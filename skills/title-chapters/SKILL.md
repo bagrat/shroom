@@ -1,17 +1,26 @@
 ---
 name: title-chapters
-description: Author a shroom recording's title, TL;DR, and chapters from its transcript, then write the <id>.md metadata record. Use after a recording is transcribed, or when the user asks to (re)title / re-chapter a video.
+description: Author a shroom recording's title, TL;DR, and chapters from its transcript, then write the <id>.md metadata record. Use after a recording is transcribed, to enrich a user-named recording with chapters, or when the user asks to (re)title / re-chapter a video.
 allowed-tools: Read, Bash(node:*)
 ---
 
 # Title / TL;DR / chapters
 
-You turn a finished recording's **transcript** into the three human-facing pieces
-of metadata — **title**, **TL;DR**, **chapters** — and persist them. This is the
-judgment half of the determinism boundary (SPEC §7): *you* decide what the title
-says and where a chapter falls; the deterministic `write-meta.mjs` script writes
-the file. Never hand-write `<id>.md` yourself — always go through the script, so
-escaping, key order, and the transcript body stay correct.
+You turn a finished recording's **transcript** into the human-facing metadata —
+**title**, **TL;DR**, **chapters** — and persist it. This is the judgment half of
+the determinism boundary (SPEC §7): *you* decide what the title says and where a
+chapter falls; the deterministic `write-meta.mjs` script writes the file. Never
+hand-write `<id>.md` yourself — always go through the script, so escaping, key
+order, and the transcript body stay correct.
+
+## Two modes
+
+- **Author from scratch** — no title exists yet (the user chose auto-naming).
+  Author title + TL;DR + chapters and pass `--title`.
+- **Enrich** — the user already named the recording at stop, and you're filling in
+  the transcript-derived parts in the background. **Preserve their title:** add
+  TL;DR + chapters but **omit `--title`** — the writer inherits the existing one.
+  Don't second-guess a title the user chose.
 
 ## Input
 
@@ -59,6 +68,8 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/page/write-meta.mjs" \
   --chapters '[{"t":0,"label":"Intro"},{"t":48,"label":"The PUT loop"}]'
 ```
 
+- **Enrich mode: omit `--title`** so the writer keeps the user's title (it reads
+  it back from the existing `<id>.md`). Only pass `--title` when authoring fresh.
 - Omit `--tldr` / `--chapters` when you decided there are none.
 - Pass `--library <dir>` only if you were given an explicit library override; by
   default the script resolves it (creds `library` → `~/shroom`).

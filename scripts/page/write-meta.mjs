@@ -23,7 +23,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-import { writeMetadataFile } from './lib/metadata.mjs';
+import { writeMetadataFile, readMetadataFile } from './lib/metadata.mjs';
 
 function parseArgs(argv) {
   const o = {};
@@ -85,14 +85,20 @@ const flag = (k) => (opts[k] !== undefined && opts[k] !== 'true' ? opts[k] : und
 
 const id = flag('id');
 if (!id) die('A recording id is required: --id <id>.');
-const title = flag('title');
-if (!title) die('A title is required: --title "<title>". (The skill authors it.)');
 
 const sessionDir = flag('session') ? path.resolve(flag('session')) : null;
 if (sessionDir && !fs.existsSync(sessionDir)) die(`No such session dir: ${sessionDir}`);
 
 const library = path.resolve(flag('library') ?? libraryFromCreds() ?? path.join(os.homedir(), 'shroom'));
 fs.mkdirSync(library, { recursive: true });
+const metaPath = path.join(library, `${id}.md`);
+
+// Title resolves: --title  >  the existing record's title  >  error. The fallback
+// lets the background enrichment pass add chapters/transcript without restating
+// (or clobbering) a title the user already gave at stop.
+const existing = readMetadataFile(metaPath);
+const title = flag('title') ?? existing?.meta?.title;
+if (!title) die('A title is required: --title "<title>" (or an existing <id>.md to inherit it from).');
 
 // Transcript body (+ language/duration fallback) from the normalized transcript.
 let transcriptBody = '';
@@ -126,7 +132,6 @@ meta.createdAt = createdAt;
 if (lang) meta.lang = lang;
 if (chapters.length) meta.chapters = chapters;
 
-const metaPath = path.join(library, `${id}.md`);
 writeMetadataFile(metaPath, { meta, transcript: transcriptBody });
 
 process.stdout.write(

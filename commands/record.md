@@ -12,22 +12,25 @@ you never reimplement them. The recorder owns ffmpeg; the agent owns the session
 
 `$ARGUMENTS`, if given, is a library-dir override for this recording's `<id>.md`.
 
-## Step 0 — drain any pending publish (recovery, SPEC §6)
+## Step 0 — what triggered this turn?
 
-A recording launched earlier may have finished while no session was live. Before
-anything else, glance at the most recent recordings:
+You launch the recorder and (later) transcription as **harness-tracked background
+tasks**, so a turn may begin because one of them just finished. Branch first:
 
-```
-ls -t ~/.shroom/recordings 2>/dev/null | head -3
-```
+- **A recorder task just completed** → that recording stopped. Go to **Step 3
+  (name + instant publish)** for its session.
+- **A transcription task just completed** → go to **Step 5 (enrich)** for its
+  session: the link is already live; you're adding chapters + transcript.
+- **Otherwise (a fresh `/shroom:record`)** → first drain any **pending publish**
+  from an earlier run (SPEC §6 recovery): glance at the recent recordings,
 
-For each, check `events.ndjson` for a `published` event **carrying a
-`playbackUrl`** (the deploy one, not the uploader's URL-less publish). If you find
-one you haven't already surfaced this session, tell the user "your last recording
-is live: <url>" and `open` it. This is also exactly what happens when the
-background recorder you launched **re-invokes you on completion** — if this turn
-was triggered by a finished recorder, skip straight to **Step 3 (publish)** for
-that session instead of starting a new one.
+  ```
+  ls -t ~/.shroom/recordings 2>/dev/null | head -3
+  ```
+
+  and for each check `events.ndjson` for a `published` event **carrying a
+  `playbackUrl`** you haven't surfaced yet — if found, tell the user "your last
+  recording is live: <url>" and `open` it. Then go to **Step 1 (start)**.
 
 ## Step 1 — start recording (harness-tracked background task)
 
@@ -69,44 +72,90 @@ When the user asks to stop, write `stop` to the fifo. The recorder finalizes
 is configured, and exits — which completes the background task and re-invokes you.
 Proceed to Step 3 with that session's `dir` and `id`.
 
-## Step 3 — publish (automatic, no edit gate)
+## Step 3 — name it, then publish instantly
+
+The link should be in the user's hands **right after stop**, not gated behind
+transcription (whisper can take a while). The page is re-derivable and the URL is
+stable, so publish a good page now and let it get richer later.
 
 Read `<dir>/events.ndjson`: confirm `finalized` with `ok: true` (else surface the
-`error`/failure and stop). Then, in order:
+`error`/failure and stop). Then `open <dir>/preview.mp4` — the instant local
+preview (SPEC §8). Now **ask the user how to title it** (`AskUserQuestion`):
 
-1. **Show it immediately.** `open <dir>/preview.mp4` — the local instant preview,
-   zero cloud needed (SPEC §8).
-2. **Transcribe** (optional, soft-skips without whisper/audio):
+- **Auto-name it** — say plainly this reads the recording's transcript with
+  whisper, so it takes a few seconds (longer for a long recording). You get a
+  title *and* chapters from it.
+- **Their own title** — tell them they can just type a title (the free-text
+  option); that publishes the link **immediately**, and you'll still transcribe in
+  the background for search + chapters.
+
+### Path A — the user gave a title (instant link)
+
+1. Write the record with their title (no transcript needed yet):
+   ```
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/page/write-meta.mjs" --id <id> --session <dir> --title "<their title>"
+   ```
+   (Pass `--library <dir>` if `$ARGUMENTS` gave an override.) Capture `metaPath`.
+2. **Build + deploy now** (see *Publish* below) → hand over the link.
+3. **Kick off transcription in the background** and end your turn — don't wait:
    ```
    node "${CLAUDE_PLUGIN_ROOT}/scripts/transcribe/transcribe.mjs" --session <dir>
    ```
-3. **Title / TL;DR / chapters** — invoke the **`title-chapters` skill** with the
-   session dir. It reads `transcript.json`, authors the metadata, and writes
-   `<id>.md` via the deterministic writer. Author it **automatically** — there is
-   **no edit-before-publish gate** in this version (editing-as-a-sentence comes
-   later). Capture the `metaPath` it reports. If `$ARGUMENTS` gave a library
-   override, pass it through to the skill.
-4. **Build the page**:
-   ```
-   node "${CLAUDE_PLUGIN_ROOT}/scripts/page/build-page.mjs" --session <dir> --meta <metaPath>
-   ```
-5. **Deploy** — only if Cloudflare is provisioned. Read `pagesProject` from
-   `~/.shroom/credentials.json`:
-   - **present** →
-     ```
-     node "${CLAUDE_PLUGIN_ROOT}/scripts/deploy/deploy.mjs" --project <pagesProject> --session <dir>
-     ```
-     Read the `published` event's `playbackUrl`, present the shareable link, and
-     `open` it. That URL **is** the publish (SPEC §6 — record → link, no separate
-     publish step).
-   - **absent** → say the recording is rendered locally (give the `preview.mp4`
-     path) and that `/shroom:setup` unlocks the shareable link. Stop here.
+   Its completion re-invokes you at **Step 5 (enrich)**.
 
-## Step 4 — commit the record (propose → confirm → run)
+### Path B — auto-name (the user opted to wait)
 
-The `<id>.md` lives in the git library (SPEC §3). Committing is a system change,
-so propose it, don't do it silently. Offer one command and run it only on the
-user's yes:
+1. Transcribe in the foreground (the user is waiting):
+   ```
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/transcribe/transcribe.mjs" --session <dir>
+   ```
+   If it **soft-skips** (`transcribe_skipped` — no whisper/audio), auto-naming
+   isn't possible: tell the user, ask them to type a title, and continue as Path A
+   (but there's no transcript to background, so skip Step 5).
+2. Invoke the **`title-chapters` skill** (author-from-scratch) with the session
+   dir → it authors title + TL;DR + chapters and writes `<id>.md`. Capture
+   `metaPath`.
+3. **Build + deploy** (below) → hand over the link. No Step 5 needed — the
+   transcript is already baked in.
+
+### Publish (both paths)
+
+```
+node "${CLAUDE_PLUGIN_ROOT}/scripts/page/build-page.mjs" --session <dir> --meta <metaPath>
+```
+
+Then deploy **only if Cloudflare is provisioned** — read `pagesProject` from
+`~/.shroom/credentials.json`:
+
+- **present** →
+  ```
+  node "${CLAUDE_PLUGIN_ROOT}/scripts/deploy/deploy.mjs" --project <pagesProject> --session <dir>
+  ```
+  Read the `published` event's `playbackUrl`, present the shareable link, and
+  `open` it. That URL **is** the publish (SPEC §6 — record → link).
+- **absent** → say it rendered locally (give the `preview.mp4` path) and that
+  `/shroom:setup` unlocks the shareable link.
+
+## Step 5 — enrich in the background (Path A only)
+
+Triggered when the background transcription completes. The link is already live;
+you're upgrading the same URL in place.
+
+1. Confirm `<dir>/transcript.json` exists (if transcription soft-skipped, there's
+   nothing to add — stop quietly).
+2. Invoke the **`title-chapters` skill** in **enrich mode**: it adds TL;DR +
+   chapters from the transcript and **preserves the user's title** (the writer
+   inherits it — the skill omits `--title`). Capture `metaPath`.
+3. **Re-build + re-deploy** the same way (*Publish* above). The stable URL now
+   carries chapters, the transcript, and richer `og:` tags.
+4. Tell the user briefly: "added chapters + a searchable transcript to <link>."
+
+## Step 6 — commit the record (propose → confirm → run)
+
+Once the record is complete (after Step 5 in Path A, after publish in Path B), the
+`<id>.md` in the git library is the thing worth keeping (SPEC §3). Committing is a
+system change — propose it, don't do it silently. Offer one command, run it only
+on the user's yes:
 
 ```
 git -C <library> add <id>.md && git -C <library> commit -m "Add recording: <title>"

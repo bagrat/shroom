@@ -104,10 +104,29 @@ test('flags override session-derived duration/createdAt', () => {
   assert.equal(meta.createdAt, '2020-01-01T00:00:00.000Z');
 });
 
-test('requires both an id and a title', () => {
+test('requires an id, and a title unless an existing record supplies one', () => {
   const lib = tmp('shroom-lib-');
   assert.throws(() => run(['--library', lib, '--title', 'T'])); // no id
-  assert.throws(() => run(['--id', 'a', '--library', lib])); // no title
+  assert.throws(() => run(['--id', 'a', '--library', lib])); // no title, no existing file
+});
+
+test('enrichment: omitting --title inherits the existing title, adds chapters+transcript', () => {
+  const lib = tmp('shroom-lib-');
+  // First write: the user's instant title, no transcript yet (manual-name path).
+  run(['--id', 'e5', '--library', lib, '--title', 'My own title']);
+  let parsed = parseMetadata(fs.readFileSync(path.join(lib, 'e5.md'), 'utf8'));
+  assert.equal(parsed.meta.title, 'My own title');
+  assert.equal(parsed.transcript, '');
+
+  // Background enrichment: transcript now exists; add chapters, keep the title.
+  const session = makeSession({ transcript: 'Body text here.' });
+  const res = run(['--id', 'e5', '--library', lib, '--session', session,
+    '--chapters', JSON.stringify([{ t: 0, label: 'Start' }])]);
+  assert.equal(res.chapters, 1);
+  parsed = parseMetadata(fs.readFileSync(res.metaPath, 'utf8'));
+  assert.equal(parsed.meta.title, 'My own title'); // preserved, not clobbered
+  assert.deepEqual(parsed.meta.chapters, [{ t: 0, label: 'Start' }]);
+  assert.match(parsed.transcript, /Body text here\./);
 });
 
 (async () => {

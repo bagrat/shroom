@@ -8,13 +8,14 @@ Slash commands exposed by the shroom plugin.
   [`scripts/setup/`](../scripts/setup/); see [`SPEC.md`](../SPEC.md) §8.
 - [`record.md`](record.md) — **built (M5c-2).** The `/shroom:record` flow:
   launch the recorder as a harness-tracked background task → pause/resume/stop via
-  its control fifo → on completion, transcribe → the `title-chapters` skill
-  authors `<id>.md` → build-page → deploy → present the link (and drain any
-  pending publish from a prior run, SPEC §6). Orchestration around the
-  deterministic recorder ([`scripts/recorder/`](../scripts/recorder/)),
+  its control fifo → on stop, **ask the user to name it or auto-name**. A typed
+  title publishes the **link instantly** (no whisper wait) and transcription runs
+  in the **background**, then the `title-chapters` skill enriches the *same* stable
+  URL with chapters + transcript; auto-name waits for whisper, then titles from the
+  transcript. Drains any pending publish from a prior run (SPEC §6). Orchestration
+  around the deterministic recorder ([`scripts/recorder/`](../scripts/recorder/)),
   transcribe, [`write-meta`](../scripts/page/write-meta.mjs), build-page, and
-  deploy. Titles are authored **automatically** post-stop — no edit-before-publish
-  gate yet (editing-as-a-sentence is M5c-3).
+  deploy.
 
 Commands hold **judgment** (what to do, when to ask) and consent (every system
 mutation = propose → confirm → run, batched into one approval). The exact,
