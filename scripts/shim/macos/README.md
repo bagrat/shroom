@@ -64,7 +64,7 @@ in the way:
 | state | left-click | right / control-click |
 | --- | --- | --- |
 | `○` armed | start → **3-2-1 countdown** → record | menu (Discard) |
-| `3 2 1` counting | **cancel** → armed | menu (Cancel, Discard) |
+| `•` counting | **cancel** → armed | same |
 | `●` recording (red) | **pause**, then open the menu | same |
 | `❚❚` paused | open the menu (Resume / Stop / Restart) | same |
 | `↻` restarting | (busy — discarding + re-arming) | — |
@@ -74,28 +74,47 @@ click can't actually begin a recording. Pausing-on-click is **instant**, but the
 menu opens only once the recorder confirms it has stopped ffmpeg (the shim watches
 the recorder's `paused` event) — so the menu is **never caught in the recording's
 last frame**. **Stop** and **Resume** stay deliberate menu choices (Stop is the
-publish act; a stray click must not end-and-publish). **Discard** stops without
-publishing, **deletes the session**, and quits — it covers the old "Quit" too.
+publish act; a stray click must not end-and-publish).
 
-**Restart** (in the paused menu) throws the current take away and starts fresh
-**without quitting** the shim: it discards the recorder (the same `cancel` Discard
-uses — stop, no publish, delete the session) and, once that process exits,
-relaunches a fresh recorder back at `armed` (new id, pristine session). The recorder
-stays a simple single-session machine; the shim owns the relaunch.
+### The fullscreen overlay ([`Sources/Overlay.swift`](Sources/Overlay.swift))
+
+In fullscreen the menu-bar tray **autohides**, so the countdown and the destructive
+confirms are drawn as a **transparent, always-on-top overlay** that floats *above
+other apps' fullscreen spaces without switching Spaces* (a borderless clear window
+at `CGShieldingWindowLevel` with `canJoinAllSpaces + fullScreenAuxiliary`, shown via
+`orderFrontRegardless` — never `NSApp.activate`). It renders the big countdown and,
+for Discard/Restart, a question + custom-drawn buttons on a soft Gaussian-blurred
+dark glow (no visible box). Buttons are hit-tested in `mouseDown` (not `NSButton`) —
+the path proven to take clicks over a fullscreen app while the accessory app is
+inactive.
+
+- **Discard** opens a 4-way panel — **Keep · Resume · Restart · Discard** — so a
+  fat-fingered Discard can pivot to a safe action instead of being a binary choice.
+  Discard stops without publishing, **deletes the session**, and quits (covers the
+  old "Quit"). From `armed`/`stopped` there's nothing recorded, so it skips the
+  prompt and just tears down.
+- **Restart** confirms (**Keep recording · Start over**), then throws the take away
+  and starts fresh **without quitting**: it discards the recorder (the same `cancel`)
+  and, once that process exits, relaunches a fresh recorder (new id, pristine
+  session). The start-over **countdown runs in parallel with the ~1s relaunch**, so
+  capture auto-starts the moment it reaches zero (the shim waits for the fresh
+  recorder's `armed` event if the relaunch is slower). The recorder stays a simple
+  single-session machine; the shim owns the relaunch.
 
 ## Not here yet
 
 The no-permission global **hotkey** (Carbon `RegisterEventHotKey` — avoids the
-Accessibility TCC prompt) is deferred, as is an optional confirm prompt before the
-destructive Discard / Restart. Wiring `/shroom:record` to launch the shim (instead
-of starting capture itself) and having `/shroom:setup` compile it is the remaining
-step (S4).
+Accessibility TCC prompt) is deferred. Wiring `/shroom:record` to launch the shim
+(instead of starting capture itself) and having `/shroom:setup` compile it is the
+remaining step (S4). The overlay currently sizes to `NSScreen.main` — multi-display
+placement is a later refinement.
 
 ## Layout
 
 ```
 Sources/main.swift   the shim: TCC + tray + recorder launch + fifo writes
-build.sh             on-device compile + ad-hoc sign
+Sources/Overlay.swift  fullscreen countdown + Discard/Restart confirm overlay
+build.sh             on-device compile (all Sources/*.swift) + ad-hoc sign
 build/               output (gitignored)
 ```
 

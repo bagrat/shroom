@@ -76,17 +76,22 @@ func parseArgs() -> Args {
 
 // MARK: - App
 
-enum RecState: Equatable { case armed, counting(Int), recording, pausing, paused, restarting, stopped }
+enum RecState: Equatable { case armed, counting, recording, pausing, paused, restarting, stopped }
 
 final class ShimController: NSObject, NSApplicationDelegate {
     let args: Args
     var statusItem: NSStatusItem!
     var node: Process?
-    var countdownTimer: Timer?
+    let overlay = Overlay()   // fullscreen countdown + Discard/Restart confirm
     var nodeBuf = ""   // accumulates recorder stdout for line-by-line event parsing
     // Set when a "Restart" is in flight: the current recorder is being discarded
     // (cancel) and, once it exits, we relaunch a fresh one instead of quitting.
     var pendingRestart = false
+    // Whether the (current) recorder has emitted `armed` — i.e. it's reading the
+    // fifo and a `start` won't be dropped. Used to time the auto-start after a
+    // Restart, whose countdown can finish before the fresh recorder has re-armed.
+    var recorderArmed = false
+    var awaitingAutoStart = false
     var state: RecState = .armed { didSet { render() } }
 
     init(_ args: Args) { self.args = args }
@@ -195,15 +200,18 @@ final class ShimController: NSObject, NSApplicationDelegate {
             DispatchQueue.main.async {
                 guard let self = self else { return }
                 // Restart: the recorder we just discarded has exited — relaunch a
-                // fresh one (new id, pristine session dir + events) and go back to
-                // `armed`, WITHOUT quitting the shim. `cancel` deleted the session
-                // dir (fifo included), so re-create the fifo before relaunching.
+                // fresh one (new id, pristine session dir + events), WITHOUT quitting
+                // the shim. `cancel` deleted the session dir (fifo included), so
+                // re-create the fifo first. State is driven by the Restart overlay
+                // flow (.restarting → .recording on auto-start, or → .armed if the
+                // countdown is canceled); the fresh recorder's `armed` event sets
+                // recorderArmed and may fire the queued auto-start (onRecorderArmed).
                 if self.pendingRestart {
                     self.pendingRestart = false
                     self.node = nil
                     self.nodeBuf = ""
+                    self.recorderArmed = false
                     self.ensureFifo()
-                    self.state = .armed
                     self.launchRecorder()
                     return
                 }
@@ -222,18 +230,21 @@ final class ShimController: NSObject, NSApplicationDelegate {
     //
     // The tray's PRIMARY (left) click is the one obvious action for the current
     // state — no menu standing in the way:
-    //   armed     → start a cancelable 3-2-1 countdown, then capture
+    //   armed     → start a cancelable 3-2-1 countdown (the fullscreen overlay,
+    //               visible even when the tray autohides), then capture
     //   counting  → cancel, back to armed (so a stray click can't actually start a
     //               recording — you get 3 s to undo, which doubles as "get ready")
     //   recording → pause IMMEDIATELY, then open the menu — reaching for the tray
-    //               halts capture (SPEC §4) — offering Resume / Stop
-    //   paused    → open the menu (Resume / Stop)
+    //               halts capture (SPEC §4) — offering Resume / Stop / Restart
+    //   paused    → open the menu (Resume / Stop / Restart)
     // Stop and Resume stay deliberate MENU choices, never a blind toggle: Stop is
     // the publish act, so a stray click must not end-and-publish. Right-click (or
     // control-click) opens the menu anywhere. The menu's escape is **Discard** —
     // stop without publishing, delete the session, and quit (covers the old Quit).
     // The paused menu also offers **Restart** — throw the take away and start fresh
-    // without quitting the shim (discard + relaunch the recorder; see onRestart).
+    // without quitting (discard + relaunch the recorder; see onRestart). Both
+    // **Discard** and **Restart** confirm first via the overlay (accidental-click
+    // guard); Restart then shows the same countdown and auto-starts the fresh take.
 
     func setupStatusItem() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -284,6 +295,8 @@ final class ShimController: NSObject, NSApplicationDelegate {
             nodeBuf = String(nodeBuf[nodeBuf.index(after: nl)...])
             if line.contains("\"event\":\"paused\"") {
                 DispatchQueue.main.async { [weak self] in self?.onRecorderPaused() }
+            } else if line.contains("\"event\":\"armed\"") {
+                DispatchQueue.main.async { [weak self] in self?.onRecorderArmed() }
             }
         }
     }
@@ -296,29 +309,35 @@ final class ShimController: NSObject, NSApplicationDelegate {
         showMenu()
     }
 
-    // MARK: countdown
-
-    // A 3-2-1 the user can abort (click during it → back to armed). Capture begins
-    // only when it reaches zero — that's when `start` hits the fifo.
-    func beginCountdown() {
-        var remaining = 3
-        state = .counting(remaining)
-        countdownTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] t in
-            guard let self = self else { return }
-            remaining -= 1
-            if remaining <= 0 {
-                t.invalidate(); self.countdownTimer = nil
-                self.send("start"); self.state = .recording
-            } else {
-                self.state = .counting(remaining)
-            }
+    // The (possibly freshly relaunched) recorder is armed and reading the fifo. If a
+    // Restart's countdown already finished and queued an auto-start, fire it now.
+    func onRecorderArmed() {
+        recorderArmed = true
+        if awaitingAutoStart {
+            awaitingAutoStart = false
+            recorderArmed = false
+            send("start"); state = .recording
         }
     }
 
-    func cancelCountdown() {
-        countdownTimer?.invalidate(); countdownTimer = nil
-        state = .armed
+    // MARK: countdown
+
+    // A 3-2-1 the user can abort (click the overlay or the tray → back to armed).
+    // The countdown is the fullscreen overlay (visible even when the tray is
+    // autohidden in fullscreen), not a tray glyph. Capture begins only when it
+    // reaches zero — that's when `start` hits the fifo.
+    func beginCountdown() {
+        state = .counting
+        overlay.countdown(seconds: 3, onComplete: { [weak self] in
+            guard let self = self else { return }
+            self.recorderArmed = false
+            self.send("start"); self.state = .recording
+        }, onCancel: { [weak self] in
+            self?.state = .armed
+        })
     }
+
+    func cancelCountdown() { overlay.cancel() } // runs the countdown's onCancel → armed
 
     // MARK: tray rendering
 
@@ -335,7 +354,7 @@ final class ShimController: NSObject, NSApplicationDelegate {
     func glyph(for s: RecState) -> String {
         switch s {
         case .armed:           return "○"          // ready
-        case .counting(let n): return String(n)    // 3 · 2 · 1
+        case .counting:        return "•"          // counting down (number is on the overlay)
         case .recording:       return "●"          // live (red)
         case .pausing:         return "❚❚"
         case .paused:          return "❚❚"
@@ -346,7 +365,7 @@ final class ShimController: NSObject, NSApplicationDelegate {
     func label(for s: RecState) -> String {
         switch s {
         case .armed:           return "shroom — ready (click to start)"
-        case .counting(let n): return "shroom — starting in \(n)… (click to cancel)"
+        case .counting:        return "shroom — starting… (click to cancel)"
         case .recording:       return "shroom — recording (click to pause)"
         case .pausing:         return "shroom — pausing…"
         case .paused:          return "shroom — paused"
@@ -394,30 +413,81 @@ final class ShimController: NSObject, NSApplicationDelegate {
     @objc func onStop()   { send("stop");   state = .stopped }
     @objc func onCancel() { cancelCountdown() }
 
-    // Start over without quitting: discard the current recorder (`cancel` stops
-    // ffmpeg without publishing and deletes the session), then — once it exits —
-    // terminationHandler relaunches a fresh recorder and re-arms (pendingRestart).
-    // Same teardown as Discard; the only difference is we relaunch instead of quit.
+    // Restart (paused only): confirm first (the accidental-click guard), then start
+    // over without quitting. Confirm + countdown are the fullscreen overlay, so they
+    // work even when the tray is autohidden in fullscreen.
     @objc func onRestart() {
-        guard node != nil, state != .restarting, state != .stopped else { return }
-        if case .counting = state { cancelCountdown() }
+        guard node != nil, state == .paused else { return }
+        overlay.choices(
+            title: "Start over?",
+            detail: "Deletes the current recording and starts fresh.",
+            actions: [
+                OverlayAction(title: "Keep recording", destructive: false) { /* stay paused */ },
+                OverlayAction(title: "Start over", destructive: true) { [weak self] in self?.performRestart() },
+            ])
+    }
+
+    // Discard the current recorder (`cancel` stops ffmpeg WITHOUT publishing and
+    // deletes the session) and relaunch a fresh one — terminationHandler does the
+    // relaunch because pendingRestart is set. The countdown runs in PARALLEL with
+    // the ~1s relaunch: when it reaches zero we start immediately if the fresh
+    // recorder is already armed, else as soon as its `armed` event lands. Canceling
+    // the countdown leaves us armed (fresh), ready for a manual start.
+    func performRestart() {
         pendingRestart = true
+        recorderArmed = false
+        awaitingAutoStart = false
         state = .restarting
         send("cancel")
-        // Backstop, mirroring Discard: if the recorder is wedged and never exits,
-        // SIGTERM it so terminationHandler still fires and we re-arm.
+        // Backstop: if the recorder is wedged and never exits, SIGTERM it so
+        // terminationHandler still fires and we relaunch.
         DispatchQueue.main.asyncAfter(deadline: .now() + 8) { [weak self] in
             guard let self = self, self.pendingRestart, let n = self.node, n.isRunning else { return }
             n.terminate()
         }
+        overlay.countdown(seconds: 3, onComplete: { [weak self] in
+            self?.autoStartAfterRestart()
+        }, onCancel: { [weak self] in
+            self?.state = .armed   // stay armed; don't auto-start
+        })
     }
 
+    // The Restart countdown reached zero: start the fresh recording if it's armed,
+    // otherwise queue it for the imminent `armed` event (onRecorderArmed).
+    func autoStartAfterRestart() {
+        if recorderArmed {
+            recorderArmed = false
+            send("start"); state = .recording
+        } else {
+            awaitingAutoStart = true
+        }
+    }
+
+    // Discard: throw this recording away and quit. From armed/stopped there's nothing
+    // recorded, so skip the confirm and just tear down (covers the old "Quit").
+    // Otherwise confirm first. `cancel` stops ffmpeg without publishing and deletes
+    // the session; the recorder exits and terminationHandler quits us (delayed
+    // terminate is a backstop if wedged).
     @objc func onDiscard() {
-        // Throw this recording away: `cancel` stops ffmpeg WITHOUT publishing and
-        // deletes the session, then the recorder exits and terminationHandler quits
-        // us. This also covers the old "Quit" — discarding an armed/empty session
-        // just tears down and closes. Delayed terminate is a backstop if wedged.
-        if case .counting = state { cancelCountdown() }
+        switch state {
+        case .armed, .stopped:
+            performDiscard()   // nothing recorded — just tear down (covers old "Quit")
+        default:
+            // A fat-fingered Discard can pivot to a safe action instead of a binary
+            // choice: Keep (stay paused), Resume, Restart, or actually Discard.
+            overlay.choices(
+                title: "Discard this recording?",
+                detail: "It won’t be saved or shared.",
+                actions: [
+                    OverlayAction(title: "Keep", destructive: false) { /* stay paused */ },
+                    OverlayAction(title: "Resume", destructive: false) { [weak self] in self?.onResume() },
+                    OverlayAction(title: "Restart", destructive: false) { [weak self] in self?.performRestart() },
+                    OverlayAction(title: "Discard", destructive: true) { [weak self] in self?.performDiscard() },
+                ])
+        }
+    }
+
+    func performDiscard() {
         send("cancel")
         DispatchQueue.main.asyncAfter(deadline: .now() + 8) { NSApp.terminate(nil) }
     }

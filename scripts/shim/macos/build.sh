@@ -13,7 +13,6 @@
 set -eu
 
 DIR=$(cd "$(dirname "$0")" && pwd)
-SRC="$DIR/Sources/main.swift"
 OUT_DIR="$DIR/build"
 OUT="$OUT_DIR/shroom-shim"
 
@@ -26,10 +25,11 @@ if ! command -v swiftc >/dev/null 2>&1; then
 fi
 
 mkdir -p "$OUT_DIR"
+# Compile every Sources/*.swift together (main.swift + Overlay.swift + …).
 swiftc -O \
   -framework Cocoa \
   -framework CoreGraphics \
-  "$SRC" -o "$OUT"
+  "$DIR"/Sources/*.swift -o "$OUT"
 
 # Ad-hoc sign in place (stable cdhash → persistent TCC grant for this build).
 codesign --force --sign - "$OUT"
