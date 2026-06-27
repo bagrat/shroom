@@ -12,6 +12,9 @@ build/
 *.env
 .env*
 
+# wrangler's local logs/cache, created wherever a wrangler command runs
+.wrangler/
+
 # scratch recordings / segments during dev
 *.m4s
 *.ts

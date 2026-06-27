@@ -19,10 +19,10 @@
 
 import path from 'node:path';
 
-import { probeEnv, spawnRun } from './lib/env-probe.mjs';
+import { probeEnv, spawnRun, findNodeBinDir } from './lib/env-probe.mjs';
 import { buildInstallPlan } from './lib/install-plan.mjs';
 import { provisionCloudflare } from './lib/cloudflare.mjs';
-import { buildCredentials, writeCreds, credsPath } from './lib/credentials.mjs';
+import { buildCredentials, writeCreds, credsPath, wranglerPathEnv } from './lib/credentials.mjs';
 import { spawnWrangler } from '../deploy/lib/wrangler.mjs';
 
 async function haveBrew(run = spawnRun) {
@@ -59,13 +59,27 @@ async function cmdProbe({ json }) {
 }
 
 async function cmdProvision({ json, opts }) {
-  const runWrangler = (args) => spawnWrangler(args, { bin: opts.wrangler ?? 'wrangler', tee: !json });
+  // The seam forwards a per-call env so R2 ops can carry CLOUDFLARE_API_TOKEN while
+  // Pages/whoami use the OAuth session (cloudflare.mjs splits them).
+  const runWrangler = (args, extra = {}) =>
+    spawnWrangler(args, { bin: opts.wrangler ?? 'wrangler', tee: !json, ...extra });
   // ndjson events to stderr so --json keeps stdout clean for the result object.
   const log = (event, fields = {}) =>
     process.stderr.write(JSON.stringify({ ts: new Date().toISOString(), event, ...fields }) + '\n');
 
+  // Persist a Node >=22 bin dir up front so the wrangler seam runs under it, and
+  // run THIS provision's wrangler calls under it too (baseEnv with prefixed PATH).
+  const nodeBinDir = findNodeBinDir();
+  if (nodeBinDir) writeCreds(buildCredentials({ nodeBinDir }));
+  const baseEnv = wranglerPathEnv(process.env);
+
   const res = await provisionCloudflare({
     runWrangler,
+    baseEnv,
+    // The R2 API token (+ its derived S3 keys) the user created in the dashboard.
+    r2Token: opts['r2-token'] ?? process.env.CLOUDFLARE_R2_TOKEN,
+    r2AccessKeyId: opts['r2-access-key-id'] ?? process.env.SHROOM_S3_ACCESS_KEY_ID,
+    r2SecretAccessKey: opts['r2-secret-access-key'] ?? process.env.SHROOM_S3_SECRET_ACCESS_KEY,
     bucket: opts.bucket ?? 'shroom',
     pagesProject: opts['pages-project'] ?? 'shroom-site',
     branch: opts.branch ?? 'main',
@@ -89,7 +103,10 @@ async function cmdProvision({ json, opts }) {
       bucket: res.bucket,
       publicBaseUrl: res.publicBaseUrl,
       pagesProject: res.pagesProject,
-      pagesBaseUrl: res.pagesBaseUrl,
+      // Only persist the Pages URL when it was actually parsed from wrangler — a
+      // bare fallback on an already_exists re-run must not clobber the stored URL
+      // (which may carry Cloudflare's random subdomain suffix).
+      pagesBaseUrl: res.pagesBaseUrlParsed ? res.pagesBaseUrl : undefined,
       accessKeyId: token.accessKeyId,
       secretAccessKey: token.secretAccessKey,
     }),
@@ -126,7 +143,9 @@ function cmdSetLibrary({ json, opts }) {
     process.stderr.write('Usage: setup.mjs set-library --dir <path>\n');
     return 2;
   }
-  writeCreds(buildCredentials({ library: dir }));
+  // Capture a Node >=22 bin dir while we're here (set-library runs early in setup),
+  // so the wrangler seam has it before the Cloudflare phase.
+  writeCreds(buildCredentials({ library: dir, nodeBinDir: findNodeBinDir() ?? undefined }));
   const out = { ok: true, library: dir, credentials: credsPath() };
   if (json) process.stdout.write(JSON.stringify(out, null, 2) + '\n');
   else process.stdout.write(`Library set to ${dir} (${out.credentials})\n`);

@@ -21,6 +21,13 @@ export const STATES = {
   already_exists: { ok: true, idempotent: true },
   not_logged_in: { retryable: true, action: 'login' },
   insufficient_scope: { retryable: true, action: 'login', note: 'token lacks R2/Pages scope' },
+  // R2 cannot be managed over the wrangler OAuth session — there is NO r2 OAuth
+  // scope (verified live), so `r2 bucket create` returns "Authentication error
+  // [code: 10000]" against /r2/buckets even when logged in with a verified,
+  // R2-enabled account. The ONLY fix is a dashboard-minted R2 API token used as
+  // CLOUDFLARE_API_TOKEN — re-login can never help, so this must not be mistaken
+  // for not_logged_in. (Live-account session finding.)
+  r2_token_required: { needsDashboard: true, action: 'create_r2_token', note: 'OAuth cannot manage R2; needs a dashboard R2 API token' },
   email_unverified: { retryable: true, needsDashboard: true, action: 'verify_email' },
   r2_not_enabled: { retryable: true, needsDashboard: true, action: 'enable_r2' },
   needs_payment: { retryable: true, needsDashboard: true, action: 'add_payment' },
@@ -32,6 +39,10 @@ export const STATES = {
 // Ordered matchers — first hit wins, so put the specific ones before the generic.
 // Each tests the combined lower-cased stdout+stderr (+ exit code).
 const MATCHERS = [
+  // R2-over-OAuth (code 10000 against an /r2/ endpoint). MUST come first: the
+  // failure text often also contains "wrangler login" (the missing-scopes warning),
+  // which would otherwise mis-fire not_logged_in and trigger a useless re-login loop.
+  { state: 'r2_token_required', test: (t) => /\[code:\s*10000\]/.test(t) && /\/r2\/|r2\/buckets|r2 bucket/.test(t) },
   // Auth. wrangler tends to say "not authenticated" / "must be logged in" /
   // "run `wrangler login`" / "Authentication error [code: 10000]".
   { state: 'not_logged_in', test: (t) => /not authenticated|must be logged in|wrangler login|you are not logged in|no account id|authentication.*required/.test(t) },

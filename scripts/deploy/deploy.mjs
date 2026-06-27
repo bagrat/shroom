@@ -24,6 +24,7 @@ import { fileURLToPath } from 'node:url';
 import { runDeploy } from './lib/deploy.mjs';
 import { spawnWrangler } from './lib/wrangler.mjs';
 import { loadPageConfig } from '../page/lib/page-config.mjs';
+import { wranglerPathEnv } from '../setup/lib/credentials.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const VENDOR_HLS = path.resolve(HERE, '../page/vendor/hls.min.js');
@@ -82,7 +83,10 @@ const log = (event, fields = {}) => {
   }
 };
 
-const runWrangler = (args) => spawnWrangler(args, { bin: flag('wrangler') ?? 'wrangler' });
+// Run wrangler under the persisted Node >=22 (creds.nodeBinDir) without changing
+// the user's default node — wrangler 4.x refuses to run on older node.
+const wranglerEnv = wranglerPathEnv(process.env);
+const runWrangler = (args) => spawnWrangler(args, { bin: flag('wrangler') ?? 'wrangler', env: wranglerEnv });
 
 const result = await runDeploy({
   siteDir,

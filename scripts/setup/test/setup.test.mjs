@@ -46,12 +46,15 @@ function probeWith(table) {
 }
 
 const REAL_OUTPUT = {
+  node: { code: 0, stdout: 'v22.23.1\n', stderr: '' },
   git: { code: 0, stdout: 'git version 2.39.3 (Apple Git-146)\n', stderr: '' },
   ffmpeg: { code: 0, stdout: '', stderr: 'ffmpeg version 7.1.1 Copyright (c) 2000-2025\n' },
   wrangler: { code: 0, stdout: ' ⛅️ wrangler 3.90.0\n', stderr: '' },
   whisper: { code: 0, stdout: 'usage: whisper [-h] ...\n', stderr: '' },
   brew: { code: 0, stdout: 'Homebrew 4.2.0\n', stderr: '' },
 };
+// Present-node baseline for tables that only care about other tools.
+const NODE_OK = { node: REAL_OUTPUT.node };
 
 await test('probeTool: present tool reports version', async () => {
   const git = TOOLS.find((t) => t.name === 'git');
@@ -98,17 +101,32 @@ await test('probeEnv: all present → ready, nothing missing', async () => {
 });
 
 await test('probeEnv: missing required → not ready', async () => {
-  const env = await probeWith({ git: REAL_OUTPUT.git, whisper: REAL_OUTPUT.whisper });
+  const env = await probeWith({ ...NODE_OK, git: REAL_OUTPUT.git, whisper: REAL_OUTPUT.whisper });
   assert.equal(env.ready, false);
   assert.deepEqual(env.missingRequired.sort(), ['ffmpeg', 'wrangler']);
   assert.deepEqual(env.missingOptional, []); // whisper present
 });
 
 await test('probeEnv: only optional missing → still ready', async () => {
-  const { whisper, ...noWhisper } = REAL_OUTPUT;
+  const { whisper, brew, ...noWhisper } = REAL_OUTPUT;
   const env = await probeWith(noWhisper);
   assert.equal(env.ready, true);
   assert.deepEqual(env.missingOptional, ['whisper']);
+});
+
+await test('probeTool: node below minMajor reads as not present', async () => {
+  const node = TOOLS.find((t) => t.name === 'node');
+  const r = await probeTool(node, { run: fakeRun({ node: { code: 0, stdout: 'v20.5.0\n' } }) });
+  assert.equal(r.present, false);
+  assert.equal(r.version, '20.5.0');
+  assert.equal(r.reason, 'below_min_v22');
+});
+
+await test('probeTool: wrangler on old node (engine error) is not present', async () => {
+  const wr = TOOLS.find((t) => t.name === 'wrangler');
+  const r = await probeTool(wr, { run: fakeRun({ wrangler: { code: 1, stderr: 'Wrangler requires at least Node.js v22.0.0. You are using v20.5.0.' } }) });
+  assert.equal(r.present, false, 'a version number scraped from the node-engine error must not count as present');
+  assert.equal(r.reason, 'unhealthy');
 });
 
 await test('installPlan: nothing missing → empty plan', async () => {
@@ -121,7 +139,7 @@ await test('installPlan: nothing missing → empty plan', async () => {
 
 await test('installPlan: groups by manager, batches packages', async () => {
   // ffmpeg+git(brew) and wrangler(npm) missing.
-  const env = await probeWith({ whisper: REAL_OUTPUT.whisper });
+  const env = await probeWith({ ...NODE_OK, whisper: REAL_OUTPUT.whisper });
   const plan = buildInstallPlan(env.results, { haveBrew: true });
   const brew = plan.steps.find((s) => s.manager === 'brew');
   const npm = plan.steps.find((s) => s.manager === 'npm');
@@ -132,7 +150,7 @@ await test('installPlan: groups by manager, batches packages', async () => {
 });
 
 await test('installPlan: optional whisper appears in plan but not requiredMissing', async () => {
-  const env = await probeWith({ git: REAL_OUTPUT.git, ffmpeg: REAL_OUTPUT.ffmpeg, wrangler: REAL_OUTPUT.wrangler });
+  const env = await probeWith({ ...NODE_OK, git: REAL_OUTPUT.git, ffmpeg: REAL_OUTPUT.ffmpeg, wrangler: REAL_OUTPUT.wrangler });
   const plan = buildInstallPlan(env.results, { haveBrew: true });
   assert.deepEqual(plan.requiredMissing, []);
   assert.deepEqual(plan.optionalMissing, ['whisper']);
@@ -169,6 +187,15 @@ await test('classify: not logged in', async () => {
   assert.equal(c.state, 'not_logged_in');
   assert.equal(c.action, 'login');
   assert.equal(c.retryable, true);
+});
+
+await test('classify: R2 code 10000 → r2_token_required, not not_logged_in', async () => {
+  // The real failure text also contains "wrangler login" (the missing-scopes
+  // warning) — the r2 matcher must still win over not_logged_in.
+  const c = ERR('A request to the Cloudflare API (/accounts/abc/r2/buckets) failed.\n  Authentication error [code: 10000]\n  run `wrangler login` to refresh');
+  assert.equal(c.state, 'r2_token_required');
+  assert.equal(c.needsDashboard, true);
+  assert.equal(c.action, 'create_r2_token');
 });
 
 await test('classify: email unverified needs dashboard', async () => {
@@ -311,6 +338,18 @@ await test('whoami: not logged in when whoami fails', async () => {
   assert.equal(me.state, 'not_logged_in');
 });
 
+await test('whoami: narrow-scope login is NOT mistaken for logged out', async () => {
+  // A logged-in narrow login prints the benign "missing scopes … run `wrangler
+  // login` to refresh" warning — must still read as logged in.
+  const withWarning = {
+    code: 0,
+    stdout: WHOAMI_OK.stdout + '\n▲ Wrangler is missing some expected OAuth scopes. To fix this, run `wrangler login` to refresh your token.',
+  };
+  const me = await whoami({ runWrangler: router([{ match: has('whoami'), res: withWarning }]) });
+  assert.equal(me.loggedIn, true);
+  assert.equal(me.accountId, '0123456789abcdef0123456789abcdef');
+});
+
 await test('createBucket: success and idempotent already-exists', async () => {
   const ok = await createBucket({ runWrangler: router([{ match: has('bucket create'), res: { code: 0, stdout: 'Created bucket shroom' } }]), name: 'shroom' });
   assert.equal(ok.ok, true);
@@ -341,9 +380,19 @@ await test('createPagesProject: success yields pages base', async () => {
   });
   assert.equal(r.ok, true);
   assert.equal(r.pagesBaseUrl, 'https://shroom-site.pages.dev');
+  assert.equal(r.parsed, false); // fallback guess, not from output
 });
 
-await test('provisionCloudflare: happy path, token deferred, ordered calls', async () => {
+await test('createPagesProject: parses Cloudflare-suffixed URL from output', async () => {
+  const r = await createPagesProject({
+    runWrangler: router([{ match: has('pages project create'), res: { code: 0, stdout: "It will be available at https://shroom-site-eym.pages.dev/ once you deploy." } }]),
+    name: 'shroom-site',
+  });
+  assert.equal(r.pagesBaseUrl, 'https://shroom-site-eym.pages.dev'); // real suffix, not <name>.pages.dev
+  assert.equal(r.parsed, true);
+});
+
+await test('provisionCloudflare: happy path with R2 token, ordered calls', async () => {
   const run = router([
     { match: has('whoami'), res: WHOAMI_OK },
     { match: has('bucket create'), res: { code: 0, stdout: 'Created' } },
@@ -351,7 +400,8 @@ await test('provisionCloudflare: happy path, token deferred, ordered calls', asy
     { match: has('pages project create'), res: { code: 0, stdout: 'Created' } },
   ]);
   const events = [];
-  const r = await provisionCloudflare({ runWrangler: run, log: (e) => events.push(e) });
+  // r2Token given but S3 keys omitted → token reported deferred.
+  const r = await provisionCloudflare({ runWrangler: run, r2Token: 'cfat_x', log: (e) => events.push(e) });
   assert.equal(r.ok, true);
   assert.equal(r.accountId, '0123456789abcdef0123456789abcdef');
   assert.equal(r.publicBaseUrl, 'https://pub-xyz.r2.dev');
@@ -361,6 +411,18 @@ await test('provisionCloudflare: happy path, token deferred, ordered calls', asy
   // whoami before bucket before public before pages.
   assert.ok(run.calls[0].includes('whoami'));
   assert.ok(run.calls[1].includes('bucket create'));
+  // dev-url enable runs with --force (consent already taken by the command).
+  assert.ok(run.calls.some((c) => c.includes('dev-url enable') && c.includes('--force')));
+});
+
+await test('provisionCloudflare: no R2 token → stops at dashboard token gate', async () => {
+  const run = router([{ match: has('whoami'), res: WHOAMI_OK }]);
+  const r = await provisionCloudflare({ runWrangler: run });
+  assert.equal(r.ok, false);
+  assert.equal(r.stage, 'bucket');
+  assert.equal(r.state, 'r2_token_required');
+  assert.equal(r.needsDashboard, true);
+  assert.ok(!run.calls.some((c) => c.includes('bucket create'))); // short-circuits before any R2 call
 });
 
 await test('provisionCloudflare: stops at bucket gate, reports stage + dashboard', async () => {
@@ -368,7 +430,7 @@ await test('provisionCloudflare: stops at bucket gate, reports stage + dashboard
     { match: has('whoami'), res: WHOAMI_OK },
     { match: has('bucket create'), res: { code: 1, stderr: 'sign up for R2 and accept the terms of service' } },
   ]);
-  const r = await provisionCloudflare({ runWrangler: run });
+  const r = await provisionCloudflare({ runWrangler: run, r2Token: 'cfat_x' });
   assert.equal(r.ok, false);
   assert.equal(r.stage, 'bucket');
   assert.equal(r.state, 'r2_not_enabled');
@@ -376,16 +438,26 @@ await test('provisionCloudflare: stops at bucket gate, reports stage + dashboard
   assert.ok(!run.calls.some((c) => c.includes('pages project create'))); // never reached
 });
 
-await test('provisionCloudflare: uses injected mintR2Token when present', async () => {
+await test('provisionCloudflare: writes S3 keys from the dashboard token', async () => {
   const run = router([
     { match: has('whoami'), res: WHOAMI_OK },
     { match: has('bucket create'), res: { code: 0 } },
     { match: has('dev-url enable'), res: { code: 0, stdout: 'https://pub-xyz.r2.dev' } },
     { match: has('pages project create'), res: { code: 0 } },
   ]);
-  const mintR2Token = async ({ accountId, bucket }) => ({ accessKeyId: `ak-${bucket}`, secretAccessKey: 'sk' });
-  const r = await provisionCloudflare({ runWrangler: run, mintR2Token });
+  const r = await provisionCloudflare({ runWrangler: run, r2Token: 'cfat_x', r2AccessKeyId: 'ak-shroom', r2SecretAccessKey: 'sk' });
   assert.equal(r.token.accessKeyId, 'ak-shroom');
+  assert.equal(r.token.secretAccessKey, 'sk');
+});
+
+await test('provisionCloudflare: R2 token kept off the Pages (OAuth) call', async () => {
+  let pagesEnv = null;
+  const run = async (args, extra = {}) => {
+    if (args.join(' ').includes('pages project create')) pagesEnv = extra.env;
+    return { code: 0, stdout: args.includes('whoami') ? WHOAMI_OK.stdout : 'https://pub-xyz.r2.dev' };
+  };
+  await provisionCloudflare({ runWrangler: run, r2Token: 'cfat_secret', baseEnv: { PATH: '/x' } });
+  assert.ok(pagesEnv && !('CLOUDFLARE_API_TOKEN' in pagesEnv), 'Pages create must not inherit the R2 token');
 });
 
 console.log(`\n${passed} passed`);

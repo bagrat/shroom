@@ -10,6 +10,7 @@
 
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 
 // One source of truth for the tools shroom needs. `required` gates setup; an
@@ -18,6 +19,22 @@ import path from 'node:path';
 // 0 exit (or a versionRe match in the output) means present. `install` feeds the
 // consolidated install plan.
 export const TOOLS = [
+  {
+    name: 'node',
+    required: true,
+    // wrangler 4.x hard-requires Node >=22 (it exits with a node-version error
+    // before doing anything). Detected here so the probe gates on it instead of
+    // letting wrangler fail downstream — and so an old node reads as not-ready,
+    // not as a missing binary. `minMajor` makes "present but too old" a failure.
+    purpose: 'wrangler 4.x requires Node >=22 to run (SPEC §8)',
+    detect: { cmd: 'node', args: ['--version'] },
+    versionRe: /v?(\d+\.\d+\.\d+)/,
+    minMajor: 22,
+    // No auto-install: node is managed per-environment (nvm/fnm/volta/brew), so we
+    // can't safely batch it into a brew/npm one-liner. `manual` is skipped by the
+    // install plan; the command guides the upgrade instead.
+    install: { manager: 'manual', package: 'node>=22 (e.g. `nvm install 22`)' },
+  },
   {
     name: 'git',
     required: true,
@@ -40,6 +57,11 @@ export const TOOLS = [
     purpose: 'Cloudflare login, R2 + Pages provisioning, and deploy (SPEC §8)',
     detect: { cmd: 'wrangler', args: ['--version'] },
     versionRe: /(\d+\.\d+\.\d+)/,
+    // On Node <22, `wrangler --version` prints "Wrangler requires at least
+    // Node.js v22.0.0…" — whose version number our versionRe would otherwise
+    // scrape as wrangler's, falsely reporting it present+working. `unhealthyRe`
+    // marks that as NOT present (with a reason), so the node gate is what surfaces.
+    unhealthyRe: /requires at least Node/i,
     install: { manager: 'npm', package: 'wrangler' },
   },
   {
@@ -97,6 +119,37 @@ export function pathLookup(cmd, { env = process.env } = {}) {
   return null;
 }
 
+// Find a Node >=minMajor bin directory, without changing the user's default node.
+// shroom shells out to wrangler (which needs Node >=22); persisting this dir in the
+// creds lets the wrangler seam prefix PATH so wrangler runs under a new-enough node
+// even when the machine default is older. Best-effort + side-effect-free:
+//   1. the node we're already running, if it qualifies (the common case);
+//   2. the newest nvm-installed node >=minMajor (version is encoded in the path);
+//   3. null — caller falls back to bare `wrangler` and surfaces the node error.
+export function findNodeBinDir({ minMajor = 22, home = os.homedir(), fsmod = fs } = {}) {
+  const major = Number((process.versions?.node || '0').split('.')[0]);
+  if (Number.isFinite(major) && major >= minMajor) return path.dirname(process.execPath);
+
+  const nvmRoot = path.join(home, '.nvm', 'versions', 'node');
+  let best = null;
+  try {
+    for (const name of fsmod.readdirSync(nvmRoot)) {
+      const m = name.match(/^v(\d+)\.(\d+)\.(\d+)$/);
+      if (!m) continue;
+      const v = [Number(m[1]), Number(m[2]), Number(m[3])];
+      if (v[0] < minMajor) continue;
+      const bin = path.join(nvmRoot, name, 'bin');
+      if (!fsmod.existsSync(path.join(bin, 'node'))) continue;
+      if (!best || cmpVer(v, best.v) > 0) best = { v, bin };
+    }
+  } catch { /* no nvm dir — fall through */ }
+  return best ? best.bin : null;
+}
+function cmpVer(a, b) {
+  for (let i = 0; i < 3; i++) if (a[i] !== b[i]) return a[i] - b[i];
+  return 0;
+}
+
 function extractVersion(tool, out) {
   if (!tool.versionRe) return null;
   const m = String(out).match(tool.versionRe);
@@ -116,6 +169,22 @@ export async function probeTool(tool, { run = spawnRun, lookupPath = pathLookup 
   const res = await run(tool.detect.cmd, tool.detect.args);
   const out = `${res.stdout ?? ''}\n${res.stderr ?? ''}`;
   const version = extractVersion(tool, out);
+
+  // A tool can be on PATH yet non-functional: e.g. wrangler on Node <22 exits with
+  // a node-version error that happens to contain a version number. `unhealthyRe`
+  // catches that so we don't count a broken binary as present.
+  if (tool.unhealthyRe && tool.unhealthyRe.test(out)) {
+    return { name: tool.name, required: tool.required, purpose: tool.purpose, present: false, version: null, reason: 'unhealthy', install: tool.install };
+  }
+  // "Present but too old": a parsed version below `minMajor` is a failure, not a
+  // missing binary — the command guides an upgrade rather than an install.
+  if (tool.minMajor != null && version != null) {
+    const major = Number(version.split('.')[0]);
+    if (Number.isFinite(major) && major < tool.minMajor) {
+      return { name: tool.name, required: tool.required, purpose: tool.purpose, present: false, version, reason: `below_min_v${tool.minMajor}`, install: tool.install };
+    }
+  }
+
   const present = res.code === 0 || version != null;
   return {
     name: tool.name,

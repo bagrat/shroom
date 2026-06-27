@@ -16,6 +16,7 @@ const ACCOUNT_ID_RE = /\b([0-9a-f]{32})\b/i;
 // Stop the local-part/domain before trailing sentence punctuation ("…email foo@bar.com.").
 const EMAIL_RE = /([\w.+-]+@[\w-]+\.[\w-]+(?:\.[\w-]+)*)/;
 const R2_DEV_RE = /https?:\/\/[^\s'"<>]*\.r2\.dev[^\s'"<>]*/;
+const PAGES_URL_RE = /https?:\/\/[^\s'"<>]*\.pages\.dev[^\s'"<>]*/;
 
 function text(res) {
   return `${res.stdout ?? ''}\n${res.stderr ?? ''}`;
@@ -25,13 +26,21 @@ function text(res) {
 // session is established by `wrangler login` (interactive, opens a browser — the
 // command runs that, then re-probes here). Skippable for a returning user whose
 // session is still valid (SPEC §8: "probe → skip or surface").
-export async function whoami({ runWrangler }) {
-  const res = await runWrangler(['whoami']);
-  if (res.code !== 0) {
-    const cls = classifyWranglerError(res);
-    return { loggedIn: false, state: cls.state, message: cls.message };
-  }
+export async function whoami({ runWrangler, env }) {
+  const res = await runWrangler(['whoami'], { env });
   const t = text(res);
+  // `wrangler whoami` exits 0 even when unauthenticated, printing "You are not
+  // authenticated. Please run `wrangler login`." — so a clean exit code is NOT
+  // proof of a session. Key on "not authenticated"/"not logged in" ONLY: a *logged-
+  // in* narrow-scope session ALSO prints "...run `wrangler login` to refresh" (the
+  // benign missing-scopes warning), so matching "wrangler login" would false-positive.
+  const unauthed = /not authenticated|you are not logged in/i.test(t);
+  if (res.code !== 0 || unauthed) {
+    const cls = classifyWranglerError({ ...res, code: res.code || 1 });
+    // Text that explicitly says "not authenticated" → not_logged_in; otherwise let
+    // the classifier name it (e.g. a node-engine error must NOT read as logged-out).
+    return { loggedIn: false, state: unauthed ? 'not_logged_in' : cls.state, message: cls.message };
+  }
   return {
     loggedIn: true,
     accountId: (t.match(ACCOUNT_ID_RE) || [])[1] ?? null,
@@ -44,8 +53,8 @@ export async function whoami({ runWrangler }) {
 // so a re-run over an existing bucket is fine. A cold account fails here with
 // r2_not_enabled / needs_payment / email_unverified — exactly the gates the
 // command surfaces as a dashboard checklist (SPEC §8 step 3).
-export async function createBucket({ runWrangler, name }) {
-  const res = await runWrangler(['r2', 'bucket', 'create', name]);
+export async function createBucket({ runWrangler, name, env }) {
+  const res = await runWrangler(['r2', 'bucket', 'create', name], { env });
   if (isCreateSuccess(res)) return { ok: true, name };
   return { ok: false, name, ...classifyWranglerError(res) };
 }
@@ -53,8 +62,11 @@ export async function createBucket({ runWrangler, name }) {
 // Turn on the bucket's managed `*.r2.dev` public URL — the zero-DNS public origin
 // for the HLS bytes (SPEC §8 custom-domain-deferred). Parse the URL it prints;
 // that becomes `publicBaseUrl` in the creds.
-export async function enablePublicAccess({ runWrangler, name }) {
-  const res = await runWrangler(['r2', 'bucket', 'dev-url', 'enable', name]);
+export async function enablePublicAccess({ runWrangler, name, env }) {
+  // `--force` skips wrangler's interactive "make this public?" confirm — safe here
+  // ONLY because the command has already taken the user's explicit consent for
+  // public access (a security-weakening step it must never auto-confirm silently).
+  const res = await runWrangler(['r2', 'bucket', 'dev-url', 'enable', name, '--force'], { env });
   if (res.code !== 0 && !isCreateSuccess(res)) {
     return { ok: false, name, ...classifyWranglerError(res) };
   }
@@ -66,9 +78,21 @@ export async function enablePublicAccess({ runWrangler, name }) {
 // to "main" (matches our git default + deploy's default). `already_exists` = ok.
 // The stable site base is `https://<name>.pages.dev` (a project name can't contain
 // dots, so this is always well-formed).
-export async function createPagesProject({ runWrangler, name, branch = 'main' }) {
-  const res = await runWrangler(['pages', 'project', 'create', name, '--production-branch', branch]);
-  if (isCreateSuccess(res)) return { ok: true, name, pagesBaseUrl: `https://${name}.pages.dev` };
+export async function createPagesProject({ runWrangler, name, branch = 'main', env }) {
+  const res = await runWrangler(['pages', 'project', 'create', name, '--production-branch', branch], { env });
+  if (isCreateSuccess(res)) {
+    // The project subdomain is NOT `<name>.pages.dev` — Cloudflare appends a random
+    // suffix when the name isn't globally unique (e.g. `shroom-site-eym.pages.dev`,
+    // verified live). Parse the real URL wrangler prints ("…available at <url>…");
+    // only fall back to the constructed form when it's absent (e.g. already_exists,
+    // where the deploy step re-derives the base from the actual deployment URL).
+    const parsed = (text(res).match(PAGES_URL_RE) || [])[0];
+    const pagesBaseUrl = parsed ? stripSlash(parsed) : `https://${name}.pages.dev`;
+    // `parsed` is false on an already_exists re-run (the create line, hence the URL,
+    // isn't reprinted). The fallback is only a guess — flag it so the caller won't
+    // clobber a previously-parsed real URL (which may carry Cloudflare's suffix).
+    return { ok: true, name, pagesBaseUrl, parsed: Boolean(parsed) };
+  }
   return { ok: false, name, ...classifyWranglerError(res) };
 }
 
@@ -84,47 +108,69 @@ export async function createPagesProject({ runWrangler, name, branch = 'main' })
 // as a pending manual step rather than fabricating credentials.
 export async function provisionCloudflare({
   runWrangler,
-  mintR2Token,
+  // The R2 API token (CF API token value) the user created in the dashboard. R2
+  // cannot be managed over the wrangler OAuth session (no r2 scope exists — live-
+  // verified), so R2 ops run with this token as CLOUDFLARE_API_TOKEN. Its derived
+  // S3 keys (accessKeyId/secretAccessKey) are what the uploader needs and are
+  // passed through to the creds by the caller. Absent → we stop with a dashboard
+  // gate rather than attempting a call we know returns code 10000.
+  r2Token,
+  r2AccessKeyId,
+  r2SecretAccessKey,
   bucket = 'shroom',
   pagesProject = 'shroom-site',
   branch = 'main',
+  baseEnv = process.env,
   log = () => {},
 }) {
-  const me = await whoami({ runWrangler });
+  // R2 calls authenticate with the dashboard R2 token; Pages/whoami use the OAuth
+  // session, so we must strip any inherited CLOUDFLARE_API_TOKEN from their env
+  // (an R2 token has no Pages permission and would fail Pages). `oauthEnv` also
+  // carries the node>=22 PATH from baseEnv, so wrangler runs under a new-enough node.
+  const { CLOUDFLARE_API_TOKEN: _drop, ...oauthEnv } = baseEnv;
+
+  const me = await whoami({ runWrangler, env: oauthEnv });
   if (!me.loggedIn) {
     log('cf_login_required', { state: me.state });
     return { ok: false, stage: 'login', ...me };
   }
   log('cf_whoami', { accountId: me.accountId, email: me.email });
 
-  const b = await createBucket({ runWrangler, name: bucket });
+  if (!r2Token) {
+    log('cf_r2_token_required', {});
+    return {
+      ok: false, stage: 'bucket', accountId: me.accountId,
+      ...STATE_R2_TOKEN_REQUIRED,
+    };
+  }
+  const r2Env = { ...oauthEnv, CLOUDFLARE_API_TOKEN: r2Token };
+
+  const b = await createBucket({ runWrangler, name: bucket, env: r2Env });
   if (!b.ok) {
     log('cf_bucket_failed', { state: b.state, needsDashboard: b.needsDashboard });
     return { ok: false, stage: 'bucket', accountId: me.accountId, ...b };
   }
   log('cf_bucket_ready', { bucket });
 
-  const pub = await enablePublicAccess({ runWrangler, name: bucket });
+  const pub = await enablePublicAccess({ runWrangler, name: bucket, env: r2Env });
   if (!pub.ok) {
     log('cf_public_failed', { state: pub.state });
     return { ok: false, stage: 'public_access', accountId: me.accountId, ...pub };
   }
   log('cf_public_ready', { publicBaseUrl: pub.publicBaseUrl });
 
-  const pg = await createPagesProject({ runWrangler, name: pagesProject, branch });
+  const pg = await createPagesProject({ runWrangler, name: pagesProject, branch, env: oauthEnv });
   if (!pg.ok) {
     log('cf_pages_failed', { state: pg.state });
     return { ok: false, stage: 'pages', accountId: me.accountId, ...pg };
   }
   log('cf_pages_ready', { pagesProject, pagesBaseUrl: pg.pagesBaseUrl });
 
-  let token = { deferred: true };
-  if (typeof mintR2Token === 'function') {
-    token = await mintR2Token({ accountId: me.accountId, bucket });
-    log(token?.accessKeyId ? 'cf_token_ready' : 'cf_token_failed', {});
-  } else {
-    log('cf_token_deferred', {});
-  }
+  // The S3 keys come straight from the dashboard token (Access Key ID + Secret).
+  const token = r2AccessKeyId && r2SecretAccessKey
+    ? { accessKeyId: r2AccessKeyId, secretAccessKey: r2SecretAccessKey }
+    : { deferred: true };
+  log(token.accessKeyId ? 'cf_token_ready' : 'cf_token_deferred', {});
 
   return {
     ok: true,
@@ -134,8 +180,21 @@ export async function provisionCloudflare({
     publicBaseUrl: pub.publicBaseUrl,
     pagesProject,
     pagesBaseUrl: pg.pagesBaseUrl,
+    // false when pagesBaseUrl is only the constructed fallback (already_exists
+    // re-run) — the caller should not overwrite a stored, parsed URL with a guess.
+    pagesBaseUrlParsed: pg.parsed,
     token, // { accessKeyId, secretAccessKey } | { deferred: true }
   };
 }
+
+// Shape returned when no R2 token is available — routes the command to the
+// dashboard token-creation gate (the one unavoidable manual step).
+const STATE_R2_TOKEN_REQUIRED = {
+  ok: false,
+  state: 'r2_token_required',
+  needsDashboard: true,
+  action: 'create_r2_token',
+  message: 'R2 cannot be provisioned over OAuth. Create an R2 API token in the dashboard (Object Read & Write) and re-run.',
+};
 
 const stripSlash = (s) => (typeof s === 'string' ? s.replace(/\/+$/, '') : s);

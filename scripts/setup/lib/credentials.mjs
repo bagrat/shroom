@@ -68,6 +68,7 @@ export function buildCredentials({
   pagesProject,
   pagesBaseUrl,
   library,
+  nodeBinDir,
 } = {}) {
   return defined({
     accountId,
@@ -80,7 +81,21 @@ export function buildCredentials({
     pagesProject,
     pagesBaseUrl: stripSlash(pagesBaseUrl),
     library, // where <id>.md records live (the git library); read by write-meta/record
+    // Bin dir of a Node >=22 (wrangler's requirement). Persisted so the wrangler
+    // seam can prefix PATH and run wrangler under a new-enough node WITHOUT changing
+    // the user's default node (live-account session decision).
+    nodeBinDir,
   });
+}
+
+// Build a child-process env that runs wrangler under the persisted Node >=22 by
+// prefixing its bin dir onto PATH. No creds / no nodeBinDir → env unchanged (the
+// caller falls back to bare `wrangler`, and the node-version error is classified).
+export function wranglerPathEnv(baseEnv = process.env, { home = os.homedir() } = {}) {
+  const dir = readCreds(credsPath({ home })).nodeBinDir;
+  if (!dir) return baseEnv;
+  const PATH = `${dir}${path.delimiter}${baseEnv.PATH || ''}`;
+  return { ...baseEnv, PATH };
 }
 
 const stripSlash = (s) => (typeof s === 'string' ? s.replace(/\/+$/, '') : s);

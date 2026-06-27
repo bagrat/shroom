@@ -53,49 +53,66 @@ Then, as **one** batched action the user already approved:
 - Record the chosen dir so `/shroom:record` finds it without re-asking:
   `node "${CLAUDE_PLUGIN_ROOT}/scripts/setup/setup.mjs" set-library --dir <dir>`
   (a pure creds write — no machine mutation).
+- **Vendor `hls.min.js` now** so the first publish's deploy doesn't stall on it
+  (the player lazy-loads it on non-Safari browsers; deploy refuses to ship without
+  it): `node "${CLAUDE_PLUGIN_ROOT}/scripts/page/vendor/fetch-hls.mjs"`. It's a
+  pinned + SHA-256-verified fetch (a network action — fold it into this same
+  approval); idempotent, a no-op if already vendored.
 
 ## Phase 3 — Cloudflare (explain before the browser opens)
 
-Trust beat for the audience: **before** running anything, tell the user you'll ask
-Cloudflare for **narrow scopes** — R2 + Pages + account read — and why. Then:
+**Always ask before opening any dashboard page.** Every `open <url>` is an outward
+action — propose it, get a yes, then open. Never pop a browser unannounced.
 
-1. **Check the existing session first** (probe capability, don't assume):
-   `wrangler whoami`. If it returns an account, **skip login silently** (returning
-   user). If not, run `wrangler login` — say plainly that it opens a browser for
-   OAuth, no token paste (SPEC §9).
-2. **Provision** over the script:
-   ```
-   node "${CLAUDE_PLUGIN_ROOT}/scripts/setup/setup.mjs" provision --json
-   ```
-   (Pass `--bucket` / `--pages-project` only if the user wants non-default names.)
+Two distinct credentials are in play (live-verified): **Pages** rides the wrangler
+**OAuth** login; **R2 cannot** — there is *no* R2 OAuth scope, so `r2 bucket create`
+over OAuth returns `Authentication error [code: 10000]` even on a verified, R2-enabled
+account. R2 needs a **dashboard-minted R2 API token**. So:
 
-   This attempts the real gated ops and **branches on the result** (SPEC §8) —
-   you don't detect account state, you react to it. Read the JSON:
-   - `ok: true` → bucket, public URL, and Pages project are ready. Continue to
-     Phase 4.
-   - `ok: false` with `needsDashboard: true` → a **human-only gate**. Surface the
-     relevant ones **together** with deep-links (you have `accountId`), one browser
-     trip, not a ping-pong:
+1. **Log in for Pages (narrow scopes).** Trust beat: tell the user you'll request
+   only `account:read user:read pages:write` — *not* wrangler's ~27-scope default.
+   - Check the session first: `wrangler whoami` (it exits 0 even when logged out, so
+     read the text, not just the code — "not authenticated" means log in).
+   - If logged out: `wrangler login --scopes account:read user:read pages:write`
+     (opens a browser, no token paste, SPEC §9). Afterward wrangler prints a yellow
+     "missing some expected OAuth scopes" warning — **expected and harmless** with a
+     narrow login; tell the user so it doesn't alarm them.
+2. **Create the R2 API token (the one unavoidable manual step).** Explain why (R2
+   can't be done over OAuth), then **ask before opening**
+   `https://dash.cloudflare.com/<accountId>/r2/api-tokens`. Have them create an
+   **Account API token** with **Admin Read & Write** (so it can also create the
+   bucket + enable public access), apply to all buckets. The confirmation screen
+   shows the **Token value**, **Access Key ID**, and **Secret Access Key** — capture
+   all three (offer to read them from a temp file to keep secrets out of chat).
+3. **Get explicit consent for public access.** Enabling the bucket's `*.r2.dev`
+   public URL makes the video bytes world-readable (at unguessable per-video URLs) —
+   a security-weakening, outward step. Ask for a plain yes; never auto-confirm it.
+   Fold it into the same approval as the rest of provisioning.
+4. **Provision**, passing the token + keys:
+   ```
+   node "${CLAUDE_PLUGIN_ROOT}/scripts/setup/setup.mjs" provision --json \
+     --r2-token <TOKEN> --r2-access-key-id <AKID> --r2-secret-access-key <SECRET>
+   ```
+   (Add `--bucket` / `--pages-project` only for non-default names.) R2 ops run with
+   the token; Pages runs on OAuth; wrangler runs under the persisted Node ≥22 so it
+   works without changing the user's default node. **Branch on the result** (SPEC §8):
+   - `ok: true` → bucket, public URL, Pages project, and S3 keys are ready → Phase 4.
+   - `ok: false`, `needsDashboard: true` → a human gate; surface together with
+     deep-links (ask before opening), then **auto-poll** (re-run `provision`, don't
+     make them type "done"):
+       - `r2_token_required` → no/invalid R2 token; (re)create it at the api-tokens page.
        - `email_unverified` → verify email at `https://dash.cloudflare.com`.
-       - `r2_not_enabled` → enable R2 (ToS + card) at
+       - `r2_not_enabled` / `needs_payment` → enable R2 (ToS + card) at
          `https://dash.cloudflare.com/<accountId>/r2/overview`.
-       - `needs_payment` → add a payment method (same R2 activation flow).
-     After the user says they've done it, **auto-poll**: re-run `provision` to
-     retry (don't make them type "done"). Repeat until `ok: true`.
-   - `ok: false` with `not_logged_in` / `insufficient_scope` → re-run
-     `wrangler login` (asking for the missing scope), then retry provision.
+   - `ok: false`, `not_logged_in` / `insufficient_scope` → re-run the narrow
+     `wrangler login`, then retry.
    - any other `ok: false` → surface `message` and stop; don't guess.
 
-## Phase 4 — S3 upload token + finish
+## Phase 4 — finish
 
-`provision` reports `s3Token`:
-- `"written"` → done. The uploader can PUT segments.
-- `"deferred"` → minting the R2 **S3 API token** programmatically isn't wired yet
-  (it's the one step wrangler has no command for; it lands in the live-account
-  session). Until then, guide the user to create an **R2 API token** at
-  `https://dash.cloudflare.com/<accountId>/r2/api-tokens` (Object Read & Write),
-  and write its Access Key ID + Secret into `~/.shroom/credentials.json` as
-  `accessKeyId` / `secretAccessKey`. Be explicit this is the interim path.
+`provision` reports `s3Token: "written"` once the dashboard token's Access Key ID +
+Secret are in the creds — the uploader can now PUT segments. (`"deferred"` only if the
+keys weren't passed; loop back and capture them.)
 
 Finish by confirming what's ready and where the creds live
 (`~/.shroom/credentials.json`, mode 600 — secrets never touch the git repo), and
