@@ -37,6 +37,9 @@ export function buildFfmpegArgs({ videoIndex, audioIndex = 'none', startNumber =
     '-framerate', String(CONFIG.framerate),
     '-capture_cursor', String(CONFIG.captureCursor),
     '-i', inputSpec,
+    // Cap to 1080p (match the original; avfoundation captures native res, so we
+    // downscale here). Never upscales — a ≤1080p source passes through.
+    '-vf', CONFIG.videoFilter,
     '-c:v', CONFIG.videoCodec,
     '-b:v', CONFIG.videoBitrate,
     '-pix_fmt', CONFIG.pixFmt,

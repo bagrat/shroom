@@ -17,6 +17,12 @@ One ffmpeg encode is `tee`'d to two outputs (the validated recipe):
 - **`preview.mp4`** — progressive faststart MP4 for instant local `file://`
   playback with zero JS / zero server (SPEC §8 "value before friction").
 
+Capture is **capped at 1080p / 30 fps** (`-vf scale=…`, `CONFIG.maxHeight`),
+matching the original SaaS shroom's `getDisplayMedia` constraints. avfoundation
+grabs the native screen res (e.g. 4K), so the downscale happens in ffmpeg; a
+≤1080p source passes through unchanged (never upscaled). Bitrate ~3.5 Mbps h264
+(≈ the original's VP9 default at parity).
+
 ## Run it
 
 ```bash

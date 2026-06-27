@@ -11,7 +11,18 @@ export const CONFIG = {
   // forced constant output rate the HLS muxer can't time-slice and wedges on a 0-byte
   // init.mp4. `-r 30` + forced keyframes at each segment boundary is what makes tee work.
   videoCodec: 'h264_videotoolbox', // macOS hardware encode
-  videoBitrate: '4M',
+  // Match the original SaaS shroom's capture policy (assets/js getDisplayMedia:
+  // width max 1920, height max 1080, 30fps). avfoundation can't constrain capture
+  // resolution (it grabs native — e.g. 4K), so we downscale in ffmpeg to fit a
+  // 1920x1080 box, preserving aspect, never upscaling (min(target,input)), even
+  // dims for yuv420p. 4K screen capture was both wasteful (4x pixels) and low
+  // quality at a sane bitrate; 1080p is the right target for a Loom-style share.
+  maxWidth: 1920,
+  maxHeight: 1080,
+  videoFilter: "scale=w='min(1920,iw)':h='min(1080,ih)':force_original_aspect_ratio=decrease:force_divisible_by=2",
+  // The original rode Chrome's VP9 default (~2.5 Mbps). VP9 is ~1.4x more efficient
+  // than our h264, so ~3.5 Mbps h264 ≈ that quality at 1080p screen content.
+  videoBitrate: '3.5M',
   pixFmt: 'yuv420p',
   captureCursor: 1,
 

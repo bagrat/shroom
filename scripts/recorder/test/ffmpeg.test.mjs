@@ -42,6 +42,13 @@ test('forced output rate + keyframes at each segment boundary (the HLS fix)', ()
   assert.equal(after(args, '-force_key_frames'), `expr:gte(t,n_forced*${CONFIG.segmentSeconds})`);
 });
 
+test('caps resolution to 1080p (matches the original) — present even with no audio', () => {
+  const args = buildFfmpegArgs({ videoIndex: 3, audioIndex: 'none' });
+  assert.equal(after(args, '-vf'), CONFIG.videoFilter);
+  assert.match(CONFIG.videoFilter, /min\(1920,iw\).*min\(1080,ih\)/);
+  assert.match(CONFIG.videoFilter, /force_divisible_by=2/); // even dims for yuv420p
+});
+
 (async () => {
   for (const [name, fn] of tests) {
     try { await fn(); passed++; console.log(`ok   ${name}`); }
