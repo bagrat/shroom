@@ -5,9 +5,12 @@ what to ask, when to install, how to phrase the Cloudflare gates — lives in th
 setup [command](../../commands/) (M5b-3). This is the exact, repeatable mechanism
 it calls (the determinism boundary).
 
-> **Status: M5b-1.** The local-env half (probe + install plan) is built and
-> offline-tested. Cloudflare provisioning (`wrangler login` → bucket → public
-> access → Pages project → R2 S3 token → `~/.shroom/credentials.json`) is M5b-2.
+> **Status: M5b-2.** Local-env half (probe + install plan) and the Cloudflare
+> provisioning core (error catalogue, `whoami` → bucket → public access → Pages
+> project, credentials writer) are built and offline-tested. The first *live*
+> `wrangler login` + real provisioning — and minting the R2 S3 API token (the one
+> step wrangler has no command for) — land in a live-account session. The
+> orchestrating `/shroom:setup` command is M5b-3.
 
 ## What it does (so far)
 
@@ -39,24 +42,67 @@ stays one approval. It **builds** the commands; it never runs them.
   can blow a timeout and flap to "absent". We only execute a tool when we need to
   parse its version.
 
+## Cloudflare provisioning (SPEC §8 sub-sequence, §9)
+
+`provision` runs the Cloudflare sub-sequence over wrangler (the same spawn+tee
+seam deploy uses) and merges the results into `~/.shroom/credentials.json`:
+
+1. **`whoami`** → account id + email (and "are we logged in at all"). The OAuth
+   session itself comes from `wrangler login`, which the *command* runs (it's
+   interactive / opens a browser); this re-probes after.
+2. **`r2 bucket create`** — `already_exists` counts as success (setup is
+   idempotent). A cold account fails *here* with a specific state.
+3. **`r2 bucket dev-url enable`** → the managed `*.r2.dev` public origin
+   (`publicBaseUrl`, zero DNS).
+4. **`pages project create`** → the `*.pages.dev` site base (`pagesBaseUrl`).
+
+**Probe capability, not state** (SPEC §8): we don't try to detect whether the
+account is verified / R2-enabled / has a card — we attempt the real op and
+**branch on the classified failure**. The states are catalogued in
+`lib/wrangler-errors.mjs` so `not_logged_in` vs `email_unverified` vs
+`r2_not_enabled` vs `needs_payment` vs `insufficient_scope` each route to the
+right next step (re-login, a dashboard gate, a retry). These matchers are
+best-effort until validated against real wrangler output — the live session
+tightens them (the SPEC §11 build task).
+
+**The deferred piece:** minting the **R2 S3 API token** (access key id + secret
+the uploader needs) — wrangler has *no command* for it, so it's an injected
+`mintR2Token` seam whose real implementation (a Cloudflare API call) is wired in
+the live session. Without it, `provision` still completes and writes the creds
+*without* S3 keys, reporting the token as `deferred` rather than fabricating one.
+
+## Credentials file (`~/.shroom/credentials.json`, mode 600)
+
+One file, two kinds of fields, so setup writes once and each consumer loads its
+slice: **secrets** (`endpoint`/`region`/`bucket`/`accessKeyId`/`secretAccessKey`
+→ uploader) and **public** (`publicBaseUrl`/`pagesBaseUrl`/`pagesProject`/
+`hlsJsUrl` → page + deploy), plus `accountId`. The `endpoint` is *derived* from
+`accountId` (`https://<id>.r2.cloudflarestorage.com`). Writes are **merge, not
+clobber** — a re-run or a later top-up (e.g. the token arriving) preserves
+untouched fields. Secrets stay out of git (working agreement).
+
 ## Usage
 
 ```bash
 node setup.mjs probe [--json]
+node setup.mjs provision [--bucket N] [--pages-project N] [--branch N] [--wrangler BIN] [--json]
 ```
 
-`probe` prints a per-tool ✓/✗/○ summary and the proposed install commands.
-`--json` emits `{ results, ready, missingRequired, missingOptional, plan }` — the
-machine-readable form the setup command consumes to drive its single
-`AskUserQuestion`. Exit `0` when all required tools are present, `1` otherwise.
+`probe` prints a per-tool ✓/✗/○ summary + proposed install commands; `--json`
+emits `{ results, ready, missingRequired, missingOptional, plan }`. `provision`
+prints a summary (or `--json` result) and merges the creds; ndjson `cf_*` events
+go to stderr. Exit `0` on success, `1` otherwise.
 
 ## Layout
 
 ```
-setup.mjs            CLI: `probe` (more subcommands in M5b-2)
-lib/env-probe.mjs    the tool catalogue + probe (run + PATH-lookup seams)
-lib/install-plan.mjs missing tools → consolidated, batched install commands
-test/setup.test.mjs  offline behaviour tests (fake run + lookup seams)
+setup.mjs              CLI: `probe`, `provision`
+lib/env-probe.mjs      tool catalogue + probe (run + PATH-lookup seams)
+lib/install-plan.mjs   missing tools → consolidated, batched install commands
+lib/wrangler-errors.mjs the error-shape catalogue (classify → next step)
+lib/cloudflare.mjs     provisioning orchestration over the runWrangler seam
+lib/credentials.mjs    read/merge/write ~/.shroom/credentials.json (mode 600)
+test/setup.test.mjs    offline behaviour tests (fake run / lookup / wrangler seams)
 ```
 
 ## Tests
@@ -65,8 +111,10 @@ test/setup.test.mjs  offline behaviour tests (fake run + lookup seams)
 node test/setup.test.mjs
 ```
 
-Runs fully offline — both the `run` (version command) and `lookupPath` (PATH
-scan) seams are injected with fakes, so no real binary is spawned and the real
-PATH is never read. Bare-machine verification of the actual install commands is
-deferred to a clean Mac / VM (the install-path-testing call); the probe is a
-mockable seam precisely so that can wait.
+Runs fully offline — the `run` (version command), `lookupPath` (PATH scan), and
+`runWrangler` (Cloudflare) seams are all injected with fakes, plus a temp `HOME`
+for the credentials writer, so no real binary is spawned, no real PATH is read,
+and nothing touches the real `~/.shroom`. Bare-machine verification of the
+install commands (clean Mac / VM, the install-path-testing call) and the first
+real `wrangler login` + provisioning (live-account session) are deferred — the
+seams exist precisely so that can wait.
