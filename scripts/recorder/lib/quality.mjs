@@ -16,9 +16,11 @@ export const QUALITY = {
 export const DEFAULT_QUALITY = 'normal';
 
 // Audio adds a small constant; R2 storage is the only real cost (egress is free,
-// SPEC §3). ~$0.015/GB-month.
+// SPEC §3). ~$0.015/GB-month. Estimates are framed around a relatable reference
+// clip (a 10-minute video): its size + what it costs to keep stored per month.
 const AUDIO_MBPS = 0.128;
 const R2_USD_PER_GB_MONTH = 0.015;
+const REF_MINUTES = 10;
 
 export function resolveQuality(key) {
   return QUALITY[key] ? key : DEFAULT_QUALITY;
@@ -35,17 +37,20 @@ export function ffmpegBitrate(key) {
   return `${QUALITY[resolveQuality(key)].bitrateMbps}M`;
 }
 
-// Eyeball estimates for the picker: MB/min, GB/hour, and monthly R2 storage cost
-// per hour of recording. Rounded for human display, not billing.
+// Eyeball estimates for the picker, framed for a human: the data rate (MB/min) and,
+// for a reference 10-minute clip, its file size and what it costs to keep stored
+// for a month. Costs are sub-cent — surfaced in cents. Rounded for display.
 export function estimate(key) {
   const q = QUALITY[resolveQuality(key)];
   const totalMbps = q.bitrateMbps + AUDIO_MBPS;
   const mbPerMin = (totalMbps / 8) * 60;
-  const gbPerHour = (mbPerMin * 60) / 1024;
+  const refSizeMB = mbPerMin * REF_MINUTES;
+  const refCentsPerMonth = (refSizeMB / 1024) * R2_USD_PER_GB_MONTH * 100;
   return {
     mbPerMin: Math.round(mbPerMin),
-    gbPerHour: Number(gbPerHour.toFixed(2)),
-    usdPerHourMonth: Number((gbPerHour * R2_USD_PER_GB_MONTH).toFixed(3)),
+    refMinutes: REF_MINUTES,
+    refSizeMB: Math.round(refSizeMB),
+    refCentsPerMonth: Number(refCentsPerMonth.toFixed(2)),
   };
 }
 

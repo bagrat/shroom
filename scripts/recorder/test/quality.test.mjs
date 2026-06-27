@@ -39,13 +39,14 @@ test('ffmpegBitrate formats the preset bitrate', () => {
   assert.equal(ffmpegBitrate('4k'), '12M');
 });
 
-test('estimates grow with quality and are sane round numbers', () => {
+test('estimates: a 10-min clip grows in size+cost with quality, stays sub-cent', () => {
   const n = estimate('normal');
   const k4 = estimate('4k');
-  assert.ok(n.mbPerMin > 20 && n.mbPerMin < 35);       // ~27 MB/min
-  assert.ok(k4.mbPerMin > n.mbPerMin * 2);             // 4K is much heavier
-  assert.ok(k4.usdPerHourMonth > n.usdPerHourMonth);   // and costs more to store
-  assert.ok(n.usdPerHourMonth < 0.1);                  // still pennies (egress free)
+  assert.equal(n.refMinutes, 10);
+  assert.ok(n.refSizeMB > 200 && n.refSizeMB < 350);   // ~270 MB for 10 min @ 1080p
+  assert.ok(k4.refSizeMB > n.refSizeMB * 2);           // 4K is much heavier
+  assert.ok(k4.refCentsPerMonth > n.refCentsPerMonth); // and costs more to store
+  assert.ok(n.refCentsPerMonth < 1);                   // sub-cent/month (egress free)
 });
 
 test('catalogue carries everything the picker surfaces', () => {
@@ -53,7 +54,7 @@ test('catalogue carries everything the picker surfaces', () => {
   assert.equal(cat.length, 3);
   const four = cat.find((c) => c.key === '4k');
   assert.equal(four.resolution, '3840x2160');
-  assert.ok('mbPerMin' in four && 'gbPerHour' in four && 'usdPerHourMonth' in four);
+  assert.ok('mbPerMin' in four && 'refSizeMB' in four && 'refCentsPerMonth' in four);
 });
 
 (async () => {

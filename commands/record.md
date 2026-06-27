@@ -41,8 +41,9 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/recorder/record.mjs" --preflight
 ```
 
 Parse `{ video, audio, defaultAudioName, qualities, lastProfile }`:
-- `qualities[]` — `{ key, label, resolution, mbPerMin, gbPerHour, usdPerHourMonth }`
-  for `normal` (1080p), `2k`, `4k`.
+- `qualities[]` — `{ key, label, resolution, mbPerMin, refMinutes, refSizeMB,
+  refCentsPerMonth }` for `normal` (1080p), `2k`, `4k`. The `ref*` fields describe a
+  relatable 10-minute clip: its size and what it costs to keep stored per month.
 - `lastProfile` — `{ quality, video, audio }` from the most recent recording, or
   `null` on the first ever run.
 
@@ -62,9 +63,10 @@ State it plainly and ask (single `AskUserQuestion`, **Use these** / **Change**):
 Ask **three questions in one `AskUserQuestion`** (one bulk, before recording):
 
 1. **Quality** — one option per `qualities[]` entry. Put the **size + cost** in each
-   description so the choice is informed, e.g. *"2K (1440p) — ~46 MB/min, ~2.7 GB/hr,
-   ~$0.04 per recorded hour stored/month"*. Note storage is the only cost (egress is
-   free). Default to `normal`.
+   description, framed around a 10-minute clip so it's relatable, e.g. *"2K (1440p) —
+   a 10-min video ≈ 460 MB, ~0.7¢/month to keep stored"*. Note storage is the only
+   cost (egress is free), and it's pennies — so pick on quality vs. file size, not
+   price. Default to `normal`.
 2. **Video source** — the `video` devices, each labelled by `kind` (screen /
    camera). A screen is the usual pick; a camera records camera-as-source (not a PiP
    overlay — deferred). Default to the first screen.
