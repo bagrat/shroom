@@ -1,0 +1,16 @@
+{
+  "name": "@shroom/transcribe",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "description": "Deterministic transcription for shroom (SPEC §7): drive whisper over a recording's preview.mp4 and normalize its output into a timestamped transcript.json that the title/TL;DR/chapters skill reads.",
+  "bin": {
+    "shroom-transcribe": "./transcribe.mjs"
+  },
+  "scripts": {
+    "test": "node test/transcribe.test.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
