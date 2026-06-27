@@ -1,0 +1,16 @@
+{
+  "name": "@shroom/setup",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "description": "Deterministic backend for /shroom:setup: probe the local env (git/ffmpeg/wrangler/whisper), build a consolidated install plan, and (M5b-2) drive Cloudflare R2 + Pages provisioning over wrangler (SPEC §8).",
+  "bin": {
+    "shroom-setup": "./setup.mjs"
+  },
+  "scripts": {
+    "test": "node test/setup.test.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
