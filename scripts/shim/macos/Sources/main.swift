@@ -77,13 +77,14 @@ func parseArgs() -> Args {
 
 // MARK: - App
 
-enum RecState { case armed, recording, paused, stopped }
+enum RecState: Equatable { case armed, counting(Int), recording, paused, stopped }
 
 final class ShimController: NSObject, NSApplicationDelegate {
     let args: Args
     var statusItem: NSStatusItem!
     var node: Process?
-    var state: RecState = .armed { didSet { rebuildMenu() } }
+    var countdownTimer: Timer?
+    var state: RecState = .armed { didSet { render() } }
 
     init(_ args: Args) { self.args = args }
 
@@ -92,6 +93,12 @@ final class ShimController: NSObject, NSApplicationDelegate {
         ensureFifo()
         setupStatusItem()
         launchRecorder()
+    }
+
+    // Never leave an orphaned recorder behind: SIGTERM it on the way out so it
+    // finalizes (if recording) or aborts (if armed) and exits cleanly.
+    func applicationWillTerminate(_ note: Notification) {
+        node?.terminate()
     }
 
     // MARK: TCC
@@ -185,17 +192,112 @@ final class ShimController: NSObject, NSApplicationDelegate {
     }
 
     // MARK: tray
+    //
+    // The tray's PRIMARY (left) click is the one obvious action for the current
+    // state — no menu standing in the way:
+    //   armed     → start a cancelable 3-2-1 countdown, then capture
+    //   counting  → cancel, back to armed (so a stray click can't actually start a
+    //               recording — you get 3 s to undo, which doubles as "get ready")
+    //   recording → pause IMMEDIATELY, then open the menu — reaching for the tray
+    //               halts capture (SPEC §4) — offering Resume / Stop
+    //   paused    → open the menu (Resume / Stop)
+    // Stop and Resume stay deliberate MENU choices, never a blind toggle: Stop is
+    // the publish act, so a stray click must not end-and-publish. Right-click (or
+    // control-click) opens the menu anywhere — Quit now, Cancel/Restart later.
 
     func setupStatusItem() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        rebuildMenu()
+        if let button = statusItem.button {
+            button.target = self
+            button.action = #selector(statusClicked)
+            // Receive both buttons ourselves instead of auto-popping a menu, so
+            // left-click can run a state action.
+            button.sendAction(on: [.leftMouseUp, .rightMouseUp])
+        }
+        render()
     }
 
-    // A state-aware menu: only the actions that make sense in the current state.
-    // (The richer "click the tray to pause + open the menu" gesture is next.)
-    func rebuildMenu() {
-        guard let statusItem = statusItem else { return }
-        statusItem.button?.title = glyph(for: state)
+    @objc func statusClicked() {
+        let ev = NSApp.currentEvent
+        let isRight = ev?.type == .rightMouseUp
+            || ev?.modifierFlags.contains(.control) == true
+        switch state {
+        case .armed:
+            if isRight { showMenu() } else { beginCountdown() }
+        case .counting:
+            cancelCountdown()                 // any click aborts the countdown
+        case .recording:
+            send("pause"); state = .paused    // halt first…
+            showMenu()                        // …then choose Resume / Stop
+        case .paused:
+            showMenu()
+        case .stopped:
+            break
+        }
+    }
+
+    // MARK: countdown
+
+    // A 3-2-1 the user can abort (click during it → back to armed). Capture begins
+    // only when it reaches zero — that's when `start` hits the fifo.
+    func beginCountdown() {
+        var remaining = 3
+        state = .counting(remaining)
+        countdownTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] t in
+            guard let self = self else { return }
+            remaining -= 1
+            if remaining <= 0 {
+                t.invalidate(); self.countdownTimer = nil
+                self.send("start"); self.state = .recording
+            } else {
+                self.state = .counting(remaining)
+            }
+        }
+    }
+
+    func cancelCountdown() {
+        countdownTimer?.invalidate(); countdownTimer = nil
+        state = .armed
+    }
+
+    // MARK: tray rendering
+
+    // Repaint the menu-bar glyph + tooltip for the current state. This is NOT a
+    // menu — the menu is popped on demand (showMenu) so left-click stays an action.
+    func render() {
+        guard let button = statusItem?.button else { return }
+        button.toolTip = label(for: state)
+        var attrs: [NSAttributedString.Key: Any] = [:]
+        if case .recording = state { attrs[.foregroundColor] = NSColor.systemRed } // universal "live"
+        button.attributedTitle = NSAttributedString(string: glyph(for: state), attributes: attrs)
+    }
+
+    func glyph(for s: RecState) -> String {
+        switch s {
+        case .armed:           return "○"          // ready
+        case .counting(let n): return String(n)    // 3 · 2 · 1
+        case .recording:       return "●"          // live (red)
+        case .paused:          return "❚❚"
+        case .stopped:         return "✓"
+        }
+    }
+    func label(for s: RecState) -> String {
+        switch s {
+        case .armed:           return "shroom — ready (click to start)"
+        case .counting(let n): return "shroom — starting in \(n)… (click to cancel)"
+        case .recording:       return "shroom — recording (click to pause)"
+        case .paused:          return "shroom — paused"
+        case .stopped:         return "shroom — finished"
+        }
+    }
+
+    // MARK: menu
+
+    // Pop the state-appropriate menu at the status item. Temporarily assigning the
+    // menu + performClick is the standard way to show an NSMenu from a status button
+    // whose left-click is otherwise bound to an action; we clear it again right after
+    // so the next left-click hits statusClicked.
+    func showMenu() {
         let menu = NSMenu()
         let header = NSMenuItem(title: label(for: state), action: nil, keyEquivalent: "")
         header.isEnabled = false
@@ -208,42 +310,29 @@ final class ShimController: NSObject, NSApplicationDelegate {
             menu.addItem(m)
         }
         switch state {
-        case .armed:     item("Start Recording", #selector(onStart))
-        case .recording: item("Pause", #selector(onPause)); item("Stop", #selector(onStop))
-        case .paused:    item("Resume", #selector(onResume)); item("Stop", #selector(onStop))
-        case .stopped:   break
+        case .paused:   item("Resume", #selector(onResume)); item("Stop", #selector(onStop))
+        case .counting: item("Cancel", #selector(onCancel))
+        default:        break   // armed / stopped: just Quit
         }
         menu.addItem(.separator())
         item("Quit", #selector(onQuit))
-        statusItem.menu = menu
-    }
 
-    func glyph(for s: RecState) -> String {
-        switch s {
-        case .armed:     return "○"   // ready
-        case .recording: return "●"   // live
-        case .paused:    return "❚❚"
-        case .stopped:   return "✓"
-        }
-    }
-    func label(for s: RecState) -> String {
-        switch s {
-        case .armed:     return "shroom — ready to record"
-        case .recording: return "shroom — recording"
-        case .paused:    return "shroom — paused"
-        case .stopped:   return "shroom — finished"
-        }
+        statusItem.menu = menu
+        statusItem.button?.performClick(nil)
+        statusItem.menu = nil   // restore: left-click → statusClicked
     }
 
     // MARK: menu actions
-    @objc func onStart()  { send("start");  state = .recording }
-    @objc func onPause()  { send("pause");  state = .paused }
     @objc func onResume() { send("resume"); state = .recording }
     @objc func onStop()   { send("stop");   state = .stopped }
+    @objc func onCancel() { cancelCountdown() }
     @objc func onQuit() {
-        // If a recording is live, stop it cleanly first so the recorder finalizes.
-        if state == .recording || state == .paused { send("stop") }
-        NSApp.terminate(nil)
+        // Tear down the recorder cleanly first. `stop` finalizes a recording or
+        // aborts an armed one; the recorder then exits and terminationHandler quits
+        // us. The delayed terminate is a backstop if the recorder is wedged.
+        if case .counting = state { cancelCountdown() }
+        send("stop")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 8) { NSApp.terminate(nil) }
     }
 }
 
