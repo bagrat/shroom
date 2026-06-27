@@ -1,0 +1,16 @@
+{
+  "name": "@shroom/deploy",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "description": "Deterministic deploy step for shroom: place the shared hls.min.js once at the site root and `wrangler pages deploy` the per-video page bundle, emitting the shareable playback URL (SPEC §6).",
+  "bin": {
+    "shroom-deploy": "./deploy.mjs"
+  },
+  "scripts": {
+    "test": "node test/deploy.test.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
