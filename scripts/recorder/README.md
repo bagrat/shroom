@@ -23,11 +23,20 @@ One ffmpeg encode is `tee`'d to two outputs (the validated recipe):
 node record.mjs [--id <id>] [--out <dir>] \
                 [--device "Capture screen 0"] \
                 [--audio none|default|<name>] \
-                [--fifo <path>]
+                [--fifo <path>] [--no-upload]
 ```
 
 Defaults: a random `--id`, `--out` = `~/.shroom/recordings/<id>/`, screen device
 resolved **by name** (indices are unstable), audio off.
+
+### Upload (optional, M3)
+
+If S3 storage is configured (`~/.shroom/credentials.json` or `SHROOM_S3_*` env),
+the recorder streams each closed segment to the bucket during recording and
+publishes the playlist at `/stop` — see [`../uploader/`](../uploader/). It's
+fail-safe: enqueue is non-blocking and **recording never waits on the network**.
+Until storage is set up (or with `--no-upload`), the recording still renders
+locally and instantly (`preview.mp4`) — value before friction (SPEC §8).
 
 Control it via the fifo (or signals):
 

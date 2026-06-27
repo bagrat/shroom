@@ -34,6 +34,8 @@ import { buildFfmpegArgs } from './lib/ffmpeg.mjs';
 import { watchControl } from './lib/control.mjs';
 import { createEventLog } from './lib/events.mjs';
 import { finalizeSession, maxSegmentIndex } from './lib/finalize.mjs';
+import { loadStorageConfig, isConfigured } from '../uploader/lib/storage-config.mjs';
+import { Uploader } from '../uploader/lib/uploader.mjs';
 
 function parseArgs(argv) {
   const opts = {};
@@ -91,6 +93,21 @@ async function main() {
     },
   });
 
+  // --- uploader (optional; off when storage isn't configured or --no-upload) ---
+  // The recorder owns the upload (SPEC §3), but it's fail-safe: enqueue is
+  // non-blocking and the recording never waits on the network (SPEC §5). Until
+  // storage is set up, the recording still renders locally (SPEC §8 value-first).
+  let uploader = null;
+  if (opts['no-upload'] !== 'true') {
+    const cfg = loadStorageConfig();
+    if (isConfigured(cfg)) {
+      uploader = new Uploader(cfg, { id, dir, log: (event, fields) => log.emit(event, fields) });
+      log.emit('upload_enabled', { endpoint: cfg.endpoint, bucket: cfg.bucket });
+    } else {
+      log.emit('upload_skipped', { reason: 'storage_not_configured' });
+    }
+  }
+
   // --- segment watcher (global across takes) ---
   // Segment N is COMPLETE once N+1 begins. On resume, the next take's first segment
   // appearing also closes the previous take's last one; finalize sweeps any remainder.
@@ -100,6 +117,8 @@ async function main() {
     if (i < 0 || emitted.has(i)) return;
     emitted.add(i);
     log.emit('segment_ready', { index: i, file: segName(i) });
+    // Stream the closed segment up opportunistically (non-blocking, retried).
+    if (uploader) uploader.enqueue(segName(i));
   };
   const watcher = fs.watch(dir, (_type, filename) => {
     if (!filename) return;
@@ -189,6 +208,19 @@ async function main() {
     }
     log.emit('recording_stopped', { takeCount: takes.length });
     log.emit('finalized', { id, ...summary });
+
+    // Publish: upload any remaining segments + init, then the playlist last (the
+    // go-live act). The segments mostly streamed up during recording, so /stop is
+    // near-instant. Only attempted on a valid local recording.
+    if (uploader && summary.ok) {
+      const pub = await uploader.finalizePublish({ segments: summary.segments });
+      log.emit('upload_finalized', {
+        published: pub.published,
+        confirmed: pub.confirmed.length,
+        failed: pub.failed,
+      });
+    }
+
     log.close();
     try { fs.unlinkSync(fifoPath); } catch {}
     process.exit(summary.ok ? 0 : 1);
