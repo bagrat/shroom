@@ -127,14 +127,20 @@ stable, so publish a good page now and let it get richer later.
 
 Read `<dir>/events.ndjson`: confirm `finalized` with `ok: true` (else surface the
 `error`/failure and stop). Then `open <dir>/preview.mp4` — the instant local
-preview (SPEC §8). Now **ask the user how to title it** (`AskUserQuestion`):
+preview (SPEC §8). Now **ask the user how to title it** (`AskUserQuestion`).
+
+Phrase the question so a typed title is a **one-step** answer, not a second turn:
+make the question itself *"Title this recording — type your own below, or pick
+auto-name"*, and give a **single** option:
 
 - **Auto-name it** — say plainly this reads the recording's transcript with
-  whisper, so it takes a few seconds (longer for a long recording). You get a
-  title *and* chapters from it.
-- **Their own title** — tell them they can just type a title (the free-text
-  option); that publishes the link **immediately**, and you'll still transcribe in
-  the background for search + chapters.
+  whisper, so it takes a few seconds (longer for a long recording). You get a title
+  *and* chapters from it.
+
+Do **not** add an "I'll type a title" option — selecting it would force another
+round-trip. The user types their title straight into the free-text ("Other") field;
+treat that text as the title (Path A) and publish **immediately**, transcribing in
+the background for search + chapters. Only the auto-name *option* needs listing.
 
 ### Path A — the user gave a title (instant link)
 
