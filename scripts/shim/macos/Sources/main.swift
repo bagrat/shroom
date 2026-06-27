@@ -121,11 +121,21 @@ final class ShimController: NSObject, NSApplicationDelegate {
 
     // Make sure the control fifo exists before any tray click can write to it (the
     // recorder also mkfifo's it, but the user might click fast). EEXIST is fine.
+    // mkdir the session dir first — the shim can win the race to it before the
+    // recorder's own mkdir, and mkfifo into a missing dir is ENOENT.
     func ensureFifo() {
         guard !args.fifo.isEmpty else { return }
+        ensureParentDir(args.fifo)
         if mkfifo(args.fifo, 0o600) != 0 && errno != EEXIST {
             NSLog("shroom-shim: mkfifo(%@) failed: %d", args.fifo, errno)
         }
+    }
+
+    func ensureParentDir(_ filePath: String) {
+        let dir = (filePath as NSString).deletingLastPathComponent
+        guard !dir.isEmpty else { return }
+        try? FileManager.default.createDirectory(
+            atPath: dir, withIntermediateDirectories: true)
     }
 
     // Write one newline command to the fifo. Non-blocking open so a missing reader
@@ -154,6 +164,7 @@ final class ShimController: NSObject, NSApplicationDelegate {
         p.executableURL = URL(fileURLWithPath: "/usr/bin/env")
         p.arguments = [args.node, args.recorder] + args.passthrough
         if !args.log.isEmpty {
+            ensureParentDir(args.log)
             FileManager.default.createFile(atPath: args.log, contents: nil)
             if let fh = FileHandle(forWritingAtPath: args.log) {
                 p.standardOutput = fh
