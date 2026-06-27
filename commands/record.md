@@ -1,24 +1,34 @@
 ---
 description: Record your screen → instant local preview, then a permanent unlisted link with auto title, chapters, and a searchable transcript.
 argument-hint: "[library-dir]"
-allowed-tools: AskUserQuestion, Skill, Read, Bash(node:*), Bash(echo:*), Bash(open:*), Bash(cat:*), Bash(ls:*), Bash(git:*)
+allowed-tools: AskUserQuestion, Skill, Read, Bash(node:*), Bash(open:*), Bash(cat:*), Bash(ls:*), Bash(git:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/shim/macos/build/shroom-shim:*)
 ---
 
 You are running `/shroom:record`. Your job is **orchestration and judgment**: you
-drive the deterministic recorder, transcribe, title, page, and deploy scripts —
-you never reimplement them. The recorder owns ffmpeg; the agent owns the session
-*around* it (start, "stop?", title/chapters, "publish"). Keep that boundary
-(CLAUDE.md, SPEC §4/§7).
+launch the native **shim** (the menu-bar "tray") and drive the transcribe, title,
+page, and deploy scripts — you never reimplement them. The **shim owns the actual
+screen capture and its controls**, and a *human* drives it: the agent can only
+*launch* the recorder (`armed`, no ffmpeg yet); the user's click in the menu bar is
+what **starts** the capture (the consent boundary, SPEC §4). So you never write the
+control fifo and you never start capture yourself — you launch, step back, and come
+back once the recording is stopped to title, page, and deploy it. Keep that boundary
+(CLAUDE.md, SPEC §4/§7). The shim is **macOS-only**; on first use it must be
+compiled by `/shroom:setup`.
 
 `$ARGUMENTS`, if given, is a library-dir override for this recording's `<id>.md`.
 
 ## Step 0 — what triggered this turn?
 
-You launch the recorder and (later) transcription as **harness-tracked background
-tasks**, so a turn may begin because one of them just finished. Branch first:
+You launch the **shim** and (later) transcription as **harness-tracked background
+tasks**, so a turn may begin because one of them just finished. The shim stays alive
+while the user records and **quits on its own** once the recording is **stopped**
+(finalized + published) **or discarded** — either way its background task completes
+and re-invokes you. Branch first:
 
-- **A recorder task just completed** → that recording stopped. Go to **Step 4
-  (name + instant publish)** for its session.
+- **The shim task just completed** → the user finished with the tray. Go to **Step 4
+  (name + instant publish)** for the session dir you launched in Step 2. (Step 4
+  handles the discarded case — a Discard deletes the session, so there's nothing to
+  publish.)
 - **A transcription task just completed** → go to **Step 5 (enrich)** for its
   session: the link is already live; you're adding chapters + transcript.
 - **Otherwise (a fresh `/shroom:record`)** → first drain any **pending publish**
@@ -78,46 +88,71 @@ Carry the chosen **names** (not indices — they shift) and the quality **key** 
 Step 2. The recorder records the choice into its `session_started`, so it becomes
 next time's `lastProfile` automatically — no separate save step.
 
-## Step 2 — start recording (harness-tracked background task)
+## Step 2 — launch the shim (harness-tracked background task)
 
-First-run note: macOS will prompt for **Screen Recording** and **Microphone**
-permission the first time — tell the user to approve them; the recorder will fail
-device resolution otherwise.
-
-Launch the recorder **in the background** with the chosen settings so the user stays
-free to chat and the harness re-invokes you when it finishes (SPEC §6 — do not
-block on a long tail):
+You **launch** the shim; the **user** starts the capture from the menu bar. First
+confirm the shim is built — it's compiled on-device by `/shroom:setup` and lives at
+`${CLAUDE_PLUGIN_ROOT}/scripts/shim/macos/build/shroom-shim` (gitignored):
 
 ```
-node "${CLAUDE_PLUGIN_ROOT}/scripts/recorder/record.mjs" --quality <key> --device "<video name>" --audio "<mic name>"
+ls "${CLAUDE_PLUGIN_ROOT}/scripts/shim/macos/build/shroom-shim"
 ```
 
-The recorder echoes its events to stdout. Read the **`session_started`** line and
-capture its `id` and `dir` — that's this recording's storage key and where the
-control fifo + `events.ndjson` live. If instead you see an `error` event (e.g.
-device resolution), surface it and stop.
+If it's missing, tell the user to run `/shroom:setup` first (it compiles the shim)
+and stop — don't try to record without it.
 
-If storage isn't set up yet you'll see `upload_skipped`
-(`storage_not_configured`) — that's fine: the recording still renders **locally
-and instantly** (value before friction, SPEC §8). Note it; offer `/shroom:setup`
-later for the shareable link. Don't block recording on it.
+First-run note: macOS will prompt for **Screen Recording** (the shim registers as
+its own TCC principal) and, on first capture, **Microphone** — tell the user to
+approve them; a first-ever Screen-Recording grant can need one quit+relaunch of the
+shim to take effect.
 
-Then tell the user it's recording and how to control it — they say it in chat, you
-translate to the fifo:
+Mint the recording's **id** — the unguessable storage/URL key — yourself, so you can
+name the session dir after it and the URL key is fixed up front:
 
-- **pause** → `echo pause  > <dir>/control.fifo`
-- **resume** → `echo resume > <dir>/control.fifo`
-- **stop** → `echo stop   > <dir>/control.fifo`
+```
+node -e "console.log(require('crypto').randomBytes(12).toString('base64url'))"
+```
 
-`stop` is the finalize act. Don't poll or tail in a loop — end your turn after
-starting; the user's "stop" (or the background task completing) brings you back.
+Then the **session dir** is `~/.shroom/recordings/<YYYYMMDD-HHMMSS>-<id>` (timestamp
+so it sorts/eyeballs nicely, `id` so the dir cross-references the link) — **remember
+it**; that's where the control fifo + `events.ndjson` live and what you read in Step
+4. Launch the shim **in the background** so the user stays free to chat and the
+harness re-invokes you when the session ends (SPEC §6 — do not block on a long tail),
+passing the id + the picker's choices straight through after `--`:
 
-## Step 3 — stop
+```
+"${CLAUDE_PLUGIN_ROOT}/scripts/shim/macos/build/shroom-shim" \
+  --recorder "${CLAUDE_PLUGIN_ROOT}/scripts/recorder/record.mjs" \
+  --node node \
+  -- --out "$HOME/.shroom/recordings/<YYYYMMDD-HHMMSS>-<id>" --id <id> \
+     --quality <key> --device "<video name>" --audio "<mic name>"
+```
 
-When the user asks to stop, write `stop` to the fifo. The recorder finalizes
-(valid moov, assembled playlist + `preview.mp4`), publishes the bytes if storage
-is configured, and exits — which completes the background task and re-invokes you.
-Proceed to Step 4 with that session's `dir` and `id`.
+(`--node node` — the recorder only needs Node ≥18, so the user's default node is
+fine; the Node ≥22 in creds `nodeBinDir` is only for wrangler.) Everything after
+`--` flows unchanged to `record.mjs`; the shim derives the fifo + log from `--out`.
+
+Then tell the user **how to drive the tray** (the shim, not you, controls capture):
+
+- A shroom icon (**○**) appears in the menu bar. **Click it to start** — a 3-2-1
+  countdown (cancelable: click again during it to abort), then it records (**●**).
+- **Click while recording** → pauses immediately (**❚❚**) and opens a menu.
+- The menu offers **Resume**, **Stop** (finalize + publish), **Restart** (throw
+  this take away and re-arm a fresh one), and **Discard** (throw it away entirely).
+
+Don't poll or tail in a loop — **end your turn after launching**. The shim quitting
+(after the user's Stop or Discard) completes the background task and brings you back.
+
+## Step 3 — the user stops (or discards)
+
+You do nothing here — the user drives the tray. When they **Stop**, the recorder
+finalizes (valid moov, assembled playlist + `preview.mp4`), publishes the bytes if
+storage is configured, and exits; the shim then quits, completing the background
+task and re-invoking you → **Step 4**. If they **Discard** instead, the session is
+deleted (no publish) and the shim still quits — Step 4 detects the missing session
+and reports it. If storage isn't set up, the recorder emits `upload_skipped`
+(`storage_not_configured`) — fine: it still renders **locally and instantly** (SPEC
+§8); note it in Step 4 and offer `/shroom:setup` for the shareable link.
 
 ## Step 4 — name it, then publish instantly
 
@@ -125,8 +160,15 @@ The link should be in the user's hands **right after stop**, not gated behind
 transcription (whisper can take a while). The page is re-derivable and the URL is
 stable, so publish a good page now and let it get richer later.
 
-Read `<dir>/events.ndjson`: confirm `finalized` with `ok: true` (else surface the
-`error`/failure and stop). Then `open <dir>/preview.mp4` — the instant local
+First, **was anything recorded?** If the session dir (the `--out` from Step 2) or
+its `events.ndjson` is gone, the user **discarded** the take — tell them it was
+discarded, nothing was published, and stop (don't hunt for an older session).
+
+Otherwise read `<dir>/events.ndjson`: confirm `finalized` with `ok: true` (else
+surface the `error`/failure and stop), and read the `id` from `session_started`
+(that's the storage/URL key). If you instead see only an `aborted` event (the user
+quit while still `armed`, before clicking Start), nothing was captured — say so and
+stop. Then `open <dir>/preview.mp4` — the instant local
 preview (SPEC §8). Now **ask the user how to title it** (`AskUserQuestion`).
 
 Phrase the question so a typed title is a **one-step** answer, not a second turn:

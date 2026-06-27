@@ -1,7 +1,7 @@
 ---
 description: One-time shroom setup — check local tools, install what's missing, and provision Cloudflare R2 + Pages so record → link works.
 argument-hint: "[library-dir]"
-allowed-tools: AskUserQuestion, Bash(node:*), Bash(git:*), Bash(brew:*), Bash(npm:*), Bash(/bin/bash:*), Bash(wrangler:*), Bash(open:*)
+allowed-tools: AskUserQuestion, Bash(node:*), Bash(git:*), Bash(brew:*), Bash(npm:*), Bash(/bin/bash:*), Bash(/bin/sh:*), Bash(xcode-select:*), Bash(wrangler:*), Bash(open:*)
 ---
 
 You are running `/shroom:setup` — the one-time onboarding flow (SPEC §8). Your job
@@ -58,6 +58,16 @@ Then, as **one** batched action the user already approved:
   it): `node "${CLAUDE_PLUGIN_ROOT}/scripts/page/vendor/fetch-hls.mjs"`. It's a
   pinned + SHA-256-verified fetch (a network action — fold it into this same
   approval); idempotent, a no-op if already vendored.
+- **Compile the macOS control shim** (the menu-bar "tray" that `/shroom:record`
+  launches — it owns Screen-Recording permission and the start/stop controls).
+  We ship readable Swift source and build it on-device, never a precompiled blob:
+  `/bin/sh "${CLAUDE_PLUGIN_ROOT}/scripts/shim/macos/build.sh"` → `build/shroom-shim`
+  (`swiftc -O` + an ad-hoc `codesign` for a stable TCC grant). It needs the Xcode
+  **Command Line Tools**; if `build.sh` exits with *"swiftc not found"*, that's the
+  one missing piece — propose **`xcode-select --install`** (a separate GUI installer,
+  so it can't fold into the batched command; ask, let the user run it, then re-run
+  `build.sh`). Idempotent — safe to re-run; recompiling is how an updated shim gets
+  re-signed. (macOS only; skip on other platforms — recording needs the shim there.)
 
 ## Phase 3 — Cloudflare (explain before the browser opens)
 
