@@ -1,0 +1,16 @@
+{
+  "name": "@shroom/page",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "description": "Deterministic per-video page generator for shroom: one template → N static HTML player pages with baked og: tags, rendered at finalize (SPEC §6).",
+  "bin": {
+    "shroom-build-page": "./build-page.mjs"
+  },
+  "scripts": {
+    "test": "node test/render.test.mjs && node test/metadata.test.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

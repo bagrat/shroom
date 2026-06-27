@@ -17,3 +17,6 @@ build/
 *.ts
 *.m3u8
 preview.mp4
+
+# vendored hls.js — fetched (pinned + SHA-256 verified), not committed; see scripts/page/vendor/
+scripts/page/vendor/hls.min.js
