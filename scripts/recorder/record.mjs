@@ -16,12 +16,13 @@
 //
 // Usage:
 //   node record.mjs [--id <id>] [--out <dir>] [--device "<screen or camera name>"]
-//                   [--audio none|default|<name>] [--fifo <path>]
-//   node record.mjs --list-devices            # JSON catalogue for the picker (no capture)
+//                   [--audio none|default|<name>] [--quality normal|2k|4k] [--fifo <path>]
+//   node record.mjs --preflight               # JSON for the picker: devices + quality presets + last profile
 //
 // --device names ANY avfoundation video source — a screen ("Capture screen 0") or a
 // camera ("FaceTime HD Camera"); camera-as-source, not PiP (SPEC §4). --audio
-// "default" prefers a built-in mic and never the iPhone/Continuity mic.
+// "default" prefers a built-in mic and never the iPhone/Continuity mic. --quality
+// picks a resolution/bitrate preset (lib/quality.mjs; default normal = 1080p).
 //
 // Control:  echo pause  > <dir>/control.fifo
 //           echo resume > <dir>/control.fifo
@@ -36,6 +37,7 @@ import { spawn, execFileSync } from 'node:child_process';
 import { CONFIG, segName } from './lib/config.mjs';
 import { resolveDevices, listDevices, pickDefaultAudio } from './lib/devices.mjs';
 import { buildFfmpegArgs } from './lib/ffmpeg.mjs';
+import { QUALITY, resolveQuality, ffmpegBitrate, qualityCatalogue, DEFAULT_QUALITY } from './lib/quality.mjs';
 import { watchControl } from './lib/control.mjs';
 import { createEventLog } from './lib/events.mjs';
 import { finalizeSession, maxSegmentIndex } from './lib/finalize.mjs';
@@ -60,28 +62,58 @@ function genId() {
   return crypto.randomBytes(12).toString('base64url');
 }
 
-// Enumerate avfoundation devices as JSON for the pre-record picker (the command
-// asks the user; this only reads). Tags video sources screen/camera and flags the
-// recommended default mic so the picker can pre-select a sane, non-Continuity one.
-async function listDevicesJson() {
+// The newest prior recording's settings (quality + video + mic), read from its
+// session_started event — the "use last settings?" the command offers. No separate
+// profile file: events.ndjson already durably records each recording's choices.
+function readLastProfile() {
+  const base = path.join(os.homedir(), '.shroom', 'recordings');
+  let dirs;
+  try {
+    dirs = fs.readdirSync(base, { withFileTypes: true })
+      .filter((d) => d.isDirectory())
+      .map((d) => ({ name: d.name, mtime: fs.statSync(path.join(base, d.name)).mtimeMs }))
+      .sort((a, b) => b.mtime - a.mtime);
+  } catch { return null; }
+  for (const d of dirs) {
+    const ev = path.join(base, d.name, 'events.ndjson');
+    if (!fs.existsSync(ev)) continue;
+    for (const line of fs.readFileSync(ev, 'utf8').split('\n')) {
+      if (!line.trim()) continue;
+      let e; try { e = JSON.parse(line); } catch { continue; }
+      if (e.event === 'session_started') {
+        return { quality: e.config?.quality ?? null, video: e.video?.name ?? null, audio: e.audio?.name ?? null };
+      }
+    }
+  }
+  return null;
+}
+
+// Preflight JSON for the picker (the command asks the user; this only reads):
+// devices (video tagged screen/camera, mic with a recommended non-Continuity
+// default), the quality catalogue with size/cost estimates, and the last profile.
+async function preflightJson() {
   const { video, audio } = await listDevices();
   const def = pickDefaultAudio(audio);
   process.stdout.write(JSON.stringify({
     video,
     audio: audio.map((d) => ({ ...d, recommended: def ? d.index === def.index : false })),
     defaultAudioName: def?.name ?? null,
+    qualities: qualityCatalogue(),
+    lastProfile: readLastProfile(),
   }) + '\n');
 }
 
 async function main() {
   const opts = parseArgs(process.argv.slice(2));
 
-  if (opts['list-devices'] === 'true') {
-    await listDevicesJson();
+  // Accept --preflight (full picker JSON) and --list-devices (back-compat alias).
+  if (opts.preflight === 'true' || opts['list-devices'] === 'true') {
+    await preflightJson();
     return;
   }
 
   const id = opts.id ?? genId();
+  const quality = resolveQuality(opts.quality ?? DEFAULT_QUALITY);
   const dir = path.resolve(
     opts.out ?? path.join(os.homedir(), '.shroom', 'recordings', id),
   );
@@ -113,7 +145,9 @@ async function main() {
     config: {
       framerate: CONFIG.framerate,
       segmentSeconds: CONFIG.segmentSeconds,
-      videoBitrate: CONFIG.videoBitrate,
+      quality, // the picker key (normal | 2k | 4k) — also the "use last settings?" record
+      resolution: `${QUALITY[quality].maxWidth}x${QUALITY[quality].maxHeight}`,
+      videoBitrate: ffmpegBitrate(quality),
     },
   });
 
@@ -167,6 +201,7 @@ async function main() {
       audioIndex: devices.audioIndex,
       startNumber: nextSegment,
       take: k,
+      quality,
     });
     if (k === 0) log.emit('ffmpeg_command', { argv: ['ffmpeg', ...args], cwd: dir });
     const ff = spawn('ffmpeg', args, { cwd: dir, stdio: ['pipe', 'ignore', 'pipe'] });

@@ -17,11 +17,13 @@ One ffmpeg encode is `tee`'d to two outputs (the validated recipe):
 - **`preview.mp4`** — progressive faststart MP4 for instant local `file://`
   playback with zero JS / zero server (SPEC §8 "value before friction").
 
-Capture is **capped at 1080p / 30 fps** (`-vf scale=…`, `CONFIG.maxHeight`),
-matching the original SaaS shroom's `getDisplayMedia` constraints. avfoundation
-grabs the native screen res (e.g. 4K), so the downscale happens in ffmpeg; a
-≤1080p source passes through unchanged (never upscaled). Bitrate ~3.5 Mbps h264
-(≈ the original's VP9 default at parity).
+Capture resolution + bitrate are a **user-chosen quality preset** (`--quality`,
+[`lib/quality.mjs`](lib/quality.mjs)): `normal` (1080p, the original SaaS shroom's
+`getDisplayMedia` policy), `2k` (1440p), `4k` (2160p), 30 fps. avfoundation grabs
+native screen res, so the recipe downscales in ffmpeg to fit the preset's box;
+a smaller source passes through unchanged (never upscaled). The preset also carries
+size/cost estimates the `/shroom:record` picker shows (storage is the only cost —
+egress is free, SPEC §3).
 
 ## Run it
 
@@ -29,13 +31,14 @@ grabs the native screen res (e.g. 4K), so the downscale happens in ffmpeg; a
 node record.mjs [--id <id>] [--out <dir>] \
                 [--device "<screen or camera name>"] \
                 [--audio none|default|<name>] \
+                [--quality normal|2k|4k] \
                 [--fifo <path>] [--no-upload]
 
-node record.mjs --list-devices    # JSON device catalogue for the picker (no capture)
+node record.mjs --preflight    # JSON for the picker: devices + quality presets + last profile
 ```
 
 Defaults: a random `--id`, `--out` = `~/.shroom/recordings/<id>/`, video source
-`Capture screen 0`, audio off.
+`Capture screen 0`, audio off, quality `normal` (1080p).
 
 `--device` names **any** avfoundation video source — a screen (`Capture screen 0`)
 **or** a camera (`FaceTime HD Camera`); resolved **by name** (indices are unstable,
@@ -43,8 +46,9 @@ a Continuity Camera connecting shifts them). A camera is recorded *as the source
 (camera-only), not a PiP overlay — PiP is deferred (SPEC §4). `--audio default`
 prefers a **built-in** mic and **never** the wireless **iPhone/Continuity mic**
 (it drops samples and, sharing one capture session, hitches the video too). The
-`/shroom:record` command surfaces `--list-devices` as a one-shot picker so the user
-chooses video source + mic before recording.
+`/shroom:record` command surfaces `--preflight` as a one-shot picker so the user
+chooses quality + video source + mic before recording, and reuses the last
+profile (read from the previous recording's `session_started`) on the next run.
 
 ### Upload (optional, M3)
 

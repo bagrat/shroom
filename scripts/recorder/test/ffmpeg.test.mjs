@@ -42,11 +42,26 @@ test('forced output rate + keyframes at each segment boundary (the HLS fix)', ()
   assert.equal(after(args, '-force_key_frames'), `expr:gte(t,n_forced*${CONFIG.segmentSeconds})`);
 });
 
-test('caps resolution to 1080p (matches the original) — present even with no audio', () => {
+test('default quality caps to 1080p (matches the original) — present without audio', () => {
   const args = buildFfmpegArgs({ videoIndex: 3, audioIndex: 'none' });
-  assert.equal(after(args, '-vf'), CONFIG.videoFilter);
-  assert.match(CONFIG.videoFilter, /min\(1920,iw\).*min\(1080,ih\)/);
-  assert.match(CONFIG.videoFilter, /force_divisible_by=2/); // even dims for yuv420p
+  const vf = after(args, '-vf');
+  assert.match(vf, /min\(1920,iw\).*min\(1080,ih\)/);
+  assert.match(vf, /force_divisible_by=2/); // even dims for yuv420p
+  assert.equal(after(args, '-b:v'), '3.5M');
+});
+
+test('quality preset drives the scale box + bitrate', () => {
+  const k2 = buildFfmpegArgs({ videoIndex: 3, audioIndex: 'none', quality: '2k' });
+  assert.match(after(k2, '-vf'), /min\(2560,iw\).*min\(1440,ih\)/);
+  assert.equal(after(k2, '-b:v'), '6M');
+
+  const k4 = buildFfmpegArgs({ videoIndex: 3, audioIndex: 'none', quality: '4k' });
+  assert.match(after(k4, '-vf'), /min\(3840,iw\).*min\(2160,ih\)/);
+  assert.equal(after(k4, '-b:v'), '12M');
+
+  // An unknown quality falls back to the default (normal), never crashes.
+  const bad = buildFfmpegArgs({ videoIndex: 3, audioIndex: 'none', quality: 'ultra' });
+  assert.equal(after(bad, '-b:v'), '3.5M');
 });
 
 (async () => {

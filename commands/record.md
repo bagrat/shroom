@@ -32,30 +32,49 @@ tasks**, so a turn may begin because one of them just finished. Branch first:
   `playbackUrl`** you haven't surfaced yet — if found, tell the user "your last
   recording is live: <url>" and `open` it. Then go to **Step 1 (pick devices)**.
 
-## Step 1 — pick the devices (one bulk ask)
+## Step 1 — settings: quality + devices
 
-Don't guess the inputs — the auto-pick can land on a wireless **iPhone Continuity
-mic**, which drops audio and hitches the video. Enumerate first (this only reads,
-no capture):
+Preflight first (this only reads, no capture):
 
 ```
-node "${CLAUDE_PLUGIN_ROOT}/scripts/recorder/record.mjs" --list-devices
+node "${CLAUDE_PLUGIN_ROOT}/scripts/recorder/record.mjs" --preflight
 ```
 
-Parse `{ video:[{index,name,kind}], audio:[{index,name,recommended}], defaultAudioName }`.
-Then ask **both choices in a single `AskUserQuestion`** (one bulk, before
-recording):
+Parse `{ video, audio, defaultAudioName, qualities, lastProfile }`:
+- `qualities[]` — `{ key, label, resolution, mbPerMin, gbPerHour, usdPerHourMonth }`
+  for `normal` (1080p), `2k`, `4k`.
+- `lastProfile` — `{ quality, video, audio }` from the most recent recording, or
+  `null` on the first ever run.
 
-1. **Video source** — list the `video` devices; label each by `kind`
-   (screen / camera). A screen is the usual pick; a camera records camera-as-source
-   (not a PiP overlay — that's deferred). Default to the first screen.
-2. **Microphone** — list the `audio` devices plus a **"No mic"** option. Pre-select
-   the `recommended` one (`defaultAudioName`, the built-in mic) and **steer away
-   from any iPhone/Continuity mic** — call out that it's the glitch culprit if the
-   user eyes it.
+### If `lastProfile` exists — offer to reuse it
 
-Carry the chosen **names** (not indices — indices shift) into Step 2 as
-`--device "<video name>"` and `--audio "<mic name>"` (or `--audio none`).
+State it plainly and ask (single `AskUserQuestion`, **Use these** / **Change**):
+
+> Last time: **<quality label>**, video **<lastProfile.video>**, mic
+> **<lastProfile.audio>**.
+
+- **Use these** → carry them straight to Step 2 (if `lastProfile.quality` is
+  `null` — an older recording — default to `normal`).
+- **Change** → fall through to the full picker below.
+
+### The full picker (first run, or on "Change")
+
+Ask **three questions in one `AskUserQuestion`** (one bulk, before recording):
+
+1. **Quality** — one option per `qualities[]` entry. Put the **size + cost** in each
+   description so the choice is informed, e.g. *"2K (1440p) — ~46 MB/min, ~2.7 GB/hr,
+   ~$0.04 per recorded hour stored/month"*. Note storage is the only cost (egress is
+   free). Default to `normal`.
+2. **Video source** — the `video` devices, each labelled by `kind` (screen /
+   camera). A screen is the usual pick; a camera records camera-as-source (not a PiP
+   overlay — deferred). Default to the first screen.
+3. **Microphone** — the `audio` devices plus a **"No mic"** option. Pre-select the
+   `recommended` one (`defaultAudioName`, the built-in mic) and **steer away from any
+   iPhone/Continuity mic** — it drops audio and hitches the video.
+
+Carry the chosen **names** (not indices — they shift) and the quality **key** into
+Step 2. The recorder records the choice into its `session_started`, so it becomes
+next time's `lastProfile` automatically — no separate save step.
 
 ## Step 2 — start recording (harness-tracked background task)
 
@@ -63,12 +82,12 @@ First-run note: macOS will prompt for **Screen Recording** and **Microphone**
 permission the first time — tell the user to approve them; the recorder will fail
 device resolution otherwise.
 
-Launch the recorder **in the background** with the picked devices so the user stays
+Launch the recorder **in the background** with the chosen settings so the user stays
 free to chat and the harness re-invokes you when it finishes (SPEC §6 — do not
 block on a long tail):
 
 ```
-node "${CLAUDE_PLUGIN_ROOT}/scripts/recorder/record.mjs" --device "<video name>" --audio "<mic name>"
+node "${CLAUDE_PLUGIN_ROOT}/scripts/recorder/record.mjs" --quality <key> --device "<video name>" --audio "<mic name>"
 ```
 
 The recorder echoes its events to stdout. Read the **`session_started`** line and

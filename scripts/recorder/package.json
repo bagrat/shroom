@@ -8,7 +8,7 @@
     "shroom-record": "./record.mjs"
   },
   "scripts": {
-    "test": "node test/devices.test.mjs && node test/ffmpeg.test.mjs"
+    "test": "node test/devices.test.mjs && node test/ffmpeg.test.mjs && node test/quality.test.mjs"
   },
   "engines": {
     "node": ">=18"

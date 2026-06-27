@@ -12,8 +12,9 @@
 // and the rationale behind `-r` + forced keyframes.
 
 import { CONFIG, takePlaylist, takePreview } from './config.mjs';
+import { scaleFilter, ffmpegBitrate, DEFAULT_QUALITY } from './quality.mjs';
 
-export function buildFfmpegArgs({ videoIndex, audioIndex = 'none', startNumber = 0, take = 0 }) {
+export function buildFfmpegArgs({ videoIndex, audioIndex = 'none', startNumber = 0, take = 0, quality = DEFAULT_QUALITY }) {
   const f = CONFIG.files;
   const seg = CONFIG.segmentSeconds;
   const hasAudio = audioIndex !== 'none';
@@ -37,11 +38,11 @@ export function buildFfmpegArgs({ videoIndex, audioIndex = 'none', startNumber =
     '-framerate', String(CONFIG.framerate),
     '-capture_cursor', String(CONFIG.captureCursor),
     '-i', inputSpec,
-    // Cap to 1080p (match the original; avfoundation captures native res, so we
-    // downscale here). Never upscales — a ≤1080p source passes through.
-    '-vf', CONFIG.videoFilter,
+    // Downscale to the chosen quality preset's box (avfoundation captures native
+    // res). Never upscales — a smaller source passes through.
+    '-vf', scaleFilter(quality),
     '-c:v', CONFIG.videoCodec,
-    '-b:v', CONFIG.videoBitrate,
+    '-b:v', ffmpegBitrate(quality),
     '-pix_fmt', CONFIG.pixFmt,
     '-r', String(CONFIG.framerate),
     '-force_key_frames', `expr:gte(t,n_forced*${seg})`,
