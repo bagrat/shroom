@@ -1,0 +1,13 @@
+{
+  "name": "@shroom/recorder",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "description": "Deterministic screen-recorder core for shroom: owns the ffmpeg lifecycle (start/stop via tee → HLS + preview), reads a control fifo, writes events.ndjson.",
+  "bin": {
+    "shroom-record": "./record.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
