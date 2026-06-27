@@ -123,9 +123,11 @@ Newline-delimited commands, serialized so they never interleave:
 | `pause` | end the current take at a clean segment boundary |
 | `resume` | start a new take with contiguous segment numbering |
 | `stop` | finalize and exit (the publish act); while `armed`, a clean abort instead |
+| `cancel` | discard: stop, **no** finalize/publish, **delete** the session dir, exit (the tray's "Discard") |
 
 Anything else → `command_ignored`. `start` while already recording, `pause` while
 paused, `resume` while recording, and `pause`/`resume` while `armed` are all no-ops.
+`cancel` only deletes the session dir when it holds `events.ndjson` (proof it's ours).
 
 ## Event schema (events.ndjson out)
 
@@ -148,6 +150,8 @@ artifact** (SPEC §6): it outlives the session and is drained on the next run.
 | `stop_requested` | `reason` | `stop` received, or a signal |
 | `recording_stopped` | `takeCount` | all takes finished |
 | `aborted` | `reason` | stopped while still `armed` — nothing captured, no finalize |
+| `cancel_requested` | `reason` | `cancel` received (discard) |
+| `discarded` | `id`, `reason` | recording thrown away — ffmpeg stopped, not published, session deleted |
 | `finalized` | `id`, `preview`, `playlist`, `initSegment`, `segments`, `segmentCount`, `durationSec`, `takeCount`, `endlist`, `ok` | session assembled |
 | `error` | `phase`, `message` | device resolution / spawn / control failure |
 

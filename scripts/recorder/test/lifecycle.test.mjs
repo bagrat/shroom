@@ -72,15 +72,22 @@ function launch(extraArgs = []) {
     '--no-upload', ...extraArgs,
   ], { env: { ...process.env, PATH: bin + ':' + process.env.PATH } });
 
+  // Capture the recorder's stdout too — on discard the session dir (and its
+  // events.ndjson) is deleted, so the streamed events are the only record left.
+  let out = '';
+  child.stdout.on('data', (d) => { out += d.toString(); });
+  const parseLines = (text) => text.split('\n').filter(Boolean)
+    .map((l) => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
+
   let exitCode = 'running';
   const exited = new Promise((res) => child.on('exit', (c) => { exitCode = c; res(c); }));
   const events = () => {
     const p = path.join(dir, 'events.ndjson');
     if (!fs.existsSync(p)) return [];
-    return fs.readFileSync(p, 'utf8').split('\n').filter(Boolean)
-      .map((l) => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
+    return parseLines(fs.readFileSync(p, 'utf8'));
   };
   const has = (name) => events().some((e) => e.event === name);
+  const hasOut = (name) => parseLines(out).some((e) => e.event === name); // from stdout
   const send = (cmd) => fs.writeFileSync(path.join(dir, 'control.fifo'), cmd + '\n');
   const waitFor = async (name, ms = 5000) => {
     const t0 = Date.now();
@@ -90,7 +97,7 @@ function launch(extraArgs = []) {
     }
     throw new Error(`timed out waiting for "${name}" event; saw: ${events().map((e) => e.event).join(',')}`);
   };
-  return { tmp, dir, child, exited, events, has, send, waitFor, getExit: () => exitCode };
+  return { tmp, dir, child, exited, events, has, hasOut, send, waitFor, getExit: () => exitCode };
 }
 
 test('launch ARMS but does not capture — no ffmpeg until `start`', async () => {
@@ -135,6 +142,29 @@ test('pause/resume before start are ignored (no take leaks out of armed)', async
   s.send('stop');
   await s.exited;
   assert.equal(s.has('aborted'), true);
+});
+
+test('cancel discards — stops, no finalize/publish, deletes the session dir', async () => {
+  const s = launch();
+  await s.waitFor('armed');
+  s.send('start');
+  await s.waitFor('recording_started');
+  s.send('cancel');
+  await s.exited;
+  assert.equal(s.getExit(), 0, 'discard exits 0');
+  assert.equal(s.hasOut('discarded'), true, 'emits discarded (read from stdout)');
+  assert.equal(s.hasOut('finalized'), false, 'discard never finalizes/publishes');
+  assert.equal(fs.existsSync(s.dir), false, 'the session scratch dir is deleted');
+});
+
+test('cancel while still armed discards cleanly (nothing captured)', async () => {
+  const s = launch();
+  await s.waitFor('armed');
+  s.send('cancel');
+  await s.exited;
+  assert.equal(s.getExit(), 0);
+  assert.equal(s.hasOut('discarded'), true);
+  assert.equal(fs.existsSync(s.dir), false, 'armed-then-cancel also cleans up');
 });
 
 test('--autostart begins capture at launch (test/headless escape hatch)', async () => {

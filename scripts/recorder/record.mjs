@@ -3,11 +3,12 @@
 // lifecycle, including pause/resume as a segment boundary.
 //
 // Contract (the determinism boundary, SPEC §4):
-//   IN  : a control fifo  (newline commands: `start`, `pause`, `resume`, `stop`)
+//   IN  : a control fifo  (newline commands: `start`, `pause`, `resume`, `stop`,
+//                          `cancel`)
 //   OUT : events.ndjson   (session_started, armed, take_started, segment_ready,
 //                          paused, resumed, take_ended, stop_requested,
 //                          recording_started, recording_stopped, aborted,
-//                          finalized, error)
+//                          cancel_requested, discarded, finalized, error)
 //
 // LAUNCH ≠ CAPTURE. The recorder launches into an `armed` state — devices
 // resolved, fifo + events + uploader ready — but spins up NO ffmpeg until it
@@ -39,7 +40,8 @@
 // Control:  echo start  > <dir>/control.fifo     (begin capture — user, from the tray)
 //           echo pause  > <dir>/control.fifo
 //           echo resume > <dir>/control.fifo
-//           echo stop   > <dir>/control.fifo     (or SIGINT/SIGTERM)
+//           echo stop   > <dir>/control.fifo     (publish; or SIGINT/SIGTERM)
+//           echo cancel > <dir>/control.fifo     (discard: stop, no publish, delete)
 
 import fs from 'node:fs';
 import os from 'node:os';
@@ -321,6 +323,30 @@ async function main() {
     process.exit(summary.ok ? 0 : 1);
   }
 
+  // Discard: stop ffmpeg, do NOT finalize or publish, and delete the session's
+  // scratch — the user threw this recording away (the tray's "Discard"). Distinct
+  // from `stop`, which is the publish act. We delete our OWN session dir only, and
+  // only when it looks like ours (holds events.ndjson), so a stray --out can't
+  // nuke an unrelated directory.
+  async function doCancel(reason) {
+    if (state === 'stopping') return;
+    state = 'stopping';
+    log.emit('cancel_requested', { reason });
+    await endCurrentTake(); // q-stop ffmpeg if running; no-op while armed
+    try { watcher.close(); } catch {}
+    control.close?.();
+    log.emit('discarded', { id, reason }); // echoed to stdout BEFORE we delete
+    log.close();
+    try {
+      if (fs.existsSync(path.join(dir, CONFIG.files.events))) {
+        fs.rmSync(dir, { recursive: true, force: true });
+      } else {
+        try { fs.unlinkSync(fifoPath); } catch {}
+      }
+    } catch {}
+    process.exit(0);
+  }
+
   // --- control wiring ---
   const control = watchControl(fifoPath);
   control.on('command', (cmd) => {
@@ -329,6 +355,7 @@ async function main() {
       case 'pause': return void enqueue(doPause);
       case 'resume': return void enqueue(doResume);
       case 'stop': return void enqueue(() => doStop('control:stop'));
+      case 'cancel': return void enqueue(() => doCancel('control:cancel'));
       default: return void log.emit('command_ignored', { command: cmd });
     }
   });
