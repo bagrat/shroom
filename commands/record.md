@@ -131,16 +131,21 @@ preview (SPEC §8). Now **ask the user how to title it** (`AskUserQuestion`).
 
 Phrase the question so a typed title is a **one-step** answer, not a second turn:
 make the question itself *"Title this recording — type your own below, or pick
-auto-name"*, and give a **single** option:
+auto-name"*. `AskUserQuestion` requires **at least two** options, so list these two
+— the always-present free-text **"Other"** field is what keeps a typed title
+one-step (it's there no matter how many options you list):
 
 - **Auto-name it** — say plainly this reads the recording's transcript with
   whisper, so it takes a few seconds (longer for a long recording). You get a title
-  *and* chapters from it.
+  *and* chapters from it (Path B).
+- **I'll type my own title** — the affordance for a user-chosen title (Path A).
 
-Do **not** add an "I'll type a title" option — selecting it would force another
-round-trip. The user types their title straight into the free-text ("Other") field;
-treat that text as the title (Path A) and publish **immediately**, transcribing in
-the background for search + chapters. Only the auto-name *option* needs listing.
+The **fast path** is the user typing their title **straight into the free-text
+("Other") field**: treat that text as the title, take **Path A**, and publish
+**immediately**, transcribing in the background for search + chapters. Only if the
+user *selects* "I'll type my own title" **without** typing anything do you ask them
+for it — one extra turn, and only in that case (never a forced round-trip for a user
+who just types).
 
 ### Path A — the user gave a title (instant link)
 
