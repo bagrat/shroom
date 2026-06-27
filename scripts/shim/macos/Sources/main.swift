@@ -25,9 +25,8 @@
 //
 // (Swift notes for the reader: `@objc` marks methods the menu can call as targets;
 // `NSStatusItem` is the menu-bar item; `.accessory` activation policy = menu-bar
-// only, no Dock icon. The countdown, click-to-pause gesture, state icon, and global
-// hotkey land in the next milestone — this is the skeleton that compiles, owns TCC,
-// launches the recorder, and drives the fifo.)
+// only, no Dock icon. The countdown, click-to-pause gesture, state icon, Discard,
+// and Restart are all here; the no-permission global hotkey lands later.)
 
 import Cocoa
 import CoreGraphics
@@ -77,7 +76,7 @@ func parseArgs() -> Args {
 
 // MARK: - App
 
-enum RecState: Equatable { case armed, counting(Int), recording, pausing, paused, stopped }
+enum RecState: Equatable { case armed, counting(Int), recording, pausing, paused, restarting, stopped }
 
 final class ShimController: NSObject, NSApplicationDelegate {
     let args: Args
@@ -85,6 +84,9 @@ final class ShimController: NSObject, NSApplicationDelegate {
     var node: Process?
     var countdownTimer: Timer?
     var nodeBuf = ""   // accumulates recorder stdout for line-by-line event parsing
+    // Set when a "Restart" is in flight: the current recorder is being discarded
+    // (cancel) and, once it exits, we relaunch a fresh one instead of quitting.
+    var pendingRestart = false
     var state: RecState = .armed { didSet { render() } }
 
     init(_ args: Args) { self.args = args }
@@ -191,7 +193,21 @@ final class ShimController: NSObject, NSApplicationDelegate {
         }
         p.terminationHandler = { [weak self] _ in
             DispatchQueue.main.async {
-                self?.state = .stopped
+                guard let self = self else { return }
+                // Restart: the recorder we just discarded has exited — relaunch a
+                // fresh one (new id, pristine session dir + events) and go back to
+                // `armed`, WITHOUT quitting the shim. `cancel` deleted the session
+                // dir (fifo included), so re-create the fifo before relaunching.
+                if self.pendingRestart {
+                    self.pendingRestart = false
+                    self.node = nil
+                    self.nodeBuf = ""
+                    self.ensureFifo()
+                    self.state = .armed
+                    self.launchRecorder()
+                    return
+                }
+                self.state = .stopped
                 // The recording finished (stop, or the process ended); the shim's
                 // job is done. Linger briefly so the menu reads "Finished", then quit.
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { NSApp.terminate(nil) }
@@ -215,8 +231,9 @@ final class ShimController: NSObject, NSApplicationDelegate {
     // Stop and Resume stay deliberate MENU choices, never a blind toggle: Stop is
     // the publish act, so a stray click must not end-and-publish. Right-click (or
     // control-click) opens the menu anywhere. The menu's escape is **Discard** —
-    // stop without publishing, delete the session, and quit (covers the old Quit);
-    // Restart layers in later.
+    // stop without publishing, delete the session, and quit (covers the old Quit).
+    // The paused menu also offers **Restart** — throw the take away and start fresh
+    // without quitting the shim (discard + relaunch the recorder; see onRestart).
 
     func setupStatusItem() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -248,6 +265,8 @@ final class ShimController: NSObject, NSApplicationDelegate {
             break                             // ignore clicks until the pause lands
         case .paused:
             showMenu()
+        case .restarting:
+            break                             // ignore clicks until the re-arm lands
         case .stopped:
             break
         }
@@ -320,6 +339,7 @@ final class ShimController: NSObject, NSApplicationDelegate {
         case .recording:       return "●"          // live (red)
         case .pausing:         return "❚❚"
         case .paused:          return "❚❚"
+        case .restarting:      return "↻"          // discarding + re-arming
         case .stopped:         return "✓"
         }
     }
@@ -330,6 +350,7 @@ final class ShimController: NSObject, NSApplicationDelegate {
         case .recording:       return "shroom — recording (click to pause)"
         case .pausing:         return "shroom — pausing…"
         case .paused:          return "shroom — paused"
+        case .restarting:      return "shroom — starting over…"
         case .stopped:         return "shroom — finished"
         }
     }
@@ -353,7 +374,10 @@ final class ShimController: NSObject, NSApplicationDelegate {
             menu.addItem(m)
         }
         switch state {
-        case .paused:   item("Resume", #selector(onResume)); item("Stop", #selector(onStop))
+        case .paused:
+            item("Resume", #selector(onResume))
+            item("Stop", #selector(onStop))
+            item("Restart", #selector(onRestart))   // throw this take away, start fresh
         case .counting: item("Cancel", #selector(onCancel))
         default:        break   // armed / stopped: just Discard
         }
@@ -369,6 +393,25 @@ final class ShimController: NSObject, NSApplicationDelegate {
     @objc func onResume() { send("resume"); state = .recording }
     @objc func onStop()   { send("stop");   state = .stopped }
     @objc func onCancel() { cancelCountdown() }
+
+    // Start over without quitting: discard the current recorder (`cancel` stops
+    // ffmpeg without publishing and deletes the session), then — once it exits —
+    // terminationHandler relaunches a fresh recorder and re-arms (pendingRestart).
+    // Same teardown as Discard; the only difference is we relaunch instead of quit.
+    @objc func onRestart() {
+        guard node != nil, state != .restarting, state != .stopped else { return }
+        if case .counting = state { cancelCountdown() }
+        pendingRestart = true
+        state = .restarting
+        send("cancel")
+        // Backstop, mirroring Discard: if the recorder is wedged and never exits,
+        // SIGTERM it so terminationHandler still fires and we re-arm.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 8) { [weak self] in
+            guard let self = self, self.pendingRestart, let n = self.node, n.isRunning else { return }
+            n.terminate()
+        }
+    }
+
     @objc func onDiscard() {
         // Throw this recording away: `cancel` stops ffmpeg WITHOUT publishing and
         // deletes the session, then the recorder exits and terminationHandler quits

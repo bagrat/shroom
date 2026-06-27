@@ -66,7 +66,8 @@ in the way:
 | `○` armed | start → **3-2-1 countdown** → record | menu (Discard) |
 | `3 2 1` counting | **cancel** → armed | menu (Cancel, Discard) |
 | `●` recording (red) | **pause**, then open the menu | same |
-| `❚❚` paused | open the menu (Resume / Stop) | same |
+| `❚❚` paused | open the menu (Resume / Stop / Restart) | same |
+| `↻` restarting | (busy — discarding + re-arming) | — |
 
 The 3-2-1 countdown is **cancelable** (click during it → back to armed), so a stray
 click can't actually begin a recording. Pausing-on-click is **instant**, but the
@@ -76,12 +77,19 @@ last frame**. **Stop** and **Resume** stay deliberate menu choices (Stop is the
 publish act; a stray click must not end-and-publish). **Discard** stops without
 publishing, **deletes the session**, and quits — it covers the old "Quit" too.
 
+**Restart** (in the paused menu) throws the current take away and starts fresh
+**without quitting** the shim: it discards the recorder (the same `cancel` Discard
+uses — stop, no publish, delete the session) and, once that process exits,
+relaunches a fresh recorder back at `armed` (new id, pristine session). The recorder
+stays a simple single-session machine; the shim owns the relaunch.
+
 ## Not here yet
 
-A **Restart** action (re-arm without quitting) and the no-permission global
-**hotkey** (Carbon `RegisterEventHotKey` — avoids the Accessibility TCC prompt) are
-deferred. Wiring `/shroom:record` to launch the shim (instead of starting capture
-itself) and having `/shroom:setup` compile it is the remaining step.
+The no-permission global **hotkey** (Carbon `RegisterEventHotKey` — avoids the
+Accessibility TCC prompt) is deferred, as is an optional confirm prompt before the
+destructive Discard / Restart. Wiring `/shroom:record` to launch the shim (instead
+of starting capture itself) and having `/shroom:setup` compile it is the remaining
+step (S4).
 
 ## Layout
 
