@@ -50,6 +50,9 @@ Then, as **one** batched action the user already approved:
   required is still missing, stop and report it — don't proceed to Cloudflare.
 - `git init` the chosen library dir if it isn't already a repo (`git -C <dir>
   rev-parse` to check). This folds into the same approval.
+- Record the chosen dir so `/shroom:record` finds it without re-asking:
+  `node "${CLAUDE_PLUGIN_ROOT}/scripts/setup/setup.mjs" set-library --dir <dir>`
+  (a pure creds write — no machine mutation).
 
 ## Phase 3 — Cloudflare (explain before the browser opens)
 

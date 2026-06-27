@@ -76,7 +76,8 @@ the live session. Without it, `provision` still completes and writes the creds
 One file, two kinds of fields, so setup writes once and each consumer loads its
 slice: **secrets** (`endpoint`/`region`/`bucket`/`accessKeyId`/`secretAccessKey`
 → uploader) and **public** (`publicBaseUrl`/`pagesBaseUrl`/`pagesProject`/
-`hlsJsUrl` → page + deploy), plus `accountId`. The `endpoint` is *derived* from
+`hlsJsUrl` → page + deploy), plus `accountId` and `library` (the git library dir
+where `<id>.md` records live → `/shroom:record` + write-meta). The `endpoint` is *derived* from
 `accountId` (`https://<id>.r2.cloudflarestorage.com`). Writes are **merge, not
 clobber** — a re-run or a later top-up (e.g. the token arriving) preserves
 untouched fields. Secrets stay out of git (working agreement).
@@ -86,17 +87,19 @@ untouched fields. Secrets stay out of git (working agreement).
 ```bash
 node setup.mjs probe [--json]
 node setup.mjs provision [--bucket N] [--pages-project N] [--branch N] [--wrangler BIN] [--json]
+node setup.mjs set-library --dir <path> [--json]
 ```
 
 `probe` prints a per-tool ✓/✗/○ summary + proposed install commands; `--json`
 emits `{ results, ready, missingRequired, missingOptional, plan }`. `provision`
 prints a summary (or `--json` result) and merges the creds; ndjson `cf_*` events
-go to stderr. Exit `0` on success, `1` otherwise.
+go to stderr. `set-library` persists the chosen library dir into the creds (a pure
+write — the command does the `git init`). Exit `0` on success, `1` otherwise.
 
 ## Layout
 
 ```
-setup.mjs              CLI: `probe`, `provision`
+setup.mjs              CLI: `probe`, `provision`, `set-library`
 lib/env-probe.mjs      tool catalogue + probe (run + PATH-lookup seams)
 lib/install-plan.mjs   missing tools → consolidated, batched install commands
 lib/wrangler-errors.mjs the error-shape catalogue (classify → next step)

@@ -67,6 +67,7 @@ export function buildCredentials({
   publicBaseUrl,
   pagesProject,
   pagesBaseUrl,
+  library,
 } = {}) {
   return defined({
     accountId,
@@ -78,6 +79,7 @@ export function buildCredentials({
     publicBaseUrl: stripSlash(publicBaseUrl),
     pagesProject,
     pagesBaseUrl: stripSlash(pagesBaseUrl),
+    library, // where <id>.md records live (the git library); read by write-meta/record
   });
 }
 

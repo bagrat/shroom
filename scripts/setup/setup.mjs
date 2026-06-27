@@ -17,6 +17,8 @@
 // how to present gates. Neither mutates the machine beyond the explicit op the
 // command has already approved (probe never mutates; provision runs wrangler).
 
+import path from 'node:path';
+
 import { probeEnv, spawnRun } from './lib/env-probe.mjs';
 import { buildInstallPlan } from './lib/install-plan.mjs';
 import { provisionCloudflare } from './lib/cloudflare.mjs';
@@ -115,6 +117,22 @@ async function cmdProvision({ json, opts }) {
   return 0;
 }
 
+// Persist the chosen library dir (where <id>.md records live) so /shroom:record
+// and write-meta resolve it without re-asking. Pure creds write, no machine
+// mutation (the command does the git init, propose→confirm→run).
+function cmdSetLibrary({ json, opts }) {
+  const dir = opts.dir && opts.dir !== 'true' ? path.resolve(opts.dir) : null;
+  if (!dir) {
+    process.stderr.write('Usage: setup.mjs set-library --dir <path>\n');
+    return 2;
+  }
+  writeCreds(buildCredentials({ library: dir }));
+  const out = { ok: true, library: dir, credentials: credsPath() };
+  if (json) process.stdout.write(JSON.stringify(out, null, 2) + '\n');
+  else process.stdout.write(`Library set to ${dir} (${out.credentials})\n`);
+  return 0;
+}
+
 const [sub, ...rest] = process.argv.slice(2);
 const json = rest.includes('--json');
 const opts = parseArgs(rest);
@@ -137,8 +155,11 @@ switch (sub) {
   case 'provision':
     code = await cmdProvision({ json, opts });
     break;
+  case 'set-library':
+    code = cmdSetLibrary({ json, opts });
+    break;
   default:
-    process.stderr.write('Usage: setup.mjs <probe|provision> [--json] [--bucket N] [--pages-project N] [--branch N] [--wrangler BIN]\n');
+    process.stderr.write('Usage: setup.mjs <probe|provision|set-library> [--json] [--dir PATH] [--bucket N] [--pages-project N] [--branch N] [--wrangler BIN]\n');
     code = 2;
 }
 process.exit(code);

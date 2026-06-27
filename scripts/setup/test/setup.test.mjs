@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 
 import { probeTool, probeEnv, TOOLS } from '../lib/env-probe.mjs';
 import { buildInstallPlan } from '../lib/install-plan.mjs';
@@ -255,6 +256,20 @@ await test('writeCreds: undefined patch fields never erase existing values', asy
   writeCreds({ bucket: 'shroom', accessKeyId: 'AK' }, { home });
   const merged = writeCreds(buildCredentials({ bucket: 'shroom' }), { home }); // no token fields
   assert.equal(merged.accessKeyId, 'AK');
+});
+
+await test('set-library: persists library to creds without clobbering, --json', async () => {
+  const home = tmpHome();
+  writeCreds({ bucket: 'shroom', accessKeyId: 'AK' }, { home });
+  const setupCli = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../setup.mjs');
+  const out = execFileSync('node', [setupCli, 'set-library', '--dir', '/tmp/my-lib', '--json'],
+    { env: { ...process.env, HOME: home }, encoding: 'utf8' });
+  const res = JSON.parse(out.trim());
+  assert.equal(res.ok, true);
+  assert.equal(res.library, '/tmp/my-lib');
+  const onDisk = readCreds(credsPath({ home }));
+  assert.equal(onDisk.library, '/tmp/my-lib');
+  assert.equal(onDisk.accessKeyId, 'AK'); // merge, not clobber
 });
 
 // ─── Cloudflare provisioning (fake runWrangler) ──────────────────────────────

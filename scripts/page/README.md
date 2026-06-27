@@ -18,7 +18,7 @@ generated pages, each re-derivable from its metadata record. Bonus: instant load
 | Source | Provides |
 | --- | --- |
 | `--session <dir>` (`~/.shroom/recordings/<id>`) | `preview.mp4` → the poster; `events.ndjson` → `id` + `durationSec` fallback |
-| `--meta <id.md>` (the git library record) | `title` / `tldr` / `chapters` the agent authored (a skill, M5) |
+| `--meta <id.md>` (the git library record) | `title` / `tldr` / `chapters` the agent authored (the `title-chapters` skill, M5c-2) |
 
 Both are optional-ish: with no metadata file you still get a valid page
 (title falls back to *"Untitled recording"*); with no session you must pass `--id`.
@@ -39,6 +39,25 @@ summary (the playback URL, the HLS URL, whether config was complete). The public
 bases also live in `~/.shroom/credentials.json` (set at setup, M5) or `SHROOM_*`
 env vars, so in normal use the two `--*-base` flags are unnecessary.
 
+## Authoring the `<id>.md` (write-meta, M5c-2)
+
+The `--meta` record is produced by **`write-meta.mjs`**, the deterministic half of
+the determinism boundary: the [`title-chapters`](../../skills/title-chapters/SKILL.md)
+skill decides the title / TL;DR / chapters (judgment); this script serializes them
+plus the transcript into `<library>/<id>.md` (mechanism — stable escaping, key
+order, body). It pulls the transcript body + `durationSec` + `createdAt` from the
+session itself, so the skill supplies only its judgment:
+
+```sh
+node scripts/page/write-meta.mjs \
+  --id <id> --session ~/.shroom/recordings/<id> \
+  --title "<title>" --tldr "<tldr>" \
+  --chapters '[{"t":0,"label":"Intro"},{"t":48,"label":"…"}]'
+```
+
+Library dir resolution: `--library` > creds `library` (set by `/shroom:setup`) >
+`~/shroom`. Idempotent — re-authoring overwrites in place with a clean diff.
+
 ## URL model
 
 - **HLS bytes** (uploaded by `scripts/uploader`): `<public-base>/<id>/stream.m3u8`
@@ -54,12 +73,13 @@ env vars, so in normal use the two `--*-base` flags are unnecessary.
 
 ```
 build-page.mjs        CLI: load inputs → render → write site bundle → emit summary
+write-meta.mjs        CLI: deterministic `<id>.md` writer (skill authors content)
 lib/render.mjs        PURE: template + metadata + urls → HTML (all values escaped)
 lib/metadata.mjs      parse/serialize the `<id>.md` frontmatter (the substrate record)
 lib/page-config.mjs   public-URL config (publicBaseUrl / pagesBaseUrl / hlsJsUrl)
 lib/poster.mjs        ffmpeg: preview.mp4 → poster.jpg (best-effort; never blocks)
 vendor/fetch-hls.mjs  pinned + integrity-checked hls.js fetch (explicit, not auto-run)
-test/                 render + metadata unit tests
+test/                 render + metadata + write-meta unit tests
 ```
 
 ## Test
@@ -67,6 +87,7 @@ test/                 render + metadata unit tests
 ```sh
 node scripts/page/test/render.test.mjs
 node scripts/page/test/metadata.test.mjs
+node scripts/page/test/write-meta.test.mjs   # drives the CLI in a temp HOME/library/session
 ```
 
 Render tests cover token substitution, duration formatting, chapters, and the
