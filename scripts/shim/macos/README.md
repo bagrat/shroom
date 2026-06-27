@@ -58,18 +58,30 @@ build/shroom-shim \
 - On first launch it requests Screen Recording (registers the shim as the TCC
   principal). A first-ever grant can need one quit+relaunch to take effect.
 
-The tray menu is **state-aware**: `armed` → **Start Recording**; `recording` →
-**Pause** / **Stop**; `paused` → **Resume** / **Stop**. When the recorder exits, the
-shim shows "finished" briefly and quits. **Quit** while recording stops cleanly
-first (so the recorder finalizes).
+The tray's **primary (left) click** is the one obvious action per state — no menu
+in the way:
 
-## Not here yet (next milestone)
+| state | left-click | right / control-click |
+| --- | --- | --- |
+| `○` armed | start → **3-2-1 countdown** → record | menu (Discard) |
+| `3 2 1` counting | **cancel** → armed | menu (Cancel, Discard) |
+| `●` recording (red) | **pause**, then open the menu | same |
+| `❚❚` paused | open the menu (Resume / Stop) | same |
 
-The 3-2-1 countdown before capture, the **click-the-tray-to-pause-and-open-the-menu**
-gesture, a state-changing tray icon, and the no-permission global **hotkey** (Carbon
-`RegisterEventHotKey` — avoids the Accessibility TCC prompt) all land next. This
-milestone is the skeleton that compiles, owns TCC, launches the recorder, and drives
-the fifo.
+The 3-2-1 countdown is **cancelable** (click during it → back to armed), so a stray
+click can't actually begin a recording. Pausing-on-click is **instant**, but the
+menu opens only once the recorder confirms it has stopped ffmpeg (the shim watches
+the recorder's `paused` event) — so the menu is **never caught in the recording's
+last frame**. **Stop** and **Resume** stay deliberate menu choices (Stop is the
+publish act; a stray click must not end-and-publish). **Discard** stops without
+publishing, **deletes the session**, and quits — it covers the old "Quit" too.
+
+## Not here yet
+
+A **Restart** action (re-arm without quitting) and the no-permission global
+**hotkey** (Carbon `RegisterEventHotKey` — avoids the Accessibility TCC prompt) are
+deferred. Wiring `/shroom:record` to launch the shim (instead of starting capture
+itself) and having `/shroom:setup` compile it is the remaining step.
 
 ## Layout
 

@@ -77,13 +77,14 @@ func parseArgs() -> Args {
 
 // MARK: - App
 
-enum RecState: Equatable { case armed, counting(Int), recording, paused, stopped }
+enum RecState: Equatable { case armed, counting(Int), recording, pausing, paused, stopped }
 
 final class ShimController: NSObject, NSApplicationDelegate {
     let args: Args
     var statusItem: NSStatusItem!
     var node: Process?
     var countdownTimer: Timer?
+    var nodeBuf = ""   // accumulates recorder stdout for line-by-line event parsing
     var state: RecState = .armed { didSet { render() } }
 
     init(_ args: Args) { self.args = args }
@@ -170,13 +171,23 @@ final class ShimController: NSObject, NSApplicationDelegate {
         let p = Process()
         p.executableURL = URL(fileURLWithPath: "/usr/bin/env")
         p.arguments = [args.node, args.recorder] + args.passthrough
+        // Read the recorder's stdout so we can react to its events (open the menu
+        // only once it confirms `paused`, so the menu never lands in the recording)
+        // and tee it to the session log.
+        var logHandle: FileHandle? = nil
         if !args.log.isEmpty {
             ensureParentDir(args.log)
             FileManager.default.createFile(atPath: args.log, contents: nil)
-            if let fh = FileHandle(forWritingAtPath: args.log) {
-                p.standardOutput = fh
-                p.standardError = fh
-            }
+            logHandle = FileHandle(forWritingAtPath: args.log)
+        }
+        let outPipe = Pipe()
+        p.standardOutput = outPipe
+        p.standardError = outPipe
+        outPipe.fileHandleForReading.readabilityHandler = { [weak self] h in
+            let data = h.availableData
+            guard !data.isEmpty else { return }
+            logHandle?.write(data)
+            self?.consumeNodeOutput(data)
         }
         p.terminationHandler = { [weak self] _ in
             DispatchQueue.main.async {
@@ -203,7 +214,9 @@ final class ShimController: NSObject, NSApplicationDelegate {
     //   paused    → open the menu (Resume / Stop)
     // Stop and Resume stay deliberate MENU choices, never a blind toggle: Stop is
     // the publish act, so a stray click must not end-and-publish. Right-click (or
-    // control-click) opens the menu anywhere — Quit now, Cancel/Restart later.
+    // control-click) opens the menu anywhere. The menu's escape is **Discard** —
+    // stop without publishing, delete the session, and quit (covers the old Quit);
+    // Restart layers in later.
 
     func setupStatusItem() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -227,13 +240,41 @@ final class ShimController: NSObject, NSApplicationDelegate {
         case .counting:
             cancelCountdown()                 // any click aborts the countdown
         case .recording:
-            send("pause"); state = .paused    // halt first…
-            showMenu()                        // …then choose Resume / Stop
+            // Pause, but DON'T open the menu yet — wait for the recorder to confirm
+            // it has actually stopped ffmpeg (onRecorderPaused). Opening the menu
+            // immediately would catch it in the recording's last frame.
+            send("pause"); state = .pausing
+        case .pausing:
+            break                             // ignore clicks until the pause lands
         case .paused:
             showMenu()
         case .stopped:
             break
         }
+    }
+
+    // MARK: recorder output
+
+    // Parse the recorder's NDJSON stdout line by line. We only need a couple of
+    // events; substring matching is enough and avoids pulling in a JSON parser.
+    func consumeNodeOutput(_ data: Data) {
+        guard let s = String(data: data, encoding: .utf8) else { return }
+        nodeBuf += s
+        while let nl = nodeBuf.firstIndex(of: "\n") {
+            let line = String(nodeBuf[..<nl])
+            nodeBuf = String(nodeBuf[nodeBuf.index(after: nl)...])
+            if line.contains("\"event\":\"paused\"") {
+                DispatchQueue.main.async { [weak self] in self?.onRecorderPaused() }
+            }
+        }
+    }
+
+    // The recorder has actually paused (ffmpeg stopped, last segment closed) — NOW
+    // it's safe to open the menu; it can't end up in the recording.
+    func onRecorderPaused() {
+        guard state == .pausing else { return }
+        state = .paused
+        showMenu()
     }
 
     // MARK: countdown
@@ -277,6 +318,7 @@ final class ShimController: NSObject, NSApplicationDelegate {
         case .armed:           return "○"          // ready
         case .counting(let n): return String(n)    // 3 · 2 · 1
         case .recording:       return "●"          // live (red)
+        case .pausing:         return "❚❚"
         case .paused:          return "❚❚"
         case .stopped:         return "✓"
         }
@@ -286,6 +328,7 @@ final class ShimController: NSObject, NSApplicationDelegate {
         case .armed:           return "shroom — ready (click to start)"
         case .counting(let n): return "shroom — starting in \(n)… (click to cancel)"
         case .recording:       return "shroom — recording (click to pause)"
+        case .pausing:         return "shroom — pausing…"
         case .paused:          return "shroom — paused"
         case .stopped:         return "shroom — finished"
         }
@@ -312,10 +355,10 @@ final class ShimController: NSObject, NSApplicationDelegate {
         switch state {
         case .paused:   item("Resume", #selector(onResume)); item("Stop", #selector(onStop))
         case .counting: item("Cancel", #selector(onCancel))
-        default:        break   // armed / stopped: just Quit
+        default:        break   // armed / stopped: just Discard
         }
         menu.addItem(.separator())
-        item("Quit", #selector(onQuit))
+        item("Discard", #selector(onDiscard))
 
         statusItem.menu = menu
         statusItem.button?.performClick(nil)
@@ -326,12 +369,13 @@ final class ShimController: NSObject, NSApplicationDelegate {
     @objc func onResume() { send("resume"); state = .recording }
     @objc func onStop()   { send("stop");   state = .stopped }
     @objc func onCancel() { cancelCountdown() }
-    @objc func onQuit() {
-        // Tear down the recorder cleanly first. `stop` finalizes a recording or
-        // aborts an armed one; the recorder then exits and terminationHandler quits
-        // us. The delayed terminate is a backstop if the recorder is wedged.
+    @objc func onDiscard() {
+        // Throw this recording away: `cancel` stops ffmpeg WITHOUT publishing and
+        // deletes the session, then the recorder exits and terminationHandler quits
+        // us. This also covers the old "Quit" — discarding an armed/empty session
+        // just tears down and closes. Delayed terminate is a backstop if wedged.
         if case .counting = state { cancelCountdown() }
-        send("stop")
+        send("cancel")
         DispatchQueue.main.asyncAfter(deadline: .now() + 8) { NSApp.terminate(nil) }
     }
 }
