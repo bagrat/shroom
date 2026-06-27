@@ -21,7 +21,8 @@ const PIN = {
   url: 'https://cdn.jsdelivr.net/npm/hls.js@1.5.20/dist/hls.min.js',
   // SHA-256 of the fetched bytes. Empty ⇒ first run prints the hash to paste here
   // (we don't ship an unverified hash; you pin it the first time you fetch).
-  sha256: '',
+  // Pinned 2026-06-27 after cross-checking the hash across jsdelivr + unpkg.
+  sha256: 'd016c1230496ee59f3f5b01c16cce4cc01b5a1d3d357adec200c908b131ebe49',
 };
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
