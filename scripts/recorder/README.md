@@ -10,6 +10,15 @@ works even with no agent session live.
    (commands in)     (ffmpeg owner)    (events out)
 ```
 
+**LAUNCH ≠ CAPTURE (the consent boundary).** The recorder launches into an
+**`armed`** state — devices resolved, fifo + events + uploader ready — but spins
+up **no ffmpeg** until it receives `start`. A human knowingly begins the screen
+capture (in v1, by clicking the Mac tray shim, which writes `start`). The recorder
+mechanism is neutral about *who* writes the fifo; "start is user-only" is enforced
+upstream — `/shroom:record` launches the recorder but **does not write `start`**,
+it tells the user to click the tray. Stopping while still `armed` (never captured)
+is a clean **abort**: no finalize, no half-built page.
+
 One ffmpeg encode is `tee`'d to two outputs (the validated recipe):
 
 - **`stream.m3u8` + `init.mp4` + `seg_NNNNN.m4s`** — HLS / fMP4, the upload
@@ -32,10 +41,13 @@ node record.mjs [--id <id>] [--out <dir>] \
                 [--device "<screen or camera name>"] \
                 [--audio none|default|<name>] \
                 [--quality normal|2k|4k] \
-                [--fifo <path>] [--no-upload]
+                [--fifo <path>] [--no-upload] [--autostart]
 
 node record.mjs --preflight    # JSON for the picker: devices + quality presets + last profile
 ```
+
+`--autostart` writes `start` to itself at launch (skips the armed wait) — a
+**test/headless escape hatch only**, never the user-consent flow.
 
 Defaults: a random `--id`, `--out` = `~/.shroom/recordings/<id>/`, video source
 `Capture screen 0`, audio off, quality `normal` (1080p).
@@ -62,6 +74,7 @@ locally and instantly (`preview.mp4`) — value before friction (SPEC §8).
 Control it via the fifo (or signals):
 
 ```bash
+echo start  > <dir>/control.fifo    # begin capture (the user's go — from the tray)
 echo pause  > <dir>/control.fifo
 echo resume > <dir>/control.fifo
 echo stop   > <dir>/control.fifo    # or: kill -INT / -TERM <pid>
@@ -106,12 +119,13 @@ Newline-delimited commands, serialized so they never interleave:
 
 | command | effect |
 | --- | --- |
+| `start` | begin capture (spawn take 0). Valid only while `armed`; the user's deliberate go |
 | `pause` | end the current take at a clean segment boundary |
 | `resume` | start a new take with contiguous segment numbering |
-| `stop` | finalize and exit (the publish act) |
+| `stop` | finalize and exit (the publish act); while `armed`, a clean abort instead |
 
-Anything else → `command_ignored`. `pause` while paused / `resume` while
-recording are no-ops.
+Anything else → `command_ignored`. `start` while already recording, `pause` while
+paused, `resume` while recording, and `pause`/`resume` while `armed` are all no-ops.
 
 ## Event schema (events.ndjson out)
 
@@ -122,8 +136,9 @@ artifact** (SPEC §6): it outlives the session and is drained on the next run.
 | event | key fields | when |
 | --- | --- | --- |
 | `session_started` | `id`, `dir`, `video` (`{index,name,kind}` — screen or camera), `audio`, `config` | after device resolution |
+| `armed` | `fifo` | ready, waiting for `start` — no ffmpeg yet (the consent boundary) |
 | `ffmpeg_command` | `argv`, `cwd` | before take 0 spawn (debug aid) |
-| `recording_started` | `pid` | take 0 spawned |
+| `recording_started` | `pid` | take 0 spawned (capture begun on `start`) |
 | `take_started` | `take`, `startNumber`, `pid` | a take's ffmpeg spawned |
 | `segment_ready` | `index`, `file` | a segment is closed (next began, or sealed at finalize) |
 | `paused` | `take`, `nextSegment` | current take ended on `pause` |
@@ -132,6 +147,7 @@ artifact** (SPEC §6): it outlives the session and is drained on the next run.
 | `command_ignored` | `command` | an unrecognized control command |
 | `stop_requested` | `reason` | `stop` received, or a signal |
 | `recording_stopped` | `takeCount` | all takes finished |
+| `aborted` | `reason` | stopped while still `armed` — nothing captured, no finalize |
 | `finalized` | `id`, `preview`, `playlist`, `initSegment`, `segments`, `segmentCount`, `durationSec`, `takeCount`, `endlist`, `ok` | session assembled |
 | `error` | `phase`, `message` | device resolution / spawn / control failure |
 

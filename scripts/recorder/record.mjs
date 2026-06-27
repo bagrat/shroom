@@ -3,10 +3,21 @@
 // lifecycle, including pause/resume as a segment boundary.
 //
 // Contract (the determinism boundary, SPEC §4):
-//   IN  : a control fifo  (newline commands: `pause`, `resume`, `stop`)
-//   OUT : events.ndjson   (session_started, take_started, segment_ready,
+//   IN  : a control fifo  (newline commands: `start`, `pause`, `resume`, `stop`)
+//   OUT : events.ndjson   (session_started, armed, take_started, segment_ready,
 //                          paused, resumed, take_ended, stop_requested,
-//                          recording_stopped, finalized, error)
+//                          recording_started, recording_stopped, aborted,
+//                          finalized, error)
+//
+// LAUNCH ≠ CAPTURE. The recorder launches into an `armed` state — devices
+// resolved, fifo + events + uploader ready — but spins up NO ffmpeg until it
+// receives `start`. This is the consent boundary: a human knowingly begins the
+// screen capture (in v1, by clicking the Mac tray shim, which writes `start`).
+// The recorder mechanism is neutral about *who* writes the fifo; "start is
+// user-only" is enforced upstream — the agent (`/shroom:record`) launches the
+// recorder but does NOT write `start`, it tells the user to click the tray.
+// (`--autostart` writes `start` to self at launch — for tests/headless only,
+// never the consent flow.)
 //
 // A "take" is one ffmpeg run between pauses. Pause = clean q-stop at a segment
 // boundary; resume = a new take with contiguous segment numbering (SPEC §4/§5).
@@ -17,6 +28,7 @@
 // Usage:
 //   node record.mjs [--id <id>] [--out <dir>] [--device "<screen or camera name>"]
 //                   [--audio none|default|<name>] [--quality normal|2k|4k] [--fifo <path>]
+//                   [--autostart]             # begin capture at launch (tests/headless ONLY)
 //   node record.mjs --preflight               # JSON for the picker: devices + quality presets + last profile
 //
 // --device names ANY avfoundation video source — a screen ("Capture screen 0") or a
@@ -24,7 +36,8 @@
 // "default" prefers a built-in mic and never the iPhone/Continuity mic. --quality
 // picks a resolution/bitrate preset (lib/quality.mjs; default normal = 1080p).
 //
-// Control:  echo pause  > <dir>/control.fifo
+// Control:  echo start  > <dir>/control.fifo     (begin capture — user, from the tray)
+//           echo pause  > <dir>/control.fifo
 //           echo resume > <dir>/control.fifo
 //           echo stop   > <dir>/control.fifo     (or SIGINT/SIGTERM)
 
@@ -190,7 +203,9 @@ async function main() {
   });
 
   // --- take management ---
-  let state = 'recording'; // 'recording' | 'paused' | 'stopping'
+  // 'armed'  : launched, everything ready, NO ffmpeg yet — waiting for `start`.
+  // 'recording' | 'paused' | 'stopping' follow once capture begins.
+  let state = 'armed';
   let nextSegment = 0; // start_number for the next take
   const takes = []; // take indices that have started
   let current = null; // { k, ff, exited }
@@ -237,6 +252,16 @@ async function main() {
     return chain;
   };
 
+  // Begin capture — only valid from `armed`. This is the act `start` triggers:
+  // the user clicking the tray (the recorder doesn't do it itself, the agent
+  // doesn't write it — see the header contract).
+  async function doStart() {
+    if (state !== 'armed') return;
+    current = spawnTake(0);
+    state = 'recording';
+    log.emit('recording_started', { pid: current.ff.pid });
+  }
+
   async function doPause() {
     if (state !== 'recording') return;
     state = 'paused';
@@ -254,11 +279,22 @@ async function main() {
 
   async function doStop(reason) {
     if (state === 'stopping') return;
+    const neverStarted = takes.length === 0; // stopped while still `armed`
     state = 'stopping';
     log.emit('stop_requested', { reason });
-    await endCurrentTake();
+    await endCurrentTake(); // no-op when nothing was ever captured
     try { watcher.close(); } catch {}
     control.close?.();
+
+    // Stopped before any capture began: clean teardown, no finalize, no publish,
+    // no half-built page. (This is the cancel-before-start case; mid-recording
+    // `cancel` — discard a real take — is reserved for later.)
+    if (neverStarted) {
+      log.emit('aborted', { reason: 'stopped_before_start' });
+      log.close();
+      try { fs.unlinkSync(fifoPath); } catch {}
+      process.exit(0);
+    }
 
     const summary = await finalizeSession(dir, takes);
     for (const file of summary.segments) {
@@ -289,6 +325,7 @@ async function main() {
   const control = watchControl(fifoPath);
   control.on('command', (cmd) => {
     switch (cmd) {
+      case 'start': return void enqueue(doStart);
       case 'pause': return void enqueue(doPause);
       case 'resume': return void enqueue(doResume);
       case 'stop': return void enqueue(() => doStop('control:stop'));
@@ -300,9 +337,15 @@ async function main() {
   process.on('SIGINT', () => enqueue(() => doStop('signal:SIGINT')));
   process.on('SIGTERM', () => enqueue(() => doStop('signal:SIGTERM')));
 
-  // --- start take 0 ---
-  current = spawnTake(0);
-  log.emit('recording_started', { pid: current.ff.pid });
+  // --- armed: ready, waiting for `start` ---
+  // No ffmpeg yet (LAUNCH ≠ CAPTURE — see header). The open control socket keeps
+  // the event loop alive; capture begins only when `start` arrives on the fifo.
+  // The agent surfaces device errors before this point, so by `armed` the only
+  // thing left is the user's deliberate go.
+  log.emit('armed', { fifo: fifoPath });
+
+  // Test/headless escape hatch ONLY — never the consent flow (see header).
+  if (opts.autostart === 'true') enqueue(doStart);
 }
 
 main().catch((e) => {
