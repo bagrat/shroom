@@ -7,6 +7,9 @@
   "bin": {
     "shroom-record": "./record.mjs"
   },
+  "scripts": {
+    "test": "node test/devices.test.mjs"
+  },
   "engines": {
     "node": ">=18"
   }

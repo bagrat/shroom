@@ -1,12 +1,62 @@
 // Resolve avfoundation capture devices BY NAME, not index.
 //
 // avfoundation device indices are unstable (a Continuity Camera connecting shifts
-// them), so production must select the screen — and any mic — by name. We parse
-// `ffmpeg -list_devices`, which prints the catalogue to stderr.
+// them), so production must select the video source — and any mic — by name. We
+// parse `ffmpeg -list_devices`, which prints the catalogue to stderr.
+//
+// The video source is EITHER a screen OR a camera (camera-as-source, not PiP — PiP
+// is deferred, SPEC §4). avfoundation lists both kinds in one "video devices" list;
+// we tag each with a `kind` so the picker can group them.
 
 import { spawn } from 'node:child_process';
 
-// Returns { video: [{index, name}], audio: [{index, name}] }.
+// A video device is a screen if avfoundation named it "Capture screen N"; anything
+// else in the video list is a camera (FaceTime, Continuity, Desk View, etc.).
+export function classifyVideoKind(name) {
+  return /capture screen/i.test(name) ? 'screen' : 'camera';
+}
+
+// Continuity mics (iPhone/iPad) are wireless and stall-prone — they drop audio
+// samples and, sharing one capture session with the screen, hitch the video too.
+// Never auto-select one; the picker can still offer it explicitly.
+export function isContinuityMic(name) {
+  return /\b(iphone|ipad|continuity)\b/i.test(name);
+}
+
+// Choose a sane default mic: a built-in mic first, else the first non-Continuity
+// device, else whatever exists. Returns a device or null.
+export function pickDefaultAudio(audioDevs = []) {
+  if (!audioDevs.length) return null;
+  return (
+    audioDevs.find((d) => /(macbook|built-?in).*microphone|microphone.*(macbook|built-?in)/i.test(d.name)) ??
+    audioDevs.find((d) => !isContinuityMic(d.name)) ??
+    audioDevs[0]
+  );
+}
+
+// Pure parse of `ffmpeg -list_devices` stderr → tagged device catalogue. Exported
+// so the parsing/selection logic is testable without spawning ffmpeg.
+// Returns { video: [{index, name, kind}], audio: [{index, name}] }.
+export function parseDeviceList(stderr) {
+  const video = [];
+  const audio = [];
+  let section = null;
+  for (const line of String(stderr).split('\n')) {
+    if (/AVFoundation video devices:/.test(line)) { section = 'video'; continue; }
+    if (/AVFoundation audio devices:/.test(line)) { section = 'audio'; continue; }
+    // Lines look like: "[AVFoundation indev @ 0x..] [1] Capture screen 0"
+    // The prefix bracket holds no bare [<digits>], so this only matches the index.
+    const m = line.match(/\[(\d+)\]\s+(.+?)\s*$/);
+    if (!section || !m) continue;
+    const index = Number(m[1]);
+    const name = m[2];
+    if (section === 'video') video.push({ index, name, kind: classifyVideoKind(name) });
+    else audio.push({ index, name });
+  }
+  return { video, audio };
+}
+
+// Returns { video: [{index, name, kind}], audio: [{index, name}] }.
 export async function listDevices() {
   const stderr = await new Promise((resolve) => {
     const p = spawn('ffmpeg', [
@@ -21,19 +71,7 @@ export async function listDevices() {
     p.on('close', () => resolve(buf));
     p.on('error', () => resolve(buf));
   });
-
-  const video = [];
-  const audio = [];
-  let section = null;
-  for (const line of stderr.split('\n')) {
-    if (/AVFoundation video devices:/.test(line)) { section = video; continue; }
-    if (/AVFoundation audio devices:/.test(line)) { section = audio; continue; }
-    // Lines look like: "[AVFoundation indev @ 0x..] [1] Capture screen 0"
-    // The prefix bracket holds no bare [<digits>], so this only matches the device index.
-    const m = line.match(/\[(\d+)\]\s+(.+?)\s*$/);
-    if (section && m) section.push({ index: Number(m[1]), name: m[2] });
-  }
-  return { video, audio };
+  return parseDeviceList(stderr);
 }
 
 function pick(devices, query) {
@@ -43,22 +81,29 @@ function pick(devices, query) {
   );
 }
 
-// screenName: device name (default "Capture screen 0").
+// videoName: the chosen video source by name (screen OR camera). Default is the
+//   first screen ("Capture screen 0"); a screen request also falls back to any
+//   screen, but a camera request must match (no silent fallback to a screen).
 // audio: "none" | "default" | a device name/substring.
-export async function resolveDevices({ screenName = 'Capture screen 0', audio = 'none' } = {}) {
+//   "default" picks a built-in mic, never the iPhone/Continuity mic.
+export async function resolveDevices({ videoName = 'Capture screen 0', audio = 'none' } = {}) {
   const { video, audio: audioDevs } = await listDevices();
 
-  const screen =
-    pick(video, screenName) ?? video.find((d) => /capture screen/i.test(d.name));
-  if (!screen) {
-    const list = video.map((d) => `[${d.index}] ${d.name}`).join(', ') || '(none)';
-    throw new Error(`Screen device "${screenName}" not found. Available video devices: ${list}`);
+  let chosen = pick(video, videoName);
+  // Only fall back to "any screen" when the request itself looks like a screen —
+  // a missing named camera should error, not silently grab the display.
+  if (!chosen && /capture screen/i.test(videoName)) {
+    chosen = video.find((d) => /capture screen/i.test(d.name));
+  }
+  if (!chosen) {
+    const list = video.map((d) => `[${d.index}] ${d.name} (${d.kind})`).join(', ') || '(none)';
+    throw new Error(`Video device "${videoName}" not found. Available video devices: ${list}`);
   }
 
   let audioIndex = 'none';
   let audioName = null;
   if (audio && audio !== 'none') {
-    const dev = audio === 'default' ? audioDevs[0] : pick(audioDevs, audio);
+    const dev = audio === 'default' ? pickDefaultAudio(audioDevs) : pick(audioDevs, audio);
     if (!dev) {
       const list = audioDevs.map((d) => `[${d.index}] ${d.name}`).join(', ') || '(none)';
       throw new Error(`Audio device "${audio}" not found. Available audio devices: ${list}`);
@@ -67,5 +112,5 @@ export async function resolveDevices({ screenName = 'Capture screen 0', audio = 
     audioName = dev.name;
   }
 
-  return { screen, audioIndex, audioName, video, audioDevs };
+  return { video: chosen, audioIndex, audioName, videoDevs: video, audioDevs };
 }

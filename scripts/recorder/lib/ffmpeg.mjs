@@ -13,11 +13,11 @@
 
 import { CONFIG, takePlaylist, takePreview } from './config.mjs';
 
-export function buildFfmpegArgs({ screenIndex, audioIndex = 'none', startNumber = 0, take = 0 }) {
+export function buildFfmpegArgs({ videoIndex, audioIndex = 'none', startNumber = 0, take = 0 }) {
   const f = CONFIG.files;
   const seg = CONFIG.segmentSeconds;
   const hasAudio = audioIndex !== 'none';
-  const inputSpec = `${screenIndex}:${audioIndex}`;
+  const inputSpec = `${videoIndex}:${audioIndex}`;
 
   const hlsOpts = [
     'f=hls',

@@ -21,13 +21,24 @@ One ffmpeg encode is `tee`'d to two outputs (the validated recipe):
 
 ```bash
 node record.mjs [--id <id>] [--out <dir>] \
-                [--device "Capture screen 0"] \
+                [--device "<screen or camera name>"] \
                 [--audio none|default|<name>] \
                 [--fifo <path>] [--no-upload]
+
+node record.mjs --list-devices    # JSON device catalogue for the picker (no capture)
 ```
 
-Defaults: a random `--id`, `--out` = `~/.shroom/recordings/<id>/`, screen device
-resolved **by name** (indices are unstable), audio off.
+Defaults: a random `--id`, `--out` = `~/.shroom/recordings/<id>/`, video source
+`Capture screen 0`, audio off.
+
+`--device` names **any** avfoundation video source — a screen (`Capture screen 0`)
+**or** a camera (`FaceTime HD Camera`); resolved **by name** (indices are unstable,
+a Continuity Camera connecting shifts them). A camera is recorded *as the source*
+(camera-only), not a PiP overlay — PiP is deferred (SPEC §4). `--audio default`
+prefers a **built-in** mic and **never** the wireless **iPhone/Continuity mic**
+(it drops samples and, sharing one capture session, hitches the video too). The
+`/shroom:record` command surfaces `--list-devices` as a one-shot picker so the user
+chooses video source + mic before recording.
 
 ### Upload (optional, M3)
 
@@ -92,7 +103,7 @@ artifact** (SPEC §6): it outlives the session and is drained on the next run.
 
 | event | key fields | when |
 | --- | --- | --- |
-| `session_started` | `id`, `dir`, `screen`, `audio`, `config` | after device resolution |
+| `session_started` | `id`, `dir`, `video` (`{index,name,kind}` — screen or camera), `audio`, `config` | after device resolution |
 | `ffmpeg_command` | `argv`, `cwd` | before take 0 spawn (debug aid) |
 | `recording_started` | `pid` | take 0 spawned |
 | `take_started` | `take`, `startNumber`, `pid` | a take's ffmpeg spawned |

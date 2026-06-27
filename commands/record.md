@@ -17,7 +17,7 @@ you never reimplement them. The recorder owns ffmpeg; the agent owns the session
 You launch the recorder and (later) transcription as **harness-tracked background
 tasks**, so a turn may begin because one of them just finished. Branch first:
 
-- **A recorder task just completed** → that recording stopped. Go to **Step 3
+- **A recorder task just completed** → that recording stopped. Go to **Step 4
   (name + instant publish)** for its session.
 - **A transcription task just completed** → go to **Step 5 (enrich)** for its
   session: the link is already live; you're adding chapters + transcript.
@@ -30,19 +30,45 @@ tasks**, so a turn may begin because one of them just finished. Branch first:
 
   and for each check `events.ndjson` for a `published` event **carrying a
   `playbackUrl`** you haven't surfaced yet — if found, tell the user "your last
-  recording is live: <url>" and `open` it. Then go to **Step 1 (start)**.
+  recording is live: <url>" and `open` it. Then go to **Step 1 (pick devices)**.
 
-## Step 1 — start recording (harness-tracked background task)
+## Step 1 — pick the devices (one bulk ask)
+
+Don't guess the inputs — the auto-pick can land on a wireless **iPhone Continuity
+mic**, which drops audio and hitches the video. Enumerate first (this only reads,
+no capture):
+
+```
+node "${CLAUDE_PLUGIN_ROOT}/scripts/recorder/record.mjs" --list-devices
+```
+
+Parse `{ video:[{index,name,kind}], audio:[{index,name,recommended}], defaultAudioName }`.
+Then ask **both choices in a single `AskUserQuestion`** (one bulk, before
+recording):
+
+1. **Video source** — list the `video` devices; label each by `kind`
+   (screen / camera). A screen is the usual pick; a camera records camera-as-source
+   (not a PiP overlay — that's deferred). Default to the first screen.
+2. **Microphone** — list the `audio` devices plus a **"No mic"** option. Pre-select
+   the `recommended` one (`defaultAudioName`, the built-in mic) and **steer away
+   from any iPhone/Continuity mic** — call out that it's the glitch culprit if the
+   user eyes it.
+
+Carry the chosen **names** (not indices — indices shift) into Step 2 as
+`--device "<video name>"` and `--audio "<mic name>"` (or `--audio none`).
+
+## Step 2 — start recording (harness-tracked background task)
 
 First-run note: macOS will prompt for **Screen Recording** and **Microphone**
 permission the first time — tell the user to approve them; the recorder will fail
 device resolution otherwise.
 
-Launch the recorder **in the background** so the user stays free to chat and the
-harness re-invokes you when it finishes (SPEC §6 — do not block on a long tail):
+Launch the recorder **in the background** with the picked devices so the user stays
+free to chat and the harness re-invokes you when it finishes (SPEC §6 — do not
+block on a long tail):
 
 ```
-node "${CLAUDE_PLUGIN_ROOT}/scripts/recorder/record.mjs" --audio default
+node "${CLAUDE_PLUGIN_ROOT}/scripts/recorder/record.mjs" --device "<video name>" --audio "<mic name>"
 ```
 
 The recorder echoes its events to stdout. Read the **`session_started`** line and
@@ -65,14 +91,14 @@ translate to the fifo:
 `stop` is the finalize act. Don't poll or tail in a loop — end your turn after
 starting; the user's "stop" (or the background task completing) brings you back.
 
-## Step 2 — stop
+## Step 3 — stop
 
 When the user asks to stop, write `stop` to the fifo. The recorder finalizes
 (valid moov, assembled playlist + `preview.mp4`), publishes the bytes if storage
 is configured, and exits — which completes the background task and re-invokes you.
-Proceed to Step 3 with that session's `dir` and `id`.
+Proceed to Step 4 with that session's `dir` and `id`.
 
-## Step 3 — name it, then publish instantly
+## Step 4 — name it, then publish instantly
 
 The link should be in the user's hands **right after stop**, not gated behind
 transcription (whisper can take a while). The page is re-derivable and the URL is

@@ -15,8 +15,13 @@
 // orchestrates *around* this (title/chapters/publish).
 //
 // Usage:
-//   node record.mjs [--id <id>] [--out <dir>] [--device "Capture screen 0"]
+//   node record.mjs [--id <id>] [--out <dir>] [--device "<screen or camera name>"]
 //                   [--audio none|default|<name>] [--fifo <path>]
+//   node record.mjs --list-devices            # JSON catalogue for the picker (no capture)
+//
+// --device names ANY avfoundation video source — a screen ("Capture screen 0") or a
+// camera ("FaceTime HD Camera"); camera-as-source, not PiP (SPEC §4). --audio
+// "default" prefers a built-in mic and never the iPhone/Continuity mic.
 //
 // Control:  echo pause  > <dir>/control.fifo
 //           echo resume > <dir>/control.fifo
@@ -29,7 +34,7 @@ import crypto from 'node:crypto';
 import { spawn, execFileSync } from 'node:child_process';
 
 import { CONFIG, segName } from './lib/config.mjs';
-import { resolveDevices } from './lib/devices.mjs';
+import { resolveDevices, listDevices, pickDefaultAudio } from './lib/devices.mjs';
 import { buildFfmpegArgs } from './lib/ffmpeg.mjs';
 import { watchControl } from './lib/control.mjs';
 import { createEventLog } from './lib/events.mjs';
@@ -55,8 +60,27 @@ function genId() {
   return crypto.randomBytes(12).toString('base64url');
 }
 
+// Enumerate avfoundation devices as JSON for the pre-record picker (the command
+// asks the user; this only reads). Tags video sources screen/camera and flags the
+// recommended default mic so the picker can pre-select a sane, non-Continuity one.
+async function listDevicesJson() {
+  const { video, audio } = await listDevices();
+  const def = pickDefaultAudio(audio);
+  process.stdout.write(JSON.stringify({
+    video,
+    audio: audio.map((d) => ({ ...d, recommended: def ? d.index === def.index : false })),
+    defaultAudioName: def?.name ?? null,
+  }) + '\n');
+}
+
 async function main() {
   const opts = parseArgs(process.argv.slice(2));
+
+  if (opts['list-devices'] === 'true') {
+    await listDevicesJson();
+    return;
+  }
+
   const id = opts.id ?? genId();
   const dir = path.resolve(
     opts.out ?? path.join(os.homedir(), '.shroom', 'recordings', id),
@@ -71,7 +95,7 @@ async function main() {
   let devices;
   try {
     devices = await resolveDevices({
-      screenName: opts.device ?? 'Capture screen 0',
+      videoName: opts.device ?? 'Capture screen 0',
       audio: opts.audio ?? 'none',
     });
   } catch (e) {
@@ -84,7 +108,7 @@ async function main() {
   log.emit('session_started', {
     id,
     dir,
-    screen: devices.screen,
+    video: devices.video, // { index, name, kind } — a screen or a camera
     audio: devices.audioName ? { index: devices.audioIndex, name: devices.audioName } : null,
     config: {
       framerate: CONFIG.framerate,
@@ -139,7 +163,7 @@ async function main() {
 
   function spawnTake(k) {
     const args = buildFfmpegArgs({
-      screenIndex: devices.screen.index,
+      videoIndex: devices.video.index,
       audioIndex: devices.audioIndex,
       startNumber: nextSegment,
       take: k,
