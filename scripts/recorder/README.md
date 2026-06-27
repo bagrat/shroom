@@ -29,14 +29,34 @@ node record.mjs [--id <id>] [--out <dir>] \
 Defaults: a random `--id`, `--out` = `~/.shroom/recordings/<id>/`, screen device
 resolved **by name** (indices are unstable), audio off.
 
-Stop cleanly:
+Control it via the fifo (or signals):
 
 ```bash
-echo stop > <dir>/control.fifo      # or: kill -INT / -TERM <pid>
+echo pause  > <dir>/control.fifo
+echo resume > <dir>/control.fifo
+echo stop   > <dir>/control.fifo    # or: kill -INT / -TERM <pid>
 ```
 
-`stop` writes `q\n` to ffmpeg stdin → valid `moov` + `ENDLIST`, ~200 ms, exit 0.
-SIGTERM/SIGKILL escalation kicks in only if `q` doesn't take.
+`stop`/`pause` write `q\n` to ffmpeg stdin → valid `moov` + per-take `ENDLIST`,
+~200 ms, exit 0. SIGTERM/SIGKILL escalation kicks in only if `q` doesn't take.
+
+### Pause/resume = segment boundary (M2)
+
+A pause is a clean **segment-boundary cut**, not SIGSTOP (which drifts a-v / leaves
+dead air — rejected in SPEC §4). Each recording run between pauses is a **take**:
+
+- A pause `q`-stops the current take's ffmpeg; resume spawns a new ffmpeg take with
+  `-start_number` set to the next global segment index, so segment filenames stay
+  **contiguous across takes** (`seg_00000`, `seg_00001`, … never collide/gap).
+- The `init.mp4` is **byte-identical** across takes (validated), so the whole
+  session shares one — playback across the join needs only an `#EXT-X-DISCONTINUITY`.
+- At finalize, the master `stream.m3u8` is **assembled** from each take's playlist
+  (one `EXT-X-MAP`, a `DISCONTINUITY` between takes, one `ENDLIST`), and the
+  per-take `preview_<k>.mp4` files are concatenated into one `preview.mp4`.
+
+> **Warmup caveat:** avfoundation takes ~1 s to deliver its first frame, so each
+> take (including the first) loses ~1 s of content at its head. Inherent to
+> restart-based capture; the SIGSTOP alternative was rejected for worse artifacts.
 
 > **Audio is off by default in M1** to keep testing free of a mic TCC prompt. The
 > code path is wired (`--audio default` picks the first mic; `--audio "<name>"`
@@ -44,14 +64,16 @@ SIGTERM/SIGKILL escalation kicks in only if `q` doesn't take.
 
 ## Control contract (fifo in)
 
-Newline-delimited commands. v1/M1 understands:
+Newline-delimited commands, serialized so they never interleave:
 
 | command | effect |
 | --- | --- |
+| `pause` | end the current take at a clean segment boundary |
+| `resume` | start a new take with contiguous segment numbering |
 | `stop` | finalize and exit (the publish act) |
 
-`pause` / `resume` are reserved for **M2** (segment-boundary pause) — currently
-logged as `command_ignored`.
+Anything else → `command_ignored`. `pause` while paused / `resume` while
+recording are no-ops.
 
 ## Event schema (events.ndjson out)
 
@@ -62,28 +84,32 @@ artifact** (SPEC §6): it outlives the session and is drained on the next run.
 | event | key fields | when |
 | --- | --- | --- |
 | `session_started` | `id`, `dir`, `screen`, `audio`, `config` | after device resolution |
-| `ffmpeg_command` | `argv`, `cwd` | just before spawn (debug aid) |
-| `recording_started` | `pid` | ffmpeg spawned |
-| `segment_ready` | `index`, `file` | a segment is closed (N+1 began, or sealed at stop) |
-| `command_ignored` | `command` | an as-yet-unsupported control command (e.g. `pause`) |
+| `ffmpeg_command` | `argv`, `cwd` | before take 0 spawn (debug aid) |
+| `recording_started` | `pid` | take 0 spawned |
+| `take_started` | `take`, `startNumber`, `pid` | a take's ffmpeg spawned |
+| `segment_ready` | `index`, `file` | a segment is closed (next began, or sealed at finalize) |
+| `paused` | `take`, `nextSegment` | current take ended on `pause` |
+| `resumed` | `take`, `startSegment` | a new take began on `resume` |
+| `take_ended` | `take`, `exitCode`, `nextSegment` | a take's ffmpeg exited (pause or stop) |
+| `command_ignored` | `command` | an unrecognized control command |
 | `stop_requested` | `reason` | `stop` received, or a signal |
-| `recording_stopped` | `exitCode` | ffmpeg process exited |
-| `finalized` | `id`, `preview`, `playlist`, `initSegment`, `segments`, `segmentIndices`, `segmentCount`, `durationSec`, `endlist`, `ok`, `ffmpegExit` | session summarized |
+| `recording_stopped` | `takeCount` | all takes finished |
+| `finalized` | `id`, `preview`, `playlist`, `initSegment`, `segments`, `segmentCount`, `durationSec`, `takeCount`, `endlist`, `ok` | session assembled |
 | `error` | `phase`, `message` | device resolution / spawn / control failure |
 
-`ok` (on `finalized`) is the success signal: `preview` + `initSegment` present,
-`endlist` sealed, and ≥1 segment. The recorder process exits `0` iff `ok`.
+`ok` (on `finalized`) is the success signal: `preview` + `initSegment` present and
+≥1 segment in the assembled playlist. The recorder process exits `0` iff `ok`.
 
 ## Layout
 
 ```
-record.mjs            CLI entry + orchestration (spawn, stop, watch, finalize)
-lib/config.mjs        validated recipe constants + segName()
+record.mjs            CLI entry + take controller (spawn, pause/resume, stop, watch)
+lib/config.mjs        validated recipe constants + segment/take name helpers
 lib/devices.mjs       resolve avfoundation devices by name
-lib/ffmpeg.mjs        build the tee argv
+lib/ffmpeg.mjs        build one take's tee argv (per-take start_number/playlist/preview)
 lib/control.mjs       fifo reader (stays open across writer disconnects)
 lib/events.mjs        events.ndjson writer (+ stdout echo)
-lib/finalize.mjs      summarize a finished session dir
+lib/finalize.mjs      assemble master playlist + concat preview; summarize
 ```
 
 Portable Node core (model B: `shim → node → ffmpeg`). The per-OS native control

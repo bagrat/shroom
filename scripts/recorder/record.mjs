@@ -1,19 +1,26 @@
 #!/usr/bin/env node
-// shroom recorder core (M1) — deterministic hands for the whole ffmpeg lifecycle.
+// shroom recorder core (M1 + M2) — deterministic hands for the whole ffmpeg
+// lifecycle, including pause/resume as a segment boundary.
 //
 // Contract (the determinism boundary, SPEC §4):
-//   IN  : a control fifo  (newline commands: `stop`; `pause`/`resume` land in M2)
-//   OUT : events.ndjson   (session_started, recording_started, segment_ready,
-//                          stop_requested, recording_stopped, finalized, error)
+//   IN  : a control fifo  (newline commands: `pause`, `resume`, `stop`)
+//   OUT : events.ndjson   (session_started, take_started, segment_ready,
+//                          paused, resumed, take_ended, stop_requested,
+//                          recording_stopped, finalized, error)
 //
-// There is nothing for an LLM to decide in real time here — recording is pure
-// mechanism. The agent orchestrates *around* this (title/chapters/publish).
+// A "take" is one ffmpeg run between pauses. Pause = clean q-stop at a segment
+// boundary; resume = a new take with contiguous segment numbering (SPEC §4/§5).
+// Segments stream straight to disk; the master playlist + preview are assembled
+// only at finalize. Nothing here is for an LLM to decide in real time — the agent
+// orchestrates *around* this (title/chapters/publish).
 //
 // Usage:
 //   node record.mjs [--id <id>] [--out <dir>] [--device "Capture screen 0"]
 //                   [--audio none|default|<name>] [--fifo <path>]
 //
-// Stop it with:  echo stop > <dir>/control.fifo   (or SIGINT/SIGTERM)
+// Control:  echo pause  > <dir>/control.fifo
+//           echo resume > <dir>/control.fifo
+//           echo stop   > <dir>/control.fifo     (or SIGINT/SIGTERM)
 
 import fs from 'node:fs';
 import os from 'node:os';
@@ -26,7 +33,7 @@ import { resolveDevices } from './lib/devices.mjs';
 import { buildFfmpegArgs } from './lib/ffmpeg.mjs';
 import { watchControl } from './lib/control.mjs';
 import { createEventLog } from './lib/events.mjs';
-import { summarize } from './lib/finalize.mjs';
+import { finalizeSession, maxSegmentIndex } from './lib/finalize.mjs';
 
 function parseArgs(argv) {
   const opts = {};
@@ -56,11 +63,9 @@ async function main() {
 
   const log = createEventLog(path.join(dir, CONFIG.files.events));
 
-  // --- control fifo ---
   const fifoPath = opts.fifo ?? path.join(dir, CONFIG.files.control);
   if (!fs.existsSync(fifoPath)) execFileSync('mkfifo', [fifoPath]);
 
-  // --- resolve capture devices by name ---
   let devices;
   try {
     devices = await resolveDevices({
@@ -86,25 +91,13 @@ async function main() {
     },
   });
 
-  // --- spawn ffmpeg (cwd = session dir, so output filenames stay relative) ---
-  const args = buildFfmpegArgs({
-    screenIndex: devices.screen.index,
-    audioIndex: devices.audioIndex,
-  });
-  log.emit('ffmpeg_command', { argv: ['ffmpeg', ...args], cwd: dir });
-
-  const ff = spawn('ffmpeg', args, { cwd: dir, stdio: ['pipe', 'ignore', 'pipe'] });
-  const ffLog = fs.createWriteStream(path.join(dir, CONFIG.files.ffmpegLog));
-  ff.stderr.pipe(ffLog);
-  log.emit('recording_started', { pid: ff.pid });
-
-  // --- segment watcher ---
-  // A segment N is COMPLETE once segment N+1 begins (HLS opens the next file). We
-  // announce completed segments as `segment_ready`; the M3 uploader consumes these.
+  // --- segment watcher (global across takes) ---
+  // Segment N is COMPLETE once N+1 begins. On resume, the next take's first segment
+  // appearing also closes the previous take's last one; finalize sweeps any remainder.
   const emitted = new Set();
   let highest = -1;
   const emitSegment = (i) => {
-    if (emitted.has(i)) return;
+    if (i < 0 || emitted.has(i)) return;
     emitted.add(i);
     log.emit('segment_ready', { index: i, file: segName(i) });
   };
@@ -114,55 +107,111 @@ async function main() {
     if (!m) return;
     const n = Number(m[1]);
     if (n > highest) {
-      for (let i = 0; i < n; i++) emitSegment(i); // everything before n is now closed
+      for (let i = 0; i < n; i++) emitSegment(i);
       highest = n;
     }
   });
 
-  // --- stop handling (single-shot, with escalation) ---
-  let stopping = false;
-  const requestStop = (reason) => {
-    if (stopping) return;
-    stopping = true;
-    log.emit('stop_requested', { reason });
-    // Primary: clean shutdown via `q` on ffmpeg stdin (valid moov + ENDLIST, exit 0).
-    try { ff.stdin.write('q\n'); } catch {}
-    // Fallbacks if ffmpeg doesn't exit promptly.
-    setTimeout(() => { if (!ff.killed) try { ff.kill('SIGTERM'); } catch {} }, 5000).unref();
-    setTimeout(() => { if (!ff.killed) try { ff.kill('SIGKILL'); } catch {} }, 10000).unref();
+  // --- take management ---
+  let state = 'recording'; // 'recording' | 'paused' | 'stopping'
+  let nextSegment = 0; // start_number for the next take
+  const takes = []; // take indices that have started
+  let current = null; // { k, ff, exited }
+
+  function spawnTake(k) {
+    const args = buildFfmpegArgs({
+      screenIndex: devices.screen.index,
+      audioIndex: devices.audioIndex,
+      startNumber: nextSegment,
+      take: k,
+    });
+    if (k === 0) log.emit('ffmpeg_command', { argv: ['ffmpeg', ...args], cwd: dir });
+    const ff = spawn('ffmpeg', args, { cwd: dir, stdio: ['pipe', 'ignore', 'pipe'] });
+    ff.stderr.pipe(fs.createWriteStream(path.join(dir, `ffmpeg_${k}.log`)));
+    const exited = new Promise((res) => ff.on('close', (code) => res(code)));
+    ff.on('error', (e) => log.emit('error', { phase: 'ffmpeg_spawn', take: k, message: e.message }));
+    takes.push(k);
+    log.emit('take_started', { take: k, startNumber: nextSegment, pid: ff.pid });
+    return { k, ff, exited };
+  }
+
+  // Cleanly end the current take's ffmpeg (q → SIGTERM → SIGKILL), then advance
+  // nextSegment past whatever it wrote.
+  async function endCurrentTake() {
+    if (!current) return;
+    const t = current;
+    try { t.ff.stdin.write('q\n'); } catch {}
+    const term = setTimeout(() => { try { t.ff.kill('SIGTERM'); } catch {} }, 5000);
+    const kill = setTimeout(() => { try { t.ff.kill('SIGKILL'); } catch {} }, 10000);
+    term.unref(); kill.unref();
+    const code = await t.exited;
+    clearTimeout(term); clearTimeout(kill);
+    nextSegment = maxSegmentIndex(dir) + 1;
+    log.emit('take_ended', { take: t.k, exitCode: code, nextSegment });
+    current = null;
+    return code;
+  }
+
+  // Serialize control commands so pause/resume/stop never interleave.
+  let chain = Promise.resolve();
+  const enqueue = (fn) => {
+    chain = chain.then(fn).catch((e) => log.emit('error', { phase: 'command', message: e.message }));
+    return chain;
   };
 
-  const control = watchControl(fifoPath);
-  control.on('command', (cmd) => {
-    if (cmd === 'stop') requestStop('control:stop');
-    else log.emit('command_ignored', { command: cmd }); // pause/resume = M2
-  });
-  control.on('error', (e) => log.emit('error', { phase: 'control', message: e.message }));
+  async function doPause() {
+    if (state !== 'recording') return;
+    state = 'paused';
+    await endCurrentTake();
+    log.emit('paused', { take: takes[takes.length - 1], nextSegment });
+  }
 
-  process.on('SIGINT', () => requestStop('signal:SIGINT'));
-  process.on('SIGTERM', () => requestStop('signal:SIGTERM'));
+  async function doResume() {
+    if (state !== 'paused') return;
+    const k = takes.length;
+    current = spawnTake(k);
+    state = 'recording';
+    log.emit('resumed', { take: k, startSegment: nextSegment });
+  }
 
-  // --- finalize on ffmpeg exit ---
-  ff.on('close', (code) => {
+  async function doStop(reason) {
+    if (state === 'stopping') return;
+    state = 'stopping';
+    log.emit('stop_requested', { reason });
+    await endCurrentTake();
     try { watcher.close(); } catch {}
     control.close?.();
-    const summary = summarize(dir);
-    // Announce any segments not seen by the watcher (notably the last one, sealed at stop).
-    for (const i of summary.segmentIndices) emitSegment(i);
 
-    log.emit('recording_stopped', { exitCode: code });
-    log.emit('finalized', { id, ...summary, ffmpegExit: code });
+    const summary = await finalizeSession(dir, takes);
+    for (const file of summary.segments) {
+      const m = file.match(CONFIG.files.segmentGlob);
+      if (m) emitSegment(Number(m[1]));
+    }
+    log.emit('recording_stopped', { takeCount: takes.length });
+    log.emit('finalized', { id, ...summary });
     log.close();
     try { fs.unlinkSync(fifoPath); } catch {}
     process.exit(summary.ok ? 0 : 1);
-  });
+  }
 
-  ff.on('error', (e) => {
-    log.emit('error', { phase: 'ffmpeg_spawn', message: e.message });
-    log.close();
-    try { fs.unlinkSync(fifoPath); } catch {}
-    process.exit(1);
+  // --- control wiring ---
+  const control = watchControl(fifoPath);
+  control.on('command', (cmd) => {
+    switch (cmd) {
+      case 'pause': return void enqueue(doPause);
+      case 'resume': return void enqueue(doResume);
+      case 'stop': return void enqueue(() => doStop('control:stop'));
+      default: return void log.emit('command_ignored', { command: cmd });
+    }
   });
+  control.on('error', (e) => log.emit('error', { phase: 'control', message: e.message }));
+
+  process.on('SIGINT', () => enqueue(() => doStop('signal:SIGINT')));
+  process.on('SIGTERM', () => enqueue(() => doStop('signal:SIGTERM')));
+
+  // --- start take 0 ---
+  current = spawnTake(0);
+  log.emit('recording_started', { pid: current.ff.pid });
 }
 
 main().catch((e) => {

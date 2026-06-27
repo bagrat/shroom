@@ -25,12 +25,18 @@ export const CONFIG = {
   segmentSeconds: 6,
 
   // --- output filenames (relative to the session dir; ffmpeg runs with cwd = dir) ---
+  //
+  // Segments are numbered GLOBALLY and contiguously across takes (a take = one
+  // recording run between pauses), via ffmpeg's -start_number. The init segment is
+  // byte-identical across takes (validated), so the whole session shares one
+  // init.mp4. Each take writes its own playlist + preview; `playlist` and `preview`
+  // are the FINAL assembled artifacts produced at finalize (SPEC §5).
   files: {
-    playlist: 'stream.m3u8',
-    initSegment: 'init.mp4',
+    playlist: 'stream.m3u8', // final master, assembled at finalize
+    initSegment: 'init.mp4', // shared by all takes
     segmentPattern: 'seg_%05d.m4s',
     segmentGlob: /^seg_(\d+)\.m4s$/,
-    preview: 'preview.mp4',
+    preview: 'preview.mp4', // final, concatenated at finalize
     events: 'events.ndjson',
     control: 'control.fifo',
     ffmpegLog: 'ffmpeg.log',
@@ -40,4 +46,12 @@ export const CONFIG = {
 // Reconstruct a segment filename from its integer index (matches segmentPattern).
 export function segName(i) {
   return `seg_${String(i).padStart(5, '0')}.m4s`;
+}
+
+// Per-take artifact names (k = 0-based take index).
+export function takePlaylist(k) {
+  return `stream_${k}.m3u8`;
+}
+export function takePreview(k) {
+  return `preview_${k}.mp4`;
 }
