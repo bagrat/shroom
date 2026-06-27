@@ -18,6 +18,14 @@ export const CONFIG = {
   // --- audio (optional; off by default in M1) ---
   audioCodec: 'aac',
   audioBitrate: '128k',
+  // THE AUDIO FIX (empirically found 2026-06-27): avfoundation mic capture delivers
+  // ~6% fewer samples than the wall-clock timeline (a device-clock/timestamp
+  // mismatch, NOT 4K throughput — verified: audio-only capture drops too,
+  // downscaling doesn't help, separate inputs make it worse). The gaps play as the
+  // audio speeding up then cutting before the video ends. `aresample=async=1`
+  // fills the gaps with silence so audio stays locked to the timeline, correct
+  // pitch, in sync to the end. Measured: ~6% drop → 0% with this filter.
+  audioFilter: 'aresample=async=1',
 
   // --- HLS segmentation ---
   // SPEC §5: "6 s default, a config constant (adjustable in code)." A forced IDR is

@@ -79,8 +79,16 @@ dead air — rejected in SPEC §4). Each recording run between pauses is a **tak
 > restart-based capture; the SIGSTOP alternative was rejected for worse artifacts.
 
 > **Audio is off by default in M1** to keep testing free of a mic TCC prompt. The
-> code path is wired (`--audio default` picks the first mic; `--audio "<name>"`
-> picks by name); v1's intended default is screen **+ mic**.
+> code path is wired (`--audio default` picks a built-in mic, never the iPhone
+> Continuity mic; `--audio "<name>"` picks by name); v1's intended default is
+> screen **+ mic**.
+
+> **Audio sync caveat (fixed):** avfoundation's mic clock drifts ~6% slow vs the
+> wall clock, so without correction ~6% of audio samples drop as gaps (audio
+> speeds up, then cuts before the video ends). The recipe applies
+> `-af aresample=async=1` (`CONFIG.audioFilter`) to fill the gaps and lock audio to
+> the timeline — measured ~6% drop → 0%. It's a clock issue, **not** 4K throughput
+> (downscaling didn't help; audio-only capture drops too).
 
 ## Control contract (fifo in)
 

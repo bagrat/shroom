@@ -44,7 +44,10 @@ export function buildFfmpegArgs({ videoIndex, audioIndex = 'none', startNumber =
     '-force_key_frames', `expr:gte(t,n_forced*${seg})`,
   ];
   if (hasAudio) {
-    args.push('-c:a', CONFIG.audioCodec, '-b:a', CONFIG.audioBitrate);
+    // -af keeps avfoundation's drifting mic clock glued to the timeline (see
+    // CONFIG.audioFilter) — without it ~6% of audio drops as gaps. Applies before
+    // the tee, so both the HLS and preview branches get the corrected audio.
+    args.push('-af', CONFIG.audioFilter, '-c:a', CONFIG.audioCodec, '-b:a', CONFIG.audioBitrate);
   }
   args.push('-f', 'tee', '-map', '0:v');
   if (hasAudio) args.push('-map', '0:a');
