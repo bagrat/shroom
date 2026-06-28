@@ -105,23 +105,18 @@ private func reexecDisclaimingResponsibility() {
 //
 // Prints one line of JSON: {"screen":"granted|prompted","mic":"granted|denied"}.
 //
-// ORDER MATTERS. A TCC prompt is owned by the process that asked — if we exit while
-// one is still open, the system tears it down. The two permissions also behave
-// differently: Microphone is an instant inline Allow/Don't-Allow; Screen Recording
-// can't be granted from its prompt at all (the user opens System Settings and toggles
-// it, effective only on the NEXT launch). So we (1) fully resolve the mic prompt FIRST
-// — never stacked under another — then (2) trigger the screen prompt and HOLD the
-// process open on a blocking "Done" dialog, so exiting can't kill the screen prompt
-// before the user has enabled it. We exit only when they click Done; the real tray
-// then launches fresh and sees the grant.
+// Mic and Screen Recording behave differently and must NOT share the screen. Mic is an
+// instant inline Allow/Don't-Allow, so we resolve it FIRST and fully — never stacked
+// under another dialog. Screen Recording can't be granted from its prompt at all (the
+// user toggles it in System Settings, effective only on the NEXT launch), so we just
+// REGISTER "shroom" in the Privacy list and report "prompted" — then EXIT. We don't
+// hold a native dialog here: stacking one over the system prompt was confusing. The
+// record command owns the screen gate instead — it opens System Settings and asks the
+// user (its own AskUserQuestion) to toggle "shroom" on before it launches the real tray
+// (which, as a fresh process, then sees the grant).
 private func runPermissionsPrimerAndExit() -> Never {
-    // An app instance lets us show the blocking "Done" dialog (and present cleanly as
-    // an accessory). The disclaim re-exec already ran, so this is still "shroom".
-    let app = NSApplication.shared
-    app.setActivationPolicy(.accessory)
-
-    // 1) Microphone — resolve it completely before touching the screen prompt so the
-    //    two never stack (allowing mic must not dismiss the screen prompt).
+    // 1) Microphone — resolve completely before the screen request so the two prompts
+    //    never stack (allowing mic must not race/dismiss anything else).
     var micGranted = AVCaptureDevice.authorizationStatus(for: .audio) == .authorized
     if !micGranted {
         let sem = DispatchSemaphore(value: 0)
@@ -129,25 +124,10 @@ private func runPermissionsPrimerAndExit() -> Never {
         sem.wait()
     }
 
-    // 2) Screen Recording — only if not already granted.
-    var screen = "granted"
-    if !CGPreflightScreenCaptureAccess() {
-        _ = CGRequestScreenCaptureAccess()   // registers "shroom" in the list + prompts
-        screen = "prompted"
-        // Hold the process open so the just-opened screen prompt survives. The grant
-        // lands on the NEXT launch (the real tray), so we don't poll — we just wait
-        // for the user to confirm they've toggled it.
-        app.activate(ignoringOtherApps: true)
-        let a = NSAlert()
-        a.messageText = "Turn on Screen Recording for shroom"
-        a.informativeText = """
-        A macOS prompt just asked about Screen Recording. On it, click “Open System \
-        Settings”, switch ON “shroom” under Screen Recording, then click Done here — \
-        recording starts right after.
-        """
-        a.addButton(withTitle: "Done")
-        a.runModal()
-    }
+    // 2) Screen Recording — preflight; if not granted, the request registers "shroom"
+    //    in the Privacy list (returns false until the user toggles it + relaunches).
+    let screen = CGPreflightScreenCaptureAccess() || CGRequestScreenCaptureAccess()
+        ? "granted" : "prompted"
 
     print("{\"screen\":\"\(screen)\",\"mic\":\"\(micGranted ? "granted" : "denied")\"}")
     exit(0)
@@ -608,7 +588,7 @@ final class ShimController: NSObject, NSApplicationDelegate {
 
     func glyph(for s: RecState) -> String {
         switch s {
-        case .armed:           return "○"          // ready
+        case .armed:           return "🍄"         // ready (fallback; render() uses armedIcon)
         case .counting:        return "•"          // counting down (number is on the overlay)
         case .recording:       return "●"          // live (red)
         case .pausing:         return "❚❚"

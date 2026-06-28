@@ -104,26 +104,27 @@ stop — don't try to record without it.
 ### Prime permissions (foreground, before the tray)
 
 Run the permissions primer **and wait for it** — a throwaway launch that requests
-**Screen Recording + Microphone** as the **“shroom”** principal (so both prompts read
-"shroom", never "Terminal"), then exits:
+**Microphone** and registers **Screen Recording** as the **“shroom”** principal (so
+prompts read "shroom", never "Terminal"), then exits with one line of JSON:
+`{"screen":"granted|prompted","mic":"granted|denied"}`:
 
 ```
 "${CLAUDE_PLUGIN_ROOT}/scripts/shim/macos/build/shroom.app/Contents/MacOS/shroom" --permissions
 ```
 
-Before you run it, give the user a one-line heads-up that macOS may ask to allow
-**shroom** to use the microphone and record the screen, and to approve both. The
-primer **blocks until they're done** — it resolves the mic prompt, then (if needed)
-shows the screen prompt and holds open its own "Done" dialog until the user has
-toggled Screen Recording on. So **it is the gate**; you don't need a separate
-`AskUserQuestion`. When it returns it prints one line of JSON:
-`{"screen":"granted|prompted","mic":"granted|denied"}`.
+The **mic** prompt resolves inline while it runs (a one-line heads-up beforehand is
+kind). Then branch on the JSON — **you** own the Screen-Recording gate (the primer no
+longer pops a dialog of its own; that stacked confusingly over the system prompt):
 
-- **`screen: "granted"`** (after the first ever record) → it didn't prompt; say
-  nothing about permissions and go straight to launching the tray.
-- **`screen: "prompted"`** → it was the user's **first** record and they've just
-  enabled it; the grant is live for the tray you're about to launch (no relaunch
-  dance). A brief "thanks — starting now" is enough.
+- **`screen: "granted"`** → already enabled; go straight to launching the tray.
+- **`screen: "prompted"`** → it's the user's **first** record. Screen Recording can't
+  be granted from its prompt — the user toggles it in System Settings, and it only
+  takes effect on the **next** launch (the tray you're about to start). So:
+  1. Open the pane: `open "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture"`.
+  2. Tell the user: turn **ON “shroom”** under Screen Recording.
+  3. **Gate with `AskUserQuestion`** ("Enabled Screen Recording for shroom?" — e.g.
+     *"Yes, it's on"* / *"Open the settings again"*). Only launch the tray once they
+     confirm — otherwise the first capture starts blind.
 - **`mic: "denied"`** → fine, they can record without a mic; don't block on it.
 
 Always call it **shroom** to the user — never say "shim" in anything you surface.
@@ -158,7 +159,7 @@ fine; the Node ≥22 in creds `nodeBinDir` is only for wrangler.) Everything aft
 
 Then tell the user **how to drive the tray** (the menu-bar app, not you, controls capture):
 
-- A shroom icon (**○**) appears in the menu bar. **Click it to start** — a 3-2-1
+- A shroom icon (**🍄**) appears in the menu bar. **Click it to start** — a 3-2-1
   countdown (cancelable: click again during it to abort), then it records (**●**).
 - **Click while recording** → pauses immediately (**❚❚**) and opens a menu.
 - The menu offers **Resume**, **Stop** (finalize + publish), **Restart** (throw
