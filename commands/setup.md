@@ -121,8 +121,11 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/setup/setup.mjs" status --verify --json
   was revoked/expired. Keep everything else; go straight to **Step 4** to recreate just
   the token, then **Step 5** (provision). Don't redo login or the dashboard card.
 - **`storage.configured: false`** → storage isn't set up; walk Steps 2–5 below.
-- **`pages.configured: false`** but storage is fine → only the site project is missing;
-  **Step 5** (provision) creates it idempotently — you can skip straight there.
+- **`pages.configured: false`** but storage is fine → only the site project is missing.
+  Jump to **Step 5** but run provision **`--pages-only`** (no `--r2-creds-file`): it
+  skips the R2 steps and creates just the Pages site over the OAuth session, so you
+  **never ask for an R2 token** for storage that already works. Just confirm the user's
+  still logged in (Step 2's `wrangler whoami`) first.
 - **`verifyReason: "no_fetch"` or `verified: null`** → couldn't live-check (old Node or
   offline). Fall back to presence: if storage + pages are `configured`, treat as done;
   otherwise walk the steps. Don't re-ask for keys just because verification was skipped.
@@ -208,7 +211,14 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/setup/setup.mjs" provision --json \
   --r2-creds-file ~/.shroom/r2-provision.json
 ```
 `provision` reads it and **deletes it** when done (kept only across dashboard-gate retries).
-(Add `--bucket` / `--pages-project` only for non-default names.) This creates the bucket,
+(Add `--bucket` / `--pages-project` only for non-default names.)
+
+**Pages-only shortcut** — if the earlier `status` showed storage already configured + the
+keys verified and *only Pages* missing, skip the token entirely: run
+`provision --json --pages-only` (no `--r2-creds-file`). It does just the OAuth Pages
+step and leaves the stored bucket/keys untouched (`s3Token: "unchanged"`).
+
+The full run creates the bucket,
 enables its public `*.r2.dev` URL (so videos play back — anyone with a link can watch;
 links are long and unguessable, but public), creates the Pages project, and writes the S3
 keys. **Branch on the result** (SPEC §8):

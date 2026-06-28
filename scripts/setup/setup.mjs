@@ -109,6 +109,11 @@ async function cmdProvision({ json, opts }) {
   }
   const rmCredsFile = () => { if (credsFile) try { fs.unlinkSync(credsFile); } catch { /* already gone */ } };
 
+  // Pages-only: storage already works (caller checked via `status --verify`) and only
+  // the Pages site is missing — skip the R2 steps so we never ask for a token we don't
+  // need. Pages goes through the OAuth session.
+  const pagesOnly = opts['pages-only'] === 'true' || opts['pages-only'] === true;
+
   const res = await provisionCloudflare({
     runWrangler,
     // Pages is created via the CF REST API with the OAuth token (wrangler refuses
@@ -116,7 +121,7 @@ async function cmdProvision({ json, opts }) {
     createPages: pagesApiCreate,
     baseEnv,
     // The R2 API token (+ its derived S3 keys) the user created in the dashboard — passed
-    // via --r2-creds-file (preferred) or, for scripting, flags/env.
+    // via --r2-creds-file (preferred) or, for scripting, flags/env. Unused in pages-only.
     r2Token: opts['r2-token'] ?? fileCreds.r2Token ?? process.env.CLOUDFLARE_R2_TOKEN,
     r2AccessKeyId: opts['r2-access-key-id'] ?? fileCreds.r2AccessKeyId ?? process.env.SHROOM_S3_ACCESS_KEY_ID,
     r2SecretAccessKey: opts['r2-secret-access-key'] ?? fileCreds.r2SecretAccessKey ?? process.env.SHROOM_S3_SECRET_ACCESS_KEY,
@@ -124,6 +129,7 @@ async function cmdProvision({ json, opts }) {
     pagesProject: opts['pages-project'] ?? 'shroom-site',
     branch: opts.branch ?? 'main',
     log,
+    skipR2: pagesOnly,
   });
 
   if (!res.ok) {
@@ -163,7 +169,7 @@ async function cmdProvision({ json, opts }) {
     publicBaseUrl: res.publicBaseUrl,
     pagesProject: res.pagesProject,
     pagesBaseUrl: res.pagesBaseUrl,
-    s3Token: res.token?.accessKeyId ? 'written' : 'deferred',
+    s3Token: res.skippedR2 ? 'unchanged' : (res.token?.accessKeyId ? 'written' : 'deferred'),
     credentials: credsPath(),
   };
   if (json) {

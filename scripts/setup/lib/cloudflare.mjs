@@ -134,6 +134,12 @@ export async function provisionCloudflare({
   branch = 'main',
   baseEnv = process.env,
   log = () => {},
+  // Skip the R2 steps (bucket + public URL + token) and create ONLY the Pages site.
+  // For the common re-run where storage already works and only Pages is missing:
+  // Pages goes through the OAuth session, so there's no reason to re-mint an R2 token
+  // for bucket/public-URL work that's already done. The caller sets this when its
+  // `status --verify` shows storage configured + keys valid.
+  skipR2 = false,
 }) {
   // R2 calls authenticate with the dashboard R2 token; whoami uses the OAuth
   // session, so we must strip any inherited CLOUDFLARE_API_TOKEN from its env (an R2
@@ -149,28 +155,44 @@ export async function provisionCloudflare({
   }
   log('cf_whoami', { accountId: me.accountId, email: me.email });
 
-  if (!r2Token) {
-    log('cf_r2_token_required', {});
-    return {
-      ok: false, stage: 'bucket', accountId: me.accountId,
-      ...STATE_R2_TOKEN_REQUIRED,
-    };
-  }
-  const r2Env = { ...oauthEnv, CLOUDFLARE_API_TOKEN: r2Token };
+  // R2 steps (token gate → bucket → public URL → S3 keys). Skipped when the caller
+  // already verified storage works and only Pages is left — leaving publicBaseUrl and
+  // token undefined so the caller's merge-write preserves what's already stored.
+  let publicBaseUrl;
+  let token;
+  if (!skipR2) {
+    if (!r2Token) {
+      log('cf_r2_token_required', {});
+      return {
+        ok: false, stage: 'bucket', accountId: me.accountId,
+        ...STATE_R2_TOKEN_REQUIRED,
+      };
+    }
+    const r2Env = { ...oauthEnv, CLOUDFLARE_API_TOKEN: r2Token };
 
-  const b = await createBucket({ runWrangler, name: bucket, env: r2Env });
-  if (!b.ok) {
-    log('cf_bucket_failed', { state: b.state, needsDashboard: b.needsDashboard });
-    return { ok: false, stage: 'bucket', accountId: me.accountId, ...b };
-  }
-  log('cf_bucket_ready', { bucket });
+    const b = await createBucket({ runWrangler, name: bucket, env: r2Env });
+    if (!b.ok) {
+      log('cf_bucket_failed', { state: b.state, needsDashboard: b.needsDashboard });
+      return { ok: false, stage: 'bucket', accountId: me.accountId, ...b };
+    }
+    log('cf_bucket_ready', { bucket });
 
-  const pub = await enablePublicAccess({ runWrangler, name: bucket, env: r2Env });
-  if (!pub.ok) {
-    log('cf_public_failed', { state: pub.state });
-    return { ok: false, stage: 'public_access', accountId: me.accountId, ...pub };
+    const pub = await enablePublicAccess({ runWrangler, name: bucket, env: r2Env });
+    if (!pub.ok) {
+      log('cf_public_failed', { state: pub.state });
+      return { ok: false, stage: 'public_access', accountId: me.accountId, ...pub };
+    }
+    publicBaseUrl = pub.publicBaseUrl;
+    log('cf_public_ready', { publicBaseUrl });
+
+    // The S3 keys come straight from the dashboard token (Access Key ID + Secret).
+    token = r2AccessKeyId && r2SecretAccessKey
+      ? { accessKeyId: r2AccessKeyId, secretAccessKey: r2SecretAccessKey }
+      : { deferred: true };
+    log(token.accessKeyId ? 'cf_token_ready' : 'cf_token_deferred', {});
+  } else {
+    log('cf_r2_skipped', {});
   }
-  log('cf_public_ready', { publicBaseUrl: pub.publicBaseUrl });
 
   const pg = await createPagesProject({ createPages, name: pagesProject, branch, accountId: me.accountId });
   if (!pg.ok) {
@@ -179,24 +201,20 @@ export async function provisionCloudflare({
   }
   log('cf_pages_ready', { pagesProject, pagesBaseUrl: pg.pagesBaseUrl });
 
-  // The S3 keys come straight from the dashboard token (Access Key ID + Secret).
-  const token = r2AccessKeyId && r2SecretAccessKey
-    ? { accessKeyId: r2AccessKeyId, secretAccessKey: r2SecretAccessKey }
-    : { deferred: true };
-  log(token.accessKeyId ? 'cf_token_ready' : 'cf_token_deferred', {});
-
   return {
     ok: true,
     accountId: me.accountId,
     email: me.email,
-    bucket,
-    publicBaseUrl: pub.publicBaseUrl,
+    // undefined in skipR2 → the caller's merge-write keeps the stored bucket/URL/keys.
+    bucket: skipR2 ? undefined : bucket,
+    publicBaseUrl,
     pagesProject,
     pagesBaseUrl: pg.pagesBaseUrl,
     // false when pagesBaseUrl is only the constructed fallback (already_exists
     // re-run) — the caller should not overwrite a stored, parsed URL with a guess.
     pagesBaseUrlParsed: pg.parsed,
-    token, // { accessKeyId, secretAccessKey } | { deferred: true }
+    token, // { accessKeyId, secretAccessKey } | { deferred: true } | undefined (skipR2)
+    skippedR2: skipR2,
   };
 }
 

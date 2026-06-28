@@ -1,6 +1,6 @@
 {
   "name": "shroom",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "description": "Agent-first, self-hosted Loom alternative. Record your screen to your own object storage and git; get a permanent unlisted link with auto title, chapters, and a searchable transcript.",
   "author": { "name": "Bagrat Aznauryan" },
   "license": "MIT"
