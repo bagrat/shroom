@@ -196,7 +196,8 @@ who just types).
    node "${CLAUDE_PLUGIN_ROOT}/scripts/page/write-meta.mjs" --id <id> --session <dir> --title "<their title>"
    ```
    (Pass `--library <dir>` if `$ARGUMENTS` gave an override.) Capture `metaPath`.
-2. **Build + deploy now** (see *Publish* below) → hand over the link.
+2. **Publish now** (see *Publish* below — it builds, deploys, and commits the
+   record in one step) → hand over the link.
 3. **Kick off transcription in the background** and end your turn — don't wait:
    ```
    node "${CLAUDE_PLUGIN_ROOT}/scripts/transcribe/transcribe.mjs" --session <dir>
@@ -220,21 +221,26 @@ who just types).
 
 ### Publish (both paths)
 
+One command builds the page, deploys it (if Cloudflare is provisioned), **and
+commits the `<id>.md` to the git library** — all deterministic, so it's a single
+step:
+
 ```
-node "${CLAUDE_PLUGIN_ROOT}/scripts/page/build-page.mjs" --session <dir> --meta <metaPath>
+node "${CLAUDE_PLUGIN_ROOT}/scripts/page/publish.mjs" --session <dir> --meta <metaPath> --title "<title>"
 ```
 
-Then deploy **only if Cloudflare is provisioned** — read `pagesProject` from
-`~/.shroom/credentials.json`:
+It reads `pagesProject` + `library` from `~/.shroom/credentials.json` itself. Read
+the terminal event:
 
-- **present** →
-  ```
-  node "${CLAUDE_PLUGIN_ROOT}/scripts/deploy/deploy.mjs" --project <pagesProject> --session <dir>
-  ```
-  Read the `published` event's `playbackUrl`, present the shareable link, and
-  `open` it. That URL **is** the publish (SPEC §6 — record → link).
-- **absent** → say it rendered locally (give the `preview.mp4` path) and that
-  `/shroom:setup` unlocks the shareable link.
+- **`published`** → present its `playbackUrl` as the shareable link and `open` it.
+  That URL **is** the publish (SPEC §6 — record → link). `committed: true` means the
+  record is already saved to the user's library (see *the record is committed
+  automatically* below).
+- **`publish_local`** → Cloudflare isn't provisioned: say it rendered locally (give
+  the `preview` path) and that `/shroom:setup` unlocks the shareable link.
+
+(`--title` is only used for the commit message; pass the user's title when you have
+it, omit it on an enrich re-publish that didn't change the title.)
 
 ## Step 5 — enrich in the background (Path A only)
 
@@ -246,20 +252,21 @@ you're upgrading the same URL in place.
 2. Invoke the **`title-chapters` skill** in **enrich mode**: it adds TL;DR +
    chapters from the transcript and **preserves the user's title** (the writer
    inherits it — the skill omits `--title`). Capture `metaPath`.
-3. **Re-build + re-deploy** the same way (*Publish* above). The stable URL now
+3. **Re-publish** the same way (*Publish* above) — omit `--title` so the commit
+   message isn't rewritten; the no-op-commit case is handled. The stable URL now
    carries chapters, the transcript, and richer `og:` tags.
 4. Tell the user briefly: "added chapters + a searchable transcript to <link>."
 
-## Step 6 — commit the record (propose → confirm → run)
+## The record is committed automatically
 
-Once the record is complete (after Step 5 in Path A, after publish in Path B), the
-`<id>.md` in the git library is the thing worth keeping (SPEC §3). Committing is a
-system change — propose it, don't do it silently. Offer one command, run it only
-on the user's yes:
+`publish.mjs` commits the `<id>.md` to the git library as its last step (SPEC §3 —
+the record is the thing worth keeping). It's automatic and best-effort: a missing or
+non-git library is reported (`commit_skipped`) but never fails the publish, and a
+re-publish with no metadata change is a no-op (`commit_noop`) — the record stays
+committed. Don't ask the user to confirm a commit; it's part of the normal record
+lifecycle into their own library.
 
-```
-git -C <library> add <id>.md && git -C <library> commit -m "Add recording: <title>"
-```
-
-Keep the final message short: the link (or local path), the title, and that the
-transcript is committed to their library.
+Keep the final message short: the link (or local path), the title, and — when the
+event reported `committed: true` — that it's saved to their library. If you instead
+saw `commit_skipped` with `not_a_git_repo`, mention the library isn't under git yet
+(`/shroom:setup` initializes it).
