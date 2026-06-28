@@ -36,8 +36,9 @@ user makes both decisions at once:
 1. **Install the missing tools?** Only if `plan.steps` is non-empty. Show the exact
    `plan.combinedCommand` in the option description so the approval is informed.
    One toggle covers *all* of them (and the Homebrew bootstrap, if `needsBrew`).
-   Required-vs-optional: note that skipping a *required* tool blocks recording;
-   `whisper` (optional) only powers titles/chapters/search and can come later.
+   They're **all required** — whisper included, since titles / chapters / transcript
+   search depend on it — so skipping leaves setup not-ready. Don't offer a "skip
+   whisper" choice; it's a single install-or-not decision now.
 2. **Where should the library live?** Default `~/shroom`; offer a free-text
    override. If `$ARGUMENTS` was given, make that the default instead.
 

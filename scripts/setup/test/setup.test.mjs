@@ -107,11 +107,12 @@ await test('probeEnv: missing required → not ready', async () => {
   assert.deepEqual(env.missingOptional, []); // whisper present
 });
 
-await test('probeEnv: only optional missing → still ready', async () => {
+await test('probeEnv: whisper now required → missing whisper is not ready', async () => {
   const { whisper, brew, ...noWhisper } = REAL_OUTPUT;
   const env = await probeWith(noWhisper);
-  assert.equal(env.ready, true);
-  assert.deepEqual(env.missingOptional, ['whisper']);
+  assert.equal(env.ready, false);
+  assert.deepEqual(env.missingRequired, ['whisper']);
+  assert.deepEqual(env.missingOptional, []);
 });
 
 await test('probeTool: node below minMajor reads as not present', async () => {
@@ -149,11 +150,11 @@ await test('installPlan: groups by manager, batches packages', async () => {
   assert.ok(plan.combinedCommand.includes(' && '));
 });
 
-await test('installPlan: optional whisper appears in plan but not requiredMissing', async () => {
+await test('installPlan: whisper (now required) appears in requiredMissing', async () => {
   const env = await probeWith({ ...NODE_OK, git: REAL_OUTPUT.git, ffmpeg: REAL_OUTPUT.ffmpeg, wrangler: REAL_OUTPUT.wrangler });
   const plan = buildInstallPlan(env.results, { haveBrew: true });
-  assert.deepEqual(plan.requiredMissing, []);
-  assert.deepEqual(plan.optionalMissing, ['whisper']);
+  assert.deepEqual(plan.requiredMissing, ['whisper']);
+  assert.deepEqual(plan.optionalMissing, []);
   assert.equal(plan.steps.find((s) => s.manager === 'brew').command, 'brew install openai-whisper');
 });
 

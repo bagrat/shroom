@@ -13,11 +13,12 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-// One source of truth for the tools shroom needs. `required` gates setup; an
-// optional tool missing is a soft note (whisper powers the agent layer, but you
-// can record + publish without it). `detect` is a presence+version probe: a
-// 0 exit (or a versionRe match in the output) means present. `install` feeds the
-// consolidated install plan.
+// One source of truth for the tools shroom needs. `required` gates setup (a missing
+// required tool makes the env not-ready). The mechanism still supports optional tools,
+// but every tool shroom ships with is currently required — whisper included, since the
+// agent layer (titles / chapters / transcript search) depends on it. `detect` is a
+// presence+version probe: a 0 exit (or a versionRe match in the output) means present.
+// `install` feeds the consolidated install plan.
 export const TOOLS = [
   {
     name: 'node',
@@ -66,7 +67,7 @@ export const TOOLS = [
   },
   {
     name: 'whisper',
-    required: false,
+    required: true,
     purpose: 'local transcription → titles / chapters / search (SPEC §7)',
     detect: { cmd: 'whisper', args: ['--help'] },
     versionRe: null, // whisper --help has no version line; presence is enough
