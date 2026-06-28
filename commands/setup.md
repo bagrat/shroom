@@ -159,9 +159,18 @@ accept the terms + add a card to enable R2. Reprint (step 3 ✅).
 
 Have them **paste the three values right here in the session**. Reprint (step 4 ✅).
 
-**Step 5 — Provision.** Keep the secrets off the command line: **write the three pasted
-values to a creds file with the Write tool** (a file write — they never appear in a shell
-command, consent prompt, or shell history) as JSON to `~/.shroom/r2-provision.json`:
+**Step 5 — Provision.** **First refresh the OAuth session — this is essential.** The access
+token is short-lived and the dashboard steps above (card + token) usually outlast it; a
+silent refresh does NOT happen here, so by now the session is likely dead. Provision runs
+wrangler **non-interactively** and can't pop a browser to re-auth, so do it yourself, *right
+before* provisioning: run `wrangler whoami`, and if it's not authenticated **re-run
+`wrangler login --scopes account:read user:read pages:write`** and proceed immediately
+(back-to-back, inside the fresh token's window). If provision still returns `not_logged_in`
+at the Pages stage, that's the same lapse — re-login and retry provision.
+
+Then, keep the secrets off the command line: **write the three pasted values to a creds file
+with the Write tool** (a file write — they never appear in a shell command, consent prompt,
+or shell history) as JSON to `~/.shroom/r2-provision.json`:
 `{"r2Token":"…","r2AccessKeyId":"…","r2SecretAccessKey":"…"}`. Then run:
 ```
 node "${CLAUDE_PLUGIN_ROOT}/scripts/setup/setup.mjs" provision --json \

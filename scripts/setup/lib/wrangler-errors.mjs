@@ -45,7 +45,13 @@ const MATCHERS = [
   { state: 'r2_token_required', test: (t) => /\[code:\s*10000\]/.test(t) && /\/r2\/|r2\/buckets|r2 bucket/.test(t) },
   // Auth. wrangler tends to say "not authenticated" / "must be logged in" /
   // "run `wrangler login`" / "Authentication error [code: 10000]".
-  { state: 'not_logged_in', test: (t) => /not authenticated|must be logged in|wrangler login|you are not logged in|no account id|authentication.*required/.test(t) },
+  // Includes the non-interactive variant: when the OAuth access token has expired (and
+  // can't refresh) in a spawned, TTY-less context, wrangler doesn't re-login — it errors
+  // "In a non-interactive environment… set a CLOUDFLARE_API_TOKEN…". That's a lapsed
+  // session, not a real token requirement, so it routes to a re-login + retry (validated
+  // live: provision's Pages step died this way after the dashboard steps outlasted the
+  // token). It comes AFTER r2_token_required (which is the genuine R2-needs-a-token case).
+  { state: 'not_logged_in', test: (t) => /not authenticated|must be logged in|wrangler login|you are not logged in|no account id|authentication.*required|non-interactive environment|cloudflare_api_token/.test(t) },
   // Scope: authed but the OAuth grant/token lacks R2 or Pages permission.
   { state: 'insufficient_scope', test: (t) => /insufficient (permissions|scope)|not authorized to|lacks the required|missing the following permissions|forbidden|\[code:\s*10000\].*authoriz/.test(t) },
 
