@@ -76,7 +76,7 @@ in the way:
 
 | state | left-click | right / control-click |
 | --- | --- | --- |
-| `○` armed | start → **3-2-1 countdown** → record | menu (Discard) |
+| `🍄` armed | start → **3-2-1 countdown** → record | menu (Discard) |
 | `•` counting | **cancel** → armed | same |
 | `●` recording (red) | **pause**, then open the menu | same |
 | `❚❚` paused | open the menu (Resume / Stop / Restart) | same |
