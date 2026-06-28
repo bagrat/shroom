@@ -32,6 +32,62 @@ import Cocoa
 import CoreGraphics
 import Darwin
 
+// MARK: - TCC responsibility (disclaim re-exec)
+
+// THE PROBLEM this solves: TCC doesn't attribute a permission to the process that
+// *asks* — it walks up to the "responsible process" (the ancestor that owns the
+// session). Launched as a background child of Terminal/Claude, our Screen-Recording
+// request lands on *that* ancestor: the user sees "Terminal" (not "shroom-shim") in
+// the prompt and in System Settings, and ad-hoc signing buys us nothing because the
+// grant isn't even keyed to our binary.
+//
+// THE FIX: re-exec ourselves once with responsibility DISCLAIMED. The private libc
+// call `responsibility_spawnattrs_setdisclaim` tells posix_spawn that the new image
+// is its OWN responsible process — so the running shim is its own TCC principal,
+// named "shroom-shim", with a stable cdhash from the ad-hoc signature. We pass
+// POSIX_SPAWN_SETEXEC so it *replaces* this image (keeps pid + the stdout pipe the
+// parent reads), and guard with an env var so it happens exactly once.
+private func reexecDisclaimingResponsibility() {
+    let guardKey = "SHROOM_SHIM_DISCLAIMED"
+    if getenv(guardKey) != nil { return }   // already the disclaimed image
+
+    // Private symbol in libsystem; absent → run in-process (best effort).
+    typealias DisclaimFn =
+        @convention(c) (UnsafeMutablePointer<posix_spawnattr_t?>, Int32) -> Int32
+    guard let sym = dlsym(UnsafeMutableRawPointer(bitPattern: -2),  // RTLD_DEFAULT
+                          "responsibility_spawnattrs_setdisclaim") else { return }
+    let setDisclaim = unsafeBitCast(sym, to: DisclaimFn.self)
+
+    // Resolve our own executable path (argv[0] may be relative).
+    var size: UInt32 = 0
+    _NSGetExecutablePath(nil, &size)
+    var pathBuf = [CChar](repeating: 0, count: Int(size))
+    guard _NSGetExecutablePath(&pathBuf, &size) == 0 else { return }
+    var resolved = [CChar](repeating: 0, count: Int(PATH_MAX))
+    let exePath = realpath(pathBuf, &resolved) != nil
+        ? String(cString: resolved) : String(cString: pathBuf)
+
+    var attr: posix_spawnattr_t?
+    posix_spawnattr_init(&attr)
+    defer { posix_spawnattr_destroy(&attr) }
+    let POSIX_SPAWN_SETEXEC: Int16 = 0x0040   // replace this image, like execve
+    posix_spawnattr_setflags(&attr, POSIX_SPAWN_SETEXEC)
+    _ = setDisclaim(&attr, 1)
+
+    // argv: ours, NULL-terminated.
+    var argv: [UnsafeMutablePointer<CChar>?] = CommandLine.arguments.map { strdup($0) }
+    argv.append(nil)
+    // envp: current environment + our one-shot guard, NULL-terminated.
+    var envp: [UnsafeMutablePointer<CChar>?] = []
+    var e = environ
+    while let cur = e.pointee { envp.append(strdup(cur)); e = e.advanced(by: 1) }
+    envp.append(strdup("\(guardKey)=1"))
+    envp.append(nil)
+
+    exePath.withCString { _ = posix_spawn(nil, $0, nil, &attr, argv, envp) }
+    // SETEXEC only returns on FAILURE — fall through and run in-process.
+}
+
 // MARK: - Arguments
 
 // shroom-shim --recorder <record.mjs> [--node node] [--fifo <path>] [--log <path>]
@@ -552,6 +608,10 @@ final class ShimController: NSObject, NSApplicationDelegate {
 }
 
 // MARK: - main
+
+// Become our own TCC principal before AppKit (and any capture) starts: re-exec
+// disclaimed so the Screen-Recording grant is named "shroom-shim", not "Terminal".
+reexecDisclaimingResponsibility()
 
 let app = NSApplication.shared
 app.setActivationPolicy(.accessory) // menu-bar only, no Dock icon
