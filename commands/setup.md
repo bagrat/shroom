@@ -101,7 +101,34 @@ Reprint the plan (step 1 ✅).
 
 ## Steps 2–5 — Cloudflare
 
-Two distinct credentials are in play (live-verified): **Pages** (where each video's page
+**First, check what's already set up — never re-ask for credentials that already
+work.** Re-running setup (or running it after a plugin update) must be a no-op when
+Cloudflare is already provisioned; the R2 token especially is a manual, annoying thing
+to recreate. Run:
+
+```
+node "${CLAUDE_PLUGIN_ROOT}/scripts/setup/setup.mjs" status --verify --json
+```
+
+`--verify` live-checks the stored R2 keys (a cheap signed HEAD). Branch on the result:
+
+- **`ready: true`** (storage + pages configured and `storage.verified` is not `false`)
+  → everything's already provisioned and the keys still work. Say so plainly — e.g.
+  *"Cloudflare's already set up: bucket `<storage.bucket>`, site `<pages.project>` —
+  nothing to redo"* — mark steps 2–5 ✅, and jump to **Step 6**. Only walk the steps
+  again if the user **explicitly** wants to switch account/bucket.
+- **`storage.verified: false`** (`verifyReason: "invalid_keys"`) → the stored R2 token
+  was revoked/expired. Keep everything else; go straight to **Step 4** to recreate just
+  the token, then **Step 5** (provision). Don't redo login or the dashboard card.
+- **`storage.configured: false`** → storage isn't set up; walk Steps 2–5 below.
+- **`pages.configured: false`** but storage is fine → only the site project is missing;
+  **Step 5** (provision) creates it idempotently — you can skip straight there.
+- **`verifyReason: "no_fetch"` or `verified: null`** → couldn't live-check (old Node or
+  offline). Fall back to presence: if storage + pages are `configured`, treat as done;
+  otherwise walk the steps. Don't re-ask for keys just because verification was skipped.
+
+If you do need to (re)provision, two distinct credentials are in play (live-verified):
+**Pages** (where each video's page
 is hosted) rides the wrangler **OAuth** login; **R2** (the storage) **cannot** — there's
 no R2 OAuth scope, so `r2 bucket create` over OAuth returns `Authentication error
 [code: 10000]` even on a verified, R2-enabled account. R2 needs an **access token you

@@ -9,6 +9,9 @@
 // Subcommands:
 //   probe [--json]   Check the local env (git/ffmpeg/wrangler/whisper) and print
 //                    a consolidated install plan for whatever's missing.
+//   status [--json]  Report what's already configured in the creds file (library,
+//        [--verify]   storage, pages) so the command can skip done steps and not
+//                     re-ask for the R2 token. --verify live-checks the R2 keys.
 //   init-library     Create the library dir, git init it, record it, vendor
 //        --dir P      hls.min.js, and compile the macOS shim — the whole local-setup
 //                     bundle as one call, so the command never hand-assembles shell.
@@ -31,8 +34,9 @@ import { fileURLToPath } from 'node:url';
 import { probeEnv, spawnRun, findNodeBinDir } from './lib/env-probe.mjs';
 import { buildInstallPlan } from './lib/install-plan.mjs';
 import { provisionCloudflare } from './lib/cloudflare.mjs';
-import { buildCredentials, writeCreds, credsPath, wranglerPathEnv } from './lib/credentials.mjs';
+import { buildCredentials, writeCreds, readCreds, credsPath, wranglerPathEnv } from './lib/credentials.mjs';
 import { spawnWrangler } from '../deploy/lib/wrangler.mjs';
+import { headObject } from '../uploader/lib/s3.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -372,6 +376,79 @@ async function cmdCheckVerified({ json, opts }) {
   }
 }
 
+// status — report what's already configured in ~/.shroom/credentials.json so the
+// command can SKIP steps that are done and never re-ask for the R2 token (the one
+// manual, painful-to-redo secret). Presence is computed offline; `--verify` adds a
+// cheap live check of the stored R2 keys. This is also what makes re-running setup
+// after a plugin update a no-op instead of a re-onboarding.
+async function cmdStatus({ json, opts }) {
+  const creds = readCreds(credsPath());
+
+  const libPath = creds.library;
+  const library = { configured: Boolean(libPath) && fs.existsSync(libPath), path: libPath ?? null };
+
+  const storageConfigured = Boolean(
+    creds.accountId && creds.bucket && creds.endpoint &&
+    creds.accessKeyId && creds.secretAccessKey && creds.publicBaseUrl,
+  );
+  const storage = {
+    configured: storageConfigured,
+    accountId: creds.accountId ?? null,
+    bucket: creds.bucket ?? null,
+    publicBaseUrl: creds.publicBaseUrl ?? null,
+    verified: null,        // null = not checked, or couldn't tell (transient)
+    verifyReason: null,
+  };
+  if (storageConfigured && opts.verify) {
+    const v = await verifyR2(creds);
+    storage.verified = v.ok;
+    storage.verifyReason = v.reason ?? null;
+  }
+
+  const pages = {
+    configured: Boolean(creds.pagesProject && creds.pagesBaseUrl),
+    project: creds.pagesProject ?? null,
+    baseUrl: creds.pagesBaseUrl ?? null,
+  };
+
+  // ready = nothing left to ask the user for: library + storage + pages all present,
+  // and (when we checked) the keys actually work. A null verify doesn't block.
+  const ready =
+    library.configured && storage.configured && pages.configured && storage.verified !== false;
+
+  const out = { ok: true, ready, library, storage, pages, credentials: credsPath() };
+  if (json) process.stdout.write(JSON.stringify(out, null, 2) + '\n');
+  else {
+    process.stdout.write(`library: ${library.configured ? library.path : 'not set'}\n`);
+    const vtag = storage.verified === true ? ' (keys OK)'
+      : storage.verified === false ? ' (keys FAILED)' : '';
+    process.stdout.write(`storage: ${storage.configured ? `${storage.bucket} @ ${storage.accountId}${vtag}` : 'not configured'}\n`);
+    process.stdout.write(`pages:   ${pages.configured ? `${pages.project} (${pages.baseUrl})` : 'not configured'}\n`);
+    process.stdout.write(`ready:   ${ready}\n`);
+  }
+  return 0;
+}
+
+// Cheap liveness check for the stored R2 keys: a signed HEAD on a key that won't
+// exist. 200/404 → signature accepted (keys + bucket good); 401/403 → bad/expired
+// keys (re-ask); anything else or a network error → null (don't cry failure on a
+// transient — presence still counts).
+async function verifyR2(creds) {
+  if (typeof fetch !== 'function') return { ok: null, reason: 'no_fetch' };  // Node <18
+  const client = {
+    endpoint: creds.endpoint, region: creds.region || 'auto', bucket: creds.bucket,
+    accessKeyId: creds.accessKeyId, secretAccessKey: creds.secretAccessKey,
+  };
+  try {
+    const { status } = await headObject(client, '.shroom-setup-probe');
+    if (status === 200 || status === 404) return { ok: true };
+    if (status === 401 || status === 403) return { ok: false, reason: 'invalid_keys' };
+    return { ok: null, reason: `http_${status}` };
+  } catch {
+    return { ok: null, reason: 'unreachable' };
+  }
+}
+
 const [sub, ...rest] = process.argv.slice(2);
 const json = rest.includes('--json');
 const opts = parseArgs(rest);
@@ -403,8 +480,11 @@ switch (sub) {
   case 'check-verified':
     code = await cmdCheckVerified({ json, opts });
     break;
+  case 'status':
+    code = await cmdStatus({ json, opts });
+    break;
   default:
-    process.stderr.write('Usage: setup.mjs <probe|provision|set-library|init-library|check-verified> [--json] [--dir PATH] [--account ID] [--bucket N] [--pages-project N] [--branch N] [--wrangler BIN]\n');
+    process.stderr.write('Usage: setup.mjs <probe|status|provision|set-library|init-library|check-verified> [--json] [--verify] [--dir PATH] [--account ID] [--bucket N] [--pages-project N] [--branch N] [--wrangler BIN]\n');
     code = 2;
 }
 process.exit(code);
