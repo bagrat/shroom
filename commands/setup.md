@@ -115,9 +115,24 @@ create in the dashboard**. Walk it as separate, brief steps:
   `wrangler login --scopes account:read user:read pages:write` (opens a browser, no token
   paste). Afterward wrangler prints a yellow "missing some expected OAuth scopes" warning
   — tell them up front it's **expected and harmless** with a narrow login.
-- If they signed up with **email** (not Google), Cloudflare makes them **verify their
-  email** before they can create tokens — if a later step reports `email_unverified`,
-  point them to the verification email and re-try. Reprint (step 2 ✅).
+- **Then check email verification — right here, before step 3.** Cloudflare blocks the R2
+  page *and* token creation until the account email is verified (email signups only;
+  Google SSO is pre-verified). Don't let a later step discover it — that's the scary
+  "verification required" wall. Run:
+  ```
+  node "${CLAUDE_PLUGIN_ROOT}/scripts/setup/setup.mjs" check-verified --json
+  ```
+  (it auto-detects the account; pass `--account <id>` if you already have it). Branch on
+  `verified`:
+  - `true` → carry on.
+  - `false` → `AskUserQuestion`: tell them to open the verification email Cloudflare sent
+    to their address and click the link; options *I've verified — continue / Resend (open
+    `https://dash.cloudflare.com`)*. On continue, **re-run `check-verified`**; loop until
+    `true`. **Do not proceed to step 3 while unverified.**
+  - `null` → couldn't determine; don't block — proceed, and provision catches
+    `email_unverified` later as a fallback.
+
+  Reprint (step 2 ✅).
 
 **Step 3 — Add a card + turn on R2.** One-line why (free tier needs a card on file), then
 `AskUserQuestion` to open `https://dash.cloudflare.com/<accountId>/r2/overview`; they

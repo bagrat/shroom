@@ -12,6 +12,9 @@
 //   init-library     Create the library dir, git init it, record it, vendor
 //        --dir P      hls.min.js, and compile the macOS shim — the whole local-setup
 //                     bundle as one call, so the command never hand-assembles shell.
+//   check-verified   Is the account email verified? (Write-probe: an unverified
+//                     account returns API code 8000077.) A gate to run right after
+//                     login, before the R2 page that throws "verification required".
 //   provision [...]  Run the Cloudflare sub-sequence (whoami → bucket → public
 //                    access → Pages project) over wrangler and merge the results
 //                    into ~/.shroom/credentials.json.
@@ -22,6 +25,7 @@
 
 import path from 'node:path';
 import fs from 'node:fs';
+import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 
 import { probeEnv, spawnRun, findNodeBinDir } from './lib/env-probe.mjs';
@@ -217,6 +221,77 @@ async function cmdInitLibrary({ json, opts, run = (c, a) => spawnRun(c, a, { tim
   return 0;
 }
 
+// wrangler stores its OAuth token in a per-OS config TOML. We read it to make one
+// authenticated API call (the verification probe below) — the same token wrangler
+// itself uses. Best-effort across the known locations; null if not found.
+function readWranglerOAuthToken({ home = os.homedir(), fsmod = fs } = {}) {
+  const candidates = [
+    path.join(home, 'Library/Preferences/.wrangler/config/default.toml'), // macOS
+    path.join(home, '.config/.wrangler/config/default.toml'), // XDG / Linux
+    path.join(home, '.wrangler/config/default.toml'), // legacy
+  ];
+  for (const p of candidates) {
+    try {
+      const m = fsmod.readFileSync(p, 'utf8').match(/oauth_token\s*=\s*"([^"]+)"/);
+      if (m) return m[1];
+    } catch { /* not here — keep looking */ }
+  }
+  return null;
+}
+
+// Is the account's email verified? Reads don't reveal it (validated live: GET /user has
+// no flag), but an in-scope WRITE does — an unverified account returns API error code
+// 8000077 "Your user email must been verified". So we attempt a throwaway Pages project
+// create and branch on that, deleting it again if it actually succeeds (verified). This
+// is the one place we *detect* rather than attempt-the-real-op, because the verification
+// wall sits BEFORE the user can even reach the R2/token steps — so it must be a gate
+// right after login, not a mid-provision surprise. Result: { verified: true|false|null }
+// (null = couldn't determine; the command proceeds and lets provision catch it later).
+async function cmdCheckVerified({ json, opts }) {
+  const emit = (o) => {
+    if (json) process.stdout.write(JSON.stringify(o, null, 2) + '\n');
+    else process.stdout.write(`email verified: ${o.verified}\n`);
+    return 0;
+  };
+  const token = readWranglerOAuthToken();
+  if (!token) return emit({ verified: null, reason: 'no_oauth_token' });
+
+  const api = 'https://api.cloudflare.com/client/v4';
+  const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+
+  let account = opts.account && opts.account !== 'true' ? opts.account : null;
+  if (!account) {
+    try {
+      const r = await fetch(`${api}/accounts`, { headers });
+      const d = await r.json();
+      account = d?.result?.[0]?.id ?? null;
+    } catch { /* fall through */ }
+  }
+  if (!account) return emit({ verified: null, reason: 'no_account' });
+
+  const probe = 'shroom-verify-probe';
+  try {
+    const res = await fetch(`${api}/accounts/${account}/pages/projects`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ name: probe, production_branch: 'main' }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.success) {
+      // Verified — the probe really created a project; clean it back up.
+      await fetch(`${api}/accounts/${account}/pages/projects/${probe}`, { method: 'DELETE', headers }).catch(() => {});
+      return emit({ verified: true, accountId: account });
+    }
+    const errs = data.errors ?? [];
+    if (errs.some((e) => e.code === 8000077) || /must be(en)? verified|verify your email/i.test(JSON.stringify(errs))) {
+      return emit({ verified: false, accountId: account });
+    }
+    return emit({ verified: null, reason: 'unexpected', errors: errs });
+  } catch (e) {
+    return emit({ verified: null, reason: 'network', message: String(e?.message || e) });
+  }
+}
+
 const [sub, ...rest] = process.argv.slice(2);
 const json = rest.includes('--json');
 const opts = parseArgs(rest);
@@ -245,8 +320,11 @@ switch (sub) {
   case 'init-library':
     code = await cmdInitLibrary({ json, opts });
     break;
+  case 'check-verified':
+    code = await cmdCheckVerified({ json, opts });
+    break;
   default:
-    process.stderr.write('Usage: setup.mjs <probe|provision|set-library|init-library> [--json] [--dir PATH] [--bucket N] [--pages-project N] [--branch N] [--wrangler BIN]\n');
+    process.stderr.write('Usage: setup.mjs <probe|provision|set-library|init-library|check-verified> [--json] [--dir PATH] [--account ID] [--bucket N] [--pages-project N] [--branch N] [--wrangler BIN]\n');
     code = 2;
 }
 process.exit(code);

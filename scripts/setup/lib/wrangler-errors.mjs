@@ -50,7 +50,10 @@ const MATCHERS = [
   { state: 'insufficient_scope', test: (t) => /insufficient (permissions|scope)|not authorized to|lacks the required|missing the following permissions|forbidden|\[code:\s*10000\].*authoriz/.test(t) },
 
   // Account gates (these come back from the first gated op, not from login).
-  { state: 'email_unverified', test: (t) => /verify your email|email.*not.*verified|unverified email|confirm your email/.test(t) },
+  // Cloudflare's real signal (validated live) is API error code 8000077, message
+  // "Your user email must been verified" (sic) — which none of the friendlier phrasings
+  // below would catch, so match the code and the "must be/been verified" wording too.
+  { state: 'email_unverified', test: (t) => /\[?code:?\s*8000077\]?|email must be(en)? verified|verify your email|email.*not.*verified|unverified email|confirm your email/.test(t) },
   // R2 subscription / ToS not accepted yet. Each alternative is self-contained
   // (no redundant leading "r2.*") so "Please enable R2" matches on its own.
   { state: 'r2_not_enabled', test: (t) => /r2 (is )?not enabled|not enabled.*r2|sign up for r2|enable r2|subscribe to r2|r2.*(subscription|terms of service|not subscribed)/.test(t) },
