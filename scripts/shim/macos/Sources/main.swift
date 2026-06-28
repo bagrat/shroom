@@ -346,9 +346,67 @@ final class ShimController: NSObject, NSApplicationDelegate {
     func render() {
         guard let button = statusItem?.button else { return }
         button.toolTip = label(for: state)
+        // Armed = the shroom mushroom mark; every other state stays a text glyph
+        // (a colored dot/bars reads faster for live/paused than a tiny silhouette).
+        if case .armed = state {
+            button.image = armedIcon
+            button.attributedTitle = NSAttributedString(string: "")
+            return
+        }
+        button.image = nil
         var attrs: [NSAttributedString.Key: Any] = [:]
         if case .recording = state { attrs[.foregroundColor] = NSColor.systemRed } // universal "live"
         button.attributedTitle = NSAttributedString(string: glyph(for: state), attributes: attrs)
+    }
+
+    // The armed-state menu-bar icon: the shroom mushroom (cap + stem) with the
+    // cap's spots punched out as transparent holes — the same mark as the site
+    // logo (variation #45). Built as a template image so macOS tints it for the
+    // current menu bar (white on a dark bar, black on a light one).
+    lazy var armedIcon: NSImage = makeMushroomIcon()
+
+    func makeMushroomIcon() -> NSImage {
+        // Design space matches docs/logo.svg: the mark occupies x∈[24,96],
+        // y∈[26,104] with y pointing DOWN (SVG convention). Fit that 72×78 box
+        // into a 17×16pt image and flip y for AppKit's bottom-left origin.
+        let w: CGFloat = 17, h: CGFloat = 16
+        let img = NSImage(size: NSSize(width: w, height: h), flipped: false) { _ in
+            guard let ctx = NSGraphicsContext.current else { return false }
+            let pad: CGFloat = 1
+            let s = min((w - 2 * pad) / 72.0, (h - 2 * pad) / 78.0)
+            let offX = (w - 72 * s) / 2 - 24 * s
+            let offY = (h - 78 * s) / 2 + 104 * s
+            func P(_ x: CGFloat, _ y: CGFloat) -> NSPoint { NSPoint(x: offX + s * x, y: offY - s * y) }
+
+            let body = NSBezierPath()
+            body.move(to: P(24, 64))
+            body.curve(to: P(60, 26), controlPoint1: P(24, 42), controlPoint2: P(40, 26))
+            body.curve(to: P(96, 64), controlPoint1: P(80, 26), controlPoint2: P(96, 42))
+            body.curve(to: P(24, 64), controlPoint1: P(86, 75), controlPoint2: P(34, 75))
+            body.close()
+            body.move(to: P(50, 68))
+            body.curve(to: P(46, 96), controlPoint1: P(49, 82), controlPoint2: P(46, 92))
+            body.curve(to: P(60, 104), controlPoint1: P(46, 101), controlPoint2: P(52, 104))
+            body.curve(to: P(74, 96), controlPoint1: P(68, 104), controlPoint2: P(74, 101))
+            body.curve(to: P(70, 68), controlPoint1: P(74, 92), controlPoint2: P(71, 82))
+            body.close()
+            NSColor.black.setFill()
+            body.fill()
+
+            // Punch the cap spots out as transparent holes (variation #45).
+            let holes: [(CGFloat, CGFloat, CGFloat)] = [
+                (33, 58, 3.4), (88, 58, 2.2), (50, 44, 6), (72, 48, 3.6), (64, 58, 2.6),
+            ]
+            ctx.compositingOperation = .destinationOut
+            for (cx, cy, r) in holes {
+                let c = P(cx, cy)
+                let rr = r * s
+                NSBezierPath(ovalIn: NSRect(x: c.x - rr, y: c.y - rr, width: 2 * rr, height: 2 * rr)).fill()
+            }
+            return true
+        }
+        img.isTemplate = true
+        return img
     }
 
     func glyph(for s: RecState) -> String {
