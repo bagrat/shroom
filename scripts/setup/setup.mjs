@@ -84,13 +84,35 @@ async function cmdProvision({ json, opts }) {
   if (nodeBinDir) writeCreds(buildCredentials({ nodeBinDir }));
   const baseEnv = wranglerPathEnv(process.env);
 
+  // R2 creds may come via a file: the command writes the dashboard token + keys there with
+  // the Write tool so they never land on a shell command line (consent prompt / ps /
+  // history). Read it here. Keep it across retries — a `needsDashboard` failure auto-polls
+  // by re-running this command, which must re-read it — and delete it on success or a
+  // terminal failure so plaintext secrets don't linger.
+  const credsFile = opts['r2-creds-file'] && opts['r2-creds-file'] !== 'true'
+    ? opts['r2-creds-file'].replace(/^~(?=\/)/, os.homedir())
+    : null;
+  let fileCreds = {};
+  if (credsFile) {
+    try {
+      fileCreds = JSON.parse(fs.readFileSync(credsFile, 'utf8'));
+      fs.chmodSync(credsFile, 0o600); // it holds secrets — lock it down while it lives
+    } catch (e) {
+      const out = { ok: false, stage: 'r2-creds-file', state: 'unreadable', message: e.message };
+      process.stdout.write(JSON.stringify(out, null, 2) + '\n');
+      return 1;
+    }
+  }
+  const rmCredsFile = () => { if (credsFile) try { fs.unlinkSync(credsFile); } catch { /* already gone */ } };
+
   const res = await provisionCloudflare({
     runWrangler,
     baseEnv,
-    // The R2 API token (+ its derived S3 keys) the user created in the dashboard.
-    r2Token: opts['r2-token'] ?? process.env.CLOUDFLARE_R2_TOKEN,
-    r2AccessKeyId: opts['r2-access-key-id'] ?? process.env.SHROOM_S3_ACCESS_KEY_ID,
-    r2SecretAccessKey: opts['r2-secret-access-key'] ?? process.env.SHROOM_S3_SECRET_ACCESS_KEY,
+    // The R2 API token (+ its derived S3 keys) the user created in the dashboard — passed
+    // via --r2-creds-file (preferred) or, for scripting, flags/env.
+    r2Token: opts['r2-token'] ?? fileCreds.r2Token ?? process.env.CLOUDFLARE_R2_TOKEN,
+    r2AccessKeyId: opts['r2-access-key-id'] ?? fileCreds.r2AccessKeyId ?? process.env.SHROOM_S3_ACCESS_KEY_ID,
+    r2SecretAccessKey: opts['r2-secret-access-key'] ?? fileCreds.r2SecretAccessKey ?? process.env.SHROOM_S3_SECRET_ACCESS_KEY,
     bucket: opts.bucket ?? 'shroom',
     pagesProject: opts['pages-project'] ?? 'shroom-site',
     branch: opts.branch ?? 'main',
@@ -98,6 +120,9 @@ async function cmdProvision({ json, opts }) {
   });
 
   if (!res.ok) {
+    // Keep the creds file only when the user will retry from a dashboard gate (auto-poll
+    // re-runs this); any other failure is terminal here, so don't leave secrets on disk.
+    if (!res.needsDashboard) rmCredsFile();
     const out = { ok: false, stage: res.stage, state: res.state, needsDashboard: res.needsDashboard ?? false, message: res.message };
     if (json) process.stdout.write(JSON.stringify(out, null, 2) + '\n');
     else process.stderr.write(`\nProvisioning stopped at "${res.stage}" (${res.state}).\n${res.message ?? ''}\n`);
@@ -122,6 +147,7 @@ async function cmdProvision({ json, opts }) {
       secretAccessKey: token.secretAccessKey,
     }),
   );
+  rmCredsFile(); // success — the secrets are now in the (mode-600) creds; consume the temp file
 
   const out = {
     ok: true,

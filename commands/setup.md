@@ -1,7 +1,7 @@
 ---
 description: One-time shroom setup — check local tools, install what's missing, and provision Cloudflare R2 + Pages so record → link works.
 argument-hint: "[library-dir]"
-allowed-tools: AskUserQuestion, Bash(node:*), Bash(git:*), Bash(brew:*), Bash(npm:*), Bash(/bin/bash:*), Bash(/bin/sh:*), Bash(xcode-select:*), Bash(wrangler:*), Bash(open:*)
+allowed-tools: AskUserQuestion, Write, Bash(node:*), Bash(git:*), Bash(brew:*), Bash(npm:*), Bash(/bin/bash:*), Bash(/bin/sh:*), Bash(xcode-select:*), Bash(wrangler:*), Bash(open:*)
 ---
 
 You are running `/shroom:setup` — the one-time onboarding flow (SPEC §8). Treat the
@@ -145,18 +145,20 @@ accept the terms + add a card to enable R2. Reprint (step 3 ✅).
 `https://dash.cloudflare.com/<accountId>/r2/api-tokens`, then a short numbered list:
 1. Click **Create Account API token**
 2. Permission: **Admin Read & Write** (so it can create the bucket + enable public access)
-3. **Apply to all buckets**
-4. On the confirmation screen, copy the three values: **Token value**, **Access Key ID**,
+3. On the confirmation screen, copy the three values: **Token value**, **Access Key ID**,
    **Secret Access Key**
 
-Have them **paste the three values right here in the session** — no temp files. Reprint
-(step 4 ✅).
+Have them **paste the three values right here in the session**. Reprint (step 4 ✅).
 
-**Step 5 — Provision.** Pass the token + keys:
+**Step 5 — Provision.** Keep the secrets off the command line: **write the three pasted
+values to a creds file with the Write tool** (a file write — they never appear in a shell
+command, consent prompt, or shell history) as JSON to `~/.shroom/r2-provision.json`:
+`{"r2Token":"…","r2AccessKeyId":"…","r2SecretAccessKey":"…"}`. Then run:
 ```
 node "${CLAUDE_PLUGIN_ROOT}/scripts/setup/setup.mjs" provision --json \
-  --r2-token <TOKEN> --r2-access-key-id <AKID> --r2-secret-access-key <SECRET>
+  --r2-creds-file ~/.shroom/r2-provision.json
 ```
+`provision` reads it and **deletes it** when done (kept only across dashboard-gate retries).
 (Add `--bucket` / `--pages-project` only for non-default names.) This creates the bucket,
 enables its public `*.r2.dev` URL (so videos play back — anyone with a link can watch;
 links are long and unguessable, but public), creates the Pages project, and writes the S3
