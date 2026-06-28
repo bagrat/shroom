@@ -82,19 +82,20 @@ Then, as **one** batched action the user approved:
 - If approved, run `plan.combinedCommand` (single Bash call), then **re-run the probe** to
   confirm required tools are present. If something required is still missing, stop and say
   so plainly — don't proceed to Cloudflare.
-- `git init` the library dir if it isn't already a repo (`git -C <dir> rev-parse`).
-- Record the dir so `/shroom:record` finds it:
-  `node "${CLAUDE_PLUGIN_ROOT}/scripts/setup/setup.mjs" set-library --dir <dir>`.
-- **Vendor `hls.min.js`** (the player lazy-loads it; deploy refuses to ship without it):
-  `node "${CLAUDE_PLUGIN_ROOT}/scripts/page/vendor/fetch-hls.mjs"` — pinned + SHA-256
-  verified, idempotent.
-- **Compile the macOS control shim** (the menu-bar "tray" `/shroom:record` launches; it
-  owns Screen-Recording permission): `/bin/sh
-  "${CLAUDE_PLUGIN_ROOT}/scripts/shim/macos/build.sh"` → `build/shroom-shim` (`swiftc -O`
-  + ad-hoc `codesign`). Needs Xcode **Command Line Tools**; if `build.sh` exits *"swiftc
-  not found"*, propose **`xcode-select --install`** (a separate GUI installer — ask, let
-  them run it, then re-run `build.sh`). Idempotent. (macOS only; skip elsewhere — recording
-  needs the shim there.)
+- Build the library + local helpers in **one script call** — don't hand-assemble shell
+  (that trips a scary "can't analyze this command" prompt and isn't the determinism
+  boundary):
+  ```
+  node "${CLAUDE_PLUGIN_ROOT}/scripts/setup/setup.mjs" init-library --dir <dir> --json
+  ```
+  It creates the dir, `git init`s it if needed, records it in the creds, vendors
+  `hls.min.js`, and compiles the macOS control shim (the menu-bar "tray" `/shroom:record`
+  launches; it owns Screen-Recording permission) — all idempotent. Read the JSON:
+  - `ok: false` → surface `stage` + `message` and stop.
+  - `shim: "needs-xcode-clt"` → the shim needs Xcode **Command Line Tools**; propose
+    **`xcode-select --install`** (a separate GUI installer — ask, let them run it), then
+    **re-run `init-library`** (idempotent; only the shim is left to build).
+  - `shim: "built"` (or `"skipped"` off macOS) → done.
 
 Reprint the plan (step 1 ✅).
 
