@@ -30,6 +30,7 @@
 
 import Cocoa
 import CoreGraphics
+import AVFoundation
 import Darwin
 
 // MARK: - TCC responsibility (disclaim re-exec)
@@ -86,6 +87,135 @@ private func reexecDisclaimingResponsibility() {
 
     exePath.withCString { _ = posix_spawn(nil, $0, nil, &attr, argv, envp) }
     // SETEXEC only returns on FAILURE — fall through and run in-process.
+}
+
+// MARK: - Permissions primer (`shroom --permissions`)
+
+// Run by /shroom:record as a throwaway FIRST launch before the real tray: request
+// Screen Recording + Microphone from THIS binary — the disclaimed "shroom" principal
+// — so both prompts read "shroom" (not Terminal) and the grants are held by the same
+// identity that records. Then exit; the real background tray launches fresh and
+// inherits the grants. Idempotent: if both are already granted this prints and exits
+// without prompting, so every record after the first is silent.
+//
+// Why a throwaway launch matters for Screen Recording: that grant can't be given from
+// the prompt — the user toggles it in System Settings and it only takes effect on the
+// NEXT launch. The primer IS that first launch, so the real tray (the next process)
+// sees it live — no "quit and relaunch the tray" dance.
+//
+// Prints one line of JSON: {"screen":"granted|prompted","mic":"granted|denied"}.
+//
+// ORDER MATTERS. A TCC prompt is owned by the process that asked — if we exit while
+// one is still open, the system tears it down. The two permissions also behave
+// differently: Microphone is an instant inline Allow/Don't-Allow; Screen Recording
+// can't be granted from its prompt at all (the user opens System Settings and toggles
+// it, effective only on the NEXT launch). So we (1) fully resolve the mic prompt FIRST
+// — never stacked under another — then (2) trigger the screen prompt and HOLD the
+// process open on a blocking "Done" dialog, so exiting can't kill the screen prompt
+// before the user has enabled it. We exit only when they click Done; the real tray
+// then launches fresh and sees the grant.
+private func runPermissionsPrimerAndExit() -> Never {
+    // An app instance lets us show the blocking "Done" dialog (and present cleanly as
+    // an accessory). The disclaim re-exec already ran, so this is still "shroom".
+    let app = NSApplication.shared
+    app.setActivationPolicy(.accessory)
+
+    // 1) Microphone — resolve it completely before touching the screen prompt so the
+    //    two never stack (allowing mic must not dismiss the screen prompt).
+    var micGranted = AVCaptureDevice.authorizationStatus(for: .audio) == .authorized
+    if !micGranted {
+        let sem = DispatchSemaphore(value: 0)
+        AVCaptureDevice.requestAccess(for: .audio) { ok in micGranted = ok; sem.signal() }
+        sem.wait()
+    }
+
+    // 2) Screen Recording — only if not already granted.
+    var screen = "granted"
+    if !CGPreflightScreenCaptureAccess() {
+        _ = CGRequestScreenCaptureAccess()   // registers "shroom" in the list + prompts
+        screen = "prompted"
+        // Hold the process open so the just-opened screen prompt survives. The grant
+        // lands on the NEXT launch (the real tray), so we don't poll — we just wait
+        // for the user to confirm they've toggled it.
+        app.activate(ignoringOtherApps: true)
+        let a = NSAlert()
+        a.messageText = "Turn on Screen Recording for shroom"
+        a.informativeText = """
+        A macOS prompt just asked about Screen Recording. On it, click “Open System \
+        Settings”, switch ON “shroom” under Screen Recording, then click Done here — \
+        recording starts right after.
+        """
+        a.addButton(withTitle: "Done")
+        a.runModal()
+    }
+
+    print("{\"screen\":\"\(screen)\",\"mic\":\"\(micGranted ? "granted" : "denied")\"}")
+    exit(0)
+}
+
+// MARK: - App-icon rendering (`--render-icon <px> <path>`)
+
+// Render the colored mushroom mark (docs/logo.svg, the same shape the tray draws) at
+// `size`×`size` into a PNG, then exit. build.sh calls this for each iconset size and
+// runs iconutil → shroom.icns, so the app's Privacy-pane icon is generated on-device
+// from source — no committed image blob.
+private func renderAppIconAndExit(size: Int, to path: String) -> Never {
+    guard size > 0,
+          let rep = NSBitmapImageRep(
+            bitmapDataPlanes: nil, pixelsWide: size, pixelsHigh: size,
+            bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+            colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0) else { exit(1) }
+    NSGraphicsContext.saveGraphicsState()
+    NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
+    drawShroomAppIcon(canvas: CGFloat(size))
+    NSGraphicsContext.restoreGraphicsState()
+    guard let png = rep.representation(using: .png, properties: [:]) else { exit(1) }
+    do { try png.write(to: URL(fileURLWithPath: path)); exit(0) } catch { exit(1) }
+}
+
+// The mushroom on a rounded slate tile, in the Nord palette of docs/logo.svg. Design
+// space matches the SVG: x∈[24,96], y∈[26,104] with y pointing DOWN; we fit + flip it
+// into a centered region of the square canvas.
+private func drawShroomAppIcon(canvas c: CGFloat) {
+    // Rounded-rect tile (a touch of inset so the corners aren't clipped).
+    let inset = c * 0.04
+    let tile = NSBezierPath(roundedRect: NSRect(x: inset, y: inset, width: c - 2 * inset,
+                                                height: c - 2 * inset),
+                            xRadius: c * 0.225, yRadius: c * 0.225)
+    NSColor(srgbRed: 0x2E/255, green: 0x34/255, blue: 0x40/255, alpha: 1).setFill() // Nord polar night
+    tile.fill()
+
+    // Fit the 72×78 mark into ~62% of the canvas, centered, y flipped for AppKit.
+    let scale = (c * 0.62) / 78.0
+    let drawnW = 72 * scale, drawnH = 78 * scale
+    let offX = (c - drawnW) / 2 - 24 * scale
+    let offY = (c - drawnH) / 2 + 104 * scale
+    func P(_ x: CGFloat, _ y: CGFloat) -> NSPoint { NSPoint(x: offX + scale * x, y: offY - scale * y) }
+
+    let stem = NSBezierPath()
+    stem.move(to: P(50, 68))
+    stem.curve(to: P(46, 96),  controlPoint1: P(49, 82),  controlPoint2: P(46, 92))
+    stem.curve(to: P(60, 104), controlPoint1: P(46, 101), controlPoint2: P(52, 104))
+    stem.curve(to: P(74, 96),  controlPoint1: P(68, 104), controlPoint2: P(74, 101))
+    stem.curve(to: P(70, 68),  controlPoint1: P(74, 92),  controlPoint2: P(71, 82))
+    stem.close()
+    NSColor(srgbRed: 0xE5/255, green: 0xE9/255, blue: 0xF0/255, alpha: 1).setFill() // snow storm
+    stem.fill()
+
+    let cap = NSBezierPath()
+    cap.move(to: P(24, 64))
+    cap.curve(to: P(60, 26), controlPoint1: P(24, 42), controlPoint2: P(40, 26))
+    cap.curve(to: P(96, 64), controlPoint1: P(80, 26), controlPoint2: P(96, 42))
+    cap.curve(to: P(24, 64), controlPoint1: P(86, 75), controlPoint2: P(34, 75))
+    cap.close()
+    NSColor(srgbRed: 0x88/255, green: 0xC0/255, blue: 0xD0/255, alpha: 1).setFill() // frost
+    cap.fill()
+
+    NSColor(srgbRed: 0xEC/255, green: 0xEF/255, blue: 0xF4/255, alpha: 1).setFill() // spots
+    for (cx, cy, r) in [(33.0, 58.0, 3.4), (88, 58, 2.2), (50, 44, 6), (72, 48, 3.6), (64, 58, 2.6)] {
+        let p = P(CGFloat(cx), CGFloat(cy)); let rr = CGFloat(r) * scale
+        NSBezierPath(ovalIn: NSRect(x: p.x - rr, y: p.y - rr, width: 2 * rr, height: 2 * rr)).fill()
+    }
 }
 
 // MARK: - Arguments
@@ -154,6 +284,7 @@ final class ShimController: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ note: Notification) {
         ensureScreenRecordingAccess()
+        ensureMicrophoneAccess()
         ensureFifo()
         setupStatusItem()
         launchRecorder()
@@ -179,13 +310,23 @@ final class ShimController: NSObject, NSApplicationDelegate {
             let a = NSAlert()
             a.messageText = "Screen Recording permission needed"
             a.informativeText = """
-            Grant “shroom-shim” Screen Recording in System Settings → Privacy & \
-            Security → Screen Recording, then quit and relaunch the shim. Capture \
+            Grant “shroom” Screen Recording in System Settings → Privacy & \
+            Security → Screen Recording, then quit and relaunch shroom. Capture \
             won’t work until it’s granted.
             """
             a.addButton(withTitle: "OK")
             a.runModal()
         }
+    }
+
+    // Hold the Microphone grant on the "shroom" principal so the grandchild ffmpeg
+    // inherits it — mirrors ensureScreenRecordingAccess. Without this the mic prompt
+    // fires from ffmpeg instead and TCC attributes it to the parent (Terminal). The
+    // record flow primes this up front via `shroom --permissions`; this launch-time
+    // call is the safety net (and a no-op that never prompts once granted).
+    func ensureMicrophoneAccess() {
+        guard AVCaptureDevice.authorizationStatus(for: .audio) != .authorized else { return }
+        AVCaptureDevice.requestAccess(for: .audio) { _ in }   // non-blocking; primes the grant
     }
 
     // MARK: fifo
@@ -609,9 +750,25 @@ final class ShimController: NSObject, NSApplicationDelegate {
 
 // MARK: - main
 
+// Build step (run by build.sh): render the app icon from our own mushroom mark and
+// exit. No TCC / disclaim needed — it's offscreen drawing. Must run BEFORE the
+// disclaim re-exec so the build isn't spawning disclaimed copies.
+if let ri = CommandLine.arguments.firstIndex(of: "--render-icon"),
+   ri + 2 < CommandLine.arguments.count,
+   let px = Int(CommandLine.arguments[ri + 1]) {
+    renderAppIconAndExit(size: px, to: CommandLine.arguments[ri + 2])
+}
+
 // Become our own TCC principal before AppKit (and any capture) starts: re-exec
-// disclaimed so the Screen-Recording grant is named "shroom-shim", not "Terminal".
+// disclaimed so the Screen-Recording + Microphone grants are named "shroom", not
+// "Terminal".
 reexecDisclaimingResponsibility()
+
+// Permissions-priming mode (run by /shroom:record before the real tray): request
+// screen + mic as "shroom", then exit. Idempotent — silent when already granted.
+if CommandLine.arguments.contains("--permissions") {
+    runPermissionsPrimerAndExit()
+}
 
 let app = NSApplication.shared
 app.setActivationPolicy(.accessory) // menu-bar only, no Dock icon

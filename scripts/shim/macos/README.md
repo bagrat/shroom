@@ -10,13 +10,21 @@ The per-OS native piece of recorder **process model B** (locked + verified —
 
 It owns three things and nothing else:
 
-1. **Screen-Recording permission (TCC).** An on-device, **ad-hoc-signed** binary is
-   its *own* TCC principal — it appears under its own name in System Settings →
-   Privacy & Security → Screen Recording, not under Claude/Terminal. The grant it
-   holds is inherited by its grandchild ffmpeg, so capture works even though the
-   shim never touches the screen itself. Ad-hoc signing gives a **stable cdhash**,
-   so the grant **persists for the life of this build** (re-prompts only when an
-   update changes the binary — no Apple Developer account needed).
+1. **Screen-Recording + Microphone permission (TCC).** An on-device,
+   **ad-hoc-signed** binary is its *own* TCC principal — it appears as **“shroom”** in
+   System Settings → Privacy & Security, not under Claude/Terminal. Two mechanisms get
+   it there: at startup it **re-execs itself with responsibility disclaimed**
+   (`responsibility_spawnattrs_setdisclaim`) so it's its own responsible process (not
+   the Terminal that launched it), and it **requests both permissions itself** (the
+   grandchild ffmpeg would otherwise trip the mic prompt and get it pinned on
+   Terminal). The grants it holds are inherited by ffmpeg, so capture works even
+   though the shim never touches the screen or mic itself. Ad-hoc signing gives a
+   **stable cdhash**, so the grants **persist for the life of this build** (re-prompts
+   only when an update changes the binary — no Apple Developer account needed). It's a
+   real `.app` bundle whose `Info.plist` carries the mic usage string, the clean
+   "shroom" name, and our icon (so the Privacy panes show the mushroom, not a generic
+   exec icon). `/shroom:record` front-loads both prompts via `shroom --permissions`
+   before the real tray launches.
 2. **The menu-bar item (the tray)** — the human's hands on the recording.
 3. **Launching the Node recorder + writing its control fifo.** The shim writes the
    exact same newline commands any shell would (`echo start > control.fifo`); it is
@@ -31,20 +39,23 @@ begins the screen capture.
 ## Build (on-device, never a precompiled blob)
 
 ```sh
-./build.sh        # swiftc -O … + codesign --force --sign -  → build/shroom-shim
+./build.sh        # swiftc -O → render icon → iconutil → codesign  → build/shroom.app
 ```
 
 We ship **readable source** ([`Sources/main.swift`](Sources/main.swift)) and compile
-it here at install. A precompiled binary that captures the screen and sits near
-cloud creds is exactly the opaque thing an OSS audience shouldn't be asked to trust
-— on-device compile means the bytes running are the bytes you can read. `build.sh`
-requires the Xcode **Command Line Tools** (`swiftc`); if missing it prints the one
-fix (`xcode-select --install`) and stops. Output (`build/`) is gitignored.
+it here at install — even the icon is rendered on-device from the same mushroom mark
+the tray draws (no committed image blob). A precompiled binary that captures the
+screen and sits near cloud creds is exactly the opaque thing an OSS audience shouldn't
+be asked to trust — on-device compile means the bytes running are the bytes you can
+read. `build.sh` requires the Xcode **Command Line Tools** (`swiftc`); if missing it
+prints the one fix (`xcode-select --install`) and stops. Output (`build/`) is
+gitignored. We package a real **`.app` bundle** (not a bare binary) so TCC shows our
+icon + clean "shroom" name in the Privacy panes.
 
 ## Run
 
 ```sh
-build/shroom-shim \
+build/shroom.app/Contents/MacOS/shroom \
   --recorder /abs/path/to/scripts/recorder/record.mjs \
   [--node node] [--fifo <path>] [--log <path>] \
   -- --out <session-dir> --device "Capture screen 0" --audio default --quality normal
@@ -55,8 +66,10 @@ build/shroom-shim \
 - `--fifo`/`--log` default to `<out>/control.fifo` and `<out>/shim-node.log`, derived
   from the `--out` in the passthrough (matching what the recorder uses), so usually
   you only pass `--out`.
-- On first launch it requests Screen Recording (registers the shim as the TCC
-  principal). A first-ever grant can need one quit+relaunch to take effect.
+- On first launch it requests Screen Recording + Microphone (registers "shroom" as
+  the TCC principal). Screen Recording's grant takes effect on the next launch — which
+  is why `/shroom:record` runs `--permissions` as a throwaway first, then launches the
+  real tray fresh.
 
 The tray's **primary (left) click** is the one obvious action per state — no menu
 in the way:
@@ -112,10 +125,12 @@ placement is a later refinement.
 ## Layout
 
 ```
-Sources/main.swift   the shim: TCC + tray + recorder launch + fifo writes
+Sources/main.swift   the shim: TCC (disclaim + perms) + tray + recorder launch + fifo
+                     + --render-icon (the app icon, drawn from the same mushroom mark)
 Sources/Overlay.swift  fullscreen countdown + Discard/Restart confirm overlay
-build.sh             on-device compile (all Sources/*.swift) + ad-hoc sign
-build/               output (gitignored)
+Info.plist           the bundle's Contents/Info.plist (mic usage string, name, icon)
+build.sh             on-device: compile + render icon → .icns + assemble .app + sign
+build/               output: shroom.app (gitignored)
 ```
 
 Cross-platform: the portable core (ffmpeg + fifo + Node recorder) is shared; this

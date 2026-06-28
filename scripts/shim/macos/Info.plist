@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Info.plist for the shroom control app.
+
+  build.sh packages the binary as build/shroom.app and copies this to
+  Contents/Info.plist. Three reasons it has to exist:
+
+  1. NSMicrophoneUsageDescription. macOS kills any process that asks for the mic via
+     AVFoundation without a usage string. The shim requests the mic itself (so the
+     prompt is attributed to the disclaimed "shroom" principal, not Terminal — the
+     same trick that makes Screen Recording read "shroom"); this string is what lets
+     that request happen instead of crashing.
+  2. CFBundleName / CFBundleIdentifier give TCC a stable, clean identity to show and
+     remember — the user sees "shroom" in the Privacy & Security panes.
+  3. CFBundleIconFile points at shroom.icns (rendered on-device from the same mushroom
+     mark the tray draws), so that "shroom" shows OUR icon in those panes, not the
+     generic executable icon. A bare binary can't carry a list icon — hence the bundle.
+
+  LSUIElement matches the app's .accessory activation policy (menu-bar only, no Dock).
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleName</key>
+  <string>shroom</string>
+  <key>CFBundleDisplayName</key>
+  <string>shroom</string>
+  <key>CFBundleIdentifier</key>
+  <string>am.shroom</string>
+  <key>CFBundleExecutable</key>
+  <string>shroom</string>
+  <key>CFBundleIconFile</key>
+  <string>shroom</string>
+  <key>CFBundlePackageType</key>
+  <string>APPL</string>
+  <key>CFBundleShortVersionString</key>
+  <string>0.1.9</string>
+  <key>CFBundleVersion</key>
+  <string>0.1.9</string>
+  <key>LSUIElement</key>
+  <true/>
+  <key>NSMicrophoneUsageDescription</key>
+  <string>shroom records your microphone while you capture your screen.</string>
+  <key>NSCameraUsageDescription</key>
+  <string>shroom records the camera you pick as a video source.</string>
+</dict>
+</plist>
