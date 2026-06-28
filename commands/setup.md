@@ -111,16 +111,16 @@ create in the dashboard**. Walk it as separate, brief steps:
 - Check the session: `wrangler whoami` (it exits 0 even when logged out — read the text,
   not the code; "not authenticated" means log in).
 - If logged out, one-line trust note then log in: you request only
-  `account:read user:read pages:write offline_access`, *not* wrangler's ~27-scope default —
-  `wrangler login --scopes account:read user:read pages:write offline_access` (opens a
-  browser, no token paste). **`offline_access` is required, not optional**: it grants the
-  refresh token. Without it the short-lived access token expires partway through setup
-  (email verify + card + token creation take minutes), and provision's *non-interactive*
-  `wrangler pages create` then fails demanding a `CLOUDFLARE_API_TOKEN` — it can't pop a
-  browser to re-login. (Validated live: a narrow login lacking `offline_access` died at the
-  Pages step exactly this way.) Afterward wrangler still prints a yellow "missing some
-  expected OAuth scopes" warning — that's about the *other* ~24 scopes we don't request;
-  **expected and harmless**, tell them so.
+  `account:read user:read pages:write`, *not* wrangler's ~27-scope default —
+  `wrangler login --scopes account:read user:read pages:write` (opens a browser, no token
+  paste). NOTE: `offline_access` is **not** a valid `--scopes` value (wrangler errors);
+  wrangler appends it to the OAuth request itself, so a refresh token is issued regardless.
+  Afterward wrangler prints a yellow "missing some expected OAuth scopes" warning — about
+  the other ~24 default scopes we skip; **expected and harmless**.
+- **Provision (step 5) runs wrangler non-interactively**, so the OAuth session must still be
+  valid then — it can't pop a browser to re-auth. If provision fails at the Pages stage
+  demanding a `CLOUDFLARE_API_TOKEN`, the session lapsed: re-run `wrangler login` (opens a
+  browser) and retry provision. [root cause under investigation — see memory]
 - **Then check email verification — right here, before step 3.** Cloudflare blocks the R2
   page *and* token creation until the account email is verified (email signups only;
   Google SSO is pre-verified). Don't let a later step discover it — that's the scary
@@ -131,8 +131,11 @@ create in the dashboard**. Walk it as separate, brief steps:
   (it auto-detects the account; pass `--account <id>` if you already have it). Branch on
   `verified`:
   - `true` → carry on.
-  - `false` → `AskUserQuestion`. Question: "Cloudflare emailed a verification link to
-    <their address> — click it, then continue. (Check spam if it's not there.)" Options,
+  - `false` → `AskUserQuestion`. Question: "Cloudflare emailed a verification link to the
+    address you signed up with — click it, then continue. (Check spam if it's not there.)"
+    **Do NOT name a specific email address** — never use the ambient/session user email
+    (that's the operator's personal email, not the Cloudflare account's). If you must show
+    one, use *only* the address from `wrangler whoami`; otherwise name none. Options,
     **self-explanatory, no jargon**: *"I've verified — continue"* and *"No email yet — open
     Cloudflare"* (the latter opens `https://dash.cloudflare.com`, which shows a verify
     banner with a Resend button — don't label an option just "Resend"; it reads as
