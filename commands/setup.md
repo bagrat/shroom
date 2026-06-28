@@ -125,10 +125,13 @@ create in the dashboard**. Walk it as separate, brief steps:
   (it auto-detects the account; pass `--account <id>` if you already have it). Branch on
   `verified`:
   - `true` → carry on.
-  - `false` → `AskUserQuestion`: tell them to open the verification email Cloudflare sent
-    to their address and click the link; options *I've verified — continue / Resend (open
-    `https://dash.cloudflare.com`)*. On continue, **re-run `check-verified`**; loop until
-    `true`. **Do not proceed to step 3 while unverified.**
+  - `false` → `AskUserQuestion`. Question: "Cloudflare emailed a verification link to
+    <their address> — click it, then continue. (Check spam if it's not there.)" Options,
+    **self-explanatory, no jargon**: *"I've verified — continue"* and *"No email yet — open
+    Cloudflare"* (the latter opens `https://dash.cloudflare.com`, which shows a verify
+    banner with a Resend button — don't label an option just "Resend"; it reads as
+    nonsense). On "continue", **re-run `check-verified`**; loop until `true`. **Do not
+    proceed to step 3 while unverified.**
   - `null` → couldn't determine; don't block — proceed, and provision catches
     `email_unverified` later as a fallback.
 
