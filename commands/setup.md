@@ -118,9 +118,13 @@ create in the dashboard**. Walk it as separate, brief steps:
   Afterward wrangler prints a yellow "missing some expected OAuth scopes" warning — about
   the other ~24 default scopes we skip; **expected and harmless**.
 - **Provision (step 5) runs wrangler non-interactively**, so the OAuth session must still be
-  valid then — it can't pop a browser to re-auth. If provision fails at the Pages stage
-  demanding a `CLOUDFLARE_API_TOKEN`, the session lapsed: re-run `wrangler login` (opens a
-  browser) and retry provision. [root cause under investigation — see memory]
+  present then — it can't pop a browser to re-auth. The Pages project is created via the
+  Cloudflare REST API with the OAuth token directly (it carries `pages:write`), *not* through
+  `wrangler pages project create` — that command demands a `CLOUDFLARE_API_TOKEN` when
+  non-interactive and refuses the OAuth session no matter how fresh it is. Provision's own
+  `wrangler whoami` refreshes the on-disk token first, so no manual refresh is needed. If
+  provision returns `not_logged_in`, the session is genuinely gone (no refresh token): re-run
+  `wrangler login` and retry.
 - **Then check email verification — right here, before step 3.** Cloudflare blocks the R2
   page *and* token creation until the account email is verified (email signups only;
   Google SSO is pre-verified). Don't let a later step discover it — that's the scary
@@ -159,14 +163,14 @@ accept the terms + add a card to enable R2. Reprint (step 3 ✅).
 
 Have them **paste the three values right here in the session**. Reprint (step 4 ✅).
 
-**Step 5 — Provision.** **First refresh the OAuth session — this is essential.** The access
-token is short-lived and the dashboard steps above (card + token) usually outlast it; a
-silent refresh does NOT happen here, so by now the session is likely dead. Provision runs
-wrangler **non-interactively** and can't pop a browser to re-auth, so do it yourself, *right
-before* provisioning: run `wrangler whoami`, and if it's not authenticated **re-run
-`wrangler login --scopes account:read user:read pages:write`** and proceed immediately
-(back-to-back, inside the fresh token's window). If provision still returns `not_logged_in`
-at the Pages stage, that's the same lapse — re-login and retry provision.
+**Step 5 — Provision.** Provision runs wrangler **non-interactively**. Its first call is
+`wrangler whoami`, which refreshes the on-disk OAuth token (wrangler uses the refresh token
+silently) — so the bucket/public-URL/Pages calls all run under a fresh token without any
+manual re-login. The Pages project is created via the Cloudflare REST API with that OAuth
+token (it carries `pages:write`); we never shell `wrangler pages project create`, which
+rejects the OAuth session non-interactively. Only if provision returns `not_logged_in` (the
+refresh token is gone) do you re-run `wrangler login --scopes account:read user:read
+pages:write` and retry.
 
 Then, keep the secrets off the command line: **write the three pasted values to a creds file
 with the Write tool** (a file write — they never appear in a shell command, consent prompt,

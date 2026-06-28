@@ -374,42 +374,60 @@ await test('enablePublicAccess: parses the r2.dev url', async () => {
   assert.equal(r.publicBaseUrl, 'https://pub-abc.r2.dev');
 });
 
-await test('createPagesProject: success yields pages base', async () => {
+await test('createPagesProject: uses the API subdomain (with CF suffix)', async () => {
   const r = await createPagesProject({
-    runWrangler: router([{ match: has('pages project create'), res: { code: 0, stdout: 'Created project shroom-site' } }]),
+    createPages: async () => ({ ok: true, subdomain: 'shroom-site-eym.pages.dev' }),
+    name: 'shroom-site',
+  });
+  assert.equal(r.ok, true);
+  assert.equal(r.pagesBaseUrl, 'https://shroom-site-eym.pages.dev'); // real suffix, not <name>.pages.dev
+  assert.equal(r.parsed, true);
+});
+
+await test('createPagesProject: already-exists falls back to <name>.pages.dev, unparsed', async () => {
+  const r = await createPagesProject({
+    createPages: async () => ({ ok: true, alreadyExists: true }),
     name: 'shroom-site',
   });
   assert.equal(r.ok, true);
   assert.equal(r.pagesBaseUrl, 'https://shroom-site.pages.dev');
-  assert.equal(r.parsed, false); // fallback guess, not from output
+  assert.equal(r.parsed, false); // fallback guess — caller must not clobber a stored URL
 });
 
-await test('createPagesProject: parses Cloudflare-suffixed URL from output', async () => {
+await test('createPagesProject: API failure surfaces classified state', async () => {
   const r = await createPagesProject({
-    runWrangler: router([{ match: has('pages project create'), res: { code: 0, stdout: "It will be available at https://shroom-site-eym.pages.dev/ once you deploy." } }]),
+    createPages: async () => ({ ok: false, state: 'email_unverified', needsDashboard: true, message: 'verify your email' }),
     name: 'shroom-site',
   });
-  assert.equal(r.pagesBaseUrl, 'https://shroom-site-eym.pages.dev'); // real suffix, not <name>.pages.dev
-  assert.equal(r.parsed, true);
+  assert.equal(r.ok, false);
+  assert.equal(r.state, 'email_unverified');
+  assert.equal(r.needsDashboard, true);
 });
+
+// Pages is created via the API seam, not wrangler — fakes inject createPages.
+const pagesOk = async () => ({ ok: true, subdomain: 'shroom-site.pages.dev' });
 
 await test('provisionCloudflare: happy path with R2 token, ordered calls', async () => {
   const run = router([
     { match: has('whoami'), res: WHOAMI_OK },
     { match: has('bucket create'), res: { code: 0, stdout: 'Created' } },
     { match: has('dev-url enable'), res: { code: 0, stdout: 'at https://pub-xyz.r2.dev' } },
-    { match: has('pages project create'), res: { code: 0, stdout: 'Created' } },
   ]);
   const events = [];
+  let pagesArgs = null;
+  const createPages = async (a) => { pagesArgs = a; return { ok: true, subdomain: 'shroom-site.pages.dev' }; };
   // r2Token given but S3 keys omitted → token reported deferred.
-  const r = await provisionCloudflare({ runWrangler: run, r2Token: 'cfat_x', log: (e) => events.push(e) });
+  const r = await provisionCloudflare({ runWrangler: run, createPages, r2Token: 'cfat_x', log: (e) => events.push(e) });
   assert.equal(r.ok, true);
   assert.equal(r.accountId, '0123456789abcdef0123456789abcdef');
   assert.equal(r.publicBaseUrl, 'https://pub-xyz.r2.dev');
   assert.equal(r.pagesBaseUrl, 'https://shroom-site.pages.dev');
   assert.deepEqual(r.token, { deferred: true });
   assert.ok(events.includes('cf_token_deferred'));
-  // whoami before bucket before public before pages.
+  // Pages create gets the account id parsed from whoami; never the R2 token.
+  assert.equal(pagesArgs.accountId, '0123456789abcdef0123456789abcdef');
+  assert.ok(!('CLOUDFLARE_API_TOKEN' in pagesArgs) && !('r2Token' in pagesArgs), 'Pages create must not receive the R2 token');
+  // whoami before bucket before public (pages runs after, via the API seam).
   assert.ok(run.calls[0].includes('whoami'));
   assert.ok(run.calls[1].includes('bucket create'));
   // dev-url enable runs with --force (consent already taken by the command).
@@ -431,12 +449,27 @@ await test('provisionCloudflare: stops at bucket gate, reports stage + dashboard
     { match: has('whoami'), res: WHOAMI_OK },
     { match: has('bucket create'), res: { code: 1, stderr: 'sign up for R2 and accept the terms of service' } },
   ]);
-  const r = await provisionCloudflare({ runWrangler: run, r2Token: 'cfat_x' });
+  let pagesCalled = false;
+  const createPages = async () => { pagesCalled = true; return pagesOk(); };
+  const r = await provisionCloudflare({ runWrangler: run, createPages, r2Token: 'cfat_x' });
   assert.equal(r.ok, false);
   assert.equal(r.stage, 'bucket');
   assert.equal(r.state, 'r2_not_enabled');
   assert.equal(r.needsDashboard, true);
-  assert.ok(!run.calls.some((c) => c.includes('pages project create'))); // never reached
+  assert.equal(pagesCalled, false); // never reached
+});
+
+await test('provisionCloudflare: Pages API failure surfaces as the pages stage', async () => {
+  const run = router([
+    { match: has('whoami'), res: WHOAMI_OK },
+    { match: has('bucket create'), res: { code: 0 } },
+    { match: has('dev-url enable'), res: { code: 0, stdout: 'https://pub-xyz.r2.dev' } },
+  ]);
+  const createPages = async () => ({ ok: false, state: 'pages_create_failed', message: 'boom' });
+  const r = await provisionCloudflare({ runWrangler: run, createPages, r2Token: 'cfat_x' });
+  assert.equal(r.ok, false);
+  assert.equal(r.stage, 'pages');
+  assert.equal(r.state, 'pages_create_failed');
 });
 
 await test('provisionCloudflare: writes S3 keys from the dashboard token', async () => {
@@ -444,21 +477,10 @@ await test('provisionCloudflare: writes S3 keys from the dashboard token', async
     { match: has('whoami'), res: WHOAMI_OK },
     { match: has('bucket create'), res: { code: 0 } },
     { match: has('dev-url enable'), res: { code: 0, stdout: 'https://pub-xyz.r2.dev' } },
-    { match: has('pages project create'), res: { code: 0 } },
   ]);
-  const r = await provisionCloudflare({ runWrangler: run, r2Token: 'cfat_x', r2AccessKeyId: 'ak-shroom', r2SecretAccessKey: 'sk' });
+  const r = await provisionCloudflare({ runWrangler: run, createPages: pagesOk, r2Token: 'cfat_x', r2AccessKeyId: 'ak-shroom', r2SecretAccessKey: 'sk' });
   assert.equal(r.token.accessKeyId, 'ak-shroom');
   assert.equal(r.token.secretAccessKey, 'sk');
-});
-
-await test('provisionCloudflare: R2 token kept off the Pages (OAuth) call', async () => {
-  let pagesEnv = null;
-  const run = async (args, extra = {}) => {
-    if (args.join(' ').includes('pages project create')) pagesEnv = extra.env;
-    return { code: 0, stdout: args.includes('whoami') ? WHOAMI_OK.stdout : 'https://pub-xyz.r2.dev' };
-  };
-  await provisionCloudflare({ runWrangler: run, r2Token: 'cfat_secret', baseEnv: { PATH: '/x' } });
-  assert.ok(pagesEnv && !('CLOUDFLARE_API_TOKEN' in pagesEnv), 'Pages create must not inherit the R2 token');
 });
 
 console.log(`\n${passed} passed`);

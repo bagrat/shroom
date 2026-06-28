@@ -16,7 +16,6 @@ const ACCOUNT_ID_RE = /\b([0-9a-f]{32})\b/i;
 // Stop the local-part/domain before trailing sentence punctuation ("…email foo@bar.com.").
 const EMAIL_RE = /([\w.+-]+@[\w-]+\.[\w-]+(?:\.[\w-]+)*)/;
 const R2_DEV_RE = /https?:\/\/[^\s'"<>]*\.r2\.dev[^\s'"<>]*/;
-const PAGES_URL_RE = /https?:\/\/[^\s'"<>]*\.pages\.dev[^\s'"<>]*/;
 
 function text(res) {
   return `${res.stdout ?? ''}\n${res.stderr ?? ''}`;
@@ -76,24 +75,33 @@ export async function enablePublicAccess({ runWrangler, name, env }) {
 
 // Create the Pages project the player pages deploy to. Production branch defaults
 // to "main" (matches our git default + deploy's default). `already_exists` = ok.
-// The stable site base is `https://<name>.pages.dev` (a project name can't contain
-// dots, so this is always well-formed).
-export async function createPagesProject({ runWrangler, name, branch = 'main', env }) {
-  const res = await runWrangler(['pages', 'project', 'create', name, '--production-branch', branch], { env });
-  if (isCreateSuccess(res)) {
+//
+// We deliberately do NOT shell out to `wrangler pages project create`. In a
+// non-interactive shell (Claude Code spawns wrangler non-interactively,
+// isInteractive:false) wrangler's Pages code path HARD-REQUIRES a
+// CLOUDFLARE_API_TOKEN and refuses the OAuth session — even with a fresh, in-scope
+// token (VM-proven 2026-06-28: the same OAuth token succeeded for an R2 API call
+// seconds earlier, then `pages project create` errored "necessary to set a
+// CLOUDFLARE_API_TOKEN"). So Pages is created via the Cloudflare REST API directly
+// with the OAuth token as a Bearer — it carries `pages:write`, so the API authorizes
+// it; we only bypass wrangler's CLI interactivity guard. `createPages` is the
+// injected HTTP seam (real impl reads the wrangler OAuth token; see setup.mjs), so
+// this stays offline-testable. It returns a normalized result:
+//   { ok:true, subdomain } | { ok:true, alreadyExists:true } |
+//   { ok:false, state, message, needsDashboard? }
+export async function createPagesProject({ createPages, name, branch = 'main', accountId }) {
+  const res = await createPages({ accountId, name, branch });
+  if (res.ok) {
     // The project subdomain is NOT `<name>.pages.dev` — Cloudflare appends a random
     // suffix when the name isn't globally unique (e.g. `shroom-site-eym.pages.dev`,
-    // verified live). Parse the real URL wrangler prints ("…available at <url>…");
-    // only fall back to the constructed form when it's absent (e.g. already_exists,
-    // where the deploy step re-derives the base from the actual deployment URL).
-    const parsed = (text(res).match(PAGES_URL_RE) || [])[0];
-    const pagesBaseUrl = parsed ? stripSlash(parsed) : `https://${name}.pages.dev`;
-    // `parsed` is false on an already_exists re-run (the create line, hence the URL,
-    // isn't reprinted). The fallback is only a guess — flag it so the caller won't
-    // clobber a previously-parsed real URL (which may carry Cloudflare's suffix).
-    return { ok: true, name, pagesBaseUrl, parsed: Boolean(parsed) };
+    // verified live). The create API returns the real subdomain; use it. An
+    // already_exists re-run has none, so fall back to the constructed form and flag
+    // it unparsed so the caller won't clobber a stored, suffixed URL.
+    const sub = res.alreadyExists ? null : res.subdomain;
+    const pagesBaseUrl = sub ? `https://${stripSlash(sub)}` : `https://${name}.pages.dev`;
+    return { ok: true, name, pagesBaseUrl, parsed: Boolean(sub) };
   }
-  return { ok: false, name, ...classifyWranglerError(res) };
+  return { ok: false, name, state: res.state, message: res.message, needsDashboard: res.needsDashboard ?? false };
 }
 
 // Orchestrate the whole sub-sequence. Stops at the first hard failure and reports
@@ -108,6 +116,10 @@ export async function createPagesProject({ runWrangler, name, branch = 'main', e
 // as a pending manual step rather than fabricating credentials.
 export async function provisionCloudflare({
   runWrangler,
+  // Injected Pages-via-API seam (see createPagesProject for why Pages can't go
+  // through wrangler non-interactively). Real impl is wired in setup.mjs; absent,
+  // we report a non-fatal "unwired" state rather than throwing.
+  createPages = async () => ({ ok: false, state: 'pages_seam_unwired', message: 'Pages API seam not provided.' }),
   // The R2 API token (CF API token value) the user created in the dashboard. R2
   // cannot be managed over the wrangler OAuth session (no r2 scope exists — live-
   // verified), so R2 ops run with this token as CLOUDFLARE_API_TOKEN. Its derived
@@ -123,10 +135,11 @@ export async function provisionCloudflare({
   baseEnv = process.env,
   log = () => {},
 }) {
-  // R2 calls authenticate with the dashboard R2 token; Pages/whoami use the OAuth
-  // session, so we must strip any inherited CLOUDFLARE_API_TOKEN from their env
-  // (an R2 token has no Pages permission and would fail Pages). `oauthEnv` also
+  // R2 calls authenticate with the dashboard R2 token; whoami uses the OAuth
+  // session, so we must strip any inherited CLOUDFLARE_API_TOKEN from its env (an R2
+  // token has no account/user scope and would mis-answer whoami). `oauthEnv` also
   // carries the node>=22 PATH from baseEnv, so wrangler runs under a new-enough node.
+  // (Pages no longer goes through wrangler at all — see createPagesProject.)
   const { CLOUDFLARE_API_TOKEN: _drop, ...oauthEnv } = baseEnv;
 
   const me = await whoami({ runWrangler, env: oauthEnv });
@@ -159,7 +172,7 @@ export async function provisionCloudflare({
   }
   log('cf_public_ready', { publicBaseUrl: pub.publicBaseUrl });
 
-  const pg = await createPagesProject({ runWrangler, name: pagesProject, branch, env: oauthEnv });
+  const pg = await createPagesProject({ createPages, name: pagesProject, branch, accountId: me.accountId });
   if (!pg.ok) {
     log('cf_pages_failed', { state: pg.state });
     return { ok: false, stage: 'pages', accountId: me.accountId, ...pg };

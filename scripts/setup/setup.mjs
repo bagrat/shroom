@@ -107,6 +107,9 @@ async function cmdProvision({ json, opts }) {
 
   const res = await provisionCloudflare({
     runWrangler,
+    // Pages is created via the CF REST API with the OAuth token (wrangler refuses
+    // the OAuth session for Pages non-interactively — see pagesApiCreate).
+    createPages: pagesApiCreate,
     baseEnv,
     // The R2 API token (+ its derived S3 keys) the user created in the dashboard — passed
     // via --r2-creds-file (preferred) or, for scripting, flags/env.
@@ -139,7 +142,7 @@ async function cmdProvision({ json, opts }) {
       bucket: res.bucket,
       publicBaseUrl: res.publicBaseUrl,
       pagesProject: res.pagesProject,
-      // Only persist the Pages URL when it was actually parsed from wrangler — a
+      // Only persist the Pages URL when it came from the create API response — a
       // bare fallback on an already_exists re-run must not clobber the stored URL
       // (which may carry Cloudflare's random subdomain suffix).
       pagesBaseUrl: res.pagesBaseUrlParsed ? res.pagesBaseUrl : undefined,
@@ -263,6 +266,57 @@ function readWranglerOAuthToken({ home = os.homedir(), fsmod = fs } = {}) {
     } catch { /* not here — keep looking */ }
   }
   return null;
+}
+
+// Create a Pages project via the Cloudflare REST API, authenticating with the
+// wrangler OAuth token (which carries `pages:write`). This is the real seam wired
+// into provisionCloudflare's `createPages`. We go direct to the API rather than
+// `wrangler pages project create` because that command hard-requires a
+// CLOUDFLARE_API_TOKEN in a non-interactive shell and refuses the OAuth session even
+// with a fresh in-scope token (VM-proven 2026-06-28). The same token `check-verified`
+// already creates probe projects with. Returns a normalized result the orchestrator
+// classifies: { ok:true, subdomain } | { ok:true, alreadyExists:true } |
+// { ok:false, state, message, needsDashboard? }.
+async function pagesApiCreate({ accountId, name, branch = 'main', token = readWranglerOAuthToken(), fetchImpl = fetch }) {
+  if (!token) return { ok: false, state: 'not_logged_in', message: 'No wrangler OAuth token found — run `wrangler login`.' };
+  const api = 'https://api.cloudflare.com/client/v4';
+  const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+
+  let account = accountId && accountId !== 'true' ? accountId : null;
+  if (!account) {
+    try {
+      const r = await fetchImpl(`${api}/accounts`, { headers });
+      const d = await r.json();
+      account = d?.result?.[0]?.id ?? null;
+    } catch { /* fall through to the no_account gate */ }
+  }
+  if (!account) return { ok: false, state: 'no_account', message: 'Could not resolve the Cloudflare account id.' };
+
+  let res, data;
+  try {
+    res = await fetchImpl(`${api}/accounts/${account}/pages/projects`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ name, production_branch: branch }),
+    });
+    data = await res.json().catch(() => ({}));
+  } catch (e) {
+    return { ok: false, state: 'network', message: String(e?.message || e) };
+  }
+  if (res.ok && data.success) return { ok: true, subdomain: data?.result?.subdomain ?? null };
+
+  const errs = data.errors ?? [];
+  const blob = JSON.stringify(errs);
+  // A duplicate project name is success for us — setup is idempotent (re-run over a
+  // partial provision). Match the code and a text backstop in case the code shifts.
+  if (errs.some((e) => e.code === 8000007) || /already exists|already taken|duplicate/i.test(blob)) {
+    return { ok: true, alreadyExists: true };
+  }
+  // Unverified email blocks the write (code 8000077) — route to the dashboard gate.
+  if (errs.some((e) => e.code === 8000077) || /must be(en)? verified|verify your email/i.test(blob)) {
+    return { ok: false, state: 'email_unverified', needsDashboard: true, message: 'Your Cloudflare email must be verified before creating the video site.' };
+  }
+  return { ok: false, state: 'pages_create_failed', message: blob || `HTTP ${res.status}` };
 }
 
 // Is the account's email verified? Reads don't reveal it (validated live: GET /user has
