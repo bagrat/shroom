@@ -16,6 +16,12 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+// The shared favicon ships with the templates; placed at the site root on deploy.
+const FAVICON_SRC = path.join(
+  path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'templates', 'favicon.svg',
+);
 
 const stripSlash = (s) => (typeof s === 'string' ? s.replace(/\/+$/, '') : s);
 
@@ -66,6 +72,19 @@ export function ensureHlsJs({ siteDir, vendorPath, force = false }) {
   }
   fs.copyFileSync(vendorPath, dest);
   return { ok: true, placed: true, path: dest };
+}
+
+// Place the favicon at the site root (/favicon.svg), shared by every per-video
+// page (player.html links it absolutely). Best-effort: a missing source never
+// blocks a deploy.
+export function ensureFavicon({ siteDir, src = FAVICON_SRC }) {
+  try {
+    if (!fs.existsSync(src)) return { ok: true, placed: false };
+    fs.copyFileSync(src, path.join(siteDir, 'favicon.svg'));
+    return { ok: true, placed: true };
+  } catch {
+    return { ok: true, placed: false };
+  }
 }
 
 // Run the actual `wrangler pages deploy`. Production deploys target the project's
@@ -122,6 +141,9 @@ export async function runDeploy({
     return { ok: false, ...hls };
   }
   if (hls.placed) log('hlsjs_placed', { path: hls.path });
+
+  const fav = ensureFavicon({ siteDir });
+  if (fav.placed) log('favicon_placed', {});
 
   const dep = await deployPages({ siteDir, projectName, branch, runWrangler });
   if (!dep.ok) {

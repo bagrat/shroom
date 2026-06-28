@@ -125,6 +125,7 @@
   .foot { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; color: var(--muted); font-size: 14px; }
   .foot a { color: var(--muted); }
   .foot a:hover { color: var(--text); }
+  .foot-logo { width: 16px; height: 16px; vertical-align: -3px; margin-right: 5px; }
 
   @media (max-width: 600px) {
     .hero h1 { font-size: 38px; }
@@ -236,7 +237,7 @@
 
 <footer>
   <div class="wrap foot">
-    <div>🍄 shroom — MIT licensed.</div>
+    <div><img class="foot-logo" src="logo.svg" alt="" /> shroom — MIT licensed.</div>
     <div>
       <a href="https://github.com/bagrat/shroom">GitHub</a> ·
       <a href="https://github.com/bagrat/claude-plugins">Marketplace</a>
