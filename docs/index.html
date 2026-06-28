@@ -8,7 +8,14 @@
 <meta property="og:title" content="shroom" />
 <meta property="og:description" content="Like Loom, but yours. Record your screen to your own storage and get a permanent link with auto title, chapters, and a searchable transcript." />
 <meta property="og:type" content="website" />
-<meta name="theme-color" content="#0e0e11" />
+<meta property="og:url" content="https://shroom.am/" />
+<meta property="og:image" content="https://shroom.am/og.png" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="shroom" />
+<meta name="twitter:description" content="Like Loom, but yours — record your screen to your own storage and get a permanent link with auto title, chapters, and a searchable transcript." />
+<meta name="twitter:image" content="https://shroom.am/og.png" />
+<link rel="icon" type="image/svg+xml" href="favicon.svg" />
+<meta name="theme-color" content="#2E3440" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -44,12 +51,12 @@
   header { padding: 28px 0; }
   .nav { display: flex; align-items: center; justify-content: space-between; }
   .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 18px; }
-  .brand .cap { font-size: 22px; }
+  .brand .cap { width: 26px; height: 26px; display: block; }
   .nav a.ghost { color: var(--muted); font-size: 15px; }
   .nav a.ghost:hover { color: var(--text); }
 
   .hero { padding: 64px 0 40px; text-align: center; }
-  .hero .cap-big { font-size: 64px; line-height: 1; }
+  .hero .cap-big { width: 96px; height: 96px; display: block; margin: 0 auto; }
   .hero h1 { font-size: 52px; font-weight: 600; letter-spacing: -1.5px; margin: 18px 0 0; }
   .hero .tagline { font-size: 22px; color: var(--text); margin: 14px 0 0; font-weight: 500; }
   .hero p.sub { font-size: 17px; color: var(--muted); max-width: 560px; margin: 18px auto 0; }
@@ -129,14 +136,14 @@
 <body>
 <header>
   <div class="wrap nav">
-    <div class="brand"><span class="cap">🍄</span> shroom</div>
+    <div class="brand"><img class="cap" src="logo.svg" alt="" /> shroom</div>
     <a class="ghost" href="https://github.com/bagrat/shroom">GitHub ↗</a>
   </div>
 </header>
 
 <main>
   <div class="hero wrap">
-    <div class="cap-big">🍄</div>
+    <img class="cap-big" src="logo.svg" alt="" />
     <h1>shroom</h1>
     <p class="tagline">Like Loom — but the videos are yours.</p>
     <p class="sub">
