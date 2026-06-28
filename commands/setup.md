@@ -111,10 +111,16 @@ create in the dashboard**. Walk it as separate, brief steps:
 - Check the session: `wrangler whoami` (it exits 0 even when logged out — read the text,
   not the code; "not authenticated" means log in).
 - If logged out, one-line trust note then log in: you request only
-  `account:read user:read pages:write`, *not* wrangler's ~27-scope default —
-  `wrangler login --scopes account:read user:read pages:write` (opens a browser, no token
-  paste). Afterward wrangler prints a yellow "missing some expected OAuth scopes" warning
-  — tell them up front it's **expected and harmless** with a narrow login.
+  `account:read user:read pages:write offline_access`, *not* wrangler's ~27-scope default —
+  `wrangler login --scopes account:read user:read pages:write offline_access` (opens a
+  browser, no token paste). **`offline_access` is required, not optional**: it grants the
+  refresh token. Without it the short-lived access token expires partway through setup
+  (email verify + card + token creation take minutes), and provision's *non-interactive*
+  `wrangler pages create` then fails demanding a `CLOUDFLARE_API_TOKEN` — it can't pop a
+  browser to re-login. (Validated live: a narrow login lacking `offline_access` died at the
+  Pages step exactly this way.) Afterward wrangler still prints a yellow "missing some
+  expected OAuth scopes" warning — that's about the *other* ~24 scopes we don't request;
+  **expected and harmless**, tell them so.
 - **Then check email verification — right here, before step 3.** Cloudflare blocks the R2
   page *and* token creation until the account email is verified (email signups only;
   Google SSO is pre-verified). Don't let a later step discover it — that's the scary
