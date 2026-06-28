@@ -69,15 +69,18 @@ Then, as **one** batched action the user already approved:
   `build.sh`). Idempotent — safe to re-run; recompiling is how an updated shim gets
   re-signed. (macOS only; skip on other platforms — recording needs the shim there.)
 
-## Phase 3 — Cloudflare (explain before the browser opens)
+## Phase 3 — Cloudflare (one step at a time; explain before any browser opens)
 
-**Always ask before opening any dashboard page.** Every `open <url>` is an outward
-action — propose it, get a yes, then open. Never pop a browser unannounced.
+**Go one step at a time, and use `AskUserQuestion` for every consent or decision
+gate** — never bury a yes/no inside a paragraph, and never stack an explanation,
+numbered instructions, and several asks into a single message (that wall of text is
+exactly what overwhelms people here). Every `open <url>` is an outward action — explain
+it, get a yes via `AskUserQuestion`, *then* open. Never pop a browser unannounced.
 
 Two distinct credentials are in play (live-verified): **Pages** rides the wrangler
 **OAuth** login; **R2 cannot** — there is *no* R2 OAuth scope, so `r2 bucket create`
 over OAuth returns `Authentication error [code: 10000]` even on a verified, R2-enabled
-account. R2 needs a **dashboard-minted R2 API token**. So:
+account. R2 needs an **R2 API token you create in the dashboard**. So:
 
 1. **Log in for Pages (narrow scopes).** Trust beat: tell the user you'll request
    only `account:read user:read pages:write` — *not* wrangler's ~27-scope default.
@@ -87,18 +90,31 @@ account. R2 needs a **dashboard-minted R2 API token**. So:
      (opens a browser, no token paste, SPEC §9). Afterward wrangler prints a yellow
      "missing some expected OAuth scopes" warning — **expected and harmless** with a
      narrow login; tell the user so it doesn't alarm them.
-2. **Create the R2 API token (the one unavoidable manual step).** Explain why (R2
-   can't be done over OAuth), then **ask before opening**
-   `https://dash.cloudflare.com/<accountId>/r2/api-tokens`. Have them create an
-   **Account API token** with **Admin Read & Write** (so it can also create the
-   bucket + enable public access), apply to all buckets. The confirmation screen
-   shows the **Token value**, **Access Key ID**, and **Secret Access Key** — capture
-   all three (offer to read them from a temp file to keep secrets out of chat).
-3. **Get explicit consent for public access.** Enabling the bucket's `*.r2.dev`
-   public URL makes the video bytes world-readable (at unguessable per-video URLs) —
-   a security-weakening, outward step. Ask for a plain yes; never auto-confirm it.
-   Fold it into the same approval as the rest of provisioning.
-4. **Provision**, passing the token + keys:
+2. **Give a short heads-up before sending them anywhere.** In **one brief message**,
+   tell the user what the R2 setup involves, so nothing ambushes them mid-flow:
+   - They'll **create an R2 API token by hand** in the Cloudflare dashboard — there's
+     no way to do it through the login; that's just how Cloudflare works.
+   - Turning on R2 **requires a credit card** on the Cloudflare account. R2 has a
+     generous free tier, but the card is mandatory to enable the service.
+   - If they signed up with **email** (not Google), Cloudflare may make them **verify
+     their email** first — the token page stays blocked until they do.
+   - Setup will switch on the bucket's **public `*.r2.dev` URL** so videos can play
+     back, which makes the video bytes **readable by anyone who has the link** (the
+     links are long and unguessable, but public). This is required for playback.
+3. **Ask, with `AskUserQuestion`, whether to open the dashboard now** — e.g. *"Open the
+   Cloudflare dashboard to create the R2 token?"* → *Open it (recommended) / Skip
+   Cloudflare for now*. Choosing to proceed is their consent for the public-access
+   behavior you just explained — don't ask for it again separately.
+4. **Only after they say yes: open the page, then give the steps.** Open
+   `https://dash.cloudflare.com/<accountId>/r2/api-tokens`, then a short numbered list:
+   1. Click **Create Account API token**
+   2. Permission: **Admin Read & Write** (so it can create the bucket and enable public access)
+   3. **Apply to all buckets**
+   4. On the confirmation screen, copy the three values: **Token value**, **Access Key
+      ID**, **Secret Access Key**
+   Have them **paste the three values right here in the session** — no temp files, that's
+   just extra friction for a personal tool.
+5. **Provision**, passing the token + keys:
    ```
    node "${CLAUDE_PLUGIN_ROOT}/scripts/setup/setup.mjs" provision --json \
      --r2-token <TOKEN> --r2-access-key-id <AKID> --r2-secret-access-key <SECRET>

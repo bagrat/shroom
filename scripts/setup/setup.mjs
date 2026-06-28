@@ -129,7 +129,7 @@ async function cmdProvision({ json, opts }) {
     process.stdout.write(`  bucket:   ${out.bucket}  (${out.publicBaseUrl ?? 'no public URL'})\n`);
     process.stdout.write(`  pages:    ${out.pagesProject}  (${out.pagesBaseUrl})\n`);
     if (out.s3Token === 'deferred')
-      process.stdout.write('  S3 token: DEFERRED — minting an R2 S3 API token needs the live-account session.\n');
+      process.stdout.write('  S3 token: DEFERRED — creating an R2 S3 API token needs the live-account session.\n');
   }
   return 0;
 }
