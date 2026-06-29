@@ -115,7 +115,10 @@ function run(args) {
 
 export { run as runPostUpdate, statePath, loadManifest };
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+// argv[1] may be a symlink (e.g. a skills-dir symlink); resolve it so it matches
+// import.meta.url, which Node resolves through symlinks — else main() is skipped.
+const entryPath = process.argv[1] && fs.realpathSync(process.argv[1]);
+if (entryPath && import.meta.url === pathToFileURL(entryPath).href) {
   let out;
   try {
     out = run(parseArgs(process.argv.slice(2)));
