@@ -1,3 +1,7 @@
+---
+description: "Index of shroom's slash commands — documentation, not itself a command (plugin.json `commands` lists the real ones, so this file is never loaded as a command)."
+---
+
 # commands/
 
 Slash commands exposed by the shroom plugin.
