@@ -1,0 +1,16 @@
+{
+  "name": "@shroom/dashboard",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "description": "Deterministic backend for the dashboard skill: merge the git library with local session state and render a self-contained static HTML library page with thumbnails.",
+  "bin": {
+    "shroom-dashboard": "./dashboard.mjs"
+  },
+  "scripts": {
+    "test": "node test/dashboard.test.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

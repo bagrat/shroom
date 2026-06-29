@@ -14,6 +14,12 @@ Agent skills — the **judgment** layer, which is the actual product (SPEC §7).
   watchable MP4), deletes locally or from the bucket, and can upload a downloadable
   MP4. The "keep this?" half of the boundary — the script refuses to delete the only
   copy; the skill decides what to even propose.
+- [`dashboard/`](dashboard/SKILL.md) — **built.** A visual library: merges the git
+  records with local session state into a self-contained static page (thumbnails,
+  links, durations, disk footprint) and acts as the entry point for management —
+  routing to `cleanup` (prune/delete) and `title-chapters` (re-title). The
+  deterministic [`dashboard.mjs`](../scripts/dashboard/dashboard.mjs) builds the
+  list + HTML; the skill narrates and routes.
 
 Planned: transcript + semantic search, edit-as-a-sentence, "publish?" (M5c-3+).
 
