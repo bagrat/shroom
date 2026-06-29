@@ -57,6 +57,20 @@ test('HLS url + hls.js path land in the JSON data island, not raw markup', () =>
   assert.equal(data.durationSec, 10);
 });
 
+test('data island carries pageUrl + chapters for the timeline/share', () => {
+  const html = renderPage({
+    template: TEMPLATE,
+    meta: { title: 'x', durationSec: 120, chapters: [{ t: 0, label: 'Intro' }, { t: 60, label: 'Mid' }] },
+    urls: URLS,
+  });
+  const data = JSON.parse(html.match(/type="application\/json">(.*?)<\/script>/s)[1]);
+  assert.equal(data.pageUrl, URLS.pageUrl);
+  assert.deepEqual(data.chapters, [{ t: 0, label: 'Intro' }, { t: 60, label: 'Mid' }]);
+  // The static scaffolding the client wires up is present.
+  assert.ok(html.includes('id="shroom-timeline"'));
+  assert.ok(html.includes('data-copy="embed"'));
+});
+
 test('escapes HTML in title — no attribute/markup breakout', () => {
   const html = renderPage({
     template: TEMPLATE,

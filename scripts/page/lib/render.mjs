@@ -70,6 +70,13 @@ export function renderPage({ template, meta = {}, urls = {} }) {
     hlsUrl: urls.hlsUrl ?? '',
     hlsJsUrl: urls.hlsJsUrl ?? '/hls.min.js',
     durationSec,
+    // Public page URL (for Copy link / Copy embed) and the chapter list, so the
+    // client can build the seekable timeline + share snippets. Both are escaped
+    // into the JSON island by jsonForScript.
+    pageUrl: urls.pageUrl ?? '',
+    chapters: chapters
+      .filter((c) => c && c.label != null)
+      .map((c) => ({ t: Math.max(0, Number(c.t) || 0), label: String(c.label) })),
   };
 
   const tokens = {

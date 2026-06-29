@@ -43,6 +43,28 @@
     .frame { position: relative; background: #000; border-radius: 12px; overflow: hidden;
       aspect-ratio: 16 / 9; box-shadow: 0 8px 40px rgba(0,0,0,.5); }
     video { width: 100%; height: 100%; display: block; background: #000; }
+
+    /* Chapter timeline: proportional, seekable chunks under the video; each fills
+       with the accent colour as the playhead crosses it. Empty (no chapters) →
+       collapses. */
+    .timeline { display: flex; gap: 2px; margin: 8px 0 0; height: 8px; }
+    .timeline:empty { display: none; }
+    .timeline .seg { position: relative; flex-basis: 0; min-width: 4px; height: 100%;
+      background: rgba(216,222,233,.18); border: 0; border-radius: 3px; padding: 0;
+      cursor: pointer; overflow: hidden; }
+    .timeline .seg:hover { background: rgba(216,222,233,.32); }
+    .timeline .seg.active { background: rgba(136,192,208,.35); }
+    .timeline .seg .fill { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--accent); }
+
+    .share { display: flex; gap: 8px; align-items: center; margin: 14px 0 0; }
+    .share[hidden] { display: none; }
+    .share button { background: transparent; border: 1px solid rgba(216,222,233,.25);
+      color: var(--muted); border-radius: 8px; padding: 5px 12px; font: inherit;
+      font-size: 13px; cursor: pointer; }
+    .share button:hover { background: rgba(216,222,233,.08); color: var(--fg); }
+    .share .copied { color: var(--accent); font-size: 13px; }
+    .share .copied[hidden] { display: none; }
+
     .tldr { color: var(--muted); margin: 16px 0 0; max-width: 70ch; }
     .chapters { margin: 20px 0 0; padding: 0; list-style: none;
       display: grid; gap: 2px; }
@@ -54,6 +76,14 @@
     .chapters .t { color: var(--accent); font-variant-numeric: tabular-nums; min-width: 52px; }
     footer { margin: 36px 0 0; color: var(--muted); font-size: 13px; }
     footer a { color: var(--muted); }
+
+    /* Embed mode (?embed=1): strip the chrome to just the player + its timeline,
+       for the Loom-style copy-embed iframe. */
+    body.embed .wrap { max-width: none; padding: 0; }
+    body.embed header, body.embed footer, body.embed .tldr,
+    body.embed .chapters, body.embed .share { display: none !important; }
+    body.embed .frame { border-radius: 0; box-shadow: none; }
+    body.embed .timeline { margin: 0; }
   </style>
 </head>
 <body>
@@ -68,6 +98,16 @@
       <video id="shroom-video" controls playsinline poster="{{POSTER_URL}}"></video>
     </div>
 
+    <!-- Seekable chapter timeline (built by JS from the data island; collapses if empty). -->
+    <div class="timeline" id="shroom-timeline"></div>
+
+    <!-- Share toolbar (revealed by JS only when there's a public page URL). -->
+    <div class="share" id="shroom-share" hidden>
+      <button type="button" data-copy="link">Copy link</button>
+      <button type="button" data-copy="embed">Copy embed</button>
+      <span class="copied" id="shroom-copied" hidden>Copied</span>
+    </div>
+
     {{TLDR_HTML}}
     {{CHAPTERS_HTML}}
 
@@ -80,13 +120,102 @@
     (function () {
       var data = JSON.parse(document.getElementById('shroom-data').textContent);
       var video = document.getElementById('shroom-video');
+      var dur = Number(data.durationSec) || 0;
+      var chapters = Array.isArray(data.chapters) ? data.chapters : [];
 
-      // Chapter seek (works whether or not HLS has loaded).
+      // Embed mode: ?embed strips the page chrome to just the player.
+      try {
+        if (new URLSearchParams(location.search).has('embed')) document.body.classList.add('embed');
+      } catch (e) { /* no URLSearchParams (ancient browser) — show full page */ }
+
+      function seekTo(t) { video.currentTime = t || 0; var p = video.play(); if (p && p.catch) p.catch(function () {}); }
+
+      // Chapter LIST buttons (the textual index).
       document.querySelectorAll('[data-seek]').forEach(function (el) {
-        el.addEventListener('click', function () {
-          video.currentTime = parseFloat(el.getAttribute('data-seek')) || 0;
-          video.play();
+        el.addEventListener('click', function () { seekTo(parseFloat(el.getAttribute('data-seek')) || 0); });
+      });
+
+      // Chapter TIMELINE: one proportional chunk per chapter, click to seek.
+      var timeline = document.getElementById('shroom-timeline');
+      var segs = [];
+      if (timeline && chapters.length && dur > 0) {
+        chapters.forEach(function (c, i) {
+          var start = Math.min(Math.max(0, c.t || 0), dur);
+          var end = i + 1 < chapters.length ? Math.min(chapters[i + 1].t, dur) : dur;
+          var seg = document.createElement('button');
+          seg.type = 'button';
+          seg.className = 'seg';
+          seg.style.flexGrow = Math.max(0.001, (end - start) / dur); // proportional width
+          seg.title = c.label;
+          seg.setAttribute('aria-label', c.label);
+          var fill = document.createElement('span');
+          fill.className = 'fill';
+          seg.appendChild(fill);
+          seg.addEventListener('click', function () { seekTo(start); });
+          timeline.appendChild(seg);
+          segs.push({ fill: fill, el: seg, start: start, end: end });
         });
+      }
+
+      // Advance the timeline fill + active highlight with playback.
+      video.addEventListener('timeupdate', function () {
+        var t = video.currentTime || 0;
+        for (var i = 0; i < segs.length; i++) {
+          var s = segs[i], span = s.end - s.start || 1;
+          var pct = t <= s.start ? 0 : t >= s.end ? 100 : ((t - s.start) / span) * 100;
+          s.fill.style.width = pct + '%';
+          if (t >= s.start && t < s.end) s.el.classList.add('active');
+          else s.el.classList.remove('active');
+        }
+      });
+
+      // Share: Copy link / Copy embed (Loom-style responsive iframe). Shown only
+      // when a public page URL exists (a local-only render has none to share).
+      var share = document.getElementById('shroom-share');
+      var toast = document.getElementById('shroom-copied');
+      if (share && data.pageUrl) {
+        share.hidden = false;
+        var toastTimer;
+        function copied() {
+          if (!toast) return;
+          toast.hidden = false;
+          clearTimeout(toastTimer);
+          toastTimer = setTimeout(function () { toast.hidden = true; }, 1500);
+        }
+        function copy(text) {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(copied, copied);
+          } else {
+            var ta = document.createElement('textarea');
+            ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+            document.body.appendChild(ta); ta.select();
+            try { document.execCommand('copy'); } catch (e) {}
+            document.body.removeChild(ta); copied();
+          }
+        }
+        share.querySelectorAll('[data-copy]').forEach(function (b) {
+          b.addEventListener('click', function () {
+            var url = data.pageUrl;
+            if (b.getAttribute('data-copy') === 'embed') {
+              var src = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'embed=1';
+              copy('<div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;">'
+                + '<iframe src="' + src + '" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;"'
+                + ' allow="fullscreen" allowfullscreen></iframe></div>');
+            } else {
+              copy(url);
+            }
+          });
+        });
+      }
+
+      // Keyboard: ← / → seek 5s, space play/pause, f fullscreen.
+      document.addEventListener('keydown', function (e) {
+        if (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+        var max = dur || video.duration || 1e9;
+        if (e.key === 'ArrowRight') video.currentTime = Math.min(max, (video.currentTime || 0) + 5);
+        else if (e.key === 'ArrowLeft') video.currentTime = Math.max(0, (video.currentTime || 0) - 5);
+        else if (e.key === ' ') { e.preventDefault(); if (video.paused) video.play(); else video.pause(); }
+        else if (e.key === 'f' || e.key === 'F') { if (video.requestFullscreen) { var r = video.requestFullscreen(); if (r && r.catch) r.catch(function () {}); } }
       });
 
       // Safari (and iOS) play HLS natively; everyone else gets hls.js, loaded
