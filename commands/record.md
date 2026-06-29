@@ -120,27 +120,25 @@ next time's `lastProfile` automatically — no separate save step.
 
 ## Step 2 — launch the shim (harness-tracked background task)
 
-You **launch** the recorder; the **user** starts the capture from the menu bar. First
-confirm the menu-bar binary is built — it's compiled on-device by `/shroom:setup` and
-lives at `${CLAUDE_PLUGIN_ROOT}/scripts/shim/macos/build/shroom.app/Contents/MacOS/shroom` (gitignored):
-
-```
-ls "${CLAUDE_PLUGIN_ROOT}/scripts/shim/macos/build/shroom.app/Contents/MacOS/shroom"
-```
-
-If it's missing, tell the user to run `/shroom:setup` first (it compiles it) and
-stop — don't try to record without it.
+You **launch** the recorder; the **user** starts the capture from the menu bar.
 
 ### Prime permissions (foreground, before the tray)
 
-Run the permissions primer **and wait for it** — a throwaway launch that requests
-**Microphone** and registers **Screen Recording** as the **“shroom”** principal (so
-prompts read "shroom", never "Terminal"), then exits with one line of JSON:
-`{"screen":"granted|prompted","mic":"granted|denied"}`:
+The permissions primer is the **first** launch of the menu-bar app this session — so
+it's also where a not-yet-set-up machine surfaces. Run it **and wait for it**: a
+throwaway launch that requests **Microphone** and registers **Screen Recording** as
+the **“shroom”** principal (so prompts read "shroom", never "Terminal"), then exits
+with one line of JSON: `{"screen":"granted|prompted","mic":"granted|denied"}`:
 
 ```
 "${CLAUDE_PLUGIN_ROOT}/scripts/shim/macos/build/shroom.app/Contents/MacOS/shroom" --permissions
 ```
+
+Don't pre-check or narrate that the app is present — just run it. If it **can't launch
+at all** (a "No such file or directory"/not-found error — it's compiled on-device the
+first time by `/shroom:setup`), don't try to record: in **product voice** tell the
+user recording needs the one-time setup first and to run `/shroom:setup`, then stop.
+Never name the app file or say "build", "binary", or "shim" to the user.
 
 The **mic** prompt resolves inline while it runs (a one-line heads-up beforehand is
 kind). Then branch on the JSON — **you** own the Screen-Recording gate (the primer no
