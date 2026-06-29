@@ -181,14 +181,18 @@ that label is shown to the user when the task completes:
 ```
 "${CLAUDE_PLUGIN_ROOT}/scripts/shim/macos/build/shroom.app/Contents/MacOS/shroom" \
   --recorder "${CLAUDE_PLUGIN_ROOT}/scripts/recorder/record.mjs" \
-  --node node \
+  --node "${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node" \
   -- --out "$HOME/.shroom/recordings/<YYYYMMDD-HHMMSS>-<id>" --id <id> \
      --quality <key> --device "<video name>" --audio "<mic name>"
 ```
 
-(`--node node` — the recorder only needs Node ≥18, so the user's default node is
-fine; the Node ≥22 in creds `nodeBinDir` is only for wrangler.) Everything after
-`--` flows unchanged to `record.mjs`; the shim derives the fifo + log from `--out`.
+(`--node` must be a Node that uploads can use: the recorder streams segments to
+storage with global `fetch`, which only exists on Node ≥18 — and the user's *default*
+node is often older, so a bare `--node node` silently lands on it and every upload
+throws. Pointing `--node` at `run-node` makes the shim launch the recorder through the
+same version-selecting wrapper everything else uses, so it always gets a current Node.)
+Everything after `--` flows unchanged to `record.mjs`; the shim derives the fifo + log
+from `--out`.
 
 Then tell the user **how to drive the tray** (the menu-bar app, not you, controls capture):
 
