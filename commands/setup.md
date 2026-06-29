@@ -61,7 +61,14 @@ step ✅ and the next ▶️.
 
 ## Step 1 — Install local tools + create the library
 
-First, a **silent** env check — it only *reads*, never installs:
+First, a best-effort **version check** (silent on failure, never blocks): run
+`node "${CLAUDE_PLUGIN_ROOT}/scripts/version/check.mjs"` and read its JSON. If
+`updateAvailable` is true, note in **one line** that a newer shroom (`<latest>`) is
+out and they may want to update from the `/plugin` menu + `/reload-plugins` before
+continuing — but don't insist; setup works fine as-is. On any error or
+`updateAvailable: false`, say nothing.
+
+Then a **silent** env check — it only *reads*, never installs:
 
 ```
 node "${CLAUDE_PLUGIN_ROOT}/scripts/setup/setup.mjs" probe --json

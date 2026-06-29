@@ -31,8 +31,16 @@ and re-invokes you. Branch first:
   publish.)
 - **A transcription task just completed** → go to **Step 5 (enrich)** for its
   session: the link is already live; you're adding chapters + transcript.
-- **Otherwise (a fresh `/shroom:record`)** → first drain any **pending publish**
-  from an earlier run (SPEC §6 recovery): glance at the recent recordings,
+- **Otherwise (a fresh `/shroom:record`)** → first a quick **version check**
+  (best-effort, never blocks): run
+  `node "${CLAUDE_PLUGIN_ROOT}/scripts/version/check.mjs"` and read its JSON. If
+  `updateAvailable` is true, mention it in **one line** ("shroom `<latest>` is out —
+  you're on `<local>`; update from the `/plugin` menu, then `/reload-plugins`"), then
+  carry on regardless. On any error or `updateAvailable: false`, say nothing and don't
+  re-check on later turns this session. Never gate recording on it.
+
+  Then drain any **pending publish** from an earlier run (SPEC §6 recovery): glance at
+  the recent recordings,
 
   ```
   ls -t ~/.shroom/recordings 2>/dev/null
