@@ -1,7 +1,7 @@
 ---
 description: Record your screen → instant local preview, then a permanent unlisted link with auto title, chapters, and a searchable transcript.
 argument-hint: "[library-dir]"
-allowed-tools: AskUserQuestion, Skill, Read, Bash(node:*), Bash(open:*), Bash(cat:*), Bash(ls:*), Bash(git:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/shim/macos/build/shroom.app/Contents/MacOS/shroom:*)
+allowed-tools: AskUserQuestion, Skill, Read, Bash(node:*), Bash(open:*), Bash(ls:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/shim/macos/build/shroom.app/Contents/MacOS/shroom:*)
 ---
 
 You are running `/shroom:record`. Your job is **orchestration and judgment**: you
