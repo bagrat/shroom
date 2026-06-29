@@ -5,7 +5,7 @@
 // evidence is scattered across ~/.shroom and the git library. This gathers it
 // for ONE recording into a single report the Develop session can read: the event
 // log, the ffmpeg tail, the file inventory, the library record, the deploy/site
-// state, the version + dashboard markers, and a SECRET-SAFE creds summary.
+// state, the version marker, and a SECRET-SAFE creds summary.
 //
 // It only ever READS. It NEVER prints credentials — just which fields are set and
 // the public URLs (bucket name / account id are reported as present/absent).
@@ -127,8 +127,6 @@ if (exists(siteDir)) {
 hr('global state');
 const vs = readSafe(path.join(SHROOM, 'version-state.json'));
 out(`  version-state: ${vs ? vs.trim() : '(none)'}`);
-const dash = path.join(SHROOM, 'dashboard', 'index.html');
-out(`  dashboard: ${exists(dash) ? 'built ' + new Date(fs.statSync(dash).mtime).toISOString() : '(none)'}`);
 
 // --- creds summary (SECRET-SAFE: presence + public values only) ---
 hr('creds summary (no secrets)');

@@ -24,23 +24,27 @@ When the user asks to walk through the test (or "step by step"):
 
 ---
 
-## Phase 0 — before setup
+## Phase 0 — record gate (before setup)
 
-- **① Nudge · item 2** — Open a **new** test window (don't run setup yet).
-  **Expect:** the assistant proactively mentions you can run `/shroom:setup`, once.
-  Silent once configured.
+- **① Record gate · item 2** — On a fresh machine (no setup yet), run
+  `/shroom:record`. **Expect:** it does **not** launch the recorder — it explains
+  recording needs a one-time `/shroom:setup` (~5–10 min) and **asks** whether to
+  start setup now. Say **no** → it stops cleanly (no device picker, no shim). Saying
+  yes would jump straight into Phase 1.
 
 ## Phase 1 — setup
 
 - **② Fresh setup · item 9 (first-timer path)** — `/shroom:setup ~/<new-library-name>`
-  **Expect:** opens with the **welcome + plan (all steps ⬜)** *first*; then one line
-  ("let me check what you've got") + a quick read-only preflight; then it **re-renders
-  the plan still all ⬜** (nothing done yet) and walks you through — tools present, then
-  Cloudflare (OAuth valid, card on file), the one manual **R2 token** recreation,
-  provisions a new bucket + Pages project, creates the new library.
+  **Expect:** opens with the **welcome (what shroom is + cost)** — *no plan yet*; then one
+  line ("let me check what you've got") + a quick read-only preflight; then it shows the
+  plan **once, pre-marked** (all ⬜ for a first-timer — never a blank copy *before* the
+  check) and walks you through — tools present, then Cloudflare (OAuth valid, card on
+  file), the one manual **R2 token** recreation, provisions a new bucket + Pages project,
+  creates the new library.
 - **③ Re-run pre-marking · item 9 (the payoff)** — run `/shroom:setup` **again**.
-  **Expect:** welcome + plan, then after the quick preflight it **re-renders the plan
-  with steps 1–5 ✅** and jumps to "already set up — bucket `…`, site `…`," no re-walk.
+  **Expect:** welcome, then the quick preflight, then the plan shown **once** with steps
+  1–5 ✅ (no redundant blank plan first) and jumps to "already set up — bucket `…`, site
+  `…`," no re-walk.
 - **④ Version/post-update preflight · items 3, 4** — runs silently during the Step 0
   preflight (and atop record).
   **Expect:** no update suggestion (on latest), no "what's new" (item 4 only fires
@@ -58,9 +62,10 @@ When the user asks to walk through the test (or "step by step"):
 
 ## Phase 3 — management skills (need ⑤'s recording)
 
-- **⑦ Dashboard · item 7** — "show my library."
-  **Expect:** builds + opens a card page — thumbnail, duration, a **live** link, disk
-  footprint.
+- **⑦ Dashboard · item 7** — *removed.* The static-page dashboard was pulled (its
+  `main()` never fired through the skills-dir symlink — same entry-point guard bug now
+  fixed for search/cleanup). To be **redesigned as a local server** that renders the
+  library; deferred — see backlog `dashboard-as-server`. Skip this step.
 - **⑧ Search · item 8** — "which recording covered `<a topic you said>`."
   **Expect:** returns the recording with a snippet + a **chapter jump-time**.
 - **⑨ Cleanup + MP4 · item 5** — "add a downloadable MP4," reload the page (Download
@@ -71,16 +76,33 @@ When the user asks to walk through the test (or "step by step"):
 
 ---
 
+## ⏸ Parked — resume here (2026-06-29)
+
+Stopped after the dashboard work; **⑧ and ⑨ remain**, and there are **no recordings left**, so
+both need a fresh capture first. In a new **repo** session (or just the test window for the runs):
+
+1. **Repo state:** the symlink entry-point guard fix (search/cleanup/version) + the dashboard
+   removal are **edited but NOT committed** on `green-set-overhaul`. Decide whether to commit
+   before/after finishing the test.
+2. **Test window** (`~/shroom-dev`): run **`/reload-plugins`** (picks up the script fix, drops the
+   removed dashboard skill).
+3. **Re-confirm ④** — version preflight was likely a false pass (it silently no-opped through the
+   symlink before the fix). On a fresh `/shroom:record` Step 0, check it actually runs now.
+4. **Re-capture ⑤** — record 30–60s with 2–3 topic shifts; note the id.
+5. **⑧ Search** — "which recording covered `<topic you said>`" → expect snippet + chapter jump-time.
+6. **⑨ Cleanup + MP4** — "add a downloadable MP4" (Download button on reload), then "clean up old
+   recordings" (asks before anything; `delete-remote` needs its own explicit yes → link 404s).
+
 ## Results
 
 | Step | Item | Status | Notes / handoff |
 | --- | --- | --- | --- |
-| ① Nudge | 2 | ⬜ | |
-| ② Fresh setup | 9 | ⬜ | |
-| ③ Re-run pre-marking | 9 | ⬜ | |
-| ④ Version/post-update | 3,4 | ⬜ | |
-| ⑤ Record | 5 | ⬜ | |
-| ⑥ Player | 6 | ⬜ | |
-| ⑦ Dashboard | 7 | ⬜ | |
+| ① Record gate | 2 | ✅ | confirmed before this session |
+| ② Fresh setup | 9 | ✅ | confirmed before this session |
+| ③ Re-run pre-marking | 9 | ✅ | confirmed before this session |
+| ④ Version/post-update | 3,4 | ✅ | confirmed before this session |
+| ⑤ Record | 5 | ✅ | confirmed before this session |
+| ⑥ Player | 6 | ✅ | confirmed before this session |
+| ⑦ Dashboard | 7 | ➖ | feature removed; redesign as a server (backlog `dashboard-as-server`) |
 | ⑧ Search | 8 | ⬜ | |
 | ⑨ Cleanup + MP4 | 5 | ⬜ | |
