@@ -20,7 +20,12 @@ Agent skills — the **judgment** layer, which is the actual product (SPEC §7).
   routing to `cleanup` (prune/delete) and `title-chapters` (re-title). The
   deterministic [`dashboard.mjs`](../scripts/dashboard/dashboard.mjs) builds the
   list + HTML; the skill narrates and routes.
+- [`search/`](search/SKILL.md) — **built.** Transcript search over the git-library
+  corpus: the deterministic [`search.mjs`](../scripts/search/search.mjs) does lexical
+  retrieval (scoring + snippets, no external service); the skill turns a question
+  into terms and ranks the candidates semantically, answering with links + chapter
+  jump points. The "find where I said X" half of the boundary.
 
-Planned: transcript + semantic search, edit-as-a-sentence, "publish?" (M5c-3+).
+Planned: edit-as-a-sentence, "publish?" (M5c-3+).
 
 Determinism boundary: skills decide; `scripts/` execute. See [`CLAUDE.md`](../CLAUDE.md).

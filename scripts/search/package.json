@@ -1,0 +1,16 @@
+{
+  "name": "@shroom/search",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "description": "Deterministic retrieval backend for the search skill: lexical index + scoring over the git-library transcript corpus, returning ranked candidates with snippets. No external service.",
+  "bin": {
+    "shroom-search": "./search.mjs"
+  },
+  "scripts": {
+    "test": "node test/search.test.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
