@@ -18,10 +18,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-// The shared favicon ships with the templates; placed at the site root on deploy.
-const FAVICON_SRC = path.join(
-  path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'templates', 'favicon.svg',
+// The shared favicons ship with the templates; placed at the site root on deploy.
+// SVG is the primary (crisp, themeable); the PNG is a fallback for browsers that
+// ignore SVG favicons — notably Safari — and doubles as the apple-touch-icon.
+const TEMPLATES_DIR = path.join(
+  path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'templates',
 );
+const FAVICON_FILES = ['favicon.svg', 'favicon.png'];
 
 const stripSlash = (s) => (typeof s === 'string' ? s.replace(/\/+$/, '') : s);
 
@@ -74,17 +77,22 @@ export function ensureHlsJs({ siteDir, vendorPath, force = false }) {
   return { ok: true, placed: true, path: dest };
 }
 
-// Place the favicon at the site root (/favicon.svg), shared by every per-video
-// page (player.html links it absolutely). Best-effort: a missing source never
-// blocks a deploy.
-export function ensureFavicon({ siteDir, src = FAVICON_SRC }) {
-  try {
-    if (!fs.existsSync(src)) return { ok: true, placed: false };
-    fs.copyFileSync(src, path.join(siteDir, 'favicon.svg'));
-    return { ok: true, placed: true };
-  } catch {
-    return { ok: true, placed: false };
+// Place the favicons at the site root (/favicon.svg + /favicon.png), shared by
+// every per-video page (player.html links them absolutely). Best-effort: a
+// missing source never blocks a deploy.
+export function ensureFavicon({ siteDir, srcDir = TEMPLATES_DIR, files = FAVICON_FILES }) {
+  let placed = false;
+  for (const file of files) {
+    try {
+      const src = path.join(srcDir, file);
+      if (!fs.existsSync(src)) continue;
+      fs.copyFileSync(src, path.join(siteDir, file));
+      placed = true;
+    } catch {
+      // best-effort per file
+    }
   }
+  return { ok: true, placed };
 }
 
 // Run the actual `wrangler pages deploy`. Production deploys target the project's
