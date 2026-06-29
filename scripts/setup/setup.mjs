@@ -260,22 +260,33 @@ async function cmdInitLibrary({ json, opts, run = (c, a) => spawnRun(c, a, { tim
   return 0;
 }
 
-// wrangler stores its OAuth token in a per-OS config TOML. We read it to make one
-// authenticated API call (the verification probe below) — the same token wrangler
-// itself uses. Best-effort across the known locations; null if not found.
+// wrangler stores its OAuth token in a per-OS config TOML — but a STALE leftover at
+// one path can shadow the fresh token wrangler actually refreshed at another (seen on
+// wrangler 4.x: a long-expired ~/Library/Preferences copy beside a current ~/.wrangler
+// one). Reading by file ORDER then hands Cloudflare an expired token → 10000
+// "Authentication error", even right after a successful `wrangler whoami` — whoami
+// refreshes via the refresh token but does NOT rewrite the orphan file. So read ALL
+// candidates and return the token with the LATEST expiration_time: freshness, not path
+// priority. (A file with no parseable expiry sorts oldest; used only if it's the only
+// token found.) null if none.
 function readWranglerOAuthToken({ home = os.homedir(), fsmod = fs } = {}) {
   const candidates = [
     path.join(home, 'Library/Preferences/.wrangler/config/default.toml'), // macOS
     path.join(home, '.config/.wrangler/config/default.toml'), // XDG / Linux
     path.join(home, '.wrangler/config/default.toml'), // legacy
   ];
+  let best = null; // { token, expMs }
   for (const p of candidates) {
-    try {
-      const m = fsmod.readFileSync(p, 'utf8').match(/oauth_token\s*=\s*"([^"]+)"/);
-      if (m) return m[1];
-    } catch { /* not here — keep looking */ }
+    let text;
+    try { text = fsmod.readFileSync(p, 'utf8'); } catch { continue; } // not here
+    const token = text.match(/oauth_token\s*=\s*"([^"]+)"/)?.[1];
+    if (!token) continue;
+    const expStr = text.match(/expiration_time\s*=\s*"([^"]+)"/)?.[1];
+    const expMs = expStr ? Date.parse(expStr) : NaN;
+    const score = Number.isNaN(expMs) ? -Infinity : expMs;
+    if (!best || score > best.expMs) best = { token, expMs: score };
   }
-  return null;
+  return best?.token ?? null;
 }
 
 // Create a Pages project via the Cloudflare REST API, authenticating with the
