@@ -51,6 +51,9 @@ export function urlsFor(cfg, id) {
     hlsUrl: cfg.publicBaseUrl ? `${cfg.publicBaseUrl}/${id}/stream.m3u8` : `./stream.m3u8`,
     pageUrl: cfg.pagesBaseUrl ? `${cfg.pagesBaseUrl}/${id}/` : '',
     posterUrl: cfg.pagesBaseUrl ? `${cfg.pagesBaseUrl}/${id}/poster.jpg` : './poster.jpg',
+    // The optional downloadable MP4 (uploaded by the cleanup skill). Rendered only
+    // when the record's `mp4` flag is set — see render.mjs.
+    downloadUrl: cfg.publicBaseUrl ? `${cfg.publicBaseUrl}/${id}/video.mp4` : '',
     hlsJsUrl: cfg.hlsJsUrl ?? '/hls.min.js',
   };
 }

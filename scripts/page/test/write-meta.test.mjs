@@ -129,6 +129,22 @@ test('enrichment: omitting --title inherits the existing title, adds chapters+tr
   assert.match(parsed.transcript, /Body text here\./);
 });
 
+test('--mp4 sets the download flag, and it survives an enrich re-publish', () => {
+  const lib = tmp('shroom-lib-');
+  // cleanup skill marks the record after uploading video.mp4.
+  run(['--id', 'm6', '--library', lib, '--title', 'Has a download', '--mp4']);
+  let parsed = parseMetadata(fs.readFileSync(path.join(lib, 'm6.md'), 'utf8'));
+  assert.equal(parsed.meta.mp4, true);
+
+  // A later enrich pass rebuilds meta from flags WITHOUT --mp4 — must not drop it.
+  const session = makeSession({ transcript: 'Body.' });
+  run(['--id', 'm6', '--library', lib, '--session', session,
+    '--chapters', JSON.stringify([{ t: 0, label: 'Start' }])]);
+  parsed = parseMetadata(fs.readFileSync(path.join(lib, 'm6.md'), 'utf8'));
+  assert.equal(parsed.meta.mp4, true); // inherited, not clobbered
+  assert.equal(parsed.meta.title, 'Has a download');
+});
+
 (async () => {
   for (const [name, fn] of tests) {
     try { await fn(); passed++; console.log(`ok   ${name}`); }

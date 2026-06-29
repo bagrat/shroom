@@ -97,6 +97,20 @@ test('renders chapters as seekable buttons; omits the list when empty', () => {
   assert.ok(!noCh.includes('class="chapters"'));
 });
 
+test('Download button renders only when mp4 flag + download URL are present', () => {
+  const urls = { ...URLS, downloadUrl: 'https://pub-x.r2.dev/vid1/video.mp4' };
+  const on = renderPage({ template: TEMPLATE, meta: { title: 't', durationSec: 5, mp4: true }, urls });
+  assert.ok(on.includes('class="download"'));
+  assert.ok(on.includes('href="https://pub-x.r2.dev/vid1/video.mp4"'));
+  assert.ok(on.includes('download>'));
+
+  const offNoFlag = renderPage({ template: TEMPLATE, meta: { title: 't', durationSec: 5 }, urls });
+  assert.ok(!offNoFlag.includes('class="download"'));
+  const offNoUrl = renderPage({ template: TEMPLATE, meta: { title: 't', durationSec: 5, mp4: true }, urls: URLS });
+  assert.ok(!offNoUrl.includes('class="download"'));
+  assert.ok(!offNoFlag.includes('{{')); // token still substitutes to empty
+});
+
 test('missing title falls back to "Untitled recording"', () => {
   const html = renderPage({ template: TEMPLATE, meta: { durationSec: 1 }, urls: URLS });
   assert.ok(html.includes('<title>Untitled recording</title>'));

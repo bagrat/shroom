@@ -55,7 +55,7 @@ export function parseMetadata(text) {
 
 // Serialize { meta, transcript } → a `<id>.md` document. Key order is stable so
 // re-saving an unchanged record produces an unchanged file (clean git diffs).
-const KEY_ORDER = ['id', 'title', 'tldr', 'durationSec', 'createdAt', 'chapters'];
+const KEY_ORDER = ['id', 'title', 'tldr', 'durationSec', 'createdAt', 'chapters', 'mp4'];
 export function serializeMetadata({ meta = {}, transcript = '' } = {}) {
   const keys = [
     ...KEY_ORDER.filter((k) => k in meta),

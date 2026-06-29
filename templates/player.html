@@ -36,6 +36,10 @@
     header { display: flex; align-items: baseline; gap: 12px; margin: 0 0 16px; }
     h1 { font-size: 20px; font-weight: 600; margin: 0; }
     .dur { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .download { margin-left: auto; white-space: nowrap; color: var(--accent);
+      text-decoration: none; border: 1px solid rgba(136,192,208,.4); border-radius: 8px;
+      padding: 4px 10px; font-size: 13px; }
+    .download:hover { background: rgba(136,192,208,.12); }
     .frame { position: relative; background: #000; border-radius: 12px; overflow: hidden;
       aspect-ratio: 16 / 9; box-shadow: 0 8px 40px rgba(0,0,0,.5); }
     video { width: 100%; height: 100%; display: block; background: #000; }
@@ -57,6 +61,7 @@
     <header>
       <h1>{{TITLE}}</h1>
       <span class="dur">{{DURATION_LABEL}}</span>
+      {{DOWNLOAD_HTML}}
     </header>
 
     <div class="frame">

@@ -125,3 +125,73 @@ export async function getObject(client, key) {
   if (!res.ok) return { ok: false, status: res.status, body: null };
   return { ok: true, status: res.status, body: Buffer.from(await res.arrayBuffer()) };
 }
+
+// DELETE one object. 204 (deleted) and 404 (already gone) are both "ok: true" —
+// delete is idempotent, so cleanup can re-run safely. Returns { ok, status }.
+export async function deleteObject(client, key) {
+  const res = await send(client, 'DELETE', key);
+  return { ok: res.status === 204 || res.status === 404, status: res.status };
+}
+
+// Minimal XML field/entity helpers for ListObjectsV2 (zero-dep, like the signer).
+// Our keys are base64url ids + safe filenames, so only basic entities can appear.
+function xmlUnescape(s) {
+  return s
+    .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&');
+}
+export function parseListObjectsV2(xml) {
+  const objects = [];
+  const re = /<Contents>([\s\S]*?)<\/Contents>/g;
+  let m;
+  while ((m = re.exec(xml))) {
+    const block = m[1];
+    const key = block.match(/<Key>([\s\S]*?)<\/Key>/);
+    const size = block.match(/<Size>(\d+)<\/Size>/);
+    if (key) objects.push({ key: xmlUnescape(key[1]), size: size ? Number(size[1]) : 0 });
+  }
+  const truncated = /<IsTruncated>\s*true\s*<\/IsTruncated>/i.test(xml);
+  const token = xml.match(/<NextContinuationToken>([\s\S]*?)<\/NextContinuationToken>/);
+  return { objects, truncated, nextToken: token ? xmlUnescape(token[1]) : null };
+}
+
+// List every object under a prefix (e.g. one recording's `<id>/`), following
+// continuation tokens so a long recording's hundreds of segments all come back.
+// Returns { objects: [{ key, size }], bytes } or throws on a non-2xx response.
+export async function listObjects(client, prefix) {
+  const objects = [];
+  let token = null;
+  do {
+    const u = new URL(`${client.endpoint.replace(/\/$/, '')}/${client.bucket}`);
+    u.searchParams.set('list-type', '2');
+    if (prefix) u.searchParams.set('prefix', prefix);
+    if (token) u.searchParams.set('continuation-token', token);
+    const signed = signRequest({
+      method: 'GET', url: u.toString(),
+      region: client.region, accessKeyId: client.accessKeyId,
+      secretAccessKey: client.secretAccessKey,
+    });
+    const res = await fetch(u.toString(), { method: 'GET', headers: signed.fetchHeaders });
+    if (!res.ok) throw new Error(`list ${prefix || ''} HTTP ${res.status}`);
+    const page = parseListObjectsV2(await res.text());
+    objects.push(...page.objects);
+    token = page.truncated ? page.nextToken : null;
+  } while (token);
+  return { objects, bytes: objects.reduce((s, o) => s + (o.size || 0), 0) };
+}
+
+// Delete every object under a prefix. Lists then deletes one-by-one (R2 supports
+// batch DeleteObjects, but per-key keeps the signer path identical + idempotent).
+// Returns { deleted, failed: [{ key, status }], bytes }.
+export async function deletePrefix(client, prefix) {
+  const { objects, bytes } = await listObjects(client, prefix);
+  let deleted = 0;
+  const failed = [];
+  for (const o of objects) {
+    const res = await deleteObject(client, o.key);
+    if (res.ok) deleted++;
+    else failed.push({ key: o.key, status: res.status });
+  }
+  return { deleted, failed, bytes, total: objects.length };
+}

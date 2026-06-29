@@ -1,0 +1,16 @@
+{
+  "name": "@shroom/cleanup",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "description": "Deterministic backend for the cleanup skill: scan local recordings, prune local HLS while keeping a watchable MP4, delete locally or from the bucket, and upload a downloadable MP4.",
+  "bin": {
+    "shroom-cleanup": "./cleanup.mjs"
+  },
+  "scripts": {
+    "test": "node test/cleanup.test.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

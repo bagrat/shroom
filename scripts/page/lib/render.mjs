@@ -50,6 +50,14 @@ function tldrHtml(tldr) {
   return t ? `<p class="tldr">${htmlEscape(t)}</p>` : '';
 }
 
+// The Download button — only when the record opted in (`mp4: true`) AND a public
+// download URL resolved. The `download` attr asks the browser to save rather than
+// navigate. Empty string otherwise, so the template token always substitutes.
+function downloadHtml(mp4, downloadUrl) {
+  if (!mp4 || !downloadUrl) return '';
+  return `<a class="download" href="${htmlEscape(downloadUrl)}" download>Download MP4</a>`;
+}
+
 // Render one page. `meta` = the metadata record's frontmatter; `urls` = the
 // resolved public links. Returns the final HTML string.
 export function renderPage({ template, meta = {}, urls = {} }) {
@@ -73,6 +81,7 @@ export function renderPage({ template, meta = {}, urls = {} }) {
     DURATION_LABEL: htmlEscape(formatDuration(durationSec)),
     TLDR_HTML: tldrHtml(tldr),
     CHAPTERS_HTML: chaptersHtml(chapters),
+    DOWNLOAD_HTML: downloadHtml(meta.mp4, urls.downloadUrl),
     DATA_JSON: jsonForScript(data),
   };
 
