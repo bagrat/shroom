@@ -39,6 +39,14 @@ and re-invokes you. Branch first:
   carry on regardless. On any error or `updateAvailable: false`, say nothing and don't
   re-check on later turns this session. Never gate recording on it.
 
+  Then a **post-update check** (also best-effort): run
+  `node "${CLAUDE_PLUGIN_ROOT}/scripts/version/post-update.mjs"` and read its JSON. For
+  each entry in `pending`, relay its `whatsNew` in one short line ("Updated to
+  `<to>` — what's new: …"). If an entry carries `actions`, treat each as a
+  **propose → ask → run** (show its `command`, get a yes, then run it) — never auto-run
+  a machine change. The check records the version itself, so it won't repeat. Empty
+  `pending` or any error → say nothing.
+
   Then drain any **pending publish** from an earlier run (SPEC §6 recovery): glance at
   the recent recordings,
 

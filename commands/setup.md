@@ -68,6 +68,12 @@ out and they may want to update from the `/plugin` menu + `/reload-plugins` befo
 continuing — but don't insist; setup works fine as-is. On any error or
 `updateAvailable: false`, say nothing.
 
+Also a **post-update check** (best-effort): run
+`node "${CLAUDE_PLUGIN_ROOT}/scripts/version/post-update.mjs"` and read its JSON. For
+each `pending` entry relay its `whatsNew` in one line; if an entry carries `actions`,
+**propose → ask → run** each (show its `command`, get a yes) — never auto-run. The
+check records the version itself, so it won't repeat. Empty / any error → say nothing.
+
 Then a **silent** env check — it only *reads*, never installs:
 
 ```

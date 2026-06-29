@@ -5,10 +5,11 @@
   "version": "0.1.0",
   "description": "Version awareness for shroom: check.mjs suggests an update when the published plugin version is newer; never updates anything itself (the determinism boundary — judgment lives in the command).",
   "bin": {
-    "shroom-version-check": "./check.mjs"
+    "shroom-version-check": "./check.mjs",
+    "shroom-post-update": "./post-update.mjs"
   },
   "scripts": {
-    "test": "node test/check.test.mjs"
+    "test": "node test/check.test.mjs && node test/post-update.test.mjs"
   },
   "engines": {
     "node": ">=18"

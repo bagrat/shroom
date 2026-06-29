@@ -44,7 +44,7 @@ function parseArgs(argv) {
 
 // Resolve the installed plugin's own version from its plugin.json. The script
 // lives at <root>/scripts/version/check.mjs, so the manifest is two dirs up.
-function localVersion(override) {
+export function localVersion(override) {
   if (override) return override;
   const root = process.env.CLAUDE_PLUGIN_ROOT || path.resolve(HERE, '..', '..');
   const manifest = path.join(root, '.claude-plugin', 'plugin.json');
