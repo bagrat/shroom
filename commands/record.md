@@ -163,7 +163,7 @@ Mint the recording's **id** — the unguessable storage/URL key — yourself, so
 name the session dir after it and the URL key is fixed up front:
 
 ```
-node -e "console.log(require('crypto').randomBytes(12).toString('base64url'))"
+"${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node" -e "console.log(require('crypto').randomBytes(12).toString('base64url'))"
 ```
 
 Then the **session dir** is `~/.shroom/recordings/<YYYYMMDD-HHMMSS>-<id>` (timestamp
