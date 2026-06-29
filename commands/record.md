@@ -157,8 +157,13 @@ longer pops a dialog of its own; that stacked confusingly over the system prompt
 
 Always call it **shroom** to the user — never say "shim" in anything you surface.
 
-Mint the recording's **id** — the unguessable storage/URL key — yourself, so you can
-name the session dir after it and the URL key is fixed up front:
+This next part — generating the id and launching the recorder — is **backstage
+plumbing the user never sees narrated**. Don't announce it (no "minting", no "id", no
+"launching the recorder"/"shim"); the only thing you say around here is the warm
+tray hand-off at the end of this step.
+
+Generate the recording's **id** — the unguessable storage/URL key — yourself, so you
+can name the session dir after it and the URL key is fixed up front:
 
 ```
 "${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node" -e "console.log(require('crypto').randomBytes(12).toString('base64url'))"
