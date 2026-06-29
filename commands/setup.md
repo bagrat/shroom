@@ -1,7 +1,7 @@
 ---
 description: One-time shroom setup — check local tools, install what's missing, and provision Cloudflare R2 + Pages so record → link works.
 argument-hint: "[library-dir]"
-allowed-tools: AskUserQuestion, Write, Bash(node:*), Bash(git:*), Bash(brew:*), Bash(npm:*), Bash(/bin/bash:*), Bash(/bin/sh:*), Bash(xcode-select:*), Bash(wrangler:*), Bash(open:*)
+allowed-tools: AskUserQuestion, Write, Bash(${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node:*), Bash(git:*), Bash(brew:*), Bash(npm:*), Bash(/bin/bash:*), Bash(/bin/sh:*), Bash(xcode-select:*), Bash(wrangler:*), Bash(open:*)
 ---
 
 You are running `/shroom:setup` — the one-time onboarding flow (SPEC §8). Treat the
@@ -20,8 +20,10 @@ The optional `$ARGUMENTS` is a preferred library directory.
 
 ## Tone & format — as important as the mechanics
 
-- **Open with the welcome + the whole plan**, so the user sees the full journey before
-  anything happens. Don't dribble out steps without showing where they lead.
+- **Open with the welcome**, then show the plan **once** — after the quick preflight, with
+  real marks (✅/⬜). Never print a blank all-⬜ plan first and then re-render it; that's a
+  redundant copy (and pure noise on a re-run). Don't dribble out steps without showing
+  where they lead.
 - Keep **every message short and scannable** — numbered or bulleted, never a wall of
   prose, never alarming jargon. Explain *why* in half a sentence, not a paragraph.
 - Use **`AskUserQuestion`** for every consent/decision gate — never bury a yes/no in
@@ -31,29 +33,17 @@ The optional `$ARGUMENTS` is a preferred library directory.
   list — no extra narration around it.
 - Every `open <url>` is an outward action: explain it in one line, get a yes, then open.
 
-## Step 0 — Welcome + preflight + the plan (show this first)
+## Step 0 — Welcome first, then preflight, then the plan with real marks
 
-**First, a read-only preflight** so the plan you show reflects reality, not a blank
-slate. None of these mutate the machine — they only *read* — so it's right to run
-them before presenting the plan:
+**Lead with the welcome — before running anything.** The first thing the user sees must be
+the warm greeting (what shroom is + the cost), so they grasp where this is going. Do
+**not** open with version checks or probe output; a sequence of technical results is
+exactly the scary first impression this flow must avoid (SPEC §8 / "Tone & format" above).
+**Show the plan only once — after the preflight, with the real marks** (never a blank
+all-⬜ copy first; that just repeats once the real marks land, and is noise on a re-run).
+Order: welcome → "let me check what you've got" → preflight → show the pre-marked plan.
 
-1. **Version + post-update** (best-effort, silent on failure, never blocks):
-   - `node "${CLAUDE_PLUGIN_ROOT}/scripts/version/check.mjs"` — if `updateAvailable`,
-     note in **one line** a newer shroom (`<latest>`) is out (update from the `/plugin`
-     menu + `/reload-plugins`); don't insist, setup works as-is.
-   - `node "${CLAUDE_PLUGIN_ROOT}/scripts/version/post-update.mjs"` — for each `pending`
-     entry relay its `whatsNew` in one line; for any `actions`, **propose → ask → run**
-     (never auto-run). It records the version itself. Empty / error → say nothing.
-2. **Local env:** `node "${CLAUDE_PLUGIN_ROOT}/scripts/setup/setup.mjs" probe --json`
-   → `{ ready, missingRequired, missingOptional, plan }`. Don't narrate it tool-by-tool.
-3. **Cloudflare + library:** `node "${CLAUDE_PLUGIN_ROOT}/scripts/setup/setup.mjs" status --verify --json`
-   → `{ ready, library, storage, pages, verifyReason }` (`--verify` live-checks the R2 keys).
-
-**Keep these results — Steps 1–5 reuse them; don't re-run probe/status.**
-
-Then lead with the welcome and the plan, **pre-marking each step from what you just
-learned** (✅ done / ⬜ to do) — so a first-timer sees all ⬜ while a returning or
-partly-set-up user sees exactly what's already done and what's left:
+**0a. Show the welcome (no plan yet):**
 
 > **Welcome to shroom 🍄 — let's get you set up.** (~5–10 min, mostly installs.)
 >
@@ -66,16 +56,41 @@ partly-set-up user sees exactly what's already done and what's left:
 > recording is ~**27 MB/min** (~**1.6 GB/hour**), so the **free tier (10 GB) holds ~6
 > hours** of recordings; past that it's pennies (≈100 hours kept online ≈ **$2.40/month**).
 > To switch the free tier on, Cloudflare does require a **credit card** on file.
->
-> **The plan:**  *(mark each ✅/⬜ per the preflight — mapping below)*
-> 1. ⬜ Install local tools + create your library (`~/shroom`)
-> 2. ⬜ Log in / sign up at Cloudflare
-> 3. ⬜ Add a card + turn on R2 storage (activates the free tier)
-> 4. ⬜ Create a storage access token (I'll guide you; you paste 3 values back)
-> 5. ⬜ I set up your bucket + video site and save credentials to `~/.shroom`
-> 6. ⬜ Done — record anytime with `/shroom:record`
 
-**Pre-mark from the preflight:**
+**0b. Then one short line — "let me take a quick look at your current setup to see what's
+already done" — and run the read-only preflight.** None of these mutate the machine (they
+only *read*), so running them now is fine; the point is they come **after** the welcome,
+under that one line, not as the opening act. Don't narrate them tool-by-tool or paste
+their output:
+
+1. **Version + post-update** (best-effort, silent on failure, never blocks):
+   - `"${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node" "${CLAUDE_PLUGIN_ROOT}/scripts/version/check.mjs"` — if `updateAvailable`,
+     note in **one line** a newer shroom (`<latest>`) is out (update from the `/plugin`
+     menu + `/reload-plugins`); don't insist, setup works as-is.
+   - `"${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node" "${CLAUDE_PLUGIN_ROOT}/scripts/version/post-update.mjs"` — for each `pending`
+     entry relay its `whatsNew` in one line; for any `actions`, **propose → ask → run**
+     (never auto-run). It records the version itself. Empty / error → say nothing.
+2. **Local env:** `"${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node" "${CLAUDE_PLUGIN_ROOT}/scripts/setup/setup.mjs" probe --json`
+   → `{ ready, missingRequired, missingOptional, plan, node }`. Don't narrate it
+   tool-by-tool. (`node` carries the safe Node-upgrade command for Step 1 — see there.)
+3. **Cloudflare + library:** `"${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node" "${CLAUDE_PLUGIN_ROOT}/scripts/setup/setup.mjs" status --verify --json`
+   → `{ ready, library, storage, pages, verifyReason }` (`--verify` live-checks the R2 keys).
+
+**Keep these results — Steps 1–5 reuse them; don't re-run probe/status.**
+
+**0c. Now show the plan, with the real marks** (✅ done / ⬜ to do) — print it once, no
+narration. This is the *first* time the plan appears. A first-timer sees all ⬜; a returning
+or partly-set-up user sees exactly what's already done and what's left:
+
+> **The plan:**
+> 1. {✅\|⬜} Install local tools + create your library (`~/shroom`)
+> 2. {✅\|⬜} Log in / sign up at Cloudflare
+> 3. {✅\|⬜} Add a card + turn on R2 storage (activates the free tier)
+> 4. {✅\|⬜} Create a storage access token (I'll guide you; you paste 3 values back)
+> 5. {✅\|⬜} I set up your bucket + video site and save credentials to `~/.shroom`
+> 6. {✅\|⬜} Done — record anytime with `/shroom:record`
+
+**Mark each from the preflight:**
 - **1** ✅ when `probe.ready` **and** `status.library` is set (tools present + library exists).
 - **2–4** ✅ when `status.storage.configured` and `storage.verified` isn't `false` — the R2
   keys exist and still work, so login + card + R2 + token are already done.
@@ -94,26 +109,39 @@ Then branch:
 You already ran `probe` (and `status`) in **Step 0** — **reuse them; don't re-run.**
 If the plan pre-marked step 1 ✅ (required tools present **and** a library configured),
 skip straight to **Steps 2–5**. Otherwise, from the Step 0 `probe` result
-`{ ready, missingRequired, plan }`, ask **one consolidated `AskUserQuestion`** with two
-decisions:
+`{ ready, missingRequired, plan, node }`, ask **one consolidated `AskUserQuestion`** with
+two decisions:
 
-1. **Install the missing tools?** Only if `plan.steps` is non-empty. Show the exact
-   `plan.combinedCommand` in the option description. One toggle covers *all* of them (and
-   the Homebrew bootstrap, if `needsBrew`). They're **all required** — whisper included,
-   since titles / chapters / transcript search depend on it — so it's a single
-   install-or-not choice; don't offer a "skip whisper" option.
+1. **Install the missing tools?** Only if there's anything to install — `plan.steps` is
+   non-empty **or** Node needs upgrading (`probe.node.present` is `false`). Show the exact
+   command(s) in the option description; they're **all required** (whisper included, since
+   titles / chapters / transcript search depend on it), so it's a single install-or-not
+   choice — don't offer a "skip whisper" option. Two kinds of command may appear:
+   - **`plan.combinedCommand`** — the batched brew/npm install for git/ffmpeg/wrangler/
+     whisper (plus the Homebrew bootstrap if `plan.needsBrew`).
+   - **Node ≥22**, when `probe.node.present` is `false`. **Do not sniff how Node is
+     installed yourself** — the probe already did and returned `probe.node`:
+     `{ belowMin, source, nvmAvailable, brewAvailable, recommendedManager,
+     recommendedCommand, note }`. Show **`probe.node.recommendedCommand` verbatim** (one
+     clean command tailored to nvm/brew/none) with `probe.node.note` as the one-line why.
+     Never hand-assemble a `which node; echo $NVM_DIR; brew list …` probe — that's the
+     scary "can't analyze this command" wall, and the detection is the script's job, not
+     yours. (`belowMin: true` means "present but too old"; otherwise Node is absent.)
 2. **Where should the library live?** Default `~/shroom` (or `$ARGUMENTS` if given), with
    a free-text override.
 
 Then, as **one** batched action the user approved:
-- If approved, run `plan.combinedCommand` (single Bash call), then **re-run the probe** to
-  confirm required tools are present. If something required is still missing, stop and say
-  so plainly — don't proceed to Cloudflare.
+- If approved, run the install command(s) the user okayed — `probe.node.recommendedCommand`
+  (if Node needed upgrading) and/or `plan.combinedCommand` — then **re-run the probe** to
+  confirm required tools (and Node ≥22) are present. If something required is still
+  missing, stop and say so plainly — don't proceed to Cloudflare. (A fresh nvm/brew Node
+  may need a new shell to land on PATH; if the re-probe still shows old Node, say so rather
+  than pushing on.)
 - Build the library + local helpers in **one script call** — don't hand-assemble shell
   (that trips a scary "can't analyze this command" prompt and isn't the determinism
   boundary):
   ```
-  node "${CLAUDE_PLUGIN_ROOT}/scripts/setup/setup.mjs" init-library --dir <dir> --json
+  "${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node" "${CLAUDE_PLUGIN_ROOT}/scripts/setup/setup.mjs" init-library --dir <dir> --json
   ```
   It creates the dir, `git init`s it if needed, records it in the creds, vendors
   `hls.min.js`, and compiles the macOS control shim (the menu-bar "tray" `/shroom:record`
@@ -185,7 +213,7 @@ create in the dashboard**. Walk it as separate, brief steps:
   Google SSO is pre-verified). Don't let a later step discover it — that's the scary
   "verification required" wall. Run:
   ```
-  node "${CLAUDE_PLUGIN_ROOT}/scripts/setup/setup.mjs" check-verified --json
+  "${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node" "${CLAUDE_PLUGIN_ROOT}/scripts/setup/setup.mjs" check-verified --json
   ```
   (it auto-detects the account; pass `--account <id>` if you already have it). Branch on
   `verified`:
@@ -233,7 +261,7 @@ with the Write tool** (a file write — they never appear in a shell command, co
 or shell history) as JSON to `~/.shroom/r2-provision.json`:
 `{"r2Token":"…","r2AccessKeyId":"…","r2SecretAccessKey":"…"}`. Then run:
 ```
-node "${CLAUDE_PLUGIN_ROOT}/scripts/setup/setup.mjs" provision --json \
+"${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node" "${CLAUDE_PLUGIN_ROOT}/scripts/setup/setup.mjs" provision --json \
   --r2-creds-file ~/.shroom/r2-provision.json
 ```
 `provision` reads it and **deletes it** when done (kept only across dashboard-gate retries).

@@ -1,7 +1,7 @@
 # dev/ — developing & diagnosing shroom
 
 Tooling and notes for working **on** shroom (not shipped functionality). The plugin
-itself lives in `commands/`, `skills/`, `scripts/`, `hooks/`, `templates/`.
+itself lives in `commands/`, `skills/`, `scripts/`, `templates/`.
 
 ## The dev setup (Claude desktop app)
 
@@ -21,7 +21,7 @@ shroom@skills-dir` or `rm ~/.claude/skills/shroom`.
   SPEC, or memory. Capture the bug and fix in a Develop window. (See
   `~/shroom-dev/README.md` for the bug-report template.)
 
-After editing: `/reload-plugins` (skill text is live immediately; `hooks/`, command
+After editing: `/reload-plugins` (skill text is live immediately; command
 frontmatter, `plugin.json`, and new files need the reload or an app restart).
 
 ## Grabbing logs from a test run
@@ -40,7 +40,7 @@ node dev/collect-logs.mjs <id> --tail 80
 It's **read-only** and **never prints credentials** (keys show as "present"; only
 public URLs are shown). It bundles: the event timeline, the `ffmpeg.log` tail, the
 on-disk file inventory, the transcript summary, the library `<id>.md`, the built
-site dir, the version/dashboard markers, and a secret-safe creds summary.
+site dir, the version marker, and a secret-safe creds summary.
 
 ## Diagnostics map — where everything lives
 
@@ -56,7 +56,6 @@ site dir, the version/dashboard markers, and a secret-safe creds summary.
 | Built page (pre-deploy) | `~/.shroom/site/<id>/index.html` + `poster.jpg` | build-page |
 | Credentials (secrets, mode 600) | `~/.shroom/credentials.json` | setup |
 | Post-update marker | `~/.shroom/version-state.json` | version/post-update.mjs |
-| Dashboard page | `~/.shroom/dashboard/index.html` (+ `thumbs/`) | dashboard skill |
 | Shim build (gitignored) | `scripts/shim/macos/build/shroom.app/…` | setup init-library |
 
 The Claude session transcript of a test window (the agent's actions, not plugin

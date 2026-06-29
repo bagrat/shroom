@@ -3,7 +3,7 @@
   "migrations": [
     {
       "version": "0.1.13",
-      "whatsNew": "shroom now nudges you to set up if you haven't, suggests updates when a newer version ships, lets you clean up old recordings (and keep a downloadable MP4), has a polished player with clickable chapters and copy-to-embed, a local library dashboard, and transcript search.",
+      "whatsNew": "the first time you record, shroom now walks you through setup automatically; it also suggests updates when a newer version ships, lets you clean up old recordings (and keep a downloadable MP4), has a polished player with clickable chapters and copy-to-embed, and transcript search.",
       "actions": []
     }
   ]

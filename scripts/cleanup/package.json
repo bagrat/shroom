@@ -8,7 +8,7 @@
     "shroom-cleanup": "./cleanup.mjs"
   },
   "scripts": {
-    "test": "node test/cleanup.test.mjs"
+    "test": "../runtime/run-node test/cleanup.test.mjs"
   },
   "engines": {
     "node": ">=18"

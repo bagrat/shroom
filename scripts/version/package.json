@@ -9,7 +9,7 @@
     "shroom-post-update": "./post-update.mjs"
   },
   "scripts": {
-    "test": "node test/check.test.mjs && node test/post-update.test.mjs"
+    "test": "../runtime/run-node test/check.test.mjs && ../runtime/run-node test/post-update.test.mjs"
   },
   "engines": {
     "node": ">=18"

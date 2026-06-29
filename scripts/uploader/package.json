@@ -1,0 +1,16 @@
+{
+  "name": "@shroom/uploader",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "description": "File-by-file S3/SigV4 uploader and crash-resume CLI: diffs a session dir against the bucket, uploads the gap, and publishes the playlist. Zero-dependency, idempotent.",
+  "bin": {
+    "shroom-upload": "./upload.mjs"
+  },
+  "scripts": {
+    "test": "../runtime/run-node test/sigv4.test.mjs && ../runtime/run-node test/uploader.test.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -8,7 +8,9 @@
 //
 // Subcommands:
 //   probe [--json]   Check the local env (git/ffmpeg/wrangler/whisper) and print
-//                    a consolidated install plan for whatever's missing.
+//                    a consolidated install plan for whatever's missing. `node`
+//                    carries the one safe upgrade command (it can't be batched into
+//                    the brew/npm one-liner) so the command never sniffs PATH itself.
 //   status [--json]  Report what's already configured in the creds file (library,
 //        [--verify]   storage, pages) so the command can skip done steps and not
 //                     re-ask for the R2 token. --verify live-checks the R2 keys.
@@ -33,6 +35,7 @@ import { fileURLToPath } from 'node:url';
 
 import { probeEnv, spawnRun, findNodeBinDir } from './lib/env-probe.mjs';
 import { buildInstallPlan } from './lib/install-plan.mjs';
+import { detectNode } from './lib/node-detect.mjs';
 import { provisionCloudflare } from './lib/cloudflare.mjs';
 import { buildCredentials, writeCreds, readCreds, credsPath, wranglerPathEnv } from './lib/credentials.mjs';
 import { spawnWrangler } from '../deploy/lib/wrangler.mjs';
@@ -47,8 +50,13 @@ async function haveBrew(run = spawnRun) {
 
 async function cmdProbe({ json }) {
   const env = await probeEnv();
-  const plan = buildInstallPlan(env.results, { haveBrew: await haveBrew() });
-  const out = { ...env, plan };
+  const brewPresent = await haveBrew();
+  const plan = buildInstallPlan(env.results, { haveBrew: brewPresent });
+  // Node is `install.manager: "manual"` (can't be batched into the brew/npm one-liner),
+  // so the command needs the ONE safe upgrade command rather than sniffing PATH itself.
+  // The script does that detection here and returns it as JSON (see node-detect.mjs).
+  const node = detectNode(env.results.find((r) => r.name === 'node'), { haveBrew: brewPresent });
+  const out = { ...env, plan, node };
 
   if (json) {
     process.stdout.write(JSON.stringify(out, null, 2) + '\n');
@@ -61,10 +69,17 @@ async function cmdProbe({ json }) {
     const note = r.present ? '' : r.required ? '  (required)' : '  (optional)';
     process.stdout.write(`  ${mark} ${r.name}${ver}${note}\n`);
   }
-  if (plan.nothingToInstall) {
+  if (plan.nothingToInstall && node.present) {
     process.stdout.write('\nAll tools present.\n');
   } else {
     process.stdout.write('\nProposed install:\n');
+    // Node can't be batched into the brew/npm command (managed per-environment) —
+    // show its tailored upgrade command separately.
+    if (node.recommendedCommand) {
+      const why = node.belowMin ? `Node ${node.version} → >=${node.minMajor}` : `Node (>=${node.minMajor})`;
+      process.stdout.write(`  # ${why} via ${node.recommendedManager} (source: ${node.source})\n`);
+      process.stdout.write(`  ${node.recommendedCommand}\n`);
+    }
     for (const step of plan.steps) {
       process.stdout.write(`  # ${step.label}${step.tools.length ? ` — ${step.tools.join(', ')}` : ''}\n`);
       process.stdout.write(`  ${step.command}\n`);

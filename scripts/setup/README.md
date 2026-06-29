@@ -41,6 +41,15 @@ stays one approval. It **builds** the commands; it never runs them.
   executed: `whisper` imports torch on every invocation, so a cold `whisper --help`
   can blow a timeout and flap to "absent". We only execute a tool when we need to
   parse its version.
+- **Node** can't be batched into the brew/npm install (it's managed per-environment:
+  nvm/brew/system), so it's `install.manager: "manual"`. To keep the command from
+  hand-assembling a scary `which node; echo $NVM_DIR; brew list …` sniff in the consent
+  path, `probe` also returns a **`node`** object (`lib/node-detect.mjs`): how Node is
+  installed (`source`, `nvmAvailable`, `brewAvailable`) and the **one** safe upgrade
+  command (`recommendedManager`, `recommendedCommand`, `note`) tailored to nvm / brew /
+  neither. Read-only — it scans PATH and stats `nvm.sh`, resolving symlinks so a brew
+  shim is recognized even on Intel's `/usr/local/bin`. The command just shows
+  `node.recommendedCommand`; it never sniffs PATH itself.
 
 ## Cloudflare provisioning (SPEC §8 sub-sequence, §9)
 
@@ -90,8 +99,9 @@ node setup.mjs provision [--bucket N] [--pages-project N] [--branch N] [--wrangl
 node setup.mjs set-library --dir <path> [--json]
 ```
 
-`probe` prints a per-tool ✓/✗/○ summary + proposed install commands; `--json`
-emits `{ results, ready, missingRequired, missingOptional, plan }`. `provision`
+`probe` prints a per-tool ✓/✗/○ summary + proposed install commands (Node's tailored
+upgrade command shown separately, since it can't be batched); `--json` emits
+`{ results, ready, missingRequired, missingOptional, plan, node }`. `provision`
 prints a summary (or `--json` result) and merges the creds; ndjson `cf_*` events
 go to stderr. `set-library` persists the chosen library dir into the creds (a pure
 write — the command does the `git init`). Exit `0` on success, `1` otherwise.
@@ -101,6 +111,7 @@ write — the command does the `git init`). Exit `0` on success, `1` otherwise.
 ```
 setup.mjs              CLI: `probe`, `provision`, `set-library`
 lib/env-probe.mjs      tool catalogue + probe (run + PATH-lookup seams)
+lib/node-detect.mjs    Node source (nvm/brew/system) → one safe upgrade command
 lib/install-plan.mjs   missing tools → consolidated, batched install commands
 lib/wrangler-errors.mjs the error-shape catalogue (classify → next step)
 lib/cloudflare.mjs     provisioning orchestration over the runWrangler seam

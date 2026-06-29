@@ -8,7 +8,7 @@
     "shroom-transcribe": "./transcribe.mjs"
   },
   "scripts": {
-    "test": "node test/transcribe.test.mjs"
+    "test": "../runtime/run-node test/transcribe.test.mjs"
   },
   "engines": {
     "node": ">=18"

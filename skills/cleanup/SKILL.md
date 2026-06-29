@@ -1,7 +1,7 @@
 ---
 name: cleanup
 description: Find and remove stale shroom recordings to reclaim disk + storage — list local recordings with sizes, drop heavy local HLS while keeping a watchable MP4, delete a recording locally or from the bucket, or add a downloadable MP4 to a player. Use when the user wants to clean up, free space, prune, or delete recordings.
-allowed-tools: AskUserQuestion, Read, Bash(node:*)
+allowed-tools: AskUserQuestion, Read, Bash(${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node:*)
 ---
 
 # Cleanup — prune & delete recordings
@@ -14,22 +14,23 @@ refuses to drop the only copy of a recording) and the path guards apply.
 
 ## The mental model — three very different "deletes"
 
-Be precise with the user; these are not interchangeable:
+Be precise with the user; these are not interchangeable. Speak in plain product
+terms — *what they keep or lose* — not file or storage internals:
 
-- **Prune local** (safe, recommended) — drop the bulky local HLS bytes (init +
-  segments + per-take intermediates) **but keep `preview.mp4`**, the one watchable
-  file. The shareable link keeps working (it serves from the bucket). This is the
-  default way to reclaim disk on already-published recordings.
-- **Delete local** — remove the whole local session dir, `preview.mp4` and all. The
-  link still works; you just no longer have a local copy.
-- **Delete remote** — delete the bytes from the bucket. **This breaks the public
-  link** — anyone who has it gets a 404. Outward and irreversible: confirm hard, and
-  never do it as part of a "free up space" batch without singling it out.
+- **Prune local** (safe, recommended) — free up disk by dropping the bulky local
+  copy **but keep one watchable copy on the Mac**. The shareable link keeps working.
+  This is the default way to reclaim disk on already-published recordings.
+- **Delete local** — remove the whole local copy from the Mac. The link still works;
+  you just no longer have it saved on this machine.
+- **Delete remote** — take the recording down from where it's hosted online. **This
+  breaks the public link** — anyone who has it gets a "page not found". Outward and
+  irreversible: confirm hard, and never do it as part of a "free up space" batch
+  without singling it out.
 
 ## Step 1 — scan
 
 ```
-node "${CLAUDE_PLUGIN_ROOT}/scripts/cleanup/cleanup.mjs" scan --verify --json
+"${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node" "${CLAUDE_PLUGIN_ROOT}/scripts/cleanup/cleanup.mjs" scan --verify --json
 ```
 
 Parse `{ sessions: [...], totalBytes, prunableBytes }`. Each session has `id`,
@@ -62,13 +63,13 @@ After the user confirms, loop over the chosen sessions:
 
 ```
 # safe: reclaim disk, keep preview.mp4 + the link (refuses if remote unconfirmed)
-node "${CLAUDE_PLUGIN_ROOT}/scripts/cleanup/cleanup.mjs" prune-local --session "<dir>" --json
+"${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node" "${CLAUDE_PLUGIN_ROOT}/scripts/cleanup/cleanup.mjs" prune-local --session "<dir>" --json
 
 # remove the whole local dir
-node "${CLAUDE_PLUGIN_ROOT}/scripts/cleanup/cleanup.mjs" delete-local --session "<dir>" --json
+"${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node" "${CLAUDE_PLUGIN_ROOT}/scripts/cleanup/cleanup.mjs" delete-local --session "<dir>" --json
 
 # delete bucket bytes — BREAKS THE LINK (confirm first)
-node "${CLAUDE_PLUGIN_ROOT}/scripts/cleanup/cleanup.mjs" delete-remote --id "<id>" --json
+"${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node" "${CLAUDE_PLUGIN_ROOT}/scripts/cleanup/cleanup.mjs" delete-remote --id "<id>" --json
 ```
 
 - `prune-local` refuses with `reason: "remote_not_confirmed"` unless the upload is
@@ -81,15 +82,15 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/cleanup/cleanup.mjs" delete-remote --id "<id
 The player streams HLS; some viewers want a plain file to download. To offer one:
 
 ```
-node "${CLAUDE_PLUGIN_ROOT}/scripts/cleanup/cleanup.mjs" upload-mp4 --session "<dir>" --json
+"${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node" "${CLAUDE_PLUGIN_ROOT}/scripts/cleanup/cleanup.mjs" upload-mp4 --session "<dir>" --json
 ```
 
 It uploads `preview.mp4` → `<id>/video.mp4` and returns `downloadUrl`. Then make the
 **Download** button appear on the page: mark the record and re-publish —
 
 ```
-node "${CLAUDE_PLUGIN_ROOT}/scripts/page/write-meta.mjs" --id "<id>" --session "<dir>" --mp4
-node "${CLAUDE_PLUGIN_ROOT}/scripts/page/publish.mjs" --session "<dir>"
+"${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node" "${CLAUDE_PLUGIN_ROOT}/scripts/page/write-meta.mjs" --id "<id>" --session "<dir>" --mp4
+"${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node" "${CLAUDE_PLUGIN_ROOT}/scripts/page/publish.mjs" --session "<dir>"
 ```
 
 (`--mp4` sets the page's download flag; the re-publish re-renders + re-deploys the

@@ -1,7 +1,7 @@
 ---
 name: search
 description: Search across your shroom recordings by what was said in them — find the recording (and chapter) that covers a topic, answer a question from the transcripts, or locate where something was discussed. Use when the user asks to find/search their recordings, or which video covered a topic.
-allowed-tools: Read, Bash(node:*), Bash(open:*)
+allowed-tools: Read, Bash(${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node:*), Bash(open:*)
 ---
 
 # Search the transcripts
@@ -19,7 +19,7 @@ for (drop filler; include obvious synonyms/variants — the retrieval is exact-t
 so *you* supply "auth", "authentication", "login" if they might all be meant). Then:
 
 ```
-node "${CLAUDE_PLUGIN_ROOT}/scripts/search/search.mjs" query --q "<terms>" --limit 6
+"${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node" "${CLAUDE_PLUGIN_ROOT}/scripts/search/search.mjs" query --q "<terms>" --limit 6
 ```
 
 Read `{ corpusSize, results: [...] }`. Each result has `id`, `title`, `link`,

@@ -8,7 +8,7 @@
     "shroom-search": "./search.mjs"
   },
   "scripts": {
-    "test": "node test/search.test.mjs"
+    "test": "../runtime/run-node test/search.test.mjs"
   },
   "engines": {
     "node": ">=18"

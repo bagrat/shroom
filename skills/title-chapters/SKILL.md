@@ -1,7 +1,7 @@
 ---
 name: title-chapters
 description: Author a shroom recording's title, TL;DR, and chapters from its transcript, then write the <id>.md metadata record. Use after a recording is transcribed, to enrich a user-named recording with chapters, or when the user asks to (re)title / re-chapter a video.
-allowed-tools: Read, Bash(node:*)
+allowed-tools: Read, Bash(${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node:*)
 ---
 
 # Title / TL;DR / chapters
@@ -61,7 +61,7 @@ Call the writer once. It reads the transcript body + duration + createdAt from t
 session itself; you supply only the judgment:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/page/write-meta.mjs" \
+"${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node" "${CLAUDE_PLUGIN_ROOT}/scripts/page/write-meta.mjs" \
   --id "<id>" --session "<session-dir>" \
   --title "<title>" \
   --tldr "<tldr>" \

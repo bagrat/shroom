@@ -8,7 +8,7 @@
     "shroom-deploy": "./deploy.mjs"
   },
   "scripts": {
-    "test": "node test/deploy.test.mjs"
+    "test": "../runtime/run-node test/deploy.test.mjs"
   },
   "engines": {
     "node": ">=18"

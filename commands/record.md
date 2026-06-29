@@ -1,7 +1,7 @@
 ---
 description: Record your screen → instant local preview, then a permanent unlisted link with auto title, chapters, and a searchable transcript.
 argument-hint: "[library-dir]"
-allowed-tools: AskUserQuestion, Skill, Read, Bash(node:*), Bash(open:*), Bash(ls:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/shim/macos/build/shroom.app/Contents/MacOS/shroom:*)
+allowed-tools: AskUserQuestion, Skill, Read, Bash(${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node:*), Bash(open:*), Bash(ls:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/shim/macos/build/shroom.app/Contents/MacOS/shroom:*)
 ---
 
 You are running `/shroom:record`. Your job is **orchestration and judgment**: you
@@ -31,16 +31,29 @@ and re-invokes you. Branch first:
   publish.)
 - **A transcription task just completed** → go to **Step 5 (enrich)** for its
   session: the link is already live; you're adding chapters + transcript.
-- **Otherwise (a fresh `/shroom:record`)** → first a quick **version check**
+- **Otherwise (a fresh `/shroom:record`)** → first a **setup gate** (this one
+  *does* block — without setup there's no recorder to launch and nowhere to publish).
+  Run `"${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node" "${CLAUDE_PLUGIN_ROOT}/scripts/setup/setup.mjs" status --json` and read
+  `ready`. **Do this silently — don't narrate the check or the flag.** If `ready` is
+  **false**, **stop — don't launch the recorder.** In **product voice only** (warm,
+  brief, no implementation detail), say recording needs a quick one-time setup the
+  first time and **ask** (AskUserQuestion) whether to do it now — e.g. *"Recording
+  needs a quick one-time setup first (about 5 minutes). Want me to take care of it
+  now?"* Never expose internals here: no `ready`, no recorder/shim mechanics, no
+  Cloudflare/R2/Pages, no file paths or script names. On *yes*, invoke `/shroom:setup`
+  (pass `$ARGUMENTS` through as the library-dir if one was given). On *no*, end the
+  turn gently — recording isn't available until setup runs; don't fall through to the
+  picker. Never run setup yourself without the yes (it mutates the machine). Only when
+  `ready` is **true** do you continue. Then a quick **version check**
   (best-effort, never blocks): run
-  `node "${CLAUDE_PLUGIN_ROOT}/scripts/version/check.mjs"` and read its JSON. If
+  `"${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node" "${CLAUDE_PLUGIN_ROOT}/scripts/version/check.mjs"` and read its JSON. If
   `updateAvailable` is true, mention it in **one line** ("shroom `<latest>` is out —
   you're on `<local>`; update from the `/plugin` menu, then `/reload-plugins`"), then
   carry on regardless. On any error or `updateAvailable: false`, say nothing and don't
   re-check on later turns this session. Never gate recording on it.
 
   Then a **post-update check** (also best-effort): run
-  `node "${CLAUDE_PLUGIN_ROOT}/scripts/version/post-update.mjs"` and read its JSON. For
+  `"${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node" "${CLAUDE_PLUGIN_ROOT}/scripts/version/post-update.mjs"` and read its JSON. For
   each entry in `pending`, relay its `whatsNew` in one short line ("Updated to
   `<to>` — what's new: …"). If an entry carries `actions`, treat each as a
   **propose → ask → run** (show its `command`, get a yes, then run it) — never auto-run
@@ -64,7 +77,7 @@ and re-invokes you. Branch first:
 Preflight first (this only reads, no capture):
 
 ```
-node "${CLAUDE_PLUGIN_ROOT}/scripts/recorder/record.mjs" --preflight
+"${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node" "${CLAUDE_PLUGIN_ROOT}/scripts/recorder/record.mjs" --preflight
 ```
 
 Parse `{ video, audio, defaultAudioName, qualities, lastProfile }`:
@@ -222,8 +235,8 @@ auto-name"*. `AskUserQuestion` requires **at least two** options, so list these 
 — the always-present free-text **"Other"** field is what keeps a typed title
 one-step (it's there no matter how many options you list):
 
-- **Auto-name it** — say plainly this reads the recording's transcript with
-  whisper, so it takes a few seconds (longer for a long recording). You get a title
+- **Auto-name it** — say plainly it reads through what was said in the recording,
+  so it takes a few seconds (longer for a long recording). You get a title
   *and* chapters from it (Path B).
 - **I'll type my own title** — the affordance for a user-chosen title (Path A).
 
@@ -238,14 +251,14 @@ who just types).
 
 1. Write the record with their title (no transcript needed yet):
    ```
-   node "${CLAUDE_PLUGIN_ROOT}/scripts/page/write-meta.mjs" --id <id> --session <dir> --title "<their title>"
+   "${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node" "${CLAUDE_PLUGIN_ROOT}/scripts/page/write-meta.mjs" --id <id> --session <dir> --title "<their title>"
    ```
    (Pass `--library <dir>` if `$ARGUMENTS` gave an override.) Capture `metaPath`.
 2. **Publish now** (see *Publish* below — it builds, deploys, and commits the
    record in one step) → hand over the link.
 3. **Kick off transcription in the background** and end your turn — don't wait:
    ```
-   node "${CLAUDE_PLUGIN_ROOT}/scripts/transcribe/transcribe.mjs" --session <dir>
+   "${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node" "${CLAUDE_PLUGIN_ROOT}/scripts/transcribe/transcribe.mjs" --session <dir>
    ```
    Its completion re-invokes you at **Step 5 (enrich)**.
 
@@ -253,7 +266,7 @@ who just types).
 
 1. Transcribe in the foreground (the user is waiting):
    ```
-   node "${CLAUDE_PLUGIN_ROOT}/scripts/transcribe/transcribe.mjs" --session <dir>
+   "${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node" "${CLAUDE_PLUGIN_ROOT}/scripts/transcribe/transcribe.mjs" --session <dir>
    ```
    If it **soft-skips** (`transcribe_skipped` — no whisper/audio), auto-naming
    isn't possible: tell the user, ask them to type a title, and continue as Path A
@@ -271,7 +284,7 @@ commits the `<id>.md` to the git library** — all deterministic, so it's a sing
 step:
 
 ```
-node "${CLAUDE_PLUGIN_ROOT}/scripts/page/publish.mjs" --session <dir> --meta <metaPath> --title "<title>"
+"${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node" "${CLAUDE_PLUGIN_ROOT}/scripts/page/publish.mjs" --session <dir> --meta <metaPath> --title "<title>"
 ```
 
 It reads `pagesProject` + `library` from `~/.shroom/credentials.json` itself. Read

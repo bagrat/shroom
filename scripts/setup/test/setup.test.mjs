@@ -11,6 +11,7 @@ import { execFileSync } from 'node:child_process';
 
 import { probeTool, probeEnv, TOOLS } from '../lib/env-probe.mjs';
 import { buildInstallPlan } from '../lib/install-plan.mjs';
+import { detectNode } from '../lib/node-detect.mjs';
 import { classifyWranglerError, isCreateSuccess } from '../lib/wrangler-errors.mjs';
 import {
   whoami,
@@ -171,6 +172,96 @@ await test('installPlan: brew present → no bootstrap step', async () => {
   const plan = buildInstallPlan(env.results, { haveBrew: true });
   assert.equal(plan.needsBrew, false);
   assert.ok(!plan.steps.some((s) => s.manager === 'brew-bootstrap'));
+});
+
+// ─── node detection (upgrade-command builder) ────────────────────────────────
+
+// A fake fs with just the bits detectNode touches: existsSync (for nvm.sh) and
+// realpathSync (symlink resolution). `links` maps a path → its realpath; `files`
+// is the set of paths that "exist".
+function fakeFs({ files = [], links = {} } = {}) {
+  const set = new Set(files);
+  return {
+    existsSync: (p) => set.has(p),
+    realpathSync: (p) => links[p] ?? p,
+  };
+}
+// The node entry env-probe would produce for each state.
+const NODE_OLD = { name: 'node', present: false, version: '20.5.0', reason: 'below_min_v22' };
+const NODE_GONE = { name: 'node', present: false, version: null };
+const NODE_NEW = { name: 'node', present: true, version: '22.9.0' };
+
+await test('detectNode: brew node too old → brew upgrade command', async () => {
+  const d = detectNode(NODE_OLD, {
+    lookupPath: (c) => (c === 'node' ? '/opt/homebrew/bin/node' : null),
+    env: {}, home: '/home/u', fsmod: fakeFs(), haveBrew: true,
+  });
+  assert.equal(d.belowMin, true);
+  assert.equal(d.absent, false);
+  assert.equal(d.source, 'brew');
+  assert.equal(d.recommendedManager, 'brew');
+  assert.equal(d.recommendedCommand, 'brew install node@22 && brew link --overwrite --force node@22');
+});
+
+await test('detectNode: nvm node too old → sourced nvm install command', async () => {
+  const d = detectNode(NODE_OLD, {
+    lookupPath: (c) => (c === 'node' ? '/home/u/.nvm/versions/node/v20.5.0/bin/node' : null),
+    env: {}, home: '/home/u', fsmod: fakeFs({ files: ['/home/u/.nvm/nvm.sh'] }), haveBrew: false,
+  });
+  assert.equal(d.source, 'nvm');
+  assert.equal(d.nvmAvailable, true);
+  assert.equal(d.recommendedManager, 'nvm');
+  assert.ok(d.recommendedCommand.includes('. "$NVM_DIR/nvm.sh"'));
+  assert.ok(d.recommendedCommand.includes('nvm install 22'));
+  assert.ok(d.recommendedCommand.includes('nvm alias default 22'));
+});
+
+await test('detectNode: brew symlink resolved via realpath (Intel /usr/local/bin)', async () => {
+  const d = detectNode(NODE_OLD, {
+    lookupPath: (c) => (c === 'node' ? '/usr/local/bin/node' : null),
+    env: {}, home: '/home/u',
+    fsmod: fakeFs({ links: { '/usr/local/bin/node': '/usr/local/Cellar/node/20.5.0/bin/node' } }),
+    haveBrew: true,
+  });
+  assert.equal(d.source, 'brew');
+  assert.equal(d.recommendedManager, 'brew');
+});
+
+await test('detectNode: system node, nvm present → prefer nvm over a system clash', async () => {
+  // A real /usr/local/bin (not brew) node, but nvm is installed — recommend nvm so
+  // we don't try to overwrite a system binary.
+  const d = detectNode(NODE_OLD, {
+    lookupPath: (c) => (c === 'node' ? '/usr/local/bin/node' : null),
+    env: { NVM_DIR: '/home/u/.nvm' }, home: '/home/u',
+    fsmod: fakeFs({ files: ['/home/u/.nvm/nvm.sh'] }), haveBrew: false,
+  });
+  assert.equal(d.source, 'system');
+  assert.equal(d.nvmAvailable, true);
+  assert.equal(d.recommendedManager, 'nvm');
+});
+
+await test('detectNode: neither nvm nor brew → bootstrap nvm', async () => {
+  const d = detectNode(NODE_GONE, {
+    lookupPath: () => null, env: {}, home: '/home/u', fsmod: fakeFs(), haveBrew: false,
+  });
+  assert.equal(d.absent, true);
+  assert.equal(d.belowMin, false);
+  assert.equal(d.nvmAvailable, false);
+  assert.equal(d.brewAvailable, false);
+  assert.equal(d.recommendedManager, 'nvm-bootstrap');
+  assert.ok(d.recommendedCommand.includes('nvm-sh/nvm'));
+  assert.ok(d.recommendedCommand.includes('nvm install 22'));
+});
+
+await test('detectNode: node already new enough → nothing to recommend', async () => {
+  const d = detectNode(NODE_NEW, {
+    lookupPath: (c) => (c === 'node' ? '/opt/homebrew/bin/node' : null),
+    env: {}, home: '/home/u', fsmod: fakeFs(), haveBrew: true,
+  });
+  assert.equal(d.present, true);
+  assert.equal(d.belowMin, false);
+  assert.equal(d.recommendedCommand, null);
+  assert.equal(d.recommendedManager, null);
 });
 
 // ─── wrangler error catalogue ────────────────────────────────────────────────

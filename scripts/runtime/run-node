@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# run-node — run a shroom Node script with a Node that's new enough, no matter how
+# Node is installed. Usage: run-node <script.mjs> [args...]
+#
+# Why this exists: the `node` on the agent's non-interactive PATH is often the old
+# system Node (e.g. 16, no global `fetch`), and a version picked via nvm isn't
+# sourced into that shell. Without this wrapper every script call would carry a
+# verbose `export NVM_DIR=…; . nvm.sh && nvm use 22 && node …` prefix. This does that
+# selection once, then execs the chosen Node with the given arguments (a pure
+# dispatcher — the determinism boundary: exact, repeatable plumbing lives in a
+# script, not in a command's prose).
+#
+# Selection order: a Node >=MIN already on PATH → nvm's >=MIN → a Homebrew node@MIN
+# keg. If none is found it exits non-zero with a product-voiced hint (setup installs
+# one). Read-only apart from sourcing nvm.sh into its own subshell.
+set -euo pipefail
+MIN=22
+
+# Succeeds iff "$1 -v" reports a major version >= MIN. Robust to a missing binary or
+# an unparseable version string (both → failure, never a set -e abort).
+have_node_ge() {
+  local v major
+  v="$("$1" -v 2>/dev/null)" || return 1   # e.g. "v22.3.0"
+  v="${v#v}"; major="${v%%.*}"
+  case "$major" in ''|*[!0-9]*) return 1;; esac
+  [ "$major" -ge "$MIN" ]
+}
+
+# 1. A new-enough Node already on PATH — nothing to source.
+if command -v node >/dev/null 2>&1 && have_node_ge node; then
+  exec node "$@"
+fi
+
+# 2. nvm — non-interactive shells don't source it, so do it here, then select >=MIN.
+NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+if [ -s "$NVM_DIR/nvm.sh" ]; then
+  # shellcheck disable=SC1091
+  . "$NVM_DIR/nvm.sh" >/dev/null 2>&1 || true
+  if nvm use "$MIN" >/dev/null 2>&1 && have_node_ge node; then
+    exec node "$@"
+  fi
+fi
+
+# 3. A Homebrew keg, in case nvm picked an older default but node@MIN is installed.
+# SHROOM_RUN_NODE_KEGS overrides the candidate list (space-separated) — tests only.
+for b in ${SHROOM_RUN_NODE_KEGS:-"/opt/homebrew/opt/node@${MIN}/bin/node" "/usr/local/opt/node@${MIN}/bin/node"}; do
+  if [ -x "$b" ] && have_node_ge "$b"; then
+    exec "$b" "$@"
+  fi
+done
+
+echo "shroom needs a newer version of Node to run. Run /shroom:setup to set it up." >&2
+exit 1
