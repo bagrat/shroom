@@ -31,10 +31,29 @@ The optional `$ARGUMENTS` is a preferred library directory.
   list — no extra narration around it.
 - Every `open <url>` is an outward action: explain it in one line, get a yes, then open.
 
-## Step 0 — Welcome + the plan (show this first)
+## Step 0 — Welcome + preflight + the plan (show this first)
 
-Lead with a short welcome and the full plan. Use these real numbers (default 1080p
-quality); keep it tight, roughly:
+**First, a read-only preflight** so the plan you show reflects reality, not a blank
+slate. None of these mutate the machine — they only *read* — so it's right to run
+them before presenting the plan:
+
+1. **Version + post-update** (best-effort, silent on failure, never blocks):
+   - `node "${CLAUDE_PLUGIN_ROOT}/scripts/version/check.mjs"` — if `updateAvailable`,
+     note in **one line** a newer shroom (`<latest>`) is out (update from the `/plugin`
+     menu + `/reload-plugins`); don't insist, setup works as-is.
+   - `node "${CLAUDE_PLUGIN_ROOT}/scripts/version/post-update.mjs"` — for each `pending`
+     entry relay its `whatsNew` in one line; for any `actions`, **propose → ask → run**
+     (never auto-run). It records the version itself. Empty / error → say nothing.
+2. **Local env:** `node "${CLAUDE_PLUGIN_ROOT}/scripts/setup/setup.mjs" probe --json`
+   → `{ ready, missingRequired, missingOptional, plan }`. Don't narrate it tool-by-tool.
+3. **Cloudflare + library:** `node "${CLAUDE_PLUGIN_ROOT}/scripts/setup/setup.mjs" status --verify --json`
+   → `{ ready, library, storage, pages, verifyReason }` (`--verify` live-checks the R2 keys).
+
+**Keep these results — Steps 1–5 reuse them; don't re-run probe/status.**
+
+Then lead with the welcome and the plan, **pre-marking each step from what you just
+learned** (✅ done / ⬜ to do) — so a first-timer sees all ⬜ while a returning or
+partly-set-up user sees exactly what's already done and what's left:
 
 > **Welcome to shroom 🍄 — let's get you set up.** (~5–10 min, mostly installs.)
 >
@@ -48,7 +67,7 @@ quality); keep it tight, roughly:
 > hours** of recordings; past that it's pennies (≈100 hours kept online ≈ **$2.40/month**).
 > To switch the free tier on, Cloudflare does require a **credit card** on file.
 >
-> **The plan:**
+> **The plan:**  *(mark each ✅/⬜ per the preflight — mapping below)*
 > 1. ⬜ Install local tools + create your library (`~/shroom`)
 > 2. ⬜ Log in / sign up at Cloudflare
 > 3. ⬜ Add a card + turn on R2 storage (activates the free tier)
@@ -56,32 +75,27 @@ quality); keep it tight, roughly:
 > 5. ⬜ I set up your bucket + video site and save credentials to `~/.shroom`
 > 6. ⬜ Done — record anytime with `/shroom:record`
 
-Then a single `AskUserQuestion` to begin. After each step, reprint the plan with that
-step ✅ and the next ▶️.
+**Pre-mark from the preflight:**
+- **1** ✅ when `probe.ready` **and** `status.library` is set (tools present + library exists).
+- **2–4** ✅ when `status.storage.configured` and `storage.verified` isn't `false` — the R2
+  keys exist and still work, so login + card + R2 + token are already done.
+- **5** ✅ when `status.ready` (bucket + site provisioned and verified).
+- **6** ✅ only when everything above is ✅.
+
+Then branch:
+- **Already fully set up** (`status.ready` and `probe.ready` and a library): say so plainly
+  — name the bucket/site from `status` — and **jump to Step 6**. Only walk a step again if
+  the user explicitly wants to change something.
+- **Otherwise:** a single `AskUserQuestion` to begin, framed as *resuming at the first ⬜
+  step*. After each step, reprint the plan with that step ✅ and the next ▶️.
 
 ## Step 1 — Install local tools + create the library
 
-First, a best-effort **version check** (silent on failure, never blocks): run
-`node "${CLAUDE_PLUGIN_ROOT}/scripts/version/check.mjs"` and read its JSON. If
-`updateAvailable` is true, note in **one line** that a newer shroom (`<latest>`) is
-out and they may want to update from the `/plugin` menu + `/reload-plugins` before
-continuing — but don't insist; setup works fine as-is. On any error or
-`updateAvailable: false`, say nothing.
-
-Also a **post-update check** (best-effort): run
-`node "${CLAUDE_PLUGIN_ROOT}/scripts/version/post-update.mjs"` and read its JSON. For
-each `pending` entry relay its `whatsNew` in one line; if an entry carries `actions`,
-**propose → ask → run** each (show its `command`, get a yes) — never auto-run. The
-check records the version itself, so it won't repeat. Empty / any error → say nothing.
-
-Then a **silent** env check — it only *reads*, never installs:
-
-```
-node "${CLAUDE_PLUGIN_ROOT}/scripts/setup/setup.mjs" probe --json
-```
-
-Parse `{ ready, missingRequired, missingOptional, plan }`. Don't narrate it tool-by-tool.
-Then **one consolidated `AskUserQuestion`** with two decisions:
+You already ran `probe` (and `status`) in **Step 0** — **reuse them; don't re-run.**
+If the plan pre-marked step 1 ✅ (required tools present **and** a library configured),
+skip straight to **Steps 2–5**. Otherwise, from the Step 0 `probe` result
+`{ ready, missingRequired, plan }`, ask **one consolidated `AskUserQuestion`** with two
+decisions:
 
 1. **Install the missing tools?** Only if `plan.steps` is non-empty. Show the exact
    `plan.combinedCommand` in the option description. One toggle covers *all* of them (and
@@ -114,16 +128,12 @@ Reprint the plan (step 1 ✅).
 
 ## Steps 2–5 — Cloudflare
 
-**First, check what's already set up — never re-ask for credentials that already
-work.** Re-running setup (or running it after a plugin update) must be a no-op when
-Cloudflare is already provisioned; the R2 token especially is a manual, annoying thing
-to recreate. Run:
-
-```
-node "${CLAUDE_PLUGIN_ROOT}/scripts/setup/setup.mjs" status --verify --json
-```
-
-`--verify` live-checks the stored R2 keys (a cheap signed HEAD). Branch on the result:
+**Use the `status --verify` you already ran in Step 0 — never re-ask for credentials
+that already work.** Re-running setup (or running it after a plugin update) must be a
+no-op when Cloudflare is already provisioned; the R2 token especially is a manual,
+annoying thing to recreate. (Only re-run `status --verify` if the login changed since
+Step 0 — e.g. you just logged in below.) `--verify` live-checks the stored R2 keys (a
+cheap signed HEAD). Branch on the result:
 
 - **`ready: true`** (storage + pages configured and `storage.verified` is not `false`)
   → everything's already provisioned and the keys still work. Say so plainly — e.g.
