@@ -68,3 +68,11 @@ state) lives under `~/.claude/projects/<project-hash>/` if you ever need it.
 for t in scripts/*/test/*.test.mjs; do node "$t"; done
 claude plugin validate .
 ```
+
+## Manual test walkthrough
+
+[`TEST-PLAN.md`](TEST-PLAN.md) — the guided Tier B + C walkthrough (the green-set
+features, end to end), sequenced for a fresh machine. When the user asks to "walk
+through the test step by step," drive it one step at a time and record each outcome.
+The test itself is done by *using* the plugin in a clean-user window; failures are
+handed off here per the diagnostics flow above.
