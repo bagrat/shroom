@@ -173,7 +173,13 @@ async function main() {
   let uploader = null;
   if (opts['no-upload'] !== 'true') {
     const cfg = loadStorageConfig();
-    if (isConfigured(cfg)) {
+    if (typeof fetch !== 'function') {
+      // We're on a Node too old to have global fetch (<18) — every PUT/HEAD would
+      // throw immediately. Don't enable uploads: skip cleanly so the recording still
+      // renders locally and the process exits, rather than storming retries forever.
+      // The launcher pins a current Node (run-node); this guards a stray old one.
+      log.emit('upload_skipped', { reason: 'no_fetch' });
+    } else if (isConfigured(cfg)) {
       uploader = new Uploader(cfg, { id, dir, log: (event, fields) => log.emit(event, fields) });
       log.emit('upload_enabled', { endpoint: cfg.endpoint, bucket: cfg.bucket });
     } else {
@@ -310,12 +316,19 @@ async function main() {
     // go-live act). The segments mostly streamed up during recording, so /stop is
     // near-instant. Only attempted on a valid local recording.
     if (uploader && summary.ok) {
-      const pub = await uploader.finalizePublish({ segments: summary.segments });
-      log.emit('upload_finalized', {
-        published: pub.published,
-        confirmed: pub.confirmed.length,
-        failed: pub.failed,
-      });
+      // Publish is best-effort: the local recording is already valid (SPEC §8), so a
+      // network/storage failure must degrade to a local-only result, never block the
+      // exit or crash. Catch anything finalize throws and report it as not-published.
+      try {
+        const pub = await uploader.finalizePublish({ segments: summary.segments });
+        log.emit('upload_finalized', {
+          published: pub.published,
+          confirmed: pub.confirmed.length,
+          failed: pub.failed,
+        });
+      } catch (e) {
+        log.emit('upload_finalized', { published: false, error: e.message });
+      }
     }
 
     log.close();
