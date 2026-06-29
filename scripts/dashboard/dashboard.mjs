@@ -87,15 +87,22 @@ export function buildDashboardItems({ library = {}, sessions = [], pagesBaseUrl 
   }
 
   const items = [...byId.values()].map((it) => {
-    const link = pagesBaseUrl ? `${pagesBaseUrl.replace(/\/+$/, '')}/${it.id}/` : (it._sessionUrl || null);
-    const posterPath = path.join(siteRoot, it.id, 'poster.jpg');
+    const sessionUrl = it._sessionUrl || null;
     delete it._sessionUrl;
+    // Only offer a link when there's positive evidence the page is live: a local
+    // `published` event, a committed library record on a site-configured account,
+    // or a recorded playback URL. An unpublished local-only take has no live page,
+    // so we don't hand out a URL that would 404.
+    const live = it.local?.published === true || (it.inLibrary && !!pagesBaseUrl) || !!sessionUrl;
+    const link = !live ? null : (pagesBaseUrl ? `${pagesBaseUrl.replace(/\/+$/, '')}/${it.id}/` : sessionUrl);
+    const posterPath = path.join(siteRoot, it.id, 'poster.jpg');
     return {
       ...it,
       title: it.title || 'Untitled recording',
       durationSec: it.durationSec || 0,
       chapters: it.chapters || 0,
       mp4: it.mp4 || false,
+      live,
       link,
       poster: fs.existsSync(posterPath) ? posterPath : null,
     };
@@ -152,6 +159,7 @@ export function renderDashboard(items, { generatedAt = new Date().toISOString() 
     const date = it.createdAt ? `<span>${esc(fmtDate(it.createdAt))}</span>` : '';
     const ch = it.chapters ? `<span>${it.chapters} chapters</span>` : '';
     const mp4 = it.mp4 ? `<span class="tag">MP4</span>` : '';
+    const status = it.link ? '' : `<span class="muted">not published</span>`;
     const local = it.local
       ? `<span title="local footprint">${esc(fmtBytes(it.local.totalBytes))} on disk${it.local.prunableBytes ? ` · ${esc(fmtBytes(it.local.prunableBytes))} prunable` : ''}</span>`
       : `<span class="muted">no local copy</span>`;
@@ -161,7 +169,7 @@ export function renderDashboard(items, { generatedAt = new Date().toISOString() 
     return `      <article class="card">
         <div class="media">${it.link ? `<a href="${esc(it.link)}" target="_blank" rel="noopener">${thumb}</a>` : thumb}${dur}</div>
         <h2>${titleEl}</h2>
-        <div class="meta">${[date, ch, mp4].filter(Boolean).join('<span class="sep">·</span>')}</div>
+        <div class="meta">${[date, ch, mp4, status].filter(Boolean).join('<span class="sep">·</span>')}</div>
         <div class="meta">${local}</div>
       </article>`;
   }).join('\n');

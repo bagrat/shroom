@@ -26,13 +26,23 @@ test('merges library records with local sessions, keyed by id', () => {
   assert.equal(a.title, 'Alpha');
   assert.equal(a.chapters, 1);
   assert.equal(a.mp4, true);
-  assert.equal(a.link, 'https://s.pages.dev/vidA/');
+  assert.equal(a.link, 'https://s.pages.dev/vidA/'); // in library + site configured → live
+  assert.equal(a.live, true);
   assert.equal(a.local.totalBytes, 1000);
   // vidB has no library record → still listed, from local state.
   assert.equal(b.inLibrary, false);
   assert.equal(b.title, 'Untitled recording');
-  assert.equal(b.link, 'https://s.pages.dev/vidB/');
   assert.equal(b.local.published, false);
+});
+
+test('an unpublished local-only take gets no live link (would 404)', () => {
+  const items = buildDashboardItems({ library: {}, sessions: SESSIONS, pagesBaseUrl: 'https://s.pages.dev' });
+  const b = items.find((i) => i.id === 'vidB'); // not in library, published:false, no playbackUrl
+  assert.equal(b.live, false);
+  assert.equal(b.link, null);
+  // but a locally-published one (published:true) is live.
+  const a = items.find((i) => i.id === 'vidA');
+  assert.equal(a.link, 'https://s.pages.dev/vidA/');
 });
 
 test('sorts newest first by createdAt', () => {
