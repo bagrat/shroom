@@ -35,10 +35,11 @@ and re-invokes you. Branch first:
   from an earlier run (SPEC §6 recovery): glance at the recent recordings,
 
   ```
-  ls -t ~/.shroom/recordings 2>/dev/null | head -3
+  ls -t ~/.shroom/recordings 2>/dev/null
   ```
 
-  and for each check `events.ndjson` for a `published` event **carrying a
+  (single command, no pipe — eyeball the most recent few yourself) and for each
+  check `events.ndjson` for a `published` event **carrying a
   `playbackUrl`** you haven't surfaced yet — if found, tell the user "your last
   recording is live: <url>" and `open` it. Then go to **Step 1 (pick devices)**.
 
