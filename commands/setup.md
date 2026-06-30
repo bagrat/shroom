@@ -1,7 +1,7 @@
 ---
 description: One-time shroom setup — check local tools, install what's missing, and provision Cloudflare R2 + Pages so record → link works.
 argument-hint: "[library-dir]"
-allowed-tools: AskUserQuestion, Write, Bash(${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node:*), Bash(git:*), Bash(brew:*), Bash(npm:*), Bash(/bin/bash:*), Bash(/bin/sh:*), Bash(xcode-select:*), Bash(wrangler:*), Bash(open:*)
+allowed-tools: AskUserQuestion, Write, Bash(${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node:*), Bash(git:*), Bash(brew:*), Bash(npm:*), Bash(/bin/bash:*), Bash(xcode-select:*), Bash(wrangler:*), Bash(open:*)
 ---
 
 You are running `/shroom:setup` — the one-time onboarding flow (SPEC §8). Treat the
