@@ -5,6 +5,17 @@
       "version": "0.1.13",
       "whatsNew": "the first time you record, shroom now walks you through setup automatically; it also suggests updates when a newer version ships, lets you clean up old recordings (and keep a downloadable MP4), has a polished player with clickable chapters and copy-to-embed, and transcript search.",
       "actions": []
+    },
+    {
+      "version": "0.1.14",
+      "whatsNew": "recording is steadier — if macOS needs to confirm screen access, it now asks while you're setting up instead of interrupting your recording. After this update macOS may ask you to turn Screen Recording back on for shroom once.",
+      "actions": [
+        {
+          "kind": "rebuild-shim",
+          "why": "the menu-bar recorder was updated; it's rebuilt on your machine so the bytes that run are the source you can read.",
+          "command": "/bin/sh \"${CLAUDE_PLUGIN_ROOT}/scripts/shim/macos/build.sh\""
+        }
+      ]
     }
   ]
 }
