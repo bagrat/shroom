@@ -101,7 +101,7 @@ both need a fresh capture first. In a new **repo** session (or just the test win
 | ② Fresh setup | 9 | ✅ | confirmed before this session |
 | ③ Re-run pre-marking | 9 | ✅ | confirmed before this session |
 | ④ Version/post-update | 3,4 | ✅ | confirmed before this session |
-| ⑤ Record | 5 | ✅ | confirmed before this session |
+| ⑤ Record | 5 | ✅ | host e2e PASS on v0.1.13 (2026-06-30). First run hit the `--node node`→Node<18→"fetch is not defined" upload storm; fixed (run-node launch + graceful upload degrade). Re-run clean. |
 | ⑥ Player | 6 | ✅ | confirmed before this session |
 | ⑦ Dashboard | 7 | ➖ | feature removed; redesign as a server (backlog `dashboard-as-server`) |
 | ⑧ Search | 8 | ⬜ | |
