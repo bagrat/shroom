@@ -133,6 +133,43 @@ private func runPermissionsPrimerAndExit() -> Never {
     exit(0)
 }
 
+// MARK: - Bypass-picker priming capture (`shroom --prime-capture`)
+
+// Run by /shroom:record at PRIMING time — after Screen Recording is granted, BEFORE the
+// real tray. Sequoia gates direct screen capture behind a SECOND consent (the "bypass the
+// system private window picker" alert) that is separate from the Screen-Recording grant;
+// it re-fires the first time capture runs after a throttle elapses (and whenever our
+// install path changes). Left to the real recording, that alert lands mid-capture and
+// interrupts the take. So we provoke + clear it here with a ~1s throwaway capture: open
+// the SAME AVFoundation screen path the recipe uses (AVCaptureScreenInput is the
+// avfoundation indev underneath ffmpeg), pull frames to a discard-only output, tear down,
+// exit. This runs under the SAME disclaimed "shroom" principal as the real recorder (the
+// disclaim re-exec still happens — capture only works because the grant inherits), so the
+// throwaway both captures successfully AND clears the consent: the real recording right
+// after is silent, and every later record until the throttle next elapses (which then
+// surfaces here, at priming, not mid-record). We never write a file.
+private final class PrimeCaptureSink: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {}
+
+private func runPrimeCaptureAndExit() -> Never {
+    guard let input = AVCaptureScreenInput(displayID: CGMainDisplayID()) else { exit(1) }
+    let session = AVCaptureSession()
+    guard session.canAddInput(input) else { exit(1) }
+    session.addInput(input)
+
+    // A discard-only data output so the graph actually pulls screen frames (which is
+    // what trips the consent) without ever writing anything.
+    let output = AVCaptureVideoDataOutput()
+    output.alwaysDiscardsLateVideoFrames = true
+    let sink = PrimeCaptureSink()
+    output.setSampleBufferDelegate(sink, queue: DispatchQueue(label: "am.shroom.prime"))
+    if session.canAddOutput(output) { session.addOutput(output) }
+
+    session.startRunning()
+    Thread.sleep(forTimeInterval: 1.2)   // long enough to actually pull screen frames
+    session.stopRunning()
+    exit(0)
+}
+
 // MARK: - App-icon rendering (`--render-icon <px> <path>`)
 
 // Render the colored mushroom mark (docs/logo.svg, the same shape the tray draws) at
@@ -748,6 +785,13 @@ reexecDisclaimingResponsibility()
 // screen + mic as "shroom", then exit. Idempotent — silent when already granted.
 if CommandLine.arguments.contains("--permissions") {
     runPermissionsPrimerAndExit()
+}
+
+// Bypass-picker priming mode (run by /shroom:record after Screen Recording is granted,
+// before the real tray): a ~1s throwaway capture that provokes + clears the Sequoia
+// "bypass private window picker" consent up front, so it never interrupts a recording.
+if CommandLine.arguments.contains("--prime-capture") {
+    runPrimeCaptureAndExit()
 }
 
 let app = NSApplication.shared
