@@ -98,7 +98,7 @@ export function ensureFavicon({ siteDir, srcDir = TEMPLATES_DIR, files = FAVICON
 // Run the actual `wrangler pages deploy`. Production deploys target the project's
 // production branch (default "main", matching our git default). `--commit-dirty`
 // silences the dirty-tree prompt (the site bundle is generated, not a git repo).
-export async function deployPages({ siteDir, projectName, branch = 'main', runWrangler, extraArgs = [] }) {
+export async function deployPages({ siteDir, projectName, branch = 'main', runWrangler, extraArgs = [], retries = 1, log = () => {} }) {
   if (typeof runWrangler !== 'function') throw new Error('deployPages: runWrangler is required');
   const args = [
     'pages', 'deploy', siteDir,
@@ -107,11 +107,19 @@ export async function deployPages({ siteDir, projectName, branch = 'main', runWr
     '--commit-dirty=true',
     ...extraArgs,
   ];
-  const res = await runWrangler(args);
+  // Retry only a *timed-out* deploy — a fresh connection often clears a one-off
+  // upload wedge. A real failure (auth, missing project) won't, so we don't retry it.
+  let res;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    res = await runWrangler(args);
+    if (res.code === 0 || !res.timedOut) break;
+    if (attempt < retries) log('deploy_retry', { attempt: attempt + 1, reason: 'timeout' });
+  }
   const deploymentUrl = res.code === 0 ? parseDeploymentUrl(`${res.stdout ?? ''}\n${res.stderr ?? ''}`) : null;
   return {
     ok: res.code === 0 && Boolean(deploymentUrl),
     code: res.code,
+    timedOut: Boolean(res.timedOut),
     deploymentUrl,
     stdout: res.stdout ?? '',
     stderr: res.stderr ?? '',
@@ -153,10 +161,11 @@ export async function runDeploy({
   const fav = ensureFavicon({ siteDir });
   if (fav.placed) log('favicon_placed', {});
 
-  const dep = await deployPages({ siteDir, projectName, branch, runWrangler });
+  const dep = await deployPages({ siteDir, projectName, branch, runWrangler, log });
   if (!dep.ok) {
-    log('deploy_failed', { reason: 'wrangler_failed', code: dep.code, stderr: tail(dep.stderr) });
-    return { ok: false, reason: 'wrangler_failed', code: dep.code, stderr: dep.stderr };
+    const reason = dep.timedOut ? 'wrangler_timeout' : 'wrangler_failed';
+    log('deploy_failed', { reason, code: dep.code, stderr: tail(dep.stderr) });
+    return { ok: false, reason, code: dep.code, timedOut: dep.timedOut, stderr: dep.stderr };
   }
   log('deployed', { deploymentUrl: dep.deploymentUrl, projectName, branch, siteDir });
 

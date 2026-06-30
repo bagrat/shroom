@@ -48,6 +48,14 @@ function fakeWrangler(result) {
   return fn;
 }
 
+// Fake wrangler that returns a different canned result per call (to exercise retry).
+function scriptedWrangler(results) {
+  const calls = [];
+  const fn = async (args) => { calls.push(args); return results[Math.min(calls.length - 1, results.length - 1)]; };
+  fn.calls = calls;
+  return fn;
+}
+
 function collector() {
   const events = [];
   const log = (event, fields) => events.push({ event, ...fields });
@@ -183,6 +191,55 @@ test('runDeploy guards a missing page bundle before touching wrangler', async ()
   assert.equal(r.ok, false);
   assert.equal(r.reason, 'page_missing');
   assert.equal(wrangler.calls.length, 0);
+});
+
+test('runDeploy retries once on a timed-out deploy, then succeeds', async () => {
+  const site = tmpSite();
+  const vendor = tmpVendor(true);
+  const log = collector();
+  // First call wedges (timeout), second call goes through.
+  const wrangler = scriptedWrangler([
+    { code: 124, stdout: 'Uploading... (6/7)\n', stderr: 'stalled', timedOut: true },
+    { code: 0, stdout: WRANGLER_OK, stderr: '' },
+  ]);
+  const r = await runDeploy({
+    siteDir: site, projectName: 'shroom-site', id: ID,
+    pageConfig: {}, vendorPath: vendor, runWrangler: wrangler, log,
+  });
+  assert.equal(r.ok, true);
+  assert.equal(wrangler.calls.length, 2);
+  assert.ok(log.find('deploy_retry'));
+  assert.equal(log.find('published').playbackUrl, 'https://shroom-site.pages.dev/AbC123xyz/');
+});
+
+test('runDeploy reports wrangler_timeout (not wrangler_failed) when every attempt times out', async () => {
+  const site = tmpSite();
+  const vendor = tmpVendor(true);
+  const log = collector();
+  const wrangler = fakeWrangler({ code: 124, stdout: 'Uploading... (6/7)\n', stderr: 'stalled', timedOut: true });
+  const r = await runDeploy({
+    siteDir: site, projectName: 'shroom-site', id: ID,
+    pageConfig: {}, vendorPath: vendor, runWrangler: wrangler, log,
+  });
+  assert.equal(r.ok, false);
+  assert.equal(r.reason, 'wrangler_timeout');
+  assert.equal(r.timedOut, true);
+  // initial attempt + one retry
+  assert.equal(wrangler.calls.length, 2);
+  assert.equal(log.find('deploy_failed').reason, 'wrangler_timeout');
+});
+
+test('runDeploy does NOT retry a real (non-timeout) failure', async () => {
+  const site = tmpSite();
+  const vendor = tmpVendor(true);
+  const wrangler = fakeWrangler({ code: 1, stdout: '', stderr: 'Error: project not found' });
+  const r = await runDeploy({
+    siteDir: site, projectName: 'shroom-site', id: ID,
+    pageConfig: {}, vendorPath: vendor, runWrangler: wrangler, log: collector(),
+  });
+  assert.equal(r.ok, false);
+  assert.equal(r.reason, 'wrangler_failed');
+  assert.equal(wrangler.calls.length, 1);
 });
 
 test('runDeploy without an id deploys but emits no published event', async () => {

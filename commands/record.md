@@ -317,8 +317,14 @@ the terminal event:
   That URL **is** the publish (SPEC §6 — record → link). `committed: true` means the
   record is already saved to the user's library (see *the record is committed
   automatically* below).
-- **`publish_local`** → Cloudflare isn't provisioned: say it rendered locally (give
-  the `preview` path) and that `/shroom:setup` unlocks the shareable link.
+- **`publish_local`** → the recording rendered locally; present its `preview` path
+  for instant viewing. Two cases, told apart by `deployFailed`:
+  - **no `deployFailed`** → sharing isn't set up yet: say it rendered locally and that
+    `/shroom:setup` unlocks the shareable link.
+  - **`deployFailed: true`** → the recording is saved and its video is published, but
+    the shareable page didn't go live this time. Say so warmly, hand over the local
+    preview, and offer to try publishing again (re-run *Publish*) — don't treat it as
+    a hard error or hunt for another session.
 
 (`--title` is only used for the commit message; pass the user's title when you have
 it, omit it on an enrich re-publish that didn't change the title.)

@@ -84,9 +84,13 @@ const log = (event, fields = {}) => {
 };
 
 // Run wrangler under the persisted Node >=22 (creds.nodeBinDir) without changing
-// the user's default node — wrangler 4.x refuses to run on older node.
+// the user's default node — wrangler 4.x refuses to run on older node. Bound every
+// deploy with a timeout so a wedged upload can't hang the publish; SHROOM_DEPLOY_TIMEOUT_MS
+// is an escape hatch for genuinely slow links (0 disables the bound).
 const wranglerEnv = wranglerPathEnv(process.env);
-const runWrangler = (args) => spawnWrangler(args, { bin: flag('wrangler') ?? 'wrangler', env: wranglerEnv });
+const timeoutOverride = Number(process.env.SHROOM_DEPLOY_TIMEOUT_MS);
+const timeoutMs = Number.isFinite(timeoutOverride) ? timeoutOverride : undefined;
+const runWrangler = (args) => spawnWrangler(args, { bin: flag('wrangler') ?? 'wrangler', env: wranglerEnv, ...(timeoutMs !== undefined ? { timeoutMs } : {}) });
 
 const result = await runDeploy({
   siteDir,

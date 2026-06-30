@@ -123,6 +123,7 @@ async function main() {
 
   // 2. Deploy — only if Cloudflare is provisioned. Otherwise it's a local render.
   let playbackUrl = null;
+  let deployFailReason = null;
   if (pagesProject) {
     const deployArgs = ['--project', pagesProject, '--session', sessionDir];
     if (branch) deployArgs.push('--branch', branch);
@@ -130,10 +131,15 @@ async function main() {
     const dep = runNode(DEPLOY, deployArgs);
     const pub = lastJson(dep.stdout, (e) => e.event === 'published');
     if (dep.code !== 0 || !pub?.playbackUrl) {
-      log('publish_failed', { stage: 'deploy', detail: 'deploy did not produce a playback URL' });
-      process.exit(1);
+      // The deploy didn't complete (e.g. wrangler wedged/timed out). Don't hang and
+      // don't hard-fail: the recording's bytes are already in the bucket and the page
+      // is built locally, so degrade to a local preview and let the user re-publish to
+      // get the live link. We carry the deploy's own reason for the user-facing wording.
+      const failEvt = lastJson(dep.stdout, (e) => e.event === 'deploy_failed');
+      deployFailReason = failEvt?.reason || 'deploy_incomplete';
+    } else {
+      playbackUrl = pub.playbackUrl;
     }
-    playbackUrl = pub.playbackUrl;
   }
 
   // 3. Commit the record to the git library — automatic, best-effort.
@@ -141,11 +147,19 @@ async function main() {
   const [commitEvent, commitFields] = commitRecord({ libraryDir, id, title });
   log(commitEvent, commitFields);
 
-  // Terminal event the skill reads for the link.
+  // Terminal event the skill reads for the link. A local render is the terminal
+  // result both when Cloudflare isn't provisioned AND when a provisioned deploy
+  // didn't complete — `deployFailed` distinguishes the two so the skill can say
+  // "couldn't reach the publish service, try again" rather than "set up sharing".
   if (playbackUrl) {
     log('published', { id, playbackUrl, committed: commitEvent === 'committed' || commitEvent === 'commit_noop' });
   } else {
-    log('publish_local', { id, indexPath: built.indexPath, preview: path.join(path.resolve(sessionDir), 'preview.mp4') });
+    log('publish_local', {
+      id,
+      indexPath: built.indexPath,
+      preview: path.join(path.resolve(sessionDir), 'preview.mp4'),
+      ...(deployFailReason ? { deployFailed: true, reason: deployFailReason } : {}),
+    });
   }
 }
 
