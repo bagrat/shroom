@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { parseListObjectsV2 } from '../../uploader/lib/s3.mjs';
-import { isPrunable, scanSessions } from '../cleanup.mjs';
+import { isPrunable, scanSessions, pruneDir } from '../cleanup.mjs';
 
 let passed = 0;
 const tests = [];
@@ -74,6 +74,40 @@ test('scanSessions reads id/state/sizes from a synthetic tree', () => {
     assert.equal(s.totalBytes, 1000 + 2000 + 50 + 500 + fs.statSync(path.join(dir, 'events.ndjson')).size);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('pruneDir removes HLS + intermediates, keeps preview.mp4 + events', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'shroom-prune-'));
+  try {
+    fs.writeFileSync(path.join(dir, 'init.mp4'), Buffer.alloc(1000));
+    fs.writeFileSync(path.join(dir, 'seg_00001.m4s'), Buffer.alloc(2000));
+    fs.writeFileSync(path.join(dir, 'stream.m3u8'), Buffer.alloc(50));
+    fs.writeFileSync(path.join(dir, 'preview_1.mp4'), Buffer.alloc(300)); // per-take intermediate
+    fs.writeFileSync(path.join(dir, 'preview.mp4'), Buffer.alloc(500));   // the keeper
+    fs.writeFileSync(path.join(dir, 'events.ndjson'), Buffer.alloc(80));  // the keeper
+
+    const r = pruneDir(dir);
+    assert.equal(r.freedBytes, 1000 + 2000 + 50 + 300);
+    assert.deepEqual(r.removed.sort(), ['init.mp4', 'preview_1.mp4', 'seg_00001.m4s', 'stream.m3u8']);
+    assert.equal(r.keptMp4, true);
+    assert.equal(fs.existsSync(path.join(dir, 'preview.mp4')), true);
+    assert.equal(fs.existsSync(path.join(dir, 'events.ndjson')), true);
+    assert.equal(fs.existsSync(path.join(dir, 'init.mp4')), false);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('pruneDir reports keptMp4:false when there is no preview.mp4', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'shroom-prune-'));
+  try {
+    fs.writeFileSync(path.join(dir, 'seg_00001.m4s'), Buffer.alloc(2000));
+    const r = pruneDir(dir);
+    assert.equal(r.keptMp4, false);
+    assert.deepEqual(r.removed, ['seg_00001.m4s']);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
   }
 });
 

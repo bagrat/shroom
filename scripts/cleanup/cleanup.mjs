@@ -18,9 +18,15 @@
 //   delete-remote --id     Delete every `<id>/*` object from the bucket (SigV4).
 //   upload-mp4 --session   Upload preview.mp4 → `<id>/video.mp4` and print the
 //                          public download URL (for the player's Download button).
+//   archive-local --session  The record flow's automatic post-stop step: upload the
+//                          watchable MP4 (so the Download button has a target) AND
+//                          reclaim disk by pruning local HLS — each half best-effort
+//                          and individually gated (see below). Composes upload-mp4 +
+//                          prune-local in one call so the flow launches one task.
 //
 // Mechanism only — never decides on its own what to remove. Mutating subcommands
-// act on exactly the target the skill (after the user's yes) passes in.
+// act on exactly the target passed in (the skill after the user's yes, or — for
+// archive-local — the just-recorded session the record flow hands over).
 
 import fs from 'node:fs';
 import os from 'node:os';
@@ -158,6 +164,24 @@ function resolveSession(opts) {
   return { dir, name, ...sessionMeta(dir, name) };
 }
 
+// Drop the prunable HLS/intermediate files from a session dir, keeping preview.mp4
+// and the page bits. Pure local fs op — callers apply the safety guards (the dir is
+// under the recordings root, the remote copy is confirmed) BEFORE invoking.
+export function pruneDir(dir) {
+  const removed = [];
+  let freedBytes = 0;
+  for (const f of fs.readdirSync(dir)) {
+    if (!isPrunable(f)) continue;
+    const p = path.join(dir, f);
+    try {
+      const sz = fs.statSync(p).size;
+      fs.rmSync(p);
+      removed.push(f); freedBytes += sz;
+    } catch { /* skip */ }
+  }
+  return { freedBytes, removed, keptMp4: fs.existsSync(path.join(dir, 'preview.mp4')) };
+}
+
 async function cmdPruneLocal(opts) {
   const s = resolveSession(opts);
   if (!opts.force) {
@@ -166,21 +190,7 @@ async function cmdPruneLocal(opts) {
     const present = await remotePlaylistPresent(cl, s.id).catch(() => false);
     if (!present) return { ok: false, reason: 'remote_not_confirmed', id: s.id, hint: 'the recording is not (fully) uploaded; refusing to drop the only copy. --force to override' };
   }
-  let removed = [];
-  let freed = 0;
-  for (const f of fs.readdirSync(s.dir)) {
-    if (!isPrunable(f)) continue;
-    const p = path.join(s.dir, f);
-    try {
-      const sz = fs.statSync(p).size;
-      fs.rmSync(p);
-      removed.push(f); freed += sz;
-    } catch { /* skip */ }
-  }
-  return {
-    ok: true, id: s.id, dir: s.dir, freedBytes: freed, removed,
-    keptMp4: fs.existsSync(path.join(s.dir, 'preview.mp4')),
-  };
+  return { ok: true, id: s.id, dir: s.dir, ...pruneDir(s.dir) };
 }
 
 async function cmdDeleteLocal(opts) {
@@ -213,12 +223,39 @@ async function cmdUploadMp4(opts) {
   return { ok: true, id: s.id, key, bytes: body.length, downloadUrl };
 }
 
+// The record flow's automatic post-stop step. Two best-effort, independently gated
+// halves: (1) upload preview.mp4 → `<id>/video.mp4` so the player's Download button
+// has a target (needs storage); (2) prune local HLS, keeping preview.mp4 (needs the
+// remote HLS confirmed). A local-only or not-yet-uploaded recording keeps every
+// byte. Never fatal — `ok` reflects the session resolving, not the two halves.
+async function cmdArchiveLocal(opts) {
+  const s = resolveSession(opts);
+
+  let mp4;
+  if (!client()) {
+    mp4 = { uploaded: false, reason: 'storage_not_configured' };
+  } else {
+    const r = await cmdUploadMp4(opts);
+    mp4 = r.ok
+      ? { uploaded: true, key: r.key, bytes: r.bytes, downloadUrl: r.downloadUrl }
+      : { uploaded: false, reason: r.reason, status: r.status };
+  }
+
+  const p = await cmdPruneLocal(opts);
+  const prune = p.ok
+    ? { pruned: true, freedBytes: p.freedBytes, removed: p.removed, keptMp4: p.keptMp4 }
+    : { pruned: false, reason: p.reason };
+
+  return { ok: true, id: s.id, dir: s.dir, mp4, prune };
+}
+
 const COMMANDS = {
   scan: cmdScan,
   'prune-local': cmdPruneLocal,
   'delete-local': cmdDeleteLocal,
   'delete-remote': cmdDeleteRemote,
   'upload-mp4': cmdUploadMp4,
+  'archive-local': cmdArchiveLocal,
 };
 
 async function main() {
