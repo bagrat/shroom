@@ -250,6 +250,20 @@ one-liner (a compound `if`/`[ -d ]` trips an approval prompt). Just **Read**
   storage/URL key), `open <dir>/preview.mp4` for the instant local preview (SPEC §8),
   and go straight to titling. (Any other `finalized` / an `error` → surface it and stop.)
 
+**Before** you ask — but only if the recording was uploaded (storage is configured;
+skip in the local-only case above) — start the background housekeeping so it runs
+*while* you talk to the user. Launch it as a **harness-tracked background task** and
+**don't wait on it**:
+
+```
+"${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node" "${CLAUDE_PLUGIN_ROOT}/scripts/cleanup/cleanup.mjs" archive-local --session <dir> --json
+```
+
+It uploads the downloadable video and frees up the bulky local copy (keeping one
+watchable file on the Mac) — none of which the user waits on. It's safe alongside
+publishing: it only touches files the page doesn't read. Its completion re-invokes
+you at **Step 6**.
+
 Then **ask the user how to title it** (`AskUserQuestion`).
 
 Phrase the question so a typed title is a **one-step** answer, not a second turn:
@@ -343,6 +357,32 @@ you're upgrading the same URL in place.
    message isn't rewritten; the no-op-commit case is handled. The stable URL now
    carries chapters, the transcript, and richer `og:` tags.
 4. Tell the user briefly: "added chapters + a searchable transcript to <link>."
+
+## Step 6 — the download becomes available (background)
+
+Triggered when the background housekeeping task (launched in Step 4) completes —
+either path. Read its result and stay quiet unless something's worth surfacing; this
+is housekeeping the user didn't ask to watch.
+
+- **`mp4.uploaded: true`** → the downloadable video is up. Make the **Download
+  button** appear: set the flag, then re-publish the *same* stable URL. **Pass
+  `--meta`** so the title + chapters survive the re-render (the page reads metadata
+  only from `--meta`), and omit `--title` so the commit message isn't rewritten:
+  ```
+  "${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node" "${CLAUDE_PLUGIN_ROOT}/scripts/page/write-meta.mjs" --id <id> --session <dir> --mp4
+  "${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node" "${CLAUDE_PLUGIN_ROOT}/scripts/page/publish.mjs" --session <dir> --meta <metaPath>
+  ```
+  `write-meta --mp4` only sets the flag — it inherits the existing title / TL;DR /
+  chapters, so it's safe in any order. If you **haven't published yet** (still
+  mid-title in Step 4), just run `write-meta --mp4` now and let the upcoming publish
+  carry the button — don't deploy twice.
+- **`mp4.uploaded: false`** → no downloadable video this time (sharing isn't set up,
+  or it didn't land). Leave the page as is.
+- **`prune.pruned: true`** → local space was reclaimed automatically; don't announce
+  it unless the user asks.
+
+A pending **enrich** (Step 5, Path A) and this can land independently — both target
+the same URL and the re-publishes are idempotent.
 
 ## Authoring the title, TL;DR & chapters
 
