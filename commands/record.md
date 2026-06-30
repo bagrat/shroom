@@ -264,25 +264,30 @@ watchable file on the Mac) — none of which the user waits on. It's safe alongs
 publishing: it only touches files the page doesn't read. Its completion re-invokes
 you at **Step 6**.
 
-Then **ask the user how to title it** (`AskUserQuestion`).
+Then **ask the user how to title it** (`AskUserQuestion`). First, **Read
+`<dir>/head-transcript.json`** — for any recording past ~a minute the opening was
+already transcribed while recording, so you usually have a head transcript in hand
+and a name ready with **no wait**.
 
-Phrase the question so a typed title is a **one-step** answer, not a second turn:
-make the question itself *"Title this recording — type your own below, or pick
-auto-name"*. `AskUserQuestion` requires **at least two** options, so list these two
-— the always-present free-text **"Other"** field is what keeps a typed title
-one-step (it's there no matter how many options you list):
+- **If `head-transcript.json` exists** → author a **suggested title** from it now
+  (it's the recording's opening — use the *title* rules in *Authoring the title,
+  TL;DR & chapters* below; title only, no chapters from the head). Offer it as the
+  recommended option, **written out**, e.g. *"Name it 'Testing the publish flow'"*.
+  This is the **auto-name**, just ready instantly. Accepting it → **Path A** with
+  that title.
+- **If it doesn't exist** (a short recording, or the opening wasn't transcribed) →
+  offer **Auto-name it** the classic way: say plainly it reads through what was said
+  before naming (a few seconds, longer for a long recording), giving a title *and*
+  chapters → **Path B**.
 
-- **Auto-name it** — say plainly it reads through what was said in the recording,
-  so it takes a few seconds (longer for a long recording). You get a title
-  *and* chapters from it (Path B).
-- **I'll type my own title** — the affordance for a user-chosen title (Path A).
-
-The **fast path** is the user typing their title **straight into the free-text
-("Other") field**: treat that text as the title, take **Path A**, and publish
-**immediately**, transcribing in the background for search + chapters. Only if the
-user *selects* "I'll type my own title" **without** typing anything do you ask them
-for it — one extra turn, and only in that case (never a forced round-trip for a user
-who just types).
+Either way the always-present free-text **"Other"** field keeps a typed title a
+**one-step** answer — `AskUserQuestion` needs at least two options, so list the
+suggested/auto option plus **"I'll type my own title"** (Path A). The **fast path**
+is the user typing straight into **"Other"**: treat that text as the title, take
+**Path A**, and publish **immediately**, full transcript in the background for search
++ chapters. Accepting your suggestion is also Path A — you already have the title.
+Only if the user *selects* "I'll type my own title" **without** typing anything do you
+then ask for it — one extra turn, and only then.
 
 ### Path A — the user gave a title (instant link)
 
