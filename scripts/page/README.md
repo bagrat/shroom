@@ -18,7 +18,7 @@ generated pages, each re-derivable from its metadata record. Bonus: instant load
 | Source | Provides |
 | --- | --- |
 | `--session <dir>` (`~/.shroom/recordings/<id>`) | `preview.mp4` → the poster; `events.ndjson` → `id` + `durationSec` fallback |
-| `--meta <id.md>` (the git library record) | `title` / `tldr` / `chapters` the agent authored (the `title-chapters` skill, M5c-2) |
+| `--meta <id.md>` (the git library record) | `title` / `tldr` / `chapters` the agent authored (the `/shroom:record` flow) |
 
 Both are optional-ish: with no metadata file you still get a valid page
 (title falls back to *"Untitled recording"*); with no session you must pass `--id`.
@@ -42,11 +42,12 @@ env vars, so in normal use the two `--*-base` flags are unnecessary.
 ## Authoring the `<id>.md` (write-meta, M5c-2)
 
 The `--meta` record is produced by **`write-meta.mjs`**, the deterministic half of
-the determinism boundary: the [`title-chapters`](../../skills/title-chapters/SKILL.md)
-skill decides the title / TL;DR / chapters (judgment); this script serializes them
-plus the transcript into `<library>/<id>.md` (mechanism — stable escaping, key
-order, body). It pulls the transcript body + `durationSec` + `createdAt` from the
-session itself, so the skill supplies only its judgment:
+the determinism boundary: the `/shroom:record` flow decides the title / TL;DR /
+chapters (judgment — see *Authoring the title, TL;DR & chapters* in
+[`commands/record.md`](../../commands/record.md)); this script serializes them plus
+the transcript into `<library>/<id>.md` (mechanism — stable escaping, key order,
+body). It pulls the transcript body + `durationSec` + `createdAt` from the session
+itself, so the caller supplies only its judgment:
 
 ```sh
 node scripts/page/write-meta.mjs \

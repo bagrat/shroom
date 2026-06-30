@@ -294,9 +294,9 @@ who just types).
    If it **soft-skips** (`transcribe_skipped` — no whisper/audio), auto-naming
    isn't possible: tell the user, ask them to type a title, and continue as Path A
    (but there's no transcript to background, so skip Step 5).
-2. Invoke the **`title-chapters` skill** (author-from-scratch) with the session
-   dir → it authors title + TL;DR + chapters and writes `<id>.md`. Capture
-   `metaPath`.
+2. **Author** the title + TL;DR + chapters from the transcript and write
+   `<id>.md` — see *Authoring the title, TL;DR & chapters* below (author-from-
+   scratch: pass `--title`). Capture `metaPath`.
 3. **Build + deploy** (below) → hand over the link. No Step 5 needed — the
    transcript is already baked in.
 
@@ -336,13 +336,64 @@ you're upgrading the same URL in place.
 
 1. Confirm `<dir>/transcript.json` exists (if transcription soft-skipped, there's
    nothing to add — stop quietly).
-2. Invoke the **`title-chapters` skill** in **enrich mode**: it adds TL;DR +
-   chapters from the transcript and **preserves the user's title** (the writer
-   inherits it — the skill omits `--title`). Capture `metaPath`.
+2. **Author** TL;DR + chapters from the transcript and write `<id>.md` in
+   **enrich mode** — see *Authoring the title, TL;DR & chapters* below (omit
+   `--title` so the writer keeps the user's chosen title). Capture `metaPath`.
 3. **Re-publish** the same way (*Publish* above) — omit `--title` so the commit
    message isn't rewritten; the no-op-commit case is handled. The stable URL now
    carries chapters, the transcript, and richer `og:` tags.
 4. Tell the user briefly: "added chapters + a searchable transcript to <link>."
+
+## Authoring the title, TL;DR & chapters
+
+Both auto-name (Path B) and enrich (Step 5) turn the recording's **transcript**
+into the human-facing metadata. This is the judgment half of the determinism
+boundary (SPEC §7): *you* decide the text and where a chapter falls; the
+deterministic `write-meta.mjs` writes the `<id>.md` record. Never hand-write
+`<id>.md` — always go through the writer so escaping, key order, and the
+transcript body stay correct.
+
+Read `<session>/transcript.json` (`{ language, transcript, durationSec, segments:
+[{ start, end, text }] }`); the `id` is in `<session>/events.ndjson`
+(`session_started.id`) if you don't already have it.
+
+**Judgment:**
+- **Title** — one line, ~3–8 words, specific and skimmable. Describe what the
+  recording *shows or explains*, never "Screen recording" / "Untitled". No
+  trailing period. Match the speaker's own framing where they state it.
+- **TL;DR** — 1–2 sentences: what a viewer learns or what was decided. Skip it
+  only for a very short clip where it would just restate the title.
+- **Chapters** — only when they genuinely help: the recording is long enough
+  (roughly ≥ 2 min) **and** moves through distinct topics. A 30-second clip needs
+  none. Each is `{ "t": <seconds>, "label": "<short phrase>" }` — `t` is a real
+  segment `start` from the transcript, never invented (the first chapter starts at
+  `0`); `label` is a few words, a topic not a sentence. Aim for a handful, not one
+  per paragraph.
+- **Ground everything in the transcript** — this metadata is committed and shipped
+  to the public page; don't claim the video covers something it doesn't.
+
+**If there is no `transcript.json`** (whisper soft-skipped, SPEC §8) or it's empty:
+don't invent content. Author a short, honest title from whatever context you have
+(the user's description, the duration), set no chapters, and still write the record
+so the page renders.
+
+Then call the writer once — you supply only the judgment; it reads the transcript
+body + duration + createdAt from the session itself:
+
+```
+"${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node" "${CLAUDE_PLUGIN_ROOT}/scripts/page/write-meta.mjs" \
+  --id <id> --session <dir> \
+  --title "<title>" --tldr "<tldr>" \
+  --chapters '[{"t":0,"label":"Intro"},{"t":48,"label":"The PUT loop"}]'
+```
+
+- **Author-from-scratch (Path B):** pass `--title` with the title you wrote.
+- **Enrich (Step 5): omit `--title`** so the writer keeps the user's chosen title
+  (it reads it back from the existing `<id>.md`). Don't second-guess their title.
+- Omit `--tldr` / `--chapters` when you decided there are none.
+- Pass `--library <dir>` only on an explicit override; otherwise the script
+  resolves it (creds `library` → `~/shroom`). It prints a JSON summary with
+  `metaPath` — capture it.
 
 ## The record is committed automatically
 

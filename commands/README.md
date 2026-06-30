@@ -14,9 +14,9 @@ Slash commands exposed by the shroom plugin.
   launch the recorder as a harness-tracked background task → pause/resume/stop via
   its control fifo → on stop, **ask the user to name it or auto-name**. A typed
   title publishes the **link instantly** (no whisper wait) and transcription runs
-  in the **background**, then the `title-chapters` skill enriches the *same* stable
-  URL with chapters + transcript; auto-name waits for whisper, then titles from the
-  transcript. Drains any pending publish from a prior run (SPEC §6). Orchestration
+  in the **background**, then the flow enriches the *same* stable URL with chapters
+  + transcript; auto-name waits for whisper, then titles from the transcript.
+  Drains any pending publish from a prior run (SPEC §6). Orchestration
   around the deterministic recorder ([`scripts/recorder/`](../scripts/recorder/)),
   transcribe, [`write-meta`](../scripts/page/write-meta.mjs), build-page, and
   deploy.
