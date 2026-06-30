@@ -8,7 +8,7 @@
     "shroom-record": "./record.mjs"
   },
   "scripts": {
-    "test": "../runtime/run-node test/devices.test.mjs && ../runtime/run-node test/ffmpeg.test.mjs && ../runtime/run-node test/quality.test.mjs && ../runtime/run-node test/control.test.mjs && ../runtime/run-node test/lifecycle.test.mjs"
+    "test": "../runtime/run-node test/devices.test.mjs && ../runtime/run-node test/ffmpeg.test.mjs && ../runtime/run-node test/quality.test.mjs && ../runtime/run-node test/control.test.mjs && ../runtime/run-node test/lifecycle.test.mjs && ../runtime/run-node test/head-transcribe.test.mjs"
   },
   "engines": {
     "node": ">=18"

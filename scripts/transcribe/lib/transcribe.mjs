@@ -71,6 +71,7 @@ export async function runTranscribe({
   sessionDir,
   audioPath,
   outDir,
+  outFile = TRANSCRIPT_FILE,
   model = DEFAULT_MODEL,
   runWhisper,
   log = () => {},
@@ -104,7 +105,7 @@ export async function runTranscribe({
     return { ok: false, reason: 'empty_transcript' };
   }
 
-  const transcriptPath = path.join(dest, TRANSCRIPT_FILE);
+  const transcriptPath = path.join(dest, outFile);
   fs.writeFileSync(transcriptPath, JSON.stringify(parsed, null, 2) + '\n');
   log('transcribed', {
     language: parsed.language,
