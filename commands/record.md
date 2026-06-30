@@ -144,18 +144,34 @@ The **mic** prompt resolves inline while it runs (a one-line heads-up beforehand
 kind). Then branch on the JSON — **you** own the Screen-Recording gate (the primer no
 longer pops a dialog of its own; that stacked confusingly over the system prompt):
 
-- **`screen: "granted"`** → already enabled; go straight to launching the tray.
+- **`screen: "granted"`** → already enabled; go straight to the priming pass below.
 - **`screen: "prompted"`** → it's the user's **first** record. Screen Recording can't
   be granted from its prompt — the user toggles it in System Settings, and it only
-  takes effect on the **next** launch (the tray you're about to start). So:
+  takes effect on the **next** launch. So:
   1. Open the pane: `open "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture"`.
   2. Tell the user: turn **ON “shroom”** under Screen Recording.
   3. **Gate with `AskUserQuestion`** ("Enabled Screen Recording for shroom?" — e.g.
-     *"Yes, it's on"* / *"Open the settings again"*). Only launch the tray once they
+     *"Yes, it's on"* / *"Open the settings again"*). Only continue once they
      confirm — otherwise the first capture starts blind.
 - **`mic: "denied"`** → fine, they can record without a mic; don't block on it.
 
 Always call it **shroom** to the user — never say "shim" in anything you surface.
+
+### Prime screen access (before the tray)
+
+With Screen Recording enabled, run one brief priming pass so macOS surfaces any
+**screen-access confirmation now**, at setup time — not partway through the recording,
+where it would interrupt. Give a one-line, warm heads-up first (e.g. *"macOS might ask
+you to confirm screen access — that's expected, just allow it"*), then run it **in the
+foreground and wait** for it:
+
+```
+"${CLAUDE_PLUGIN_ROOT}/scripts/shim/macos/build/shroom.app/Contents/MacOS/shroom" --prime-capture
+```
+
+It takes about a second and keeps nothing. Run it **every** record (it's silent unless
+macOS is due to re-confirm). Don't narrate the mechanism or name any file — just the
+warm heads-up, then launch the tray.
 
 This next part — generating the id and launching the recorder — is **backstage
 plumbing the user never sees narrated**. Don't announce it (no "minting", no "id", no
