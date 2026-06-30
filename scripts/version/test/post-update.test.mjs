@@ -26,6 +26,13 @@ function writeManifest(versions) {
   fs.writeFileSync(file, JSON.stringify({ migrations: versions.map((v) => ({ version: v, whatsNew: `notes ${v}`, actions: [] })) }));
   return file;
 }
+// Offset the installed version's patch, so fixtures track the real version and don't
+// go stale on every bump (post-update reads installed from the real plugin.json).
+const patchOffset = (delta) => {
+  const p = INSTALLED.split('.').map(Number);
+  p[2] += delta;
+  return p.join('.');
+};
 const run = (args) => JSON.parse(execFileSync(process.execPath, [SCRIPT, ...args], { encoding: 'utf8' }));
 
 let passed = 0;
@@ -42,12 +49,16 @@ test('first run baselines to installed and reports nothing', () => {
 
 test('a bump reports migrations in (from, installed], ascending', () => {
   const state = path.join(tmp, 's2.json');
-  fs.writeFileSync(state, JSON.stringify({ lastSeenVersion: '0.1.10' }));
-  const manifest = writeManifest(['0.1.13', '0.1.11', '0.1.12', '0.1.10']);
+  const from = patchOffset(-3);      // == lastSeen, excluded (not > from)
+  const lo = patchOffset(-2);        // in range
+  const mid = patchOffset(-1);       // in range
+  const above = patchOffset(+1);     // > installed, excluded
+  fs.writeFileSync(state, JSON.stringify({ lastSeenVersion: from }));
+  const manifest = writeManifest([INSTALLED, lo, above, mid, from]);
   const res = run(['--state', state, '--manifest', manifest]);
-  // 0.1.10 excluded (== from, not > from); 0.1.13 excluded (> installed 0.1.12)
-  assert.deepEqual(res.pending.map((m) => m.version), ['0.1.11', '0.1.12']);
-  assert.equal(res.pending[0].whatsNew, 'notes 0.1.11');
+  // `from` excluded (== from, not > from); `above` excluded (> installed)
+  assert.deepEqual(res.pending.map((m) => m.version), [lo, mid, INSTALLED]);
+  assert.equal(res.pending[0].whatsNew, `notes ${lo}`);
 });
 
 test('the marker advances, so a re-run reports nothing', () => {
