@@ -21,6 +21,11 @@ import { spawnWhisper } from '../../transcribe/lib/whisper.mjs';
 // never clobber each other. The agent reads this at /stop to suggest a title.
 export const HEAD_TRANSCRIPT_FILE = 'head-transcript.json';
 
+// How much of the opening to transcribe for the title. A minute is plenty — for this
+// medium the speaker states the topic up front (validated 2026-06-30 against the real
+// library: a head-only title matched the full-transcript title in every titleable case).
+export const HEAD_SECONDS = 60;
+
 // How many segments cover `seconds` at the configured segment length.
 export function segmentsForSeconds(seconds) {
   return Math.ceil(seconds / CONFIG.segmentSeconds);

@@ -58,6 +58,7 @@ import { createEventLog } from './lib/events.mjs';
 import { finalizeSession, maxSegmentIndex } from './lib/finalize.mjs';
 import { loadStorageConfig, isConfigured } from '../uploader/lib/storage-config.mjs';
 import { Uploader } from '../uploader/lib/uploader.mjs';
+import { transcribeHead, segmentsForSeconds, HEAD_SECONDS } from './lib/head-transcribe.mjs';
 
 function parseArgs(argv) {
   const opts = {};
@@ -192,12 +193,27 @@ async function main() {
   // appearing also closes the previous take's last one; finalize sweeps any remainder.
   const emitted = new Set();
   let highest = -1;
+
+  // Mid-record head transcription (Thread 2): the instant we've captured enough to
+  // cover the head, transcribe it in the BACKGROUND so a good auto-title is ready at
+  // /stop with no wait. Fire once, best-effort, never blocking capture — read-only
+  // over the closed segments (see head-transcribe.mjs). Off with --no-head-transcribe.
+  let headFired = false;
+  const HEAD_AT = segmentsForSeconds(HEAD_SECONDS); // segment index that means ~HEAD_SECONDS is closed
+  const maybeHeadTranscribe = (i) => {
+    if (headFired || opts['no-head-transcribe'] === 'true' || i < HEAD_AT) return;
+    headFired = true;
+    transcribeHead({ dir, maxSeconds: HEAD_SECONDS, log: (event, fields) => log.emit(event, fields) })
+      .catch((e) => log.emit('head_transcribe_skipped', { reason: 'error', message: e.message }));
+  };
+
   const emitSegment = (i) => {
     if (i < 0 || emitted.has(i)) return;
     emitted.add(i);
     log.emit('segment_ready', { index: i, file: segName(i) });
     // Stream the closed segment up opportunistically (non-blocking, retried).
     if (uploader) uploader.enqueue(segName(i));
+    maybeHeadTranscribe(i);
   };
   const watcher = fs.watch(dir, (_type, filename) => {
     if (!filename) return;

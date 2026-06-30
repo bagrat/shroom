@@ -41,13 +41,18 @@ node record.mjs [--id <id>] [--out <dir>] \
                 [--device "<screen or camera name>"] \
                 [--audio none|default|<name>] \
                 [--quality normal|2k|4k] \
-                [--fifo <path>] [--no-upload] [--autostart]
+                [--fifo <path>] [--no-upload] [--no-head-transcribe] [--autostart]
 
 node record.mjs --preflight    # JSON for the picker: devices + quality presets + last profile
 ```
 
 `--autostart` writes `start` to itself at launch (skips the armed wait) — a
 **test/headless escape hatch only**, never the user-consent flow.
+
+Once ~1 minute of audio is captured, the recorder transcribes the **head** in the
+background (read-only over the closed segments) so a good auto-title is ready the
+instant the user stops — written to `head-transcript.json`, never blocking capture.
+`--no-head-transcribe` turns it off.
 
 Defaults: a random `--id`, `--out` = `~/.shroom/recordings/<id>/`, video source
 `Capture screen 0`, audio off, quality `normal` (1080p).
