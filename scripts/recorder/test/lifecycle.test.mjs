@@ -19,6 +19,24 @@ let passed = 0;
 const tests = [];
 const test = (name, fn) => tests.push([name, fn]);
 
+// Every launched recorder is a process-GROUP leader (detached) and registered here,
+// so teardown can take down the whole tree — the recorder AND its fake mic/ffmpeg
+// children. A test that throws before `await s.exited` (an assertion or a waitFor
+// timeout) would otherwise orphan a running recorder; and SIGKILLing just the
+// recorder would leave its grandchildren behind. Killing the group avoids both.
+const spawned = new Set();
+function killGroup(child) {
+  try { process.kill(-child.pid, 'SIGKILL'); } catch { /* group already gone */ }
+}
+function killAllSpawned() {
+  for (const c of spawned) killGroup(c);
+  spawned.clear();
+}
+// Last-resort net: if the runner itself is interrupted, nothing outlives it.
+process.on('exit', killAllSpawned);
+process.on('SIGINT', () => { killAllSpawned(); process.exit(130); });
+process.on('SIGTERM', () => { killAllSpawned(); process.exit(143); });
+
 // A fake `ffmpeg`: answers -list_devices with a tiny catalogue, and in capture
 // mode writes just enough artifacts for finalize (init + one segment + per-take
 // playlist + preview) then waits for `q` on stdin (clean stop) like real ffmpeg.
@@ -97,7 +115,9 @@ function launch(extraArgs = [], { audio = 'none', withMic = false } = {}) {
   const child = spawn('node', [
     RECORD, '--out', dir, '--device', 'Capture screen 0', '--audio', audio,
     '--no-upload', ...micArgs, ...extraArgs,
-  ], { env: { ...process.env, PATH: bin + ':' + process.env.PATH } });
+  ], { env: { ...process.env, PATH: bin + ':' + process.env.PATH }, detached: true });
+  spawned.add(child);
+  child.on('exit', () => spawned.delete(child));
 
   // Capture the recorder's stdout too — on discard the session dir (and its
   // events.ndjson) is deleted, so the streamed events are the only record left.
@@ -246,6 +266,7 @@ test('audio requested but no mic tap given → records silently, never crashes',
   for (const [name, fn] of tests) {
     try { await fn(); passed++; console.log(`ok   ${name}`); }
     catch (e) { console.error(`FAIL ${name}\n     ${e.stack || e.message}`); }
+    finally { killAllSpawned(); } // a failed/timed-out test must not leak a recorder tree
   }
   console.log(`\n${passed}/${tests.length} tests passed`);
   process.exit(passed === tests.length ? 0 : 1);
