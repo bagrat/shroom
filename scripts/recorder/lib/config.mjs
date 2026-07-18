@@ -17,17 +17,16 @@ export const CONFIG = {
   pixFmt: 'yuv420p',
   captureCursor: 1,
 
-  // --- audio (optional; off by default in M1) ---
+  // --- audio (optional) ---
   audioCodec: 'aac',
   audioBitrate: '128k',
-  // THE AUDIO FIX (empirically found 2026-06-27): avfoundation mic capture delivers
-  // ~6% fewer samples than the wall-clock timeline (a device-clock/timestamp
-  // mismatch, NOT 4K throughput — verified: audio-only capture drops too,
-  // downscaling doesn't help, separate inputs make it worse). The gaps play as the
-  // audio speeding up then cutting before the video ends. `aresample=async=1`
-  // fills the gaps with silence so audio stays locked to the timeline, correct
-  // pitch, in sync to the end. Measured: ~6% drop → 0% with this filter.
-  audioFilter: 'aresample=async=1',
+  // Audio is captured NATIVELY (the mic tap → mono f32le PCM on a fifo), then fed to
+  // ffmpeg as a second input and encoded to AAC here. We do NOT capture the mic via
+  // ffmpeg's avfoundation audio demuxer: its buffer handling corrupts the built-in
+  // mic with real digital splices (a ~decade-old, version-independent bug). The old
+  // `aresample=async=1` band-aid is gone with it — native PCM is clean and locked to
+  // wall-clock, so async would only stuff silence back in. See ffmpeg.mjs and the
+  // capture-empirical-findings notes for the full why.
 
   // --- HLS segmentation ---
   // SPEC §5: "6 s default, a config constant (adjustable in code)." A forced IDR is
