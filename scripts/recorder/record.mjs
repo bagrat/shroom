@@ -202,11 +202,15 @@ async function main() {
   // /stop with no wait. Fire once, best-effort, never blocking capture — read-only
   // over the closed segments (see head-transcribe.mjs). Off with --no-head-transcribe.
   let headFired = false;
+  let headPromise = null; // the in-flight head job, retained so /stop can let it finish
+                          // writing head-transcript.json before we exit (else whisper
+                          // is orphaned mid-parse and only the raw head.json survives).
   const HEAD_AT = segmentsForSeconds(HEAD_SECONDS); // segment index that means ~HEAD_SECONDS is closed
+  const HEAD_STOP_GRACE_MS = Number(opts['head-grace-ms']) || 4000; // max /stop wait for it
   const maybeHeadTranscribe = (i) => {
     if (headFired || opts['no-head-transcribe'] === 'true' || i < HEAD_AT) return;
     headFired = true;
-    transcribeHead({ dir, maxSeconds: HEAD_SECONDS, log: (event, fields) => log.emit(event, fields) })
+    headPromise = transcribeHead({ dir, maxSeconds: HEAD_SECONDS, log: (event, fields) => log.emit(event, fields) })
       .catch((e) => log.emit('head_transcribe_skipped', { reason: 'error', message: e.message }));
   };
 
@@ -435,6 +439,19 @@ async function main() {
       } catch (e) {
         log.emit('upload_finalized', { published: false, error: e.message });
       }
+    }
+
+    // Let an in-flight head transcription finish so head-transcript.json (the /stop
+    // title suggestion) lands before we exit — otherwise process.exit orphans whisper
+    // mid-parse and only the raw head.json survives. Bounded: a short grace, then
+    // degrade to the auto-name fallback (the command handles an absent head
+    // transcript). Usually finalize + publish already covered the wait.
+    if (headPromise) {
+      let timer;
+      const grace = new Promise((r) => { timer = setTimeout(() => r('timeout'), HEAD_STOP_GRACE_MS); timer.unref(); });
+      const outcome = await Promise.race([headPromise.then(() => 'done'), grace]);
+      clearTimeout(timer);
+      if (outcome === 'timeout') log.emit('head_transcribe_timeout', { graceMs: HEAD_STOP_GRACE_MS });
     }
 
     log.close();
