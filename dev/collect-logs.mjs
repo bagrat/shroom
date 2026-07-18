@@ -15,7 +15,7 @@
 //   node dev/collect-logs.mjs latest         # same
 //   node dev/collect-logs.mjs <id>           # a specific recording id
 //   node dev/collect-logs.mjs --list         # list recent recordings, then stop
-//   node dev/collect-logs.mjs <id> --tail 80 # more ffmpeg.log lines (default 40)
+//   node dev/collect-logs.mjs <id> --tail 80 # more capture-log lines (default 40)
 
 import fs from 'node:fs';
 import os from 'node:os';
@@ -78,16 +78,22 @@ out(`published   : ${rec.published}${rec.playbackUrl ? '  ' + rec.playbackUrl : 
 hr('events.ndjson');
 out(readSafe(path.join(dir, 'events.ndjson')) || '(none)');
 
-// --- ffmpeg log tail ---
-hr(`ffmpeg.log (last ${tailN})`);
-const flog = readSafe(path.join(dir, 'ffmpeg.log'));
-out(flog ? flog.trim().split('\n').slice(-tailN).join('\n') : '(none)');
+// --- per-take log tails: the recorder writes ffmpeg_<k>.log + mictap_<k>.log per
+// take (one per pause/resume run), not a single ffmpeg.log ---
+let dirFiles = [];
+try { dirFiles = fs.readdirSync(dir); } catch {}
+const tailLogs = dirFiles.filter((f) => /^(ffmpeg|mictap)_\d+\.log$/.test(f)).sort();
+if (tailLogs.length === 0) { hr('capture logs'); out('(none)'); }
+for (const name of tailLogs) {
+  hr(`${name} (last ${tailN})`);
+  const flog = readSafe(path.join(dir, name));
+  out(flog ? flog.trim().split('\n').slice(-tailN).join('\n') : '(none)');
+}
 
 // --- file inventory ---
 hr('files on disk');
-let segCount = 0;
-try { segCount = fs.readdirSync(dir).filter((f) => /^seg_\d+\.m4s$/.test(f)).length; } catch {}
-for (const f of ['init.mp4', 'stream.m3u8', 'preview.mp4', 'transcript.json', 'index.html', 'poster.jpg']) {
+const segCount = dirFiles.filter((f) => /^seg_\d+\.m4s$/.test(f)).length;
+for (const f of ['init.mp4', 'stream.m3u8', 'preview.mp4', 'head.json', 'head-transcript.json', 'transcript.json', 'index.html', 'poster.jpg']) {
   out(`  ${exists(path.join(dir, f)) ? '✓' : '·'} ${f}${exists(path.join(dir, f)) ? '  ' + human(sizeOf(path.join(dir, f))) : ''}`);
 }
 out(`  seg_*.m4s × ${segCount}`);
