@@ -252,8 +252,17 @@ one-liner (a compound `if`/`[ -d ]` trips an approval prompt). Just **Read**
 
 - **Read fails / the file is gone** → the user **discarded** the take. Say it was
   discarded, nothing was published, and stop (don't hunt for an older session).
-- **only an `aborted` event** (quit while still `armed`, before clicking Start) →
-  nothing was captured; say so and stop.
+- **an `aborted` event** → nothing was published; branch on its `reason`:
+  - `stopped_before_start` (quit while still `armed`, before clicking Start) → nothing
+    was captured; say so and stop.
+  - `screen_grant_inactive` → recording couldn't start because screen access had just
+    been granted and only takes effect next time. In **product voice**, reassure and
+    ask them to **start recording again** — e.g. *"That first try couldn't start the
+    screen recording — just run it once more and you're set."* Don't expose the
+    reason slug, permissions internals, or file names.
+  - any other reason (e.g. `capture_wedged`) → recording didn't start cleanly; briefly
+    say so and suggest **recording again** — e.g. *"That recording didn't start
+    properly — let's try once more."*
 - **`finalized` with `ok: true`** → good: read the `id` from `session_started` (the
   storage/URL key), `open <dir>/preview.mp4` for the instant local preview (SPEC §8),
   and go straight to titling. (Any other `finalized` / an `error` → surface it and stop.)

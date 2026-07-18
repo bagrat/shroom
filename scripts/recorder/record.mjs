@@ -339,6 +339,24 @@ async function main() {
     return code;
   }
 
+  // A wedge (first take never produced init.mp4) has two very different causes, and
+  // the fix differs — so read ffmpeg's own log to tell them apart:
+  //   • screen access isn't active THIS launch — a freshly (re)granted Screen
+  //     Recording permission only takes effect on the NEXT launch. ffmpeg logs
+  //     "Configuration of video device failed" / "not supported by the input device"
+  //     and never opens the screen. Actionable: the user just records again.
+  //   • otherwise it's the two-input audio deadlock (ffmpeg blocked on the mic input).
+  // The command maps these reasons to product-voice guidance; the slugs are internal.
+  function classifyWedge(k) {
+    try {
+      const t = fs.readFileSync(path.join(dir, `ffmpeg_${k}.log`), 'utf8');
+      if (/Configuration of video device failed|not supported by the input device/i.test(t)) {
+        return { reason: 'screen_grant_inactive', message: 'screen capture did not start — its permission takes effect on the next launch' };
+      }
+    } catch { /* no log yet → treat as the audio deadlock */ }
+    return { reason: 'capture_wedged', message: 'no init segment within watchdog window' };
+  }
+
   // Two-live-input deadlock guard (audio path only): if the first take never
   // produces init.mp4, ffmpeg is wedged waiting on the audio it can't get — q won't
   // help, so SIGKILL everything, report it, and exit rather than hang holding the
@@ -348,12 +366,13 @@ async function main() {
     const timer = setTimeout(() => {
       if (t !== current) return; // already moved on / stopped
       if (fs.existsSync(path.join(dir, CONFIG.files.initSegment))) return; // capture is live
-      log.emit('error', { phase: 'capture_wedged', take: t.k, message: 'no init segment within watchdog window' });
+      const w = classifyWedge(t.k);
+      log.emit('error', { phase: w.reason, take: t.k, message: w.message });
       try { t.ff.kill('SIGKILL'); } catch {}
       teardownMic(t);
       try { watcher.close(); } catch {}
       control.close?.();
-      log.emit('aborted', { reason: 'capture_wedged' });
+      log.emit('aborted', { reason: w.reason });
       log.close();
       try { fs.unlinkSync(fifoPath); } catch {}
       process.exit(1);
