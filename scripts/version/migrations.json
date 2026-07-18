@@ -16,6 +16,11 @@
           "command": "/bin/sh \"${CLAUDE_PLUGIN_ROOT}/scripts/shim/macos/build.sh\""
         }
       ]
+    },
+    {
+      "version": "0.1.15",
+      "whatsNew": "naming is instant now — stop a recording longer than a minute and shroom suggests a title from what you said, no waiting. Every recording gets a one-click download of the video, named after its title, and shroom automatically frees up disk space after each one while keeping a watchable copy on your Mac.",
+      "actions": []
     }
   ]
 }
