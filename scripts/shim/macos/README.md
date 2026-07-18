@@ -17,8 +17,11 @@ It owns three things and nothing else:
    (`responsibility_spawnattrs_setdisclaim`) so it's its own responsible process (not
    the Terminal that launched it), and it **requests both permissions itself** (the
    grandchild ffmpeg would otherwise trip the mic prompt and get it pinned on
-   Terminal). The grants it holds are inherited by ffmpeg, so capture works even
-   though the shim never touches the screen or mic itself. Ad-hoc signing gives a
+   Terminal). The screen grant it holds is inherited by ffmpeg (the shim never
+   touches the screen itself); the **mic** it captures natively in `--mic-tap` mode —
+   a child the recorder spawns from this same binary (see below), so the clean-audio
+   tap rides the shim's own mic grant + signature + Info.plist usage string, no
+   separate helper or grant. Ad-hoc signing gives a
    **stable cdhash**, so the grants **persist for the life of this build** (re-prompts
    only when an update changes the binary — no Apple Developer account needed). It's a
    real `.app` bundle whose `Info.plist` carries the mic usage string, the clean
@@ -127,6 +130,10 @@ placement is a later refinement.
 ```
 Sources/main.swift   the shim: TCC (disclaim + perms) + tray + recorder launch + fifo
                      + --render-icon (the app icon, drawn from the same mushroom mark)
+                     + --mic-tap dispatch (the recorder spawns this binary for audio)
+Sources/MicTap.swift native mic capture (AVAudioEngine → mono f32le on stdout); the
+                     --mic-tap mode + --mic-device CoreAudio selection (replaces
+                     ffmpeg's buggy avfoundation audio — see scripts/recorder)
 Sources/Overlay.swift  fullscreen countdown + Discard/Restart confirm overlay
 Info.plist           the bundle's Contents/Info.plist (mic usage string, name, icon)
 build.sh             on-device: compile + render icon → .icns + assemble .app + sign

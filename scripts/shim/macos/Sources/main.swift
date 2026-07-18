@@ -277,6 +277,17 @@ func parseArgs() -> Args {
     return a
 }
 
+// Absolute path to THIS running executable (for spawning ourselves in --mic-tap
+// mode). argv[0] is absolute when launched by /shroom:record; realpath resolves a
+// relative dev launch. nil only if both fail.
+func resolvedExecutablePath() -> String? {
+    let arg0 = CommandLine.arguments.first ?? ""
+    guard !arg0.isEmpty else { return nil }
+    var resolved = [CChar](repeating: 0, count: Int(PATH_MAX))
+    if realpath(arg0, &resolved) != nil { return String(cString: resolved) }
+    return arg0.hasPrefix("/") ? arg0 : nil
+}
+
 // MARK: - App
 
 enum RecState: Equatable { case armed, counting, recording, pausing, paused, restarting, stopped }
@@ -391,7 +402,15 @@ final class ShimController: NSObject, NSApplicationDelegate {
         }
         let p = Process()
         p.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-        p.arguments = [args.node, args.recorder] + args.passthrough
+        // Tell the recorder which binary to run for the native mic tap — this same
+        // shim executable, in `--mic-tap` mode (shares our signature, mic grant, and
+        // Info.plist mic-usage string). argv[0] is our absolute launch path (the
+        // disclaim re-exec preserves it); realpath hardens a relative dev launch.
+        var passthrough = args.passthrough
+        if !passthrough.contains("--mic-cmd"), let exe = resolvedExecutablePath() {
+            passthrough += ["--mic-cmd", exe]
+        }
+        p.arguments = [args.node, args.recorder] + passthrough
         // Read the recorder's stdout so we can react to its events (open the menu
         // only once it confirms `paused`, so the menu never lands in the recording)
         // and tee it to the session log.
@@ -792,6 +811,22 @@ if CommandLine.arguments.contains("--permissions") {
 // "bypass private window picker" consent up front, so it never interrupts a recording.
 if CommandLine.arguments.contains("--prime-capture") {
     runPrimeCaptureAndExit()
+}
+
+// Native mic-tap mode (run by the recorder as a child, once per take): stream the
+// microphone as mono f32le PCM on stdout for ffmpeg's second input, or --probe its
+// sample rate and exit. Runs under the SAME disclaimed "shroom" principal that holds
+// the microphone grant (the disclaim re-exec above still ran), and — being the shim
+// binary — carries the Info.plist mic-usage string, so macOS won't kill the request.
+// --mic-device "<name>" points the engine at the picker's chosen mic (else default).
+if CommandLine.arguments.contains("--mic-tap") {
+    let probe = CommandLine.arguments.contains("--probe")
+    var device: String? = nil
+    if let di = CommandLine.arguments.firstIndex(of: "--mic-device"),
+       di + 1 < CommandLine.arguments.count {
+        device = CommandLine.arguments[di + 1]
+    }
+    MicTap.runAndExit(device: device, probe: probe)
 }
 
 let app = NSApplication.shared
