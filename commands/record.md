@@ -260,9 +260,10 @@ one-liner (a compound `if`/`[ -d ]` trips an approval prompt). Just **Read**
     ask them to **start recording again** — e.g. *"That first try couldn't start the
     screen recording — just run it once more and you're set."* Don't expose the
     reason slug, permissions internals, or file names.
-  - any other reason (e.g. `capture_wedged`) → recording didn't start cleanly; briefly
-    say so and suggest **recording again** — e.g. *"That recording didn't start
-    properly — let's try once more."*
+  - any other reason (e.g. `capture_wedged`, `capture_no_frames`) → recording didn't
+    start cleanly; briefly say so and suggest **recording again** — e.g. *"That recording
+    didn't start properly — let's try once more."* (Don't send them to re-check
+    permissions — screen access was fine; it just stalled.)
 - **`finalized` with `ok: true`** → good: read the `id` from `session_started` (the
   storage/URL key), `open <dir>/preview.mp4` for the instant local preview (SPEC §8),
   and go straight to titling. (Any other `finalized` / an `error` → surface it and stop.)
