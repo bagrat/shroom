@@ -21,6 +21,17 @@
       "version": "0.1.15",
       "whatsNew": "naming is instant now — stop a recording longer than a minute and shroom suggests a title from what you said, no waiting. Every recording gets a one-click download of the video, named after its title, and shroom automatically frees up disk space after each one while keeping a watchable copy on your Mac.",
       "actions": []
+    },
+    {
+      "version": "0.1.16",
+      "whatsNew": "starting a recording is quicker — shroom gets everything ready in one step before you pick your settings. Change your mind before you hit record? Just say so and it bows out cleanly. And if macOS needs you to turn Screen Recording back on after this update, it's now a single clean toggle instead of a confusing re-prompt.",
+      "actions": [
+        {
+          "kind": "rebuild-shim",
+          "why": "the menu-bar recorder was updated; it's rebuilt on your machine so the bytes that run are the source you can read.",
+          "command": "/bin/sh \"${CLAUDE_PLUGIN_ROOT}/scripts/shim/macos/build.sh\""
+        }
+      ]
     }
   ]
 }
