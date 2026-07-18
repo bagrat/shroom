@@ -9,6 +9,10 @@
 // we tag each with a `kind` so the picker can group them.
 
 import { spawn } from 'node:child_process';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { qualityCatalogue } from './quality.mjs';
 
 // A video device is a screen if avfoundation named it "Capture screen N"; anything
 // else in the video list is a camera (FaceTime, Continuity, Desk View, etc.).
@@ -81,6 +85,29 @@ function pick(devices, query) {
   );
 }
 
+// Would the saved "last settings" still capture successfully against the devices
+// present RIGHT NOW? Mirrors resolveDevices' matching so the picker only offers to
+// reuse a profile when reuse would actually work — a saved mic that's since been
+// unplugged (e.g. AirPods) otherwise hard-aborts the whole recording at launch.
+//   video: a null/absent name defaults to the first screen; a "Capture screen N"
+//     name also resolves if ANY screen exists (displays renumber). A named camera
+//     must still be present.
+//   audio: null / "none" / "default" always resolve (a no-mic or built-in-default
+//     recording); a specifically-named mic must still be connected.
+// Returns { video, audio } booleans, or null when there's no profile to check.
+export function lastProfileAvailability(lastProfile, { video = [], audio = [] } = {}) {
+  if (!lastProfile) return null;
+  const videoName = lastProfile.video;
+  const videoOk =
+    !videoName ||
+    Boolean(pick(video, videoName)) ||
+    (/capture screen/i.test(videoName) && video.some((d) => /capture screen/i.test(d.name)));
+  const audioName = lastProfile.audio;
+  const audioOk =
+    !audioName || audioName === 'none' || audioName === 'default' || Boolean(pick(audio, audioName));
+  return { video: videoOk, audio: audioOk };
+}
+
 // videoName: the chosen video source by name (screen OR camera). Default is the
 //   first screen ("Capture screen 0"); a screen request also falls back to any
 //   screen, but a camera request must match (no silent fallback to a screen).
@@ -113,4 +140,49 @@ export async function resolveDevices({ videoName = 'Capture screen 0', audio = '
   }
 
   return { video: chosen, audioIndex, audioName, videoDevs: video, audioDevs };
+}
+
+// The newest prior recording's settings (quality + video + mic), read from its
+// session_started event — the "use last settings?" the picker offers. No separate
+// profile file: events.ndjson already durably records each recording's choices.
+export function readLastProfile() {
+  const base = path.join(os.homedir(), '.shroom', 'recordings');
+  let dirs;
+  try {
+    dirs = fs.readdirSync(base, { withFileTypes: true })
+      .filter((d) => d.isDirectory())
+      .map((d) => ({ name: d.name, mtime: fs.statSync(path.join(base, d.name)).mtimeMs }))
+      .sort((a, b) => b.mtime - a.mtime);
+  } catch { return null; }
+  for (const d of dirs) {
+    const ev = path.join(base, d.name, 'events.ndjson');
+    if (!fs.existsSync(ev)) continue;
+    for (const line of fs.readFileSync(ev, 'utf8').split('\n')) {
+      if (!line.trim()) continue;
+      let e; try { e = JSON.parse(line); } catch { continue; }
+      if (e.event === 'session_started') {
+        return { quality: e.config?.quality ?? null, video: e.video?.name ?? null, audio: e.audio?.name ?? null };
+      }
+    }
+  }
+  return null;
+}
+
+// The full device-picker payload the record command reads before capture: the
+// video sources (tagged screen/camera), the mics (with a recommended non-Continuity
+// default), the quality catalogue with size/cost estimates, and the last profile
+// annotated with whether its saved devices are still connected. Pure read — no
+// capture. Shared by `record.mjs --preflight` and the one-shot record preflight.
+export async function buildPreflight() {
+  const { video, audio } = await listDevices();
+  const def = pickDefaultAudio(audio);
+  const lastProfile = readLastProfile();
+  const available = lastProfileAvailability(lastProfile, { video, audio });
+  return {
+    video,
+    audio: audio.map((d) => ({ ...d, recommended: def ? d.index === def.index : false })),
+    defaultAudioName: def?.name ?? null,
+    qualities: qualityCatalogue(),
+    lastProfile: lastProfile ? { ...lastProfile, available } : null,
+  };
 }

@@ -10,6 +10,7 @@ import {
   classifyVideoKind,
   isContinuityMic,
   pickDefaultAudio,
+  lastProfileAvailability,
 } from '../lib/devices.mjs';
 
 let passed = 0;
@@ -70,6 +71,69 @@ test('pickDefaultAudio: no built-in → first non-Continuity → else first', ()
     'iPhone Microphone', // only option — better than nothing
   );
   assert.equal(pickDefaultAudio([]), null);
+});
+
+// lastProfileAvailability: gate the "use last settings?" offer on the saved
+// devices still being connected. The real bug: a saved mic ("airpods-4") that's
+// been unplugged reported available → reuse chosen → recorder hard-aborted at
+// device_resolution with 0 segments captured.
+const CATALOGUE = parseDeviceList(LISTING); // screens: "Capture screen 0"; mics incl. "MacBook Pro Microphone"
+
+test('lastProfileAvailability: null profile → null', () => {
+  assert.equal(lastProfileAvailability(null, CATALOGUE), null);
+});
+
+test('lastProfileAvailability: saved mic gone → audio false (the bug)', () => {
+  const a = lastProfileAvailability(
+    { quality: 'normal', video: 'Capture screen 0', audio: 'airpods-4' },
+    { video: [{ index: 0, name: 'Capture screen 0', kind: 'screen' }],
+      audio: [{ index: 0, name: 'iPhone Microphone' }, { index: 1, name: 'MacBook Pro Microphone' }] },
+  );
+  // Note the real repro had ONLY these two mics present — no AirPods.
+  assert.deepEqual(a, { video: true, audio: false });
+});
+
+test('lastProfileAvailability: both present → both true', () => {
+  const a = lastProfileAvailability(
+    { quality: 'normal', video: 'Capture screen 0', audio: 'MacBook Pro Microphone' },
+    CATALOGUE,
+  );
+  assert.deepEqual(a, { video: true, audio: true });
+});
+
+test('lastProfileAvailability: substring mic match still counts as present', () => {
+  // resolveDevices matches by substring, so availability must too.
+  const a = lastProfileAvailability(
+    { quality: 'normal', video: 'Capture screen 0', audio: 'BlackHole' },
+    CATALOGUE,
+  );
+  assert.equal(a.audio, true);
+});
+
+test('lastProfileAvailability: no-mic / default profiles always resolve', () => {
+  for (const audio of [null, 'none', 'default']) {
+    assert.equal(
+      lastProfileAvailability({ quality: 'normal', video: 'Capture screen 0', audio }, CATALOGUE).audio,
+      true,
+      `audio=${audio}`,
+    );
+  }
+});
+
+test('lastProfileAvailability: screen renumbered → still available (any screen)', () => {
+  const a = lastProfileAvailability(
+    { quality: 'normal', video: 'Capture screen 1', audio: null },
+    { video: [{ index: 0, name: 'Capture screen 0', kind: 'screen' }], audio: [] },
+  );
+  assert.equal(a.video, true);
+});
+
+test('lastProfileAvailability: named camera gone → video false (no screen fallback)', () => {
+  const a = lastProfileAvailability(
+    { quality: 'normal', video: 'FaceTime HD Camera', audio: null },
+    { video: [{ index: 0, name: 'Capture screen 0', kind: 'screen' }], audio: [] },
+  );
+  assert.equal(a.video, false);
 });
 
 (async () => {

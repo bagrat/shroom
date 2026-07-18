@@ -51,9 +51,9 @@ import { spawn, execFileSync } from 'node:child_process';
 import { PassThrough } from 'node:stream';
 
 import { CONFIG, segName } from './lib/config.mjs';
-import { resolveDevices, listDevices, pickDefaultAudio } from './lib/devices.mjs';
+import { resolveDevices, buildPreflight } from './lib/devices.mjs';
 import { buildFfmpegArgs } from './lib/ffmpeg.mjs';
-import { QUALITY, resolveQuality, ffmpegBitrate, qualityCatalogue, DEFAULT_QUALITY } from './lib/quality.mjs';
+import { QUALITY, resolveQuality, ffmpegBitrate, DEFAULT_QUALITY } from './lib/quality.mjs';
 import { watchControl } from './lib/control.mjs';
 import { createEventLog } from './lib/events.mjs';
 import { finalizeSession, maxSegmentIndex } from './lib/finalize.mjs';
@@ -77,32 +77,6 @@ function parseArgs(argv) {
 // Unguessable-ish id for now; the bucket key/prefix scheme is deferred (SPEC §11).
 function genId() {
   return crypto.randomBytes(12).toString('base64url');
-}
-
-// The newest prior recording's settings (quality + video + mic), read from its
-// session_started event — the "use last settings?" the command offers. No separate
-// profile file: events.ndjson already durably records each recording's choices.
-function readLastProfile() {
-  const base = path.join(os.homedir(), '.shroom', 'recordings');
-  let dirs;
-  try {
-    dirs = fs.readdirSync(base, { withFileTypes: true })
-      .filter((d) => d.isDirectory())
-      .map((d) => ({ name: d.name, mtime: fs.statSync(path.join(base, d.name)).mtimeMs }))
-      .sort((a, b) => b.mtime - a.mtime);
-  } catch { return null; }
-  for (const d of dirs) {
-    const ev = path.join(base, d.name, 'events.ndjson');
-    if (!fs.existsSync(ev)) continue;
-    for (const line of fs.readFileSync(ev, 'utf8').split('\n')) {
-      if (!line.trim()) continue;
-      let e; try { e = JSON.parse(line); } catch { continue; }
-      if (e.event === 'session_started') {
-        return { quality: e.config?.quality ?? null, video: e.video?.name ?? null, audio: e.audio?.name ?? null };
-      }
-    }
-  }
-  return null;
 }
 
 // The MIC TAP is the native mic capture path (the shim binary in `--mic-tap` mode):
@@ -141,19 +115,11 @@ function probeMicRate(cmd, device, timeoutMs = 8000) {
   });
 }
 
-// Preflight JSON for the picker (the command asks the user; this only reads):
-// devices (video tagged screen/camera, mic with a recommended non-Continuity
-// default), the quality catalogue with size/cost estimates, and the last profile.
+// Preflight JSON for the picker (the command asks the user; this only reads). The
+// payload — devices, quality catalogue, last profile with device availability — is
+// built by lib/devices so the one-shot record preflight can share it verbatim.
 async function preflightJson() {
-  const { video, audio } = await listDevices();
-  const def = pickDefaultAudio(audio);
-  process.stdout.write(JSON.stringify({
-    video,
-    audio: audio.map((d) => ({ ...d, recommended: def ? d.index === def.index : false })),
-    defaultAudioName: def?.name ?? null,
-    qualities: qualityCatalogue(),
-    lastProfile: readLastProfile(),
-  }) + '\n');
+  process.stdout.write(JSON.stringify(await buildPreflight()) + '\n');
 }
 
 async function main() {
