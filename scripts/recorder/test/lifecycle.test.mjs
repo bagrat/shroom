@@ -42,6 +42,11 @@ if (joined.includes('-list_devices')) {
 if (joined.includes('concat')) { // finalize multi-take path (unused here)
   fs.writeFileSync(argv[argv.length - 1], 'PREVIEW'); process.exit(0);
 }
+// Two-input capture: open + drain the audio fifo like real ffmpeg would, so node's
+// fifo write end unblocks (else the mic buffer just fills — no deadlock, but the fifo
+// never connects). No audio arg → no-op (the video-only tests).
+const af = argv.find((a) => /audio_\\d+\\.pcm$/.test(a));
+if (af) { try { fs.createReadStream(af).on('data', () => {}).on('error', () => {}); } catch (e) {} }
 const k = (joined.match(/stream_(\\d+)\\.m3u8/) || [, '0'])[1];
 const start = Number((joined.match(/start_number=(\\d+)/) || [, '0'])[1]);
 const seg = 'seg_' + String(start).padStart(5, '0') + '.m4s';
@@ -57,19 +62,41 @@ process.on('SIGINT', () => process.exit(0));
 setInterval(() => {}, 1000);
 `;
 
+// A fake mic tap (the shim's `--mic-tap` mode): `--probe` prints the rate; otherwise
+// it streams f32le bytes on stdout until SIGTERM — enough to exercise record.mjs's
+// tap supervision hermetically (no real mic, runs anywhere).
+const FAKE_MIC = `#!/usr/bin/env node
+const argv = process.argv.slice(2);
+process.stdout.on('error', () => {}); // ignore EPIPE when the reader goes away
+if (argv.includes('--probe')) { process.stdout.write('rate=48000\\n'); process.exit(0); }
+const buf = Buffer.alloc(4096);
+const iv = setInterval(() => { try { process.stdout.write(buf); } catch (e) {} }, 20);
+const stop = () => { clearInterval(iv); process.exit(0); };
+process.on('SIGTERM', stop);
+process.on('SIGINT', stop);
+setInterval(() => {}, 1000);
+`;
+
 // One temp session: a fake-ffmpeg bin on PATH, a session dir, the launched
 // recorder. Returns helpers to read events, send fifo commands, and await exit.
-function launch(extraArgs = []) {
+// audio: the --audio value; withMic: install a fake mic tap and point --mic-cmd at it.
+function launch(extraArgs = [], { audio = 'none', withMic = false } = {}) {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'shroom-life-'));
   const bin = path.join(tmp, 'bin');
   fs.mkdirSync(bin);
   const fake = path.join(bin, 'ffmpeg');
   fs.writeFileSync(fake, FAKE_FFMPEG, { mode: 0o755 });
+  let micArgs = [];
+  if (withMic) {
+    const fakeMic = path.join(bin, 'mic');
+    fs.writeFileSync(fakeMic, FAKE_MIC, { mode: 0o755 });
+    micArgs = ['--mic-cmd', fakeMic];
+  }
   const dir = path.join(tmp, 'session');
 
   const child = spawn('node', [
-    RECORD, '--out', dir, '--device', 'Capture screen 0', '--audio', 'none',
-    '--no-upload', ...extraArgs,
+    RECORD, '--out', dir, '--device', 'Capture screen 0', '--audio', audio,
+    '--no-upload', ...micArgs, ...extraArgs,
   ], { env: { ...process.env, PATH: bin + ':' + process.env.PATH } });
 
   // Capture the recorder's stdout too — on discard the session dir (and its
@@ -174,6 +201,45 @@ test('--autostart begins capture at launch (test/headless escape hatch)', async 
   s.send('stop');
   await s.exited;
   assert.equal(s.getExit(), 0);
+});
+
+test('audio path: native mic tap is probed + wired as a 2nd input, clean start→stop', async () => {
+  const s = launch(['--autostart'], { audio: 'default', withMic: true });
+  await s.waitFor('recording_started');
+  const enabled = s.events().find((e) => e.event === 'audio_enabled');
+  assert.ok(enabled && enabled.rate === 48000, 'mic rate probed + audio enabled');
+  const ts = s.events().find((e) => e.event === 'take_started');
+  assert.equal(ts.audio, true, 'take_started marks audio on');
+  // The recipe is the two-input one: video-only input 0 + f32le fifo input 1, -map 1:a.
+  const cmd = s.events().find((e) => e.event === 'ffmpeg_command');
+  const argv = cmd.argv.join(' ');
+  assert.match(argv, /-f f32le -ar 48000 -ac 1 -i \S*audio_0\.pcm/, 'f32le fifo is the 2nd input');
+  assert.match(argv, /-map 1:a/, 'audio mapped from input 1');
+  assert.match(argv, /:none/, 'video input carries no avfoundation audio');
+  assert.ok(!argv.includes('aresample'), 'no aresample band-aid');
+
+  s.send('stop');
+  await s.exited;
+  assert.equal(s.getExit(), 0, 'clean exit with the audio path');
+  const fin = s.events().find((e) => e.event === 'finalized');
+  assert.ok(fin && fin.ok === true, 'finalized ok with audio');
+  assert.equal(fs.existsSync(path.join(s.dir, 'audio_0.pcm')), false, 'the take fifo is cleaned up');
+});
+
+test('audio requested but no mic tap given → records silently, never crashes', async () => {
+  // --audio default but NO --mic-cmd: the recording must still render (video-only),
+  // with a logged skip. No avfoundation-audio fallback — that path is the bug.
+  const s = launch(['--autostart'], { audio: 'default', withMic: false });
+  await s.waitFor('recording_started');
+  const skipped = s.events().find((e) => e.event === 'audio_skipped');
+  assert.ok(skipped && skipped.reason === 'no_mic_tap', 'logs the skip reason');
+  const ts = s.events().find((e) => e.event === 'take_started');
+  assert.equal(ts.audio, false, 'take is video-only when no tap is available');
+  const cmd = s.events().find((e) => e.event === 'ffmpeg_command');
+  assert.ok(!cmd.argv.join(' ').includes('f32le'), 'no phantom audio input');
+  s.send('stop');
+  await s.exited;
+  assert.equal(s.getExit(), 0, 'renders and exits cleanly regardless');
 });
 
 (async () => {

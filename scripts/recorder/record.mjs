@@ -48,6 +48,7 @@ import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { spawn, execFileSync } from 'node:child_process';
+import { PassThrough } from 'node:stream';
 
 import { CONFIG, segName } from './lib/config.mjs';
 import { resolveDevices, listDevices, pickDefaultAudio } from './lib/devices.mjs';
@@ -102,6 +103,42 @@ function readLastProfile() {
     }
   }
   return null;
+}
+
+// The MIC TAP is the native mic capture path (the shim binary in `--mic-tap` mode):
+// it streams clean mono f32le PCM that ffmpeg reads as a 2nd input, replacing
+// ffmpeg's buggy avfoundation audio (see lib/ffmpeg.mjs). The shim owns AVFoundation
+// + the mic grant, so it passes its own path as `--mic-cmd`. No tap given (or it
+// can't be probed) → the recording still renders locally, just without audio (a
+// logged skip, never a crash — SPEC §8). A raw `node record.mjs` dev run supplies
+// `--mic-cmd <built shroom>` to get audio.
+const MIC_TAP_WATCHDOG_MS = 12000; // first capture must produce init.mp4 within this
+
+function resolveMicCmd(explicit) {
+  return explicit && fs.existsSync(explicit) ? explicit : null;
+}
+
+// Ask the mic tap for its device's native sample rate so ffmpeg's -ar matches
+// exactly (no resample). Best-effort: any failure/timeout resolves null → audio off.
+function probeMicRate(cmd, device, timeoutMs = 8000) {
+  return new Promise((resolve) => {
+    const a = ['--mic-tap', '--probe', ...(device ? ['--mic-device', device] : [])];
+    let p;
+    try { p = spawn(cmd, a, { stdio: ['ignore', 'pipe', 'pipe'] }); }
+    catch { return resolve(null); }
+    let out = '';
+    let done = false;
+    const finish = (rate) => { if (done) return; done = true; try { p.kill('SIGKILL'); } catch {} resolve(rate); };
+    const timer = setTimeout(() => finish(null), timeoutMs);
+    timer.unref();
+    p.stdout.on('data', (d) => {
+      out += d;
+      const m = out.match(/rate=(\d+)/);
+      if (m) { clearTimeout(timer); finish(Number(m[1])); }
+    });
+    p.on('error', () => { clearTimeout(timer); finish(null); });
+    p.on('close', () => { clearTimeout(timer); const m = out.match(/rate=(\d+)/); finish(m ? Number(m[1]) : null); });
+  });
 }
 
 // Preflight JSON for the picker (the command asks the user; this only reads):
@@ -232,12 +269,71 @@ async function main() {
   let state = 'armed';
   let nextSegment = 0; // start_number for the next take
   const takes = []; // take indices that have started
-  let current = null; // { k, ff, exited }
+  let current = null; // { k, ff, exited, mic, audioBuf, fifo, fifoStream }
+
+  // --- native mic tap ---
+  // Audio is requested when a mic was resolved. The tap (the shim binary in
+  // `--mic-tap` mode) streams mono f32le PCM; ffmpeg reads it as a 2nd input. We
+  // probe the device's rate ONCE at the first start (not at arm — the mic stays
+  // untouched until the user begins), then reuse it for every resume take.
+  const audioOn = devices.audioName != null;
+  const micCmd = resolveMicCmd(opts['mic-cmd']);
+  let audioTap = null;   // { device, rate } once probed & available; null = record silent
+  let audioProbed = false;
+
+  async function ensureAudioProbed() {
+    if (audioProbed) return;
+    audioProbed = true;
+    if (!audioOn) return;
+    if (!micCmd) { log.emit('audio_skipped', { reason: 'no_mic_tap' }); return; }
+    const rate = await probeMicRate(micCmd, devices.audioName);
+    if (!rate) { log.emit('audio_skipped', { reason: 'mic_probe_failed' }); return; }
+    audioTap = { device: devices.audioName, rate };
+    log.emit('audio_enabled', { device: devices.audioName, rate });
+  }
+
+  // Start one take's mic tap: a fresh per-take fifo, the tap child, and a ~16MB
+  // in-memory buffer between them. NODE-IN-THE-MIDDLE is load-bearing: if the tap
+  // wrote straight to the fifo, ffmpeg's ~1s avfoundation video warmup wouldn't drain
+  // it, the tap would block on a full pipe, deliver zero audio, and ffmpeg would block
+  // forever on its audio input. Buffering here means the mic never blocks.
+  function startMicTap(k) {
+    const fifo = path.join(dir, `audio_${k}.pcm`);
+    try { if (fs.existsSync(fifo)) fs.unlinkSync(fifo); } catch {}
+    execFileSync('mkfifo', [fifo]);
+    const a = ['--mic-tap', ...(audioTap.device ? ['--mic-device', audioTap.device] : [])];
+    const mic = spawn(micCmd, a, { stdio: ['ignore', 'pipe', 'pipe'] });
+    mic.stderr.pipe(fs.createWriteStream(path.join(dir, `mictap_${k}.log`)));
+    mic.on('error', (e) => log.emit('error', { phase: 'mic_tap_spawn', take: k, message: e.message }));
+    const audioBuf = new PassThrough({ highWaterMark: 1 << 24 });
+    mic.stdout.pipe(audioBuf);
+    return { mic, audioBuf, fifo, fifoStream: null };
+  }
+
+  // Open the fifo's write end AFTER ffmpeg is up (it opens the read end), then flush
+  // the buffered PCM into it. Opening for write blocks until a reader exists, so this
+  // must follow the ffmpeg spawn.
+  function connectMicFifo(mt, k) {
+    const fifoStream = fs.createWriteStream(mt.fifo);
+    fifoStream.on('error', (e) => log.emit('error', { phase: 'mic_fifo', take: k, message: e.message }));
+    mt.audioBuf.pipe(fifoStream);
+    mt.fifoStream = fifoStream;
+  }
+
+  // Tear a take's mic tap down. Called AFTER ffmpeg has finalized (see stop ordering).
+  function teardownMic(t) {
+    try { t.mic?.kill('SIGTERM'); } catch {}
+    try { t.audioBuf?.destroy(); } catch {}
+    try { t.fifoStream?.destroy(); } catch {}
+    try { if (t.fifo && fs.existsSync(t.fifo)) fs.unlinkSync(t.fifo); } catch {}
+  }
 
   function spawnTake(k) {
+    const mt = audioTap ? startMicTap(k) : null;
+    const audio = mt ? { fifo: mt.fifo, rate: audioTap.rate } : null;
     const args = buildFfmpegArgs({
       videoIndex: devices.video.index,
-      audioIndex: devices.audioIndex,
+      audio,
       startNumber: nextSegment,
       take: k,
       quality,
@@ -245,15 +341,18 @@ async function main() {
     if (k === 0) log.emit('ffmpeg_command', { argv: ['ffmpeg', ...args], cwd: dir });
     const ff = spawn('ffmpeg', args, { cwd: dir, stdio: ['pipe', 'ignore', 'pipe'] });
     ff.stderr.pipe(fs.createWriteStream(path.join(dir, `ffmpeg_${k}.log`)));
+    if (mt) connectMicFifo(mt, k); // ffmpeg is now reading — open the write end + flush
     const exited = new Promise((res) => ff.on('close', (code) => res(code)));
     ff.on('error', (e) => log.emit('error', { phase: 'ffmpeg_spawn', take: k, message: e.message }));
     takes.push(k);
-    log.emit('take_started', { take: k, startNumber: nextSegment, pid: ff.pid });
-    return { k, ff, exited };
+    log.emit('take_started', { take: k, startNumber: nextSegment, pid: ff.pid, audio: Boolean(mt) });
+    return { k, ff, exited, mic: mt?.mic ?? null, audioBuf: mt?.audioBuf ?? null, fifo: mt?.fifo ?? null, fifoStream: mt?.fifoStream ?? null };
   }
 
-  // Cleanly end the current take's ffmpeg (q → SIGTERM → SIGKILL), then advance
-  // nextSegment past whatever it wrote.
+  // Cleanly end the current take's ffmpeg (q → SIGTERM → SIGKILL), then — STOP
+  // ORDERING — stop the mic tap. ffmpeg must finalize FIRST; killing the mic before
+  // it drains would EOF the audio early and leave a video-only tail. Finally advance
+  // nextSegment past whatever this take wrote.
   async function endCurrentTake() {
     if (!current) return;
     const t = current;
@@ -263,10 +362,33 @@ async function main() {
     term.unref(); kill.unref();
     const code = await t.exited;
     clearTimeout(term); clearTimeout(kill);
+    teardownMic(t); // ffmpeg is done — now the mic can stop
     nextSegment = maxSegmentIndex(dir) + 1;
     log.emit('take_ended', { take: t.k, exitCode: code, nextSegment });
     current = null;
     return code;
+  }
+
+  // Two-live-input deadlock guard (audio path only): if the first take never
+  // produces init.mp4, ffmpeg is wedged waiting on the audio it can't get — q won't
+  // help, so SIGKILL everything, report it, and exit rather than hang holding the
+  // mic + screen. Video-only capture can't deadlock, so we only arm this with audio.
+  function armMicWatchdog(t) {
+    if (!t.mic) return;
+    const timer = setTimeout(() => {
+      if (t !== current) return; // already moved on / stopped
+      if (fs.existsSync(path.join(dir, CONFIG.files.initSegment))) return; // capture is live
+      log.emit('error', { phase: 'capture_wedged', take: t.k, message: 'no init segment within watchdog window' });
+      try { t.ff.kill('SIGKILL'); } catch {}
+      teardownMic(t);
+      try { watcher.close(); } catch {}
+      control.close?.();
+      log.emit('aborted', { reason: 'capture_wedged' });
+      log.close();
+      try { fs.unlinkSync(fifoPath); } catch {}
+      process.exit(1);
+    }, MIC_TAP_WATCHDOG_MS);
+    timer.unref();
   }
 
   // Serialize control commands so pause/resume/stop never interleave.
@@ -281,9 +403,11 @@ async function main() {
   // doesn't write it — see the header contract).
   async function doStart() {
     if (state !== 'armed') return;
+    await ensureAudioProbed(); // resolve the mic rate once, here (fail-safe → silent)
     current = spawnTake(0);
     state = 'recording';
-    log.emit('recording_started', { pid: current.ff.pid });
+    log.emit('recording_started', { pid: current.ff.pid, audio: Boolean(current.mic) });
+    armMicWatchdog(current);
   }
 
   async function doPause() {
@@ -389,6 +513,11 @@ async function main() {
     }
   });
   control.on('error', (e) => log.emit('error', { phase: 'control', message: e.message }));
+
+  // Last-resort safety net: if we exit for any reason with a mic tap still running,
+  // SIGKILL it so it never orphans holding the microphone (the graceful paths stop it
+  // in order via endCurrentTake; this only fires on an abnormal exit).
+  process.on('exit', () => { try { current?.mic?.kill('SIGKILL'); } catch {} });
 
   process.on('SIGINT', () => enqueue(() => doStop('signal:SIGINT')));
   process.on('SIGTERM', () => enqueue(() => doStop('signal:SIGTERM')));
