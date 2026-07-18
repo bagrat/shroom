@@ -1,7 +1,7 @@
 ---
 description: Record your screen → instant local preview, then a permanent unlisted link with auto title, chapters, and a searchable transcript.
 argument-hint: "[library-dir]"
-allowed-tools: AskUserQuestion, Skill, Read, Bash(${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node:*), Bash(open:*), Bash(ls:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/shim/macos/build/shroom.app/Contents/MacOS/shroom:*)
+allowed-tools: AskUserQuestion, Skill, Read, Bash(${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node:*), Bash(open:*), Bash(${CLAUDE_PLUGIN_ROOT}/scripts/shim/macos/build/shroom.app/Contents/MacOS/shroom:*)
 ---
 
 You are running `/shroom:record`. Your job is **orchestration and judgment**: you
@@ -31,63 +31,61 @@ and re-invokes you. Branch first:
   publish.)
 - **A transcription task just completed** → go to **Step 5 (enrich)** for its
   session: the link is already live; you're adding chapters + transcript.
-- **Otherwise (a fresh `/shroom:record`)** → first a **setup gate** (this one
-  *does* block — without setup there's no recorder to launch and nowhere to publish).
-  Run `"${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node" "${CLAUDE_PLUGIN_ROOT}/scripts/setup/setup.mjs" status --json` and read
-  `ready`. **Do this silently — don't narrate the check or the flag.** If `ready` is
-  **false**, **stop — don't launch the recorder.** In **product voice only** (warm,
-  brief, no implementation detail), say recording needs a quick one-time setup the
-  first time and **ask** (AskUserQuestion) whether to do it now — e.g. *"Recording
-  needs a quick one-time setup first (about 5 minutes). Want me to take care of it
-  now?"* Never expose internals here: no `ready`, no recorder/shim mechanics, no
-  Cloudflare/R2/Pages, no file paths or script names. On *yes*, invoke `/shroom:setup`
-  (pass `$ARGUMENTS` through as the library-dir if one was given). On *no*, end the
-  turn gently — recording isn't available until setup runs; don't fall through to the
-  picker. Never run setup yourself without the yes (it mutates the machine). Only when
-  `ready` is **true** do you continue. Then a quick **version check**
-  (best-effort, never blocks): run
-  `"${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node" "${CLAUDE_PLUGIN_ROOT}/scripts/version/check.mjs"` and read its JSON. If
-  `updateAvailable` is true, mention it in **one line** ("shroom `<latest>` is out —
-  you're on `<local>`; update from the `/plugin` menu, then `/reload-plugins`"), then
-  carry on regardless. On any error or `updateAvailable: false`, say nothing and don't
-  re-check on later turns this session. Never gate recording on it.
-
-  Then a **post-update check** (also best-effort): run
-  `"${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node" "${CLAUDE_PLUGIN_ROOT}/scripts/version/post-update.mjs"` and read its JSON. For
-  each entry in `pending`, relay its `whatsNew` in one short line ("Updated to
-  `<to>` — what's new: …"). If an entry carries `actions`, treat each as a
-  **propose → ask → run** (show its `command`, get a yes, then run it) — never auto-run
-  a machine change. The check records the version itself, so it won't repeat. Empty
-  `pending` or any error → say nothing.
-
-  Then drain any **pending publish** from an earlier run (SPEC §6 recovery): glance at
-  the recent recordings,
+- **Otherwise (a fresh `/shroom:record`)** → run the **one-shot preflight**: a single
+  command that does *every* pre-record check at once (setup readiness, an update
+  check, any post-update notes, a recovery scan, and the device catalogue) so no wait
+  stacks up before you can hand off the tray. **Run it silently — don't narrate the
+  command or its fields.**
 
   ```
-  ls -t ~/.shroom/recordings 2>/dev/null
+  "${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node" "${CLAUDE_PLUGIN_ROOT}/scripts/recorder/preflight.mjs"
   ```
 
-  (single command, no pipe — eyeball the most recent few yourself) and for each
-  check `events.ndjson` for a `published` event **carrying a
-  `playbackUrl`** you haven't surfaced yet — if found, tell the user "your last
-  recording is live: <url>" and `open` it. Then go to **Step 1 (pick devices)**.
+  Parse the JSON `{ ready, version, postUpdate, pendingPublish, devices }` and act on
+  it — the **setup gate first**, since it's the only part that blocks:
+
+  - **`ready: false`** → **stop; don't launch the recorder** (without setup there's no
+    recorder to launch and nowhere to publish). In **product voice only** (warm,
+    brief, no implementation detail) say recording needs a quick one-time setup the
+    first time and **ask** (AskUserQuestion) whether to do it now — e.g. *"Recording
+    needs a quick one-time setup first (about 5 minutes). Want me to take care of it
+    now?"* Never expose internals: no `ready`, no recorder/shim mechanics, no
+    Cloudflare/R2/Pages, no file paths or script names. On *yes*, invoke `/shroom:setup`
+    (pass `$ARGUMENTS` through as the library-dir if one was given). On *no*, end the
+    turn gently — recording isn't available until setup runs; don't fall through to the
+    picker. Never run setup yourself without the yes (it mutates the machine).
+
+  Only when **`ready: true`** do you continue. The rest are **best-effort — none gate
+  recording**; weave any that apply into a warm line or two, and on any empty/missing
+  field or error just say nothing:
+
+  - **`version.updateAvailable: true`** → mention in **one line** ("shroom
+    `<version.latest>` is out — you're on `<version.local>`; update from the `/plugin`
+    menu, then `/reload-plugins`"), then carry on. Nothing if false/absent.
+  - **`postUpdate.pending[]`** → for each entry relay its `whatsNew` in one short line
+    ("Updated to `<to>` — what's new: …"). If an entry carries `actions`, treat each as
+    **propose → ask → run** (show its `command`, get a yes, then run it) — never
+    auto-run a machine change. It records the version itself, so it won't repeat.
+  - **`pendingPublish[]`** → an earlier recording whose live link you may not have
+    shown yet (SPEC §6 recovery). For each, tell the user "your last recording is live:
+    `<playbackUrl>`" and `open` it.
+
+  Then go straight to **Step 1** — you **already have `devices`** from this same
+  payload, so there's no second lookup.
 
 ## Step 1 — settings: quality + devices
 
-Preflight first (this only reads, no capture):
-
-```
-"${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node" "${CLAUDE_PLUGIN_ROOT}/scripts/recorder/record.mjs" --preflight
-```
-
-Parse `{ video, audio, defaultAudioName, qualities, lastProfile }`:
+Step 0's preflight already handed you **`devices`** — use it directly (no second
+lookup, no capture). It's `{ video, audio, defaultAudioName, qualities, lastProfile }`:
 - `qualities[]` — `{ key, label, resolution, mbPerMin, refMinutes, refSizeMB,
   refCentsPerMonth }` for `normal` (1080p), `2k`, `4k`. The `ref*` fields describe a
   relatable 10-minute clip: its size and what it costs to keep stored per month.
-- `lastProfile` — `{ quality, video, audio }` from the most recent recording, or
-  `null` on the first ever run.
+- `lastProfile` — `{ quality, video, audio, available }` from the most recent
+  recording, or `null` on the first ever run. `available` is `{ video, audio }`
+  booleans: whether last time's screen/camera and mic are **still connected right
+  now** (a saved device may have been unplugged since — e.g. AirPods).
 
-### If `lastProfile` exists — offer to reuse it
+### If `lastProfile` exists AND `available.video && available.audio` — offer to reuse it
 
 State it plainly and ask (single `AskUserQuestion`, **Use these** / **Change**):
 
@@ -97,6 +95,16 @@ State it plainly and ask (single `AskUserQuestion`, **Use these** / **Change**):
 - **Use these** → carry them straight to Step 2 (if `lastProfile.quality` is
   `null` — an older recording — default to `normal`).
 - **Change** → fall through to the full picker below.
+
+### If `lastProfile` exists but a saved device is gone — skip the reuse offer
+
+When `available.audio` is `false` (or `available.video` is `false`), **don't** offer
+"use last settings" — reusing it would fail. Go straight to the full picker below,
+and open with a warm one-liner in **product voice** naming what's changed so the user
+isn't surprised the offer's gone — e.g. *"Your usual mic isn't connected right now,
+so let's pick fresh."* (or the camera, if it's the video source that's missing). Name
+the thing warmly (**"your usual mic"**), never the internals — don't say
+`lastProfile`, `available`, "device resolution", or an avfoundation name.
 
 ### The full picker (first run, or on "Change")
 
