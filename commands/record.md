@@ -268,21 +268,25 @@ one-liner (a compound `if`/`[ -d ]` trips an approval prompt). Just **Read**
   storage/URL key), `open <dir>/preview.mp4` for the instant local preview (SPEC §8),
   and go straight to titling. (Any other `finalized` / an `error` → surface it and stop.)
 
-Then **ask the user how to title it** (`AskUserQuestion`). First, **Read
-`<dir>/head-transcript.json`** — for any recording past ~a minute the opening was
-already transcribed while recording, so you usually have a head transcript in hand
-and a name ready with **no wait**.
+Then **ask the user how to title it** (`AskUserQuestion`). The events you just read
+tell you whether the opening was already transcribed while recording: a
+**`head_transcribed`** event means a head transcript is waiting, so you have a name
+ready with **no wait**. Let that event — not a blind file read — decide which path:
 
-- **If `head-transcript.json` exists** → author a **suggested title** from it now
-  (it's the recording's opening — use the *title* rules in *Authoring the title,
-  TL;DR & chapters* below; title only, no chapters from the head). Offer it as the
-  recommended option, **written out**, e.g. *"Name it 'Testing the publish flow'"*.
-  This is the **auto-name**, just ready instantly. Accepting it → **Path A** with
-  that title.
-- **If it doesn't exist** (a short recording, or the opening wasn't transcribed) →
-  offer **Auto-name it** the classic way: say plainly it reads through what was said
-  before naming (a few seconds, longer for a long recording), giving a title *and*
-  chapters → **Path B**.
+- **If you saw `head_transcribed`** → **Read `<dir>/head-transcript.json`** and author a
+  **suggested title** from it now (it's the recording's opening — use the *title* rules
+  in *Authoring the title, TL;DR & chapters* below; title only, no chapters from the
+  head). Offer it as the recommended option, **written out**, e.g. *"Name it 'Testing
+  the publish flow'"*. This is the **auto-name**, just ready instantly. Accepting it →
+  **Path A** with that title. (If that read somehow comes back empty, don't dwell on
+  it — quietly fall to the no-head case below.)
+- **Otherwise** (a short recording, or the opening wasn't transcribed yet) → **don't try
+  to read the head transcript at all** — offer **Auto-name it** the classic way: say
+  plainly it reads through what was said before naming (a few seconds, longer for a long
+  recording), giving a title *and* chapters → **Path B**.
+
+A missing head transcript is **normal and silent** — never surface a file name or a
+"couldn't read…" error to the user.
 
 Either way the always-present free-text **"Other"** field keeps a typed title a
 **one-step** answer — `AskUserQuestion` needs at least two options, so list the
