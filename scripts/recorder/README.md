@@ -106,17 +106,29 @@ dead air — rejected in SPEC §4). Each recording run between pauses is a **tak
 > take (including the first) loses ~1 s of content at its head. Inherent to
 > restart-based capture; the SIGSTOP alternative was rejected for worse artifacts.
 
-> **Audio is off by default in M1** to keep testing free of a mic TCC prompt. The
-> code path is wired (`--audio default` picks a built-in mic, never the iPhone
-> Continuity mic; `--audio "<name>"` picks by name); v1's intended default is
-> screen **+ mic**.
+> **Audio selection:** `--audio default` picks a built-in mic (never the iPhone
+> Continuity mic); `--audio "<name>"` picks by name. Off with `--audio none`. The
+> chosen mic name is passed through to the native tap, which selects that device via
+> CoreAudio.
 
-> **Audio sync caveat (fixed):** avfoundation's mic clock drifts ~6% slow vs the
-> wall clock, so without correction ~6% of audio samples drop as gaps (audio
-> speeds up, then cuts before the video ends). The recipe applies
-> `-af aresample=async=1` (`CONFIG.audioFilter`) to fill the gaps and lock audio to
-> the timeline — measured ~6% drop → 0%. It's a clock issue, **not** 4K throughput
-> (downscaling didn't help; audio-only capture drops too).
+> **Audio is captured NATIVELY, not via ffmpeg.** ffmpeg's avfoundation *audio*
+> demuxer corrupts the built-in mic with real digital splices (a ~decade-old,
+> version-independent bug). So the recorder runs the **mic tap** (the shim binary in
+> `--mic-tap` mode, passed as `--mic-cmd`) as a child, reads clean mono f32le PCM off
+> its stdout, and feeds it to ffmpeg as a **second input** (`-f f32le -ar <rate> -ac 1
+> -i <fifo>`, mapped `1:a`). ffmpeg's first input is video-only (`<index>:none`); it
+> still owns encode + segment + tee. The old `-af aresample=async=1` band-aid is gone
+> — native PCM is clean and wall-clock-locked (drift measured dead, ~0.011%@120s), so
+> async would only stuff silence back in.
+>
+> **Two-input plumbing (load-bearing):** node buffers the tap's PCM in a ~16MB
+> `PassThrough` between it and the fifo. Straight-piping would deadlock — ffmpeg's ~1s
+> video warmup wouldn't drain the fifo, the tap would block on a full pipe, deliver
+> zero audio, and ffmpeg would block forever on its audio input. On stop, ffmpeg is
+> `q`-finalized **first**, then the tap is killed (reverse leaves a video-only tail). A
+> watchdog aborts + cleans up if the first take never produces `init.mp4`. No mic tap
+> available (or its probe fails) → the recording still renders locally, silent, with a
+> logged skip.
 
 ## Control contract (fifo in)
 
