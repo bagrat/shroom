@@ -26,8 +26,8 @@ It owns three things and nothing else:
    only when an update changes the binary — no Apple Developer account needed). It's a
    real `.app` bundle whose `Info.plist` carries the mic usage string, the clean
    "shroom" name, and our icon (so the Privacy panes show the mushroom, not a generic
-   exec icon). `/shroom:record` front-loads both prompts via `shroom --permissions`
-   before the real tray launches.
+   exec icon). The record preflight front-loads both prompts (plus capture-priming) via
+   a single `shroom --prep` before the real tray launches.
 2. **The menu-bar item (the tray)** — the human's hands on the recording.
 3. **Launching the Node recorder + writing its control fifo.** The shim writes the
    exact same newline commands any shell would (`echo start > control.fifo`); it is
@@ -71,8 +71,17 @@ build/shroom.app/Contents/MacOS/shroom \
   you only pass `--out`.
 - On first launch it requests Screen Recording + Microphone (registers "shroom" as
   the TCC principal). Screen Recording's grant takes effect on the next launch — which
-  is why `/shroom:record` runs `--permissions` as a throwaway first, then launches the
-  real tray fresh.
+  is why the record preflight runs `--prep` as a throwaway first (it also primes
+  capture), then launches the real tray fresh.
+- **Stale-grant self-reset.** Because we're ad-hoc signed, TCC pins the Screen-Recording
+  grant to the exact cdhash, so every update (and every dev rebuild) orphans it — the
+  Privacy toggle still reads ON while the new binary is denied. So when `--prep` finds
+  itself **not** authorized, it first runs `tccutil reset ScreenCapture am.shroom` (our
+  own bundle, ScreenCapture only — never the mic) to clear that phantom entry, then
+  re-registers, so the re-grant is one clean toggle instead of a confusing "it's already
+  on." It's a deliberate, scoped exception to "never silently mutate the machine": it
+  grants nothing and only runs when already unauthorized, so it never disturbs a working
+  grant — it just removes our own dead entry. Best-effort (no `sudo`; falls back quietly).
 
 The tray's **primary (left) click** is the one obvious action per state — no menu
 in the way:

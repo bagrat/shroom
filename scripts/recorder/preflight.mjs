@@ -11,25 +11,39 @@
 //   version        — update-available check (network, best-effort, fail-soft)
 //   postUpdate     — per-version "what's new" since last-seen (advances its own
 //                    marker; each version fires once)
-//   pendingPublish — recordings published in a PRIOR run whose live link the user
-//                    may not have seen yet (fire-once; advances a "surfaced" marker)
 //   devices        — the full picker payload (video/audio/qualities/lastProfile)
+//   prep           — with --prep, on a configured machine: the ONE native pre-record
+//                    step (prime mic + Screen Recording + capture consent) PLUS the
+//                    staged recording identity (id + session dir). null otherwise. This
+//                    is what lets /shroom:record do every programmatic thing in a single
+//                    call BEFORE the picker, then just launch the tray after it.
 //
-// Every branch is fail-soft: a slow network, missing state, old Node — any problem
-// degrades that one field, never the whole payload. Like post-update, it NEVER
-// mutates the machine beyond advancing its own marker files.
+// Every read-only branch is fail-soft: a slow network, missing state, old Node — any
+// problem degrades that one field, never the whole payload; those never mutate the
+// machine beyond advancing their own marker files. `--prep` is the deliberate exception:
+// it prompts for permissions (idempotent — silent once granted) and is likewise
+// fail-soft (a not-yet-compiled app reports appMissing so the caller routes to setup).
+//
+// NOT surfaced here on purpose: the published-link recovery (SPEC §6). Announcing/opening
+// a PRIOR recording's link in the middle of starting a NEW one is intrusive, so it's kept
+// out of the record hot path — `scanPublished` + `pendingPublish` stay exported below for
+// a future status/dashboard surface to use, but preflight neither computes nor advances
+// their marker.
 //
 // Flags (all optional; most exist for tests):
+//   --prep                 also run the native pre-record prep + stage the recording
+//                          identity (see `prep` above); off by default so the read-only
+//                          checks never prompt for permissions
 //   --no-version           skip the network version check (→ version:null)
 //   --version-timeout <ms> version-fetch timeout (default 2000 — keep the hot path snappy)
 //   --recordings <dir>     override the recordings base (default ~/.shroom/recordings)
-//   --surfaced-state <p>   override the pending-publish "surfaced" marker path
-//   --no-advance           report pendingPublish without advancing its marker (dry-run)
 //   --verify               live-check the stored R2 keys in the setup status (adds a HEAD)
 
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import crypto from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { computeStatus } from '../setup/lib/status.mjs';
@@ -42,14 +56,13 @@ const MAX_PENDING = 5;         // cap what we surface — a fresh run only cares
 const SCAN_DIRS = 20;          // newest-N recording dirs to inspect (bounds IO)
 
 function parseArgs(argv) {
-  const a = { advance: true, version: true, timeout: 2000, verify: false };
+  const a = { version: true, timeout: 2000, verify: false, prep: false };
   for (let i = 0; i < argv.length; i++) {
     const k = argv[i];
-    if (k === '--no-advance') a.advance = false;
+    if (k === '--prep') a.prep = true;
     else if (k === '--no-version') a.version = false;
     else if (k === '--version-timeout') a.timeout = Number(argv[++i]) || 2000;
     else if (k === '--recordings') a.recordings = argv[++i];
-    else if (k === '--surfaced-state') a.surfacedState = argv[++i];
     else if (k === '--verify') a.verify = true;
   }
   return a;
@@ -109,7 +122,7 @@ function writeSurfaced(file, ids) {
 // a "surfaced" marker (same pattern as post-update's version marker). First ever run
 // baselines silently — it records what's already published and reports nothing, so a
 // fresh install never replays the whole history.
-export function pendingPublish({ base, stateFile, advance }) {
+export function pendingPublish({ base, stateFile = path.join(shroomDir(), 'publish-surfaced.json'), advance = true }) {
   const published = scanPublished(base);
   const firstRun = !fs.existsSync(stateFile);
   const surfaced = readSurfaced(stateFile);
@@ -126,9 +139,46 @@ export function pendingPublish({ base, stateFile, advance }) {
   return { candidates, firstRun };
 }
 
+// The compiled shim binary, resolved through any skills-dir symlink so it points at the
+// real repo checkout where build/ lives (same realpath trick as the entry guard below).
+function shimBinary() {
+  const here = path.dirname(fs.realpathSync(fileURLToPath(import.meta.url)));
+  return path.join(here, '..', 'shim', 'macos', 'build', 'shroom.app', 'Contents', 'MacOS', 'shroom');
+}
+
+// YYYYMMDD-HHMMSS in LOCAL time — the session-dir prefix, matching the `date
+// +%Y%m%d-%H%M%S` the command used to shell out for (so dirs still sort + eyeball nicely).
+function stamp(d = new Date()) {
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+}
+
+// The single native pre-record step, run only on a configured machine (ready + --prep):
+// one throwaway shim launch primes Microphone + Screen Recording as "shroom" and, when
+// screen is already granted, the capture consent. It also mints the recording id and its
+// session dir HERE — in the deterministic core — so the command needs no id/timestamp
+// shell calls and can hand the tray a ready path after the picker. Fail-soft: a not-yet-
+// compiled app reports appMissing (→ caller routes to /shroom:setup); any other hiccup
+// still returns id + sessionDir (screen/mic null) so the tray's launch-time safety nets
+// carry the record. The dir is only NAMED here — the shim/recorder mkdir it at launch.
+export function runPrep({ base }) {
+  const id = crypto.randomBytes(12).toString('base64url');
+  const sessionDir = path.join(base, `${stamp()}-${id}`);
+  let screen = null, mic = null, appMissing = false;
+  try {
+    const out = execFileSync(shimBinary(), ['--prep'], { encoding: 'utf8' });
+    const j = JSON.parse((out.trim().split('\n').pop()) || '{}');
+    screen = j.screen ?? null;
+    mic = j.mic ?? null;
+  } catch (e) {
+    if (e && e.code === 'ENOENT') appMissing = true;   // not compiled yet → needs setup
+    // else best-effort: leave screen/mic null; the tray primes again at launch.
+  }
+  return { ok: !appMissing, appMissing, screen, mic, id, sessionDir };
+}
+
 export async function runPreflight(args = {}) {
   const base = args.recordings || path.join(os.homedir(), '.shroom', 'recordings');
-  const stateFile = args.surfacedState || path.join(shroomDir(), 'publish-surfaced.json');
 
   // Fire every check at once; each is independently fail-soft.
   const [setup, version, devices] = await Promise.all([
@@ -139,20 +189,28 @@ export async function runPreflight(args = {}) {
     buildPreflight().catch((e) => ({ error: 'devices_failed', detail: String(e?.message || e), video: [], audio: [], defaultAudioName: null, qualities: [], lastProfile: null })),
   ]);
 
-  // These two are cheap + synchronous; keep them out of the await group.
+  // Cheap + synchronous; keep it out of the await group.
   let postUpdate = null;
   try { postUpdate = runPostUpdate({ advance: true }); } catch { postUpdate = null; }
-  let pending = { candidates: [], firstRun: false };
-  try { pending = pendingPublish({ base, stateFile, advance: args.advance !== false }); } catch { /* fail-soft */ }
+
+  const ready = Boolean(setup && setup.ready);
+
+  // The one native pre-record step + staged recording identity — only when asked
+  // (--prep) AND configured (no point prompting for permissions on a machine that's
+  // about to be routed to setup). Fail-soft so a prep hiccup never sinks the payload.
+  let prep = null;
+  if (args.prep && ready) {
+    try { prep = runPrep({ base }); } catch { prep = null; }
+  }
 
   return {
     ok: true,
-    ready: Boolean(setup && setup.ready),
+    ready,
     setup,
     version,
     postUpdate,
-    pendingPublish: pending.candidates,
     devices,
+    prep,
   };
 }
 

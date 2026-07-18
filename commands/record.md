@@ -31,33 +31,70 @@ and re-invokes you. Branch first:
   publish.)
 - **A transcription task just completed** → go to **Step 5 (enrich)** for its
   session: the link is already live; you're adding chapters + transcript.
+- **The user asks you to stop/quit/cancel while the recorder you launched is still
+  running** (its background task hasn't completed) → see **Stopping before it started**
+  below: if nothing was captured yet, you can cleanly quit it for them; if capture is
+  under way, that's theirs to end from the tray.
 - **Otherwise (a fresh `/shroom:record`)** → run the **one-shot preflight**: a single
-  command that does *every* pre-record check at once (setup readiness, an update
-  check, any post-update notes, a recovery scan, and the device catalogue) so no wait
-  stacks up before you can hand off the tray. **Run it silently — don't narrate the
-  command or its fields.**
+  command that does *every* programmatic pre-record step at once — all the read-only
+  checks (setup readiness, an update check, any post-update notes, a recovery scan, the
+  device catalogue) **and**, on a set-up machine, the native prep: it primes recording
+  permissions and stages this recording's identity. After this, **nothing programmatic is
+  left before the tray** — the only remaining thing is the user's picker answer, then you
+  launch. **Run it silently — don't narrate the command or its fields.**
 
   ```
-  "${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node" "${CLAUDE_PLUGIN_ROOT}/scripts/recorder/preflight.mjs"
+  "${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node" "${CLAUDE_PLUGIN_ROOT}/scripts/recorder/preflight.mjs" --prep
   ```
 
-  Parse the JSON `{ ready, version, postUpdate, pendingPublish, devices }` and act on
-  it — the **setup gate first**, since it's the only part that blocks:
+  A one-line heads-up before you run it is kind — on the user's **first** record it may
+  surface a Microphone prompt (product voice: *"macOS may ask to allow the mic — go ahead
+  and allow it"*); after that it's silent.
 
-  - **`ready: false`** → **stop; don't launch the recorder** (without setup there's no
-    recorder to launch and nowhere to publish). In **product voice only** (warm,
-    brief, no implementation detail) say recording needs a quick one-time setup the
-    first time and **ask** (AskUserQuestion) whether to do it now — e.g. *"Recording
-    needs a quick one-time setup first (about 5 minutes). Want me to take care of it
-    now?"* Never expose internals: no `ready`, no recorder/shim mechanics, no
-    Cloudflare/R2/Pages, no file paths or script names. On *yes*, invoke `/shroom:setup`
-    (pass `$ARGUMENTS` through as the library-dir if one was given). On *no*, end the
-    turn gently — recording isn't available until setup runs; don't fall through to the
-    picker. Never run setup yourself without the yes (it mutates the machine).
+  Parse the JSON `{ ready, version, postUpdate, devices, prep }` and act on it — the
+  **gates first**, since they're the only parts that block recording:
 
-  Only when **`ready: true`** do you continue. The rest are **best-effort — none gate
-  recording**; weave any that apply into a warm line or two, and on any empty/missing
-  field or error just say nothing:
+  - **`ready: false`** OR **`prep.appMissing: true`** → recording needs the quick
+    one-time setup (either nothing's configured yet, or it isn't installed on this Mac).
+    **Stop; don't launch the recorder.** In **product voice only** (warm, brief, no
+    implementation detail) say recording needs a quick one-time setup the first time and
+    **ask** (AskUserQuestion) whether to do it now — e.g. *"Recording needs a quick
+    one-time setup first (about 5 minutes). Want me to take care of it now?"* Never expose
+    internals: no `ready`/`prep`, no recorder/shim mechanics, no Cloudflare/R2/Pages, no
+    file/app/"build" names or script names. On *yes*, invoke `/shroom:setup` (pass
+    `$ARGUMENTS` through as the library-dir if one was given). On *no*, end the turn
+    gently — recording isn't available until setup runs; don't fall through to the picker.
+    Never run setup yourself without the yes (it mutates the machine).
+
+  Only past the gates do you continue. **`prep`** carries this recording's identity —
+  keep its **`id`** and **`sessionDir`**; they're what you hand the tray in Step 2
+  (backstage — never narrate them). Now settle permissions from `prep` (all product
+  voice; always call it **shroom**, never "shim"):
+
+  - **`prep.mic: "denied"`** → fine, they can record without a mic; don't block on it.
+  - **`prep.screen: "granted"`** → screen access is enabled and already primed; nothing
+    to do — carry on.
+  - **`prep.screen: "prompted"`** → it's the user's **first** record. Screen Recording
+    can't be granted from its prompt — the user toggles it in System Settings, and it
+    only takes effect on the **next** launch. So:
+    1. Open the pane: `open "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture"`.
+    2. Tell the user: turn **ON “shroom”** under Screen Recording.
+    3. **Gate with `AskUserQuestion`** ("Enabled Screen Recording for shroom?" — e.g.
+       *"Yes, it's on"* / *"Open the settings again"*). Only continue once they confirm —
+       otherwise the first capture starts blind.
+    4. Then prime screen access once — the grant is live now that it's a fresh launch, so
+       macOS may surface a one-time **screen-access confirmation**; provoke it here, at
+       setup time, not partway through the recording. Give a one-line warm heads-up (e.g.
+       *"macOS might ask you to confirm screen access — that's expected, just allow it"*),
+       then run it **in the foreground and wait**:
+       ```
+       "${CLAUDE_PLUGIN_ROOT}/scripts/shim/macos/build/shroom.app/Contents/MacOS/shroom" --prime-capture
+       ```
+       It takes about a second and keeps nothing. Don't narrate the mechanism or name any
+       file.
+
+  The rest are **best-effort — none gate recording**; weave any that apply into a warm
+  line or two, and on any empty/missing field or error just say nothing:
 
   - **`version.updateAvailable: true`** → mention in **one line** ("shroom
     `<version.latest>` is out — you're on `<version.local>`; update from the `/plugin`
@@ -66,9 +103,10 @@ and re-invokes you. Branch first:
     ("Updated to `<to>` — what's new: …"). If an entry carries `actions`, treat each as
     **propose → ask → run** (show its `command`, get a yes, then run it) — never
     auto-run a machine change. It records the version itself, so it won't repeat.
-  - **`pendingPublish[]`** → an earlier recording whose live link you may not have
-    shown yet (SPEC §6 recovery). For each, tell the user "your last recording is live:
-    `<playbackUrl>`" and `open` it.
+
+  Don't surface anything about **earlier** recordings here — starting a new recording is
+  no time to announce or open a prior session's link. (Recovering a link you may have
+  lost belongs to a status view, not the middle of a fresh record.)
 
   Then go straight to **Step 1** — you **already have `devices`** from this same
   payload, so there's no second lookup.
@@ -129,84 +167,28 @@ next time's `lastProfile` automatically — no separate save step.
 ## Step 2 — launch the shim (harness-tracked background task)
 
 You **launch** the recorder; the **user** starts the capture from the menu bar.
+Everything programmatic — permissions and this recording's identity — was already
+settled by Step 0's prep, so there's **nothing left here but the launch** (the only
+thing between the picker and the tray).
 
-### Prime permissions (foreground, before the tray)
+Launching the recorder is **backstage plumbing the user never sees narrated**. Don't
+announce it (no "launching the recorder"/"shim", no "id", no "session dir"); the only
+thing you say around here is the warm tray hand-off at the end of this step.
 
-The permissions primer is the **first** launch of the menu-bar app this session — so
-it's also where a not-yet-set-up machine surfaces. Run it **and wait for it**: a
-throwaway launch that requests **Microphone** and registers **Screen Recording** as
-the **“shroom”** principal (so prompts read "shroom", never "Terminal"), then exits
-with one line of JSON: `{"screen":"granted|prompted","mic":"granted|denied"}`:
-
-```
-"${CLAUDE_PLUGIN_ROOT}/scripts/shim/macos/build/shroom.app/Contents/MacOS/shroom" --permissions
-```
-
-Don't pre-check or narrate that the app is present — just run it. If it **can't launch
-at all** (a "No such file or directory"/not-found error — it's compiled on-device the
-first time by `/shroom:setup`), don't try to record: in **product voice** tell the
-user recording needs the one-time setup first and to run `/shroom:setup`, then stop.
-Never name the app file or say "build", "binary", or "shim" to the user.
-
-The **mic** prompt resolves inline while it runs (a one-line heads-up beforehand is
-kind). Then branch on the JSON — **you** own the Screen-Recording gate (the primer no
-longer pops a dialog of its own; that stacked confusingly over the system prompt):
-
-- **`screen: "granted"`** → already enabled; go straight to the priming pass below.
-- **`screen: "prompted"`** → it's the user's **first** record. Screen Recording can't
-  be granted from its prompt — the user toggles it in System Settings, and it only
-  takes effect on the **next** launch. So:
-  1. Open the pane: `open "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture"`.
-  2. Tell the user: turn **ON “shroom”** under Screen Recording.
-  3. **Gate with `AskUserQuestion`** ("Enabled Screen Recording for shroom?" — e.g.
-     *"Yes, it's on"* / *"Open the settings again"*). Only continue once they
-     confirm — otherwise the first capture starts blind.
-- **`mic: "denied"`** → fine, they can record without a mic; don't block on it.
-
-Always call it **shroom** to the user — never say "shim" in anything you surface.
-
-### Prime screen access (before the tray)
-
-With Screen Recording enabled, run one brief priming pass so macOS surfaces any
-**screen-access confirmation now**, at setup time — not partway through the recording,
-where it would interrupt. Give a one-line, warm heads-up first (e.g. *"macOS might ask
-you to confirm screen access — that's expected, just allow it"*), then run it **in the
-foreground and wait** for it:
-
-```
-"${CLAUDE_PLUGIN_ROOT}/scripts/shim/macos/build/shroom.app/Contents/MacOS/shroom" --prime-capture
-```
-
-It takes about a second and keeps nothing. Run it **every** record (it's silent unless
-macOS is due to re-confirm). Don't narrate the mechanism or name any file — just the
-warm heads-up, then launch the tray.
-
-This next part — generating the id and launching the recorder — is **backstage
-plumbing the user never sees narrated**. Don't announce it (no "minting", no "id", no
-"launching the recorder"/"shim"); the only thing you say around here is the warm
-tray hand-off at the end of this step.
-
-Generate the recording's **id** — the unguessable storage/URL key — yourself, so you
-can name the session dir after it and the URL key is fixed up front:
-
-```
-"${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node" -e "console.log(require('crypto').randomBytes(12).toString('base64url'))"
-```
-
-Then the **session dir** is `~/.shroom/recordings/<YYYYMMDD-HHMMSS>-<id>` (timestamp
-so it sorts/eyeballs nicely, `id` so the dir cross-references the link) — **remember
-it**; that's where the control fifo + `events.ndjson` live and what you read in Step
-4. Launch it **in the background** so the user stays free to chat and the harness
-re-invokes you when the session ends (SPEC §6 — do not block on a long tail), passing
-the id + the picker's choices straight through after `--`. Give the background task a
-**user-facing label without "shim"** (e.g. *"shroom recorder (menu-bar tray)"*) —
-that label is shown to the user when the task completes:
+Use **`prep.sessionDir`** (from Step 0) as the session dir — it's already named
+`~/.shroom/recordings/<YYYYMMDD-HHMMSS>-<id>` and is where the control fifo +
+`events.ndjson` live and what you read in Step 4; **remember it**. Launch the tray **in
+the background** so the user stays free to chat and the harness re-invokes you when the
+session ends (SPEC §6 — do not block on a long tail), passing **`prep.id`** + the
+picker's choices straight through after `--`. Give the background task a **user-facing
+label without "shim"** (e.g. *"shroom recorder (menu-bar tray)"*) — that label is shown
+to the user when the task completes:
 
 ```
 "${CLAUDE_PLUGIN_ROOT}/scripts/shim/macos/build/shroom.app/Contents/MacOS/shroom" \
   --recorder "${CLAUDE_PLUGIN_ROOT}/scripts/recorder/record.mjs" \
   --node "${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node" \
-  -- --out "$HOME/.shroom/recordings/<YYYYMMDD-HHMMSS>-<id>" --id <id> \
+  -- --out "<prep.sessionDir>" --id <prep.id> \
      --quality <key> --device "<video name>" --audio "<mic name>"
 ```
 
@@ -240,6 +222,31 @@ and reports it. If storage isn't set up, the recorder emits `upload_skipped`
 (`storage_not_configured`) — fine: it still renders **locally and instantly** (SPEC
 §8); note it in Step 4 and offer `/shroom:setup` for the shareable link.
 
+### Stopping before it started (the user says "stop" while it's still armed)
+
+Once capture is under way, **Stop** (publish) and **Discard** (throw away) are the
+user's calls on the tray — you never end a real recording for them (SPEC §4). But
+before they've clicked Start, there's **nothing captured and nothing to consent to** —
+so if the user says "stop" / "quit" / "never mind" while the tray is still armed, you
+can quit it for them without making them touch the menu bar.
+
+Tell armed from recording by **Read**ing `<prep.sessionDir>/events.ndjson`:
+
+- **No `recording_started` (or `resumed`) event** → it's still **armed**, nothing was
+  captured. Cancel it cleanly — the recorder drops its empty session and exits, and the
+  tray quits itself:
+  ```
+  "${CLAUDE_PLUGIN_ROOT}/scripts/shim/macos/build/shroom.app/Contents/MacOS/shroom" --cancel --out "<prep.sessionDir>"
+  ```
+  Then say, in product voice, that you've stopped it and nothing was recorded — no link,
+  nothing to publish. The tray's background task will complete right after; that's this
+  same cancel, so **don't announce it again** (Step 4 will see the session gone — stay
+  quiet, you've already told them).
+- **A `recording_started` event is present** → capture is live (or paused mid-take).
+  **Don't cancel** — that would throw away real footage. In product voice, point them to
+  the tray: click the shroom icon, then **Stop** to save + share it or **Discard** to
+  throw it away — their choice.
+
 ## Step 4 — name it, then publish instantly
 
 The link should be in the user's hands **right after stop**, not gated behind
@@ -250,8 +257,10 @@ Work **quietly** here — no "let me check…" narration, and don't probe with a
 one-liner (a compound `if`/`[ -d ]` trips an approval prompt). Just **Read**
 `<dir>/events.ndjson` with the Read tool (not `cat`) and branch on what's there:
 
-- **Read fails / the file is gone** → the user **discarded** the take. Say it was
-  discarded, nothing was published, and stop (don't hunt for an older session).
+- **Read fails / the file is gone** → the session was thrown away. If **you** just
+  cancelled it yourself (the armed-stop case in *Stopping before it started*), you've
+  already told the user — stay quiet and stop. Otherwise the user **discarded** the take:
+  say it was discarded, nothing was published, and stop (don't hunt for an older session).
 - **an `aborted` event** → nothing was published; branch on its `reason`:
   - `stopped_before_start` (quit while still `armed`, before clicking Start) → nothing
     was captured; say so and stop.

@@ -89,32 +89,58 @@ private func reexecDisclaimingResponsibility() {
     // SETEXEC only returns on FAILURE — fall through and run in-process.
 }
 
-// MARK: - Permissions primer (`shroom --permissions`)
+// MARK: - Fused permissions + capture prep (`shroom --prep`)
 
-// Run by /shroom:record as a throwaway FIRST launch before the real tray: request
-// Screen Recording + Microphone from THIS binary — the disclaimed "shroom" principal
-// — so both prompts read "shroom" (not Terminal) and the grants are held by the same
-// identity that records. Then exit; the real background tray launches fresh and
-// inherits the grants. Idempotent: if both are already granted this prints and exits
+// The one native step the record preflight runs before the tray, as a throwaway launch
+// of THIS binary — the disclaimed "shroom" principal (so every prompt reads "shroom",
+// not Terminal, and the grants are held by the identity that records). It fuses what
+// used to be two launches into one: request Microphone, register / preflight Screen
+// Recording, and — when screen is ALREADY live — prime the Sequoia bypass-picker capture
+// consent. Then it exits; the real background tray launches fresh and inherits the
+// grants. Idempotent for the grants: already-granted mic + screen prints and exits
 // without prompting, so every record after the first is silent.
-//
-// Why a throwaway launch matters for Screen Recording: that grant can't be given from
-// the prompt — the user toggles it in System Settings and it only takes effect on the
-// NEXT launch. The primer IS that first launch, so the real tray (the next process)
-// sees it live — no "quit and relaunch the tray" dance.
 //
 // Prints one line of JSON: {"screen":"granted|prompted","mic":"granted|denied"}.
 //
-// Mic and Screen Recording behave differently and must NOT share the screen. Mic is an
+// Mic and Screen Recording behave differently and must NOT share a dialog. Mic is an
 // instant inline Allow/Don't-Allow, so we resolve it FIRST and fully — never stacked
 // under another dialog. Screen Recording can't be granted from its prompt at all (the
 // user toggles it in System Settings, effective only on the NEXT launch), so we just
-// REGISTER "shroom" in the Privacy list and report "prompted" — then EXIT. We don't
-// hold a native dialog here: stacking one over the system prompt was confusing. The
-// record command owns the screen gate instead — it opens System Settings and asks the
-// user (its own AskUserQuestion) to toggle "shroom" on before it launches the real tray
-// (which, as a fresh process, then sees the grant).
-private func runPermissionsPrimerAndExit() -> Never {
+// REGISTER "shroom" in the Privacy list and report "prompted" — then EXIT. We don't hold
+// a native dialog here: stacking one over the system prompt was confusing. The record
+// command owns the screen gate instead — it opens System Settings and asks the user (its
+// own AskUserQuestion) to toggle "shroom" on before the real tray launches (which, as a
+// fresh process, then sees the grant).
+//
+// Capture priming only runs when screen is ALREADY granted: on a first record the grant
+// isn't live in THIS process (it needs a fresh one after the toggle), so `--prep` returns
+// "prompted" WITHOUT priming, and the record flow runs `--prime-capture` as a fresh
+// process once the user has enabled Screen Recording.
+// Clear a STALE Screen-Recording decision for our OWN bundle, then return. Why this
+// exists: shroom is ad-hoc signed, so TCC pins the grant to the exact cdhash. Every
+// update (and every dev rebuild) changes the cdhash and orphans the prior grant — TCC
+// still lists "shroom" as enabled, but the new binary doesn't match, so the toggle reads
+// ON while capture is denied. That phantom state drags the user through a muddy re-grant
+// ("it's already on, why is it asking?"). `tccutil reset ScreenCapture <bundle>` wipes
+// just our own entry so the next grant is a clean single toggle.
+//
+// Deliberate, scoped exception to CLAUDE.md's "never silently mutate the machine": it is
+// confined to OUR bundle and the ScreenCapture service (never the mic), it GRANTS
+// nothing, and it runs ONLY when we're already unauthorized (about to send the user to
+// re-grant regardless) — so it can never disturb a working grant or widen access, it only
+// clears our own dead entry. Best-effort: if tccutil is missing or refuses, we fall back
+// to the old (muddy but functional) path.
+private func resetOwnStaleScreenGrant() {
+    let bundleID = Bundle.main.bundleIdentifier ?? "am.shroom"
+    let p = Process()
+    p.executableURL = URL(fileURLWithPath: "/usr/bin/tccutil")
+    p.arguments = ["reset", "ScreenCapture", bundleID]
+    p.standardOutput = FileHandle.nullDevice
+    p.standardError = FileHandle.nullDevice
+    do { try p.run(); p.waitUntilExit() } catch { /* best-effort */ }
+}
+
+private func runPrepAndExit() -> Never {
     // 1) Microphone — resolve completely before the screen request so the two prompts
     //    never stack (allowing mic must not race/dismiss anything else).
     var micGranted = AVCaptureDevice.authorizationStatus(for: .audio) == .authorized
@@ -124,12 +150,21 @@ private func runPermissionsPrimerAndExit() -> Never {
         sem.wait()
     }
 
-    // 2) Screen Recording — preflight; if not granted, the request registers "shroom"
-    //    in the Privacy list (returns false until the user toggles it + relaunches).
-    let screen = CGPreflightScreenCaptureAccess() || CGRequestScreenCaptureAccess()
-        ? "granted" : "prompted"
+    // 2) Screen Recording. Preflight first; if THIS binary isn't authorized, clear any
+    //    stale grant for our own bundle before (re-)registering — so the Privacy pane is
+    //    honest and the re-grant is clean (see resetOwnStaleScreenGrant). Only ever when
+    //    already not granted, so a working grant is never touched.
+    var screenGranted = CGPreflightScreenCaptureAccess()
+    if !screenGranted {
+        resetOwnStaleScreenGrant()
+        screenGranted = CGRequestScreenCaptureAccess()
+    }
 
-    print("{\"screen\":\"\(screen)\",\"mic\":\"\(micGranted ? "granted" : "denied")\"}")
+    // 3) Prime the bypass-picker consent now — but only when the grant is already live
+    //    (a first record primes on the later `--prime-capture` instead).
+    if screenGranted { primeCapture() }
+
+    print("{\"screen\":\"\(screenGranted ? "granted" : "prompted")\",\"mic\":\"\(micGranted ? "granted" : "denied")\"}")
     exit(0)
 }
 
@@ -150,10 +185,13 @@ private func runPermissionsPrimerAndExit() -> Never {
 // surfaces here, at priming, not mid-record). We never write a file.
 private final class PrimeCaptureSink: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {}
 
-private func runPrimeCaptureAndExit() -> Never {
-    guard let input = AVCaptureScreenInput(displayID: CGMainDisplayID()) else { exit(1) }
+// The ~1s throwaway capture itself, WITHOUT exiting — shared by the `--prime-capture`
+// mode and the fused `--prep` (which calls it inline when screen is already granted).
+// Best-effort: returns silently on any setup failure; priming never blocks a record.
+private func primeCapture() {
+    guard let input = AVCaptureScreenInput(displayID: CGMainDisplayID()) else { return }
     let session = AVCaptureSession()
-    guard session.canAddInput(input) else { exit(1) }
+    guard session.canAddInput(input) else { return }
     session.addInput(input)
 
     // A discard-only data output so the graph actually pulls screen frames (which is
@@ -167,6 +205,33 @@ private func runPrimeCaptureAndExit() -> Never {
     session.startRunning()
     Thread.sleep(forTimeInterval: 1.2)   // long enough to actually pull screen frames
     session.stopRunning()
+}
+
+private func runPrimeCaptureAndExit() -> Never { primeCapture(); exit(0) }
+
+// MARK: - Cancel an armed session (`shroom --cancel --out <dir>` / `--fifo <path>`)
+
+// Write a single `cancel` to the recorder's control fifo, then exit — the very command
+// the tray's Discard sends. The record flow uses this to quit a shim that's still ARMED
+// (launched, no capture started) WITHOUT the user touching the tray: the recorder
+// discards its empty session and exits, and the tray — watching the recorder — quits
+// itself, completing its background task. Safe precisely because nothing was captured; it
+// is NEVER a stand-in for the user's Stop (publish) or Discard once recording has begun.
+// A fifo write needs no TCC, so this runs before the disclaim re-exec.
+private func runCancelAndExit() -> Never {
+    let argv = CommandLine.arguments
+    var fifo = ""
+    if let fi = argv.firstIndex(of: "--fifo"), fi + 1 < argv.count { fifo = argv[fi + 1] }
+    if fifo.isEmpty, let oi = argv.firstIndex(of: "--out"), oi + 1 < argv.count {
+        fifo = (argv[oi + 1] as NSString).appendingPathComponent("control.fifo")
+    }
+    guard !fifo.isEmpty else { exit(1) }
+    let fd = open(fifo, O_WRONLY | O_NONBLOCK)   // ENXIO if no reader — then there's nothing to cancel
+    if fd >= 0 {
+        defer { close(fd) }
+        let line = "cancel\n"
+        _ = line.withCString { write(fd, $0, strlen($0)) }
+    }
     exit(0)
 }
 
@@ -350,7 +415,7 @@ final class ShimController: NSObject, NSApplicationDelegate {
     // Hold the Microphone grant on the "shroom" principal so the grandchild ffmpeg
     // inherits it — mirrors ensureScreenRecordingAccess. Without this the mic prompt
     // fires from ffmpeg instead and TCC attributes it to the parent (Terminal). The
-    // record flow primes this up front via `shroom --permissions`; this launch-time
+    // record flow primes this up front via `shroom --prep`; this launch-time
     // call is the safety net (and a no-op that never prompts once granted).
     func ensureMicrophoneAccess() {
         guard AVCaptureDevice.authorizationStatus(for: .audio) != .authorized else { return }
@@ -795,15 +860,23 @@ if let ri = CommandLine.arguments.firstIndex(of: "--render-icon"),
     renderAppIconAndExit(size: px, to: CommandLine.arguments[ri + 2])
 }
 
+// Cancel an armed session from outside the tray (record flow): write `cancel` to the
+// recorder's fifo and exit. No TCC needed, so — like --render-icon — it runs BEFORE the
+// disclaim re-exec (no point spawning a disclaimed copy just to poke a fifo).
+if CommandLine.arguments.contains("--cancel") {
+    runCancelAndExit()
+}
+
 // Become our own TCC principal before AppKit (and any capture) starts: re-exec
 // disclaimed so the Screen-Recording + Microphone grants are named "shroom", not
 // "Terminal".
 reexecDisclaimingResponsibility()
 
-// Permissions-priming mode (run by /shroom:record before the real tray): request
-// screen + mic as "shroom", then exit. Idempotent — silent when already granted.
-if CommandLine.arguments.contains("--permissions") {
-    runPermissionsPrimerAndExit()
+// Fused prep mode (run by the record preflight before the real tray): request screen +
+// mic as "shroom", prime capture when screen is already live, print JSON, then exit.
+// Idempotent for the grants — silent once granted.
+if CommandLine.arguments.contains("--prep") {
+    runPrepAndExit()
 }
 
 // Bypass-picker priming mode (run by /shroom:record after Screen Recording is granted,
