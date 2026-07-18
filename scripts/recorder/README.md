@@ -44,7 +44,17 @@ node record.mjs [--id <id>] [--out <dir>] \
                 [--fifo <path>] [--no-upload] [--no-head-transcribe] [--autostart]
 
 node record.mjs --preflight    # JSON for the picker: devices + quality presets + last profile
+node preflight.mjs             # one-shot pre-record checks (see below)
 ```
+
+`preflight.mjs` is what `/shroom:record` actually runs on a fresh trigger: it does
+**every** read-only pre-record check in one command — setup readiness (the `ready`
+gate), an update check, post-update "what's new", a pending-publish recovery scan,
+and the `--preflight` device payload — and prints one JSON
+`{ ready, setup, version, postUpdate, pendingPublish, devices }`. Everything runs in
+parallel and is fail-soft, so the command waits on a single tool call instead of 4-5
+sequential ones. It's read-only bar advancing its own once-per-item marker files
+(`~/.shroom/version-state.json`, `~/.shroom/publish-surfaced.json`).
 
 `--autostart` writes `start` to itself at launch (skips the armed wait) — a
 **test/headless escape hatch only**, never the user-consent flow.
