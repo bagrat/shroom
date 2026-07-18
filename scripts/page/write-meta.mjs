@@ -125,12 +125,14 @@ const createdAt = flag('created-at') ?? facts.createdAt ?? new Date().toISOStrin
 const lang = flag('lang') ?? transcriptLang;
 const chapters = flag('chapters') ? normalizeChapters(flag('chapters')) : [];
 
-// The downloadable-MP4 flag: set by the valueless `--mp4` (the cleanup skill after
-// upload-mp4), otherwise INHERITED from the existing record — like the title, so a
-// later enrich re-publish (which rebuilds meta from flags) never silently drops it.
-// `--mp4` parses to opts.mp4 === 'true', so test presence, not the `flag()` helper
-// (which is for value flags and returns undefined here).
-const mp4 = opts.mp4 !== undefined ? true : existing?.meta?.mp4 === true;
+// The downloadable-MP4 field: `--mp4 <slug>.mp4` records the uploaded object's
+// filename (from archive-local), so the page builds the download URL from it. A
+// valueless `--mp4` records `true` (legacy → the page falls back to video.mp4).
+// Absent → INHERITED from the existing record, like the title, so a later enrich
+// re-publish (which rebuilds meta from flags) never silently drops it.
+const mp4 = opts.mp4 !== undefined
+  ? (opts.mp4 === 'true' ? true : opts.mp4)
+  : existing?.meta?.mp4;
 
 const meta = { id, title };
 if (flag('tldr')) meta.tldr = flag('tldr');
@@ -138,7 +140,7 @@ if (Number.isFinite(durationSec) && durationSec > 0) meta.durationSec = Math.rou
 meta.createdAt = createdAt;
 if (lang) meta.lang = lang;
 if (chapters.length) meta.chapters = chapters;
-if (mp4) meta.mp4 = true;
+if (mp4) meta.mp4 = mp4;
 
 writeMetadataFile(metaPath, { meta, transcript: transcriptBody });
 

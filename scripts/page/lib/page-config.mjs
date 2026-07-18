@@ -45,15 +45,19 @@ export function loadPageConfig({ credsPath = DEFAULT_CREDS_PATH, env = process.e
   };
 }
 
-// Resolve the public links for one video id from a page config.
-export function urlsFor(cfg, id) {
+// Resolve the public links for one video id from a page config. `mp4` is the
+// record's downloadable-MP4 field: a `<slug>.mp4` filename (slug-in-key — the object
+// is stored under that name so a cross-origin download is named from the URL path),
+// or `true` for legacy records (→ `video.mp4`). Falsy → no download URL.
+export function urlsFor(cfg, id, mp4) {
+  const mp4File = typeof mp4 === 'string' ? mp4 : (mp4 ? 'video.mp4' : null);
   return {
     hlsUrl: cfg.publicBaseUrl ? `${cfg.publicBaseUrl}/${id}/stream.m3u8` : `./stream.m3u8`,
     pageUrl: cfg.pagesBaseUrl ? `${cfg.pagesBaseUrl}/${id}/` : '',
     posterUrl: cfg.pagesBaseUrl ? `${cfg.pagesBaseUrl}/${id}/poster.jpg` : './poster.jpg',
-    // The optional downloadable MP4 (uploaded by the cleanup skill). Rendered only
-    // when the record's `mp4` flag is set — see render.mjs.
-    downloadUrl: cfg.publicBaseUrl ? `${cfg.publicBaseUrl}/${id}/video.mp4` : '',
+    // The optional downloadable MP4 (uploaded by archive-local / the cleanup skill).
+    // Rendered only when the record carries an `mp4` field — see render.mjs.
+    downloadUrl: (cfg.publicBaseUrl && mp4File) ? `${cfg.publicBaseUrl}/${id}/${mp4File}` : '',
     hlsJsUrl: cfg.hlsJsUrl ?? '/hls.min.js',
   };
 }

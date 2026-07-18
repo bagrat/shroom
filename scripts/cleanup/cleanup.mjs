@@ -16,8 +16,9 @@
 //                          only copy of a recording.
 //   delete-local --session Remove a whole local session dir.
 //   delete-remote --id     Delete every `<id>/*` object from the bucket (SigV4).
-//   upload-mp4 --session   Upload preview.mp4 → `<id>/video.mp4` and print the
-//                          public download URL (for the player's Download button).
+//   upload-mp4 --session   Upload preview.mp4 → `<id>/<title-slug>.mp4` (slug-in-key,
+//                          so a cross-origin download is named from the URL path) and
+//                          print `fileName` + the public download URL.
 //   archive-local --session  The record flow's automatic post-stop step: upload the
 //                          watchable MP4 (so the Download button has a target) AND
 //                          reclaim disk by pruning local HLS — each half best-effort
@@ -36,6 +37,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { loadStorageConfig, isConfigured } from '../uploader/lib/storage-config.mjs';
 import { headObject, deletePrefix, putObject } from '../uploader/lib/s3.mjs';
 import { readCreds, credsPath } from '../setup/lib/credentials.mjs';
+import { readMetadataFile } from '../page/lib/metadata.mjs';
 
 const HOME = os.homedir();
 export const RECORDINGS_ROOT = path.join(HOME, '.shroom', 'recordings');
@@ -208,19 +210,48 @@ async function cmdDeleteRemote(opts) {
   return { ok: res.failed.length === 0, id, ...res };
 }
 
+// A filesystem/URL-safe download name from the title (slug-in-key: the object is
+// stored under `<slug>.mp4`, so a cross-origin download is named from the URL path —
+// no Content-Disposition, no touching the SigV4 signer). Falls back to `video`.
+export function slugify(title) {
+  const slug = String(title ?? '')
+    .toLowerCase()
+    .normalize('NFKD').replace(/\p{Diacritic}/gu, '') // strip accents
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60)
+    .replace(/-+$/g, '');
+  return slug || 'video';
+}
+
+function resolveLibrary(opts) {
+  if (opts.library) return path.resolve(String(opts.library));
+  const lib = readCreds(credsPath()).library;
+  return lib ? path.resolve(String(lib)) : path.join(HOME, 'shroom');
+}
+
+// The title the download is named after: an explicit --title wins; otherwise read it
+// from the committed `<id>.md`. null when neither is available (→ slug 'video').
+function downloadTitle(id, opts) {
+  if (opts.title && opts.title !== true) return String(opts.title);
+  try { return readMetadataFile(path.join(resolveLibrary(opts), `${id}.md`))?.meta?.title ?? null; }
+  catch { return null; }
+}
+
 async function cmdUploadMp4(opts) {
   const cl = client();
   if (!cl) return { ok: false, reason: 'storage_not_configured' };
   const s = resolveSession(opts);
   const mp4 = path.join(s.dir, 'preview.mp4');
   if (!fs.existsSync(mp4)) return { ok: false, reason: 'no_preview_mp4', dir: s.dir };
+  const fileName = `${slugify(downloadTitle(s.id, opts))}.mp4`;
   const body = fs.readFileSync(mp4);
-  const key = `${s.id}/video.mp4`;
+  const key = `${s.id}/${fileName}`;
   const put = await putObject(cl, key, body);
   if (!put.ok) return { ok: false, reason: 'upload_failed', status: put.status, key };
   const base = readCreds(credsPath()).publicBaseUrl;
   const downloadUrl = base ? `${base.replace(/\/+$/, '')}/${key}` : null;
-  return { ok: true, id: s.id, key, bytes: body.length, downloadUrl };
+  return { ok: true, id: s.id, key, fileName, bytes: body.length, downloadUrl };
 }
 
 // The record flow's automatic post-stop step. Two best-effort, independently gated
@@ -237,7 +268,7 @@ async function cmdArchiveLocal(opts) {
   } else {
     const r = await cmdUploadMp4(opts);
     mp4 = r.ok
-      ? { uploaded: true, key: r.key, bytes: r.bytes, downloadUrl: r.downloadUrl }
+      ? { uploaded: true, key: r.key, fileName: r.fileName, bytes: r.bytes, downloadUrl: r.downloadUrl }
       : { uploaded: false, reason: r.reason, status: r.status };
   }
 

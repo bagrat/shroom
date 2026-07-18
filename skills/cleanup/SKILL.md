@@ -85,18 +85,19 @@ The player streams HLS; some viewers want a plain file to download. To offer one
 "${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node" "${CLAUDE_PLUGIN_ROOT}/scripts/cleanup/cleanup.mjs" upload-mp4 --session "<dir>" --json
 ```
 
-It uploads `preview.mp4` → `<id>/video.mp4` and returns `downloadUrl`. Then make the
-**Download** button appear on the page: mark the record and re-publish. `write-meta`
-prints `metaPath` — **pass it as `--meta` to the re-publish** so the title + chapters
-survive the re-render (the page reads metadata only from `--meta`):
+It uploads `preview.mp4` → `<id>/<title-slug>.mp4` (so the saved file is named after
+the recording) and returns `fileName` + `downloadUrl`. Then make the **Download**
+button appear: record that filename and re-publish. `write-meta` prints `metaPath` —
+**pass it as `--meta` to the re-publish** so the title + chapters survive the
+re-render (the page reads metadata only from `--meta`):
 
 ```
-"${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node" "${CLAUDE_PLUGIN_ROOT}/scripts/page/write-meta.mjs" --id "<id>" --session "<dir>" --mp4
+"${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node" "${CLAUDE_PLUGIN_ROOT}/scripts/page/write-meta.mjs" --id "<id>" --session "<dir>" --mp4 "<fileName>"
 "${CLAUDE_PLUGIN_ROOT}/scripts/runtime/run-node" "${CLAUDE_PLUGIN_ROOT}/scripts/page/publish.mjs" --session "<dir>" --meta "<metaPath>"
 ```
 
-(`--mp4` sets the page's download flag — it inherits the existing title / TL;DR /
-chapters; the re-publish re-renders + re-deploys the same stable URL.) Don't
+(`--mp4 <filename>` records the download name — it inherits the existing title /
+TL;DR / chapters; the re-publish re-renders + re-deploys the same stable URL.) Don't
 `upload-mp4` after a `delete-local` — there's no `preview.mp4` left to upload.
 
 ## Safety rules (non-negotiable)

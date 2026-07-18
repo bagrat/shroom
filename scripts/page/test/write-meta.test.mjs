@@ -129,9 +129,8 @@ test('enrichment: omitting --title inherits the existing title, adds chapters+tr
   assert.match(parsed.transcript, /Body text here\./);
 });
 
-test('--mp4 sets the download flag, and it survives an enrich re-publish', () => {
+test('valueless --mp4 records the legacy flag, and it survives an enrich re-publish', () => {
   const lib = tmp('shroom-lib-');
-  // cleanup skill marks the record after uploading video.mp4.
   run(['--id', 'm6', '--library', lib, '--title', 'Has a download', '--mp4']);
   let parsed = parseMetadata(fs.readFileSync(path.join(lib, 'm6.md'), 'utf8'));
   assert.equal(parsed.meta.mp4, true);
@@ -143,6 +142,21 @@ test('--mp4 sets the download flag, and it survives an enrich re-publish', () =>
   parsed = parseMetadata(fs.readFileSync(path.join(lib, 'm6.md'), 'utf8'));
   assert.equal(parsed.meta.mp4, true); // inherited, not clobbered
   assert.equal(parsed.meta.title, 'Has a download');
+});
+
+test('--mp4 <filename> records the slugged download name and inherits it', () => {
+  const lib = tmp('shroom-lib-');
+  // archive-local passes the uploaded object's filename (slug-in-key).
+  run(['--id', 'm7', '--library', lib, '--title', 'Has a download', '--mp4', 'has-a-download.mp4']);
+  let parsed = parseMetadata(fs.readFileSync(path.join(lib, 'm7.md'), 'utf8'));
+  assert.equal(parsed.meta.mp4, 'has-a-download.mp4');
+
+  // Enrich WITHOUT --mp4 keeps the filename (not clobbered, not coerced to true).
+  const session = makeSession({ transcript: 'Body.' });
+  run(['--id', 'm7', '--library', lib, '--session', session,
+    '--chapters', JSON.stringify([{ t: 0, label: 'Start' }])]);
+  parsed = parseMetadata(fs.readFileSync(path.join(lib, 'm7.md'), 'utf8'));
+  assert.equal(parsed.meta.mp4, 'has-a-download.mp4');
 });
 
 (async () => {

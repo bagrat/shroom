@@ -8,6 +8,7 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
 import { renderPage, formatDuration } from '../lib/render.mjs';
+import { urlsFor } from '../lib/page-config.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const TEMPLATE = fs.readFileSync(path.resolve(HERE, '../../../templates/player.html'), 'utf8');
@@ -109,6 +110,14 @@ test('renders chapters as seekable buttons; omits the list when empty', () => {
 
   const noCh = renderPage({ template: TEMPLATE, meta: { title: 't', durationSec: 1 }, urls: URLS });
   assert.ok(!noCh.includes('class="chapters"'));
+});
+
+test('urlsFor: mp4 filename → slugged download URL; legacy true → video.mp4; falsy → none', () => {
+  const cfg = { publicBaseUrl: 'https://pub-x.r2.dev', pagesBaseUrl: 'https://s.pages.dev' };
+  assert.equal(urlsFor(cfg, 'vid1', 'my-title.mp4').downloadUrl, 'https://pub-x.r2.dev/vid1/my-title.mp4');
+  assert.equal(urlsFor(cfg, 'vid1', true).downloadUrl, 'https://pub-x.r2.dev/vid1/video.mp4');
+  assert.equal(urlsFor(cfg, 'vid1', undefined).downloadUrl, '');
+  assert.equal(urlsFor({}, 'vid1', 'x.mp4').downloadUrl, ''); // no publicBaseUrl → no URL
 });
 
 test('Download button renders only when mp4 flag + download URL are present', () => {

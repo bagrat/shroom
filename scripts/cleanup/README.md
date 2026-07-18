@@ -12,7 +12,7 @@ keep it?") and the consent gates (the determinism boundary, [`CLAUDE.md`](../../
 | `prune-local --session <dir>` | Drop the bulky local HLS (init + `seg_*.m4s` + per-take intermediates) but **keep `preview.mp4`**. Refuses unless the remote copy is confirmed (or `--force`) — never deletes the only copy. |
 | `delete-local --session <dir>` | Remove a whole local session dir. |
 | `delete-remote --id <id>` | Delete every `<id>/*` object from the bucket (SigV4 `DELETE`). **Breaks the public link.** |
-| `upload-mp4 --session <dir>` | Upload `preview.mp4` → `<id>/video.mp4`; print the public `downloadUrl` (for the player's Download button). |
+| `upload-mp4 --session <dir>` | Upload `preview.mp4` → `<id>/<title-slug>.mp4` (slug-in-key: the browser names a cross-origin download from the URL path); print `fileName` + the public `downloadUrl`. Reads the title from the committed `<id>.md` (or `--title`). |
 | `archive-local --session <dir>` | The record flow's automatic post-stop step: `upload-mp4` **and** `prune-local` in one call. Each half is best-effort and independently gated (upload needs storage; prune needs the remote HLS confirmed), so a local-only recording keeps every byte. Returns `{ mp4, prune }`. |
 
 All print JSON; mutating ops act on exactly one target — the skill passes it after

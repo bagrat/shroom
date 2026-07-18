@@ -83,7 +83,7 @@ async function main() {
       hlsJsUrl: opts['hlsjs-url'] !== 'true' ? opts['hlsjs-url'] : undefined,
     },
   });
-  const urls = urlsFor(cfg, id);
+  const urls = urlsFor(cfg, id, meta.mp4);
 
   const outRoot = path.resolve(opts.out ?? path.join(os.homedir(), '.shroom', 'site'));
   const pageDir = path.join(outRoot, id);
