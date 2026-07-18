@@ -87,20 +87,21 @@ async function fetchLatest(url, timeout) {
   }
 }
 
-async function main() {
-  const args = parseArgs(process.argv.slice(2));
-  const url = args.url || DEFAULT_URL;
-
+// The check itself, importable so the record preflight can run it in-process
+// (one command, no extra round-trip) instead of spawning check.mjs. Always
+// resolves to the JSON verdict; never throws (fail-soft is the contract).
+// Opts: { url?, local?, timeout? } — all optional, same as the CLI flags.
+export async function checkVersion({ url = DEFAULT_URL, local: localOverride, timeout = 2500 } = {}) {
   let local;
   try {
-    local = localVersion(args.local);
+    local = localVersion(localOverride);
   } catch (e) {
     // Can't even read our own version — report soft and stop. Never throw.
     return { ok: true, local: null, latest: null, updateAvailable: false, error: 'no_local_version', detail: e.message, source: url };
   }
 
   try {
-    const latest = await fetchLatest(url, args.timeout);
+    const latest = await fetchLatest(url, timeout);
     return {
       ok: true,
       local,
@@ -111,6 +112,11 @@ async function main() {
   } catch (e) {
     return { ok: true, local, latest: null, updateAvailable: false, error: 'fetch_failed', detail: e.message, source: url };
   }
+}
+
+async function main() {
+  const args = parseArgs(process.argv.slice(2));
+  return checkVersion({ url: args.url, local: args.local, timeout: args.timeout });
 }
 
 // Run only when invoked directly — importing this module (e.g. for compareSemver
