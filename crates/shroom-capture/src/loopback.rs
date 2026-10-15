@@ -26,6 +26,10 @@ pub enum Signal {
     /// A continuous sine at this frequency, phase-continuous sample to sample: any sample
     /// lost or added on the way in shows as a jump in its phase (TESTING-PLAN §3's tone).
     Tone(f64),
+    /// A burst of a sine at `hz` for the beep's length, starting `at_ms` into every
+    /// wall-clock second: the system-audio check's sound from another process, a known
+    /// distance from the beep (DECISIONS B172).
+    Burst { hz: f64, at_ms: u64 },
 }
 
 /// The tone's level, of full scale.
@@ -74,6 +78,29 @@ pub fn play(signal: Signal) -> Result<Loopback, String> {
         .map_err(|e| e.to_string())?
         .find(|d| uid_of(d).is_some_and(|u| u == input.uid))
         .ok_or("BlackHole has no output side")?;
+    let (stream, rate, output_gaps) = play_on(&device, signal)?;
+    Ok(Loopback { _stream: Live(stream), input, rate, output_gaps })
+}
+
+/// Something playing out loud, on the system's default output; dropping it stops it.
+pub struct Speaker {
+    _stream: Live,
+    /// The output's name and rate.
+    pub device: String,
+    pub rate: u32,
+    pub output_gaps: Arc<AtomicU64>,
+}
+
+/// Plays `signal` on the system's default output, as any app would: the system-audio
+/// check's sound (B172). Only on a test Mac — it is heard.
+pub fn play_out(signal: Signal) -> Result<Speaker, String> {
+    let device = cpal::default_host().default_output_device().ok_or("this Mac has no output device")?;
+    let name = device.description().map(|x| x.name().to_string()).unwrap_or_else(|_| device.to_string());
+    let (stream, rate, output_gaps) = play_on(&device, signal)?;
+    Ok(Speaker { _stream: Live(stream), device: name, rate, output_gaps })
+}
+
+fn play_on(device: &cpal::Device, signal: Signal) -> Result<(cpal::Stream, u32, Arc<AtomicU64>), String> {
     let supported = device.default_output_config().map_err(|e| e.to_string())?;
     if supported.sample_format() != cpal::SampleFormat::F32 {
         return Err(format!("unsupported sample format {:?}", supported.sample_format()));
@@ -104,6 +131,11 @@ pub fn play(signal: Signal) -> Result<Loopback, String> {
                 for (i, frame) in data.chunks_exact_mut(channels).enumerate() {
                     let v = match signal {
                         Signal::Beep => crate::beep::sample_at(t0 + i as f64 / rate as f64),
+                        Signal::Burst { hz, at_ms } => {
+                            let t = t0 + i as f64 / rate as f64;
+                            let into = (t.rem_euclid(1.0) * 1000.0 - at_ms as f64).rem_euclid(1000.0);
+                            if into < crate::beep::BEEP_MS as f64 { TONE_LEVEL * (2.0 * std::f64::consts::PI * hz * t.rem_euclid(1.0)).sin() as f32 } else { 0.0 }
+                        }
                         Signal::Tone(hz) => {
                             let k = n + i as u64;
                             // The phase in whole cycles, reduced before the sine (f64 keeps it exact
@@ -121,5 +153,5 @@ pub fn play(signal: Signal) -> Result<Loopback, String> {
         )
         .map_err(|e| e.to_string())?;
     stream.play().map_err(|e| e.to_string())?;
-    Ok(Loopback { _stream: Live(stream), input, rate, output_gaps })
+    Ok((stream, rate, output_gaps))
 }

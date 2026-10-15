@@ -27,6 +27,12 @@ pub enum Mode {
     /// between them through the real path, write the stats as JSON, exit. With `tone`, one
     /// take of a synthetic picture and the loopback's tone instead (no screen at all).
     RecordCheck { out: PathBuf, seconds: f64, capture_fps: f32, audio: CheckAudio, exclude_pattern: bool },
+    /// `--play-out <hz> <at_ms> <seconds>`: play a burst of `hz` at `at_ms` into every
+    /// wall-clock second on the default output, then exit — the system-audio check's
+    /// "other app" (B172). Started by the check's script, not by shroom: ScreenCaptureKit's
+    /// `excludesCurrentProcessAudio` leaves out shroom's children too (probed on the hosted
+    /// Mac, 2026-10-16).
+    PlayOut { hz: f64, at_ms: u64, seconds: f64 },
     /// Tray + popover mechanics: the Dock rule (law 6) and an unasked popover that must
     /// not take the keyboard (law 5). Writes JSON, exits.
     ShellProbe(PathBuf),
@@ -108,6 +114,8 @@ pub fn from_args(args: Vec<String>) -> Mode {
             CheckAudio::Tone
         } else if rest.iter().any(|a| a == "loopback") {
             CheckAudio::Loopback
+        } else if rest.iter().any(|a| a == "system") {
+            CheckAudio::System
         } else if rest.iter().any(|a| a == "mic") {
             CheckAudio::Mic
         } else {
@@ -115,6 +123,10 @@ pub fn from_args(args: Vec<String>) -> Mode {
         };
         let exclude_pattern = rest.iter().any(|a| a == "exclude-pattern");
         return Mode::RecordCheck { out, seconds, capture_fps, audio, exclude_pattern };
+    }
+    if let Some(rest) = after("--play-out") {
+        let num = |i: usize, d: f64| rest.get(i).and_then(|s| s.parse().ok()).unwrap_or(d);
+        return Mode::PlayOut { hz: num(0, 440.0), at_ms: num(1, 500.0) as u64, seconds: num(2, 10.0) };
     }
     if let Some(rest) = after("--guard-probe") {
         return Mode::GuardProbe(PathBuf::from(rest.first().expect("--guard-probe needs an output path")));
@@ -262,6 +274,42 @@ pub enum CheckAudio {
     /// The loopback carrying a continuous tone, under a synthetic picture: TESTING-PLAN §3's
     /// tone capture (sample gaps, the duration against the wall clock).
     Tone,
+    /// The Mac's own sound mixed with the drives' beep (spec N47, DECISIONS B172). Take 0:
+    /// other apps play — `--play-out`'s [`SYSTEM_BURST_HZ`] half a second after each beep,
+    /// started by the check's script, never by this process. Take 1: nothing else plays.
+    /// Both: this process plays [`SELF_TONE_HZ`] all along, which must never be in a take.
+    System,
+}
+
+/// The other process's burst, and where in each wall-clock second it starts.
+pub const SYSTEM_BURST_HZ: f64 = 440.0;
+pub const SYSTEM_BURST_AT_MS: u64 = 500;
+/// shroom's own sound in the system-audio check: kept out of every take.
+pub const SELF_TONE_HZ: f64 = 2_000.0;
+
+/// `--play-out`: plays, then exits with 0, or 1 when there was nothing to play on.
+pub fn play_out(hz: f64, at_ms: u64, seconds: f64) -> i32 {
+    match shroom_capture::loopback::play_out(shroom_capture::loopback::Signal::Burst { hz, at_ms }) {
+        Ok(_speaker) => {
+            std::thread::sleep(Duration::from_secs_f64(seconds));
+            0
+        }
+        Err(e) => {
+            eprintln!("play-out: {e}");
+            1
+        }
+    }
+}
+
+#[derive(Serialize, Default)]
+struct SystemReport {
+    /// The default output both sounds play on.
+    output: Option<String>,
+    rate: u32,
+    output_gaps: u64,
+    /// What reached each take's handle from ScreenCaptureKit.
+    per_take: Vec<shroom_record::mix::SystemCounts>,
+    error: Option<String>,
 }
 
 /// The tone the tone check plays: not a divisor of any common rate, so a lost or added
@@ -293,6 +341,7 @@ struct RecordCheckReport {
     mic: Option<shroom_capture::mic::MicDevice>,
     audio: CheckAudio,
     loopback: Option<LoopbackReport>,
+    system: Option<SystemReport>,
     /// Each take's wall-clock length, from its start to its end returning.
     wall_seconds: Vec<f64>,
     takes: Vec<TakeStats>,
@@ -325,6 +374,11 @@ fn run_record_check(app: &AppHandle, out: &Path, seconds: f64, capture_fps: f32,
     if let Some(lb) = &loopback {
         report.loopback = Some(LoopbackReport { input: lb.input.name.clone(), rate: lb.rate, signal: "beep".into(), output_gaps: 0 });
     }
+    // shroom's own sound, out loud for the whole check: never in a take (B172).
+    let speaker = if audio == CheckAudio::System { Some(shroom_capture::loopback::play_out(shroom_capture::loopback::Signal::Tone(SELF_TONE_HZ))?) } else { None };
+    if let Some(sp) = &speaker {
+        report.system = Some(SystemReport { output: Some(sp.device.clone()), rate: sp.rate, ..Default::default() });
+    }
 
     // The pattern covers the whole display, proven before anything records.
     let pattern = cover_with_pattern(app)?;
@@ -346,6 +400,11 @@ fn run_record_check(app: &AppHandle, out: &Path, seconds: f64, capture_fps: f32,
                 .with_cursor(false)
                 .with_capture_fps(capture_fps)
                 .excluding(excluded.clone());
+            let system = (audio == CheckAudio::System).then(shroom_record::mix::SystemAudio::new);
+            let source = match &system {
+                Some(system) => source.with_system_audio(system.clone()),
+                None => source,
+            };
             let audio: Option<Box<dyn shroom_record::AudioSource>> = match (audio, &loopback) {
                 (CheckAudio::Mic, _) => {
                     let devices = shroom_capture::mic::input_devices();
@@ -359,6 +418,11 @@ fn run_record_check(app: &AppHandle, out: &Path, seconds: f64, capture_fps: f32,
                     report.mic = Some(lb.input.clone());
                     Some(Box::new(shroom_capture::mic::MicSource::open(lb.input.clone())?))
                 }
+                // The beep is the voice; the Mac's sound is mixed in.
+                (CheckAudio::System, _) => Some(Box::new(shroom_record::mix::Mixed::new(
+                    Some(Box::new(shroom_capture::beep::BeepSource::new(48_000))),
+                    system.clone().expect("the system check has the Mac's sound"),
+                ))),
                 _ => None,
             };
             let began = std::time::Instant::now();
@@ -367,6 +431,20 @@ fn run_record_check(app: &AppHandle, out: &Path, seconds: f64, capture_fps: f32,
             let stop = std::time::Instant::now();
             report.takes.push(rec.end_take().map_err(|e| e.to_string())?);
             report.wall_seconds.push(began.elapsed().as_secs_f64());
+            if let (Some(system), Some(r)) = (&system, report.system.as_mut()) {
+                r.per_take.push(system.counts());
+            }
+            // The system check's other apps play outside this process (a child of shroom's is
+            // shroom's own sound, left out like the rest): `system-audio-check.mjs` plays them
+            // through take 0 and, told it ended, stops them before take 1.
+            if system.is_some() && take == 0 {
+                std::fs::write(out.with_extension("take0-ended"), b"").map_err(|e| e.to_string())?;
+                let quiet = out.with_extension("quiet");
+                let asked = std::time::Instant::now();
+                while !quiet.exists() && asked.elapsed() < Duration::from_secs(15) {
+                    std::thread::sleep(Duration::from_millis(50));
+                }
+            }
             if take == 1 {
                 report.finalized = Some(rec.finalize().map_err(|e| e.to_string())?);
                 report.finalize_ms = Some(stop.elapsed().as_millis() as u64);
@@ -380,6 +458,9 @@ fn run_record_check(app: &AppHandle, out: &Path, seconds: f64, capture_fps: f32,
     let _ = pattern.close();
     if let (Some(lb), Some(r)) = (&loopback, report.loopback.as_mut()) {
         r.output_gaps = lb.output_gaps.load(std::sync::atomic::Ordering::Relaxed);
+    }
+    if let (Some(sp), Some(r)) = (&speaker, report.system.as_mut()) {
+        r.output_gaps = sp.output_gaps.load(std::sync::atomic::Ordering::Relaxed);
     }
     report.cpu_seconds = cpu_seconds();
     result

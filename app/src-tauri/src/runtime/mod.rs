@@ -403,7 +403,7 @@ pub fn guard_source(s: &Scene, covered: u32) -> Result<(), String> {
 
 /// The test harness's modes (`harness::from_args`): each records, drives or probes this
 /// Mac, so none ever runs in a build anyone else gets.
-pub const HARNESS_FLAGS: &[&str] = &["--selftest", "--camera-check", "--record-check", "--guard-probe", "--drive", "--bubble-probe", "--shell-probe", "--tray-probe", "--grant"];
+pub const HARNESS_FLAGS: &[&str] = &["--selftest", "--camera-check", "--record-check", "--guard-probe", "--drive", "--bubble-probe", "--shell-probe", "--tray-probe", "--grant", "--play-out"];
 
 /// Why this process must not run its harness mode, if it asked for one: a build whose
 /// identifier isn't a dev one never does (B5), and a build without the harness can't —
