@@ -601,11 +601,11 @@ fn the_takes_microphone_leaving_pauses_and_resume_uses_the_fallback() {
     assert_eq!(r.w.take.as_ref().unwrap().mic.as_deref(), Some("BuiltInMicrophoneDevice"));
 
     // The recorder's own report (the device's stream failed) pauses the same way; with no
-    // other microphone, Resume continues without sound — and says so.
+    // other microphone, Resume continues without your microphone — and says so.
     r.send(devices(vec![], quick().cameras));
     assert!(r.has(|e| *e == Effect::Recorder(RecCmd::Pause)));
     r.send(Event::Rec(RecNews::Paused { length_ms: 90_000 }));
-    assert_eq!(paused_body(&r.scene).sub.as_deref(), Some("Resume continues without sound."));
+    assert_eq!(paused_body(&r.scene).sub.as_deref(), Some("Resume continues without your microphone."));
     r.act(Action::Resume);
     assert!(r.has(|e| *e == Effect::Recorder(RecCmd::Resume { mic: None })));
     r.send(Event::Rec(RecNews::Resumed));
@@ -652,7 +652,7 @@ fn permission_lost_mid_take_comes_from_the_poll_or_any_entrys_probe() {
     assert!(r.has(|e| *e == Effect::Recorder(RecCmd::Finalize { why: Why::ScreenRevoked })), "{:?}", r.effects);
     assert!(!r.has(|e| *e == Effect::Recorder(RecCmd::Pause)));
 
-    // The microphone switched off: an auto-pause, Resume continues without sound.
+    // The microphone switched off: an auto-pause, Resume continues without your microphone.
     let mut r = Run::new(w.clone());
     r.send(Event::Tick);
     r.send(Event::Os(OsNews::Grants { screen: true, mic: Access::Denied, camera: Access::Granted }));
