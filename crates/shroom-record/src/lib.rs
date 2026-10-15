@@ -11,6 +11,7 @@ pub mod probe;
 pub mod recording;
 pub mod repair;
 pub mod source;
+pub mod warm;
 
 pub use audio::{AudioSink, AudioSource, AudioStats, Silence};
 pub use handoff::FrameSink;
