@@ -290,7 +290,9 @@ pub const SELF_TONE_HZ: f64 = 2_000.0;
 /// `--play-out`: plays, then exits with 0, or 1 when there was nothing to play on.
 pub fn play_out(hz: f64, at_ms: u64, seconds: f64) -> i32 {
     match shroom_capture::loopback::play_out(shroom_capture::loopback::Signal::Burst { hz, at_ms }) {
-        Ok(_speaker) => {
+        Ok(speaker) => {
+            // For the check: its bursts leave the output this much after their instants.
+            eprintln!("device_latency_ms={:.1}", speaker.device_latency.as_secs_f64() * 1000.0);
             std::thread::sleep(Duration::from_secs_f64(seconds));
             0
         }

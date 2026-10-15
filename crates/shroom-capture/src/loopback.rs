@@ -89,6 +89,35 @@ pub struct Speaker {
     pub device: String,
     pub rate: u32,
     pub output_gaps: Arc<AtomicU64>,
+    /// How long after its scheduled instant a sample really leaves the output: the
+    /// device's own latency and safety offset, which the stream's timestamps don't count.
+    pub device_latency: std::time::Duration,
+}
+
+#[repr(C)]
+struct PropertyAddress {
+    selector: u32,
+    scope: u32,
+    element: u32,
+}
+
+#[link(name = "CoreAudio", kind = "framework")]
+unsafe extern "C" {
+    fn AudioObjectGetPropertyData(object: u32, address: *const PropertyAddress, qualifier_size: u32, qualifier: *const std::ffi::c_void, data_size: *mut u32, data: *mut std::ffi::c_void) -> i32;
+}
+
+fn property_u32(object: u32, selector: &[u8; 4], scope: &[u8; 4]) -> Option<u32> {
+    let address = PropertyAddress { selector: u32::from_be_bytes(*selector), scope: u32::from_be_bytes(*scope), element: 0 };
+    let (mut value, mut size) = (0u32, 4u32);
+    let status = unsafe { AudioObjectGetPropertyData(object, &address, 0, std::ptr::null(), &mut size, (&mut value as *mut u32).cast()) };
+    (status == 0).then_some(value)
+}
+
+/// The default output's latency and safety offset, in frames at its rate.
+fn default_output_latency(rate: u32) -> std::time::Duration {
+    let Some(device) = property_u32(1, b"dOut", b"glob") else { return std::time::Duration::ZERO };
+    let frames = property_u32(device, b"ltnc", b"outp").unwrap_or(0) + property_u32(device, b"saft", b"outp").unwrap_or(0);
+    std::time::Duration::from_secs_f64(frames as f64 / rate.max(1) as f64)
 }
 
 /// Plays `signal` on the system's default output, as any app would: the system-audio
@@ -97,7 +126,7 @@ pub fn play_out(signal: Signal) -> Result<Speaker, String> {
     let device = cpal::default_host().default_output_device().ok_or("this Mac has no output device")?;
     let name = device.description().map(|x| x.name().to_string()).unwrap_or_else(|_| device.to_string());
     let (stream, rate, output_gaps) = play_on(&device, signal)?;
-    Ok(Speaker { _stream: Live(stream), device: name, rate, output_gaps })
+    Ok(Speaker { _stream: Live(stream), device: name, rate, output_gaps, device_latency: default_output_latency(rate) })
 }
 
 fn play_on(device: &cpal::Device, signal: Signal) -> Result<(cpal::Stream, u32, Arc<AtomicU64>), String> {

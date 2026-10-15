@@ -103,7 +103,11 @@ try {
   const exe = path.join(app, "Contents/MacOS", fs.readdirSync(path.join(app, "Contents/MacOS"))[0]);
   const wav = path.join(work, "other-app.wav");
   toneWav(wav, OTHER_APP_HZ, 120);
-  const players = [spawn(exe, ["--play-out", String(MAC_HZ), String(MAC_AT_S * 1000), "120"], { stdio: "ignore" }), spawn("/usr/bin/afplay", [wav], { stdio: "ignore" })];
+  const players = [spawn(exe, ["--play-out", String(MAC_HZ), String(MAC_AT_S * 1000), "120"], { stdio: ["ignore", "ignore", "pipe"] }), spawn("/usr/bin/afplay", [wav], { stdio: "ignore" })];
+  // The burst player's output latency: its bursts leave the speaker this long after their
+  // wall-clock instants, so that much of the Mac's offset is the player's, not shroom's.
+  let playerSaid = "";
+  players[0].stderr.on("data", (d) => { playerSaid += d; });
   const stopPlayers = () => { for (const p of players) if (p.exitCode === null) p.kill(); };
   const check = spawn("open", ["-W", "-n", app, "--args", "--record-check", report, String(seconds), "60", "system"], { stdio: "ignore" });
   const done = new Promise((r) => check.on("exit", r));
@@ -136,10 +140,13 @@ try {
     // shroom's tone plays all along: if it got in, it's in most of the take (its median).
     const voicePeak = peak(voice), macPeak = peak(mac), selfLevel = median(self);
     const voiceAv = avOffsets(pic, 30, gate(voice, samples.length, voicePeak / 3), RATE, { videoStart, audioStart });
-    const macAv = macPeak > 0.02 ? avOffsets(pic, 30, gate(mac, samples.length, macPeak / 3), RATE, { videoStart, audioStart: audioStart - MAC_AT_S }) : [];
+    const playerLatency = Number(/device_latency_ms=([\d.]+)/.exec(playerSaid)?.[1] ?? 0) / 1000;
+    summary.playerLatencyMs = playerLatency * 1000;
+    const macAv = macPeak > 0.02 ? avOffsets(pic, 30, gate(mac, samples.length, macPeak / 3), RATE, { videoStart, audioStart: audioStart - MAC_AT_S - playerLatency }) : [];
     // Anything on the line that is neither the beep nor the Mac's burst, in 50 ms steps.
     let foreign = 0;
-    const loud = (env, w) => env[w] > 0.02;
+    // A window near a tone's edge (±15 ms) counts as that tone.
+    const loud = (env, w) => { for (let k = Math.max(0, w - 6); k <= Math.min(env.length - 1, w + 6); k++) if (env[k] > 0.02) return true; return false; };
     for (let w = 0; w < voice.length; w += 20) {
       let e = 0;
       for (let j = w * HOP; j < w * HOP + WIN && j < samples.length; j++) e += samples[j] * samples[j];
