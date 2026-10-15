@@ -16,7 +16,8 @@ use shroom_record::{AudioSink, AudioSource};
 
 const RATE: u32 = 24_000;
 
-/// A headset mic: silent for `wake` after it's opened, then 10 ms of 0.25 every 10 ms.
+/// A headset mic: silent for `wake` after it's opened, then 0.25 at the wall clock's pace
+/// (each push carries what's owed since the last, as a device's callback does).
 struct SlowMic {
     wake: Duration,
     stop: Arc<AtomicBool>,
@@ -40,9 +41,14 @@ impl AudioSource for SlowMic {
         let (wake, stop) = (self.wake, self.stop.clone());
         self.thread = Some(std::thread::spawn(move || {
             let awake = Instant::now() + wake;
+            let mut pushed = 0u64;
             while !stop.load(Ordering::SeqCst) {
-                if Instant::now() >= awake {
-                    sink.push(&[0.25; RATE as usize / 100]);
+                if let Some(since) = Instant::now().checked_duration_since(awake) {
+                    let owed = (since.as_nanos() * RATE as u128 / 1_000_000_000) as u64 - pushed;
+                    if owed > 0 {
+                        sink.push(&vec![0.25; owed as usize]);
+                        pushed += owed;
+                    }
                 }
                 std::thread::sleep(Duration::from_millis(10));
             }
@@ -150,8 +156,12 @@ fn the_macs_sound_is_mixed_from_the_takes_zero_with_a_warmed_mic() {
     take.start(sink.clone()).unwrap();
     let got: Arc<Mutex<Vec<f32>>> = Arc::default();
     let t0 = Instant::now();
-    while t0.elapsed() < Duration::from_millis(300) {
-        system.feed(&[0.5; SYSTEM_RATE as usize / 100]);
+    let mut fed = 0u64;
+    while t0.elapsed() < Duration::from_millis(600) {
+        // The Mac's sound at the wall clock's pace too.
+        let owed = (t0.elapsed().as_nanos() * SYSTEM_RATE as u128 / 1_000_000_000) as u64 - fed;
+        system.feed(&vec![0.5; owed as usize]);
+        fed += owed;
         got.lock().unwrap().extend(sink.drain());
         std::thread::sleep(Duration::from_millis(10));
     }
