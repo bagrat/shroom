@@ -64,6 +64,10 @@ fn main() {
         std::process::exit(harness::camera_check(out, *record));
     }
     #[cfg(feature = "dev-harness")]
+    if let harness::Mode::PlayOut { hz, at_ms, seconds } = &mode {
+        std::process::exit(harness::play_out(*hz, *at_ms, *seconds));
+    }
+    #[cfg(feature = "dev-harness")]
     if let harness::Mode::Selftest(out) = &mode {
         std::process::exit(harness::selftest(out));
     }

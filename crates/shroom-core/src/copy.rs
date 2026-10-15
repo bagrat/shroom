@@ -91,7 +91,7 @@ pub fn restart_line(len: &str) -> String { format!("This replaces the {len} you'
 pub fn display_lost() -> String { "Your display disconnected — recording paused.".into() }
 pub fn mic_lost() -> String { "Your microphone disconnected — recording paused.".into() }
 pub fn mic_fallback(mic: &str) -> String { format!("Resume uses {mic}.") }
-pub fn mic_none() -> String { "Resume continues without sound.".into() }
+pub fn mic_none() -> String { "Resume continues without your microphone.".into() }
 /// A take that died with nothing a repair could save (DEVIATIONS #53, ratified 2026-10-14).
 pub fn nothing_recorded(camera: bool) -> String {
     if camera {

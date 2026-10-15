@@ -6,6 +6,7 @@
 
 pub mod audio;
 pub mod handoff;
+pub mod mix;
 pub mod probe;
 pub mod recording;
 pub mod repair;

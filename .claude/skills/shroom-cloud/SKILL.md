@@ -243,6 +243,13 @@ bash dev/mac/loop.sh run selftest settings    # ~4 min warm, ~7 cold; prints the
   camera offers only 1920×1080 at 60 fps (DECISIONS B120), and
   with OBS rendering on three cores it delivers ~20 fps: the camera's path, the
   bubble and `camera-lost` (quit OBS) can be read there, its timing can't.
+- **The Mac's sound.** The `system-audio` scenario (`tests/e2e/system-audio-check.mjs`,
+  DECISIONS B172) records two takes of the pattern, with the beep as the voice and the
+  Mac's sound mixed in. In take 0, two other apps play: the dev app's `--play-out` burst
+  and Apple's `afplay`. Both must be heard against the picture, and the app's own tone
+  must be in neither take. Take 1 must be the beep alone. Start any "other app" from the
+  script, never from shroom: ScreenCaptureKit's `excludesCurrentProcessAudio` leaves out
+  shroom's own children too (probed 2026-10-16), so a player shroom starts reads as silence.
 - **What it can't settle** — say so, don't stretch it. First-run permission prompts:
   the grants are written, never asked for. A real camera's picture and rate. Timing
   bars — repeated and skipped frames, A/V offset: `record` ends with 2 there, and a

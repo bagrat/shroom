@@ -4,7 +4,7 @@
 
 The machine: every state, edge, rule, said-line and law of shroom v1 — the spec (DECISIONS B133). Sessions edit it; MACHINE.md and the canvas's machine boards are generated from it.
 
-142 states · 294 edges · 23 rules · 545 said-lines · 16 laws · 57 ledger rows.
+142 states · 294 edges · 23 rules · 545 said-lines · 16 laws · 58 ledger rows.
 
 Status: **ratified** is Bagrat's; **provisional** is designed or built and awaits him (each cites its row: `#n` is a DEVIATIONS row of docs/DECISIONS.md, `Bn` a decision, `Nn`/`Un`/`Pn` a ledger row below). `SM:n` in older citations is a line of the retired spec text, kept in history/spec/UX-STATEMACHINE.md.
 
@@ -1427,11 +1427,11 @@ The microphone disappears mid-take (AirPods out of range, a USB mic pulled), so 
 |---|---|---|---|
 | “Your microphone disconnected — recording paused.” | line | provisional |  |
 | “Resume uses MacBook Pro Microphone.” | line | provisional | Quiet. Names the built-in mic, so the name varies by Mac. |
-| “Resume continues without sound.” | line | provisional | replaces the line above on a Mac with no other microphone |
+| “Resume continues without your microphone.” | line | ratified | replaces the line above on a Mac with no other microphone, so which of the two shows varies by Mac. Was “Resume continues without sound.” until the Mac's own sound kept recording (Bagrat, 2026-10-16, N47) |
 
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
-| Resume | filled-default | ↵ | `recording` | Stays live and switches to the built-in mic (or continues without sound). It stays paused's Return default, but the unasked popover never takes key focus, so a Return typed into another app can't Resume. |
+| Resume | filled-default | ↵ | `recording` | Stays live and switches to the built-in mic (or continues without your microphone, the Mac's sound still recorded — N47). It stays paused's Return default, but the unasked popover never takes key focus, so a Return typed into another app can't Resume. |
 
 | → | Kind | Label | Status | Cites |
 |---|---|---|---|---|
@@ -1499,7 +1499,7 @@ The screen half: macOS switches off screen recording mid-take (System Settings, 
 
 face · popover · **provisional** · a face of `paused` · board: AutoPause · cites N39
 
-The microphone half of `permission-lost`: macOS switches off the microphone mid-take, so the take auto-pauses. Resume continues without sound. The popover opens by itself without key focus.
+The microphone half of `permission-lost`: macOS switches off the microphone mid-take, so the take auto-pauses. Resume continues without your microphone. The popover opens by itself without key focus.
 
 **Entry.** Mid-take, the microphone grant is revoked.
 
@@ -1509,11 +1509,11 @@ The microphone half of `permission-lost`: macOS switches off the microphone mid-
 
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
-| Resume | filled-default | ↵ | `recording` | Continues without sound. Spec text: '(Resume continues without sound)', unquoted here. It is paused's Return default, but there is no key focus while unasked. |
+| Resume | filled-default | ↵ | `recording` | Continues without your microphone (the Mac's sound still recorded — N47). Spec text: '(Resume continues without sound)', unquoted here. It is paused's Return default, but there is no key focus while unasked. |
 
 | → | Kind | Label | Status | Cites |
 |---|---|---|---|---|
-| `recording` | flow | Resume — continues without sound | provisional |  |
+| `recording` | flow | Resume — continues without your microphone | provisional |  |
 
 ### `disk-full-stop`
 
@@ -3756,6 +3756,7 @@ A move that holds for a whole group of states, written once (B133). The tests ex
 | N44 | System default, for the microphone and the camera | **Both pickers offer “System default” first, and it's what a new Mac starts on** (Bagrat, 2026-10-14: the pickers account for the default devices too, so the input follows macOS when, say, AirPods join). It follows what macOS has as the default input (the microphone) and its preferred camera, shown in grey beneath — AirPods joining moves it. N39 holds: an iPhone over Continuity is never taken by itself, so a default that is one falls back to the built-in device. A device picked by name stays picked. **A take keeps the device it started with**: a default that changes mid-take is followed from the next take (B149). | autonomous-awaiting-ratification | 2026-10-14 |
 | N45 | The setup window after the first stranger run: the email first, the card watched, the token box still, and the permissions before the wiring | **Bagrat, on the canvas (2026-10-15: all four boards approved, to be built), after CHECKPOINT §10's first two-VM run.** (1) Cloudflare makes no token until the account's email is confirmed, and shroom can't see that before it has one: the signup trip says to confirm the email first, and the token step reached through “I signed up” carries one quiet reminder under the field until a paste lands. (2) The card gate keeps its line and Add credit card; one quiet line under the button says where it goes and that shroom is watching — another once the button was clicked. (3) While a paste is checked the field goes still: disabled, dimmed, no caret; any answer but a pass gives it back live and empty. (4) **The two last rows swap**: “Letting macOS allow recording” is drawn fifth and “Wiring it up” last. Wiring starts the moment the link name ticks and runs out of sight under the permissions chapter (its row's dot a small spinner, its aside “shroom is doing this part now”); the chapter's `done` follows the name row at once. Permissions finished first: the last step is `wiring`, with “Almost there — switching your name on takes a few minutes the first time, and only once.”; wiring finished first: the chapter's end is `all-set`. A new name still switching on is this wait, never `wizard-offline` (DEVIATIONS #54). Rows keep their numbers in the machine (row five is wiring, row six the permissions); only the drawn order changes. A space found is joined first, as before (its line under the wiring row, then `done`). Settings · Space keeps its order (its microphone door hangs under the last row). | ratified | 2026-10-15 |
 | N46 | Copy thumbnail: a link that looks embedded where links don't embed | **A second copy beside Copy link, on the owner page and in the Library row's menu, reading “Copy thumbnail”** (Bagrat, 2026-10-15, after the boards “Copy as a thumbnail — designs”, “B kept current” and “B + loop, kept current”: he chose B, kept current, with the loop, in both places, as a Copy thumbnail that also acts as the link, and said to build it). It puts the video's picture on the clipboard wrapped in the link, and the plain link as text beside it, so a paste into Basecamp or an email shows a picture that opens the page, and a paste where only text goes is the link. **The picture is B + loop, kept current:** a 3 s silent loop from the start of the video with the title on a soft band at its foot and the length in a corner; before the loop can be made, the same as a still. Untitled, it has no band. A new picture is made for each title by whoever sets it, after the title saves; an earlier paste keeps the picture it was given. A video from before this gets its picture on its first copy. Copying stays explicit (N1); nothing on the picture names the sender (U3). **The viewer's page too** (Bagrat, 2026-10-15, asked whether the recipient's live face shows Copy link: yes, both buttons, with Download there too): `live` shows Copy link and Copy thumbnail beside Download (still only once the single-file MP4 exists). A viewer stores nothing: their Copy thumbnail wraps the newest picture made for the current title, or, when none exists yet, the video's first frame. **Copy thumbnail waits until its picture is ready** (Bagrat, 2026-10-15: after trying 0.1.15 he asked for the button to stay disabled until its picture is ready, then approved the board “Copy thumbnail waits until the moving picture is ready” and its wording, asking for a gap between each tooltip and its button). On the owner page the button is greyed and doesn't copy until the loop for the current title is stored; hovering or focusing it says “Preparing the thumbnail…”. A new title greys it again until its loop is stored. When no loop can be made (the upload finished with no teaser, or drawing it failed), it wakes with the still. On the viewer's page it is hidden until a picture made for the current title exists (it no longer falls back to the first frame). The Library row's menu keeps it enabled: an older video's picture is long made. Every tooltip on the page (Copy link, Copy thumbnail, Download, the preparing line) sits a clear gap below its button. | ratified | 2026-10-15 |
+| N47 | The Mac's own sound in a take | **A take of a display records the Mac's sound with the voice, on by default, with no switch and no setting** (Bagrat, 2026-10-16: on by default, with no setting and no UI, to keep the work minimal). Whatever the Mac plays (a video, a call, an app's sounds) is mixed with the microphone into the take's one sound track, in step with the picture. shroom's own sounds are never in it. With the microphone off, or after it is lost and the take resumes without it, the Mac's sound is still recorded. No screen, popover or control changes; one line does: mic-lost's “Resume continues without sound.” becomes “Resume continues without your microphone.”, as Bagrat chose the same day. A take of the camera alone records the microphone only; with the microphone off, the Mac's sound is kept (Bagrat, 2026-10-16, answering both). How it is captured and mixed: DECISIONS B172. | ratified | 2026-10-16 |
 
 ## Surfaces
 
@@ -3783,7 +3784,7 @@ A move that holds for a whole group of states, written once (B133). The tests ex
 - more than one space per Mac (N31)  [L1729]
 - deleting from the page (delete lives in the Library)  [L1729-1730]
 - an uninstall button (N36)  [L1730]
-- system audio and window/region capture (§5.2)  [L1730-1731]
+- window/region capture (§5.2; system audio left this list with N47)  [L1730-1731]
 - OAuth sign-in (P5)  [L1731]
 - a second repair UI (N42)  [L1731]
 - an instant member cut-off control (parent-token rotation stays a scaffold flag)  [L1731-1732]

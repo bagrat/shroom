@@ -164,7 +164,7 @@ fn a_microphone_that_goes_or_changes_never_touches_the_shared_init() {
     let t0 = rec.end_take().unwrap();
     assert_eq!(rec.audio_shape(), Some(Some(48_000)));
     let first = init();
-    // Take two: the microphone is gone (mic-lost, Resume continues without sound).
+    // Take two: the microphone is gone (mic-lost, Resume continues without your microphone).
     rec.start_take(frames(), None).unwrap();
     std::thread::sleep(Duration::from_millis(1500));
     let t1 = rec.end_take().unwrap();

@@ -12,12 +12,19 @@ use std::time::{Duration, Instant};
 use serde::Serialize;
 use shroom_encode::clock::AudioClock;
 
+
 /// Anything that delivers mono 32-bit float samples at a fixed rate: the microphone,
 /// a test tone.
 pub trait AudioSource: Send {
     fn sample_rate(&self) -> u32;
     fn start(&mut self, sink: AudioSink) -> Result<(), String>;
     fn stop(&mut self) -> Result<(), String>;
+    /// How long after a sound is heard its sample reaches the sink, when the source holds it
+    /// back on purpose (the Mac's sound waits for ScreenCaptureKit, B172). The take's writer
+    /// places the track that much earlier. A microphone pushes as it hears: zero.
+    fn latency(&self) -> Duration {
+        Duration::ZERO
+    }
 }
 
 /// Silence at a rate: what a take records when its microphone is gone (or switched off),
@@ -37,19 +44,58 @@ impl AudioSource for Silence {
     }
 }
 
+type Route = Arc<dyn Fn(&[f32]) + Send + Sync>;
+type Flush = Arc<Mutex<Option<Box<dyn FnMut() + Send>>>>;
+
 /// The capture side's handle. Bounded: if nobody drains it, the oldest samples go.
 #[derive(Clone)]
 pub struct AudioSink {
     buf: Arc<Mutex<VecDeque<f32>>>,
     cap: usize,
+    /// Where pushes go instead of the buffer: the mixer's voice side (B172).
+    route: Option<Route>,
+    /// What the writer calls as the take ends: a source holding samples back hands them over.
+    flush: Flush,
 }
 
 impl AudioSink {
+    /// A sink nobody drains but its holder: up to `cap` samples, oldest dropped first.
+    pub fn with_capacity(cap: usize) -> AudioSink {
+        AudioSink { buf: Arc::new(Mutex::new(VecDeque::new())), cap, route: None, flush: Arc::default() }
+    }
+
     pub fn push(&self, samples: &[f32]) {
+        if let Some(route) = &self.route {
+            return route(samples);
+        }
         let mut b = self.buf.lock().unwrap();
         b.extend(samples.iter().copied());
         let over = b.len().saturating_sub(self.cap);
         b.drain(..over);
+    }
+
+    /// Everything pushed and not yet taken.
+    pub fn drain(&self) -> Vec<f32> {
+        self.buf.lock().unwrap().drain(..).collect()
+    }
+
+    /// A sink whose pushes go to `route` instead (the mixer's voice side).
+    pub(crate) fn routed(&self, route: Route) -> AudioSink {
+        AudioSink { route: Some(route), ..self.clone() }
+    }
+
+    /// What to run as the take ends, before its last samples are written.
+    pub(crate) fn on_flush(&self, flush: impl FnMut() + Send + 'static) {
+        *self.flush.lock().unwrap() = Some(Box::new(flush));
+    }
+
+    /// Runs the flush hook, if any (the writer, as the take ends; tests).
+    pub fn flush(&self) {
+        let hook = self.flush.lock().unwrap().take();
+        if let Some(mut hook) = hook {
+            hook();
+            *self.flush.lock().unwrap() = Some(hook);
+        }
     }
 }
 
@@ -67,11 +113,14 @@ pub struct AudioStats {
 pub(crate) struct AudioTap {
     buf: Arc<Mutex<VecDeque<f32>>>,
     rate: u32,
+    flush: Flush,
+    latency: Duration,
 }
 
-pub(crate) fn channel(rate: u32) -> (AudioSink, AudioTap) {
+pub(crate) fn channel(rate: u32, latency: Duration) -> (AudioSink, AudioTap) {
     let buf = Arc::new(Mutex::new(VecDeque::with_capacity(rate as usize)));
-    (AudioSink { buf: buf.clone(), cap: rate as usize * 10 }, AudioTap { buf, rate })
+    let flush: Flush = Arc::default();
+    (AudioSink { buf: buf.clone(), cap: rate as usize * 10, route: None, flush: flush.clone() }, AudioTap { buf, rate, flush, latency })
 }
 
 /// Creates the named pipe ffmpeg reads the audio from.
@@ -106,12 +155,27 @@ pub(crate) fn write_audio(
     // heard at that moment at the take's zero, every beep early by the open's delay (DECISIONS
     // B58). The buffer's newest sample is now, so the newest `elapsed × rate` samples start at
     // `t0`.
-    let lead_in = trim_to_take(&mut tap.buf.lock().unwrap(), t0.elapsed(), tap.rate);
+    // A source that holds its samples back (B172) is `latency` behind: its newest sample was
+    // heard that long ago, so the take so far is what was heard until then.
+    let heard = |at: Duration| at.saturating_sub(tap.latency);
+    // Until the take is `latency` old, what the source lets out was heard before it began,
+    // and more of that is still coming: trimming now would keep some of it. Wait it out.
+    while t0.elapsed() < tap.latency && !stop.load(Ordering::SeqCst) {
+        std::thread::sleep(Duration::from_millis(2));
+    }
+    let lead_in = trim_to_take(&mut tap.buf.lock().unwrap(), heard(t0.elapsed()), tap.rate);
     let mut clock = AudioClock::new(tap.rate, Duration::from_millis(80));
     let mut out: Vec<u8> = Vec::with_capacity(tap.rate as usize);
     loop {
         let stopping = stop.load(Ordering::SeqCst);
-        let elapsed = t0.elapsed();
+        if stopping {
+            // What the source still holds is the take's end: handed over, then written whole.
+            let hook = tap.flush.lock().unwrap().take();
+            if let Some(mut hook) = hook {
+                hook();
+            }
+        }
+        let elapsed = if stopping { t0.elapsed() } else { heard(t0.elapsed()) };
         out.clear();
         {
             let mut b = tap.buf.lock().unwrap();
