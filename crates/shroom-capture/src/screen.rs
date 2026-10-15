@@ -6,9 +6,10 @@
 
 use std::ffi::c_void;
 
-use cidre::{arc, cv, ns, sc};
+use cidre::{arc, cm, cv, ns, sc};
 use scap_screencapturekit::{Capturer, Frame, StreamCfgBuilder};
 use shroom_encode::quality::Quality;
+use shroom_record::mix::{SYSTEM_RATE, SystemAudio};
 use shroom_record::{FrameSink, FrameSource};
 
 #[link(name = "CoreGraphics", kind = "framework")]
@@ -55,6 +56,7 @@ pub struct ScreenSource {
     cursor: bool,
     capture_fps: f32,
     excluded: Vec<u32>,
+    system: Option<SystemAudio>,
     live: Option<Live>,
 }
 
@@ -63,7 +65,7 @@ impl ScreenSource {
     pub fn new(display_id: u32, quality: Quality) -> Result<ScreenSource, String> {
         let (pw, ph) = pixel_size(display_id).ok_or("that display isn't available")?;
         let (width, height) = quality.output_size(pw, ph);
-        Ok(ScreenSource { display_id, width, height, cursor: true, capture_fps: 60.0, excluded: Vec::new(), live: None })
+        Ok(ScreenSource { display_id, width, height, cursor: true, capture_fps: 60.0, excluded: Vec::new(), system: None, live: None })
     }
 
     /// How often ScreenCaptureKit may deliver. Twice the encode rate (the default) means
@@ -79,6 +81,13 @@ impl ScreenSource {
     /// bubble is deliberately *not* excluded: it's meant to be recorded.
     pub fn excluding(mut self, window_numbers: Vec<u32>) -> Self {
         self.excluded = window_numbers;
+        self
+    }
+
+    /// The Mac's own sound, on the same stream as the picture (spec N47, DECISIONS B172):
+    /// mono at [`SYSTEM_RATE`], with shroom's own sounds left out, fed to `system`.
+    pub fn with_system_audio(mut self, system: SystemAudio) -> Self {
+        self.system = Some(system);
         self
     }
 
@@ -101,6 +110,7 @@ impl FrameSource for ScreenSource {
     fn start(&mut self, sink: FrameSink) -> Result<(), String> {
         let (width, height, display_id, cursor, fps) = (self.width, self.height, self.display_id, self.cursor, self.capture_fps);
         let excluded = self.excluded.clone();
+        let system = self.system.clone();
         let capturer = futures::executor::block_on(async move {
             let content = sc::ShareableContent::current().await.map_err(|e| describe(&e))?;
             let displays = content.displays();
@@ -126,16 +136,32 @@ impl FrameSource for ScreenSource {
                 .with_shows_cursor(cursor)
                 .build();
             config.set_pixel_format(cv::PixelFormat::_32_BGRA);
+            if system.is_some() {
+                // macOS 13+; the app's floor is 14.
+                unsafe {
+                    config.set_captures_audio(true);
+                    config.set_excludes_current_process_audio(true);
+                    config.set_sample_rate(SYSTEM_RATE as i64);
+                    config.set_channel_count(1);
+                }
+            }
 
             let row_bytes = width as usize * 4;
             // The stream stopping by itself (screen recording switched off, the display gone,
             // the system's own stop) is capture dying: the recorder's watchdog hears it.
             let dead = sink.clone();
             let capturer = Capturer::builder(filter, config)
-                .with_output_sample_buf_cb(move |frame| {
-                    let Frame::Screen(mut video) = frame else { return };
-                    let Some(image) = video.sample_buf_mut().image_buf_mut() else { return };
-                    copy_into(image, &sink, row_bytes, height as usize);
+                .with_output_sample_buf_cb(move |frame| match frame {
+                    Frame::Screen(mut video) => {
+                        let Some(image) = video.sample_buf_mut().image_buf_mut() else { return };
+                        copy_into(image, &sink, row_bytes, height as usize);
+                    }
+                    Frame::Audio(audio) => {
+                        if let Some(system) = &system {
+                            feed_audio(audio.sample_buf(), system);
+                        }
+                    }
+                    Frame::Mic(_) => {}
                 })
                 .with_stop_with_err_cb(move |_stream, _error| dead.fail())
                 .build()
@@ -199,6 +225,102 @@ fn copy_into(image: &mut cv::PixelBuf, sink: &FrameSink, row_bytes: usize, rows:
         }
         let _ = image.unlock_lock_base_addr(flags);
     }
+}
+
+/// CoreAudio's description of a stream (`AudioStreamBasicDescription`).
+#[repr(C)]
+#[allow(dead_code)]
+struct Asbd {
+    sample_rate: f64,
+    format_id: u32,
+    format_flags: u32,
+    bytes_per_packet: u32,
+    frames_per_packet: u32,
+    bytes_per_frame: u32,
+    channels_per_frame: u32,
+    bits_per_channel: u32,
+    reserved: u32,
+}
+
+const FLAG_FLOAT: u32 = 1;
+const FLAG_BIG_ENDIAN: u32 = 2;
+const FLAG_NON_INTERLEAVED: u32 = 32;
+
+#[link(name = "CoreMedia", kind = "framework")]
+unsafe extern "C" {
+    fn CMSampleBufferGetFormatDescription(sbuf: *const c_void) -> *const c_void;
+    fn CMAudioFormatDescriptionGetStreamBasicDescription(desc: *const c_void) -> *const Asbd;
+    fn CMSampleBufferGetPresentationTimeStamp(sbuf: *const c_void) -> CmTime;
+    fn CMClockGetHostTimeClock() -> *const c_void;
+    fn CMClockGetTime(clock: *const c_void) -> CmTime;
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct CmTime {
+    value: i64,
+    timescale: i32,
+    flags: u32,
+    epoch: i64,
+}
+
+impl CmTime {
+    fn seconds(self) -> Option<f64> {
+        (self.flags & 1 != 0 && self.timescale > 0).then(|| self.value as f64 / self.timescale as f64)
+    }
+}
+
+/// The Mac's sound from one of ScreenCaptureKit's audio buffers, read as its own format
+/// says (32-bit float or 16-bit integer, interleaved or one plane per channel), averaged
+/// to mono. Asked for mono 32-bit float at 48 kHz; anything else is still read right.
+fn feed_audio(buf: &cm::SampleBuf, system: &SystemAudio) {
+    let asbd = unsafe {
+        let desc = CMSampleBufferGetFormatDescription((buf as *const cm::SampleBuf).cast());
+        if desc.is_null() { None } else { CMAudioFormatDescriptionGetStreamBasicDescription(desc).as_ref() }
+    };
+    let Some(asbd) = asbd else { return system.note_unreadable() };
+    // When its first sample was heard: its presentation time against now, both on the host
+    // clock ScreenCaptureKit stamps with — the mix places it by that (B172).
+    let (pts, now) = unsafe { (CMSampleBufferGetPresentationTimeStamp((buf as *const cm::SampleBuf).cast()), CMClockGetTime(CMClockGetHostTimeClock())) };
+    let arrived = std::time::Instant::now();
+    let heard = match (pts.seconds(), now.seconds()) {
+        (Some(pts), Some(now)) if now >= pts && now - pts < 5.0 => arrived.checked_sub(std::time::Duration::from_secs_f64(now - pts)).unwrap_or(arrived),
+        _ => arrived,
+    };
+    let (float, bits, channels) = (asbd.format_flags & FLAG_FLOAT != 0, asbd.bits_per_channel as usize, asbd.channels_per_frame.max(1) as usize);
+    let planar = asbd.format_flags & FLAG_NON_INTERLEAVED != 0;
+    system.note_format(|| {
+        format!(
+            "{} Hz, {} ch, {} bit {}{}, flags {:#x}, {} bytes/frame",
+            asbd.sample_rate,
+            channels,
+            bits,
+            if float { "float" } else { "int" },
+            if planar { " planar" } else { " interleaved" },
+            asbd.format_flags,
+            asbd.bytes_per_frame
+        )
+    });
+    let frames = buf.num_samples() as usize;
+    let Some(bytes) = buf.data_buf().and_then(|b| b.as_slice().ok()) else { return system.note_unreadable() };
+    let width = bits / 8;
+    let readable = asbd.format_flags & FLAG_BIG_ENDIAN == 0 && ((float && bits == 32) || (!float && bits == 16));
+    if !readable || frames == 0 || bytes.len() < frames * channels * width {
+        return system.note_unreadable();
+    }
+    let sample = |i: usize| -> f32 {
+        let b = &bytes[i * width..(i + 1) * width];
+        if float { f32::from_le_bytes([b[0], b[1], b[2], b[3]]) } else { i16::from_le_bytes([b[0], b[1]]) as f32 / 32_768.0 }
+    };
+    // Interleaved: frame f's channel c is sample f·channels + c; planar: plane c holds the
+    // channel's samples in a row, the planes one after another (each maybe padded).
+    let plane = bytes.len() / width / channels;
+    let at = |f: usize, c: usize| if planar { c * plane + f } else { f * channels + c };
+    let mono: Vec<f32> = (0..frames).map(|f| (0..channels).map(|c| sample(at(f, c))).sum::<f32>() / channels as f32).collect();
+    if (asbd.sample_rate as u32) != SYSTEM_RATE {
+        return system.note_unreadable();
+    }
+    system.feed_heard(&mono, heard);
 }
 
 fn describe(error: &arc::R<ns::Error>) -> String {

@@ -13,7 +13,7 @@
 //!   the preview staying through the take while the take still gets its frames,
 //!   `camera-lost` for the recorded camera — then Discard, so the room never outlives the
 //!   drive), then display takes interrupted by: the microphone leaving (`mic-lost`, Resume
-//!   without sound), the microphone switched off (`permission-lost (microphone)`), the
+//!   without your microphone), the microphone switched off (`permission-lost (microphone)`), the
 //!   encoder killed (`kill -9`: capture dying → a saved take), and screen recording
 //!   switched off (`permission-lost`).
 //! - `--drive take <out> movies`: the space's storage deleted on the fake, a take stopped
@@ -1194,7 +1194,7 @@ fn display_takes(d: &D, displays: &[shroom_core::world::Display], mics: &[shroom
             Some(PopoverBody::Paused(b)) => b.sub.clone(),
             _ => None,
         };
-        d.check("mic-lost says Resume continues without sound", sub.as_deref() == Some("Resume continues without sound."), format!("{sub:?}"));
+        d.check("mic-lost says Resume continues without your microphone", sub.as_deref() == Some("Resume continues without your microphone."), format!("{sub:?}"));
         d.check("an unasked popover (law 5)", s.popover.as_ref().is_some_and(|p| !p.activates), "");
         let init = d.newest_take().map(|t| std::fs::read(t.join("init.mp4")).unwrap_or_default()).unwrap_or_default();
         d.act(Action::Resume);

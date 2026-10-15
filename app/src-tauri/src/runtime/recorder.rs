@@ -19,6 +19,7 @@ use shroom_core::effect::RecCmd;
 use shroom_core::event::{Event, OsNews, RecNews};
 use shroom_core::world::{FailClass, Quality, RecId, SourceId, TakeDir, Why};
 use shroom_encode::quality::Quality as EncQuality;
+use shroom_record::mix::{Mixed, SystemAudio};
 use shroom_record::{AudioSource, FrameSource, Recording};
 
 use super::Runtime;
@@ -189,7 +190,8 @@ type Sources = (Box<dyn FrameSource>, Option<Box<dyn AudioSource>>, Option<Arc<A
 
 /// Where a take's sound comes from: the microphone the core named — or, in an unattended
 /// harness run, the test pattern's beep in its place (never the room: what a drive records
-/// may be published, TESTING-PLAN §4, b4 #17). No microphone named: silence.
+/// may be published, TESTING-PLAN §4, b4 #17). No microphone named: silence. A display's take
+/// mixes the Mac's own sound in (spec N47, DECISIONS B172) — with no microphone, it alone.
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum Ears {
     Device,
@@ -202,8 +204,15 @@ fn ears(rt: &Runtime) -> Ears {
 }
 
 fn sources(ears: Ears, a_source: SourceId, quality: Quality, mic_uid: &Option<String>, camera: &Option<String>, excluded: &[u32]) -> Result<Sources, String> {
+    let system = matches!(a_source, SourceId::Display(_)).then(SystemAudio::new);
     let video: Box<dyn FrameSource> = match a_source {
-        SourceId::Display(display) => Box::new(ScreenSource::new(display, enc(quality))?.excluding(excluded.to_vec())),
+        SourceId::Display(display) => {
+            let screen = ScreenSource::new(display, enc(quality))?.excluding(excluded.to_vec());
+            Box::new(match &system {
+                Some(system) => screen.with_system_audio(system.clone()),
+                None => screen,
+            })
+        }
         // The camera as the whole picture: the one the core picked (N39: never an iPhone by
         // itself) — this lane never chooses.
         SourceId::Camera => {
@@ -211,18 +220,23 @@ fn sources(ears: Ears, a_source: SourceId, quality: Quality, mic_uid: &Option<St
             Box::new(shroom_capture::CameraSource::new(uid, enc(quality))?)
         }
     };
-    if ears == Ears::DriveBeep {
-        let beep = mic_uid.as_ref().map(|_| Box::new(shroom_capture::beep::BeepSource::new(48_000)) as Box<dyn AudioSource>);
-        return Ok((video, beep, None));
-    }
-    let opened = match mic_uid {
-        Some(uid) if shroom_capture::mic_access() == shroom_capture::Access::Granted => {
-            mic::input_devices().into_iter().find(|d| &d.uid == uid).and_then(|d| mic::MicSource::open(d).ok())
-        }
-        _ => None,
+    let (voice, lost) = if ears == Ears::DriveBeep {
+        (mic_uid.as_ref().map(|_| Box::new(shroom_capture::beep::BeepSource::new(48_000)) as Box<dyn AudioSource>), None)
+    } else {
+        let opened = match mic_uid {
+            Some(uid) if shroom_capture::mic_access() == shroom_capture::Access::Granted => {
+                mic::input_devices().into_iter().find(|d| &d.uid == uid).and_then(|d| mic::MicSource::open(d).ok())
+            }
+            _ => None,
+        };
+        let lost = opened.as_ref().map(|m| m.lost_flag());
+        (opened.map(|m| Box::new(m) as Box<dyn AudioSource>), lost)
     };
-    let lost = opened.as_ref().map(|m| m.lost_flag());
-    Ok((video, opened.map(|m| Box::new(m) as Box<dyn AudioSource>), lost))
+    let audio = match system {
+        Some(system) => Some(Box::new(Mixed::new(voice, system)) as Box<dyn AudioSource>),
+        None => voice,
+    };
+    Ok((video, audio, lost))
 }
 
 fn handle(rt: &Runtime, active: &mut Option<Active>, live: &Arc<Mutex<Option<LiveTake>>>, excluded: &Arc<Mutex<Vec<u32>>>, cmd: RecCmd) -> Option<RecNews> {

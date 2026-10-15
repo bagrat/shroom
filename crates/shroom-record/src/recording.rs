@@ -250,7 +250,7 @@ impl Recording {
         // Audio first, so the microphone is already listening when the first frame lands.
         let audio_writer = match audio.as_mut() {
             Some(a) => {
-                let (asink, atap) = channel(a.sample_rate());
+                let (asink, atap) = channel(a.sample_rate(), a.latency());
                 a.start(asink).map_err(RecordError::Source)?;
                 let (fifo, start_at, stop) = (fifo.clone(), start_at.clone(), stop.clone());
                 Some(std::thread::Builder::new().name("shroom-audio-writer".into()).spawn(move || write_audio(atap, fifo, start_at, stop))?)
