@@ -920,6 +920,18 @@
     "N27 (the live face gains Copy link and Copy thumbnail)"
    ],
    "amended_by": []
+  },
+  {
+   "id": "N47",
+   "title": "The Mac's own sound in a take",
+   "decision": "**A take of a display records the Mac's sound with the voice, on by default, with no switch and no setting** (Bagrat, 2026-10-16: on by default, with no setting and no UI, to keep the work minimal). Whatever the Mac plays (a video, a call, an app's sounds) is mixed with the microphone into the take's one sound track, in step with the picture. shroom's own sounds are never in it. With the microphone off, or after it is lost and the take resumes without it, the Mac's sound is still recorded. No screen, popover or control changes; one line does: mic-lost's “Resume continues without sound.” becomes “Resume continues without your microphone.”, as Bagrat chose the same day. A take of the camera alone records the microphone only; with the microphone off, the Mac's sound is kept (Bagrat, 2026-10-16, answering both). How it is captured and mixed: DECISIONS B172.",
+   "status": "ratified",
+   "date": "2026-10-16",
+   "amends": [
+    "§5.2's “not in v1” (system audio leaves it; window and region capture stay)",
+    "mic-lost's and mic-permission-lost's “continues without sound” (now “without your microphone”)"
+   ],
+   "amended_by": []
   }
  ],
  "surfaces": [
@@ -964,7 +976,7 @@
   "more than one space per Mac (N31)  [L1729]",
   "deleting from the page (delete lives in the Library)  [L1729-1730]",
   "an uninstall button (N36)  [L1730]",
-  "system audio and window/region capture (§5.2)  [L1730-1731]",
+  "window/region capture (§5.2; system audio left this list with N47)  [L1730-1731]",
   "OAuth sign-in (P5)  [L1731]",
   "a second repair UI (N42)  [L1731]",
   "an instant member cut-off control (parent-token rotation stays a scaffold flag)  [L1731-1732]",
@@ -5445,11 +5457,11 @@
      "id": "mic-lost.resume-uses-macbook-pro"
     },
     {
-     "text": "Resume continues without sound.",
+     "text": "Resume continues without your microphone.",
      "role": "line",
-     "copy": "provisional",
-     "note": "replaces the line above on a Mac with no other microphone",
-     "id": "mic-lost.resume-continues-without-sound"
+     "copy": "ratified",
+     "note": "replaces the line above on a Mac with no other microphone, so which of the two shows varies by Mac. Was “Resume continues without sound.” until the Mac's own sound kept recording (Bagrat, 2026-10-16, N47)",
+     "id": "mic-lost.resume-continues-without-your-microphone"
     }
    ],
    "actions": [
@@ -5458,7 +5470,7 @@
      "kind": "filled-default",
      "return_default": true,
      "goes_to": "recording",
-     "note": "Stays live and switches to the built-in mic (or continues without sound). It stays paused's Return default, but the unasked popover never takes key focus, so a Return typed into another app can't Resume."
+     "note": "Stays live and switches to the built-in mic (or continues without your microphone, the Mac's sound still recorded — N47). It stays paused's Return default, but the unasked popover never takes key focus, so a Return typed into another app can't Resume."
     }
    ],
    "cites": [
@@ -5601,7 +5613,7 @@
    "surface": "popover",
    "status": "provisional",
    "board": "AutoPause",
-   "summary": "The microphone half of `permission-lost`: macOS switches off the microphone mid-take, so the take auto-pauses. Resume continues without sound. The popover opens by itself without key focus.",
+   "summary": "The microphone half of `permission-lost`: macOS switches off the microphone mid-take, so the take auto-pauses. Resume continues without your microphone. The popover opens by itself without key focus.",
    "entry": "Mid-take, the microphone grant is revoked.",
    "said": [
     {
@@ -5617,7 +5629,7 @@
      "kind": "filled-default",
      "return_default": true,
      "goes_to": "recording",
-     "note": "Continues without sound. Spec text: '(Resume continues without sound)', unquoted here. It is paused's Return default, but there is no key focus while unasked."
+     "note": "Continues without your microphone (the Mac's sound still recorded — N47). Spec text: '(Resume continues without sound)', unquoted here. It is paused's Return default, but there is no key focus while unasked."
     }
    ],
    "cites": [
@@ -13146,7 +13158,7 @@
    "to": "recording",
    "kind": "flow",
    "label": "",
-   "trigger": "Resume — continues without sound",
+   "trigger": "Resume — continues without your microphone",
    "status": "provisional",
    "cites": [],
    "source": [
