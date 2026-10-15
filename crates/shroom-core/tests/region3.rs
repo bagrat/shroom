@@ -1384,7 +1384,7 @@ fn the_count_opens_the_microphone_and_a_cancel_closes_it() {
     r.key(Surface::Popover, Key::Return);
     assert!(r.ids().contains(&"countdown"));
     assert!(r.has(|e| *e == Effect::Recorder(RecCmd::Warm { mic: Some("usb-mic".into()) })), "{:?}", r.effects);
-    r.act(Action::CancelCountdown);
+    r.send(Event::Act { surface: Surface::Countdown, action: Action::CancelCountdown, rev: 0 });
     assert!(r.has(|e| *e == Effect::Recorder(RecCmd::Cool)), "{:?}", r.effects);
     r.key(Surface::Popover, Key::Return);
     assert!(r.has(|e| matches!(e, Effect::Recorder(RecCmd::Warm { .. }))));
@@ -1407,6 +1407,6 @@ fn restarts_count_opens_the_microphone_too() {
     r.act(Action::Restart);
     r.act(Action::ConfirmRestart);
     assert!(r.has(|e| matches!(e, Effect::Recorder(RecCmd::Warm { .. }))), "{:?}", r.effects);
-    r.act(Action::CancelCountdown);
+    r.send(Event::Act { surface: Surface::Countdown, action: Action::CancelCountdown, rev: 0 });
     assert!(r.has(|e| *e == Effect::Recorder(RecCmd::Cool)));
 }
