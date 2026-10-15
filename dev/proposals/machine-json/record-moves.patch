@@ -1,0 +1,74 @@
+diff --git a/crates/shroom-core/tests/common/support.rs b/crates/shroom-core/tests/common/support.rs
+index 6dff620..233e40c 100644
+--- a/crates/shroom-core/tests/common/support.rs
++++ b/crates/shroom-core/tests/common/support.rs
+@@ -128,6 +128,9 @@ impl Run {
+         if let Some(edge) = arm.edge {
+             assert!(edge_listed(edge), "arm {:?} names {edge:?}: not a map edge, not a fixture transition, not in EXTRA_ARM_EDGES", arm.name);
+         }
++        if let Ok(path) = std::env::var("SHROOM_MOVES") {
++            moves_log(&path, &prev, &next, &event, &arm, &prev_w, &self.w);
++        }
+         self.arm = arm;
+         self.effects = fx;
+         self.scene = next;
+@@ -332,3 +335,39 @@ impl Run {
+         Run { w: self.w.clone(), scene: self.scene.clone(), effects: self.effects.clone(), arm: self.arm, t: self.t }
+     }
+ }
++
++fn surfaces(s: &Scene) -> serde_json::Value {
++    let win = |id: &str, faces: &[&str]| serde_json::json!({"id": id, "faces": faces});
++    serde_json::json!({
++        "tray": {"state": s.tray.state, "face": format!("{:?}", s.tray.face)},
++        "popover": s.popover.as_ref().map(|p| serde_json::json!({"id": p.id, "faces": p.faces, "banner": p.banner.as_ref().map(|b| b.id)})),
++        "onboarding": s.onboarding.as_ref().map(|o| win(o.id, &o.faces)),
++        "library": s.library.as_ref().map(|l| serde_json::json!({"id": l.id, "faces": l.faces, "sheet": l.body.sheet.as_ref().map(|x| win(x.id, &x.faces))})),
++        "settings": s.settings.as_ref().map(|l| serde_json::json!({"id": l.id, "faces": l.faces, "sheet": l.body.sheet.as_ref().map(|x| win(x.id, &x.faces))})),
++        "countdown": s.countdown.is_some(),
++        "ids": s.state_ids(),
++    })
++}
++
++fn moves_log(path: &str, prev: &Scene, next: &Scene, event: &Event, arm: &Arm, pw: &World, nw: &World) {
++    use std::io::Write;
++    let ev = format!("{event:?}");
++    let line = serde_json::json!({
++        "test": std::thread::current().name().unwrap_or(""),
++        "before": surfaces(prev), "after": surfaces(next),
++        "phase": [phase(pw), phase(nw)],
++        "event": ev.chars().take(160).collect::<String>(),
++        "arm": arm.name, "edge": arm.edge,
++    });
++    let mut f = std::fs::OpenOptions::new().create(true).append(true).open(path).unwrap();
++    f.write_all(format!("{line}\n").as_bytes()).unwrap();
++}
++
++fn phase(w: &World) -> &'static str {
++    match w.take.as_ref().map(|t| t.phase) {
++        Some(Phase::Paused(_)) => "paused",
++        Some(Phase::Finalizing(_)) => "stopping",
++        Some(_) => "open",
++        None => "none",
++    }
++}
+diff --git a/crates/shroom-core/tests/enumerate.rs b/crates/shroom-core/tests/enumerate.rs
+index f63ff11..df8a2ed 100644
+--- a/crates/shroom-core/tests/enumerate.rs
++++ b/crates/shroom-core/tests/enumerate.rs
+@@ -641,6 +641,7 @@ fn converse(walk: &Walk, kind: WindowKind) -> (usize, Vec<String>) {
+             answers += usize::from(matches!(ev, Event::Cloud(_) | Event::Rec(_) | Event::Failed { .. }));
+             match ran {
+                 Ok((after, beat)) => {
++                    if before != after { eprintln!("MOVE\t{:?}\t{}\t{}\t{}\t{}", kind, before, after, listed(before, after, &ev, beat).unwrap_or_else(|| "UNLISTED".into()), short(&ev)); }
+                     if listed(before, after, &ev, beat).is_none() {
+                         unlisted.insert(format!("{before} → {after} on {}", short(&ev)));
+                     }
+@@ -1241,6 +1242,7 @@ fn pop_converse(walk: &Walk) -> (usize, Vec<String>) {
+             steps += 1;
+             match ran {
+                 Ok(after) => {
++                    if before != after { eprintln!("MOVE\tPopover\t{}\t{}\t{}\t{}", before, after, pop_listed(before, after, &ev).unwrap_or_else(|| "UNLISTED".into()), short(&ev)); }
+                     if pop_listed(before, after, &ev).is_none() {
+                         unlisted.insert(format!("{before} → {after} on {}", short(&ev)));
+                     }

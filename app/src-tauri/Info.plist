@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- LSUIElement: shroom is a menu-bar app from the moment macOS hears of it. The Dock
+     shows a launching app by what its bundle says, before the app has run a line, so only
+     the bundle can keep a set-up shroom out of it; the setup window's Dock icon is raised
+     when a Scene asks for it (law 6, DEVIATIONS #38, DECISIONS B113). -->
+<plist version="1.0">
+<dict>
+  <key>LSUIElement</key>
+  <true/>
+  <key>NSMicrophoneUsageDescription</key>
+  <string>shroom records your voice with your video.</string>
+  <key>NSCameraUsageDescription</key>
+  <string>shroom shows and records your camera only when you choose it.</string>
+</dict>
+</plist>

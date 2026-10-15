@@ -1,0 +1,8 @@
+# Empty stand-in for the upstream hakari `workspace-hack` crate, which the scap crates
+# depend on by path. The real one unifies the upstream monorepo's dependency set; we need none of it.
+[package]
+name = "workspace-hack"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+publish = false

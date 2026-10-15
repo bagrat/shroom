@@ -1,0 +1,19 @@
+# L5's encode proof (DECISIONS B82): a dev tool copied into the throwaway VM, never shipped.
+# Its own workspace, so the app's workspace and lockfile stay as they are.
+[package]
+name = "shroom-l5-encode-check"
+version = "0.0.0"
+edition = "2024"
+publish = false
+license = "MIT"
+
+[[bin]]
+name = "encode-check"
+path = "src/main.rs"
+
+[dependencies]
+shroom-encode = { path = "../../../crates/shroom-encode" }
+shroom-record = { path = "../../../crates/shroom-record" }
+shroom-testpattern = { path = "../../../crates/shroom-testpattern" }
+
+[workspace]

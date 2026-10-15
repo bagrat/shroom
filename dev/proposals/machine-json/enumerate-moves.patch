@@ -1,0 +1,10 @@
+--- crates/shroom-core/tests/enumerate.rs	2026-10-14 10:58:59.474462976 +0000
++++ crates/shroom-core/tests/enumerate.rs	2026-10-14 19:11:48.798330689 +0000
+@@ -641,6 +641,7 @@
+             answers += usize::from(matches!(ev, Event::Cloud(_) | Event::Rec(_) | Event::Failed { .. }));
+             match ran {
+                 Ok((after, beat)) => {
++                    if before != after { eprintln!("MOVE\t{:?}\t{}\t{}\t{}\t{}", kind, before, after, listed(before, after, &ev, beat).unwrap_or_else(|| "UNLISTED".into()), short(&ev)); }
+                     if listed(before, after, &ev, beat).is_none() {
+                         unlisted.insert(format!("{before} → {after} on {}", short(&ev)));
+                     }

@@ -1,0 +1,36 @@
+{
+  "audio": {
+    "channels": 1,
+    "codec_name": "aac",
+    "sample_rate": "48000",
+    "time_base": "1/48000"
+  },
+  "fmp4": {
+    "init": [
+      "ftyp",
+      "moov"
+    ],
+    "segment": [
+      "styp",
+      "moof",
+      "mdat"
+    ]
+  },
+  "gop_frames": 12,
+  "playlist": {
+    "discontinuities_per_pause": 1,
+    "ends": true,
+    "maps": 1,
+    "segments_whole_but_each_takes_last": true,
+    "target_duration": "6",
+    "type": "VOD",
+    "version": "7"
+  },
+  "video": {
+    "codec_name": "h264",
+    "pix_fmt": "yuv420p",
+    "profile": "High",
+    "r_frame_rate": "30/1",
+    "time_base": "1/15360"
+  }
+}

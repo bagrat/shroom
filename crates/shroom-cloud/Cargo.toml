@@ -1,0 +1,18 @@
+[package]
+name = "shroom-cloud"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+shroom-storage = { path = "../shroom-storage" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+getrandom = "0.3"
+base64 = "0.22"
+ureq = { version = "3", default-features = false, features = ["rustls", "platform-verifier"] }
+
+[dev-dependencies]
+shroom-cloudfake = { path = "../shroom-cloudfake" }
+shroom-storage = { path = "../shroom-storage" }

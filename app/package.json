@@ -1,0 +1,39 @@
+{
+  "name": "shroom-app",
+  "private": true,
+  "version": "0.1.16",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "check": "svelte-check --tsconfig ./tsconfig.json",
+    "tauri": "tauri",
+    "build:dev": "tauri build --debug --bundles app --features dev-harness",
+    "test": "vitest run",
+    "test:gallery": "node test/onboarding-gallery.mjs && node test/windows-gallery.mjs && node test/typing-gallery.mjs",
+    "drive:onboarding": "node test/onboarding-drive.mjs",
+    "drive:library": "node test/region5-drive.mjs library",
+    "drive:settings": "node test/region5-drive.mjs settings",
+    "drive:update": "sh test/update-drive.sh",
+    "drive:take": "node test/take-drive.mjs",
+    "record-check": "node ../tests/e2e/record-check.mjs",
+    "av-check": "node ../tests/e2e/record-check.mjs 20 loopback",
+    "tone-check": "node ../tests/e2e/tone-check.mjs 1800",
+    "test:readers": "node --test ../tests/e2e/av.test.mjs ../tests/e2e/tone.test.mjs ../tests/e2e/field.test.mjs",
+    "heartbeat": "node ../tests/e2e/heartbeat.mjs 10",
+    "gallery:pages": "node ../tests/e2e/pages-gallery.mjs"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.12.1"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^7.3.1",
+    "@tauri-apps/cli": "^2.12.1",
+    "@tsconfig/svelte": "^5.0.8",
+    "svelte": "^5.57.1",
+    "svelte-check": "^4.7.6",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.2",
+    "vitest": "^5.0.4"
+  }
+}

@@ -1,0 +1,294 @@
+/* Settings · Members (N28, N33), in the canvas's look (../lib/theme.css): the head and its
+   one line of truth; the list as one card of rows with hairlines (You first, the owner's
+   other Macs as sub-rows under it, then members and invites — each row's buttons at its
+   end, Remove… as red text), a born link's pill in its row's cell; then the composer. */
+
+.members {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.members > h1 {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.4;
+  margin: 0 0 -12px;
+}
+
+.members > .truth {
+  color: var(--fg-2);
+}
+
+/* ── the list ── */
+
+.mrows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.mrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 6px 12px;
+}
+
+.mrow.you {
+  min-height: 52px;
+}
+
+/* The owner's other Macs sit under You. */
+.mrow.sub {
+  padding-left: 28px;
+}
+
+.mmain {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* A row whose link was just born leads its cell. */
+.mrow:has(+ .mnest) .mline {
+  font-weight: 600;
+}
+
+/* A row's fact, under its line (the canvas's sub-line). */
+.mmain .fact {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* *Add another Mac*: quiet Frost text at the end of You's row, not a button (N33). */
+.mrow.you .b.link {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  font-size: 13px;
+  color: var(--frost);
+}
+
+.mrow.you .mbtns .b.link {
+  color: var(--frost);
+}
+
+.mrow.you .b.link:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+/* A row's buttons: quiet text at its end — New link, then Remove… in red. */
+.mbtns {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  white-space: nowrap;
+}
+
+.mrow .mbtns .b {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  font-size: 13px;
+}
+
+.mrow .mbtns .b.plain,
+.mrow .mbtns .b.quiet,
+.mrow .mbtns .b.link {
+  color: var(--muted);
+}
+
+.mrow .mbtns .b.plain:hover:not(:disabled),
+.mrow .mbtns .b.quiet:hover:not(:disabled),
+.mrow .mbtns .b.link:hover:not(:disabled) {
+  color: var(--fg);
+}
+
+.mrow .mbtns .b.red-text {
+  color: var(--red);
+}
+
+.mrow .mbtns .b.red-text:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+/* A born link's nest: in its row's cell (under You for another Mac's) — no hairline. */
+.mrows > li.mnest {
+  border-top: 0;
+  padding: 0 12px 12px;
+}
+
+.mrows > li.mrow:has(+ li.mnest) {
+  padding-bottom: 6px;
+}
+
+.born {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.pill-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* The address up to its code, in a field-like well. */
+.pill {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  height: 34px;
+  box-sizing: border-box;
+  padding: 0 10px;
+  border-radius: 8px;
+  background: var(--seg);
+  font-family: var(--mono);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.pill .pre {
+  color: var(--fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+/* The code stays in the runner's stash (law 13): the pill draws its place, not its text. */
+.pill .code {
+  flex: none;
+}
+
+.pill .code::after {
+  content: "••••••";
+  color: var(--muted);
+  letter-spacing: 0.08em;
+}
+
+/* [ Copy link ], 34 tall; it reads “Copied” for a moment without the pill's row shifting. */
+.born .pill-row .b {
+  flex: none;
+  min-height: 0;
+  height: 34px;
+  min-width: 7.4em;
+  padding: 0 16px;
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.born > p.quiet {
+  font-size: 13px;
+  color: var(--fg-2);
+}
+
+/* ── the composer: the face's ask ── */
+
+.composer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+input.who {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 34px;
+  box-sizing: border-box;
+  padding: 0 10px;
+  font: inherit;
+  color: var(--fg);
+  background: var(--field);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+input.who::placeholder {
+  color: var(--muted);
+}
+
+input.who:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+input.who:disabled {
+  opacity: 0.5;
+}
+
+.members .composer .b {
+  flex: none;
+  min-height: 0;
+  height: 34px;
+  padding: 0 18px;
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.members .composer .b.plain {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--fg);
+}
+
+.members .invite-line {
+  margin-top: -8px;
+  padding: 0 2px;
+}
+
+/* Who invites say they're from (B158): quiet, under the composer's line; the name bold. */
+.members .from {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: -10px 0 0;
+  padding: 0 2px;
+  font-size: 12px;
+}
+
+.members .from strong {
+  color: var(--fg);
+  font-weight: 600;
+}
+
+.members .from .b {
+  font-size: 12px;
+  min-height: 0;
+}
+
+input.from-name {
+  width: 170px;
+  height: 28px;
+  box-sizing: border-box;
+  padding: 0 8px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--fg);
+  background: var(--field);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+input.from-name:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}

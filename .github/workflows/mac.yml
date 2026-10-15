@@ -1,0 +1,199 @@
+# The Mac in the loop: a branch's dev app, tried on a GitHub-hosted Mac the way it can only
+# be tried on macOS — built with the harness, signed with a throwaway identity, granted its
+# permissions by the workflow, and run through the scenarios asked for (dev/mac/scenarios)
+# with the screen recorded. The evidence — a table of verdicts, and per scenario a video,
+# its output and the windows that were on screen — comes back as one artifact, kept three
+# days. With `hold`, the Mac is then kept for the session that asked, behind an SSH door.
+#
+# A session starts it and fetches what it saw with dev/mac/loop.sh. What the runner does is
+# dev/mac/mac.sh; why the grants are written the way they are was asked of a runner first
+# (dev/mac/proof.sh and .github/workflows/mac-proof.yml, retired 2026-10-13 — at tag v0.1.5).
+#
+# Its verdict is the table (summary.md, results.tsv), never the job's colour: the job is
+# green whenever the Mac ran what was asked, and red only when it couldn't (the build, the
+# grants, the door). Only sessions ask for it, and they read the table.
+#
+# It reads no secret and its token can only read the repo: the Mac it runs on holds nothing
+# worth taking, and is thrown away after the job. It records nothing but that Mac's own
+# screen — and the artifact of a public repo can be read by anyone signed in to GitHub.
+#
+# Every action is pinned to a full commit SHA, as in ci.yml.
+name: Mac
+
+on:
+  workflow_dispatch:
+    inputs:
+      scenario:
+        description: Scenarios, by name, in order (dev/mac/scenarios/<name>.sh)
+        default: selftest
+        type: string
+      hold:
+        description: Minutes to keep the Mac afterwards for an SSH session (0 to 60)
+        default: '0'
+        type: string
+      ssh_key:
+        description: The session's public key, for hold (ssh-ed25519 …)
+        default: ''
+        type: string
+  # Asking by a commit to dev/mac/request (loop.sh run --by-push), for a session that may
+  # not start a workflow. A session's own branch only — never main: the ask is a commit.
+  push:
+    branches: ['claude/**']
+    paths: ['dev/mac/request']
+
+permissions:
+  contents: read
+
+# A newer ask for the same branch replaces the older one — a held Mac included.
+concurrency:
+  group: mac-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: 22
+  CARGO_INCREMENTAL: 0
+  CARGO_TERM_COLOR: always
+  # The end-to-end lanes' browsers are never needed on a runner.
+  PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
+  HOMEBREW_NO_AUTO_UPDATE: 1
+  HOMEBREW_NO_INSTALL_CLEANUP: 1
+  HOMEBREW_NO_ENV_HINTS: 1
+
+jobs:
+  mac:
+    name: The dev app on a Mac
+    runs-on: macos-26
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # What was asked, from the inputs or from dev/mac/request, held to what it may be
+      # before any step uses it: scenario names are words, hold is minutes. The key is
+      # public and goes by a file — never through a command line built from it.
+      - name: What was asked
+        id: asked
+        env:
+          IN_SCENARIO: ${{ inputs.scenario }}
+          IN_HOLD: ${{ inputs.hold }}
+          IN_KEY: ${{ inputs.ssh_key }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = push ]; then
+            IN_SCENARIO=$(sed -n 's/^scenario=//p' dev/mac/request | head -n 1)
+            IN_HOLD=$(sed -n 's/^hold=//p' dev/mac/request | head -n 1)
+            IN_KEY=$(sed -n 's/^ssh_key=//p' dev/mac/request | head -n 1)
+          fi
+          scenario=$(printf '%s' "${IN_SCENARIO:-selftest}" | tr ',' ' ' | tr -s ' ' | sed -e 's/^ //' -e 's/ $//')
+          for name in $scenario; do
+            printf '%s' "$name" | grep -Eq '^[a-z0-9][a-z0-9-]*$' || { echo "::error::'$name' isn't a scenario's name"; exit 1; }
+          done
+          hold=${IN_HOLD:-0}
+          { printf '%s' "$hold" | grep -Eq '^[0-9]{1,2}$' && [ "$hold" -le 60 ]; } || { echo "::error::hold is minutes, 0 to 60"; exit 1; }
+          printf '%s\n' "${IN_KEY:-}" >"$RUNNER_TEMP/mac-key.pub"
+          { echo "scenario=$scenario"; echo "hold=$hold"; } >>"$GITHUB_OUTPUT"
+          echo "Scenarios: $scenario. Hold: $hold min."
+
+      # Spotlight indexes whatever a build writes; on three cores that alone kept the load
+      # near thirty while the first scenarios ran (run 38320681293), and windows came up
+      # blank. Nothing here is ever searched for.
+      - name: A quieter Mac
+        run: sudo mdutil -a -i off || true
+
+      - name: Rust toolchain (the workspace's rust-version), and the Xcode in use
+        id: toolchain
+        run: |
+          version=$(sed -n 's/^rust-version = "\(.*\)"$/\1/p' Cargo.toml)
+          rustup toolchain install "$version" --profile minimal --no-self-update
+          rustup default "$version"
+          rustc -vV
+          xcodebuild -version
+          echo "xcode=$(xcodebuild -version | awk 'NR==1{v=$2} NR==2{b=$3} END{print v "-" b}')" >>"$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          package-manager-cache: false
+
+      # What ci.yml's build job saved from main.
+      - name: Restore npm's download cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.npm
+          key: npm-macos-26-node${{ env.NODE_VERSION }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            npm-macos-26-node${{ env.NODE_VERSION }}-
+
+      - name: Install the node packages
+        run: npm ci
+
+      # The dev build's compiled dependencies. Saved from main, where every branch can read
+      # it, and kept even when a scenario says no; a branch's own run restores and saves
+      # nothing, so a week of fix branches can't push main's caches out.
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          shared-key: mac-macos-26-xcode${{ steps.toolchain.outputs.xcode }}
+          cache-on-failure: true
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      # Made and trusted the way ci.yml's signing rehearsal does it, under the dev build's
+      # name. It is never deleted: the runner is.
+      - name: A throwaway identity of the dev build's name
+        run: |
+          .github/scripts/signing-keychain.sh scratch "$RUNNER_TEMP/scratch.keychain-db"
+          tools/make-release-identity.sh "shroom-dev" --keychain "$RUNNER_TEMP/scratch.keychain-db" --out "$RUNNER_TEMP/dev-identity" --days 365 >/dev/null
+          .github/scripts/signing-keychain.sh drop "$RUNNER_TEMP/scratch.keychain-db"
+          SIGNING_P12_BASE64=$(cat "$RUNNER_TEMP/dev-identity/shroom-dev.p12.base64")
+          SIGNING_P12_PASSWORD=$(cat "$RUNNER_TEMP/dev-identity/shroom-dev.password")
+          export SIGNING_P12_BASE64 SIGNING_P12_PASSWORD
+          .github/scripts/signing-keychain.sh import
+
+      - name: The dev build, with the harness, and the Cloudflare fake the drives run against
+        run: |
+          npm run build:dev --workspace app
+          cargo build --locked -p shroom-cloudfake --bin cloudfake
+
+      # A dev build takes Homebrew's ffmpeg as its encoder; the watch records with it.
+      - name: The encoder and the recorder, the pointer, the tunnel
+        run: brew install ffmpeg cliclick ${{ steps.asked.outputs.hold != '0' && 'cloudflared' || '' }}
+
+      - name: The dev app, granted
+        run: dev/mac/mac.sh prepare target/debug/bundle/macos/shroom-dev.app
+
+      - name: The scenarios
+        env:
+          SCENARIO: ${{ steps.asked.outputs.scenario }}
+        run: dev/mac/mac.sh run $SCENARIO
+
+      - name: An SSH door for the session
+        id: door
+        if: always() && steps.asked.outputs.hold != '0'
+        run: dev/mac/mac.sh ssh-up "$RUNNER_TEMP/mac-key.pub"
+
+      # By itself and at once: the session reads where the door is while the Mac is held.
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always() && steps.door.outcome == 'success'
+        with:
+          name: mac-connect-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/mac-connect/connect.json
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Held for the session
+        if: always() && steps.door.outcome == 'success'
+        env:
+          HOLD: ${{ steps.asked.outputs.hold }}
+        run: dev/mac/mac.sh hold "$HOLD"
+
+      # Green with a scenario's no in it: the table says so, and a warning on the run.
+      - name: The verdicts
+        if: always()
+        run: dev/mac/mac.sh summary
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: mac-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/mac
+          if-no-files-found: error
+          retention-days: 3

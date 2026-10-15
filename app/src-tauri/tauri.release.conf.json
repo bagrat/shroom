@@ -1,0 +1,19 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "shroom",
+  "identifier": "am.shroom",
+  "bundle": {
+    "externalBin": [
+      "../../build/ffmpeg/sidecar/ffmpeg"
+    ],
+    "resources": {
+      "../../tools/ffmpeg-NOTICE.txt": "licenses/ffmpeg/NOTICE.txt",
+      "../../build/ffmpeg/sidecar/COPYING.LGPLv2.1": "licenses/ffmpeg/COPYING.LGPLv2.1",
+      "../../THIRD-PARTY-NOTICES.md": "licenses/third-party/NOTICES.md"
+    },
+    "macOS": {
+      "infoPlist": "Info.release.plist",
+      "signingIdentity": null
+    }
+  }
+}

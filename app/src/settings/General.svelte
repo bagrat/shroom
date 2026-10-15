@@ -1,0 +1,74 @@
+<script lang="ts">
+  // Settings · General (N36): one card — the login box (reads the system's truth, as the
+  // Scene says), the update row (its line, its button, What's new) — then the help line,
+  // whose doors are runs of the line itself; Uninstall shroom… at the foot.
+  import type { Action } from "../lib/ipc";
+  import Btn from "../onboarding/Btn.svelte";
+  import type { Button } from "../onboarding/types";
+  import type { GeneralPane } from "./types";
+
+  let { g, send }: { g: GeneralPane; send: (a: Action) => void } = $props();
+
+  /** The help line cut at each door's label, in order; a door the line doesn't carry
+   * follows it. */
+  function cut(line: string, links: Button[]): (string | Button)[] {
+    const out: (string | Button)[] = [];
+    let at = 0;
+    const rest: Button[] = [];
+    for (const b of links) {
+      const i = line.indexOf(b.label, at);
+      if (i < 0) {
+        rest.push(b);
+        continue;
+      }
+      if (i > at) out.push(line.slice(at, i));
+      out.push(b);
+      at = i + b.label.length;
+    }
+    if (at < line.length) out.push(line.slice(at));
+    return [...out, ...rest];
+  }
+  let help = $derived(cut(g.help, g.help_links));
+</script>
+
+<section class="general">
+  <div class="card">
+    <!-- The login box, drawn as a switch: its label at the row's start, the switch at its end. -->
+    <label class="srow login" class:off={!g.login.enabled}>
+      <span class="grow">{g.login.label}</span>
+      <input
+        type="checkbox"
+        class="switch"
+        checked={g.login.on}
+        disabled={!g.login.enabled}
+        onclick={(e) => {
+          e.preventDefault();
+          send(g.login.action);
+        }}
+      />
+    </label>
+
+    <div class="srow updates">
+      <span class="grow lbl">{g.updates_label}</span>
+      <div class="update">
+        <p class="update-line">{g.update_line}</p>
+        {#if g.update || g.whats_new}
+          <div class="acts">
+            {#if g.update}<Btn b={g.update} {send} />{/if}
+            {#if g.whats_new}<Btn b={g.whats_new} {send} />{/if}
+          </div>
+        {/if}
+      </div>
+    </div>
+  </div>
+  <p class="help">
+    {#each help as part}{#if typeof part === "string"}{part}{:else}<button
+          type="button"
+          class="b {part.style} inline-link"
+          disabled={!part.enabled}
+          onclick={() => send(part.action)}>{part.label}</button
+        >{/if}{/each}
+  </p>
+  <!-- Uninstall shroom…, quiet text at the tab's foot (B135); greyed mid-take with its line. -->
+  <div class="uninstall"><Btn b={g.uninstall} {send} /></div>
+</section>

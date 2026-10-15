@@ -1,0 +1,4 @@
+{
+  "http_status": 403,
+  "body": "{\"success\":false,\"errors\":[{\"code\":10042,\"message\":\"Please enable R2 through the Cloudflare Dashboard.\"}],\"messages\":[],\"result\":null}"
+}

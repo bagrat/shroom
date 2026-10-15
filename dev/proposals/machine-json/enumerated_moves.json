@@ -1,0 +1,1506 @@
+[
+ [
+  "Onboarding",
+  "account",
+  "account-signing-up",
+  [
+   "map"
+  ]
+ ],
+ [
+  "Onboarding",
+  "account",
+  "idle-unprovisioned",
+  [
+   "rule: N19/N21"
+  ]
+ ],
+ [
+  "Onboarding",
+  "account",
+  "token",
+  [
+   "map"
+  ]
+ ],
+ [
+  "Onboarding",
+  "account-signing-up",
+  "idle-unprovisioned",
+  [
+   "rule: N19/N21"
+  ]
+ ],
+ [
+  "Onboarding",
+  "account-signing-up",
+  "token",
+  [
+   "map"
+  ]
+ ],
+ [
+  "Onboarding",
+  "all-set",
+  "config",
+  [
+   "map"
+  ]
+ ],
+ [
+  "Onboarding",
+  "all-set",
+  "idle-ready",
+  [
+   "map"
+  ]
+ ],
+ [
+  "Onboarding",
+  "card",
+  "gate-email",
+  [
+   "map"
+  ]
+ ],
+ [
+  "Onboarding",
+  "card",
+  "idle-unprovisioned",
+  [
+   "rule: N19/N21"
+  ]
+ ],
+ [
+  "Onboarding",
+  "card",
+  "name",
+  [
+   "map"
+  ]
+ ],
+ [
+  "Onboarding",
+  "card",
+  "space-found",
+  [
+   "rule: N13 + law 1"
+  ]
+ ],
+ [
+  "Onboarding",
+  "card",
+  "token",
+  [
+   "rule: N13 + law 1"
+  ]
+ ],
+ [
+  "Onboarding",
+  "card",
+  "wiring",
+  [
+   "map"
+  ]
+ ],
+ [
+  "Onboarding",
+  "card",
+  "wizard-offline",
+  [
+   "fixture/EXTRA"
+  ]
+ ],
+ [
+  "Onboarding",
+  "card",
+  "wizard-unexpected",
+  [
+   "rule: DEVIATIONS #25"
+  ]
+ ],
+ [
+  "Onboarding",
+  "done",
+  "idle-ready",
+  [
+   "rule: N19/N21"
+  ]
+ ],
+ [
+  "Onboarding",
+  "done",
+  "perm-mic",
+  [
+   "map"
+  ]
+ ],
+ [
+  "Onboarding",
+  "gate-card",
+  "idle-unprovisioned",
+  [
+   "rule: N19/N21"
+  ]
+ ],
+ [
+  "Onboarding",
+  "gate-card",
+  "wizard-offline",
+  [
+   "fixture/EXTRA"
+  ]
+ ],
+ [
+  "Onboarding",
+  "gate-email",
+  "idle-unprovisioned",
+  [
+   "rule: N19/N21"
+  ]
+ ],
+ [
+  "Onboarding",
+  "gate-email",
+  "wizard-offline",
+  [
+   "fixture/EXTRA"
+  ]
+ ],
+ [
+  "Onboarding",
+  "name",
+  "idle-unprovisioned",
+  [
+   "rule: N19/N21"
+  ]
+ ],
+ [
+  "Onboarding",
+  "name",
+  "wizard-offline",
+  [
+   "fixture/EXTRA"
+  ]
+ ],
+ [
+  "Onboarding",
+  "name-taken",
+  "idle-unprovisioned",
+  [
+   "rule: N19/N21"
+  ]
+ ],
+ [
+  "Onboarding",
+  "name-taken",
+  "name",
+  [
+   "map"
+  ]
+ ],
+ [
+  "Onboarding",
+  "name-taken",
+  "wizard-offline",
+  [
+   "rule: N18"
+  ]
+ ],
+ [
+  "Onboarding",
+  "perm-mic",
+  "idle-ready",
+  [
+   "rule: N19/N21"
+  ]
+ ],
+ [
+  "Onboarding",
+  "perm-mic",
+  "perm-priming",
+  [
+   "rule: N17 + law 1"
+  ]
+ ],
+ [
+  "Onboarding",
+  "perm-mic",
+  "perm-screen",
+  [
+   "map"
+  ]
+ ],
+ [
+  "Onboarding",
+  "perm-priming",
+  "all-set",
+  [
+   "map"
+  ]
+ ],
+ [
+  "Onboarding",
+  "perm-priming",
+  "idle-ready",
+  [
+   "rule: N19/N21"
+  ]
+ ],
+ [
+  "Onboarding",
+  "perm-priming",
+  "perm-screen",
+  [
+   "rule: N17 + law 1"
+  ]
+ ],
+ [
+  "Onboarding",
+  "perm-screen",
+  "idle-ready",
+  [
+   "rule: N19/N21"
+  ]
+ ],
+ [
+  "Onboarding",
+  "perm-screen",
+  "perm-priming",
+  [
+   "map"
+  ]
+ ],
+ [
+  "Onboarding",
+  "perm-screen",
+  "relaunching",
+  [
+   "map"
+  ]
+ ],
+ [
+  "Onboarding",
+  "relaunching",
+  "idle-ready",
+  [
+   "rule: N19/N21"
+  ]
+ ],
+ [
+  "Onboarding",
+  "relaunching",
+  "perm-priming",
+  [
+   "rule: N17 + law 1"
+  ]
+ ],
+ [
+  "Onboarding",
+  "space-found",
+  "done",
+  [
+   "fixture/EXTRA"
+  ]
+ ],
+ [
+  "Onboarding",
+  "space-found",
+  "idle-unprovisioned",
+  [
+   "rule: N19/N21"
+  ]
+ ],
+ [
+  "Onboarding",
+  "space-found",
+  "wizard-offline",
+  [
+   "rule: N18"
+  ]
+ ],
+ [
+  "Onboarding",
+  "space-found",
+  "wizard-unexpected",
+  [
+   "rule: DEVIATIONS #25"
+  ]
+ ],
+ [
+  "Onboarding",
+  "token",
+  "idle-unprovisioned",
+  [
+   "rule: N19/N21"
+  ]
+ ],
+ [
+  "Onboarding",
+  "token",
+  "token-garbled",
+  [
+   "map"
+  ]
+ ],
+ [
+  "Onboarding",
+  "token-garbled",
+  "idle-unprovisioned",
+  [
+   "rule: N19/N21"
+  ]
+ ],
+ [
+  "Onboarding",
+  "token-garbled",
+  "token",
+  [
+   "map"
+  ]
+ ],
+ [
+  "Onboarding",
+  "token-pick-account",
+  "idle-unprovisioned",
+  [
+   "rule: N19/N21"
+  ]
+ ],
+ [
+  "Onboarding",
+  "token-pick-account",
+  "token",
+  [
+   "rule: ARCHITECTURE §3.7 BEATS"
+  ]
+ ],
+ [
+  "Onboarding",
+  "token-wrong-powers",
+  "idle-unprovisioned",
+  [
+   "rule: N19/N21"
+  ]
+ ],
+ [
+  "Onboarding",
+  "token-wrong-powers",
+  "token",
+  [
+   "map"
+  ]
+ ],
+ [
+  "Onboarding",
+  "token-wrong-powers",
+  "token-garbled",
+  [
+   "rule: N14 / map token → token-garbled"
+  ]
+ ],
+ [
+  "Onboarding",
+  "welcome",
+  "account",
+  [
+   "map"
+  ]
+ ],
+ [
+  "Onboarding",
+  "welcome",
+  "idle-unprovisioned",
+  [
+   "map"
+  ]
+ ],
+ [
+  "Onboarding",
+  "wiring",
+  "done",
+  [
+   "map"
+  ]
+ ],
+ [
+  "Onboarding",
+  "wiring",
+  "idle-unprovisioned",
+  [
+   "rule: N19/N21"
+  ]
+ ],
+ [
+  "Onboarding",
+  "wiring",
+  "wizard-offline",
+  [
+   "map"
+  ]
+ ],
+ [
+  "Onboarding",
+  "wiring",
+  "wizard-unexpected",
+  [
+   "rule: DEVIATIONS #25"
+  ]
+ ],
+ [
+  "Onboarding",
+  "wizard-offline",
+  "card",
+  [
+   "rule: N18"
+  ]
+ ],
+ [
+  "Onboarding",
+  "wizard-offline",
+  "idle-unprovisioned",
+  [
+   "rule: N19/N21"
+  ]
+ ],
+ [
+  "Onboarding",
+  "wizard-offline",
+  "name",
+  [
+   "rule: N18"
+  ]
+ ],
+ [
+  "Onboarding",
+  "wizard-offline",
+  "token",
+  [
+   "rule: N18"
+  ]
+ ],
+ [
+  "Onboarding",
+  "wizard-offline",
+  "wiring",
+  [
+   "map"
+  ]
+ ],
+ [
+  "Onboarding",
+  "wizard-unexpected",
+  "card",
+  [
+   "rule: DEVIATIONS #25"
+  ]
+ ],
+ [
+  "Onboarding",
+  "wizard-unexpected",
+  "idle-unprovisioned",
+  [
+   "rule: DEVIATIONS #25"
+  ]
+ ],
+ [
+  "Onboarding",
+  "wizard-unexpected",
+  "token",
+  [
+   "rule: DEVIATIONS #25"
+  ]
+ ],
+ [
+  "Onboarding",
+  "wizard-unexpected",
+  "wiring",
+  [
+   "rule: DEVIATIONS #25"
+  ]
+ ],
+ [
+  "Onboarding",
+  "wizard-unexpected",
+  "wizard-offline",
+  [
+   "rule: DEVIATIONS #25"
+  ]
+ ],
+ [
+  "Settings",
+  "gate-card",
+  "gate-email",
+  [
+   "rule: N13 + law 1"
+  ]
+ ],
+ [
+  "Settings",
+  "gate-card",
+  "idle-ready",
+  [
+   "rule: N19/N21"
+  ]
+ ],
+ [
+  "Settings",
+  "gate-card",
+  "name-changed",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "gate-card",
+  "re-entry-as-settings",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "gate-card",
+  "space-storage-gone",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "gate-card",
+  "token~repair-mood",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "gate-card",
+  "wiring",
+  [
+   "rule: N13 + law 1"
+  ]
+ ],
+ [
+  "Settings",
+  "gate-card",
+  "wizard-offline",
+  [
+   "fixture/EXTRA"
+  ]
+ ],
+ [
+  "Settings",
+  "gate-card",
+  "wizard-unexpected",
+  [
+   "rule: DEVIATIONS #25"
+  ]
+ ],
+ [
+  "Settings",
+  "gate-email",
+  "idle-ready",
+  [
+   "rule: N19/N21"
+  ]
+ ],
+ [
+  "Settings",
+  "gate-email",
+  "name-changed",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "gate-email",
+  "re-entry-as-settings",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "gate-email",
+  "space-storage-gone",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "gate-email",
+  "token~repair-mood",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "gate-email",
+  "wiring",
+  [
+   "rule: N13 + law 1"
+  ]
+ ],
+ [
+  "Settings",
+  "gate-email",
+  "wizard-offline",
+  [
+   "fixture/EXTRA"
+  ]
+ ],
+ [
+  "Settings",
+  "gate-email",
+  "wizard-unexpected",
+  [
+   "rule: DEVIATIONS #25"
+  ]
+ ],
+ [
+  "Settings",
+  "name-changed",
+  "gate-email",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "name-changed",
+  "idle-ready",
+  [
+   "rule: N19/N21"
+  ]
+ ],
+ [
+  "Settings",
+  "name-changed",
+  "re-entry-as-settings",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "name-changed",
+  "space-storage-gone",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "name-changed",
+  "token~repair-mood",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "name-changed",
+  "wiring",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "perm-screen",
+  "gate-email",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "perm-screen",
+  "idle-ready",
+  [
+   "rule: N19/N21"
+  ]
+ ],
+ [
+  "Settings",
+  "perm-screen",
+  "name-changed",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "perm-screen",
+  "re-entry-as-settings",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "perm-screen",
+  "relaunching",
+  [
+   "map"
+  ]
+ ],
+ [
+  "Settings",
+  "perm-screen",
+  "settings · Space · member",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "perm-screen",
+  "settings · Space · owner-class-without-token",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "perm-screen",
+  "space-storage-gone",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "perm-screen",
+  "token~repair-mood",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "perm-screen",
+  "wiring",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "re-entry-as-settings",
+  "gate-email",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "re-entry-as-settings",
+  "idle-ready",
+  [
+   "rule: N19/N21"
+  ]
+ ],
+ [
+  "Settings",
+  "re-entry-as-settings",
+  "name-changed",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "re-entry-as-settings",
+  "perm-screen",
+  [
+   "rule: N36"
+  ]
+ ],
+ [
+  "Settings",
+  "re-entry-as-settings",
+  "space-storage-gone",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "re-entry-as-settings",
+  "token~repair-mood",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "re-entry-as-settings",
+  "wiring",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "relaunching",
+  "gate-email",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "relaunching",
+  "idle-ready",
+  [
+   "rule: N19/N21"
+  ]
+ ],
+ [
+  "Settings",
+  "relaunching",
+  "name-changed",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "relaunching",
+  "re-entry-as-settings",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "relaunching",
+  "settings · Space · member",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "relaunching",
+  "settings · Space · owner-class-without-token",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "relaunching",
+  "space-storage-gone",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "relaunching",
+  "token~repair-mood",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "relaunching",
+  "wiring",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "repair-mood",
+  "gate-email",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "repair-mood",
+  "idle-ready",
+  [
+   "rule: N19/N21"
+  ]
+ ],
+ [
+  "Settings",
+  "repair-mood",
+  "name-changed",
+  [
+   "map"
+  ]
+ ],
+ [
+  "Settings",
+  "repair-mood",
+  "re-entry-as-settings",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "repair-mood",
+  "space-storage-gone",
+  [
+   "map"
+  ]
+ ],
+ [
+  "Settings",
+  "repair-mood",
+  "token~repair-mood",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "repair-mood",
+  "wiring",
+  [
+   "fixture/EXTRA"
+  ]
+ ],
+ [
+  "Settings",
+  "repair-mood",
+  "wizard-offline",
+  [
+   "rule: N18"
+  ]
+ ],
+ [
+  "Settings",
+  "repair-mood",
+  "wizard-unexpected",
+  [
+   "rule: DEVIATIONS #25"
+  ]
+ ],
+ [
+  "Settings",
+  "settings · Space · member",
+  "idle-ready",
+  [
+   "rule: N19/N21"
+  ]
+ ],
+ [
+  "Settings",
+  "settings · Space · member",
+  "perm-screen",
+  [
+   "rule: N36"
+  ]
+ ],
+ [
+  "Settings",
+  "settings · Space · owner-class-without-token",
+  "idle-ready",
+  [
+   "rule: N19/N21"
+  ]
+ ],
+ [
+  "Settings",
+  "settings · Space · owner-class-without-token",
+  "perm-screen",
+  [
+   "rule: N36"
+  ]
+ ],
+ [
+  "Settings",
+  "settings · Space · owner-class-without-token",
+  "token",
+  [
+   "fixture/EXTRA"
+  ]
+ ],
+ [
+  "Settings",
+  "space-storage-gone",
+  "gate-email",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "space-storage-gone",
+  "idle-ready",
+  [
+   "rule: N19/N21"
+  ]
+ ],
+ [
+  "Settings",
+  "space-storage-gone",
+  "name-changed",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "space-storage-gone",
+  "re-entry-as-settings",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "space-storage-gone",
+  "token~repair-mood",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "space-storage-gone",
+  "wiring",
+  [
+   "fixture/EXTRA"
+  ]
+ ],
+ [
+  "Settings",
+  "token",
+  "idle-ready",
+  [
+   "rule: N19/N21"
+  ]
+ ],
+ [
+  "Settings",
+  "token",
+  "token-garbled",
+  [
+   "map"
+  ]
+ ],
+ [
+  "Settings",
+  "token",
+  "token-other-account",
+  [
+   "fixture/EXTRA"
+  ]
+ ],
+ [
+  "Settings",
+  "token",
+  "token-wrong-powers",
+  [
+   "map"
+  ]
+ ],
+ [
+  "Settings",
+  "token",
+  "wizard-offline",
+  [
+   "fixture/EXTRA"
+  ]
+ ],
+ [
+  "Settings",
+  "token",
+  "wizard-unexpected",
+  [
+   "rule: DEVIATIONS #25"
+  ]
+ ],
+ [
+  "Settings",
+  "token-garbled",
+  "idle-ready",
+  [
+   "rule: N19/N21"
+  ]
+ ],
+ [
+  "Settings",
+  "token-garbled",
+  "name-changed",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "token-garbled",
+  "re-entry-as-settings",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "token-garbled",
+  "space-storage-gone",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "token-garbled",
+  "token",
+  [
+   "map"
+  ]
+ ],
+ [
+  "Settings",
+  "token-garbled",
+  "wiring",
+  [
+   "rule: N13 + law 1"
+  ]
+ ],
+ [
+  "Settings",
+  "token-other-account",
+  "idle-ready",
+  [
+   "rule: N19/N21"
+  ]
+ ],
+ [
+  "Settings",
+  "token-other-account",
+  "name-changed",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "token-other-account",
+  "re-entry-as-settings",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "token-other-account",
+  "space-storage-gone",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "token-other-account",
+  "token",
+  [
+   "fixture/EXTRA"
+  ]
+ ],
+ [
+  "Settings",
+  "token-other-account",
+  "token-garbled",
+  [
+   "rule: N14 / map token → token-garbled"
+  ]
+ ],
+ [
+  "Settings",
+  "token-other-account",
+  "wiring",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "token-wrong-powers",
+  "idle-ready",
+  [
+   "rule: N19/N21"
+  ]
+ ],
+ [
+  "Settings",
+  "token-wrong-powers",
+  "name-changed",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "token-wrong-powers",
+  "re-entry-as-settings",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "token-wrong-powers",
+  "space-storage-gone",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "token-wrong-powers",
+  "token",
+  [
+   "map"
+  ]
+ ],
+ [
+  "Settings",
+  "token-wrong-powers",
+  "token-garbled",
+  [
+   "rule: N14 / map token → token-garbled"
+  ]
+ ],
+ [
+  "Settings",
+  "token-wrong-powers",
+  "wiring",
+  [
+   "rule: N13 + law 1"
+  ]
+ ],
+ [
+  "Settings",
+  "token~repair-mood",
+  "idle-ready",
+  [
+   "rule: N19/N21"
+  ]
+ ],
+ [
+  "Settings",
+  "token~repair-mood",
+  "name-changed",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "token~repair-mood",
+  "re-entry-as-settings",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "token~repair-mood",
+  "space-storage-gone",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "token~repair-mood",
+  "token",
+  [
+   "fixture/EXTRA"
+  ]
+ ],
+ [
+  "Settings",
+  "token~repair-mood",
+  "token-garbled",
+  [
+   "rule: N14 / map token → token-garbled"
+  ]
+ ],
+ [
+  "Settings",
+  "token~repair-mood",
+  "wiring",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "wiring",
+  "gate-email",
+  [
+   "fixture/EXTRA"
+  ]
+ ],
+ [
+  "Settings",
+  "wiring",
+  "idle-ready",
+  [
+   "rule: N19/N21"
+  ]
+ ],
+ [
+  "Settings",
+  "wiring",
+  "name-changed",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "wiring",
+  "re-entry-as-settings",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "wiring",
+  "space-storage-gone",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "wiring",
+  "token~repair-mood",
+  [
+   "rule: N42"
+  ]
+ ],
+ [
+  "Settings",
+  "wiring",
+  "wizard-offline",
+  [
+   "map"
+  ]
+ ],
+ [
+  "Settings",
+  "wiring",
+  "wizard-unexpected",
+  [
+   "rule: DEVIATIONS #25"
+  ]
+ ],
+ [
+  "Settings",
+  "wizard-offline",
+  "gate-email",
+  [
+   "rule: N18"
+  ]
+ ],
+ [
+  "Settings",
+  "wizard-offline",
+  "idle-ready",
+  [
+   "rule: N19/N21"
+  ]
+ ],
+ [
+  "Settings",
+  "wizard-offline",
+  "repair-mood",
+  [
+   "rule: N18"
+  ]
+ ],
+ [
+  "Settings",
+  "wizard-offline",
+  "token",
+  [
+   "rule: N18"
+  ]
+ ],
+ [
+  "Settings",
+  "wizard-offline",
+  "wiring",
+  [
+   "map"
+  ]
+ ],
+ [
+  "Settings",
+  "wizard-unexpected",
+  "gate-email",
+  [
+   "rule: DEVIATIONS #25"
+  ]
+ ],
+ [
+  "Settings",
+  "wizard-unexpected",
+  "idle-ready",
+  [
+   "rule: DEVIATIONS #25"
+  ]
+ ],
+ [
+  "Settings",
+  "wizard-unexpected",
+  "repair-mood",
+  [
+   "rule: DEVIATIONS #25"
+  ]
+ ],
+ [
+  "Settings",
+  "wizard-unexpected",
+  "token",
+  [
+   "rule: DEVIATIONS #25"
+  ]
+ ],
+ [
+  "Settings",
+  "wizard-unexpected",
+  "token-garbled",
+  [
+   "rule: DEVIATIONS #25"
+  ]
+ ],
+ [
+  "Settings",
+  "wizard-unexpected",
+  "wiring",
+  [
+   "rule: DEVIATIONS #25"
+  ]
+ ],
+ [
+  "Settings",
+  "wizard-unexpected",
+  "wizard-offline",
+  [
+   "rule: DEVIATIONS #25"
+  ]
+ ]
+]

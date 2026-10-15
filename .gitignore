@@ -1,0 +1,21 @@
+# Build output. `target` is a link to `target.noindex`, a name Spotlight skips, so app
+# bundles built here never show up beside the installed one.
+/target
+/target.noindex/
+node_modules/
+/app/dist/
+/app/src-tauri/gen/
+
+# macOS
+.DS_Store
+
+# The release encoder's build dir (tools/build-ffmpeg.sh, TESTING-PLAN §9 M6)
+/build/
+
+# Agent worktrees (isolated copies made during a session)
+/.claude/worktrees/
+/site/public/
+/site/.wrangler/
+
+# Local test credentials (the e2e account token and id) — never committed
+/.secrets/

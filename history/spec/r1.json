@@ -1,0 +1,758 @@
+{
+  "region": "Region 1 — acquisition → first launch",
+  "states": [
+    {
+      "id": "landing",
+      "kind": "web-page",
+      "surface": "web-page",
+      "status": "ratified",
+      "summary": "shroom.am, a static page with one job: take a curious visitor to a pasted command, with no false notes. Blocks top to bottom: Hero (the punchline, the explanation points and two eyeball-number price tiles, which carry the whole message), Install (one command with [ Copy ], \"Read it first\" and the system-requirements line), which sits above the Demo (a real shroom recording on the real player page, self-recorded and record-only), and the Trust strip. Page chrome: the shroom wordmark on the left (the spec draws 🍄 before it) and a GitHub link on the right.",
+      "entry_conditions": "A visitor arrives at shroom.am through one of three entry arrows. (1) Direct: HN, README or word of mouth; a cold visitor who needs the pitch. (2) The recipient loop: they watched a shroom video and clicked the player page's mark (Region 4; whether the mark exists = U3); a warm visitor who already saw the product work. (3) An agent fetching the BYO-agent skill (Region 6's overlay). Also reached by going back from the source view.",
+      "decided_by": [
+        "P17",
+        "N6",
+        "N7",
+        "N11",
+        "U6",
+        "U3"
+      ],
+      "said_lines": [
+        {
+          "text": "Screen recordings without the monthly seat.",
+          "role": "title",
+          "copy_status": "ratified",
+          "note": "Hero punchline, first line, bold."
+        },
+        {
+          "text": "Pay as you go — sometimes completely free.",
+          "role": "line",
+          "copy_status": "ratified",
+          "note": "Hero punchline, second line."
+        },
+        {
+          "text": "Your videos live in your own Cloudflare account — we never hold them.",
+          "role": "line",
+          "copy_status": "ratified",
+          "note": "First dashed point of the hero explanation. The spec puts a leading '— ' list marker before each point; it is stripped here. 'your own Cloudflare account' is bold."
+        },
+        {
+          "text": "You set Cloudflare up once, in a guided setup — about five minutes.",
+          "role": "line",
+          "copy_status": "ratified",
+          "note": "Hero explanation, second dashed point. 'once' is bold."
+        },
+        {
+          "text": "You only ever pay Cloudflare. No account with us, no subscription.",
+          "role": "line",
+          "copy_status": "ratified",
+          "note": "Hero explanation, third dashed point. 'No account with us, no subscription.' is bold. The two price tiles render right after this point."
+        },
+        {
+          "text": "$0 /month — about six hours of video",
+          "role": "other",
+          "copy_status": "ratified",
+          "note": "Price tile 1 of 2 (an eyeball-number tile). '$0' is bold. The spec draws it in [ ] brackets, but it is a tile, not a button."
+        },
+        {
+          "text": "$2.40 /month — about a hundred hours",
+          "role": "other",
+          "copy_status": "ratified",
+          "note": "Price tile 2 of 2. '$2.40' is bold. Words, not numerals, on the landing; the welcome deliberately uses numerals (Law 16, N12)."
+        },
+        {
+          "text": "Delete old videos and pay less — storage is the whole bill.",
+          "role": "line",
+          "copy_status": "ratified",
+          "note": "Hero explanation, fourth dashed point. 'Delete old videos and pay less' is bold."
+        },
+        {
+          "text": "Your team just accepts an invite and records — no Cloudflare setup for them.",
+          "role": "line",
+          "copy_status": "ratified",
+          "note": "Hero explanation, last dashed point. 'accepts an invite' is bold. This point replaces the dissolved \"Record together\" section (N6). The spec calls it 'point six', although only five dashed points are drawn (see open notes)."
+        },
+        {
+          "text": "Install in one line",
+          "role": "title",
+          "copy_status": "ratified",
+          "note": "Install block heading, bold."
+        },
+        {
+          "text": "curl -fsSL https://shroom.am/install | sh",
+          "role": "other",
+          "copy_status": "ratified",
+          "note": "The one install command, set as code, with [ Copy ] beside it."
+        },
+        {
+          "text": "Copy",
+          "role": "button",
+          "copy_status": "ratified",
+          "note": "The install block's [ Copy ] button beside the command (not drawn filled). No 'Copied' face is drawn in Region 1 (see Law 10 note)."
+        },
+        {
+          "text": "Read it first — the same address opens as readable source.",
+          "role": "line",
+          "copy_status": "ratified",
+          "note": "The link text is 'Read it first'. It opens the same URL as plain-text source."
+        },
+        {
+          "text": "For macOS 14 or newer, Apple silicon and Intel.",
+          "role": "line",
+          "copy_status": "ratified",
+          "note": "The sentence shape is ratified. The floor ('14') and the Intel stance are scaffold-time facts (SCK matrix): fill in the facts, don't reword."
+        },
+        {
+          "text": "Recorded with shroom itself. It ends at the click of Stop — this page is what opened.",
+          "role": "line",
+          "copy_status": "ratified",
+          "note": "Demo block caption. Video shape per N7."
+        },
+        {
+          "text": "v.myshroom.workers.dev/b4kq9d",
+          "role": "other",
+          "copy_status": "ratified",
+          "note": "The demo's address, set as code. The space is real; the id 'b4kq9d' is illustrative and varies."
+        },
+        {
+          "text": "Open source — Every line on GitHub — the app, the installer, the player.",
+          "role": "line",
+          "copy_status": "ratified",
+          "note": "Trust strip item 1. 'Open source' is a bold label."
+        },
+        {
+          "text": "Your storage, your bill — The prices above are Cloudflare's, not ours.",
+          "role": "line",
+          "copy_status": "ratified",
+          "note": "Trust strip item 2. 'Your storage, your bill' is a bold label. The apostrophe is straight ASCII, as in the spec."
+        },
+        {
+          "text": "Built to outlive us — Links play from your own account — if shroom vanished tomorrow, they'd keep working.",
+          "role": "line",
+          "copy_status": "ratified",
+          "note": "Trust strip item 3. 'Built to outlive us' is a bold label. The source wraps after 'vanished'; that line break is joined with a space here."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Copy",
+          "kind": "secondary",
+          "return_default": false,
+          "goes_to": "landing (copies the install command)",
+          "note": "The install block's copy button, not drawn filled. Law 10 says copying is always a visible button that reads “Copied”, but Region 1 doesn't draw that face for this button."
+        },
+        {
+          "label": "Read it first",
+          "kind": "text-link",
+          "return_default": false,
+          "goes_to": "source view",
+          "note": "Opens the same URL (shroom.am/install) as readable source: one URL, two audiences."
+        },
+        {
+          "label": "GitHub link",
+          "kind": "text-link",
+          "return_default": false,
+          "goes_to": "GitHub (external)",
+          "note": "Page chrome, right side. The spec doesn't give the link's wording."
+        },
+        {
+          "label": "watch demo",
+          "kind": "other",
+          "return_default": false,
+          "goes_to": "Region 4's player, live",
+          "note": "The demo is a real shroom recording on the real player page (N7)."
+        }
+      ],
+      "transitions": [
+        {
+          "to": "installing",
+          "trigger": "run the install command (pasted into Terminal)"
+        },
+        {
+          "to": "source view",
+          "trigger": "read script: Read it first opens a text view of /install"
+        },
+        {
+          "to": "Region 4's player, live",
+          "trigger": "watch demo (cross-ref fixed 2026-07-25; the recipient page lives in Region 4)"
+        }
+      ],
+      "source_lines": "172-231, 359-360"
+    },
+    {
+      "id": "source view",
+      "kind": "web-page",
+      "surface": "web-page",
+      "parent": "landing",
+      "status": "ratified",
+      "summary": "\"Read it first\" opens shroom.am/install, the same URL the command fetches, as plain text: the install script itself. The header comment block is ratified copy (N11). Inline comments stay technical but honest. Bound at scaffold: /install never redirects, and the temp download lands under ~.",
+      "entry_conditions": "Read it first is clicked on the landing: a text view of the script at the same URL.",
+      "decided_by": [
+        "N11",
+        "P17"
+      ],
+      "said_lines": [
+        {
+          "text": "# shroom installer\n#\n# You're reading exactly what will run — this address serves one file,\n# and this is it. Four things, in order:\n#\n#   1. Download the shroom app for your Mac.\n#   2. Check it against its published fingerprint — if anything is off,\n#      nothing gets installed.\n#   3. Place it in ~/Applications — no admin password, nothing outside\n#      your home folder.\n#   4. Open it.\n#\n# Run it again anytime — that's also the update: same four steps, newer\n# shroom. If shroom is in the middle of a recording, the script stops\n# and changes nothing.\n#\n# Trouble, questions: https://github.com/bagrat/shroom/issues/new\n# No GitHub? issues@shroom.am works too.",
+          "role": "other",
+          "copy_status": "ratified",
+          "note": "The ratified header comment block of the install script, verbatim with its line breaks and leading spaces. In the file it directly follows '#!/bin/sh'. Inline comments elsewhere aren't ratified copy."
+        }
+      ],
+      "actions": [],
+      "transitions": [
+        {
+          "to": "landing",
+          "trigger": "back"
+        }
+      ],
+      "source_lines": "187, 229-231, 265-291"
+    },
+    {
+      "id": "installing",
+      "kind": "state",
+      "surface": "terminal",
+      "status": "ratified",
+      "summary": "The install script. Internally it runs the version probe (before fetch), then fetch, checksum verify, place in ~/Applications, launch, handoff. The user experiences it as one stream of about 5 s. The pasted one-liner keeps -fsSL and fetches only the tiny script. The app download inside the script shows curl's native progress bar (N10). The script always ends by opening the app (no quarantine ⇒ no prompt). No Gatekeeper, no admin password, nothing signing-shaped on the machine. The menu-bar handoff happens later, at all-set (N20).",
+      "entry_conditions": "The user runs `curl -fsSL https://shroom.am/install | sh` in Terminal: from the landing's install block, or as a re-run after a net drop, a checksum failure or a finished take.",
+      "decided_by": [
+        "P17",
+        "N9",
+        "N10",
+        "N11",
+        "N18",
+        "N20"
+      ],
+      "said_lines": [
+        {
+          "text": "Getting shroom… verified ✓",
+          "role": "terminal-output",
+          "copy_status": "ratified",
+          "note": "Stream line 1; the ellipsis is the single character U+2026. curl's native progress bar shows during the app download (N10)."
+        },
+        {
+          "text": "Installed — opening shroom now.",
+          "role": "terminal-output",
+          "copy_status": "ratified",
+          "note": "Stream line 2."
+        }
+      ],
+      "actions": [],
+      "transitions": [
+        {
+          "to": "install-net-drop",
+          "trigger": "fetch exit"
+        },
+        {
+          "to": "install-checksum-fail",
+          "trigger": "hash mismatch (hash ≠ manifest)"
+        },
+        {
+          "to": "install-unsupported-os",
+          "trigger": "honest stop: the version probe before fetch finds an unsupported macOS"
+        },
+        {
+          "to": "updating",
+          "trigger": "bundle present — the update lane"
+        },
+        {
+          "to": "install-refused-midtake",
+          "trigger": "mid-take (N9): the app's status seam reports recording or paused"
+        },
+        {
+          "to": "first-launch",
+          "trigger": "app placed and launched"
+        }
+      ],
+      "source_lines": "233-246, 257-263, 357-369"
+    },
+    {
+      "id": "install-net-drop",
+      "kind": "failure-state",
+      "surface": "terminal",
+      "status": "ratified",
+      "summary": "The app download didn't finish. The script tells the user to check the connection and run the same command again. Re-running is idempotent.",
+      "entry_conditions": "Classified by the fetch's exit: the in-script app download failed.",
+      "decided_by": [
+        "N18"
+      ],
+      "said_lines": [
+        {
+          "text": "Couldn't finish the download — check your connection and run the same command again.",
+          "role": "terminal-output",
+          "copy_status": "draft",
+          "note": "From the N18 table's 'Said-line draft' column. The section's copy ratification covers only the stream and the source header."
+        }
+      ],
+      "actions": [],
+      "transitions": [
+        {
+          "to": "installing",
+          "trigger": "re-run (idempotent)"
+        }
+      ],
+      "source_lines": "257-259, 361-362"
+    },
+    {
+      "id": "install-checksum-fail",
+      "kind": "failure-state",
+      "surface": "terminal",
+      "status": "ratified",
+      "summary": "The downloaded app didn't match its published fingerprint, so nothing was installed. The message offers N8's two issue doors. A mismatch is never installed.",
+      "entry_conditions": "Classified by the downloaded app's hash ≠ the published manifest.",
+      "decided_by": [
+        "N18",
+        "N8"
+      ],
+      "said_lines": [
+        {
+          "text": "The download didn't check out, so nothing was installed. Run it once more — if it repeats, tell us: https://github.com/bagrat/shroom/issues/new — no GitHub? issues@shroom.am works too.",
+          "role": "terminal-output",
+          "copy_status": "draft",
+          "note": "From the 'Said-line draft' column. The spec sets the URL as code; the backticks are stripped here. The two doors are per N8, and the issue URL may prefill title and body through query params (an N8 scaffold nicety)."
+        }
+      ],
+      "actions": [],
+      "transitions": [
+        {
+          "to": "installing",
+          "trigger": "run once more (re-run; never install on mismatch)"
+        }
+      ],
+      "source_lines": "257-260, 363-364"
+    },
+    {
+      "id": "install-unsupported-os",
+      "kind": "failure-state",
+      "surface": "terminal",
+      "status": "ratified",
+      "summary": "This Mac's macOS is below the floor: an honest stop. The version probe runs before any fetch.",
+      "entry_conditions": "The version probe, run before the fetch, finds macOS older than the supported floor.",
+      "decided_by": [
+        "N18"
+      ],
+      "said_lines": [
+        {
+          "text": "shroom needs macOS N or newer — this Mac is on M.",
+          "role": "terminal-output",
+          "copy_status": "draft",
+          "note": "From the 'Said-line draft' column. N = the supported macOS floor (a scaffold-time fact); M = this Mac's macOS version."
+        }
+      ],
+      "actions": [],
+      "transitions": [],
+      "source_lines": "257-261, 365, 381"
+    },
+    {
+      "id": "updating",
+      "kind": "state",
+      "surface": "terminal",
+      "status": "ratified",
+      "summary": "Not a failure: the update lane. A shroom bundle is already present and no take is open, so the script quits shroom (if it's running), swaps the bundle and relaunches it. The relaunch is tray-only and silent (dock rule), and the disk-backed upload queue rides through. The script is the manual update path, forever. Designed 2026-09-30 (N41): if the command carries --join, the relaunched app opens the invite.",
+      "entry_conditions": "A shroom bundle is present and the app's machine-readable status seam reports no open take (not recording, not paused). The process is never sniffed.",
+      "decided_by": [
+        "N9",
+        "N18",
+        "N41"
+      ],
+      "said_lines": [
+        {
+          "text": "Updated shroom to 1.2.0 — opening it now.",
+          "role": "terminal-output",
+          "copy_status": "draft",
+          "note": "From the 'Said-line draft' column. '1.2.0' is an example: the newly installed version varies."
+        }
+      ],
+      "actions": [],
+      "transitions": [
+        {
+          "to": "the relaunched app, tray-only and silent",
+          "trigger": "quit → swap → relaunch (N9); never swap under a running process"
+        },
+        {
+          "to": "member-welcome · join-already-here · join-switch-confirm (Region 6)",
+          "trigger": "the install command carries --join: the relaunched app opens the invite — member-welcome, or join-already-here / join-switch-confirm when this Mac already has a space (N41 + Region 6 member lane, designed 2026-09-30, awaiting ratification)"
+        }
+      ],
+      "source_lines": "248-252, 262, 300-306, 366, 1468-1471"
+    },
+    {
+      "id": "install-refused-midtake",
+      "kind": "failure-state",
+      "surface": "terminal",
+      "status": "ratified",
+      "summary": "shroom is mid-take (recording or paused, since a paused take is live). The script politely refuses and touches nothing: the sacred-recording law reaches into the installer.",
+      "entry_conditions": "A shroom bundle is present and the app's machine-readable status seam (the agent overlay's seam) reports a take open, recording or paused. The process is never sniffed.",
+      "decided_by": [
+        "N9",
+        "N18"
+      ],
+      "said_lines": [
+        {
+          "text": "shroom is in the middle of a recording — finish that take, then run this again.",
+          "role": "terminal-output",
+          "copy_status": "draft",
+          "note": "Refusal line 1. The update-path blockquote breaks the refusal after 'again.'; the N18 table gives it as one line: \"shroom is in the middle of a recording — finish that take, then run this again. Nothing was changed.\" The copy is draft; the section ratifies only the stream and the source header."
+        },
+        {
+          "text": "Nothing was changed.",
+          "role": "terminal-output",
+          "copy_status": "draft",
+          "note": "Refusal line 2 (see the note on line 1)."
+        }
+      ],
+      "actions": [],
+      "transitions": [
+        {
+          "to": "installing",
+          "trigger": "re-run after the take (N9)"
+        }
+      ],
+      "source_lines": "248-255, 263, 367-368"
+    },
+    {
+      "id": "first-launch",
+      "kind": "state",
+      "surface": "window",
+      "status": "ratified",
+      "summary": "The installer's launch presents shroom as a normal macOS app, with a dock icon and a centered welcome window: no hunting in the menu bar on day one. The tray mushroom appears from the first launch onward regardless. Standing rule: the dock icon shows iff a shroom window is open. When the last window closes, the app retreats to the tray and the dock icon goes away. Launches shroom does itself (the login item, the update relaunch) are silent and tray-only. A launch the user does opens the door, like a tray click (N41, designed 2026-09-30).",
+      "entry_conditions": "The installer placed and launched the app on a Mac with no space: a first launch.",
+      "decided_by": [
+        "U1",
+        "N41"
+      ],
+      "said_lines": [],
+      "actions": [],
+      "transitions": [
+        {
+          "to": "welcome",
+          "trigger": "the welcome window opens (first launch only), opened by the installer's launch"
+        },
+        {
+          "to": "member-welcome",
+          "trigger": "the install command carried --join on a fresh Mac: the app opens at member-welcome instead of welcome (Region 6 member lane, N30, designed 2026-09-30, awaiting ratification)"
+        },
+        {
+          "to": "the tray click's door (N21)",
+          "trigger": "a fresh install onto a Mac that still remembers its space (the app was trashed, ~/.shroom kept) acts exactly as a tray click (N41, designed 2026-09-30, awaiting ratification)"
+        }
+      ],
+      "source_lines": "293-306, 369-370, 1468"
+    },
+    {
+      "id": "welcome",
+      "kind": "state",
+      "surface": "window",
+      "status": "ratified",
+      "summary": "The centered welcome window (U1 + U4). It says what shroom is and what it costs, names the two steps ahead, shows the pre-checked login box, and offers [ Set up my space ] [ Later ]. It is the same ratified window on first launch and on any later day, from idle-unprovisioned's tray click. Set up my space morphs this same window into the wizard: one continuous onboarding surface, never a second window. Closing it ≡ Later, so there is no trap. Designed 2026-09-30 (N30, which amends the ratified window): a quiet line under the buttons, \"Have an invite link?\", becomes a classified paste door. A join link goes to member-welcome; a Cloudflare token goes to the wizard at `token`; anything else gets a quiet line that fades.",
+      "entry_conditions": "Any of: a first launch on a Mac with no space (the installer's launch); the tray click in idle-unprovisioned (N21); or, designed 2026-09-30 (N41), a launch the user did themselves while unprovisioned, which acts as a tray click.",
+      "decided_by": [
+        "U1",
+        "U4",
+        "N12",
+        "N21",
+        "N30",
+        "N41"
+      ],
+      "said_lines": [
+        {
+          "text": "shroom records your screen and hands you a link to share — no account with us, no subscription. Your videos live in your own Cloudflare storage: free for about six hours of video, and pennies after that — about 100 hours for $2.40 a month.",
+          "role": "line",
+          "copy_status": "ratified",
+          "note": "First paragraph. The source wraps are joined with spaces. 'shroom' is bold and 'your own' is italic. 'storage' (the landing says 'account') and the numerals ('100 hours') are deliberate two-register choices: don't make them uniform (N12)."
+        },
+        {
+          "text": "Two steps before your first video: set up your Cloudflare, and let macOS allow recording. About five minutes, once.",
+          "role": "line",
+          "copy_status": "ratified",
+          "note": "Second paragraph. 'set up' is N12's copy correction (it was 'connect')."
+        },
+        {
+          "text": "Start shroom when you log in",
+          "role": "field-label",
+          "copy_status": "ratified",
+          "note": "Checkbox label. The checkbox is visible and checked by default (☑)."
+        },
+        {
+          "text": "Set up my space",
+          "role": "button",
+          "copy_status": "ratified",
+          "note": "The filled button (bold), placed first: the ratified welcome pair puts its filled action first (Law 8's exception)."
+        },
+        {
+          "text": "Later",
+          "role": "button",
+          "copy_status": "ratified",
+          "note": "Second button, not filled."
+        },
+        {
+          "text": "Have an invite link?",
+          "role": "link",
+          "copy_status": "provisional",
+          "note": "The invite door: one quiet line beneath the buttons (N30, designed 2026-09-30, amends the ratified welcome)."
+        },
+        {
+          "text": "Paste your invite link",
+          "role": "placeholder",
+          "copy_status": "provisional",
+          "note": "The paste field that the quiet line becomes (N30). The spec doesn't say whether this is placeholder or label text."
+        },
+        {
+          "text": "That doesn't look like an invite link.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "A quiet line that fades when the paste is neither a join link nor a Cloudflare token (N15's filter-not-scold). There is no transition. The apostrophe is straight ASCII, as in the spec."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Set up my space",
+          "kind": "filled-default",
+          "return_default": true,
+          "goes_to": "wizard (Region 2)",
+          "note": "Morphs this same window into the wizard. Registers the login item iff the box is still checked (U4/N12). Return is the default per Law 8 (one default per surface; this pair's filled action comes first, a deliberate local exception to check at ratification). Law 8 comes from N38, which is awaiting ratification."
+        },
+        {
+          "label": "Later",
+          "kind": "secondary",
+          "return_default": false,
+          "goes_to": "idle-unprovisioned",
+          "note": "Registers the login item iff the box is still checked (U4/N12)."
+        },
+        {
+          "label": "✕",
+          "kind": "close",
+          "return_default": false,
+          "goes_to": "idle-unprovisioned",
+          "note": "Close ≡ Later, exactly, with no special case (N12). It registers the login item iff the box is still checked."
+        },
+        {
+          "label": "Start shroom when you log in",
+          "kind": "other",
+          "return_default": false,
+          "goes_to": "welcome (no transition)",
+          "note": "Checkbox, visible and checked by default. Applied only when the panel is dismissed (either button or ✕), changeable in settings, never registered silently."
+        },
+        {
+          "label": "Have an invite link?",
+          "kind": "text-link",
+          "return_default": false,
+          "goes_to": "welcome (the line becomes the paste field)",
+          "note": "Designed 2026-09-30 (N30), awaiting ratification."
+        },
+        {
+          "label": "Paste your invite link",
+          "kind": "field",
+          "return_default": false,
+          "goes_to": "member-welcome (join link) · wizard at `token` with the paste already landed (Cloudflare token) · stays on welcome with a quiet fading line (anything else)",
+          "note": "Validates the moment a paste lands, with no Continue button (the token field's posture). Designed 2026-09-30 (N30). Law 8: a focused field's Return belongs to its field."
+        }
+      ],
+      "transitions": [
+        {
+          "to": "wizard",
+          "trigger": "Set up my space (Region 2; the same window morphs)"
+        },
+        {
+          "to": "idle-unprovisioned",
+          "trigger": "Later"
+        },
+        {
+          "to": "idle-unprovisioned",
+          "trigger": "✕-close (≡ Later exactly, N12)"
+        },
+        {
+          "to": "member-welcome",
+          "trigger": "a join link pasted into the invite door (N30, designed 2026-09-30, awaiting ratification)"
+        },
+        {
+          "to": "token",
+          "trigger": "a Cloudflare token pasted into the invite door: the wizard opens at `token` with the paste already landed, the recovery door reached early (N30, designed 2026-09-30, awaiting ratification)"
+        }
+      ],
+      "source_lines": "293-343, 371-372"
+    },
+    {
+      "id": "idle-unprovisioned",
+      "kind": "state",
+      "surface": "tray",
+      "status": "ratified",
+      "summary": "The only pre-setup state (U1). There is no menu: the tray click opens the welcome window, the same ratified window any day later, and the dock icon shows while it is open. Right-click opens a one-item native menu, Quit shroom, the only way to quit before a space exists. Before a space exists there is no capture, no library and no local recording. The icon is the plain mushroom, the same as idle-ready's. The former Record-routed context line was retired along with the menu.",
+      "entry_conditions": "No space exists on this Mac and no welcome window is open. Ways in: the welcome was dismissed with Later or ✕; shroom launched itself before setup (the login item), silently and tray-only; Settings' Disconnect this Mac… or Leave this space… sent the app back here (Region 5; ~/.shroom secrets wiped, the login item stays as it was); or member-welcome's Later, with the invite remembered (Region 6, N30, designed 2026-09-30).",
+      "decided_by": [
+        "U1",
+        "N21",
+        "N41"
+      ],
+      "said_lines": [
+        {
+          "text": "Quit shroom",
+          "role": "menu-item",
+          "copy_status": "ratified",
+          "note": "The one item of the right-click native menu (N21)."
+        }
+      ],
+      "actions": [
+        {
+          "label": "tray click",
+          "kind": "other",
+          "return_default": false,
+          "goes_to": "welcome",
+          "note": "The click is the door (N21). The dock icon shows while the window is open."
+        },
+        {
+          "label": "right-click",
+          "kind": "other",
+          "return_default": false,
+          "goes_to": "one-item native menu (Quit shroom)",
+          "note": "The only way to quit before a space exists."
+        },
+        {
+          "label": "Quit shroom",
+          "kind": "other",
+          "return_default": false,
+          "goes_to": "(shroom quits)",
+          "note": "Native menu item."
+        }
+      ],
+      "transitions": [
+        {
+          "to": "welcome",
+          "trigger": "tray click — the same window, any day (N21)"
+        },
+        {
+          "to": "welcome",
+          "trigger": "a launch the user did themselves (Spotlight, Finder, the Dock) acts exactly as a tray click (N41, designed 2026-09-30, awaiting ratification)"
+        },
+        {
+          "to": "member-welcome",
+          "trigger": "tray click while a remembered invite still lives (defined in Region 6, N30, designed 2026-09-30)"
+        },
+        {
+          "to": "join-expired",
+          "trigger": "tray click after the remembered invite has died: the window's join-expired face, shown once; the plain welcome thereafter (defined in Region 6, N30, designed 2026-09-30)"
+        },
+        {
+          "to": "(shroom quits)",
+          "trigger": "right-click → Quit shroom"
+        }
+      ],
+      "source_lines": "343-353, 372-373, 394, 748, 1206-1225, 1496-1499"
+    }
+  ],
+  "scaffold_flags": [
+    {
+      "flag": "The system-requirements sentence's shape is ratified. The macOS floor and the Intel stance are scaffold-time facts (SCK matrix): fill the facts into the ratified shape without rewording, and state them plainly on the page once known. The same floor is the N in install-unsupported-os.",
+      "source_lines": "214-215, 261, 381"
+    },
+    {
+      "flag": "/install never redirects: architecture dispatch lives inside the script (\"this address serves one file, and this is it\"). The same URL serves the source view, so one URL serves two audiences.",
+      "source_lines": "187, 265-268"
+    },
+    {
+      "flag": "The temporary download lands under ~ (\"nothing outside your home folder\"), and the app is placed in ~/Applications with no admin password.",
+      "source_lines": "235, 268-269, 281-282"
+    },
+    {
+      "flag": "The pasted one-liner keeps -fsSL and fetches only the tiny script. The app download inside the script uses curl's native progress bar (N10): no hand-rolled ticker or cursor-control code in the source people are told to read first.",
+      "source_lines": "58, 241-243"
+    },
+    {
+      "flag": "The script always ends by opening the app (no quarantine ⇒ no prompt). No Gatekeeper, no admin password, nothing signing-shaped on the machine.",
+      "source_lines": "235-239"
+    },
+    {
+      "flag": "The OS version probe runs before the fetch (install-unsupported-os). A checksum mismatch is never installed. A re-run after a net drop is idempotent.",
+      "source_lines": "259-261"
+    },
+    {
+      "flag": "Mid-take classification reads the app's machine-readable status seam (the agent overlay's seam, the same door) and never sniffs the process. Recording and paused both refuse, and nothing is touched.",
+      "source_lines": "57, 250-252, 263"
+    },
+    {
+      "flag": "Update lane: quit → swap → relaunch, tray-only and silent. The disk-backed upload queue rides through. Never swap under a running process (a signature mismatch kills it on the next load; verify the exact behavior at scaffold).",
+      "source_lines": "57, 248-250"
+    },
+    {
+      "flag": "The issue link in failure copy may prefill title and body through query params, with everything visible in the URL (N8 scaffold nicety).",
+      "source_lines": "56, 260"
+    },
+    {
+      "flag": "The dock icon shows iff a shroom window is open. The tray mushroom appears from the first launch onward regardless. Popovers never bring the dock icon (Law 6).",
+      "source_lines": "133, 295-300"
+    },
+    {
+      "flag": "Login item (U4/N12): the checkbox is visible and checked by default. The item is registered at panel dismissal (Set up my space, Later or ✕) iff the box is still checked. Never silent; changeable in settings.",
+      "source_lines": "40, 60, 324, 328-330"
+    },
+    {
+      "flag": "Set up my space morphs the same window into the wizard: never a second window.",
+      "source_lines": "309-310"
+    },
+    {
+      "flag": "Invite door paste field (N30, designed): validates the moment a paste lands, with no Continue button. It classifies the paste: a join link, a Cloudflare token, or anything else. The join link's shape is v.<name>.workers.dev/join/<code> (N28), and both the bare and the https:// forms are accepted (N29).",
+      "source_lines": "76-77, 334-341"
+    },
+    {
+      "flag": "Before a space exists there is no capture, no library and no local recording (U1). There are no brew or .dmg lanes in v1 (P17).",
+      "source_lines": "38-39, 350-351, 377-381"
+    },
+    {
+      "flag": "The source view has no backticked scaffold-grade name. The inventory calls it just 'source view' (folded under `landing`), so the fixture uses that literal id.",
+      "source_lines": "265, 1673"
+    },
+    {
+      "flag": "The mermaid diagram uses underscore names (install_net_drop, install_checksum_fail, install_unsupported_os, install_refused_midtake, first_launch, idle_unprovisioned). The spec's scaffold-grade names are kebab-case, and the fixtures use the kebab forms.",
+      "source_lines": "94, 357-375"
+    }
+  ],
+  "open_notes": [
+    "Hero point count, to check at ratification: the spec calls the hero a 'six-point explanation' and the team line 'point six' (lines 54, 205, 1658). The ratified hero draws only five dashed points, and 'tiles between points three and four' matches five-point numbering. Either a point is missing or the count is wrong.",
+    "Law 8's welcome exception is flagged in the spec: 'A deliberate local exception — check it at ratification.' The welcome pair's filled action (Set up my space) comes first rather than rightmost. Its Return default is derived from Law 8 (N38, designed 2026-09-30, awaiting ratification); Region 1 itself never names a Return key (Law 8 is lines 136-143).",
+    "Copy status of the Terminal failure lines: the `installing` heading ratifies copy only for 'stream + source header'. The N18 table's column is headed 'Said-line draft', so install-net-drop, install-checksum-fail, install-unsupported-os, updating and install-refused-midtake lines are marked draft, including the mid-take refusal quoted in the N9 update-path block (lines 233, 254-263).",
+    "The mid-take refusal appears twice: as two lines in the update-path blockquote (254-255) and as one line in the N18 table (263). The fixture uses the two-line form.",
+    "The invite door on the welcome (N30) is designed, not ratified, and amends the ratified welcome. The spec says the join page's Open shroom deep link is the main road, and this paste door is its fallback (and the agent persona's) (lines 334-341).",
+    "N41 amends Region 1's 'every launch is silent' and is awaiting ratification. A launch the user does (Spotlight, Finder, the Dock, a fresh install onto a Mac that remembers its space) acts as a tray click. This is also the rescue when a crowded menu bar hides the mushroom behind the notch (lines 300-306).",
+    "Open question: N41 and Law 5 say an update relaunch restores whatever window was open before it. Region 1 says the script's `updating` lane relaunches tray-only and silent. Whether the restore applies to the script lane is not stated (lines 89, 128-129, 248-249, 304).",
+    "Retired copy that must NOT appear in idle-unprovisioned: the former Record-routed context line “Your first video is one setup away — about five minutes, once.” (retired with the menu by N21, lines 352-353).",
+    "Region 6 extends Region 1 states (lines 1462-1474). In the member lane, `installing` forwards --join to the app at launch. On a fresh Mac the app opens at `member-welcome` instead of `welcome`. If shroom is already installed, the `updating` lane runs and the relaunched app opens the invite (`member-welcome`, `join-already-here` or `join-switch-confirm`). Mid-take gives `install-refused-midtake` and the link stays unused. These are designed, not ratified.",
+    "Law 10 ('copying is always a visible button that reads “Copied”') is a standing law, but Region 1 doesn't draw a Copied face for the landing's [ Copy ] button. No 'Copied' said-line was invented.",
+    "The landing's page chrome is given only as '🍄 shroom wordmark left · GitHub link right.' The 🍄 is likely the mock stand-in for the logo (spec header, lines 18-20). The GitHub link's wording is not specified.",
+    "The demo id 'b4kq9d' is illustrative ('real space; id illustrative').",
+    "Personas: the dev walks Region 1 alone. The guided persona's agent overlays narration on the same machine; Region 6 defines the overlay, not a second machine (lines 169-170). Entry arrow 3 into the landing is the agent fetching the BYO-agent skill.",
+    "The welcome's two-register choices are ratified as-is: 'storage' on the welcome vs 'account' on the landing, and numerals ('100 hours') on the welcome vs words ('about a hundred hours') on the landing tile. Tests must not normalize them (lines 331-333, Law 16).",
+    "There are no Fat-marker status notes in Region 1. Deliberately absent: brew and .dmg lanes (post-v1), any local recording before setup (U1), and the min-OS floor and Intel stance (scaffold-time facts) (lines 377-381).",
+    "All apostrophes in Region 1's said-lines are straight ASCII (') in the spec; quote marks around lines are curly “ ” and are stripped. Tests should match the spec's straight apostrophes."
+  ],
+  "amendments": [
+    {
+      "ledger_id": "N6",
+      "amends": "U6 (placement of the member story)",
+      "summary": "The landing's separate \"Record together\" section dissolves into the hero's team point: \"Your team just accepts an invite and records — no Cloudflare setup for them.\" The claim stands, promoted into the hero."
+    },
+    {
+      "ledger_id": "N12",
+      "amends": "U4 (login-item mechanics) and the welcome copy",
+      "summary": "✕-close ≡ Later exactly, with no special case. Any dismissal registers the login item iff the box is still checked. Copy corrected to \"set up your Cloudflare\" (it was \"connect\"). The storage/account and numeral/word choices stand as deliberate two-register choices."
+    },
+    {
+      "ledger_id": "N20",
+      "amends": "the installer's passive menu-bar handoff",
+      "summary": "The menu-bar handoff moves to `all-set`, where it is earned. The installer just opens the app, with no menu-bar hunting on day one."
+    },
+    {
+      "ledger_id": "N21",
+      "amends": "U1's tray menu (Record routing to the wizard) and N1's Copy last link",
+      "summary": "In idle-unprovisioned the native tray menu is gone: the tray click opens the `welcome` window directly, and right-click gives a one-item native menu, Quit shroom. The Record-routed context line (“Your first video is one setup away — about five minutes, once.”) is retired."
+    },
+    {
+      "ledger_id": "N30",
+      "amends": "the ratified welcome window (Region 1, copy ratified 2026-07-25 / N12)",
+      "summary": "Designed 2026-09-30, awaiting ratification. Adds one quiet line under the welcome's buttons, \"Have an invite link?\". It opens a classified paste door (\"Paste your invite link\"): a join link goes to `member-welcome`, a Cloudflare token goes to the wizard at `token`, and anything else gets \"That doesn't look like an invite link.\""
+    },
+    {
+      "ledger_id": "N41",
+      "amends": "Region 1's \"every launch is silent\" (and refines N9)",
+      "summary": "Designed 2026-09-30, awaiting ratification. Silence applies only to launches shroom does itself (the login item, the update relaunch). A launch the user does (Spotlight, Finder, the Dock, a fresh install onto a Mac that still remembers its space) acts exactly as a tray click. The `updating` lane stays silent, except that an install command carrying --join opens the invite."
+    }
+  ]
+}

@@ -1,0 +1,242 @@
+// The page's faces (Region 4's web-page states) as a person sees them: the real worker.js
+// served over loopback from an in-memory space (worker/test/space-fixture.js — every secret
+// a fixture), a real fMP4 stream behind the live faces, each face opened in headless WebKit,
+// light and dark, screenshotted to tests/e2e/gallery-out/, and its said
+// lines checked verbatim against spec/machine.json (the page follows the viewer's scheme, its
+// player dark under both — both are shot). Never the network, never a real space.
+//
+//   node tests/e2e/pages-gallery.mjs
+//
+// Faces: owner-page (uploading, waiting-conn, waiting-space, fully-live), live, on-its-way,
+// on-its-way-untitled, on-its-way-stalled, unavailable, removed, embed-face (live and
+// removed). Prints one JSON summary; exits non-zero when a face is missing a line, shows
+// another face's, or throws.
+
+import { execFileSync } from "node:child_process";
+import fs from "node:fs";
+import { createServer } from "node:http";
+import os from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { chromium, webkit } from "playwright";
+import { handle } from "../../worker/src/worker.js";
+import { M1, OWNER_AIR, HEALTH, cookieFor, metaKey, space } from "../../worker/test/space-fixture.js";
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const repo = path.resolve(here, "../..");
+const out = path.join(here, "gallery-out");
+const work = fs.mkdtempSync(path.join(os.tmpdir(), "shroom-pages-gallery-"));
+const machine = JSON.parse(fs.readFileSync(path.join(repo, "spec/machine.json"), "utf8"));
+const said = (id) => (machine.states[id]?.said ?? []).map((l) => l.text);
+const summary = { ok: false, faces: {} };
+
+const iso = (ms) => new Date(ms).toISOString();
+const TITLE = "Where the 502s come from";
+const media = (id, mp4 = true) => ({ hls: `rec/${id}/master.m3u8`, mp4: mp4 ? `rec/${id}/video.mp4` : null, poster: `rec/${id}/poster.jpg`, width: 640, height: 400 });
+const meta = (id, over = {}) => JSON.stringify({ schema: 1, id, state: "live", titled: true, createdAt: iso(Date.now() - 60_000), title: TITLE, durationSec: 8, media: media(id), owner: M1, ...over });
+const uploading = (id, done, total, ageMs = 1000, over = {}) => meta(id, { state: "uploading", media: null, progress: { done, total, updatedAt: iso(Date.now() - ageMs) }, ...over });
+
+// Each face: its id in spec/machine.json, the record behind it, how it's opened, and which of the
+// spec's lines it must show (the lines that vary are pinned by the record: 2 of 5 is 40 %).
+const FACES = [
+  { face: "uploading", id: "OwnrUpldOwnrUpld", owner: true, record: (id) => uploading(id, 2, 5), lines: () => said("uploading") },
+  { face: "waiting-conn", id: "OwnrWaitOwnrWait", owner: true, record: (id) => uploading(id, 3, 5, 10 * 60_000), lines: () => said("waiting-conn") },
+  { face: "waiting-space", id: "OwnrSpacOwnrSpac", owner: true, blocked: true, record: (id) => uploading(id, 3, 5, 10 * 60_000), lines: () => [said("waiting-space")[0]] },
+  // Every file up, the restyled page says nothing: the upload line goes (no “Fully live ✓”).
+  { face: "fully-live", id: "OwnrLiveOwnrLive", owner: true, record: (id) => meta(id, { progress: { done: 9, total: 9, updatedAt: iso(Date.now()) } }), lines: () => [], absent: ["Fully live ✓"] }, // the line left the page (DEVIATIONS #46)
+  // Copy thumbnail (N46): beside Copy link once the video plays; the page draws the still and
+  // then the loop from the teaser, stores them, and a click reads “Copied” for a moment.
+  { face: "copy-thumbnail", id: "OwnrThmbOwnrThmb", owner: true, record: (id) => meta(id, { media: { ...media(id), teaser: `rec/${id}/teaser.mp4` }, progress: { done: 9, total: 9, updatedAt: iso(Date.now()) } }),
+    lines: () => [], click: "#th", after: "Copied", pictures: ["jpg"] },
+  // Headless WebKit on Linux draws a video as nothing, so the page keeps the still there
+  // (it never stores a blank loop); Chromium draws the teaser, and the loop is made too.
+  { face: "copy-thumbnail-loop", id: "OwnrLoopOwnrLoop", owner: true, engine: "chromium", record: (id) => meta(id, { media: { ...media(id), teaser: `rec/${id}/teaser.mp4` }, progress: { done: 9, total: 9, updatedAt: iso(Date.now()) } }),
+    lines: () => [], click: "#th", after: "Copied", wait: (env) => [...env.BUCKET.store.keys()].some((k) => k.startsWith("rec/OwnrLoopOwnrLoop/thumb-") && k.endsWith(".gif")), pictures: ["jpg", "gif"] },
+  // The page opened at stop, while the video uploads: the record has no length yet. Once it
+  // goes live the page draws the picture — and the picture carries the length (the chip in
+  // its corner: light text on the dark pill), learned from the status (Bagrat, 0.1.15).
+  { face: "copy-thumbnail-late", id: "OwnrLateOwnrLate", owner: true, engine: "chromium", record: (id) => uploading(id, 2, 5, 1000, { durationSec: null }),
+    golive: (id) => meta(id, { media: { ...media(id), teaser: `rec/${id}/teaser.mp4` }, progress: { done: 9, total: 9, updatedAt: iso(Date.now()) } }),
+    lines: () => [], wait: (env) => [...env.BUCKET.store.keys()].some((k) => k.startsWith("rec/OwnrLateOwnrLate/thumb-") && k.endsWith(".jpg")), pictures: ["jpg"], chip: true },
+  // Copy thumbnail waits until its picture is ready (N46, Bagrat: “Yes disabled until ready”):
+  // the teaser held back, the button stays greyed and its tooltip, hovered, says it's
+  // preparing; once the loop is stored it wakes and says its name. Each tooltip sits 8px
+  // below its button (“tooltips need padding between the button”).
+  { face: "copy-thumbnail-preparing", id: "OwnrPrepOwnrPrep", owner: true, engine: "chromium", record: (id) => meta(id, { media: { ...media(id), teaser: `rec/${id}/teaser.mp4` }, progress: { done: 9, total: 9, updatedAt: iso(Date.now()) } }),
+    lines: () => [], hold: "**/teaser.mp4", hover: { disabled: true, tip: said("owner-page").includes("Preparing the thumbnail…") ? "Preparing the thumbnail…" : "(not in the spec)" } },
+  { face: "copy-thumbnail-ready", id: "OwnrRedyOwnrRedy", owner: true, engine: "chromium", record: (id) => meta(id, { media: { ...media(id), teaser: `rec/${id}/teaser.mp4` }, progress: { done: 9, total: 9, updatedAt: iso(Date.now()) } }),
+    lines: () => [], wait: (env) => [...env.BUCKET.store.keys()].some((k) => k.startsWith("rec/OwnrRedyOwnrRedy/thumb-") && k.endsWith(".gif")), hover: { disabled: false, tip: "Copy thumbnail" } },
+  { face: "live", id: "LiveLiveLiveLive", record: (id) => meta(id), lines: () => [TITLE] },
+  // The viewer's Copy link and Copy thumbnail (N46): Copy thumbnail shows once the owner's
+  // page has made a picture for the title, and the copy wraps it; a viewer never stores one.
+  { face: "live-copied", id: "LiveCopyLiveCopy", record: (id) => meta(id, { thumb: { title: TITLE, jpg: "thumb-0123456789abcdef.jpg" } }), lines: () => [TITLE], click: "#th", after: "Copied", pictures: [] },
+  { face: "live-no-picture", id: "LiveNoThLiveNoTh", record: (id) => meta(id), lines: () => [TITLE], hidden: "#th" },
+  { face: "on-its-way", id: "WayxWayxWayxWayx", record: (id) => uploading(id, 1, 4, 1000, { title: "Untitled — Aug 21", titled: false }), lines: () => said("on-its-way") },
+  { face: "on-its-way-untitled", id: "NeverHeardOfThis", record: null, lines: () => said("on-its-way-untitled").slice(0, 1), absent: [TITLE] },
+  { face: "on-its-way-stalled", id: "StalStalStalStal", record: (id) => uploading(id, 3, 4, 10 * 60_000), lines: () => said("on-its-way-stalled") },
+  { face: "unavailable", id: "OffxOffxOffxOffx", record: (id) => meta(id, { media: null }), lines: () => said("unavailable") },
+  // The mark's words now show beside its logo, so the face carries both of its lines.
+  { face: "removed", id: "GoneGoneGoneGone", record: (id) => JSON.stringify({ schema: 1, id, state: "deleted", title: TITLE }), lines: () => said("removed"), absent: [TITLE] },
+  { face: "embed-face", id: "EmbdEmbdEmbdEmbd", embed: true, record: (id) => meta(id), lines: () => [], absent: [TITLE] },
+  { face: "embed-face · removed", id: "EmbdGoneEmbdGone", embed: true, record: (id) => JSON.stringify({ schema: 1, id, state: "deleted", title: TITLE }), lines: () => said("removed").slice(0, 1) },
+];
+
+/** A real 8 s fMP4 HLS stream and its poster, as the app uploads them. */
+function encode() {
+  const v0 = path.join(work, "v0");
+  fs.mkdirSync(v0);
+  execFileSync("ffmpeg", ["-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc2=size=640x400:rate=30", "-f", "lavfi", "-i", "sine=frequency=440",
+    "-t", "8", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-g", "30", "-c:a", "aac", "-f", "hls", "-hls_time", "2", "-hls_playlist_type", "vod",
+    "-hls_segment_type", "fmp4", "-hls_fmp4_init_filename", "init.mp4", "-hls_segment_filename", "seg_%05d.m4s", "stream.m3u8"], { cwd: v0 });
+  execFileSync("ffmpeg", ["-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc2=size=640x400", "-frames:v", "1", path.join(work, "poster.jpg")]);
+  fs.writeFileSync(path.join(work, "master.m3u8"), "#EXTM3U\n#EXT-X-VERSION:7\n#EXT-X-STREAM-INF:BANDWIDTH=1500000,RESOLUTION=640x400\nv0/stream.m3u8\n");
+  execFileSync("ffmpeg", ["-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc2=size=640x400:rate=30", "-t", "4", "-c:v", "libx264", "-pix_fmt", "yuv420p",
+    "-movflags", "+faststart", "-an", path.join(work, "teaser.mp4")]);
+  const files = { "video.mp4": new TextEncoder().encode("mp4"), "teaser.mp4": new Uint8Array(fs.readFileSync(path.join(work, "teaser.mp4"))) };
+  for (const f of ["master.m3u8", "poster.jpg", ...fs.readdirSync(v0).map((n) => `v0/${n}`)]) files[f] = new Uint8Array(fs.readFileSync(path.join(work, f)));
+  return files;
+}
+
+/** The brightest pixel where the length sits (the picture's bottom-right corner). */
+async function chipIn(browser, bytes) {
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  const b64 = Buffer.from(bytes).toString("base64");
+  const r = await page.evaluate(async (b64) => {
+    const img = new Image(); img.src = "data:image/jpeg;base64," + b64; await img.decode();
+    const W = img.naturalWidth, H = img.naturalHeight, k = document.createElement("canvas"); k.width = W; k.height = H;
+    const x = k.getContext("2d"); x.drawImage(img, 0, 0);
+    const d = x.getImageData(Math.round(W * 0.88), Math.round(H - W * 0.065), Math.round(W * 0.1), Math.round(W * 0.04)).data;
+    let max = 0; for (let i = 0; i < d.length; i += 4) max = Math.max(max, 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]);
+    return { maxLuma: Math.round(max), width: W };
+  }, b64);
+  await context.close();
+  return r;
+}
+
+async function main() {
+  fs.mkdirSync(out, { recursive: true });
+  const files = encode();
+  const env = space();
+  await env.BUCKET.put(".shroom/player/hls.min.js", new Uint8Array(fs.readFileSync(path.join(repo, "worker/vendor/hls.min.js"))));
+  for (const f of FACES) {
+    for (const [name, bytes] of Object.entries(files)) await env.BUCKET.put(`rec/${f.id}/${name}`, bytes);
+    if (f.record) await env.BUCKET.put(metaKey(f.id), f.record(f.id));
+  }
+  const server = createServer(async (req, res) => {
+    const chunks = [];
+    for await (const c of req) chunks.push(c);
+    const r = await handle(new Request(`http://127.0.0.1:${server.address().port}${req.url}`, { method: req.method, headers: req.headers, body: chunks.length ? Buffer.concat(chunks) : undefined }), env, Date.now());
+    res.writeHead(r.status, Object.fromEntries(r.headers));
+    if (r.body) for await (const c of r.body) res.write(c);
+    res.end();
+  });
+  await new Promise((ok) => server.listen(0, "127.0.0.1", ok));
+  const origin = `http://127.0.0.1:${server.address().port}`;
+  const browser = await webkit.launch();
+  /** @type {import("playwright").Browser | null} */
+  let chrome = null;
+  try {
+    const [cname, cvalue] = cookieFor(M1, OWNER_AIR).split("=");
+    for (const f of FACES) {
+      const entry = (summary.faces[f.face] = { shots: [] });
+      const backgrounds = [];
+      if (f.blocked) await env.BUCKET.put(HEALTH, JSON.stringify({ v: 1, uploads: "blocked", at: iso(Date.now()) }));
+      for (const scheme of ["light", "dark"]) {
+        if (f.golive) {
+          await env.BUCKET.put(metaKey(f.id), f.record(f.id));
+          for (const k of [...env.BUCKET.store.keys()].filter((k) => k.startsWith(`rec/${f.id}/thumb-`))) env.BUCKET.store.delete(k);
+        }
+        const engine = f.engine === "chromium" ? (chrome ??= await chromium.launch()) : browser;
+        const context = await engine.newContext({ colorScheme: scheme, viewport: { width: 900, height: 640 } });
+        if (f.owner) await context.addCookies([{ name: cname, value: cvalue, url: origin }]);
+        const page = await context.newPage();
+        if (f.hold) await page.route(f.hold, () => {});
+        const errors = [];
+        page.on("pageerror", (e) => errors.push(String(e.message).slice(0, 200)));
+        await page.goto(`${origin}/${f.id}${f.embed ? "?embed=1" : ""}`);
+        // A held request never lets the network go idle (and Copy thumbnail's 20 s guard would wake it).
+        await page.waitForLoadState(f.hold ? "load" : "networkidle").catch(() => {});
+        if (!f.record || f.record(f.id).includes('"live"')) await page.waitForTimeout(400);
+        let clicked = true;
+        if (f.golive) {
+          // Back to uploading for this scheme's pass, then live under the open page.
+          await env.BUCKET.put(metaKey(f.id), f.golive(f.id));
+          for (let t = 0; !f.wait(env) && t < 150; t++) await page.waitForTimeout(100);
+        }
+        if (f.click) {
+          // The picture is made in the background; the copy waits for the still if it must.
+          await page.waitForFunction(() => document.querySelector("#th") && !document.querySelector("#th").hidden && !document.querySelector("#th").getAttribute("aria-disabled"));
+          await page.click(f.click);
+          clicked = await page.waitForFunction((w) => document.body.innerText.includes(w), f.after, { timeout: 8000 }).then(() => true, () => false);
+          for (let t = 0; f.wait && !f.wait(env) && t < 100; t++) await page.waitForTimeout(100);
+        }
+        const text = await page.evaluate(() => document.body.innerText);
+        const missing = f.lines().filter((l) => !text.includes(l));
+        if (!clicked) missing.push(f.after);
+        if (f.hidden && !(await page.evaluate((q) => document.querySelector(q)?.hidden, f.hidden))) missing.push(`${f.hidden} hidden`);
+        if (f.hover) {
+          // The still is stored first; then the button is hovered and its tooltip read.
+          for (let t = 0; f.wait && !f.wait(env) && t < 150; t++) await page.waitForTimeout(100);
+          if (!f.wait) await page.waitForTimeout(1500);
+          await page.hover("#th");
+          await page.waitForTimeout(600);
+          const tip = await page.evaluate(() => {
+            const b = document.querySelector("#th"), a = getComputedStyle(b, "::after");
+            return { disabled: b.getAttribute("aria-disabled") === "true", text: a.content.replace(/^"|"$/g, ""), shown: a.opacity === "1", gap: parseFloat(a.top) - b.offsetHeight };
+          });
+          entry.tip = tip;
+          if (tip.disabled !== f.hover.disabled) missing.push(f.hover.disabled ? "Copy thumbnail greyed" : "Copy thumbnail awake");
+          if (tip.text !== f.hover.tip || !tip.shown) missing.push(`the tooltip “${f.hover.tip}” (got “${tip.text}”, shown ${tip.shown})`);
+          if (tip.gap !== 8) missing.push(`8px between the button and its tooltip (got ${tip.gap})`);
+          if (f.hover.disabled) {
+            // A click while it waits copies nothing.
+            // Forced: Playwright waits for an aria-disabled button to wake before clicking it.
+            await page.click("#th", { force: true });
+            if (await page.waitForFunction(() => document.body.innerText.includes("Copied"), null, { timeout: 1000 }).then(() => true, () => false)) missing.push("no copy while it waits");
+          }
+        }
+        const shown = (f.absent ?? []).filter((l) => text.includes(l));
+        backgrounds.push(await page.evaluate(() => getComputedStyle(document.body).backgroundColor));
+        const name = `${f.face.replace(/[^a-z0-9-]+/g, "-")}-${scheme}.png`;
+        await page.screenshot({ path: path.join(out, name) });
+        entry.shots.push(name);
+        entry[scheme] = { missing, shown, errors, owner: await page.evaluate(() => !!document.getElementById("t")) };
+        await context.close();
+      }
+      if (f.blocked) await env.BUCKET.delete(HEALTH);
+      if (f.chip) {
+        // The stored still's corner: the length's light text over the dark pill, or not there.
+        const key = [...env.BUCKET.store.keys()].find((k) => k.startsWith(`rec/${f.id}/thumb-`) && k.endsWith(".jpg"));
+        const chip = key ? await chipIn(browser, env.BUCKET.store.get(key)) : null;
+        entry.chip = chip;
+        if (!chip || chip.maxLuma < 180) entry.light.missing.push(`the length on the picture (max light in its corner ${chip?.maxLuma})`);
+      }
+      if (f.click || f.golive) {
+        // The pictures the page stored for the title, kept beside the shots: what a paste shows.
+        for await (const key of [...env.BUCKET.store.keys()].filter((k) => k.startsWith(`rec/${f.id}/thumb-`))) {
+          const ext = key.split(".").pop();
+          fs.writeFileSync(path.join(out, `${f.face}-picture.${ext}`), env.BUCKET.store.get(key));
+          entry.pictures = [...(entry.pictures ?? []), `${f.face}-picture.${ext}`];
+        }
+        for (const ext of f.pictures) if (!(entry.pictures ?? []).includes(`${f.face}-picture.${ext}`)) entry.light.missing.push(`a stored .${ext} picture`);
+      }
+      // The page follows the viewer's scheme (the spec sets none for it; the embed is the
+      // player alone, dark under both): both are shot, and the difference is reported, not required.
+      entry.schemesDiffer = backgrounds[0] !== backgrounds[1];
+      entry.ok = ["light", "dark"].every((s) => entry[s].missing.length === 0 && entry[s].shown.length === 0 && entry[s].errors.length === 0 && entry[s].owner === !!f.owner);
+    }
+  } finally {
+    await browser.close();
+    await chrome?.close();
+    server.close();
+  }
+  summary.out = out;
+  summary.ok = Object.values(summary.faces).every((f) => f.ok);
+}
+
+main().catch((e) => { summary.error = String(e?.stack ?? e).slice(0, 600); }).finally(() => {
+  fs.rmSync(work, { recursive: true, force: true });
+  console.log(JSON.stringify(summary, null, 2));
+  process.exit(summary.ok ? 0 : 1);
+});

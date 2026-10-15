@@ -1,0 +1,4 @@
+{
+  "http_status": 200,
+  "body": "{\n  \"result\": {\n    \"subdomain\": \"shroom-e2e\"\n  },\n  \"success\": true,\n  \"errors\": [],\n  \"messages\": []\n}\n"
+}

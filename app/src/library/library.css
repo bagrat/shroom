@@ -1,0 +1,569 @@
+/* The Library window (N35), in the canvas's look (../lib/theme.css): the header row — the
+   title, Mine · Everyone, the search field — then one grouped card of rows with hairlines,
+   and the count centred at the foot. The empty face is the dimmed mushroom over its line.
+   The native title bar sits above all of it; nothing here draws the window's chrome. */
+
+body {
+  overflow: hidden;
+}
+
+#app,
+.lib,
+.lib > .behind {
+  height: 100%;
+}
+
+.lib {
+  line-height: 1.45;
+}
+
+.lib > .behind {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  padding: 12px 24px 16px;
+}
+
+/* ── the header row ── */
+
+.toolbar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.toolbar h1 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Mine · Everyone: the theme's segmented control. */
+.scope {
+  flex: none;
+}
+
+.toolbar .scope button {
+  padding: 2px 12px;
+}
+
+.toolbar .scope button:disabled {
+  opacity: 0.45;
+}
+
+.search {
+  flex: 0 1 200px;
+  min-width: 120px;
+  height: 28px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  background: var(--field);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.search:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+.search.off {
+  opacity: 0.5;
+}
+
+.search svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  display: block;
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+.search input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  color: var(--fg);
+  background: transparent;
+  border: 0;
+  outline: none;
+  padding: 0;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.search input::placeholder {
+  color: var(--muted);
+}
+
+/* ── the notice (offline), and a greyed row button's note ── */
+
+.notice {
+  flex: none;
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 9px;
+  font-size: 12px;
+  color: var(--fg-2);
+  background: var(--amber-bg);
+}
+
+/* Law 4's line mid-take, the updating line: once, under the header — never inside a row. */
+.notes {
+  flex: none;
+  margin: 0;
+  padding: 0 2px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.behind > .notice + .notes,
+.behind > .notes + .notes {
+  margin-top: -6px;
+}
+
+/* ── the list ── */
+
+.list {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+  overflow-y: auto;
+  /* Rows lay out by the list's own width (a narrow window drops a row's buttons under it). */
+  container-type: inline-size;
+}
+
+/* The empty face (and the no-match line): centred in the room the list has. */
+.list > .empty {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 0 16px 40px;
+}
+
+.empty p {
+  margin: 0;
+  max-width: 320px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--fg-2);
+}
+
+.mush {
+  width: 52px;
+  height: 56px;
+  display: block;
+  opacity: 0.55;
+}
+
+.mush .cap {
+  fill: var(--frost);
+}
+
+.mush .stem {
+  fill: var(--card);
+  stroke: var(--muted);
+  stroke-width: 4;
+  stroke-linejoin: round;
+}
+
+.mush circle {
+  fill: var(--card);
+}
+
+@media (prefers-color-scheme: dark) {
+  .mush .stem {
+    fill: var(--fg-2);
+    stroke: none;
+  }
+  .mush circle {
+    fill: var(--fg);
+  }
+}
+
+/* The grouped card (theme `.card`: hairlines between rows). */
+.lib .rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  flex: none;
+  overflow: hidden;
+}
+
+.lrow {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 12px;
+  min-height: 60px;
+  box-sizing: border-box;
+  padding: 6px 12px;
+}
+
+/* A recovered take pinned on top: every row keeps its dot's room, so the posters line up. */
+.rows.pins .lrow {
+  grid-template-columns: 7px 64px minmax(0, 1fr) auto;
+  column-gap: 10px;
+  padding-left: 10px;
+}
+
+.lead {
+  display: none;
+}
+
+.rows.pins .lead {
+  display: flex;
+  justify-content: center;
+}
+
+.lrow:hover {
+  background: color-mix(in srgb, var(--hover) 55%, transparent);
+}
+
+.lrow.selected,
+.lrow.selected:hover {
+  background: var(--selected);
+}
+
+.lrow.pinned,
+.lrow.pinned:hover {
+  background: color-mix(in srgb, var(--amber) 8%, transparent);
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--amber);
+}
+
+.dot.frost {
+  background: var(--frost);
+}
+
+/* The poster (N35): 16:9, a quiet tile with a play mark until it's there or when there isn't one. */
+.thumb {
+  width: 64px;
+  height: 36px;
+  border-radius: 5px;
+  overflow: hidden;
+  background: var(--seg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.thumb svg {
+  width: 12px;
+  height: 12px;
+  display: block;
+  fill: var(--dim);
+}
+
+.main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.line1 {
+  min-width: 0;
+  display: flex;
+}
+
+.title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.title-edit {
+  font: inherit;
+  color: var(--fg);
+  background: var(--field);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent);
+  outline: none;
+  height: 22px;
+  padding: 0 4px;
+  margin: -1px 0 -1px -5px;
+  width: min(100%, 300px);
+  box-sizing: border-box;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.title-edit::selection {
+  background: color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+.title-edit:disabled {
+  opacity: 0.6;
+}
+
+/* Date · length shrinks first; the state word — often the row's only signal ("Waiting for
+   your space") — is never clipped. */
+.line2 {
+  display: flex;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.line2 .meta {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.line2 .state {
+  flex: none;
+}
+
+/* The separator between date · length and the state word is the row's, not a sentence. */
+.line2 .state::before {
+  content: "·";
+  margin: 0 0.35em;
+  color: var(--muted);
+}
+
+.state.amber {
+  color: var(--amber);
+}
+
+.state.frost {
+  color: var(--frost);
+}
+
+.bar {
+  height: 3px;
+  max-width: 320px;
+  border-radius: 2px;
+  margin-top: 3px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--muted) 22%, transparent);
+}
+
+.bar > span {
+  display: block;
+  height: 100%;
+  background: var(--frost);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+/* Whose video it is — a quiet tag after date · length, never clipped. */
+.line2 .member {
+  flex: none;
+  margin-left: 8px;
+  padding: 0 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 16px;
+  align-self: center;
+  color: var(--frost);
+  background: color-mix(in srgb, var(--frost) 14%, transparent);
+}
+
+/* ── the row's buttons ── */
+
+.tail {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  white-space: nowrap;
+}
+
+.tail .always,
+.tail .hover {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Open page · Delete… show on hover or selection, left of the row's own buttons — which
+   stay where they are. */
+.tail .hover {
+  display: none;
+}
+
+.lrow:hover .tail .hover,
+.lrow.selected .tail .hover {
+  display: flex;
+}
+
+/* Copy link, Save to Movies: outlined, 28 tall. */
+.tail .b {
+  font-size: 13px;
+  box-shadow: none;
+}
+
+.tail .b.plain {
+  min-height: 0;
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--fg);
+}
+
+/* Copy link reads “Copied” for a moment without the row shifting. */
+.tail .always .b.plain:first-child {
+  min-width: 6.6em;
+}
+
+.tail .b.filled {
+  min-height: 0;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 7px;
+}
+
+/* Open page and Delete…: quiet text. */
+.tail .b.link,
+.tail .b.quiet,
+.tail .b.red-text {
+  min-height: 0;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+}
+
+.tail .b.link,
+.tail .b.quiet {
+  color: var(--muted);
+}
+
+.tail .b.link:hover:not(:disabled),
+.tail .b.quiet:hover:not(:disabled) {
+  color: var(--fg);
+}
+
+.tail .b.red-text {
+  color: var(--red);
+}
+
+.tail .b.red-text:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+@media (prefers-color-scheme: light) {
+  .lrow.selected .tail .b.plain {
+    background: var(--card);
+  }
+}
+
+/* A narrow window: the row's buttons drop under its text (the row's own first), so neither
+   the title nor the state word is squeezed. */
+@container (max-width: 600px) {
+  .lrow,
+  .rows.pins .lrow {
+    grid-template-columns: 64px minmax(0, 1fr);
+    row-gap: 6px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+  .rows.pins .lrow {
+    grid-template-columns: 7px 64px minmax(0, 1fr);
+  }
+  .lrow .tail {
+    grid-column: 2;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+  .rows.pins .lrow .tail {
+    grid-column: 3;
+  }
+  .lrow .tail .always {
+    order: -1;
+  }
+}
+
+/* ── the footer ── */
+
+.foot {
+  flex: none;
+  font-size: 12px;
+  text-align: center;
+  color: var(--muted);
+}
+
+/* ── the right-click menu ── */
+
+.menu {
+  position: fixed;
+  z-index: 20;
+  min-width: 172px;
+  box-sizing: border-box;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  background: var(--menu);
+  border: 1px solid var(--pop-edge);
+  border-radius: 9px;
+  box-shadow: var(--shadow);
+}
+
+.menu .mi {
+  font: inherit;
+  text-align: left;
+  height: 30px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--fg);
+  white-space: nowrap;
+}
+
+.menu .mi.red-text {
+  color: var(--red);
+}
+
+.menu .mi:hover:not(:disabled),
+.menu .mi:focus-visible {
+  outline: none;
+  background: var(--menu-on);
+}
+
+.menu .mi:disabled {
+  opacity: 0.4;
+}

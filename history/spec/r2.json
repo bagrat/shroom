@@ -1,0 +1,1290 @@
+{
+  "region": "Region 2 — the cloud setup wizard (ratified 2026-07-20; per-screen copy ratified 2026-07-25; N42 additions designed 2026-09-30, awaiting ratification). UX-STATEMACHINE.md lines 385-713.",
+  "states": [
+    {
+      "id": "account",
+      "kind": "state",
+      "surface": "window",
+      "status": "ratified",
+      "decided_by": [
+        "U1",
+        "N13",
+        "N14",
+        "N17",
+        "N19"
+      ],
+      "summary": "The wizard's first screen: the plan panel (six rows, row one current) over a clean fork asking whether the user already has a Cloudflare account. The plan itself pre-warns both gates (box 1 = the sign-in gate, the card row = the card gate). The plan panel persists over every wizard state; its rows are recorded here, as the spec quotes them at this screen.",
+      "entry_conditions": "Wizard entered (welcome → Set up my space, or idle-unprovisioned → tray click → welcome → Set up my space) and nothing is probeable yet: no valid stored token. Also the re-entry point after a relaunch during the signup trip (the virgin fork).",
+      "said_lines": [
+        {
+          "text": "Your space — set up once, yours forever:",
+          "role": "title",
+          "copy_status": "ratified",
+          "note": "Plan panel heading; the panel spans the whole onboarding and appears on every wizard state."
+        },
+        {
+          "text": "→ A Cloudflare account (free — they'll want a verified email or a Google sign-in)",
+          "role": "line",
+          "copy_status": "ratified",
+          "note": "Plan row 1, as rendered at account (current, → in Frost). Glyph varies by derived state: → current · ✓ done (green) · • still ahead. Parentheticals drop off rows that are behind you."
+        },
+        {
+          "text": "• One access token for shroom (a pre-filled page — review, create, paste)",
+          "role": "line",
+          "copy_status": "ratified",
+          "note": "Plan row 2 (still ahead at account)."
+        },
+        {
+          "text": "• A credit card for storage (their rule, not a charge — free up to about six hours of video)",
+          "role": "line",
+          "copy_status": "ratified",
+          "note": "Plan row 3 (still ahead). Spec soft-wraps this row across two blockquote lines; joined with a single space. The visible card row is the card-gate pre-warn (N14)."
+        },
+        {
+          "text": "• Your link name (part of every link you share — v.yourname.workers.dev)",
+          "role": "line",
+          "copy_status": "ratified",
+          "note": "Plan row 4. Spec italicises 'yourname' (markdown *yourname*); asterisks stripped. When this row is current (name), the parenthetical sheds only its example."
+        },
+        {
+          "text": "• Wiring it up (shroom does this part)",
+          "role": "line",
+          "copy_status": "ratified",
+          "note": "Plan row 5."
+        },
+        {
+          "text": "• Letting macOS allow recording (microphone and screen — a one-time yes each)",
+          "role": "line",
+          "copy_status": "ratified",
+          "note": "Plan row 6 (N17) — per-Mac where rows 1-5 are per-space; it is the permissions chapter."
+        },
+        {
+          "text": "Do you already have a Cloudflare account?",
+          "role": "line",
+          "copy_status": "ratified",
+          "note": "The fork question in the current row's nest."
+        },
+        {
+          "text": "Not yet — take me there",
+          "role": "button",
+          "copy_status": "ratified"
+        },
+        {
+          "text": "I have one",
+          "role": "button",
+          "copy_status": "ratified",
+          "note": "Filled default, rightmost per macOS."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Not yet — take me there",
+          "kind": "secondary",
+          "return_default": false,
+          "goes_to": "account-signing-up",
+          "note": "Opens Cloudflare's signup in the browser."
+        },
+        {
+          "label": "I have one",
+          "kind": "filled-default",
+          "return_default": true,
+          "goes_to": "token",
+          "note": "Explicitly 'the filled default, rightmost per macOS' (line 444) — the dev-majority path. Box 1 ticks at proceed — the plan's one self-reported tick."
+        }
+      ],
+      "transitions": [
+        {
+          "to": "account-signing-up",
+          "trigger": "Not yet — opens signup (N19)"
+        },
+        {
+          "to": "token",
+          "trigger": "I have one — box 1 ticks at proceed"
+        }
+      ],
+      "source_lines": "391-399, 408-435, 439-450, 61 (N13), 62 (N14), 676-678"
+    },
+    {
+      "id": "account-signing-up",
+      "kind": "state",
+      "surface": "window",
+      "status": "ratified",
+      "decided_by": [
+        "N19",
+        "N14"
+      ],
+      "summary": "After 'Not yet' opens Cloudflare's signup, the account row's nest acknowledges the browser trip (reverses N13's no-morph). Account creation stays self-reported.",
+      "entry_conditions": "User chose Not yet — take me there at account; Cloudflare's signup is open in the browser.",
+      "said_lines": [
+        {
+          "text": "Cloudflare's signup is open in your browser — finish there, I'll wait.",
+          "role": "line",
+          "copy_status": "ratified",
+          "note": "Under account's copy-ratified heading; inventory R — N19 (2026-07-25)."
+        },
+        {
+          "text": "Take me there again",
+          "role": "button",
+          "copy_status": "ratified"
+        },
+        {
+          "text": "I signed up",
+          "role": "button",
+          "copy_status": "ratified",
+          "note": "Filled continue."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Take me there again",
+          "kind": "secondary",
+          "return_default": false,
+          "goes_to": "",
+          "note": "Reopens the signup tab — no transition."
+        },
+        {
+          "label": "I signed up",
+          "kind": "filled-default",
+          "return_default": true,
+          "goes_to": "token",
+          "note": "Box 1 still ticks at proceed (the wizard cannot observe the dashboard session). Spec says 'filled continue'; return_default inferred from Law 8 (one filled button per surface) — not stated in Region 2."
+        }
+      ],
+      "transitions": [
+        {
+          "to": "token",
+          "trigger": "I signed up — box 1 ticks"
+        },
+        {
+          "to": "account",
+          "trigger": "Relaunch mid-trip — re-enters at the virgin fork (nothing probeable before a token exists)"
+        }
+      ],
+      "source_lines": "450-461, 66 (N19), 676-677"
+    },
+    {
+      "id": "token",
+      "kind": "state",
+      "surface": "window",
+      "status": "ratified",
+      "decided_by": [
+        "N14",
+        "N18",
+        "N42"
+      ],
+      "summary": "Row two current. Instruction line, the filled Create token in Cloudflare button (the only browser trigger, serving first visit and every retry), then the paste field. Never auto-opens the browser. Paste validates the moment it lands — no Continue button. Pipeline: shape/prefix check → verify endpoint → probe by use. On pass the token is written to ~/.shroom/ (mode 600) before wiring begins.",
+      "entry_conditions": "Box 1 ticked (I have one / I signed up), or a re-entry/repair re-probe finds no valid stored token, or a door into the wizard at token (Reconnect here on an owner-class Mac without the token).",
+      "said_lines": [
+        {
+          "text": "Your space runs on one access token. The page comes pre-filled — review what it grants, two narrow permissions and nothing more, create the token, and paste it here.",
+          "role": "line",
+          "copy_status": "ratified",
+          "note": "Soft-wrapped in spec; joined with a single space."
+        },
+        {
+          "text": "Create token in Cloudflare",
+          "role": "button",
+          "copy_status": "ratified",
+          "note": "Filled."
+        },
+        {
+          "text": "Paste your token",
+          "role": "placeholder",
+          "copy_status": "ratified",
+          "note": "Paste field placeholder."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Create token in Cloudflare",
+          "kind": "filled-default",
+          "return_default": true,
+          "goes_to": "",
+          "note": "Opens the pre-filled token page on dash.cloudflare.com (name + Workers Scripts Write, Workers R2 Storage Write); no state transition. return_default inferred from Law 8 (the surface's one filled button); spec silent on Return while the paste field holds focus."
+        },
+        {
+          "label": "Paste your token",
+          "kind": "field",
+          "return_default": false,
+          "goes_to": "",
+          "note": "Validates the moment a paste lands; no Continue button exists."
+        }
+      ],
+      "transitions": [
+        {
+          "to": "token-garbled",
+          "trigger": "shape check fails"
+        },
+        {
+          "to": "token-wrong-powers",
+          "trigger": "probe-by-use fails"
+        },
+        {
+          "to": "card",
+          "trigger": "paste validates, token persisted — probe pass runs"
+        },
+        {
+          "to": "token-pick-account",
+          "trigger": "the token reaches several accounts (N42)"
+        },
+        {
+          "to": "token-other-account",
+          "trigger": "repair mood — a token for another account"
+        },
+        {
+          "to": "wizard-offline",
+          "trigger": "network drop during verify/probe (any step — N18)"
+        }
+      ],
+      "source_lines": "463-487, 62 (N14), 679-683, 695, 705, 620"
+    },
+    {
+      "id": "token-garbled",
+      "kind": "failure-state",
+      "surface": "window",
+      "status": "ratified",
+      "decided_by": [
+        "N18",
+        "N14"
+      ],
+      "summary": "Garbled or truncated paste caught by the pre-network shape/prefix check; rendered under the token row.",
+      "entry_conditions": "A pasted value fails the shape/prefix check (pre-network).",
+      "said_lines": [
+        {
+          "text": "Tokens sometimes lose characters in the copy — copy it once more.",
+          "role": "line",
+          "copy_status": "draft",
+          "note": "Appears only in the failure-classification table, which carries no copy-ratified mark (see open notes)."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Paste your token",
+          "kind": "field",
+          "return_default": false,
+          "goes_to": "token",
+          "note": "A new paste re-runs the pipeline; resume is immediate."
+        },
+        {
+          "label": "Create token in Cloudflare",
+          "kind": "filled-default",
+          "return_default": true,
+          "goes_to": "",
+          "note": "Still on screen from token's render — the button serves every retry (lines 466-467); not restated in the failure row."
+        }
+      ],
+      "transitions": [
+        {
+          "to": "token",
+          "trigger": "copy once more (new paste — resume immediate)"
+        }
+      ],
+      "source_lines": "479-481, 615, 627-628, 65 (N18), 679-680"
+    },
+    {
+      "id": "token-wrong-powers",
+      "kind": "failure-state",
+      "surface": "window",
+      "status": "ratified",
+      "decided_by": [
+        "N18",
+        "N14"
+      ],
+      "summary": "A real token that lacks the needed powers, caught by probe-by-use (never by echo); the line points back at the create button already on screen.",
+      "entry_conditions": "Verify passes but one harmless probe per permission fails.",
+      "said_lines": [
+        {
+          "text": "This token can't manage your video space — create a fresh one and paste that.",
+          "role": "line",
+          "copy_status": "draft",
+          "note": "Only in the failure-classification table; N14 says the wrong-powers line points back at the create button. See open notes on copy status."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Create token in Cloudflare",
+          "kind": "filled-default",
+          "return_default": true,
+          "goes_to": "",
+          "note": "\"the create button is already on screen\" (line 616)."
+        },
+        {
+          "label": "Paste your token",
+          "kind": "field",
+          "return_default": false,
+          "goes_to": "token",
+          "note": "Resume on new paste."
+        }
+      ],
+      "transitions": [
+        {
+          "to": "token",
+          "trigger": "on new paste"
+        }
+      ],
+      "source_lines": "482-484, 616, 62 (N14), 681-682"
+    },
+    {
+      "id": "token~repair-mood",
+      "kind": "face",
+      "parent": "token",
+      "surface": "window",
+      "status": "provisional",
+      "decided_by": [
+        "N42"
+      ],
+      "summary": "The token state as the repair mood renders it when the token was revoked or expired: a redrafted line replaces the normal instruction, with the create button and paste field. Id assigned by extractor (spec gives no scaffold name for this face).",
+      "entry_conditions": "Repair mood re-probe finds the stored token revoked or expired; the 'One access token for shroom' row un-ticks and becomes current.",
+      "said_lines": [
+        {
+          "text": "Cloudflare stopped accepting shroom's token — create a fresh one and paste it here. Nothing else needs redoing.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "Replaces the draft “…changed its mind about our token…”."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Create token in Cloudflare",
+          "kind": "filled-default",
+          "return_default": true,
+          "goes_to": "",
+          "note": "Opens the pre-filled token page. return_default inferred from Law 8."
+        },
+        {
+          "label": "Paste your token",
+          "kind": "field",
+          "return_default": false,
+          "goes_to": "token",
+          "note": "The paste field; runs token's pipeline."
+        }
+      ],
+      "transitions": [
+        {
+          "to": "token-other-account",
+          "trigger": "a fresh token pasted for a different Cloudflare account"
+        },
+        {
+          "to": "token",
+          "trigger": "paste — handled by token's own pipeline (this face is token itself); what follows a valid repair paste is not drawn in the spec"
+        }
+      ],
+      "source_lines": "649, 701, 705, 90 (N42)"
+    },
+    {
+      "id": "token-pick-account",
+      "kind": "state",
+      "surface": "window",
+      "status": "provisional",
+      "decided_by": [
+        "N42"
+      ],
+      "summary": "Not a failure: the verified token reaches two or more Cloudflare accounts, so the nest asks which one holds the videos before anything is created. The choice is the space's, for good. One account → this never appears.",
+      "entry_conditions": "Verify lists more than one account for the pasted token.",
+      "said_lines": [
+        {
+          "text": "This token works for more than one Cloudflare account — which one should hold your videos?",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "Soft-wrapped in spec; joined."
+        },
+        {
+          "text": "Use this account",
+          "role": "button",
+          "copy_status": "provisional",
+          "note": "Filled."
+        },
+        {
+          "text": "✓ A Cloudflare account — Bagrat's Account",
+          "role": "status",
+          "copy_status": "provisional",
+          "note": "Row one's fact after the choice; the account name varies."
+        }
+      ],
+      "actions": [
+        {
+          "label": "◉ Bagrat's Account · ○ Acme Engineering",
+          "kind": "field",
+          "return_default": false,
+          "goes_to": "",
+          "note": "Radio list of the accounts the token reaches; names are example data."
+        },
+        {
+          "label": "Use this account",
+          "kind": "filled-default",
+          "return_default": true,
+          "goes_to": "card",
+          "note": "return_default inferred from Law 8 (one filled button per surface) — not stated in Region 2."
+        }
+      ],
+      "transitions": [
+        {
+          "to": "card",
+          "trigger": "Use this account"
+        }
+      ],
+      "source_lines": "489-498, 621, 90 (N42), 695-696"
+    },
+    {
+      "id": "token-other-account",
+      "kind": "failure-state",
+      "surface": "window",
+      "status": "provisional",
+      "decided_by": [
+        "N42"
+      ],
+      "summary": "Repair mood only: a pasted token belongs to a different Cloudflare account than the space's. Never builds a second space by accident.",
+      "entry_conditions": "In the repair mood, the pasted token's account isn't the space's.",
+      "said_lines": [
+        {
+          "text": "This token is for a different Cloudflare account than your space — create it in the account that holds v.myshroom.workers.dev.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "The link name varies (spec renders it in backticks — monospace formatting stripped)."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Paste your token",
+          "kind": "field",
+          "return_default": false,
+          "goes_to": "token",
+          "note": "Resume on new paste."
+        },
+        {
+          "label": "Create token in Cloudflare",
+          "kind": "filled-default",
+          "return_default": true,
+          "goes_to": "",
+          "note": "Not restated for this face; inherited from token's render (the button serves every retry, lines 466-467)."
+        }
+      ],
+      "transitions": [
+        {
+          "to": "token",
+          "trigger": "on new paste"
+        }
+      ],
+      "source_lines": "622, 653, 705-706"
+    },
+    {
+      "id": "card",
+      "kind": "state",
+      "surface": "window",
+      "status": "ratified",
+      "decided_by": [
+        "N14"
+      ],
+      "summary": "The visible gate step under the plan's card row. One probe pass runs at paste-validate (write-class probe, R2-enabled probe, subdomain GET); its gates surface here, email first then card. Existing-R2 accounts tick the row silently, seeing neither gate.",
+      "entry_conditions": "Paste validated and token persisted (or account chosen at token-pick-account); probe pass ran.",
+      "said_lines": [],
+      "actions": [],
+      "transitions": [
+        {
+          "to": "gate-email",
+          "trigger": "email unverified (8000077)"
+        },
+        {
+          "to": "gate-card",
+          "trigger": "storage needs a card"
+        },
+        {
+          "to": "name",
+          "trigger": "cleared, no subdomain yet (10007)"
+        },
+        {
+          "to": "wiring",
+          "trigger": "cleared, subdomain exists"
+        },
+        {
+          "to": "wizard-offline",
+          "trigger": "network drop during the probe pass (any step — N18)"
+        }
+      ],
+      "source_lines": "500-522, 62 (N14), 683-689, 620"
+    },
+    {
+      "id": "gate-email",
+      "kind": "failure-state",
+      "surface": "window",
+      "status": "ratified",
+      "decided_by": [
+        "N14",
+        "N18"
+      ],
+      "summary": "Cloudflare's email-verification gate under the card row; auto-polls with a spinner (the only progress surface, no refresh affordance). Mostly greets fresh email signups.",
+      "entry_conditions": "Write-class probe returns 403 8000077 (numeric match). Also reachable from wiring's fallback classification if the gate closes between the card step and wiring.",
+      "said_lines": [
+        {
+          "text": "Cloudflare wants your email verified before it opens storage. Check your inbox for their message — I'll notice the moment it's done and carry on.",
+          "role": "line",
+          "copy_status": "ratified",
+          "note": "Soft-wrapped in spec; joined."
+        }
+      ],
+      "actions": [],
+      "transitions": [
+        {
+          "to": "card",
+          "trigger": "auto-poll clears"
+        },
+        {
+          "to": "wizard-offline",
+          "trigger": "network drop (any step — N18)"
+        }
+      ],
+      "source_lines": "502-510, 517-522, 617, 684, 686"
+    },
+    {
+      "id": "gate-card",
+      "kind": "failure-state",
+      "surface": "window",
+      "status": "ratified",
+      "decided_by": [
+        "N14",
+        "N18",
+        "N42"
+      ],
+      "summary": "The card gate under the card row. The button opens Cloudflare's own billing page (shroom never sees payment data); a spinner marks the auto-poll watch. Also the repair mood's state when the card is removed / storage switched off.",
+      "entry_conditions": "R2-enabled probe returns the needs-payment class (after the email gate, if both). Repair mood: card removed, storage switched off. Also wiring's fallback classification.",
+      "said_lines": [
+        {
+          "text": "One step left on Cloudflare's side: adding a card switches storage on. The free tier stays free — the card is their rule, not a charge.",
+          "role": "line",
+          "copy_status": "ratified",
+          "note": "The same ratified line in the repair mood."
+        },
+        {
+          "text": "Add credit card",
+          "role": "button",
+          "copy_status": "ratified",
+          "note": "Filled."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Add credit card",
+          "kind": "filled-default",
+          "return_default": true,
+          "goes_to": "",
+          "note": "Opens Cloudflare's billing page (card or PayPal); no transition — the spinner watches. return_default inferred from Law 8."
+        }
+      ],
+      "transitions": [
+        {
+          "to": "card",
+          "trigger": "auto-poll clears"
+        },
+        {
+          "to": "wizard-offline",
+          "trigger": "network drop (any step — N18)"
+        }
+      ],
+      "source_lines": "511-522, 618, 650, 685, 687, 702"
+    },
+    {
+      "id": "name",
+      "kind": "state",
+      "surface": "window",
+      "status": "ratified",
+      "decided_by": [
+        "N15",
+        "U8",
+        "N18"
+      ],
+      "summary": "Row four current. The row is the ask; the URL is the field — the name is typed in place inside https://v.___.workers.dev/…. Explicit claim only (filled, Enter-equivalent, disabled until the local charset check passes); no availability pre-check. The charset guard filters, never scolds (stateless). Both endings tick the row with the fact — the plan's only outcome-bearing tick.",
+      "entry_conditions": "Guard: the account has no workers.dev subdomain (10007) after the card row clears. Skip path: an existing subdomain ticks the row itself and the wizard never stops here.",
+      "said_lines": [
+        {
+          "text": "https://v.",
+          "role": "field-label",
+          "copy_status": "ratified",
+          "note": "URL prefix before the in-place name field (shown as `https://v.` in spec). With the “v” clash it reads with the label shroom instead."
+        },
+        {
+          "text": ".workers.dev/…",
+          "role": "field-label",
+          "copy_status": "ratified",
+          "note": "URL suffix after the field. Spec mock shows the typed value 'myshroom' in the field."
+        },
+        {
+          "text": "This one's a keeper: choose a name you'll be glad to see in a year.",
+          "role": "line",
+          "copy_status": "ratified"
+        },
+        {
+          "text": "Claim this name",
+          "role": "button",
+          "copy_status": "ratified",
+          "note": "Filled."
+        },
+        {
+          "text": "Lowercase letters, numbers, and dashes.",
+          "role": "line",
+          "copy_status": "ratified",
+          "note": "Quiet line that appears, then fades, when a character outside the set is typed (it never lands); uppercase lowercases silently. Stateless — no transition."
+        },
+        {
+          "text": "✓ Your link name — v.myshroom.workers.dev",
+          "role": "status",
+          "copy_status": "ratified",
+          "note": "Row fact after claim or on the skip path (pre-existing subdomain); shown on the plan from then on. The name varies; backticks in spec are monospace formatting."
+        }
+      ],
+      "actions": [
+        {
+          "label": "https://v.[ name ].workers.dev/… (name field)",
+          "kind": "field",
+          "return_default": false,
+          "goes_to": "",
+          "note": "Return in the focused field belongs to Claim this name (Law 8)."
+        },
+        {
+          "label": "Claim this name",
+          "kind": "filled-default",
+          "return_default": true,
+          "goes_to": "wiring",
+          "note": "Enter-equivalent; the only trigger (never a typing debounce); disabled until the charset check passes. A 10031 answer goes to name-taken."
+        }
+      ],
+      "transitions": [
+        {
+          "to": "name-taken",
+          "trigger": "10031 at claim"
+        },
+        {
+          "to": "wiring",
+          "trigger": "Claim this name — accepted"
+        },
+        {
+          "to": "wizard-offline",
+          "trigger": "network drop (any step — N18)"
+        }
+      ],
+      "source_lines": "524-553, 63 (N15), 688, 690, 692"
+    },
+    {
+      "id": "name-taken",
+      "kind": "failure-state",
+      "surface": "window",
+      "status": "ratified",
+      "decided_by": [
+        "N15",
+        "N18"
+      ],
+      "summary": "The claimed name is taken: field edges red, the value stays put for editing, inline retry.",
+      "entry_conditions": "Claim returns 10031.",
+      "said_lines": [
+        {
+          "text": "That name's taken — try another.",
+          "role": "line",
+          "copy_status": "ratified"
+        }
+      ],
+      "actions": [
+        {
+          "label": "name field (value stays, red edges)",
+          "kind": "field",
+          "return_default": false,
+          "goes_to": "",
+          "note": "Return belongs to Claim this name."
+        },
+        {
+          "label": "Claim this name",
+          "kind": "filled-default",
+          "return_default": true,
+          "goes_to": "name",
+          "note": "Inline retry."
+        }
+      ],
+      "transitions": [
+        {
+          "to": "name",
+          "trigger": "inline retry — value stays"
+        }
+      ],
+      "source_lines": "545-546, 619, 690-691"
+    },
+    {
+      "id": "name~v-clash",
+      "kind": "face",
+      "parent": "name",
+      "surface": "window",
+      "status": "provisional",
+      "decided_by": [
+        "N42",
+        "U8"
+      ],
+      "summary": "Not a state — a derived label. If the account already holds a Worker named v that isn't shroom's, wiring never touches it and the space's pages take the label shroom; the URL field shows the right label from the start and the row's fact says it once. Id assigned by extractor.",
+      "entry_conditions": "Probe pass (before the name is claimed) finds a non-shroom Worker named v in the account.",
+      "said_lines": [
+        {
+          "text": "✓ Your link name — shroom.myname.workers.dev (“v” was already taken in your Cloudflare)",
+          "role": "status",
+          "copy_status": "provisional",
+          "note": "Row fact; soft-wrapped in spec, joined with a single space; inner “v” quotes are part of the line. The name varies."
+        }
+      ],
+      "actions": [],
+      "transitions": [],
+      "source_lines": "555-561, 1681 (inventory)"
+    },
+    {
+      "id": "wiring",
+      "kind": "state",
+      "surface": "window",
+      "status": "ratified",
+      "decided_by": [
+        "N16",
+        "N18",
+        "N3",
+        "N4",
+        "R6"
+      ],
+      "summary": "Zero affordances: a spinner and one calm line carry ~6 idempotent REST calls (private bucket, the v Worker, the Worker secret, member #1 enrollment, ~40 s subdomain propagation) and the silent self-check. Closing the window mid-wire is safe. In the repair mood, wiring runs again when the page or its key is gone (the click was the consent).",
+      "entry_conditions": "Card row cleared and a subdomain exists, or a name was just claimed. Repair mood: the page (Worker) or its key is gone.",
+      "said_lines": [
+        {
+          "text": "Setting up your space… switching your name on takes about a minute, one time only.",
+          "role": "line",
+          "copy_status": "ratified",
+          "note": "The calm line (also used, ratified, in the repair mood re-wire)."
+        }
+      ],
+      "actions": [],
+      "transitions": [
+        {
+          "to": "done",
+          "trigger": "self-check passes"
+        },
+        {
+          "to": "space-found",
+          "trigger": "a space is already there — Found your space (N42)"
+        },
+        {
+          "to": "wizard-offline",
+          "trigger": "offline mid-wire"
+        },
+        {
+          "to": "gate-email",
+          "trigger": "fallback classification — the email gate closes between the card step and wiring"
+        },
+        {
+          "to": "gate-card",
+          "trigger": "fallback classification — the card gate closes between the card step and wiring"
+        }
+      ],
+      "source_lines": "563-581, 521-522, 64 (N16), 651, 689, 692-693, 697, 703, 708-711"
+    },
+    {
+      "id": "wizard-offline",
+      "kind": "failure-state",
+      "surface": "window",
+      "status": "ratified",
+      "decided_by": [
+        "N18",
+        "N16"
+      ],
+      "summary": "One offline state for the whole wizard, rendered under whichever row is current: the spinner rests, one amber line, auto-resume on reconnect. No retry affordance.",
+      "entry_conditions": "Transport-level failure at any wizard step.",
+      "said_lines": [
+        {
+          "text": "Everything so far is saved — I'll pick up right here when you're back online.",
+          "role": "line",
+          "copy_status": "ratified",
+          "note": "Amber line."
+        }
+      ],
+      "actions": [],
+      "transitions": [
+        {
+          "to": "(derived — the current row's state)",
+          "trigger": "reconnect — auto-resume; re-probe routes by derived state"
+        }
+      ],
+      "source_lines": "576-579, 620, 64 (N16), 65 (N18), 708-711"
+    },
+    {
+      "id": "space-found",
+      "kind": "state",
+      "surface": "window",
+      "status": "provisional",
+      "decided_by": [
+        "N42",
+        "U10"
+      ],
+      "summary": "A pasted token's probes find a space already there (a Mac replaced, or the owner adding a token-holding Mac): rows three to five tick in order and the wiring row's nest says this instead of the calm line; then row six becomes current — permissions are per-Mac.",
+      "entry_conditions": "Probes find an existing space for the pasted token's account.",
+      "said_lines": [
+        {
+          "text": "Found your space — v.myshroom.workers.dev, 14 videos. This Mac is joined.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "Link name and video count vary (count kept as figures per Law 16)."
+        }
+      ],
+      "actions": [],
+      "transitions": [
+        {
+          "to": "done",
+          "trigger": "row six becomes current"
+        }
+      ],
+      "source_lines": "583-590, 49 (U10), 90 (N42), 697-698"
+    },
+    {
+      "id": "done",
+      "kind": "state",
+      "surface": "window",
+      "status": "ratified",
+      "decided_by": [
+        "N17",
+        "U5"
+      ],
+      "summary": "The resting beat: five ticks, row six current, its nest previewing the permissions choreography. Nothing auto-fires (no dialog to an empty chair). perm-preamble is fused in. Row six ticks only at the end of permissions; the menu-bar handoff lives at all-set.",
+      "entry_conditions": "The fifth tick lands (wiring's self-check passed), or space-found ticked rows three to five.",
+      "said_lines": [
+        {
+          "text": "macOS will ask twice: your microphone first — one click — then screen recording, which opens System Settings.",
+          "role": "line",
+          "copy_status": "ratified",
+          "note": "Spec gives this and the next line as one quote across a line break; the N17 ledger renders them as two lines."
+        },
+        {
+          "text": "Flip the switch next to shroom there. When macOS offers to quit and reopen the app, say yes — I'll be right where you left off.",
+          "role": "line",
+          "copy_status": "ratified"
+        },
+        {
+          "text": "Allow recording",
+          "role": "button",
+          "copy_status": "ratified",
+          "note": "Filled."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Allow recording",
+          "kind": "filled-default",
+          "return_default": true,
+          "goes_to": "perm-mic",
+          "note": "Starts Region 3's chapter in the same window (U5). return_default inferred from Law 8 (one filled button per surface) — not stated in Region 2."
+        }
+      ],
+      "transitions": [
+        {
+          "to": "perm-mic",
+          "trigger": "Allow recording — Region 3 opens at perm-mic"
+        }
+      ],
+      "source_lines": "592-609, 67 (N17), 693-694, 698"
+    },
+    {
+      "id": "space-degraded",
+      "kind": "banner",
+      "surface": "banner",
+      "status": "provisional",
+      "decided_by": [
+        "N42",
+        "N38",
+        "N21"
+      ],
+      "summary": "The wizard's afterlife on the owner's token-holding Mac: any auth- or space-class failure surfaces as the config popover's banner under the amber dot. Start recording stays live (capture is local; takes wait and drain after repair). Members never see it (their side is space-needs-owner).",
+      "entry_conditions": "An auth- or space-class failure on a publish or the periodic self-check, any time after setup (diagram: from idle-ready).",
+      "said_lines": [
+        {
+          "text": "Your space needs you — new videos wait safely on this Mac.",
+          "role": "banner",
+          "copy_status": "provisional"
+        },
+        {
+          "text": "Reconnect your space",
+          "role": "button",
+          "copy_status": "provisional",
+          "note": "Filled."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Reconnect your space",
+          "kind": "filled-default",
+          "return_default": false,
+          "goes_to": "repair-mood",
+          "note": "Filled, but a banner's own filled button is never the Return default (Law 8). Opens the Settings window on Space in the repair mood."
+        }
+      ],
+      "transitions": [
+        {
+          "to": "repair-mood",
+          "trigger": "Reconnect your space — Settings, Space tab"
+        }
+      ],
+      "source_lines": "634-640, 656-658, 662-663, 398-399, 699-700"
+    },
+    {
+      "id": "space-degraded~no-token-mac",
+      "kind": "banner",
+      "parent": "space-degraded",
+      "surface": "banner",
+      "status": "provisional",
+      "decided_by": [
+        "N42",
+        "N33"
+      ],
+      "summary": "The different banner an owner-class Mac without the token reads for the same break. Id assigned by extractor.",
+      "entry_conditions": "space-degraded's cause, on an owner-class Mac that does not hold the Cloudflare token.",
+      "said_lines": [
+        {
+          "text": "Your space needs a fix — open shroom on the Mac you set it up on, or reconnect here with a fresh token.",
+          "role": "banner",
+          "copy_status": "provisional"
+        },
+        {
+          "text": "Reconnect here",
+          "role": "button",
+          "copy_status": "provisional",
+          "note": "Not bolded in spec."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Reconnect here",
+          "kind": "secondary",
+          "return_default": false,
+          "goes_to": "token",
+          "note": "The wizard at token, making this Mac a token-holder too. Spec does not mark it filled; banner buttons are never the Return default (Law 8)."
+        }
+      ],
+      "transitions": [
+        {
+          "to": "token",
+          "trigger": "Reconnect here"
+        }
+      ],
+      "source_lines": "659-661"
+    },
+    {
+      "id": "repair-mood",
+      "kind": "state",
+      "surface": "window",
+      "status": "provisional",
+      "decided_by": [
+        "N42",
+        "N36"
+      ],
+      "summary": "The Settings window's Space tab in the repair mood: the plan re-probed from scratch (no stored step), whatever broke un-ticked, the first broken row current with Region 2's own state beneath it. No second repair UI exists. Id from the diagram node repair_mood.",
+      "entry_conditions": "Reconnect your space from the space-degraded banner.",
+      "said_lines": [],
+      "actions": [],
+      "transitions": [
+        {
+          "to": "token",
+          "trigger": "the token died (revoked or expired) — renders as token~repair-mood"
+        },
+        {
+          "to": "gate-card",
+          "trigger": "storage switched off (card removed)"
+        },
+        {
+          "to": "wiring",
+          "trigger": "the page or its key is gone — rewire"
+        },
+        {
+          "to": "space-storage-gone",
+          "trigger": "the bucket is gone"
+        },
+        {
+          "to": "name-changed",
+          "trigger": "the link name changed"
+        }
+      ],
+      "source_lines": "642-655, 700-707"
+    },
+    {
+      "id": "space-storage-gone",
+      "kind": "failure-state",
+      "surface": "window",
+      "status": "provisional",
+      "decided_by": [
+        "N42"
+      ],
+      "summary": "Repair mood only: the bucket is missing; the Wiring it up row un-ticks. Offers fresh storage or disconnecting this Mac.",
+      "entry_conditions": "Repair-mood re-probe finds the space's bucket missing.",
+      "said_lines": [
+        {
+          "text": "Your space's storage is gone from Cloudflare — the videos that were in it can't come back. Set up fresh storage?",
+          "role": "line",
+          "copy_status": "provisional"
+        },
+        {
+          "text": "Set it up fresh",
+          "role": "button",
+          "copy_status": "provisional",
+          "note": "Bold (filled) in the repair table (652); plain in the failure table (623)."
+        },
+        {
+          "text": "Disconnect this Mac…",
+          "role": "link",
+          "copy_status": "provisional",
+          "note": "Quiet text opening the Disconnect sheet (Region 5)."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Set it up fresh",
+          "kind": "filled-default",
+          "return_default": true,
+          "goes_to": "",
+          "note": "Resume 'on choice'; destination not drawn in the spec. return_default inferred from Law 8."
+        },
+        {
+          "label": "Disconnect this Mac…",
+          "kind": "text-link",
+          "return_default": false,
+          "goes_to": "Disconnect sheet (Region 5 — N36)",
+          "note": "Region 5 describes it as quiet text; sheet under N23's law."
+        }
+      ],
+      "transitions": [],
+      "source_lines": "623, 652, 704"
+    },
+    {
+      "id": "name-changed",
+      "kind": "failure-state",
+      "surface": "window",
+      "status": "provisional",
+      "decided_by": [
+        "N42"
+      ],
+      "summary": "Repair mood only: the account's workers.dev name differs from the space's, so shared links stopped opening; changing it back in Cloudflare restores them. Re-probed when the window regains focus.",
+      "entry_conditions": "Repair-mood re-probe finds the account's workers.dev name differs from the space's.",
+      "said_lines": [
+        {
+          "text": "Your link name changed in Cloudflare, so links you've shared stopped opening. Changing it back brings them back.",
+          "role": "line",
+          "copy_status": "provisional"
+        }
+      ],
+      "actions": [],
+      "transitions": [
+        {
+          "to": "(derived — re-probe)",
+          "trigger": "the window regains focus — re-probe on return"
+        }
+      ],
+      "source_lines": "624, 654, 707"
+    },
+    {
+      "id": "re-entry-as-settings",
+      "kind": "state",
+      "surface": "window",
+      "status": "provisional",
+      "decided_by": [
+        "N36",
+        "N21"
+      ],
+      "summary": "Re-entry after success: the all-ticked panel is the space's settings surface — since N36 the Settings window's Space tab in its inspection mood, with Disconnect this Mac… at its foot. Name taken from the section heading (not backticked).",
+      "entry_conditions": "Re-entry through the gear in the config popover's footer and all probes pass.",
+      "said_lines": [
+        {
+          "text": "Your space is ready — nothing to redo.",
+          "role": "line",
+          "copy_status": "draft",
+          "note": "Only in the unmarked failure-classification table (and Region 5's D — N36 inspection mood)."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Disconnect this Mac…",
+          "kind": "text-link",
+          "return_default": false,
+          "goes_to": "Disconnect sheet (Region 5 — N36)"
+        }
+      ],
+      "transitions": [],
+      "source_lines": "396-397, 625, 665-669"
+    }
+  ],
+  "scaffold_flags": [
+    {
+      "flag": "Extractor-assigned ids. These have no backticked scaffold name in the spec: name~v-clash, token~repair-mood and space-degraded~no-token-mac (faces); repair-mood (from the diagram node repair_mood); re-entry-as-settings (from the ### heading). Rename if the scaffold names them differently.",
+      "source_lines": "555-561, 642-649, 659-661, 665, 700"
+    },
+    {
+      "flag": "The wizard is a window, never a popover: it has to survive the browser round-trip. Dock icon shows only while a window is open.",
+      "source_lines": "401-406"
+    },
+    {
+      "flag": "No step counter. Every entry (first run, after a crash, a week later) re-probes in this order: token verify → gates → bucket → Worker → subdomain, and marks the plan from the answers. It never reprints a blank plan. All wiring calls are idempotent.",
+      "source_lines": "429-431"
+    },
+    {
+      "flag": "Box 1 ticks at proceed and is self-reported: the plan's one exception. On re-entry a valid stored token re-proves it. The gates are probed, never assumed.",
+      "source_lines": "432-435"
+    },
+    {
+      "flag": "Plan glyphs: → current (Frost) · ✓ done (green) · • still ahead. Nothing in the plan looks clickable, so no checkboxes. Parentheticals drop off rows that are behind you. At name, the current row sheds only its example.",
+      "source_lines": "419-422, 527-529"
+    },
+    {
+      "flag": "Action buttons inside nested step content sit flush-left across the wizard.",
+      "source_lines": "424-425"
+    },
+    {
+      "flag": "Row six is per-Mac and rows 1-5 are per-space. A second Mac redoes only row six. The plan spans the whole onboarding.",
+      "source_lines": "425-427"
+    },
+    {
+      "flag": "token never auto-opens the browser. Create token in Cloudflare is the only browser trigger, for the first visit and every retry. It opens the pre-filled dash.cloudflare.com token page (name + Workers Scripts Write, Workers R2 Storage Write).",
+      "source_lines": "465-470"
+    },
+    {
+      "flag": "A paste validates the moment it lands; there is no Continue button. Pipeline order: shape/prefix check (pre-network; verify-endpoint routing by prefix) → verify endpoint → probe by use (one harmless call per permission, never by echo).",
+      "source_lines": "476-484"
+    },
+    {
+      "flag": "On pass, the token goes to ~/.shroom/ (mode 600) BEFORE wiring begins. Never argv, chat or logs.",
+      "source_lines": "486-487"
+    },
+    {
+      "flag": "Probe pass at paste-validate: write-class probe (403 8000077 → gate-email), R2-enabled probe (needs-payment → gate-card), subdomain GET (10007 → name). Gates surface email first, then card. Existing-R2 accounts tick the card row silently.",
+      "source_lines": "502-506, 517-520"
+    },
+    {
+      "flag": "Gates auto-poll under a spinner. The spinner is the only progress surface: no refresh affordance, no polling dots.",
+      "source_lines": "507, 511, 520-521"
+    },
+    {
+      "flag": "gate-card: the card is entered on Cloudflare's own billing page (card or PayPal). shroom never sees payment data.",
+      "source_lines": "511-513"
+    },
+    {
+      "flag": "wiring keeps the same gate classifications as a fallback. A gate that closes between the card step and wiring routes the same way there.",
+      "source_lines": "521-522"
+    },
+    {
+      "flag": "name: claim is explicit only, never on a typing debounce. Claim this name is filled and Enter-equivalent, disabled until the local charset check passes. No availability pre-check: taken is discovered at claim. Uppercase lowercases silently. Out-of-set characters never land, and a hint appears then fades. Exact charset/length edges are scaffold-time facts. The subdomain is created by PUT under the same token.",
+      "source_lines": "537-544, 553"
+    },
+    {
+      "flag": "The as-you-type charset guard is stateless: no transition happens (N18 nuance).",
+      "source_lines": "65, 541-544"
+    },
+    {
+      "flag": "“v” clash: detected in the probe pass before the name is claimed. Wiring never touches the foreign v Worker. The label shroom is derived; this is not a state.",
+      "source_lines": "555-561"
+    },
+    {
+      "flag": "Wiring: about 6 REST calls. The bucket is private from birth (r2.dev never enabled) and the v Worker is the only read path. Places the Worker's narrow R2-scoped parent token as a Worker secret. Silently enrolls the owner as member #1. The ~40 s propagation wait rides the calm line. Ends with a silent self-check: derive the S3 keys, then write/read/delete one tiny object through the real path.",
+      "source_lines": "565-572, 579-581"
+    },
+    {
+      "flag": "wiring has zero affordances: no cancel, no button, no stage narration. Closing the window mid-wire is safe; re-entry re-probes and resumes.",
+      "source_lines": "568-572"
+    },
+    {
+      "flag": "Copy never names internals: 10007, verify-by-prefix, empty-bindings echo, the propagation poll, key derivation.",
+      "source_lines": "630-632"
+    },
+    {
+      "flag": "Every failure row is a first-class state with its own render and transitions, rendered under the plan's current row.",
+      "source_lines": "627-628"
+    },
+    {
+      "flag": "space-degraded classification: any auth- or space-class failure on a publish or on the periodic self-check → the config popover banner under the amber dot.",
+      "source_lines": "636-640"
+    },
+    {
+      "flag": "Repair mood = the same machine. The plan is re-probed from scratch and the first broken row is current with Region 2's own state. No second repair UI. Re-wiring needs no extra confirmation: the click was the consent.",
+      "source_lines": "642-651"
+    },
+    {
+      "flag": "Start recording stays live while degraded. Takes wait and drain after the repair. The stop sequence opens the page when the page still answers (N40).",
+      "source_lines": "656-658"
+    },
+    {
+      "flag": "Members never see repair tooling. Their side of the same break is space-needs-owner (N34).",
+      "source_lines": "662-663"
+    },
+    {
+      "flag": "token-other-account must never build a second space by accident.",
+      "source_lines": "653"
+    },
+    {
+      "flag": "name-changed is re-probed when the window regains focus.",
+      "source_lines": "654"
+    },
+    {
+      "flag": "Relaunching during the signup trip re-enters at the virgin fork (account).",
+      "source_lines": "458-459"
+    },
+    {
+      "flag": "Typography: Region 2 copy uses straight ASCII apostrophes (') throughout (no ’; verified: 67 straight, 0 curly in lines 385-713). Ellipses are the single character …, dashes are em dashes —; the only curly quotes inside a said-line are the “v” in the v-clash row fact. Tests should match the spec's characters exactly.",
+      "source_lines": "385-713"
+    }
+  ],
+  "open_notes": [
+    "Copy status of token-garbled / token-wrong-powers: their lines appear only in the Failure classification table, which has no copy-ratified mark. The token screen's copy was ratified 2026-07-25, and N14 says “the wrong-powers line points back at” the create button. Marked draft to be safe; confirm whether leg 5 ratified them.",
+    "“Your space is ready — nothing to redo.” (re-entry after success) appears only in the unmarked failure table and in Region 5's inspection mood (D — N36). Marked draft. The table row says “all ✅”, but the plan glyph for done is ✓.",
+    "space-found's line (“Found your space — v.myshroom.workers.dev, 14 videos. This Mac is joined.”) differs from U10's ledger wording (“Found your space — 14 videos. This Mac is joined.”): N42 inserts the link name. N42 says it “gives U10's recovery line its place” but does not mark this an amendment (the spec header says amending rows say **amends** and name it), so it is not listed under amendments. Check at ratification.",
+    "space-found entry differs between prose and diagram. Prose: “when a pasted token's probes find a space already there”, rendered in the wiring row's nest with rows three to five ticking in order. The diagram draws it as wiring --> space_found.",
+    "space-storage-gone: Set it up fresh resumes “on choice (N42)”, but its destination is not drawn and the diagram has no outgoing edge from space_storage_gone. The button is bold in the repair table (line 652) and plain in the failure table (line 623).",
+    "name-changed has no outgoing edge in the diagram. The prose says only “re-probe on return” / “re-probed when the window regains focus”.",
+    "Things the diagram omits that the prose states: wizard-offline as a node (drawn only as a note, “can interpose at any step”); account-signing-up's relaunch → account; wiring's fallback to gate-email/gate-card; Reconnect here → token on an owner-class Mac without the token; Take me there again (no transition). The wizard-offline transitions on token, card, gate-email, gate-card, name and wiring were added from N18's “network drop, any step”. The spec does not list the steps, so tests should cover every step that makes a network call.",
+    "Return defaults inferred from Law 8 (the surface's one filled button), with no explicit statement in Region 2: I signed up (account-signing-up), Create token in Cloudflare (token and its failure faces), Use this account (token-pick-account), Add credit card (gate-card), Allow recording (done), Set it up fresh (space-storage-gone). Only I have one (“the filled default”, line 444) and Claim this name (“Enter equivalent”, line 538; Law 8 names it) are explicit. Law 8 itself comes from N38, which is autonomous and awaiting ratification. The spec does not say what Return does while token's paste field has focus.",
+    "token-other-account: the repair table names only the line. The Create token in Cloudflare button and the paste field are inherited from token's render, not restated for this face.",
+    "The diagram's idle_ready --> space_degraded edge starts at idle-ready, which is Region 3's state. Where the banner sits in the popover (priority 2 of the N38 banner order) is defined outside this range (line 771).",
+    "space-degraded as a state dates from 2026-07-20 (its heading: “state 2026-07-20; surface designed 2026-09-30 — N42”); only its banner surface, copy and the repair mood are N42. The inventory marks the whole row D — N42, so it is recorded as provisional.",
+    "Plan row renders outside the first screen are not quoted, apart from the outcome-bearing facts (“✓ Your link name — …”, “✓ A Cloudflare account — Bagrat's Account”). Rows behind you drop their parentheticals, but the exact strings are not given, so tests should not assert them verbatim.",
+    "Cross-region doors into token that this range does not define: welcome's “Have an invite link?” paste door (N30: a token → the wizard at token), and Settings Space's “Add a token here” for owner-class Macs without the token (Region 5, around line 1190). The inspection → repair-mood re-probe is described in Region 5 (line 1184).",
+    "Region 2 has no “Fat-marker status” notes and no “check at ratification” markers. Every N42 item here (token-pick-account, the v clash, space-found, the space-degraded surface + repair mood, token-other-account, space-storage-gone, name-changed, the redrafted token line, entry arrow 4) is autonomous and awaiting Bagrat's ratification.",
+    "The region heading says only “ratified 2026-07-20” (structure). Copy is ratified per subsection on 2026-07-25 (the plan, account, token, card, name, wiring, done)."
+  ],
+  "amendments": [
+    {
+      "ledger_id": "N42",
+      "amends": "U8",
+      "summary": "When the account already holds a non-shroom Worker named v, the space's pages take the label shroom instead. The name row's fact says it once. This applies to that case only; it is a derived label, not a state."
+    },
+    {
+      "ledger_id": "N42",
+      "amends": "Region 2 entry arrow 4 (space-degraded, 2026-07-20: “opens at `token` only”)",
+      "summary": "Reconnect your space now opens the repair mood in Settings → Space. The plan is re-probed and the first broken row is current with its own Region 2 state (token · gate-card · wiring · space-storage-gone · name-changed · token-other-account)."
+    },
+    {
+      "ledger_id": "N42",
+      "amends": "repair token line draft (“…changed its mind about our token…”)",
+      "summary": "Redrafted as “Cloudflare stopped accepting shroom's token — create a fresh one and paste it here. Nothing else needs redoing.”"
+    },
+    {
+      "ledger_id": "N19",
+      "amends": "N13 (deliberate no-morph after “Not yet”)",
+      "summary": "account-signing-up acknowledges the browser trip (Take me there again / I signed up). Signup stays self-reported, and box 1 still ticks at proceed."
+    },
+    {
+      "ledger_id": "N14",
+      "amends": "N13 (box-1 wording) and the 2026-07-20 invisible post-paste-sweep surfacing",
+      "summary": "The card content moves to its own plan row, which becomes the gate pre-warn. Gates surface visibly under the card row as gate-email then gate-card. The sweep survives as the mechanism underneath."
+    },
+    {
+      "ledger_id": "N17",
+      "amends": "perm-preamble as a separate beat; the five-row plan",
+      "summary": "The plan gains a sixth row (permissions). perm-preamble fuses into done, which rests with row six current. Region 3 opens at perm-mic."
+    },
+    {
+      "ledger_id": "N18",
+      "amends": "N16 (wiring-only offline)",
+      "summary": "wizard-offline generalizes the offline handling into one state for the whole wizard. It renders under whichever row is current and auto-resumes on reconnect by derived state."
+    },
+    {
+      "ledger_id": "N21",
+      "amends": "Region 2 entry arrow 2 (tray menu + Record-routed context line)",
+      "summary": "The tray menu is retired. idle-unprovisioned's tray click opens welcome directly. Re-entry after success goes through the gear in config's footer."
+    },
+    {
+      "ledger_id": "N36",
+      "amends": "Re-entry-as-settings surface",
+      "summary": "The all-ticked panel now lives in the Settings window's Space tab (inspection mood, with the repair mood and Disconnect this Mac… at its foot)."
+    }
+  ]
+}

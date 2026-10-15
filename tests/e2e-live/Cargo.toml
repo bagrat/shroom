@@ -1,0 +1,15 @@
+[package]
+name = "shroom-e2e-live"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+description = "L2 on the dedicated test account (TESTING-PLAN D3): pinned, swept, driven by a per-run token with the product's powers."
+
+[dependencies]
+shroom-cloud = { path = "../../crates/shroom-cloud" }
+serde_json = "1"
+
+[dev-dependencies]
+shroom-cloudfake = { path = "../../crates/shroom-cloudfake" }

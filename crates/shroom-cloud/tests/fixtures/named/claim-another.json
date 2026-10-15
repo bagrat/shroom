@@ -1,0 +1,4 @@
+{
+  "http_status": 409,
+  "body": "{\n  \"result\": null,\n  \"success\": false,\n  \"errors\": [\n    {\n      \"code\": 10036,\n      \"message\": \"Account already has an associated subdomain.\"\n    }\n  ],\n  \"messages\": []\n}\n"
+}

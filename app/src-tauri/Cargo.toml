@@ -1,0 +1,54 @@
+[package]
+name = "shroom-app"
+version = "0.1.16"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "shroom"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon", "image-png", "macos-private-api"] }
+tauri-nspanel = "2.1"
+objc2-app-kit = { version = "0.3", features = ["NSRunningApplication", "NSWorkspace", "NSApplication", "NSWindow", "NSPanel", "NSResponder", "NSScreen", "NSGraphics", "NSPasteboard", "NSStatusItem", "NSStatusBarButton", "NSButton", "NSControl", "NSView", "NSEvent"] }
+objc2 = "0.6"
+block2 = "0.6"
+objc2-foundation = { version = "0.3", features = ["NSArray", "NSDictionary", "NSString", "NSValue", "NSGeometry", "NSError", "NSNotification", "NSDistributedNotificationCenter", "NSOperation", "NSURL", "block2", "NSFormatter", "NSPersonNameComponents", "NSPersonNameComponentsFormatter"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+libc = "0.2"
+shroom-capture = { path = "../../crates/shroom-capture" }
+shroom-record = { path = "../../crates/shroom-record" }
+shroom-encode = { path = "../../crates/shroom-encode" }
+shroom-core = { path = "../../crates/shroom-core" }
+shroom-storage = { path = "../../crates/shroom-storage" }
+shroom-upload = { path = "../../crates/shroom-upload" }
+shroom-cloud = { path = "../../crates/shroom-cloud" }
+shroom-update = { path = "../../crates/shroom-update" }
+getrandom = "0.3"
+ureq = { version = "3", default-features = false, features = ["rustls", "platform-verifier"] }
+# UI automation for the test harness only — an HTTP WebDriver server on 127.0.0.1.
+# Never in the app anyone runs: off by default, built only by the UI test command.
+tauri-plugin-wdio-webdriver = { version = "1.4", optional = true }
+
+[dependencies.shroom-testpattern]
+path = "../../crates/shroom-testpattern"
+optional = true
+
+[features]
+# Nothing by default: a plain build is the app anyone gets (B5, whole-spec audit b4 #18).
+default = []
+# The test harness's modes (`--grant`, `--selftest`, `--drive`, …): hooks it drives through
+# LaunchServices. Only ever built on purpose — every dev build path passes
+# `--features dev-harness` (app/package.json's `build:dev`) — and refused at startup in any
+# identifier that isn't a dev one.
+dev-harness = ["dep:shroom-testpattern"]
+webdriver = ["dep:tauri-plugin-wdio-webdriver"]
+
+[dev-dependencies]
+tempfile = "3"

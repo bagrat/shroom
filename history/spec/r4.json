@@ -1,0 +1,812 @@
+{
+  "region": "Region 4 — stop → the link → the recipient (UX-STATEMACHINE.md lines 907-1074; ratified 2026-07-20; copy ratified 2026-08-21 — owner page N26, recipient faces N27; N40 edges designed 2026-09-30, awaiting ratification)",
+  "states": [
+    {
+      "id": "stopping",
+      "kind": "state",
+      "parent": "",
+      "surface": "other",
+      "status": "ratified",
+      "summary": "The stop beat: the take is finalized (measured 102 ms) and the video's id exists, so its page exists (P9). Stop means published, with no publish prompt (§5.3). Three ways out: the owner page opens (the normal case), stopped-offline, or stopped-stranded. The two N40 exits are designed, not ratified. `stopping` is the scaffold-grade name (Region 3, line 863, and the inventory, line 1696); the Region 4 diagram draws the same beat as `finalizing`.",
+      "entry_conditions": "A deliberate Stop from the paused popover (Region 3 paused → stopping), or Get link on a saved take (recovered-take's banner, disk-full-stop), which runs the normal stop sequence from the saved file.",
+      "said_lines": [],
+      "actions": [],
+      "transitions": [
+        {
+          "to": "owner-page",
+          "trigger": "opens keyed URL — cookie set, 302 to clean (the page is reachable and can ever fill; this includes a space that serves pages but can't take uploads yet, which opens with the waiting-space upload line)"
+        },
+        {
+          "to": "stopped-offline",
+          "trigger": "offline at stop — the link in the popover (N40): the short reachability probe of the space's page, capped well under a second, can't reach it"
+        },
+        {
+          "to": "stopped-stranded",
+          "trigger": "the space can't take it (N40): member-revoked, space-gone, or an owner's space whose page is gone"
+        }
+      ],
+      "decided_by": [
+        "§5.3",
+        "P9",
+        "POC §5",
+        "N40"
+      ],
+      "source_lines": "909-910, 914-917, 921-922, 960-961, 1052-1053, 1059, 1061; Region 3 `stopping` 863, 893, 897, 902; inventory 1696"
+    },
+    {
+      "id": "owner-page",
+      "kind": "state",
+      "parent": "",
+      "surface": "web-page",
+      "status": "ratified",
+      "summary": "The real shareable page, opened in the browser at stop. It is never a preview or a processing screen. From top to bottom: the editable title field, which is the only chrome (no header, no wordmark, no name, per U3); the player (first frame, play, scrub bar, `0:00 / 4:32`, fullscreen); [ Copy link ], which is the page's one copy door, with the upload line and a thin bar beside it; then, bottom-right, the owner switch, “made with shroom”, and the mark. Download appears only once the single-file MP4 exists, and it is second-class (R11). Only the editable title and the switch are owner-only. The address bar shows the clean link because the key died at the 302. The clipboard is never touched (N1). Rename at any time later is a metadata write, live worldwide on the next load (R4). It works from this page in owner-mode or from the Library. Owner-mode by role is N40 and still provisional: the cookie names a member, a member's own pages give them the title only, and owner-class browsers get full owner-mode on every page of the space.",
+      "entry_conditions": "Stop finalized and the space's page is reachable and can fill. The app opens `v.<name>.workers.dev/<id>?k=<one-time-key>`. The Worker validates k, sets a long-lived owner cookie that names the member, and 302-redirects to the clean URL. The page also opens later on any visit from a browser carrying a qualifying cookie (owner-mode persists per-browser, rendered server-side), when stopped-offline reconnects, and through the Library's Open page (the owner-keyed door, N35).",
+      "said_lines": [
+        {
+          "text": "Untitled — Aug 21",
+          "role": "placeholder",
+          "copy_status": "ratified",
+          "note": "The title field's placeholder. The date varies (the day's date). Left untouched, the placeholder becomes the title, so a shared link is never blank."
+        },
+        {
+          "text": "0:00 / 4:32",
+          "role": "other",
+          "copy_status": "ratified",
+          "note": "The player's time readout (position / length). The values vary. The spec writes it in backticks, not as quoted copy."
+        },
+        {
+          "text": "Copy link",
+          "role": "button",
+          "copy_status": "ratified"
+        },
+        {
+          "text": "Copied",
+          "role": "status",
+          "copy_status": "ratified",
+          "note": "Copy link's label for a moment after the click."
+        },
+        {
+          "text": "Download",
+          "role": "button",
+          "copy_status": "ratified",
+          "note": "Present only once the single-file MP4 exists; second-class (R11). The spec gives no button styling beyond “second-class”; the action is recorded as secondary on that basis."
+        },
+        {
+          "text": "made with shroom",
+          "role": "field-label",
+          "copy_status": "ratified",
+          "note": "The owner switch's label, beside the mark. The same three words are the hover tooltip recipients get."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Untitled — Aug 21",
+          "kind": "field",
+          "return_default": true,
+          "goes_to": "owner-page (self — metadata write)",
+          "note": "The title field, focused on arrival. Enter or click-away saves. Left untouched, the placeholder becomes the title. Clearing the title and leaving the field brings the previous title back (N35). Per Law 8, a focused field's Return belongs to its field."
+        },
+        {
+          "label": "Copy link",
+          "kind": "filled-default",
+          "return_default": false,
+          "goes_to": "owner-page (label reads “Copied” for a moment)",
+          "note": "The page's one copy door (N1); copies the clean link. No copy affordance ever emits a keyed URL. It is filled, but Return belongs to the focused title field, and the spec names no Return default for this button."
+        },
+        {
+          "label": "Download",
+          "kind": "secondary",
+          "return_default": false,
+          "note": "Appears only when the single-file MP4 exists; second-class (R11)."
+        },
+        {
+          "label": "made with shroom",
+          "kind": "switch",
+          "return_default": false,
+          "note": "The owner switch bottom-right, beside the mark. Shown to owner-class only (N40). Flipping it is the space-global mark setting: one metadata write, which the Worker reads at render (U3)."
+        },
+        {
+          "label": "the mark (small shroom icon)",
+          "kind": "other",
+          "return_default": false,
+          "goes_to": "home",
+          "note": "Bottom-right; hover “made with shroom”; links home."
+        },
+        {
+          "label": "play",
+          "kind": "other",
+          "return_default": false,
+          "note": "Player control."
+        },
+        {
+          "label": "scrub bar",
+          "kind": "other",
+          "return_default": false,
+          "note": "Player control."
+        },
+        {
+          "label": "fullscreen",
+          "kind": "other",
+          "return_default": false,
+          "note": "Player control."
+        }
+      ],
+      "transitions": [
+        {
+          "to": "owner-page",
+          "trigger": "title Enter/blur — metadata write"
+        },
+        {
+          "to": "uploading",
+          "trigger": "(unlabeled in the diagram) the page opens while the upload queue drains"
+        }
+      ],
+      "decided_by": [
+        "U2",
+        "N26",
+        "N1",
+        "U9",
+        "U3",
+        "N35",
+        "N40",
+        "R11"
+      ],
+      "source_lines": "914-920, 924-944, 985-1009, 1038-1045, 1053-1055; inventory 1697"
+    },
+    {
+      "id": "uploading",
+      "kind": "face",
+      "parent": "owner-page",
+      "surface": "web-page",
+      "status": "ratified",
+      "summary": "The owner page's upload line while the queue drains, with a thin bar. The config popover's status line mirrors it (U9 / N21).",
+      "entry_conditions": "The owner page is open and this video's upload is in progress.",
+      "said_lines": [
+        {
+          "text": "Uploading — 40%. Your link already works.",
+          "role": "status",
+          "copy_status": "ratified",
+          "note": "The percentage varies. A thin bar sits under or beside it."
+        }
+      ],
+      "actions": [],
+      "transitions": [
+        {
+          "to": "fully-live",
+          "trigger": "queue drained"
+        },
+        {
+          "to": "waiting-conn",
+          "trigger": "offline"
+        }
+      ],
+      "decided_by": [
+        "U9",
+        "N26",
+        "N21"
+      ],
+      "source_lines": "920, 932, 946, 1055-1057"
+    },
+    {
+      "id": "waiting-conn",
+      "kind": "face",
+      "parent": "owner-page",
+      "surface": "web-page",
+      "status": "ratified",
+      "summary": "The owner page's upload line when the Mac dropped offline after the page opened. The face is in the ratified diagram (inventory: “waiting”, R — N26). Its wording is an N40 line variant, so the copy is provisional.",
+      "entry_conditions": "The Mac went offline after the owner page opened, while the upload was still draining.",
+      "said_lines": [
+        {
+          "text": "Waiting for connection — your link already works.",
+          "role": "status",
+          "copy_status": "provisional",
+          "note": "N40 line variant. The config popover's status-line counterpart (Region 3, line 777) reads “Waiting for connection — your links already work.”"
+        }
+      ],
+      "actions": [],
+      "transitions": [
+        {
+          "to": "uploading",
+          "trigger": "back online"
+        }
+      ],
+      "decided_by": [
+        "N26",
+        "N40"
+      ],
+      "source_lines": "946-947, 1057-1058; inventory 1697"
+    },
+    {
+      "id": "waiting-space",
+      "kind": "face",
+      "parent": "owner-page",
+      "surface": "web-page",
+      "status": "provisional",
+      "summary": "The owner page's upload line when the space still serves pages but can't take uploads yet. The page opens as usual and its upload line says so. The spec never gives this face a scaffold name: `waiting-space` is a descriptive placeholder.",
+      "entry_conditions": "At stop, or later: the space still serves pages but can't take uploads yet (a dead token, storage switched off). Members see the named-owner variant.",
+      "said_lines": [
+        {
+          "text": "Waiting for your space — your link already works.",
+          "role": "status",
+          "copy_status": "provisional"
+        },
+        {
+          "text": "Waiting for Bagrat's space — your link already works.",
+          "role": "status",
+          "copy_status": "provisional",
+          "note": "The members' variant. The owner's name varies."
+        }
+      ],
+      "actions": [],
+      "transitions": [],
+      "decided_by": [
+        "N40"
+      ],
+      "source_lines": "922, 946-949; ledger N40 line 88"
+    },
+    {
+      "id": "fully-live",
+      "kind": "face",
+      "parent": "owner-page",
+      "surface": "web-page",
+      "status": "ratified",
+      "summary": "The owner page's upload line once the queue has drained. The config popover's status line mirrors it (U9 / N21).",
+      "entry_conditions": "This video's upload queue has drained.",
+      "said_lines": [
+        {
+          "text": "Fully live ✓",
+          "role": "status",
+          "copy_status": "ratified"
+        }
+      ],
+      "actions": [],
+      "transitions": [],
+      "decided_by": [
+        "U9",
+        "N26"
+      ],
+      "source_lines": "920, 932, 949, 1056"
+    },
+    {
+      "id": "owner-page-member",
+      "kind": "face",
+      "parent": "owner-page",
+      "surface": "web-page",
+      "status": "provisional",
+      "summary": "Owner-mode by role (N40): on a member's own pages, the member's owner-mode is the editable title only. The mark switch is space-global (U3), so it belongs to owner-class Macs. The member sees no switch. When the space can't take uploads, the member's upload line names the owner. The spec doesn't name this variant: `owner-page-member` is a descriptive placeholder.",
+      "entry_conditions": "The browser's owner cookie names a member who made this video and is not owner-class. The Worker checks the video's maker against the cookie.",
+      "said_lines": [
+        {
+          "text": "Waiting for Bagrat's space — your link already works.",
+          "role": "status",
+          "copy_status": "provisional",
+          "note": "The members' form of the waiting-space line. The owner's name varies."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Untitled — Aug 21",
+          "kind": "field",
+          "return_default": true,
+          "goes_to": "owner-page-member (self — metadata write)",
+          "note": "The title, the member's only owner-mode control. It behaves like the owner page's title field."
+        }
+      ],
+      "transitions": [],
+      "decided_by": [
+        "N40",
+        "U3",
+        "N5"
+      ],
+      "source_lines": "941-944, 948-949, 987-995; ledger U2 line 43, N40 line 88"
+    },
+    {
+      "id": "stopped-offline",
+      "kind": "state",
+      "parent": "",
+      "surface": "popover",
+      "status": "provisional",
+      "summary": "An offline Mac can't load the page, so the paused popover morphs in place: no window, no dock icon. It shows the link, a Copy link button, and the promise that the page opens by itself when the connection returns. Copy link is explicit (N1). Recipients meanwhile get on-its-way, without a title until the details arrive. When the connection returns, the owner page opens, keyed, exactly as a live stop would. If a take is running by then, it waits for that take to end (the quiet-take law, N41). It fires once, only for the latest stop, and only while it's still “now”: several offline stops open one page, the newest. The page opens by itself only if you're back within the hour and shroom is still running. Otherwise, including after a quit or restart, the Library row carries the link and a login launch stays silent. Click-away dismisses the popover, and the page still opens later.",
+      "entry_conditions": "During finalize, the short reachability probe of the space's page (capped well under a second) can't reach it. This also covers Get link while offline from a saved take's banner (recovered-take) or from disk-full-stop.",
+      "said_lines": [
+        {
+          "text": "Your link is ready.",
+          "role": "title",
+          "copy_status": "provisional"
+        },
+        {
+          "text": "You're offline — it's already safe to share. The page opens by itself the moment you're back.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "Carries the meaning of beat 6's superseded ratified line."
+        },
+        {
+          "text": "v.myshroom.workers.dev/b4kq9d",
+          "role": "other",
+          "copy_status": "provisional",
+          "note": "The link, shown in the popover (backticked in the spec). The name and the id vary."
+        },
+        {
+          "text": "Copy link",
+          "role": "button",
+          "copy_status": "provisional"
+        },
+        {
+          "text": "Copied",
+          "role": "status",
+          "copy_status": "provisional",
+          "note": "Comes from Law 10 (line 147: copying is always a visible button that reads “Copied”). The region text doesn't restate it for this popover."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Copy link",
+          "kind": "filled-default",
+          "return_default": true,
+          "goes_to": "stopped-offline (label reads “Copied”)",
+          "note": "The only filled button on the surface. Return-triggering is inferred from Law 8 (one default per surface, and Return triggers it); the region text doesn't say. Copying is explicit (N1)."
+        },
+        {
+          "label": "click-away",
+          "kind": "close",
+          "return_default": false,
+          "goes_to": "popover dismissed — the page still opens later; the Library row carries the link meanwhile",
+          "note": "The spec doesn't name the state the popover lands in. Esc presumably dismisses (line 787 “Esc dismisses”; Law 9 “Esc always means back”), but this popover doesn't restate it."
+        }
+      ],
+      "transitions": [
+        {
+          "to": "owner-page",
+          "trigger": "back online — the page opens itself, keyed, as a live stop would. Conditions: the newest offline stop only, back within the hour, and shroom still running. It waits for any running take to end."
+        }
+      ],
+      "decided_by": [
+        "N40",
+        "N1",
+        "N41"
+      ],
+      "source_lines": "921, 951-973, 1059-1060; inventory 1698"
+    },
+    {
+      "id": "stopped-stranded",
+      "kind": "state",
+      "parent": "",
+      "surface": "popover",
+      "status": "provisional",
+      "summary": "The space can't take this video. The popover says the recording is safe, gives the matching banner's reason line (N34 / Region 2), and offers [ Save to Movies ]. Owners also get [ Reconnect your space ]. The page never opens, because it could never fill. The take waits in the Library as “Waiting for your space” until it drains, is saved, or is discarded. Under Law 8, this single-action face's one filled button leads rather than sitting rightmost.",
+      "entry_conditions": "At stop, the space can't take this video: member-revoked, space-gone, or an owner's space whose page is gone.",
+      "said_lines": [
+        {
+          "text": "Your recording is safe on this Mac.",
+          "role": "title",
+          "copy_status": "provisional"
+        },
+        {
+          "text": "Your access to Bagrat's space was turned off. Recordings on this Mac are safe — ask Bagrat if that's a surprise.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "The reason line when the cause is member-revoked. The region only says “the matching banner's reason line (N34 / Region 2)”; this is the member-revoked banner's line from line 1578. The owner's name varies."
+        },
+        {
+          "text": "Bagrat's space isn't there anymore. Recordings on this Mac are safe — save any you want to keep.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "The reason line when the cause is space-gone, from the space-gone banner (line 1580). The owner's name varies."
+        },
+        {
+          "text": "Save to Movies",
+          "role": "button",
+          "copy_status": "provisional"
+        },
+        {
+          "text": "Reconnect your space",
+          "role": "button",
+          "copy_status": "provisional",
+          "note": "Owners only."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Save to Movies",
+          "kind": "filled-default",
+          "return_default": true,
+          "goes_to": "stopped-stranded (the single-file copy lands in ~/Movies and Finder shows it; the take keeps waiting until discarded)",
+          "note": "The filled button leads (leftmost), per Law 8's single-action exception, which is to be checked at ratification. Return-triggering is inferred from Law 8 (one default per surface, and Return triggers it); the region text doesn't say. The after-click face (“Saved to Movies ✓”) is specified only for the banners (lines 1582-1586)."
+        },
+        {
+          "label": "Reconnect your space",
+          "kind": "secondary",
+          "return_default": false,
+          "goes_to": "Settings window, Space tab, repair mood (Region 2, line 642)",
+          "note": "Owners only."
+        }
+      ],
+      "transitions": [],
+      "decided_by": [
+        "N40",
+        "N34",
+        "N42",
+        "N38"
+      ],
+      "source_lines": "922, 975-983, 1061; Law 8 139-143; reason lines 1578, 1580; inventory 1698"
+    },
+    {
+      "id": "live",
+      "kind": "web-page",
+      "parent": "",
+      "surface": "web-page",
+      "status": "ratified",
+      "summary": "The recipient's normal page: the owner page minus the owner's two controls. It shows the title as plain text, the minimal player (first frame well under 1 s per R6.2, custom controls), Download (quiet and second-class, once the single-file MP4 exists), and the mark with its hover label. Nothing else: no comments, no sign-in, no name, no shroom account anywhere. Every page is `noindex`, with no passwords, no expiry and no captions in v1. Unfurls follow R5 honesty.",
+      "entry_conditions": "Someone opens the clean shared link without a qualifying owner cookie, and the video's content is ready and served (the normal case).",
+      "said_lines": [
+        {
+          "text": "Untitled — Aug 21",
+          "role": "title",
+          "copy_status": "ratified",
+          "note": "The video's title as plain text. This is the untouched default, with the date varying; any title the owner typed replaces it."
+        },
+        {
+          "text": "Download",
+          "role": "button",
+          "copy_status": "ratified",
+          "note": "Quiet and second-class; only once the single-file MP4 exists."
+        },
+        {
+          "text": "made with shroom",
+          "role": "tooltip",
+          "copy_status": "ratified",
+          "note": "The mark's hover label."
+        }
+      ],
+      "actions": [
+        {
+          "label": "play",
+          "kind": "other",
+          "return_default": false,
+          "note": "Minimal player, custom controls."
+        },
+        {
+          "label": "scrub bar",
+          "kind": "other",
+          "return_default": false
+        },
+        {
+          "label": "fullscreen",
+          "kind": "other",
+          "return_default": false
+        },
+        {
+          "label": "Download",
+          "kind": "secondary",
+          "return_default": false,
+          "note": "Quiet and second-class; only once the single-file MP4 exists (R11)."
+        },
+        {
+          "label": "the mark (small shroom icon)",
+          "kind": "other",
+          "return_default": false,
+          "goes_to": "home",
+          "note": "Bottom-right; hover “made with shroom”; links home."
+        }
+      ],
+      "transitions": [
+        {
+          "to": "unavailable",
+          "trigger": "storage switched off or mid-repair (N40)"
+        }
+      ],
+      "decided_by": [
+        "N27",
+        "U3",
+        "P1",
+        "R11",
+        "R5"
+      ],
+      "source_lines": "939, 1013-1015, 1021-1026, 1034-1036, 1038-1045, 1064, 1069-1070; inventory 1699"
+    },
+    {
+      "id": "on-its-way",
+      "kind": "web-page",
+      "parent": "",
+      "surface": "web-page",
+      "status": "ratified",
+      "summary": "The link beat the upload. The title stays (the untouched placeholder if the owner never typed). Where the player will be, one line sits over a thin bar: the owner's upload seen from the other side (U9). The page refreshes itself; there is nothing for the viewer to do. Recipients also get this face while an offline stop's video hasn't arrived.",
+      "entry_conditions": "The shared link is opened before the upload has finished (the link beat the upload).",
+      "said_lines": [
+        {
+          "text": "Untitled — Aug 21",
+          "role": "title",
+          "copy_status": "ratified",
+          "note": "The title stays: the owner's title, or this untouched placeholder (the date varies) if the owner never typed."
+        },
+        {
+          "text": "This video is on its way. The page refreshes itself — nothing to do.",
+          "role": "line",
+          "copy_status": "ratified",
+          "note": "Shown where the player will be, over a thin bar."
+        }
+      ],
+      "actions": [],
+      "transitions": [
+        {
+          "to": "live",
+          "trigger": "self-refresh, content ready"
+        },
+        {
+          "to": "on-its-way-stalled",
+          "trigger": "no progress for a while (N40)"
+        }
+      ],
+      "decided_by": [
+        "N27",
+        "U9"
+      ],
+      "source_lines": "921, 1013, 1016, 1065-1067; inventory 1699"
+    },
+    {
+      "id": "on-its-way-untitled",
+      "kind": "face",
+      "parent": "on-its-way",
+      "surface": "web-page",
+      "status": "provisional",
+      "summary": "Unknown ids and videos that aren't described yet render on-its-way without a title. This is indistinguishable by design: a bogus id leaks nothing (R10). It is also exactly what an offline stop's link shows before its details arrive. The dated placeholder appears once the details land. The spec doesn't name this face: `on-its-way-untitled` is a descriptive placeholder.",
+      "entry_conditions": "The page is opened for an id the space has never heard of, or for a video whose details haven't arrived yet (for example, an offline stop's link).",
+      "said_lines": [
+        {
+          "text": "This video is on its way. The page refreshes itself — nothing to do.",
+          "role": "line",
+          "copy_status": "ratified",
+          "note": "on-its-way's ratified line, shown here without a title. The untitled rendering itself is N40."
+        }
+      ],
+      "actions": [],
+      "transitions": [
+        {
+          "to": "on-its-way",
+          "trigger": "the details land — the dated placeholder appears"
+        }
+      ],
+      "decided_by": [
+        "N40",
+        "R10"
+      ],
+      "source_lines": "1027-1030, 1017"
+    },
+    {
+      "id": "on-its-way-stalled",
+      "kind": "face",
+      "parent": "on-its-way",
+      "surface": "web-page",
+      "status": "provisional",
+      "summary": "The upload has made no progress for a while, for example because the sender's Mac is asleep or offline. The line changes and the bar rests. The page promises nothing it can't know, and a mistyped link lands here too, by design. The id comes from the diagram's `on_its_way_stalled`; the inventory writes it as “`on-its-way`, stalled”.",
+      "entry_conditions": "on-its-way with no upload progress for the stall window (threshold to pin at scaffold). Unknown or mistyped ids also end up here.",
+      "said_lines": [
+        {
+          "text": "This video isn't here yet — the page keeps checking and will play it the moment it arrives.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "The bar rests beneath."
+        }
+      ],
+      "actions": [],
+      "transitions": [
+        {
+          "to": "live",
+          "trigger": "the sender's Mac is back"
+        }
+      ],
+      "decided_by": [
+        "N40"
+      ],
+      "source_lines": "1017, 1067-1068; inventory 1700"
+    },
+    {
+      "id": "unavailable",
+      "kind": "web-page",
+      "parent": "",
+      "surface": "web-page",
+      "status": "provisional",
+      "summary": "The space can't serve the bytes right now. The title stays if it's known, and the page says nothing about why: it isn't the viewer's business.",
+      "entry_conditions": "The space can't serve the bytes right now: its storage is switched off, or its page is mid-repair.",
+      "said_lines": [
+        {
+          "text": "This video can't play right now — try again a little later.",
+          "role": "line",
+          "copy_status": "provisional"
+        }
+      ],
+      "actions": [],
+      "transitions": [
+        {
+          "to": "live",
+          "trigger": "served again"
+        }
+      ],
+      "decided_by": [
+        "N40"
+      ],
+      "source_lines": "1018, 1069-1070; inventory 1700"
+    },
+    {
+      "id": "removed",
+      "kind": "web-page",
+      "parent": "",
+      "surface": "web-page",
+      "status": "ratified",
+      "summary": "The P2 tombstone alone: no title, no player. The mark stays, and the address lives forever.",
+      "entry_conditions": "The video was deleted (the tombstone, forever). Deleting happens in the Library, never from the page.",
+      "said_lines": [
+        {
+          "text": "This video was removed by its owner.",
+          "role": "line",
+          "copy_status": "ratified"
+        },
+        {
+          "text": "made with shroom",
+          "role": "tooltip",
+          "copy_status": "ratified",
+          "note": "The mark's hover label (line 1040); the mark stays on this face (line 1019)."
+        }
+      ],
+      "actions": [
+        {
+          "label": "the mark (small shroom icon)",
+          "kind": "other",
+          "return_default": false,
+          "goes_to": "home",
+          "note": "The mark stays; links home."
+        }
+      ],
+      "transitions": [],
+      "decided_by": [
+        "N27",
+        "P2"
+      ],
+      "source_lines": "1019, 1040, 1071; inventory 1699"
+    },
+    {
+      "id": "embed-face",
+      "kind": "web-page",
+      "parent": "",
+      "surface": "web-page",
+      "status": "provisional",
+      "summary": "`…/<id>?embed=1`: the player alone, with no title and the mark small in its corner. It has the same on-its-way, unavailable and removed faces. This is what Notion's embed and any iframe get. The spec calls it “the embed face” but gives no backticked name: `embed-face` is a descriptive placeholder.",
+      "entry_conditions": "The page is requested with `?embed=1`, for example from Notion's embed or any iframe.",
+      "said_lines": [],
+      "actions": [
+        {
+          "label": "the mark (small, in its corner)",
+          "kind": "other",
+          "return_default": false,
+          "goes_to": "home",
+          "note": "Small mark in the corner. The spec doesn't restate its hover label for the embed."
+        }
+      ],
+      "transitions": [],
+      "decided_by": [
+        "N40",
+        "§5.4",
+        "R4",
+        "R5"
+      ],
+      "source_lines": "1025-1026, 1031-1033; inventory 1700"
+    }
+  ],
+  "scaffold_flags": [
+    {
+      "flag": "Fixture ids that aren't backticked scaffold names in the spec: owner-page, uploading, waiting-conn, fully-live, on-its-way-stalled and unavailable are kebab-cased from the Region 4 mermaid's snake_case names, using the same mapping as stopped_offline ↔ `stopped-offline`. waiting-space, owner-page-member, on-its-way-untitled and embed-face are descriptive placeholders for faces the spec describes but never names. Pin the scaffold names.",
+      "source_lines": "946-949, 941-944, 1027-1033, 1049-1072, 1697-1700"
+    },
+    {
+      "flag": "One beat, two names: the Region 4 diagram draws it as `finalizing`, while Region 3 (line 863, bold-backticked) and the inventory name it `stopping` (finalize, measured 102 ms). The fixture uses `stopping`; the diagram node should be renamed to match.",
+      "source_lines": "863, 916, 1052, 1696"
+    },
+    {
+      "flag": "The reachability probe at stop: a short probe of the space's page, capped well under a second so a live stop never waits on it. Anything that can't reach the page takes stopped-offline.",
+      "source_lines": "960-961, 1747-1748"
+    },
+    {
+      "flag": "The member cookie: the stop opens `v.<name>.workers.dev/<id>?k=<one-time-key>`. The Worker validates k and sets a long-lived cookie that names the member (“likely HttpOnly” — verify). It then 302-redirects to the clean URL, so the key never rests in the address bar. Owner-mode is rendered server-side. The Worker checks the video's maker against the cookie, and owner-class sees all. The cookie bears metadata powers only (rename, mark toggle), never storage credentials.",
+      "source_lines": "941-944, 985-1002, 1742-1743"
+    },
+    {
+      "flag": "No copy affordance ever emits a keyed URL. Copy link (page, popover, Library) always yields the clean link.",
+      "source_lines": "996, 935"
+    },
+    {
+      "flag": "Thresholds to pin: the stall window for on-its-way-stalled, and the upload no-progress window.",
+      "source_lines": "1017, 1749-1750"
+    },
+    {
+      "flag": "The deferred-page window after an offline stop: the page opens by itself only within the hour and only while shroom is still running. Only the newest of several offline stops opens. It waits for any running take to end.",
+      "source_lines": "963-971"
+    },
+    {
+      "flag": "Media artifacts the pages depend on. Download appears only once the single-file MP4 exists (R11). A small teaser MP4 lets iMessage and Discord play inline. The player's first frame comes well under 1 s (R6.2), with custom controls.",
+      "source_lines": "938, 1015, 1021-1024"
+    },
+    {
+      "flag": "The embed route is `…/<id>?embed=1`: player only, with a small mark and the same on-its-way, unavailable and removed faces.",
+      "source_lines": "1031-1033"
+    },
+    {
+      "flag": "Every page is `noindex` (P1). No passwords or expiry in v1. No captions surface, but the VTT-grade foundation stays as background machinery.",
+      "source_lines": "1034-1036"
+    },
+    {
+      "flag": "The schema carries a sender-name field from day one, with no name UI in v1 (U3).",
+      "source_lines": "1044-1045"
+    },
+    {
+      "flag": "The mark switch is one space-global metadata write, which the Worker reads at render. Rename is a metadata write, live worldwide on the next load (R4: strongly consistent; no redeploy).",
+      "source_lines": "1006-1007, 1043-1044"
+    },
+    {
+      "flag": "Docs carry the one honest cache note on rename: chat apps keep their unfurl cards for a while — already-posted cards keep the old title, new shares pick up the new one (R4.2).",
+      "source_lines": "1008-1009"
+    },
+    {
+      "flag": "Unknown ids render on-its-way without a title, indistinguishable from a not-yet-described video (R10: a bogus id leaks nothing).",
+      "source_lines": "1027-1030"
+    },
+    {
+      "flag": "Tombstone check before every upload resume (N35), so another Mac's delete stops this Mac's upload. This affects removed and uploading.",
+      "source_lines": "1758-1759"
+    },
+    {
+      "flag": "The page's interface stays backwards-compatible across app versions (N37).",
+      "source_lines": "1754"
+    }
+  ],
+  "open_notes": [
+    "Law 8's deliberate local exception, marked “check it at ratification” in the spec: stopped-stranded's one filled button (Save to Movies) leads instead of sitting rightmost (lines 139-143).",
+    "The region text never says whether Return triggers a button in stopped-offline (Copy link) or stopped-stranded (Save to Movies). The fixture sets return_default=true for both, inferred from Law 8 (“One default per surface, and Return triggers it”). Confirm at ratification; if wrong, those tests flip.",
+    "On the owner page, Copy link is filled, but the title field arrives focused and Enter saves the title. The fixture gives Return to the field (Law 8: a focused field's Return belongs to its field) and marks Copy link return_default=false.",
+    "Does the recipient's live face show Copy link? Line 939 (“Owner-only elements: the editable title and the switch; everything else is what recipients see”) and line 1015 (“the owner page minus the owner's two controls”) imply it does. The live face's enumerated list (line 1015, N27) ends “and nothing else” and omits Copy link, so the fixture leaves it out. Check at ratification.",
+    "The owner page section is marked copy ratified (N26, 2026-08-21), but it holds 2026-09-30 additions. “Clearing the title and leaving the field brings the previous title back” (line 936) cites N35. Owner-mode by role (941-944) and the upload-line faces (946-949) are N40. These are treated as provisional where they carry copy.",
+    "Unfurl honesty (line 1024-1025): Linear was corrected on 2026-09-30 (R5.1) inside ratified region text, with no ledger row. The Notion line now points at the N40 embed face. Confirm at ratification.",
+    "stopped-stranded's reason line is “the matching banner's reason line (N34 / Region 2)”. The member-revoked and space-gone lines map to N34's banners (lines 1578 and 1580) and are in the fixture. For “an owner's space whose page is gone”, the spec doesn't say which Region 2 line applies — the space-degraded banner (line 640: “Your space needs you — new videos wait safely on this Mac.”) or the owner-class-without-token banner (lines 659-661) — so the fixture asserts no reason line for that case. Pin it.",
+    "Classification overlap: stopped-offline takes “anything that can't reach” the space's page (line 961), while stopped-stranded covers “an owner's space whose page is gone” (line 975). An online Mac whose space page is gone fails the reachability probe; the spec doesn't say which state wins.",
+    "Transitions the spec doesn't draw. There is no exit from waiting-space (back to uploading or fully-live once the space is fixed). stopped-stranded has no exits (the take waits in the Library as “Waiting for your space” until it drains, is saved, or is discarded, line 982-983), and its click-away and Esc behavior is unstated. stopped-offline's click-away destination state isn't named. removed is entered only from [*]: no live → removed or on-its-way → removed. fully-live has no outgoing transitions.",
+    "Line 1017 says a mistyped link lands in the stalled face, while line 1027 says an unknown id renders on-its-way without a title. The diagram draws on_its_way → on_its_way_stalled but nothing from the untitled face; presumably the untitled face inherits its parent's stall transition. Confirm.",
+    "Embed face: “the same on its way, unavailable and removed faces” (line 1032), but those lines aren't restated for the embed. Whether on-its-way-stalled applies to the embed isn't said, and neither is the embed mark's hover label.",
+    "on-its-way-stalled: whether the title stays isn't stated. on-its-way keeps the title, and unavailable keeps it “if known”.",
+    "Beat 6's ratified line “You're offline — your link is ready and safe to share. The video follows the moment you're back online.” (line 921) is superseded. Its meaning now lives in stopped-offline's new wording, so tests should not assert the old line on any surface.",
+    "Save to Movies after the click: the “Saved to Movies ✓” label and the quiet Discard… are specified only for the N34 banners (lines 1582-1586), not for the stopped-stranded popover.",
+    "Character fidelity: UX-STATEMACHINE.md uses straight ASCII apostrophes (') throughout, with zero U+2019 in the file (verified). The fixtures keep the file's characters, while em dashes (—), ellipses (…) and ✓ are kept as written.",
+    "The page's upload line is singular (“your link already works.”), while the config popover's status line (Region 3, line 777) is plural (“Waiting for connection — your links already work.”). This is probably deliberate, but it is a two-surface difference tests must respect.",
+    "No Fat-marker status notes sit inside Region 4: the region was closed by N27."
+  ],
+  "amendments": [
+    {
+      "ledger_id": "N40",
+      "amends": "Region 4 beat 6 — the offline stop (ratified 2026-07-20; offline line kept by reference in N26)",
+      "summary": "An offline Mac can't load the page, so the paused popover becomes stopped-offline: the link, Copy link, and a page that opens by itself on reconnect, after any running take. The ratified offline line keeps its meaning in the popover's new wording. Recipients see on-its-way meanwhile. Awaiting ratification."
+    },
+    {
+      "ledger_id": "N40",
+      "amends": "U2 — owner-cookie auth",
+      "summary": "The cookie names a member, not the space, and the Worker checks the video's maker against it. Owner-mode is by role: a member's own pages give the title only, and owner-class browsers get owner-mode, the mark switch included, on every page of the space. Awaiting ratification."
+    },
+    {
+      "ledger_id": "N40",
+      "amends": "N27 — the recipient page, three faces (extends)",
+      "summary": "Adds the on-its-way-stalled face, the unavailable face, and the embed face (`?embed=1`), plus untitled on-its-way for unknown or not-yet-described ids. Awaiting ratification."
+    },
+    {
+      "ledger_id": "N21",
+      "amends": "N1 — clipboard at stop",
+      "summary": "The tray's Copy last link is removed. The page's Copy link and the Library row are the two copy doors (beat 4). Ratified 2026-08-21."
+    },
+    {
+      "ledger_id": "N21",
+      "amends": "U9 — where fully live lands",
+      "summary": "The tray's upload mirror becomes the config popover's status line (beat 5). Ratified 2026-08-21."
+    },
+    {
+      "ledger_id": "N33",
+      "amends": "U10 — second-Mac join (as reflected in Region 4's cookie section)",
+      "summary": "Another browser or Mac re-keys by opening the page from that machine's Library: Open page is the owner-keyed door (N35). A new Mac joins through Add another Mac, owner-class. Awaiting ratification."
+    }
+  ]
+}

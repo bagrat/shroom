@@ -1,0 +1,51 @@
+# A full e2e request that never ran says so on its commit (DECISIONS B129).
+#
+# e2e-full.yml's concurrency group is the branch's own (runs from different branches queue
+# on the account — B130), and GitHub keeps one pending run per group: a newer request on
+# the branch cancels the one already waiting. That run never starts a job, so it never
+# sets its `e2e (test account)` status, and its commit waits for a verdict that never
+# comes. This sets it.
+#
+# A run that started speaks for itself (its last step runs even when it's cancelled), so a
+# commit whose latest `e2e (test account)` status is that run's final word is left alone.
+#
+# It reads nothing from the branch: no checkout, only the run's id and commit. A
+# `workflow_run` workflow runs from main's copy, so it acts once this file is on main.
+name: E2E full, a dropped request
+
+on:
+  workflow_run:
+    workflows: ['E2E full (install → setup → record → play)']
+    types: [completed]
+
+permissions:
+  statuses: write
+
+env:
+  STATUS_CONTEXT: e2e (test account)
+
+jobs:
+  said:
+    name: The commit hears its request was dropped
+    if: github.event.workflow_run.conclusion == 'cancelled'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: The branch's commit says it didn't run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+        run: |
+          latest=$(gh api "repos/$GITHUB_REPOSITORY/commits/$SHA/statuses" \
+            --jq "[.[] | select(.context == \"$STATUS_CONTEXT\")][0] | \"\(.state) \(.target_url)\"")
+          if [ "${latest%% *}" != pending ] && [ "${latest#* }" = "$RUN_URL" ]; then
+            echo "The run set its own verdict ($latest): nothing to say."
+            exit 0
+          fi
+          # Its own pending status: it started and was stopped before its last step.
+          said="Cancelled by another request — ask again"
+          if [ "$latest" = "pending $RUN_URL" ]; then said="Cancelled while running — ask again"; fi
+          gh api "repos/$GITHUB_REPOSITORY/statuses/$SHA" -f state=error -f context="$STATUS_CONTEXT" \
+            -f description="$said" -f target_url="$RUN_URL" >/dev/null
+          echo "Said on $SHA: $said."

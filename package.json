@@ -1,0 +1,20 @@
+{
+  "name": "shroom",
+  "private": true,
+  "workspaces": [
+    "app",
+    "worker",
+    "tests/e2e"
+  ],
+  "scripts": {
+    "tauri": "npm run tauri --workspace app --",
+    "test:installer": "node --test installer/test/install.test.mjs",
+    "test:site": "node --test site/test/landing.test.mjs site/test/agent.test.mjs site/test/worker.test.mjs"
+  },
+  "overrides": {
+    "sharp": "^0.35.5"
+  },
+  "devDependencies": {
+    "elkjs": "0.9.3"
+  }
+}

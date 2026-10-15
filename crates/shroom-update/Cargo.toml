@@ -1,0 +1,10 @@
+[package]
+name = "shroom-update"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+shroom-storage = { path = "../shroom-storage" }
+ureq = { version = "3", default-features = false, features = ["rustls", "platform-verifier"] }

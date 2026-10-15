@@ -1,0 +1,28 @@
+[package]
+name = "shroom-devtool"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+description = "Development harness commands: bring a fenced test space up and down on the real account."
+default-run = "shroom-dev"
+
+[[bin]]
+name = "shroom-dev"
+path = "src/main.rs"
+
+[[bin]]
+name = "shroom-crashtest"
+path = "src/crashtest.rs"
+
+[dependencies]
+shroom-record = { path = "../shroom-record" }
+shroom-testpattern = { path = "../shroom-testpattern" }
+libc = "0.2"
+shroom-cloud = { path = "../shroom-cloud" }
+shroom-e2e-live = { path = "../../tests/e2e-live" }
+serde_json = "1"
+
+[dev-dependencies]
+tempfile = "3"

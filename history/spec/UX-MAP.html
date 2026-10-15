@@ -1,0 +1,1464 @@
+<title>shroom — ratified UX map</title>
+<style>
+  :root{color-scheme:dark}
+  html,body{background:#242933;margin:0}
+  body{font-family:system-ui,-apple-system,sans-serif;color:#D8DEE9;padding:34px 22px 60px}
+  main{max-width:1100px;margin:0 auto;position:relative;padding-left:46px}
+  #wires,#wires2{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1;overflow:visible}
+  #wires2{z-index:3}
+
+  header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:10px}
+  header svg{width:34px;height:37px}
+  header h1{font-size:19px;font-weight:600;color:#ECEFF4;margin:0}
+  header .sub{font-size:12.5px;color:#7B88A1}
+  .status{font-size:12px;color:#7B88A1;line-height:1.7;border:1px solid #3B4252;border-radius:8px;padding:10px 14px;margin:6px 0 8px}
+  .status b{color:#A3BE8C;font-weight:600}
+  .status i{color:#EBCB8B;font-style:normal}
+  .legend{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:11.5px;color:#7B88A1;margin:0 0 26px}
+  .legend .sw{display:inline-block;width:18px;height:0;border-top:2px solid;vertical-align:middle;margin-right:6px}
+  .legend .bx{display:inline-block;width:11px;height:11px;border-radius:3px;border:1px solid;vertical-align:-1px;margin-right:6px}
+
+  sm-region{display:grid;grid-template-columns:minmax(400px,540px) minmax(280px,1fr);gap:30px 64px;align-items:start;position:relative;z-index:2;margin-bottom:56px}
+  sm-region>h2{grid-column:1/-1;grid-row:1;font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#81A1C1;border-bottom:1px solid #3B4252;padding-bottom:8px;margin:0 0 4px}
+  sm-region>h2 small{color:#616E88;font-weight:400;text-transform:none;letter-spacing:0;margin-left:10px}
+  sm-edges{display:none}
+
+  sm-state,sm-fail,sm-note,sm-port{display:block;position:relative;z-index:2}
+  .shead{font-size:11px;letter-spacing:.05em;color:#616E88;margin:0 0 6px;font-family:ui-monospace,SF Mono,Menlo,monospace}
+  .shead b{color:#88C0D0;font-weight:600}
+  .badge{display:inline-block;font-size:10.5px;border:1px solid #EBCB8B;color:#EBCB8B;border-radius:99px;padding:1px 8px;margin-left:8px;letter-spacing:.03em}
+  .badge.p{border-color:#616E88;color:#7B88A1}
+
+  .win{background:#2E3440;border:1px solid #434C5E;border-radius:10px;overflow:hidden}
+  .tb{height:30px;background:#353B49;border-bottom:1px solid #434C5E;display:flex;align-items:center;padding:0 12px}
+  .tl{width:10px;height:10px;border-radius:50%;background:#BF616A;box-shadow:17px 0 0 #EBCB8B,34px 0 0 #A3BE8C;margin-right:38px;flex:none}
+  .wb{padding:16px 20px 20px}
+  .whead{display:flex;align-items:center;gap:9px;margin-bottom:13px}
+  .whead svg{width:20px;height:22px}
+  .whead span{font-size:13.5px;font-weight:600;color:#ECEFF4}
+  .plan{display:flex;flex-direction:column;gap:7px}
+  .pr{display:flex;gap:9px;font-size:12.5px;line-height:1.45;align-items:flex-start}
+  .pr .g{width:14px;flex:none;text-align:center;font-weight:600;margin-top:1px}
+  .tick{display:inline-block;width:12px;height:12px;margin-top:3px;background:no-repeat center/contain url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 14"><path d="M2 7.5 L5.5 11 L12 3" fill="none" stroke="%23A3BE8C" stroke-width="2" stroke-linecap="square"/></svg>')}
+  .cur{color:#88C0D0}
+  .ah{color:#616E88}
+  .pr .t{color:#D8DEE9}
+  .pr .tc{color:#ECEFF4}
+  .pr .ta{color:#7B88A1}
+  .pr .p{color:#7B88A1}
+  .nest{margin:2px 0 2px 23px;border-left:2px solid #4C6A72;padding:10px 0 10px 14px;display:flex;flex-direction:column;gap:9px}
+  .said{font-size:12.5px;color:#D8DEE9;line-height:1.55}
+  .said.hi{color:#ECEFF4;font-size:13px}
+  .quiet{font-size:11.5px;color:#7B88A1;line-height:1.5}
+  .mono{font-family:ui-monospace,SF Mono,Menlo,monospace}
+  .bf{display:inline-block;background:#88C0D0;color:#2E3440;font-size:12px;font-weight:600;padding:5px 12px;border-radius:6px;width:max-content}
+  .bo{display:inline-block;border:1px solid #4C566A;color:#D8DEE9;font-size:12px;font-weight:500;padding:5px 12px;border-radius:6px;width:max-content}
+  .field{display:inline-flex;align-items:center;background:#272C36;border:1.5px solid #88C0D0;border-radius:6px;padding:3px 8px;font-family:ui-monospace,SF Mono,Menlo,monospace;font-size:12.5px;color:#ECEFF4}
+  .paste{border:1.5px dashed #4C566A;border-radius:6px;padding:6px 10px;font-size:12px;color:#616E88;font-family:ui-monospace,SF Mono,Menlo,monospace}
+  .spin{display:inline-block;width:11px;height:11px;border:2px solid #4C566A;border-top-color:#88C0D0;border-radius:50%;flex:none;margin:2px 0 0}
+  .cbx{display:flex;gap:8px;font-size:12.5px;color:#D8DEE9;align-items:center}
+  .cbx .b{width:13px;height:13px;border-radius:3px;background:#88C0D0;color:#2E3440;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center}
+  .mrow{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #3B4252;font-size:12.5px}
+  .mrow .mn{color:#ECEFF4}
+  .mrow .rm{margin-left:auto;color:#BF616A;font-size:11.5px}
+
+  .bwin{background:#2E3440;border:1px solid #434C5E;border-radius:10px;overflow:hidden}
+  .bbar{display:flex;align-items:center;gap:10px;background:#353B49;border-bottom:1px solid #434C5E;padding:7px 12px}
+  .bbar .url{flex:1;background:#2A303C;border-radius:6px;font-size:11px;color:#7B88A1;padding:4px 10px;font-family:ui-monospace,SF Mono,Menlo,monospace}
+  .bsec{padding:14px 18px;border-bottom:1px solid #3B4252}
+  .bsec:last-child{border-bottom:0}
+  .hero-h{font-size:16px;font-weight:700;color:#ECEFF4;line-height:1.3;margin:0 0 2px}
+  .hero-s{font-size:13px;color:#88C0D0;margin:0 0 10px}
+  .pt{font-size:11.5px;color:#D8DEE9;line-height:1.55;margin:3px 0}
+  .pt b{color:#ECEFF4}
+  .tiles{display:flex;gap:8px;margin:7px 0}
+  .tile{border:1px solid #434C5E;border-radius:8px;padding:6px 10px;font-size:11px;color:#7B88A1}
+  .tile b{color:#ECEFF4;font-size:13px}
+  .cmd{background:#232831;border:1px solid #434C5E;border-radius:6px;padding:6px 10px;font-size:11.5px;color:#ECEFF4;display:flex;justify-content:space-between;gap:10px;align-items:center;margin:6px 0}
+  .cmd i{font-style:normal;color:#88C0D0;font-size:10.5px;border:1px solid #4C566A;border-radius:4px;padding:1px 6px}
+  .lbl{font-size:12px;font-weight:600;color:#ECEFF4;margin:0 0 3px}
+  .trust{display:flex;gap:14px}
+  .trust div{flex:1;font-size:10.5px;color:#7B88A1;line-height:1.5}
+  .trust b{display:block;color:#D8DEE9;font-size:11px}
+
+  .term{background:#232831;border:1px solid #434C5E;border-radius:10px;padding:13px 16px;font-family:ui-monospace,SF Mono,Menlo,monospace;font-size:12px;line-height:1.75;color:#D8DEE9}
+  .term .ps{color:#616E88}
+  .term .ok{color:#A3BE8C}
+  .term .cm{color:#7B88A1}
+
+  .card{background:#2E3440;border:1px solid #434C5E;border-radius:10px;padding:12px 15px;font-size:12px;line-height:1.55;color:#D8DEE9}
+  sm-state[kind="fail"] .card{border-color:#7d4a50}
+  sm-state[kind="fail"] .said{color:#d8b0b4}
+  .card.warn{border-color:#8a7a4d!important}
+  sm-note .card{border-style:dashed;color:#a7b2c8}
+  .pend .card,.pend .win{border-style:dashed}
+  sm-port .card{border:1.5px dashed #5E81AC;color:#81A1C1;font-size:11.5px;border-radius:99px;padding:7px 15px;width:max-content;max-width:100%}
+  .cap{font-size:11px;color:#616E88;line-height:1.5;margin-top:6px}
+
+  .popv{max-width:296px;background:#2E3440;border:1px solid #434C5E;border-radius:11px;padding:12px 14px 10px}
+  .prow{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:5px 0;font-size:12px;color:#A7B2C8}
+  .pop{display:inline-flex;align-items:center;gap:5px;background:#353B49;border:1px solid #4C566A;border-radius:6px;padding:3px 8px;font-size:11.5px;color:#ECEFF4;white-space:nowrap}
+  .pop i{font-style:normal;color:#7B88A1;font-size:10px}
+  .seg{display:inline-flex;border:1px solid #4C566A;border-radius:6px;overflow:hidden;font-size:11px}
+  .seg span{padding:3px 9px;color:#7B88A1}
+  .seg span.on{background:#434C5E;color:#ECEFF4}
+  .tog{width:30px;height:18px;border-radius:99px;background:#88C0D0;display:inline-flex;align-items:center;justify-content:flex-end;padding:2px;box-sizing:border-box;flex:none}
+  .tog i{width:14px;height:14px;border-radius:50%;background:#ECEFF4;display:block}
+  .ficons{display:flex;align-items:flex-end;gap:18px;border-top:1px solid #3B4252;margin-top:10px;padding-top:8px}
+  .ficons div{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10.5px;color:#616E88}
+  .ficons svg{width:16px;height:16px;color:#A7B2C8}
+
+  .lrow{display:flex;align-items:center;gap:10px;padding:7px 8px;border:1px solid transparent;border-bottom-color:#3B4252;border-radius:6px;font-size:12px}
+  .lrow.sel{background:#353B49;border-color:#434C5E}
+  .thumb{width:46px;height:26px;border-radius:4px;background:#232831;border:1px solid #434C5E;flex:none}
+  .lmain{flex:1;min-width:0}
+  .lt{color:#ECEFF4;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .lm{color:#7B88A1;font-size:11px;margin-top:1px}
+  .lbar{height:2px;background:#3B4252;border-radius:2px;margin-top:4px}
+  .lbar i{display:block;height:2px;background:#88C0D0;border-radius:2px}
+  .lc{font-size:11px!important;padding:3px 9px!important}
+  .lh{font-size:11px;color:#88C0D0}
+  .rm2{font-size:11px;color:#BF616A}
+  .tabs{display:flex;justify-content:center;gap:4px;padding:6px 10px;border-bottom:1px solid #434C5E;background:#313744}
+  .tabs span{font-size:11.5px;color:#7B88A1;padding:4px 12px;border-radius:6px}
+  .tabs span.on{background:#434C5E;color:#ECEFF4}
+  .tfaces{display:flex;flex-direction:column;gap:7px;font-size:11px;color:#7B88A1}
+  .tfaces div{display:flex;align-items:center;gap:9px}
+  .tf{position:relative;display:inline-flex;align-items:center;justify-content:center;width:26px;height:20px;background:#353B49;border-radius:5px}
+  .tf i{position:absolute;right:2px;bottom:2px;width:7px;height:7px;border-radius:50%}
+  .tf b{position:absolute;right:2px;bottom:2px;width:7px;height:7px;background:linear-gradient(90deg,#ECEFF4 0 2.5px,transparent 2.5px 4.5px,#ECEFF4 4.5px 7px)}
+  .journey{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:0 0 18px}
+  .journey div{border:1px solid #3B4252;border-radius:8px;padding:8px 10px;font-size:11.5px;color:#7B88A1;line-height:1.45;min-width:0}
+  .journey b{display:block;color:#88C0D0;font-weight:600;font-size:12px;margin-bottom:2px}
+  @media (max-width:840px){.journey{grid-template-columns:1fr 1fr}}
+  footer{position:relative;z-index:2;font-size:11.5px;color:#616E88;line-height:1.7;border-top:1px solid #3B4252;padding-top:14px;max-width:70ch}
+  @media (max-width:840px){sm-region{grid-template-columns:1fr}sm-region>*{grid-row:auto!important;grid-column:1!important}}
+</style>
+
+<main>
+<svg id="wires" aria-hidden="true"></svg>
+<svg id="wires2" aria-hidden="true"></svg>
+
+<header>
+  <svg viewBox="18 20 84 90" aria-label="shroom"><path d="M50,68 C49,82 46,92 46,96 C46,101 52,104 60,104 C68,104 74,101 74,96 C74,92 71,82 70,68 Z" fill="#E5E9F0"/><path d="M24,64 C24,42 40,26 60,26 C80,26 96,42 96,64 C86,75 34,75 24,64 Z" fill="#88C0D0"/><circle cx="33" cy="58" r="3.4" fill="#ECEFF4"/><circle cx="88" cy="58" r="2.2" fill="#ECEFF4"/><circle cx="50" cy="44" r="6" fill="#ECEFF4"/><circle cx="72" cy="48" r="3.6" fill="#ECEFF4"/><circle cx="64" cy="58" r="2.6" fill="#ECEFF4"/></svg>
+  <div>
+    <h1>shroom — ratified UX map</h1>
+    <div class="sub">every v1 state, with its real copy and every classified path · source of truth: UX-STATEMACHINE.md</div>
+  </div>
+</header>
+
+<div class="status"><b>Ratified by Bagrat, N6–N28</b> — the landing and installer · the six-row setup wizard · the permissions chapter · the tray and its popover · countdown, pause, discard, the saved take · the owner page and the recipient's faces · the Members face. <i>Designed 2026-09-30 in the autonomous sitting, awaiting ratification, N29–N42</i> — the join machine through member life · the owner's other Macs · the Library · Settings · updates · the popover's grammar · auto-pauses, disk, quit · the stop's offline and stranded edges · wizard edges and the repair mood. Amendments to ratified work, to read first: the welcome's invite door (N30) · U10 via Add another Mac (N33) · launches you do open the door (N41) · the offline stop (N40) · the “v” clash label (N42).</div>
+
+<div class="journey">
+  <div><b>1 · Get it</b>one pasted line; the script opens the app (R1)</div>
+  <div><b>2 · Set up once</b>six rows: account, token, card, name, wiring, macOS — or one Join for members (R2, R6)</div>
+  <div><b>3 · Record</b>click the mushroom, press Return, 3·2·1 — click again to pause (R3)</div>
+  <div><b>4 · Stop = a link</b>the page opens, title focused, video filling in behind it (R4)</div>
+  <div><b>5 · Live with it</b>Library to re-share and clean up · Settings · invites · updates (R5, R6)</div>
+</div>
+
+<div class="legend">
+  <span><span class="sw" style="border-color:#88C0D0"></span>the happy spine</span>
+  <span><span class="sw" style="border-color:#BF616A;border-top-style:dashed"></span>classified failure</span>
+  <span><span class="sw" style="border-color:#EBCB8B;border-top-style:dotted"></span>retry / quiet guard</span>
+  <span><span class="sw" style="border-color:#A3BE8C;border-top-style:dotted"></span>auto-poll · auto-resume</span>
+  <span><span class="sw" style="border-color:#81A1C1;border-top-style:dashed"></span>into a later region</span>
+  <span><span class="bx" style="border-color:#7d4a50"></span>red edge = failure state, named scaffold-grade (N18)</span>
+</div>
+
+<sm-region id="r1">
+<h2>Region 1 — acquisition → first launch <small>copy ratified 2026-07-25</small></h2>
+
+<sm-state name="landing" style="grid-row:2/4;grid-column:1">
+  <p class="shead"><b>landing</b> — shroom.am · static page</p>
+  <div class="bwin">
+    <div class="bbar"><span class="tl"></span><span class="url">shroom.am</span></div>
+    <div class="bsec">
+      <p class="hero-h">Screen recordings without the monthly seat.</p>
+      <p class="hero-s">Pay as you go — sometimes completely free.</p>
+      <p class="pt">— Your videos live in <b>your own Cloudflare account</b> — we never hold them.</p>
+      <p class="pt">— You set Cloudflare up <b>once</b>, in a guided setup — about five minutes.</p>
+      <p class="pt">— You only ever pay Cloudflare. <b>No account with us, no subscription.</b></p>
+      <div class="tiles"><span class="tile"><b>$0</b> /month — about six hours of video</span><span class="tile"><b>$2.40</b> /month — about a hundred hours</span></div>
+      <p class="pt">— <b>Delete old videos and pay less</b> — storage is the whole bill.</p>
+      <p class="pt">— Your team just <b>accepts an invite</b> and records — no Cloudflare setup for them.</p>
+    </div>
+    <div class="bsec">
+      <p class="lbl">Install in one line</p>
+      <div class="cmd"><span class="mono">curl -fsSL https://shroom.am/install | sh</span><i>Copy</i></div>
+      <p class="quiet">Read it first — the same address opens as readable source.<br>For macOS 14 or newer, Apple silicon and Intel.</p>
+    </div>
+    <div class="bsec">
+      <p class="quiet">Recorded with shroom itself. It ends at the click of Stop — this page is what opened.</p>
+      <p class="quiet mono">v.myshroom.workers.dev/b4kq9d</p>
+    </div>
+    <div class="bsec trust">
+      <div><b>Open source</b>Every line on GitHub — the app, the installer, the player.</div>
+      <div><b>Your storage, your bill</b>The prices above are Cloudflare's, not ours.</div>
+      <div><b>Built to outlive us</b>Links play from your own account — if shroom vanished tomorrow, they'd keep working.</div>
+    </div>
+  </div>
+</sm-state>
+
+<sm-state name="source-view" style="grid-row:2;grid-column:2">
+  <p class="shead"><b>source view</b> — /install as plain text (N11)</p>
+  <div class="term" style="font-size:11px;line-height:1.6"><span class="cm">#!/bin/sh<br># shroom installer<br>#<br># You're reading exactly what will run — this address serves<br># one file, and this is it. Four things, in order:<br>#<br>#   1. Download the shroom app for your Mac.<br>#   2. Check it against its published fingerprint — if anything<br>#      is off, nothing gets installed.<br>#   3. Place it in ~/Applications — no admin password, nothing<br>#      outside your home folder.<br>#   4. Open it.<br>#<br># Run it again anytime — that's also the update: same four<br># steps, newer shroom. If shroom is in the middle of a<br># recording, the script stops and changes nothing.<br>#<br># Trouble, questions: github.com/bagrat/shroom/issues/new<br># No GitHub? issues@shroom.am works too.</span></div>
+</sm-state>
+
+<sm-port name="r4demo" style="grid-row:3;grid-column:2">
+  <div class="card">Region 4 — the player page (the demo is live there)</div>
+</sm-port>
+
+<sm-state name="installing" style="grid-row:4/9;grid-column:1">
+  <p class="shead"><b>installing</b> — one ~5 s stream; the app download rides curl's own bar (N10)</p>
+  <div class="term">
+    <span class="ps">$</span> curl -fsSL https://shroom.am/install | sh<br>
+    Getting shroom… <span class="ok">verified ✓</span><br>
+    Installed — opening shroom now.
+  </div>
+  <p class="cap">No Gatekeeper, no admin password, nothing signing-shaped on-machine. The script always ends by opening the app.</p>
+</sm-state>
+
+<sm-state name="install-net-drop" kind="fail" style="grid-row:4;grid-column:2"><p class="shead"><b>install-net-drop</b></p><div class="card"><span class="said">“Couldn't finish the download — check your connection and run the same command again.”</span></div></sm-state>
+<sm-state name="install-checksum-fail" kind="fail" style="grid-row:5;grid-column:2"><p class="shead"><b>install-checksum-fail</b></p><div class="card"><span class="said">“The download didn't check out, so nothing was installed. Run it once more — if it repeats, tell us: <span class="mono">github.com/bagrat/shroom/issues/new</span> — no GitHub? <span class="mono">issues@shroom.am</span> works too.”</span><p class="cap">never install on mismatch (N8 second door)</p></div></sm-state>
+<sm-state name="install-unsupported-os" kind="fail" style="grid-row:6;grid-column:2"><p class="shead"><b>install-unsupported-os</b> — honest stop</p><div class="card"><span class="said">“shroom needs macOS N or newer — this Mac is on M.”</span><p class="cap">honest stop — probed before fetch</p></div></sm-state>
+<sm-state name="install-refused-midtake" kind="fail" style="grid-row:7;grid-column:2"><p class="shead"><b>install-refused-midtake</b></p><div class="card"><span class="said">“shroom is in the middle of a recording — finish that take, then run this again. Nothing was changed.”</span><p class="cap">recording or paused — the sacred-recording law reaches the installer (N9)</p></div></sm-state>
+<sm-state name="updating" style="grid-row:8;grid-column:2">
+  <p class="shead"><b>updating</b> — the update lane, not a failure</p>
+  <div class="card"><span class="said">“Updated shroom to 1.2.0 — opening it now.”</span><p class="cap">quit → swap → relaunch; the script is the manual update path, forever (N9)</p></div>
+</sm-state>
+
+<sm-state name="flaunch" style="grid-row:9;grid-column:1">
+  <p class="shead"><b>first-launch</b> — beat</p>
+  <div class="card quiet">A normal macOS app on day one: dock icon + centered welcome window, opened by the installer. Dock presence iff a window is open; the tray mushroom appears from first launch onward.</div>
+</sm-state>
+
+<sm-state name="welcome" style="grid-row:10;grid-column:1">
+  <p class="shead"><b>welcome</b> — first launch only (N12: ✕-close ≡ Later, exactly)</p>
+  <div class="win">
+    <div class="tb"><span class="tl"></span></div>
+    <div class="wb">
+      <div class="whead"><svg viewBox="18 20 84 90"><path d="M50,68 C49,82 46,92 46,96 C46,101 52,104 60,104 C68,104 74,101 74,96 C74,92 71,82 70,68 Z" fill="#E5E9F0"/><path d="M24,64 C24,42 40,26 60,26 C80,26 96,42 96,64 C86,75 34,75 24,64 Z" fill="#88C0D0"/><circle cx="33" cy="58" r="3.4" fill="#ECEFF4"/><circle cx="88" cy="58" r="2.2" fill="#ECEFF4"/><circle cx="50" cy="44" r="6" fill="#ECEFF4"/><circle cx="72" cy="48" r="3.6" fill="#ECEFF4"/><circle cx="64" cy="58" r="2.6" fill="#ECEFF4"/></svg><span>shroom</span></div>
+      <p class="said" style="margin:0 0 8px"><b>shroom</b> records your screen and hands you a link to share — no account with us, no subscription. Your videos live in <i>your own</i> Cloudflare storage: free for about six hours of video, and pennies after that — about 100 hours for $2.40 a month.</p>
+      <p class="said" style="margin:0 0 12px">Two steps before your first video: set up your Cloudflare, and let macOS allow recording. About five minutes, once.</p>
+      <div class="cbx" style="margin:0 0 14px"><span class="b">✓</span>Start shroom when you log in</div>
+      <div style="display:flex;gap:10px"><span class="bf">Set up my space</span><span class="bo">Later</span></div>
+      <p class="quiet" style="margin:12px 0 0;color:#88C0D0">Have an invite link?</p>
+    </div>
+  </div>
+  <p class="cap">D — N30, amends the ratified welcome: “Have an invite link?” becomes a paste field (“Paste your invite link”), validating on paste — a join link → member-welcome; a token → the wizard at token; anything else → a fading “That doesn't look like an invite link.” The join page's Open shroom deep link is the main road; this is its fallback.</p>
+</sm-state>
+
+<sm-state name="idle" style="grid-row:10;grid-column:2">
+  <p class="shead"><b>idle-unprovisioned</b> — the only pre-setup state (U1)</p>
+  <div class="card">
+    <div class="said hi">No menu — the tray click opens the welcome window, immediately.</div>
+    <div class="said">Right-click → <b style="color:#ECEFF4">Quit shroom</b> <span class="quiet">— a one-item native menu, the only quit door before a space exists</span></div>
+  </div>
+  <p class="cap">N21: the click is the door — the same ratified window, any day later (dock icon while it's open). The former Record-routed context line retired with the menu; welcome already says it.</p>
+</sm-state>
+
+<sm-note name="launch-door" style="grid-row:11;grid-column:2">
+  <p class="shead"><b>a launch you did is a click</b> — N41 · D</p>
+  <div class="card">Opening shroom yourself — Spotlight, Finder, the Dock, a fresh install onto a Mac that still remembers its space — acts exactly as a tray click, in every state (mid-take: it's the pause). The update lane stays silent (N9). And the quiet-take law: while a take is open nothing new appears, and nothing that would end or move the app runs — Update, Disconnect, Leave, Quit grey out with “You can do this once your recording is finished.” Launches shroom does itself — the login item, the update relaunch — stay silent. Also the rescue when a crowded menu bar hides the mushroom behind the notch; the popover then drops from the top-right.</div>
+</sm-note>
+
+<sm-edges>
+  <sm-edge from="idle" to="launch-door" kind="side" label="also"></sm-edge>
+  <sm-edge from="landing" to="source-view" kind="side" label="Read it first"></sm-edge>
+  <sm-edge from="source-view" to="landing" kind="side" label="back"></sm-edge>
+  <sm-edge from="landing" to="r4demo" kind="port" label="watch the demo"></sm-edge>
+  <sm-edge from="landing" to="installing" kind="flow" label="run the install command"></sm-edge>
+  <sm-edge from="installing" to="install-net-drop" kind="fail" label="fetch exit"></sm-edge>
+  <sm-edge from="install-net-drop" to="installing" kind="retry" label="re-run — idempotent"></sm-edge>
+  <sm-edge from="installing" to="install-checksum-fail" kind="fail" label="hash ≠ manifest"></sm-edge>
+  <sm-edge from="install-checksum-fail" to="installing" kind="retry" label="run it once more"></sm-edge>
+  <sm-edge from="installing" to="install-unsupported-os" kind="fail" label="version probe, before fetch"></sm-edge>
+  <sm-edge from="installing" to="install-refused-midtake" kind="fail" label="app status seam"></sm-edge>
+  <sm-edge from="install-refused-midtake" to="installing" kind="retry" label="after the take"></sm-edge>
+  <sm-edge from="installing" to="updating" kind="auto" label="bundle present"></sm-edge>
+  <sm-edge from="installing" to="flaunch" kind="flow" label="app placed and launched"></sm-edge>
+  <sm-edge from="flaunch" to="welcome" kind="flow" label="first launch only"></sm-edge>
+  <sm-edge from="welcome" to="idle" kind="flow" label="Later — or ✕-close (login item iff box checked)"></sm-edge>
+  <sm-edge from="welcome" to="account" kind="flow" label="Set up my space — the window morphs"></sm-edge>
+  <sm-edge from="idle" to="welcome" kind="flow" label="tray click — the same window, any day (N21)"></sm-edge>
+</sm-edges>
+</sm-region>
+
+<sm-region id="r2">
+<h2>Region 2 — the cloud setup wizard <small>ratified (N13–N19) · edge states and the repair mood designed 2026-09-30 — N42, awaiting ratification</small></h2>
+
+<sm-state name="account" style="grid-row:2/4;grid-column:1">
+  <p class="shead"><b>account</b> — the frame + the fork; the plan is the pre-warn (N13, N14)</p>
+  <div class="win">
+    <div class="tb"><span class="tl"></span></div>
+    <div class="wb">
+      <div class="whead"><svg viewBox="18 20 84 90"><path d="M50,68 C49,82 46,92 46,96 C46,101 52,104 60,104 C68,104 74,101 74,96 C74,92 71,82 70,68 Z" fill="#E5E9F0"/><path d="M24,64 C24,42 40,26 60,26 C80,26 96,42 96,64 C86,75 34,75 24,64 Z" fill="#88C0D0"/><circle cx="33" cy="58" r="3.4" fill="#ECEFF4"/><circle cx="88" cy="58" r="2.2" fill="#ECEFF4"/><circle cx="50" cy="44" r="6" fill="#ECEFF4"/><circle cx="72" cy="48" r="3.6" fill="#ECEFF4"/><circle cx="64" cy="58" r="2.6" fill="#ECEFF4"/></svg><span>Your space — set up once, yours forever:</span></div>
+      <div class="plan">
+        <div class="pr"><span class="g cur">→</span><span class="tc">A Cloudflare account <span class="p">(free — they'll want a verified email or a Google sign-in)</span></span></div>
+        <div class="nest">
+          <span class="said hi">Do you already have a Cloudflare account?</span>
+          <div style="display:flex;gap:10px"><span class="bo">Not yet — take me there</span><span class="bf">I have one</span></div>
+        </div>
+        <div class="pr"><span class="g ah">•</span><span class="ta">One access token for shroom <span class="p">(a pre-filled page — review, create, paste)</span></span></div>
+        <div class="pr"><span class="g ah">•</span><span class="ta">A credit card for storage <span class="p">(their rule, not a charge — free up to about six hours of video)</span></span></div>
+        <div class="pr"><span class="g ah">•</span><span class="ta">Your link name <span class="p">(part of every link you share — v.<i>yourname</i>.workers.dev)</span></span></div>
+        <div class="pr"><span class="g ah">•</span><span class="ta">Wiring it up <span class="p">(shroom does this part)</span></span></div>
+        <div class="pr"><span class="g ah">•</span><span class="ta">Letting macOS allow recording <span class="p">(microphone and screen — a one-time yes each)</span></span></div>
+      </div>
+    </div>
+  </div>
+  <p class="cap">Glyphs: → current · ✓ done · • ahead — nothing in the plan looks clickable. Parentheticals drop off passed rows. No step counter exists: every entry re-probes reality and marks the plan from the answers.</p>
+</sm-state>
+
+<sm-state name="account-signing-up" style="grid-row:2;grid-column:2">
+  <p class="shead"><b>account-signing-up</b> — after “Not yet” (N19)</p>
+  <div class="win">
+    <div class="tb"><span class="tl"></span></div>
+    <div class="wb">
+      <div class="plan">
+        <div class="pr"><span class="g cur">→</span><span class="tc">A Cloudflare account <span class="p">(free — they'll want a verified email or a Google sign-in)</span></span></div>
+        <div class="nest">
+          <span class="said">Cloudflare's signup is open in your browser — finish there, I'll wait.</span>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><span class="bo">Take me there again</span><span class="bf">I signed up</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="cap">Same window, rows below unchanged — the return from the browser is acknowledged, never a dead screen (N19, amending N13's no-morph). Signup stays self-reported: box 1 ticks at proceed; a relaunch mid-trip re-enters at the virgin fork (nothing probeable yet). “Take me there again” reopens the tab — no state change.</p>
+</sm-state>
+
+<sm-state name="token" style="grid-row:4/6;grid-column:1">
+  <p class="shead"><b>token</b> — never auto-opens the browser (N14)</p>
+  <div class="win">
+    <div class="tb"><span class="tl"></span></div>
+    <div class="wb">
+      <div class="plan">
+        <div class="pr"><span class="g"><span class="tick"></span></span><span class="t">A Cloudflare account</span></div>
+        <div class="pr"><span class="g cur">→</span><span class="tc">One access token for shroom <span class="p">(a pre-filled page — review, create, paste)</span></span></div>
+        <div class="nest">
+          <span class="said">Your space runs on one access token. The page comes pre-filled — review what it grants, two narrow permissions and nothing more, create the token, and paste it here.</span>
+          <span class="bf">Create token in Cloudflare</span>
+          <span class="paste">Paste your token</span>
+        </div>
+        <div class="pr"><span class="g ah">•</span><span class="ta">A credit card for storage <span class="p">(their rule, not a charge — free up to about six hours of video)</span></span></div>
+        <div class="pr"><span class="g ah">•</span><span class="ta">Your link name <span class="p">(part of every link you share — v.<i>yourname</i>.workers.dev)</span></span></div>
+        <div class="pr"><span class="g ah">•</span><span class="ta">Wiring it up <span class="p">(shroom does this part)</span></span></div>
+        <div class="pr"><span class="g ah">•</span><span class="ta">Letting macOS allow recording <span class="p">(microphone and screen — a one-time yes each)</span></span></div>
+      </div>
+    </div>
+  </div>
+  <p class="cap">Paste validates the moment it lands — no Continue button exists. On pass: token → ~/.shroom, mode 600, before wiring begins.</p>
+</sm-state>
+
+<sm-state name="token-garbled" kind="fail" style="grid-row:4;grid-column:2"><p class="shead"><b>token-garbled</b></p><div class="card"><span class="said">“Tokens sometimes lose characters in the copy — copy it once more.”</span><p class="cap">shape/prefix check — pre-network</p></div></sm-state>
+<sm-state name="token-wrong-powers" kind="fail" style="grid-row:5;grid-column:2"><p class="shead"><b>token-wrong-powers</b></p><div class="card"><span class="said">“This token can't manage your video space — create a fresh one and paste that.”</span><p class="cap">probe by use, never by echo — the create button is already on screen</p></div></sm-state>
+
+<sm-state name="token-pick-account" style="grid-row:3;grid-column:2">
+  <p class="shead"><b>token-pick-account</b> — N42 · D</p>
+  <div class="card">
+    <span class="said">“This token works for more than one Cloudflare account — which one should hold your videos?”</span>
+    <div style="display:flex;flex-direction:column;gap:4px;margin:8px 0;font-size:12px"><span>◉ Bagrat's Account</span><span style="color:#A7B2C8">○ Acme Engineering</span></div>
+    <span class="bf">Use this account</span>
+    <p class="cap">the pre-filled page lets a many-account person include several. The choice is the space's for good; row one gains the name as its fact. One account → never asked.</p>
+  </div>
+</sm-state>
+
+<sm-state name="card" style="grid-row:6/8;grid-column:1">
+  <p class="shead"><b>card</b> — the visible gate step (N14)</p>
+  <div class="win">
+    <div class="tb"><span class="tl"></span></div>
+    <div class="wb">
+      <div class="plan">
+        <div class="pr"><span class="g"><span class="tick"></span></span><span class="t">A Cloudflare account</span></div>
+        <div class="pr"><span class="g"><span class="tick"></span></span><span class="t">One access token for shroom</span></div>
+        <div class="pr"><span class="g cur">→</span><span class="tc">A credit card for storage <span class="p">(their rule, not a charge — free up to about six hours of video)</span></span></div>
+        <div class="pr"><span class="g ah">•</span><span class="ta">Your link name <span class="p">(part of every link you share — v.<i>yourname</i>.workers.dev)</span></span></div>
+        <div class="pr"><span class="g ah">•</span><span class="ta">Wiring it up <span class="p">(shroom does this part)</span></span></div>
+        <div class="pr"><span class="g ah">•</span><span class="ta">Letting macOS allow recording <span class="p">(microphone and screen — a one-time yes each)</span></span></div>
+      </div>
+    </div>
+  </div>
+  <p class="cap">One probe pass runs at paste-validate, while the user is still warm in the dashboard; its gates surface under this row — email first, then card. Existing-R2 accounts tick silently, seeing neither gate. The spinner is the only progress surface.</p>
+</sm-state>
+
+<sm-state name="gate-email" kind="fail" style="grid-row:6;grid-column:2"><p class="shead"><b>gate-email</b> — auto-poll</p><div class="card"><div style="display:flex;gap:8px"><span class="spin"></span><span class="said">“Cloudflare wants your email verified before it opens storage. Check your inbox for their message — I'll notice the moment it's done and carry on.”</span></div><p class="cap">Google sign-ins usually arrive verified — this mostly greets fresh email signups</p></div></sm-state>
+<sm-state name="gate-card" kind="fail" style="grid-row:7;grid-column:2"><p class="shead"><b>gate-card</b> — auto-poll</p><div class="card"><div style="display:flex;flex-direction:column;gap:7px"><span class="bf" style="background:#EBCB8B">Add credit card</span><div style="display:flex;gap:8px"><span class="spin"></span><span class="said">“One step left on Cloudflare's side: adding a card switches storage on. The free tier stays free — the card is their rule, not a charge.”</span></div></div><p class="cap">entered on Cloudflare's own billing page — shroom never sees payment data</p></div></sm-state>
+
+<sm-state name="name" style="grid-row:8/10;grid-column:1">
+  <p class="shead"><b>name</b> — the row is the ask, the URL is the field (N15)</p>
+  <div class="win">
+    <div class="tb"><span class="tl"></span></div>
+    <div class="wb">
+      <div class="plan">
+        <div class="pr"><span class="g"><span class="tick"></span></span><span class="t">A Cloudflare account</span></div>
+        <div class="pr"><span class="g"><span class="tick"></span></span><span class="t">One access token for shroom</span></div>
+        <div class="pr"><span class="g"><span class="tick"></span></span><span class="t">A credit card for storage</span></div>
+        <div class="pr"><span class="g cur">→</span><span class="tc">Your link name <span class="p">(part of every link you share)</span></span></div>
+        <div class="nest">
+          <span class="mono" style="font-size:12.5px;color:#D8DEE9">https://v.<span class="field">myshroom</span>.workers.dev/<span style="color:#7B88A1">…</span></span>
+          <span class="quiet">This one's a keeper: choose a name you'll be glad to see in a year.</span>
+          <span class="bf">Claim this name</span>
+        </div>
+        <div class="pr"><span class="g ah">•</span><span class="ta">Wiring it up <span class="p">(shroom does this part)</span></span></div>
+        <div class="pr"><span class="g ah">•</span><span class="ta">Letting macOS allow recording <span class="p">(microphone and screen — a one-time yes each)</span></span></div>
+      </div>
+    </div>
+  </div>
+  <p class="cap">Permanent names never auto-claim — the button (Enter equivalent) is the only trigger, disabled until the charset passes. Skip path: account already has a subdomain → the row ticks itself with the fact; the wizard never stops here. The “v” clash (N42 · D): if the account already holds a Worker named v that isn't shroom's, the label becomes shroom — the field shows it from the start, and the fact says once: “(“v” was already taken in your Cloudflare)”.</p>
+</sm-state>
+
+<sm-state name="name-taken" kind="fail" style="grid-row:8;grid-column:2"><p class="shead"><b>name-taken</b></p><div class="card"><span class="mono" style="font-size:12px;color:#D8DEE9">https://v.<span class="field" style="border-color:#BF616A">shroom</span>.workers.dev/…</span><br><span class="said">“That name's taken — try another.”</span><p class="cap">10031 at claim — value stays put for editing</p></div></sm-state>
+<sm-note name="charset" style="grid-row:9;grid-column:2"><p class="shead"><b>charset guard</b> — not a state (N18 nuance)</p><div class="card warn"><span class="said" style="color:#e2d3a3">“Lowercase letters, numbers, and dashes.”</span><p class="cap">a stray character never lands — the line appears, then fades; uppercase lowercases silently. No transition happens, so this stays a guard.</p></div></sm-note>
+
+<sm-state name="wiring" style="grid-row:10;grid-column:1">
+  <p class="shead"><b>wiring</b> — zero affordances (N16)</p>
+  <div class="win">
+    <div class="tb"><span class="tl"></span></div>
+    <div class="wb">
+      <div class="plan">
+        <div class="pr"><span class="g"><span class="tick"></span></span><span class="t">A Cloudflare account</span></div>
+        <div class="pr"><span class="g"><span class="tick"></span></span><span class="t">One access token for shroom</span></div>
+        <div class="pr"><span class="g"><span class="tick"></span></span><span class="t">A credit card for storage</span></div>
+        <div class="pr"><span class="g"><span class="tick"></span></span><span class="t">Your link name — <span class="mono" style="font-size:11.5px">v.myshroom.workers.dev</span></span></div>
+        <div class="pr"><span class="g cur">→</span><span class="tc">Wiring it up <span class="p">(shroom does this part)</span></span></div>
+        <div class="nest" style="flex-direction:row;gap:9px"><span class="spin"></span><span class="said">Setting up your space… switching your name on takes about a minute, one time only.</span></div>
+        <div class="pr"><span class="g ah">•</span><span class="ta">Letting macOS allow recording <span class="p">(microphone and screen — a one-time yes each)</span></span></div>
+      </div>
+    </div>
+  </div>
+  <p class="cap">Bucket private from birth; the v Worker is the only read path. Places the Worker's parent secret, enrolls the owner as member #1, ends with the silent self-check. Closing the window mid-wire is safe — re-entry re-probes.</p>
+</sm-state>
+
+<sm-state name="wizard-offline" kind="fail" style="grid-row:10;grid-column:2"><p class="shead"><b>wizard-offline</b> — one state for the whole wizard (N18)</p><div class="card warn"><span class="said" style="color:#e2d3a3">“Everything so far is saved — I'll pick up right here when you're back online.”</span><p class="cap">spinner rests; auto-resume on reconnect, re-probe routes by derived state — rendered under whichever row is current; no retry affordance</p></div></sm-state>
+
+<sm-state name="done" style="grid-row:11/13;grid-column:1">
+  <p class="shead"><b>done</b> — the resting beat; perm-preamble fused in (N17)</p>
+  <div class="win">
+    <div class="tb"><span class="tl"></span></div>
+    <div class="wb">
+      <div class="plan">
+        <div class="pr"><span class="g"><span class="tick"></span></span><span class="t">A Cloudflare account</span></div>
+        <div class="pr"><span class="g"><span class="tick"></span></span><span class="t">One access token for shroom</span></div>
+        <div class="pr"><span class="g"><span class="tick"></span></span><span class="t">A credit card for storage</span></div>
+        <div class="pr"><span class="g"><span class="tick"></span></span><span class="t">Your link name — <span class="mono" style="font-size:11.5px">v.myshroom.workers.dev</span></span></div>
+        <div class="pr"><span class="g"><span class="tick"></span></span><span class="t">Wiring it up</span></div>
+        <div class="pr"><span class="g cur">→</span><span class="tc">Letting macOS allow recording <span class="p">(microphone and screen — a one-time yes each)</span></span></div>
+        <div class="nest">
+          <span class="said">macOS will ask twice: your microphone first — one click — then screen recording, which opens System Settings.</span>
+          <span class="said">Flip the switch next to shroom there. When macOS offers to quit and reopen the app, say yes — I'll be right where you left off.</span>
+          <span class="bf">Allow recording</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="cap">The window rests here until the click — a macOS permission dialog must never appear to an empty chair. Row six ticks at the end of permissions; the menu-bar handoff lives there, not here. The payoff line was retired (N17 rev 2) — the name row already states the link fact.</p>
+</sm-state>
+
+<sm-note name="settingsnote" style="grid-row:11;grid-column:2">
+  <div class="card">Re-entry after success is Settings → Space (N36): the six ticked rows with their facts — “Your space is ready — nothing to redo.” — and Disconnect this Mac… at its foot. See Region 5.</div>
+</sm-note>
+
+<sm-state name="space-found" style="grid-row:12;grid-column:2">
+  <p class="shead"><b>space-found</b> — N42 · D</p>
+  <div class="card"><span class="said">“Found your space — <span class="mono">v.myshroom.workers.dev</span>, 14 videos. This Mac is joined.”</span><p class="cap">a pasted token's probes find a space already there — rows three to five tick in order, this replaces wiring's calm line, then row six (per-Mac). U10's recovery line, given its place.</p></div>
+</sm-state>
+
+<sm-state name="degraded" kind="fail" style="grid-row:13;grid-column:1">
+  <p class="shead"><b>space-degraded</b> — one banner under the amber dot (N42 · D)</p>
+  <div class="popv">
+    <div style="background:rgba(235,203,139,.10);border:1px solid rgba(235,203,139,.45);border-radius:8px;padding:9px 11px 10px">
+      <div class="said" style="color:#ECEFF4">Your space needs you — new videos wait safely on this Mac.</div>
+      <div style="margin-top:8px"><span class="bf" style="font-size:11.5px;padding:4px 11px">Reconnect your space</span></div>
+    </div>
+    <span class="bf" style="display:block;width:auto;text-align:center;margin-top:8px">Start recording</span>
+  </div>
+  <p class="cap">Start stays live — capture is local; takes drain after the repair. An owner-class Mac without the token reads: “Your space needs a fix — open shroom on the Mac you set it up on, or reconnect here with a fresh token.” [ Reconnect here ]. Members see space-needs-owner instead (Region 6).</p>
+</sm-state>
+
+<sm-state name="repair-mood" style="grid-row:14/16;grid-column:1">
+  <p class="shead"><b>repair mood</b> — Settings → Space, re-probed; the first broken row is current (N42 · D)</p>
+  <div class="win">
+    <div class="tb"><span class="tl"></span></div>
+    <div class="tabs"><span>General</span><span class="on">Space</span><span>Members</span></div>
+    <div class="wb">
+      <div class="plan">
+        <div class="pr"><span class="g"><span class="tick"></span></span><span class="t">A Cloudflare account — Bagrat's Account</span></div>
+        <div class="pr"><span class="g cur">→</span><span class="tc">One access token for shroom</span></div>
+        <div class="nest">
+          <span class="said">Cloudflare stopped accepting shroom's token — create a fresh one and paste it here. Nothing else needs redoing.</span>
+          <span class="bf">Create token in Cloudflare</span>
+          <span class="paste">Paste your token</span>
+        </div>
+        <div class="pr"><span class="g"><span class="tick"></span></span><span class="t">A credit card for storage</span></div>
+        <div class="pr"><span class="g"><span class="tick"></span></span><span class="t">Your link name — <span class="mono" style="font-size:11.5px">v.myshroom.workers.dev</span></span></div>
+        <div class="pr"><span class="g"><span class="tick"></span></span><span class="t">Wiring it up</span></div>
+        <div class="pr"><span class="g"><span class="tick"></span></span><span class="t">Letting macOS allow recording — on this Mac</span></div>
+      </div>
+    </div>
+  </div>
+  <p class="cap">No second repair UI: Region 2's own states under whichever row broke — token revoked → token (the line above replaces the draft “changed its mind about our token”) · card removed → gate-card · the page or its key gone → wiring runs again (the click was the consent) · the bucket gone → space-storage-gone · the name changed → name-changed · a fresh token for another account → token-other-account: “This token is for a different Cloudflare account than your space — create it in the account that holds v.myshroom.workers.dev.”</p>
+</sm-state>
+
+<sm-state name="space-storage-gone" kind="fail" style="grid-row:14;grid-column:2">
+  <p class="shead"><b>space-storage-gone</b> — N42 · D</p>
+  <div class="card"><span class="said">“Your space's storage is gone from Cloudflare — the videos that were in it can't come back. Set up fresh storage?”</span><div style="display:flex;gap:10px;align-items:center;margin-top:8px"><span class="bf">Set it up fresh</span><span class="quiet">Disconnect this Mac…</span></div></div>
+</sm-state>
+
+<sm-state name="name-changed" kind="fail" style="grid-row:15;grid-column:2">
+  <p class="shead"><b>name-changed</b> — N42 · D</p>
+  <div class="card"><span class="said">“Your link name changed in Cloudflare, so links you've shared stopped opening. Changing it back brings them back.”</span><p class="cap">re-probed when the window regains focus</p></div>
+</sm-state>
+
+<sm-port name="laterport" style="grid-row:13;grid-column:2">
+  <div class="card">later life — any publish or periodic self-check (Region 3+)</div>
+</sm-port>
+
+<sm-edges>
+  <sm-edge from="account" to="account-signing-up" kind="flow" label="Not yet — opens signup"></sm-edge>
+  <sm-edge from="account-signing-up" to="token" kind="flow" label="I signed up — box 1 ticks at proceed"></sm-edge>
+  <sm-edge from="account" to="token" kind="flow" label="I have one — box 1 ticks at proceed"></sm-edge>
+  <sm-edge from="token" to="token-garbled" kind="fail" label="shape check"></sm-edge>
+  <sm-edge from="token-garbled" to="token" kind="retry" label="copy once more"></sm-edge>
+  <sm-edge from="token" to="token-wrong-powers" kind="fail" label="probe by use"></sm-edge>
+  <sm-edge from="token-wrong-powers" to="token" kind="retry" label="on new paste"></sm-edge>
+  <sm-edge from="token" to="card" kind="flow" label="paste validates — probe pass runs"></sm-edge>
+  <sm-edge from="card" to="gate-email" kind="fail" label="403 8000077"></sm-edge>
+  <sm-edge from="gate-email" to="card" kind="auto" label="auto-poll clears"></sm-edge>
+  <sm-edge from="card" to="gate-card" kind="fail" label="needs-payment class"></sm-edge>
+  <sm-edge from="gate-card" to="card" kind="auto" label="auto-poll clears"></sm-edge>
+  <sm-edge from="card" to="name" kind="flow" label="cleared — no subdomain yet (10007)"></sm-edge>
+  <sm-edge from="card" to="wiring" kind="flow" label="cleared — subdomain exists: the name row ticks itself"></sm-edge>
+  <sm-edge from="name" to="name-taken" kind="fail" label="10031 at claim"></sm-edge>
+  <sm-edge from="name-taken" to="name" kind="retry" label="inline retry"></sm-edge>
+  <sm-edge from="name" to="charset" kind="retry" label="as-you-type"></sm-edge>
+  <sm-edge from="name" to="wiring" kind="flow" label="Claim this name — the row ticks with the fact"></sm-edge>
+  <sm-edge from="wiring" to="wizard-offline" kind="fail" label="transport failure"></sm-edge>
+  <sm-edge from="wizard-offline" to="wiring" kind="auto" label="auto-resume on reconnect"></sm-edge>
+  <sm-edge from="wiring" to="done" kind="flow" label="silent self-check passes"></sm-edge>
+  <sm-edge from="done" to="settingsnote" kind="side" label="re-entry, later — the settings mood"></sm-edge>
+  <sm-edge from="laterport" to="degraded" kind="fail" label="auth-class failure → classify"></sm-edge>
+  <sm-edge from="degraded" to="repair-mood" kind="flow" label="Reconnect your space"></sm-edge>
+  <sm-edge from="repair-mood" to="space-storage-gone" kind="fail" label="the bucket is gone"></sm-edge>
+  <sm-edge from="repair-mood" to="name-changed" kind="fail" label="the name changed"></sm-edge>
+  <sm-edge from="token" to="token-pick-account" kind="side" label="several accounts"></sm-edge>
+  <sm-edge from="wiring" to="space-found" kind="side" label="a space is already there"></sm-edge>
+</sm-edges>
+</sm-region>
+
+<sm-region id="r3">
+<h2>Region 3 — the permissions chapter + the tray <small>ratified (N17, N20–N25) · the popover's grammar, auto-pauses, disk, quit designed 2026-09-30 — N38, N39, N41, awaiting ratification</small></h2>
+
+<sm-state name="perm-mic" style="grid-row:2;grid-column:1">
+  <p class="shead"><b>perm-mic</b> — the system prompt, answerable inline (N20)</p>
+  <div class="card" style="max-width:340px">
+    <div style="display:flex;gap:10px;align-items:flex-start">
+      <svg viewBox="18 20 84 90" style="width:24px;height:26px;flex:none" aria-hidden="true"><path d="M50,68 C49,82 46,92 46,96 C46,101 52,104 60,104 C68,104 74,101 74,96 C74,92 71,82 70,68 Z" fill="#E5E9F0"/><path d="M24,64 C24,42 40,26 60,26 C80,26 96,42 96,64 C86,75 34,75 24,64 Z" fill="#88C0D0"/><circle cx="33" cy="58" r="3.4" fill="#ECEFF4"/><circle cx="88" cy="58" r="2.2" fill="#ECEFF4"/><circle cx="50" cy="44" r="6" fill="#ECEFF4"/><circle cx="72" cy="48" r="3.6" fill="#ECEFF4"/><circle cx="64" cy="58" r="2.6" fill="#ECEFF4"/></svg>
+      <div>
+        <div class="said" style="color:#ECEFF4;font-weight:600">“shroom” would like to access the microphone.</div>
+        <div class="said" style="font-size:11.5px;margin-top:4px">shroom records your voice with your video.</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><span class="bo" style="font-size:11.5px">Don't Allow</span><span class="bf" style="font-size:11.5px">OK</span></div>
+  </div>
+  <p class="cap">macOS's own dialog — our copy is the usage string, an Info.plist said-line. Mic resolves fully before anything else; dialogs never stack (POC §4).</p>
+</sm-state>
+
+<sm-note name="mic-denied" style="grid-row:2;grid-column:2">
+  <div class="card">A denied mic never blocks — silent screencasts are legitimate. config later shows the mic off with a quiet “allowed in System Settings” hint.</div>
+</sm-note>
+
+<sm-state name="perm-screen" style="grid-row:3/5;grid-column:1">
+  <p class="shead"><b>perm-screen</b> — the Settings switch (N20)</p>
+  <div class="win">
+    <div class="tb"><span class="tl"></span></div>
+    <div class="wb">
+      <div class="plan">
+        <div class="pr"><span class="g"><span class="tick"></span></span><span class="t">A Cloudflare account</span></div>
+        <div class="pr"><span class="g"><span class="tick"></span></span><span class="t">One access token for shroom</span></div>
+        <div class="pr"><span class="g"><span class="tick"></span></span><span class="t">A credit card for storage</span></div>
+        <div class="pr"><span class="g"><span class="tick"></span></span><span class="t">Your link name — <span class="mono" style="font-size:11.5px">v.myshroom.workers.dev</span></span></div>
+        <div class="pr"><span class="g"><span class="tick"></span></span><span class="t">Wiring it up</span></div>
+        <div class="pr"><span class="g cur">→</span><span class="tc">Letting macOS allow recording <span class="p">(microphone and screen — a one-time yes each)</span></span></div>
+        <div class="nest">
+          <span class="said">macOS handles screen recording in System Settings — it's open. Flip the switch next to shroom, and when macOS offers to quit and reopen it, say yes. I'll be right where you left me.</span>
+          <div style="display:flex;align-items:center;gap:9px"><span class="quiet">Flipped it already?</span><span class="bo" style="font-size:11px;padding:3px 9px">Reopen shroom</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="cap">shroom opens the exact pane; the switch takes effect on next launch. Rhymes with done's preview by design — pre-warn, then guide in the moment. Reopen shroom (N42 · D) covers a declined or missing macOS relaunch offer. A denied mic still ticks row six, with the fact “— microphone off for now”.</p>
+</sm-state>
+
+<sm-note name="camera-note" style="grid-row:3;grid-column:2">
+  <div class="card">Camera is never asked at onboarding — it prompts inline at the first camera-mode pick. Don't ask for hardware the user may never use.</div>
+</sm-note>
+
+<sm-state name="relaunching" style="grid-row:4;grid-column:2">
+  <p class="shead"><b>relaunching</b> — beat</p>
+  <div class="card quiet">macOS's own “quit and reopen” offer; the app relaunches and onboarding resumes at this chapter — derived state, no stored counter.</div>
+</sm-state>
+
+<sm-state name="perm-priming" style="grid-row:5;grid-column:1">
+  <p class="shead"><b>perm-priming</b> — ~1 s invisible warm-up (N20)</p>
+  <div class="card"><span class="said">“If macOS double-checks about recording, approve it — that's the last one for a good while.”</span><p class="cap">fires Apple's second (~30-day) consent now, at setup — never mid-recording (POC §4; probe: dialog real on Tahoe, non-fatal).</p></div>
+</sm-state>
+
+<sm-note name="arm-guard" style="grid-row:5;grid-column:2">
+  <div class="card">Arm-time guard, not a step: every record arm re-probes grants and replays exactly the missing beat. Docs carry Apple's ~monthly re-confirm honestly — their policy.</div>
+</sm-note>
+
+<sm-state name="all-set" style="grid-row:6/9;grid-column:1">
+  <p class="shead"><b>all-set</b> — the window's final face (N20)</p>
+  <div class="win">
+    <div class="tb"><span class="tl"></span></div>
+    <div class="wb">
+      <div class="plan">
+        <div class="pr"><span class="g"><span class="tick"></span></span><span class="t">A Cloudflare account</span></div>
+        <div class="pr"><span class="g"><span class="tick"></span></span><span class="t">One access token for shroom</span></div>
+        <div class="pr"><span class="g"><span class="tick"></span></span><span class="t">A credit card for storage</span></div>
+        <div class="pr"><span class="g"><span class="tick"></span></span><span class="t">Your link name — <span class="mono" style="font-size:11.5px">v.myshroom.workers.dev</span></span></div>
+        <div class="pr"><span class="g"><span class="tick"></span></span><span class="t">Wiring it up</span></div>
+        <div class="pr"><span class="g"><span class="tick"></span></span><span class="t">Letting macOS allow recording</span></div>
+      </div>
+      <div style="border-top:1px solid #3B4252;margin:14px 0 12px"></div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div class="said hi" style="font-size:13.5px">You're all set — ready to record.</div>
+        <div class="quiet">shroom lives in your menu bar now — look for the little mushroom.</div>
+        <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap"><span class="bo">Close</span><span class="bo">Invite someone</span><span class="bf">Record now</span></div>
+      </div>
+    </div>
+  </div>
+  <p class="cap">Bagrat's three-door close — replaces the passive handoff. Record now closes the window and opens config as a tray popover: the eye lands on the menu bar, teaching where shroom lives. Close (and ✕, ≡ Close exactly — N12's precedent) is the retreat: dock icon goes away, tray-only life. Invite someone morphs this same window into the members surface — detailed at its own leg. “Invite someone”, not “someone else” — ratified.</p>
+</sm-state>
+
+<sm-port name="portinvite" style="grid-row:6;grid-column:2">
+  <div class="card">Region 6 — invite-born (Settings → Members)</div>
+</sm-port>
+
+<sm-state name="idle-ready" style="grid-row:7/9;grid-column:2">
+  <p class="shead"><b>idle-ready</b> — tray-only life (N21)</p>
+  <div class="card">
+    <div class="said hi">No menu — the tray click opens config, directly.</div>
+    <div class="said">Right-click → <b style="color:#ECEFF4">Quit shroom</b> <span class="quiet">— the one-item native menu, both idle states</span></div>
+  </div>
+  <p class="cap">The plain mushroom, identical to idle-unprovisioned's — icon faces are reserved for the recording life and the update badge (U7).</p>
+</sm-state>
+
+<sm-state name="config" style="grid-row:9/12;grid-column:1">
+  <p class="shead"><b>config</b> — the tray's idle-ready face: a same-themed popover, never a native menu (N21)</p>
+  <div class="popv">
+    <div class="prow">Record<span class="pop">LG UltraFine <i>⌄</i></span></div>
+    <div class="prow">Show yourself<span class="tog"><i></i></span></div>
+    <div class="prow">Microphone<span class="pop">MacBook Pro Microphone <i>⌄</i></span></div>
+    <div class="prow">Quality<span class="seg"><span class="on">Normal</span><span>2K</span><span>4K</span></span></div>
+    <span class="bf" style="display:block;width:auto;text-align:center;margin-top:9px">Start recording</span>
+    <div class="quiet" style="text-align:center;margin-top:6px">Starts after 3-2-1 — click anywhere to cancel.</div>
+    <div class="ficons">
+      <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Library</div>
+      <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg>Settings</div>
+      <div style="margin-left:auto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 3v8"/><path d="M6.3 6.3a8 8 0 1 0 11.4 0"/></svg>Quit shroom</div>
+    </div>
+  </div>
+  <p class="cap">Loom-style (Bagrat, N21): the tray click is this popover. Pre-filled with last-used — a confirm, not a form; click-away or Esc dismisses it, nothing lost. Record is one source picker: displays by human name first, Camera below (Camera greys Show yourself). With Show yourself on, the bubble is live from the moment the popover opens — place yourself before Start; first-ever default off, and flipping it on is the camera-permission moment (N22). The footer labels are hover tooltips. Above the footer a status line appears only when there's something to say — U9's upload mirror, U7's update row, space-degraded's face — each at its own leg. Copy last link is gone; the page and the Library row carry copying (N1 amended).</p>
+</sm-state>
+
+<sm-note name="statusnote" style="grid-row:9;grid-column:2">
+  <p class="shead"><b>the popover's grammar</b> — N38 · D</p>
+  <div class="card">Two slots, never more. <b style="color:#ECEFF4">The banner (top) is an ask</b> — one at a time, highest first: a saved take · the space can't take videos · recording switched off · an update (Frost, slimmest). <b style="color:#ECEFF4">The status line (above the footer) is a fact</b> — “Uploading — 40%. Your link already works.” · “Uploading two videos — 40%.” · “Waiting for connection — your links already work.” · “Fully live ✓” once · “Updated to 1.3.0 ✓” once. Disk-low sits under Start. Return = Start recording.</div>
+</sm-note>
+<sm-state name="countdown" style="grid-row:10;grid-column:2">
+  <p class="shead"><b>countdown</b> — on the chosen display only (N22)</p>
+  <div style="position:relative;height:118px;border-radius:9px;border:1px solid #434C5E;background:#2A2F3A;overflow:hidden">
+    <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px">
+      <div style="font-size:44px;line-height:1;font-weight:600;color:#ECEFF4">3</div>
+      <div class="quiet" style="color:#A7B2C8">Click anywhere to cancel.</div>
+    </div>
+    <div style="position:absolute;right:10px;bottom:10px;width:30px;height:30px;border-radius:50%;background:#434C5E;border:1.5px solid #E5E9F0"></div>
+  </div>
+  <p class="cap">A light scrim, a large 3 · 2 · 1, one quiet line. Cancel = any click, Esc, or the line → back to config, still armed. Silent; other displays untouched; the scrim lifts the instant capture starts — the count is never in the take (N7). The bubble is already there from config and simply stays.</p>
+</sm-state>
+<sm-port name="portlib" style="grid-row:11;grid-column:2">
+  <div class="card">Region 5 — Library · Settings (the gear is the settings door)</div>
+</sm-port>
+<sm-state name="recording" style="grid-row:12;grid-column:2">
+  <p class="shead"><b>recording</b> — the tray is the whole surface (N24)</p>
+  <div class="card quiet">No popover. The icon wears the red dot; the click is the pause — the popover opens only after the pause is confirmed (POC §8). No timer in the menu bar. Capture writes locally whatever the network does; upload is opportunistic background — the recording is sacred.</div>
+</sm-state>
+
+<sm-state name="paused" style="grid-row:13/16;grid-column:2">
+  <p class="shead"><b>paused</b> — the take's popover (N24)</p>
+  <div class="popv" style="max-width:280px">
+    <div style="display:flex;align-items:center;gap:7px;font-size:12px;color:#A7B2C8"><span style="display:inline-flex;gap:2px"><span style="width:3px;height:10px;background:#A7B2C8;border-radius:1px"></span><span style="width:3px;height:10px;background:#A7B2C8;border-radius:1px"></span></span>Paused — 4:32</div>
+    <span class="bf" style="display:block;width:auto;text-align:center;margin-top:9px">Resume</span>
+    <div style="display:flex;gap:8px;margin-top:8px"><span class="bo" style="flex:1;width:auto;text-align:center">Drop a marker</span><span class="bo" style="flex:1;width:auto;text-align:center">Restart</span></div>
+    <span class="bo" style="display:block;width:auto;text-align:center;margin-top:8px;font-weight:600">Stop</span>
+    <div class="quiet" style="text-align:center;margin-top:4px">Your link opens right away.</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:9px;padding-top:7px;border-top:1px solid #3B4252"><span style="font-size:11.5px;color:#BF616A">Discard…</span><span style="font-size:10.5px;color:#616E88">no Quit while a take is open</span></div>
+  </div>
+  <p class="cap">Resume is the one filled action; Stop is deliberate but visible, its line the single place stop = published gets said; Discard… is red text a stray click never finds. Tray faces: plain · red dot · pause bars — no timer in the menu bar — plus amber (something needs you) and Frost (an update), N38. Drop a marker lands at the pause point, metadata-only in v1. The count is Restart's undo (N39 · D): cancelling it returns here with the take intact.</p>
+</sm-state>
+
+<sm-state name="display-lost" style="grid-row:14;grid-column:1">
+  <p class="shead"><b>display-lost</b> — the paused popover with one context line (N24, by reference)</p>
+  <div class="card"><span class="said">“Your display disconnected — recording paused.”</span><p class="cap">auto-pause; Resume greyed until the display is back · Stop · Discard… — the take up to the unplug is intact.</p></div>
+</sm-state>
+
+<sm-port name="portstop" style="grid-row:15;grid-column:1">
+  <div class="card">Region 4 — stopping → the link moment</div>
+</sm-port>
+
+<sm-state name="recovered-take" style="grid-row:16;grid-column:1">
+  <p class="shead"><b>recovered-take</b> — a banner on top of config, the amber dot on the tray (N25)</p>
+  <div class="popv">
+    <div style="background:rgba(235,203,139,.10);border:1px solid rgba(235,203,139,.45);border-radius:8px;padding:9px 11px 10px">
+      <div class="said" style="color:#ECEFF4">We saved your interrupted recording (4:32).</div>
+      <div style="display:flex;align-items:center;gap:12px;margin-top:8px"><span class="bf" style="font-size:11.5px;padding:4px 11px">Get link</span><span style="font-size:11.5px;color:#BF616A">Discard…</span></div>
+    </div>
+    <div class="quiet" style="margin-top:8px">config, usable beneath it</div>
+  </div>
+  <p class="cap">Launch stays silent — no window, no notification; the amber dot says something waits, the next click greets it. Get link runs the normal stop sequence from the saved file; Discard… confirms (“4:32 was saved. There's no undo.”), clean delete. Persists until resolved, across launches; a new take can start meanwhile; oldest first. Never auto-published.</p>
+</sm-state>
+
+<sm-port name="portcrash" style="grid-row:16;grid-column:2">
+  <div class="card">crash or forced shutdown mid-take — the next launch</div>
+</sm-port>
+
+<sm-state name="recording-off" kind="fail" style="grid-row:17;grid-column:2">
+  <p class="shead"><b>recording-off</b> — the arm-time guard, made visible (N38 · D)</p>
+  <div class="popv">
+    <div style="background:rgba(235,203,139,.10);border:1px solid rgba(235,203,139,.45);border-radius:8px;padding:9px 11px 10px">
+      <div class="said" style="color:#ECEFF4">macOS has screen recording switched off for shroom.</div>
+      <div style="margin-top:8px"><span class="bf" style="font-size:11.5px;padding:4px 11px">Turn it back on</span></div>
+    </div>
+  </div>
+  <p class="cap">probed when config opens, so it's a banner before Start, never a surprise after. → Settings, Space, row six at perm-screen. Display sources grey; Camera still records. When Apple's monthly re-confirm is due, opening config runs the ~1 s warm-up so macOS asks now, never inside a take.</p>
+</sm-state>
+
+<sm-state name="auto-pause" kind="fail" style="grid-row:17;grid-column:1">
+  <p class="shead"><b>the auto-pause family</b> — the popover opens by itself once you're back (N39 · D)</p>
+  <div class="popv" style="max-width:300px">
+    <div class="said" style="font-size:11.5px;color:#EBCB8B">Your microphone disconnected — recording paused.</div>
+    <div class="quiet">Resume uses MacBook Pro Microphone.</div>
+    <div style="display:flex;align-items:center;gap:7px;font-size:12px;color:#A7B2C8;margin-top:8px"><span style="display:inline-flex;gap:2px"><span style="width:3px;height:10px;background:#A7B2C8;border-radius:1px"></span><span style="width:3px;height:10px;background:#A7B2C8;border-radius:1px"></span></span>Paused — 7:15</div>
+    <span class="bf" style="display:block;width:auto;text-align:center;margin-top:8px">Resume</span>
+  </div>
+  <p class="cap">display-lost (ratified) · mic-lost (Resume switches to the built-in mic) · camera-lost (camera as source — Resume greyed until back; a lost bubble never interrupts) · mac-away: “Your Mac went to sleep — recording paused.” / “Your screen locked — recording paused.” · permission-lost: the microphone pauses — “macOS switched off the microphone — recording paused.” (Resume continues without sound); a lost screen grant can't return mid-take, so it finalizes and asks like a full disk (below). Unasked popovers — for pauses and stops you didn't make — never take the keyboard: a stray Return stays in your app. Right-click mid-take = a left click.</p>
+</sm-state>
+
+<sm-state name="disk-full-stop" kind="fail" style="grid-row:18;grid-column:1">
+  <p class="shead"><b>disk-full-stop</b> — finalized, never published (N39 · D)</p>
+  <div class="popv">
+    <div class="said" style="color:#ECEFF4">This Mac ran out of room, so the recording stopped at 12:04 — everything so far is saved.</div>
+    <div style="display:flex;align-items:center;gap:12px;margin-top:9px"><span class="bf" style="font-size:11.5px;padding:4px 11px">Get link</span><span style="font-size:11.5px;color:#BF616A">Discard…</span></div>
+  </div>
+  <p class="cap">at arm, disk-low sits under Start: “About 20 minutes of room left on this Mac.” — under a minute, Start greys: “This Mac is out of room for recording — free up some space first.” Dismissed unanswered → a recovered take under the amber dot. A screen grant switched off mid-take ends the same way: “macOS switched off screen recording, so the recording stopped at 7:15 — everything so far is saved.”</p>
+</sm-state>
+
+<sm-state name="quit-confirm" style="grid-row:18;grid-column:2">
+  <p class="shead"><b>quit-confirm</b> — only while uploads drain (N41 · D)</p>
+  <div class="popv">
+    <div class="said hi" style="font-weight:600">Quit with two videos still uploading?</div>
+    <div class="quiet" style="margin-top:3px">They'll finish the next time shroom opens — until then, their links say “on its way.”</div>
+    <div style="display:flex;gap:8px;margin-top:10px"><span class="bo">Back</span><span style="flex:1"></span><span class="bo">Quit anyway</span></div>
+  </div>
+  <p class="cap">nothing is destroyed, so nothing is red; no Return default. Right-click Quit asks the same way. Nothing draining → quits at once; a system shutdown never asks.</p>
+</sm-state>
+
+<sm-note name="devices" style="grid-row:19;grid-column:1">
+  <p class="shead"><b>devices at config</b> — N39 · D</p>
+  <div class="card">Never auto-pick an iPhone — mic or camera. A last-used display that's gone falls back to the one with the menu bar. No microphone: “No microphone — your video will be silent.” Camera as the source previews at config, like the bubble. With Show yourself on, picking another display moves the bubble there. Same-named displays get their place: “LG UltraFine (left)” / “(right)”. Camera denied: Show yourself flips back off, Camera-as-source greys Start — “Camera is off for shroom —” [ Open System Settings ]. The count is Restart's undo: the old take dies only when the new capture begins.</div>
+</sm-note>
+
+<sm-state name="discard-confirm" style="grid-row:12/14;grid-column:1">
+  <p class="shead"><b>discard-confirm</b> — the paused popover morphs into the question (N23)</p>
+  <div class="popv">
+    <div class="said hi" style="font-weight:600">Toss this recording?</div>
+    <div class="quiet" style="margin-top:3px">4:32 recorded so far. There's no undo.</div>
+    <div style="display:flex;align-items:center;gap:8px;margin-top:12px"><span class="bo">Back</span><span style="flex:1"></span><span class="bo">Restart instead</span><span class="bo" style="border-color:#BF616A;color:#BF616A">Discard</span></div>
+  </div>
+  <p class="cap">No window, no dock icon. Click-away or Esc ≡ Back; no Enter default — a stray Return can never destroy. Restart instead re-arms with the count already running. Discard deletes the local take and any bytes the opportunistic upload already placed — a clean delete, no tombstone: the link was never handed out.</p>
+</sm-state>
+
+<sm-edges>
+  <sm-edge from="done" to="perm-mic" kind="flow" label="Allow recording"></sm-edge>
+  <sm-edge from="perm-mic" to="mic-denied" kind="side" label="Don't Allow — never blocks"></sm-edge>
+  <sm-edge from="perm-mic" to="perm-screen" kind="flow" label="mic resolved — allow or deny"></sm-edge>
+  <sm-edge from="perm-screen" to="relaunching" kind="flow" label="switch flipped — say yes to quit and reopen"></sm-edge>
+  <sm-edge from="relaunching" to="perm-screen" kind="auto" label="resumes right here — derived state"></sm-edge>
+  <sm-edge from="perm-screen" to="perm-priming" kind="flow" label="grant live"></sm-edge>
+  <sm-edge from="perm-priming" to="all-set" kind="flow" label="warm-up clean — row six ticks"></sm-edge>
+  <sm-edge from="all-set" to="config" kind="flow" label="Record now — the window closes, the popover opens at the tray"></sm-edge>
+  <sm-edge from="all-set" to="portinvite" kind="side" label="Invite someone"></sm-edge>
+  <sm-edge from="all-set" to="idle-ready" kind="flow" label="Close — dock retreats"></sm-edge>
+  <sm-edge from="idle-ready" to="config" kind="flow" label="tray click"></sm-edge>
+  <sm-edge from="config" to="idle-ready" kind="retry" label="click away or Esc — nothing lost"></sm-edge>
+  <sm-edge from="config" to="statusnote" kind="side" label="when there's something to say"></sm-edge>
+  <sm-edge from="config" to="countdown" kind="flow" label="Start recording"></sm-edge>
+  <sm-edge from="countdown" to="config" kind="retry" label="any click, Esc, or the line — cancel, still armed"></sm-edge>
+  <sm-edge from="countdown" to="recording" kind="flow" label="3-2-1 elapsed — the scrim lifts"></sm-edge>
+  <sm-edge from="recording" to="paused" kind="flow" label="tray click — pause confirmed first"></sm-edge>
+  <sm-edge from="recording" to="display-lost" kind="fail" label="display unplugged — auto-pause"></sm-edge>
+  <sm-edge from="paused" to="recording" kind="flow" label="Resume"></sm-edge>
+  <sm-edge from="paused" to="countdown" kind="flow" label="Restart — count already running"></sm-edge>
+  <sm-edge from="paused" to="portstop" kind="port" label="Stop — your link opens right away"></sm-edge>
+  <sm-edge from="paused" to="discard-confirm" kind="flow" label="Discard…"></sm-edge>
+  <sm-edge from="discard-confirm" to="paused" kind="retry" label="Back — click away, Esc"></sm-edge>
+  <sm-edge from="portcrash" to="recovered-take" kind="fail" label="the take survives, truncated but valid"></sm-edge>
+  <sm-edge from="recovered-take" to="portstop" kind="port" label="Get link — the normal stop sequence"></sm-edge>
+  <sm-edge from="recovered-take" to="discard-confirm" kind="flow" label="Discard… — “4:32 was saved.”"></sm-edge>
+  <sm-edge from="discard-confirm" to="countdown" kind="flow" label="Restart instead — count already running"></sm-edge>
+  <sm-edge from="discard-confirm" to="idle-ready" kind="flow" label="Discard — clean delete, the bubble goes"></sm-edge>
+  <sm-edge from="config" to="portlib" kind="side" label="footer icons"></sm-edge>
+  <sm-edge from="recording" to="auto-pause" kind="fail" label="mic · camera · sleep · lock"></sm-edge>
+  <sm-edge from="config" to="recording-off" kind="fail" label="screen recording switched off"></sm-edge>
+  <sm-edge from="recording" to="disk-full-stop" kind="fail" label="out of room"></sm-edge>
+  <sm-edge from="config" to="quit-confirm" kind="side" label="Quit shroom while uploads drain"></sm-edge>
+</sm-edges>
+</sm-region>
+
+<sm-region id="r4">
+<h2>Region 4 — stop → the link → the recipient <small>ratified (N26, N27) · the stop's edges designed 2026-09-30 — N40, awaiting ratification</small></h2>
+
+<sm-port name="portstopin" style="grid-row:2;grid-column:2">
+  <div class="card">from Region 3 — paused's Stop, or recovered-take's Get link</div>
+</sm-port>
+
+<sm-state name="owner-page" style="grid-row:2/6;grid-column:1">
+  <p class="shead"><b>owner-page</b> — opens at Stop: keyed URL → owner cookie → 302 to the clean address (N26)</p>
+  <div class="bwin">
+    <div class="bbar"><span class="tl"></span><span class="url">v.myshroom.workers.dev/b4kq9d</span></div>
+    <div class="bsec">
+      <div style="width:60%;background:#272C36;border:1.5px solid #88C0D0;border-radius:6px;padding:5px 9px;font-size:13px;color:#616E88">Untitled — Aug 21</div>
+      <div style="margin-top:10px;aspect-ratio:16/9;background:#232831;border-radius:8px;border:1px solid #434C5E;display:flex;align-items:center;justify-content:center"><span style="width:40px;height:40px;border-radius:50%;background:#ECEFF4;display:inline-flex;align-items:center;justify-content:center"><svg width="14" height="16" viewBox="0 0 20 22" aria-hidden="true"><path d="M4 2 L18 11 L4 20 Z" fill="#2E3440"/></svg></span></div>
+      <div style="display:flex;align-items:center;gap:14px;margin-top:10px;flex-wrap:wrap"><span class="bf">Copy link</span><span class="said" style="font-size:12px">Uploading — 40%. Your link already works.</span></div>
+      <div style="display:flex;justify-content:flex-end;align-items:center;gap:7px;margin-top:12px"><span class="tog" style="width:24px;height:14px"><i style="width:10px;height:10px"></i></span><span class="quiet">made with shroom</span><svg viewBox="18 20 84 90" style="width:14px;height:15px" aria-hidden="true"><path d="M50,68 C49,82 46,92 46,96 C46,101 52,104 60,104 C68,104 74,101 74,96 C74,92 71,82 70,68 Z" fill="#E5E9F0"/><path d="M24,64 C24,42 40,26 60,26 C80,26 96,42 96,64 C86,75 34,75 24,64 Z" fill="#88C0D0"/><circle cx="33" cy="58" r="3.4" fill="#ECEFF4"/><circle cx="88" cy="58" r="2.2" fill="#ECEFF4"/><circle cx="50" cy="44" r="6" fill="#ECEFF4"/><circle cx="72" cy="48" r="3.6" fill="#ECEFF4"/><circle cx="64" cy="58" r="2.6" fill="#ECEFF4"/></svg></div>
+    </div>
+  </div>
+  <p class="cap">The title field is the page's only chrome — focused on arrival, Enter or click-away saves, an untouched placeholder (the day's date) becomes the title. Copy link reads “Copied” for a moment — the page's one copy door (N1). Download appears only when the single-file MP4 exists. The owner switch beside the mark is the space-global setting; its label doubles as the tooltip recipients get. No header, no name (U3). The address bar shows the clean link — the key died at the 302.</p>
+</sm-state>
+
+<sm-state name="fully-live" style="grid-row:3;grid-column:2">
+  <p class="shead"><b>fully-live</b> — the queue drained</p>
+  <div class="card"><span class="said">“Fully live ✓”</span><p class="cap">the page refreshes itself; the config popover's status line mirrors (U9). Download appears when the MP4 is ready.</p></div>
+</sm-state>
+
+<sm-state name="waiting-conn" kind="fail" style="grid-row:4;grid-column:2">
+  <p class="shead"><b>waiting-conn</b> — offline after the page opened</p>
+  <div class="card"><span class="said">“Waiting for connection — your link already works.”</span><p class="cap">now the owner page's line when the Mac drops offline after the page opened: “Waiting for connection — your link already works.” Offline at the moment of stop is stopped-offline (N40), which carries beat 6's ratified promise. Recipients meanwhile get on its way.</p></div>
+</sm-state>
+
+<sm-state name="live" style="grid-row:5;grid-column:2">
+  <p class="shead"><b>live</b> — what the link opens, the normal case (N27)</p>
+  <div class="card">
+    <div class="said hi" style="font-weight:600">Where the 502s come from</div>
+    <div style="margin:8px 0;height:46px;border-radius:6px;background:#232831;border:1px solid #434C5E;display:flex;align-items:center;justify-content:center"><span style="width:22px;height:22px;border-radius:50%;background:#ECEFF4;display:inline-flex;align-items:center;justify-content:center"><svg width="8" height="9" viewBox="0 0 20 22" aria-hidden="true"><path d="M4 2 L18 11 L4 20 Z" fill="#2E3440"/></svg></span></div>
+    <div style="display:flex;justify-content:space-between;align-items:center"><span class="bo" style="font-size:11px;padding:3px 9px">Download</span><span class="quiet">made with shroom · the mark</span></div>
+    <p class="cap">the owner page minus the owner's two controls — the title as text, the player, Download quiet once the MP4 exists, the mark with its hover label; no comments, no sign-in, no name. noindex.</p>
+  </div>
+</sm-state>
+
+<sm-state name="on-its-way" style="grid-row:6;grid-column:2">
+  <p class="shead"><b>on-its-way</b> — the link beat the upload</p>
+  <div class="card"><span class="said">“This video is on its way. The page refreshes itself — nothing to do.”</span><div style="margin-top:8px;height:3px;border-radius:2px;background:#3B4252"><div style="width:62%;height:3px;border-radius:2px;background:#88C0D0"></div></div><p class="cap">the title stays (the untouched placeholder if never typed); the line sits where the player will be, over the owner's upload seen from the other side (U9).</p></div>
+</sm-state>
+
+<sm-state name="removed" style="grid-row:7;grid-column:2">
+  <p class="shead"><b>removed</b> — the tombstone, forever at the same address</p>
+  <div class="card"><span class="said">“This video was removed by its owner.”</span><p class="cap">the line alone — no title, no player; the mark stays (P2).</p></div>
+</sm-state>
+
+<sm-state name="stopped-offline" kind="fail" style="grid-row:6;grid-column:1">
+  <p class="shead"><b>stopped-offline</b> — the link in the popover; the page opens itself later (N40 · D, amends beat 6)</p>
+  <div class="popv">
+    <div class="said hi" style="font-weight:600">Your link is ready.</div>
+    <div class="quiet" style="margin-top:3px">You're offline — it's already safe to share. The page opens by itself the moment you're back.</div>
+    <div style="display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap"><span class="field" style="border:1px solid #4C566A;font-size:11px">v.myshroom.workers.dev/b4kq9d</span><span class="bf">Copy link</span></div>
+  </div>
+  <p class="cap">A browser can't load the page while the Mac is offline, so the page can't be what opens. On reconnect the owner page opens, keyed — after any running take (the quiet-take law); once, only the newest of several, and only if you're back within the hour with shroom still running — later, the Library row carries the link. Get link while offline takes this same face. Copy link is explicit; N1 holds.</p>
+</sm-state>
+
+<sm-state name="stopped-stranded" kind="fail" style="grid-row:8;grid-column:1">
+  <p class="shead"><b>stopped-stranded</b> — the space can't take this video (N40 · D)</p>
+  <div class="popv">
+    <div class="said hi" style="font-weight:600">Your recording is safe on this Mac.</div>
+    <div class="quiet" style="margin-top:3px">Your access to Bagrat's space was turned off.</div>
+    <div style="margin-top:9px"><span class="bf" style="font-size:11.5px;padding:4px 11px">Save to Movies</span></div>
+  </div>
+  <p class="cap">revoked, or a space that's gone: the page never opens (it could never fill); the take waits in the Library. Owners also get [ Reconnect your space ]. A space that still serves pages but can't take uploads opens the page as usual — its line: “Waiting for your space — your link already works.”</p>
+</sm-state>
+
+<sm-state name="on-its-way-stalled" style="grid-row:8;grid-column:2">
+  <p class="shead"><b>on its way, stalled</b> — no progress for a while (N40 · D)</p>
+  <div class="card"><span class="said">“This video isn't here yet — the page keeps checking and will play it the moment it arrives.”</span><p class="cap">the bar rests. Also N40: <b style="color:#D8DEE9">unavailable</b> — “This video can't play right now — try again a little later.” · unknown ids render on its way without a title (indistinguishable by design — also an offline stop before its details land) · the <b style="color:#D8DEE9">embed face</b> (?embed=1) is the player alone, the mark in its corner. Owner-mode by role: the cookie names a member; members' pages give the title only, owner-class gets the switch everywhere.</p></div>
+</sm-state>
+
+<sm-port name="portdelete" style="grid-row:7;grid-column:1">
+  <div class="card">Region 5 — Library → Delete… (storage removed, tombstone metadata)</div>
+</sm-port>
+
+<sm-edges>
+  <sm-edge from="portstopin" to="owner-page" kind="flow" label="finalize, 102 ms — the page opens"></sm-edge>
+  <sm-edge from="owner-page" to="fully-live" kind="auto" label="queue drains — the page refreshes itself"></sm-edge>
+  <sm-edge from="owner-page" to="waiting-conn" kind="fail" label="the Mac drops offline"></sm-edge>
+  <sm-edge from="waiting-conn" to="owner-page" kind="auto" label="back online — the video follows"></sm-edge>
+  <sm-edge from="owner-page" to="live" kind="flow" label="the link, always clean — content ready"></sm-edge>
+  <sm-edge from="owner-page" to="on-its-way" kind="flow" label="the link beat the upload"></sm-edge>
+  <sm-edge from="on-its-way" to="live" kind="auto" label="self-refresh — content ready"></sm-edge>
+  <sm-edge from="waiting-conn" to="on-its-way" kind="side" label="recipients meanwhile"></sm-edge>
+  <sm-edge from="portdelete" to="removed" kind="fail" label="Delete — the link stays, says the video is gone"></sm-edge>
+  <sm-edge from="portstopin" to="stopped-offline" kind="fail" label="offline at stop"></sm-edge>
+  <sm-edge from="stopped-offline" to="owner-page" kind="auto" label="back online — opens itself"></sm-edge>
+  <sm-edge from="on-its-way" to="on-its-way-stalled" kind="auto" label="no progress for a while"></sm-edge>
+  <sm-edge from="portstopin" to="stopped-stranded" kind="fail" label="the space can't take it"></sm-edge>
+</sm-edges>
+</sm-region>
+
+<sm-region id="r5">
+<h2>Region 5 — the tail: library, settings, updates <small>designed 2026-09-30, autonomous — N35–N37, awaiting ratification</small></h2>
+
+<sm-port name="portlibin" style="grid-row:2;grid-column:2">
+  <div class="card">from config's footer — the folder icon (Library) · the gear (Settings)</div>
+</sm-port>
+
+<sm-state name="library" style="grid-row:2/5;grid-column:1">
+  <p class="shead"><b>library</b> — a list tuned to two jobs: re-share and clean up (N35)</p>
+  <div class="win">
+    <div class="tb"><span class="tl"></span></div>
+    <div class="wb">
+      <div class="whead"><svg viewBox="18 20 84 90"><path d="M50,68 C49,82 46,92 46,96 C46,101 52,104 60,104 C68,104 74,101 74,96 C74,92 71,82 70,68 Z" fill="#E5E9F0"/><path d="M24,64 C24,42 40,26 60,26 C80,26 96,42 96,64 C86,75 34,75 24,64 Z" fill="#88C0D0"/><circle cx="33" cy="58" r="3.4" fill="#ECEFF4"/><circle cx="88" cy="58" r="2.2" fill="#ECEFF4"/><circle cx="50" cy="44" r="6" fill="#ECEFF4"/><circle cx="72" cy="48" r="3.6" fill="#ECEFF4"/><circle cx="64" cy="58" r="2.6" fill="#ECEFF4"/></svg><span>Library</span></div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap"><span class="field" style="border:1.5px solid #4C566A;color:#616E88;font-family:inherit;flex:1;min-width:140px">Search titles</span><span class="seg"><span class="on">Mine</span><span>Everyone</span></span></div>
+      <div class="lrow" style="background:rgba(235,203,139,.08);border-color:rgba(235,203,139,.35)"><span class="thumb" style="background:#3B3A33"></span><div class="lmain"><div class="lt">Interrupted recording — 4:32 saved</div><div class="lm">Aug 22 · 4:32</div></div><span class="bf" style="font-size:11px;padding:3px 9px">Get link</span><span class="rm2">Discard…</span></div>
+      <div class="lrow sel"><span class="thumb"></span><div class="lmain"><div class="lt">Where the 502s come from</div><div class="lm">Aug 21 · 4:32</div></div><span class="bo lc">Copy link</span><span class="lh">Open page</span><span class="rm2">Delete…</span></div>
+      <div class="lrow"><span class="thumb"></span><div class="lmain"><div class="lt">Untitled — Aug 19</div><div class="lm">Aug 19 · 0:48 · Uploading — 40%</div><div class="lbar"><i style="width:40%"></i></div></div><span class="bo lc">Copy link</span></div>
+      <div class="lrow"><span class="thumb"></span><div class="lmain"><div class="lt">Onboarding flow, take 2</div><div class="lm">Aug 16 · 12:10 · Waiting for connection</div></div><span class="bo lc">Copy link</span></div>
+      <div class="lrow"><span class="thumb"></span><div class="lmain"><div class="lt">Why the cache misses on Mondays</div><div class="lm">Aug 3 · 2:05</div></div><span class="bo lc">Copy link</span></div>
+      <p class="quiet" style="margin:10px 0 0">14 videos</p>
+    </div>
+  </div>
+  <p class="cap">Newest first; a small poster, because “Untitled — Aug 19” and “Untitled — Aug 20” need the first frame to tell apart. Copy link always visible (reads “Copied”); Open page · Delete… on hover or selection. Silence = live; state words only otherwise. Click a title to rename in place (never blank) · double-click opens the page (owner-keyed → the cookie) · ⌘C copies · Delete key deletes · multi-select for cleanup. Mine · Everyone appears on owner-class Macs once others record; others' rows carry their label. Opens on the cache, refreshes behind — new rows slide in, including your other Macs'. Footer: the count only (P13 parked).</p>
+</sm-state>
+
+<sm-state name="delete-confirm" style="grid-row:3;grid-column:2">
+  <p class="shead"><b>delete-confirm</b> — a sheet (N35 · N23's law)</p>
+  <div class="card">
+    <div class="said hi" style="font-weight:600">Delete “Where the 502s come from”?</div>
+    <div class="quiet" style="margin-top:3px">It's removed everywhere. The link stays, and says the video is gone.</div>
+    <div style="display:flex;gap:8px;margin-top:10px"><span class="bo">Cancel</span><span style="flex:1"></span><span class="bo" style="border-color:#BF616A;color:#BF616A">Delete</span></div>
+    <p class="cap">No Return default; Esc ≡ Cancel. Another member's video adds “This is Mher's video.” Several: “Delete six videos? They're removed everywhere. Their links stay, and say the videos are gone.” Still uploading: same sheet, the upload stops — on another Mac, its row turns to “Removed from the space” with Save to Movies · Discard… (the take stays its maker's). Tombstone first, then the bytes.</p>
+  </div>
+</sm-state>
+
+<sm-note name="library-faces" style="grid-row:4;grid-column:2">
+  <p class="shead"><b>library faces</b></p>
+  <div class="card">empty: “No videos yet — click the mushroom in your menu bar to record your first.” · no match: “No titles match “502”.” · offline: “You're offline — showing what this Mac remembers. Renaming and deleting wait until you're back.” (Copy link stays live) · space unreachable (N34): the remembered list; only Copy link and Save to Movies live.</div>
+</sm-note>
+
+<sm-port name="porttomb" style="grid-row:5;grid-column:2">
+  <div class="card">Region 4 — removed: the tombstone, forever at the same address</div>
+</sm-port>
+
+<sm-state name="settings-general" style="grid-row:6;grid-column:1">
+  <p class="shead"><b>settings</b> — one window, toolbar tabs (N36) · General</p>
+  <div class="win">
+    <div class="tb"><span class="tl"></span></div>
+    <div class="tabs"><span class="on">General</span><span>Space</span><span>Members</span></div>
+    <div class="wb">
+      <div class="cbx" style="margin:0 0 12px"><span class="b">✓</span>Start shroom when you log in</div>
+      <div class="prow" style="border-top:1px solid #3B4252;padding-top:10px">Updates<span class="quiet">shroom 1.2.0 — up to date.</span></div>
+      <p class="quiet" style="margin:12px 0 0">Something off? Tell us on GitHub — or write to issues@shroom.am.</p>
+    </div>
+  </div>
+  <p class="cap">Members is a tab only on owner-class Macs. Opens on the last tab used; all-set's Invite someone morphs the onboarding window into this window, on Members. The login box reads the system's truth. ✕ ≡ Close.</p>
+</sm-state>
+
+<sm-state name="settings-space" style="grid-row:7/9;grid-column:1">
+  <p class="shead"><b>settings · Space</b> — the setup Mac's inspection mood (N36)</p>
+  <div class="win">
+    <div class="tb"><span class="tl"></span></div>
+    <div class="tabs"><span>General</span><span class="on">Space</span><span>Members</span></div>
+    <div class="wb">
+      <div class="plan">
+        <div class="pr"><span class="g"><span class="tick"></span></span><span class="t">A Cloudflare account — Bagrat's Account</span></div>
+        <div class="pr"><span class="g"><span class="tick"></span></span><span class="t">One access token for shroom — on this Mac</span></div>
+        <div class="pr"><span class="g"><span class="tick"></span></span><span class="t">A credit card for storage</span></div>
+        <div class="pr"><span class="g"><span class="tick"></span></span><span class="t">Your link name — <span class="mono" style="font-size:11.5px">v.myshroom.workers.dev</span></span></div>
+        <div class="pr"><span class="g"><span class="tick"></span></span><span class="t">Wiring it up</span></div>
+        <div class="pr"><span class="g"><span class="tick"></span></span><span class="t">Letting macOS allow recording — on this Mac</span></div>
+      </div>
+      <p class="said" style="margin:12px 0 0">Your space is ready — nothing to redo.</p>
+      <div style="border-top:1px solid #3B4252;margin:12px 0 8px"></div>
+      <div class="prow"><span><span style="color:#ECEFF4">“made with shroom” on your pages</span><br><span class="quiet">The small mark on every video page. You can flip it right on a page, too.</span></span><span class="tog"><i></i></span></div>
+      <p class="quiet" style="margin:8px 0 0">Have an invite link? Paste it here.</p>
+      <p class="quiet" style="margin:8px 0 0;color:#A7B2C8">Disconnect this Mac…</p>
+    </div>
+  </div>
+  <p class="cap">Region 2's re-entry-as-settings, made concrete. Repair mood (N42): a re-probe that un-ticks a row makes the first broken row current, with Region 2's own state under it — no second repair UI. Row six is live: a revoked grant un-ticks it — “screen recording is off” + [ Turn it back on ] → the chapter at the missing beat.</p>
+</sm-state>
+
+<sm-note name="space-moods" style="grid-row:7;grid-column:2">
+  <p class="shead"><b>Space, other Macs</b></p>
+  <div class="card">Owner-class, no token: “✓ Your space — v.myshroom.workers.dev” · “✓ Letting macOS allow recording — on this Mac” · “Repairs happen where your Cloudflare token lives — on the Mac you set your space up on, or here if you add a fresh one.” [ Add a token here ] — Member: “✓ Bagrat's space — v.myshroom.workers.dev” · row six · “Your videos live there, where Bagrat can see them too.” · Leave this space… — the mark switch is owner-class only.</div>
+</sm-note>
+
+<sm-state name="exit-confirm" style="grid-row:8;grid-column:2">
+  <p class="shead"><b>disconnect / leave</b> — sheets (N36)</p>
+  <div class="card">
+    <div class="said hi" style="font-weight:600">Disconnect this Mac?</div>
+    <div class="quiet" style="margin-top:3px">Your space and every video in it stay exactly as they are. This Mac forgets your space and goes back to the start.</div>
+    <div style="display:flex;gap:8px;margin-top:10px"><span class="bo">Cancel</span><span style="flex:1"></span><span class="bo" style="border-color:#BF616A;color:#BF616A">Disconnect</span></div>
+    <p class="cap">Only token-holder adds: “To manage your space again, set it up with a fresh token — everything will be there.” Member: “Leave Bagrat's space?” / “Your videos stay there, where Bagrat can still see them — delete any you want gone first. This Mac goes back to the start.” Blocked while uploads drain or a recovered take waits, and mid-take. Stranded takes never block: “Two recordings never reached the space — leaving deletes them from this Mac.” [ Save them to Movies first ]. After: secrets wiped → idle-unprovisioned.</p>
+  </div>
+</sm-state>
+
+<sm-state name="update-ready" style="grid-row:9/11;grid-column:1">
+  <p class="shead"><b>update-ready</b> — the Frost dot + config's lowest banner (N37)</p>
+  <div style="display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap">
+    <div class="tfaces">
+      <div><span class="tf"><svg viewBox="18 20 84 90" style="width:14px;height:15px" aria-hidden="true"><path d="M50,68 C49,82 46,92 46,96 C46,101 52,104 60,104 C68,104 74,101 74,96 C74,92 71,82 70,68 Z" fill="#E5E9F0"/><path d="M24,64 C24,42 40,26 60,26 C80,26 96,42 96,64 C86,75 34,75 24,64 Z" fill="#88C0D0"/><circle cx="33" cy="58" r="3.4" fill="#ECEFF4"/><circle cx="88" cy="58" r="2.2" fill="#ECEFF4"/><circle cx="50" cy="44" r="6" fill="#ECEFF4"/><circle cx="72" cy="48" r="3.6" fill="#ECEFF4"/><circle cx="64" cy="58" r="2.6" fill="#ECEFF4"/></svg></span>idle</div>
+      <div><span class="tf"><svg viewBox="18 20 84 90" style="width:14px;height:15px" aria-hidden="true"><path d="M50,68 C49,82 46,92 46,96 C46,101 52,104 60,104 C68,104 74,101 74,96 C74,92 71,82 70,68 Z" fill="#E5E9F0"/><path d="M24,64 C24,42 40,26 60,26 C80,26 96,42 96,64 C86,75 34,75 24,64 Z" fill="#88C0D0"/><circle cx="33" cy="58" r="3.4" fill="#ECEFF4"/><circle cx="88" cy="58" r="2.2" fill="#ECEFF4"/><circle cx="50" cy="44" r="6" fill="#ECEFF4"/><circle cx="72" cy="48" r="3.6" fill="#ECEFF4"/><circle cx="64" cy="58" r="2.6" fill="#ECEFF4"/></svg><i style="background:#BF616A"></i></span>recording</div>
+      <div><span class="tf"><svg viewBox="18 20 84 90" style="width:14px;height:15px" aria-hidden="true"><path d="M50,68 C49,82 46,92 46,96 C46,101 52,104 60,104 C68,104 74,101 74,96 C74,92 71,82 70,68 Z" fill="#E5E9F0"/><path d="M24,64 C24,42 40,26 60,26 C80,26 96,42 96,64 C86,75 34,75 24,64 Z" fill="#88C0D0"/><circle cx="33" cy="58" r="3.4" fill="#ECEFF4"/><circle cx="88" cy="58" r="2.2" fill="#ECEFF4"/><circle cx="50" cy="44" r="6" fill="#ECEFF4"/><circle cx="72" cy="48" r="3.6" fill="#ECEFF4"/><circle cx="64" cy="58" r="2.6" fill="#ECEFF4"/></svg><b></b></span>paused</div>
+      <div><span class="tf"><svg viewBox="18 20 84 90" style="width:14px;height:15px" aria-hidden="true"><path d="M50,68 C49,82 46,92 46,96 C46,101 52,104 60,104 C68,104 74,101 74,96 C74,92 71,82 70,68 Z" fill="#E5E9F0"/><path d="M24,64 C24,42 40,26 60,26 C80,26 96,42 96,64 C86,75 34,75 24,64 Z" fill="#88C0D0"/><circle cx="33" cy="58" r="3.4" fill="#ECEFF4"/><circle cx="88" cy="58" r="2.2" fill="#ECEFF4"/><circle cx="50" cy="44" r="6" fill="#ECEFF4"/><circle cx="72" cy="48" r="3.6" fill="#ECEFF4"/><circle cx="64" cy="58" r="2.6" fill="#ECEFF4"/></svg><i style="background:#EBCB8B"></i></span>needs you</div>
+      <div><span class="tf"><svg viewBox="18 20 84 90" style="width:14px;height:15px" aria-hidden="true"><path d="M50,68 C49,82 46,92 46,96 C46,101 52,104 60,104 C68,104 74,101 74,96 C74,92 71,82 70,68 Z" fill="#E5E9F0"/><path d="M24,64 C24,42 40,26 60,26 C80,26 96,42 96,64 C86,75 34,75 24,64 Z" fill="#88C0D0"/><circle cx="33" cy="58" r="3.4" fill="#ECEFF4"/><circle cx="88" cy="58" r="2.2" fill="#ECEFF4"/><circle cx="50" cy="44" r="6" fill="#ECEFF4"/><circle cx="72" cy="48" r="3.6" fill="#ECEFF4"/><circle cx="64" cy="58" r="2.6" fill="#ECEFF4"/></svg><i style="background:#88C0D0"></i></span>update</div>
+    </div>
+    <div class="popv">
+      <div style="background:rgba(136,192,208,.08);border:1px solid rgba(136,192,208,.35);border-radius:8px;padding:8px 11px;display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span class="said" style="color:#ECEFF4">shroom 1.3.0 is ready.</span><span class="bf" style="font-size:11px;padding:3px 10px">Update</span><span class="quiet">What's new</span></div>
+      <div class="prow" style="margin-top:6px">Record<span class="pop">LG UltraFine <i>⌄</i></span></div>
+      <span class="bf" style="display:block;width:auto;text-align:center;margin-top:6px">Start recording</span>
+    </div>
+  </div>
+  <p class="cap">The five tray faces, highest priority first: red dot · pause bars · amber (something needs you — a saved take, a space that needs you, recording switched off) · Frost (something new from us) · plain. Checked quietly against public releases, verified like the installer; no nag, versions roll up. Settings → General mirrors the row.</p>
+</sm-state>
+
+<sm-state name="updating-app" style="grid-row:9;grid-column:2">
+  <p class="shead"><b>updating</b> — quit → swap → relaunch (N9)</p>
+  <div class="card"><span class="said">“Updating — back in a few seconds.”</span><p class="cap">silent relaunch, tray-only; the upload queue rides through. Next config open, once: “Updated to 1.3.0 ✓”. On a token-holding Mac the space's page follows the app.</p></div>
+</sm-state>
+
+<sm-state name="update-failed" kind="fail" style="grid-row:10;grid-column:2">
+  <p class="shead"><b>update-failed</b> — nothing breaks</p>
+  <div class="card"><span class="said">“The update didn't finish — shroom will try again later.”</span><p class="cap">the running version stays. A fingerprint mismatch is discarded silently, never installed. Past this Mac's macOS: no dot — General says “shroom 1.4.0 needs macOS 15 — this Mac stays on 1.3.2.”</p></div>
+</sm-state>
+
+<sm-edges>
+  <sm-edge from="portlibin" to="library" kind="flow" label="the folder icon"></sm-edge>
+  <sm-edge from="library" to="delete-confirm" kind="side" label="Delete… · Delete key"></sm-edge>
+  <sm-edge from="library" to="library-faces" kind="side" label="empty · offline · unreachable"></sm-edge>
+  <sm-edge from="delete-confirm" to="porttomb" kind="port" label="Delete — tombstone first"></sm-edge>
+  <sm-edge from="portlibin" to="settings-general" kind="flow" label="the gear"></sm-edge>
+  <sm-edge from="settings-space" to="space-moods" kind="side" label="other kinds of Mac"></sm-edge>
+  <sm-edge from="settings-space" to="exit-confirm" kind="side" label="Disconnect… · Leave…"></sm-edge>
+  <sm-edge from="update-ready" to="updating-app" kind="flow" label="Update"></sm-edge>
+  <sm-edge from="updating-app" to="update-failed" kind="fail" label="swap refused"></sm-edge>
+</sm-edges>
+</sm-region>
+
+<sm-region id="r6">
+<h2>Region 6 — members and the join machine <small>Members face ratified (N28) · join machine through member life designed 2026-09-30, autonomous — N29–N34, awaiting ratification</small></h2>
+
+<sm-port name="portmembersin" style="grid-row:2;grid-column:2">
+  <div class="card">from all-set — Invite someone (the window morphs) · or the gear → Settings → Members</div>
+</sm-port>
+
+<sm-state name="invite-born" style="grid-row:2/6;grid-column:1">
+  <p class="shead"><b>invite-born</b> — the Members face; the composer is the ask (N28 · You row N33)</p>
+  <div class="win">
+    <div class="tb"><span class="tl"></span></div>
+    <div class="wb">
+      <div class="whead"><svg viewBox="18 20 84 90"><path d="M50,68 C49,82 46,92 46,96 C46,101 52,104 60,104 C68,104 74,101 74,96 C74,92 71,82 70,68 Z" fill="#E5E9F0"/><path d="M24,64 C24,42 40,26 60,26 C80,26 96,42 96,64 C86,75 34,75 24,64 Z" fill="#88C0D0"/><circle cx="33" cy="58" r="3.4" fill="#ECEFF4"/><circle cx="88" cy="58" r="2.2" fill="#ECEFF4"/><circle cx="50" cy="44" r="6" fill="#ECEFF4"/><circle cx="72" cy="48" r="3.6" fill="#ECEFF4"/><circle cx="64" cy="58" r="2.6" fill="#ECEFF4"/></svg><span>Members</span></div>
+      <p class="quiet" style="margin:0 0 10px">Everyone here records to your space — their videos live in your storage, and you can see and delete any of them.</p>
+      <div style="border-top:1px solid #3B4252">
+        <div class="mrow"><span class="mn">You</span><span class="quiet" style="color:#88C0D0">Add another Mac</span></div>
+        <div class="mrow" style="padding-left:14px"><span class="mn" style="color:#A7B2C8">You · MacBook Air</span><span class="quiet">joined Sep 2</span><span class="rm">Remove…</span></div>
+        <div class="mrow"><span class="mn">Mher</span><span class="quiet">joined Aug 3</span><span class="rm">Remove…</span></div>
+        <div style="padding:8px 0 10px;border-bottom:1px solid #3B4252">
+          <div class="mrow" style="border:0;padding:0"><span class="mn">Ani</span><span class="quiet">invited just now</span><span class="rm">Remove…</span></div>
+          <div class="nest" style="margin:8px 0 0">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span class="field" style="border:1px solid #4C566A;font-size:11.5px">v.myshroom.workers.dev/join/7xk2pm</span><span class="bf">Copy link</span></div>
+            <span class="said">Send Ani this link — it's good for one person, for seven days.</span>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:12px"><span class="field" style="border:1.5px solid #4C566A;color:#616E88;font-family:inherit;flex:1;max-width:190px">Who's this for?</span><span class="bo">Invite</span></div>
+      <p class="quiet" style="margin:6px 0 0">You'll get a link to send them — over any chat.</p>
+    </div>
+  </div>
+  <p class="cap">Owner-class only (N5). The composer is the ask — always present, focused on arrival from all-set; Return ≡ Invite. The typed name is the admin-private label, forever; members never type a name (U3). Copy link is the born moment's one action (filled; “Copied” briefly), Invite drops to outline meanwhile. You carries no fact — beside it only the quiet “Add another Mac” (N33); the owner's other Macs list as sub-rows under You. Members is the Settings window's third tab (N36).</p>
+</sm-state>
+
+<sm-state name="member-remove-confirm" style="grid-row:3;grid-column:2">
+  <p class="shead"><b>member-remove-confirm</b> — a sheet, three faces (N32)</p>
+  <div class="card">
+    <div class="said hi" style="font-weight:600">Remove Mher?</div>
+    <div class="quiet" style="margin-top:3px">Mher won't be able to record to your space anymore — a video already on its way can still finish. Mher's videos stay; you'll find them in your Library.</div>
+    <div style="display:flex;gap:8px;margin-top:10px"><span class="bo">Cancel</span><span style="flex:1"></span><span class="bo" style="border-color:#BF616A;color:#BF616A">Remove</span></div>
+    <p class="cap">Pending: “Cancel Ani's invite?” / “The link stops working right away.” [ Keep it ] [ Cancel invite ] · Own Mac (never one that keeps the token): “Remove MacBook Air?” / “That Mac stops recording to your space. Its videos stay.” No Return default; Esc ≡ Cancel. Removal and deletion never bundled. “Already on its way” is bound to per-recording minting.</p>
+  </div>
+</sm-state>
+
+<sm-note name="invite-row-faces" style="grid-row:4;grid-column:2">
+  <p class="shead"><b>row faces</b> — not states (N18 nuance)</p>
+  <div class="card">“invited just now” → “invited Aug 21 · 5 days left” → expired: the row offers <span class="bo" style="font-size:11px;padding:2px 8px">New link</span> — nothing is blocked, so no transition happens.</div>
+</sm-note>
+
+<sm-state name="add-another-mac" style="grid-row:5;grid-column:2">
+  <p class="shead"><b>add-another-mac</b> — the You row's nest (N33)</p>
+  <div class="card">
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span class="field" style="border:1px solid #4C566A;font-size:11.5px">v.myshroom.workers.dev/join/q8w3zt</span><span class="bf">Copy link</span></div>
+    <div class="said" style="margin-top:7px">Open this link on your other Mac — it's good for one hour.</div>
+    <p class="cap">Owner-class: the joined Mac sees everything and manages members. One Mac, one hour — owner powers die young. Labeled by the Mac's own name, silently. Resolves P12 (two Macs, one library) inside the member model; only a token-holding Mac repairs the space. Every owner Mac is member #1 (Mine spans them) with its own device key — Remove revokes the device; You is never removable, nor is a Mac that keeps the Cloudflare token (its row says “keeps your Cloudflare token”; Disconnect there, or delete the token in Cloudflare). Rides argv like a member link — a deliberate extension of N3's exception. A member's second Mac = a second invite.</p>
+  </div>
+</sm-state>
+
+<sm-state name="join-landing" style="grid-row:6/11;grid-column:1">
+  <p class="shead"><b>join-landing</b> — the page the link opens, served by the space's own Worker (N29)</p>
+  <div class="bwin">
+    <div class="bbar"><span class="tl"></span><span class="url">v.myshroom.workers.dev/join/7xk2pm</span></div>
+    <div class="bsec">
+      <p class="hero-h">Bagrat invited you to record with shroom.</p>
+      <p class="pt" style="margin-top:6px">shroom records your screen and hands you a link to share. Nothing to sign up for — Bagrat set up a space for you.</p>
+    </div>
+    <div class="bsec">
+      <p class="lbl">Get shroom</p>
+      <p class="pt">Paste this into Terminal (⌘ space, type “Terminal”) and press Return — it installs shroom and opens it, already knowing it's you.</p>
+      <div class="cmd"><span class="mono" style="font-size:10.5px;word-break:break-all">curl -fsSL https://shroom.am/install | sh -s -- --join v.myshroom.workers.dev/join/7xk2pm</span><i>Copy</i></div>
+      <p class="quiet">Read it first — the same address opens as readable source.<br>For macOS 14 or newer, Apple silicon and Intel.</p>
+    </div>
+    <div class="bsec">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span class="said">Already have shroom?</span><span class="bo">Open shroom</span></div>
+      <p class="quiet" style="margin:6px 0 0">If it doesn't open, paste this page's address into shroom.</p>
+    </div>
+    <div class="bsec" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+      <span class="quiet">This invite is for one person and works for seven days.</span>
+      <span style="display:inline-flex;align-items:center;gap:6px"><span class="quiet">made with shroom</span><svg viewBox="18 20 84 90" style="width:14px;height:15px" aria-hidden="true"><path d="M50,68 C49,82 46,92 46,96 C46,101 52,104 60,104 C68,104 74,101 74,96 C74,92 71,82 70,68 Z" fill="#E5E9F0"/><path d="M24,64 C24,42 40,26 60,26 C80,26 96,42 96,64 C86,75 34,75 24,64 Z" fill="#88C0D0"/><circle cx="33" cy="58" r="3.4" fill="#ECEFF4"/><circle cx="88" cy="58" r="2.2" fill="#ECEFF4"/><circle cx="50" cy="44" r="6" fill="#ECEFF4"/><circle cx="72" cy="48" r="3.6" fill="#ECEFF4"/><circle cx="64" cy="58" r="2.6" fill="#ECEFF4"/></svg></span>
+    </div>
+  </div>
+  <p class="cap">The join link is the code — one artifact, three doors: this page, --join in the command, the in-app paste door. The page title is the hero line, so a chat unfurl says it before the click; noindex. Opening the page never uses the invite — only Join in the app does. No prices, no Cloudflare, no card: not their bill. Own-Mac variant: “Add this Mac to your shroom space.” · “Same videos, same members — v.myshroom.workers.dev, on this Mac too.” · “This link is for one Mac and works for one hour.”</p>
+</sm-state>
+
+<sm-note name="join-owner-view" style="grid-row:6;grid-column:2">
+  <p class="shead"><b>owner view</b> — the owner's cookie rides along</p>
+  <div class="card"><span class="said">“This is the page Ani will see — opening it here doesn't use it up.”</span><p class="cap">one quiet note on top of the same page — the owner who clicks their own link to check it never wonders if they spent it.</p></div>
+</sm-note>
+
+<sm-state name="join-landing-elsewhere" style="grid-row:7;grid-column:2">
+  <p class="shead"><b>join-landing-elsewhere</b> — not a Mac</p>
+  <div class="card"><span class="said">“shroom runs on a Mac — open this link on yours to get started.”</span> <span class="bo" style="font-size:11px;padding:2px 8px">Copy link</span><p class="cap">phone, tablet, Windows, Linux — the chat link is often first tapped on a phone. The hero and the one-person line stay; the install block gives way.</p></div>
+</sm-state>
+
+<sm-state name="join-expired" kind="fail" style="grid-row:8;grid-column:2">
+  <p class="shead"><b>join-expired</b> — expired, cancelled, or unknown</p>
+  <div class="card"><span class="said">“This invite has expired — ask Bagrat for a fresh one.”</span><p class="cap">the line alone, no install block. Unknown code, no name to give: “This invite link doesn't work — ask whoever sent it for a fresh one.” Own-Mac: “This link has expired — make a fresh one from Members on your other Mac.”</p></div>
+</sm-state>
+
+<sm-state name="join-used" kind="fail" style="grid-row:9;grid-column:2">
+  <p class="shead"><b>join-used</b></p>
+  <div class="card"><span class="said">“This invite was already used. If that wasn't you, ask Bagrat for a fresh one.”</span><p class="cap">the honest face for a forwarded or stolen link. With the joiner's own cookie: “You're in — this invite already did its job. The mushroom in your menu bar is all you need.”</p></div>
+</sm-state>
+
+<sm-state name="join-installing" style="grid-row:10;grid-column:2">
+  <p class="shead"><b>installing</b> — the member lane (Region 1's script, verbatim)</p>
+  <div class="term" style="font-size:11px"><span class="ps">$</span> curl … | sh -s -- --join v.myshroom…/join/7xk2pm<br>Getting shroom… <span class="ok">verified ✓</span><br>Installed — opening shroom now.</div>
+  <p class="cap">forwards --join to the app. Already installed → the update lane, then the invite opens. Mid-take → refused, nothing changed, the link still unused. The link rides argv once — one-time, seven days; the admin token never gets this exception.</p>
+</sm-state>
+
+<sm-state name="member-welcome" style="grid-row:11/13;grid-column:1">
+  <p class="shead"><b>member-welcome</b> — the welcome's twin, already knowing it's an invite (N30)</p>
+  <div class="win">
+    <div class="tb"><span class="tl"></span></div>
+    <div class="wb">
+      <div class="whead"><svg viewBox="18 20 84 90"><path d="M50,68 C49,82 46,92 46,96 C46,101 52,104 60,104 C68,104 74,101 74,96 C74,92 71,82 70,68 Z" fill="#E5E9F0"/><path d="M24,64 C24,42 40,26 60,26 C80,26 96,42 96,64 C86,75 34,75 24,64 Z" fill="#88C0D0"/><circle cx="33" cy="58" r="3.4" fill="#ECEFF4"/><circle cx="88" cy="58" r="2.2" fill="#ECEFF4"/><circle cx="50" cy="44" r="6" fill="#ECEFF4"/><circle cx="72" cy="48" r="3.6" fill="#ECEFF4"/><circle cx="64" cy="58" r="2.6" fill="#ECEFF4"/></svg><span>shroom</span></div>
+      <p class="said hi" style="margin:0 0 8px;font-weight:600">Bagrat invited you to record with shroom.</p>
+      <p class="said" style="margin:0 0 8px">shroom records your screen and hands you a link to share. Your videos will live in Bagrat's space, where Bagrat can see them too — nothing to sign up for, nothing to pay.</p>
+      <p class="said" style="margin:0 0 12px">One step before your first video: let macOS allow recording. About a minute, once.</p>
+      <div class="cbx" style="margin:0 0 14px"><span class="b">✓</span>Start shroom when you log in</div>
+      <div style="display:flex;gap:10px"><span class="bf">Join</span><span class="bo">Later</span></div>
+    </div>
+  </div>
+  <p class="cap">The N5 truth mirrored for the invitee, once, before anything exists — the consent point. U4 mechanics as the welcome's (N12). Later remembers the invite (mode 600); the tray click reopens this window while it lives. Own-Mac variant: “Add this Mac to your space.” · “Same videos, same members — v.myshroom.workers.dev, on this Mac too.” Also reached from the deep link and the welcome's “Have an invite link?” paste door. “Bagrat” is macOS's short form of the account's name (N29 amends N28's “full name”).</p>
+</sm-state>
+
+<sm-state name="join-already-here" style="grid-row:11;grid-column:2">
+  <p class="shead"><b>join-already-here</b> — this Mac is already in that space</p>
+  <div class="card"><span class="said">“This Mac is already in Bagrat's space — nothing to do. The invite is still unused, so it can go to someone else.”</span> <span class="bo" style="font-size:11px;padding:2px 8px">Close</span><p class="cap">own space: “This Mac is already in your space — open the link on the Mac you want to add.” The link stays unused.</p></div>
+</sm-state>
+
+<sm-state name="join-switch-confirm" style="grid-row:12;grid-column:2">
+  <p class="shead"><b>join-switch-confirm</b> — one space per Mac (N31)</p>
+  <div class="card">
+    <div class="said" style="color:#ECEFF4;font-weight:600">Bagrat invited you to record with shroom.</div>
+    <div class="said" style="margin-top:5px">This Mac records to <span class="mono">v.mine.workers.dev</span> now. Joining moves it to Bagrat's space — your videos in <span class="mono">v.mine.workers.dev</span> stay right where they are.</div>
+    <div style="display:flex;gap:8px;margin-top:9px;flex-wrap:wrap"><span class="bf">Join Bagrat's space</span><span class="bo">Stay</span></div>
+    <p class="cap">Only token-holder of its space: “You can come back to your own space anytime by setting it up again with a fresh token — everything will be there.” Uploads draining → Join greyed: “Two videos are still uploading — you can switch once they're done.” A recovered take blocks the same way. Stay ≡ ✕.</p>
+  </div>
+</sm-state>
+
+<sm-state name="joining" style="grid-row:13/15;grid-column:1">
+  <p class="shead"><b>joining</b> — Join morphs the window into a two-row plan (N30)</p>
+  <div class="win">
+    <div class="tb"><span class="tl"></span></div>
+    <div class="wb">
+      <div class="whead"><svg viewBox="18 20 84 90"><path d="M50,68 C49,82 46,92 46,96 C46,101 52,104 60,104 C68,104 74,101 74,96 C74,92 71,82 70,68 Z" fill="#E5E9F0"/><path d="M24,64 C24,42 40,26 60,26 C80,26 96,42 96,64 C86,75 34,75 24,64 Z" fill="#88C0D0"/><circle cx="33" cy="58" r="3.4" fill="#ECEFF4"/><circle cx="88" cy="58" r="2.2" fill="#ECEFF4"/><circle cx="50" cy="44" r="6" fill="#ECEFF4"/><circle cx="72" cy="48" r="3.6" fill="#ECEFF4"/><circle cx="64" cy="58" r="2.6" fill="#ECEFF4"/></svg><span>Bagrat's space, on this Mac:</span></div>
+      <div class="plan">
+        <div class="pr"><span class="g cur">→</span><span class="tc">Joining Bagrat's space <span class="p">(shroom does this part)</span></span></div>
+        <div class="nest" style="flex-direction:row;gap:9px"><span class="spin"></span><span class="said">Joining — a few seconds.</span></div>
+        <div class="pr"><span class="g ah">•</span><span class="ta">Letting macOS allow recording <span class="p">(microphone and screen — a one-time yes each)</span></span></div>
+      </div>
+    </div>
+  </div>
+  <p class="cap">Zero affordances (N16's posture). The Worker validates the link, confirms the member, the Mac's member identity lands locally — creds mint later, per recording. Own-Mac: “Your space, on this Mac:” / “Joining your space”.</p>
+</sm-state>
+
+<sm-state name="join-waiting" kind="fail" style="grid-row:13;grid-column:2">
+  <p class="shead"><b>join-waiting</b> — auto-resume</p>
+  <div class="card warn"><span class="said" style="color:#e2d3a3">“You're offline — I'll finish joining the moment you're back.”</span><p class="cap">online but unanswered: “Bagrat's space isn't answering right now — I'll keep trying.” Spinner rests; no button (wizard-offline's posture).</p></div>
+</sm-state>
+
+<sm-state name="join-space-missing" kind="fail" style="grid-row:14;grid-column:2">
+  <p class="shead"><b>join-space-missing</b></p>
+  <div class="card"><span class="said">“This invite's space isn't there anymore — ask Bagrat about it.”</span><p class="cap">the link's address answers as no space at all. In-app join-expired / join-used mirror the page faces word for word, with a paste door: “Have a new link? Paste it here.”</p></div>
+</sm-state>
+
+<sm-state name="member-done" style="grid-row:15;grid-column:1">
+  <p class="shead"><b>member done</b> — ticked with the fact, then the rest (N30 · N17)</p>
+  <div class="win">
+    <div class="tb"><span class="tl"></span></div>
+    <div class="wb">
+      <div class="plan">
+        <div class="pr"><span class="g"><span class="tick"></span></span><span class="t">Bagrat's space — <span class="mono" style="font-size:11.5px">v.myshroom.workers.dev</span></span></div>
+        <div class="pr"><span class="g cur">→</span><span class="tc">Letting macOS allow recording <span class="p">(microphone and screen — a one-time yes each)</span></span></div>
+        <div class="nest">
+          <span class="said">macOS will ask twice: your microphone first — one click — then screen recording, which opens System Settings.</span>
+          <span class="said">Flip the switch next to shroom there. When macOS offers to quit and reopen the app, say yes — I'll be right where you left off.</span>
+          <span class="bf">Allow recording</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="cap">done's ratified nest, verbatim — the window rests; no dialog ever meets an empty chair.</p>
+</sm-state>
+
+<sm-port name="portchapter" style="grid-row:15;grid-column:2">
+  <div class="card">Region 3 — the permissions chapter, verbatim</div>
+</sm-port>
+
+<sm-state name="member-all-set" style="grid-row:16;grid-column:1">
+  <p class="shead"><b>all-set</b> — the member face: two doors (N30)</p>
+  <div class="win">
+    <div class="tb"><span class="tl"></span></div>
+    <div class="wb">
+      <div class="plan">
+        <div class="pr"><span class="g"><span class="tick"></span></span><span class="t">Bagrat's space — <span class="mono" style="font-size:11.5px">v.myshroom.workers.dev</span></span></div>
+        <div class="pr"><span class="g"><span class="tick"></span></span><span class="t">Letting macOS allow recording</span></div>
+      </div>
+      <div style="border-top:1px solid #3B4252;margin:14px 0 12px"></div>
+      <div class="said hi" style="font-size:13.5px">You're all set — ready to record.</div>
+      <div class="quiet" style="margin-top:6px">shroom lives in your menu bar now — look for the little mushroom.</div>
+      <div style="display:flex;gap:8px;margin-top:12px"><span class="bo">Close</span><span class="bf">Record now</span></div>
+    </div>
+  </div>
+  <p class="cap">Members don't invite (N5) — the door isn't there. The own-Mac variant keeps all three doors.</p>
+</sm-state>
+
+<sm-port name="portconfig6" style="grid-row:16;grid-column:2">
+  <div class="card">Region 3 — config at the tray · Close → idle-ready</div>
+</sm-port>
+
+<sm-state name="member-revoked" kind="fail" style="grid-row:17/19;grid-column:1">
+  <p class="shead"><b>member-revoked</b> — a banner on config, the amber dot (N34)</p>
+  <div class="popv">
+    <div style="background:rgba(235,203,139,.10);border:1px solid rgba(235,203,139,.45);border-radius:8px;padding:9px 11px 10px">
+      <div class="said" style="color:#ECEFF4">Your access to Bagrat's space was turned off. Recordings on this Mac are safe — ask Bagrat if that's a surprise.</div>
+      <div style="display:flex;align-items:center;gap:12px;margin-top:8px;flex-wrap:wrap"><span class="bf" style="font-size:11.5px;padding:4px 11px">Save to Movies</span><span style="font-size:11.5px;color:#A7B2C8">Leave this space…</span></div>
+    </div>
+    <div class="prow" style="opacity:.45;margin-top:6px">Record<span class="pop">Built-in Display <i>⌄</i></span></div>
+    <span class="bf" style="display:block;width:auto;text-align:center;margin-top:6px;opacity:.35">Start recording</span>
+  </div>
+  <p class="cap">Start greyed — a new video would have nowhere to go. Save to Movies shows only while takes wait. A fresh invite re-joins the same space and the waiting takes drain. Derived: when the cause clears, the face clears by itself.</p>
+</sm-state>
+
+<sm-state name="space-needs-owner" kind="fail" style="grid-row:17;grid-column:2">
+  <p class="shead"><b>space-needs-owner</b> — Start stays live</p>
+  <div class="card warn"><span class="said" style="color:#e2d3a3">“Bagrat's space needs a fix on Bagrat's side. Your videos wait safely on this Mac and upload by themselves once it's done.”</span><p class="cap">the mint door fails with a space-side class — the space's key, storage, billing. Nothing for the member to fix.</p></div>
+</sm-state>
+
+<sm-state name="space-gone" kind="fail" style="grid-row:18;grid-column:2">
+  <p class="shead"><b>space-gone</b> — Start greyed</p>
+  <div class="card"><span class="said">“Bagrat's space isn't there anymore. Recordings on this Mac are safe — save any you want to keep.”</span><p class="cap">[ Save to Movies ] while takes wait · “Leave this space…”</p></div>
+</sm-state>
+
+<sm-note name="save-movies" style="grid-row:19;grid-column:2">
+  <p class="shead"><b>Save to Movies</b> — the stranded-take rescue (N34)</p>
+  <div class="card">The take's single-file copy lands in ~/Movies under its title and Finder shows it. The take keeps waiting — it still uploads if the space returns — until discarded. Several: “Save three to Movies”. After saving, the banner reads “Saved to Movies ✓” with a quiet Discard…. No take is ever lost to a space that went away.</div>
+</sm-note>
+
+<sm-edges>
+  <sm-edge from="portmembersin" to="invite-born" kind="flow" label="Invite someone — the window morphs, the field focused"></sm-edge>
+  <sm-edge from="invite-born" to="member-remove-confirm" kind="side" label="Remove…"></sm-edge>
+  <sm-edge from="invite-born" to="invite-row-faces" kind="auto" label="time passes — seven days, unused"></sm-edge>
+  <sm-edge from="invite-born" to="add-another-mac" kind="side" label="You — Add another Mac"></sm-edge>
+  <sm-edge from="invite-born" to="join-landing" kind="flow" label="the link, sent over any chat, opened"></sm-edge>
+  <sm-edge from="join-landing" to="join-owner-view" kind="side" label="the owner's cookie"></sm-edge>
+  <sm-edge from="join-landing" to="join-landing-elsewhere" kind="side" label="not a Mac"></sm-edge>
+  <sm-edge from="join-landing" to="join-expired" kind="fail" label="past its days · cancelled"></sm-edge>
+  <sm-edge from="join-landing" to="join-used" kind="fail" label="already used"></sm-edge>
+  <sm-edge from="join-landing" to="join-installing" kind="flow" label="curl with the link built in"></sm-edge>
+  <sm-edge from="join-installing" to="member-welcome" kind="flow" label="the script forwards the link"></sm-edge>
+  <sm-edge from="join-landing" to="member-welcome" kind="flow" label="Open shroom — already installed"></sm-edge>
+  <sm-edge from="member-welcome" to="join-already-here" kind="fail" label="already in that space"></sm-edge>
+  <sm-edge from="member-welcome" to="join-switch-confirm" kind="side" label="in another space"></sm-edge>
+  <sm-edge from="member-welcome" to="joining" kind="flow" label="Join"></sm-edge>
+  <sm-edge from="join-switch-confirm" to="joining" kind="flow" label="Join Bagrat's space"></sm-edge>
+  <sm-edge from="joining" to="join-waiting" kind="fail" label="offline or unanswered"></sm-edge>
+  <sm-edge from="join-waiting" to="joining" kind="auto" label="auto-resume"></sm-edge>
+  <sm-edge from="joining" to="join-space-missing" kind="fail" label="no space there"></sm-edge>
+  <sm-edge from="joining" to="member-done" kind="flow" label="ticked with the fact — rests"></sm-edge>
+  <sm-edge from="member-done" to="portchapter" kind="port" label="Allow recording"></sm-edge>
+  <sm-edge from="portchapter" to="member-all-set" kind="flow" label="row two ticks"></sm-edge>
+  <sm-edge from="member-all-set" to="portconfig6" kind="port" label="Record now · Close"></sm-edge>
+  <sm-edge from="member-revoked" to="save-movies" kind="side" label="while takes wait"></sm-edge>
+</sm-edges>
+</sm-region>
+
+<footer>
+  Mock dress only — Nord and this logo are the fat-marker session's dress, not a ratified product style.
+  Non-happy paths are first-class states with scaffold-grade names (N18) — only as-you-type guards stay stateless.
+  Nodes hold the copy verbatim — ratified where the region header says so, designed-awaiting-ratification where it says D; annotations under each card speak in the internal register the copy itself never uses.
+</footer>
+</main>
+
+<script>
+(function () {
+  var COLORS = { flow: '#88C0D0', fail: '#BF616A', retry: '#EBCB8B', auto: '#A3BE8C', port: '#81A1C1', side: '#616E88' };
+  var DASH = { fail: '5 4', retry: '2 3', auto: '2 3', port: '7 5', side: '2 3' };
+  var svg = document.getElementById('wires');
+  var svg2 = document.getElementById('wires2');
+  var main = document.querySelector('main');
+  var NS = 'http://www.w3.org/2000/svg';
+
+  function rectOf(name) {
+    var el = document.querySelector('[name="' + name + '"]');
+    if (!el) return null;
+    var r = el.getBoundingClientRect(), m = main.getBoundingClientRect();
+    return { l: r.left - m.left, t: r.top - m.top, w: r.width, h: r.height };
+  }
+
+  function el(tag, attrs) {
+    var n = document.createElementNS(NS, tag);
+    for (var k in attrs) n.setAttribute(k, attrs[k]);
+    return n;
+  }
+
+  function draw() {
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+    while (svg2.firstChild) svg2.removeChild(svg2.firstChild);
+    svg.setAttribute('width', main.scrollWidth);
+    svg.setAttribute('height', main.scrollHeight);
+    var rail = 0;
+
+    var defs = el('defs', {});
+    Object.keys(COLORS).forEach(function (k) {
+      var mk = el('marker', { id: 'a-' + k, viewBox: '0 0 10 10', refX: 8, refY: 5, markerWidth: 7, markerHeight: 7, orient: 'auto-start-reverse' });
+      mk.appendChild(el('path', { d: 'M0 0 L10 5 L0 10 z', fill: COLORS[k] }));
+      defs.appendChild(mk);
+    });
+    svg.appendChild(defs);
+
+    var edges = [].slice.call(document.querySelectorAll('sm-edge')).map(function (e) {
+      return { from: e.getAttribute('from'), to: e.getAttribute('to'), kind: e.getAttribute('kind') || 'flow', label: e.getAttribute('label') || '' };
+    }).filter(function (e) { return rectOf(e.from) && rectOf(e.to); });
+
+    var pairSeen = {};
+    var exits = {}, enters = {};
+
+    edges.forEach(function (e) {
+      var a = rectOf(e.from), b = rectOf(e.to);
+      if (b.l >= a.l + a.w - 8) e.dir = 'R';
+      else if (b.l + b.w <= a.l + 8) e.dir = 'L';
+      else if (b.t >= a.t + a.h - 8) e.dir = 'D';
+      else e.dir = 'U';
+      var xk = e.from + '|' + (e.dir === 'D' ? 'B' : e.dir === 'U' ? 'T' : e.dir);
+      (exits[xk] = exits[xk] || []).push(e);
+      var ek = e.to + '|' + e.dir;
+      (enters[ek] = enters[ek] || []).push(e);
+    });
+
+    function frac(list, e) {
+      var i = list.indexOf(e), n = list.length;
+      return (i + 1) / (n + 1);
+    }
+
+    edges.forEach(function (e) {
+      var a = rectOf(e.from), b = rectOf(e.to);
+      var key = [e.from, e.to].sort().join('|');
+      var off = (pairSeen[key] === undefined ? (pairSeen[key] = 0) : ++pairSeen[key]) ? 9 : (edges.some(function (o) { return o !== e && o.from === e.to && o.to === e.from; }) ? -9 : 0);
+      var d, mid, midDy = -7, anchor = 'middle', rot = 0;
+
+      if (e.dir === 'R' || e.dir === 'L') {
+        var xk = e.from + '|' + e.dir;
+        var y1 = a.t + a.h * frac(exits[xk], e) + off;
+        var y2 = b.t + b.h * 0.5 + off;
+        var x1 = e.dir === 'R' ? a.l + a.w : a.l;
+        var x2 = e.dir === 'R' ? b.l : b.l + b.w;
+        var dx = Math.max(36, Math.min(110, Math.abs(x2 - x1) * 0.45)) * (e.dir === 'R' ? 1 : -1);
+        d = 'M' + x1 + ' ' + y1 + ' C' + (x1 + dx) + ' ' + y1 + ', ' + (x2 - dx) + ' ' + y2 + ', ' + x2 + ' ' + y2;
+        mid = { x: (x1 + x2) / 2, y: (y1 + y2) / 2 };
+        midDy = e.dir === 'R' ? -7 : 15;
+      } else if (e.dir === 'D') {
+        var gap = b.t - (a.t + a.h);
+        if (gap > 300) {
+          var ch = Math.max(8, Math.min(a.l, b.l) - 24 - (rail++) * 12);
+          var cy1 = a.t + a.h * 0.6, cy2 = b.t + Math.min(40, b.h * 0.3);
+          d = 'M' + a.l + ' ' + cy1 + ' L' + ch + ' ' + cy1 + ' L' + ch + ' ' + cy2 + ' L' + b.l + ' ' + cy2;
+          mid = { x: ch - 6, y: (cy1 + cy2) / 2 }; rot = -90; midDy = 0;
+        } else {
+          var xk2 = e.from + '|B';
+          var x1d = a.l + a.w * frac(exits[xk2], e);
+          var x2d = b.l + b.w * 0.5;
+          d = 'M' + x1d + ' ' + (a.t + a.h) + ' C' + x1d + ' ' + (a.t + a.h + 42) + ', ' + x2d + ' ' + (b.t - 42) + ', ' + x2d + ' ' + b.t;
+          mid = { x: (x1d + x2d) / 2 + 6, y: (a.t + a.h + b.t) / 2 }; anchor = 'start';
+        }
+      } else {
+        var ch2 = Math.max(8, Math.min(a.l, b.l) - 24 - (rail++) * 12);
+        var uy1 = a.t + a.h * 0.4, uy2 = b.t + b.h * 0.6;
+        d = 'M' + a.l + ' ' + uy1 + ' L' + ch2 + ' ' + uy1 + ' L' + ch2 + ' ' + uy2 + ' L' + b.l + ' ' + uy2;
+        mid = { x: ch2 - 6, y: (uy1 + uy2) / 2 }; rot = -90; midDy = 0;
+      }
+
+      svg.appendChild(el('path', {
+        d: d, fill: 'none', stroke: COLORS[e.kind], 'stroke-width': e.kind === 'flow' ? 2.1 : 1.7,
+        'stroke-dasharray': DASH[e.kind] || 'none', 'stroke-linejoin': 'round',
+        'marker-end': 'url(#a-' + e.kind + ')', opacity: 0.9
+      }));
+
+      if (e.label) {
+        var words = e.label.split(' '), lines = [''], li = 0;
+        words.forEach(function (w) {
+          if ((lines[li] + ' ' + w).trim().length > 30) { lines[++li] = w; }
+          else lines[li] = (lines[li] + ' ' + w).trim();
+        });
+        var tx = mid.x + (anchor === 'start' ? 8 : 0);
+        var t = el('text', {
+          x: tx, y: mid.y + midDy - (lines.length - 1) * 6, 'text-anchor': anchor,
+          'font-size': 11, fill: COLORS[e.kind], stroke: '#242933', 'stroke-width': 4,
+          'paint-order': 'stroke', 'font-family': 'system-ui, sans-serif',
+          opacity: 0.95
+        });
+        if (rot) t.setAttribute('transform', 'rotate(' + rot + ' ' + tx + ' ' + mid.y + ')');
+        lines.forEach(function (ln, i) {
+          var ts = el('tspan', { x: tx, dy: i ? 13 : 0 });
+          ts.textContent = ln;
+          t.appendChild(ts);
+        });
+        svg2.appendChild(t);
+      }
+    });
+  }
+
+  var pend;
+  window.addEventListener('resize', function () { clearTimeout(pend); pend = setTimeout(draw, 150); });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(draw);
+  window.addEventListener('load', draw);
+  draw();
+})();
+</script>

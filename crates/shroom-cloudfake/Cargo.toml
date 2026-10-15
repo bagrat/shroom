@@ -1,0 +1,11 @@
+[package]
+name = "shroom-cloudfake"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+description = "L1: an in-process stand-in for Cloudflare's REST API and R2's S3 API, for tests only."
+
+[dependencies]
+serde_json = "1"

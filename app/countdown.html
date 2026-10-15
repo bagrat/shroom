@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>shroom countdown</title>
+    <style>
+      /* The canvas's count (DEVIATIONS #45): Nord's night scrim on a dark Mac, the spec's
+         light scrim on a light one (N22), a large 3 · 2 · 1 and one quiet line. */
+      html, body { margin: 0; height: 100%; background: rgba(236, 239, 244, 0.35); cursor: default; font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif; }
+      main { height: 100%; display: grid; place-content: center; text-align: center; gap: 4px; }
+      .digit { font-size: 168px; font-weight: 600; line-height: 1; color: #2e3440; font-variant-numeric: tabular-nums; }
+      .line { font-size: 15px; color: #3b4252; }
+      @media (prefers-color-scheme: dark) {
+        html, body { background: rgba(46, 52, 64, 0.62); }
+        .digit { color: #eceff4; }
+        .line { color: #d8dee9; }
+      }
+      @media (prefers-reduced-motion: no-preference) { .digit { transition: opacity 120ms; } }
+    </style>
+  </head>
+  <body>
+    <main><div class="digit" id="digit"></div><div class="line" id="line"></div></main>
+    <script type="module" src="/src/countdown.ts"></script>
+  </body>
+</html>

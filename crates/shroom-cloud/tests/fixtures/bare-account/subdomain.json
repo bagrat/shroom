@@ -1,0 +1,4 @@
+{
+  "http_status": 404,
+  "body": "{\n  \"result\": null,\n  \"success\": false,\n  \"errors\": [\n    {\n      \"code\": 10007,\n      \"message\": \"You do not have a workers.dev subdomain. Please go to https://dash.cloudflare.com/?to=/:account/workers/workers-and-pages. Opening the Workers \\u0026 Pages landing page for the first time will create a workers.dev subdomain automatically.\"\n    }\n  ],\n  \"messages\": []\n}\n"
+}

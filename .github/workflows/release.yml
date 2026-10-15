@@ -1,0 +1,368 @@
+# A release: **Actions → Release → Run workflow** on `main` with "Publish" ticked — or push a
+# tag `v<version>` — and this builds it, signs it and publishes it (DECISIONS B102, B126;
+# docs/RELEASING.md has the routine and the one-time setup).
+#
+# Run from `main` with Publish, the version is the tree's (tools/bump-version.sh), the run
+# refuses unless CI is green on that exact commit and the version isn't out yet, and the
+# publish job makes the tag `v<version>` on that commit as it creates the release.
+#
+#   check    the tag is the version every version file holds, the commit is on `main`, and
+#            the repo pins the release certificate. No secret, no approval.
+#   build    in the `release` environment (its two secrets; Bagrat's approval, if he turned
+#            that on): the one release build (tools/release-build.sh), signed with the
+#            release identity from a throwaway keychain, then packaged
+#            (tools/package-release.sh) — manifest.txt, update.txt (the same bytes, the
+#            name the app's updater asks for: DECISIONS B136) and shroom-<version>-arm64.zip.
+#   publish  the only job that may write to the repo: a GitHub release for the tag with
+#            exactly those three files — the layout installer/install.sh and the app's updater
+#            fetch (`releases/latest/download/manifest.txt`, or `update.txt` for the app, then
+#            `releases/download/v<version>/<zip>`) — then asks the public address for them.
+#
+# It starts warm: GitHub lets a tag's run read the caches the default branch saved (never
+# another tag's), so ci.yml's build job saves them from `main` and this file only restores
+# — the same runner image, toolchain, environment and script, held equal by the app's test
+# `the_tag_workflow_builds_what_ci_cached`. Nothing here saves a cache.
+#
+# "Run workflow" without Publish is a rehearsal: it builds and signs exactly as a release
+# does, keeps the result as a workflow artifact for a few days, and publishes nothing.
+#
+# Every action is pinned to a full commit SHA — the version is in the comment beside it.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish it — from main only; tags the commit v<version> (unticked, a rehearsal)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# One release at a time: a second tag waits for the first to finish.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+# The build's environment — the same block, word for word, in ci.yml (see there).
+env:
+  RUNNER_IMAGE: macos-26
+  NODE_VERSION: 22
+  CARGO_INCREMENTAL: 0
+  CARGO_TERM_COLOR: always
+  RELEASE_CACHE: release-v1
+  # The end-to-end lanes' browsers are never needed on a runner.
+  PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
+
+jobs:
+  check:
+    name: The tag is the tree's version
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      checks: read
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: The tag is the version in every version file
+        id: version
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          if [ "$REF_TYPE" = tag ]; then
+            said=$(sh tools/bump-version.sh --check "${REF_NAME#v}" 2>&1) || {
+              echo "::error::The tag $REF_NAME isn't the version in the tree: ${said#bump-version: }"
+              exit 1
+            }
+          else
+            said=$(sh tools/bump-version.sh --check 2>&1) || { echo "::error::${said#bump-version: }"; exit 1; }
+          fi
+          echo "version=$said" >>"$GITHUB_OUTPUT"
+          echo "shroom $said"
+
+      - name: Published from Run workflow, it is main, CI is green on it, and the version is new
+        if: github.event_name == 'workflow_dispatch' && inputs.publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          [ "$GITHUB_REF" = refs/heads/main ] || { echo "::error::A release is published from main — run it on main."; exit 1; }
+          if git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" >/dev/null; then
+            echo "::error::v$VERSION is already tagged — a version is released once: tools/bump-version.sh to the next, then run again."
+            exit 1
+          fi
+          runs=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/check-runs?per_page=100" \
+            --jq '[.check_runs[] | select(.app.slug == "github-actions") | {name, status, conclusion}]')
+          for job in "Tests" "Release build (ad hoc)" "Signing rehearsal" "Advisories"; do
+            got=$(printf '%s' "$runs" | jq -r --arg n "$job" '[.[] | select(.name == $n)] | if length == 0 then "missing" else (.[0].status + "/" + (.[0].conclusion // "")) end')
+            [ "$got" = "completed/success" ] || { echo "::error::CI's $job on $GITHUB_SHA is $got — a release waits for CI to be green on the commit it ships."; exit 1; }
+          done
+          echo "Publishing v$VERSION from $GITHUB_SHA — CI is green on it."
+
+      - name: The tagged commit is on main
+        if: github.ref_type == 'tag'
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main || {
+            echo "::error::The tag $REF_NAME isn't on main — a release is cut from main: merge first, then tag the merged commit."
+            exit 1
+          }
+
+      - name: The repo pins the release certificate
+        run: |
+          pin=$(tr -d ' \n' <tools/release-identity.sha1 2>/dev/null || true)
+          printf '%s' "$pin" | grep -Eq '^[0-9a-f]{40}$' || {
+            echo "::error::tools/release-identity.sha1 doesn't hold the release certificate's SHA-1 yet — docs/RELEASING.md, one-time setup."
+            exit 1
+          }
+
+      # What "What's new" opens (DECISIONS B152): written by hand before the release is cut,
+      # in shroom's voice. A rehearsal only warns; a release that would publish stops here,
+      # before anything is built.
+      - name: The release's notes are written
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          PUBLISHING: ${{ github.ref_type == 'tag' || (github.event_name == 'workflow_dispatch' && inputs.publish) }}
+        run: |
+          if said=$(node tools/release-notes.mjs check "$VERSION" 2>&1); then
+            echo "$said"
+          elif [ "$PUBLISHING" = true ]; then
+            printf '%s\n' "$said" | while IFS= read -r l; do echo "::error::$l"; done
+            exit 1
+          else
+            printf '%s\n' "$said" | while IFS= read -r l; do echo "::warning::$l (a rehearsal goes on; a release would stop here)"; done
+          fi
+
+  build:
+    name: Build, sign, package
+    needs: check
+    runs-on: macos-26
+    # The signing secrets live in this environment and reach this job only.
+    environment: release
+    timeout-minutes: 90
+    env:
+      VERSION: ${{ needs.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The Rust the workspace names (Cargo.toml's rust-version), and which Xcode this image
+      # builds with — part of the Rust cache's name: a dependency's build keeps the path of
+      # the Xcode it was built by, so a new default Xcode must start a new cache.
+      - name: Rust toolchain (the workspace's rust-version), and the Xcode in use
+        id: toolchain
+        run: |
+          version=$(sed -n 's/^rust-version = "\(.*\)"$/\1/p' Cargo.toml)
+          rustup toolchain install "$version" --profile minimal --no-self-update
+          rustup default "$version"
+          rustc -vV
+          xcodebuild -version
+          echo "macOS SDK $(xcrun --sdk macosx --show-sdk-version)"
+          echo "xcode=$(xcodebuild -version | awk 'NR==1{v=$2} NR==2{b=$3} END{print v "-" b}')" >>"$GITHUB_OUTPUT"
+
+      - name: The macOS floor
+        id: facts
+        run: |
+          floor=$(plutil -extract bundle.macOS.minimumSystemVersion raw -o - app/src-tauri/tauri.conf.json)
+          echo "floor=$floor" >>"$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          package-manager-cache: false
+
+      - name: Restore npm's download cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.npm
+          key: npm-${{ env.RUNNER_IMAGE }}-node${{ env.NODE_VERSION }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            npm-${{ env.RUNNER_IMAGE }}-node${{ env.NODE_VERSION }}-
+
+      - name: Install the node packages
+        run: npm ci
+
+      # What ci.yml's build job saved from main. Restored, never saved: a tag's cache is
+      # invisible to the next tag.
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          shared-key: ${{ env.RELEASE_CACHE }}-${{ env.RUNNER_IMAGE }}-xcode${{ steps.toolchain.outputs.xcode }}
+          save-if: false
+
+      - name: Restore the encoder
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: build/ffmpeg/sidecar
+          key: ffmpeg-sidecar-${{ env.RUNNER_IMAGE }}-${{ hashFiles('tools/build-ffmpeg.sh') }}-floor${{ steps.facts.outputs.floor }}
+
+      # A cached encoder is held to the script's own checks; without one it is built here,
+      # from the pinned, checksum-verified tarball.
+      - name: The encoder (built only when the cache has none)
+        run: |
+          if [ -x build/ffmpeg/sidecar/ffmpeg-aarch64-apple-darwin ] && tools/build-ffmpeg.sh --check; then
+            echo "From the cache, and the encoder tools/build-ffmpeg.sh makes."
+          else
+            tools/build-ffmpeg.sh
+          fi
+
+      - name: The release identity, into a throwaway keychain
+        id: identity
+        env:
+          SIGNING_P12_BASE64: ${{ secrets.RELEASE_CERT_P12_BASE64 }}
+          SIGNING_P12_PASSWORD: ${{ secrets.RELEASE_CERT_PASSWORD }}
+        run: .github/scripts/signing-keychain.sh import
+
+      - name: It is the certificate the repo pins
+        env:
+          LEAF: ${{ steps.identity.outputs.leaf }}
+        run: |
+          pin=$(tr -d ' \n' <tools/release-identity.sha1)
+          [ "$LEAF" = "$pin" ] || {
+            echo "::error::The certificate in the release secrets ($LEAF) isn't the one this repo pins ($pin). A release signed with it would cost every user their Screen Recording permission — nothing was built."
+            exit 1
+          }
+
+      - name: The release build, signed
+        env:
+          IDENTITY: ${{ steps.identity.outputs.identity }}
+        run: tools/release-build.sh "$RUNNER_TEMP/release" --identity "$IDENTITY" --leaf "$(tr -d ' \n' <tools/release-identity.sha1)"
+
+      - name: The signing keychain, gone
+        if: always()
+        run: .github/scripts/signing-keychain.sh delete
+
+      # The script shows the last lines of a failed build; a runner can't be asked for more
+      # afterwards, so here is all of it.
+      - name: The whole build log, if the build failed
+        if: failure()
+        run: cat "$RUNNER_TEMP/release/build.log" 2>/dev/null || echo "The build never started."
+
+      - name: Package it
+        run: tools/package-release.sh "$RUNNER_TEMP/release/shroom.app" "$VERSION" "$RUNNER_TEMP/dist"
+
+      - name: What was built
+        run: |
+          cd "$RUNNER_TEMP/dist"
+          {
+            echo "### shroom $VERSION"
+            echo
+            echo "SHA-256:"
+            echo
+            echo '```'
+            shasum -a 256 "shroom-$VERSION-arm64.zip" manifest.txt
+            echo '```'
+            echo
+            echo "manifest.txt:"
+            echo
+            echo '```'
+            cat manifest.txt
+            echo '```'
+            echo
+            echo "Signature:"
+            echo
+            echo '```'
+            cat "$RUNNER_TEMP/release/signature.txt"
+            tail -n 2 "$RUNNER_TEMP/release/minos-probe.log"
+            echo '```'
+          } >>"$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: shroom-${{ needs.check.outputs.version }}
+          path: |
+            ${{ runner.temp }}/dist/manifest.txt
+            ${{ runner.temp }}/dist/update.txt
+            ${{ runner.temp }}/dist/shroom-${{ needs.check.outputs.version }}-arm64.zip
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+  publish:
+    name: Publish the release
+    needs: [check, build]
+    # A tag publishes, and so does Run workflow on main with Publish; a rehearsal stops
+    # after the build.
+    if: github.ref_type == 'tag' || (github.event_name == 'workflow_dispatch' && inputs.publish && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.check.outputs.version }}
+      TAG: ${{ github.ref_type == 'tag' && github.ref_name || format('v{0}', needs.check.outputs.version) }}
+    steps:
+      # Only the notes and the tool that writes the body from them.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            docs/release-notes
+            tools/release-notes.mjs
+          sparse-checkout-cone-mode: false
+          path: src
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: shroom-${{ needs.check.outputs.version }}
+          path: dist
+
+      - name: The three files are the ones the manifest names
+        working-directory: dist
+        run: |
+          [ "$(ls | sort | tr '\n' ' ')" = "manifest.txt shroom-$VERSION-arm64.zip update.txt " ] || { echo "::error::expected exactly manifest.txt, update.txt and shroom-$VERSION-arm64.zip, got: $(ls | tr '\n' ' ')"; exit 1; }
+          cmp -s update.txt manifest.txt || { echo "::error::update.txt isn't the manifest"; exit 1; }
+          [ "$(sed -n 's/^version=//p' manifest.txt)" = "$VERSION" ] || { echo "::error::the manifest isn't for $VERSION"; exit 1; }
+          entry=$(sed -n 's/^arm64=//p' manifest.txt)
+          [ "${entry%% *}" = "shroom-$VERSION-arm64.zip" ] || { echo "::error::the manifest names ${entry%% *}"; exit 1; }
+          echo "${entry##* }  shroom-$VERSION-arm64.zip" | sha256sum -c -
+
+      - name: Publish
+        working-directory: dist
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # A tag's run publishes that tag; Run workflow's makes it, on the commit it built.
+          if [ "$GITHUB_REF_TYPE" = tag ]; then on=(--verify-tag); else on=(--target "$GITHUB_SHA"); fi
+          # The notes (B152): the hand-written "What's new", then GitHub's list of what was
+          # merged since the last release, folded away.
+          gh api "repos/$GITHUB_REPOSITORY/releases/generate-notes" -f tag_name="$TAG" -f target_commitish="$GITHUB_SHA" --jq .body >"$RUNNER_TEMP/generated.md"
+          node ../src/tools/release-notes.mjs body "$VERSION" "$RUNNER_TEMP/generated.md" >"$RUNNER_TEMP/notes.md"
+          gh release create "$TAG" "shroom-$VERSION-arm64.zip" manifest.txt update.txt \
+            --repo "$GITHUB_REPOSITORY" --title "shroom $VERSION" --notes-file "$RUNNER_TEMP/notes.md" "${on[@]}"
+
+      # What the install line and the updater will fetch, asked of the public address.
+      - name: The public address serves it
+        working-directory: dist
+        run: |
+          base="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases"
+          fetch() { curl -fsSL --retry 6 --retry-delay 5 --retry-all-errors -o "$2" "$1"; }
+          fetch "$base/download/$TAG/shroom-$VERSION-arm64.zip" served.zip
+          entry=$(sed -n 's/^arm64=//p' manifest.txt)
+          echo "${entry##* }  served.zip" | sha256sum -c - || { echo "::error::$base/download/$TAG/shroom-$VERSION-arm64.zip isn't the file that was built"; exit 1; }
+          fetch "$base/download/$TAG/manifest.txt" served.txt
+          cmp -s served.txt manifest.txt || { echo "::error::$base/download/$TAG/manifest.txt isn't the manifest that was built"; exit 1; }
+          fetch "$base/download/$TAG/update.txt" served-update.txt
+          cmp -s served-update.txt manifest.txt || { echo "::error::$base/download/$TAG/update.txt isn't the manifest that was built"; exit 1; }
+          fetch "$base/latest/download/manifest.txt" latest.txt
+          cmp -s latest.txt manifest.txt || echo "::warning::releases/latest isn't $TAG — the install line and the updater get $(sed -n 's/^version=//p' latest.txt) until this one is the latest release."
+          {
+            echo "### shroom $VERSION is published"
+            echo
+            echo "$base/tag/$TAG"
+            echo
+            echo '```'
+            cat manifest.txt
+            echo '```'
+          } >>"$GITHUB_STEP_SUMMARY"

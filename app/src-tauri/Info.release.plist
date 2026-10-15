@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- The release bundle's Info.plist (DECISIONS B66): what the dev Info.plist says, verbatim
+     — a menu-bar app from birth (B113), the prompts — plus the `shroom` URL type — the join
+     page's Open shroom (SM:1442, 1751). Only the release config merges it; a dev bundle
+     never claims the scheme. -->
+<plist version="1.0">
+<dict>
+  <key>LSUIElement</key>
+  <true/>
+  <key>NSMicrophoneUsageDescription</key>
+  <string>shroom records your voice with your video.</string>
+  <key>NSCameraUsageDescription</key>
+  <string>shroom shows and records your camera only when you choose it.</string>
+  <key>CFBundleURLTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleURLName</key>
+      <string>am.shroom.join</string>
+      <key>CFBundleURLSchemes</key>
+      <array>
+        <string>shroom</string>
+      </array>
+    </dict>
+  </array>
+</dict>
+</plist>

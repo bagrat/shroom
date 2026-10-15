@@ -1,0 +1,1735 @@
+{
+  "region": "Region 5 — the tail: library, settings, updates, custom domain (UX-STATEMACHINE.md lines 1075-1281; structure ratified 2026-07-20; everything below designed 2026-09-30 in the autonomous sitting — N35, N36, N37 — awaiting Bagrat's ratification)",
+  "states": [
+    {
+      "id": "library",
+      "kind": "state",
+      "surface": "window",
+      "status": "provisional",
+      "parent": "",
+      "summary": "The Library window, thin by design (§5.6), built for two jobs: re-share an old video and clean up. It is a list, newest first. Each row shows a small poster, the title, then date · length; in Everyone, other members' rows add their admin-private label (N28; removed members keep it). Copy link is always visible. Open page and Delete… show on hover or selection. State words appear only when a video isn't live (no word means live). A recovered take pins to the top under the amber dot, mirroring N25's banner. The full macOS idiom applies: click a title to rename it, double-click to open, ⌘C copies, the Delete key deletes, right-click opens a menu, ⌘/⇧-click multi-selects. Mine · Everyone shows only on owner-class Macs once someone else has a video here, and Mine is the default. Search is local and instant, over titles only. The window opens on the local cache, and the bucket refresh (R10 delta sync) runs behind it, sliding new rows in, including videos from your other Macs. Footer: the count only, with no sizes or prices (P13 parked). Scope: members see their own videos, owner-class Macs see the whole space. If another Mac deletes a video while this Mac is uploading it, the tombstone check at resume stops the upload and this row turns to 'Removed from the space' with Save to Movies · Discard…. Mocked row shape: '<title> — Aug 21 · 4:32' (+ ' · Mher' in Everyone).",
+      "entry_conditions": "A space exists, so config is reachable: idle-ready, not mid-take. The user clicks the Library (folder) icon in config's footer. One instance: clicking the icon again brings the open window forward. A window opened before a take stays open through it (N41's quiet-take law covers only what shroom would newly show). It is also restored at its derived state after an update relaunch if it was open when Update ran. The dock icon shows while it is open (Region 1 dock rule).",
+      "said_lines": [
+        {
+          "text": "Library",
+          "role": "title",
+          "copy_status": "provisional",
+          "note": "Window head in the mock (bold, unquoted)."
+        },
+        {
+          "text": "Search titles",
+          "role": "placeholder",
+          "copy_status": "provisional",
+          "note": "Search field. Filters as you type over the titles this Mac knows."
+        },
+        {
+          "text": "Mine",
+          "role": "other",
+          "copy_status": "provisional",
+          "note": "Segment of the 'Mine · Everyone' control (italic in the mock). Only on owner-class Macs once someone else has a video here. Default."
+        },
+        {
+          "text": "Everyone",
+          "role": "other",
+          "copy_status": "provisional",
+          "note": "Second segment. Rows here add the member's label."
+        },
+        {
+          "text": "Copy link",
+          "role": "button",
+          "copy_status": "provisional",
+          "note": "On every row, always visible, outline style."
+        },
+        {
+          "text": "Copied",
+          "role": "status",
+          "copy_status": "provisional",
+          "note": "Copy link reads this for a moment after the click (N26's pattern, Law 10). The word itself is ratified on the owner page (N26)."
+        },
+        {
+          "text": "Open page",
+          "role": "link",
+          "copy_status": "provisional",
+          "note": "Appears on hover or selection."
+        },
+        {
+          "text": "Delete…",
+          "role": "link",
+          "copy_status": "provisional",
+          "note": "Red text. Appears on hover or selection."
+        },
+        {
+          "text": "Uploading — 40%",
+          "role": "status",
+          "copy_status": "provisional",
+          "note": "Row state word with a thin bar under the row. The percentage varies."
+        },
+        {
+          "text": "Waiting for connection",
+          "role": "status",
+          "copy_status": "provisional",
+          "note": "Row state word."
+        },
+        {
+          "text": "Waiting for your space",
+          "role": "status",
+          "copy_status": "provisional",
+          "note": "Amber. Shown in the degraded and member faces (N34), with [ Save to Movies ] while the take can't go anywhere."
+        },
+        {
+          "text": "Save to Movies",
+          "role": "button",
+          "copy_status": "provisional",
+          "note": "Shown next to 'Waiting for your space' while the take can't go anywhere, and on a 'Removed from the space' row."
+        },
+        {
+          "text": "Interrupted recording — 4:32 saved",
+          "role": "status",
+          "copy_status": "provisional",
+          "note": "Recovered-take row, pinned to the top under the amber dot and mirroring N25's banner. The length varies."
+        },
+        {
+          "text": "Get link",
+          "role": "button",
+          "copy_status": "provisional",
+          "note": "Filled. On the recovered-take row."
+        },
+        {
+          "text": "Discard…",
+          "role": "link",
+          "copy_status": "provisional",
+          "note": "On the recovered-take row, and on a 'Removed from the space' row."
+        },
+        {
+          "text": "Removed from the space",
+          "role": "status",
+          "copy_status": "provisional",
+          "note": "Row state on the Mac whose upload was stopped by another Mac's delete (tombstone found at resume)."
+        },
+        {
+          "text": "Copy link",
+          "role": "menu-item",
+          "copy_status": "provisional",
+          "note": "Right-click menu item 1 of 4."
+        },
+        {
+          "text": "Open page",
+          "role": "menu-item",
+          "copy_status": "provisional",
+          "note": "Right-click menu item 2 of 4."
+        },
+        {
+          "text": "Rename",
+          "role": "menu-item",
+          "copy_status": "provisional",
+          "note": "Right-click menu item 3 of 4."
+        },
+        {
+          "text": "Delete…",
+          "role": "menu-item",
+          "copy_status": "provisional",
+          "note": "Right-click menu item 4 of 4."
+        },
+        {
+          "text": "14 videos",
+          "role": "status",
+          "copy_status": "provisional",
+          "note": "Footer count, the only footer content. The number varies and stays a figure (Law 16, compact facts). The singular form is not given."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Copy link",
+          "kind": "secondary",
+          "return_default": false,
+          "note": "Outline, always visible. Also ⌘C on a selected row and right-click → Copy link. Reads 'Copied' for a moment. Stays live offline and when the space can't be reached.",
+          "goes_to": "library"
+        },
+        {
+          "label": "Open page",
+          "kind": "text-link",
+          "return_default": false,
+          "note": "On hover or selection. Also double-click a row and right-click → Open page. Opens the owner-keyed URL (U2): the page arrives in owner-mode and the default browser gets the cookie, which is also the door for a new browser or a new Mac.",
+          "goes_to": "owner page (Region 4)"
+        },
+        {
+          "label": "Delete…",
+          "kind": "red-text",
+          "return_default": false,
+          "note": "On hover or selection. Also the Delete key, right-click → Delete…, and ⌘/⇧-click several rows then Delete… once. Greys out offline.",
+          "goes_to": "library · delete sheet"
+        },
+        {
+          "label": "Rename (click a title)",
+          "kind": "field",
+          "return_default": true,
+          "note": "Renames in place. Enter or click-away saves (the field's own Return, Law 8). Esc cancels. An emptied title brings the previous one back, never blank. A metadata write, live on the next load (Region 4 Rename). Greys out offline.",
+          "goes_to": "library"
+        },
+        {
+          "label": "Search titles",
+          "kind": "field",
+          "return_default": false,
+          "note": "Filters as you type, local and instant. Return behaviour not stated."
+        },
+        {
+          "label": "Mine · Everyone",
+          "kind": "other",
+          "return_default": false,
+          "note": "Segmented scope control, owner-class only, once someone else records here."
+        },
+        {
+          "label": "Save to Movies",
+          "kind": "secondary",
+          "return_default": false,
+          "note": "Stranded-take rescue (N34): copies to ~/Movies. Live even when the space can't be reached."
+        },
+        {
+          "label": "Get link",
+          "kind": "filled-default",
+          "return_default": false,
+          "note": "Recovered-take row. Its one filled button leads (Law 8's single-action pattern, mirroring the saved-take banner). Return is not stated for the Library window.",
+          "goes_to": "stopping"
+        },
+        {
+          "label": "Discard… (recovered take)",
+          "kind": "red-text",
+          "return_default": false,
+          "note": "N25's confirm, not the delete sheet: no link was ever handed out, so no tombstone. Red per Law 9 (the row text doesn't restate the colour).",
+          "goes_to": "discard-confirm"
+        },
+        {
+          "label": "Discard… (Removed from the space row)",
+          "kind": "red-text",
+          "return_default": false,
+          "note": "The take on this Mac is still its maker's to keep or toss (law 2). Which confirm it opens is not stated."
+        },
+        {
+          "label": "✕ (close window)",
+          "kind": "close",
+          "return_default": false,
+          "note": "Ordinary window: closing it takes the dock icon away unless another window is open (Region 1 dock rule: dock iff a window is open; ✕ ≡ the retreat, line 1717)."
+        }
+      ],
+      "transitions": [
+        {
+          "trigger": "no videos in this Mac's scope",
+          "to": "library · empty"
+        },
+        {
+          "trigger": "search text matches no title",
+          "to": "library · no match"
+        },
+        {
+          "trigger": "Mac goes offline",
+          "to": "library · offline"
+        },
+        {
+          "trigger": "member-revoked or space-gone (N34)",
+          "to": "library · the space can't be reached"
+        },
+        {
+          "trigger": "Delete… / Delete key / right-click Delete… on one or several selected rows",
+          "to": "library · delete sheet"
+        },
+        {
+          "trigger": "Open page / double-click a row / right-click Open page",
+          "to": "owner page (Region 4), owner-mode via the owner-keyed URL"
+        },
+        {
+          "trigger": "Get link on the pinned recovered-take row (N25's normal stop sequence from the saved file)",
+          "to": "stopping"
+        },
+        {
+          "trigger": "Discard… on the recovered-take row",
+          "to": "discard-confirm (N25's variant: “4:32 was saved. There's no undo.”)"
+        }
+      ],
+      "decided_by": [
+        "N35",
+        "N5",
+        "N33",
+        "N25",
+        "N26",
+        "N28",
+        "N34",
+        "N41",
+        "U2",
+        "§5.6",
+        "R10",
+        "P13"
+      ],
+      "source_lines": "1077-1121, 1133-1140, 1151-1157 (keyboard/order laws 107-108, 136-146)"
+    },
+    {
+      "id": "library · empty",
+      "kind": "face",
+      "surface": "window",
+      "status": "provisional",
+      "parent": "library",
+      "summary": "Empty Library: one line pointing at the mushroom.",
+      "entry_conditions": "Library open and there are no videos in this Mac's scope.",
+      "said_lines": [
+        {
+          "text": "No videos yet — click the mushroom in your menu bar to record your first.",
+          "role": "line",
+          "copy_status": "provisional"
+        }
+      ],
+      "actions": [],
+      "transitions": [
+        {
+          "trigger": "a video exists (derived, so the face clears by itself — Law 1)",
+          "to": "library"
+        }
+      ],
+      "decided_by": [
+        "N35"
+      ],
+      "source_lines": "1142-1146"
+    },
+    {
+      "id": "library · no match",
+      "kind": "face",
+      "surface": "window",
+      "status": "provisional",
+      "parent": "library",
+      "summary": "The search matches no title.",
+      "entry_conditions": "Library open, search text non-empty, and no known title matches.",
+      "said_lines": [
+        {
+          "text": "No titles match “502”.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "“502” is the typed search text, shown inside curly quotes. It varies."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Search titles",
+          "kind": "field",
+          "return_default": false,
+          "note": "Editing or clearing the search returns to the list."
+        }
+      ],
+      "transitions": [
+        {
+          "trigger": "search text changed so titles match, or cleared",
+          "to": "library"
+        }
+      ],
+      "decided_by": [
+        "N35"
+      ],
+      "source_lines": "1118, 1142-1147"
+    },
+    {
+      "id": "library · offline",
+      "kind": "face",
+      "surface": "window",
+      "status": "provisional",
+      "parent": "library",
+      "summary": "Offline: the list this Mac remembers, with one quiet line on top. Copy link stays live because an address never changes. Rename and Delete… grey out.",
+      "entry_conditions": "Library open while the Mac is offline.",
+      "said_lines": [
+        {
+          "text": "You're offline — showing what this Mac remembers. Renaming and deleting wait until you're back.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "A quiet line at the top of the window."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Copy link",
+          "kind": "secondary",
+          "return_default": false,
+          "note": "Stays live."
+        },
+        {
+          "label": "Rename (click a title)",
+          "kind": "field",
+          "return_default": false,
+          "note": "Greyed."
+        },
+        {
+          "label": "Delete…",
+          "kind": "red-text",
+          "return_default": false,
+          "note": "Greyed."
+        }
+      ],
+      "transitions": [
+        {
+          "trigger": "back online (derived — Law 1)",
+          "to": "library"
+        }
+      ],
+      "decided_by": [
+        "N35"
+      ],
+      "source_lines": "1142-1148"
+    },
+    {
+      "id": "library · the space can't be reached",
+      "kind": "face",
+      "surface": "window",
+      "status": "provisional",
+      "parent": "library",
+      "summary": "Member-revoked or space-gone: the list this Mac remembers, and only Copy link and Save to Movies stay live.",
+      "entry_conditions": "Library open on a member Mac in member-revoked or space-gone (N34).",
+      "said_lines": [],
+      "actions": [
+        {
+          "label": "Copy link",
+          "kind": "secondary",
+          "return_default": false,
+          "note": "Live."
+        },
+        {
+          "label": "Save to Movies",
+          "kind": "secondary",
+          "return_default": false,
+          "note": "Live."
+        }
+      ],
+      "transitions": [
+        {
+          "trigger": "the cause clears (derived — Law 1, N34)",
+          "to": "library"
+        }
+      ],
+      "decided_by": [
+        "N35",
+        "N34"
+      ],
+      "source_lines": "1142-1149"
+    },
+    {
+      "id": "library · delete sheet",
+      "kind": "sheet",
+      "surface": "sheet",
+      "status": "provisional",
+      "parent": "library",
+      "summary": "Delete confirmation sheet under N23's law: no Return default, Esc ≡ Cancel, and the destructive button red-outlined, rightmost, never filled. A video still uploading gets the same sheet, and its upload stops. Behind the sheet the P2 tombstone is written first, then the bytes are deleted (R10's crash-safe order). When the upload runs on another Mac (a member's, or your other Mac), that Mac checks for the tombstone before every resume and stops, and its Library row turns to 'Removed from the space' with Save to Movies · Discard…. A recovered take's Discard… does not use this sheet.",
+      "entry_conditions": "Online, and Delete… is invoked on a published video in this Mac's scope (own video, or any video on an owner-class Mac): via the red text, the Delete key, the right-click menu, or a multi-selection. Not for a recovered take.",
+      "said_lines": [
+        {
+          "text": "Delete “Where the 502s come from”?",
+          "role": "sheet-title",
+          "copy_status": "provisional",
+          "note": "Bold. The video's title varies and is shown in curly quotes."
+        },
+        {
+          "text": "It's removed everywhere. The link stays, and says the video is gone.",
+          "role": "sheet-body",
+          "copy_status": "provisional"
+        },
+        {
+          "text": "Cancel",
+          "role": "button",
+          "copy_status": "provisional"
+        },
+        {
+          "text": "Delete",
+          "role": "button",
+          "copy_status": "provisional",
+          "note": "Red-outlined, rightmost, never filled."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Cancel",
+          "kind": "secondary",
+          "return_default": false,
+          "note": "Esc ≡ Cancel. No Return default anywhere on this sheet (N23, Law 9).",
+          "goes_to": "library"
+        },
+        {
+          "label": "Delete",
+          "kind": "destructive",
+          "return_default": false,
+          "note": "Red-outlined, rightmost, never filled.",
+          "goes_to": "library"
+        }
+      ],
+      "transitions": [
+        {
+          "trigger": "Cancel or Esc",
+          "to": "library"
+        },
+        {
+          "trigger": "Delete (tombstone first, then bytes; an upload in flight stops; the link's page becomes the removed tombstone)",
+          "to": "library"
+        },
+        {
+          "trigger": "on another Mac uploading the same video: tombstone found before its next resume",
+          "to": "library (that Mac's row reads 'Removed from the space')"
+        }
+      ],
+      "decided_by": [
+        "N35",
+        "N23",
+        "P2",
+        "R10",
+        "N5"
+      ],
+      "source_lines": "1123-1140"
+    },
+    {
+      "id": "library · delete sheet · another member's video",
+      "kind": "face",
+      "surface": "sheet",
+      "status": "provisional",
+      "parent": "library · delete sheet",
+      "summary": "Owner-class Mac deleting another member's video: the sheet gains one more line naming whose video it is.",
+      "entry_conditions": "Owner-class Mac. The video being deleted was made by another member.",
+      "said_lines": [
+        {
+          "text": "This is Mher's video.",
+          "role": "sheet-body",
+          "copy_status": "provisional",
+          "note": "Added to the parent sheet's lines. 'Mher' is the member's admin-private label and varies."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Cancel",
+          "kind": "secondary",
+          "return_default": false,
+          "note": "Inherited from the parent sheet.",
+          "goes_to": "library"
+        },
+        {
+          "label": "Delete",
+          "kind": "destructive",
+          "return_default": false,
+          "note": "Inherited from the parent sheet.",
+          "goes_to": "library"
+        }
+      ],
+      "transitions": [
+        {
+          "trigger": "Cancel or Esc",
+          "to": "library"
+        },
+        {
+          "trigger": "Delete",
+          "to": "library"
+        }
+      ],
+      "decided_by": [
+        "N35",
+        "N5"
+      ],
+      "source_lines": "1130"
+    },
+    {
+      "id": "library · delete sheet · several",
+      "kind": "face",
+      "surface": "sheet",
+      "status": "provisional",
+      "parent": "library · delete sheet",
+      "summary": "Several rows selected (the cleanup job): one sheet for all of them, with plural copy.",
+      "entry_conditions": "Several rows selected with ⌘/⇧-click, then Delete… once.",
+      "said_lines": [
+        {
+          "text": "Delete six videos?",
+          "role": "sheet-title",
+          "copy_status": "provisional",
+          "note": "Bold. The count varies and is written as a word ('six', Law 16 — one to nine are words). The wording above nine is not given."
+        },
+        {
+          "text": "They're removed everywhere. Their links stay, and say the videos are gone.",
+          "role": "sheet-body",
+          "copy_status": "provisional"
+        }
+      ],
+      "actions": [
+        {
+          "label": "Cancel",
+          "kind": "secondary",
+          "return_default": false,
+          "note": "From the parent sheet's pair (line 1128).",
+          "goes_to": "library"
+        },
+        {
+          "label": "Delete",
+          "kind": "destructive",
+          "return_default": false,
+          "note": "From the parent sheet's pair.",
+          "goes_to": "library"
+        }
+      ],
+      "transitions": [
+        {
+          "trigger": "Cancel or Esc",
+          "to": "library"
+        },
+        {
+          "trigger": "Delete",
+          "to": "library"
+        }
+      ],
+      "decided_by": [
+        "N35"
+      ],
+      "source_lines": "1114, 1131-1132"
+    },
+    {
+      "id": "settings",
+      "kind": "state",
+      "surface": "window",
+      "status": "provisional",
+      "parent": "",
+      "summary": "One standard macOS settings window with toolbar tabs General · Space · Members. Members appears only on owner-class Macs (N5, N33). The window opens on the last tab used (General the first time). One instance. ✕ ≡ Close (N12). Resolves N28's open placement.",
+      "entry_conditions": "A space exists, so config is reachable: not mid-take. The window opens from any of these doors: (a) the gear in config's footer; (b) all-set's Invite someone, which morphs the onboarding window into Settings on Members; (c) space-degraded's Reconnect your space, which opens Space in the repair mood (Region 2); (d) recording-off's Turn it back on, which opens Space with row six current at perm-screen (Region 3). It is also restored at its derived state after an update relaunch. A window opened before a take stays open.",
+      "said_lines": [
+        {
+          "text": "General",
+          "role": "other",
+          "copy_status": "provisional",
+          "note": "Toolbar tab."
+        },
+        {
+          "text": "Space",
+          "role": "other",
+          "copy_status": "provisional",
+          "note": "Toolbar tab."
+        },
+        {
+          "text": "Members",
+          "role": "other",
+          "copy_status": "provisional",
+          "note": "Toolbar tab, owner-class Macs only."
+        }
+      ],
+      "actions": [
+        {
+          "label": "General",
+          "kind": "other",
+          "return_default": false,
+          "note": "Toolbar tab.",
+          "goes_to": "settings · General"
+        },
+        {
+          "label": "Space",
+          "kind": "other",
+          "return_default": false,
+          "note": "Toolbar tab.",
+          "goes_to": "settings · Space"
+        },
+        {
+          "label": "Members",
+          "kind": "other",
+          "return_default": false,
+          "note": "Toolbar tab, owner-class only.",
+          "goes_to": "settings · Members"
+        },
+        {
+          "label": "✕",
+          "kind": "close",
+          "return_default": false,
+          "note": "≡ Close (N12). The window closes; the dock icon goes unless another window (e.g. Library) is still open (dock iff a window is open)."
+        }
+      ],
+      "transitions": [
+        {
+          "trigger": "first open ever",
+          "to": "settings · General"
+        },
+        {
+          "trigger": "open (any later time) — the last tab used",
+          "to": "settings · General / settings · Space / settings · Members"
+        },
+        {
+          "trigger": "all-set → Invite someone (window morph, field focused)",
+          "to": "settings · Members"
+        },
+        {
+          "trigger": "space-degraded → Reconnect your space",
+          "to": "settings · Space · repair"
+        },
+        {
+          "trigger": "recording-off → Turn it back on",
+          "to": "settings · Space (row six current at perm-screen)"
+        }
+      ],
+      "decided_by": [
+        "N36",
+        "N28",
+        "N12",
+        "N5",
+        "N33",
+        "N42",
+        "N38"
+      ],
+      "source_lines": "1077-1084, 1159-1164 (doors also at 642, 736-737)"
+    },
+    {
+      "id": "settings · General",
+      "kind": "face",
+      "surface": "window",
+      "status": "provisional",
+      "parent": "settings",
+      "summary": "The General tab: U4's login checkbox at home at last (it reads the system's truth: if the login item is removed in System Settings, the box shows unchecked), the update row mirroring config's banner, and N8's two help doors (the new-issue link, prefilled with the version). Past this Mac's macOS, General carries the only update line: no banner, no dot.",
+      "entry_conditions": "Settings window on the General tab (the default on first open).",
+      "said_lines": [
+        {
+          "text": "Start shroom when you log in",
+          "role": "field-label",
+          "copy_status": "provisional",
+          "note": "Checkbox label (☑). Verbatim the ratified welcome checkbox (Region 1, copy ratified 2026-07-25, line 324). Its Settings home is N36's and not yet ratified."
+        },
+        {
+          "text": "Updates",
+          "role": "field-label",
+          "copy_status": "provisional",
+          "note": "Row label of the update row."
+        },
+        {
+          "text": "shroom 1.2.0 — up to date.",
+          "role": "status",
+          "copy_status": "provisional",
+          "note": "The version varies."
+        },
+        {
+          "text": "shroom 1.3.0 is ready.",
+          "role": "status",
+          "copy_status": "provisional",
+          "note": "Mirrors config's update-ready banner. The version varies."
+        },
+        {
+          "text": "Update",
+          "role": "button",
+          "copy_status": "provisional",
+          "note": "Filled."
+        },
+        {
+          "text": "What's new",
+          "role": "link",
+          "copy_status": "provisional"
+        },
+        {
+          "text": "Something off? Tell us on GitHub — or write to issues@shroom.am.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "'GitHub' is the new-issue link prefilled with the version. issues@shroom.am is the mail door (N8)."
+        },
+        {
+          "text": "shroom 1.4.0 needs macOS 15 — this Mac stays on 1.3.2.",
+          "role": "status",
+          "copy_status": "provisional",
+          "note": "Past this Mac's macOS: the update row reads this, with no banner and no dot. The versions and the macOS number vary."
+        },
+        {
+          "text": "You can do this once your recording is finished.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "Law 4: mid-take, Update greys with this line (only possible if the window was open before the take)."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Start shroom when you log in",
+          "kind": "other",
+          "return_default": false,
+          "note": "Checkbox. Reflects and sets the system login item, and reads the system's truth."
+        },
+        {
+          "label": "Update",
+          "kind": "filled-default",
+          "return_default": false,
+          "note": "Return behaviour in Settings is not stated. Greys mid-take with “You can do this once your recording is finished.” (Law 4).",
+          "goes_to": "update-ready · updating"
+        },
+        {
+          "label": "What's new",
+          "kind": "text-link",
+          "return_default": false,
+          "note": "Opens the release notes in the browser."
+        },
+        {
+          "label": "GitHub",
+          "kind": "text-link",
+          "return_default": false,
+          "note": "The new-issue link, prefilled with the version (N8)."
+        },
+        {
+          "label": "issues@shroom.am",
+          "kind": "text-link",
+          "return_default": false,
+          "note": "The mail door (N8)."
+        }
+      ],
+      "transitions": [
+        {
+          "trigger": "Update (an update is ready, not mid-take)",
+          "to": "update-ready · updating"
+        }
+      ],
+      "decided_by": [
+        "N36",
+        "U4",
+        "N8",
+        "N37",
+        "U7"
+      ],
+      "source_lines": "1166-1174, 1245, 1259-1260 (law 4: 116-125)"
+    },
+    {
+      "id": "settings · Space",
+      "kind": "face",
+      "surface": "window",
+      "status": "provisional",
+      "parent": "settings",
+      "summary": "The Space tab: one tab with a mood per kind of Mac (inspection · repair · owner-class-without-token · member). Beneath the rows, by role: the mark switch (owner-class only — a space setting, U3), the invite paste door (any Mac), and the exits as quiet text (Disconnect this Mac… for owners, Leave this space… for members). Row six is live on every Mac. A revoked grant un-ticks it (“screen recording is off”), with Turn it back on → the permissions chapter at exactly the missing beat, in this window. A denied microphone ticks the row with the fact, plus a quiet Turn on the microphone that opens System Settings' Microphone pane (a denied mic never blocks). Mid-take both exits grey (law 4). After Disconnect or Leave, the ~/.shroom secrets are wiped and the app returns to idle-unprovisioned; the login item stays as it was.",
+      "entry_conditions": "Settings window on the Space tab. Which mood shows is derived from the kind of Mac and the probe results.",
+      "said_lines": [
+        {
+          "text": "“made with shroom” on your pages",
+          "role": "field-label",
+          "copy_status": "provisional",
+          "note": "Label of the mark switch, owner-class only. The spec writes the curly quotes around 'made with shroom' inline, with the rest of the label unquoted, so it is ambiguous whether the quotes render. Kept as written."
+        },
+        {
+          "text": "The small mark on every video page. You can flip it right on a page, too.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "Description beside the switch."
+        },
+        {
+          "text": "Have an invite link? Paste it here.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "The paste door (N29), any Mac."
+        },
+        {
+          "text": "Disconnect this Mac…",
+          "role": "link",
+          "copy_status": "provisional",
+          "note": "Quiet text, owners only."
+        },
+        {
+          "text": "Leave this space…",
+          "role": "link",
+          "copy_status": "provisional",
+          "note": "Quiet text, members only."
+        },
+        {
+          "text": "→ Letting macOS allow recording — screen recording is off",
+          "role": "status",
+          "copy_status": "provisional",
+          "note": "Row six, un-ticked by a revoked grant (→ = the current-row glyph)."
+        },
+        {
+          "text": "Turn it back on",
+          "role": "button",
+          "copy_status": "provisional",
+          "note": "Filled. Same label as the recording-off banner (N38)."
+        },
+        {
+          "text": "— microphone off for now",
+          "role": "status",
+          "copy_status": "provisional",
+          "note": "Row-six fact when the mic is denied (the row stays ticked). The full row reads “✓ Letting macOS allow recording — microphone off for now” (Region 3, line 730)."
+        },
+        {
+          "text": "Turn on the microphone",
+          "role": "button",
+          "copy_status": "provisional",
+          "note": "Quiet."
+        },
+        {
+          "text": "You can do this once your recording is finished.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "Mid-take, both exits grey with this line (law 4)."
+        }
+      ],
+      "actions": [
+        {
+          "label": "made with shroom switch",
+          "kind": "switch",
+          "return_default": false,
+          "note": "Owner-class only. A space-global setting (U3), also flippable on a page."
+        },
+        {
+          "label": "Have an invite link? Paste it here.",
+          "kind": "field",
+          "return_default": false,
+          "note": "The paste door (N29) into the join machine (Region 6). Return behaviour not stated.",
+          "goes_to": "join machine (Region 6)"
+        },
+        {
+          "label": "Turn it back on",
+          "kind": "filled-default",
+          "return_default": false,
+          "note": "Only shown when the screen grant is revoked. Return behaviour in Settings is not stated.",
+          "goes_to": "perm-screen (the permissions chapter at exactly the missing beat, in this window)"
+        },
+        {
+          "label": "Turn on the microphone",
+          "kind": "secondary",
+          "return_default": false,
+          "note": "Quiet. Opens System Settings' Microphone pane."
+        },
+        {
+          "label": "Disconnect this Mac…",
+          "kind": "text-link",
+          "return_default": false,
+          "note": "Quiet text, owners. Greys mid-take (law 4). Which sheet opens depends on whether this Mac holds the token.",
+          "goes_to": "settings · Space · Disconnect sheet · owner, holds the token | settings · Space · Disconnect sheet · owner-class, no token"
+        },
+        {
+          "label": "Leave this space…",
+          "kind": "text-link",
+          "return_default": false,
+          "note": "Quiet text, members. Greys mid-take (law 4).",
+          "goes_to": "settings · Space · Leave sheet · member"
+        }
+      ],
+      "transitions": [
+        {
+          "trigger": "setup Mac (holds the token), all probes pass",
+          "to": "settings · Space · inspection"
+        },
+        {
+          "trigger": "token-holding Mac, a re-probe un-ticks a row (or space-degraded → Reconnect your space)",
+          "to": "settings · Space · repair"
+        },
+        {
+          "trigger": "owner-class Mac without the token (joined via Add another Mac)",
+          "to": "settings · Space · owner-class-without-token"
+        },
+        {
+          "trigger": "member's Mac",
+          "to": "settings · Space · member"
+        },
+        {
+          "trigger": "Turn it back on (screen grant revoked)",
+          "to": "perm-screen (the permissions chapter at the missing beat, in this window)"
+        },
+        {
+          "trigger": "paste a join link for this Mac's own space",
+          "to": "join-already-here (Region 6)"
+        },
+        {
+          "trigger": "paste a join link for a different space",
+          "to": "join-switch-confirm (Region 6, N31)"
+        },
+        {
+          "trigger": "Disconnect this Mac… (owner, holds the token)",
+          "to": "settings · Space · Disconnect sheet · owner, holds the token"
+        },
+        {
+          "trigger": "Disconnect this Mac… (owner-class, no token)",
+          "to": "settings · Space · Disconnect sheet · owner-class, no token"
+        },
+        {
+          "trigger": "Leave this space… (member)",
+          "to": "settings · Space · Leave sheet · member"
+        }
+      ],
+      "decided_by": [
+        "N36",
+        "N42",
+        "U3",
+        "N29",
+        "N31",
+        "law 4"
+      ],
+      "source_lines": "1176-1177, 1196-1207, 1217-1225 (paste-door routing per 1309-1310, 1530-1541)"
+    },
+    {
+      "id": "settings · Space · inspection",
+      "kind": "face",
+      "surface": "window",
+      "status": "provisional",
+      "parent": "settings · Space",
+      "summary": "The inspection mood on the setup Mac (the one holding the token) — Region 2's re-entry-as-settings made concrete. It shows the plan with all six rows ticked, facts on the rows that have them, then the 'nothing to redo' line.",
+      "entry_conditions": "This Mac holds the Cloudflare token and every probe passes.",
+      "said_lines": [
+        {
+          "text": "✓ A Cloudflare account — Bagrat's Account",
+          "role": "status",
+          "copy_status": "provisional",
+          "note": "Row 1 fact. The account name varies."
+        },
+        {
+          "text": "✓ One access token for shroom — on this Mac",
+          "role": "status",
+          "copy_status": "provisional",
+          "note": "Row 2 fact."
+        },
+        {
+          "text": "✓ A credit card for storage",
+          "role": "status",
+          "copy_status": "provisional",
+          "note": "Row 3, no fact."
+        },
+        {
+          "text": "✓ Your link name — v.myshroom.workers.dev",
+          "role": "status",
+          "copy_status": "provisional",
+          "note": "Row 4 fact. The spec sets the link name in markdown code backticks (not rendered). The name varies. The tick-with-fact shape matches N15's ratified name-row ending (“✓ Your link name — v.name.workers.dev”)."
+        },
+        {
+          "text": "✓ Wiring it up",
+          "role": "status",
+          "copy_status": "provisional",
+          "note": "Row 5, no fact."
+        },
+        {
+          "text": "✓ Letting macOS allow recording — on this Mac",
+          "role": "status",
+          "copy_status": "provisional",
+          "note": "Row 6 fact."
+        },
+        {
+          "text": "Your space is ready — nothing to redo.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "Same text as Region 2's re-entry-after-success line (line 625, not copy-ratified there)."
+        }
+      ],
+      "actions": [],
+      "transitions": [
+        {
+          "trigger": "a re-probe un-ticks a row",
+          "to": "settings · Space · repair"
+        }
+      ],
+      "decided_by": [
+        "N36"
+      ],
+      "source_lines": "1178-1183 (Region 2 re-entry: 625, 665-669)"
+    },
+    {
+      "id": "settings · Space · repair",
+      "kind": "face",
+      "surface": "window",
+      "status": "provisional",
+      "parent": "settings · Space",
+      "summary": "The repair mood (N42). A re-probe that un-ticks a row makes the first broken row current, with Region 2's own state beneath it. It is the same machine — there is no second repair UI. Region 5 adds no said-lines of its own; the nests are Region 2's states and lines.",
+      "entry_conditions": "A token-holding Mac where a re-probe un-ticks a row. Typically reached from space-degraded's banner → Reconnect your space.",
+      "said_lines": [],
+      "actions": [],
+      "transitions": [
+        {
+          "trigger": "the token died (revoked or expired)",
+          "to": "token"
+        },
+        {
+          "trigger": "storage switched off / card removed",
+          "to": "gate-card"
+        },
+        {
+          "trigger": "the page or its key is gone — rewire",
+          "to": "wiring"
+        },
+        {
+          "trigger": "the bucket is gone",
+          "to": "space-storage-gone"
+        },
+        {
+          "trigger": "the link name changed",
+          "to": "name-changed"
+        },
+        {
+          "trigger": "a fresh token pasted for a different account (from token)",
+          "to": "token-other-account"
+        },
+        {
+          "trigger": "all probes pass after the fix (derived — Law 1)",
+          "to": "settings · Space · inspection"
+        }
+      ],
+      "decided_by": [
+        "N42",
+        "N36"
+      ],
+      "source_lines": "1184-1186 (edges drawn in Region 2's diagram 700-707; table 642-655; re-entry 625)"
+    },
+    {
+      "id": "settings · Space · owner-class-without-token",
+      "kind": "face",
+      "surface": "window",
+      "status": "provisional",
+      "parent": "settings · Space",
+      "summary": "An owner-class Mac without the token (joined through Add another Mac). It shows two ticked rows and a quiet line saying repairs happen where the token lives, with Add a token here → the wizard at token (the degraded banner's own door, N42).",
+      "entry_conditions": "Owner-class Mac that does not hold the Cloudflare token.",
+      "said_lines": [
+        {
+          "text": "✓ Your space — v.myshroom.workers.dev",
+          "role": "status",
+          "copy_status": "provisional",
+          "note": "The spec sets the link name in backticks (not rendered). The name varies."
+        },
+        {
+          "text": "✓ Letting macOS allow recording — on this Mac",
+          "role": "status",
+          "copy_status": "provisional"
+        },
+        {
+          "text": "Repairs happen where your Cloudflare token lives — on the Mac you set your space up on, or here if you add a fresh one.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "Quiet line."
+        },
+        {
+          "text": "Add a token here",
+          "role": "button",
+          "copy_status": "provisional"
+        }
+      ],
+      "actions": [
+        {
+          "label": "Add a token here",
+          "kind": "secondary",
+          "return_default": false,
+          "note": "Not filled in the spec.",
+          "goes_to": "token"
+        }
+      ],
+      "transitions": [
+        {
+          "trigger": "Add a token here",
+          "to": "token (the wizard; this Mac becomes a token-holder)"
+        }
+      ],
+      "decided_by": [
+        "N36",
+        "N33",
+        "N42"
+      ],
+      "source_lines": "1187-1191"
+    },
+    {
+      "id": "settings · Space · member",
+      "kind": "face",
+      "surface": "window",
+      "status": "provisional",
+      "parent": "settings · Space",
+      "summary": "A member's Mac: two ticked rows and one line of N5 truth. There is no repair tooling here — a member has nothing to fix.",
+      "entry_conditions": "This Mac is a member (not owner-class).",
+      "said_lines": [
+        {
+          "text": "✓ Bagrat's space — v.myshroom.workers.dev",
+          "role": "status",
+          "copy_status": "provisional",
+          "note": "The owner's name (macOS short form, N29) and the link name vary. The link name is in backticks in the spec (not rendered)."
+        },
+        {
+          "text": "✓ Letting macOS allow recording — on this Mac",
+          "role": "status",
+          "copy_status": "provisional"
+        },
+        {
+          "text": "Your videos live there, where Bagrat can see them too.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "The owner's name varies."
+        }
+      ],
+      "actions": [],
+      "transitions": [],
+      "decided_by": [
+        "N36",
+        "N5"
+      ],
+      "source_lines": "1192-1194"
+    },
+    {
+      "id": "settings · Space · Disconnect sheet · owner, holds the token",
+      "kind": "sheet",
+      "surface": "sheet",
+      "status": "provisional",
+      "parent": "settings · Space",
+      "summary": "Disconnect confirmation for a token-holding owner Mac, under N23's law. The space's only token-holder gets one extra line. The sheet is blocked while uploads drain or a recovered take waits. After Disconnect: the ~/.shroom secrets are wiped, the app goes to idle-unprovisioned (the tray click opens the welcome), and the login item stays as it was.",
+      "entry_conditions": "Owner Mac holding the token. Disconnect this Mac… clicked, not mid-take.",
+      "said_lines": [
+        {
+          "text": "Disconnect this Mac?",
+          "role": "sheet-title",
+          "copy_status": "provisional",
+          "note": "Bold."
+        },
+        {
+          "text": "Your space and every video in it stay exactly as they are. This Mac forgets your space and goes back to the start.",
+          "role": "sheet-body",
+          "copy_status": "provisional"
+        },
+        {
+          "text": "To manage your space again, set it up with a fresh token — everything will be there.",
+          "role": "sheet-body",
+          "copy_status": "provisional",
+          "note": "Added only when this Mac is its space's only token-holder."
+        },
+        {
+          "text": "Two videos are still uploading — you can disconnect once they're done.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "Blocked state while uploads drain: 'the button greys, one line'. The count word varies. The line for a waiting recovered take is not given."
+        },
+        {
+          "text": "Cancel",
+          "role": "button",
+          "copy_status": "provisional"
+        },
+        {
+          "text": "Disconnect",
+          "role": "button",
+          "copy_status": "provisional",
+          "note": "Red-outlined, rightmost, never filled (N23's law)."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Cancel",
+          "kind": "secondary",
+          "return_default": false,
+          "note": "Esc ≡ Cancel. No Return default (N23, Law 9).",
+          "goes_to": "settings · Space"
+        },
+        {
+          "label": "Disconnect",
+          "kind": "destructive",
+          "return_default": false,
+          "note": "Greys while uploads drain or a recovered take waits (N31's rule).",
+          "goes_to": "idle-unprovisioned"
+        }
+      ],
+      "transitions": [
+        {
+          "trigger": "Cancel or Esc",
+          "to": "settings · Space"
+        },
+        {
+          "trigger": "Disconnect (~/.shroom secrets wiped; login item unchanged)",
+          "to": "idle-unprovisioned"
+        }
+      ],
+      "decided_by": [
+        "N36",
+        "N23",
+        "N31"
+      ],
+      "source_lines": "1209-1213, 1217-1218, 1224-1225"
+    },
+    {
+      "id": "settings · Space · Disconnect sheet · owner-class, no token",
+      "kind": "sheet",
+      "surface": "sheet",
+      "status": "provisional",
+      "parent": "settings · Space",
+      "summary": "Disconnect confirmation for an owner-class Mac without the token, under N23's law. The Mac can be re-added from Members. The sheet is blocked while uploads drain or a recovered take waits.",
+      "entry_conditions": "Owner-class Mac without the token. Disconnect this Mac… clicked, not mid-take.",
+      "said_lines": [
+        {
+          "text": "Disconnect this Mac?",
+          "role": "sheet-title",
+          "copy_status": "provisional",
+          "note": "Bold."
+        },
+        {
+          "text": "Your space and every video stay as they are — add this Mac again anytime from Members.",
+          "role": "sheet-body",
+          "copy_status": "provisional"
+        },
+        {
+          "text": "Two videos are still uploading — you can disconnect once they're done.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "Blocked state while uploads drain. The count word varies."
+        },
+        {
+          "text": "Cancel",
+          "role": "button",
+          "copy_status": "provisional"
+        },
+        {
+          "text": "Disconnect",
+          "role": "button",
+          "copy_status": "provisional",
+          "note": "Red-outlined, rightmost, never filled."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Cancel",
+          "kind": "secondary",
+          "return_default": false,
+          "note": "Esc ≡ Cancel. No Return default.",
+          "goes_to": "settings · Space"
+        },
+        {
+          "label": "Disconnect",
+          "kind": "destructive",
+          "return_default": false,
+          "note": "Greys while uploads drain or a recovered take waits.",
+          "goes_to": "idle-unprovisioned"
+        }
+      ],
+      "transitions": [
+        {
+          "trigger": "Cancel or Esc",
+          "to": "settings · Space"
+        },
+        {
+          "trigger": "Disconnect (~/.shroom secrets wiped; login item unchanged)",
+          "to": "idle-unprovisioned"
+        }
+      ],
+      "decided_by": [
+        "N36",
+        "N23",
+        "N33",
+        "N31"
+      ],
+      "source_lines": "1209-1214, 1217-1218, 1224-1225"
+    },
+    {
+      "id": "settings · Space · Leave sheet · member",
+      "kind": "sheet",
+      "surface": "sheet",
+      "status": "provisional",
+      "parent": "settings · Space",
+      "summary": "Leave confirmation for a member Mac, under N23's law. Stranded takes don't block (they can't drain): the sheet adds a line and Save them to Movies first, so revoked or space-gone members can always leave. The sheet is blocked while uploads drain or a recovered take waits. After Leave: the ~/.shroom secrets are wiped and the app returns to idle-unprovisioned.",
+      "entry_conditions": "Member Mac. Leave this space… clicked, not mid-take. Also reachable via the 'Leave this space…' text on the member-revoked and space-gone banners (Region 6, N34, lines 1578-1580).",
+      "said_lines": [
+        {
+          "text": "Leave Bagrat's space?",
+          "role": "sheet-title",
+          "copy_status": "provisional",
+          "note": "Bold. The owner's name varies."
+        },
+        {
+          "text": "Your videos stay there, where Bagrat can still see them — delete any you want gone first. This Mac goes back to the start.",
+          "role": "sheet-body",
+          "copy_status": "provisional"
+        },
+        {
+          "text": "Two recordings never reached the space — leaving deletes them from this Mac.",
+          "role": "sheet-body",
+          "copy_status": "provisional",
+          "note": "Added only when stranded takes exist. The count word varies."
+        },
+        {
+          "text": "Save them to Movies first",
+          "role": "button",
+          "copy_status": "provisional",
+          "note": "Shown with the stranded-takes line."
+        },
+        {
+          "text": "Cancel",
+          "role": "button",
+          "copy_status": "provisional"
+        },
+        {
+          "text": "Leave",
+          "role": "button",
+          "copy_status": "provisional",
+          "note": "Red-outlined, rightmost, never filled."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Cancel",
+          "kind": "secondary",
+          "return_default": false,
+          "note": "Esc ≡ Cancel. No Return default.",
+          "goes_to": "settings · Space"
+        },
+        {
+          "label": "Save them to Movies first",
+          "kind": "secondary",
+          "return_default": false,
+          "note": "Stranded-take rescue (N34) before leaving. Whether the sheet stays open afterwards is not stated."
+        },
+        {
+          "label": "Leave",
+          "kind": "destructive",
+          "return_default": false,
+          "note": "Greys while uploads drain or a recovered take waits (the blocked line is given only with 'disconnect' wording).",
+          "goes_to": "idle-unprovisioned"
+        }
+      ],
+      "transitions": [
+        {
+          "trigger": "Cancel or Esc",
+          "to": "settings · Space"
+        },
+        {
+          "trigger": "Leave (~/.shroom secrets wiped; stranded takes deleted from this Mac; login item unchanged)",
+          "to": "idle-unprovisioned"
+        }
+      ],
+      "decided_by": [
+        "N36",
+        "N23",
+        "N31",
+        "N34"
+      ],
+      "source_lines": "1209-1211, 1215-1221, 1224-1225"
+    },
+    {
+      "id": "settings · Members",
+      "kind": "face",
+      "surface": "window",
+      "status": "provisional",
+      "parent": "settings",
+      "summary": "The third tab: N28's Members face (Region 6 invite-born, copy ratified) with N33's You row. Region 5 only places it here (N36). Its content and copy belong to Region 6 and are not extracted here.",
+      "entry_conditions": "Owner-class Mac only. Reached by the Members tab, or by all-set's Invite someone (the window morphs, field focused).",
+      "said_lines": [],
+      "actions": [],
+      "transitions": [
+        {
+          "trigger": "this tab is the invite-born face",
+          "to": "invite-born (Region 6)"
+        }
+      ],
+      "decided_by": [
+        "N36",
+        "N28",
+        "N33"
+      ],
+      "source_lines": "1161-1164, 1227"
+    },
+    {
+      "id": "update-ready",
+      "kind": "state",
+      "surface": "banner",
+      "status": "provisional",
+      "parent": "",
+      "summary": "U7 notify-then-apply. A newer release, checked quietly in the background, is downloaded and verified. config grows a slim banner — the lowest of the four banner kinds (N38) — and the tray shows the Frost dot. What's new opens the release notes in the browser, and Settings → General mirrors the row. The banner never shows mid-take (config is unreachable mid-take, so it simply waits). There is no nag: the dot and banner sit quietly until applied, and versions roll up so only the newest is offered. On a token-holding Mac, applying an update also refreshes the space's page code. The install script stays the manual update path forever.",
+      "entry_conditions": "The background check found a newer release. It runs at launch and every few hours, against the project's public releases (no shroom server). The release is downloaded and verified against the published fingerprint. A space exists (config exists — before that, no banner and no dot). This Mac's macOS supports the release. It shows in config only when no higher banner (saved take, space can't take videos, recording-off) is present.",
+      "said_lines": [
+        {
+          "text": "shroom 1.3.0 is ready.",
+          "role": "banner",
+          "copy_status": "provisional",
+          "note": "The version varies (always the newest)."
+        },
+        {
+          "text": "Update",
+          "role": "button",
+          "copy_status": "provisional",
+          "note": "Filled."
+        },
+        {
+          "text": "What's new",
+          "role": "link",
+          "copy_status": "provisional"
+        }
+      ],
+      "actions": [
+        {
+          "label": "Update",
+          "kind": "filled-default",
+          "return_default": false,
+          "note": "A banner's own filled button is never the Return default (Law 8). Return stays Start recording in config.",
+          "goes_to": "update-ready · updating"
+        },
+        {
+          "label": "What's new",
+          "kind": "text-link",
+          "return_default": false,
+          "note": "Opens the release notes in the browser."
+        }
+      ],
+      "transitions": [
+        {
+          "trigger": "Update (banner or Settings → General)",
+          "to": "update-ready · updating"
+        },
+        {
+          "trigger": "a higher banner appears (saved take · space can't take videos · recording-off)",
+          "to": "hidden under the higher banner (one banner at a time, N38)"
+        },
+        {
+          "trigger": "a newer release appears before applying (versions roll up)",
+          "to": "update-ready"
+        }
+      ],
+      "decided_by": [
+        "N37",
+        "U7",
+        "N38",
+        "N9",
+        "N41"
+      ],
+      "source_lines": "1233-1245, 1249-1250, 1254-1256, 1261-1266 (banner order 769-774; Law 8: 136-139)"
+    },
+    {
+      "id": "update-ready · Frost dot",
+      "kind": "tray-face",
+      "surface": "tray",
+      "status": "provisional",
+      "parent": "update-ready",
+      "summary": "The Frost dot is the update's own tray face, the lowest in priority: the recording faces and the amber dot both override it. Amber stays 'something needs you'; Frost says 'something new from us'.",
+      "entry_conditions": "update-ready holds, there is no recording or paused take, and no amber cause. Never shown before a space exists or when the release is past this Mac's macOS.",
+      "said_lines": [],
+      "actions": [],
+      "transitions": [
+        {
+          "trigger": "tray click",
+          "to": "config (carrying the update-ready banner)"
+        },
+        {
+          "trigger": "update applied",
+          "to": "plain tray face"
+        }
+      ],
+      "decided_by": [
+        "N37",
+        "N38",
+        "N25",
+        "N24"
+      ],
+      "source_lines": "1238-1241, 1254-1256, 1259-1261 (tray-face priority 781-784; Law 7: 134-135)"
+    },
+    {
+      "id": "update-ready · updating",
+      "kind": "face",
+      "surface": "banner",
+      "status": "provisional",
+      "parent": "update-ready",
+      "summary": "After Update, the banner reads the updating line. Then quit → swap → relaunch, using N9's semantics: silent and tray-only, with the upload queue riding through. Any Library, Settings or onboarding window open at that moment reopens after the relaunch at its derived state.",
+      "entry_conditions": "Update clicked in config's banner or Settings → General, not mid-take.",
+      "said_lines": [
+        {
+          "text": "Updating — back in a few seconds.",
+          "role": "banner",
+          "copy_status": "provisional"
+        }
+      ],
+      "actions": [],
+      "transitions": [
+        {
+          "trigger": "swap succeeds → relaunch (silent); next config open",
+          "to": "updated"
+        },
+        {
+          "trigger": "swap fails (running version left in place)",
+          "to": "update failed"
+        },
+        {
+          "trigger": "a window was open at Update",
+          "to": "that window reopened at its derived state after relaunch"
+        }
+      ],
+      "decided_by": [
+        "N37",
+        "N9",
+        "N41"
+      ],
+      "source_lines": "1246-1248, 1251-1253, 1257-1258"
+    },
+    {
+      "id": "updated",
+      "kind": "face",
+      "surface": "status-line",
+      "status": "provisional",
+      "parent": "config",
+      "summary": "A one-shot status-line fact after a successful update relaunch. It appears once, on the next config open. The id comes from the said-line: the spec gives this outcome no name.",
+      "entry_conditions": "The first config open after a successful update relaunch.",
+      "said_lines": [
+        {
+          "text": "Updated to 1.3.0 ✓",
+          "role": "status",
+          "copy_status": "provisional",
+          "note": "Once only. The version varies. It ranks after the upload truth in the status line (N38)."
+        }
+      ],
+      "actions": [],
+      "transitions": [
+        {
+          "trigger": "shown once",
+          "to": "config (no status line)"
+        }
+      ],
+      "decided_by": [
+        "N37",
+        "N38"
+      ],
+      "source_lines": "1246-1248 (status-line order 775-779)"
+    },
+    {
+      "id": "update failed",
+      "kind": "failure-state",
+      "surface": "status-line",
+      "status": "provisional",
+      "parent": "config",
+      "summary": "A failed swap leaves the running version in place, and config's status line says so. Failure never breaks anything. A fingerprint mismatch is not this state: it is discarded silently, retried later, and never installed.",
+      "entry_conditions": "An update's swap failed. The running version is unchanged.",
+      "said_lines": [
+        {
+          "text": "The update didn't finish — shroom will try again later.",
+          "role": "status",
+          "copy_status": "provisional",
+          "note": "A one-shot status line (N38)."
+        }
+      ],
+      "actions": [],
+      "transitions": [
+        {
+          "trigger": "retried later (automatic)",
+          "to": "update-ready (implied by 'will try again later'; whether the banner and dot persist meanwhile is not stated)"
+        }
+      ],
+      "decided_by": [
+        "N37",
+        "N38"
+      ],
+      "source_lines": "1251-1253 (status-line order 775-779)"
+    },
+    {
+      "id": "space needs an update · member",
+      "kind": "banner",
+      "surface": "banner",
+      "status": "provisional",
+      "parent": "",
+      "summary": "When a member's app needs a newer page than its space has, the member reads a sibling line to space-needs-owner. The page is refreshed only from a token-holding Mac. The page's interface stays backwards-compatible, so this should be rare.",
+      "entry_conditions": "Member Mac. This app version needs newer page code than the space currently runs.",
+      "said_lines": [
+        {
+          "text": "Bagrat's space needs an update — it happens when Bagrat updates shroom.",
+          "role": "banner",
+          "copy_status": "provisional",
+          "note": "The owner's name varies (twice). The spec calls it 'space-needs-owner's sibling line'. space-needs-owner is an amber config banner (N34), so a banner surface is implied, not stated."
+        }
+      ],
+      "actions": [],
+      "transitions": [
+        {
+          "trigger": "the owner updates shroom on a token-holding Mac (derived — Law 1)",
+          "to": "config (banner clears)"
+        }
+      ],
+      "decided_by": [
+        "N37",
+        "N34"
+      ],
+      "source_lines": "1263-1268"
+    },
+    {
+      "id": "space needs an update · owner-class without the token",
+      "kind": "banner",
+      "surface": "other",
+      "status": "provisional",
+      "parent": "",
+      "summary": "The same condition seen from an owner-class Mac without the token. It points at the token Mac, or at adding a token here.",
+      "entry_conditions": "Owner-class Mac without the token. This app version needs newer page code than the space has.",
+      "said_lines": [
+        {
+          "text": "Your space needs an update — open shroom on the Mac you set it up on, or add a fresh token here.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "The surface is not stated (it parallels Region 2's owner-class degraded banner, lines 659-661)."
+        },
+        {
+          "text": "Add a token here",
+          "role": "button",
+          "copy_status": "provisional"
+        }
+      ],
+      "actions": [
+        {
+          "label": "Add a token here",
+          "kind": "secondary",
+          "return_default": false,
+          "note": "The destination is not restated here. The same-label button in the Space tab goes to the wizard at token (line 1190-1191).",
+          "goes_to": "token"
+        }
+      ],
+      "transitions": [
+        {
+          "trigger": "Add a token here",
+          "to": "token"
+        }
+      ],
+      "decided_by": [
+        "N37",
+        "N33"
+      ],
+      "source_lines": "1263-1270"
+    }
+  ],
+  "scaffold_flags": [
+    {
+      "flag": "Tombstone check before every upload resume (N35): another Mac's delete must stop this Mac's upload, and this Mac's Library row turns to 'Removed from the space' with Save to Movies · Discard…. The copy is bound to it.",
+      "source_lines": "1133-1138, 1758-1759"
+    },
+    {
+      "flag": "The page's interface stays backwards-compatible across app versions (N37), so members ahead of or behind the owner keep working.",
+      "source_lines": "1263-1266, 1754"
+    },
+    {
+      "flag": "The page refuses a downgrade (N37, N42): a token-holding Mac on an older app, repairing or updating, never replaces newer page code.",
+      "source_lines": "1263-1265, 1755-1756"
+    },
+    {
+      "flag": "Swap-under-running-process behavior (N9, carried): Update reuses N9's quit → swap → relaunch semantics. Verify the exact signature-mismatch behavior at scaffold.",
+      "source_lines": "1246-1247, 57, 1762"
+    },
+    {
+      "flag": "Launch provenance (N41): an update relaunch stays silent but must restore whatever Library, Settings or onboarding window was open, at its derived state. This requires telling an update relaunch apart from a launch the user did.",
+      "source_lines": "1257-1258, 1744-1745"
+    },
+    {
+      "flag": "Fingerprint verification of downloaded updates exactly as the installer does. A mismatch is discarded silently and retried, never installed (the installer's law). Region-local; not in the machine-wide scaffold-flag list (1736-1762).",
+      "source_lines": "1235-1237, 1252-1253"
+    }
+  ],
+  "open_notes": [
+    "Region 5 has no mermaid diagram. Transitions here come from prose. The repair-mood edges are drawn in Region 2's diagram (lines 699-707) and are reproduced on 'settings · Space · repair'.",
+    "Copy status: every said-line in lines 1075-1281 is designed 2026-09-30 (N35–N37, awaiting ratification), so all are marked provisional. Some text is verbatim copy ratified elsewhere: 'Start shroom when you log in' (welcome, line 324), 'Copied' (N26), the N15 name-row tick shape, and 'Turn it back on' (N38's recording-off, itself provisional). Their use here is still N36/N35's and unratified.",
+    "Ids: only `library`, `settings` and `update-ready` are backticked scaffold-grade names in Region 5. All other ids (faces, tabs, moods, sheets, 'updated', 'update failed', 'space needs an update · …') are built from the spec's own labels and need real scaffold-grade names. Inventory row 1703's 'updating' clashes with Region 1's `updating` (Terminal lane, N9/N18), so it is filed as 'update-ready · updating'.",
+    "Not in the inventory, but defined in Region 5 prose: the success status line “Updated to 1.3.0 ✓” (also in N38, line 779) and the two 'space needs an update' lines (member / owner-class without token). The inventory's Region 5 rows (1701-1703) otherwise all map to entries above.",
+    "Law 8 'check it at ratification' (line 143): single-action faces lead with their filled button. The Library's recovered-take row mirrors N25's saved-take banner ([ Get link ] then Discard…), so it falls under this local exception.",
+    "Return defaults in the Library and Settings windows are not stated. Law 8 says one default per surface, but no default is named for the Settings tabs, the Library, or the filled buttons there ('Update' in General, 'Turn it back on', 'Get link' on a row). All are recorded as return_default=false. Confirm at ratification.",
+    "Disconnect this Mac… / Leave this space… are written as 'quiet text', while Law 9 says destructive entry points are red text. Check whether these exits count as destructive entry points.",
+    "Exit-sheet gaps: (a) 'the button greys' while uploads drain is ambiguous between the tab's exit text and the sheet's Disconnect/Leave button; recorded on the sheets. (b) The blocked line is given only with the verb 'disconnect'; the Leave wording and the recovered-take-waiting line are not given (compare join-switch-confirm's “Get the link for your saved recording first, or discard it.”, line 1555-1556). (c) The stranded-takes line + [ Save them to Movies first ] is stated generically ('the sheet adds') but says 'leaving'. It is attached only to the member Leave sheet; whether the owner Disconnect sheets carry it is unstated.",
+    "Library gaps: the Discard… on a 'Removed from the space' row names no confirm. The singular form of the footer count ('14 videos') is not given. The mocked row separator (title — date · length) is from a mock, and whether the em dash renders is unconfirmed. The mark-switch label “made with shroom” on your pages is ambiguous about whether the inner curly quotes render.",
+    "Settings paste door: Region 5 names it only as N29's paste door (any Mac). Whether it also classifies a pasted token (as the welcome's N30 door does → the wizard at token) is not stated; not modelled here.",
+    "Update gaps: after a failed swap ('shroom will try again later') it isn't said whether the Frost dot and banner persist until the retry. 'Every few hours' check cadence is unpinned (not in the Thresholds flag). Before a space exists there is no dot and no banner — the install command is the update path for a never-set-up app. Past this Mac's macOS: no banner, no dot, General line only.",
+    "Fat-marker status: no 'Fat-marker status' notes appear in lines 1075-1281. The region's structure is ratified (2026-07-20), and N35–N37 await Bagrat's ratification.",
+    "Custom domain (N2): post-v1.0, so v1 has no state or said-line for it. When it lands it lives in Settings → Space as a token-Mac row. Docs state the upgrade honestly per R6.3 (never pitched as a reliability rescue). It is listed under 'Deliberately absent from v1' (line 1729).",
+    "Rejected alternatives recorded in-region (do not build): a web library on the Worker; a thumbnail grid; per-row sizes (P13); the mark switch in General; a Quit row in Settings; an uninstall button (docs: Disconnect this Mac, then drag shroom to the Trash).",
+    "Settings → Members content (invite-born, You row, Add another Mac, member-remove-confirm) belongs to Region 6 and is not extracted here. Region 5 only places it as the third tab (owner-class only).",
+    "Markdown stripped from said-lines: bold markers and code backticks around link names (e.g. `v.myshroom.workers.dev`); line-wrapped quotes are joined with single spaces. Apostrophes in this region are straight (U+0027; no U+2019 in 1075-1281), ellipses are U+2026 (no '...' in range), and checks are ✓ U+2713."
+  ],
+  "amendments": [
+    {
+      "ledger_id": "N36",
+      "amends": "N28",
+      "summary": "Resolves N28's open placement ('how Members sits beside the Space panel is the settings leg's call'): Members is the Settings window's third tab, owner-class only, and all-set's Invite someone morphs the onboarding window into this window on Members ('N28's morph, now with a home', line 1163-1164). N28's row records it as 'Settled by N36'. Not marked **amends** in the ledger."
+    },
+    {
+      "ledger_id": "N36",
+      "amends": "U4",
+      "summary": "U4's 'changeable in settings' gets its home: the General checkbox, which reads the system's login-item truth. A refinement, not marked **amends**."
+    },
+    {
+      "ledger_id": "N36",
+      "amends": "Region 2 Re-entry-as-settings",
+      "summary": "The all-✅ re-entry panel now lives as the Settings window's Space tab (inspection mood), alongside the repair mood and the exits (lines 665-669, 1178-1183)."
+    },
+    {
+      "ledger_id": "N37",
+      "amends": "N25",
+      "summary": "Settles N25's open badge question: the update does not share the amber dot. It gets its own lowest-priority Frost dot, and amber stays 'something needs you'. N25's row records it as 'Settled by N37/N38'."
+    },
+    {
+      "ledger_id": "N37",
+      "amends": "N24",
+      "summary": "Extends N24's tray faces with the Frost dot (five faces with N38's amber). N24's row records it as 'Extended by N37/N38'."
+    },
+    {
+      "ledger_id": "N37",
+      "amends": "U7",
+      "summary": "Makes U7's tray badge concrete as the Frost dot plus a slim config banner (lowest of the banners) with [ Update ] · What's new, mirrored in Settings → General. Apply follows N9's quit/swap/relaunch. A refinement, not marked **amends**."
+    }
+  ]
+}

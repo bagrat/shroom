@@ -1,0 +1,16 @@
+{
+  "name": "shroom-worker",
+  "private": true,
+  "type": "module",
+  "description": "The Worker that serves every shroom link from the user's own bucket. One dependency-free ES module: what runs is what you read.",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "../node_modules/.bin/tsc --noEmit --allowJs --checkJs --strict --target es2022 --module es2022 --lib es2022,dom,dom.iterable --skipLibCheck src/worker.js",
+    "drive:page": "node dev/page-drive.mjs",
+    "test:workerd": "node --test test/workerd/contract.workerd.mjs"
+  },
+  "devDependencies": {
+    "miniflare": "5.20261001.0-alpha",
+    "vitest": "^5.0.4"
+  }
+}

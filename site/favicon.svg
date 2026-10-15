@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="shroom">
+  <rect width="64" height="64" rx="14" fill="#2E3440"/>
+  <g transform="translate(-1.85,-4.66) scale(0.564)">
+    <path d="M50,68 C49,82 46,92 46,96 C46,101 52,104 60,104 C68,104 74,101 74,96 C74,92 71,82 70,68 Z" fill="#E5E9F0"/>
+    <path d="M24,64 C24,42 40,26 60,26 C80,26 96,42 96,64 C86,75 34,75 24,64 Z" fill="#88C0D0"/>
+    <circle cx="33" cy="58" r="3.4" fill="#ECEFF4"/>
+    <circle cx="88" cy="58" r="2.2" fill="#ECEFF4"/>
+    <circle cx="50" cy="44" r="6" fill="#ECEFF4"/>
+    <circle cx="72" cy="48" r="3.6" fill="#ECEFF4"/>
+    <circle cx="64" cy="58" r="2.6" fill="#ECEFF4"/>
+  </g>
+</svg>

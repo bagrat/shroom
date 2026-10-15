@@ -1,0 +1,464 @@
+# CI: the tests that need no grant, the release build, and a rehearsal of release signing
+# (DECISIONS B102; docs/RELEASING.md).
+#
+# It also makes a tag's build fast. GitHub lets a tag's run read caches saved on the default
+# branch and nothing a tag saved, so the caches release.yml restores are SAVED HERE, FROM
+# `main` ONLY (a pull request's run restores them and saves nothing). For the tag run to
+# reuse them the two workflows must build the same thing the same way: the same runner
+# image, toolchain and environment (the `env` block below is repeated word for word in
+# release.yml), through the same script (tools/release-build.sh). The app's own test
+# `the_tag_workflow_builds_what_ci_cached` holds the two files to that.
+#
+# Every action is pinned to a full commit SHA — the version is in the comment beside it.
+# No secret is read anywhere in this file, and it runs on the plain `pull_request` event
+# only (never the one that hands a pull request the repo's secrets): a pull request's code
+# runs with a read-only token and nothing else.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # "Run workflow" on `main` warms the caches before a tag, when nothing ran for a week.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  # A newer push to a pull request supersedes the older run; a run on `main` always
+  # finishes, so its caches are saved.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+# The build's environment — the same block, word for word, in release.yml. RUNNER_IMAGE is
+# every macOS job's `runs-on` (an expression can't put it there) and part of each cache's
+# name; the two CARGO_ values are part of the Rust cache's key.
+env:
+  RUNNER_IMAGE: macos-26
+  NODE_VERSION: 22
+  CARGO_INCREMENTAL: 0
+  CARGO_TERM_COLOR: always
+  RELEASE_CACHE: release-v1
+  # The end-to-end lanes' browsers are never needed on a runner.
+  PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
+
+jobs:
+  # ── Public tripwire ─────────────────────────────────────────────────────────────────
+  # This repo is public: no session links, `Claude-Session:` trailers, personal email
+  # addresses or names of the files that moved private, in the tree, the commits this
+  # run brings or the PR's title and body (CLAUDE.md, "Public and private"). Seconds.
+  public:
+    name: Public tripwire
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Tripwire
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          PR_TEXT: |-
+            ${{ github.event.pull_request.title }}
+            ${{ github.event.pull_request.body }}
+        run: |
+          if [ -n "$BASE" ] && git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            bash tools/public-tripwire.sh "$BASE" HEAD
+          else
+            bash tools/public-tripwire.sh
+          fi
+
+  # ── Tests ────────────────────────────────────────────────────────────────────────────
+  # What runs here needs no permission grant, no window on a screen, no VM and no keychain
+  # identity: the spec's fixtures, the Rust workspace, the Worker, the installer, the landing
+  # page, the agent skill, the media readers.
+  #
+  # NOT run here, by name, and why — these stay on Bagrat's Mac (docs/RELEASING.md, "What CI
+  # does not cover"):
+  #   tests/e2e/heartbeat.mjs, record-check.mjs, tone-check.mjs, soak.mjs,
+  #   kill-relaunch.mjs, playback.mjs, pages-gallery.mjs
+  #       record through the installed dev app: Screen Recording and microphone grants,
+  #       LaunchServices, the test space's token in ~/.shroom-dev, Playwright's browsers.
+  #   app/test/*-drive.mjs, *-gallery.mjs, update-drive.sh
+  #       drive the dev app's own windows (the `shroom-dev` keychain identity, a session
+  #       with a screen).
+  #   tests/l5/*
+  #       a Tart VM cloned from a 30 GB golden image, and the `shroom-dev` identity.
+  #   tests/l6/two-macs.mjs
+  #       two installed instances with grants.
+  #   tests/e2e-live/tests/live.rs, contract.rs
+  #       real Cloudflare, on the dedicated test account (TESTING-PLAN D3): they skip
+  #       themselves unless SHROOM_E2E=1, which only e2e.yml and e2e-full.yml set, through
+  #       the cf-e2e environment. They compile and report "skipped" here.
+  #   crates/shroom-record/tests/av_sync.rs's three-minute drift run
+  #       `#[ignore]`d everywhere; run by hand.
+  tests:
+    name: Tests
+    runs-on: macos-26
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The Rust the workspace names (Cargo.toml's rust-version), and which Xcode this image
+      # builds with — part of the Rust cache's name: a dependency's build keeps the path of
+      # the Xcode it was built by, so a new default Xcode must start a new cache.
+      - name: Rust toolchain (the workspace's rust-version), and the Xcode in use
+        id: toolchain
+        run: |
+          version=$(sed -n 's/^rust-version = "\(.*\)"$/\1/p' Cargo.toml)
+          rustup toolchain install "$version" --profile minimal --no-self-update
+          rustup default "$version"
+          rustc -vV
+          xcodebuild -version
+          echo "macOS SDK $(xcrun --sdk macosx --show-sdk-version)"
+          echo "xcode=$(xcodebuild -version | awk 'NR==1{v=$2} NR==2{b=$3} END{print v "-" b}')" >>"$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          package-manager-cache: false
+
+      # npm's download cache: restored here, saved by the build job (from main only).
+      - name: Restore npm's download cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.npm
+          key: npm-${{ env.RUNNER_IMAGE }}-node${{ env.NODE_VERSION }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            npm-${{ env.RUNNER_IMAGE }}-node${{ env.NODE_VERSION }}-
+
+      - name: Install the node packages
+        run: npm ci
+
+      # Compiled Rust dependencies for the test (debug) profile — its own cache, apart from
+      # the release build's.
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          shared-key: tests-${{ env.RUNNER_IMAGE }}-xcode${{ steps.toolchain.outputs.xcode }}
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      # The media tests' oracle — ffmpeg and ffprobe on PATH. The image has neither, so it
+      # is built from the tarball tools/build-ffmpeg.sh pins, once, and cached.
+      - name: Restore the tests' ffmpeg and ffprobe
+        id: oracle
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            build/ffmpeg-oracle/bin
+            build/ffmpeg-oracle/BUILDINFO
+          key: ffmpeg-oracle-${{ env.RUNNER_IMAGE }}-${{ hashFiles('tools/build-ffmpeg-oracle.sh', 'tools/build-ffmpeg.sh') }}
+
+      - name: The tests' ffmpeg and ffprobe (built only when the cache has none)
+        run: |
+          if [ -x build/ffmpeg-oracle/bin/ffmpeg ] && tools/build-ffmpeg-oracle.sh --check; then
+            echo "From the cache, and the pair tools/build-ffmpeg-oracle.sh makes."
+          else
+            tools/build-ffmpeg-oracle.sh
+          fi
+          echo "$GITHUB_WORKSPACE/build/ffmpeg-oracle/bin" >>"$GITHUB_PATH"
+
+      - name: Save the tests' ffmpeg and ffprobe (from main only)
+        if: github.ref == 'refs/heads/main' && steps.oracle.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            build/ffmpeg-oracle/bin
+            build/ffmpeg-oracle/BUILDINFO
+          key: ${{ steps.oracle.outputs.cache-primary-key }}
+
+      # spec/MACHINE.md is spec/machine.json's readable form, regenerated after every change (B133).
+      - name: The spec's readable form is current
+        run: python3 tools/render-machine-md.py --check
+
+      # Everything the app ships that isn't shroom's own has its licence in
+      # THIRD-PARTY-NOTICES.md, for the dependencies Cargo.lock and package-lock.json hold now (B124).
+      - name: The app's third-party notices are current
+        run: python3 tools/third-party-notices.py --check
+
+      - name: The app's frontend builds and typechecks
+        run: |
+          npm run build --workspace app
+          npm run check --workspace app
+
+      - name: The Worker — unit suite, typecheck, the contract under workerd
+        run: |
+          npm test --workspace worker
+          npm run typecheck --workspace worker
+          npm run test:workerd --workspace worker
+
+      - name: The installer
+        run: node --test installer/test/install.test.mjs
+
+      - name: The release notes (DECISIONS B152)
+        run: |
+          node --test tools/test/release-notes.test.mjs
+          node tools/release-notes.mjs check --all
+
+      - name: The landing page, the media readers
+        run: |
+          node --test site/test/landing.test.mjs site/test/agent.test.mjs site/test/worker.test.mjs
+          node --test tests/e2e/av.test.mjs tests/e2e/tone.test.mjs tests/e2e/field.test.mjs
+
+      # The media tests make real recordings: H.264 through VideoToolbox. A hosted runner
+      # is a virtual Mac, and whether its VideoToolbox encodes is a fact about the runner,
+      # asked here rather than assumed.
+      - name: Can this runner encode? (VideoToolbox)
+        id: encode
+        run: |
+          if ffmpeg -hide_banner -loglevel error -f lavfi -i testsrc2=size=1280x720:rate=30 -t 1 \
+               -c:v h264_videotoolbox -b:v 2000k -pix_fmt yuv420p -f null - ; then
+            echo "can=yes" >>"$GITHUB_OUTPUT"
+          else
+            echo "can=no" >>"$GITHUB_OUTPUT"
+            echo "::warning title=Media tests not run::VideoToolbox can't encode on this runner — the tests that make a recording are left out of this run (they are listed in the job summary). Run them on a Mac: cargo test --workspace."
+          fi
+
+      - name: The Rust workspace
+        if: steps.encode.outputs.can == 'yes'
+        run: .github/scripts/rust-tests.sh --ci
+
+      # Sound against picture, held to 15 ms and 100 ms. A runner of three virtual cores
+      # can starve the recorder past them while every take still comes out whole: here a
+      # miss is a warning, and a Mac decides (DECISIONS B116, ruled 2026-10-13) — the plain
+      # `rust-tests.sh` on a Mac holds them.
+      - name: The recorder's A/V timing bars (a miss here is a warning; a Mac decides)
+        if: steps.encode.outputs.can == 'yes'
+        continue-on-error: true
+        run: |
+          .github/scripts/rust-tests.sh --timing-bars || {
+            echo "::warning title=A/V timing bars missed on the runner::The recorder's sound-against-picture bars weren't met here; run cargo test --workspace on a Mac to decide."
+            exit 1
+          }
+
+      - name: The Rust workspace, without the tests that make a recording
+        if: steps.encode.outputs.can != 'yes'
+        run: .github/scripts/rust-tests.sh --no-encoder
+
+  # ── The release build ────────────────────────────────────────────────────────────────
+  # The very build a tag runs — tools/release-build.sh, the same toolchain, environment and
+  # target dir (./target) — signed ad hoc, because no identity exists here. It proves the
+  # release configuration builds and its bundle passes every check, and from `main` it
+  # saves the caches the tag's run starts from.
+  build:
+    name: Release build (ad hoc)
+    runs-on: macos-26
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The Rust the workspace names (Cargo.toml's rust-version), and which Xcode this image
+      # builds with — part of the Rust cache's name: a dependency's build keeps the path of
+      # the Xcode it was built by, so a new default Xcode must start a new cache.
+      - name: Rust toolchain (the workspace's rust-version), and the Xcode in use
+        id: toolchain
+        run: |
+          version=$(sed -n 's/^rust-version = "\(.*\)"$/\1/p' Cargo.toml)
+          rustup toolchain install "$version" --profile minimal --no-self-update
+          rustup default "$version"
+          rustc -vV
+          xcodebuild -version
+          echo "macOS SDK $(xcrun --sdk macosx --show-sdk-version)"
+          echo "xcode=$(xcodebuild -version | awk 'NR==1{v=$2} NR==2{b=$3} END{print v "-" b}')" >>"$GITHUB_OUTPUT"
+
+      - name: The version, and the macOS floor
+        id: facts
+        run: |
+          version=$(tools/bump-version.sh --check)
+          floor=$(plutil -extract bundle.macOS.minimumSystemVersion raw -o - app/src-tauri/tauri.conf.json)
+          echo "version=$version" >>"$GITHUB_OUTPUT"
+          echo "floor=$floor" >>"$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          package-manager-cache: false
+
+      - name: Restore npm's download cache
+        id: npm
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.npm
+          key: npm-${{ env.RUNNER_IMAGE }}-node${{ env.NODE_VERSION }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            npm-${{ env.RUNNER_IMAGE }}-node${{ env.NODE_VERSION }}-
+
+      - name: Install the node packages
+        run: npm ci
+
+      - name: Save npm's download cache (from main only)
+        if: github.ref == 'refs/heads/main' && steps.npm.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.npm
+          key: ${{ steps.npm.outputs.cache-primary-key }}
+
+      # Compiled Rust dependencies and cargo's registry, release profile. The tag workflow
+      # names the same shared key and only restores.
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          shared-key: ${{ env.RELEASE_CACHE }}-${{ env.RUNNER_IMAGE }}-xcode${{ steps.toolchain.outputs.xcode }}
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      # The release's encoder: keyed by the script that builds it (and the floor it builds
+      # for), so a hit skips the build — and is still held to the script's own checks.
+      - name: Restore the encoder
+        id: encoder
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: build/ffmpeg/sidecar
+          key: ffmpeg-sidecar-${{ env.RUNNER_IMAGE }}-${{ hashFiles('tools/build-ffmpeg.sh') }}-floor${{ steps.facts.outputs.floor }}
+
+      - name: The encoder (built only when the cache has none)
+        run: |
+          if [ -x build/ffmpeg/sidecar/ffmpeg-aarch64-apple-darwin ] && tools/build-ffmpeg.sh --check; then
+            echo "From the cache, and the encoder tools/build-ffmpeg.sh makes."
+          else
+            tools/build-ffmpeg.sh
+          fi
+
+      - name: Save the encoder (from main only)
+        if: github.ref == 'refs/heads/main' && steps.encoder.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: build/ffmpeg/sidecar
+          key: ${{ steps.encoder.outputs.cache-primary-key }}
+
+      - name: The release build, signed ad hoc
+        run: tools/release-build.sh "$RUNNER_TEMP/release" --adhoc
+
+      # The script shows the last lines of a failed build; a runner can't be asked for more
+      # afterwards, so here is all of it.
+      - name: The whole build log, if the build failed
+        if: failure()
+        run: cat "$RUNNER_TEMP/release/build.log" 2>/dev/null || echo "The build never started."
+
+      # Packaged as a release is, to prove the packager takes it — as a stand-in: an ad hoc
+      # build is never published.
+      - name: Package it (a stand-in, never published)
+        env:
+          VERSION: ${{ steps.facts.outputs.version }}
+          SHROOM_STAND_IN: 1
+        run: |
+          tools/package-release.sh "$RUNNER_TEMP/release/shroom.app" "$VERSION" "$RUNNER_TEMP/dist"
+          {
+            echo "### shroom $VERSION — the release build, signed ad hoc (not a release)"
+            echo
+            echo '```'
+            cat "$RUNNER_TEMP/release/signature.txt"
+            tail -n 2 "$RUNNER_TEMP/release/minos-probe.log"
+            echo '```'
+          } >>"$GITHUB_STEP_SUMMARY"
+
+  # ── The signing rehearsal ────────────────────────────────────────────────────────────
+  # A release is signed from a .p12 in a secret, in a throwaway keychain, on a runner that
+  # has to be told to trust a self-signed certificate. None of that can be tried on a pull
+  # request with the real identity — so it is tried with a throwaway one, made by the very
+  # script that makes the real one and imported by the very script the tag workflow uses.
+  # If this job is green, the only thing a tag adds is the real .p12.
+  # ── The machine's change list ───────────────────────────────────────────────────────
+  # What a pull request changes in spec/machine.json (B133, phase 5): in words on the run's
+  # summary page (states, said-lines, edges and rules added, removed or changed, and what
+  # changed status), and as a before/after picture of the regions it touches, the
+  # "machine-picture" artifact. Read them instead of the JSON's diff.
+  machine:
+    name: The machine's change list
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: What this changes in the machine
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: python3 tools/machine-diff.py "$BASE" HEAD --regions | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          package-manager-cache: false
+
+      # Only the root's own devDependency (elkjs), not the workspaces.
+      - name: The picture, before and after
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          npm ci --workspaces=false --include-workspace-root --ignore-scripts
+          node tools/machine-picture.mjs machine-picture "$BASE" HEAD
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: machine-picture
+          path: machine-picture/
+
+  # ── Advisories ───────────────────────────────────────────────────────────────────────
+  # Known vulnerabilities in what the lockfiles pin (DECISIONS B125): the Rust crates
+  # against RustSec, through cargo-audit (an unmaintained or unsound notice is listed, not
+  # fatal), and the node packages against npm's database, high and critical. Reading a
+  # lockfile needs no Mac, so this runs on Linux, beside the Mac jobs.
+  advisories:
+    name: Advisories
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: The Rust crates (RustSec)
+        run: |
+          cargo install cargo-audit --locked --version 0.22.2
+          cargo audit
+
+      - name: The node packages
+        run: npm audit --audit-level=high
+
+  signing:
+    name: Signing rehearsal
+    runs-on: macos-26
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: A throwaway identity, made as the release's is
+        run: |
+          .github/scripts/signing-keychain.sh scratch "$RUNNER_TEMP/scratch.keychain-db"
+          tools/make-release-identity.sh "shroom ci rehearsal" --keychain "$RUNNER_TEMP/scratch.keychain-db" --out "$RUNNER_TEMP/rehearsal" --days 365 >/dev/null
+          .github/scripts/signing-keychain.sh drop "$RUNNER_TEMP/scratch.keychain-db"
+
+      - name: Imported and trusted as the tag workflow does it
+        id: identity
+        run: |
+          SIGNING_P12_BASE64=$(cat "$RUNNER_TEMP/rehearsal/shroom-ci-rehearsal.p12.base64")
+          SIGNING_P12_PASSWORD=$(cat "$RUNNER_TEMP/rehearsal/shroom-ci-rehearsal.password")
+          export SIGNING_P12_BASE64 SIGNING_P12_PASSWORD
+          .github/scripts/signing-keychain.sh import
+
+      - name: It signs, and macOS would keep a permission by it
+        env:
+          IDENTITY: ${{ steps.identity.outputs.identity }}
+          LEAF: ${{ steps.identity.outputs.leaf }}
+        run: |
+          [ "$LEAF" = "$(cat "$RUNNER_TEMP/rehearsal/shroom-ci-rehearsal.sha1")" ] || { echo "::error::the imported certificate isn't the one that was made"; exit 1; }
+          printf 'int main(void){return 0;}\n' | clang -x c - -o "$RUNNER_TEMP/hello"
+          codesign --force --options runtime -s "$IDENTITY" -i am.shroom.rehearsal "$RUNNER_TEMP/hello"
+          codesign --verify --strict "$RUNNER_TEMP/hello"
+          got=$(codesign -d -r- "$RUNNER_TEMP/hello" 2>/dev/null | sed -n 's/^#* *designated => //p')
+          want="identifier \"am.shroom.rehearsal\" and certificate leaf = H\"$LEAF\""
+          [ "$got" = "$want" ] || { echo "::error::the designated requirement is '$got', not '$want'"; exit 1; }
+          echo "Signed with $IDENTITY; the requirement is: $got"
+
+      - name: The signing keychain, gone
+        if: always()
+        run: .github/scripts/signing-keychain.sh delete

@@ -1,0 +1,19 @@
+[package]
+name = "shroom-capture"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+shroom-record = { path = "../shroom-record" }
+shroom-encode = { path = "../shroom-encode" }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+# The MIT capture and camera crates + cidre fork (notices: THIRD-PARTY-NOTICES.md), pinned to the revs the 2026-07-20 probe proved.
+scap-screencapturekit = { git = "https://github.com/CapSoftware/Cap", rev = "fb3f2438" }
+cap-camera-avfoundation = { git = "https://github.com/CapSoftware/Cap", rev = "fb3f2438" }
+cidre = { git = "https://github.com/CapSoftware/cidre", rev = "bf84b67079a8", default-features = false, features = ["macos_12_7", "cv", "cf", "cg", "sc", "av", "blocks", "async", "dispatch"] }
+futures = "0.3"
+cpal = "0.18"

@@ -1,0 +1,62 @@
+# The e2e suite on the dedicated Cloudflare test account (TESTING-PLAN D3,
+# tests/e2e-live): Region 2's states live, each test pinned to that account, in its own
+# space (deleted after), and driven by a per-run token with exactly the product's two
+# powers. It runs beside e2e-full.yml and a Mac's heartbeat: none touches another's space
+# (DECISIONS B131).
+#
+# It is the one workflow that reads a Cloudflare secret, so it runs only when asked
+# ("Run workflow"), only from `main` or a branch of this repo, and only through the
+# `cf-e2e` environment (whatever reviewer rule Bagrat sets on it). The account holds nothing but tests; the token never reaches an argv or
+# the log.
+#
+# Every action is pinned to a full commit SHA, as in ci.yml.
+name: E2E (test account)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    name: Region 2, live
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: cf-e2e
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Rust toolchain (the workspace's rust-version)
+        run: |
+          version=$(sed -n 's/^rust-version = "\(.*\)"$/\1/p' Cargo.toml)
+          rustup toolchain install "$version" --profile minimal --no-self-update
+          rustup default "$version"
+          rustc -vV
+
+      # Built before the token is written: no dependency's build script runs beside it.
+      - name: Build the suite
+        run: cargo test -p shroom-e2e-live --no-run --locked
+
+      # `printf` is bash's own, so the token is never a process argument.
+      - name: The account token, to a file only this job reads
+        env:
+          SHROOM_E2E_TOKEN: ${{ secrets.SHROOM_E2E_TOKEN }}
+        run: |
+          [ -n "$SHROOM_E2E_TOKEN" ] || { echo "::error title=No token::the cf-e2e environment has no SHROOM_E2E_TOKEN secret"; exit 1; }
+          umask 077
+          printf '%s' "$SHROOM_E2E_TOKEN" > "$RUNNER_TEMP/e2e-account-token"
+
+      - name: The suite
+        env:
+          SHROOM_E2E: '1'
+          SHROOM_E2E_ACCOUNT_ID: ${{ secrets.SHROOM_E2E_ACCOUNT_ID }}
+        run: |
+          [ -n "$SHROOM_E2E_ACCOUNT_ID" ] || { echo "::error title=No account id::the cf-e2e environment has no SHROOM_E2E_ACCOUNT_ID secret"; exit 1; }
+          SHROOM_E2E_TOKEN_FILE="$RUNNER_TEMP/e2e-account-token" cargo test -p shroom-e2e-live --locked -- --test-threads=1
+
+      - name: Forget the token
+        if: always()
+        run: rm -f "$RUNNER_TEMP/e2e-account-token"

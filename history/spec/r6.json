@@ -1,0 +1,2073 @@
+{
+  "region": "Region 6 — members, the join machine, and the guided overlay (UX-STATEMACHINE.md lines 1282-1663)",
+  "states": [
+    {
+      "id": "invite-born",
+      "kind": "state",
+      "parent": "",
+      "surface": "window",
+      "status": "ratified",
+      "summary": "The Members face, the Settings window's third tab (N36). It shows a heading, the one line of N5 truth, the member list (You, the owner's other Macs as sub-rows, joined members, pending invites) and the composer (a name field + Invite), which is always present. Invite mints a one-person, seven-day join link. The link appears under the new row with a filled Copy link. Copy is ratified (N28). The You row's Add another Mac and the owner-Mac sub-rows are provisional (N33).",
+      "entry_conditions": "Owner-class Mac only (N5, N33). Reached by the gear → Settings → Members, or by all-set's Invite someone morphing the same window (the name field arrives focused). Diagram: [*] → invite_born ('owner — Invite someone, or Add another Mac').",
+      "decided_by": [
+        "N28",
+        "N33",
+        "N36",
+        "N29",
+        "N5",
+        "N3",
+        "N26",
+        "N24",
+        "N12"
+      ],
+      "said_lines": [
+        {
+          "text": "Members",
+          "role": "title",
+          "copy_status": "ratified"
+        },
+        {
+          "text": "Everyone here records to your space — their videos live in your storage, and you can see and delete any of them.",
+          "role": "line",
+          "copy_status": "ratified",
+          "note": "The one line of N5 truth, said once, here."
+        },
+        {
+          "text": "You",
+          "role": "other",
+          "copy_status": "ratified",
+          "note": "Member #1's row. It carries no fact (N28)."
+        },
+        {
+          "text": "Add another Mac",
+          "role": "link",
+          "copy_status": "provisional",
+          "note": "Quiet Frost text beside You, not a button (N33)."
+        },
+        {
+          "text": "Mher — joined Aug 3",
+          "role": "status",
+          "copy_status": "ratified",
+          "note": "A joined member's row: the admin-private label + the join date. Both vary."
+        },
+        {
+          "text": "Ani — invited just now",
+          "role": "status",
+          "copy_status": "ratified",
+          "note": "A pending invite's row right after Invite. The label is what the admin typed."
+        },
+        {
+          "text": "invited Aug 21 · 5 days left",
+          "role": "status",
+          "copy_status": "ratified",
+          "note": "The pending-row fact later in the invite's life. Date and days left vary (figures per Law 16)."
+        },
+        {
+          "text": "Remove…",
+          "role": "link",
+          "copy_status": "ratified",
+          "note": "Red text on every row but You (N24's pattern)."
+        },
+        {
+          "text": "v.myshroom.workers.dev/join/7xk2pm",
+          "role": "other",
+          "copy_status": "ratified",
+          "note": "The new link's pill under the new row: v.<name>.workers.dev/join/<code>. Name and code vary."
+        },
+        {
+          "text": "Copy link",
+          "role": "button",
+          "copy_status": "ratified"
+        },
+        {
+          "text": "Copied",
+          "role": "status",
+          "copy_status": "ratified",
+          "note": "Copy link reads “Copied” briefly (N26/N28, Law 10)."
+        },
+        {
+          "text": "Send Ani this link — it's good for one person, for seven days.",
+          "role": "line",
+          "copy_status": "ratified",
+          "note": "Under the new link. The invitee's label varies."
+        },
+        {
+          "text": "Who's this for?",
+          "role": "placeholder",
+          "copy_status": "ratified",
+          "note": "The composer's name field. The typed name is the admin-private label, forever."
+        },
+        {
+          "text": "Invite",
+          "role": "button",
+          "copy_status": "ratified"
+        },
+        {
+          "text": "You'll get a link to send them — over any chat.",
+          "role": "line",
+          "copy_status": "ratified",
+          "note": "Beneath the composer."
+        },
+        {
+          "text": "New link",
+          "role": "button",
+          "copy_status": "ratified",
+          "note": "Offered on an expired invite's row. A row face, not a state (N18 nuance)."
+        },
+        {
+          "text": "You · MacBook Air — joined Sep 2 · Remove…",
+          "role": "status",
+          "copy_status": "provisional",
+          "note": "One of the owner's other Macs as a sub-row under You (N33). The Mac's sharing name and the date vary."
+        },
+        {
+          "text": "keeps your Cloudflare token",
+          "role": "status",
+          "copy_status": "provisional",
+          "note": "Row fact on the sub-row of an owner Mac that holds the token. That row has no Remove… (N33)."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Invite",
+          "kind": "filled-default",
+          "return_default": true,
+          "goes_to": "invite-born",
+          "note": "Return in the name field ≡ Invite (the field owns Return, Law 8). Mints the link, which appears under the new pending row. Drops to outline while a new link is on screen."
+        },
+        {
+          "label": "Copy link",
+          "kind": "filled-default",
+          "return_default": false,
+          "goes_to": "invite-born",
+          "note": "Filled while a new link is on screen: the moment's one action. Reads “Copied” briefly. The spec does not bind Return to it."
+        },
+        {
+          "label": "Remove…",
+          "kind": "red-text",
+          "return_default": false,
+          "goes_to": "member-remove-confirm",
+          "note": "On every row but You. Absent on the sub-row of a Mac that holds the token."
+        },
+        {
+          "label": "New link",
+          "kind": "secondary",
+          "return_default": false,
+          "goes_to": "invite-born",
+          "note": "Expired invite rows only. Nothing is blocked. Not marked filled."
+        },
+        {
+          "label": "Add another Mac",
+          "kind": "text-link",
+          "return_default": false,
+          "goes_to": "Add another Mac",
+          "note": "Opens the nest under You (N33)."
+        },
+        {
+          "label": "✕",
+          "kind": "close",
+          "return_default": false,
+          "note": "≡ Close (N12). The face has no back-chrome."
+        }
+      ],
+      "transitions": [
+        {
+          "to": "member-remove-confirm",
+          "trigger": "Remove… on a member, pending-invite or other-Mac row"
+        },
+        {
+          "to": "join-landing",
+          "trigger": "link sent and opened (diagram)"
+        },
+        {
+          "to": "Add another Mac",
+          "trigger": "click Add another Mac on the You row"
+        },
+        {
+          "to": "invite-born",
+          "trigger": "Invite (or Return in the name field): a pending row is added and the new link appears under it"
+        }
+      ],
+      "source_lines": "1282, 1317-1355, 76, 81, 84, 1402-1404, 1564-1565, 1605-1608, 1704"
+    },
+    {
+      "id": "Add another Mac",
+      "kind": "face",
+      "parent": "invite-born",
+      "surface": "window",
+      "status": "provisional",
+      "summary": "The You row's nest for adding one of the owner's own Macs. It holds an owner-class join link, one-time use and good for one hour, with a filled Copy link. The joined Mac later appears as a sub-row under You, labelled by its own sharing name.",
+      "entry_conditions": "Owner-class Mac on the Members face; the owner clicks the quiet Add another Mac beside You. Members never have this door in v1.",
+      "decided_by": [
+        "N33"
+      ],
+      "said_lines": [
+        {
+          "text": "v.myshroom.workers.dev/join/q8w3zt",
+          "role": "other",
+          "copy_status": "provisional",
+          "note": "The own-Mac link pill. Name and code vary."
+        },
+        {
+          "text": "Copy link",
+          "role": "button",
+          "copy_status": "provisional",
+          "note": "Same label as the ratified Copy link on the Members face. This nest is N33."
+        },
+        {
+          "text": "Open this link on your other Mac — it's good for one hour.",
+          "role": "line",
+          "copy_status": "provisional"
+        }
+      ],
+      "actions": [
+        {
+          "label": "Copy link",
+          "kind": "filled-default",
+          "return_default": false,
+          "note": "Filled (bold in the spec). Reads “Copied” per Law 10. The spec does not bind Return to it."
+        }
+      ],
+      "transitions": [
+        {
+          "to": "join-landing · own-Mac variant",
+          "trigger": "the link is opened on the other Mac"
+        }
+      ],
+      "source_lines": "1326, 1343-1345, 1377-1409, 81, 1605, 1705"
+    },
+    {
+      "id": "member-remove-confirm",
+      "kind": "sheet",
+      "parent": "invite-born",
+      "surface": "sheet",
+      "status": "provisional",
+      "summary": "A sheet over the Members face that confirms a Remove…. It has three faces by row kind: a member, a pending invite, your other Mac. Esc ≡ the left button. There is no Return default. The destructive button is red-outlined, rightmost and never filled. A removal is never bundled with deleting videos.",
+      "entry_conditions": "Remove… clicked on any Members row except You (and never on a Mac that keeps the Cloudflare token).",
+      "decided_by": [
+        "N32",
+        "N33",
+        "N23",
+        "N24"
+      ],
+      "said_lines": [],
+      "actions": [
+        {
+          "label": "Esc",
+          "kind": "other",
+          "return_default": false,
+          "goes_to": "invite-born",
+          "note": "≡ the left button (Cancel / Keep it)."
+        }
+      ],
+      "transitions": [
+        {
+          "to": "invite-born",
+          "trigger": "Cancel / Keep it / Esc: nothing changes"
+        },
+        {
+          "to": "invite-born",
+          "trigger": "Remove / Cancel invite: the row goes"
+        }
+      ],
+      "source_lines": "1346-1347, 1357-1375, 80, 1606-1607, 1705"
+    },
+    {
+      "id": "member-remove-confirm · a member",
+      "kind": "face",
+      "parent": "member-remove-confirm",
+      "surface": "sheet",
+      "status": "provisional",
+      "summary": "Removing a joined member. They can't record to the space anymore, but a video already on its way can still finish. Their videos stay in the Library with their label.",
+      "entry_conditions": "Remove… on a joined member's row.",
+      "decided_by": [
+        "N32"
+      ],
+      "said_lines": [
+        {
+          "text": "Remove Mher?",
+          "role": "sheet-title",
+          "copy_status": "provisional",
+          "note": "The member's admin-private label varies."
+        },
+        {
+          "text": "Mher won't be able to record to your space anymore — a video already on its way can still finish. Mher's videos stay; you'll find them in your Library.",
+          "role": "sheet-body",
+          "copy_status": "provisional",
+          "note": "Bound to per-recording minting. Per-member creds would force “for up to a week”."
+        },
+        {
+          "text": "Cancel",
+          "role": "button",
+          "copy_status": "provisional"
+        },
+        {
+          "text": "Remove",
+          "role": "button",
+          "copy_status": "provisional"
+        }
+      ],
+      "actions": [
+        {
+          "label": "Cancel",
+          "kind": "secondary",
+          "return_default": false,
+          "goes_to": "invite-born",
+          "note": "Left button; ≡ Esc."
+        },
+        {
+          "label": "Remove",
+          "kind": "destructive",
+          "return_default": false,
+          "goes_to": "invite-born",
+          "note": "Red outline, rightmost, never filled; no Return default. The member's row goes; their videos keep their label in the Library."
+        }
+      ],
+      "transitions": [
+        {
+          "to": "invite-born",
+          "trigger": "Cancel / Esc"
+        },
+        {
+          "to": "invite-born",
+          "trigger": "Remove: the member's row goes"
+        }
+      ],
+      "source_lines": "1365, 1369-1375, 80"
+    },
+    {
+      "id": "member-remove-confirm · a pending invite",
+      "kind": "face",
+      "parent": "member-remove-confirm",
+      "surface": "sheet",
+      "status": "provisional",
+      "summary": "Cancelling a pending invite: the link stops working right away.",
+      "entry_conditions": "Remove… on a pending invite's row.",
+      "decided_by": [
+        "N32"
+      ],
+      "said_lines": [
+        {
+          "text": "Cancel Ani's invite?",
+          "role": "sheet-title",
+          "copy_status": "provisional",
+          "note": "The invitee's label varies."
+        },
+        {
+          "text": "The link stops working right away.",
+          "role": "sheet-body",
+          "copy_status": "provisional"
+        },
+        {
+          "text": "Keep it",
+          "role": "button",
+          "copy_status": "provisional"
+        },
+        {
+          "text": "Cancel invite",
+          "role": "button",
+          "copy_status": "provisional"
+        }
+      ],
+      "actions": [
+        {
+          "label": "Keep it",
+          "kind": "secondary",
+          "return_default": false,
+          "goes_to": "invite-born",
+          "note": "Left button; ≡ Esc."
+        },
+        {
+          "label": "Cancel invite",
+          "kind": "destructive",
+          "return_default": false,
+          "goes_to": "invite-born",
+          "note": "Red outline, rightmost, never filled; no Return default. The link then lands on join-expired."
+        }
+      ],
+      "transitions": [
+        {
+          "to": "invite-born",
+          "trigger": "Keep it / Esc"
+        },
+        {
+          "to": "invite-born",
+          "trigger": "Cancel invite: the pending row goes"
+        }
+      ],
+      "source_lines": "1366, 1359-1361, 80, 1454"
+    },
+    {
+      "id": "member-remove-confirm · your other Mac",
+      "kind": "face",
+      "parent": "member-remove-confirm",
+      "surface": "sheet",
+      "status": "provisional",
+      "summary": "Removing one of the owner's other Macs revokes its device key. That Mac stops recording to the space and its videos stay. Not offered for a Mac that keeps the Cloudflare token, or for this Mac itself (that is Disconnect, N36).",
+      "entry_conditions": "Remove… on an owner-Mac sub-row under You that does not keep the Cloudflare token and is not the current Mac.",
+      "decided_by": [
+        "N32",
+        "N33"
+      ],
+      "said_lines": [
+        {
+          "text": "Remove MacBook Air?",
+          "role": "sheet-title",
+          "copy_status": "provisional",
+          "note": "The Mac's sharing name varies."
+        },
+        {
+          "text": "That Mac stops recording to your space. Its videos stay.",
+          "role": "sheet-body",
+          "copy_status": "provisional"
+        },
+        {
+          "text": "Cancel",
+          "role": "button",
+          "copy_status": "provisional"
+        },
+        {
+          "text": "Remove",
+          "role": "button",
+          "copy_status": "provisional"
+        }
+      ],
+      "actions": [
+        {
+          "label": "Cancel",
+          "kind": "secondary",
+          "return_default": false,
+          "goes_to": "invite-born",
+          "note": "Left button; ≡ Esc."
+        },
+        {
+          "label": "Remove",
+          "kind": "destructive",
+          "return_default": false,
+          "goes_to": "invite-born",
+          "note": "Red outline, rightmost, never filled; no Return default. Revokes that Mac's device key."
+        }
+      ],
+      "transitions": [
+        {
+          "to": "invite-born",
+          "trigger": "Cancel / Esc"
+        },
+        {
+          "to": "invite-born",
+          "trigger": "Remove: the sub-row goes"
+        }
+      ],
+      "source_lines": "1367, 1393-1399, 81"
+    },
+    {
+      "id": "join-landing",
+      "kind": "web-page",
+      "parent": "",
+      "surface": "web-page",
+      "status": "provisional",
+      "summary": "The page a join link opens, served by the space's own Worker with no shroom.am dependency. It has no header, its title is the hero line (so a chat unfurl says it) and it is noindex. It holds a Get-shroom block with the --join install command, an Open shroom deep link with a paste fallback, the one-person/seven-days line, and the mark bottom-right. Opening the page never uses the invite; only Join in the app does.",
+      "entry_conditions": "A join link (v.<name>.workers.dev/join/<code>) opened in a browser on a Mac; the invite is valid, unused and unexpired; no owner cookie riding along.",
+      "decided_by": [
+        "N29",
+        "N3",
+        "N6",
+        "U3"
+      ],
+      "said_lines": [
+        {
+          "text": "Bagrat invited you to record with shroom.",
+          "role": "title",
+          "copy_status": "provisional",
+          "note": "Also the page's title, used by the unfurl. The inviter's name varies: the inviting Mac account's name in macOS's short, locale-aware form (N29: 'Bagrat' for 'Bagrat Aznauryan')."
+        },
+        {
+          "text": "shroom records your screen and hands you a link to share. Nothing to sign up for — Bagrat set up a space for you.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "The inviter's name varies (macOS short form, N29)."
+        },
+        {
+          "text": "Get shroom",
+          "role": "other",
+          "copy_status": "provisional",
+          "note": "Block heading."
+        },
+        {
+          "text": "Paste this into Terminal (⌘ space, type “Terminal”) and press Return — it installs shroom and opens it, already knowing it's you.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "The Terminal hand-hold (flag 2, kept). The inner quotes are curly in the spec."
+        },
+        {
+          "text": "curl -fsSL https://shroom.am/install | sh -s -- --join v.myshroom.workers.dev/join/7xk2pm",
+          "role": "other",
+          "copy_status": "provisional",
+          "note": "The install command with the join link built in. The link varies."
+        },
+        {
+          "text": "Copy",
+          "role": "button",
+          "copy_status": "provisional"
+        },
+        {
+          "text": "Read it first — the same address opens as readable source.",
+          "role": "line",
+          "copy_status": "ratified",
+          "note": "The landing's ratified line, verbatim (N6)."
+        },
+        {
+          "text": "For macOS 14 or newer, Apple silicon and Intel.",
+          "role": "line",
+          "copy_status": "ratified",
+          "note": "The landing's ratified line, verbatim. Only the sentence's shape is ratified: the OS floor and Intel stance are scaffold-time facts, to fill in without rewording (line 214)."
+        },
+        {
+          "text": "Already have shroom?",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "Below a divider."
+        },
+        {
+          "text": "Open shroom",
+          "role": "button",
+          "copy_status": "provisional",
+          "note": "The shroom://join/… deep link."
+        },
+        {
+          "text": "If it doesn't open, paste this page's address into shroom.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "The fallback for the deep link."
+        },
+        {
+          "text": "This invite is for one person and works for seven days.",
+          "role": "line",
+          "copy_status": "provisional"
+        },
+        {
+          "text": "made with shroom",
+          "role": "tooltip",
+          "copy_status": "ratified",
+          "note": "Bottom-right label beside the mark (U3/N26). The page's only shroom chrome; links home."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Copy",
+          "kind": "secondary",
+          "return_default": false,
+          "note": "Copies the install command. Not marked filled. Reads “Copied” per Law 10."
+        },
+        {
+          "label": "Open shroom",
+          "kind": "secondary",
+          "return_default": false,
+          "goes_to": "member-welcome",
+          "note": "The shroom://join/… deep link. The browser's own “open shroom?” prompt is the only step it adds. Not marked filled."
+        },
+        {
+          "label": "made with shroom (the mark)",
+          "kind": "text-link",
+          "return_default": false,
+          "note": "Links home (shroom.am)."
+        }
+      ],
+      "transitions": [
+        {
+          "to": "join-landing-elsewhere",
+          "trigger": "not a Mac (diagram)"
+        },
+        {
+          "to": "join-expired · page",
+          "trigger": "past its days, cancelled, unknown (diagram: join_expired)"
+        },
+        {
+          "to": "join-used · page",
+          "trigger": "already used (diagram: join_used)"
+        },
+        {
+          "to": "installing · member lane",
+          "trigger": "curl with the link built in (diagram)"
+        },
+        {
+          "to": "member-welcome",
+          "trigger": "Open shroom (already installed) (diagram)"
+        },
+        {
+          "to": "join-landing · owner view",
+          "trigger": "the space owner's cookie rides along"
+        }
+      ],
+      "source_lines": "1411-1446, 1451, 77, 214, 1608-1613, 1706"
+    },
+    {
+      "id": "join-landing · owner view",
+      "kind": "face",
+      "parent": "join-landing",
+      "surface": "web-page",
+      "status": "provisional",
+      "summary": "The same join page with one quiet note on top, for an owner checking their own link. Opening it here doesn't use it up.",
+      "entry_conditions": "The join link is opened with the space owner's cookie riding along (they clicked their own link to check it).",
+      "decided_by": [
+        "N29"
+      ],
+      "said_lines": [
+        {
+          "text": "This is the page Ani will see — opening it here doesn't use it up.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "One quiet note on top of an otherwise identical page. The invitee's admin-private label varies."
+        }
+      ],
+      "actions": [],
+      "transitions": [],
+      "source_lines": "1452, 77, 1706"
+    },
+    {
+      "id": "join-landing-elsewhere",
+      "kind": "face",
+      "parent": "join-landing",
+      "surface": "web-page",
+      "status": "provisional",
+      "summary": "The join page on something that isn't a Mac (phone, tablet, Windows, Linux). The hero stays. The Get-shroom block and the divider give way to one line + Copy link. The one-person line stays.",
+      "entry_conditions": "The join link is opened on something that is not a Mac.",
+      "decided_by": [
+        "N29"
+      ],
+      "said_lines": [
+        {
+          "text": "Bagrat invited you to record with shroom.",
+          "role": "title",
+          "copy_status": "provisional",
+          "note": "“The hero stays.” The inviter's name varies (macOS short form, N29)."
+        },
+        {
+          "text": "shroom runs on a Mac — open this link on yours to get started.",
+          "role": "line",
+          "copy_status": "provisional"
+        },
+        {
+          "text": "Copy link",
+          "role": "button",
+          "copy_status": "provisional"
+        },
+        {
+          "text": "This invite is for one person and works for seven days.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "“The one-person line stays.”"
+        }
+      ],
+      "actions": [
+        {
+          "label": "Copy link",
+          "kind": "secondary",
+          "return_default": false,
+          "note": "Copies the join link. Fill not specified. Reads “Copied” per Law 10."
+        }
+      ],
+      "transitions": [],
+      "source_lines": "1453, 77, 1609, 1706"
+    },
+    {
+      "id": "join-landing · own-Mac variant",
+      "kind": "face",
+      "parent": "join-landing",
+      "surface": "web-page",
+      "status": "provisional",
+      "summary": "The join page for an own-Mac link (from Add another Mac). Same shape, different words: owner-class, one Mac, one hour.",
+      "entry_conditions": "An own-Mac link (from Add another Mac) is opened while valid and unused, within its hour.",
+      "decided_by": [
+        "N33",
+        "N29"
+      ],
+      "said_lines": [
+        {
+          "text": "Add this Mac to your shroom space.",
+          "role": "title",
+          "copy_status": "provisional"
+        },
+        {
+          "text": "Same videos, same members — v.myshroom.workers.dev, on this Mac too.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "The space address varies (v.<name>.workers.dev). The spec's example is kept."
+        },
+        {
+          "text": "This link is for one Mac and works for one hour.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "Replaces the one-person/seven-days line. The Get-shroom block is the same as join-landing's."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Copy",
+          "kind": "secondary",
+          "return_default": false,
+          "note": "The same Get-shroom block as join-landing."
+        },
+        {
+          "label": "Open shroom",
+          "kind": "secondary",
+          "return_default": false,
+          "goes_to": "member-welcome · own-Mac variant",
+          "note": "The same block; deep link."
+        }
+      ],
+      "transitions": [
+        {
+          "to": "installing · member lane",
+          "trigger": "curl with the own-Mac link built in"
+        },
+        {
+          "to": "member-welcome · own-Mac variant",
+          "trigger": "Open shroom (already installed)"
+        },
+        {
+          "to": "join-expired · page",
+          "trigger": "the hour has passed"
+        }
+      ],
+      "source_lines": "1457-1461, 1408-1409, 81"
+    },
+    {
+      "id": "installing · member lane",
+      "kind": "face",
+      "parent": "installing",
+      "surface": "terminal",
+      "status": "provisional",
+      "summary": "Region 1's install script verbatim, run with --join <link>; it passes the link to the app at launch. The join link rides argv and shell history once. This is the conscious scoped exception: one-time use + a 7-day TTL (one hour for own-Mac links). The admin token never gets this exception.",
+      "entry_conditions": "The user runs the join page's install command (curl … | sh -s -- --join <link>).",
+      "decided_by": [
+        "N3",
+        "N29",
+        "N33",
+        "N9",
+        "N41"
+      ],
+      "said_lines": [],
+      "actions": [],
+      "transitions": [
+        {
+          "to": "member-welcome",
+          "trigger": "fresh Mac: the app opens at member-welcome instead of welcome (diagram: the script forwards the link)"
+        },
+        {
+          "to": "updating",
+          "trigger": "shroom already installed: quit → swap → relaunch (N9); the relaunched app opens the invite"
+        },
+        {
+          "to": "join-already-here",
+          "trigger": "already installed and this Mac is already in that space (after the updating lane)"
+        },
+        {
+          "to": "join-switch-confirm",
+          "trigger": "already installed and this Mac has another space (after the updating lane)"
+        },
+        {
+          "to": "install-refused-midtake",
+          "trigger": "mid-take: nothing changed; the link is still unused"
+        }
+      ],
+      "source_lines": "1463-1474, 1389-1392, 50, 57, 89, 1612, 1614"
+    },
+    {
+      "id": "member-welcome",
+      "kind": "state",
+      "parent": "",
+      "surface": "window",
+      "status": "provisional",
+      "summary": "The welcome window's twin, which already knows it's an invite. It shows the hero, the N5 truth mirrored for the invitee (the consent point), the permissions step, the U4 login box, and [ Join ] [ Later ] in the welcome's order (filled first). No Cloudflare, no card, no prices.",
+      "entry_conditions": "The app holds a live invite and this Mac has no space. It arrives by: the install script passing --join (fresh Mac, or a relaunch after the updating lane); the join page's Open shroom deep link; the paste door (the welcome's “Have an invite link?” or Settings → Space); or a tray click in idle-unprovisioned while a remembered invite lives. Not while a take is open (Law 4: invites wait).",
+      "decided_by": [
+        "N30",
+        "U4",
+        "N12",
+        "N5",
+        "N41"
+      ],
+      "said_lines": [
+        {
+          "text": "Bagrat invited you to record with shroom.",
+          "role": "title",
+          "copy_status": "provisional",
+          "note": "The inviter's name varies: the inviting Mac account's name in macOS's short, locale-aware form (N29)."
+        },
+        {
+          "text": "shroom records your screen and hands you a link to share. Your videos will live in Bagrat's space, where Bagrat can see them too — nothing to sign up for, nothing to pay.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "The N5 truth mirrored for the invitee, said once. The inviter's name varies."
+        },
+        {
+          "text": "One step before your first video: let macOS allow recording. About a minute, once.",
+          "role": "line",
+          "copy_status": "provisional"
+        },
+        {
+          "text": "Start shroom when you log in",
+          "role": "field-label",
+          "copy_status": "ratified",
+          "note": "The welcome's ratified U4 checkbox label, reused. Pre-checked."
+        },
+        {
+          "text": "Join",
+          "role": "button",
+          "copy_status": "provisional"
+        },
+        {
+          "text": "Later",
+          "role": "button",
+          "copy_status": "ratified",
+          "note": "The welcome's ratified Later label, reused."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Join",
+          "kind": "filled-default",
+          "return_default": true,
+          "goes_to": "joining",
+          "note": "Filled, first (leftmost), mirroring the ratified welcome's order (Law 8's local exception; check at ratification)."
+        },
+        {
+          "label": "Later",
+          "kind": "secondary",
+          "return_default": false,
+          "goes_to": "idle-unprovisioned",
+          "note": "The invite is remembered (~/.shroom, mode 600). The login item registers iff the box is still checked."
+        },
+        {
+          "label": "✕",
+          "kind": "close",
+          "return_default": false,
+          "goes_to": "idle-unprovisioned",
+          "note": "≡ Later exactly (N12)."
+        },
+        {
+          "label": "Start shroom when you log in",
+          "kind": "switch",
+          "return_default": false,
+          "note": "Checkbox, checked by default. Applied at any dismissal (U4/N12)."
+        }
+      ],
+      "transitions": [
+        {
+          "to": "joining",
+          "trigger": "Join"
+        },
+        {
+          "to": "idle-unprovisioned",
+          "trigger": "Later: the invite is remembered"
+        },
+        {
+          "to": "idle-unprovisioned",
+          "trigger": "✕ (≡ Later)"
+        },
+        {
+          "to": "join-already-here",
+          "trigger": "this Mac is already in that space (diagram)"
+        },
+        {
+          "to": "join-switch-confirm",
+          "trigger": "this Mac is in another space (diagram)"
+        }
+      ],
+      "source_lines": "1476-1503, 78, 311-313, 334-341, 1200, 1613-1617, 1623-1624, 1707"
+    },
+    {
+      "id": "member-welcome · own-Mac variant",
+      "kind": "face",
+      "parent": "member-welcome",
+      "surface": "window",
+      "status": "provisional",
+      "summary": "member-welcome for an own-Mac link. It adds this Mac to the owner's own space as owner-class.",
+      "entry_conditions": "The invite the app holds is an own-Mac link (from Add another Mac) and this Mac has no space.",
+      "decided_by": [
+        "N33",
+        "N30"
+      ],
+      "said_lines": [
+        {
+          "text": "Add this Mac to your space.",
+          "role": "title",
+          "copy_status": "provisional",
+          "note": "Differs from the page's hero (“…your shroom space.”)."
+        },
+        {
+          "text": "Same videos, same members — v.myshroom.workers.dev, on this Mac too.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "The space address varies (v.<name>.workers.dev). The spec's example is kept."
+        },
+        {
+          "text": "One step before your first video here: let macOS allow recording. About a minute, once.",
+          "role": "line",
+          "copy_status": "provisional"
+        },
+        {
+          "text": "Start shroom when you log in",
+          "role": "field-label",
+          "copy_status": "ratified",
+          "note": "☑: the ratified welcome checkbox label."
+        },
+        {
+          "text": "Join",
+          "role": "button",
+          "copy_status": "provisional"
+        },
+        {
+          "text": "Later",
+          "role": "button",
+          "copy_status": "ratified"
+        }
+      ],
+      "actions": [
+        {
+          "label": "Join",
+          "kind": "filled-default",
+          "return_default": true,
+          "goes_to": "joining · own-Mac variant",
+          "note": "Filled, first."
+        },
+        {
+          "label": "Later",
+          "kind": "secondary",
+          "return_default": false,
+          "goes_to": "idle-unprovisioned"
+        },
+        {
+          "label": "✕",
+          "kind": "close",
+          "return_default": false,
+          "goes_to": "idle-unprovisioned",
+          "note": "≡ Later."
+        },
+        {
+          "label": "Start shroom when you log in",
+          "kind": "switch",
+          "return_default": false,
+          "note": "Checked by default."
+        }
+      ],
+      "transitions": [
+        {
+          "to": "joining · own-Mac variant",
+          "trigger": "Join"
+        },
+        {
+          "to": "idle-unprovisioned",
+          "trigger": "Later / ✕"
+        }
+      ],
+      "source_lines": "1500-1502, 1408-1409"
+    },
+    {
+      "id": "joining",
+      "kind": "state",
+      "parent": "",
+      "surface": "window",
+      "status": "provisional",
+      "summary": "Join morphs the window into a two-row plan. Row one is current, with a spinner and one calm line, while the app validates the link with the Worker and the Mac's member identity lands locally (creds mint later, per recording). Zero affordances (N16's posture).",
+      "entry_conditions": "Join in member-welcome, or Join Bagrat's space in join-switch-confirm; auto-resume from join-waiting.",
+      "decided_by": [
+        "N30",
+        "N16",
+        "N13",
+        "N17",
+        "N4"
+      ],
+      "said_lines": [
+        {
+          "text": "Bagrat's space, on this Mac:",
+          "role": "title",
+          "copy_status": "provisional",
+          "note": "Plan header. The inviter's name varies (macOS short form, N29)."
+        },
+        {
+          "text": "→ Joining Bagrat's space (shroom does this part)",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "Row one, current. → is the plan's current-row glyph (N13)."
+        },
+        {
+          "text": "• Letting macOS allow recording (microphone and screen — a one-time yes each)",
+          "role": "line",
+          "copy_status": "ratified",
+          "note": "Row six verbatim (N17), still ahead (• glyph)."
+        },
+        {
+          "text": "Joining — a few seconds.",
+          "role": "status",
+          "copy_status": "provisional",
+          "note": "With a spinner."
+        }
+      ],
+      "actions": [],
+      "transitions": [
+        {
+          "to": "done · member",
+          "trigger": "the link validates and the member is confirmed; row one ticks with the fact and the window rests (diagram)"
+        },
+        {
+          "to": "join-waiting",
+          "trigger": "offline or unanswered (diagram)"
+        },
+        {
+          "to": "join-expired",
+          "trigger": "expired or cancelled (diagram)"
+        },
+        {
+          "to": "join-used",
+          "trigger": "already used (diagram)"
+        },
+        {
+          "to": "join-space-missing",
+          "trigger": "no space there (diagram)"
+        }
+      ],
+      "source_lines": "1505-1517, 78, 1617-1622, 1626, 1707"
+    },
+    {
+      "id": "joining · own-Mac variant",
+      "kind": "face",
+      "parent": "joining",
+      "surface": "window",
+      "status": "provisional",
+      "summary": "The own-Mac plan. The header and the row speak of “your space”, and the row ticks with the space address.",
+      "entry_conditions": "Join on member-welcome's own-Mac variant.",
+      "decided_by": [
+        "N30",
+        "N33"
+      ],
+      "said_lines": [
+        {
+          "text": "Your space, on this Mac:",
+          "role": "title",
+          "copy_status": "provisional",
+          "note": "Own-Mac plan header."
+        },
+        {
+          "text": "Joining your space",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "Own-Mac row one. The spec doesn't say whether “(shroom does this part)” follows."
+        },
+        {
+          "text": "✓ Your space — v.myshroom.workers.dev",
+          "role": "status",
+          "copy_status": "provisional",
+          "note": "The row's tick with the fact once joined. The space address varies."
+        }
+      ],
+      "actions": [],
+      "transitions": [
+        {
+          "to": "done · member",
+          "trigger": "joined: the row ticks with the fact (own-Mac wording)"
+        }
+      ],
+      "source_lines": "1527-1528"
+    },
+    {
+      "id": "done · member",
+      "kind": "face",
+      "parent": "done",
+      "surface": "window",
+      "status": "provisional",
+      "summary": "The member plan's resting beat. Row one is ticked with the fact; row two (row six verbatim) is current, with done's ratified nest verbatim and Allow recording. Nothing fires by itself: no macOS dialog to an empty chair (N17).",
+      "entry_conditions": "joining succeeded: the member is confirmed and the identity has landed locally. Diagram node member_done.",
+      "decided_by": [
+        "N30",
+        "N17",
+        "N15"
+      ],
+      "said_lines": [
+        {
+          "text": "Bagrat's space, on this Mac:",
+          "role": "title",
+          "copy_status": "provisional",
+          "note": "Plan header. The inviter's name varies."
+        },
+        {
+          "text": "✓ Bagrat's space — v.myshroom.workers.dev",
+          "role": "status",
+          "copy_status": "provisional",
+          "note": "Row one ticked with the fact (N15's outcome-bearing tick). The inviter's name and the space address vary."
+        },
+        {
+          "text": "Letting macOS allow recording (microphone and screen — a one-time yes each)",
+          "role": "line",
+          "copy_status": "ratified",
+          "note": "Row two (= row six, N17), now current."
+        },
+        {
+          "text": "macOS will ask twice: your microphone first — one click — then screen recording, which opens System Settings.",
+          "role": "line",
+          "copy_status": "ratified",
+          "note": "done's ratified nest, verbatim (lines 599-600)."
+        },
+        {
+          "text": "Flip the switch next to shroom there. When macOS offers to quit and reopen the app, say yes — I'll be right where you left off.",
+          "role": "line",
+          "copy_status": "ratified",
+          "note": "done's ratified nest, verbatim (lines 601-602)."
+        },
+        {
+          "text": "Allow recording",
+          "role": "button",
+          "copy_status": "ratified"
+        }
+      ],
+      "actions": [
+        {
+          "label": "Allow recording",
+          "kind": "filled-default",
+          "return_default": true,
+          "goes_to": "perm-mic",
+          "note": "Filled. Return comes from Law 8 (one default per surface); it is not restated for this face. Starts Region 3's chapter verbatim: perm-mic → perm-screen → relaunching → perm-priming."
+        }
+      ],
+      "transitions": [
+        {
+          "to": "perm-mic",
+          "trigger": "Allow recording: Region 3's chapter verbatim (diagram: member_done → permissions)"
+        }
+      ],
+      "source_lines": "1517-1522, 599-605, 78, 1626-1627, 1707"
+    },
+    {
+      "id": "all-set · member",
+      "kind": "face",
+      "parent": "all-set",
+      "surface": "window",
+      "status": "provisional",
+      "summary": "The member's final window face. All rows are green, with all-set's ratified closing block and two doors: Close · Record now (members don't invite, N5).",
+      "entry_conditions": "The permissions chapter ends on a member Mac and row two ticks (diagram: permissions → member_all_set).",
+      "decided_by": [
+        "N30",
+        "N20",
+        "N5",
+        "N12"
+      ],
+      "said_lines": [
+        {
+          "text": "You're all set — ready to record.",
+          "role": "line",
+          "copy_status": "ratified",
+          "note": "all-set's ratified line (N20), reused."
+        },
+        {
+          "text": "shroom lives in your menu bar now — look for the little mushroom.",
+          "role": "line",
+          "copy_status": "ratified",
+          "note": "all-set's ratified line (N20), reused."
+        },
+        {
+          "text": "Close",
+          "role": "button",
+          "copy_status": "ratified"
+        },
+        {
+          "text": "Record now",
+          "role": "button",
+          "copy_status": "ratified"
+        }
+      ],
+      "actions": [
+        {
+          "label": "Close",
+          "kind": "secondary",
+          "return_default": false,
+          "goes_to": "idle-ready",
+          "note": "The retreat to tray-only life."
+        },
+        {
+          "label": "Record now",
+          "kind": "filled-default",
+          "return_default": true,
+          "goes_to": "config",
+          "note": "Filled, rightmost. Closes the window and opens config at the tray. Return per Law 8."
+        },
+        {
+          "label": "✕",
+          "kind": "close",
+          "return_default": false,
+          "goes_to": "idle-ready",
+          "note": "≡ Close (N20/N12, the window rule). Not restated for the member face."
+        }
+      ],
+      "transitions": [
+        {
+          "to": "config",
+          "trigger": "Record now (diagram)"
+        },
+        {
+          "to": "idle-ready",
+          "trigger": "Close (diagram)"
+        }
+      ],
+      "source_lines": "1523-1526, 723, 68, 1628-1630, 1707"
+    },
+    {
+      "id": "all-set · member, own-Mac variant",
+      "kind": "face",
+      "parent": "all-set",
+      "surface": "window",
+      "status": "provisional",
+      "summary": "The own-Mac all-set keeps all three doors (owner-class): Close · Invite someone · Record now.",
+      "entry_conditions": "The permissions chapter ends on a Mac joined through an own-Mac link.",
+      "decided_by": [
+        "N30",
+        "N33",
+        "N20"
+      ],
+      "said_lines": [
+        {
+          "text": "✓ Your space — v.myshroom.workers.dev",
+          "role": "status",
+          "copy_status": "provisional",
+          "note": "The plan's ticked row (own-Mac). The space address varies."
+        },
+        {
+          "text": "You're all set — ready to record.",
+          "role": "line",
+          "copy_status": "ratified"
+        },
+        {
+          "text": "shroom lives in your menu bar now — look for the little mushroom.",
+          "role": "line",
+          "copy_status": "ratified"
+        },
+        {
+          "text": "Close",
+          "role": "button",
+          "copy_status": "ratified"
+        },
+        {
+          "text": "Invite someone",
+          "role": "button",
+          "copy_status": "ratified"
+        },
+        {
+          "text": "Record now",
+          "role": "button",
+          "copy_status": "ratified"
+        }
+      ],
+      "actions": [
+        {
+          "label": "Close",
+          "kind": "secondary",
+          "return_default": false,
+          "goes_to": "idle-ready"
+        },
+        {
+          "label": "Invite someone",
+          "kind": "secondary",
+          "return_default": false,
+          "goes_to": "invite-born",
+          "note": "Morphs this window into the Members face, field focused."
+        },
+        {
+          "label": "Record now",
+          "kind": "filled-default",
+          "return_default": true,
+          "goes_to": "config",
+          "note": "Return per Law 8."
+        },
+        {
+          "label": "✕",
+          "kind": "close",
+          "return_default": false,
+          "goes_to": "idle-ready",
+          "note": "≡ Close."
+        }
+      ],
+      "transitions": [
+        {
+          "to": "config",
+          "trigger": "Record now"
+        },
+        {
+          "to": "idle-ready",
+          "trigger": "Close / ✕"
+        },
+        {
+          "to": "invite-born",
+          "trigger": "Invite someone"
+        }
+      ],
+      "source_lines": "1525-1526, 723, 68"
+    },
+    {
+      "id": "join-waiting",
+      "kind": "failure-state",
+      "parent": "",
+      "surface": "window",
+      "status": "provisional",
+      "summary": "Joining can't reach the space: the Mac is offline, or the space answers with a transient error. The spinner rests, one line says why, and there is no button. It resumes by itself (N18's wizard-offline posture).",
+      "entry_conditions": "During joining: a transport failure (offline) or the space answering with a transient error (online but unanswered).",
+      "decided_by": [
+        "N31",
+        "N18"
+      ],
+      "said_lines": [
+        {
+          "text": "You're offline — I'll finish joining the moment you're back.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "Face when offline."
+        },
+        {
+          "text": "Bagrat's space isn't answering right now — I'll keep trying.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "Face when online but unanswered. The inviter's name varies."
+        }
+      ],
+      "actions": [],
+      "transitions": [
+        {
+          "to": "joining",
+          "trigger": "auto-resume: back online / the space answers (diagram)"
+        }
+      ],
+      "source_lines": "1530-1538, 79, 1618-1619, 1708"
+    },
+    {
+      "id": "join-expired",
+      "kind": "failure-state",
+      "parent": "",
+      "surface": "window",
+      "status": "provisional",
+      "summary": "In the app: the Worker says the invite is expired, cancelled or unknown. One line + the paste door for a new link. Reads the same as the page's face.",
+      "entry_conditions": "During joining, the Worker answers expired, cancelled or unknown. Also a tray click in idle-unprovisioned after a remembered invite has died: shown once, then later tray clicks from idle-unprovisioned show the plain welcome.",
+      "decided_by": [
+        "N31",
+        "N29",
+        "N30"
+      ],
+      "said_lines": [
+        {
+          "text": "This invite has expired — ask Bagrat for a fresh one.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "The inviter's name varies."
+        },
+        {
+          "text": "Have a new link? Paste it here.",
+          "role": "field-label",
+          "copy_status": "provisional",
+          "note": "The paste door."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Have a new link? Paste it here.",
+          "kind": "field",
+          "return_default": false,
+          "goes_to": "member-welcome",
+          "note": "Paste door. Resume = a new link (the paste door's arrivals land on member-welcome, line 1503)."
+        }
+      ],
+      "transitions": [
+        {
+          "to": "member-welcome",
+          "trigger": "a new link pasted (Resume: a new link)"
+        }
+      ],
+      "source_lines": "1539, 1496-1499, 1503, 79, 1620, 1706"
+    },
+    {
+      "id": "join-expired · page",
+      "kind": "face",
+      "parent": "join-expired",
+      "surface": "web-page",
+      "status": "provisional",
+      "summary": "The join page's expired face: the line alone, no install block. An unknown code gets the same face without a name. An own-Mac link has its own wording.",
+      "entry_conditions": "The join link is opened in a browser and the invite is past its days or was cancelled from Members; or the code is unknown; or an own-Mac link's hour has passed.",
+      "decided_by": [
+        "N29",
+        "N33"
+      ],
+      "said_lines": [
+        {
+          "text": "This invite has expired — ask Bagrat for a fresh one.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "Expired or cancelled. The inviter's name varies."
+        },
+        {
+          "text": "This invite link doesn't work — ask whoever sent it for a fresh one.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "Unknown code: the wording without a name."
+        },
+        {
+          "text": "This link has expired — make a fresh one from Members on your other Mac.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "The own-Mac link's expired face (N33)."
+        }
+      ],
+      "actions": [],
+      "transitions": [],
+      "source_lines": "1454, 1460-1461, 77, 1610, 1706"
+    },
+    {
+      "id": "join-used",
+      "kind": "failure-state",
+      "parent": "",
+      "surface": "window",
+      "status": "provisional",
+      "summary": "In the app: the Worker says the invite was already used. This is the honest face for a forwarded or stolen link. Plus the paste door.",
+      "entry_conditions": "During joining, the Worker answers already used.",
+      "decided_by": [
+        "N31",
+        "N29",
+        "N3"
+      ],
+      "said_lines": [
+        {
+          "text": "This invite was already used. If that wasn't you, ask Bagrat for a fresh one.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "The inviter's name varies."
+        },
+        {
+          "text": "Have a new link? Paste it here.",
+          "role": "field-label",
+          "copy_status": "provisional",
+          "note": "“+ the paste door”, worded as in join-expired's row."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Have a new link? Paste it here.",
+          "kind": "field",
+          "return_default": false,
+          "goes_to": "member-welcome",
+          "note": "Paste door. Resume = a new link."
+        }
+      ],
+      "transitions": [
+        {
+          "to": "member-welcome",
+          "trigger": "a new link pasted (Resume: a new link)"
+        }
+      ],
+      "source_lines": "1540, 79, 1621, 1706"
+    },
+    {
+      "id": "join-used · page",
+      "kind": "face",
+      "parent": "join-used",
+      "surface": "web-page",
+      "status": "provisional",
+      "summary": "The join page's used face (N3's “fails loudly for the real invitee”). It has a “You're in” variant when the joiner's own cookie rides along.",
+      "entry_conditions": "The join link is opened in a browser after it was used. The “You're in” wording shows when the joiner's own cookie rides along.",
+      "decided_by": [
+        "N29",
+        "N3"
+      ],
+      "said_lines": [
+        {
+          "text": "This invite was already used. If that wasn't you, ask Bagrat for a fresh one.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "The inviter's name varies."
+        },
+        {
+          "text": "You're in — this invite already did its job. The mushroom in your menu bar is all you need.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "Variant for the joiner's own cookie."
+        }
+      ],
+      "actions": [],
+      "transitions": [],
+      "source_lines": "1455, 77, 1611, 1706"
+    },
+    {
+      "id": "join-space-missing",
+      "kind": "failure-state",
+      "parent": "",
+      "surface": "window",
+      "status": "provisional",
+      "summary": "The link's address answers as no space at all (no shroom Worker there). One line; no resume.",
+      "entry_conditions": "During joining, the link's address answers as no space at all.",
+      "decided_by": [
+        "N31"
+      ],
+      "said_lines": [
+        {
+          "text": "This invite's space isn't there anymore — ask Bagrat about it.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "The inviter's name varies."
+        }
+      ],
+      "actions": [],
+      "transitions": [],
+      "source_lines": "1541, 79, 1622, 1708"
+    },
+    {
+      "id": "join-already-here",
+      "kind": "failure-state",
+      "parent": "",
+      "surface": "window",
+      "status": "provisional",
+      "summary": "A whole-window face: this Mac is already in the invite's space, so there is nothing to do. The link stays unused so it can go to someone else. An own-Mac link opened on a Mac already in that space gets the own-space wording.",
+      "entry_conditions": "An invite arrives (any door) for the space this Mac is already in. Not after a removal: a re-invite then re-joins the same space (this Mac's identity is dead).",
+      "decided_by": [
+        "N31",
+        "N33"
+      ],
+      "said_lines": [
+        {
+          "text": "This Mac is already in Bagrat's space — nothing to do. The invite is still unused, so it can go to someone else.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "The inviter's name varies."
+        },
+        {
+          "text": "Close",
+          "role": "button",
+          "copy_status": "provisional"
+        },
+        {
+          "text": "This Mac is already in your space — open the link on the Mac you want to add.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "Own-space wording (an own-Mac link)."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Close",
+          "kind": "secondary",
+          "return_default": false,
+          "note": "Closes the window; the link stays unused. Not marked filled; Return not specified."
+        }
+      ],
+      "transitions": [],
+      "source_lines": "1542, 1588-1589, 79, 1472-1473, 1623, 1708"
+    },
+    {
+      "id": "join-switch-confirm",
+      "kind": "failure-state",
+      "parent": "",
+      "surface": "window",
+      "status": "provisional",
+      "summary": "The invite window asks before anything moves. There is one space per Mac, so joining moves this Mac out of its current space; the videos there stay. A space's only token-holder gets one extra line. A half-set-up space counts too: an invite that arrives mid-wizard gets one different line.",
+      "entry_conditions": "An invite arrives and this Mac is in a different space, including a half-set-up one (token saved, nothing wired yet). Invites wait while a take is open (Law 4).",
+      "decided_by": [
+        "N31",
+        "N30",
+        "N36",
+        "N41"
+      ],
+      "said_lines": [
+        {
+          "text": "Bagrat invited you to record with shroom.",
+          "role": "title",
+          "copy_status": "provisional",
+          "note": "The inviter's name varies."
+        },
+        {
+          "text": "This Mac records to v.mine.workers.dev now. Joining moves it to Bagrat's space — your videos in v.mine.workers.dev stay right where they are.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "The current space's address varies (example v.mine.workers.dev). The inviter's name varies."
+        },
+        {
+          "text": "You can come back to your own space anytime by setting it up again with a fresh token — everything will be there.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "One more line, shown only when this Mac is its space's only token-holder."
+        },
+        {
+          "text": "You've started setting up your own space. Joining Bagrat's instead sets that aside — your Cloudflare stays as it is.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "The one different line for a half-set-up space (the invite arrives mid-wizard)."
+        },
+        {
+          "text": "Join Bagrat's space",
+          "role": "button",
+          "copy_status": "provisional",
+          "note": "The inviter's name varies."
+        },
+        {
+          "text": "Stay",
+          "role": "button",
+          "copy_status": "provisional"
+        },
+        {
+          "text": "You can do this once your recording is finished.",
+          "role": "status",
+          "copy_status": "provisional",
+          "note": "Law 4 (N41): 'joining another space' never runs mid-take. If a take is open while this window is up, Join greys with this line."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Join Bagrat's space",
+          "kind": "filled-default",
+          "return_default": true,
+          "goes_to": "joining",
+          "note": "Filled, first (leftmost): a twin of the welcome (Law 8's local exception; check at ratification). Return per Law 8. Greyed mid-take with Law 4's line."
+        },
+        {
+          "label": "Stay",
+          "kind": "secondary",
+          "return_default": false,
+          "note": "The invite stays unused; the window closes."
+        },
+        {
+          "label": "✕",
+          "kind": "close",
+          "return_default": false,
+          "note": "≡ Stay."
+        }
+      ],
+      "transitions": [
+        {
+          "to": "joining",
+          "trigger": "Join Bagrat's space (diagram)"
+        },
+        {
+          "to": "join-switch-confirm · uploads draining",
+          "trigger": "uploads still draining"
+        },
+        {
+          "to": "join-switch-confirm · recovered take waiting",
+          "trigger": "a recovered take waits (N25)"
+        }
+      ],
+      "source_lines": "1543-1565, 1309-1310, 116-125, 79, 141-143, 1624-1625, 1708"
+    },
+    {
+      "id": "join-switch-confirm · uploads draining",
+      "kind": "face",
+      "parent": "join-switch-confirm",
+      "surface": "window",
+      "status": "provisional",
+      "summary": "Join is greyed while uploads drain. It enables itself when the queue empties.",
+      "entry_conditions": "join-switch-confirm while uploads from the current space are still draining.",
+      "decided_by": [
+        "N31"
+      ],
+      "said_lines": [
+        {
+          "text": "Two videos are still uploading — you can switch once they're done.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "The count varies (words for one to nine, Law 16)."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Join Bagrat's space",
+          "kind": "filled-default",
+          "return_default": false,
+          "goes_to": "joining",
+          "note": "Greyed until the queue empties."
+        },
+        {
+          "label": "Stay",
+          "kind": "secondary",
+          "return_default": false
+        }
+      ],
+      "transitions": [
+        {
+          "to": "join-switch-confirm",
+          "trigger": "the queue empties: Join enables itself"
+        }
+      ],
+      "source_lines": "1555-1556"
+    },
+    {
+      "id": "join-switch-confirm · recovered take waiting",
+      "kind": "face",
+      "parent": "join-switch-confirm",
+      "surface": "window",
+      "status": "provisional",
+      "summary": "A recovered take waiting (N25) blocks the switch the same way, so nothing from the old space is ever orphaned.",
+      "entry_conditions": "join-switch-confirm while a recovered take waits.",
+      "decided_by": [
+        "N31",
+        "N25"
+      ],
+      "said_lines": [
+        {
+          "text": "Get the link for your saved recording first, or discard it.",
+          "role": "line",
+          "copy_status": "provisional"
+        }
+      ],
+      "actions": [
+        {
+          "label": "Join Bagrat's space",
+          "kind": "filled-default",
+          "return_default": false,
+          "goes_to": "joining",
+          "note": "Greyed (“blocks the same way”)."
+        },
+        {
+          "label": "Stay",
+          "kind": "secondary",
+          "return_default": false
+        }
+      ],
+      "transitions": [
+        {
+          "to": "join-switch-confirm",
+          "trigger": "the saved take is resolved (Get link or discarded)"
+        }
+      ],
+      "source_lines": "1557-1559"
+    },
+    {
+      "id": "member-revoked",
+      "kind": "banner",
+      "parent": "config",
+      "surface": "banner",
+      "status": "provisional",
+      "summary": "A member-only banner on config under the amber dot: this member's access was turned off. Start recording is greyed. Recordings on this Mac are safe, and Save to Movies rescues waiting takes. The banner is derived and clears by itself when the cause clears.",
+      "entry_conditions": "A member Mac whose mint door refuses with the removed class (the owner removed this member). Diagram: idle_ready → member_revoked ('removed from the space').",
+      "decided_by": [
+        "N34",
+        "N38",
+        "N32"
+      ],
+      "said_lines": [
+        {
+          "text": "Your access to Bagrat's space was turned off. Recordings on this Mac are safe — ask Bagrat if that's a surprise.",
+          "role": "banner",
+          "copy_status": "provisional",
+          "note": "The inviter's name varies."
+        },
+        {
+          "text": "Save to Movies",
+          "role": "button",
+          "copy_status": "provisional",
+          "note": "Only while takes wait. Save to Movies puts the take's single-file copy in ~/Movies under its title, and Finder shows it. The take keeps waiting until it is discarded from the Library."
+        },
+        {
+          "text": "Save three to Movies",
+          "role": "button",
+          "copy_status": "provisional",
+          "note": "When several takes wait. The count varies."
+        },
+        {
+          "text": "Saved to Movies ✓",
+          "role": "status",
+          "copy_status": "provisional",
+          "note": "The button after saving, with a quiet Discard… beside it."
+        },
+        {
+          "text": "Discard…",
+          "role": "link",
+          "copy_status": "provisional",
+          "note": "Quiet, beside “Saved to Movies ✓”."
+        },
+        {
+          "text": "shroom recording — Aug 21",
+          "role": "other",
+          "copy_status": "provisional",
+          "note": "The saved file's name when the take has no title. The date varies."
+        },
+        {
+          "text": "Leave this space…",
+          "role": "link",
+          "copy_status": "provisional"
+        }
+      ],
+      "actions": [
+        {
+          "label": "Save to Movies",
+          "kind": "other",
+          "return_default": false,
+          "note": "Fill not marked. A banner's own button is never the Return default (Law 8)."
+        },
+        {
+          "label": "Discard…",
+          "kind": "red-text",
+          "return_default": false,
+          "note": "Appears after saving. A destructive entry point (Law 9). Its confirmation is not drawn here."
+        },
+        {
+          "label": "Leave this space…",
+          "kind": "text-link",
+          "return_default": false,
+          "note": "Destination not drawn here. Settings → Space's Leave this space… is a sheet under N23's law (N36)."
+        },
+        {
+          "label": "Start recording",
+          "kind": "filled-default",
+          "return_default": false,
+          "note": "Greyed: a new video would have nowhere to go."
+        }
+      ],
+      "transitions": [
+        {
+          "to": "config",
+          "trigger": "the cause clears and the banner clears by itself (e.g. re-invited: the new link re-joins the same space and waiting takes drain)"
+        }
+      ],
+      "source_lines": "1567-1578, 1582-1590, 82, 1631, 1709"
+    },
+    {
+      "id": "space-needs-owner",
+      "kind": "banner",
+      "parent": "config",
+      "surface": "banner",
+      "status": "provisional",
+      "summary": "A member-only banner under the amber dot: the space needs a fix on the owner's side. Start stays live. Videos wait on this Mac and upload later by themselves.",
+      "entry_conditions": "A member Mac whose mint door fails with a space-side class (the space's own key revoked, storage switched off, billing). Diagram: idle_ready → space_needs_owner.",
+      "decided_by": [
+        "N34",
+        "N38"
+      ],
+      "said_lines": [
+        {
+          "text": "Bagrat's space needs a fix on Bagrat's side. Your videos wait safely on this Mac and upload by themselves once it's done.",
+          "role": "banner",
+          "copy_status": "provisional",
+          "note": "The inviter's name varies."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Start recording",
+          "kind": "filled-default",
+          "return_default": true,
+          "note": "Live: videos drain later. Config's Return default (Law 8)."
+        }
+      ],
+      "transitions": [
+        {
+          "to": "config",
+          "trigger": "the space is fixed: the banner clears by itself and waiting videos upload"
+        }
+      ],
+      "source_lines": "1579, 1572-1575, 82, 1632, 1709"
+    },
+    {
+      "id": "space-gone",
+      "kind": "banner",
+      "parent": "config",
+      "surface": "banner",
+      "status": "provisional",
+      "summary": "A member-only banner under the amber dot: the space's address answers as no space at all. Start is greyed. Save to Movies rescues waiting takes, and Leave this space… is offered.",
+      "entry_conditions": "A member Mac whose space's address answers as no space at all. Diagram: idle_ready → space_gone.",
+      "decided_by": [
+        "N34",
+        "N38"
+      ],
+      "said_lines": [
+        {
+          "text": "Bagrat's space isn't there anymore. Recordings on this Mac are safe — save any you want to keep.",
+          "role": "banner",
+          "copy_status": "provisional",
+          "note": "The inviter's name varies."
+        },
+        {
+          "text": "Save to Movies",
+          "role": "button",
+          "copy_status": "provisional",
+          "note": "Only while takes wait. Save to Movies puts the take's single-file copy in ~/Movies under its title, and Finder shows it. The take keeps waiting until it is discarded from the Library."
+        },
+        {
+          "text": "Save three to Movies",
+          "role": "button",
+          "copy_status": "provisional",
+          "note": "When several takes wait. The count varies."
+        },
+        {
+          "text": "Saved to Movies ✓",
+          "role": "status",
+          "copy_status": "provisional",
+          "note": "After saving, with a quiet Discard… beside it."
+        },
+        {
+          "text": "Discard…",
+          "role": "link",
+          "copy_status": "provisional"
+        },
+        {
+          "text": "shroom recording — Aug 21",
+          "role": "other",
+          "copy_status": "provisional",
+          "note": "The saved file's name when the take has no title. The date varies."
+        },
+        {
+          "text": "Leave this space…",
+          "role": "link",
+          "copy_status": "provisional"
+        }
+      ],
+      "actions": [
+        {
+          "label": "Save to Movies",
+          "kind": "other",
+          "return_default": false,
+          "note": "Fill not marked. Never the Return default (Law 8)."
+        },
+        {
+          "label": "Discard…",
+          "kind": "red-text",
+          "return_default": false,
+          "note": "After saving. A destructive entry point (Law 9)."
+        },
+        {
+          "label": "Leave this space…",
+          "kind": "text-link",
+          "return_default": false,
+          "note": "Destination not drawn here (N36's Leave sheet)."
+        },
+        {
+          "label": "Start recording",
+          "kind": "filled-default",
+          "return_default": false,
+          "note": "Greyed."
+        }
+      ],
+      "transitions": [
+        {
+          "to": "config",
+          "trigger": "the space comes back: the banner clears by itself and waiting takes upload"
+        }
+      ],
+      "source_lines": "1580, 1582-1587, 82, 1633, 1709"
+    },
+    {
+      "id": "guided-agent overlay",
+      "kind": "overlay",
+      "parent": "",
+      "surface": "other",
+      "status": "ratified",
+      "summary": "Not a separate state. The guided persona's agent narrates the same machine (R7.7's one-implementation rule). It proposes the install command and runs it on approval. It points while the human pastes the admin token into the app (never into chat). It instructs and waits on Cloudflare and macOS dialogs, narrates the app's machine-readable status, and leaves the stage at recording. For a member, it runs the install command with the code built in, narrates the permissions chapter, and exits.",
+      "entry_conditions": "The guided persona's agent is driving onboarding (admin wizard or the member path).",
+      "decided_by": [
+        "N3"
+      ],
+      "said_lines": [
+        {
+          "text": "You're all set. From here it's just the mushroom in your menu bar — record, stop, share the link. You won't need me for that.",
+          "role": "other",
+          "copy_status": "draft",
+          "note": "The agent's exit line at recording (narration, not app UI)."
+        }
+      ],
+      "actions": [],
+      "transitions": [],
+      "source_lines": "1636-1653, 169-170"
+    }
+  ],
+  "scaffold_flags": [
+    {
+      "flag": "Instant member cut-off = rotating the parent token (an admin operation). Whether the UI offers it is a scaffold flag. An instant member cut-off control is listed as deliberately absent from v1 (parent-token rotation UI, N3).",
+      "source_lines": "1299-1302, 1731-1732, 1762"
+    },
+    {
+      "flag": "Per-recording credential minting at upload start. member-remove-confirm's “a video already on its way can still finish” is true only if creds mint per recording. Per-member creds would force the line to become “for up to a week”: the copy is bound to the mechanism.",
+      "source_lines": "1294-1298, 1372-1375, 80, 1740-1741"
+    },
+    {
+      "flag": "Own-Mac invites: one hour, one-time, owner-class, labelled silently by the joining Mac's sharing name. Every owner Mac records as member #1 with its own device key, which is what Remove revokes. A Mac that holds the Cloudflare token mints from that token and can't be stopped by a device key (no Remove…; Disconnect, or delete the token in Cloudflare).",
+      "source_lines": "1387-1404, 81, 1753"
+    },
+    {
+      "flag": "Deep link registration (shroom://join/…) at first launch. The browser's own “open shroom?” prompt is the only step it adds (N29). [ Open shroom ] on the join page is this deep link; the paste line is its fallback.",
+      "source_lines": "1442, 1751-1752"
+    },
+    {
+      "flag": "The member cookie: owner-mode keys on the member, not the space (N40). The Worker checks maker vs cookie, and owner-class sees all. A member's owner-mode on a page is the title only; the space-global mark switch belongs to owner-class Macs.",
+      "source_lines": "1569-1571, 88, 1742-1743"
+    },
+    {
+      "flag": "R10's index/layout work is v1-urgent. The index must be safe for many writers from day one: per-recording objects (rec/<id>/ + meta/<id>.json), no per-member prefix, no shared mutable index. Named consequence, not in the spec's flags list.",
+      "source_lines": "1295-1297, 1313-1315"
+    },
+    {
+      "flag": "The deterministic status seam (engineering requirement, not in the spec's flags list): the app exposes setup, permission and join state as machine-readable status, like the POC's --prep JSON. The guided agent narrates state and never infers from screenshots.",
+      "source_lines": "1647-1649"
+    }
+  ],
+  "open_notes": [
+    "Status split per the region heading and inventory (1282, 1704-1709). Ratified: the member model (N3/N4/N5, 2026-07-20) and the Members face copy (N28, 2026-08-21). Provisional: the You row's Add another Mac and the owner-Mac sub-rows (N33), and everything from join-landing through member life (N29–N34, designed 2026-09-30, awaiting ratification). The guided-agent overlay is structure-ratified (2026-07-20) with draft copy.",
+    "Check at ratification (Law 8, lines 141-143): member-welcome and join-switch-confirm put the filled action first, following the ratified welcome's order. This is a deliberate local exception to macOS's default-rightmost order. Law 8 also names the saved-take banners as leading with their one filled button; whether member-revoked/space-gone's Save to Movies is filled is not stated.",
+    "Return is unspecified in several places. On invite-born while a new link is on screen, Copy link is filled but the field-owned Return ≡ Invite (Law 8). Add another Mac's filled Copy link, join-already-here's lone Close, and the web page's Copy/Open shroom have no stated Return. Return on done · member's Allow recording and all-set · member's Record now comes only from Law 8's general rule. The spec names Return explicitly only for config/paused, the name field, and the no-default confirms.",
+    "join-expired in the app gives only the named wording for 'expired, cancelled, or unknown' (1539). The page has a separate wording without a name for an unknown code (1454). N31 says the join failures read the same in the app as on the page (79, 1532-1534), so the in-app wording for an unknown code is ambiguous. The in-app wording of join failures for own-Mac links is not given either; only the page's own-Mac expired face is (1460-1461).",
+    "join-switch-confirm for a half-set-up space gets 'one different line' (1561-1563); which line it replaces is not stated (presumably 'This Mac records to…'). join-landing-elsewhere says 'the hero stays' (1453); whether the sub-hero paragraph and the mark stay is not stated.",
+    "Undrawn exits: join-space-missing has no actions and no resume ('—'). Where join-already-here's Close and join-switch-confirm's Stay land is not drawn (the window closes; the Mac's idle state). The destination of Leave this space… in member-revoked/space-gone is not drawn (Settings → Space has a sheet of the same name, N36). Save to Movies' Discard… confirm is not drawn here (deleting is the Library's job, N35). The diagram has no edges out of join-expired/join-used (the table's resume is 'a new link' via the paste door) or out of the guided overlay.",
+    "Fixture conventions used here. Faces without a backticked name are named '<parent> · <the spec's face name>'. The diagram nodes member_done / member_all_set / permissions map to 'done · member' / 'all-set · member' / Region 3's chapter (perm-mic → perm-screen → relaunching → perm-priming). The page renders of join-expired/join-used are faces of the in-app states ('· page'), because the diagram has one node for each and N31 says they read the same. Copy variants that swap a single line are folded into their parent with a condition note: offline/unanswered, unknown code, own-Mac expired, You're in, own space, only token-holder, half-set-up, Law 4's mid-take greyed line, and Save three / Saved ✓. Markdown ** and backticks are stripped from said-lines, plan glyphs (→ • ✓) are kept as written, and the spec's apostrophes are straight (') throughout this region (verified: zero U+2019 in 1282-1663 and in the reused lines 590-605/715-725).",
+    "Cross-region edges drawn in Region 6's diagram whose source state lives elsewhere: idle-unprovisioned → member-welcome (tray click while the invite lives, 1497-1498, 1616); idle-unprovisioned tray click after the invite died → join-expired once, then the plain welcome on later clicks (1498-1499; an edge out of idle-unprovisioned, not out of join-expired); all-set's Invite someone → invite-born (N20, 68, 1605); the end of the permissions chapter → all-set · member (row two ticks, 1628); idle-ready → member-revoked / space-needs-owner / space-gone (1631-1633). The paste doors that land on member-welcome: the welcome's 'Have an invite link?' → field 'Paste your invite link' (a token → the wizard at token; anything else → 'That doesn't look like an invite link.', 334-341), and Settings → Space's 'Have an invite link? Paste it here.' (1200).",
+    "Lines restated in this region that belong to other regions: U10's final form (1597-1598) restates Region 2's space-found line “Found your space — v.myshroom.workers.dev, 14 videos. This Mac is joined.” (D, N42, line 588); U6 (1658-1659) restates the landing hero's point six “Your team just accepts an invite and records — no Cloudflare setup for them.” (ratified, N6, line 202).",
+    "Membership facts without a state of their own. When a member leaves, the owner sees their row simply go; their videos stay, with their label, in Everyone (1564-1565). Removed members' videos keep their label in the Library; removal and deletion are never bundled (1369-1371). If re-invited after removal, the new link re-joins the same space (not join-already-here) and waiting takes drain (1588-1589). A member never sees repair tooling (1590).",
+    "A member's second Mac is a second invite: a separate row and a separate library. Members have no Add another Mac in v1, which is named as a post-v1 candidate (1400-1401, 1733-1734). Owner-class Macs other than the token-holder can do everything except repair or re-wire the space (1405-1407).",
+    "Secrets and argv: Later stores the remembered invite under ~/.shroom, mode 600 (1496-1497). The join link rides argv/shell history once: one-time use, a 7-day TTL, and one hour for own-Mac links. The admin token never gets this exception (1465-1468, 1389-1392, Law 13).",
+    "Quiet-take law: invites and deep links wait while a take is open (Law 4, 116-120). A mid-take install goes to install-refused-midtake with the link still unused (1474). Joining another space is among the acts that never run mid-take; their buttons grey with “You can do this once your recording is finished.” (120-123).",
+    "N29's three leg-19 flags were resolved as recommended: the link is the code (one artifact, three doors; bare and https:// forms accepted everywhere a link is pasted, 1413-1420); the Terminal hand-hold stays (flag 2, 1444); the inviter's name uses the short form. The name comes from the Mac account in macOS's short, locale-aware form, used silently, with no field anywhere; a wrong name is a post-v1 fix (1351-1353).",
+    "Join page facts: it is served by the space's own Worker with no shroom.am dependency. Its title is the hero line (for the unfurl) and it is noindex (1424-1426). It shows no prices, no Cloudflare and no card (1443). The members surface's N5 line is said once, with nothing about prices (1348-1350).",
+    "No Fat-marker status notes appear in this region."
+  ],
+  "amendments": [
+    {
+      "ledger_id": "N29",
+      "amends": "N28",
+      "summary": "The inviter's name on the join page uses macOS's short, locale-aware form of the account name ('Bagrat' for 'Bagrat Aznauryan'). This amends N28's 'full name', which its own copy never showed."
+    },
+    {
+      "ledger_id": "N30",
+      "amends": "N12 (Region 1's ratified welcome)",
+      "summary": "Adds one quiet line under the welcome's buttons, “Have an invite link?”, which opens the classified paste door (a join link → member-welcome; a token → the wizard at token)."
+    },
+    {
+      "ledger_id": "N31",
+      "amends": "N18",
+      "summary": "Replaces the merged expired/used row with first-class join states: join-waiting, join-expired, join-used, join-space-missing, join-already-here, join-switch-confirm."
+    },
+    {
+      "ledger_id": "N33",
+      "amends": "U10",
+      "summary": "The second Mac joins through Add another Mac on the You row (owner-class, one hour, one-time), not as a plain member, which would silently regress P12."
+    },
+    {
+      "ledger_id": "N33",
+      "amends": "N28",
+      "summary": "The You row gains the quiet Add another Mac, and the owner's other Macs appear as sub-rows (“You · MacBook Air — joined Sep 2 · Remove…”). A Mac that holds the token shows “keeps your Cloudflare token” and has no Remove…."
+    },
+    {
+      "ledger_id": "N33",
+      "amends": "N3",
+      "summary": "Deliberately extends N3's argv/shell-history exception to own-Mac links: they carry owner powers, but last one hour and work once."
+    },
+    {
+      "ledger_id": "N36",
+      "amends": "N28",
+      "summary": "Settles N28's open placement: Members is the Settings window's third tab, owner-class only; ✕ ≡ Close."
+    },
+    {
+      "ledger_id": "N40",
+      "amends": "U2",
+      "summary": "The owner cookie names a member and owner-mode follows role. A member's page gives the title only; the space-global mark switch belongs to owner-class Macs (member life, 1569-1571)."
+    },
+    {
+      "ledger_id": "N41",
+      "amends": "Region 1's “every launch is silent” (and refines N9)",
+      "summary": "An install command carrying --join opens the invite even in the otherwise silent updating lane. In the member lane, an already-installed Mac relaunches into member-welcome / join-already-here / join-switch-confirm."
+    },
+    {
+      "ledger_id": "N6",
+      "amends": "U6",
+      "summary": "U6's “Record together” section dissolved into the landing hero's sixth point; the claim stands, promoted (ratified 2026-07-25)."
+    }
+  ]
+}

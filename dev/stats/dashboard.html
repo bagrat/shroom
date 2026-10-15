@@ -1,0 +1,282 @@
+<title>shroom Install Funnel</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+  /* Layout: one narrow column, read top-down — the week's funnel, then where people came
+     from, then the releases, then the weeks before. shroom's own Frost palette, dark first. */
+  :root {
+    --bg: #2b2f36; --card: #333944; --line: #434a56; --well: #1f2228;
+    --text: #eceff4; --muted: #c3cad6; --quiet: #aeb6c4; --frost: #88c0d0; --warn: #ebcb8b;
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", sans-serif;
+    color-scheme: dark;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #f6f7f9; --card: #ffffff; --line: #dfe3ea; --well: #eef1f5;
+      --text: #2e3440; --muted: #4c566a; --quiet: #5c6779; --frost: #4c6f9a; --warn: #9a6b12;
+      color-scheme: light;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #f6f7f9; --card: #ffffff; --line: #dfe3ea; --well: #eef1f5;
+    --text: #2e3440; --muted: #4c566a; --quiet: #5c6779; --frost: #4c6f9a; --warn: #9a6b12;
+    color-scheme: light;
+  }
+  body { background: var(--bg); color: var(--text); font: 15px/1.5 var(--sans); }
+  main { max-width: 760px; margin: 0 auto; padding-block: 28px 48px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+    display: grid; gap: 28px; }
+  header { display: grid; gap: 4px; }
+  h1 { font-size: 22px; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+  h2 { font-size: 12px; margin: 0; text-transform: uppercase; letter-spacing: 0.08em; color: var(--quiet); font-weight: 600; }
+  .sub { color: var(--muted); margin: 0; }
+  .num, td.n, th.n { font-variant-numeric: tabular-nums; }
+  section { display: grid; gap: 12px; min-width: 0; }
+  .funnel { display: grid; gap: 8px; }
+  .step { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: baseline;
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .step .label { font-weight: 600; }
+  .step .why { grid-column: 1 / -1; color: var(--quiet); font-size: 13px; }
+  .step .num { font: 600 22px/1 var(--mono); color: var(--frost); }
+  .bar { grid-column: 1 / -1; height: 4px; background: var(--well); border-radius: 2px; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--frost); }
+  .pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+  .scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  th { color: var(--quiet); font-weight: 600; font-size: 12px; }
+  td.n, th.n { text-align: right; font-family: var(--mono); }
+  .note { color: var(--warn); font-size: 13px; margin: 0; }
+  .empty { background: var(--card); border: 1px dashed var(--line); border-radius: 10px; padding: 20px; color: var(--muted); }
+  .empty strong { color: var(--text); }
+  footer { color: var(--quiet); font-size: 13px; }
+  select { font: inherit; color: var(--text); background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; }
+  .story { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; display: grid; gap: 8px; }
+  .story p { margin: 0; max-width: 65ch; }
+  .story .when { color: var(--quiet); font-size: 13px; }
+  .notable { display: flex; flex-wrap: wrap; gap: 6px; }
+  .notable span { font-size: 12px; border: 1px solid var(--warn); color: var(--warn); border-radius: 999px; padding: 2px 10px; }
+  .modes { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .modes button { font: inherit; font-size: 14px; color: var(--text); background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 4px 14px; cursor: pointer; }
+  .modes button[aria-pressed="true"] { background: var(--frost); color: var(--bg); border-color: var(--frost); }
+  .modes button:focus-visible { outline: 2px solid var(--frost); outline-offset: 2px; }
+  .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  select:focus-visible { outline: 2px solid var(--frost); outline-offset: 2px; }
+</style>
+
+<main>
+  <header>
+    <h1>shroom install funnel</h1>
+    <p class="sub" id="span">Counts from shroom.am, Cloudflare and GitHub, a day or a week at a time.</p>
+    <div class="modes">
+      <button type="button" id="modeDays" aria-pressed="true">Daily</button>
+      <button type="button" id="modeWeeks" aria-pressed="false">Weekly</button>
+      <label for="week" hidden id="weekLabel"><span class="vh">Which one</span> <select id="week"></select></label>
+    </div>
+  </header>
+
+  <section class="story" id="story" hidden>
+    <h2>What the numbers say</h2>
+    <p id="storyText"></p>
+    <div class="notable" id="notable"></div>
+    <p class="when" id="storyWhen"></p>
+  </section>
+
+  <div id="empty" class="empty">
+    <strong>Nothing here yet.</strong> Each morning a scheduled task collects the day before,
+    and on Mondays the week before, and adds them here with a short reading of the numbers:
+    landing visits, agents reading /agent, installer runs, release downloads, and where
+    visitors came from.
+  </div>
+
+  <div id="report" hidden>
+    <section>
+      <h2>The funnel</h2>
+      <p class="note" id="siteMissing" hidden></p>
+      <div class="funnel" id="funnel"></div>
+    </section>
+
+    <section>
+      <h2>Cloudflare's count of the landing</h2>
+      <p class="sub">From Cloudflare Web Analytics, which counts browsers that load the page (agents and curl never run it).</p>
+      <p class="note" id="cfMissing" hidden></p>
+      <div class="pair">
+        <div class="step"><span class="label">Visits</span><span class="num" id="cfVisits">–</span></div>
+        <div class="step"><span class="label">Page views</span><span class="num" id="cfViews">–</span></div>
+      </div>
+      <div class="pair">
+        <div class="scroll"><table id="cfRefs"></table></div>
+        <div class="scroll"><table id="cfCountries"></table></div>
+        <div class="scroll"><table id="cfDevices"></table></div>
+        <div class="scroll"><table id="cfPaths"></table></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Came via</h2>
+      <p class="sub">Links tagged <code>?ref=</code> (or <code>utm_source</code>): what each one brought.</p>
+      <div class="scroll"><table id="via"></table></div>
+    </section>
+
+    <div class="pair">
+      <section><h2>Linked from</h2><div class="scroll"><table id="refs"></table></div></section>
+      <section><h2>Countries</h2><div class="scroll"><table id="countries"></table></div></section>
+    </div>
+
+    <section>
+      <h2>Release downloads</h2>
+      <p class="sub">manifest.txt: installer runs (and apps older than 0.1.11). update.txt: the app's own checks, a few a day per running copy. The zip: installs plus updates.</p>
+      <div class="scroll"><table id="releases"></table></div>
+    </section>
+
+    <section>
+      <h2>The repository on GitHub</h2>
+      <p class="note" id="trafficMissing" hidden></p>
+      <div class="scroll"><table id="traffic"></table></div>
+    </section>
+
+    <section>
+      <h2 id="historyTitle">Day by day</h2>
+      <div class="scroll"><table id="history"></table></div>
+    </section>
+  </div>
+
+  <footer>Aggregate counts only: no IPs, no User-Agents, no cookies, nothing that ties two visits together. Sources: shroom.am's own counter, Cloudflare Web Analytics, and GitHub. Code: dev/stats in the shroom repository.</footer>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const fmt = (n) => (n ?? 0).toLocaleString("en-US");
+let mode = "days";
+let chosen = false; // the viewer picked daily or weekly
+const lists = { days: [], weeks: [] };
+let weeks = lists.days; // the list on show
+
+const STEPS = [
+  ["landingVisits", "Landing visits", "People opening shroom.am in a browser"],
+  ["agentPageAgents", "Agents reading /agent", "Coding agents fetching the install page"],
+  ["agentPageBrowsers", "People reading /agent", "Browsers opening the agent page to see what it says"],
+  ["installReads", "Installer read in a browser", "Someone checking the script before running it"],
+  ["installRuns", "Installer fetched by curl", "About to run: the strongest install signal shroom.am sees"],
+];
+
+function rows(table, head, body) {
+  table.replaceChildren();
+  const tr = table.insertRow();
+  head.forEach(([t, n]) => { const th = document.createElement("th"); th.textContent = t; if (n) th.className = "n"; tr.append(th); });
+  body.forEach((r) => {
+    const row = table.insertRow();
+    r.forEach((v, i) => { const td = row.insertCell(); td.textContent = typeof v === "number" ? fmt(v) : v; if (head[i][1]) td.className = "n"; });
+  });
+  if (!body.length) { const td = table.insertRow().insertCell(); td.colSpan = head.length; td.textContent = "None in this span."; }
+}
+
+/** Release downloads in a week: this week's running totals minus the week before's. */
+function releaseDeltas(i) {
+  const now = weeks[i].releases ?? [], before = new Map((weeks[i + 1]?.releases ?? []).map((r) => [r.tag, r.downloads]));
+  const out = [];
+  for (const r of now) {
+    const prev = before.get(r.tag) ?? {};
+    for (const [name, n] of Object.entries(r.downloads ?? {})) {
+      const d = weeks[i + 1] ? n - (prev[name] ?? 0) : n;
+      if (d > 0 || !weeks[i + 1]) out.push([r.tag, name, d, n]);
+    }
+  }
+  return out;
+}
+
+function render(i) {
+  const w = weeks[i];
+  $("empty").hidden = true; $("report").hidden = false;
+  $("span").textContent = `${w.from} to ${w.to} (UTC), collected ${String(w.collected ?? "").slice(0, 10)}.`;
+
+  const f = w.site?.funnel;
+  $("siteMissing").hidden = !w.site?.missing;
+  $("siteMissing").textContent = w.site?.missing ?? "";
+  const top = Math.max(1, ...STEPS.map(([k]) => f?.[k] ?? 0));
+  $("funnel").replaceChildren(...STEPS.map(([k, label, why]) => {
+    const el = document.createElement("div"); el.className = "step";
+    const n = f?.[k] ?? 0;
+    el.innerHTML = `<span class="label"></span><span class="num"></span><span class="why"></span><span class="bar"><i></i></span>`;
+    el.children[0].textContent = label; el.children[1].textContent = f ? fmt(n) : "–"; el.children[2].textContent = why;
+    el.querySelector("i").style.width = `${(n / top) * 100}%`;
+    return el;
+  }));
+
+  const cf = w.cloudflare ?? { missing: "Not collected this week." };
+  $("cfMissing").hidden = !cf.missing;
+  $("cfMissing").textContent = cf.missing ?? "";
+  $("cfVisits").textContent = cf.missing ? "–" : fmt(cf.visits);
+  $("cfViews").textContent = cf.missing ? "–" : fmt(cf.pageviews);
+  rows($("cfRefs"), [["Linked from"], ["Visits", 1]], (cf.referrers ?? []).map((r) => [r.k, r.n]));
+  rows($("cfCountries"), [["Country"], ["Visits", 1]], (cf.countries ?? []).map((r) => [r.k, r.n]));
+  rows($("cfDevices"), [["Device"], ["Visits", 1]], (cf.devices ?? []).map((r) => [r.k, r.n]));
+  rows($("cfPaths"), [["Page"], ["Views", 1]], (cf.paths ?? []).map((r) => [r.k, r.n]));
+
+  rows($("via"), [["Tag"], ["Visits", 1], ["Agents", 1], ["Installer runs", 1], ["All requests", 1]],
+    (w.site?.cameVia ?? []).map((r) => [r.k, r.visits, r.agents, r.installRuns, r.all]));
+  rows($("refs"), [["Site"], ["Visits", 1]], (w.site?.referrers ?? []).map((r) => [r.k, r.n]));
+  rows($("countries"), [["Country"], ["Requests", 1]], (w.site?.countries ?? []).map((r) => [r.k, r.n]));
+  rows($("releases"), [["Release"], ["File"], [mode === "days" ? "That day" : "That week", 1], ["All time", 1]], releaseDeltas(i));
+
+  const t = w.traffic ?? {};
+  $("trafficMissing").hidden = !t.missing;
+  $("trafficMissing").textContent = t.missing ? "GitHub's traffic wasn't readable for this span." : "";
+  const inWeek = (list) => (list ?? []).filter((d) => d.timestamp >= w.from && d.timestamp < w.to);
+  const sum = (list, k) => inWeek(list).reduce((s, d) => s + (d[k] ?? 0), 0);
+  rows($("traffic"), [["What"], ["Count", 1], ["Unique", 1]], [
+    ["Repository views", sum(t.views, "count"), sum(t.views, "uniques")],
+    ["Clones", sum(t.clones, "count"), sum(t.clones, "uniques")],
+    ...(t.referrers ?? []).map((r) => [`From ${r.referrer} (14 days)`, r.count, r.uniques]),
+  ]);
+
+  $("historyTitle").textContent = mode === "days" ? "Day by day" : "Week by week";
+  rows($("history"), [[mode === "days" ? "Day" : "Week"], ["Visits", 1], ["Cloudflare visits", 1], ["Agents", 1], ["curl", 1], ["Zip downloads", 1]],
+    weeks.map((x, j) => [x.from, x.site?.funnel?.landingVisits ?? 0, x.cloudflare?.visits ?? 0, x.site?.funnel?.agentPageAgents ?? 0, x.site?.funnel?.installRuns ?? 0,
+      releaseDeltas(j).filter((r) => r[1].endsWith(".zip")).reduce((s, r) => s + r[2], 0)]));
+}
+
+/** The reading at the top: the newest one written, daily or weekly. */
+function story() {
+  const latest = [...lists.days, ...lists.weeks].filter((d) => d.narrative).sort((a, b) => String(b.collected).localeCompare(String(a.collected)))[0];
+  $("story").hidden = !latest;
+  if (!latest) return;
+  $("storyText").textContent = latest.narrative;
+  $("notable").replaceChildren(...(latest.notable ?? []).map((n) => { const s = document.createElement("span"); s.textContent = n; return s; }));
+  const span = latest.days === 1 ? latest.from : `${latest.from} to ${latest.to}`;
+  $("storyWhen").textContent = `On ${span} (UTC), written ${String(latest.collected ?? "").slice(0, 10)}. The counts below are the collector's; the reading is Claude's.`;
+}
+
+function show() {
+  story();
+  weeks = lists[mode];
+  $("modeDays").setAttribute("aria-pressed", String(mode === "days"));
+  $("modeWeeks").setAttribute("aria-pressed", String(mode === "weeks"));
+  if (!weeks.length) { $("empty").hidden = false; $("report").hidden = true; $("weekLabel").hidden = true; return; }
+  const sel = $("week"), keep = sel.dataset.mode === mode ? sel.value : "";
+  sel.dataset.mode = mode;
+  sel.replaceChildren(...weeks.map((w, i) => new Option(w.days === 1 ? w.from : `${w.from} to ${w.to}`, String(i))));
+  if (keep && +keep < weeks.length) sel.value = keep;
+  $("weekLabel").hidden = weeks.length < 2;
+  render(+sel.value || 0);
+}
+$("week").addEventListener("change", (e) => render(+e.target.value));
+$("modeDays").addEventListener("click", () => { mode = "days"; chosen = true; show(); });
+$("modeWeeks").addEventListener("click", () => { mode = "weeks"; chosen = true; show(); });
+
+(async () => {
+  const db = await window.claude?.use?.("db");
+  if (!db) { $("empty").innerHTML = "<strong>This page can't read its numbers here.</strong> Open it on claude.ai, signed in."; return; }
+  const loaded = { days: false, weeks: false };
+  const failed = () => { $("empty").innerHTML = "<strong>The numbers couldn't load.</strong> Reload the page to try again."; };
+  for (const [name, n] of [["days", 60], ["weeks", 104]]) {
+    db.collection(name).orderBy("from", "desc").limit(n).onSnapshot((snap) => {
+      lists[name] = snap.docs.map((d) => d.data());
+      loaded[name] = true;
+      // Until the first day lands, the weeks are what there is.
+      if (loaded.days && !lists.days.length && lists.weeks.length && !chosen) mode = "weeks";
+      show();
+    }, failed);
+  }
+})();
+</script>

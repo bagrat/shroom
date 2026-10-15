@@ -1,0 +1,49 @@
+# A published release's notes, rewritten from docs/release-notes/<version>.md (DECISIONS
+# B152): **Actions → Release notes → Run workflow** on `main` with the version. It writes
+# the same body the release workflow writes at publish — "What's new" from the file, then
+# GitHub's list of what was merged folded under "Under the hood" — and changes nothing else:
+# the files, the tag and the fingerprint stay as published. For notes written after a
+# release went out (0.1.12's), or a line corrected later; the words go in by a PR first.
+name: Release notes
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: The released version whose notes to rewrite (e.g. 0.1.12)
+        required: true
+
+permissions: {}
+
+concurrency:
+  group: release
+
+jobs:
+  notes:
+    name: Rewrite the release's notes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            docs/release-notes
+            tools/release-notes.mjs
+          sparse-checkout-cone-mode: false
+
+      - name: Rewrite them
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          [ "$GITHUB_REF" = refs/heads/main ] || { echo "::error::Release notes are rewritten from main — run it on main."; exit 1; }
+          printf '%s' "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' || { echo "::error::'$VERSION' isn't a version"; exit 1; }
+          tag="v$VERSION"
+          gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json tagName >/dev/null || { echo "::error::$tag isn't released"; exit 1; }
+          gh api "repos/$GITHUB_REPOSITORY/releases/generate-notes" -f tag_name="$tag" --jq .body >"$RUNNER_TEMP/generated.md"
+          node tools/release-notes.mjs body "$VERSION" "$RUNNER_TEMP/generated.md" >"$RUNNER_TEMP/notes.md"
+          gh release edit "$tag" --repo "$GITHUB_REPOSITORY" --notes-file "$RUNNER_TEMP/notes.md"
+          { echo "### $tag's notes, rewritten"; echo; cat "$RUNNER_TEMP/notes.md"; } >>"$GITHUB_STEP_SUMMARY"

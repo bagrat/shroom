@@ -1,0 +1,108 @@
+/* A sheet over a window (Library's Delete, Settings' Disconnect, Leave and Remove): the
+   window dimmed, and one card over it — its title, its lines, its buttons right-aligned.
+   Law 9: the destructive answer red-outlined and rightmost (the Scene's order), never
+   filled; no default ring. */
+
+html,
+body {
+  height: 100%;
+}
+
+.scrim {
+  position: fixed;
+  inset: 0;
+  background: var(--scrim);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 56px 16px 16px;
+  box-sizing: border-box;
+  z-index: 10;
+  animation: scrim-in 0.16s ease-out;
+}
+
+.sheet {
+  box-sizing: border-box;
+  width: min(440px, 100%);
+  background: var(--card);
+  color: var(--fg);
+  border-radius: 12px;
+  border: 1px solid var(--pop-edge);
+  box-shadow: var(--shadow);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  outline: none;
+  animation: sheet-in 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.sheet h2 {
+  margin: 0 0 -2px;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.sheet p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--fg-2);
+}
+
+.sheet .blocked,
+.sheet .note {
+  color: var(--muted);
+}
+
+.sheet .note {
+  font-size: 12px;
+}
+
+/* One row, Cancel … the answer rightmost; the buttons never wrap apart (a long secondary
+   answer like "Save them to Movies first" shrinks nothing, the sheet is wide enough). */
+.sheet-acts {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.sheet .sheet-acts .b {
+  white-space: nowrap;
+  min-width: 82px;
+  min-height: 0;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.sheet .sheet-acts .b.plain {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--fg);
+}
+
+@keyframes scrim-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes sheet-in {
+  from {
+    transform: translateY(-8px);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scrim,
+  .sheet {
+    animation: none;
+  }
+}

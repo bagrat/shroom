@@ -1,0 +1,18 @@
+shroom includes FFmpeg
+
+shroom records with FFmpeg 8.1.2 (https://ffmpeg.org), which it carries as a separate
+program inside the app (Contents/MacOS/ffmpeg) and runs on its own. FFmpeg is free
+software, licensed under the GNU Lesser General Public License, version 2.1 or later; the
+licence's text is beside this notice (COPYING.LGPLv2.1). FFmpeg is a trademark of Fabrice
+Bellard, originator of the FFmpeg project.
+
+This copy was built, unmodified, from the official source release:
+
+  https://ffmpeg.org/releases/ffmpeg-8.1.2.tar.xz
+  SHA-256 464beb5e7bf0c311e68b45ae2f04e9cc2af88851abb4082231742a74d97b524c
+
+with only its LGPL parts (no --enable-gpl, no --enable-nonfree, no external libraries),
+by tools/build-ffmpeg.sh in shroom's source repository, which holds the exact configure
+line. `ffmpeg -buildconf` prints it too. To use your own build instead, rebuild shroom
+with it, or replace Contents/MacOS/ffmpeg with an FFmpeg that has the same encoders,
+muxers and filters (and sign the app again).

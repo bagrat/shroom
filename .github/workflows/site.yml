@@ -1,0 +1,111 @@
+# shroom.am: every push to `main` that touches what it serves deploys it — the landing, the
+# install line and the page for coding agents (site/worker.js; dev/proposals/shroom-am-worker.md).
+#
+#   test     the site's tests, on the tree being deployed. No secret.
+#   deploy   site/build.mjs, then `wrangler deploy` in the `site` environment, which holds
+#            the two secrets this file reads: CLOUDFLARE_API_TOKEN (Account · Workers
+#            Scripts: Edit, and Zone shroom.am · Workers Routes: Edit) and
+#            CLOUDFLARE_ACCOUNT_ID. Until both exist, the job says so and deploys nothing.
+#
+# Releases are not deployed here — they go out on a tag (release.yml).
+#
+# Every action is pinned to a full commit SHA, as in ci.yml; wrangler is pinned to a version.
+name: Site
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'site/**'
+      - 'installer/install.sh'
+      - 'docs/release-notes/**'
+      - 'spec/machine.json'
+      - '.github/workflows/site.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One deploy at a time, and the newest push wins.
+concurrency:
+  group: site
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: 22
+  WRANGLER_VERSION: 4.145.0
+
+jobs:
+  test:
+    name: The site's tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          package-manager-cache: false
+      - name: The landing, the agent page, the Worker
+        run: node --test site/test/landing.test.mjs site/test/agent.test.mjs site/test/worker.test.mjs
+
+  deploy:
+    name: Deploy shroom.am
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: site
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          package-manager-cache: false
+      - name: Is there anything to deploy with?
+        id: secrets
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -n "$CLOUDFLARE_API_TOKEN" ] && [ -n "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "ready=yes" >>"$GITHUB_OUTPUT"
+          else
+            echo "ready=no" >>"$GITHUB_OUTPUT"
+            echo "::warning title=shroom.am not deployed::The site environment doesn't hold CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID yet — nothing was deployed."
+          fi
+      - name: Build
+        if: steps.secrets.outputs.ready == 'yes'
+        run: node site/build.mjs
+      - name: Deploy
+        if: steps.secrets.outputs.ready == 'yes'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          WRANGLER_SEND_METRICS: 'false'
+        run: npx --yes "wrangler@$WRANGLER_VERSION" deploy -c site/wrangler.jsonc
+      - name: shroom.am answers
+        if: steps.secrets.outputs.ready == 'yes'
+        # A new version takes a few seconds to reach every edge: asked again for a minute.
+        # The zone's Web Analytics adds its one beacon <script> line to HTML at the edge
+        # (kept on purpose), so the landing is compared with that line taken out.
+        run: |
+          landing() {
+            curl -fsS -H 'accept: text/html' https://shroom.am/ |
+              grep -v '^<script [^>]*src="https://static\.cloudflareinsights\.com/beacon\.min\.js/[^"]*"[^>]*></script>$'
+          }
+          serves() {
+            curl -fsS https://shroom.am/install | cmp -s - installer/install.sh &&
+            curl -fsS -H 'accept: text/markdown' https://shroom.am/agent | cmp -s - site/agent.md &&
+            landing | cmp -s - site/index.html
+          }
+          for try in 1 2 3 4 5 6; do
+            if serves; then echo "shroom.am serves this commit's landing, install line and agent page."; exit 0; fi
+            sleep 10
+          done
+          echo "::error title=shroom.am doesn't serve this commit::After a minute, shroom.am's landing, /install or /agent still differs from this commit."
+          exit 1

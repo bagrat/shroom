@@ -1,0 +1,206 @@
+# The pre-merge e2e run (TESTING-PLAN D3): a branch's app, start to end, on the dedicated
+# Cloudflare test account, on a GitHub-hosted Mac with its screen recorded.
+#
+#   1. install — the branch's dev build, packaged as a release is, put in place by the real
+#      one-line installer (dev/e2e/install.sh);
+#   2. the run opens — the account pinned, the run's own space id made (its page v-<run>,
+#      its bucket shroom-space-<run>), a crashed run's leftovers reaped, the run's own token
+#      minted with the product's two powers (tests/e2e-live's e2e-run);
+#   3. setup — the installed app's own wizard: the token pasted as a person pastes it, the
+#      gates found clear, the account's name found, the run's space wired for real (the
+#      product's path, the run's names), the permissions chapter to all-set;
+#   4. the heartbeat in that space — one take, the page played in WebKit and Chromium,
+#      every frame and the sound held to the recipe, the owner's title, a member invited,
+#      joining, recording and removed, delete (dev/mac/scenarios/e2e-full.sh); then the
+#      show pass — the take a person makes, paced for the recording, the bubble on OBS's
+#      pattern camera — and its link playing in a visible browser;
+#   5. the run closes — the run's own space and token deleted — pass or fail.
+#
+# Its verdict is the job's colour, and a commit status on the branch's head ("e2e (test
+# account)"), so a PR shows it. Start it on the PR's branch with "Run workflow" before
+# merging; a session asks through a commit to dev/e2e/request on its own branch.
+#
+# It reads the cf-e2e environment's secrets (whatever reviewer rule Bagrat sets on it). Runs
+# go side by side — this one's, e2e.yml's, a Mac's heartbeat — each in its own space on
+# the one test account, touching nothing of another's (DECISIONS B131): no queue, no lock.
+# The token goes to
+# files only this job reads, never an argv or the log; the run's token reaches the app by a
+# mode-600 file it removes once read. The evidence — the table, a video of the screen, the
+# drives' reports — is kept three days and can be read by anyone signed in to GitHub: it
+# shows only the runner's screen and the test account's throwaway space.
+#
+# Every action is pinned to a full commit SHA, as in ci.yml.
+name: E2E full (install → setup → record → play)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ['claude/**']
+    paths: ['dev/e2e/request']
+
+permissions:
+  contents: read
+  statuses: write
+
+env:
+  NODE_VERSION: 22
+  CARGO_INCREMENTAL: 0
+  CARGO_TERM_COLOR: always
+  HOMEBREW_NO_AUTO_UPDATE: 1
+  HOMEBREW_NO_INSTALL_CLEANUP: 1
+  HOMEBREW_NO_ENV_HINTS: 1
+  STATUS_CONTEXT: e2e (test account)
+
+jobs:
+  e2e:
+    name: Install → setup → record → play, live
+    runs-on: macos-26
+    timeout-minutes: 90
+    environment: cf-e2e
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: The branch's head says the run has started
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" -f state=pending -f context="$STATUS_CONTEXT" \
+            -f description="Running on a hosted Mac" -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" >/dev/null
+
+      - name: A quieter Mac
+        run: sudo mdutil -a -i off || true
+
+      - name: Rust toolchain (the workspace's rust-version), and the Xcode in use
+        id: toolchain
+        run: |
+          version=$(sed -n 's/^rust-version = "\(.*\)"$/\1/p' Cargo.toml)
+          rustup toolchain install "$version" --profile minimal --no-self-update
+          rustup default "$version"
+          echo "xcode=$(xcodebuild -version | awk 'NR==1{v=$2} NR==2{b=$3} END{print v "-" b}')" >>"$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          package-manager-cache: false
+
+      - name: Restore npm's download cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.npm
+          key: npm-macos-26-node${{ env.NODE_VERSION }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            npm-macos-26-node${{ env.NODE_VERSION }}-
+
+      # The heartbeat plays the page in WebKit and Chromium: their browsers come with it.
+      - name: Install the node packages, and the two browsers
+        run: |
+          npm ci
+          npx playwright install webkit chromium
+
+      # mac.yml's dev-build cache, read only.
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          shared-key: mac-macos-26-xcode${{ steps.toolchain.outputs.xcode }}
+          save-if: false
+
+      - name: A throwaway identity of the dev build's name
+        run: |
+          .github/scripts/signing-keychain.sh scratch "$RUNNER_TEMP/scratch.keychain-db"
+          tools/make-release-identity.sh "shroom-dev" --keychain "$RUNNER_TEMP/scratch.keychain-db" --out "$RUNNER_TEMP/dev-identity" --days 365 >/dev/null
+          .github/scripts/signing-keychain.sh drop "$RUNNER_TEMP/scratch.keychain-db"
+          SIGNING_P12_BASE64=$(cat "$RUNNER_TEMP/dev-identity/shroom-dev.p12.base64")
+          SIGNING_P12_PASSWORD=$(cat "$RUNNER_TEMP/dev-identity/shroom-dev.password")
+          export SIGNING_P12_BASE64 SIGNING_P12_PASSWORD
+          .github/scripts/signing-keychain.sh import
+
+      # Everything is built before any secret is written: no build script runs beside one.
+      - name: The dev build, with the harness, and the run's two ends
+        run: |
+          npm run build:dev --workspace app
+          cargo build --locked -p shroom-e2e-live --bin e2e-run
+
+      - name: The encoder and the recorder, the pointer
+        run: brew install ffmpeg cliclick
+
+      - name: Install, through the one-line installer
+        run: dev/e2e/install.sh target/debug/bundle/macos/shroom-dev.app "$RUNNER_TEMP/e2e-releases"
+
+      # `printf` is bash's own: neither value is ever a process argument.
+      - name: The test account, to files only this job reads
+        env:
+          SHROOM_E2E_TOKEN: ${{ secrets.SHROOM_E2E_TOKEN }}
+          SHROOM_E2E_ACCOUNT_ID: ${{ secrets.SHROOM_E2E_ACCOUNT_ID }}
+        run: |
+          [ -n "$SHROOM_E2E_TOKEN" ] && [ -n "$SHROOM_E2E_ACCOUNT_ID" ] || { echo "::error title=No secrets::cf-e2e needs SHROOM_E2E_TOKEN and SHROOM_E2E_ACCOUNT_ID"; exit 1; }
+          umask 077
+          mkdir -p "$RUNNER_TEMP/e2e" "$HOME/.shroom-dev"
+          printf '%s' "$SHROOM_E2E_TOKEN" >"$RUNNER_TEMP/e2e/account-token"
+          printf '%s\n' "$SHROOM_E2E_ACCOUNT_ID" >"$HOME/.shroom-dev/e2e-account-id"
+
+      # The harness reads the id from this (#26: its file is now the repo's .secrets/); the
+      # app and full.mjs read the copy in ~/.shroom-dev. The run's space id goes beside it,
+      # where the app's --e2e reads it.
+      - name: The run opens (pinned, its own space and token)
+        env:
+          SHROOM_E2E: '1'
+          SHROOM_E2E_ACCOUNT_ID: ${{ secrets.SHROOM_E2E_ACCOUNT_ID }}
+        run: SHROOM_E2E_TOKEN_FILE="$RUNNER_TEMP/e2e/account-token" target/debug/e2e-run open "$RUNNER_TEMP/e2e/run-token" "$HOME/.shroom-dev/e2e-space-id"
+
+      - name: The installed app, granted
+        run: dev/mac/mac.sh prepare "$HOME/Applications/shroom.app"
+
+      # The show pass's bubble: OBS's virtual camera on the test pattern (~2 min, before the
+      # recorded part — its System Settings clicks aren't the app's).
+      - name: A camera for the bubble
+        run: MAC_APP="$HOME/Applications/shroom.app" bash dev/mac/camera.sh up
+
+      - name: Setup, one take, the page, the member, delete — recorded
+        run: E2E_TOKEN_FILE="$RUNNER_TEMP/e2e/run-token" MAC_LIMIT=1800 dev/mac/mac.sh run e2e-full
+
+      # For a person on a phone: each step's caption burned into the screen's recording.
+      - name: The recording, captioned
+        if: always()
+        run: node dev/e2e/captions.mjs "$RUNNER_TEMP/mac/e2e-full" || echo "::warning title=No captions::the uncaptioned recording is in the evidence"
+
+      - name: The run closes (its own space and token deleted)
+        if: always()
+        env:
+          SHROOM_E2E: '1'
+          SHROOM_E2E_ACCOUNT_ID: ${{ secrets.SHROOM_E2E_ACCOUNT_ID }}
+        run: |
+          if [ -s "$RUNNER_TEMP/e2e/account-token" ]; then
+            SHROOM_E2E_TOKEN_FILE="$RUNNER_TEMP/e2e/account-token" target/debug/e2e-run close "$HOME/.shroom-dev/e2e-space-id"
+          fi
+          rm -f "$RUNNER_TEMP/e2e/account-token" "$RUNNER_TEMP/e2e/run-token" "$HOME/.shroom-dev/e2e-space-id"
+
+      - name: The verdict
+        id: verdict
+        if: always()
+        run: |
+          dev/mac/mac.sh summary
+          # Timing bars the runner can't decide (dev/mac/scenarios/e2e-full.sh): said, not judged.
+          if [ -s "$RUNNER_TEMP/mac/e2e-full/bars.txt" ]; then
+            echo "::warning title=Timing bars missed on the runner::$(cat "$RUNNER_TEMP/mac/e2e-full/bars.txt") — the path held; a Mac decides (heartbeat.mjs)."
+          fi
+          ! grep -q '^fail' "$RUNNER_TEMP/mac/results.tsv"
+
+      - name: The branch's head says how it went
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OUTCOME: ${{ steps.verdict.outcome }}
+        run: |
+          if [ "$OUTCOME" = success ]; then state=success; said="Installed, set up, recorded and played"; else state=failure; said="See the run's table"; fi
+          if [ "$OUTCOME" = success ] && [ -s "$RUNNER_TEMP/mac/e2e-full/bars.txt" ]; then said="$said — timing bars for a Mac to decide"; fi
+          gh api "repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" -f state="$state" -f context="$STATUS_CONTEXT" \
+            -f description="$said" -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" >/dev/null
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: e2e-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/mac
+          if-no-files-found: warn
+          retention-days: 3

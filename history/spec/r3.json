@@ -1,0 +1,1824 @@
+{
+  "region": "Region 3 — permissions + the first recording (UX-STATEMACHINE.md lines 714-906; heading verbatim: structure ratified 2026-07-20; permissions chapter copy ratified 2026-07-25 — N17/N20; tray + `config` ratified 2026-08-21 — N21; `countdown` — N22; `discard-confirm` — N23; `paused` + tray faces — N24; `recovered-take` — N25. Not in the heading: the autonomous-sitting additions N38, N39, N41 and N42 are designed 2026-09-30 and awaiting ratification, so they are provisional.)",
+  "states": [
+    {
+      "id": "perm-mic",
+      "kind": "state",
+      "parent": "",
+      "surface": "window",
+      "status": "ratified",
+      "summary": "The permissions chapter's first beat, in the onboarding window. macOS's microphone prompt appears and is answered inline. The mic resolves fully before anything else, so dialogs never stack (POC §4). Camera is never asked at onboarding. A denied mic never blocks.",
+      "entry_conditions": "At Region 2's `done` the user clicked Allow recording (N17: perm-preamble fused into done, so the chapter opens here). The microphone grant is unresolved (state is derived from probes, Law 1). The arm-time guard re-probes grants at every record arm and replays exactly the missing beat.",
+      "said_lines": [
+        {
+          "text": "shroom records your voice with your video.",
+          "role": "other",
+          "copy_status": "ratified",
+          "note": "Info.plist microphone usage string, shown inside macOS's own mic prompt. N20 ratifies 'the mic usage string' by name."
+        },
+        {
+          "text": "shroom shows and records your camera only when you choose it.",
+          "role": "other",
+          "copy_status": "ratified",
+          "note": "Info.plist camera usage string. It appears at the first camera pick (Show yourself flipped on, or Camera chosen as the source), never at onboarding. It sits in the copy-ratified chapter table, but N20's enumeration names only the mic string, so confirm."
+        }
+      ],
+      "actions": [
+        {
+          "label": "macOS's microphone prompt — allow or deny",
+          "kind": "other",
+          "return_default": false,
+          "goes_to": "perm-screen",
+          "note": "Apple's own dialog. The spec gives no button copy of ours. Either answer resolves the mic."
+        }
+      ],
+      "transitions": [
+        {
+          "to": "perm-screen",
+          "trigger": "mic resolved — allow or deny"
+        }
+      ],
+      "decided_by": [
+        "U5",
+        "N17",
+        "N20"
+      ],
+      "source_lines": "716-720, 725-733, 869-871"
+    },
+    {
+      "id": "perm-screen",
+      "kind": "state",
+      "parent": "",
+      "surface": "window",
+      "status": "ratified",
+      "summary": "shroom opens the exact System Settings pane for screen recording. The switch takes effect on next launch, through macOS's own quit-and-reopen offer (the `relaunching` beat). Onboarding resumes at this chapter from derived state, with no stored counter. N42 adds a quiet 'Reopen shroom' door underneath, for when macOS's offer was declined or never came. That addition is provisional.",
+      "entry_conditions": "The mic is resolved (allowed or denied) and the screen-recording grant is not live (derived). It is re-entered after `relaunching` ('resumes right here'). It is also reached from config's `recording-off` banner: Turn it back on opens the Settings window, Space tab, with row six current at perm-screen (N38).",
+      "said_lines": [
+        {
+          "text": "macOS handles screen recording in System Settings — it's open. Flip the switch next to shroom, and when macOS offers to quit and reopen it, say yes. I'll be right where you left me.",
+          "role": "line",
+          "copy_status": "ratified",
+          "note": "N20 ratifies 'perm-screen's flip-the-switch line' by name. The text ends 'left me.', not 'left off.' (the 'left off' wording belongs to done's preview, N17). The source uses straight apostrophes."
+        },
+        {
+          "text": "Flipped it already?",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "N42, quiet, beneath the main line"
+        },
+        {
+          "text": "Reopen shroom",
+          "role": "button",
+          "copy_status": "provisional",
+          "note": "N42"
+        }
+      ],
+      "actions": [
+        {
+          "label": "Reopen shroom",
+          "kind": "secondary",
+          "return_default": false,
+          "goes_to": "relaunching",
+          "note": "Quiet, beneath the main line (N42). shroom relaunches itself into `relaunching`. The spec names no filled action and no Return default on this surface."
+        },
+        {
+          "label": "flip the switch in System Settings and accept macOS's quit-and-reopen offer",
+          "kind": "other",
+          "return_default": false,
+          "goes_to": "relaunching",
+          "note": "Done in macOS's own UI, not ours"
+        }
+      ],
+      "transitions": [
+        {
+          "to": "relaunching",
+          "trigger": "switch flipped — quit and reopen (macOS's offer)"
+        },
+        {
+          "to": "relaunching",
+          "trigger": "Reopen shroom — shroom relaunches itself (N42; table only, not drawn in the diagram)"
+        },
+        {
+          "to": "perm-priming",
+          "trigger": "grant live"
+        }
+      ],
+      "decided_by": [
+        "U5",
+        "N18",
+        "N20",
+        "N42"
+      ],
+      "source_lines": "721, 734-738, 872-874"
+    },
+    {
+      "id": "relaunching",
+      "kind": "state",
+      "parent": "",
+      "surface": "window",
+      "status": "ratified",
+      "summary": "A named beat (N18 spirit, named by N20): shroom quits and reopens so the screen grant takes effect. Onboarding then resumes at the permissions chapter from derived state. The region gives this beat no render and no said-line.",
+      "entry_conditions": "The screen-recording switch was flipped and the user accepted macOS's quit-and-reopen offer, or the user clicked Reopen shroom (N42).",
+      "said_lines": [],
+      "actions": [],
+      "transitions": [
+        {
+          "to": "perm-screen",
+          "trigger": "resumes right here — derived state"
+        }
+      ],
+      "decided_by": [
+        "N18",
+        "N20",
+        "N42"
+      ],
+      "source_lines": "68, 721, 872-873"
+    },
+    {
+      "id": "perm-priming",
+      "kind": "state",
+      "parent": "",
+      "surface": "window",
+      "status": "ratified",
+      "summary": "An invisible warm-up of about 1 s, the moment the screen grant is live. Apple's second (~30-day) consent fires now, at setup, never mid-recording (POC §4; probe: the dialog is real on Tahoe and non-fatal). Since N38 (provisional), the same warm-up also runs when `config` opens and Apple's periodic re-confirm is due. macOS then asks over the popover, never inside a take. The popover may close as the dialog takes focus, and the next click finds it again.",
+      "entry_conditions": "Onboarding: the screen-recording grant has just become live. Everyday (N38): `config` opens while Apple's periodic re-confirm is due.",
+      "said_lines": [
+        {
+          "text": "If macOS double-checks about recording, approve it — that's the last one for a good while.",
+          "role": "line",
+          "copy_status": "ratified",
+          "note": "N20 ratifies 'priming's double-check line' by name"
+        }
+      ],
+      "actions": [],
+      "transitions": [
+        {
+          "to": "all-set",
+          "trigger": "warm-up clean — row six ticks"
+        }
+      ],
+      "decided_by": [
+        "U5",
+        "N20",
+        "N38"
+      ],
+      "source_lines": "722, 739-742, 874-875"
+    },
+    {
+      "id": "all-set",
+      "kind": "state",
+      "parent": "",
+      "surface": "window",
+      "status": "ratified",
+      "summary": "The onboarding window's final face, a resting state with three doors (N20; it replaces the passive handoff). All six plan rows are green, with a closing block below the plan. Record now closes the window and opens `config` as a tray popover, so the eye lands on the menu bar. Invite someone morphs this same window into Region 6's members surface. Close, and ✕ (exactly the same as Close), is the retreat: the window closes, the dock icon goes away, and tray-only life begins.",
+      "entry_conditions": "`perm-priming` finished clean and row six ticked. All six rows are green. If the mic was denied, row six ticks with the fact 'microphone off for now' (N42).",
+      "said_lines": [
+        {
+          "text": "You're all set — ready to record.",
+          "role": "line",
+          "copy_status": "ratified",
+          "note": "first line of the closing block below the plan"
+        },
+        {
+          "text": "shroom lives in your menu bar now — look for the little mushroom.",
+          "role": "line",
+          "copy_status": "ratified"
+        },
+        {
+          "text": "Close",
+          "role": "button",
+          "copy_status": "ratified"
+        },
+        {
+          "text": "Invite someone",
+          "role": "button",
+          "copy_status": "ratified",
+          "note": "N20: 'Invite someone', not 'someone else'"
+        },
+        {
+          "text": "Record now",
+          "role": "button",
+          "copy_status": "ratified",
+          "note": "filled"
+        },
+        {
+          "text": "✓ Letting macOS allow recording — microphone off for now",
+          "role": "status",
+          "copy_status": "provisional",
+          "note": "N42: row six's tick fact when the mic was denied. The spec writes it in the denied-mic bullet with the ✓ glyph included."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Close",
+          "kind": "secondary",
+          "return_default": false,
+          "goes_to": "idle-ready",
+          "note": "leftmost. The window closes, the dock icon goes away, tray-only life."
+        },
+        {
+          "label": "Invite someone",
+          "kind": "secondary",
+          "return_default": false,
+          "goes_to": "invite-born",
+          "note": "morphs this same window into the Region 6 members surface"
+        },
+        {
+          "label": "Record now",
+          "kind": "filled-default",
+          "return_default": true,
+          "goes_to": "config",
+          "note": "Filled and rightmost. Closes the window and opens config at the tray. Return comes from Law 8 (one default per surface, and Return triggers it). The region's row doesn't restate it."
+        },
+        {
+          "label": "✕",
+          "kind": "close",
+          "return_default": false,
+          "goes_to": "idle-ready",
+          "note": "≡ Close exactly (N12's precedent)"
+        }
+      ],
+      "transitions": [
+        {
+          "to": "config",
+          "trigger": "Record now — popover opens at the tray"
+        },
+        {
+          "to": "invite-born",
+          "trigger": "Invite someone (Region 6)"
+        },
+        {
+          "to": "idle-ready",
+          "trigger": "Close (or ✕) — dock retreats, tray-only life"
+        }
+      ],
+      "decided_by": [
+        "N20",
+        "N12",
+        "N21",
+        "N42"
+      ],
+      "source_lines": "723, 728-730, 875-880"
+    },
+    {
+      "id": "idle-ready",
+      "kind": "state",
+      "parent": "",
+      "surface": "tray",
+      "status": "ratified",
+      "summary": "Tray-only life with no menu. The tray click opens `config` directly. Right-click opens a one-item native menu, Quit shroom. The icon is the plain mushroom, identical to idle-unprovisioned's, unless something needs you (amber dot) or an update waits (Frost dot). The five faces are N38's.",
+      "entry_conditions": "The space is provisioned and no take is open. The onboarding window is closed, or the user retreated from all-set, or a discard ended a take.",
+      "said_lines": [
+        {
+          "text": "Quit shroom",
+          "role": "menu-item",
+          "copy_status": "ratified",
+          "note": "the right-click one-item native menu (N21). It exists only in the idle states (N39)."
+        }
+      ],
+      "actions": [
+        {
+          "label": "tray click",
+          "kind": "other",
+          "return_default": false,
+          "goes_to": "config",
+          "note": "N21: the click is the door. A launch you did yourself counts as a click (law 5, N41)."
+        },
+        {
+          "label": "Quit shroom (right-click menu)",
+          "kind": "other",
+          "return_default": false,
+          "goes_to": "quit-confirm",
+          "note": "Quits at once when nothing is draining. While uploads drain, it asks the same way as the footer Quit (N41)."
+        }
+      ],
+      "transitions": [
+        {
+          "to": "config",
+          "trigger": "tray click (N21)"
+        },
+        {
+          "to": "recovered-take",
+          "trigger": "launch finds an interrupted take — amber dot (N25)"
+        },
+        {
+          "to": "quit-confirm",
+          "trigger": "right-click Quit shroom while uploads drain (N41; table only, not drawn)"
+        }
+      ],
+      "decided_by": [
+        "N21",
+        "N25",
+        "N38",
+        "N41"
+      ],
+      "source_lines": "746-749, 857, 861, 880-882, 901"
+    },
+    {
+      "id": "config",
+      "kind": "state",
+      "parent": "",
+      "surface": "popover",
+      "status": "ratified",
+      "summary": "A same-themed custom popover under the tray (Loom-style). It is never a native menu and never a window, so the dock stays clear. Click-away or Esc dismisses it with nothing lost. It is pre-filled with last-used values and never skipped: a confirm, not a form. Fields run label left, control right, top to bottom: Record (one source picker: displays by human name first, then Camera), Show yourself, Microphone, Quality, then Start recording (filled, full width) with a quiet line beneath. The footer holds three icons with tooltips. The grammar is N38's (provisional): a banner slot at the top for asks, a status line above the footer for facts, and disk-low under Start. When it opens, the grant probe runs (`recording-off`), and a due monthly re-confirm runs perm-priming's warm-up. The device rules are N39's (provisional): never auto-pick an iPhone (mic or camera); a gone last-used display falls back silently to the menu-bar display; same-named displays are labeled by position; Camera as the source previews here; with Show yourself on, picking another display moves the bubble there. If the camera is denied, Show yourself flips off and Camera as the source greys Start.",
+      "entry_conditions": "Not mid-take, and the tray clicked in idle-ready (or a launch you did, or all-set's Record now, or a cancelled countdown, which returns here still armed). Popover banners stack one at a time, highest first: saved take (recovered-take / disk-full-stop), the space can't take videos (other regions), recording-off, update-ready (Region 5).",
+      "said_lines": [
+        {
+          "text": "Record",
+          "role": "field-label",
+          "copy_status": "ratified"
+        },
+        {
+          "text": "LG UltraFine",
+          "role": "menu-item",
+          "copy_status": "ratified",
+          "note": "An example only. Displays appear by their human name from macOS, which varies by hardware (§5.2 hard requirement)."
+        },
+        {
+          "text": "Built-in Display",
+          "role": "menu-item",
+          "copy_status": "ratified",
+          "note": "An example of a display's human name, which varies"
+        },
+        {
+          "text": "Camera",
+          "role": "menu-item",
+          "copy_status": "ratified",
+          "note": "Unquoted in the spec, but named as the picker's option below the displays"
+        },
+        {
+          "text": "Show yourself",
+          "role": "field-label",
+          "copy_status": "ratified"
+        },
+        {
+          "text": "Microphone",
+          "role": "field-label",
+          "copy_status": "ratified"
+        },
+        {
+          "text": "Quality",
+          "role": "field-label",
+          "copy_status": "ratified"
+        },
+        {
+          "text": "Normal",
+          "role": "other",
+          "copy_status": "ratified",
+          "note": "Segmented control option, bolded in the spec. '(1080p)' is the spec's gloss, and whether it renders isn't stated."
+        },
+        {
+          "text": "2K",
+          "role": "other",
+          "copy_status": "ratified",
+          "note": "segmented control option"
+        },
+        {
+          "text": "4K",
+          "role": "other",
+          "copy_status": "ratified",
+          "note": "segmented control option"
+        },
+        {
+          "text": "Start recording",
+          "role": "button",
+          "copy_status": "ratified",
+          "note": "filled, full width"
+        },
+        {
+          "text": "Starts after 3-2-1 — click anywhere to cancel.",
+          "role": "line",
+          "copy_status": "ratified",
+          "note": "Quiet, beneath Start. '3-2-1' uses ASCII hyphens."
+        },
+        {
+          "text": "Library",
+          "role": "tooltip",
+          "copy_status": "ratified",
+          "note": "footer icon tooltip"
+        },
+        {
+          "text": "Settings",
+          "role": "tooltip",
+          "copy_status": "ratified",
+          "note": "footer gear tooltip, the door to the Region-5 inventory"
+        },
+        {
+          "text": "Quit shroom",
+          "role": "tooltip",
+          "copy_status": "ratified",
+          "note": "footer icon tooltip"
+        },
+        {
+          "text": "allowed in System Settings",
+          "role": "line",
+          "copy_status": "ratified",
+          "note": "A quoted fragment: with the mic denied, config shows the mic off with this quiet hint. Its full rendered wording isn't given. It sits in the permissions-chapter bullets, under that subsection's 'copy ratified 2026-07-25' heading, with no later (N38/N42) marker. N20's enumeration doesn't name it, so confirm."
+        },
+        {
+          "text": "Uploading — 40%. Your link already works.",
+          "role": "status",
+          "copy_status": "provisional",
+          "note": "Status line (N38). The percent varies. The same wording is ratified on the owner page (N26), but its status-line placement here is provisional."
+        },
+        {
+          "text": "Uploading two videos — 40%.",
+          "role": "status",
+          "copy_status": "provisional",
+          "note": "Status line (N38) with several uploads. The count is in words (Law 16) and varies, as does the percent. The spec wraps it across a line break."
+        },
+        {
+          "text": "Waiting for connection — your links already work.",
+          "role": "status",
+          "copy_status": "provisional",
+          "note": "status line (N38)"
+        },
+        {
+          "text": "Fully live ✓",
+          "role": "status",
+          "copy_status": "provisional",
+          "note": "Status line (N38). Shown once after the queue drains, until the popover closes."
+        },
+        {
+          "text": "Updated to 1.3.0 ✓",
+          "role": "status",
+          "copy_status": "provisional",
+          "note": "One-shot status line (N37/N38). The version varies."
+        },
+        {
+          "text": "The update didn't finish — shroom will try again later.",
+          "role": "status",
+          "copy_status": "provisional",
+          "note": "one-shot status line (N37/N38)"
+        },
+        {
+          "text": "No microphone — your video will be silent.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "N39: on a Mac with no microphone"
+        },
+        {
+          "text": "LG UltraFine (left)",
+          "role": "menu-item",
+          "copy_status": "provisional",
+          "note": "N39: two displays with the same name get their place. The name varies, and they are numbered only when position can't tell them apart."
+        },
+        {
+          "text": "LG UltraFine (right)",
+          "role": "menu-item",
+          "copy_status": "provisional",
+          "note": "N39, as above"
+        },
+        {
+          "text": "Camera is off for shroom —",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "N39: shown when the camera is denied. Show yourself flips back off, and Camera as the source greys Start. The line is followed by the Open System Settings button."
+        },
+        {
+          "text": "Open System Settings",
+          "role": "button",
+          "copy_status": "provisional",
+          "note": "N39 camera-denied door"
+        }
+      ],
+      "actions": [
+        {
+          "label": "Record",
+          "kind": "field",
+          "return_default": false,
+          "note": "One source picker. Default: last-used, else the display with the menu bar. Choosing Camera greys Show yourself, and a first pick of Camera triggers the inline camera prompt (N22)."
+        },
+        {
+          "label": "Show yourself",
+          "kind": "switch",
+          "return_default": false,
+          "note": "Screen sources only. When on, the bubble is live from the moment the popover opens. First-ever default is off, flipping it on is the inline camera-permission moment, and last-used applies after that (N22)."
+        },
+        {
+          "label": "Microphone",
+          "kind": "field",
+          "return_default": false,
+          "note": "By name, prefers built-in, never auto-picks an iPhone"
+        },
+        {
+          "label": "Quality",
+          "kind": "other",
+          "return_default": false,
+          "note": "segmented Normal / 2K / 4K"
+        },
+        {
+          "label": "Start recording",
+          "kind": "filled-default",
+          "return_default": true,
+          "goes_to": "countdown",
+          "note": "Return = Start recording (Law 8, N38): 'click the mushroom, press Return'. Greys under about a minute of disk (disk-low)."
+        },
+        {
+          "label": "Library",
+          "kind": "other",
+          "return_default": false,
+          "goes_to": "library",
+          "note": "footer icon, the Region 5 window"
+        },
+        {
+          "label": "Settings",
+          "kind": "other",
+          "return_default": false,
+          "goes_to": "Settings window (Region 5)",
+          "note": "footer gear"
+        },
+        {
+          "label": "Quit shroom",
+          "kind": "other",
+          "return_default": false,
+          "goes_to": "quit-confirm",
+          "note": "Footer icon. Quits at once when nothing is draining. Asks quit-confirm while uploads drain (N41)."
+        },
+        {
+          "label": "click away or Esc",
+          "kind": "other",
+          "return_default": false,
+          "goes_to": "idle-ready",
+          "note": "dismisses, nothing lost"
+        },
+        {
+          "label": "Open System Settings",
+          "kind": "secondary",
+          "return_default": false,
+          "note": "only in the camera-denied variant (N39)"
+        }
+      ],
+      "transitions": [
+        {
+          "to": "idle-ready",
+          "trigger": "click away or Esc — nothing lost"
+        },
+        {
+          "to": "countdown",
+          "trigger": "Start recording (or Return)"
+        },
+        {
+          "to": "quit-confirm",
+          "trigger": "Quit shroom while uploads drain (N41)"
+        },
+        {
+          "to": "library",
+          "trigger": "Library footer icon (table only, not drawn in the diagram)"
+        },
+        {
+          "to": "Settings window (Region 5)",
+          "trigger": "Settings footer gear (table only, not drawn in the diagram)"
+        }
+      ],
+      "decided_by": [
+        "N21",
+        "N22",
+        "N37",
+        "N38",
+        "N39",
+        "N41",
+        "U5"
+      ],
+      "source_lines": "728-742, 751-787, 855, 858, 878, 881-884, 899"
+    },
+    {
+      "id": "disk-low",
+      "kind": "face",
+      "parent": "config",
+      "surface": "popover",
+      "status": "provisional",
+      "summary": "A line under Start, in amber, because it is about this take (N38/N39): neither a banner nor the status line. Below about a minute of room, Start greys.",
+      "entry_conditions": "`config` is open and free disk space at the chosen quality is low. Thresholds are a scaffold flag.",
+      "said_lines": [
+        {
+          "text": "About 20 minutes of room left on this Mac.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "Amber, under Start. The minutes vary with free space at the chosen quality."
+        },
+        {
+          "text": "This Mac is out of room for recording — free up some space first.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "Under about a minute of room. Start greys."
+        }
+      ],
+      "actions": [
+        {
+          "label": "Start recording",
+          "kind": "filled-default",
+          "return_default": true,
+          "goes_to": "countdown",
+          "note": "Still config's Return default while live (Law 8) in the 'About 20 minutes' variant. Greyed under about a minute of room, when neither click nor Return starts."
+        }
+      ],
+      "transitions": [],
+      "decided_by": [
+        "N38",
+        "N39"
+      ],
+      "source_lines": "780, 855"
+    },
+    {
+      "id": "recording-off",
+      "kind": "banner",
+      "parent": "config",
+      "surface": "banner",
+      "status": "provisional",
+      "summary": "The arm-time guard made visible (N38). The grant probe runs when `config` opens, so a missing screen grant shows as a banner before Start, never as a surprise after it. Amber, banner priority 3. Display sources grey out, and Camera still records.",
+      "entry_conditions": "`config` opens and the probe finds screen recording switched off for shroom. This includes the next config after a screen `permission-lost`.",
+      "said_lines": [
+        {
+          "text": "macOS has screen recording switched off for shroom.",
+          "role": "banner",
+          "copy_status": "provisional"
+        },
+        {
+          "text": "Turn it back on",
+          "role": "button",
+          "copy_status": "provisional",
+          "note": "filled"
+        }
+      ],
+      "actions": [
+        {
+          "label": "Turn it back on",
+          "kind": "filled-default",
+          "return_default": false,
+          "goes_to": "perm-screen",
+          "note": "Filled, but a banner's own filled button is never the Return default (Law 8). Opens the Settings window, Space tab, with row six current at perm-screen."
+        }
+      ],
+      "transitions": [
+        {
+          "to": "perm-screen",
+          "trigger": "Turn it back on — Settings window, Space tab, row six current"
+        }
+      ],
+      "decided_by": [
+        "N38",
+        "N39"
+      ],
+      "source_lines": "734-738, 773, 853"
+    },
+    {
+      "id": "bubble",
+      "kind": "overlay",
+      "parent": "",
+      "surface": "overlay",
+      "status": "ratified",
+      "summary": "The Show yourself corner bubble, born at `config`, not at the count (N22). Live from the moment the popover opens, so you see and place yourself before Start. It stays through the count and the take, and the switch hides it live. Draggable, not resizable. It uses the un-excluded preview-window trick with zero compositing. It never takes focus, and it is the only thing of ours ever in a take. Discard takes it away. If the bubble's camera disappears, the take is never interrupted; the bubble simply goes.",
+      "entry_conditions": "Show yourself is on and the source is a display (it greys when Camera is the source), from config's opening through countdown, recording and paused.",
+      "said_lines": [],
+      "actions": [
+        {
+          "label": "drag",
+          "kind": "other",
+          "return_default": false,
+          "note": "draggable, not resizable"
+        }
+      ],
+      "transitions": [],
+      "decided_by": [
+        "N22",
+        "N39"
+      ],
+      "source_lines": "70, 759, 799, 837, 851, 858, 1720"
+    },
+    {
+      "id": "countdown",
+      "kind": "overlay",
+      "parent": "",
+      "surface": "overlay",
+      "status": "ratified",
+      "summary": "A light scrim on the chosen display only, with a large 3 · 2 · 1 and one quiet line beneath. Silent, and other displays are untouched. The scrim lifts the instant capture starts, so the count is never in the take (N7). There is no recording flash of ours; macOS's own indicator marks the capture. The bubble, if on, simply stays. With Camera as the source, the count plays on the display holding the camera preview (N39). Cancel by any click, Esc, or the line itself.",
+      "entry_conditions": "Start recording in `config`. Also Restart in `paused` or Restart instead in `discard-confirm`, which re-arm with the count already running.",
+      "said_lines": [
+        {
+          "text": "Click anywhere to cancel.",
+          "role": "line",
+          "copy_status": "ratified"
+        }
+      ],
+      "actions": [
+        {
+          "label": "click anywhere",
+          "kind": "other",
+          "return_default": false,
+          "goes_to": "config",
+          "note": "Cancel: back to config, still armed, one click from retry. If the count was Restart's, it returns to paused with the take intact (N39)."
+        },
+        {
+          "label": "Esc",
+          "kind": "other",
+          "return_default": false,
+          "goes_to": "config",
+          "note": "Cancel. The countdown takes focus so Esc works."
+        },
+        {
+          "label": "Click anywhere to cancel.",
+          "kind": "text-link",
+          "return_default": false,
+          "goes_to": "config",
+          "note": "the line itself cancels"
+        }
+      ],
+      "transitions": [
+        {
+          "to": "config",
+          "trigger": "click or Esc — cancel"
+        },
+        {
+          "to": "recording",
+          "trigger": "3-2-1 elapsed"
+        },
+        {
+          "to": "paused",
+          "trigger": "cancelling Restart's count (any click, Esc) — take intact (N39; not drawn in the diagram)"
+        }
+      ],
+      "decided_by": [
+        "N22",
+        "N7",
+        "N39"
+      ],
+      "source_lines": "790-799, 822-825, 858, 883-885, 888, 891, 1720"
+    },
+    {
+      "id": "recording",
+      "kind": "state",
+      "parent": "",
+      "surface": "tray",
+      "status": "ratified",
+      "summary": "The tray is the whole surface and there is no popover. The icon wears the red dot. A click is an instant pause, and the popover opens only after the pause is confirmed (never catch a menu in the last frame, POC §8). No timer in the menu bar. Network is never the recording's problem: capture writes locally regardless, and upload is opportunistic in the background. A right-click mid-take is the same as a left click (N39). ⌘Q and the Dock's Quit are declined silently (law 4).",
+      "entry_conditions": "`countdown` elapsed and capture began, or Resume from `paused`.",
+      "said_lines": [],
+      "actions": [
+        {
+          "label": "tray click",
+          "kind": "other",
+          "return_default": false,
+          "goes_to": "paused",
+          "note": "Instant pause. The popover opens after the pause is confirmed."
+        },
+        {
+          "label": "right-click",
+          "kind": "other",
+          "return_default": false,
+          "goes_to": "paused",
+          "note": "same as a left click mid-take (N39)"
+        },
+        {
+          "label": "⌘Q / Dock Quit",
+          "kind": "other",
+          "return_default": false,
+          "note": "declined silently while recording (law 4)"
+        }
+      ],
+      "transitions": [
+        {
+          "to": "paused",
+          "trigger": "tray click (pause confirmed first)"
+        },
+        {
+          "to": "paused",
+          "trigger": "auto-pause — display, mic, camera, sleep, lock, mic permission (N39); the popover opens itself"
+        },
+        {
+          "to": "permission-lost",
+          "trigger": "screen permission switched off — finalized and asked, like a full disk (N39; the diagram draws this edge into disk_full_stop)"
+        },
+        {
+          "to": "disk-full-stop",
+          "trigger": "out of room — finalized, never published (N39)"
+        },
+        {
+          "to": "recovered-take",
+          "trigger": "crash / forced shutdown / system-initiated termination mid-take — surfaces at the next launch"
+        }
+      ],
+      "decided_by": [
+        "N24",
+        "N39",
+        "N41",
+        "N25"
+      ],
+      "source_lines": "801-806, 849-860, 885-896"
+    },
+    {
+      "id": "paused",
+      "kind": "state",
+      "parent": "",
+      "surface": "popover",
+      "status": "ratified",
+      "summary": "The same custom popover, with the icon wearing the pause bars. Top to bottom: the header with the length, Resume (the one filled action, Return default), Drop a marker and Restart, Stop with a quiet line beneath (the single place stop = published gets said, §5.3), and Discard… as red text at the bottom beside a grey no-Quit note. Quit is absent by law. Markers land at the pause point, metadata-only in v1. Restart re-arms with the countdown already running. The count is Restart's undo (N39, provisional): the old take is discarded only the instant the new capture begins.",
+      "entry_conditions": "Tray click while recording, after the pause is confirmed (a right-click counts the same, N39). Also: Back (or click-away / Esc) from discard-confirm; a cancelled Restart count; a Quit request while paused, which opens this popover (law 4).",
+      "said_lines": [
+        {
+          "text": "Paused — 4:32",
+          "role": "title",
+          "copy_status": "ratified",
+          "note": "header; the length varies"
+        },
+        {
+          "text": "Resume",
+          "role": "button",
+          "copy_status": "ratified",
+          "note": "filled"
+        },
+        {
+          "text": "Drop a marker",
+          "role": "button",
+          "copy_status": "ratified"
+        },
+        {
+          "text": "Restart",
+          "role": "button",
+          "copy_status": "ratified"
+        },
+        {
+          "text": "Stop",
+          "role": "button",
+          "copy_status": "ratified"
+        },
+        {
+          "text": "Your link opens right away.",
+          "role": "line",
+          "copy_status": "ratified",
+          "note": "quiet, beneath Stop"
+        },
+        {
+          "text": "Discard…",
+          "role": "link",
+          "copy_status": "ratified",
+          "note": "red text at the bottom, never a button"
+        },
+        {
+          "text": "no Quit while a take is open",
+          "role": "line",
+          "copy_status": "ratified",
+          "note": "Grey note, lowercase 'no' verbatim, italic in the spec; quoted in N24 and Law 4"
+        }
+      ],
+      "actions": [
+        {
+          "label": "Resume",
+          "kind": "filled-default",
+          "return_default": true,
+          "goes_to": "recording",
+          "note": "Return = Resume (Law 8, N38)"
+        },
+        {
+          "label": "Drop a marker",
+          "kind": "secondary",
+          "return_default": false,
+          "note": "Lands at the pause point, metadata-only in v1. No state change."
+        },
+        {
+          "label": "Restart",
+          "kind": "secondary",
+          "return_default": false,
+          "goes_to": "countdown",
+          "note": "The count is Restart's undo (N39). The old take dies only when the new capture begins."
+        },
+        {
+          "label": "Stop",
+          "kind": "secondary",
+          "return_default": false,
+          "goes_to": "stopping",
+          "note": "deliberate but visible"
+        },
+        {
+          "label": "Discard…",
+          "kind": "red-text",
+          "return_default": false,
+          "goes_to": "discard-confirm"
+        },
+        {
+          "label": "Esc",
+          "kind": "other",
+          "return_default": false,
+          "note": "N38's keyboard bullet says Esc dismisses the popover. The spec says nothing more for paused."
+        }
+      ],
+      "transitions": [
+        {
+          "to": "recording",
+          "trigger": "Resume"
+        },
+        {
+          "to": "countdown",
+          "trigger": "Restart"
+        },
+        {
+          "to": "discard-confirm",
+          "trigger": "Discard…"
+        },
+        {
+          "to": "stopping",
+          "trigger": "Stop"
+        }
+      ],
+      "decided_by": [
+        "N24",
+        "N38",
+        "N39",
+        "N41"
+      ],
+      "source_lines": "116-125, 808-826, 857, 860, 886-893"
+    },
+    {
+      "id": "discard-confirm",
+      "kind": "state",
+      "parent": "",
+      "surface": "popover",
+      "status": "ratified",
+      "summary": "The paused popover morphs into the question; no window, no dock icon. Discard is red-outlined and rightmost, never filled. There is no Enter/Return default, so a stray Return can never destroy. Click-away or Esc is the same as Back. Discard deletes the local take and any bytes the opportunistic upload already placed in the bucket. It is a clean delete with no tombstone, because the link was never handed out. The POC's 'Keep' option was removed (U1, a 2026-07-20 POC delta), so the panel is three-way.",
+      "entry_conditions": "Discard… from `paused` (including its auto-pause faces). Also Discard… from `recovered-take` (the saved-take variant).",
+      "said_lines": [
+        {
+          "text": "Toss this recording?",
+          "role": "title",
+          "copy_status": "ratified",
+          "note": "bold"
+        },
+        {
+          "text": "4:32 recorded so far. There's no undo.",
+          "role": "line",
+          "copy_status": "ratified",
+          "note": "the length varies"
+        },
+        {
+          "text": "Back",
+          "role": "button",
+          "copy_status": "ratified"
+        },
+        {
+          "text": "Restart instead",
+          "role": "button",
+          "copy_status": "ratified"
+        },
+        {
+          "text": "Discard",
+          "role": "button",
+          "copy_status": "ratified",
+          "note": "red outline, rightmost, never filled"
+        }
+      ],
+      "actions": [
+        {
+          "label": "Back",
+          "kind": "secondary",
+          "return_default": false,
+          "goes_to": "paused",
+          "note": "leftmost; separated from the other two (· · ·)"
+        },
+        {
+          "label": "Restart instead",
+          "kind": "secondary",
+          "return_default": false,
+          "goes_to": "countdown",
+          "note": "re-arms with the count already running"
+        },
+        {
+          "label": "Discard",
+          "kind": "destructive",
+          "return_default": false,
+          "goes_to": "idle-ready",
+          "note": "No Return default (N23, Law 9). The bubble goes with it. Clean delete of the local take and any uploaded bytes."
+        },
+        {
+          "label": "click away or Esc",
+          "kind": "other",
+          "return_default": false,
+          "goes_to": "paused",
+          "note": "≡ Back"
+        }
+      ],
+      "transitions": [
+        {
+          "to": "paused",
+          "trigger": "Back — or click away, Esc"
+        },
+        {
+          "to": "countdown",
+          "trigger": "Restart instead"
+        },
+        {
+          "to": "idle-ready",
+          "trigger": "Discard"
+        }
+      ],
+      "decided_by": [
+        "N23",
+        "N24",
+        "U1"
+      ],
+      "source_lines": "828-842, 889-892"
+    },
+    {
+      "id": "discard-confirm (saved take)",
+      "kind": "face",
+      "parent": "discard-confirm",
+      "surface": "popover",
+      "status": "ratified",
+      "summary": "N23's question with its second line changed, used when discarding a saved take from the recovered-take banner. Same clean delete. The spec gives this variant no scaffold-grade name of its own.",
+      "entry_conditions": "Discard… on the `recovered-take` banner in config.",
+      "said_lines": [
+        {
+          "text": "Toss this recording?",
+          "role": "title",
+          "copy_status": "ratified",
+          "note": "Implied unchanged per N25 ('N23's question, one word changed'); not re-quoted for this variant."
+        },
+        {
+          "text": "4:32 was saved. There's no undo.",
+          "role": "line",
+          "copy_status": "ratified",
+          "note": "the saved length varies"
+        },
+        {
+          "text": "Discard",
+          "role": "button",
+          "copy_status": "ratified",
+          "note": "red outline, never filled (implied by N23's question)"
+        }
+      ],
+      "actions": [
+        {
+          "label": "Discard",
+          "kind": "destructive",
+          "return_default": false,
+          "note": "Clean delete of the saved take. The destination isn't stated, and the diagram draws only discard_confirm → idle_ready."
+        }
+      ],
+      "transitions": [],
+      "decided_by": [
+        "N25",
+        "N23"
+      ],
+      "source_lines": "73, 859, 903"
+    },
+    {
+      "id": "display-lost",
+      "kind": "face",
+      "parent": "paused",
+      "surface": "popover",
+      "status": "ratified",
+      "summary": "The recorded display was unplugged, so the take auto-pauses. This is the paused popover with one context line above the actions. Resume is greyed until the display is back. The take up to the unplug is intact (sacred law). Since N39 (provisional), the popover opens by itself at once and never takes key focus.",
+      "entry_conditions": "Mid-take, the recorded display disconnects.",
+      "said_lines": [
+        {
+          "text": "Your display disconnected — recording paused.",
+          "role": "line",
+          "copy_status": "ratified",
+          "note": "context line above the actions (N24)"
+        },
+        {
+          "text": "Resume",
+          "role": "button",
+          "copy_status": "ratified",
+          "note": "greyed until the display is back"
+        },
+        {
+          "text": "Stop",
+          "role": "button",
+          "copy_status": "ratified"
+        },
+        {
+          "text": "Discard…",
+          "role": "link",
+          "copy_status": "ratified",
+          "note": "red text"
+        }
+      ],
+      "actions": [
+        {
+          "label": "Resume",
+          "kind": "filled-default",
+          "return_default": false,
+          "goes_to": "recording",
+          "note": "Greyed until the display is back. The unasked popover never takes key focus (law 5, N39)."
+        },
+        {
+          "label": "Stop",
+          "kind": "secondary",
+          "return_default": false,
+          "goes_to": "stopping"
+        },
+        {
+          "label": "Discard…",
+          "kind": "red-text",
+          "return_default": false,
+          "goes_to": "discard-confirm"
+        }
+      ],
+      "transitions": [
+        {
+          "to": "recording",
+          "trigger": "Resume, once the display is back"
+        },
+        {
+          "to": "stopping",
+          "trigger": "Stop"
+        },
+        {
+          "to": "discard-confirm",
+          "trigger": "Discard…"
+        }
+      ],
+      "decided_by": [
+        "N24",
+        "N39"
+      ],
+      "source_lines": "72, 849, 854, 894"
+    },
+    {
+      "id": "mic-lost",
+      "kind": "face",
+      "parent": "paused",
+      "surface": "popover",
+      "status": "provisional",
+      "summary": "The microphone disappears mid-take (AirPods out of range, a USB mic pulled), so the take auto-pauses. A context line appears plus a quiet line naming the mic Resume will use. Resume stays live. The popover opens by itself at once, without key focus.",
+      "entry_conditions": "Mid-take, the selected microphone disconnects.",
+      "said_lines": [
+        {
+          "text": "Your microphone disconnected — recording paused.",
+          "role": "line",
+          "copy_status": "provisional"
+        },
+        {
+          "text": "Resume uses MacBook Pro Microphone.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "Quiet. Names the built-in mic, so the name varies by Mac."
+        },
+        {
+          "text": "Resume continues without sound.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "replaces the line above on a Mac with no other microphone"
+        }
+      ],
+      "actions": [
+        {
+          "label": "Resume",
+          "kind": "filled-default",
+          "return_default": true,
+          "goes_to": "recording",
+          "note": "Stays live and switches to the built-in mic (or continues without sound). It stays paused's Return default, but the unasked popover never takes key focus, so a Return typed into another app can't Resume."
+        }
+      ],
+      "transitions": [
+        {
+          "to": "recording",
+          "trigger": "Resume"
+        }
+      ],
+      "decided_by": [
+        "N39"
+      ],
+      "source_lines": "850, 854, 894"
+    },
+    {
+      "id": "camera-lost",
+      "kind": "face",
+      "parent": "paused",
+      "surface": "popover",
+      "status": "provisional",
+      "summary": "Camera is the source and it disappears, so the take auto-pauses. Resume is greyed until the camera is back. If the bubble's camera disappears instead, the take is never interrupted; the bubble simply goes.",
+      "entry_conditions": "Mid-take with Camera as the source, and the camera disconnects.",
+      "said_lines": [
+        {
+          "text": "Your camera disconnected — recording paused.",
+          "role": "line",
+          "copy_status": "provisional"
+        }
+      ],
+      "actions": [
+        {
+          "label": "Resume",
+          "kind": "filled-default",
+          "return_default": false,
+          "goes_to": "recording",
+          "note": "Greyed until the camera is back. Unasked popover, no key focus."
+        }
+      ],
+      "transitions": [
+        {
+          "to": "recording",
+          "trigger": "Resume, once the camera is back"
+        }
+      ],
+      "decided_by": [
+        "N39"
+      ],
+      "source_lines": "851, 854, 894"
+    },
+    {
+      "id": "mac-away",
+      "kind": "face",
+      "parent": "paused",
+      "surface": "popover",
+      "status": "provisional",
+      "summary": "The take auto-pauses at the instant of sleep, lid closed, screen locked, or another user switched in. The popover opens by itself at unlock or wake, with its context line and without key focus.",
+      "entry_conditions": "Mid-take, the Mac sleeps, the lid closes, the screen locks, or a user switch happens.",
+      "said_lines": [
+        {
+          "text": "Your Mac went to sleep — recording paused.",
+          "role": "line",
+          "copy_status": "provisional"
+        },
+        {
+          "text": "Your screen locked — recording paused.",
+          "role": "line",
+          "copy_status": "provisional"
+        }
+      ],
+      "actions": [],
+      "transitions": [],
+      "decided_by": [
+        "N39"
+      ],
+      "source_lines": "852, 854, 894"
+    },
+    {
+      "id": "permission-lost",
+      "kind": "failure-state",
+      "parent": "",
+      "surface": "popover",
+      "status": "provisional",
+      "summary": "The screen half: macOS switches off screen recording mid-take (System Settings, a cleanup tool). A screen grant only returns after a relaunch, and nothing relaunches mid-take (law 4). So this is a stop you didn't make, not a pause. The take finalizes and asks, like disk-full-stop, and is never auto-published. The popover opens by itself without key focus. `recording-off` then greets the next config. The microphone half is an auto-pause and has its own face entry.",
+      "entry_conditions": "Mid-take, the screen-recording grant is revoked.",
+      "said_lines": [
+        {
+          "text": "macOS switched off screen recording, so the recording stopped at 7:15 — everything so far is saved.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "the stop time varies"
+        },
+        {
+          "text": "Get link",
+          "role": "button",
+          "copy_status": "provisional",
+          "note": "filled"
+        },
+        {
+          "text": "Discard…",
+          "role": "link",
+          "copy_status": "provisional",
+          "note": "red text"
+        }
+      ],
+      "actions": [
+        {
+          "label": "Get link",
+          "kind": "filled-default",
+          "return_default": true,
+          "goes_to": "stopping",
+          "note": "The face's one filled action, so Return triggers it once the popover has focus (Law 8; line 854 says an unasked popover's lack of key focus is what stops a stray Return from triggering Get link). The filled button leads (Law 8's local exception for single-action faces)."
+        },
+        {
+          "label": "Discard…",
+          "kind": "red-text",
+          "return_default": false,
+          "note": "destination not stated or drawn"
+        }
+      ],
+      "transitions": [
+        {
+          "to": "stopping",
+          "trigger": "Get link"
+        },
+        {
+          "to": "recording-off",
+          "trigger": "the next config opens (banner greets it)"
+        }
+      ],
+      "decided_by": [
+        "N39"
+      ],
+      "source_lines": "853, 854, 895"
+    },
+    {
+      "id": "permission-lost (microphone)",
+      "kind": "face",
+      "parent": "paused",
+      "surface": "popover",
+      "status": "provisional",
+      "summary": "The microphone half of `permission-lost`: macOS switches off the microphone mid-take, so the take auto-pauses. Resume continues without sound. The popover opens by itself without key focus.",
+      "entry_conditions": "Mid-take, the microphone grant is revoked.",
+      "said_lines": [
+        {
+          "text": "macOS switched off the microphone — recording paused.",
+          "role": "line",
+          "copy_status": "provisional"
+        }
+      ],
+      "actions": [
+        {
+          "label": "Resume",
+          "kind": "filled-default",
+          "return_default": true,
+          "goes_to": "recording",
+          "note": "Continues without sound. Spec text: '(Resume continues without sound)', unquoted here. It is paused's Return default, but there is no key focus while unasked."
+        }
+      ],
+      "transitions": [
+        {
+          "to": "recording",
+          "trigger": "Resume — continues without sound"
+        }
+      ],
+      "decided_by": [
+        "N39"
+      ],
+      "source_lines": "853, 894"
+    },
+    {
+      "id": "disk-full-stop",
+      "kind": "failure-state",
+      "parent": "",
+      "surface": "popover",
+      "status": "provisional",
+      "summary": "At the disk floor the take finalizes itself, so it never dies by a surprise ENOSPC. It is never auto-published (N25's principle: you didn't choose to stop). The popover opens by itself without key focus and asks. Dismissed unanswered, it becomes a recovered take under the amber dot (banner kind 1).",
+      "entry_conditions": "Mid-take, free disk space reaches the floor.",
+      "said_lines": [
+        {
+          "text": "This Mac ran out of room, so the recording stopped at 12:04 — everything so far is saved.",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "the stop time varies"
+        },
+        {
+          "text": "Get link",
+          "role": "button",
+          "copy_status": "provisional",
+          "note": "filled"
+        },
+        {
+          "text": "Discard…",
+          "role": "link",
+          "copy_status": "provisional",
+          "note": "red text"
+        }
+      ],
+      "actions": [
+        {
+          "label": "Get link",
+          "kind": "filled-default",
+          "return_default": true,
+          "goes_to": "stopping",
+          "note": "The face's one filled action, so Return triggers it once the popover has focus (Law 8; line 854: an unasked popover never takes key focus, 'so a Return typed into another app can't … Get link'). The filled button leads (Law 8's local exception)."
+        },
+        {
+          "label": "Discard…",
+          "kind": "red-text",
+          "return_default": false,
+          "note": "destination not stated or drawn"
+        },
+        {
+          "label": "dismiss unanswered",
+          "kind": "other",
+          "return_default": false,
+          "goes_to": "recovered-take"
+        }
+      ],
+      "transitions": [
+        {
+          "to": "stopping",
+          "trigger": "Get link"
+        },
+        {
+          "to": "recovered-take",
+          "trigger": "dismissed unanswered"
+        }
+      ],
+      "decided_by": [
+        "N39",
+        "N25",
+        "N38"
+      ],
+      "source_lines": "770, 854, 856, 896-898"
+    },
+    {
+      "id": "recovered-take",
+      "kind": "banner",
+      "parent": "config",
+      "surface": "banner",
+      "status": "ratified",
+      "summary": "After a crash or forced shutdown mid-take, §5.5's valid-but-truncated file survives. The next launch is silent and the tray wears the amber dot. The next click opens `config` with this banner on top, and config stays usable beneath it. Never auto-published. Get link runs the normal stop sequence from the saved file. Discard… confirms with N23's question (saved-take variant) and does a clean delete. It persists until resolved, across launches. Two interrupted takes surface oldest first, and a new take can start meanwhile. N38 places it at banner priority 1 (amber).",
+      "entry_conditions": "A take was interrupted (crash, forced shutdown, system-initiated termination), or disk-full-stop was dismissed unanswered. The next tray click opens config.",
+      "said_lines": [
+        {
+          "text": "We saved your interrupted recording (4:32).",
+          "role": "banner",
+          "copy_status": "ratified",
+          "note": "the saved length varies"
+        },
+        {
+          "text": "Get link",
+          "role": "button",
+          "copy_status": "ratified",
+          "note": "filled"
+        },
+        {
+          "text": "Discard…",
+          "role": "link",
+          "copy_status": "ratified",
+          "note": "red text"
+        }
+      ],
+      "actions": [
+        {
+          "label": "Get link",
+          "kind": "filled-default",
+          "return_default": false,
+          "goes_to": "stopping",
+          "note": "Filled and leads (Law 8's saved-take-banner exception). A banner's own filled button is never the Return default; Return in config stays Start recording."
+        },
+        {
+          "label": "Discard…",
+          "kind": "red-text",
+          "return_default": false,
+          "goes_to": "discard-confirm (saved take)"
+        }
+      ],
+      "transitions": [
+        {
+          "to": "stopping",
+          "trigger": "Get link — the normal stop sequence"
+        },
+        {
+          "to": "discard-confirm (saved take)",
+          "trigger": "Discard… (the diagram draws recovered_take → discard_confirm)"
+        }
+      ],
+      "decided_by": [
+        "N25",
+        "N38",
+        "N41"
+      ],
+      "source_lines": "73, 769-770, 859-860, 898, 901-903"
+    },
+    {
+      "id": "quit-confirm",
+      "kind": "state",
+      "parent": "",
+      "surface": "popover",
+      "status": "provisional",
+      "summary": "Quit with uploads draining: the popover morphs into a question. No Return default. Nothing is destroyed, so nothing is red. The right-click Quit asks the same way. With nothing draining, Quit quits at once. A system shutdown never asks: the queue is on disk and resumes at the next launch.",
+      "entry_conditions": "Quit shroom (config footer, or the idle right-click menu) while uploads are draining.",
+      "said_lines": [
+        {
+          "text": "Quit with two videos still uploading?",
+          "role": "title",
+          "copy_status": "provisional",
+          "note": "Bold. The count is in words (Law 16) and varies."
+        },
+        {
+          "text": "They'll finish the next time shroom opens — until then, their links say “on its way.”",
+          "role": "line",
+          "copy_status": "provisional",
+          "note": "Keeps the inner curly quotes around 'on its way.'; the outer closing quote is stripped."
+        },
+        {
+          "text": "Back",
+          "role": "button",
+          "copy_status": "provisional"
+        },
+        {
+          "text": "Quit anyway",
+          "role": "button",
+          "copy_status": "provisional",
+          "note": "rightmost; not red, not filled"
+        }
+      ],
+      "actions": [
+        {
+          "label": "Back",
+          "kind": "secondary",
+          "return_default": false,
+          "goes_to": "config",
+          "note": "leftmost, separated (···)"
+        },
+        {
+          "label": "Quit anyway",
+          "kind": "secondary",
+          "return_default": false,
+          "note": "Quits shroom. Uploads resume at the next launch. No Return default, and not red because nothing is destroyed."
+        }
+      ],
+      "transitions": [
+        {
+          "to": "config",
+          "trigger": "Back"
+        }
+      ],
+      "decided_by": [
+        "N41"
+      ],
+      "source_lines": "144-146, 861, 899-900"
+    },
+    {
+      "id": "stopping",
+      "kind": "state",
+      "parent": "",
+      "surface": "other",
+      "status": "ratified",
+      "summary": "A beat: finalize (measured 102 ms), then Region 4, the link moment.",
+      "entry_conditions": "Stop in `paused`, or Get link from `recovered-take`, `disk-full-stop` or screen `permission-lost`.",
+      "said_lines": [],
+      "actions": [],
+      "transitions": [
+        {
+          "to": "Region 4 — the link moment",
+          "trigger": "finalize done"
+        }
+      ],
+      "decided_by": [
+        "N24",
+        "N25",
+        "N39"
+      ],
+      "source_lines": "863, 893, 897, 902, 904"
+    },
+    {
+      "id": "plain",
+      "kind": "tray-face",
+      "parent": "idle-ready",
+      "surface": "tray",
+      "status": "ratified",
+      "summary": "The plain mushroom, identical to idle-unprovisioned's. It shows when no take is open, nothing needs you, and no update waits. Face priority: the recording faces, then amber, then Frost, then plain.",
+      "entry_conditions": "Idle, with no banner of kinds 1–4 waiting.",
+      "said_lines": [],
+      "actions": [],
+      "transitions": [],
+      "decided_by": [
+        "N21",
+        "N24",
+        "N38"
+      ],
+      "source_lines": "748-749, 781-784, 825-826"
+    },
+    {
+      "id": "red dot",
+      "kind": "tray-face",
+      "parent": "recording",
+      "surface": "tray",
+      "status": "ratified",
+      "summary": "Recording. No popover, and the click is the pause. No timer in the menu bar.",
+      "entry_conditions": "A take is recording.",
+      "said_lines": [],
+      "actions": [],
+      "transitions": [],
+      "decided_by": [
+        "N24",
+        "N38"
+      ],
+      "source_lines": "781-784, 801-803"
+    },
+    {
+      "id": "pause bars",
+      "kind": "tray-face",
+      "parent": "paused",
+      "surface": "tray",
+      "status": "ratified",
+      "summary": "Paused. The icon wears pause bars while the take is paused.",
+      "entry_conditions": "A take is paused.",
+      "said_lines": [],
+      "actions": [],
+      "transitions": [],
+      "decided_by": [
+        "N24",
+        "N38"
+      ],
+      "source_lines": "781-784, 808-809"
+    },
+    {
+      "id": "amber dot",
+      "kind": "tray-face",
+      "parent": "idle-ready",
+      "surface": "tray",
+      "status": "ratified",
+      "summary": "Something needs you: a banner of kinds 1–3 waits (a saved take, the space can't take videos, recording-off). Born ratified for the saved take (N25). Its 'something needs you' generalization is N38's (provisional). No window, no notification.",
+      "entry_conditions": "Idle, and a recovered take / unanswered disk-full-stop, a space-can't-take-videos banner, or recording-off waits.",
+      "said_lines": [],
+      "actions": [],
+      "transitions": [],
+      "decided_by": [
+        "N25",
+        "N38"
+      ],
+      "source_lines": "748-749, 768-773, 781-784, 825-826, 859"
+    },
+    {
+      "id": "Frost dot",
+      "kind": "tray-face",
+      "parent": "idle-ready",
+      "surface": "tray",
+      "status": "provisional",
+      "summary": "Something new from us: an update waits (update-ready, Region 5). This is the lowest non-plain face.",
+      "entry_conditions": "Idle, an update is ready, and no amber-kind banner waits.",
+      "said_lines": [],
+      "actions": [],
+      "transitions": [],
+      "decided_by": [
+        "N37",
+        "N38"
+      ],
+      "source_lines": "748-749, 774, 781-784, 825-826"
+    }
+  ],
+  "scaffold_flags": [
+    {
+      "flag": "Info.plist usage strings ARE said-lines: the mic and camera usage strings must ship verbatim in Info.plist.",
+      "source_lines": "720"
+    },
+    {
+      "flag": "Mic resolves fully before the screen step, so system dialogs never stack (POC §4).",
+      "source_lines": "720"
+    },
+    {
+      "flag": "perm-screen opens the exact System Settings pane. The grant takes effect only on the next launch, and resumption after relaunch is derived from probes with no stored step counter.",
+      "source_lines": "721"
+    },
+    {
+      "flag": "Reopen shroom (N42) needs a self-relaunch path that lands in `relaunching` / the permissions chapter.",
+      "source_lines": "721"
+    },
+    {
+      "flag": "perm-priming: an invisible warm-up of about 1 s that triggers Apple's second (~30-day) consent at setup (probe: dialog real on Tahoe, non-fatal).",
+      "source_lines": "722"
+    },
+    {
+      "flag": "Arm-time guard: grants are re-probed at every record arm and when config opens. The missing beat is replayed, and a missing screen grant surfaces as `recording-off` before Start.",
+      "source_lines": "731-738"
+    },
+    {
+      "flag": "Monthly re-confirm: config must know when Apple's periodic re-confirm is due and run perm-priming's warm-up then. The popover may close as the dialog takes focus.",
+      "source_lines": "739-742"
+    },
+    {
+      "flag": "Show yourself bubble: the un-excluded preview-window trick with zero compositing. Draggable, not resizable, never takes focus. Live from config's opening through the take.",
+      "source_lines": "759, 799, 1720"
+    },
+    {
+      "flag": "Never auto-pick an iPhone (Continuity devices), for the microphone or the camera (POC §2).",
+      "source_lines": "760, 858"
+    },
+    {
+      "flag": "Quality presets Normal (1080p) / 2K / 4K come from POC §2.",
+      "source_lines": "761"
+    },
+    {
+      "flag": "Device fallbacks: a gone last-used display falls back silently to the menu-bar display. Same-named displays are labeled by position and numbered only when position can't tell them apart. Camera as the source previews at config, and the count plays on that display.",
+      "source_lines": "858"
+    },
+    {
+      "flag": "Countdown scrim lifts the instant capture starts, so the count is never in the take. The countdown takes focus so Esc works without extra macOS permission.",
+      "source_lines": "797-799, 1720"
+    },
+    {
+      "flag": "Recording: click = instant pause, and the popover opens only after the pause is confirmed (POC §8). Right-click mid-take = left click.",
+      "source_lines": "801-804, 857"
+    },
+    {
+      "flag": "Capture writes locally regardless of network. Upload is opportunistic in the background.",
+      "source_lines": "804-806"
+    },
+    {
+      "flag": "Markers: metadata-only at the pause point in v1.",
+      "source_lines": "821-822"
+    },
+    {
+      "flag": "Restart's undo: the old take is discarded only the instant the new capture begins. A cancelled count leaves it intact.",
+      "source_lines": "822-825"
+    },
+    {
+      "flag": "Discard deletes the local take AND any bytes already uploaded to the bucket: a clean delete, no tombstone.",
+      "source_lines": "837-840"
+    },
+    {
+      "flag": "Non-activating popovers: an unasked (auto-pause / auto-stop) popover never takes key focus.",
+      "source_lines": "854, 1760"
+    },
+    {
+      "flag": "Thresholds: disk-low (~20 minutes example), the Start-greys floor (~1 minute), and the disk-full-stop floor, each at each quality.",
+      "source_lines": "855-856, 1749-1750"
+    },
+    {
+      "flag": "disk-full-stop finalizes at the floor, never by a surprise ENOSPC.",
+      "source_lines": "856"
+    },
+    {
+      "flag": "A screen grant only returns after a relaunch, so screen permission-lost mid-take must finalize rather than pause.",
+      "source_lines": "853"
+    },
+    {
+      "flag": "mac-away detection: sleep, lid closed, screen lock, and user switch pause at that instant. The popover opens at unlock or wake.",
+      "source_lines": "852, 854"
+    },
+    {
+      "flag": "recovered-take relies on §5.5's valid-but-truncated file surviving a crash or forced shutdown. Interrupted takes surface oldest first and persist across launches.",
+      "source_lines": "859"
+    },
+    {
+      "flag": "quit-confirm: the upload queue is on disk and resumes at the next launch. A system shutdown never asks.",
+      "source_lines": "861"
+    },
+    {
+      "flag": "stopping: finalize measured at 102 ms.",
+      "source_lines": "863"
+    },
+    {
+      "flag": "Launch provenance: tell a user-made launch (treated as a tray click) from a login-item or update relaunch (silent).",
+      "source_lines": "1744-1745"
+    },
+    {
+      "flag": "Popover anchor fallback to the top-right when the status item is occluded (e.g. behind the notch).",
+      "source_lines": "1746"
+    },
+    {
+      "flag": "Tray faces have no scaffold-grade names in the spec. The fixture ids use the spec's words (plain, red dot, pause bars, amber dot, Frost dot), and the scaffold should pin real names.",
+      "source_lines": "781-784"
+    }
+  ],
+  "open_notes": [
+    "Law 8's local exception is marked 'check it at ratification': single-action faces whose one filled button LEADS (the saved-take banners). In this region that means recovered-take's Get link before Discard…, and by extension disk-full-stop and screen permission-lost (lines 141-143).",
+    "Return on disk-full-stop / screen permission-lost: Law 8 makes the one filled action the Return default, and line 854 says only the missing key focus stops a stray Return from triggering Get link, so Get link is modeled as the Return default once focused. Law 8's 'never the Return default' applies to banners, and these are popovers. Confirm.",
+    "The camera usage string sits in the copy-ratified chapter table, but N20 enumerates only 'the mic usage string' as ratified. It is marked ratified here on the heading's authority; confirm.",
+    "The quiet hint 'allowed in System Settings' (denied mic at config) is a quoted fragment with no full rendered wording. It sits under the permissions subsection's 'copy ratified' heading, so it is marked ratified on that authority (consistent with the camera string), but N20 doesn't enumerate it; confirm, and pin the full wording.",
+    "The diagram draws the screen-permission edge as recording → disk_full_stop, but the table gives screen permission-lost its own line ('macOS switched off screen recording, so the recording stopped at 7:15 …'). It is modeled here as its own failure-state that behaves like disk-full-stop. If it is literally disk_full_stop, it would also inherit 'dismissed unanswered → recovered-take', which the table doesn't state for permission-lost.",
+    "Discard… from disk-full-stop and from screen permission-lost has no stated or drawn destination (presumably discard-confirm).",
+    "discard-confirm reached from recovered-take: only the line change and the clean delete are stated. The Back and Discard destinations and whether Restart instead appears are unstated, and the diagram draws Back → paused only.",
+    "The diagram draws idle_ready → recovered_take ('launch finds an interrupted take'), but recovered-take renders as a banner atop config, greeted by the next tray click.",
+    "Not drawn in the diagram, though stated in the tables: Reopen shroom → relaunching (N42); a cancelled Restart count → paused with the take intact (N39); right-click Quit → quit-confirm from idle-ready (N41); config → Library / Settings via the footer; recording-off and disk-low; crash mid-take → recovered-take; recording-off → perm-screen via the Settings window.",
+    "mac-away gives lines only for sleep and lock. Lines for lid closed and user switch are unstated, as are its actions (presumably the paused popover's).",
+    "Screen permission-lost's microphone half says '(Resume continues without sound)' unquoted. mic-lost's quoted equivalent is “Resume continues without sound.” It's unclear whether a line renders.",
+    "`relaunching` has no render or said-line in the region.",
+    "Click-away on the paused popover is unspecified. N38's keyboard bullet says only that Esc dismisses.",
+    "display-lost: N24 says 'the same popover with the context line', but the edge row lists only Resume (greyed) · Stop · Discard…. Whether Drop a marker and Restart remain is unstated.",
+    "quit-confirm reached by right-click Quit from idle-ready: the Back destination is unstated (the diagram draws config → quit_confirm → config). Esc / click-away on quit-confirm is also unstated beyond Law 9's 'Esc always means back'.",
+    "recovered-take says 'next launch is silent', but N41 / law 5 make a user-made launch a tray click. Presumably such a launch opens config with the banner. Check against N41's amendment of Region 1.",
+    "The config heading is copy ratified (N21), but the popover grammar (banner slot, status line, disk-low under Start, Return = Start) is N38/N39 and provisional. The status-line strings 'Uploading — 40%. Your link already works.' and 'Fully live ✓' match ratified owner-page copy (N26), but are provisional in this placement.",
+    "all-set says 'all six rows green', while N42 lets row six tick with 'microphone off for now'.",
+    "The member all-set variant (two doors, Close · Record now) lives in Region 6 (N30), not here.",
+    "The bubble is not a state in the inventory. It is included as the overlay the region defines (N22; the surfaces table, line 1720). 'discard-confirm (saved take)' and 'permission-lost (microphone)' are fixture ids for variants that the spec doesn't name separately.",
+    "Law 4: a Quit request while paused opens the paused popover (its no-Quit note), and is declined silently while recording.",
+    "No in-range 'Fat-marker status' notes or 'check at ratification' markers exist beyond Law 8's exception (cited from the Standing laws)."
+  ],
+  "amendments": [
+    {
+      "ledger_id": "N17",
+      "amends": "Region 3's original perm-preamble beat",
+      "summary": "perm-preamble fuses into Region 2's `done`, which previews the choreography with Allow recording. Region 3 opens at perm-mic."
+    },
+    {
+      "ledger_id": "N20",
+      "amends": "the passive end-of-onboarding handoff",
+      "summary": "all-set becomes the window's final face, a resting state with three doors (Close · Invite someone · Record now). relaunching is named as a beat."
+    },
+    {
+      "ledger_id": "N21",
+      "amends": "N1 (tray Copy last link), U9's tray upload mirror, U7's tray update row",
+      "summary": "No native menus. The tray click opens config directly, and right-click is a one-item Quit shroom menu. Copy last link is removed (N1 amended). The orphaned rows move to popover slots (settled by N24, N37 and N38)."
+    },
+    {
+      "ledger_id": "U1",
+      "amends": "the POC's four-way discard panel (POC delta, 2026-07-20)",
+      "summary": "'Keep' (keep locally without publishing) is removed because U1 removed local keeps, so discard-confirm is three-way. N23 later ratified the three-way panel's copy."
+    },
+    {
+      "ledger_id": "N37",
+      "amends": "settles N25's open badge question",
+      "summary": "Autonomous, awaiting ratification. The update gets its own Frost dot, the lowest tray face. Amber stays 'something needs you'."
+    },
+    {
+      "ledger_id": "N38",
+      "amends": "extends N24's three tray faces plus N25's amber fourth; settles N21's popover slots and, with N37, N25's badge question",
+      "summary": "Autonomous, awaiting ratification. Five tray faces: plain · red dot · pause bars · amber (something needs you) · Frost (update). The popover has one banner (ask) and one status line (fact). recording-off appears before Start. The monthly re-confirm moves to config. Return = Start / Resume."
+    },
+    {
+      "ledger_id": "N39",
+      "amends": "extends ratified N24 (paused's Restart, display-lost)",
+      "summary": "Autonomous, awaiting ratification. The count is Restart's undo. The auto-pause family (mic-lost, camera-lost, mac-away, permission-lost) and disk-full-stop open their popover unasked without key focus. disk-low sits under Start. Device rules at config."
+    },
+    {
+      "ledger_id": "N41",
+      "amends": "Region 1's 'every launch is silent' (touches recovered-take's 'next launch is silent')",
+      "summary": "Autonomous, awaiting ratification. A launch you did is a tray click, and shroom's own launches stay silent. quit-confirm applies while uploads drain. Nothing ends the app mid-take."
+    },
+    {
+      "ledger_id": "N42",
+      "amends": "extends ratified N20 (perm-screen, all-set row six)",
+      "summary": "Autonomous, awaiting ratification. Adds 'Flipped it already?' [ Reopen shroom ] under perm-screen for a declined relaunch. Row six ticks with 'microphone off for now' when the mic was denied."
+    },
+    {
+      "ledger_id": "U5",
+      "amends": "the walkthrough's first-arm permission recommendation",
+      "summary": "Permissions happen at the end of onboarding in the same window (mic inline → Settings switch → guided relaunch → priming). The first Record is pure, and the arm-time re-probe survives as a guard."
+    }
+  ]
+}

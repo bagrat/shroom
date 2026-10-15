@@ -1,0 +1,10 @@
+{
+  "name": "shroom-e2e",
+  "private": true,
+  "type": "module",
+  "description": "End-to-end checks: the heartbeat, playback in real browser engines, the state gallery.",
+  "devDependencies": {
+    "playwright": "^1.56.0",
+    "hls.js": "^1.6.0"
+  }
+}

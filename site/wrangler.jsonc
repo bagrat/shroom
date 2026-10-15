@@ -1,0 +1,26 @@
+// shroom.am: the landing, the install line, the page for coding agents and What's new.
+// Deployed by .github/workflows/site.yml on every push to main (after `node site/build.mjs`).
+{
+  "name": "shroom-site",
+  "main": "worker.js",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "public",
+    "binding": "ASSETS",
+    // Only these reach worker.js; the favicons are served as they are, and free.
+    "run_worker_first": ["/", "/install", "/agent", "/agent.md", "/whats-new", "/whats-new/*", "/_/*"],
+    "html_handling": "none",
+    "not_found_handling": "none"
+  },
+  "routes": [
+    { "pattern": "shroom.am", "custom_domain": true },
+    { "pattern": "www.shroom.am", "custom_domain": true }
+  ],
+  "workers_dev": false,
+  "preview_urls": false,
+  // Counts, not logs (worker.js says what one row holds).
+  // The dataset is made on its first write and keeps rows three months.
+  "analytics_engine_datasets": [{ "binding": "STATS", "dataset": "shroom_site" }],
+  // No request logs: nothing about who visited is kept.
+  "observability": { "enabled": false }
+}

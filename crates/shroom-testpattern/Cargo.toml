@@ -1,0 +1,8 @@
+[package]
+name = "shroom-testpattern"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+description = "The media-truth test pattern: a frame-counter strip drawn into frames and read back from decoded video."

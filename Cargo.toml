@@ -1,0 +1,11 @@
+[workspace]
+resolver = "3"
+members = ["crates/*", "app/src-tauri", "tests/e2e-live"]
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.88"
+license = "MIT"
+
+[patch."https://github.com/CapSoftware/Cap"]
+workspace-hack = { path = "vendor/workspace-hack" }

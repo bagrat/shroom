@@ -1,0 +1,1406 @@
+{
+  "source": "UX-MAP.html",
+  "states": [
+    {
+      "name": "landing",
+      "kind": "state",
+      "region": 1
+    },
+    {
+      "name": "source-view",
+      "kind": "state",
+      "region": 1
+    },
+    {
+      "name": "installing",
+      "kind": "state",
+      "region": 1
+    },
+    {
+      "name": "install-net-drop",
+      "kind": "fail",
+      "region": 1
+    },
+    {
+      "name": "install-checksum-fail",
+      "kind": "fail",
+      "region": 1
+    },
+    {
+      "name": "install-unsupported-os",
+      "kind": "fail",
+      "region": 1
+    },
+    {
+      "name": "install-refused-midtake",
+      "kind": "fail",
+      "region": 1
+    },
+    {
+      "name": "updating",
+      "kind": "state",
+      "region": 1
+    },
+    {
+      "name": "flaunch",
+      "kind": "state",
+      "region": 1
+    },
+    {
+      "name": "welcome",
+      "kind": "state",
+      "region": 1
+    },
+    {
+      "name": "idle",
+      "kind": "state",
+      "region": 1
+    },
+    {
+      "name": "account",
+      "kind": "state",
+      "region": 2
+    },
+    {
+      "name": "account-signing-up",
+      "kind": "state",
+      "region": 2
+    },
+    {
+      "name": "token",
+      "kind": "state",
+      "region": 2
+    },
+    {
+      "name": "token-garbled",
+      "kind": "fail",
+      "region": 2
+    },
+    {
+      "name": "token-wrong-powers",
+      "kind": "fail",
+      "region": 2
+    },
+    {
+      "name": "token-pick-account",
+      "kind": "state",
+      "region": 2
+    },
+    {
+      "name": "card",
+      "kind": "state",
+      "region": 2
+    },
+    {
+      "name": "gate-email",
+      "kind": "fail",
+      "region": 2
+    },
+    {
+      "name": "gate-card",
+      "kind": "fail",
+      "region": 2
+    },
+    {
+      "name": "name",
+      "kind": "state",
+      "region": 2
+    },
+    {
+      "name": "name-taken",
+      "kind": "fail",
+      "region": 2
+    },
+    {
+      "name": "wiring",
+      "kind": "state",
+      "region": 2
+    },
+    {
+      "name": "wizard-offline",
+      "kind": "fail",
+      "region": 2
+    },
+    {
+      "name": "done",
+      "kind": "state",
+      "region": 2
+    },
+    {
+      "name": "space-found",
+      "kind": "state",
+      "region": 2
+    },
+    {
+      "name": "degraded",
+      "kind": "fail",
+      "region": 2
+    },
+    {
+      "name": "repair-mood",
+      "kind": "state",
+      "region": 2
+    },
+    {
+      "name": "space-storage-gone",
+      "kind": "fail",
+      "region": 2
+    },
+    {
+      "name": "name-changed",
+      "kind": "fail",
+      "region": 2
+    },
+    {
+      "name": "perm-mic",
+      "kind": "state",
+      "region": 3
+    },
+    {
+      "name": "perm-screen",
+      "kind": "state",
+      "region": 3
+    },
+    {
+      "name": "relaunching",
+      "kind": "state",
+      "region": 3
+    },
+    {
+      "name": "perm-priming",
+      "kind": "state",
+      "region": 3
+    },
+    {
+      "name": "all-set",
+      "kind": "state",
+      "region": 3
+    },
+    {
+      "name": "idle-ready",
+      "kind": "state",
+      "region": 3
+    },
+    {
+      "name": "config",
+      "kind": "state",
+      "region": 3
+    },
+    {
+      "name": "countdown",
+      "kind": "state",
+      "region": 3
+    },
+    {
+      "name": "recording",
+      "kind": "state",
+      "region": 3
+    },
+    {
+      "name": "paused",
+      "kind": "state",
+      "region": 3
+    },
+    {
+      "name": "display-lost",
+      "kind": "state",
+      "region": 3
+    },
+    {
+      "name": "recovered-take",
+      "kind": "state",
+      "region": 3
+    },
+    {
+      "name": "recording-off",
+      "kind": "fail",
+      "region": 3
+    },
+    {
+      "name": "auto-pause",
+      "kind": "fail",
+      "region": 3
+    },
+    {
+      "name": "disk-full-stop",
+      "kind": "fail",
+      "region": 3
+    },
+    {
+      "name": "quit-confirm",
+      "kind": "state",
+      "region": 3
+    },
+    {
+      "name": "discard-confirm",
+      "kind": "state",
+      "region": 3
+    },
+    {
+      "name": "owner-page",
+      "kind": "state",
+      "region": 4
+    },
+    {
+      "name": "fully-live",
+      "kind": "state",
+      "region": 4
+    },
+    {
+      "name": "waiting-conn",
+      "kind": "fail",
+      "region": 4
+    },
+    {
+      "name": "live",
+      "kind": "state",
+      "region": 4
+    },
+    {
+      "name": "on-its-way",
+      "kind": "state",
+      "region": 4
+    },
+    {
+      "name": "removed",
+      "kind": "state",
+      "region": 4
+    },
+    {
+      "name": "stopped-offline",
+      "kind": "fail",
+      "region": 4
+    },
+    {
+      "name": "stopped-stranded",
+      "kind": "fail",
+      "region": 4
+    },
+    {
+      "name": "on-its-way-stalled",
+      "kind": "state",
+      "region": 4
+    },
+    {
+      "name": "library",
+      "kind": "state",
+      "region": 5
+    },
+    {
+      "name": "delete-confirm",
+      "kind": "state",
+      "region": 5
+    },
+    {
+      "name": "settings-general",
+      "kind": "state",
+      "region": 5
+    },
+    {
+      "name": "settings-space",
+      "kind": "state",
+      "region": 5
+    },
+    {
+      "name": "exit-confirm",
+      "kind": "state",
+      "region": 5
+    },
+    {
+      "name": "update-ready",
+      "kind": "state",
+      "region": 5
+    },
+    {
+      "name": "updating-app",
+      "kind": "state",
+      "region": 5
+    },
+    {
+      "name": "update-failed",
+      "kind": "fail",
+      "region": 5
+    },
+    {
+      "name": "invite-born",
+      "kind": "state",
+      "region": 6
+    },
+    {
+      "name": "member-remove-confirm",
+      "kind": "state",
+      "region": 6
+    },
+    {
+      "name": "add-another-mac",
+      "kind": "state",
+      "region": 6
+    },
+    {
+      "name": "join-landing",
+      "kind": "state",
+      "region": 6
+    },
+    {
+      "name": "join-landing-elsewhere",
+      "kind": "state",
+      "region": 6
+    },
+    {
+      "name": "join-expired",
+      "kind": "fail",
+      "region": 6
+    },
+    {
+      "name": "join-used",
+      "kind": "fail",
+      "region": 6
+    },
+    {
+      "name": "join-installing",
+      "kind": "state",
+      "region": 6
+    },
+    {
+      "name": "member-welcome",
+      "kind": "state",
+      "region": 6
+    },
+    {
+      "name": "join-already-here",
+      "kind": "state",
+      "region": 6
+    },
+    {
+      "name": "join-switch-confirm",
+      "kind": "state",
+      "region": 6
+    },
+    {
+      "name": "joining",
+      "kind": "state",
+      "region": 6
+    },
+    {
+      "name": "join-waiting",
+      "kind": "fail",
+      "region": 6
+    },
+    {
+      "name": "join-space-missing",
+      "kind": "fail",
+      "region": 6
+    },
+    {
+      "name": "member-done",
+      "kind": "state",
+      "region": 6
+    },
+    {
+      "name": "member-all-set",
+      "kind": "state",
+      "region": 6
+    },
+    {
+      "name": "member-revoked",
+      "kind": "fail",
+      "region": 6
+    },
+    {
+      "name": "space-needs-owner",
+      "kind": "fail",
+      "region": 6
+    },
+    {
+      "name": "space-gone",
+      "kind": "fail",
+      "region": 6
+    }
+  ],
+  "ports": [
+    {
+      "name": "r4demo",
+      "region": 1
+    },
+    {
+      "name": "laterport",
+      "region": 2
+    },
+    {
+      "name": "portinvite",
+      "region": 3
+    },
+    {
+      "name": "portlib",
+      "region": 3
+    },
+    {
+      "name": "portstop",
+      "region": 3
+    },
+    {
+      "name": "portcrash",
+      "region": 3
+    },
+    {
+      "name": "portstopin",
+      "region": 4
+    },
+    {
+      "name": "portdelete",
+      "region": 4
+    },
+    {
+      "name": "portlibin",
+      "region": 5
+    },
+    {
+      "name": "porttomb",
+      "region": 5
+    },
+    {
+      "name": "portmembersin",
+      "region": 6
+    },
+    {
+      "name": "portchapter",
+      "region": 6
+    },
+    {
+      "name": "portconfig6",
+      "region": 6
+    }
+  ],
+  "notes": [
+    {
+      "name": "launch-door",
+      "region": 1
+    },
+    {
+      "name": "charset",
+      "region": 2
+    },
+    {
+      "name": "settingsnote",
+      "region": 2
+    },
+    {
+      "name": "mic-denied",
+      "region": 3
+    },
+    {
+      "name": "camera-note",
+      "region": 3
+    },
+    {
+      "name": "arm-guard",
+      "region": 3
+    },
+    {
+      "name": "statusnote",
+      "region": 3
+    },
+    {
+      "name": "devices",
+      "region": 3
+    },
+    {
+      "name": "library-faces",
+      "region": 5
+    },
+    {
+      "name": "space-moods",
+      "region": 5
+    },
+    {
+      "name": "invite-row-faces",
+      "region": 6
+    },
+    {
+      "name": "join-owner-view",
+      "region": 6
+    },
+    {
+      "name": "save-movies",
+      "region": 6
+    }
+  ],
+  "edges": [
+    {
+      "from": "idle",
+      "to": "launch-door",
+      "kind": "side",
+      "label": "also",
+      "region": 1
+    },
+    {
+      "from": "landing",
+      "to": "source-view",
+      "kind": "side",
+      "label": "Read it first",
+      "region": 1
+    },
+    {
+      "from": "source-view",
+      "to": "landing",
+      "kind": "side",
+      "label": "back",
+      "region": 1
+    },
+    {
+      "from": "landing",
+      "to": "r4demo",
+      "kind": "port",
+      "label": "watch the demo",
+      "region": 1
+    },
+    {
+      "from": "landing",
+      "to": "installing",
+      "kind": "flow",
+      "label": "run the install command",
+      "region": 1
+    },
+    {
+      "from": "installing",
+      "to": "install-net-drop",
+      "kind": "fail",
+      "label": "fetch exit",
+      "region": 1
+    },
+    {
+      "from": "install-net-drop",
+      "to": "installing",
+      "kind": "retry",
+      "label": "re-run — idempotent",
+      "region": 1
+    },
+    {
+      "from": "installing",
+      "to": "install-checksum-fail",
+      "kind": "fail",
+      "label": "hash ≠ manifest",
+      "region": 1
+    },
+    {
+      "from": "install-checksum-fail",
+      "to": "installing",
+      "kind": "retry",
+      "label": "run it once more",
+      "region": 1
+    },
+    {
+      "from": "installing",
+      "to": "install-unsupported-os",
+      "kind": "fail",
+      "label": "version probe, before fetch",
+      "region": 1
+    },
+    {
+      "from": "installing",
+      "to": "install-refused-midtake",
+      "kind": "fail",
+      "label": "app status seam",
+      "region": 1
+    },
+    {
+      "from": "install-refused-midtake",
+      "to": "installing",
+      "kind": "retry",
+      "label": "after the take",
+      "region": 1
+    },
+    {
+      "from": "installing",
+      "to": "updating",
+      "kind": "auto",
+      "label": "bundle present",
+      "region": 1
+    },
+    {
+      "from": "installing",
+      "to": "flaunch",
+      "kind": "flow",
+      "label": "app placed and launched",
+      "region": 1
+    },
+    {
+      "from": "flaunch",
+      "to": "welcome",
+      "kind": "flow",
+      "label": "first launch only",
+      "region": 1
+    },
+    {
+      "from": "welcome",
+      "to": "idle",
+      "kind": "flow",
+      "label": "Later — or ✕-close (login item iff box checked)",
+      "region": 1
+    },
+    {
+      "from": "welcome",
+      "to": "account",
+      "kind": "flow",
+      "label": "Set up my space — the window morphs",
+      "region": 1
+    },
+    {
+      "from": "idle",
+      "to": "welcome",
+      "kind": "flow",
+      "label": "tray click — the same window, any day (N21)",
+      "region": 1
+    },
+    {
+      "from": "account",
+      "to": "account-signing-up",
+      "kind": "flow",
+      "label": "Not yet — opens signup",
+      "region": 2
+    },
+    {
+      "from": "account-signing-up",
+      "to": "token",
+      "kind": "flow",
+      "label": "I signed up — box 1 ticks at proceed",
+      "region": 2
+    },
+    {
+      "from": "account",
+      "to": "token",
+      "kind": "flow",
+      "label": "I have one — box 1 ticks at proceed",
+      "region": 2
+    },
+    {
+      "from": "token",
+      "to": "token-garbled",
+      "kind": "fail",
+      "label": "shape check",
+      "region": 2
+    },
+    {
+      "from": "token-garbled",
+      "to": "token",
+      "kind": "retry",
+      "label": "copy once more",
+      "region": 2
+    },
+    {
+      "from": "token",
+      "to": "token-wrong-powers",
+      "kind": "fail",
+      "label": "probe by use",
+      "region": 2
+    },
+    {
+      "from": "token-wrong-powers",
+      "to": "token",
+      "kind": "retry",
+      "label": "on new paste",
+      "region": 2
+    },
+    {
+      "from": "token",
+      "to": "card",
+      "kind": "flow",
+      "label": "paste validates — probe pass runs",
+      "region": 2
+    },
+    {
+      "from": "card",
+      "to": "gate-email",
+      "kind": "fail",
+      "label": "403 8000077",
+      "region": 2
+    },
+    {
+      "from": "gate-email",
+      "to": "card",
+      "kind": "auto",
+      "label": "auto-poll clears",
+      "region": 2
+    },
+    {
+      "from": "card",
+      "to": "gate-card",
+      "kind": "fail",
+      "label": "needs-payment class",
+      "region": 2
+    },
+    {
+      "from": "gate-card",
+      "to": "card",
+      "kind": "auto",
+      "label": "auto-poll clears",
+      "region": 2
+    },
+    {
+      "from": "card",
+      "to": "name",
+      "kind": "flow",
+      "label": "cleared — no subdomain yet (10007)",
+      "region": 2
+    },
+    {
+      "from": "card",
+      "to": "wiring",
+      "kind": "flow",
+      "label": "cleared — subdomain exists: the name row ticks itself",
+      "region": 2
+    },
+    {
+      "from": "name",
+      "to": "name-taken",
+      "kind": "fail",
+      "label": "10031 at claim",
+      "region": 2
+    },
+    {
+      "from": "name-taken",
+      "to": "name",
+      "kind": "retry",
+      "label": "inline retry",
+      "region": 2
+    },
+    {
+      "from": "name",
+      "to": "charset",
+      "kind": "retry",
+      "label": "as-you-type",
+      "region": 2
+    },
+    {
+      "from": "name",
+      "to": "wiring",
+      "kind": "flow",
+      "label": "Claim this name — the row ticks with the fact",
+      "region": 2
+    },
+    {
+      "from": "wiring",
+      "to": "wizard-offline",
+      "kind": "fail",
+      "label": "transport failure",
+      "region": 2
+    },
+    {
+      "from": "wizard-offline",
+      "to": "wiring",
+      "kind": "auto",
+      "label": "auto-resume on reconnect",
+      "region": 2
+    },
+    {
+      "from": "wiring",
+      "to": "done",
+      "kind": "flow",
+      "label": "silent self-check passes",
+      "region": 2
+    },
+    {
+      "from": "done",
+      "to": "settingsnote",
+      "kind": "side",
+      "label": "re-entry, later — the settings mood",
+      "region": 2
+    },
+    {
+      "from": "laterport",
+      "to": "degraded",
+      "kind": "fail",
+      "label": "auth-class failure → classify",
+      "region": 2
+    },
+    {
+      "from": "degraded",
+      "to": "repair-mood",
+      "kind": "flow",
+      "label": "Reconnect your space",
+      "region": 2
+    },
+    {
+      "from": "repair-mood",
+      "to": "space-storage-gone",
+      "kind": "fail",
+      "label": "the bucket is gone",
+      "region": 2
+    },
+    {
+      "from": "repair-mood",
+      "to": "name-changed",
+      "kind": "fail",
+      "label": "the name changed",
+      "region": 2
+    },
+    {
+      "from": "token",
+      "to": "token-pick-account",
+      "kind": "side",
+      "label": "several accounts",
+      "region": 2
+    },
+    {
+      "from": "wiring",
+      "to": "space-found",
+      "kind": "side",
+      "label": "a space is already there",
+      "region": 2
+    },
+    {
+      "from": "done",
+      "to": "perm-mic",
+      "kind": "flow",
+      "label": "Allow recording",
+      "region": 3
+    },
+    {
+      "from": "perm-mic",
+      "to": "mic-denied",
+      "kind": "side",
+      "label": "Don't Allow — never blocks",
+      "region": 3
+    },
+    {
+      "from": "perm-mic",
+      "to": "perm-screen",
+      "kind": "flow",
+      "label": "mic resolved — allow or deny",
+      "region": 3
+    },
+    {
+      "from": "perm-screen",
+      "to": "relaunching",
+      "kind": "flow",
+      "label": "switch flipped — say yes to quit and reopen",
+      "region": 3
+    },
+    {
+      "from": "relaunching",
+      "to": "perm-screen",
+      "kind": "auto",
+      "label": "resumes right here — derived state",
+      "region": 3
+    },
+    {
+      "from": "perm-screen",
+      "to": "perm-priming",
+      "kind": "flow",
+      "label": "grant live",
+      "region": 3
+    },
+    {
+      "from": "perm-priming",
+      "to": "all-set",
+      "kind": "flow",
+      "label": "warm-up clean — row six ticks",
+      "region": 3
+    },
+    {
+      "from": "all-set",
+      "to": "config",
+      "kind": "flow",
+      "label": "Record now — the window closes, the popover opens at the tray",
+      "region": 3
+    },
+    {
+      "from": "all-set",
+      "to": "portinvite",
+      "kind": "side",
+      "label": "Invite someone",
+      "region": 3
+    },
+    {
+      "from": "all-set",
+      "to": "idle-ready",
+      "kind": "flow",
+      "label": "Close — dock retreats",
+      "region": 3
+    },
+    {
+      "from": "idle-ready",
+      "to": "config",
+      "kind": "flow",
+      "label": "tray click",
+      "region": 3
+    },
+    {
+      "from": "config",
+      "to": "idle-ready",
+      "kind": "retry",
+      "label": "click away or Esc — nothing lost",
+      "region": 3
+    },
+    {
+      "from": "config",
+      "to": "statusnote",
+      "kind": "side",
+      "label": "when there's something to say",
+      "region": 3
+    },
+    {
+      "from": "config",
+      "to": "countdown",
+      "kind": "flow",
+      "label": "Start recording",
+      "region": 3
+    },
+    {
+      "from": "countdown",
+      "to": "config",
+      "kind": "retry",
+      "label": "any click, Esc, or the line — cancel, still armed",
+      "region": 3
+    },
+    {
+      "from": "countdown",
+      "to": "recording",
+      "kind": "flow",
+      "label": "3-2-1 elapsed — the scrim lifts",
+      "region": 3
+    },
+    {
+      "from": "recording",
+      "to": "paused",
+      "kind": "flow",
+      "label": "tray click — pause confirmed first",
+      "region": 3
+    },
+    {
+      "from": "recording",
+      "to": "display-lost",
+      "kind": "fail",
+      "label": "display unplugged — auto-pause",
+      "region": 3
+    },
+    {
+      "from": "paused",
+      "to": "recording",
+      "kind": "flow",
+      "label": "Resume",
+      "region": 3
+    },
+    {
+      "from": "paused",
+      "to": "countdown",
+      "kind": "flow",
+      "label": "Restart — count already running",
+      "region": 3
+    },
+    {
+      "from": "paused",
+      "to": "portstop",
+      "kind": "port",
+      "label": "Stop — your link opens right away",
+      "region": 3
+    },
+    {
+      "from": "paused",
+      "to": "discard-confirm",
+      "kind": "flow",
+      "label": "Discard…",
+      "region": 3
+    },
+    {
+      "from": "discard-confirm",
+      "to": "paused",
+      "kind": "retry",
+      "label": "Back — click away, Esc",
+      "region": 3
+    },
+    {
+      "from": "portcrash",
+      "to": "recovered-take",
+      "kind": "fail",
+      "label": "the take survives, truncated but valid",
+      "region": 3
+    },
+    {
+      "from": "recovered-take",
+      "to": "portstop",
+      "kind": "port",
+      "label": "Get link — the normal stop sequence",
+      "region": 3
+    },
+    {
+      "from": "recovered-take",
+      "to": "discard-confirm",
+      "kind": "flow",
+      "label": "Discard… — “4:32 was saved.”",
+      "region": 3
+    },
+    {
+      "from": "discard-confirm",
+      "to": "countdown",
+      "kind": "flow",
+      "label": "Restart instead — count already running",
+      "region": 3
+    },
+    {
+      "from": "discard-confirm",
+      "to": "idle-ready",
+      "kind": "flow",
+      "label": "Discard — clean delete, the bubble goes",
+      "region": 3
+    },
+    {
+      "from": "config",
+      "to": "portlib",
+      "kind": "side",
+      "label": "footer icons",
+      "region": 3
+    },
+    {
+      "from": "recording",
+      "to": "auto-pause",
+      "kind": "fail",
+      "label": "mic · camera · sleep · lock",
+      "region": 3
+    },
+    {
+      "from": "config",
+      "to": "recording-off",
+      "kind": "fail",
+      "label": "screen recording switched off",
+      "region": 3
+    },
+    {
+      "from": "recording",
+      "to": "disk-full-stop",
+      "kind": "fail",
+      "label": "out of room",
+      "region": 3
+    },
+    {
+      "from": "config",
+      "to": "quit-confirm",
+      "kind": "side",
+      "label": "Quit shroom while uploads drain",
+      "region": 3
+    },
+    {
+      "from": "portstopin",
+      "to": "owner-page",
+      "kind": "flow",
+      "label": "finalize, 102 ms — the page opens",
+      "region": 4
+    },
+    {
+      "from": "owner-page",
+      "to": "fully-live",
+      "kind": "auto",
+      "label": "queue drains — the page refreshes itself",
+      "region": 4
+    },
+    {
+      "from": "owner-page",
+      "to": "waiting-conn",
+      "kind": "fail",
+      "label": "the Mac drops offline",
+      "region": 4
+    },
+    {
+      "from": "waiting-conn",
+      "to": "owner-page",
+      "kind": "auto",
+      "label": "back online — the video follows",
+      "region": 4
+    },
+    {
+      "from": "owner-page",
+      "to": "live",
+      "kind": "flow",
+      "label": "the link, always clean — content ready",
+      "region": 4
+    },
+    {
+      "from": "owner-page",
+      "to": "on-its-way",
+      "kind": "flow",
+      "label": "the link beat the upload",
+      "region": 4
+    },
+    {
+      "from": "on-its-way",
+      "to": "live",
+      "kind": "auto",
+      "label": "self-refresh — content ready",
+      "region": 4
+    },
+    {
+      "from": "waiting-conn",
+      "to": "on-its-way",
+      "kind": "side",
+      "label": "recipients meanwhile",
+      "region": 4
+    },
+    {
+      "from": "portdelete",
+      "to": "removed",
+      "kind": "fail",
+      "label": "Delete — the link stays, says the video is gone",
+      "region": 4
+    },
+    {
+      "from": "portstopin",
+      "to": "stopped-offline",
+      "kind": "fail",
+      "label": "offline at stop",
+      "region": 4
+    },
+    {
+      "from": "stopped-offline",
+      "to": "owner-page",
+      "kind": "auto",
+      "label": "back online — opens itself",
+      "region": 4
+    },
+    {
+      "from": "on-its-way",
+      "to": "on-its-way-stalled",
+      "kind": "auto",
+      "label": "no progress for a while",
+      "region": 4
+    },
+    {
+      "from": "portstopin",
+      "to": "stopped-stranded",
+      "kind": "fail",
+      "label": "the space can't take it",
+      "region": 4
+    },
+    {
+      "from": "portlibin",
+      "to": "library",
+      "kind": "flow",
+      "label": "the folder icon",
+      "region": 5
+    },
+    {
+      "from": "library",
+      "to": "delete-confirm",
+      "kind": "side",
+      "label": "Delete… · Delete key",
+      "region": 5
+    },
+    {
+      "from": "library",
+      "to": "library-faces",
+      "kind": "side",
+      "label": "empty · offline · unreachable",
+      "region": 5
+    },
+    {
+      "from": "delete-confirm",
+      "to": "porttomb",
+      "kind": "port",
+      "label": "Delete — tombstone first",
+      "region": 5
+    },
+    {
+      "from": "portlibin",
+      "to": "settings-general",
+      "kind": "flow",
+      "label": "the gear",
+      "region": 5
+    },
+    {
+      "from": "settings-space",
+      "to": "space-moods",
+      "kind": "side",
+      "label": "other kinds of Mac",
+      "region": 5
+    },
+    {
+      "from": "settings-space",
+      "to": "exit-confirm",
+      "kind": "side",
+      "label": "Disconnect… · Leave…",
+      "region": 5
+    },
+    {
+      "from": "update-ready",
+      "to": "updating-app",
+      "kind": "flow",
+      "label": "Update",
+      "region": 5
+    },
+    {
+      "from": "updating-app",
+      "to": "update-failed",
+      "kind": "fail",
+      "label": "swap refused",
+      "region": 5
+    },
+    {
+      "from": "portmembersin",
+      "to": "invite-born",
+      "kind": "flow",
+      "label": "Invite someone — the window morphs, the field focused",
+      "region": 6
+    },
+    {
+      "from": "invite-born",
+      "to": "member-remove-confirm",
+      "kind": "side",
+      "label": "Remove…",
+      "region": 6
+    },
+    {
+      "from": "invite-born",
+      "to": "invite-row-faces",
+      "kind": "auto",
+      "label": "time passes — seven days, unused",
+      "region": 6
+    },
+    {
+      "from": "invite-born",
+      "to": "add-another-mac",
+      "kind": "side",
+      "label": "You — Add another Mac",
+      "region": 6
+    },
+    {
+      "from": "invite-born",
+      "to": "join-landing",
+      "kind": "flow",
+      "label": "the link, sent over any chat, opened",
+      "region": 6
+    },
+    {
+      "from": "join-landing",
+      "to": "join-owner-view",
+      "kind": "side",
+      "label": "the owner's cookie",
+      "region": 6
+    },
+    {
+      "from": "join-landing",
+      "to": "join-landing-elsewhere",
+      "kind": "side",
+      "label": "not a Mac",
+      "region": 6
+    },
+    {
+      "from": "join-landing",
+      "to": "join-expired",
+      "kind": "fail",
+      "label": "past its days · cancelled",
+      "region": 6
+    },
+    {
+      "from": "join-landing",
+      "to": "join-used",
+      "kind": "fail",
+      "label": "already used",
+      "region": 6
+    },
+    {
+      "from": "join-landing",
+      "to": "join-installing",
+      "kind": "flow",
+      "label": "curl with the link built in",
+      "region": 6
+    },
+    {
+      "from": "join-installing",
+      "to": "member-welcome",
+      "kind": "flow",
+      "label": "the script forwards the link",
+      "region": 6
+    },
+    {
+      "from": "join-landing",
+      "to": "member-welcome",
+      "kind": "flow",
+      "label": "Open shroom — already installed",
+      "region": 6
+    },
+    {
+      "from": "member-welcome",
+      "to": "join-already-here",
+      "kind": "fail",
+      "label": "already in that space",
+      "region": 6
+    },
+    {
+      "from": "member-welcome",
+      "to": "join-switch-confirm",
+      "kind": "side",
+      "label": "in another space",
+      "region": 6
+    },
+    {
+      "from": "member-welcome",
+      "to": "joining",
+      "kind": "flow",
+      "label": "Join",
+      "region": 6
+    },
+    {
+      "from": "join-switch-confirm",
+      "to": "joining",
+      "kind": "flow",
+      "label": "Join Bagrat's space",
+      "region": 6
+    },
+    {
+      "from": "joining",
+      "to": "join-waiting",
+      "kind": "fail",
+      "label": "offline or unanswered",
+      "region": 6
+    },
+    {
+      "from": "join-waiting",
+      "to": "joining",
+      "kind": "auto",
+      "label": "auto-resume",
+      "region": 6
+    },
+    {
+      "from": "joining",
+      "to": "join-space-missing",
+      "kind": "fail",
+      "label": "no space there",
+      "region": 6
+    },
+    {
+      "from": "joining",
+      "to": "member-done",
+      "kind": "flow",
+      "label": "ticked with the fact — rests",
+      "region": 6
+    },
+    {
+      "from": "member-done",
+      "to": "portchapter",
+      "kind": "port",
+      "label": "Allow recording",
+      "region": 6
+    },
+    {
+      "from": "portchapter",
+      "to": "member-all-set",
+      "kind": "flow",
+      "label": "row two ticks",
+      "region": 6
+    },
+    {
+      "from": "member-all-set",
+      "to": "portconfig6",
+      "kind": "port",
+      "label": "Record now · Close",
+      "region": 6
+    },
+    {
+      "from": "member-revoked",
+      "to": "save-movies",
+      "kind": "side",
+      "label": "while takes wait",
+      "region": 6
+    }
+  ],
+  "dangling_endpoints": []
+}

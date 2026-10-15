@@ -1,0 +1,718 @@
+/* The setup window — the welcome, the plan, the invite window's faces — drawn as the
+   canvas draws it (“shroom UI”, DEVIATIONS #45): the mushroom header, one grouped card of
+   rows with hairlines, one filled Frost action per face, the buttons at the window's foot.
+   The tokens and the shared primitives (.card, .b, .switch, .field-input, .icon16) are the
+   canvas's, in ../lib/theme.css (loaded first). The Library and Settings windows load this
+   sheet too: the window's own layout lives under `.ob`; the plan's rows (Settings · Space
+   renders the plan) and the shared pieces at the end keep their class names. */
+
+html,
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+body {
+  font: 13px/1.5 var(--font);
+  -webkit-font-smoothing: antialiased;
+  -webkit-user-select: none;
+  user-select: none;
+  cursor: default;
+}
+
+/* ── the window ── */
+
+/* The canvas's frames draw the title bar as a 36px band and start the window 8px under
+   it: macOS's own title bar is that band. */
+.ob {
+  box-sizing: border-box;
+  min-height: 100vh;
+  padding: 8px 32px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.ob.ob-plan {
+  gap: 16px;
+}
+
+/* The plan is the window's tallest face (the token step with its error, the accounts to
+   pick from): with nothing at its foot it keeps a narrower margin there. */
+.ob.ob-plan:not(:has(.below > .nest.all-set)) {
+  padding-bottom: 16px;
+}
+
+.ob p {
+  margin: 0;
+}
+
+.ob > .wordmark {
+  gap: 9px;
+  font-size: 18px;
+  line-height: 26px;
+  flex: none;
+}
+
+/* On light the mushroom's pale stem takes an edge (the light popover frame); on dark none. */
+.wordmark .stem {
+  stroke: var(--muted);
+  stroke-width: 4;
+  stroke-linejoin: round;
+}
+
+@media (prefers-color-scheme: dark) {
+  .wordmark .stem {
+    stroke: none;
+  }
+}
+
+/* The window's buttons are the canvas's 34px ones. */
+.ob .b:not(.link):not(.red-text):not(.quiet) {
+  min-height: 34px;
+  padding: 0 16px;
+}
+
+.ob .b.filled {
+  min-width: 70px;
+}
+
+.ob .b.quiet {
+  color: var(--fg-3);
+}
+
+.ob .note {
+  font-size: 12px;
+}
+
+.ob .err {
+  font-size: 13px;
+}
+
+/* A face's lines: the first in the text's own colour, the rest a step back. */
+.ob .said {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 14px;
+}
+
+.ob .said > p + p {
+  color: var(--fg-3);
+}
+
+/* ── the welcome ── */
+
+.welcome {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.welcome .foot {
+  margin-top: auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+
+.welcome .foot > .acts {
+  flex: none;
+  flex-wrap: nowrap;
+}
+
+/* “Start shroom when you log in”: a switch row in a card (LoginBox). */
+.login .check {
+  box-sizing: border-box;
+  min-height: 40px;
+  padding: 0 12px;
+  gap: 10px;
+}
+
+.login .check > span {
+  flex: 1;
+}
+
+/* ── the plan ── */
+
+/* Settings · Space renders the plan too (N36, N42): what follows is the plan in both
+   windows — its rows, their marks and their parts; Settings' own sheet sets its rows in a
+   card. The setup window's card and its spacing are the `.ob` block after this one. */
+.plan {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+}
+
+.plan > .rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+}
+
+.plan > .rows > li {
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+.plan > .rows > li.row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.plan > .rows > li.row.current {
+  font-weight: 500;
+}
+
+.plan > .rows > li.row.ahead,
+.plan > .rows > li.row.working {
+  color: var(--muted);
+}
+
+.plan > .rows > li.under {
+  padding-left: 22px;
+  margin: 4px 0 8px;
+}
+
+.plan > .below {
+  margin-top: 14px;
+}
+
+/* A row's mark: the canvas's tick, arrow and dot (or the spinner), in the row's colour. */
+.plan .row .glyph {
+  position: relative;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.plan .row.done .glyph {
+  color: var(--green);
+}
+
+.plan .row.current .glyph {
+  color: var(--frost);
+}
+
+.plan .row.ahead .glyph,
+.plan .row.working .glyph {
+  color: var(--dim);
+}
+
+/* A row ahead that shroom is already doing (wiring under the permissions, N45): its dot
+   is a small spinner. */
+.plan .row.working .glyph .small {
+  display: flex;
+  transform: scale(0.85);
+}
+
+.plan .row .glyph .icon16 {
+  stroke-width: 1.8;
+}
+
+.plan .row .glyph .dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 3px;
+  background: currentColor;
+}
+
+/* The Scene's glyph (→ ✓ •), drawn by the mark beside it and kept as the row's text. */
+.plan .row .glyph .ch {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* A row's line in its parts (row.ts): the title, the aside under it, the fact at the
+   row's right — the canvas's row in both windows. The line's own brackets and dash stay
+   in the row as text; the layout draws them. */
+.plan .row .text {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.plan .row .title,
+.plan .row .aside {
+  display: block;
+}
+
+.plan .row.current .title {
+  font-weight: 600;
+}
+
+.plan .row.ahead .title,
+.plan .row.working .title {
+  color: var(--fg-3);
+}
+
+.plan .row .aside {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.plan .row .fact {
+  flex: 0 1 auto;
+  min-width: 0;
+  text-align: right;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.plan .row .sep {
+  font-size: 0;
+}
+
+/* ── the plan, in the setup window: the canvas's card ── */
+
+.ob .plan {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ob .plan h1 {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--fg-3);
+  margin: 0;
+}
+
+/* The theme's .card, for this window's plan. */
+.ob .plan > .rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background: var(--card);
+  border-radius: 9px;
+  box-shadow: 0 0 0 1px var(--card-edge);
+}
+
+.ob .plan > .rows > li + li {
+  border-top: 1px solid var(--line);
+}
+
+/* A row: its mark, its title (and the aside under it), a done row's fact at the right. */
+.ob .plan > .rows > li.row {
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 5px 12px;
+  font-weight: 400;
+  color: var(--fg);
+}
+
+.ob .plan .row .glyph {
+  margin-top: 0;
+}
+
+/* The current row opens up: its nest beneath it, indented to the title. */
+.ob .plan > .rows > li.row.current {
+  padding: 12px;
+}
+
+.ob .plan > .rows > li.under {
+  border-top: 0;
+  margin: 0;
+  padding: 0 12px 12px 38px;
+}
+
+.ob .plan > .below {
+  margin-top: 0;
+}
+
+/* A title and its aside are one pair: set close, so six rows and an open step fit the
+   window's 600px. */
+.ob .plan .row.two .text {
+  line-height: 1.35;
+}
+
+/* ── the nest ── */
+
+.nest {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+  color: var(--fg-2);
+}
+
+.nest:empty {
+  display: none;
+}
+
+.nest > * {
+  max-width: 100%;
+}
+
+.nest p {
+  margin: 0;
+}
+
+/* A field's own line sits close under it (the canvas's invite field and its line). */
+.nest .pasterow + .err {
+  margin-top: -4px;
+}
+
+.nest.name > .acts {
+  gap: 12px;
+}
+
+.wait {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.inline {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* A quiet button inside a line (perm-screen's Reopen shroom) is the line's height. */
+.nest .inline .b.quiet {
+  min-height: 0;
+}
+
+/* The token's field: the body's width. */
+.pasterow {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pasterow input.paste {
+  flex: 1;
+  min-width: 0;
+}
+
+/* The accounts to pick from: one bordered list, a hairline between. */
+.choices {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  background: var(--field);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.choices .radio {
+  min-height: 36px;
+  padding: 0 10px;
+  gap: 10px;
+  color: var(--fg);
+}
+
+.choices .radio + .radio {
+  border-top: 1px solid var(--line);
+}
+
+.choices .radio input {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  box-sizing: border-box;
+  border-radius: 8px;
+  border: 1.5px solid var(--dim);
+  background: transparent;
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+
+.choices .radio input:checked {
+  border-color: var(--frost);
+}
+
+.choices .radio input:checked::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--frost);
+}
+
+/* The link name: the URL around its field. */
+.url {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  min-width: 0;
+  font-family: var(--mono);
+  font-size: 13px;
+}
+
+.url .pre,
+.url .suf {
+  flex: none;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+input.name {
+  flex: 0 1 auto;
+  min-width: 0;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+input.name.taken {
+  border-color: var(--red);
+}
+
+input.name.taken:focus {
+  outline-color: var(--red);
+}
+
+/* All set: the closing lines under the card, its buttons at the window's foot. */
+.ob > .plan {
+  flex: 1;
+}
+
+.ob .below {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.ob .below > .nest.all-set {
+  flex: 1;
+  align-items: stretch;
+  color: var(--fg);
+}
+
+.nest.all-set > .said {
+  gap: 4px;
+  padding-top: 4px;
+}
+
+.nest.all-set > .said > p:first-child {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.ob .nest.all-set > .acts {
+  margin-top: auto;
+  justify-content: flex-end;
+}
+
+/* ── the invite window's faces (Region 6): member-welcome, the switch, a dead invite ── */
+
+.invite {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.invite > h1 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.invite .say {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+/* No title: the line in the window's middle (the canvas's dead invite). */
+.invite:not(.hero) .say {
+  margin: auto 0;
+  padding-bottom: 40px;
+}
+
+.invite .lines.wait {
+  align-items: flex-start;
+}
+
+.invite .lines.wait .spin {
+  margin-top: 3px;
+}
+
+.invite .login {
+  align-self: stretch;
+  margin-top: 8px;
+}
+
+.invite > .acts {
+  margin-top: auto;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+}
+
+.invite > .note {
+  text-align: right;
+  margin-top: -4px;
+}
+
+.ob .paste-door {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.ob .paste-door .door-line {
+  font-size: 13px;
+}
+
+.ob .paste-door input.paste {
+  flex: none;
+  width: 260px;
+  max-width: 100%;
+}
+
+/* ── shared pieces (the Library and Settings use these names too) ── */
+
+.quiet {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.err {
+  color: var(--red);
+  font-size: 12px;
+}
+
+.amber {
+  color: var(--amber);
+}
+
+.note {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.acts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+}
+
+.check,
+.radio {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.check input,
+.radio input {
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.check.off,
+.radio.off {
+  opacity: 0.5;
+}
+
+.check input:focus-visible,
+.radio input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* A paste-only field (the token, an invite link): the theme's field. */
+input.paste {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+input.paste::placeholder,
+input.name::placeholder {
+  color: var(--muted);
+}
+
+/* Still while shroom checks a paste (N45): dimmed, no caret, nothing to type. */
+input.paste:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* A held paste (the Scene's `held`): its row of dots, drawn as a password's. */
+input.paste.held {
+  -webkit-text-security: disc;
+}
+
+/* The invite paste door: its line, the field beside it (under it when narrow). */
+.paste-door {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  min-width: 0;
+}
+
+.paste-door .door-line {
+  margin: 0;
+}
+
+.paste-door input.paste {
+  flex: 1 1 180px;
+  max-width: 280px;
+  min-width: 0;
+}
+
+/* The spinner: the canvas's ring, its Frost arc turning; at rest it holds still. */
+.spin {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  display: block;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  animation: spin 0.9s linear infinite;
+}
+
+.spin .track {
+  stroke: var(--border);
+}
+
+.spin .arc {
+  stroke: var(--frost);
+}
+
+.spin.rest {
+  animation: none;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spin {
+    animation-duration: 2.4s;
+  }
+}

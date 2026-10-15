@@ -1,0 +1,1240 @@
+{
+  "laws": [
+    {
+      "n": 1,
+      "title": "State is derived, never a step counter",
+      "rule": "**State is derived, never a step counter** — every entry re-probes reality (POC §6/§8, Region 2's backbone). A face clears by itself when its cause does (N34).",
+      "invariants": [
+        "Persisted state under ~/.shroom holds no wizard step counter or step index; the current state id is a pure function of probe results: derive(probes) called twice with identical probes returns the identical state id.",
+        "Every entry (launch, relaunch, reconnect, window reopen, tray click) runs the probes before choosing a state; no transition target is read from a stored 'last step'.",
+        "Kill + relaunch in any state S lands in derive(probes), not in S by memory — e.g. a relaunch mid account-signing-up re-enters at the virgin fork (N19); wizard-offline on reconnect routes by derived state (N18).",
+        "Every derived face (member-revoked, space-needs-owner, space-gone, space-degraded, recording-off) disappears with no user action once its cause probe clears."
+      ],
+      "cites": [
+        "POC §6",
+        "POC §8",
+        "Region 2's backbone",
+        "N34",
+        "UX-STATEMACHINE.md L107-108"
+      ]
+    },
+    {
+      "n": 2,
+      "title": "The recording is sacred",
+      "rule": "**The recording is sacred** — capture is local whatever the network or the space does; a crash leaves a saved take (N25); a full disk finalizes (N39); a space that went away leaves Save to Movies (N34). Nothing shroom does ever loses a take the user didn't discard.",
+      "invariants": [
+        "No network, space, or upload failure event causes a transition out of recording or paused; capture bytes keep landing locally whatever those probes say.",
+        "Local take bytes are removed only by an explicit user act — discard-confirm → Discard, the saved-take banner's Discard… confirmed, or Restart (whose old take dies only when the new capture begins, N39); no crash, disk-full, auto-pause, offline, or space-loss transition deletes them.",
+        "After a simulated crash mid-take, the next launch has the take saved and the recovered-take banner present in config with the amber tray face.",
+        "A full disk mid-take enters disk-full-stop with the take finalized, never discarded or auto-published; left unanswered it remains a saved take (disk_full_stop → recovered_take, L898).",
+        "When a take can't reach the space (stopped-stranded, member-revoked, space-gone), Save to Movies is offered; it copies the single file to ~/Movies and the take keeps waiting until discarded (N34)."
+      ],
+      "cites": [
+        "N25",
+        "N39",
+        "N34",
+        "UX-STATEMACHINE.md L109-112"
+      ]
+    },
+    {
+      "n": 3,
+      "title": "Only you make a link",
+      "rule": "**Only you make a link** — a link comes into being by Stop or Get link, never by a crash, a full disk, or an auto-pause (N25, N39). Stop = published (§5.3) — the one place that's said is the paused popover's quiet line.",
+      "invariants": [
+        "A link/page id comes into being only on Stop or Get link events; crash recovery, disk-full-stop, and every auto-pause (display-lost, mic-lost, camera-lost, mac-away, permission-lost) create no link and open no page.",
+        "disk-full-stop and a lost screen grant finalize and ask; neither transitions to a page-open or upload-published state without a user Stop/Get link.",
+        "The stop = published line “Your link opens right away.” appears only in the paused popover, as the quiet line beneath Stop — on no other surface (no window, page, banner, or other popover)."
+      ],
+      "cites": [
+        "N25",
+        "N39",
+        "§5.3",
+        "UX-STATEMACHINE.md L113-115"
+      ]
+    },
+    {
+      "n": 4,
+      "title": "The quiet-take law",
+      "rule": "**The quiet-take law** *(N41)* — while a take is open (recording *or* paused), shroom puts nothing new on screen: invites, deep links, windows, the deferred page of an offline stop, update banners — all wait for the take to end. Only the bubble and macOS's own indicator can ever appear in a take; the paused popover exists only after the pause is confirmed (POC §8). **And nothing that would end, move or replace the app runs mid-take** — Update, Disconnect, Leave, joining another space, Quit (⌘Q or the Dock, reachable when a window was already open) — their buttons grey with “You can do this once your recording is finished.”; a Quit request is declined silently while recording and opens the paused popover (its “no Quit while a take is open” note) while paused.",
+      "invariants": [
+        "Let take_open = state ∈ {recording, paused, and paused's morphs/auto-pause faces}. While take_open, no window, banner, invite, deep-link handling, deferred offline-stop page, or update banner becomes newly visible; the only shroom surfaces that may newly appear are the bubble overlay, the paused popover (only after the pause is confirmed) and its morphs (discard-confirm), and the auto-pause popovers (display-lost, mic-lost, camera-lost, mac-away, permission-lost, disk-full-stop).",
+        "Items that arrive while take_open (invite deep link, offline-stop page, update banner, windows) are queued and surface only after the take ends.",
+        "While take_open, Update, Disconnect, Leave, join-another-space and Quit controls are disabled and show “You can do this once your recording is finished.”",
+        "A Quit request (⌘Q or Dock) while recording causes no state change and no visible surface; while paused it opens/keeps the paused popover showing its “no Quit while a take is open” note; the process keeps running in both.",
+        "The paused popover is never visible before the capture engine confirms the pause (POC §8).",
+        "An install/update run while take_open lands in install-refused-midtake and touches nothing (N9)."
+      ],
+      "cites": [
+        "N41",
+        "POC §8",
+        "UX-STATEMACHINE.md L116-125"
+      ]
+    },
+    {
+      "n": 5,
+      "title": "The click is the door",
+      "rule": "**The click is the door** (N21) — no menus; the mushroom opens the one surface the moment needs. **A launch you did yourself is a click** (N41); launches shroom does itself (login, update) stay silent — an update relaunch only restores the window that was open before it. When the mushroom can't be seen, the popover drops from the top-right of the screen with the pointer. A popover opens unasked only for a pause or stop you didn't make (N39) — and **an unasked popover never takes the keyboard**: a Return typed into another app stays there.",
+      "invariants": [
+        "Left-click on the tray never shows a native menu in any state; in idle-unprovisioned it opens welcome (or member-welcome while an invite remembered under Later still lives, N30), in idle-ready it opens config, in recording it pauses (popover only after the pause is confirmed).",
+        "A user-initiated launch (Spotlight, Finder, Dock, a fresh install onto a Mac that remembers its space, the reopen event) yields exactly the transition a tray click yields in the same state.",
+        "Login-item and update relaunches open no new surface; an update relaunch restores only the window that was open before it — sole exception: an install command carrying --join opens the invite (N41).",
+        "Popovers opened unasked (the auto-pause/auto-stop family) are non-activating: shroom's key-window/focus state is unchanged and a Return typed into the frontmost other app is not delivered to shroom.",
+        "When the status item is occluded, the popover is anchored at the top-right of the screen that has the pointer.",
+        "Right-click yields the one-item native menu “Quit shroom” only in idle states; mid-take a right-click behaves as a click (surfaces table, N39)."
+      ],
+      "cites": [
+        "N21",
+        "N41",
+        "N39",
+        "UX-STATEMACHINE.md L126-132"
+      ]
+    },
+    {
+      "n": 6,
+      "title": "Dock iff a window is open",
+      "rule": "**Dock iff a window is open** (Region 1). Popovers never bring the dock icon.",
+      "invariants": [
+        "For every state: dock_icon_visible == (number of open shroom windows > 0).",
+        "Opening or closing any popover, banner, or overlay (the countdown scrim, the bubble) never changes dock_icon_visible.",
+        "Popover-only states (config, paused, discard-confirm, quit-confirm, stopped-offline, stopped-stranded, auto-pause faces) with no window open have no dock icon."
+      ],
+      "cites": [
+        "Region 1",
+        "UX-STATEMACHINE.md L133"
+      ]
+    },
+    {
+      "n": 7,
+      "title": "Asks are banners, facts are the status line",
+      "rule": "**Asks are banners, facts are the status line** (N38) — one of each at most; the amber dot means *something needs you*, the Frost dot *something new from us*.",
+      "invariants": [
+        "At any moment the popover shows at most one banner and at most one status line.",
+        "With several banner causes active, the shown banner is the highest of: a saved take > the space can't take videos > recording-off > an update (N38).",
+        "Banners carry the ask (an action); the status line carries facts only (upload truth, then one-shot lines) and no action button.",
+        "Tray face is exactly one of {plain, red dot, pause bars, amber, Frost}: red dot iff recording, pause bars iff paused, amber = something needs you (a saved take, the space can't take videos, recording off), Frost = an update is ready and is the lowest face — shown only when no other non-plain face applies (N37, N38)."
+      ],
+      "cites": [
+        "N38",
+        "UX-STATEMACHINE.md L134-135"
+      ]
+    },
+    {
+      "n": 8,
+      "title": "One default per surface, and Return triggers it",
+      "rule": "**One default per surface, and Return triggers it** (N38) — Start in `config`, Resume in `paused`; *click the mushroom, press Return* is the whole path to a recording. A banner's own filled button is never the Return default, and a focused field's Return belongs to its field (Invite in Members, Claim in `name`). Button order follows macOS — the default rightmost — except the ratified welcome pair, whose filled action comes first; its twins (`member-welcome`, `join-switch-confirm`) follow it, and so do the single-action faces (`stopped-stranded`, the saved-take banners), whose one filled button leads. *(A deliberate local exception — check it at ratification.)*",
+      "invariants": [
+        "Each state has at most one default action, and Return activates exactly it: config → Start, paused → Resume.",
+        "From idle-ready with Start enabled, the event sequence tray-click, Return reaches countdown with no other input.",
+        "A banner's filled button (e.g. the saved-take banner's Get link, the update banner's Update) is never the Return target; Return in config with a banner showing triggers Start when Start is enabled, and nothing when a banner greys Start (member-revoked, space-gone).",
+        "With a text field focused, Return triggers that field's action: Members composer → Invite; name → Claim this name (and only once the charset check passes).",
+        "In every face that has a default/filled action among several buttons, the default is rightmost, except welcome, member-welcome, join-switch-confirm, stopped-stranded and the saved-take banners, whose filled action comes first."
+      ],
+      "cites": [
+        "N38",
+        "UX-STATEMACHINE.md L136-143"
+      ]
+    },
+    {
+      "n": 9,
+      "title": "Destruction is never one stray keystroke away",
+      "rule": "**Destruction is never one stray keystroke away** (N23, N24) — destructive entry points are red text, never buttons; destructive questions are red-outlined, rightmost, never filled, with **no Return default**; Esc always means *back*.",
+      "invariants": [
+        "Every destructive entry point (Discard…, Remove…, Delete…) renders as red text, never as a button.",
+        "Every destructive question (discard-confirm, the saved-take Discard… confirm, member-remove-confirm, the Library delete sheet, the Disconnect/Leave sheets) renders its destructive button red-outlined, rightmost, never filled.",
+        "In every destructive-question state, Return causes no transition (no Return default).",
+        "In every confirm/popover state, Esc maps to back (e.g. discard-confirm Esc → paused; click-away ≡ Back) and never to the destructive action."
+      ],
+      "cites": [
+        "N23",
+        "N24",
+        "UX-STATEMACHINE.md L144-146"
+      ]
+    },
+    {
+      "n": 10,
+      "title": "Nothing auto-copies",
+      "rule": "**Nothing auto-copies** (N1) — copying is always a visible button that reads “Copied”.",
+      "invariants": [
+        "No transition writes the system clipboard unless it is a user-invoked copy (a visible Copy link button click; ⌘C in the Library, N35).",
+        "Entering the owner page after Stop/Get link, invite-born, stopped-offline, or any other state leaves the clipboard unchanged.",
+        "Every Copy link button reads “Copied” immediately after its click, then reverts."
+      ],
+      "cites": [
+        "N1",
+        "UX-STATEMACHINE.md L147"
+      ]
+    },
+    {
+      "n": 11,
+      "title": "No dialog to an empty chair",
+      "rule": "**No dialog to an empty chair** (N17) — a macOS prompt appears only right after a click that asked for it; the monthly re-confirm is pulled forward to `config` so it never lands inside a take (N38).",
+      "invariants": [
+        "Every macOS permission prompt (microphone, screen, camera) is requested only inside the handler of a user click that asked for it (e.g. Allow recording, the Show yourself switch, Camera as the source).",
+        "done never fires a permission dialog on entry (N17).",
+        "No macOS prompt — including the monthly screen-recording re-confirm — appears while a take is open; the re-confirm is surfaced at config (the recording-off banner) before Start."
+      ],
+      "cites": [
+        "N17",
+        "N38",
+        "UX-STATEMACHINE.md L148-150"
+      ]
+    },
+    {
+      "n": 12,
+      "title": "Failures are states",
+      "rule": "**Failures are states** (N18) with scaffold-grade names and their own renders; guards that act as you type filter and never scold (N15).",
+      "invariants": [
+        "Every blocking failure in the spec maps to a distinct kebab-case state id with its own render and its own set of enabled transitions (e.g. install-net-drop, install-checksum-fail, install-unsupported-os, install-refused-midtake, token-garbled, token-wrong-powers, gate-email, gate-card, name-taken, wizard-offline, the join failures).",
+        "As-you-type guards (the name charset filter) cause no state transition: rejected characters never land, uppercase lowercases silently, and no scolding/error line renders (only the quiet fading explanation).",
+        "wizard-offline auto-resumes on reconnect with no retry button."
+      ],
+      "cites": [
+        "N18",
+        "N15",
+        "UX-STATEMACHINE.md L151-152"
+      ]
+    },
+    {
+      "n": 13,
+      "title": "Secrets ride files",
+      "rule": "**Secrets ride files** under `~/.shroom`, mode 600 — never argv, chat, or logs. One scoped exception: a join link — a member's or an own-Mac one — once, in an install command (N3, N29, N33).",
+      "invariants": [
+        "Every file under ~/.shroom that holds a secret has mode 0600.",
+        "No spawned argv, log line, or chat-facing text contains a token, temp credential, or device key — sole exception: a join link (member or own-Mac) passed once via --join in the install command.",
+        "Join links accepted on argv are one-time-use; member links expire after seven days, own-Mac links after one hour (N3, N33).",
+        "Stored secrets (the admin token, member/device credentials, an invite remembered under Later — N30) exist only as files under ~/.shroom, never in argv, chat, or logs."
+      ],
+      "cites": [
+        "N3",
+        "N29",
+        "N33",
+        "UX-STATEMACHINE.md L153-155"
+      ]
+    },
+    {
+      "n": 14,
+      "title": "One space per Mac",
+      "rule": "**One space per Mac** (N31); **every Mac of the owner is owner-class** (N33); members own their videos, the owner sees all (N5).",
+      "invariants": [
+        "A Mac is joined to at most one space at any time; moving to another space happens only through join-switch-confirm (blocked while uploads drain or a recovered take waits).",
+        "Every Mac joined via Add another Mac, and every Mac holding the token, has owner-class role: its Library can show all members' videos and it sees the Members tab.",
+        "A member Mac lists and manages only videos whose maker is that member; owner-class Macs see and can delete all."
+      ],
+      "cites": [
+        "N31",
+        "N33",
+        "N5",
+        "UX-STATEMACHINE.md L156-157"
+      ]
+    },
+    {
+      "n": 15,
+      "title": "Product voice",
+      "rule": "**Product voice** — *your space · an invite · members · your link*; internals never surface (no error codes, no bucket, no Worker, no creds).",
+      "invariants": [
+        "No user-visible string (window, popover, banner, sheet, page, Terminal output, tooltip) contains an error code (e.g. 10031) or the internals “bucket”, “Worker”, or “creds”/credentials (“Cloudflare” and “token” are product-facing in the wizard's ratified copy and are not banned; the workers.dev hostname inside a link is the link, not the internal noun — match “Worker” case-sensitively as a word).",
+        "User-facing copy names things with the product vocabulary: your space · an invite · members · your link.",
+        "Scope: the no-internals check covers said-lines, including the installer's header comment block (ratifiable copy, N11); the installer's inline source comments are exempt (technical but honest, N11)."
+      ],
+      "cites": [
+        "UX-STATEMACHINE.md L158-159"
+      ]
+    },
+    {
+      "n": 16,
+      "title": "Numbers",
+      "rule": "**Numbers** — in the app's sentences, one to nine are words (“seven days”, “two videos are still uploading”, N28); compact facts keep figures (row facts like “5 days left”, counts like “14 videos”, lengths like “4:32”). The price facts are the deliberate two-register pair: numerals in the welcome, words on the landing's tiles (N12).",
+      "invariants": [
+        "In the app's sentences, a standalone count from one to nine is spelled as a word (“seven days”, “two videos are still uploading”).",
+        "Compact facts keep figures: row facts (“5 days left”), counts (“14 videos”), lengths (“4:32”).",
+        "Price facts: numerals in the welcome, words on the landing's tiles (N12) — the deliberate two-register pair."
+      ],
+      "cites": [
+        "N28",
+        "N12",
+        "UX-STATEMACHINE.md L160-163"
+      ]
+    }
+  ],
+  "ledger": [
+    {
+      "id": "P17",
+      "title": "Landing page in v1's definition of done?",
+      "decision": "**Yes — full page, curl-only.** One install path at launch: the readable script at `shroom.am/install`. brew formula + .dmg are post-v1 additions, absent from the v1 machine.",
+      "status": "ratified",
+      "date": "2026-07-20",
+      "amends": [],
+      "amended_by": []
+    },
+    {
+      "id": "U1",
+      "title": "Record before cloud setup?",
+      "decision": "**No — setup-first gate.** `Later` parks the app in `idle-unprovisioned`; Record routes to the wizard. No local-recording or local-library states exist in v1.",
+      "status": "ratified",
+      "date": "2026-07-20",
+      "amends": [],
+      "amended_by": []
+    },
+    {
+      "id": "U4",
+      "title": "Start at login?",
+      "decision": "**Pre-checked visible checkbox in the welcome panel.** Applied on panel dismissal (either button), changeable in settings, never registered silently.",
+      "status": "ratified",
+      "date": "2026-07-20",
+      "amends": [],
+      "amended_by": [
+        "N12 (refined)"
+      ]
+    },
+    {
+      "id": "U8",
+      "title": "First hostname label (the Worker's name, visible in every link)",
+      "decision": "**`v`** — every link reads `v.<name>.workers.dev/<id>`; a custom domain (upgrade tier) hides the label entirely. Permanent once links exist. *Amended by N42 for one case: a clashing “v” becomes the label `shroom`.*",
+      "status": "ratified",
+      "date": "2026-07-20",
+      "amends": [],
+      "amended_by": [
+        "N42 (amended for one case: a clashing “v” becomes the label shroom)"
+      ]
+    },
+    {
+      "id": "U5",
+      "title": "Permission timing",
+      "decision": "**End of onboarding, same window** — mic inline → Settings switch → guided relaunch → priming warm-up. First Record is pure. Arm-time re-probe survives as a guard, not a step. (Reversed the walkthrough's first-arm rec — that rec was premised on the value-first U1 shape, which U1's decision rejected.)",
+      "status": "ratified",
+      "date": "2026-07-20",
+      "amends": [],
+      "amended_by": []
+    },
+    {
+      "id": "U2",
+      "title": "The title moment at stop",
+      "decision": "**On-page focused title, owner-cookie auth.** Stop opens `…/<id>?k=<one-time-key>` → the Worker validates, sets a long-lived owner cookie (space-scoped, likely HttpOnly), 302s to the clean URL — the address bar never holds the key. Owner-mode persists per-browser: opening your own link from Slack months later still edits. Shared links are always clean. *Amended by N40: the cookie names a member, and owner-mode is by role.*",
+      "status": "ratified",
+      "date": "2026-07-20",
+      "amends": [],
+      "amended_by": [
+        "N40 (amended: the cookie names a member; owner-mode by role)"
+      ]
+    },
+    {
+      "id": "N1",
+      "title": "Clipboard at stop *(new question, leg 4)*",
+      "decision": "**Never auto-copied.** Copying is explicit — [ Copy link ] on the page, Copy last link in the tray. *Tray door removed by N21 — the page and the Library row are the two doors.*",
+      "status": "ratified",
+      "date": "2026-07-20",
+      "amends": [],
+      "amended_by": [
+        "N21 (tray door removed)"
+      ]
+    },
+    {
+      "id": "U9",
+      "title": "Where \"fully live\" lands",
+      "decision": "**The page itself is the signal.** The self-refreshing page carries live upload progress while the queue drains; the tray mirrors it. **No macOS notifications in v1** — zero notification-permission surface. *Since N21 the tray's mirror is the config popover's status line.*",
+      "status": "ratified",
+      "date": "2026-07-20",
+      "amends": [],
+      "amended_by": [
+        "N21 (the tray mirror is now the config popover status line)"
+      ]
+    },
+    {
+      "id": "U3",
+      "title": "Sender identity on the page",
+      "decision": "**Anonymous.** Schema carries a sender-name field from day one; no name UI in v1. The mark: a small shroom icon bottom-right, tooltip “made with shroom”, linking home — and in owner-mode it's toggleable **right on the page**, the setting applying space-globally.",
+      "status": "ratified",
+      "date": "2026-07-20",
+      "amends": [],
+      "amended_by": []
+    },
+    {
+      "id": "U7",
+      "title": "Update posture",
+      "decision": "**Notify-then-apply.** A tray badge announces the update; the user applies with one click. (Bagrat, against the auto-apply recommendation — consent over convenience.) *The apply row lives in the config popover since N21.*",
+      "status": "ratified",
+      "date": "2026-07-20",
+      "amends": [],
+      "amended_by": [
+        "N21 (the apply row lives in the config popover)"
+      ]
+    },
+    {
+      "id": "N2",
+      "title": "Custom-domain timing *(new question, leg 5)*",
+      "decision": "**Post-v1.0.** v1 is workers.dev-only; the Worker design keeps the attach door open; docs state the upgrade honestly.",
+      "status": "ratified",
+      "date": "2026-07-20",
+      "amends": [],
+      "amended_by": []
+    },
+    {
+      "id": "U10",
+      "title": "Second-Mac join flow",
+      "decision": "**Dissolved into the member model (N3):** the second Mac is a member you invite from the first — 30 s, no dashboard. Admin re-paste survives as the recovery door (“Found your space — 14 videos. This Mac is joined.”). *Amended by N33: the second Mac joins through Add another Mac, owner-class — not as a plain member.*",
+      "status": "ratified",
+      "date": "2026-07-20",
+      "amends": [],
+      "amended_by": [
+        "N33 (amended: the second Mac joins through Add another Mac, owner-class)"
+      ]
+    },
+    {
+      "id": "N3",
+      "title": "Member model *(Bagrat reframe, leg 5)*",
+      "decision": "**Ratified for v1.** The space is born multi-member: the pasted token is infra/admin setup and retires after it; recording always runs on member creds; the owner is silently member #1. Members join with zero Cloudflare anything — the C persona lands in v1. Join code may embed in the install command (zero-paste join; conscious argv/history exception — one-time-use, 7-day TTL).",
+      "status": "ratified",
+      "date": "2026-07-20",
+      "amends": [],
+      "amended_by": [
+        "N33 (argv exception extended to own-Mac links)"
+      ]
+    },
+    {
+      "id": "N4",
+      "title": "Member write path",
+      "decision": "**Worker-minted temp creds.** One cred shape for all: prefix-scoped ≤7-day S3 temp creds (probed); owner self-mints locally from the admin token, members mint via one authenticated Worker endpoint. **Minting is automatic and invisible for every role** (Bagrat's ratification condition). Bytes always direct to R2 — never proxied.",
+      "status": "ratified",
+      "date": "2026-07-20",
+      "amends": [],
+      "amended_by": []
+    },
+    {
+      "id": "N5",
+      "title": "In-space authority",
+      "decision": "**Own videos + admin sees all.** Members see/manage only their own; the admin (whose bucket and bill) sees the whole library, deletes anything, manages members.",
+      "status": "ratified",
+      "date": "2026-07-20",
+      "amends": [],
+      "amended_by": []
+    },
+    {
+      "id": "U6",
+      "title": "Is the guided persona claimed publicly?",
+      "decision": "**Claim it, second billing.** Landing leads with the dev story; a “Record together” section states the member story honestly — true without asterisks now (the card cliff exists only for the admin). *Placement amended by N6: the section dissolved into hero point six — the claim stands, promoted.*",
+      "status": "ratified",
+      "date": "2026-07-20",
+      "amends": [],
+      "amended_by": [
+        "N6 (placement)"
+      ]
+    },
+    {
+      "id": "N6",
+      "title": "Landing message architecture *(fat-marker leg 1)*",
+      "decision": "**The hero carries the whole message:** a punchline in shroom's own words (“Screen recordings without the monthly seat. / Pay as you go — sometimes completely free.” — re-ratified 2026-10-13: no competitor's name on the page) + six-point explanation with eyeball-number tiles. Install block above the demo (the command is small and hides below a full-width player; recipient-loop visitors already saw the demo half work). Trust strip = open source · your-storage-your-bill · built-to-outlive-us (telemetry line cut).",
+      "status": "ratified",
+      "date": "2026-07-25",
+      "amends": [
+        "U6 (placement amended)"
+      ],
+      "amended_by": []
+    },
+    {
+      "id": "N7",
+      "title": "Demo video shape *(fat-marker leg 1)*",
+      "decision": "**Self-recorded, record-only, single take, no editing.** The controls can't appear in their own take (config/countdown precede capture; the tray click *is* pause; the page opens post-take) — so the demo narrates its own start, shows the being-recorded life + one real task, and ends “I click stop — the page you're watching is what opened.” Setup never appears in the demo; the VM full-loop variant rejected as a stunt.",
+      "status": "ratified",
+      "date": "2026-07-25",
+      "amends": [],
+      "amended_by": []
+    },
+    {
+      "id": "N8",
+      "title": "Issue-reporting second door *(fat-marker leg 2)*",
+      "decision": "**Two doors in failure copy: the new-issue deep link + `issues@shroom.am`.** The alias is one Cloudflare Email Routing rule on the domain — zero operated service, works for members without GitHub accounts. The tiny opt-in proxy (telemetry, PRINCIPLES) stays parked with the post-v1 telemetry track. Scaffold nicety: the issue URL may prefill title/body via query params — everything visible in the URL.",
+      "status": "ratified",
+      "date": "2026-07-25",
+      "amends": [],
+      "amended_by": []
+    },
+    {
+      "id": "N9",
+      "title": "Update-while-running semantics *(fat-marker leg 2)*",
+      "decision": "**Quit → swap → relaunch; mid-take refuses.** Running but not mid-take: the script quits shroom, replaces the bundle, relaunches — tray-only, silent per the dock rule; the disk-backed upload queue rides through. Mid-take — recording **or paused** (a paused take is live) — polite refusal, nothing touched: the sacred-recording law reaches into the installer. Never swap under a running process (signature-mismatch kill on next load — verify exact behavior at scaffold). Classification via the app's machine-readable status seam, not process-sniffing. *Refined by N41: a fresh install onto a Mac that remembers its space opens the door; this update lane stays silent.*",
+      "status": "ratified",
+      "date": "2026-07-25",
+      "amends": [],
+      "amended_by": [
+        "N41 (refined)"
+      ]
+    },
+    {
+      "id": "N10",
+      "title": "Install progress posture *(fat-marker leg 2)*",
+      "decision": "**curl's native bar for the app fetch.** The pasted one-liner keeps `-fsSL` — it fetches only the tiny script. The in-script app download shows curl's own progress bar: native terminal idiom, zero custom code in the readable source. Stillness rejected (indistinguishable from a hang on slow links); hand-rolled ticker rejected (cursor-control code in read-it-first source).",
+      "status": "ratified",
+      "date": "2026-07-25",
+      "amends": [],
+      "amended_by": []
+    },
+    {
+      "id": "N11",
+      "title": "Installer source comments as copy *(fat-marker leg 2)*",
+      "decision": "**A said-line surface.** “Read it first” makes the source a first-class audience page — the one page a skeptic reads slowly. The header comment block is ratifiable copy (plain-speech what-it-does); inline comments stay technical but honest. One screenful mocked and ratified with this screen.",
+      "status": "ratified",
+      "date": "2026-07-25",
+      "amends": [],
+      "amended_by": []
+    },
+    {
+      "id": "N12",
+      "title": "Welcome dismissal semantics *(fat-marker leg 3)*",
+      "decision": "**✕-close ≡ Later, exactly — no special case.** Any dismissal (either button or the close control) registers the login item iff the visible box is still checked; U4 refined. Copy correction: “**set up** your Cloudflare” (was “connect”). “Storage” here vs the landing's “account”, and numerals vs words, stand as deliberate two-register choices.",
+      "status": "ratified",
+      "date": "2026-07-25",
+      "amends": [
+        "U4 (refined)"
+      ],
+      "amended_by": [
+        "N30 (adds the “Have an invite link?” line under the welcome buttons)"
+      ]
+    },
+    {
+      "id": "N13",
+      "title": "Wizard plan panel + `account` screen *(fat-marker leg 4)*",
+      "decision": "**Plan glyphs, not checkboxes:** → current · ✓ done · • still ahead — checkboxes read as something the user must click. Box 1 reworded: the Google sign-in alternative named in-panel (promoted from docs-only), “Adding it costs nothing”, and the free ceiling made concrete (“up to about six hours of video” — the welcome register). Box 3 gains the example `v.yourname.workers.dev`. **I have one** = filled rightmost default; after “Not yet” opens signup the screen deliberately doesn't morph — self-report by proceeding stands. *Box-1 wording amended by N14 — the card content moved to its own row. The no-morph is reversed by N19 (`account-signing-up`).*",
+      "status": "ratified",
+      "date": "2026-07-25",
+      "amends": [],
+      "amended_by": [
+        "N14 (box-1 wording)",
+        "N19 (no-morph reversed)"
+      ]
+    },
+    {
+      "id": "N14",
+      "title": "The card step + token-screen posture *(fat-marker leg 5)*",
+      "decision": "**The plan grows a fifth row and the gates move into it.** Box 1 ticks at proceed — the plan's one self-reported tick (nothing is probeable pre-token; the paste proves it moments later). New row: “A credit card for storage (their rule, not a charge — free up to about six hours of video)”; box 1 slims to the sign-in gate — the visible card row *is* the pre-warn now. Card step: email check first (`gate-email`), then card presence (`gate-card`, button **Add credit card**); auto-poll spinner (polling dots rejected — read as a carousel); both clear → row ticks. Token screen never auto-opens the browser: read → **[ Create token in Cloudflare ]** (the only trigger, serves every retry) → paste; the wrong-powers line points back at it.",
+      "status": "ratified",
+      "date": "2026-07-25",
+      "amends": [
+        "N13 (box-1 wording)"
+      ],
+      "amended_by": []
+    },
+    {
+      "id": "N15",
+      "title": "The `name` step surface *(fat-marker leg 6)*",
+      "decision": "**The row is the ask; the URL is the field.** No instruction line — typing happens inside `https://v.___.workers.dev/…`; the current row's parenthetical sheds only its example (the live URL replaces it). Explicit **[ Claim this name ]**, Enter-equivalent — permanent names never auto-claim; disabled until the charset check passes; no availability pre-check (taken discovered at claim: `10031` → red field edges, value stays, inline retry). The charset guard filters, never scolds: stray characters never land, a quiet fading line explains; uppercase lowercases silently. **Both endings tick the row with the fact** (“✓ Your link name — v.*name*.workers.dev”) — the plan's only outcome-bearing tick. Action buttons inside nested step content sit flush-left, wizard-wide.",
+      "status": "ratified",
+      "date": "2026-07-25",
+      "amends": [],
+      "amended_by": []
+    },
+    {
+      "id": "N16",
+      "title": "The `wiring` surface *(fat-marker leg 7)*",
+      "decision": "**Zero affordances — a spinner and one calm line.** No cancel, no button, no stage narration (the ~6 calls, secret placement, member-#1 enrollment, and propagation all hide behind the line); closing the window mid-wire is safe by the backbone. Offline: the spinner rests, “Everything so far is saved — I'll pick up right here when you're back online.”, auto-resume on reconnect — no retry affordance. The name row shows its N15 outcome throughout. *Offline generalized wizard-wide by N18 (`wizard-offline`).*",
+      "status": "ratified",
+      "date": "2026-07-25",
+      "amends": [],
+      "amended_by": [
+        "N18 (offline generalized)"
+      ]
+    },
+    {
+      "id": "N18",
+      "title": "Non-happy paths are states *(fat-marker, map session)*",
+      "decision": "**Every blocking failure is a first-class state with a scaffold-grade name** — a distinct render plus a distinct set of enabled transitions; easier to build and reason about (Bagrat's call). Roster: `install-net-drop` · `install-checksum-fail` · `install-unsupported-os` · `install-refused-midtake` · `updating` (the not-a-failure lane) · `token-garbled` · `token-wrong-powers` · `gate-email` / `gate-card` (already states) · `name-taken` · `wizard-offline`. **`wizard-offline` generalizes N16's wiring-only offline** — one state for the whole wizard, rendered under whichever row is current, auto-resume on reconnect (re-probe routes by derived state). Nuance: as-you-type guards (the N15 charset filter) stay stateless — no transition happens.",
+      "status": "ratified",
+      "date": "2026-07-25",
+      "amends": [
+        "N16 (generalizes the wiring-only offline into wizard-offline)"
+      ],
+      "amended_by": [
+        "N31 (merged expired/used row replaced)"
+      ]
+    },
+    {
+      "id": "N19",
+      "title": "`account-signing-up` *(fat-marker, map session)*",
+      "decision": "**The return from the browser is acknowledged, never a dead screen** — reverses N13's deliberate no-morph. After “Not yet” the nest becomes: “Cloudflare's signup is open in your browser — finish there, I'll wait.” + [ Take me there again ] · [ **I signed up** ] (filled). Signup stays self-reported — box 1 ticks at proceed; “Take me there again” reopens the tab, no transition; a relaunch mid-trip re-enters at the virgin fork (nothing probeable before a token exists).",
+      "status": "ratified",
+      "date": "2026-07-25",
+      "amends": [
+        "N13 (reverses the deliberate no-morph)"
+      ],
+      "amended_by": []
+    },
+    {
+      "id": "N17",
+      "title": "The `done` screen + the sixth row *(fat-marker legs 8–9; ratified after two Bagrat corrections)*",
+      "decision": "**The plan grows a SIXTH row and spans the whole onboarding:** “Letting macOS allow recording (microphone and screen — a one-time yes each)” — visible from the wizard's first screen; per-Mac where rows 1–5 are per-space. **`done` = the resting beat** (never auto-fires a permission dialog): five ticks, row six current, its nest **previews the permissions choreography** — “macOS will ask twice…” / “Flip the switch next to shroom there… say yes — I'll be right where you left off.” + [ **Allow recording** ]. “Updates never ask again.” removed (Bagrat); the payoff line retired — the name row already states the link fact. **`perm-preamble` fuses into `done`**; Region 3 opens at `perm-mic`.",
+      "status": "ratified",
+      "date": "2026-07-25",
+      "amends": [],
+      "amended_by": []
+    },
+    {
+      "id": "N20",
+      "title": "The permissions chapter + `all-set` *(fat-marker leg 10)*",
+      "decision": "**Chapter copy ratified as drafted** (the mic usage string · perm-screen's flip-the-switch line · priming's double-check line); `relaunching` named as a beat (N18 spirit). **`all-set` = the window's final face — a resting state with three doors** (replaces the passive handoff): all six rows green, closing block below the plan — “You're all set — ready to record.” · “shroom lives in your menu bar now — look for the little mushroom.” · [ Close ] [ Invite someone ] [ **Record now** ] (filled). Record now closes the window and opens `config` at the tray (teaching by gesture, not sentence); Invite someone morphs into the members surface (Region 6 `invite-born`); Close — and ✕, ≡ Close exactly per N12 — is the retreat to tray-only life. “Invite someone”, not “someone else”.",
+      "status": "ratified",
+      "date": "2026-07-25",
+      "amends": [],
+      "amended_by": []
+    },
+    {
+      "id": "N21",
+      "title": "The tray surface *(fat-marker leg 11 — the tray quartet's idle pair, merged with `config`)*",
+      "decision": "**Loom-style custom popover, never a native menu — and the tray click is the door itself.** `idle-unprovisioned`: click → the `welcome` window, immediately (the same ratified window, any day later). `idle-ready`: click → `config`, directly — a same-themed popover, pre-filled, one click from Start, footer of three icons with hover tooltips: **Library · Settings** (the gear — the door to the Region-5 inventory) **· Quit shroom**. Both native menus die with their rows: **Copy last link removed** (N1 amended — the page and the Library row are the doors); the wizard's Record-routed context line retires (welcome already says it); quit before setup = right-click → a one-item native menu, Quit shroom (both states). Orphaned tray rows get popover homes at their own legs: U9's upload mirror → a status line above the footer; U7's update row → a banner row; `space-degraded`'s Reconnect your space → the popover's degraded face. Config's Record row is **one source picker** — displays by human name first, Camera below (Camera greys Show yourself). Recording-life click semantics untouched (click = pause); the paused surface follows the same direction at its leg. *The slots “at their own legs” were settled by N24 (paused), N37 (updates) and N38 (the grammar).*",
+      "status": "ratified",
+      "date": "2026-08-21",
+      "amends": [
+        "N1 (tray door removed)",
+        "U9 (the tray mirror becomes the config popover status line)",
+        "U7 (the apply row moves into the config popover)"
+      ],
+      "amended_by": [
+        "N24 (settles the paused slot)",
+        "N37 (settles the updates slot)",
+        "N38 (settles the grammar)"
+      ]
+    },
+    {
+      "id": "N22",
+      "title": "`countdown` + the bubble's birth *(fat-marker leg 12)*",
+      "decision": "**Countdown ratified as rendered; cancel by any of three — a click anywhere, Esc, or the quiet line itself.** Bagrat kept click-anywhere (the click-through variant rejected: a cancelled count is one click from retry). The overlay: a light scrim on the chosen display only, a large 3 · 2 · 1, one quiet line beneath — “Click anywhere to cancel.” (the config line, repeated where the decision is made); silent; other displays untouched; the scrim lifts the instant capture starts, so the count is never in the take (N7); no recording flash of ours — macOS's own indicator marks the capture. **The bubble is born at `config`, not at the count** (Bagrat): with Show yourself on, the camera preview appears the moment the popover opens — you see and place yourself before Start; it stays through the count into the take, and the switch hides it live. Consequence: the first-ever Show yourself defaults **off**, and flipping it on is the camera-permission moment — the inline-at-first-pick rule now has two first picks (the switch, or Camera as the source); last-used thereafter.",
+      "status": "ratified",
+      "date": "2026-08-21",
+      "amends": [],
+      "amended_by": []
+    },
+    {
+      "id": "N23",
+      "title": "`discard-confirm` *(fat-marker leg 13)*",
+      "decision": "**Ratified as rendered — the paused popover morphs into the question; no window, no dock icon.** “Toss this recording?” · “4:32 recorded so far. There's no undo.” (new second line — the length gives the decision its weight, the no-undo is the truth) · [ Back ] ··· [ Restart instead ] [ Discard ] (red outline, rightmost, never filled). Click-away or Esc ≡ Back; **no Enter default** — a stray Return can never destroy. Restart instead re-arms with the count already running; Discard → `idle-ready`, the bubble goes with it. **What Discard deletes:** the local take *and* any bytes the opportunistic upload already placed in the bucket — a clean delete with no tombstone, since the link was never handed out (the page never opened, nothing copied). Ordering: the `paused` popover — promoted to its own leg by N21 — comes next.",
+      "status": "ratified",
+      "date": "2026-08-21",
+      "amends": [],
+      "amended_by": []
+    },
+    {
+      "id": "N24",
+      "title": "`paused` + the tray faces *(fat-marker leg 14)*",
+      "decision": "**Ratified as rendered.** The take's popover (opens only after the click's pause is confirmed — POC §8): header “Paused — 4:32” · [ **Resume** ] (the one filled action) · [ Drop a marker ] [ Restart ] · [ Stop ] with one quiet line beneath, “Your link opens right away.” — the single place stop = published (§5.3) gets said · “Discard…” as red text at the bottom, never a button a stray click finds · a grey “no Quit while a take is open” note (kept). **Three tray faces:** plain (idle) · red dot (recording — no popover, the click *is* the pause) · pause bars (paused). **No timer in the menu bar** — the length lives in the popover header. `display-lost` ratified by reference: the same popover with the context line “Your display disconnected — recording paused.” and Resume greyed until the display is back. Drop a marker lands at the pause point, metadata-only in v1. *Extended by N37/N38: five tray faces (amber, Frost).*",
+      "status": "ratified",
+      "date": "2026-08-21",
+      "amends": [
+        "N21 (settles the paused slot)"
+      ],
+      "amended_by": [
+        "N37 (extended: five tray faces)",
+        "N38 (extended: five tray faces)"
+      ]
+    },
+    {
+      "id": "N25",
+      "title": "`recovered-take` *(fat-marker leg 15)*",
+      "decision": "**Ratified as rendered — a banner at the top of `config`, greeted by the next tray click; launch stays silent.** A **fourth tray face, the amber dot** — something waits for you (no window, no notification: U9 and the dock rule hold). The banner: “We saved your interrupted recording (4:32).” · [ **Get link** ] · “Discard…”; config stays usable beneath it. Get link runs the normal stop sequence from the saved file — the page opens exactly as a deliberate stop would (Region 4). Discard… confirms with N23's question, one word changed — “4:32 was saved. There's no undo.” — and the same clean delete. The banner persists until resolved, across launches; a new take can start meanwhile; two interrupted takes surface oldest first. Named tradeoff: someone who never clicks the mushroom won't learn of it — the take is safe meanwhile. The update badge (U7) and the degraded face may share the amber dot — decided at their legs. *Settled by N37/N38: amber = something needs you (saved take, space, recording off); the update has its own Frost dot.*",
+      "status": "ratified",
+      "date": "2026-08-21",
+      "amends": [],
+      "amended_by": [
+        "N37 (settled: Frost dot for updates)",
+        "N38 (settled: amber = something needs you)"
+      ]
+    },
+    {
+      "id": "N26",
+      "title": "The owner page at stop *(fat-marker leg 16)*",
+      "decision": "**Ratified as rendered.** The title field is the page's only chrome — focused on arrival, Enter or click-away saves, an untouched placeholder “Untitled — Aug 21” (the day's date) becomes the title so a shared link is never blank; no header, no wordmark, no name (U3). Player: first frame, play, scrub, time, fullscreen. [ **Copy link** ] reads “Copied” for a moment — the page's one copy door (N1); beside it the upload truth, “Uploading — 40%. Your link already works.” with a thin bar → “Fully live ✓”. Download appears only when the single-file MP4 exists (R11). Bottom-right: the owner switch beside the mark, its label “made with shroom” doubling as the tooltip recipients get — flipping it is the space-global setting (U3). Offline line kept by reference. The address bar shows the clean link — the key died at the 302.",
+      "status": "ratified",
+      "date": "2026-08-21",
+      "amends": [],
+      "amended_by": []
+    },
+    {
+      "id": "N27",
+      "title": "The recipient page, three faces *(fat-marker leg 17)*",
+      "decision": "**Ratified as rendered, copy verbatim from Region 4.** `live` = the owner page minus the owner's two controls: the title as plain text, the player, Download quiet and second-class once the MP4 exists, the mark with its hover label — no comments, no sign-in, no name. `on-its-way` keeps the title (the untouched placeholder if never typed) and puts the line where the player will be, over a thin bar — the owner's upload seen from the other side; self-refresh. `removed` = the tombstone line alone — no title, no player — the mark stays, the address lives forever. `noindex` on every face; unfurl honesty per R5 unchanged. Closes Region 4. *Extended by N40: a stalled face, an unavailable face, the embed face.*",
+      "status": "ratified",
+      "date": "2026-08-21",
+      "amends": [],
+      "amended_by": [
+        "N40 (extended: stalled, unavailable, embed faces)"
+      ]
+    },
+    {
+      "id": "N28",
+      "title": "`invite-born` — the Members face *(fat-marker leg 18)*",
+      "decision": "**Ratified as rendered.** The Members face of the window — the gear → Settings → Members, or `all-set`'s Invite someone morphing the same window, the field focused. Head “Members” + one line of N5 truth: “Everyone here records to your space — their videos live in your storage, and you can see and delete any of them.” The list: You (no fact — member #1 shows, silently) · joined members with their date · pending invites. **The composer is the ask** — a name field (“Who's this for?”) + [ Invite ], always present, no Invite-someone button on this face; beneath it “You'll get a link to send them — over any chat.” The typed name is the admin-private label for the member, forever — members never type a name (U3 holds). **The born state appears under the new row:** the link pill `v.<name>.workers.dev/join/<code>` · [ **Copy link** ] (filled — the moment's one action; reads “Copied” briefly per N26; Invite drops to outline meanwhile) · “Send Ani this link — it's good for one person, for seven days.” Row facts: “invited just now” → “invited Aug 21 · 5 days left” → expired: [ New link ] (a row face, not a state — nothing is blocked). “Remove…” = red text on every row but You (N24's pattern), confirming at its own beat, `member-remove-confirm`, with the ≤7-day honesty. Flags resolved with the ratification: the inviter's name on the join page = the Mac account's full name, used silently, no field; small numbers as words; the face has no back-chrome (✕ ≡ Close) — how Members sits beside the Space panel is the settings leg's call. *Settled by N36: Members is the Settings window's third tab. Amended by N29 (the name's short form) and N33 (the You row).*",
+      "status": "ratified",
+      "date": "2026-08-21",
+      "amends": [],
+      "amended_by": [
+        "N29 (the name's short form)",
+        "N33 (the You row)",
+        "N36 (settled: Members is the Settings window's third tab)"
+      ]
+    },
+    {
+      "id": "N29",
+      "title": "`join-landing` *(leg 19)*",
+      "decision": "**The leg-19 proposal, adopted with all three flags as recommended.** The join link *is* the code — one artifact, three doors (the page, `--join <link>` in the install command, the in-app paste door); both the bare and the `https://` forms accepted. The Terminal hand-hold line stays. Page faces: `join-landing` · an owner-view note when the owner's cookie rides along (“This is the page Ani will see — opening it here doesn't use it up.”) · `join-landing-elsewhere` for phones and non-Macs (“shroom runs on a Mac — open this link on yours to get started.” + Copy link) · `join-expired` (expired, cancelled, or an unknown code — the nameless wording) · `join-used` (with a “You're in” variant for the joiner's own cookie). Opening the page never uses the invite; only Join in the app does. **The inviter's name renders in macOS's short form of the account name** (“Bagrat” for “Bagrat Aznauryan”, locale-aware) — **amends** N28's “full name”, which its own copy never showed.",
+      "status": "autonomous-awaiting-ratification",
+      "date": "2026-09-30",
+      "amends": [
+        "N28 (the inviter's name renders in macOS's short form, not the full name)"
+      ],
+      "amended_by": []
+    },
+    {
+      "id": "N30",
+      "title": "`member-welcome` → `joining` → member `all-set`",
+      "decision": "**The welcome's twin, already knowing it's an invite.** “Bagrat invited you to record with shroom.” + the N5 truth mirrored for the invitee, once, before anything exists (“…where Bagrat can see them too — nothing to sign up for, nothing to pay.”) + the U4 box + [ **Join** ] [ Later ] (twin's button order). Later remembers the invite (mode 600); the tray click reopens it while it lives. Join morphs into a **two-row plan** — “Joining Bagrat's space (shroom does this part)” → ticked with the fact, then row six verbatim — resting at `done`'s nest (N17). Member `all-set` has two doors, Close · Record now (members don't invite). Own-Mac variants throughout (N33). **Amends** the ratified welcome: one quiet line under its buttons, “Have an invite link?”, opens the classified paste door (a join link → here; a token → the wizard at `token`).",
+      "status": "autonomous-awaiting-ratification",
+      "date": "2026-09-30",
+      "amends": [
+        "N12 (the ratified welcome, Region 1: adds the “Have an invite link?” line under its buttons)"
+      ],
+      "amended_by": []
+    },
+    {
+      "id": "N31",
+      "title": "Join failures as states",
+      "decision": "**Replaces the merged expired/used row** (N18): `join-waiting` (offline or unanswered — auto-resume, no button) · `join-expired` · `join-used` (both with a paste door for a new link) · `join-space-missing` · `join-already-here` (the link stays unused — pass it on) · `join-switch-confirm` (one space per Mac: an explicit move, blocked while uploads drain or a recovered take waits, with a way-back line for a space's only token-holder). The join failures read the same in-app as on the page.",
+      "status": "autonomous-awaiting-ratification",
+      "date": "2026-09-30",
+      "amends": [
+        "N18 (replaces the merged expired/used row)"
+      ],
+      "amended_by": []
+    },
+    {
+      "id": "N32",
+      "title": "`member-remove-confirm`",
+      "decision": "**A sheet with three faces, no Return default:** “Remove Mher?” / “Mher won't be able to record to your space anymore — a video already on its way can still finish. Mher's videos stay; you'll find them in your Library.” · “Cancel Ani's invite?” / “The link stops working right away.” [ Keep it ] [ Cancel invite ] · “Remove MacBook Air?” / “That Mac stops recording to your space. Its videos stay.” Removal and deletion are never bundled. The ≤7-day honesty rides “already on its way” — **bound to per-recording minting**; per-member creds would force “for up to a week”.",
+      "status": "autonomous-awaiting-ratification",
+      "date": "2026-09-30",
+      "amends": [],
+      "amended_by": []
+    },
+    {
+      "id": "N33",
+      "title": "The owner's other Macs *(**amends** U10 and N28's You row)*",
+      "decision": "**Add another Mac — a quiet action on the You row, owner-class, one Mac, one hour.** A plain member invite would have shown the second Mac only its own videos — a silent P12 regression. Own-Mac links carry owner powers, so they die young (one hour, one-time). The joined Mac is labeled by its own name, silently, as a sub-row under You. Owner-class Macs see all and manage members through the Worker; only a token-holding Mac repairs or re-wires. Every surface of the join machine has an own-Mac variant. **Extends N3's argv exception to own-Mac links, deliberately** — owner powers, but one hour and one-time: a link in shell history is dead long before anyone reads it, and a stolen live one shows up as an unexpected Mac under You. Every owner Mac records as member #1 (Mine spans all your Macs) with its own device key — Remove revokes the device; the You row itself is never removable, and neither is a Mac that keeps the Cloudflare token (a device key can't stop it — Disconnect on that Mac, or delete the token in Cloudflare).",
+      "status": "autonomous-awaiting-ratification",
+      "date": "2026-09-30",
+      "amends": [
+        "U10 (the second Mac joins through Add another Mac, owner-class)",
+        "N28 (the You row)",
+        "N3 (extends the argv exception to own-Mac links)"
+      ],
+      "amended_by": []
+    },
+    {
+      "id": "N34",
+      "title": "Member life + the stranded-take rescue",
+      "decision": "**Three member-only banners under the amber dot, all derived (they clear by themselves):** `member-revoked` (Start greyed) · `space-needs-owner` (Start live — videos drain later) · `space-gone` (Start greyed). **Save to Movies** is the rescue for any take the space can't take: the single-file copy lands in `~/Movies` and Finder shows it; the take keeps waiting until discarded. The sacred-recording law, carried to its end — no take is ever lost to a space that went away.",
+      "status": "autonomous-awaiting-ratification",
+      "date": "2026-09-30",
+      "amends": [],
+      "amended_by": []
+    },
+    {
+      "id": "N35",
+      "title": "The Library window",
+      "decision": "**A list, newest first, tuned to its two jobs — re-share and clean up.** Rows: small poster · title · date · length (· the member's label in *Everyone*); **Copy link always visible**, Open page · Delete… on hover; state words only when not live (silence = live); a recovered take pins to the top under the amber dot. The whole macOS idiom (click-title rename, double-click opens, ⌘C, Delete key, multi-select delete). *Mine · Everyone* for owner-class Macs once others record. Search over titles, local and instant. Delete is a sheet under N23's law carrying the tombstone truth; opens on the cache, refreshes behind. Footer = the count only — P13 stays parked.",
+      "status": "autonomous-awaiting-ratification",
+      "date": "2026-09-30",
+      "amends": [],
+      "amended_by": []
+    },
+    {
+      "id": "N36",
+      "title": "The Settings window *(resolves N28's open placement)*",
+      "decision": "**One window, toolbar tabs General · Space · Members** (Members owner-class only). General: the login box (reading the system's truth), the update row, N8's help doors. Space: one tab, a mood per kind of Mac — inspection (the six ticked rows with facts), repair (N42), owner-class-without-token, member — plus the mark switch (owner-class only), the invite paste door, and the exits: **Disconnect this Mac…** / **Leave this space…**, sheets under N23's law, blocked while uploads drain. Row six is live everywhere, with [ Turn it back on ].",
+      "status": "autonomous-awaiting-ratification",
+      "date": "2026-09-30",
+      "amends": [
+        "N28 (resolves the Members placement: the Settings window's third tab)"
+      ],
+      "amended_by": []
+    },
+    {
+      "id": "N37",
+      "title": "Updates *(settles N25's badge question)*",
+      "decision": "**The Frost dot — its own, lowest tray face; amber stays “something needs you”.** A slim `config` banner, “shroom 1.3.0 is ready.” [ Update ] · What's new → “Updating — back in a few seconds.” → quit/swap/relaunch (N9) → “Updated to 1.3.0 ✓” once. Never mid-take; a failed swap leaves the running version; a bad fingerprint is never installed; too-old macOS gets a line in General, no dot; versions roll up, no nag. The page (Worker) follows the app on token-holding Macs only; its interface stays backwards-compatible.",
+      "status": "autonomous-awaiting-ratification",
+      "date": "2026-09-30",
+      "amends": [
+        "N25 (settles the badge question: the Frost dot)",
+        "N21 (settles the updates slot)",
+        "N24 (extends: five tray faces)"
+      ],
+      "amended_by": []
+    },
+    {
+      "id": "N38",
+      "title": "The popover's grammar + the tray faces, final *(settles N21's slots and N25's badge question with N37)*",
+      "decision": "**Two slots, never more: a banner at the top is an ask, the status line above the footer is a fact.** One banner at a time, highest first — a saved take · the space can't take videos · `recording-off` · an update. Status line: the upload truth, then one-shot lines. Disk-low sits under Start (it's about this take). **Five tray faces:** plain · red dot · pause bars · amber (something needs you) · Frost (update). The arm-time guard made visible — `recording-off` banner before Start; Apple's monthly re-confirm pulled forward to `config`. Return = the filled action (Start, Resume); destructive questions keep no Return default.",
+      "status": "autonomous-awaiting-ratification",
+      "date": "2026-09-30",
+      "amends": [
+        "N21 (settles the slots: the grammar)",
+        "N25 (settles the badge question, with N37)",
+        "N24 (extends: five tray faces)"
+      ],
+      "amended_by": []
+    },
+    {
+      "id": "N39",
+      "title": "The auto-pause family, Restart's undo, disk, devices",
+      "decision": "**Every pause or stop the user didn't make opens its popover by itself once they're back — without taking the keyboard** (the only unasked popovers): `display-lost` (ratified) + `mic-lost` (Resume switches to the built-in mic) + `camera-lost` (camera as source only — a lost bubble never interrupts) + `mac-away` (sleep, lid, lock, user switch) + `permission-lost` (the mic pauses; a lost *screen* grant can't come back mid-take, so it finalizes and asks like a full disk). **The count is Restart's undo** — the old take dies only when the new capture begins. `disk-low` under Start; `disk-full-stop` finalizes and asks, never auto-publishes. Never auto-pick an iPhone, mic or camera; a lost display falls back to the menu-bar one; Camera-as-source previews at `config`.",
+      "status": "autonomous-awaiting-ratification",
+      "date": "2026-09-30",
+      "amends": [],
+      "amended_by": []
+    },
+    {
+      "id": "N40",
+      "title": "The stop's edges *(**amends** Region 4 beat 6)*",
+      "decision": "**An offline Mac can't load the page — so `stopped-offline` puts the link in the popover** (“Your link is ready.” + Copy link) and the page opens by itself on reconnect (after any running take). **`stopped-stranded`** when the space can't take the video — no page, Save to Movies. A space that serves but can't take uploads still opens the page, its upload line saying so (“Waiting for your space — your link already works.”). Owner-mode by role: the cookie names a member; members' pages give the title only, owner-class gets the switch everywhere. Recipients get an *on its way, stalled* face when the upload has made no progress for a while.",
+      "status": "autonomous-awaiting-ratification",
+      "date": "2026-09-30",
+      "amends": [
+        "Region 4 beat 6",
+        "U2 (the cookie names a member; owner-mode by role)",
+        "N27 (extends: stalled, unavailable, embed faces)"
+      ],
+      "amended_by": []
+    },
+    {
+      "id": "N41",
+      "title": "Launch & presence laws *(**amends** Region 1's “every launch is silent”)*",
+      "decision": "**The quiet-take law** — nothing new on screen while a take is open (invites, deep links, windows, deferred pages, banners all wait). **A launch you did is a tray click** (Spotlight, Finder, Dock, a fresh install onto a Mac that still remembers its space — the `updating` lane stays silent per N9, except that an install command carrying `--join` opens the invite, because the user asked); launches shroom does itself stay silent — though an update relaunch restores whatever window was open — also the rescue for a mushroom hidden behind the notch; the popover falls back to the top-right when the mushroom can't be seen. **`quit-confirm`** when uploads are draining (no red, no Return default); shutdown never asks. Uploads hold off idle sleep, never lid sleep.",
+      "status": "autonomous-awaiting-ratification",
+      "date": "2026-09-30",
+      "amends": [
+        "Region 1's “every launch is silent”",
+        "N9 (refines: a fresh install onto a Mac that remembers its space opens the door)"
+      ],
+      "amended_by": []
+    },
+    {
+      "id": "N42",
+      "title": "Wizard edges + the repair mood",
+      "decision": "**`token-pick-account`** when a token reaches several accounts · the **“v” clash** falls back to the label `shroom`, said once in the name row (**amends** U8 for that case) · **Reopen shroom** under `perm-screen` for a declined relaunch · row six ticks with “microphone off for now” · **`space-found`** gives U10's recovery line its place · **`space-degraded` = one banner → the Settings Space tab in the repair mood**, the first broken row current with Region 2's own state (`token` · `gate-card` · re-`wiring` · `space-storage-gone` · `name-changed`); the token line redrafted (“Cloudflare stopped accepting shroom's token…”). Start stays live while degraded.",
+      "status": "autonomous-awaiting-ratification",
+      "date": "2026-09-30",
+      "amends": [
+        "U8 (a clashing “v” becomes the label shroom)"
+      ],
+      "amended_by": []
+    }
+  ],
+  "inventory": [
+    {
+      "region": "1",
+      "states": [
+        "landing",
+        "source view"
+      ],
+      "surface": "web (shroom.am)",
+      "status": "ratified | R — N6, N11"
+    },
+    {
+      "region": "1",
+      "states": [
+        "installing",
+        "install-net-drop",
+        "install-checksum-fail",
+        "install-unsupported-os",
+        "install-refused-midtake",
+        "updating"
+      ],
+      "surface": "Terminal",
+      "status": "ratified | R — N9–N11, N18"
+    },
+    {
+      "region": "1",
+      "states": [
+        "first-launch → welcome"
+      ],
+      "surface": "window",
+      "status": "mixed (ratified; part provisional) | R — N12 · its invite door D — N30"
+    },
+    {
+      "region": "1",
+      "states": [
+        "idle-unprovisioned"
+      ],
+      "surface": "tray",
+      "status": "ratified | R — N21"
+    },
+    {
+      "region": "2",
+      "states": [
+        "account",
+        "account-signing-up"
+      ],
+      "surface": "window (the plan)",
+      "status": "ratified | R — N13, N19"
+    },
+    {
+      "region": "2",
+      "states": [
+        "token",
+        "token-garbled",
+        "token-wrong-powers"
+      ],
+      "surface": "window",
+      "status": "ratified | R — N14, N18"
+    },
+    {
+      "region": "2",
+      "states": [
+        "token-pick-account"
+      ],
+      "surface": "window",
+      "status": "provisional | D — N42"
+    },
+    {
+      "region": "2",
+      "states": [
+        "card",
+        "gate-email",
+        "gate-card"
+      ],
+      "surface": "window",
+      "status": "ratified | R — N14"
+    },
+    {
+      "region": "2",
+      "states": [
+        "name",
+        "name-taken (the “v” clash as a derived label)"
+      ],
+      "surface": "window",
+      "status": "mixed (ratified; part provisional) | R — N15 · clash D — N42"
+    },
+    {
+      "region": "2",
+      "states": [
+        "wiring",
+        "wizard-offline"
+      ],
+      "surface": "window",
+      "status": "ratified | R — N16, N18"
+    },
+    {
+      "region": "2",
+      "states": [
+        "space-found"
+      ],
+      "surface": "window",
+      "status": "provisional | D — N42"
+    },
+    {
+      "region": "2",
+      "states": [
+        "done"
+      ],
+      "surface": "window",
+      "status": "ratified | R — N17"
+    },
+    {
+      "region": "2",
+      "states": [
+        "space-degraded → the repair mood",
+        "token-other-account",
+        "space-storage-gone",
+        "name-changed"
+      ],
+      "surface": "banner → Settings, Space",
+      "status": "provisional | D — N42"
+    },
+    {
+      "region": "3",
+      "states": [
+        "perm-mic",
+        "perm-screen",
+        "relaunching",
+        "perm-priming",
+        "all-set"
+      ],
+      "surface": "window",
+      "status": "mixed (ratified; part provisional) | R — N20 · Reopen shroom D — N42"
+    },
+    {
+      "region": "3",
+      "states": [
+        "idle-ready"
+      ],
+      "surface": "tray",
+      "status": "ratified | R — N21"
+    },
+    {
+      "region": "3",
+      "states": [
+        "config (+ recording-off, disk-low)"
+      ],
+      "surface": "popover",
+      "status": "mixed (ratified; part provisional) | R — N21 · grammar D — N38, N39"
+    },
+    {
+      "region": "3",
+      "states": [
+        "countdown"
+      ],
+      "surface": "overlay on the chosen display",
+      "status": "ratified | R — N22"
+    },
+    {
+      "region": "3",
+      "states": [
+        "recording"
+      ],
+      "surface": "tray (red dot)",
+      "status": "ratified | R — N24"
+    },
+    {
+      "region": "3",
+      "states": [
+        "paused",
+        "discard-confirm"
+      ],
+      "surface": "popover",
+      "status": "mixed (ratified; part provisional) | R — N23, N24 · Restart's undo D — N39"
+    },
+    {
+      "region": "3",
+      "states": [
+        "display-lost"
+      ],
+      "surface": "popover (auto)",
+      "status": "ratified | R — N24"
+    },
+    {
+      "region": "3",
+      "states": [
+        "mic-lost",
+        "camera-lost",
+        "mac-away",
+        "permission-lost",
+        "disk-full-stop"
+      ],
+      "surface": "popover (auto, never the keyboard)",
+      "status": "provisional | D — N39"
+    },
+    {
+      "region": "3",
+      "states": [
+        "recovered-take"
+      ],
+      "surface": "banner (amber)",
+      "status": "ratified | R — N25"
+    },
+    {
+      "region": "3",
+      "states": [
+        "quit-confirm"
+      ],
+      "surface": "popover",
+      "status": "provisional | D — N41"
+    },
+    {
+      "region": "3",
+      "states": [
+        "stopping"
+      ],
+      "surface": "beat",
+      "status": "ratified | R"
+    },
+    {
+      "region": "4",
+      "states": [
+        "owner page (uploading · waiting · fully live)"
+      ],
+      "surface": "web (the space's page)",
+      "status": "mixed (ratified; part provisional) | R — N26 · line variants D — N40"
+    },
+    {
+      "region": "4",
+      "states": [
+        "stopped-offline",
+        "stopped-stranded"
+      ],
+      "surface": "popover",
+      "status": "provisional | D — N40"
+    },
+    {
+      "region": "4",
+      "states": [
+        "live",
+        "on-its-way",
+        "removed"
+      ],
+      "surface": "web",
+      "status": "ratified | R — N27"
+    },
+    {
+      "region": "4",
+      "states": [
+        "on-its-way, stalled",
+        "unavailable",
+        "the embed face"
+      ],
+      "surface": "web",
+      "status": "provisional | D — N40"
+    },
+    {
+      "region": "5",
+      "states": [
+        "library",
+        "delete sheet"
+      ],
+      "surface": "window",
+      "status": "provisional | D — N35"
+    },
+    {
+      "region": "5",
+      "states": [
+        "Settings — General",
+        "Space (inspection, repair, other Macs, member)",
+        "Members",
+        "Disconnect / Leave sheets"
+      ],
+      "surface": "window",
+      "status": "provisional | D — N36"
+    },
+    {
+      "region": "5",
+      "states": [
+        "update-ready",
+        "updating",
+        "update failed"
+      ],
+      "surface": "tray (Frost) + banner + status line",
+      "status": "provisional | D — N37"
+    },
+    {
+      "region": "6",
+      "states": [
+        "invite-born (Members face)"
+      ],
+      "surface": "window (Settings tab)",
+      "status": "mixed (ratified; part provisional) | R — N28 · You row D — N33"
+    },
+    {
+      "region": "6",
+      "states": [
+        "member-remove-confirm",
+        "Add another Mac"
+      ],
+      "surface": "sheet · row nest",
+      "status": "provisional | D — N32, N33"
+    },
+    {
+      "region": "6",
+      "states": [
+        "join-landing (+ owner view)",
+        "join-landing-elsewhere",
+        "join-expired",
+        "join-used"
+      ],
+      "surface": "web (the space's page)",
+      "status": "provisional | D — N29"
+    },
+    {
+      "region": "6",
+      "states": [
+        "member-welcome",
+        "joining",
+        "member done",
+        "member all-set"
+      ],
+      "surface": "window",
+      "status": "provisional | D — N30"
+    },
+    {
+      "region": "6",
+      "states": [
+        "join-waiting",
+        "join-space-missing",
+        "join-already-here",
+        "join-switch-confirm"
+      ],
+      "surface": "window",
+      "status": "provisional | D — N31"
+    },
+    {
+      "region": "6",
+      "states": [
+        "member-revoked",
+        "space-needs-owner",
+        "space-gone (+ Save to Movies)"
+      ],
+      "surface": "banner (amber)",
+      "status": "provisional | D — N34"
+    }
+  ],
+  "surfaces": [
+    {
+      "name": "The tray mushroom",
+      "may_do": "Lives: always | Opens: — | Rules: five faces (N38); the click is the door (N21); right-click → Quit shroom (idle only — mid-take it's a click, N39)  [UX-STATEMACHINE.md L1715]"
+    },
+    {
+      "name": "The popover",
+      "may_do": "Lives: under the mushroom | Opens: on a click, a launch you did, all-set's Record now, or a pause or stop you didn't make (without the keyboard) | Rules: `config` · `paused` · the confirms that morph from them; one banner + one status line (N38); never brings the dock icon  [UX-STATEMACHINE.md L1716]"
+    },
+    {
+      "name": "The window",
+      "may_do": "Lives: centered, one at a time per kind | Opens: onboarding, Library, Settings | Rules: the dock icon while open; ✕ ≡ the retreat (N12); survives a browser round-trip  [UX-STATEMACHINE.md L1717]"
+    },
+    {
+      "name": "The page",
+      "may_do": "Lives: the space's own address | Opens: Stop, Get link, Open page, a shared link, an invite | Rules: owner-mode by cookie, per member (N40); `noindex`; the mark bottom-right  [UX-STATEMACHINE.md L1718]"
+    },
+    {
+      "name": "Terminal",
+      "may_do": "Lives: the user's own | Opens: the install command | Rules: the readable script; refuses mid-take; the update path forever  [UX-STATEMACHINE.md L1719]"
+    },
+    {
+      "name": "The overlays",
+      "may_do": "Lives: the chosen display | Opens: the countdown scrim; the bubble from `config` through the take | Rules: never windows, never the dock icon; the bubble never takes focus, while the countdown does — you just started it, and its Esc must work without any extra macOS permission; the bubble is the only thing of ours ever in a take  [UX-STATEMACHINE.md L1720]"
+    }
+  ],
+  "absent_from_v1": [
+    "Local recording before setup and any local library (U1)  [L1724]",
+    "brew and the .dmg (P17)  [L1724]",
+    "macOS notifications (U9)  [L1724-1725]",
+    "global hotkeys (the rethink — the reopen door covers a hidden mushroom, N41)  [L1725-1726]",
+    "the tray's Copy last link and any auto-copy (N21, N1)  [L1726]",
+    "trim, the editor, marker surfacing (P11)  [L1726-1727]",
+    "captions and transcript search (P8)  [L1727]",
+    "a sender name or avatar (U3)  [L1727-1728]",
+    "passwords or expiry on links (P1)  [L1728]",
+    "storage sizes and cost figures (P13)  [L1728]",
+    "custom domains (N2)  [L1728-1729]",
+    "view tracking  [L1729]",
+    "more than one space per Mac (N31)  [L1729]",
+    "deleting from the page (delete lives in the Library)  [L1729-1730]",
+    "an uninstall button (N36)  [L1730]",
+    "system audio and window/region capture (§5.2)  [L1730-1731]",
+    "OAuth sign-in (P5)  [L1731]",
+    "a second repair UI (N42)  [L1731]",
+    "an instant member cut-off control (parent-token rotation stays a scaffold flag)  [L1731-1732]",
+    "deleting a whole space from the app (Cloudflare's dashboard does it; the docs say how)  [L1732-1733]",
+    "a member's own Add another Mac (a member's second Mac is a second invite, N33)  [L1733-1734]"
+  ],
+  "scaffold_flags": [
+    "**Per-recording credential minting** — N32's removal copy is true only if creds mint per recording at upload start; per-member creds would force “for up to a week”.  [L1740-1741]",
+    "**The member cookie** — owner-mode keys on the member, not the space (N40); the Worker checks maker vs cookie, owner-class sees all.  [L1742-1743]",
+    "**Launch provenance** — tell a launch you did from a login-item or update relaunch (N41); treat the reopen event as a tray click in every state.  [L1744-1745]",
+    "**The popover's anchor fallback** when the status item is occluded (N41).  [L1746]",
+    "**The reachability probe at stop** — capped well under a second, so a live stop never waits on it (N40).  [L1747-1748]",
+    "**Thresholds** — the stall window for *on its way, stalled* (N40); disk-low and the disk floor at each quality (N39); the upload no-progress window.  [L1749-1750]",
+    "**Deep link registration** (`shroom://join/…`) at first launch, and the browser's own “open shroom?” prompt as the only step it adds (N29).  [L1751-1752]",
+    "**Own-Mac invites** — one hour, owner-class, labelled by the Mac's sharing name (N33).  [L1753]",
+    "**The page's interface stays backwards-compatible** across app versions (N37).  [L1754]",
+    "**The page refuses a downgrade** — a token-holding Mac on an older app, repairing or updating, never replaces newer page code (N37, N42).  [L1755-1756]",
+    "**Label fallback chain** — if `shroom` is taken too, the next free of `shroom-v`, … (N42).  [L1757]",
+    "**Tombstone check before every upload resume**, so another Mac's delete stops this Mac's upload (N35).  [L1758-1759]",
+    "**Non-activating popovers** for everything shroom opens unasked (law 5, N39).  [L1760]",
+    "Carried from before: the min-OS floor and Intel stance (Region 1) · the name charset edges (N15) · swap-under-running-process behavior (N9) · parent-token rotation UI (N3).  [L1761-1762]"
+  ],
+  "notation": "States are kebab-case, stable, scaffold-grade names; events are written in bold, [guards] in brackets, and said-lines in quotes. Every region carries its failure classification and resume semantics — the POC's wizard discipline generalized: attempt → classify → route to the fix → auto-poll → resume (POC §6) — and state is derived from probes, never stored as a step counter (UX-STATEMACHINE.md L92-98). Status keys used across the fixture: the ledger's When column carries a date for ratified rows and “· autonomous — awaiting ratification” for N29–N42 (designed 2026-09-30, L22-29); in the inventory R = ratified by Bagrat and D = designed in the autonomous sitting, awaiting ratification (= provisional), with faces that are row facts or copy variants folded into their state per N18 (L1666-1669); said-lines are drafts unless their section is marked copy ratified (L6-9). Fixture provenance: ledger entries are the table rows at L38-90 in table order (P17 at L38 … N42 at L90; N17 sits after N19), title = the Question cell and decision = the Decision cell, both verbatim markdown source; law rules are the markdown source with line wraps joined by single spaces; inventory entries are rows L1673-1709 in order, states split on top-level “ · ” with backticks dropped (non-scaffold descriptive faces kept verbatim, e.g. “source view”, “delete sheet”, “Add another Mac”), status given as “normalized | verbatim cell”; surfaces are rows L1715-1720 with may_do = the Lives | Opens | Rules cells joined by “ | ”; absent-list items (L1724-1734, split on “ · ”) and scaffold flags (L1740-1762, markdown source) each carry a two-space-separated [Lnnn] source suffix; amends/amended_by entries are “ID (relation)” strings covering every explicit amends / amended / refined / reversed / replaces / extends / settles / resolves marker in the ledger, recorded on both sides (non-ledger targets such as “Region 4 beat 6” kept as text). Spec observations for the test author: N31 says it replaces “the merged expired/used row (N18)”, but N18's ledger roster as written lists no such row (the only other mention is the N31 section heading, L1530); P1, P5, P8, P11, P13 (absent list) and P12 (N33) are cited but have no row in this ledger (only P17 does); the state inventory carries no row for countdown's or config's sub-faces beyond those listed, and “stopping” (R) has no ledger citation."
+}
