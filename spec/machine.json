@@ -967,8 +967,8 @@
   {
    "id": "N50",
    "title": "A join link macOS hands to shroom",
-   "decision": "**A join link macOS hands to shroom as it opens is an arrival, like the page's Open shroom.** `open -a shroom \"https://<space>/join/<code>\"` (the Homebrew join line) makes macOS give shroom the link with the open; shroom takes a web address only when it reads as a join link and ignores any other. It lands where Open shroom's `shroom://join/…` lands: kept in the owner-only invite file, then the invite window (member-welcome, or join-already-here / join-switch-confirm) — never a silent join — and it waits while a take is open (Law 4). shroom claims no web addresses, so no website can send it one, and the link is never on the app's command line. Built and proved: DECISIONS B176.",
-   "status": "provisional",
+   "decision": "**A join link macOS hands to shroom as it opens is an arrival, like the page's Open shroom** (Bagrat, 2026-10-16). `open -a shroom \"https://<space>/join/<code>\"` (the Homebrew join line) makes macOS give shroom the link with the open; shroom takes a web address only when it reads as a join link and ignores any other. It lands where Open shroom's `shroom://join/…` lands: kept in the owner-only invite file, then the invite window (member-welcome, or join-already-here / join-switch-confirm) — never a silent join — and it waits while a take is open (Law 4). shroom claims no web addresses, so no website can send it one, and the link is never on the app's command line. Built and proved: DECISIONS B176.",
+   "status": "ratified",
    "date": "2026-10-16",
    "amends": [
     "member-welcome (one more arrival door)"
