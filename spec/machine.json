@@ -967,11 +967,22 @@
   {
    "id": "N50",
    "title": "A join link macOS hands to shroom",
-   "decision": "**A join link macOS hands to shroom as it opens is an arrival, like the page's Open shroom.** `open -a shroom \"https://<space>/join/<code>\"` (the Homebrew join line) makes macOS give shroom the link with the open; shroom takes a web address only when it reads as a join link and ignores any other. It lands where Open shroom's `shroom://join/…` lands: kept in the owner-only invite file, then the invite window (member-welcome, or join-already-here / join-switch-confirm) — never a silent join — and it waits while a take is open (Law 4). shroom claims no web addresses, so no website can send it one, and the link is never on the app's command line. Built and proved: DECISIONS B176.",
-   "status": "provisional",
+   "decision": "**A join link macOS hands to shroom as it opens is an arrival, like the page's Open shroom** (Bagrat, 2026-10-16). `open -a shroom \"https://<space>/join/<code>\"` (the Homebrew join line) makes macOS give shroom the link with the open; shroom takes a web address only when it reads as a join link and ignores any other. It lands where Open shroom's `shroom://join/…` lands: kept in the owner-only invite file, then the invite window (member-welcome, or join-already-here / join-switch-confirm) — never a silent join — and it waits while a take is open (Law 4). shroom claims no web addresses, so no website can send it one, and the link is never on the app's command line. Built and proved: DECISIONS B176.",
+   "status": "ratified",
    "date": "2026-10-16",
    "amends": [
     "member-welcome (one more arrival door)"
+   ],
+   "amended_by": []
+  },
+  {
+   "id": "N51",
+   "title": "The invite page offers the Homebrew join line",
+   "decision": "**The invite page shows the Homebrew join line under the install command** (Bagrat, 2026-10-16: the board approved, placement and words as drawn). “Use Homebrew? This does the same:” then `brew install --cask bagrat/shroom/shroom && open -a ~/Applications/shroom.app \"https://<space>/join/<code>\"` with its own Copy, quieter than the install command's. It goes live only with the app that takes the link (N50, 0.1.17). Built: DECISIONS B178.",
+   "status": "ratified",
+   "date": "2026-10-16",
+   "amends": [
+    "join-landing (two more lines in Get shroom)"
    ],
    "amended_by": []
   }
@@ -9200,6 +9211,27 @@
       "B134"
      ],
      "id": "join-landing.for-macos-14-or"
+    },
+    {
+     "text": "Use Homebrew? This does the same:",
+     "role": "line",
+     "copy": "ratified",
+     "note": "Under the install command, above a divider of its own; quieter than the install line (N51).",
+     "cites": [
+      "N51"
+     ],
+     "id": "join-landing.use-homebrew-this-does"
+    },
+    {
+     "text": "brew install --cask bagrat/shroom/shroom && open -a ~/Applications/shroom.app \"https://v.myshroom.workers.dev/join/7xk2pm\"",
+     "role": "other",
+     "copy": "ratified",
+     "note": "The Homebrew join line (N50, N51): the link varies, and is always whole, https:// and all — the app takes a web address only as a join link. Its Copy is outlined, not filled.",
+     "cites": [
+      "N50",
+      "N51"
+     ],
+     "id": "join-landing.brew-install-cask-bagrat"
     },
     {
      "text": "Already have shroom?",
