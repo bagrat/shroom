@@ -18,8 +18,8 @@
 //! When the two clocks drift apart, the Mac's sound is read up to 0.2 % faster or slower
 //! until they meet again. Only a gap of more than [`RESYNC`] (a stall, the Mac's sound
 //! starting or stopping) is closed by placing the Mac's sound again by its timestamps.
-//! Those timestamps place it and find its gaps, never set its pace: the Mac's sound keeps
-//! its own sample count too, eased by when its buffers arrive.
+//! Those timestamps hold however its buffers are delivered; when the voice's blocks
+//! arrive is eased, and a burst of them passes.
 
 use std::collections::VecDeque;
 use std::sync::atomic::{AtomicI64, AtomicU64, Ordering};
@@ -45,6 +45,8 @@ const SLEW: f64 = 0.002;
 const EASE: f64 = 0.5;
 /// A gap in the Mac's sound, by its timestamps, kept as silence; anything less is jitter.
 const GAP: f64 = 0.02;
+/// How long the voice's blocks must keep arriving far off its time to be a stall.
+const STALL: f64 = 0.25;
 
 /// The screen's side of the Mac's sound: cheap to clone, fed from the capture's thread.
 #[derive(Clone)]
@@ -200,15 +202,6 @@ struct Mix {
     /// The Mac's sound at `rate`, and when (seconds from `base`) its front sample was heard.
     system: VecDeque<f32>,
     system_at: f64,
-    /// When (by its timestamps) the capture's next buffer should start: the gap check's
-    /// reference, buffer to buffer, so a slow drift of the timestamps never adds up to one.
-    fed_until: Option<f64>,
-    /// The Mac's sound by its own count since it was placed: when its next sample is due,
-    /// how late (eased) its buffers arrive against that, and how much of the change in that
-    /// lateness `system_at` has taken on.
-    counted: f64,
-    system_late: Option<(f64, f64)>,
-    followed: f64,
     /// Whether the Mac's sound is being read on without a cut (false: placed by
     /// timestamps at the next read).
     locked: bool,
@@ -219,6 +212,9 @@ struct Mix {
     /// the voice's own sample count, and the eased lateness of its blocks on top of that.
     voice_at: Option<f64>,
     voice_late: f64,
+    /// Since when (seconds from `base`) the voice's blocks have arrived more than
+    /// [`RESYNC`] off its eased time: past [`STALL`], that's its new time.
+    voice_odd: Option<f64>,
     /// With no microphone: when the next sample let out was heard.
     next: Option<f64>,
 }
@@ -234,15 +230,12 @@ impl Mix {
             voice: voice.then(VecDeque::new),
             system: VecDeque::new(),
             system_at: 0.0,
-            fed_until: None,
-            counted: 0.0,
-            system_late: None,
-            followed: 0.0,
             locked: false,
             slewed: 0.0,
             resampler: Resampler::new(SYSTEM_RATE, rate),
             voice_at: None,
             voice_late: 0.0,
+            voice_odd: None,
             next: None,
         }
     }
@@ -275,42 +268,25 @@ impl Mix {
     /// from `base`).
     fn feed_system_at(&mut self, samples: &[f32], at: f64, now: f64) {
         let rate = self.rate as f64;
-        // The Mac's sound keeps its own sample count as its clock. Its timestamps place it
-        // when it starts and find its gaps; they never stretch it (on the hosted Mac they run
-        // ~0.2 % fast against its samples, which keep time). Its sound card's drift against
-        // the host shows in when its buffers arrive, eased like the voice's.
-        let span = samples.len() as f64 / SYSTEM_RATE as f64;
-        let gap = self.fed_until.map(|until| at - until).unwrap_or(0.0);
-        self.fed_until = Some(at + span);
+        // The Mac's sound is placed by its timestamps, which hold however its buffers are
+        // delivered (in bursts, on a busy Mac). A gap in them stays a gap. Anything less is
+        // the sound card's clock against the host's: the buffer follows its timestamps, and
+        // the read catches up by stretching, never a cut.
         if self.system.is_empty() && !self.locked {
             self.system_at = at;
-            self.counted = at;
-            self.system_late = None;
-            self.followed = 0.0;
         } else {
             let end = self.system_at + self.system.len() as f64 / rate;
             self.counts.stamps_us.store(((at - end) * 1e6) as i64, Ordering::Relaxed);
-            // A gap in what the capture delivered stays a gap; anything less is jitter.
-            if gap > GAP {
+            if at - end > GAP {
                 self.counts.gaps.fetch_add(1, Ordering::Relaxed);
-                self.system.extend(std::iter::repeat_n(0.0, (gap * rate).round() as usize));
-                self.counted += gap;
+                self.system.extend(std::iter::repeat_n(0.0, ((at - end) * rate).round() as usize));
+            } else {
+                self.system_at += at - end;
             }
         }
-        self.counted += span;
-        let late = now - self.counted;
-        let (first, eased) = self.system_late.get_or_insert((late, late));
-        if (late - *eased).abs() > RESYNC {
-            *eased = late;
-        } else {
-            *eased += (late - *eased) * (span / EASE).min(1.0);
-        }
-        let follow = *eased - *first;
-        self.system_at += follow - self.followed;
-        self.followed = follow;
-        let buffered = self.system.len() as f64 / rate;
-        self.trace([1.0, now, at, span, buffered, self.locked as u8 as f64]);
         self.resampler.run(samples, &mut self.system);
+        let (span, buffered) = (samples.len() as f64 / SYSTEM_RATE as f64, self.system.len() as f64 / rate);
+        self.trace([1.0, now, at, span, buffered, self.locked as u8 as f64]);
         // Never more than KEEP behind what the mix will want next.
         let wanted = now - self.latency - KEEP;
         let stale = (((wanted - self.system_at) * rate).floor().max(0.0) as usize).min(self.system.len());
@@ -420,15 +396,18 @@ impl Mix {
         let mut block: Vec<f32> = voice.drain(..n).collect();
         // By when it arrived: the newest sample in the line was heard now, and the block
         // ends `held` before it. That's late by the callback's jitter, so the voice keeps
-        // its own count, eased towards it; a jump past RESYNC (a stall) is taken at once.
+        // its own count, eased towards it. A block far off is a burst and passes; blocks far
+        // off for longer than STALL are a stall, and that's the voice's time from then on.
         let arrived = now - (held + n) as f64 / rate;
         let at = *self.voice_at.get_or_insert(arrived);
         if !flushing {
             let late = arrived - at;
-            if (late - self.voice_late).abs() > RESYNC {
-                self.voice_late = late;
-            } else {
+            if (late - self.voice_late).abs() <= RESYNC {
+                self.voice_odd = None;
                 self.voice_late += (late - self.voice_late) * (n as f64 / rate / EASE).min(1.0);
+            } else if now - *self.voice_odd.get_or_insert(now) > STALL {
+                self.voice_odd = None;
+                self.voice_late = late;
             }
         }
         self.counts.voice_us.store((self.voice_late * 1e6) as i64, Ordering::Relaxed);
@@ -565,8 +544,11 @@ mod tests {
     /// at `rate` hands over `block`-sample blocks, its clock `mic_ppm` fast, each arriving up
     /// to `jitter` seconds after its last sample was heard (a callback is never early). What
     /// the take's track carries, and when each of its samples was heard (host clock).
+    /// With `bursty`, as a busy Mac delivers: the Mac's first four buffers come together,
+    /// the rest in clumps up to 40 ms late, and every second the microphone stalls 80 ms
+    /// and then catches up.
     #[allow(clippy::too_many_arguments)]
-    fn take(rate: u32, block: usize, secs: f64, jitter: f64, mic_ppm: f64, mac_ppm: f64, stamps_ppm: f64, wave: impl Fn(f64) -> f32) -> (Vec<f32>, Vec<f64>) {
+    fn take(rate: u32, block: usize, secs: f64, jitter: f64, mic_ppm: f64, mac_ppm: f64, stamps_ppm: f64, bursty: bool, wave: impl Fn(f64) -> f32) -> (Vec<f32>, Vec<f64>) {
         let out = AudioSink::with_capacity(rate as usize * (secs as usize + 2));
         let mut mix = Mix::new(rate, out.clone(), Arc::default(), true);
         let mic_period = block as f64 / rate as f64 / (1.0 + mic_ppm * 1e-6);
@@ -582,9 +564,17 @@ mod tests {
         };
         let (mut j, mut m, mut last_voice) = (0usize, 0usize, 0.0f64);
         loop {
-            let voice_due = ((j + 1) as f64 * mic_period + jitter * rand()).max(last_voice);
+            let mut voice_due = (j + 1) as f64 * mic_period + jitter * rand();
             let mac_heard = m as f64 * mac_period;
-            let mac_due = mac_heard + mac_period + 0.065;
+            let mut mac_due = mac_heard + mac_period + 0.065;
+            if bursty {
+                let stalled = voice_due.rem_euclid(1.0);
+                if (0.5..0.58).contains(&stalled) {
+                    voice_due += 0.58 - stalled;
+                }
+                mac_due = if m < 4 { 3.0 * mac_period + 0.065 + 0.055 } else { (mac_due / 0.04).ceil() * 0.04 };
+            }
+            let voice_due = voice_due.max(last_voice);
             if voice_due > secs && mac_due > secs {
                 break;
             }
@@ -625,13 +615,13 @@ mod tests {
         // late. Every block used to be placed by when it arrived, so the Mac's sound was cut
         // at each block's edge: some of it skipped or silence put in, many times a second.
         let tone = |t: f64| (0.5 * (std::f64::consts::TAU * 440.0 * t).sin()) as f32;
-        let (heard, _) = take(24_000, 480, 6.0, 0.015, 0.0, 0.0, 0.0, tone);
+        let (heard, _) = take(24_000, 480, 6.0, 0.015, 0.0, 0.0, 0.0, false, tone);
         let settled = 24_000; // the first second: the mix finds its place
         // 440 Hz at 24 kHz bends by at most 0.0066 a sample; a cut, far more.
         let cuts = splices(&heard[settled..], 0.01);
         assert!(cuts.is_empty(), "{} splices in 5 s, the first at {:?}", cuts.len(), &cuts[..cuts.len().min(5)]);
         let slow = |t: f64| (0.5 * (std::f64::consts::TAU * 3.0 * t).sin()) as f32;
-        let (heard, when) = take(24_000, 480, 6.0, 0.015, 0.0, 0.0, 0.0, slow);
+        let (heard, when) = take(24_000, 480, 6.0, 0.015, 0.0, 0.0, 0.0, false, slow);
         let late = lag(&heard, &when, settled, slow);
         assert!(late.abs() < 0.012, "the Mac's sound sits {:.1} ms off the voice", late * 1e3);
     }
@@ -642,7 +632,7 @@ mod tests {
         // ±100 ppm is 6 ms a minute. The mix follows by stretching, never by cutting.
         let slow = |t: f64| (0.5 * (std::f64::consts::TAU * 3.0 * t).sin()) as f32;
         for (mic, mac) in [(100.0, -100.0), (-100.0, 100.0)] {
-            let (heard, when) = take(48_000, 512, 90.0, 0.004, mic, mac, 0.0, slow);
+            let (heard, when) = take(48_000, 512, 90.0, 0.004, mic, mac, 0.0, false, slow);
             // 3 Hz bends by ~2e-7 a sample; one sample dropped or doubled, ~4e-4.
             let cuts = splices(&heard[48_000..], 5e-5);
             assert!(cuts.is_empty(), "mic {mic} ppm, Mac {mac} ppm: {} splices, the first at {:?}", cuts.len(), &cuts[..cuts.len().min(5)]);
@@ -652,16 +642,19 @@ mod tests {
     }
 
     #[test]
-    fn timestamps_that_run_fast_never_stretch_the_macs_sound() {
-        // The hosted Mac: ScreenCaptureKit's timestamps run ~0.2 % fast against its
-        // samples, which keep time. The Mac's sound is its samples: never stretched to the
-        // timestamps, never a gap put in for them.
+    fn a_busy_macs_bursts_never_splice_the_macs_sound() {
+        // The hosted Mac, traced: ScreenCaptureKit's first buffers came four at once, the
+        // first 120 ms late, the rest in clumps; and a microphone can stall and catch up.
+        // Neither moves where the Mac's sound belongs: its timestamps hold.
+        let tone = |t: f64| (0.5 * (std::f64::consts::TAU * 440.0 * t).sin()) as f32;
+        let (heard, _) = take(48_000, 480, 10.0, 0.004, 0.0, 0.0, 0.0, true, tone);
+        // 440 Hz at 48 kHz bends by at most 0.0017 a sample.
+        let cuts = splices(&heard[48_000..], 0.003);
+        assert!(cuts.is_empty(), "{} splices in 9 s, the first at {:?}", cuts.len(), &cuts[..cuts.len().min(5)]);
         let slow = |t: f64| (0.5 * (std::f64::consts::TAU * 3.0 * t).sin()) as f32;
-        let (heard, when) = take(48_000, 512, 30.0, 0.004, 0.0, 0.0, 2_000.0, slow);
-        let cuts = splices(&heard[48_000..], 5e-5);
-        assert!(cuts.is_empty(), "{} splices, the first at {:?}", cuts.len(), &cuts[..cuts.len().min(5)]);
+        let (heard, when) = take(48_000, 480, 10.0, 0.004, 0.0, 0.0, 0.0, true, slow);
         let late = lag(&heard, &when, heard.len() - 48_000, slow);
-        assert!(late.abs() < 0.005, "after 30 s the Mac's sound sits {:.1} ms off", late * 1e3);
+        assert!(late.abs() < 0.005, "the Mac's sound sits {:.1} ms off the voice", late * 1e3);
     }
 
     #[test]
