@@ -715,8 +715,9 @@ function onePicture(env, id) {
 }
 
 /** What the player plays (B176): the single-file copy once it's up and the stream is one
- * picture — a 5-minute view costs ~4–8 of the Worker's requests that way, against ~56
- * through the stream's 6 s pieces (worker/dev/view-cost.mjs) — and the stream otherwise.
+ * picture — a 5-minute view costs ~4–8 of the Worker's requests that way in Chromium, ~47
+ * in Safari (it reads a file ~3 MB at a time), against ~56–58 through the stream's 6 s
+ * pieces (worker/dev/view-cost.mjs) — and the stream otherwise.
  * Both are served by /m/ under the same removal gate.
  * @param {string} id @param {any} meta @param {Promise<boolean>} oneP */
 async function sourceOf(id, meta, oneP) {

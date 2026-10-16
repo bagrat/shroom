@@ -1,6 +1,7 @@
 // What the player plays (DECISIONS B176). Every request a viewer makes is one of the Workers
 // Free plan's 100,000 a day; a 5-minute video watched through HLS's 6 s pieces costs ~56 of
-// them, through the single-file copy ~4–8 (worker/dev/view-cost.mjs). So once the copy is up
+// them, through the single-file copy ~4–8 in Chromium and ~47 in Safari (worker/dev/view-cost.mjs,
+// the hosted Mac's view-cost scenario). So once the copy is up
 // and the stream is one picture throughout, the page plays the copy; before that, or when a
 // later take's picture differs in size (its own init segment, B58 a — a copy joined by
 // `-c copy` can't carry the change), it plays the stream as before. And a page opened but
