@@ -193,8 +193,8 @@ jobs:
           npm run typecheck --workspace worker
           npm run test:workerd --workspace worker
 
-      - name: The installer
-        run: node --test installer/test/install.test.mjs
+      - name: The installer, the Homebrew cask
+        run: node --test installer/test/install.test.mjs installer/test/cask.test.mjs
 
       - name: The release notes (DECISIONS B152)
         run: |
@@ -203,7 +203,7 @@ jobs:
 
       - name: The landing page, the media readers
         run: |
-          node --test site/test/landing.test.mjs site/test/agent.test.mjs site/test/worker.test.mjs
+          node --test site/test/landing.test.mjs site/test/agent.test.mjs site/test/worker.test.mjs site/test/og.test.mjs
           node --test tests/e2e/av.test.mjs tests/e2e/tone.test.mjs tests/e2e/field.test.mjs
 
       # The media tests make real recordings: H.264 through VideoToolbox. A hosted runner

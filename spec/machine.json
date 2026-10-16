@@ -296,7 +296,9 @@
    "status": "ratified",
    "date": "2026-07-20",
    "amends": [],
-   "amended_by": []
+   "amended_by": [
+    "N49 (install via Homebrew joins the install line in v1)"
+   ]
   },
   {
    "id": "U1",
@@ -950,6 +952,17 @@
     "the landing's price tiles and the welcome's first paragraph"
    ],
    "amended_by": []
+  },
+  {
+   "id": "N49",
+   "title": "Install via Homebrew",
+   "decision": "**shroom installs via Homebrew in v1, beside the install line** (Bagrat, 2026-10-16: a required item). `brew install --cask bagrat/shroom/shroom`, from shroom's own tap: Homebrew's own cask list takes only apps Apple notarized, and the release is self-signed (B125). The cask does what the install line does: the release's zip, checked against its fingerprint; placed in `~/Applications`; taken only from the release's signer, and opened by macOS without asking because nothing marks it as downloaded. The app keeps itself up to date, so Homebrew leaves updates to it. No screen, line or control of the app changes. Showing it on the landing page would be a design change, put on the canvas first. How it is built and kept current: DECISIONS B175.",
+   "status": "ratified",
+   "date": "2026-10-16",
+   "amends": [
+    "P17 (brew leaves the post-v1 list; the .dmg stays on it)"
+   ],
+   "amended_by": []
   }
  ],
  "surfaces": [
@@ -980,7 +993,7 @@
  ],
  "absent_from_v1": [
   "Local recording before setup and any local library (U1)  [L1724]",
-  "brew and the .dmg (P17)  [L1724]",
+  "the .dmg (P17; brew joined v1 by N49)  [L1724]",
   "macOS notifications (U9)  [L1724-1725]",
   "global hotkeys (the reopen door covers a hidden mushroom, N41)  [L1725-1726]",
   "the tray's Copy last link and any auto-copy (N21, N1)  [L1726]",
@@ -1126,7 +1139,7 @@
      "source_lines": "76-77, 334-341"
     },
     {
-     "flag": "Before a space exists there is no capture, no library and no local recording (U1). There are no brew or .dmg lanes in v1 (P17).",
+     "flag": "Before a space exists there is no capture, no library and no local recording (U1). There is no .dmg lane in v1 (P17); Homebrew installs beside the install line (N49).",
      "source_lines": "38-39, 350-351, 377-381"
     },
     {

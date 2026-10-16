@@ -5,7 +5,7 @@
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use shroom_record::audio::{AudioSink, AudioSource};
 
@@ -51,18 +51,23 @@ impl AudioSource for BeepSource {
             std::thread::Builder::new()
                 .name("shroom-drive-beep".into())
                 .spawn(move || {
-                    // Samples are paced by the wall clock, 10 ms at a time, as a device's
-                    // callback delivers them.
-                    let mut t = now();
+                    // Samples are paced by the host's steady clock, 10 ms at a time, as a
+                    // device's callback delivers them on its own crystal; what they sound is
+                    // the beep at the wall-clock instant each was heard, so it stays on the
+                    // picture's tick. Pacing by the wall clock made a microphone that runs
+                    // tenths of a percent fast or slow while the clock is being set (a fresh
+                    // runner, measured: DECISIONS B174), which no real one does.
+                    let start = Instant::now();
+                    let (mut pushed, mut wall) = (0u64, now());
                     let mut buf = Vec::new();
                     while !stop.load(Ordering::SeqCst) {
                         std::thread::sleep(Duration::from_millis(10));
-                        let until = now();
-                        let n = ((until - t) * rate).floor() as usize;
+                        let (due, until) = ((start.elapsed().as_secs_f64() * rate).floor() as u64, now());
+                        let n = (due - pushed) as usize;
                         buf.clear();
-                        buf.extend((0..n).map(|i| sample_at(t + i as f64 / rate)));
+                        buf.extend((0..n).map(|i| sample_at(wall + (until - wall) * i as f64 / n as f64)));
                         sink.push(&buf);
-                        t += n as f64 / rate;
+                        (pushed, wall) = (due, until);
                     }
                 })
                 .map_err(|e| e.to_string())?,

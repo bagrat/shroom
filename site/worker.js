@@ -1,9 +1,9 @@
 // shroom.am — the landing, the install line and the page for coding agents
 // (dev/proposals/shroom-am-worker.md).
 //
-// The favicons are static files Cloudflare serves without running this script. It runs
-// only for the paths site/wrangler.jsonc names (`run_worker_first`), and answers from the
-// files site/build.mjs puts in site/public:
+// The favicons and the link preview card (og.png) are static files Cloudflare serves without
+// running this script. It runs only for the paths site/wrangler.jsonc names
+// (`run_worker_first`), and answers from the files site/build.mjs puts in site/public:
 //
 //   /            the landing — or, to a coding agent, the same page in markdown
 //   (any of them may carry ?ref=<tag>, which is counted and changes nothing else)
@@ -15,6 +15,8 @@
 //   /whats-new/<version>
 //                that release's — what the app's "What's new" opens; a version with no
 //                notes (never released, or from before them) goes to /whats-new, never a 404
+//   /faq, /privacy, /terms
+//                questions and known limits, privacy, terms: site/pages, as pages
 //   www.…        a permanent redirect to shroom.am
 //
 // Nothing else exists: the files behind these answers (/_/…) aren't addresses.
@@ -180,6 +182,10 @@ export default {
         return serve(env, request, url, "/_/agent.md", MARKDOWN);
       case "/whats-new":
         return serve(env, request, url, "/_/whats-new/latest.html", HTML);
+      case "/faq":
+      case "/privacy":
+      case "/terms":
+        return serve(env, request, url, `/_${url.pathname}.html`, HTML);
       default:
         return whatsNew(env, request, url) ?? plain(404);
     }
