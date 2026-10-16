@@ -109,16 +109,16 @@ function decode(raw) {
 }
 
 describe("POST /report", () => {
-  it("sends one message to the inbox in REPORT_TO, from reports@shroom.am, with the cleaned log attached", async () => {
+  it("sends one message to the inbox in REPORT_TO, from report-sender@shroom.am, with the cleaned log attached", async () => {
     const { post, sent } = harness();
     const res = await post(good({ reply_to: "you@example.com" }));
     assert.equal(res.status, 200);
     assert.deepEqual(await res.json(), { ok: true });
     assert.equal(sent.length, 1);
-    assert.equal(sent[0].from, "reports@shroom.am");
+    assert.equal(sent[0].from, "report-sender@shroom.am");
     assert.equal(sent[0].to, "inbox@example.com");
     const raw = sent[0].raw;
-    assert.match(raw, /^From: shroom reports <reports@shroom\.am>\r\n/);
+    assert.match(raw, /^From: shroom reports <report-sender@shroom\.am>\r\n/);
     assert.match(raw, /\r\nTo: <inbox@example\.com>\r\n/);
     assert.match(raw, /\r\nReply-To: <you@example\.com>\r\n/);
     assert.match(raw, /\r\nSubject: \[shroom\] A problem · 0\.1\.18 · macOS 15\.3\.1|\r\nSubject: =\?UTF-8\?B\?/);

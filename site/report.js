@@ -12,14 +12,15 @@
 //   check    from the page: Turnstile says a person sent it               403 {error:"check"}
 //
 // Then the log is cleaned once more (site/clean.js), and one message goes out through the
-// `send_email` binding: from reports@shroom.am to `REPORT_TO`, a Worker secret holding a
+// `send_email` binding: from report-sender@shroom.am (never the inbox's own address: Bagrat
+// chose the pair, 2026-10-16) to `REPORT_TO`, a Worker secret holding a
 // destination verified in Email Routing — never written in this repo. Nothing is stored: no
 // storage is bound, and request logs are off (wrangler.jsonc).
 
 import { cleanLog } from "./clean.js";
 
 export const MAX_BYTES = 64 * 1024;
-export const FROM = "reports@shroom.am";
+export const FROM = "report-sender@shroom.am";
 const SITEVERIFY = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 
 /** The fields a report may carry, each with its bound in characters. */
@@ -215,7 +216,10 @@ export async function handleReport(request, env, fetcher = fetch) {
   });
   try {
     await env.EMAIL.send(await message(env, FROM, env.REPORT_TO, raw822));
-  } catch {
+  } catch (e) {
+    // Why the binding refused, for a live `wrangler tail` only: request logs are off, so
+    // nothing keeps it. The message names no part of the report.
+    console.error(`report: the binding refused it (${e instanceof Error ? e.message : String(e)})`);
     return json(502, { error: "send" });
   }
   return json(200, { ok: true });
