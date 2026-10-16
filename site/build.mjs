@@ -147,9 +147,9 @@ ${footer}
 export const PAGES = ["faq", "privacy", "terms", "feedback"];
 
 /** The feedback form's Turnstile site key (public by design: it names the widget, and only
- * the Worker's TURNSTILE_SECRET can check a token). Empty until the widget exists, and then
- * the form says sending is off. */
-export const TURNSTILE_SITEKEY = "";
+ * the Worker's TURNSTILE_SECRET can check a token): the invisible widget “shroom.am
+ * feedback”, for shroom.am alone. Emptied, the form says sending is off. */
+export const TURNSTILE_SITEKEY = "0x4AAAAAAFYi2j_R2IFjqx_7";
 
 /** The feedback page's fragment with its questions and its site key filled in.
  * @param {string} fragment */
