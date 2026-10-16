@@ -18,7 +18,7 @@
 # Run it with --uninstall to remove shroom from this Mac.
 #
 # Trouble, questions: https://github.com/bagrat/shroom/issues/new
-# No GitHub? issues@shroom.am works too.
+# No GitHub? hi@shroom.am works too.
 
 # How it works, for the curious: releases are GitHub releases of the open-source
 # repository. Each one carries manifest.txt — the version, the oldest macOS it runs
@@ -36,7 +36,7 @@ MIN_MACOS=14
 RELEASE_LEAF=8344cbe040722ea0a5632320c1d0d4348eaa3af3
 
 NET_DROP="Couldn't finish the download — check your connection and run the same command again."
-CHECKSUM="The download didn't check out, so nothing was installed. Run it once more — if it repeats, tell us: https://github.com/bagrat/shroom/issues/new — no GitHub? issues@shroom.am works too."
+CHECKSUM="The download didn't check out, so nothing was installed. Run it once more — if it repeats, tell us: https://github.com/bagrat/shroom/issues/new — no GitHub? hi@shroom.am works too."
 MIDTAKE="shroom is in the middle of a recording — finish that take, then run this again."
 UNCHANGED="Nothing was changed."
 NO_BUILD="shroom doesn't run on this kind of Mac yet — Apple silicon only, for now."
@@ -44,8 +44,8 @@ DIDNT_QUIT="shroom didn't close — quit it from the menu bar, then run this aga
 NO_ROOM="Couldn't place shroom on this Mac — check there's room for it, then run the same command again."
 DIDNT_OPEN="shroom is in ~/Applications but didn't open — open it from there."
 NOT_A_MAC="shroom runs on a Mac — run this in Terminal on yours."
-NOT_ALL_THERE="This release isn't all there on our side, so nothing was installed. Tell us and we'll fix it: https://github.com/bagrat/shroom/issues/new — no GitHub? issues@shroom.am works too."
-SIGNATURE="shroom's signature didn't verify, so nothing was installed. Run the same command in Terminal — if it repeats, tell us: https://github.com/bagrat/shroom/issues/new — no GitHub? issues@shroom.am works too."
+NOT_ALL_THERE="This release isn't all there on our side, so nothing was installed. Tell us and we'll fix it: https://github.com/bagrat/shroom/issues/new — no GitHub? hi@shroom.am works too."
+SIGNATURE="shroom's signature didn't verify, so nothing was installed. Run the same command in Terminal — if it repeats, tell us: https://github.com/bagrat/shroom/issues/new — no GitHub? hi@shroom.am works too."
 REMOVED="Removed shroom from this Mac — the app, its settings and its permissions."
 SPACE_STAYS="Every video and link is just as it was — only this Mac changed."
 NOTHING_HERE="shroom isn't on this Mac — nothing to remove."

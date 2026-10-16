@@ -37,7 +37,7 @@ pub fn url(page: &PublicUrl) -> String {
         PublicUrl::NewIssue { version } => {
             format!("https://github.com/bagrat/shroom/issues/new?body={}", percent(&format!("shroom {version}")))
         }
-        PublicUrl::Mail => "mailto:issues@shroom.am".to_string(),
+        PublicUrl::Mail => "mailto:hi@shroom.am".to_string(),
     }
 }
 
