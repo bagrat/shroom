@@ -3,6 +3,10 @@
 # `open -a`, and does the same with two throwaway test apps (no URL types; one custom
 # scheme) to tell macOS's behaviour apart from shroom's. Reports what happened; the
 # verdict is read, not asserted. The link is invented and reaches nothing real.
+#
+# Run 1 (38875304073) found `open -a shroom` right after the install says "Unable to find
+# application named 'shroom'", and the scheme unbound until `lsregister -f`. This run asks
+# why, how long until Launch Services learns of it, and what opening by path delivers.
 set -u
 export HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 HOMEBREW_NO_ENV_HINTS=1 HOMEBREW_NO_ANALYTICS=1
 APP="$HOME/Applications/shroom.app"
@@ -12,68 +16,75 @@ OUT=${MAC_OUT:-$(mktemp -d)}
 LSREG=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
 shot() { screencapture -x "$OUT/$1.png" 2>/dev/null; echo "  screenshot: $1.png"; }
 quit() { osascript -e 'tell application id "am.shroom" to quit' >/dev/null 2>&1; sleep 2; pkill -f "shroom.app/Contents/MacOS/" 2>/dev/null; sleep 1; true; }
-browsers() { pgrep -lx Safari 2>/dev/null; pgrep -lf "Google Chrome.app/Contents/MacOS" 2>/dev/null | head -1; true; }
+running() { pgrep -f "$APP/Contents/MacOS/" >/dev/null && echo "  shroom: running" || echo "  shroom: NOT running"; }
+browsers() { pgrep -lx Safari 2>/dev/null | sed 's/^/  browser running: /'; true; }
 args_of() { ps -axo args | grep "$1/Contents/MacOS/" | grep -v grep | sed 's/^/  argv: /'; }
-logtail() { [ -f "$HOME/.shroom/logs/run.log" ] && grep -E "member:|invite|link" "$HOME/.shroom/logs/run.log" | sed 's/^/  log: /' | tail -n 8; ls -l "$HOME/.shroom/invite" 2>/dev/null | sed 's/^/  file: /'; true; }
+logtail() { [ -f "$HOME/.shroom/logs/run.log" ] && grep -E "member:|invite|link|launch|Booted" "$HOME/.shroom/logs/run.log" | sed 's/^/  log: /' | tail -n 8; ls -l "$HOME/.shroom/invite" 2>/dev/null | sed 's/^/  file: /'; true; }
 
-# Which app macOS would hand a URL to with plain `open` (no -a).
-cat >"$OUT/handler.swift" <<'EOF'
+# What Launch Services knows: an app by name (what `open -a <name>` asks), by id, and
+# which app a URL's scheme goes to with plain `open`.
+cat >"$OUT/ls.swift" <<'EOF'
 import AppKit
-for s in CommandLine.arguments.dropFirst() {
-  let u = URL(string: s)!
-  print("  handler for \(u.scheme!): \(NSWorkspace.shared.urlForApplication(toOpen: u)?.path ?? "none")")
+for a in CommandLine.arguments.dropFirst() {
+  if a.contains(":") { let u = URL(string: a)!; print("  scheme \(u.scheme!): \(NSWorkspace.shared.urlForApplication(toOpen: u)?.path ?? "none")") }
+  else if a.contains(".") { print("  id \(a): \(NSWorkspace.shared.urlForApplication(withBundleIdentifier: a)?.path ?? "none")") }
+  else { print("  name \(a): \(NSWorkspace.shared.fullPath(forApplication: a) ?? "none")") }
 }
 EOF
-swiftc -O -o "$OUT/handler" "$OUT/handler.swift" 2>&1 | tail -n 3
+swiftc -O -o "$OUT/ls" "$OUT/ls.swift" 2>&1 | grep -v warning | tail -n 3
+# Polls until the name resolves (or <secs> pass); prints how long.
+wait_name() { # <name> <secs>
+  local i=0
+  while [ $i -lt "$2" ]; do "$OUT/ls" "$1" | grep -qv ': none$' && { echo "  name $1 resolved after ${i}s"; return 0; }; sleep 1; i=$((i + 1)); done
+  echo "  name $1 still unknown after ${2}s"; return 1
+}
 
-echo "macOS $(sw_vers -productVersion), brew $(brew --version | head -n 1)"
-echo "── before anything"
-"$OUT/handler" "$LINK" "$SLINK" "shroomprobe://join/x"
-browsers | sed 's/^/  browser running: /'
+echo "macOS $(sw_vers -productVersion)"
+echo "── the runner"
+mdutil -s / 2>&1 | sed 's/^/  spotlight: /'
+[ -d "$HOME/Applications" ] && echo "  ~/Applications exists before install" || echo "  ~/Applications does NOT exist before install"
+pgrep -lx lsd | sed 's/^/  /'; pgrep -lx mds | sed 's/^/  /'
+"$OUT/ls" shroom am.shroom "$LINK" "$SLINK"
 
-echo "══ probe 1: brew install --cask bagrat/shroom/shroom && open -a shroom \"<https join link>\""
+echo "══ A. brew install, then wait to see whether Launch Services learns of shroom by itself"
 rm -rf "$APP"
-t0=$(date +%s)
-brew install --cask bagrat/shroom/shroom 2>&1 | tail -n 4; rc=${PIPESTATUS[0]}
-echo "  brew exit $rc ($(( $(date +%s) - t0 ))s); $(defaults read "$APP/Contents/Info" CFBundleShortVersionString 2>/dev/null) at $APP"
-/usr/libexec/PlistBuddy -c 'Print :CFBundleURLTypes' "$APP/Contents/Info.plist" 2>&1 | tr -s ' \n' ' ' | sed 's/^/  URL types: /'; echo
-"$OUT/handler" "$LINK" "$SLINK"
-said=$(open -a shroom "$LINK" 2>&1); echo "  open -a exit $? ${said:+said: $said}"
-sleep 10
-pgrep -f "$APP/Contents/MacOS/" >/dev/null && echo "  shroom: running" || echo "  shroom: NOT running"
-args_of "$APP"
-browsers | sed 's/^/  browser running: /'
-logtail
-shot p1-https-cold
-echo "── probe 1b: the same link to the running shroom (warm)"
-open -a shroom "$LINK"; echo "  open -a exit $?"; sleep 5; logtail; shot p1b-https-warm
+brew install --cask bagrat/shroom/shroom 2>&1 | tail -n 2
+"$OUT/ls" shroom am.shroom "$SLINK"
+wait_name shroom 60
+"$OUT/ls" am.shroom "$SLINK"
+echo "── open -b am.shroom (by id) now?"
+said=$(open -b am.shroom --hide 2>&1); echo "  exit $? ${said:+said: $said}"; sleep 3; running; quit
+
+echo "══ B. the https link, by path: open -a ~/Applications/shroom.app \"<https link>\" (cold)"
+said=$(open -a "$APP" "$LINK" 2>&1); echo "  exit $? ${said:+said: $said}"
+sleep 12; running; args_of "$APP"; browsers; logtail; shot b-https-cold
+echo "── after it has run once, does Launch Services know it?"
+"$OUT/ls" shroom am.shroom "$SLINK"
+echo "── the same link warm"
+open -a "$APP" "$LINK"; echo "  exit $?"; sleep 5; logtail; shot b-https-warm
 quit
 
-echo "══ probe 2 (shroom): open -a shroom \"<shroom:// join link>\", cold"
-rm -rf "$HOME/.shroom/invite"
-open -a shroom "$SLINK"; echo "  open -a exit $?"
-sleep 10
-args_of "$APP"; logtail; shot p2-scheme-cold
+echo "══ C. the shroom:// link, by path, cold"
+rm -f "$HOME/.shroom/invite"
+said=$(open -a "$APP" "$SLINK" 2>&1); echo "  exit $? ${said:+said: $said}"
+sleep 12; running; args_of "$APP"; logtail; shot c-scheme-cold
+quit
+echo "── plain open \"<shroom:// link>\" (after one launch)"
+rm -f "$HOME/.shroom/invite"
+said=$(open "$SLINK" 2>&1); echo "  exit $? ${said:+said: $said}"
+sleep 10; running; logtail; shot c-scheme-plain
 quit
 
-echo "══ probe 4: brew install --cask bagrat/shroom/shroom && open -a shroom (fresh, no link)"
+echo "══ D. the README line on a fresh install: brew install && open -a shroom, and the path form"
 brew uninstall --zap --cask bagrat/shroom/shroom >/dev/null 2>&1
-[ -e "$APP" ] && echo "  (still there after zap)"
-brew install --cask bagrat/shroom/shroom >/dev/null 2>&1 && open -a shroom; echo "  line exit $?"
-sleep 10
-pgrep -f "$APP/Contents/MacOS/" >/dev/null && echo "  shroom: running" || echo "  shroom: NOT running"
-shot p4-plain
-echo "── probe 3 (shroom): plain open \"<shroom:// link>\" right after that install"
-"$OUT/handler" "$SLINK"
-quit
+"$OUT/ls" shroom am.shroom
+brew install --cask bagrat/shroom/shroom >/dev/null 2>&1 && open -a shroom; echo "  name form: exit $?"
+sleep 3; running; quit
 brew uninstall --zap --cask bagrat/shroom/shroom >/dev/null 2>&1
-brew install --cask bagrat/shroom/shroom >/dev/null 2>&1
-"$OUT/handler" "$SLINK"
-said=$(open "$SLINK" 2>&1); echo "  plain open exit $? ${said:+said: $said}"
-sleep 10; args_of "$APP"; logtail; shot p3-plain-open
-quit
+brew install --cask bagrat/shroom/shroom >/dev/null 2>&1 && open ~/Applications/shroom.app; echo "  path form: exit $?"
+sleep 8; running; shot d-path-form; quit
 
-echo "══ the test apps: what macOS itself does"
+echo "══ E. the test apps (what macOS itself does), moved into the existing ~/Applications"
 cat >"$OUT/probe.swift" <<'EOF'
 import AppKit
 let log = "/tmp/" + (Bundle.main.bundleIdentifier ?? "probe") + ".log"
@@ -92,7 +103,7 @@ EOF
 stage=$(mktemp -d)
 for kind in plain scheme; do
   b="$stage/probe-$kind.app"; mkdir -p "$b/Contents/MacOS"
-  swiftc -O -o "$b/Contents/MacOS/probe" "$OUT/probe.swift" 2>&1 | tail -n 3
+  swiftc -O -o "$b/Contents/MacOS/probe" "$OUT/probe.swift" 2>&1 | grep -v warning | tail -n 3
   types=""
   [ "$kind" = scheme ] && types='<key>CFBundleURLTypes</key><array><dict><key>CFBundleURLName</key><string>am.shroom.probe</string><key>CFBundleURLSchemes</key><array><string>shroomprobe</string></array></dict></array>'
   cat >"$b/Contents/Info.plist" <<EOF
@@ -101,37 +112,48 @@ for kind in plain scheme; do
 <key>CFBundleExecutable</key><string>probe</string><key>CFBundlePackageType</key><string>APPL</string><key>LSUIElement</key><true/>$types</dict></plist>
 EOF
   codesign -s - --force "$b" >/dev/null 2>&1
-done
-for kind in plain scheme; do
   rm -f "/tmp/am.shroom.probe.$kind.log"
-  mv "$stage/probe-$kind.app" "$HOME/Applications/"   # moved in, as brew moves a cask's app
+  mv "$b" "$HOME/Applications/"
 done
+"$OUT/ls" probe-plain probe-scheme "shroomprobe://x"
+wait_name probe-scheme 30
+"$OUT/ls" "shroomprobe://x"
 
-echo "── probe 1 (macOS): open -a probe-plain \"<https link>\", cold, no URL types at all"
-said=$(open -a probe-plain "$LINK" 2>&1); echo "  open -a exit $? ${said:+said: $said}"
-sleep 4; sed 's/^/  app: /' /tmp/am.shroom.probe.plain.log 2>/dev/null || echo "  app: no log"
-browsers | sed 's/^/  browser running: /'
-echo "── warm"
-open -a probe-plain "$LINK"; sleep 2; tail -n 1 /tmp/am.shroom.probe.plain.log | sed 's/^/  app: /'
-echo "── a website's way in: does plain open of the https link ever reach it?"
-"$OUT/handler" "$LINK"
+echo "── E1. open -a <path>/probe-plain.app \"<https link>\", cold, no URL types"
+said=$(open -a "$HOME/Applications/probe-plain.app" "$LINK" 2>&1); echo "  exit $? ${said:+said: $said}"
+sleep 4; sed 's/^/  app: /' /tmp/am.shroom.probe.plain.log 2>/dev/null || echo "  app: no log"; browsers
+echo "── E1 warm"
+open -a "$HOME/Applications/probe-plain.app" "$LINK"; sleep 2; tail -n 1 /tmp/am.shroom.probe.plain.log | sed 's/^/  app: /'
+echo "── plain open of the https link still goes to:"; "$OUT/ls" "$LINK"
+pkill -x probe
+echo "── E2. open -a <path>/probe-scheme.app \"shroomprobe://…\", cold"
+said=$(open -a "$HOME/Applications/probe-scheme.app" "shroomprobe://join/with-a" 2>&1); echo "  exit $? ${said:+said: $said}"
+sleep 4; sed 's/^/  app: /' /tmp/am.shroom.probe.scheme.log 2>/dev/null || echo "  app: no log"
+"$OUT/ls" probe-scheme "shroomprobe://x"
 pkill -x probe
 
-echo "── probe 3 (macOS): plain open \"shroomprobe://…\" right after the move, before any launch"
-for i in 0 1 2 3 4 5; do "$OUT/handler" "shroomprobe://join/x"; sleep 1; done
-said=$(open "shroomprobe://join/plain-first" 2>&1); echo "  plain open exit $? ${said:+said: $said}"
-sleep 4; sed 's/^/  app: /' /tmp/am.shroom.probe.scheme.log 2>/dev/null || echo "  app: no log"
-pkill -x probe; rm -f /tmp/am.shroom.probe.scheme.log
-echo "── probe 2 (macOS): open -a probe-scheme \"shroomprobe://…\", cold"
-said=$(open -a probe-scheme "shroomprobe://join/with-a" 2>&1); echo "  open -a exit $? ${said:+said: $said}"
-sleep 4; sed 's/^/  app: /' /tmp/am.shroom.probe.scheme.log 2>/dev/null || echo "  app: no log"
-"$OUT/handler" "shroomprobe://join/x"
-pkill -x probe
-echo "── lsregister -f, then the handler again"
-$LSREG -f "$HOME/Applications/probe-scheme.app"; echo "  lsregister exit $?"
-"$OUT/handler" "shroomprobe://join/x"
+echo "══ F. with Spotlight on, as on a person's Mac: a fresh test app moved in"
+sudo mdutil -i on / 2>&1 | sed 's/^/  /'; sleep 5; mdutil -s / 2>&1 | sed 's/^/  spotlight: /'
+b="$stage/probe-late.app"; mkdir -p "$b/Contents/MacOS"
+cp "$HOME/Applications/probe-scheme.app/Contents/MacOS/probe" "$b/Contents/MacOS/"
+sed 's/probe\.scheme/probe.late/; s/probe-scheme/probe-late/; s/<string>shroomprobe</<string>shroomlate</' "$HOME/Applications/probe-scheme.app/Contents/Info.plist" >"$b/Contents/Info.plist"
+codesign -s - --force "$b" >/dev/null 2>&1
+mv "$b" "$HOME/Applications/"
+wait_name probe-late 60
+"$OUT/ls" "shroomlate://x"
+echo "── and shroom installed again with Spotlight on"
+brew uninstall --zap --cask bagrat/shroom/shroom >/dev/null 2>&1
+"$LSREG" -u "$APP" >/dev/null 2>&1
+"$OUT/ls" shroom
+brew install --cask bagrat/shroom/shroom >/dev/null 2>&1 && open -a shroom; echo "  name form: exit $?"
+wait_name shroom 60
+sleep 2; running; quit
 
-rm -rf "$HOME/Applications/probe-plain.app" "$HOME/Applications/probe-scheme.app"
+echo "══ G. lsregister -f on the installed app, then name and scheme"
+"$LSREG" -f "$APP"; echo "  lsregister exit $?"
+"$OUT/ls" shroom "$SLINK"
+
+rm -rf "$HOME/Applications/probe-plain.app" "$HOME/Applications/probe-scheme.app" "$HOME/Applications/probe-late.app"
 brew uninstall --zap --cask bagrat/shroom/shroom >/dev/null 2>&1
 echo "done — read, not asserted"
 exit 0
