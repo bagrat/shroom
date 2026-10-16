@@ -208,6 +208,26 @@ To build the app half, the log needs **one more boot line**:
 The said-lines, the states and the site surfaces go into `machine.json` with the build, after
 Bagrat's go. This PR adds only the provisional ledger row.
 
+## As built in the app (b)
+
+The sheet follows the board, with two changes from building it:
+
+- **Save full report… left the sheet.** The app has no save panel today, and Copy
+  diagnostics carries the same report. A failed send offers the mail draft, and the row's
+  Copy diagnostics stays behind the sheet.
+- **Copy diagnostics reads “Copied” for a moment,** as Copy link does, instead of a
+  separate line beside it.
+
+Two of the core's law checks now say what they cover:
+- law 9's colours apply to sheets that destroy something (`NOT_DESTRUCTIVE` in
+  `tests/common/laws.rs` and in the windows gallery). Send destroys nothing, and is filled
+  as an ordinary answer is.
+- law 15's scan leaves out the disclosure's `preview`: it quotes the person's words and
+  log as they go, as data, like a field's `value`.
+
+The app's screenshots are `app-sheet-dark.png` and `app-sheet-failed-light.png`, from the
+windows gallery.
+
 ## Estimates
 
 - **(a) The endpoint and /feedback (site only):** about **1 day** of session work.
