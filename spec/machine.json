@@ -985,6 +985,17 @@
     "join-landing (two more lines in Get shroom)"
    ],
    "amended_by": []
+  },
+  {
+   "id": "N52",
+   "title": "shroom.am puts Homebrew first",
+   "decision": "**The landing's install block offers Homebrew first and the install line under it**, as the README does (Bagrat, 2026-10-16: build it, he looks at the screenshot after). “With Homebrew:” `brew install --cask bagrat/shroom/shroom && open ~/Applications/shroom.app` with the filled Copy; “Or without it:” the install line with an outlined one, then its Read it first; the agent door below as before. The two lead-ins are placeholders for his words. Built: DECISIONS B179.",
+   "status": "provisional",
+   "date": "2026-10-16",
+   "amends": [
+    "landing (the install block's order)"
+   ],
+   "amended_by": []
   }
  ],
  "surfaces": [
@@ -2235,6 +2246,37 @@
      "copy": "ratified",
      "note": "Install block heading, bold.",
      "id": "landing.install-in-one-line"
+    },
+    {
+     "text": "With Homebrew:",
+     "role": "line",
+     "copy": "provisional",
+     "note": "Above the Homebrew line, which comes first (N52). A placeholder for Bagrat's words.",
+     "cites": [
+      "N52"
+     ],
+     "id": "landing.with-homebrew"
+    },
+    {
+     "text": "brew install --cask bagrat/shroom/shroom && open ~/Applications/shroom.app",
+     "role": "other",
+     "copy": "provisional",
+     "note": "The Homebrew install line (N49, N52), set as code with a filled [ Copy ]. The app is opened by its path: Launch Services may not know it by name the moment brew returns (B175).",
+     "cites": [
+      "N49",
+      "N52"
+     ],
+     "id": "landing.brew-install-cask-bagrat"
+    },
+    {
+     "text": "Or without it:",
+     "role": "line",
+     "copy": "provisional",
+     "note": "Above the install line, now second, its [ Copy ] outlined (N52). A placeholder for Bagrat's words.",
+     "cites": [
+      "N52"
+     ],
+     "id": "landing.or-without-it"
     },
     {
      "text": "curl -fsSL https://shroom.am/install | sh",

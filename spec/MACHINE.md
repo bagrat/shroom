@@ -4,7 +4,7 @@
 
 The machine: every state, edge, rule, said-line and law of shroom v1 — the spec (DECISIONS B133). Sessions edit it; MACHINE.md and the canvas's machine boards are generated from it.
 
-142 states · 294 edges · 23 rules · 547 said-lines · 16 laws · 62 ledger rows.
+142 states · 294 edges · 23 rules · 550 said-lines · 16 laws · 63 ledger rows.
 
 Status: **ratified** is Bagrat's; **provisional** is designed or built and awaits him (each cites its row: `#n` is a DEVIATIONS row of docs/DECISIONS.md, `Bn` a decision, `Nn`/`Un`/`Pn` a ledger row below). `SM:n` in older citations is a line of the retired spec text, kept in history/spec/UX-STATEMACHINE.md.
 
@@ -48,6 +48,9 @@ shroom.am, a static page with one job: take a curious visitor to a pasted comman
 | “Delete old videos and pay less — storage is the whole bill.” | line | ratified | Hero explanation, fourth dashed point. 'Delete old videos and pay less' is bold. |
 | “Your team just accepts an invite and records — no Cloudflare setup for them.” | line | ratified | Hero explanation, last dashed point. 'accepts an invite' is bold. This point replaces the dissolved "Record together" section (N6). The spec calls it 'point six', although only five dashed points are drawn (see open notes). |
 | “Install in one line” | title | ratified | Install block heading, bold. |
+| “With Homebrew:” | line | provisional | Above the Homebrew line, which comes first (N52). A placeholder for Bagrat's words. · N52 |
+| “brew install --cask bagrat/shroom/shroom && open ~/Applications/shroom.app” | other | provisional | The Homebrew install line (N49, N52), set as code with a filled [ Copy ]. The app is opened by its path: Launch Services may not know it by name the moment brew returns (B175). · N49, N52 |
+| “Or without it:” | line | provisional | Above the install line, now second, its [ Copy ] outlined (N52). A placeholder for Bagrat's words. · N52 |
 | “curl -fsSL https://shroom.am/install \| sh” | other | ratified | The one install command, set as code, with [ Copy ] beside it. |
 | “Copy” | button | ratified | The install block's [ Copy ] button beside the command (not drawn filled). No 'Copied' face is drawn in Region 1 (see Law 10 note). |
 | “Read it first — the same address opens as readable source.” | line | ratified | The link text is 'Read it first'. It opens the same URL as plain-text source. |
@@ -3763,6 +3766,7 @@ A move that holds for a whole group of states, written once (B133). The tests ex
 | N49 | Install via Homebrew | **shroom installs via Homebrew in v1, beside the install line** (Bagrat, 2026-10-16: a required item). `brew install --cask bagrat/shroom/shroom`, from shroom's own tap: Homebrew's own cask list takes only apps Apple notarized, and the release is self-signed (B125). The cask does what the install line does: the release's zip, checked against its fingerprint; placed in `~/Applications`; taken only from the release's signer, and opened by macOS without asking because nothing marks it as downloaded. The app keeps itself up to date, so Homebrew leaves updates to it. No screen, line or control of the app changes. Showing it on the landing page would be a design change, put on the canvas first. How it is built and kept current: DECISIONS B175. | ratified | 2026-10-16 |
 | N50 | A join link macOS hands to shroom | **A join link macOS hands to shroom as it opens is an arrival, like the page's Open shroom** (Bagrat, 2026-10-16). `open -a shroom "https://<space>/join/<code>"` (the Homebrew join line) makes macOS give shroom the link with the open; shroom takes a web address only when it reads as a join link and ignores any other. It lands where Open shroom's `shroom://join/…` lands: kept in the owner-only invite file, then the invite window (member-welcome, or join-already-here / join-switch-confirm) — never a silent join — and it waits while a take is open (Law 4). shroom claims no web addresses, so no website can send it one, and the link is never on the app's command line. Built and proved: DECISIONS B176. | ratified | 2026-10-16 |
 | N51 | The invite page offers the Homebrew join line | **The invite page shows the Homebrew join line under the install command** (Bagrat, 2026-10-16: the board approved, placement and words as drawn). “Use Homebrew? This does the same:” then `brew install --cask bagrat/shroom/shroom && open -a ~/Applications/shroom.app "https://<space>/join/<code>"` with its own Copy, quieter than the install command's. It goes live only with the app that takes the link (N50, 0.1.17). Built: DECISIONS B178. | ratified | 2026-10-16 |
+| N52 | shroom.am puts Homebrew first | **The landing's install block offers Homebrew first and the install line under it**, as the README does (Bagrat, 2026-10-16: build it, he looks at the screenshot after). “With Homebrew:” `brew install --cask bagrat/shroom/shroom && open ~/Applications/shroom.app` with the filled Copy; “Or without it:” the install line with an outlined one, then its Read it first; the agent door below as before. The two lead-ins are placeholders for his words. Built: DECISIONS B179. | provisional | 2026-10-16 |
 
 ## Surfaces
 
