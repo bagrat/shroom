@@ -22,32 +22,31 @@ cask "shroom" do
 
   livecheck do
     url "https://github.com/bagrat/shroom/releases/latest/download/manifest.txt"
+    strategy :page_match
     regex(/^version=(\d+(?:\.\d+)+)$/i)
   end
 
   # The app updates itself (DECISIONS B31): `brew upgrade` leaves it be unless --greedy.
   auto_updates true
   depends_on arch: :arm64
-  depends_on macos: ">= :sonoma"
+  depends_on macos: :sonoma
 
   app "shroom.app", target: "~/Applications/shroom.app"
 
-  postflight do
-    # The release certificate's SHA-1 (tools/release-identity.sha1; the installer's
-    # RELEASE_LEAF; installer/test/cask.test.mjs holds the three equal).
-    leaf = "8344cbe040722ea0a5632320c1d0d4348eaa3af3"
-    placed = File.expand_path("~/Applications/shroom.app")
-    signed = system_command("/usr/bin/codesign",
-                            args:         ["--verify", "--deep", "--strict", "-R",
-                                           "=identifier \"am.shroom\" and certificate leaf = H\"#{leaf}\"",
-                                           placed],
-                            print_stderr: false).success?
-    unless signed
-      FileUtils.rm_rf(placed)
-      raise "shroom's signature didn't verify, so nothing was installed. If it repeats, tell us: " \
-            "https://github.com/bagrat/shroom/issues/new — no GitHub? hi@shroom.am works too."
-    end
-    system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", placed]
+  # Only the release's signer is kept, and only then is Homebrew's quarantine mark lifted.
+  # The pin is the release certificate's SHA-1 (tools/release-identity.sha1; the
+  # installer's RELEASE_LEAF; installer/test/cask.test.mjs holds the three equal).
+  postflight_steps do
+    run "/bin/sh", args: ["-c", <<~'SH']
+      app="$HOME/Applications/shroom.app"
+      leaf=8344cbe040722ea0a5632320c1d0d4348eaa3af3
+      if ! /usr/bin/codesign --verify --deep --strict -R "=identifier \"am.shroom\" and certificate leaf = H\"$leaf\"" "$app" 2>/dev/null; then
+        rm -rf "$app"
+        echo "shroom's signature didn't verify, so nothing was installed. If it repeats, tell us: https://github.com/bagrat/shroom/issues/new — no GitHub? hi@shroom.am works too." >&2
+        exit 1
+      fi
+      /usr/bin/xattr -dr com.apple.quarantine "$app"
+    SH
   end
 
   uninstall quit: "am.shroom"

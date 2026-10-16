@@ -21,8 +21,9 @@ grep -E '^  (version|sha256) ' "$casks/shroom.rb"
 rm -rf "$APP"
 
 echo "── brew style, brew audit (for the record)"
-brew style --cask "$TAP/shroom" 2>&1 | tail -n 5
-brew audit --cask --online "$TAP/shroom" 2>&1 | tail -n 5
+brew style --cask "$TAP/shroom" 2>&1 | tail -n 30
+brew audit --cask --online "$TAP/shroom" 2>&1 | tail -n 10
+brew livecheck --cask "$TAP/shroom" 2>&1 | tail -n 3
 
 echo "── install"
 brew install --cask "$TAP/shroom"; rc=$?
@@ -34,21 +35,10 @@ q=$(xattr -lr "$APP" 2>/dev/null | grep -c com.apple.quarantine)
 leaf=$(tr -d ' \n' <tools/release-identity.sha1)
 codesign --verify --deep --strict -R "=identifier \"am.shroom\" and certificate leaf = H\"$leaf\"" "$APP" \
   && echo "signer: the release's" || no "not the release's signer"
-brew info --cask "$TAP/shroom" 2>&1 | sed -n '1,6p'
+brew info --cask "$TAP/shroom" 2>&1 | grep -v "^::warning" | sed -n '1,6p'
 open "$APP"; sleep 8
 running "$APP" && echo "opened: it runs" || no "it didn't open"
 quit
-
-echo "── control: the same app with the mark Homebrew adds"
-ctl=$(mktemp -d)/shroom.app
-ditto "$APP" "$ctl"
-xattr -w com.apple.quarantine "0081;$(printf %x "$(date +%s)");Homebrew Cask;" "$ctl"
-spctl --assess --type execute -vv "$ctl" 2>&1 | sed 's/^/  spctl: /'
-open "$ctl" 2>&1 | sed 's/^/  open: /'; sleep 8
-running "$ctl" && echo "  marked copy: it runs (the mark wouldn't have stopped it)" || echo "  marked copy: macOS didn't let it run — why the cask lifts the mark"
-quit
-osascript -e 'tell application "System Events" to tell process "CoreServicesUIAgent" to click button 1 of window 1' >/dev/null 2>&1
-rm -rf "$(dirname "$ctl")"
 
 echo "── uninstall --zap"
 mkdir -p "$HOME/.shroom" "$HOME/Library/Caches/am.shroom"; : >"$HOME/.shroom/marker"
@@ -58,8 +48,8 @@ for p in "$APP" "$HOME/.shroom" "$HOME/Library/Caches/am.shroom"; do [ -e "$p" ]
 [ "$bad" = 0 ] && echo "zap: nothing left"
 
 echo "── a cask whose pin isn't the signer's installs nothing"
-sed -i '' 's/^    leaf = "[0-9a-f]*"$/    leaf = "0000000000000000000000000000000000000000"/' "$casks/shroom.rb"
-grep -q 'leaf = "0000' "$casks/shroom.rb" || no "couldn't write the wrong pin"
+sed -i '' 's/^      leaf=[0-9a-f]*$/      leaf=0000000000000000000000000000000000000000/' "$casks/shroom.rb"
+grep -q '^      leaf=0000' "$casks/shroom.rb" || no "couldn't write the wrong pin"
 said=$(brew install --cask "$TAP/shroom" 2>&1); rc=$?
 printf '%s\n' "$said" | tail -n 4 | sed 's/^/  /'
 [ "$rc" != 0 ] && echo "refused: exit $rc" || no "installed with the wrong pin"
@@ -78,6 +68,19 @@ q=$(xattr -lr "$APP" 2>/dev/null | grep -c com.apple.quarantine)
 [ "$q" = 0 ] || no "$q files carry the quarantine mark after adopting"
 brew uninstall --zap --cask "$TAP/shroom" >/dev/null 2>&1
 [ -e "$APP" ] && no "left after adopting and uninstalling: $APP"
+
+echo "── control (for the record): the same app with the mark Homebrew adds, opened"
+ctl=$(mktemp -d)/shroom.app
+ditto "$APP" "$ctl"
+xattr -w com.apple.quarantine "0081;$(printf %x "$(date +%s)");Homebrew Cask;" "$ctl"
+spctl --assess --type execute -vv "$ctl" 2>&1 | sed 's/^/  spctl: /'
+open "$ctl" >/dev/null 2>&1 &
+sleep 10
+running "$ctl" && echo "  marked copy: it runs (the mark wouldn't have stopped it)" || echo "  marked copy: macOS didn't let it run — why the cask lifts the mark"
+kill $! 2>/dev/null
+quit
+pkill -x CoreServicesUIAgent 2>/dev/null
+rm -rf "$(dirname "$ctl")"
 
 brew untap "$TAP" >/dev/null 2>&1
 [ "$bad" = 0 ] && echo "verdict: Homebrew installs, opens, refuses a wrong signer, adopts and zaps"
