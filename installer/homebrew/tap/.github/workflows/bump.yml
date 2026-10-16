@@ -1,0 +1,53 @@
+# Keeps Casks/shroom.rb on the latest shroom release: every hour, and on demand (Actions →
+# Bump → Run workflow — docs/RELEASING.md's last step after a release). The cask is
+# rendered from bagrat/shroom's `main` (installer/homebrew/shroom.rb and render-cask.sh)
+# with the version and SHA-256 the release's manifest.txt names; it is never edited here.
+# The source of this file is bagrat/shroom's installer/homebrew/tap/.
+#
+# It reads no secret: its own token pushes to this repo, and nothing else.
+name: Bump
+
+on:
+  schedule:
+    - cron: '23 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: bump
+  cancel-in-progress: false
+
+jobs:
+  bump:
+    name: The cask is the latest release's
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: bagrat/shroom
+          path: .shroom
+          sparse-checkout: installer/homebrew
+          persist-credentials: false
+
+      - name: Render it
+        run: |
+          mkdir -p Casks
+          .shroom/installer/homebrew/render-cask.sh > "$RUNNER_TEMP/shroom.rb"
+          ruby -c "$RUNNER_TEMP/shroom.rb"
+          mv "$RUNNER_TEMP/shroom.rb" Casks/shroom.rb
+
+      - name: Push it, if it changed
+        run: |
+          git add Casks/shroom.rb
+          if git diff --cached --quiet; then echo "Already the latest."; exit 0; fi
+          version=$(sed -n 's/^  version "\(.*\)"$/\1/p' Casks/shroom.rb)
+          from=$(git -C .shroom rev-parse --short HEAD)
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "shroom $version (from bagrat/shroom@$from)"
+          git push

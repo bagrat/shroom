@@ -7,7 +7,7 @@ A release is a GitHub release of `bagrat/shroom` carrying exactly three files:
   download counts tell the app's checks from the install line's runs (DECISIONS B136);
 - `shroom-<version>-arm64.zip` — the signed app.
 
-The install line and the app's own updater read nothing else
+The install line, the app's own updater and the Homebrew cask read nothing else
 (`releases/latest/download/manifest.txt` — `update.txt` for the app, which falls back to
 `manifest.txt` on a release without one — then `releases/download/v<version>/<zip>`;
 DECISIONS B29, B31). You make one by pushing a tag: `.github/workflows/release.yml` builds,
@@ -73,8 +73,9 @@ Two things to know before anything else:
    `release` environment can read them, and no pull request's job does.
 
 5. Pin the certificate in the repo, then commit and push that one file. (The installer
-   carries the same pin as `RELEASE_LEAF` in `installer/install.sh`; its test holds the two
-   equal, so a new certificate means changing both — DECISIONS B125.)
+   carries the same pin as `RELEASE_LEAF` in `installer/install.sh`, and the Homebrew cask
+   as `leaf` in `installer/homebrew/shroom.rb`; their tests hold the three equal, so a new
+   certificate means changing all three — DECISIONS B125, B175.)
 
    ```bash
    cp ~/.shroom/release-identity/shroom-release.sha1 tools/release-identity.sha1
@@ -218,6 +219,12 @@ not been proven". 0.1.4 was never released.) Read your version for it.
 
 8. When the run is green, check the release (next section).
 
+9. Bring Homebrew's copy up to it: on github.com, `bagrat/homebrew-shroom` → **Actions** →
+   **Bump** → **Run workflow**. It runs by itself every hour anyway; running it now puts
+   the release in `brew install --cask bagrat/shroom/shroom` at once, and wakes the hourly
+   run if GitHub paused it after 60 quiet days. Its run ends "shroom <version> (from
+   bagrat/shroom@…)" in the tap's commits, or "Already the latest." (Homebrew below.)
+
 If the run fails before the publish job, nothing was published: fix what it says, and
 either re-run the failed job or (a hand-pushed tag) delete the tag, fix, and tag again. A version that *was*
 published is never replaced — installed apps already know its fingerprint. Bump and
@@ -284,6 +291,30 @@ it built. To see for yourself:
    ```bash
    tart delete shroom-release-check
    ```
+
+### Homebrew
+
+`brew install --cask bagrat/shroom/shroom` installs from the tap `bagrat/homebrew-shroom`
+(DECISIONS B175). Its `Casks/shroom.rb` is never edited there: the tap's **Bump** workflow
+renders it from this repo's `installer/homebrew/shroom.rb` with the latest release's
+version and SHA-256 (`installer/homebrew/render-cask.sh`), every hour and on demand
+(Cutting a release, step 9). A change to the cask itself is a PR here, and reaches the tap
+within the hour of its merge. To see what the tap should hold now:
+
+```bash
+installer/homebrew/render-cask.sh
+```
+
+The cask does what the install line does: the same zip and fingerprint, placed in
+`~/Applications`, taken only if signed by the pinned certificate (its `leaf`, held equal to
+`tools/release-identity.sha1` by `installer/test/cask.test.mjs` — a new certificate changes
+it too), and its quarantine mark lifted after that check, since a self-signed app marked as
+downloaded is refused at first open. The hosted Mac's `brew-cask` scenario runs it for real
+against the latest release:
+
+```bash
+bash dev/mac/loop.sh run brew-cask
+```
 
 ## What the two workflows do
 

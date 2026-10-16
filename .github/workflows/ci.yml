@@ -193,8 +193,8 @@ jobs:
           npm run typecheck --workspace worker
           npm run test:workerd --workspace worker
 
-      - name: The installer
-        run: node --test installer/test/install.test.mjs
+      - name: The installer, the Homebrew cask
+        run: node --test installer/test/install.test.mjs installer/test/cask.test.mjs
 
       - name: The release notes (DECISIONS B152)
         run: |
