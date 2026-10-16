@@ -1,0 +1,41 @@
+<!-- shroom.am/faq — the canvas board "shroom.am/faq". The questions, the limits and the
+     closing line are the approved copy, word for word (Bagrat, 2026-10-16). -->
+<title>shroom — questions and known limits</title>
+<meta name="description" content="What shroom needs, and what it doesn't do yet.">
+<h1>Questions and known limits</h1>
+<p class="punch">What shroom needs, and what it doesn't do yet</p>
+
+<h2>Questions</h2>
+<ul class="points qa">
+  <li><b>What does it cost?</b><span>Nothing to us: there's no account with us and no subscription. Your videos live in your own Cloudflare account, and Cloudflare charges for storage only. At normal quality, about three hours of video fits in Cloudflare's free tier. Beyond that it's about 5 cents per hour of video per month. Delete old videos and the bill goes down. Cloudflare doesn't charge for people watching.</span></li>
+  <li><b>Why does Cloudflare ask for a credit card?</b><span>It's Cloudflare's rule for turning on storage, even on the free tier. You enter it on Cloudflare's own page; shroom never sees it. Within the free tier you aren't charged.</span></li>
+  <li><b>What do I need?</b><span>A Mac with Apple silicon and macOS 14 or newer, and a Cloudflare account (setup walks you through making one). Your teammates need only the Mac: they join with your invite, with no Cloudflare account, no card and no setup.</span></li>
+  <li><b>How long does setup take?</b><span>About five minutes, plus a few minutes of waiting the first time, while Cloudflare switches your new address on.</span></li>
+  <li><b>Is the install line safe?</b><span>You can read it first: <a href="/install">shroom.am/install</a> opens as readable source. It downloads shroom from its GitHub releases and checks the file's fingerprint. It then checks the app is signed by shroom's own release certificate, and if anything doesn't match, nothing is installed. It puts the app in your home folder's Applications, with no admin password. shroom isn't notarized by Apple: the signature check above is what proves it's ours.</span></li>
+  <li><b>Who can see my videos?</b><span>Anyone you send the link to. Links are unlisted, not secret: the address is long and random, and search engines are told not to index it. There are no passwords or expiry dates yet.</span></li>
+  <li><b>What does shroom know about me?</b><span>Nothing. The app talks only to your Cloudflare account, plus GitHub to check for updates. There's no telemetry and no account with us. The website counts visits without cookies and without anything that identifies you.</span></li>
+  <li><b>What happens to my videos if shroom disappears?</b><span>They keep playing. The pages and the player run in your own Cloudflare account, not ours.</span></li>
+  <li><b>How do I remove someone from my team?</b><span>Settings → Members → Remove. They can't record to your space anymore, though a video already on its way may still finish. Their videos stay in your space.</span></li>
+  <li><b>Can viewers download a video?</b><span>Yes, as a single MP4 file, from the player page.</span></li>
+  <li><b>Can I embed a video?</b><span>Yes. Links unfurl with a preview picture and a short clip in apps that support it, and there's an embed version for web pages.</span></li>
+  <li><b>How do I uninstall it?</b><span>Run the install line with <code>--uninstall</code>. Your videos and links stay in your Cloudflare account.</span></li>
+</ul>
+
+<h2>What it doesn't do yet</h2>
+<ul class="points limits">
+  <li class="soon"><span>Editing — trimming and cutting. Pause, restart and discard are there while you record.</span><em class="pill">Coming soon</em></li>
+  <li class="soon"><span>Captions and chapters.</span><em class="pill">Coming soon</em></li>
+  <li class="soon"><span>View counts on a video's page.</span><em class="pill">Coming soon</em></li>
+  <li class="soon"><span>Deleting a video from its page — for now, from the Library on your Mac.</span><em class="pill">Coming soon</em></li>
+</ul>
+<h3>Also not yet</h3>
+<ul class="points limits">
+  <li>Windows, Linux and Intel Macs.</li>
+  <li>Recording a single window or part of the screen (it records a whole display, or your camera).</li>
+  <li>Comments and reactions.</li>
+  <li>Passwords or expiry dates on links, or your own domain for them.</li>
+  <li>Signing in with Google or a company account (SSO); removing a member is done by hand.</li>
+  <li>On Cloudflare's free plan, your videos can be watched about 1,800 times a day in total (for five-minute videos). Past that, they pause until the next day. Cloudflare's $5/month plan lifts the limit.</li>
+</ul>
+
+<p class="fine">If one of these is what stops you, tell us: <a href="https://github.com/bagrat/shroom/issues/new/choose">an issue on GitHub</a>, or <a href="mailto:hi@shroom.am">hi@shroom.am</a>.</p>
