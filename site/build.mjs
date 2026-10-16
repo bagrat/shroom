@@ -2,6 +2,7 @@
 // Puts together what shroom.am serves, in site/public (never committed):
 //
 //   index.html, favicon.svg, favicon.png   the landing, as it is
+//   og.png                                 the link preview card (tools/render-og-card.mjs)
 //   _/install.sh                           installer/install.sh, as it is
 //   _/agent.md                             site/agent.md, as it is
 //   _/agent.html                           the same markdown, as a page for a browser
@@ -16,6 +17,13 @@ import { fileURLToPath } from "node:url";
 
 const SITE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(SITE, "..");
+
+/** The link preview card every page names (tools/render-og-card.mjs draws site/og.png). */
+export const OG_IMAGE = `<meta property="og:image" content="https://shroom.am/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="shroom — Record. Share. Pay-as-you-go.">
+<meta name="twitter:card" content="summary_large_image">`;
 
 const escapeHtml = (/** @type {string} */ s) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -36,6 +44,8 @@ export function agentPage(/** @type {string} */ landing, /** @type {string} */ m
 <meta property="og:type" content="website">
 <meta property="og:title" content="shroom — for your coding agent">
 <meta property="og:url" content="https://shroom.am/agent">
+<meta property="og:description" content="What your coding agent reads when you ask it to install shroom.">
+${OG_IMAGE}
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="icon" type="image/png" sizes="180x180" href="favicon.png">
 <link rel="apple-touch-icon" href="favicon.png">
@@ -94,6 +104,8 @@ export function whatsNewPage(landing, version, notes) {
 <meta property="og:type" content="website">
 <meta property="og:title" content="${escapeHtml(title)}">
 <meta property="og:url" content="https://shroom.am/whats-new/${version}">
+<meta property="og:description" content="${escapeHtml(title)}.">
+${OG_IMAGE}
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="icon" type="image/png" sizes="180x180" href="/favicon.png">
 <link rel="apple-touch-icon" href="/favicon.png">
@@ -128,7 +140,7 @@ ${footer}
 export function build(out) {
   rmSync(out, { recursive: true, force: true });
   mkdirSync(join(out, "_"), { recursive: true });
-  for (const f of ["index.html", "favicon.svg", "favicon.png"]) copyFileSync(join(SITE, f), join(out, f));
+  for (const f of ["index.html", "favicon.svg", "favicon.png", "og.png"]) copyFileSync(join(SITE, f), join(out, f));
   copyFileSync(join(ROOT, "installer/install.sh"), join(out, "_/install.sh"));
   const markdown = readFileSync(join(SITE, "agent.md"), "utf8");
   writeFileSync(join(out, "_/agent.md"), markdown);

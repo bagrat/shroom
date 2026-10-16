@@ -1,9 +1,9 @@
 // shroom.am — the landing, the install line and the page for coding agents
 // (dev/proposals/shroom-am-worker.md).
 //
-// The favicons are static files Cloudflare serves without running this script. It runs
-// only for the paths site/wrangler.jsonc names (`run_worker_first`), and answers from the
-// files site/build.mjs puts in site/public:
+// The favicons and the link preview card (og.png) are static files Cloudflare serves without
+// running this script. It runs only for the paths site/wrangler.jsonc names
+// (`run_worker_first`), and answers from the files site/build.mjs puts in site/public:
 //
 //   /            the landing — or, to a coding agent, the same page in markdown
 //   (any of them may carry ?ref=<tag>, which is counted and changes nothing else)
