@@ -111,7 +111,7 @@ The rules run in three places, each tested against one shared fixture of cases:
      point to hi@shroom.am.
 - **Sending:** the `send_email` binding
   ([Email Routing: send emails from Workers](https://developers.cloudflare.com/email-routing/email-workers/send-email-workers/)).
-  - It sends one message from `reports@shroom.am` to Bagrat's inbox, with Reply-To set to
+  - It sends one message from `report-sender@shroom.am` to Bagrat's inbox, with Reply-To set to
     `reply_to` when one was given.
   - The cleaned log goes as an attached `report.txt`.
   - **His address is a Worker secret (`REPORT_TO`), never in the repo.** The binding is

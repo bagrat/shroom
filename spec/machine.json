@@ -7685,29 +7685,29 @@
     {
      "text": "Something off?",
      "role": "field-label",
-     "copy": "provisional",
-     "note": "Row label of the help row: Copy diagnostics and Report a problem… sit at its end (B180).",
+     "copy": "ratified",
+     "note": "Row label of the help row: Copy diagnostics and Report a problem… sit at its end (B180). Ratified by Bagrat, 2026-10-16, relayed by the orchestrator.",
      "id": "settings-general.something-off"
     },
     {
      "text": "Copied",
      "role": "button",
-     "copy": "provisional",
-     "note": "Copy diagnostics reads Copied for a moment after its click, as Copy link does (B180).",
+     "copy": "ratified",
+     "note": "Copy diagnostics reads Copied for a moment after its click, as Copy link does (B180). Ratified by Bagrat, 2026-10-16, relayed by the orchestrator.",
      "id": "settings-general.copied"
     },
     {
      "text": "Or tell us in public, on GitHub.",
      "role": "line",
-     "copy": "provisional",
-     "note": "Under the card. 'GitHub' is the new-issue link prefilled with the version (N8), with no log in it.",
+     "copy": "ratified",
+     "note": "Under the card. 'GitHub' is the new-issue link prefilled with the version (N8), with no log in it. Ratified by Bagrat, 2026-10-16, relayed by the orchestrator.",
      "id": "settings-general.or-tell-us-in-public"
     },
     {
      "text": "Sent — thank you. If you left your email, you’ll hear back.",
      "role": "status",
-     "copy": "provisional",
-     "note": "After a report went through (B180); until the window closes.",
+     "copy": "ratified",
+     "note": "After a report went through (B180); until the window closes. Ratified by Bagrat, 2026-10-16, relayed by the orchestrator.",
      "id": "settings-general.report-sent"
     },
     {
@@ -11130,54 +11130,57 @@
     {
      "text": "Report a problem",
      "role": "sheet-title",
-     "copy": "provisional",
-     "id": "report-problem.title"
+     "copy": "ratified",
+     "id": "report-problem.title",
+     "note": "Ratified by Bagrat, 2026-10-16, relayed by the orchestrator."
     },
     {
      "text": "Tell us what happened. shroom adds its version, your Mac’s model and its recent log — never your videos, links, names or keys. It goes straight to the person who makes shroom.",
      "role": "sheet-body",
-     "copy": "provisional",
-     "id": "report-problem.line"
+     "copy": "ratified",
+     "id": "report-problem.line",
+     "note": "Ratified by Bagrat, 2026-10-16, relayed by the orchestrator."
     },
     {
      "text": "What were you doing, and what went wrong?",
      "role": "placeholder",
-     "copy": "provisional",
-     "note": "The description box; Return types a new line, ⌘Return sends.",
+     "copy": "ratified",
+     "note": "The description box; Return types a new line, ⌘Return sends. Ratified by Bagrat, 2026-10-16, relayed by the orchestrator.",
      "id": "report-problem.what-happened"
     },
     {
      "text": "Your email, if you’d like an answer (optional)",
      "role": "field-label",
-     "copy": "provisional",
-     "id": "report-problem.reply-to"
+     "copy": "ratified",
+     "id": "report-problem.reply-to",
+     "note": "Ratified by Bagrat, 2026-10-16, relayed by the orchestrator."
     },
     {
      "text": "See exactly what’s sent",
      "role": "disclosure",
-     "copy": "provisional",
-     "note": "Opens the whole report, word for word, cleaned.",
+     "copy": "ratified",
+     "note": "Opens the whole report, word for word, cleaned. Ratified by Bagrat, 2026-10-16, relayed by the orchestrator.",
      "id": "report-problem.see-whats-sent"
     },
     {
      "text": "Putting it together…",
      "role": "line",
-     "copy": "provisional",
-     "note": "Under the disclosure until the report is gathered; Send waits for it.",
+     "copy": "ratified",
+     "note": "Under the disclosure until the report is gathered; Send waits for it. Ratified by Bagrat, 2026-10-16, relayed by the orchestrator.",
      "id": "report-problem.putting-it-together"
     },
     {
      "text": "Sending…",
      "role": "button",
-     "copy": "provisional",
-     "note": "Send's label while it posts; Cancel greys with it.",
+     "copy": "ratified",
+     "note": "Send's label while it posts; Cancel greys with it. Ratified by Bagrat, 2026-10-16, relayed by the orchestrator.",
      "id": "report-problem.sending"
     },
     {
      "text": "That didn’t go through — check your connection and try again. Or email it to hi@shroom.am instead.",
      "role": "line",
-     "copy": "provisional",
-     "note": "Offline, refused, rate-limited or switched off: the sheet keeps what was typed. “email it to hi@shroom.am” is a link: a mail draft with the description and the version.",
+     "copy": "ratified",
+     "note": "Offline, refused, rate-limited or switched off: the sheet keeps what was typed. “email it to hi@shroom.am” is a link: a mail draft with the description and the version. Ratified by Bagrat, 2026-10-16, relayed by the orchestrator.",
      "id": "report-problem.couldnt-send"
     }
    ],
