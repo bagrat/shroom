@@ -970,9 +970,9 @@ The permissions chapter's first beat, in the onboarding window. macOS's micropho
 
 ### `perm-camera`
 
-state · window · **provisional** · board: WizardPerms · cites N43, U5
+state · window · **provisional** · board: WizardPerms · cites N43, U5, #43
 
-The chapter's second beat (N43): macOS's own camera prompt, answered inline, the moment the microphone's answer lands. Nothing of ours shows. A denied camera never blocks: Show yourself starts off and Camera as the source greys Start, as N39's Camera denied says. Skipped on a Mac with no camera.
+The chapter's second beat (N43): macOS's own camera prompt, answered inline, the moment the microphone's answer lands. Nothing of ours shows. A denied camera never blocks: the camera picker starts at Camera off and Camera as the source greys Start, as N39's Camera denied says (DEVIATIONS #43). Skipped on a Mac with no camera.
 
 **Entry.** The microphone prompt the Allow recording click put to macOS was answered (allowed or denied), the camera grant is unasked, and the Mac has a camera.
 
@@ -1108,9 +1108,9 @@ Tray-only life with no menu. The tray click opens `config` directly. Right-click
 
 ### `config`
 
-state · popover · **ratified** · board: Main · cites N21, N22, N37, N38, N39, N41, U5, N44
+state · popover · **ratified** · board: Main · cites N21, N22, N37, N38, N39, N41, U5, N44, #43
 
-A same-themed custom popover under the tray (Loom-style). It is never a native menu and never a window, so the dock stays clear. Click-away or Esc dismisses it with nothing lost. It is pre-filled with last-used values and never skipped: a confirm, not a form. Fields run label left, control right, top to bottom: Record (one source picker: displays by human name first, then Camera), Show yourself, Microphone, Quality, then Start recording (filled, full width) with a quiet line beneath. The footer holds three icons with tooltips. The grammar is N38's (provisional): a banner slot at the top for asks, a status line above the footer for facts, and disk-low under Start. When it opens, the grant probe runs (`recording-off`), and a due monthly re-confirm runs perm-priming's warm-up. The device rules are N39's (provisional): never auto-pick an iPhone (mic or camera); a gone last-used display falls back silently to the menu-bar display; same-named displays are labeled by position; Camera as the source previews here; with Show yourself on, picking another display moves the bubble there. If the camera is denied, Show yourself flips off and Camera as the source greys Start. Since N44 both pickers start with System default: it follows macOS's default input and its preferred camera (never an iPhone by itself), and a take keeps the device it started with.
+A same-themed custom popover under the tray (Loom-style). It is never a native menu and never a window, so the dock stays clear. Click-away or Esc dismisses it with nothing lost. It is pre-filled with last-used values and never skipped: a confirm, not a form. Rows run top to bottom, each a picker (an icon, the pick's name, a chevron; its label is the row's accessible name, DEVIATIONS #45): Record (one source picker: displays by human name first, then Camera only), the camera (every camera here, then Camera off — a camera turns the bubble on with it, Camera off turns it off; DEVIATIONS #43), Microphone (every microphone, then No mic), Quality, then Start recording (filled, full width) with a quiet line beneath. The footer holds three icons with tooltips. The grammar is N38's (provisional): a banner slot at the top for asks, a status line above the footer for facts, and disk-low under Start. When it opens, the grant probe runs (`recording-off`), and a due monthly re-confirm runs perm-priming's warm-up. The device rules are N39's (provisional): never auto-pick an iPhone (mic or camera); a gone last-used display falls back silently to the menu-bar display; same-named displays are labeled by position; Camera as the source previews here; with a camera picked for the bubble, picking another display moves the bubble there. If the camera is denied, the camera picker shows Camera off and Camera as the source greys Start. Since N44 both pickers start with System default: it follows macOS's default input and its preferred camera (never an iPhone by itself), and a take keeps the device it started with.
 
 **Entry.** Not mid-take, and the tray clicked in idle-ready (or a launch you did, or all-set's Record now, or a cancelled countdown, which returns here still armed). Popover banners stack one at a time, highest first: saved take (recovered-take / disk-full-stop), the space can't take videos (other regions), recording-off, update-ready (Region 5).
 
@@ -1120,7 +1120,7 @@ A same-themed custom popover under the tray (Loom-style). It is never a native m
 | “LG UltraFine” | menu-item | ratified | An example only. Displays appear by their human name from macOS, which varies by hardware (§5.2 hard requirement). |
 | “Built-in Display” | menu-item | ratified | An example of a display's human name, which varies |
 | “Camera only” | menu-item | ratified | Unquoted in the spec, but named as the picker's option below the displays · was “Camera” · #43 |
-| “Show yourself” | field-label | ratified |  |
+| “Show yourself” | field-label | ratified | the camera picker's accessible name, not shown on the row; it named a switch until the camera became a pick · #43, #45 |
 | “Microphone” | field-label | ratified |  |
 | “Quality” | field-label | ratified |  |
 | “Normal” | other | ratified | Segmented control option, bolded in the spec. '(1080p)' is the spec's gloss, and whether it renders isn't stated. |
@@ -1140,10 +1140,10 @@ A same-themed custom popover under the tray (Loom-style). It is never a native m
 | “No microphone — your video will be silent.” | line | provisional | N39: on a Mac with no microphone |
 | “LG UltraFine (left)” | menu-item | provisional | N39: two displays with the same name get their place. The name varies, and they are numbered only when position can't tell them apart. |
 | “LG UltraFine (right)” | menu-item | provisional | N39, as above |
-| “Camera is off for shroom —” | line | provisional | N39: shown when the camera is denied. Show yourself flips back off, and Camera as the source greys Start. The line is followed by the Open System Settings button. |
+| “Camera is off for shroom —” | line | provisional | N39: shown when the camera is denied. The camera picker goes back to Camera off (DEVIATIONS #43), and Camera as the source greys Start. The line is followed by the Open System Settings button. |
 | “Open System Settings” | button | provisional | N39 camera-denied door |
 | “System default” | menu-item | provisional | N44: the first item of the microphone's and the camera's menus, the device it means in grey beneath (the device's own name, so it varies by Mac) · N44 |
-| “Camera off” | menu-item | ratified | Show yourself's last pick; ratified by Bagrat in the asking · #43 |
+| “Camera off” | menu-item | ratified | the camera picker's last pick; ratified by Bagrat in the asking · #43 |
 | “No mic” | menu-item | ratified | the microphone's last pick; ratified by Bagrat in the asking · #43 |
 | “You can record once this Mac has joined Bagrat's space.” | line | provisional | one case the spec didn't print, so it varies by case — the copy table: The popover's Start while a switch's join runs · copy table |
 | “LG UltraFine 1” | line | provisional | one case the spec didn't print, so it varies by case — the copy table: Displays of one name that place can't tell apart · copy table |
@@ -1154,8 +1154,8 @@ A same-themed custom popover under the tray (Loom-style). It is never a native m
 
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
-| Record | field |  |  | One source picker. Default: last-used, else the display with the menu bar. Choosing Camera greys Show yourself, and a first pick of Camera triggers the inline camera prompt (N22). |
-| Show yourself | switch |  |  | Screen sources only. When on, the bubble is live from the moment the popover opens. First-ever default is off, flipping it on is the inline camera-permission moment, and last-used applies after that (N22). |
+| Record | field |  |  | One source picker. Default: last-used, else the display with the menu bar. Choosing Camera only keeps the camera picker as the pick of the camera the take records, without Camera off, and a first pick of Camera only triggers the inline camera prompt (N22, DEVIATIONS #43). |
+| Show yourself | field |  |  | The camera picker, no longer a switch (DEVIATIONS #43); “Show yourself” is its accessible name, not shown (DEVIATIONS #45). System default first, every camera here, then Camera off: a camera turns the bubble on, live from the moment the popover opens; Camera off turns it off and keeps the pick. The first-ever pick is System default, the bubble on (N43, N44); last-used after that. With Camera only as the source it picks the camera the take records, without Camera off. |
 | Microphone | field |  |  | By name, prefers built-in, never auto-picks an iPhone |
 | Quality | other |  |  | segmented Normal / 2K / 4K |
 | Start recording | filled-default | ↵ | `countdown` | Return = Start recording (Law 8, N38): 'click the mushroom, press Return'. Greys under about a minute of disk (disk-low). |
@@ -1218,11 +1218,11 @@ The arm-time guard made visible (N38). The grant probe runs when `config` opens,
 
 ### `bubble`
 
-overlay · overlay · **ratified** · cites N22, N39
+overlay · overlay · **ratified** · cites N22, N39, #43
 
-The Show yourself corner bubble, born at `config`, not at the count (N22). Live from the moment the popover opens, so you see and place yourself before Start. It stays through the count and the take, and the switch hides it live. Draggable, not resizable. It uses the un-excluded preview-window trick with zero compositing. It never takes focus, and it is the only thing of ours ever in a take. Discard takes it away. If the bubble's camera disappears, the take is never interrupted; the bubble simply goes.
+The corner bubble, born at `config`, not at the count (N22). Live from the moment the popover opens, so you see and place yourself before Start. It stays through the count and the take, and Camera off in the camera picker hides it live (DEVIATIONS #43). Draggable, not resizable. It uses the un-excluded preview-window trick with zero compositing. It never takes focus, and it is the only thing of ours ever in a take. Discard takes it away. If the bubble's camera disappears, the take is never interrupted; the bubble simply goes.
 
-**Entry.** Show yourself is on and the source is a display (it greys when Camera is the source), from config's opening through countdown, recording and paused.
+**Entry.** A camera is picked in the camera picker (not Camera off) and the source is a display (with Camera only as the source there is no bubble), from config's opening through countdown, recording and paused.
 
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
@@ -1685,7 +1685,7 @@ Something new from us: an update waits (update-ready, Region 5). This is the low
 - perm-priming: an invisible warm-up of about 1 s that triggers Apple's second (~30-day) consent at setup (probe: dialog real on Tahoe, non-fatal).
 - Arm-time guard: grants are re-probed at every record arm and when config opens. The missing beat is replayed, and a missing screen grant surfaces as `recording-off` before Start.
 - Monthly re-confirm: config must know when Apple's periodic re-confirm is due and run perm-priming's warm-up then. The popover may close as the dialog takes focus.
-- Show yourself bubble: the un-excluded preview-window trick with zero compositing. Draggable, not resizable, never takes focus. Live from config's opening through the take.
+- The camera bubble: the un-excluded preview-window trick with zero compositing. Draggable, not resizable, never takes focus. Live from config's opening through the take.
 - Never auto-pick an iPhone (Continuity devices), for the microphone or the camera (POC §2).
 - Quality presets Normal (1080p) / 2K / 4K come from POC §2.
 - Device fallbacks: a gone last-used display falls back silently to the menu-bar display. Same-named displays are labeled by position and numbered only when position can't tell them apart. Camera as the source previews at config, and the count plays on that display.
@@ -3709,7 +3709,7 @@ A move that holds for a whole group of states, written once (B133). The tests ex
    - Entering the owner page after Stop/Get link, invite-born, stopped-offline, or any other state leaves the clipboard unchanged.
    - Every Copy link button reads “Copied” immediately after its click, then reverts.
 11. **No dialog to an empty chair** (N17) — a macOS prompt appears only right after a click that asked for it; the monthly re-confirm is pulled forward to `config` so it never lands inside a take (N38).
-   - Every macOS permission prompt (microphone, screen, camera) is requested only inside the handler of a user click that asked for it (e.g. Allow recording, the Show yourself switch, Camera as the source).
+   - Every macOS permission prompt (microphone, screen, camera) is requested only inside the handler of a user click that asked for it (e.g. Allow recording, a camera picked in the popover, Camera as the source).
    - done never fires a permission dialog on entry (N17).
    - No macOS prompt — including the monthly screen-recording re-confirm — appears while a take is open; the re-confirm is surfaced at config (the recording-off banner) before Start.
 12. **Failures are states** (N18) with scaffold-grade names and their own renders; guards that act as you type filter and never scold (N15).
@@ -3864,7 +3864,7 @@ The map's notes: lines about a state that aren't a state.
 - **camera-note** (Region 3): Camera is never asked at onboarding — it prompts inline at the first camera-mode pick. Don't ask for hardware the user may never use.
 - **arm-guard** (Region 3): Arm-time guard, not a step: every record arm re-probes grants and replays exactly the missing beat. Docs carry Apple's ~monthly re-confirm honestly — their policy.
 - **statusnote** (Region 3, about `config`): the popover's grammar — N38 · D Two slots, never more. The banner (top) is an ask — one at a time, highest first: a saved take · the space can't take videos · recording switched off · an update (Frost, slimmest). The status line (above the footer) is a fact — “Uploading — 40%. Your link already works.” · “Uploading two videos — 40%.” · “Waiting for connection — your links already work.” · “Updated to 1.3.0 ✓” once. Disk-low sits under Start. Return = Start recording.
-- **devices** (Region 3): devices at config — N39 · D Never auto-pick an iPhone — mic or camera. A last-used display that's gone falls back to the one with the menu bar. No microphone: “No microphone — your video will be silent.” Camera as the source previews at config, like the bubble. With Show yourself on, picking another display moves the bubble there. Same-named displays get their place: “LG UltraFine (left)” / “(right)”. Camera denied: Show yourself flips back off, Camera-as-source greys Start — “Camera is off for shroom —” [ Open System Settings ]. The count is Restart's undo: the old take dies only when the new capture begins.
+- **devices** (Region 3): devices at config — N39 · D Never auto-pick an iPhone — mic or camera. A last-used display that's gone falls back to the one with the menu bar. No microphone: “No microphone — your video will be silent.” Camera as the source previews at config, like the bubble. With a camera picked for the bubble, picking another display moves the bubble there. Same-named displays get their place: “LG UltraFine (left)” / “(right)”. Camera denied: the camera picker goes back to Camera off (DEVIATIONS #43), Camera-as-source greys Start — “Camera is off for shroom —” [ Open System Settings ]. The count is Restart's undo: the old take dies only when the new capture begins.
 - **library-faces** (Region 5, about `library`): library faces empty: “No videos yet — click the mushroom in your menu bar to record your first.” · no match: “No titles match “502”.” · offline: “You're offline — showing what this Mac remembers. Renaming and deleting wait until you're back.” (Copy link stays live) · space unreachable (N34): the remembered list; only Copy link and Save to Movies live.
 - **space-moods** (Region 5, about `settings-space`): Space, other Macs Owner-class, no token: “✓ Your space — v.myshroom.workers.dev” · “✓ Letting macOS allow recording — on this Mac” · “Repairs happen where your Cloudflare token lives — on the Mac you set your space up on, or here if you add a fresh one.” [ Add a token here ] — Member: “✓ Bagrat's space — v.myshroom.workers.dev” · row six · “Your videos live there, where Bagrat can see them too.” · Leave this space… — the mark switch is owner-class only.
 - **invite-row-faces** (Region 6, about `invite-born`): row faces — not states (N18 nuance) “invited just now” → “invited Aug 21 · 5 days left” → expired: the row offers New link — nothing is blocked, so no transition happens.

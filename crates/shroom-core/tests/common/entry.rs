@@ -81,7 +81,7 @@ pub const READS: &[Read] = &[
     r("updating-app", "Update clicked in config's banner or Settings → General, not mid-take."),
     // ── the overlays (r3) ──
     r("countdown", "Start recording in `config`."),
-    r("bubble", "Show yourself is on and the source is a display"),
+    r("bubble", "A camera is picked in the camera picker (not Camera off) and the source is a display"),
     // ── the onboarding window (r1, r2, r3, r6) ──
     r("welcome", "a first launch on a Mac with no space (the installer's launch); the tray click in idle-unprovisioned"),
     r("first-launch", "The installer placed and launched the app on a Mac with no space: a first launch."),
@@ -444,7 +444,7 @@ fn bubble(w: &World, config: bool) -> Option<bool> {
     // beat between the two (the count fired, the recorder starting) is inside it.
     let through = config || w.session.arming.is_some() || recording(w) || paused(w).is_some();
     // N39: never with the camera off for shroom, never an iPhone's camera by itself — one the
-    // person picked in Show yourself is theirs to show (DEVIATIONS #43).
+    // person picked in the camera picker is theirs to show (DEVIATIONS #43).
     let picked = |cs: &Vec<Device>| w.prefs.camera.as_ref().is_some_and(|uid| cs.iter().any(|c| &c.uid == uid));
     let camera = w.mac.camera.is(&Access::Granted) && w.mac.cameras.get().is_some_and(|cs| picked(cs) || cs.iter().any(|c| !c.continuity));
     Some(w.prefs.show_yourself && through && camera && matches!(source(w), Some(SourceId::Display(_))))

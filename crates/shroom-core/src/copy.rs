@@ -22,11 +22,12 @@ pub fn camera_purpose() -> String { "shroom shows and records your camera only w
 
 // ── config ──
 pub fn record() -> String { "Record".into() }
-/// The source picker's camera choice, and Show yourself's and the microphone's “none”
+/// The source picker's camera choice, and the camera picker's and the microphone's “none”
 /// choices — Bagrat's words (2026-10-13, DEVIATIONS #43), not yet in the spec.
 pub fn camera_only() -> String { "Camera only".into() }
 pub fn camera_off_pick() -> String { "Camera off".into() }
 pub fn no_mic_pick() -> String { "No mic".into() }
+/// The camera picker's accessible name; no row shows it (DEVIATIONS #45).
 pub fn show_yourself() -> String { "Show yourself".into() }
 /// The first item of the microphone's and the camera's menus (N44).
 pub fn system_default() -> String { "System default".into() }

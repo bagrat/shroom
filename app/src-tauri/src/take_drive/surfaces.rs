@@ -1380,7 +1380,7 @@ fn count(s: &S, h: Option<&Helper>, behind: Option<&'static str>) -> Result<(), 
     // the count starts. Where it may not — a clean VM — the answer that stood in above is
     // replaced by the truth, and `config` says recording is off: news only the page's own
     // Return brings. Either way the key went the whole road. Where the guard would ask
-    // macOS first — this Mac has a microphone it hasn't answered for, or Show yourself is on
+    // macOS first — this Mac has a microphone it hasn't answered for, or a camera is picked
     // and it hasn't answered for the camera — a drive never lets it; and behind a locked
     // screen no window has the keyboard.
     const BY_RETURN: &str = "Return, pressed in the popover, goes through its page to the core";

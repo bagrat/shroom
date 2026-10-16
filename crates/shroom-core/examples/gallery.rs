@@ -962,7 +962,7 @@ fn region3_rows() -> Vec<(&'static str, &'static str, &'static str, World)> {
         w.prefs.show_yourself = true;
         w
     }));
-    // Show yourself's and the microphone's picks (DEVIATIONS #43): two cameras, one shown;
+    // The camera's and the microphone's picks (DEVIATIONS #43): two cameras, one shown;
     // Camera only, its camera picked and no Camera off; No mic, picked.
     let two_cameras = || {
         vec![
@@ -983,7 +983,7 @@ fn region3_rows() -> Vec<(&'static str, &'static str, &'static str, World)> {
         w.prefs.source = Some(SourceId::Camera);
         w
     }));
-    // Camera only on a Mac with one camera: Show yourself has that camera alone, and stays live.
+    // Camera only on a Mac with one camera: the camera picker has that camera alone, and stays live.
     rows.push(("popover", "config", "config-camera-only-one", {
         let mut w = popover(ready());
         w.prefs.source = Some(SourceId::Camera);

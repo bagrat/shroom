@@ -40,9 +40,9 @@ pub enum Action {
     QuitAnyway,
     CopyLink,
     SetSource(SourceId),
-    /// Show yourself's pick: a camera by uid, or `None` — Camera off (DEVIATIONS #43).
+    /// The camera picker's pick: a camera by uid, or `None` — Camera off (DEVIATIONS #43).
     SetCamera(Option<String>),
-    /// Show yourself's System default: follows macOS's preferred camera (N44).
+    /// The camera picker's System default: follows macOS's preferred camera (N44).
     SetCameraDefault,
     /// The microphone's pick: one by uid, or `None` — No mic (DEVIATIONS #43).
     SetMic(Option<String>),
@@ -306,8 +306,9 @@ pub struct Banner {
 pub struct ConfigBody {
     pub record_label: String,
     pub sources: Vec<Choice>,
-    /// Show yourself, a pick like the microphone's: every camera here, then Camera off —
-    /// none with Camera only as the source, whose camera it picks (DEVIATIONS #43).
+    /// The camera picker (its accessible name “Show yourself”), a pick like the
+    /// microphone's: every camera here, then Camera off — none with Camera only as the
+    /// source, whose camera it picks (DEVIATIONS #43).
     pub camera_label: String,
     pub cameras: Vec<Choice>,
     pub mic_label: String,
@@ -325,7 +326,7 @@ pub struct ConfigBody {
 }
 
 impl ConfigBody {
-    /// The camera Show yourself shows, by uid — `None` at Camera off (DEVIATIONS #43). With
+    /// The camera the camera picker shows, by uid — `None` at Camera off (DEVIATIONS #43). With
     /// Camera only as the source, the camera the take records.
     /// System default (N44) is the camera named beneath it.
     pub fn camera_picked(&self) -> Option<&str> {
@@ -1083,7 +1084,7 @@ pub struct Countdown {
     pub line: String,
 }
 
-/// The Show yourself bubble (N22): round, mirrored, on the display being recorded —
+/// The camera bubble (N22): round, mirrored, on the display being recorded —
 /// recorded as-is (never excluded from capture), never key (law 5), draggable.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Bubble {

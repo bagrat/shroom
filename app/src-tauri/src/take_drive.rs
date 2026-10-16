@@ -66,7 +66,7 @@
 //!
 //! - `--drive take <out> show` (`--e2e` only; DECISIONS B127): the take a person makes, paced
 //!   for the screen's recording of the pre-merge run — never measured. The mushroom opens
-//!   `config`, Show yourself turns the bubble on, Return, the whole count, a few seconds of
+//!   `config`, a camera picked turns the bubble on, Return, the whole count, a few seconds of
 //!   the desktop, the mushroom again, Stop, the link — each surface held until it has
 //!   painted (a hosted runner paints a new window two to four seconds late). On the e2e
 //!   run's own space, from the home its wizard set up; only with OBS's virtual camera
@@ -252,8 +252,8 @@ impl D {
         }
         click(&self.app, &self.rt);
         let s = self.wait("config", 10, |s| s.popover.as_ref().is_some_and(|p| p.id == "config"))?;
-        // Show yourself starts on (N43): every drive begins with the bubble off, and the
-        // ones about it switch it on themselves.
+        // The camera picker starts on a camera (N43): every drive begins with the bubble off,
+        // and the ones about it pick a camera themselves.
         if s.bubble.is_none() {
             return Ok(s);
         }
@@ -846,7 +846,7 @@ fn windows_excluded(d: &D) -> Result<(), String> {
     Ok(())
 }
 
-/// Show yourself on the camera shroom would pick by itself: the built-in one, else the first
+/// The camera picker on the camera shroom would pick by itself: the built-in one, else the first
 /// that isn't an iPhone (N39) — a drive never picks an iPhone either.
 pub(crate) fn show_yourself_on(cameras: &[shroom_core::world::Device]) -> Action {
     let cam = cameras.iter().find(|c| c.builtin && !c.continuity).or_else(|| cameras.iter().find(|c| !c.continuity));
@@ -879,7 +879,7 @@ fn bubble(d: &D, cameras: &[shroom_core::world::Device]) -> Result<(), String> {
     d.check("the place is in prefs.json", prefs.as_ref().and_then(|p| p.bubble_at) == Some(want_at), format!("{:?}", prefs.and_then(|p| p.bubble_at)));
     d.check("and the Scene", s.bubble.as_ref().and_then(|b| b.at) == Some(want_at), "");
     // The lid closes: only the Continuity cameras of this Mac's real list are left (the
-    // observer's report, as `camera_source` posts it). No bubble, Show yourself greyed off,
+    // observer's report, as `camera_source` posts it). No bubble, the camera picker at Camera off,
     // no Camera source — nothing opens an iPhone by itself (N39, B48).
     let (displays, mics, _) = d.devices();
     let only_iphones: Vec<_> = cameras.iter().filter(|c| c.continuity).cloned().collect();
@@ -890,7 +890,7 @@ fn bubble(d: &D, cameras: &[shroom_core::world::Device]) -> Result<(), String> {
     d.check("with only an iPhone the bubble's window closes", d.on_main(camera::bubble_seen).flatten().is_none(), "");
     let greyed = matches!(s.popover.as_ref().map(|p| &p.body), Some(PopoverBody::Config(c))
         if c.camera_picked().is_none() && !c.sources.iter().any(|x| x.action == Action::SetSource(SourceId::Camera)));
-    d.check("Show yourself reads Camera off and Camera only leaves the sources", greyed, "");
+    d.check("the camera picker reads Camera off and Camera only leaves the sources", greyed, "");
     d.rt.post(Event::Os(OsNews::Devices { displays, mics, cameras: probe::cameras() }));
     let s = d.wait("the bubble back with the Mac's camera", 5, |s| s.bubble.is_some())?;
     std::thread::sleep(Duration::from_millis(1200));

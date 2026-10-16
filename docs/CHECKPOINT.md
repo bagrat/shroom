@@ -95,15 +95,15 @@ your account). Leave it be.
 ## 7. Feel
 
 - The countdown: does it feel right before a take starts?
-- The popover: is it quick to open and to answer? With a camera picked under Show
-  yourself, it should open at once, the bubble showing a spinner until the camera
+- The popover: is it quick to open and to answer? With a camera picked in its camera
+  picker, it should open at once, the bubble showing a spinner until the camera
   delivers (B119).
-- The bubble: pick your camera under Show yourself, and see how it sits and moves. Pick
+- The bubble: pick your camera in the popover's camera picker, and see how it sits and moves. Pick
   Camera off: it goes. Pick it again: it comes back on the camera you picked.
-- The first click: with another app in front, click the mushroom, then click the Show
-  yourself row once. Its list of cameras should open on that first click; Esc should
+- The first click: with another app in front, click the mushroom, then click the camera
+  row once. Its list of cameras should open on that first click; Esc should
   close the list, and Esc again the popover, without you clicking in it first.
-- Following you: open the popover on a desktop with a camera picked under Show yourself,
+- Following you: open the popover on a desktop with a camera picked in the camera picker,
   then ⌘-Tab to an app that is full screen. The popover and the bubble should both be
   there with you. Click anywhere in that app: the popover closes, and the bubble goes
   with it.
@@ -135,7 +135,7 @@ your account). Leave it be.
   switcher. The popover should still be there when you arrive.
 - Show Desktop: with the popover open, sweep the windows aside (Show Desktop) and click the
   bare desktop. The popover stays.
-- Hidden: open the Library, pick a camera under Show yourself, click the mushroom, and
+- Hidden: open the Library, pick a camera in the camera picker, click the mushroom, and
   press ⌘H. The Library should go; the popover and the bubble should stay. Click the
   mushroom to close the popover, click it again, and open the Library from the popover: it
   should come back in front. Then start a take, click the Library, and press ⌘H: the
@@ -144,7 +144,7 @@ your account). Leave it be.
   for the menu bar) and press Start. The count should play right there, Esc should cancel
   it, and at no point should macOS slide you to a desktop. Start again and let it run: you
   should still be in the full-screen app when the dot turns red.
-- The microphone, by ear: with a camera picked under Show yourself, clap three times in
+- The microphone, by ear: with a camera picked in the camera picker, clap three times in
   view of the camera. Watch the take back — does each clap's sound land with your hands?
   (B59 e)
 
@@ -251,7 +251,7 @@ memory while it runs (two at once is macOS's limit for macOS guests). A fresh em
 address the new Cloudflare account can use, and your card (storage needs one on file; a
 few takes cost nothing).
 
-**What the VMs can't show.** They have no camera, so Show yourself, the bubble and camera
+**What the VMs can't show.** They have no camera, so the camera picker, the bubble and camera
 at setup can only be seen saying there's no camera; their sound may be thin or missing.
 Those stay with steps 5–7 on your own Mac. Timing in a VM is no measure of feel either.
 

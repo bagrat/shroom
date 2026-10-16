@@ -604,7 +604,7 @@ fn act(w: &mut World, action: Action) -> Out {
             }
             (fx, Arm::named("set-source"))
         }
-        // Show yourself's pick (DEVIATIONS #43): a camera turns the bubble on with it, Camera
+        // The camera picker's pick (DEVIATIONS #43): a camera turns the bubble on with it, Camera
         // off turns it off and keeps the pick for next time. With Camera only as the source
         // the pick is the camera it records — the bubble's wish stays as it was.
         Action::SetCamera(c) => {
@@ -623,7 +623,7 @@ fn act(w: &mut World, action: Action) -> Out {
             }
             (fx, Arm::named("set-camera"))
         }
-        // System default, for Show yourself (N44): the camera follows macOS's preferred one,
+        // System default, in the camera picker (N44): the camera follows macOS's preferred one,
         // and it turns the bubble on like any camera pick — the permission moment if unasked.
         Action::SetCameraDefault => {
             let camera_source = crate::derive::popover_selected_source(w) == Some(SourceId::Camera);
@@ -1852,7 +1852,7 @@ fn os(w: &mut World, news: OsNews) -> Out {
                 Some("perm-mic")
             } else if w.mac.camera_asked && camera != Access::NotAsked {
                 w.mac.camera_asked = false;
-                // Show yourself starts on (N43) — unless the camera was just denied here.
+                // The bubble starts on (N43) — unless the camera was just denied here.
                 if camera != Access::Granted && w.prefs.show_yourself {
                     w.prefs.show_yourself = false;
                     fx.push(persist_prefs(w));
@@ -2043,8 +2043,8 @@ fn guard_take(w: &mut World) -> Option<Out> {
 
 /// The arm-time guard's missing beat: a grant this take needs that reads as never asked
 /// (a reset, a cleanup tool) — the microphone first, then the camera when Camera is the
-/// source or Show yourself is on. A Mac with no camera has no camera beat (N43): Show
-/// yourself has nothing to show there, so nothing is asked.
+/// source or a camera is picked for the bubble. A Mac with no camera has no camera beat
+/// (N43): the camera picker has nothing to show there, so nothing is asked.
 fn missing_beat(w: &World, source: SourceId) -> Option<Perm> {
     if !w.prefs.mic_off && w.mac.mic.is(&Access::NotAsked) && w.mac.mics.get().is_some_and(|m| !m.is_empty()) {
         return Some(Perm::Mic);

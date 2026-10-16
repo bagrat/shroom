@@ -1002,7 +1002,7 @@ fn run_drive(app: &AppHandle, rt: &crate::runtime::Runtime, out: &Path, seconds:
         wait_for(rt, "ready", 20, report, t0, |s| s.tray.click == Click::OpenPopover)?;
         click(app, rt);
         wait_for(rt, "config", 5, report, t0, |s| s.popover.as_ref().is_some_and(|p| p.id == "config"))?;
-        // Only the pattern is measured: Show yourself starts on (N43), so its bubble goes.
+        // Only the pattern is measured: the camera picker starts on a camera (N43), so its bubble goes.
         if snapshot(rt).is_some_and(|s| s.bubble.is_some()) {
             rt.post(Event::Act { surface: Surface::Popover, action: Action::SetCamera(None), rev: 0 });
             wait_for(rt, "the bubble off", 5, report, t0, |s| s.bubble.is_none())?;
