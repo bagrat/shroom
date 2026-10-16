@@ -10,7 +10,9 @@ LOG="$home/logs/run.log"
 rm -rf "$home"
 bad=0
 no() { echo "NO: $*"; bad=1; }
-lines() { grep -c "member: an invite for probe-owner.example.workers.dev arrived by a link opened with shroom" "$LOG" 2>/dev/null || echo 0; }
+lines() { local n; n=$(grep -c "member: an invite for probe-owner.example.workers.dev arrived by a link opened with shroom" "$LOG" 2>/dev/null); echo "${n:-0}"; }
+# What any opened URL that reached the member flow leaves: an arrival, or the non-join line.
+doors() { local n; n=$(grep -cE "member: an invite for .* arrived by|member: an opened link that isn't a join link" "$LOG" 2>/dev/null); echo "${n:-0}"; }
 quit() { pkill -f "$MAC_APP/Contents/MacOS/" 2>/dev/null; sleep 2; true; }
 
 echo "── cold: open -a <app> \"<join link>\""
@@ -25,10 +27,10 @@ ps -axo args | grep "$MAC_APP/Contents/MacOS/" | grep -v grep | grep -q "join/" 
 screencapture -x "$OUT/cold.png"
 
 echo "── warm: a web address that isn't a join link is ignored"
-before=$(grep -c "member:" "$LOG")
+before=$(doors)
 open -a "$MAC_APP" "https://shroom.am/"; sleep 4
-after=$(grep -c "member:" "$LOG")
-[ "$after" = "$before" ] && echo "ignored: nothing logged" || no "a non-join web address reached the member flow: $(grep member: "$LOG" | tail -n 1)"
+after=$(doors)
+[ "$after" = "$before" ] && echo "ignored: no arrival, nothing read" || no "a non-join web address reached the member flow: $(grep member: "$LOG" | tail -n 1)"
 pgrep -lx Safari >/dev/null && echo "  (Safari is running)"
 
 echo "── warm: the join link again"
