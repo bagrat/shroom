@@ -13,7 +13,9 @@ video. shroom's own landing page shows a video recorded with shroom.
 
 1. **Least-resistance UX** (Loom-grade).
 2. **BYO-storage, no SaaS we operate.** Everything a user records lives on their own
-   Cloudflare account and is billed by Cloudflare, not by us.
+   Cloudflare account and is billed by Cloudflare, not by us. One small exception, ruled
+   by Bagrat on 2026-10-16: shroom.am's `/report` takes a report or feedback when someone
+   presses Send, emails it to the maker's inbox and keeps nothing (DECISIONS B180).
 3. **Open source.**
 4. **Minimal, no bloat.**
 5. **Desktop, cross-platform eventually**: macOS first, Windows and Linux later. Those

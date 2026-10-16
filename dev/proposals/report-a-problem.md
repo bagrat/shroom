@@ -9,7 +9,11 @@ boards are placeholders. The copy, and the six questions, are Bagrat's.*
 > The first draft's mail-first design survives only as a fallback, and among the rejected
 > options below.
 >
-> **For Bagrat to rule.** Until now, shroom has run nothing that receives anything from a
+> **Ruled (Bagrat, 2026-10-16, relayed by the orchestrator):** he approved the plan, both
+> halves: the endpoint and /feedback first, the app's button for 0.1.18. That ruling covers
+> the exception below. The six questions are his; the in-app entry is in Settings only for now.
+>
+> **The exception.** Until now, shroom has run nothing that receives anything from a
 > user. This endpoint would be the first: a small receiving service on shroom.am. It stores
 > nothing, and it only ever sends to his inbox. It is still an **exception to “never a SaaS
 > we operate”** (PRINCIPLES) and to the privacy page's “It sends nothing to us”. Both lines

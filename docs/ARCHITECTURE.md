@@ -71,7 +71,7 @@ at `bf84b67079a8` (D:B2). Svelte 5, TypeScript 5.9.
 | `app/src-tauri` | `main.rs`, `commands.rs` (IPC), `runtime/` (runner, lanes, presenter, overlays, observers, seam), `harness.rs`/`drives.rs` (only with `dev-harness` in a `.dev` build — D:B5, B55, B62) | drives, `tests/l5/` |
 | `app/src` | webviews (`Popover`, `Onboarding`, `Library`, `Settings`, `members/`, `join/`, countdown), `lib/ipc.ts`, `lib/typed.ts`, `lib/theme.css` (D:B122) | galleries |
 | `worker/` | `src/worker.js` (one dependency-free module), `vendor/hls.min.js`, `page-version.json`, `dev/serve.mjs` | vitest + workerd contract (D:B63) |
-| `installer/`, `site/` | `install.sh` (D:B29, B44); the Homebrew cask and its renderer, `homebrew/` (D:B175); shroom.am Worker, with `/agent` for a coding agent (D:B132) | their `test/` |
+| `installer/`, `site/` | `install.sh` (D:B29, B44); the Homebrew cask and its renderer, `homebrew/` (D:B175); shroom.am Worker, with `/agent` for a coding agent (D:B132), and `/report` with its `/feedback` form (D:B180) | their `test/` |
 | `tools/`, `.github/workflows/` | release build, packaging, identity, ffmpeg, notices; `ci.yml`, `release.yml`, `site.yml`, `e2e.yml`, `e2e-full.yml`, `mac.yml` | CI |
 
 **Flavors** come from the bundle identifier alone (`runtime::Flavor::of`, D:B97; the
@@ -701,7 +701,11 @@ the oEmbed link; no og:description or og:site_name (U3).
 **Install:** `curl -fsSL https://shroom.am/install | sh` (or `sh -s -- --join <link>`).
 shroom.am is the `shroom-site` Worker (`site/worker.js`, deployed by `site.yml` on pushes to
 `main` touching `site/` or `installer/install.sh`); `/install` serves the script as plain
-text, never a redirect; `/agent` is the coding agents' page.
+text, never a redirect; `/agent` is the coding agents' page. `POST /report`
+(`site/report.js`, D:B180) is the one address that takes anything in: a report or feedback,
+checked (size, shape, rate, Turnstile from `/feedback`), its log cleaned (`site/clean.js`),
+emailed through the `send_email` binding to the inbox in the secret `REPORT_TO`, and kept
+nowhere. `/feedback` is its form.
 
 `installer/install.sh` (D:B29, B44, B125), all inside `main()`:
 1. Refuse a non-Mac, macOS below `MIN_MACOS` (14) before any fetch, and Intel ("no build").
