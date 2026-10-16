@@ -1007,6 +1007,19 @@
     "N8 (a third door: a report through shroom.am, beside the issue link and the address)"
    ],
    "amended_by": []
+  },
+  {
+   "id": "N54",
+   "title": "⌥⌘P pauses a take and resumes it",
+   "decision": "**One global shortcut, ⌥⌘P, held only while a take is open** (Bagrat asked for it, 2026-10-16, to pause between beats of a take; the same day he chose ⌥⌘P, fixed rather than settable for now, and pause and resume only, no Stop shortcut). While recording it is the tray click: an instant pause, the paused popover opening once the pause is confirmed. While paused it is Resume: the popover closes and capture resumes, with no count. It does nothing while a question is open (Discard…, Restart) or while Resume is greyed. Registered with the system's hot-key service, which needs no new permission (no Accessibility, no Input Monitoring), and let go the moment the take closes, so ⌥⌘P belongs to other apps the rest of the time. Nothing on screen names it in v1. Built: DECISIONS B182.",
+   "status": "provisional",
+   "date": "2026-10-16",
+   "amends": [
+    "absent_from_v1 (global hotkeys: this one shortcut joins v1)",
+    "recording (a second door to the pause)",
+    "paused (a second door to Resume)"
+   ],
+   "amended_by": []
   }
  ],
  "surfaces": [
@@ -1039,7 +1052,7 @@
   "Local recording before setup and any local library (U1)  [L1724]",
   "the .dmg (P17; brew joined v1 by N49)  [L1724]",
   "macOS notifications (U9)  [L1724-1725]",
-  "global hotkeys (the reopen door covers a hidden mushroom, N41)  [L1725-1726]",
+  "global hotkeys, save ⌥⌘P's pause and resume during a take (N54) (the reopen door covers a hidden mushroom, N41)  [L1725-1726]",
   "the tray's Copy last link and any auto-copy (N21, N1)  [L1726]",
   "trim, the editor, marker surfacing (P11)  [L1726-1727]",
   "captions and transcript search (P8)  [L1727]",
@@ -5154,6 +5167,13 @@
      "note": "same as a left click mid-take (N39)"
     },
     {
+     "label": "⌥⌘P",
+     "kind": "other",
+     "return_default": false,
+     "goes_to": "paused",
+     "note": "the tray click's pause, from the keyboard; the popover opens after the pause is confirmed (N54)"
+    },
+    {
      "label": "⌘Q / Dock Quit",
      "kind": "other",
      "return_default": false,
@@ -5164,7 +5184,8 @@
     "N24",
     "N39",
     "N41",
-    "N25"
+    "N25",
+    "N54"
    ],
    "was": {
     "fixture": "r3.json",
@@ -5226,6 +5247,13 @@
      "note": "Return = Resume (Law 8, N38)"
     },
     {
+     "label": "⌥⌘P",
+     "kind": "other",
+     "return_default": false,
+     "goes_to": "recording",
+     "note": "Resume from the keyboard, wherever focus is; nothing while Resume is greyed (N54)"
+    },
+    {
      "label": "Finish & Share",
      "kind": "secondary",
      "return_default": false,
@@ -5264,7 +5292,8 @@
     "N38",
     "N39",
     "N41",
-    "B143"
+    "B143",
+    "N54"
    ],
    "was": {
     "fixture": "r3.json",
@@ -12938,10 +12967,12 @@
    "from": "recording",
    "to": "paused",
    "kind": "flow",
-   "label": "tray click — pause confirmed first",
-   "trigger": "tray click (pause confirmed first)",
+   "label": "tray click or ⌥⌘P — pause confirmed first",
+   "trigger": "tray click or ⌥⌘P (pause confirmed first)",
    "status": "ratified",
-   "cites": [],
+   "cites": [
+    "N54"
+   ],
    "source": [
     "map",
     "fixture",
@@ -13094,10 +13125,12 @@
    "from": "paused",
    "to": "recording",
    "kind": "flow",
-   "label": "Resume",
-   "trigger": "Resume",
+   "label": "Resume or ⌥⌘P",
+   "trigger": "Resume or ⌥⌘P",
    "status": "ratified",
-   "cites": [],
+   "cites": [
+    "N54"
+   ],
    "source": [
     "map",
     "fixture",
@@ -13105,7 +13138,8 @@
    ],
    "on": [
     "Act(Resume)",
-    "Key(Return)"
+    "Key(Return)",
+    "Shortcut"
    ]
   },
   {

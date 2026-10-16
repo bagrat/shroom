@@ -274,6 +274,8 @@ pub struct Tray {
     pub click: Click,
     /// The one-item right-click menu ("Quit shroom") — idle only.
     pub right_menu: Option<String>,
+    /// ⌥⌘P is held (N54): only while a take is open, so it's other apps' the rest of the time.
+    pub shortcut: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]

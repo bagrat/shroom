@@ -88,7 +88,7 @@ use shroom_core::world::{Access, SourceId, WindowKind};
 use tauri::{AppHandle, Manager};
 
 use crate::harness::{click, cover_with_pattern, snapshot, write_json};
-use crate::runtime::{Runtime, camera, observe, presenter, probe};
+use crate::runtime::{Runtime, camera, hotkey, observe, presenter, probe};
 
 mod surfaces;
 pub(crate) use surfaces::key_focus_pid;
@@ -1185,8 +1185,17 @@ fn display_takes(d: &D, displays: &[shroom_core::world::Display], mics: &[shroom
 
     // ── the microphone leaves, then is switched off ──
     d.config()?;
+    d.check("⌥⌘P isn't held before the take (N54)", d.on_main(hotkey::held) == Some(false), "");
     d.record()?;
     std::thread::sleep(Duration::from_secs(2));
+    // ⌥⌘P (N54): held for the take; a press pauses as a click does, the next resumes.
+    d.check("⌥⌘P is held while recording (N54)", d.on_main(hotkey::held) == Some(true), "");
+    d.check("the system hands ⌥⌘P to shroom", d.on_main(hotkey::press) == Some(true), "");
+    let s = d.wait("paused by ⌥⌘P", 10, |s| D::popover_id(s) == Some("paused"))?;
+    d.check("⌥⌘P's pause opens the popover asked, as a click does", s.popover.as_ref().is_some_and(|p| p.activates), "");
+    d.on_main(hotkey::press);
+    d.wait("resumed by ⌥⌘P", 10, |s| s.tray.state == Some("recording") && s.popover.is_none())?;
+    std::thread::sleep(Duration::from_secs(1));
     if mic_granted && !mics.is_empty() {
         d.rt.post(Event::Os(OsNews::Devices { displays: displays.to_vec(), mics: vec![], cameras: cameras.to_vec() }));
         let s = d.wait("mic-lost", 10, |s| s.popover.as_ref().is_some_and(|p| p.faces.contains(&"mic-lost")))?;
@@ -1240,6 +1249,8 @@ fn display_takes(d: &D, displays: &[shroom_core::world::Display], mics: &[shroom
     d.fact("stalled_take", files);
     d.rt.post(Event::PopoverDismissed);
     d.wait("dismissed", 5, |s| s.popover.is_none())?;
+    std::thread::sleep(Duration::from_millis(300));
+    d.check("⌥⌘P is let go once the take has closed (N54)", d.on_main(hotkey::held) == Some(false), "");
 
     // ── screen recording switched off ──
     d.config()?;
