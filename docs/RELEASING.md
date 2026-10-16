@@ -75,7 +75,7 @@ Two things to know before anything else:
 5. Pin the certificate in the repo, then commit and push that one file. (The installer
    carries the same pin as `RELEASE_LEAF` in `installer/install.sh`, and the Homebrew cask
    as `leaf` in `installer/homebrew/shroom.rb`; their tests hold the three equal, so a new
-   certificate means changing all three — DECISIONS B125, B174.)
+   certificate means changing all three — DECISIONS B125, B175.)
 
    ```bash
    cp ~/.shroom/release-identity/shroom-release.sha1 tools/release-identity.sha1
@@ -295,7 +295,7 @@ it built. To see for yourself:
 ### Homebrew
 
 `brew install --cask bagrat/shroom/shroom` installs from the tap `bagrat/homebrew-shroom`
-(DECISIONS B174). Its `Casks/shroom.rb` is never edited there: the tap's **Bump** workflow
+(DECISIONS B175). Its `Casks/shroom.rb` is never edited there: the tap's **Bump** workflow
 renders it from this repo's `installer/homebrew/shroom.rb` with the latest release's
 version and SHA-256 (`installer/homebrew/render-cask.sh`), every hour and on demand
 (Cutting a release, step 9). A change to the cask itself is a PR here, and reaches the tap

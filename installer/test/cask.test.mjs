@@ -38,6 +38,13 @@ describe("the cask", () => {
     assert.match(post, /unless signed\n\s+FileUtils\.rm_rf\(placed\)\n\s+raise /);
   });
 
+  it("says where to tell us as the installer's signature line does", () => {
+    const installer = readFileSync(join(ROOT, "installer/install.sh"), "utf8");
+    const tell = installer.match(/^SIGNATURE=".*(tell us: .*)"$/m)[1];
+    const said = cask.split("  postflight do\n")[1].split("\n  end\n")[0].match(/raise "(.*)" \\\n\s+"(.*)"/);
+    assert.ok(`${said[1]}${said[2]}`.endsWith(tell), `${said[1]}${said[2]}`);
+  });
+
   it("is Apple silicon only, macOS 14 and newer, and leaves updates to the app (DECISIONS B31)", () => {
     assert.match(cask, /^  depends_on arch: :arm64$/m);
     assert.match(cask, /^  depends_on macos: ">= :sonoma"$/m);

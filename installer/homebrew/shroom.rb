@@ -45,7 +45,7 @@ cask "shroom" do
     unless signed
       FileUtils.rm_rf(placed)
       raise "shroom's signature didn't verify, so nothing was installed. If it repeats, tell us: " \
-            "https://github.com/bagrat/shroom/issues/new — no GitHub? issues@shroom.am works too."
+            "https://github.com/bagrat/shroom/issues/new — no GitHub? hi@shroom.am works too."
     end
     system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", placed]
   end
