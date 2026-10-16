@@ -10,7 +10,7 @@ shares it from your own Cloudflare account.
 [Open an issue](https://github.com/bagrat/shroom/issues/new/choose) and pick the kind.
 Check the [known limits](https://shroom.am/faq) first: it may be one of them. Leave out
 anything private (your Cloudflare token or account id, links to videos you don't want seen).
-For anything you'd rather not post in public, write to hello@shroom.am.
+For anything you'd rather not post in public, write to hi@shroom.am.
 
 ## Changing code
 
