@@ -86,6 +86,12 @@ describe("the landing", () => {
     }
   });
 
+  it("offers Homebrew first, the install line under it (N52)", () => {
+    const brew = text.indexOf("brew install --cask bagrat/shroom/shroom && open ~/Applications/shroom.app");
+    const curl = text.indexOf("curl -fsSL https://shroom.am/install | sh");
+    assert.ok(brew >= 0 && curl > brew, "the Homebrew line comes before the install line");
+  });
+
   it("points Read it first at the installer's own address", () => {
     assert.match(html, /<a href="\/install">Read it first<\/a>/);
     assert.ok(text.includes("curl -fsSL https://shroom.am/install | sh"));
