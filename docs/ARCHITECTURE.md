@@ -665,9 +665,13 @@ server-rendered; `htmlEscape` and a JSON island neutralizing `< > &` and U+2028/
 canvas's dark palette (DV #45).
 
 **Player** (D:B43): custom controls (`PLAYER_JS`) — poster, play, time, speed, mute, full
-screen. Safari plays HLS natively; elsewhere hls.js **1.7.3** (`worker/vendor/hls.min.js`,
-SHA-256 `a12e7ee1…423e`, D:B30) from `/_shroom/hls.js`, `backBufferLength: 90`. The
-heartbeat plays in WebKit and Chromium.
+screen. **What it plays** (D:B176): the single-file copy (`/m/<id>/video.mp4`) once
+`media.mp4` is set and the stream's playlist names one init segment, read beside the record;
+else the stream. A 5-minute view costs ~4–8 of the Worker's requests that way against ~56
+(`worker/dev/view-cost.mjs`). The stream: Safari plays HLS natively; elsewhere hls.js
+**1.7.3** (`worker/vendor/hls.min.js`, SHA-256 `a12e7ee1…423e`, D:B30) from
+`/_shroom/hls.js`, `backBufferLength: 90`, buffering one 6 s piece until the first play
+(`maxBufferLength` 6, then 30). The heartbeat plays in WebKit and Chromium.
 
 | Record | Face |
 |---|---|
