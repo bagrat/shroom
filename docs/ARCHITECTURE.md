@@ -406,8 +406,8 @@ The design record has them: history/design/ARCHITECTURE.md §3.9.
   180 pt, round, mirrored, an `AVCaptureVideoPreviewLayer` on the exact camera the Scene
   names; every other shroom window is excluded, the bubble is recorded as-is. Born at
   `config`, through the countdown and take; follows the chosen display; dragged position in
-  `prefs.bubble_at`; goes quietly if its camera leaves. Show yourself is a camera pick or
-  Camera off (DV #43); an iPhone is never auto-picked (D:B48). Panels open at once with a
+  `prefs.bubble_at`; goes quietly if its camera leaves. The popover's camera picker is a camera
+  pick or Camera off (DV #43); an iPhone is never auto-picked (D:B48). Panels open at once with a
   spinner (D:B119).
 - **Camera as the source** (`shroom-capture/src/camera.rs:CameraSource`, D:B33):
   `cap-camera-avfoundation` into the same frame clock and rawvideo path; format via

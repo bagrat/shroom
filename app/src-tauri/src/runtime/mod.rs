@@ -1840,8 +1840,8 @@ mod tests {
         let conf: serde_json::Value = serde_json::from_str(include_str!("../../tauri.conf.json")).unwrap();
         let cur = shroom_update::Version::parse(conf["version"].as_str().unwrap()).unwrap();
         let next = shroom_update::Version(cur.0, cur.1, cur.2 + 1).to_string();
+        // Not Show yourself: it's the camera row's accessible name, shown nowhere.
         for label in [
-            copy::show_yourself(),
             copy::login_box(),
             copy::tab_general(),
             copy::tab_space(),

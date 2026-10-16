@@ -13,7 +13,7 @@
 //      and is removed → delete → the removed face.
 //
 //   3. the show pass (`--drive take show`): the take a person makes, paced so the screen's
-//      recording shows it — the mushroom, the popover, Show yourself and its bubble (OBS's
+//      recording shows it — the mushroom, the popover, the camera picker and its bubble (OBS's
 //      pattern camera), Start, the count, a few seconds, Stop — then its link playing in a
 //      visible browser. For a person to watch; it fails the run only if it can't publish.
 //
@@ -143,7 +143,7 @@ if (summary.wizard.ok && process.env.E2E_SHOW !== "0") {
   await exited(spawn("open", ["-W", "-n", "--stderr", path.join(out, "show.stderr.log"), app, "--args", "--e2e", "--drive", "take", showReport, "show"], { stdio: "inherit" }));
   let show = null;
   try { show = JSON.parse(fs.readFileSync(showReport, "utf8")); } catch { /* none */ }
-  chapter(showFrom, Date.now(), "As a person: the mushroom, Show yourself (the bubble), Start, the count, Stop");
+  chapter(showFrom, Date.now(), "As a person: the mushroom, the camera picker (the bubble), Start, the count, Stop");
   summary.show = { ok: !!show?.ok, error: show?.error ?? (show ? undefined : "no report"), link: show?.facts?.link ?? null };
   // The link, playing where the screen's recording sees it.
   const link = summary.show.link;
