@@ -123,6 +123,16 @@ lives in `spec/`; the working docs live in `docs/`.
 - **Blocked children are surfaced.** Each recap checks every live child's `status_bucket`.
   One that reads blocked or waiting on a permission gets a push to Bagrat at once, with its
   session link and the exact thing to approve.
+- **Asking Bagrat: one question at a time.** As simple as it can be put. When the answer
+  is a choice, ask it with the question tool (`AskUserQuestion`) and its options, not as
+  prose (Bagrat, 2026-10-16).
+- **Push notifications come from the orchestrator.** A child session sends Bagrat a push
+  only when it absolutely needs him and can't go through the orchestrator. Everything
+  else goes to the orchestrator, and only the orchestrator pushes him (Bagrat, 2026-10-16).
+- **"Remember this."** When Bagrat asks a session to remember something about how he
+  works, it goes into this file, into shroom-private's CLAUDE.md, or both, by where it
+  applies. Anything more specific waits for a memory that also works in cloud sessions,
+  which is being researched (Bagrat, 2026-10-16).
 - **Report up; don't wait to be polled.** A session the orchestrator spawned or watches
   messages it (`send_message`) when something that matters changes. That covers finishing,
   opening or merging a PR, failing, getting blocked, or needing Bagrat: a question, a
