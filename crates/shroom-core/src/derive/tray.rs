@@ -5,7 +5,7 @@ use crate::scene::{Click, Face, Tray};
 use crate::world::{Phase, WindowKind, World};
 
 pub fn derive(w: &World) -> Tray {
-    Tray { state: state(w), face: face(w), click: click(w), right_menu: (!w.take_open()).then(crate::copy::quit) }
+    Tray { state: state(w), face: face(w), click: click(w), right_menu: (!w.take_open()).then(crate::copy::quit), shortcut: shortcut(w) }
 }
 
 fn state(w: &World) -> Option<&'static str> {
@@ -68,4 +68,10 @@ fn click(w: &World) -> Click {
         return Click::OpenOnboarding;
     }
     Click::OpenPopover
+}
+
+/// ⌥⌘P is held while a take is recording or paused (N54), not through a count or a finish.
+fn shortcut(w: &World) -> bool {
+    w.session.arming.is_none()
+        && w.take.as_ref().is_some_and(|t| matches!(t.phase, Phase::Recording | Phase::Pausing(_) | Phase::Paused(_) | Phase::Resuming))
 }

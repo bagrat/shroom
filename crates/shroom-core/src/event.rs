@@ -105,6 +105,8 @@ pub enum Event {
     TrayClicked { right: bool, quick: QuickProbe },
     /// The reopen event (Spotlight, Finder, the Dock) while running — a click (N41).
     Reopened(QuickProbe),
+    /// ⌥⌘P, held while a take is open (N54): the tray click's pause, or Resume.
+    Shortcut(QuickProbe),
     Act { surface: Surface, action: Action, rev: u64 },
     Key { surface: Surface, key: Key },
     PopoverDismissed,

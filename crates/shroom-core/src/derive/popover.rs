@@ -456,23 +456,22 @@ fn lost_line(w: &World) -> Option<String> {
 }
 
 fn paused(w: &World, cause: Cause, length_ms: u64) -> Popover {
-    let source_present = w.take.as_ref().is_some_and(|t| source_present(w, t));
-    let present = w.mac.os.get().is_none_or(|o| o.present());
-    let (face, context, sub, resume_ok, ret) = match cause {
-        Cause::User => (None, None, None, true, Some(Action::Resume)),
-        Cause::DisplayLost => (Some("display-lost"), Some(copy::display_lost()), None, source_present, None),
-        Cause::CameraLost => (Some("camera-lost"), Some(copy::camera_lost()), None, source_present, None),
+    let resume_ok = resume_ok(w, cause);
+    let (face, context, sub, ret) = match cause {
+        Cause::User => (None, None, None, Some(Action::Resume)),
+        Cause::DisplayLost => (Some("display-lost"), Some(copy::display_lost()), None, None),
+        Cause::CameraLost => (Some("camera-lost"), Some(copy::camera_lost()), None, None),
         Cause::MicLost => {
             let fallback = resume_mic(w).and_then(|uid| w.mac.mics.get()?.iter().find(|m| m.uid == uid).map(|m| m.name.clone()));
             let sub = Some(match fallback {
                 Some(name) => copy::mic_fallback(&name),
                 None => copy::mic_none(),
             });
-            (Some("mic-lost"), Some(copy::mic_lost()), sub, true, Some(Action::Resume))
+            (Some("mic-lost"), Some(copy::mic_lost()), sub, Some(Action::Resume))
         }
-        Cause::Asleep => (Some("mac-away"), Some(copy::slept()), None, present, None),
-        Cause::Locked => (Some("mac-away"), Some(copy::locked()), None, present, None),
-        Cause::MicRevoked => (Some("mic-permission-lost"), Some(copy::mic_permission_lost()), None, true, Some(Action::Resume)),
+        Cause::Asleep => (Some("mac-away"), Some(copy::slept()), None, None),
+        Cause::Locked => (Some("mac-away"), Some(copy::locked()), None, None),
+        Cause::MicRevoked => (Some("mic-permission-lost"), Some(copy::mic_permission_lost()), None, Some(Action::Resume)),
     };
     Popover {
         id: "paused",
@@ -493,6 +492,16 @@ fn paused(w: &World, cause: Cause, length_ms: u64) -> Popover {
         esc: Some(Action::Dismiss),
         activates: true,
         away_closes: false,
+    }
+}
+
+/// Whether the paused popover's Resume is live: the display, camera or Mac it waits for is
+/// back (the paused faces); the microphone faces resume with the fallback (N39).
+pub fn resume_ok(w: &World, cause: Cause) -> bool {
+    match cause {
+        Cause::DisplayLost | Cause::CameraLost => w.take.as_ref().is_some_and(|t| source_present(w, t)),
+        Cause::Asleep | Cause::Locked => w.mac.os.get().is_none_or(|o| o.present()),
+        Cause::User | Cause::MicLost | Cause::MicRevoked => true,
     }
 }
 

@@ -164,6 +164,19 @@ fn apply_event(w: &mut World, event: Event) -> Out {
             }
             click(w)
         }
+        Event::Shortcut(q) => {
+            // ⌥⌘P (N54): recording, the tray click's pause; paused, Resume. Nothing else.
+            quick(w, &q);
+            if let Some(out) = guard_take(w) {
+                return out;
+            }
+            match w.take.as_ref().map(|t| t.phase) {
+                _ if !derive(w).tray.shortcut => (vec![], Arm::DROPPED),
+                Some(Phase::Recording) => click(w),
+                Some(Phase::Paused(cause)) if w.session.confirm.is_none() && crate::derive::resume_ok(w, cause) => act(w, Action::Resume),
+                _ => (vec![], Arm::DROPPED),
+            }
+        }
         Event::Act { surface, action, .. } => {
             if action != Action::Dismiss && !derive(w).offers(surface, &action) {
                 return (vec![], Arm::DROPPED);
