@@ -131,7 +131,7 @@ export const STALL_SECONDS = 120;
 export const IFACE = 2;
 /** The version of the app that deploys this file — the same as the app's own
  * (`app/src-tauri/tauri.conf.json`, held equal by a shroom-cloud test). */
-export const VERSION = "0.1.16";
+export const VERSION = "0.1.17";
 
 const ID = /^[A-Za-z0-9_-]{16}$/;
 const HLS_JS_KEY = ".shroom/player/hls.min.js";
@@ -701,6 +701,28 @@ async function media(request, env, key, type, cache, extra = {}) {
   return new Response(object.body, { status: 200, headers });
 }
 
+/** Whether the recording's stream is one picture throughout: its playlist names one init
+ * segment. A later take whose picture differs in size has its own (B58 a), and the
+ * single-file copy, joined by `-c copy`, can't carry the change. False when the playlist
+ * is missing or can't be read: nothing then vouches for the copy. Never throws, and always
+ * reads the body through, so the page can start it beside the record and not wait on it.
+ * @param {Env} env @param {string} id @returns {Promise<boolean>} */
+function onePicture(env, id) {
+  if (!ID.test(id)) return Promise.resolve(false);
+  return env.BUCKET.get(`rec/${id}/v0/stream.m3u8`)
+    .then(async (o) => (o ? (await o.text()).split("#EXT-X-MAP:").length === 2 : false))
+    .catch(() => false);
+}
+
+/** What the player plays (B176): the single-file copy once it's up and the stream is one
+ * picture — a 5-minute view costs ~4–8 of the Worker's requests that way, against ~56
+ * through the stream's 6 s pieces (worker/dev/view-cost.mjs) — and the stream otherwise.
+ * Both are served by /m/ under the same removal gate.
+ * @param {string} id @param {any} meta @param {Promise<boolean>} oneP */
+async function sourceOf(id, meta, oneP) {
+  return meta?.state === "live" && meta.media?.mp4 && (await oneP) ? `/m/${id}/video.mp4` : `/m/${id}/master.m3u8`;
+}
+
 /** @param {Env} env @param {string} id */
 async function readMeta(env, id) {
   if (!ID.test(id)) return null;
@@ -732,6 +754,9 @@ async function download(request, env, id) {
 /** @param {Env} env @param {string} id @param {number} now @param {Promise<Owner | null>} ownerP @param {string} origin */
 async function page(env, id, now, ownerP, origin) {
   // Only the record's own read decides the face: a mark that can't be read is the default.
+  // The stream's playlist is read beside the record, never after it: whether the copy may
+  // play costs no round of its own (B176).
+  const oneP = onePicture(env, id);
   const [meta, mark, owner] = await Promise.all([readMeta(env, id), markOn(env).catch(() => true), ownerP]);
   const face = { mark, owner: owner?.ownerClass ? { switchOn: mark } : null, head: meta && meta.state !== "deleted" ? unfurl(id, meta, origin) : "", ratio: ratioOf(meta) };
   if (meta && meta.state === "deleted") return html(notFoundPage(face), false, 404);
@@ -762,13 +787,13 @@ async function page(env, id, now, ownerP, origin) {
   }
   if (owner && mine && (meta.state === "uploading" || (meta.state === "live" && meta.media?.hls))) {
     const blocked = stalledAt(meta, now) && !drained(meta) && (await uploadsBlocked(env));
-    return html(ownerPage(id, meta, now, face, blocked ? waitingWords(owner) : COPY.waitingConnection));
+    return html(ownerPage(id, meta, now, face, blocked ? waitingWords(owner) : COPY.waitingConnection, false, false, await sourceOf(id, meta, oneP)));
   }
   if (meta.state === "uploading") {
     const st = status(meta, now);
     return html(onItsWayPage(meta.title, st.stalled ? COPY.stalled : COPY.onItsWay, face, st.pct ?? 0, !!st.stalled));
   }
-  if (meta.state === "live" && meta.media?.hls) return html(livePage(id, meta, face));
+  if (meta.state === "live" && meta.media?.hls) return html(livePage(id, meta, face, await sourceOf(id, meta, oneP)));
   return html(unavailablePage(face));
 }
 
@@ -864,6 +889,7 @@ async function oembed(env, url) {
  * on-its-way, unavailable and removed faces; never owner mode. */
 /** @param {Env} env @param {string} id @param {number} now @param {string} origin */
 async function embed(env, id, now, origin) {
+  const oneP = onePicture(env, id);
   const [meta, mark] = await Promise.all([readMeta(env, id), markOn(env).catch(() => true)]);
   // The mark sits at the end of the player's control row (it hides with the controls), or
   // in the corner of a line.
@@ -880,8 +906,9 @@ async function embed(env, id, now, origin) {
     return frame(line(st.stalled ? COPY.stalled : COPY.onItsWay, thinBar(st.pct ?? 0, !!st.stalled)), 5);
   }
   if (meta.state !== "live" || !meta.media?.hls) return frame(line(COPY.unavailable), 30);
+  const src = await sourceOf(id, meta, oneP);
   return frame(`${playerHtml(id, meta, origin)}
-<script>${PLAYER_JS};shroomPlayer(document.querySelector(".player"),${JSON.stringify(`/m/${id}/master.m3u8`)},${jsonForScript(JSON.stringify(LABELS))})</script>`);
+<script>${PLAYER_JS};shroomPlayer(document.querySelector(".player"),${JSON.stringify(src)},${jsonForScript(JSON.stringify(LABELS))})</script>`);
 }
 
 /** The embed is the player alone, and the player stays dark whatever the viewer's scheme. */
@@ -1173,8 +1200,9 @@ export function playerHtml(id, meta, base = "") {
  * fullscreen where elements can't go fullscreen). The seek bar shows what has played and
  * what is buffered ahead. The controls fade while playing and the pointer rests, never
  * while a control holds focus. */
-export const PLAYER_JS = `function shroomPlay(v,s){if(v.canPlayType("application/vnd.apple.mpegurl")){v.src=s;return}
-var t=document.createElement("script");t.src="/_shroom/hls.js";t.onload=function(){var h=new Hls({backBufferLength:90});h.loadSource(s);h.attachMedia(v)};document.head.appendChild(t)}
+export const PLAYER_JS = `function shroomPlay(v,s){if(/\\.mp4$/.test(s)||v.canPlayType("application/vnd.apple.mpegurl")){v.src=s;return}
+var t=document.createElement("script");t.src="/_shroom/hls.js";t.onload=function(){var h=new Hls({backBufferLength:90,maxBufferLength:6,maxMaxBufferLength:6});
+v.addEventListener("play",function(){h.config.maxBufferLength=30;h.config.maxMaxBufferLength=600},{once:true});h.loadSource(s);h.attachMedia(v)};document.head.appendChild(t)}
 function shroomClock(s,l){s=Math.max(0,+s||0);s=l?Math.round(s):Math.floor(s);var h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60,two=function(n){return(n<10?"0":"")+n};return h?h+":"+two(m)+":"+two(x):m+":"+two(x)}
 function shroomPlayer(p,s,L){var v=p.querySelector("video"),pp=p.querySelector(".pp"),sk=p.querySelector(".seek"),tm=p.querySelector(".time"),fs=p.querySelector(".fs"),sp=p.querySelector(".sp"),mu=p.querySelector(".mu"),known=+p.getAttribute("data-dur")||0,held=false,idle=0,R=[1,1.25,1.5,2];
 function dur(){return isFinite(v.duration)&&v.duration>0?v.duration:known}
@@ -1285,8 +1313,8 @@ function old(x){var ok=false;function on(e){e.preventDefault();e.clipboardData.s
 if(navigator.clipboard&&navigator.clipboard.write&&window.ClipboardItem){try{return navigator.clipboard.write([new ClipboardItem({"text/html":hp.then(function(x){return new Blob([x],{type:"text/html"})}),"text/plain":new Blob([t],{type:"text/plain"})})]).then(function(){return true},function(){return hp.then(old)})}catch(e){}}
 return hp.then(old)}`;
 
-/** @param {string} id @param {any} meta @param {Face} face */
-function livePage(id, meta, face) {
+/** @param {string} id @param {any} meta @param {Face} face @param {string} src what the player plays (B176) */
+function livePage(id, meta, face, src) {
   const title = meta.title || "";
   // Download is a quiet icon beside the title: its word names it.
   const download = meta.media.mp4 ? `<span class="dl" data-tip="${COPY.download}"><a href="/d/${id}">${COPY.download}</a></span>` : "";
@@ -1295,7 +1323,7 @@ function livePage(id, meta, face) {
   const thumbs = thumbsOf(id, meta, true, false);
   const cfg = JSON.stringify({ copied: COPY.copied, copy: COPY.copyLink, copyThumb: COPY.copyThumbnail, thumbs });
   const player = `${playerHtml(id, meta)}
-<script>${PLAYER_JS};shroomPlayer(document.querySelector(".player"),${JSON.stringify(`/m/${id}/master.m3u8`)},${jsonForScript(JSON.stringify(LABELS))})
+<script>${PLAYER_JS};shroomPlayer(document.querySelector(".player"),${JSON.stringify(src)},${jsonForScript(JSON.stringify(LABELS))})
 ${COPY_JS}
 ${THUMB_JS}
 (function(){var c=${jsonForScript(cfg)},th=shroomThumbs(c.thumbs);
@@ -1341,7 +1369,7 @@ function thumbsOf(id, meta, live, store = true) {
 /** @param {string} id @param {any} meta @param {number} now @param {Face} face @param {string} waiting the stalled line
  * @param {boolean} [blocked] the space can't take uploads: the waiting line from the start
  * @param {boolean} [pending] no record yet (its claim is still on its way) */
-function ownerPage(id, meta, now, face, waiting, blocked = false, pending = false) {
+function ownerPage(id, meta, now, face, waiting, blocked = false, pending = false, src = `/m/${id}/master.m3u8`) {
   const live = meta.state === "live";
   const placeholder = meta.titled ? untitled(meta.createdAt ?? new Date(now).toISOString()) : meta.title || untitled(meta.createdAt);
   const value = meta.titled ? meta.title : "";
@@ -1370,7 +1398,7 @@ function ownerPage(id, meta, now, face, waiting, blocked = false, pending = fals
   const script = `<script>${PLAYER_JS}
 ${COPY_JS}
 ${THUMB_JS}
-(function(){var c=${jsonForScript(cfg)},t=document.getElementById("t"),saved=c.saved,src="/m/"+c.id+"/master.m3u8",tb=document.getElementById("th");
+(function(){var c=${jsonForScript(cfg)},t=document.getElementById("t"),saved=c.saved,src=${jsonForScript(JSON.stringify(src))},tb=document.getElementById("th");
 var th=shroomThumbs(c.thumbs,function(ok){if(ok)tb.removeAttribute("aria-disabled");else tb.setAttribute("aria-disabled","true");tb.setAttribute("data-tip",ok?c.copyThumb:c.preparing)});
 if(c.live){shroomPlayer(document.querySelector(".player"),src,c.labels);th.live()}
 function send(v){c.pend=null;fetch("/_shroom/title/"+c.id,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({title:v})})

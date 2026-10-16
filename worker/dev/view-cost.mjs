@@ -10,7 +10,8 @@
 //
 // Per engine and segment length: a bounce (the page opened, never played), a full watch
 // (played muted to the end at --rate), and a watch with two seeks. --mp4 adds the same
-// three against the single-file copy played directly (the page's source rewritten).
+// three with the single-file copy up, which the page then plays (DECISIONS B176); without
+// it the page plays the stream.
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import { createServer } from "node:http";
@@ -57,9 +58,10 @@ async function main() {
     const id = `Seg${String(seg).padStart(2, "0")}`.padEnd(16, "x");
     ids[seg] = id;
     for (const [f, bytes] of Object.entries(encode(seg))) await env.BUCKET.put(`rec/${id}/${f}`, bytes);
-    await env.BUCKET.put(metaKey(id), JSON.stringify({ schema: 1, id, state: "live", createdAt: new Date(Date.now() - 60_000).toISOString(), title: "A view's cost",
-      durationSec: SECS, media: { hls: `rec/${id}/master.m3u8`, mp4: `rec/${id}/video.mp4`, poster: `rec/${id}/poster.jpg`, width: 1920, height: 1080 }, owner: M1 }));
   }
+  /** The record: live, with the single-file copy up or not yet. */
+  const record = (id, mp4) => env.BUCKET.put(metaKey(id), JSON.stringify({ schema: 1, id, state: "live", createdAt: new Date(Date.now() - 60_000).toISOString(), title: "A view's cost",
+    durationSec: SECS, media: { hls: `rec/${id}/master.m3u8`, mp4: mp4 ? `rec/${id}/video.mp4` : null, poster: `rec/${id}/poster.jpg`, width: 1920, height: 1080 }, owner: M1 }));
 
   let log = [];
   const server = createServer(async (req, res) => {
@@ -81,15 +83,8 @@ async function main() {
       for (const seg of SEGS) for (const src of (MP4 && seg === SEGS[0] ? ["hls", "mp4"] : ["hls"]).filter((s) => !ONLY || s === ONLY)) {
         for (const scenario of ["bounce", "watch", "seeks"]) {
           const context = await browser.newContext();
-          if (forceHlsJs && src === "hls") await context.addInitScript(`const o = HTMLMediaElement.prototype.canPlayType; HTMLMediaElement.prototype.canPlayType = function (t) { return /mpegurl/i.test(t) ? "" : o.call(this, t); };`);
-          if (src === "mp4") {
-            // The page as it would be with the single-file copy as its source.
-            await context.addInitScript(`HTMLMediaElement.prototype.canPlayType = function () { return "maybe"; };`);
-            await context.route(/\/Seg[0-9]{2}x+$/, async (route) => {
-              const r = await route.fetch();
-              await route.fulfill({ response: r, body: (await r.text()).replaceAll("/master.m3u8", "/video.mp4") });
-            });
-          }
+          await record(ids[seg], src === "mp4");
+          if (forceHlsJs) await context.addInitScript(`const o = HTMLMediaElement.prototype.canPlayType; HTMLMediaElement.prototype.canPlayType = function (t) { return /mpegurl/i.test(t) ? "" : o.call(this, t); };`);
           const page = await context.newPage();
           log = [];
           await page.goto(`${origin}/${ids[seg]}`);
