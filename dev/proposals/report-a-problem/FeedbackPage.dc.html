@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>shroom.am feedback</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#88c0d0}a:hover{color:#8fbcbb}
+</style>
+</helmet>
+<div style="width: 1960px; height: 1610px; box-sizing: border-box; background: #1a1d22; padding: 30px; display: flex; flex-direction: column; gap: 24px; font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif; font-size: 13px; line-height: 1.5; color: #eceff4">
+<div style="display: flex; flex-direction: column; gap: 4px"><div style="font-size: 20px; font-weight: 600">shroom.am/feedback — the testers’ questions, a log, and Send</div><div style="color: #aeb6c4">A proposal for Bagrat. The five questions are his (approved 2026-10-16; the one on what was recorded dropped); all other words are placeholders.</div></div>
+<div style="display: flex; flex-direction: row; gap: 40px; align-items: flex-start">
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div style="width: 1000px; height: 1440px; box-sizing: border-box; background: #2b2f36; border-radius: 10px; padding: 0 40px 40px 40px; display: flex; flex-direction: column; align-items: center; overflow: hidden; flex: none; font-size: 16px; line-height: 1.55">
+<header style="width: 100%; max-width: 760px; min-height: 64px; display: flex; flex-direction: row; justify-content: space-between; align-items: center; gap: 16px">
+<a href="/" style="display: flex; flex-direction: row; align-items: center; gap: 9px; min-height: 44px; text-decoration: none; color: #eceff4; font-size: 18px; font-weight: 600">
+<svg viewBox="18 20 84 90" aria-hidden="true" style="width: 24px; height: 26px; display: block"><path d="M50,68 C49,82 46,92 46,96 C46,101 52,104 60,104 C68,104 74,101 74,96 C74,92 71,82 70,68 Z" fill="#E5E9F0"></path><path d="M24,64 C24,42 40,26 60,26 C80,26 96,42 96,64 C86,75 34,75 24,64 Z" fill="#88C0D0"></path><circle cx="50" cy="44" r="6" fill="#ECEFF4"></circle><circle cx="72" cy="48" r="3.6" fill="#ECEFF4"></circle><circle cx="33" cy="58" r="3.4" fill="#ECEFF4"></circle><circle cx="64" cy="58" r="2.6" fill="#ECEFF4"></circle><circle cx="88" cy="58" r="2.2" fill="#ECEFF4"></circle></svg>
+<span>shroom</span></a>
+<a href="https://github.com/bagrat/shroom" style="display: flex; align-items: center; min-height: 44px; font-size: 14px; text-decoration: none; color: #c3cad6">GitHub</a>
+</header>
+<main style="width: 100%; max-width: 760px; padding: 40px 0 0 0; display: flex; flex-direction: column; gap: 24px">
+<div style="display: flex; flex-direction: column; gap: 8px"><h1 style="margin: 0; font-size: 2.5rem; font-weight: 700; line-height: 1.12" data-said="feedback.title">Tell us how it went</h1><p style="margin: 0; font-size: 1.15rem; color: #88c0d0" data-said="feedback.lede">Five questions, a couple of minutes. It goes straight to the person who makes shroom.</p></div>
+<form style="background: #333944; border-radius: 12px; padding: 22px; display: flex; flex-direction: column; gap: 20px">
+<div style="display: flex; flex-direction: column; gap: 6px"><label for="fname" style="font-weight: 600" data-said="feedback.name">Your name (optional)</label><input id="fname" type="text" value="Sam" style="font: inherit; font-size: 15px; box-sizing: border-box; border: 1px solid #4c566a; border-radius: 9px; background: #262a31; color: #eceff4; height: 40px; padding: 0 12px"><div style="color: #aeb6c4; font-size: 13px">Filled in from the link you were sent, when it carries one; change it if you like.</div></div>
+<div style="display: flex; flex-direction: column; gap: 8px"><label for="fq1" style="font-weight: 600">1. Did setup finish? Where did you stop or have to think?</label><textarea id="fq1" style="font: inherit; font-size: 15px; box-sizing: border-box; border: 1px solid #4c566a; border-radius: 9px; background: #262a31; color: #eceff4; height: 72px; resize: vertical; padding: 10px 12px"></textarea></div><div style="display: flex; flex-direction: column; gap: 8px"><label for="fq2" style="font-weight: 600">2. Did anything break, look wrong, or surprise you?</label><textarea id="fq2" style="font: inherit; font-size: 15px; box-sizing: border-box; border: 1px solid #4c566a; border-radius: 9px; background: #262a31; color: #eceff4; height: 72px; resize: vertical; padding: 10px 12px"></textarea></div><div style="display: flex; flex-direction: column; gap: 8px"><label for="fq3" style="font-weight: 600">3. What did you expect it to do that it didn't?</label><textarea id="fq3" style="font: inherit; font-size: 15px; box-sizing: border-box; border: 1px solid #4c566a; border-radius: 9px; background: #262a31; color: #eceff4; height: 72px; resize: vertical; padding: 10px 12px"></textarea></div><div style="display: flex; flex-direction: column; gap: 8px"><label for="fq4" style="font-weight: 600">4. Would you use it instead of what you use now, or move your team to it? If not, what's the one thing in the way?</label><textarea id="fq4" style="font: inherit; font-size: 15px; box-sizing: border-box; border: 1px solid #4c566a; border-radius: 9px; background: #262a31; color: #eceff4; height: 72px; resize: vertical; padding: 10px 12px"></textarea></div><div style="display: flex; flex-direction: column; gap: 8px"><label for="fq5" style="font-weight: 600">5. Was anything on the site unclear, or hard to believe?</label><textarea id="fq5" style="font: inherit; font-size: 15px; box-sizing: border-box; border: 1px solid #4c566a; border-radius: 9px; background: #262a31; color: #eceff4; height: 72px; resize: vertical; padding: 10px 12px"></textarea></div>
+<div style="border-top: 1px solid #434a56; padding: 18px 0 0 0; display: flex; flex-direction: column; gap: 8px">
+<div style="font-weight: 600" data-said="feedback.log-title">shroom's log (optional, and it helps)</div>
+<div style="color: #aeb6c4; font-size: 14px" data-said="feedback.log-how">In shroom 0.1.18 or newer: Settings → General → Copy diagnostics, then paste it here. On an older shroom, choose the file <code style="font-family: ui-monospace, Menlo, monospace; font-size: 0.9em; background: #1f2228; padding: 1px 5px; border-radius: 5px">~/.shroom/logs/run.log</code> (in the file picker, ⌘⇧. shows hidden folders).</div>
+<div style="display: flex; flex-direction: row; gap: 10px; align-items: flex-start"><textarea aria-label="Paste the diagnostics" placeholder="Paste here" style="font: inherit; font-size: 15px; box-sizing: border-box; border: 1px solid #4c566a; border-radius: 9px; background: #262a31; color: #eceff4; flex: 1 1 0; height: 64px; resize: vertical; padding: 10px 12px; font-size: 13px"></textarea><button type="button" style="font: inherit; font-size: 14px; height: 40px; padding: 0 14px; border: 1px solid #4c566a; border-radius: 9px; background: transparent; color: #eceff4; flex: none" data-said="feedback.choose-file">Choose file…</button></div>
+<button type="button" aria-expanded="false" style="font: inherit; font-size: 14px; border: 0; background: transparent; color: #aeb6c4; padding: 0; display: flex; align-items: center; gap: 6px; align-self: flex-start"><svg viewBox="0 0 12 12" aria-hidden="true" style="width: 10px; height: 10px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; display: block"><path d="M4.5 3l3 3-3 3"></path></svg>See exactly what’s sent — cleaned in your browser before it leaves</button>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px"><label for="fmail" style="font-weight: 600" data-said="feedback.reply-to">Your email, if you'd like an answer (optional)</label><input id="fmail" type="email" style="font: inherit; font-size: 15px; box-sizing: border-box; border: 1px solid #4c566a; border-radius: 9px; background: #262a31; color: #eceff4; height: 40px; padding: 0 12px"></div>
+<div style="display: flex; flex-direction: row; align-items: center; gap: 14px; flex-wrap: wrap">
+<button type="submit" style="font: inherit; font-weight: 600; height: 44px; padding: 0 22px; border: 0; border-radius: 9px; background: #88c0d0; color: #2b2f36" data-said="feedback.send">Send</button>
+<span style="color: #aeb6c4; font-size: 13px" data-said="feedback.check">Cloudflare checks you're a person, quietly, as you send.</span>
+</div>
+</form>
+</main>
+</div>
+<div style="width: 1000px; color: #aeb6c4; font-size: 12px; line-height: 1.45"><span style="color: #88c0d0; font-weight: 600">G</span> The page, in the site's look (the privacy page's frame). An optional name (prefilled from a link's ?ref= tag), then the five questions; the log is optional, pasted or chosen as a file, and cleaned in the browser with the app's rules before anything leaves. Turnstile runs invisibly on Send.</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div style="width: 820px; height: 640px; box-sizing: border-box; background: #2b2f36; border-radius: 10px; padding: 0 40px 40px 40px; display: flex; flex-direction: column; align-items: center; overflow: hidden; flex: none; font-size: 16px; line-height: 1.55">
+<header style="width: 100%; max-width: 640px; min-height: 64px; display: flex; flex-direction: row; justify-content: space-between; align-items: center; gap: 16px">
+<a href="/" style="display: flex; flex-direction: row; align-items: center; gap: 9px; min-height: 44px; text-decoration: none; color: #eceff4; font-size: 18px; font-weight: 600">
+<svg viewBox="18 20 84 90" aria-hidden="true" style="width: 24px; height: 26px; display: block"><path d="M50,68 C49,82 46,92 46,96 C46,101 52,104 60,104 C68,104 74,101 74,96 C74,92 71,82 70,68 Z" fill="#E5E9F0"></path><path d="M24,64 C24,42 40,26 60,26 C80,26 96,42 96,64 C86,75 34,75 24,64 Z" fill="#88C0D0"></path><circle cx="50" cy="44" r="6" fill="#ECEFF4"></circle><circle cx="72" cy="48" r="3.6" fill="#ECEFF4"></circle><circle cx="33" cy="58" r="3.4" fill="#ECEFF4"></circle><circle cx="64" cy="58" r="2.6" fill="#ECEFF4"></circle><circle cx="88" cy="58" r="2.2" fill="#ECEFF4"></circle></svg>
+<span>shroom</span></a>
+<a href="https://github.com/bagrat/shroom" style="display: flex; align-items: center; min-height: 44px; font-size: 14px; text-decoration: none; color: #c3cad6">GitHub</a>
+</header>
+<main style="width: 100%; max-width: 640px; padding: 80px 0 0 0; display: flex; flex-direction: column; gap: 14px">
+<h1 style="margin: 0; font-size: 2.5rem; font-weight: 700; line-height: 1.12" data-said="feedback.sent-title">Thank you</h1>
+<p style="margin: 0; font-size: 1.15rem; color: #88c0d0" data-said="feedback.sent-line">It's on its way. If you left your email, you'll hear back.</p>
+<p style="margin: 0; color: #aeb6c4; font-size: 14px" data-said="feedback.sent-kept">Nothing you sent is kept on shroom.am: it goes by email, and only there.</p>
+<div style="margin: 24px 0 0 0; padding: 14px 16px; border-radius: 10px; background: #333944; color: #c3cad6; font-size: 14px" data-said="feedback.failed">If it can't go through: “That didn't send — try again in a minute, or write to <a href="#">hi@shroom.am</a>.” The form keeps what you wrote.</div>
+</main>
+</div>
+<div style="width: 820px; color: #aeb6c4; font-size: 12px; line-height: 1.45"><span style="color: #88c0d0; font-weight: 600">H</span> After Send. A refusal (the rate limit, the check, the switch being off) keeps the form filled and says so in one line.</div>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1960,"height":1610}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

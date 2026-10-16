@@ -1,0 +1,18 @@
+{
+ "about": "Each line of shroom's log a report may carry, and what it becomes once cleaned (site/clean.js; the app's cleaner reads the same cases). Values are invented.",
+ "cases": [
+  ["    1840 core config [Probe, Draw]", "    1840 core config [Probe, Draw]"],
+  ["  413020 uploader 7f3a…: request to https://v.example-owner.workers.dev/_shroom/api/up timed out", "  413020 uploader 7f3a…: request to <your space> timed out"],
+  ["  2210 member: joined v.example-owner.workers.dev, but couldn't write join.json", "  2210 member: joined <your space>, but couldn't write join.json"],
+  ["  5120 member: peek 9xk2 on media.example.com: live", "  5120 member: peek 9xk2 on <a host>: live"],
+  ["  1200 updater staged 0.1.18 (/Users/jane/Applications/shroom.app)", "  1200 updater staged 0.1.18 (~/Applications/shroom.app)"],
+  ["  3300 takes: 7f3a couldn't be saved to Movies (No such file or directory: /Users/jane/Movies/Where the 502s come from.mp4)", "  3300 takes: 7f3a couldn't be saved to Movies (No such file or directory: ~/Movies/Where the 502s come from.mp4)"],
+  ["  9000 uploader: S3 PUT https://0123456789abcdef0123456789abcdef.r2.cloudflarestorage.com/shroom-space/rec/x failed", "  9000 uploader: S3 PUT <a web address> failed"],
+  ["  9100 library refresh: account 0123456789abcdef0123456789abcdef not reachable", "  9100 library refresh: account <an id> not reachable"],
+  ["  9200 wizard token: failed Unauthorized for someone@example.com", "  9200 wizard token: failed Unauthorized for <an email>"],
+  ["  9300 updater check: error sending request for url (https://github.com/bagrat/shroom/releases/latest/download/update.txt)", "  9300 updater check: error sending request for url (https://github.com/…)"],
+  ["  9400 cloud: a key-shaped run Zm9vYmFyYmF6cXV4MTIzNDU2Nzg5MA== in an error", "  9400 cloud: a key-shaped run <an id> in an error"],
+  ["  9500 boot: launch login · shroom 0.1.18 · 2026-10-16T09:12:00Z", "  9500 boot: launch login · shroom 0.1.18 · 2026-10-16T09:12:00Z"],
+  ["  9600 boot: encoder videotoolbox", "  9600 boot: encoder videotoolbox"]
+ ]
+}

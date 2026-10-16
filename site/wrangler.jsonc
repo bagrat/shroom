@@ -8,7 +8,7 @@
     "directory": "public",
     "binding": "ASSETS",
     // Only these reach worker.js; the favicons and og.png are served as they are, and free.
-    "run_worker_first": ["/", "/install", "/agent", "/agent.md", "/whats-new", "/whats-new/*", "/faq", "/privacy", "/terms", "/_/*"],
+    "run_worker_first": ["/", "/install", "/agent", "/agent.md", "/whats-new", "/whats-new/*", "/faq", "/privacy", "/terms", "/feedback", "/report", "/_/*"],
     "html_handling": "none",
     "not_found_handling": "none"
   },
@@ -21,6 +21,19 @@
   // Counts, not logs (worker.js says what one row holds).
   // The dataset is made on its first write and keeps rows three months.
   "analytics_engine_datasets": [{ "binding": "STATS", "dataset": "shroom_site" }],
+  // POST /report (site/report.js): one message per report, to the inbox in the secret
+  // REPORT_TO — a destination verified in Email Routing. The binding names no address: with
+  // none, it can reach only the account's verified destinations, and the address stays out
+  // of this repo. TURNSTILE_SECRET is the feedback form's check. Neither secret is here: they
+  // live in the Worker (`wrangler secret put`). Without REPORT_TO, /report answers "off";
+  // without TURNSTILE_SECRET, so does the feedback form's.
+  "send_email": [{ "name": "EMAIL" }],
+  // A few reports a minute from one address, and a ceiling for everyone (per Cloudflare
+  // location). The counters are Cloudflare's own and short-lived; nothing else is kept.
+  "ratelimits": [
+    { "name": "REPORT_RATE", "namespace_id": "1801", "simple": { "limit": 3, "period": 60 } },
+    { "name": "REPORT_CEILING", "namespace_id": "1802", "simple": { "limit": 30, "period": 60 } }
+  ],
   // No request logs: nothing about who visited is kept.
   "observability": { "enabled": false }
 }
