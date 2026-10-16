@@ -2333,10 +2333,10 @@ The General tab: U4's login checkbox at home at last (it reads the system's trut
 | “shroom 1.3.0 is ready.” | status | provisional | Mirrors config's update-ready banner. The version varies. |
 | “Update” | button | provisional | Filled. |
 | “What's new” | link | provisional |  |
-| “Something off?” | field-label | provisional | Row label of the help row: Copy diagnostics and Report a problem… sit at its end (B180). |
-| “Copied” | button | provisional | Copy diagnostics reads Copied for a moment after its click, as Copy link does (B180). |
-| “Or tell us in public, on GitHub.” | line | provisional | Under the card. 'GitHub' is the new-issue link prefilled with the version (N8), with no log in it. |
-| “Sent — thank you. If you left your email, you’ll hear back.” | status | provisional | After a report went through (B180); until the window closes. |
+| “Something off?” | field-label | ratified | Row label of the help row: Copy diagnostics and Report a problem… sit at its end (B180). Ratified by Bagrat, 2026-10-16, relayed by the orchestrator. |
+| “Copied” | button | ratified | Copy diagnostics reads Copied for a moment after its click, as Copy link does (B180). Ratified by Bagrat, 2026-10-16, relayed by the orchestrator. |
+| “Or tell us in public, on GitHub.” | line | ratified | Under the card. 'GitHub' is the new-issue link prefilled with the version (N8), with no log in it. Ratified by Bagrat, 2026-10-16, relayed by the orchestrator. |
+| “Sent — thank you. If you left your email, you’ll hear back.” | status | ratified | After a report went through (B180); until the window closes. Ratified by Bagrat, 2026-10-16, relayed by the orchestrator. |
 | “shroom 1.4.0 needs macOS 15 — this Mac stays on 1.3.2.” | status | provisional | Past this Mac's macOS: the update row reads this, with no banner and no dot. The versions and the macOS number vary. |
 | “You can do this once your recording is finished.” | line | provisional | Law 4: mid-take, Update greys with this line (only possible if the window was open before the take). |
 | “shroom 1.2.0.” | line | provisional | one case the spec didn't print, so it varies by case — the copy table: Settings · General, nothing known about a newer version (no check answered yet, or one couldn't run) · copy table |
@@ -2735,14 +2735,14 @@ Report a problem (B180, N53): a description, an optional email for an answer, an
 
 | Said | Role | Copy | Note |
 |---|---|---|---|
-| “Report a problem” | sheet-title | provisional |  |
-| “Tell us what happened. shroom adds its version, your Mac’s model and its recent log — never your videos, links, names or keys. It goes straight to the person who makes shroom.” | sheet-body | provisional |  |
-| “What were you doing, and what went wrong?” | placeholder | provisional | The description box; Return types a new line, ⌘Return sends. |
-| “Your email, if you’d like an answer (optional)” | field-label | provisional |  |
-| “See exactly what’s sent” | disclosure | provisional | Opens the whole report, word for word, cleaned. |
-| “Putting it together…” | line | provisional | Under the disclosure until the report is gathered; Send waits for it. |
-| “Sending…” | button | provisional | Send's label while it posts; Cancel greys with it. |
-| “That didn’t go through — check your connection and try again. Or email it to hi@shroom.am instead.” | line | provisional | Offline, refused, rate-limited or switched off: the sheet keeps what was typed. “email it to hi@shroom.am” is a link: a mail draft with the description and the version. |
+| “Report a problem” | sheet-title | ratified | Ratified by Bagrat, 2026-10-16, relayed by the orchestrator. |
+| “Tell us what happened. shroom adds its version, your Mac’s model and its recent log — never your videos, links, names or keys. It goes straight to the person who makes shroom.” | sheet-body | ratified | Ratified by Bagrat, 2026-10-16, relayed by the orchestrator. |
+| “What were you doing, and what went wrong?” | placeholder | ratified | The description box; Return types a new line, ⌘Return sends. Ratified by Bagrat, 2026-10-16, relayed by the orchestrator. |
+| “Your email, if you’d like an answer (optional)” | field-label | ratified | Ratified by Bagrat, 2026-10-16, relayed by the orchestrator. |
+| “See exactly what’s sent” | disclosure | ratified | Opens the whole report, word for word, cleaned. Ratified by Bagrat, 2026-10-16, relayed by the orchestrator. |
+| “Putting it together…” | line | ratified | Under the disclosure until the report is gathered; Send waits for it. Ratified by Bagrat, 2026-10-16, relayed by the orchestrator. |
+| “Sending…” | button | ratified | Send's label while it posts; Cancel greys with it. Ratified by Bagrat, 2026-10-16, relayed by the orchestrator. |
+| “That didn’t go through — check your connection and try again. Or email it to hi@shroom.am instead.” | line | ratified | Offline, refused, rate-limited or switched off: the sheet keeps what was typed. “email it to hi@shroom.am” is a link: a mail draft with the description and the version. Ratified by Bagrat, 2026-10-16, relayed by the orchestrator. |
 
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
