@@ -4609,15 +4609,17 @@
      "id": "config.camera-only"
     },
     {
-     "text": "Show yourself",
+     "text": "Camera",
      "role": "field-label",
      "copy": "ratified",
-     "note": "the camera picker's accessible name, not shown on the row; it named a switch until the camera became a pick",
+     "note": "the camera picker's accessible name, not shown on the row; “Show yourself” named a switch until the camera became a pick, and Bagrat renamed it Camera on 2026-10-16",
+     "was": "Show yourself",
      "cites": [
       "#43",
-      "#45"
+      "#45",
+      "B181"
      ],
-     "id": "config.show-yourself"
+     "id": "config.camera"
     },
     {
      "text": "Microphone",
@@ -4863,10 +4865,10 @@
      "note": "One source picker. Default: last-used, else the display with the menu bar. Choosing Camera only keeps the camera picker as the pick of the camera the take records, without Camera off, and a first pick of Camera only triggers the inline camera prompt (N22, DEVIATIONS #43)."
     },
     {
-     "label": "Show yourself",
+     "label": "Camera",
      "kind": "field",
      "return_default": false,
-     "note": "The camera picker, no longer a switch (DEVIATIONS #43); “Show yourself” is its accessible name, not shown (DEVIATIONS #45). System default first, every camera here, then Camera off: a camera turns the bubble on, live from the moment the popover opens; Camera off turns it off and keeps the pick. The first-ever pick is System default, the bubble on (N43, N44); last-used after that. With Camera only as the source it picks the camera the take records, without Camera off."
+     "note": "The camera picker, no longer a switch (DEVIATIONS #43); “Camera” is its accessible name, not shown (DEVIATIONS #45; “Show yourself” until B181). System default first, every camera here, then Camera off: a camera turns the bubble on, live from the moment the popover opens; Camera off turns it off and keeps the pick. The first-ever pick is System default, the bubble on (N43, N44); last-used after that. With Camera only as the source it picks the camera the take records, without Camera off."
     },
     {
      "label": "Microphone",
