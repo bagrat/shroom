@@ -175,7 +175,13 @@ impl Mix {
     }
 
     fn feed_system(&mut self, samples: &[f32], heard: Instant) {
-        let at = self.secs(heard);
+        let (at, now) = (self.secs(heard), self.now());
+        self.feed_system_at(samples, at, now);
+    }
+
+    /// The Mac's sound whose first sample was heard at `at`, delivered at `now` (seconds
+    /// from `base`).
+    fn feed_system_at(&mut self, samples: &[f32], at: f64, now: f64) {
         let rate = self.rate as f64;
         if self.system.is_empty() {
             self.system_at = at;
@@ -189,12 +195,12 @@ impl Mix {
         }
         self.resampler.run(samples, &mut self.system);
         // Never more than KEEP behind what the mix will want next.
-        let wanted = self.now() - self.latency - KEEP;
+        let wanted = now - self.latency - KEEP;
         let stale = (((wanted - self.system_at) * rate).floor().max(0.0) as usize).min(self.system.len());
         self.system.drain(..stale);
         self.system_at += stale as f64 / rate;
         if self.voice.is_none() {
-            self.let_out(self.now() - self.latency);
+            self.let_out(now - self.latency);
         }
     }
 
@@ -224,6 +230,12 @@ impl Mix {
     /// The voice's block, as it arrives: held back `latency`, then let out with the Mac's
     /// sound of the same instants added.
     fn push_voice(&mut self, samples: &[f32], flushing: bool) {
+        let now = self.now();
+        self.push_voice_at(samples, now, flushing);
+    }
+
+    /// The voice's block that arrived at `now` (seconds from `base`).
+    fn push_voice_at(&mut self, samples: &[f32], now: f64, flushing: bool) {
         let Some(voice) = self.voice.as_mut() else { return };
         voice.extend(samples.iter().copied());
         let rate = self.rate as f64;
@@ -234,7 +246,7 @@ impl Mix {
         }
         let mut block: Vec<f32> = voice.drain(..n).collect();
         // The newest sample in the line was heard now; the block ends `held` before it.
-        let from = self.now() - (held + n) as f64 / rate;
+        let from = now - (held + n) as f64 / rate;
         let system = self.system_over(from, n);
         for (v, s) in block.iter_mut().zip(system) {
             *v = limit(*v + s);
@@ -356,6 +368,98 @@ impl AudioSource for Mixed {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A take on a clock the test keeps: the Mac plays `wave(t)` (t in seconds, host clock)
+    /// as ScreenCaptureKit delivers it, 10 ms buffers at 48 kHz, each arriving 65 ms after
+    /// its first sample was heard, with the Mac's sound card `mac_ppm` fast against the
+    /// host; a silent microphone at `rate` hands over `block`-sample blocks, its clock
+    /// `mic_ppm` fast, each arriving up to `jitter` seconds after its last sample was heard
+    /// (a callback is never early). What the take's track carries, and when each of its
+    /// samples was heard (host clock).
+    fn take(rate: u32, block: usize, secs: f64, jitter: f64, mic_ppm: f64, mac_ppm: f64, wave: impl Fn(f64) -> f32) -> (Vec<f32>, Vec<f64>) {
+        let out = AudioSink::with_capacity(rate as usize * (secs as usize + 2));
+        let mut mix = Mix::new(rate, out.clone(), Arc::default(), true);
+        let mic_period = block as f64 / rate as f64 / (1.0 + mic_ppm * 1e-6);
+        let mac_buf = 480usize;
+        let mac_period = mac_buf as f64 / SYSTEM_RATE as f64 / (1.0 + mac_ppm * 1e-6);
+        // A fixed pseudo-random jitter, so the test is the same every run.
+        let mut seed = 0x2545_f491_4f6c_dd1du64;
+        let mut rand = move || {
+            seed ^= seed << 13;
+            seed ^= seed >> 7;
+            seed ^= seed << 17;
+            (seed >> 11) as f64 / (1u64 << 53) as f64
+        };
+        let (mut j, mut m, mut last_voice) = (0usize, 0usize, 0.0f64);
+        loop {
+            let voice_due = ((j + 1) as f64 * mic_period + jitter * rand()).max(last_voice);
+            let mac_heard = m as f64 * mac_period;
+            let mac_due = mac_heard + mac_period + 0.065;
+            if voice_due > secs && mac_due > secs {
+                break;
+            }
+            if mac_due <= voice_due {
+                let samples: Vec<f32> = (0..mac_buf).map(|i| wave(mac_heard + i as f64 * mac_period / mac_buf as f64)).collect();
+                mix.feed_system_at(&samples, mac_heard, mac_due);
+                m += 1;
+            } else {
+                mix.push_voice_at(&vec![0.0; block], voice_due, false);
+                last_voice = voice_due;
+                j += 1;
+            }
+        }
+        let heard = out.drain();
+        let when = (0..heard.len()).map(|k| k as f64 * mic_period / block as f64).collect();
+        (heard, when)
+    }
+
+    /// Where the track bends by more than `step` from one sample to the next: a splice.
+    fn splices(s: &[f32], step: f32) -> Vec<usize> {
+        (2..s.len()).filter(|&i| (s[i] - 2.0 * s[i - 1] + s[i - 2]).abs() > step).collect()
+    }
+
+    /// How far behind (seconds) the Mac's sound sits in `s[from..]`, against when each
+    /// sample was heard: the best fit over ±60 ms in 0.1 ms steps.
+    fn lag(s: &[f32], when: &[f64], from: usize, wave: impl Fn(f64) -> f32) -> f64 {
+        (-600..=600)
+            .map(|d| d as f64 * 1e-4)
+            .map(|d| (d, (from..s.len()).map(|k| (s[k] - wave(when[k] - d)).powi(2)).sum::<f32>()))
+            .min_by(|a, b| a.1.total_cmp(&b.1))
+            .unwrap()
+            .0
+    }
+
+    #[test]
+    fn a_microphones_late_blocks_never_splice_the_macs_sound() {
+        // The report: AirPods' call profile (24 kHz, 20 ms blocks), a callback up to 15 ms
+        // late. Every block used to be placed by when it arrived, so the Mac's sound was cut
+        // at each block's edge: some of it skipped or silence put in, many times a second.
+        let tone = |t: f64| (0.5 * (std::f64::consts::TAU * 440.0 * t).sin()) as f32;
+        let (heard, _) = take(24_000, 480, 6.0, 0.015, 0.0, 0.0, tone);
+        let settled = 24_000; // the first second: the mix finds its place
+        // 440 Hz at 24 kHz bends by at most 0.0066 a sample; a cut, far more.
+        let cuts = splices(&heard[settled..], 0.01);
+        assert!(cuts.is_empty(), "{} splices in 5 s, the first at {:?}", cuts.len(), &cuts[..cuts.len().min(5)]);
+        let slow = |t: f64| (0.5 * (std::f64::consts::TAU * 3.0 * t).sin()) as f32;
+        let (heard, when) = take(24_000, 480, 6.0, 0.015, 0.0, 0.0, slow);
+        let late = lag(&heard, &when, settled, slow);
+        assert!(late.abs() < 0.012, "the Mac's sound sits {:.1} ms off the voice", late * 1e3);
+    }
+
+    #[test]
+    fn clocks_that_drift_apart_stay_in_step_without_a_splice() {
+        // A microphone's clock and the Mac's sound card each run a little off the host's:
+        // ±100 ppm is 6 ms a minute. The mix follows by stretching, never by cutting.
+        let slow = |t: f64| (0.5 * (std::f64::consts::TAU * 3.0 * t).sin()) as f32;
+        for (mic, mac) in [(100.0, -100.0), (-100.0, 100.0)] {
+            let (heard, when) = take(48_000, 512, 90.0, 0.004, mic, mac, slow);
+            // 3 Hz bends by ~2e-7 a sample; one sample dropped or doubled, ~4e-4.
+            let cuts = splices(&heard[48_000..], 5e-5);
+            assert!(cuts.is_empty(), "mic {mic} ppm, Mac {mac} ppm: {} splices, the first at {:?}", cuts.len(), &cuts[..cuts.len().min(5)]);
+            let late = lag(&heard, &when, heard.len() - 48_000, slow);
+            assert!(late.abs() < 0.008, "mic {mic} ppm, Mac {mac} ppm: after 90 s the Mac's sound sits {:.1} ms off", late * 1e3);
+        }
+    }
 
     #[test]
     fn resampling_keeps_the_count_and_the_level() {
