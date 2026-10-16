@@ -1657,7 +1657,7 @@ fn every_broken_row_unticks_and_only_the_first_is_current() {
         [
             (shroom_core::scene::Glyph::Done, "✓ Cloudflare account — Bagrat's Account"),
             (shroom_core::scene::Glyph::Done, "✓ Access token valid — on this Mac"),
-            (shroom_core::scene::Glyph::Current, "→ A credit card for storage (their rule, not a charge — free up to about six hours of video)"),
+            (shroom_core::scene::Glyph::Current, "→ A credit card for storage (their rule, not a charge — free up to about three hours of video)"),
             (shroom_core::scene::Glyph::Done, "✓ Your link name — v.myshroom.workers.dev"),
             (shroom_core::scene::Glyph::Ahead, "• Wiring it up (shroom does this part)"),
             (shroom_core::scene::Glyph::Ahead, "• Letting macOS allow recording (microphone, camera and screen — a one-time yes each)"),

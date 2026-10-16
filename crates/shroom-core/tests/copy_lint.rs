@@ -158,7 +158,7 @@ fn the_lint_catches_internals_and_codes_and_spares_the_product() {
         "Paused — 4:32",
         "shroom 1.3.0 is ready.",
         "Uploading — 40%. Your link already works.",
-        "about 100 hours for $2.40 a month.",
+        "about 30 hours for $1.50 a month.",
         "Found your space — v.myshroom.workers.dev, 14 videos. This Mac is joined.",
         "For macOS 14 or newer, Apple silicon and Intel.",
         "140 videos in your space",
