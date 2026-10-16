@@ -996,6 +996,17 @@
     "landing (the install block's order)"
    ],
    "amended_by": []
+  },
+  {
+   "id": "N53",
+   "title": "Report a problem, and Copy diagnostics",
+   "decision": "**Proposed, not built (Bagrat asked for it, 2026-10-16; boards for his review).** Settings · General's “Something off?” becomes a row with **Copy diagnostics** and **Report a problem…**, the GitHub door kept under it as the public one. Report a problem… opens a sheet: a description, “See exactly what's sent” (the whole report, cleaned, word for word), Save full report… (the save panel, then shown in Finder), Copy, Cancel, and Email it (default; a `mailto:` draft to hi@shroom.am carrying the description, the version and Mac, and as much of the cleaned log tail as a mail link holds; with no mail app, the sheet points to Copy instead). The report is the version, macOS, chip and memory, the setup timeline, this Mac's role as counts, and the last 200 lines of the run log with home paths, the space's host, other web addresses, emails and long ids replaced. Nothing goes to a service of ours (none exists); nothing is copied without a click (law 10). Proposal: dev/proposals/report-a-problem.md; DECISIONS B180. The said-lines and the `report-problem` state land with the build.",
+   "status": "provisional",
+   "date": "2026-10-16",
+   "amends": [
+    "N8 (the doors: a report through the person's own mail beside the issue link)"
+   ],
+   "amended_by": []
   }
  ],
  "surfaces": [
