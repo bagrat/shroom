@@ -123,6 +123,9 @@ lives in `spec/`; the working docs live in `docs/`.
 - **Blocked children are surfaced.** Each recap checks every live child's `status_bucket`.
   One that reads blocked or waiting on a permission gets a push to Bagrat at once, with its
   session link and the exact thing to approve.
+- **Asking Bagrat: one question at a time.** As simple as it can be put. When the answer
+  is a choice, ask it with the question tool (`AskUserQuestion`) and its options, not as
+  prose (Bagrat, 2026-10-16).
 - **Report up; don't wait to be polled.** A session the orchestrator spawned or watches
   messages it (`send_message`) when something that matters changes. That covers finishing,
   opening or merging a PR, failing, getting blocked, or needing Bagrat: a question, a
