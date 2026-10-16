@@ -126,6 +126,9 @@ lives in `spec/`; the working docs live in `docs/`.
 - **Asking Bagrat: one question at a time.** As simple as it can be put. When the answer
   is a choice, ask it with the question tool (`AskUserQuestion`) and its options, not as
   prose (Bagrat, 2026-10-16).
+- **Push notifications come from the orchestrator.** A child session sends Bagrat a push
+  only when it absolutely needs him and can't go through the orchestrator. Everything
+  else goes to the orchestrator, and only the orchestrator pushes him (Bagrat, 2026-10-16).
 - **"Remember this."** When Bagrat asks a session to remember something about how he
   works, it goes into this file, into shroom-private's CLAUDE.md, or both, by where it
   applies. Anything more specific waits for a memory that also works in cloud sessions,
