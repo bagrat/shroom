@@ -73,6 +73,8 @@ const W = {
 };
 const GET_SHROOM_BLOCK = (code) => LANDING(code).filter((l) => ![W.hero, W.sevenDays].includes(l.text) && !l.text.startsWith("shroom records your screen"));
 const INSTALL = (code) => `curl -fsSL https://shroom.am/install | sh -s -- --join ${HOST}/join/${code}`;
+// The Homebrew join line (N50, N51): the link whole, https:// and all.
+const BREW = (code) => `brew install --cask bagrat/shroom/shroom && open -a ~/Applications/shroom.app "https://${HOST}/join/${code}"`;
 
 // ───────── helpers ─────────
 
@@ -1687,6 +1689,7 @@ describe("the join page (§4.3, r6, #11)", () => {
     hasLines(html, LANDING(CODE.ani));
     expect(titleOf(html)).toBe(W.hero);
     expect(textOf(html)).toContain(INSTALL(CODE.ani));
+    expect(textOf(html)).toContain(BREW(CODE.ani));
     expect(html).toContain(`shroom://join/${HOST}/${CODE.ani}`);
     expect(html).toContain("maxTouchPoints"); // iPadOS's Macintosh UA flips to the elsewhere face
     lacks(html, [W.ownerNote.split(" Ani ")[0], W.used, W.expired]);
@@ -1722,7 +1725,7 @@ describe("the join page (§4.3, r6, #11)", () => {
     const html = await expectFace(await page(space(), `/join/${CODE.ani}`, { ua: UA[ua] }));
     hasLines(html, everyCase(saidOf(r6, "join-landing-elsewhere")));
     expect(titleOf(html)).toBe(W.hero);
-    lacks(html, ["curl -fsSL", pick("join-landing", "Get shroom"), pick("join-landing", "Already have shroom?"), pick("join-landing", "Paste this into Terminal")]);
+    lacks(html, ["curl -fsSL", "brew install", pick("join-landing", "Get shroom"), pick("join-landing", "Already have shroom?"), pick("join-landing", "Paste this into Terminal")]);
   });
 
   it("a Mac's browser — Safari or Chrome — gets the Mac face", async () => {

@@ -4,7 +4,7 @@
 
 The machine: every state, edge, rule, said-line and law of shroom v1 — the spec (DECISIONS B133). Sessions edit it; MACHINE.md and the canvas's machine boards are generated from it.
 
-142 states · 294 edges · 23 rules · 545 said-lines · 16 laws · 61 ledger rows.
+142 states · 294 edges · 23 rules · 547 said-lines · 16 laws · 62 ledger rows.
 
 Status: **ratified** is Bagrat's; **provisional** is designed or built and awaits him (each cites its row: `#n` is a DEVIATIONS row of docs/DECISIONS.md, `Bn` a decision, `Nn`/`Un`/`Pn` a ledger row below). `SM:n` in older citations is a line of the retired spec text, kept in history/spec/UX-STATEMACHINE.md.
 
@@ -2940,6 +2940,8 @@ The page a join link opens, served by the space's own Worker with no shroom.am d
 | “Copy” | button | provisional |  |
 | “Read it first — the same address opens as readable source.” | line | ratified | The landing's ratified line, verbatim (N6). |
 | “For macOS 14 or newer, Apple silicon.” | line | ratified | The landing's ratified line, verbatim. Only the sentence's shape is ratified: the OS floor and Intel stance are scaffold-time facts, to fill in without rewording (line 214). · was “For macOS 14 or newer, Apple silicon and Intel.” · B7, B44, copy table, B134 |
+| “Use Homebrew? This does the same:” | line | ratified | Under the install command, above a divider of its own; quieter than the install line (N51). · N51 |
+| “brew install --cask bagrat/shroom/shroom && open -a ~/Applications/shroom.app "https://v.myshroom.workers.dev/join/7xk2pm"” | other | ratified | The Homebrew join line (N50, N51): the link varies, and is always whole, https:// and all — the app takes a web address only as a join link. Its Copy is outlined, not filled. · N50, N51 |
 | “Already have shroom?” | line | provisional | Below a divider. |
 | “Open shroom” | button | provisional | The shroom://join/… deep link. |
 | “If it doesn't open, paste this page's address into shroom.” | line | provisional | The fallback for the deep link. |
@@ -3760,6 +3762,7 @@ A move that holds for a whole group of states, written once (B133). The tests ex
 | N48 | The storage figures and the one contact address | **The storage figures count what a recording keeps, and shroom has one address, `hi@shroom.am`** (Bagrat, 2026-10-16: correct the copy now, optimise storage later; one contact address everywhere). A recording keeps its stream and its MP4 copy, about 3.2 GB an hour at Normal, so the free 10 GB holds about three hours and $1.50 a month (100 GB at $0.015/GB-month) about thirty. The landing's tiles read “$0 /month — about three hours of video” and “$1.50 /month — about thirty hours”; the welcome reads “free for about three hours of video, and pennies after that — about 30 hours for $1.50 a month.”; the card row reads “free up to about three hours of video”. Every line that named `issues@shroom.am` (the installer's header and failure lines, the app's “Something off?” line and its mail door) names `hi@shroom.am`. | ratified | 2026-10-16 |
 | N49 | Install via Homebrew | **shroom installs via Homebrew in v1, beside the install line** (Bagrat, 2026-10-16: a required item). `brew install --cask bagrat/shroom/shroom`, from shroom's own tap: Homebrew's own cask list takes only apps Apple notarized, and the release is self-signed (B125). The cask does what the install line does: the release's zip, checked against its fingerprint; placed in `~/Applications`; taken only from the release's signer, and opened by macOS without asking because nothing marks it as downloaded. The app keeps itself up to date, so Homebrew leaves updates to it. No screen, line or control of the app changes. Showing it on the landing page would be a design change, put on the canvas first. How it is built and kept current: DECISIONS B175. | ratified | 2026-10-16 |
 | N50 | A join link macOS hands to shroom | **A join link macOS hands to shroom as it opens is an arrival, like the page's Open shroom.** `open -a shroom "https://<space>/join/<code>"` (the Homebrew join line) makes macOS give shroom the link with the open; shroom takes a web address only when it reads as a join link and ignores any other. It lands where Open shroom's `shroom://join/…` lands: kept in the owner-only invite file, then the invite window (member-welcome, or join-already-here / join-switch-confirm) — never a silent join — and it waits while a take is open (Law 4). shroom claims no web addresses, so no website can send it one, and the link is never on the app's command line. Built and proved: DECISIONS B176. | provisional | 2026-10-16 |
+| N51 | The invite page offers the Homebrew join line | **The invite page shows the Homebrew join line under the install command** (Bagrat, 2026-10-16: the board approved, placement and words as drawn). “Use Homebrew? This does the same:” then `brew install --cask bagrat/shroom/shroom && open -a ~/Applications/shroom.app "https://<space>/join/<code>"` with its own Copy, quieter than the install command's. It goes live only once the app that takes the link (N50, 0.1.17) is out. Built: DECISIONS B177. | ratified | 2026-10-16 |
 
 ## Surfaces
 
