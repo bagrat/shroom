@@ -479,7 +479,9 @@
    "status": "ratified",
    "date": "2026-07-25",
    "amends": [],
-   "amended_by": []
+   "amended_by": [
+    "N48 (the mail door is hi@shroom.am)"
+   ]
   },
   {
    "id": "N9",
@@ -532,7 +534,8 @@
    "amends": [],
    "amended_by": [
     "N14 (box-1 wording)",
-    "N19 (no-morph reversed)"
+    "N19 (no-morph reversed)",
+    "N48 (the free ceiling is about three hours)"
    ]
   },
   {
@@ -544,7 +547,9 @@
    "amends": [
     "N13 (box-1 wording)"
    ],
-   "amended_by": []
+   "amended_by": [
+    "N48 (the card row's free ceiling is about three hours)"
+   ]
   },
   {
    "id": "N15",
@@ -932,6 +937,19 @@
     "mic-lost's and mic-permission-lost's “continues without sound” (now “without your microphone”)"
    ],
    "amended_by": []
+  },
+  {
+   "id": "N48",
+   "title": "The storage figures and the one contact address",
+   "decision": "**The storage figures count what a recording keeps, and shroom has one address, `hi@shroom.am`** (Bagrat, 2026-10-16: correct the copy now, optimise storage later; one contact address everywhere). A recording keeps its stream and its MP4 copy, about 3.2 GB an hour at Normal, so the free 10 GB holds about three hours and $1.50 a month (100 GB at $0.015/GB-month) about thirty. The landing's tiles read “$0 /month — about three hours of video” and “$1.50 /month — about thirty hours”; the welcome reads “free for about three hours of video, and pennies after that — about 30 hours for $1.50 a month.”; the card row reads “free up to about three hours of video”. Every line that named `issues@shroom.am` (the installer's header and failure lines, the app's “Something off?” line and its mail door) names `hi@shroom.am`.",
+   "status": "ratified",
+   "date": "2026-10-16",
+   "amends": [
+    "N8 (the mail door's address)",
+    "N13 and N14 (the free ceiling, six hours → three)",
+    "the landing's price tiles and the welcome's first paragraph"
+   ],
+   "amended_by": []
   }
  ],
  "surfaces": [
@@ -1050,7 +1068,7 @@
     "The landing's page chrome is given only as '🍄 shroom wordmark left · GitHub link right.' The 🍄 is likely the mock stand-in for the logo (spec header, lines 18-20). The GitHub link's wording is not specified.",
     "The demo id 'b4kq9d' is illustrative ('real space; id illustrative').",
     "Personas: the dev walks Region 1 alone. The guided persona's agent overlays narration on the same machine; Region 6 defines the overlay, not a second machine (lines 169-170). Entry arrow 3 into the landing is the agent fetching the BYO-agent skill.",
-    "The welcome's two-register choices are ratified as-is: 'storage' on the welcome vs 'account' on the landing, and numerals ('100 hours') on the welcome vs words ('about a hundred hours') on the landing tile. Tests must not normalize them (lines 331-333, Law 16).",
+    "The welcome's two-register choices are ratified as-is: 'storage' on the welcome vs 'account' on the landing, and numerals ('30 hours') on the welcome vs words ('about thirty hours') on the landing tile. Tests must not normalize them (lines 331-333, Law 16).",
     "There are no Fat-marker status notes in Region 1. Deliberately absent: brew and .dmg lanes (post-v1), any local recording before setup (U1), and the min-OS floor and Intel stance (scaffold-time facts) (lines 377-381).",
     "All apostrophes in Region 1's said-lines are straight ASCII (') in the spec; quote marks around lines are curly “ ” and are stripped. Tests should match the spec's straight apostrophes."
    ],
@@ -2149,18 +2167,18 @@
      "id": "landing.you-only-ever-pay"
     },
     {
-     "text": "$0 /month — about six hours of video",
+     "text": "$0 /month — about three hours of video",
      "role": "other",
      "copy": "ratified",
      "note": "Price tile 1 of 2 (an eyeball-number tile). '$0' is bold. The spec draws it in [ ] brackets, but it is a tile, not a button.",
      "id": "landing.0-month-about-six"
     },
     {
-     "text": "$2.40 /month — about a hundred hours",
+     "text": "$1.50 /month — about thirty hours",
      "role": "other",
      "copy": "ratified",
-     "note": "Price tile 2 of 2. '$2.40' is bold. Words, not numerals, on the landing; the welcome deliberately uses numerals (Law 16, N12).",
-     "id": "landing.2-40-month-about"
+     "note": "Price tile 2 of 2. '$1.50' is bold. Words, not numerals, on the landing; the welcome deliberately uses numerals (Law 16, N12).",
+     "id": "landing.1-50-month-about"
     },
     {
      "text": "Delete old videos and pay less — storage is the whole bill.",
@@ -2370,7 +2388,7 @@
    "entry": "Read it first is clicked on the landing: a text view of the script at the same URL.",
    "said": [
     {
-     "text": "# shroom installer\n#\n# You're reading exactly what will run — this address serves one file,\n# and this is it. Four things, in order:\n#\n#   1. Download the shroom app for your Mac.\n#   2. Check it against its published fingerprint — if anything is off,\n#      nothing gets installed.\n#   3. Place it in ~/Applications — no admin password, nothing outside\n#      your home folder.\n#   4. Open it.\n#\n# Run it again anytime — that's also the update: same four steps, newer\n# shroom. If shroom is in the middle of a recording, the script stops\n# and changes nothing.\n#\n# Run it with --uninstall to remove shroom from this Mac.\n#\n# Trouble, questions: https://github.com/bagrat/shroom/issues/new\n# No GitHub? issues@shroom.am works too.",
+     "text": "# shroom installer\n#\n# You're reading exactly what will run — this address serves one file,\n# and this is it. Four things, in order:\n#\n#   1. Download the shroom app for your Mac.\n#   2. Check it against its published fingerprint — if anything is off,\n#      nothing gets installed.\n#   3. Place it in ~/Applications — no admin password, nothing outside\n#      your home folder.\n#   4. Open it.\n#\n# Run it again anytime — that's also the update: same four steps, newer\n# shroom. If shroom is in the middle of a recording, the script stops\n# and changes nothing.\n#\n# Run it with --uninstall to remove shroom from this Mac.\n#\n# Trouble, questions: https://github.com/bagrat/shroom/issues/new\n# No GitHub? hi@shroom.am works too.",
      "role": "other",
      "copy": "ratified",
      "note": "The ratified header comment block of the install script, verbatim with its line breaks and leading spaces. In the file it directly follows '#!/bin/sh'. Inline comments elsewhere aren't ratified copy. The --uninstall line is B135's (Bagrat, 2026-10-14, on the UninstallTerminal board).",
@@ -2507,14 +2525,14 @@
    "entry": "Classified by the downloaded app's hash ≠ the published manifest.",
    "said": [
     {
-     "text": "The download didn't check out, so nothing was installed. Run it once more — if it repeats, tell us: https://github.com/bagrat/shroom/issues/new — no GitHub? issues@shroom.am works too.",
+     "text": "The download didn't check out, so nothing was installed. Run it once more — if it repeats, tell us: https://github.com/bagrat/shroom/issues/new — no GitHub? hi@shroom.am works too.",
      "role": "terminal-output",
      "copy": "draft",
      "note": "From the 'Said-line draft' column. The spec sets the URL as code; the backticks are stripped here. The two doors are per N8, and the issue URL may prefill title and body through query params (an N8 scaffold nicety).",
      "id": "install-checksum-fail.the-download-didnt-check"
     },
     {
-     "text": "This release isn't all there on our side, so nothing was installed. Tell us and we'll fix it: https://github.com/bagrat/shroom/issues/new — no GitHub? issues@shroom.am works too.",
+     "text": "This release isn't all there on our side, so nothing was installed. Tell us and we'll fix it: https://github.com/bagrat/shroom/issues/new — no GitHub? hi@shroom.am works too.",
      "role": "line",
      "copy": "provisional",
      "note": "one case the spec didn't print, so it varies by case — the copy table: The installer, a release that's ours to fix (its manifest or file answers 4xx, a malformed manifest, a zip with no shroom.app)",
@@ -2524,7 +2542,7 @@
      "id": "install-checksum-fail.this-release-isnt-all"
     },
     {
-     "text": "shroom's signature didn't verify, so nothing was installed. Run the same command in Terminal — if it repeats, tell us: https://github.com/bagrat/shroom/issues/new — no GitHub? issues@shroom.am works too.",
+     "text": "shroom's signature didn't verify, so nothing was installed. Run the same command in Terminal — if it repeats, tell us: https://github.com/bagrat/shroom/issues/new — no GitHub? hi@shroom.am works too.",
      "role": "line",
      "copy": "provisional",
      "note": "one case the spec didn't print, so it varies by case — the copy table: The installer, a signature that doesn't verify or isn't the release's own signer (B125)",
@@ -2732,10 +2750,10 @@
    "entry": "Any of: a first launch on a Mac with no space (the installer's launch); the tray click in idle-unprovisioned (N21); or, designed 2026-09-30 (N41), a launch the user did themselves while unprovisioned, which acts as a tray click.",
    "said": [
     {
-     "text": "shroom records your screen and hands you a link to share — no account with us, no subscription. Your videos live in your own Cloudflare storage: free for about six hours of video, and pennies after that — about 100 hours for $2.40 a month.",
+     "text": "shroom records your screen and hands you a link to share — no account with us, no subscription. Your videos live in your own Cloudflare storage: free for about three hours of video, and pennies after that — about 30 hours for $1.50 a month.",
      "role": "line",
      "copy": "ratified",
-     "note": "First paragraph. The source wraps are joined with spaces. 'shroom' is bold and 'your own' is italic. 'storage' (the landing says 'account') and the numerals ('100 hours') are deliberate two-register choices: don't make them uniform (N12).",
+     "note": "First paragraph. The source wraps are joined with spaces. 'shroom' is bold and 'your own' is italic. 'storage' (the landing says 'account') and the numerals ('30 hours') are deliberate two-register choices: don't make them uniform (N12).",
      "id": "welcome.shroom-records-your-screen"
     },
     {
@@ -2918,7 +2936,7 @@
      "id": "account.one-access-token-for"
     },
     {
-     "text": "• A credit card for storage (their rule, not a charge — free up to about six hours of video)",
+     "text": "• A credit card for storage (their rule, not a charge — free up to about three hours of video)",
      "role": "line",
      "copy": "ratified",
      "note": "Plan row 3 (still ahead). Spec soft-wraps this row across two blockquote lines; joined with a single space. The visible card row is the card-gate pre-warn (N14).",
@@ -7577,10 +7595,10 @@
      "id": "settings-general.whats-new"
     },
     {
-     "text": "Something off? Tell us on GitHub — or write to issues@shroom.am.",
+     "text": "Something off? Tell us on GitHub — or write to hi@shroom.am.",
      "role": "line",
      "copy": "provisional",
-     "note": "'GitHub' is the new-issue link prefilled with the version. issues@shroom.am is the mail door (N8).",
+     "note": "'GitHub' is the new-issue link prefilled with the version. hi@shroom.am is the mail door (N8).",
      "id": "settings-general.something-off-tell-us"
     },
     {
@@ -7642,7 +7660,7 @@
      "note": "The new-issue link, prefilled with the version (N8)."
     },
     {
-     "label": "issues@shroom.am",
+     "label": "hi@shroom.am",
      "kind": "text-link",
      "return_default": false,
      "note": "The mail door (N8)."
