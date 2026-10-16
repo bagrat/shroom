@@ -139,7 +139,7 @@ pub fn quit_anyway() -> String { "Quit anyway".into() }
 
 // ── the welcome (Region 1) ──
 pub fn welcome_what() -> String {
-    "shroom records your screen and hands you a link to share — no account with us, no subscription. Your videos live in your own Cloudflare storage: free for about six hours of video, and pennies after that — about 100 hours for $2.40 a month.".into()
+    "shroom records your screen and hands you a link to share — no account with us, no subscription. Your videos live in your own Cloudflare storage: free for about three hours of video, and pennies after that — about 30 hours for $1.50 a month.".into()
 }
 /// The first paragraph's ratified emphasis: “shroom” bold, “your own” italic.
 pub const WELCOME_WHAT_MARKS: &[(&str, crate::scene::Em)] = &[("shroom", crate::scene::Em::Strong), ("your own", crate::scene::Em::Em)];
@@ -166,7 +166,7 @@ fn row_paren(row: u8) -> &'static str {
     match row {
         1 => "free — they'll want a verified email or a Google sign-in",
         2 => "a pre-filled page — review, create, paste",
-        3 => "their rule, not a charge — free up to about six hours of video",
+        3 => "their rule, not a charge — free up to about three hours of video",
         4 => "part of every link you share — v.yourname.workers.dev",
         5 => "shroom does this part",
         _ => "microphone, camera and screen — a one-time yes each",
@@ -366,9 +366,9 @@ pub fn running_version(version: &str) -> String { format!("shroom {version}.") }
 pub fn update_ready(version: &str) -> String { format!("shroom {version} is ready.") }
 pub fn update() -> String { "Update".into() }
 pub fn whats_new() -> String { "What's new".into() }
-pub fn help_line() -> String { "Something off? Tell us on GitHub — or write to issues@shroom.am.".into() }
+pub fn help_line() -> String { "Something off? Tell us on GitHub — or write to hi@shroom.am.".into() }
 pub fn github() -> String { "GitHub".into() }
-pub fn mail_door() -> String { "issues@shroom.am".into() }
+pub fn mail_door() -> String { "hi@shroom.am".into() }
 pub fn needs_macos(version: &str, macos: u32, running: &str) -> String {
     format!("shroom {version} needs macOS {macos} — this Mac stays on {running}.")
 }

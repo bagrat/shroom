@@ -140,7 +140,7 @@ pub enum PublicUrl {
     ReleaseNotes { version: String },
     /// A new GitHub issue, prefilled with the running version (N8).
     NewIssue { version: String },
-    /// The mail door, issues@shroom.am (N8).
+    /// The mail door, hi@shroom.am (N8).
     Mail,
 }
 
