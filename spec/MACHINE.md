@@ -2334,7 +2334,7 @@ The General tab: U4's login checkbox at home at last (it reads the system's trut
 | “Update” | button | provisional | Filled. |
 | “What's new” | link | provisional |  |
 | “Something off?” | field-label | provisional | Row label of the help row: Copy diagnostics and Report a problem… sit at its end (B180). |
-| “Copied” | status | provisional | For a moment beside Copy diagnostics, as on the page (B180). |
+| “Copied” | button | provisional | Copy diagnostics reads Copied for a moment after its click, as Copy link does (B180). |
 | “Or tell us in public, on GitHub.” | line | provisional | Under the card. 'GitHub' is the new-issue link prefilled with the version (N8), with no log in it. |
 | “Sent — thank you. If you left your email, you’ll hear back.” | status | provisional | After a report went through (B180); until the window closes. |
 | “shroom 1.4.0 needs macOS 15 — this Mac stays on 1.3.2.” | status | provisional | Past this Mac's macOS: the update row reads this, with no banner and no dot. The versions and the macOS number vary. |

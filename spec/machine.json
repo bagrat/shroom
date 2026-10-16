@@ -7691,9 +7691,9 @@
     },
     {
      "text": "Copied",
-     "role": "status",
+     "role": "button",
      "copy": "provisional",
-     "note": "For a moment beside Copy diagnostics, as on the page (B180).",
+     "note": "Copy diagnostics reads Copied for a moment after its click, as Copy link does (B180).",
      "id": "settings-general.copied"
     },
     {
