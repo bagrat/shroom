@@ -16,6 +16,7 @@ pub mod power;
 pub mod presenter;
 pub mod probe;
 pub mod recorder;
+pub mod report;
 pub mod ring;
 pub mod stash;
 pub mod status;
@@ -611,7 +612,9 @@ impl Runtime {
     /// A non-secret field's contents, as typed (the core filters; filtering here would
     /// hide the charset hint, which the core shows when it drops a character).
     pub fn field(&self, field: Field, value: String) {
-        let value: String = value.chars().take(256).collect();
+        // A report's words may run long (B180); every other field is short.
+        let max = if field == Field::ReportWords { shroom_core::copy::REPORT_WORDS_MAX } else { 256 };
+        let value: String = value.chars().take(max).collect();
         self.post(Event::Field { field, value });
     }
 
@@ -880,6 +883,8 @@ fn launch_word(launch: LaunchKind) -> &'static str {
 
 /// The boot lines: kinds only — no path, no name, no secret.
 fn log_boot(rt: &Runtime, home_override: bool, quiet: bool, launch: LaunchKind) {
+    // Which shroom wrote the lines that follow, and when: a report's log reads by it (B180).
+    rt.log(&format!("boot: shroom {} · {}", rt.version, report::utc_now()));
     rt.log(&format!("boot: launch {}", launch_word(launch)));
     rt.log(&format!(
         "boot: home {} · shell {} · cloud {}",
@@ -1224,6 +1229,10 @@ fn shell(rt: &Runtime, app: &AppHandle, cmd: ShellCmd) {
         ShellCmd::Uninstall => uninstall::uninstall(rt, app),
         // A join link's Copy link (Region 6): its code lives in the stash.
         ShellCmd::CopyInvite(id) => os::copy_invite(rt, id),
+        // Report a problem and Copy diagnostics (B180), each off the core thread.
+        ShellCmd::GatherReport { role } => report::gather_for_sheet(rt, role),
+        ShellCmd::CopyDiagnostics { role } => report::copy(rt, role),
+        ShellCmd::SendReport(post) => report::send(rt, post),
     }
 }
 

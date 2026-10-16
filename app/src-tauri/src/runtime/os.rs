@@ -37,7 +37,12 @@ pub fn url(page: &PublicUrl) -> String {
         PublicUrl::NewIssue { version } => {
             format!("https://github.com/bagrat/shroom/issues/new?body={}", percent(&format!("shroom {version}")))
         }
-        PublicUrl::Mail => "mailto:hi@shroom.am".to_string(),
+        // A send that didn't go through (B180): a draft with the words and the version — short,
+        // since a mail link that's too long opens nothing.
+        PublicUrl::MailReport { version, words } => {
+            let words: String = words.chars().take(1_500).collect();
+            format!("mailto:hi@shroom.am?subject={}&body={}", percent(&format!("shroom {version} — a problem")), percent(&format!("{words}\n\nshroom {version}")))
+        }
     }
 }
 
@@ -64,7 +69,7 @@ pub fn open_url(rt: &Runtime, page: &PublicUrl) {
         PublicUrl::Billing { .. } => "billing",
         PublicUrl::ReleaseNotes { .. } => "release-notes",
         PublicUrl::NewIssue { .. } => "new-issue",
-        PublicUrl::Mail => "mail",
+        PublicUrl::MailReport { .. } => "mail-report",
     }));
     open_detached(u);
 }
@@ -467,7 +472,7 @@ pub fn copy_invite(rt: &Runtime, id: shroom_core::world::SecretId) {
 }
 
 /// The general pasteboard — or, in a harness run (a drive), shroom's own named one.
-fn put_on_pasteboard(rt: &Runtime, link: String) {
+pub fn put_on_pasteboard(rt: &Runtime, link: String) {
     let harness = rt.harness;
     super::observe::dispatch_main(move || {
         use objc2_app_kit::{NSPasteboard, NSPasteboardTypeString};
