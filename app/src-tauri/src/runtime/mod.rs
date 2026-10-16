@@ -4,6 +4,7 @@
 pub mod camera;
 pub mod cloud;
 pub mod home;
+pub mod hotkey;
 pub mod launch;
 pub mod library;
 pub mod member;

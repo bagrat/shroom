@@ -617,6 +617,10 @@ fn apply(app: &AppHandle, rt: &Runtime, prev: Option<&Scene>, s: &Scene, exclude
             let _ = t.set_menu(menu);
         }
     }
+    // ⌥⌘P, held only while a take is open (N54).
+    if prev.is_none_or(|p| p.tray.shortcut != s.tray.shortcut) {
+        super::hotkey::hold(rt, s.tray.shortcut);
+    }
 
     // The popover.
     match &s.popover {
