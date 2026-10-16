@@ -888,6 +888,21 @@ mod tests {
     }
 
     #[test]
+    fn an_opened_url_is_taken_only_as_a_join_link() {
+        // N50: what macOS hands the app as it opens. Open shroom's scheme is always taken
+        // (a non-join one is reported, then ignored); a web address only as a join link.
+        for take in ["https://v.myshroom.workers.dev/join/AbCdEfGhIjKlMnOp", "https://V.MyShroom.workers.dev/join/AbCdEfGhIjKlMnOp/",
+            "shroom://join/v.myshroom.workers.dev/AbCdEfGhIjKlMnOp", "shroom://join/short"] {
+            assert!(takes_opened(take), "{take}");
+        }
+        for leave in ["https://shroom.am/", "https://v.myshroom.workers.dev/AbCdEfGhIjKlMnOp", "https://v.myshroom.workers.dev/join/7xk2pm",
+            "https://v.myshroom.workers.dev/join/AbCdEfGhIjKlMnOp?x=1", "http://v.myshroom.workers.dev/join/AbCdEfGhIjKlMnOp",
+            "file:///Users/x/v.myshroom.workers.dev/join/AbCdEfGhIjKlMnOp", "v.myshroom.workers.dev/join/AbCdEfGhIjKlMnOp", ""] {
+            assert!(!takes_opened(leave), "{leave}");
+        }
+    }
+
+    #[test]
     fn the_parent_proof_is_domain_separated_and_bound_to_the_request() {
         let p = parent_proof("secret", "POST", "v.example.workers.dev", "/_shroom/api/enroll", 1_790_942_400, b"{}");
         assert!(p.starts_with("ShroomParent 1790942400."));

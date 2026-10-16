@@ -963,6 +963,17 @@
     "P17 (brew leaves the post-v1 list; the .dmg stays on it)"
    ],
    "amended_by": []
+  },
+  {
+   "id": "N50",
+   "title": "A join link macOS hands to shroom",
+   "decision": "**A join link macOS hands to shroom as it opens is an arrival, like the page's Open shroom.** `open -a shroom \"https://<space>/join/<code>\"` (the Homebrew join line) makes macOS give shroom the link with the open; shroom takes a web address only when it reads as a join link and ignores any other. It lands where Open shroom's `shroom://join/…` lands: kept in the owner-only invite file, then the invite window (member-welcome, or join-already-here / join-switch-confirm) — never a silent join — and it waits while a take is open (Law 4). shroom claims no web addresses, so no website can send it one, and the link is never on the app's command line. Built and proved: DECISIONS B176.",
+   "status": "provisional",
+   "date": "2026-10-16",
+   "amends": [
+    "member-welcome (one more arrival door)"
+   ],
+   "amended_by": []
   }
  ],
  "surfaces": [
@@ -9448,7 +9459,7 @@
    "status": "provisional",
    "board": "MemberWelcome",
    "summary": "The welcome window's twin, which already knows it's an invite. It shows the hero, the N5 truth mirrored for the invitee (the consent point), the permissions step, the U4 login box, and [ Join ] [ Later ] in the welcome's order (filled first). No Cloudflare, no card, no prices.",
-   "entry": "The app holds a live invite and this Mac has no space. It arrives by: the install script passing --join (fresh Mac, or a relaunch after the updating lane); the join page's Open shroom deep link; the paste door (the welcome's “Have an invite link?” or Settings → Space); or a tray click in idle-unprovisioned while a remembered invite lives. Not while a take is open (Law 4: invites wait).",
+   "entry": "The app holds a live invite and this Mac has no space. It arrives by: the install script passing --join (fresh Mac, or a relaunch after the updating lane); the join page's Open shroom deep link; a join link macOS hands to shroom as it opens (`open -a shroom <link>`, the Homebrew join line — N50); the paste door (the welcome's “Have an invite link?” or Settings → Space); or a tray click in idle-unprovisioned while a remembered invite lives. Not while a take is open (Law 4: invites wait).",
    "said": [
     {
      "text": "Bagrat invited you to record with shroom.",
