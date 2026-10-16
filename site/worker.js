@@ -15,8 +15,11 @@
 //   /whats-new/<version>
 //                that release's — what the app's "What's new" opens; a version with no
 //                notes (never released, or from before them) goes to /whats-new, never a 404
-//   /faq, /privacy, /terms
-//                questions and known limits, privacy, terms: site/pages, as pages
+//   /faq, /privacy, /terms, /feedback
+//                questions and known limits, privacy, terms, and the feedback form:
+//                site/pages, as pages
+//   POST /report a report or feedback, emailed to the one inbox that reads them and kept
+//                nowhere (site/report.js); the only address that takes anything in
 //   www.…        a permanent redirect to shroom.am
 //
 // Nothing else exists: the files behind these answers (/_/…) aren't addresses.
@@ -26,6 +29,8 @@
 // the host of the page that linked here, the country, and the link's own `?ref=` tag (or
 // `utm_source`) — never an IP, a User-Agent, a full referring address, a cookie or anything
 // that ties two requests together.
+
+import { handleReport } from "./report.js";
 
 const APEX = "shroom.am";
 
@@ -165,6 +170,9 @@ export default {
     if (url.hostname === `www.${APEX}`) {
       return new Response(null, { status: 301, headers: { location: `https://${APEX}${url.pathname}${url.search}` } });
     }
+    if (url.pathname === "/report") {
+      return request.method === "POST" ? handleReport(request, env) : plain(405, { allow: "POST" });
+    }
     if (request.method !== "GET" && request.method !== "HEAD") return plain(405, { allow: "GET, HEAD" });
 
     switch (url.pathname) {
@@ -185,6 +193,7 @@ export default {
       case "/faq":
       case "/privacy":
       case "/terms":
+      case "/feedback":
         return serve(env, request, url, `/_${url.pathname}.html`, HTML);
       default:
         return whatsNew(env, request, url) ?? plain(404);

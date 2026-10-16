@@ -9,13 +9,16 @@
 //   _/whats-new/<version>.html             each release's "What's new", from
 //                                          docs/release-notes/<version>.md (DECISIONS B152)
 //   _/whats-new/latest.html                the newest of them
-//   _/faq.html, _/privacy.html, _/terms.html
+//   _/faq.html, _/privacy.html, _/terms.html, _/feedback.html
 //                                          site/pages/<name>.html in the landing's look
+//   clean.js                               site/clean.js, as it is: the feedback page
+//                                          cleans a log with it before anything leaves
 //
 // site/worker.js answers from these. Run: node site/build.mjs [out-dir]
 import { copyFileSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { FEEDBACK_QUESTIONS } from "./report.js";
 
 const SITE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(SITE, "..");
@@ -141,7 +144,27 @@ ${footer}
 /** The pages under site/pages, each a fragment: its <title>, its description, then what
  * goes in <main> (an <h1> and a punch line first, as on the landing).
  * @type {string[]} */
-export const PAGES = ["faq", "privacy", "terms"];
+export const PAGES = ["faq", "privacy", "terms", "feedback"];
+
+/** The feedback form's Turnstile site key (public by design: it names the widget, and only
+ * the Worker's TURNSTILE_SECRET can check a token). Empty until the widget exists, and then
+ * the form says sending is off. */
+export const TURNSTILE_SITEKEY = "";
+
+/** The feedback page's fragment with its questions and its site key filled in.
+ * @param {string} fragment */
+export function feedbackFragment(fragment, sitekey = TURNSTILE_SITEKEY) {
+  const fields = FEEDBACK_QUESTIONS.map(
+    (q, i) => `<div class="field">
+    <label for="fb-q${i + 1}">${i + 1}. ${escapeHtml(q)}</label>
+    <textarea id="fb-q${i + 1}" maxlength="4000"></textarea>
+  </div>`,
+  ).join("\n  ");
+  return fragment
+    .replace("{{questions}}", fields)
+    .replace("{{questions-json}}", JSON.stringify(FEEDBACK_QUESTIONS).replace(/</g, "\\u003c"))
+    .replace("{{sitekey}}", sitekey.replace(/[^A-Za-z0-9_-]/g, ""));
+}
 
 /** One of site/pages in the landing's look, with its header and footer.
  * @param {string} landing @param {string} name @param {string} fragment */
@@ -159,7 +182,7 @@ export function docPage(landing, name, fragment) {
     .replace(/<meta name="description"[^>]*>\s*/, "")
     .trim();
   // The hero: the <h1>, then the lines right under it (a punch line, a date).
-  const [, hero, rest] = body.match(/^(<h1>[^<]*<\/h1>(?:\s*<p class="(?:punch|fine)">[\s\S]*?<\/p>)*)\s*([\s\S]*)$/) ?? [];
+  const [, hero, rest] = body.match(/^(<h1(?: [^>]*)?>[^<]*<\/h1>(?:\s*<p class="(?:punch|fine)"(?: [^>]*)?>[\s\S]*?<\/p>)*)\s*([\s\S]*)$/) ?? [];
   if (!hero) throw new Error(`site/pages/${name}.html should open with an <h1>`);
   return `<!doctype html>
 <html lang="en">
@@ -221,8 +244,10 @@ export function build(out) {
   const landing = readFileSync(join(SITE, "index.html"), "utf8");
   writeFileSync(join(out, "_/agent.html"), agentPage(landing, markdown));
   for (const name of PAGES) {
-    writeFileSync(join(out, `_/${name}.html`), docPage(landing, name, readFileSync(join(SITE, "pages", `${name}.html`), "utf8")));
+    const fragment = readFileSync(join(SITE, "pages", `${name}.html`), "utf8");
+    writeFileSync(join(out, `_/${name}.html`), docPage(landing, name, name === "feedback" ? feedbackFragment(fragment) : fragment));
   }
+  copyFileSync(join(SITE, "clean.js"), join(out, "clean.js"));
   const notes = join(ROOT, "docs/release-notes");
   const versions = noteVersions(notes);
   mkdirSync(join(out, "_/whats-new"), { recursive: true });

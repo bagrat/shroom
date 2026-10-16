@@ -1,0 +1,175 @@
+<!-- shroom.am/feedback — the canvas board "shroom.am/feedback". The six questions are Bagrat's
+     (approved 2026-10-16; site/report.js FEEDBACK_QUESTIONS, filled in by site/build.mjs).
+     The other words are the board's, awaiting his OK. Send posts to /report (site/report.js),
+     which emails it and keeps nothing; the log is cleaned here first (site/clean.js), and
+     "See exactly what's sent" shows the very text that goes. -->
+<title>shroom — tell us how it went</title>
+<meta name="description" content="Six questions about trying shroom, sent straight to the person who makes it.">
+<h1 id="fb-title">Tell us how it went</h1>
+<p class="punch" id="fb-punch">Six questions, a couple of minutes. It goes straight to the person who makes shroom.</p>
+
+<style>
+  .fb { display: flex; flex-direction: column; gap: 20px; padding: 22px; background: var(--card); border: 1px solid var(--card-edge); border-radius: 12px; }
+  .fb[hidden] { display: none; }
+  .fb .field { display: flex; flex-direction: column; gap: 8px; }
+  .fb label, .fb .label { font-weight: 600; }
+  .fb input[type=text], .fb input[type=email], .fb textarea { font: inherit; font-size: 15px; color: var(--text); background: var(--well); border: 1px solid var(--line-strong); border-radius: 9px; padding: 10px 12px; box-sizing: border-box; width: 100%; }
+  .fb textarea { min-height: 72px; resize: vertical; }
+  .fb .hint { color: var(--quiet); font-size: 14px; margin: 0; }
+  .fb .log { border-top: 1px solid var(--line); padding-top: 18px; }
+  .fb .log-row { display: flex; gap: 10px; align-items: flex-start; }
+  .fb .log-row textarea { flex: 1 1 auto; font: 13px/1.5 var(--mono); }
+  .fb .file { flex: none; min-height: 40px; padding: 0 14px; border: 1px solid var(--line-strong); border-radius: 9px; background: transparent; color: var(--text); font: 14px var(--sans); cursor: pointer; display: inline-flex; align-items: center; }
+  .fb .file input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+  .fb details summary { color: var(--muted); font-size: 14px; cursor: pointer; }
+  .fb pre { margin: 10px 0 0; max-height: 260px; overflow: auto; padding: 10px 12px; background: var(--well); border: 1px solid var(--line); border-radius: 8px; font: 12px/1.55 var(--mono); color: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; }
+  .fb .send { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .fb .send button { min-height: 44px; padding: 0 22px; border: 0; border-radius: 9px; background: var(--frost); color: var(--on-frost); font: 600 16px var(--sans); cursor: pointer; }
+  .fb .send button:disabled { opacity: 0.55; cursor: default; }
+  .fb .status { margin: 0; color: var(--quiet); font-size: 14px; }
+  .fb .status.bad { color: var(--text); font-weight: 600; }
+  @media (max-width: 560px) { .fb { padding: 16px; } .fb .log-row { flex-direction: column; } }
+</style>
+
+<form class="fb" id="fb" novalidate>
+  <div class="field">
+    <label for="fb-name">Your name (optional)</label>
+    <input id="fb-name" type="text" maxlength="80" autocomplete="name">
+    <p class="hint">Filled in from the link you were sent, when it carries one; change it if you like.</p>
+  </div>
+  {{questions}}
+  <div class="field log">
+    <div class="label" id="fb-log-label">shroom's log (optional, and it helps)</div>
+    <p class="hint">In shroom 0.1.18 or newer: Settings → General → Copy diagnostics, then paste it here. On an older shroom, choose the file <code>~/.shroom/logs/run.log</code> (in the file picker, ⌘⇧. shows hidden folders).</p>
+    <div class="log-row">
+      <textarea id="fb-log" aria-labelledby="fb-log-label" placeholder="Paste here"></textarea>
+      <label class="file">Choose file…<input id="fb-file" type="file" accept=".log,.txt,text/plain"></label>
+    </div>
+    <details id="fb-preview">
+      <summary>See exactly what's sent — cleaned in your browser before it leaves</summary>
+      <pre id="fb-preview-text"></pre>
+    </details>
+  </div>
+  <div class="field">
+    <label for="fb-mail">Your email, if you'd like an answer (optional)</label>
+    <input id="fb-mail" type="email" maxlength="254" autocomplete="email">
+  </div>
+  <div id="fb-check"></div>
+  <div class="send">
+    <button type="submit" id="fb-send">Send</button>
+    <p class="status" id="fb-status" role="status" aria-live="polite">Cloudflare checks you're a person, quietly, as you send.</p>
+  </div>
+</form>
+
+<div id="fb-sent" hidden>
+  <p class="fine">Nothing you sent is kept on shroom.am: it goes by email, and only there.</p>
+</div>
+
+<script type="module">
+  import { cleanLog } from "/clean.js";
+  const SITEKEY = "{{sitekey}}";
+  const QUESTIONS = {{questions-json}};
+  const $ = (id) => document.getElementById(id);
+  const form = $("fb"), send = $("fb-send"), status = $("fb-status"), log = $("fb-log");
+
+  // A link's ?ref= tag names who it was sent to: it fills the name, which stays theirs to change.
+  const ref = new URLSearchParams(location.search).get("ref") || "";
+  if (/^[A-Za-z0-9-]{1,32}$/.test(ref)) $("fb-name").value = ref.charAt(0).toUpperCase() + ref.slice(1);
+
+  const report = (token) => ({
+    kind: "feedback",
+    from: "page",
+    name: $("fb-name").value.trim(),
+    reply_to: $("fb-mail").value.trim(),
+    answers: QUESTIONS.map((_, i) => $(`fb-q${i + 1}`).value),
+    log: log.value.trim() ? cleanLog(log.value) : "",
+    ...(token ? { turnstile: token } : {}),
+  });
+
+  // What goes, word for word: the answers as written and the log as cleaned.
+  const preview = () => {
+    const r = report("");
+    const lines = [];
+    if (r.name) lines.push(`From: ${r.name}`);
+    if (r.reply_to) lines.push(`Reply to: ${r.reply_to}`);
+    r.answers.forEach((a, i) => a.trim() && lines.push(`\n${i + 1}. ${QUESTIONS[i]}\n${a.trim()}`));
+    lines.push(r.log ? `\n— the log, cleaned —\n${r.log}` : "\nNo log.");
+    $("fb-preview-text").textContent = lines.join("\n").trim();
+  };
+  form.addEventListener("input", preview);
+  $("fb-preview").addEventListener("toggle", preview);
+
+  $("fb-file").addEventListener("change", async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Only the end matters: the last lines of a log that may run to megabytes.
+    const text = await file.slice(Math.max(0, file.size - 512 * 1024)).text();
+    log.value = text.split(/\r?\n/).slice(-400).join("\n");
+    preview();
+  });
+
+  const say = (text, bad = false) => {
+    status.textContent = text;
+    status.classList.toggle("bad", bad);
+  };
+  const LINES = {
+    rate: "That's a lot at once — try again in a minute.",
+    check: "Cloudflare couldn't tell you're a person — try again, please.",
+    off: "Sending is switched off right now — write to hi@shroom.am instead.",
+    size: "That's more than one message holds — trim the log and try again.",
+    shape: "Write something in at least one answer, then send.",
+  };
+  const FAILED = "That didn't send — try again in a minute, or write to hi@shroom.am.";
+
+  async function post(token) {
+    try {
+      const res = await fetch("/report", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(report(token)) });
+      if (res.ok) {
+        form.hidden = true;
+        $("fb-sent").hidden = false;
+        $("fb-title").textContent = "Thank you";
+        $("fb-punch").textContent = "It's on its way. If you left your email, you'll hear back.";
+        window.scrollTo(0, 0);
+        return;
+      }
+      const { error } = await res.json().catch(() => ({}));
+      say(LINES[error] ?? FAILED, true);
+    } catch {
+      say(FAILED, true);
+    }
+    send.disabled = false;
+    if (window.turnstile && widget !== null) window.turnstile.reset(widget);
+  }
+
+  let widget = null;
+  if (!SITEKEY) {
+    send.disabled = true;
+    say(LINES.off, true);
+  } else {
+    window.onTurnstile = () => {
+      widget = window.turnstile.render("#fb-check", {
+        sitekey: SITEKEY,
+        execution: "execute",
+        appearance: "interaction-only",
+        callback: (token) => post(token),
+        "error-callback": () => {
+          say(LINES.check, true);
+          send.disabled = false;
+        },
+      });
+    };
+    const s = document.createElement("script");
+    s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=onTurnstile";
+    s.async = true;
+    document.head.appendChild(s);
+  }
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    if (!report("").answers.some((a) => a.trim())) return say(LINES.shape, true);
+    if (!window.turnstile || widget === null) return say(FAILED, true);
+    send.disabled = true;
+    say("Sending…");
+    window.turnstile.execute("#fb-check");
+  });
+</script>
