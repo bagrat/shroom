@@ -77,7 +77,12 @@ struct Counts {
     gaps: AtomicU64,
     /// How far the voice's own count wandered from when its blocks arrived (µs, eased).
     voice_us: AtomicI64,
+    /// The first moments of the mix, for the checks: see [`SystemCounts::trace`].
+    trace: Mutex<Vec<[f32; 6]>>,
 }
+
+/// Rows of the mix's trace kept, at most.
+const TRACE: usize = 600;
 
 /// [`SystemAudio::counts`]: what the capture delivered, and how it went.
 #[derive(Debug, Clone, Default, PartialEq, serde::Serialize)]
@@ -105,6 +110,11 @@ pub struct SystemCounts {
     /// How far the voice's own clock (its sample count) wandered from the host's over the
     /// take, in ms: a real microphone's crystal, a few ms a minute.
     pub voice_ms: f64,
+    /// The mix as it ran, a row per event, times in ms from its start: a voice block
+    /// `[0, arrived, from, system_at, buffered, locked]`, a buffer of the Mac's sound
+    /// `[1, arrived, heard, its length, buffered after, locked]`.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub trace: Vec<[f32; 6]>,
 }
 
 impl Default for SystemAudio {
@@ -146,6 +156,7 @@ impl SystemAudio {
             placed: c.placed.load(Ordering::Relaxed),
             gaps: c.gaps.load(Ordering::Relaxed),
             voice_ms: c.voice_us.load(Ordering::Relaxed) as f64 / 1000.0,
+            trace: c.trace.lock().unwrap().clone(),
         }
     }
 
@@ -236,6 +247,14 @@ impl Mix {
         }
     }
 
+    fn trace(&self, row: [f64; 6]) {
+        let mut t = self.counts.trace.lock().unwrap();
+        if t.len() < TRACE {
+            let ms = |x: f64| (x * 1e3) as f32;
+            t.push([row[0] as f32, ms(row[1]), ms(row[2]), ms(row[3]), ms(row[4]), row[5] as f32]);
+        }
+    }
+
     fn secs(&self, at: Instant) -> f64 {
         match at.checked_duration_since(self.base) {
             Some(d) => d.as_secs_f64(),
@@ -289,6 +308,8 @@ impl Mix {
         let follow = *eased - *first;
         self.system_at += follow - self.followed;
         self.followed = follow;
+        let buffered = self.system.len() as f64 / rate;
+        self.trace([1.0, now, at, span, buffered, self.locked as u8 as f64]);
         self.resampler.run(samples, &mut self.system);
         // Never more than KEEP behind what the mix will want next.
         let wanted = now - self.latency - KEEP;
@@ -413,6 +434,8 @@ impl Mix {
         self.counts.voice_us.store((self.voice_late * 1e6) as i64, Ordering::Relaxed);
         let from = at + self.voice_late;
         self.voice_at = Some(at + n as f64 / rate);
+        let (system_at, buffered) = (self.system_at, self.system.len() as f64 / self.rate as f64);
+        self.trace([0.0, now, from, system_at, buffered, self.locked as u8 as f64]);
         let system = self.system_over(from, n);
         for (v, s) in block.iter_mut().zip(system) {
             *v = limit(*v + s);
