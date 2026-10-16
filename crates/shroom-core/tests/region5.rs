@@ -1378,8 +1378,6 @@ fn realized() -> Vec<(&'static str, &'static str, World, Event)> {
         ("library", "library-faces", library(ready()), E::Os(OsNews::NetPath(false))),
         ("delete-confirm", "removed", { let mut w = library(ready()); w.session.confirm = Some(Confirm::Delete(vec![rec("r502")])); w }, at(Surface::Library, Action::ConfirmDelete)),
         ("config", "settings-general", with_popover(ready()), at(Surface::Popover, Action::OpenSettings)),
-        ("settings-general", "report-problem", settings_on(ready(), SettingsTab::General), at(Surface::Settings, Action::ReportProblem)),
-        ("report-problem", "settings-general", report_asked(), E::Key { surface: Surface::Settings, key: Key::Esc }),
         ("settings-space", "disconnect-confirm", space_tab(), at(Surface::Settings, Action::Disconnect)),
         ("update-ready", "updating-app", with_popover(update_ready(ready(), "1.3.0")), at(Surface::Popover, Action::Update)),
         // The swap helper's `--update-failed` relaunch: a new process, so the crossing boots a

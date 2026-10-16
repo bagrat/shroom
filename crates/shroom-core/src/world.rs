@@ -1039,6 +1039,9 @@ pub enum Confirm {
     Uninstall { going: bool },
     /// member-remove-confirm: a member, a pending invite, or another of the owner's Macs.
     Remove(Removal),
+    /// Settings · General's Report a problem sheet (B180); `sending` once Send was clicked,
+    /// until shroom.am answers.
+    Report { sending: bool },
 }
 
 /// The countdown: armed by Start, fired at its deadline, cancelled by any click or Esc.
@@ -1077,6 +1080,8 @@ pub enum CopyTarget {
     Link(RecId),
     /// A born join link (Region 6), by its stash handle.
     Invite(SecretId),
+    /// Settings · General's Copy diagnostics (B180).
+    Diagnostics,
 }
 
 /// The account fork (N14's box 1, N19): the plan's one self-reported tick.
@@ -1137,6 +1142,22 @@ pub struct SettingsFields {
     /// space-storage-gone's “Set it up fresh” was clicked — the person's consent to new
     /// storage: wiring runs, and retries, under the calm line until it lands (#10).
     pub fresh: bool,
+    /// The Report a problem sheet's own fields (B180): they clear with the sheet.
+    pub report: ReportFields,
+    /// A report went through: General says so until the window closes (B180).
+    pub sent: bool,
+}
+
+/// What the Report a problem sheet holds (B180): the words and the reply-to as typed, the
+/// report the shell gathered, and whether the last Send didn't go through.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct ReportFields {
+    pub words: String,
+    pub words_edits: u32,
+    pub reply_to: String,
+    pub reply_edits: u32,
+    pub gathered: Option<crate::report::Diagnostics>,
+    pub failed: bool,
 }
 
 /// A link just made: its row (by invite id) and its stash handle.

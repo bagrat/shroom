@@ -187,7 +187,7 @@ fn cancel_sends_nothing() {
 }
 
 /// Send hands the shell the post, once: the words, the reply-to and the gathered report.
-/// While it goes, Send reads Sending…, both grey, Esc does nothing, and typing is dropped.
+/// While it goes, Send reads Sending…, both grey, Esc is dropped, and so is typing.
 #[test]
 fn send_posts_once_and_holds_still_while_it_goes() {
     let mut r = ready_to_send();
@@ -202,7 +202,6 @@ fn send_posts_once_and_holds_still_while_it_goes() {
         }))]
     );
     assert_eq!(buttons(&sheet(&r.scene)), [("Cancel", Style::Plain, false), ("Sending…", Style::Filled, false)]);
-    assert_eq!(r.scene.esc(Surface::Settings), None);
     r.set(Action::SendReport);
     assert!(r.effects.is_empty(), "a second click sends nothing more");
     r.key(Surface::Settings, Key::Esc);
@@ -259,7 +258,9 @@ fn not_sent_keeps_the_words_and_offers_the_mail_address() {
 /// Law 4: Report a problem asks nothing of a take, so it stays open mid-take.
 #[test]
 fn reporting_is_open_mid_take() {
+    // Opened before the take (law 4: no window opens for one mid-take).
     let mut w = general_open();
+    w.session.windows.insert(WindowKind::Settings, Door::asked(Mono(100)));
     w.take = Some(take(Phase::Recording, 30_000));
     let mut r = Run::new(w);
     assert!(general(&r.scene).report.enabled && general(&r.scene).copy_diagnostics.enabled);

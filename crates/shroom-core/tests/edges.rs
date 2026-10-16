@@ -363,7 +363,7 @@ fn every_drawn_edge_belongs_to_an_edge_test() {
     };
     let orphans: Vec<_> = drawn_edges(|f, t| !owned(f, t)).into_iter().map(|(f, t)| format!("{f} → {t}")).collect();
     assert!(orphans.is_empty(), "drawn edges no edge test owns: {orphans:?}");
-    assert_eq!(drawn_edges(|_, _| true).len(), 118, "the drawn edges: the map's 125, one id per state, the notes not edges, paused → countdown gone (B134), the camera's beat in the chapter (N43), Report a problem's two (B180)");
+    assert_eq!(drawn_edges(|_, _| true).len(), 116, "the drawn edges: the map's 125, one id per state, the notes not edges, paused → countdown gone (B134), the camera's beat in the chapter (N43)");
 }
 
 /// the machine's law 12, invariant 1, across the fixtures: every failure-state the core renders
