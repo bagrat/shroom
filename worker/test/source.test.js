@@ -1,4 +1,4 @@
-// What the player plays (DECISIONS B176). Every request a viewer makes is one of the Workers
+// What the player plays (DECISIONS B177). Every request a viewer makes is one of the Workers
 // Free plan's 100,000 a day; a 5-minute video watched through HLS's 6 s pieces costs ~56 of
 // them, through the single-file copy ~4–8 in Chromium and ~47 in Safari (worker/dev/view-cost.mjs,
 // the hosted Mac's view-cost scenario). So once the copy is up
@@ -20,7 +20,7 @@ const owner = { headers: { cookie: cookieFor(M1, OWNER_AIR) } };
 const COPY_SRC = `"/m/${REC}/video.mp4"`;
 const STREAM_SRC = `"/m/${REC}/master.m3u8"`;
 
-describe("the single-file copy plays once it's up (B176)", () => {
+describe("the single-file copy plays once it's up (B177)", () => {
   it("is the recipient's page's source when the copy is up and the stream is one picture", async () => {
     const body = await html(withRecording(true), `/${REC}`);
     expect(body).toContain(`shroomPlayer(document.querySelector(".player"),${COPY_SRC}`);
@@ -39,7 +39,7 @@ describe("the single-file copy plays once it's up (B176)", () => {
   });
 });
 
-describe("the stream plays otherwise (B176)", () => {
+describe("the stream plays otherwise (B177)", () => {
   it("before the copy is up", async () => {
     for (const [path, init] of [[`/${REC}`], [`/${REC}?embed=1`]]) expect(await html(withRecording(false), path, init)).toContain(STREAM_SRC);
     expect(await html(withRecording(false), `/${REC}`, owner)).toContain(`src=${STREAM_SRC}`);
@@ -64,7 +64,7 @@ describe("the stream plays otherwise (B176)", () => {
   });
 });
 
-describe("the player plays the copy as a file (B176)", () => {
+describe("the player plays the copy as a file (B177)", () => {
   it("hands an .mp4 straight to the video element, never to hls.js", () => {
     const at = PLAYER_JS.indexOf("function shroomPlay(");
     const play = PLAYER_JS.slice(at, PLAYER_JS.indexOf("function shroomClock("));
@@ -74,7 +74,7 @@ describe("the player plays the copy as a file (B176)", () => {
   });
 });
 
-describe("a page opened but not played asks for one piece of the stream (B176)", () => {
+describe("a page opened but not played asks for one piece of the stream (B177)", () => {
   it("hls.js starts with a buffer of one piece and takes its usual one at the first play", () => {
     const at = PLAYER_JS.indexOf("new Hls(");
     const config = PLAYER_JS.slice(at, PLAYER_JS.indexOf(")", at));

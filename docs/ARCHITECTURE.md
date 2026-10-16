@@ -665,7 +665,7 @@ server-rendered; `htmlEscape` and a JSON island neutralizing `< > &` and U+2028/
 canvas's dark palette (DV #45).
 
 **Player** (D:B43): custom controls (`PLAYER_JS`) — poster, play, time, speed, mute, full
-screen. **What it plays** (D:B176): the single-file copy (`/m/<id>/video.mp4`) once
+screen. **What it plays** (D:B177): the single-file copy (`/m/<id>/video.mp4`) once
 `media.mp4` is set and the stream's playlist names one init segment, read beside the record;
 else the stream. A 5-minute view costs ~4–8 of the Worker's requests that way in Chromium
 and ~47 in Safari (it reads ~3 MB at a time), against ~56–58 (`worker/dev/view-cost.mjs`). The stream: Safari plays HLS natively; elsewhere hls.js

@@ -1,4 +1,4 @@
-# What one view of the single-file copy costs in real Safari (DECISIONS B176): the real
+# What one view of the single-file copy costs in real Safari (DECISIONS B177): the real
 # worker.js over loopback, a 3-minute 1080p recording at Normal's bitrate, and Safari driven
 # through safaridriver. A page opened and never played, a full watch and a watch with two
 # seeks, at real speed and muted (at 8× Safari asks for far more: run 38877481672). The

@@ -38,7 +38,7 @@
 //              picture's box has the recording's shape, sits whole in the player, and the
 //              control bar is below it, never over it
 //   copy       with the single-file copy up, the page plays it and asks for no piece of the
-//              stream (DECISIONS B176); every check above plays the stream, as before it's up
+//              stream (DECISIONS B177); every check above plays the stream, as before it's up
 //   bytes      a tombstoned recording's playlist answers 404
 //
 // Prints one JSON summary and exits 0 only when every required check passed.
@@ -161,7 +161,7 @@ async function main() {
         const back = full ? await page.waitForFunction(() => !document.fullscreenElement, null, { timeout: 3000 }).then(() => true, () => false) : false;
         check("fullscreen is the player itself, and back", full && back && exitLabel === COPY.exitFullscreen, name === "chromium");
 
-        // ── the single-file copy (DECISIONS B176) ──
+        // ── the single-file copy (DECISIONS B177) ──
         await put(metaKey(ids.live), meta(ids.live, { media: { hls: `rec/${ids.live}/master.m3u8`, mp4: `rec/${ids.live}/video.mp4`, poster: `rec/${ids.live}/poster.jpg`, width: 640, height: 400 } }));
         const asked = [];
         const onRequest = (/** @type {any} */ r) => asked.push(new URL(r.url()).pathname);

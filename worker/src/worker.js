@@ -714,7 +714,7 @@ function onePicture(env, id) {
     .catch(() => false);
 }
 
-/** What the player plays (B176): the single-file copy once it's up and the stream is one
+/** What the player plays (B177): the single-file copy once it's up and the stream is one
  * picture — a 5-minute view costs ~4–8 of the Worker's requests that way in Chromium, ~47
  * in Safari (it reads a file ~3 MB at a time), against ~56–58 through the stream's 6 s
  * pieces (worker/dev/view-cost.mjs) — and the stream otherwise.
@@ -756,7 +756,7 @@ async function download(request, env, id) {
 async function page(env, id, now, ownerP, origin) {
   // Only the record's own read decides the face: a mark that can't be read is the default.
   // The stream's playlist is read beside the record, never after it: whether the copy may
-  // play costs no round of its own (B176).
+  // play costs no round of its own (B177).
   const oneP = onePicture(env, id);
   const [meta, mark, owner] = await Promise.all([readMeta(env, id), markOn(env).catch(() => true), ownerP]);
   const face = { mark, owner: owner?.ownerClass ? { switchOn: mark } : null, head: meta && meta.state !== "deleted" ? unfurl(id, meta, origin) : "", ratio: ratioOf(meta) };
@@ -1314,7 +1314,7 @@ function old(x){var ok=false;function on(e){e.preventDefault();e.clipboardData.s
 if(navigator.clipboard&&navigator.clipboard.write&&window.ClipboardItem){try{return navigator.clipboard.write([new ClipboardItem({"text/html":hp.then(function(x){return new Blob([x],{type:"text/html"})}),"text/plain":new Blob([t],{type:"text/plain"})})]).then(function(){return true},function(){return hp.then(old)})}catch(e){}}
 return hp.then(old)}`;
 
-/** @param {string} id @param {any} meta @param {Face} face @param {string} src what the player plays (B176) */
+/** @param {string} id @param {any} meta @param {Face} face @param {string} src what the player plays (B177) */
 function livePage(id, meta, face, src) {
   const title = meta.title || "";
   // Download is a quiet icon beside the title: its word names it.

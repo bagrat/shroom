@@ -13,7 +13,7 @@
 //
 // Per engine and segment length: a bounce (the page opened, never played), a full watch
 // (played muted to the end at --rate), and a watch with two seeks. --mp4 adds the same
-// three with the single-file copy up, which the page then plays (DECISIONS B176); without
+// three with the single-file copy up, which the page then plays (DECISIONS B177); without
 // it the page plays the stream.
 import { execFileSync, spawn } from "node:child_process";
 import fs from "node:fs";
