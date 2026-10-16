@@ -63,6 +63,8 @@ export const COPY = {
   pasteThis: "Paste this into Terminal (⌘ space, type “Terminal”) and press Return — it installs shroom and opens it, already knowing it's you.",
   copy: "Copy",
   readFirst: "Read it first — the same address opens as readable source.",
+  // The Homebrew join line's lead-in (N51).
+  useHomebrew: "Use Homebrew? This does the same:",
   // The ratified sentence's shape with the facts that ship: arm64 only (B7; test/sysreq.js).
   macos: "For macOS 14 or newer, Apple silicon.",
   alreadyHave: "Already have shroom?",
@@ -108,6 +110,9 @@ export const joinHero = (name) => `${name} invited you to record with shroom.`;
 export const joinIntro = (name) => `shroom records your screen and hands you a link to share. Nothing to sign up for — ${name} set up a space for you.`;
 /** @param {string} link the join link without its scheme: <host>/join/<code> */
 export const installLine = (link) => `curl -fsSL https://shroom.am/install | sh -s -- --join ${link}`;
+/** The Homebrew join line (N50, N51): the link whole, since the app takes a web address
+ * handed over by `open -a` only as a join link. @param {string} link <host>/join/<code> */
+export const brewLine = (link) => `brew install --cask bagrat/shroom/shroom && open -a ~/Applications/shroom.app "https://${link}"`;
 /** @param {string} host */
 export const ownSame = (host) => `Same videos, same members — ${host}, on this Mac too.`;
 /** @param {string} label */
@@ -2490,7 +2495,8 @@ function landingFace(invite, host, code, ownerView, elsewhere) {
   const get = `<div id="get"><p class="line">${escapeHtml(ownMac ? ownSame(host) : joinIntro(inviter))}</p>
 <section class="card"><h2>${escapeHtml(COPY.getShroom)}</h2><p class="line">${escapeHtml(COPY.pasteThis)}</p>
 <div class="cmd"><code id="cmd">${escapeHtml(installLine(link))}</code><button class="btn primary" type="button" data-copy="cmd">${escapeHtml(COPY.copy)}</button></div>
-<div class="fine"><p><a href="https://shroom.am/install">${escapeHtml(readFirst)}</a>${escapeHtml(readRest)}</p><p>${escapeHtml(COPY.macos)}</p></div></section>
+<div class="fine"><p><a href="https://shroom.am/install">${escapeHtml(readFirst)}</a>${escapeHtml(readRest)}</p><p>${escapeHtml(COPY.macos)}</p></div>
+<div class="brew"><p class="line">${escapeHtml(COPY.useHomebrew)}</p><div class="cmd"><code id="brew">${escapeHtml(brewLine(link))}</code><button class="btn" type="button" data-copy="brew">${escapeHtml(COPY.copy)}</button></div></div></section>
 <section class="have"><div class="ask"><p>${escapeHtml(COPY.alreadyHave)}</p><a class="btn" href="${escapeHtml(`shroom://join/${host}/${code}`)}">${escapeHtml(COPY.openShroom)}</a></div>
 <p class="small">${escapeHtml(COPY.openFallback)}</p></section></div>`;
   const cfg = JSON.stringify({ flip: !elsewhere, away, copied: COPY.copied });
@@ -2499,7 +2505,7 @@ function landingFace(invite, host, code, ownerView, elsewhere) {
 (function(){var c=${jsonForScript(cfg)};
 if(c.flip&&navigator.maxTouchPoints>1){var g=document.getElementById("get");if(g)g.outerHTML=c.away}
 document.addEventListener("click",function(e){var b=e.target&&e.target.closest?e.target.closest("button[data-copy]"):null;if(!b)return;
-var cmd=b.getAttribute("data-copy")==="cmd"?document.getElementById("cmd"):null,t=cmd?cmd.textContent:location.origin+location.pathname,o=b.textContent;
+var k=b.getAttribute("data-copy"),cmd=k==="link"?null:document.getElementById(k),t=cmd?cmd.textContent:location.origin+location.pathname,o=b.textContent;
 shroomCopy(t,cmd).then(function(ok){if(!ok)return;b.textContent=c.copied;setTimeout(function(){b.textContent=o},1500)})})})();</script>`;
   return {
     title: hero,
@@ -2531,6 +2537,7 @@ const JOIN_STYLE = `body{padding:0 16px 24px;font-size:15px;line-height:1.55}
 .cmd{display:flex;flex-wrap:wrap;align-items:stretch;gap:8px}
 .cmd code{flex:1 1 280px;min-width:0;padding:12px;border-radius:8px;background:var(--well);color:var(--text);font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;overflow-wrap:anywhere}
 .fine{display:flex;flex-direction:column;gap:2px;color:var(--quiet);font-size:13px}
+.brew{border-top:1px solid var(--hair);padding-top:14px;display:flex;flex-direction:column;gap:8px}
 .have{border-top:1px solid var(--hair);padding-top:24px;display:flex;flex-direction:column;gap:12px}
 .ask{display:flex;flex-wrap:wrap;align-items:center;gap:14px}.ask p{font-weight:600}
 .btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 18px;border:1px solid var(--edge);border-radius:8px;background:transparent;color:var(--text);font:inherit;text-decoration:none;white-space:nowrap;cursor:pointer}
