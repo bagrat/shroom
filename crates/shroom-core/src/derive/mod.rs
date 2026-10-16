@@ -160,7 +160,7 @@ fn countdown(w: &World) -> Option<Countdown> {
     Some(Countdown { display, digit, line: copy::countdown_cancel() })
 }
 
-/// The bubble is born when `config` opens with Show yourself on (N22) and stays through
+/// The bubble is born when `config` opens with a camera picked for it (N22) and stays through
 /// the count and the take; never with Camera as the source, never with the camera off for
 /// shroom, never on an iPhone's camera by itself — and when its camera goes, it simply
 /// goes (N39). It sits on the display being recorded, and follows the choice.

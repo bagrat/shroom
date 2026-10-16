@@ -1,4 +1,4 @@
-//! shroom's camera windows (DECISIONS B47, superseding B20's webview): the Show yourself
+//! shroom's camera windows (DECISIONS B47, superseding B20's webview): the camera
 //! bubble and Camera-as-the-source's preview, each a native non-activating panel showing an
 //! `AVCaptureVideoPreviewLayer` on the exact camera the Scene names — never WebKit's default
 //! camera, which can be an iPhone over Continuity (N39).
@@ -196,7 +196,7 @@ fn present_bubble(mtm: MainThreadMarker, rt: &Runtime, want: Option<&Bubble>) {
     BUBBLE.with(|slot| {
         let mut slot = slot.borrow_mut();
         let Some(b) = want else {
-            // Its camera went, the take ended, Show yourself went off: it simply goes.
+            // Its camera went, the take ended, the camera picker went to Camera off: it simply goes.
             if let Some(n) = slot.take() {
                 n.panel.close();
             }

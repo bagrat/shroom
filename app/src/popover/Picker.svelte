@@ -21,7 +21,7 @@
   let menuEl: HTMLDivElement | undefined = $state();
 
   // What each choice is: a display, a microphone, a camera — or none of them, crossed out
-  // (Camera only is “no display”: the camera is Show yourself's pick).
+  // (Camera only is “no display”: the camera is the camera picker's).
   type Glyph = "display" | "display-off" | "camera" | "camera-off" | "mic" | "mic-off";
   const glyph = (a: Action): Glyph => {
     const x = a as { do: string; arg?: any };

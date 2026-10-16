@@ -1680,7 +1680,7 @@ fn the_mics_answer_asks_the_camera_and_the_cameras_answer_asks_the_screen() {
     r.send(Event::Os(OsNews::Grants { screen: false, mic: Access::Granted, camera: Access::Denied }));
     assert_eq!(win(&r.scene), "perm-screen", "a denied camera never blocks");
     assert!(r.has(|e| *e == Effect::Shell(ShellCmd::RequestPermission(Perm::Screen))), "the camera's answer chains the screen step");
-    assert!(!r.w.prefs.show_yourself, "a camera denied at setup turns Show yourself off");
+    assert!(!r.w.prefs.show_yourself, "a camera denied at setup turns the bubble off");
     assert!(r.has(|e| matches!(e, Effect::Persist(PersistOp::Prefs(p)) if !p.show_yourself)));
 }
 

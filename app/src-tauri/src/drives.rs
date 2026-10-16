@@ -1498,7 +1498,7 @@ fn record_take(d: &Drive, start: impl Fn(), upload: bool) -> Result<(PathBuf, St
     let recorded = (|| {
         start();
         let s = d.wait("config", 10, |s| s.popover.as_ref().is_some_and(|p| p.id == "config"))?;
-        // Only the pattern is measured: Show yourself starts on (N43), so its bubble goes.
+        // Only the pattern is measured: the camera picker starts on a camera (N43), so its bubble goes.
         if s.bubble.is_some() {
             d.act(Surface::Popover, Action::SetCamera(None));
             d.wait("the bubble off", 5, |s| s.bubble.is_none())?;

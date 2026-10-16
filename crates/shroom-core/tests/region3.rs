@@ -812,7 +812,7 @@ fn labels(choices: &[shroom_core::scene::Choice]) -> Vec<&str> {
 
 #[test]
 fn with_only_an_iphone_around_show_yourself_picks_nothing_and_keeps_the_wish() {
-    // Show yourself on, the Mac's own camera here: the bubble on it.
+    // A camera picked for the bubble, the Mac's own camera here: the bubble on it.
     let mut w = ready();
     w.prefs.show_yourself = true;
     w.session.popover = Some(Door::asked(Mono(900)));
@@ -822,7 +822,7 @@ fn with_only_an_iphone_around_show_yourself_picks_nothing_and_keeps_the_wish() {
     assert_eq!(picked(&c.cameras), Some("System default"));
     assert_eq!(r.scene.bubble.as_ref().map(|b| b.camera.as_str()), Some("cam"));
     // The lid closes (the built-in camera goes); an iPhone is nearby: it's listed, but nothing
-    // opens it by itself — Show yourself reads Camera off, no bubble, no Camera only (N39).
+    // opens it by itself — the camera picker reads Camera off, no bubble, no Camera only (N39).
     r.send(devices(quick().mics, vec![iphone_camera()]));
     let c = config_body(&r.scene);
     assert_eq!(labels(&c.cameras), ["Bagrat's iPhone Camera", "Camera off"]);
@@ -846,7 +846,7 @@ fn with_only_an_iphone_around_show_yourself_picks_nothing_and_keeps_the_wish() {
 
 #[test]
 fn show_yourself_picks_a_camera_or_camera_off() {
-    // Bagrat (2026-10-13): Show yourself is a pick, like the microphone — every camera here,
+    // Bagrat (2026-10-13): the camera is a pick, like the microphone — every camera here,
     // then Camera off. On from the first start, with the camera shroom picks (N43, Bagrat:
     // “yes on by default” — amends N22's off).
     let ext = Device { uid: "ext".into(), name: "Logitech BRIO".into(), builtin: false, continuity: false, system_default: false };
@@ -857,7 +857,7 @@ fn show_yourself_picks_a_camera_or_camera_off() {
     let c = config_body(&r.scene);
     assert_eq!(c.camera_label, "Show yourself");
     assert_eq!(labels(&c.cameras), ["System default", "FaceTime HD Camera", "Logitech BRIO", "Bagrat's iPhone Camera", "Camera off"]);
-    assert_eq!(picked(&c.cameras), Some("System default"), "the first-ever Show yourself is on (N43), on System default (N44)");
+    assert_eq!(picked(&c.cameras), Some("System default"), "the first-ever camera pick is on (N43), on System default (N44)");
     assert!(c.cameras.iter().all(|x| x.enabled));
     assert_eq!(r.scene.bubble.as_ref().map(|b| b.camera.as_str()), Some("cam"), "the bubble is live at the first popover");
     // Picking a camera shows it in the bubble, and is remembered.
@@ -1007,7 +1007,7 @@ fn choosing_camera_asks_for_the_camera_on_that_click_and_a_denial_greys_start() 
     assert_eq!(c.camera_line.as_deref(), Some("Camera is off for shroom —"));
     assert_eq!(c.camera_settings.as_ref().map(|b| b.action.clone()), Some(Action::OpenCameraSettings));
     assert!(r.scene.preview.is_none());
-    // Back to a display: Show yourself, on, flips back off — with the same line.
+    // Back to a display: the camera picker goes back to Camera off — with the same line.
     r.act(Action::SetSource(SourceId::Display(1)));
     r.act(Action::SetCamera(Some("cam".into())));
     assert!(!r.has(|e| matches!(e, Effect::Shell(ShellCmd::RequestPermission(_)))), "denied is an answer: no second prompt");
@@ -1121,7 +1121,7 @@ fn the_arm_time_guard_replays_exactly_the_missing_beat() {
     assert!(r.w.session.arming.is_none(), "never a prompt under the count (law 11)");
     r.send(Event::Os(OsNews::Grants { screen: true, mic: Access::Granted, camera: Access::NotAsked }));
     r.key(Surface::Popover, Key::Return);
-    assert_eq!(r.effects, vec![Effect::Shell(ShellCmd::RequestPermission(shroom_core::effect::Perm::Camera))], "then the camera, which Show yourself needs");
+    assert_eq!(r.effects, vec![Effect::Shell(ShellCmd::RequestPermission(shroom_core::effect::Perm::Camera))], "then the camera, which the bubble needs");
     r.send(Event::Os(OsNews::Grants { screen: true, mic: Access::Granted, camera: Access::Denied }));
     r.key(Surface::Popover, Key::Return);
     assert!(r.w.session.arming.is_some(), "answered either way: it arms");
@@ -1129,7 +1129,7 @@ fn the_arm_time_guard_replays_exactly_the_missing_beat() {
 
 #[test]
 fn a_mac_with_no_camera_is_never_asked_for_one_at_start() {
-    // Setup skips the camera beat on a Mac without one (N43), and Show yourself starts on:
+    // Setup skips the camera beat on a Mac without one (N43), and the bubble starts on:
     // Start never asks macOS for a camera that isn't there — it arms (CHECKPOINT §10, 6.1).
     let mut w = ready();
     w.mac.cameras = Fact::known(vec![], Mono(0));
@@ -1179,7 +1179,7 @@ fn the_bubble_sits_on_the_chosen_display_remembers_its_place_and_goes_with_its_c
     let mut r = Run::new(w);
     let b = r.scene.bubble.clone().expect("live from the moment config opens (N22)");
     assert_eq!((b.display, b.camera.as_str(), b.at), (1, "cam", None));
-    // With Show yourself on, picking another display moves the bubble there (N39).
+    // With a camera picked for the bubble, picking another display moves the bubble there (N39).
     r.act(Action::SetSource(SourceId::Display(7)));
     assert_eq!(r.scene.bubble.as_ref().map(|b| b.display), Some(7));
     // Dragged: the place is remembered, relative to its display.

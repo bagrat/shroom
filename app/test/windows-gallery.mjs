@@ -1049,7 +1049,7 @@ for (const entry of countdowns) {
   const camRow = pk.page.locator(".picker").nth(2).locator(".prow");
   await camRow.focus();
   await pk.page.keyboard.press("ArrowDown");
-  check("config-camera-picked: ↓ on the Show yourself row opens its menu", (await pk.page.locator(".picker").nth(2).locator(".menu").count()) === 1);
+  check("config-camera-picked: ↓ on the camera row opens its menu", (await pk.page.locator(".picker").nth(2).locator(".menu").count()) === 1);
   await pk.page.keyboard.press("Escape");
   check("config-camera-picked: Esc in a menu closes the menu only", (await pk.page.locator(".menu").count()) === 0 && !(await calls(pk.page)).some((x) => x.cmd === "key"), JSON.stringify(await calls(pk.page)));
   await pk.page.keyboard.press("ArrowDown");
@@ -1069,10 +1069,10 @@ for (const entry of countdowns) {
   await pk.page.locator(".hint").click();
   check("config-camera-picked: a click outside an open menu closes it, and sends nothing", (await pk.page.locator(".menu").count()) === 0 && !(await calls(pk.page)).some((x) => x.cmd === "act" || x.cmd === "key"));
   await pk.ctx.close();
-  // Camera only with one camera: Show yourself keeps that camera, live, its menu that one pick.
+  // Camera only with one camera: the camera picker keeps that camera, live, its menu that one pick.
   const one = await open("popover", pop("config-camera-only-one"));
   const oneRow = one.page.locator(".picker").nth(2).locator(".prow");
-  check("config-camera-only-one: Show yourself stays live on its one camera", (await oneRow.getAttribute("aria-disabled")) !== "true" && !(await oneRow.evaluate((e) => e.classList.contains("greyed"))), await oneRow.getAttribute("aria-label"));
+  check("config-camera-only-one: the camera picker stays live on its one camera", (await oneRow.getAttribute("aria-disabled")) !== "true" && !(await oneRow.evaluate((e) => e.classList.contains("greyed"))), await oneRow.getAttribute("aria-label"));
   await oneRow.click({ timeout: 2000 }).catch(() => {});
   const oneItems = await one.page.locator(".picker").nth(2).locator('[role="menuitemradio"]').allInnerTexts();
   // System default (N44) first, meaning that camera; then the camera by name; no Camera off.

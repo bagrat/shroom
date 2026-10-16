@@ -939,7 +939,7 @@ pub struct Prefs {
     /// On from the first start (N43, Bagrat: “yes on by default”) — the camera is asked in
     /// the chapter; a camera denied there turns it off.
     pub show_yourself: bool,
-    /// The camera picked in Show yourself, by device uid — the bubble's, and Camera only's;
+    /// The camera picked in the camera picker, by device uid — the bubble's, and Camera only's;
     /// `None`, or one that isn't here, = the one shroom picks by itself (N39, DEVIATIONS #43).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub camera: Option<String>,

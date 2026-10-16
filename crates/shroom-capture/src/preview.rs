@@ -1,4 +1,4 @@
-//! A live camera picture for shroom's own windows — the Show yourself bubble (mirrored)
+//! A live camera picture for shroom's own windows — the camera bubble (mirrored)
 //! and Camera-as-the-source's preview at `config` (as recorded) — through
 //! AVCaptureVideoPreviewLayer, on the exact camera the core picked by its id (N39: never
 //! an iPhone by itself; WebKit's `getUserMedia` can only start from the system default).

@@ -62,7 +62,7 @@ pub fn selected_source(w: &World) -> Option<SourceId> {
     }
 }
 
-/// The camera shroom shows and records: the one picked in Show yourself while it's here
+/// The camera shroom shows and records: the one picked in the camera picker while it's here
 /// (an iPhone too, when the person picked it — DEVIATIONS #43), else the built-in one, else
 /// the first that isn't an iPhone over Continuity — never an iPhone by itself (N39:
 /// Continuity devices come and go). `None` when only an iPhone is around, unpicked.
@@ -202,7 +202,7 @@ fn config(w: &World) -> Popover {
     let camera_source = source == Some(SourceId::Camera);
     let wants_camera = camera_source || w.prefs.show_yourself;
     let camera_denied = matches!(w.mac.camera.get(), Some(Access::Denied | Access::Restricted));
-    // Show yourself's pick (DEVIATIONS #43): every camera, then Camera off. A denied camera
+    // The camera picker (DEVIATIONS #43): every camera, then Camera off. A denied camera
     // flips it back off — the quiet line says why (N39); the wish is kept, so allowing the
     // camera again brings the bubble back. Camera only picks the camera it records: no
     // Camera off then.
