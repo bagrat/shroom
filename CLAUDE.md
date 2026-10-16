@@ -123,9 +123,11 @@ lives in `spec/`; the working docs live in `docs/`.
 - **Blocked children are surfaced.** Each recap checks every live child's `status_bucket`.
   One that reads blocked or waiting on a permission gets a push to Bagrat at once, with its
   session link and the exact thing to approve.
-- **Asking Bagrat: one question at a time.** As simple as it can be put. When the answer
-  is a choice, ask it with the question tool (`AskUserQuestion`) and its options, not as
-  prose (Bagrat, 2026-10-16).
+- **Asking Bagrat.** As simple as it can be put. Interviews and walkthroughs ask one
+  question at a time. Otherwise, questions that are each a single click from a few options
+  and don't depend on each other go together in one question tool (`AskUserQuestion`)
+  call. A question that needs a prose answer is asked in plain chat, never through the
+  tool, since he can't dictate into it on mobile (Bagrat, 2026-10-16).
 - **Push notifications come from the orchestrator.** A child session sends Bagrat a push
   only when it absolutely needs him and can't go through the orchestrator. Everything
   else goes to the orchestrator, and only the orchestrator pushes him (Bagrat, 2026-10-16).
