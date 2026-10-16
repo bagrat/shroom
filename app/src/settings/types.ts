@@ -11,7 +11,13 @@ export type GeneralPane = {
   update_line: string;
   update: Button | null;
   whats_new: Button | null;
-  /** The help line; each of `help_links`' labels is a run of it. */
+  /** The help row (B180): “Something off?”, Copy diagnostics, Report a problem…. */
+  help_label: string;
+  copy_diagnostics: Button;
+  report: Button;
+  /** After a report went through, until the window closes. */
+  sent: string | null;
+  /** The line under the card; each of `help_links`' labels is a run of it. */
   help: string;
   help_links: Button[];
   /** “Uninstall shroom…”, quiet text at the tab's foot (B135). */
@@ -55,7 +61,21 @@ export type MembersPane = {
     | { kind: "changing"; label: string; field: TextField; save: Button };
 };
 
-export type SettingsBody = { tabs: Choice[]; pane: GeneralPane | SpacePane | MembersPane; sheet: Sheet | null };
+/** The Report a problem sheet's form, between its line and its buttons (B180). */
+export type ReportForm = {
+  words: TextField;
+  reply_label: string;
+  reply_to: TextField;
+  disclosure: string;
+  /** What goes, word for word — once gathered. */
+  preview: string | null;
+  /** Until then: “Putting it together…”. */
+  preparing: string | null;
+  failed: string | null;
+  mail: Button | null;
+};
+
+export type SettingsBody = { tabs: Choice[]; pane: GeneralPane | SpacePane | MembersPane; sheet: Sheet | null; report: ReportForm | null };
 
 export type SettingsWindow = {
   id: string;

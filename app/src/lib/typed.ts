@@ -24,7 +24,7 @@ export type Said = { value: string; edits: number };
 const UNANSWERED_MS = 2000;
 
 /** `use:typed={{ field, scene }}` on the field's input: nothing else writes its value. */
-export function typed(node: HTMLInputElement, p: { field: Field; scene: Said }) {
+export function typed(node: HTMLInputElement | HTMLTextAreaElement, p: { field: Field; scene: Said }) {
   let name = p.field;
   let said = p.scene;
   // The count the Scene reaches once it holds everything typed here. It only goes forward

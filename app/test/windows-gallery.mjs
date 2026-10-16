@@ -73,7 +73,15 @@ const TEXT = new Set([
   "member", "mark_line", "you", "fact", "invite_line", "prefix",
   // A line in runs (Rich): who invites say they're from (B158).
   "text",
+  // Report a problem (B180): General's help row and its sent line; the sheet's field label,
+  // its disclosure, the line while it's gathered, and a failed send's line. The disclosure's
+  // text (`preview`) is the person's own report, shown only when opened.
+  "help_label", "sent", "reply_label", "disclosure", "preparing", "failed",
 ]);
+
+/** The sheets that ask no destructive question: law 9's colours aren't theirs (B180, as
+ * the core's laws.rs NOT_DESTRUCTIVE). */
+const NOT_DESTRUCTIVE = ["report-problem"];
 
 const heights = [];
 const results = [];
@@ -145,7 +153,8 @@ async function sheetChecks(tag, page, surface, w, v) {
   const labels = await page.locator(".sheet .sheet-acts button").allInnerTexts();
   check(`${tag}: sheet buttons in the Scene's order`, labels.join("|") === sh.buttons.map((b) => b.label).join("|"), labels.join("|"));
   const last = sh.buttons[sh.buttons.length - 1];
-  check(`${tag}: the answer is red-outlined (law 9)`, last.style === "red-outline");
+  const destructive = !NOT_DESTRUCTIVE.includes(sh.id);
+  if (destructive) check(`${tag}: the answer is red-outlined (law 9)`, last.style === "red-outline");
   const xs = await page.locator(".sheet .sheet-acts button").evaluateAll((els) => els.map((e) => e.getBoundingClientRect().right));
   check(`${tag}: the answer is rightmost`, xs.length && xs[xs.length - 1] === Math.max(...xs), JSON.stringify(xs));
   const tops = await page.locator(".sheet .sheet-acts button").evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().top)));
@@ -154,7 +163,7 @@ async function sheetChecks(tag, page, surface, w, v) {
   const notes = [...new Set(sh.buttons.map((b) => b.note).filter((n) => n && n !== sh.blocked))];
   check(`${tag}: a greyed answer's note sits with the lines`, JSON.stringify(await page.locator(".sheet > p.note").allInnerTexts()) === JSON.stringify(notes));
   const bad = await styled(page.locator(".sheet .sheet-acts button").last(), last.style, v);
-  check(`${tag}: the answer looks red-outlined, never filled`, !bad, bad ?? "");
+  check(destructive ? `${tag}: the answer looks red-outlined, never filled` : `${tag}: the answer looks as the Scene says`, !bad, bad ?? "");
   check(`${tag}: no button holds the keyboard`, await page.evaluate(() => !(document.activeElement instanceof HTMLButtonElement)));
   check(`${tag}: the window behind is inert`, (await page.locator(".behind[inert]").count()) === 1);
   check(`${tag}: no Return default in the Scene`, w.ret === null);
@@ -627,9 +636,13 @@ const set = (variant) => settings.find((e) => e.variant === variant).scene;
   check("settings: the login box sends its action", acted(c, "settings", { do: "set-login-item", arg: true }));
   check("settings: the box keeps the Scene's state until the Scene changes", !(await page.getByRole("checkbox").isChecked()));
   await clear(page);
-  for (const name of ["Update", "What's new", "GitHub", "hi@shroom.am"]) await page.getByRole("button", { name, exact: true }).click();
+  for (const name of ["Update", "What's new", "Copy diagnostics", "Report a problem…", "GitHub"]) await page.getByRole("button", { name, exact: true }).click();
   c = await calls(page);
-  check("settings: Update, What's new and the help doors send their actions", ["update", "whats-new", "report-issue", "write-us"].every((d) => acted(c, "settings", { do: d })), JSON.stringify(c));
+  check(
+    "settings: Update, What's new, the help row and the GitHub door send their actions",
+    ["update", "whats-new", "copy-diagnostics", "report-problem", "report-issue"].every((d) => acted(c, "settings", { do: d })),
+    JSON.stringify(c),
+  );
   await clear(page);
   await page.locator(".update-line").click();
   await page.keyboard.press("Enter");
