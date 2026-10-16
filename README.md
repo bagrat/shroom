@@ -5,6 +5,12 @@ account â€” we never hold them. You set Cloudflare up once, in a guided setup â€
 minutes. You only ever pay Cloudflare. No account with us, no subscription.
 
 ```sh
+brew install --cask bagrat/shroom/shroom && open ~/Applications/shroom.app
+```
+
+Or without Homebrew:
+
+```sh
 curl -fsSL https://shroom.am/install | sh
 ```
 
