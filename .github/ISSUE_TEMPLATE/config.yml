@@ -1,0 +1,9 @@
+# Placeholder wording until the approved copy lands.
+blank_issues_enabled: true
+contact_links:
+  - name: Known limits and questions
+    url: https://shroom.am/faq
+    about: What shroom doesn't do yet, and answers to the common questions.
+  - name: Write to us privately
+    url: mailto:hello@shroom.am
+    about: For anything you'd rather not post in public.

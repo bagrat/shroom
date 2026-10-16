@@ -1,0 +1,16 @@
+# Placeholder wording until the approved copy lands (the fields stay).
+name: An idea
+description: Something shroom could do, or do better.
+labels: [idea]
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: What are you trying to do?
+      description: The moment it would help, in your own words. What it should look like can wait.
+    validations:
+      required: true
+  - type: textarea
+    id: today
+    attributes:
+      label: What do you do today instead?
