@@ -25,11 +25,11 @@ const SITEVERIFY = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 /** The fields a report may carry, each with its bound in characters. */
 const TEXT_FIELDS = /** @type {const} */ ({ words: 8000, name: 80, reply_to: 254, setup: 300, log: 48000, turnstile: 4096 });
 const VERSION_FIELDS = ["shroom", "macos", "chip", "memory"];
-/** The feedback page's questions, in Bagrat's words (approved 2026-10-16): the page shows
+/** The feedback page's questions, in Bagrat's words (approved 2026-10-16; the one on what
+ * was recorded dropped the same day, as too hard to answer): the page shows
  * them, and the message labels each answer with its question. */
 export const FEEDBACK_QUESTIONS = [
   "Did setup finish? Where did you stop or have to think?",
-  "What did you record, and did you send it to anyone? How did the link land with them?",
   "Did anything break, look wrong, or surprise you?",
   "What did you expect it to do that it didn't?",
   "Would you use it instead of what you use now, or move your team to it? If not, what's the one thing in the way?",

@@ -49,7 +49,7 @@ const good = (/** @type {Record<string, unknown>} */ more = {}) => ({
 describe("a report's shape", () => {
   it("takes a report from the app and feedback from the page", () => {
     assert.ok(parseReport(good()));
-    assert.ok(parseReport({ kind: "feedback", from: "page", answers: ["", "Yes", "", "", "", ""], turnstile: "t" }));
+    assert.ok(parseReport({ kind: "feedback", from: "page", answers: ["", "Yes", "", "", ""], turnstile: "t" }));
   });
 
   for (const [why, body] of /** @type {[string, unknown][]} */ ([
@@ -58,7 +58,7 @@ describe("a report's shape", () => {
     ["an unknown kind", good({ kind: "praise" })],
     ["an unknown sender", good({ from: "cli" })],
     ["nothing said", good({ words: "  " })],
-    ["too many answers", { kind: "feedback", from: "page", answers: ["a", "b", "c", "d", "e", "f", "g"] }],
+    ["more answers than questions", { kind: "feedback", from: "page", answers: ["a", "b", "c", "d", "e", "f"] }],
     ["an answer that isn't text", { kind: "feedback", from: "page", answers: [1] }],
     ["an unknown version field", good({ versions: { kernel: "x" } })],
     ["a reply-to that isn't an address", good({ reply_to: "me at home" })],
@@ -133,7 +133,7 @@ describe("POST /report", () => {
 
   it("labels the page's answers with their questions, and needs Turnstile's yes", async () => {
     const { post, sent, checked } = harness();
-    const body = { kind: "feedback", from: "page", name: "Sam", answers: ["Yes, at the card step.", "", "", "", "", ""] };
+    const body = { kind: "feedback", from: "page", name: "Sam", answers: ["Yes, at the card step.", "", "", "", ""] };
     assert.equal((await post({ ...body, turnstile: "robot" })).status, 403);
     assert.equal(sent.length, 0);
     assert.equal((await post({ ...body, turnstile: "person" }, "198.51.100.8")).status, 200);
@@ -214,11 +214,14 @@ describe("the site's routes", () => {
     assert.equal(res.status, 503);
   });
 
-  it("serves /feedback with Bagrat's six questions, and clean.js beside it", async () => {
+  it("serves /feedback with Bagrat's five questions, and clean.js beside it", async () => {
     const res = await worker.fetch(new Request("https://shroom.am/feedback", { headers: { accept: "text/html" } }), { ASSETS });
     assert.equal(res.status, 200);
     const html = await res.text();
+    assert.equal(FEEDBACK_QUESTIONS.length, 5);
     for (const q of FEEDBACK_QUESTIONS) assert.ok(html.includes(q.replace(/'/g, "&#39;")) || html.includes(q), q);
+    assert.ok(!html.includes("What did you record"), "the question on what was recorded is gone (Bagrat, 2026-10-16)");
+    assert.ok(html.includes("5. Was anything on the site unclear"), "renumbered");
     assert.match(html, /import \{ cleanLog \} from "\/clean\.js"/);
     assert.equal(readFileSync(join(out, "clean.js"), "utf8"), readFileSync(new URL("../clean.js", import.meta.url), "utf8"));
   });
