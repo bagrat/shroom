@@ -4,7 +4,7 @@
 
 The machine: every state, edge, rule, said-line and law of shroom v1 — the spec (DECISIONS B133). Sessions edit it; MACHINE.md and the canvas's machine boards are generated from it.
 
-143 states · 296 edges · 23 rules · 561 said-lines · 16 laws · 64 ledger rows.
+143 states · 296 edges · 23 rules · 561 said-lines · 16 laws · 65 ledger rows.
 
 Status: **ratified** is Bagrat's; **provisional** is designed or built and awaits him (each cites its row: `#n` is a DEVIATIONS row of docs/DECISIONS.md, `Bn` a decision, `Nn`/`Un`/`Pn` a ledger row below). `SM:n` in older citations is a line of the retired spec text, kept in history/spec/UX-STATEMACHINE.md.
 
@@ -1255,7 +1255,7 @@ A light scrim on the chosen display only, with a large 3 · 2 · 1 and one quiet
 
 ### `recording`
 
-state · tray · **ratified** · board: TrayFaces · cites N24, N39, N41, N25
+state · tray · **ratified** · board: TrayFaces · cites N24, N39, N41, N25, N54
 
 The tray is the whole surface and there is no popover. The icon wears the red dot. A click is an instant pause, and the popover opens only after the pause is confirmed (never catch a menu in the last frame, POC §8). No timer in the menu bar. Network is never the recording's problem: capture writes locally regardless, and upload is opportunistic in the background. A right-click mid-take is the same as a left click (N39). ⌘Q and the Dock's Quit are declined silently (law 4).
 
@@ -1265,12 +1265,13 @@ The tray is the whole surface and there is no popover. The icon wears the red do
 |---|---|---|---|---|
 | tray click | other |  | `paused` | Instant pause. The popover opens after the pause is confirmed. |
 | right-click | other |  | `paused` | same as a left click mid-take (N39) |
+| ⌥⌘P | other |  | `paused` | the tray click's pause, from the keyboard; the popover opens after the pause is confirmed (N54) |
 | ⌘Q / Dock Quit | other |  |  | declined silently while recording (law 4) |
 
 | → | Kind | Label | Status | Cites |
 |---|---|---|---|---|
 | `config` | flow | the recorder: frame stall | ratified | #6, B134 |
-| `paused` | flow | tray click — pause confirmed first | ratified |  |
+| `paused` | flow | tray click or ⌥⌘P — pause confirmed first | ratified | N54 |
 | `display-lost` | fail | display unplugged — auto-pause | ratified |  |
 | `mic-lost` | fail | mic · camera · sleep · lock | provisional |  |
 | `camera-lost` | fail | mic · camera · sleep · lock | provisional |  |
@@ -1283,7 +1284,7 @@ The tray is the whole surface and there is no popover. The icon wears the red do
 
 ### `paused`
 
-state · popover · **ratified** · board: Paused · cites N24, N38, N39, N41, B143
+state · popover · **ratified** · board: Paused · cites N24, N38, N39, N41, B143, N54
 
 The same custom popover, with the icon wearing the pause bars. Top to bottom: the header with the length, Resume (the one filled action, Return default), Finish & Share and Restart as plain rows (Finish & Share was Stop, with a line beneath it; B143), and Discard… as red text at the bottom beside a grey no-Quit note. Quit is absent by law. Drop a marker is hidden until the editor ships (B143): the core still lands a marker at the pause point, metadata-only, but no surface offers it. Restart re-arms with the countdown already running. The count is Restart's undo (N39, provisional): the old take is discarded only the instant the new capture begins.
 
@@ -1300,6 +1301,7 @@ The same custom popover, with the icon wearing the pause bars. Top to bottom: th
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
 | Resume | filled-default | ↵ | `recording` | Return = Resume (Law 8, N38) |
+| ⌥⌘P | other |  | `recording` | Resume from the keyboard, wherever focus is; nothing while Resume is greyed (N54) |
 | Finish & Share | secondary |  | `stopping` | deliberate but visible; a plain row like Restart, with no line beneath (B143) |
 | Restart | secondary |  | `restart-confirm` | Restart asks first (DEVIATIONS #44, B134); its count is still Restart's undo (N39). The old take dies only when the new capture begins. |
 | Drop a marker | secondary |  |  | Hidden from the UI until the editor ships (B143). The core keeps it: it lands a marker at the pause point, metadata-only in v1. No state change. |
@@ -1308,7 +1310,7 @@ The same custom popover, with the icon wearing the pause bars. Top to bottom: th
 
 | → | Kind | Label | Status | Cites |
 |---|---|---|---|---|
-| `recording` | flow | Resume | ratified |  |
+| `recording` | flow | Resume or ⌥⌘P | ratified | N54 |
 | `discard-confirm` | flow | Discard… | ratified |  |
 | `restart-confirm` | flow | Restart | ratified | #44, B134 |
 | `stopping` | flow | Finish & Share — the link is made and its page opens | ratified | B143 |
@@ -3802,6 +3804,7 @@ A move that holds for a whole group of states, written once (B133). The tests ex
 | N51 | The invite page offers the Homebrew join line | **The invite page shows the Homebrew join line under the install command** (Bagrat, 2026-10-16: the board approved, placement and words as drawn). “Use Homebrew? This does the same:” then `brew install --cask bagrat/shroom/shroom && open -a ~/Applications/shroom.app "https://<space>/join/<code>"` with its own Copy, quieter than the install command's. It goes live only with the app that takes the link (N50, 0.1.17). Built: DECISIONS B178. | ratified | 2026-10-16 |
 | N52 | shroom.am puts Homebrew first | **The landing's install block offers Homebrew first and the install line under it**, as the README does (Bagrat, 2026-10-16: build it, he looks at the screenshot after). “With Homebrew:” `brew install --cask bagrat/shroom/shroom && open ~/Applications/shroom.app` with the filled Copy; “Or without it:” the install line with an outlined one, then its Read it first; the agent door below as before. The two lead-ins are placeholders for his words. Built: DECISIONS B179. | provisional | 2026-10-16 |
 | N53 | Report a problem and feedback, through shroom.am | **Bagrat asked for it, 2026-10-16; the same day he chose a report endpoint on the shroom.am site Worker over a mail draft, and approved the plan: the endpoint and the page first, the app's button for 0.1.18.** **One endpoint, `POST shroom.am/report`**, takes a report (kind problem or feedback, the words, optional answers, an optional reply-to, the versions, the setup timeline, and up to 200 cleaned log lines), checks its size, shape and rate (and Turnstile from the web form), and emails it through the `send_email` binding to one verified inbox whose address is a Worker secret. It stores nothing. **Two doors:** shroom.am/feedback (the testers' questions, an optional log pasted or chosen and cleaned in the browser), and in the app Settings · General's “Something off?” row with **Copy diagnostics** and **Report a problem…**, a sheet with “See exactly what's sent” and **Send** (a mail draft to hi@shroom.am only as the fallback when sending fails). Cleaning: home paths, the space's host, other web addresses, emails and long ids replaced, the same rules in the app, the page and the Worker. **The exception to “never a SaaS we operate”** (a receiving service of ours, storing nothing) is ruled by Bagrat, 2026-10-16; the privacy page's words change with his OK. Proposal: dev/proposals/report-a-problem.md; DECISIONS B180. The said-lines, the `report-problem` states and the site surfaces land with the build. | provisional | 2026-10-16 |
+| N54 | ⌥⌘P pauses a take and resumes it | **One global shortcut, ⌥⌘P, held only while a take is open** (Bagrat asked for it, 2026-10-16, to pause between beats of a take; the same day he chose ⌥⌘P, fixed rather than settable for now, and pause and resume only, no Stop shortcut). While recording it is the tray click: an instant pause, the paused popover opening once the pause is confirmed. While paused it is Resume: the popover closes and capture resumes, with no count. It does nothing while a question is open (Discard…, Restart) or while Resume is greyed. Registered with the system's hot-key service, which needs no new permission (no Accessibility, no Input Monitoring), and let go the moment the take closes, so ⌥⌘P belongs to other apps the rest of the time. Nothing on screen names it in v1. Built: DECISIONS B182. | provisional | 2026-10-16 |
 
 ## Surfaces
 
@@ -3817,7 +3820,7 @@ A move that holds for a whole group of states, written once (B133). The tests ex
 - Local recording before setup and any local library (U1)  [L1724]
 - the .dmg (P17; brew joined v1 by N49)  [L1724]
 - macOS notifications (U9)  [L1724-1725]
-- global hotkeys (the reopen door covers a hidden mushroom, N41)  [L1725-1726]
+- global hotkeys, save ⌥⌘P's pause and resume during a take (N54) (the reopen door covers a hidden mushroom, N41)  [L1725-1726]
 - the tray's Copy last link and any auto-copy (N21, N1)  [L1726]
 - trim, the editor, marker surfacing (P11)  [L1726-1727]
 - captions and transcript search (P8)  [L1727]

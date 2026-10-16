@@ -1410,3 +1410,90 @@ fn restarts_count_opens_the_microphone_too() {
     r.send(Event::Act { surface: Surface::Countdown, action: Action::CancelCountdown, rev: 0 });
     assert!(r.has(|e| *e == Effect::Recorder(RecCmd::Cool)));
 }
+
+#[test]
+fn the_pause_shortcut_is_held_only_while_a_take_is_open() {
+    // N54: ⌥⌘P is shroom's only while a take is open; the rest of the time it's other apps'.
+    let mut r = Run::new(ready());
+    assert!(!r.scene.tray.shortcut, "idle: the shortcut isn't held");
+    r.click();
+    assert!(!r.scene.tray.shortcut, "config: not yet");
+    r.key(Surface::Popover, Key::Return);
+    assert!(!r.scene.tray.shortcut, "the count: not yet");
+    let deadline = r.w.session.arming.as_ref().unwrap().deadline;
+    r.tick_to(deadline.0);
+    r.send(Event::Rec(RecNews::Started { dir: TakeDir("d1".into()), rec: RecId("AbCdEfGhIjKlMnOp".into()) }));
+    assert!(r.scene.tray.shortcut, "recording: held");
+    r.send(Event::Shortcut(quick()));
+    r.send(Event::Rec(RecNews::Paused { length_ms: 61_000 }));
+    assert!(r.scene.tray.shortcut, "paused: held");
+    r.act(Action::Stop);
+    r.send(Event::Rec(RecNews::Finalized(Ok(61_000))));
+    assert!(!r.scene.tray.shortcut, "the take closed: let go");
+
+    // Idle, a stray press (one already queued as it was let go) does nothing.
+    let mut r = Run::new(ready());
+    r.send(Event::Shortcut(quick()));
+    assert!(r.effects.is_empty() && r.scene.popover.is_none());
+}
+
+#[test]
+fn the_pause_shortcut_pauses_like_a_click_and_resumes_like_resume() {
+    // N54: recording, ⌥⌘P is the tray click — the pause first, the popover only once it's
+    // confirmed, so nothing of shroom's reaches the take.
+    let mut w = ready();
+    w.take = Some(take(Phase::Recording, 0));
+    let mut r = Run::new(w);
+    r.send(Event::Tick);
+    r.send(Event::Shortcut(quick()));
+    assert!(r.has(|e| matches!(e, Effect::Recorder(RecCmd::Pause))), "the shortcut pauses");
+    assert!(r.scene.popover.is_none(), "the popover waits for the pause to be confirmed (POC §8)");
+    r.send(Event::Shortcut(quick()));
+    assert!(r.effects.is_empty(), "a second press before the pause lands does nothing");
+    r.send(Event::Rec(RecNews::Paused { length_ms: 61_000 }));
+    let p = r.scene.popover.as_ref().expect("the paused popover, as after a click");
+    assert_eq!(p.id, "paused");
+    assert!(p.activates, "asked, as by a click");
+
+    // Paused, ⌥⌘P is Resume: the popover closes and capture resumes, with no count.
+    r.send(Event::Shortcut(quick()));
+    assert!(r.has(|e| matches!(e, Effect::Recorder(RecCmd::Resume { .. }))), "the shortcut resumes");
+    assert!(r.scene.popover.is_none(), "the popover closes as on Resume");
+    assert!(r.scene.countdown.is_none(), "Resume has no count");
+    r.send(Event::Rec(RecNews::Resumed));
+    assert!(r.ids().contains(&"tray-red-dot"));
+
+    // Paused with the popover put away, it still resumes.
+    r.send(Event::Shortcut(quick()));
+    r.send(Event::Rec(RecNews::Paused { length_ms: 90_000 }));
+    r.send(Event::PopoverDismissed);
+    assert!(r.scene.popover.is_none());
+    r.send(Event::Shortcut(quick()));
+    assert!(r.has(|e| matches!(e, Effect::Recorder(RecCmd::Resume { .. }))), "resumes with the popover away");
+}
+
+#[test]
+fn the_pause_shortcut_never_answers_a_question_or_a_greyed_resume() {
+    // N54: a question open (Discard…, Restart) waits for its answer.
+    for action in [Action::Discard, Action::Restart] {
+        let mut w = ready();
+        w.take = Some(take(Phase::Paused(Cause::User), 272_000));
+        w.session.popover = Some(Door::asked(Mono(900)));
+        let mut r = Run::new(w);
+        r.act(action.clone());
+        let before = r.scene.popover.as_ref().map(|p| p.id);
+        r.send(Event::Shortcut(quick()));
+        assert!(r.effects.is_empty(), "{action:?}: the question stays");
+        assert_eq!(r.scene.popover.as_ref().map(|p| p.id), before);
+    }
+    // The display left: Resume is greyed, and so is the shortcut.
+    let mut w = ready();
+    w.take = Some(take(Phase::Recording, 0));
+    let mut r = Run::new(w);
+    r.send(Event::Tick);
+    r.send(Event::Os(OsNews::Devices { displays: vec![], mics: quick().mics, cameras: quick().cameras }));
+    r.send(Event::Rec(RecNews::Paused { length_ms: 61_000 }));
+    assert!(r.scene.popover.as_ref().is_some_and(|p| p.faces.contains(&"display-lost")));
+    r.send(Event::Shortcut(QuickProbe { displays: vec![], ..quick() }));
+    assert!(!r.has(|e| matches!(e, Effect::Recorder(RecCmd::Resume { .. }))), "no Resume while the display is gone");
+}
