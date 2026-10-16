@@ -75,6 +75,8 @@ struct Counts {
     /// How often the Mac's sound was placed by its timestamps, and gaps kept as silence.
     placed: AtomicU64,
     gaps: AtomicU64,
+    /// How far the voice's own count wandered from when its blocks arrived (µs, eased).
+    voice_us: AtomicI64,
 }
 
 /// [`SystemAudio::counts`]: what the capture delivered, and how it went.
@@ -100,6 +102,9 @@ pub struct SystemCounts {
     /// cut), and how many gaps in its timestamps were kept as silence.
     pub placed: u64,
     pub gaps: u64,
+    /// How far the voice's own clock (its sample count) wandered from the host's over the
+    /// take, in ms: a real microphone's crystal, a few ms a minute.
+    pub voice_ms: f64,
 }
 
 impl Default for SystemAudio {
@@ -140,6 +145,7 @@ impl SystemAudio {
             stamps_ms: c.stamps_us.load(Ordering::Relaxed) as f64 / 1000.0,
             placed: c.placed.load(Ordering::Relaxed),
             gaps: c.gaps.load(Ordering::Relaxed),
+            voice_ms: c.voice_us.load(Ordering::Relaxed) as f64 / 1000.0,
         }
     }
 
@@ -404,6 +410,7 @@ impl Mix {
                 self.voice_late += (late - self.voice_late) * (n as f64 / rate / EASE).min(1.0);
             }
         }
+        self.counts.voice_us.store((self.voice_late * 1e6) as i64, Ordering::Relaxed);
         let from = at + self.voice_late;
         self.voice_at = Some(at + n as f64 / rate);
         let system = self.system_over(from, n);

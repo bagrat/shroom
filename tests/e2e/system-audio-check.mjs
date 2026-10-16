@@ -120,6 +120,8 @@ try {
   let playerSaid = "";
   players[0].stderr.on("data", (d) => { playerSaid += d; });
   const stopPlayers = () => { for (const p of players) if (p.exitCode === null) p.kill(); };
+  // The wall clock against the steady one over the takes: a fresh runner's is still being set.
+  const clock0 = [Date.now(), process.hrtime.bigint()];
   const check = spawn("open", ["-W", "-n", app, "--args", "--record-check", report, String(seconds), "60", "system"], { stdio: "ignore" });
   const done = new Promise((r) => check.on("exit", r));
   let ended = false;
@@ -132,6 +134,8 @@ try {
   fs.writeFileSync(report.replace(/\.json$/, ".quiet"), "");
   await done;
   stopPlayers();
+  const steadyMs = Number(process.hrtime.bigint() - clock0[1]) / 1e6;
+  summary.wallClockPpm = Math.round(((Date.now() - clock0[0] - steadyMs) / steadyMs) * 1e6);
   const r = JSON.parse(fs.readFileSync(report, "utf8"));
   summary.system = r.system;
   if (r.error) throw new Error(`record check: ${r.error}`);
