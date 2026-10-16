@@ -1,0 +1,39 @@
+name: Something's wrong
+description: shroom did something it shouldn't, or didn't do something it should.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: shroom version
+      description: In the mushroom menu → About, or Settings.
+      placeholder: "0.1.16"
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+      placeholder: "macOS 15.5"
+    validations:
+      required: true
+  - type: dropdown
+    id: role
+    attributes:
+      label: Whose space
+      options:
+        - My own (I set up Cloudflare)
+        - A teammate's (I joined by invite)
+        - Not set up yet
+  - type: textarea
+    id: more
+    attributes:
+      label: Anything else
+      description: A screenshot, or a shroom link showing it, helps a lot. Please leave out tokens and account IDs.

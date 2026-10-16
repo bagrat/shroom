@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: A question
+    url: https://shroom.am/faq
+    about: The common ones are answered here. Still stuck? Open a blank issue.
+  - name: Rather not use GitHub?
+    url: mailto:hi@shroom.am
+    about: Email hi@shroom.am.

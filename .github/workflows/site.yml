@@ -48,8 +48,8 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           package-manager-cache: false
-      - name: The landing, the agent page, the Worker
-        run: node --test site/test/landing.test.mjs site/test/agent.test.mjs site/test/worker.test.mjs
+      - name: The landing, the agent page, the Worker, link previews
+        run: node --test site/test/landing.test.mjs site/test/agent.test.mjs site/test/worker.test.mjs site/test/og.test.mjs
 
   deploy:
     name: Deploy shroom.am
