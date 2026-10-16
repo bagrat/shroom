@@ -75,6 +75,7 @@
   .fine { color: var(--quiet); font-size: 14px; margin: 0; }
   .fine.os { padding-top: 4px; }
   /* The agent's line is the page's second way in: outlined, so Install keeps the one fill. */
+  .install .lead { margin: 0; color: var(--muted); }
   .cmd.second button { background: transparent; border: 1px solid var(--line-strong); color: var(--text); }
   .cmd.second button:hover { background: var(--card); }
 
@@ -127,7 +128,10 @@
 
   <section class="install" id="install">
     <h2>Install in one line</h2>
-    <div class="cmd"><code id="cmd">curl -fsSL https://shroom.am/install | sh</code><button type="button" data-copy="cmd">Copy</button></div>
+    <p class="lead">With Homebrew:</p>
+    <div class="cmd"><code id="brew">brew install --cask bagrat/shroom/shroom &amp;&amp; open ~/Applications/shroom.app</code><button type="button" data-copy="brew">Copy</button></div>
+    <p class="lead">Or without it:</p>
+    <div class="cmd second"><code id="cmd">curl -fsSL https://shroom.am/install | sh</code><button type="button" data-copy="cmd">Copy</button></div>
     <p class="fine"><a href="/install">Read it first</a> — the same address opens as readable source.</p>
     <h3>Or ask your coding agent</h3>
     <div class="cmd second"><code id="agent">Install shroom on my Mac: read https://shroom.am/agent and follow it.</code><button type="button" data-copy="agent">Copy</button></div>
