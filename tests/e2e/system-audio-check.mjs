@@ -8,7 +8,9 @@
 //     picture within the heartbeat's 40 ms;
 //   - shroom's own tone is in neither take;
 //   - take 1 is exactly what a voice-only take was: every beep within 40 ms, and nothing
-//     else on the line.
+//     else on the line;
+//   - the other app's steady tone never drops out in take 0 (DECISIONS B174: the mix used to
+//     cut the Mac's sound at the voice's block edges).
 //
 //   node tests/e2e/system-audio-check.mjs [seconds=12]
 //
@@ -59,6 +61,15 @@ function band(samples, hz) {
     out[w] = (4 * Math.sqrt(Math.max(0, s1 * s1 + s2 * s2 - k * s1 * s2))) / WIN;
   }
   return out;
+}
+
+/** Windows in the steady middle of a tone (its first and last half second left out) where
+ *  it falls below half its median: a dropout, or a splice the window straddles. */
+function dropouts(env) {
+  const edge = Math.round((0.5 * RATE) / HOP), level = median(env) / 2;
+  let n = 0;
+  for (let w = edge; w < env.length - edge; w++) if (env[w] < level) n++;
+  return n;
 }
 
 const median = (env) => { const a = Array.from(env).sort((x, y) => x - y); return a.length ? a[Math.floor(a.length / 2)] : 0; };
@@ -163,6 +174,7 @@ try {
       selfLevel: Number(selfLevel.toFixed(4)),
       // Apple's player's steady tone (take 0): another app's sound, by its median level.
       otherAppLevel: Number(median(other).toFixed(4)),
+      otherAppDropouts: dropouts(other),
       foreign,
       starts: [videoStart, audioStart],
     };
@@ -176,6 +188,8 @@ try {
     voiceInTake0: t0.voice.beeps >= expected,
     macInTake0: t0.macHits >= expected,
     otherAppInTake0: t0.otherAppLevel > 0.02,
+    // ...and steady: never cut, never silenced, for the whole take.
+    otherAppSteady: t0.otherAppDropouts === 0,
     // shroom's own tone: never, at a twentieth of the Mac's burst level or more.
     selfAbsent: takes.every((t) => t.selfLevel < Math.max(0.005, t0.mac.peak / 20)),
     // Take 1: the voice as it ever was, and nothing of the Mac.
