@@ -128,7 +128,9 @@ lives in `spec/`; the working docs live in `docs/`.
   needs code (that repo's CLAUDE.md says how its cloud setup runs).
 - **Blocked children are surfaced.** Each recap checks every live child's `status_bucket`.
   One that reads blocked or waiting on a permission gets a push to Bagrat at once, with its
-  session link and the exact thing to approve.
+  session link and the exact thing to approve. When Bagrat unblocks a child in its own chat,
+  that child tells the orchestrator at once that he did and what it's doing now
+  (Bagrat, 2026-10-16).
 - **Asking Bagrat.** As simple as it can be put. Interviews and walkthroughs ask one
   question at a time. Otherwise, questions that are each a single click from a few options
   and don't depend on each other go together in one question tool (`AskUserQuestion`)
