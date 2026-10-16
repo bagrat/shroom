@@ -9,6 +9,8 @@
 //   _/whats-new/<version>.html             each release's "What's new", from
 //                                          docs/release-notes/<version>.md (DECISIONS B152)
 //   _/whats-new/latest.html                the newest of them
+//   _/faq.html, _/privacy.html, _/terms.html
+//                                          site/pages/<name>.html in the landing's look
 //
 // site/worker.js answers from these. Run: node site/build.mjs [out-dir]
 import { copyFileSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
@@ -136,6 +138,73 @@ ${footer}
 `;
 }
 
+/** The pages under site/pages, each a fragment: its <title>, its description, then what
+ * goes in <main> (an <h1> and a punch line first, as on the landing).
+ * @type {string[]} */
+export const PAGES = ["faq", "privacy", "terms"];
+
+/** One of site/pages in the landing's look, with its header and footer.
+ * @param {string} landing @param {string} name @param {string} fragment */
+export function docPage(landing, name, fragment) {
+  const style = landing.match(/<style>[\s\S]*?<\/style>/)?.[0];
+  const header = landing.match(/<header>[\s\S]*?<\/header>/)?.[0];
+  const footer = landing.match(/<footer>[\s\S]*?<\/footer>/)?.[0];
+  if (!style || !header || !footer) throw new Error("site/index.html should carry one <style>, one <header> and one <footer>");
+  const title = fragment.match(/<title>([^<]*)<\/title>/)?.[1];
+  const description = fragment.match(/<meta name="description" content="([^"]*)">/)?.[1];
+  if (!title || !description) throw new Error(`site/pages/${name}.html should carry a <title> and a description`);
+  const body = fragment
+    .replace(/<!--[\s\S]*?-->\s*/g, "")
+    .replace(/<title>[^<]*<\/title>\s*/, "")
+    .replace(/<meta name="description"[^>]*>\s*/, "")
+    .trim();
+  const [, hero, rest] = body.match(/^(<h1>[\s\S]*?<\/h1>\s*<p class="punch">[\s\S]*?<\/p>)\s*([\s\S]*)$/) ?? [];
+  if (!hero) throw new Error(`site/pages/${name}.html should open with an <h1> and its punch line`);
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${title}</title>
+<meta name="description" content="${description}">
+<meta property="og:type" content="website">
+<meta property="og:title" content="${title}">
+<meta property="og:url" content="https://shroom.am/${name}">
+<meta property="og:description" content="${description}">
+${OG_IMAGE}
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="icon" type="image/png" sizes="180x180" href="/favicon.png">
+<link rel="apple-touch-icon" href="/favicon.png">
+<meta name="theme-color" content="#2b2f36" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f6f7f9" media="(prefers-color-scheme: light)">
+${style.replace("</style>", `  main.doc { gap: 20px; }
+  .doc h2 { margin-top: 20px; }
+  .qa li { display: flex; flex-direction: column; gap: 4px; }
+  .qa li b { font-weight: 600; }
+  .qa li span, .limits li { color: var(--muted); }
+  /* What's coming: its words and the pill on one line; the words wrap beside it. */
+  .limits li.soon { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--text); }
+  .limits li.soon span { flex: 1 1 auto; min-width: 0; color: var(--text); }
+  .pill { flex: none; white-space: nowrap; padding: 2px 10px; border: 1px solid var(--frost); border-radius: 999px; background: color-mix(in srgb, var(--frost) 14%, transparent); color: var(--frost); font: 600 12px/1.6 var(--sans); font-style: normal; letter-spacing: 0.02em; }
+  .doc .fine { margin-top: 12px; }
+</style>`)}
+</head>
+<body>
+${header}
+
+<main class="wrap doc">
+  <div class="hero">
+    ${hero.replace(/\n\s*/g, "\n    ")}
+  </div>
+${rest.split("\n").map((l) => (l ? `  ${l}` : l)).join("\n")}
+</main>
+
+${footer}
+</body>
+</html>
+`;
+}
+
 /** @param {string} out */
 export function build(out) {
   rmSync(out, { recursive: true, force: true });
@@ -146,6 +215,9 @@ export function build(out) {
   writeFileSync(join(out, "_/agent.md"), markdown);
   const landing = readFileSync(join(SITE, "index.html"), "utf8");
   writeFileSync(join(out, "_/agent.html"), agentPage(landing, markdown));
+  for (const name of PAGES) {
+    writeFileSync(join(out, `_/${name}.html`), docPage(landing, name, readFileSync(join(SITE, "pages", `${name}.html`), "utf8")));
+  }
   const notes = join(ROOT, "docs/release-notes");
   const versions = noteVersions(notes);
   mkdirSync(join(out, "_/whats-new"), { recursive: true });

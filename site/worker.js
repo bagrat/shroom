@@ -15,6 +15,8 @@
 //   /whats-new/<version>
 //                that release's — what the app's "What's new" opens; a version with no
 //                notes (never released, or from before them) goes to /whats-new, never a 404
+//   /faq, /privacy, /terms
+//                questions and known limits, privacy, terms: site/pages, as pages
 //   www.…        a permanent redirect to shroom.am
 //
 // Nothing else exists: the files behind these answers (/_/…) aren't addresses.
@@ -180,6 +182,10 @@ export default {
         return serve(env, request, url, "/_/agent.md", MARKDOWN);
       case "/whats-new":
         return serve(env, request, url, "/_/whats-new/latest.html", HTML);
+      case "/faq":
+      case "/privacy":
+      case "/terms":
+        return serve(env, request, url, `/_${url.pathname}.html`, HTML);
       default:
         return whatsNew(env, request, url) ?? plain(404);
     }

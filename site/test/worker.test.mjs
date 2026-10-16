@@ -1,5 +1,6 @@
 // shroom.am's Worker (site/worker.js) over what site/build.mjs puts together: the landing,
-// the install line, the page for coding agents, What's new, and nothing else.
+// the install line, the page for coding agents, What's new, the questions, privacy and terms
+// pages, and nothing else.
 // Run: node --test site/test/worker.test.mjs
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -262,5 +263,44 @@ describe("what's counted", () => {
     assert.equal(tag("?ref=<script>"), "");
     assert.equal(tag("?ref=you@example.com"), "", "an address: no tag");
     assert.equal(tag(""), "");
+  });
+});
+
+describe("the questions, privacy and terms pages", () => {
+  const landing = file("site/index.html");
+  for (const name of ["faq", "privacy", "terms"]) {
+    it(`/${name} is site/pages/${name}.html in the landing's look`, async () => {
+      const res = await get(`/${name}`, { accept: "*/*" });
+      assert.equal(res.status, 200);
+      assert.equal(res.headers.get("content-type"), "text/html; charset=utf-8", "a page to everyone, agents too");
+      const page = await res.text();
+      const source = file(`site/pages/${name}.html`);
+      for (const li of source.match(/<li[\s\S]*?<\/li>/g) ?? []) assert.ok(page.includes(li), li);
+      assert.ok(page.includes(source.match(/<h1>[^<]*<\/h1>/)?.[0] ?? "no h1"));
+      assert.ok(page.includes(landing.match(/<header>[\s\S]*?<\/header>/)?.[0] ?? "no header"), "the landing's header");
+      assert.ok(page.includes(landing.match(/<footer>[\s\S]*?<\/footer>/)?.[0] ?? "no footer"), "the landing's footer");
+      assert.match(page, /<meta property="og:url" content="https:\/\/shroom\.am\/[a-z]+">/);
+    });
+  }
+
+  it("each is linked from the footer", () => {
+    const footer = landing.match(/<footer>[\s\S]*?<\/footer>/)?.[0] ?? "";
+    for (const name of ["faq", "privacy", "terms"]) assert.match(footer, new RegExp(`<a href="/${name}">`));
+  });
+
+  it("is counted like the others", async () => {
+    counted = [];
+    await get("/privacy", { accept: BROWSERS.chrome });
+    assert.equal(counted.length, 1);
+    assert.deepEqual(counted[0].indexes, ["/privacy"]);
+  });
+
+  it("puts every coming-soon line's pill on its own line's end", () => {
+    const faq = file("site/pages/faq.html");
+    const soon = faq.match(/<li class="soon">[\s\S]*?<\/li>/g) ?? [];
+    assert.equal(soon.length, 4, "editing, captions and chapters, view counts, deleting from the page");
+    for (const li of soon) assert.match(li, /^<li class="soon"><span>[^<]+<\/span><em class="pill">Coming soon<\/em><\/li>$/);
+    const limits = faq.match(/<ul class="points limits">([\s\S]*?)<\/ul>/)?.[1] ?? "";
+    assert.ok(limits.trim().startsWith('<li class="soon">'), "what's coming sits at the top of the list");
   });
 });

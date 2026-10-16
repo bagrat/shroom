@@ -1,0 +1,30 @@
+<!-- shroom.am/privacy — the canvas board "shroom.am/privacy". PLACEHOLDER WORDS until the
+     approved copy. Every claim is the code's: what the app sends (crates/shroom-update,
+     crates/shroom-cloud), where the token lives (app/src-tauri/src/runtime/home.rs), the
+     video page (worker/src/worker.js), and what this site counts (site/worker.js). -->
+<title>shroom — privacy</title>
+<meta name="description" content="What shroom keeps, and where: your videos stay in your own Cloudflare account.">
+<h1>Privacy</h1>
+<p class="punch">Short, because there's little to say: we never hold your videos</p>
+
+<h2>Your videos</h2>
+<ul class="points qa">
+  <li><b>Where they live</b><span>In your own Cloudflare account. They go straight from your Mac to your storage; they never pass through us, and we can't see them.</span></li>
+  <li><b>Who can watch</b><span>Anyone with a video's link. Its page sets no cookie for viewers, counts no views, and asks search engines to leave it out.</span></li>
+  <li><b>Your Cloudflare token</b><span>Kept on your Mac only, in a folder only you can read. It's sent to Cloudflare and nowhere else.</span></li>
+</ul>
+
+<h2>The app</h2>
+<ul class="points qa">
+  <li><b>No tracking</b><span>No analytics, no crash reports, nothing sent to us.</span></li>
+  <li><b>Updates</b><span>A few times a day it asks GitHub, where shroom's releases are, whether there's a newer one. GitHub sees that request the way it sees any download.</span></li>
+  <li><b>Your team</b><span>Your space keeps the name you give each invite, and each of your Macs' name and your user name on it, so the Members list can show them. No email addresses.</span></li>
+</ul>
+
+<h2>This website</h2>
+<ul class="points qa">
+  <li><b>What we count</b><span>Each visit to a page: which page, what kind of browser or tool (never its full details), the site that linked here, and the country. No cookies, no addresses, nothing that ties one visit to another. Counts are kept three months.</span></li>
+  <li><b>Cloudflare's visit counter</b><span>shroom.am also runs Cloudflare Web Analytics, which counts visits the same cookie-free way.</span></li>
+</ul>
+
+<p class="fine">Questions: <a href="mailto:hi@shroom.am">hi@shroom.am</a>. Every line of shroom is <a href="https://github.com/bagrat/shroom">on GitHub</a>, so you can check all of this.</p>

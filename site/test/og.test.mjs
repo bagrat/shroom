@@ -14,6 +14,9 @@ const pages = {
   "/": readFileSync(join(out, "index.html"), "utf8"),
   "/agent": readFileSync(join(out, "_/agent.html"), "utf8"),
   "/whats-new": readFileSync(join(out, "_/whats-new/latest.html"), "utf8"),
+  "/faq": readFileSync(join(out, "_/faq.html"), "utf8"),
+  "/privacy": readFileSync(join(out, "_/privacy.html"), "utf8"),
+  "/terms": readFileSync(join(out, "_/terms.html"), "utf8"),
 };
 const meta = (html, attr, key) => html.match(new RegExp(`<meta ${attr}="${key}" content="([^"]*)">`))?.[1];
 
