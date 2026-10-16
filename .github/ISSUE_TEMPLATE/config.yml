@@ -1,9 +1,8 @@
-# Placeholder wording until the approved copy lands.
 blank_issues_enabled: true
 contact_links:
-  - name: Known limits and questions
+  - name: A question
     url: https://shroom.am/faq
-    about: What shroom doesn't do yet, and answers to the common questions.
-  - name: Write to us privately
+    about: The common ones are answered here. Still stuck? Open a blank issue.
+  - name: Rather not use GitHub?
     url: mailto:hi@shroom.am
-    about: For anything you'd rather not post in public.
+    about: Email hi@shroom.am.

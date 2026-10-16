@@ -1,16 +1,15 @@
-# Placeholder wording until the approved copy lands (the fields stay).
 name: An idea
 description: Something shroom could do, or do better.
 labels: [idea]
 body:
   - type: textarea
-    id: need
+    id: problem
     attributes:
-      label: What are you trying to do?
-      description: The moment it would help, in your own words. What it should look like can wait.
+      label: What you're trying to do
+      description: The situation, not the solution. What gets in your way today?
     validations:
       required: true
   - type: textarea
-    id: today
+    id: idea
     attributes:
-      label: What do you do today instead?
+      label: What would help

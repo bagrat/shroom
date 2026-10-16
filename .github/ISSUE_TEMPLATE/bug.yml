@@ -1,47 +1,39 @@
-# Placeholder wording until the approved copy lands (the fields stay).
-name: Something went wrong
+name: Something's wrong
 description: shroom did something it shouldn't, or didn't do something it should.
 labels: [bug]
 body:
-  - type: markdown
-    attributes:
-      value: |
-        Thanks for telling us. The [known limits](https://shroom.am/faq) may already answer it.
-        Please leave out anything private: your Cloudflare token, account id, or links to videos you don't want seen.
   - type: textarea
     id: what
     attributes:
-      label: What happened?
-      description: What you did, what you expected, and what you saw instead.
-    validations:
-      required: true
-  - type: textarea
-    id: steps
-    attributes:
-      label: How can we see it too?
-      description: The steps, one per line, if you know them.
-  - type: input
-    id: macos
-    attributes:
-      label: macOS version
-      placeholder: "15.1"
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
     validations:
       required: true
   - type: input
     id: version
     attributes:
-      label: shroom version, if you know it
-      placeholder: "0.1.12"
+      label: shroom version
+      description: In the mushroom menu → About, or Settings.
+      placeholder: "0.1.16"
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+      placeholder: "macOS 15.5"
+    validations:
+      required: true
   - type: dropdown
     id: role
     attributes:
-      label: Whose space is it?
+      label: Whose space
       options:
-        - I set it up (my own Cloudflare account)
-        - I joined from an invite
-        - It's about a video's page, as someone watching it
+        - My own (I set up Cloudflare)
+        - A teammate's (I joined by invite)
+        - Not set up yet
   - type: textarea
     id: more
     attributes:
       label: Anything else
-      description: A screenshot or a screen recording helps.
+      description: A screenshot, or a shroom link showing it, helps a lot. Please leave out tokens and account IDs.
