@@ -5,6 +5,12 @@ without Loom pricing, never a SaaS we operate." The repo is **in the v1 build** 
 2026-10-01): the agent-first POC shipped (v0.1.16) and was archived, the rethink chose the
 stack (Tauri v2 shell + Rust capture core) and designed the UX, and the build is under way.
 
+> **Read memory first.** Before anything else in a session, attach the private
+> bagrat/shroom-private (`add_repo`, then clone it as the tool says) and read its
+> `memory/MEMORY.md`: Bagrat's memory. It stays private: nothing from it lands in this
+> repo. No access (a contributor, or the attach is refused)? Carry on without it; never
+> wait on it. A session reads the memory as it was when it attached.
+
 ## The lay of the land
 
 At the root: this file, [`README.md`](README.md) and the licences. The spec
@@ -131,8 +137,9 @@ lives in `spec/`; the working docs live in `docs/`.
   else goes to the orchestrator, and only the orchestrator pushes him (Bagrat, 2026-10-16).
 - **"Remember this."** When Bagrat asks a session to remember something about how he
   works, it goes into this file, into shroom-private's CLAUDE.md, or both, by where it
-  applies. Anything more specific waits for a memory that also works in cloud sessions,
-  which is being researched (Bagrat, 2026-10-16).
+  applies. Anything more specific (a fact, a preference about one area, a standing
+  decision, context to carry) goes in shroom-private's `memory/MEMORY.md`, committed
+  straight to its `main` with no PR (Bagrat, 2026-10-16). See *Read memory first* above.
 - **Report up; don't wait to be polled.** A session the orchestrator spawned or watches
   messages it (`send_message`) when something that matters changes. That covers finishing,
   opening or merging a PR, failing, getting blocked, or needing Bagrat: a question, a
