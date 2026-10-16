@@ -976,6 +976,17 @@
    "amended_by": []
   },
   {
+   "id": "N51",
+   "title": "The invite page offers the Homebrew join line",
+   "decision": "**The invite page shows the Homebrew join line under the install command** (Bagrat, 2026-10-16: the board approved, placement and words as drawn). “Use Homebrew? This does the same:” then `brew install --cask bagrat/shroom/shroom && open -a ~/Applications/shroom.app \"https://<space>/join/<code>\"` with its own Copy, quieter than the install command's. It goes live only with the app that takes the link (N50, 0.1.17). Built: DECISIONS B178.",
+   "status": "ratified",
+   "date": "2026-10-16",
+   "amends": [
+    "join-landing (two more lines in Get shroom)"
+   ],
+   "amended_by": []
+  },
+  {
    "id": "N52",
    "title": "shroom.am puts Homebrew first",
    "decision": "**The landing's install block offers Homebrew first and the install line under it**, as the README does (Bagrat, 2026-10-16: build it, he looks at the screenshot after). “With Homebrew:” `brew install --cask bagrat/shroom/shroom && open ~/Applications/shroom.app` with the filled Copy; “Or without it:” the install line with an outlined one, then its Read it first; the agent door below as before. The two lead-ins are placeholders for his words. Built: DECISIONS B179.",
@@ -9242,6 +9253,27 @@
       "B134"
      ],
      "id": "join-landing.for-macos-14-or"
+    },
+    {
+     "text": "Use Homebrew? This does the same:",
+     "role": "line",
+     "copy": "ratified",
+     "note": "Under the install command, above a divider of its own; quieter than the install line (N51).",
+     "cites": [
+      "N51"
+     ],
+     "id": "join-landing.use-homebrew-this-does"
+    },
+    {
+     "text": "brew install --cask bagrat/shroom/shroom && open -a ~/Applications/shroom.app \"https://v.myshroom.workers.dev/join/7xk2pm\"",
+     "role": "other",
+     "copy": "ratified",
+     "note": "The Homebrew join line (N50, N51): the link varies, and is always whole, https:// and all — the app takes a web address only as a join link. Its Copy is outlined, not filled.",
+     "cites": [
+      "N50",
+      "N51"
+     ],
+     "id": "join-landing.brew-install-cask-bagrat"
     },
     {
      "text": "Already have shroom?",
