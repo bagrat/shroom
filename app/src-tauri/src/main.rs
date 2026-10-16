@@ -334,13 +334,14 @@ fn main() {
                     }
                 }
             }
-            // The page's Open shroom (`shroom://join/<host>/<code>`): an arrival, queued
-            // behind `Booted` on the main thread. The link's text goes to the stash and
-            // `~/.shroom/invite` only — never a log. The `shroom` URL type belongs in the
-            // release bundle's Info.plist only: a dev bundle never claims the scheme, so
-            // a real invite opened on this Mac can't launch a dev build.
+            // The page's Open shroom (`shroom://join/<host>/<code>`), or a join link handed
+            // over by `open -a shroom <link>` (N50): an arrival, queued behind `Booted` on
+            // the main thread. Any other web address is ignored. The link's text goes to
+            // the stash and `~/.shroom/invite` only — never a log. The `shroom` URL type
+            // belongs in the release bundle's Info.plist only: a dev bundle never claims
+            // the scheme, so a real invite opened on this Mac can't launch a dev build.
             tauri::RunEvent::Opened { urls } => {
-                EARLY_LINKS.lock().unwrap().extend(urls.iter().filter(|u| u.scheme() == "shroom").map(|u| u.to_string()));
+                EARLY_LINKS.lock().unwrap().extend(urls.iter().map(|u| u.to_string()).filter(|u| shroom_cloud::member::takes_opened(u)));
                 if let Some(rt) = app.try_state::<runtime::Runtime>() {
                     drain_early_links(app, rt.inner());
                 }

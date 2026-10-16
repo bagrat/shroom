@@ -44,6 +44,14 @@ pub fn parse_link(link: &str) -> Option<(String, String)> {
     (host_ok && is_b14(code)).then(|| (host.to_ascii_lowercase(), code.to_string()))
 }
 
+/// Whether a URL macOS hands the app as it opens is taken as an invite (N50): the page's
+/// Open shroom (`shroom:` — a non-join one is still reported, then ignored), and a web
+/// address only when it reads as a join link (`open -a shroom <link>`). Any other is
+/// ignored unread: shroom claims no web addresses, so only a local open can send one.
+pub fn takes_opened(url: &str) -> bool {
+    url.starts_with("shroom:") || (url.starts_with("https://") && parse_link(url).is_some())
+}
+
 /// The parent proof's `Authorization` value (§3.2): an HMAC under the parent's S3 secret
 /// over a domain-separated message binding the method, host, path, time and body.
 pub fn parent_proof(secret: &str, method: &str, host: &str, path: &str, ts: u64, body: &[u8]) -> String {
@@ -884,6 +892,21 @@ mod tests {
         for bad in ["v.myshroom.workers.dev/join/7xk2pm", "http://v.myshroom.workers.dev/AbCdEfGhIjKlMnOp", "localhost/join/AbCdEfGhIjKlMnOp",
             "v.myshroom.workers.dev/join/AbCdEfGh/jKlMnOp", "ev il.example/join/AbCdEfGhIjKlMnOp", ""] {
             assert_eq!(parse_link(bad), None, "{bad}");
+        }
+    }
+
+    #[test]
+    fn an_opened_url_is_taken_only_as_a_join_link() {
+        // N50: what macOS hands the app as it opens. Open shroom's scheme is always taken
+        // (a non-join one is reported, then ignored); a web address only as a join link.
+        for take in ["https://v.myshroom.workers.dev/join/AbCdEfGhIjKlMnOp", "https://V.MyShroom.workers.dev/join/AbCdEfGhIjKlMnOp/",
+            "shroom://join/v.myshroom.workers.dev/AbCdEfGhIjKlMnOp", "shroom://join/short"] {
+            assert!(takes_opened(take), "{take}");
+        }
+        for leave in ["https://shroom.am/", "https://v.myshroom.workers.dev/AbCdEfGhIjKlMnOp", "https://v.myshroom.workers.dev/join/7xk2pm",
+            "https://v.myshroom.workers.dev/join/AbCdEfGhIjKlMnOp?x=1", "http://v.myshroom.workers.dev/join/AbCdEfGhIjKlMnOp",
+            "file:///Users/x/v.myshroom.workers.dev/join/AbCdEfGhIjKlMnOp", "v.myshroom.workers.dev/join/AbCdEfGhIjKlMnOp", ""] {
+            assert!(!takes_opened(leave), "{leave}");
         }
     }
 
