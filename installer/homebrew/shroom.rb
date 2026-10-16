@@ -33,15 +33,15 @@ cask "shroom" do
 
   app "shroom.app", target: "~/Applications/shroom.app"
 
-  # Only the release's signer is kept, and only then is Homebrew's quarantine mark lifted.
-  # The pin is the release certificate's SHA-1 (tools/release-identity.sha1; the
-  # installer's RELEASE_LEAF; installer/test/cask.test.mjs holds the three equal).
-  postflight_steps do
-    run "/bin/sh", args: ["-c", <<~'SH']
-      app="$HOME/Applications/shroom.app"
+  # Before anything is placed, the staged copy is held to the release's signer, and only
+  # then is Homebrew's quarantine mark lifted from it. The pin is the release certificate's
+  # SHA-1 (tools/release-identity.sha1; the installer's RELEASE_LEAF;
+  # installer/test/cask.test.mjs holds the three equal).
+  preflight_steps do
+    run "/bin/sh", args: ["-c", <<~'SH', "shroom-check", "{{staged_path}}/shroom.app"]
+      app=$1
       leaf=8344cbe040722ea0a5632320c1d0d4348eaa3af3
       if ! /usr/bin/codesign --verify --deep --strict -R "=identifier \"am.shroom\" and certificate leaf = H\"$leaf\"" "$app" 2>/dev/null; then
-        rm -rf "$app"
         echo "shroom's signature didn't verify, so nothing was installed. If it repeats, tell us: https://github.com/bagrat/shroom/issues/new — no GitHub? hi@shroom.am works too." >&2
         exit 1
       fi

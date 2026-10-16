@@ -22,8 +22,9 @@ const render = (manifest) => {
 const SUM = "ab".repeat(32);
 
 describe("the cask", () => {
-  // The postflight step's shell, as Homebrew hands it to /bin/sh (a heredoc Ruby leaves as is).
-  const step = cask.split("  postflight_steps do\n    run \"/bin/sh\", args: [\"-c\", <<~'SH']\n")[1].split("\n    SH\n")[0].replace(/^ {6}/gm, "");
+  // The preflight step's shell, as Homebrew hands it to /bin/sh (a heredoc Ruby leaves as is),
+  // with the staged copy as its one argument.
+  const step = cask.split("  preflight_steps do\n    run \"/bin/sh\", args: [\"-c\", <<~'SH', \"shroom-check\", \"{{staged_path}}/shroom.app\"]\n")[1].split("\n    SH\n")[0].replace(/^ {6}/gm, "");
 
   it("pins the release certificate the installer and tools/release-identity.sha1 pin (DECISIONS B125)", () => {
     const pin = readFileSync(join(ROOT, "tools/release-identity.sha1"), "utf8").trim();
@@ -31,14 +32,14 @@ describe("the cask", () => {
     assert.ok(installer.includes(`\nRELEASE_LEAF=${pin}\n`));
     assert.ok(step.includes(`\nleaf=${pin}\n`), "the cask's leaf is the release certificate's");
     assert.ok(step.includes('-R "=identifier \\"am.shroom\\" and certificate leaf = H\\"$leaf\\"" "$app"'), step);
-    assert.ok(step.startsWith('app="$HOME/Applications/shroom.app"\n'), "the copy it checks is the one it placed");
+    assert.ok(step.startsWith("app=$1\n"), "the copy it checks is the staged one, before anything is placed");
   });
 
-  it("checks the signature before it lifts the quarantine, and takes the app away when it doesn't verify", () => {
+  it("checks the signature before it lifts the quarantine, and fails the install when it doesn't verify", () => {
     const verify = step.indexOf("/usr/bin/codesign");
     const lift = step.indexOf('/usr/bin/xattr -dr com.apple.quarantine "$app"');
     assert.ok(verify >= 0 && lift > verify, step);
-    assert.match(step, /then\n\s+rm -rf "\$app"\n\s+echo ".*" >&2\n\s+exit 1\n\s*fi\n/);
+    assert.match(step, /then\n\s+echo ".*" >&2\n\s+exit 1\n\s*fi\n/);
     assert.equal(spawnSync("sh", ["-n", "-c", step]).status, 0, "it is shell that parses");
   });
 
