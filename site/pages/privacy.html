@@ -1,0 +1,20 @@
+<!-- shroom.am/privacy — the canvas board "shroom.am/privacy". The approved copy, word for word
+     (Bagrat, 2026-10-16). Every claim is the code's: what the app sends (crates/shroom-update,
+     crates/shroom-cloud), where the token lives (app/src-tauri/src/runtime/home.rs), the video
+     page (worker/src/worker.js), and what this site counts (site/worker.js). -->
+<title>shroom — privacy</title>
+<meta name="description" content="What shroom keeps, and where: your videos stay in your own Cloudflare account.">
+<h1>Privacy</h1>
+<p class="punch">shroom is built so that we hold nothing of yours.</p>
+<p class="fine">Updated 16 October 2026.</p>
+
+<ul class="points prose">
+  <li><b>Your videos</b> live in your own Cloudflare account. We never receive them, store them or see them. Who can watch a video is up to you: anyone with its link can.</li>
+  <li><b>The app</b> talks to your Cloudflare account (to set it up, upload your videos and manage your space) and to GitHub (to check for updates, sending no ID or version; like any website, GitHub sees your IP address). It sends nothing to us: no telemetry, no analytics, no crash reports. Its logs stay on your Mac.</li>
+  <li><b>Your Cloudflare token and card.</b> The token you create during setup stays on your Mac, and a key made from it stays in your own Cloudflare account; neither ever reaches us. Your card goes to Cloudflare, on Cloudflare's own page, and shroom never sees it.</li>
+  <li><b>This website</b> counts visits so we can see how people find shroom. For each page it counts the page, the kind of browser (not which one), the site that linked here (just its name), the country, and a link's <code>?ref=</code> tag if it has one. It never keeps your IP address, your browser's details, the full address you came from, or a cookie. The counts are kept for three months. Cloudflare's Web Analytics also counts visits on our behalf, without cookies.</li>
+  <li><b>Your teammates.</b> If you invite someone, their videos go to your Cloudflare account, and you can see and delete them. They can see only their own. Your space keeps its list of members in your own account: the names you give them and their Macs' names, never email addresses.</li>
+  <li><b>People watching your videos</b> get no cookies and aren't counted or logged.</li>
+</ul>
+
+<p class="fine">Questions: <a href="mailto:hi@shroom.am">hi@shroom.am</a>.</p>

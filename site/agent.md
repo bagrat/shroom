@@ -10,8 +10,8 @@ No monthly seat, sometimes completely free
 - Your videos live in your own Cloudflare account — we never hold them.
 - You set Cloudflare up once, in a guided setup — about five minutes.
 - You only ever pay Cloudflare. No account with us, no subscription.
-  - $0 /month — about six hours of video
-  - $2.40 /month — about a hundred hours
+  - $0 /month — about three hours of video
+  - $1.50 /month — about thirty hours
 - Delete old videos and pay less — storage is the whole bill.
 - Your team just accepts an invite and records — no Cloudflare setup for them.
 
@@ -71,6 +71,6 @@ chat. You never need to see it. If one lands here anyway, don't use or repeat it
 them to delete it in Cloudflare and make a fresh one.
 
 Trouble or questions go to https://github.com/bagrat/shroom/issues/new or
-issues@shroom.am — theirs to send, not yours to file.
+hi@shroom.am — theirs to send, not yours to file.
 
 We count visits to this page — no cookies, and nothing that tells us who you are.

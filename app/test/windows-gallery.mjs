@@ -627,7 +627,7 @@ const set = (variant) => settings.find((e) => e.variant === variant).scene;
   check("settings: the login box sends its action", acted(c, "settings", { do: "set-login-item", arg: true }));
   check("settings: the box keeps the Scene's state until the Scene changes", !(await page.getByRole("checkbox").isChecked()));
   await clear(page);
-  for (const name of ["Update", "What's new", "GitHub", "issues@shroom.am"]) await page.getByRole("button", { name, exact: true }).click();
+  for (const name of ["Update", "What's new", "GitHub", "hi@shroom.am"]) await page.getByRole("button", { name, exact: true }).click();
   c = await calls(page);
   check("settings: Update, What's new and the help doors send their actions", ["update", "whats-new", "report-issue", "write-us"].every((d) => acted(c, "settings", { do: d })), JSON.stringify(c));
   await clear(page);

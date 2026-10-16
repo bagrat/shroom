@@ -101,9 +101,10 @@ the build; the ones marked **release** block shipping. The numbers are the ones
 **Supply**
 17. **The demo recording** (N7, DEVIATIONS 29) — **release.** Record it in his space; its
     id goes into the landing's demo block.
-18. **og:description** for link previews (B27, the copy table) — none is invented; R5.1's
-    Teams card wants one. Whether “shroom” belongs on cards as a site name. The Teams
-    rich-card probe needs a Teams tenant.
+18. **og:description** for a video page's link previews (B27, the copy table) — none is
+    invented; R5.1's Teams card wants one. Whether “shroom” belongs on cards as a site name.
+    The Teams rich-card probe needs a Teams tenant. (shroom.am's own pages have theirs,
+    since [#8](https://github.com/bagrat/shroom/pull/8) *(FAQ, privacy and terms pages)*.)
 19. **Recorded REST responses** (B63): the real account's answers, scrubbed, for L1 — his
     review that no account id, token id or name survives.
 
