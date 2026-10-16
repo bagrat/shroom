@@ -154,7 +154,8 @@ pub fn check_invite_file(rt: &Runtime, opened: bool) {
     rt.post(Event::Member(MemberNews::Arrived { link, host: f.host, remembered: !opened }));
 }
 
-/// The page's Open shroom (`shroom://join/<host>/<code>`, RunEvent::Opened): written to
+/// The page's Open shroom (`shroom://join/<host>/<code>`) or a join link opened with
+/// shroom (`open -a shroom <link>`, N50), from RunEvent::Opened: written to
 /// `~/.shroom/invite` and the stash, then posted as an arrival. Its text is never logged.
 pub fn deep_link(rt: &Runtime, url: &str) {
     let Some((host, code)) = parse_link(url) else {
@@ -168,7 +169,8 @@ pub fn deep_link(rt: &Runtime, url: &str) {
         rt.log(&format!("member: couldn't keep the invite: {e}"));
     }
     let link = rt.stash.lock().unwrap().keep_link(LinkKind::Invite, link_of(&host, &code));
-    rt.log(&format!("member: an invite for {host} arrived by the page's Open shroom (link {})", link.0));
+    let door = if url.starts_with("shroom:") { "the page's Open shroom" } else { "a link opened with shroom" };
+    rt.log(&format!("member: an invite for {host} arrived by {door} (link {})", link.0));
     rt.post(Event::Member(MemberNews::Arrived { link, host, remembered: false }));
 }
 

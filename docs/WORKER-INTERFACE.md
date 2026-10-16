@@ -856,7 +856,7 @@ Only the Worker writes it. `setHealth` reads first and puts only on a change (ab
 | absent | anyone else | on its way: 5 s refresh, stall clock (`sessionStorage`; stalled line after 120 s, D:B94 a) |
 | uploading, or live with HLS | mine | the owner page: "Uploading — N%. Your link already works."; stalled and undrained, "Waiting for connection — …", or with health `blocked` "Waiting for your space — …" (owner-class) / `waitingFor(members[m].inviter)` (a member; no inviter → the connection line); drained, no line |
 | uploading | others | on its way, or the stalled line |
-| live with HLS | others | the player (+ Download if `media.mp4`) |
+| live with HLS | others | the player (+ Download if `media.mp4`). It plays `video.mp4` when `media.mp4` is set and `rec/<id>/v0/stream.m3u8` (read beside the record) names one `EXT-X-MAP`; else `master.m3u8` (D:B177). The owner page and the embed choose the same way |
 | else | anyone | unavailable (30 s refresh) |
 
 The owner page polls `/_shroom/status/<id>`; its waiting words come from the render
