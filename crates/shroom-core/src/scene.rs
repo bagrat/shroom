@@ -306,7 +306,7 @@ pub struct Banner {
 pub struct ConfigBody {
     pub record_label: String,
     pub sources: Vec<Choice>,
-    /// The camera picker (its accessible name “Show yourself”), a pick like the
+    /// The camera picker (its accessible name “Camera”), a pick like the
     /// microphone's: every camera here, then Camera off — none with Camera only as the
     /// source, whose camera it picks (DEVIATIONS #43).
     pub camera_label: String,

@@ -855,7 +855,7 @@ fn show_yourself_picks_a_camera_or_camera_off() {
     w.session.popover = Some(Door::asked(Mono(900)));
     let mut r = Run::new(w);
     let c = config_body(&r.scene);
-    assert_eq!(c.camera_label, "Show yourself");
+    assert_eq!(c.camera_label, "Camera");
     assert_eq!(labels(&c.cameras), ["System default", "FaceTime HD Camera", "Logitech BRIO", "Bagrat's iPhone Camera", "Camera off"]);
     assert_eq!(picked(&c.cameras), Some("System default"), "the first-ever camera pick is on (N43), on System default (N44)");
     assert!(c.cameras.iter().all(|x| x.enabled));

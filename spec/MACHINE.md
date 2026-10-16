@@ -1120,7 +1120,7 @@ A same-themed custom popover under the tray (Loom-style). It is never a native m
 | “LG UltraFine” | menu-item | ratified | An example only. Displays appear by their human name from macOS, which varies by hardware (§5.2 hard requirement). |
 | “Built-in Display” | menu-item | ratified | An example of a display's human name, which varies |
 | “Camera only” | menu-item | ratified | Unquoted in the spec, but named as the picker's option below the displays · was “Camera” · #43 |
-| “Show yourself” | field-label | ratified | the camera picker's accessible name, not shown on the row; it named a switch until the camera became a pick · #43, #45 |
+| “Camera” | field-label | ratified | the camera picker's accessible name, not shown on the row; “Show yourself” named a switch until the camera became a pick, and Bagrat renamed it Camera on 2026-10-16 · was “Show yourself” · #43, #45, B181 |
 | “Microphone” | field-label | ratified |  |
 | “Quality” | field-label | ratified |  |
 | “Normal” | other | ratified | Segmented control option, bolded in the spec. '(1080p)' is the spec's gloss, and whether it renders isn't stated. |
@@ -1155,7 +1155,7 @@ A same-themed custom popover under the tray (Loom-style). It is never a native m
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
 | Record | field |  |  | One source picker. Default: last-used, else the display with the menu bar. Choosing Camera only keeps the camera picker as the pick of the camera the take records, without Camera off, and a first pick of Camera only triggers the inline camera prompt (N22, DEVIATIONS #43). |
-| Show yourself | field |  |  | The camera picker, no longer a switch (DEVIATIONS #43); “Show yourself” is its accessible name, not shown (DEVIATIONS #45). System default first, every camera here, then Camera off: a camera turns the bubble on, live from the moment the popover opens; Camera off turns it off and keeps the pick. The first-ever pick is System default, the bubble on (N43, N44); last-used after that. With Camera only as the source it picks the camera the take records, without Camera off. |
+| Camera | field |  |  | The camera picker, no longer a switch (DEVIATIONS #43); “Camera” is its accessible name, not shown (DEVIATIONS #45; “Show yourself” until B181). System default first, every camera here, then Camera off: a camera turns the bubble on, live from the moment the popover opens; Camera off turns it off and keeps the pick. The first-ever pick is System default, the bubble on (N43, N44); last-used after that. With Camera only as the source it picks the camera the take records, without Camera off. |
 | Microphone | field |  |  | By name, prefers built-in, never auto-picks an iPhone |
 | Quality | other |  |  | segmented Normal / 2K / 4K |
 | Start recording | filled-default | ↵ | `countdown` | Return = Start recording (Law 8, N38): 'click the mushroom, press Return'. Greys under about a minute of disk (disk-low). |

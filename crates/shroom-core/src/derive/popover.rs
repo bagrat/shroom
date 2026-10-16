@@ -282,7 +282,7 @@ fn config(w: &World) -> Popover {
         body: PopoverBody::Config(ConfigBody {
             record_label: copy::record(),
             sources,
-            camera_label: copy::show_yourself(),
+            camera_label: copy::camera(),
             cameras,
             mic_label: copy::microphone(),
             mics,

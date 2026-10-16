@@ -27,8 +27,9 @@ pub fn record() -> String { "Record".into() }
 pub fn camera_only() -> String { "Camera only".into() }
 pub fn camera_off_pick() -> String { "Camera off".into() }
 pub fn no_mic_pick() -> String { "No mic".into() }
-/// The camera picker's accessible name; no row shows it (DEVIATIONS #45).
-pub fn show_yourself() -> String { "Show yourself".into() }
+/// The camera picker's accessible name; no row shows it (DEVIATIONS #45). Was “Show yourself”
+/// until Bagrat renamed it (B181).
+pub fn camera() -> String { "Camera".into() }
 /// The first item of the microphone's and the camera's menus (N44).
 pub fn system_default() -> String { "System default".into() }
 pub fn microphone() -> String { "Microphone".into() }
@@ -743,7 +744,7 @@ pub fn registry() -> Vec<(&'static str, String)> {
         ("perm-mic", mic_purpose()),
         ("perm-mic", camera_purpose()),
         ("config", record()),
-        ("config", show_yourself()),
+        ("config", camera()),
         ("config", system_default()),
         ("config", microphone()),
         ("config", quality()),
