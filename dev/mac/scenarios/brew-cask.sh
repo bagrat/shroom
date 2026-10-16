@@ -17,9 +17,6 @@ brew tap-new --no-git "$TAP" >/dev/null || { echo "NO: couldn't make a local tap
 casks="$(brew --repository)/Library/Taps/shroom-check/homebrew-local/Casks"
 mkdir -p "$casks"
 installer/homebrew/render-cask.sh >"$casks/shroom.rb" || { echo "NO: couldn't render the cask"; exit 1; }
-# PROBE (temporary): what the postflight step sees.
-sed -i '' -e 's|^      app="\$HOME/Applications/shroom.app"$|      echo "probe: HOME=$HOME USER=$(id -un) PWD=$PWD" >\&2; env \| sed "s/^/probe env: /" >\&2; app="$HOME/Applications/shroom.app"; ls -ld "$app" >\&2; /usr/bin/codesign -dv "$app" >\&2 2>\&1|' -e 's| "\$app" 2>/dev/null; then$| "$app"; then|' "$casks/shroom.rb"
-sed -n '/postflight_steps/,/^  end/p' "$casks/shroom.rb"
 grep -E '^  (version|sha256) ' "$casks/shroom.rb"
 rm -rf "$APP"
 
@@ -42,6 +39,19 @@ brew info --cask "$TAP/shroom" 2>&1 | grep -v "^::warning" | sed -n '1,6p'
 open "$APP"; sleep 8
 running "$APP" && echo "opened: it runs" || no "it didn't open"
 quit
+
+echo "── control (for the record): the same app with the mark Homebrew adds, opened"
+ctl=$(mktemp -d)/shroom.app
+ditto "$APP" "$ctl"
+xattr -w com.apple.quarantine "0081;$(printf %x "$(date +%s)");Homebrew Cask;" "$ctl"
+spctl --assess --type execute -vv "$ctl" 2>&1 | sed 's/^/  spctl: /'
+open "$ctl" >/dev/null 2>&1 &
+sleep 10
+running "$ctl" && echo "  marked copy: it runs (the mark wouldn't have stopped it)" || echo "  marked copy: macOS didn't let it run — why the cask lifts the mark"
+kill $! 2>/dev/null
+quit
+pkill -x CoreServicesUIAgent 2>/dev/null
+rm -rf "$(dirname "$ctl")"
 
 echo "── uninstall --zap"
 mkdir -p "$HOME/.shroom" "$HOME/Library/Caches/am.shroom"; : >"$HOME/.shroom/marker"
@@ -71,19 +81,6 @@ q=$(xattr -lr "$APP" 2>/dev/null | grep -c com.apple.quarantine)
 [ "$q" = 0 ] || no "$q files carry the quarantine mark after adopting"
 brew uninstall --zap --cask "$TAP/shroom" >/dev/null 2>&1
 [ -e "$APP" ] && no "left after adopting and uninstalling: $APP"
-
-echo "── control (for the record): the same app with the mark Homebrew adds, opened"
-ctl=$(mktemp -d)/shroom.app
-ditto "$APP" "$ctl"
-xattr -w com.apple.quarantine "0081;$(printf %x "$(date +%s)");Homebrew Cask;" "$ctl"
-spctl --assess --type execute -vv "$ctl" 2>&1 | sed 's/^/  spctl: /'
-open "$ctl" >/dev/null 2>&1 &
-sleep 10
-running "$ctl" && echo "  marked copy: it runs (the mark wouldn't have stopped it)" || echo "  marked copy: macOS didn't let it run — why the cask lifts the mark"
-kill $! 2>/dev/null
-quit
-pkill -x CoreServicesUIAgent 2>/dev/null
-rm -rf "$(dirname "$ctl")"
 
 brew untap "$TAP" >/dev/null 2>&1
 [ "$bad" = 0 ] && echo "verdict: Homebrew installs, opens, refuses a wrong signer, adopts and zaps"
