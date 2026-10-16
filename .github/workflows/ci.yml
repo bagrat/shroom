@@ -19,6 +19,9 @@ on:
   push:
     branches: [main]
   pull_request:
+    # `edited` re-runs the tripwire when a PR's title or body changes: a fixed body would
+    # otherwise stay red until the next push.
+    types: [opened, synchronize, reopened, edited]
   # "Run workflow" on `main` warms the caches before a tag, when nothing ran for a week.
   workflow_dispatch:
 
