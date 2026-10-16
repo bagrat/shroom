@@ -82,6 +82,12 @@ pub enum RecCmd {
     Abandon,
     Discard(TakeDir),
     Prime,
+    /// The count began: open this microphone now, so it's already heard at the take's zero
+    /// (a Bluetooth headset wakes about two seconds after its mic opens; B173). Nothing it
+    /// hears before the take begins is kept.
+    Warm { mic: Option<String> },
+    /// The count was cancelled: close what `Warm` opened.
+    Cool,
 }
 
 #[derive(Debug, Clone, PartialEq)]

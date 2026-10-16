@@ -201,7 +201,7 @@ new `Rec(Started)`.
 |---|---|
 | main | presenter (tray, panels, windows, Dock), `probe::quick`, shell effects |
 | `shroom-core` | the loop; `Publish` and `Persist` writes |
-| `shroom-recorder` | `Recording`; serial Start/Pause/Resume/Marker/Finalize/Confirm/Discard/Abandon/Prime; holds `LOCK`; 1 s watchdog mid-take: disk floor → `DiskFloor`, liveness (`STALL_AFTER` 5 s) → `FrameStall` or the revoked grants, mic lost flag → `MicLost` (D:B47) |
+| `shroom-recorder` | `Recording`; serial Start/Pause/Resume/Marker/Finalize/Confirm/Discard/Abandon/Prime, and Warm/Cool (the count's mic, D:B173); holds `LOCK`; 1 s watchdog mid-take: disk floor → `DiskFloor`, liveness (`STALL_AFTER` 5 s) → `FrameStall` or the revoked grants, mic lost flag → `MicLost` (D:B47) |
 | `shroom-uploader` | mid-take `LiveUpload`, the pass (§9), `cred.json`, owed discards |
 | `shroom-cloud` (+ `shroom-wizard`, `shroom-key-ahead`) | Reach (600 ms), `OpenOwnerPage`; the wizard's calls on their own sub-lane; the owner key minted ahead mid-take |
 | `shroom-member` | every `MemberCmd`, serial; answers from a left space dropped (`space_gen`) |
@@ -393,6 +393,9 @@ The design record has them: history/design/ARCHITECTURE.md §3.9.
 - cpal at the device's native rate, mono f32le, through a per-take named pipe (D:B17).
   Device: the pick (`prefs.mic`), else the system default unless Continuity, else built-in;
   "No mic" records silently (`prefs.mic_off`, DV #43).
+- It opens with the count, not at its zero (`RecCmd::Warm`/`Cool`, `shroom-record::warm`,
+  D:B173): a Bluetooth headset wakes about 2 s after its mic opens. A Bluetooth mic is also
+  held open through a pause; any other mic closes at the pause.
 - The audio clock (D:B18) writes `elapsed × rate` samples from the first video frame,
   padding silence or dropping beyond ±80 ms. The first take fixes the rate; later takes are
   resampled to it. A/V measured ≤ 40 ms end to end (D:B59).

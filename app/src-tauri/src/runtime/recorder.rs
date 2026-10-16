@@ -1,12 +1,17 @@
 //! The recorder lane: serial Start / Pause / Resume / Finalize / Confirm / Discard /
-//! Abandon / Marker / Prime, each answered with an event. Holds the take's LOCK while it's
-//! live (a crash releases it; the scan then reads the take as interrupted — law 2).
+//! Abandon / Marker / Prime, each answered with an event (Warm and Cool aren't). Holds the
+//! take's LOCK while it's live (a crash releases it; the scan then reads the take as
+//! interrupted — law 2).
 //!
 //! Between commands, while a take runs, its watchdog looks every second (DECISIONS B47):
 //! the takes volume's free space against the floor (`Rec(DiskFloor)`, once, and the free
 //! space itself as `Os(Disk)`), the take's liveness (`Rec(FrameStall)` — or, when screen
 //! recording was switched off under it, the grants that say so), and the microphone's
 //! own lost flag (`Rec(MicLost)`). The core decides what each means (N39).
+//!
+//! The microphone opens with the count (`Warm`), not at its zero, and a Bluetooth one stays
+//! open through a pause: a headset wakes about two seconds after its mic opens, and that
+//! wake was every take's silent head (B173).
 
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -20,6 +25,7 @@ use shroom_core::event::{Event, OsNews, RecNews};
 use shroom_core::world::{FailClass, Quality, RecId, SourceId, TakeDir, Why};
 use shroom_encode::quality::Quality as EncQuality;
 use shroom_record::mix::{Mixed, SystemAudio};
+use shroom_record::warm::WarmMic;
 use shroom_record::{AudioSource, FrameSource, Recording};
 
 use super::Runtime;
@@ -49,8 +55,39 @@ struct Active {
     /// The running stretch: when it began, and its microphone's lost flag.
     since: Instant,
     mic_lost: Option<Arc<AtomicBool>>,
+    /// A Bluetooth microphone, held open through a pause so Resume is heard at once (B173).
+    held: Option<Opened>,
     /// What the watchdog already said this stretch (each is said once).
     said: Said,
+}
+
+/// A microphone opened ahead of its take: the count's, or a Bluetooth one held through a
+/// pause. Each take records from a clone of `mic`; the device closes with the last one.
+#[derive(Clone)]
+struct Opened {
+    uid: String,
+    mic: WarmMic,
+    lost: Arc<AtomicBool>,
+    bluetooth: bool,
+}
+
+impl Opened {
+    fn open(uid: &str) -> Option<Opened> {
+        if shroom_capture::mic_access() != shroom_capture::Access::Granted {
+            return None;
+        }
+        let info = mic::input_devices().into_iter().find(|d| d.uid == uid)?;
+        let bluetooth = info.transport == mic::Transport::Bluetooth;
+        let source = mic::MicSource::open(info).ok()?;
+        let lost = source.lost_flag();
+        let mic = WarmMic::warm(Box::new(source)).ok()?;
+        Some(Opened { uid: uid.to_string(), mic, lost, bluetooth })
+    }
+
+    /// Still the device `uid` names, and still delivering.
+    fn serves(&self, uid: &str) -> bool {
+        self.uid == uid && !self.lost.load(Ordering::SeqCst)
+    }
 }
 
 #[derive(Default)]
@@ -83,10 +120,12 @@ pub fn spawn(rt: Runtime, live: Arc<Mutex<Option<LiveTake>>>, excluded: Arc<Mute
         .name("shroom-recorder".into())
         .spawn(move || {
             let mut active: Option<Active> = None;
+            // The microphone the count opened, until the count fires or is cancelled.
+            let mut warm: Option<Opened> = None;
             loop {
                 match rx.recv_timeout(WATCH_EVERY) {
                     Ok(cmd) => {
-                        let news = handle(&rt, &mut active, &live, &excluded, cmd);
+                        let news = handle(&rt, &mut active, &mut warm, &live, &excluded, cmd);
                         if let Some(n) = news {
                             rt.post(Event::Rec(n));
                         }
@@ -186,7 +225,7 @@ fn describe(e: &Event) -> String {
     }
 }
 
-type Sources = (Box<dyn FrameSource>, Option<Box<dyn AudioSource>>, Option<Arc<AtomicBool>>);
+type Sources = (Box<dyn FrameSource>, Option<Box<dyn AudioSource>>, Option<Arc<AtomicBool>>, Option<Opened>);
 
 /// Where a take's sound comes from: the microphone the core named — or, in an unattended
 /// harness run, the test pattern's beep in its place (never the room: what a drive records
@@ -203,7 +242,9 @@ fn ears(rt: &Runtime) -> Ears {
     if rt.harness { Ears::DriveBeep } else { Ears::Device }
 }
 
-fn sources(ears: Ears, a_source: SourceId, quality: Quality, mic_uid: &Option<String>, camera: &Option<String>, excluded: &[u32]) -> Result<Sources, String> {
+/// `ready`: a microphone already open (the count's, or one held through the pause) — used
+/// when it's the one named and still delivering, else the named one opens now.
+fn sources(ears: Ears, a_source: SourceId, quality: Quality, mic_uid: &Option<String>, ready: Option<Opened>, camera: &Option<String>, excluded: &[u32]) -> Result<Sources, String> {
     let system = matches!(a_source, SourceId::Display(_)).then(SystemAudio::new);
     let video: Box<dyn FrameSource> = match a_source {
         SourceId::Display(display) => {
@@ -220,26 +261,21 @@ fn sources(ears: Ears, a_source: SourceId, quality: Quality, mic_uid: &Option<St
             Box::new(shroom_capture::CameraSource::new(uid, enc(quality))?)
         }
     };
-    let (voice, lost) = if ears == Ears::DriveBeep {
-        (mic_uid.as_ref().map(|_| Box::new(shroom_capture::beep::BeepSource::new(48_000)) as Box<dyn AudioSource>), None)
+    let (voice, lost, opened) = if ears == Ears::DriveBeep {
+        (mic_uid.as_ref().map(|_| Box::new(shroom_capture::beep::BeepSource::new(48_000)) as Box<dyn AudioSource>), None, None)
     } else {
-        let opened = match mic_uid {
-            Some(uid) if shroom_capture::mic_access() == shroom_capture::Access::Granted => {
-                mic::input_devices().into_iter().find(|d| &d.uid == uid).and_then(|d| mic::MicSource::open(d).ok())
-            }
-            _ => None,
-        };
-        let lost = opened.as_ref().map(|m| m.lost_flag());
-        (opened.map(|m| Box::new(m) as Box<dyn AudioSource>), lost)
+        let opened = mic_uid.as_deref().and_then(|uid| ready.filter(|o| o.serves(uid)).or_else(|| Opened::open(uid)));
+        let voice = opened.as_ref().map(|o| Box::new(o.mic.clone()) as Box<dyn AudioSource>);
+        (voice, opened.as_ref().map(|o| o.lost.clone()), opened)
     };
     let audio = match system {
         Some(system) => Some(Box::new(Mixed::new(voice, system)) as Box<dyn AudioSource>),
         None => voice,
     };
-    Ok((video, audio, lost))
+    Ok((video, audio, lost, opened))
 }
 
-fn handle(rt: &Runtime, active: &mut Option<Active>, live: &Arc<Mutex<Option<LiveTake>>>, excluded: &Arc<Mutex<Vec<u32>>>, cmd: RecCmd) -> Option<RecNews> {
+fn handle(rt: &Runtime, active: &mut Option<Active>, warm: &mut Option<Opened>, live: &Arc<Mutex<Option<LiveTake>>>, excluded: &Arc<Mutex<Vec<u32>>>, cmd: RecCmd) -> Option<RecNews> {
     match cmd {
         RecCmd::Start { source, quality, mic, camera } => {
             let Some(ffmpeg) = super::locate_ffmpeg() else { return Some(RecNews::Failed) };
@@ -252,7 +288,7 @@ fn handle(rt: &Runtime, active: &mut Option<Active>, live: &Arc<Mutex<Option<Liv
                 let rec = shroom_upload::new_id();
                 write_json(&dir.join("take.json"), &TakeJson { v: 1, rec: rec.clone(), created: wall }).map_err(|e| e.to_string())?;
                 let mut recording = Recording::create(&dir, &ffmpeg, enc(quality).video_kbps()).map_err(|e| e.to_string())?;
-                let (screen, audio, mic_lost) = sources(ears(rt), source, quality, &mic, &camera, &excluded.lock().unwrap())?;
+                let (screen, audio, mic_lost, opened) = sources(ears(rt), source, quality, &mic, warm.take(), &camera, &excluded.lock().unwrap())?;
                 recording.start_take(screen, audio).map_err(|e| e.to_string())?;
                 Ok(Active {
                     recording,
@@ -268,6 +304,7 @@ fn handle(rt: &Runtime, active: &mut Option<Active>, live: &Arc<Mutex<Option<Liv
                     markers: Vec::new(),
                     since: Instant::now(),
                     mic_lost,
+                    held: opened.filter(|o| o.bluetooth),
                     said: Said::default(),
                 })
                     .inspect(|_| {
@@ -312,13 +349,14 @@ fn handle(rt: &Runtime, active: &mut Option<Active>, live: &Arc<Mutex<Option<Liv
             // The microphone the core named: the take's own, the fallback, or none — the
             // recording keeps its audio format either way (one init.mp4, DECISIONS B47).
             a.mic = mic;
-            let started = sources(ears(rt), a.source, a.quality, &a.mic, &a.camera, &excluded.lock().unwrap())
-                .and_then(|(s, m, lost)| a.recording.start_take(s, m).map(|()| lost).map_err(|e| e.to_string()));
+            let started = sources(ears(rt), a.source, a.quality, &a.mic, a.held.take(), &a.camera, &excluded.lock().unwrap())
+                .and_then(|(s, m, lost, opened)| a.recording.start_take(s, m).map(|()| (lost, opened)).map_err(|e| e.to_string()));
             match started {
-                Ok(lost) => {
+                Ok((lost, opened)) => {
                     a.running = true;
                     a.since = Instant::now();
                     a.mic_lost = lost;
+                    a.held = opened.filter(|o| o.bluetooth);
                     a.said = Said::default();
                     Some(RecNews::Resumed)
                 }
@@ -405,6 +443,25 @@ fn handle(rt: &Runtime, active: &mut Option<Active>, live: &Arc<Mutex<Option<Liv
             // On disk at once, atomically: a take that dies, or comes back as a recovered
             // one, keeps every marker dropped so far (whole-spec audit #28).
             write_markers(&a.dir, &a.markers);
+            None
+        }
+        RecCmd::Warm { mic } => {
+            // Restart's count reuses the paused take's held microphone rather than open it
+            // twice. A harness run records the test pattern's beep: nothing to open.
+            *warm = match mic {
+                Some(uid) if ears(rt) == Ears::Device => {
+                    let ready = warm.take().or_else(|| active.as_ref().and_then(|a| a.held.clone())).filter(|o| o.serves(&uid));
+                    ready.or_else(|| Opened::open(&uid))
+                }
+                _ => None,
+            };
+            if let Some(o) = warm.as_ref() {
+                rt.log(&format!("recorder: microphone open for the count (bluetooth: {})", o.bluetooth));
+            }
+            None
+        }
+        RecCmd::Cool => {
+            *warm = None;
             None
         }
         RecCmd::Prime => {

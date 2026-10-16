@@ -1370,3 +1370,43 @@ fn the_cameras_system_default_turns_the_bubble_on_and_follows_macos() {
     assert_eq!(config_body(&r.scene).cameras[0].detail.as_deref(), Some("Logitech BRIO"));
     assert_eq!(r.scene.bubble.as_ref().map(|b| b.camera.as_str()), Some("ext"));
 }
+
+#[test]
+fn the_count_opens_the_microphone_and_a_cancel_closes_it() {
+    // AirPods (2026-10-15, B173): a Bluetooth headset wakes about two seconds after its mic
+    // opens, so the mic opens with the 3-2-1, not at its zero, and is already heard when the
+    // take begins. Cancelling the count closes it.
+    let mut w = ready();
+    w.mac.mics = Fact::known(vec![quick().mics[0].clone(), usb_mic()], Mono(0));
+    w.prefs.mic = Some("usb-mic".into());
+    w.session.popover = Some(Door::asked(Mono(900)));
+    let mut r = Run::new(w);
+    r.key(Surface::Popover, Key::Return);
+    assert!(r.ids().contains(&"countdown"));
+    assert!(r.has(|e| *e == Effect::Recorder(RecCmd::Warm { mic: Some("usb-mic".into()) })), "{:?}", r.effects);
+    r.send(Event::Act { surface: Surface::Countdown, action: Action::CancelCountdown, rev: 0 });
+    assert!(r.has(|e| *e == Effect::Recorder(RecCmd::Cool)), "{:?}", r.effects);
+    r.key(Surface::Popover, Key::Return);
+    assert!(r.has(|e| matches!(e, Effect::Recorder(RecCmd::Warm { .. }))));
+    r.key(Surface::Countdown, Key::Esc);
+    assert!(r.w.session.arming.is_none());
+    assert!(r.has(|e| *e == Effect::Recorder(RecCmd::Cool)), "Esc cancels too: {:?}", r.effects);
+    // The count fires capture with the same microphone it opened.
+    r.key(Surface::Popover, Key::Return);
+    let deadline = r.w.session.arming.as_ref().unwrap().deadline;
+    r.tick_to(deadline.0);
+    assert!(r.has(|e| matches!(e, Effect::Recorder(RecCmd::Start { mic: Some(m), .. }) if m == "usb-mic")));
+}
+
+#[test]
+fn restarts_count_opens_the_microphone_too() {
+    let mut w = ready();
+    w.take = Some(take(Phase::Paused(Cause::User), 272_000));
+    w.session.popover = Some(Door::asked(Mono(900)));
+    let mut r = Run::new(w);
+    r.act(Action::Restart);
+    r.act(Action::ConfirmRestart);
+    assert!(r.has(|e| matches!(e, Effect::Recorder(RecCmd::Warm { .. }))), "{:?}", r.effects);
+    r.send(Event::Act { surface: Surface::Countdown, action: Action::CancelCountdown, rev: 0 });
+    assert!(r.has(|e| *e == Effect::Recorder(RecCmd::Cool)));
+}

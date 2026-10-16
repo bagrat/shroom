@@ -325,7 +325,7 @@ fn click(w: &mut World) -> Out {
         Click::CancelCountdown => {
             w.session.arming = None;
             w.session.popover = Some(Door::asked(w.now));
-            (vec![], Arm { name: "click-cancel-countdown", edge: Some(("countdown", "config")) })
+            (vec![Effect::Recorder(RecCmd::Cool)], Arm { name: "click-cancel-countdown", edge: Some(("countdown", "config")) })
         }
         Click::OpenOnboarding => {
             let now = w.now;
@@ -406,6 +406,11 @@ fn carried(w: &mut World) -> Members {
     }
 }
 
+/// The count began: the microphone the count will fire capture with opens now (B173).
+fn warm(w: &World) -> Effect {
+    Effect::Recorder(RecCmd::Warm { mic: crate::derive::popover_selected_mic(w) })
+}
+
 fn pause(w: &mut World, cause: Cause) {
     if let Some(t) = w.take.as_mut() {
         t.phase = Phase::Pausing(cause);
@@ -433,12 +438,12 @@ fn act(w: &mut World, action: Action) -> Out {
             w.prefs.source = Some(source);
             w.session.arming = Some(Arming { started: now, deadline: now.plus(COUNTDOWN_MS), source, restart_of: None, fired: false });
             w.session.popover = None;
-            (vec![persist_prefs(w)], Arm { name: "start", edge: Some(("config", "countdown")) })
+            (vec![persist_prefs(w), warm(w)], Arm { name: "start", edge: Some(("config", "countdown")) })
         }
         Action::CancelCountdown => {
             w.session.arming = None;
             w.session.popover = Some(Door::asked(now));
-            (vec![], Arm { name: "cancel-countdown", edge: Some(("countdown", "config")) })
+            (vec![Effect::Recorder(RecCmd::Cool)], Arm { name: "cancel-countdown", edge: Some(("countdown", "config")) })
         }
         Action::Resume => {
             // The take's own microphone while it's here, else the one the paused popover
@@ -493,7 +498,7 @@ fn act(w: &mut World, action: Action) -> Out {
                 restart_of: Some(t.dir.clone()),
                 fired: false,
             });
-            (vec![], Arm { name: "restart", edge: Some((from, "countdown")) })
+            (vec![warm(w)], Arm { name: "restart", edge: Some((from, "countdown")) })
         }
         Action::DropMarker => {
             if let Some(t) = w.take.as_mut() {
