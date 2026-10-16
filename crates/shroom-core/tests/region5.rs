@@ -135,6 +135,25 @@ fn uninstall_asked() -> World {
     w
 }
 
+/// Settings · General with Report a problem… asked (B180).
+fn report_asked() -> World {
+    let mut w = settings_on(ready(), SettingsTab::General);
+    w.session.confirm = Some(Confirm::Report { sending: false });
+    w
+}
+
+fn report_gathered() -> shroom_core::report::Diagnostics {
+    shroom_core::report::Diagnostics {
+        shroom: "1.2.0".into(),
+        macos: "15.3.1".into(),
+        chip: "Apple M2".into(),
+        memory: "16 GB".into(),
+        setup: String::new(),
+        role: "owns its space".into(),
+        log: "  1 boot: launch login".into(),
+    }
+}
+
 fn space_tab() -> World {
     inspected(settings_on(ready(), SettingsTab::Space))
 }
@@ -375,6 +394,38 @@ fn rows() -> Vec<(&'static str, World)> {
         w
     }));
     // ── uninstall (B135) ──
+    // ── report a problem (B180) ──
+    rows.push(("settings-general", {
+        let mut w = settings_on(ready(), SettingsTab::General);
+        w.session.copied = Some((CopyTarget::Diagnostics, Mono(950)));
+        w
+    }));
+    rows.push(("settings-general", {
+        let mut w = settings_on(ready(), SettingsTab::General);
+        w.session.fields.settings.sent = true;
+        w
+    }));
+    rows.push(("report-problem", report_asked()));
+    rows.push(("report-problem", {
+        let mut w = report_asked();
+        w.session.fields.settings.report.gathered = Some(report_gathered());
+        w.session.fields.settings.report.words = "It stopped.".into();
+        w
+    }));
+    rows.push(("report-problem", {
+        let mut w = report_asked();
+        w.session.fields.settings.report.gathered = Some(report_gathered());
+        w.session.fields.settings.report.words = "It stopped.".into();
+        w.session.confirm = Some(Confirm::Report { sending: true });
+        w
+    }));
+    rows.push(("report-problem", {
+        let mut w = report_asked();
+        w.session.fields.settings.report.gathered = Some(report_gathered());
+        w.session.fields.settings.report.words = "It stopped.".into();
+        w.session.fields.settings.report.failed = true;
+        w
+    }));
     rows.push(("uninstall-confirm", uninstall_asked()));
     rows.push(("uninstall-confirm", {
         let mut w = uninstall_asked();
@@ -452,7 +503,7 @@ const LINES_OUT_OF_SCOPE: &[(&str, &str, &str)] = &[
 fn surface_of(id: &str) -> Surface {
     if id.starts_with("library") || id.starts_with("delete-confirm") {
         Surface::Library
-    } else if id.starts_with("settings") || ["disconnect-confirm", "disconnect-confirm-no-token", "leave-confirm", "uninstall-confirm", "repair-mood", "re-entry-as-settings", "token-repair-mood", "token-other-account", "gate-card", "wiring", "space-storage-gone", "name-changed"].contains(&id) {
+    } else if id.starts_with("settings") || ["disconnect-confirm", "disconnect-confirm-no-token", "leave-confirm", "uninstall-confirm", "report-problem", "repair-mood", "re-entry-as-settings", "token-repair-mood", "token-other-account", "gate-card", "wiring", "space-storage-gone", "name-changed"].contains(&id) {
         Surface::Settings
     } else {
         Surface::Popover
@@ -1327,6 +1378,8 @@ fn realized() -> Vec<(&'static str, &'static str, World, Event)> {
         ("library", "library-faces", library(ready()), E::Os(OsNews::NetPath(false))),
         ("delete-confirm", "removed", { let mut w = library(ready()); w.session.confirm = Some(Confirm::Delete(vec![rec("r502")])); w }, at(Surface::Library, Action::ConfirmDelete)),
         ("config", "settings-general", with_popover(ready()), at(Surface::Popover, Action::OpenSettings)),
+        ("settings-general", "report-problem", settings_on(ready(), SettingsTab::General), at(Surface::Settings, Action::ReportProblem)),
+        ("report-problem", "settings-general", report_asked(), E::Key { surface: Surface::Settings, key: Key::Esc }),
         ("settings-space", "disconnect-confirm", space_tab(), at(Surface::Settings, Action::Disconnect)),
         ("update-ready", "updating-app", with_popover(update_ready(ready(), "1.3.0")), at(Surface::Popover, Action::Update)),
         // The swap helper's `--update-failed` relaunch: a new process, so the crossing boots a
