@@ -37,6 +37,8 @@
 //              wide-short, a tall-narrow and a phone window, before and during a play — the
 //              picture's box has the recording's shape, sits whole in the player, and the
 //              control bar is below it, never over it
+//   copy       with the single-file copy up, the page plays it and asks for no piece of the
+//              stream (DECISIONS B177); every check above plays the stream, as before it's up
 //   bytes      a tombstoned recording's playlist answers 404
 //
 // Prints one JSON summary and exits 0 only when every required check passed.
@@ -74,7 +76,9 @@ function encode(size = "640x400", seconds = DURATION) {
   fs.writeFileSync(path.join(dir, "master.m3u8"), `#EXTM3U\n#EXT-X-VERSION:7\n#EXT-X-STREAM-INF:BANDWIDTH=1500000,RESOLUTION=${size}\nv0/stream.m3u8\n`);
   const files = {};
   for (const f of ["master.m3u8", "poster.jpg", ...fs.readdirSync(v0).map((n) => `v0/${n}`)]) files[f] = new Uint8Array(fs.readFileSync(path.join(dir, f)));
-  files["video.mp4"] = new TextEncoder().encode("mp4");
+  // The single-file copy, joined from the stream as the app joins its takes (+faststart).
+  execFileSync("ffmpeg", ["-hide_banner", "-loglevel", "error", "-i", path.join(v0, "stream.m3u8"), "-c", "copy", "-movflags", "+faststart", path.join(dir, "video.mp4")]);
+  files["video.mp4"] = new Uint8Array(fs.readFileSync(path.join(dir, "video.mp4")));
   return files;
 }
 
@@ -156,6 +160,18 @@ async function main() {
         if (full) await page.click(".fs");
         const back = full ? await page.waitForFunction(() => !document.fullscreenElement, null, { timeout: 3000 }).then(() => true, () => false) : false;
         check("fullscreen is the player itself, and back", full && back && exitLabel === COPY.exitFullscreen, name === "chromium");
+
+        // ── the single-file copy (DECISIONS B177) ──
+        await put(metaKey(ids.live), meta(ids.live, { media: { hls: `rec/${ids.live}/master.m3u8`, mp4: `rec/${ids.live}/video.mp4`, poster: `rec/${ids.live}/poster.jpg`, width: 640, height: 400 } }));
+        const asked = [];
+        const onRequest = (/** @type {any} */ r) => asked.push(new URL(r.url()).pathname);
+        page.on("request", onRequest);
+        await page.goto(`${origin}/${ids.live}`);
+        const copyPlays = (await page.evaluate(() => { const v = document.getElementById("v"); v.muted = true; return v.play().then(() => true, () => false); }))
+          && (await page.waitForFunction(() => document.getElementById("v").currentTime > 1.1, null, { timeout: 15_000 }).then(() => true, () => false));
+        page.off("request", onRequest);
+        check("with the copy up, the page plays it and asks for no piece of the stream", copyPlays && asked.some((p) => p.endsWith("/video.mp4")) && !asked.some((p) => /\.(m3u8|m4s)$/.test(p)), true, { copyPlays, asked });
+        await put(metaKey(ids.live), meta(ids.live, {}));
 
         // ── a short window (the canvas's "The page — a short window") ──
         // A 4:3 recording in a 1280×640 window: the player, its controls and the mark's foot
