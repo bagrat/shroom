@@ -44,6 +44,14 @@ pub fn parse_link(link: &str) -> Option<(String, String)> {
     (host_ok && is_b14(code)).then(|| (host.to_ascii_lowercase(), code.to_string()))
 }
 
+/// Whether a URL macOS hands the app as it opens is taken as an invite (N50): the page's
+/// Open shroom (`shroom:` — a non-join one is still reported, then ignored), and a web
+/// address only when it reads as a join link (`open -a shroom <link>`). Any other is
+/// ignored unread: shroom claims no web addresses, so only a local open can send one.
+pub fn takes_opened(url: &str) -> bool {
+    url.starts_with("shroom:") || (url.starts_with("https://") && parse_link(url).is_some())
+}
+
 /// The parent proof's `Authorization` value (§3.2): an HMAC under the parent's S3 secret
 /// over a domain-separated message binding the method, host, path, time and body.
 pub fn parent_proof(secret: &str, method: &str, host: &str, path: &str, ts: u64, body: &[u8]) -> String {
