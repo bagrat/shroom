@@ -17,6 +17,9 @@ brew tap-new --no-git "$TAP" >/dev/null || { echo "NO: couldn't make a local tap
 casks="$(brew --repository)/Library/Taps/shroom-check/homebrew-local/Casks"
 mkdir -p "$casks"
 installer/homebrew/render-cask.sh >"$casks/shroom.rb" || { echo "NO: couldn't render the cask"; exit 1; }
+# PROBE (temporary): what the postflight step sees.
+sed -i '' -e 's|^      app="\$HOME/Applications/shroom.app"$|      echo "probe: HOME=$HOME USER=$(id -un) PWD=$PWD" >\&2; env \| sed "s/^/probe env: /" >\&2; app="$HOME/Applications/shroom.app"; ls -ld "$app" >\&2; /usr/bin/codesign -dv "$app" >\&2 2>\&1|' -e 's| "\$app" 2>/dev/null; then$| "$app"; then|' "$casks/shroom.rb"
+sed -n '/postflight_steps/,/^  end/p' "$casks/shroom.rb"
 grep -E '^  (version|sha256) ' "$casks/shroom.rb"
 rm -rf "$APP"
 
