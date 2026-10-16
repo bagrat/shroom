@@ -158,8 +158,9 @@ export function docPage(landing, name, fragment) {
     .replace(/<title>[^<]*<\/title>\s*/, "")
     .replace(/<meta name="description"[^>]*>\s*/, "")
     .trim();
-  const [, hero, rest] = body.match(/^(<h1>[\s\S]*?<\/h1>\s*<p class="punch">[\s\S]*?<\/p>)\s*([\s\S]*)$/) ?? [];
-  if (!hero) throw new Error(`site/pages/${name}.html should open with an <h1> and its punch line`);
+  // The hero: the <h1>, then the lines right under it (a punch line, a date).
+  const [, hero, rest] = body.match(/^(<h1>[^<]*<\/h1>(?:\s*<p class="(?:punch|fine)">[\s\S]*?<\/p>)*)\s*([\s\S]*)$/) ?? [];
+  if (!hero) throw new Error(`site/pages/${name}.html should open with an <h1>`);
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -182,7 +183,10 @@ ${style.replace("</style>", `  main.doc { gap: 20px; }
   .doc h3 { margin: 8px 0 0; color: var(--muted); }
   .qa li { display: flex; flex-direction: column; gap: 4px; }
   .qa li b { font-weight: 600; }
-  .qa li span, .limits li { color: var(--muted); }
+  .qa li span, .limits li, .prose li { color: var(--muted); }
+  .prose li b { color: var(--text); }
+  .doc code { font: 0.92em var(--mono); background: var(--well); padding: 1px 5px; border-radius: 5px; overflow-wrap: anywhere; }
+  .doc .hero .fine { margin: 0; }
   /* What's coming: its words and the pill on one line; the words wrap beside it. */
   .limits li.soon { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--text); }
   .limits li.soon span { flex: 1 1 auto; min-width: 0; color: var(--text); }
