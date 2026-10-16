@@ -11,14 +11,15 @@ use crate::derive::settings::{self as settings_view, SpaceAt};
 use crate::derive::{COPIED_MS, COUNTDOWN_MS, OneShot, derive, library as library_view};
 use crate::effect::{CloudCmd, Effect, LibCmd, MemberCmd, MoviesCopy, Perm, PersistOp, PublicUrl, RecCmd, ShellCmd, TakeCmd, UpCmd, UpdCmd};
 use crate::event::{
-    ClaimFail, CloudNews, Event, Field, JoinAnswer, Key, LibraryNews, MemberNews, OsNews, PeekAnswer, QuitVia, RecNews, SecretField, Shape,
+    ClaimFail, CloudNews, Event, Field, JoinAnswer, Key, LibraryNews, MemberNews, OsNews, PeekAnswer, QuitVia, RecNews, ReportNews, SecretField, Shape,
     StandingAnswer, Surface, TokenFail, UpdateNews, UploadNews, WireFail,
 };
+use crate::report::Post;
 use crate::scene::{Action, Click};
 use crate::time::{Fact, Mono};
 use crate::world::{
     Access, Arming, Blocked, Born, Cause, Confirm, CopyTarget, Door, FailClass, Failure, Fields, Fork, Invite, JoinRefusal, Landed, LaunchKind,
-    LibraryFields, LibraryOps, Members, OpenTake, Op, PageOpen, Paste, Phase, QuickProbe, Reach, RelaunchWhy, Removal, Restore, Role, SavedCause,
+    LibraryFields, LibraryOps, Members, OpenTake, Op, PageOpen, Paste, Phase, QuickProbe, Reach, RelaunchWhy, Removal, ReportFields, Restore, Role, SavedCause,
     SavedTake, SecretId, SettingsFields, SettingsTab, SourceId, Space, SpaceIdentity, StopOutcome, Strike, Sweep, TakeDir, TakeLost, TokenVerdict,
     UpdateOffer, Why, WindowKind, WorkerFact, World,
 };
@@ -199,6 +200,21 @@ fn apply_event(w: &mut World, event: Event) -> Out {
             w.session.fields.settings.invite_edits += 1;
             (vec![], Arm::named("invite-name-typed"))
         }
+        Event::Field { field: field @ (Field::ReportWords | Field::ReportReplyTo), value } => {
+            // The report sheet's fields: typed only while it shows and nothing is on its way.
+            if w.session.confirm != Some(Confirm::Report { sending: false }) || !w.window_visible(WindowKind::Settings) {
+                return (vec![], Arm::DROPPED);
+            }
+            let f = &mut w.session.fields.settings.report;
+            if field == Field::ReportWords {
+                f.words = value.chars().take(crate::copy::REPORT_WORDS_MAX).collect();
+                f.words_edits += 1;
+            } else {
+                f.reply_to = value.chars().take(254).collect();
+                f.reply_edits += 1;
+            }
+            (vec![], Arm::named("report-typed"))
+        }
         Event::Field { field: Field::FromName, value } => {
             // The name invites carry, while it's being changed on the Members face (B158).
             let members = w.window_visible(WindowKind::Settings) && settings_view::tab(w) == SettingsTab::Members;
@@ -278,6 +294,7 @@ fn apply_event(w: &mut World, event: Event) -> Out {
         Event::Library(news) => library(w, news),
         Event::Update(news) => update_news(w, news),
         Event::Member(news) => member(w, news),
+        Event::Report(news) => report(w, news),
         Event::Failed { op, class } => failed(w, op, class),
         Event::Tick => tick(w),
     }
@@ -520,11 +537,15 @@ fn act(w: &mut World, action: Action) -> Out {
             )
         }
         Action::Back => {
-            // An uninstall under way isn't taken back: shroom is removing itself (B135).
-            if w.session.confirm == Some(Confirm::Uninstall { going: true }) {
+            // An uninstall under way isn't taken back: shroom is removing itself (B135); nor
+            // is a report on its way (B180).
+            if matches!(w.session.confirm, Some(Confirm::Uninstall { going: true } | Confirm::Report { sending: true })) {
                 return (vec![], Arm::DROPPED);
             }
-            w.session.confirm = None;
+            if w.session.confirm.take() == Some(Confirm::Report { sending: false }) {
+                w.session.fields.settings.report = ReportFields::default();
+                return (vec![], Arm { name: "report-cancelled", edge: Some(("report-problem", "settings-general")) });
+            }
             (vec![], Arm::named("back"))
         }
         Action::GetLink => {
@@ -926,7 +947,45 @@ fn act(w: &mut World, action: Action) -> Out {
             let version = w.launch.version.clone();
             (vec![Effect::Shell(ShellCmd::OpenUrl(PublicUrl::NewIssue { version }))], Arm::named("report-issue"))
         }
-        Action::WriteUs => (vec![Effect::Shell(ShellCmd::OpenUrl(PublicUrl::Mail))], Arm::named("write-us")),
+        // ── Report a problem (B180) ──
+        Action::CopyDiagnostics => {
+            if !w.window_visible(WindowKind::Settings) {
+                return (vec![], Arm::DROPPED);
+            }
+            w.session.copied = Some((CopyTarget::Diagnostics, w.now));
+            (vec![Effect::Shell(ShellCmd::CopyDiagnostics { role: crate::report::role_words(w.space.role()) })], Arm::named("copy-diagnostics"))
+        }
+        Action::ReportProblem => {
+            if !(w.window_visible(WindowKind::Settings) && settings_view::tab(w) == SettingsTab::General) {
+                return (vec![], Arm::DROPPED);
+            }
+            w.session.confirm = Some(Confirm::Report { sending: false });
+            w.session.fields.settings.report = ReportFields::default();
+            w.session.fields.settings.sent = false;
+            let fx = vec![Effect::Shell(ShellCmd::GatherReport { role: crate::report::role_words(w.space.role()) })];
+            (fx, Arm { name: "report-asked", edge: Some(("settings-general", "report-problem")) })
+        }
+        Action::SendReport => {
+            let f = &w.session.fields.settings.report;
+            let Some(diagnostics) = f.gathered.clone() else { return (vec![], Arm::DROPPED) };
+            if w.session.confirm != Some(Confirm::Report { sending: false }) || f.words.trim().is_empty() {
+                return (vec![], Arm::DROPPED);
+            }
+            let reply = f.reply_to.trim();
+            let post = Post { words: f.words.trim().to_string(), reply_to: (!reply.is_empty()).then(|| reply.to_string()), diagnostics };
+            w.session.confirm = Some(Confirm::Report { sending: true });
+            w.session.fields.settings.report.failed = false;
+            (vec![Effect::Shell(ShellCmd::SendReport(post))], Arm::named("report-sending"))
+        }
+        Action::MailReport => {
+            let f = &w.session.fields.settings.report;
+            if w.session.confirm != Some(Confirm::Report { sending: false }) || !f.failed {
+                return (vec![], Arm::DROPPED);
+            }
+            let version = f.gathered.as_ref().map_or_else(|| w.launch.version.clone(), |d| d.shroom.clone());
+            let url = PublicUrl::MailReport { version, words: f.words.trim().to_string() };
+            (vec![Effect::Shell(ShellCmd::OpenUrl(url))], Arm::named("report-by-mail"))
+        }
         Action::Disconnect => {
             if w.take_open() {
                 return (vec![], Arm::DROPPED);
@@ -1715,7 +1774,8 @@ fn window_closed(w: &mut World, kind: WindowKind) -> Out {
         }
         WindowKind::Settings => {
             w.session.windows.remove(&WindowKind::Settings);
-            if matches!(w.session.confirm, Some(Confirm::Exit | Confirm::Remove(_))) {
+            // A report sheet goes with its window; one on its way still goes (B180).
+            if matches!(w.session.confirm, Some(Confirm::Exit | Confirm::Remove(_) | Confirm::Report { .. })) {
                 w.session.confirm = None;
             }
             // The born link is shown once (§6.1.7); the composer starts empty next time.
@@ -2883,3 +2943,33 @@ fn update_news(w: &mut World, news: UpdateNews) -> Out {
 
 #[allow(dead_code)]
 fn _mono(_: Mono) {}
+
+/// The report lane's answers (B180): each lands only on the sheet that asked for it.
+fn report(w: &mut World, news: ReportNews) -> Out {
+    match news {
+        ReportNews::Gathered(d) => {
+            if !matches!(w.session.confirm, Some(Confirm::Report { .. })) {
+                return (vec![], Arm::DROPPED);
+            }
+            w.session.fields.settings.report.gathered = Some(d);
+            (vec![], Arm::named("report-gathered"))
+        }
+        ReportNews::Sent => {
+            if w.session.confirm != Some(Confirm::Report { sending: true }) {
+                return (vec![], Arm::DROPPED);
+            }
+            w.session.confirm = None;
+            w.session.fields.settings.report = ReportFields::default();
+            w.session.fields.settings.sent = true;
+            (vec![], Arm { name: "report-sent", edge: Some(("report-problem", "settings-general")) })
+        }
+        ReportNews::NotSent => {
+            if w.session.confirm != Some(Confirm::Report { sending: true }) {
+                return (vec![], Arm::DROPPED);
+            }
+            w.session.confirm = Some(Confirm::Report { sending: false });
+            w.session.fields.settings.report.failed = true;
+            (vec![], Arm::named("report-not-sent"))
+        }
+    }
+}

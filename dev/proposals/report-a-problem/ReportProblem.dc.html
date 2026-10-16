@@ -42,8 +42,8 @@ a{color:#88c0d0}a:hover{color:#8fbcbb}
 </div>
 <div style="height: 48px; padding: 0 12px; border-top: 1px solid #434a56; display: flex; flex-direction: row; align-items: center; gap: 8px">
 <span style="flex: 1 1 0" data-said="settings-general.something-off">Something off?</span>
-<span role="status" style="color: #88c0d0; font-size: 12px; padding: 0 2px" data-said="settings-general.copied">Copied</span>
-<button style="font: inherit; height: 28px; padding: 0 12px; border: 1px solid #4c566a; border-radius: 7px; background: transparent; color: #eceff4; flex: none" data-said="settings-general.copy-diagnostics">Copy diagnostics</button>
+
+<button style="font: inherit; height: 28px; padding: 0 12px; border: 1px solid #4c566a; border-radius: 7px; background: transparent; color: #eceff4; flex: none" data-said="settings-general.copy-diagnostics">Copied</button>
 <button style="font: inherit; height: 28px; padding: 0 12px; border: 1px solid #4c566a; border-radius: 7px; background: transparent; color: #eceff4; flex: none" data-said="settings-general.report-a-problem">Report a problem…</button>
 </div>
 </div>
@@ -52,7 +52,7 @@ a{color:#88c0d0}a:hover{color:#8fbcbb}
 <div style="padding: 0 2px"><a href="#" style="color: #aeb6c4; text-decoration: underline; text-decoration-color: #4c566a">Uninstall shroom…</a></div>
 </div>
 </div>
-<div style="width: 600px; color: #aeb6c4; font-size: 12px; line-height: 1.45"><span style="color: #88c0d0; font-weight: 600">A</span> Settings · General. “Something off?” becomes a row with two buttons. Copy diagnostics puts the cleaned report, with no description, on the clipboard and says “Copied” for a moment. GitHub stays below as the public door.</div>
+<div style="width: 600px; color: #aeb6c4; font-size: 12px; line-height: 1.45"><span style="color: #88c0d0; font-weight: 600">A</span> Settings · General. “Something off?” becomes a row with two buttons. Copy diagnostics puts the cleaned report, with no description, on the clipboard, and reads “Copied” for a moment, as Copy link does. GitHub stays below as the public door.</div>
 </div>
 <div style="display: flex; flex-direction: column; gap: 10px">
 <div style="width: 600px; height: 600px; box-sizing: border-box; background: #1f2228; border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; flex: none">
@@ -79,16 +79,16 @@ a{color:#88c0d0}a:hover{color:#8fbcbb}
 </div>
 <button aria-expanded="false" style="font: inherit; border: 0; background: transparent; color: #aeb6c4; padding: 0; display: flex; flex-direction: row; align-items: center; gap: 6px; align-self: flex-start" data-said="report-problem.see-whats-sent"><svg viewBox="0 0 12 12" aria-hidden="true" style="width: 10px; height: 10px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; display: block"><path d="M4.5 3l3 3-3 3"></path></svg>See exactly what’s sent</button>
 
-
+<p style="margin: 0; font-size: 12px; color: #aeb6c4" data-said="report-problem.putting-it-together">Putting it together…</p>
 <div style="display: flex; flex-direction: row; align-items: center; gap: 8px; padding: 2px 0 0 0">
-<a href="#" style="color: #aeb6c4; text-decoration: underline; text-decoration-color: #4c566a; flex: 1 1 0" data-said="report-problem.save-full-report">Save full report…</a>
+<span style="flex: 1 1 0"></span>
 <button style="font: inherit; height: 32px; padding: 0 14px; border: 1px solid #4c566a; border-radius: 8px; background: transparent; color: #eceff4" data-said="report-problem.cancel">Cancel</button>
 <button disabled style="font: inherit; font-weight: 600; height: 32px; padding: 0 16px; border: 0; border-radius: 8px; background: #4c566a; color: #7b8494" data-said="report-problem.send">Send</button>
 </div>
 </div>
 </div>
 </div>
-<div style="width: 600px; color: #aeb6c4; font-size: 12px; line-height: 1.45"><span style="color: #88c0d0; font-weight: 600">B</span> Report a problem… opens a sheet. Send stays grey until something is typed. The email is optional; it's only there so a reply can reach you.</div>
+<div style="width: 600px; color: #aeb6c4; font-size: 12px; line-height: 1.45"><span style="color: #88c0d0; font-weight: 600">B</span> Report a problem… opens a sheet. Send stays grey until something is typed and the report is gathered (“Putting it together…”, a moment). The email is optional; it's only there so a reply can reach you.</div>
 </div>
 <div style="display: flex; flex-direction: column; gap: 10px">
 <div style="width: 600px; height: 600px; box-sizing: border-box; background: #1f2228; border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; flex: none">
@@ -130,7 +130,7 @@ This Mac: owns its space · 2 Macs
   …</pre>
 
 <div style="display: flex; flex-direction: row; align-items: center; gap: 8px; padding: 2px 0 0 0">
-<a href="#" style="color: #aeb6c4; text-decoration: underline; text-decoration-color: #4c566a; flex: 1 1 0" data-said="report-problem.save-full-report">Save full report…</a>
+<span style="flex: 1 1 0"></span>
 <button style="font: inherit; height: 32px; padding: 0 14px; border: 1px solid #4c566a; border-radius: 8px; background: transparent; color: #eceff4" data-said="report-problem.cancel">Cancel</button>
 <button style="font: inherit; font-weight: 600; height: 32px; padding: 0 16px; border: 0; border-radius: 8px; background: #88c0d0; color: #2b2f36" data-said="report-problem.send">Send</button>
 </div>
@@ -168,7 +168,7 @@ This Mac: owns its space · 2 Macs
 
 
 <div style="display: flex; flex-direction: row; align-items: center; gap: 8px; padding: 2px 0 0 0">
-<a href="#" style="color: #aeb6c4; text-decoration: underline; text-decoration-color: #4c566a; flex: 1 1 0" data-said="report-problem.save-full-report">Save full report…</a>
+<span style="flex: 1 1 0"></span>
 <button style="font: inherit; height: 32px; padding: 0 14px; border: 1px solid #4c566a; border-radius: 8px; background: transparent; color: #eceff4" data-said="report-problem.cancel">Cancel</button>
 <button disabled style="font: inherit; font-weight: 600; height: 32px; padding: 0 16px; border: 0; border-radius: 8px; background: #4c566a; color: #7b8494" data-said="report-problem.sending">Sending…</button>
 </div>
@@ -243,14 +243,14 @@ This Mac: owns its space · 2 Macs
 
 <p role="status" style="margin: 0; color: #ebcb8b" data-said="report-problem.couldnt-send">That didn’t go through — check your connection and try again. Or <a href="#">email it to hi@shroom.am</a> instead.</p>
 <div style="display: flex; flex-direction: row; align-items: center; gap: 8px; padding: 2px 0 0 0">
-<a href="#" style="color: #aeb6c4; text-decoration: underline; text-decoration-color: #4c566a; flex: 1 1 0" data-said="report-problem.save-full-report">Save full report…</a>
+<span style="flex: 1 1 0"></span>
 <button style="font: inherit; height: 32px; padding: 0 14px; border: 1px solid #4c566a; border-radius: 8px; background: transparent; color: #eceff4" data-said="report-problem.cancel">Cancel</button>
 <button style="font: inherit; font-weight: 600; height: 32px; padding: 0 16px; border: 0; border-radius: 8px; background: #88c0d0; color: #2b2f36" data-said="report-problem.send">Send</button>
 </div>
 </div>
 </div>
 </div>
-<div style="width: 600px; color: #aeb6c4; font-size: 12px; line-height: 1.45"><span style="color: #88c0d0; font-weight: 600">F</span> Offline, refused, or the service is switched off: the sheet stays, with what was typed. Send tries again; the mail link is the fallback, and Save full report… is still there.</div>
+<div style="width: 600px; color: #aeb6c4; font-size: 12px; line-height: 1.45"><span style="color: #88c0d0; font-weight: 600">F</span> Offline, refused, or the service is switched off: the sheet stays, with what was typed. Send tries again; the mail link is the fallback. (Save full report… left the sheet: Copy diagnostics covers it.)</div>
 </div>
 </div>
 </div>

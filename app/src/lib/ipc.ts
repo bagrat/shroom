@@ -24,7 +24,7 @@ export const pasteSecret = (field: "token" | "invite", text: string) => invoke("
  * renamed, the Members composer's “Who's this for?”). Its input sends from one place,
  * `typed.ts`, which counts the edits it sends and shows the Scene's value back once the
  * Scene has counted them too. */
-export type Field = "name" | "library-search" | "title" | "invite-name" | "from-name";
+export type Field = "name" | "library-search" | "title" | "invite-name" | "from-name" | "report-words" | "report-reply-to";
 export const field = (field: Field, value: string) => invoke("field", { field, value });
 
 /** A webview's own errors go to the app's log, so a window that stops drawing says why

@@ -4,7 +4,7 @@
 
 The machine: every state, edge, rule, said-line and law of shroom v1 — the spec (DECISIONS B133). Sessions edit it; MACHINE.md and the canvas's machine boards are generated from it.
 
-142 states · 294 edges · 23 rules · 550 said-lines · 16 laws · 64 ledger rows.
+143 states · 296 edges · 23 rules · 561 said-lines · 16 laws · 64 ledger rows.
 
 Status: **ratified** is Bagrat's; **provisional** is designed or built and awaits him (each cites its row: `#n` is a DEVIATIONS row of docs/DECISIONS.md, `Bn` a decision, `Nn`/`Un`/`Pn` a ledger row below). `SM:n` in older citations is a line of the retired spec text, kept in history/spec/UX-STATEMACHINE.md.
 
@@ -2319,9 +2319,9 @@ One standard macOS settings window with toolbar tabs General · Space · Members
 
 ### `settings-general`
 
-face · window · **provisional** · a face of `settings` · board: SettingsGeneral · cites N36, U4, N8, N37, U7, B135
+face · window · **provisional** · a face of `settings` · board: SettingsGeneral · cites N36, U4, N8, N37, U7, B135, B180, N53
 
-The General tab: U4's login checkbox at home at last (it reads the system's truth: if the login item is removed in System Settings, the box shows unchecked), the update row mirroring config's banner, and N8's two help doors (the new-issue link, prefilled with the version). Past this Mac's macOS, General carries the only update line: no banner, no dot.
+The General tab: U4's login checkbox at home at last (it reads the system's truth: if the login item is removed in System Settings, the box shows unchecked), the update row mirroring config's banner, and the help row: Copy diagnostics and Report a problem… (B180), with GitHub's new-issue link under it as the public door (N8). Past this Mac's macOS, General carries the only update line: no banner, no dot.
 
 **Entry.** Settings window on the General tab (the default on first open).
 
@@ -2333,7 +2333,10 @@ The General tab: U4's login checkbox at home at last (it reads the system's trut
 | “shroom 1.3.0 is ready.” | status | provisional | Mirrors config's update-ready banner. The version varies. |
 | “Update” | button | provisional | Filled. |
 | “What's new” | link | provisional |  |
-| “Something off? Tell us on GitHub — or write to hi@shroom.am.” | line | provisional | 'GitHub' is the new-issue link prefilled with the version. hi@shroom.am is the mail door (N8). |
+| “Something off?” | field-label | provisional | Row label of the help row: Copy diagnostics and Report a problem… sit at its end (B180). |
+| “Copied” | button | provisional | Copy diagnostics reads Copied for a moment after its click, as Copy link does (B180). |
+| “Or tell us in public, on GitHub.” | line | provisional | Under the card. 'GitHub' is the new-issue link prefilled with the version (N8), with no log in it. |
+| “Sent — thank you. If you left your email, you’ll hear back.” | status | provisional | After a report went through (B180); until the window closes. |
 | “shroom 1.4.0 needs macOS 15 — this Mac stays on 1.3.2.” | status | provisional | Past this Mac's macOS: the update row reads this, with no banner and no dot. The versions and the macOS number vary. |
 | “You can do this once your recording is finished.” | line | provisional | Law 4: mid-take, Update greys with this line (only possible if the window was open before the take). |
 | “shroom 1.2.0.” | line | provisional | one case the spec didn't print, so it varies by case — the copy table: Settings · General, nothing known about a newer version (no check answered yet, or one couldn't run) · copy table |
@@ -2344,8 +2347,9 @@ The General tab: U4's login checkbox at home at last (it reads the system's trut
 | Start shroom when you log in | other |  |  | Checkbox. Reflects and sets the system login item, and reads the system's truth. |
 | Update | filled-default |  | `updating-app` | Return behaviour in Settings is not stated. Greys mid-take with “You can do this once your recording is finished.” (Law 4). |
 | What's new | text-link |  |  | Opens the release notes in the browser. |
-| GitHub | text-link |  |  | The new-issue link, prefilled with the version (N8). |
-| hi@shroom.am | text-link |  |  | The mail door (N8). |
+| Copy diagnostics | secondary |  |  | Puts the report, without a description, on the clipboard: the version, macOS, the chip and memory, the setup timeline and the last 200 log lines, cleaned (B180). Law 10: only on this click. |
+| Report a problem… | secondary |  | `report-problem` | Opens the report sheet (B180). |
+| GitHub | text-link |  |  | The new-issue link, prefilled with the version and nothing else (N8, B180). |
 | Uninstall shroom… | text-link |  | `uninstall-confirm` | Opens the Uninstall sheet. Greys mid-take (law 4). |
 
 | → | Kind | Label | Status | Cites |
@@ -2353,6 +2357,7 @@ The General tab: U4's login checkbox at home at last (it reads the system's trut
 | `settings-space` | flow | the Space tab | provisional | N36 |
 | `updating-app` | flow | Update (an update is ready, not mid-take) | provisional |  |
 | `uninstall-confirm` | side | Uninstall shroom…, not mid-take | provisional | B135 |
+| `report-problem` | side | Report a problem… | provisional | B180 |
 
 ### `settings-space`
 
@@ -2719,6 +2724,35 @@ Uninstall shroom from this Mac, asked first under N23's law. The space is never 
 |---|---|---|---|---|
 | `settings-general` | flow | Cancel or Esc | provisional | B135 |
 | `landing` | flow | Uninstall (shroom removes itself; the space untouched) | provisional | B135 |
+
+### `report-problem`
+
+sheet · sheet · **provisional** · a face of `settings-general` · board: ReportProblem · cites B180, N53, N8, N48
+
+Report a problem (B180, N53): a description, an optional email for an answer, and “See exactly what’s sent” — the whole report as it goes: the words, the version, macOS, the chip and memory, the setup timeline and the last 200 lines of shroom’s log, each line cleaned (home paths, the space’s host, web addresses, emails and long ids replaced). Send posts it to shroom.am/report, which emails it to the person who makes shroom and keeps nothing. Sending, the button reads Sending… and both grey; accepted, the sheet closes and General says so; refused or offline, the sheet stays with what was typed, says so, and offers the mail address. A dev build never reaches shroom.am.
+
+**Entry.** Settings → General, Report a problem… clicked. Available mid-take too: it touches no take (law 4 holds — no window opens for it).
+
+| Said | Role | Copy | Note |
+|---|---|---|---|
+| “Report a problem” | sheet-title | provisional |  |
+| “Tell us what happened. shroom adds its version, your Mac’s model and its recent log — never your videos, links, names or keys. It goes straight to the person who makes shroom.” | sheet-body | provisional |  |
+| “What were you doing, and what went wrong?” | placeholder | provisional | The description box; Return types a new line, ⌘Return sends. |
+| “Your email, if you’d like an answer (optional)” | field-label | provisional |  |
+| “See exactly what’s sent” | disclosure | provisional | Opens the whole report, word for word, cleaned. |
+| “Putting it together…” | line | provisional | Under the disclosure until the report is gathered; Send waits for it. |
+| “Sending…” | button | provisional | Send's label while it posts; Cancel greys with it. |
+| “That didn’t go through — check your connection and try again. Or email it to hi@shroom.am instead.” | line | provisional | Offline, refused, rate-limited or switched off: the sheet keeps what was typed. “email it to hi@shroom.am” is a link: a mail draft with the description and the version. |
+
+| Action | Kind | Return | Goes to | Note |
+|---|---|---|---|---|
+| Cancel | secondary |  | `settings-general` | Esc ≡ Cancel. Greys while sending. |
+| Send | filled-default |  | `settings-general` | ⌘Return; plain Return types a new line. Grey until something is typed and the report is gathered. |
+| email it to hi@shroom.am | text-link |  |  | Only once a send failed: a mail draft to hi@shroom.am with the description and the version (N48). |
+
+| → | Kind | Label | Status | Cites |
+|---|---|---|---|---|
+| `settings-general` | flow | Cancel or Esc (not while sending); or Send, and shroom.am took it: General then says it’s sent | provisional | B180 |
 
 #### Region 5's amendments
 

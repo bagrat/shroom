@@ -140,12 +140,21 @@ pub enum PublicUrl {
     ReleaseNotes { version: String },
     /// A new GitHub issue, prefilled with the running version (N8).
     NewIssue { version: String },
-    /// The mail door, hi@shroom.am (N8).
-    Mail,
+    /// A send that didn't go through, by mail instead: a draft to hi@shroom.am (N48) with the
+    /// words and the version (B180).
+    MailReport { version: String, words: String },
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ShellCmd {
+    /// Gather the report for the sheet: the Mac, the setup, this Mac's role (in words, from
+    /// the core) and the log, cleaned — answered by `ReportNews::Gathered` (B180).
+    GatherReport { role: String },
+    /// The same report onto the clipboard — only ever from Copy diagnostics' click (law 10).
+    CopyDiagnostics { role: String },
+    /// Post it to shroom.am/report — only ever from Send's click; answered by
+    /// `ReportNews::Sent` or `NotSent`. A dev build never reaches shroom.am.
+    SendReport(crate::report::Post),
     /// A public link onto the clipboard — only ever from a Copy click (law 10).
     Copy(RecId),
     /// The video's picture wrapped in its link, and the link as text — only ever from a

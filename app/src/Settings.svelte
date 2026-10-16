@@ -2,12 +2,13 @@
   // The Settings window (N36) renders the slice it's handed — final copy included. It
   // composes no sentences and decides nothing (ARCHITECTURE §3.5). The band at its top is
   // the Scene's tabs; the pane is General, Space or Members, each in cards of rows; a sheet
-  // (Disconnect, Leave, member-remove-confirm) sits over them.
+  // (Disconnect, Leave, member-remove-confirm, Report a problem) sits over them.
   import { onMount } from "svelte";
   import { act, key, onScene, pasteSecret, sceneGet, type Action } from "./lib/ipc";
   import Sheet from "./library/Sheet.svelte";
   import General from "./settings/General.svelte";
   import Space from "./settings/Space.svelte";
+  import ReportSheet from "./settings/ReportSheet.svelte";
   import Members from "./members/Members.svelte";
   import { isSettings, type SettingsWindow } from "./settings/types";
 
@@ -100,6 +101,6 @@
         {/if}
       </main>
     </div>
-    {#if b.sheet}<Sheet sheet={b.sheet} {send} />{/if}
+    {#if b.sheet && b.report}<ReportSheet sheet={b.sheet} form={b.report} {send} />{:else if b.sheet}<Sheet sheet={b.sheet} {send} />{/if}
   </div>
 {/if}

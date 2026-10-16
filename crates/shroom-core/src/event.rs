@@ -64,6 +64,10 @@ pub enum Field {
     InviteName,
     /// The name invites say they're from, while it's being changed (B158).
     FromName,
+    /// Report a problem's description (B180).
+    ReportWords,
+    /// Report a problem's “Your email, if you'd like an answer” (B180).
+    ReportReplyTo,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -133,6 +137,8 @@ pub enum Event {
     Update(UpdateNews),
     /// The space's Worker answering this Mac (Region 6, WORKER-INTERFACE §4).
     Member(MemberNews),
+    /// Report a problem's lane: the report gathered, or Send's answer (B180).
+    Report(ReportNews),
     /// The runner's catch-all: an error, a caught panic, or a deadline passing.
     Failed { op: Op, class: FailClass },
     /// Posted at `Scene.next_wake`.
@@ -401,4 +407,15 @@ pub enum StandingAnswer {
     SpaceSide,
     /// The ping isn't shroom's (or NXDOMAIN while online). Debounced the same way.
     Gone,
+}
+
+/// What the shell says about a report (B180).
+#[derive(Debug, Clone, PartialEq)]
+pub enum ReportNews {
+    /// The report, gathered for the sheet: its disclosure, and what Send posts.
+    Gathered(crate::report::Diagnostics),
+    /// shroom.am took it.
+    Sent,
+    /// It didn't go through: offline, refused, rate-limited or switched off.
+    NotSent,
 }

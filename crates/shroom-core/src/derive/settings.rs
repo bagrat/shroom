@@ -6,11 +6,11 @@
 
 use crate::copy;
 use crate::scene::{
-    Action, Button, Choice, GeneralBody, Glyph, Nest, PlanRow, PlanView, SettingsBody, SettingsPane, Sheet, SpaceBody, Style, Toggle,
-    Window,
+    Action, Button, Choice, GeneralBody, Glyph, Nest, PlanRow, PlanView, ReportForm, SettingsBody, SettingsPane, Sheet, SpaceBody, Style,
+    TextField, Toggle, Window,
 };
 use crate::time::Mono;
-use crate::world::{Access, Confirm, FailClass, Op, Paste, Queued, Role, SettingsTab, TakeDir, TokenVerdict, UpdateOffer, WindowKind, WorkerFact, World};
+use crate::world::{Access, Confirm, CopyTarget, FailClass, Op, Paste, Queued, Role, SettingsTab, TakeDir, TokenVerdict, UpdateOffer, WindowKind, WorkerFact, World};
 
 use super::onboarding::GATE_POLL_MS;
 
@@ -293,11 +293,15 @@ pub fn derive(w: &World) -> Option<Window<SettingsBody>> {
             SettingsPane::Space(space(w, at, off))
         }
     };
-    let sheet = sheet(w);
-    // Esc in the name invites carry, while it's being changed, puts it back (B158).
+    let (sheet, report) = match report_sheet(w) {
+        Some((sheet, form)) => (Some(sheet), Some(form)),
+        None => (sheet(w), None),
+    };
+    // Esc in the name invites carry, while it's being changed, puts it back (B158). A
+    // sheet's Esc is Back — a report on its way drops it, as an uninstall under way does.
     let changing = tab == SettingsTab::Members && w.session.fields.settings.from.is_some();
     let (ret, esc) = if sheet.is_some() { (None, Some(Action::Back)) } else { (ret, changing.then_some(Action::KeepFrom)) };
-    Some(Window { id: "settings", faces, body: SettingsBody { tabs, pane, sheet }, ret, esc, activates: door.asked })
+    Some(Window { id: "settings", faces, body: SettingsBody { tabs, pane, sheet, report }, ret, esc, activates: door.asked })
 }
 
 /// Return in the Space tab: the nest's own default, as the wizard's state gives it.
@@ -352,11 +356,17 @@ fn general(w: &World) -> GeneralBody {
         update_line,
         update,
         whats_new,
+        // Reporting asks nothing of a take: open mid-take too (B180).
+        help_label: copy::help_label(),
+        copy_diagnostics: Button::new(
+            Action::CopyDiagnostics,
+            if matches!(w.session.copied, Some((CopyTarget::Diagnostics, _))) { copy::copied() } else { copy::copy_diagnostics() },
+            Style::Plain,
+        ),
+        report: Button::new(Action::ReportProblem, copy::report_a_problem(), Style::Plain),
+        sent: w.session.fields.settings.sent.then(copy::report_sent),
         help: copy::help_line(),
-        help_links: vec![
-            Button::new(Action::ReportIssue, copy::github(), Style::Link),
-            Button::new(Action::WriteUs, copy::mail_door(), Style::Link),
-        ],
+        help_links: vec![Button::new(Action::ReportIssue, copy::github(), Style::Link)],
         uninstall: not_mid_take(w, Button::new(Action::Uninstall, copy::uninstall_ellipsis(), Style::Quiet)),
     }
 }
@@ -519,6 +529,43 @@ fn nest(w: &World, at: SpaceAt) -> Nest {
         SpaceAt::PermScreen => super::onboarding::perm_screen(w),
         SpaceAt::Relaunching => Nest::Relaunching,
     }
+}
+
+/// The Report a problem sheet and its form (B180): Send waits for words and for the report
+/// the shell gathers; while it goes, Send reads Sending… and both grey; a send that didn't
+/// go through keeps the words and offers the mail address.
+fn report_sheet(w: &World) -> Option<(Sheet, ReportForm)> {
+    let Some(Confirm::Report { sending }) = w.session.confirm else { return None };
+    if tab(w) != SettingsTab::General {
+        return None;
+    }
+    let f = &w.session.fields.settings.report;
+    let ready = f.gathered.is_some() && !f.words.trim().is_empty();
+    let send = if sending {
+        Button::new(Action::SendReport, copy::sending(), Style::Filled).enabled(false)
+    } else {
+        Button::new(Action::SendReport, copy::send(), Style::Filled).enabled(ready)
+    };
+    let sheet = Sheet {
+        id: "report-problem",
+        faces: vec![],
+        title: copy::report_title(),
+        lines: vec![copy::report_line()],
+        blocked: None,
+        buttons: vec![Button::new(Action::Back, copy::cancel(), Style::Plain).enabled(!sending), send],
+    };
+    let failed = f.failed && !sending;
+    let form = ReportForm {
+        words: TextField { placeholder: copy::report_placeholder(), value: f.words.clone(), enabled: !sending, edits: f.words_edits },
+        reply_label: copy::report_reply_label(),
+        reply_to: TextField { placeholder: String::new(), value: f.reply_to.clone(), enabled: !sending, edits: f.reply_edits },
+        disclosure: copy::report_disclosure(),
+        preview: f.gathered.as_ref().map(|d| crate::report::preview(&f.words, Some(&f.reply_to), d)),
+        preparing: f.gathered.is_none().then(copy::report_preparing),
+        failed: failed.then(copy::report_failed),
+        mail: failed.then(|| Button::new(Action::MailReport, copy::report_mail(), Style::Link)),
+    };
+    Some((sheet, form))
 }
 
 /// The Disconnect sheet (owner, holds the token) under N23's law: no Return default, Esc ≡

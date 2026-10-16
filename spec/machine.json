@@ -7638,7 +7638,7 @@
    "surface": "window",
    "status": "provisional",
    "board": "SettingsGeneral",
-   "summary": "The General tab: U4's login checkbox at home at last (it reads the system's truth: if the login item is removed in System Settings, the box shows unchecked), the update row mirroring config's banner, and N8's two help doors (the new-issue link, prefilled with the version). Past this Mac's macOS, General carries the only update line: no banner, no dot.",
+   "summary": "The General tab: U4's login checkbox at home at last (it reads the system's truth: if the login item is removed in System Settings, the box shows unchecked), the update row mirroring config's banner, and the help row: Copy diagnostics and Report a problem… (B180), with GitHub's new-issue link under it as the public door (N8). Past this Mac's macOS, General carries the only update line: no banner, no dot.",
    "entry": "Settings window on the General tab (the default on first open).",
    "said": [
     {
@@ -7683,11 +7683,32 @@
      "id": "settings-general.whats-new"
     },
     {
-     "text": "Something off? Tell us on GitHub — or write to hi@shroom.am.",
+     "text": "Something off?",
+     "role": "field-label",
+     "copy": "provisional",
+     "note": "Row label of the help row: Copy diagnostics and Report a problem… sit at its end (B180).",
+     "id": "settings-general.something-off"
+    },
+    {
+     "text": "Copied",
+     "role": "button",
+     "copy": "provisional",
+     "note": "Copy diagnostics reads Copied for a moment after its click, as Copy link does (B180).",
+     "id": "settings-general.copied"
+    },
+    {
+     "text": "Or tell us in public, on GitHub.",
      "role": "line",
      "copy": "provisional",
-     "note": "'GitHub' is the new-issue link prefilled with the version. hi@shroom.am is the mail door (N8).",
-     "id": "settings-general.something-off-tell-us"
+     "note": "Under the card. 'GitHub' is the new-issue link prefilled with the version (N8), with no log in it.",
+     "id": "settings-general.or-tell-us-in-public"
+    },
+    {
+     "text": "Sent — thank you. If you left your email, you’ll hear back.",
+     "role": "status",
+     "copy": "provisional",
+     "note": "After a report went through (B180); until the window closes.",
+     "id": "settings-general.report-sent"
     },
     {
      "text": "shroom 1.4.0 needs macOS 15 — this Mac stays on 1.3.2.",
@@ -7742,16 +7763,23 @@
      "note": "Opens the release notes in the browser."
     },
     {
+     "label": "Copy diagnostics",
+     "kind": "secondary",
+     "return_default": false,
+     "note": "Puts the report, without a description, on the clipboard: the version, macOS, the chip and memory, the setup timeline and the last 200 log lines, cleaned (B180). Law 10: only on this click."
+    },
+    {
+     "label": "Report a problem…",
+     "kind": "secondary",
+     "return_default": false,
+     "note": "Opens the report sheet (B180).",
+     "goes_to": "report-problem"
+    },
+    {
      "label": "GitHub",
      "kind": "text-link",
      "return_default": false,
-     "note": "The new-issue link, prefilled with the version (N8)."
-    },
-    {
-     "label": "hi@shroom.am",
-     "kind": "text-link",
-     "return_default": false,
-     "note": "The mail door (N8)."
+     "note": "The new-issue link, prefilled with the version and nothing else (N8, B180)."
     },
     {
      "label": "Uninstall shroom…",
@@ -7767,7 +7795,9 @@
     "N8",
     "N37",
     "U7",
-    "B135"
+    "B135",
+    "B180",
+    "N53"
    ],
    "was": {
     "fixture": "r5.json",
@@ -11085,6 +11115,99 @@
     "N31",
     "N36",
     "B160"
+   ]
+  },
+  "report-problem": {
+   "region": 5,
+   "kind": "sheet",
+   "parent": "settings-general",
+   "surface": "sheet",
+   "status": "provisional",
+   "board": "ReportProblem",
+   "summary": "Report a problem (B180, N53): a description, an optional email for an answer, and “See exactly what’s sent” — the whole report as it goes: the words, the version, macOS, the chip and memory, the setup timeline and the last 200 lines of shroom’s log, each line cleaned (home paths, the space’s host, web addresses, emails and long ids replaced). Send posts it to shroom.am/report, which emails it to the person who makes shroom and keeps nothing. Sending, the button reads Sending… and both grey; accepted, the sheet closes and General says so; refused or offline, the sheet stays with what was typed, says so, and offers the mail address. A dev build never reaches shroom.am.",
+   "entry": "Settings → General, Report a problem… clicked. Available mid-take too: it touches no take (law 4 holds — no window opens for it).",
+   "said": [
+    {
+     "text": "Report a problem",
+     "role": "sheet-title",
+     "copy": "provisional",
+     "id": "report-problem.title"
+    },
+    {
+     "text": "Tell us what happened. shroom adds its version, your Mac’s model and its recent log — never your videos, links, names or keys. It goes straight to the person who makes shroom.",
+     "role": "sheet-body",
+     "copy": "provisional",
+     "id": "report-problem.line"
+    },
+    {
+     "text": "What were you doing, and what went wrong?",
+     "role": "placeholder",
+     "copy": "provisional",
+     "note": "The description box; Return types a new line, ⌘Return sends.",
+     "id": "report-problem.what-happened"
+    },
+    {
+     "text": "Your email, if you’d like an answer (optional)",
+     "role": "field-label",
+     "copy": "provisional",
+     "id": "report-problem.reply-to"
+    },
+    {
+     "text": "See exactly what’s sent",
+     "role": "disclosure",
+     "copy": "provisional",
+     "note": "Opens the whole report, word for word, cleaned.",
+     "id": "report-problem.see-whats-sent"
+    },
+    {
+     "text": "Putting it together…",
+     "role": "line",
+     "copy": "provisional",
+     "note": "Under the disclosure until the report is gathered; Send waits for it.",
+     "id": "report-problem.putting-it-together"
+    },
+    {
+     "text": "Sending…",
+     "role": "button",
+     "copy": "provisional",
+     "note": "Send's label while it posts; Cancel greys with it.",
+     "id": "report-problem.sending"
+    },
+    {
+     "text": "That didn’t go through — check your connection and try again. Or email it to hi@shroom.am instead.",
+     "role": "line",
+     "copy": "provisional",
+     "note": "Offline, refused, rate-limited or switched off: the sheet keeps what was typed. “email it to hi@shroom.am” is a link: a mail draft with the description and the version.",
+     "id": "report-problem.couldnt-send"
+    }
+   ],
+   "actions": [
+    {
+     "label": "Cancel",
+     "kind": "secondary",
+     "return_default": false,
+     "note": "Esc ≡ Cancel. Greys while sending.",
+     "goes_to": "settings-general"
+    },
+    {
+     "label": "Send",
+     "kind": "filled-default",
+     "return_default": false,
+     "note": "⌘Return; plain Return types a new line. Grey until something is typed and the report is gathered.",
+     "goes_to": "settings-general"
+    },
+    {
+     "label": "email it to hi@shroom.am",
+     "kind": "text-link",
+     "return_default": false,
+     "note": "Only once a send failed: a mail draft to hi@shroom.am with the description and the version (N48)."
+    }
+   ],
+   "cites": [
+    "B180",
+    "N53",
+    "N8",
+    "N48"
    ]
   }
  },
@@ -15582,6 +15705,36 @@
    "on": [
     "Rec(Primed)"
    ]
+  },
+  {
+   "from": "settings-general",
+   "to": "report-problem",
+   "kind": "side",
+   "label": "",
+   "trigger": "Report a problem…",
+   "status": "provisional",
+   "cites": [
+    "B180"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": []
+  },
+  {
+   "from": "report-problem",
+   "to": "settings-general",
+   "kind": "flow",
+   "label": "",
+   "trigger": "Cancel or Esc (not while sending); or Send, and shroom.am took it: General then says it’s sent",
+   "status": "provisional",
+   "cites": [
+    "B180"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": []
   }
  ],
  "rules": [

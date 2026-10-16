@@ -131,8 +131,14 @@ pub enum Action {
     SetLoginItem(bool),
     /// The help line's GitHub door.
     ReportIssue,
-    /// The help line's mail door.
-    WriteUs,
+    /// General's “Copy diagnostics”: the report onto the clipboard (B180, law 10).
+    CopyDiagnostics,
+    /// General's “Report a problem…” — opens its sheet (B180).
+    ReportProblem,
+    /// The report sheet's Send (⌘Return).
+    SendReport,
+    /// A failed send's “email it to hi@shroom.am”.
+    MailReport,
     /// “Disconnect this Mac…” — opens its sheet.
     Disconnect,
     ConfirmDisconnect,
@@ -813,11 +819,34 @@ pub struct GeneralBody {
     pub update_line: String,
     pub update: Option<Button>,
     pub whats_new: Option<Button>,
-    /// The help line; its doors are `help_links`, each label a run of the line.
+    /// The help row (B180): “Something off?”, Copy diagnostics, Report a problem….
+    pub help_label: String,
+    pub copy_diagnostics: Button,
+    pub report: Button,
+    /// After a report went through, until the window closes.
+    pub sent: Option<String>,
+    /// The line under the card; its doors are `help_links`, each label a run of the line.
     pub help: String,
     pub help_links: Vec<Button>,
     /// “Uninstall shroom…”, quiet text at the tab's foot (B135).
     pub uninstall: Button,
+}
+
+/// The Report a problem sheet's form, between its line and its buttons (B180).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct ReportForm {
+    pub words: TextField,
+    pub reply_label: String,
+    pub reply_to: TextField,
+    /// “See exactly what's sent”.
+    pub disclosure: String,
+    /// What goes, word for word — once the report is gathered.
+    pub preview: Option<String>,
+    /// Until then: “Putting it together…”.
+    pub preparing: Option<String>,
+    /// The last Send didn't go through: its line, and the mail address as a link.
+    pub failed: Option<String>,
+    pub mail: Option<Button>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -903,6 +932,8 @@ pub struct SettingsBody {
     pub tabs: Vec<Choice>,
     pub pane: SettingsPane,
     pub sheet: Option<Sheet>,
+    /// The Report a problem sheet's form, with its `sheet` (B180).
+    pub report: Option<ReportForm>,
 }
 
 impl Sheet {
@@ -949,10 +980,12 @@ impl Window<LibraryBody> {
 impl Window<SettingsBody> {
     pub fn buttons(&self) -> Vec<&Button> {
         if let Some(s) = &self.body.sheet {
-            return s.buttons().collect();
+            return s.buttons().chain(self.body.report.iter().flat_map(|f| &f.mail)).collect();
         }
         match &self.body.pane {
-            SettingsPane::General(g) => g.update.iter().chain(&g.whats_new).chain(&g.help_links).chain(std::iter::once(&g.uninstall)).collect(),
+            SettingsPane::General(g) => {
+                g.update.iter().chain(&g.whats_new).chain([&g.copy_diagnostics, &g.report]).chain(&g.help_links).chain(std::iter::once(&g.uninstall)).collect()
+            }
             SettingsPane::Space(sp) => {
                 let mut out = nest_buttons(&sp.plan.nest);
                 out.extend(sp.mic.iter());

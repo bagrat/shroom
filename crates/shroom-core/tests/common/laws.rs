@@ -290,6 +290,11 @@ pub fn check(pw: &World, ps: &Scene, ev: &Event, nw: &World, ns: &Scene, fx: &[E
     for (sheet, ret, esc) in sheets {
         assert_eq!(ret, None, "law 9: {} has a Return default — {}", sheet.id, ctx());
         assert_eq!(esc, Some(&Action::Back), "law 9: {}'s Esc isn't back — {}", sheet.id, ctx());
+        // The law's colours are for destructive questions; Report a problem's Send destroys
+        // nothing, and is filled as an ordinary answer is (B180).
+        if NOT_DESTRUCTIVE.contains(&sheet.id) {
+            continue;
+        }
         let last = sheet.buttons.last().expect("a sheet answers");
         assert_eq!(last.style, Style::RedOutline, "law 9: {}'s answer isn't red-outlined and rightmost", sheet.id);
         assert!(sheet.buttons.iter().all(|b| b.style != Style::Filled), "law 9: a filled button on {}", sheet.id);
@@ -597,8 +602,11 @@ pub fn voice_failures(scene: &Scene, row: &str) -> Vec<String> {
 /// Every string the Scene shows a person: labels, lines, notes, titles, placeholders —
 /// not ids, actions, kinds, device ids or what the person typed.
 pub fn user_strings(scene: &Scene) -> Vec<String> {
+    // `preview` is Report a problem's disclosure: the person's words and their log, quoted
+    // as they go — data, as a field's `value` is (B180).
     const NOT_COPY: &[&str] = &[
         "id", "faces", "do", "arg", "kind", "key", "camera", "poster", "value", "style", "tone", "face", "click", "glyph", "em", "action", "anchor", "state",
+        "preview",
     ];
     fn walk(v: &serde_json::Value, out: &mut Vec<String>) {
         match v {
@@ -914,3 +922,7 @@ fn strip(v: serde_json::Value) -> serde_json::Value {
         x => x,
     }
 }
+
+/// The sheets that ask no destructive question (law 9 is about destruction): their answer
+/// may be filled (B180).
+const NOT_DESTRUCTIVE: &[&str] = &["report-problem"];

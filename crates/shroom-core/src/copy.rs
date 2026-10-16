@@ -366,9 +366,28 @@ pub fn running_version(version: &str) -> String { format!("shroom {version}.") }
 pub fn update_ready(version: &str) -> String { format!("shroom {version} is ready.") }
 pub fn update() -> String { "Update".into() }
 pub fn whats_new() -> String { "What's new".into() }
-pub fn help_line() -> String { "Something off? Tell us on GitHub — or write to hi@shroom.am.".into() }
+/// The line under General's card: GitHub is the public door (N8, B180).
+pub fn help_line() -> String { "Or tell us in public, on GitHub.".into() }
 pub fn github() -> String { "GitHub".into() }
-pub fn mail_door() -> String { "hi@shroom.am".into() }
+// ── Report a problem (B180) ──
+/// The most a report's words hold (characters); the page and the Worker take as many.
+pub const REPORT_WORDS_MAX: usize = 8000;
+pub fn help_label() -> String { "Something off?".into() }
+pub fn copy_diagnostics() -> String { "Copy diagnostics".into() }
+pub fn report_a_problem() -> String { "Report a problem…".into() }
+pub fn report_sent() -> String { "Sent — thank you. If you left your email, you’ll hear back.".into() }
+pub fn report_title() -> String { "Report a problem".into() }
+pub fn report_line() -> String {
+    "Tell us what happened. shroom adds its version, your Mac’s model and its recent log — never your videos, links, names or keys. It goes straight to the person who makes shroom.".into()
+}
+pub fn report_placeholder() -> String { "What were you doing, and what went wrong?".into() }
+pub fn report_reply_label() -> String { "Your email, if you’d like an answer (optional)".into() }
+pub fn report_disclosure() -> String { "See exactly what’s sent".into() }
+pub fn report_preparing() -> String { "Putting it together…".into() }
+pub fn send() -> String { "Send".into() }
+pub fn sending() -> String { "Sending…".into() }
+pub fn report_failed() -> String { "That didn’t go through — check your connection and try again. Or email it to hi@shroom.am instead.".into() }
+pub fn report_mail() -> String { "email it to hi@shroom.am".into() }
 pub fn needs_macos(version: &str, macos: u32, running: &str) -> String {
     format!("shroom {version} needs macOS {macos} — this Mac stays on {running}.")
 }
@@ -885,7 +904,22 @@ pub fn registry() -> Vec<(&'static str, String)> {
         ("settings-general", whats_new()),
         ("settings-general", help_line()),
         ("settings-general", github()),
-        ("settings-general", mail_door()),
+        ("settings-general", help_label()),
+        ("settings-general", copy_diagnostics()),
+        ("settings-general", copied()),
+        ("settings-general", report_a_problem()),
+        ("settings-general", report_sent()),
+        ("report-problem", report_title()),
+        ("report-problem", report_line()),
+        ("report-problem", report_placeholder()),
+        ("report-problem", report_reply_label()),
+        ("report-problem", report_disclosure()),
+        ("report-problem", report_preparing()),
+        ("report-problem", cancel()),
+        ("report-problem", send()),
+        ("report-problem", sending()),
+        ("report-problem", report_failed()),
+        ("report-problem", report_mail()),
         ("settings-general", needs_macos("1.4.0", 15, "1.3.2")),
         ("settings-general", after_take()),
         ("settings-space", disconnect_ellipsis()),

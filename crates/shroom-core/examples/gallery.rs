@@ -587,6 +587,38 @@ fn settings_rows() -> Vec<(&'static str, &'static str, World)> {
         w
     }));
     rows.push(("uninstall-confirm", "uninstall-sheet-going", uninstall(true)));
+    // ── Report a problem (B180) ──
+    let reporting = |sending: bool, gathered: bool, words: &str, failed: bool| {
+        let mut w = uninstall(false);
+        w.session.confirm = Some(Confirm::Report { sending });
+        let f = &mut w.session.fields.settings.report;
+        f.words = words.into();
+        f.reply_to = if words.is_empty() { String::new() } else { "you@example.com".into() };
+        f.failed = failed;
+        f.gathered = gathered.then(|| shroom_core::report::Diagnostics {
+            shroom: "1.3.0".into(),
+            macos: "15.3.1".into(),
+            chip: "Apple M2".into(),
+            memory: "16 GB".into(),
+            setup: "2026-10-12 10:06 UTC key · 10:14 recording allowed · 10:15 wired".into(),
+            role: "owns its space".into(),
+            log: shroom_core::report::clean_log(
+                "    1840 core config [Probe, Draw]\n  412900 recorder finalize failed: the screen stream ended early\n  413020 uploader 7f3a…: request to https://v.example-owner.workers.dev/x timed out",
+            ),
+        });
+        w
+    };
+    let words = "I stopped a recording and the link never finished uploading.";
+    rows.push(("report-problem", "report-sheet", reporting(false, false, "", false)));
+    rows.push(("report-problem", "report-sheet-filled", reporting(false, true, words, false)));
+    rows.push(("report-problem", "report-sheet-sending", reporting(true, true, words, false)));
+    rows.push(("report-problem", "report-sheet-failed", reporting(false, true, words, true)));
+    rows.push(("settings-general", "settings-general-sent", {
+        let mut w = uninstall(false);
+        w.session.confirm = None;
+        w.session.fields.settings.sent = true;
+        w
+    }));
     rows.push(("disconnect-confirm", "disconnect-sheet-blocked", {
         let mut w = space();
         w.session.confirm = Some(Confirm::Exit);

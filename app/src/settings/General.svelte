@@ -1,7 +1,8 @@
 <script lang="ts">
   // Settings · General (N36): one card — the login box (reads the system's truth, as the
-  // Scene says), the update row (its line, its button, What's new) — then the help line,
-  // whose doors are runs of the line itself; Uninstall shroom… at the foot.
+  // Scene says), the update row (its line, its button, What's new), the help row (Copy
+  // diagnostics, Report a problem…, B180) — then the line under it, whose doors are runs of
+  // the line itself; Uninstall shroom… at the foot.
   import type { Action } from "../lib/ipc";
   import Btn from "../onboarding/Btn.svelte";
   import type { Button } from "../onboarding/types";
@@ -60,7 +61,16 @@
         {/if}
       </div>
     </div>
+
+    <div class="srow help-row">
+      <span class="grow">{g.help_label}</span>
+      <div class="acts">
+        <Btn b={g.copy_diagnostics} {send} />
+        <Btn b={g.report} {send} />
+      </div>
+    </div>
   </div>
+  {#if g.sent}<p class="sent" role="status">{g.sent}</p>{/if}
   <p class="help">
     {#each help as part}{#if typeof part === "string"}{part}{:else}<button
           type="button"
