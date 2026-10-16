@@ -978,7 +978,7 @@
   {
    "id": "N51",
    "title": "The invite page offers the Homebrew join line",
-   "decision": "**The invite page shows the Homebrew join line under the install command** (Bagrat, 2026-10-16: the board approved, placement and words as drawn). “Use Homebrew? This does the same:” then `brew install --cask bagrat/shroom/shroom && open -a ~/Applications/shroom.app \"https://<space>/join/<code>\"` with its own Copy, quieter than the install command's. It goes live only once the app that takes the link (N50, 0.1.17) is out. Built: DECISIONS B177.",
+   "decision": "**The invite page shows the Homebrew join line under the install command** (Bagrat, 2026-10-16: the board approved, placement and words as drawn). “Use Homebrew? This does the same:” then `brew install --cask bagrat/shroom/shroom && open -a ~/Applications/shroom.app \"https://<space>/join/<code>\"` with its own Copy, quieter than the install command's. It goes live only with the app that takes the link (N50, 0.1.17). Built: DECISIONS B178.",
    "status": "ratified",
    "date": "2026-10-16",
    "amends": [
