@@ -300,7 +300,8 @@ describe("the questions, privacy and terms pages", () => {
     const soon = faq.match(/<li class="soon">[\s\S]*?<\/li>/g) ?? [];
     assert.equal(soon.length, 4, "editing, captions and chapters, view counts, deleting from the page");
     for (const li of soon) assert.match(li, /^<li class="soon"><span>[^<]+<\/span><em class="pill">Coming soon<\/em><\/li>$/);
-    const limits = faq.match(/<ul class="points limits">([\s\S]*?)<\/ul>/)?.[1] ?? "";
-    assert.ok(limits.trim().startsWith('<li class="soon">'), "what's coming sits at the top of the list");
+    const lists = [...faq.matchAll(/<ul class="points limits">([\s\S]*?)<\/ul>/g)].map((m) => m[1]);
+    assert.ok(lists[0]?.trim().startsWith('<li class="soon">'), "what's coming sits at the top");
+    assert.ok(lists.slice(1).every((l) => !l.includes('class="soon"')), "the rest, under Also not yet, carry no pill");
   });
 });

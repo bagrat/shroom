@@ -179,6 +179,7 @@ ${OG_IMAGE}
 <meta name="theme-color" content="#f6f7f9" media="(prefers-color-scheme: light)">
 ${style.replace("</style>", `  main.doc { gap: 20px; }
   .doc h2 { margin-top: 20px; }
+  .doc h3 { margin: 8px 0 0; color: var(--muted); }
   .qa li { display: flex; flex-direction: column; gap: 4px; }
   .qa li b { font-weight: 600; }
   .qa li span, .limits li { color: var(--muted); }
