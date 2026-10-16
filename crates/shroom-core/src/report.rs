@@ -202,7 +202,7 @@ fn replace_urls(s: &str) -> String {
     out
 }
 
-/// `local@domain.tld` → `<an email>`.
+/// An email address → `<an email>`.
 fn replace_emails(s: &str) -> String {
     let chars: Vec<char> = s.chars().collect();
     let local = |c: char| c.is_ascii_alphanumeric() || "._%+-".contains(c);
