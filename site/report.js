@@ -12,8 +12,8 @@
 //   check    from the page: Turnstile says a person sent it               403 {error:"check"}
 //
 // Then the log is cleaned once more (site/clean.js), and one message goes out through the
-// `send_email` binding: from report-sender@shroom.am (never the inbox's own address: Bagrat
-// chose the pair, 2026-10-16) to `REPORT_TO`, a Worker secret holding a
+// `send_email` binding: from report-sender@shroom.am (never the inbox's own address — the
+// binding refuses a From equal to its To, measured 2026-10-16) to `REPORT_TO`, a Worker secret holding a
 // destination verified in Email Routing — never written in this repo. Nothing is stored: no
 // storage is bound, and request logs are off (wrangler.jsonc).
 
