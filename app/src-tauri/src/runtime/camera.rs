@@ -187,6 +187,7 @@ fn panel(mtm: MainThreadMarker, frame: NSRect, preview: &shroom_capture::CameraP
         spinner
     };
     content.addSubview(&picture);
+    preview.fit(frame.size.width, frame.size.height);
     content.addSubview(&spinner);
     p.setContentView(Some(&content));
     (p, Spinner(spinner))
@@ -316,6 +317,8 @@ pub struct Seen {
     pub nonactivating: bool,
     pub camera: String,
     pub running: bool,
+    /// Whether its picture is drawn mirrored (the bubble's must be).
+    pub mirrored: bool,
     /// The camera frames drawn into it so far.
     pub frames: u64,
     pub size: (f64, f64),
@@ -333,6 +336,7 @@ fn seen(n: &Native) -> Seen {
         nonactivating: n.panel.styleMask().contains(NSWindowStyleMask::NonactivatingPanel),
         camera: n.preview.uid().to_string(),
         running: n.preview.running(),
+        mirrored: n.preview.mirrored(),
         frames: n.preview.frames(),
         size: (f.size.width, f.size.height),
     }

@@ -5,7 +5,8 @@
 # pattern), then the dev app's --bubble-probe held 40 s, reading the bubble's picture off
 # the screen once a second. While it holds, TextEdit goes full screen (a Space of its own),
 # and the Spaces are switched back and forth with ⌃← / ⌃→, ending on the full-screen one.
-# Passes when the bubble's picture still moves through the hold's last third.
+# Passes when the bubble's picture still moves through the hold's last third, and reads
+# mirrored there: OBS's yellow bar on the right of its blue one (0.1.22's read the other way).
 set -u
 . dev/mac/lib.sh
 bash dev/mac/camera.sh up || exit 1
@@ -52,5 +53,5 @@ shot 5-end
 osascript -e 'tell application "TextEdit" to quit saving no' >/dev/null 2>&1 || pkill -x TextEdit
 node -e 'const r = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
   const c = (r.samples || []).map(s => s.change == null ? "-" : s.change.toFixed(1));
-  console.log(`bubble on ${r.camera ? r.camera.name : "no camera"}: moving through the end ${r.moving}; running ${r.seen && r.seen.running}; change a second apart: ${c.join(" ")}`);
+  console.log(`bubble on ${r.camera ? r.camera.name : "no camera"}: moving through the end ${r.moving}; mirrored ${r.mirrored} (left ${r.sides ? r.sides[0].toFixed(0) : "-"}, right ${r.sides ? r.sides[1].toFixed(0) : "-"}); running ${r.seen && r.seen.running}; change a second apart: ${c.join(" ")}`);
   process.exit(r.ok ? 0 : 1)' "$out"
