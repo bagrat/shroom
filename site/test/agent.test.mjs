@@ -13,9 +13,10 @@ const installer = readFileSync(`${ROOT}installer/install.sh`, "utf8");
 const landing = JSON.parse(readFileSync(`${ROOT}spec/machine.json`, "utf8")).states.landing;
 
 // The landing's ratified lines that belong to the page itself, not to a browser: no Copy
-// button, no "Read it first" link, no demo, no header links (N55). The system-requirements sentence is checked
-// against the landing's own (filled-in) sentence instead.
-const PAGE_ONLY = /^(Copy|Send feedback|Install in one line|Read it first — .*|Recorded with shroom\..*)$/;
+// button, no install tabs or "Read it first" link, no demo, no links at its foot (N55, N59), and
+// none of its words to the person about their agent. The system-requirements sentence is
+// checked against the landing's own (filled-in) sentence instead.
+const PAGE_ONLY = /^(Copy|Send feedback|Send feedback · .*|Install in one line|Terminal|Homebrew|Coding agent|Read it first|Your agent asks you .*|Recorded with shroom\..*)$/;
 
 /** Every “…” on the page: a line the agent says to the person, or a word it quotes. */
 const said = [...flat.matchAll(/“([^”]+)”/g)].map((m) => m[1]);
@@ -129,7 +130,7 @@ describe("the agent page", () => {
   it("is where the landing's agent line sends the agent", () => {
     const line = html.match(/<code id="agent">([^<]+)<\/code>/)?.[1];
     assert.equal(line, "Install shroom on my Mac: read https://shroom.am/agent and follow it.");
-    assert.match(html, /<a href="\/agent">Read it first<\/a> — the same address shows what your agent will read\. Your agent asks you before it runs anything\./);
+    assert.match(html, /<a href="\/agent">Read it first<\/a> <span>Your agent asks you before it runs anything\.<\/span>/);
   });
 });
 

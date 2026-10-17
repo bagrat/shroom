@@ -58,7 +58,7 @@ describe("the landing", () => {
     assert.deepEqual(said, [line], "no other version of the sentence is on the page");
   });
 
-  it("plays a real recording in place, second, right above Install (N58)", () => {
+  it("plays a real recording in place, right above Install (N58, N59)", () => {
     assert.doesNotMatch(demo, /<section class="demo"[^>]*\bhidden\b/, "the demo block shows");
     const id = demo.match(/data-id="([^"]*)"/)?.[1] ?? "";
     assert.match(id, ID, "the demo is a real recording id");
@@ -70,8 +70,8 @@ describe("the landing", () => {
     assert.match(demo, /<video\b[^>]*\bpreload="none"/, "nothing loads before the script asks");
     assert.doesNotMatch(demo, /<video\b[^>]*\bsrc=/, "the video's address is set by script, as the block nears the screen");
     assert.match(demo, /<img src="demo-poster\.webp"/, "the still is the site's own file");
-    const order = ["Your team just", 'class="demo"', 'id="install"'].map((k) => html.indexOf(k));
-    assert.ok(order[0] < order[1] && order[1] < order[2], "the demo comes after the team line and before Install");
+    const order = ['class="terms"', 'class="demo"', 'id="install"'].map((k) => html.indexOf(k));
+    assert.ok(order[0] < order[1] && order[1] < order[2], "the demo's box comes after the terms (beside them on a laptop), and Install under the demo (N59)");
   });
 
   it("ships the demo's still with the page", () => {
@@ -89,10 +89,39 @@ describe("the landing", () => {
     assert.match(scripts, /"https:\/\/" \+ box\.getAttribute\("data-space"\) \+ "\/m\/" \+ box\.getAttribute\("data-id"\) \+ "\/video\.mp4"/);
   });
 
-  it("offers Homebrew first, the install line under it (N52)", () => {
-    const brew = text.indexOf("brew install --cask bagrat/shroom/shroom && open ~/Applications/shroom.app");
-    const curl = text.indexOf("curl -fsSL https://shroom.am/install | sh");
-    assert.ok(brew >= 0 && curl > brew, "the Homebrew line comes before the install line");
+  it("offers the install line first, then Homebrew, then the agent, in tabs (N59)", () => {
+    const tabs = [...html.matchAll(/<button type="button" role="tab" id="([^"]+)" aria-controls="([^"]+)" aria-selected="(true|false)"[^>]*>([^<]+)<\/button>/g)];
+    assert.deepEqual(tabs.map((t) => t[4]), ["Terminal", "Homebrew", "Coding agent"]);
+    assert.deepEqual(tabs.map((t) => t[3]), ["true", "false", "false"], "Terminal is chosen when the page opens");
+    const panel = (id) => html.match(new RegExp(`<div class="panel( on)?" id="${id}" role="tabpanel"[^>]*>([\\s\\S]*?)\\n        </div>`)) ?? [];
+    const [term, brew, agent] = tabs.map((t) => panel(t[2]));
+    assert.equal(term[1], " on", "its panel is the one showing");
+    assert.ok(!brew[1] && !agent[1], "the others wait");
+    assert.match(term[2], /<code id="cmd">curl -fsSL https:\/\/shroom\.am\/install \| sh<\/code>/);
+    assert.match(brew[2], /<code id="brew">brew install --cask bagrat\/shroom\/shroom &amp;&amp; open ~\/Applications\/shroom\.app<\/code>/);
+    assert.match(agent[2], /<code id="agent">Install shroom on my Mac: read https:\/\/shroom\.am\/agent and follow it\.<\/code>/);
+    // Each tab's own Read it first, on the line with the system requirements (Homebrew has none).
+    const reads = [...html.matchAll(/<span class="read( on)?" data-for="([^"]+)"><a href="([^"]+)">Read it first<\/a>/g)].map((m) => [m[2], m[3], m[1] ?? ""]);
+    assert.deepEqual(reads, [[tabs[0][2], "/install", " on"], [tabs[2][2], "/agent", ""]]);
+    // Without script every panel shows, Terminal's first; the sheet hides the others only once script runs.
+    assert.match(html, /\.js \.panel:not\(\.on\), \.js \.read:not\(\.on\) \{ display: none; \}/);
+    assert.match(html, /<script>document\.documentElement\.className = "js";<\/script>/);
+  });
+
+  it("says the terms in Bagrat's order, under the price bar (N59)", () => {
+    const terms = (html.match(/<ul class="terms">([\s\S]*?)<\/ul>/)?.[1] ?? "").match(/<li>[\s\S]*?<\/li>/g)?.map((li) => visible(li).trim()) ?? [];
+    const ids = ["landing.your-videos-live-in", "landing.you-only-ever-pay", "landing.your-team-just-accepts", "landing.no-price-per-person",
+      "landing.delete-old-videos-and", "landing.you-set-cloudflare-up", "landing.open-source-every-line"];
+    assert.deepEqual(terms, ids.map((id) => landing.said.find((l) => l.id === id).text));
+  });
+
+  it("draws the price as one bar, its two ends labelled, inside the headline's own width (N59)", () => {
+    const pitch = html.match(/<div class="pitch">([\s\S]*?)\n  <\/div>/)?.[1] ?? "";
+    assert.match(pitch, /<h1>Record\. Share\. Pay-as-you-go\.<\/h1>/);
+    const ends = [...pitch.matchAll(/<span>(.*?)<\/span>/g)].map((m) => visible(m[1]));
+    assert.deepEqual(ends, ["landing.0-month-about-six", "landing.1-50-month-about"].map((id) => landing.said.find((l) => l.id === id).text));
+    assert.match(pitch, /<div class="gauge" role="img" aria-label="[^"]+">/, "the bar has a name a screen reader says");
+    assert.match(html, /\.pitch \{[^}]*width: max-content;/, "the headline, its line and the bar share the headline's width");
   });
 
   it("points Read it first at the installer's own address", () => {
@@ -101,22 +130,30 @@ describe("the landing", () => {
   });
 });
 
-describe("the footer", () => {
+describe("the page's foot", () => {
+  const foot = html.match(/<footer class="foot">[\s\S]*?<\/footer>/)?.[0] ?? "";
+
   it("says visits are counted, and how little is kept (DECISIONS copy table)", () => {
-    const footer = html.match(/<footer>[\s\S]*?<\/footer>/)?.[0] ?? "";
-    assert.ok(footer.includes("We count visits to this page — no cookies, and nothing that tells us who you are."));
+    assert.ok(foot.includes("<p>We count visits to this page — no cookies, and nothing that tells us who you are.</p>"));
   });
 
-  it("takes Trouble, questions to the feedback page (N55)", () => {
-    const footer = html.match(/<footer>[\s\S]*?<\/footer>/)?.[0] ?? "";
-    assert.match(footer, /shroom · <a href="\/feedback">Trouble, questions<\/a>/);
+  it("holds the links the header and footer held, Send feedback first (N55, N59)", () => {
+    const hrefs = [...foot.matchAll(/<a href="([^"]+)">/g)].map((m) => m[1]);
+    assert.deepEqual(hrefs, ["/feedback", "https://github.com/bagrat/shroom", "/faq", "/privacy", "/terms"]);
+    assert.ok(visible(foot).includes(landing.said.find((l) => l.id === "landing.shroom-trouble-questions").text));
+    assert.doesNotMatch(html, /Trouble, questions/, "Send feedback already opens /feedback");
+  });
+
+  it("sits at the bottom of the first screen, never over the page (N59)", () => {
+    assert.match(html, /\.page \{ min-height: 100vh; min-height: 100svh; display: flex; flex-direction: column;/);
+    assert.match(html, /\.foot \{[^}]*margin: auto auto 0;/);
+    assert.doesNotMatch(html, /position: (fixed|sticky)/);
   });
 });
 
 describe("the header", () => {
-  it("offers Send feedback beside GitHub (N55)", () => {
-    const nav = html.match(/<header>[\s\S]*?<nav>([\s\S]*?)<\/nav>/)?.[1] ?? "";
-    assert.equal(nav, '<a href="/feedback">Send feedback</a><a href="https://github.com/bagrat/shroom">GitHub</a>');
+  it("is gone from the landing: its links are at the foot (N59)", () => {
+    assert.doesNotMatch(html, /<header>/);
   });
 });
 

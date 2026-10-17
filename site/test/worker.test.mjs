@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { build, noteVersions, whatsNewPage } from "../build.mjs";
+import { build, FOOTER, HEADER, noteVersions, whatsNewPage } from "../build.mjs";
 import worker, { clientKind, refTag, referrerHost, wantsMarkdown } from "../worker.js";
 
 const ROOT = new URL("../..", import.meta.url).pathname;
@@ -121,7 +121,7 @@ describe("what's new", () => {
     assert.match(page, /<h1>What's new<\/h1>/);
     assert.match(page, /shroom 0\.1\.12/);
     for (const line of notes("0.1.12")) assert.ok(page.includes(`<li>${line.replace(/&/g, "&amp;")}</li>`), line);
-    assert.ok(page.includes(file("site/index.html").match(/<header>[\s\S]*?<\/header>/)?.[0] ?? "no header"), "the landing's header");
+    assert.ok(page.includes(HEADER), "the pages' header");
     assert.match(page, /href="\/favicon\.svg"/, "the icons from the root, wherever the page sits");
     assert.ok(!/Under the hood|pull\/\d+/.test(page), "only what's new, never the list of merged work");
   });
@@ -277,15 +277,18 @@ describe("the questions, privacy and terms pages", () => {
       const source = file(`site/pages/${name}.html`);
       for (const li of source.match(/<li[\s\S]*?<\/li>/g) ?? []) assert.ok(page.includes(li), li);
       assert.ok(page.includes(source.match(/<h1>[^<]*<\/h1>/)?.[0] ?? "no h1"));
-      assert.ok(page.includes(landing.match(/<header>[\s\S]*?<\/header>/)?.[0] ?? "no header"), "the landing's header");
-      assert.ok(page.includes(landing.match(/<footer>[\s\S]*?<\/footer>/)?.[0] ?? "no footer"), "the landing's footer");
+      assert.ok(page.includes(HEADER), "the pages' header");
+      assert.ok(page.includes(FOOTER), "the pages' footer");
       assert.match(page, /<meta property="og:url" content="https:\/\/shroom\.am\/[a-z]+">/);
     });
   }
 
-  it("each is linked from the footer", () => {
-    const footer = landing.match(/<footer>[\s\S]*?<\/footer>/)?.[0] ?? "";
-    for (const name of ["faq", "privacy", "terms"]) assert.match(footer, new RegExp(`<a href="/${name}">`));
+  it("each is linked from the landing's foot and the pages' footer", () => {
+    const foot = landing.match(/<footer class="foot">[\s\S]*?<\/footer>/)?.[0] ?? "";
+    for (const name of ["faq", "privacy", "terms"]) {
+      assert.match(foot, new RegExp(`<a href="/${name}">`));
+      assert.match(FOOTER, new RegExp(`<a href="/${name}">`));
+    }
   });
 
   it("is counted like the others", async () => {
