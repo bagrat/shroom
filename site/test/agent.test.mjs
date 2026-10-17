@@ -13,9 +13,9 @@ const installer = readFileSync(`${ROOT}installer/install.sh`, "utf8");
 const landing = JSON.parse(readFileSync(`${ROOT}spec/machine.json`, "utf8")).states.landing;
 
 // The landing's ratified lines that belong to the page itself, not to a browser: no Copy
-// button, no "Read it first" link, no demo. The system-requirements sentence is checked
+// button, no "Read it first" link, no demo, no header links (N55). The system-requirements sentence is checked
 // against the landing's own (filled-in) sentence instead.
-const PAGE_ONLY = /^(Copy|Install in one line|Read it first — .*|Recorded with shroom itself\..*)$/;
+const PAGE_ONLY = /^(Copy|Send feedback|Install in one line|Read it first — .*|Recorded with shroom itself\..*)$/;
 
 /** Every “…” on the page: a line the agent says to the person, or a word it quotes. */
 const said = [...flat.matchAll(/“([^”]+)”/g)].map((m) => m[1]);
