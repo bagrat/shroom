@@ -1020,6 +1020,17 @@
     "paused (a second door to Resume)"
    ],
    "amended_by": []
+  },
+  {
+   "id": "N55",
+   "title": "shroom.am's header offers Send feedback, and the footer's Trouble, questions opens the feedback page",
+   "decision": "**Bagrat asked for both, 2026-10-17, and chose the label “Send feedback” from “Send feedback”, “Got feedback?” and “Feedback”.** Every shroom.am page's header carries a second link, **Send feedback**, beside GitHub and in its style, opening shroom.am/feedback (N53's page). The footer keeps its words, “shroom · Trouble, questions”, and its link now opens shroom.am/feedback instead of a new GitHub issue. The installer's header block and its lines keep the issue address (N11 and N8 are unchanged). Canvas board: “shroom.am — Send feedback in the header, and the footer's Trouble, questions opens shroom.am/feedback”. Built: DECISIONS B183.",
+   "status": "ratified",
+   "date": "2026-10-17",
+   "amends": [
+    "landing (page chrome: a Send feedback link beside GitHub; the footer's link opens shroom.am/feedback)"
+   ],
+   "amended_by": []
   }
  ],
  "surfaces": [
@@ -2198,7 +2209,7 @@
    "surface": "web-page",
    "status": "ratified",
    "board": "Landing",
-   "summary": "shroom.am, a static page with one job: take a curious visitor to a pasted command, with no false notes. Blocks top to bottom: Hero (the punchline, the explanation points and two eyeball-number price tiles, which carry the whole message), Install (one command with [ Copy ], \"Read it first\" and the system-requirements line), which sits above the Demo (a real shroom recording on the real player page, self-recorded and record-only), and the Trust strip. Page chrome: the shroom wordmark on the left (the spec draws 🍄 before it) and a GitHub link on the right.",
+   "summary": "shroom.am, a static page with one job: take a curious visitor to a pasted command, with no false notes. Blocks top to bottom: Hero (the punchline, the explanation points and two eyeball-number price tiles, which carry the whole message), Install (one command with [ Copy ], \"Read it first\" and the system-requirements line), which sits above the Demo (a real shroom recording on the real player page, self-recorded and record-only), and the Trust strip. Page chrome: the shroom wordmark on the left (the spec draws 🍄 before it) and two links on the right, Send feedback and GitHub (N55).",
    "entry": "A visitor arrives at shroom.am through one of three entry arrows. (1) Direct: HN, README or word of mouth; a cold visitor who needs the pitch. (2) The recipient loop: they watched a shroom video and clicked the player page's mark (Region 4; whether the mark exists = U3); a warm visitor who already saw the product work. (3) An agent fetching the BYO-agent skill (Region 6's overlay). Also reached by going back from the source view.",
    "said": [
     {
@@ -2393,10 +2404,20 @@
      "id": "landing.screen-recordings-that-live"
     },
     {
+     "text": "Send feedback",
+     "role": "link",
+     "copy": "ratified",
+     "note": "The header link beside GitHub, in its style, on every shroom.am page; it opens shroom.am/feedback. **Ratified by Bagrat** (2026-10-17, N55), chosen from “Send feedback”, “Got feedback?” and “Feedback”",
+     "cites": [
+      "N55"
+     ],
+     "id": "landing.send-feedback"
+    },
+    {
      "text": "shroom · Trouble, questions",
      "role": "line",
      "copy": "provisional",
-     "note": "one case the spec didn't print, so it varies by case — the copy table: The landing's footer",
+     "note": "one case the spec didn't print, so it varies by case — the copy table: The landing's footer. Its link opens shroom.am/feedback (N55, Bagrat, 2026-10-17); the words are unchanged",
      "cites": [
       "copy table"
      ],
@@ -2456,6 +2477,13 @@
      "note": "Opens GitHub, outside shroom. Page chrome, right side. The spec doesn't give the link's wording."
     },
     {
+     "label": "Send feedback",
+     "kind": "text-link",
+     "return_default": false,
+     "goes_to": "landing",
+     "note": "Opens shroom.am/feedback, the feedback page (N53), which the spec draws no state for. Page chrome, right side, before GitHub (N55)."
+    },
+    {
      "label": "watch demo",
      "kind": "other",
      "return_default": false,
@@ -2470,7 +2498,8 @@
     "N11",
     "U6",
     "U3",
-    "B140"
+    "B140",
+    "N55"
    ],
    "was": {
     "fixture": "r1.json",
