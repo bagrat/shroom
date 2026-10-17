@@ -373,7 +373,12 @@ pub fn clicked_display(mtm: objc2_foundation::MainThreadMarker) -> Option<u32> {
     let screens = NSScreen::screens(mtm);
     let both: Vec<(Frame, Frame)> = screens.iter().map(|s| (Frame::of(s.frame()), Frame::of(s.visibleFrame()))).collect();
     let item = APP.get().and_then(|a| a.tray_by_id("shroom")).and_then(|t| {
-        t.with_inner_tray_icon(move |inner| Some(Frame::of(inner.ns_status_item()?.button(mtm)?.window()?.frame()))).ok().flatten()
+        t.with_inner_tray_icon(|inner| {
+            let mtm = objc2_foundation::MainThreadMarker::new()?;
+            Some(Frame::of(inner.ns_status_item()?.button(mtm)?.window()?.frame()))
+        })
+        .ok()
+        .flatten()
     });
     let p = NSEvent::mouseLocation();
     let i = clicked_screen((p.x, p.y), item, &both)?;
