@@ -2261,7 +2261,7 @@
      "id": "landing.your-videos-live-in"
     },
     {
-     "text": "You set Cloudflare up once, in a guided setup — about five minutes.",
+     "text": "You set Cloudflare up once, in a guided setup — about ten minutes.",
      "role": "line",
      "copy": "ratified",
      "note": "Hero explanation, second dashed point. 'once' is bold.",
@@ -2914,7 +2914,7 @@
      "id": "welcome.shroom-records-your-screen"
     },
     {
-     "text": "Two steps before your first video: set up your Cloudflare, and let macOS allow recording. About five minutes, once.",
+     "text": "Two steps before your first video: set up your Cloudflare, and let macOS allow recording. About ten minutes, once.",
      "role": "line",
      "copy": "ratified",
      "note": "Second paragraph. 'set up' is N12's copy correction (it was 'connect').",

@@ -41,7 +41,7 @@ shroom.am, a static page with one job: take a curious visitor to a pasted comman
 | “Record. Share. Pay-as-you-go.” | title | ratified | Hero punchline, first line, bold. Bagrat's own wording (B140, 2026-10-14), replacing “Screen recordings without the monthly seat.” |
 | “No monthly seat, sometimes completely free” | line | ratified | Hero punchline, second line, with no closing period, as he wrote it (B140). |
 | “Your videos live in your own Cloudflare account — we never hold them.” | line | ratified | First dashed point of the hero explanation. The spec puts a leading '— ' list marker before each point; it is stripped here. 'your own Cloudflare account' is bold. |
-| “You set Cloudflare up once, in a guided setup — about five minutes.” | line | ratified | Hero explanation, second dashed point. 'once' is bold. |
+| “You set Cloudflare up once, in a guided setup — about ten minutes.” | line | ratified | Hero explanation, second dashed point. 'once' is bold. |
 | “You only ever pay Cloudflare. No account with us, no subscription.” | line | ratified | Hero explanation, third dashed point. 'No account with us, no subscription.' is bold. The two price tiles render right after this point. |
 | “$0 /month — about three hours of video” | other | ratified | Price tile 1 of 2 (an eyeball-number tile). '$0' is bold. The spec draws it in [ ] brackets, but it is a tile, not a button. |
 | “$1.50 /month — about thirty hours” | other | ratified | Price tile 2 of 2. '$1.50' is bold. Words, not numerals, on the landing; the welcome deliberately uses numerals (Law 16, N12). |
@@ -236,7 +236,7 @@ The centered welcome window (U1 + U4). It says what shroom is and what it costs,
 | Said | Role | Copy | Note |
 |---|---|---|---|
 | “shroom records your screen and hands you a link to share — no account with us, no subscription. Your videos live in your own Cloudflare storage: free for about three hours of video, and pennies after that — about 30 hours for $1.50 a month.” | line | ratified | First paragraph. The source wraps are joined with spaces. 'shroom' is bold and 'your own' is italic. 'storage' (the landing says 'account') and the numerals ('30 hours') are deliberate two-register choices: don't make them uniform (N12). |
-| “Two steps before your first video: set up your Cloudflare, and let macOS allow recording. About five minutes, once.” | line | ratified | Second paragraph. 'set up' is N12's copy correction (it was 'connect'). |
+| “Two steps before your first video: set up your Cloudflare, and let macOS allow recording. About ten minutes, once.” | line | ratified | Second paragraph. 'set up' is N12's copy correction (it was 'connect'). |
 | “Start shroom when you log in” | field-label | ratified | Checkbox label. The checkbox is visible and checked by default (☑). |
 | “Set up my space” | button | ratified | The filled button (bold), placed first: the ratified welcome pair puts its filled action first (Law 8's exception). |
 | “Later” | button | ratified | Second button, not filled. |
