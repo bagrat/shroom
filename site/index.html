@@ -69,16 +69,31 @@
   .install { display: flex; flex-direction: column; gap: 14px; }
   h2 { font-size: 1.5rem; font-weight: 600; margin: 0; }
   h3 { font-size: 1.0625rem; font-weight: 600; margin: 14px 0 0; }
-  .cmd { display: flex; flex-wrap: wrap; align-items: stretch; gap: 8px; }
-  .cmd code { flex: 1 1 280px; min-width: 0; overflow-wrap: anywhere; padding: 14px; border-radius: 9px; background: var(--well); font: 15px/1.5 var(--mono); color: var(--text); }
-  .cmd button { flex: none; min-height: 48px; padding: 0 24px; border: 0; border-radius: 9px; background: var(--frost); color: var(--on-frost); font: 600 16px var(--sans); cursor: pointer; }
+  /* A command: one row that scrolls sideways under a fade (no room kept for a scrollbar),
+     its Copy an icon inside the block's end; a click shows “Copied” beside a tick (law 10). */
+  .cmd { position: relative; border-radius: 9px; background: var(--well); }
+  .cmd:has(code:focus-visible) { outline: 2px solid var(--frost); outline-offset: 2px; }
+  .cmd code:focus-visible { outline: none; }
+  .cmd code { display: block; padding: 14px; font: 15px/1.5 var(--mono); color: var(--text);
+    white-space: nowrap; overflow-x: auto; scrollbar-width: none;
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 84px), transparent calc(100% - 50px));
+    mask-image: linear-gradient(to right, #000 calc(100% - 84px), transparent calc(100% - 50px)); }
+  .cmd code::-webkit-scrollbar { display: none; }
+  .cmd code::after { content: ""; display: inline-block; width: 70px; }
+  .cmd button { position: absolute; top: 50%; right: 4px; transform: translateY(-50%); display: flex; align-items: center; justify-content: center; gap: 6px;
+    min-width: 44px; height: 44px; padding: 0 12px; border: 0; border-radius: 7px; background: var(--frost); color: var(--on-frost); font: 600 15px var(--sans); cursor: pointer; }
   .cmd button:hover { background: var(--frost-2); }
+  .cmd svg { flex: none; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .cmd .ok, .cmd .done .ic { display: none; }
+  .cmd .done .ok { display: block; }
+  .cmd .lbl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .cmd .done .lbl { position: static; width: auto; height: auto; clip-path: none; }
   .fine { color: var(--quiet); font-size: 14px; margin: 0; }
   .fine.os { padding-top: 4px; }
-  /* The agent's line is the page's second way in: outlined, so Install keeps the one fill. */
+  /* The other two lines are the page's second ways in: a plain icon, so Homebrew keeps the one fill. */
   .install .lead { margin: 0; color: var(--muted); }
-  .cmd.second button { background: transparent; border: 1px solid var(--line-strong); color: var(--text); }
-  .cmd.second button:hover { background: var(--card); }
+  .cmd.second button { background: transparent; color: var(--quiet); }
+  .cmd.second button:hover, .cmd.second button.done { background: var(--card); color: var(--text); }
 
   .demo { background: var(--card); border: 1px solid var(--card-edge); border-radius: 12px; padding: 20px; }
   .demo p { color: var(--muted); margin: 0 0 12px; }
@@ -130,12 +145,12 @@
   <section class="install" id="install">
     <h2>Install in one line</h2>
     <p class="lead">With Homebrew:</p>
-    <div class="cmd"><code id="brew">brew install --cask bagrat/shroom/shroom &amp;&amp; open ~/Applications/shroom.app</code><button type="button" data-copy="brew">Copy</button></div>
+    <div class="cmd"><code id="brew">brew install --cask bagrat/shroom/shroom &amp;&amp; open ~/Applications/shroom.app</code><button type="button" data-copy="brew"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg><svg class="ok" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span class="lbl">Copy</span></button></div>
     <p class="lead">Or without it:</p>
-    <div class="cmd second"><code id="cmd">curl -fsSL https://shroom.am/install | sh</code><button type="button" data-copy="cmd">Copy</button></div>
+    <div class="cmd second"><code id="cmd">curl -fsSL https://shroom.am/install | sh</code><button type="button" data-copy="cmd"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg><svg class="ok" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span class="lbl">Copy</span></button></div>
     <p class="fine"><a href="/install">Read it first</a> — the same address opens as readable source.</p>
     <h3>Or ask your coding agent</h3>
-    <div class="cmd second"><code id="agent">Install shroom on my Mac: read https://shroom.am/agent and follow it.</code><button type="button" data-copy="agent">Copy</button></div>
+    <div class="cmd second"><code id="agent">Install shroom on my Mac: read https://shroom.am/agent and follow it.</code><button type="button" data-copy="agent"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg><svg class="ok" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span class="lbl">Copy</span></button></div>
     <p class="fine"><a href="/agent">Read it first</a> — the same address shows what your agent will read. Your agent asks you before it runs anything.</p>
     <!-- The ratified sentence's shape with its facts filled in (SM:212-215): the floor is
          the installer's MIN_MACOS, the kinds of Mac are what tools/package-release.sh
@@ -174,8 +189,11 @@
   })();
   document.querySelectorAll("button[data-copy]").forEach(function (b) {
     b.addEventListener("click", function () {
-      var text = document.getElementById(b.getAttribute("data-copy")).textContent;
-      var done = function () { b.textContent = "Copied"; setTimeout(function () { b.textContent = "Copy"; }, 1500); };
+      var text = document.getElementById(b.getAttribute("data-copy")).textContent, label = b.querySelector(".lbl");
+      var done = function () {
+        label.textContent = "Copied"; b.classList.add("done");
+        setTimeout(function () { label.textContent = "Copy"; b.classList.remove("done"); }, 1500);
+      };
       if (navigator.clipboard) navigator.clipboard.writeText(text).then(done, function () {});
     });
   });

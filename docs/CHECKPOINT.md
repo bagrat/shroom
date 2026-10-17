@@ -203,18 +203,18 @@ grep 'power: macOS will sleep' ~/.shroom/logs/run.log
 
 ## 9. The update
 
-Once a newer release is out (one patch above the tree's: shroom 0.1.20), shroom finds it
+Once a newer release is out (one patch above the tree's: shroom 0.1.21), shroom finds it
 by itself — it looks each time you open the popover (B154) — so click the mushroom.
 Within a few seconds the mushroom gets its small Frost dot. Click it: a slim banner reads
-"shroom 0.1.20 is ready." with Update beside it. ("What's new" opens the release notes.)
+"shroom 0.1.21 is ready." with Update beside it. ("What's new" opens the release notes.)
 
 Press Update. It says "Updating — back in a few seconds.", closes, and comes back by
 itself, with no window open, so no icon in the Dock as it comes back. Its popover opens by
-itself under the mushroom and says "Updated to 0.1.20 ✓". The app you're in stays in front,
+itself under the mushroom and says "Updated to 0.1.21 ✓". The app you're in stays in front,
 and what you type still goes there. Click anywhere else and the popover goes; the line
 shows only once (B155). Your
 space, your takes and your permissions are all as they were. Settings · General should
-now read "shroom 0.1.20 — up to date."
+now read "shroom 0.1.21 — up to date."
 
 To see it found the update — and that the update's signature matched the copy it
 replaced (B125), which the second line shows by finding nothing:
