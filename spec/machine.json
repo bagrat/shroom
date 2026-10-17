@@ -1080,7 +1080,7 @@
   {
    "id": "N60",
    "title": "Send feedback from the popover, in its own window, the log going along",
-   "decision": "**Bagrat asked for it, 2026-10-17**: feedback is worth most from people who have installed shroom, it is easier to send from inside the app than from the web form, and the log should go without anyone attaching it by hand (it makes N53's in-app door easier to reach). **The same day he chose design A** of three on the canvas (“Send feedback — A”) and **the log box ticked by default**. **The popover's header gains a fourth icon, first: Send feedback · Library · Settings · Quit**, named “Send feedback” on hover and to VoiceOver; which glyph is still his to pick (the board “Send feedback — A: the icon, eight options”). It opens **its own small window, Send feedback**: one line on where it goes, the words, the optional email for an answer, **Include shroom’s recent log** (ticked) with a line on what goes and what never goes, and N53's “See exactly what’s sent”. Unticked, the report carries the words and the version only. **Send** posts to N53's `shroom.am/report` as kind feedback, from the app; Sending… and a send that didn't go through are N53's, word for word, mail link included. **Sent**, the window says so and offers Done. Settings · General's Report a problem… stays as it is (a problem, the log always). The icon sits in the ready popover only, so it never shows mid-take (law 4). The window's words are proposals until he OKs them.",
+   "decision": "**Bagrat asked for it, 2026-10-17**: feedback is worth most from people who have installed shroom, it is easier to send from inside the app than from the web form, and the log should go without anyone attaching it by hand (it makes N53's in-app door easier to reach). **The same day he chose design A** of three on the canvas (“Send feedback — A”) and **the log box ticked by default**. **The popover's header gains a fourth icon, first: Send feedback · Library · Settings · Quit**, named “Send feedback” on hover and to VoiceOver; which glyph is still his to pick (the board “Send feedback — A: the icon, eight options”). It opens **its own small window, Send feedback**: one line on where it goes, the words, the optional email for an answer, **Include shroom’s recent log** (ticked) with a line on what goes and what never goes, and N53's “See exactly what’s sent”. Unticked, the report carries the words and the version only. **Send** posts to N53's `shroom.am/report` as kind feedback, from the app; Sending… and a send that didn't go through are N53's, word for word, mail link included. **Sent**, the window says so and offers Done. Settings · General's Report a problem… stays as it is (a problem, the log always). The icon sits in the ready popover only, so it never shows mid-take (law 4). The window's words are proposals until he OKs them. Built: DECISIONS B192.",
    "status": "provisional",
    "date": "2026-10-17",
    "amends": [
@@ -11394,7 +11394,7 @@
      "id": "send-feedback.include-log"
     },
     {
-     "text": "Its version, your Mac’s model and its last 200 lines, cleaned — never your videos, links, names or keys.",
+     "text": "Its version, your Mac’s model and its recent log, cleaned — never your videos, links, names or keys.",
      "role": "line",
      "copy": "provisional",
      "note": "Under the box. Drawn from Report a problem's ratified line. Proposed 2026-10-17 (FeedbackA); awaiting Bagrat.",
