@@ -136,7 +136,7 @@ export const STALL_SECONDS = 120;
 export const IFACE = 2;
 /** The version of the app that deploys this file — the same as the app's own
  * (`app/src-tauri/tauri.conf.json`, held equal by a shroom-cloud test). */
-export const VERSION = "0.1.19";
+export const VERSION = "0.1.20";
 
 const ID = /^[A-Za-z0-9_-]{16}$/;
 const HLS_JS_KEY = ".shroom/player/hls.min.js";
@@ -2479,6 +2479,12 @@ function lineFace(line) {
   return { title: line, blocks: `<h1 class="alone">${escapeHtml(line)}</h1>` };
 }
 
+/** A command's Copy: an icon inside the block's end (the landing's, site/index.html), its
+ * word kept for a screen reader; a click shows “Copied” beside a tick (law 10). The install
+ * line's is filled, the Homebrew line's plain, so the install line stays the first road. */
+/** @param {string} id @param {boolean} primary */
+const copyIcon = (id, primary) => `<button class="copy-ic${primary ? " primary" : ""}" type="button" data-copy="${id}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg><svg class="ok" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span class="lbl">${escapeHtml(COPY.copy)}</span></button>`;
+
 /** join-landing, its own-Mac variant, the owner view and the -elsewhere face. */
 /** @param {any} invite @param {string} host @param {string} code @param {boolean} ownerView @param {boolean} elsewhere */
 function landingFace(invite, host, code, ownerView, elsewhere) {
@@ -2494,9 +2500,9 @@ function landingFace(invite, host, code, ownerView, elsewhere) {
   const [readFirst, readRest] = COPY.readFirst.split(/(?= — )/);
   const get = `<div id="get"><p class="line">${escapeHtml(ownMac ? ownSame(host) : joinIntro(inviter))}</p>
 <section class="card"><h2>${escapeHtml(COPY.getShroom)}</h2><p class="line">${escapeHtml(COPY.pasteThis)}</p>
-<div class="cmd"><code id="cmd">${escapeHtml(installLine(link))}</code><button class="btn primary" type="button" data-copy="cmd">${escapeHtml(COPY.copy)}</button></div>
+<div class="cmd"><code id="cmd">${escapeHtml(installLine(link))}</code>${copyIcon("cmd", true)}</div>
 <div class="fine"><p><a href="https://shroom.am/install">${escapeHtml(readFirst)}</a>${escapeHtml(readRest)}</p><p>${escapeHtml(COPY.macos)}</p></div>
-<div class="brew"><p class="line">${escapeHtml(COPY.useHomebrew)}</p><div class="cmd"><code id="brew">${escapeHtml(brewLine(link))}</code><button class="btn" type="button" data-copy="brew">${escapeHtml(COPY.copy)}</button></div></div></section>
+<div class="brew"><p class="line">${escapeHtml(COPY.useHomebrew)}</p><div class="cmd"><code id="brew">${escapeHtml(brewLine(link))}</code>${copyIcon("brew", false)}</div></div></section>
 <section class="have"><div class="ask"><p>${escapeHtml(COPY.alreadyHave)}</p><a class="btn" href="${escapeHtml(`shroom://join/${host}/${code}`)}">${escapeHtml(COPY.openShroom)}</a></div>
 <p class="small">${escapeHtml(COPY.openFallback)}</p></section></div>`;
   const cfg = JSON.stringify({ flip: !elsewhere, away, copied: COPY.copied });
@@ -2504,9 +2510,9 @@ function landingFace(invite, host, code, ownerView, elsewhere) {
   const script = `<script>${COPY_JS}
 (function(){var c=${jsonForScript(cfg)};
 if(c.flip&&navigator.maxTouchPoints>1){var g=document.getElementById("get");if(g)g.outerHTML=c.away}
-document.addEventListener("click",function(e){var b=e.target&&e.target.closest?e.target.closest("button[data-copy]"):null;if(!b)return;
-var k=b.getAttribute("data-copy"),cmd=k==="link"?null:document.getElementById(k),t=cmd?cmd.textContent:location.origin+location.pathname,o=b.textContent;
-shroomCopy(t,cmd).then(function(ok){if(!ok)return;b.textContent=c.copied;setTimeout(function(){b.textContent=o},1500)})})})();</script>`;
+document.addEventListener("click",function(e){var n=e.target&&e.target.closest?e.target.closest("button[data-copy]"):null;if(!n)return;
+var k=n.getAttribute("data-copy"),cmd=k==="link"?null:document.getElementById(k),t=cmd?cmd.textContent:location.origin+location.pathname,b=n.querySelector(".lbl")||n,o=b.textContent;
+shroomCopy(t,cmd).then(function(ok){if(!ok)return;b.textContent=c.copied;n.classList.add("done");setTimeout(function(){b.textContent=o;n.classList.remove("done")},1500)})})})();</script>`;
   return {
     title: hero,
     blocks: `${note}<h1>${escapeHtml(hero)}</h1>${elsewhere ? away : get}<p class="small">${escapeHtml(ownMac ? COPY.ownHour : COPY.onePerson)}</p>`,
@@ -2534,8 +2540,14 @@ const JOIN_STYLE = `body{padding:0 16px 24px;font-size:15px;line-height:1.55}
 #get{display:flex;flex-direction:column;gap:28px}#get>.line:first-child{margin-top:-16px}
 .card{background:var(--card);border:1px solid var(--card-edge);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:14px}
 .card h2{margin:0;font-size:1.0625rem;font-weight:600}
-.cmd{display:flex;flex-wrap:wrap;align-items:stretch;gap:8px}
-.cmd code{flex:1 1 280px;min-width:0;padding:12px;border-radius:8px;background:var(--well);color:var(--text);font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;overflow-wrap:anywhere}
+.cmd{position:relative;border-radius:8px;background:var(--well)}.cmd:has(code:focus-visible){outline:2px solid var(--accent);outline-offset:2px}.cmd code:focus-visible{outline:none}
+.cmd code{display:block;padding:12px;color:var(--text);font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 76px),transparent calc(100% - 46px));mask-image:linear-gradient(to right,#000 calc(100% - 76px),transparent calc(100% - 46px))}
+.cmd code::-webkit-scrollbar{display:none}.cmd code::after{content:"";display:inline-block;width:64px}
+.copy-ic{position:absolute;top:50%;right:3px;transform:translateY(-50%);display:flex;align-items:center;justify-content:center;gap:6px;min-width:38px;height:38px;padding:0 10px;border:0;border-radius:6px;background:transparent;color:var(--quiet);font:inherit;font-size:14px;font-weight:600;cursor:pointer}
+.copy-ic:hover,.copy-ic.done{background:var(--card);color:var(--text)}.copy-ic.primary{background:var(--accent);color:var(--on-accent)}.copy-ic.primary:hover{background:var(--accent-hi);color:var(--on-accent)}
+.copy-ic svg{flex:none;width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.copy-ic .ok,.copy-ic.done .ic{display:none}.copy-ic.done .ok{display:block}
+.copy-ic .lbl{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}.copy-ic.done .lbl{position:static;width:auto;height:auto;clip-path:none}
 .fine{display:flex;flex-direction:column;gap:2px;color:var(--quiet);font-size:13px}
 .brew{border-top:1px solid var(--hair);padding-top:14px;display:flex;flex-direction:column;gap:8px}
 .have{border-top:1px solid var(--hair);padding-top:24px;display:flex;flex-direction:column;gap:12px}
