@@ -40,6 +40,9 @@ pub use screen::{ScreenSource, main_display_id, not_shareable};
 /// Which of a camera's formats to record from.
 pub mod format;
 
+/// When a camera picture has stopped, and its camera wants a restart.
+pub mod watchdog;
+
 #[cfg(target_os = "macos")]
 mod camera;
 #[cfg(target_os = "macos")]
