@@ -959,6 +959,39 @@ mod tests {
         assert!(!seen(false, false, Frame { x: 1500.0, y: 1210.0, w: 24.0, h: 30.0 }, other, None, false), "off its edge: hidden");
     }
 
+    /// Bagrat's update relaunch, 2026-10-17 (N57): 359 ms after boot, the mushroom read on
+    /// the MacBook (left of the primary external display) at its screen's very left edge,
+    /// occlusion not visible, and the popover hung from there, at the screen's top-left
+    /// corner. A status item never rests at a screen's left edge: it isn't laid out yet.
+    #[test]
+    fn a_mushroom_at_its_screens_left_edge_isnt_laid_out_yet() {
+        let whole = Frame { x: -1512.0, y: 98.0, w: 1512.0, h: 982.0 };
+        let usable = Frame { h: 944.0, ..whole };
+        let notch = Some((663.0, 664.0));
+        let early = Frame { x: -1512.0, y: 1047.0, w: 34.0, h: 33.0 };
+        let later = Frame { x: -616.0, ..early };
+        assert!(!seen(false, false, early, whole, notch, false), "at the screen's left edge: not laid out");
+        assert!(seen(false, false, later, whole, notch, false), "where it settled 14 s later: seen");
+        let m = |frame: Frame, visible: bool| Mushroom { frame, visible, screen: usable, top: 1080.0 };
+        assert!(holds(true, Some(m(early, true))), "a just-made one waits there, even if macOS calls it seen");
+        assert!(!holds(true, Some(m(later, true))));
+    }
+
+    /// Bagrat, 2026-10-17 (N57): Settings and the Library, opened from the popover on the
+    /// MacBook, came up on the external display. A window opens centred on the mushroom's
+    /// display; one already there stays where it was left.
+    #[test]
+    fn a_window_opens_on_the_mushrooms_display() {
+        let external = Frame { x: 0.0, y: 0.0, w: 1920.0, h: 1055.0 };
+        let macbook = Frame { x: -1512.0, y: 98.0, w: 1512.0, h: 944.0 };
+        let window = Frame { x: 600.0, y: 300.0, w: 720.0, h: 480.0 };
+        assert_eq!(window_origin(window, macbook), Some((-1512.0 + 396.0, 98.0 + 232.0)), "centred on the MacBook");
+        assert_eq!(window_origin(window, external), None, "already on the mushroom's display: left where it is");
+        assert_eq!(window_origin(window, Frame { w: 0.0, ..macbook }), None, "no display to go to: left where it is");
+        let bigger = Frame { w: 2000.0, h: 1200.0, ..window };
+        assert_eq!(window_origin(bigger, macbook), Some((-1512.0, 98.0 + 944.0 - 1200.0)), "too big for it: its top-left on the display's");
+    }
+
     /// A MacBook mirrored to an external display put the popover in the corner with the
     /// mushroom in plain view (the 0.1.12 checkpoint, 2026-10-15: “Still top right”).
     #[test]
