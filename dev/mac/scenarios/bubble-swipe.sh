@@ -5,9 +5,9 @@
 # --bubble-probe, and a swipe out of the full-screen Space and back, the screen shot as fast
 # as it goes through each swipe. The shots and a clip of each swipe land in the evidence
 # (bubble-swipe/<variant>/), for the eye: whether the bubble stays through the swipe (on
-# 2026-10-17 the stationary one stayed in every shot; the other was gone from the desktop
-# once shown on the full-screen Space). The shipped one's probe verdict (the picture still
-# moves at its end, with OBS's own window hidden) is the scenario's.
+# 2026-10-17 the stationary one stayed in every shot of two runs; the other was gone from
+# the desktop in one run and stayed in the next). The shipped one's probe verdict (the
+# picture still moves at its end, with OBS's own window hidden) is the scenario's.
 set -u
 . dev/mac/lib.sh
 bash dev/mac/camera.sh up || exit 1
