@@ -40,8 +40,10 @@ struct WindowSpec {
     resizable: bool,
 }
 
+/// The setup window: one fixed size for every step, the canvas's frame — tall enough for the
+/// tallest step (the token step with its reminder or its error) under the title bar (B189).
 const ONBOARDING_WINDOW: WindowSpec =
-    WindowSpec { label: ONBOARDING, kind: WindowKind::Onboarding, url: "onboarding.html", width: 520.0, height: 600.0, resizable: false };
+    WindowSpec { label: ONBOARDING, kind: WindowKind::Onboarding, url: "onboarding.html", width: 600.0, height: 680.0, resizable: false };
 /// The Library: a list that grows — resizable.
 const LIBRARY_WINDOW: WindowSpec =
     WindowSpec { label: LIBRARY, kind: WindowKind::Library, url: "library.html", width: 680.0, height: 560.0, resizable: true };
