@@ -19,6 +19,8 @@ se() { limit 30 osascript -e "tell application \"System Events\" to $1" >>"$B/ke
 allow_soon() { (sleep 4; osascript -e 'tell application "System Events" to tell process "UserNotificationCenter" to click button "Allow" of window 1' >/dev/null 2>&1) & }
 shot() { screencapture -x "$B/$1.png" >/dev/null 2>&1; }
 
+# OBS's own window plays the pattern too: hidden, so only the bubble moves where it sits.
+se 'set visible of process "OBS" to false'
 open -n "$MAC_APP" --args --bubble-probe "$out" --hold 40
 for _ in $(seq 1 100); do [ -e "$B/probe.ready" ] && break; sleep 0.2; done
 [ -e "$B/probe.ready" ] || { echo "the bubble never showed"; exit 1; }

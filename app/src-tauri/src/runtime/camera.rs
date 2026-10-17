@@ -147,7 +147,10 @@ fn panel(mtm: MainThreadMarker, frame: NSRect, preview: &shroom_capture::CameraP
     p.setCanHide(false);
     p.setMovableByWindowBackground(true);
     p.setBecomesKeyOnlyIfNeeded(true);
-    p.setCollectionBehavior(NSWindowCollectionBehavior::CanJoinAllSpaces | NSWindowCollectionBehavior::FullScreenAuxiliary);
+    // Stationary: it stays where it is while the Spaces swipe, rather than leaving with one
+    // and arriving with the next; without it, a bubble shown on a full-screen Space was gone
+    // from every other one (the hosted Mac, 2026-10-17, DECISIONS B187).
+    p.setCollectionBehavior(NSWindowCollectionBehavior::CanJoinAllSpaces | NSWindowCollectionBehavior::FullScreenAuxiliary | NSWindowCollectionBehavior::Stationary);
     let bounds = NSRect::new(NSPoint::new(0.0, 0.0), frame.size);
     let content = NSView::initWithFrame(NSView::alloc(mtm), bounds);
     content.setWantsLayer(true);
@@ -357,8 +360,8 @@ pub fn bubble_window() -> Option<Retained<NSPanel>> {
 /// ride Space switches.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct ProbeWindow {
-    /// `NSWindowCollectionBehaviorStationary` on top of the real one's.
-    pub stationary: bool,
+    /// Without `NSWindowCollectionBehaviorStationary` (as 0.1.21 had it).
+    pub not_stationary: bool,
     /// Another window level than `NSFloatingWindowLevel`.
     pub level: Option<isize>,
 }
@@ -374,8 +377,10 @@ pub fn show_probe_bubble(app: &tauri::AppHandle, b: Bubble, window: ProbeWindow)
             let (_, _, _, dh) = bounds(b.display);
             let (origin, placed) = place(bounds(b.display), main_h(), default_bubble_at(dh), (BUBBLE_SIZE, BUBBLE_SIZE));
             let (p, spinner) = panel(mtm, NSRect::new(origin, NSSize::new(BUBBLE_SIZE, BUBBLE_SIZE)), &preview, true);
-            if window.stationary {
-                p.setCollectionBehavior(p.collectionBehavior() | NSWindowCollectionBehavior::Stationary);
+            if window.not_stationary {
+                let mut behavior = p.collectionBehavior();
+                behavior.remove(NSWindowCollectionBehavior::Stationary);
+                p.setCollectionBehavior(behavior);
             }
             if let Some(level) = window.level {
                 p.setLevel(level);

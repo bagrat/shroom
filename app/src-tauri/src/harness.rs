@@ -165,7 +165,7 @@ pub fn from_args(args: Vec<String>) -> Mode {
     if let Some(rest) = after("--bubble-probe") {
         let hold = args.iter().position(|a| a == "--hold").and_then(|i| args.get(i + 1)).and_then(|s| s.parse::<u64>().ok()).filter(|s| (1..=300).contains(s));
         let window = crate::runtime::camera::ProbeWindow {
-            stationary: args.iter().any(|a| a == "--stationary"),
+            not_stationary: args.iter().any(|a| a == "--not-stationary"),
             level: args.iter().position(|a| a == "--level").and_then(|i| args.get(i + 1)).and_then(|s| s.parse::<isize>().ok()),
         };
         return Mode::BubbleProbe { out: PathBuf::from(rest.first().expect("--bubble-probe needs an output path")), hold, window };
