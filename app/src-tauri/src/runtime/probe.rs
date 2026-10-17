@@ -38,6 +38,12 @@ pub fn access(a: shroom_capture::Access) -> Access {
     }
 }
 
+/// A screen's display id (AppKit's NSScreenNumber is an NSNumber holding it).
+pub fn screen_id(s: &NSScreen) -> Option<u32> {
+    let num: Retained<NSNumber> = s.deviceDescription().objectForKey(&NSString::from_str("NSScreenNumber"))?.downcast().ok()?;
+    Some(num.unsignedIntValue())
+}
+
 /// Displays by their human names, as macOS shows them (spec §5.2).
 pub fn displays(mtm: MainThreadMarker) -> Vec<Display> {
     let main = unsafe { CGMainDisplayID() };
@@ -115,6 +121,8 @@ pub fn quick(mtm: MainThreadMarker, home: &std::path::Path) -> (QuickProbe, u128
         // Read only: what macOS says now, so Settings shows a change made in System
         // Settings on its entry and focus (N36, b4 #6).
         login_item: super::os::login_item(),
+        // The display a click came from: `config` records it (N56).
+        clicked_display: super::presenter::clicked_display(mtm),
     };
     (q, started.elapsed().as_micros())
 }

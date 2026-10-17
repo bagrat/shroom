@@ -53,6 +53,7 @@ fn quick() -> QuickProbe {
         os: OsSession::default(),
         status_item_visible: true,
         login_item: None,
+        clicked_display: None,
     }
 }
 

@@ -128,6 +128,12 @@ your account). Leave it be.
 - Restart: start a take, pause it, and click Restart. It should ask first ("Start over?");
   Back keeps the take, paused; Restart starts the count, and Esc during the count gives the
   take back (DEVIATIONS #44).
+- Two displays, the clicked one (N56): with “Displays have separate Spaces” on and a camera
+  picked, click the mushroom in the MacBook's menu bar. Record should show the MacBook's
+  display, and the bubble should come up there. Close the popover and click the mushroom on
+  the external display: both should be on the external one now, and so should the count
+  after Start. Then pick the MacBook's display in Record by hand and reopen from the
+  external display: the pick should hold until that take ends.
 - Two displays: with both displays awake, open the popover and click on the other display
   — once in a window, once on bare desktop. The popover should close both times. If it
   ever stays, note which display had the Dock.

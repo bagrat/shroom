@@ -128,7 +128,7 @@ fn apply_event(w: &mut World, event: Event) -> Out {
                 // silent — the install script's update too (N9) — and so does an install
                 // carrying an invite (its window is the member lane's to open).
                 LaunchKind::User | LaunchKind::Install { join: false } => {
-                    let (more, a) = click(w);
+                    let (more, a) = click(w, disk.quick.clicked_display);
                     fx.extend(more);
                     if matches!(disk.launch, LaunchKind::Install { .. }) && onboarding_at(w) == Some(At::Welcome) {
                         arm = Arm { name: "first-launch", edge: Some(("first-launch", "welcome")) };
@@ -145,6 +145,7 @@ fn apply_event(w: &mut World, event: Event) -> Out {
         }
         Event::TrayClicked { right, quick: q } => {
             quick(w, &q);
+            let at = q.clicked_display;
             // What the click's probe found about the take comes first (a grant switched off,
             // a device gone): that pause or stop is the answer, and its popover opens itself.
             if let Some(out) = guard_take(w) {
@@ -155,14 +156,15 @@ fn apply_event(w: &mut World, event: Event) -> Out {
             if right && !w.take_open() {
                 return (vec![], Arm::named("tray-right-click"));
             }
-            click(w)
+            click(w, at)
         }
         Event::Reopened(q) => {
             quick(w, &q);
             if let Some(out) = guard_take(w) {
                 return out;
             }
-            click(w)
+            // A launch you did is a click (N41): from the display it came from (N56).
+            click(w, q.clicked_display)
         }
         Event::Shortcut(q) => {
             // ⌥⌘P (N54): recording, the tray click's pause; paused, Resume. Nothing else.
@@ -172,7 +174,7 @@ fn apply_event(w: &mut World, event: Event) -> Out {
             }
             match w.take.as_ref().map(|t| t.phase) {
                 _ if !derive(w).tray.shortcut => (vec![], Arm::DROPPED),
-                Some(Phase::Recording) => click(w),
+                Some(Phase::Recording) => click(w, None),
                 Some(Phase::Paused(cause)) if w.session.confirm.is_none() && crate::derive::resume_ok(w, cause) => act(w, Action::Resume),
                 _ => (vec![], Arm::DROPPED),
             }
@@ -334,12 +336,18 @@ fn quick(w: &mut World, q: &QuickProbe) {
     }
 }
 
-/// The mushroom was clicked (or a launch you did): open the one door the moment needs.
-fn click(w: &mut World) -> Out {
+/// The mushroom was clicked (or a launch you did) — in the menu bar of display `at`, when
+/// the shell could tell: open the one door the moment needs.
+fn click(w: &mut World, at: Option<u32>) -> Out {
     match derive(w).tray.click {
         Click::OpenPopover => {
             if w.session.popover.is_some() {
                 return dismiss(w);
+            }
+            // `config` opens on the clicked display's source (N56); mid-take the click is
+            // the pause and moves nothing.
+            if !w.take_open() && at.is_some() {
+                w.display_pick.clicked = at;
             }
             w.session.popover = Some(Door::asked(w.now));
             (vec![], Arm::named("click-open-popover"))
@@ -609,6 +617,8 @@ fn act(w: &mut World, action: Action) -> Out {
         }
         Action::SetSource(s) => {
             w.prefs.source = Some(s);
+            // A display picked by hand holds over the click's until the take ends (N56).
+            w.display_pick.by_hand = matches!(s, SourceId::Display(_));
             let mut fx = vec![persist_prefs(w)];
             // Choosing Camera as the source is a camera-permission moment too (N22) — right
             // after the click.

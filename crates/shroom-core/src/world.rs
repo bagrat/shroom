@@ -45,6 +45,10 @@ pub struct World {
     pub prefs: Prefs,
     pub once: Once,
     pub session: Session,
+    /// Which display a click put `config` on, and whether one was picked by hand since
+    /// (N56). In memory only, like the session; kept beside it, since it outlives the
+    /// popover and the session holds at most twelve intents.
+    pub display_pick: DisplayPick,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -219,6 +223,11 @@ pub struct QuickProbe {
     /// `None` when it couldn't be read. Re-read on every entry, so Settings never shows a
     /// box the person changed in System Settings (law 1, N36).
     pub login_item: Option<bool>,
+    /// The display whose menu bar the mushroom was clicked in (each display has its own
+    /// with “Displays have separate Spaces”), when the shell can tell: the source a click
+    /// opens `config` with (N56). Read at every probe; only a click, or a launch you did,
+    /// uses it. `None` when the shell can't tell.
+    pub clicked_display: Option<u32>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1226,6 +1235,17 @@ pub struct Session {
     pub news: Option<Mono>,
 }
 
+/// The display a click brings to `config` (N56).
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct DisplayPick {
+    /// The display the mushroom was clicked on to open `config`: the source, unless a display
+    /// was picked by hand or Camera only is. Set by each click that opens `config`.
+    pub clicked: Option<u32>,
+    /// A display was picked by hand in Record: it holds over the click's display until the
+    /// take ends.
+    pub by_hand: bool,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TakeLost {
     /// Capture died; the lane hasn't said what it kept.
@@ -1300,6 +1320,7 @@ impl World {
             prefs: Prefs::default(),
             once: Once::default(),
             session: Session::default(),
+            display_pick: DisplayPick::default(),
         }
     }
 }
