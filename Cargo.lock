@@ -3510,6 +3510,7 @@ dependencies = [
  "cidre",
  "cpal",
  "futures",
+ "objc2",
  "scap-screencapturekit",
  "serde",
  "shroom-encode",
