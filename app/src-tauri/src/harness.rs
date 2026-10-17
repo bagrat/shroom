@@ -725,7 +725,8 @@ pub fn bubble_probe(app: AppHandle, out: PathBuf, hold: Option<u64>, window: cra
             (Some(a), Some(b)) => Some(a.iter().zip(b).map(|(x, y)| x.abs_diff(*y) as f64).sum::<f64>() / b.len() as f64),
             _ => None,
         };
-        samples.push(serde_json::json!({ "t": second + 1, "change": change, "seen": seen }));
+        let sides = picture.as_deref().map(sides_of);
+        samples.push(serde_json::json!({ "t": second + 1, "change": change, "sides": sides, "seen": seen }));
         if picture.is_some() {
             last = picture;
         }
@@ -735,14 +736,35 @@ pub fn bubble_probe(app: AppHandle, out: PathBuf, hold: Option<u64>, window: cra
     // still move there (the pattern's moving parts change it every second).
     let tail: Vec<f64> = samples.iter().skip(samples.len() * 2 / 3).filter_map(|s| s["change"].as_f64()).collect();
     let moving = !tail.is_empty() && tail.iter().filter(|c| **c > BUBBLE_MOVES).count() * 2 >= tail.len();
-    let ok = moving && report.as_ref().is_some_and(|s| s.running && !s.can_become_key && !s.key);
-    let _ = std::fs::write(&out, serde_json::json!({ "ok": ok, "moving": moving, "camera": cam, "seen": report, "samples": samples }).to_string());
+    // Mirrored like a mirror, read off the screen (0.1.22's bubble wasn't): the hosted Mac's
+    // camera is OBS's testsrc2, whose yellow bar sits left of its blue one, so the bubble's
+    // middle shows blue on its left and yellow on its right. Unmirrored, 0.1.22 read 164 left,
+    // 93 right.
+    let last_sides = samples.iter().rev().find_map(|s| s["sides"].as_array().map(|a| (a[0].as_f64().unwrap_or(0.0), a[1].as_f64().unwrap_or(0.0))));
+    let mirrored = last_sides.is_some_and(|(left, right)| right - left > BUBBLE_MIRRORED);
+    let ok = moving && mirrored && report.as_ref().is_some_and(|s| s.running && s.mirrored && !s.can_become_key && !s.key);
+    let _ = std::fs::write(&out, serde_json::json!({ "ok": ok, "moving": moving, "mirrored": mirrored, "sides": last_sides, "camera": cam, "seen": report, "samples": samples }).to_string());
     app.exit(0);
 }
 
 /// A picture that changes by more than this (mean gray difference, 0–255) a second apart
 /// is a live camera; a frozen bubble reads ~0 (the rehearsal's read 0.0–0.4).
 const BUBBLE_MOVES: f64 = 1.0;
+
+/// How much brighter the right of the bubble's middle must read than its left for the
+/// pattern to be mirrored (yellow ~165 against blue ~90).
+const BUBBLE_MIRRORED: f64 = 30.0;
+
+/// The mean gray of a square picture's left quarter and right quarter.
+fn sides_of(picture: &[u8]) -> (f64, f64) {
+    let side = (picture.len() as f64).sqrt() as usize;
+    let quarter = (side / 4).max(1);
+    let mean = |from: usize| {
+        let sum: f64 = (0..side).flat_map(|y| (from..from + quarter).map(move |x| picture[y * side + x] as f64)).sum();
+        sum / (side * quarter) as f64
+    };
+    (mean(0), mean(side - quarter))
+}
 
 /// The bubble's picture off the screen: its square of `display`, in gray, at one sample a point.
 fn bubble_picture(display: u32, at: (i32, i32)) -> Result<Vec<u8>, String> {
@@ -1949,6 +1971,19 @@ mod tests {
 
     fn args(s: &str) -> Vec<String> {
         std::iter::once("shroom").chain(s.split_whitespace()).map(String::from).collect()
+    }
+
+    /// The bubble's mirror check reads its middle's left and right quarters: 0.1.22's
+    /// unmirrored bubble read yellow (164) left of blue (93); mirrored, it's the other way.
+    #[test]
+    fn the_mirror_check_reads_which_side_is_brighter() {
+        let side = 8;
+        let picture = |left: u8, right: u8| (0..side * side).map(|i| if i % side < side / 2 { left } else { right }).collect::<Vec<u8>>();
+        let (l, r) = sides_of(&picture(164, 93));
+        assert!((l, r) == (164.0, 93.0) && r - l < BUBBLE_MIRRORED, "unmirrored: {l} {r}");
+        let (l, r) = sides_of(&picture(93, 164));
+        assert!(r - l > BUBBLE_MIRRORED, "mirrored: {l} {r}");
+        assert!(matches!(from_args(args("--bubble-probe /tmp/b.json --hold 40 --not-stationary")), Mode::BubbleProbe { hold: Some(40), window: crate::runtime::camera::ProbeWindow { not_stationary: true, level: None }, .. }));
     }
 
     /// The L3 kill drives and the heartbeat's member leg parse to their modes (B68, B69).

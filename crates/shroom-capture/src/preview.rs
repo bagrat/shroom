@@ -49,7 +49,12 @@ unsafe impl Send for CameraPreview {}
 
 /// What the camera's queue, the main thread and the watchdog share.
 struct Shared {
+    /// The layer the shell puts in its window: AppKit owns its geometry, its transform too.
     layer: arc::R<ca::Layer>,
+    /// The picture inside it, mirrored for the bubble: a sublayer AppKit never touches. The
+    /// mirror was on `layer` itself in 0.1.22, and AppKit put it back to the identity, so the
+    /// bubble showed unmirrored.
+    picture: arc::R<ca::Layer>,
     /// The newest frame not drawn yet; a draw is on its way to the main thread while it's set.
     next: Mutex<Option<Frame>>,
     /// The frame the layer shows, kept so the camera doesn't reuse its surface meanwhile.
@@ -139,7 +144,7 @@ fn show(shared: &Shared) {
         if surface.is_null() {
             return;
         }
-        let layer = &*(&*shared.layer as *const ca::Layer as *const AnyObject);
+        let layer = &*(&*shared.picture as *const ca::Layer as *const AnyObject);
         let transaction = AnyClass::get(c"CATransaction").expect("QuartzCore's CATransaction");
         let _: () = msg_send![transaction, begin];
         let _: () = msg_send![transaction, setDisableActions: Bool::YES];
@@ -182,18 +187,20 @@ impl CameraPreview {
         output.set_video_settings(Some(settings.as_ref())).map_err(|e| format!("the camera refused BGRA output: {e:?}"))?;
         output.set_always_discard_late_video_frames(true);
 
-        let layer = ca::Layer::new();
+        let mut layer = ca::Layer::new();
+        let picture = ca::Layer::new();
         // Filled edge to edge, cropped to the window's shape (`kCAGravityResizeAspectFill`).
         let fill = ns::String::with_str("resizeAspectFill");
         // SAFETY: a plain QuartzCore message to a layer nothing shows yet.
         unsafe {
-            let l = &*(&*layer as *const ca::Layer as *const AnyObject);
+            let l = &*(&*picture as *const ca::Layer as *const AnyObject);
             let _: () = msg_send![l, setContentsGravity: &*fill as *const ns::String as *mut AnyObject];
         }
         if mirrored {
-            layer.set_affine_transform(cg::AffineTransform::new_scale(-1.0, 1.0));
+            picture.set_affine_transform(cg::AffineTransform::new_scale(-1.0, 1.0));
         }
-        let shared = Arc::new(Shared { layer, next: Mutex::default(), shown: Mutex::default(), drawn: AtomicU64::new(0), closed: AtomicBool::new(false) });
+        layer.add_sublayer(&picture);
+        let shared = Arc::new(Shared { layer, picture, next: Mutex::default(), shown: Mutex::default(), drawn: AtomicU64::new(0), closed: AtomicBool::new(false) });
         let to_draw = shared.clone();
         let delegate = CallbackOutputDelegate::with(CallbackOutputDelegateInner::new(Box::new(move |data| {
             let Some(image) = data.sample_buf.image_buf() else { return };
@@ -234,6 +241,18 @@ impl CameraPreview {
                 }
             });
         });
+    }
+
+    /// Sizes the picture to its window's `width` × `height` points (main thread): the shell
+    /// calls it once the layer is in its view.
+    pub fn fit(&self, width: f64, height: f64) {
+        let mut picture = self.shared.picture.retained();
+        picture.set_frame(cg::Rect::new(0.0, 0.0, width, height));
+    }
+
+    /// Whether the picture is drawn mirrored, as its layer says (main thread).
+    pub fn mirrored(&self) -> bool {
+        self.shared.picture.affine_transform().a < 0.0
     }
 
     /// The `CALayer` to put in a view.
