@@ -9,6 +9,8 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use shroom_core::event::{Event, ReportNews};
 use shroom_core::report::{self, Diagnostics, Post};
+#[cfg(test)]
+use shroom_core::report::Kind;
 
 use super::Runtime;
 
@@ -57,23 +59,24 @@ pub fn send(rt: &Runtime, post: Post) {
     let rt = rt.clone();
     std::thread::spawn(move || {
         let body = body(&post).to_string();
+        let (sent, not_sent) = (ReportNews::Sent(post.kind), ReportNews::NotSent(post.kind));
         let news = if rt.dev {
             rt.log(&format!("report: a dev build would send {} bytes", body.len()));
-            if rt.harness { ReportNews::Sent } else { ReportNews::NotSent }
+            if rt.harness { sent.clone() } else { not_sent }
         } else {
             match post_json(ENDPOINT, &body) {
-                Ok(200) => ReportNews::Sent,
+                Ok(200) => sent.clone(),
                 Ok(status) => {
                     rt.log(&format!("report: not taken ({status})"));
-                    ReportNews::NotSent
+                    not_sent
                 }
                 Err(e) => {
                     rt.log(&format!("report: didn't go through ({e})"));
-                    ReportNews::NotSent
+                    not_sent
                 }
             }
         };
-        if news == ReportNews::Sent {
+        if news == sent {
             rt.log("report: sent");
         }
         rt.post(Event::Report(news));
@@ -81,18 +84,28 @@ pub fn send(rt: &Runtime, post: Post) {
 }
 
 /// The JSON site/report.js takes: kind, from, the words, the reply-to, the versions, the
-/// setup line (with this Mac's role) and the cleaned log, each within its bound.
+/// setup line (with this Mac's role) and the cleaned log, each within its bound. Feedback
+/// sent without the log (N60) carries the version alone: no setup, no log.
 pub fn body(p: &Post) -> serde_json::Value {
     let d = &p.diagnostics;
     let setup = [d.setup.as_str(), d.role.as_str()].into_iter().filter(|s| !s.is_empty()).collect::<Vec<_>>().join(" · ");
+    let versions: serde_json::Map<String, serde_json::Value> = [("shroom", &d.shroom), ("macos", &d.macos), ("chip", &d.chip), ("memory", &d.memory)]
+        .into_iter()
+        .filter(|(_, v)| !v.is_empty())
+        .map(|(k, v)| (k.to_string(), serde_json::Value::String(v.clone())))
+        .collect();
     let mut v = serde_json::json!({
-        "kind": "problem",
+        "kind": p.kind.as_str(),
         "from": "app",
         "words": p.words.chars().take(shroom_core::copy::REPORT_WORDS_MAX).collect::<String>(),
-        "versions": { "shroom": d.shroom, "macos": d.macos, "chip": d.chip, "memory": d.memory },
-        "setup": setup.chars().take(SETUP_CHARS).collect::<String>(),
-        "log": bounded_log(&d.log),
+        "versions": versions,
     });
+    if !setup.is_empty() {
+        v["setup"] = serde_json::Value::String(setup.chars().take(SETUP_CHARS).collect());
+    }
+    if !d.log.is_empty() {
+        v["log"] = serde_json::Value::String(bounded_log(&d.log));
+    }
     if let Some(r) = &p.reply_to {
         v["reply_to"] = serde_json::Value::String(r.chars().take(254).collect());
     }
@@ -185,6 +198,7 @@ mod tests {
 
     fn post(log: String) -> Post {
         Post {
+            kind: Kind::Problem,
             words: "It stopped.".into(),
             reply_to: Some("you@example.com".into()),
             diagnostics: Diagnostics {
@@ -211,6 +225,15 @@ mod tests {
         assert_eq!(v["versions"]["macos"], "15.3.1");
         let v = body(&Post { reply_to: None, ..post(String::new()) });
         assert!(v.get("reply_to").is_none());
+    }
+
+    /// Send feedback (N60) posts as feedback; without the log, the version alone.
+    #[test]
+    fn feedback_without_the_log_carries_the_version_alone() {
+        let v = body(&Post { kind: Kind::Feedback, words: "Love it.".into(), reply_to: None, diagnostics: Diagnostics::version_only("0.1.18") });
+        assert_eq!(v, serde_json::json!({ "kind": "feedback", "from": "app", "words": "Love it.", "versions": { "shroom": "0.1.18" } }));
+        let v = body(&Post { kind: Kind::Feedback, ..post("  1 boot: launch login".into()) });
+        assert_eq!((v["kind"].as_str(), v["log"].as_str()), (Some("feedback"), Some("  1 boot: launch login")));
     }
 
     #[test]

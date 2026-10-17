@@ -76,6 +76,7 @@ pub fn scene_get(rt: State<Runtime>, surface: Surface) -> Value {
         Surface::Onboarding => serde_json::to_value(&s.onboarding).unwrap_or(Value::Null),
         Surface::Library => serde_json::to_value(&s.library).unwrap_or(Value::Null),
         Surface::Settings => serde_json::to_value(&s.settings).unwrap_or(Value::Null),
+        Surface::Feedback => serde_json::to_value(&s.feedback).unwrap_or(Value::Null),
         _ => Value::Null,
     }
 }

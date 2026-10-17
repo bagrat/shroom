@@ -1147,6 +1147,42 @@ fn member_gallery() -> Vec<Value> {
         .collect()
 }
 
+/// The Send feedback window (N60): empty and gathering, filled with what goes shown, the
+/// log box unticked, sending, a send that didn't go through, and sent.
+fn feedback_rows() -> Vec<(&'static str, &'static str, World)> {
+    let open = |words: &str, gathered: bool| {
+        let mut w = ready();
+        w.launch.version = "1.3.0".into();
+        w.session.windows.insert(WindowKind::Feedback, Door::asked(Mono(100)));
+        let f = &mut w.session.fields.feedback;
+        f.words = words.into();
+        f.reply_to = if words.is_empty() { String::new() } else { "you@example.com".into() };
+        f.gathered = gathered.then(|| shroom_core::report::Diagnostics {
+            shroom: "1.3.0".into(),
+            macos: "15.3.1".into(),
+            chip: "Apple M2".into(),
+            memory: "16 GB".into(),
+            setup: "2026-10-12 10:06 UTC key · 10:14 recording allowed · 10:15 wired".into(),
+            role: "owns its space".into(),
+            log: shroom_core::report::clean_log("    1840 core config [Probe, Draw]\n    2210 library refreshed (Owner): 0 new, 1 changed, 0 gone"),
+        });
+        w
+    };
+    let words = "Love it. One thing: I'd like the link copied the moment I stop, without opening the popover again.";
+    let with = |mut w: World, f: fn(&mut shroom_core::world::FeedbackFields)| {
+        f(&mut w.session.fields.feedback);
+        w
+    };
+    vec![
+        ("send-feedback", "feedback-empty", open("", false)),
+        ("send-feedback", "feedback-filled", open(words, true)),
+        ("send-feedback", "feedback-without-log", with(open(words, false), |f| f.without_log = true)),
+        ("send-feedback", "feedback-sending", with(open(words, true), |f| f.sending = true)),
+        ("send-feedback", "feedback-failed", with(open(words, true), |f| f.failed = true)),
+        ("send-feedback", "feedback-sent", with(open("", false), |f| f.sent = true)),
+    ]
+}
+
 fn window_gallery(rows: Vec<(&'static str, &'static str, World)>, slice: fn(&shroom_core::Scene) -> (Value, Vec<&'static str>)) -> Vec<Value> {
     rows.into_iter()
         .map(|(state, variant, w)| {
@@ -1175,6 +1211,13 @@ fn main() {
         }
         Some("region3") => {
             println!("{}", serde_json::to_string_pretty(&region3_gallery()).unwrap());
+            return;
+        }
+        Some("feedback") => {
+            let out = window_gallery(feedback_rows(), |s| {
+                (serde_json::to_value(&s.feedback).expect("the slice serializes"), s.feedback.as_ref().map(|f| f.faces.clone()).unwrap_or_default())
+            });
+            println!("{}", serde_json::to_string_pretty(&out).unwrap());
             return;
         }
         Some("settings") => {

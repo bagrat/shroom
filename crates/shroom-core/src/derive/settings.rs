@@ -560,7 +560,7 @@ fn report_sheet(w: &World) -> Option<(Sheet, ReportForm)> {
         reply_label: copy::report_reply_label(),
         reply_to: TextField { placeholder: String::new(), value: f.reply_to.clone(), enabled: !sending, edits: f.reply_edits },
         disclosure: copy::report_disclosure(),
-        preview: f.gathered.as_ref().map(|d| crate::report::preview(&f.words, Some(&f.reply_to), d)),
+        preview: f.gathered.as_ref().map(|d| crate::report::preview(crate::report::Kind::Problem, &f.words, Some(&f.reply_to), d)),
         preparing: f.gathered.is_none().then(copy::report_preparing),
         failed: failed.then(copy::report_failed),
         mail: failed.then(|| Button::new(Action::MailReport, copy::report_mail(), Style::Link)),

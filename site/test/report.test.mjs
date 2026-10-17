@@ -126,9 +126,22 @@ describe("POST /report", () => {
     const [text, log] = decode(raw);
     assert.match(text, /What happened:\nThe link never finished uploading\./);
     assert.match(text, /shroom 0\.1\.18 · macOS 15\.3\.1 · Apple M2 · 16 GB/);
-    assert.match(text, /Sent from: the app/);
+    assert.match(text, /Sent from: the app \(Settings → Report a problem\)/);
     assert.equal(log, "  1200 updater staged 0.1.18 (~/Applications/shroom.app)\n  413020 uploader 7f3a…: request to <your space> timed out\n");
     assert.ok(!raw.includes("jane") && !raw.includes("example-owner"), "nothing the cleaning removes reaches the inbox");
+  });
+
+  it("tags the app's Send feedback as feedback, from its own door, with no log when it's left out (N60)", async () => {
+    const { post, sent } = harness();
+    const res = await post({ kind: "feedback", from: "app", words: "Copy the link the moment I stop.", versions: { shroom: "0.1.18" } });
+    assert.equal(res.status, 200);
+    const raw = sent[0].raw;
+    assert.ok(raw.includes(`\r\nSubject: =?UTF-8?B?${Buffer.from("[shroom] Feedback · 0.1.18").toString("base64")}?=\r\n`), "the subject says feedback");
+    assert.ok(!raw.includes('filename="report.txt"'), "nothing to attach");
+    const [text] = decode(raw);
+    assert.match(text, /Feedback:\nCopy the link the moment I stop\./);
+    assert.match(text, /Sent from: the app \(Send feedback\)/);
+    assert.match(text, /No log was sent\./);
   });
 
   it("labels the page's answers with their questions, and needs Turnstile's yes", async () => {

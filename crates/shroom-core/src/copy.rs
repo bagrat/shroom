@@ -390,6 +390,16 @@ pub fn send() -> String { "Send".into() }
 pub fn sending() -> String { "Sending…".into() }
 pub fn report_failed() -> String { "That didn’t go through — check your connection and try again. Or email it to hi@shroom.am instead.".into() }
 pub fn report_mail() -> String { "email it to hi@shroom.am".into() }
+// ── Send feedback (N60): ratified by Bagrat, 2026-10-17 ──
+/// The header icon's name (hover, VoiceOver) and the window's title: the site's label (N55).
+pub fn send_feedback() -> String { "Send feedback".into() }
+pub fn feedback_line() -> String { "An idea, something that bugged you, something that broke — it goes straight to the person who makes shroom.".into() }
+pub fn feedback_placeholder() -> String { "What’s on your mind?".into() }
+pub fn include_log() -> String { "Include shroom’s recent log".into() }
+pub fn include_log_note() -> String { "Its version, your Mac’s model and its recent log, cleaned — never your videos, links, names or keys.".into() }
+pub fn feedback_sent() -> String { "Sent — thank you.".into() }
+pub fn feedback_sent_line() -> String { "If you left your email, you’ll hear back.".into() }
+pub fn done() -> String { "Done".into() }
 pub fn needs_macos(version: &str, macos: u32, running: &str) -> String {
     format!("shroom {version} needs macOS {macos} — this Mac stays on {running}.")
 }
@@ -922,6 +932,23 @@ pub fn registry() -> Vec<(&'static str, String)> {
         ("report-problem", sending()),
         ("report-problem", report_failed()),
         ("report-problem", report_mail()),
+        ("config", send_feedback()),
+        ("send-feedback", send_feedback()),
+        ("send-feedback", feedback_line()),
+        ("send-feedback", feedback_placeholder()),
+        ("send-feedback", report_reply_label()),
+        ("send-feedback", include_log()),
+        ("send-feedback", include_log_note()),
+        ("send-feedback", report_disclosure()),
+        ("send-feedback", report_preparing()),
+        ("send-feedback", cancel()),
+        ("send-feedback", send()),
+        ("send-feedback", sending()),
+        ("send-feedback", report_failed()),
+        ("send-feedback", report_mail()),
+        ("send-feedback", feedback_sent()),
+        ("send-feedback", feedback_sent_line()),
+        ("send-feedback", done()),
         ("settings-general", needs_macos("1.4.0", 15, "1.3.2")),
         ("settings-general", after_take()),
         ("settings-space", disconnect_ellipsis()),

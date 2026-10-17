@@ -1015,7 +1015,9 @@
    "amends": [
     "N8 (a third door: a report through shroom.am, beside the issue link and the address)"
    ],
-   "amended_by": []
+   "amended_by": [
+    "N60 (a second in-app door: Send feedback from the popover)"
+   ]
   },
   {
    "id": "N54",
@@ -1095,6 +1097,19 @@
     "N58 (the demo's place: a box beside the pitch; its caption goes)"
    ],
    "amended_by": []
+  },
+  {
+   "id": "N60",
+   "title": "Send feedback from the popover, in its own window, the log going along",
+   "decision": "**Bagrat asked for it, 2026-10-17**: feedback is worth most from people who have installed shroom, it is easier to send from inside the app than from the web form, and the log should go without anyone attaching it by hand (it makes N53's in-app door easier to reach). **The same day he chose design A** of three on the canvas (“Send feedback — A”) and **the log box ticked by default**. **The popover's header gains a fourth icon, first: Send feedback · Library · Settings · Quit**, named “Send feedback” on hover and to VoiceOver; its glyph a waving hand, his pick from 28 on the canvas (“Send feedback — A: the icon” boards, #23), 2026-10-17. It opens **its own small window, Send feedback**: one line on where it goes, the words, the optional email for an answer, **Include shroom’s recent log** (ticked) with a line on what goes and what never goes, and N53's “See exactly what’s sent”. Unticked, the report carries the words and the version only. **Send** posts to N53's `shroom.am/report` as kind feedback, from the app; Sending… and a send that didn't go through are N53's, word for word, mail link included. **Sent**, the window says so and offers Done. Settings · General's Report a problem… stays as it is (a problem, the log always). The icon sits in the ready popover only, so it never shows mid-take (law 4). Bagrat OK'd the window's words the same day (“its recent log” for “its last 200 lines” among them). Built: DECISIONS B193. Ratified by Bagrat, 2026-10-17.",
+   "status": "ratified",
+   "date": "2026-10-17",
+   "amends": [
+    "N53 (a second in-app door: Send feedback from the popover)",
+    "The popover (the header holds four icons)",
+    "The window (Opens: also Send feedback)"
+   ],
+   "amended_by": []
   }
  ],
  "surfaces": [
@@ -1108,7 +1123,7 @@
   },
   {
    "name": "The window",
-   "may_do": "Lives: centered on the mushroom's display (N57), one at a time per kind | Opens: onboarding, Library, Settings | Rules: the dock icon while open; ✕ ≡ the retreat (N12); survives a browser round-trip  [UX-STATEMACHINE.md L1717]"
+   "may_do": "Lives: centered on the mushroom's display (N57), one at a time per kind | Opens: onboarding, Library, Settings, Send feedback (N60) | Rules: the dock icon while open; ✕ ≡ the retreat (N12); survives a browser round-trip  [UX-STATEMACHINE.md L1717]"
   },
   {
    "name": "The page",
@@ -4743,7 +4758,7 @@
    "surface": "popover",
    "status": "ratified",
    "board": "Main",
-   "summary": "A same-themed custom popover under the tray (Loom-style). It is never a native menu and never a window, so the dock stays clear. Click-away or Esc dismisses it with nothing lost. It is pre-filled with last-used values and never skipped: a confirm, not a form. Rows run top to bottom, each a picker (an icon, the pick's name, a chevron; its label is the row's accessible name, DEVIATIONS #45): Record (one source picker: displays by human name first, then Camera only), the camera (every camera here, then Camera off — a camera turns the bubble on with it, Camera off turns it off; DEVIATIONS #43), Microphone (every microphone, then No mic), Quality, then Start recording (filled, full width) with a quiet line beneath. The footer holds three icons with tooltips. The grammar is N38's (provisional): a banner slot at the top for asks, a status line above the footer for facts, and disk-low under Start. When it opens, the grant probe runs (`recording-off`), and a due monthly re-confirm runs perm-priming's warm-up. The device rules are N39's (provisional): never auto-pick an iPhone (mic or camera); a click picks the display it came from as the source, over a remembered display but never over a hand pick in this take's Record picker or Camera only (N56); a gone last-used display falls back silently to the menu-bar display; same-named displays are labeled by position; Camera as the source previews here; with a camera picked for the bubble, picking another display moves the bubble there. If the camera is denied, the camera picker shows Camera off and Camera as the source greys Start. Since N44 both pickers start with System default: it follows macOS's default input and its preferred camera (never an iPhone by itself), and a take keeps the device it started with.",
+   "summary": "A same-themed custom popover under the tray (Loom-style). It is never a native menu and never a window, so the dock stays clear. Click-away or Esc dismisses it with nothing lost. It is pre-filled with last-used values and never skipped: a confirm, not a form. Rows run top to bottom, each a picker (an icon, the pick's name, a chevron; its label is the row's accessible name, DEVIATIONS #45): Record (one source picker: displays by human name first, then Camera only), the camera (every camera here, then Camera off — a camera turns the bubble on with it, Camera off turns it off; DEVIATIONS #43), Microphone (every microphone, then No mic), Quality, then Start recording (filled, full width) with a quiet line beneath. The footer holds four icons with tooltips: Send feedback, Library, Settings, Quit (N60). The grammar is N38's (provisional): a banner slot at the top for asks, a status line above the footer for facts, and disk-low under Start. When it opens, the grant probe runs (`recording-off`), and a due monthly re-confirm runs perm-priming's warm-up. The device rules are N39's (provisional): never auto-pick an iPhone (mic or camera); a click picks the display it came from as the source, over a remembered display but never over a hand pick in this take's Record picker or Camera only (N56); a gone last-used display falls back silently to the menu-bar display; same-named displays are labeled by position; Camera as the source previews here; with a camera picked for the bubble, picking another display moves the bubble there. If the camera is denied, the camera picker shows Camera off and Camera as the source greys Start. Since N44 both pickers start with System default: it follows macOS's default input and its preferred camera (never an iPhone by itself), and a take keeps the device it started with.",
    "entry": "Not mid-take, and the tray clicked in idle-ready (or a launch you did, or all-set's Record now, or a cancelled countdown, which returns here still armed). Popover banners stack one at a time, highest first: saved take (recovered-take / disk-full-stop), the space can't take videos (other regions), recording-off, update-ready (Region 5).",
    "said": [
     {
@@ -5059,6 +5074,13 @@
      "note": "Return = Start recording (Law 8, N38): 'click the mushroom, press Return'. Greys under about a minute of disk (disk-low)."
     },
     {
+     "label": "Send feedback",
+     "kind": "other",
+     "return_default": false,
+     "goes_to": "send-feedback",
+     "note": "The header's first icon, a waving hand, before Library (N60; Bagrat's pick, 2026-10-17)."
+    },
+    {
      "label": "Library",
      "kind": "other",
      "return_default": false,
@@ -5103,7 +5125,8 @@
     "U5",
     "N44",
     "#43",
-    "N56"
+    "N56",
+    "N60"
    ],
    "was": {
     "fixture": "r3.json",
@@ -11409,6 +11432,149 @@
     "N8",
     "N48"
    ]
+  },
+  "send-feedback": {
+   "region": 5,
+   "kind": "state",
+   "parent": null,
+   "surface": "window",
+   "status": "ratified",
+   "board": "FeedbackA",
+   "summary": "Send feedback (N60): a small window of its own, opened from the popover's first header icon. One line on where it goes, the words, an optional email for an answer, **Include shroom’s recent log** — ticked, with a line on what goes and what never goes — and “See exactly what’s sent”, which shows the whole report word for word: the words, the reply-to and, with the box ticked, N53's gathered report (the version, macOS, the chip and memory, the setup timeline and the last 200 lines of shroom's log, cleaned); unticked, the words, the reply-to and the version only. Send posts it to shroom.am/report as kind feedback from the app, which emails it to the person who makes shroom and keeps nothing. Sending, the button reads Sending… and Cancel greys; accepted, the window says it's sent and offers Done; refused or offline, it keeps what was typed, says so, and offers the mail address. A dev build never reaches shroom.am.",
+   "entry": "The ready popover's first header icon, Send feedback, clicked (not mid-take: the header lives in config only). One instance: clicking it again brings the open window forward, as typed. A window opened before a take stays open through it (law 4 covers only what shroom would newly show). The dock icon shows while it is open (Region 1 dock rule).",
+   "said": [
+    {
+     "text": "Send feedback",
+     "role": "window-title",
+     "copy": "ratified",
+     "note": "The window's title, and the header icon's name on hover and to VoiceOver: the site's header label (N55, Bagrat's pick). Ratified by Bagrat, 2026-10-17, relayed by the orchestrator.",
+     "id": "send-feedback.title"
+    },
+    {
+     "text": "An idea, something that bugged you, something that broke — it goes straight to the person who makes shroom.",
+     "role": "line",
+     "copy": "ratified",
+     "note": "Ratified by Bagrat, 2026-10-17, relayed by the orchestrator.",
+     "id": "send-feedback.line"
+    },
+    {
+     "text": "What’s on your mind?",
+     "role": "placeholder",
+     "copy": "ratified",
+     "note": "The words box; Return types a new line, ⌘Return sends. Ratified by Bagrat, 2026-10-17, relayed by the orchestrator.",
+     "id": "send-feedback.placeholder"
+    },
+    {
+     "text": "Your email, if you’d like an answer (optional)",
+     "role": "field-label",
+     "copy": "ratified",
+     "note": "The same words as Report a problem's, ratified by Bagrat, 2026-10-16.",
+     "id": "send-feedback.reply-to"
+    },
+    {
+     "text": "Include shroom’s recent log",
+     "role": "checkbox",
+     "copy": "ratified",
+     "note": "Ticked when the window opens (Bagrat, 2026-10-17). Ratified by Bagrat, 2026-10-17, relayed by the orchestrator.",
+     "id": "send-feedback.include-log"
+    },
+    {
+     "text": "Its version, your Mac’s model and its recent log, cleaned — never your videos, links, names or keys.",
+     "role": "line",
+     "copy": "ratified",
+     "note": "Under the box. Drawn from Report a problem's ratified line. Ratified by Bagrat, 2026-10-17, relayed by the orchestrator.",
+     "id": "send-feedback.include-log-note"
+    },
+    {
+     "text": "See exactly what’s sent",
+     "role": "disclosure",
+     "copy": "ratified",
+     "note": "Opens the whole report as it would go, box ticked or not. The same words as Report a problem's, ratified by Bagrat, 2026-10-16.",
+     "id": "send-feedback.see-whats-sent"
+    },
+    {
+     "text": "Putting it together…",
+     "role": "line",
+     "copy": "ratified",
+     "note": "Under the disclosure until the report is gathered; Send waits for it only while the box is ticked. The same words as Report a problem's, ratified by Bagrat, 2026-10-16.",
+     "id": "send-feedback.putting-it-together"
+    },
+    {
+     "text": "Sending…",
+     "role": "button",
+     "copy": "ratified",
+     "note": "Send's label while it posts; Cancel greys with it. The same words as Report a problem's, ratified by Bagrat, 2026-10-16.",
+     "id": "send-feedback.sending"
+    },
+    {
+     "text": "That didn’t go through — check your connection and try again. Or email it to hi@shroom.am instead.",
+     "role": "line",
+     "copy": "ratified",
+     "note": "Offline, refused, rate-limited or switched off: the window keeps what was typed. “email it to hi@shroom.am” is a link: a mail draft with the words and the version (N48). The same words as Report a problem's, ratified by Bagrat, 2026-10-16.",
+     "id": "send-feedback.couldnt-send"
+    },
+    {
+     "text": "Sent — thank you.",
+     "role": "status",
+     "copy": "ratified",
+     "note": "The sent face's heading. Report a problem's ratified line, split in two. Ratified by Bagrat, 2026-10-17, relayed by the orchestrator.",
+     "id": "send-feedback.sent"
+    },
+    {
+     "text": "If you left your email, you’ll hear back.",
+     "role": "line",
+     "copy": "ratified",
+     "note": "Under it. Ratified by Bagrat, 2026-10-17, relayed by the orchestrator.",
+     "id": "send-feedback.sent-line"
+    },
+    {
+     "text": "Done",
+     "role": "button",
+     "copy": "ratified",
+     "note": "The sent face's one button, filled; Return or Esc. Ratified by Bagrat, 2026-10-17, relayed by the orchestrator.",
+     "id": "send-feedback.done"
+    }
+   ],
+   "actions": [
+    {
+     "label": "Include shroom’s recent log",
+     "kind": "field",
+     "return_default": false,
+     "note": "A checkbox, ticked when the window opens. Unticked, the report carries the words, the reply-to and the version only, and the disclosure shows exactly that."
+    },
+    {
+     "label": "Cancel",
+     "kind": "secondary",
+     "return_default": false,
+     "note": "Closes the window, the words dropped. Esc ≡ Cancel; ✕ ≡ Cancel (N12). Greys while sending."
+    },
+    {
+     "label": "Send",
+     "kind": "filled-default",
+     "return_default": false,
+     "note": "⌘Return; plain Return types a new line. Grey until something is typed and, with the box ticked, the report is gathered."
+    },
+    {
+     "label": "email it to hi@shroom.am",
+     "kind": "text-link",
+     "return_default": false,
+     "note": "Only once a send failed: a mail draft to hi@shroom.am with the words and the version (N48)."
+    },
+    {
+     "label": "Done",
+     "kind": "filled-default",
+     "return_default": true,
+     "note": "The sent face only: closes the window. Esc and ✕ too."
+    }
+   ],
+   "cites": [
+    "N60",
+    "N53",
+    "B180",
+    "N48",
+    "N12",
+    "N41"
+   ]
   }
  },
  "edges": [
@@ -15924,6 +16090,23 @@
     "canvas"
    ],
    "on": []
+  },
+  {
+   "from": "config",
+   "to": "send-feedback",
+   "kind": "side",
+   "label": "footer icons",
+   "trigger": "Send feedback, the header's first icon",
+   "status": "ratified",
+   "cites": [
+    "N60"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Act(OpenFeedback)"
+   ]
   }
  ],
  "rules": [

@@ -195,11 +195,16 @@ pub fn breach(take_was_open: bool, prev: &Scene, w: &World, next: &Scene, effect
     if !crate::settle::settle(w).is_empty() {
         return Some("law 1: settle isn't idempotent");
     }
-    if next.dock != (next.onboarding.is_some() || next.library.is_some() || next.settings.is_some()) {
+    if next.dock != (next.onboarding.is_some() || next.library.is_some() || next.settings.is_some() || next.feedback.is_some()) {
         return Some("law 6: the dock and the windows disagree");
     }
     if take_was_open && w.take_open() {
-        if (next.onboarding.is_some() && prev.onboarding.is_none()) || (next.library.is_some() && prev.library.is_none()) || (next.settings.is_some() && prev.settings.is_none()) {
+        let appeared = |now: bool, before: bool| now && !before;
+        if appeared(next.onboarding.is_some(), prev.onboarding.is_some())
+            || appeared(next.library.is_some(), prev.library.is_some())
+            || appeared(next.settings.is_some(), prev.settings.is_some())
+            || appeared(next.feedback.is_some(), prev.feedback.is_some())
+        {
             return Some("law 4: a window appeared mid-take");
         }
         if next.popover.as_ref().is_some_and(|p| !["paused", "discard-confirm", "restart-confirm"].contains(&p.id)) {

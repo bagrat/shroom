@@ -142,6 +142,13 @@ fn report_asked() -> World {
     w
 }
 
+/// The Send feedback window, opened from the popover (N60).
+fn feedback_open() -> World {
+    let mut w = ready();
+    w.session.windows.insert(WindowKind::Feedback, Door::asked(Mono(900)));
+    w
+}
+
 fn report_gathered() -> shroom_core::report::Diagnostics {
     shroom_core::report::Diagnostics {
         shroom: "1.2.0".into(),
@@ -426,6 +433,33 @@ fn rows() -> Vec<(&'static str, World)> {
         w.session.fields.settings.report.failed = true;
         w
     }));
+    // ── send feedback (N60) ──
+    rows.push(("send-feedback", feedback_open()));
+    rows.push(("send-feedback", {
+        let mut w = feedback_open();
+        w.session.fields.feedback.gathered = Some(report_gathered());
+        w.session.fields.feedback.words = "Love it.".into();
+        w
+    }));
+    rows.push(("send-feedback", {
+        let mut w = feedback_open();
+        w.session.fields.feedback.without_log = true;
+        w.session.fields.feedback.words = "Love it.".into();
+        w.session.fields.feedback.sending = true;
+        w
+    }));
+    rows.push(("send-feedback", {
+        let mut w = feedback_open();
+        w.session.fields.feedback.gathered = Some(report_gathered());
+        w.session.fields.feedback.words = "Love it.".into();
+        w.session.fields.feedback.failed = true;
+        w
+    }));
+    rows.push(("send-feedback", {
+        let mut w = feedback_open();
+        w.session.fields.feedback.sent = true;
+        w
+    }));
     rows.push(("uninstall-confirm", uninstall_asked()));
     rows.push(("uninstall-confirm", {
         let mut w = uninstall_asked();
@@ -503,6 +537,8 @@ const LINES_OUT_OF_SCOPE: &[(&str, &str, &str)] = &[
 fn surface_of(id: &str) -> Surface {
     if id.starts_with("library") || id.starts_with("delete-confirm") {
         Surface::Library
+    } else if id == "send-feedback" {
+        Surface::Feedback
     } else if id.starts_with("settings") || ["disconnect-confirm", "disconnect-confirm-no-token", "leave-confirm", "uninstall-confirm", "report-problem", "repair-mood", "re-entry-as-settings", "token-repair-mood", "token-other-account", "gate-card", "wiring", "space-storage-gone", "name-changed"].contains(&id) {
         Surface::Settings
     } else {
@@ -518,6 +554,7 @@ fn action_for(label: &str, renaming: bool) -> Option<Action> {
         "Add credit card" => Some(Action::AddCard),
         "Set it up fresh" => Some(Action::SetUpFresh),
         "Start recording" => Some(Action::Start),
+        "Done" => Some(Action::CloseFeedback),
         other => panic!("no mapping for the Return default {other:?}"),
     }
 }
@@ -542,7 +579,19 @@ fn every_region5_state_derives_with_its_return_default_and_its_lines() {
         let renaming = w.session.fields.library.renaming.is_some();
         // The repair mood's own Return is its nest's — checked under the nest's id.
         let structural = ["settings-space-repair", "repair-mood", "tray-frost-dot"].contains(&id);
-        if !structural {
+        // Send feedback (N60): Return types a new line in the words until the sent face,
+        // whose Done it is; Esc is Cancel, but not while it goes.
+        if id == "send-feedback" {
+            let f = &w.session.fields.feedback;
+            let want = f.sent.then(|| fixture.return_default().and_then(|a| action_for(&a.label, false))).flatten();
+            if scene.ret(surface) != want {
+                failures.push(format!("{id}: Return is {:?}, want {want:?}", scene.ret(surface)));
+            }
+            let want_esc = (!f.sending).then_some(Action::CloseFeedback);
+            if scene.esc(surface) != want_esc {
+                failures.push(format!("{id}: Esc is {:?}, want {want_esc:?}", scene.esc(surface)));
+            }
+        } else if !structural {
             let got = scene.ret(surface);
             let want = match fixture.kind.as_str() {
                 // A banner's own filled button is never the Return default (law 8): config's

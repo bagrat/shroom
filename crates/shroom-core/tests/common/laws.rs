@@ -24,16 +24,21 @@ pub const SECRET_CANARY: &str = "cfat_";
 /// only the World can say it is wrong. On its own so that a test can hand it a Scene
 /// `derive` never made — `check` turns every such Scene away at law 1.
 pub fn law_6(nw: &World, ns: &Scene) -> Option<String> {
-    let open = [WindowKind::Onboarding, WindowKind::Library, WindowKind::Settings].into_iter().any(|k| entry::shows(nw, k));
+    let open = [WindowKind::Onboarding, WindowKind::Library, WindowKind::Settings, WindowKind::Feedback].into_iter().any(|k| entry::shows(nw, k));
     if ns.dock != open {
         let dock = if ns.dock { "a Dock icon" } else { "no Dock icon" };
         let window = if open { "a window of shroom's is open" } else { "no window of shroom's is open" };
         return Some(format!("law 6: {dock}, and in the World {window}"));
     }
-    if ns.dock != (ns.onboarding.is_some() || ns.library.is_some() || ns.settings.is_some()) {
+    if ns.dock != (ns.onboarding.is_some() || ns.library.is_some() || ns.settings.is_some() || ns.feedback.is_some()) {
         return Some("law 6: the Dock and the windows disagree".into());
     }
-    for (shown, kind) in [(ns.onboarding.is_some(), WindowKind::Onboarding), (ns.library.is_some(), WindowKind::Library), (ns.settings.is_some(), WindowKind::Settings)] {
+    for (shown, kind) in [
+        (ns.onboarding.is_some(), WindowKind::Onboarding),
+        (ns.library.is_some(), WindowKind::Library),
+        (ns.settings.is_some(), WindowKind::Settings),
+        (ns.feedback.is_some(), WindowKind::Feedback),
+    ] {
         if shown && !nw.session.windows.contains_key(&kind) {
             return Some("law 6: a window without a door".into());
         }
@@ -179,7 +184,11 @@ pub fn check(pw: &World, ps: &Scene, ev: &Event, nw: &World, ns: &Scene, fx: &[E
             assert!(!o.activates, "law 5: an unasked window activates — {}", ctx());
         }
     }
-    for (activates, kind) in [(ns.library.as_ref().map(|l| l.activates), WindowKind::Library), (ns.settings.as_ref().map(|s| s.activates), WindowKind::Settings)] {
+    for (activates, kind) in [
+        (ns.library.as_ref().map(|l| l.activates), WindowKind::Library),
+        (ns.settings.as_ref().map(|s| s.activates), WindowKind::Settings),
+        (ns.feedback.as_ref().map(|f| f.activates), WindowKind::Feedback),
+    ] {
         if let (Some(a), Some(d)) = (activates, nw.session.windows.get(&kind)) {
             assert!(d.asked || !a, "law 5: an unasked {kind:?} window activates — {}", ctx());
         }

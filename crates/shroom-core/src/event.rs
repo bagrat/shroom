@@ -68,6 +68,10 @@ pub enum Field {
     ReportWords,
     /// Report a problem's “Your email, if you'd like an answer” (B180).
     ReportReplyTo,
+    /// Send feedback's words (N60).
+    FeedbackWords,
+    /// Send feedback's “Your email, if you'd like an answer” (N60).
+    FeedbackReplyTo,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -78,6 +82,8 @@ pub enum Surface {
     Onboarding,
     Library,
     Settings,
+    /// The Send feedback window (N60).
+    Feedback,
     Countdown,
     Bubble,
 }
@@ -416,8 +422,8 @@ pub enum StandingAnswer {
 pub enum ReportNews {
     /// The report, gathered for the sheet: its disclosure, and what Send posts.
     Gathered(crate::report::Diagnostics),
-    /// shroom.am took it.
-    Sent,
+    /// shroom.am took the report of this kind.
+    Sent(crate::report::Kind),
     /// It didn't go through: offline, refused, rate-limited or switched off.
-    NotSent,
+    NotSent(crate::report::Kind),
 }

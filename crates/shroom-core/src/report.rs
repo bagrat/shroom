@@ -49,7 +49,13 @@ pub struct Diagnostics {
 }
 
 impl Diagnostics {
-    /// The report as words: the Mac's line, the setup, the role, then the log.
+    /// The version alone: what Send feedback carries with its log box unticked (N60).
+    pub fn version_only(version: &str) -> Diagnostics {
+        Diagnostics { shroom: version.into(), macos: String::new(), chip: String::new(), memory: String::new(), setup: String::new(), role: String::new(), log: String::new() }
+    }
+
+    /// The report as words: the Mac's line, the setup, the role, then the log — or, for
+    /// the version alone, its line.
     pub fn text(&self) -> String {
         let mac: Vec<String> = [
             (!self.shroom.is_empty()).then(|| format!("shroom {}", self.shroom)),
@@ -61,6 +67,9 @@ impl Diagnostics {
         .flatten()
         .collect();
         let mut out = vec![mac.join(" · ")];
+        if self.role.is_empty() && self.log.is_empty() && self.setup.is_empty() {
+            return out.join("\n");
+        }
         if !self.setup.is_empty() {
             out.push(format!("Set up: {}", self.setup));
         }
@@ -73,9 +82,29 @@ impl Diagnostics {
     }
 }
 
-/// What Send posts to shroom.am/report: the words, the reply-to, and the gathered report.
+/// Which door a report came by: Settings' Report a problem (B180), or the popover's Send
+/// feedback (N60). shroom.am/report tags its message with it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Kind {
+    Problem,
+    Feedback,
+}
+
+impl Kind {
+    /// site/report.js's `kind`.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Kind::Problem => "problem",
+            Kind::Feedback => "feedback",
+        }
+    }
+}
+
+/// What Send posts to shroom.am/report: its kind, the words, the reply-to, and the
+/// gathered report (the version alone for feedback sent without the log).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Post {
+    pub kind: Kind,
     pub words: String,
     pub reply_to: Option<String>,
     pub diagnostics: Diagnostics,
@@ -84,13 +113,17 @@ pub struct Post {
 impl Post {
     /// What goes, as the disclosure shows it: the words, the reply-to, then the report.
     pub fn text(&self) -> String {
-        preview(&self.words, self.reply_to.as_deref(), &self.diagnostics)
+        preview(self.kind, &self.words, self.reply_to.as_deref(), &self.diagnostics)
     }
 }
 
 /// The disclosure's text for what's typed and what's gathered.
-pub fn preview(words: &str, reply_to: Option<&str>, d: &Diagnostics) -> String {
-    let mut out = format!("What happened:\n{}\n\n", words.trim());
+pub fn preview(kind: Kind, words: &str, reply_to: Option<&str>, d: &Diagnostics) -> String {
+    let head = match kind {
+        Kind::Problem => "What happened:",
+        Kind::Feedback => "Feedback:",
+    };
+    let mut out = format!("{head}\n{}\n\n", words.trim());
     if let Some(r) = reply_to.filter(|r| !r.trim().is_empty()) {
         out.push_str(&format!("Reply to: {}\n\n", r.trim()));
     }

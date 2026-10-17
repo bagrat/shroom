@@ -121,6 +121,8 @@ pub const READS: &[Read] = &[
     r("repair-mood", "Reconnect your space from the space-degraded banner."),
     r("settings-space-no-token", "Owner-class Mac that does not hold the Cloudflare token."),
     r("settings-space-member", "This Mac is a member (not owner-class)."),
+    // ── Send feedback (N60) ──
+    r("send-feedback", "The ready popover's first header icon, Send feedback, clicked"),
 ];
 
 /// Where the fixtures don't say, and the oracle names nothing (each a reason, not a copy of
@@ -143,6 +145,8 @@ pub struct Named {
     pub bubble: Option<bool>,
     pub onboarding: Option<Option<Win>>,
     pub settings: Option<Option<Win>>,
+    /// The Send feedback window (N60).
+    pub feedback: Option<Win>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -642,7 +646,14 @@ pub fn name(w: &World) -> Named {
         bubble: bubble(w, config),
         onboarding: onboarding(w),
         settings: settings(w),
+        feedback: feedback(w),
     }
+}
+
+/// The Send feedback window: open from its icon, once a space exists — the popover's
+/// header lives in `config` only (N60).
+fn feedback(w: &World) -> Option<Win> {
+    (shows(w, WindowKind::Feedback) && has_space(w)).then(|| Win { id: "send-feedback", faces: vec![] })
 }
 
 fn face_name(f: Face) -> &'static str {
@@ -702,6 +713,10 @@ pub fn disagreements(w: &World, s: &Scene) -> Vec<String> {
         if st != &got || !pane_ok {
             out.push(format!("settings: oracle {st:?}, derive {got:?}"));
         }
+    }
+    let got = s.feedback.as_ref().map(|d| Win { id: d.id, faces: d.faces.clone() });
+    if n.feedback != got {
+        out.push(format!("send feedback: oracle {:?}, derive {got:?}", n.feedback));
     }
     out
 }
