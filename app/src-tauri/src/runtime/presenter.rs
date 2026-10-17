@@ -27,6 +27,7 @@ pub const COUNTDOWN: &str = "countdown";
 pub const ONBOARDING: &str = "onboarding";
 pub const LIBRARY: &str = "library";
 pub const SETTINGS: &str = "settings";
+pub const FEEDBACK: &str = "feedback";
 const POPOVER_WIDTH: f64 = 320.0;
 
 /// One of shroom's ordinary windows: titled, the standard ✕ (which the core answers — the
@@ -51,11 +52,17 @@ const LIBRARY_WINDOW: WindowSpec =
 const SETTINGS_WINDOW: WindowSpec =
     WindowSpec { label: SETTINGS, kind: WindowKind::Settings, url: "settings.html", width: 600.0, height: 620.0, resizable: false };
 
+/// Send feedback (N60): a small fixed window, the board's frame — room for the form with
+/// “See exactly what's sent” open under the title bar.
+const FEEDBACK_WINDOW: WindowSpec =
+    WindowSpec { label: FEEDBACK, kind: WindowKind::Feedback, url: "feedback.html", width: 520.0, height: 600.0, resizable: false };
+
 fn spec(kind: WindowKind) -> &'static WindowSpec {
     match kind {
         WindowKind::Onboarding => &ONBOARDING_WINDOW,
         WindowKind::Library => &LIBRARY_WINDOW,
         WindowKind::Settings => &SETTINGS_WINDOW,
+        WindowKind::Feedback => &FEEDBACK_WINDOW,
     }
 }
 
@@ -591,7 +598,7 @@ pub fn becomes_key(prev_activates: Option<bool>, activates: bool) -> bool {
 /// What a Scene puts on screen that the keyboard can be in.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Holds {
-    /// One of shroom's windows: setup, the Library, Settings.
+    /// One of shroom's windows: setup, the Library, Settings, Send feedback.
     pub window: bool,
     /// A popover the person asked for (an unasked one never takes the keyboard — law 5).
     pub asked_popover: bool,
@@ -601,7 +608,7 @@ pub struct Holds {
 impl Holds {
     pub fn of(s: &Scene) -> Holds {
         Holds {
-            window: s.onboarding.is_some() || s.library.is_some() || s.settings.is_some(),
+            window: s.onboarding.is_some() || s.library.is_some() || s.settings.is_some() || s.feedback.is_some(),
             asked_popover: s.popover.as_ref().is_some_and(|p| p.activates),
             countdown: s.countdown.is_some(),
         }
@@ -709,6 +716,11 @@ fn apply(app: &AppHandle, rt: &Runtime, prev: Option<&Scene>, s: &Scene, exclude
         prev.and_then(|p| p.library.as_ref()).map(|l| l.activates),
     );
     window(&SETTINGS_WINDOW, s.settings.as_ref().map(|w| (json(w), w.activates, "shroom".to_string())), prev.and_then(|p| p.settings.as_ref()).map(|w| w.activates));
+    window(
+        &FEEDBACK_WINDOW,
+        s.feedback.as_ref().map(|f| (json(f), f.activates, f.body.title.clone())),
+        prev.and_then(|p| p.feedback.as_ref()).map(|f| f.activates),
+    );
     // The last of them closed: the keyboard goes back to the app the person was in.
     if gives_keyboard_back(prev.map(Holds::of), Holds::of(s)) {
         give_keyboard_back(rt);
@@ -800,6 +812,7 @@ pub fn bring_forward_kind(app: &AppHandle, kind: WindowKind) {
             WindowKind::Onboarding => s.onboarding.is_some(),
             WindowKind::Library => s.library.is_some(),
             WindowKind::Settings => s.settings.is_some(),
+            WindowKind::Feedback => s.feedback.is_some(),
         });
         if !open {
             return;

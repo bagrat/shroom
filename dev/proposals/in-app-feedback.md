@@ -73,7 +73,7 @@ The icon is only in the popover's ready face, like its neighbours, so it never s
 | Placeholder | What's on your mind? | New |
 | Email label | Your email, if you'd like an answer (optional) | Ratified (Report a problem) |
 | Log box | Include shroom's recent log | New |
-| Under the box | Its version, your Mac's model and its last 200 lines, cleaned — never your videos, links, names or keys. | New, drawn from Report a problem's ratified line |
+| Under the box | Its version, your Mac's model and its recent log, cleaned — never your videos, links, names or keys. | New, drawn from Report a problem's ratified line |
 | Disclosure | See exactly what's sent | Ratified |
 | Sending, failed | Sending… · That didn't go through — … | Ratified |
 | Sent | Sent — thank you. / If you left your email, you'll hear back. / Done | Ratified line split in two; Done new |

@@ -36,6 +36,8 @@ pub enum Action {
     SaveToMovies,
     OpenLibrary,
     OpenSettings,
+    /// The header's Send feedback: opens its window (N60).
+    OpenFeedback,
     Quit,
     QuitAnyway,
     CopyLink,
@@ -139,6 +141,15 @@ pub enum Action {
     SendReport,
     /// A failed send's “email it to hi@shroom.am”.
     MailReport,
+    // ── Send feedback (N60) ──
+    /// “Include shroom's recent log”, ticked or not.
+    FeedbackLog(bool),
+    /// Send (⌘Return).
+    SendFeedback,
+    /// A failed send's “email it to hi@shroom.am”.
+    MailFeedback,
+    /// Cancel, Esc, or the sent face's Done: the window closes.
+    CloseFeedback,
     /// “Disconnect this Mac…” — opens its sheet.
     Disconnect,
     ConfirmDisconnect,
@@ -852,6 +863,39 @@ pub struct ReportForm {
     pub mail: Option<Button>,
 }
 
+/// The Send feedback window (N60): the form, then — once shroom.am took it — the sent face.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct FeedbackBody {
+    pub title: String,
+    pub line: String,
+    pub words: TextField,
+    pub reply_label: String,
+    pub reply_to: TextField,
+    /// “Include shroom's recent log”, and the line under it on what goes.
+    pub log: Toggle,
+    pub log_note: String,
+    /// “See exactly what's sent”.
+    pub disclosure: String,
+    /// What goes, word for word — once it can be told (with the log, once it's gathered).
+    pub preview: Option<String>,
+    /// Until then: “Putting it together…”.
+    pub preparing: Option<String>,
+    /// The last Send didn't go through: its line, and the mail address as a link.
+    pub failed: Option<String>,
+    pub mail: Option<Button>,
+    /// Cancel, then Send.
+    pub buttons: Vec<Button>,
+    /// shroom.am took it: the form gives way to this.
+    pub sent: Option<FeedbackSent>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct FeedbackSent {
+    pub title: String,
+    pub line: String,
+    pub done: Button,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct SpaceBody {
     /// The re-probed plan (Region 2's own panel): every row ticked with its fact, or the
@@ -977,6 +1021,22 @@ impl Window<LibraryBody> {
             let g = &r.gestures;
             [&g.click, &g.cmd_click, &g.shift_click, &g.title_click, &g.double_click, &g.copy].into_iter().any(|a| a.as_ref() == Some(action))
         })
+    }
+}
+
+impl Window<FeedbackBody> {
+    pub fn buttons(&self) -> Vec<&Button> {
+        match &self.body.sent {
+            Some(s) => vec![&s.done],
+            None => self.body.buttons.iter().chain(&self.body.mail).collect(),
+        }
+    }
+
+    pub fn offers(&self, action: &Action) -> bool {
+        if self.buttons().iter().any(|b| b.enabled && &b.action == action) {
+            return true;
+        }
+        self.body.sent.is_none() && self.body.log.enabled && &self.body.log.action == action
     }
 }
 
@@ -1118,6 +1178,8 @@ pub struct Scene {
     pub library: Option<Window<LibraryBody>>,
     /// The Settings window (N36).
     pub settings: Option<Window<SettingsBody>>,
+    /// The Send feedback window (N60).
+    pub feedback: Option<Window<FeedbackBody>>,
     pub countdown: Option<Countdown>,
     pub bubble: Option<Bubble>,
     pub preview: Option<Preview>,
@@ -1167,6 +1229,10 @@ impl Scene {
                 ids.extend(&s.faces);
             }
         }
+        if let Some(f) = &self.feedback {
+            ids.push(f.id);
+            ids.extend(&f.faces);
+        }
         if self.countdown.is_some() {
             ids.push("countdown");
         }
@@ -1183,6 +1249,7 @@ impl Scene {
             Surface::Onboarding => self.onboarding.as_ref().is_some_and(|o| o.offers(action)),
             Surface::Library => self.library.as_ref().is_some_and(|l| l.offers(action)),
             Surface::Settings => self.settings.as_ref().is_some_and(|s| s.offers(action)),
+            Surface::Feedback => self.feedback.as_ref().is_some_and(|f| f.offers(action)),
             _ => false,
         }
     }
@@ -1193,6 +1260,7 @@ impl Scene {
             Surface::Onboarding => self.onboarding.as_ref().and_then(|o| o.ret.clone()),
             Surface::Library => self.library.as_ref().and_then(|o| o.ret.clone()),
             Surface::Settings => self.settings.as_ref().and_then(|o| o.ret.clone()),
+            Surface::Feedback => self.feedback.as_ref().and_then(|o| o.ret.clone()),
             _ => None,
         }
     }
@@ -1203,6 +1271,7 @@ impl Scene {
             Surface::Onboarding => self.onboarding.as_ref().and_then(|o| o.esc.clone()),
             Surface::Library => self.library.as_ref().and_then(|o| o.esc.clone()),
             Surface::Settings => self.settings.as_ref().and_then(|o| o.esc.clone()),
+            Surface::Feedback => self.feedback.as_ref().and_then(|o| o.esc.clone()),
             Surface::Countdown => self.countdown.as_ref().map(|_| Action::CancelCountdown),
             _ => None,
         }

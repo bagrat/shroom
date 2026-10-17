@@ -174,7 +174,7 @@ def form(*, title, line, placeholder, words="", mail="", log=True, log_note=True
         out.append(f'<div style="color: #aeb6c4; font-size: 12px">{fixed_log}</div>')
     else:
         out.append(check(log, "Include shroom’s recent log", "send-feedback.include-log",
-                         "Its version, your Mac’s model and its last 200 lines, cleaned — never your videos, links, names or keys." if log_note else None))
+                         "Its version, your Mac’s model and its recent log, cleaned — never your videos, links, names or keys." if log_note else None))
     out.append(disclosure(open_))
     send = f'<button style="{GREY}" data-said="report-problem.sending">Sending…</button>' if sending else \
         f'<button style="{FILLED if words else GREY}" data-said="send-feedback.send">Send</button>'

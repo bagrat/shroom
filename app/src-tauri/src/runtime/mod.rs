@@ -1224,6 +1224,7 @@ fn shell(rt: &Runtime, app: &AppHandle, cmd: ShellCmd) {
         // forward with the keyboard (the person reached for it).
         ShellCmd::OpenLibrary => presenter::bring_forward_kind(app, shroom_core::world::WindowKind::Library),
         ShellCmd::OpenSettings => presenter::bring_forward_kind(app, shroom_core::world::WindowKind::Settings),
+        ShellCmd::OpenFeedback => presenter::bring_forward_kind(app, shroom_core::world::WindowKind::Feedback),
         ShellCmd::OpenUrl(page) => os::open_url(rt, &page),
         ShellCmd::SetLoginItem(on) => os::set_login_item(rt, on),
         ShellCmd::Relaunch(why) => os::relaunch(rt, app, why),

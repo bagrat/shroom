@@ -1008,6 +1008,8 @@ pub enum WindowKind {
     Onboarding,
     Library,
     Settings,
+    /// Send feedback, from the popover's header (N60).
+    Feedback,
 }
 
 /// An open surface: when it opened (law 4 visibility), when it was last entered (probe
@@ -1130,6 +1132,27 @@ pub struct Fields {
     pub library: LibraryFields,
     /// The Settings window's own fields — kept apart, they clear when it closes.
     pub settings: SettingsFields,
+    /// The Send feedback window's own fields (N60) — they clear when it closes.
+    pub feedback: FeedbackFields,
+}
+
+/// What the Send feedback window holds (N60): the words and the reply-to as typed, the log
+/// box, the report the shell gathered, and where Send stands. All clear when it closes.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct FeedbackFields {
+    pub words: String,
+    pub words_edits: u32,
+    pub reply_to: String,
+    pub reply_edits: u32,
+    /// The log box was unticked: the report carries the version alone (it opens ticked).
+    pub without_log: bool,
+    pub gathered: Option<crate::report::Diagnostics>,
+    /// Send was clicked and shroom.am hasn't answered.
+    pub sending: bool,
+    /// The last Send didn't go through.
+    pub failed: bool,
+    /// shroom.am took it: the window says so and offers Done.
+    pub sent: bool,
 }
 
 /// What the Settings window holds while it's open: the Members composer, the link just

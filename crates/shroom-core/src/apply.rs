@@ -14,12 +14,12 @@ use crate::event::{
     ClaimFail, CloudNews, Event, Field, JoinAnswer, Key, LibraryNews, MemberNews, OsNews, PeekAnswer, QuitVia, RecNews, ReportNews, SecretField, Shape,
     StandingAnswer, Surface, TokenFail, UpdateNews, UploadNews, WireFail,
 };
-use crate::report::Post;
+use crate::report::{Kind, Post};
 use crate::scene::{Action, Click};
 use crate::time::{Fact, Mono};
 use crate::world::{
     Access, Arming, Blocked, Born, Cause, Confirm, CopyTarget, Door, FailClass, Failure, Fields, Fork, Invite, JoinRefusal, Landed, LaunchKind,
-    LibraryFields, LibraryOps, Members, OpenTake, Op, PageOpen, Paste, Phase, QuickProbe, Reach, RelaunchWhy, Removal, ReportFields, Restore, Role, SavedCause,
+    LibraryFields, LibraryOps, Members, OpenTake, Op, PageOpen, Paste, Phase, QuickProbe, Reach, RelaunchWhy, Removal, ReportFields, FeedbackFields, Restore, Role, SavedCause,
     SavedTake, SecretId, SettingsFields, SettingsTab, SourceId, Space, SpaceIdentity, StopOutcome, Strike, Sweep, TakeDir, TakeLost, TokenVerdict,
     UpdateOffer, Why, WindowKind, WorkerFact, World,
 };
@@ -229,6 +229,22 @@ fn apply_event(w: &mut World, event: Event) -> Out {
                 f.reply_edits += 1;
             }
             (vec![], Arm::named("report-typed"))
+        }
+        Event::Field { field: field @ (Field::FeedbackWords | Field::FeedbackReplyTo), value } => {
+            // Send feedback's fields: typed only while its form shows and nothing is on its way.
+            let open = w.window_visible(WindowKind::Feedback);
+            let f = &mut w.session.fields.feedback;
+            if !open || f.sending || f.sent {
+                return (vec![], Arm::DROPPED);
+            }
+            if field == Field::FeedbackWords {
+                f.words = value.chars().take(crate::copy::REPORT_WORDS_MAX).collect();
+                f.words_edits += 1;
+            } else {
+                f.reply_to = value.chars().take(254).collect();
+                f.reply_edits += 1;
+            }
+            (vec![], Arm::named("feedback-typed"))
         }
         Event::Field { field: Field::FromName, value } => {
             // The name invites carry, while it's being changed on the Members face (B158).
@@ -606,6 +622,20 @@ fn act(w: &mut World, action: Action) -> Out {
             fx.push(Effect::Shell(ShellCmd::OpenSettings));
             let edge = (settings_view::tab(w) == SettingsTab::General).then_some(("config", "settings-general"));
             (fx, Arm { name: "open-settings", edge })
+        }
+        Action::OpenFeedback => {
+            w.session.popover = None;
+            // A window already open comes forward as typed; a new one starts empty, its
+            // report gathered for the log box (ticked) and the disclosure.
+            let fresh = !w.session.windows.contains_key(&WindowKind::Feedback);
+            open_window(w, WindowKind::Feedback);
+            let mut fx = Vec::new();
+            if fresh {
+                w.session.fields.feedback = FeedbackFields::default();
+                fx.push(Effect::Shell(ShellCmd::GatherReport { role: crate::report::role_words(w.space.role()) }));
+            }
+            fx.push(Effect::Shell(ShellCmd::OpenFeedback));
+            (fx, Arm { name: "open-feedback", edge: Some(("config", "send-feedback")) })
         }
         Action::Quit => quit_requested(w, QuitVia::Footer),
         Action::QuitAnyway => (vec![Effect::Shell(ShellCmd::Quit)], Arm::named("quit-anyway")),
@@ -995,7 +1025,7 @@ fn act(w: &mut World, action: Action) -> Out {
                 return (vec![], Arm::DROPPED);
             }
             let reply = f.reply_to.trim();
-            let post = Post { words: f.words.trim().to_string(), reply_to: (!reply.is_empty()).then(|| reply.to_string()), diagnostics };
+            let post = Post { kind: Kind::Problem, words: f.words.trim().to_string(), reply_to: (!reply.is_empty()).then(|| reply.to_string()), diagnostics };
             w.session.confirm = Some(Confirm::Report { sending: true });
             w.session.fields.settings.report.failed = false;
             (vec![Effect::Shell(ShellCmd::SendReport(post))], Arm::named("report-sending"))
@@ -1008,6 +1038,43 @@ fn act(w: &mut World, action: Action) -> Out {
             let version = f.gathered.as_ref().map_or_else(|| w.launch.version.clone(), |d| d.shroom.clone());
             let url = PublicUrl::MailReport { version, words: f.words.trim().to_string() };
             (vec![Effect::Shell(ShellCmd::OpenUrl(url))], Arm::named("report-by-mail"))
+        }
+        // ── Send feedback (N60) ──
+        Action::FeedbackLog(on) => {
+            let open = w.window_visible(WindowKind::Feedback);
+            let f = &mut w.session.fields.feedback;
+            if !open || f.sending || f.sent {
+                return (vec![], Arm::DROPPED);
+            }
+            f.without_log = !on;
+            (vec![], Arm::named("feedback-log"))
+        }
+        Action::SendFeedback => {
+            let f = &w.session.fields.feedback;
+            if !w.window_visible(WindowKind::Feedback) || f.sending || f.sent || f.words.trim().is_empty() {
+                return (vec![], Arm::DROPPED);
+            }
+            let Some(diagnostics) = crate::derive::feedback::goes(w, f) else { return (vec![], Arm::DROPPED) };
+            let reply = f.reply_to.trim();
+            let post = Post { kind: Kind::Feedback, words: f.words.trim().to_string(), reply_to: (!reply.is_empty()).then(|| reply.to_string()), diagnostics };
+            let f = &mut w.session.fields.feedback;
+            f.sending = true;
+            f.failed = false;
+            (vec![Effect::Shell(ShellCmd::SendReport(post))], Arm::named("feedback-sending"))
+        }
+        Action::MailFeedback => {
+            let f = &w.session.fields.feedback;
+            if !w.window_visible(WindowKind::Feedback) || f.sending || !f.failed {
+                return (vec![], Arm::DROPPED);
+            }
+            let url = PublicUrl::MailReport { version: w.launch.version.clone(), words: f.words.trim().to_string() };
+            (vec![Effect::Shell(ShellCmd::OpenUrl(url))], Arm::named("feedback-by-mail"))
+        }
+        Action::CloseFeedback => {
+            if !w.window_visible(WindowKind::Feedback) || w.session.fields.feedback.sending {
+                return (vec![], Arm::DROPPED);
+            }
+            window_closed(w, WindowKind::Feedback)
         }
         Action::Disconnect => {
             if w.take_open() {
@@ -1809,6 +1876,13 @@ fn window_closed(w: &mut World, kind: WindowKind) -> Out {
                 w.session.chapter = false;
             }
             (vec![], Arm::named("settings-closed"))
+        }
+        WindowKind::Feedback => {
+            // The words go with the window; a send on its way still goes, and its answer
+            // finds no one waiting.
+            w.session.windows.remove(&WindowKind::Feedback);
+            w.session.fields.feedback = FeedbackFields::default();
+            (vec![], Arm::named("feedback-closed"))
         }
     }
 }
@@ -2971,13 +3045,39 @@ fn _mono(_: Mono) {}
 fn report(w: &mut World, news: ReportNews) -> Out {
     match news {
         ReportNews::Gathered(d) => {
-            if !matches!(w.session.confirm, Some(Confirm::Report { .. })) {
+            // One gathering serves whichever form waits for it: the sheet, Send feedback, or both.
+            let sheet = matches!(w.session.confirm, Some(Confirm::Report { .. }));
+            let feedback = w.session.windows.contains_key(&WindowKind::Feedback) && w.session.fields.feedback.gathered.is_none();
+            if !sheet && !feedback {
                 return (vec![], Arm::DROPPED);
             }
-            w.session.fields.settings.report.gathered = Some(d);
+            if feedback {
+                w.session.fields.feedback.gathered = Some(d.clone());
+            }
+            if sheet {
+                w.session.fields.settings.report.gathered = Some(d);
+            }
             (vec![], Arm::named("report-gathered"))
         }
-        ReportNews::Sent => {
+        ReportNews::Sent(Kind::Feedback) => {
+            let f = &mut w.session.fields.feedback;
+            if !f.sending {
+                return (vec![], Arm::DROPPED);
+            }
+            f.sending = false;
+            f.sent = true;
+            (vec![], Arm::named("feedback-sent"))
+        }
+        ReportNews::NotSent(Kind::Feedback) => {
+            let f = &mut w.session.fields.feedback;
+            if !f.sending {
+                return (vec![], Arm::DROPPED);
+            }
+            f.sending = false;
+            f.failed = true;
+            (vec![], Arm::named("feedback-not-sent"))
+        }
+        ReportNews::Sent(Kind::Problem) => {
             if w.session.confirm != Some(Confirm::Report { sending: true }) {
                 return (vec![], Arm::DROPPED);
             }
@@ -2986,7 +3086,7 @@ fn report(w: &mut World, news: ReportNews) -> Out {
             w.session.fields.settings.sent = true;
             (vec![], Arm { name: "report-sent", edge: Some(("report-problem", "settings-general")) })
         }
-        ReportNews::NotSent => {
+        ReportNews::NotSent(Kind::Problem) => {
             if w.session.confirm != Some(Confirm::Report { sending: true }) {
                 return (vec![], Arm::DROPPED);
             }

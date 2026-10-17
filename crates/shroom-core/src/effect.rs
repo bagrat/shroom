@@ -170,6 +170,8 @@ pub enum ShellCmd {
     AllowSleep,
     OpenLibrary,
     OpenSettings,
+    /// The Send feedback window, brought forward when it's already open (N60).
+    OpenFeedback,
     /// Open a public page in the browser — only ever right after the click that asked.
     OpenUrl(PublicUrl),
     /// Register (or not) shroom to start at login.

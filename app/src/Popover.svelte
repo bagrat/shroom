@@ -1,7 +1,7 @@
 <script lang="ts">
   // The popover renders the slice it's handed — final copy included. It composes no
   // sentences and decides nothing (ARCHITECTURE §3.5). Its look is the canvas's
-  // (DEVIATIONS #45): the mushroom header with Library · Settings · Quit, one card of
+  // (DEVIATIONS #45): the mushroom header with Send feedback · Library · Settings · Quit, one card of
   // picker rows, one filled action.
   import { onMount, tick } from "svelte";
   import { act, fit, key, keyed, onScene, sceneGet, type Action } from "./lib/ipc";
@@ -71,7 +71,8 @@
 
 {#snippet glyph(name: string)}
   <svg class="icon16" viewBox="0 0 16 16" aria-hidden="true">
-    {#if name === "open-library"}<path d="M4.5 2.5h7" /><rect x="2" y="5" width="12" height="9" rx="1.8" /><path d="M7 7.8v3.4l2.8-1.7z" />
+    {#if name === "open-feedback"}<path d="M3 3h10a1.5 1.5 0 0 1 1.5 1.5v5.5a1.5 1.5 0 0 1-1.5 1.5H7.5L4.5 14v-2.5H3A1.5 1.5 0 0 1 1.5 10V4.5A1.5 1.5 0 0 1 3 3z" /><path d="M5 6.3h6M5 8.7h3.5" />
+    {:else if name === "open-library"}<path d="M4.5 2.5h7" /><rect x="2" y="5" width="12" height="9" rx="1.8" /><path d="M7 7.8v3.4l2.8-1.7z" />
     {:else if name === "open-settings"}<circle cx="8" cy="8" r="2" /><path d="M12.54 6.16L14.46 6.63L14.46 9.37L12.54 9.84L11.86 11.02L12.42 12.9L10.04 14.28L8.68 12.85L7.32 12.85L5.96 14.28L3.58 12.9L4.14 11.02L3.46 9.84L1.54 9.37L1.54 6.63L3.46 6.16L4.14 4.98L3.58 3.1L5.96 1.72L7.32 3.15L8.68 3.15L10.04 1.72L12.42 3.1L11.86 4.98Z" />
     {:else if name === "quit"}<path d="M8 2v6M4.5 4.5a5 5 0 1 0 7 0" />
     {:else if name === "stop"}<rect x="3.5" y="3.5" width="9" height="9" rx="2" />

@@ -304,6 +304,7 @@ fn config(w: &World) -> Popover {
             hint: copy::countdown_hint(),
             room_line,
             footer: vec![
+                Button::new(Action::OpenFeedback, copy::send_feedback(), Style::Quiet),
                 Button::new(Action::OpenLibrary, copy::library(), Style::Quiet),
                 Button::new(Action::OpenSettings, copy::settings(), Style::Quiet),
                 Button::new(Action::Quit, copy::quit(), Style::Quiet),

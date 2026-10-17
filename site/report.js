@@ -89,7 +89,8 @@ export function bodyText(r, questions) {
   if (r.name?.trim()) out.push(`From: ${r.name.trim()}`);
   if (r.reply_to) out.push(`Reply to: ${r.reply_to}`);
   if (out.length) out.push("");
-  if (r.words?.trim()) out.push(r.kind === "feedback" ? "Anything else:" : "What happened:", r.words.trim(), "");
+  const label = r.kind === "problem" ? "What happened:" : r.from === "app" ? "Feedback:" : "Anything else:";
+  if (r.words?.trim()) out.push(label, r.words.trim(), "");
   (r.answers ?? []).forEach((a, i) => {
     if (a.trim()) out.push(`${i + 1}. ${questions[i] ?? `Question ${i + 1}`}`, a.trim(), "");
   });
@@ -97,7 +98,7 @@ export function bodyText(r, questions) {
   const mac = [v.shroom && `shroom ${v.shroom}`, v.macos && `macOS ${v.macos}`, v.chip, v.memory].filter(Boolean);
   if (mac.length) out.push(mac.join(" · "));
   if (r.setup?.trim()) out.push(`Set up: ${r.setup.trim()}`);
-  out.push(`Sent from: ${r.from === "app" ? "the app (Settings → Report a problem)" : "shroom.am/feedback"}`);
+  out.push(`Sent from: ${r.from === "page" ? "shroom.am/feedback" : r.kind === "feedback" ? "the app (Send feedback)" : "the app (Settings → Report a problem)"}`);
   out.push(r.log?.trim() ? "\nThe log, cleaned, is attached as report.txt." : "\nNo log was sent.");
   return out.join("\n");
 }
