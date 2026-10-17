@@ -4,10 +4,11 @@
 # on all Spaces, B188) and as 0.1.21 had it (not stationary): for each, the dev app's
 # --bubble-probe, and a swipe out of the full-screen Space and back, the screen shot as fast
 # as it goes through each swipe. The shots and a clip of each swipe land in the evidence
-# (bubble-swipe/<variant>/), for the eye: whether the bubble stays through the swipe (on
-# 2026-10-17 the stationary one stayed in every shot of two runs; the other was gone from
-# the desktop in one run and stayed in the next). The shipped one's probe verdict (the
-# picture still moves at its end, with OBS's own window hidden) is the scenario's.
+# (bubble-swipe/<variant>/), for the eye. The runner's virtual display has no swipe
+# animation, so the shots can't show whether the bubble slides with a swipe (on a real Mac
+# it does, stationary or not: B188); they show it's there before and after. The shipped
+# one's probe verdict (the picture still moves at its end, with OBS's own window hidden) is
+# the scenario's.
 set -u
 . dev/mac/lib.sh
 bash dev/mac/camera.sh up || exit 1
