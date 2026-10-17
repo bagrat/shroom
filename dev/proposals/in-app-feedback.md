@@ -40,7 +40,9 @@ and Settings column, at its foot:
   icon turns the popover itself into a short form, the way the quit question does. After
   Send, the popover is ready again and shows the thank-you line.
 
-`make-boards.py` writes the three boards and `render.mjs` renders their PNGs.
+- **A's icon, eight options** ([`FeedbackIcons.png`](in-app-feedback/FeedbackIcons.png)): Bagrat chose A on 2026-10-17 and asked to see more icons. Each option is drawn in the header in dark and light, at real size and at 3×. The pick is 2, the bubble with lines: at 16 px it reads as a message rather than a blank shape, and it doesn't look like Library's frame. The envelope reads as mail and the paper plane as share, which a recording app already means.
+
+`make-boards.py` writes the three boards, `make-icons.py` the icon sheet, and `render.mjs` renders their PNGs.
 
 ## Why A
 
