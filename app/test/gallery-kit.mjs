@@ -25,6 +25,21 @@ export const gallery = (which) =>
     }),
   );
 
+/** The page a window's webview gets: its WindowSpec in runtime/presenter.rs (read from there, so
+ *  the galleries and the runner stay in step), less macOS's title bar. The spec's height is
+ *  the window's frame, title bar included: on the hosted Mac a 520×600 setup window measured
+ *  a 520×568 web area (dev/mac/scenarios/window-size.sh, 2026-10-17). */
+export const TITLE_BAR = 32;
+export function windowPage(label, fallback) {
+  let size = fallback;
+  try {
+    const src = readFileSync(join(repo, "app/src-tauri/src/runtime/presenter.rs"), "utf8");
+    const m = src.match(new RegExp(`label: ${label},[^}]*?width: ([\\d.]+), height: ([\\d.]+)`));
+    if (m) size = { width: Number(m[1]), height: Number(m[2]) };
+  } catch {}
+  return { width: size.width, height: size.height - TITLE_BAR };
+}
+
 const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png" };
 
 /** Serves app/dist on 127.0.0.1; resolves to { origin, close }. */

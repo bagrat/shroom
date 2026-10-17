@@ -18,7 +18,7 @@
 import { existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { webkit } from "playwright";
-import { collect, dist, gallery as load, hex, isButton, isChoice, norm, out, serve, stub, texts as said } from "./gallery-kit.mjs";
+import { collect, dist, gallery as load, hex, isButton, isChoice, norm, out, serve, stub, texts as said, windowPage } from "./gallery-kit.mjs";
 
 if (!existsSync(join(dist, "onboarding.html"))) {
   console.error("app/dist/onboarding.html is missing — run `npm run build --workspace app` first.");
@@ -30,6 +30,8 @@ mkdirSync(out, { recursive: true });
 const gallery = [...load(), ...load("members").filter((e) => e.window === "onboarding")];
 const server = await serve();
 const url = `${server.origin}/onboarding.html`;
+// The page the setup window gives its webview: 600×680 less the title bar (the canvas's frame).
+const PAGE = windowPage("ONBOARDING", { width: 600, height: 680 });
 
 const TEXT = new Set(["text", "paragraphs", "label", "header", "line", "lines", "question", "error", "hint", "taken", "quiet", "miss", "prefix", "suffix", "note", "title", "door"]);
 const texts = (node) => said(node, TEXT);
@@ -47,7 +49,7 @@ const masks = new Set();
 const browser = await webkit.launch();
 
 async function open(entry, colorScheme = "light") {
-  const ctx = await browser.newContext({ colorScheme, viewport: { width: 520, height: 600 }, deviceScaleFactor: 2 });
+  const ctx = await browser.newContext({ colorScheme, viewport: PAGE, deviceScaleFactor: 2 });
   const page = await ctx.newPage();
   const errors = [];
   page.on("pageerror", (e) => errors.push(String(e)));
@@ -164,7 +166,7 @@ for (const entry of gallery) {
       check(`${tag}: nest ${cur === null ? "below the plan" : silent ? `none under row ${cur}` : `under row ${cur}`}`, placed === (silent ? 0 : 1));
     }
 
-    // The window is 520 wide (the runner's inner size): nothing scrolls it sideways.
+    // Nothing scrolls the window sideways.
     const wide = await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth }));
     check(`${tag}: fits the window's width`, wide.sw <= wide.cw, JSON.stringify(wide));
     // Emphasis is the Scene's runs, rendered as given — and none the Scene didn't give.
@@ -178,9 +180,9 @@ for (const entry of gallery) {
     check(`${tag}: no page errors`, errors.length === 0, errors.join(" | "));
     check(`${tag}: listens to its own slice`, (await page.evaluate(() => window.__listenTarget()))?.label === "onboarding");
     check(`${tag}: rendering calls nothing`, (await calls(page)).length === 0, JSON.stringify(await calls(page)));
-    // Nothing runs off the window's 600px height (the window doesn't scroll by design).
+    // Nothing runs off the page under the title bar (the window doesn't scroll by design).
     const tall = await page.evaluate(() => Math.ceil(document.querySelector("main.ob").getBoundingClientRect().bottom));
-    check(`${tag}: fits the window's height (${tall} ≤ 600)`, tall <= 600);
+    check(`${tag}: fits the window's height (${tall} ≤ ${PAGE.height})`, tall <= PAGE.height);
     await page.screenshot({ path: join(out, `${entry.variant}-${scheme}.png`), fullPage: true });
     await ctx.close();
   }
@@ -272,7 +274,7 @@ async function pasteInto(page, selector, text) {
 }
 // The other webviews hear only their own slice (one "scene" event, targeted per label).
 for (const [html, label] of [["popover.html", "popover"], ["countdown.html", "countdown"]]) {
-  const ctx = await browser.newContext({ viewport: { width: 520, height: 600 } });
+  const ctx = await browser.newContext({ viewport: PAGE });
   const page = await ctx.newPage();
   await page.addInitScript(stub, null);
   await page.goto(url.replace("onboarding.html", html));

@@ -273,7 +273,7 @@ stay. A switch keeps the old space's files until the new join's 200 (D:B42, B54 
   (DV #40); shown with `orderFrontRegardless`, key only when asked; shroom is never
   activated. Losing the keyboard closes nothing; a click elsewhere closes an asked popover
   (`overlay::click_away`) unless it is a switch (`overlay::switches`, DV #39).
-- Windows: onboarding 520×600, Library 680×560 (resizable), Settings 600×620.
+- Windows: onboarding 600×680 (B189), Library 680×560 (resizable), Settings 600×620 — each its frame, macOS's 32 pt title bar inside it.
 - Camera panels (`runtime/camera.rs`): bubble and Camera-only preview (§4.4).
 - Every window and overlay joins `Runtime.excluded` when made and is left out of capture;
   the bubble never is. Overlays and camera panels don't hide on ⌘H (D:B112).
