@@ -146,7 +146,7 @@ pub fn welcome_what() -> String {
 /// The first paragraph's ratified emphasis: “shroom” bold, “your own” italic.
 pub const WELCOME_WHAT_MARKS: &[(&str, crate::scene::Em)] = &[("shroom", crate::scene::Em::Strong), ("your own", crate::scene::Em::Em)];
 pub fn welcome_steps() -> String {
-    "Two steps before your first video: set up your Cloudflare, and let macOS allow recording. About five minutes, once.".into()
+    "Two steps before your first video: set up your Cloudflare, and let macOS allow recording. About ten minutes, once.".into()
 }
 pub fn login_box() -> String { "Start shroom when you log in".into() }
 pub fn set_up() -> String { "Set up my space".into() }
