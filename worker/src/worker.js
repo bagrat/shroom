@@ -136,7 +136,7 @@ export const STALL_SECONDS = 120;
 export const IFACE = 2;
 /** The version of the app that deploys this file — the same as the app's own
  * (`app/src-tauri/tauri.conf.json`, held equal by a shroom-cloud test). */
-export const VERSION = "0.1.20";
+export const VERSION = "0.1.21";
 
 const ID = /^[A-Za-z0-9_-]{16}$/;
 const HLS_JS_KEY = ".shroom/player/hls.min.js";
@@ -2483,7 +2483,7 @@ function lineFace(line) {
  * word kept for a screen reader; a click shows “Copied” beside a tick (law 10). The install
  * line's is filled, the Homebrew line's plain, so the install line stays the first road. */
 /** @param {string} id @param {boolean} primary */
-const copyIcon = (id, primary) => `<button class="copy-ic${primary ? " primary" : ""}" type="button" data-copy="${id}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg><svg class="ok" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span class="lbl">${escapeHtml(COPY.copy)}</span></button>`;
+const copyIcon = (id, primary) => `<button class="copy-ic${primary ? " primary" : ""}" type="button" data-copy="${id}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M15 5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2"/></svg><svg class="ok" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span class="lbl">${escapeHtml(COPY.copy)}</span></button>`;
 
 /** join-landing, its own-Mac variant, the owner view and the -elsewhere face. */
 /** @param {any} invite @param {string} host @param {string} code @param {boolean} ownerView @param {boolean} elsewhere */
@@ -2500,7 +2500,7 @@ function landingFace(invite, host, code, ownerView, elsewhere) {
   const [readFirst, readRest] = COPY.readFirst.split(/(?= — )/);
   const get = `<div id="get"><p class="line">${escapeHtml(ownMac ? ownSame(host) : joinIntro(inviter))}</p>
 <section class="card"><h2>${escapeHtml(COPY.getShroom)}</h2><p class="line">${escapeHtml(COPY.pasteThis)}</p>
-<div class="cmd"><code id="cmd">${escapeHtml(installLine(link))}</code>${copyIcon("cmd", true)}</div>
+<div class="cmd"><code id="cmd">${escapeHtml(installLine(link))}</code>${copyIcon("cmd", false)}</div>
 <div class="fine"><p><a href="https://shroom.am/install">${escapeHtml(readFirst)}</a>${escapeHtml(readRest)}</p><p>${escapeHtml(COPY.macos)}</p></div>
 <div class="brew"><p class="line">${escapeHtml(COPY.useHomebrew)}</p><div class="cmd"><code id="brew">${escapeHtml(brewLine(link))}</code>${copyIcon("brew", false)}</div></div></section>
 <section class="have"><div class="ask"><p>${escapeHtml(COPY.alreadyHave)}</p><a class="btn" href="${escapeHtml(`shroom://join/${host}/${code}`)}">${escapeHtml(COPY.openShroom)}</a></div>
