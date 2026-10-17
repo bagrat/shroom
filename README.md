@@ -1,7 +1,7 @@
 # shroom
 
 **Record. Share. Pay-as-you-go.** Your videos live in your own Cloudflare
-account — we never hold them. You set Cloudflare up once, in a guided setup — about five
+account — we never hold them. You set Cloudflare up once, in a guided setup — about ten
 minutes. You only ever pay Cloudflare. No account with us, no subscription.
 
 ```sh
@@ -16,6 +16,8 @@ curl -fsSL https://shroom.am/install | sh
 
 Read it first — the same address opens as readable source. For macOS 14 or newer, Apple
 silicon. More at [shroom.am](https://shroom.am).
+
+See it first: [the demo](https://v.myshroom.workers.dev/ao_nEWdnMegiXNjz), recorded with shroom itself.
 
 ## In this repo
 
