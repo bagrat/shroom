@@ -8,7 +8,7 @@ Record. Share. Pay-as-you-go.
 No monthly seat, sometimes completely free
 
 - Your videos live in your own Cloudflare account — we never hold them.
-- You set Cloudflare up once, in a guided setup — about five minutes.
+- You set Cloudflare up once, in a guided setup — about ten minutes.
 - You only ever pay Cloudflare. No account with us, no subscription.
   - $0 /month — about three hours of video
   - $1.50 /month — about thirty hours
