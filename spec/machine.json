@@ -464,7 +464,8 @@
     "U6 (placement amended)"
    ],
    "amended_by": [
-    "N58"
+    "N58",
+    "N59"
    ]
   },
   {
@@ -1001,7 +1002,9 @@
    "amends": [
     "landing (the install block's order)"
    ],
-   "amended_by": []
+   "amended_by": [
+    "N59"
+   ]
   },
   {
    "id": "N53",
@@ -1036,7 +1039,9 @@
    "amends": [
     "landing (page chrome: a Send feedback link beside GitHub; the footer's link opens shroom.am/feedback)"
    ],
-   "amended_by": []
+   "amended_by": [
+    "N59"
+   ]
   },
   {
    "id": "N56",
@@ -1072,6 +1077,22 @@
    "amends": [
     "N6 (the demo now sits above Install)",
     "N7 (the demo plays on the landing, not on the player page)"
+   ],
+   "amended_by": [
+    "N59"
+   ]
+  },
+  {
+   "id": "N59",
+   "title": "shroom.am, redesigned: two columns, the price as one bar, install in tabs",
+   "decision": "**Bagrat approved the canvas board “shroom.am redesign — B8-box”, 2026-10-17**, after eight rounds from his ask for a page with less text that shows the demo and install without scrolling. (1) **Two columns on a laptop.** Left: the shroom mark and wordmark, large, at the top; then the headline “Record. Share. Pay-as-you-go.” on one line with its line under it; then one thin price bar, 0 to 30 hours to scale, as wide as the headline, its first tenth lit, labelled “$0 · about three hours of video” and “$1.50 /month · about thirty hours” (it replaces the two price tiles, which read as two plans); then seven terms with green ticks, in his order: “Your videos live in your own Cloudflare account”, “You pay only Cloudflare, for the storage”, “Invite your team with a link”, “No price per person — the bill counts video, not people”, “Delete old videos and pay less”, “About ten minutes of guided setup, once”, “Open source — every line on GitHub”. Spacing: brand to headline 70 px, headline's line to the bar 48, bar to terms 48. Right: one box, corners 10 px, its top level with the wordmark's baseline and its bottom with the last term's: the demo (N58, the caption on the still's corner), then Install. (2) **Install is one command at a time, in tabs: Terminal (chosen), Homebrew, Coding agent**, amending N52's Homebrew-first stack; under each, “Read it first” alone, and in the agent's tab “Your agent asks you before it runs anything.”; the system-requirements line under all three. (3) **No header and no trust strip.** The page's foot, under the left column at the bottom of the first screen (after the content when it runs longer), holds Send feedback · GitHub · Questions and limits · Privacy · Terms, then the visits line; “Trouble, questions” goes (it opened /feedback, as Send feedback does), and so do “Your storage, your bill” (term 2 says it) and “Built to outlive us”. The other shroom.am pages keep their header and footer. (4) **On a phone** it stacks: the brand, the headline, the bar, the box, the terms, the foot. Built: DECISIONS B191.",
+   "status": "ratified",
+   "date": "2026-10-17",
+   "amends": [
+    "N6 (the hero's points, the price tiles and the trust strip)",
+    "N52 (the install block: tabs, Terminal first)",
+    "N55 (the landing's header links move to its foot; its footer's Trouble, questions goes)",
+    "N58 (the demo's place: a box beside the pitch, the caption on the still)"
    ],
    "amended_by": []
   }
@@ -2252,7 +2273,7 @@
    "surface": "web-page",
    "status": "ratified",
    "board": "Landing",
-   "summary": "shroom.am, a static page with one job: take a curious visitor to a pasted command, with no false notes. Blocks top to bottom: Hero (the punchline, the explanation points and two eyeball-number price tiles, which carry the whole message), the Demo (a real shroom recording, self-recorded and record-only, that plays in place on the page: a still with a play button, the video under it; N58), Install (one command with [ Copy ], \"Read it first\" and the system-requirements line), right under the demo, and the Trust strip. Page chrome: the shroom wordmark on the left (the spec draws 🍄 before it) and two links on the right, Send feedback and GitHub (N55).",
+   "summary": "shroom.am, a static page with one job: take a curious visitor to a pasted command, with no false notes. Two columns on a laptop (N59). Left: the shroom mark and wordmark, large; the headline on one line and its line under it; one thin price bar, 0 to 30 hours to scale, as wide as the headline, $0 for the first tenth and $1.50 a month at its end; then seven terms with green ticks. Right: one box, its top level with the wordmark's baseline and its bottom with the last term's: the Demo (a real shroom recording that plays in place: a still with a play button and the length, the video under it; N58), and Install under it (Terminal, Homebrew and Coding agent tabs, Terminal first; each command with [ Copy ]; Read it first; the system-requirements line). No header: the page's foot, at the bottom of the first screen under the left column, holds Send feedback, GitHub, Questions and limits, Privacy and Terms, then the visits line. On a phone it stacks: the brand, the headline and its line, the bar, the box, the terms, the foot.",
    "entry": "A visitor arrives at shroom.am through one of three entry arrows. (1) Direct: HN, README or word of mouth; a cold visitor who needs the pitch. (2) The recipient loop: they watched a shroom video and clicked the player page's mark (Region 4; whether the mark exists = U3); a warm visitor who already saw the product work. (3) An agent fetching the BYO-agent skill (Region 6's overlay). Also reached by going back from the source view.",
    "said": [
     {
@@ -2270,112 +2291,211 @@
      "id": "landing.pay-as-you-go"
     },
     {
-     "text": "Your videos live in your own Cloudflare account — we never hold them.",
-     "role": "line",
-     "copy": "ratified",
-     "note": "First dashed point of the hero explanation. The spec puts a leading '— ' list marker before each point; it is stripped here. 'your own Cloudflare account' is bold.",
-     "id": "landing.your-videos-live-in"
-    },
-    {
-     "text": "You set Cloudflare up once, in a guided setup — about ten minutes.",
-     "role": "line",
-     "copy": "ratified",
-     "note": "Hero explanation, second dashed point. 'once' is bold.",
-     "id": "landing.you-set-cloudflare-up"
-    },
-    {
-     "text": "You only ever pay Cloudflare. No account with us, no subscription.",
-     "role": "line",
-     "copy": "ratified",
-     "note": "Hero explanation, third dashed point. 'No account with us, no subscription.' is bold. The two price tiles render right after this point.",
-     "id": "landing.you-only-ever-pay"
-    },
-    {
-     "text": "$0 /month — about three hours of video",
+     "text": "$0 · about three hours of video",
      "role": "other",
      "copy": "ratified",
-     "note": "Price tile 1 of 2 (an eyeball-number tile). '$0' is bold. The spec draws it in [ ] brackets, but it is a tile, not a button.",
-     "id": "landing.0-month-about-six"
+     "note": "The price bar's left label: one thin bar from 0 to 30 hours, true to scale, its first tenth lit (the free part). '$0' is bold, in frost. It replaces the first of the two price tiles, which read as two plans. Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59).",
+     "cites": [
+      "N59"
+     ],
+     "id": "landing.0-month-about-six",
+     "was": "$0 /month — about three hours of video"
     },
     {
-     "text": "$1.50 /month — about thirty hours",
+     "text": "$1.50 /month · about thirty hours",
      "role": "other",
      "copy": "ratified",
-     "note": "Price tile 2 of 2. '$1.50' is bold. Words, not numerals, on the landing; the welcome deliberately uses numerals (Law 16, N12).",
-     "id": "landing.1-50-month-about"
+     "note": "The price bar's right label, under its end. '$1.50 /month' is bold. Words, not numerals, on the landing; the welcome deliberately uses numerals (Law 16, N12). Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59).",
+     "cites": [
+      "N59"
+     ],
+     "id": "landing.1-50-month-about",
+     "was": "$1.50 /month — about thirty hours"
     },
     {
-     "text": "Delete old videos and pay less — storage is the whole bill.",
+     "text": "Your videos live in your own Cloudflare account",
      "role": "line",
      "copy": "ratified",
-     "note": "Hero explanation, fourth dashed point. 'Delete old videos and pay less' is bold.",
-     "id": "landing.delete-old-videos-and"
+     "note": "Term 1 of 7, under the price bar; green tick. 'your own Cloudflare account' is bold. Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59).",
+     "cites": [
+      "N59"
+     ],
+     "id": "landing.your-videos-live-in",
+     "was": "Your videos live in your own Cloudflare account — we never hold them."
     },
     {
-     "text": "Your team just accepts an invite and records — no Cloudflare setup for them.",
+     "text": "You pay only Cloudflare, for the storage",
      "role": "line",
      "copy": "ratified",
-     "note": "Hero explanation, last dashed point. 'accepts an invite' is bold. This point replaces the dissolved \"Record together\" section (N6). The spec calls it 'point six', although only five dashed points are drawn (see open notes).",
-     "id": "landing.your-team-just-accepts"
+     "note": "Term 2 of 7. 'only Cloudflare' is bold. Drops “No account with us, no subscription.” from the page (the search description keeps it). Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59).",
+     "cites": [
+      "N59"
+     ],
+     "id": "landing.you-only-ever-pay",
+     "was": "You only ever pay Cloudflare. No account with us, no subscription."
+    },
+    {
+     "text": "Invite your team with a link",
+     "role": "line",
+     "copy": "ratified",
+     "note": "Term 3 of 7. 'Invite your team' is bold. Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59).",
+     "cites": [
+      "N59"
+     ],
+     "id": "landing.your-team-just-accepts",
+     "was": "Your team just accepts an invite and records — no Cloudflare setup for them."
+    },
+    {
+     "text": "No price per person — the bill counts video, not people",
+     "role": "line",
+     "copy": "ratified",
+     "note": "Term 4 of 7, new: the bill doesn't grow with the team. 'No price per person' is bold. Draft (a) of three on the board; Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59).",
+     "cites": [
+      "N59"
+     ],
+     "id": "landing.no-price-per-person"
+    },
+    {
+     "text": "Delete old videos and pay less",
+     "role": "line",
+     "copy": "ratified",
+     "note": "Term 5 of 7. 'Delete old videos' is bold. Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59).",
+     "cites": [
+      "N59"
+     ],
+     "id": "landing.delete-old-videos-and",
+     "was": "Delete old videos and pay less — storage is the whole bill."
+    },
+    {
+     "text": "About ten minutes of guided setup, once",
+     "role": "line",
+     "copy": "ratified",
+     "note": "Term 6 of 7. 'ten minutes' is bold. Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59).",
+     "cites": [
+      "N59"
+     ],
+     "id": "landing.you-set-cloudflare-up",
+     "was": "You set Cloudflare up once, in a guided setup — about ten minutes."
+    },
+    {
+     "text": "Open source — every line on GitHub",
+     "role": "line",
+     "copy": "ratified",
+     "note": "Term 7 of 7, moved from the trust strip, which is gone. 'Open source' is bold. Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59).",
+     "cites": [
+      "N59"
+     ],
+     "id": "landing.open-source-every-line",
+     "was": "Open source — Every line on GitHub — the app, the installer, the player."
+    },
+    {
+     "text": "Recorded with shroom.",
+     "role": "line",
+     "copy": "ratified",
+     "note": "The demo's caption, on the still's lower-left corner. No link and no address: the demo plays in place (N58). Moved onto the still by N59.",
+     "cites": [
+      "N58",
+      "B190",
+      "N59"
+     ],
+     "id": "landing.recorded-with-shroom-itself",
+     "was": "Recorded with shroom itself. It ends at the click of Finish & Share — this page is what opened."
     },
     {
      "text": "Install in one line",
      "role": "title",
      "copy": "ratified",
-     "note": "Install block heading, bold.",
+     "note": "The install block's heading, bold, inside the box under the demo, the three tabs at its right. Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59).",
+     "cites": [
+      "N59"
+     ],
      "id": "landing.install-in-one-line"
     },
     {
-     "text": "With Homebrew:",
-     "role": "line",
-     "copy": "provisional",
-     "note": "Above the Homebrew line, which comes first (N52). A placeholder for Bagrat's words.",
+     "text": "Terminal",
+     "role": "button",
+     "copy": "ratified",
+     "note": "The install block's first tab, chosen when the page opens: the install line with its Copy. Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59).",
      "cites": [
-      "N52"
+      "N52",
+      "N59"
      ],
-     "id": "landing.with-homebrew"
+     "id": "landing.or-without-it",
+     "was": "Or without it:"
     },
     {
-     "text": "brew install --cask bagrat/shroom/shroom && open ~/Applications/shroom.app",
-     "role": "other",
-     "copy": "provisional",
-     "note": "The Homebrew install line (N49, N52), set as code with a filled [ Copy ]. The app is opened by its path: Launch Services may not know it by name the moment brew returns (B175).",
+     "text": "Homebrew",
+     "role": "button",
+     "copy": "ratified",
+     "note": "The install block's second tab: the Homebrew line with its Copy (N52's line, now a tab). Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59).",
      "cites": [
-      "N49",
-      "N52"
+      "N52",
+      "N59"
      ],
-     "id": "landing.brew-install-cask-bagrat"
+     "id": "landing.with-homebrew",
+     "was": "With Homebrew:"
     },
     {
-     "text": "Or without it:",
-     "role": "line",
-     "copy": "provisional",
-     "note": "Above the install line, now second, its [ Copy ] outlined (N52). A placeholder for Bagrat's words.",
+     "text": "Coding agent",
+     "role": "button",
+     "copy": "ratified",
+     "note": "The install block's third tab: the agent line with its Copy, then Read it first and the ask-first line. Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59).",
      "cites": [
-      "N52"
+      "N59"
      ],
-     "id": "landing.or-without-it"
+     "id": "landing.or-ask-your-coding",
+     "was": "Or ask your coding agent"
     },
     {
      "text": "curl -fsSL https://shroom.am/install | sh",
      "role": "other",
      "copy": "ratified",
-     "note": "The one install command, set as code, with [ Copy ] beside it.",
+     "note": "The one install command, set as code with its Copy: the Terminal tab, the one shown when the page opens (N59).",
      "id": "landing.curl-fssl-https-shroom"
+    },
+    {
+     "text": "brew install --cask bagrat/shroom/shroom && open ~/Applications/shroom.app",
+     "role": "other",
+     "copy": "ratified",
+     "note": "The Homebrew tab's line (N49, N52), set as code with its Copy. The app is opened by its path: Launch Services may not know it by name the moment brew returns (B175). Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59).",
+     "cites": [
+      "N49",
+      "N52",
+      "N59"
+     ],
+     "id": "landing.brew-install-cask-bagrat"
     },
     {
      "text": "Copy",
      "role": "button",
      "copy": "ratified",
-     "note": "The install block's [ Copy ] button beside the command (not drawn filled). No 'Copied' face is drawn in Region 1 (see Law 10 note).",
+     "note": "The Copy icon inside each command's end (law 10: a click reads “Copied” beside a tick). Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59).",
+     "cites": [
+      "N59"
+     ],
      "id": "landing.copy"
     },
     {
-     "text": "Read it first — the same address opens as readable source.",
+     "text": "Read it first",
      "role": "line",
      "copy": "ratified",
-     "note": "The link text is 'Read it first'. It opens the same URL as plain-text source.",
-     "id": "landing.read-it-first-the"
+     "note": "Under the install line (and the agent line): a link alone. It opens the same address as readable source (/install), or the page the agent reads (/agent). Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59).",
+     "cites": [
+      "N59"
+     ],
+     "id": "landing.read-it-first-the",
+     "was": "Read it first — the same address opens as readable source."
+    },
+    {
+     "text": "Your agent asks you before it runs anything.",
+     "role": "line",
+     "copy": "ratified",
+     "note": "Beside Read it first under the agent line, in the Coding agent tab. The agent page's frame in a browser keeps its own line (landing.this-is-what-your). Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59).",
+     "cites": [
+      "N59"
+     ],
+     "id": "landing.read-it-first-the-2",
+     "was": "Read it first — the same address shows what your agent will read. Your agent asks you before it runs anything."
     },
     {
      "text": "For macOS 14 or newer, Apple silicon.",
@@ -2392,37 +2512,27 @@
      "id": "landing.for-macos-14-or"
     },
     {
-     "text": "Recorded with shroom.",
-     "role": "line",
+     "text": "Send feedback",
+     "role": "link",
      "copy": "ratified",
-     "note": "Demo block caption, under the video. No link and no address: the demo plays in place (N58).",
-     "id": "landing.recorded-with-shroom-itself",
-     "was": "Recorded with shroom itself. It ends at the click of Finish & Share — this page is what opened.",
+     "note": "The first link of the page's foot (it was the header's, beside GitHub); it opens shroom.am/feedback (N53). Ratified by Bagrat, 2026-10-17 (N55); moved by N59.",
      "cites": [
-      "N58",
-      "B190"
-     ]
+      "N55",
+      "N59"
+     ],
+     "id": "landing.send-feedback"
     },
     {
-     "text": "Open source — Every line on GitHub — the app, the installer, the player.",
+     "text": "Send feedback · GitHub · Questions and limits · Privacy · Terms",
      "role": "line",
      "copy": "ratified",
-     "note": "Trust strip item 1. 'Open source' is a bold label.",
-     "id": "landing.open-source-every-line"
-    },
-    {
-     "text": "Your storage, your bill — The prices above are Cloudflare's, not ours.",
-     "role": "line",
-     "copy": "ratified",
-     "note": "Trust strip item 2. 'Your storage, your bill' is a bold label. The apostrophe is straight ASCII, as in the spec.",
-     "id": "landing.your-storage-your-bill"
-    },
-    {
-     "text": "Built to outlive us — Links play from your own account — if shroom vanished tomorrow, they'd keep working.",
-     "role": "line",
-     "copy": "ratified",
-     "note": "Trust strip item 3. 'Built to outlive us' is a bold label. The source wraps after 'vanished'; that line break is joined with a space here.",
-     "id": "landing.built-to-outlive-us"
+     "note": "The page's foot: one row of links under the left column, at the bottom of the first screen (after the content when it runs longer); the visits line under it. The header is gone, so Send feedback and GitHub live here. “Trouble, questions” is gone: it opened /feedback, as Send feedback does. The other shroom.am pages keep their header and footer. Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59).",
+     "cites": [
+      "N55",
+      "N59"
+     ],
+     "id": "landing.shroom-trouble-questions",
+     "was": "shroom · Trouble, questions"
     },
     {
      "text": "shroom — Record. Share. Pay-as-you-go.",
@@ -2445,46 +2555,6 @@
      "id": "landing.screen-recordings-that-live"
     },
     {
-     "text": "Send feedback",
-     "role": "link",
-     "copy": "ratified",
-     "note": "The header link beside GitHub, in its style, on every shroom.am page; it opens shroom.am/feedback. **Ratified by Bagrat** (2026-10-17, N55), chosen from “Send feedback”, “Got feedback?” and “Feedback”",
-     "cites": [
-      "N55"
-     ],
-     "id": "landing.send-feedback"
-    },
-    {
-     "text": "shroom · Trouble, questions",
-     "role": "line",
-     "copy": "provisional",
-     "note": "one case the spec didn't print, so it varies by case — the copy table: The landing's footer. Its link opens shroom.am/feedback (N55, Bagrat, 2026-10-17); the words are unchanged",
-     "cites": [
-      "copy table"
-     ],
-     "id": "landing.shroom-trouble-questions"
-    },
-    {
-     "text": "Or ask your coding agent",
-     "role": "line",
-     "copy": "ratified",
-     "note": "one case the spec didn't print, so it varies by case — the copy table: The landing's agent door (`landing`, Install block, below the install line) and the agent page's frame in a browser. **Ratified by Bagrat** (2026-10-14)",
-     "cites": [
-      "copy table"
-     ],
-     "id": "landing.or-ask-your-coding"
-    },
-    {
-     "text": "Read it first — the same address shows what your agent will read. Your agent asks you before it runs anything.",
-     "role": "line",
-     "copy": "ratified",
-     "note": "one case the spec didn't print, so it varies by case — the copy table: The landing's agent door (`landing`, Install block, below the install line) and the agent page's frame in a browser. **Ratified by Bagrat** (2026-10-14)",
-     "cites": [
-      "copy table"
-     ],
-     "id": "landing.read-it-first-the-2"
-    },
-    {
      "text": "This is what your coding agent reads when you ask it to install shroom — word for word.",
      "role": "line",
      "copy": "ratified",
@@ -2497,32 +2567,39 @@
    ],
    "actions": [
     {
+     "label": "Terminal / Homebrew / Coding agent",
+     "kind": "other",
+     "return_default": false,
+     "goes_to": "landing",
+     "note": "The install block's tabs choose which command shows; Terminal is chosen when the page opens. No address changes (N59)."
+    },
+    {
      "label": "Copy",
      "kind": "secondary",
      "return_default": false,
      "goes_to": "landing",
-     "note": "Copies the install command. The install block's copy button, not drawn filled. Law 10 says copying is always a visible button that reads “Copied”, but Region 1 doesn't draw that face for this button."
+     "note": "Copies the command of the tab that's showing. Law 10: it reads “Copied” beside a tick for a moment."
     },
     {
      "label": "Read it first",
      "kind": "text-link",
      "return_default": false,
      "goes_to": "source-view",
-     "note": "Opens the same URL (shroom.am/install) as readable source: one URL, two audiences."
+     "note": "Opens the same URL (shroom.am/install) as readable source: one URL, two audiences. In the Coding agent tab it opens shroom.am/agent."
     },
     {
      "label": "GitHub link",
      "kind": "text-link",
      "return_default": false,
      "goes_to": "landing",
-     "note": "Opens GitHub, outside shroom. Page chrome, right side. The spec doesn't give the link's wording."
+     "note": "Opens GitHub, outside shroom. The page's foot, after Send feedback (N59)."
     },
     {
      "label": "Send feedback",
      "kind": "text-link",
      "return_default": false,
      "goes_to": "landing",
-     "note": "Opens shroom.am/feedback, the feedback page (N53), which the spec draws no state for. Page chrome, right side, before GitHub (N55)."
+     "note": "Opens shroom.am/feedback, the feedback page (N53), which the spec draws no state for. The page's foot, first (N55, moved by N59)."
     },
     {
      "label": "watch demo",
@@ -2541,7 +2618,8 @@
     "U3",
     "B140",
     "N55",
-    "N58"
+    "N58",
+    "N59"
    ],
    "was": {
     "fixture": "r1.json",
