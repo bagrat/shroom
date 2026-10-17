@@ -138,11 +138,9 @@
   .still .play { position: absolute; left: 50%; top: 50%; width: 72px; height: 72px; margin: -36px 0 0 -36px; border-radius: 50%; background: #88c0d0; display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 24px rgba(0,0,0,.35); transition: transform .15s ease; }
   .still:hover .play { transform: scale(1.06); }
   .still .play svg { width: 27px; height: 27px; fill: #2b2f36; margin-left: 3px; }
-  .still .len, .demo .cap { position: absolute; bottom: 12px; padding: 3px 9px; border-radius: 6px; background: rgba(31,34,40,.85); color: #eceff4; font: 600 13px var(--sans); font-variant-numeric: tabular-nums; }
-  .still .len { right: 12px; }
-  .demo .cap { left: 12px; margin: 0; font-weight: 500; pointer-events: none; transition: opacity .4s ease; }
-  .still.gone, .still.gone ~ .cap, .demo.playing .cap { opacity: 0; pointer-events: none; }
-  @media (prefers-reduced-motion: reduce) { .still, .demo .cap { transition: none; } }
+  .still .len { position: absolute; right: 12px; bottom: 12px; padding: 3px 9px; border-radius: 6px; background: rgba(31,34,40,.85); color: #eceff4; font: 600 13px var(--sans); font-variant-numeric: tabular-nums; }
+  .still.gone { opacity: 0; pointer-events: none; }
+  @media (prefers-reduced-motion: reduce) { .still { transition: none; } }
 
   /* Install: one command at a time, in tabs; Terminal first. Without script every panel shows. */
   .install { display: flex; flex-direction: column; gap: 12px; }
@@ -236,7 +234,6 @@
         <div class="stage">
           <video playsinline preload="none" width="1280" height="832"></video>
           <button type="button" class="still" aria-label="Play the demo, 15 minutes"><img src="demo-poster.webp" alt="" width="1440" height="936" decoding="async"><span class="play" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M5 3v10l8.5-5z"/></svg></span><span class="len" aria-hidden="true">15:07</span></button>
-          <p class="cap">Recorded with shroom.</p>
         </div>
       </section>
 
@@ -300,14 +297,14 @@
       }, { rootMargin: "200px 0px" });
       io.observe(box);
     }
-    v.addEventListener("playing", function () { still.classList.add("gone"); box.classList.add("playing"); }, { once: true });
+    v.addEventListener("playing", function () { still.classList.add("gone"); }, { once: true });
     // A browser that can't play the file keeps the still rather than show a broken video.
-    v.addEventListener("error", function () { still.classList.remove("gone"); box.classList.remove("playing"); v.controls = false; });
+    v.addEventListener("error", function () { still.classList.remove("gone"); v.controls = false; });
     still.addEventListener("click", function () {
       load();
       v.controls = true;
       var r = v.play();
-      if (r && r.catch) r.catch(function () { if (!v.error) { still.classList.add("gone"); box.classList.add("playing"); } });
+      if (r && r.catch) r.catch(function () { if (!v.error) still.classList.add("gone"); });
       v.focus();
     });
   })();

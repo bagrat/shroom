@@ -64,9 +64,9 @@ describe("the landing", () => {
     assert.match(id, ID, "the demo is a real recording id");
     assert.match(demo.match(/data-space="([^"]*)"/)?.[1] ?? "", /^v\.[a-z0-9-]+\.workers\.dev$/, "the space it plays from");
     assert.doesNotMatch(demo, /href=/, "the demo links nowhere: it plays on the landing, never on the player page");
-    const caption = landing.said.find((l) => l.id === "landing.recorded-with-shroom-itself").text;
     const words = visible(demo.replace(/<span[^>]*aria-hidden="true"[^>]*>[\s\S]*?<\/span>/g, "")).trim();
-    assert.equal(words, caption, "the caption is the block's only words (the length on the still is decoration)");
+    assert.equal(words, "", "no caption (Bagrat, 2026-10-17): the still and its play button speak for it; the length is decoration");
+    assert.ok(!landing.said.some((l) => l.id === "landing.recorded-with-shroom-itself"), "the caption's said-line is gone from the spec");
     assert.match(demo, /<video\b[^>]*\bpreload="none"/, "nothing loads before the script asks");
     assert.doesNotMatch(demo, /<video\b[^>]*\bsrc=/, "the video's address is set by script, as the block nears the screen");
     assert.match(demo, /<img src="demo-poster\.webp"/, "the still is the site's own file");
