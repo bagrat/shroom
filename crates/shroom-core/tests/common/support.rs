@@ -22,6 +22,7 @@ pub fn quick() -> QuickProbe {
         os: OsSession::default(),
         status_item_visible: true,
         login_item: None,
+        clicked_display: None,
     }
 }
 
@@ -139,6 +140,12 @@ impl Run {
 
     pub fn click(&mut self) -> &mut Run {
         self.send(Event::TrayClicked { right: false, quick: quick() })
+    }
+
+    /// A click on the mushroom in this display's menu bar (N56).
+    pub fn click_on(&mut self, display: u32) -> &mut Run {
+        let displays = self.w.mac.displays.get().cloned().unwrap_or_default();
+        self.send(Event::TrayClicked { right: false, quick: QuickProbe { displays, clicked_display: Some(display), ..quick() } })
     }
 
     pub fn act(&mut self, action: Action) -> &mut Run {

@@ -837,7 +837,9 @@
    "status": "autonomous-awaiting-ratification",
    "date": "2026-09-30",
    "amends": [],
-   "amended_by": []
+   "amended_by": [
+    "N56"
+   ]
   },
   {
    "id": "N40",
@@ -1029,6 +1031,19 @@
    "date": "2026-10-17",
    "amends": [
     "landing (page chrome: a Send feedback link beside GitHub; the footer's link opens shroom.am/feedback)"
+   ],
+   "amended_by": []
+  },
+  {
+   "id": "N56",
+   "title": "The display you click the mushroom on is the one you record",
+   "decision": "**Bagrat found it with an external display, 2026-10-17** (“Displays have separate Spaces” on, so every display has its own menu bar and mushroom): he clicked the mushroom on the MacBook's display, and the bubble and the count came up on the external one. **A click on the mushroom opens `config` with the display it was clicked on as the source** — the popover already hangs there, and now the bubble, the count and the take go there too. It wins over a remembered display (Bagrat, 2026-10-17: the click wins). **A hand pick holds:** a display picked in the Record picker stays the source, whichever display the popover is reopened from, until that take ends (Bagrat, 2026-10-17). **Camera only stays Camera only** — a source you chose — but its preview, and with it the count, moves to the clicked display (Bagrat, 2026-10-17). It is the rule for every click; with one display (or a mirror set) nothing changes. A launch you did is a click (N41) and takes the display it came from too; a popover that opens by itself (a pause you didn't make, an update relaunch) and Record now from `all-set` keep last-used, else the main display. Mid-take a click is still the pause and moves nothing. Built: DECISIONS B185.",
+   "status": "ratified",
+   "date": "2026-10-17",
+   "amends": [
+    "config (Record's default: the clicked display, before last-used; Camera only's preview on the clicked display)",
+    "countdown (Camera as the source: the count plays on the clicked display, where its preview is)",
+    "N39 (a gone last-used display still falls back, now to the clicked display first)"
    ],
    "amended_by": []
   }
@@ -1529,7 +1544,7 @@
      "source_lines": "761"
     },
     {
-     "flag": "Device fallbacks: a gone last-used display falls back silently to the menu-bar display. Same-named displays are labeled by position and numbered only when position can't tell them apart. Camera as the source previews at config, and the count plays on that display.",
+     "flag": "Device fallbacks: a click's display is the source unless a display was picked by hand for this take (N56); a gone last-used display falls back silently to the menu-bar display. Same-named displays are labeled by position and numbered only when position can't tell them apart. Camera as the source previews at config on the clicked display, and the count plays on that display.",
      "source_lines": "858"
     },
     {
@@ -4616,7 +4631,7 @@
    "surface": "popover",
    "status": "ratified",
    "board": "Main",
-   "summary": "A same-themed custom popover under the tray (Loom-style). It is never a native menu and never a window, so the dock stays clear. Click-away or Esc dismisses it with nothing lost. It is pre-filled with last-used values and never skipped: a confirm, not a form. Rows run top to bottom, each a picker (an icon, the pick's name, a chevron; its label is the row's accessible name, DEVIATIONS #45): Record (one source picker: displays by human name first, then Camera only), the camera (every camera here, then Camera off — a camera turns the bubble on with it, Camera off turns it off; DEVIATIONS #43), Microphone (every microphone, then No mic), Quality, then Start recording (filled, full width) with a quiet line beneath. The footer holds three icons with tooltips. The grammar is N38's (provisional): a banner slot at the top for asks, a status line above the footer for facts, and disk-low under Start. When it opens, the grant probe runs (`recording-off`), and a due monthly re-confirm runs perm-priming's warm-up. The device rules are N39's (provisional): never auto-pick an iPhone (mic or camera); a gone last-used display falls back silently to the menu-bar display; same-named displays are labeled by position; Camera as the source previews here; with a camera picked for the bubble, picking another display moves the bubble there. If the camera is denied, the camera picker shows Camera off and Camera as the source greys Start. Since N44 both pickers start with System default: it follows macOS's default input and its preferred camera (never an iPhone by itself), and a take keeps the device it started with.",
+   "summary": "A same-themed custom popover under the tray (Loom-style). It is never a native menu and never a window, so the dock stays clear. Click-away or Esc dismisses it with nothing lost. It is pre-filled with last-used values and never skipped: a confirm, not a form. Rows run top to bottom, each a picker (an icon, the pick's name, a chevron; its label is the row's accessible name, DEVIATIONS #45): Record (one source picker: displays by human name first, then Camera only), the camera (every camera here, then Camera off — a camera turns the bubble on with it, Camera off turns it off; DEVIATIONS #43), Microphone (every microphone, then No mic), Quality, then Start recording (filled, full width) with a quiet line beneath. The footer holds three icons with tooltips. The grammar is N38's (provisional): a banner slot at the top for asks, a status line above the footer for facts, and disk-low under Start. When it opens, the grant probe runs (`recording-off`), and a due monthly re-confirm runs perm-priming's warm-up. The device rules are N39's (provisional): never auto-pick an iPhone (mic or camera); a click picks the display it came from as the source, over a remembered display but never over a hand pick in this take's Record picker or Camera only (N56); a gone last-used display falls back silently to the menu-bar display; same-named displays are labeled by position; Camera as the source previews here; with a camera picked for the bubble, picking another display moves the bubble there. If the camera is denied, the camera picker shows Camera off and Camera as the source greys Start. Since N44 both pickers start with System default: it follows macOS's default input and its preferred camera (never an iPhone by itself), and a take keeps the device it started with.",
    "entry": "Not mid-take, and the tray clicked in idle-ready (or a launch you did, or all-set's Record now, or a cancelled countdown, which returns here still armed). Popover banners stack one at a time, highest first: saved take (recovered-take / disk-full-stop), the space can't take videos (other regions), recording-off, update-ready (Region 5).",
    "said": [
     {
@@ -4904,7 +4919,7 @@
      "label": "Record",
      "kind": "field",
      "return_default": false,
-     "note": "One source picker. Default: last-used, else the display with the menu bar. Choosing Camera only keeps the camera picker as the pick of the camera the take records, without Camera off, and a first pick of Camera only triggers the inline camera prompt (N22, DEVIATIONS #43)."
+     "note": "One source picker. Default: the display the mushroom was clicked on (N56); a display picked here by hand holds until that take ends, and Camera only stays Camera only. Without a click (a popover that opened by itself, Record now): last-used, else the display with the menu bar. Choosing Camera only keeps the camera picker as the pick of the camera the take records, without Camera off, and a first pick of Camera only triggers the inline camera prompt (N22, DEVIATIONS #43)."
     },
     {
      "label": "Camera",
@@ -4975,7 +4990,8 @@
     "N41",
     "U5",
     "N44",
-    "#43"
+    "#43",
+    "N56"
    ],
    "was": {
     "fixture": "r3.json",
@@ -5126,7 +5142,7 @@
    "surface": "overlay",
    "status": "ratified",
    "board": "Countdown",
-   "summary": "A light scrim on the chosen display only, with a large 3 · 2 · 1 and one quiet line beneath. Silent, and other displays are untouched. The scrim lifts the instant capture starts, so the count is never in the take (N7). There is no recording flash of ours; macOS's own indicator marks the capture. The bubble, if on, simply stays. With Camera as the source, the count plays on the display holding the camera preview (N39). Cancel by any click, Esc, or the line itself.",
+   "summary": "A light scrim on the chosen display only, with a large 3 · 2 · 1 and one quiet line beneath. Silent, and other displays are untouched. The scrim lifts the instant capture starts, so the count is never in the take (N7). There is no recording flash of ours; macOS's own indicator marks the capture. The bubble, if on, simply stays. With Camera as the source, the count plays on the display holding the camera preview: the one the mushroom was clicked on (N39, N56). Cancel by any click, Esc, or the line itself.",
    "entry": "Start recording in `config`. Also Restart in `paused` or Restart instead in `discard-confirm`, which re-arm with the count already running.",
    "said": [
     {
@@ -5162,7 +5178,8 @@
    "cites": [
     "N22",
     "N7",
-    "N39"
+    "N39",
+    "N56"
    ],
    "was": {
     "fixture": "r3.json",

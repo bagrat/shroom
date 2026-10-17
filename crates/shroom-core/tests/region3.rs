@@ -1204,6 +1204,127 @@ fn the_bubble_sits_on_the_chosen_display_remembers_its_place_and_goes_with_its_c
     assert!(r.effects.is_empty());
 }
 
+/// Two displays, each with its own menu bar and mushroom (“Displays have separate Spaces”):
+/// the MacBook's, and an external one to its right.
+fn two_displays() -> World {
+    let mut w = ready();
+    w.mac.displays = Fact::known(
+        vec![
+            Display { id: 1, name: "Built-in Display".into(), is_main: true, x: 0, y: 0 },
+            Display { id: 7, name: "LG UltraFine".into(), is_main: false, x: 1512, y: 0 },
+        ],
+        Mono(0),
+    );
+    w
+}
+
+#[test]
+fn the_display_you_click_the_mushroom_on_is_the_one_you_record() {
+    // Bagrat, 2026-10-17: clicked on the MacBook, the bubble and the count came up on the
+    // external display. The click wins over the remembered display (N56).
+    let mut w = two_displays();
+    w.prefs.source = Some(SourceId::Display(7));
+    w.prefs.show_yourself = true;
+    let mut r = Run::new(w);
+    r.click_on(1);
+    assert_eq!(picked(&config_body(&r.scene).sources), Some("Built-in Display"), "the clicked display, over last-used");
+    assert_eq!(r.scene.bubble.as_ref().map(|b| b.display), Some(1), "the bubble comes up where you clicked");
+    r.key(Surface::Popover, Key::Return);
+    assert_eq!(r.scene.countdown.as_ref().map(|c| c.display), Some(1), "and so does the count");
+    let deadline = r.w.session.arming.as_ref().unwrap().deadline;
+    r.tick_to(deadline.0);
+    assert!(r.has(|e| matches!(e, Effect::Recorder(RecCmd::Start { source: SourceId::Display(1), .. }))), "{:?}", r.effects);
+    r.send(Event::Rec(RecNews::Started { dir: TakeDir("d1".into()), rec: RecId("AbCdEfGhIjKlMnOp".into()) }));
+    // Mid-take a click is the pause, wherever it comes from: it moves nothing.
+    r.click_on(7);
+    r.send(Event::Rec(RecNews::Paused { length_ms: 4_000 }));
+    assert_eq!(r.w.take.as_ref().map(|t| t.source), Some(SourceId::Display(1)));
+    assert_eq!(r.scene.bubble.as_ref().map(|b| b.display), Some(1));
+}
+
+#[test]
+fn a_click_on_the_other_display_reopens_config_there() {
+    let mut r = Run::new(two_displays());
+    r.click_on(7);
+    assert_eq!(picked(&config_body(&r.scene).sources), Some("LG UltraFine"));
+    r.click_on(7);
+    assert!(r.scene.popover.is_none(), "a click on the mushroom closes it");
+    r.click_on(1);
+    assert_eq!(picked(&config_body(&r.scene).sources), Some("Built-in Display"), "the next click is where you are now");
+}
+
+#[test]
+fn a_display_picked_by_hand_holds_until_that_take_ends() {
+    // Bagrat, 2026-10-17: your hand pick holds, whichever display you reopen from (N56).
+    let mut r = Run::new(two_displays());
+    r.click_on(1);
+    r.act(Action::SetSource(SourceId::Display(7)));
+    r.click_on(1);
+    assert!(r.scene.popover.is_none());
+    r.click_on(1);
+    assert_eq!(picked(&config_body(&r.scene).sources), Some("LG UltraFine"), "the hand pick holds");
+    // A cancelled count is no take's end: back at config, the pick still holds.
+    r.key(Surface::Popover, Key::Return);
+    r.key(Surface::Countdown, Key::Esc);
+    assert!(r.w.session.arming.is_none());
+    r.click_on(1);
+    if r.scene.popover.is_none() {
+        r.click_on(1);
+    }
+    assert_eq!(picked(&config_body(&r.scene).sources), Some("LG UltraFine"));
+    r.key(Surface::Popover, Key::Return);
+    assert_eq!(r.scene.countdown.as_ref().map(|c| c.display), Some(7));
+    let deadline = r.w.session.arming.as_ref().unwrap().deadline;
+    r.tick_to(deadline.0);
+    r.send(Event::Rec(RecNews::Started { dir: TakeDir("d1".into()), rec: RecId("AbCdEfGhIjKlMnOp".into()) }));
+    r.click_on(1);
+    r.send(Event::Rec(RecNews::Paused { length_ms: 4_000 }));
+    r.act(Action::Stop);
+    r.send(Event::Rec(RecNews::Finalized(Ok(4_000))));
+    assert!(r.w.take.is_none(), "the take has ended");
+    if r.scene.popover.is_some() {
+        r.key(Surface::Popover, Key::Esc);
+    }
+    r.click_on(1);
+    assert_eq!(picked(&config_body(&r.scene).sources), Some("Built-in Display"), "once the take ends, the click picks again");
+}
+
+#[test]
+fn camera_only_stays_camera_only_and_previews_where_you_clicked() {
+    // Bagrat, 2026-10-17: keep Camera only, and move its preview to that screen (N56).
+    let mut w = two_displays();
+    w.prefs.source = Some(SourceId::Camera);
+    let mut r = Run::new(w);
+    r.click_on(7);
+    assert_eq!(picked(&config_body(&r.scene).sources), Some("Camera only"), "a chosen Camera only stays");
+    assert_eq!(r.scene.preview.as_ref().map(|p| p.display), Some(7), "its preview sits on the clicked display");
+    r.key(Surface::Popover, Key::Return);
+    assert_eq!(r.scene.countdown.as_ref().map(|c| c.display), Some(7), "the count plays where the preview is");
+    let deadline = r.w.session.arming.as_ref().unwrap().deadline;
+    r.tick_to(deadline.0);
+    r.send(Event::Rec(RecNews::Started { dir: TakeDir("d1".into()), rec: RecId("AbCdEfGhIjKlMnOp".into()) }));
+    r.click_on(1);
+    r.send(Event::Rec(RecNews::Paused { length_ms: 4_000 }));
+    assert_eq!(r.scene.preview.as_ref().map(|p| p.display), Some(7), "a click mid-take moves nothing");
+}
+
+#[test]
+fn without_a_click_config_keeps_last_used() {
+    // A popover nobody clicked for (Record now, one that opened by itself) has no display
+    // of its own: last-used, else the main display (N56, N39).
+    let mut w = two_displays();
+    w.prefs.source = Some(SourceId::Display(7));
+    w.session.popover = Some(Door::asked(Mono(900)));
+    let r = Run::new(w);
+    assert_eq!(picked(&config_body(&r.scene).sources), Some("LG UltraFine"));
+    // A click whose display can't be told (None) is the same.
+    let mut w = two_displays();
+    w.prefs.source = Some(SourceId::Display(7));
+    let mut r = Run::new(w);
+    r.click();
+    assert_eq!(picked(&config_body(&r.scene).sources), Some("LG UltraFine"));
+}
+
 #[test]
 fn a_denied_mic_shows_the_microphone_off() {
     let mut w = ready();
