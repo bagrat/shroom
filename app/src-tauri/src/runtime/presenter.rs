@@ -153,7 +153,8 @@ pub fn seen(occlusion_visible: bool, locked: bool, frame: Frame, whole: Frame, n
     // In the menu bar: its top edge on the screen's, or a few points short of it (a mirror
     // set's menu bar is drawn at one display's height).
     let below = whole.y + whole.h - (frame.y + frame.h);
-    let at_rest = whole.w > 0.0 && frame.w > 0.0 && frame.h > 0.0 && (-0.5..=frame.h / 2.0).contains(&below);
+    // Never at the screen's left edge, the Apple menu's: there it isn't laid out yet (N57).
+    let at_rest = whole.w > 0.0 && frame.w > 0.0 && frame.h > 0.0 && (-0.5..=frame.h / 2.0).contains(&below) && frame.x > whole.x + 0.5;
     let clear = match notch.filter(|_| !mirrored) {
         Some((l, r)) => within(whole.x, whole.x + l) || within(whole.x + whole.w - r, whole.x + whole.w),
         None => within(whole.x, whole.x + whole.w),
@@ -348,8 +349,10 @@ pub fn holds(young: bool, m: Option<Mushroom>) -> bool {
 /// macOS rests a status item whatever the menu bar's height (a notch's, an external
 /// display's). On its way in it is lower — parked under the screen, or a few points
 /// short — or higher.
+/// A just-made one can read at its screen's very left edge before it is laid out, already
+/// marked as seen: not at rest (N57).
 fn rests(m: &Mushroom) -> bool {
-    (m.frame.y + m.frame.h - m.top).abs() <= 0.5
+    (m.frame.y + m.frame.h - m.top).abs() <= 0.5 && m.frame.x > m.screen.x + 0.5
 }
 
 /// Which of the screens a click on the mushroom came from (N56), each with its whole and
@@ -752,6 +755,10 @@ fn present_window(app: &AppHandle, rt: &Runtime, sp: &WindowSpec, now: Option<(s
             }
             // Shown when it opens — not on every Scene: a window the person minimized (or
             // hid with shroom) stays where they put it until they reach for it.
+            // It opens on the mushroom's display, the popover's (N57).
+            if before.is_none() {
+                to_mushrooms_display(app, &w);
+            }
             match before {
                 None if activates => {
                     let _ = w.show();
@@ -836,6 +843,29 @@ fn build_window(app: &AppHandle, rt: &Runtime, sp: &WindowSpec, excluded: &Arc<M
         _ => {}
     });
     Some(w)
+}
+
+/// Where a window opening now goes (its frame's origin): centred on `target`, the visible
+/// frame of the mushroom's display — the one the popover hangs on (N57). `None` when it is
+/// already on that display (it stays where the person left it) or there's none to go to.
+pub fn window_origin(window: Frame, target: Frame) -> Option<(f64, f64)> {
+    let (cx, cy) = (window.x + window.w / 2.0, window.y + window.h / 2.0);
+    if target.w <= 0.0 || target.h <= 0.0 || target.contains(cx, cy) {
+        return None;
+    }
+    let x = target.x + ((target.w - window.w) / 2.0).max(0.0);
+    let top = target.y + target.h - ((target.h - window.h) / 2.0).max(0.0);
+    Some((x, top - window.h))
+}
+
+/// Moves a window that is opening to the mushroom's display (N57; main thread).
+fn to_mushrooms_display(app: &AppHandle, w: &tauri::WebviewWindow) {
+    let Some(target) = app.tray_by_id("shroom").and_then(|t| mushroom(&t)).map(|m| m.screen) else { return };
+    let Ok(ptr) = w.ns_window() else { return };
+    let ns: &objc2_app_kit::NSWindow = unsafe { &*(ptr as *const objc2_app_kit::NSWindow) };
+    if let Some((x, y)) = window_origin(Frame::of(ns.frame()), target) {
+        ns.setFrameOrigin(objc2_foundation::NSPoint::new(x, y));
+    }
 }
 
 /// Shows `w` in front without making it key or activating shroom (law 5).
@@ -957,6 +987,39 @@ mod tests {
         let other = Frame { x: 1512.0, y: -200.0, w: 2560.0, h: 1440.0 };
         assert!(seen(false, false, Frame { x: 3000.0, y: 1210.0, w: 24.0, h: 30.0 }, other, None, false));
         assert!(!seen(false, false, Frame { x: 1500.0, y: 1210.0, w: 24.0, h: 30.0 }, other, None, false), "off its edge: hidden");
+    }
+
+    /// Bagrat's update relaunch, 2026-10-17 (N57): 359 ms after boot, the mushroom read on
+    /// the MacBook (left of the primary external display) at its screen's very left edge,
+    /// occlusion not visible, and the popover hung from there, at the screen's top-left
+    /// corner. A status item never rests at a screen's left edge: it isn't laid out yet.
+    #[test]
+    fn a_mushroom_at_its_screens_left_edge_isnt_laid_out_yet() {
+        let whole = Frame { x: -1512.0, y: 98.0, w: 1512.0, h: 982.0 };
+        let usable = Frame { h: 944.0, ..whole };
+        let notch = Some((663.0, 664.0));
+        let early = Frame { x: -1512.0, y: 1047.0, w: 34.0, h: 33.0 };
+        let later = Frame { x: -616.0, ..early };
+        assert!(!seen(false, false, early, whole, notch, false), "at the screen's left edge: not laid out");
+        assert!(seen(false, false, later, whole, notch, false), "where it settled 14 s later: seen");
+        let m = |frame: Frame, visible: bool| Mushroom { frame, visible, screen: usable, top: 1080.0 };
+        assert!(holds(true, Some(m(early, true))), "a just-made one waits there, even if macOS calls it seen");
+        assert!(!holds(true, Some(m(later, true))));
+    }
+
+    /// Bagrat, 2026-10-17 (N57): Settings and the Library, opened from the popover on the
+    /// MacBook, came up on the external display. A window opens centred on the mushroom's
+    /// display; one already there stays where it was left.
+    #[test]
+    fn a_window_opens_on_the_mushrooms_display() {
+        let external = Frame { x: 0.0, y: 0.0, w: 1920.0, h: 1055.0 };
+        let macbook = Frame { x: -1512.0, y: 98.0, w: 1512.0, h: 944.0 };
+        let window = Frame { x: 600.0, y: 300.0, w: 720.0, h: 480.0 };
+        assert_eq!(window_origin(window, macbook), Some((-1512.0 + 396.0, 98.0 + 232.0)), "centred on the MacBook");
+        assert_eq!(window_origin(window, external), None, "already on the mushroom's display: left where it is");
+        assert_eq!(window_origin(window, Frame { w: 0.0, ..macbook }), None, "no display to go to: left where it is");
+        let bigger = Frame { w: 2000.0, h: 1200.0, ..window };
+        assert_eq!(window_origin(bigger, macbook), Some((-1512.0, 98.0 + 944.0 - 1200.0)), "too big for it: its top-left on the display's");
     }
 
     /// A MacBook mirrored to an external display put the popover in the corner with the

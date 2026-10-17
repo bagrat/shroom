@@ -1046,6 +1046,18 @@
     "N39 (a gone last-used display still falls back, now to the clicked display first)"
    ],
    "amended_by": []
+  },
+  {
+   "id": "N57",
+   "title": "The popover and the windows it opens stay on the mushroom's display",
+   "decision": "**Bagrat found both on a MacBook beside an external display, 2026-10-17.** (1) After an update relaunch, the popover shroom opened by itself sat at the MacBook screen's top-left corner, not under the mushroom: the just-made mushroom was read before it was laid out, at its screen's very left edge, and was taken as at rest. **A popover hangs under the mushroom, on the mushroom's display, however it opened** (a click, a launch you did, an update relaunch, a pause or stop you didn't make); only a mushroom that can't be seen sends it to the corner (N41, B161). A mushroom read at its screen's left edge isn't laid out yet: a status item never rests there, since the left of a menu bar is the Apple menu's and the app's. The opening waits for it as for any mushroom still on its way in. (2) Settings and the Library, opened from the popover on the MacBook, came up on the external display. **A window opens on the mushroom's display**, centred there — the display the popover hangs on — unless it is already on that display, where it stays where the person left it. That covers the setup window, the Library and Settings. Built: DECISIONS B186.",
+   "status": "provisional",
+   "date": "2026-10-17",
+   "amends": [
+    "The popover (Lives: under the mushroom, on its display, however it opened)",
+    "The window (Lives: centred on the mushroom's display)"
+   ],
+   "amended_by": []
   }
  ],
  "surfaces": [
@@ -1055,11 +1067,11 @@
   },
   {
    "name": "The popover",
-   "may_do": "Lives: under the mushroom | Opens: on a click, a launch you did, all-set's Record now, or a pause or stop you didn't make (without the keyboard) | Rules: `config` · `paused` · the confirms that morph from them; one banner + one status line (N38); never brings the dock icon  [UX-STATEMACHINE.md L1716]"
+   "may_do": "Lives: under the mushroom, on its display, however it opened (N57) | Opens: on a click, a launch you did, all-set's Record now, or a pause or stop you didn't make (without the keyboard) | Rules: `config` · `paused` · the confirms that morph from them; one banner + one status line (N38); never brings the dock icon  [UX-STATEMACHINE.md L1716]"
   },
   {
    "name": "The window",
-   "may_do": "Lives: centered, one at a time per kind | Opens: onboarding, Library, Settings | Rules: the dock icon while open; ✕ ≡ the retreat (N12); survives a browser round-trip  [UX-STATEMACHINE.md L1717]"
+   "may_do": "Lives: centered on the mushroom's display (N57), one at a time per kind | Opens: onboarding, Library, Settings | Rules: the dock icon while open; ✕ ≡ the retreat (N12); survives a browser round-trip  [UX-STATEMACHINE.md L1717]"
   },
   {
    "name": "The page",
