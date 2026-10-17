@@ -1,7 +1,7 @@
 # Does the bubble stay in place while the Spaces swipe? Bagrat saw it vanish and come back
 # on every switch into or out of a full-screen Space (2026-10-17). The hosted Mac's camera
 # (dev/mac/camera.sh), TextEdit full screen, then the bubble's window as shipped (stationary
-# on all Spaces, B187) and as 0.1.21 had it (not stationary): for each, the dev app's
+# on all Spaces, B188) and as 0.1.21 had it (not stationary): for each, the dev app's
 # --bubble-probe, and a swipe out of the full-screen Space and back, the screen shot as fast
 # as it goes through each swipe. The shots and a clip of each swipe land in the evidence
 # (bubble-swipe/<variant>/), for the eye: whether the bubble stays through the swipe (on

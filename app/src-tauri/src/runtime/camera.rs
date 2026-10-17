@@ -148,7 +148,7 @@ fn panel(mtm: MainThreadMarker, frame: NSRect, preview: &shroom_capture::CameraP
     p.setMovableByWindowBackground(true);
     p.setBecomesKeyOnlyIfNeeded(true);
     // Stationary: it stays where it is while the Spaces swipe, rather than leaving with one
-    // and arriving with the next (DECISIONS B187).
+    // and arriving with the next (DECISIONS B188).
     p.setCollectionBehavior(NSWindowCollectionBehavior::CanJoinAllSpaces | NSWindowCollectionBehavior::FullScreenAuxiliary | NSWindowCollectionBehavior::Stationary);
     let bounds = NSRect::new(NSPoint::new(0.0, 0.0), frame.size);
     let content = NSView::initWithFrame(NSView::alloc(mtm), bounds);

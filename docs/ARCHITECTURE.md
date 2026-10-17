@@ -404,7 +404,7 @@ The design record has them: history/design/ARCHITECTURE.md §3.9.
 
 - **Bubble = an un-excluded native panel, zero compositing** (`runtime/camera.rs`, D:B47 g):
   180 pt, round, mirrored, a layer shroom draws the exact camera's frames into (the Scene
-  names it; a picture that stops restarts its camera, D:B187); every other shroom window is excluded, the bubble is recorded as-is. Born at
+  names it; a picture that stops restarts its camera, D:B188); every other shroom window is excluded, the bubble is recorded as-is. Born at
   `config`, through the countdown and take; follows the chosen display; dragged position in
   `prefs.bubble_at`; goes quietly if its camera leaves. The popover's camera picker is a camera
   pick or Camera off (DV #43); an iPhone is never auto-picked (D:B48). Panels open at once with a
