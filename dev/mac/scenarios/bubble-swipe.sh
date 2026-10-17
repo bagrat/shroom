@@ -44,7 +44,7 @@ for v in floating stationary statusbar stationary-statusbar; do
   esac
   d="$S/$v"
   mkdir -p "$d"
-  open -n "$MAC_APP" --args --bubble-probe "$d/probe.json" --hold 16 "${args[@]}"
+  open -n "$MAC_APP" --args --bubble-probe "$d/probe.json" --hold 16 ${args[@]+"${args[@]}"}
   for _ in $(seq 1 100); do [ -e "$d/probe.ready" ] && break; sleep 0.2; done
   [ -e "$d/probe.ready" ] || { note fail "bubble-swipe: $v" "the bubble never showed"; fails=$((fails + 1)); continue; }
   swipe "$d" 1-out 123   # ⌃← out of the full-screen Space
