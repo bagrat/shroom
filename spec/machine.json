@@ -463,7 +463,9 @@
    "amends": [
     "U6 (placement amended)"
    ],
-   "amended_by": []
+   "amended_by": [
+    "N58"
+   ]
   },
   {
    "id": "N7",
@@ -472,7 +474,9 @@
    "status": "ratified",
    "date": "2026-07-25",
    "amends": [],
-   "amended_by": []
+   "amended_by": [
+    "N58"
+   ]
   },
   {
    "id": "N8",
@@ -1056,6 +1060,18 @@
    "amends": [
     "The popover (Lives: under the mushroom, on its display, however it opened)",
     "The window (Lives: centred on the mushroom's display)"
+   ],
+   "amended_by": []
+  },
+  {
+   "id": "N58",
+   "title": "The demo plays on the landing, second, with a short caption",
+   "decision": "**Bagrat confirmed the design on the canvas, 2026-10-17** (the board “shroom.am — the demo, B1b at position 2”). (1) **The demo is the page's second block**: after the points, the price tiles and the team line, and right before Install, so the install line sits under the demo. (2) **It plays in place.** The block shows a still of the take (the real setup window from 7:00 and the camera bubble from 0:16, mirrored, cut from the video onto the landing's own ground) with a play button and the length. The video itself loads quietly behind the still as the block comes near the screen; a click fades the still and the video plays there. The landing never sends the visitor to the player page. (3) **The caption is “Recorded with shroom.”**, with no link and no address shown. Built: DECISIONS B190. Ratified by Bagrat, 2026-10-17.",
+   "status": "ratified",
+   "date": "2026-10-17",
+   "amends": [
+    "N6 (the demo now sits above Install)",
+    "N7 (the demo plays on the landing, not on the player page)"
    ],
    "amended_by": []
   }
@@ -2236,7 +2252,7 @@
    "surface": "web-page",
    "status": "ratified",
    "board": "Landing",
-   "summary": "shroom.am, a static page with one job: take a curious visitor to a pasted command, with no false notes. Blocks top to bottom: Hero (the punchline, the explanation points and two eyeball-number price tiles, which carry the whole message), Install (one command with [ Copy ], \"Read it first\" and the system-requirements line), which sits above the Demo (a real shroom recording on the real player page, self-recorded and record-only), and the Trust strip. Page chrome: the shroom wordmark on the left (the spec draws 🍄 before it) and two links on the right, Send feedback and GitHub (N55).",
+   "summary": "shroom.am, a static page with one job: take a curious visitor to a pasted command, with no false notes. Blocks top to bottom: Hero (the punchline, the explanation points and two eyeball-number price tiles, which carry the whole message), the Demo (a real shroom recording, self-recorded and record-only, that plays in place on the page: a still with a play button, the video under it; N58), Install (one command with [ Copy ], \"Read it first\" and the system-requirements line), right under the demo, and the Trust strip. Page chrome: the shroom wordmark on the left (the spec draws 🍄 before it) and two links on the right, Send feedback and GitHub (N55).",
    "entry": "A visitor arrives at shroom.am through one of three entry arrows. (1) Direct: HN, README or word of mouth; a cold visitor who needs the pitch. (2) The recipient loop: they watched a shroom video and clicked the player page's mark (Region 4; whether the mark exists = U3); a warm visitor who already saw the product work. (3) An agent fetching the BYO-agent skill (Region 6's overlay). Also reached by going back from the source view.",
    "said": [
     {
@@ -2376,18 +2392,16 @@
      "id": "landing.for-macos-14-or"
     },
     {
-     "text": "Recorded with shroom itself. It ends at the click of Finish & Share — this page is what opened.",
+     "text": "Recorded with shroom.",
      "role": "line",
      "copy": "ratified",
-     "note": "Demo block caption. Video shape per N7.",
-     "id": "landing.recorded-with-shroom-itself"
-    },
-    {
-     "text": "v.myshroom.workers.dev/b4kq9d",
-     "role": "other",
-     "copy": "ratified",
-     "note": "The demo's address, set as code. The space is real; the id 'b4kq9d' is illustrative and varies.",
-     "id": "landing.v-myshroom-workers-dev"
+     "note": "Demo block caption, under the video. No link and no address: the demo plays in place (N58).",
+     "id": "landing.recorded-with-shroom-itself",
+     "was": "Recorded with shroom itself. It ends at the click of Finish & Share — this page is what opened.",
+     "cites": [
+      "N58",
+      "B190"
+     ]
     },
     {
      "text": "Open source — Every line on GitHub — the app, the installer, the player.",
@@ -2514,8 +2528,8 @@
      "label": "watch demo",
      "kind": "other",
      "return_default": false,
-     "goes_to": "live",
-     "note": "The demo is a real shroom recording on the real player page (N7)."
+     "goes_to": "landing",
+     "note": "The demo plays in place on the landing: the still fades and the video plays under it; the page never navigates to the player page (N58)."
     }
    ],
    "cites": [
@@ -2526,7 +2540,8 @@
     "U6",
     "U3",
     "B140",
-    "N55"
+    "N55",
+    "N58"
    ],
    "was": {
     "fixture": "r1.json",
@@ -11334,22 +11349,6 @@
    "trigger": "run the install command (pasted into Terminal)",
    "status": "ratified",
    "cites": [],
-   "source": [
-    "map",
-    "fixture"
-   ],
-   "on": []
-  },
-  {
-   "from": "landing",
-   "to": "live",
-   "kind": "flow",
-   "label": "watch the demo",
-   "trigger": "watch demo (cross-ref fixed 2026-07-25; the recipient page lives in Region 4)",
-   "status": "provisional",
-   "cites": [
-    "#29"
-   ],
    "source": [
     "map",
     "fixture"
