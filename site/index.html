@@ -156,11 +156,12 @@
 
   .foot { width: 100%; max-width: 1376px; margin: auto auto 0; padding: 40px 0 24px; color: var(--quiet); font-size: 14px; }
   .foot > * { max-width: 744px; }
-  .foot nav { display: flex; flex-wrap: wrap; align-items: center; column-gap: 12px; }
-  .foot nav a { display: inline-flex; align-items: center; min-height: 44px; color: var(--muted); font-size: 15px; text-decoration: none; }
-  .foot nav a:hover { color: var(--text); }
-  .foot .sep { color: var(--line-strong); }
-  .foot p { margin: 2px 0 0; font-size: 13px; }
+  /* The same links close every shroom.am page (the others' footer is site/build.mjs's FOOTER). */
+  .foot nav, .links nav { display: flex; flex-wrap: wrap; align-items: center; column-gap: 12px; }
+  .foot nav a, .links nav a { display: inline-flex; align-items: center; min-height: 44px; color: var(--muted); font-size: 15px; text-decoration: none; }
+  .foot nav a:hover, .links nav a:hover { color: var(--text); }
+  .foot .sep, .links .sep { color: var(--line-strong); }
+  .foot p, .links p { margin: 2px 0 0; font-size: 13px; }
 
   @media (max-width: 900px) {
     .page { padding: 0 16px; }
@@ -183,10 +184,10 @@
     .terms { font-size: 16px; gap: 10px; }
     .terms svg { margin-top: 2px; }
     .foot { padding-top: 32px; }
-    .foot nav { column-gap: 18px; }
-    .foot nav a { font-size: 14px; }
-    .foot .sep { display: none; }
-    .foot p { font-size: 13px; line-height: 1.5; }
+    .foot nav, .links nav { column-gap: 18px; }
+    .foot nav a, .links nav a { font-size: 14px; }
+    .foot .sep, .links .sep { display: none; }
+    .foot p, .links p { font-size: 13px; line-height: 1.5; }
     .still .play { width: 56px; height: 56px; margin: -28px 0 0 -28px; }
     .still .play svg { width: 22px; height: 22px; }
   }

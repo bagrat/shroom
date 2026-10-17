@@ -32,7 +32,8 @@ export const OG_IMAGE = `<meta property="og:image" content="https://shroom.am/og
 <meta name="twitter:card" content="summary_large_image">`;
 
 /** The other pages' header and footer. The landing has neither since N59 (DECISIONS B191): its
- * links sit at its foot. These are the landing's as they were, Send feedback beside GitHub (N55). */
+ * links sit at its foot. The header is the landing's as it was, Send feedback beside GitHub
+ * (N55); the footer holds the landing's foot, the same links and the visits line (B192). */
 export const HEADER = `<header>
   <div class="wrap">
     <a class="brand" href="/"><svg xmlns="http://www.w3.org/2000/svg" viewBox="18 20 84 90" aria-hidden="true">
@@ -48,7 +49,10 @@ export const HEADER = `<header>
   </div>
 </header>`;
 
-export const FOOTER = `<footer><div class="wrap">shroom · <a href="/feedback">Trouble, questions</a> · <a href="/faq">Questions and limits</a> · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a><p>We count visits to this page — no cookies, and nothing that tells us who you are.</p></div></footer>`;
+export const FOOTER = `<footer><div class="wrap links">
+  <nav><a href="/feedback">Send feedback</a><span class="sep"> · </span><a href="https://github.com/bagrat/shroom">GitHub</a><span class="sep"> · </span><a href="/faq">Questions and limits</a><span class="sep"> · </span><a href="/privacy">Privacy</a><span class="sep"> · </span><a href="/terms">Terms</a></nav>
+  <p>We count visits to this page — no cookies, and nothing that tells us who you are.</p>
+</div></footer>`;
 
 const escapeHtml = (/** @type {string} */ s) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
