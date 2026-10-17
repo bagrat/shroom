@@ -283,6 +283,14 @@ describe("the questions, privacy and terms pages", () => {
     });
   }
 
+  it("closes with the landing's own links and visits line, and no Trouble, questions (B192)", () => {
+    const hrefs = (/** @type {string} */ h) => [...h.matchAll(/<a href="([^"]+)">/g)].map((m) => m[1]);
+    const foot = landing.match(/<footer class="foot">[\s\S]*?<\/footer>/)?.[0] ?? "";
+    assert.deepEqual(hrefs(FOOTER), hrefs(foot));
+    assert.ok(FOOTER.includes("<p>We count visits to this page — no cookies, and nothing that tells us who you are.</p>"));
+    assert.doesNotMatch(FOOTER, /Trouble, questions/);
+  });
+
   it("each is linked from the landing's foot and the pages' footer", () => {
     const foot = landing.match(/<footer class="foot">[\s\S]*?<\/footer>/)?.[0] ?? "";
     for (const name of ["faq", "privacy", "terms"]) {
