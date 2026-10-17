@@ -103,6 +103,18 @@ describe("the footer", () => {
     const footer = html.match(/<footer>[\s\S]*?<\/footer>/)?.[0] ?? "";
     assert.ok(footer.includes("We count visits to this page — no cookies, and nothing that tells us who you are."));
   });
+
+  it("takes Trouble, questions to the feedback page (N55)", () => {
+    const footer = html.match(/<footer>[\s\S]*?<\/footer>/)?.[0] ?? "";
+    assert.match(footer, /shroom · <a href="\/feedback">Trouble, questions<\/a>/);
+  });
+});
+
+describe("the header", () => {
+  it("offers Send feedback beside GitHub (N55)", () => {
+    const nav = html.match(/<header>[\s\S]*?<nav>([\s\S]*?)<\/nav>/)?.[1] ?? "";
+    assert.equal(nav, '<a href="/feedback">Send feedback</a><a href="https://github.com/bagrat/shroom">GitHub</a>');
+  });
 });
 
 describe("a shared link's tag", () => {
