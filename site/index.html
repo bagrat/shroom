@@ -19,7 +19,9 @@
 <link rel="apple-touch-icon" href="favicon.png">
 <meta name="theme-color" content="#2b2f36" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#f6f7f9" media="(prefers-color-scheme: light)">
-<!-- No fonts, scripts or images from anyone else: the page you read is all there is. -->
+<!-- No fonts, scripts or images from anyone else: the page you read is all there is. The one
+     exception is the demo's video, which plays from the maker's own shroom space, as any shroom
+     link does, and only once its block nears the screen (N58). -->
 <style>
   /* Dark Nord, and its light variant for a browser set to light: every colour is one of these. */
   :root {
@@ -92,10 +94,20 @@
   .fine.os { padding-top: 4px; }
   .install .lead { margin: 0; color: var(--muted); }
 
-  .demo { background: var(--card); border: 1px solid var(--card-edge); border-radius: 12px; padding: 20px; }
-  .demo p { color: var(--muted); margin: 0 0 12px; }
-  .demo a { display: inline-flex; align-items: center; min-height: 44px; }
-  .demo code { font: 15px var(--mono); overflow-wrap: anywhere; }
+  /* The demo: the still sits over the video, and fades once the video is playing. */
+  .demo { display: flex; flex-direction: column; gap: 14px; background: var(--card); border: 1px solid var(--card-edge); border-radius: 12px; padding: 20px; }
+  .demo p { color: var(--muted); margin: 0; font-size: 15px; }
+  .stage { position: relative; aspect-ratio: 1280 / 832; border-radius: 12px; overflow: hidden; background: var(--well); border: 1px solid var(--line); }
+  .stage video { position: absolute; inset: 0; width: 100%; height: 100%; background: #1f2228; }
+  .still { position: absolute; inset: 0; padding: 0; border: 0; background: #2b2f36; cursor: pointer; transition: opacity .4s ease; }
+  .still img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .still .play { position: absolute; left: 50%; top: 50%; width: 80px; height: 80px; margin: -40px 0 0 -40px; border-radius: 50%; background: #88c0d0; display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 24px rgba(0,0,0,.35); transition: transform .15s ease; }
+  .still:hover .play { transform: scale(1.06); }
+  .still .play svg { width: 30px; height: 30px; fill: #2b2f36; margin-left: 3px; }
+  .still .len { position: absolute; right: 12px; bottom: 12px; padding: 3px 9px; border-radius: 6px; background: rgba(31,34,40,.85); color: #eceff4; font: 600 13px var(--sans); font-variant-numeric: tabular-nums; }
+  .still.gone { opacity: 0; pointer-events: none; }
+  @media (max-width: 480px) { .still .play { width: 60px; height: 60px; margin: -30px 0 0 -30px; } .still .play svg { width: 24px; height: 24px; } }
+  @media (prefers-reduced-motion: reduce) { .still { transition: none; } }
 
   .trust { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 24px; border-top: 1px solid var(--line); padding-top: 32px; }
   .trust p { margin: 0; display: flex; flex-direction: column; gap: 4px; color: var(--muted); font-size: 15px; }
@@ -139,6 +151,18 @@
     <li>Your team just <b>accepts an invite</b> and records — no Cloudflare setup for them.</li>
   </ul>
 
+  <!-- The demo (N58, DECISIONS B190): a real shroom recording that plays here, never on the
+       player page. The still is shroom.am's own file; the video comes from the maker's own shroom
+       space, and only once the block is within 200 px of the screen (the script below), so a
+       visitor who never scrolls this far costs that space nothing. -->
+  <section class="demo" id="demo" data-id="ao_nEWdnMegiXNjz" data-space="v.myshroom.workers.dev">
+    <div class="stage">
+      <video playsinline preload="none" width="1280" height="832"></video>
+      <button type="button" class="still" aria-label="Play the demo, 15 minutes"><img src="demo-poster.webp" alt="" width="1440" height="936" loading="lazy" decoding="async"><span class="play" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M5 3v10l8.5-5z"/></svg></span><span class="len" aria-hidden="true">15:07</span></button>
+    </div>
+    <p>Recorded with shroom.</p>
+  </section>
+
   <section class="install" id="install">
     <h2>Install in one line</h2>
     <p class="lead">With Homebrew:</p>
@@ -156,13 +180,6 @@
     <p class="fine os">For macOS 14 or newer, Apple silicon.</p>
   </section>
 
-  <!-- The demo (N7): a real shroom recording on the real player page, in Bagrat's space
-       (DEVIATIONS #29; recorded on 0.1.22 and approved by Bagrat, 2026-10-17). Its 16-character
-       id sits in data-id, the href and the code — the landing test checks all three. -->
-  <section class="demo" id="demo" data-id="ao_nEWdnMegiXNjz">
-    <p>Recorded with shroom itself. It ends at the click of Finish &amp; Share — this page is what opened.</p>
-    <a href="https://v.myshroom.workers.dev/ao_nEWdnMegiXNjz"><code>v.myshroom.workers.dev/ao_nEWdnMegiXNjz</code></a>
-  </section>
 
   <section class="trust">
     <p><b>Open source</b><span class="vh"> — </span><span>Every line on GitHub — the app, the installer, the player.</span></p>
@@ -175,13 +192,39 @@
 
 <script>
   // What runs on this page: a link's ?ref= tag (or utm_*) leaves the address bar once counted,
-  // so it isn't shared onward; and Copy, which reads "Copied" for a moment (law 10).
+  // so it isn't shared onward; the demo; and Copy, which reads "Copied" for a moment (law 10).
   (function () {
     var u = new URL(location.href), tagged = false;
     Array.from(u.searchParams.keys()).forEach(function (k) {
       if (k === "ref" || k.indexOf("utm_") === 0) { u.searchParams.delete(k); tagged = true; }
     });
     if (tagged && history.replaceState) history.replaceState(null, "", u.pathname + u.search + u.hash);
+  })();
+  // The demo (N58): the video's address is set only as its block nears the screen, and only its
+  // index is read then (preload "metadata"); a click plays it and fades the still away. Without
+  // IntersectionObserver the click itself sets it.
+  (function () {
+    var box = document.getElementById("demo");
+    if (!box) return;
+    var v = box.querySelector("video"), still = box.querySelector(".still");
+    var src = "https://" + box.getAttribute("data-space") + "/m/" + box.getAttribute("data-id") + "/video.mp4";
+    var load = function () { if (!v.getAttribute("src")) { v.preload = "metadata"; v.src = src; } };
+    if ("IntersectionObserver" in window) {
+      var io = new IntersectionObserver(function (es) {
+        if (es.some(function (e) { return e.isIntersecting; })) { io.disconnect(); load(); }
+      }, { rootMargin: "200px 0px" });
+      io.observe(box);
+    }
+    v.addEventListener("playing", function () { still.classList.add("gone"); }, { once: true });
+    // A browser that can't play the file keeps the still rather than show a broken video.
+    v.addEventListener("error", function () { still.classList.remove("gone"); v.controls = false; });
+    still.addEventListener("click", function () {
+      load();
+      v.controls = true;
+      var r = v.play();
+      if (r && r.catch) r.catch(function () { if (!v.error) still.classList.add("gone"); });
+      v.focus();
+    });
   })();
   document.querySelectorAll("button[data-copy]").forEach(function (b) {
     b.addEventListener("click", function () {

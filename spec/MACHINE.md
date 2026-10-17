@@ -4,7 +4,7 @@
 
 The machine: every state, edge, rule, said-line and law of shroom v1 — the spec (DECISIONS B133). Sessions edit it; MACHINE.md and the canvas's machine boards are generated from it.
 
-143 states · 296 edges · 23 rules · 562 said-lines · 16 laws · 68 ledger rows.
+143 states · 295 edges · 23 rules · 561 said-lines · 16 laws · 69 ledger rows.
 
 Status: **ratified** is Bagrat's; **provisional** is designed or built and awaits him (each cites its row: `#n` is a DEVIATIONS row of docs/DECISIONS.md, `Bn` a decision, `Nn`/`Un`/`Pn` a ledger row below). `SM:n` in older citations is a line of the retired spec text, kept in history/spec/UX-STATEMACHINE.md.
 
@@ -30,9 +30,9 @@ States are kebab-case, stable, scaffold-grade names; events are written in bold,
 
 ### `landing`
 
-web-page · web-page · **ratified** · board: Landing · cites P17, N6, N7, N11, U6, U3, B140, N55
+web-page · web-page · **ratified** · board: Landing · cites P17, N6, N7, N11, U6, U3, B140, N55, N58
 
-shroom.am, a static page with one job: take a curious visitor to a pasted command, with no false notes. Blocks top to bottom: Hero (the punchline, the explanation points and two eyeball-number price tiles, which carry the whole message), Install (one command with [ Copy ], "Read it first" and the system-requirements line), which sits above the Demo (a real shroom recording on the real player page, self-recorded and record-only), and the Trust strip. Page chrome: the shroom wordmark on the left (the spec draws 🍄 before it) and two links on the right, Send feedback and GitHub (N55).
+shroom.am, a static page with one job: take a curious visitor to a pasted command, with no false notes. Blocks top to bottom: Hero (the punchline, the explanation points and two eyeball-number price tiles, which carry the whole message), the Demo (a real shroom recording, self-recorded and record-only, that plays in place on the page: a still with a play button, the video under it; N58), Install (one command with [ Copy ], "Read it first" and the system-requirements line), right under the demo, and the Trust strip. Page chrome: the shroom wordmark on the left (the spec draws 🍄 before it) and two links on the right, Send feedback and GitHub (N55).
 
 **Entry.** A visitor arrives at shroom.am through one of three entry arrows. (1) Direct: HN, README or word of mouth; a cold visitor who needs the pitch. (2) The recipient loop: they watched a shroom video and clicked the player page's mark (Region 4; whether the mark exists = U3); a warm visitor who already saw the product work. (3) An agent fetching the BYO-agent skill (Region 6's overlay). Also reached by going back from the source view.
 
@@ -55,8 +55,7 @@ shroom.am, a static page with one job: take a curious visitor to a pasted comman
 | “Copy” | button | ratified | The install block's [ Copy ] button beside the command (not drawn filled). No 'Copied' face is drawn in Region 1 (see Law 10 note). |
 | “Read it first — the same address opens as readable source.” | line | ratified | The link text is 'Read it first'. It opens the same URL as plain-text source. |
 | “For macOS 14 or newer, Apple silicon.” | line | ratified | The sentence shape is ratified. The floor ('14') and the Intel stance are scaffold-time facts (SCK matrix): fill in the facts, don't reword. · was “For macOS 14 or newer, Apple silicon and Intel.” · B7, B44, copy table, B134 |
-| “Recorded with shroom itself. It ends at the click of Finish & Share — this page is what opened.” | line | ratified | Demo block caption. Video shape per N7. |
-| “v.myshroom.workers.dev/b4kq9d” | other | ratified | The demo's address, set as code. The space is real; the id 'b4kq9d' is illustrative and varies. |
+| “Recorded with shroom.” | line | ratified | Demo block caption, under the video. No link and no address: the demo plays in place (N58). · was “Recorded with shroom itself. It ends at the click of Finish & Share — this page is what opened.” · N58, B190 |
 | “Open source — Every line on GitHub — the app, the installer, the player.” | line | ratified | Trust strip item 1. 'Open source' is a bold label. |
 | “Your storage, your bill — The prices above are Cloudflare's, not ours.” | line | ratified | Trust strip item 2. 'Your storage, your bill' is a bold label. The apostrophe is straight ASCII, as in the spec. |
 | “Built to outlive us — Links play from your own account — if shroom vanished tomorrow, they'd keep working.” | line | ratified | Trust strip item 3. 'Built to outlive us' is a bold label. The source wraps after 'vanished'; that line break is joined with a space here. |
@@ -74,13 +73,12 @@ shroom.am, a static page with one job: take a curious visitor to a pasted comman
 | Read it first | text-link |  | `source-view` | Opens the same URL (shroom.am/install) as readable source: one URL, two audiences. |
 | GitHub link | text-link |  | `landing` | Opens GitHub, outside shroom. Page chrome, right side. The spec doesn't give the link's wording. |
 | Send feedback | text-link |  | `landing` | Opens shroom.am/feedback, the feedback page (N53), which the spec draws no state for. Page chrome, right side, before GitHub (N55). |
-| watch demo | other |  | `live` | The demo is a real shroom recording on the real player page (N7). |
+| watch demo | other |  | `landing` | The demo plays in place on the landing: the still fades and the video plays under it; the page never navigates to the player page (N58). |
 
 | → | Kind | Label | Status | Cites |
 |---|---|---|---|---|
 | `source-view` | side | Read it first | ratified |  |
 | `installing` | flow | run the install command | ratified |  |
-| `live` | flow | watch the demo | provisional | #29 |
 
 ### `source-view`
 
@@ -3810,6 +3808,7 @@ A move that holds for a whole group of states, written once (B133). The tests ex
 | N55 | shroom.am's header offers Send feedback, and the footer's Trouble, questions opens the feedback page | **Bagrat asked for both, 2026-10-17, and chose the label “Send feedback” from “Send feedback”, “Got feedback?” and “Feedback”.** Every shroom.am page's header carries a second link, **Send feedback**, beside GitHub and in its style, opening shroom.am/feedback (N53's page). The footer keeps its words, “shroom · Trouble, questions”, and its link now opens shroom.am/feedback instead of a new GitHub issue. The installer's header block and its lines keep the issue address (N11 and N8 are unchanged). Canvas board: “shroom.am — Send feedback in the header, and the footer's Trouble, questions opens shroom.am/feedback”. Built: DECISIONS B183. | ratified | 2026-10-17 |
 | N56 | The display you click the mushroom on is the one you record | **Bagrat found it with an external display, 2026-10-17** (“Displays have separate Spaces” on, so every display has its own menu bar and mushroom): he clicked the mushroom on the MacBook's display, and the bubble and the count came up on the external one. **A click on the mushroom opens `config` with the display it was clicked on as the source** — the popover already hangs there, and now the bubble, the count and the take go there too. It wins over a remembered display (Bagrat, 2026-10-17: the click wins). **A hand pick holds:** a display picked in the Record picker stays the source, whichever display the popover is reopened from, until that take ends (Bagrat, 2026-10-17). **Camera only stays Camera only** — a source you chose — but its preview, and with it the count, moves to the clicked display (Bagrat, 2026-10-17). It is the rule for every click; with one display (or a mirror set) nothing changes. A launch you did is a click (N41) and takes the display it came from too; a popover that opens by itself (a pause you didn't make, an update relaunch) and Record now from `all-set` keep last-used, else the main display. Mid-take a click is still the pause and moves nothing. Built: DECISIONS B185. | ratified | 2026-10-17 |
 | N57 | The popover and the windows it opens stay on the mushroom's display | **Bagrat found both on a MacBook beside an external display, 2026-10-17.** (1) After an update relaunch, the popover shroom opened by itself sat at the MacBook screen's top-left corner, not under the mushroom: the just-made mushroom was read before it was laid out, at its screen's very left edge, and was taken as at rest. **A popover hangs under the mushroom, on the mushroom's display, however it opened** (a click, a launch you did, an update relaunch, a pause or stop you didn't make); only a mushroom that can't be seen sends it to the corner (N41, B161). A mushroom read at its screen's left edge isn't laid out yet: a status item never rests there, since the left of a menu bar is the Apple menu's and the app's. The opening waits for it as for any mushroom still on its way in. (2) Settings and the Library, opened from the popover on the MacBook, came up on the external display. **A window opens on the mushroom's display**, centred there — the display the popover hangs on — unless it is already on that display, where it stays where the person left it. That covers the setup window, the Library and Settings. Built: DECISIONS B186. Ratified by Bagrat, 2026-10-17. | ratified | 2026-10-17 |
+| N58 | The demo plays on the landing, second, with a short caption | **Bagrat confirmed the design on the canvas, 2026-10-17** (the board “shroom.am — the demo, B1b at position 2”). (1) **The demo is the page's second block**: after the points, the price tiles and the team line, and right before Install, so the install line sits under the demo. (2) **It plays in place.** The block shows a still of the take (the real setup window from 7:00 and the camera bubble from 0:16, mirrored, cut from the video onto the landing's own ground) with a play button and the length. The video itself loads quietly behind the still as the block comes near the screen; a click fades the still and the video plays there. The landing never sends the visitor to the player page. (3) **The caption is “Recorded with shroom.”**, with no link and no address shown. Built: DECISIONS B190. Ratified by Bagrat, 2026-10-17. | ratified | 2026-10-17 |
 
 ## Surfaces
 

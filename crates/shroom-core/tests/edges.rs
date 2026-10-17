@@ -252,7 +252,6 @@ const CHAPTER: &[&str] = &["done", "perm-mic", "perm-camera", "perm-screen", "re
 const ELSEWHERE: &[(&str, &str, &str)] = &[
     ("wiring", "all-set", "onboarding.rs — every_in_scope_drawn_edge_is_realized_or_out_of_scope (the setup's last step, N45)"),
     ("stopping", "stopped-stranded", "region6.rs — every_region6_and_deferred_drawn_edge_is_realized_or_listed"),
-    ("landing", "live", "onboarding.rs — out of scope there: shroom.am, the web suite"),
     ("idle-ready", "space-degraded", "region5.rs — every_region5_and_afterlife_drawn_edge_is_realized"),
     ("config", "settings-general", "region5.rs — every_region5_and_afterlife_drawn_edge_is_realized"),
     ("member-done", "perm-mic", "region6.rs — every_region6_and_deferred_drawn_edge_is_realized_or_listed"),
@@ -363,7 +362,7 @@ fn every_drawn_edge_belongs_to_an_edge_test() {
     };
     let orphans: Vec<_> = drawn_edges(|f, t| !owned(f, t)).into_iter().map(|(f, t)| format!("{f} → {t}")).collect();
     assert!(orphans.is_empty(), "drawn edges no edge test owns: {orphans:?}");
-    assert_eq!(drawn_edges(|_, _| true).len(), 116, "the drawn edges: the map's 125, one id per state, the notes not edges, paused → countdown gone (B134), the camera's beat in the chapter (N43)");
+    assert_eq!(drawn_edges(|_, _| true).len(), 115, "the drawn edges: the map's 125, one id per state, the notes not edges, paused → countdown gone (B134), the camera's beat in the chapter (N43), landing → live gone (N58)");
 }
 
 /// the machine's law 12, invariant 1, across the fixtures: every failure-state the core renders

@@ -1192,7 +1192,6 @@ fn realized() -> Vec<(&'static str, &'static str, World, Event)> {
 const OUT_OF_SCOPE: &[(&str, &str, &str)] = &[
     ("landing", "source-view", "shroom.am — the web suite"),
     ("source-view", "landing", "shroom.am — the web suite"),
-    ("landing", "live", "shroom.am — the web suite"),
     ("landing", "installing", "the installer — its own suite"),
     ("installing", "install-net-drop", "the installer — its own suite"),
     ("install-net-drop", "installing", "the installer — its own suite"),

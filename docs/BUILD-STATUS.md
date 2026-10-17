@@ -34,7 +34,7 @@
 2. The checkpoint sitting (`CHECKPOINT.md`, items 20–25 and the by-hand checks of
    28–35, plus what came since — B119, DEVIATIONS #42, B125), then the ratifications
    (1–6).
-3. Still his: the demo recording (17). Intel is decided: Apple
+3. The demo is recorded and plays on the landing (17, B190). Intel is decided: Apple
    silicon only (7, B167). Identity and signing (8) are done: 0.1.5
    shipped signed.
 4. Nothing in-frame is queued: the build resumes on his answers.
@@ -50,7 +50,7 @@ the build; the ones marked **release** block shipping. The numbers are the ones
 1. **DEVIATIONS 1–32 and 36** (#7 not adopted). New since milestone 4: 24 (the installer's
    named failures), 25 (`wizard-unexpected`), 26 (a verify-rejected token reads garbled),
    27 (exits wait for a copy to Movies), 28 (Members writes that fail say so), 29 (the
-   landing's demo held back), 30 (the needs-update line in the invite window), 31 (the
+   landing's demo held back; closed by B190), 30 (the needs-update line in the invite window), 31 (the
    join page's cookie faces best-effort), 32 (the repair mood's foreign-Worker rest), 36
    ((a) Return copies the link on `stopped-offline`; (b) the tray's face and the bubble
    during `stopping` — the spec is silent on both).
@@ -99,8 +99,8 @@ the build; the ones marked **release** block shipping. The numbers are the ones
     shroom.am are live, and 0.1.5 is the first GitHub release — **done.**
 
 **Supply**
-17. **The demo recording** (N7, DEVIATIONS 29) — **release.** Record it in his space; its
-    id goes into the landing's demo block.
+17. **The demo recording** (N7, DEVIATIONS 29) — **done** (2026-10-17): recorded on 0.1.22 in
+    his space; it plays in place on the landing, second, under “Recorded with shroom.” (N58, B190).
 18. **og:description** for a video page's link previews (B27, the copy table) — none is
     invented; R5.1's Teams card wants one. Whether “shroom” belongs on cards as a site name.
     The Teams rich-card probe needs a Teams tenant. (shroom.am's own pages have theirs,
