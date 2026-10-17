@@ -26,7 +26,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { webkit } from "playwright";
-import { dist, echo, gallery, serve, stub } from "./gallery-kit.mjs";
+import { dist, echo, gallery, serve, stub, windowPage } from "./gallery-kit.mjs";
 
 for (const f of ["library.html", "settings.html", "onboarding.html"]) {
   if (!existsSync(join(dist, f))) {
@@ -53,7 +53,7 @@ const FIELDS = [
   { name: "name", page: "onboarding", scene: scene(onboarding, "name"), sel: "input.name", cap: 63 },
 ];
 const READY = { library: ".lib", settings: ".set", onboarding: "main.ob" };
-const SIZE = { library: { width: 680, height: 560 }, settings: { width: 600, height: 620 }, onboarding: { width: 520, height: 600 } };
+const SIZE = { library: { width: 680, height: 560 }, settings: { width: 600, height: 620 }, onboarding: windowPage("ONBOARDING", { width: 600, height: 680 }) };
 
 // What a person types: Bagrat's own word, and a longer one for typing ahead of the core
 // (every character one the link name keeps too).

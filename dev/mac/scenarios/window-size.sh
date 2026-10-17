@@ -1,7 +1,7 @@
 # The setup window's size as macOS has it: the onboarding drive's email-gate path with the
 # gate held 30 s, and meanwhile the window's frame (CGWindowBounds, title bar included) and
 # its web area (the page's viewport) read from the accessibility tree, and the screen shot.
-# Settles whether WindowSpec's height is the window's frame or the page's.
+# WindowSpec's height is the frame (B189): the page must be 600×648 under the 32 pt title bar.
 size() {
   osascript -l JavaScript -e '
     ObjC.import("CoreGraphics");
@@ -23,7 +23,7 @@ size() {
 ( sleep 20; for i in 1 2 3; do size >>"$MAC_OUT/size.txt"; screencapture -x "$MAC_OUT/shot-$i.png"; sleep 4; done ) &
 probe=$!
 GATE_HOLD_MS=30000 node app/test/onboarding-drive.mjs email-gate
-code=$?
+echo "the drive ended with $?"
 wait "$probe" 2>/dev/null
 cat "$MAC_OUT/size.txt"
-exit $code
+grep -q 'ax window {"size":\[600,680\]' "$MAC_OUT/size.txt" && grep -q 'AXWebArea \[600,648\]' "$MAC_OUT/size.txt"
