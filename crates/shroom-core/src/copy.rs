@@ -390,7 +390,7 @@ pub fn send() -> String { "Send".into() }
 pub fn sending() -> String { "Sending…".into() }
 pub fn report_failed() -> String { "That didn’t go through — check your connection and try again. Or email it to hi@shroom.am instead.".into() }
 pub fn report_mail() -> String { "email it to hi@shroom.am".into() }
-// ── Send feedback (N60): proposals, awaiting Bagrat ──
+// ── Send feedback (N60): ratified by Bagrat, 2026-10-17 ──
 /// The header icon's name (hover, VoiceOver) and the window's title: the site's label (N55).
 pub fn send_feedback() -> String { "Send feedback".into() }
 pub fn feedback_line() -> String { "An idea, something that bugged you, something that broke — it goes straight to the person who makes shroom.".into() }
