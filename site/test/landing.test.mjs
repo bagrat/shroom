@@ -1,11 +1,11 @@
 // The landing (Region 1, `landing`): every ratified line is on the page, verbatim, and
 // the page asks nothing of anyone else's servers. Run: node --test site/test/landing.test.mjs
 //
-// Two of the fixture's lines are ratified as a shape, not as words: the system-requirements
-// sentence (“fill the facts in, don't reword”) and the demo's address (“id illustrative”).
-// Those two are checked against their facts instead — the floor and the kinds of Mac from
-// what actually ships, the demo's id from the recording it links (DEVIATIONS #29).
-import { readFileSync } from "node:fs";
+// One of the fixture's lines is ratified as a shape, not as words: the system-requirements
+// sentence (“fill the facts in, don't reword”). It is checked against its facts instead —
+// the floor and the kinds of Mac from what actually ships. The demo plays in place (N58):
+// its block names a real recording, and the page fetches the video only from script.
+import { existsSync, readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
@@ -22,7 +22,6 @@ const landing = JSON.parse(readFileSync(`${ROOT}spec/machine.json`, "utf8")).sta
 
 const SYSREQ = /^For macOS (\d+) or newer, (.+)\.$/;
 const isSysReq = (l) => SYSREQ.test(l.text);
-const isDemoAddress = (l) => /illustrative/.test(l.note ?? "");
 
 // The facts, from the two files that decide them: the installer's floor, and the kinds of
 // Mac the release packager lets through (its `case "$arch"` arms that don't exit).
@@ -42,7 +41,7 @@ describe("the landing", () => {
     for (const l of landing.said) {
       // The copy table's lines (the title, the search description, the footer, the agent
       // door) are the build's, each held by its own test.
-      if (isSysReq(l) || isDemoAddress(l) || (l.cites ?? []).includes("copy table")) continue;
+      if (isSysReq(l) || (l.cites ?? []).includes("copy table")) continue;
       assert.ok(text.includes(l.text), `missing: ${l.text}`);
     }
   });
@@ -59,31 +58,35 @@ describe("the landing", () => {
     assert.deepEqual(said, [line], "no other version of the sentence is on the page");
   });
 
-  it("links only a real recording as its demo, or holds the block back", () => {
-    const address = landing.said.find(isDemoAddress).text;
-    const host = address.slice(0, address.lastIndexOf("/") + 1); // v.myshroom.workers.dev/
-    const illustrative = address.slice(host.length);
-    assert.ok(!html.includes(illustrative), `the spec's illustrative id (${illustrative}) is never linked`);
-    const id = demo.match(/data-id="([^"]*)"/)?.[1];
-    assert.notEqual(id, undefined, "the demo block carries its id in data-id");
-    if (/<section class="demo"[^>]*\bhidden\b/.test(demo)) {
-      assert.equal(id, "", "a held-back demo names no recording");
-      assert.doesNotMatch(demo, /href=/, "a held-back demo links nowhere");
-    } else {
-      assert.match(id, ID, "the demo is a real recording id");
-      assert.ok(demo.includes(`href="https://${host}${id}"`), "the link opens that recording's page");
-      assert.ok(visible(demo).includes(`${host}${id}`), "the address shown is the one linked");
-      const caption = landing.said.find((l) => /Recorded with shroom itself/.test(l.text)).text;
-      assert.ok(visible(demo).includes(caption), "the caption sits with the link");
-    }
+  it("plays a real recording in place, second, right above Install (N58)", () => {
+    assert.doesNotMatch(demo, /<section class="demo"[^>]*\bhidden\b/, "the demo block shows");
+    const id = demo.match(/data-id="([^"]*)"/)?.[1] ?? "";
+    assert.match(id, ID, "the demo is a real recording id");
+    assert.match(demo.match(/data-space="([^"]*)"/)?.[1] ?? "", /^v\.[a-z0-9-]+\.workers\.dev$/, "the space it plays from");
+    assert.doesNotMatch(demo, /href=/, "the demo links nowhere: it plays on the landing, never on the player page");
+    const caption = landing.said.find((l) => l.id === "landing.recorded-with-shroom-itself").text;
+    const words = visible(demo.replace(/<span[^>]*aria-hidden="true"[^>]*>[\s\S]*?<\/span>/g, "")).trim();
+    assert.equal(words, caption, "the caption is the block's only words (the length on the still is decoration)");
+    assert.match(demo, /<video\b[^>]*\bpreload="none"/, "nothing loads before the script asks");
+    assert.doesNotMatch(demo, /<video\b[^>]*\bsrc=/, "the video's address is set by script, as the block nears the screen");
+    assert.match(demo, /<img src="demo-poster\.webp"/, "the still is the site's own file");
+    const order = ["Your team just", 'class="demo"', 'id="install"'].map((k) => html.indexOf(k));
+    assert.ok(order[0] < order[1] && order[1] < order[2], "the demo comes after the team line and before Install");
   });
 
-  it("loads nothing from anyone else", () => {
-    const external = [...html.matchAll(/(?:src|href)="(https?:[^"]+)"/g)].map((m) => m[1]);
-    for (const url of external) {
-      // Links people follow are fine; nothing the page itself fetches may be remote.
-      assert.ok(!/<(?:script|link|img)[^>]*\b(?:src|href)="https?:/.test(html), `fetches ${url}`);
-    }
+  it("ships the demo's still with the page", () => {
+    const build = readFileSync(`${ROOT}site/build.mjs`, "utf8");
+    assert.ok(existsSync(`${ROOT}site/demo-poster.webp`), "site/demo-poster.webp is there");
+    assert.match(build, /"demo-poster\.webp"/, "build.mjs copies it into what the site serves");
+  });
+
+  it("loads nothing from anyone else, but the demo's video from the maker's own space", () => {
+    // Links people follow are fine; nothing the markup itself fetches may be remote.
+    assert.doesNotMatch(html, /<(?:script|link|img|video|source|iframe)[^>]*\b(?:src|href)="https?:/, "a remote fetch in the markup");
+    // The script's one remote address is the demo's video, in the space the block names (N58).
+    const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]).join("\n");
+    assert.deepEqual([...scripts.matchAll(/https?:\/\/[^"'\s]*/g)].map((m) => m[0]), ["https://"], "only the demo's address is built in script");
+    assert.match(scripts, /"https:\/\/" \+ box\.getAttribute\("data-space"\) \+ "\/m\/" \+ box\.getAttribute\("data-id"\) \+ "\/video\.mp4"/);
   });
 
   it("offers Homebrew first, the install line under it (N52)", () => {

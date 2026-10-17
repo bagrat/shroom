@@ -15,7 +15,7 @@ const landing = JSON.parse(readFileSync(`${ROOT}spec/machine.json`, "utf8")).sta
 // The landing's ratified lines that belong to the page itself, not to a browser: no Copy
 // button, no "Read it first" link, no demo, no header links (N55). The system-requirements sentence is checked
 // against the landing's own (filled-in) sentence instead.
-const PAGE_ONLY = /^(Copy|Send feedback|Install in one line|Read it first — .*|Recorded with shroom itself\..*)$/;
+const PAGE_ONLY = /^(Copy|Send feedback|Install in one line|Read it first — .*|Recorded with shroom\..*)$/;
 
 /** Every “…” on the page: a line the agent says to the person, or a word it quotes. */
 const said = [...flat.matchAll(/“([^”]+)”/g)].map((m) => m[1]);
@@ -24,7 +24,7 @@ describe("the agent page", () => {
   it("mirrors the landing's ratified lines", () => {
     for (const l of landing.said) {
       // The Homebrew road (N52) is the person's: the agent runs the install line it names.
-      if (PAGE_ONLY.test(l.text) || /illustrative/.test(l.note ?? "") || /^For macOS/.test(l.text) || (l.cites ?? []).includes("copy table") || (l.cites ?? []).includes("N52")) continue;
+      if (PAGE_ONLY.test(l.text) || /^For macOS/.test(l.text) || (l.cites ?? []).includes("copy table") || (l.cites ?? []).includes("N52")) continue;
       assert.ok(flat.includes(l.text), `missing: ${l.text}`);
     }
   });
