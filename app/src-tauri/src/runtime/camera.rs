@@ -345,10 +345,10 @@ pub fn bubble_window() -> Option<Retained<NSPanel>> {
     BUBBLE.with(|s| s.borrow().as_ref().map(|n| n.panel.clone()))
 }
 
-/// The harness's bubble probe, with no runtime: shows `b` (main thread), lets the camera
-/// run for `run`, reads what's on screen, and closes it.
+/// The harness's bubble probe, with no runtime: shows `b` (main thread) and returns once
+/// it's on screen; `close_probe_bubble` reads it and closes it.
 #[cfg_attr(not(feature = "dev-harness"), allow(dead_code))]
-pub fn probe_bubble(app: &tauri::AppHandle, b: Bubble, run: std::time::Duration) -> Option<Seen> {
+pub fn show_probe_bubble(app: &tauri::AppHandle, b: Bubble) {
     let (tx, rx) = std::sync::mpsc::channel();
     let _ = app.run_on_main_thread(move || {
         let Some(mtm) = MainThreadMarker::new() else { return };
@@ -366,7 +366,21 @@ pub fn probe_bubble(app: &tauri::AppHandle, b: Bubble, run: std::time::Duration)
         let _ = tx.send(());
     });
     let _ = rx.recv_timeout(std::time::Duration::from_secs(5));
-    std::thread::sleep(run);
+}
+
+/// What's on screen of the probe's bubble now (any thread).
+#[cfg_attr(not(feature = "dev-harness"), allow(dead_code))]
+pub fn read_probe_bubble(app: &tauri::AppHandle) -> Option<Seen> {
+    let (tx, rx) = std::sync::mpsc::channel();
+    let _ = app.run_on_main_thread(move || {
+        let _ = tx.send(bubble_seen());
+    });
+    rx.recv_timeout(std::time::Duration::from_secs(5)).ok().flatten()
+}
+
+/// Reads the probe's bubble and closes it (any thread).
+#[cfg_attr(not(feature = "dev-harness"), allow(dead_code))]
+pub fn close_probe_bubble(app: &tauri::AppHandle) -> Option<Seen> {
     let (tx, rx) = std::sync::mpsc::channel();
     let _ = app.run_on_main_thread(move || {
         let seen = BUBBLE.with(|s| s.borrow_mut().take()).map(|n| {
