@@ -108,6 +108,11 @@ describe("the landing", () => {
     assert.match(html, /<script>document\.documentElement\.className = "js";<\/script>/);
   });
 
+  it("puts the terms before the demo on a phone, and install last (Bagrat, 2026-10-17)", () => {
+    assert.match(html, /grid-template-areas: "brand box" "pitch box" "terms box";/, "a laptop: the box beside the pitch and the terms");
+    assert.match(html, /@media \(max-width: 900px\) \{[\s\S]*?grid-template-areas: "brand" "pitch" "terms" "box";/, "a phone: the terms, then the demo and install");
+  });
+
   it("says the terms in Bagrat's order, under the price bar (N59)", () => {
     const terms = (html.match(/<ul class="terms">([\s\S]*?)<\/ul>/)?.[1] ?? "").match(/<li>[\s\S]*?<\/li>/g)?.map((li) => visible(li).trim()) ?? [];
     const ids = ["landing.your-videos-live-in", "landing.you-only-ever-pay", "landing.your-team-just-accepts", "landing.no-price-per-person",
@@ -118,8 +123,12 @@ describe("the landing", () => {
   it("draws the price as one bar, its two ends labelled, inside the headline's own width (N59)", () => {
     const pitch = html.match(/<div class="pitch">([\s\S]*?)\n  <\/div>/)?.[1] ?? "";
     assert.match(pitch, /<h1>Record\. Share\. Pay-as-you-go\.<\/h1>/);
-    const ends = [...pitch.matchAll(/<span>(.*?)<\/span>/g)].map((m) => visible(m[1]));
-    assert.deepEqual(ends, ["landing.0-month-about-six", "landing.1-50-month-about"].map((id) => landing.said.find((l) => l.id === id).text));
+    const ends = [...pitch.matchAll(/<span class="(long|short)">(.*?)<\/span>/g)].map((m) => [m[1], visible(m[2])]);
+    const text = (id) => landing.said.find((l) => l.id === id).text;
+    assert.deepEqual(ends, [["long", text("landing.0-month-about-six")], ["long", text("landing.1-50-month-about")],
+      ["short", text("landing.0-3h-video")], ["short", text("landing.1-50-30h")]], "the long labels on a laptop, the short on a phone");
+    assert.match(html, /\.gauge \.ends \.short \{ display: none; \}/);
+    assert.match(html, /@media \(max-width: 900px\) \{[\s\S]*?\.gauge \.ends \.long \{ display: none; \}/);
     assert.match(pitch, /<div class="gauge" role="img" aria-label="[^"]+">/, "the bar has a name a screen reader says");
     assert.match(html, /\.pitch \{[^}]*width: max-content;/, "the headline, its line and the bar share the headline's width");
   });

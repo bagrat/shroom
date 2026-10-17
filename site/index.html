@@ -115,9 +115,10 @@
   .gauge .bar { position: relative; height: 6px; border-radius: 3px; background: var(--line); }
   .gauge .bar::before { content: ""; position: absolute; inset: 0 90% 0 0; border-radius: 3px 0 0 3px; background: var(--frost); }
   .gauge .ends { display: flex; justify-content: space-between; gap: 12px; color: var(--quiet); font-size: 15px; }
-  .gauge .ends span:last-child { text-align: right; }
+  .gauge .ends span:nth-child(2n) { text-align: right; }
+  .gauge .ends .short { display: none; }
   .gauge b { color: var(--text); font-weight: 600; }
-  .gauge .ends span:first-child b { color: var(--frost); }
+  .gauge .ends span:nth-child(2n+1) b { color: var(--frost); }
   .terms { grid-area: terms; list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; align-self: start;
     color: var(--muted); font-size: 19px; line-height: 1.45; }
   .terms li { display: flex; align-items: flex-start; gap: 12px; }
@@ -165,15 +166,18 @@
 
   @media (max-width: 900px) {
     .page { padding: 0 16px; }
-    .split { --mark: 72px; --word: 60px; padding-top: 28px; grid-template-columns: minmax(0, 1fr); grid-template-areas: "brand" "pitch" "box" "terms"; grid-template-rows: none; }
+    /* On a phone the terms come before the demo, and install goes last (Bagrat, 2026-10-17). */
+    .split { --mark: 72px; --word: 60px; padding-top: 28px; grid-template-columns: minmax(0, 1fr); grid-template-areas: "brand" "pitch" "terms" "box"; grid-template-rows: none; }
     .split .brand { margin-bottom: 28px; }
     .pitch { width: auto; margin-bottom: 24px; }
     .pitch h1 { font-size: 33px; white-space: normal; text-wrap: balance; }
     .pitch .punch { font-size: 17px; }
     .gauge { margin-top: 24px; }
-    .gauge .ends { flex-direction: column; gap: 2px; font-size: 14px; }
-    .gauge .ends span:last-child { align-self: flex-end; }
-    .side { padding-top: 0; margin-bottom: 28px; }
+    .gauge .ends { font-size: 15px; }
+    .gauge .ends .long { display: none; }
+    .gauge .ends .short { display: inline; }
+    .terms { margin-bottom: 28px; }
+    .side { padding-top: 0; }
     .box { padding: 16px; gap: 22px; }
     .install .head { flex-direction: column; align-items: flex-start; }
     .install h2 { font-size: 20px; }
@@ -181,8 +185,10 @@
     .terms { font-size: 16px; gap: 10px; }
     .terms svg { margin-top: 2px; }
     .foot { padding-top: 32px; }
-    .foot nav { column-gap: 20px; }
+    .foot nav { column-gap: 18px; }
+    .foot nav a { font-size: 14px; }
     .foot .sep { display: none; }
+    .foot p { font-size: 13px; line-height: 1.5; }
     .still .play { width: 56px; height: 56px; margin: -28px 0 0 -28px; }
     .still .play svg { width: 22px; height: 22px; }
   }
@@ -206,7 +212,7 @@
     <p class="punch">No monthly seat, sometimes completely free</p>
     <div class="gauge" role="img" aria-label="$0 for about three hours of video; $1.50 a month for about thirty hours">
       <div class="bar"></div>
-      <div class="ends" aria-hidden="true"><span><b>$0</b> · about three hours of video</span><span><b>$1.50 /month</b> · about thirty hours</span></div>
+      <div class="ends" aria-hidden="true"><span class="long"><b>$0</b> · about three hours of video</span><span class="long"><b>$1.50 /month</b> · about thirty hours</span><span class="short"><b>$0</b> / 3h video</span><span class="short"><b>$1.50</b> / 30h</span></div>
     </div>
   </div>
 
