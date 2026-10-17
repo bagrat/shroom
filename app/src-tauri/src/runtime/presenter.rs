@@ -153,7 +153,8 @@ pub fn seen(occlusion_visible: bool, locked: bool, frame: Frame, whole: Frame, n
     // In the menu bar: its top edge on the screen's, or a few points short of it (a mirror
     // set's menu bar is drawn at one display's height).
     let below = whole.y + whole.h - (frame.y + frame.h);
-    let at_rest = whole.w > 0.0 && frame.w > 0.0 && frame.h > 0.0 && (-0.5..=frame.h / 2.0).contains(&below);
+    // Never at the screen's left edge, the Apple menu's: there it isn't laid out yet (N57).
+    let at_rest = whole.w > 0.0 && frame.w > 0.0 && frame.h > 0.0 && (-0.5..=frame.h / 2.0).contains(&below) && frame.x > whole.x + 0.5;
     let clear = match notch.filter(|_| !mirrored) {
         Some((l, r)) => within(whole.x, whole.x + l) || within(whole.x + whole.w - r, whole.x + whole.w),
         None => within(whole.x, whole.x + whole.w),
@@ -348,8 +349,10 @@ pub fn holds(young: bool, m: Option<Mushroom>) -> bool {
 /// macOS rests a status item whatever the menu bar's height (a notch's, an external
 /// display's). On its way in it is lower — parked under the screen, or a few points
 /// short — or higher.
+/// A just-made one can read at its screen's very left edge before it is laid out, already
+/// marked as seen: not at rest (N57).
 fn rests(m: &Mushroom) -> bool {
-    (m.frame.y + m.frame.h - m.top).abs() <= 0.5
+    (m.frame.y + m.frame.h - m.top).abs() <= 0.5 && m.frame.x > m.screen.x + 0.5
 }
 
 /// Which of the screens a click on the mushroom came from (N56), each with its whole and
@@ -752,6 +755,10 @@ fn present_window(app: &AppHandle, rt: &Runtime, sp: &WindowSpec, now: Option<(s
             }
             // Shown when it opens — not on every Scene: a window the person minimized (or
             // hid with shroom) stays where they put it until they reach for it.
+            // It opens on the mushroom's display, the popover's (N57).
+            if before.is_none() {
+                to_mushrooms_display(app, &w);
+            }
             match before {
                 None if activates => {
                     let _ = w.show();
@@ -836,6 +843,29 @@ fn build_window(app: &AppHandle, rt: &Runtime, sp: &WindowSpec, excluded: &Arc<M
         _ => {}
     });
     Some(w)
+}
+
+/// Where a window opening now goes (its frame's origin): centred on `target`, the visible
+/// frame of the mushroom's display — the one the popover hangs on (N57). `None` when it is
+/// already on that display (it stays where the person left it) or there's none to go to.
+pub fn window_origin(window: Frame, target: Frame) -> Option<(f64, f64)> {
+    let (cx, cy) = (window.x + window.w / 2.0, window.y + window.h / 2.0);
+    if target.w <= 0.0 || target.h <= 0.0 || target.contains(cx, cy) {
+        return None;
+    }
+    let x = target.x + ((target.w - window.w) / 2.0).max(0.0);
+    let top = target.y + target.h - ((target.h - window.h) / 2.0).max(0.0);
+    Some((x, top - window.h))
+}
+
+/// Moves a window that is opening to the mushroom's display (N57; main thread).
+fn to_mushrooms_display(app: &AppHandle, w: &tauri::WebviewWindow) {
+    let Some(target) = app.tray_by_id("shroom").and_then(|t| mushroom(&t)).map(|m| m.screen) else { return };
+    let Ok(ptr) = w.ns_window() else { return };
+    let ns: &objc2_app_kit::NSWindow = unsafe { &*(ptr as *const objc2_app_kit::NSWindow) };
+    if let Some((x, y)) = window_origin(Frame::of(ns.frame()), target) {
+        ns.setFrameOrigin(objc2_foundation::NSPoint::new(x, y));
+    }
 }
 
 /// Shows `w` in front without making it key or activating shroom (law 5).
