@@ -36,8 +36,9 @@ pub enum Mode {
     /// Tray + popover mechanics: the Dock rule (law 6) and an unasked popover that must
     /// not take the keyboard (law 5). Writes JSON, exits.
     ShellProbe(PathBuf),
-    /// Open the camera bubble and report whether the webview got the camera.
-    BubbleProbe(PathBuf),
+    /// Open the camera bubble and report what's on screen; held `hold` seconds and read
+    /// off the screen when given (the Space-switch check), its window varied by `window`.
+    BubbleProbe { out: PathBuf, hold: Option<u64>, window: crate::runtime::camera::ProbeWindow },
     /// Every tray face drawn on every menu bar, its mushroom checked against the bar
     /// (`tray_probe.rs`); then faces put on at the scenario's asks. Writes JSON, exits.
     TrayProbe(PathBuf),
@@ -162,7 +163,12 @@ pub fn from_args(args: Vec<String>) -> Mode {
         return Mode::Drive { out, seconds };
     }
     if let Some(rest) = after("--bubble-probe") {
-        return Mode::BubbleProbe(PathBuf::from(rest.first().expect("--bubble-probe needs an output path")));
+        let hold = args.iter().position(|a| a == "--hold").and_then(|i| args.get(i + 1)).and_then(|s| s.parse::<u64>().ok()).filter(|s| (1..=300).contains(s));
+        let window = crate::runtime::camera::ProbeWindow {
+            not_stationary: args.iter().any(|a| a == "--not-stationary"),
+            level: args.iter().position(|a| a == "--level").and_then(|i| args.get(i + 1)).and_then(|s| s.parse::<isize>().ok()),
+        };
+        return Mode::BubbleProbe { out: PathBuf::from(rest.first().expect("--bubble-probe needs an output path")), hold, window };
     }
     if let Some(rest) = after("--tray-probe") {
         return Mode::TrayProbe(PathBuf::from(rest.first().expect("--tray-probe needs an output path")));
@@ -683,7 +689,12 @@ pub fn shell_probe(app: AppHandle, out: PathBuf) {
 /// Opens the native bubble on the camera the core would pick (the built-in one, else the
 /// first that isn't an iPhone — N39) and reports what's on screen: the camera, whether it
 /// delivers, and that the panel can never take the keyboard (law 5). Closes it, exits.
-pub fn bubble_probe(app: AppHandle, out: PathBuf) {
+///
+/// With `hold`, it stays that many seconds and reads the bubble's picture off the screen
+/// once a second (`<out>.ready` says when it shows, so a scenario can switch Spaces around
+/// it): a camera that moves must keep moving there, whatever Space is in front. The
+/// rehearsal's bubble froze on a switch into a full-screen Space and never came back.
+pub fn bubble_probe(app: AppHandle, out: PathBuf, hold: Option<u64>, window: crate::runtime::camera::ProbeWindow) {
     let cameras = crate::runtime::probe::cameras();
     let pick = cameras.iter().find(|c| c.builtin && !c.continuity).or_else(|| cameras.iter().find(|c| !c.continuity)).cloned();
     let Some(cam) = pick else {
@@ -691,10 +702,64 @@ pub fn bubble_probe(app: AppHandle, out: PathBuf) {
         app.exit(0);
         return;
     };
-    let bubble = shroom_core::scene::Bubble { at: None, display: main_display_id(), camera: cam.uid.clone() };
-    let report = crate::runtime::camera::probe_bubble(&app, bubble, Duration::from_secs(2));
-    let _ = std::fs::write(&out, serde_json::json!({ "ok": report.as_ref().is_some_and(|s| s.running && !s.can_become_key && !s.key), "camera": cam, "seen": report }).to_string());
+    let display = main_display_id();
+    let bubble = shroom_core::scene::Bubble { at: None, display, camera: cam.uid.clone() };
+    crate::runtime::camera::show_probe_bubble(&app, bubble, window);
+    let Some(hold) = hold else {
+        std::thread::sleep(Duration::from_secs(2));
+        let report = crate::runtime::camera::close_probe_bubble(&app);
+        let _ = std::fs::write(&out, serde_json::json!({ "ok": report.as_ref().is_some_and(|s| s.running && !s.can_become_key && !s.key), "camera": cam, "seen": report }).to_string());
+        app.exit(0);
+        return;
+    };
+    // The camera's first picture, then the scenario may start moving Spaces.
+    std::thread::sleep(Duration::from_secs(3));
+    let _ = std::fs::write(out.with_extension("ready"), "");
+    let mut samples = Vec::new();
+    let mut last: Option<Vec<u8>> = None;
+    for second in 0..hold {
+        std::thread::sleep(Duration::from_secs(1));
+        let seen = crate::runtime::camera::read_probe_bubble(&app);
+        let picture = seen.as_ref().and_then(|s| bubble_picture(display, s.at).ok());
+        let change = match (&last, &picture) {
+            (Some(a), Some(b)) => Some(a.iter().zip(b).map(|(x, y)| x.abs_diff(*y) as f64).sum::<f64>() / b.len() as f64),
+            _ => None,
+        };
+        samples.push(serde_json::json!({ "t": second + 1, "change": change, "seen": seen }));
+        if picture.is_some() {
+            last = picture;
+        }
+    }
+    let report = crate::runtime::camera::close_probe_bubble(&app);
+    // The last third of the hold is after the scenario's Space switches: the picture must
+    // still move there (the pattern's moving parts change it every second).
+    let tail: Vec<f64> = samples.iter().skip(samples.len() * 2 / 3).filter_map(|s| s["change"].as_f64()).collect();
+    let moving = !tail.is_empty() && tail.iter().filter(|c| **c > BUBBLE_MOVES).count() * 2 >= tail.len();
+    let ok = moving && report.as_ref().is_some_and(|s| s.running && !s.can_become_key && !s.key);
+    let _ = std::fs::write(&out, serde_json::json!({ "ok": ok, "moving": moving, "camera": cam, "seen": report, "samples": samples }).to_string());
     app.exit(0);
+}
+
+/// A picture that changes by more than this (mean gray difference, 0–255) a second apart
+/// is a live camera; a frozen bubble reads ~0 (the rehearsal's read 0.0–0.4).
+const BUBBLE_MOVES: f64 = 1.0;
+
+/// The bubble's picture off the screen: its square of `display`, in gray, at one sample a point.
+fn bubble_picture(display: u32, at: (i32, i32)) -> Result<Vec<u8>, String> {
+    let b = crate::runtime::probe::display_bounds(display);
+    let (w, h) = (b.w as u32, b.h as u32);
+    let gray = shroom_capture::grab_gray(display, w, h)?;
+    let side = crate::runtime::camera::BUBBLE_SIZE as u32;
+    let (x0, y0) = (at.0.max(0) as u32, at.1.max(0) as u32);
+    // The middle of the circle only: its corners are whatever is behind the bubble.
+    let (inset, inner) = (side / 4, side / 2);
+    let mut out = Vec::with_capacity((inner * inner) as usize);
+    for y in y0 + inset..(y0 + inset + inner).min(h) {
+        for x in x0 + inset..(x0 + inset + inner).min(w) {
+            out.push(gray[(y * w + x) as usize]);
+        }
+    }
+    Ok(out)
 }
 
 /// A Tauri window's AppKit window number (what ScreenCaptureKit calls its window id).

@@ -16,4 +16,5 @@ scap-screencapturekit = { git = "https://github.com/CapSoftware/Cap", rev = "fb3
 cap-camera-avfoundation = { git = "https://github.com/CapSoftware/Cap", rev = "fb3f2438" }
 cidre = { git = "https://github.com/CapSoftware/cidre", rev = "bf84b67079a8", default-features = false, features = ["macos_12_7", "cv", "cf", "cg", "sc", "av", "blocks", "async", "dispatch"] }
 futures = "0.3"
+objc2 = "0.6"
 cpal = "0.18"

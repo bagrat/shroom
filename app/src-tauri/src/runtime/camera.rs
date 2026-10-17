@@ -1,6 +1,7 @@
 //! shroom's camera windows (DECISIONS B47, superseding B20's webview): the camera
-//! bubble and Camera-as-the-source's preview, each a native non-activating panel showing an
-//! `AVCaptureVideoPreviewLayer` on the exact camera the Scene names — never WebKit's default
+//! bubble and Camera-as-the-source's preview, each a native non-activating panel showing a
+//! layer shroom draws the camera's frames into (`shroom_capture::CameraPreview`), from the
+//! exact camera the Scene names — never WebKit's default
 //! camera, which can be an iPhone over Continuity (N39).
 //!
 //! - **The bubble** (N22): round, mirrored, 180 pt; borderless and non-activating, so a click
@@ -117,15 +118,19 @@ impl Spinner {
     }
 }
 
-/// Starts `preview`'s camera; once it delivers, `spinner` goes.
+/// Starts `preview`'s camera; once it delivers, `spinner` goes. A picture that stops later
+/// restarts its camera (`shroom_capture::watchdog`), logged.
 fn run(rt: &Runtime, what: &'static str, preview: &shroom_capture::CameraPreview, spinner: Spinner) {
-    let rt = rt.clone();
-    preview.run(move |running| {
-        if !running {
-            rt.log(&format!("{what}: the camera didn't start"));
-        }
-        spinner.stop();
-    });
+    let (rt, rt2) = (rt.clone(), rt.clone());
+    preview.run(
+        move |running| {
+            if !running {
+                rt.log(&format!("{what}: the camera didn't start"));
+            }
+            spinner.stop();
+        },
+        move |n| rt2.log(&format!("{what}: the camera's picture stopped; restarting it ({n})")),
+    );
 }
 
 fn panel(mtm: MainThreadMarker, frame: NSRect, preview: &shroom_capture::CameraPreview, round: bool) -> (Retained<NSPanel>, Spinner) {
@@ -142,7 +147,9 @@ fn panel(mtm: MainThreadMarker, frame: NSRect, preview: &shroom_capture::CameraP
     p.setCanHide(false);
     p.setMovableByWindowBackground(true);
     p.setBecomesKeyOnlyIfNeeded(true);
-    p.setCollectionBehavior(NSWindowCollectionBehavior::CanJoinAllSpaces | NSWindowCollectionBehavior::FullScreenAuxiliary);
+    // Stationary: it stays where it is while the Spaces swipe, rather than leaving with one
+    // and arriving with the next (DECISIONS B188).
+    p.setCollectionBehavior(NSWindowCollectionBehavior::CanJoinAllSpaces | NSWindowCollectionBehavior::FullScreenAuxiliary | NSWindowCollectionBehavior::Stationary);
     let bounds = NSRect::new(NSPoint::new(0.0, 0.0), frame.size);
     let content = NSView::initWithFrame(NSView::alloc(mtm), bounds);
     content.setWantsLayer(true);
@@ -151,7 +158,7 @@ fn panel(mtm: MainThreadMarker, frame: NSRect, preview: &shroom_capture::CameraP
     picture.setAutoresizingMask(NSAutoresizingMaskOptions::ViewWidthSizable | NSAutoresizingMaskOptions::ViewHeightSizable);
     let at = NSPoint::new((frame.size.width - SPINNER) / 2.0, (frame.size.height - SPINNER) / 2.0);
     // SAFETY: plain AppKit/QuartzCore messages on objects owned here; the layer is the
-    // preview's AVCaptureVideoPreviewLayer (a CALayer), kept alive by `preview`.
+    // preview's CALayer, kept alive by `preview`.
     let spinner: Retained<NSView> = unsafe {
         let class = |name: &std::ffi::CStr| AnyClass::get(name).expect("an AppKit class");
         let clear: *mut AnyObject = msg_send![class(c"NSColor"), clearColor];
@@ -309,6 +316,8 @@ pub struct Seen {
     pub nonactivating: bool,
     pub camera: String,
     pub running: bool,
+    /// The camera frames drawn into it so far.
+    pub frames: u64,
     pub size: (f64, f64),
 }
 
@@ -324,6 +333,7 @@ fn seen(n: &Native) -> Seen {
         nonactivating: n.panel.styleMask().contains(NSWindowStyleMask::NonactivatingPanel),
         camera: n.preview.uid().to_string(),
         running: n.preview.running(),
+        frames: n.preview.frames(),
         size: (f.size.width, f.size.height),
     }
 }
@@ -345,10 +355,20 @@ pub fn bubble_window() -> Option<Retained<NSPanel>> {
     BUBBLE.with(|s| s.borrow().as_ref().map(|n| n.panel.clone()))
 }
 
-/// The harness's bubble probe, with no runtime: shows `b` (main thread), lets the camera
-/// run for `run`, reads what's on screen, and closes it.
+/// How the probe's bubble window differs from the real one's, to try other ways it could
+/// ride Space switches.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct ProbeWindow {
+    /// Without `NSWindowCollectionBehaviorStationary` (as 0.1.21 had it).
+    pub not_stationary: bool,
+    /// Another window level than `NSFloatingWindowLevel`.
+    pub level: Option<isize>,
+}
+
+/// The harness's bubble probe, with no runtime: shows `b` (main thread) and returns once
+/// it's on screen; `close_probe_bubble` reads it and closes it.
 #[cfg_attr(not(feature = "dev-harness"), allow(dead_code))]
-pub fn probe_bubble(app: &tauri::AppHandle, b: Bubble, run: std::time::Duration) -> Option<Seen> {
+pub fn show_probe_bubble(app: &tauri::AppHandle, b: Bubble, window: ProbeWindow) {
     let (tx, rx) = std::sync::mpsc::channel();
     let _ = app.run_on_main_thread(move || {
         let Some(mtm) = MainThreadMarker::new() else { return };
@@ -356,8 +376,16 @@ pub fn probe_bubble(app: &tauri::AppHandle, b: Bubble, run: std::time::Duration)
             let (_, _, _, dh) = bounds(b.display);
             let (origin, placed) = place(bounds(b.display), main_h(), default_bubble_at(dh), (BUBBLE_SIZE, BUBBLE_SIZE));
             let (p, spinner) = panel(mtm, NSRect::new(origin, NSSize::new(BUBBLE_SIZE, BUBBLE_SIZE)), &preview, true);
+            if window.not_stationary {
+                let mut behavior = p.collectionBehavior();
+                behavior.remove(NSWindowCollectionBehavior::Stationary);
+                p.setCollectionBehavior(behavior);
+            }
+            if let Some(level) = window.level {
+                p.setLevel(level);
+            }
             p.orderFrontRegardless();
-            preview.run(move |_| spinner.stop());
+            preview.run(move |_| spinner.stop(), |_| {});
             Native { panel: p, preview, display: b.display, at: placed, _moved: None }
         });
         if let Ok(n) = shown {
@@ -366,7 +394,21 @@ pub fn probe_bubble(app: &tauri::AppHandle, b: Bubble, run: std::time::Duration)
         let _ = tx.send(());
     });
     let _ = rx.recv_timeout(std::time::Duration::from_secs(5));
-    std::thread::sleep(run);
+}
+
+/// What's on screen of the probe's bubble now (any thread).
+#[cfg_attr(not(feature = "dev-harness"), allow(dead_code))]
+pub fn read_probe_bubble(app: &tauri::AppHandle) -> Option<Seen> {
+    let (tx, rx) = std::sync::mpsc::channel();
+    let _ = app.run_on_main_thread(move || {
+        let _ = tx.send(bubble_seen());
+    });
+    rx.recv_timeout(std::time::Duration::from_secs(5)).ok().flatten()
+}
+
+/// Reads the probe's bubble and closes it (any thread).
+#[cfg_attr(not(feature = "dev-harness"), allow(dead_code))]
+pub fn close_probe_bubble(app: &tauri::AppHandle) -> Option<Seen> {
     let (tx, rx) = std::sync::mpsc::channel();
     let _ = app.run_on_main_thread(move || {
         let seen = BUBBLE.with(|s| s.borrow_mut().take()).map(|n| {

@@ -296,9 +296,9 @@ fn main() {
                     std::thread::spawn(move || tray_probe::tray_probe(handle, out));
                     return Ok(());
                 }
-                harness::Mode::BubbleProbe(out) => {
+                harness::Mode::BubbleProbe { out, hold, window } => {
                     let handle = app.handle().clone();
-                    std::thread::spawn(move || harness::bubble_probe(handle, out));
+                    std::thread::spawn(move || harness::bubble_probe(handle, out, hold, window));
                     return Ok(());
                 }
                 _ => {}
