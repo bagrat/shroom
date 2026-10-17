@@ -134,6 +134,9 @@ your account). Leave it be.
   the external display: both should be on the external one now, and so should the count
   after Start. Then pick the MacBook's display in Record by hand and reopen from the
   external display: the pick should hold until that take ends.
+- Two displays, the popover's display (N57): from the MacBook's popover, open Settings and
+  the Library. Both should open on the MacBook. After an update, the popover that opens by
+  itself should hang under the mushroom, not in a corner.
 - Two displays: with both displays awake, open the popover and click on the other display
   — once in a window, once on bare desktop. The popover should close both times. If it
   ever stays, note which display had the Dock.
