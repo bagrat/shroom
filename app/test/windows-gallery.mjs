@@ -22,9 +22,9 @@
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { webkit } from "playwright";
-import { collect, dist, gallery, hex, isButton, norm, out, repo, serve, stub, texts } from "./gallery-kit.mjs";
+import { collect, dist, gallery, hex, isButton, norm, out, repo, serve, stub, texts, windowPage } from "./gallery-kit.mjs";
 
-for (const f of ["library.html", "settings.html", "popover.html", "countdown.html"]) {
+for (const f of ["library.html", "settings.html", "feedback.html", "popover.html", "countdown.html"]) {
   if (!existsSync(join(dist, f))) {
     console.error(`app/dist/${f} is missing — run \`npm run build --workspace app\` first.`);
     process.exit(2);
@@ -47,6 +47,8 @@ function spec(label, fallback) {
 export const SIZES = {
   library: { ...spec("LIBRARY", { width: 680, height: 560 }), min: { width: 520, height: 360 } },
   settings: spec("SETTINGS", { width: 600, height: 620 }),
+  // Send feedback (N60): its page under the title bar.
+  feedback: windowPage("FEEDBACK", { width: 520, height: 600 }),
   // The popover is 320 wide and fits its content's height (commands.rs's popover_fit, up to 720).
   popover: { width: 320, height: 720 },
   // The countdown covers its display; a laptop's is drawn here.
@@ -61,6 +63,8 @@ const settings = [...gallery("settings"), ...members.filter((e) => e.window === 
 const region3 = gallery("region3");
 const popovers = [...members, ...region3].filter((e) => e.window === "popover");
 const countdowns = region3.filter((e) => e.window === "countdown");
+// Send feedback (`-- feedback`): the form in each of its faces, and the sent face (N60).
+const feedbacks = gallery("feedback");
 const server = await serve();
 
 const TEXT = new Set([
@@ -77,6 +81,8 @@ const TEXT = new Set([
   // its disclosure, the line while it's gathered, and a failed send's line. The disclosure's
   // text (`preview`) is the person's own report, shown only when opened.
   "help_label", "sent", "reply_label", "disclosure", "preparing", "failed",
+  // Send feedback (N60): the line under the log box.
+  "log_note",
 ]);
 
 /** The sheets that ask no destructive question: law 9's colours aren't theirs (B180, as
@@ -97,7 +103,7 @@ async function open(surface, scene, { colorScheme = "light", size = SIZES[surfac
   page.on("pageerror", (e) => errors.push(String(e)));
   await page.addInitScript(stub, scene);
   await page.goto(`${server.origin}/${surface}.html`);
-  await page.waitForSelector({ library: ".lib", settings: ".set", popover: "main.pop", countdown: "#digit:not(:empty)" }[surface]);
+  await page.waitForSelector({ library: ".lib", settings: ".set", feedback: "main.fb", popover: "main.pop", countdown: "#digit:not(:empty)" }[surface]);
   await page.waitForTimeout(60);
   return { ctx, page, errors };
 }
@@ -1115,11 +1121,95 @@ for (const entry of countdowns) {
   await s.ctx.close();
 }
 
+// ── Send feedback (N60): the form and the sent face, light and dark ──
+
+for (const entry of feedbacks) {
+  const w = entry.scene;
+  const b = w.body;
+  // The disclosure's text is shown only when it's opened; the words and the reply-to are
+  // the person's own, in their fields.
+  // The sent face shows only its own lines.
+  const sceneForText = b.sent ? { ...w, body: { sent: b.sent } } : { ...w, body: { ...b, preview: null, words: null, reply_to: null, title: null } };
+  for (const scheme of ["light", "dark"]) {
+    const tag = `feedback/${entry.variant} [${scheme}]`;
+    const { ctx, page, errors } = await open("feedback", w, { colorScheme: scheme });
+    const v = await vars(page);
+    await common(tag, page, errors, "feedback", sceneForText, { allow: ["field"] });
+    const want = b.sent ? [b.sent.done] : [...b.buttons, ...(b.mail ? [b.mail] : [])];
+    const shown = await page.locator("button:visible").allInnerTexts();
+    check(`${tag}: the Scene's buttons, no others`, shown.map(norm).sort().join("|") === want.map((x) => norm(x.label)).sort().join("|"), shown.join("|"));
+    for (const x of want) {
+      const loc = page.getByRole("button", { name: x.label, exact: true });
+      const bad = (await loc.count()) === 1 ? await styled(loc, x.style, v) : "missing";
+      check(`${tag}: “${x.label}” ${x.enabled ? "enabled" : "disabled"}, ${x.style}`, !bad && (await loc.isEnabled()) === x.enabled, bad ?? "");
+    }
+    if (!b.sent) {
+      const t = page.locator("textarea.words");
+      check(`${tag}: the words read the Scene`, (await t.inputValue()) === b.words.value && (await t.getAttribute("placeholder")) === b.words.placeholder && (await t.isEnabled()) === b.words.enabled);
+      if (b.words.enabled) check(`${tag}: the words have the keyboard`, await t.evaluate((e) => e === document.activeElement));
+      const box = page.locator(".log input[type=checkbox]");
+      check(`${tag}: the log box reads the Scene`, (await box.isChecked()) === b.log.on && (await box.isEnabled()) === b.log.enabled);
+      const xs = await page.locator(".acts button").evaluateAll((els) => els.map((e) => e.getBoundingClientRect().right));
+      check(`${tag}: Send is rightmost`, xs.length === 2 && xs[1] > xs[0], JSON.stringify(xs));
+      const fits = await page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight + 1);
+      check(`${tag}: the form fits the window`, fits);
+      if (b.preview) {
+        await page.locator(".what summary").click();
+        check(`${tag}: “See exactly what's sent” shows what goes`, norm(await page.locator(".what pre").innerText()) === norm(b.preview));
+        const open = await page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight + 1);
+        check(`${tag}: open, it still fits the window`, open);
+        await page.screenshot({ path: join(out, `feedback-${entry.variant}-open-${scheme}.png`), animations: "disabled" });
+        await page.locator(".what summary").click();
+      }
+    }
+    await page.screenshot({ path: join(out, `feedback-${entry.variant}-${scheme}.png`), animations: "disabled" });
+    await ctx.close();
+  }
+}
+
+{
+  const fb = (variant) => feedbacks.find((e) => e.variant === variant).scene;
+  const f = await open("feedback", fb("feedback-filled"));
+  await clear(f.page);
+  await f.page.locator("textarea.words").press("Enter");
+  let c = await calls(f.page);
+  check("feedback: Return in the words is a new line, nothing sent", !c.some((x) => x.cmd === "act" || x.cmd === "key"), JSON.stringify(c));
+  await clear(f.page);
+  await f.page.keyboard.press("Meta+Enter");
+  c = await calls(f.page);
+  check("feedback: ⌘Return is Send", acted(c, "feedback", { do: "send-feedback" }), JSON.stringify(c));
+  await clear(f.page);
+  await f.page.locator(".log input").click();
+  c = await calls(f.page);
+  check("feedback: the log box sends its action", acted(c, "feedback", fb("feedback-filled").body.log.action), JSON.stringify(c));
+  await clear(f.page);
+  await f.page.keyboard.press("Escape");
+  c = await calls(f.page);
+  check("feedback: Esc is the Scene's esc", c.some((x) => x.cmd === "key" && x.args.surface === "feedback" && x.args.key === "esc"), JSON.stringify(c));
+  await f.ctx.close();
+  const e = await open("feedback", fb("feedback-empty"));
+  await clear(e.page);
+  await e.page.keyboard.press("Meta+Enter");
+  check("feedback: ⌘Return with Send greyed sends nothing", !(await calls(e.page)).some((x) => x.cmd === "act"));
+  await e.ctx.close();
+  const s = await open("feedback", fb("feedback-sent"));
+  await clear(s.page);
+  await s.page.keyboard.press("Enter");
+  c = await calls(s.page);
+  check("feedback: on the sent face Return is the Scene's ret (Done)", c.some((x) => x.cmd === "key" && x.args.key === "return") && fb("feedback-sent").ret?.do === "close-feedback", JSON.stringify(c));
+  await s.ctx.close();
+  const m = await open("feedback", fb("feedback-failed"));
+  await clear(m.page);
+  await m.page.getByRole("button", { name: "email it to hi@shroom.am", exact: true }).click();
+  check("feedback: a failed send's mail link sends its action", acted(await calls(m.page), "feedback", { do: "mail-feedback" }));
+  await m.ctx.close();
+}
+
 await browser.close();
 server.close();
 console.log(`windows: library ${SIZES.library.width}×${SIZES.library.height} (min ${SIZES.library.min.width}×${SIZES.library.min.height}) · settings ${SIZES.settings.width}×${SIZES.settings.height}, tallest pane ${Math.max(...heights)}px`);
 
 const failed = results.filter((r) => !r.ok);
 for (const f of failed) console.log(`FAIL ${f.name}${f.detail ? ` — ${f.detail}` : ""}`);
-console.log(`\n${library.length} library + ${settings.length} settings + ${popovers.length} popover + ${countdowns.length} countdown scenes × 2 schemes · ${results.length - failed.length}/${results.length} checks passed · screenshots in ${out}`);
+console.log(`\n${library.length} library + ${settings.length} settings + ${feedbacks.length} feedback + ${popovers.length} popover + ${countdowns.length} countdown scenes × 2 schemes · ${results.length - failed.length}/${results.length} checks passed · screenshots in ${out}`);
 process.exit(failed.length ? 1 : 0);

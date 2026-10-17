@@ -10,7 +10,7 @@ mod support;
 use shroom_core::derive;
 use shroom_core::effect::{Effect, PublicUrl, ShellCmd};
 use shroom_core::event::{Event, Field, Key, ReportNews, Surface};
-use shroom_core::report::{self, Diagnostics, Post};
+use shroom_core::report::{self, Diagnostics, Kind, Post};
 use shroom_core::scene::{Action, GeneralBody, ReportForm, Scene, SettingsPane, Sheet, Style};
 use shroom_core::time::Mono;
 use shroom_core::world::*;
@@ -196,6 +196,7 @@ fn send_posts_once_and_holds_still_while_it_goes() {
     assert_eq!(
         r.effects,
         vec![Effect::Shell(ShellCmd::SendReport(Post {
+            kind: Kind::Problem,
             words: "The link never finished uploading.".into(),
             reply_to: Some("you@example.com".into()),
             diagnostics: gathered(),
@@ -223,7 +224,7 @@ fn an_empty_reply_to_sends_none() {
 fn sent_closes_the_sheet_and_general_says_so() {
     let mut r = ready_to_send();
     r.set(Action::SendReport);
-    r.send(Event::Report(ReportNews::Sent));
+    r.send(Event::Report(ReportNews::Sent(Kind::Problem)));
     assert_eq!(faces(&r.scene), ["settings-general"]);
     assert_eq!(general(&r.scene).sent.as_deref(), Some("Sent — thank you. If you left your email, you’ll hear back."));
     assert_eq!(r.w.session.fields.settings.report, ReportFields::default());
@@ -237,7 +238,7 @@ fn sent_closes_the_sheet_and_general_says_so() {
 fn not_sent_keeps_the_words_and_offers_the_mail_address() {
     let mut r = ready_to_send();
     r.set(Action::SendReport);
-    r.send(Event::Report(ReportNews::NotSent));
+    r.send(Event::Report(ReportNews::NotSent(Kind::Problem)));
     assert!(r.ids().contains(&"report-problem"));
     let f = form(&r.scene);
     assert_eq!(f.words.value, "The link never finished uploading.");
