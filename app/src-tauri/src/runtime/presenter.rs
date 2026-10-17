@@ -352,6 +352,34 @@ fn rests(m: &Mushroom) -> bool {
     (m.frame.y + m.frame.h - m.top).abs() <= 0.5
 }
 
+/// Which of the screens a click on the mushroom came from (N56), each with its whole and
+/// visible frames. With “Displays have separate Spaces” every display has its own menu bar
+/// and mushroom: a pointer in a screen's menu bar, above its visible frame, clicked that
+/// one. Otherwise (a launch you did, from the Dock or Spotlight) the screen the mushroom
+/// rests on, else the pointer's.
+pub fn clicked_screen(pointer: (f64, f64), item: Option<Frame>, screens: &[(Frame, Frame)]) -> Option<usize> {
+    let (x, y) = pointer;
+    let wholes: Vec<Frame> = screens.iter().map(|s| s.0).collect();
+    let under = wholes.iter().position(|s| s.contains(x, y));
+    under
+        .filter(|&i| y >= screens[i].1.y + screens[i].1.h)
+        .or_else(|| item.and_then(|f| home(f, &wholes)))
+        .or(under)
+}
+
+/// The display a click on the mushroom came from, by its display id (N56; main thread).
+pub fn clicked_display(mtm: objc2_foundation::MainThreadMarker) -> Option<u32> {
+    use objc2_app_kit::{NSEvent, NSScreen};
+    let screens = NSScreen::screens(mtm);
+    let both: Vec<(Frame, Frame)> = screens.iter().map(|s| (Frame::of(s.frame()), Frame::of(s.visibleFrame()))).collect();
+    let item = APP.get().and_then(|a| a.tray_by_id("shroom")).and_then(|t| {
+        t.with_inner_tray_icon(move |inner| Some(Frame::of(inner.ns_status_item()?.button(mtm)?.window()?.frame()))).ok().flatten()
+    });
+    let p = NSEvent::mouseLocation();
+    let i = clicked_screen((p.x, p.y), item, &both)?;
+    probe::screen_id(&screens.objectAtIndex(i as _))
+}
+
 /// The visible frame of the screen holding the pointer (the main screen if none does).
 fn pointer_screen(mtm: objc2_foundation::MainThreadMarker) -> Frame {
     use objc2_app_kit::{NSEvent, NSScreen};
@@ -943,6 +971,21 @@ mod tests {
         assert!(seen(false, false, Frame { x: 1500.0, y: 1050.0, w: 24.0, h: 24.0 }, set, None, true), "a few points short of the top: still in the menu bar");
         assert!(!seen(false, false, Frame { x: 1500.0, y: 1000.0, w: 24.0, h: 24.0 }, set, None, true), "under the menu bar: not resting there");
         assert!(!seen(false, false, Frame { x: 1500.0, y: 1056.0, w: 0.0, h: 24.0 }, set, None, true), "a zero-width frame: not laid out");
+    }
+
+    #[test]
+    fn a_click_comes_from_the_menu_bar_the_pointer_is_in() {
+        // The MacBook, and an external display to its right, each with its own menu bar
+        // (“Displays have separate Spaces”): Bagrat's desk, 2026-10-17 (N56).
+        let built_in = (Frame { x: 0.0, y: 0.0, w: 1512.0, h: 982.0 }, Frame { x: 0.0, y: 0.0, w: 1512.0, h: 944.0 });
+        let external = (Frame { x: 1512.0, y: -200.0, w: 2560.0, h: 1440.0 }, Frame { x: 1512.0, y: -200.0, w: 2560.0, h: 1415.0 });
+        let screens = [built_in, external];
+        let on_external = Some(Frame { x: 3000.0, y: 1210.0, w: 24.0, h: 30.0 });
+        assert_eq!(clicked_screen((1210.0, 970.0), on_external, &screens), Some(0), "the pointer in the MacBook's menu bar: the MacBook");
+        assert_eq!(clicked_screen((3010.0, 1230.0), Some(Frame { x: 1200.0, y: 944.0, w: 24.0, h: 38.0 }), &screens), Some(1), "and the external one's");
+        assert_eq!(clicked_screen((700.0, 400.0), on_external, &screens), Some(1), "a launch, the pointer on a desktop: where the mushroom rests");
+        assert_eq!(clicked_screen((700.0, 400.0), None, &screens), Some(0), "and with no mushroom to read, the pointer's screen");
+        assert_eq!(clicked_screen((-50.0, 400.0), None, &screens), None, "off every screen: can't tell");
     }
 
     #[test]

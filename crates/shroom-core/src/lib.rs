@@ -27,7 +27,12 @@ pub use world::World;
 pub fn update(w: &mut World, env: Envelope) -> (Vec<Effect>, Arm) {
     w.now = env.mono;
     w.wall = env.wall;
+    let take_was = w.take.is_some();
     let (mut fx, arm) = apply::apply(w, env.event);
+    // A display picked by hand holds until the take ends (N56).
+    if take_was && w.take.is_none() {
+        w.display_pick.by_hand = false;
+    }
     mark(w, &fx);
     let more = settle::settle(w);
     mark(w, &more);

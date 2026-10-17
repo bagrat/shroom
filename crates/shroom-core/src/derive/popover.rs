@@ -51,13 +51,18 @@ pub fn derive(w: &World) -> Option<Popover> {
     Some(p)
 }
 
-/// The source to record: the remembered one if it's still here, else the main display.
-/// Camera only while a camera shroom may pick by itself is here (N39).
+/// The source to record: Camera only while a camera shroom may pick by itself is here
+/// (N39); a display picked by hand for this take; else the display the mushroom was clicked
+/// on (N56); else the remembered one if it's still here; else the main display.
 pub fn selected_source(w: &World) -> Option<SourceId> {
     let displays = w.mac.displays.get().cloned().unwrap_or_default();
+    let here = |id: u32| displays.iter().any(|d| d.id == id);
+    let clicked = w.display_pick.clicked.filter(|&id| here(id));
     match w.prefs.source {
         Some(SourceId::Camera) if selected_camera(w).is_some() => Some(SourceId::Camera),
-        Some(SourceId::Display(id)) if displays.iter().any(|d| d.id == id) => Some(SourceId::Display(id)),
+        Some(SourceId::Display(id)) if w.display_pick.by_hand && here(id) => Some(SourceId::Display(id)),
+        _ if clicked.is_some() => clicked.map(SourceId::Display),
+        Some(SourceId::Display(id)) if here(id) => Some(SourceId::Display(id)),
         _ => super::main_display(w).map(SourceId::Display),
     }
 }

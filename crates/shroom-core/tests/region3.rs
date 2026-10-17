@@ -1320,8 +1320,9 @@ fn without_a_click_config_keeps_last_used() {
     // A click whose display can't be told (None) is the same.
     let mut w = two_displays();
     w.prefs.source = Some(SourceId::Display(7));
+    let displays = w.mac.displays.get().cloned().unwrap();
     let mut r = Run::new(w);
-    r.click();
+    r.send(Event::TrayClicked { right: false, quick: QuickProbe { displays, clicked_display: None, ..quick() } });
     assert_eq!(picked(&config_body(&r.scene).sources), Some("LG UltraFine"));
 }
 

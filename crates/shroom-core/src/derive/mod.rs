@@ -199,9 +199,11 @@ fn preview(w: &World, config_showing: bool) -> Option<Preview> {
     Some(Preview { display: preview_display(w)?, camera: camera.uid.clone() })
 }
 
-/// Where Camera's preview sits: the display with the menu bar, where `config` hangs.
+/// Where Camera's preview sits: the display the mushroom was clicked on, where `config`
+/// hangs (N56); else the main display.
 fn preview_display(w: &World) -> Option<u32> {
-    main_display(w)
+    let here = |id: u32| w.mac.displays.get().is_some_and(|ds| ds.iter().any(|d| d.id == id));
+    w.display_pick.clicked.filter(|&id| here(id)).or_else(|| main_display(w))
 }
 
 pub(crate) fn main_display(w: &World) -> Option<u32> {
