@@ -44,11 +44,14 @@ for (const p of [app, fakeBin]) if (!existsSync(p)) { console.error(`missing ${p
 
 const head = ["welcome", "account", "token", "card"];
 const tail = ["done", "perm-priming", "all-set", "closed"];
+// A claimed name goes straight to done: wiring starts underneath the moment the name ticks
+// (N45), and its own last step shows only if the permissions chapter outruns it — never
+// against the fake, which wires at once.
 const PATHS = {
-  fresh: { fake: ["fresh"], states: [...head, "name", "wiring", ...tail] },
-  taken: { fake: ["taken:acme-team"], drive: ["--taken", "acme-team"], states: [...head, "name", "name-taken", "name", "wiring", ...tail] },
-  "email-gate": { fake: ["email-gate"], states: [...head, "gate-email", "card", "name", "wiring", ...tail] },
-  "card-gate": { fake: ["card-gate"], states: [...head, "gate-card", "card", "name", "wiring", ...tail] },
+  fresh: { fake: ["fresh"], states: [...head, "name", ...tail] },
+  taken: { fake: ["taken:acme-team"], drive: ["--taken", "acme-team"], states: [...head, "name", "name-taken", "name", ...tail] },
+  "email-gate": { fake: ["email-gate"], states: [...head, "gate-email", "card", "name", ...tail] },
+  "card-gate": { fake: ["card-gate"], states: [...head, "gate-card", "card", "name", ...tail] },
   found: { fake: ["found"], states: [...head, "space-found", ...tail], host: "v.myshroom.workers.dev" },
   doors: { fake: ["found"], drive: ["--doors"], states: [...head, "space-found", "done", "closed", "done", "closed"], host: "v.myshroom.workers.dev", ends: "done", checks: 2 },
   invite: { fake: ["found"], drive: ["--invite-someone"], states: [...head, "space-found", ...tail], host: "v.myshroom.workers.dev", checks: 1 },
