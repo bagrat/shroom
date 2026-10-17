@@ -1,6 +1,7 @@
 //! shroom's camera windows (DECISIONS B47, superseding B20's webview): the camera
-//! bubble and Camera-as-the-source's preview, each a native non-activating panel showing an
-//! `AVCaptureVideoPreviewLayer` on the exact camera the Scene names — never WebKit's default
+//! bubble and Camera-as-the-source's preview, each a native non-activating panel showing a
+//! layer shroom draws the camera's frames into (`shroom_capture::CameraPreview`), from the
+//! exact camera the Scene names — never WebKit's default
 //! camera, which can be an iPhone over Continuity (N39).
 //!
 //! - **The bubble** (N22): round, mirrored, 180 pt; borderless and non-activating, so a click
@@ -117,15 +118,19 @@ impl Spinner {
     }
 }
 
-/// Starts `preview`'s camera; once it delivers, `spinner` goes.
+/// Starts `preview`'s camera; once it delivers, `spinner` goes. A picture that stops later
+/// restarts its camera (`shroom_capture::watchdog`), logged.
 fn run(rt: &Runtime, what: &'static str, preview: &shroom_capture::CameraPreview, spinner: Spinner) {
-    let rt = rt.clone();
-    preview.run(move |running| {
-        if !running {
-            rt.log(&format!("{what}: the camera didn't start"));
-        }
-        spinner.stop();
-    });
+    let (rt, rt2) = (rt.clone(), rt.clone());
+    preview.run(
+        move |running| {
+            if !running {
+                rt.log(&format!("{what}: the camera didn't start"));
+            }
+            spinner.stop();
+        },
+        move |n| rt2.log(&format!("{what}: the camera's picture stopped; restarting it ({n})")),
+    );
 }
 
 fn panel(mtm: MainThreadMarker, frame: NSRect, preview: &shroom_capture::CameraPreview, round: bool) -> (Retained<NSPanel>, Spinner) {
@@ -151,7 +156,7 @@ fn panel(mtm: MainThreadMarker, frame: NSRect, preview: &shroom_capture::CameraP
     picture.setAutoresizingMask(NSAutoresizingMaskOptions::ViewWidthSizable | NSAutoresizingMaskOptions::ViewHeightSizable);
     let at = NSPoint::new((frame.size.width - SPINNER) / 2.0, (frame.size.height - SPINNER) / 2.0);
     // SAFETY: plain AppKit/QuartzCore messages on objects owned here; the layer is the
-    // preview's AVCaptureVideoPreviewLayer (a CALayer), kept alive by `preview`.
+    // preview's CALayer, kept alive by `preview`.
     let spinner: Retained<NSView> = unsafe {
         let class = |name: &std::ffi::CStr| AnyClass::get(name).expect("an AppKit class");
         let clear: *mut AnyObject = msg_send![class(c"NSColor"), clearColor];
@@ -309,6 +314,8 @@ pub struct Seen {
     pub nonactivating: bool,
     pub camera: String,
     pub running: bool,
+    /// The camera frames drawn into it so far.
+    pub frames: u64,
     pub size: (f64, f64),
 }
 
@@ -324,6 +331,7 @@ fn seen(n: &Native) -> Seen {
         nonactivating: n.panel.styleMask().contains(NSWindowStyleMask::NonactivatingPanel),
         camera: n.preview.uid().to_string(),
         running: n.preview.running(),
+        frames: n.preview.frames(),
         size: (f.size.width, f.size.height),
     }
 }
@@ -357,7 +365,7 @@ pub fn show_probe_bubble(app: &tauri::AppHandle, b: Bubble) {
             let (origin, placed) = place(bounds(b.display), main_h(), default_bubble_at(dh), (BUBBLE_SIZE, BUBBLE_SIZE));
             let (p, spinner) = panel(mtm, NSRect::new(origin, NSSize::new(BUBBLE_SIZE, BUBBLE_SIZE)), &preview, true);
             p.orderFrontRegardless();
-            preview.run(move |_| spinner.stop());
+            preview.run(move |_| spinner.stop(), |_| {});
             Native { panel: p, preview, display: b.display, at: placed, _moved: None }
         });
         if let Ok(n) = shown {
