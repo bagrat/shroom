@@ -7,19 +7,18 @@ Record. Share. Pay-as-you-go.
 
 No monthly seat, sometimes completely free
 
-- Your videos live in your own Cloudflare account — we never hold them.
-- You set Cloudflare up once, in a guided setup — about ten minutes.
-- You only ever pay Cloudflare. No account with us, no subscription.
-  - $0 /month — about three hours of video
-  - $1.50 /month — about thirty hours
-- Delete old videos and pay less — storage is the whole bill.
-- Your team just accepts an invite and records — no Cloudflare setup for them.
+- $0 · about three hours of video
+- $1.50 /month · about thirty hours
+
+- Your videos live in your own Cloudflare account
+- You pay only Cloudflare, for the storage
+- Invite your team with a link
+- No price per person — the bill counts video, not people
+- Delete old videos and pay less
+- About ten minutes of guided setup, once
+- Open source — every line on GitHub
 
 For macOS 14 or newer, Apple silicon.
-
-- Open source — Every line on GitHub — the app, the installer, the player.
-- Your storage, your bill — The prices above are Cloudflare's, not ours.
-- Built to outlive us — Links play from your own account — if shroom vanished tomorrow, they'd keep working.
 
 ## If you're an agent
 

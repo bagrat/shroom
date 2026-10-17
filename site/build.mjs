@@ -31,6 +31,25 @@ export const OG_IMAGE = `<meta property="og:image" content="https://shroom.am/og
 <meta property="og:image:alt" content="shroom — Record. Share. Pay-as-you-go.">
 <meta name="twitter:card" content="summary_large_image">`;
 
+/** The other pages' header and footer. The landing has neither since N59 (DECISIONS B191): its
+ * links sit at its foot. These are the landing's as they were, Send feedback beside GitHub (N55). */
+export const HEADER = `<header>
+  <div class="wrap">
+    <a class="brand" href="/"><svg xmlns="http://www.w3.org/2000/svg" viewBox="18 20 84 90" aria-hidden="true">
+<path class="stem" d="M50,68 C49,82 46,92 46,96 C46,101 52,104 60,104 C68,104 74,101 74,96 C74,92 71,82 70,68 Z" fill="#E5E9F0"/>
+<path d="M24,64 C24,42 40,26 60,26 C80,26 96,42 96,64 C86,75 34,75 24,64 Z" fill="#88C0D0"/>
+<circle cx="33" cy="58" r="3.4" fill="#ECEFF4"/>
+<circle cx="88" cy="58" r="2.2" fill="#ECEFF4"/>
+<circle cx="50" cy="44" r="6" fill="#ECEFF4"/>
+<circle cx="72" cy="48" r="3.6" fill="#ECEFF4"/>
+<circle cx="64" cy="58" r="2.6" fill="#ECEFF4"/>
+</svg>shroom</a>
+    <nav><a href="/feedback">Send feedback</a><a href="https://github.com/bagrat/shroom">GitHub</a></nav>
+  </div>
+</header>`;
+
+export const FOOTER = `<footer><div class="wrap">shroom · <a href="/feedback">Trouble, questions</a> · <a href="/faq">Questions and limits</a> · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a><p>We count visits to this page — no cookies, and nothing that tells us who you are.</p></div></footer>`;
+
 const escapeHtml = (/** @type {string} */ s) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
@@ -38,8 +57,8 @@ const escapeHtml = (/** @type {string} */ s) =>
  * reads it — "Read it first" shows the words themselves, not a retelling of them. */
 export function agentPage(/** @type {string} */ landing, /** @type {string} */ markdown) {
   const style = landing.match(/<style>[\s\S]*?<\/style>/)?.[0];
-  const header = landing.match(/<header>[\s\S]*?<\/header>/)?.[0];
-  if (!style || !header) throw new Error("site/index.html should carry one <style> and one <header>");
+  const header = HEADER;
+  if (!style) throw new Error("site/index.html should carry one <style>");
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -93,9 +112,8 @@ export function noteVersions(dir) {
  * @param {string} landing @param {string} version @param {string} notes */
 export function whatsNewPage(landing, version, notes) {
   const style = landing.match(/<style>[\s\S]*?<\/style>/)?.[0];
-  const header = landing.match(/<header>[\s\S]*?<\/header>/)?.[0];
-  const footer = landing.match(/<footer>[\s\S]*?<\/footer>/)?.[0];
-  if (!style || !header || !footer) throw new Error("site/index.html should carry one <style>, one <header> and one <footer>");
+  const header = HEADER, footer = FOOTER;
+  if (!style) throw new Error("site/index.html should carry one <style>");
   const lines = notes.split("\n").map((l) => l.trim()).filter(Boolean);
   const items = lines.filter((l) => /^[-*] /.test(l)).map((l) => `    <li>${escapeHtml(l.slice(2).trim())}</li>`);
   const paras = lines.filter((l) => !/^[-*] /.test(l)).map((l) => `  <p class="lead">${escapeHtml(l)}</p>\n`);
@@ -167,13 +185,12 @@ export function feedbackFragment(fragment, sitekey = TURNSTILE_SITEKEY) {
     .replace("{{sitekey}}", sitekey.replace(/[^A-Za-z0-9_-]/g, ""));
 }
 
-/** One of site/pages in the landing's look, with its header and footer.
+/** One of site/pages in the landing's look, with the pages' header and footer.
  * @param {string} landing @param {string} name @param {string} fragment */
 export function docPage(landing, name, fragment) {
   const style = landing.match(/<style>[\s\S]*?<\/style>/)?.[0];
-  const header = landing.match(/<header>[\s\S]*?<\/header>/)?.[0];
-  const footer = landing.match(/<footer>[\s\S]*?<\/footer>/)?.[0];
-  if (!style || !header || !footer) throw new Error("site/index.html should carry one <style>, one <header> and one <footer>");
+  const header = HEADER, footer = FOOTER;
+  if (!style) throw new Error("site/index.html should carry one <style>");
   const title = fragment.match(/<title>([^<]*)<\/title>/)?.[1];
   const description = fragment.match(/<meta name="description" content="([^"]*)">/)?.[1];
   if (!title || !description) throw new Error(`site/pages/${name}.html should carry a <title> and a description`);
