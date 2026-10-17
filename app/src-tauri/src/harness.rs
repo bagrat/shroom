@@ -36,9 +36,9 @@ pub enum Mode {
     /// Tray + popover mechanics: the Dock rule (law 6) and an unasked popover that must
     /// not take the keyboard (law 5). Writes JSON, exits.
     ShellProbe(PathBuf),
-    /// Open the camera bubble and report whether the webview got the camera.
-    /// The bubble, read for `hold` seconds when given (the Space-switch check).
-    BubbleProbe { out: PathBuf, hold: Option<u64> },
+    /// Open the camera bubble and report what's on screen; held `hold` seconds and read
+    /// off the screen when given (the Space-switch check), its window varied by `window`.
+    BubbleProbe { out: PathBuf, hold: Option<u64>, window: crate::runtime::camera::ProbeWindow },
     /// Every tray face drawn on every menu bar, its mushroom checked against the bar
     /// (`tray_probe.rs`); then faces put on at the scenario's asks. Writes JSON, exits.
     TrayProbe(PathBuf),
@@ -164,7 +164,11 @@ pub fn from_args(args: Vec<String>) -> Mode {
     }
     if let Some(rest) = after("--bubble-probe") {
         let hold = args.iter().position(|a| a == "--hold").and_then(|i| args.get(i + 1)).and_then(|s| s.parse::<u64>().ok()).filter(|s| (1..=300).contains(s));
-        return Mode::BubbleProbe { out: PathBuf::from(rest.first().expect("--bubble-probe needs an output path")), hold };
+        let window = crate::runtime::camera::ProbeWindow {
+            stationary: args.iter().any(|a| a == "--stationary"),
+            level: args.iter().position(|a| a == "--level").and_then(|i| args.get(i + 1)).and_then(|s| s.parse::<isize>().ok()),
+        };
+        return Mode::BubbleProbe { out: PathBuf::from(rest.first().expect("--bubble-probe needs an output path")), hold, window };
     }
     if let Some(rest) = after("--tray-probe") {
         return Mode::TrayProbe(PathBuf::from(rest.first().expect("--tray-probe needs an output path")));
@@ -690,7 +694,7 @@ pub fn shell_probe(app: AppHandle, out: PathBuf) {
 /// once a second (`<out>.ready` says when it shows, so a scenario can switch Spaces around
 /// it): a camera that moves must keep moving there, whatever Space is in front. The
 /// rehearsal's bubble froze on a switch into a full-screen Space and never came back.
-pub fn bubble_probe(app: AppHandle, out: PathBuf, hold: Option<u64>) {
+pub fn bubble_probe(app: AppHandle, out: PathBuf, hold: Option<u64>, window: crate::runtime::camera::ProbeWindow) {
     let cameras = crate::runtime::probe::cameras();
     let pick = cameras.iter().find(|c| c.builtin && !c.continuity).or_else(|| cameras.iter().find(|c| !c.continuity)).cloned();
     let Some(cam) = pick else {
@@ -700,7 +704,7 @@ pub fn bubble_probe(app: AppHandle, out: PathBuf, hold: Option<u64>) {
     };
     let display = main_display_id();
     let bubble = shroom_core::scene::Bubble { at: None, display, camera: cam.uid.clone() };
-    crate::runtime::camera::show_probe_bubble(&app, bubble);
+    crate::runtime::camera::show_probe_bubble(&app, bubble, window);
     let Some(hold) = hold else {
         std::thread::sleep(Duration::from_secs(2));
         let report = crate::runtime::camera::close_probe_bubble(&app);

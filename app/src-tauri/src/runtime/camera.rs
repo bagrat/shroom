@@ -353,10 +353,20 @@ pub fn bubble_window() -> Option<Retained<NSPanel>> {
     BUBBLE.with(|s| s.borrow().as_ref().map(|n| n.panel.clone()))
 }
 
+/// How the probe's bubble window differs from the real one's, to try other ways it could
+/// ride Space switches.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct ProbeWindow {
+    /// `NSWindowCollectionBehaviorStationary` on top of the real one's.
+    pub stationary: bool,
+    /// Another window level than `NSFloatingWindowLevel`.
+    pub level: Option<isize>,
+}
+
 /// The harness's bubble probe, with no runtime: shows `b` (main thread) and returns once
 /// it's on screen; `close_probe_bubble` reads it and closes it.
 #[cfg_attr(not(feature = "dev-harness"), allow(dead_code))]
-pub fn show_probe_bubble(app: &tauri::AppHandle, b: Bubble) {
+pub fn show_probe_bubble(app: &tauri::AppHandle, b: Bubble, window: ProbeWindow) {
     let (tx, rx) = std::sync::mpsc::channel();
     let _ = app.run_on_main_thread(move || {
         let Some(mtm) = MainThreadMarker::new() else { return };
@@ -364,6 +374,12 @@ pub fn show_probe_bubble(app: &tauri::AppHandle, b: Bubble) {
             let (_, _, _, dh) = bounds(b.display);
             let (origin, placed) = place(bounds(b.display), main_h(), default_bubble_at(dh), (BUBBLE_SIZE, BUBBLE_SIZE));
             let (p, spinner) = panel(mtm, NSRect::new(origin, NSSize::new(BUBBLE_SIZE, BUBBLE_SIZE)), &preview, true);
+            if window.stationary {
+                p.setCollectionBehavior(p.collectionBehavior() | NSWindowCollectionBehavior::Stationary);
+            }
+            if let Some(level) = window.level {
+                p.setLevel(level);
+            }
             p.orderFrontRegardless();
             preview.run(move |_| spinner.stop(), |_| {});
             Native { panel: p, preview, display: b.display, at: placed, _moved: None }
