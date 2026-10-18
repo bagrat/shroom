@@ -380,6 +380,7 @@ fn spawn_wizard(rt: Runtime) -> Sender<(Instant, CloudCmd)> {
                     CloudCmd::Claim(_) => (Op::Claim, "claim"),
                     CloudCmd::Wire { .. } => (Op::Wire, "wire"),
                     CloudCmd::Refresh => (Op::Refresh, "refresh"),
+                    CloudCmd::SetAi(_) => (Op::Ai, "naming"),
                     CloudCmd::Reach | CloudCmd::OpenOwnerPage(_) => continue,
                 };
                 // A whole pass that found this token live over its own page: this Mac enrolls
@@ -392,6 +393,7 @@ fn spawn_wizard(rt: Runtime) -> Sender<(Instant, CloudCmd)> {
                     CloudCmd::Claim(name) => claim(&rt, name),
                     CloudCmd::Wire { label } => wire_space(&rt, &label),
                     CloudCmd::Refresh => refresh(&rt),
+                    CloudCmd::SetAi(on) => set_ai(&rt, on),
                     CloudCmd::Reach | CloudCmd::OpenOwnerPage(_) => continue,
                 };
                 match news {
@@ -440,7 +442,8 @@ fn summary(n: &CloudNews) -> String {
         CloudNews::Wired(r) => format!("{:?}", r.as_ref().map(|s| &s.host)),
         CloudNews::Reached(r) => format!("{r:?}"),
         CloudNews::PageOpened(r) => r.0.clone(),
-        CloudNews::Refreshed { deployed } => format!("deployed {deployed}"),
+        CloudNews::Refreshed { deployed, ai } => format!("deployed {deployed}, naming {ai:?}"),
+        CloudNews::AiSet(on) => format!("naming {}", if *on { "on" } else { "off" }),
     }
 }
 
@@ -824,18 +827,24 @@ fn unreached(rt: &Runtime, what: &str) -> FailClass {
 /// answer as shroom is the self-check's and the repair mood's, never a refresh's.
 fn refresh(rt: &Runtime) -> Result<CloudNews, FailClass> {
     let Some(space) = rt.home.read_json::<SpaceIdentity>("space.json").filter(|s| s.role == Role::TokenHolder) else {
-        return Ok(CloudNews::Refreshed { deployed: false });
+        return Ok(CloudNews::Refreshed { deployed: false, ai: None });
     };
     // The pasted token only (never a harness's): no token here, nothing to deploy with.
     let h = held(rt)?;
     let at = |host: &str| rt.page_at(host);
     let page = PageCheck { at: &at, version: page_version(), every: PageCheck::EVERY, within: PageCheck::WITHIN };
-    let live = live_version(rt.page_at(&space.host).ping()).inspect_err(|class| {
+    let ping = rt.page_at(&space.host).ping();
+    // Whether the page names videos (N66): the switch in Settings · Space reads it.
+    let ai = match &ping {
+        shroom_cloud::member::Ping::Shroom { ai, .. } => Some(*ai),
+        _ => None,
+    };
+    let live = live_version(ping).inspect_err(|class| {
         rt.log(&format!("refresh: the page didn't answer as the space's ({class:?}) — tried again later"));
     })?;
     if !wire::may_deploy_over(&live, page_version()) {
         rt.log(&format!("refresh: the page is at {live} — current for {}", page_version()));
-        return Ok(CloudNews::Refreshed { deployed: false });
+        return Ok(CloudNews::Refreshed { deployed: false, ai });
     }
     let (_, proved) = prove(&h)?;
     let Some((account_id, token_id)) = proved.filter(|(a, _)| *a == space.account_id) else {
@@ -858,13 +867,50 @@ fn refresh(rt: &Runtime) -> Result<CloudNews, FailClass> {
         Ok(Refresh::Deployed { was }) => {
             rt.log(&format!("refresh: the page went from {was} to {}", page_version()));
             enroll_on_entry(rt, &account_id, &token_id);
-            Ok(CloudNews::Refreshed { deployed: true })
+            Ok(CloudNews::Refreshed { deployed: true, ai })
         }
-        Ok(_) => Ok(CloudNews::Refreshed { deployed: false }),
+        Ok(_) => Ok(CloudNews::Refreshed { deployed: false, ai }),
         Err(WireError::Cloud(e)) => Err(class(&e)),
         Err(WireError::Storage(shroom_storage::s3::S3Error::Transport(_))) => Err(FailClass::Transport),
         Err(e) => {
             rt.log(&format!("refresh: refused ({})", redact(&e.to_string())));
+            Err(FailClass::Refused)
+        }
+    }
+}
+
+/// Naming on or off (N66, DECISIONS B206 a): this app's page put up again over the space's
+/// own with Cloudflare's AI and its schedule, or without them — only on the Mac that holds
+/// the setup key, and never over a newer page (another Mac's update): that page keeps its
+/// script and the switch says it couldn't change it.
+fn set_ai(rt: &Runtime, on: bool) -> Result<CloudNews, FailClass> {
+    let space = rt.home.read_json::<SpaceIdentity>("space.json").filter(|s| s.role == Role::TokenHolder).ok_or(FailClass::Refused)?;
+    let h = held(rt)?;
+    let live = live_version(rt.page_at(&space.host).ping())?;
+    if wire::may_deploy_over(page_version(), &live) {
+        rt.log(&format!("naming: the page is at {live}, newer than {} — kept as it is", page_version()));
+        return Err(FailClass::Refused);
+    }
+    let (_, proved) = prove(&h)?;
+    let Some((account_id, token_id)) = proved.filter(|(a, _)| *a == space.account_id) else {
+        rt.log("naming: the token isn't live for this space");
+        return Err(FailClass::Refused);
+    };
+    let assets: [(&str, &[u8], &str); 1] = [(".shroom/player/hls.min.js", HLS_JS, "text/javascript")];
+    let spec = WireSpec {
+        account_id: &account_id,
+        token_id: &token_id,
+        label: &space.label,
+        bucket: &space.bucket,
+        worker_module: WORKER_MODULE,
+        compatibility_date: COMPATIBILITY_DATE,
+        assets: &assets,
+    };
+    match wire::set_ai(&h.cloud, &spec, on) {
+        Ok(()) => Ok(CloudNews::AiSet(on)),
+        Err(WireError::Cloud(e)) => Err(class(&e)),
+        Err(e) => {
+            rt.log(&format!("naming: refused ({})", redact(&e.to_string())));
             Err(FailClass::Refused)
         }
     }
