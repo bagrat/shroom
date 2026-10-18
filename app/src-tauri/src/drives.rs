@@ -1030,6 +1030,7 @@ fn update_relaunched(d: &Drive) -> Result<(), String> {
 /// runner's test video.
 const HERE: (&str, &str) = ("Edrive00000here0", "Setting up shroom in two minutes");
 const AWAY: (&str, &str) = ("Edrive00000away0", "Onboarding flow, take 2");
+const THIRD: (&str, &str) = ("Edrive0000third0", "Where the 502s come from");
 /// The markers dropped while the first was recorded (N64).
 const MARKERS: [f64; 2] = [6.0, 31.0];
 
@@ -1089,7 +1090,7 @@ fn editor_layout(d: &Drive) -> Result<serde_json::Value, String> {
         for (const t of ["pointerdown", "pointerup", "lostpointercapture", "click"]) addEventListener(t, (e) => window.__drive.presses.push(`${t} ${e.target.className?.baseVal ?? e.target.className} ${Math.round(e.clientX)},${Math.round(e.clientY)}`), true);
       }
       const r = (q) => { const e = document.querySelector(q); if (!e) return null; const b = e.getBoundingClientRect(); return [b.left, b.top, b.width, b.height]; };
-      return JSON.stringify({ track: r(".track"), chip: r(".chip button"), screen: r(".screen"), pointer: window.__drive.at, presses: window.__drive.presses.slice(-12) });
+      return JSON.stringify({ track: r(".track"), chip: r(".chip button"), screen: r(".screen"), delete: r(".ask .b.filled"), pointer: window.__drive.at, presses: window.__drive.presses.slice(-12) });
     })()"#;
     let w = d.app.get_webview_window(crate::runtime::presenter::EDITOR).ok_or("no editor window")?;
     let (tx, rx) = std::sync::mpsc::channel();
@@ -1149,6 +1150,8 @@ fn seed_edit_video(s3: &Client, (id, title): (&str, &str), video: &std::path::Pa
     m.media = Some(meta::Media { hls: Some(keys::master(id)), mp4: Some(keys::mp4(id)), poster: Some(keys::poster(id)), teaser: None, width: 1280, height: 720 });
     let e = |e: shroom_storage::s3::S3Error| e.to_string();
     s3.put(&keys::master(id), b"#EXTM3U\n", "application/vnd.apple.mpegurl").map_err(e)?;
+    s3.put(&format!("{}v0/seg0.m4s", keys::prefix(id)), &[0u8; 512], "video/iso.segment").map_err(e)?;
+    s3.put(&keys::teaser(id), &[0u8; 512], "video/mp4").map_err(e)?;
     s3.put_file(&keys::mp4(id), video, "video/mp4", shroom_upload::upload::SINGLE_PUT_MAX, shroom_upload::upload::PART_SIZE).map_err(e)?;
     s3.put_file(&keys::poster(id), poster, "image/jpeg", shroom_upload::upload::SINGLE_PUT_MAX, shroom_upload::upload::PART_SIZE).map_err(e)?;
     s3.put(&keys::meta(id), &serde_json::to_vec(&m).map_err(|e| e.to_string())?, "application/json").map_err(e)
@@ -1203,12 +1206,13 @@ fn editor(d: &Drive) -> Result<(), String> {
     let s3 = d.bucket()?;
     seed_edit_video(&s3, HERE, &video, &poster, length, &MARKERS)?;
     seed_edit_video(&s3, AWAY, &video, &poster, length, &[])?;
+    seed_edit_video(&s3, THIRD, &video, &poster, length, &[])?;
     let take = seed_edit_take(&d.rt, HERE, &video, &poster)?;
-    d.step("seeded two videos into the fake's bucket, and the first one's take on this Mac");
+    d.step("seeded three videos into the fake's bucket, and the first one's take on this Mac");
 
     // Edit… on a live row of the Library.
     d.open(Action::OpenLibrary)?;
-    let s = d.wait("the two videos", 20, |s| titles(s).len() == 2)?;
+    let s = d.wait("the three videos", 20, |s| titles(s).len() == 3)?;
     let here = rec_of(&s, HERE.1).ok_or("no row for the first video")?;
     d.check("a live row offers Edit… (N63)", s.offers(Surface::Library, &Action::EditRow(here.clone())), format!("{:?}", s.library.as_ref().and_then(|l| l.body.rows.iter().find(|r| r.key == here.0)).map(|r| r.menu.iter().map(|b| b.label.clone()).collect::<Vec<_>>())));
     d.act(Surface::Library, Action::EditRow(here.clone()));
@@ -1291,43 +1295,50 @@ fn editor(d: &Drive) -> Result<(), String> {
         runner.shot(d, crate::runtime::presenter::EDITOR, "editor-dragged-cut")?;
     }
 
-    // Done: the edit goes into the record, the window closes, and the Library row reads the
-    // edited length at once.
+    // Done: the edit goes into the record, and the window makes the final video (B197 (a)).
     let want = snapshot(&d.rt).as_ref().and_then(|s| editor_body(s).map(|b| (cuts_of(s), b.edited_duration))).ok_or("no editor")?;
     d.act(Surface::Editor, Action::EditorDone);
-    let s = d.wait("saved and closed", 30, |s| s.editor.is_none())?;
+    let s = d.wait("the final video, being made", 30, |s| s.editor.as_ref().is_some_and(|e| e.id == "editor-making" || e.id == "editor-keep-original"))?;
+    let making = s.editor.as_ref().is_some_and(|e| e.id == "editor-making");
+    runner.shot(d, crate::runtime::presenter::EDITOR, "editor-making")?;
+    let shown = snapshot(&d.rt).and_then(|s| s.editor.map(|e| e.id));
+    d.fact_like("making_shot_face", shown);
     let seen = d.rt.trace.lock().unwrap().as_ref().map(|t| t.ids.clone()).unwrap_or_default();
-    d.check("Done saves, then the window closes", seen.iter().any(|id| id.starts_with("editor editor-saving")), seen.join(" → "));
+    d.check("Done saves, then the window makes the final video (B197)", seen.iter().any(|id| id.starts_with("editor editor-saving")) && seen.iter().any(|id| id.starts_with("editor editor-making")), seen.join(" → "));
+    d.fact_like("making_seen_first", making);
     let rec = record_json(&s3, &here.0).ok_or("no record")?;
     let ed = &rec["edits"];
     let cuts: Vec<(f64, f64)> = ed["cuts"].as_array().map(|a| a.iter().filter(|c| c["applied"] == true).filter_map(|c| Some((c["start"].as_f64()?, c["end"].as_f64()?))).collect()).unwrap_or_default();
-    d.check(
-        "the record holds the edit: revision 1, the trim and the cuts",
-        ed["rev"] == 1 && ed["in"] == 2.0 && ed["out"] == 25.0 && cuts == want.0,
-        ed.to_string(),
-    );
+    d.check("the record holds the edit: revision 1, the trim and the cuts", ed["rev"] == 1 && ed["in"] == 2.0 && ed["out"] == 25.0 && cuts == want.0, ed.to_string());
     d.check("… and its title and markers are as they were", rec["title"] == HERE.1 && rec["markers"] == serde_json::json!(MARKERS), format!("{} {}", rec["title"], rec["markers"]));
-    let row = s.library.as_ref().and_then(|l| l.body.rows.iter().find(|r| r.key == here.0)).map(|r| r.meta.clone()).unwrap_or_default();
     let len = shroom_core::copy::length((want.1 * 1000.0).round() as u64);
-    d.check("the Library row reads the edited length", row.ends_with(&format!("· {len}")), format!("{row} (want {len})"));
-    // The Library was behind the editor all along: macOS paints it again once it shows.
-    std::thread::sleep(Duration::from_secs(4));
-    runner.shot(d, LIBRARY, "library-edited")?;
-    // What the row reads once the Library's next refresh has answered (its focus re-reads
-    // the space): the cached rows don't carry the record's edit yet, so only this Mac's
-    // save says it — noted, not checked, until they do.
-    let later = snapshot(&d.rt).and_then(|s| s.library.as_ref().and_then(|l| l.body.rows.iter().find(|r| r.key == here.0)).map(|r| r.meta.clone()));
-    d.fact_like("row_after_refresh", later);
+    let row = |s: &Scene| s.library.as_ref().and_then(|l| l.body.rows.iter().find(|r| r.key == here.0)).map(|r| r.meta.clone()).unwrap_or_default();
+    d.check("the Library row reads the edited length", row(&s).ends_with(&format!("· {len}")), format!("{} (want {len})", row(&s)));
 
-    // The permanent copy, cut on this Mac with the encoder and put beside the recording.
-    let copy = poll(240, || record_json(&s3, &here.0).map(|r| r["edits"]["copy"].clone()).filter(|c| !c.is_null()));
-    let copy = copy.ok_or("the copy never landed in the record (4 min)")?;
+    // The copy is up: the window asks about the original (B197 (b)).
+    let s = d.wait("“Delete the original?”", 240, |s| s.editor.as_ref().is_some_and(|e| e.id == "editor-keep-original"))?;
+    std::thread::sleep(Duration::from_millis(600));
+    runner.shot(d, crate::runtime::presenter::EDITOR, "editor-asking")?;
+    let asked = s.editor.as_ref().and_then(|e| match &e.body.after {
+        Some(shroom_core::scene::EditorAfterView::Asking { title, keep, delete, .. }) => Some((title.clone(), keep.label.clone(), delete.label.clone(), delete.style, e.ret.clone())),
+        _ => None,
+    });
+    d.check("it asks “Delete the original?”: Keep for 2 days, Yes, delete — filled, never on Return", asked.as_ref().is_some_and(|(t, k, del, style, ret)| t == "Delete the original?" && k == "Keep for 2 days" && del == "Yes, delete" && *style == Style::Filled && ret.is_none()), format!("{asked:?}"));
+    let rec = record_json(&s3, &here.0).ok_or("no record")?;
+    let copy = rec["edits"]["copy"].clone();
     d.fact_like("copy", &copy);
     d.check("the copy is named for revision 1", copy["rev"] == 1 && copy["file"] == "edit-1.mp4" && copy["poster"] == "edit-1-poster.jpg" && copy["teaser"] == "edit-1-teaser.mp4", copy.to_string());
     d.check("the copy is as long as the edit", copy["duration"].as_f64().is_some_and(|c| near(c, want.1, 0.6)), format!("{} vs {}", copy["duration"], want.1));
+    let two_days = |r: &serde_json::Value| {
+        let at = r["edits"]["keep_until"].as_str().and_then(shroom_upload::library::iso_ms);
+        let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as i64).unwrap_or(0);
+        (at.is_some_and(|t| (t - now - 2 * 86_400_000).abs() < 15 * 60_000), r["edits"]["keep_until"].clone())
+    };
+    let (kept, until) = two_days(&rec);
+    d.check("its landing set when the original goes: two days on", kept, until.to_string());
     let files: Vec<String> = s3.list(&shroom_upload::keys::prefix(&here.0)).map(|v| v.into_iter().map(|o| o.key).collect()).unwrap_or_default();
-    let has = |name: &str| files.iter().any(|k| k.ends_with(&format!("/{name}")));
-    d.check("its three files are beside the recording, the original's too", ["edit-1.mp4", "edit-1-poster.jpg", "edit-1-teaser.mp4", "video.mp4", "poster.jpg"].iter().all(|f| has(f)), files.join(" "));
+    let has = |files: &[String], name: &str| files.iter().any(|k| k.ends_with(&format!("/{name}")));
+    d.check("its three files are beside the recording, the original's too", ["edit-1.mp4", "edit-1-poster.jpg", "edit-1-teaser.mp4", "video.mp4", "poster.jpg"].iter().all(|f| has(&files, f)), files.join(" "));
     let temp: Vec<String> = std::fs::read_dir(&edits).map(|r| r.filter_map(|e| e.ok()).map(|e| e.file_name().to_string_lossy().into_owned()).collect()).unwrap_or_default();
     d.check("the copy's working files are gone from this Mac", temp.iter().all(|f| f == crate::runtime::editor::PEAKS), temp.join(" "));
     let got = s3.get(&format!("{}edit-1.mp4", shroom_upload::keys::prefix(&here.0))).ok().flatten().unwrap_or_default();
@@ -1335,9 +1346,66 @@ fn editor(d: &Drive) -> Result<(), String> {
     let _ = std::fs::write(&copy_file, &got);
     let read = shroom_encode::cut::picture_length(&copy_file);
     d.check("the copy is a faststart MP4 whose picture is the edit's length", read.is_some_and(|r| near(r, want.1, 0.6)), format!("{read:?}"));
+    // The Library comes forward and reads the space again: its cached row carries the
+    // edit's length, so the row keeps it through every refresh.
+    d.focus(WindowKind::Library);
+    let edited = |c: &str| serde_json::from_str::<serde_json::Value>(c).ok()?.pointer(&format!("/cache/rows/{}/1/edited_sec", here.0))?.as_f64();
+    let cached = poll(15, || std::fs::read_to_string(d.rt.home.path("library.json")).ok().and_then(|c| edited(&c)).filter(|e| near(*e, want.1, 0.01)));
+    let s = d.after(300);
+    d.check("after a refresh the row still reads the edit's length (the cache holds it)", cached.is_some() && row(&s).ends_with(&format!("· {len}")), format!("{} (want {len}); cached {cached:?}", row(&s)));
+    // Return isn't Yes, delete (law 9; DEVIATIONS #55).
+    d.key(Surface::Editor, Key::Return);
+    let s = d.after(800);
+    d.check("Return does nothing there", s.editor.as_ref().is_some_and(|e| e.id == "editor-keep-original") && record_json(&s3, &here.0).is_some_and(|r| !r["edits"].is_null()), format!("{:?}", s.editor.as_ref().map(|e| e.id)));
 
-    // The second video isn't on this Mac: the editor fetches it, and ✕ with nothing changed
-    // closes it with nothing written.
+    // Yes, delete — a click on it: the edit becomes the video, the original goes (B197 (c)).
+    let layout = editor_layout(d)?;
+    let yes = layout.get("delete").and_then(|r| centre(origin, r)).ok_or("no Yes, delete on the page")?;
+    runner.ask(d, serde_json::json!({ "do": "click", "at": [yes.0, yes.1] }))?;
+    d.wait("Yes, delete closed it", 10, |s| s.editor.is_none())?;
+    let baked = poll(30, || record_json(&s3, &here.0).filter(|r| r["edits"].is_null()));
+    let rec = baked.ok_or("the bake never landed in the record (30 s)")?;
+    d.fact_like("baked_record", serde_json::json!({ "media": rec["media"], "durationSec": rec["durationSec"], "markers": rec["markers"], "bakedFrom": rec["bakedFrom"] }));
+    let key = |name: &str| format!("{}{name}", shroom_upload::keys::prefix(&here.0));
+    let m = &rec["media"];
+    d.check(
+        "the record plays the copy: its file, its poster and teaser, no stream",
+        m["mp4"] == key("edit-1.mp4") && m["poster"] == key("edit-1-poster.jpg") && m["teaser"] == key("edit-1-teaser.mp4") && m["hls"].is_null(),
+        m.to_string(),
+    );
+    d.check("… its length the copy's, its edit gone, one bake remembered", rec["durationSec"] == copy["duration"] && rec["bakedFrom"].as_array().is_some_and(|b| b.len() == 1), format!("{} {}", rec["durationSec"], rec["bakedFrom"]));
+    d.check("… a marker inside what's kept moved onto the edit's clock, one past the trim gone", rec["markers"] == serde_json::json!([4.0]), rec["markers"].to_string());
+    let gone = poll(20, || {
+        let files: Vec<String> = s3.list(&shroom_upload::keys::prefix(&here.0)).ok()?.into_iter().map(|o| o.key).collect();
+        (!["master.m3u8", "v0/seg0.m4s", "video.mp4", "poster.jpg", "teaser.mp4"].iter().any(|f| has(&files, f))).then_some(files)
+    });
+    d.check("the original's files are gone; the copy's stay", gone.as_ref().is_some_and(|f| ["edit-1.mp4", "edit-1-poster.jpg", "edit-1-teaser.mp4"].iter().all(|n| has(f, n))), format!("{gone:?}"));
+    d.check("… and this Mac's copy of the original with them", !edits.exists(), edits.display().to_string());
+    let s = d.after(500);
+    d.check("baked, the row reads the copy's length", row(&s).ends_with(&format!("· {len}")), format!("{} (want {len})", row(&s)));
+    std::thread::sleep(Duration::from_secs(3));
+    runner.shot(d, LIBRARY, "library-edited")?;
+
+    // Edit… again: the baked video is an ordinary one-file recording — no original kept,
+    // nothing to revert — opened on its own file, fetched (no take holds it).
+    d.act(Surface::Library, Action::EditRow(here.clone()));
+    let s = d.wait("the baked video, ready", 60, editor_ready)?;
+    let b = editor_body(&s).ok_or("no editor")?;
+    let l = b.list.as_ref().expect("a list");
+    d.check(
+        "the baked video opens as itself: its length, no edit, no countdown, nothing to revert",
+        near(b.source_duration, want.1, 0.6) && l.in_ == 0.0 && l.cuts.is_empty() && b.original_kept.is_none() && !b.revert.enabled && b.markers == [4.0],
+        format!("{} s, {} cuts, kept {:?}, revert {}, markers {:?}", b.source_duration, l.cuts.len(), b.original_kept, b.revert.enabled, b.markers),
+    );
+    let fetched_key = std::fs::read_to_string(edits.join(crate::runtime::editor::SOURCE_KEY)).unwrap_or_default();
+    d.check("… from its own file, fetched — never the take's original", fetched_key.trim() == key("edit-1.mp4"), fetched_key);
+    std::thread::sleep(Duration::from_secs(3));
+    runner.shot(d, crate::runtime::presenter::EDITOR, "editor-baked")?;
+    d.rt.post(Event::WindowClosed(WindowKind::Editor));
+    d.wait("✕ closed it", 10, |s| s.editor.is_none())?;
+
+    // The second video isn't on this Mac: the editor fetches it; an edit, Done, and Esc at
+    // the question is Keep for 2 days — the original kept, nothing baked.
     let s = snapshot(&d.rt).ok_or("no scene")?;
     let away = rec_of(&s, AWAY.1).ok_or("no row for the second video")?;
     d.act(Surface::Library, Action::EditRow(away.clone()));
@@ -1349,10 +1417,32 @@ fn editor(d: &Drive) -> Result<(), String> {
     d.check("… its flags none, its length the record's", editor_body(&s).is_some_and(|b| b.markers.is_empty() && near(b.source_duration, length, 0.01)), "");
     std::thread::sleep(Duration::from_secs(3));
     runner.shot(d, crate::runtime::presenter::EDITOR, "editor-fetched")?;
-    d.rt.post(Event::WindowClosed(WindowKind::Editor));
-    d.wait("✕ closed it", 10, |s| s.editor.is_none())?;
-    std::thread::sleep(Duration::from_millis(500));
-    d.check("nothing changed, nothing written", record_json(&s3, &away.0).is_some_and(|r| r.get("edits").is_none()), "");
+    d.rt.post(Event::Edit(EditStep::Op(Op::Trim { in_: 1.0, out: 30.0 })));
+    d.wait("trimmed", 5, |s| editor_body(s).and_then(|b| b.list.as_ref()).is_some_and(|l| l.in_ == 1.0))?;
+    d.act(Surface::Editor, Action::EditorDone);
+    d.wait("“Delete the original?” again", 240, |s| s.editor.as_ref().is_some_and(|e| e.id == "editor-keep-original"))?;
+    d.key(Surface::Editor, Key::Esc);
+    d.wait("Esc closed it", 10, |s| s.editor.is_none())?;
+    std::thread::sleep(Duration::from_secs(2));
+    let rec = record_json(&s3, &away.0).ok_or("no record")?;
+    let (kept, until) = two_days(&rec);
+    d.check("Esc is Keep for 2 days: the copy named, the original kept two days, nothing baked", kept && rec["edits"]["copy"]["rev"] == 1 && rec["media"]["mp4"] == format!("{}video.mp4", shroom_upload::keys::prefix(&away.0)), format!("{until} {}", rec["media"]));
+
+    // The third: the window closed while the final video is made — the copy still lands,
+    // and its two days are set.
+    let s = snapshot(&d.rt).ok_or("no scene")?;
+    let third = rec_of(&s, THIRD.1).ok_or("no row for the third video")?;
+    d.act(Surface::Library, Action::EditRow(third.clone()));
+    d.wait("the third video, ready", 60, editor_ready)?;
+    d.rt.post(Event::Edit(EditStep::Op(Op::Cut { start: 5.0, end: 15.0 })));
+    d.wait("cut", 5, |s| cuts_of(s).len() == 1)?;
+    d.act(Surface::Editor, Action::EditorDone);
+    d.wait("making", 30, |s| s.editor.as_ref().is_some_and(|e| e.id == "editor-making"))?;
+    d.act(Surface::Editor, Action::EditorClose);
+    d.wait("Close closed it mid-way", 10, |s| s.editor.is_none())?;
+    let landed = poll(240, || record_json(&s3, &third.0).filter(|r| r["edits"]["copy"]["rev"] == 1));
+    let (kept, until) = landed.as_ref().map(two_days).unwrap_or((false, serde_json::Value::Null));
+    d.check("closed while it was made, the copy still lands, its two days set", kept, format!("{until}"));
 
     d.rt.post(Event::WindowClosed(WindowKind::Library));
     d.wait("the Library closed", 5, |s| s.library.is_none())?;
