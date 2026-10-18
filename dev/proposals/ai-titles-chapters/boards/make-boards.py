@@ -443,10 +443,32 @@ boards["LandingAiLine.dc.html"] = (
     "shroom.am — the AI line under the price gauge (a proposal; the line as Bagrat saw it, 2026-10-18)", 840, 300,
     page("shroom.am, the AI line", 840, 300, landing_body()))
 
+# ───────── shroom.am/privacy: what the AI hears (a draft; the page's words change only with Bagrat's OK, as B180's did) ─────────
+
+PRIVACY_AI = "runs in your own Cloudflare account: it hears what’s said in your new videos to name them and add chapters and captions. What it hears stays in your space and goes when you delete the video; it never reaches us."
+PRIVACY_CUT = "When you say “shroom cut”, the slip is cut from what viewers get; the words cut stay in your space, and only you see them."
+
+def privacy_body():
+    def li(lead, rest):
+        return f'<li><b style="color: #eceff4; font-weight: 600">{lead}</b> {rest}</li>'
+    return f'''<div style="width: 760px; height: 560px; box-sizing: border-box; background: #2b2f36; padding: 36px 48px; display: flex; flex-direction: column; gap: 14px; font-family: {FONT}; font-size: 16px; line-height: 1.55; color: #eceff4">
+<div style="font-size: 32px; font-weight: 700; line-height: 1.2">Privacy</div>
+<div style="font-size: 18px; color: #c3cad6">shroom is built so that we hold nothing of yours.</div>
+<ul style="margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 10px; color: #c3cad6">
+{li("Your videos", "live in your own Cloudflare account. We never receive them, store them or see them. Who can watch a video is up to you: anyone with its link can.")}
+<li><div style="margin-left: -6px; padding: 8px 12px 8px 10px; border-left: 3px solid #88c0d0; border-radius: 0 9px 9px 0; background: rgba(136, 192, 208, 0.08)"><b style="color: #eceff4; font-weight: 600">AI, if you turn it on,</b> {PRIVACY_AI} <span style="color: #aeb6c4; font-style: italic">{PRIVACY_CUT}</span></div></li>
+{li("The app", "talks to your Cloudflare account (to set it up, upload your videos and manage your space) and to GitHub (to check for updates, sending no ID or version) …")}
+</ul>
+{note("A draft for Bagrat’s OK: one new point, right after “Your videos”, in the page’s own words (true to the build: the space hears new videos only while AI is on, keeps the words at rec/&lt;id&gt;/ai/, and deleting a video clears everything under it). The grey sentence after it is the voice cuts’ line (N65, theirs), so the two read as one point. The rest of the page as it is; its date moves to the day this lands.")}
+</div>'''
+boards["AiPrivacy.dc.html"] = (
+    "shroom.am/privacy — what the AI hears (a draft, 2026-10-18)", 760, 560,
+    page("shroom.am/privacy, the AI point", 760, 560, privacy_body()))
+
 # One column right of the editor's, top to bottom: the Mac's boards, then the page's.
 X = 11600
 place = ["AiBanner.dc.html", "AiConfirm.dc.html", "AiBannerStates.dc.html", "AiSettings.dc.html", "AiSettingsFailed.dc.html", "AiOwnerNamed.dc.html", "AiNamingLater.dc.html",
-         "AiPageMarks.dc.html", "AiPageMarksPhone.dc.html", "AiCaptions.dc.html", "LandingAiLine.dc.html", "AiOffer.dc.html", "AiPageChapters.dc.html"]
+         "AiPageMarks.dc.html", "AiPageMarksPhone.dc.html", "AiCaptions.dc.html", "LandingAiLine.dc.html", "AiPrivacy.dc.html", "AiOffer.dc.html", "AiPageChapters.dc.html"]
 canvas_path = os.path.join(out, "canvas.json")
 raw = open(canvas_path).read()
 lines = raw.split("\n")

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>shroom.am/privacy, the AI point</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#88c0d0}a:hover{color:#8fbcbb}
+</style>
+</helmet>
+<div style="width: 760px; height: 560px; box-sizing: border-box; background: #2b2f36; padding: 36px 48px; display: flex; flex-direction: column; gap: 14px; font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif; font-size: 16px; line-height: 1.55; color: #eceff4">
+<div style="font-size: 32px; font-weight: 700; line-height: 1.2">Privacy</div>
+<div style="font-size: 18px; color: #c3cad6">shroom is built so that we hold nothing of yours.</div>
+<ul style="margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 10px; color: #c3cad6">
+<li><b style="color: #eceff4; font-weight: 600">Your videos</b> live in your own Cloudflare account. We never receive them, store them or see them. Who can watch a video is up to you: anyone with its link can.</li>
+<li><div style="margin-left: -6px; padding: 8px 12px 8px 10px; border-left: 3px solid #88c0d0; border-radius: 0 9px 9px 0; background: rgba(136, 192, 208, 0.08)"><b style="color: #eceff4; font-weight: 600">AI, if you turn it on,</b> runs in your own Cloudflare account: it hears what’s said in your new videos to name them and add chapters and captions. What it hears stays in your space and goes when you delete the video; it never reaches us. <span style="color: #aeb6c4; font-style: italic">When you say “shroom cut”, the slip is cut from what viewers get; the words cut stay in your space, and only you see them.</span></div></li>
+<li><b style="color: #eceff4; font-weight: 600">The app</b> talks to your Cloudflare account (to set it up, upload your videos and manage your space) and to GitHub (to check for updates, sending no ID or version) …</li>
+</ul>
+<div style="padding: 10px 12px; border: 1px dashed #4c566a; border-radius: 9px; color: #aeb6c4; font-size: 12px; line-height: 1.5">A draft for Bagrat’s OK: one new point, right after “Your videos”, in the page’s own words (true to the build: the space hears new videos only while AI is on, keeps the words at rec/&lt;id&gt;/ai/, and deleting a video clears everything under it). The grey sentence after it is the voice cuts’ line (N65, theirs), so the two read as one point. The rest of the page as it is; its date moves to the day this lands.</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":760,"height":560}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>
