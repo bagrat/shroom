@@ -2028,7 +2028,7 @@ fn editor_done(w: &mut World) -> Out {
         let edge = (face == "editor").then_some(("editor", "library"));
         return (close_editor(w, false), Arm { name: "editor-closed", edge });
     }
-    let saved = shroom_edit::Saved { list: h.now.clone().checked(), rev: e.rev + 1, copy: None };
+    let saved = shroom_edit::Saved::new(h.now.clone().checked(), e.rev + 1);
     let rec = e.rec.clone();
     if let Some(e) = w.session.fields.editor.as_mut() {
         e.save = EditorSave::Saving;

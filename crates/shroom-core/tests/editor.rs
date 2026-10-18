@@ -58,7 +58,7 @@ fn saved_edit(rev: u64) -> Saved {
     list.in_ = 8.0;
     list.out = 241.0;
     list.cuts = vec![Cut::manual(150.0, 162.0), Cut { kind: CutKind::LineBeforeCue, applied: false, ..Cut::manual(200.0, 204.0) }];
-    Saved { list, rev, copy: None }
+    Saved::new(list, rev)
 }
 
 /// The saved edit with one more part cut by hand, 20–30 s: the list's first hand-cut id.
@@ -439,7 +439,7 @@ fn done_with_nothing_changed_closes_at_once() {
 fn done_with_changes_saves_the_checked_list_as_the_next_revision() {
     let mut r = dirty();
     r.ed(Action::EditorDone);
-    assert_eq!(r.effects, vec![Effect::Editor(EditCmd::Save { rec: rec(), saved: Saved { list: edited().checked(), rev: 4, copy: None } })]);
+    assert_eq!(r.effects, vec![Effect::Editor(EditCmd::Save { rec: rec(), saved: Saved::new(edited().checked(), 4) })]);
     assert_eq!(r.arm.edge, Some(("editor", "editor-saving")));
     assert_eq!(face(&r), "editor-saving");
     let b = body(&r);
@@ -526,7 +526,7 @@ fn a_failed_save_says_so_and_done_tries_again() {
     assert_eq!(b.keep, vec![[8.0, 20.0], [30.0, 150.0], [162.0, 241.0]]);
     assert_eq!(r.scene.ret(Surface::Editor), Some(Action::EditorDone));
     r.key(Surface::Editor, Key::Return);
-    assert_eq!(r.effects, vec![Effect::Editor(EditCmd::Save { rec: rec(), saved: Saved { list: edited().checked(), rev: 4, copy: None } })]);
+    assert_eq!(r.effects, vec![Effect::Editor(EditCmd::Save { rec: rec(), saved: Saved::new(edited().checked(), 4) })]);
     assert_eq!(r.arm.edge, Some(("editor-save-failed", "editor-saving")));
     // A save that never answers fails at its deadline the same way.
     let deadline = r.w.inflight.ops[&Op::EditorSave];

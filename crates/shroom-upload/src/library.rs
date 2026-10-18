@@ -174,16 +174,20 @@ pub fn save_edits(s3: &Client, id: &str, list: &shroom_edit::EditList, asked_rev
     let mut dropped: Vec<String> = Vec::new();
     update_edit(s3, id, |m| {
         rev = record_rev(m).max(asked_rev.saturating_sub(1)) + 1;
-        let old = m.edits.take().and_then(|s| s.copy);
+        let before = m.edits.take();
+        let (old, keep_until, extra) = match before {
+            Some(s) => (s.copy, s.keep_until, s.extra),
+            None => (None, None, serde_json::Map::new()),
+        };
         dropped.clear();
-        let copy = if identity {
+        let (copy, keep_until) = if identity {
             dropped.extend(old.iter().flat_map(|c| c.files().into_iter().map(str::to_string)));
-            None
+            (None, None)
         } else {
-            old
+            (old, keep_until)
         };
         m.extra.remove("edits");
-        m.edits = Some(shroom_edit::Saved { list: list.clone(), rev, copy });
+        m.edits = Some(shroom_edit::Saved { copy, keep_until, extra, ..shroom_edit::Saved::new(list.clone(), rev) });
     })?;
     delete_copy_files(s3, id, &dropped);
     Ok(rev)

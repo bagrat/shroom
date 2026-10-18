@@ -290,7 +290,7 @@ mod tests {
         let rec = RecId("AbCdEfGhIjKlMnOp".into());
         let mut list = shroom_edit::EditList::new(60.0);
         list.cuts.push(shroom_edit::Cut { removed: "Quarterly numbers, take two".into(), ..shroom_edit::Cut::manual(10.0, 20.0) });
-        let saved = shroom_edit::Saved { list, rev: 3, copy: None };
+        let saved = shroom_edit::Saved::new(list, 3);
         let mut r = Ring::default();
         let events = [
             Event::Editor(EditorNews::Opened { rec: rec.clone(), saved: Some(saved.clone()), markers: vec![12.5], duration_sec: Some(60.0) }),

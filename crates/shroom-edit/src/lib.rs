@@ -304,9 +304,20 @@ pub struct Saved {
     pub rev: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub copy: Option<EditCopy>,
+    /// While the original is kept beside the copy, when it goes (B197): RFC 3339, UTC.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub keep_until: Option<String>,
+    /// Fields this build doesn't know, kept through every rewrite.
+    #[serde(flatten)]
+    pub extra: serde_json::Map<String, serde_json::Value>,
 }
 
 impl Saved {
+    /// A list saved as `rev`, with no copy yet.
+    pub fn new(list: EditList, rev: u64) -> Saved {
+        Saved { list, rev, copy: None, keep_until: None, extra: serde_json::Map::new() }
+    }
+
     /// The copy, when it was cut from this very revision.
     pub fn current_copy(&self) -> Option<&EditCopy> {
         self.copy.as_ref().filter(|c| c.rev == self.rev)
