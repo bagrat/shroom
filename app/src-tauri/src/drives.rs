@@ -1300,6 +1300,20 @@ fn editor(d: &Drive) -> Result<(), String> {
         d.check("the chip's Cut lands in the core, where it was dragged", s.is_ok() && near(cuts[1].0, 14.0, 0.6) && near(cuts[1].1, 18.0, 0.6), format!("{cuts:?}; the page's presses: {presses}"));
         std::thread::sleep(Duration::from_millis(600));
         runner.shot(d, crate::runtime::presenter::EDITOR, "editor-dragged-cut")?;
+
+        // That cut's end, dragged two seconds on with the pointer (B195 (g)): one step, which
+        // Undo takes back — the rest of the drive goes on with the cut as it was.
+        if let Some(&(_, end)) = cuts.get(1) {
+            let dragged = d.runner_drag(&runner, video_at, (x(end), y), (x(end + 2.0), y));
+            let s = d.wait("the cut's edge, moved", 5, |s| cuts_of(s).get(1).is_some_and(|c| near(c.1, end + 2.0, 0.6)));
+            let moved = snapshot(&d.rt).map(|s| cuts_of(&s)).unwrap_or_default();
+            d.check("a cut's edge drags: the cut ends where it was let go (B195 (g))", dragged.is_ok() && s.is_ok(), format!("{moved:?} (its end was {end:.2})"));
+            std::thread::sleep(Duration::from_millis(500));
+            runner.shot(d, crate::runtime::presenter::EDITOR, "editor-edge-dragged")?;
+            d.rt.post(Event::Edit(EditStep::Undo));
+            let back = d.wait("the edge, back", 5, |s| cuts_of(s).get(1).is_some_and(|c| c.1 == end));
+            d.check("… one step: Undo puts the edge back", back.is_ok(), format!("{:?}", snapshot(&d.rt).map(|s| cuts_of(&s))));
+        }
     }
 
     // Done: the edit goes into the record, and the window makes the final video (B197 (a)).
@@ -1495,6 +1509,7 @@ fn editor(d: &Drive) -> Result<(), String> {
         ("the save, its ranges and seconds", format!("editor: {h} saved as revision 1 in ")),
         ("the final video's cut: encoder, parts, size, time", format!("editor: {h}'s final video of revision 1 cut with ")),
         ("… and its naming", format!("editor: {h}'s final video of revision 1 is up and named")),
+        ("the edge dragged", "core edit-resize".to_string()),
         ("Yes, delete", "core original-deleted".to_string()),
         ("the bake, the files it deleted", format!("editor: {h}'s edit is the video now (revision 1): ")),
         ("the upkeep's bake", format!("editor upkeep: {a}'s edit is the video now")),

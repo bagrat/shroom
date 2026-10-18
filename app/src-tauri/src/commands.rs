@@ -108,7 +108,7 @@ fn finite(op: &shroom_edit::Op) -> bool {
     use shroom_edit::Op;
     match op {
         Op::Trim { in_, out } => in_.is_finite() && out.is_finite(),
-        Op::Cut { start, end } => start.is_finite() && end.is_finite(),
+        Op::Cut { start, end } | Op::Resize { start, end, .. } => start.is_finite() && end.is_finite(),
         Op::PutBack { .. } | Op::Apply { .. } | Op::Revert => true,
     }
 }
