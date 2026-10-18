@@ -38,7 +38,9 @@
    silicon only (7, B167). Identity and signing (8) are done: 0.1.5
    shipped signed.
 4. Send feedback from the popover is built (N60, B193), the waving hand his pick.
-   Nothing else in-frame is queued: the build resumes on his answers.
+5. Voice cuts (N65, provisional): the owner page's strip, its press and the cuts' word in
+   the status are built (B200); the Mac's planner lane, on N66's transcript and N63's edit
+   list, is next. Built ahead of the release call, which is Bagrat's.
 
 
 ## Waiting for Bagrat
