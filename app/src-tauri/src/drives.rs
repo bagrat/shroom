@@ -1678,19 +1678,21 @@ fn cleanup_meta(id: &str, title: &str, days: i64, bytes: u64, now: i64) -> shroo
     m
 }
 
-/// The space the drive meets. Two buckets in this setup, as the dev drives have them: the
-/// Library's (the fake's, over the token's pair) and the local Worker's, which counts plays
-/// and answers `/cleanup`. Each video goes to both; so does what the Mac writes (Keep, a
-/// delete), mirrored by the drive once it has landed.
+/// The space the drive meets, in the local Worker's bucket: the one the Library reads over
+/// the token's pair (the space's parent, as wiring places it) and the one that counts plays
+/// and answers `/cleanup`.
 fn seed_cleanup(d: &Drive, base: &str) -> Result<(), String> {
     use shroom_upload::keys;
     let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|t| t.as_secs() as i64).unwrap_or(0);
-    let s3 = d.bucket()?;
+    let token = d.rt.home.token().ok_or("no token")?;
+    let cloud = d.rt.cloud(&token);
+    let token_id = cloud.verify(ACCOUNT).map_err(|e| e.to_string())?.id;
+    let pair = cloud.s3_credentials(&token_id);
+    d.seen.lock().unwrap().push(pair.secret_access_key.clone());
+    knob(base, SPACE_A, "parent", serde_json::json!({ "account_id": ACCOUNT, "bucket": shroom_cloud::wire::BUCKET, "key_id": pair.access_key_id, "secret": pair.secret_access_key }))?;
     knob(base, SPACE_A, "put", serde_json::json!({ "key": ".shroom/views/since.json", "json": { "since": shroom_cloud::registry::iso((now - 200 * DAY_SECS) as u64) } }))?;
     for (id, title, days, bytes, plays) in CLEANUP_SEEDED {
         let m = cleanup_meta(id, title, days, bytes, now);
-        s3.put(&keys::master(id), b"#EXTM3U\n", "application/vnd.apple.mpegurl").map_err(|e| e.to_string())?;
-        s3.put(&keys::meta(id), &serde_json::to_vec(&m).map_err(|e| e.to_string())?, "application/json").map_err(|e| e.to_string())?;
         knob(base, SPACE_A, "put", serde_json::json!({ "key": keys::meta(id), "json": m }))?;
         if let Some((n, quiet, tenth)) = plays {
             let last = now - quiet * DAY_SECS;
@@ -1769,16 +1771,8 @@ fn cleanup_drive(d: &Drive) -> Result<(), String> {
     d.act(Surface::Library, Action::KeepRow(migrated.clone()));
     let s = d.wait("kept", 15, |s| cleanup_view(s).is_some_and(|v| v.rows.len() == 2))?;
     d.check("Keep takes it off the list", !cleanup_titles(&s).iter().any(|t| t == "Migration dry run"), format!("{:?}", cleanup_titles(&s)));
-    let s3 = d.bucket()?;
-    let kept = poll(10, || {
-        let m = s3.get(&keys::meta(&migrated.0)).ok().flatten()?;
-        let v: serde_json::Value = serde_json::from_slice(&m).ok()?;
-        (v["keep"] == true).then_some(v)
-    });
+    let kept = poll(10, || worker_object(&base, &keys::meta(&migrated.0)).filter(|m| m["keep"] == true));
     d.check("the record says keep", kept.is_some(), "meta keep");
-    if let Some(m) = kept {
-        knob(&base, SPACE_A, "put", serde_json::json!({ "key": keys::meta(&migrated.0), "json": m }))?;
-    }
     d.after(2000);
 
     // Delete, then Undo: nothing is sent.
@@ -1791,22 +1785,15 @@ fn cleanup_drive(d: &Drive) -> Result<(), String> {
     d.act(Surface::Library, Action::UndoDelete);
     d.wait("back on the list", 5, |s| cleanup_titles(s).iter().any(|t| t == "Customer call recap (Acme)") && cleanup_view(s).is_some_and(|v| v.undo.is_none()))?;
     std::thread::sleep(Duration::from_secs(6));
-    let still = s3.get(&keys::meta(&recap.0)).ok().flatten().and_then(|m| serde_json::from_slice::<serde_json::Value>(&m).ok());
+    let still = worker_object(&base, &keys::meta(&recap.0));
     d.check("Undo sent nothing: the video is still live", still.as_ref().is_some_and(|m| m["state"] == "live"), format!("{:?}", still.as_ref().map(|m| m["state"].clone())));
 
     // Delete again, and let it go.
     d.act(Surface::Library, Action::DeleteSuggested(recap.clone()));
     d.wait("the Undo line again", 5, |s| cleanup_view(s).is_some_and(|v| v.undo.is_some()))?;
     let s = d.wait("the delete went", 20, |s| cleanup_view(s).is_some_and(|v| v.undo.is_none() && v.rows.len() == 1) && !titles(s).iter().any(|t| t == "Customer call recap (Acme)"))?;
-    let gone = poll(15, || {
-        let m = s3.get(&keys::meta(&recap.0)).ok().flatten()?;
-        let v: serde_json::Value = serde_json::from_slice(&m).ok()?;
-        (v["state"] == "deleted").then_some(v)
-    });
+    let gone = poll(15, || worker_object(&base, &keys::meta(&recap.0)).filter(|m| m["state"] == "deleted"));
     d.check("the record is a tombstone", gone.is_some(), "meta deleted");
-    if let Some(m) = gone {
-        knob(&base, SPACE_A, "put", serde_json::json!({ "key": keys::meta(&recap.0), "json": m }))?;
-    }
     d.check("one left, and no Delete all… for one", cleanup_titles(&s) == ["Code walkthrough: billing service"] && cleanup_view(&s).is_some_and(|v| v.delete_all.is_none()), format!("{:?}", cleanup_titles(&s)));
     d.after(2500);
 
