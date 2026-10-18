@@ -1071,7 +1071,9 @@ fn run(rt: Runtime, rx: Receiver<Envelope>, lanes: Lanes, mut presenter: present
             // Named before `update` takes it: the ring keeps kinds only (B93, law 13).
             let (mono, kind) = (env.mono.0, shroom_core::trace::event_kind(&env.event));
             let (fx, arm) = shroom_core::update(&mut w, env);
-            rt.log(&format!("core {} {:?}", arm.name, fx.iter().map(effect_kind).collect::<Vec<_>>()));
+            if let Some(line) = core_line(tick, &arm, &fx) {
+                rt.log(&line);
+            }
             ring::step(mono, kind, &arm, &fx);
             effects.extend(fx);
             count += u64::from(!tick);
@@ -1097,6 +1099,13 @@ fn run(rt: Runtime, rx: Receiver<Envelope>, lanes: Lanes, mut presenter: present
         *lock.lock().unwrap() += count;
         cv.notify_all();
     }
+}
+
+/// A core step's run-log line: its arm and its effects' kinds. A tick that asked for
+/// nothing is left out, so a day of waiting doesn't push the day's events out of a
+/// report's tail (the trace ring still keeps it).
+fn core_line(tick: bool, arm: &shroom_core::Arm, fx: &[Effect]) -> Option<String> {
+    (!tick || !fx.is_empty()).then(|| format!("core {} {:?}", arm.name, fx.iter().map(effect_kind).collect::<Vec<_>>()))
 }
 
 fn effect_kind(e: &Effect) -> &'static str {
@@ -1546,6 +1555,16 @@ mod tests {
         assert!(!logs.join("run.log.2").exists());
         assert_eq!(short("AbCdEfGhIjKlMnOp"), "AbCd…");
         assert_eq!(short("ab"), "ab");
+    }
+
+    /// A tick that changed nothing outward isn't logged; every other step is.
+    #[test]
+    fn a_tick_that_asks_for_nothing_stays_out_of_the_run_log() {
+        let arm = shroom_core::Arm::named("tick");
+        assert_eq!(core_line(true, &arm, &[]), None);
+        assert_eq!(core_line(false, &shroom_core::Arm::named("click-start"), &[]).as_deref(), Some("core click-start []"));
+        let fx = [Effect::Persist(PersistOp::Wipe)];
+        assert!(core_line(true, &arm, &fx).is_some_and(|l| l.starts_with("core tick [")));
     }
 
     /// Every line carries the UTC wall clock; the boot's first line names the build, and so
