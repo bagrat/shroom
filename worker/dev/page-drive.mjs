@@ -39,6 +39,11 @@
 //              control bar is below it, never over it
 //   copy       with the single-file copy up, the page plays it and asks for no piece of the
 //              stream (DECISIONS B177); every check above plays the stream, as before it's up
+//   cuts       the owner page's voice cuts (N65, DECISIONS B200): under the player, a row per
+//              voice cut, an applied one struck through; Put back and Cut it too save at once,
+//              the row then saying what it is and what plays reaching the player; a press
+//              that doesn't save leaves its row and says so; a recipient's page carries none
+//              of it; a page open while the cues are coming takes the strip in when they land
 //   bytes      a tombstoned recording's playlist answers 404
 //
 // Prints one JSON summary and exits 0 only when every required check passed.
@@ -54,7 +59,7 @@ import { CODE, INV, M1, OWNER_AIR, OWNER_MAC, cookieFor, metaKey, roster, sha, s
 const here = path.dirname(new URL(import.meta.url).pathname);
 const work = fs.mkdtempSync(path.join(os.tmpdir(), "shroom-page-drive-"));
 const summary = { ok: false, engines: {} };
-const ids = { live: "LiveLiveLiveLive", wait: "WaitWaitWaitWait", stall: "StalStalStalStal", own: "OwnrOwnrOwnrOwnr", gone: "GoneGoneGoneGone", off: "OffxOffxOffxOffx" };
+const ids = { live: "LiveLiveLiveLive", wait: "WaitWaitWaitWait", stall: "StalStalStalStal", own: "OwnrOwnrOwnrOwnr", gone: "GoneGoneGoneGone", off: "OffxOffxOffxOffx", cuts: "CutsCutsCutsCuts" };
 const DURATION = 20;
 /** The shapes the whole-frame check plays (a recording of each, a few seconds long): a
  * MacBook's 16:10 screen, a 16:9 display, a tall portrait window. */
@@ -387,6 +392,71 @@ async function main() {
         await page.goto(`${origin}/${ids.off}`);
         await put(metaKey(ids.off), meta(ids.off, { media: null }));
         check("unavailable: its line in the frame, the bar gone", await page.waitForFunction((w) => document.getElementById("w")?.textContent === w && getComputedStyle(document.getElementById("b").parentNode).display === "none", COPY.unavailable, { timeout: 6000 }).then(() => true, () => false));
+
+        // ── the voice cuts (N65, DECISIONS B200) ──
+        const WORDS = { v1: "Hello, that is shroom. Shroom cut.", v3: "The second one is, um, I forget what it's called." };
+        const voiceEdits = () => ({ version: 1, source_duration: DURATION, in: 0, out: DURATION, rev: 1, voice: { planned_at: Date.now() - 5000, cues: 2 },
+          cuts: [
+            { id: "v1", start: 1.2, end: 3.4, kind: "retake", confidence: "high", applied: true, removed: WORDS.v1, resumes: "Hello, this is shroom." },
+            { id: "v2", start: 12, end: 13.1, kind: "cue-only", confidence: "high", applied: true, removed: "Shroom cut.", resumes: "Let's move on to the Library." },
+            { id: "v3", start: 9.6, end: 13.1, kind: "line-before-cue", confidence: "low", applied: false, removed: `${WORDS.v3} Shroom cut.`, resumes: "Let's move on to the Library." },
+          ] });
+        const strip = () => page.evaluate(() => {
+          const s = document.getElementById("cuts"), p = document.querySelector(".player");
+          if (!s || s.hidden) return null;
+          return {
+            below: !!p && s.getBoundingClientRect().top >= p.getBoundingClientRect().bottom - 1,
+            rows: [...s.querySelectorAll("li")].map((li) => ({ id: li.dataset.cut, cls: li.className, button: li.querySelector("button").textContent, said: li.querySelector("q").textContent, struck: getComputedStyle(li.querySelector("q")).textDecorationLine.includes("line-through"), asks: li.querySelector(".why")?.getClientRects().length > 0 })),
+            unsaved: !s.querySelector(".unsaved").hidden,
+          };
+        });
+        const row = (id, button) => page.waitForFunction(([i, w]) => document.querySelector(`li[data-cut="${i}"] button`)?.textContent === w, [id, button], { timeout: 3000 }).then(() => true, () => false);
+        const pressed = () => page.waitForResponse((r) => r.url().endsWith(`/_shroom/edits/${ids.cuts}`) && r.request().method() === "POST", { timeout: 5000 }).then((r) => r.status(), () => 0);
+        const kept = async () => JSON.parse(await (await env.BUCKET.get(metaKey(ids.cuts))).text()).edits;
+        await page.setViewportSize({ width: 1280, height: 1000 });
+        await put(metaKey(ids.cuts), meta(ids.cuts, { edits: voiceEdits() }));
+        await page.goto(`${origin}/${ids.cuts}`);
+        await page.evaluate(() => { window.__keeps = []; document.addEventListener("shroom:keep", (e) => window.__keeps.push(e.detail)); });
+        const shown = await strip();
+        check("cuts: under the player, a row per voice cut — an applied one struck through with Put back, the offered line with Cut it too",
+          !!shown?.below && same(shown.rows.map((r) => [r.id, r.cls, r.button, r.struck, r.said, r.asks]), [["v1", "cut on", COPY.putBack, true, `“${WORDS.v1}”`, false], ["v3", "cut offer", COPY.cutItToo, false, `“${WORDS.v3}”`, true]]), true, shown);
+        await shot("owner-cuts");
+        await page.emulateMedia({ colorScheme: "dark" });
+        await shot("owner-cuts-dark");
+        await page.emulateMedia({ colorScheme: "light" });
+        let answer = pressed();
+        await page.click('li[data-cut="v1"] button');
+        const putBack = { status: await answer, row: await row("v1", COPY.cutAgain) };
+        const afterBack = await strip();
+        check("cuts: Put back saves at once — the row reads Cut again, its words no longer struck; the record and the player follow",
+          putBack.status === 200 && putBack.row && afterBack?.rows[0].cls === "cut" && !afterBack.rows[0].struck && (await kept()).cuts.find((c) => c.id === "v1").applied === false
+            && same(await page.evaluate(() => window.__keeps.at(-1)), [[0, 12], [13.1, DURATION]]), true, { putBack, afterBack });
+        answer = pressed();
+        await page.click('li[data-cut="v3"] button');
+        const too = { status: await answer, row: await row("v3", COPY.putBack) };
+        const afterToo = await strip();
+        check("cuts: Cut it too cuts the offered line — its row reads Put back, struck through, its question gone", too.status === 200 && too.row && afterToo?.rows[1].cls === "cut on" && afterToo.rows[1].struck && !afterToo.rows[1].asks, true, { too, afterToo });
+        await page.route(`**/_shroom/edits/${ids.cuts}`, (route) => (route.request().method() === "POST" ? route.abort() : route.continue()));
+        await page.click('li[data-cut="v1"] button');
+        const failed = await page.waitForFunction(() => !document.querySelector("#cuts .unsaved").hidden, null, { timeout: 3000 }).then(() => strip(), () => null);
+        await page.unroute(`**/_shroom/edits/${ids.cuts}`);
+        await shot("owner-cuts-unsaved");
+        check("cuts: a press that doesn't save leaves its row as it was and says so", !!failed?.unsaved && failed.rows[0].cls === "cut" && failed.rows[0].button === COPY.cutAgain && (await kept()).cuts.find((c) => c.id === "v1").applied === false, true, failed);
+        const outsider = await browser.newContext();
+        const stranger = await outsider.newPage();
+        await stranger.goto(`${origin}/${ids.cuts}`);
+        const theirs = await stranger.evaluate((w) => ({ strip: !!document.getElementById("cuts"), words: document.documentElement.outerHTML.includes(w) }), WORDS.v1);
+        await outsider.close();
+        check("cuts: a recipient's page carries no strip and no word that was cut", !theirs.strip && !theirs.words, true, theirs);
+        // A space that listens has Cloudflare's AI bound to its page (N66).
+        env.AI = {};
+        await put(metaKey(ids.cuts), meta(ids.cuts, { publishedAt: iso(Date.now() - 2000) }));
+        await page.goto(`${origin}/${ids.cuts}`);
+        const coming = await page.evaluate(() => { const s = document.getElementById("cuts"); return !!s && s.hidden; });
+        await put(metaKey(ids.cuts), meta(ids.cuts, { publishedAt: iso(Date.now() - 4000), edits: voiceEdits() }));
+        const landed = await page.waitForFunction(() => { const s = document.getElementById("cuts"); return !!s && !s.hidden && s.querySelectorAll("li").length === 2; }, null, { timeout: 10_000 }).then(() => true, () => false);
+        delete env.AI;
+        check("cuts: a page open while the cues are coming takes the strip in when they land", coming && landed, true, { coming, landed });
         await context.clearCookies();
       } finally {
         await browser.close();

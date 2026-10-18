@@ -1170,7 +1170,7 @@ h1{flex:1 1 0;min-width:0;margin:0;font-size:1.75rem;font-weight:600;line-height
 .cuts .only{color:var(--quiet);font-size:13px}.cuts ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
 .cut{display:flex;align-items:center;gap:14px;padding-top:10px;border-top:1px solid var(--hair)}.cut .at{flex:none;width:40px;color:var(--soft);font-variant-numeric:tabular-nums}
 .cut .said{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:2px}.cut q{quotes:none;overflow-wrap:anywhere}.cut.on q{color:var(--quiet);text-decoration:line-through;text-decoration-color:var(--cut)}
-.cut .why,.cuts .unsaved{color:var(--warn);font-size:13px}.cuts .unsaved{margin:0}.cuts .unsaved[hidden]{display:none}
+.cut .why,.cuts .unsaved{color:var(--warn);font-size:13px}.cut.on .why{display:none}.cuts .unsaved{margin:0}.cuts .unsaved[hidden]{display:none}
 .cut button{flex:none;font:inherit;font-size:13px;min-height:32px;padding:0 12px;border:1px solid var(--edge);border-radius:8px;background:transparent;color:var(--text);cursor:pointer}.cut button:hover{background:var(--hover)}.cut button[aria-busy]{opacity:.6}
 .wait{position:relative;aspect-ratio:var(--ar);border-radius:12px;background:var(--player);color:var(--player-text);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px;text-align:center;overflow:hidden;--track:var(--player-track);--fill:var(--player-fill)}
 .wait .line{margin:0;max-width:420px;font-size:1.0625rem}.wait .bar{max-width:320px}
