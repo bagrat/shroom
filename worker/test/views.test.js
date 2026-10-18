@@ -3,7 +3,7 @@
 // owner's own page never counts, and POST /_shroom/api/cleanup scores each video under
 // one of four formulas, with the reason and the facts its line needs.
 import { describe, expect, it } from "vitest";
-import { BYTES_PER_SEC, VIEW_JS, applyView, cleanupFacts, cleanupScore, medianWatched, monthlySaving } from "../src/worker.js";
+import { BYTES_PER_SEC, FORMULAS, VIEW_JS, applyView, cleanupFacts, cleanupScore, medianWatched, monthlySaving } from "../src/worker.js";
 import {
   DAY, HOST, M1, MHER, MHER_MAC, NOW, OWNER_MAC, bodyOf, call, cookieFor, iso, ledger, metaKey, metaOf, recId, space, textOf,
 } from "./space-fixture.js";
@@ -140,12 +140,24 @@ describe("the scores", () => {
   const facts = (over = {}, rec = null) => cleanupFacts({ state: "live", createdAt: iso(NOW - 200 * DAY), durationSec: 600, ...over }, rec, NOW, SINCE);
 
   it("never suggests a kept video, a new one, one watched in the last two weeks, or before counting can tell", () => {
-    for (const f of ["idle", "fading", "cost", "gravity"]) {
+    for (const f of FORMULAS) {
       expect(cleanupScore(facts({ keep: true }), f, NOW).reason.code).toBe("kept");
       expect(cleanupScore(facts({ createdAt: iso(NOW - 5 * DAY) }), f, NOW).reason.code).toBe("new");
       expect(cleanupScore(facts({}, { v: 1, plays: 1, lastAt: iso(NOW - 3 * DAY), days: days(1, 3), watch: [] }), f, NOW).reason.code).toBe("watched-lately");
       expect(cleanupScore(cleanupFacts({ createdAt: iso(NOW - 200 * DAY), durationSec: 60 }, null, NOW, null), f, NOW).reason.code).toBe("counting-too-new");
     }
+  });
+
+  it("fading-cost: faded plays and a cent a month or more; a past hit and small clutter are left", () => {
+    expect(cleanupScore(facts({ durationSec: 1800 }), "fading-cost", NOW)).toMatchObject({ candidate: true, reason: { code: "never-played", heat: 0 } });
+    expect(cleanupScore(facts({ durationSec: 300 }), "fading-cost", NOW).candidate).toBe(false); // ~0.28 GB: under a cent
+    const hit = { v: 1, plays: 30, lastAt: iso(NOW - 150 * DAY), days: days(10, 150, 151, 152), watch: [0, 0, 0, 0, 0, 0, 0, 0, 0, 30] };
+    expect(cleanupScore(facts({ durationSec: 1800 }, hit), "fading-cost", NOW).candidate).toBe(false);
+    const faded = { ...hit, plays: 6, days: days(2, 150, 151, 152), watch: [0, 0, 0, 0, 0, 0, 0, 0, 0, 6] };
+    const v = cleanupScore(facts({ durationSec: 1800 }, faded), "fading-cost", NOW);
+    expect(v).toMatchObject({ candidate: true, reason: { code: "not-lately", plays: 6 } });
+    // The dearer of two equally faded videos goes first.
+    expect(cleanupScore(facts({ durationSec: 3600 }, faded), "fading-cost", NOW).score).toBeGreaterThan(v.score);
   });
 
   it("idle: nobody in 30 days if nobody ever, else 60; counting that began late counts from then", () => {
@@ -214,7 +226,7 @@ describe("POST /_shroom/api/cleanup", () => {
     const res = await call(env, "POST", "/_shroom/api/cleanup", { auth: OWNER_MAC.bearer, body: { scope: "everyone" }, now: LATER });
     expect(res.status).toBe(200);
     const out = await bodyOf(res);
-    expect(out).toMatchObject({ shroom: 1, countingSince: iso(NOW), formula: "idle", next: null });
+    expect(out).toMatchObject({ shroom: 1, countingSince: iso(NOW), formula: "fading-cost", next: null });
     const by = Object.fromEntries(out.items.map((i) => [i.id, i]));
     expect(Object.keys(by).sort()).toEqual([a, b, c].sort());
     expect(by[a]).toMatchObject({ candidate: true, plays: 0, owner: M1, reason: { code: "never-played", quietDays: 100 } });

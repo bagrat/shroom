@@ -2742,8 +2742,13 @@ export const BYTES_PER_SEC = Math.round(10e9 / (3 * 3600));
 /** No video is suggested younger than this, or played more recently. */
 export const CLEANUP_GRACE_DAYS = 14;
 
-/** The scores, each a rule that says why. `idle` is the proposal's pick. */
-export const FORMULAS = ["idle", "fading", "cost", "gravity"];
+/** The scores, each a rule that says why. `fading-cost` is Bagrat's pick (2026-10-18: fading
+ * and cost together); the other four are kept for comparison. */
+export const FORMULAS = ["fading-cost", "idle", "fading", "cost", "gravity"];
+/** fading-cost's two gates: what's left of its plays (a 30-day half-life, each weighted by
+ * how far it was watched) is under a quarter of one fresh full watch, and it takes at least
+ * a cent a month at list price (≈ 0.67 GB, about 12 minutes at Normal). */
+export const FADING_COST = { halfLifeDays: 30, heatBelow: 0.25, usdAtLeast: 0.01 };
 
 /** A video's facts, as the scores read them.
  * @param {any} meta @param {any} rec the video's plays record, or null @param {number} now @param {number | null} sinceMs when counting began */
@@ -2785,7 +2790,18 @@ export function cleanupScore(x, formula, now) {
   const facts = { plays: x.plays, lastPlayedAt: x.lastPlayedAt, quietDays: Math.floor(x.quietDays), ageDays: Math.floor(x.ageDays), bytes: x.bytes, medianWatched: x.medianWatched };
   const code = x.plays === 0 ? "never-played" : x.medianWatched !== null && x.medianWatched < 0.25 ? "stopped-early" : "not-lately";
   const gb = x.bytes / 1e9;
+  let heat = 0;
+  for (const [d, n] of Object.entries(x.days)) heat += Number(n) * 0.5 ** ((now - Date.parse(`${d}T12:00:00Z`)) / DAY_MS / FADING_COST.halfLifeDays);
+  heat *= 0.3 + 0.7 * (x.medianWatched ?? 0.5);
   switch (formula) {
+    case "fading-cost": {
+      // B + C: its plays have faded and it takes room worth paying for. The dearest per unit
+      // of what's left of its plays goes first (cost ÷ heat, GreedyDual-Size's shape). The
+      // gate is the list price, not the bill: inside the free 10 GB it still names what
+      // takes the room, and the saving line says it saves nothing yet.
+      const yes = heat < FADING_COST.heatBelow && x.usdPerMonth >= FADING_COST.usdAtLeast && x.ageDays >= 30 && x.quietDays >= 30;
+      return { candidate: yes, score: yes ? x.usdPerMonth / (heat + 0.05) : 0, reason: { code, heat: Math.round(heat * 1000) / 1000, usdPerMonth: x.usdPerMonth, ...facts } };
+    }
     case "idle": {
       // A: nobody has played it in 60 days (30 if nobody ever has). Biggest and quietest first.
       const due = x.plays === 0 ? 30 : 60;
@@ -2795,9 +2811,6 @@ export function cleanupScore(x, formula, now) {
     case "fading": {
       // B: plays fade with a 30-day half-life, each worth more the further it's watched.
       // Below a quarter of a fresh full watch, and at least 30 days old, it's suggested.
-      let heat = 0;
-      for (const [d, n] of Object.entries(x.days)) heat += Number(n) * 0.5 ** ((now - Date.parse(`${d}T12:00:00Z`)) / DAY_MS / 30);
-      heat *= 0.3 + 0.7 * (x.medianWatched ?? 0.5);
       const yes = heat < 0.25 && x.ageDays >= 30;
       return { candidate: yes, score: yes ? Math.max(gb, 0.01) / (heat + 0.05) : 0, reason: { code, heat: Math.round(heat * 1000) / 1000, ...facts } };
     }
@@ -2837,7 +2850,7 @@ async function cleanup(request, env, b, now) {
   const scope = b.scope ?? "mine";
   if (scope !== "mine" && scope !== "everyone") throw bad();
   if (!who.ownerClass && scope !== "mine") throw new Refusal(403, "forbidden");
-  const formula = b.formula ?? "idle";
+  const formula = b.formula ?? "fading-cost";
   if (!FORMULAS.includes(formula)) throw bad();
   const after = b.after === undefined || b.after === null ? null : typeof b.after === "string" && ID.test(b.after) ? b.after : (() => { throw bad(); })();
 
