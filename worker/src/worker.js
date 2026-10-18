@@ -304,10 +304,14 @@ export function status(meta, now, id = meta?.id) {
     // `dur`: the length as it plays (N63: the edited one), which a page opened while the
     // video uploaded draws on its picture. With an edit (N63), `keep`: the ranges that
     // play; and once its permanent copy is up, `copy`: where it is — a player that was
-    // playing the original when the copy took its place moves over to it.
+    // playing the original when the copy took its place moves over to it. A baked
+    // recording with no edit (B197) names its own file there the same way: the bake took
+    // the original away from a player still on it.
     const view = viewOf(String(id), meta);
+    const moved = view.copy ?? (view.baked && !view.edit && Array.isArray(meta.bakedFrom) && meta.bakedFrom.length > 0
+      ? { src: `/m/${id}/${view.file}`, dur: view.dur, poster: view.poster ?? undefined } : null);
     const live = { state: "live", poster: !!view.poster, mp4: view.download, teaser: !!view.teaser, thumb: newestThumb(meta), dur: view.dur, drained: drained(meta),
-      ...(view.edit ? { keep: view.edit.keep } : {}), ...(view.copy ? { copy: { src: view.copy.src, dur: view.copy.dur, poster: view.copy.poster ?? null } } : {}) };
+      ...(view.edit ? { keep: view.edit.keep } : {}), ...(moved ? { copy: { src: moved.src, dur: moved.dur, poster: moved.poster ?? null } } : {}) };
     return live.drained ? live : { ...live, pct: pct(meta), stalled: stalledAt(meta, now) };
   }
   if (meta.state !== "uploading") return { state: "unavailable" };

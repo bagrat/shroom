@@ -686,7 +686,39 @@ describe("a baked recording: the edit became the video (B197)", () => {
     expect(mine).toContain(`src="/m/${REC}/edit-3.mp4"`);
     expect(mine).toContain(`"mp4":true`);
     expect(mine).toContain(`"len":"3:41","psrc":"/m/${REC}/edit-3-poster.jpg","tsrc":"/m/${REC}/edit-3-teaser.mp4"`);
-    expect(JSON.parse(await text(env, `/_shroom/status/${REC}`))).toEqual({ state: "live", poster: true, mp4: true, teaser: true, thumb: null, dur: 220.9, drained: true });
+    expect(JSON.parse(await text(env, `/_shroom/status/${REC}`))).toEqual({ state: "live", poster: true, mp4: true, teaser: true, thumb: null, dur: 220.9, drained: true,
+      copy: { src: `/m/${REC}/edit-3.mp4`, dur: 220.9, poster: `/m/${REC}/edit-3-poster.jpg` } });
+  });
+
+  it("tells the status where its file is, so a player still on the original moves over to it", async () => {
+    const st = JSON.parse(await text(baked(), `/_shroom/status/${REC}`));
+    expect(st.copy).toEqual({ src: `/m/${REC}/edit-3.mp4`, dur: 220.9, poster: `/m/${REC}/edit-3-poster.jpg` });
+    // Opened while the edit played over the original: the bake took the original away.
+    const s = stage([[2, 6], [9, 12], [13.5, 18]], { answer: st });
+    s.click();
+    s.at(10.5);
+    s.emit("error");
+    await new Promise((ok) => setImmediate(ok));
+    expect(s.video.src).toBe(`/m/${REC}/edit-3.mp4`);
+    s.emit("loadedmetadata");
+    expect(s.video.currentTime).toBe(5.5);
+    // A player already on that file stays where it is, however often it asks.
+    const there = stage(null, { answer: { ...st, copy: { ...st.copy, src: "/m/x/video.mp4" } } });
+    there.click();
+    for (let i = 0; i < 2; i++) {
+      there.emit("error");
+      await new Promise((ok) => setImmediate(ok));
+    }
+    expect(there.asked).toHaveLength(2);
+    expect(there.video.src).toBe("/m/x/video.mp4");
+    // Edited again, until its new copy is up: the ranges play over the file, and nothing
+    // moves a player off it onto a file that would play the new cuts.
+    const again = JSON.parse(await text(baked({ edits: AGAIN }), `/_shroom/status/${REC}`));
+    expect(again.keep).toEqual([[2, 50], [60, 200]]);
+    expect(again.copy).toBeUndefined();
+    expect(JSON.parse(await text(baked({ edits: { ...AGAIN, copy: COPY5 } }), `/_shroom/status/${REC}`)).copy.src).toBe(`/m/${REC}/edit-5.mp4`);
+    // An edit put back to the whole: the file plays as it is.
+    expect(JSON.parse(await text(baked({ edits: { ...AGAIN, in: 0, out: 220.9, cuts: [] } }), `/_shroom/status/${REC}`)).copy.src).toBe(`/m/${REC}/edit-3.mp4`);
   });
 
   it("unfurls with its own pictures and length", async () => {
