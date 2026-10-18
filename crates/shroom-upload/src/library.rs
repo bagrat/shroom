@@ -365,6 +365,48 @@ fn is_original_file(name: &str) -> bool {
     matches!(name, "master.m3u8" | "video.mp4" | "poster.jpg" | "teaser.mp4") || name.strip_prefix(keys::VARIANT).is_some_and(|r| r.starts_with('/'))
 }
 
+/// Copy thumbnail's picture as the record names it (the Worker writes it, B164):
+/// `{"title", "gif"?, "jpg"?, "from"?}`. `from`, agreed with the Worker, is the file beside
+/// the recording of the poster the picture was drawn from — `edit-<rev>-poster.jpg` for a
+/// copy's, `poster.jpg` (the original's) when it doesn't say.
+pub const THUMB: &str = "thumb";
+
+/// How much of a video's start Copy thumbnail's pictures show (B164): its first frame, and a
+/// loop of its first three seconds.
+pub const PICTURE_SECONDS: f64 = 3.0;
+
+/// Whether `name` is one of Copy thumbnail's pictures beside a recording (`thumb-…`).
+fn is_picture_file(name: &str) -> bool {
+    name.starts_with("thumb-") && !name.contains('/')
+}
+
+/// The poster the record's picture was drawn from, when it has one (`poster.jpg` when the
+/// picture doesn't say).
+fn picture_from(m: &Meta) -> Option<&str> {
+    let t = m.extra.get(THUMB)?;
+    Some(t.get("from").and_then(serde_json::Value::as_str).unwrap_or("poster.jpg"))
+}
+
+/// The record's own picture files (its loop, its still) when they were drawn from the poster it
+/// shows now — the only pictures a bake that cut into the start keeps.
+fn own_pictures(m: &Meta) -> Vec<String> {
+    let Some(t) = m.extra.get(THUMB).filter(|_| picture_from(m).is_some_and(|f| poster_file(m).as_deref() == Some(f))) else { return vec![] };
+    ["gif", "jpg"].iter().filter_map(|k| t.get(*k)?.as_str()).map(str::to_string).collect()
+}
+
+/// Whether the newest bake the record remembers kept the video's start whole — the part Copy
+/// thumbnail's pictures show: its first kept range starts at 0 and runs [`PICTURE_SECONDS`],
+/// or to the end of a video `before` seconds long that was shorter. A length not known asks
+/// for the whole three seconds; a keep that doesn't read never kept it.
+fn kept_the_start(m: &Meta, before: Option<f64>) -> bool {
+    const EDGE: f64 = 1e-6;
+    let newest = m.extra.get(BAKED_FROM).and_then(serde_json::Value::as_array).and_then(|from| from.last());
+    let first = newest.and_then(|b| b.get("keep")?.as_array()?.first()?.as_array().cloned()).unwrap_or_default();
+    let (Some(s), Some(e)) = (first.first().and_then(serde_json::Value::as_f64), first.get(1).and_then(serde_json::Value::as_f64)) else { return false };
+    let span = before.filter(|d| d.is_finite() && *d > 0.0).map_or(PICTURE_SECONDS, |d| d.min(PICTURE_SECONDS));
+    s <= EDGE && e >= span - EDGE
+}
+
 /// The copy a bake makes the video: the saved revision's, with a copy's own file names and a
 /// length.
 fn bakeable(saved: &shroom_edit::Saved) -> Option<&shroom_edit::EditCopy> {
@@ -384,8 +426,9 @@ fn baked(m: &Meta, id: &str) -> bool {
 /// The record's half of a bake: `media` becomes `copy`'s own files (its stream null, the
 /// picture's size kept), the length the copy's, every marker moved onto the edited clock
 /// (one inside a cut or outside the trim goes; none past the copy's end), the edit gone,
-/// and the bake remembered in [`BAKED_FROM`]. `false`, changing nothing, unless `copy` is
-/// still the record's current copy.
+/// the bake remembered in [`BAKED_FROM`], and Copy thumbnail's picture ([`THUMB`]) gone unless
+/// it was drawn from the copy's own poster — the page draws a fresh one. `false`, changing
+/// nothing, unless `copy` is still the record's current copy.
 fn bake_record(m: &mut Meta, id: &str, copy: &shroom_edit::EditCopy, now: &str) -> bool {
     let Some(saved) = m.edits.clone().filter(|s| bakeable(s) == Some(copy)) else { return false };
     // The list as the page plays it: on the record's own clock.
@@ -406,6 +449,9 @@ fn bake_record(m: &mut Meta, id: &str, copy: &shroom_edit::EditCopy, now: &str) 
     from.drain(..over);
     m.extra.insert(BAKED_FROM.into(), serde_json::Value::Array(from));
     m.edits = None;
+    if !picture_from(m).is_some_and(|f| copy.poster.as_deref() == Some(f)) {
+        m.extra.remove(THUMB);
+    }
     true
 }
 
@@ -425,8 +471,11 @@ pub struct Baked {
 /// read-modify-write points `media` at the copy's own files ([`bake_record`]) and drops the
 /// edit; then the original's files go (`master.m3u8`, `v0/…`, `video.mp4`, `poster.jpg`,
 /// `teaser.mp4`) and every copy's file the record no longer names (an earlier bake's).
-/// Never a file `media` names after the write, never a thumbnail. Nothing is renamed, so
-/// any of the space's Macs can do it without the video in hand.
+/// Never a file `media` names after the write. Copy thumbnail's pictures (`thumb-…`) show the
+/// video's first three seconds: they go only when the edit cut into those — all but the
+/// record's own, drawn from the copy's poster — and otherwise stay (B164: a sent paste keeps
+/// its picture). Nothing is renamed, so any of the space's Macs can do it without the video
+/// in hand.
 ///
 /// Idempotent and safe to repeat after any interruption — the record first, then the
 /// deletes: a record already baked (no edit, `media` one of its own copies) writes nothing
@@ -456,13 +505,16 @@ pub fn bake(s3: &Client, id: &str, now: &str) -> Result<Option<Baked>, UploadErr
     // What's beside the record before the write: the deletes take only from this, so a
     // file sent after it (a later edit's copy) is never one of them.
     let listed = with_retry(|| s3.list(&prefix))?;
-    let (now_named, written) = match copy {
-        None => (seen, false),
+    // `before`: the length the video had before the bake, on whose clock its list plays —
+    // not known once it's baked.
+    let (now_named, written, before) = match copy {
+        None => (seen, false, None),
         Some(copy) => {
             let file = format!("{prefix}{}", copy.file);
             if !listed.iter().any(|o| o.key == file && o.size > 0) {
                 return Err(UploadError::Incomplete(format!("the copy {} isn't in the space", copy.file)));
             }
+            let before = seen.duration_sec.filter(|d| d.is_finite() && *d > 0.0).or_else(|| seen.edits.as_ref().map(|s| s.list.source_duration));
             let mut done = false;
             let meta = update_edit(s3, id, |m| done = bake_record(m, id, &copy, now))?;
             // Between the look and the write: another Mac's bake (finish it), or a newer
@@ -470,25 +522,30 @@ pub fn bake(s3: &Client, id: &str, now: &str) -> Result<Option<Baked>, UploadErr
             if !done && !baked(&meta, id) {
                 return Ok(None);
             }
-            (meta, done)
+            (meta, done, before)
         }
     };
-    let deleted = bake_deletes(s3, id, &listed, &now_named)?;
+    let start_cut = !kept_the_start(&now_named, before);
+    let deleted = bake_deletes(s3, id, &listed, &now_named, start_cut)?;
     Ok(Some(Baked { rev: baked_rev(&now_named), written, deleted }))
 }
 
-/// A bake's deletes, from `listed` (what was beside the record before its write): the
-/// original's files and every copy's file `record`'s media doesn't name. How many went.
-fn bake_deletes(s3: &Client, id: &str, listed: &[Object], record: &Meta) -> Result<usize, UploadError> {
+/// A bake's deletes, from `listed` (what was beside the record before its write): when the
+/// edit cut into the video's start (`start_cut`), Copy thumbnail's pictures first — all but
+/// the record's own, drawn from the poster it shows now — then the original's files and every
+/// copy's file `record`'s media doesn't name. A bake cut off part-way so always leaves an
+/// original's or a copy's file behind, which the cleanup sweep finds. How many went.
+fn bake_deletes(s3: &Client, id: &str, listed: &[Object], record: &Meta, start_cut: bool) -> Result<usize, UploadError> {
     let prefix = keys::prefix(id);
     let playing = media_keys(record);
+    let own = own_pictures(record);
+    let names = || listed.iter().filter_map(|o| Some((o.key.as_str(), o.key.strip_prefix(&prefix)?)));
+    let pictures = names().filter(|(_, n)| start_cut && is_picture_file(n) && !own.iter().any(|p| p == n));
+    let files = names().filter(|(k, n)| (is_original_file(n) || is_copy_file(n)) && !playing.iter().any(|p| p == k));
     let mut deleted = 0;
-    for o in listed {
-        let Some(name) = o.key.strip_prefix(&prefix) else { continue };
-        if (is_original_file(name) || is_copy_file(name)) && !playing.contains(&o.key) {
-            with_retry(|| s3.delete(&o.key))?;
-            deleted += 1;
-        }
+    for (key, _) in pictures.chain(files) {
+        with_retry(|| s3.delete(key))?;
+        deleted += 1;
     }
     Ok(deleted)
 }
@@ -956,6 +1013,28 @@ mod tests {
         let mut again = baked.clone();
         again.extra.insert(BAKED_FROM.into(), serde_json::json!([{}, {}]));
         assert_ne!(Plays::of(&again), Plays::of(&baked), "a second bake, its file named alike or not");
+    }
+
+    /// B164: a bake kept the start Copy thumbnail's pictures show when the newest bake's first
+    /// kept range runs from 0 for three seconds — or to the end of a shorter video; a length not
+    /// known asks for all three.
+    #[test]
+    fn a_bake_kept_the_start_when_its_first_three_seconds_play() {
+        let baked = |keep: serde_json::Value| {
+            let mut m = Meta::uploading("AbCdEfGhIjKlMnOp", "t", "2026-10-02T12:00:00Z");
+            m.extra.insert(BAKED_FROM.into(), serde_json::json!([{ "at": "2026-10-01T00:00:00Z", "rev": 1, "keep": [[4.0, 9.0]] }, { "at": "2026-10-02T00:00:00Z", "rev": 2, "keep": keep }]));
+            m
+        };
+        assert!(kept_the_start(&baked(serde_json::json!([[0.0, 3.0], [5.0, 9.0]])), Some(60.0)), "the newest bake's, not the first's");
+        assert!(kept_the_start(&baked(serde_json::json!([[0.0, 50.0]])), None));
+        assert!(!kept_the_start(&baked(serde_json::json!([[0.0, 2.9], [4.0, 9.0]])), Some(60.0)), "a cut inside the first three seconds");
+        assert!(!kept_the_start(&baked(serde_json::json!([[0.5, 9.0]])), Some(60.0)), "the start trimmed");
+        assert!(kept_the_start(&baked(serde_json::json!([[0.0, 2.5]])), Some(2.5)), "a shorter video kept to its end");
+        assert!(!kept_the_start(&baked(serde_json::json!([[0.0, 2.0]])), Some(2.5)), "a shorter video, its end cut");
+        assert!(!kept_the_start(&baked(serde_json::json!([[0.0, 2.5]])), None), "its length not known");
+        assert!(!kept_the_start(&baked(serde_json::json!([])), Some(60.0)), "nothing plays");
+        assert!(!kept_the_start(&baked(serde_json::json!("garbled")), Some(60.0)));
+        assert!(!kept_the_start(&Meta::uploading("AbCdEfGhIjKlMnOp", "t", "2026-10-02T12:00:00Z"), Some(60.0)), "never baked");
     }
 
     /// N63, B197: a row carries the edited length (none for the identity) and its poster's

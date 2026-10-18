@@ -34,8 +34,11 @@ fn space() -> (Fake, Client) {
 /// poster and the teaser.
 const ORIGINAL: [&str; 8] = ["master.m3u8", "v0/init.mp4", "v0/seg_00000.m4s", "v0/seg_00001.m4s", "v0/stream.m3u8", "video.mp4", "poster.jpg", "teaser.mp4"];
 
+/// The picture Copy thumbnail stored for the video's title, drawn from the original's poster.
+const PICTURE: &str = "thumb-0123456789abcdef.jpg";
+
 /// A live minute-long recording, uploaded and renamed: its stream and extras, the markers
-/// dropped while recording, a picture Copy thumbnail stored beside it.
+/// dropped while recording, the picture Copy thumbnail drew for its title stored beside it.
 fn record(s3: &Client, id: &str) {
     let mut m = Meta::uploading(id, "Setting up shroom", "2026-10-02T10:00:00Z");
     m.state = MetaState::Live;
@@ -50,9 +53,9 @@ fn record(s3: &Client, id: &str) {
         height: 1080,
     });
     m.extra.insert("titled".into(), true.into());
-    m.extra.insert("thumb".into(), serde_json::json!({ "title": "Setting up shroom", "jpg": "thumb-0123456789abcdef.jpg" }));
+    m.extra.insert("thumb".into(), serde_json::json!({ "title": "Setting up shroom", "jpg": PICTURE }));
     s3.put(&format!("meta/{id}.json"), &serde_json::to_vec(&m).unwrap(), "application/json").unwrap();
-    for f in ORIGINAL.iter().chain(&["thumb-0123456789abcdef.jpg"]) {
+    for f in ORIGINAL.iter().chain(&[PICTURE]) {
         s3.put(&format!("rec/{id}/{f}"), f.as_bytes(), "application/octet-stream").unwrap();
     }
 }
@@ -96,7 +99,7 @@ fn a_bake_makes_the_edit_the_video_and_deletes_the_original() {
     let (fake, s3) = space();
     record(&s3, A);
     assert_eq!(save_and_copy(&s3, A, &edited(60.0), 37.96), 1);
-    assert_eq!(library::bake(&s3, A, DUE).unwrap(), Some(Baked { rev: 1, written: true, deleted: ORIGINAL.len() }));
+    assert_eq!(library::bake(&s3, A, DUE).unwrap(), Some(Baked { rev: 1, written: true, deleted: ORIGINAL.len() + 1 }));
 
     let v = read(&s3, A);
     assert_eq!(
@@ -110,18 +113,88 @@ fn a_bake_makes_the_edit_the_video_and_deletes_the_original() {
     assert_eq!(v["markers"], serde_json::json!([3.0, 33.0, 37.96]));
     assert!(v.get("edits").is_none(), "{v}");
     assert_eq!(v["bakedFrom"], serde_json::json!([{ "at": DUE, "rev": 1, "keep": [[2.0, 10.0], [20.0, 50.0]] }]));
-    // The rest of the record is as it was.
+    // The rest of the record is as it was — but the picture, drawn from the start the edit
+    // cut (the next two tests).
     assert_eq!((v["title"].as_str(), v["titled"].as_bool(), v["state"].as_str()), (Some("Setting up shroom"), Some(true), Some("live")));
-    assert_eq!(v["thumb"]["jpg"], "thumb-0123456789abcdef.jpg");
+    assert!(v.get("thumb").is_none(), "{v}");
     let m: Meta = serde_json::from_value(v).unwrap();
     assert_eq!(m.edited_sec(), None, "nothing is left out of the video it is now");
-    assert_eq!(files(&fake, A), ["edit-1-poster.jpg", "edit-1-teaser.mp4", "edit-1.mp4", "thumb-0123456789abcdef.jpg"]);
+    assert_eq!(files(&fake, A), ["edit-1-poster.jpg", "edit-1-teaser.mp4", "edit-1.mp4"]);
 
     // Again: nothing to write, nothing more to delete.
     let before = etag(&s3, A);
     assert_eq!(library::bake(&s3, A, "2026-10-21T00:00:00Z").unwrap(), Some(Baked { rev: 1, written: false, deleted: 0 }));
     assert_eq!(etag(&s3, A), before);
-    assert_eq!(files(&fake, A).len(), 4);
+    assert_eq!(files(&fake, A).len(), 3);
+}
+
+/// Another title's picture Copy thumbnail stored earlier: B164 keeps it, so a paste sent then
+/// keeps its picture.
+const EARLIER: &str = "thumb-fedcba9876543210.gif";
+
+/// The record's picture, as the Worker stamps one drawn from the copy's own poster.
+fn drawn_from_the_copy(s3: &Client) {
+    let mut v = read(s3, A);
+    v["thumb"]["from"] = "edit-1-poster.jpg".into();
+    s3.put(&format!("meta/{A}.json"), v.to_string().as_bytes(), "application/json").unwrap();
+}
+
+/// Copy thumbnail's pictures show a video's first three seconds (B164). An edit that cut into
+/// them takes every picture with the original — but the record's own when it was drawn from
+/// the copy's poster: that one stays named, its file with it. One drawn from the original is
+/// forgotten, and the page draws a fresh one.
+#[test]
+fn a_bake_that_cut_into_the_start_takes_the_pictures_drawn_from_it() {
+    for from_copy in [false, true] {
+        let (fake, s3) = space();
+        record(&s3, A);
+        s3.put(&format!("rec/{A}/{EARLIER}"), b"an earlier title's", "image/gif").unwrap();
+        // Trimmed to start at 2 s.
+        save_and_copy(&s3, A, &edited(60.0), 38.0);
+        if from_copy {
+            drawn_from_the_copy(&s3);
+        }
+        let baked = library::bake(&s3, A, DUE).unwrap().expect("baked");
+        let v = read(&s3, A);
+        if from_copy {
+            assert_eq!(v["thumb"], serde_json::json!({ "title": "Setting up shroom", "jpg": PICTURE, "from": "edit-1-poster.jpg" }));
+            assert_eq!(files(&fake, A), ["edit-1-poster.jpg", "edit-1-teaser.mp4", "edit-1.mp4", PICTURE]);
+            assert_eq!(baked.deleted, ORIGINAL.len() + 1, "the earlier picture went");
+        } else {
+            assert!(v.get("thumb").is_none(), "{v}");
+            assert_eq!(files(&fake, A), ["edit-1-poster.jpg", "edit-1-teaser.mp4", "edit-1.mp4"]);
+            assert_eq!(baked.deleted, ORIGINAL.len() + 2, "both pictures went");
+        }
+    }
+}
+
+/// An edit that kept the first three seconds whole keeps every picture file: they show nothing
+/// it cut (B164). The record still forgets a picture drawn from the original — the page draws
+/// a fresh one, with the edited length — and keeps one drawn from the copy's poster.
+#[test]
+fn a_bake_that_kept_the_start_keeps_every_picture() {
+    for from_copy in [false, true] {
+        let (fake, s3) = space();
+        record(&s3, A);
+        s3.put(&format!("rec/{A}/{EARLIER}"), b"an earlier title's", "image/gif").unwrap();
+        // 10–20 s cut and the end trimmed at 50 s: the first ten seconds play as they were.
+        let mut h = History::new(EditList::new(60.0));
+        assert!(h.act(&Op::Trim { in_: 0.0, out: 50.0 }) && h.act(&Op::Cut { start: 10.0, end: 20.0 }));
+        save_and_copy(&s3, A, &h.now, 40.0);
+        if from_copy {
+            drawn_from_the_copy(&s3);
+        }
+        let baked = library::bake(&s3, A, DUE).unwrap().expect("baked");
+        let v = read(&s3, A);
+        assert_eq!(v["bakedFrom"][0]["keep"], serde_json::json!([[0.0, 10.0], [20.0, 50.0]]));
+        if from_copy {
+            assert_eq!(v["thumb"]["from"], "edit-1-poster.jpg");
+        } else {
+            assert!(v.get("thumb").is_none(), "{v}");
+        }
+        assert_eq!(files(&fake, A), ["edit-1-poster.jpg", "edit-1-teaser.mp4", "edit-1.mp4", PICTURE, EARLIER]);
+        assert_eq!(baked.deleted, ORIGINAL.len(), "the original only");
+    }
 }
 
 #[test]
@@ -180,10 +253,10 @@ fn a_bake_interrupted_after_its_write_finishes_when_repeated() {
     let written = etag(&s3, A);
 
     fake.with(|s| s.control("faults-clear").unwrap());
-    assert_eq!(library::bake(&s3, A, "2026-10-20T10:00:00Z").unwrap(), Some(Baked { rev: 1, written: false, deleted: ORIGINAL.len() }));
+    assert_eq!(library::bake(&s3, A, "2026-10-20T10:00:00Z").unwrap(), Some(Baked { rev: 1, written: false, deleted: ORIGINAL.len() + 1 }));
     assert_eq!(etag(&s3, A), written, "the record was already baked");
     assert_eq!(read(&s3, A)["bakedFrom"].as_array().unwrap().len(), 1);
-    assert_eq!(files(&fake, A), ["edit-1-poster.jpg", "edit-1-teaser.mp4", "edit-1.mp4", "thumb-0123456789abcdef.jpg"]);
+    assert_eq!(files(&fake, A), ["edit-1-poster.jpg", "edit-1-teaser.mp4", "edit-1.mp4"]);
 }
 
 /// A baked video is an ordinary one-file recording: edited again, its revisions carry on
@@ -249,7 +322,7 @@ fn a_baked_video_edited_again_bakes_again() {
     assert_eq!(from[0], older[1], "the oldest dropped off");
     assert_eq!((from[18]["rev"].as_u64(), from[18]["at"].as_str()), (Some(1), Some(DUE)));
     assert_eq!(from[19], serde_json::json!({ "at": "2026-10-24T08:00:00Z", "rev": 3, "keep": [[2.0, 30.0]] }));
-    assert_eq!(files(&fake, A), ["edit-3-poster.jpg", "edit-3.mp4", "thumb-0123456789abcdef.jpg"], "the first bake's files went");
+    assert_eq!(files(&fake, A), ["edit-3-poster.jpg", "edit-3.mp4"], "the first bake's files went, its picture with the original");
 
     // A third edit after that: the revisions still carry on.
     assert_eq!(library::save_edits(&s3, A, &edited(28.0), 1).unwrap(), 4);
@@ -265,7 +338,7 @@ fn a_late_copy_of_the_baked_revision_never_takes_its_files() {
     assert!(library::bake(&s3, A, DUE).unwrap().is_some());
     let late = EditCopy { rev: 1, file: EditCopy::file_for(1), duration: 38.0, poster: Some(EditCopy::poster_for(1)), teaser: Some(EditCopy::teaser_for(1)) };
     assert!(!library::set_edit_copy(&s3, A, &late, DUE).unwrap());
-    assert_eq!(files(&fake, A), ["edit-1-poster.jpg", "edit-1-teaser.mp4", "edit-1.mp4", "thumb-0123456789abcdef.jpg"]);
+    assert_eq!(files(&fake, A), ["edit-1-poster.jpg", "edit-1-teaser.mp4", "edit-1.mp4"]);
 }
 
 /// An editor that opened before the bake holds a list on the original's clock: its save writes
