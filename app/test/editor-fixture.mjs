@@ -94,8 +94,17 @@ export function editorScenes(
       variant: "editor-save-failed",
       scene: window("editor-save-failed", body({ footer: "Couldn't save your edit. Check your connection, then press Done again.", footer_tone: "amber" })),
     },
-    // Editing again while an earlier edit's original is kept: the time it has left (B197 (e)).
-    ...[["2-days", "2 more days"], ["1-day", "1 more day"], ["hours", "a few more hours"]].map(([v, left]) => ({
+    // Editing again while an earlier edit's original is kept: the time it has left (B197 (e)),
+    // never more than it has (B199), counts in words to nine (law 16) — the core's gallery
+    // holds them at 47½ h, 30 h, 20 h, 5½ h, 90 min and 25 min.
+    ...[
+      ["2-days", "two more days"],
+      ["1-day", "one more day"],
+      ["hours", "20 more hours"],
+      ["hours-in-words", "five more hours"],
+      ["1-hour", "one more hour"],
+      ["under-an-hour", "less than an hour"],
+    ].map(([v, left]) => ({
       variant: `editor-original-kept-${v}`,
       scene: window("editor", body({ original_kept: `The original is kept ${left}` })),
     })),
