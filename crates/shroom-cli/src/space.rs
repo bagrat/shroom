@@ -165,7 +165,7 @@ impl Door {
             label: Some(name.to_string()),
             inviter: self.identity.owner_name.chars().take(40).collect(),
         };
-        let row = answer(self.page.invite(&self.key, &invite))?;
+        let row = answer_as(self.page.invite(&self.key, &invite), |r| (r.status == 400).then(|| Fail::Usage(say::name_too_long())))?;
         Ok((row, format!("https://{}/join/{code}", self.identity.host)))
     }
 
@@ -179,12 +179,12 @@ impl Door {
 
     /// Cancels a pending invite (§4.13): its link stops working.
     pub fn cancel_invite(&self, id: &str) -> Result<(), Fail> {
-        answer(self.page.cancel_invite(&self.key, id))
+        answer_as(self.page.cancel_invite(&self.key, id), |r| (r.status == 404).then(|| Fail::NotFound(say::no_such_invite())))
     }
 
     /// Removes a member and every Mac of theirs (§4.14). Videos they made stay.
     pub fn remove_member(&self, id: &str) -> Result<(), Fail> {
-        answer(self.page.remove_member(&self.key, id))
+        answer_as(self.page.remove_member(&self.key, id), |r| (r.status == 404).then(|| Fail::NotFound(say::no_such_member())))
     }
 
     /// The page's own suggestions of what to delete, every page of them (`POST cleanup`,
@@ -217,6 +217,18 @@ impl Door {
     }
 }
 
+/// The space's answer in the words of the one call that met it, where those differ from
+/// any call's (`answer`): a name too long for an invite, an invite or member not there.
+fn answer_as<T>(a: Answer<T>, special: impl Fn(&shroom_cloud::member::Refusal) -> Option<Fail>) -> Result<T, Fail> {
+    if let Answer::Refused(r) = &a
+        && let Some(f) = special(r)
+    {
+        return Err(f);
+    }
+    answer(a)
+}
+
+/// The space's answer, in the command's words.
 fn answer<T>(a: Answer<T>) -> Result<T, Fail> {
     match a {
         Answer::Ok(t) => Ok(t),
@@ -225,10 +237,10 @@ fn answer<T>(a: Answer<T>) -> Result<T, Fail> {
         Answer::Refused(r) if r.status == 403 && r.is_revoked() => Err(Fail::Refused(say::not_in_the_space())),
         Answer::Refused(r) if r.status == 401 => Err(Fail::NotSetUp(say::unknown_mac())),
         Answer::Refused(r) if r.status == 403 => Err(Fail::Refused(say::owner_only())),
-        Answer::Refused(r) if r.status == 404 => Err(Fail::NotFound(say::no_such_invite_or_member())),
+        Answer::Refused(r) if r.status == 404 => Err(Fail::NotFound(say::not_there())),
         Answer::Refused(r) if r.class == shroom_cloud::member::Class::Full => Err(Fail::Refused(say::too_many_invites())),
         Answer::Refused(r) if r.status == 409 => Err(Fail::Refused(say::cant_change_now())),
-        Answer::Refused(r) if r.status == 400 => Err(Fail::Usage(say::name_too_long())),
+        Answer::Refused(r) if r.status == 400 => Err(Fail::Usage(say::space_didnt_take_it())),
         Answer::Refused(_) => Err(Fail::Other(say::space_said_no())),
         Answer::NotShroom { .. } => Err(Fail::Offline(say::not_answering_as_shroom())),
     }

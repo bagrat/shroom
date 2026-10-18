@@ -151,6 +151,23 @@ fn door(a: &Args) -> Result<(Home, Door), Fail> {
     Ok((h, Door::open(space, key, base)))
 }
 
+/// The ids a command acts on: its arguments, or `--from`'s items, each one an id (a line, a
+/// string, or an object's `"id"`). An item of another shape is refused before anything is
+/// done, never quietly dropped.
+fn ids(a: &Args, rest: &[String], usage: fn() -> String) -> Result<Vec<String>, Fail> {
+    let ids: Vec<String> = match &a.from {
+        Some(_) => batch::items(rest, a.from.as_deref())?
+            .iter()
+            .map(|i| i.field("id").filter(|s| !s.is_empty()).ok_or_else(|| Fail::Usage(say::item_needs_an_id())))
+            .collect::<Result<_, _>>()?,
+        None => rest.to_vec(),
+    };
+    if ids.is_empty() {
+        return Err(Fail::Usage(usage()));
+    }
+    Ok(ids)
+}
+
 /// A change waits while a recording is open: shroom stays quiet mid-take (law 4).
 fn quiet(h: &Home) -> Result<(), Fail> {
     match h.app_status() {
@@ -268,21 +285,18 @@ fn titled(title: &str, words: &str) -> bool {
 }
 
 /// Finds the one video `words` names: an id, a link, or words from its title.
-fn find(v: Vec<Video>, words: &str, host: &str, titles: bool) -> Result<Video, Fail> {
+fn find(v: &[Video], words: &str, host: &str, titles: bool) -> Result<Video, Fail> {
     if let Some(id) = id_of(words, host) {
-        return v.into_iter().find(|x| x.row.id == id).ok_or_else(|| Fail::NotFound(say::no_video(&id)));
+        return v.iter().find(|x| x.row.id == id).cloned().ok_or_else(|| Fail::NotFound(say::no_video(&id)));
     }
     if !titles {
         return Err(Fail::Usage(say::by_id_or_link()));
     }
-    let mut hits: Vec<Video> = v.into_iter().filter(|x| titled(&x.row.title, words)).collect();
-    match hits.len() {
-        0 => Err(Fail::NotFound(say::no_title_has(words))),
-        1 => Ok(hits.remove(0)),
-        n => Err(Fail::Ambiguous {
-            message: say::several_match(n, words),
-            matches: hits.iter().map(Video::json).collect(),
-        }),
+    let hits: Vec<&Video> = v.iter().filter(|x| titled(&x.row.title, words)).collect();
+    match hits.as_slice() {
+        [] => Err(Fail::NotFound(say::no_title_has(words))),
+        [one] => Ok((*one).clone()),
+        _ => Err(Fail::Ambiguous { message: say::several_match(hits.len(), words), matches: hits.iter().map(|x| x.json()).collect() }),
     }
 }
 
@@ -291,7 +305,7 @@ fn one(a: &Args, rest: &[String], then: impl FnOnce(&Video, &Door) -> Result<Don
         return Err(Fail::Usage(say::which_video()));
     }
     let (_, d, v) = videos(a)?;
-    let hit = find(v, &rest.join(" "), &d.identity.host, true)?;
+    let hit = find(&v, &rest.join(" "), &d.identity.host, true)?;
     then(&hit, &d)
 }
 
@@ -301,8 +315,12 @@ fn rename(a: &Args, rest: &[String]) -> Result<Done, Fail> {
         return Err(Fail::Usage(say::rename_usage()));
     }
     let (h, d, v) = videos(a)?;
+    let hit = find(&v, which, &d.identity.host, true)?;
+    if a.dry_run {
+        let title = title.join(" ");
+        return Ok(Done::new(json!({"dry_run": true, "id": hit.row.id, "was": hit.row.title, "title": title, "link": hit.link}), say::would_rename(&hit.row.title, &title)));
+    }
     quiet(&h)?;
-    let hit = find(v, which, &d.identity.host, true)?;
     let saved = d.rename(&hit.row.id, &title.join(" "))?;
     Ok(Done::new(json!({"id": hit.row.id, "title": saved, "link": hit.link}), say::renamed(&saved)))
 }
@@ -330,7 +348,7 @@ fn rename_batch(a: &Args, rest: &[String]) -> Result<Done, Fail> {
     let mut outcomes = Vec::new();
     for (w, title) in &pairs {
         let title = title.split_whitespace().collect::<Vec<_>>().join(" ");
-        let hit = match find(v.clone(), w, &d.identity.host, false) {
+        let hit = match find(&v, w, &d.identity.host, false) {
             Ok(h) => h,
             Err(f) => {
                 outcomes.push(batch::Outcome::failed(json!({"id": w, "title": title}), &f, say::line_failed(w, f.message())));
@@ -373,7 +391,7 @@ fn links(a: &Args, rest: &[String]) -> Result<Done, Fail> {
     let (_, d, v) = videos(a)?;
     let mut outcomes = Vec::new();
     for w in &words {
-        match find(v.clone(), w, &d.identity.host, true) {
+        match find(&v, w, &d.identity.host, true) {
             Ok(hit) => {
                 let mut j = hit.json();
                 j["asked"] = w.clone().into();
@@ -393,20 +411,14 @@ fn links(a: &Args, rest: &[String]) -> Result<Done, Fail> {
 }
 
 fn delete(a: &Args, rest: &[String]) -> Result<Done, Fail> {
-    let words: Vec<String> = match &a.from {
-        Some(_) => batch::items(rest, a.from.as_deref())?.iter().filter_map(|i| i.field("id")).collect(),
-        None => rest.to_vec(),
-    };
-    if words.is_empty() {
-        return Err(Fail::Usage(say::delete_usage()));
-    }
+    let words = ids(a, rest, say::delete_usage)?;
     let (h, d, v) = videos(a)?;
     // Each word: a video of this space (by id or link — never title words), or one that
     // isn't there, which a re-run after a delete will meet: reported, never fatal.
     let mut targets: Vec<Video> = Vec::new();
     let mut missing: Vec<String> = Vec::new();
     for w in &words {
-        match find(v.clone(), w, &d.identity.host, false) {
+        match find(&v, w, &d.identity.host, false) {
             Ok(hit) if !targets.iter().any(|t| t.row.id == hit.row.id) => targets.push(hit),
             Ok(_) => {}
             Err(f) if f.code() == "not_found" => missing.push(id_of(w, &d.identity.host).unwrap_or_else(|| w.clone())),
@@ -556,6 +568,9 @@ fn invite(a: &Args, rest: &[String]) -> Result<Done, Fail> {
         return Err(Fail::Usage(say::invite_who()));
     }
     let (h, d) = door(a)?;
+    if a.dry_run {
+        return Ok(Done::new(json!({"dry_run": true, "would_invite": name}), say::would_invite(name)));
+    }
     quiet(&h)?;
     let (row, link) = d.invite(name)?;
     Ok(Done::new(
@@ -569,14 +584,25 @@ fn invite(a: &Args, rest: &[String]) -> Result<Done, Fail> {
 /// the space doesn't know is `not_found`; one already used is `failed` — they're in, and
 /// `members remove` is the way out.
 fn cancel_invite(a: &Args, rest: &[String]) -> Result<Done, Fail> {
-    let ids: Vec<String> = match &a.from {
-        Some(_) => batch::items(rest, a.from.as_deref())?.iter().filter_map(|i| i.field("id")).collect(),
-        None => rest.to_vec(),
-    };
-    if ids.is_empty() {
-        return Err(Fail::Usage(say::cancel_usage()));
+    let ids = ids(a, rest, say::cancel_usage)?;
+    // An invite's id, and only that: never a path in its place (`../members/…`).
+    if let Some(bad) = ids.iter().find(|id| !shroom_cloud::device::is_registry_id(id, 'i')) {
+        return Err(Fail::Usage(say::not_an_invite_id(bad)));
     }
     let (h, d) = door(a)?;
+    if a.dry_run {
+        let m = d.members()?;
+        let outcomes = ids
+            .iter()
+            .map(|id| match m.invites.iter().find(|i| &i.id == id) {
+                Some(i) => batch::Outcome::ok(json!({"id": id, "name": i.label, "status": "would_cancel"}), say::line_would_cancel(id, i.label.as_deref())),
+                None => batch::Outcome::ok(json!({"id": id, "status": "not_found"}), say::line_not_found(id)),
+            })
+            .collect();
+        let mut done = batch::finish("results", outcomes, say::would_cancel_head(), "")?;
+        done.json["dry_run"] = true.into();
+        return Ok(done);
+    }
     quiet(&h)?;
     let mut outcomes = Vec::new();
     for id in &ids {
@@ -605,13 +631,7 @@ fn cancel_invite(a: &Args, rest: &[String]) -> Result<Done, Fail> {
 /// Removes members: like a delete, it asks first (`--yes`), and names them by id only. Each
 /// is tried; one already gone is reported as such.
 fn remove_member(a: &Args, rest: &[String]) -> Result<Done, Fail> {
-    let ids: Vec<String> = match &a.from {
-        Some(_) => batch::items(rest, a.from.as_deref())?.iter().filter_map(|i| i.field("id")).collect(),
-        None => rest.to_vec(),
-    };
-    if ids.is_empty() {
-        return Err(Fail::Usage(say::remove_usage()));
-    }
+    let ids = ids(a, rest, say::remove_usage)?;
     let (h, d) = door(a)?;
     let m = d.members()?;
     let mut who = Vec::new();
@@ -630,7 +650,10 @@ fn remove_member(a: &Args, rest: &[String]) -> Result<Done, Fail> {
         return Ok(Done::new(json!({"dry_run": true, "would_remove": would, "not_found": missing}), say::would_remove(&names, &gone_note)));
     }
     if who.is_empty() {
-        return Err(Fail::NotFound(say::no_such_member(&gone_note)));
+        // Nobody to remove: a re-run after it went through, or ids no longer here — said item
+        // by item, as a delete's are.
+        let outcomes = missing.iter().map(|id| batch::Outcome::ok(json!({"id": id, "status": "not_found"}), say::line_not_found(id))).collect();
+        return batch::finish("results", outcomes, say::nobody_to_remove(), "");
     }
     if !a.yes {
         return Err(Fail::NeedsConfirmation {
@@ -687,9 +710,6 @@ fn invite_batch(a: &Args, rest: &[String]) -> Result<Done, Fail> {
             names.push(n);
         }
     }
-    if names.len() > batch::MAX_INVITES {
-        return Err(Fail::Usage(say::too_many_at_once(batch::MAX_INVITES, names.len())));
-    }
     let (h, d) = door(a)?;
     let m = d.members()?;
     let key = |s: &str| s.to_lowercase();
@@ -697,6 +717,13 @@ fn invite_batch(a: &Args, rest: &[String]) -> Result<Done, Fail> {
     let plan_only = a.dry_run || !a.yes;
     let member = |n: &str| m.members.iter().find(|x| key(&x.label) == key(n));
     let waiting = |n: &str| m.invites.iter().find(|i| !i.expired && i.kind == "member" && i.label.as_deref().map(key) == Some(key(n)));
+    // The space's room for waiting invites (at most 20, WORKER-INTERFACE §4.12): only the
+    // people this would invite anew take one — never someone already in, or already invited.
+    let new = names.iter().filter(|n| member(n).is_none() && waiting(n).is_none()).count();
+    let room = batch::MAX_INVITES.saturating_sub(m.invites.iter().filter(|i| !i.expired).count());
+    if new > room {
+        return Err(Fail::Usage(say::no_room(new, room)));
+    }
     if !plan_only {
         quiet(&h)?;
     }
@@ -828,23 +855,23 @@ mod tests {
     #[test]
     fn a_video_is_named_by_id_link_or_title_words() {
         let v = vec![video("AbCdEfGhIjKlMnOp", "Onboarding walkthrough"), video("QrStUvWxYz012345", "Bug repro")];
-        assert_eq!(find(v.clone(), "AbCdEfGhIjKlMnOp", HOST, true).unwrap().row.title, "Onboarding walkthrough");
-        assert_eq!(find(v.clone(), "https://v.myshroom.workers.dev/QrStUvWxYz012345", HOST, true).unwrap().row.title, "Bug repro");
-        assert_eq!(find(v.clone(), "onboarding", HOST, true).unwrap().row.id, "AbCdEfGhIjKlMnOp");
-        assert_eq!(find(v.clone(), "repro bug", HOST, true).unwrap().row.id, "QrStUvWxYz012345", "words in any order");
-        assert_eq!(find(v, "nothing", HOST, true).unwrap_err().code(), "not_found");
+        assert_eq!(find(&v, "AbCdEfGhIjKlMnOp", HOST, true).unwrap().row.title, "Onboarding walkthrough");
+        assert_eq!(find(&v, "https://v.myshroom.workers.dev/QrStUvWxYz012345", HOST, true).unwrap().row.title, "Bug repro");
+        assert_eq!(find(&v, "onboarding", HOST, true).unwrap().row.id, "AbCdEfGhIjKlMnOp");
+        assert_eq!(find(&v, "repro bug", HOST, true).unwrap().row.id, "QrStUvWxYz012345", "words in any order");
+        assert_eq!(find(&v, "nothing", HOST, true).unwrap_err().code(), "not_found");
     }
 
     #[test]
     fn a_delete_never_guesses_from_title_words() {
         let v = vec![video("AbCdEfGhIjKlMnOp", "Onboarding walkthrough")];
-        assert_eq!(find(v, "onboarding", HOST, false).unwrap_err().code(), "usage");
+        assert_eq!(find(&v, "onboarding", HOST, false).unwrap_err().code(), "usage");
     }
 
     #[test]
     fn two_title_matches_name_both_and_pick_neither() {
         let v = vec![video("AbCdEfGhIjKlMnOp", "Demo one"), video("QrStUvWxYz012345", "Demo two")];
-        let f = find(v, "demo", HOST, true).unwrap_err();
+        let f = find(&v, "demo", HOST, true).unwrap_err();
         assert_eq!(f.code(), "ambiguous");
         assert_eq!(f.json()["matches"].as_array().unwrap().len(), 2);
     }

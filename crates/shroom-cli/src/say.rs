@@ -151,8 +151,20 @@ pub fn owner_only() -> String {
     "Only the space's owner can do that.".into()
 }
 
-pub fn no_such_invite_or_member() -> String {
-    "There's no such invite or member.".into()
+pub fn not_there() -> String {
+    "That isn't in your space.".into()
+}
+
+pub fn no_such_invite() -> String {
+    "There's no such invite in your space.".into()
+}
+
+pub fn no_such_member() -> String {
+    "There's no such member in your space.".into()
+}
+
+pub fn space_didnt_take_it() -> String {
+    "The space didn't take that request.".into()
 }
 
 pub fn too_many_invites() -> String {
@@ -247,6 +259,10 @@ pub fn rename_usage() -> String {
 
 pub fn renamed(title: &str) -> String {
     format!("Renamed to “{title}”.")
+}
+
+pub fn would_rename(was: &str, title: &str) -> String {
+    format!("Would rename “{was}” to “{title}” (nothing was changed).")
 }
 
 pub fn rename_item_shape() -> String {
@@ -390,8 +406,8 @@ pub fn would_remove(names: &str, gone: &str) -> String {
     format!("Would remove from the space:\n{names}{gone}")
 }
 
-pub fn no_such_member(gone: &str) -> String {
-    format!("No such member in your space (see shroom members).{gone}")
+pub fn nobody_to_remove() -> String {
+    "Nobody to remove: none of these is in your space (already removed?).".into()
 }
 
 pub fn confirm_remove(names: &str, gone: &str) -> String {
@@ -412,12 +428,28 @@ pub fn invite_who() -> String {
     "Who is it for? shroom invite <their name>".into()
 }
 
+pub fn would_invite(name: &str) -> String {
+    format!("Would make an invite for {name} (nothing was made).")
+}
+
 pub fn invite_made(name: &str, until: &str, link: &str) -> String {
     format!("An invite for {name}, good until {until} and for one use:\n{link}\nSend it to them yourself.")
 }
 
 pub fn cancel_usage() -> String {
     "shroom invite cancel <invite-id>... (see shroom members)".into()
+}
+
+pub fn not_an_invite_id(word: &str) -> String {
+    format!("“{word}” isn't an invite's id (see shroom members).")
+}
+
+pub fn line_would_cancel(id: &str, name: Option<&str>) -> String {
+    format!("  {id}  {}", name.unwrap_or("Another Mac"))
+}
+
+pub fn would_cancel_head() -> String {
+    "Would stop these invite links working (nothing was changed):".into()
 }
 
 pub fn line_cancelled(id: &str) -> String {
@@ -436,8 +468,12 @@ pub fn not_a_name(name: &str) -> String {
     format!("“{name}” isn't a name shroom can keep: 1 to 64 characters.")
 }
 
-pub fn too_many_at_once(max: usize, asked: usize) -> String {
-    format!("At most {max} invites wait at once in a space; this asks for {asked}. Send the first {max} now.")
+/// More new invites than the space has room for (20 wait at once): nothing is made.
+pub fn no_room(new: usize, room: usize) -> String {
+    match room {
+        0 => "Your space already has 20 invites waiting, the most it holds. Cancel the ones nobody used (see shroom members), then try again.".into(),
+        r => format!("This would make {new} invites, and your space has room for {r} more (20 wait at once). Invite {r} now, and the rest once some are used or cancelled."),
+    }
 }
 
 pub fn line_already_member(name: &str) -> String {
@@ -500,6 +536,10 @@ pub fn not_a_json_array() -> String {
 
 pub fn item_shape() -> String {
     "Each item is a string or an object.".into()
+}
+
+pub fn item_needs_an_id() -> String {
+    "Each item is an id (or {\"id\": …}).".into()
 }
 
 pub fn partly(failed: usize, of: usize, lines: &str) -> String {
