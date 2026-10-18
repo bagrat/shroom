@@ -1805,6 +1805,8 @@ fn cleanup_drive(d: &Drive) -> Result<(), String> {
     d.wait("closed", 5, |s| s.library.is_none())?;
 
     // Settings · General: Your videos, the space's size, and Count plays off and on again.
+    // The read Settings asks for meets a busy space once: the failure is in the run log.
+    knob(&base, SPACE_A, "fault", serde_json::json!({ "prefix": "/_shroom/api/cleanup", "status": 500, "count": 1 }))?;
     d.open(Action::OpenSettings)?;
     let s = d.wait("Your videos", 30, |s| general_videos(s).is_some_and(|v| v.used.is_some()))?;
     let v = general_videos(&s).expect("videos");
@@ -1828,6 +1830,21 @@ fn cleanup_drive(d: &Drive) -> Result<(), String> {
     d.after(2000);
     d.rt.post(Event::WindowClosed(WindowKind::Settings));
     d.wait("closed", 5, |s| s.settings.is_none())?;
+
+    // What a problem report would carry of all this: the run log's lines, as a report
+    // cleans them (no title, no link, no whole id).
+    let log = poll(10, || {
+        let text = std::fs::read_to_string(d.rt.home.root.join("logs/run.log")).ok()?;
+        text.contains("library Suggest: failed").then_some(text)
+    })
+    .unwrap_or_default();
+    let cleaned = shroom_core::report::clean_log(&log);
+    let has = |want: &str| cleaned.lines().any(|l| l.contains(want));
+    d.check("the log: the read, its size and how counting fares", has("library suggestions: 3 of 5 videos, 6.4 GB of 10.6 GB, counting on; plays read 4, unreadable 0, newest play 0h ago"), "library suggestions: …");
+    d.check("the log: each candidate by a short id, why, its score and facts", has("library suggested: Cdri… not-lately s0.") && has(" never-played s0.") && has(" stopped-early s0."), "library suggested: …");
+    d.check("the log: the line showing and going, Keep, the delete and its Undo", ["library: the cleanup line shows", "core cleanup-opened", "library kept Cdri…", "core delete-undone", "library deleted Cdri…"].iter().all(|w| has(w)), "the steps");
+    d.check("the log: the read that met a busy space", has("library Suggest: failed (Transport)"), "the failure");
+    d.check("the log names no video", !CLEANUP_SEEDED.iter().any(|(id, title, ..)| log.contains(title) || log.contains(id)), "no titles, no whole ids");
     Ok(())
 }
 
