@@ -43,8 +43,10 @@
 //              voice cut between the words around it, an applied one struck through; Put back and Cut it too save at once,
 //              the row then saying what it is and what plays reaching the player; a press
 //              that doesn't save leaves its row and says so; a recipient's page carries none
-//              of it; a page open while the cues are coming takes the strip in when they land; the
-//              hint shows on a take with no voice cuts, and Got it (or a strip seen) puts it away
+//              of it; a page open while the cues are coming keeps its one line (hearing), its spinner
+//              turning, then takes the strip in when they land; the hint shows on a take with no
+//              voice cuts, and Got it (or a strip seen) puts it away; the line fades when the Mac finds
+//              nothing to cut (the hint in its place), and by its own count after five minutes
 //   edit       a saved edit (N63, DECISIONS B195: 2–6, 9–12 and 13.5–18 of the 20 s) played
 //              at 2× over the stream and over the single-file copy: the position, sampled
 //              every frame and every 4 ms, never falls inside a cut (0.05 s past a cut's start
@@ -70,7 +72,7 @@ import { createServer } from "node:http";
 import os from "node:os";
 import path from "node:path";
 import { chromium, webkit } from "playwright";
-import { COPY, handle } from "../src/worker.js";
+import { COPY, VOICE_WAIT_MS, handle } from "../src/worker.js";
 import { CODE, INV, M1, OWNER_AIR, OWNER_MAC, cookieFor, metaKey, roster, sha, space } from "../test/space-fixture.js";
 
 const here = path.dirname(new URL(import.meta.url).pathname);
@@ -448,8 +450,8 @@ async function main() {
         await context.addCookies([{ name: cname, value: cvalue, url: origin }]);
         await put(metaKey(ids.own), uploading(ids.own, 1, 4));
         await page.goto(`${origin}/${ids.own}`);
-        const stage = await page.evaluate(() => ({ w: document.getElementById("w")?.textContent, bar: !!document.getElementById("b"), up: document.getElementById("u").textContent, body: document.body.innerText }));
-        check("owner, uploading: the stage is empty, the upload line speaks", stage.w === "" && stage.bar && stage.up.startsWith("Uploading — 25%") && !stage.body.includes(COPY.onItsWay));
+        const stage = await page.evaluate(() => ({ w: document.getElementById("w")?.textContent, spin: document.getElementById("b")?.className ?? null, turning: getComputedStyle(document.getElementById("b")).animationName, up: document.getElementById("u").textContent, body: document.body.innerText }));
+        check("owner, uploading: the stage is empty, the one line speaks, a spinner turning in front of it", stage.w === "" && stage.spin === "spin" && stage.turning === "shroom-spin" && stage.up === COPY.finishing && !stage.body.includes(COPY.onItsWay), true, stage);
         check("owner, uploading: Edit in shroom waits for the drain (N69)", await page.evaluate(() => { const e = document.getElementById("ed"); return !!e && e.getClientRects().length === 0; }));
         await page.evaluate(() => { navigator.clipboard.writeText = () => Promise.reject(new Error("denied")); document.execCommand = () => false; });
         await page.click("#c");
@@ -460,8 +462,8 @@ async function main() {
         check("a real copy says Copied", await page.waitForFunction((w) => document.getElementById("c").textContent === w, COPY.copied, { timeout: 2000 }).then(() => true, () => false));
         await put(metaKey(ids.own), meta(ids.own, {}));
         const swapped = await page.waitForFunction(() => { const v = document.querySelector(".player video"); return v && (v.getAttribute("poster") || "").endsWith("/poster.jpg"); }, null, { timeout: 10_000 }).then(() => true, () => false);
-        // Every file up (the record counts none), the upload line goes: no “Fully live ✓” on the
-        // page — “Ready ✓” for a few seconds first, then nothing (B142).
+        // Every file up (the record counts none), the line goes: no “Fully live ✓” on the page,
+        // and no “Ready ✓” either; in a space that doesn't listen it simply fades (N65 (7)).
         await page.waitForFunction(() => document.getElementById("u").getClientRects().length === 0 && !document.getElementById("b"), null, { timeout: 10_000 }).catch(() => {});
         const afterSwap = await page.evaluate((fully) => ({ up: document.getElementById("u").getClientRects().length > 0, said: document.body.innerText.includes(fully), bar: !!document.getElementById("b"), dl: document.getElementById("dl").textContent, controls: document.querySelector(".player video").controls }), COPY.fullyLive);
         check("the go-live swaps the player in with its poster, and the upload line goes", swapped && !afterSwap.up && !afterSwap.said && !afterSwap.bar && !afterSwap.controls && afterSwap.dl === "", true, afterSwap);
@@ -546,7 +548,7 @@ async function main() {
         await put(metaKey(ids.off), uploading(ids.off, 1, 4));
         await page.goto(`${origin}/${ids.off}`);
         await put(metaKey(ids.off), meta(ids.off, { media: null }));
-        check("unavailable: its line in the frame, the bar gone", await page.waitForFunction((w) => document.getElementById("w")?.textContent === w && getComputedStyle(document.getElementById("b").parentNode).display === "none", COPY.unavailable, { timeout: 6000 }).then(() => true, () => false));
+        check("unavailable: its line in the frame, the spinner gone", await page.waitForFunction((w) => document.getElementById("w")?.textContent === w && getComputedStyle(document.getElementById("b")).display === "none", COPY.unavailable, { timeout: 6000 }).then(() => true, () => false));
 
         // ── the voice cuts (N65, DECISIONS B200) ──
         const WORDS = { v1: "Hello, that is shroom. Shroom cut.", v3: "The second one is, um, I forget what it's called." };
@@ -612,9 +614,19 @@ async function main() {
         await put(metaKey(ids.cuts), meta(ids.cuts, { publishedAt: iso(Date.now() - 2000) }));
         await page.goto(`${origin}/${ids.cuts}`);
         const coming = await page.evaluate(() => { const s = document.getElementById("cuts"); return !!s && s.hidden; });
+        // While the take is heard (hearing): the page's one line stays under the player, its
+        // spinner turning, until the cuts land.
+        const finishing = () => page.evaluate(() => { const u = document.getElementById("ul"), b = document.getElementById("b"), p = document.querySelector(".player");
+          return !!u && !u.hidden && u.getClientRects().length > 0 ? { words: document.getElementById("u").textContent, turning: !!b && b.className === "spin" && getComputedStyle(b).animationName === "shroom-spin",
+            below: !!p && u.getBoundingClientRect().top >= p.getBoundingClientRect().bottom - 1 } : null; });
+        const lineGone = () => page.waitForFunction(() => { const u = document.getElementById("ul"); return !u || u.hidden; }, null, { timeout: 4000 }).then(() => true, () => false);
+        const heard = await finishing();
+        await shot("owner-finishing");
         await put(metaKey(ids.cuts), meta(ids.cuts, { publishedAt: iso(Date.now() - 4000), edits: voiceEdits() }));
         const stripLanded = await page.waitForFunction(() => { const s = document.getElementById("cuts"); return !!s && !s.hidden && s.querySelectorAll("li").length === 2; }, null, { timeout: 10_000 }).then(() => true, () => false);
-        check("cuts: a page open while the cues are coming takes the strip in when they land", coming && stripLanded, true, { coming, landed: stripLanded });
+        const goneWithStrip = await lineGone();
+        check("cuts: a page open while the cues are coming keeps its one line, its spinner turning, then takes the strip in when they land, the line gone",
+          coming && heard?.words === COPY.finishing && heard.turning && heard.below && stripLanded && goneWithStrip, true, { coming, heard, landed: stripLanded, goneWithStrip });
         // The hint (owner-page-cue-hint): a take with no voice cuts, in a space that listens.
         const hintShown = () => page.evaluate(() => { const h = document.querySelector(".cue-hint"); return !!h && !h.hidden && h.getClientRects().length > 0; });
         const forget = () => page.evaluate(() => { try { localStorage.removeItem("shroom:cue-hint"); } catch { /* none kept */ } });
@@ -635,9 +647,27 @@ async function main() {
         await put(metaKey(ids.cuts), meta(ids.cuts, { edits: noCues() }));
         await page.goto(`${origin}/${ids.cuts}`);
         const afterStrip = await hintShown();
-        delete env.AI;
         check("cuts: the hint shows under the player on a take with no voice cuts; Got it puts it away for good, as a strip seen does",
           shownFirst && goneOnPress && goneForGood && !afterStrip, true, { shownFirst, goneOnPress, goneForGood, afterStrip });
+        // The line ends without cuts: the Mac found none (the hint, while it's due, takes its
+        // place), or five minutes passed by the page's own count, whatever the status says.
+        await forget();
+        await put(metaKey(ids.cuts), meta(ids.cuts, { publishedAt: iso(Date.now() - 2000) }));
+        await page.goto(`${origin}/${ids.cuts}`);
+        const firstLine = await finishing();
+        const hintHeld = !(await hintShown());
+        await put(metaKey(ids.cuts), meta(ids.cuts, { publishedAt: iso(Date.now() - 4000), edits: noCues() }));
+        const noneGone = await lineGone();
+        const hintAfter = await page.waitForFunction(() => { const h = document.querySelector(".cue-hint"); return !!h && !h.hidden; }, null, { timeout: 3000 }).then(() => true, () => false);
+        await page.route(`**/_shroom/status/${ids.cuts}`, async (route) => { const res = await route.fetch(); route.fulfill({ response: res, json: { ...(await res.json()), cuts: "coming" } }); });
+        await put(metaKey(ids.cuts), meta(ids.cuts, { publishedAt: iso(Date.now() - VOICE_WAIT_MS + 2500) }));
+        await page.goto(`${origin}/${ids.cuts}`);
+        const late = await finishing();
+        const ownCount = await lineGone();
+        await page.unroute(`**/_shroom/status/${ids.cuts}`);
+        delete env.AI;
+        check("cuts: the one line fades when the Mac finds nothing to cut, the hint in its place, and by its own count when its five minutes are up",
+          firstLine?.words === COPY.finishing && hintHeld && noneGone && hintAfter && !!late && ownCount, true, { firstLine, hintHeld, noneGone, hintAfter, late, ownCount });
         await context.clearCookies();
       } finally {
         await browser.close();

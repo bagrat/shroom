@@ -4,7 +4,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { SYSREQ, sysreqLine } from "./sysreq.js";
-import { COPY, installLine, inviteExpired, inviteUsed, joinHero, joinIntro, ownSame, ownerNote, untitled, uploadingLine, waitingFor } from "../src/worker.js";
+import { COPY, installLine, inviteExpired, inviteUsed, joinHero, joinIntro, ownSame, ownerNote, untitled, waitingFor } from "../src/worker.js";
 
 const machine = JSON.parse(readFileSync(new URL("../../spec/machine.json", import.meta.url), "utf8"));
 const said = (region) => Object.values(machine.states).filter((s) => s.region === region).flatMap((s) => s.said.map((l) => l.text));
@@ -42,7 +42,7 @@ describe("copy", () => {
   });
 
   it("renders the templated lines exactly as the spec's examples", () => {
-    expect(r4.has(uploadingLine(40))).toBe(true);
+    expect(r4.has(COPY.finishing)).toBe(true);
     expect(r4.has(untitled("2026-08-21T12:00:00Z"))).toBe(true);
   });
 
