@@ -210,7 +210,9 @@ describe("installing", () => {
     const profile = readFileSync(join(r.home, ".zprofile"), "utf8");
     assert.ok(profile.startsWith("export FOO=1\n"), "the profile keeps what was there");
     assert.equal(profile.split(MARK).length, 2, "one marked line");
-    assert.match(profile, /export PATH="\$HOME\/\.local\/bin:\$PATH"/);
+    // After the system's folders, never before them: nothing already sitting in ~/.local/bin
+    // gets to stand in for a system command (the security review, 2026-10-18).
+    assert.match(profile, /\nexport PATH="\$PATH:\$HOME\/\.local\/bin"\n/);
     assert.deepEqual(r.out, ["Getting shroom…", "verified ✓", "Installed — opening shroom now."], "said nothing more");
   });
 
@@ -905,12 +907,27 @@ describe("uninstalling", () => {
         installed(home);
         mkdirSync(join(home, ".local/bin"), { recursive: true });
         symlinkSync(join(home, "Applications/shroom.app/Contents/MacOS/shroom-cli"), join(home, ".local/bin/shroom"));
-        writeFileSync(join(home, ".zprofile"), `export FOO=1\n\n${MARK}\nexport PATH="$HOME/.local/bin:$PATH"\nexport BAR=2\n`);
+        writeFileSync(join(home, ".zprofile"), `export FOO=1\n\n${MARK}\nexport PATH="$PATH:$HOME/.local/bin"\nexport BAR=2\n`);
       },
     });
     assert.equal(r.code, 0);
     assert.throws(() => lstatSync(join(r.home, ".local/bin/shroom")), "the link itself is gone, not left dangling");
     assert.equal(readFileSync(join(r.home, ".zprofile"), "utf8"), "export FOO=1\n\nexport BAR=2\n");
+  });
+
+  // The security review, 2026-10-18: the person moved or deleted shroom's PATH line and kept
+  // the mark — the line after the mark is theirs now, and stays.
+  it("takes back only shroom's own PATH line: a line of theirs after the mark stays", async () => {
+    const MARK = "# shroom's command line (shroom.am) — run shroom --help";
+    const r = await run({
+      args: UN,
+      setup: (home) => {
+        installed(home);
+        writeFileSync(join(home, ".zprofile"), `export FOO=1\n${MARK}\neval "$(/opt/homebrew/bin/brew shellenv)"\numask 077\n`);
+      },
+    });
+    assert.equal(r.code, 0);
+    assert.equal(readFileSync(join(r.home, ".zprofile"), "utf8"), `export FOO=1\neval "$(/opt/homebrew/bin/brew shellenv)"\numask 077\n`);
   });
 
   it("removes the app, its folder and what the system keeps for it, and says so in the spec's words", async () => {

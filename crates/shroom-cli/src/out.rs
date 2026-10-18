@@ -163,6 +163,23 @@ mod tests {
         assert!(all.iter().all(|f| f.json()["ok"] == false && f.json()["error"] == f.code()));
     }
 
+    /// Titles and names are written by the people in a space: what the command prints can't
+    /// drive the terminal — no escape sequence (a clipboard write, a line rewritten), no
+    /// carriage return, no C1 control, no bidi override — and its JSON still says exactly
+    /// what the space holds, those characters escaped (the security review, 2026-10-18).
+    #[test]
+    fn text_from_the_space_cant_drive_the_terminal() {
+        let title = "Q3\u{1b}]52;c;cm0gLXJmIH4=\u{7}\u{1b}[2K\r\u{9b}31m\u{7f}\u{202e}fdp.exe\u{2066}x\u{2069}\tok\nnext";
+        let bad = |c: char| matches!(c, '\u{0}'..='\u{8}' | '\u{b}'..='\u{1f}' | '\u{7f}'..='\u{9f}' | '\u{61c}' | '\u{200e}' | '\u{200f}' | '\u{202a}'..='\u{202e}' | '\u{2066}'..='\u{2069}');
+        let shown = clean(title);
+        assert!(!shown.chars().any(bad), "{shown:?}");
+        assert!(shown.starts_with("Q3") && shown.ends_with("\tok\nnext"), "tabs and line breaks stay: {shown:?}");
+        let j = json_safe(&json!({"title": title}).to_string());
+        assert!(!j.chars().any(bad), "{j}");
+        assert_eq!(serde_json::from_str::<Value>(&j).unwrap()["title"], title, "the JSON still says exactly what the space holds");
+        assert_eq!(clean("Weekly sync — Q3 ✓"), "Weekly sync — Q3 ✓", "ordinary words are left alone");
+    }
+
     #[test]
     fn lengths_and_columns_read_for_a_person() {
         assert_eq!(length(Some(93.4)), "1:33");
