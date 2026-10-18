@@ -1,0 +1,44 @@
+[
+ {
+  "say": "Welcome to the tour.",
+  "role": "keep",
+  "pause": 0.5,
+  "start": 0.6,
+  "end": 1.632
+ },
+ {
+  "say": "Press stop, and your link is pasted.",
+  "role": "flub",
+  "pause": 0.5,
+  "start": 2.132,
+  "end": 4.013
+ },
+ {
+  "say": "Shroom cut.",
+  "role": "cue",
+  "pause": 0.6,
+  "start": 4.513,
+  "end": 5.173
+ },
+ {
+  "say": "Press stop, and your link is, uh,",
+  "role": "flub",
+  "pause": 0.5,
+  "start": 5.773,
+  "end": 8.006
+ },
+ {
+  "say": "shroom cut.",
+  "role": "cue",
+  "pause": 0.6,
+  "start": 8.506,
+  "end": 9.097
+ },
+ {
+  "say": "Press stop, and your link is copied to the clipboard.",
+  "role": "keep",
+  "pause": 0.8,
+  "start": 9.697,
+  "end": 12.222
+ }
+]

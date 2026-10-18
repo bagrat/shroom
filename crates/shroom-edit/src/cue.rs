@@ -68,14 +68,13 @@ pub fn find_cues(words: &[Word]) -> Vec<Cue> {
                 .trim_end()
                 .ends_with(['.', '?', '!', ',', ';', ':']);
         // "shroom cut", "Shroom-cut" (one token, hyphen gone), or "shroomcut".
-        let joined = n[i]
-            .strip_suffix("cut")
-            .filter(|head| is_code_word(head))
-            .is_some();
+        let head = n[i].strip_suffix("cut");
+        let joined = head.is_some_and(is_code_word);
+        let joined_loose = !joined && head.is_some_and(is_code_word_heard_loosely);
         let then_cut = i + 1 < words.len() && is_cut(&n[i + 1]);
         let pair = is_code_word(&n[i]) && then_cut;
-        let loose = !pair && is_code_word_heard_loosely(&n[i]) && then_cut;
-        let last = if joined {
+        let loose = (!pair && is_code_word_heard_loosely(&n[i]) && then_cut) || joined_loose;
+        let last = if joined || joined_loose {
             Some(i)
         } else if pair || loose {
             Some(i + 1)
@@ -141,6 +140,7 @@ mod tests {
             "shroomcut",
             "shrooms cut",
             "is pasted. Troom cut.",
+            "is pasted. Troomcut.",
             "uh, drum cut.",
         ] {
             assert_eq!(find_cues(&words(s)).len(), 1, "{s}");

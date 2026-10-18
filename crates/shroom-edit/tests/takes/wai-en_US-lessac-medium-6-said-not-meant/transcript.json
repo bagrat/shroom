@@ -1,0 +1,182 @@
+{
+ "duration": 10.112154195011337,
+ "words": [
+  {
+   "text": "You",
+   "start": 0,
+   "end": 0.7
+  },
+  {
+   "text": "can",
+   "start": 0.7,
+   "end": 0.86
+  },
+  {
+   "text": "cut",
+   "start": 0.86,
+   "end": 1.06
+  },
+  {
+   "text": "the",
+   "start": 1.06,
+   "end": 1.22
+  },
+  {
+   "text": "start",
+   "start": 1.22,
+   "end": 1.5
+  },
+  {
+   "text": "of",
+   "start": 1.5,
+   "end": 1.68
+  },
+  {
+   "text": "a",
+   "start": 1.68,
+   "end": 1.76
+  },
+  {
+   "text": "video",
+   "start": 1.76,
+   "end": 2
+  },
+  {
+   "text": "in",
+   "start": 2,
+   "end": 2.26
+  },
+  {
+   "text": "the",
+   "start": 2.26,
+   "end": 2.34
+  },
+  {
+   "text": "editor.",
+   "start": 2.34,
+   "end": 2.66
+  },
+  {
+   "text": "Or",
+   "start": 2.98,
+   "end": 3.36
+  },
+  {
+   "text": "just",
+   "start": 3.36,
+   "end": 3.64
+  },
+  {
+   "text": "say",
+   "start": 3.64,
+   "end": 3.9
+  },
+  {
+   "text": "shroom",
+   "start": 3.9,
+   "end": 4.24
+  },
+  {
+   "text": "cut",
+   "start": 4.24,
+   "end": 4.6
+  },
+  {
+   "text": "and",
+   "start": 4.6,
+   "end": 4.9
+  },
+  {
+   "text": "shroom",
+   "start": 4.9,
+   "end": 5.22
+  },
+  {
+   "text": "trims",
+   "start": 5.22,
+   "end": 5.68
+  },
+  {
+   "text": "the",
+   "start": 5.68,
+   "end": 5.78
+  },
+  {
+   "text": "mistake",
+   "start": 5.78,
+   "end": 6.12
+  },
+  {
+   "text": "for",
+   "start": 6.12,
+   "end": 6.34
+  },
+  {
+   "text": "you.",
+   "start": 6.34,
+   "end": 6.54
+  },
+  {
+   "text": "The",
+   "start": 6.78,
+   "end": 7.08
+  },
+  {
+   "text": "shroom",
+   "start": 7.08,
+   "end": 7.4
+  },
+  {
+   "text": "cut",
+   "start": 7.4,
+   "end": 7.64
+  },
+  {
+   "text": "feature",
+   "start": 7.64,
+   "end": 7.96
+  },
+  {
+   "text": "works",
+   "start": 7.96,
+   "end": 8.3
+  },
+  {
+   "text": "on",
+   "start": 8.3,
+   "end": 8.48
+  },
+  {
+   "text": "every",
+   "start": 8.48,
+   "end": 8.72
+  },
+  {
+   "text": "recording.",
+   "start": 8.72,
+   "end": 9.16
+  }
+ ],
+ "silences": [
+  {
+   "start": 0.0,
+   "end": 0.612336
+  },
+  {
+   "start": 2.80118,
+   "end": 3.22649
+  },
+  {
+   "start": 4.67029,
+   "end": 4.79433
+  },
+  {
+   "start": 6.60154,
+   "end": 7.02526
+  },
+  {
+   "start": 9.30168,
+   "end": 10.1122
+  }
+ ]
+}

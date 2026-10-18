@@ -1,0 +1,30 @@
+[
+ {
+  "say": "The settings window has three tabs.",
+  "role": "keep",
+  "pause": 0.45,
+  "start": 0.6,
+  "end": 2.954
+ },
+ {
+  "say": "The second one is, hmm, I forget what it's called.",
+  "role": "flub",
+  "pause": 0.6,
+  "start": 3.404,
+  "end": 6.675
+ },
+ {
+  "say": "Shroom cut.",
+  "role": "cue",
+  "pause": 0.7,
+  "start": 7.275,
+  "end": 8.197
+ },
+ {
+  "say": "Let's move on to the library instead.",
+  "role": "keep",
+  "pause": 0.8,
+  "start": 8.897,
+  "end": 11.403
+ }
+]

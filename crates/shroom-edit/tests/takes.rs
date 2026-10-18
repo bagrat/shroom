@@ -32,6 +32,11 @@ const KNOWN: &[(&str, &str)] = &[
         "Whisper left the first 8 s out of the transcript (the slip, the first cue and the \
          retake): nothing heard, nothing cut. Chunked transcription with VAD is the fix",
     ),
+    (
+        "wai-en_US-lessac-medium-2-mid-paragraph",
+        "Workers AI's Whisper wrote the line as meant (\"Then you pick the window you want to \
+         share.\"), leaving out the slip and the cue: nothing heard, nothing cut",
+    ),
 ];
 
 #[test]
@@ -99,4 +104,49 @@ fn every_take() {
         failed.len(),
         failed.join("\n")
     );
+}
+
+/// Ten minutes of the takes run together (52 cues), transcribed by Workers AI in one
+/// request and in 60 s chunks. Nothing kept may be cut; most cues must go. Word times drift
+/// on long audio and Whisper tidies some slips away, so the floor is below every cue.
+#[test]
+fn ten_minutes() {
+    for (name, floor) in [("wai-one-request", 44), ("wai-60s-chunks", 48)] {
+        let dir = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/long")
+            .join(name);
+        let t: Transcript =
+            serde_json::from_str(&fs::read_to_string(dir.join("transcript.json")).unwrap())
+                .unwrap();
+        let lines: Vec<Line> =
+            serde_json::from_str(&fs::read_to_string(dir.join("script.json")).unwrap()).unwrap();
+        let list = plan(&t, Options::default());
+        let applied: Vec<(f64, f64)> = list
+            .cuts
+            .iter()
+            .filter(|c| c.applied)
+            .map(|c| (c.start, c.end))
+            .collect();
+        let cut = |l: &Line| {
+            applied
+                .iter()
+                .map(|&c| overlap((l.start, l.end), c))
+                .sum::<f64>()
+        };
+        let lines: Vec<&Line> = lines.iter().filter(|l| l.end < t.duration - 2.0).collect();
+        let damaged = lines
+            .iter()
+            .filter(|l| matches!(l.role.as_str(), "keep" | "mention") && cut(l) > 0.08)
+            .count();
+        let cues = lines.iter().filter(|l| l.role == "cue").count();
+        let gone = lines
+            .iter()
+            .filter(|l| l.role == "cue" && cut(l) >= 0.9 * (l.end - l.start))
+            .count();
+        assert_eq!(damaged, 0, "{name}: kept lines cut");
+        assert!(
+            gone >= floor,
+            "{name}: {gone} of {cues} cues cut, floor {floor}"
+        );
+    }
 }

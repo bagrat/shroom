@@ -50,13 +50,16 @@ impl Ctx<'_> {
     /// silence in it isn't quiet (the transcriber missed speech there), so then the edge
     /// hugs the word on the cut's side: `hug_b` for a cut that starts at `b`.
     fn quiet(&self, a: f64, b: f64, hug_b: bool) -> (f64, f64) {
+        // Word times drift (by a few tenths on long audio), so a silence near the gap
+        // counts, and keeps its own extent up to 0.6 s past the words.
         let (lo, hi) = (a - 0.25, b + 0.25);
         let found = self
             .t
             .silences
             .iter()
-            .map(|s: &Silence| (s.start.max(lo), s.end.min(hi)))
-            .filter(|(s, e)| e > s && *e > a && *s < b)
+            .filter(|s: &&Silence| s.end > lo && s.start < hi)
+            .map(|s| (s.start.max(a - 0.6), s.end.min(b + 0.6)))
+            .filter(|(s, e)| e > s)
             .max_by(|x, y| (x.1 - x.0).total_cmp(&(y.1 - y.0)))
             // Speech the transcriber missed leaves most of a long gap loud.
             .filter(|(s, e)| e - s >= (b - a) - 0.5);
