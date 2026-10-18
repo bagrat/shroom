@@ -2335,12 +2335,14 @@
     "editor-cant-get",
     "editor-saving",
     "editor-save-failed",
+    "editor-save-refused",
     "editor-making",
     "editor-making-failed",
     "editor-keep-original"
    ],
    "cites": [
-    "N63"
+    "N63",
+    "B199"
    ]
   }
  ],
@@ -8015,7 +8017,7 @@
    "surface": "window",
    "status": "provisional",
    "board": "EditorStates",
-   "summary": "The save didn't go through (offline, or the space didn't answer): the window stays open with every change in it, the footer line says so in amber, and Done tries again.",
+   "summary": "The save didn't go through (offline, or the space didn't answer): the window stays open with every change in it, the footer line says so in amber, and Done tries again. A save the space turns down is editor-save-refused's (B199).",
    "entry": "A save from editor-saving failed.",
    "said": [
     {
@@ -8037,7 +8039,47 @@
    ],
    "cites": [
     "N63",
-    "B195"
+    "B195",
+    "B199"
+   ]
+  },
+  "editor-save-refused": {
+   "region": 5,
+   "kind": "state",
+   "parent": null,
+   "surface": "window",
+   "status": "provisional",
+   "board": "EditorStates",
+   "summary": "The space turned the save down: the video is gone (deleted from another Mac), or another Mac made an edit the video while this window was open, so the edit was made on a video that no longer plays. Nothing can be saved over it: in the save-failed line's place, one amber line says so; Revert to original is gone, the changes can't be stepped, and Close stands in Done's place. Close, Return, Esc and ✕ close the window, and nothing is saved.",
+   "entry": "A save from editor-saving the space turned down: the video is gone, or another Mac made an edit the video while the editor was open.",
+   "said": [
+    {
+     "text": "This video changed since you opened it, so this edit can't be saved.",
+     "role": "line",
+     "copy": "provisional",
+     "note": "amber, in the save-failed line's place",
+     "id": "editor-save-refused.refused"
+    },
+    {
+     "text": "Close",
+     "role": "button",
+     "copy": "provisional",
+     "note": "filled, in Done's place; Return",
+     "id": "editor-save-refused.close"
+    }
+   ],
+   "actions": [
+    {
+     "label": "Close",
+     "kind": "filled-default",
+     "return_default": true,
+     "goes_to": "library",
+     "note": "closes the window, and nothing is saved; ✕ and Esc too"
+    }
+   ],
+   "cites": [
+    "N63",
+    "B199"
    ]
   },
   "editor-making": {
@@ -16993,6 +17035,43 @@
    "on": [
     "Act(DeleteOriginal)",
     "Act(KeepOriginal)",
+    "WindowClosed"
+   ]
+  },
+  {
+   "from": "editor-saving",
+   "to": "editor-save-refused",
+   "kind": "flow",
+   "label": "",
+   "trigger": "the space turned the save down: the video is gone, or another Mac made an edit the video meanwhile",
+   "status": "provisional",
+   "cites": [
+    "N63",
+    "B199"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Failed"
+   ]
+  },
+  {
+   "from": "editor-save-refused",
+   "to": "library",
+   "kind": "flow",
+   "label": "Close",
+   "trigger": "Close, Return, Esc or ✕: nothing is saved",
+   "status": "provisional",
+   "cites": [
+    "N63",
+    "B199"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Act(EditorClose)",
     "WindowClosed"
    ]
   }

@@ -4,7 +4,7 @@
 
 The machine: every state, edge, rule, said-line and law of shroom v1 — the spec (DECISIONS B133). Sessions edit it; MACHINE.md and the canvas's machine boards are generated from it.
 
-152 states · 313 edges · 23 rules · 609 said-lines · 16 laws · 74 ledger rows.
+153 states · 315 edges · 23 rules · 611 said-lines · 16 laws · 74 ledger rows.
 
 Status: **ratified** is Bagrat's; **provisional** is designed or built and awaits him (each cites its row: `#n` is a DEVIATIONS row of docs/DECISIONS.md, `Bn` a decision, `Nn`/`Un`/`Pn` a ledger row below). `SM:n` in older citations is a line of the retired spec text, kept in history/spec/UX-STATEMACHINE.md.
 
@@ -2339,12 +2339,13 @@ Done pressed with changes: the footer says the edit is saving and Done reads Sav
 | `library` | flow | saved, and nothing is left out any more (the edit was reverted): the editor closes | provisional | N63 |
 | `editor-save-failed` | flow | the save didn't go through | provisional | N63 |
 | `editor-making` | flow | saved with something left out: the final video is made | provisional | N63, B197 |
+| `editor-save-refused` | flow | the space turned the save down: the video is gone, or another Mac made an edit the video meanwhile | provisional | N63, B199 |
 
 ### `editor-save-failed`
 
-state · window · **provisional** · board: EditorStates · cites N63, B195
+state · window · **provisional** · board: EditorStates · cites N63, B195, B199
 
-The save didn't go through (offline, or the space didn't answer): the window stays open with every change in it, the footer line says so in amber, and Done tries again.
+The save didn't go through (offline, or the space didn't answer): the window stays open with every change in it, the footer line says so in amber, and Done tries again. A save the space turns down is editor-save-refused's (B199).
 
 **Entry.** A save from editor-saving failed.
 
@@ -2359,6 +2360,27 @@ The save didn't go through (offline, or the space didn't answer): the window sta
 | → | Kind | Label | Status | Cites |
 |---|---|---|---|---|
 | `editor-saving` | flow | Done | provisional | N63 |
+
+### `editor-save-refused`
+
+state · window · **provisional** · board: EditorStates · cites N63, B199
+
+The space turned the save down: the video is gone (deleted from another Mac), or another Mac made an edit the video while this window was open, so the edit was made on a video that no longer plays. Nothing can be saved over it: in the save-failed line's place, one amber line says so; Revert to original is gone, the changes can't be stepped, and Close stands in Done's place. Close, Return, Esc and ✕ close the window, and nothing is saved.
+
+**Entry.** A save from editor-saving the space turned down: the video is gone, or another Mac made an edit the video while the editor was open.
+
+| Said | Role | Copy | Note |
+|---|---|---|---|
+| “This video changed since you opened it, so this edit can't be saved.” | line | provisional | amber, in the save-failed line's place |
+| “Close” | button | provisional | filled, in Done's place; Return |
+
+| Action | Kind | Return | Goes to | Note |
+|---|---|---|---|---|
+| Close | filled-default | ↵ | `library` | closes the window, and nothing is saved; ✕ and Esc too |
+
+| → | Kind | Label | Status | Cites |
+|---|---|---|---|---|
+| `library` | flow | Close | provisional | N63, B199 |
 
 ### `editor-making`
 
@@ -3892,7 +3914,7 @@ A move that holds for a whole group of states, written once (B133). The tests ex
 - **@join-doors** — where an invite can arrive (N30, N31): `idle-ready`, `idle-unprovisioned`, `config`, `welcome`, `first-launch`, `join-waiting`, `join-expired`, `join-used`, `join-space-missing`
 - **@join-arrival** — the invite window's faces on arrival (N30, N31, #20): `member-welcome`, `join-waiting`, `join-expired`, `join-used`, `join-space-missing`, `join-already-here`, `join-switch-confirm`, `join-switch-confirm-uploads`, `join-switch-confirm-saved-take`, `joining`
 - **@banners** — config's banners (one at a time, N38) (N38): `space-degraded`, `space-degraded-no-token-mac`, `recording-off`, `recovered-take`, `update-ready`, `updating-app`, `space-needs-update-member`, `space-needs-update-no-token`, `member-revoked`, `space-needs-owner`, `space-gone`, `owner-mac-removed`
-- **@editor-faces** — the editor's faces (N63): `editor`, `editor-getting`, `editor-cant-get`, `editor-saving`, `editor-save-failed`, `editor-making`, `editor-making-failed`, `editor-keep-original`
+- **@editor-faces** — the editor's faces (N63, B199): `editor`, `editor-getting`, `editor-cant-get`, `editor-saving`, `editor-save-failed`, `editor-save-refused`, `editor-making`, `editor-making-failed`, `editor-keep-original`
 
 ## Laws
 
