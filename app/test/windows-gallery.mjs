@@ -289,16 +289,6 @@ for (const entry of library) {
       check(`${rt} hover buttons ${r.selected ? "shown (selected)" : "hidden until hover"}`, (await hov.count()) === r.hover.length && (r.hover.length === 0 || (await hov.first().isVisible()) === r.selected));
     }
     if (b.sheet) expected += b.rows.reduce((n, r) => n + r.buttons.length + (r.selected ? r.hover.length : 0), 0);
-    // The naming card (N66): its two answers, as the Scene has them.
-    if (b.offer) {
-      for (const x of [b.offer.on, b.offer.not_now]) {
-        const loc = page.locator(".offer").getByRole("button", { name: x.label, exact: true });
-        check(`${tag}: card button “${x.label}” ${x.enabled ? "enabled" : "disabled"}`, (await loc.count()) === 1 && (await loc.isEnabled()) === x.enabled);
-        const bad = await styled(loc, x.style, v);
-        check(`${tag}: card “${x.label}” styled ${x.style}`, !bad, bad ?? "");
-      }
-      expected += b.sheet ? 0 : 2;
-    }
     const shown = await page.locator("button:visible").count();
     check(`${tag}: ${expected} buttons showing, no others`, shown === expected, `shown ${shown}`);
 
@@ -857,20 +847,10 @@ for (const variant of ["remove-member", "remove-invite", "remove-mac"]) {
 {
   // N66: naming's switch on the setup Mac sends its action and keeps the Scene's state.
   const { ctx, page } = await open("settings", set("space-ai-off"));
-  const sw = page.getByRole("switch", { name: "Name videos and add chapters", exact: true });
+  const sw = page.getByRole("switch", { name: "AI for new videos", exact: true });
   await sw.click();
   check("space · naming: the switch sends set-ai", acted(await calls(page), "settings", { do: "set-ai", arg: true }));
   check("space · naming: the switch keeps the Scene's state until the Scene changes", !(await sw.isChecked()));
-  await ctx.close();
-}
-{
-  // N66: the Library's card — Turn on and Not now send the Scene's actions.
-  const { ctx, page } = await open("library", lib("library-ai-offer"));
-  await page.getByRole("button", { name: "Turn on", exact: true }).click();
-  check("library · naming card: Turn on sends ai-on", acted(await calls(page), "library", { do: "ai-on" }));
-  await clear(page);
-  await page.getByRole("button", { name: "Not now", exact: true }).click();
-  check("library · naming card: Not now sends ai-not-now", acted(await calls(page), "library", { do: "ai-not-now" }));
   await ctx.close();
 }
 {
@@ -1069,6 +1049,24 @@ for (const entry of countdowns) {
     await page.screenshot({ path: join(out, `countdown-${entry.variant}-${scheme}.png`), animations: "disabled" });
     await ctx.close();
   }
+}
+
+// N66: the AI banner and its confirm send the Scene's actions.
+{
+  const pop = (variant) => popovers.find((e) => e.variant === variant).scene;
+  const ban = await open("popover", pop("ai-offer"));
+  await clear(ban.page);
+  await ban.page.getByRole("button", { name: "Turn on…", exact: true }).click();
+  check("ai-offer: Turn on… sends ai-ask", acted(await calls(ban.page), "popover", { do: "ai-ask" }));
+  await clear(ban.page);
+  await ban.page.getByRole("button", { name: "Not now", exact: true }).click();
+  check("ai-offer: Not now sends ai-not-now", acted(await calls(ban.page), "popover", { do: "ai-not-now" }));
+  await ban.ctx.close();
+  const ask = await open("popover", pop("ai-confirm"));
+  await clear(ask.page);
+  await ask.page.getByRole("button", { name: "Turn on", exact: true }).click();
+  check("ai-confirm: Turn on sends ai-on", acted(await calls(ask.page), "popover", { do: "ai-on" }));
+  await ask.ctx.close();
 }
 
 // Region 3's controls send the Scene's actions.

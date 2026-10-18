@@ -5,7 +5,6 @@
   import { onMount } from "svelte";
   import { act, key, onScene, sceneGet, type Action } from "./lib/ipc";
   import { typed } from "./lib/typed";
-  import Btn from "./onboarding/Btn.svelte";
   import Menu from "./library/Menu.svelte";
   import Row from "./library/Row.svelte";
   import Sheet from "./library/Sheet.svelte";
@@ -145,18 +144,6 @@
       </header>
       {#if b.notice}<p class="notice">{b.notice}</p>{/if}
       {#each notes as n}<p class="notes">{n}</p>{/each}
-      {#if b.offer}
-        <!-- N66: once, on the setup Mac — its head, its line, Turn on and Not now. -->
-        <div class="offer" role="group" aria-label={b.offer.title}>
-          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5l1.3 3.2 3.2 1.3-3.2 1.3L8 11.5 6.7 8.3 3.5 7l3.2-1.3z" /></svg>
-          <div class="offer-text">
-            <span class="offer-title">{b.offer.title}</span>
-            <span class="offer-line">{b.offer.line}</span>
-          </div>
-          <Btn b={b.offer.on} {send} />
-          <Btn b={b.offer.not_now} {send} />
-        </div>
-      {/if}
       <div class="list">
         {#if b.empty}
           <!-- The empty face: the mushroom, dimmed, over the Scene's line. -->
