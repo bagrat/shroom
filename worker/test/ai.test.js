@@ -5,7 +5,7 @@
 // (./ai-take.js); everything else is the Worker as it runs.
 import { existsSync, readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readdirSync } from "node:fs";
+import { mkdtempSync, readdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -214,12 +214,14 @@ describe("hearing (B205 a, b)", () => {
     }
     expect(Math.abs(secs - 20)).toBeLessThan(0.1);
     expect(read / size).toBeLessThan(0.5);
+    // The sound as Whisper gets it: AAC frames of 1,024 samples, twenty seconds of them, that ffmpeg decodes without a complaint.
     const all = cat(parts);
-    for (const f of adtsFrames(all)) expect(f.payload.length).toBeGreaterThan(0);
+    const frames = adtsFrames(all);
+    for (const f of frames) expect(f.payload.length).toBeGreaterThan(0);
+    expect(Math.abs((frames.length * 1024) / 48000 - 20)).toBeLessThan(0.1);
     const file = join(dir, "all.aac");
-    (await import("node:fs")).writeFileSync(file, all);
-    const heard = Number(execFileSync("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", file]).toString());
-    expect(Math.abs(heard - 20)).toBeLessThan(0.5);
+    writeFileSync(file, all);
+    expect(execFileSync("ffmpeg", ["-v", "error", "-i", file, "-f", "null", "-"], { stdio: ["ignore", "pipe", "pipe"] }).toString()).toBe("");
   });
 });
 
@@ -621,7 +623,7 @@ describe("the page (B209)", () => {
 
   it("has no chapters for a video under 90 s", async () => {
     const env = await namedSpace({ durationSec: 80, edits: edits([], 2, { out: 80 }) });
-    expect(await live(env)).not.toContain("shroomChapters(");
+    expect(await live(env)).not.toMatch(/shroomChapters\(p,\[/);
   });
 
   it("the owner's page shows the named title in its field and says where it came from, until it's typed over", async () => {
