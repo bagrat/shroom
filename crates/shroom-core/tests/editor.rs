@@ -61,10 +61,10 @@ fn saved_edit(rev: u64) -> Saved {
     Saved { list, rev, copy: None }
 }
 
-/// The saved edit with one more part cut by hand, 20–30 s.
+/// The saved edit with one more part cut by hand, 20–30 s: the list's first hand-cut id.
 fn edited() -> EditList {
     let mut l = saved_edit(3).list;
-    l.cuts.push(Cut::manual(20.0, 30.0));
+    l.cuts.push(Cut { id: "m1".into(), ..Cut::manual(20.0, 30.0) });
     l
 }
 
