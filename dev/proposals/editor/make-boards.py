@@ -246,14 +246,14 @@ def board_after_save():
     failed = footer("Couldn't make the final video. The link plays your edit anyway, and shroom tries again later.", done="Close", revert=False, line_colour=AMBER)
     kept = (f'<div style="display: flex; flex-direction: row; align-items: center; gap: 10px">'
             f'<span style="color: {MUTED}; flex: 1 1 0">Your link stays the same. Viewers see the edit once it\'s saved.</span>'
-            f'<span style="color: {DIM}; font-size: 12px" data-said="editor.original-kept">The original is kept 1 more day</span>'
+            f'<span style="color: {DIM}; font-size: 12px" data-said="editor.original-kept">The original is kept one more day</span>'
             f'{button("Revert to original", colour=FG3)}{button("Done", primary=True)}</div>')
     gone = (f'<div style="display: flex; flex-direction: row; align-items: center; gap: 10px">'
             f'<span style="color: {MUTED}; flex: 1 1 0">Your link stays the same. Viewers see the edit once it\'s saved.</span>'
             f'<button disabled style="font: inherit; height: 30px; padding: 0 14px; border: 1px solid {BORDER}; border-radius: 7px; background: transparent; color: {DIM}; flex: none; opacity: 0.6">Revert to original</button>{button("Done", primary=True)}</div>')
     body = f'''<div style="flex: 1 1 0; padding: 24px; display: flex; flex-direction: column; gap: 20px">
 {strip("Saved: the final video is made on this Mac and put up (the link already plays the edit)", making)}
-{strip("Once it's up: the window asks, Yes, delete leading (Return). ✕ or Close here means Keep for 2 days", ask)}
+{strip("Once it's up: the window asks, Yes, delete leading (a click: Return does nothing here). ✕, Esc or Close means Keep for 2 days", ask)}
 {strip("When it couldn't be made (offline, the space didn't answer)", failed)}
 {strip("Editing again while the original is kept: the time it has left sits by Revert", kept)}
 {strip("Once the original is gone the edit is final: Revert to original only undoes what's changed since the window opened", gone)}
