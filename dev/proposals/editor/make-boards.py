@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Writes the editor's extra canvas boards into <root>/project/: EditorCuts and EditorStates.
+"""Writes the editor's extra canvas boards into <root>/project/: EditorCuts, EditorStates and PausedMarker.
 
 They draw what the "Editing (a proposal)" boards leave out (DECISIONS B195): Undo and
 Redo, a cut put back, the video fetched from the space, saving, and a save that did not
-go through. The helpers are the voice-cut proposal's (PR #59), so the column reads as one."""
+go through, and the paused popover's marker row. The helpers are the voice-cut proposal's (PR #59), so the column reads as one."""
 
 import math
 import random
@@ -229,11 +229,47 @@ def board_states():
     return page("shroom Editor, getting ready and saving", 1100, 700, body)
 
 
+def board_paused_marker():
+    sq = lambda path: f'<svg viewBox="0 0 16 16" aria-hidden="true" style="width: 16px; height: 16px; fill: none; stroke: {MUTED}; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; display: block; flex: none">{path}</svg>'
+    stop = sq('<rect x="3.5" y="3.5" width="9" height="9" rx="2"></rect>')
+    restart = sq('<path d="M3 8a5 5 0 1 0 1.6-3.7M3 2.5v2.5h2.5"></path>')
+    trash = f'<svg viewBox="0 0 16 16" aria-hidden="true" style="width: 16px; height: 16px; fill: none; stroke: {RED}; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; display: block; flex: none"><path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.6 8.5h5.8l.6-8.5"></path></svg>'
+    check = f'<svg viewBox="0 0 16 16" aria-hidden="true" style="width: 16px; height: 16px; fill: none; stroke: {DIM}; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; display: block; flex: none"><path d="M3.5 8.5l3 3 6-7"></path></svg>'
+
+    def row(icon, label, colour=FG, top=True, said=None, enabled=True):
+        s = f' data-said="{said}"' if said else ""
+        dis = "" if enabled else " disabled"
+        return (f'<button{dis} style="font: inherit; height: 36px; padding: 0 10px; border: 0; {"border-top: 1px solid " + LINE + ";" if top else ""} background: transparent; color: {colour if enabled else DIM}; display: flex; flex-direction: row; align-items: center; gap: 10px; text-align: left">'
+                f'{icon}<span{s}>{label}</span></button>')
+
+    def popover(dropped):
+        marker = (row(check, "Marker dropped", said="paused.marker-dropped", enabled=False) if dropped
+                  else row(f'<span style="width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; flex: none">{flag(ACCENT)}</span>', "Drop a marker", said="paused.drop-marker"))
+        return f'''<div style="width: 300px; box-sizing: border-box; background: {BG}; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; box-shadow: 0 8px 28px rgba(0, 0, 0, 0.3); padding: 14px; display: flex; flex-direction: column; gap: 12px">
+<h1 style="margin: 0; font-size: 15px; font-weight: 600; line-height: 28px" data-said="paused.paused-4-32">Paused — 4:32</h1>
+<button style="font: inherit; font-weight: 600; height: 36px; border: 0; border-radius: 8px; background: {ACCENT}; color: {BG}" data-said="paused.resume">Resume</button>
+<div style="background: {CARD}; border-radius: 9px; display: flex; flex-direction: column">
+{row(stop, "Finish &amp; Share", top=False, said="paused.stop")}{marker}{row(restart, "Restart", said="paused.restart")}{row(trash, "Discard…", colour=RED, said="paused.discard")}
+</div></div>'''
+    body = f'''<div style="flex: 1 1 0; padding: 28px; display: flex; flex-direction: row; gap: 48px; align-items: flex-start">
+{mini("Paused: Drop a marker, between Finish &amp; Share and Restart (N64)", popover(False), 300)}
+{mini("Once dropped at this pause: greyed until Resume", popover(True), 300)}
+{mini("While recording, ⌥⌘M drops one at that moment: nothing on screen answers", f'<span style="color: {MUTED}">The take goes on. The flag shows on the editor\'s timeline.</span>', 300)}
+</div>'''
+    return page("shroom Popover, paused, a marker dropped", 1100, 360, body)
+
+
+def mini(title, inner, w):
+    return (f'<div style="width: {w}px; display: flex; flex-direction: column; gap: 10px; flex: none">'
+            f'<span style="color: {MUTED}; font-size: 12px">{title}</span>{inner}</div>')
+
+
 def main():
     root = Path(sys.argv[1]) / "project"
     root.mkdir(parents=True, exist_ok=True)
     (root / "EditorCuts.dc.html").write_text(board_cuts())
     (root / "EditorStates.dc.html").write_text(board_states())
+    (root / "PausedMarker.dc.html").write_text(board_paused_marker())
 
 
 if __name__ == "__main__":
