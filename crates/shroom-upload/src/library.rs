@@ -528,7 +528,14 @@ pub struct Swept {
 /// and removes bytes under a tombstone, and bytes with no record whose ids appear in
 /// `orphans_ok` (the caller passes ids it knows are stale — the claim is written before
 /// any byte, so a record-less id is either mid-claim or abandoned; only the caller can tell).
+/// A live record's bytes are never touched here: its stream, its copies, its thumbnails.
 pub fn sweep(s3: &Client, orphans_ok: &dyn Fn(&str) -> bool) -> Result<Swept, UploadError> {
+    sweep_reading(s3, orphans_ok, &mut |_, _| {})
+}
+
+/// [`sweep`], handing every other record it reads (one with bytes, not a tombstone) to
+/// `live`, so a caller that needs them costs no second read.
+fn sweep_reading(s3: &Client, orphans_ok: &dyn Fn(&str) -> bool, live: &mut dyn FnMut(&str, &[u8])) -> Result<Swept, UploadError> {
     let mut ids = std::collections::BTreeSet::new();
     for o in with_retry(|| s3.list("rec/"))? {
         if let Some(id) = o.key.strip_prefix("rec/").and_then(|k| k.split('/').next()) {
@@ -546,7 +553,8 @@ pub fn sweep(s3: &Client, orphans_ok: &dyn Fn(&str) -> bool) -> Result<Swept, Up
                 remove_bytes(s3, &id)?;
                 out.orphans.push(id);
             }
-            _ => {}
+            Some(b) => live(&id, &b),
+            None => {}
         }
     }
     Ok(out)
@@ -585,20 +593,31 @@ pub struct Cleaned {
     pub swept: Swept,
     /// Page keys (`.shroom/keys/<hash>`) spent or past their life.
     pub keys: usize,
+    /// Videos whose original's two days were up: their edit became the video (B197 (d)).
+    pub baked: Vec<String>,
 }
 
 /// The token Mac's cleanup sweep (DECISIONS B91; ARCHITECTURE §5.5's GC, §16 #49):
 /// bytes under a tombstone go (an interrupted delete, a late segment from another Mac);
 /// bytes with no record go only once no Mac can still finish them (`reapable`); page keys
-/// go once spent or an hour past their life. Records are never touched — a link that was
-/// made keeps answering as it did.
+/// go once spent or an hour past their life; and every video in the space whose original's
+/// two days are up is baked (B197 (d), [`upkeep_plan`] over every record the sweep reads,
+/// [`bake`]) — a bake that fails waits for the next pass, the rest of the pass stands. No
+/// other record is touched, and nothing a live record names: a link that was made keeps
+/// answering as it did.
 pub fn cleanup(s3: &Client, here: &Here) -> Result<Cleaned, UploadError> {
     // An unreadable roster reaps no orphan at all (fail closed): who can still finish one
     // is the roster's to say.
     let roster: Option<serde_json::Value> = with_retry(|| s3.get(ROSTER))?.and_then(|b| serde_json::from_slice(&b).ok());
-    let swept = sweep(s3, &|id: &str| {
+    let mut edited: Vec<(String, Meta)> = Vec::new();
+    let reapable_here = |id: &str| {
         let ledger = s3.get(&format!("{LEDGER}{id}")).ok().flatten().and_then(|b| serde_json::from_slice::<serde_json::Value>(&b).ok());
         reapable(id, ledger.as_ref(), roster.as_ref(), here)
+    };
+    let swept = sweep_reading(s3, &reapable_here, &mut |id, bytes| {
+        if let Some(m) = serde_json::from_slice::<Meta>(bytes).ok().filter(|m| m.edits.is_some()) {
+            edited.push((id.to_string(), m));
+        }
     })?;
     let mut keys = 0;
     for o in with_retry(|| s3.list(KEYS))? {
@@ -608,7 +627,9 @@ pub fn cleanup(s3: &Client, here: &Here) -> Result<Cleaned, UploadError> {
             keys += 1;
         }
     }
-    Ok(Cleaned { swept, keys })
+    let now = iso_at(u64::try_from(here.now_ms.div_euclid(1000)).unwrap_or(0));
+    let baked = upkeep_plan(&edited, &now, &|_| true, &|_| false).bake.into_iter().filter(|id| bake(s3, id, &now).unwrap_or(false)).collect();
+    Ok(Cleaned { swept, keys, baked })
 }
 
 /// Whether a recording's bytes with no record may go (B91): a recording only ever gets
