@@ -84,7 +84,10 @@ pre { margin: 8px 0 0; overflow-x: auto; font: 12px/1.5 var(--mono); color: var(
   <section class="panel" id="start">
     <h2>Something to say</h2>
     <p class="script">Hi, this is a quick test of shroom. Today I'll show you how to share, um, how to sh… <b>Shroom cut.</b> Today I'll show you how to share a recording in one click. You press stop and the link is pasted. <b>Shroom cut.</b> You press stop and the link is copied. That's it.</p>
-    <p class="muted small">Any words work. Say “shroom cut” as its own sentence, with a breath before and after.</p>
+    <p class="muted small" id="hint">Any words work. Say “shroom cut” as its own sentence, with a breath before and after.</p>
+    <div class="row small muted"><span>Listen for</span><div class="seg" role="group" aria-label="Listen for" style="margin-left:0">
+      <button id="cShroom" aria-pressed="true">“shroom cut”</button><button id="cPlain" aria-pressed="false">“cut” too</button><button id="cRelaxed" aria-pressed="false">Any of them</button>
+    </div></div>
     <div class="row">
       <button class="btn rec" id="rec">Record</button>
       <button class="btn" id="stop" hidden>Stop</button>
@@ -128,6 +131,22 @@ let take = null, list = null, media = null, mode = 'edited', heard = null, judge
 // knee of poc/joins.py (2026-10-18; the median click falls fourfold by then, little after).
 const FADE = 0.06;
 let source = null, fade = FADE, ac = null, edited = null, segs = [], node = null, startedAt = 0, at = 0;
+// Which cues to listen for (shroom-edit's CueWords): "cut" and the rest only count when said
+// on their own and Clef says the speaker meant them for the editor.
+let cues = 'shroom', gated = null;
+const HINTS = {
+  shroom: 'Any words work. Say “shroom cut” as its own sentence, with a breath before and after.',
+  plain: 'Any words work. Say “cut” (or “shroom cut”) as its own sentence, with a breath before and after.',
+  relaxed: 'Any words work. Say “cut”, “cut that”, “scratch that”, “let me redo that” or “shroom cut”, on its own, with a breath before and after.',
+};
+function setCues(c) {
+  cues = c;
+  for (const [id, v] of [['cShroom', 'shroom'], ['cPlain', 'plain'], ['cRelaxed', 'relaxed']]) $(id).setAttribute('aria-pressed', String(v === c));
+  $('hint').textContent = HINTS[c];
+}
+$('cShroom').onclick = () => setCues('shroom');
+$('cPlain').onclick = () => setCues('plain');
+$('cRelaxed').onclick = () => setCues('relaxed');
 
 function say(text, bad) { $('status').textContent = text; $('status').classList.toggle('bad', !!bad); }
 if (!key) say('This page needs its link with the key on the end. Open the link you were sent.', true);
@@ -162,7 +181,7 @@ async function go(blob, isVideo) {
     const pcm = await to16k(decoded);
     const dur = pcm.length / 16000;
     say('Listening in the test Cloudflare account…');
-    const r = await fetch('/listen', { method: 'POST', headers: { 'x-key': key, 'content-type': 'audio/wav' }, body: wav(pcm) });
+    const r = await fetch(`/listen?cues=${cues}`, { method: 'POST', headers: { 'x-key': key, 'content-type': 'audio/wav' }, body: wav(pcm) });
     if (!r.ok) {
       const why = await r.text().catch(() => '');
       // Workers AI's free allowance is per day: it comes back at 00:00 UTC.
@@ -175,10 +194,24 @@ async function go(blob, isVideo) {
     heard = await r.json();
     if (heard.error) { say(`Listening failed: ${heard.error}`, true); return; }
     const db = loudness(pcm);
-    const transcript = { duration: dur, words: heard.words, silences: silences(db), levels: { step: 0.01, db: db.map((d) => Math.round(d * 10) / 10) } };
+    let transcript = { duration: dur, words: heard.words, silences: silences(db), levels: { step: 0.01, db: db.map((d) => Math.round(d * 10) / 10) }, cues };
     heardAs = transcript;
     let planned = await plan(transcript);
     if (planned.error) { say(`The planner said: ${planned.error}`, true); return; }
+    // A phrase said on its own that may be a cue ("cut", "scratch that"…): Clef says whether
+    // it was meant for the editor; with no answer, only "shroom cut" counts.
+    gated = null;
+    if (planned.intents && planned.intents.length) {
+      say('Asking whether each one was meant for the editor…');
+      const g = await fetch('/gate', { method: 'POST', headers: { 'x-key': key, 'content-type': 'application/json' }, body: JSON.stringify({ intents: planned.intents }) })
+        .then((res) => (res.ok ? res.json() : null), () => null);
+      if (g && g.meant) {
+        gated = { ms: g.ms, intents: planned.intents, meant: g.meant };
+        transcript = { ...transcript, meant: g.meant };
+        const again = await plan(transcript);
+        if (!again.error) planned = again;
+      }
+    }
     // The judgment above the planner: Clef weighs how far back each redo reaches; the
     // planner picks, and keeps its own plan if the judgment doesn't come.
     judged = null;
@@ -340,7 +373,7 @@ function setFade(f) { fade = f; $('jSmooth').setAttribute('aria-pressed', String
 $('jSmooth').onclick = () => setFade(FADE);
 $('jPlain').onclick = () => setFade(0);
 
-function render() { draw(); cards(); words(); clock(); $('json').textContent = JSON.stringify({ heard: heard && heard.text, whisper_ms: heard && heard.ms, judged, edit_list: list }, (k, x) => typeof x === 'number' ? Math.round(x * 1000) / 1000 : x, 2); }
+function render() { draw(); cards(); words(); clock(); $('json').textContent = JSON.stringify({ heard: heard && heard.text, whisper_ms: heard && heard.ms, cues: heardAs && heardAs.cues, gated, judged, edit_list: list }, (k, x) => typeof x === 'number' ? Math.round(x * 1000) / 1000 : x, 2); }
 
 function draw() {
   const cv = $('cv'), ctx = cv.getContext('2d'), dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = 84;
@@ -366,12 +399,12 @@ function cards() {
   const made = list.cuts.filter((c) => c.applied).length, offered = list.cuts.length - made;
   $('sum').textContent = list.cuts.length
     ? `${made} cut${made === 1 ? '' : 's'} made${offered ? `, ${offered} suggested` : ''}. ${fmt(take.duration)} becomes ${fmt(editedLen())}.`
-    : 'No “shroom cut” heard, so nothing was cut. Open “What Whisper heard” below to see how it came out.';
+    : 'No cue heard, so nothing was cut. Open “What Whisper heard” below to see how it came out.';
   list.cuts.slice().sort((a, b) => a.start - b.start).forEach((c) => {
     const d = document.createElement('div');
     d.className = 'card' + (c.kind === 'line-before-cue' ? ' offered' : '');
-    const note = c.kind === 'line-before-cue' ? 'Nothing was said again after this cue, so only “shroom cut” went. The line before it too?'
-      : c.kind === 'cue-only' ? 'Only the words “shroom cut”: nothing was said again after them.' : '';
+    const note = c.kind === 'line-before-cue' ? 'Nothing was said again after this cue, so only the cue went. The line before it too?'
+      : c.kind === 'cue-only' ? 'Only the cue’s words: nothing was said again after them.' : '';
     d.innerHTML = `<div class="row"><span style="color:var(${c.applied ? '--red' : '--amber'})">${scissors}</span><span class="when"></span><span class="len"></span><span class="grow"></span><button class="btn small quiet" data-a="hear">Play</button><button class="btn small" data-a="toggle"></button></div>${note ? '<span class="note"></span>' : ''}<span class="gone"></span>${c.resumes ? '<span class="then"></span>' : ''}`;
     d.querySelector('.when').textContent = fmt(c.start);
     d.querySelector('.len').textContent = `· ${(c.end - c.start).toFixed(1)} s`;
@@ -427,8 +460,8 @@ window.addEventListener('resize', () => take && draw());
 // What was heard, weighed and cut, to paste to whoever is tuning the planner: the words, the
 // quiet and the loudness (whole dB) it planned from, and the cuts as they stand.
 $('copy').onclick = async () => {
-  const text = JSON.stringify({ v: 1, at: new Date().toISOString(), duration: take.duration, heard: heard && heard.text, words: take.words,
-    silences: heardAs.silences, levels: { step: 0.01, db: heardAs.levels.db.map(Math.round) }, judged, cuts: list.cuts });
+  const text = JSON.stringify({ v: 1, at: new Date().toISOString(), cues: heardAs.cues, duration: take.duration, heard: heard && heard.text, words: take.words,
+    silences: heardAs.silences, levels: { step: 0.01, db: heardAs.levels.db.map(Math.round) }, gated, judged, cuts: list.cuts });
   try { await navigator.clipboard.writeText(text); $('copied').textContent = 'Copied. Paste it into the chat.'; }
   catch {
     const pre = $('json'); pre.textContent = text; pre.closest('details').open = true;

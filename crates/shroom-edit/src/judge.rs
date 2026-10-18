@@ -47,8 +47,10 @@ pub struct Meant {
     pub score: f64,
 }
 
-/// Meant at least this surely, a phrase said apart is a cue (measured by
-/// dev/proposals/voice-cut/poc/cues.py).
+/// Meant at least this surely, a phrase said apart is a cue. Measured on stock-voice takes
+/// (dev/proposals/voice-cut/poc/cues.py, 2026-10-18), with the question that names what a
+/// viewer is meant to hear (a button, a menu item, a key, a command, an action described):
+/// every cue Whisper wrote scored 0.81–0.98, every phrase meant for the viewer at most 0.29.
 pub const MEANT: f64 = 0.5;
 
 /// The farthest-back candidate scored past [`JUDGED`], when the answer fits a question of
