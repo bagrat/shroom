@@ -21,8 +21,10 @@ use crate::world::{Op, SourceId, UpdateOffer, World};
 
 /// How long "Copied" shows (DEVIATIONS #8).
 pub const COPIED_MS: u64 = 1_500;
-/// How long a spot the settings link opened stays lit (N62, B216): long enough to find it.
-pub const LIT_MS: u64 = 2_000;
+/// How long a spot the settings link opened stays lit (N62, B216): long enough for a window
+/// the link opened cold to draw itself. The window shows the light for its own first moments
+/// (about two seconds) and fades it, whenever it drew.
+pub const LIT_MS: u64 = 6_000;
 /// The countdown: 3 · 2 · 1 (N22).
 pub const COUNTDOWN_MS: u64 = 3_000;
 /// “Every few hours”: how often the background update check runs, and how long a failed

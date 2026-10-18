@@ -1111,6 +1111,8 @@ fn act(w: &mut World, action: Action) -> Out {
         // ── Settings ──
         Action::SettingsTab(tab) => {
             w.prefs.settings_tab = Some(tab);
+            // Another tab puts the link's light out: coming back never lights it again.
+            w.session.fields.settings.lit = None;
             // A name being changed and left is put back (B158).
             w.session.fields.settings.from = None;
             // Entering a tab is an entry: Space re-probes (law 1).
@@ -1136,6 +1138,8 @@ fn act(w: &mut World, action: Action) -> Out {
         Action::OpenAgentGuide => (vec![Effect::Shell(ShellCmd::OpenUrl(PublicUrl::AgentGuide))], Arm::named("agent-guide")),
         Action::SetAgentRecording(on) => {
             w.prefs.agent_recording = on;
+            // The link's light pointed here; the person's own flip puts it out.
+            w.session.fields.settings.lit = None;
             (vec![persist_prefs(w)], Arm::named("agent-recording"))
         }
         // ── Report a problem (B180) ──
