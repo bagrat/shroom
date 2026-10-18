@@ -173,7 +173,7 @@ export async function editorLooks({ browser, origin, mediaOrigin, entries, check
         : [b.footer, ...(["ready", "opening"].includes(b.media.state) && !after ? [b.hint] : []), ...(b.media.line ? [b.media.line] : []), ...(after?.state === "making" ? [after.line] : []), ...(b.original_kept && !after ? [b.original_kept] : [])];
       const missing = lines.filter((l) => !body.includes(norm(l)));
       check(`${tag}: every line is visible`, missing.length === 0, missing.join(" | "));
-      const want = asking ? [after.keep, after.delete] : [...(b.media.state === "failed" ? [b.media.retry] : []), ...(b.media.state === "failed" || after ? [] : [b.revert]), b.done];
+      const want = asking ? [after.keep, after.delete] : [...(b.media.state === "failed" ? [b.media.retry] : []), ...(b.media.state === "failed" || after || !b.revert ? [] : [b.revert]), b.done];
       const shown = (await page.locator("button:visible").evaluateAll((els) => els.map((e) => e.innerText.trim()).filter(Boolean))).map(norm);
       check(`${tag}: the Scene's buttons, no others with words`, shown.sort().join("|") === want.map((x) => x.label).sort().join("|"), shown.join("|"));
       for (const x of want) {
@@ -194,7 +194,7 @@ export async function editorLooks({ browser, origin, mediaOrigin, entries, check
         const pct = await page.locator(".note.making .fill span").evaluate((e) => e.style.width);
         check(`${tag}: the final video's bar fills as the Scene says, where the track was`, pct === `${after.pct}%` && (await page.locator(".track").count()) === 0, pct);
       }
-      if (b.original_kept && !after) {
+      if (b.original_kept && !after && b.revert) {
         const kept = await page.locator(".foot .kept").evaluate((e) => ({ text: e.innerText, size: getComputedStyle(e).fontSize }));
         const next = await page.locator(".foot .kept + button").innerText();
         check(`${tag}: the time the original has left, small, by Revert`, kept.text === b.original_kept && kept.size === "12px" && norm(next) === b.revert.label, JSON.stringify(kept));
@@ -469,6 +469,24 @@ export async function editorDrives({ browser, origin, mediaOrigin, entries, chec
     c = await calls(page);
     check("editor-cant-get: Try again and Close send their actions; Return and Esc the Scene's", acted(c, w.body.media.retry.action) && acted(c, w.body.done.action) && keyed(c, "return") && keyed(c, "esc"), JSON.stringify(c));
     check("editor-cant-get: no Revert to original", (await page.getByRole("button", { name: w.body.revert.label }).count()) === 0);
+    await ctx.close();
+  }
+  // A save the space turned down (B199): Close, Return and Esc are the Scene's; no Revert to
+  // original, and nothing edits.
+  {
+    const w = face("editor-save-refused");
+    const { ctx, page } = await openEditor(browser, origin, mediaOrigin, w);
+    await clear(page);
+    await drag(page, 46, 56, d);
+    await page.keyboard.press("Meta+z");
+    await page.keyboard.press("Delete");
+    check("editor-save-refused: no selecting, no undo, no cut", (await page.locator(".sel, .chip").count()) === 0 && steps(await calls(page)).length === 0);
+    await page.getByRole("button", { name: w.body.done.label, exact: true }).click();
+    await page.keyboard.press("Enter");
+    await page.keyboard.press("Escape");
+    c = await calls(page);
+    check("editor-save-refused: Close, Return and Esc are the Scene's", acted(c, w.body.done.action) && keyed(c, "return") && keyed(c, "esc"), JSON.stringify(c));
+    check("editor-save-refused: no Revert to original", (await page.getByRole("button", { name: "Revert to original" }).count()) === 0);
     await ctx.close();
   }
   // The final video being made: Close (and Return, and Esc) are the Scene's; nothing edits.

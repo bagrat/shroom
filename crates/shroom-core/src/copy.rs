@@ -435,6 +435,9 @@ pub fn saving_edit() -> String { "Saving your edit…".into() }
 pub fn saving_done() -> String { "Saving…".into() }
 /// editor-save-failed: amber, in the footer's place.
 pub fn save_failed() -> String { "Couldn't save your edit. Check your connection, then press Done again.".into() }
+/// editor-save-refused (B199): amber, in the save-failed line's place — the space turned the
+/// save down (the video is gone, or another Mac made an edit the video).
+pub fn save_refused() -> String { "This video changed since you opened it, so this edit can't be saved.".into() }
 /// Under a dashed suggestion that was clicked (a voice cue's offer, N65).
 pub fn cut_it_too() -> String { "Cut it too".into() }
 /// By Revert, while an earlier edit's original is kept beside its copy (B197 (e)): the time
@@ -1254,6 +1257,8 @@ pub fn registry() -> Vec<(&'static str, String)> {
         ("editor-saving", saving_edit()),
         ("editor-saving", saving_done()),
         ("editor-save-failed", save_failed()),
+        ("editor-save-refused", save_refused()),
+        ("editor-save-refused", close()),
         ("editor", cut_it_too()),
         ("editor", original_kept(30 * 3_600_000)),
         ("editor-making", making_video(40)),

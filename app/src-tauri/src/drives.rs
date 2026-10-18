@@ -1236,7 +1236,7 @@ fn editor(d: &Drive) -> Result<(), String> {
     d.check("the recording's length is the record's", near(b.source_duration, length, 0.01), format!("{} vs {length}", b.source_duration));
     let l = b.list.as_ref().expect("a list");
     d.check("nothing cut yet: the whole recording", l.in_ == 0.0 && near(l.out, length, 0.01) && l.cuts.is_empty(), format!("{} – {}, {} cuts", l.in_, l.out, l.cuts.len()));
-    d.check("Done is live, Revert to original greyed", b.done.enabled && !b.revert.enabled, format!("{} {}", b.done.enabled, b.revert.enabled));
+    d.check("Done is live, Revert to original greyed", b.done.enabled && b.revert.as_ref().is_some_and(|r| !r.enabled), format!("{} {:?}", b.done.enabled, b.revert.as_ref().map(|r| r.enabled)));
     let edits = d.rt.home.edits().join(&here.0);
     d.check("found on this Mac, from its take: nothing fetched", !edits.join(crate::runtime::editor::SOURCE).exists() && take.join(shroom_encode::files::PREVIEW).is_file(), edits.display().to_string());
     let peaks = std::fs::metadata(edits.join(crate::runtime::editor::PEAKS)).map(|m| m.len()).unwrap_or(0);
@@ -1266,7 +1266,7 @@ fn editor(d: &Drive) -> Result<(), String> {
     d.wait("undone", 5, |s| cuts_of(s).is_empty())?;
     d.rt.post(Event::Edit(EditStep::Redo));
     let s = d.wait("redone", 5, |s| cuts_of(s) == [(8.0, 12.0)])?;
-    d.check("Undo takes the cut back, Redo makes it again", editor_body(&s).is_some_and(|b| b.can_undo && !b.can_redo && b.revert.enabled), "");
+    d.check("Undo takes the cut back, Redo makes it again", editor_body(&s).is_some_and(|b| b.can_undo && !b.can_redo && b.revert.as_ref().is_some_and(|r| r.enabled)), "");
     std::thread::sleep(Duration::from_millis(800));
     runner.shot(d, crate::runtime::presenter::EDITOR, "editor-edited")?;
 
@@ -1413,8 +1413,8 @@ fn editor(d: &Drive) -> Result<(), String> {
     let l = b.list.as_ref().expect("a list");
     d.check(
         "the baked video opens as itself: its length, no edit, no countdown, nothing to revert",
-        near(b.source_duration, want.1, 0.6) && l.in_ == 0.0 && l.cuts.is_empty() && b.original_kept.is_none() && !b.revert.enabled && b.markers == [4.0],
-        format!("{} s, {} cuts, kept {:?}, revert {}, markers {:?}", b.source_duration, l.cuts.len(), b.original_kept, b.revert.enabled, b.markers),
+        near(b.source_duration, want.1, 0.6) && l.in_ == 0.0 && l.cuts.is_empty() && b.original_kept.is_none() && b.revert.as_ref().is_some_and(|r| !r.enabled) && b.markers == [4.0],
+        format!("{} s, {} cuts, kept {:?}, revert {:?}, markers {:?}", b.source_duration, l.cuts.len(), b.original_kept, b.revert.as_ref().map(|r| r.enabled), b.markers),
     );
     let fetched_key = std::fs::read_to_string(edits.join(crate::runtime::editor::SOURCE_KEY)).unwrap_or_default();
     d.check("… from its own file, fetched — never the take's original", fetched_key.trim() == key("edit-1.mp4"), fetched_key);

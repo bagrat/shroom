@@ -1125,13 +1125,18 @@ fn act(w: &mut World, action: Action) -> Out {
         }
         Action::EditorClose => {
             // editor-cant-get's Close (Return, Esc): the window goes, and nothing more comes.
-            // After a save (B197): the window goes, and the final video is still made.
+            // After a save (B197): the window goes, and the final video is still made. After
+            // the space turned the save down (B199): the window goes, nothing saved.
             let Some(e) = w.session.fields.editor.as_ref() else { return (vec![], Arm::DROPPED) };
             if crate::derive::editor::after_save(e) {
                 return close_after_save(w);
             }
-            let edge = (crate::derive::editor::state(e) == "editor-cant-get").then_some(("editor-cant-get", "library"));
-            (close_editor(w, true), Arm { name: "editor-closed", edge })
+            let (edge, coming) = match crate::derive::editor::state(e) {
+                "editor-cant-get" => (Some(("editor-cant-get", "library")), true),
+                "editor-save-refused" => (Some(("editor-save-refused", "library")), false),
+                _ => (None, true),
+            };
+            (close_editor(w, coming), Arm { name: "editor-closed", edge })
         }
         Action::DeleteOriginal => {
             // Yes, delete (B197 (c)): the edit becomes the video, and the original goes now.
@@ -2041,7 +2046,8 @@ fn leave_editor(w: &mut World) -> Vec<Effect> {
 /// closes at once and what's coming stops; with nothing changed it closes; with changes, the
 /// checked list is saved as the next revision, and the window stays until the save answers.
 /// While it saves, nothing. After the save (the window's ✕ only: Done is gone by then), it
-/// closes and leaves the original for two days (B197 (b)).
+/// closes and leaves the original for two days (B197 (b)); after the space turned it down,
+/// it closes and nothing is saved (B199).
 fn editor_done(w: &mut World) -> Out {
     let Some(e) = w.session.fields.editor.as_ref() else {
         w.session.windows.remove(&WindowKind::Editor);
@@ -2053,6 +2059,9 @@ fn editor_done(w: &mut World) -> Out {
     }
     if crate::derive::editor::after_save(e) {
         return close_after_save(w);
+    }
+    if e.save == EditorSave::Refused {
+        return (close_editor(w, false), Arm { name: "editor-closed", edge: Some(("editor-save-refused", "library")) });
     }
     let Some(h) = e.history.as_ref().filter(|_| crate::derive::editor::ready(e)) else {
         let edge = match face {
@@ -3253,6 +3262,12 @@ fn failed(w: &mut World, op: Op, class: crate::world::FailClass) -> Out {
         Op::EditorSave => {
             w.inflight.failures.remove(&Op::EditorSave);
             if let Some(e) = w.session.fields.editor.as_mut().filter(|e| e.save == EditorSave::Saving) {
+                // The space turned it down — the video is gone, or another Mac made an edit
+                // the video: no retry can land, and the window only closes (B199).
+                if class == FailClass::Refused {
+                    e.save = EditorSave::Refused;
+                    return (fx, Arm { name: "editor-save-refused", edge: Some(("editor-saving", "editor-save-refused")) });
+                }
                 e.save = EditorSave::Failed;
                 return (fx, Arm { name: "editor-save-failed", edge: Some(("editor-saving", "editor-save-failed")) });
             }

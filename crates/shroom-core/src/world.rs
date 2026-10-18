@@ -1230,6 +1230,10 @@ pub enum EditorSave {
     Saving,
     /// It didn't go through: every change is still here, and Done tries again.
     Failed,
+    /// The space turned it down: the video is gone, or plays another file than the one the
+    /// editor opened on (another Mac made an edit the video). Nothing can be saved over it,
+    /// and the window only closes (B199).
+    Refused,
     /// Saved with something left out: the final video (the permanent copy of the saved
     /// revision) is being made, this far.
     Making { pct: u8 },

@@ -41,7 +41,19 @@ export function editorScenes(
   const edited = { in: edit.in, out: edit.out, cuts: edit.cuts.map((c) => ({ applied: true, kind: "manual", ...c })) };
   const untouched = { in: 0, out: duration, cuts: [] };
   const window = (id, body, { ret = DONE, esc = null } = {}) => ({ id, faces: [], body, ret, esc, activates: true });
-  const body = ({ list = edited, media = { state: "ready", duration }, editable = true, can_undo = list === edited, can_redo = false, footer = FOOTER, footer_tone = "plain", done = button("Done", DONE, "filled"), original_kept = null, after = null } = {}) => {
+  const body = ({
+    list = edited,
+    media = { state: "ready", duration },
+    editable = true,
+    can_undo = list === edited,
+    can_redo = false,
+    footer = FOOTER,
+    footer_tone = "plain",
+    done = button("Done", DONE, "filled"),
+    original_kept = null,
+    after = null,
+    revert = button("Revert to original", { do: "editor-revert" }, "plain", editable && list !== untouched && !!list),
+  } = {}) => {
     const keep = list ? keepOf(list) : [];
     return {
       title: "Edit — Setting up shroom in two minutes",
@@ -59,7 +71,7 @@ export function editorScenes(
       editable,
       can_undo,
       can_redo,
-      revert: button("Revert to original", { do: "editor-revert" }, "plain", editable && list !== untouched && !!list),
+      revert,
       done,
       original_kept,
       after,
@@ -93,6 +105,23 @@ export function editorScenes(
     {
       variant: "editor-save-failed",
       scene: window("editor-save-failed", body({ footer: "Couldn't save your edit. Check your connection, then press Done again.", footer_tone: "amber" })),
+    },
+    // The space turned the save down (B199): its amber line in the save-failed line's place,
+    // no Revert to original, nothing steps, Close in Done's place; Return and Esc are Close.
+    {
+      variant: "editor-save-refused",
+      scene: window(
+        "editor-save-refused",
+        body({
+          editable: false,
+          can_undo: false,
+          footer: "This video changed since you opened it, so this edit can't be saved.",
+          footer_tone: "amber",
+          done: button("Close", CLOSE, "filled"),
+          revert: null,
+        }),
+        { ret: CLOSE, esc: CLOSE },
+      ),
     },
     // Editing again while an earlier edit's original is kept: the time it has left (B197 (e)),
     // never more than it has (B199), counts in words to nine (law 16) — the core's gallery

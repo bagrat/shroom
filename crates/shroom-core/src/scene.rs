@@ -961,10 +961,12 @@ pub struct EditorBody {
     pub editable: bool,
     pub can_undo: bool,
     pub can_redo: bool,
-    /// Revert to original: live when there's something to put back.
-    pub revert: Button,
-    /// Done (Saving…, greyed, while it saves; Close in editor-cant-get and while the final
-    /// video is made or couldn't be); greyed until the video is here.
+    /// Revert to original: live when there's something to put back; `None` where the window
+    /// doesn't offer it — a save the space turned down, when nothing can be saved (B199).
+    pub revert: Option<Button>,
+    /// Done (Saving…, greyed, while it saves; Close in editor-cant-get, in
+    /// editor-save-refused, and while the final video is made or couldn't be); greyed until
+    /// the video is here.
     pub done: Button,
     /// By Revert, while an earlier edit's original is kept: the time it has left (B197 (e)).
     pub original_kept: Option<String>,
@@ -1186,7 +1188,8 @@ impl Window<FeedbackBody> {
 
 impl Window<EditorBody> {
     pub fn buttons(&self) -> Vec<&Button> {
-        let mut out = vec![&self.body.revert, &self.body.done];
+        let mut out: Vec<&Button> = self.body.revert.iter().collect();
+        out.push(&self.body.done);
         if let EditorMediaView::Failed { retry, .. } = &self.body.media {
             out.push(retry);
         }

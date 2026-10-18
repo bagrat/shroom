@@ -384,8 +384,9 @@
     {:else}
       <footer class="foot">
         <span class="line" class:amber={b.footer_tone === "amber"} role="status">{b.footer}</span>
-        <!-- After a save the edit is the video's own: nothing is reverted from here. -->
-        {#if media !== "failed" && !b.after}
+        <!-- After a save the edit is the video's own: nothing is reverted from here — nor
+             once the space turned the save down (no `revert`, B199). -->
+        {#if media !== "failed" && !b.after && b.revert}
           {#if b.original_kept}<span class="kept">{b.original_kept}</span>{/if}
           <Btn b={b.revert} {send} inlineNote={false} />
         {/if}

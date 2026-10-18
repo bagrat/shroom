@@ -29,9 +29,9 @@
 //! `tests/region5.rs`'s editor rows: ready on a trimmed video with a cut applied, a
 //! suggestion waiting, markers and a step to undo; just opened; opened again while the
 //! earlier edit's original is kept, with each of the time-left lines by Revert; the video
-//! coming at 40%; couldn't come; saving; the save that didn't go through; and after a save
-//! (B197), the final video being made at 40%, the one that couldn't be made, and “Delete the
-//! original?”.
+//! coming at 40%; couldn't come; saving; the save that didn't go through, and the one the
+//! space turned down (B199); and after a save (B197), the final video being made at 40%, the
+//! one that couldn't be made, and “Delete the original?”.
 //!
 //! Examples can't import tests, so the builders are copied from
 //! `tests/common/support.rs` and `tests/onboarding.rs`; keep them in step.
@@ -1229,6 +1229,7 @@ fn editor_rows() -> Vec<(&'static str, &'static str, World)> {
         ("editor-cant-get", "editor-cant-get", open(EditorMedia::Failed, EditorSave::Idle, Some(saved()))),
         ("editor-saving", "editor-saving", open(here(), EditorSave::Saving, Some(stepped()))),
         ("editor-save-failed", "editor-save-failed", open(here(), EditorSave::Failed, Some(stepped()))),
+        ("editor-save-refused", "editor-save-refused", open(here(), EditorSave::Refused, Some(stepped()))),
         ("editor-making", "editor-making", after(EditorSave::Making { pct: 40 })),
         ("editor-making-failed", "editor-making-failed", after(EditorSave::MakingFailed)),
         ("editor-keep-original", "editor-keep-original", after(EditorSave::Asking)),

@@ -1,10 +1,10 @@
 //! The editor (N63, B195, B197): one window, on one video — `editor` (the video here, or its
 //! record still being read), `editor-getting` (it comes from the space), `editor-cant-get`,
-//! `editor-saving` and `editor-save-failed`; then, once a save leaves something out,
-//! `editor-making` (the final video being made), `editor-making-failed` and
-//! `editor-keep-original` (“Delete the original?”). It shows the list as it stands, what
-//! plays, and what can be done; the webview plays, draws and sends steps, and decides
-//! nothing.
+//! `editor-saving`, `editor-save-failed` and `editor-save-refused` (the space turned the save
+//! down, B199); then, once a save leaves something out, `editor-making` (the final video
+//! being made), `editor-making-failed` and `editor-keep-original` (“Delete the original?”).
+//! It shows the list as it stands, what plays, and what can be done; the webview plays,
+//! draws and sends steps, and decides nothing.
 
 use crate::copy;
 use crate::scene::{Action, Button, CutView, EditListView, EditorAfterView, EditorBody, EditorLabels, EditorMediaView, LineTone, Style, Window};
@@ -31,6 +31,7 @@ pub fn derive(w: &World) -> Option<Window<EditorBody>> {
         EditorSave::Idle | EditorSave::Asking => (copy::editor_footer(), LineTone::Plain),
         EditorSave::Saving => (copy::saving_edit(), LineTone::Plain),
         EditorSave::Failed => (copy::save_failed(), LineTone::Amber),
+        EditorSave::Refused => (copy::save_refused(), LineTone::Amber),
         EditorSave::Making { .. } => (copy::making_line(), LineTone::Plain),
         EditorSave::MakingFailed => (copy::making_failed(), LineTone::Amber),
     };
@@ -38,6 +39,8 @@ pub fn derive(w: &World) -> Option<Window<EditorBody>> {
     let done = match (e.media, e.save) {
         // Saved, the final video being made or not made: Close leaves it to finish.
         (_, EditorSave::Making { .. } | EditorSave::MakingFailed) => close(),
+        // The space turned the save down: nothing can be saved, Close is the way out (B199).
+        (_, EditorSave::Refused) => close(),
         // The question's own buttons answer it (in the footer's place).
         (_, EditorSave::Asking) => close().enabled(false),
         // The video couldn't come: Close is the way out.
@@ -54,7 +57,7 @@ pub fn derive(w: &World) -> Option<Window<EditorBody>> {
             keep: Button::new(Action::KeepOriginal, copy::keep_two_days(), Style::Plain),
             delete: Button::new(Action::DeleteOriginal, copy::yes_delete(), Style::Filled),
         }),
-        EditorSave::Idle | EditorSave::Saving | EditorSave::Failed => None,
+        EditorSave::Idle | EditorSave::Saving | EditorSave::Failed | EditorSave::Refused => None,
     };
     let now = history.map(|h| &h.now);
     let body = EditorBody {
@@ -87,7 +90,9 @@ pub fn derive(w: &World) -> Option<Window<EditorBody>> {
         editable,
         can_undo: editable && history.is_some_and(|h| h.can_undo()),
         can_redo: editable && history.is_some_and(|h| h.can_redo()),
-        revert: Button::new(Action::EditorRevert, copy::revert_to_original(), Style::Plain).enabled(editable && history.is_some_and(|h| h.can_revert())),
+        // Not where nothing can be saved any more (B199).
+        revert: (e.save != EditorSave::Refused)
+            .then(|| Button::new(Action::EditorRevert, copy::revert_to_original(), Style::Plain).enabled(editable && history.is_some_and(|h| h.can_revert()))),
         done,
         original_kept: kept_left(w, e).map(copy::original_kept),
         after,
@@ -95,9 +100,9 @@ pub fn derive(w: &World) -> Option<Window<EditorBody>> {
     // Return is Done once there's a video to save over (cant-get's Close); Esc is the
     // webview's own — it drops a selection — except where Close is the one way on. After a
     // save, Close, Esc and ✕ all leave the original for two days (B197 (b)); the question
-    // has no Return at all.
+    // has no Return at all. A save turned down closes the same way (B199).
     let (ret, esc) = match id {
-        "editor-cant-get" | "editor-making" | "editor-making-failed" => (Some(Action::EditorClose), Some(Action::EditorClose)),
+        "editor-cant-get" | "editor-save-refused" | "editor-making" | "editor-making-failed" => (Some(Action::EditorClose), Some(Action::EditorClose)),
         // Yes, delete leads but is never one keystroke away (law 9; DEVIATIONS #55).
         "editor-keep-original" => (None, Some(Action::KeepOriginal)),
         "editor" | "editor-save-failed" if live => (Some(Action::EditorDone), None),
@@ -111,6 +116,7 @@ pub fn state(e: &EditorFields) -> &'static str {
     match (e.save, e.media) {
         (EditorSave::Saving, _) => "editor-saving",
         (EditorSave::Failed, _) => "editor-save-failed",
+        (EditorSave::Refused, _) => "editor-save-refused",
         (EditorSave::Making { .. }, _) => "editor-making",
         (EditorSave::MakingFailed, _) => "editor-making-failed",
         (EditorSave::Asking, _) => "editor-keep-original",
@@ -136,10 +142,11 @@ pub fn after_save(e: &EditorFields) -> bool {
     matches!(e.save, EditorSave::Making { .. } | EditorSave::MakingFailed | EditorSave::Asking)
 }
 
-/// How long the original has left beside its copy (ms), while it's kept (B197 (e)).
+/// How long the original has left beside its copy (ms), while it's kept (B197 (e)) — and
+/// while the window can still revert to it: never once the space turned the save down (B199).
 fn kept_left(w: &World, e: &EditorFields) -> Option<i64> {
     let left = e.kept_until?.0 - w.wall.0;
-    (left > 0).then_some(left)
+    (left > 0 && e.save != EditorSave::Refused).then_some(left)
 }
 
 /// When the time-left line by Revert next changes its words — under 47 hours, under a day,

@@ -23,7 +23,11 @@ export type EditorBody = {
   labels: { play: string; pause: string; undo: string; redo: string; cut: string; put_back: string; was: string; time?: string; cut_it_too?: string };
   list: { in: number; out: number; cuts: { start: number; end: number; applied: boolean; kind: string }[] } | null;
   keep: [number, number][]; edited_duration: number; source_duration: number; markers: number[];
-  editable: boolean; can_undo: boolean; can_redo: boolean; revert: Button; done: Button;
+  editable: boolean; can_undo: boolean; can_redo: boolean;
+  /** Revert to original; null where the window doesn't offer it (a save the space turned
+   * down, B199). */
+  revert: Button | null;
+  done: Button;
   /** By Revert, while an earlier edit's original is kept: the time it has left. */
   original_kept?: string | null;
   after?: EditorAfter | null;
