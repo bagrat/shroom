@@ -57,6 +57,17 @@ const cliclick = (...cmds) => {
   const r = spawnSync("cliclick", ["-w", "60", ...cmds], { encoding: "utf8" });
   if (r.status !== 0) throw new Error(`cliclick ${cmds.join(" ")}: ${r.error ?? r.stderr}`);
 };
+// A drag's moves are drags (the button held: `dm:`), never plain moves — a page that saw
+// plain moves never sees the button come up, and keeps the pointer. An older cliclick
+// without `dm:` gets plain moves.
+const dragMoves = (points) => {
+  try {
+    cliclick(...points.map((p) => `dm:${at(p)}`));
+    return true;
+  } catch {
+    return false;
+  }
+};
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function answer(ask) {
   if (ask.do === "shot") {
@@ -70,8 +81,10 @@ async function answer(ask) {
     cliclick(`c:${at(ask.focus)}`);
     await sleep(400);
     const [[x1, y1], [x2, y2]] = [ask.from, ask.to];
-    const moves = [1, 2, 3, 4, 5, 6].map((i) => `m:${at([x1 + ((x2 - x1) * i) / 6, y1 + ((y2 - y1) * i) / 6])}`);
-    cliclick(`m:${at(ask.from)}`, `dd:${at(ask.from)}`, ...moves, `du:${at(ask.to)}`);
+    const points = [1, 2, 3, 4, 5, 6].map((i) => [x1 + ((x2 - x1) * i) / 6, y1 + ((y2 - y1) * i) / 6]);
+    cliclick(`m:${at(ask.from)}`, `dd:${at(ask.from)}`);
+    if (!dragMoves(points)) cliclick(...points.map((p) => `m:${at(p)}`));
+    cliclick(`du:${at(ask.to)}`);
     return;
   }
   if (ask.do === "click") {
