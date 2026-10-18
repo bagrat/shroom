@@ -912,6 +912,8 @@ fn log_since(rt: &crate::runtime::Runtime, from: u64) -> Vec<(u64, String)> {
     text.lines()
         .filter_map(|l| {
             let l = l.trim_start();
+            // Past the line's wall clock (`2026-10-18T17:52:03Z`) to its monotonic ms.
+            let l = l.split_once(' ').filter(|(w, _)| w.ends_with('Z')).map_or(l, |(_, rest)| rest.trim_start());
             let (mono, rest) = l.split_once(' ')?;
             Some((mono.parse().ok()?, rest.to_string()))
         })
