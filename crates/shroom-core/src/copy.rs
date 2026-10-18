@@ -435,6 +435,8 @@ pub fn saving_edit() -> String { "Saving your edit…".into() }
 pub fn saving_done() -> String { "Saving…".into() }
 /// editor-save-failed: amber, in the footer's place.
 pub fn save_failed() -> String { "Couldn't save your edit. Check your connection, then press Done again.".into() }
+/// Under a dashed suggestion that was clicked (a voice cue's offer, N65).
+pub fn cut_it_too() -> String { "Cut it too".into() }
 pub fn needs_macos(version: &str, macos: u32, running: &str) -> String {
     format!("shroom {version} needs macOS {macos} — this Mac stays on {running}.")
 }
@@ -1226,5 +1228,6 @@ pub fn registry() -> Vec<(&'static str, String)> {
         ("editor-saving", saving_edit()),
         ("editor-saving", saving_done()),
         ("editor-save-failed", save_failed()),
+        ("editor", cut_it_too()),
     ]
 }

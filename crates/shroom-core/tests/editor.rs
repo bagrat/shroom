@@ -704,6 +704,18 @@ fn copies_wait_for_the_take_and_go_one_at_a_time() {
     assert!(r.w.library_ops.copies.is_empty() && !r.w.inflight.failures.contains_key(&Op::EditorCopy));
 }
 
+// ── Cut it too ──
+
+/// A dashed suggestion's chip says Cut it too (N65's offer); it sends `apply`, which cuts it.
+#[test]
+fn a_suggestion_offers_cut_it_too() {
+    let mut r = ready_with(Some(saved_edit(3)));
+    assert_eq!(body(&r).labels.cut_it_too, "Cut it too");
+    assert!(!list(&r).cuts[1].applied);
+    r.op(EditOp::Apply { index: 1 });
+    assert!(list(&r).cuts[1].applied, "it's cut, red");
+}
+
 // ── leaving ──
 
 /// Disconnect closes the editor with the rest, and stops a video still coming.
@@ -893,7 +905,7 @@ fn the_slice_is_the_webviews_json() {
             "source_duration", "title"
         ]
     );
-    assert_eq!(keys(&b["labels"]), ["cut", "pause", "play", "put_back", "redo", "time", "undo", "was"]);
+    assert_eq!(keys(&b["labels"]), ["cut", "cut_it_too", "pause", "play", "put_back", "redo", "time", "undo", "was"]);
     assert_eq!(b["media"], json!({ "state": "ready", "duration": 272.4 }));
     assert_eq!(b["footer_tone"], "plain");
     assert_eq!((b["list"]["in"].clone(), b["list"]["out"].clone()), (json!(8.0), json!(235.0)));

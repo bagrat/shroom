@@ -988,6 +988,8 @@ pub struct EditorLabels {
     pub was: String,
     /// The edited position / the edited length.
     pub time: String,
+    /// Under a dashed suggestion that was clicked: it's cut (`Op::Apply`).
+    pub cut_it_too: String,
 }
 
 /// The list as the timeline draws it: the yellow ends, and every cut — applied ones red,

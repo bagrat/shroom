@@ -51,6 +51,7 @@ pub fn derive(w: &World) -> Option<Window<EditorBody>> {
             put_back: copy::put_back("{}"),
             was: copy::editor_was("{}"),
             time: copy::editor_time("{}", "{}"),
+            cut_it_too: copy::cut_it_too(),
         },
         list: now.map(|l| EditListView {
             in_: l.in_,
