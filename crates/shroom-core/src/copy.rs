@@ -431,6 +431,8 @@ fn ago(days: u32) -> String {
 }
 
 /// Why a video is suggested (B211): its plays, and when the last was.
+/// A suggested row's cost, past the free 10 GB.
+pub fn row_cost(cents: u64) -> String { format!("{} a month", money(cents)) }
 pub fn cleanup_reason(plays: u32, quiet_days: u32, stopped_early: bool) -> String {
     let early = if stopped_early { "stopped early, " } else { "" };
     match plays {
@@ -1009,6 +1011,7 @@ pub fn registry() -> Vec<(&'static str, String)> {
         ("library-cleanup", cleanup_inside_free(6, 5_000_000_000)),
         ("library-cleanup", cleanup_back_inside(6, 3_000_000_000)),
         ("library-cleanup", cleanup_frees(6, 11_000_000_000)),
+        ("library-cleanup", row_cost(5)),
         ("library-cleanup", cleanup_reason(4, 300, false)),
         ("library-cleanup", cleanup_reason(0, 45, false)),
         ("library-cleanup", open_page()),

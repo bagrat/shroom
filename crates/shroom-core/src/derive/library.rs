@@ -215,6 +215,11 @@ fn saving_cents(total: u64, freed: u64) -> u64 {
     if saved == 0 { 0 } else { ((saved as f64 / 1e9 * CENTS_PER_GB_MONTH).round() as u64).max(1) }
 }
 
+/// A video's size at the list price, in cents a month: at least 1¢.
+fn list_cents(bytes: u64) -> u64 {
+    ((bytes as f64 / 1e9 * CENTS_PER_GB_MONTH).round() as u64).max(1)
+}
+
 /// What the space costs a month past the free 10 GB, in cents (0 inside it).
 pub fn space_cents(total: u64) -> u64 {
     saving_cents(total, total)
@@ -262,6 +267,9 @@ fn cleanup_body(w: &World, list: &[(Suggestion, Row)]) -> CleanupBody {
     let online = w.online() != Some(false);
     let reachable = online && !(w.space.role() == Some(Role::Member) && super::members::stranded_by_space(w));
     let mid_take = w.take_open();
+    // Each row's cost, its size at the list price: only past the free 10 GB, and never on a
+    // member's Mac, whose bill is the owner's (N68 (8)).
+    let priced = w.space.role() != Some(Role::Member) && w.suggestions.get().is_some_and(|s| s.space_bytes > FREE_BYTES);
     let rows: Vec<CleanupRowView> = list
         .iter()
         .map(|(s, r)| {
@@ -273,7 +281,10 @@ fn cleanup_body(w: &World, list: &[(Suggestion, Row)]) -> CleanupBody {
             CleanupRowView {
                 key: rec.0.clone(),
                 title: r.title.clone(),
-                meta: format!("{} · {} · {why}", copy::day(r.created, w.mac.utc_offset_min), copy::size(s.bytes)),
+                meta: match priced {
+                    true => format!("{} · {} · {} · {why}", copy::day(r.created, w.mac.utc_offset_min), copy::size(s.bytes), copy::row_cost(list_cents(s.bytes))),
+                    false => format!("{} · {} · {why}", copy::day(r.created, w.mac.utc_offset_min), copy::size(s.bytes)),
+                },
                 poster: r.poster.clone(),
                 buttons: vec![
                     open,
