@@ -1206,6 +1206,22 @@ pub struct EditorFields {
     pub kept_until: Option<Wall>,
     pub media: EditorMedia,
     pub save: EditorSave,
+    /// A quit or an update asked while the edit held changes not saved yet (B199): it waits
+    /// on the save, goes on once the save lands, and is dropped if it doesn't — the window
+    /// says why.
+    pub leaving: Option<Leaving>,
+}
+
+/// What waits on the editor's save (B199).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Leaving {
+    /// Quit — the Dock's, the popover's, the right-click menu's, macOS's: once saved, the
+    /// quit goes on, uploads still draining asked about first.
+    Quit,
+    /// Quit anyway, the uploads question answered: once saved, shroom quits.
+    QuitAnyway,
+    /// Update: once saved, the update applies.
+    Update,
 }
 
 /// The video the editor plays and draws.

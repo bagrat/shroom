@@ -1200,6 +1200,7 @@ fn editor_rows() -> Vec<(&'static str, &'static str, World)> {
             kept_until: None,
             media,
             save,
+            leaving: None,
         });
         w
     };

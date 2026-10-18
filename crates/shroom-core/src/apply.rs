@@ -19,7 +19,7 @@ use crate::scene::{Action, Click};
 use crate::time::{Fact, Mono};
 use crate::world::{
     Access, Arming, Blocked, Born, Cause, Confirm, CopyOwed, CopyTarget, Door, EditorFields, EditorMedia, EditorSave, FailClass, Failure, Fields, Fork, Invite,
-    JoinRefusal, Landed, LaunchKind, RecId,
+    JoinRefusal, Landed, LaunchKind, Leaving, RecId,
     LibraryFields, LibraryOps, Members, OpenTake, Op, PageOpen, Paste, Phase, QuickProbe, Reach, RelaunchWhy, Removal, ReportFields, FeedbackFields, Restore, Role, SavedCause,
     SavedTake, SecretId, SettingsFields, SettingsTab, SourceId, Space, SpaceIdentity, StopOutcome, Strike, Sweep, TakeDir, TakeLost, TokenVerdict,
     UpdateOffer, Why, WindowKind, WorkerFact, World,
@@ -671,7 +671,7 @@ fn act(w: &mut World, action: Action) -> Out {
             (fx, Arm { name: "open-feedback", edge: Some(("config", "send-feedback")) })
         }
         Action::Quit => quit_requested(w, QuitVia::Footer),
-        Action::QuitAnyway => (vec![Effect::Shell(ShellCmd::Quit)], Arm::named("quit-anyway")),
+        Action::QuitAnyway => quit_now(w, Leaving::QuitAnyway, "quit-anyway"),
         Action::CopyLink => {
             let Some(StopOutcome::Offline(rec)) = &w.session.last_stop else { return (vec![], Arm::DROPPED) };
             let rec = rec.clone();
@@ -866,23 +866,7 @@ fn act(w: &mut World, action: Action) -> Out {
             (vec![], Arm { name: "record-now", edge: Some(("all-set", "config")) })
         }
         // ── the update ──
-        Action::Update => {
-            let Some(version) = crate::derive::update_ready(w).map(String::from) else { return (vec![], Arm::DROPPED) };
-            // Never mid-take (law 4) — the button greys; this is the guard behind it.
-            if w.take_open() || w.update.applying {
-                return (vec![], Arm::DROPPED);
-            }
-            w.update.applying = true;
-            let mut fx = Vec::new();
-            // The window in front comes back after the relaunch, at its derived state — never
-            // the editor, whose steps live in this process (N63): the one behind it.
-            let front = w.session.windows.iter().filter(|(k, _)| **k != WindowKind::Editor).max_by_key(|(_, d)| d.entered).map(|(k, _)| *k);
-            if let Some(window) = front {
-                fx.push(Effect::Persist(PersistOp::Restore(Some(Restore { why: RelaunchWhy::Update, window, written: w.wall }))));
-            }
-            fx.push(Effect::Updater(UpdCmd::Apply(version)));
-            (fx, Arm { name: "update", edge: Some(("update-ready", "updating-app")) })
-        }
+        Action::Update => apply_update(w),
         Action::WhatsNew => {
             let version = match w.update.offer.get() {
                 Some(Some(UpdateOffer::Ready { version } | UpdateOffer::NeedsMacos { version, .. })) => version.clone(),
@@ -1996,6 +1980,7 @@ fn open_editor(w: &mut World, rec: RecId) -> Out {
         kept_until: None,
         media: EditorMedia::Opening,
         save: EditorSave::Idle,
+        leaving: None,
     });
     w.inflight.failures.remove(&Op::EditorOpen);
     (vec![Effect::Editor(EditCmd::Open { rec }), Effect::Shell(ShellCmd::OpenEditor)], Arm { name: "open-editor", edge: Some(("library", "editor")) })
@@ -2176,6 +2161,8 @@ fn editor_news(w: &mut World, news: EditorNews) -> Out {
             e.rev = rev;
             // Whatever copy the record held is an older revision's now.
             e.kept_until = None;
+            // A quit or an update that waited on this save goes on below (B199).
+            let leaving = e.leaving.take();
             let list = e.history.as_mut().map(|h| {
                 h.saved_as_now();
                 h.now.clone()
@@ -2194,7 +2181,7 @@ fn editor_news(w: &mut World, news: EditorNews) -> Out {
                 // Nothing left out any more: the window closes.
                 w.library_ops.copies.remove(&rec);
                 close_editor(w, false);
-                return (vec![], Arm { name: "editor-saved", edge: Some(("editor-saving", "library")) });
+                return (go_on(w, leaving), Arm { name: "editor-saved", edge: Some(("editor-saving", "library")) });
             }
             // Something left out (B197 (a)): the window stays and makes the final video —
             // asked as any owed copy is, one at a time and never over a take.
@@ -2202,7 +2189,7 @@ fn editor_news(w: &mut World, news: EditorNews) -> Out {
                 e.save = EditorSave::Making { pct: 0 };
             }
             w.library_ops.copies.insert(rec, CopyOwed { rev, asked: false });
-            (vec![], Arm { name: "editor-saved", edge: Some(("editor-saving", "editor-making")) })
+            (go_on(w, leaving), Arm { name: "editor-saved", edge: Some(("editor-saving", "editor-making")) })
         }
         EditorNews::Making { rec, pct } => {
             // Bytes moving keep the copy alive: a long one isn't cut off mid-way — unless
@@ -2280,6 +2267,12 @@ fn quit_requested(w: &mut World, via: QuitVia) -> Out {
             return window_closed(w, kind);
         }
     }
+    quit(w)
+}
+
+/// The quit goes on: uploads still draining ask first; then shroom quits — once an edit the
+/// editor holds is saved (B199).
+fn quit(w: &mut World) -> Out {
     if !w.queue.is_empty() {
         // The edge's name only (the trace): from config's footer when the popover shows,
         // from idle-ready's right-click or ⌘Q otherwise (map: config → quit-confirm).
@@ -2288,7 +2281,82 @@ fn quit_requested(w: &mut World, via: QuitVia) -> Out {
         w.session.confirm = Some(Confirm::Quit);
         return (vec![], Arm { name: "quit-asked", edge: Some((from, "quit-confirm")) });
     }
-    (vec![Effect::Shell(ShellCmd::Quit)], Arm::named("quit"))
+    quit_now(w, Leaving::Quit, "quit")
+}
+
+/// shroom quits — unless the editor holds an edit not saved yet: it's saved first, and the
+/// quit waits on it (B199).
+fn quit_now(w: &mut World, leaving: Leaving, name: &'static str) -> Out {
+    if let Some(out) = save_first(w, leaving) {
+        return out;
+    }
+    (vec![Effect::Shell(ShellCmd::Quit)], Arm::named(name))
+}
+
+/// Update (N37): quit → swap → relaunch — never mid-take, and never over an edit the editor
+/// holds unsaved: that's saved first, and the update waits on it (B199).
+fn apply_update(w: &mut World) -> Out {
+    let Some(version) = crate::derive::update_ready(w).map(String::from) else { return (vec![], Arm::DROPPED) };
+    // Never mid-take (law 4) — the button greys; this is the guard behind it.
+    if w.take_open() || w.update.applying {
+        return (vec![], Arm::DROPPED);
+    }
+    if let Some(out) = save_first(w, Leaving::Update) {
+        return out;
+    }
+    w.update.applying = true;
+    let mut fx = Vec::new();
+    // The window in front comes back after the relaunch, at its derived state — never the
+    // editor, whose steps live in this process (N63): the one behind it.
+    let front = w.session.windows.iter().filter(|(k, _)| **k != WindowKind::Editor).max_by_key(|(_, d)| d.entered).map(|(k, _)| *k);
+    if let Some(window) = front {
+        fx.push(Effect::Persist(PersistOp::Restore(Some(Restore { why: RelaunchWhy::Update, window, written: w.wall }))));
+    }
+    fx.push(Effect::Updater(UpdCmd::Apply(version)));
+    (fx, Arm { name: "update", edge: Some(("update-ready", "updating-app")) })
+}
+
+/// Quit or Update while the editor holds an edit not saved yet (B199): it's saved first — as
+/// ✕ and ⌘Q save it — and the editor comes forward to show it saving, the popover making
+/// way; a save already on its way is waited for. What was asked waits on the save
+/// (`EditorFields::leaving`): it goes on once the save lands, and is dropped if it doesn't.
+/// `None`: nothing to wait for.
+fn save_first(w: &mut World, leaving: Leaving) -> Option<Out> {
+    let e = w.session.fields.editor.as_ref()?;
+    let unsaved = crate::derive::editor::editable(e) && e.history.as_ref().is_some_and(|h| h.dirty());
+    if e.save != EditorSave::Saving && !unsaved {
+        return None;
+    }
+    let (mut fx, edge) = if unsaved {
+        let (fx, arm) = editor_done(w);
+        (fx, arm.edge)
+    } else {
+        (vec![], None)
+    };
+    if let Some(e) = w.session.fields.editor.as_mut() {
+        e.leaving = Some(leaving);
+    }
+    if w.session.popover.is_some() {
+        dismiss(w);
+    }
+    open_window(w, WindowKind::Editor);
+    fx.push(Effect::Shell(ShellCmd::OpenEditor));
+    let name = if leaving == Leaving::Update { "update-waits-on-save" } else { "quit-waits-on-save" };
+    Some((fx, Arm { name, edge }))
+}
+
+/// What waited on the editor's save goes on now that it landed (B199): the quit — uploads
+/// still draining asked about first — or the update, not waiting for the final video (an
+/// upkeep makes it). A take begun meanwhile holds everything that would end the app (law 4):
+/// then it's dropped.
+fn go_on(w: &mut World, leaving: Option<Leaving>) -> Vec<Effect> {
+    let Some(leaving) = leaving.filter(|_| !w.take_open()) else { return vec![] };
+    let (fx, _) = match leaving {
+        Leaving::Quit => quit(w),
+        Leaving::QuitAnyway => quit_now(w, Leaving::QuitAnyway, "quit-anyway"),
+        Leaving::Update => apply_update(w),
+    };
+    fx
 }
 
 fn os(w: &mut World, news: OsNews) -> Out {
@@ -3278,6 +3346,9 @@ fn failed(w: &mut World, op: Op, class: crate::world::FailClass) -> Out {
         Op::EditorSave => {
             w.inflight.failures.remove(&Op::EditorSave);
             if let Some(e) = w.session.fields.editor.as_mut().filter(|e| e.save == EditorSave::Saving) {
+                // A quit or an update that waited on it doesn't go on: the window stays, and
+                // says why (B199).
+                e.leaving = None;
                 // The space turned it down — the video is gone, or another Mac made an edit
                 // the video: no retry can land, and the window only closes (B199).
                 if class == FailClass::Refused {
