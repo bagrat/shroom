@@ -1487,6 +1487,23 @@ fn editor(d: &Drive) -> Result<(), String> {
     d.check("… the third has the copy its revision lacked, its two days set", third_rec["edits"]["copy"]["rev"] == 2 && third_rec["edits"]["copy"]["file"] == "edit-2.mp4" && kept, format!("{} {until}", third_rec["edits"]["copy"]));
     d.check("… and what this Mac kept of the baked one's original is gone", !d.rt.home.edits().join(&away.0).exists(), "");
 
+    // What a report would carry of all that (DECISIONS B199 (t)): a line a step, in numbers.
+    let log = std::fs::read_to_string(d.rt.home.root.join("logs/run.log")).unwrap_or_default();
+    let (h, a) = (crate::runtime::short(&here.0), crate::runtime::short(&away.0));
+    for (what, needle) in [
+        ("the open", format!("editor: {h} opened: ")),
+        ("the save, its ranges and seconds", format!("editor: {h} saved as revision 1 in ")),
+        ("the final video's cut: encoder, parts, size, time", format!("editor: {h}'s final video of revision 1 cut with ")),
+        ("… and its naming", format!("editor: {h}'s final video of revision 1 is up and named")),
+        ("Yes, delete", "core original-deleted".to_string()),
+        ("the bake, the files it deleted", format!("editor: {h}'s edit is the video now (revision 1): ")),
+        ("the upkeep's bake", format!("editor upkeep: {a}'s edit is the video now")),
+        ("the upkeep's counts", "due, 1 baked (".to_string()),
+    ] {
+        let line = log.lines().find(|l| l.contains(&needle));
+        d.check(&format!("run.log: {what}"), line.is_some(), line.unwrap_or(&needle).to_string());
+    }
+
     d.rt.post(Event::WindowClosed(WindowKind::Library));
     d.wait("the Library closed", 5, |s| s.library.is_none())?;
     Ok(())

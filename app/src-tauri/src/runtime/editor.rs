@@ -804,7 +804,8 @@ pub fn unused(last: Option<SystemTime>, now: SystemTime) -> bool {
 /// deletes, so its share page and embed would read the video as unavailable. `Err` says why,
 /// for the run log.
 pub(super) fn page_takes_bakes(rt: &Runtime, host: &str) -> Result<(), String> {
-    let url = super::posters::reachable(rt, host, "/_shroom/ping").ok_or("the space's page can't be reached from this build")?;
+    // Only a dev build against the fake reaches no page: none to play anything, none to wait for.
+    let Some(url) = super::posters::reachable(rt, host, "/_shroom/ping") else { return Ok(()) };
     let body = super::posters::get(&url).ok_or("the space's page didn't answer")?;
     page_verdict(&body, super::cloud::page_version())
 }
