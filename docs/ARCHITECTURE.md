@@ -529,7 +529,7 @@ Registry ids are `d_`/`m_`/`i_` + 16 chars.
   "thumb"?: { "title": null|"…", "from"?: "poster.jpg"|"edit-<rev>-poster.jpg",    // Copy thumbnail, the Worker's (D:B164, B198):
               "gif"?: "thumb-<16 hex>.gif", "jpg"?: "thumb-<16 hex>.jpg" },        // `from` the first frame drawn from (N63)
   "edits"?: { "version": 1, "source_duration", "in", "out",                    // the editor's (N63, D:B195)
-              "cuts": [{ "id"?, "start", "end", "kind", "confidence", "applied", "leads"?, "removed", "resumes"?, "why"? }],
+              "cuts": [{ "id"?, "start", "end", "kind", "confidence", "applied", "leads"?, "removed", "resumes"?, "why"?, "adjusted"? }],
               "voice"?: { "planned_at", "cues" },                              // the voice cues' plan (N65)
               "rev", "copy"?: { "rev", "file": "edit-<rev>.mp4", "duration", "poster"?, "teaser"? },
               "keep_until"?: "iso" },                                          // when the original goes (D:B197)
@@ -545,7 +545,9 @@ read-modify-write under `If-Match`** (`upload::update_meta`), retried on 412, st
 rename's door; the Worker's title and thumbnail rewrites keep it as written. The Worker
 reads from it only the ranges that play and the current copy's names (`worker.js`
 `editsOf`, §10): the cuts' transcript text (`leads`, `removed`, `resumes`, `why`, a later
-voice cut's) never reaches a viewer. An edit that leaves everything in is no edit.
+voice cut's) never reaches a viewer. A cut whose edges were dragged in the editor is marked
+`adjusted` (B195 (g)): its words are the ones first transcribed for it, and may no longer
+be exactly what it cuts. An edit that leaves everything in is no edit.
 **`edits.keep_until`** (RFC 3339, UTC) is when the original goes: the copy's landing sets it
 two days on (`library::set_edit_copy`; naming the same copy again keeps the first time), a
 save back to the original drops it with the copy, and the editor says by Revert how long is

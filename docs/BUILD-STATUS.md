@@ -41,7 +41,8 @@
 5. **The editor is built** ([#61](https://github.com/bagrat/shroom/pull/61) *(the editor:
    trim, cut, undo, markers, and edits on the share page)*; N63 and N64, provisional;
    B195–B199). Edit… in a live Library row opens it in a window of its own: trim, cut,
-   Undo and Redo, Revert. Done saves the edit into the record, and the link, unchanged,
+   a cut's edges dragged to adjust it (B195 (g), Bagrat's ask once he'd seen it), Undo and
+   Redo, Revert. Done saves the edit into the record, and the link, unchanged,
    plays it at once. The Mac then makes the final video and asks “Delete the original?”:
    Yes, delete makes the edit the video now; otherwise the original goes two days on, by
    the first of the space's Macs to run then (B197). Markers dropped while paused, or with
