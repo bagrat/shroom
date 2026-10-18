@@ -425,8 +425,9 @@ pub fn drive_region5(app: AppHandle, rt: Runtime, which: Region5, out: PathBuf) 
         let second = PathBuf::from(format!("{}.relaunched.json", out.display()));
         *rt.relaunch_extra.lock().unwrap() = vec!["--drive".into(), "update-relaunched".into(), second.display().to_string()];
     }
-    // The Settings drive ends on ⌘Q: the core quits shroom, and the report is written on
-    // the way out — with whether the quit was the one the key asked for.
+    // The Settings drive ends on ⌘Q with no window open (one with Settings in front closes
+    // it, B145): the core quits shroom, and the report is written on the way out — with
+    // whether the quit was the one the key asked for.
     if which == Region5::Settings {
         let (rt2, report, out2) = (rt.clone(), d.report.clone(), out.clone());
         *rt.on_exit.lock().unwrap() = Some(Box::new(move || {
@@ -893,16 +894,20 @@ fn settings(d: &Drive) -> Result<(), String> {
     let dock = d.dock();
     d.check("law 6: no Dock icon after close", dock.starts_with("accessory"), dock);
 
-    // ⌘Q with Settings in front: nothing is recording and nothing is uploading, so the core
-    // quits — the drive's report is written on the way out (`drive_region5`).
+    // ⌘Q with Settings in front closes it, as its ✕ does, and shroom stays in the menu bar
+    // (B145). ⌘Q again, no window open: nothing is recording and nothing is uploading, so
+    // the core quits — the drive's report is written on the way out (`drive_region5`).
     d.open(Action::OpenSettings)?;
     d.wait("settings again", 10, |s| s.settings.is_some())?;
     let f = d.front_when(SETTINGS, Front::has_keyboard);
     d.check("Settings again, in front with the keyboard", f.has_keyboard(), f.says());
+    d.command('q')?;
+    let closed = d.wait("⌘Q closes Settings (B145)", 5, |s| s.settings.is_none());
+    d.check("⌘Q with Settings in front closes it, and shroom stays in the menu bar (B145)", closed.is_ok(), closed.err().unwrap_or_default());
     d.step(CMD_Q);
     d.command('q')?;
     std::thread::sleep(Duration::from_secs(10));
-    Err("⌘Q with Settings in front didn't quit shroom within 10 s".into())
+    Err("⌘Q with no window open didn't quit shroom within 10 s".into())
 }
 
 /// The step a drive notes just before it presses ⌘Q.
