@@ -37,8 +37,9 @@ pub(crate) fn after_go_live(rt: &Runtime, dir: &Path, rec: &str) {
     if voice::mark(dir).is_some_and(|m| !matches!(m, Mark::Waiting { .. })) {
         return;
     }
-    let (rt, dir, rec) = (rt.clone(), dir.to_path_buf(), rec.to_string());
+    let (lane, dir, rec) = (rt.clone(), dir.to_path_buf(), rec.to_string());
     let spawned = std::thread::Builder::new().name("shroom-voice".into()).spawn(move || {
+        let rt = lane;
         let Some(s3) = client(&rt, &dir) else {
             rt.log(&format!("voice: {} has no credential to read its words with", super::short(&rec)));
             return;
