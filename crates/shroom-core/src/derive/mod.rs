@@ -11,7 +11,8 @@ mod tray;
 
 pub(crate) use popover::{OneShot, one_shot_showing, selected_mic as popover_selected_mic, selected_source as popover_selected_source};
 pub use popover::{
-    DISK_MARGIN, ROOM_FLOOR_MINUTES, ROOM_LOW_MINUTES, bytes_per_minute, resume_mic, resume_ok, selected_camera, source_present, take_floor_bytes,
+    DISK_MARGIN, ROOM_FLOOR_MINUTES, ROOM_LOW_MINUTES, bytes_per_minute, marker_offered, resume_mic, resume_ok, selected_camera, source_present,
+    take_floor_bytes,
 };
 
 use crate::copy;

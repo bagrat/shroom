@@ -512,6 +512,9 @@ pub struct OpenTake {
     pub since: Mono,
     pub length_ms: u64,
     pub markers: u32,
+    /// A marker was dropped at this pause (N64): the paused popover's row reads Marker
+    /// dropped, greyed, until the take resumes.
+    pub marked_at_pause: bool,
     /// The microphone this take records from, by uid (`None` = silent): the one chosen when
     /// capture began, then whichever Resume used (N39's `mic-lost` fallback).
     pub mic: Option<String>,

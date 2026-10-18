@@ -113,6 +113,9 @@ pub enum Event {
     Reopened(QuickProbe),
     /// ⌥⌘P, held while a take is open (N54): the tray click's pause, or Resume.
     Shortcut(QuickProbe),
+    /// ⌥⌘M, held with ⌥⌘P (N64): a marker at this moment while recording; Drop a marker
+    /// while paused, where the paused popover offers it.
+    MarkerShortcut(QuickProbe),
     Act { surface: Surface, action: Action, rev: u64 },
     Key { surface: Surface, key: Key },
     PopoverDismissed,

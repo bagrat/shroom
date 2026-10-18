@@ -179,6 +179,27 @@ fn apply_event(w: &mut World, event: Event) -> Out {
                 _ => (vec![], Arm::DROPPED),
             }
         }
+        Event::MarkerShortcut(q) => {
+            // ⌥⌘M (N64), under ⌥⌘P's rule: recording, a marker at this moment — nothing on
+            // screen answers, the take goes on; paused, Drop a marker where it's offered.
+            quick(w, &q);
+            if let Some(out) = guard_take(w) {
+                return out;
+            }
+            if !derive(w).tray.shortcut {
+                return (vec![], Arm::DROPPED);
+            }
+            match w.take.as_ref().map(|t| t.phase) {
+                Some(Phase::Recording) => {
+                    if let Some(t) = w.take.as_mut() {
+                        t.markers += 1;
+                    }
+                    (vec![Effect::Recorder(RecCmd::Marker)], Arm::named("marker-shortcut"))
+                }
+                Some(Phase::Paused(_)) if crate::derive::marker_offered(w) => act(w, Action::DropMarker),
+                _ => (vec![], Arm::DROPPED),
+            }
+        }
         Event::Act { surface, action, .. } => {
             if action != Action::Dismiss && !derive(w).offers(surface, &action) {
                 return (vec![], Arm::DROPPED);
@@ -507,6 +528,8 @@ fn act(w: &mut World, action: Action) -> Out {
                 t.phase = Phase::Resuming;
                 t.since = now;
                 t.mic = mic.clone();
+                // The next pause offers Drop a marker again (N64).
+                t.marked_at_pause = false;
             }
             w.session.popover = None;
             (vec![Effect::Recorder(RecCmd::Resume { mic })], Arm { name: "resume", edge: Some(("paused", "recording")) })
@@ -554,9 +577,15 @@ fn act(w: &mut World, action: Action) -> Out {
             });
             (vec![warm(w)], Arm { name: "restart", edge: Some((from, "countdown")) })
         }
+        // N64: a marker at the pause point, once — the row then reads Marker dropped until
+        // Resume (⌥⌘M while paused comes here too, past the Scene's gate).
         Action::DropMarker => {
+            if !crate::derive::marker_offered(w) {
+                return (vec![], Arm::DROPPED);
+            }
             if let Some(t) = w.take.as_mut() {
                 t.markers += 1;
+                t.marked_at_pause = true;
             }
             (vec![Effect::Recorder(RecCmd::Marker)], Arm::named("drop-marker"))
         }
@@ -1597,6 +1626,7 @@ fn get_link(w: &mut World, dir: TakeDir) -> Out {
         since: now,
         length_ms: saved.length_ms,
         markers: 0,
+        marked_at_pause: false,
         mic: None,
         camera: None,
     });
@@ -2183,6 +2213,7 @@ fn rec(w: &mut World, news: RecNews) -> Out {
                 since: now,
                 length_ms: 0,
                 markers: 0,
+                marked_at_pause: false,
                 mic,
                 camera,
             });

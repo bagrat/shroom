@@ -365,6 +365,7 @@ fn recording() -> OpenTake {
         since: Mono(500),
         length_ms: 30_000,
         markers: 0,
+        marked_at_pause: false,
         mic: None,
         camera: None,
     }
@@ -1038,6 +1039,15 @@ fn region3_rows() -> Vec<(&'static str, &'static str, &'static str, World)> {
         w
     }));
     rows.push(("popover", "paused", "paused", paused_take(Cause::User, 272_000)));
+    // N64: Drop a marker used at this pause — the row reads Marker dropped, greyed.
+    rows.push(("popover", "paused", "paused-marker-dropped", {
+        let mut w = paused_take(Cause::User, 272_000);
+        if let Some(t) = w.take.as_mut() {
+            t.markers = 1;
+            t.marked_at_pause = true;
+        }
+        w
+    }));
     rows.push(("popover", "display-lost", "display-lost", {
         let mut w = paused_take(Cause::DisplayLost, 61_000);
         w.mac.displays = Fact::known(vec![], Mono(0));

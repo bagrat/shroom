@@ -489,6 +489,14 @@ fn paused(w: &World, cause: Cause, length_ms: u64) -> Popover {
             resume: Button::new(Action::Resume, copy::resume(), Style::Filled).enabled(resume_ok),
             restart: Button::new(Action::Restart, copy::restart(), Style::Plain),
             stop: Button::new(Action::Stop, copy::stop(), Style::Plain),
+            // N64: at a pause you made; the auto-pause faces stay as they were.
+            marker: (cause == Cause::User).then(|| {
+                if marker_offered(w) {
+                    Button::new(Action::DropMarker, copy::drop_marker(), Style::Plain)
+                } else {
+                    Button::new(Action::DropMarker, copy::marker_dropped(), Style::Plain).enabled(false)
+                }
+            }),
             discard: Button::new(Action::Discard, copy::discard_ellipsis(), Style::RedText),
         }),
         banner: None,
@@ -499,6 +507,12 @@ fn paused(w: &World, cause: Cause, length_ms: u64) -> Popover {
         activates: true,
         away_closes: false,
     }
+}
+
+/// Drop a marker is live (N64): a pause you made, no marker dropped at it yet, and no
+/// question open over it — the paused popover's row, and what ⌥⌘M does while paused.
+pub fn marker_offered(w: &World) -> bool {
+    w.session.confirm.is_none() && w.take.as_ref().is_some_and(|t| t.phase == Phase::Paused(Cause::User) && !t.marked_at_pause)
 }
 
 /// Whether the paused popover's Resume is live: the display, camera or Mac it waits for is

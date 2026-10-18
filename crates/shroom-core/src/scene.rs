@@ -285,7 +285,8 @@ pub struct Tray {
     pub click: Click,
     /// The one-item right-click menu ("Quit shroom") — idle only.
     pub right_menu: Option<String>,
-    /// ⌥⌘P is held (N54): only while a take is open, so it's other apps' the rest of the time.
+    /// ⌥⌘P and ⌥⌘M are held (N54, N64): only while a take is open, so they're other apps'
+    /// the rest of the time.
     pub shortcut: bool,
 }
 
@@ -366,6 +367,9 @@ pub struct PausedBody {
     pub resume: Button,
     pub restart: Button,
     pub stop: Button,
+    /// Drop a marker, between Finish & Share and Restart — a pause you made only (N64); it
+    /// reads Marker dropped, greyed, once used at this pause.
+    pub marker: Option<Button>,
     pub discard: Button,
 }
 
@@ -430,7 +434,11 @@ impl Popover {
                 out.extend(c.camera_settings.iter());
                 out.extend(c.mic_hint.iter());
             }
-            PopoverBody::Paused(p) => out.extend([&p.resume, &p.stop, &p.restart, &p.discard]),
+            PopoverBody::Paused(p) => {
+                out.extend([&p.resume, &p.stop]);
+                out.extend(p.marker.iter());
+                out.extend([&p.restart, &p.discard]);
+            }
             PopoverBody::Question(q) => out.extend(&q.buttons),
             PopoverBody::Stopped(s) => out.extend(&s.buttons),
         }
