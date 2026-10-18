@@ -473,11 +473,11 @@ fn pause(w: &mut World, cause: Cause) {
     }
 }
 
-/// The `shroom` command's ask (dev/proposals/cli-agent-skill.md §3): each op is exactly
-/// what its click does — Start as the popover's (its countdown, its permission beat),
-/// pause as the tray's, Resume and Stop as the paused popover's — and only while the
-/// person has turned on General's “Let it start and stop recordings”. Answered once, with
-/// a code (the command says the words).
+/// The `shroom` command's ask (spec N62, DECISIONS B216): each op is exactly what its click
+/// does — Start as the popover's (its countdown, its permission beat), pause as the tray's,
+/// Resume and Stop as the paused popover's — and only while the person has turned on
+/// General's “Let it start and stop recordings”. Answered once, always, with a code (the
+/// command says the words): the app holds the connection until it is.
 fn cli(w: &mut World, id: u64, op: crate::event::CliOp) -> Out {
     use crate::event::CliOp;
     let face = |w: &World| -> &'static str {
@@ -504,12 +504,16 @@ fn cli(w: &mut World, id: u64, op: crate::event::CliOp) -> Out {
     if matches!(phase, Some(Phase::Pausing(_) | Phase::Resuming | Phase::Finalizing(_))) {
         return refuse(w, "busy");
     }
+    // The count, and the recorder starting after it: the take is on its way.
+    let coming = w.session.arming.is_some() || matches!(phase, Some(Phase::Starting));
     let (mut fx, arm) = match op {
         CliOp::Start => {
             if w.take_open() {
                 return refuse(w, "take_open");
             }
-            // Start only where the popover would offer it, as if it were open now.
+            // Start only where the popover would offer it, as if it were open now. With it
+            // closed, the move is the machine's own edge idle-ready → countdown (N62).
+            let idle = w.session.popover.is_none() && derive(w).state_ids().contains(&"idle-ready");
             let was = w.session.popover.take();
             w.session.popover = Some(Door::asked(w.now));
             let offered = derive(w).popover.as_ref().is_some_and(|p| p.offers(&Action::Start));
@@ -517,25 +521,33 @@ fn cli(w: &mut World, id: u64, op: crate::event::CliOp) -> Out {
                 w.session.popover = was;
                 return refuse(w, "not_ready");
             }
-            let out = act(w, Action::Start);
+            let (fx, mut arm) = act(w, Action::Start);
             if w.session.arming.is_none() {
                 // Not started: a permission beat is asked first, or nothing at all.
                 w.session.popover = was;
-                let mut fx = out.0;
+                let mut fx = fx;
                 fx.push(answer(w, Some("not_ready"), None));
-                return (fx, out.1);
+                return (fx, arm);
             }
-            out
+            if was.is_none() {
+                arm.edge = idle.then_some(("idle-ready", "countdown"));
+            }
+            (fx, arm)
         }
+        _ if coming => return refuse(w, "busy"),
         CliOp::Pause => match phase {
             Some(Phase::Recording) => click(w, None),
             _ => return refuse(w, "no_take"),
         },
         CliOp::Resume => match phase {
             Some(Phase::Paused(cause)) if w.session.confirm.is_none() && crate::derive::resume_ok(w, cause) => act(w, Action::Resume),
+            // Paused, but its popover wouldn't offer Resume now: its source is gone, or it
+            // asks a question.
+            Some(Phase::Paused(_)) => return refuse(w, "not_ready"),
             _ => return refuse(w, "no_take"),
         },
         CliOp::Stop => match phase {
+            Some(Phase::Paused(_)) if w.session.confirm.is_some() => return refuse(w, "not_ready"),
             Some(Phase::Recording | Phase::Paused(_)) => act(w, Action::Stop),
             _ => return refuse(w, "no_take"),
         },
