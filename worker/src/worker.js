@@ -1404,7 +1404,14 @@ export function playerHtml(id, meta, base = "") {
  * (`shroomAt`/`shroomToSource`, held with `editsOf` to crates/shroom-edit's vectors). A
  * permanent copy plays as it is. And once the copy is up the original is out of reach
  * (`servedOnly`): a player that was playing the original asks `E.st`, the status, when its
- * media fails, and moves over to the copy at the same edited moment. */
+ * media fails, and moves over to the copy at the same edited moment.
+ *
+ * A `shroom:keep` event on the document (agreed with the voice-cut build, #59) hands the
+ * player new ranges to play, `detail: [[s, e], …]` on the recording's own clock: made safe
+ * as `editsOf` makes an edit (`shroomKeep`: numbers only, clamped to the recording's length
+ * `E.len`, merged, at most 500), they take the edit's place — the length, the seek bar and
+ * the playhead follow, a playhead in a cut moving on to the next range — unless the player
+ * plays a permanent copy (`E.copy`), which is the edit already. */
 export const PLAYER_JS = `function shroomPlay(v,s,f){if(/\\.mp4$/.test(s)||v.canPlayType("application/vnd.apple.mpegurl")){v.src=s;return}
 var t=document.createElement("script");t.src="/_shroom/hls.js";t.onload=function(){var h=new Hls({backBufferLength:90,maxBufferLength:6,maxMaxBufferLength:6});v.hls=h;
 v.addEventListener("play",function(){h.config.maxBufferLength=30;h.config.maxMaxBufferLength=600},{once:true});if(f)h.on(Hls.Events.ERROR,function(e,d){if(d&&(d.fatal||d.response&&d.response.code===404))f()});h.loadSource(s);h.attachMedia(v)};document.head.appendChild(t)}
@@ -1412,8 +1419,11 @@ function shroomClock(s,l){s=Math.max(0,+s||0);s=l?Math.round(s):Math.floor(s);va
 function shroomLength(K){for(var a=0,i=0;i<K.length;i++)a+=K[i][1]-K[i][0];return a}
 function shroomAt(K,t){for(var a=0,i=0;i<K.length;i++){if(t<K[i][1])return a+Math.max(0,t-K[i][0]);a+=K[i][1]-K[i][0]}return a}
 function shroomToSource(K,e){for(var a=0,i=0;i<K.length;i++){var n=K[i][1]-K[i][0];if(e<a+n)return K[i][0]+Math.max(0,e-a);a+=n}return K.length?K[K.length-1][1]:0}
+function shroomKeep(R,D){var a=[],m=[],i,r,s,e;if(!Array.isArray(R))return m;D=D>0?D:Infinity;
+for(i=0;i<R.length&&a.length<500;i++){r=R[i];if(!Array.isArray(r)||typeof r[0]!=="number"||typeof r[1]!=="number"||!isFinite(r[0])||!isFinite(r[1]))continue;s=Math.min(D,Math.max(0,r[0]));e=Math.min(D,Math.max(0,r[1]));if(e>s)a.push([s,e])}
+a.sort(function(x,y){return x[0]-y[0]});for(i=0;i<a.length;i++){r=m[m.length-1];if(r&&a[i][0]<=r[1]){if(a[i][1]>r[1])r[1]=a[i][1]}else m.push(a[i])}return m}
 function shroomPlayer(p,s,L,E){var v=p.querySelector("video"),pp=p.querySelector(".pp"),sk=p.querySelector(".seek"),tm=p.querySelector(".time"),fs=p.querySelector(".fs"),sp=p.querySelector(".sp"),mu=p.querySelector(".mu"),known=+p.getAttribute("data-dur")||0,held=false,idle=0,R=[1,1.25,1.5,2],
-K=E&&E.keep&&E.keep.length?E.keep:null,fin=false,aim=-1,raf=0,busy=false;
+K=E&&E.keep&&E.keep.length?E.keep:null,len=E&&+E.len||0,cp=!!(E&&E.copy),fin=false,aim=-1,raf=0,busy=false;
 function dur(){return K?shroomLength(K):isFinite(v.duration)&&v.duration>0?v.duration:known}
 function at(){var t=v.currentTime||0;return K?shroomAt(K,t):t}
 function ahead(t){var b=v.buffered,e=0;try{for(var i=0;i<b.length;i++)if(b.start(i)<=t+1&&b.end(i)>e)e=b.end(i)}catch(x){}return e}
@@ -1423,7 +1433,7 @@ function skip(){if(!K)return;var t=v.currentTime||0,n=K.length,i=0;while(i<n&&t>
 if(i===n){fin=true;if(!v.paused)v.pause();paint();return}if(t<K[i][0]-.001&&Math.abs(t-aim)>.05){aim=K[i][0];v.currentTime=aim}}
 function tick(){raf=0;if(!K||v.paused||v.ended)return;skip();if(!v.paused)raf=requestAnimationFrame(tick)}
 function fail(){if(busy||!E||!E.st)return;busy=true;fetch(E.st,{cache:"no-store"}).then(function(r){return r.json()}).then(function(x){var c=x&&x.copy;if(!c||!c.src||c.src===s)return;
-var t=v.currentTime||0,e=K?shroomAt(K,t):x.keep&&x.keep.length?shroomAt(x.keep,t):0,go=!v.paused&&!fin;K=null;fin=false;s=c.src;known=+c.dur||known;if(c.poster)v.poster=c.poster;if(v.hls){v.hls.destroy();v.hls=null}
+var t=v.currentTime||0,e=K?shroomAt(K,t):x.keep&&x.keep.length?shroomAt(x.keep,t):0,go=!v.paused&&!fin;K=null;cp=true;fin=false;s=c.src;known=+c.dur||known;if(c.poster)v.poster=c.poster;if(v.hls){v.hls.destroy();v.hls=null}
 v.addEventListener("loadedmetadata",function(){v.currentTime=e;if(go){var r=v.play();if(r&&r.catch)r.catch(function(){})}},{once:true});shroomPlay(v,s,fail);paint()}).catch(function(){}).then(function(){busy=false})}
 function wake(){p.classList.remove("idle");clearTimeout(idle);if(!v.paused&&!v.ended)idle=setTimeout(function(){var a=document.activeElement;if(!(a&&a!==v&&p.contains(a)))p.classList.add("idle")},2500)}
 function mode(){var on=!v.paused&&!v.ended;p.classList.toggle("playing",on);if(on)p.classList.add("started");pp.setAttribute("aria-label",on?L.pause:L.play);wake()}
@@ -1443,6 +1453,8 @@ else if(k==="Home")to(0);else if(k==="End")to(dur());else if(k==="f"||k==="F")fs
 pp.addEventListener("click",toggle);v.addEventListener("click",toggle);v.addEventListener("dblclick",fsToggle);fs.addEventListener("click",fsToggle);sp.addEventListener("click",faster);mu.addEventListener("click",hush);
 v.addEventListener("play",function(){if(!K)return;if(fin){fin=false;v.currentTime=K[0][0]}skip();if(!raf)raf=requestAnimationFrame(tick)});
 v.addEventListener("seeking",function(){if(!K)return;fin=false;skip()});v.addEventListener("timeupdate",skip);v.addEventListener("error",fail);
+document.addEventListener("shroom:keep",function(ev){if(cp)return;var D=len>0?len:isFinite(v.duration)&&v.duration>0?v.duration:0,k=shroomKeep(ev&&ev.detail,D);if(!k.length)return;
+K=D&&k.length===1&&k[0][0]<=0&&k[0][1]>=D?null:k;if(!K)known=D||known;aim=-1;fin=false;skip();if(K&&!v.paused&&!raf)raf=requestAnimationFrame(tick);paint()});
 ["play","pause","ended"].forEach(function(e){v.addEventListener(e,mode)});
 ["timeupdate","durationchange","loadedmetadata","seeked","emptied","progress"].forEach(function(e){v.addEventListener(e,paint)});
 v.addEventListener("ratechange",rate);v.addEventListener("volumechange",sound);
@@ -1453,9 +1465,10 @@ document.addEventListener("keydown",function(e){if(e.target===document.body)key(
 shroomPlay(v,s,fail);paint();rate();sound()}`;
 
 /** The player's last argument (N63): the ranges that play, when an edit plays over the
- * original — numbers only — and the status it asks when its media fails.
+ * original — numbers only; the recording's own length, which `shroom:keep`'s ranges are
+ * held to; the status it asks when its media fails; and whether it plays the permanent copy.
  * @param {string} id @param {View} view */
-const playing = (id, view) => jsonForScript(JSON.stringify({ keep: view.keep, st: `/_shroom/status/${id}` }));
+const playing = (id, view) => jsonForScript(JSON.stringify({ keep: view.keep, len: view.whole, st: `/_shroom/status/${id}`, copy: !!view.copy }));
 
 /** Copy to the clipboard, saying whether it happened: the Clipboard API, else the older
  * copy command; when neither works, the visible text (if any) is selected so ⌘C does
@@ -1648,7 +1661,7 @@ if(s.state==="removed"){var m=document.querySelector("main"),p=document.createEl
 if(c.pend&&s.state!=="waiting")send(c.pend);
 if(s.state==="live"){if(s.dur)th.length(shroomClock(s.dur,true));if(s.teaser)th.teaser();if(!c.live){c.live=true;tb.hidden=false;th.live();var w=document.getElementById("w"),h=document.createElement("div");h.innerHTML=c.player;var pl=h.firstChild;
 var cp=s.copy,ps=cp&&cp.poster||(s.poster?"/m/"+c.id+"/poster.jpg":"");if(s.dur)pl.setAttribute("data-dur",s.dur);if(ps)pl.querySelector("video").poster=ps;w.replaceWith(pl);
-shroomPlayer(pl,cp?cp.src:src,c.labels,{keep:cp?null:s.keep||null,st:"/_shroom/status/"+c.id})}
+shroomPlayer(pl,cp?cp.src:src,c.labels,{keep:cp?null:s.keep||null,st:"/_shroom/status/"+c.id,copy:!!cp})}
 if(s.drained)th.drained();
 if(s.drained){if(bar&&!c.done){c.done=true;up.textContent=c.ready;ul.classList.add("done");showBar(true,false);bar.style.width="100%";setTimeout(function(){ul.classList.add("fade");setTimeout(function(){ul.hidden=true;up.textContent="";if(bar){bar.parentNode.remove();bar=null}},400)},3000)}else if(!c.done){ul.hidden=true;up.textContent="";if(bar){bar.parentNode.remove();bar=null}}}else{ul.hidden=false;up.textContent=s.stalled?c.waiting:c.upA+s.pct+"%"+c.upB;showBar(true,!s.stalled);if(bar)bar.style.width=s.pct+"%"}
 if(s.mp4){if(!dl.firstChild){var a=document.createElement("a");a.href="/d/"+c.id;a.textContent=c.dl;dl.appendChild(a)}if(s.drained)return}
