@@ -64,6 +64,13 @@ fn with_popover(mut w: World) -> World {
     w
 }
 
+/// The setup Mac's popover while the space's AI is off: its banner is due (N66).
+fn ai_offered() -> World {
+    let mut w = with_popover(ready());
+    w.space.ai = Some(false);
+    w
+}
+
 fn library_with(mut w: World, rows: Vec<LibraryRow>) -> World {
     w.session.windows.insert(WindowKind::Library, Door::asked(Mono(900)));
     w.library = Fact::known(Arc::new(rows), Mono(950));
@@ -293,16 +300,30 @@ fn rows() -> Vec<(&'static str, World)> {
         w
     }));
     rows.push(("library-empty", library_with(ready(), vec![])));
-    // N66: the setup Mac's Library, naming off and the card not yet answered.
-    rows.push(("library-ai-offer", {
-        let mut w = library(ready());
-        w.space.ai = Some(false);
+    // N66 (Bagrat, 2026-10-18): the setup Mac's popover while the space's AI is off — its
+    // banner, the confirm Turn on… opens, the banner while the page is re-wired and when that
+    // didn't go through, and the line once it's on.
+    rows.push(("ai-offer", ai_offered()));
+    rows.push(("ai-confirm", {
+        let mut w = ai_offered();
+        w.session.confirm = Some(Confirm::Ai);
         w
     }));
-    rows.push(("library-ai-offer", {
-        let mut w = library(ready());
-        w.space.ai = Some(false);
+    rows.push(("ai-turning-on", {
+        let mut w = ai_offered();
+        w.session.ai_turning_on = true;
+        w.inflight.ops.insert(Op::Ai, Mono(990).plus(Op::Ai.deadline_ms()));
+        w
+    }));
+    rows.push(("ai-offer-failed", {
+        let mut w = ai_offered();
         w.inflight.failures.insert(Op::Ai, Failure { at: Mono(990), class: FailClass::Transport, tries: 1 });
+        w
+    }));
+    rows.push(("ai-on", {
+        let mut w = with_popover(ready());
+        w.space.ai = Some(true);
+        w.session.ai_on_news = true;
         w
     }));
     rows.push(("library-no-match", {
@@ -615,6 +636,11 @@ fn every_region5_state_derives_with_its_return_default_and_its_lines() {
             let want_esc = (!f.sending).then_some(Action::CloseFeedback);
             if scene.esc(surface) != want_esc {
                 failures.push(format!("{id}: Esc is {:?}, want {want_esc:?}", scene.esc(surface)));
+            }
+        } else if id == "ai-confirm" {
+            // The popover's question (N66): Turn on is Return, Back is Esc.
+            if scene.ret(surface) != Some(Action::AiOn) || scene.esc(surface) != Some(Action::Back) {
+                failures.push(format!("{id}: Return {:?}, Esc {:?}", scene.ret(surface), scene.esc(surface)));
             }
         } else if !structural {
             let got = scene.ret(surface);
@@ -2050,7 +2076,7 @@ fn naming_is_a_switch_on_the_setup_mac_that_re_wires_the_page() {
     let mut r = Run::new(w);
     let t = space_pane(&r.scene).ai.clone().expect("the switch");
     assert_eq!((t.label.as_str(), t.on, t.enabled), (shroom_core::copy::ai_label().as_str(), false, true));
-    assert_eq!(space_pane(&r.scene).ai_line, Some(shroom_core::copy::ai_line()));
+    assert_eq!(space_pane(&r.scene).ai_line, Some(shroom_core::copy::ai_cost()));
     r.set(Action::SetAi(true));
     assert!(r.has(|e| *e == Effect::Cloud(CloudCmd::SetAi(true))));
     assert!(!space_pane(&r.scene).ai.as_ref().unwrap().enabled, "greys while the page is re-wired");
@@ -2063,7 +2089,7 @@ fn naming_is_a_switch_on_the_setup_mac_that_re_wires_the_page() {
     assert_eq!(space_pane(&r.scene).ai_line, Some(shroom_core::copy::ai_failed()), "and it says so (law 12)");
     r.set(Action::SetAi(false));
     r.send(Event::Cloud(CloudNews::AiSet(false)));
-    assert_eq!(space_pane(&r.scene).ai_line, Some(shroom_core::copy::ai_line()), "until it goes through");
+    assert_eq!(space_pane(&r.scene).ai_line, Some(shroom_core::copy::ai_cost()), "until it goes through");
     let mut w = space_tab();
     w.space.ai = Some(true);
     w.take = Some(OpenTake { opened: Mono(950), since: Mono(950), ..take(Phase::Recording, 61_000) });
@@ -2082,55 +2108,113 @@ fn the_page_check_says_whether_naming_is_on() {
     assert_eq!(r.w.space.ai, Some(true));
 }
 
-/// N66: the Library on the setup Mac offers naming once, at its top, until it's answered:
-/// Turn on does what the switch does; Not now puts it away for good on this Mac.
+/// N66 (Bagrat, 2026-10-18: off by default, but visible): on the setup Mac, while the space's
+/// AI is off, the popover's lowest banner offers it. Turn on… asks first, with what it costs;
+/// Turn on re-wires the page, the banner says so, a Turn on that didn't go through says that
+/// (law 12), and once it's on the status line says it, once.
 #[test]
-fn the_library_offers_naming_once_on_the_setup_mac() {
-    let offered = || {
-        let mut w = library(ready());
-        w.space.ai = Some(false);
-        w
-    };
-    let r = Run::new(offered());
-    let o = r.scene.library.as_ref().unwrap().body.offer.clone().expect("the card");
-    assert_eq!((o.title.as_str(), o.line.as_str()), (shroom_core::copy::ai_offer_title().as_str(), shroom_core::copy::ai_offer_line().as_str()));
-    assert_eq!((o.on.label.as_str(), o.on.style, o.on.enabled), (shroom_core::copy::turn_on().as_str(), Style::Filled, true));
-    assert_eq!((o.not_now.label.as_str(), o.not_now.style), (shroom_core::copy::not_now().as_str(), Style::Quiet));
-    assert!(r.scene.state_ids().contains(&"library-ai-offer"));
+fn the_popover_offers_ai_on_the_setup_mac() {
+    let banner = |r: &Run| r.scene.popover.as_ref().and_then(|p| p.banner.clone());
+    let labels = |b: &shroom_core::scene::Banner| b.buttons.iter().map(|x| (x.label.clone(), x.style)).collect::<Vec<_>>();
+    let mut r = Run::new(ai_offered());
+    let b = banner(&r).expect("the banner");
+    assert_eq!((b.id, b.tone, b.line.as_str()), ("ai-offer", shroom_core::scene::Tone::Frost, shroom_core::copy::ai_banner().as_str()));
+    assert_eq!(labels(&b), [(shroom_core::copy::turn_on_ask(), Style::Filled), (shroom_core::copy::not_now(), Style::Link)]);
+    assert_eq!(r.scene.popover.as_ref().unwrap().ret, Some(Action::Start), "a banner's own button is never Return (law 8)");
 
-    let mut r = Run::new(offered());
-    r.lib(Action::AiNotNow);
-    assert!(r.scene.library.as_ref().unwrap().body.offer.is_none());
-    assert!(r.has(|e| matches!(e, Effect::Persist(PersistOp::Once(o)) if o.ai_offer)), "remembered on this Mac");
+    // Turn on… asks first: what it does and costs, Turn on the default, Back and Esc out.
+    r.act(Action::AiAsk);
+    let p = r.scene.popover.clone().unwrap();
+    assert_eq!(p.id, "ai-confirm");
+    let shroom_core::scene::PopoverBody::Question(q) = &p.body else { panic!("a question") };
+    assert_eq!((q.title.as_str(), q.line.as_str()), (shroom_core::copy::ai_confirm_title().as_str(), shroom_core::copy::ai_cost().as_str()));
+    assert_eq!(q.buttons.iter().map(|b| b.label.clone()).collect::<Vec<_>>(), [shroom_core::copy::back(), shroom_core::copy::turn_on()]);
+    assert_eq!((p.ret, p.esc), (Some(Action::AiOn), Some(Action::Back)));
+    assert!(!r.has(|e| matches!(e, Effect::Cloud(CloudCmd::SetAi(_)))), "asking costs nothing");
+    r.act(Action::Back);
+    assert_eq!(banner(&r).map(|b| b.id), Some("ai-offer"), "back: the banner stays");
+
+    // Turn on: the page is re-wired, and the banner says so with nothing to press.
+    r.act(Action::AiAsk).act(Action::AiOn);
+    assert!(r.has(|e| *e == Effect::Cloud(CloudCmd::SetAi(true))));
+    let b = banner(&r).unwrap();
+    assert_eq!((b.id, b.line.as_str(), b.buttons.len()), ("ai-turning-on", shroom_core::copy::ai_turning_on().as_str(), 0));
+    assert!(r.scene.state_ids().contains(&"ai-offer"));
+
+    // It didn't go through: said in place of the line, Turn on… live again (law 12).
+    r.send(Event::Failed { op: Op::Ai, class: FailClass::Transport });
+    let b = banner(&r).unwrap();
+    assert_eq!((b.id, b.line.as_str()), ("ai-offer-failed", shroom_core::copy::ai_failed().as_str()));
+    assert_eq!(labels(&b), [(shroom_core::copy::turn_on_ask(), Style::Filled), (shroom_core::copy::not_now(), Style::Link)]);
+
+    // Again, and it's on: the banner goes, the status line says so once, and it's done here.
+    r.act(Action::AiAsk).act(Action::AiOn);
+    r.send(Event::Cloud(CloudNews::AiSet(true)));
+    assert!(banner(&r).is_none());
+    assert_eq!(status(&r.scene), Some(shroom_core::copy::ai_on_said()));
+    assert!(r.scene.state_ids().contains(&"ai-on"));
+    assert!(r.has(|e| matches!(e, Effect::Persist(PersistOp::Once(o)) if o.ai_banner.done)), "answered for good on this Mac");
+    r.act(Action::Dismiss);
+    r.click();
+    assert_ne!(status(&r.scene), Some(shroom_core::copy::ai_on_said()), "said once");
+}
+
+/// N66: Not now hides the banner; after five more recordings on this Mac it's back once, and
+/// a second Not now is for good. AI turned on anywhere answers it too.
+#[test]
+fn not_now_hides_the_ai_banner_until_five_more_recordings_then_for_good() {
+    let due = |w: &World| derive(w).popover.and_then(|p| p.banner).is_some_and(|b| b.id == "ai-offer");
+    let mut r = Run::new(ai_offered());
+    r.act(Action::AiNotNow);
+    assert!(r.scene.popover.as_ref().unwrap().banner.is_none());
+    assert!(r.has(|e| matches!(e, Effect::Persist(PersistOp::Once(o)) if o.ai_banner.not_now == 1 && o.ai_banner.takes == 0)));
     assert!(!r.has(|e| matches!(e, Effect::Cloud(CloudCmd::SetAi(_)))));
 
-    // Turn on: what the switch does; the card stays, Turn on greyed, until the page answers.
-    let mut r = Run::new(offered());
-    r.lib(Action::AiOn);
-    assert!(r.has(|e| *e == Effect::Cloud(CloudCmd::SetAi(true))));
-    assert!(r.scene.library.as_ref().unwrap().body.offer.as_ref().is_some_and(|o| !o.on.enabled));
-    r.send(Event::Failed { op: Op::Ai, class: FailClass::Transport });
-    let o = r.scene.library.as_ref().unwrap().body.offer.clone().expect("still offered");
-    assert_eq!((o.line, o.on.enabled), (shroom_core::copy::ai_failed(), true), "a Turn on that didn't go through says so (law 12)");
-    r.lib(Action::AiOn);
-    r.send(Event::Cloud(CloudNews::AiSet(true)));
-    assert!(r.scene.library.as_ref().unwrap().body.offer.is_none(), "on: the card goes");
-    assert!(r.has(|e| matches!(e, Effect::Persist(PersistOp::Once(o)) if o.ai_offer)), "and for good, even if it's turned off later");
+    // A recording that makes a link counts.
+    let mut w = ai_offered();
+    w.once.ai_banner.not_now = 1;
+    w.session.popover = None;
+    w.take = Some(OpenTake { phase: Phase::Finalizing(Why::Stop), ..take(Phase::Recording, 61_000) });
+    let mut r = Run::new(w);
+    r.send(Event::Rec(RecNews::Finalized(Ok(61_000))));
+    assert!(r.has(|e| matches!(e, Effect::Persist(PersistOp::Once(o)) if o.ai_banner.takes == 1)));
 
-    let not: [fn(&mut World); 3] = [|w| w.space.ai = Some(true), |w| w.space.ai = None, |w| w.once.ai_offer = true];
-    for f in not {
-        let mut w = offered();
-        f(&mut w);
-        assert!(derive(&w).library.unwrap().body.offer.is_none());
+    for (takes, back) in [(4, false), (5, true), (40, true)] {
+        let mut w = ai_offered();
+        w.once.ai_banner.not_now = 1;
+        w.once.ai_banner.takes = takes;
+        assert_eq!(due(&w), back, "{takes} recordings after Not now");
     }
-    // Offline or mid-take, Turn on waits; Not now still answers it.
-    let mut w = offered();
-    w.net.online = Fact::known(false, Mono(900));
-    let o = derive(&w).library.unwrap().body.offer.unwrap();
-    assert!(!o.on.enabled && o.not_now.enabled);
-    let mut w = offered();
-    w.take = Some(OpenTake { opened: Mono(950), since: Mono(950), ..take(Phase::Recording, 61_000) });
-    assert!(!derive(&w).library.unwrap().body.offer.unwrap().on.enabled);
+    let mut w = ai_offered();
+    w.once.ai_banner.not_now = 1;
+    w.once.ai_banner.takes = 5;
+    let mut r = Run::new(w);
+    r.act(Action::AiNotNow);
+    assert!(r.has(|e| matches!(e, Effect::Persist(PersistOp::Once(o)) if o.ai_banner.not_now == 2)));
+    let mut w = ai_offered();
+    w.once.ai_banner.not_now = 2;
+    w.once.ai_banner.takes = 500;
+    assert!(!due(&w), "twice is for good");
+
+    // On from Settings answers it too, even if it's turned off again later.
+    let mut r = Run::new(ai_offered());
+    r.send(Event::Cloud(CloudNews::AiSet(true)));
+    assert!(r.has(|e| matches!(e, Effect::Persist(PersistOp::Once(o)) if o.ai_banner.done)));
+    let mut w = ai_offered();
+    w.once.ai_banner.done = true;
+    assert!(!due(&w));
+}
+
+/// N66: the banner sits under every other banner, and never mid-take or while the space's
+/// AI is unknown.
+#[test]
+fn the_ai_banner_is_the_lowest_banner() {
+    let mut w = ai_offered();
+    w.mac.screen = Fact::known(false, Mono(0));
+    assert_eq!(derive(&w).popover.unwrap().banner.map(|b| b.id), Some("recording-off"));
+    let mut w = ai_offered();
+    w.space.ai = None;
+    assert!(derive(&w).popover.unwrap().banner.is_none(), "unknown: nothing offered");
 }
 
 /// N66: only the Mac that holds the setup key can re-wire the page, so only it shows naming:
@@ -2145,7 +2229,7 @@ fn naming_shows_only_where_the_setup_key_is() {
         if let Some(SettingsPane::Space(sp)) = derive(&w).settings.as_ref().map(|s| &s.body.pane) {
             assert!(sp.ai.is_none(), "{role:?}");
         }
-        let w = library(w);
-        assert!(derive(&w).library.unwrap().body.offer.is_none(), "{role:?}");
+        let w = with_popover(w);
+        assert!(derive(&w).popover.unwrap().banner.is_none(), "{role:?}");
     }
 }
