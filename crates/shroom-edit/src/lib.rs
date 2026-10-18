@@ -52,6 +52,9 @@ pub struct Cut {
     pub kind: CutKind,
     pub confidence: Confidence,
     pub applied: bool,
+    /// What plays right before the cut (for a review list). Never sent to viewers.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub leads: Option<String>,
     /// What the cut removes, as transcribed (for a review list). Never sent to viewers.
     #[serde(default)]
     pub removed: String,
@@ -73,6 +76,7 @@ impl Cut {
             kind: CutKind::Manual,
             confidence: Confidence::High,
             applied: true,
+            leads: None,
             removed: String::new(),
             resumes: None,
             why: String::new(),
