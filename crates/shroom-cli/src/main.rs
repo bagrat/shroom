@@ -786,7 +786,7 @@ fn invite_batch(a: &Args, rest: &[String]) -> Result<Done, Fail> {
     if !a.dry_run && !a.yes && outcomes.iter().any(would) {
         let lines = outcomes.iter().map(|o| o.line.clone()).collect::<Vec<_>>().join("\n");
         return Err(Fail::NeedsConfirmation {
-            message: format!("This gives each of these people their own link to join your space, for 7 days:\n{lines}\nCheck the list with them, then run it again with --yes once that's what they want."),
+            message: format!("This gives each of these people their own link to join your space, for 7 days:\n{lines}\nRun it again with --yes once that's who you mean."),
             what: "would_invite",
             would: outcomes.into_iter().map(|o| o.json).collect(),
         });
