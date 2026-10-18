@@ -130,10 +130,36 @@ fn a_sentence_trailing_off_into_an_ellipsis_is_broken_off_too() {
 }
 
 #[test]
+fn a_full_stop_on_a_word_no_sentence_ends_on_is_broken_off_too() {
+    // Whisper puts a full stop where the speaker stopped (the stock-voice take of these
+    // words came back "…and you will. Shroom cut."), but no sentence ends on “will”.
+    assert_eq!(
+        kept(&reworded("will.")),
+        "Hi, this is a quick test of the voice cut. To get your video, use this link and you'll see it right away."
+    );
+}
+
+#[test]
 fn a_sentence_that_ended_cleanly_keeps_to_the_cue_and_offers_the_line() {
-    // “…and you'll see it.” ends cleanly; nothing like it follows the cue.
-    let t = reworded("will.");
-    let list = plan(&t, Options::default());
+    // “Click on this link to see it.” is whole; nothing like it follows the cue.
+    let finished = [
+        ("Click", 6.5, 6.8),
+        ("on", 6.85, 6.95),
+        ("this", 7.0, 7.2),
+        ("link", 7.25, 7.55),
+        ("to", 7.6, 7.7),
+        ("see", 7.75, 7.95),
+        ("it.", 8.0, 8.2),
+        ("shroom", 8.9, 9.3),
+        ("cut.", 9.35, 9.8),
+    ];
+    let words: Vec<(&str, f64, f64)> = BEFORE
+        .iter()
+        .chain(finished.iter())
+        .chain(AFTER.iter())
+        .copied()
+        .collect();
+    let list = plan(&take(&words, QUIET, 18.9), Options::default());
     let kinds: Vec<(CutKind, bool)> = list.cuts.iter().map(|c| (c.kind, c.applied)).collect();
     assert_eq!(
         kinds,

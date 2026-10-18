@@ -1,0 +1,30 @@
+[
+ {
+  "say": "Hi, this is a quick test of the voice cut.",
+  "role": "keep",
+  "pause": 0.9,
+  "start": 0.0,
+  "end": 2.229
+ },
+ {
+  "say": "Click on this link and you will",
+  "role": "flub",
+  "pause": 0.7,
+  "start": 3.129,
+  "end": 4.499
+ },
+ {
+  "say": "shroom cut.",
+  "role": "cue",
+  "pause": 1.0,
+  "start": 5.199,
+  "end": 5.838
+ },
+ {
+  "say": "To get your video, use this link and you'll see it right away.",
+  "role": "keep",
+  "pause": 0,
+  "start": 6.838,
+  "end": 9.682
+ }
+]
