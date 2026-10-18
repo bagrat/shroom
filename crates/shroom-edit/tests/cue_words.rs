@@ -6,8 +6,12 @@
 //! judgment says the speaker meant it for whoever edits the video; with no judgment, only
 //! “shroom cut” counts.
 
+use std::fs;
+use std::path::Path;
+
 use shroom_edit::{
-    CueWords, Meant, Options, Said, Silence, Transcript, find_cues_in, intents, plan_meant,
+    Answer, CueWords, EditList, Meant, Options, Said, Silence, Transcript, find_cues_in, intents,
+    plan_meant,
 };
 
 /// Words a second apart unless a time is given: (text, start, end).
@@ -157,4 +161,72 @@ fn the_relaxed_set_hears_the_other_ways_of_saying_it() {
             "{cue:?}"
         );
     }
+}
+
+/// Bagrat's take in plain mode on the tester (2026-10-18), as it heard him: the words and the
+/// silences, what the gate said each “cut” was meant for, and the judgment's answers
+/// (tests/plain/hand-bagrat-tester-plain).
+fn his_plain_take() -> (Transcript, Vec<Meant>, Vec<Answer>) {
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/plain/hand-bagrat-tester-plain");
+    let read = |f: &str| -> serde_json::Value {
+        serde_json::from_str(&fs::read_to_string(dir.join(f)).unwrap()).unwrap()
+    };
+    (
+        serde_json::from_value(read("transcript.json")).unwrap(),
+        serde_json::from_value(read("gated.json")["meant"].clone()).unwrap(),
+        serde_json::from_value(read("judged.json")["answers"].clone()).unwrap(),
+    )
+}
+
+#[test]
+fn his_plain_take_cuts_what_the_gate_let_in_and_the_miss_was_the_gates() {
+    // “…the link is pasted. Cut. You press stop and the link is copied and that's it. No, no,
+    // cut. When you want to get the link to your video…”: both are asked about; the gate let
+    // in “Cut.” (0.77) and not “No, no, cut.” (0.31), so the line he said again stayed (“Not
+    // good”). Plain “cut” is set aside (B203 (d)): this holds what the planner does with the
+    // gate's word, for if it comes back.
+    let (t, meant, answers) = his_plain_take();
+    let asked = intents(&t, opts(CueWords::Plain));
+    assert_eq!(
+        asked
+            .iter()
+            .map(|i| (i.word, i.said.as_str()))
+            .collect::<Vec<_>>(),
+        [(40, "Cut."), (54, "cut.")]
+    );
+    let removed = |list: &EditList| -> Vec<String> {
+        list.cuts
+            .iter()
+            .filter(|c| c.applied)
+            .map(|c| c.removed.clone())
+            .collect()
+    };
+    assert_eq!(
+        removed(&plan_meant(&t, opts(CueWords::Plain), &meant, &answers)),
+        [
+            "Today I'll show you how to share and how to shroom cut.",
+            "You press stop and the link is pasted. Cut."
+        ]
+    );
+    // Had the gate said yes, the cue would go with its “No, no,”; how far back the line said
+    // again in other words reaches is the judgment's (here, a yes on the farther start).
+    let yes: Vec<Meant> = meant
+        .iter()
+        .map(|m| Meant {
+            word: m.word,
+            score: if m.word == 54 { 0.9 } else { m.score },
+        })
+        .collect();
+    let cut = removed(&plan_meant(&t, opts(CueWords::Plain), &yes, &answers));
+    assert_eq!(cut.last().map(String::as_str), Some("No, no, cut."));
+    let mut more = answers.clone();
+    more.push(Answer {
+        cue: 2,
+        scores: vec![0.9, 0.8],
+    });
+    let cut = removed(&plan_meant(&t, opts(CueWords::Plain), &yes, &more));
+    assert_eq!(
+        cut.last().map(String::as_str),
+        Some("You press stop and the link is copied and that's it. No, no, cut.")
+    );
 }

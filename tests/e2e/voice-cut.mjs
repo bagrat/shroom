@@ -1,6 +1,6 @@
 // Voice cuts from capture to the owner page (spec N65), on the dedicated test account, after
 // the e2e run's wizard has wired the run's space (tests/e2e/full.mjs): the space turned to
-// listen as a person turns it (`--drive ai`, N66's banner and its confirm), then one take
+// listen as a person turns it (the live drive's `--ai`: N66's banner and its confirm), then one take
 // whose sound is the Mac's own stock voice saying a slip, “shroom cut”, and the line again,
 // twice, in place of the beep (`--voice`); Stop → the page live → the space hears the take →
 // this Mac plans the cuts, asks the space's Clef how far back the second redo reaches, and
@@ -14,7 +14,7 @@
 // voice-cut/summary.json, strip.webm — the owner page as the cuts land —, strip.png,
 // before.wav and after.wav — the take's sound as recorded, and cut where the strip says with
 // the editor's 30 ms fades at each join —, and voice-cut.mp4, the strip over the cut sound)
-// and a build that turns the AI on (N66's `--drive ai`). Prints one JSON summary. Exit 0:
+// and a build whose live drive turns the AI on (`--ai`, N66). Prints one JSON summary. Exit 0:
 // every check held; 1: one didn't, or the path broke; 64: this build can't turn the AI on.
 //
 // No one's voice: the speech is macOS's `say`. No secret: the owner's one-time key reaches
@@ -28,10 +28,10 @@ import { chromium } from "playwright";
 import { refuseOffTestMachine } from "../test-machine.mjs";
 
 refuseOffTestMachine("voice-cut.mjs");
-// Without N66's drive, `--drive ai` would read as a heartbeat's report path and record.
+// Voice cuts need the space to listen: a build whose live drive can't turn the AI on is refused.
 const repo = path.resolve(path.dirname(new URL(import.meta.url).pathname), "../..");
-if (!fs.readFileSync(path.join(repo, "app/src-tauri/src/drives.rs"), "utf8").includes('"ai" => Region5::Ai')) {
-  console.error("voice-cut.mjs: this build has no `--drive ai` (N66); voice cuts need the space to listen");
+if (!fs.readFileSync(path.join(repo, "app/src-tauri/src/harness.rs"), "utf8").includes("pub fn drive_ai(")) {
+  console.error("voice-cut.mjs: this build's live drive can't turn the AI on (`--ai`, N66); voice cuts need the space to listen");
   process.exit(64);
 }
 
@@ -76,22 +76,14 @@ try {
   check("the speech fits the take", said > 10 && said < SECONDS - 3, `${said.toFixed(1)} s of speech in a ${SECONDS} s take`);
   fs.copyFileSync(wav, path.join(out, "speech.wav"));
 
-  // 2. The space turned to listen, as a person turns it: the banner, its confirm, Turn on.
-  spawnSync("pkill", ["-f", DRIVE_PROC]);
-  const aiReport = path.join(work, "ai.json");
-  const ai = spawn("open", ["-W", "-n", installed, "--args", "--e2e", "--drive", "ai", aiReport], { stdio: "ignore" });
-  await Promise.race([new Promise((ok) => ai.once("exit", ok)), sleep(240_000)]);
-  const turned = readJson(aiReport);
-  const failed = (turned?.checks ?? []).filter(([, ok]) => !ok).map(([what, , seen]) => `${what}: ${seen}`);
-  check("the space listens (the AI turned on)", turned && !turned.error && failed.length === 0, turned?.error ?? (failed.join("; ") || "on"));
-  if (!summary.checks["the space listens (the AI turned on)"].ok) throw new Error("the AI didn't turn on");
-
-  // 3. The take: the pattern on the screen, the speech in place of the microphone. The drive
-  // stops, waits for the upload, leaves the owner's key beside its report and holds there
-  // until this script asks for the delete — while this Mac's voice lane runs.
+  // 2–3. The live drive: the space turned to listen as a person turns it (the popover's AI
+  // banner, Turn on…, its confirm's Turn on), then the take — the pattern on the screen, the
+  // speech in place of the microphone. It stops, waits for the upload, leaves the owner's key
+  // beside its report and holds there until this script asks for the delete, while this
+  // Mac's voice lane runs. (A drive of the AI alone, `--drive ai`, is the fake's only.)
   spawnSync("pkill", ["-f", DRIVE_PROC]);
   const report = path.join(work, "drive.json");
-  driving = spawn("open", ["-W", "-n", installed, "--args", "--e2e", "--drive", report, String(SECONDS), "--voice", wav], { stdio: "ignore" });
+  driving = spawn("open", ["-W", "-n", installed, "--args", "--e2e", "--drive", report, String(SECONDS), "--voice", wav, "--ai"], { stdio: "ignore" });
   let drive = null;
   for (const until = Date.now() + (SECONDS + 300) * 1000; Date.now() < until;) {
     drive = readJson(report);
@@ -99,6 +91,8 @@ try {
     if (driving.exitCode !== null) break;
     await sleep(250);
   }
+  const listens = (drive?.steps ?? []).some(([step]) => step === "AI is on");
+  check("the space listens (the AI turned on)", listens, listens ? "on" : drive?.error ?? "no step said so");
   if (!drive || drive.error || drive.phase !== "live") throw new Error(`the take: ${drive?.error ?? drive?.phase ?? "no report"}`);
   const stopAt = drive.stop_at_ms;
   summary.ms.stopToLive = drive.stop_to_uploaded_ms;
