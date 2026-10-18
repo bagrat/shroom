@@ -63,9 +63,10 @@ describe("the CLI guide", () => {
   // Bagrat, 2026-10-18: batch invites for a team, each person their own link, mailed by
   // the agent's own tools; shroom sends nothing and is given names only.
   it("invites a team in one call, after the person confirms the list, and keeps emails out of shroom", () => {
-    assert.match(flat, /show them the list of names and ask one question: "Invite these people\?"/);
+    assert.match(flat, /Show them that list and ask one question: "Invite these people\?" — always, even when they said "the whole team": a list you looked up is often out of date/);
+    assert.match(flat, /It makes nothing yet: it answers `needs_confirmation` with each name's plan/);
     assert.match(flat, /Pass names only — never email addresses or anything else about them; keep those yourself\./);
-    assert.match(flat, /send each person their own link, one message each, from them\. shroom sends nothing\./);
+    assert.match(flat, /send each person on the confirmed list their own link, one message each, from them\. shroom sends nothing\./);
     assert.match(flat, /Run it with `--dry-run` first whenever it changes anything\./);
   });
 

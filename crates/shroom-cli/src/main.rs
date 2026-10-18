@@ -39,7 +39,7 @@ shroom — your shroom videos from the command line.
                                       they leave the space; their videos stay
 
 Many at once (each item its own result; safe to run again; --dry-run first)
-  shroom invite --batch \"Ann Lee\" \"Sam Ng\" ...    a link for each person (at most 20)
+  shroom invite --batch \"Ann Lee\" \"Sam Ng\" ... --yes   a link each (at most 20)
   shroom delete <id>... --yes                     several videos, one confirmation
   shroom rename --batch \"<id>=<new title>\" ...    several titles
   shroom links <video>...                         the links of several videos
@@ -663,6 +663,12 @@ fn remove_member(a: &Args, rest: &[String]) -> Result<Done, Fail> {
 /// Safe to run again: a name already in the space is `already_member`, one already invited
 /// and waiting is `already_invited` (its link can't be shown again: only its hash is kept;
 /// `--renew` makes it a new one, and the old one stops working).
+///
+/// Like a delete, it asks first: without `--yes` it makes nothing and answers
+/// `needs_confirmation` with the list. A batch gives several people a way into the space,
+/// often from a list the agent looked up — the batch demo's agent, told "the engineering
+/// team", invited everyone its directory named, someone on leave included, without showing
+/// the list (2026-10-18). The guide's rule wasn't enough; this makes the ask the mechanism's.
 fn invite_batch(a: &Args, rest: &[String]) -> Result<Done, Fail> {
     let items = batch::items(rest, a.from.as_deref())?;
     let mut names: Vec<String> = Vec::new();
@@ -683,9 +689,11 @@ fn invite_batch(a: &Args, rest: &[String]) -> Result<Done, Fail> {
     let (h, d) = door(a)?;
     let m = d.members()?;
     let key = |s: &str| s.to_lowercase();
+    // Without --yes, what it would do is the answer — and nothing is made.
+    let plan_only = a.dry_run || !a.yes;
     let member = |n: &str| m.members.iter().find(|x| key(&x.label) == key(n));
     let waiting = |n: &str| m.invites.iter().find(|i| !i.expired && i.kind == "member" && i.label.as_deref().map(key) == Some(key(n)));
-    if !a.dry_run {
+    if !plan_only {
         quiet(&h)?;
     }
     let mut outcomes = Vec::new();
@@ -707,7 +715,7 @@ fn invite_batch(a: &Args, rest: &[String]) -> Result<Done, Fail> {
                 outcomes.push(batch::Outcome::ok(j, format!("  {n} — already invited, waiting (--renew for a new link)")));
                 continue;
             }
-            if a.dry_run {
+            if plan_only {
                 let mut j = base;
                 j["status"] = "would_renew".into();
                 outcomes.push(batch::Outcome::ok(j, format!("  {n} — would get a new link")));
@@ -726,7 +734,7 @@ fn invite_batch(a: &Args, rest: &[String]) -> Result<Done, Fail> {
             }
             continue;
         }
-        if a.dry_run {
+        if plan_only {
             let mut j = base;
             j["status"] = "would_invite".into();
             outcomes.push(batch::Outcome::ok(j, format!("  {n} — would get a link")));
@@ -744,8 +752,19 @@ fn invite_batch(a: &Args, rest: &[String]) -> Result<Done, Fail> {
             Err(f) => outcomes.push(batch::Outcome::failed(base, &f, format!("  {n} — {}", f.message()))),
         }
     }
+    let would = |o: &batch::Outcome| matches!(o.json["status"].as_str(), Some("would_invite" | "would_renew"));
+    if !a.dry_run && !a.yes && outcomes.iter().any(would) {
+        let lines = outcomes.iter().map(|o| o.line.clone()).collect::<Vec<_>>().join("\n");
+        return Err(Fail::NeedsConfirmation {
+            message: format!("This gives each of these people their own link to join your space, for 7 days:\n{lines}\nCheck the list with them, then run it again with --yes once that's what they want."),
+            what: "would_invite",
+            would: outcomes.into_iter().map(|o| o.json).collect(),
+        });
+    }
     let (head, tail) = if a.dry_run {
         ("Would invite (nothing was made):".to_string(), "")
+    } else if plan_only {
+        ("Nothing to make: each is already in the space or invited.".to_string(), "")
     } else {
         ("Invites, each for one person, good for 7 days:".to_string(), "Send each link to its person yourself; each works once.")
     };

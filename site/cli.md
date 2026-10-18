@@ -57,7 +57,7 @@ safe — nothing is done twice. Run it with `--dry-run` first whenever it change
 
 | They ask | Run |
 |---|---|
-| Invite the whole engineering team | `shroom invite --batch "Ann Lee" "Sam Ng" … --json` (at most 20) |
+| Invite the whole engineering team | `shroom invite --batch "Ann Lee" "Sam Ng" … --json`, ask, then the same with `--yes` (at most 20) |
 | Delete these old ones | `shroom delete <id> <id> … --dry-run --json`, ask, then the same with `--yes` |
 | Give these better titles | `shroom rename --batch "<id>=<new title>" … --json` |
 | Send me the links to these | `shroom links "<title words>" "<title words>" … --json` |
@@ -67,19 +67,23 @@ safe — nothing is done twice. Run it with `--dry-run` first whenever it change
 
 **Inviting a team**, from start to end:
 
-1. Find out exactly who. If they named a group ("the engineering team"), use what you know
-   or can look up, then show them the list of names and ask one question: "Invite these
-   people?" Change it as they say.
-2. Run `shroom invite --batch "<name>" "<name>" … --dry-run --json`, then without
-   `--dry-run`. Pass names only — never email addresses or anything else about them; keep
-   those yourself.
-3. You get one link per person: `{"name", "status": "invited", "link", "expires_at"}`.
-   A person already in the space is `already_member`. One already invited and waiting is
-   `already_invited`: their link can't be shown again. Add `--renew` to give them a new one
-   (the old one stops working).
-4. If they asked you to send the invites and you have their mail or messaging tool, send
-   each person their own link, one message each, from them. shroom sends nothing. Otherwise
-   give them the list of names and links, once.
+1. Find out who: the names they gave you or, if they named a group ("the engineering
+   team"), what you know or can look up.
+2. Run `shroom invite --batch "<name>" "<name>" … --json`. It makes nothing yet: it answers
+   `needs_confirmation` with each name's plan — `would_invite`, `already_member`,
+   `already_invited`.
+3. Show them that list and ask one question: "Invite these people?" — always, even when
+   they said "the whole team": a list you looked up is often out of date (someone on leave,
+   someone who left). Change it as they say.
+4. On a clear yes, run it again with the names they confirmed and `--yes`. Pass names only
+   — never email addresses or anything else about them; keep those yourself.
+5. You get one link per person: `{"name", "status": "invited", "link", "expires_at"}`.
+   `already_member` is in the space already. `already_invited` is invited and waiting:
+   their link can't be shown again; add `--renew` to give them a new one (the old one stops
+   working).
+6. If they asked you to send the invites and you have their mail or messaging tool, send
+   each person on the confirmed list their own link, one message each, from them. shroom
+   sends nothing. Otherwise give them the list of names and links, once.
 
 A batch answers `partial` (exit 11) when some items didn't go through: the answer still
 lists every item. Tell them which failed and why, and run it again for those only.

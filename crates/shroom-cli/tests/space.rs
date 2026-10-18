@@ -154,8 +154,15 @@ fn a_team_lead_invites_a_list_in_one_call_and_a_rerun_is_safe() {
     assert_eq!(st, ["would_invite", "would_invite", "already_member"], "a name given twice is asked once");
     assert!(shroom(&home, &base, &["members"]).1["invites"].as_array().unwrap().is_empty());
 
-    // One call: a link for each new person, in the order given.
+    // Without --yes it asks first, like a delete: the list, and nothing made.
     let (code, v) = shroom(&home, &base, &["invite", "--batch", "Sam Lee", "Ana Ruiz", "Mher"]);
+    assert_eq!((code, v["error"].as_str()), (7, Some("needs_confirmation")), "{v}");
+    let would: Vec<&str> = v["would_invite"].as_array().unwrap().iter().map(|x| x["status"].as_str().unwrap()).collect();
+    assert_eq!(would, ["would_invite", "would_invite", "already_member"]);
+    assert!(shroom(&home, &base, &["members"]).1["invites"].as_array().unwrap().is_empty(), "nothing made before the yes");
+
+    // With it: a link for each new person, in the order given.
+    let (code, v) = shroom(&home, &base, &["invite", "--batch", "Sam Lee", "Ana Ruiz", "Mher", "--yes"]);
     assert_eq!(code, 0, "{v}");
     let inv = v["invites"].as_array().unwrap();
     assert_eq!((inv[0]["name"].as_str(), inv[0]["status"].as_str()), (Some("Sam Lee"), Some("invited")));
@@ -165,14 +172,15 @@ fn a_team_lead_invites_a_list_in_one_call_and_a_rerun_is_safe() {
     assert!(l0.contains("/join/") && l0 != l1, "each person their own link");
     assert_eq!(v["counts"]["invited"], 2);
 
-    // Again: nothing is made twice; the links already given can't be shown again.
+    // Again: nothing is made twice (nothing to confirm, either); the links already given
+    // can't be shown again.
     let (code, v) = shroom(&home, &base, &["invite", "--batch", "Sam Lee", "Ana Ruiz"]);
-    assert_eq!(code, 0);
+    assert_eq!(code, 0, "{v}");
     assert!(v["invites"].as_array().unwrap().iter().all(|x| x["status"] == "already_invited" && x.get("link").is_none()));
     assert_eq!(shroom(&home, &base, &["members"]).1["invites"].as_array().unwrap().len(), 2);
 
     // --renew: a new link for one already invited; the old one stops working.
-    let (code, v) = shroom(&home, &base, &["invite", "--batch", "Sam Lee", "--renew"]);
+    let (code, v) = shroom(&home, &base, &["invite", "--batch", "Sam Lee", "--renew", "--yes"]);
     assert_eq!((code, v["invites"][0]["status"].as_str()), (0, Some("renewed")));
     let fresh = v["invites"][0]["link"].as_str().unwrap();
     assert_ne!(fresh, l0);
