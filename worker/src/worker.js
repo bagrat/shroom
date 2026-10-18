@@ -2806,7 +2806,7 @@ const AI_LATER = ".shroom/ai/later/";
 /** The models (B205): hearing, naming, and naming's fallback. */
 export const AI_MODELS = { hear: "@cf/openai/whisper-large-v3-turbo", name: "@cf/openai/gpt-oss-120b", fallback: "@cf/google/gemma-4-26b-a4b-it" };
 /** The rules held in code (B205 a, d; B208 c): ten pieces a window, 1.5 s at its edges. */
-const AI_RULES = { window: 10, edge: 1.5, minChapter: 20, minVideo: 90, maxChapters: 12, minWords: 12, renameShare: 0.2, titleMax: 60 };
+const AI_RULES = { window: 10, edge: 1.5, minChapter: 20, minVideo: 90, maxChapters: 12, minWords: 12, earlyWords: 20, renameShare: 0.2, titleMax: 60 };
 /** How long a step holds its take, so the schedule and a Mac never take the same one. */
 const AI_LEASE_MS = 2 * 60 * 1000;
 /** Tries of one step that keeps failing (not a free day, not a busy model) before the take is let go. */
@@ -3010,8 +3010,9 @@ export async function aiPiece(env, key, size, tracks) {
 
 /** @typedef {[string, number, number]} Word [text, start, end]: seconds on the recording's clock */
 /** The take's words, grown a window at a time (B206 d): final up to `heard_through`, the
- * window's last 1.5 s held in `tail` until the next window hears them whole.
- * @typedef {{ v: 1, model: string, language: string | null, duration: number, heard_through: number, done: boolean, windows: number, clock: string | null, words: Word[], tail?: Word[] }} Transcript */
+ * window's last 1.5 s held in `tail` until the next window hears them whole; `early`, the
+ * early title was tried (B205 f).
+ * @typedef {{ v: 1, model: string, language: string | null, duration: number, heard_through: number, done: boolean, windows: number, clock: string | null, words: Word[], tail?: Word[], early?: boolean }} Transcript */
 
 /** Window k of a take `n` pieces long: its own pieces [from, to), and the piece that leads
  * it (the last of the window before). @param {number} k @param {number} n */
@@ -3115,6 +3116,11 @@ function aiBakes(meta, since) {
   const i = since ? list.findIndex((b) => b.at === since) : -1;
   return list.slice(i + 1);
 }
+/** Whether times stamped with clock `since` can be carried onto the record's: the original's
+ * (null), or a bake the record's list still holds. The editor keeps its last 20 bakes; past
+ * that, words and chapters on an older clock aren't shown rather than shown wrong.
+ * @param {any} meta @param {string | null | undefined} since */
+const aiPlaced = (meta, since) => !since || aiBakes(meta, null).some((b) => b.at === since);
 /** What stamps the clock the record's times are on: its last bake, or null for the original's. @param {any} meta */
 function aiClock(meta) {
   const all = aiBakes(meta, null);
@@ -3162,6 +3168,7 @@ function aiChaptersNow(meta) {
   let out = (Array.isArray(named?.chapters) ? named.chapters : [])
     .filter((/** @type {any} */ c) => Array.isArray(c) && Number.isFinite(Number(c[0])) && typeof c[1] === "string")
     .map((/** @type {any} */ c) => /** @type {[number, string]} */ ([Number(c[0]), String(c[1])]));
+  if (!aiPlaced(meta, named?.clock)) return [];
   for (const b of aiBakes(meta, named?.clock)) out = aiChaptersThrough(out, b.keep, Infinity).map(([s, t]) => [s, t]);
   return out;
 }
@@ -3260,7 +3267,7 @@ function aiFace(id, meta, src, on, now) {
   const named = meta.named?.by === "ai" && typeof meta.named.title === "string";
   const line = meta.titled ? "" : named ? COPY.named : meta.naming?.later === "daily" ? COPY.namingLater : "";
   const created = Date.parse(String(meta.createdAt ?? ""));
-  const waiting = on && !meta.titled && !meta.named && Number.isFinite(created) && now - created < 2 * HOUR_MS;
+  const waiting = on && !meta.titled && (!meta.named || !!meta.named.early) && Number.isFinite(created) && now - created < 2 * HOUR_MS;
   return { chapters: live ? aiChapters(meta) : [], captions, line, waiting };
 }
 
@@ -3388,6 +3395,71 @@ async function aiName(env, id, t, meta, now) {
   });
 }
 
+/** Whether the early title is due (B205 f): the take still recording (no rename, not done),
+ * a minute of it heard, untitled and unnamed, with enough words for a title, not tried yet.
+ * @param {any} meta @param {Transcript} t @param {Later} want */
+const aiEarlyDue = (meta, t, want) => !want.done && !want.rename && !t.done && !t.early && !meta.titled && !meta.named && t.windows >= 1 && t.words.length + (t.tail?.length ?? 0) >= AI_RULES.earlyWords;
+
+/** The words with the slips cut by voice taken out (N65), roughly, for the early title: each
+ * “shroom cut” and the sentence it breaks off, back to the sentence before it (at most 20 s).
+ * The take's own cuts come later, from its Mac; this only keeps a slip out of the first name.
+ * @param {Word[]} words */
+export function aiWithoutSlips(words) {
+  const bare = (/** @type {unknown} */ w) => String(w).toLowerCase().replace(/[^a-z]/g, "");
+  /** @type {Word[]} */
+  const out = [];
+  for (let i = 0; i < words.length; i++) {
+    const one = bare(words[i][0]) === "shroomcut";
+    if (one || (bare(words[i][0]) === "shroom" && /^cut/.test(bare(words[i + 1]?.[0] ?? "")))) {
+      const at = words[i][1];
+      // The sentence broken off: back past its own end, if the speaker stopped on one, to the end before it.
+      if (out.length && /[.!?…]$/.test(out[out.length - 1][0])) out.pop();
+      while (out.length && !/[.!?…]$/.test(out[out.length - 1][0]) && at - out[out.length - 1][1] <= 20) out.pop();
+      if (!one) i++;
+      continue;
+    }
+    out.push(words[i]);
+  }
+  return out;
+}
+
+/** The early title (B205 f; Bagrat, 2026-10-18: the page opens named): once the first minute
+ * is heard while the take records, one title-only call on the words so far, a slip cut by
+ * voice left out. It's the record's title until the full name at done replaces it, never over
+ * one typed meanwhile (`named.early` says which it is). Tried once a take: a model that fails
+ * it is let go, holding nothing up; a used-up free day or a busy model waits like any step.
+ * @param {Env} env @param {string} id @param {Transcript} t @param {string | null} etag @param {number} now */
+async function aiNameEarly(env, id, t, etag, now) {
+  const ai = /** @type {Ai} */ (env.AI);
+  const words = aiWithoutSlips([...t.words, ...(t.tail ?? [])]);
+  const sents = aiSentences(words);
+  let model = AI_MODELS.name;
+  /** @type {string | null} */
+  let title = null;
+  try {
+    /** @type {any} */
+    let answer;
+    try {
+      answer = await aiAsk(ai, model, sents, false);
+    } catch (e) {
+      if (aiRefusal(e) !== "error") throw e;
+      model = AI_MODELS.fallback;
+      answer = await aiAsk(ai, model, sents, false);
+    }
+    title = aiTitle(answer?.title) || null;
+  } catch (e) {
+    if (aiRefusal(e) !== "error") throw e;
+  }
+  await casPut(env, aiTranscriptKey(id), JSON.stringify({ ...t, early: true }), etag ? { etagMatches: etag } : { etagDoesNotMatch: "*" });
+  if (!title) return;
+  await aiWriteMeta(env, id, (m) => {
+    if (m.titled || m.named) return false;
+    m.title = title;
+    m.named = { by: "ai", early: true, model, at: iso(now), rev: aiRev(m), clock: aiClock(m), words: words.length, title, chapters: [], language: t.language };
+    return true;
+  });
+}
+
 // ───────── a used-up free day, a busy model (B207) ─────────
 
 /** What a refused call means (Workers AI's errors): `daily`, the account's free daily neurons
@@ -3396,7 +3468,7 @@ async function aiName(env, id, t, meta, now) {
  * @param {unknown} e */
 export function aiRefusal(e) {
   const m = String(/** @type {any} */ (e)?.message ?? e ?? "");
-  if (/\b3036\b|daily free allocation/i.test(m)) return "daily";
+  if (/\b(3036|4006)\b|daily free allocation/i.test(m)) return "daily";
   if (/\b(3040|3007|3008|429)\b|capacity|rate.?limit|too many requests|timed? ?out|overloaded/i.test(m)) return "busy";
   return "error";
 }
@@ -3532,13 +3604,14 @@ async function aiHear(env, id, meta, pieces, w, t, etag, last) {
   };
   if (last) delete next.tail;
   else next.tail = words.filter(([, s]) => s >= until);
-  await casPut(env, aiTranscriptKey(id), JSON.stringify(next), etag ? { etagMatches: etag } : { etagDoesNotMatch: "*" });
+  return (await casPut(env, aiTranscriptKey(id), JSON.stringify(next), etag ? { etagMatches: etag } : { etagDoesNotMatch: "*" })) ? next : null;
 }
 
-/** One step for a take, the next thing it needs: hear the next window that's up, or — once
- * the take is done and all of it heard — name it (or name it again after an edit, B208 c).
- * `more`: another step can be taken now. @param {Env} env @param {string} id @param {Later} want @param {number} now
- * @returns {Promise<{ step: "heard" | "named" | "idle", more: boolean }>} */
+/** One step for a take, the next thing it needs: while it records, the early title once its
+ * first minute is heard (B205 f), else the next window that's up; once the take is done and
+ * all of it heard, its name (or the name again after an edit, B208 c). `more`: another step
+ * can be taken now. @param {Env} env @param {string} id @param {Later} want @param {number} now
+ * @returns {Promise<{ step: "heard" | "titled" | "named" | "idle", more: boolean }>} */
 async function aiStep(env, id, want, now) {
   const [meta, read] = await Promise.all([readMeta(env, id), aiTranscriptOf(env, id)]);
   if (!meta || meta.state === "deleted") return { step: "idle", more: false };
@@ -3548,10 +3621,15 @@ async function aiStep(env, id, want, now) {
     const n = want.done ? pieces.length : Math.min(want.through, pieces.length);
     const k = t?.windows ?? 0;
     const w = aiWindow(k, n);
+    // The title the page opens with comes before more hearing (it's the one the free day favours).
+    if (t && aiEarlyDue(meta, t, want)) {
+      await aiNameEarly(env, id, t, read?.etag ?? null, now);
+      return { step: "titled", more: w.from < n && w.to - w.from === AI_RULES.window };
+    }
     if (w.from < n && (w.to - w.from === AI_RULES.window || want.done)) {
-      await aiHear(env, id, meta, pieces, w, t, read?.etag ?? null, want.done && w.to >= pieces.length);
+      const heard = await aiHear(env, id, meta, pieces, w, t, read?.etag ?? null, want.done && w.to >= pieces.length);
       const next = aiWindow(k + 1, n);
-      return { step: "heard", more: want.done || next.to - next.from === AI_RULES.window };
+      return { step: "heard", more: want.done || next.to - next.from === AI_RULES.window || (!!heard && aiEarlyDue(meta, heard, want)) };
     }
     if (!want.done) return { step: "idle", more: false };
     // Nothing left to hear: what the last window held back is final now.
@@ -3562,13 +3640,13 @@ async function aiStep(env, id, want, now) {
     if (!(await casPut(env, aiTranscriptKey(id), JSON.stringify(done), read ? { etagMatches: read.etag } : { etagDoesNotMatch: "*" }))) return { step: "heard", more: true };
     t = done;
   }
-  if (meta.named && !want.rename) return { step: "idle", more: false };
+  if ((meta.named && !meta.named.early && !want.rename) || !aiPlaced(meta, t.clock)) return { step: "idle", more: false };
   await aiName(env, id, t, meta, now);
   return { step: "named", more: false };
 }
 
 /** @typedef {{ through: number | null, done: boolean, rename?: boolean }} AiAsk */
-/** @typedef {{ step: "heard" | "named" | "idle", more: boolean } | { later: string }} AiRun */
+/** @typedef {{ step: "heard" | "titled" | "named" | "idle", more: boolean } | { later: string }} AiRun */
 
 /** Runs one step for a take, if it may take one now. A take waiting for the next free day
  * or a busy model only notes what was asked. A done take, a rename, or a take already
@@ -3592,7 +3670,7 @@ async function aiRun(env, id, ask, now) {
   if (!ok) return { later: "running" };
   if (run.waiting) return { later: run.waiting };
   const { want } = run;
-  /** @type {{ step: "heard" | "named" | "idle", more: boolean }} */
+  /** @type {{ step: "heard" | "titled" | "named" | "idle", more: boolean }} */
   let out;
   try {
     out = await aiStep(env, id, want, now);
@@ -3601,7 +3679,7 @@ async function aiRun(env, id, ask, now) {
   }
   // Heard: the mark goes back to waiting its turn, with whatever was asked meanwhile. Named, or nothing to do: it goes.
   const step = out.step;
-  if (run.held) await aiMark(env, id, (l) => (step === "heard" ? { ...want, ...(l ?? {}), after: 0, reason: "more", tries: 0 } : null));
+  if (run.held) await aiMark(env, id, (l) => (step === "heard" || step === "titled" ? { ...want, ...(l ?? {}), after: 0, reason: "more", tries: 0 } : null));
   return out;
 }
 
@@ -3690,9 +3768,9 @@ export async function aiTick(env, now) {
  * as weighed, so it isn't weighed again. @param {Env} env @param {string} id @param {any} meta @param {number} now */
 async function aiAfterView(env, id, meta, now) {
   const rev = aiRev(meta);
-  if (!meta?.named || meta.named.rev === rev) return;
+  if (!meta?.named || meta.named.early || meta.named.rev === rev) return;
   const read = await aiTranscriptOf(env, id);
-  if (!read?.t.done) return;
+  if (!read?.t.done || !aiPlaced(meta, read.t.clock)) return;
   const { t } = read;
   const clockNow = aiClock(meta);
   const words = aiOverBakes(t.words, meta, t.clock);
@@ -3717,7 +3795,7 @@ async function aiAfterView(env, id, meta, now) {
  * on the recording's. Removed with the video. @param {Request} request @param {Env} env @param {string} id @param {URL} url */
 async function aiCaptionsRoute(request, env, id, url) {
   const [meta, read] = await Promise.all([readMeta(env, id), aiTranscriptOf(env, id)]);
-  if (!meta || meta.state !== "live" || !meta.captions || !read?.t.done) return plain(404, "");
+  if (!meta || meta.state !== "live" || !meta.captions || !read?.t.done || !aiPlaced(meta, read.t.clock)) return plain(404, "");
   const body = aiCaptions(aiOverBakes(read.t.words, meta, read.t.clock), aiKeep(meta), url.searchParams.get("e") === "1");
   return new Response(request.method === "HEAD" ? null : body, {
     headers: { "content-type": "text/vtt; charset=utf-8", "cache-control": "public, max-age=300", "x-robots-tag": "noindex", "x-content-type-options": "nosniff" },
@@ -3734,7 +3812,7 @@ async function aiNamedRoute(request, env, id) {
   if (!meta || meta.state === "deleted") return plain(404, "");
   if (!(await mayEdit(env, owner, id, true))) return plain(403, "");
   const named = !meta.titled && meta.named?.by === "ai" && typeof meta.named.title === "string" ? String(meta.title || "") : "";
-  return json({ named, titled: !!meta.titled, later: !named && !meta.titled && meta.naming?.later === "daily" });
+  return json({ named, titled: !!meta.titled, later: !named && !meta.titled && meta.naming?.later === "daily", early: !!named && !!meta.named.early });
 }
 
 // ───────── the page's player: chapters in the seek bar, captions (B209) ─────────
@@ -3820,13 +3898,14 @@ const aiNote = (ai) => (ai.line || ai.waiting ? `<p class="ainote" id="ainote"${
 
 /** The owner's page while a name is on its way (B209 c): it asks now and then, and shows
  * the name in the title field (as its placeholder, so it stays the space's until it's typed
- * over) unless a title was typed meanwhile. @param {string} id @param {AiFace} ai */
+ * over) unless a title was typed meanwhile; an early title (B205 f) is shown and asked past,
+ * till the full name takes its place. @param {string} id @param {AiFace} ai */
 function aiOwnerScript(id, ai) {
   if (!ai.waiting) return "";
   return `<script>(function(){var t=document.getElementById("t"),l=document.getElementById("ainote"),n=0,c=${jsonForScript(JSON.stringify({ id, named: COPY.named, later: COPY.namingLater }))};
 function say(x){if(l){l.textContent=x;l.hidden=!x}}
 function poll(){if(++n>60)return;fetch("/_shroom/named/"+c.id,{cache:"no-store"}).then(function(r){return r.ok?r.json():null}).then(function(j){if(!j||j.titled){say("");return}
-if(j.named){t.placeholder=j.named;if(!t.value)document.title=j.named;say(c.named);return}
+if(j.named){t.placeholder=j.named;if(!t.value)document.title=j.named;say(c.named);if(!j.early)return}
 if(j.later)say(c.later);setTimeout(poll,n<12?5000:30000)}).catch(function(){setTimeout(poll,30000)})}
 t.addEventListener("change",function(){say("")});setTimeout(poll,5000)})()</script>`;
 }
