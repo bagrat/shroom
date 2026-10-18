@@ -193,3 +193,83 @@ fn one_kept_range_is_one_part_and_nothing_kept_is_refused() {
     assert!(cut::render(&ffmpeg, &dir.path().join("missing.mp4"), &[(0.0, 1.0)], &none, &enc).is_err());
     assert!(!none.exists() && !dir.path().join(".none.mp4.parts").exists());
 }
+
+/// The copy's sound as one channel of samples, and its rate, decoded with the waveform's own
+/// reader.
+fn sound(file: &Path) -> (Vec<f64>, f64) {
+    use symphonia::core::codecs::audio::AudioDecoderOptions;
+    use symphonia::core::formats::probe::Hint;
+    use symphonia::core::formats::{FormatOptions, TrackType};
+    use symphonia::core::io::MediaSourceStream;
+    use symphonia::core::meta::MetadataOptions;
+    let mss = MediaSourceStream::new(Box::new(std::fs::File::open(file).unwrap()), Default::default());
+    let mut fmt = symphonia::default::get_probe().probe(&Hint::new(), mss, FormatOptions::default(), MetadataOptions::default()).unwrap();
+    let track = fmt.default_track(TrackType::Audio).unwrap().clone();
+    let params = track.codec_params.as_ref().unwrap().audio().unwrap().clone();
+    let rate = f64::from(params.sample_rate.unwrap());
+    let channels = params.channels.as_ref().map_or(1, |c| c.count());
+    let mut dec = symphonia::default::get_codecs().make_audio_decoder(&params, &AudioDecoderOptions::default()).unwrap();
+    let mut mono = Vec::new();
+    while let Ok(Some(pkt)) = fmt.next_packet() {
+        if pkt.track_id != track.id {
+            continue;
+        }
+        let buf = dec.decode(&pkt).unwrap();
+        let mut v = vec![0.0_f32; buf.samples_interleaved()];
+        buf.copy_to_slice_interleaved(&mut v);
+        mono.extend(v.chunks(channels).map(|c| f64::from(c.iter().sum::<f32>()) / channels as f64));
+    }
+    (mono, rate)
+}
+
+/// How much a click splatters, from `t0` to `t1`: over 10 ms windows that hold at least a
+/// twentieth of the tone's level, the most energy the second difference (a crude
+/// high-pass) carries for the sound's own. A steady 440 Hz tone keeps one small value; a
+/// hard cut into it splatters about twelve times that; a 30 ms fade, none.
+fn splatter(x: &[f64], rate: f64, t0: f64, t1: f64, floor: f64) -> f64 {
+    let n = (0.01 * rate) as usize;
+    let (a, b) = ((t0 * rate) as usize, ((t1 * rate) as usize).min(x.len().saturating_sub(n + 2)));
+    (a..b)
+        .step_by((0.001 * rate) as usize)
+        .filter_map(|i| {
+            let e: f64 = x[i..i + n].iter().map(|v| v * v).sum();
+            let h: f64 = (i..i + n).map(|j| x[j + 2] - 2.0 * x[j + 1] + x[j]).map(|d| d * d).sum();
+            (e > floor).then_some(h / e)
+        })
+        .fold(0.0, f64::max)
+}
+
+#[test]
+fn a_join_fades_the_sound_instead_of_clicking() {
+    let ffmpeg = shroom_encode::locate::under_test();
+    let Some(enc) = encoder(&ffmpeg) else {
+        eprintln!("SKIPPED: {} has neither h264_videotoolbox nor libx264 — the copy can't be cut here", ffmpeg.display());
+        return;
+    };
+    if !cut::has_filter(&ffmpeg, "afade") {
+        eprintln!("SKIPPED: {} has no afade — its copies cut hard", ffmpeg.display());
+        return;
+    }
+    // A steady tone throughout: a hard join into it is a click.
+    let dir = tempfile::tempdir().unwrap();
+    let src = dir.path().join("tone.mp4");
+    let ok = Command::new(oracle())
+        .args(["-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi", "-i", "testsrc2=size=320x180:rate=30", "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000"])
+        .args(["-t", "4", "-g", "30"])
+        .args(enc.video_args(800))
+        .args(["-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart"])
+        .arg(&src)
+        .status()
+        .unwrap()
+        .success();
+    assert!(ok, "the tone was made");
+    let out = dir.path().join("copy.mp4");
+    cut::render(&ffmpeg, &src, &[(0.0, 1.5), (2.5, 4.0)], &out, &enc).expect("the copy is cut");
+    let (x, rate) = sound(&out);
+    let n = (0.01 * rate) as usize;
+    let tone: f64 = x[(0.5 * rate) as usize..(0.5 * rate) as usize + n].iter().map(|v| v * v).sum();
+    let steady = splatter(&x, rate, 0.3, 1.2, tone / 20.0);
+    let join = splatter(&x, rate, 1.4, 1.62, tone / 20.0);
+    assert!(steady > 0.0, "the tone plays");
+    assert!(join < steady * 2.0, "the join doesn't click: {join:e} against the tone's own {steady:e}");
+}

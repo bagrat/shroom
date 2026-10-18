@@ -7,6 +7,12 @@
 //! stream copy. Nothing here needs a filter, codec or format the release's encoder lacks
 //! (`tools/build-ffmpeg.sh`: no concat filter; the concat demuxer, mov, mp4, h264, aac,
 //! trim/atrim, scale and format are in it).
+//!
+//! At each join the sound dips: the part before it fades out over its last
+//! [`JOIN_FADE`] seconds and the part after it fades in over its first, so a cut never
+//! clicks (the voice-cut build measured joins in real room noise, PR #59: a hard cut scored
+//! a median 0.87 against the room's own texture, a 60 ms fade 0.22). The fades need
+//! `afade`, which the bundled ffmpeg has from 0.1.25 on; one without it cuts hard.
 
 use std::ffi::{OsStr, OsString};
 use std::fs::File;
@@ -44,6 +50,36 @@ impl Encoder {
 
 /// The copy's sound.
 pub const AUDIO_KBPS: u32 = 128;
+/// Each side of a join's dip in the sound: out over the last 30 ms before it, in over the
+/// first 30 ms after it.
+pub const JOIN_FADE: f64 = 0.03;
+
+/// Which ends of a part meet a join, and so fade.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct Fades {
+    /// A join before it: the part's sound fades in.
+    pub fade_in: bool,
+    /// A join after it: the part's sound fades out.
+    pub fade_out: bool,
+}
+
+impl Fades {
+    /// The `afade` chain for a part `len` seconds long, if any end fades. A part too short
+    /// to hold both fades gets neither, so the two never overlap into a hole.
+    pub fn filter(self, len: f64) -> Option<String> {
+        if len < 2.0 * JOIN_FADE + 0.01 {
+            return None;
+        }
+        let mut f = Vec::new();
+        if self.fade_in {
+            f.push(format!("afade=t=in:st=0:d={JOIN_FADE}"));
+        }
+        if self.fade_out {
+            f.push(format!("afade=t=out:st={}:d={JOIN_FADE}", secs(len - JOIN_FADE)));
+        }
+        (!f.is_empty()).then(|| f.join(","))
+    }
+}
 /// The picture's bitrate is the source's, held to this range (kbps).
 pub const MIN_VIDEO_KBPS: u32 = 500;
 pub const MAX_VIDEO_KBPS: u32 = 20_000;
@@ -82,11 +118,15 @@ fn os(items: &[&str]) -> Vec<OsString> {
     items.iter().map(OsString::from).collect()
 }
 
-/// One kept range, `[start, start + len)` of `src`, re-encoded into `out` (faststart MP4).
-pub fn part_args(src: &Path, start: f64, len: f64, kbps: u32, enc: Encoder, out: &Path) -> Vec<OsString> {
+/// One kept range, `[start, start + len)` of `src`, re-encoded into `out` (faststart MP4),
+/// its sound faded at the ends that meet a join.
+pub fn part_args(src: &Path, start: f64, len: f64, kbps: u32, enc: Encoder, fades: Fades, out: &Path) -> Vec<OsString> {
     let mut a = os(&["-hide_banner", "-loglevel", "error", "-nostdin", "-y", "-ss", &secs(start), "-i"]);
     a.push(path_arg(src));
     a.extend(os(&["-t", &secs(len), "-map", "0:v:0", "-map", "0:a:0?"]));
+    if let Some(f) = fades.filter(len) {
+        a.extend(os(&["-af", &f]));
+    }
     a.extend(enc.video_args(kbps));
     a.extend(os(&["-c:a", "aac", "-b:a", &format!("{AUDIO_KBPS}k"), "-movflags", "+faststart", "-f", "mp4"]));
     a.push(path_arg(out));
@@ -231,6 +271,8 @@ pub fn render_with(ffmpeg: &Path, src: &Path, keep: &[(f64, f64)], out: &Path, e
     let _ = std::fs::remove_dir_all(&work);
     std::fs::create_dir_all(&work)?;
     let total: f64 = keep.iter().map(|(s, e)| e - s).sum();
+    let fades = keep.len() > 1 && has_filter(ffmpeg, "afade");
+    let last = keep.len() - 1;
     let mut said = 0.0_f64;
     let mut tell = |f: f64| {
         let f = f.clamp(0.0, 1.0);
@@ -245,7 +287,8 @@ pub fn render_with(ffmpeg: &Path, src: &Path, keep: &[(f64, f64)], out: &Path, e
         for (k, (s, e)) in keep.iter().enumerate() {
             let part = work.join(format!("part-{k:03}.mp4"));
             let len = e - s;
-            run_reporting(ffmpeg, &part_args(src, *s, len, kbps, *enc, &part), &format!("part {k}"), &mut |t| tell((before + t.min(len)) / total))?;
+            let ends = if fades { Fades { fade_in: k > 0, fade_out: k < last } } else { Fades::default() };
+            run_reporting(ffmpeg, &part_args(src, *s, len, kbps, *enc, ends, &part), &format!("part {k}"), &mut |t| tell((before + t.min(len)) / total))?;
             before += len;
             tell(before / total);
             parts.push(part);
@@ -266,6 +309,17 @@ pub fn render_with(ffmpeg: &Path, src: &Path, keep: &[(f64, f64)], out: &Path, e
     tell(1.0);
     let kept: f64 = keep.iter().map(|(s, e)| e - s).sum();
     Ok(picture_length(out).unwrap_or(kept))
+}
+
+/// Whether `ffmpeg` has the filter `name` (`ffmpeg -filters`: a line of flags, then the name).
+pub fn has_filter(ffmpeg: &Path, name: &str) -> bool {
+    Command::new(ffmpeg)
+        .args([OsStr::new("-hide_banner"), OsStr::new("-filters")])
+        .stdin(Stdio::null())
+        .stderr(Stdio::null())
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).lines().any(|l| l.split_whitespace().nth(1) == Some(name)))
+        .unwrap_or(false)
 }
 
 /// Whether `ffmpeg` has the encoder `name` (`ffmpeg -encoders`).
@@ -299,15 +353,28 @@ mod tests {
 
     #[test]
     fn a_part_is_an_input_seek_and_a_length_re_encoded() {
-        let a = part_args(Path::new("/Users/x/.shroom/edits/AbCdEfGhIjKlMnOp/source.mp4"), 150.0, 12.25, 3372, Encoder::VideoToolbox, Path::new("/w/part-001.mp4"));
+        let a = part_args(Path::new("/Users/x/.shroom/edits/AbCdEfGhIjKlMnOp/source.mp4"), 150.0, 12.25, 3372, Encoder::VideoToolbox, Fades::default(), Path::new("/w/part-001.mp4"));
         assert_eq!(
             line(&a),
             "-hide_banner -loglevel error -nostdin -y -ss 150.000 -i /Users/x/.shroom/edits/AbCdEfGhIjKlMnOp/source.mp4 \
              -t 12.250 -map 0:v:0 -map 0:a:0? -c:v h264_videotoolbox -b:v 3372k -pix_fmt yuv420p \
              -c:a aac -b:a 128k -movflags +faststart -f mp4 /w/part-001.mp4"
         );
-        let x = line(&part_args(Path::new("s.mp4"), 0.0, 1.0, 500, Encoder::Libx264, Path::new("p.mp4")));
+        let x = line(&part_args(Path::new("s.mp4"), 0.0, 1.0, 500, Encoder::Libx264, Fades::default(), Path::new("p.mp4")));
         assert!(x.contains("-ss 0.000 -i s.mp4 -t 1.000 ") && x.contains("-c:v libx264 -b:v 500k"), "{x}");
+        assert!(!x.contains("-af"), "an end that meets no join keeps its sound as it is");
+    }
+
+    #[test]
+    fn a_part_fades_its_sound_only_where_it_meets_a_join() {
+        let both = Fades { fade_in: true, fade_out: true };
+        let a = line(&part_args(Path::new("s.mp4"), 10.0, 12.25, 900, Encoder::VideoToolbox, both, Path::new("p.mp4")));
+        assert!(a.contains("-map 0:a:0? -af afade=t=in:st=0:d=0.03,afade=t=out:st=12.220:d=0.03 -c:v"), "{a}");
+        let first = Fades { fade_in: false, fade_out: true }.filter(5.0).unwrap();
+        assert_eq!(first, "afade=t=out:st=4.970:d=0.03");
+        assert_eq!(Fades { fade_in: true, fade_out: false }.filter(5.0).unwrap(), "afade=t=in:st=0:d=0.03");
+        assert_eq!(Fades::default().filter(5.0), None);
+        assert_eq!(both.filter(0.05), None, "too short to hold both fades: none, rather than a hole");
     }
 
     #[test]
