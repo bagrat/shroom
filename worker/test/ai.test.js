@@ -9,7 +9,7 @@ import { mkdtempSync, readdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import worker, { AI_MODELS, COPY, aiCaptions, aiChapters, aiCleanChapters, aiKeep, aiPiece, aiRefusal, aiSentences, aiTick, aiTitle, aiToEdited, aiToSource, mp4Tracks } from "../src/worker.js";
+import worker, { AI_HEAR_PRIME, AI_MODELS, COPY, aiCaptions, aiChapters, aiCleanChapters, aiKeep, aiPiece, aiRefusal, aiSentences, aiTick, aiTitle, aiToEdited, aiToSource, mp4Tracks } from "../src/worker.js";
 import { GONE_MAC, HOST, M1, MHER, MHER_MAC, NOW, OTHER_PARENT_SECRET, OWNER_AIR, OWNER_MAC, REC, SEC, bodyOf, call, cookieFor, goneKey, ledger, metaKey, metaOf, parentProof, space, textOf } from "./space-fixture.js";
 import { PIECE_SECS, adtsFrames, cat, chat, fakeAI, initMp4, pieceMp4, responseOf, script, takeObjects } from "./ai-take.js";
 
@@ -114,6 +114,19 @@ describe("the ping (B206 a)", () => {
 describe("hearing (B205 a, b)", () => {
   // A titled take, so no early title (B205 f) steps in: these are about hearing.
   const TYPED = { title: "Mine", titled: true };
+
+  it("tells Whisper to expect the cue and hesitations, with its voice-activity filter on, and keeps no word without a letter", async () => {
+    // Measured 2026-10-18 (dev/proposals/ai-titles-chapters/poc/results/prime-2026-10-18.json):
+    // unfiltered, Whisper wrote "Thank you." into silent and music minutes and ". ." into a
+    // room's noise; filtered, nothing, and speech kept its words and times.
+    const words = script(["s0a s0b . s0c.", "s1a … s1b s1c."]);
+    const env = await aiSpace({ meta: TYPED, words });
+    await answerOf(env, { rec: REC, through: 10 });
+    const [{ input }] = whisperCalls(env);
+    expect(input).toMatchObject({ vad_filter: true, initial_prompt: AI_HEAR_PRIME });
+    expect(AI_HEAR_PRIME).toMatch(/^Shroom cut\./);
+    expect(env.BUCKET.json(TRANSCRIPT).words.map((w) => w[0])).toEqual(["s0a", "s0b", "s0c.", "s1a", "s1b", "s1c."]);
+  });
 
   it("hears each full minute as it's asked, then the rest once the take is done: every word once, on the recording's clock", async () => {
     const env = await aiSpace({ meta: TYPED });
@@ -591,6 +604,12 @@ const cuesOf = (text) => [...text.matchAll(/(\d\d):(\d\d):(\d\d)\.(\d\d\d) --> (
   Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3]) + Number(m[4]) / 1000, Number(m[5]) * 3600 + Number(m[6]) * 60 + Number(m[7]) + Number(m[8]) / 1000, m[9]]);
 
 describe("captions (B205 e, B208 b, B209 b)", () => {
+  it("leaves lone hesitations out of the captions, which the words keep for voice cuts", () => {
+    const words = [["So", 0, 0.3], ["um,", 0.4, 0.6], ["we", 0.7, 0.9], ["start", 1.0, 1.2], ["uh.", 1.3, 1.5], ["Then", 2.6, 2.8], ["Erm", 2.9, 3.0], ["umbrellas.", 3.1, 3.6]];
+    const cues = aiCaptions(words, null, false).split("\n\n").slice(1).map((c) => c.split("\n").slice(2).join(" "));
+    expect(cues).toEqual(["So we start.", "Then umbrellas."]);
+  });
+
   it("serves the words as WebVTT, each word once, in order", async () => {
     const env = await namedSpace();
     const { res, text } = await vtt(env);
