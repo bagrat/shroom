@@ -257,6 +257,15 @@ describe("POST /_shroom/api/cleanup", () => {
     expect(by[a].bytes).toBe(Math.round(900 * BYTES_PER_SEC));
     expect(by[b]).toMatchObject({ candidate: false, plays: 2, owner: MHER, reason: { code: "watched-lately" } });
     expect(by[c]).toMatchObject({ candidate: false, reason: { code: "kept" } });
+    expect(out.views).toEqual({ records: 1, unreadable: 0, newestPlayAt: iso(LATER - 5 * DAY) });
+  });
+
+  it("says how counting fares: a record that won't read is counted, never fatal", async () => {
+    const { env, a } = await populated();
+    await env.BUCKET.put(`.shroom/views/${a}.json`, "{not json");
+    const out = await bodyOf(await call(env, "POST", "/_shroom/api/cleanup", { auth: OWNER_MAC.bearer, body: { scope: "everyone" }, now: LATER }));
+    expect(out.views).toEqual({ records: 1, unreadable: 1, newestPlayAt: iso(LATER - 5 * DAY) });
+    expect(out.items.find((i) => i.id === a)).toMatchObject({ plays: 0, reason: { code: "never-played" } });
   });
 
   it("a member sees only their own, and can't ask for everyone's", async () => {

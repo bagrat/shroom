@@ -941,7 +941,12 @@ true unless set false) and the video is live. A guessed id never makes a record.
 **`POST /_shroom/api/cleanup`** — device key, `{"scope":"mine"|"everyone","formula"?,"after"?}`
 (`everyone` is owner-class only, else 403; an unknown formula is 400). It pages as §4.10
 does: ≤ 40 records a call, `next` until null. The answer is
-`{countingSince, counting, formula, items, next}`. Each live item carries:
+`{countingSince, counting, formula, views, items, next}`. `views` is counting's health over
+the page, for the Mac's run log: `{records, unreadable, newestPlayAt}`, the plays records
+read, the ones that wouldn't read (that video then reads as unplayed), and the newest play
+any of them saw. The Mac logs each read in two lines (`shroom_cloud::cleanup_log`): the
+counts, sizes and that health, then each candidate by a short id, its reason, score and
+facts. Each live item carries:
 
 - `id, title, createdAt, owner, ageDays, durationSec`;
 - `bytes`: the record's, which the Mac writes when the upload drains; else the length ×

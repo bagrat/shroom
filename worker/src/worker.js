@@ -2904,15 +2904,28 @@ async function cleanup(request, env, b, now) {
   let ids = metas.objects.map((o) => metaIdOf(o.key)).filter((id) => id !== null && inPage(id)).map((id) => /** @type {string} */ (id))
     .filter((id) => scope === "everyone" || (owners.get(id) ?? M1) === who.mid);
   if (ids.length > LIBRARY_BODIES) { end = ids[LIBRARY_BODIES - 1]; ids = ids.slice(0, LIBRARY_BODIES); }
+  // Counting's health over this page, for the Mac's log: records read, ones that wouldn't
+  // read, and the newest play any of them saw (a stale one says counting stopped).
+  const views = { records: 0, unreadable: 0, newestPlayAt: /** @type {string | null} */ (null) };
+  const readViews = async (/** @type {string} */ id) => {
+    try {
+      const o = await env.BUCKET.get(`${VIEWS}${id}.json`);
+      if (!o) return null;
+      const r = JSON.parse(await o.text());
+      views.records += 1;
+      if (typeof r?.lastAt === "string" && (views.newestPlayAt === null || r.lastAt > views.newestPlayAt)) views.newestPlayAt = r.lastAt;
+      return r;
+    } catch { views.unreadable += 1; return null; }
+  };
   const items = (await Promise.all(ids.map(async (id) => {
-    const [meta, rec] = await Promise.all([readMeta(env, id), env.BUCKET.get(`${VIEWS}${id}.json`).then(async (o) => (o ? JSON.parse(await o.text()) : null)).catch(() => null)]);
+    const [meta, rec] = await Promise.all([readMeta(env, id), readViews(id)]);
     if (!meta || meta.state !== "live") return null;
     const x = cleanupFacts(meta, rec, now, sinceMs);
     const verdict = cleanupScore(x, formula, now);
     const { days: _days, ...facts } = x;
     return { id, title: typeof meta.title === "string" ? meta.title : "", createdAt: meta.createdAt ?? null, owner: owners.get(id) ?? M1, ...facts, ...verdict };
   }))).filter((i) => i !== null);
-  return answer({ countingSince: sinceMs === null ? null : iso(sinceMs), counting, formula, items, next: end });
+  return answer({ countingSince: sinceMs === null ? null : iso(sinceMs), counting, formula, views, items, next: end });
 }
 
 // ───────── the tab icon (DECISIONS B109) ─────────
