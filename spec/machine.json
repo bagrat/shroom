@@ -1131,13 +1131,14 @@
   {
    "id": "N63",
    "title": "The editor: trim, cut, undo, and edits the link plays",
-   "decision": "**Bagrat asked for it, 2026-10-18** (relayed by the orchestrator): a real editor, apart from AI, that the spoken-cue layer can plug into later. **Edit… in a Library row's menu** opens the **editor**, a window of its own (one at a time), on a live video in this Mac's scope, renamable here: the video plays at the top; under it the play button and the time, edited position / edited length, with “was 4:32” once the edit changes the length; then the **timeline**: the whole recording's sound as a waveform with the playhead, **yellow ends that drag to trim**, and **a drag across the sound that selects a part**, with **Cut 12.0 s** under it. **A cut shows red** and the preview skips it as it plays; clicking a cut offers **Put back**. **Undo and Redo** (also ⌘Z and ⇧⌘Z) step through every change made in the window, Put back and Revert included. **Revert to original** puts back every cut and both ends. **Done** (Return) saves the edit and closes the window; ✕ is Done. The footer says the link stays the same. Saving is a small edit list kept in the video's record; **the share page and the embed apply it as they play** (they skip the cuts, hold to the trim, and show the edited length), so **the link never changes** and nothing is re-encoded first. The original stays in the space, so Revert works from any Mac. Afterwards the Mac makes **a permanent copy of the edit** with its own encoder and puts it up beside the original under the same link; once it is up, Download and the page use it. A video that isn't on this Mac comes from the space first (“Getting the video from your space…”); if that fails the window says so and offers Try again. While it saves, Done reads Saving…; if the save doesn't go through, the window stays open and says so, and Done tries again. Edit… greys offline and while a take is open (law 4), as Rename does. Built: DECISIONS B195.",
+   "decision": "**Bagrat asked for it, 2026-10-18** (relayed by the orchestrator): a real editor, apart from AI, that the spoken-cue layer can plug into later. **Edit… in a Library row's menu** opens the **editor**, a window of its own (one at a time), on a live video in this Mac's scope, renamable here: the video plays at the top; under it the play button and the time, edited position / edited length, with “was 4:32” once the edit changes the length; then the **timeline**: the whole recording's sound as a waveform with the playhead, **yellow ends that drag to trim**, and **a drag across the sound that selects a part**, with **Cut 12.0 s** under it. **A cut shows red** and the preview skips it as it plays; clicking a cut offers **Put back**. **Undo and Redo** (also ⌘Z and ⇧⌘Z) step through every change made in the window, Put back and Revert included. **Revert to original** puts back every cut and both ends. **Done** (Return) saves the edit and closes the window; ✕ is Done. The footer says the link stays the same. Saving is a small edit list kept in the video's record; **the share page and the embed apply it as they play** (they skip the cuts, hold to the trim, and show the edited length), so **the link never changes** and nothing is re-encoded first. Until then the original stays in the space, so Revert works from any Mac. Then the window stays to make **the final video**: the Mac cuts the edit with its own encoder and puts it up beside the original under the same link (“Making the final video… 40%”; the window can be closed and shroom finishes it); once it is up, Download and the page use it. **Then it asks “Delete the original?”** (Bagrat, 2026-10-18: encourage deleting it soon; no 30-day keep): **Yes, delete** leads (Return) and the edit becomes the video for good; **Keep for 2 days** keeps the original so the edit can still be reverted, and shroom deletes it after two days, whether or not this Mac is open then; closing the window there means Keep for 2 days. While the original is kept, the editor says by Revert how long it has left; once it is gone, the edit is final and Revert to original only undoes what changed since the window opened. A video that isn't on this Mac comes from the space first (“Getting the video from your space…”); if that fails the window says so and offers Try again. While it saves, Done reads Saving…; if the save doesn't go through, the window stays open and says so, and Done tries again. Edit… greys offline and while a take is open (law 4), as Rename does. Built: DECISIONS B195, B197.",
    "status": "provisional",
    "date": "2026-10-18",
    "amends": [
     "absent_from_v1 (trim, the editor and marker surfacing join v1; anything beyond trim and cut stays out)",
     "library (a row's menu gains Edit…)",
-    "The window (Opens: also the editor)"
+    "The window (Opens: also the editor)",
+    "B195 (the original is no longer kept indefinitely: B197)"
    ],
    "amended_by": []
   },
@@ -2333,7 +2334,10 @@
     "editor-getting",
     "editor-cant-get",
     "editor-saving",
-    "editor-save-failed"
+    "editor-save-failed",
+    "editor-making",
+    "editor-making-failed",
+    "editor-keep-original"
    ],
    "cites": [
     "N63"
@@ -7712,7 +7716,7 @@
    "surface": "window",
    "status": "provisional",
    "board": "EditorCuts",
-   "summary": "The editor (N63): a window of its own, titled “Edit — <the video's title>”, one at a time. Top to bottom: the video, playing the edit (cuts skipped, held to the trim); the play button and the time, edited position / edited length, with “was <the recording's length>” once the edit changes it; on the right the hint and Undo · Redo; then the timeline, the whole recording's sound as a waveform with the playhead: two yellow ends that drag to trim, a drag across the sound that selects a part with Cut <its length> under it, every cut red and hatched (clicking one offers Put back <its length>), and every marker (N64) a flag at its time. The footer: the line that the link stays the same, Revert to original and Done. The waveform fills in once the sound is read; until then the timeline is empty and the ends wait. Every change can be undone, Put back and Revert included; the changes stay in the window until Done saves them.",
+   "summary": "The editor (N63): a window of its own, titled “Edit — <the video's title>”, one at a time. Top to bottom: the video, playing the edit (cuts skipped, held to the trim); the play button and the time, edited position / edited length, with “was <the recording's length>” once the edit changes it; on the right the hint and Undo · Redo; then the timeline, the whole recording's sound as a waveform with the playhead: two yellow ends that drag to trim, a drag across the sound that selects a part with Cut <its length> under it, every cut red and hatched (clicking one offers Put back <its length>), and every marker (N64) a flag at its time. The footer: the line that the link stays the same, Revert to original and Done. The waveform fills in once the sound is read; until then the timeline is empty and the ends wait. Every change can be undone, Put back and Revert included; the changes stay in the window until Done saves them. While an earlier edit's original is still kept, the time it has left sits by Revert to original; once it is gone, Revert to original only undoes what changed since the window opened.",
    "entry": "Edit… on a live row in the Library (N63), when the video is on this Mac: its take was recorded here and is still here, or it came from the space before. One instance: Edit… again brings the open editor forward, on the video it holds. A take started while it is open leaves it open (law 4 covers only what shroom would newly show). The dock icon shows while it is open.",
    "said": [
     {
@@ -7790,6 +7794,13 @@
      "id": "editor.footer"
     },
     {
+     "text": "The original is kept 1 more day",
+     "role": "line",
+     "copy": "provisional",
+     "note": "by Revert, only while an earlier edit's original is kept (B197); also “2 more days” and “a few more hours”",
+     "id": "editor.original-kept"
+    },
+    {
      "text": "Revert to original",
      "role": "button",
      "copy": "provisional",
@@ -7862,7 +7873,8 @@
    ],
    "cites": [
     "N63",
-    "B195"
+    "B195",
+    "B197"
    ]
   },
   "editor-getting": {
@@ -7957,7 +7969,7 @@
    "surface": "window",
    "status": "provisional",
    "board": "EditorStates",
-   "summary": "Done pressed with changes: the footer says the edit is saving and Done reads Saving…, greyed. Saved, the window closes; the share page plays the edit from its next load.",
+   "summary": "Done pressed with changes: the footer says the edit is saving and Done reads Saving…, greyed. Saved, the share page plays the edit from its next load, and the window goes on to make the final video (or closes, when nothing is left out any more).",
    "entry": "Done (or ✕) in editor with changes, or Done again in editor-save-failed.",
    "said": [
     {
@@ -8010,6 +8022,153 @@
    "cites": [
     "N63",
     "B195"
+   ]
+  },
+  "editor-making": {
+   "region": 5,
+   "kind": "state",
+   "parent": null,
+   "surface": "window",
+   "status": "provisional",
+   "board": "EditorAfterSave",
+   "summary": "Saved: the final video is being made on this Mac and put up beside the original. Where the timeline was, “Making the final video… 40%” over a bar that fills; the footer says the link already plays the edit and that the window can be closed. Close (or ✕) closes it and shroom finishes in the background; the question that would follow is then answered Keep for 2 days.",
+   "entry": "The save landed in editor-saving with something left out.",
+   "said": [
+    {
+     "text": "Making the final video… 40%",
+     "role": "line",
+     "copy": "provisional",
+     "note": "the share grows",
+     "id": "editor-making.making"
+    },
+    {
+     "text": "The link already plays your edit. You can close this window: shroom finishes it.",
+     "role": "line",
+     "copy": "provisional",
+     "id": "editor-making.line"
+    },
+    {
+     "text": "Close",
+     "role": "button",
+     "copy": "provisional",
+     "note": "filled; Return",
+     "id": "editor-making.close"
+    }
+   ],
+   "actions": [
+    {
+     "label": "Close",
+     "kind": "filled-default",
+     "return_default": true,
+     "goes_to": "library",
+     "note": "the final video is still made; the original is then kept for 2 days"
+    }
+   ],
+   "cites": [
+    "N63",
+    "B197"
+   ]
+  },
+  "editor-making-failed": {
+   "region": 5,
+   "kind": "state",
+   "parent": null,
+   "surface": "window",
+   "status": "provisional",
+   "board": "EditorAfterSave",
+   "summary": "The final video couldn't be made or put up (offline, the space didn't answer, the encoder failed): one amber line and Close. The link keeps playing the edit over the original; shroom tries again later.",
+   "entry": "Making the final video failed in editor-making.",
+   "said": [
+    {
+     "text": "Couldn't make the final video. The link plays your edit anyway, and shroom tries again later.",
+     "role": "line",
+     "copy": "provisional",
+     "note": "amber",
+     "id": "editor-making-failed.failed"
+    },
+    {
+     "text": "Close",
+     "role": "button",
+     "copy": "provisional",
+     "note": "filled; Return",
+     "id": "editor-making-failed.close"
+    }
+   ],
+   "actions": [
+    {
+     "label": "Close",
+     "kind": "filled-default",
+     "return_default": true,
+     "goes_to": "library"
+    }
+   ],
+   "cites": [
+    "N63",
+    "B197"
+   ]
+  },
+  "editor-keep-original": {
+   "region": 5,
+   "kind": "state",
+   "parent": null,
+   "surface": "window",
+   "status": "provisional",
+   "board": "EditorAfterSave",
+   "summary": "The final video is up: the window asks whether to delete the original. One card: “Delete the original?”, a line that the edit is the video now and the original is only kept for reverting, then Keep for 2 days and Yes, delete, which leads (filled, Return). Yes, delete makes the edit the video for good and deletes the original now; Keep for 2 days keeps it, and shroom deletes it two days on. ✕ or Esc is Keep for 2 days.",
+   "entry": "The final video landed while the editor was open.",
+   "said": [
+    {
+     "text": "Delete the original?",
+     "role": "title",
+     "copy": "provisional",
+     "id": "editor-keep-original.title"
+    },
+    {
+     "text": "Your edit is the video now. The original is only kept so you can revert to it.",
+     "role": "line",
+     "copy": "provisional",
+     "id": "editor-keep-original.line"
+    },
+    {
+     "text": "Keep for 2 days",
+     "role": "button",
+     "copy": "provisional",
+     "id": "editor-keep-original.keep"
+    },
+    {
+     "text": "Yes, delete",
+     "role": "button",
+     "copy": "provisional",
+     "note": "filled; Return",
+     "id": "editor-keep-original.delete"
+    }
+   ],
+   "actions": [
+    {
+     "label": "Yes, delete",
+     "kind": "filled-default",
+     "return_default": true,
+     "goes_to": "library",
+     "note": "the edit becomes the video; the original's files are deleted"
+    },
+    {
+     "label": "Keep for 2 days",
+     "kind": "secondary",
+     "return_default": false,
+     "goes_to": "library",
+     "note": "deleted two days on, by whichever of the space's Macs is open first (B197)"
+    },
+    {
+     "label": "Esc / ✕",
+     "kind": "other",
+     "return_default": false,
+     "goes_to": "library",
+     "note": "≡ Keep for 2 days"
+    }
+   ],
+   "cites": [
+    "N63",
+    "B197"
    ]
   },
   "delete-confirm": {
@@ -16622,7 +16781,7 @@
    "to": "library",
    "kind": "flow",
    "label": "",
-   "trigger": "saved: the editor closes",
+   "trigger": "saved, and nothing is left out any more (the edit was reverted): the editor closes",
    "status": "provisional",
    "cites": [
     "N63"
@@ -16702,6 +16861,118 @@
    ],
    "on": [
     "Act(EditorClose)",
+    "WindowClosed"
+   ]
+  },
+  {
+   "from": "editor-saving",
+   "to": "editor-making",
+   "kind": "flow",
+   "label": "",
+   "trigger": "saved with something left out: the final video is made",
+   "status": "provisional",
+   "cites": [
+    "N63",
+    "B197"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Editor"
+   ]
+  },
+  {
+   "from": "editor-making",
+   "to": "editor-keep-original",
+   "kind": "flow",
+   "label": "",
+   "trigger": "the final video is up",
+   "status": "provisional",
+   "cites": [
+    "N63",
+    "B197"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Editor"
+   ]
+  },
+  {
+   "from": "editor-making",
+   "to": "editor-making-failed",
+   "kind": "flow",
+   "label": "",
+   "trigger": "it couldn't be made or put up",
+   "status": "provisional",
+   "cites": [
+    "N63",
+    "B197"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Failed"
+   ]
+  },
+  {
+   "from": "editor-making",
+   "to": "library",
+   "kind": "flow",
+   "label": "Close",
+   "trigger": "Close, Return or ✕: shroom finishes in the background",
+   "status": "provisional",
+   "cites": [
+    "N63",
+    "B197"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Act(EditorClose)",
+    "WindowClosed"
+   ]
+  },
+  {
+   "from": "editor-making-failed",
+   "to": "library",
+   "kind": "flow",
+   "label": "Close",
+   "trigger": "Close, Return, Esc or ✕",
+   "status": "provisional",
+   "cites": [
+    "N63",
+    "B197"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Act(EditorClose)",
+    "WindowClosed"
+   ]
+  },
+  {
+   "from": "editor-keep-original",
+   "to": "library",
+   "kind": "flow",
+   "label": "Yes, delete · Keep for 2 days",
+   "trigger": "Yes, delete (Return): the edit becomes the video and the original is deleted; Keep for 2 days, Esc or ✕: the original is deleted two days on",
+   "status": "provisional",
+   "cites": [
+    "N63",
+    "B197"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Act(DeleteOriginal)",
+    "Act(KeepOriginal)",
     "WindowClosed"
    ]
   }

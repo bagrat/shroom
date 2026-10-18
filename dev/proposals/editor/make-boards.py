@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Writes the editor's extra canvas boards into <root>/project/: EditorCuts, EditorStates and PausedMarker.
+"""Writes the editor's extra canvas boards into <root>/project/: EditorCuts, EditorStates, EditorAfterSave and PausedMarker.
 
 They draw what the "Editing (a proposal)" boards leave out (DECISIONS B195): Undo and
 Redo, a cut put back, the video fetched from the space, saving, and a save that did not
-go through, and the paused popover's marker row. The helpers are the voice-cut proposal's (PR #59), so the column reads as one."""
+go through, the final video made after a save and the question of the
+original (B197), and the paused popover's marker row. The helpers are the voice-cut proposal's (PR #59), so the column reads as one."""
 
 import math
 import random
@@ -229,6 +230,35 @@ def board_states():
     return page("shroom Editor, getting ready and saving", 1100, 700, body)
 
 
+def board_after_save():
+    """After Done: the final video is made, then the original's fate is asked (B197)."""
+    bar = lambda pct: f'<div style="width: 240px; height: 4px; border-radius: 2px; background: {LINE}; overflow: hidden"><div style="width: {pct}%; height: 4px; background: {ACCENT}"></div></div>'
+    making = f'''<div style="height: 66px; border-radius: 6px; background: {FIELD}; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px">
+<span style="color: {FG}" data-said="editor-making.making">Making the final video… 40%</span>{bar(40)}</div>
+{footer("The link already plays your edit. You can close this window: shroom finishes it.", done="Close", revert=False)}'''
+    ask = f'''<div style="display: flex; flex-direction: row; align-items: center; gap: 16px; background: {CARD}; border: 1px solid {LINE}; border-radius: 10px; padding: 14px 16px">
+<div style="flex: 1 1 0; display: flex; flex-direction: column; gap: 4px">
+<span style="font-weight: 600; font-size: 14px" data-said="editor-keep-original.title">Delete the original?</span>
+<span style="color: {MUTED}" data-said="editor-keep-original.line">Your edit is the video now. The original is only kept so you can revert to it.</span></div>
+{button("Keep for 2 days", colour=FG3, said="editor-keep-original.keep")}{button("Yes, delete", primary=True, said="editor-keep-original.delete")}</div>'''
+    failed = footer("Couldn't make the final video. The link plays your edit anyway, and shroom tries again later.", done="Close", revert=False, line_colour=AMBER)
+    kept = (f'<div style="display: flex; flex-direction: row; align-items: center; gap: 10px">'
+            f'<span style="color: {MUTED}; flex: 1 1 0">Your link stays the same. Viewers see the edit once it\'s saved.</span>'
+            f'<span style="color: {DIM}; font-size: 12px" data-said="editor.original-kept">The original is kept 1 more day</span>'
+            f'{button("Revert to original", colour=FG3)}{button("Done", primary=True)}</div>')
+    gone = (f'<div style="display: flex; flex-direction: row; align-items: center; gap: 10px">'
+            f'<span style="color: {MUTED}; flex: 1 1 0">Your link stays the same. Viewers see the edit once it\'s saved.</span>'
+            f'<button disabled style="font: inherit; height: 30px; padding: 0 14px; border: 1px solid {BORDER}; border-radius: 7px; background: transparent; color: {DIM}; flex: none; opacity: 0.6">Revert to original</button>{button("Done", primary=True)}</div>')
+    body = f'''<div style="flex: 1 1 0; padding: 24px; display: flex; flex-direction: column; gap: 20px">
+{strip("Saved: the final video is made on this Mac and put up (the link already plays the edit)", making)}
+{strip("Once it's up: the window asks, Yes, delete leading (Return). ✕ or Close here means Keep for 2 days", ask)}
+{strip("When it couldn't be made (offline, the space didn't answer)", failed)}
+{strip("Editing again while the original is kept: the time it has left sits by Revert", kept)}
+{strip("Once the original is gone the edit is final: Revert to original only undoes what's changed since the window opened", gone)}
+</div>'''
+    return page("shroom Editor, after saving", 1100, 760, body)
+
+
 def board_paused_marker():
     sq = lambda path: f'<svg viewBox="0 0 16 16" aria-hidden="true" style="width: 16px; height: 16px; fill: none; stroke: {MUTED}; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; display: block; flex: none">{path}</svg>'
     stop = sq('<rect x="3.5" y="3.5" width="9" height="9" rx="2"></rect>')
@@ -270,6 +300,7 @@ def main():
     (root / "EditorCuts.dc.html").write_text(board_cuts())
     (root / "EditorStates.dc.html").write_text(board_states())
     (root / "PausedMarker.dc.html").write_text(board_paused_marker())
+    (root / "EditorAfterSave.dc.html").write_text(board_after_save())
 
 
 if __name__ == "__main__":
