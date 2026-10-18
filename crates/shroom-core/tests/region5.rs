@@ -661,10 +661,10 @@ fn every_region5_state_derives_with_its_return_default_and_its_lines() {
         if id.starts_with("editor") {
             let e = w.session.fields.editor.as_ref().expect("the editor's fields");
             let live = matches!(e.media, EditorMedia::Ready { .. }) && e.history.is_some() && e.save != EditorSave::Saving;
+            // Never Yes, delete (law 9; DEVIATIONS #55): a fixture naming it has no mapping.
             let want = fixture.return_default().and_then(|a| match a.label.as_str() {
                 "Done" => live.then_some(Action::EditorDone),
                 "Close" => Some(Action::EditorClose),
-                "Yes, delete" => Some(Action::DeleteOriginal),
                 other => panic!("no mapping for the editor's Return default {other:?}"),
             });
             if scene.ret(surface) != want {

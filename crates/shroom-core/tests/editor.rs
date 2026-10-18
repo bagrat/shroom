@@ -517,8 +517,8 @@ fn saved_with_something_left_out_makes_the_final_video() {
 }
 
 /// The whole after-save flow (B197 (a)–(c)): the bar fills with the lane's news, the final
-/// video lands and the window asks “Delete the original?” — Yes, delete (Return) makes the
-/// edit the video and closes.
+/// video lands and the window asks “Delete the original?” — Yes, delete, a click and never
+/// Return (law 9; DEVIATIONS #55), makes the edit the video and closes.
 #[test]
 fn the_final_video_lands_and_yes_delete_bakes_it() {
     let mut r = dirty();

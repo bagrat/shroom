@@ -94,8 +94,8 @@ pub fn derive(w: &World) -> Option<Window<EditorBody>> {
     };
     // Return is Done once there's a video to save over (cant-get's Close); Esc is the
     // webview's own — it drops a selection — except where Close is the one way on. After a
-    // save, Close, Esc and ✕ all leave the original for two days (B197 (b)); the question's
-    // Return is Yes, delete.
+    // save, Close, Esc and ✕ all leave the original for two days (B197 (b)); the question
+    // has no Return at all.
     let (ret, esc) = match id {
         "editor-cant-get" | "editor-making" | "editor-making-failed" => (Some(Action::EditorClose), Some(Action::EditorClose)),
         // Yes, delete leads but is never one keystroke away (law 9; DEVIATIONS #55).

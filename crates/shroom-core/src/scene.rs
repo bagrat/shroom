@@ -163,8 +163,8 @@ pub enum Action {
     EditorClose,
     /// Revert to original — the list's own Revert, as a click (undoable like any step).
     EditorRevert,
-    /// editor-keep-original's Yes, delete (Return): the edit becomes the video, and the
-    /// original's files go now (B197).
+    /// editor-keep-original's Yes, delete — a click, never Return (law 9; DEVIATIONS #55):
+    /// the edit becomes the video, and the original's files go now (B197).
     DeleteOriginal,
     /// editor-keep-original's Keep for 2 days (Esc, ✕ too): the window closes; the original
     /// goes two days on.
@@ -984,7 +984,8 @@ pub enum EditorAfterView {
     /// It couldn't be made or put up: the footer's amber line says so; Done is Close.
     Failed,
     /// It's up: “Delete the original?”, its line, then Keep for 2 days and Yes, delete
-    /// (filled, Return) — in the footer's place.
+    /// (filled and leading, but a click: Return never deletes — law 9; DEVIATIONS #55) —
+    /// in the footer's place.
     Asking { title: String, line: String, keep: Button, delete: Button },
 }
 
