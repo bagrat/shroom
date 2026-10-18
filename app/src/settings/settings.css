@@ -352,3 +352,35 @@
   padding: 0 2px;
   color: var(--green, var(--frost));
 }
+
+/* Your videos (N68): a small heading over its card; each switch carries its line under the label. */
+.general .group {
+  margin: 0 0 -10px;
+  padding: 0 2px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.srow.tall {
+  padding: 10px 12px;
+}
+
+.srow .lbl2 {
+  display: block;
+}
+
+.srow .hint {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.srow .hint.note {
+  color: var(--amber);
+}
+
+.videos .used {
+  color: var(--muted);
+  text-align: right;
+}

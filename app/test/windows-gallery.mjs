@@ -83,6 +83,9 @@ const TEXT = new Set([
   "help_label", "sent", "reply_label", "disclosure", "preparing", "failed",
   // Send feedback (N60): the line under the log box.
   "log_note",
+  // Suggested to clean up (N68): the view's line and foot; Your videos' heading, the
+  // switches' lines, the space's size.
+  "intro", "foot", "heading", "count_hint", "count_note", "suggest_hint", "used_label", "used",
 ]);
 
 /** The sheets that ask no destructive question: law 9's colours aren't theirs (B180, as
@@ -210,11 +213,19 @@ for (const entry of library) {
   const rowNotes = [...new Set(b.rows.flatMap((r) => [...r.buttons, ...r.hover]).map((x) => x.note).filter(Boolean))];
   const sceneForText = { ...w, body: { ...b, window_notes: rowNotes, rows: b.rows.map((r) => ({ ...r, title: r.rename ? null : r.title, hover: r.selected ? r.hover : [], menu: [] })) } };
 
+  // Suggested to clean up (N68) stands in place of the list: its own checks, then on.
+  if (b.cleanup) {
+    await cleanupChecks(entry, w);
+    continue;
+  }
+
   for (const scheme of ["light", "dark"]) {
     const tag = `library/${entry.variant} [${scheme}]`;
     const { ctx, page, errors } = await open("library", w, { colorScheme: scheme });
     const v = await vars(page);
     await common(tag, page, errors, "library", sceneForText, { hidden: [...hidden, ...renamed.filter((t) => !shownElsewhere.has(t))] });
+    // N68's line above the rows: its words, Review… and Not now.
+    check(`${tag}: the cleanup line ${b.cleanup_line ? "shows" : "absent"}`, (await page.locator(".cline").count()) === (b.cleanup_line ? 1 : 0));
 
     // The search field reads the Scene.
     const s = page.locator('input[data-field="library-search"]');
@@ -240,7 +251,7 @@ for (const entry of library) {
       const tagged = await page.locator(`li.lrow[data-key="${r.key}"] .line2 .member`).allInnerTexts();
       check(`${tag}: row ${r.key} ${r.member ? `carries “${r.member}”` : "carries no member's label"}`, JSON.stringify(tagged) === JSON.stringify(r.member ? [r.member] : []), JSON.stringify(tagged));
     }
-    let expected = (b.sheet ? b.sheet.buttons.length : 0) + b.scope.length;
+    let expected = (b.sheet ? b.sheet.buttons.length : 0) + b.scope.length + (b.cleanup_line && !b.sheet ? 2 : 0);
     for (const r of b.rows) {
       const row = page.locator(`li.lrow[data-key="${r.key}"]`);
       const rt = `${tag}: row ${r.key}`;
@@ -496,6 +507,54 @@ for (const variant of ["library-delete-sheet", "library-delete-sheet-several"]) 
   await ctx.close();
 }
 
+/** Suggested to clean up (N68): every line, the rows in the Scene's order with their
+ * buttons enabled and styled as said (Delete red text, law 9), Delete all… and the Undo
+ * line as the Scene gives them, nothing else, nothing sideways — at the window's size and
+ * its minimum; then each button sends the Scene's action. */
+async function cleanupChecks(entry, w) {
+  const c = w.body.cleanup;
+  for (const [scheme, size] of [["light", SIZES.library], ["dark", SIZES.library], ["light", SIZES.library.min]]) {
+    const tag = `library/${entry.variant} [${scheme}${size === SIZES.library.min ? ", min width" : ""}]`;
+    const { ctx, page, errors } = await open("library", w, { colorScheme: scheme, size });
+    const v = await vars(page);
+    await common(tag, page, errors, "library", { ...w, body: { cleanup: c } });
+    check(`${tag}: the list gives way to the view`, (await page.locator(".toolbar").count()) === 0 && (await page.locator(".cview").count()) === 1);
+    const keys = await page.locator(".cview li.lrow").evaluateAll((els) => els.map((e) => e.dataset.key));
+    check(`${tag}: rows in the Scene's order`, keys.join("|") === c.rows.map((r) => r.key).join("|"), keys.join("|"));
+    check(`${tag}: ${c.empty ? "the empty line" : "no empty line"}`, (await page.locator(".cview .empty").count()) === (c.empty ? 1 : 0));
+    for (const r of c.rows) {
+      const row = page.locator(`.cview li.lrow[data-key="${r.key}"]`);
+      const cut = await unclipped(row);
+      check(`${tag}: row ${r.key} title and meta unclipped`, cut.length === 0, cut.join(" "));
+      for (const x of r.buttons) {
+        const loc = row.locator("button", { hasText: x.label });
+        const bad = (await loc.count()) === 1 ? await styled(loc, x.style, v) : "missing";
+        check(`${tag}: row ${r.key} “${x.label}” ${x.enabled ? "enabled" : "disabled"}, ${x.style}`, (await loc.isVisible()) && (await loc.isEnabled()) === x.enabled && !bad, bad ?? "");
+      }
+    }
+    if (c.delete_all) {
+      const loc = page.locator(".cfoot button");
+      const bad = await styled(loc, c.delete_all.style, v);
+      check(`${tag}: “${c.delete_all.label}” red text (law 9)`, c.delete_all.style === "red-text" && !bad, bad ?? "");
+    }
+    check(`${tag}: the Undo line ${c.undo ? "shows" : "absent"}`, (await page.locator(".cview .undo").count()) === (c.undo ? 1 : 0));
+    const expected = 1 + c.rows.reduce((n, r) => n + r.buttons.length, 0) + (c.delete_all ? 1 : 0) + (c.undo ? 1 : 0);
+    const shown = await page.locator("button:visible").count();
+    check(`${tag}: ${expected} buttons showing, no others`, shown === expected, `shown ${shown}`);
+    if (size !== SIZES.library.min) await page.screenshot({ path: join(out, `library-${entry.variant}-${scheme}.png`), animations: "disabled" });
+    // Every button sends the Scene's action.
+    if (scheme === "light" && size !== SIZES.library.min) {
+      const where = [[".chead", c.back], ...c.rows.flatMap((r) => r.buttons.map((x) => [`li.lrow[data-key="${r.key}"]`, x])), ...(c.delete_all ? [[".cfoot", c.delete_all]] : []), ...(c.undo ? [[".undo", c.undo.undo]] : [])];
+      for (const [scope, x] of where.filter(([, x]) => x.enabled)) {
+        await clear(page);
+        await page.locator(`.cview ${scope} button`, { hasText: x.label }).first().click();
+        check(`${tag}: “${x.label}” sends the Scene's action`, acted(await calls(page), "library", x.action), JSON.stringify(await calls(page)));
+      }
+    }
+    await ctx.close();
+  }
+}
+
 // ── Settings ──
 
 for (const entry of settings) {
@@ -631,16 +690,31 @@ for (const entry of settings) {
 
 const set = (variant) => settings.find((e) => e.variant === variant).scene;
 {
+  // Your videos (N68): each switch sends the Scene's action and keeps the Scene's state.
+  const w = set("general-your-videos");
+  const v = w.body.pane.videos;
+  const { ctx, page } = await open("settings", w);
+  for (const t of [v.count, v.suggest]) {
+    await clear(page);
+    const box = page.getByRole("checkbox", { name: t.label });
+    await box.click();
+    check(`settings: “${t.label}” sends its action`, acted(await calls(page), "settings", t.action), JSON.stringify(await calls(page)));
+    check(`settings: “${t.label}” keeps the Scene's state`, (await box.isChecked()) === t.on);
+  }
+  await ctx.close();
+}
+{
   const { ctx, page } = await open("settings", set("general-update-ready"));
   await page.getByRole("tab", { name: "Space" }).click();
   await page.getByRole("tab", { name: "General" }).click();
   let c = await calls(page);
   check("settings: a tab sends its action; the selected one nothing", acted(c, "settings", { do: "settings-tab", arg: "space" }) && c.length === 1, JSON.stringify(c));
   await clear(page);
-  await page.getByRole("checkbox").click();
+  const login = page.getByRole("checkbox", { name: "Start shroom when you log in" });
+  await login.click();
   c = await calls(page);
   check("settings: the login box sends its action", acted(c, "settings", { do: "set-login-item", arg: true }));
-  check("settings: the box keeps the Scene's state until the Scene changes", !(await page.getByRole("checkbox").isChecked()));
+  check("settings: the box keeps the Scene's state until the Scene changes", !(await login.isChecked()));
   await clear(page);
   for (const name of ["Update", "What's new", "Copy diagnostics", "Report a problem…", "GitHub"]) await page.getByRole("button", { name, exact: true }).click();
   c = await calls(page);

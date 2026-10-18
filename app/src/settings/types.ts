@@ -22,6 +22,18 @@ export type GeneralPane = {
   help_links: Button[];
   /** “Uninstall shroom…”, quiet text at the tab's foot (B135). */
   uninstall: Button;
+  /** Your videos (N68): the space's play-count switch, this Mac's suggestions switch, the space's size. */
+  videos: {
+    heading: string;
+    count: Toggle;
+    count_hint: string;
+    /** The switch didn't go through (law 12). */
+    count_note: string | null;
+    suggest: Toggle;
+    suggest_hint: string;
+    used_label: string | null;
+    used: string | null;
+  } | null;
 };
 
 export type SpacePane = {
