@@ -63,9 +63,13 @@ describe("the cask", () => {
   });
 
   // Bagrat, 2026-10-18: the `shroom` command is always installed — Homebrew links the one
-  // inside the app, the same file the install line links into ~/.local/bin.
+  // inside the app, the same file the install line links into ~/.local/bin (DECISIONS B217).
+  // Only for a release that carries it: the line waits behind `#cli: ` until render-cask.sh
+  // reads `cli=shroom-cli` in the release's manifest (a release before it has none to link,
+  // and Homebrew fails an install whose binary isn't there).
   it("links the app's shroom command into Homebrew's bin, the same file the install line links", () => {
-    assert.match(cask, /^  binary "#\{Dir\.home\}\/Applications\/shroom\.app\/Contents\/MacOS\/shroom-cli", target: "shroom"$/m);
+    assert.match(cask, /^  #cli: binary "#\{Dir\.home\}\/Applications\/shroom\.app\/Contents\/MacOS\/shroom-cli", target: "shroom"$/m);
+    assert.doesNotMatch(cask, /^  binary /m, "never unconditionally");
     const installer = readFileSync(join(ROOT, "installer/install.sh"), "utf8");
     assert.ok(installer.includes('target="$APP/Contents/MacOS/shroom-cli"'));
     assert.ok(installer.includes('APP="$HOME/Applications/shroom.app"'));
@@ -92,20 +96,47 @@ describe("the cask", () => {
 });
 
 describe("render-cask.sh", () => {
+  // A release before the command (no `cli=` in its manifest): the waiting line goes.
+  const without = (c) => c.replace(/^  #cli: .*\n/m, "");
+
   it("fills in the manifest's version and fingerprint, and changes nothing else", () => {
     const r = render(`version=1.2.3\nmacos=14\narm64=shroom-1.2.3-arm64.zip ${SUM.toUpperCase()}\n`);
     assert.equal(r.status, 0, r.stderr);
-    const want = cask.replace(/^  version "[0-9.]+"$/m, '  version "1.2.3"').replace(/^  sha256 "[0-9a-f]+"$/m, `  sha256 "${SUM}"`);
+    const want = without(cask.replace(/^  version "[0-9.]+"$/m, '  version "1.2.3"').replace(/^  sha256 "[0-9a-f]+"$/m, `  sha256 "${SUM}"`));
     assert.notEqual(want, cask);
     assert.equal(r.stdout, want);
   });
 
-  it("gives back the cask as it is for the release it names", () => {
+  it("gives back the cask as it is for the release it names, which carries no command", () => {
     const version = cask.match(/^  version "([0-9.]+)"$/m)[1];
     const sum = cask.match(/^  sha256 "([0-9a-f]{64})"$/m)[1];
     const r = render(`version=${version}\nmacos=14\narm64=shroom-${version}-arm64.zip ${sum}\n`);
     assert.equal(r.status, 0, r.stderr);
-    assert.equal(r.stdout, cask);
+    assert.equal(r.stdout, without(cask));
+  });
+
+  it("links the command for a release that carries it (cli=shroom-cli), and only then", () => {
+    const r = render(`version=1.2.3\nmacos=14\narm64=shroom-1.2.3-arm64.zip ${SUM}\ncli=shroom-cli\n`);
+    assert.equal(r.status, 0, r.stderr);
+    assert.match(r.stdout, /^  binary "#\{Dir\.home\}\/Applications\/shroom\.app\/Contents\/MacOS\/shroom-cli", target: "shroom"$/m);
+    assert.doesNotMatch(r.stdout, /#cli: /);
+    const before = render(`version=1.2.3\nmacos=14\narm64=shroom-1.2.3-arm64.zip ${SUM}\n`).stdout;
+    assert.doesNotMatch(before, /binary /);
+    assert.doesNotMatch(before, /#cli: /);
+  });
+
+  it("is Ruby that parses, either way", { skip: spawnSync("ruby", ["-v"]).status !== 0 && "no ruby here" }, () => {
+    for (const tail of ["", "cli=shroom-cli\n"]) {
+      const path = join(work, `rendered-${tail ? "cli" : "plain"}.rb`);
+      writeFileSync(path, render(`version=1.2.3\nmacos=14\narm64=shroom-1.2.3-arm64.zip ${SUM}\n${tail}`).stdout);
+      const r = spawnSync("ruby", ["-c", path], { encoding: "utf8" });
+      assert.equal(r.status, 0, r.stderr);
+    }
+  });
+
+  it("and the release's packaging says when it carries the command", () => {
+    const pack = readFileSync(join(ROOT, "tools/package-release.sh"), "utf8");
+    assert.ok(pack.includes('[ -x "$app/Contents/MacOS/shroom-cli" ]') && pack.includes("cli=shroom-cli"), "package-release.sh writes cli=shroom-cli for a bundle carrying the command");
   });
 
   for (const [what, manifest] of [
