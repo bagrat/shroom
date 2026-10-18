@@ -4,7 +4,7 @@
 
 The machine: every state, edge, rule, said-line and law of shroom v1 — the spec (DECISIONS B133). Sessions edit it; MACHINE.md and the canvas's machine boards are generated from it.
 
-155 states · 318 edges · 25 rules · 620 said-lines · 16 laws · 75 ledger rows.
+155 states · 318 edges · 25 rules · 622 said-lines · 16 laws · 75 ledger rows.
 
 Status: **ratified** is Bagrat's; **provisional** is designed or built and awaits him (each cites its row: `#n` is a DEVIATIONS row of docs/DECISIONS.md, `Bn` a decision, `Nn`/`Un`/`Pn` a ledger row below). `SM:n` in older citations is a line of the retired spec text, kept in history/spec/UX-STATEMACHINE.md.
 
@@ -2042,7 +2042,7 @@ web-page · web-page · **provisional** · cites N40, §5.4, R4, R5
 
 face · web-page · **provisional** · a face of `owner-page` · board: OwnerPageCuts · cites N65, N63, N66, N40, B21
 
-Voice cuts (N65): when the speaker said “shroom cut” in a take, the owner page shows what was cut, under the player. A heading, a quiet note that only the owner sees it, then one row per cut: its time on the video, and what was said, struck through while it is cut, between a few words of what plays around it (up to six either side, never struck), with Put back (and, once put back, Cut again). A cue with nothing said again after it cut only its own words; the line before it comes as an offer, its words not struck, with Cut it too. Owner-mode as the title has it (N40): the video's maker and owner-class browsers. Viewers see only the cut video, never the strip or the words cut. A press saves at once and the player follows; a press that didn't save puts the row back as it was and says so on one line (OwnerPageCutRows).
+Voice cuts (N65): when the speaker said “shroom cut” in a take, the owner page shows what was cut, under the player. A heading, a quiet note that only the owner sees it, then one row per cut: its time on the video, and what was said, struck through while it is cut, between a few words of what plays around it (up to six either side, never struck), with Put back (and, once put back, Cut again). A cue with nothing said again after it cut only its own words; the line before it comes as an offer, its words not struck, with Cut it too. Owner-mode as the title has it (N40): the video's maker and owner-class browsers. Viewers see only the cut video, never the strip or the words cut. A press saves at once and the player follows; a press that didn't save puts the row back as it was and says so on one line (OwnerPageCutRows). A cut whose edges were moved in the editor (N63) shows how long it is and where it now ends in place of its words, which would no longer be what's cut; Put back, Cut again and Cut it too work on it as before.
 
 **Entry.** The record's edit list holds voice cuts (N63's list; kinds retake, cue-only and line-before-cue, landed by the Mac once the take is heard) and the browser is in owner-mode for this video. The strip shows on load, or, on a page already open, once the page's own poll sees the cuts land.
 
@@ -2055,6 +2055,8 @@ Voice cuts (N65): when the speaker said “shroom cut” in a take, the owner pa
 | “Cut it too” | button | provisional | On the offered line before a cue with nothing said again after it. Proposed 2026-10-18; awaiting Bagrat. |
 | “Nothing was said again after it, so only “shroom cut” went. Cut the line before it too?” | note | provisional | Above the offered line, in amber. Proposed 2026-10-18; awaiting Bagrat. |
 | “Couldn't save that. Check your connection, then try again.” | status | provisional | Under the rows, in amber, after a press that didn't save; the row is back as it was. Proposed 2026-10-18; awaiting Bagrat. |
+| “4.6 s, to 0:09” | line | ratified | In place of a cut's words once its edges were moved in the editor (N63: a cut's edges dragged, its `adjusted`): how long it is now and where it ends; the numbers vary. The words would no longer be what's cut. Approved as drawn, Bagrat 2026-10-18 (OwnerPageCutAdjusted). |
+| “changed in the editor” | note | ratified | After the length, quieter: why the row shows no words. Approved as drawn, Bagrat 2026-10-18 (OwnerPageCutAdjusted). |
 
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|

@@ -12226,7 +12226,7 @@
    "surface": "web-page",
    "status": "provisional",
    "board": "OwnerPageCuts",
-   "summary": "Voice cuts (N65): when the speaker said “shroom cut” in a take, the owner page shows what was cut, under the player. A heading, a quiet note that only the owner sees it, then one row per cut: its time on the video, and what was said, struck through while it is cut, between a few words of what plays around it (up to six either side, never struck), with Put back (and, once put back, Cut again). A cue with nothing said again after it cut only its own words; the line before it comes as an offer, its words not struck, with Cut it too. Owner-mode as the title has it (N40): the video's maker and owner-class browsers. Viewers see only the cut video, never the strip or the words cut. A press saves at once and the player follows; a press that didn't save puts the row back as it was and says so on one line (OwnerPageCutRows).",
+   "summary": "Voice cuts (N65): when the speaker said “shroom cut” in a take, the owner page shows what was cut, under the player. A heading, a quiet note that only the owner sees it, then one row per cut: its time on the video, and what was said, struck through while it is cut, between a few words of what plays around it (up to six either side, never struck), with Put back (and, once put back, Cut again). A cue with nothing said again after it cut only its own words; the line before it comes as an offer, its words not struck, with Cut it too. Owner-mode as the title has it (N40): the video's maker and owner-class browsers. Viewers see only the cut video, never the strip or the words cut. A press saves at once and the player follows; a press that didn't save puts the row back as it was and says so on one line (OwnerPageCutRows). A cut whose edges were moved in the editor (N63) shows how long it is and where it now ends in place of its words, which would no longer be what's cut; Put back, Cut again and Cut it too work on it as before.",
    "entry": "The record's edit list holds voice cuts (N63's list; kinds retake, cue-only and line-before-cue, landed by the Mac once the take is heard) and the browser is in owner-mode for this video. The strip shows on load, or, on a page already open, once the page's own poll sees the cuts land.",
    "said": [
     {
@@ -12277,6 +12277,20 @@
      "copy": "provisional",
      "note": "Under the rows, in amber, after a press that didn't save; the row is back as it was. Proposed 2026-10-18; awaiting Bagrat.",
      "id": "owner-page-cuts.couldnt-save"
+    },
+    {
+     "text": "4.6 s, to 0:09",
+     "role": "line",
+     "copy": "ratified",
+     "note": "In place of a cut's words once its edges were moved in the editor (N63: a cut's edges dragged, its `adjusted`): how long it is now and where it ends; the numbers vary. The words would no longer be what's cut. Approved as drawn, Bagrat 2026-10-18 (OwnerPageCutAdjusted).",
+     "id": "owner-page-cuts.changed-length"
+    },
+    {
+     "text": "changed in the editor",
+     "role": "note",
+     "copy": "ratified",
+     "note": "After the length, quieter: why the row shows no words. Approved as drawn, Bagrat 2026-10-18 (OwnerPageCutAdjusted).",
+     "id": "owner-page-cuts.changed-in-the-editor"
     }
    ],
    "actions": [
