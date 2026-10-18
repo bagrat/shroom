@@ -1097,7 +1097,7 @@ fn editor_layout(d: &Drive) -> Result<serde_json::Value, String> {
       }
       const r = (q) => { const e = document.querySelector(q); if (!e) return null; const b = e.getBoundingClientRect(); return [b.left, b.top, b.width, b.height]; };
       const v = document.querySelector("video");
-      return JSON.stringify({ track: r(".track"), chip: r(".chip button"), screen: r(".screen"), delete: r(".ask .b.filled"), play: r(".play"), video: v ? [v.duration, v.readyState] : null, paused: v ? v.paused : null, pointer: window.__drive.at, presses: window.__drive.presses.slice(-12) });
+      return JSON.stringify({ track: r(".track"), chip: r(".chip button"), screen: r(".screen"), delete: r(".ask .b.filled"), play: r(".play"), label: document.querySelector(".play")?.getAttribute("aria-label") ?? null, video: v ? [v.duration, v.readyState] : null, paused: v ? v.paused : null, pointer: window.__drive.at, presses: window.__drive.presses.slice(-12) });
     })()"#;
     let w = d.app.get_webview_window(crate::runtime::presenter::EDITOR).ok_or("no editor window")?;
     let (tx, rx) = std::sync::mpsc::channel();
@@ -1138,6 +1138,14 @@ fn editor_origin(d: &Drive) -> Result<(f64, f64), String> {
 }
 
 /// A rectangle from the page, its centre on screen.
+/// The editor just opened: its video paused, and its button reading Play.
+fn starts_paused(d: &Drive, what: &str) -> Result<(), String> {
+    let fresh = poll(5, || editor_layout(d).ok().filter(|l| l["video"].get(1).and_then(serde_json::Value::as_u64).is_some_and(|ready| ready >= 1)));
+    let l = fresh.ok_or("the editor's video never loaded")?;
+    d.check(what, l["paused"] == true && l["label"] == shroom_core::copy::editor_play().as_str(), format!("paused {}, the button reads {}", l["paused"], l["label"]));
+    Ok(())
+}
+
 /// Play, pressed with the pointer: a real click on the editor's play button.
 fn play_by_hand(d: &Drive, runner: &Runner, origin: (f64, f64)) -> Result<(), String> {
     let at = editor_layout(d)?.get("play").and_then(|r| centre(origin, r)).ok_or("no play button on the page")?;
@@ -1449,12 +1457,16 @@ fn editor(d: &Drive) -> Result<(), String> {
     // The window held the original under the same name: its page reads the new file.
     let played = poll(10, || editor_layout(d).ok().and_then(|l| l.get("video")?.get(0)?.as_f64()).filter(|t| near(*t, want.1, 0.6)));
     d.check("… and the window plays that file, not the one it held before", played.is_some(), format!("{:?}", editor_layout(d).ok().and_then(|l| l.get("video").cloned())));
+    // Opened again after playing through Done: it starts paused, reading Play (early.1 opened
+    // every editor stuck on Pause, the button and Space doing nothing, 2026-10-18).
+    starts_paused(d, "reopened after playing through Done, it starts paused, reading Play")?;
     std::thread::sleep(Duration::from_secs(3));
     runner.shot(d, crate::runtime::presenter::EDITOR, "editor-baked")?;
     // Closed while playing: the window is only hidden, so its page lets go of the video, and
     // nothing plays on behind it (the audio went on after the window closed, 2026-10-18).
     play_by_hand(d, &runner, origin)?;
     let playing = poll(3, || editor_layout(d).ok().filter(|l| l["paused"] == false));
+    d.check("… and Play plays it", playing.is_some(), format!("{:?}", editor_layout(d).map(|l| l["paused"].clone())));
     d.rt.post(Event::WindowClosed(WindowKind::Editor));
     d.wait("✕ closed it", 10, |s| s.editor.is_none())?;
     let gone = poll(3, || editor_layout(d).ok().filter(|l| l["video"].is_null()));
@@ -1471,6 +1483,12 @@ fn editor(d: &Drive) -> Result<(), String> {
     let bytes = std::fs::metadata(&video).map(|m| m.len()).unwrap_or(1);
     d.check("not on this Mac: fetched from the space, whole", size == bytes && mode(&fetched) == "600", format!("{size} of {bytes} bytes, mode {}", mode(&fetched)));
     d.check("… its flags none, its length the record's", editor_body(&s).is_some_and(|b| b.markers.is_empty() && near(b.source_duration, length, 0.01)), "");
+    // The window was closed while playing just before: this one starts paused, and Play plays.
+    starts_paused(d, "opened after one closed while playing, it starts paused, reading Play")?;
+    play_by_hand(d, &runner, origin)?;
+    let playing = poll(3, || editor_layout(d).ok().filter(|l| l["paused"] == false && l["label"] == shroom_core::copy::editor_pause().as_str()));
+    d.check("… and Play plays it, reading Pause", playing.is_some(), format!("{:?}", editor_layout(d).map(|l| (l["paused"].clone(), l["label"].clone()))));
+    play_by_hand(d, &runner, origin)?;
     std::thread::sleep(Duration::from_secs(3));
     runner.shot(d, crate::runtime::presenter::EDITOR, "editor-fetched")?;
     d.rt.post(Event::Edit(EditStep::Op(Op::Trim { in_: 1.0, out: 30.0 })));

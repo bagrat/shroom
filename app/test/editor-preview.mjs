@@ -472,8 +472,36 @@ export async function editorDrives({ browser, origin, mediaOrigin, entries, chec
   await page.waitForTimeout(200);
   const left = await page.evaluate(() => [...document.querySelectorAll("video")].map((v) => ({ paused: v.paused, src: v.currentSrc })));
   check("editor: put away, the window lets go of its video, nothing playing behind it", playingAtClose && left.length === 0, `${playingAtClose} ${JSON.stringify(left)}`);
+  // Opened again after that: it starts paused, the button reads Play, and Play plays
+  // (early.1 opened every editor stuck on Pause, the button and Space doing nothing).
+  const fresh = async () => {
+    await page.waitForFunction(() => (document.querySelector("video")?.readyState ?? 0) >= 1, null, { timeout: 5000 }).catch(() => {});
+    return page.evaluate(() => ({ paused: document.querySelector("video")?.paused ?? null, label: document.querySelector(".play")?.getAttribute("aria-label") }));
+  };
+  const playsAgain = async () => {
+    await page.keyboard.press(" ");
+    await page.waitForTimeout(400);
+    const ok = (await isPlaying()) && (await page.locator(".play").getAttribute("aria-label")) === b.labels.pause;
+    await page.keyboard.press(" ");
+    await page.waitForTimeout(150);
+    return ok;
+  };
   await page.evaluate((w) => window.__emit(w), cutFace);
-  await page.waitForTimeout(800);
+  const reopened = await fresh();
+  check("editor: opened again after it was put away playing, it starts paused, reading Play", reopened.paused === true && reopened.label === b.labels.play, JSON.stringify(reopened));
+  check("editor: … and Play plays, after it was put away", await playsAgain());
+  // A new file in its place while playing (opened afresh, or its edit baked under the same
+  // name): the same.
+  await page.keyboard.press(" ");
+  await page.waitForTimeout(400);
+  const playingAtSwap = await isPlaying();
+  await page.evaluate((w) => window.__emit(w), { ...cutFace, body: { ...cutFace.body, media: { state: "opening" } } });
+  await page.waitForTimeout(150);
+  await page.evaluate((w) => window.__emit(w), cutFace);
+  const swapped = await fresh();
+  check("editor: a new file in its place while playing: it starts paused, reading Play", playingAtSwap && swapped.paused === true && swapped.label === b.labels.play, `${playingAtSwap} ${JSON.stringify(swapped)}`);
+  check("editor: … and Play plays, with the new file", await playsAgain());
+  await page.waitForTimeout(500);
 
   // A narrower window: the waveform redrawn to its new width, still crisp; nothing sideways.
   await page.setViewportSize(EDITOR_MIN);
