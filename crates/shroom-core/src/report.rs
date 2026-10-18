@@ -8,9 +8,9 @@
 use serde::Serialize;
 
 /// The lines a report keeps: the last ones, the newest last.
-pub const LOG_LINES: usize = 200;
+pub const LOG_LINES: usize = 1000;
 /// Of those, at most this many are the `shroom` command's own (its `cli.log`, spec N62):
-/// its last runs, after the app's lines.
+/// its last runs, among the app's lines by their time.
 pub const CLI_LINES: usize = 30;
 /// One line, at most, once cleaned (in characters).
 pub const LINE_CHARS: usize = 400;
@@ -173,13 +173,15 @@ fn is_word(c: char) -> bool {
     c.is_ascii_alphanumeric() || c == '_'
 }
 
-/// `   10 webview popover: <message>`: the message cut to `WEBVIEW_CHARS`.
+/// `2026-10-18T17:52:03Z       10 webview popover: <message>`: the message cut to
+/// `WEBVIEW_CHARS`.
 fn cut_webview(s: &str) -> String {
     let Some(at) = s.find("webview ") else {
         return s.into();
     };
-    // Only the line's own kind: digits and spaces before it, a surface name after it.
-    if !s[..at].chars().all(|c| c.is_ascii_digit() || c == ' ') {
+    // Only the line's own kind: its wall clock, then digits and spaces before it, a surface
+    // name after it.
+    if !after_stamp(&s[..at]).chars().all(|c| c.is_ascii_digit() || c == ' ') {
         return s.into();
     }
     let rest = &s[at + "webview ".len()..];
@@ -195,6 +197,16 @@ fn cut_webview(s: &str) -> String {
         return s.into();
     }
     format!("{head}{}…", message.chars().take(WEBVIEW_CHARS).collect::<String>())
+}
+
+/// A log line past its wall clock (`2026-10-18T17:52:03Z `), when it opens with one.
+fn after_stamp(s: &str) -> &str {
+    let b = s.as_bytes();
+    let shape = |i: usize, c: u8| match c {
+        b'-' | b'T' | b':' | b'Z' | b' ' => b[i] == c,
+        _ => b[i].is_ascii_digit(),
+    };
+    if b.len() >= 21 && b"0000-00-00T00:00:00Z ".iter().enumerate().all(|(i, &c)| shape(i, c)) { &s[21..] } else { s }
 }
 
 fn host_of(url: &str) -> String {

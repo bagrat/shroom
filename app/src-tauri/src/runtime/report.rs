@@ -5,7 +5,7 @@
 //! from a click (law 10), and answers once. A dev build never reaches shroom.am.
 
 use std::path::Path;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, UNIX_EPOCH};
 
 use shroom_core::event::{Event, ReportNews};
 use shroom_core::report::{self, Diagnostics, Post};
@@ -17,7 +17,7 @@ use super::Runtime;
 /// Where a release posts (site/report.js).
 pub const ENDPOINT: &str = "https://shroom.am/report";
 /// The Worker's bounds (site/report.js): the log and the setup line, in characters.
-const LOG_CHARS: usize = 48_000;
+const LOG_CHARS: usize = 120_000;
 const SETUP_CHARS: usize = 300;
 
 /// The report, gathered: never fails — a fact it can't read is left out.
@@ -189,18 +189,30 @@ fn setup(root: &Path) -> String {
 
 /// A time as UTC's date and hour:minute.
 pub fn utc(secs: i64) -> (String, String) {
+    let tm = gmtime(secs);
+    (format!("{:04}-{:02}-{:02}", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday), format!("{:02}:{:02}", tm.tm_hour, tm.tm_min))
+}
+
+fn gmtime(secs: i64) -> libc::tm {
     let t: libc::time_t = secs as libc::time_t;
     let mut tm: libc::tm = unsafe { std::mem::zeroed() };
     // SAFETY: gmtime_r writes only into `tm`.
     unsafe { libc::gmtime_r(&t, &mut tm) };
-    (format!("{:04}-{:02}-{:02}", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday), format!("{:02}:{:02}", tm.tm_hour, tm.tm_min))
+    tm
 }
 
-/// Now, as UTC (the boot line's stamp): “2026-10-16 09:12 UTC”.
-pub fn utc_now() -> String {
-    let secs = SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs() as i64).unwrap_or(0);
-    let (date, time) = utc(secs);
-    format!("{date} {time} UTC")
+/// A log line's wall clock, UTC to the second: “2026-10-18T17:52:03Z”.
+pub fn stamp(secs: i64) -> String {
+    let tm = gmtime(secs);
+    format!("{:04}-{:02}-{:02}T{:02}:{:02}:{:02}Z", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec)
+}
+
+/// Which build runs on which Mac, for the log's boot and roll lines:
+/// “shroom 0.1.17 · macOS 15.5 · Apple M2” (a fact it can't read is left out).
+pub fn build(version: &str) -> String {
+    let macos = command("sw_vers", &["-productVersion"]).map(|v| format!("macOS {v}"));
+    let chip = command("sysctl", &["-n", "machdep.cpu.brand_string"]);
+    std::iter::once(format!("shroom {version}")).chain(macos).chain(chip).collect::<Vec<_>>().join(" · ")
 }
 
 #[cfg(test)]
@@ -249,16 +261,20 @@ mod tests {
 
     #[test]
     fn a_long_log_keeps_its_newest_lines_within_the_bound() {
-        let log = (0..200).map(|i| format!("{i:>6} {}", "x".repeat(390))).collect::<Vec<_>>().join("\n");
+        let log = (0..400).map(|i| format!("{i:>6} {}", "x".repeat(390))).collect::<Vec<_>>().join("\n");
         let v = body(&post(log));
         let kept = v["log"].as_str().unwrap();
         assert!(kept.chars().count() <= LOG_CHARS);
-        assert!(kept.ends_with(&"x".repeat(10)) && kept.lines().last().unwrap().starts_with("   199"));
+        // The Worker takes as much of the log as the app sends.
+        assert!(include_str!("../../../../site/report.js").contains(&format!("log: {LOG_CHARS},")));
+        assert!(kept.ends_with(&"x".repeat(10)) && kept.lines().last().unwrap().starts_with("   399"));
+        assert!(!kept.starts_with("     0"), "the oldest lines go first");
     }
 
     #[test]
     fn utc_reads_the_calendar() {
         assert_eq!(utc(1_792_150_000), ("2026-10-16".to_string(), "11:26".to_string()));
+        assert_eq!(stamp(1_792_150_003), "2026-10-16T11:26:43Z");
     }
 
     /// The `shroom` command's runs (its `cli.log`, spec N62) ride after the app's lines,
