@@ -238,6 +238,11 @@ enum Ears {
     DriveBeep,
 }
 
+/// The voice-cut drive's speech (`--voice <wav>`, spec N65): what a drive's take plays in
+/// place of the beep. Set by the harness's arguments only, so never outside a quiet harness
+/// run.
+pub static DRIVE_VOICE: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
+
 fn ears(rt: &Runtime) -> Ears {
     // `harness` is a quiet dev run only (never a release build, never a person's dev app).
     if rt.harness { Ears::DriveBeep } else { Ears::Device }
@@ -263,7 +268,7 @@ fn sources(ears: Ears, a_source: SourceId, quality: Quality, mic_uid: &Option<St
         }
     };
     let (voice, lost, opened) = if ears == Ears::DriveBeep {
-        let drive: Option<Box<dyn AudioSource>> = match (mic_uid, crate::harness::drive_voice()) {
+        let drive: Option<Box<dyn AudioSource>> = match (mic_uid, DRIVE_VOICE.get()) {
             (None, _) => None,
             (Some(_), Some(wav)) => Some(Box::new(shroom_capture::speech::SpeechSource::open(wav, 48_000)?)),
             (Some(_), None) => Some(Box::new(shroom_capture::beep::BeepSource::new(48_000))),

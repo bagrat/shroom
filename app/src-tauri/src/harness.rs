@@ -98,16 +98,6 @@ pub enum Mode {
     DriveTake { which: crate::take_drive::TakeDrive, out: PathBuf },
 }
 
-/// The voice-cut drive's speech (`--voice <wav>`, spec N65): what a drive's take says in
-/// place of the beep, so the space's hearing and the voice lane have a cue to find. A quiet
-/// harness run only, as the beep is (`runtime::recorder`'s ears).
-static DRIVE_VOICE: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
-
-/// The speech a drive's take plays in place of the beep, when `--voice` named one.
-pub fn drive_voice() -> Option<&'static Path> {
-    DRIVE_VOICE.get().map(PathBuf::as_path)
-}
-
 /// The live drive turns its space to listen before it records (`--ai`, N66), as a person
 /// does: the voice-cut drive's take must be heard.
 static DRIVE_AI: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
@@ -118,8 +108,10 @@ pub fn drive_ai() -> bool {
 
 pub fn from_args(args: Vec<String>) -> Mode {
     let after = |flag: &str| args.iter().position(|a| a == flag).map(|i| args[i + 1..].to_vec());
+    // The voice-cut drive's speech (`--voice <wav>`, spec N65), in place of the beep: the
+    // space's hearing and the voice lane have a cue to find.
     if let Some(wav) = after("--voice").and_then(|rest| rest.first().cloned()) {
-        let _ = DRIVE_VOICE.set(PathBuf::from(wav));
+        let _ = crate::runtime::recorder::DRIVE_VOICE.set(PathBuf::from(wav));
     }
     if args.iter().any(|a| a == "--ai") {
         DRIVE_AI.store(true, std::sync::atomic::Ordering::SeqCst);
