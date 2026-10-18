@@ -774,6 +774,15 @@ pub fn log_line(dir: &Path, line: &str) {
     }
 }
 
+/// One `run.log` line as `Runtime::log` wrote it: its monotonic ms and its text, past the
+/// wall clock `log_line` opens it with (a line from before the stamps has none). A line
+/// with no ms (the trace ring's, a continuation) is `None`.
+pub fn read_log_line(line: &str) -> Option<(u64, &str)> {
+    let line = line.split_once(' ').filter(|(wall, _)| wall.ends_with('Z')).map_or(line, |(_, rest)| rest);
+    let (mono, text) = line.trim_start().split_once(' ')?;
+    Some((mono.parse().ok()?, text))
+}
+
 /// A recording id as the run log names it: enough to tell takes apart, never the whole
 /// link (`AbCd…`).
 pub fn short(id: &str) -> String {
