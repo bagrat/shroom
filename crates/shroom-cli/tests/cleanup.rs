@@ -75,12 +75,15 @@ fn shroom(home: &Path, base: &str, args: &[&str]) -> (i32, Value) {
     (out.status.code().unwrap_or(-1), serde_json::from_slice(&out.stdout).unwrap_or(Value::Null))
 }
 
-fn item(id: &str, title: &str, age: u64, candidate: bool, score: f64, reason: Value) -> Value {
+fn item(id: &str, title: &str, age: f64, quiet: Option<f64>, plays: u64, last: Option<&str>, candidate: bool, score: f64, code: &str) -> Value {
+    // As #57's worker.js `cleanup` writes an item: the record's facts (days as fractions), then
+    // the verdict, whose reason carries the facts again, floored.
     json!({
         "id": id, "title": title, "createdAt": "2026-03-11T10:00:00.000Z", "owner": "m_AnnAnnAnnAnnAnnA",
-        "ageDays": age, "durationSec": 1500.0, "bytes": 900_000_000u64, "usdPerMonth": 0.0,
-        "plays": reason["plays"].clone(), "viewers": 1, "medianWatched": 0.1, "lastPlayedAt": reason["lastPlayedAt"].clone(),
-        "plays90": 0, "quietDays": reason["quietDays"].clone(), "keep": false, "candidate": candidate, "score": score, "reason": reason,
+        "ageDays": age, "durationSec": 1500.0, "bytes": 900_000_000u64, "usdPerMonth": 0.0135,
+        "plays": plays, "viewers": 1, "medianWatched": 0.1, "lastPlayedAt": last, "plays90": 0, "quietDays": quiet,
+        "candidate": candidate, "score": score,
+        "reason": {"code": code, "plays": plays, "lastPlayedAt": last, "quietDays": quiet.map(f64::floor), "ageDays": age.floor()},
     })
 }
 
@@ -90,19 +93,19 @@ fn suggestions(path: &str, body: &Value) -> (u16, Value) {
     let first = body["after"].is_null();
     let items = if first {
         vec![
-            item("Fr1st3v3rT3st000", "Untitled — Feb 2", 258, true, 9.5, json!({"code": "never-played", "plays": 0, "lastPlayedAt": null, "quietDays": 258, "ageDays": 258})),
-            item("Q3rNdPl4nW1kThr0", "Q3 roadmap walkthrough", 2, false, 0.0, json!({"code": "new", "plays": 3, "lastPlayedAt": "2026-10-17T09:00:00.000Z", "quietDays": 1})),
-            item("0ldD3m0F0rAcm3Co", "Old demo for a prospect", 221, true, 4.0, json!({"code": "not-lately", "plays": 7, "lastPlayedAt": "2026-04-01T09:00:00.000Z", "quietDays": 200, "ageDays": 221})),
+            item("Fr1st3v3rT3st000", "Untitled — Feb 2", 258.3, Some(258.3), 0, None, true, 9.5, "never-played"),
+            item("Q3rNdPl4nW1kThr0", "Q3 roadmap walkthrough", 2.1, Some(1.2), 3, Some("2026-10-17T09:00:00.000Z"), false, 0.0, "new"),
+            item("0ldD3m0F0rAcm3Co", "Old demo for a prospect", 221.4, Some(200.7), 7, Some("2026-04-01T09:00:00.000Z"), true, 4.0, "not-lately"),
         ]
     } else {
         assert_eq!(body["after"], "0ldD3m0F0rAcm3Co", "the next page starts after the last");
         vec![
-            item("D3s1gnR3v13wAug1", "Design review", 60, true, 2.5, json!({"code": "stopped-early", "plays": 4, "lastPlayedAt": "2026-08-30T09:00:00.000Z", "quietDays": 49, "medianWatched": 0.12})),
-            item("St4ndupN0t3sJn05", "Standup notes", 135, false, 0.0, json!({"code": "kept"})),
+            item("D3s1gnR3v13wAug1", "Design review", 60.2, Some(49.9), 4, Some("2026-08-30T09:00:00.000Z"), true, 2.5, "stopped-early"),
+            item("St4ndupN0t3sJn05", "Standup notes", 135.0, None, 0, None, false, 0.0, "kept"),
         ]
     };
     let next = if first { json!("0ldD3m0F0rAcm3Co") } else { Value::Null };
-    (200, json!({"shroom": 1, "countingSince": "2026-02-01T00:00:00.000Z", "formula": "idle", "next": next, "items": items}))
+    (200, json!({"shroom": 1, "countingSince": "2026-02-01T00:00:00.000Z", "counting": true, "formula": "fading-cost", "next": next, "items": items}))
 }
 
 #[test]
@@ -114,12 +117,15 @@ fn the_pages_own_suggestions_every_page_of_them_most_likely_first() {
     assert_eq!(code, 0, "{v}");
     assert_eq!(v["by"], "suggestions", "{v}");
     assert_eq!(v["counting_since"], "2026-02-01T00:00:00.000Z");
+    assert_eq!(v["counting"], true, "the space counts plays");
     let ids: Vec<&str> = v["candidates"].as_array().unwrap().iter().map(|c| c["id"].as_str().unwrap()).collect();
     assert_eq!(ids, ["Fr1st3v3rT3st000", "0ldD3m0F0rAcm3Co", "D3s1gnR3v13wAug1"], "candidates only, most likely first");
     let c = &v["candidates"][1];
     assert_eq!(c["link"], format!("https://{HOST}/0ldD3m0F0rAcm3Co"));
+    // The page's days are fractions (200.7, 221.4); the command gives whole days.
     assert_eq!((c["plays"].as_u64(), c["last_played"].as_str(), c["quiet_days"].as_u64()), (Some(7), Some("2026-04-01T09:00:00.000Z"), Some(200)));
     assert_eq!((c["reason"].as_str(), c["age_days"].as_u64()), (Some("not-lately"), Some(221)));
+    assert_eq!((c["title"].as_str(), c["created_at"].as_str()), (Some("Old demo for a prospect"), Some("2026-03-11T10:00:00.000Z")));
     assert!(c["why"].as_str().is_some_and(|w| w.contains("200 days")), "its why, in words: {c}");
     assert_eq!(v["candidates"][0]["reason"], "never-played");
     // Under this Mac's device key, no Origin (as the app calls its page); an owner's Mac
@@ -141,4 +147,20 @@ fn older_than_narrows_the_suggestions_and_a_members_mac_asks_for_its_own() {
     assert_eq!(ids, ["Fr1st3v3rT3st000", "0ldD3m0F0rAcm3Co"], "only the suggestions at least 200 days old");
     assert_eq!(v["older_than_days"], 200);
     assert_eq!(heard.lock().unwrap()[0].3["scope"], "mine");
+}
+
+/// A space with Count plays off (#57's switch) still answers; the command says so, for an
+/// agent not to read "never played" as never watched.
+#[test]
+fn a_space_not_counting_plays_says_so() {
+    let (base, _) = page(|path, body| {
+        let (status, mut v) = suggestions(path, body);
+        v["counting"] = false.into();
+        (status, v)
+    });
+    let dir = tempfile::tempdir().unwrap();
+    mac(dir.path(), "OwnerClass");
+    let (code, v) = shroom(dir.path(), &base, &["cleanup-candidates"]);
+    assert_eq!(code, 0, "{v}");
+    assert_eq!(v["counting"], false);
 }

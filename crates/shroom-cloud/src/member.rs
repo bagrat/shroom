@@ -951,6 +951,29 @@ mod tests {
     /// An id that isn't one — `../members/m_…` from a typed list — never becomes a path: the
     /// call is refused before anything is sent (WORKER-INTERFACE §4.13–§4.15; a URL's dot
     /// segments would otherwise name another route).
+    /// `POST cleanup` as #57's worker.js writes it: the record's facts (days as fractions,
+    /// `quietDays` null where counting can't tell), the verdict, and the space's switch.
+    #[test]
+    fn a_cleanup_page_reads_every_fact_the_worker_sends() {
+        let body = br#"{"shroom":1,"countingSince":"2026-04-18T00:00:00.000Z","counting":false,"formula":"fading-cost","next":"AbCdEfGhIjKlMnOq","items":[
+            {"id":"AbCdEfGhIjKlMnOo","title":"Old demo","createdAt":"2026-01-10T09:00:00.000Z","owner":"m_AnnAnnAnnAnnAnnA","ageDays":281.6,"durationSec":1500.4,"bytes":3222000000,"usdPerMonth":0.048,"plays":4,"viewers":2,"medianWatched":0.45,"lastPlayedAt":"2025-12-20T09:00:00.000Z","plays90":0,"quietDays":300.4,"candidate":true,"score":0.96,"reason":{"code":"not-lately","heat":0.01,"plays":4,"quietDays":300,"ageDays":281}},
+            {"id":"AbCdEfGhIjKlMnOq","title":"","createdAt":null,"owner":"m_AnnAnnAnnAnnAnnA","ageDays":3.2,"durationSec":0,"bytes":0,"plays":0,"medianWatched":null,"lastPlayedAt":null,"quietDays":null,"candidate":false,"score":0,"reason":{"code":"counting-too-new"}}]}"#;
+        let page: CleanupPage = match Space::classify(Ok((200, body.to_vec(), None))) {
+            Answer::Ok(p) => p,
+            other => panic!("{other:?}"),
+        };
+        assert!(!page.counting);
+        assert_eq!(page.counting_since.as_deref(), Some("2026-04-18T00:00:00.000Z"));
+        assert_eq!(page.next.as_deref(), Some("AbCdEfGhIjKlMnOq"));
+        let a = &page.items[0];
+        assert_eq!((a.title.as_str(), a.created_at.as_deref(), a.owner.as_deref()), ("Old demo", Some("2026-01-10T09:00:00.000Z"), Some("m_AnnAnnAnnAnnAnnA")));
+        assert_eq!((a.age_days, a.quiet_days, a.duration_sec, a.plays), (Some(281.6), Some(300.4), Some(1500.4), 4));
+        assert_eq!((a.last_played_at.as_deref(), a.candidate, a.reason.as_ref().map(|r| r.code.as_str())), (Some("2025-12-20T09:00:00.000Z"), true, Some("not-lately")));
+        let b = &page.items[1];
+        assert_eq!((b.created_at.as_deref(), b.quiet_days, b.median_watched, b.candidate), (None, None, None, false));
+        assert_eq!(b.reason.as_ref().map(|r| r.code.as_str()), Some("counting-too-new"));
+    }
+
     #[test]
     fn an_id_that_isnt_one_never_reaches_a_path() {
         // Nothing listens here: a request that went out would come back unanswered.
