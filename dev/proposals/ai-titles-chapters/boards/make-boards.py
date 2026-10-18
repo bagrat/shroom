@@ -174,12 +174,30 @@ def web(inner, foot, extra=""):
 
 boards = {}
 
+def timeline():
+    """When the name comes (Bagrat, 2026-10-18): a title from the first minute while recording,
+    so the page opens named; the full name and chapters at Stop replace it, quietly."""
+    steps = [("0:00", "Recording starts", "The page would show the date as its title."),
+             ("a minute in", "The first minute is heard", "A title from what was said so far is kept for the page, seconds later."),
+             ("Stop", "The page opens", "With that title, in the field's placeholder."),
+             ("10–20 s later", "The full name and chapters", "Replace it in place, quietly: no flash. A viewer sees it on their next visit.")]
+    cells = "".join(f'''<div style="flex: 1 1 0; display: flex; flex-direction: column; gap: 4px; position: relative">
+<div style="display: flex; flex-direction: row; align-items: center; gap: 8px"><span style="width: 10px; height: 10px; border-radius: 5px; background: {'#88c0d0' if i in (1, 3) else '#4c566a'}; display: block; flex: none"></span><span style="font-variant-numeric: tabular-nums; color: #88c0d0; font-size: 12px; font-weight: 600">{t}</span></div>
+<div style="color: #eceff4; font-size: 13px; font-weight: 600">{a}</div>
+<div style="color: #aeb6c4; font-size: 12px; line-height: 1.45">{b}</div>
+</div>''' for i, (t, a, b) in enumerate(steps))
+    return f'''<div style="padding: 12px 14px; border: 1px dashed #4c566a; border-radius: 9px; display: flex; flex-direction: column; gap: 10px">
+<div style="color: #aeb6c4; font-size: 12px">When the name comes</div>
+<div style="display: flex; flex-direction: row; gap: 18px">{cells}</div>
+<div style="color: #aeb6c4; font-size: 12px; line-height: 1.5">A title someone types, at any point, wins for good. A take shorter than a minute, or one with no speech in its first minute, is named once, at Stop. A slip cut with “shroom cut” in the first minute never reaches the early title.</div>
+</div>'''
+
 boards["AiOwnerNamed.dc.html"] = (
-    "The page — the owner's, named from what was said (N67; words are drafts)", 1280, 900,
-    page("shroom video page, owner, named", 1280, 900, web(
+    "The page — the owner's, named from what was said: a title from the first minute, the full name at Stop (N67; words are drafts)", 1280, 980,
+    page("shroom video page, owner, named", 1280, 980, web(
         owner_head(TITLE, "Named from what you said. Click the title to change it.", "owner-page.named-from-what-you-said") + "\n" + player(0, started=False, cc=False),
         OWNER_FOOT,
-        note("The space's name sits in the title field as its placeholder, so it stays the space's until a title is typed; the line goes once one is. The chapters cut the seek bar, the one playing is named after the time, and Captions sits before the speed. A page left open while the name was on its way shows it when it comes."))))
+        timeline())))
 
 LATER_DAY = "Untitled — Oct 18"
 boards["AiNamingLater.dc.html"] = (
@@ -271,19 +289,20 @@ def settings_body(ai_on, ai_line, ai_line_id):
 <div style="color: #aeb6c4; padding: 0 2px" data-said="settings-space-inspection.your-space-is-ready">Your space is ready — nothing to redo.</div>
 <div style="background: #333944; border-radius: 9px; display: flex; flex-direction: column">
 {switch_row("“made with shroom” on your pages", "settings-space.made-with-shroom-on", "The small mark on every video page. You can flip it right on a page, too.", "settings-space.the-small-mark-on", True, "mark-label")}
-<div style="border-top: 1px solid #434a56">{switch_row("Name videos and add chapters", "settings-space.name-videos-and-add", ai_line, ai_line_id, ai_on, "ai-label")}</div>
+<div style="border-top: 1px solid #434a56">{switch_row(AI_LABEL, "settings-space.ai-for-new-videos", ai_line, ai_line_id, ai_on, "ai-label")}</div>
 <button style="font: inherit; height: 40px; padding: 0 12px; border: 0; border-top: 1px solid #434a56; background: transparent; color: #e88790; text-align: left" data-said="settings-space.disconnect-this-mac">Disconnect this Mac…</button>
 </div>
 </div></div>'''
 
-AI_LINE = "From what’s said in each video, by your own Cloudflare account. Free for about three hours of video a day; past that, about 4¢ an hour."
+AI_LABEL = "AI for new videos"
+AI_LINE = "Titles, chapters and captions from what’s said, and your “shroom cut” slips cut — on your own Cloudflare account. Free for about 2½ hours of new video a day; more is about 4¢ an hour on Cloudflare’s $5 plan."
 FAILED = "Couldn't change that just now — try again in a moment."
 boards["AiSettings.dc.html"] = (
-    "Settings — Space: Name videos and add chapters, off as it ships (the Mac that holds the setup key; N66, words are drafts)", 600, 760,
-    page("shroom Settings, Space, naming", 600, 760, settings_body(False, AI_LINE, "settings-space.from-whats-said-in")))
+    "Settings — Space: AI for new videos, one switch for every AI feature, off as it ships (the Mac that holds the setup key; N66, words are drafts)", 600, 760,
+    page("shroom Settings, Space, AI", 600, 760, settings_body(False, AI_LINE, "settings-space.titles-chapters-and-captions")))
 boards["AiSettingsFailed.dc.html"] = (
-    "Settings — Space: naming couldn't change (the switch as the page has it, until the next try)", 600, 760,
-    page("shroom Settings, Space, naming couldn't change", 600, 760, settings_body(False, FAILED, "settings-space.couldnt-change-that-just")))
+    "Settings — Space: AI couldn't change (the switch as the page has it, until the next try)", 600, 760,
+    page("shroom Settings, Space, AI couldn't change", 600, 760, settings_body(False, FAILED, "settings-space.couldnt-change-that-just")))
 
 def library_body(line, line_id):
     def row(t, meta, first=False):
@@ -317,16 +336,117 @@ def library_body(line, line_id):
 </div></div>'''
 
 boards["AiOffer.dc.html"] = (
-    "Library — the naming card, once (the Mac that holds the setup key; N66, words are drafts)", 760, 560,
+    "Library — the naming card (replaced by the popover's banner, Bagrat 2026-10-18: too hidden; kept for the record)", 760, 560,
     page("shroom Library, naming card", 760, 560, library_body("From what’s said in them, by your own Cloudflare account. Free for about three hours of video a day; past that, about 4¢ an hour.", "library-ai-offer.from-whats-said-in")))
-boards["AiOfferFailed.dc.html"] = (
-    "Library — the naming card when Turn on didn't go through (Turn on is live again)", 760, 560,
-    page("shroom Library, naming card, couldn't change", 760, 560, library_body(FAILED, "library-ai-offer.couldnt-change-that-just")))
+# ───────── the popover: the AI banner (Bagrat, 2026-10-18: visible, off by default) ─────────
+
+MENU_MARK = MARK.replace('style="width: 17px; height: 18px; display: block"', 'role="img" aria-label="shroom" style="width: 16px; height: 17px; display: block"')
+
+def popover_frame(panel, menu_extra=""):
+    """The menu bar and the popover hanging from shroom's mark, as the Main and JustUpdated boards draw them."""
+    return f'''<div style="width: 520px; height: 520px; box-sizing: border-box; background: #3b4252; display: flex; flex-direction: column; font-family: {FONT}; font-size: 13px; line-height: 1.45; color: #eceff4">
+<div style="height: 28px; background: #2e3440; display: flex; flex-direction: row; justify-content: flex-end; align-items: center; padding: 0 86px 0 0; box-sizing: border-box">
+<div style="width: 30px; height: 22px; border-radius: 5px; background: rgba(236, 239, 244, 0.14); display: flex; align-items: center; justify-content: center">{MENU_MARK}</div>
+</div>
+<div style="display: flex; flex-direction: row; justify-content: flex-end; padding: 8px 40px 0 0">
+<div style="width: 300px; box-sizing: border-box; background: #2b2f36; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; box-shadow: 0 8px 28px rgba(0, 0, 0, 0.3); padding: 12px 14px 14px 14px; display: flex; flex-direction: column; gap: 12px">
+{panel}
+</div>
+</div>
+{menu_extra}
+</div>'''
+
+TOOL = lambda label, d: f'<button aria-label="{label}" style="width: 28px; height: 28px; border: 0; background: transparent; color: #aeb6c4; padding: 0; border-radius: 6px; display: flex; align-items: center; justify-content: center"><svg viewBox="0 0 16 16" aria-hidden="true" style="width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; display: block">{d}</svg></button>'
+HEADER = f'''<div style="display: flex; flex-direction: row; justify-content: space-between; align-items: center">
+<div style="display: flex; flex-direction: row; align-items: center; gap: 7px">{MARK}<div style="font-size: 14px; font-weight: 600">shroom</div></div>
+<div style="display: flex; flex-direction: row; gap: 2px">{TOOL("Library", '<path d="M4.5 2.5h7"></path><rect x="2" y="5" width="12" height="9" rx="1.8"></rect><path d="M7 7.8v3.4l2.8-1.7z" stroke-linejoin="round"></path>')}{TOOL("Settings", '<circle cx="8" cy="8" r="2"></circle><path stroke-linejoin="round" d="M12.54 6.16L14.46 6.63L14.46 9.37L12.54 9.84L11.86 11.02L12.42 12.9L10.04 14.28L8.68 12.85L7.32 12.85L5.96 14.28L3.58 12.9L4.14 11.02L3.46 9.84L1.54 9.37L1.54 6.63L3.46 6.16L4.14 4.98L3.58 3.1L5.96 1.72L7.32 3.15L8.68 3.15L10.04 1.72L12.42 3.1L11.86 4.98Z"></path>')}{TOOL("Quit shroom", '<path d="M8 2v6M4.5 4.5a5 5 0 1 0 7 0"></path>')}</div>
+</div>'''
+CHEVRON = '<svg viewBox="0 0 12 12" aria-hidden="true" style="width: 10px; height: 10px; fill: none; stroke: #aeb6c4; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; display: block; flex: none"><path d="M3 4.5l3 3 3-3"></path></svg>'
+def pick(label, d, first=False):
+    return f'''<div style="height: 38px; padding: 0 10px;{'' if first else ' border-top: 1px solid #434a56;'} display: flex; flex-direction: row; align-items: center; gap: 10px">
+<svg viewBox="0 0 16 16" aria-hidden="true" style="width: 16px; height: 16px; fill: none; stroke: #aeb6c4; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; display: block; flex: none">{d}</svg>
+<span style="flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{label}</span>{CHEVRON}</div>'''
+CONFIG = f'''<div style="background: #333944; border-radius: 9px; display: flex; flex-direction: column">
+{pick("Built-in Display", '<rect x="1.5" y="2.5" width="13" height="9" rx="1.5"></rect><path d="M6 14h4M8 11.5V14"></path>', first=True)}
+{pick("MacBook Pro Microphone", '<rect x="6" y="1.5" width="4" height="8" rx="2"></rect><path d="M3.5 7.5a4.5 4.5 0 0 0 9 0M8 12v2.5"></path>')}
+{pick("FaceTime HD Camera", '<rect x="1.5" y="4" width="9" height="8" rx="1.8"></rect><path d="M10.5 7l4-2v6l-4-2"></path>')}
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<button style="font: inherit; font-weight: 600; height: 36px; border: 0; border-radius: 8px; background: #88c0d0; color: #2b2f36" data-said="config.start-recording">Start recording</button>
+<div style="color: #aeb6c4; font-size: 12px; text-align: center" data-said="config.starts-after-3-2">Starts after 3-2-1 — click anywhere to cancel.</div>
+</div>'''
+
+BANNER_LINE = "shroom can name your videos, add chapters and cut your slips for you."
+def frost(line, line_id, buttons=True):
+    """The frost banner, as the update's: a line beside a dot, Not now and Turn on… under it."""
+    row = '''<div style="display: flex; flex-direction: row; align-items: center; gap: 10px; margin-left: auto">
+<button style="font: inherit; border: 0; padding: 0; background: transparent; color: #c3cad6" data-said="ai-offer.not-now">Not now</button>
+<button style="font: inherit; font-weight: 600; height: 28px; padding: 0 12px; border: 0; border-radius: 7px; background: #88c0d0; color: #2b2f36" data-said="ai-offer.turn-on">Turn on…</button>
+</div>''' if buttons else ""
+    return f'''<div style="background: #33424f; border-radius: 9px; padding: 8px 10px; display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px">
+<div style="flex: 1 1 140px; display: flex; flex-direction: row; align-items: center; gap: 8px">
+<span style="width: 8px; height: 8px; border-radius: 4px; background: #88c0d0; display: block; flex: none"></span>
+<div data-said="{line_id}">{line}</div>
+</div>
+{row}
+</div>'''
+
+boards["AiBanner.dc.html"] = (
+    "Popover — the AI banner: shroom can name, chapter and cut your videos (the Mac that holds the setup key, while AI is off; N66, words are drafts)", 520, 520,
+    page("shroom popover, the AI banner", 520, 520, popover_frame(HEADER + "\n" + frost(BANNER_LINE, "ai-offer.shroom-can-name-your") + "\n" + CONFIG)))
+
+CONFIRM_TITLE = "Turn on AI for new videos?"
+boards["AiConfirm.dc.html"] = (
+    "Popover — Turn on…: what it does and costs, once (N66, words are drafts)", 520, 520,
+    page("shroom popover, turn on AI", 520, 520, popover_frame(f'''<div style="display: flex; flex-direction: column; gap: 6px">
+<h1 style="margin: 0; font-size: 15px; font-weight: 600; line-height: 1.35" data-said="ai-confirm.turn-on-ai-for">{CONFIRM_TITLE}</h1>
+<div style="color: #c3cad6" data-said="ai-confirm.titles-chapters-and-captions">{AI_LINE}</div>
+</div>
+<div style="display: flex; flex-direction: row; justify-content: space-between; align-items: center; gap: 8px">
+<button style="font: inherit; height: 32px; padding: 0 14px; border: 1px solid #4c566a; border-radius: 8px; background: transparent; color: #eceff4" data-said="ai-confirm.back">Back</button>
+<button style="font: inherit; font-weight: 600; height: 32px; padding: 0 14px; border: 0; border-radius: 8px; background: #88c0d0; color: #2b2f36" data-said="ai-confirm.turn-on">Turn on</button>
+</div>''')))
+
+def states_body():
+    def panel(label, inner):
+        return f'''<div style="display: flex; flex-direction: column; gap: 8px"><div style="color: #aeb6c4; font-size: 12px">{label}</div>
+<div style="width: 300px; box-sizing: border-box; background: #2b2f36; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 12px 14px 14px 14px; display: flex; flex-direction: column; gap: 12px">{inner}</div></div>'''
+    status = '''<div style="display: flex; flex-direction: row; align-items: center; gap: 7px; color: #aeb6c4; font-size: 12px">
+<span style="width: 6px; height: 6px; border-radius: 3px; background: #a3be8c; display: block; flex: none"></span>
+<div data-said="ai-on.ai-is-on-for">AI is on for new videos ✓</div>
+</div>'''
+    return f'''<div style="width: 520px; height: 900px; box-sizing: border-box; background: #3b4252; padding: 28px 0; display: flex; flex-direction: column; align-items: center; gap: 22px; font-family: {FONT}; font-size: 13px; line-height: 1.45; color: #eceff4">
+{panel("After Turn on: the space's page is put up again with AI, a few seconds", frost("Turning on — a few seconds.", "ai-turning-on.turning-on-a-few", buttons=False))}
+{panel("When it didn't go through: Turn on… is live again (law 12)", frost(FAILED, "ai-offer-failed.couldnt-change-that-just"))}
+{panel("Once it's on: said once, where the update's “Updated ✓” goes", CONFIG + status)}
+<div style="width: 300px">{note("Only on the Mac that holds the setup key, and only while AI is off; members' Macs never show it. It sits under the other banners (a saved take, the space, recording off, an update come first). <b>Not now</b> hides it; it comes back once more after five more recordings on this Mac, then never: the switch in Settings · Space stays. New videos only: earlier ones keep their titles (Bagrat, 2026-10-18).")}</div>
+</div>'''
+boards["AiBannerStates.dc.html"] = (
+    "Popover — the AI banner's states: turning on, didn't go through, on (N66, words are drafts)", 520, 900,
+    page("shroom popover, the AI banner's states", 520, 900, states_body()))
+
+# ───────── shroom.am: where AI's price sits (a proposal; the line is the one Bagrat saw) ─────────
+
+def landing_body():
+    return f'''<div style="width: 840px; height: 300px; box-sizing: border-box; background: #2b2f36; padding: 40px 48px; display: flex; flex-direction: column; gap: 14px; font-family: {FONT}; font-size: 16px; line-height: 1.5; color: #eceff4">
+<div style="width: 744px; display: flex; flex-direction: column; gap: 8px">
+<div style="position: relative; width: 100%; height: 6px; border-radius: 3px; background: #434a56"><div style="position: absolute; left: 0; top: 0; bottom: 0; width: 10%; border-radius: 3px 0 0 3px; background: #88c0d0"></div></div>
+<div style="display: flex; flex-direction: row; justify-content: space-between; gap: 12px; font-size: 15px; color: #aeb6c4"><span><strong style="color: #88c0d0; font-weight: 600">$0</strong> · about three hours of video</span><span><strong style="color: #eceff4; font-weight: 600">$1.50 /month</strong> · about thirty hours</span></div>
+<div style="display: flex; flex-direction: row; align-items: flex-start; gap: 8px; margin-top: 10px; font-size: 15px; color: #aeb6c4">
+<svg viewBox="0 0 16 16" aria-hidden="true" style="width: 16px; height: 16px; fill: none; stroke: #88c0d0; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; display: block; flex: none; margin-top: 3px">{SPARK}</svg>
+<span data-said="landing.ai-titles-chapters-and">AI titles, chapters and captions are free for about 2½ hours of new video a day. Recording more? About 4¢ an hour on Cloudflare’s $5 plan.</span>
+</div>
+</div>
+{note("A proposal for where the line sits: under the price gauge, the storage price above it, in the gauge's own grey. The rest of the page as it is.")}
+</div>'''
+boards["LandingAiLine.dc.html"] = (
+    "shroom.am — the AI line under the price gauge (a proposal; the line as Bagrat saw it, 2026-10-18)", 840, 300,
+    page("shroom.am, the AI line", 840, 300, landing_body()))
 
 # One column right of the editor's, top to bottom: the Mac's boards, then the page's.
 X = 11600
-place = ["AiOffer.dc.html", "AiOfferFailed.dc.html", "AiSettings.dc.html", "AiSettingsFailed.dc.html", "AiOwnerNamed.dc.html", "AiNamingLater.dc.html",
-         "AiPageMarks.dc.html", "AiPageMarksPhone.dc.html", "AiCaptions.dc.html", "AiPageChapters.dc.html"]
+place = ["AiBanner.dc.html", "AiConfirm.dc.html", "AiBannerStates.dc.html", "AiSettings.dc.html", "AiSettingsFailed.dc.html", "AiOwnerNamed.dc.html", "AiNamingLater.dc.html",
+         "AiPageMarks.dc.html", "AiPageMarksPhone.dc.html", "AiCaptions.dc.html", "LandingAiLine.dc.html", "AiOffer.dc.html", "AiPageChapters.dc.html"]
 canvas_path = os.path.join(out, "canvas.json")
 raw = open(canvas_path).read()
 lines = raw.split("\n")

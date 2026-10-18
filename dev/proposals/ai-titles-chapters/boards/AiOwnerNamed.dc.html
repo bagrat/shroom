@@ -43,7 +43,27 @@ a{color:#88c0d0}a:hover{color:#8fbcbb}
 </div>
 </div>
 </div>
-<div style="padding: 10px 12px; border: 1px dashed #4c566a; border-radius: 9px; color: #aeb6c4; font-size: 12px; line-height: 1.5">The space's name sits in the title field as its placeholder, so it stays the space's until a title is typed; the line goes once one is. The chapters cut the seek bar, the one playing is named after the time, and Captions sits before the speed. A page left open while the name was on its way shows it when it comes.</div>
+<div style="padding: 12px 14px; border: 1px dashed #4c566a; border-radius: 9px; display: flex; flex-direction: column; gap: 10px">
+<div style="color: #aeb6c4; font-size: 12px">When the name comes</div>
+<div style="display: flex; flex-direction: row; gap: 18px"><div style="flex: 1 1 0; display: flex; flex-direction: column; gap: 4px; position: relative">
+<div style="display: flex; flex-direction: row; align-items: center; gap: 8px"><span style="width: 10px; height: 10px; border-radius: 5px; background: #4c566a; display: block; flex: none"></span><span style="font-variant-numeric: tabular-nums; color: #88c0d0; font-size: 12px; font-weight: 600">0:00</span></div>
+<div style="color: #eceff4; font-size: 13px; font-weight: 600">Recording starts</div>
+<div style="color: #aeb6c4; font-size: 12px; line-height: 1.45">The page would show the date as its title.</div>
+</div><div style="flex: 1 1 0; display: flex; flex-direction: column; gap: 4px; position: relative">
+<div style="display: flex; flex-direction: row; align-items: center; gap: 8px"><span style="width: 10px; height: 10px; border-radius: 5px; background: #88c0d0; display: block; flex: none"></span><span style="font-variant-numeric: tabular-nums; color: #88c0d0; font-size: 12px; font-weight: 600">a minute in</span></div>
+<div style="color: #eceff4; font-size: 13px; font-weight: 600">The first minute is heard</div>
+<div style="color: #aeb6c4; font-size: 12px; line-height: 1.45">A title from what was said so far is kept for the page, seconds later.</div>
+</div><div style="flex: 1 1 0; display: flex; flex-direction: column; gap: 4px; position: relative">
+<div style="display: flex; flex-direction: row; align-items: center; gap: 8px"><span style="width: 10px; height: 10px; border-radius: 5px; background: #4c566a; display: block; flex: none"></span><span style="font-variant-numeric: tabular-nums; color: #88c0d0; font-size: 12px; font-weight: 600">Stop</span></div>
+<div style="color: #eceff4; font-size: 13px; font-weight: 600">The page opens</div>
+<div style="color: #aeb6c4; font-size: 12px; line-height: 1.45">With that title, in the field's placeholder.</div>
+</div><div style="flex: 1 1 0; display: flex; flex-direction: column; gap: 4px; position: relative">
+<div style="display: flex; flex-direction: row; align-items: center; gap: 8px"><span style="width: 10px; height: 10px; border-radius: 5px; background: #88c0d0; display: block; flex: none"></span><span style="font-variant-numeric: tabular-nums; color: #88c0d0; font-size: 12px; font-weight: 600">10–20 s later</span></div>
+<div style="color: #eceff4; font-size: 13px; font-weight: 600">The full name and chapters</div>
+<div style="color: #aeb6c4; font-size: 12px; line-height: 1.45">Replace it in place, quietly: no flash. A viewer sees it on their next visit.</div>
+</div></div>
+<div style="color: #aeb6c4; font-size: 12px; line-height: 1.5">A title someone types, at any point, wins for good. A take shorter than a minute, or one with no speech in its first minute, is named once, at Stop. A slip cut with “shroom cut” in the first minute never reaches the early title.</div>
+</div>
 </div>
 <div style="width: 100%; max-width: 960px; padding: 32px 0 0 0; display: flex; flex-direction: row; justify-content: flex-end; align-items: center; gap: 10px">
 <button role="switch" aria-checked="true" aria-labelledby="mark-label" style="width: 36px; height: 20px; border: 0; border-radius: 10px; background: #88c0d0; padding: 2px; display: flex; flex-direction: row; justify-content: flex-end; align-items: center; flex: none"><span style="width: 16px; height: 16px; border-radius: 8px; background: #2b2f36; display: block"></span></button>
@@ -56,7 +76,7 @@ a{color:#88c0d0}a:hover{color:#8fbcbb}
 </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":900}}'>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":980}}'>
 class Component extends DCLogic {
 renderVals() {
 return {};
