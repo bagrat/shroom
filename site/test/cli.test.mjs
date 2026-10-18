@@ -60,6 +60,13 @@ describe("the CLI guide", () => {
     assert.match(flat, /never look for another way to record\./);
   });
 
+  // Bagrat, 2026-10-18: the refusal says how to turn it on, with a link that opens Settings
+  // right at the switch; the person flips it.
+  it("gives the person the refusal's link to the switch, for them to turn it on", () => {
+    assert.match(flat, /until then you get `recording_off`, with a `settings_link`: pass on the message and give them the link, which opens shroom's Settings right at the switch\. They turn it on themselves;/);
+    assert.match(flat, /\| `recording_off` \| They haven't let you record: pass on `message` and give them `settings_link` \(see \*Rules\*\)\. \|/);
+  });
+
   // Bagrat, 2026-10-18: batch invites for a team, each person their own link, mailed by
   // the agent's own tools; shroom sends nothing and is given names only.
   it("invites a team in one call, after the person confirms the list, and keeps emails out of shroom", () => {

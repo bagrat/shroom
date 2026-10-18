@@ -677,6 +677,20 @@ const set = (variant) => settings.find((e) => e.variant === variant).scene;
   await ctx.close();
 }
 {
+  // The shroom command's settings link (spec N62, DECISIONS B216): General opens with the
+  // switch's row lit and in view — and the switch as the Scene says, off.
+  const { ctx, page } = await open("settings", set("general-agent-lit"));
+  const lit = page.locator(".lit");
+  check("settings: the link lights one row, the switch's", (await lit.count()) === 1 && (await lit.innerText()).includes("Let it start and stop recordings"), JSON.stringify(await lit.allInnerTexts()));
+  const box = await lit.boundingBox();
+  check("settings: the lit row is in view", !!box && box.y >= 0 && box.y + box.height <= SIZES.settings.height, JSON.stringify(box));
+  check("settings: the switch stays off — the link flips nothing", !(await page.getByRole("checkbox", { name: "Let it start and stop recordings" }).isChecked()));
+  const plain = await open("settings", set("general-update-ready"));
+  check("settings: nothing is lit without the link", (await plain.page.locator(".lit").count()) === 0);
+  await plain.ctx.close();
+  await ctx.close();
+}
+{
   const { ctx, page } = await open("settings", set("repair-token"));
   await page.locator(".plan h1").click();
   await page.keyboard.press("Enter");

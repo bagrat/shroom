@@ -1,6 +1,7 @@
 //! The `shroom` command's recording asks (spec N62, provisional; dev/proposals/cli-agent-skill.md):
 //! refused while General's switch is off (the default), and otherwise exactly what each
-//! click does — answered once, with a code.
+//! click does — answered once, with a code. And the refusal's link, which opens Settings at
+//! that switch and lights it, never flipping it (Bagrat, 2026-10-18; DECISIONS B216).
 
 #[path = "common/laws.rs"]
 mod laws;
@@ -8,7 +9,8 @@ mod laws;
 mod support;
 
 use shroom_core::effect::{CliAnswer, Effect, PersistOp, PublicUrl, ShellCmd};
-use shroom_core::event::{CliOp, Event, Surface};
+use shroom_core::derive::LIT_MS;
+use shroom_core::event::{CliOp, Event, SettingsSpot, Surface};
 use shroom_core::scene::{Action, SettingsPane};
 use shroom_core::world::{Cause, Why};
 use shroom_core::time::Mono;
@@ -141,6 +143,8 @@ fn every_ask_in_every_moment_is_answered_once_as_its_click() {
     gone.take = Some(t);
     let mut no_space = allowed();
     no_space.space.identity = None;
+    let mut no_space_off = ready();
+    no_space_off.space.identity = None;
     let mut counting = Run::new(allowed());
     counting.send(Event::Cli { id: 99, op: CliOp::Start });
     assert!(counting.w.session.arming.is_some(), "the count runs");
@@ -154,6 +158,8 @@ fn every_ask_in_every_moment_is_answered_once_as_its_click() {
     let table: Vec<(&str, Run, [&str; 4])> = vec![
         ("the switch off", Run::new(ready()), ["recording_off"; 4]),
         ("no space", Run::new(no_space), ["not_set_up"; 4]),
+        // Settings needs a space (B160): set up first, the switch after (B216).
+        ("no space, the switch off", Run::new(no_space_off), ["not_set_up"; 4]),
         ("ready", Run::new(allowed()), ["ok:countdown", "no_take", "no_take", "no_take"]),
         ("the popover open", open, ["ok:countdown", "no_take", "no_take", "no_take"]),
         ("the count", counting, ["take_open", "busy", "busy", "busy"]),
@@ -218,4 +224,125 @@ fn a_stop_while_recording_names_its_own_edge() {
     let mut r = Run::new(w);
     assert!(ask(&mut r, 2, CliOp::Stop).ok);
     assert_eq!(r.arm.edge, Some(("paused", "stopping")));
+}
+
+// ── the refusal's link (Bagrat, 2026-10-18; N62, B216) ──
+
+fn general(r: &Run) -> shroom_core::scene::GeneralBody {
+    match &r.scene.settings.as_ref().expect("Settings is open").body.pane {
+        SettingsPane::General(g) => g.clone(),
+        other => panic!("not General: {other:?}"),
+    }
+}
+
+fn link(r: &mut Run) -> &mut Run {
+    r.send(Event::SettingsLink(SettingsSpot::AgentRecording))
+}
+
+/// The link the refusal carries, read back exactly: nothing else opens Settings.
+#[test]
+fn the_link_is_shroom_settings_agent_and_nothing_else_reads_as_it() {
+    assert_eq!(SettingsSpot::AgentRecording.link(), "shroom://settings/agent");
+    for yes in ["shroom://settings/agent", "shroom://settings/agent/", "SHROOM://settings/agent", " shroom://settings/agent\n"] {
+        assert_eq!(SettingsSpot::of_link(yes), Some(SettingsSpot::AgentRecording), "{yes:?}");
+    }
+    for no in ["shroom://settings", "shroom://settings/agent?on=1", "shroom://settings/agent#x", "shroom://settings/general", "shroom://join/v.myshroom.workers.dev/AbCdEfGhIjKlMnOp", "https://shroom.am/settings/agent", "shroom:settings/agent", ""] {
+        assert_eq!(SettingsSpot::of_link(no), None, "{no:?}");
+    }
+}
+
+/// From the tray at rest: Settings opens on General, the switch's row lit for a moment —
+/// the machine's edge idle-ready → settings-general — and the switch stays off.
+#[test]
+fn the_link_opens_general_at_the_switch_lit_and_flips_nothing() {
+    let mut r = Run::new(ready());
+    assert!(r.ids().contains(&"idle-ready") && r.scene.settings.is_none(), "{:?}", r.ids());
+    link(&mut r);
+    assert_eq!(r.arm.edge, Some(("idle-ready", "settings-general")));
+    assert!(r.effects.contains(&Effect::Shell(ShellCmd::OpenSettings)), "{:?}", r.effects);
+    let g = general(&r);
+    assert!(g.agent.lit, "the switch's row is lit");
+    assert!(!g.agent.recording.on && !r.w.prefs.agent_recording, "only the person flips it");
+    assert!(!r.effects.iter().any(|e| matches!(e, Effect::Persist(PersistOp::Prefs(p)) if p.agent_recording)));
+    // The light goes by itself, Settings stays.
+    let lit_at = r.t;
+    assert!(r.scene.next_wake.is_some_and(|w| w.0 <= lit_at + LIT_MS), "a wake to put the light out: {:?}", r.scene.next_wake);
+    r.tick_to(lit_at + LIT_MS + 10);
+    assert!(!general(&r).agent.lit, "out after {LIT_MS} ms");
+    assert!(r.scene.settings.is_some());
+    // The command's next ask is still refused: the link changed nothing.
+    assert_eq!(ask(&mut r, 1, CliOp::Start).error, Some("recording_off"));
+}
+
+/// Settings open on another tab: the link takes it to General, as a click on the tab would,
+/// and remembers General as the tab last used.
+#[test]
+fn from_another_tab_the_link_goes_to_general() {
+    let mut w = ready();
+    w.prefs.settings_tab = Some(SettingsTab::Space);
+    settings(&mut w);
+    let mut r = Run::new(w);
+    assert!(!matches!(r.scene.settings.as_ref().unwrap().body.pane, SettingsPane::General(_)));
+    link(&mut r);
+    assert!(general(&r).agent.lit);
+    assert_eq!(r.w.prefs.settings_tab, Some(SettingsTab::General));
+    assert!(r.effects.iter().any(|e| matches!(e, Effect::Persist(PersistOp::Prefs(p)) if p.settings_tab == Some(SettingsTab::General))));
+}
+
+/// Over an idle popover, the popover closes, as a click away closes it, and Settings opens.
+#[test]
+fn over_an_idle_popover_the_popover_closes_and_settings_opens() {
+    let mut r = Run::new(ready());
+    r.click();
+    assert!(r.ids().contains(&"config"), "{:?}", r.ids());
+    link(&mut r);
+    assert!(r.w.session.popover.is_none() && r.scene.popover.is_none());
+    assert!(general(&r).agent.lit);
+}
+
+/// Mid-take — the count included — the link opens nothing (law 4: no window opens while a
+/// take is open).
+#[test]
+fn mid_take_the_link_opens_nothing() {
+    let mut w = ready();
+    w.take = Some(take(Phase::Recording, 61_000));
+    let mut r = Run::new(w);
+    link(&mut r);
+    assert!(r.scene.settings.is_none() && !r.has(|e| matches!(e, Effect::Shell(ShellCmd::OpenSettings))), "{:?}", r.effects);
+    assert_eq!(r.arm.name, "dropped");
+    let mut r = Run::new(allowed());
+    ask(&mut r, 1, CliOp::Start);
+    assert!(r.w.session.arming.is_some(), "the count runs");
+    link(&mut r);
+    assert!(r.scene.settings.is_none() && !r.has(|e| matches!(e, Effect::Shell(ShellCmd::OpenSettings))), "{:?}", r.effects);
+}
+
+/// A Mac with no space has no Settings (B160): the link opens nothing there — and the
+/// command never gives it one, since such a Mac hears `not_set_up` first.
+#[test]
+fn a_mac_with_no_space_has_no_settings_for_the_link_to_open() {
+    let mut w = ready();
+    w.space.identity = None;
+    let mut r = Run::new(w);
+    link(&mut r);
+    assert!(r.scene.settings.is_none() && !r.has(|e| matches!(e, Effect::Shell(ShellCmd::OpenSettings))), "{:?}", r.effects);
+    assert_eq!(ask(&mut r, 1, CliOp::Start).error, Some("not_set_up"));
+}
+
+/// A sheet open in Settings is a question the person is in the middle of: the link leaves
+/// it as it is, and brings Settings forward as it stands.
+#[test]
+fn a_sheet_open_in_settings_stays_and_settings_comes_forward() {
+    for sheet in [Confirm::Report { sending: false }, Confirm::Uninstall { going: false }] {
+        let mut w = ready();
+        settings(&mut w);
+        w.session.confirm = Some(sheet.clone());
+        let mut r = Run::new(w);
+        let before = r.scene.settings.clone();
+        link(&mut r);
+        assert_eq!(r.w.session.confirm, Some(sheet.clone()), "the sheet stays");
+        assert!(r.effects.contains(&Effect::Shell(ShellCmd::OpenSettings)), "Settings comes forward: {:?}", r.effects);
+        assert!(!general(&r).agent.lit, "nothing lit behind a sheet");
+        assert_eq!(r.scene.settings.as_ref().map(|s| &s.body), before.as_ref().map(|s| &s.body), "as it stands");
+    }
 }

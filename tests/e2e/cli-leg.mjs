@@ -6,7 +6,9 @@
 //      command, and a login shell finds it (B217).
 //   2. It follows its app: `status` names the dev app and the wizard's space (B215).
 //   3. The app running (with --e2e, as every instance of the run), `record start` is
-//      refused as recording_off: General's switch is off by default (B216).
+//      refused as recording_off: General's switch is off by default (B216). The refusal
+//      carries the link to the switch (`settings_link`), and the link, opened with the app
+//      (`open -a`: a dev bundle claims no scheme), opens Settings there and flips nothing.
 //   4. The switch on (prefs.json, as the app keeps it), relaunched: `record start` starts
 //      the count, `pause` pauses, `resume` resumes, `stop` stops — each the click it stands
 //      for — and the stop answers with its link, which goes live.
@@ -104,6 +106,17 @@ try {
   step("switch-off");
   const off = shroom("record", "start");
   check("record start with the switch off is recording_off (exit 10)", off.code === 10 && off.json.error === "recording_off", off);
+  check("the refusal carries the link to the switch", off.json.settings_link === "shroom://settings/agent", off.json);
+  step("settings-link");
+  const runLog = path.join(home, "logs", "run.log");
+  const taken = () => (fs.existsSync(runLog) ? fs.readFileSync(runLog, "utf8").split("\n").filter((l) => l.includes("core settings-link ")).length : 0);
+  const before = taken();
+  spawnSync("open", ["-a", app, off.json.settings_link ?? "shroom://settings/agent"]);
+  let tookIt = false;
+  for (const until = Date.now() + 15_000; !tookIt && Date.now() < until; await sleep(500)) tookIt = taken() > before;
+  check("the link opens Settings at the switch", tookIt, `${taken()} after ${before}`);
+  const prefsNow = (() => { try { return JSON.parse(fs.readFileSync(path.join(home, "prefs.json"), "utf8")); } catch { return {}; } })();
+  check("the link flips nothing", prefsNow.agent_recording !== true && shroom("record", "start").json.error === "recording_off", prefsNow);
 
   // 4. The switch on, as the app keeps it; relaunched.
   step("switch-on");

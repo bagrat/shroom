@@ -32,7 +32,7 @@ use std::sync::Arc;
 use std::collections::BTreeMap;
 
 use serde_json::{Value, json};
-use shroom_core::event::{Event, JoinAnswer, MemberNews, PeekAnswer, StandingAnswer, Surface};
+use shroom_core::event::{Event, JoinAnswer, MemberNews, PeekAnswer, SettingsSpot, StandingAnswer, Surface};
 use shroom_core::scene::{Action, RowRef};
 use shroom_core::time::{Envelope, Fact, Mono, Wall};
 use shroom_core::world::*;
@@ -490,6 +490,13 @@ fn settings_rows() -> Vec<(&'static str, &'static str, World)> {
         let mut w = settings(ready(), SettingsTab::General);
         w.launch.version = "1.3.2".into();
         w.update.offer = Fact::known(Some(UpdateOffer::NeedsMacos { version: "1.4.0".into(), macos: 15 }), Mono(950));
+        w
+    }));
+    // The shroom command's settings link (N62, DECISIONS B216): General, the switch's row lit.
+    rows.push(("settings-general", "general-agent-lit", {
+        let mut w = settings(ready(), SettingsTab::General);
+        w.launch.version = "1.2.0".into();
+        w.session.lit = Some((SettingsSpot::AgentRecording, w.now));
         w
     }));
     rows.push(("settings-space-inspection", "space-inspection", space()));
