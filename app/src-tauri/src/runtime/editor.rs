@@ -391,11 +391,12 @@ fn save(rt: &Runtime, door: &mut Doorway, rec: &RecId, saved: &shroom_edit::Save
     }
 }
 
-/// The picture encoder for the copy: VideoToolbox (the release's encoder has it), else x264
-/// where a dev build's encoder lacks it.
-fn encoder(ffmpeg: &Path) -> shroom_encode::cut::Encoder {
+/// The picture encoders the copy may take, best first: VideoToolbox (the release's encoder
+/// has only it), then x264 where a dev build's encoder has it — a virtual Mac's VideoToolbox
+/// can refuse to encode.
+fn encoders(ffmpeg: &Path) -> Vec<shroom_encode::cut::Encoder> {
     use shroom_encode::cut::{Encoder, has_encoder};
-    if !has_encoder(ffmpeg, Encoder::VideoToolbox.codec()) && has_encoder(ffmpeg, Encoder::Libx264.codec()) { Encoder::Libx264 } else { Encoder::VideoToolbox }
+    std::iter::once(Encoder::VideoToolbox).chain(has_encoder(ffmpeg, Encoder::Libx264.codec()).then_some(Encoder::Libx264)).collect()
 }
 
 fn copy(rt: &Runtime, door: &mut Doorway, rec: &RecId, rev: u64) -> Result<(), Ended> {
@@ -426,14 +427,20 @@ fn copy(rt: &Runtime, door: &mut Doorway, rec: &RecId, rev: u64) -> Result<(), E
         rt.log("editor: no encoder for the copy");
         Ended::Failed(FailClass::Unclassified)
     })?;
-    let enc = encoder(&ffmpeg);
     let names = [shroom_edit::EditCopy::file_for(rev), shroom_edit::EditCopy::poster_for(rev), shroom_edit::EditCopy::teaser_for(rev)];
     let made = (|| -> Result<(), Ended> {
         let out = dir.join(&names[0]);
-        let duration = shroom_encode::cut::render(&ffmpeg, &source, &keep, &out, &enc).map_err(|e| {
-            rt.log(&format!("editor: {}'s copy didn't cut ({e})", short(&rec.0)));
-            Ended::Failed(FailClass::Unclassified)
-        })?;
+        let mut cut = None;
+        for enc in encoders(&ffmpeg) {
+            match shroom_encode::cut::render(&ffmpeg, &source, &keep, &out, &enc) {
+                Ok(duration) => {
+                    cut = Some((duration, enc));
+                    break;
+                }
+                Err(e) => rt.log(&format!("editor: {}'s copy didn't cut with {} ({e})", short(&rec.0), enc.codec())),
+            }
+        }
+        let (duration, enc) = cut.ok_or(Ended::Failed(FailClass::Unclassified))?;
         // Its own first frame and teaser: a trimmed-off start never shows in an unfurl.
         let poster = shroom_encode::take::poster_of(&ffmpeg, &out, &dir.join(&names[1])).map_err(|e| rt.log(&format!("editor: the copy's poster: {e}"))).ok().map(|()| names[1].clone());
         let teaser = shroom_encode::take::teaser_of(&ffmpeg, &out, &dir.join(&names[2]), &enc).map_err(|e| rt.log(&format!("editor: the copy's teaser: {e}"))).ok().map(|()| names[2].clone());
