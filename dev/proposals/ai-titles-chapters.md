@@ -292,7 +292,7 @@ as computed. Two gpt-oss-120b calls that ran out of tokens while reasoning still
 - **The free day (10,000 neurons) covers about 2.7 hours of video a day** for the whole
   space (3.1 hours with gemma-4). Past it, on the free plan, naming waits until 00:00
   UTC and catches up. The paid plan gets the same 10,000 a day, then continues at
-  ~4¢ an hour.
+  ~4¢ per video hour.
 - **A provisional title before Stop** (from the first ~2 minutes heard) costs ~20
   neurons.
 - **Speed, on the 35:39 take:** one window was heard in a median of 4.3 s (at most
@@ -321,8 +321,10 @@ as computed. Two gpt-oss-120b calls that ran out of tokens while reasoning still
 4. **Store everything beside the take** (`rec/<id>/ai/…`), deleted with it. The record
    keeps today's `titled` flag: an AI title fills the title only while `titled` is
    false, and typing one sets it as today.
-5. **Off by default; the owner turns it on once.** One card in the Library and a switch in
-   Settings · Space, each with one plain cost line. Members never see a cost.
+5. **Off by default, but visible** (Bagrat, 2026-10-18): on the setup Mac, a banner in the
+   popover; its Turn on… opens a short confirm with the one cost line, and the switch in
+   Settings · Space is its home. Not now hides the banner for good. Members never see a
+   cost. (First built as a card in the Library; replaced, too hidden.)
 6. **Hand the sibling features full Clef** (not Clef-flash) for per-sentence judgments, and Whisper
    turbo's word times to the voice-cue editor.
 7. **Captions ship with it:** `rec/<id>/ai/captions.vtt`, from the same transcript, as a
@@ -331,7 +333,10 @@ as computed. Two gpt-oss-120b calls that ran out of tokens while reasoning still
 ## 7. Spec sketch (provisional, numbers at ratification)
 
 Rows `N-ai-1…6` stand in for ledger numbers, so they don't collide with other proposals.
-Said-lines are drafts, copy for Bagrat.
+Said-lines are drafts, copy for Bagrat. **Built as N66 and N67** (spec/machine.json), and
+where the build departs from this sketch the spec wins: the Library card became the
+popover's banner and its confirm, Not now is for good there, and the price is said per
+video hour (Bagrat, 2026-10-18).
 
 - **N-ai-1 — Turning naming on.** Owner-class only. **Turn on** (the Library card or the
   Settings · Space switch) redeploys the space's Worker with an `ai` binding. That is a
@@ -387,13 +392,23 @@ column right of the editor's boards (x = 11600), redrawn as built on 2026-10-18.
 in `ai-titles-chapters/boards/`, beside the generator (`make-boards.py`); the pages
 gallery (`tests/e2e/pages-gallery.mjs`) shoots the page's faces from the code itself:
 
-- **Library — the naming card, once** (`AiOffer`), and **when Turn on didn't go through** (`AiOfferFailed`)
-- **Settings — Space: Name videos and add chapters, off as it ships** (`AiSettings`), and **naming couldn't change** (`AiSettingsFailed`)
-- **The page — the owner's, named from what was said** (`AiOwnerNamed`)
+- **Popover — the AI banner** (`AiBanner`), **Turn on…'s confirm** (`AiConfirm`) and **the
+  banner's states** (`AiBannerStates`): approved as drawn, Bagrat 2026-10-18 (he may tweak
+  the words later)
+- **Settings — Space: AI for new videos, off as it ships** (`AiSettings`): approved as
+  drawn, 2026-10-18; and **AI couldn't change** (`AiSettingsFailed`)
+- **The page — the owner's, named from what was said: the early title, then the full name
+  at Stop** (`AiOwnerNamed`)
 - **The page — the owner's, its name waiting for the free hours** (`AiNamingLater`)
 - **The page — chapters in the seek bar, named on hover** (`AiPageMarks`), Bagrat's pick, approved 2026-10-18
 - **The page on a phone — chapters in the seek bar, named while a finger is on it** (`AiPageMarksPhone`), approved 2026-10-18; redrawn as built (below)
 - **The page — captions on** (`AiCaptions`)
+- **shroom.am — the AI line, agreed** (`LandingAiLine`): it goes up with the homepage's
+  redesign, not before
+- **shroom.am/privacy — what the AI hears** (`AiPrivacy`): approved as drafted, 2026-10-18,
+  and built
+- **Library — the naming card** (`AiOffer`): replaced by the popover's banner, kept for the
+  record
 - **The page — chapters, A: listed under the player** (`AiPageChapters`), not chosen, kept for the record
 
 The titles and chapters on the boards are the pages gallery's invented take.
