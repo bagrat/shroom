@@ -32,6 +32,11 @@ spec rows are Bagrat's call. The words on the boards are placeholders.*
 >   (“cut here”, “scratch that”, “let me redo that”…) were built behind a choice, each heard
 >   only said apart and only when Clef says it was meant for the editor, and measured by
 >   `voice-cut/poc/cues.py`; set aside for now, they stay on the tester as “Listen for”.
+> - **End to end on a Mac** (`tests/e2e/voice-cut.mjs`): in the e2e run's own space on the
+>   test account, the AI turned on as a person turns it, one take whose sound is macOS's
+>   stock voice saying two slips and “shroom cut” (the drive's `--voice`, in place of the
+>   beep), and the owner page filmed until the strip shows. It runs when `dev/e2e/request`
+>   asks for `voice-cut`, on a build that turns the AI on (N66).
 > - **Whisper's prime** (asked by the AI build, which hears the take; `voice-cut/poc/priming.py`):
 >   with Whisper's own filter for what isn't speech (`vad_filter`), no prime wrote a word into
 >   a silent or music-only minute, and the full prime heard 34 of 34 cues; without it, every

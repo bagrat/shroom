@@ -2,6 +2,8 @@
 
 /// The drives' microphone: the test pattern's beep, never the room.
 pub mod beep;
+/// The voice-cut drive's microphone: stock-voice speech from a file, never the room.
+pub mod speech;
 
 #[cfg(target_os = "macos")]
 mod liveness;
