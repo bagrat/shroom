@@ -8,7 +8,7 @@ use std::sync::Arc;
 use crate::copy;
 use crate::derive::onboarding::{self, At};
 use crate::derive::settings::{self as settings_view, SpaceAt};
-use crate::derive::{COPIED_MS, COUNTDOWN_MS, OneShot, derive, library as library_view};
+use crate::derive::{COPIED_MS, COUNTDOWN_MS, LIT_MS, OneShot, derive, library as library_view};
 use crate::effect::{CloudCmd, Effect, LibCmd, MemberCmd, MoviesCopy, Perm, PersistOp, PublicUrl, RecCmd, ShellCmd, TakeCmd, UpCmd, UpdCmd};
 use crate::event::{
     ClaimFail, CloudNews, Event, Field, JoinAnswer, Key, LibraryNews, MemberNews, OsNews, PeekAnswer, QuitVia, RecNews, ReportNews, SecretField, Shape,
@@ -198,6 +198,7 @@ fn apply_event(w: &mut World, event: Event) -> Out {
         }
         Event::PopoverDismissed => dismiss(w),
         Event::Cli { id, op } => cli(w, id, op),
+        Event::SettingsLink(spot) => settings_link(w, spot),
         Event::Field { field: Field::LibrarySearch, value } => {
             if derive(w).library.is_none() {
                 return (vec![], Arm::DROPPED);
@@ -493,11 +494,13 @@ fn cli(w: &mut World, id: u64, op: crate::event::CliOp) -> Out {
         Effect::Cli(crate::effect::CliAnswer { id, ok: error.is_none(), take: face(w), error, link })
     };
     let refuse = |w: &World, code: &'static str| (vec![answer(w, Some(code), None)], Arm::named("cli-refused"));
-    if !w.prefs.agent_recording {
-        return refuse(w, "recording_off");
-    }
+    // Set up first: the switch lives in Settings, and Settings needs a space (B160) — so
+    // the refusal's link always has a Settings to open (B216).
     if w.space.identity.is_none() {
         return refuse(w, "not_set_up");
+    }
+    if !w.prefs.agent_recording {
+        return refuse(w, "recording_off");
     }
     let phase = w.take.as_ref().map(|t| t.phase);
     // Between two steps (pausing, resuming, stopping): ask again in a moment.
@@ -561,6 +564,37 @@ fn cli(w: &mut World, id: u64, op: crate::event::CliOp) -> Out {
     let link = (op == CliOp::Stop).then(|| crate::derive::cli_link(w)).flatten();
     fx.push(answer(w, None, link));
     (fx, arm)
+}
+
+/// A `shroom://settings/…` link (N62, B216): Settings on the spot's tab, the spot lit for a
+/// moment — General's switch, for the command's recording refusal. It changes nothing there:
+/// the person flips the switch. Mid-take it opens nothing (law 4); a Mac with no space has no
+/// Settings (B160). A sheet open in Settings is a question the person is in the middle of:
+/// it stays, and Settings comes forward as it stands. An idle popover closes, as a click
+/// away closes it.
+fn settings_link(w: &mut World, spot: crate::event::SettingsSpot) -> Out {
+    if w.take_open() || !w.provisioned() {
+        return (vec![], Arm::DROPPED);
+    }
+    let sheet = matches!(w.session.confirm, Some(Confirm::Exit | Confirm::Uninstall { .. } | Confirm::Remove(_) | Confirm::Report { .. }));
+    if sheet && w.window_visible(WindowKind::Settings) {
+        open_window(w, WindowKind::Settings);
+        return (vec![Effect::Shell(ShellCmd::OpenSettings)], Arm::named("settings-link-forward"));
+    }
+    let at_rest = w.session.popover.is_none() && !w.window_visible(WindowKind::Settings) && derive(w).state_ids().contains(&"idle-ready");
+    if w.session.popover.is_some() {
+        dismiss(w);
+    }
+    let mut fx = Vec::new();
+    if w.window_visible(WindowKind::Settings) && settings_view::tab(w) != spot.tab() {
+        // A tab change, as a click on the tab: a name being changed and left is put back (B158).
+        w.session.fields.settings.from = None;
+    }
+    open_settings(w, Some(spot.tab()), &mut fx);
+    fx.push(Effect::Shell(ShellCmd::OpenSettings));
+    w.session.fields.settings.lit = Some((spot, w.now));
+    let edge = (at_rest && spot.tab() == SettingsTab::General).then_some(("idle-ready", "settings-general"));
+    (fx, Arm { name: "settings-link", edge })
 }
 
 fn act(w: &mut World, action: Action) -> Out {
@@ -3033,6 +3067,10 @@ fn tick(w: &mut World) -> Out {
     // "Copied" reverts.
     if w.session.copied.as_ref().is_some_and(|(_, at)| now >= at.plus(COPIED_MS)) {
         w.session.copied = None;
+    }
+    // The settings link's light goes out.
+    if w.session.fields.settings.lit.as_ref().is_some_and(|(_, at)| now >= at.plus(LIT_MS)) {
+        w.session.fields.settings.lit = None;
     }
     // Deadlines: nothing waits forever.
     let overdue: Vec<Op> = w.inflight.ops.iter().filter(|(_, d)| **d <= now).map(|(op, _)| *op).collect();

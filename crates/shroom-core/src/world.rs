@@ -1186,6 +1186,9 @@ pub struct SettingsFields {
     pub report: ReportFields,
     /// A report went through: General says so until the window closes (B180).
     pub sent: bool,
+    /// The spot the settings link opened, lit for `LIT_MS` from then (N62, B216): cleared
+    /// by the Tick at its end.
+    pub lit: Option<(crate::event::SettingsSpot, Mono)>,
 }
 
 /// What the Report a problem sheet holds (B180): the words and the reply-to as typed, the

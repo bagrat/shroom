@@ -864,6 +864,9 @@ pub struct AgentCard {
     pub read_first: Button,
     pub line: String,
     pub recording: Toggle,
+    /// The switch's row lit for a moment: the command's settings link opened Settings here
+    /// (N62, B216). The window brings it into view while it's lit.
+    pub lit: bool,
 }
 
 /// The Report a problem sheet's form, between its line and its buttons (B180).

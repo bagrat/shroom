@@ -384,6 +384,7 @@ fn general(w: &World) -> GeneralBody {
                 on: w.prefs.agent_recording,
                 enabled: true,
             },
+            lit: matches!(w.session.fields.settings.lit, Some((crate::event::SettingsSpot::AgentRecording, _))),
         },
     }
 }
