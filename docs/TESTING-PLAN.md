@@ -169,7 +169,8 @@ read from a frame (`shroom_testpattern::field_lit`; `tests/e2e/field.mjs`): the 
 alone lights none of it, shroom's popover over it a few percent, the count's scrim all of
 it. `node app/test/take-drive.mjs left-out` holds both above the pattern while a take
 records — a capture that leaves nothing out must see them there — and every frame of the
-take must have under 0.2 % of the field lit. `not-left-out` is the reader's own proof, as
+take must have under 0.2 % of the field lit. The agent label (N62) is held up the same way,
+at its own place top right, where the field's top band lies. `not-left-out` is the reader's own proof, as
 `--guard-probe` is the pattern guard's: the count taken off the list, and the reader must
 find it in the take. The pattern guard itself looks again for a few seconds on a slow Mac
 before it refuses; nothing records until a captured frame shows the pattern.
@@ -240,7 +241,9 @@ bundle's command reads its own app's folder, through its link too); `site/test/c
 (the guide held to `main.rs` and `out.rs`); the cask's renderer (`installer/test/cask.test.mjs`);
 the windows gallery's General with the switch lit.
 **L2** — on the hosted Mac, `cli-socket` (the bundled command, the socket's mode, set up
-first, the switch's refusal, opening the app), `settings-link` (the refusal's link opened
+first, the switch's refusal, opening the app), `cli-label` (filmed: `--no-countdown`
+records at once with the agent label on screen, a decoded frame of the take dark where the
+label was; `--no-label` shows none), `settings-link` (the refusal's link opened
 with the app, cold and warm: Settings on screen at the switch, the switch still off) and the
 `settings` drive's switch (kept in `prefs.json`, the ask let through and refused again, the
 link's light on and off); and the full e2e's command leg (`tests/e2e/cli-leg.mjs`): on PATH
