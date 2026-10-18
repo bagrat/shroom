@@ -152,7 +152,15 @@ async function go(blob, isVideo) {
     const dur = pcm.length / 16000;
     say('Listening in the test Cloudflare account…');
     const r = await fetch('/listen', { method: 'POST', headers: { 'x-key': key, 'content-type': 'audio/wav' }, body: wav(pcm) });
-    if (!r.ok) { say(r.status === 403 ? 'That key is not right. Open the link you were sent.' : `Listening failed (${r.status}). Try again in a moment.`, true); return; }
+    if (!r.ok) {
+      const why = await r.text().catch(() => '');
+      // Workers AI's free allowance is per day: it comes back at 00:00 UTC.
+      const left = () => { const n = new Date(), next = Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate() + 1); const h = Math.ceil((next - n) / 3600000); return h <= 1 ? 'within the hour' : `in about ${h} hours`; };
+      say(r.status === 403 ? 'That key is not right. Open the link you were sent.'
+        : /4006|daily free allocation/.test(why) ? `The test account's free listening for today is used up. It comes back at midnight UTC, ${left()}.`
+        : `Listening failed (${r.status}). Try again in a moment.`, true);
+      return;
+    }
     heard = await r.json();
     if (heard.error) { say(`Listening failed: ${heard.error}`, true); return; }
     const transcript = { duration: dur, words: heard.words, silences: silences(pcm) };
@@ -305,7 +313,10 @@ function words() {
   take.words.forEach((w) => {
     const s = document.createElement('span'), mid = (w.start + w.end) / 2;
     s.textContent = w.text + ' ';
-    if (list.cuts.some((c) => c.applied && mid >= c.start && mid < c.end)) s.className = 'cut';
+    // Whisper's word times can run a little early into the quiet before a word, so a word
+    // shows as cut only when the whole of it is: the sound is cut by the quiet, not the word.
+    const inside = (c) => w.start >= c.start - 0.05 && w.end <= c.end + 0.05;
+    if (list.cuts.some((c) => c.applied && inside(c))) s.className = 'cut';
     else if (list.cuts.some((c) => !c.applied && mid >= c.start && mid < c.end)) s.className = 'offer';
     s.dataset.t = w.start; s.dataset.e = w.end;
     s.onclick = () => { media.currentTime = w.start; draw(); };
