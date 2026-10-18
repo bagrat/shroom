@@ -1335,7 +1335,11 @@ mod tests {
         let conf: serde_json::Value = serde_json::from_str(include_str!("../../tauri.conf.json")).unwrap();
         let script = include_str!("../../../../tools/build-ffmpeg.sh");
         let notice = include_str!("../../../../tools/ffmpeg-NOTICE.txt");
-        assert_eq!(rel["bundle"]["externalBin"], serde_json::json!(["../../build/ffmpeg/sidecar/ffmpeg"]));
+        // Beside it, the `shroom` command (dev/proposals/cli-agent-skill.md): Contents/MacOS/shroom-cli,
+        // built by tools/release-build.sh where the bundler reads it.
+        assert_eq!(rel["bundle"]["externalBin"], serde_json::json!(["../../build/ffmpeg/sidecar/ffmpeg", "../../build/cli/shroom-cli"]));
+        let build = include_str!("../../../../tools/release-build.sh");
+        assert!(build.contains("CLI=$ROOT/build/cli/shroom-cli-aarch64-apple-darwin") && build.contains("cargo build --release -p shroom-cli"), "release-build makes the command the bundle reads");
         assert!(script.contains("OUT=$ROOT/build/ffmpeg") && script.contains("\"$OUT/sidecar/ffmpeg-$TRIPLE\"") && script.contains("TRIPLE=aarch64-apple-darwin"), "the script writes what the bundle reads");
         assert_eq!(std::path::Path::new("../../build/ffmpeg/sidecar/ffmpeg").file_name().unwrap(), shroom_encode::locate::SIDECAR, "Tauri bundles it as Contents/MacOS/ffmpeg, where a release looks");
         let res = &rel["bundle"]["resources"];
