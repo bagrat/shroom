@@ -1,5 +1,5 @@
 //! Bagrat's takes on the tester (2026-10-18), rebuilt from the words it showed
-//! (tests/takes/hand-bagrat-tester-1 and -2): what the planner got wrong in them, held.
+//! (tests/takes/hand-bagrat-tester-1, -2 and -3): what the planner got wrong in them, held.
 //!
 //! - A cue that breaks off a sentence takes that sentence, never the finished one before it,
 //!   even when the speaker ran straight on from one into the other.
@@ -8,17 +8,35 @@
 //!   it is whole.
 //! - Where the judgment may begin a redone stretch: a sentence's start, or a pause inside the
 //!   cue's own sentence, and never one that leaves a word or two of that sentence behind.
+//! - A cut after a cue runs through what still sounds after its last word (the word's
+//!   release, a breath) to the first pause, never ending in the short dip right after it.
 
 use std::fs;
 use std::path::Path;
 
-use shroom_edit::{CutKind, Options, Silence, Transcript, plan, questions};
+use shroom_edit::{
+    Answer, CutKind, Levels, Options, Silence, Transcript, plan, plan_with, questions,
+};
 
 fn rebuilt(name: &str) -> Transcript {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("tests/takes")
         .join(name);
     serde_json::from_str(&fs::read_to_string(dir.join("transcript.json")).unwrap()).unwrap()
+}
+
+/// What the judgment answered for a rebuilt take, as the tester showed it.
+fn judged(name: &str) -> Vec<Answer> {
+    #[derive(serde::Deserialize)]
+    struct Judged {
+        answers: Vec<Answer>,
+    }
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/takes")
+        .join(name);
+    serde_json::from_str::<Judged>(&fs::read_to_string(dir.join("judged.json")).unwrap())
+        .unwrap()
+        .answers
 }
 
 fn take(words: &[(&str, f64, f64)], silences: &[(f64, f64)], duration: f64) -> Transcript {
@@ -233,4 +251,113 @@ fn the_judgment_never_begins_a_word_or_two_into_a_sentence() {
         "{:?}",
         qs[0].candidates
     );
+}
+
+/// His third take's loudness every 50 ms where it was read out (relayed, 2026-10-18) around
+/// the ends of its two cuts; elsewhere drawn from the words (-20 dB), the silences (-118 dB,
+/// the true silence his browser gave) and between them a breath's -60 dB.
+fn with_his_loudness(t: Transcript) -> Transcript {
+    const READ: &[(f64, f32)] = &[
+        (9.60, -22.0),
+        (9.65, -40.0),
+        (9.70, -56.0),
+        (9.75, -38.0),
+        (9.80, -45.0),
+        (9.85, -59.0),
+        (9.90, -76.0),
+        (9.95, -106.0),
+        (10.00, -100.0),
+        (10.05, -60.0),
+        (10.10, -60.0),
+        (10.15, -60.0),
+        (10.20, -60.0),
+        (10.25, -60.0),
+        (10.30, -60.0),
+        (10.35, -60.0),
+        (19.50, -20.0),
+        (19.55, -32.0),
+        (19.60, -59.0),
+        (19.65, -35.0),
+        (19.70, -34.0),
+        (19.75, -37.0),
+        (19.80, -49.0),
+        (19.85, -59.0),
+        (19.90, -68.0),
+        (19.95, -93.0),
+        (20.00, -50.0),
+        (20.05, -58.0),
+        (20.10, -85.0),
+        (20.15, -114.0),
+        (20.20, -118.0),
+        (20.25, -118.0),
+        (20.30, -118.0),
+        (20.35, -118.0),
+        (20.40, -118.0),
+        (20.45, -118.0),
+        (20.50, -82.0),
+        (20.55, -71.0),
+        (20.60, -72.0),
+        (20.65, -92.0),
+        (20.70, -103.0),
+        (20.75, -82.0),
+        (20.80, -82.0),
+        (20.85, -82.0),
+    ];
+    let step = 0.05;
+    let db = (0..(t.duration / step).ceil() as usize)
+        .map(|i| {
+            let at = i as f64 * step;
+            if let Some(&(_, d)) = READ.iter().find(|(r, _)| (r - at).abs() < 1e-6) {
+                d
+            } else if t.words.iter().any(|w| w.start <= at && at < w.end) {
+                -20.0
+            } else if t.silences.iter().any(|s| s.start <= at && at < s.end) {
+                -118.0
+            } else {
+                -60.0
+            }
+        })
+        .collect();
+    t.with_levels(Levels { step, db })
+}
+
+#[test]
+fn a_cut_after_the_cue_runs_through_its_tail_and_the_breath_to_the_pause() {
+    // His third take: “…the link is pasted. Shroom cut. [the “t”'s release and a breath to
+    // about 20.10 s, the pause at 20.15–20.48 s, an inhale] When you want…”. The cut ended in
+    // the dip right after “cut.” (19.60 s), and the breath played (Bagrat, 2026-10-18).
+    let third = rebuilt("hand-bagrat-tester-3");
+    for t in [third.clone(), with_his_loudness(third)] {
+        let by_ear = plan_with(&t, Options::default(), &judged("hand-bagrat-tester-3"));
+        assert_eq!(
+            by_ear
+                .cuts
+                .iter()
+                .map(|c| c.removed.as_str())
+                .collect::<Vec<_>>(),
+            [
+                "Today, I will show you how to share, um, Shroom cut.",
+                "You press stop and the link is pasted. Shroom cut.",
+            ]
+        );
+        // The code alone cuts only the cue there, and ends it in the same place.
+        let alone = plan(&t, Options::default());
+        let cue_only = alone
+            .cuts
+            .iter()
+            .find(|c| c.kind == CutKind::CueOnly)
+            .unwrap();
+        assert_eq!(cue_only.removed, "Shroom cut.");
+        for cut in [&by_ear.cuts[1], cue_only] {
+            assert!(
+                (20.15..=20.48).contains(&cut.end),
+                "the cut ends in the pause, past the breath: {cut:?}"
+            );
+        }
+    }
+    // His first cut ended right: in the quiet after its cue, before the inhale that leads
+    // into the line said again.
+    let t = with_his_loudness(rebuilt("hand-bagrat-tester-3"));
+    let first = &plan_with(&t, Options::default(), &judged("hand-bagrat-tester-3")).cuts[0];
+    assert!((9.95..10.05).contains(&first.end), "{first:?}");
 }
