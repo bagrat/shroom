@@ -7393,10 +7393,10 @@
      "id": "library.aug-21-4-32"
     },
     {
-     "text": "Six videos you've stopped watching take 11 GB.",
+     "text": "Six videos might be worth deleting — they take 11 GB.",
      "role": "line",
      "copy": "provisional",
-     "note": "N68's line above the rows, when the suggestions hold at least one video and Suggest videos to clean up is on. The count varies (a word up to nine, Law 16), and so does the size, the suggestions' total. One suggestion reads 'One video you've stopped watching takes 3.2 GB.'",
+     "note": "N68's line above the rows, when the suggestions hold at least one video and Suggest videos to clean up is on. The count varies (a word up to nine, Law 16), and so does the size, the suggestions' total. One suggestion reads 'One video might be worth deleting — it takes 3.2 GB.'",
      "id": "library.cleanup-line"
     },
     {
@@ -8050,7 +8050,7 @@
      "id": "settings-general.suggest-videos-to-clean-up"
     },
     {
-     "text": "Videos you've stopped watching that take real room, in the Library.",
+     "text": "In the Library, videos that might be worth deleting: rarely watched lately, and taking real room.",
      "role": "line",
      "copy": "provisional",
      "id": "settings-general.videos-youve-stopped-watching"
@@ -11715,28 +11715,28 @@
      "id": "library-cleanup.library"
     },
     {
-     "text": "Videos you've stopped watching that take real room. Deleting all six frees 11 GB — about 17¢ a month off your Cloudflare bill.",
+     "text": "These might be worth deleting: rarely watched lately, and taking real room. Deleting all six frees 11 GB — about 17¢ a month off your Cloudflare bill.",
      "role": "line",
      "copy": "provisional",
      "note": "Past the free 10 GB. The count varies (a word up to nine, Law 16), and so do the size and the cents. Two read 'Deleting both', one 'Deleting it'.",
      "id": "library-cleanup.videos-youve-stopped-watching"
     },
     {
-     "text": "Videos you've stopped watching that take real room. Deleting all six frees 5 GB. Your space is inside Cloudflare's free 10 GB, so this saves nothing yet.",
+     "text": "These might be worth deleting: rarely watched lately, and taking real room. Deleting all six frees 5 GB. Your space is inside Cloudflare's free 10 GB, so this saves nothing yet.",
      "role": "line",
      "copy": "provisional",
      "note": "Inside the free 10 GB (B212). The count and the size: each varies.",
      "id": "library-cleanup.inside-free"
     },
     {
-     "text": "Videos you've stopped watching that take real room. Deleting all six frees 3 GB and brings your space back inside Cloudflare's free 10 GB.",
+     "text": "These might be worth deleting: rarely watched lately, and taking real room. Deleting all six frees 3 GB and brings your space back inside Cloudflare's free 10 GB.",
      "role": "line",
      "copy": "provisional",
      "note": "When deleting them all would take the space back under 10 GB (B212). The count and the size: each varies.",
      "id": "library-cleanup.back-inside-free"
     },
     {
-     "text": "Videos you've stopped watching that take real room. Deleting all six frees 11 GB.",
+     "text": "These might be worth deleting: rarely watched lately, and taking real room. Deleting all six frees 11 GB.",
      "role": "line",
      "copy": "provisional",
      "note": "On a member's Mac: the bill is the space owner's, so no money is said. The count and the size: each varies.",

@@ -2123,7 +2123,7 @@ The Library window, thin by design (§5.6), built for two jobs: re-share an old 
 | “1 video” | line | provisional | one case the spec didn't print, so it varies by case — the copy table: The Library footer, one video · copy table |
 | “Aug 21” | line | provisional | one case the spec didn't print, so it varies by case — the copy table: The Library's dates · copy table |
 | “Aug 21 · 4:32” | line | provisional | one case the spec didn't print, so it varies by case — the copy table: The Library's dates · copy table |
-| “Six videos you've stopped watching take 11 GB.” | line | provisional | N68's line above the rows, when the suggestions hold at least one video and Suggest videos to clean up is on. The count varies (a word up to nine, Law 16), and so does the size, the suggestions' total. One suggestion reads 'One video you've stopped watching takes 3.2 GB.' |
+| “Six videos might be worth deleting — they take 11 GB.” | line | provisional | N68's line above the rows, when the suggestions hold at least one video and Suggest videos to clean up is on. The count varies (a word up to nine, Law 16), and so does the size, the suggestions' total. One suggestion reads 'One video might be worth deleting — it takes 3.2 GB.' |
 | “Review…” | button | provisional | Opens Suggested to clean up (N68). |
 | “Not now” | tooltip | provisional | The ✕ at the line's end, named for VoiceOver. Hides the line until the suggestions change (N68). |
 
@@ -2355,7 +2355,7 @@ The General tab: U4's login checkbox at home at last (it reads the system's trut
 | “How often each video is played and how far, kept in your Cloudflare account. No cookies, nothing about who watched.” | line | provisional |  |
 | “Couldn't change that just now — try again in a moment.” | line | provisional | Under Count plays, when the space didn't take the switch (law 12); the switch reads as the space has it. |
 | “Suggest videos to clean up” | field-label | provisional | Switch, on by default; this Mac's (N68). |
-| “Videos you've stopped watching that take real room, in the Library.” | line | provisional |  |
+| “In the Library, videos that might be worth deleting: rarely watched lately, and taking real room.” | line | provisional |  |
 | “Space used” | field-label | provisional |  |
 | “34 GB — about 36¢ a month past Cloudflare's free 10 GB” | status | provisional | Past the free 10 GB; the size and the cents vary (B212). |
 | “8.2 GB — inside Cloudflare's free 10 GB” | status | provisional | Inside the free 10 GB; the size varies (B212). |
@@ -2816,10 +2816,10 @@ Suggested to clean up (N68): the Library's own view of the videos worth deleting
 |---|---|---|---|
 | “Suggested to clean up” | title | provisional |  |
 | “‹ Library” | button | provisional | Back to the Library. |
-| “Videos you've stopped watching that take real room. Deleting all six frees 11 GB — about 17¢ a month off your Cloudflare bill.” | line | provisional | Past the free 10 GB. The count varies (a word up to nine, Law 16), and so do the size and the cents. Two read 'Deleting both', one 'Deleting it'. |
-| “Videos you've stopped watching that take real room. Deleting all six frees 5 GB. Your space is inside Cloudflare's free 10 GB, so this saves nothing yet.” | line | provisional | Inside the free 10 GB (B212). The count and the size: each varies. |
-| “Videos you've stopped watching that take real room. Deleting all six frees 3 GB and brings your space back inside Cloudflare's free 10 GB.” | line | provisional | When deleting them all would take the space back under 10 GB (B212). The count and the size: each varies. |
-| “Videos you've stopped watching that take real room. Deleting all six frees 11 GB.” | line | provisional | On a member's Mac: the bill is the space owner's, so no money is said. The count and the size: each varies. |
+| “These might be worth deleting: rarely watched lately, and taking real room. Deleting all six frees 11 GB — about 17¢ a month off your Cloudflare bill.” | line | provisional | Past the free 10 GB. The count varies (a word up to nine, Law 16), and so do the size and the cents. Two read 'Deleting both', one 'Deleting it'. |
+| “These might be worth deleting: rarely watched lately, and taking real room. Deleting all six frees 5 GB. Your space is inside Cloudflare's free 10 GB, so this saves nothing yet.” | line | provisional | Inside the free 10 GB (B212). The count and the size: each varies. |
+| “These might be worth deleting: rarely watched lately, and taking real room. Deleting all six frees 3 GB and brings your space back inside Cloudflare's free 10 GB.” | line | provisional | When deleting them all would take the space back under 10 GB (B212). The count and the size: each varies. |
+| “These might be worth deleting: rarely watched lately, and taking real room. Deleting all six frees 11 GB.” | line | provisional | On a member's Mac: the bill is the space owner's, so no money is said. The count and the size: each varies. |
 | “Watched 4 times, the last 10 months ago” | line | provisional | A row's reason (B211); the counts and times vary. Counts are figures here: a row fact (Law 16). Shapes: 'Watched once, 5 months ago' · 'Watched twice, the last 2 months ago' · 'Watched twice, stopped early, the last 4 months ago' (most stopped in the first quarter) · 'Nobody has watched it'. Times: days under 60, months under 24, then years. |
 | “Nobody has watched it” | line | provisional | The reason when counting never saw a play. |
 | “Open page” | button | provisional |  |

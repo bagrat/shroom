@@ -381,9 +381,9 @@ pub fn money(cents: u64) -> String {
 /// The Library's line above the rows.
 pub fn cleanup_line(n: u64, bytes: u64) -> String {
     if n == 1 {
-        format!("One video you've stopped watching takes {}.", size(bytes))
+        format!("One video might be worth deleting — it takes {}.", size(bytes))
     } else {
-        format!("{} videos you've stopped watching take {}.", count_word_cap(n), size(bytes))
+        format!("{} videos might be worth deleting — they take {}.", count_word_cap(n), size(bytes))
     }
 }
 pub fn review() -> String { "Review…".into() }
@@ -391,7 +391,7 @@ pub fn not_now() -> String { "Not now".into() }
 pub fn cleanup_title() -> String { "Suggested to clean up".into() }
 pub fn cleanup_back() -> String { "‹ Library".into() }
 
-const CLEANUP_WHY: &str = "Videos you've stopped watching that take real room.";
+const CLEANUP_WHY: &str = "These might be worth deleting: rarely watched lately, and taking real room.";
 
 /// “Deleting all six” — “Deleting both” for two, “Deleting it” for one.
 fn deleting_all(n: u64) -> String {
@@ -455,7 +455,7 @@ pub fn count_plays_hint() -> String { "How often each video is played and how fa
 /// The play-count switch didn't go through (law 12).
 pub fn plays_failed() -> String { "Couldn't change that just now — try again in a moment.".into() }
 pub fn suggest_cleanup() -> String { "Suggest videos to clean up".into() }
-pub fn suggest_cleanup_hint() -> String { "Videos you've stopped watching that take real room, in the Library.".into() }
+pub fn suggest_cleanup_hint() -> String { "In the Library, videos that might be worth deleting: rarely watched lately, and taking real room.".into() }
 pub fn space_used() -> String { "Space used".into() }
 /// The space past the free 10 GB, and what it costs a month.
 pub fn space_used_past(bytes: u64, cents: u64) -> String { format!("{} — about {} a month past Cloudflare's free 10 GB", size(bytes), money(cents)) }

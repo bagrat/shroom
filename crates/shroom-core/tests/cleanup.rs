@@ -126,7 +126,7 @@ fn button<'a>(s: &'a Scene, title: &str, action: &Action) -> &'a shroom_core::sc
 #[test]
 fn the_library_says_so_in_one_line_and_review_opens_the_view() {
     let mut r = Run::new(library(three(), 34_000_000_000));
-    assert_eq!(line(&r.scene).as_deref(), Some("Three videos you've stopped watching take 6.3 GB."));
+    assert_eq!(line(&r.scene).as_deref(), Some("Three videos might be worth deleting — they take 6.3 GB."));
     let l = r.scene.library.as_ref().unwrap().body.cleanup_line.clone().unwrap();
     assert_eq!((l.review.label.as_str(), l.dismiss.label.as_str()), ("Review…", "Not now"));
     assert!(r.scene.library.as_ref().unwrap().body.cleanup.is_none(), "the list first");
@@ -142,7 +142,7 @@ fn the_library_says_so_in_one_line_and_review_opens_the_view() {
     assert_eq!(v.rows[0].meta, format!("{} · 3.2 GB · Watched 4 times, the last 10 months ago", shroom_core::copy::day(Wall(NOW - 380 * DAY), 0)));
     assert!(v.rows[1].meta.ends_with("1.8 GB · Nobody has watched it"));
     assert!(v.rows[2].meta.ends_with("1.3 GB · Watched 41 times, the last 4 months ago"));
-    assert_eq!(v.intro.as_deref(), Some("Videos you've stopped watching that take real room. Deleting all three frees 6.3 GB — about 9¢ a month off your Cloudflare bill."));
+    assert_eq!(v.intro.as_deref(), Some("These might be worth deleting: rarely watched lately, and taking real room. Deleting all three frees 6.3 GB — about 9¢ a month off your Cloudflare bill."));
     assert_eq!(v.foot.as_deref(), Some("Keep takes a video off this list for good. Plays are counted in your own Cloudflare account."));
     let all = v.delete_all.clone().unwrap();
     assert_eq!((all.label.as_str(), all.style), ("Delete all three…", Style::RedText), "law 9: red text, never a button");
@@ -241,7 +241,7 @@ fn the_line_put_away_stays_away_until_the_suggestions_change() {
     let mut more = three();
     more.push(suggestion("standup", 900_000_000, 0, 31));
     r.send(answer(more, 35_000_000_000));
-    assert_eq!(line(&r.scene).as_deref(), Some("Four videos you've stopped watching take 7.2 GB."), "a new one: the line is back");
+    assert_eq!(line(&r.scene).as_deref(), Some("Four videos might be worth deleting — they take 7.2 GB."), "a new one: the line is back");
 }
 
 #[test]
@@ -258,14 +258,14 @@ fn the_money_line_is_honest_about_the_free_ten_gigabytes() {
     let r = open(three(), 12_000_000_000);
     assert!(view(&r.scene).intro.as_deref().unwrap().ends_with("frees 6.3 GB and brings your space back inside Cloudflare's free 10 GB."));
     let r = open(vec![suggestion("billing", 3_200_000_000, 4, 300)], 34_000_000_000);
-    assert_eq!(view(&r.scene).intro.as_deref(), Some("Videos you've stopped watching that take real room. Deleting it frees 3.2 GB — about 5¢ a month off your Cloudflare bill."));
+    assert_eq!(view(&r.scene).intro.as_deref(), Some("These might be worth deleting: rarely watched lately, and taking real room. Deleting it frees 3.2 GB — about 5¢ a month off your Cloudflare bill."));
     assert!(view(&r.scene).delete_all.is_none(), "one suggestion: its own Delete is enough");
     let r = Run::new({
         let mut w = member(library(three(), 6_300_000_000));
         w.session.fields.library.cleanup = true;
         w
     });
-    assert_eq!(view(&r.scene).intro.as_deref(), Some("Videos you've stopped watching that take real room. Deleting all three frees 6.3 GB."), "the bill is the owner's");
+    assert_eq!(view(&r.scene).intro.as_deref(), Some("These might be worth deleting: rarely watched lately, and taking real room. Deleting all three frees 6.3 GB."), "the bill is the owner's");
 }
 
 #[test]
@@ -320,7 +320,7 @@ fn settings_counts_plays_by_the_spaces_switch_and_suggests_by_this_macs() {
     assert_eq!((g.count.label.as_str(), g.count.on, g.count.enabled), ("Count plays", true, true));
     assert_eq!(g.count_hint, "How often each video is played and how far, kept in your Cloudflare account. No cookies, nothing about who watched.");
     assert_eq!((g.suggest.label.as_str(), g.suggest.on, g.suggest.enabled), ("Suggest videos to clean up", true, true));
-    assert_eq!(g.suggest_hint, "Videos you've stopped watching that take real room, in the Library.");
+    assert_eq!(g.suggest_hint, "In the Library, videos that might be worth deleting: rarely watched lately, and taking real room.");
     assert_eq!((g.used_label.as_deref(), g.used.as_deref()), (Some("Space used"), Some("34 GB — about 36¢ a month past Cloudflare's free 10 GB")));
 
     r.set(Action::SetPlays(false));
