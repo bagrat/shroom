@@ -477,21 +477,23 @@ fn delete(a: &Args, rest: &[String]) -> Result<Done, Fail> {
 /// and `by` says which it was.
 fn cleanup(a: &Args) -> Result<Done, Fail> {
     let (_, d) = door(a)?;
-    let Some((since, items)) = d.suggestions(a.mine)? else { return cleanup_by_age(a) };
-    let mut rows: Vec<_> = items.into_iter().filter(|i| i.candidate && a.older_than.is_none_or(|n| i.age_days.is_some_and(|age| age >= n))).collect();
+    let Some(s) = d.suggestions(a.mine)? else { return cleanup_by_age(a) };
+    // The page's days are fractions; a person reads whole ones.
+    let whole = |d: Option<f64>| d.map(|d| d.max(0.0).floor() as u64);
+    let mut rows: Vec<_> = s.items.into_iter().filter(|i| i.candidate && a.older_than.is_none_or(|n| whole(i.age_days).is_some_and(|age| age >= n))).collect();
     // Most likely first; between equals, the older.
-    rows.sort_by(|x, y| y.score.total_cmp(&x.score).then(y.age_days.cmp(&x.age_days)));
+    rows.sort_by(|x, y| y.score.total_cmp(&x.score).then(y.age_days.unwrap_or(0.0).total_cmp(&x.age_days.unwrap_or(0.0))));
     if let Some(n) = a.limit {
         rows.truncate(n);
     }
     let candidates: Vec<Value> = rows
         .iter()
         .map(|i| {
-            let code = i.reason.as_ref().and_then(|r| r["code"].as_str()).unwrap_or("suggested");
+            let code = i.reason.as_ref().map_or("suggested", |r| r.code.as_str());
             json!({
                 "id": i.id, "title": i.title, "state": "live", "created_at": i.created_at, "duration_sec": i.duration_sec,
-                "owner": i.owner, "link": d.link(&i.id), "age_days": i.age_days, "plays": i.plays, "last_played": i.last_played_at,
-                "quiet_days": i.quiet_days, "score": i.score, "reason": code, "why": say::why(code, i.quiet_days),
+                "owner": i.owner, "link": d.link(&i.id), "age_days": whole(i.age_days), "plays": i.plays, "last_played": i.last_played_at,
+                "quiet_days": whole(i.quiet_days), "score": i.score, "reason": code, "why": say::why(code, whole(i.quiet_days)),
             })
         })
         .collect();
@@ -504,7 +506,7 @@ fn cleanup(a: &Args) -> Result<Done, Fail> {
             .collect();
         format!("{}\n{}\n{}", say::suggestions_head(rows.len()), lines.join("\n"), say::nothing_was_deleted())
     };
-    Ok(Done::new(json!({"by": "suggestions", "counting_since": since, "older_than_days": a.older_than, "candidates": candidates}), text))
+    Ok(Done::new(json!({"by": "suggestions", "counting": s.counting, "counting_since": s.since, "older_than_days": a.older_than, "candidates": candidates}), text))
 }
 
 /// Without the page's suggestions: age alone, oldest first.

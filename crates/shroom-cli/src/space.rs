@@ -28,8 +28,13 @@ pub struct Door {
     base: Option<String>,
 }
 
-/// The page's suggestions: since when plays are counted, and every video it looked at.
-pub type Suggestions = (Option<String>, Vec<CleanupItem>);
+/// The page's suggestions: whether the space counts plays and since when, and every video
+/// it looked at.
+pub struct Suggestions {
+    pub counting: bool,
+    pub since: Option<String>,
+    pub items: Vec<CleanupItem>,
+}
 
 /// One video, as the CLI shows it.
 #[derive(Debug, Clone, PartialEq)]
@@ -191,24 +196,23 @@ impl Door {
     /// paged by `after`) — only this Mac's person's videos for a member, or with `mine`;
     /// `None` when the page doesn't make them (404: an older page).
     pub fn suggestions(&self, mine: bool) -> Result<Option<Suggestions>, Fail> {
-        let scope = if mine || self.identity.role == Role::Member { Scope::Mine } else { Scope::Everyone };
-        let mut items = Vec::new();
-        let mut since = None;
+        let everyone = !(mine || self.identity.role == Role::Member);
+        let mut s = Suggestions { counting: true, since: None, items: Vec::new() };
         let mut after: Option<String> = None;
         for _ in 0..10_000 {
-            let page = match self.page.cleanup(&self.key, scope, after.as_deref()) {
+            let page = match self.page.cleanup(&self.key, everyone, after.as_deref()) {
                 Answer::Refused(r) if r.status == 404 => return Ok(None),
                 Answer::NotShroom { status: 404 } => return Ok(None),
                 a => answer(a)?,
             };
-            since = page.counting_since;
-            items.extend(page.items);
+            (s.counting, s.since) = (page.counting, page.counting_since);
+            s.items.extend(page.items);
             match page.next {
                 Some(n) if after.as_deref() != Some(n.as_str()) => after = Some(n),
                 _ => break,
             }
         }
-        Ok(Some((since, items)))
+        Ok(Some(s))
     }
 
     /// The space's people (owner-class only, §4.11).
