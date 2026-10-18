@@ -9,7 +9,7 @@
 // Routes (ARCHITECTURE §8.1, WORKER-INTERFACE §4):
 //   GET /<id>                the page, its face chosen by meta/<id>.json
 //   GET /m/<id>/<file>       media from rec/<id>/…, with Range (206) and HEAD
-//   GET /d/<id>              the single-file copy, named after the live title
+//   GET /d/<id>              the single-file copy (an edit's, once it's up), named after the live title
 //   GET /_shroom/hls.js      the pinned hls.js, kept in the bucket (no third-party CDN)
 //   GET /_shroom/ping        "this answers as a shroom space", with the page's iface and version
 //   GET /favicon.svg, /favicon.png, /favicon.ico
@@ -34,7 +34,8 @@
 // amended): POST /_shroom/api/key writes .shroom/keys/<sha256(k)> = {member, device, exp};
 // redeeming spends it by CAS and sets a cookie {m, d, t} HMAC-signed with
 // .shroom/cookie.key, re-checked against the roster on every use. None of .shroom/ is
-// ever served: /m/ reads only rec/<id>/…, /d/ only rec/<id>/video.mp4.
+// ever served: /m/ reads only rec/<id>/…, /d/ only rec/<id>/video.mp4 or an edit's copy
+// beside it.
 
 /** Said-lines, verbatim from the spec (checked by test/copy.test.js) — or, where the spec
  * prints none, logged in DECISIONS.md's copy table for Bagrat to ratify. */
@@ -203,7 +204,7 @@ export async function handle(request, env, now, ctx) {
   const st = path.match(/^\/_shroom\/status\/([A-Za-z0-9_-]{16})$/);
   // A record that can't be read right now is the unavailable face, never Cloudflare's own
   // error page (DECISIONS B94).
-  if (st) return json(await readMeta(env, st[1]).then((meta) => status(meta, now), () => ({ state: "unavailable" })));
+  if (st) return json(await readMeta(env, st[1]).then((meta) => status(meta, now, st[1]), () => ({ state: "unavailable" })));
 
   const m = path.match(/^\/m\/([A-Za-z0-9_-]{16})\/([A-Za-z0-9_./-]+)$/);
   if (m) {
@@ -286,8 +287,8 @@ function json(body, status = 200) {
 
 /** The upload line's truth — no title, so a guessed id learns nothing. */
 /** @typedef {{ state: string, pct?: number, stalled?: boolean, poster?: boolean, mp4?: boolean, drained?: boolean }} Status */
-/** @param {any} meta @param {number} now @returns {Status} */
-export function status(meta, now) {
+/** @param {any} meta @param {number} now @param {string} [id] the recording's, for the edit's copy @returns {Status} */
+export function status(meta, now, id = meta?.id) {
   if (!meta) return { state: "waiting" };
   if (meta.state === "deleted") return { state: "removed" };
   // The owner page swaps the player in with its first frame, and adds Download when the
@@ -297,8 +298,12 @@ export function status(meta, now) {
   // go-live (r4 `fully-live`: the queue drained; DECISIONS B49). A record without a count is drained.
   if (meta.state === "live" && meta.media?.hls) {
     // `thumb`: Copy thumbnail's newest picture for the title (N46) — what the Library copies.
-    // `dur`: the length, which a page opened while the video uploaded draws on its picture.
-    const live = { state: "live", poster: !!meta.media.poster, mp4: !!meta.media.mp4, teaser: !!meta.media.teaser, thumb: newestThumb(meta), dur: Number(meta.durationSec) > 0 ? Number(meta.durationSec) : 0, drained: drained(meta) };
+    // `dur`: the length as it plays (N63: the edited one), which a page opened while the
+    // video uploaded draws on its picture. With an edit (N63), `keep`: the ranges that
+    // play; and once its permanent copy is up, `copy`: where it is.
+    const view = viewOf(String(id), meta);
+    const live = { state: "live", poster: !!view.poster, mp4: view.download, teaser: !!view.teaser, thumb: newestThumb(meta), dur: view.dur, drained: drained(meta),
+      ...(view.edit ? { keep: view.edit.keep } : {}), ...(view.copy ? { copy: { src: view.copy.src, dur: view.copy.dur, poster: view.copy.poster ?? null } } : {}) };
     return live.drained ? live : { ...live, pct: pct(meta), stalled: stalledAt(meta, now) };
   }
   if (meta.state !== "uploading") return { state: "unavailable" };
@@ -722,11 +727,108 @@ function onePicture(env, id) {
 /** What the player plays (B177): the single-file copy once it's up and the stream is one
  * picture — a 5-minute view costs ~4–8 of the Worker's requests that way in Chromium, ~47
  * in Safari (it reads a file ~3 MB at a time), against ~56–58 through the stream's 6 s
- * pieces (worker/dev/view-cost.mjs) — and the stream otherwise.
- * Both are served by /m/ under the same removal gate.
- * @param {string} id @param {any} meta @param {Promise<boolean>} oneP */
-async function sourceOf(id, meta, oneP) {
+ * pieces (worker/dev/view-cost.mjs) — and the stream otherwise. An edit's permanent copy,
+ * once it matches the saved edit, before either (N63).
+ * All are served by /m/ under the same removal gate.
+ * @param {string} id @param {any} meta @param {Promise<boolean>} oneP @param {View} [view] */
+async function sourceOf(id, meta, oneP, view = viewOf(id, meta)) {
+  if (meta?.state === "live" && view.copy) return view.copy.src;
   return meta?.state === "live" && meta.media?.mp4 && (await oneP) ? `/m/${id}/video.mp4` : `/m/${id}/master.m3u8`;
+}
+
+// ───────── edits (N63, DECISIONS B195) ─────────
+
+/** The most applied cuts a record's edit is read with: far past what a hand draws, and a
+ * bound on what one record can cost a view (the sort, the ranges the page carries). Past
+ * it, the rest are left out. */
+export const EDIT_CUTS_MAX = 500;
+/** The permanent copy's files beside the recording (`shroom_edit::EditCopy`): the video,
+ * its first frame and its teaser. */
+const EDIT_FILE = /^edit-\d{1,9}(\.mp4|-poster\.jpg|-teaser\.mp4)$/;
+
+/** @typedef {{ src: string, dur: number, poster?: string, teaser?: string }} EditCopy
+ * @typedef {{ keep: [number, number][], dur: number, copy: EditCopy | null }} Edit */
+
+/** The record's edit (`meta.edits`, the Mac's editor writes it), made safe and cut down to
+ * what plays: the ranges of the recording that play, in order; the edited length; and the
+ * permanent copy once it was cut from this very revision (`copy.rev === rev`) under names
+ * of its own kind. A port of `shroom_edit::EditList::checked()` and `keep()` (both held to
+ * crates/shroom-edit/tests/keep-vectors.json by test/edits.test.js), clamped to the
+ * record's own `durationSec` — the list's `source_duration` only when the record has none.
+ * A value that isn't a number reads as one that isn't finite does there. Null when there's
+ * no edit, it leaves everything in, or nothing would play. Nothing else in `edits` leaves
+ * the Worker: never the transcript text a voice cut carries (`removed`, `resumes`, `why`).
+ * @param {any} meta @param {string} [id] the recording's id, for the copy's address
+ * @returns {Edit | null} */
+export function editsOf(meta, id = meta?.id) {
+  const e = meta?.edits;
+  if (!e || typeof e !== "object") return null;
+  const num = (/** @type {unknown} */ v) => (typeof v === "number" && Number.isFinite(v) ? v : NaN);
+  const whole = num(meta.durationSec), listed = num(e.source_duration);
+  const d = whole > 0 ? whole : listed > 0 ? listed : 0;
+  const clamp = (/** @type {unknown} */ v) => { const t = num(v); return Number.isNaN(t) ? t : Math.min(d, Math.max(0, t)); };
+  let a = clamp(e.in), b = clamp(e.out);
+  if (Number.isNaN(a)) a = 0;
+  if (Number.isNaN(b)) b = d;
+  if (b - a < Math.min(1, d)) { a = 0; b = d; }
+  // The applied cuts inside the trim, sorted by where they start (`EditList::applied`).
+  /** @type {[number, number][]} */
+  const cuts = [];
+  for (const c of Array.isArray(e.cuts) ? e.cuts : []) {
+    if (cuts.length >= EDIT_CUTS_MAX) break;
+    if (!c || typeof c !== "object" || c.applied !== true) continue;
+    const s = clamp(c.start), t = clamp(c.end);
+    if (Number.isNaN(s) || Number.isNaN(t) || t <= s) continue;
+    const from = Math.max(s, a), to = Math.min(t, b);
+    if (to > from) cuts.push([from, to]);
+  }
+  cuts.sort((x, y) => x[0] - y[0]);
+  // The trim minus those, overlaps merged (`EditList::keep`).
+  /** @type {[number, number][]} */
+  const keep = [];
+  let at = a;
+  for (const [s, t] of cuts) {
+    if (t <= at) continue;
+    if (s > at) keep.push([at, s]);
+    at = Math.max(at, t);
+  }
+  if (at < b) keep.push([at, b]);
+  if (!keep.length || (keep.length === 1 && keep[0][0] <= 0 && keep[0][1] >= d)) return null;
+  const dur = keep.reduce((n, [s, t]) => n + (t - s), 0);
+  const rev = Number.isInteger(e.rev) ? e.rev : 0;
+  const c = e.copy;
+  /** @type {EditCopy | null} */
+  let copy = null;
+  const named = (/** @type {unknown} */ v, /** @type {string} */ kind) => typeof v === "string" && EDIT_FILE.exec(v)?.[1] === kind;
+  if (c && typeof c === "object" && Number.isInteger(c.rev) && c.rev === rev && named(c.file, ".mp4") && ID.test(String(id))) {
+    copy = { src: `/m/${id}/${c.file}`, dur: num(c.duration) > 0 ? c.duration : dur };
+    if (named(c.poster, "-poster.jpg")) copy.poster = `/m/${id}/${c.poster}`;
+    if (named(c.teaser, "-teaser.mp4")) copy.teaser = `/m/${id}/${c.teaser}`;
+  }
+  return { keep, dur, copy };
+}
+
+/** @typedef {{ edit: Edit | null, copy: EditCopy | null, keep: [number, number][] | null, dur: number, poster: string | null, teaser: string | null, download: boolean }} View */
+
+/** What a viewer of the recording gets, its edit applied (N63): the permanent copy as-is
+ * once it matches the saved edit; else the original with the ranges that play (`keep`).
+ * `dur` is the length the page shows, `poster` and `teaser` the pictures it and its unfurl
+ * show (the copy's own when it has them), each an address on this origin. `download`: what
+ * Download hands over is the video as it plays — the original with no edit, the copy once
+ * it's up, and nothing in between, so a cut part never leaves as a file.
+ * @param {string} id @param {any} meta @returns {View} */
+function viewOf(id, meta) {
+  const edit = editsOf(meta, id);
+  const m = meta?.media ?? {};
+  const copy = edit?.copy ?? null;
+  const whole = Number(meta?.durationSec) > 0 ? Number(meta.durationSec) : 0;
+  return {
+    edit, copy, keep: edit && !copy ? edit.keep : null,
+    dur: copy ? copy.dur : edit ? edit.dur : whole,
+    poster: copy?.poster ?? (m.poster ? `/m/${id}/poster.jpg` : null),
+    teaser: copy ? copy.teaser ?? null : m.teaser ? `/m/${id}/teaser.mp4` : null,
+    download: copy ? true : !edit && !!m.mp4,
+  };
 }
 
 /** @param {Env} env @param {string} id */
@@ -749,12 +851,17 @@ async function readMeta(env, id) {
 /** @param {Request} request @param {Env} env @param {string} id */
 async function download(request, env, id) {
   const meta = await readMeta(env, id);
-  if (!meta || meta.state !== "live" || !meta.media?.mp4) return plain(404, "");
+  // The video as it plays (N63): an edit's permanent copy once it's up; nothing while an
+  // edit waits for it, so a cut part never leaves as a file.
+  const view = meta?.state === "live" ? viewOf(id, meta) : null;
+  if (!view?.download) return plain(404, "");
   const name = `${(meta.title || "shroom video").replace(/[\\/:*?"<>|\u0000-\u001f]/g, " ").trim()}.mp4`;
   const disposition = `attachment; filename="${name.replace(/[^\x20-\x7e]/g, "_")}"; filename*=UTF-8''${encodeURIComponent(name)}`;
   // The key is fixed by the id — never taken from the record, which a recording Mac
-  // writes: a record naming another key must not turn /d/ into a reader of the bucket.
-  return media(request, env, `rec/${id}/video.mp4`, "video/mp4", "private, max-age=0", { "content-disposition": disposition });
+  // writes: a record naming another key must not turn /d/ into a reader of the bucket. The
+  // copy's name is one `editsOf` let through: `edit-<n>.mp4`, beside the recording.
+  const file = view.copy ? view.copy.src.slice(view.copy.src.lastIndexOf("/") + 1) : "video.mp4";
+  return media(request, env, `rec/${id}/${file}`, "video/mp4", "private, max-age=0", { "content-disposition": disposition });
 }
 
 /** @param {Env} env @param {string} id @param {number} now @param {Promise<Owner | null>} ownerP @param {string} origin */
@@ -838,12 +945,14 @@ function html(body, frameable = false, status = 200) {
 
 /** The tags every platform reads, server-rendered (crawlers run no script), og first.
  * og:video is the small teaser, never HLS. No description or site name: nothing the
- * spec has said, and the sender stays anonymous (U3). */
+ * spec has said, and the sender stays anonymous (U3). With an edit (N63) the length is the
+ * edited one, and once its permanent copy is up the pictures are the copy's own. */
 /** @param {string} id @param {any} meta @param {string} origin */
 export function unfurl(id, meta, origin) {
   const title = meta.title || "";
   const url = `${origin}/${id}`;
   const m = meta.media ?? {};
+  const view = viewOf(id, meta);
   const w = m.width || 0, h = m.height || 0;
   const scaled = (/** @type {number} */ width, even = false) => {
     const v = w && h ? Math.round((width * h) / w) : 0;
@@ -854,16 +963,16 @@ export function unfurl(id, meta, origin) {
     ["og:title", title],
     ["og:url", url],
   ];
-  if (m.poster) tags.push(["og:image", `${origin}/m/${id}/poster.jpg`], ["og:image:width", "1200"], ["og:image:height", String(scaled(1200))]);
-  if (m.teaser) {
-    const teaser = `${origin}/m/${id}/teaser.mp4`;
+  if (view.poster) tags.push(["og:image", `${origin}${view.poster}`], ["og:image:width", "1200"], ["og:image:height", String(scaled(1200))]);
+  if (view.teaser) {
+    const teaser = `${origin}${view.teaser}`;
     tags.push(["og:video", teaser], ["og:video:secure_url", teaser], ["og:video:type", "video/mp4"],
       ["og:video:width", "640"], ["og:video:height", String(scaled(640, true))]);
-    if (meta.durationSec) tags.push(["og:video:duration", String(Math.round(meta.durationSec))]);
+    if (view.dur) tags.push(["og:video:duration", String(Math.round(view.dur))]);
   }
   const named = [["twitter:card", "summary_large_image"], ["twitter:title", title]];
-  if (m.poster) named.push(["twitter:image", `${origin}/m/${id}/poster.jpg`]);
-  if (m.teaser) named.push(["twitter:player:stream", `${origin}/m/${id}/teaser.mp4`]);
+  if (view.poster) named.push(["twitter:image", `${origin}${view.poster}`]);
+  if (view.teaser) named.push(["twitter:player:stream", `${origin}${view.teaser}`]);
   return tags.map(([k, v]) => `<meta property="${k}" content="${escapeHtml(v)}">`).join("")
     + named.map(([k, v]) => `<meta name="${k}" content="${escapeHtml(v)}">`).join("")
     + `<link rel="alternate" type="application/json+oembed" href="${escapeHtml(`${origin}/oembed?url=${encodeURIComponent(url)}`)}">`;
@@ -887,7 +996,8 @@ async function oembed(env, url) {
     html: `<iframe src="${escapeHtml(`${url.origin}/${id}?embed=1`)}" width="${width}" height="${height}" frameborder="0" allow="fullscreen; picture-in-picture" allowfullscreen></iframe>`,
   };
   if (live?.title) body.title = live.title;
-  if (live?.media?.poster) Object.assign(body, { thumbnail_url: `${url.origin}/m/${id}/poster.jpg`, thumbnail_width: 1200, thumbnail_height: Math.round((1200 * h) / w) });
+  const poster = live ? viewOf(id, live).poster : null;
+  if (poster) Object.assign(body, { thumbnail_url: `${url.origin}${poster}`, thumbnail_width: 1200, thumbnail_height: Math.round((1200 * h) / w) });
   return json(body);
 }
 
@@ -912,9 +1022,10 @@ async function embed(env, id, now, origin) {
     return frame(line(st.stalled ? COPY.stalled : COPY.onItsWay, thinBar(st.pct ?? 0, !!st.stalled)), 5);
   }
   if (meta.state !== "live" || !meta.media?.hls) return frame(line(COPY.unavailable), 30);
-  const src = await sourceOf(id, meta, oneP);
+  const view = viewOf(id, meta);
+  const src = await sourceOf(id, meta, oneP, view);
   return frame(`${playerHtml(id, meta, origin)}
-<script>${PLAYER_JS};shroomPlayer(document.querySelector(".player"),${JSON.stringify(src)},${jsonForScript(JSON.stringify(LABELS))})</script>`);
+<script>${PLAYER_JS};shroomPlayer(document.querySelector(".player"),${JSON.stringify(src)},${jsonForScript(JSON.stringify(LABELS))},${playing(id, view)})</script>`);
 }
 
 /** The embed is the player alone, and the player stays dark whatever the viewer's scheme. */
@@ -1180,11 +1291,14 @@ const speedLabel = (rate) => `${COPY.speed}, ${rate}×`;
  * range (a slider to assistive tech, its value read as the time), every one reachable by
  * keyboard: play first, then the seek bar drawn along the bar's top edge. `id="v"` stays
  * the video's (the heartbeat drives it). */
+/** With an edit (N63) its length and seek bar are the edited ones, and once the edit's
+ * permanent copy is up its first frame is the copy's own. */
 /** @param {string} id @param {any} meta @param {string} [base] the poster's origin, for the framable embed */
 export function playerHtml(id, meta, base = "") {
   const m = meta?.media ?? {};
-  const dur = Number(meta?.durationSec) > 0 ? Number(meta.durationSec) : 0;
-  const poster = m.poster ? ` poster="${escapeHtml(`${base}/m/${id}/poster.jpg`)}"` : "";
+  const view = viewOf(id, meta);
+  const dur = view.dur;
+  const poster = view.poster ? ` poster="${escapeHtml(`${base}${view.poster}`)}"` : "";
   const ratio = m.width > 0 && m.height > 0 ? ` style="--ar:${Math.round(m.width)}/${Math.round(m.height)}"` : "";
   const time = `0:00${dur ? ` / ${clock(dur, true)}` : ""}`;
   return `<div class="player" data-dur="${dur}"${ratio}><video id="v" playsinline preload="metadata"${poster}></video>`
@@ -1205,20 +1319,37 @@ export function playerHtml(id, meta, base = "") {
  * double-click is fullscreen (the player itself, so its controls stay; a phone's own
  * fullscreen where elements can't go fullscreen). The seek bar shows what has played and
  * what is buffered ahead. The controls fade while playing and the pointer rests, never
- * while a control holds focus. */
+ * while a control holds focus.
+ *
+ * An edit (N63, DECISIONS B195) plays as the editor plays it: `E.keep` holds the ranges of
+ * the recording that play, and the player starts at the first, skips every gap between
+ * them and stops at the last one's end, showing it ended. The skip runs on every frame
+ * while it plays, and on `timeupdate` and `seeking` besides (a background tab gets no
+ * frames): outside every range — a range's last 30 ms counting as past it — it seeks to the
+ * next range's start. The time, the seek bar, ←/→ and Home/End all count edited time
+ * (`shroomAt`/`shroomToSource`, held with `editsOf` to crates/shroom-edit's vectors). A
+ * permanent copy plays as it is. */
 export const PLAYER_JS = `function shroomPlay(v,s){if(/\\.mp4$/.test(s)||v.canPlayType("application/vnd.apple.mpegurl")){v.src=s;return}
 var t=document.createElement("script");t.src="/_shroom/hls.js";t.onload=function(){var h=new Hls({backBufferLength:90,maxBufferLength:6,maxMaxBufferLength:6});
 v.addEventListener("play",function(){h.config.maxBufferLength=30;h.config.maxMaxBufferLength=600},{once:true});h.loadSource(s);h.attachMedia(v)};document.head.appendChild(t)}
 function shroomClock(s,l){s=Math.max(0,+s||0);s=l?Math.round(s):Math.floor(s);var h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60,two=function(n){return(n<10?"0":"")+n};return h?h+":"+two(m)+":"+two(x):m+":"+two(x)}
-function shroomPlayer(p,s,L){var v=p.querySelector("video"),pp=p.querySelector(".pp"),sk=p.querySelector(".seek"),tm=p.querySelector(".time"),fs=p.querySelector(".fs"),sp=p.querySelector(".sp"),mu=p.querySelector(".mu"),known=+p.getAttribute("data-dur")||0,held=false,idle=0,R=[1,1.25,1.5,2];
-function dur(){return isFinite(v.duration)&&v.duration>0?v.duration:known}
+function shroomLength(K){for(var a=0,i=0;i<K.length;i++)a+=K[i][1]-K[i][0];return a}
+function shroomAt(K,t){for(var a=0,i=0;i<K.length;i++){if(t<K[i][1])return a+Math.max(0,t-K[i][0]);a+=K[i][1]-K[i][0]}return a}
+function shroomToSource(K,e){for(var a=0,i=0;i<K.length;i++){var n=K[i][1]-K[i][0];if(e<a+n)return K[i][0]+Math.max(0,e-a);a+=n}return K.length?K[K.length-1][1]:0}
+function shroomPlayer(p,s,L,E){var v=p.querySelector("video"),pp=p.querySelector(".pp"),sk=p.querySelector(".seek"),tm=p.querySelector(".time"),fs=p.querySelector(".fs"),sp=p.querySelector(".sp"),mu=p.querySelector(".mu"),known=+p.getAttribute("data-dur")||0,held=false,idle=0,R=[1,1.25,1.5,2],
+K=E&&E.keep&&E.keep.length?E.keep:null,fin=false,aim=-1,raf=0;
+function dur(){return K?shroomLength(K):isFinite(v.duration)&&v.duration>0?v.duration:known}
+function at(){var t=v.currentTime||0;return K?shroomAt(K,t):t}
 function ahead(t){var b=v.buffered,e=0;try{for(var i=0;i<b.length;i++)if(b.start(i)<=t+1&&b.end(i)>e)e=b.end(i)}catch(x){}return e}
-function paint(){var d=dur(),t=held?+sk.value:v.ended&&d?d:v.currentTime||0,txt=shroomClock(t,v.ended)+(d?" / "+shroomClock(d,true):"");tm.textContent=txt;sk.max=String(d||0);if(!held)sk.value=String(t);sk.setAttribute("aria-valuetext",txt);
-sk.style.setProperty("--p",String(d?Math.min(1,t/d):0));sk.style.setProperty("--b",String(d?Math.min(1,ahead(t)/d):0))}
+function paint(){var d=dur(),e=v.ended||fin,t=held?+sk.value:e&&d?d:at(),txt=shroomClock(t,e)+(d?" / "+shroomClock(d,true):"");tm.textContent=txt;sk.max=String(d||0);if(!held)sk.value=String(t);sk.setAttribute("aria-valuetext",txt);
+var b=K?shroomAt(K,ahead(v.currentTime||0)):ahead(t);sk.style.setProperty("--p",String(d?Math.min(1,t/d):0));sk.style.setProperty("--b",String(d?Math.min(1,b/d):0))}
+function skip(){if(!K)return;var t=v.currentTime||0,n=K.length,i=0;while(i<n&&t>=K[i][1]-.03)i++;
+if(i===n){fin=true;if(!v.paused)v.pause();paint();return}if(t<K[i][0]-.001&&Math.abs(t-aim)>.05){aim=K[i][0];v.currentTime=aim}}
+function tick(){raf=0;if(!K||v.paused||v.ended)return;skip();if(!v.paused)raf=requestAnimationFrame(tick)}
 function wake(){p.classList.remove("idle");clearTimeout(idle);if(!v.paused&&!v.ended)idle=setTimeout(function(){var a=document.activeElement;if(!(a&&a!==v&&p.contains(a)))p.classList.add("idle")},2500)}
 function mode(){var on=!v.paused&&!v.ended;p.classList.toggle("playing",on);if(on)p.classList.add("started");pp.setAttribute("aria-label",on?L.pause:L.play);wake()}
-function toggle(){if(v.paused||v.ended){var r=v.play();if(r&&r.catch)r.catch(function(){})}else v.pause()}
-function to(t){var d=dur();if(!d)return;v.currentTime=Math.max(0,Math.min(d,t));paint()}
+function toggle(){if(v.paused||v.ended){if(K){if(fin||v.ended)v.currentTime=K[0][0];fin=false;skip()}var r=v.play();if(r&&r.catch)r.catch(function(){})}else v.pause()}
+function to(t){var d=dur();if(!d)return;t=Math.max(0,Math.min(d,t));fin=false;v.currentTime=K?shroomToSource(K,t):t;skip();paint()}
 function rate(){var x=Math.round((v.playbackRate||1)*100)/100+"\\u00d7";sp.textContent=x;sp.setAttribute("aria-label",L.speed+", "+x)}
 function faster(){var n=R[(R.indexOf(v.playbackRate)+1)%R.length];v.defaultPlaybackRate=n;v.playbackRate=n}
 function sound(){p.classList.toggle("muted",v.muted);mu.setAttribute("aria-label",v.muted?L.unmute:L.mute)}
@@ -1228,9 +1359,11 @@ function fsToggle(){if(full()){var x=document.exitFullscreen||document.webkitExi
 else if(p.requestFullscreen){p.requestFullscreen().catch(function(){})}else if(p.webkitRequestFullscreen){p.webkitRequestFullscreen()}else if(v.webkitEnterFullscreen){v.webkitEnterFullscreen()}}
 function fsMode(){var on=full()===p;p.classList.toggle("full",on);fs.setAttribute("aria-label",on?L.exit:L.full)}
 function key(e){if(e.metaKey||e.ctrlKey||e.altKey)return;var k=e.key,b=e.target&&e.target.tagName==="BUTTON";if((k===" "||k==="Enter")&&b)return;
-if(k===" "||k==="k"||k==="K")toggle();else if(k==="ArrowLeft"||k==="ArrowRight")to((v.currentTime||0)+(k==="ArrowLeft"?-5:5));
+if(k===" "||k==="k"||k==="K")toggle();else if(k==="ArrowLeft"||k==="ArrowRight")to(at()+(k==="ArrowLeft"?-5:5));
 else if(k==="Home")to(0);else if(k==="End")to(dur());else if(k==="f"||k==="F")fsToggle();else if(k==="m"||k==="M")hush();else return;e.preventDefault();wake()}
 pp.addEventListener("click",toggle);v.addEventListener("click",toggle);v.addEventListener("dblclick",fsToggle);fs.addEventListener("click",fsToggle);sp.addEventListener("click",faster);mu.addEventListener("click",hush);
+v.addEventListener("play",function(){if(!K)return;if(fin){fin=false;v.currentTime=K[0][0]}skip();if(!raf)raf=requestAnimationFrame(tick)});
+v.addEventListener("seeking",function(){if(!K)return;fin=false;skip()});v.addEventListener("timeupdate",skip);
 ["play","pause","ended"].forEach(function(e){v.addEventListener(e,mode)});
 ["timeupdate","durationchange","loadedmetadata","seeked","emptied","progress"].forEach(function(e){v.addEventListener(e,paint)});
 v.addEventListener("ratechange",rate);v.addEventListener("volumechange",sound);
@@ -1239,6 +1372,11 @@ document.addEventListener("fullscreenchange",fsMode);document.addEventListener("
 p.addEventListener("mousemove",wake);p.addEventListener("touchstart",wake,{passive:true});p.addEventListener("focusin",wake);p.addEventListener("keydown",key);
 document.addEventListener("keydown",function(e){if(e.target===document.body)key(e)});
 shroomPlay(v,s);paint();rate();sound()}`;
+
+/** The player's last argument (N63): the ranges that play, when an edit plays over the
+ * original — numbers only.
+ * @param {string} id @param {View} view */
+const playing = (id, view) => jsonForScript(JSON.stringify({ keep: view.keep }));
 
 /** Copy to the clipboard, saying whether it happened: the Clipboard API, else the older
  * copy command; when neither works, the visible text (if any) is selected so ⌘C does
@@ -1288,10 +1426,10 @@ var f=Math.round(W*.026),pad=W*.012,bx=W,bh=f*1.6;x.font="500 "+f+"px "+F;x.text
 if(c.len){var bw=x.measureText(c.len).width+pad*2,by=H-W*.02-bh;bx=W-W*.02-bw;x.fillStyle="rgba(46,52,64,.85)";x.beginPath();if(x.roundRect)x.roundRect(bx,by,bw,bh,f*.3);else x.rect(bx,by,bw,bh);x.fill();x.fillStyle="#eceff4";x.fillText(c.len,bx+pad,by+bh/2)}
 if(title){var tf=Math.round(W*.04),max=bx-W*.06,t=title;x.font="600 "+tf+"px "+F;x.textBaseline="alphabetic";if(x.measureText(t).width>max){while(t&&x.measureText(t+"…").width>max)t=t.slice(0,-1);t+="…"}x.fillStyle="#eceff4";x.fillText(t,W*.03,H-W*.035)}}
 function canvas(W,H){var k=document.createElement("canvas");k.width=W;k.height=H;return k}
-function still(title){var img=new Image();img.src="/m/"+c.id+"/poster.jpg";return img.decode().then(function(){var s=size(1200),k=canvas(s[0],s[1]);draw(k.getContext("2d"),s[0],s[1],img,title);
+function still(title){var img=new Image();img.src=c.psrc;return img.decode().then(function(){var s=size(1200),k=canvas(s[0],s[1]);draw(k.getContext("2d"),s[0],s[1],img,title);
 return jpeg(k,.85).then(function(b){return b&&b.size>c.caps.jpgMax?jpeg(k,.7):b})})}
 function jpeg(k,q){return new Promise(function(ok){k.toBlob(ok,"image/jpeg",q)})}
-function loop(title){var v=document.createElement("video");v.muted=true;v.playsInline=true;v.preload="auto";v.src="/m/"+c.id+"/teaser.mp4";
+function loop(title){var v=document.createElement("video");v.muted=true;v.playsInline=true;v.preload="auto";v.src=c.tsrc;
 return new Promise(function(ok,no){v.addEventListener("loadeddata",ok,{once:true});v.addEventListener("error",no,{once:true})}).then(function(){
 var s=size(c.caps.gifWidth),k=canvas(s[0],s[1]),x=k.getContext("2d",{willReadFrequently:true}),n=Math.min(30,Math.floor((v.duration||3)*10)),frames=[],i=0;
 function step(){if(i>=n)return Promise.resolve();return new Promise(function(ok){v.addEventListener("seeked",ok,{once:true});v.currentTime=i/10}).then(function(){x.clearRect(0,0,s[0],s[1]);draw(x,s[0],s[1],v,title);
@@ -1313,7 +1451,7 @@ return{length:function(l){if(l)c.len=l},retitle:function(t){c.title=t;c.titled=t
 drained:function(){if(c.drained)return;c.drained=true;var my=gen;if(!c.teaser&&making)making.then(function(){if(!c.teaser)wake(my)})},
 live:function(){c.live=true;if(!c.thumb||!c.gif)make()},
 teaser:function(){if(c.teaser)return;c.teaser=true;if(c.live&&!c.gif)make()},
-copy:function(){var link=location.origin+"/"+c.id;return shroomCopyRich(c.thumb?html(c.thumb):(making||make()).then(function(u){return html(u||"/m/"+c.id+"/poster.jpg")}),link)}}}
+copy:function(){var link=location.origin+"/"+c.id;return shroomCopyRich(c.thumb?html(c.thumb):(making||make()).then(function(u){return html(u||c.psrc)}),link)}}}
 function shroomCopyRich(h,t){var hp=Promise.resolve(h);
 function old(x){var ok=false;function on(e){e.preventDefault();e.clipboardData.setData("text/html",x);e.clipboardData.setData("text/plain",t);ok=true}document.addEventListener("copy",on);try{document.execCommand("copy")}catch(e){}document.removeEventListener("copy",on);return ok}
 if(navigator.clipboard&&navigator.clipboard.write&&window.ClipboardItem){try{return navigator.clipboard.write([new ClipboardItem({"text/html":hp.then(function(x){return new Blob([x],{type:"text/html"})}),"text/plain":new Blob([t],{type:"text/plain"})})]).then(function(){return true},function(){return hp.then(old)})}catch(e){}}
@@ -1322,14 +1460,16 @@ return hp.then(old)}`;
 /** @param {string} id @param {any} meta @param {Face} face @param {string} src what the player plays (B177) */
 function livePage(id, meta, face, src) {
   const title = meta.title || "";
-  // Download is a quiet icon beside the title: its word names it.
-  const download = meta.media.mp4 ? `<span class="dl" data-tip="${COPY.download}"><a href="/d/${id}">${COPY.download}</a></span>` : "";
+  const view = viewOf(id, meta);
+  // Download is a quiet icon beside the title: its word names it. It hands over the video
+  // as it plays (N63), so it waits while an edit's permanent copy is on its way.
+  const download = view.download ? `<span class="dl" data-tip="${COPY.download}"><a href="/d/${id}">${COPY.download}</a></span>` : "";
   // Copy link and Copy thumbnail for viewers too (N46): a viewer stores nothing, so Copy
   // thumbnail shows only once the owner's page has made a picture for the title.
   const thumbs = thumbsOf(id, meta, true, false);
   const cfg = JSON.stringify({ copied: COPY.copied, copy: COPY.copyLink, copyThumb: COPY.copyThumbnail, thumbs });
   const player = `${playerHtml(id, meta)}
-<script>${PLAYER_JS};shroomPlayer(document.querySelector(".player"),${JSON.stringify(src)},${jsonForScript(JSON.stringify(LABELS))})
+<script>${PLAYER_JS};shroomPlayer(document.querySelector(".player"),${JSON.stringify(src)},${jsonForScript(JSON.stringify(LABELS))},${playing(id, view)})
 ${COPY_JS}
 ${THUMB_JS}
 (function(){var c=${jsonForScript(cfg)},th=shroomThumbs(c.thumbs);
@@ -1356,12 +1496,16 @@ function newestThumb(meta) {
 }
 
 /** What a page's Copy thumbnail starts from (N46): the picture made for the title the video
- * has now — the loop over the still — and what drawing the next one needs. */
+ * has now — the loop over the still — and what drawing the next one needs: the length and
+ * the pictures as the video plays (N63: the edited length, and an edit's permanent copy's
+ * own first frame and teaser once it's up — the original's teaser is then out of reach). */
 /** @param {string} id @param {any} meta @param {boolean} live */
 function thumbsOf(id, meta, live, store = true) {
   const thumb = newestThumb({ ...meta, id });
+  const view = viewOf(id, meta);
   return { id, live, store, title: meta.titled ? meta.title : "", titled: !!meta.titled, thumb, gif: !!thumb?.endsWith(".gif"),
-    teaser: !!meta.media?.teaser, len: Number(meta.durationSec) > 0 ? clock(meta.durationSec, true) : "",
+    teaser: !!view.teaser, len: view.dur > 0 ? clock(view.dur, true) : "",
+    psrc: view.poster ?? `/m/${id}/poster.jpg`, tsrc: view.teaser ?? (view.copy ? "" : `/m/${id}/teaser.mp4`),
     rw: meta.media?.width || 16, rh: meta.media?.height || 9, caps: THUMB };
 }
 
@@ -1388,17 +1532,19 @@ function ownerPage(id, meta, now, face, waiting, blocked = false, pending = fals
   const field = `<input class="title" id="t" maxlength="${TITLE_MAX}" aria-label="Title" value="${escapeHtml(value)}" placeholder="${escapeHtml(placeholder)}"${meta.titled ? "" : " autofocus"}>`;
   const frame = meta.media?.poster ? `<img src="/m/${id}/poster.jpg" alt="">` : "";
   const stage = live ? playerHtml(id, meta) : `<div class="wait" id="w">${frame}</div>`;
-  const download = meta.media?.mp4 ? `<a href="/d/${id}">${COPY.download}</a>` : "";
+  // Download hands over the video as it plays (N63): it waits for an edit's permanent copy.
+  const view = viewOf(id, meta);
+  const download = view.download ? `<a href="/d/${id}">${COPY.download}</a>` : "";
   // Copy thumbnail waits for the loop made for this title — or, when none can be made (the
   // upload finished with no teaser), for the still (N46).
   const thumbs = { ...thumbsOf(id, meta, live), drained: drainedNow };
-  const ready = thumbs.gif || (drainedNow && !meta.media?.teaser && !!thumbs.thumb);
+  const ready = thumbs.gif || (drainedNow && !thumbs.teaser && !!thumbs.thumb);
   // Copy link and Download are quiet icons beside the title; their words name them.
   const head = `<div class="head">${field}${copyButtons(live, !ready)}<span id="dl" data-tip="${COPY.download}">${download}</span></div>`;
   const upload = `<div class="upl" id="ul"${drainedNow ? " hidden" : ""}><span class="up" id="u">${escapeText(line)}</span>${drainedNow ? "" : thinBar(st.pct ?? 0, stalled, "b")}</div>`;
   const [upA, upB] = uploadingLine(0).split("0%");
   const cfg = JSON.stringify({
-    id, live, drained: drainedNow, pending, mp4: !!meta.media?.mp4, saved: meta.titled ? meta.title : "", copied: COPY.copied, copy: COPY.copyLink, waiting,
+    id, live, drained: drainedNow, pending, mp4: view.download, saved: meta.titled ? meta.title : "", copied: COPY.copied, copy: COPY.copyLink, waiting,
     copyThumb: COPY.copyThumbnail, preparing: COPY.preparingThumbnail, thumbs, dl: COPY.download, ready: COPY.ready, notFound: COPY.notFound, unavailable: COPY.unavailable, upA, upB, labels: LABELS, player: live ? "" : playerHtml(id, { ...meta, media: { ...meta.media, poster: null } }),
   });
   const script = `<script>${PLAYER_JS}
@@ -1406,7 +1552,7 @@ ${COPY_JS}
 ${THUMB_JS}
 (function(){var c=${jsonForScript(cfg)},t=document.getElementById("t"),saved=c.saved,src=${jsonForScript(JSON.stringify(src))},tb=document.getElementById("th");
 var th=shroomThumbs(c.thumbs,function(ok){if(ok)tb.removeAttribute("aria-disabled");else tb.setAttribute("aria-disabled","true");tb.setAttribute("data-tip",ok?c.copyThumb:c.preparing)});
-if(c.live){shroomPlayer(document.querySelector(".player"),src,c.labels);th.live()}
+if(c.live){shroomPlayer(document.querySelector(".player"),src,c.labels,${playing(id, view)});th.live()}
 function send(v){c.pend=null;fetch("/_shroom/title/"+c.id,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({title:v})})
 .then(function(r){if(r.status===404)c.pend=v;return r.ok?r.json():null}).then(function(j){if(j){saved=j.title;if(document.activeElement!==t)t.value=saved;document.title=saved;th.retitle(saved)}})}
 function save(){var v=t.value.replace(/\\s+/g," ").trim();if(!v){t.value=saved;return}if(v===saved)return;send(v)}
@@ -1422,7 +1568,8 @@ function poll(){fetch("/_shroom/status/"+c.id,{cache:"no-store"}).then(function(
 if(s.state==="removed"){var m=document.querySelector("main"),p=document.createElement("p");m.textContent="";p.className="line";p.textContent=c.notFound;m.appendChild(p);document.title="shroom";return}
 if(c.pend&&s.state!=="waiting")send(c.pend);
 if(s.state==="live"){if(s.dur)th.length(shroomClock(s.dur,true));if(s.teaser)th.teaser();if(!c.live){c.live=true;tb.hidden=false;th.live();var w=document.getElementById("w"),h=document.createElement("div");h.innerHTML=c.player;var pl=h.firstChild;
-if(s.poster)pl.querySelector("video").poster="/m/"+c.id+"/poster.jpg";w.replaceWith(pl);shroomPlayer(pl,src,c.labels)}
+var cp=s.copy,ps=cp&&cp.poster||(s.poster?"/m/"+c.id+"/poster.jpg":"");if(s.dur)pl.setAttribute("data-dur",s.dur);if(ps)pl.querySelector("video").poster=ps;w.replaceWith(pl);
+shroomPlayer(pl,cp?cp.src:src,c.labels,{keep:cp?null:s.keep||null})}
 if(s.drained)th.drained();
 if(s.drained){if(bar&&!c.done){c.done=true;up.textContent=c.ready;ul.classList.add("done");showBar(true,false);bar.style.width="100%";setTimeout(function(){ul.classList.add("fade");setTimeout(function(){ul.hidden=true;up.textContent="";if(bar){bar.parentNode.remove();bar=null}},400)},3000)}else if(!c.done){ul.hidden=true;up.textContent="";if(bar){bar.parentNode.remove();bar=null}}}else{ul.hidden=false;up.textContent=s.stalled?c.waiting:c.upA+s.pct+"%"+c.upB;showBar(true,!s.stalled);if(bar)bar.style.width=s.pct+"%"}
 if(s.mp4){if(!dl.firstChild){var a=document.createElement("a");a.href="/d/"+c.id;a.textContent=c.dl;dl.appendChild(a)}if(s.drained)return}
