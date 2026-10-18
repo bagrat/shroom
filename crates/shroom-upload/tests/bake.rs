@@ -476,7 +476,8 @@ fn a_librarys_row_follows_the_edit_and_the_bake() {
 
 /// The uploader never moves a baked video back (B197): a take whose teaser and single-file
 /// copy were still being made when its edit became the video keeps playing the edit, and
-/// what it sends then goes again; so does a pass run again from the start.
+/// none of them is sent; nor does a pass run again from the start send any of the
+/// original's files — its stream, playlists, poster, teaser or single-file copy.
 #[test]
 fn the_uploader_never_moves_a_baked_video_back() {
     let (fake, s3) = space();
@@ -505,17 +506,23 @@ fn the_uploader_never_moves_a_baked_video_back() {
     };
     baked(&s3);
 
-    // The extras were still being made: now they go up.
+    let only_the_edit = |fake: &Fake| assert_eq!(files(fake, A), ["edit-1-poster.jpg", "edit-1-teaser.mp4", "edit-1.mp4"]);
+    only_the_edit(&fake);
+
+    // The extras were still being made: they're done now, and nothing of them is sent.
     std::fs::write(dir.join("teaser.mp4"), b"the teaser").unwrap();
     std::fs::write(dir.join("preview.mp4"), b"the single-file copy").unwrap();
-    assert!(upload::finish(&s3, A, dir, 5, 7, &upload::Beat::default(), |_, _| {}).unwrap());
+    std::fs::write(dir.join("poster.jpg"), b"the first frame").unwrap();
+    assert!(!upload::finish(&s3, A, dir, 5, 7, &upload::Beat::default(), |_, _| {}).unwrap(), "no single-file copy went up");
     baked(&s3);
     assert_eq!(read(&s3, A)["progress"]["done"], 7, "drained all the same");
-    assert!(files(&fake, A).iter().all(|f| f != "video.mp4" && f != "teaser.mp4"), "{:?}", files(&fake, A));
+    only_the_edit(&fake);
 
-    // The whole pass again (its live marker lost): the record stays the edit.
-    upload::upload_recording(&s3, A, dir, "Setting up shroom", |_, _| {}).unwrap();
+    // The whole pass again (its live marker lost): the record stays the edit, and the
+    // original's stream, playlists, poster, teaser and single-file copy stay gone.
+    let report = upload::upload_recording(&s3, A, dir, "Setting up shroom", |_, _| {}).unwrap();
+    assert_eq!((report.uploaded, report.bytes, report.mp4), (0, 0, false));
     baked(&s3);
-    assert!(files(&fake, A).iter().all(|f| f != "video.mp4" && f != "teaser.mp4"));
-    assert!(["edit-1.mp4", "edit-1-poster.jpg", "edit-1-teaser.mp4"].iter().all(|f| files(&fake, A).contains(&f.to_string())));
+    assert_eq!((read(&s3, A)["state"].as_str(), read(&s3, A)["progress"]["done"].as_u64()), (Some("live"), Some(7)));
+    only_the_edit(&fake);
 }

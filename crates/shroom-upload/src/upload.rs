@@ -309,7 +309,9 @@ fn with_beat<T>(s3: &Client, id: &str, beat: &Beat, counter: &Counter, work: imp
 /// flips to live. `extras` is how many second-class files (the teaser, the single-file
 /// copy) [`finish`] will still send: they count in `progress.total`, so the record reads
 /// drained — the page's “Fully live ✓” — only once they're up too (r4 `fully-live`: the
-/// queue drained). `progress(done, total)` is called after each file.
+/// queue drained). `progress(done, total)` is called after each file. Over a video whose edit
+/// already became it (B197's bake) it sends nothing ([`baked_now`]): the record says live
+/// and the count moves on.
 #[allow(clippy::too_many_arguments)]
 pub fn go_live(
     s3: &Client,
@@ -324,6 +326,17 @@ pub fn go_live(
     let called = Instant::now();
     let stream = local.stream_files();
     let total = stream + extras;
+    let duration: f64 = local.segments.iter().map(|s| s.seconds).sum();
+    if baked_now(s3, id)? {
+        progress(stream, total);
+        update_meta(s3, id, |m| {
+            m.state = State::Live;
+            m.published_at.get_or_insert_with(now_iso);
+            m.progress = Some(Progress { done: stream, total, updated_at: now_iso() });
+        })?;
+        let ms = called.elapsed().as_millis() as u64;
+        return Ok(Report { id: id.to_string(), live_ms: ms, done_ms: ms, uploaded: 0, already_there: 0, bytes: 0, duration_sec: duration, mp4: false });
+    }
     // What's already up (a resume uploads only the gap). Prefix-scoped credentials may
     // not list; then every file is simply PUT again (idempotent). A take rebuilt after a
     // crash ([`REBUILT_FILE`]) trusts nothing that went up before: its segments were
@@ -393,9 +406,8 @@ pub fn go_live(
         };
 
         // 5. The record flips to live (read-modify-write; stops if it was deleted meanwhile).
-        // A pass run again over a video whose edit already became it (B197) never points it
-        // back at the stream, nor its length at the recording's.
-        let duration: f64 = local.segments.iter().map(|s| s.seconds).sum();
+        // A video whose edit became it while this pass ran (B197) is never pointed back at
+        // the stream, nor its length at the recording's.
         update_meta(s3, id, |m| {
             m.state = State::Live;
             m.published_at.get_or_insert_with(now_iso);
@@ -419,6 +431,17 @@ fn baked(m: &Meta) -> bool {
     m.media.as_ref().is_some_and(|x| x.hls.is_none())
 }
 
+/// Whether the record is [`baked`], read before a pass sends anything: run again over such a
+/// video, the pass sends none of the original's files — the bake deleted them, and nothing
+/// would ever delete them again. A tombstone stops the pass here.
+fn baked_now(s3: &Client, id: &str) -> Result<bool, UploadError> {
+    match read_meta(s3, id)? {
+        Some(m) if m.state == State::Deleted => Err(UploadError::Tombstoned),
+        Some(m) => Ok(baked(&m)),
+        None => Ok(false),
+    }
+}
+
 /// Names `key` in the record's `media` (as `set` does) unless the video is baked; then the
 /// file just sent is the original's, which the bake deletes, and it goes here too (never a
 /// file `media` names).
@@ -439,9 +462,15 @@ fn name_extra(s3: &Client, id: &str, key: &str, set: impl Fn(&mut Media)) -> Res
 /// teaser (small), then the single-file copy — each only if it's on this Mac. Then the
 /// record says the upload drained (`progress.done = total`), the page's “Fully live ✓”,
 /// whether or not every extra could be made. `done`/`total` continue [`go_live`]'s count.
-/// A video whose edit became it meanwhile (B197) keeps its `media`: what this sends is then
-/// removed again. Returns whether the single-file copy went up.
+/// Over a video whose edit already became it (B197's bake, [`baked_now`]) it sends nothing
+/// and says drained; one whose edit becomes it while this runs keeps its `media`, and what
+/// this sent is removed again. Returns whether the single-file copy went up.
 pub fn finish(s3: &Client, id: &str, dir: &Path, done: u32, total: u32, beat: &Beat, mut progress: impl FnMut(u32, u32)) -> Result<bool, UploadError> {
+    if baked_now(s3, id)? {
+        update_meta(s3, id, |m| m.progress = Some(Progress { done: total, total, updated_at: now_iso() }))?;
+        progress(total, total);
+        return Ok(false);
+    }
     let counter = Counter { done: AtomicU32::new(done), total };
     let mp4 = with_beat(s3, id, beat, &counter, || {
         let teaser = dir.join(files::TEASER);
