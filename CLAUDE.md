@@ -136,6 +136,11 @@ lives in `spec/`; the working docs live in `docs/`.
   and don't depend on each other go together in one question tool (`AskUserQuestion`)
   call. A question that needs a prose answer is asked in plain chat, never through the
   tool, since he can't dictate into it on mobile (Bagrat, 2026-10-16).
+- **The waiting-on-you footer.** While anything waits on Bagrat that he hasn't answered
+  (a question, a review, a decision, a check by hand), every message to him ends with a
+  short footer listing it, most urgent first, even when the message is about another
+  thread. It stays on every message until he answers; with nothing waiting, no footer
+  (Bagrat, 2026-10-18).
 - **Push notifications come from the orchestrator.** A child session sends Bagrat a push
   only when it absolutely needs him and can't go through the orchestrator. Everything
   else goes to the orchestrator, and only the orchestrator pushes him (Bagrat, 2026-10-16).
