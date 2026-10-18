@@ -48,9 +48,10 @@ than one, you get `ambiguous` with the matches: show them, ask which, then use t
 Cleanup candidates are their space's own suggestions where it makes them (`"by":
 "suggestions"`), most likely first: each with `plays`, `last_played`, `quiet_days`, a
 `reason` (`never-played`, `stopped-early`, `not-lately`, `big-and-quiet`) and its words in
-`why`. A space that doesn't make them answers by age alone (`"by": "age"`, `reason`
-`old`), and then `plays`, `last_played` and `quiet_days` are `null`: that means *not
-known*, never zero, so don't say nobody watched it.
+`why`. With `"counting": false` the space isn't counting plays (its owner turned that
+off): read every `plays` as not known. A space that doesn't make them answers by age alone
+(`"by": "age"`, `reason` `old`), and then `plays`, `last_played` and `quiet_days` are
+`null`: that means *not known*, never zero, so don't say nobody watched it.
 
 ## Many at once
 
