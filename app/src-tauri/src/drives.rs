@@ -895,8 +895,9 @@ fn settings(d: &Drive) -> Result<(), String> {
     d.check("law 6: no Dock icon after close", dock.starts_with("accessory"), dock);
 
     // ⌘Q with Settings in front closes it, as its ✕ does, and shroom stays in the menu bar
-    // (B145). ⌘Q again, no window open: nothing is recording and nothing is uploading, so
-    // the core quits — the drive's report is written on the way out (`drive_region5`).
+    // (B145). ⌘Q again, no window open — no window to address a key to, so the menu's Quit
+    // it sends (`terminate:`): nothing is recording and nothing is uploading, so the core
+    // quits — the drive's report is written on the way out (`drive_region5`).
     d.open(Action::OpenSettings)?;
     d.wait("settings again", 10, |s| s.settings.is_some())?;
     let f = d.front_when(SETTINGS, Front::has_keyboard);
@@ -905,7 +906,7 @@ fn settings(d: &Drive) -> Result<(), String> {
     let closed = d.wait("⌘Q closes Settings (B145)", 5, |s| s.settings.is_none());
     d.check("⌘Q with Settings in front closes it, and shroom stays in the menu bar (B145)", closed.is_ok(), closed.err().unwrap_or_default());
     d.step(CMD_Q);
-    d.command('q')?;
+    d.on_main(front::terminate).ok_or("the main thread didn't answer")?;
     std::thread::sleep(Duration::from_secs(10));
     Err("⌘Q with no window open didn't quit shroom within 10 s".into())
 }

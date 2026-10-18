@@ -229,6 +229,16 @@ pub fn command(c: char) -> Result<(), String> {
     post(NSEventType::KeyDown, c, NSEventModifierFlags::Command)
 }
 
+/// The app menu's Quit — `terminate:` from no window, which is what ⌘Q sends when none of
+/// shroom's windows holds the keyboard, so no key event can be addressed (B145: shroom quits,
+/// through the core). Main thread.
+pub fn terminate() {
+    let ns_app = NSApplication::sharedApplication(mtm());
+    let nil: *const AnyObject = std::ptr::null();
+    // SAFETY: NSApplication's own action, with the nil sender a menu item may send.
+    let _: () = unsafe { msg_send![&*ns_app, terminate: nil] };
+}
+
 /// A standard key of the app's menu, as AppKit would answer it now.
 #[derive(Debug, Clone, Serialize)]
 pub struct MenuKey {
