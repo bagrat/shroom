@@ -215,11 +215,30 @@ pub struct EditCopy {
     pub file: String,
     /// Its length in seconds.
     pub duration: f64,
+    /// Its own first frame and 15-second teaser beside it (`edit-<rev>-poster.jpg`,
+    /// `edit-<rev>-teaser.mp4`), so a trimmed-off start never shows in an unfurl.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub poster: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub teaser: Option<String>,
 }
 
 impl EditCopy {
     pub fn file_for(rev: u64) -> String {
         format!("edit-{rev}.mp4")
+    }
+
+    pub fn poster_for(rev: u64) -> String {
+        format!("edit-{rev}-poster.jpg")
+    }
+
+    pub fn teaser_for(rev: u64) -> String {
+        format!("edit-{rev}-teaser.mp4")
+    }
+
+    /// The copy's files, each a name beside the recording (`rec/<id>/<name>`).
+    pub fn files(&self) -> Vec<&str> {
+        std::iter::once(self.file.as_str()).chain(self.poster.as_deref()).chain(self.teaser.as_deref()).collect()
     }
 }
 
@@ -324,5 +343,8 @@ mod tests {
         let stale = Saved { rev: 4, ..s };
         assert!(stale.current_copy().is_none());
         assert_eq!(EditCopy::file_for(4), "edit-4.mp4");
+        assert_eq!(EditCopy::poster_for(4), "edit-4-poster.jpg");
+        let c = EditCopy { rev: 4, file: EditCopy::file_for(4), duration: 1.0, poster: Some(EditCopy::poster_for(4)), teaser: None };
+        assert_eq!(c.files(), vec!["edit-4.mp4", "edit-4-poster.jpg"]);
     }
 }
