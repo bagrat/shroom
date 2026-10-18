@@ -120,6 +120,8 @@ const server = createServer((req, res) => {
   } else if (req.url === "/latest/download/manifest.txt") {
     if (mode.manifestStatus) { res.statusCode = mode.manifestStatus; return res.end(); }
     res.end(manifest());
+  } else if (req.url === `/download/v1.2.0-early.1/${v120.file}`) {
+    res.end(v120.bytes); // an early build's tag (DECISIONS B220), the same zip
   } else if (req.url === `/download/v${v120.version}/${v120.file}`) {
     if (mode.assetStatus) { res.statusCode = mode.assetStatus; return res.end(); }
     if (mode.drop) {
@@ -764,6 +766,16 @@ describe("a manifest the app's updater wouldn't accept", () => {
       assert.equal(r.hits, 1);
     });
   }
+  it("an early build's version (B220) installs; any other suffix is refused", async () => {
+    const early = (v) => `version=${v}\nmacos=14\narm64=${v120.file} ${sha(v120.bytes)}\n`;
+    const ok = await run({ args: ["--early"], with: { early: true, manifest: early("1.2.0-early.1") } });
+    assert.equal(ok.code, 0);
+    assert.equal(ok.installed, "1.2.0");
+    for (const bad of ["1.2.0-beta.1", "1.2.0-early.0", "1.2.0-early.x", "1.2.0-early."]) {
+      const r = await run({ args: ["--early"], with: { early: true, manifest: early(bad) } });
+      assert.deepEqual(r.out, [NOT_ALL_THERE], bad);
+    }
+  });
   it("a macOS floor that isn't a whole number", async () => {
     const r = await run({ with: { floor: "14.4" } });
     assert.deepEqual(r.out, [NOT_ALL_THERE]);

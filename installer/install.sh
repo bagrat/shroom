@@ -270,9 +270,13 @@ main() {
   version=$(field version)
   floor=$(field macos)
   [ -n "$version" ] || fail "$NET_DROP"
-  # The same shapes the app's own updater accepts: 1.2.3, a whole-number macOS, and for
-  # each kind of Mac a plain (non-empty) file name and a 64-character fingerprint.
-  case "$version" in .*|*.|*..*|*.*.*.*|*[!0-9.]*) fail "$NOT_ALL_THERE" ;; esac
+  # The same shapes the app's own updater accepts: 1.2.3 (or an early build's
+  # 1.2.3-early.4, B220), a whole-number macOS, and for each kind of Mac a plain (non-empty)
+  # file name and a 64-character fingerprint.
+  core=${version%-early.*}
+  case "$core" in .*|*.|*..*|*.*.*.*|*[!0-9.]*) fail "$NOT_ALL_THERE" ;; esac
+  case "${version#"$core"}" in ""|-early.[1-9]|-early.[1-9]*[0-9]) ;; *) fail "$NOT_ALL_THERE" ;; esac
+  case "${version#"$core"-early.}" in *[!0-9]*) [ "$core" = "$version" ] || fail "$NOT_ALL_THERE" ;; esac
   case "${floor:=$MIN_MACOS}" in *[!0-9]*) fail "$NOT_ALL_THERE" ;; esac
   [ "$major" -ge "$floor" ] || fail "shroom needs macOS $floor or newer — this Mac is on $macos."
   entry=$(field "$(mac_kind)")            # "<file> <sha256>"

@@ -238,11 +238,26 @@ pinned certificate — so a Mac that takes it keeps its Screen Recording permiss
 "latest" never points at a pre-release, so the install line, Homebrew and every app on the
 official channel never see it. Only a Mac on the **early channel** takes it.
 
-**Versions.** A pre-release takes the next plain version, and the official release after
-it takes the next one again: `0.1.24` (official) → `0.1.25` (early) → `0.1.26` (official).
-No suffix — every reader of a version takes three whole numbers (B220 says why). Step 1 of
-"Cutting a release" already bumps past a version listed under **Releases**, and a
-pre-release is listed there.
+**Versions.** An early build is `x.y.z-early.n` on the way to release `x.y.z`, n counting
+from 1: `0.1.24` → `0.1.25-early.1` → `0.1.25-early.2` → `0.1.25` → `0.1.26-early.1`. Every reader of
+a version keeps that order: the app's updater, the page compare, `tools/bump-version.sh`, the
+installer and the release workflow. `tools/bump-version.sh 0.1.25-early.1` moves the tree there,
+from `0.1.24` or from an unreleased `0.1.25`; the next is `-early.2`, and `0.1.25` itself is the
+release. The release workflow takes an early build's version only with **Early** ticked, and
+an early build only with that version.
+
+**Branches.** The channel's own code lives on `main`. Early builds are cut only from the
+long-lived integration branch, `claude/early-integration`: `main` plus the feature pull
+requests held for a release, each merged in. It takes `main` by merging it in, never by a
+rebase. `main` stays free — fixes and features merge to it as always, and releases are cut
+from it as always (Cutting a release, above). A feature reaches `main` through its own pull
+request, never through this branch.
+
+**A hotfix while an early build is out.** Release it from `main` as the version the early
+build was heading to: with `0.1.25-early.2` out, the fix ships as `0.1.25`. An early Mac takes
+it (it's newer), and the integration branch, after merging `main` in, moves to
+`0.1.26-early.1` for the next early build. The workflow refuses an early build of a version
+already released — it would sort below it, and no Mac would take it.
 
 **The pointer.** A pre-release tagged `early`, titled "shroom early channel", is not a
 release: its `manifest.txt` and `update.txt` name the newest build, early or official. The
@@ -254,18 +269,21 @@ it names:
 curl -fsSL https://github.com/bagrat/shroom/releases/download/early/manifest.txt
 ```
 
-**Cutting one.** From a branch that carries what you want to try (an integration branch
-that merges open pull requests, say — never `main` itself unless that's what you want):
+**Cutting one**, on the integration branch:
 
-1. Move the branch to the next version (`tools/bump-version.sh <x.y.z>`), commit, push,
-   and open a draft pull request for it, so CI runs on its head.
-2. See CI green on that head, and the hosted-Mac heartbeat (**Actions** → **E2E full** →
+1. Merge `main` in, and the feature pull requests' newest heads; resolve, and run the
+   checks (CI's Tests job, as a contributor runs them).
+2. Move it to the next early version (`tools/bump-version.sh 0.1.25-early.1`, or `-early.2`
+   after it), commit and push. Its draft pull request (never merged) is what runs CI on its
+   head.
+3. See CI green on that head, and the hosted-Mac heartbeat (**Actions** → **E2E full** →
    Run workflow on the branch).
-3. **Actions** → **Release** → **Run workflow** → the branch, tick **Publish** and
-   **Early**. The run refuses unless CI is green on that commit and the version isn't
-   tagged; it needs no release notes (shroom.am's What's new sends a version it has no
-   notes for to the newest release's). It tags `v<version>` on the commit it built.
-4. The run's publish job fails if `releases/latest` turned out to be the early build, and
+4. **Actions** → **Release** → **Run workflow** → the branch, tick **Publish** and
+   **Early**. The run refuses unless CI is green on that commit, the version is an early
+   build's and isn't tagged, and its release isn't out; it needs no release notes
+   (shroom.am's What's new sends a version it has no notes for to the newest release's). It
+   tags `v<version>` on the commit it built.
+5. The run's publish job fails if `releases/latest` turned out to be the early build, and
    warns if the pointer doesn't name it.
 
 *(If the `release` environment's deployment branches are limited — One-time setup, step 9
@@ -287,7 +305,8 @@ diagnostics says `shroom <version> (early channel)`. To leave the channel:
 rm ~/.shroom/channel
 ```
 
-The app stays on the build it has, and takes the next official release above it.
+The app stays on the build it has, and takes the next release above it (`0.1.25` after
+`0.1.25-early.2`).
 
 **A space's page.** An early app puts its own page on its space as any update does, so the
 people watching that space's videos see the early build's page. A page only ever moves up:

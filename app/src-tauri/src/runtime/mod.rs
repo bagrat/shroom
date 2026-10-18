@@ -2000,7 +2000,7 @@ mod tests {
         // The update step names the version one patch above the tree's: the next release.
         let conf: serde_json::Value = serde_json::from_str(include_str!("../../tauri.conf.json")).unwrap();
         let cur = shroom_update::Version::parse(conf["version"].as_str().unwrap()).unwrap();
-        let next = shroom_update::Version(cur.0, cur.1, cur.2 + 1).to_string();
+        let next = shroom_update::Version::new(cur.0, cur.1, cur.2 + 1).to_string();
         // Not Camera: it's the camera row's accessible name, shown nowhere.
         for label in [
             copy::login_box(),

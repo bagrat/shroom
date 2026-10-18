@@ -100,6 +100,22 @@ jobs:
           echo "version=$said" >>"$GITHUB_OUTPUT"
           echo "shroom $said"
 
+      # An early build's version says so, and only an early build's (DECISIONS B220):
+      # x.y.z-early.n, published by Run workflow with Early ticked; a tag pushed by hand is a
+      # release.
+      - name: An early build is versioned as one, and a release isn't
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          EARLY: ${{ github.event_name == 'workflow_dispatch' && inputs.early }}
+        run: |
+          case "$VERSION" in *-early.*) versioned=true ;; *) versioned=false ;; esac
+          if [ "$EARLY" = true ] && [ "$versioned" = false ]; then
+            echo "::error::An early build is versioned x.y.z-early.n — tools/bump-version.sh $VERSION-early.1 on this branch, then run again."; exit 1
+          fi
+          if [ "$EARLY" != true ] && [ "$versioned" = true ]; then
+            echo "::error::$VERSION is an early build's version — tick Early (a pre-release), or move the tree to a release's version."; exit 1
+          fi
+
       - name: Published from Run workflow, it is main (or an early build), CI is green on it, and the version is new
         if: github.event_name == 'workflow_dispatch' && inputs.publish
         env:
@@ -110,6 +126,11 @@ jobs:
           [ "$GITHUB_REF" = refs/heads/main ] || [ "$EARLY" = true ] || { echo "::error::A release is published from main — run it on main (or tick Early for a pre-release)."; exit 1; }
           if git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" >/dev/null; then
             echo "::error::v$VERSION is already tagged — a version is released once: tools/bump-version.sh to the next, then run again."
+            exit 1
+          fi
+          # An early build of a version already released would sort below it: no Mac takes it.
+          if [ "$EARLY" = true ] && git ls-remote --exit-code --tags origin "refs/tags/v${VERSION%-early.*}" >/dev/null; then
+            echo "::error::v${VERSION%-early.*} is out — an early build now leads to the next one: tools/bump-version.sh <the next>-early.1."
             exit 1
           fi
           runs=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/check-runs?per_page=100" \
@@ -381,8 +402,9 @@ jobs:
               --notes "Not a release: the early channel reads the newest build's manifest from here (install.sh --early). Every publish replaces it."
           fi
           was=$(curl -fsSL --retry 3 "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/download/early/manifest.txt" 2>/dev/null | sed -n 's/^version=//p' || true)
-          newer=$(printf '%s\n%s\n' "${was:-0.0.0}" "$VERSION" | sort -t. -k1,1n -k2,2n -k3,3n | tail -n 1)
-          if [ -n "$was" ] && [ "$newer" != "$VERSION" ]; then
+          # The updater's order (B220): numbers, then an early build's n below the release's.
+          key() { printf '%s\n' "$1" | awk -F'[.-]' '{printf "%09d %09d %09d %09d\n", $1, $2, $3, (NF > 3 ? $5 : 999999999)}'; }
+          if [ -n "$was" ] && [ "$(key "$was")" \> "$(key "$VERSION")" ]; then
             echo "::notice::The early pointer already names $was, newer than $VERSION — left as it is."
           else
             gh release upload early manifest.txt update.txt --repo "$GITHUB_REPOSITORY" --clobber
