@@ -67,7 +67,8 @@ fn main() {
             .and_then(|b| serde_json::from_slice::<Value>(&b).ok())
             .is_some_and(|p| p["agent_recording"] == true);
         let answer = match (op.as_str(), t.as_ref().map(|x| x.state)) {
-            _ if !allowed => json!({"ok": false, "error": "recording_off", "message": "shroom isn't set to let your coding agent record. Turn on “Let it start and stop recordings” in shroom's Settings, under General."}),
+            // The app answers with a code; the command says the words (control.rs).
+            _ if !allowed => json!({"ok": false, "take": "none", "error": "recording_off"}),
             ("record.start", None) => {
                 *t = Some(Take { state: "countdown", since: Instant::now() });
                 let (take, home) = (take.clone(), home.clone());
@@ -82,7 +83,7 @@ fn main() {
                 });
                 json!({"ok": true, "take": "countdown"})
             }
-            ("record.start", Some(_)) => json!({"ok": false, "error": "take_open", "message": "A recording is already going."}),
+            ("record.start", Some(_)) => json!({"ok": false, "take": "recording", "error": "take_open"}),
             ("record.pause", Some("recording")) => {
                 t.as_mut().unwrap().state = "paused";
                 json!({"ok": true, "take": "paused"})
@@ -97,8 +98,8 @@ fn main() {
                 demo::put_video(&demo::bucket(&base), &id, "Untitled — Oct 18", &shroom_upload::meta::now_iso(), secs.round());
                 json!({"ok": true, "take": "none", "link": format!("https://{}/{id}", demo::HOST)})
             }
-            (_, None) => json!({"ok": false, "error": "no_take", "message": "Nothing is recording."}),
-            _ => json!({"ok": false, "error": "refused", "message": "Not now."}),
+            (_, None) => json!({"ok": false, "take": "none", "error": "no_take"}),
+            _ => json!({"ok": false, "take": "recording", "error": "busy"}),
         };
         write_status(&home, &t);
         let _ = (&conn).write_all(format!("{answer}\n").as_bytes());

@@ -46,12 +46,19 @@ pub fn ask(socket: &Path, op: &str, launch: bool) -> Result<Value, Fail> {
     if v["ok"] == true {
         return Ok(v);
     }
-    let message = v["message"].as_str().unwrap_or("shroom said no.").to_string();
-    Err(match v["error"].as_str() {
-        Some("take_open") => Fail::TakeOpen(message),
-        Some("not_set_up") => Fail::NotSetUp(message),
-        Some("recording_off") => Fail::RecordingOff(message),
-        _ => Fail::Refused(message),
+    // The app answers with a code; the words are the command's (a stand-in may send its own).
+    let code = v["error"].as_str().unwrap_or("");
+    let words = |default: &str| v["message"].as_str().unwrap_or(default).to_string();
+    Err(match code {
+        "take_open" => Fail::TakeOpen(words("A recording is already going.")),
+        "not_set_up" => Fail::NotSetUp(words("shroom isn't set up on this Mac yet. Open it to set it up.")),
+        "recording_off" => Fail::RecordingOff(words(
+            "shroom isn't set to let your coding agent record. Turn on “Let it start and stop recordings” in shroom's Settings, under General.",
+        )),
+        "busy" => Fail::Refused(words("shroom is between two steps. Try again in a moment.")),
+        "no_take" => Fail::Refused(words("Nothing is recording.")),
+        "not_ready" => Fail::Refused(words("shroom can't start a recording right now. Open it from the menu bar to see why.")),
+        _ => Fail::Refused(words("shroom said no.")),
     })
 }
 
