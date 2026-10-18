@@ -27,8 +27,11 @@
 //!
 //! `… --example gallery -- editor` prints the editor's faces (N63), from the worlds of
 //! `tests/region5.rs`'s editor rows: ready on a trimmed video with a cut applied, a
-//! suggestion waiting, markers and a step to undo; just opened; the video coming at 40%;
-//! couldn't come; saving; and the save that didn't go through.
+//! suggestion waiting, markers and a step to undo; just opened; opened again while the
+//! earlier edit's original is kept, with each of the time-left lines by Revert; the video
+//! coming at 40%; couldn't come; saving; the save that didn't go through; and after a save
+//! (B197), the final video being made at 40%, the one that couldn't be made, and “Delete the
+//! original?”.
 //!
 //! Examples can't import tests, so the builders are copied from
 //! `tests/common/support.rs` and `tests/onboarding.rs`; keep them in step.
@@ -1201,13 +1204,31 @@ fn editor_rows() -> Vec<(&'static str, &'static str, World)> {
         w
     };
     let here = || EditorMedia::Ready { duration: 272.4 };
+    // Opened again while the earlier edit's original is kept, with `left` ms to go (B197 (e)).
+    let kept = |left: i64| {
+        let mut w = open(here(), EditorSave::Idle, Some(saved()));
+        w.session.fields.editor.as_mut().unwrap().kept_until = Some(Wall(w.wall.0 + left));
+        w
+    };
+    // The saved list, as the window holds it once the save landed.
+    let after = |save: EditorSave| {
+        let mut h = stepped();
+        h.saved_as_now();
+        open(here(), save, Some(h))
+    };
     vec![
         ("editor", "editor-ready", open(here(), EditorSave::Idle, Some(stepped()))),
         ("editor", "editor-opening", open(EditorMedia::Opening, EditorSave::Idle, None)),
+        ("editor", "editor-original-kept-2-days", kept(40 * 3_600_000)),
+        ("editor", "editor-original-kept-1-day", kept(20 * 3_600_000)),
+        ("editor", "editor-original-kept-hours", kept(25 * 60_000)),
         ("editor-getting", "editor-getting", open(EditorMedia::Getting { pct: 40 }, EditorSave::Idle, Some(saved()))),
         ("editor-cant-get", "editor-cant-get", open(EditorMedia::Failed, EditorSave::Idle, Some(saved()))),
         ("editor-saving", "editor-saving", open(here(), EditorSave::Saving, Some(stepped()))),
         ("editor-save-failed", "editor-save-failed", open(here(), EditorSave::Failed, Some(stepped()))),
+        ("editor-making", "editor-making", after(EditorSave::Making { pct: 40 })),
+        ("editor-making-failed", "editor-making-failed", after(EditorSave::MakingFailed)),
+        ("editor-keep-original", "editor-keep-original", after(EditorSave::Asking)),
     ]
 }
 
