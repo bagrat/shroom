@@ -1,13 +1,22 @@
 //! The POC's takes as fixtures: real Whisper transcripts of invented scripts spoken by
 //! stock voices (dev/proposals/voice-cut/poc), each beside its script with every line's
-//! time. The planner must cut every cue, never cut a kept or merely mentioned line, and cut
-//! every slip (or, after a cue with no retake, offer it).
+//! time, and, for the Workers AI ones, what the judgment above the planner answered
+//! (`judged.json`, Clef). The plan with that judgment must cut every cue, never cut a kept or
+//! merely mentioned line, and cut every slip (or, after a cue with no retake, offer it); the
+//! code alone, as when no judgment comes, must never cut a kept or mentioned line either.
 
 use std::fs;
 use std::path::Path;
 
 use serde::Deserialize;
-use shroom_edit::{Options, Transcript, plan};
+use shroom_edit::{Answer, Options, Transcript, plan, plan_with};
+
+/// What the judgment answered for a take (Clef on Workers AI, recorded by
+/// dev/proposals/voice-cut/poc/judge.py).
+#[derive(Deserialize)]
+struct Judged {
+    answers: Vec<Answer>,
+}
 
 #[derive(Deserialize)]
 struct Line {
@@ -51,8 +60,18 @@ fn every_take() {
                 .unwrap();
         let lines: Vec<Line> =
             serde_json::from_str(&fs::read_to_string(dir.join("script.json")).unwrap()).unwrap();
-        let list = plan(&t, Options::default());
+        let answers = fs::read_to_string(dir.join("judged.json"))
+            .map(|j| serde_json::from_str::<Judged>(&j).unwrap().answers)
+            .unwrap_or_default();
+        let list = plan_with(&t, Options::default(), &answers);
         let applied: Vec<(f64, f64)> = list
+            .cuts
+            .iter()
+            .filter(|c| c.applied)
+            .map(|c| (c.start, c.end))
+            .collect();
+        // The code alone, as when no judgment comes: it may leave a slip, never cut what stays.
+        let alone: Vec<(f64, f64)> = plan(&t, Options::default())
             .cuts
             .iter()
             .filter(|c| c.applied)
@@ -72,6 +91,9 @@ fn every_take() {
         let mut why = Vec::new();
         for l in &lines {
             let len = l.end - l.start;
+            if matches!(l.role.as_str(), "keep" | "mention") && cut(l, &alone) > 0.08 {
+                why.push(format!("the code alone cut into a {} line", l.role));
+            }
             match l.role.as_str() {
                 "keep" | "mention" if cut(l, &applied) > 0.08 => {
                     why.push(format!("cut into a {} line", l.role))
@@ -86,7 +108,7 @@ fn every_take() {
         let name = dir.file_name().unwrap().to_string_lossy().to_string();
         let known = KNOWN.iter().any(|(k, _)| *k == name);
         if known {
-            why.retain(|w| w.starts_with("cut into"));
+            why.retain(|w| w.contains("cut into"));
         }
         if !why.is_empty() {
             failed.push(format!(

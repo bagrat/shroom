@@ -1,0 +1,103 @@
+{
+ "duration": 7.098,
+ "words": [
+  {
+   "text": "Open",
+   "start": 0,
+   "end": 0.22
+  },
+  {
+   "text": "the",
+   "start": 0.22,
+   "end": 0.38
+  },
+  {
+   "text": "settings",
+   "start": 0.38,
+   "end": 0.66
+  },
+  {
+   "text": "window.",
+   "start": 0.66,
+   "end": 1.12
+  },
+  {
+   "text": "Then",
+   "start": 1.64,
+   "end": 2.24
+  },
+  {
+   "text": "click",
+   "start": 2.24,
+   "end": 2.54
+  },
+  {
+   "text": "the,",
+   "start": 2.54,
+   "end": 2.74
+  },
+  {
+   "text": "the",
+   "start": 2.74,
+   "end": 3.08
+  },
+  {
+   "text": "blue.",
+   "start": 3.08,
+   "end": 3.38
+  },
+  {
+   "text": "Shroom",
+   "start": 3.82,
+   "end": 4.42
+  },
+  {
+   "text": "cut.",
+   "start": 4.42,
+   "end": 4.72
+  },
+  {
+   "text": "Then",
+   "start": 5.42,
+   "end": 6.02
+  },
+  {
+   "text": "click",
+   "start": 6.02,
+   "end": 6.28
+  },
+  {
+   "text": "the",
+   "start": 6.28,
+   "end": 6.44
+  },
+  {
+   "text": "green",
+   "start": 6.44,
+   "end": 6.64
+  },
+  {
+   "text": "button.",
+   "start": 6.64,
+   "end": 6.92
+  }
+ ],
+ "silences": [
+  {
+   "start": 1.23,
+   "end": 2.03194
+  },
+  {
+   "start": 2.79719,
+   "end": 2.957
+  },
+  {
+   "start": 3.45875,
+   "end": 4.15894
+  },
+  {
+   "start": 4.79531,
+   "end": 5.79825
+  }
+ ]
+}
