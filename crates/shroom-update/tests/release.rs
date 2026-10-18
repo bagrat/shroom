@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::{Arc, Mutex};
 
-use shroom_update::{Offer, Release, SWAP_SH, UpdateError, Version, check, download, offer};
+use shroom_update::{Channel, Offer, Release, SWAP_SH, UpdateError, Version, check, check_channel, download, offer};
 
 /// A test's own folder, removed when the test ends (pass or fail).
 struct Scratch(PathBuf);
@@ -103,6 +103,26 @@ fn the_app_reads_update_txt_and_a_release_without_one_its_manifest() {
     let older = serve(vec![("/latest/download/manifest.txt".into(), manifest("1.3.0"))]);
     assert_eq!(check(&older).unwrap().version, Version(1, 3, 0));
     assert!(matches!(check(&serve(vec![])), Err(UpdateError::Transport(_))), "neither: fails soft");
+}
+
+/// The early channel (DECISIONS B220): the `early` pointer's manifest or the latest
+/// release's, whichever is newer; the official channel never reads the pointer.
+#[test]
+fn the_early_channel_takes_the_newer_of_the_pointer_and_the_latest() {
+    let manifest = |v: &str| format!("version={v}\nmacos=14\narm64=shroom-{v}-arm64.zip {}\n", "a".repeat(64)).into_bytes();
+    let pre = serve(vec![("/latest/download/update.txt".into(), manifest("0.1.24")), ("/download/early/update.txt".into(), manifest("0.1.25"))]);
+    assert_eq!(check_channel(&pre, Channel::Early).unwrap().version, Version(0, 1, 25));
+    assert_eq!(check_channel(&pre, Channel::Official).unwrap().version, Version(0, 1, 24), "an official Mac never sees a pre-release");
+    assert_eq!(check(&pre).unwrap().version, Version(0, 1, 24));
+    // An official release newer than the pointer (its update missed): the early Mac takes it.
+    let stale = serve(vec![("/latest/download/update.txt".into(), manifest("0.1.26")), ("/download/early/update.txt".into(), manifest("0.1.25"))]);
+    assert_eq!(check_channel(&stale, Channel::Early).unwrap().version, Version(0, 1, 26));
+    // No pointer yet (before the first pre-release), or only a pointer: what there is.
+    let none = serve(vec![("/latest/download/manifest.txt".into(), manifest("0.1.24"))]);
+    assert_eq!(check_channel(&none, Channel::Early).unwrap().version, Version(0, 1, 24));
+    let only = serve(vec![("/download/early/manifest.txt".into(), manifest("0.1.25"))]);
+    assert_eq!(check_channel(&only, Channel::Early).unwrap().version, Version(0, 1, 25));
+    assert!(matches!(check_channel(&serve(vec![]), Channel::Early), Err(UpdateError::Transport(_))), "neither: fails soft");
 }
 
 #[test]

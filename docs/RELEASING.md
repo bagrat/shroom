@@ -230,6 +230,71 @@ either re-run the failed job or (a hand-pushed tag) delete the tag, fix, and tag
 published is never replaced — installed apps already know its fingerprint. Bump and
 release the next one.
 
+## Pre-releases
+
+An early build (DECISIONS B220) is a release marked **pre-release** on GitHub: the same
+signed zip, `manifest.txt` and `update.txt`, made by the same workflow, signed by the same
+pinned certificate — so a Mac that takes it keeps its Screen Recording permission. GitHub's
+"latest" never points at a pre-release, so the install line, Homebrew and every app on the
+official channel never see it. Only a Mac on the **early channel** takes it.
+
+**Versions.** A pre-release takes the next plain version, and the official release after
+it takes the next one again: `0.1.24` (official) → `0.1.25` (early) → `0.1.26` (official).
+No suffix — every reader of a version takes three whole numbers (B220 says why). Step 1 of
+"Cutting a release" already bumps past a version listed under **Releases**, and a
+pre-release is listed there.
+
+**The pointer.** A pre-release tagged `early`, titled "shroom early channel", is not a
+release: its `manifest.txt` and `update.txt` name the newest build, early or official. The
+first publish that finds none makes it; every publish after puts its own manifest there
+unless the pointer already names a newer version. Nothing is uploaded by hand. To see what
+it names:
+
+```bash
+curl -fsSL https://github.com/bagrat/shroom/releases/download/early/manifest.txt
+```
+
+**Cutting one.** From a branch that carries what you want to try (an integration branch
+that merges open pull requests, say — never `main` itself unless that's what you want):
+
+1. Move the branch to the next version (`tools/bump-version.sh <x.y.z>`), commit, push,
+   and open a draft pull request for it, so CI runs on its head.
+2. See CI green on that head, and the hosted-Mac heartbeat (**Actions** → **E2E full** →
+   Run workflow on the branch).
+3. **Actions** → **Release** → **Run workflow** → the branch, tick **Publish** and
+   **Early**. The run refuses unless CI is green on that commit and the version isn't
+   tagged; it needs no release notes (shroom.am's What's new sends a version it has no
+   notes for to the newest release's). It tags `v<version>` on the commit it built.
+4. The run's publish job fails if `releases/latest` turned out to be the early build, and
+   warns if the pointer doesn't name it.
+
+*(If the `release` environment's deployment branches are limited — One-time setup, step 9
+— the branch must be on that list for the run to reach the signing secrets.)*
+
+**Taking the early channel on a Mac.** Once, in Terminal:
+
+```bash
+curl -fsSL https://shroom.am/install | sh -s -- --early
+```
+
+It installs the newest build the pointer names — over the shroom that is there, the
+way an update does — and leaves `~/.shroom/channel` holding `early`. From then on the app's
+own updater reads the pointer and the latest release and takes the newer, so an official
+release that is out is taken too. `run.log` says `boot: channel early`, and Copy
+diagnostics says `shroom <version> (early channel)`. To leave the channel:
+
+```bash
+rm ~/.shroom/channel
+```
+
+The app stays on the build it has, and takes the next official release above it.
+
+**A space's page.** An early app puts its own page on its space as any update does, so the
+people watching that space's videos see the early build's page. A page only ever moves up:
+an older official app on another Mac of the same space leaves it as it is, and the next
+build — early or official — replaces it. Take the early channel only on a Mac whose space's
+viewers can live with that.
+
 ## Checking a published release
 
 What installs it checks it too (DECISIONS B125): the installer runs `codesign --verify` on
@@ -260,7 +325,7 @@ it built. To see for yourself:
    ```
 
    Don't unzip it on this Mac: an unpacked release app answers for `shroom://` links, and
-   your Mac carries only the installed official release (DECISIONS B66).
+   your Mac carries only the installed release, official or early (DECISIONS B66, B220).
 
 3. The install line itself, on a clean Mac — a throwaway clone of the Tahoe image:
 

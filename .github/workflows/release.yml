@@ -23,6 +23,12 @@
 # — the same runner image, toolchain, environment and script, held equal by the app's test
 # `the_tag_workflow_builds_what_ci_cached`. Nothing here saves a cache.
 #
+# "Run workflow" with Publish and Early ticked publishes an early build (DECISIONS B220): a
+# GitHub pre-release, from any branch CI is green on — GitHub's "latest" never points at
+# one, so the official channel never sees it. Every publish, early or not, then puts its
+# manifest on the `early` pointer (a pre-release of its own whose update.txt and
+# manifest.txt the early channel reads), so an early Mac takes whichever is newest.
+#
 # "Run workflow" without Publish is a rehearsal: it builds and signs exactly as a release
 # does, keeps the result as a workflow artifact for a few days, and publishes nothing.
 #
@@ -36,6 +42,10 @@ on:
     inputs:
       publish:
         description: Publish it — from main only; tags the commit v<version> (unticked, a rehearsal)
+        type: boolean
+        default: false
+      early:
+        description: An early build — a pre-release, from any branch CI is green on (with Publish)
         type: boolean
         default: false
 
@@ -90,13 +100,14 @@ jobs:
           echo "version=$said" >>"$GITHUB_OUTPUT"
           echo "shroom $said"
 
-      - name: Published from Run workflow, it is main, CI is green on it, and the version is new
+      - name: Published from Run workflow, it is main (or an early build), CI is green on it, and the version is new
         if: github.event_name == 'workflow_dispatch' && inputs.publish
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.version.outputs.version }}
+          EARLY: ${{ inputs.early }}
         run: |
-          [ "$GITHUB_REF" = refs/heads/main ] || { echo "::error::A release is published from main — run it on main."; exit 1; }
+          [ "$GITHUB_REF" = refs/heads/main ] || [ "$EARLY" = true ] || { echo "::error::A release is published from main — run it on main (or tick Early for a pre-release)."; exit 1; }
           if git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" >/dev/null; then
             echo "::error::v$VERSION is already tagged — a version is released once: tools/bump-version.sh to the next, then run again."
             exit 1
@@ -129,11 +140,13 @@ jobs:
 
       # What "What's new" opens (DECISIONS B152): written by hand before the release is cut,
       # in shroom's voice. A rehearsal only warns; a release that would publish stops here,
-      # before anything is built.
+      # before anything is built. An early build needs none (B220): its notes live on main
+      # only once its version is released, and shroom.am's What's new sends any other
+      # version to the newest release's.
       - name: The release's notes are written
         env:
           VERSION: ${{ steps.version.outputs.version }}
-          PUBLISHING: ${{ github.ref_type == 'tag' || (github.event_name == 'workflow_dispatch' && inputs.publish) }}
+          PUBLISHING: ${{ github.ref_type == 'tag' || (github.event_name == 'workflow_dispatch' && inputs.publish && !inputs.early) }}
         run: |
           if said=$(node tools/release-notes.mjs check "$VERSION" 2>&1); then
             echo "$said"
@@ -292,9 +305,9 @@ jobs:
   publish:
     name: Publish the release
     needs: [check, build]
-    # A tag publishes, and so does Run workflow on main with Publish; a rehearsal stops
-    # after the build.
-    if: github.ref_type == 'tag' || (github.event_name == 'workflow_dispatch' && inputs.publish && github.ref == 'refs/heads/main')
+    # A tag publishes, and so does Run workflow on main with Publish, or on any branch with
+    # Publish and Early (a pre-release); a rehearsal stops after the build.
+    if: github.ref_type == 'tag' || (github.event_name == 'workflow_dispatch' && inputs.publish && (github.ref == 'refs/heads/main' || inputs.early))
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
@@ -302,6 +315,7 @@ jobs:
     env:
       VERSION: ${{ needs.check.outputs.version }}
       TAG: ${{ github.ref_type == 'tag' && github.ref_name || format('v{0}', needs.check.outputs.version) }}
+      EARLY: ${{ github.event_name == 'workflow_dispatch' && inputs.early }}
     steps:
       # Only the notes and the tool that writes the body from them.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -338,9 +352,42 @@ jobs:
           # The notes (B152): the hand-written "What's new", then GitHub's list of what was
           # merged since the last release, folded away.
           gh api "repos/$GITHUB_REPOSITORY/releases/generate-notes" -f tag_name="$TAG" -f target_commitish="$GITHUB_SHA" --jq .body >"$RUNNER_TEMP/generated.md"
-          node ../src/tools/release-notes.mjs body "$VERSION" "$RUNNER_TEMP/generated.md" >"$RUNNER_TEMP/notes.md"
+          if [ "$EARLY" = true ]; then
+            # An early build (B220): a pre-release, never "latest" — the official channel and
+            # the install line never see it. Its notes are what was merged, as GitHub lists it.
+            { echo "An early build of shroom, for the early channel — what's coming, signed like every release, ahead of it."
+              echo
+              cat "$RUNNER_TEMP/generated.md"; } >"$RUNNER_TEMP/notes.md"
+            on+=(--prerelease --latest=false)
+            title="shroom $VERSION (early)"
+          else
+            node ../src/tools/release-notes.mjs body "$VERSION" "$RUNNER_TEMP/generated.md" >"$RUNNER_TEMP/notes.md"
+            title="shroom $VERSION"
+          fi
           gh release create "$TAG" "shroom-$VERSION-arm64.zip" manifest.txt update.txt \
-            --repo "$GITHUB_REPOSITORY" --title "shroom $VERSION" --notes-file "$RUNNER_TEMP/notes.md" "${on[@]}"
+            --repo "$GITHUB_REPOSITORY" --title "$title" --notes-file "$RUNNER_TEMP/notes.md" "${on[@]}"
+
+      # The early channel's pointer (B220): a pre-release tagged `early`, made by the first
+      # publish that finds none, whose manifest.txt and update.txt are this publish's — early
+      # or official — unless it already names a newer version. Never "latest".
+      - name: The early channel's pointer names the newest build
+        working-directory: dist
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view early --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create early --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease --latest=false \
+              --title "shroom early channel" \
+              --notes "Not a release: the early channel reads the newest build's manifest from here (install.sh --early). Every publish replaces it."
+          fi
+          was=$(curl -fsSL --retry 3 "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/download/early/manifest.txt" 2>/dev/null | sed -n 's/^version=//p' || true)
+          newer=$(printf '%s\n%s\n' "${was:-0.0.0}" "$VERSION" | sort -t. -k1,1n -k2,2n -k3,3n | tail -n 1)
+          if [ -n "$was" ] && [ "$newer" != "$VERSION" ]; then
+            echo "::notice::The early pointer already names $was, newer than $VERSION — left as it is."
+          else
+            gh release upload early manifest.txt update.txt --repo "$GITHUB_REPOSITORY" --clobber
+            echo "The early pointer names $VERSION (was ${was:-nothing})."
+          fi
 
       # What the install line and the updater will fetch, asked of the public address.
       - name: The public address serves it
@@ -355,8 +402,15 @@ jobs:
           cmp -s served.txt manifest.txt || { echo "::error::$base/download/$TAG/manifest.txt isn't the manifest that was built"; exit 1; }
           fetch "$base/download/$TAG/update.txt" served-update.txt
           cmp -s served-update.txt manifest.txt || { echo "::error::$base/download/$TAG/update.txt isn't the manifest that was built"; exit 1; }
-          fetch "$base/latest/download/manifest.txt" latest.txt
-          cmp -s latest.txt manifest.txt || echo "::warning::releases/latest isn't $TAG — the install line and the updater get $(sed -n 's/^version=//p' latest.txt) until this one is the latest release."
+          if [ "$EARLY" = true ]; then
+            fetch "$base/latest/download/manifest.txt" latest.txt
+            if cmp -s latest.txt manifest.txt; then echo "::error::releases/latest is the early build $TAG — the official channel must never get it."; exit 1; fi
+          else
+            fetch "$base/latest/download/manifest.txt" latest.txt
+            cmp -s latest.txt manifest.txt || echo "::warning::releases/latest isn't $TAG — the install line and the updater get $(sed -n 's/^version=//p' latest.txt) until this one is the latest release."
+          fi
+          fetch "$base/download/early/update.txt" early.txt
+          cmp -s early.txt manifest.txt || echo "::warning::the early pointer isn't $TAG — it names $(sed -n 's/^version=//p' early.txt)."
           {
             echo "### shroom $VERSION is published"
             echo
