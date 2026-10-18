@@ -4,6 +4,9 @@ use crate::text::{is_filler, likeness};
 
 const MISMATCH: f64 = -0.6;
 const GAP: f64 = -0.8;
+/// What each word between a restart and the cue costs when the retake doesn't say it
+/// again: a line said right a minute ago and repeated is not the slip.
+const TAIL: f64 = 0.3;
 
 /// Where the retake restarts: `pre[r..]` is the flubbed take, `post[s..]` the retake.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -60,7 +63,8 @@ fn pinned(pre: &[String], post: &[String]) -> (f64, usize) {
     best
 }
 
-/// The restart that best explains the retake. `pre` is what came before the cue (oldest
+/// The restart that best explains the retake: the best alignment, less what it leaves
+/// unsaid between the restart and the cue. `pre` is what came before the cue (oldest
 /// first), `post` what came after it. Among equal scores the latest restart wins: a
 /// speaker retakes the line they just fluffed, not one from a minute ago.
 pub fn find_restart(pre: &[String], post: &[String]) -> Option<Restart> {
@@ -71,10 +75,11 @@ pub fn find_restart(pre: &[String], post: &[String]) -> Option<Restart> {
             if is_filler(&pre[r]) {
                 continue;
             }
-            let (score, matched) = pinned(&pre[r..], &post[s..]);
+            let (fit, matched) = pinned(&pre[r..], &post[s..]);
             if matched == 0 {
                 continue;
             }
+            let score = fit - TAIL * (pre.len() - r - matched) as f64;
             let better = match best {
                 None => true,
                 Some(b) => score > b.score + 1e-9 || ((score - b.score).abs() <= 1e-9 && r > b.r),
@@ -112,6 +117,15 @@ mod tests {
         let post = w("so then you pick the window you want");
         let r = find_restart(&pre, &post).unwrap();
         assert_eq!((pre[r.r].as_str(), r.s), ("then", 1));
+    }
+
+    #[test]
+    fn a_line_said_right_earlier_is_not_the_slip() {
+        let pre = w(
+            "hello this is shroom today i'll show you how to share it in one click hello that is shroom",
+        );
+        let r = find_restart(&pre, &w("hello this is shroom")).unwrap();
+        assert_eq!(pre.len() - r.r, 4);
     }
 
     #[test]
