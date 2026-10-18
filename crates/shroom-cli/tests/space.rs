@@ -219,6 +219,10 @@ fn many_videos_at_once_each_with_its_own_result() {
     let (_, week) = shroom(&home, &base, &["list", "--since", "3650d"]);
     assert_eq!(all["total"], week["total"]);
     assert_eq!(shroom(&home, &base, &["list", "--since", "2026-09-01"]).1["total"], 3);
+    // The answer says what it holds: an owner's --mine is "mine", and the filter is echoed.
+    let (_, mine) = shroom(&home, &base, &["list", "--mine", "--since", "10d"]);
+    assert_eq!((mine["scope"].as_str(), mine["since"].as_str()), (Some("mine"), Some("10d")), "{mine}");
+    assert_eq!(shroom(&home, &base, &["list"]).1["scope"], "everyone");
 
     // Several deletes, one confirmation; an id that isn't there is reported, not fatal; a
     // re-run finds them gone.

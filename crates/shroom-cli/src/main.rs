@@ -273,7 +273,9 @@ fn list(a: &Args) -> Result<Done, Fail> {
     if let Some(n) = a.limit {
         v.truncate(n);
     }
-    let scope = if d.identity.role == shroom_core::world::Role::Member { "mine" } else { "everyone" };
+    // What was asked for, as shown: a member's list is always their own; --mine makes an
+    // owner's theirs too; --since and --search say what they kept.
+    let scope = if a.mine || d.identity.role == shroom_core::world::Role::Member { "mine" } else { "everyone" };
     let mut text = String::new();
     if v.is_empty() {
         text.push_str(if a.search.is_some() || a.mine || a.since.is_some() { "No videos match." } else { "No videos yet." });
@@ -286,7 +288,14 @@ fn list(a: &Args) -> Result<Done, Fail> {
             text.push_str(&format!("({} of {total})", v.len()));
         }
     }
-    Ok(Done::new(json!({"scope": scope, "count": v.len(), "total": total, "videos": v.iter().map(Video::json).collect::<Vec<_>>()}), text))
+    let mut j = json!({"scope": scope, "count": v.len(), "total": total, "videos": v.iter().map(Video::json).collect::<Vec<_>>()});
+    if let Some(since) = &a.since {
+        j["since"] = since.clone().into();
+    }
+    if let Some(search) = &a.search {
+        j["search"] = search.clone().into();
+    }
+    Ok(Done::new(j, text))
 }
 
 fn info_text(v: &Video) -> String {
