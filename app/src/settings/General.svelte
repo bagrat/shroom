@@ -79,8 +79,8 @@
           onclick={() => send(part.action)}>{part.label}</button
         >{/if}{/each}
   </p>
-  <!-- Your coding agent (dev/proposals/cli-agent-skill.md): the prompt to paste and its Copy,
-       what the agent reads (Read it first), and whether it may start and stop recordings. -->
+  <!-- Your coding agent (spec N62, DECISIONS B219): the prompt to paste and its Copy, what
+       the agent reads (Read it first), and whether it may start and stop recordings. -->
   <div class="card agent">
     <div class="agent-top">
       <div class="agent-head">

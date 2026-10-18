@@ -84,7 +84,7 @@ function release(version) {
   const dir = mkdtempSync(join(scratch, "rel-"));
   mkdirSync(join(dir, "shroom.app/Contents/MacOS"), { recursive: true });
   writeFileSync(join(dir, "shroom.app/Contents/version"), version);
-  // The `shroom` command the app carries (dev/proposals/cli-agent-skill.md).
+  // The `shroom` command the app carries (spec N62, DECISIONS B217).
   writeFileSync(join(dir, "shroom.app/Contents/MacOS/shroom-cli"), "#!/bin/sh\necho shroom\n");
   chmodSync(join(dir, "shroom.app/Contents/MacOS/shroom-cli"), 0o755);
   const zip = join(dir, `shroom-${version}-arm64.zip`);

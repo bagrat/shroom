@@ -22,7 +22,7 @@ export type GeneralPane = {
   help_links: Button[];
   /** “Uninstall shroom…”, quiet text at the tab's foot (B135). */
   uninstall: Button;
-  /** “Your coding agent” (dev/proposals/cli-agent-skill.md, provisional). */
+  /** “Your coding agent” (spec N62, provisional; DECISIONS B219). */
   agent: AgentCard;
 };
 

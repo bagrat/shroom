@@ -86,7 +86,7 @@ impl Home {
             .unwrap_or_default()
     }
 
-    /// Where the app listens for the CLI (dev/proposals/cli-agent-skill.md §3).
+    /// Where the app listens for the command (DECISIONS B216).
     pub fn control_socket(&self) -> PathBuf {
         self.dir.join("control.sock")
     }

@@ -1,7 +1,7 @@
 //! What the CLI prints and how it exits. One shape for an agent (`--json`: one object on
 //! stdout, `{"ok": true, …}` or `{"ok": false, "error": "<code>", "message": "…"}`) and
 //! plain lines for a person. The error codes and exit codes are a contract: an agent
-//! branches on them, so a code is added, never renamed (dev/proposals/cli-agent-skill.md §4).
+//! branches on them, so a code is added, never renamed (DECISIONS B215).
 
 use serde_json::{Value, json};
 

@@ -1,4 +1,4 @@
-//! Many at once (dev/proposals/cli-agent-skill.md §3b; Bagrat, 2026-10-18: batch commands,
+//! Many at once (spec N62, DECISIONS B218; Bagrat, 2026-10-18: batch commands,
 //! so an agent can invite a team, or tidy many videos, in one step). Every batch command
 //! takes its items the same two ways — each argument one item (`--batch`), or `--from
 //! <file>`, a JSON array or one item per line — answers item by item in the order given,

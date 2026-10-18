@@ -972,7 +972,7 @@ fn start_inner(app: &AppHandle, launch: LaunchKind, quiet: bool, flags: &DevFlag
         updater: updater::spawn(rt.clone(), app.clone()),
         member: member::spawn(rt.clone()),
     };
-    // The `shroom` command's door (dev/proposals/cli-agent-skill.md §3).
+    // The `shroom` command's door (spec N62, DECISIONS B216).
     control::spawn(rt.clone(), rt.cli.clone());
     // The core's trace ring, and the panic hook that writes it down (DECISIONS B93).
     ring::install(&rt);

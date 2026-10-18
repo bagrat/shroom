@@ -83,7 +83,7 @@ const TEXT = new Set([
   "help_label", "sent", "reply_label", "disclosure", "preparing", "failed",
   // Send feedback (N60): the line under the log box.
   "log_note",
-  // Your coding agent (dev/proposals/cli-agent-skill.md): the prompt in its well.
+  // Your coding agent (spec N62, DECISIONS B219): the prompt in its well.
   "prompt",
 ]);
 
@@ -645,7 +645,7 @@ const set = (variant) => settings.find((e) => e.variant === variant).scene;
   check("settings: the login box sends its action", acted(c, "settings", { do: "set-login-item", arg: true }));
   check("settings: the box keeps the Scene's state until the Scene changes", !(await login.isChecked()));
   await clear(page);
-  // Your coding agent (dev/proposals/cli-agent-skill.md): the switch, off by default; Copy
+  // Your coding agent (spec N62, DECISIONS B219): the switch, off by default; Copy
   // and Read it first.
   const agent = page.getByRole("checkbox", { name: "Let it start and stop recordings" });
   check("settings: the agent's recording switch is off by default", !(await agent.isChecked()));

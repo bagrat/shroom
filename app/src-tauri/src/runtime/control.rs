@@ -1,4 +1,4 @@
-//! The `shroom` command's door into the running app (dev/proposals/cli-agent-skill.md §3,
+//! The `shroom` command's door into the running app (DECISIONS B216,
 //! spec N62 provisional): `control.sock` in this flavor's home, one JSON line each way.
 //!
 //!   → {"v":1,"op":"record.start"}       ← {"ok":true,"take":"countdown"}

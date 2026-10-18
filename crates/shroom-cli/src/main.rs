@@ -1,9 +1,10 @@
-//! `shroom` — shroom on the command line, for a person or the coding agent they ask
-//! (dev/proposals/cli-agent-skill.md). Everything a list, a link, a rename or a delete
-//! needs works whether the app is running or not: the CLI reads shroom's home and asks
-//! the space's own page under this Mac's key. Recording goes through the running app.
+//! `shroom` — shroom on the command line, for a person or the coding agent they ask (spec
+//! N62; DECISIONS B215–B219; the write-up, dev/proposals/cli-agent-skill.md). Everything a
+//! list, a link, a rename or a delete needs works whether the app is running or not: the
+//! command reads its app's folder and asks the space's own page under this Mac's key.
+//! Recording goes through the running app.
 //!
-//! The mechanism is exact and the judgment is the agent's: the CLI never guesses which
+//! The mechanism is exact and the judgment is the agent's: the command never guesses which
 //! video was meant for a delete, never deletes without `--yes`, and says why in a stable
 //! code (`--json`) when it won't.
 
