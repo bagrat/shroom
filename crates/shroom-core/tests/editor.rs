@@ -867,3 +867,63 @@ fn markers_show_as_flags_in_the_editor() {
     let r = ready_editor();
     assert_eq!(body(&r).markers, vec![61.5, 130.0]);
 }
+
+// ── the webview's JSON ──
+
+fn keys(v: &serde_json::Value) -> Vec<String> {
+    let mut k: Vec<String> = v.as_object().expect("an object").keys().cloned().collect();
+    k.sort();
+    k
+}
+
+/// The slice is the webview's contract (app/src/editor/types.ts): the window's keys, the
+/// body's, the media's `state` tag, the list's `in`, and the actions' `do`.
+#[test]
+fn the_slice_is_the_webviews_json() {
+    use serde_json::json;
+    let mut r = ready_with(Some(saved_edit(3)));
+    r.op(EditOp::Trim { in_: 8.0, out: 235.0 });
+    let v = serde_json::to_value(r.scene.editor.as_ref().unwrap()).unwrap();
+    assert_eq!(keys(&v), ["activates", "body", "esc", "faces", "id", "ret"]);
+    let b = &v["body"];
+    assert_eq!(
+        keys(b),
+        [
+            "can_redo", "can_undo", "done", "editable", "edited_duration", "footer", "footer_tone", "hint", "keep", "labels", "list", "markers", "media", "rec", "revert",
+            "source_duration", "title"
+        ]
+    );
+    assert_eq!(keys(&b["labels"]), ["cut", "pause", "play", "put_back", "redo", "time", "undo", "was"]);
+    assert_eq!(b["media"], json!({ "state": "ready", "duration": 272.4 }));
+    assert_eq!(b["footer_tone"], "plain");
+    assert_eq!((b["list"]["in"].clone(), b["list"]["out"].clone()), (json!(8.0), json!(235.0)));
+    assert_eq!(b["list"]["cuts"][1], json!({ "start": 200.0, "end": 204.0, "applied": false, "kind": "line-before-cue" }));
+    assert_eq!(b["keep"], json!([[8.0, 150.0], [162.0, 235.0]]));
+    assert_eq!(b["edited_duration"], json!(215.0));
+    assert_eq!(b["done"]["action"], json!({ "do": "editor-done" }));
+    assert_eq!(b["revert"]["action"], json!({ "do": "editor-revert" }));
+    assert_eq!(v["ret"], json!({ "do": "editor-done" }));
+    assert_eq!(v["esc"], serde_json::Value::Null);
+
+    let mut r = opened();
+    r.news(EditorNews::Getting { rec: rec(), pct: 40 });
+    let b = serde_json::to_value(&r.scene.editor.as_ref().unwrap().body).unwrap();
+    assert_eq!(b["media"], json!({ "state": "getting", "pct": 40, "line": GETTING }));
+    assert_eq!(b["list"], serde_json::Value::Null);
+    assert_eq!(b["keep"], json!([]));
+    r.send(Event::Failed { op: Op::EditorOpen, class: FailClass::Transport });
+    let b = serde_json::to_value(&r.scene.editor.as_ref().unwrap().body).unwrap();
+    assert_eq!((b["media"]["state"].clone(), b["media"]["retry"]["action"].clone()), (json!("failed"), json!({ "do": "editor-retry" })));
+    assert_eq!(b["done"]["action"], json!({ "do": "editor-close" }));
+
+    let mut r = dirty();
+    r.ed(Action::EditorDone);
+    r.send(Event::Failed { op: Op::EditorSave, class: FailClass::Transport });
+    assert_eq!(serde_json::to_value(&r.scene.editor.as_ref().unwrap().body).unwrap()["footer_tone"], "amber");
+
+    assert_eq!(serde_json::to_value(Action::EditRow(rec())).unwrap(), json!({ "do": "edit-row", "arg": REC }));
+    assert_eq!(serde_json::to_value(Surface::Editor).unwrap(), json!("editor"));
+    assert_eq!(serde_json::to_value(WindowKind::Editor).unwrap(), json!("editor"));
+    let paused = serde_json::to_value(Run::new(paused_popover(Cause::User)).scene.popover.unwrap().body).unwrap();
+    assert_eq!(paused["marker"]["action"], json!({ "do": "drop-marker" }));
+}

@@ -281,6 +281,36 @@ mod tests {
         }
     }
 
+    /// The editor's events and effects (N63) are kinds too: never the video's id, its
+    /// title, or what a cut removed.
+    #[test]
+    fn the_editors_steps_reach_the_ring_as_kinds() {
+        use crate::effect::EditCmd;
+        use crate::event::{EditStep, EditorNews};
+        let rec = RecId("AbCdEfGhIjKlMnOp".into());
+        let mut list = shroom_edit::EditList::new(60.0);
+        list.cuts.push(shroom_edit::Cut { removed: "Quarterly numbers, take two".into(), ..shroom_edit::Cut::manual(10.0, 20.0) });
+        let saved = shroom_edit::Saved { list, rev: 3, copy: None };
+        let mut r = Ring::default();
+        let events = [
+            Event::Editor(EditorNews::Opened { rec: rec.clone(), saved: Some(saved.clone()), markers: vec![12.5], duration_sec: Some(60.0) }),
+            Event::Edit(EditStep::Op(shroom_edit::Op::Cut { start: 1.0, end: 2.0 })),
+            Event::Edit(EditStep::Undo),
+            Event::Act { surface: Surface::Library, action: Action::EditRow(rec.clone()), rev: 1 },
+        ];
+        let effects = [Effect::Editor(EditCmd::Save { rec: rec.clone(), saved }), Effect::Editor(EditCmd::Copy { rec: rec.clone(), rev: 3 })];
+        for e in &events {
+            r.step(1, e, &Arm { name: "an-arm", edge: Some(("editor", "editor-saving")) }, &effects);
+        }
+        let all = r.lines().join("\n");
+        for leak in ["AbCdEfGhIjKlMnOp", "Quarterly", "12.5"] {
+            assert!(!all.contains(leak), "{leak:?} leaked into the ring:\n{all}");
+        }
+        for kind in ["Editor.Opened", "Edit.Op", "Edit.Undo", "Act.Library.EditRow", "Editor.Save", "Editor.Copy"] {
+            assert!(all.contains(kind), "{kind} missing:\n{all}");
+        }
+    }
+
     #[test]
     fn a_big_value_is_never_formatted_whole() {
         let big = Event::Field { field: Field::LibrarySearch, value: "x".repeat(1_000_000) };
