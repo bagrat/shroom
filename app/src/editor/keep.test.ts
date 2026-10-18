@@ -4,7 +4,7 @@
 // the same list the same way. Then the playback helpers the preview's skip loop runs on.
 import { describe, expect, it } from "vitest";
 import text from "../../../crates/shroom-edit/tests/keep-vectors.json?raw";
-import { checked, editedAt, editedDuration, END_SLACK, isIdentity, keep, keepToEdited, keepToSource, length, nextPlay, snap, toEdited, toSource, type List } from "./keep";
+import { checked, editedAt, editedDuration, END_SLACK, gain, isIdentity, keep, keepToEdited, keepToSource, length, nextPlay, snap, toEdited, toSource, type List } from "./keep";
 
 type Vector = {
   name: string;
@@ -88,5 +88,22 @@ describe("playback over a keep", () => {
     expect(length(k)).toBe(40);
     expect(keepToEdited(k, 25)).toBeNull();
     expect(keepToSource(k, 12)).toBe(32);
+  });
+});
+
+describe("the preview's sound dips at each skip, as the share page's does", () => {
+  const K: [number, number][] = [[1, 10], [20, 30], [40, 50]];
+  it("plays at full level away from every join, and at the trim's own ends", () => {
+    for (const t of [1, 5, 9.8, 25, 45, 49.99, 60]) expect(gain(K, t), `${t}`).toBe(1);
+  });
+  it("eases out over the last 50 ms before a jump and in over the first 50 ms after", () => {
+    expect(gain(K, 9.97 - 0.05)).toBeCloseTo(1, 6);
+    expect(gain(K, 9.97 - 0.025)).toBeCloseTo(0.5, 6);
+    expect(gain(K, 20)).toBe(0);
+    expect(gain(K, 20.025)).toBeCloseTo(0.5, 6);
+    expect(gain(K, 20.05)).toBeCloseTo(1, 6);
+  });
+  it("takes the shorter ease on a range too short for both", () => {
+    expect(gain([[0, 5], [6, 6.06], [8, 9]], 6.015)).toBeCloseTo(0.3, 6);
   });
 });

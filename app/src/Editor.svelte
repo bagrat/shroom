@@ -12,7 +12,7 @@
   import Btn from "./onboarding/Btn.svelte";
   import Timeline, { type Selection, type Trim } from "./editor/Timeline.svelte";
   import { clock, fill } from "./editor/clock";
-  import { END_SLACK, editedAt, keep as keepOf, length, nextPlay, snap, type Keep } from "./editor/keep";
+  import { END_SLACK, editedAt, gain, keep as keepOf, length, nextPlay, snap, type Keep } from "./editor/keep";
   import { isEditor, type EditorWindow } from "./editor/types";
 
   /** Where the shell serves the editor's media (runtime/media.rs); a gallery points it
@@ -128,12 +128,24 @@
     const k = playKeep;
     if (!video || video.paused || !k.length) return;
     const to = nextPlay(k, video.currentTime);
-    if (to === null) return;
+    if (to === null) {
+      level(gain(k, video.currentTime));
+      return;
+    }
     if (to === "end") {
+      level(1);
       finish(k);
       return;
     }
+    level(0);
     video.currentTime = to;
+  }
+
+  /** The preview's level, eased around each skip as the share page does (in 5% steps, so a
+   * frame doesn't write it for nothing). */
+  function level(g: number) {
+    const v = Math.round(g * 20) / 20;
+    if (video && video.volume !== v) video.volume = v;
   }
 
   function finish(k: Keep) {

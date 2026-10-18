@@ -113,6 +113,22 @@ export function nextPlay(k: Keep, t: number): number | "end" | null {
 
 /** Where a click at source time `t` puts the playhead: there when it plays, else the next
  * kept moment (the last kept end past the last range). */
+/** How long the sound eases out before a skip, and back in after it (s): the page's own. */
+export const JOIN_EASE = 0.05;
+
+/** The level to play at `t` (0–1): full away from every join; easing to nothing over the
+ * last [`JOIN_EASE`] before a skip and back over the first after it, so a cut doesn't click
+ * — the share page's `shroomGain`, held to the same cases. The trim's own ends keep it full. */
+export function gain(k: Keep, t: number, ease = JOIN_EASE): number {
+  let i = 0;
+  while (i < k.length && t >= k[i][1] - END_SLACK) i++;
+  if (i === k.length) return 1;
+  let g = 1;
+  if (i < k.length - 1) g = Math.min(g, (k[i][1] - END_SLACK - t) / ease);
+  if (i > 0) g = Math.min(g, (t - k[i][0]) / ease);
+  return Math.max(0, Math.min(1, g));
+}
+
 export function snap(k: Keep, t: number): number {
   for (const [s, e] of k) {
     if (t < s) return s;
