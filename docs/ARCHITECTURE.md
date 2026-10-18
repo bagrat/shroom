@@ -223,10 +223,10 @@ Keep-awake (`os.rs`) is held while `settle::can_drain` (D:B34).
 most two variants deep so no value or secret enters; `runtime/ring.rs` writes it into
 `run.log` on a dev-build law breach, a rescued take, a panic and each harness run's end
 (D:B93). The `shroom` command keeps its own, `logs/cli.log` (600, rolled at 64 KB; D:B215):
-one line a run — UTC time, the verb and the options' names, `ok` or the code and exit, what
-it counted, the space's or the app's refusal, the time it took; never a word it was given.
-Report a problem and Copy diagnostics carry its last 30 lines after the app's
-(`report::clean_logs`), the whole within 200 lines.
+one line a run — stamped as `run.log`'s are, the verb and the options' names, `ok` or the
+code and exit, what it counted, the space's or the app's refusal, the time it took; never a
+word it was given. Report a problem and Copy diagnostics carry its last 30 lines among the
+app's by their time (`report::clean_logs`), the whole within the report's 1,000.
 
 ### 3.4 Persistence under `~/.shroom`
 
