@@ -84,6 +84,22 @@ mod tests {
     }
 
     #[test]
+    fn the_loudness_is_each_steps_rms_and_missing_sound_reads_loud() {
+        // At 200 frames a second, two frames a step: full scale, then half, then nothing,
+        // then two frames that never came, then quiet again.
+        let mut l = Loudness::default();
+        l.block(0, 200, &[1.0, 1.0, 0.5, 0.5, 0.0, 0.0]);
+        l.block(8, 200, &[0.0, 0.0]);
+        let db = l.db();
+        assert_eq!(db.len(), 5);
+        assert!(db[0].abs() < 0.01, "{db:?}");
+        assert!((db[1] + 6.02).abs() < 0.05, "{db:?}");
+        assert!(db[2] < -100.0, "{db:?}");
+        assert_eq!(db[3], 0.0, "a step whose sound never came is loud: {db:?}");
+        assert!(db[4] < -100.0, "{db:?}");
+    }
+
+    #[test]
     fn missing_sound_is_never_quiet() {
         // Frames 3–5 never came: the quiet before them ends where they would have begun.
         let got = runs(&[(0, &[0.0, 0.0, 0.0]), (6, &[0.0, 0.0])]);

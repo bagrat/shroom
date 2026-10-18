@@ -5,7 +5,7 @@
 use std::path::PathBuf;
 use std::process::Command;
 
-use shroom_encode::quiet::silences;
+use shroom_encode::quiet::{STEP, read, silences};
 
 fn tool(name: &str) -> PathBuf {
     let out = Command::new("sh").args(["-c", &format!("command -v {name}")]).output().expect("sh runs");
@@ -37,6 +37,14 @@ fn the_pauses_in_a_takes_sound_and_the_quiet_it_ends_on() {
     for ((s, e), (ws, we)) in got.iter().zip(want) {
         assert!((s - ws).abs() < 0.06 && (e - we).abs() < 0.06, "{got:?}");
     }
+    // Its loudness, read in the same pass: every 10 ms, loud in the sound, quiet in the pauses.
+    let q = read(&file).expect("read");
+    assert_eq!(q.silences, got);
+    assert!((q.db.len() as f64 * STEP - 5.0).abs() < 0.1, "{} steps", q.db.len());
+    let at = |t: f64| q.db[(t / STEP) as usize];
+    // ffmpeg's sine plays at an eighth of full scale: about -21 dBFS RMS.
+    assert!(at(0.5) > -25.0 && at(2.0) > -25.0, "the sound: {} {}", at(0.5), at(2.0));
+    assert!(at(1.25) < -60.0 && at(2.9) < -60.0, "the pauses: {} {}", at(1.25), at(2.9));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
