@@ -13,7 +13,7 @@ mod support;
 
 use std::sync::Arc;
 
-use shroom_core::effect::{EditCmd, Effect, RecCmd, ShellCmd};
+use shroom_core::effect::{EditCmd, Effect, LibCmd, RecCmd, ShellCmd};
 use shroom_core::event::{EditStep, EditorNews, Event, Key, LibraryNews, RecNews, Surface};
 use shroom_core::scene::{Action, Button, EditListView, EditorAfterView, EditorBody, EditorMediaView, LibraryRowView, LineTone, PausedBody, PopoverBody, Style};
 use shroom_core::time::{Fact, Mono, Wall};
@@ -905,6 +905,49 @@ fn only_a_refusal_is_final() {
         r.send(Event::Failed { op: Op::EditorSave, class });
         assert_eq!(face(&r), "editor-save-failed", "{class:?}");
     }
+}
+
+// ── its video deleted (B199) ──
+
+/// Delete… confirmed in the Library for the video the editor holds closes the editor: what
+/// its open asked for stops, and nothing is saved — not even the change it holds. Another
+/// video's delete leaves it alone.
+#[test]
+fn deleting_its_video_closes_the_editor() {
+    let mut r = dirty();
+    r.lib(Action::DeleteRow(rec()));
+    assert_eq!(face(&r), "editor", "asking changes nothing");
+    r.lib(Action::ConfirmDelete);
+    assert!(r.has(|e| *e == Effect::Library(LibCmd::Delete(vec![rec()]))), "{:?}", r.effects);
+    assert!(r.has(|e| *e == Effect::Editor(EditCmd::Cancel { rec: rec() })), "its open stops: {:?}", r.effects);
+    assert!(!r.has(|e| matches!(e, Effect::Editor(EditCmd::Save { .. }))), "nothing is saved");
+    assert!(r.scene.editor.is_none() && r.w.session.fields.editor.is_none());
+    assert!(!r.w.session.windows.contains_key(&WindowKind::Editor));
+    r.send(Event::Library(LibraryNews::Deleted(vec![rec()])));
+    assert!(r.scene.editor.is_none() && r.effects.is_empty(), "{:?}", r.effects);
+
+    let mut r = dirty();
+    r.lib(Action::DeleteRow(RecId(OTHER.into())));
+    r.lib(Action::ConfirmDelete);
+    assert_eq!(face(&r), "editor");
+    assert_eq!(list(&r).cuts.len(), 3, "the change is still there");
+}
+
+/// The delete landing closes it as well — here with a save on its way, whose late answer
+/// then finds no one waiting.
+#[test]
+fn its_delete_landing_closes_the_editor_and_a_save_on_its_way_answers_no_one() {
+    let mut r = dirty();
+    r.ed(Action::EditorDone);
+    assert_eq!(face(&r), "editor-saving");
+    r.send(Event::Library(LibraryNews::Deleted(vec![rec()])));
+    assert!(r.has(|e| *e == Effect::Editor(EditCmd::Cancel { rec: rec() })), "{:?}", r.effects);
+    assert!(r.scene.editor.is_none() && r.w.session.fields.editor.is_none());
+    assert!(!r.w.inflight.ops.contains_key(&Op::EditorSave), "the save on its way answers no one");
+    r.send(Event::Failed { op: Op::EditorSave, class: FailClass::Refused });
+    assert!(r.scene.editor.is_none() && r.effects.is_empty());
+    r.news(EditorNews::Saved { rec: rec(), rev: 4 });
+    assert_eq!(r.arm.name, "editor-stale");
 }
 
 // ── the video that can't come ──
