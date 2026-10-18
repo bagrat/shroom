@@ -243,8 +243,8 @@ The Worker gains only reading `edits.json` and the skip in its player. The app d
 render; it already owns ffmpeg and the takes.
 
 **Markers** land in the same file (`"markers": [seconds]`) as flags on the timeline, and
-playback can jump to them. B143's hidden **Drop a marker** comes back while paused. A
-global shortcut while recording (⌥⌘M, beside N54's ⌥⌘P) is an open question.
+playback can jump to them. B143's hidden **Drop a marker** comes back while paused, and
+⌥⌘M drops one while recording (call 7 below).
 
 ## Where the words are heard
 
@@ -305,6 +305,8 @@ thread):
     not shown) and BUILD-STATUS item 9 (B168: no transcription in v1).
 - **N64 Markers surface** (provisional).
   - Drop a marker comes back in `paused`, reversing B143's hiding.
+  - ⌥⌘M drops a marker in `recording`, held only while a take is open, like N54's ⌥⌘P.
+    Amends `absent_from_v1`'s global hotkeys.
   - Markers show as flags in the editor.
 - **Laws touched.**
   - The Worker gains a route that calls AI on the person's own account, a new power for
@@ -365,9 +367,12 @@ Under the working rule above, each is decided, with why:
 6. **A real take is still needed.** One or two retakes from Bagrat with “shroom cut”, any
    mic, would be the last probe: `run.py --wav take.m4a --model workers-ai` once a Worker
    is up. It is the one thing that can't be decided on judgment.
-7. **Markers: back while paused, as before; no new shortcut yet.** A global ⌥⌘M while
-   recording would be a second always-on shortcut beside N54's ⌥⌘P. Since cues already
-   mark slips, it waits for demand.
+7. **Markers: Drop a marker comes back while paused, and ⌥⌘M drops one while
+   recording.** Bagrat asked for markers dropped *during* recording. A marker that only
+   drops while paused sits on a take boundary, which says nothing a pause doesn't. ⌥⌘M sits
+   beside N54's ⌥⌘P and is held only while a take is open, the same way.
+   - The core's `DropMarker` and the recorder's `Marker` already exist (B143 kept them).
+   - Rejected: no shortcut, waiting for demand. That leaves markers worth little.
 
 ## Running the POC
 
