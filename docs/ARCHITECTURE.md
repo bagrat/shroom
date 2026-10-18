@@ -516,16 +516,17 @@ Registry ids are `d_`/`m_`/`i_` + 16 chars.
 { "schema": 1, "id": "…", "state": "uploading" | "live" | "deleted",
   "createdAt": "iso", "publishedAt": null|"iso", "deletedAt": null|"iso", "title": "Untitled — Aug 21",
   "durationSec": null|0.0,
-  "media": null | { "hls": key, "mp4": key|null, "poster": key|null, "teaser"?: key, "width", "height" },
+  "media": null | { "hls": key|null, "mp4": key|null, "poster": key|null, "teaser"?: key, "width", "height" },
   "captions": null, "owner": null|"<member>",   // informational; ownership is the ledger (D:B54 f)
   "progress": null | { "done", "total", "updatedAt" }, "markers"?: [seconds],
   "titled"?: true,                                  // the Worker's title save (N26)
-  "thumb"?: { "title": null|"…", "gif"?: "thumb-<16 hex>.gif", "jpg"?: "thumb-<16 hex>.jpg" },  // Copy thumbnail, the Worker's (D:B164)
+  "thumb"?: { "title": null|"…", "gif"?: "thumb-<16 hex>.gif", "jpg"?: "thumb-<16 hex>.jpg", "from"? },  // Copy thumbnail, the Worker's (D:B164, B198)
   "edits"?: { "version": 1, "source_duration", "in", "out",                    // the editor's (N63, D:B195)
-              "cuts": [{ "start", "end", "kind", "confidence", "applied", "removed", "resumes"?, "why"? }],
+              "cuts": [{ "id"?, "start", "end", "kind", "confidence", "applied", "leads"?, "removed", "resumes"?, "why"? }],
+              "voice"?: { "planned_at", "cues" },                              // the voice cues' plan (N65)
               "rev", "copy"?: { "rev", "file": "edit-<rev>.mp4", "duration", "poster"?, "teaser"? },
               "keep_until"?: "iso" },                                          // when the original goes (D:B197)
-  "bakedFrom"?: [{ "at": "iso", "keep": [[s, e]] }] }                              // the bake's (D:B197), never served
+  "bakedFrom"?: [{ "at": "iso", "rev", "keep": [[s, e]] }] }                       // each bake, oldest first (D:B197), never served
 ```
 
 `media` holds keys. Additive only; unknown fields kept (`extra`). **Every rewrite is
@@ -536,11 +537,29 @@ read-modify-write under `If-Match`** (`upload::update_meta`), retried on 412, st
 `rev`) and its permanent copy (`copy`, current only while `copy.rev == rev`), over the
 rename's door; the Worker's title and thumbnail rewrites keep it as written. The Worker
 reads from it only the ranges that play and the current copy's names (`worker.js`
-`editsOf`, §10): the cuts' transcript text (`removed`, `resumes`, `why`, a later voice
-cut's) never reaches a viewer. An edit that leaves everything in is no edit. **The bake**
-(D:B197) makes the edit the video: `media` names the copy's own files with `hls: null`,
-`durationSec` is the copy's length, `edits` goes and `bakedFrom` keeps each earlier clock's
-ranges; a later edit counts on the new clock.
+`editsOf`, §10): the cuts' transcript text (`leads`, `removed`, `resumes`, `why`, a later
+voice cut's) never reaches a viewer. An edit that leaves everything in is no edit.
+**`edits.keep_until`** (RFC 3339, UTC) is when the original goes: the copy's landing sets it
+two days on (`library::set_edit_copy`; naming the same copy again keeps the first time), a
+save back to the original drops it with the copy, and the editor says by Revert how long is
+left only while the copy is current (D:B197 (b), (e)).
+
+**The bake** (D:B197 (c)), on Yes, delete or once `keep_until` has passed, makes the edit
+the video: `media` names the copy's own files with `hls: null`, `durationSec` is the copy's
+length, `markers` move onto the edited clock (one inside a cut or outside the trim goes),
+`edits` goes, and `bakedFrom` gains `{at, rev, keep}`: when, the baked edit's revision, and
+the ranges that played on the clock before it. Oldest first, the last 20 kept, so data kept
+on an older clock (a transcript) maps through every later bake in order. A later edit
+counts on the new clock, and its revision starts past every baked one (`record_rev`: one
+past the highest of `edits.rev` and each `bakedFrom` `rev`), so its copy never takes a file
+name the video now plays from.
+
+**`thumb.from`** (D:B198) stamps what Copy thumbnail's pictures were drawn from: the
+video's first 3 seconds as they played then. After an edit `thumb` is no longer current, so
+the status and the page hand out no earlier picture and the owner's page draws a fresh one,
+with the edited length. The earlier `thumb-*` files stay served, so a paste already sent
+keeps its picture (D:B164), unless an edit removes something in those first 3 seconds: then
+only the current picture is served, and the bake deletes the others.
 
 ### 5.4 Index, list-on-read, multi-writer safety
 
