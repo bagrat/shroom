@@ -2,6 +2,8 @@
  "about": "Each line of shroom's log a report may carry, and what it becomes once cleaned (site/clean.js; the app's cleaner reads the same cases). Values are invented.",
  "cases": [
   ["    1840 core config [Probe, Draw]", "    1840 core config [Probe, Draw]"],
+  ["2026-10-18T17:52:03Z     1840 core config [Probe, Draw]", "2026-10-18T17:52:03Z     1840 core config [Probe, Draw]"],
+  ["2026-10-18T17:52:03Z   413020 uploader 7f3a…: request to https://v.example-owner.workers.dev/_shroom/api/up timed out", "2026-10-18T17:52:03Z   413020 uploader 7f3a…: request to <your space> timed out"],
   ["  413020 uploader 7f3a…: request to https://v.example-owner.workers.dev/_shroom/api/up timed out", "  413020 uploader 7f3a…: request to <your space> timed out"],
   ["  2210 member: joined v.example-owner.workers.dev, but couldn't write join.json", "  2210 member: joined <your space>, but couldn't write join.json"],
   ["  5120 member: peek 9xk2 on media.example.com: live", "  5120 member: peek 9xk2 on <a host>: live"],
