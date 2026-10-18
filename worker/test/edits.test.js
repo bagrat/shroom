@@ -70,7 +70,8 @@ describe("editsOf: the record's edit, as the editor's own list plays it (crates/
     expect(got.keep).toEqual([[10, 190]]);
     // A record with no length of its own falls back to the list's.
     expect(editsOf({ durationSec: null, edits: { source_duration: 60, in: 5, out: 60, cuts: [] } }, REC).keep).toEqual([[5, 60]]);
-    expect(editsOf({ edits: { in: 5, out: 60, cuts: [] } }, REC)).toBeNull();
+    // Neither has one: there is no clock to place the list on, so nothing of it plays.
+    expect(editsOf({ edits: { in: 5, out: 60, cuts: [] } }, REC)).toEqual({ keep: [], dur: 0, copy: null });
   });
 });
 
@@ -98,7 +99,6 @@ describe("editsOf takes nothing on trust", () => {
   it("reads no edit from what isn't one", () => {
     for (const edits of [undefined, null, "cut it", 42, true, [], {}, { cuts: "all of it" }, { in: 0, out: 60, cuts: [] }]) expect(of(edits), JSON.stringify(edits)).toBeNull();
     expect(editsOf(null)).toBeNull();
-    expect(editsOf({ edits: { in: 0, out: 1, cuts: [] } }, REC)).toBeNull();
   });
 
   it("reads a value that isn't a number as one that isn't finite: the trim falls back to the whole", () => {
@@ -223,6 +223,28 @@ describe("the page applies the edit until the copy is up (N63)", () => {
     expect(body).toContain(`<span class="time">0:00 / 4:32</span>`);
     expect(body).toContain(`href="/d/${REC}"`);
     expect((await get(env, `/m/${REC}/master.m3u8`)).status).toBe(200);
+  });
+
+  it("an edit whose cuts cover the whole trim plays nothing: the faces for a video that can't play, no Download", async () => {
+    // The editor trimmed to 100–105 before a voice plan landed; Done merged the plan's applied 99–106.
+    const nothing = { ...LIST, in: 100, out: 105, cuts: [{ start: 99, end: 106, kind: "retake", confidence: "high", applied: true, removed: SAID[0] }], rev: 4 };
+    expect(editsOf(JSON.parse(record(nothing)), REC)).toEqual({ keep: [], dur: 0, copy: null });
+    // A copy named for it changes nothing: there is nothing to play.
+    expect(editsOf(JSON.parse(record({ ...nothing, copy: { ...COPY3, rev: 4 } })), REC)).toEqual({ keep: [], dur: 0, copy: null });
+    for (const env of [withEdit(nothing), withEdit({ ...nothing, copy: { ...COPY3, rev: 4 } })]) {
+      for (const [path, init] of [[`/${REC}`], [`/${REC}`, owner], [`/${REC}?embed=1`]]) {
+        const body = await text(env, path, init);
+        expect(body, path).toContain(COPY.unavailable);
+        expect(body, path).not.toContain("shroomPlayer(document");
+        expect(body, path).not.toContain(`/d/${REC}`);
+        for (const s of SAID) expect(body).not.toContain(s);
+      }
+      expect(JSON.parse(await text(env, `/_shroom/status/${REC}`))).toEqual({ state: "unavailable" });
+      expect((await get(env, `/d/${REC}`)).status).toBe(404);
+    }
+    // A list with no length anywhere (no durationSec, no source_duration) can be placed on
+    // no clock: EditList::checked keeps nothing of it either, and it isn't the identity.
+    expect(editsOf({ edits: { in: 0, out: 1, cuts: [] } }, REC)).toEqual({ keep: [], dur: 0, copy: null });
   });
 
   it("a record whose edit makes no sense plays as recorded", async () => {

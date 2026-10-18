@@ -779,9 +779,11 @@ function baked(id, meta) {
   return meta?.state === "live" && !!meta.media && !meta.media.hls && !!ownFile(id, meta, "mp4");
 }
 
-/** The live faces play: the stream, or a baked recording's one file. @param {string} id @param {any} meta */
+/** The live faces play: the stream, or a baked recording's one file — unless its edit
+ * leaves nothing to play (N63), which no face plays as recorded: it reads as a video that
+ * can't play right now. @param {string} id @param {any} meta */
 function playable(id, meta) {
-  return meta?.state === "live" && (!!meta.media?.hls || baked(id, meta));
+  return meta?.state === "live" && (!!meta.media?.hls || baked(id, meta)) && editsOf(meta, id)?.keep.length !== 0;
 }
 
 /** What `/m/<id>/` serves when it isn't everything (Copy thumbnail's pictures besides, a
@@ -832,9 +834,11 @@ const EDIT_FILE = /^edit-\d{1,9}(\.mp4|-poster\.jpg|-teaser\.mp4)$/;
  * record's own `durationSec` — the list's `source_duration` only when the record has none.
  * A value that isn't a number reads as one that isn't finite does there. Every applied cut
  * counts, wherever it sits in the list; at most `EDIT_KEEP_MAX` ranges are handed out, the
- * first ones, so the page never plays a moment the copy leaves out. Null when there's
- * no edit, it leaves everything in, or nothing would play. Nothing else in `edits` leaves
- * the Worker: never the transcript text a voice cut carries (`removed`, `resumes`, `why`).
+ * first ones, so the page never plays a moment the copy leaves out. Null when there's no
+ * edit or it leaves everything in; an edit that leaves nothing to play is still one, with
+ * no ranges (`keep` empty, no copy), and the video doesn't play (`playable`). Nothing else
+ * in `edits` leaves the Worker: never the transcript text a voice cut carries (`removed`,
+ * `resumes`, `why`).
  * Read once per record read (a page asks for it a dozen times): the answer is shared, and
  * never changed by its readers.
  * @param {any} meta @param {string} [id] the recording's id, for the copy's address
@@ -887,7 +891,10 @@ function readEdit(meta, e, id) {
     at = Math.max(at, t);
   }
   if (at < b && keep.length < EDIT_KEEP_MAX) keep.push([at, b]);
-  if (!keep.length || (keep.length === 1 && keep[0][0] <= 0 && keep[0][1] >= d)) return null;
+  // Nothing plays — the cuts cover the trim, or there's no length to place it on — is an
+  // edit, never the recording as it was: as for `EditList::is_identity`, which it isn't.
+  if (!keep.length) return { keep, dur: 0, copy: null };
+  if (keep.length === 1 && keep[0][0] <= 0 && keep[0][1] >= d) return null;
   const dur = keep.reduce((n, [s, t]) => n + (t - s), 0);
   const rev = Number.isInteger(e.rev) ? e.rev : 0;
   const c = e.copy;

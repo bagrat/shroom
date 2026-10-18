@@ -778,9 +778,10 @@ playback ends rather than play a cut. Over `video.mp4` and the stream alike the
 player starts at the trim's in, skips each cut — every frame while playing, and on
 `timeupdate` and `seeking` — and stops at the out, its time, seek bar and keys in edited
 time; the page, the unfurl's `og:video:duration`, the status and Copy thumbnail show the
-edited length; Download waits for the copy. Once the edit's permanent copy is current the
-page and the embed play it as it is, with its own poster and teaser, and `/d/` hands it
-over. Then (step 3) `/m/` serves only the copy's files, `poster.jpg` and `thumb-*`: the
+edited length; Download waits for the copy. An edit that leaves nothing to play is still an
+edit: every face shows *unavailable*, never the recording as it was. Once the edit's
+permanent copy is current the page and the embed play it as it is, with its own poster and
+teaser, and `/d/` hands it over. Then (step 3) `/m/` serves only the copy's files, `poster.jpg` and `thumb-*`: the
 original's stream, teaser and `video.mp4` answer 404, and a player still on the original
 moves over to the copy at the same edited moment when they do. Until the copy lands the
 original stays reachable at its addresses, so the edit holds only for what the page plays.
