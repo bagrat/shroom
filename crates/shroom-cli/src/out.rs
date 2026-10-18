@@ -26,6 +26,9 @@ pub enum Fail {
     AppUnreachable(String),
     /// A recording is open: shroom stays quiet until it ends (law 4) (exit 9).
     TakeOpen(String),
+    /// A batch did some of its items and not others (exit 11): `results` says which, item
+    /// by item, so a re-run can finish the rest.
+    Partial { message: String, results: Value },
     /// The person hasn't let a coding agent record: Settings → General's switch is off,
     /// as it is by default (exit 10).
     RecordingOff(String),
@@ -46,6 +49,7 @@ impl Fail {
             Fail::AppUnreachable(_) => "app_unreachable",
             Fail::TakeOpen(_) => "take_open",
             Fail::RecordingOff(_) => "recording_off",
+            Fail::Partial { .. } => "partial",
             Fail::Other(_) => "failed",
         }
     }
@@ -62,6 +66,7 @@ impl Fail {
             Fail::AppUnreachable(_) => 8,
             Fail::TakeOpen(_) => 9,
             Fail::RecordingOff(_) => 10,
+            Fail::Partial { .. } => 11,
         }
     }
 
@@ -76,7 +81,7 @@ impl Fail {
             | Fail::TakeOpen(m)
             | Fail::RecordingOff(m)
             | Fail::Other(m) => m,
-            Fail::Ambiguous { message, .. } | Fail::NeedsConfirmation { message, .. } => message,
+            Fail::Ambiguous { message, .. } | Fail::NeedsConfirmation { message, .. } | Fail::Partial { message, .. } => message,
         }
     }
 
@@ -85,6 +90,13 @@ impl Fail {
         match self {
             Fail::Ambiguous { matches, .. } => v["matches"] = Value::Array(matches.clone()),
             Fail::NeedsConfirmation { what, would, .. } => v[*what] = Value::Array(would.clone()),
+            Fail::Partial { results, .. } => {
+                if let (Some(o), Some(r)) = (v.as_object_mut(), results.as_object()) {
+                    for (k, x) in r {
+                        o.insert(k.clone(), x.clone());
+                    }
+                }
+            }
             _ => {}
         }
         v
@@ -92,6 +104,7 @@ impl Fail {
 }
 
 /// A command's success: the object an agent reads, and the lines a person reads.
+#[derive(Debug)]
 pub struct Done {
     pub json: Value,
     pub text: String,
@@ -140,6 +153,7 @@ mod tests {
             Fail::AppUnreachable(String::new()),
             Fail::TakeOpen(String::new()),
             Fail::RecordingOff(String::new()),
+            Fail::Partial { message: String::new(), results: Value::Null },
             Fail::Other(String::new()),
         ];
         let exits: std::collections::BTreeSet<i32> = all.iter().map(Fail::exit).collect();

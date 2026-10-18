@@ -8,6 +8,7 @@
 //! code (`--json`) when it won't.
 
 mod app;
+mod batch;
 mod home;
 mod out;
 mod space;
@@ -34,8 +35,16 @@ shroom — your shroom videos from the command line.
   shroom members                      who is in your space (the owner's Macs)
   shroom invite <name>                a link that lets one person join (7 days, once)
   shroom invite cancel <invite-id>    that link stops working
-  shroom members remove <member-id> --yes
+  shroom members remove <member-id>... --yes
                                       they leave the space; their videos stay
+
+Many at once (each item its own result; safe to run again; --dry-run first)
+  shroom invite --batch \"Ann Lee\" \"Sam Ng\" ...    a link for each person (at most 20)
+  shroom delete <id>... --yes                     several videos, one confirmation
+  shroom rename --batch \"<id>=<new title>\" ...    several titles
+  shroom links <video>...                         the links of several videos
+  shroom list --mine --since 7d                   what you made this week
+  --from <file>   the items from a file instead: a JSON array, or one per line
   shroom record start|pause|resume|stop
                                       asks the shroom app (opens it if needed)
   shroom status                       is shroom running, recording, set up?
@@ -49,13 +58,14 @@ Options
                   {\"ok\":false,\"error\":\"<code>\",\"message\":\"…\"}
   --limit N       at most N rows          --search TEXT  titles containing TEXT
   --mine          only videos you made    --older-than DAYS (cleanup, default 90)
+  --since 7d|DATE only videos since then  --renew  a new link for someone already invited
   --dry-run       say what a delete would remove, remove nothing
   --yes           confirm a delete        --no-launch   don't open the app to record
 
 Exit codes
   0 ok · 1 failed · 2 usage · 3 not set up · 4 not found or ambiguous · 5 offline
   6 refused · 7 needs --yes · 8 the app is needed and didn't answer · 9 recording now
-  10 recording from here is off (Settings → General)
+  10 recording from here is off (Settings → General) · 11 a batch partly went through
 ";
 
 /// The command line, parsed: the verb, its words, and the options.
@@ -72,6 +82,14 @@ struct Args {
     older_than: Option<u64>,
     home: Option<String>,
     space_base: Option<String>,
+    /// Each argument is one item (`batch.rs`).
+    batch: bool,
+    /// The items from a file (`-`: stdin).
+    from: Option<String>,
+    /// Batch invites: a name already invited gets a new link (its old one stops working).
+    renew: bool,
+    /// `list`: only videos made since this many days ago, or this date (YYYY-MM-DD).
+    since: Option<String>,
 }
 
 fn parse(argv: Vec<String>) -> Result<Args, Fail> {
@@ -87,6 +105,10 @@ fn parse(argv: Vec<String>) -> Result<Args, Fail> {
             "--no-launch" => a.no_launch = true,
             "--limit" => a.limit = Some(value("--limit")?.parse().map_err(|_| Fail::Usage("--limit takes a number.".into()))?),
             "--search" => a.search = Some(value("--search")?),
+            "--batch" => a.batch = true,
+            "--from" => a.from = Some(value("--from")?),
+            "--renew" => a.renew = true,
+            "--since" => a.since = Some(value("--since")?),
             "--older-than" => {
                 let v = value("--older-than")?;
                 a.older_than = Some(v.trim_end_matches('d').parse().map_err(|_| Fail::Usage("--older-than takes a number of days.".into()))?)
@@ -136,11 +158,13 @@ fn run(a: &Args) -> Result<Done, Fail> {
         "status" => status(a),
         "list" | "ls" => list(a),
         "info" | "show" => one(a, rest, |v, _| Ok(Done::new(json!({"video": v.json()}), info_text(v)))),
+        "link" | "links" if a.batch || a.from.is_some() || verb == "links" => links(a, rest),
         "link" => one(a, rest, |v, _| Ok(Done::new(json!({"id": v.row.id, "link": v.link}), v.link.clone()))),
         "open" => one(a, rest, |v, _| {
             open_url(&v.link)?;
             Ok(Done::new(json!({"id": v.row.id, "link": v.link, "opened": true}), format!("Opened {}", v.link)))
         }),
+        "rename" if a.batch || a.from.is_some() => rename_batch(a, rest),
         "rename" => rename(a, rest),
         "delete" | "rm" => delete(a, rest),
         "cleanup-candidates" | "cleanup" => cleanup(a),
@@ -151,6 +175,7 @@ fn run(a: &Args) -> Result<Done, Fail> {
         },
         "invite" => match rest.first().map(String::as_str) {
             Some("cancel") => cancel_invite(a, &rest[1..]),
+            _ if a.batch || a.from.is_some() => invite_batch(a, rest),
             _ => invite(a, rest),
         },
         "record" => record(a, rest),
@@ -223,7 +248,23 @@ fn videos(a: &Args) -> Result<(Home, Door, Vec<Video>), Fail> {
     if let Some(s) = &a.search {
         v.retain(|x| titled(&x.row.title, s));
     }
+    if let Some(since) = &a.since {
+        let from = since_ms(since)?;
+        v.retain(|x| shroom_upload::library::iso_ms(&x.row.created_at).is_some_and(|ms| ms >= from));
+    }
     Ok((h, d, v))
+}
+
+/// `--since 7d` (that many days back from now) or `--since 2026-10-01` (that day, UTC), as
+/// Unix milliseconds.
+fn since_ms(since: &str) -> Result<i64, Fail> {
+    let bad = || Fail::Usage("--since takes days (7d) or a date (2026-10-01).".into());
+    if let Some(days) = since.strip_suffix('d') {
+        let n: i64 = days.parse().map_err(|_| bad())?;
+        let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as i64).unwrap_or(0);
+        return Ok(now - n * 86_400_000);
+    }
+    shroom_upload::library::iso_ms(&format!("{since}T00:00:00Z")).ok_or_else(bad)
 }
 
 fn list(a: &Args) -> Result<Done, Fail> {
@@ -235,7 +276,7 @@ fn list(a: &Args) -> Result<Done, Fail> {
     let scope = if d.identity.role == shroom_core::world::Role::Member { "mine" } else { "everyone" };
     let mut text = String::new();
     if v.is_empty() {
-        text.push_str(if a.search.is_some() || a.mine { "No videos match." } else { "No videos yet." });
+        text.push_str(if a.search.is_some() || a.mine || a.since.is_some() { "No videos match." } else { "No videos yet." });
     } else {
         text.push_str(&format!("{}  {}  {}  TITLE\n", col("ID", 16), col("DATE", 10), col("LENGTH", 7)));
         for x in &v {
@@ -312,43 +353,155 @@ fn rename(a: &Args, rest: &[String]) -> Result<Done, Fail> {
     Ok(Done::new(json!({"id": hit.row.id, "title": saved, "link": hit.link}), format!("Renamed to “{saved}”.")))
 }
 
+/// Several titles at once: `--batch "<id>=<title>" …`, or `--from` a JSON array of
+/// `{"id", "title"}` (or lines `<id>=<title>`). By id or link only, as a delete is. A
+/// video that already has its new title is `unchanged`.
+fn rename_batch(a: &Args, rest: &[String]) -> Result<Done, Fail> {
+    let items = batch::items(rest, a.from.as_deref())?;
+    let mut pairs: Vec<(String, String)> = Vec::new();
+    for i in &items {
+        let pair = match i {
+            batch::Item::Obj(_) => i.field("id").zip(i.field("title")),
+            batch::Item::Text(t) => t.split_once('=').map(|(x, y)| (x.trim().to_string(), y.trim().to_string())),
+        };
+        match pair {
+            Some((id, title)) if !id.is_empty() && !title.is_empty() => pairs.push((id, title)),
+            _ => return Err(Fail::Usage("Each rename is <id>=<new title> (or {\"id\", \"title\"}).".into())),
+        }
+    }
+    let (h, d, v) = videos(a)?;
+    if !a.dry_run {
+        quiet(&h)?;
+    }
+    let mut outcomes = Vec::new();
+    for (w, title) in &pairs {
+        let title = title.split_whitespace().collect::<Vec<_>>().join(" ");
+        let hit = match find(v.clone(), w, &d.identity.host, false) {
+            Ok(h) => h,
+            Err(f) => {
+                outcomes.push(batch::Outcome::failed(json!({"id": w, "title": title}), &f, format!("  {w} — {}", f.message())));
+                continue;
+            }
+        };
+        let base = json!({"id": hit.row.id, "was": hit.row.title, "title": title, "link": hit.link});
+        if hit.row.title == title {
+            let mut j = base;
+            j["status"] = "unchanged".into();
+            outcomes.push(batch::Outcome::ok(j, format!("  “{title}” — already so")));
+        } else if a.dry_run {
+            let mut j = base;
+            j["status"] = "would_rename".into();
+            outcomes.push(batch::Outcome::ok(j, format!("  “{}” → “{title}”", hit.row.title)));
+        } else {
+            match d.rename(&hit.row.id, &title) {
+                Ok(saved) => {
+                    let mut j = base;
+                    j["title"] = saved.clone().into();
+                    j["status"] = "renamed".into();
+                    outcomes.push(batch::Outcome::ok(j, format!("  “{}” → “{saved}”", hit.row.title)));
+                }
+                Err(f) => outcomes.push(batch::Outcome::failed(base, &f, format!("  “{}” — {}", hit.row.title, f.message()))),
+            }
+        }
+    }
+    let head = if a.dry_run { "Would rename (nothing was changed):" } else { "Renamed:" };
+    let mut done = batch::finish("results", outcomes, head.into(), "")?;
+    if a.dry_run {
+        done.json["dry_run"] = true.into();
+    }
+    Ok(done)
+}
+
+/// The links of several videos, each named as one argument (an id, a link, or its title
+/// words) — for a digest or a message. A name that matches none, or several, says so and
+/// the rest still come back.
+fn links(a: &Args, rest: &[String]) -> Result<Done, Fail> {
+    let words: Vec<String> = batch::items(rest, a.from.as_deref())?.iter().filter_map(|i| i.field("id").or_else(|| i.field("title"))).collect();
+    let (_, d, v) = videos(a)?;
+    let mut outcomes = Vec::new();
+    for w in &words {
+        match find(v.clone(), w, &d.identity.host, true) {
+            Ok(hit) => {
+                let mut j = hit.json();
+                j["asked"] = w.clone().into();
+                j["status"] = "found".into();
+                outcomes.push(batch::Outcome::ok(j, format!("  {}  {}", hit.row.title, hit.link)));
+            }
+            Err(f) => {
+                let mut j = json!({"asked": w});
+                if let Fail::Ambiguous { matches, .. } = &f {
+                    j["matches"] = Value::Array(matches.clone());
+                }
+                outcomes.push(batch::Outcome::failed(j, &f, format!("  {w} — {}", f.message())));
+            }
+        }
+    }
+    batch::finish("links", outcomes, "Links:".into(), "")
+}
+
 fn delete(a: &Args, rest: &[String]) -> Result<Done, Fail> {
-    if rest.is_empty() {
+    let words: Vec<String> = match &a.from {
+        Some(_) => batch::items(rest, a.from.as_deref())?.iter().filter_map(|i| i.field("id")).collect(),
+        None => rest.to_vec(),
+    };
+    if words.is_empty() {
         return Err(Fail::Usage("shroom delete <id-or-link>... --yes".into()));
     }
     let (h, d, v) = videos(a)?;
+    // Each word: a video of this space (by id or link — never title words), or one that
+    // isn't there, which a re-run after a delete will meet: reported, never fatal.
     let mut targets: Vec<Video> = Vec::new();
-    for w in rest {
-        let hit = find(v.clone(), w, &d.identity.host, false)?;
-        if !targets.iter().any(|t| t.row.id == hit.row.id) {
-            targets.push(hit);
+    let mut missing: Vec<String> = Vec::new();
+    for w in &words {
+        match find(v.clone(), w, &d.identity.host, false) {
+            Ok(hit) if !targets.iter().any(|t| t.row.id == hit.row.id) => targets.push(hit),
+            Ok(_) => {}
+            Err(f) if f.code() == "not_found" => missing.push(id_of(w, &d.identity.host).unwrap_or_else(|| w.clone())),
+            Err(f) => return Err(f),
         }
     }
     let would: Vec<Value> = targets.iter().map(Video::json).collect();
     let names = targets.iter().map(|t| format!("  {}  {}", t.row.id, t.row.title)).collect::<Vec<_>>().join("\n");
+    let gone_note = if missing.is_empty() { String::new() } else { format!("\nNot in your space (already gone?): {}", missing.join(", ")) };
     if a.dry_run {
-        return Ok(Done::new(json!({"dry_run": true, "would_delete": would}), format!("Would delete, for good:\n{names}")));
+        return Ok(Done::new(json!({"dry_run": true, "would_delete": would, "not_found": missing}), format!("Would delete, for good:\n{names}{gone_note}")));
+    }
+    if targets.is_empty() {
+        let outcomes = missing.iter().map(|id| batch::Outcome::ok(json!({"id": id, "status": "not_found"}), format!("  not found  {id}"))).collect();
+        let mut done = batch::finish("results", outcomes, "Nothing to delete: none of these is in your space (already gone?).".into(), "")?;
+        done.json["deleted"] = json!([]);
+        return Ok(done);
     }
     if !a.yes {
         return Err(Fail::NeedsConfirmation {
-            message: format!("This deletes for good — its link will say it was removed:\n{names}\nRun it again with --yes once that's what you want."),
+            message: format!("This deletes for good — each link will say it was removed:\n{names}{gone_note}\nRun it again with --yes once that's what you want."),
             what: "would_delete",
             would,
         });
     }
     quiet(&h)?;
+    // Every one is tried; the ones done stay done, and a failed one doesn't stop the rest.
+    let mut outcomes = Vec::new();
     let mut deleted = Vec::new();
     for t in &targets {
-        if let Err(f) = d.delete(&t.row.id) {
-            // The ones done stay done; say which.
-            return Err(match deleted.is_empty() {
-                true => f,
-                false => Fail::Other(format!("Deleted {} of {}, then: {}", deleted.len(), targets.len(), f.message())),
-            });
+        let item = json!({"id": t.row.id, "title": t.row.title});
+        match d.delete(&t.row.id) {
+            Ok(()) => {
+                deleted.push(t.row.id.clone());
+                let mut j = item;
+                j["status"] = "deleted".into();
+                outcomes.push(batch::Outcome::ok(j, format!("  deleted  {}  {}", t.row.id, t.row.title)));
+            }
+            Err(f) => outcomes.push(batch::Outcome::failed(item, &f, format!("  failed   {}  {} — {}", t.row.id, t.row.title, f.message()))),
         }
-        deleted.push(t.row.id.clone());
     }
-    Ok(Done::new(json!({"deleted": deleted}), format!("Deleted {} video{}.", deleted.len(), if deleted.len() == 1 { "" } else { "s" })))
+    for id in &missing {
+        outcomes.push(batch::Outcome::ok(json!({"id": id, "status": "not_found"}), format!("  not found  {id}")));
+    }
+    let n = deleted.len();
+    let mut done = batch::finish("results", outcomes, format!("Deleted {n} video{}.", if n == 1 { "" } else { "s" }), "")?;
+    done.json["deleted"] = json!(deleted);
+    Ok(done)
 }
 
 /// What says a video may be worth deleting. Today only its age; when the space counts
@@ -436,28 +589,162 @@ fn cancel_invite(a: &Args, rest: &[String]) -> Result<Done, Fail> {
     Ok(Done::new(json!({"cancelled": id}), "Cancelled: that invite link no longer works."))
 }
 
-/// Removes a member: like a delete, it asks first (`--yes`), and names them by id only.
+/// Removes members: like a delete, it asks first (`--yes`), and names them by id only. Each
+/// is tried; one already gone is reported as such.
 fn remove_member(a: &Args, rest: &[String]) -> Result<Done, Fail> {
-    let [id] = rest else { return Err(Fail::Usage("shroom members remove <member-id> --yes (see shroom members)".into())) };
+    let ids: Vec<String> = match &a.from {
+        Some(_) => batch::items(rest, a.from.as_deref())?.iter().filter_map(|i| i.field("id")).collect(),
+        None => rest.to_vec(),
+    };
+    if ids.is_empty() {
+        return Err(Fail::Usage("shroom members remove <member-id>... --yes (see shroom members)".into()));
+    }
     let (h, d) = door(a)?;
     let m = d.members()?;
-    let Some(who) = m.members.iter().find(|x| &x.id == id) else {
-        return Err(Fail::NotFound(format!("No member {id} in your space (see shroom members).")));
-    };
-    let would = json!({"id": who.id, "name": who.label});
+    let mut who = Vec::new();
+    let mut missing = Vec::new();
+    for id in &ids {
+        match m.members.iter().find(|x| &x.id == id) {
+            Some(x) if !who.iter().any(|w: &&shroom_cloud::member::MemberRow| w.id == x.id) => who.push(x),
+            Some(_) => {}
+            None => missing.push(id.clone()),
+        }
+    }
+    let would: Vec<Value> = who.iter().map(|x| json!({"id": x.id, "name": x.label})).collect();
+    let names = who.iter().map(|x| format!("  {}  {}", x.id, x.label)).collect::<Vec<_>>().join("\n");
+    let gone_note = if missing.is_empty() { String::new() } else { format!("\nNot in your space (already removed?): {}", missing.join(", ")) };
     if a.dry_run {
-        return Ok(Done::new(json!({"dry_run": true, "would_remove": would}), format!("Would remove {} from the space.", who.label)));
+        return Ok(Done::new(json!({"dry_run": true, "would_remove": would, "not_found": missing}), format!("Would remove from the space:\n{names}{gone_note}")));
+    }
+    if who.is_empty() {
+        return Err(Fail::NotFound(format!("No such member in your space (see shroom members).{gone_note}")));
     }
     if !a.yes {
         return Err(Fail::NeedsConfirmation {
-            message: format!("This removes {} from the space: their Macs stop recording into it. Their videos stay.\nRun it again with --yes once that's what you want.", who.label),
+            message: format!("This removes them from the space: their Macs stop recording into it. Their videos stay.\n{names}{gone_note}\nRun it again with --yes once that's what you want."),
             what: "would_remove",
-            would: vec![would],
+            would,
         });
     }
     quiet(&h)?;
-    d.remove_member(id)?;
-    Ok(Done::new(json!({"removed": id}), format!("{} is no longer in the space.", who.label)))
+    let mut outcomes = Vec::new();
+    for x in &who {
+        let item = json!({"id": x.id, "name": x.label});
+        match d.remove_member(&x.id) {
+            Ok(()) => {
+                let mut j = item;
+                j["status"] = "removed".into();
+                outcomes.push(batch::Outcome::ok(j, format!("  removed  {}", x.label)));
+            }
+            Err(f) => outcomes.push(batch::Outcome::failed(item, &f, format!("  failed   {} — {}", x.label, f.message()))),
+        }
+    }
+    for id in &missing {
+        outcomes.push(batch::Outcome::ok(json!({"id": id, "status": "not_found"}), format!("  not found  {id}")));
+    }
+    let mut done = batch::finish("results", outcomes, "No longer in the space:".into(), "")?;
+    if let [one] = who.as_slice() {
+        done.json["removed"] = json!(one.id);
+    }
+    Ok(done)
+}
+
+/// Invites for many people in one call (Bagrat, 2026-10-18: a team lead's agent invites the
+/// team, then mails each link itself). Each name gets its own link — shroom sends nothing.
+/// Safe to run again: a name already in the space is `already_member`, one already invited
+/// and waiting is `already_invited` (its link can't be shown again: only its hash is kept;
+/// `--renew` makes it a new one, and the old one stops working).
+fn invite_batch(a: &Args, rest: &[String]) -> Result<Done, Fail> {
+    let items = batch::items(rest, a.from.as_deref())?;
+    let mut names: Vec<String> = Vec::new();
+    for i in &items {
+        let Some(n) = i.field("name").map(|n| n.split_whitespace().collect::<Vec<_>>().join(" ")) else {
+            return Err(Fail::Usage("Each person is a name (or {\"name\": …}).".into()));
+        };
+        if n.is_empty() || n.chars().count() > 64 {
+            return Err(Fail::Usage(format!("“{n}” isn't a name shroom can keep: 1 to 64 characters.")));
+        }
+        if !names.iter().any(|x| x.to_lowercase() == n.to_lowercase()) {
+            names.push(n);
+        }
+    }
+    if names.len() > batch::MAX_INVITES {
+        return Err(Fail::Usage(format!("At most {} invites wait at once in a space; this asks for {}. Send the first {} now.", batch::MAX_INVITES, names.len(), batch::MAX_INVITES)));
+    }
+    let (h, d) = door(a)?;
+    let m = d.members()?;
+    let key = |s: &str| s.to_lowercase();
+    let member = |n: &str| m.members.iter().find(|x| key(&x.label) == key(n));
+    let waiting = |n: &str| m.invites.iter().find(|i| !i.expired && i.kind == "member" && i.label.as_deref().map(key) == Some(key(n)));
+    if !a.dry_run {
+        quiet(&h)?;
+    }
+    let mut outcomes = Vec::new();
+    for n in &names {
+        let base = json!({"name": n});
+        if let Some(x) = member(n) {
+            let mut j = base;
+            j["status"] = "already_member".into();
+            j["member_id"] = x.id.clone().into();
+            outcomes.push(batch::Outcome::ok(j, format!("  {n} — already in the space")));
+            continue;
+        }
+        if let Some(i) = waiting(n) {
+            if !a.renew {
+                let mut j = base;
+                j["status"] = "already_invited".into();
+                j["invite_id"] = i.id.clone().into();
+                j["expires_at"] = i.expires_at.clone().into();
+                outcomes.push(batch::Outcome::ok(j, format!("  {n} — already invited, waiting (--renew for a new link)")));
+                continue;
+            }
+            if a.dry_run {
+                let mut j = base;
+                j["status"] = "would_renew".into();
+                outcomes.push(batch::Outcome::ok(j, format!("  {n} — would get a new link")));
+                continue;
+            }
+            match d.renew(&i.id) {
+                Ok((row, link)) => {
+                    let mut j = base;
+                    j["status"] = "renewed".into();
+                    j["invite_id"] = row.id.into();
+                    j["link"] = link.clone().into();
+                    j["expires_at"] = row.expires_at.into();
+                    outcomes.push(batch::Outcome::ok(j, format!("  {n}  {link}")));
+                }
+                Err(f) => outcomes.push(batch::Outcome::failed(base, &f, format!("  {n} — {}", f.message()))),
+            }
+            continue;
+        }
+        if a.dry_run {
+            let mut j = base;
+            j["status"] = "would_invite".into();
+            outcomes.push(batch::Outcome::ok(j, format!("  {n} — would get a link")));
+            continue;
+        }
+        match d.invite(n) {
+            Ok((row, link)) => {
+                let mut j = base;
+                j["status"] = "invited".into();
+                j["invite_id"] = row.id.into();
+                j["link"] = link.clone().into();
+                j["expires_at"] = row.expires_at.into();
+                outcomes.push(batch::Outcome::ok(j, format!("  {n}  {link}")));
+            }
+            Err(f) => outcomes.push(batch::Outcome::failed(base, &f, format!("  {n} — {}", f.message()))),
+        }
+    }
+    let (head, tail) = if a.dry_run {
+        ("Would invite (nothing was made):".to_string(), "")
+    } else {
+        ("Invites, each for one person, good for 7 days:".to_string(), "Send each link to its person yourself; each works once.")
+    };
+    let mut done = batch::finish("invites", outcomes, head, tail)?;
+    if a.dry_run {
+        done.json["dry_run"] = true.into();
+    }
+    Ok(done)
 }
 
 fn record(a: &Args, rest: &[String]) -> Result<Done, Fail> {

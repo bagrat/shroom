@@ -165,6 +165,14 @@ impl Door {
         Ok((row, format!("https://{}/join/{code}", self.identity.host)))
     }
 
+    /// A new link for a pending invite (§4.12, renew): the same invite, a new code — the
+    /// old link stops working.
+    pub fn renew(&self, id: &str) -> Result<(shroom_cloud::member::InviteRow, String), Fail> {
+        let code = shroom_cloud::device::new_join_code();
+        let row = answer(self.page.renew(&self.key, id, &shroom_cloud::device::hash(&code)))?;
+        Ok((row, format!("https://{}/join/{code}", self.identity.host)))
+    }
+
     /// Cancels a pending invite (§4.13): its link stops working.
     pub fn cancel_invite(&self, id: &str) -> Result<(), Fail> {
         answer(self.page.cancel_invite(&self.key, id))

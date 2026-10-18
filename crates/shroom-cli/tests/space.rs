@@ -136,3 +136,100 @@ fn a_mac_that_isnt_set_up_says_so() {
     let (code, v) = shroom(dir.path(), "http://127.0.0.1:9", &["list"]);
     assert_eq!((code, v["error"].as_str()), (3, Some("not_set_up")));
 }
+
+#[test]
+fn a_team_lead_invites_a_list_in_one_call_and_a_rerun_is_safe() {
+    let Some((_serve, base)) = serve() else {
+        eprintln!("skipped: node or worker/dev/serve.mjs isn't available");
+        return;
+    };
+    let dir = tempfile::tempdir().unwrap();
+    let home = dir.path().join("home");
+    demo::seed(&base, &home);
+
+    // A dry run makes nothing.
+    let (code, v) = shroom(&home, &base, &["invite", "--batch", "Sam Lee", "Ana Ruiz", "Mher", "sam lee", "--dry-run"]);
+    assert_eq!(code, 0, "{v}");
+    let st: Vec<&str> = v["invites"].as_array().unwrap().iter().map(|x| x["status"].as_str().unwrap()).collect();
+    assert_eq!(st, ["would_invite", "would_invite", "already_member"], "a name given twice is asked once");
+    assert!(shroom(&home, &base, &["members"]).1["invites"].as_array().unwrap().is_empty());
+
+    // One call: a link for each new person, in the order given.
+    let (code, v) = shroom(&home, &base, &["invite", "--batch", "Sam Lee", "Ana Ruiz", "Mher"]);
+    assert_eq!(code, 0, "{v}");
+    let inv = v["invites"].as_array().unwrap();
+    assert_eq!((inv[0]["name"].as_str(), inv[0]["status"].as_str()), (Some("Sam Lee"), Some("invited")));
+    assert_eq!(inv[1]["status"], "invited");
+    assert_eq!(inv[2]["status"], "already_member");
+    let (l0, l1) = (inv[0]["link"].as_str().unwrap().to_string(), inv[1]["link"].as_str().unwrap().to_string());
+    assert!(l0.contains("/join/") && l0 != l1, "each person their own link");
+    assert_eq!(v["counts"]["invited"], 2);
+
+    // Again: nothing is made twice; the links already given can't be shown again.
+    let (code, v) = shroom(&home, &base, &["invite", "--batch", "Sam Lee", "Ana Ruiz"]);
+    assert_eq!(code, 0);
+    assert!(v["invites"].as_array().unwrap().iter().all(|x| x["status"] == "already_invited" && x.get("link").is_none()));
+    assert_eq!(shroom(&home, &base, &["members"]).1["invites"].as_array().unwrap().len(), 2);
+
+    // --renew: a new link for one already invited; the old one stops working.
+    let (code, v) = shroom(&home, &base, &["invite", "--batch", "Sam Lee", "--renew"]);
+    assert_eq!((code, v["invites"][0]["status"].as_str()), (0, Some("renewed")));
+    let fresh = v["invites"][0]["link"].as_str().unwrap();
+    assert_ne!(fresh, l0);
+    let old = l0.rsplit('/').next().unwrap();
+    let new = fresh.rsplit('/').next().unwrap();
+    let page = |code: &str| ureq::get(&format!("{base}/{}/join/{code}", demo::HOST)).call().unwrap().body_mut().read_to_string().unwrap();
+    assert_ne!(page(old), page(new), "the old link no longer opens the invite");
+
+    // Too many at once is refused before anything is made.
+    let many: Vec<String> = (0..21).map(|i| format!("Person {i}")).collect();
+    let mut args: Vec<&str> = vec!["invite", "--batch"];
+    args.extend(many.iter().map(String::as_str));
+    assert_eq!(shroom(&home, &base, &args).1["error"], "usage");
+}
+
+#[test]
+fn many_videos_at_once_each_with_its_own_result() {
+    let Some((_serve, base)) = serve() else {
+        eprintln!("skipped: node or worker/dev/serve.mjs isn't available");
+        return;
+    };
+    let dir = tempfile::tempdir().unwrap();
+    let home = dir.path().join("home");
+    demo::seed(&base, &home);
+
+    // Renames: several, one already so, dry run first.
+    let ren = ["rename", "--batch", "St4ndupN0t3sJn05=Standup — June 5", "Fr1st3v3rT3st000=First test", "Q3rNdPl4nW1kThr0=Q3 roadmap walkthrough"];
+    let (code, v) = shroom(&home, &base, &[&ren[..], &["--dry-run"]].concat());
+    assert_eq!(code, 0, "{v}");
+    let st: Vec<&str> = v["results"].as_array().unwrap().iter().map(|x| x["status"].as_str().unwrap()).collect();
+    assert_eq!(st, ["would_rename", "would_rename", "unchanged"]);
+    let (code, v) = shroom(&home, &base, &ren);
+    assert_eq!((code, v["counts"]["renamed"].as_u64()), (0, Some(2)), "{v}");
+    assert_eq!(shroom(&home, &base, &["info", "St4ndupN0t3sJn05"]).1["video"]["title"], "Standup — June 5");
+
+    // Links for a digest: by title words; one that matches several says so, the rest come back.
+    let (code, v) = shroom(&home, &base, &["links", "roadmap", "login loops", "o"]);
+    assert_eq!((code, v["error"].as_str()), (11, Some("partial")), "{v}");
+    assert_eq!(v["links"][0]["link"], "https://v.myshroom.workers.dev/Q3rNdPl4nW1kThr0");
+    assert_eq!(v["links"][2]["error"], "ambiguous");
+
+    // This week's: only what's new.
+    let (_, all) = shroom(&home, &base, &["list"]);
+    let (_, week) = shroom(&home, &base, &["list", "--since", "3650d"]);
+    assert_eq!(all["total"], week["total"]);
+    assert_eq!(shroom(&home, &base, &["list", "--since", "2026-09-01"]).1["total"], 3);
+
+    // Several deletes, one confirmation; an id that isn't there is reported, not fatal; a
+    // re-run finds them gone.
+    let del = ["delete", "0ldD3m0F0rAcm3Co", "Fr1st3v3rT3st000", "NoSuchVide0Here1"];
+    let (code, v) = shroom(&home, &base, &del);
+    assert_eq!((code, v["error"].as_str()), (7, Some("needs_confirmation")));
+    assert_eq!(v["would_delete"].as_array().unwrap().len(), 2);
+    let (code, v) = shroom(&home, &base, &[&del[..], &["--yes"]].concat());
+    assert_eq!(code, 0, "{v}");
+    assert_eq!(v["deleted"].as_array().unwrap().len(), 2);
+    assert_eq!(v["counts"]["not_found"], 1);
+    let (code, v) = shroom(&home, &base, &[&del[..], &["--yes"]].concat());
+    assert_eq!((code, v["counts"]["not_found"].as_u64()), (0, Some(3)), "a re-run deletes nothing twice");
+}

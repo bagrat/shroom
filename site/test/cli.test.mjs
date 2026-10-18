@@ -28,7 +28,8 @@ describe("the CLI guide", () => {
   });
 
   it("names only commands the binary has", () => {
-    const verbs = new Set([...main.matchAll(/^\s+"([a-z-]+)"(?: \| "[a-z-]+")* =>/gm)].map((m) => m[1]));
+    const arms = [...main.matchAll(/^\s+("[a-z-]+"(?: \| "[a-z-]+")*)(?: if [^\n]*)? =>/gm)].map((m) => m[1]);
+    const verbs = new Set(arms.flatMap((a) => [...a.matchAll(/"([a-z-]+)"/g)].map((m) => m[1])));
     for (const m of md.matchAll(/`shroom ([a-z][a-z-]*)/g)) assert.ok(verbs.has(m[1]), `shroom ${m[1]} isn't a command`);
     for (const m of md.matchAll(/(--[a-z][a-z-]*)/g)) assert.ok(main.includes(`"${m[1]}"`), `${m[1]} isn't an option`);
   });
@@ -50,13 +51,22 @@ describe("the CLI guide", () => {
 
   // Bagrat, 2026-10-18: the CLI may make invites; the link goes to the person, once.
   it("hands an invite link to the person, once, and never sends it on", () => {
-    assert.match(flat, /give it to the person you're helping once, say it's for them to send, and don't repeat it, post it or send it on yourself\./);
+    assert.match(flat, /give it to the person you're helping once, say it's for them to send, and don't repeat it, post it or send it on yourself — unless they asked you to send the invites, and then each link goes only to its own person\./);
   });
 
   // Bagrat, 2026-10-18: an agent records only once Settings' switch is on (off by default).
   it("records only where the person turned the switch on", () => {
     assert.match(flat, /shroom lets you record only once they've turned on “Let it start and stop recordings” in its Settings, under General/);
     assert.match(flat, /never look for another way to record\./);
+  });
+
+  // Bagrat, 2026-10-18: batch invites for a team, each person their own link, mailed by
+  // the agent's own tools; shroom sends nothing and is given names only.
+  it("invites a team in one call, after the person confirms the list, and keeps emails out of shroom", () => {
+    assert.match(flat, /show them the list of names and ask one question: "Invite these people\?"/);
+    assert.match(flat, /Pass names only — never email addresses or anything else about them; keep those yourself\./);
+    assert.match(flat, /send each person their own link, one message each, from them\. shroom sends nothing\./);
+    assert.match(flat, /Run it with `--dry-run` first whenever it changes anything\./);
   });
 
   it("asks for no secret and reads nothing of shroom's own", () => {

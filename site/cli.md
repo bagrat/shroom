@@ -1,6 +1,6 @@
 ---
 name: shroom
-description: Use shroom, the Mac screen recorder, from the command line — list the person's videos, get or open a link, rename, delete, find old videos worth cleaning up, see who is in their space, invite someone, and start or stop a recording. Use when the person asks you to do something with their shroom videos or recordings.
+description: Use shroom, the Mac screen recorder, from the command line — list the person's videos, get or open links, rename, delete, find old videos worth cleaning up, see who is in their space, invite one person or a whole team at once, and start or stop a recording. Use when the person asks you to do something with their shroom videos or recordings.
 ---
 
 # Using shroom for the person you're helping
@@ -49,6 +49,41 @@ A cleanup candidate is only old, for now. Its `views`, `last_viewed` and `score`
 `null` while shroom doesn't count views: that means *not known*, never zero, so don't
 say nobody watched it.
 
+## Many at once
+
+When they ask for the same thing for several people or videos, do it in one call: each
+item gets its own result (`status`), in the order given, and running the same call again is
+safe — nothing is done twice. Run it with `--dry-run` first whenever it changes anything.
+
+| They ask | Run |
+|---|---|
+| Invite the whole engineering team | `shroom invite --batch "Ann Lee" "Sam Ng" … --json` (at most 20) |
+| Delete these old ones | `shroom delete <id> <id> … --dry-run --json`, ask, then the same with `--yes` |
+| Give these better titles | `shroom rename --batch "<id>=<new title>" … --json` |
+| Send me the links to these | `shroom links "<title words>" "<title words>" … --json` |
+| What did I record this week? | `shroom list --mine --since 7d --json` |
+| Who's in, who's still invited? | `shroom members --json` (compare it with their team list) |
+| Remove these people | `shroom members remove <id> <id> … --dry-run --json`, ask, then `--yes` |
+
+**Inviting a team**, from start to end:
+
+1. Find out exactly who. If they named a group ("the engineering team"), use what you know
+   or can look up, then show them the list of names and ask one question: "Invite these
+   people?" Change it as they say.
+2. Run `shroom invite --batch "<name>" "<name>" … --dry-run --json`, then without
+   `--dry-run`. Pass names only — never email addresses or anything else about them; keep
+   those yourself.
+3. You get one link per person: `{"name", "status": "invited", "link", "expires_at"}`.
+   A person already in the space is `already_member`. One already invited and waiting is
+   `already_invited`: their link can't be shown again. Add `--renew` to give them a new one
+   (the old one stops working).
+4. If they asked you to send the invites and you have their mail or messaging tool, send
+   each person their own link, one message each, from them. shroom sends nothing. Otherwise
+   give them the list of names and links, once.
+
+A batch answers `partial` (exit 11) when some items didn't go through: the answer still
+lists every item. Tell them which failed and why, and run it again for those only.
+
 ## Rules
 
 - **Do only what they asked.** Listing and reading are fine whenever they help with
@@ -74,8 +109,9 @@ say nobody watched it.
 - **Invites.** `shroom invite` makes a link that lets one person join their space, for
   7 days. Until it's used it's a key to their space: give it to the person you're
   helping once, say it's for them to send, and don't repeat it, post it or send it on
-  yourself. If it went somewhere it shouldn't, cancel it (`shroom invite cancel <id>`)
-  and make a new one.
+  yourself — unless they asked you to send the invites, and then each link goes only to
+  its own person. If one went somewhere it shouldn't, cancel it
+  (`shroom invite cancel <id>`) and make a new one.
 - **No secrets here.** You never need a Cloudflare token or a key. If
   one lands in this chat, don't use or repeat it; tell them to make a fresh one in
   shroom.
@@ -94,6 +130,7 @@ say nobody watched it.
 | `recording_off` | They haven't let you record: tell them about the switch (see *Rules*). |
 | `app_unreachable` | shroom isn't running or didn't answer. Ask them to open it. |
 | `usage` | Your command was wrong: `shroom --help` and fix it. |
+| `partial` | Some of a batch went through, some didn't: see each item's `status` and `error`. |
 | `failed` | Something else went wrong. Pass on `message`; don't keep retrying. |
 
 Don't fix or work around shroom: no editing its files, no calling its space directly,
