@@ -97,6 +97,37 @@ pub fn listed(v: Value) -> Option<Meta> {
     Some(m)
 }
 
+/// What the space's AI did with a take, as the record says it, in one line for the Mac's log
+/// (N66, DECISIONS B206 f): named, the early title, let go, or waiting for the free day — its
+/// model, time, counts and codes, never a word said or a title. None for a take it hasn't touched.
+pub fn ai_note(m: &Meta) -> Option<String> {
+    let model = |n: &Value| n.get("model").and_then(Value::as_str).map(|s| s.rsplit('/').next().unwrap_or(s).to_string());
+    let num = |n: &Value, k: &str| n.get(k).and_then(Value::as_u64);
+    let text = |n: &Value, k: &str| n.get(k).and_then(Value::as_str).map(|s| s.chars().filter(|c| c.is_ascii_alphanumeric() || "-:.".contains(*c)).take(40).collect::<String>());
+    if let Some(n) = m.extra.get("named").filter(|n| n.is_object()) {
+        if n.get("failed").and_then(Value::as_bool) == Some(true) {
+            return Some(format!("let go: error {}", text(n, "code").unwrap_or_else(|| "no code".into())));
+        }
+        let ms = num(n, "ms").map(|ms| format!(" in {ms} ms")).unwrap_or_default();
+        let Some(by) = model(n) else {
+            return Some(format!("not named: {} words", num(n, "words").unwrap_or(0)));
+        };
+        if n.get("early").and_then(Value::as_bool) == Some(true) {
+            return Some(format!("early title by {by}{ms}"));
+        }
+        let chapters = n.get("chapters").and_then(Value::as_array).map_or(0, Vec::len);
+        let tokens = n.get("tokens").and_then(Value::as_array).and_then(|t| Some(format!(", {}+{} tokens", t.first()?.as_u64()?, t.get(1)?.as_u64()?))).unwrap_or_default();
+        let fallback = text(n, "fallback").map(|c| format!(" (the first model failed: {c})")).unwrap_or_default();
+        return Some(format!("named by {by}{ms}: {chapters} chapters from {} words{tokens}{fallback}", num(n, "words").unwrap_or(0)));
+    }
+    let naming = m.extra.get("naming")?;
+    (naming.get("later").and_then(Value::as_str) == Some("daily")).then(|| {
+        let since = text(naming, "at").map(|a| format!(" since {a}")).unwrap_or_default();
+        let code = text(naming, "code").map(|c| format!(" ({c})")).unwrap_or_default();
+        format!("waiting for the free day{since}{code}")
+    })
+}
+
 /// ISO-8601 UTC, seconds precision.
 pub fn now_iso() -> String {
     let secs = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);

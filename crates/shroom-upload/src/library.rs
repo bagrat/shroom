@@ -27,6 +27,9 @@ pub struct Row {
     /// member can rewrite on their records (WORKER-INTERFACE §4.10, H3).
     pub owner: Option<String>,
     pub poster: Option<String>,
+    /// What the space's AI did with it, in one line for the Mac's log (`meta::ai_note`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ai: Option<String>,
 }
 
 impl Row {
@@ -40,6 +43,7 @@ impl Row {
             // Member-writable: never trusted for ownership (§4.10).
             owner: None,
             poster: m.media.as_ref().and_then(|x| x.poster.clone()),
+            ai: crate::meta::ai_note(m),
         }
     }
 }

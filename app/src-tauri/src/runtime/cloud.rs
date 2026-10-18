@@ -386,6 +386,7 @@ fn spawn_wizard(rt: Runtime) -> Sender<(Instant, CloudCmd)> {
                 // A whole pass that found this token live over its own page: this Mac enrolls
                 // after the answer is out (§6.11's every entry).
                 let mut proved: Option<(String, String)> = None;
+                let began = Instant::now();
                 let news = match cmd {
                     CloudCmd::Validate(id) => validate(&rt, id),
                     CloudCmd::SaveToken(id, account_id) => save_token(&rt, id, &account_id),
@@ -396,16 +397,18 @@ fn spawn_wizard(rt: Runtime) -> Sender<(Instant, CloudCmd)> {
                     CloudCmd::SetAi(on) => set_ai(&rt, on),
                     CloudCmd::Reach | CloudCmd::OpenOwnerPage(_) => continue,
                 };
+                // Turning the AI on or off says how long the page took to go up again (B206 f).
+                let took = if kind == "naming" { format!(" in {} ms", began.elapsed().as_millis()) } else { String::new() };
                 match news {
                     Ok(n) => {
-                        rt.log(&format!("wizard {kind}: {}", summary(&n)));
+                        rt.log(&format!("wizard {kind}: {}{took}", summary(&n)));
                         rt.post(Event::Cloud(n));
                         if let Some((account_id, token_id)) = proved {
                             enroll_on_entry(&rt, &account_id, &token_id);
                         }
                     }
                     Err(class) => {
-                        rt.log(&format!("wizard {kind}: failed {class:?}"));
+                        rt.log(&format!("wizard {kind}: failed {class:?}{took}"));
                         rt.post(Event::Failed { op, class });
                     }
                 }
