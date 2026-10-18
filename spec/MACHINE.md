@@ -1178,7 +1178,7 @@ A same-themed custom popover under the tray (Loom-style). It is never a native m
 | `library` | side | footer icons | provisional |  |
 | `settings-general` | side | footer icons | provisional |  |
 | `send-feedback` | side | footer icons | ratified | N60 |
-| `ai-offer` | auto | config opens on the Mac that holds the setup key while the space's AI is off, no higher banner shows and the banner is due (N66) | provisional | N66 |
+| `ai-offer` | auto | config opens on the Mac that holds the setup key while the space's AI is off, no higher banner shows and the banner has never been answered on this Mac (N66) | ratified | N66 |
 
 ### `disk-low`
 
@@ -2388,8 +2388,8 @@ The Space tab: one tab with a mood per kind of Mac (inspection · repair · owne
 | “— microphone off for now” | status | provisional | Row-six fact when the mic is denied (the row stays ticked). The full row reads “✓ Letting macOS allow recording — microphone off for now” (Region 3, line 730). |
 | “Turn on the microphone” | button | provisional | Quiet. |
 | “You can do this once your recording is finished.” | line | provisional | Mid-take, both exits grey with this line (law 4). |
-| “AI for new videos” | field-label | provisional | N66. Label of the AI switch, one switch for every AI feature (voice cuts, N65, included), on the Mac that holds the setup key only (it re-wires the page). Proposed 2026-10-18 (AiSettings); awaiting Bagrat. · N66 |
-| “Titles, chapters and captions from what’s said, and your “shroom cut” slips cut — on your own Cloudflare account. Free for about 2½ hours of new video a day; more is about 4¢ an hour on Cloudflare’s $5 plan.” | line | provisional | N66. Description beside the AI switch: the one cost line, also in ai-confirm. Proposed 2026-10-18 (AiSettings); awaiting Bagrat. · N66 |
+| “AI for new videos” | field-label | ratified | N66. Label of the AI switch, one switch for every AI feature (voice cuts, N65, included), on the Mac that holds the setup key only (it re-wires the page). Bagrat approved the board AiSettings as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later. · N66 |
+| “Titles, chapters and captions from what’s said, and your “shroom cut” slips cut — on your own Cloudflare account. Free for about 2½ hours of new video a day; more is about 4¢ per video hour on Cloudflare’s $5 plan.” | line | ratified | N66. Description beside the AI switch: the one cost line, also in ai-confirm. Bagrat approved the board AiSettings as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later. · N66 |
 | “Couldn't change that just now — try again in a moment.” | line | provisional | N66. In place of the AI switch's line when a re-wiring didn't go through, until the next try or the next visit (law 12); the switch is as the page has it. · N66 |
 
 | Action | Kind | Return | Goes to | Note |
@@ -2802,31 +2802,31 @@ Send feedback (N60): a small window of its own, opened from the popover's first 
 
 ### `ai-offer`
 
-banner · banner · **provisional** · a face of `config` · board: AiBanner · cites N66
+banner · banner · **ratified** · a face of `config` · board: AiBanner · cites N66
 
-The AI offer (N66; Bagrat, 2026-10-18: off by default, but visible): a frost banner in the popover, like the update's, on the Mac that holds the setup key while the space's AI is off. It says what shroom can do — name videos, add chapters, cut slips — never what it costs: Turn on… opens the short confirm that says so. The lowest banner: a saved take, the space, recording off and an update come first. Not now hides it; it comes back once more after five more recordings on this Mac, then never, and the switch in Settings · Space stays. Members' Macs and the space's other Macs never show it, nor does a Mac once AI has been on there.
+The AI offer (N66; Bagrat, 2026-10-18: off by default, but visible): a frost banner in the popover, like the update's, on the Mac that holds the setup key while the space's AI is off. It says what shroom can do — name videos, add chapters, cut slips — never what it costs: Turn on… opens the short confirm that says so. The lowest banner: a saved take, the space, recording off and an update come first. Not now hides it for good on this Mac (Bagrat, 2026-10-18): from then on only the switch in Settings · Space turns AI on. Members' Macs and the space's other Macs never show it, nor does a Mac once AI has been on there.
 
-**Entry.** `config` opens on the Mac that holds the setup key while the space's AI is off and no higher banner shows, the banner unanswered — or Not now said once, five recordings ago.
+**Entry.** `config` opens on the Mac that holds the setup key while the space's AI is off and no higher banner shows, and the banner has never been answered on this Mac.
 
 | Said | Role | Copy | Note |
 |---|---|---|---|
-| “shroom can name your videos, add chapters and cut your slips for you.” | banner | provisional | N66. The banner's line (AiBanner). Proposed 2026-10-18; awaiting Bagrat. · N66 |
-| “Turn on…” | button | provisional | N66. Filled; a banner's own filled button is never the Return default (law 8). Opens ai-confirm. Proposed 2026-10-18; awaiting Bagrat. · N66 |
-| “Not now” | link | provisional | N66. Quiet, left of Turn on…. Proposed 2026-10-18; awaiting Bagrat. · N66 |
+| “shroom can name your videos, add chapters and cut your slips for you.” | banner | ratified | N66. The banner's line (AiBanner). Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later. · N66 |
+| “Turn on…” | button | ratified | N66. Filled; a banner's own filled button is never the Return default (law 8). Opens ai-confirm. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later. · N66 |
+| “Not now” | link | ratified | N66. Quiet, left of Turn on…. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later. · N66 |
 
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
 | Turn on… | filled-default |  | `ai-confirm` | The confirm says what it costs. |
-| Not now | text-link |  | `config` | Hidden; back once more after five more recordings on this Mac, then never. |
+| Not now | text-link |  | `config` | Hidden for good on this Mac; the switch in Settings · Space stays. |
 
 | → | Kind | Label | Status | Cites |
 |---|---|---|---|---|
-| `ai-confirm` | flow | Turn on… | provisional | N66 |
-| `config` | flow | Not now | provisional | N66 |
+| `ai-confirm` | flow | Turn on… | ratified | N66 |
+| `config` | flow | Not now | ratified | N66 |
 
 ### `ai-confirm`
 
-state · popover · **provisional** · board: AiConfirm · cites N66
+state · popover · **ratified** · board: AiConfirm · cites N66
 
 Turn on…'s short confirm (N66): the popover morphs into a question that says what turning AI on does and what it costs, once, before it costs anything. Like every question in the popover it has no Return default: Turn on is a click. Back and Esc go back to config with the banner still there.
 
@@ -2834,10 +2834,10 @@ Turn on…'s short confirm (N66): the popover morphs into a question that says w
 
 | Said | Role | Copy | Note |
 |---|---|---|---|
-| “Turn on AI for new videos?” | title | provisional | N66. Bold. Proposed 2026-10-18; awaiting Bagrat. · N66 |
-| “Titles, chapters and captions from what’s said, and your “shroom cut” slips cut — on your own Cloudflare account. Free for about 2½ hours of new video a day; more is about 4¢ an hour on Cloudflare’s $5 plan.” | line | provisional | N66. The one cost line, also under the switch in Settings · Space. Proposed 2026-10-18; awaiting Bagrat. · N66 |
-| “Back” | button | provisional | N66. Leftmost. Proposed 2026-10-18; awaiting Bagrat. · N66 |
-| “Turn on” | button | provisional | N66. Filled, rightmost; no Return default (a click, as every popover question). Proposed 2026-10-18; awaiting Bagrat. · N66 |
+| “Turn on AI for new videos?” | title | ratified | N66. Bold. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later. · N66 |
+| “Titles, chapters and captions from what’s said, and your “shroom cut” slips cut — on your own Cloudflare account. Free for about 2½ hours of new video a day; more is about 4¢ per video hour on Cloudflare’s $5 plan.” | line | ratified | N66. The one cost line, also under the switch in Settings · Space. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later. · N66 |
+| “Back” | button | ratified | N66. Leftmost. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later. · N66 |
+| “Turn on” | button | ratified | N66. Filled, rightmost; no Return default (a click, as every popover question). Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later. · N66 |
 
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
@@ -2846,12 +2846,12 @@ Turn on…'s short confirm (N66): the popover morphs into a question that says w
 
 | → | Kind | Label | Status | Cites |
 |---|---|---|---|---|
-| `ai-turning-on` | flow | Turn on | provisional | N66 |
-| `config` | flow | Back | provisional | N66 |
+| `ai-turning-on` | flow | Turn on | ratified | N66 |
+| `config` | flow | Back | ratified | N66 |
 
 ### `ai-turning-on`
 
-face · banner · **provisional** · a face of `ai-offer` · board: AiBannerStates · cites N66
+face · banner · **ratified** · a face of `ai-offer` · board: AiBannerStates · cites N66
 
 While the space's page is put up again with Cloudflare's AI (a few seconds), the banner says so and holds no buttons.
 
@@ -2859,16 +2859,16 @@ While the space's page is put up again with Cloudflare's AI (a few seconds), the
 
 | Said | Role | Copy | Note |
 |---|---|---|---|
-| “Turning on — a few seconds.” | banner | provisional | N66. Proposed 2026-10-18; awaiting Bagrat. · N66 |
+| “Turning on — a few seconds.” | banner | ratified | N66. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later. · N66 |
 
 | → | Kind | Label | Status | Cites |
 |---|---|---|---|---|
-| `ai-on` | auto | the page answers that its AI is on | provisional | N66 |
-| `ai-offer-failed` | fail | the re-wiring didn't go through (law 12) | provisional | N66 |
+| `ai-on` | auto | the page answers that its AI is on | ratified | N66 |
+| `ai-offer-failed` | fail | the re-wiring didn't go through (law 12) | ratified | N66 |
 
 ### `ai-offer-failed`
 
-face · banner · **provisional** · a face of `ai-offer` · board: AiBannerStates · cites N66, law 12
+face · banner · **ratified** · a face of `ai-offer` · board: AiBannerStates · cites N66, law 12
 
 The re-wiring didn't go through (law 12): the banner says so in place of its line, for this visit to the popover, and Turn on… is live again.
 
@@ -2876,18 +2876,18 @@ The re-wiring didn't go through (law 12): the banner says so in place of its lin
 
 | Said | Role | Copy | Note |
 |---|---|---|---|
-| “Couldn't change that just now — try again in a moment.” | banner | provisional | N66. The words of the switch's own failure line. Proposed 2026-10-18; awaiting Bagrat. · N66 |
-| “Turn on…” | button | provisional | N66. Proposed 2026-10-18; awaiting Bagrat. · N66 |
-| “Not now” | link | provisional | N66. Proposed 2026-10-18; awaiting Bagrat. · N66 |
+| “Couldn't change that just now — try again in a moment.” | banner | ratified | N66. The words of the switch's own failure line. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later. · N66 |
+| “Turn on…” | button | ratified | N66. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later. · N66 |
+| “Not now” | link | ratified | N66. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later. · N66 |
 
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
 | Turn on… | filled-default |  | `ai-confirm` |  |
-| Not now | text-link |  | `config` |  |
+| Not now | text-link |  | `config` | Hidden for good on this Mac, as ai-offer's. |
 
 ### `ai-on`
 
-face · status-line · **provisional** · a face of `config` · board: AiBannerStates · cites N66, N38
+face · status-line · **ratified** · a face of `config` · board: AiBannerStates · cites N66, N38
 
 A one-shot status-line fact once the banner's Turn on has gone through, where the update's “Updated ✓” goes: said once, then the line is behind us.
 
@@ -2895,7 +2895,7 @@ A one-shot status-line fact once the banner's Turn on has gone through, where th
 
 | Said | Role | Copy | Note |
 |---|---|---|---|
-| “AI is on for new videos ✓” | status | provisional | N66. Once only; it ranks after the upload truth (N38). Proposed 2026-10-18; awaiting Bagrat. · N66 |
+| “AI is on for new videos ✓” | status | ratified | N66. Once only; it ranks after the upload truth (N38). Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later. · N66 |
 
 #### Region 5's amendments
 
@@ -3953,7 +3953,7 @@ A move that holds for a whole group of states, written once (B133). The tests ex
 | N59 | shroom.am, redesigned: two columns, the price as one bar, install in tabs | **Bagrat approved the canvas board “shroom.am redesign — B8-box”, 2026-10-17**, after eight rounds from his ask for a page with less text that shows the demo and install without scrolling. (1) **Two columns on a laptop.** Left: the shroom mark and wordmark, large, at the top; then the headline “Record. Share. Pay-as-you-go.” on one line with its line under it; then one thin price bar, 0 to 30 hours to scale, as wide as the headline, its first tenth lit, labelled “$0 · about three hours of video” and “$1.50 /month · about thirty hours” (it replaces the two price tiles, which read as two plans); then seven terms with green ticks, in his order: “Your videos live in your own Cloudflare account”, “You pay only Cloudflare, for the storage”, “Invite your team with a link”, “No price per person — the bill counts video, not people”, “Delete old videos and pay less”, “About ten minutes of guided setup, once”, “Open source — every line on GitHub”. Spacing: brand to headline 70 px, headline's line to the bar 48, bar to terms 48. Right: one box, corners 10 px, its top level with the wordmark's baseline and its bottom with the last term's: the demo (N58), then Install. (2) **Install is one command at a time, in tabs: Terminal (chosen), Homebrew, Coding agent**, amending N52's Homebrew-first stack; under each, “Read it first” alone, and in the agent's tab “Your agent asks you before it runs anything.”; the system-requirements line under all three. (3) **No header and no trust strip.** The page's foot, under the left column at the bottom of the first screen (after the content when it runs longer), holds Send feedback · GitHub · Questions and limits · Privacy · Terms, then the visits line; “Trouble, questions” goes (it opened /feedback, as Send feedback does), and so do “Your storage, your bill” (term 2 says it) and “Built to outlive us”. The other shroom.am pages keep their header and footer. **The demo's caption, “Recorded with shroom.”, goes** (his later note, the same day), with no link to the take in its place: the video is to be replaced by a generated one; the still and play-in-place stay. (4) **On a phone** it stacks, and by his phone notes the same day the terms come before the demo and install goes last: the brand, the headline, the bar, the terms, the box (the demo, then install), the foot, its links wrapping to fit. The bar's labels are short there, “$0 / 3h video” and “$1.50 / 30h”, because the long ones wrapped; the laptop keeps the long ones. Built: DECISIONS B191. | ratified | 2026-10-17 |
 | N60 | Send feedback from the popover, in its own window, the log going along | **Bagrat asked for it, 2026-10-17**: feedback is worth most from people who have installed shroom, it is easier to send from inside the app than from the web form, and the log should go without anyone attaching it by hand (it makes N53's in-app door easier to reach). **The same day he chose design A** of three on the canvas (“Send feedback — A”) and **the log box ticked by default**. **The popover's header gains a fourth icon, first: Send feedback · Library · Settings · Quit**, named “Send feedback” on hover and to VoiceOver; its glyph a waving hand, his pick from 28 on the canvas (“Send feedback — A: the icon” boards, #23), 2026-10-17. It opens **its own small window, Send feedback**: one line on where it goes, the words, the optional email for an answer, **Include shroom’s recent log** (ticked) with a line on what goes and what never goes, and N53's “See exactly what’s sent”. Unticked, the report carries the words and the version only. **Send** posts to N53's `shroom.am/report` as kind feedback, from the app; Sending… and a send that didn't go through are N53's, word for word, mail link included. **Sent**, the window says so and offers Done. Settings · General's Report a problem… stays as it is (a problem, the log always). The icon sits in the ready popover only, so it never shows mid-take (law 4). Bagrat OK'd the window's words the same day (“its recent log” for “its last 200 lines” among them). Built: DECISIONS B193. Ratified by Bagrat, 2026-10-17. | ratified | 2026-10-17 |
 | N61 | The landing's video becomes “How to set up and use shroom”, served by shroom.am | **Bagrat approved the new video and asked for it to go up, 2026-10-18.** (1) **The video in the landing's box is now “How to set up and use shroom”** (four minutes): a walkthrough drawn from the design boards, with his own narration, replacing the 15-minute take N58 placed there. It is not a shroom recording, so nothing on the page or in the README says it was recorded with shroom. (2) **Its still** is a frame of the video itself: the setup window at “You're all set — ready to record.”, on the landing's dark ground, the same size as before. The play button reads “Play how to set up and use shroom, 4 minutes” to VoiceOver; the length shown is “4 mins”, in minutes rather than to the second (his note the same day). (3) **shroom.am serves it** as its own file (`/how-to.mp4`), no longer from the maker's shroom space; it still loads only as its block nears the screen, and plays in place on a click. (4) **The word “demo” leaves the page** where it meant this video. (5) **While it plays, its controls hide** when the pointer is idle for a few seconds or leaves the video, and come back on a move, a tap or the keyboard (his ask, the same day): the browser's own controls, which do this in Chromium and WebKit and keep keyboard and VoiceOver access. The layout of N59 is unchanged. Built: DECISIONS B194. Ratified by Bagrat, 2026-10-18. | ratified | 2026-10-18 |
-| N66 | The space names its videos, adds chapters and writes captions, through the owner's own Cloudflare | **B171's plan, built** (Bagrat, 2026-10-18, relayed by the orchestrator: build it now, decide the release later; the build's calls are made on judgment and listed in DECISIONS B205–B208 for him to overturn). (1) **Off until the owner turns it on, on the Mac that holds the setup key, and visible** (Bagrat, 2026-10-18: off by default, not to spend the AI allowance, but very visible; one switch for every AI feature): a banner in the popover, like the update's, says what shroom can do — name videos, add chapters, cut slips — and Turn on… opens a short confirm that says what it costs, once; the switch in Settings · Space, “AI for new videos”, is its home, and covers voice cuts (N65) too. Not now hides the banner; it comes back once more after five more recordings, then never. Turning it on re-wires the space's page with Cloudflare's AI and a schedule that runs each minute; the owner's key needs no new power (B171's live check 2). Turning it off takes them away; names, chapters and captions already made stay. Only new videos (Bagrat, 2026-10-18: no offer to name earlier ones). Members' Macs never show it and never see a cost. (2) **Each take is heard as it uploads**: every Mac tells the space when another minute of a take is up and once more after Stop, and the space hears that minute and keeps its words beside the take, on the recording's own clock. (3) **The title comes early, the rest after Stop** (Bagrat, 2026-10-18: the title must be there when the page opens): once the first minute is heard while the take records, a title from it alone, so the page opens named; after Stop the space names the take again from all of it and places its chapters, from the words that play: the title while nobody has typed one (a typed title always wins and is never written over), chapters only on a video of 90 s or more with two or more, and captions from the same words, never a second hearing. (4) **The free day**: every Cloudflare account gets 10,000 neurons a day (about 2½ hours of new video; Bagrat, 2026-10-18); when they run out, the rest waits and is finished after 00:00 UTC by the space's schedule, with no error anywhere; on a paid account it simply runs (about 4¢ an hour). (5) **Edits never re-hear** (the editor, N63, when it lands): chapters and captions follow the saved edit on every view; the name and chapters are made again only when an edit removes at least a fifth of what was said or a whole chapter. Provisional: the words are drafts until he OKs them. | provisional | 2026-10-18 |
+| N66 | The space names its videos, adds chapters and writes captions, through the owner's own Cloudflare | **B171's plan, built** (Bagrat, 2026-10-18, relayed by the orchestrator: build it now, decide the release later; the build's calls are made on judgment and listed in DECISIONS B205–B208 for him to overturn). (1) **Off until the owner turns it on, on the Mac that holds the setup key, and visible** (Bagrat, 2026-10-18: off by default, not to spend the AI allowance, but very visible; one switch for every AI feature): a banner in the popover, like the update's, says what shroom can do — name videos, add chapters, cut slips — and Turn on… opens a short confirm that says what it costs, once; the switch in Settings · Space, “AI for new videos”, is its home, and covers voice cuts (N65) too. Not now hides the banner for good on that Mac (Bagrat, 2026-10-18: from then on only the switch turns AI on). Turning it on re-wires the space's page with Cloudflare's AI and a schedule that runs each minute; the owner's key needs no new power (B171's live check 2). Turning it off takes them away; names, chapters and captions already made stay. Only new videos (Bagrat, 2026-10-18: no offer to name earlier ones). Members' Macs never show it and never see a cost. (2) **Each take is heard as it uploads**: every Mac tells the space when another minute of a take is up and once more after Stop, and the space hears that minute and keeps its words beside the take, on the recording's own clock. (3) **The title comes early, the rest after Stop** (Bagrat, 2026-10-18: the title must be there when the page opens): once the first minute is heard while the take records, a title from it alone, so the page opens named; after Stop the space names the take again from all of it and places its chapters, from the words that play: the title while nobody has typed one (a typed title always wins and is never written over), chapters only on a video of 90 s or more with two or more, and captions from the same words, never a second hearing. (4) **The free day**: every Cloudflare account gets 10,000 neurons a day (about 2½ hours of new video; Bagrat, 2026-10-18); when they run out, the rest waits and is finished after 00:00 UTC by the space's schedule, with no error anywhere; on a paid account it simply runs (about 4¢ per video hour). (5) **Edits never re-hear** (the editor, N63, when it lands): chapters and captions follow the saved edit on every view; the name and chapters are made again only when an edit removes at least a fifth of what was said or a whole chapter. **The turn-on, ratified** (Bagrat, 2026-10-18): he approved the banner, its confirm, its turning-on, failed and on faces and the switch in Settings · Space as drawn (AiBanner, AiConfirm, AiBannerStates, AiSettings), with the price said “per video hour” so it reads as hours of video, not of the day; he may tweak the words later. **The landing's line, agreed** (Bagrat, 2026-10-18), goes on shroom.am with the homepage's redesign, not before: “AI titles, chapters and captions are free for about 2½ hours of new video a day. Recording more? About 4¢ per video hour on Cloudflare’s $5 plan.” **The privacy page's AI point, approved** (Bagrat, 2026-10-18), as drafted on the board AiPrivacy. The rest is provisional: its words are drafts until he OKs them. | provisional | 2026-10-18 |
 | N67 | Chapters in the seek bar, captions, and the named title on the page | **Chapters live in the page's seek bar** (Bagrat's ruling, 2026-10-18, relayed by the orchestrator; he approved the canvas boards “The page — chapters in the seek bar, named on hover” and “The page on a phone — chapters in the seek bar, named while a finger is on it” the same day). The bar splits into one section per chapter, 2 px apart. Hovering it, playing or paused, shows the time and the chapter's name at that point, and the section under the pointer grows a little. On a phone a finger on the bar shows the same above the thumb, while it drags and for a moment after a tap, and the thumb grows while the finger is on it. The chapter now playing is named after the time, cut short when long, where the player's row has room for it; a phone's row has none beside its five controls, so there the finger's tip names it (a change from the phone board as approved, found while building and put back on the canvas). The bar's spoken value names it everywhere. There is no chapter list. A video with fewer than two chapters keeps today's whole bar. **Captions**, when the space has them: a Captions button in the player's row turns them on; off by default, and remembered on that browser. **The named title** is the page's title, everywhere a title shows (the page, its tab, unfurls, the download's name, the Library). On the owner's page a line under the title says it was named from what was said, until the title is edited; while the free day is used up, it says the name comes a little later instead. Built: DECISIONS B209. Provisional: the words are drafts until he OKs them. | provisional | 2026-10-18 |
 
 ## Surfaces
