@@ -21,6 +21,8 @@ with word times and returns an edit list. The cloud harness speaks seven invente
 four stock voices, transcribes them with Whisper and plans them, then scores the cuts
 against the script.
 
+- **A real voice passed.** Bagrat tried the tester (below) with his own voice on 2026-10-18,
+  and the auto cut worked.
 - **On real Workers AI**, through a Worker deployed with a shroom-shaped token on the test
   account, **27 of 28 takes passed**, both with and without the code word in Whisper's
   prompt. **No run cut a word that should stay.**
@@ -135,8 +137,8 @@ cues, then transcribed by Workers AI:
   - The app could also flag a take whose transcript has a long stretch of sound with no
     words in it.
 - **Whisper mostly kept the repeated words and the fillers** (“the, the window”, “um”). It
-  tidied one take in 28 on Workers AI. These are clean synthetic voices; a real one is the
-  next probe.
+  tidied one take in 28 on Workers AI. These are clean synthetic voices. The first real one
+  (below) came out cut right too.
 - Two bugs came out of the runs:
   - A sentence ending in “called.” made the cue look like a mention.
   - “uh” transcribed as “the”, as in “one more thing, the shroom cut.”, did the same.
@@ -222,6 +224,16 @@ video of four takes sits beside it (also private).
   - an uploaded take: one cut, the right one;
   - a recording through a fake microphone: two cuts, the right ones. This one turned up a
     planner bug, below.
+
+**The real-voice probe passed** (Bagrat, 2026-10-18). He tried the tester with his own
+voice, and the auto cut worked.
+
+- The tester stores nothing, so there's no transcript to look at.
+- Cloudflare's analytics for its Worker show that hour's whole traffic:
+  - 16 requests and no errors;
+  - 5 calls to Workers AI.
+- 12 of those requests, and 4 of the AI calls, were the headless checks above. So about one
+  take of his went through, and it went cleanly.
 
 **The full path, recording in the app to cuts on the share page, can't be tested yet.**
 The app, the Worker and the page don't do any of this until the integration is built
@@ -362,9 +374,10 @@ out a mistake, rather than talking about the phrase, a feature, or cutting somet
 ## Spec sketch (provisional, not in `machine.json` yet)
 
 The editor and markers are now being built in their own session (branch `claude/editor`),
-which holds **N63 (the editor)** and **N64 (markers)** and takes this crate's edit list
-unchanged. What follows is this proposal's own row, and its sketch of those two as first
-written here, for the record.
+which holds **N63 (the editor)** and **N64 (markers)**, plus decision rows B195–B199, and
+takes this crate's edit list unchanged. N62 is held elsewhere. What follows is this
+proposal's own row, whose decision rows would start at B200, and its sketch of those two
+as first written here, for the record.
 
 - **N65 Voice cuts** (provisional; this proposal).
   - Settings › General gets a switch, off by default (call 3 below). Copy is for Bagrat.
@@ -401,7 +414,7 @@ with tests:
 
 | Piece | Days |
 |---|---|
-| Probes: AI binding vs the token, size limit (**done**); a real human take | 0.25 |
+| Probes: AI binding vs the token, size limit, a real human take (**all done**) | 0 |
 | Worker: `/_shroom/listen/<id>`, the `ai` binding at deploy, voice cuts into `meta.edits`, cloudfake twin | 1.5 |
 | App: ask the Worker to listen after stop, merge the words, plan, save into `meta.edits` | 1 |
 | `shroom-edit` hardening plus spec tests from real takes | 1 |
@@ -421,9 +434,9 @@ with tests:
   - Ship it opt-in, labelled new, with the cuts list as the review.
 - **The timeline editor and publishing the edit are realistic the week after launch.**
 - The prototype here is close to the editor's front end and would cut the UI time.
-- **The risk is a real human voice.** All 28 takes are clean synthetic speech. Before
-  committing, one or two retake recordings from Bagrat (any mic, any length) would show
-  whether Whisper keeps his repeats and hears his “shroom cut”.
+- **The real-voice risk is down, not gone.** One take of Bagrat's own voice, on one device,
+  cut right (2026-10-18). Before it's on by default, a few more takes are worth it: another
+  mic, a noisy room, a longer take, another accent. The tester stays up for that.
 
 ## Calls made, for Bagrat to overturn
 
@@ -437,17 +450,18 @@ Under the working rule above, each is decided, with why:
    (28 takes × 5 runs) and both 10-minute takes, no applied cut touched a kept line.
    Offering everything would add a review step to every take for little safety.
 3. **Off by default for launch, opt-in from Settings.** It sends the voice to the person's
-   own Cloudflare account, and the privacy page's facts must change first. Turn it on by
-   default once a real voice has been through it.
+   own Cloudflare account, and the privacy page's facts must change first. A real voice has
+   now been through it once (2026-10-18). Turn it on by default after a few more takes,
+   once the privacy page says so.
 4. **Launch scope: voice cuts with a review list by the 27th; the timeline editor the week
    after.** This is the 7.5 days above. The editor adds 3–4 days and isn't needed for the
    differentiator.
 5. **Playback-skip at launch, publishing the edit right after.** Cut parts stay in R2 until
    published, and the review window says so. Publishing is 1.5–2 days and protects the
    download and the teaser.
-6. **A real take is still needed.** One or two retakes from Bagrat with “shroom cut”, any
-   mic, would be the last probe: `run.py --wav take.m4a --model workers-ai` once a Worker
-   is up. It is the one thing that can't be decided on judgment.
+6. **A real take: done, and it passed.** Bagrat tried the tester with his own voice
+   (2026-10-18) and the auto cut worked. More takes would still help: other mics, noise,
+   accents, longer takes. The tester stays up for them.
 7. **Markers: Drop a marker comes back while paused, and ⌥⌘M drops one while
    recording.** Bagrat asked for markers dropped *during* recording. A marker that only
    drops while paused sits on a take boundary, which says nothing a pause doesn't. ⌥⌘M sits
