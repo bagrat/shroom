@@ -226,9 +226,9 @@ describe("while the take is heard, the owner page keeps its one line (hearing)",
     return page(env, await cookieFor(env));
   };
 
-  it("the upload's line stays under the player: the same words, over a full bar that breathes", async () => {
+  it("the upload's line stays under the player: the same words, its spinner turning", async () => {
     const body = await ownerPage(fresh());
-    expect(lineOf(body)).toBe(`<div class="upl" id="ul"><span class="up" id="u">${html(finishing())}</span><span class="bar go"><i id="b" style="width:100%"></i></span></div>`);
+    expect(lineOf(body)).toBe(`<div class="upl" id="ul"><span class="spin" id="b" aria-hidden="true"></span><span class="up" id="u">${html(finishing())}</span></div>`);
     expect(body.indexOf('id="ul"')).toBeGreaterThan(body.indexOf('class="player"'));
     // It never speaks of cuts: the same listening names the video and makes its captions.
     expect(finishing()).not.toMatch(/cut/i);

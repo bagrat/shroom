@@ -156,9 +156,9 @@ try {
     await page.goto(`${pageUrl}?k=${encodeURIComponent(k)}`);
     const STRIP = "#cuts:not([hidden]) li";
     const shown = page.waitForSelector(STRIP, { timeout: 660_000 }).then(() => Date.now() - stopAt, () => null);
-    // Until then its one line stays (N65 (7)): “Finishing your video …” over a full bar.
+    // Until then its one line stays (N65 (7)): “Finishing your video …”, its spinner turning.
     const finishingSeen = page.waitForFunction(() => { const u = document.getElementById("ul"), b = document.getElementById("b");
-      return !!u && !u.hidden && /^Finishing your video/.test(document.getElementById("u").textContent) && b?.style.width === "100%"; }, null, { timeout: 120_000, polling: 250 })
+      return !!u && !u.hidden && /^Finishing your video/.test(document.getElementById("u").textContent) && !!b && b.className === "spin"; }, null, { timeout: 120_000, polling: 250 })
       .then(() => Date.now() - stopAt, () => null);
     const status = async () => (await fetch(`${origin}/_shroom/status/${drive.rec}`, { cache: "no-store" }).then((r) => r.json()).catch(() => ({})));
     let coming = false, tag = null;
@@ -189,7 +189,7 @@ try {
     const lineGone = await page.waitForFunction(() => { const u = document.getElementById("ul"); return !u || u.hidden; }, null, { timeout: 3000 }).then(() => true, () => false);
     summary.ms.stopToFinishing = heardAt;
     check("the open page kept its one line until the strip came", heardAt !== null && heardAt <= at && lineGone,
-      heardAt === null ? "never seen, its bar full" : `its bar full from ${(heardAt / 1000).toFixed(1)} s after Stop, ${lineGone ? "gone as the strip came" : "still there beside the strip"}`);
+      heardAt === null ? "never seen, its spinner turning" : `its spinner turning from ${(heardAt / 1000).toFixed(1)} s after Stop, ${lineGone ? "gone as the strip came" : "still there beside the strip"}`);
     await page.locator("#cuts").scrollIntoViewIfNeeded();
     await sleep(1500);
     const rows = await page.$$eval("#cuts li", (lis) => lis.map((li) => ({ cls: li.className, words: li.querySelector("q .w")?.textContent ?? "", at: li.querySelector(".at")?.textContent ?? "" })));

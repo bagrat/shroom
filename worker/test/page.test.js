@@ -107,9 +107,11 @@ describe("the owner page before and after the go-live (N26, N40)", () => {
     // One line from go-live (N65 (7)): the words keep no percent; the bar carries it.
     expect(textOf(body)).toContain(COPY.finishing);
     expect(textOf(body)).not.toContain("25%");
-    expect(body).toContain(`<span class="bar go"><i id="b" style="width:25%"></i></span>`);
+    // A small spinner in front of the words, no bar (Bagrat, 2026-10-18).
+    expect(body).toContain(`<div class="upl" id="ul"><span class="spin" id="b" aria-hidden="true"></span><span class="up" id="u">${COPY.finishing}</span></div>`);
     const stalled = await html(space({ objects: { [metaKey(REC)]: uploading(1, 4, STALL_SECONDS + 1) } }), `/${REC}`, { headers: { cookie: ownerCookie() } });
-    expect(stalled).toContain(`<span class="bar"><i id="b" style="width:25%"></i></span>`);
+    // Stalled, its words say why and the spinner rests.
+    expect(stalled).toContain(`<div class="upl" id="ul"><span class="spin rest" id="b" aria-hidden="true"></span><span class="up" id="u">${COPY.waitingConnection}</span></div>`);
   });
 
   it("hands its poll the player to swap in, the lines for a removed video and unavailable, and Download's word", async () => {
