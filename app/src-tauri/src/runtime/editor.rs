@@ -13,9 +13,11 @@
 //!   its own, so a Cancel lands mid-fetch. A baked record never opens on its original.
 //! - `Cancel`: the open in flight stops — a cancelled open says nothing more, a failure
 //!   included — and its video is no longer served.
-//! - `Save`: `meta.edits` rewritten as the next revision (`shroom_upload::library::save_edits`,
-//!   read-modify-write as a rename) — `Saved`. Refused when another Mac baked the video
-//!   while the editor was open: the list was made on a clock the record no longer plays.
+//! - `Save`: `meta.edits` rewritten as the next revision
+//!   (`shroom_upload::library::save_edits_over`, read-modify-write as a rename) — `Saved`.
+//!   Refused, nothing written, when the record no longer plays what the editor opened on (an
+//!   edit became the video since, on this Mac or another): the list was made on a clock the
+//!   record no longer has. Judged inside the write, so no bake slips in between.
 //! - `Copy`: on a lane of its own, one at a time, never holding the window's commands up:
 //!   the saved list's kept ranges cut from the video (the registered one, else found or
 //!   fetched again — an app that restarted has none registered) by the encoder
@@ -47,6 +49,7 @@ use shroom_core::event::{EditorNews, Event};
 use shroom_core::time::Wall;
 use shroom_core::world::{FailClass, Op, RecId, SpaceIdentity};
 use shroom_storage::s3::S3Error;
+use shroom_upload::library::Plays;
 use shroom_upload::meta::{Meta, State, now_iso};
 use shroom_upload::upload::{PART_SIZE, SINGLE_PUT_MAX, UploadError, with_retry};
 use shroom_upload::{keys, library as records};
@@ -119,26 +122,11 @@ impl Ended {
     }
 }
 
-/// What the record played when the editor opened on it: which file, and how many bakes it
-/// had been through. A save over a record that moved on from this — another Mac's bake —
-/// would put a list made on the old clock over the new one.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Played {
-    pub mp4: Option<String>,
-    pub bakes: usize,
-}
+/// What each record the editor opened on played then (`records::Plays`: which file, how many
+/// bakes), by id: a save over a record that moved on from it is refused.
+static OPENED: Mutex<Option<HashMap<String, Plays>>> = Mutex::new(None);
 
-impl Played {
-    pub fn of(m: &Meta) -> Played {
-        let bakes = m.extra.get(records::BAKED_FROM).and_then(serde_json::Value::as_array).map_or(0, Vec::len);
-        Played { mp4: m.media.as_ref().and_then(|x| x.mp4.clone()), bakes }
-    }
-}
-
-/// The records the editor opened on, by id, as they were then.
-static OPENED: Mutex<Option<HashMap<String, Played>>> = Mutex::new(None);
-
-fn opened_as(rec: &str) -> Option<Played> {
+fn opened_as(rec: &str) -> Option<Plays> {
     OPENED.lock().unwrap().as_ref()?.get(rec).cloned()
 }
 
@@ -416,7 +404,7 @@ fn opened(rt: &Runtime, rec: &RecId, stop: &Stop) -> Result<(), Ended> {
     let mut door = Doorway::default();
     let meta = record(rt, &mut door, &space, &rec.0)?;
     let said = stop.unless_stopped(|| {
-        OPENED.lock().unwrap().get_or_insert_with(HashMap::new).insert(rec.0.clone(), Played::of(&meta));
+        OPENED.lock().unwrap().get_or_insert_with(HashMap::new).insert(rec.0.clone(), Plays::of(&meta));
         rt.post(Event::Editor(EditorNews::Opened {
             rec: rec.clone(),
             saved: meta.edits.clone(),
@@ -473,24 +461,16 @@ fn opened(rt: &Runtime, rec: &RecId, stop: &Stop) -> Result<(), Ended> {
     Ok(())
 }
 
-/// Why a save is refused before anything is written: the record moved on to another file
-/// since the editor opened on it (another Mac's bake) — the list was made on the old clock.
-pub fn moved_on(opened: Option<&Played>, now: &Meta) -> bool {
-    opened.is_some_and(|o| *o != Played::of(now))
-}
-
 fn save(rt: &Runtime, door: &mut Doorway, rec: &RecId, saved: &shroom_edit::Saved) {
     let result = space(rt).and_then(|space| {
-        // The guard against a bake under the editor: rare (another Mac's, mid-edit), and
-        // between this look and the write it can still slip in — the next open shows it.
-        let now = record(rt, door, &space, &rec.0)?;
-        if moved_on(opened_as(&rec.0).as_ref(), &now) {
-            rt.log(&format!("editor: {} was made the video on another Mac while the editor was open — this edit wasn't saved over it", short(&rec.0)));
-            return Err(FailClass::Refused);
-        }
         let s3 = door.client(rt, &space, &rec.0)?;
-        records::save_edits(&s3, &rec.0, &saved.list, saved.rev).map_err(|e| {
-            rt.log(&format!("editor: {}'s save: {e}", short(&rec.0)));
+        // The guard against a bake under the editor (another Mac's, or this one's sweep) is
+        // inside the write: none can slip in between a look and it.
+        records::save_edits_over(&s3, &rec.0, &saved.list, saved.rev, opened_as(&rec.0).as_ref()).map_err(|e| {
+            match e {
+                UploadError::MovedOn => rt.log(&format!("editor: {} was made the video from its edit while the editor was open — this edit wasn't saved over it", short(&rec.0))),
+                _ => rt.log(&format!("editor: {}'s save: {e}", short(&rec.0))),
+            }
             class(&e)
         })
     });
@@ -854,23 +834,6 @@ mod tests {
         saved.keep_until = Some("soon".into());
         m.edits = Some(saved);
         assert_eq!(kept_until(&m), None, "a time that doesn't read");
-    }
-
-    #[test]
-    fn a_save_over_a_video_baked_since_the_editor_opened_is_refused() {
-        let opened = meta("AbCd", Some("rec/AbCd/video.mp4"), Some(10.0));
-        let at = Played::of(&opened);
-        assert!(!moved_on(Some(&at), &opened), "as it was");
-        let mut renamed = opened.clone();
-        renamed.title = "New".into();
-        assert!(!moved_on(Some(&at), &renamed), "a rename moves nothing");
-        let mut baked = meta("AbCd", Some("rec/AbCd/edit-1.mp4"), Some(6.0));
-        baked.extra.insert(records::BAKED_FROM.into(), serde_json::json!([{ "at": "2026-10-18T00:00:00Z", "rev": 1, "keep": [[0, 6]] }]));
-        assert!(moved_on(Some(&at), &baked), "another Mac's bake");
-        let mut again = baked.clone();
-        again.extra.insert(records::BAKED_FROM.into(), serde_json::json!([{}, {}]));
-        assert!(moved_on(Some(&Played::of(&baked)), &again), "a second bake, same file name or not");
-        assert!(!moved_on(None, &baked), "nothing known of the open: the save goes ahead");
     }
 
     #[test]

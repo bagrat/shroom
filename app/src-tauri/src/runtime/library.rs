@@ -314,11 +314,12 @@ fn manage(rt: &Runtime, space: &SpaceIdentity, key: &DeviceKey, page: &Space, re
 }
 
 /// The Library's failure classes: a dropped connection is `Transport` (the offline face),
-/// the store saying no is `Refused`, anything else unclassified. The editor's lane's too.
+/// the store saying no is `Refused`, anything else unclassified. The editor's lane's too: an
+/// editor's save over a video that moved on under it is `Refused`.
 pub(super) fn class(e: &UploadError) -> FailClass {
     match e {
         UploadError::S3(S3Error::Transport(_)) => FailClass::Transport,
-        UploadError::S3(S3Error::Status { status: 401 | 403 | 404, .. }) | UploadError::Tombstoned => FailClass::Refused,
+        UploadError::S3(S3Error::Status { status: 401 | 403 | 404, .. }) | UploadError::Tombstoned | UploadError::MovedOn => FailClass::Refused,
         _ => FailClass::Unclassified,
     }
 }
@@ -888,6 +889,16 @@ mod tests {
         rt.home.write_json("space.json", &space).unwrap();
         lane.send(LibCmd::Cleanup).unwrap();
         refused();
+    }
+
+    /// The store saying no reads as refused — a tombstone, and an editor's save over a video
+    /// that moved on under it (B197) — a dropped connection as offline, the rest unclassified.
+    #[test]
+    fn a_save_over_a_video_that_moved_on_reads_as_refused() {
+        assert_eq!(class(&UploadError::MovedOn), FailClass::Refused);
+        assert_eq!(class(&UploadError::Tombstoned), FailClass::Refused);
+        assert_eq!(class(&UploadError::S3(S3Error::Status { status: 404, body: String::new() })), FailClass::Refused);
+        assert_eq!(class(&UploadError::Incomplete("the record kept changing under us".into())), FailClass::Unclassified);
     }
 
     #[test]
