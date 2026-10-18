@@ -401,8 +401,8 @@ fn own_pictures(m: &Meta) -> Vec<String> {
 fn kept_the_start(m: &Meta, before: Option<f64>) -> bool {
     const EDGE: f64 = 1e-6;
     let newest = m.extra.get(BAKED_FROM).and_then(serde_json::Value::as_array).and_then(|from| from.last());
-    let first = newest.and_then(|b| b.get("keep")?.as_array()?.first()?.as_array().cloned()).unwrap_or_default();
-    let (Some(s), Some(e)) = (first.first().and_then(serde_json::Value::as_f64), first.get(1).and_then(serde_json::Value::as_f64)) else { return false };
+    let range = newest.and_then(|b| b.get("keep")?.as_array()?.first()?.as_array().cloned()).unwrap_or_default();
+    let (Some(s), Some(e)) = (range.first().and_then(serde_json::Value::as_f64), range.get(1).and_then(serde_json::Value::as_f64)) else { return false };
     let span = before.filter(|d| d.is_finite() && *d > 0.0).map_or(PICTURE_SECONDS, |d| d.min(PICTURE_SECONDS));
     s <= EDGE && e >= span - EDGE
 }
@@ -527,12 +527,12 @@ fn look(s3: &Client, id: &str) -> Result<Meta, UploadError> {
     serde_json::from_value(raw).map_err(|e| UploadError::Incomplete(format!("unreadable meta: {e}")))
 }
 
-/// The deletes of a video already baked, finished: what its bake deletes, from what's beside
-/// it now (the length it had before isn't known any more).
-fn finish(s3: &Client, id: &str, baked: &Meta) -> Result<Option<Baked>, UploadError> {
+/// The deletes of a video already baked (`record`), finished: what its bake deletes, from
+/// what's beside it now (the length it had before isn't known any more).
+fn finish(s3: &Client, id: &str, record: &Meta) -> Result<Option<Baked>, UploadError> {
     let listed = with_retry(|| s3.list(&keys::prefix(id)))?;
-    let deleted = bake_deletes(s3, id, &listed, baked, !kept_the_start(baked, None))?;
-    Ok(Some(Baked { rev: baked_rev(baked), written: false, deleted }))
+    let deleted = bake_deletes(s3, id, &listed, record, !kept_the_start(record, None))?;
+    Ok(Some(Baked { rev: baked_rev(record), written: false, deleted }))
 }
 
 /// A bake cut off after its write, finished by the cleanup sweep: the record read again, and
@@ -553,10 +553,10 @@ fn remembers_a_bake(m: &Meta) -> bool {
 }
 
 /// A bake's deletes, from `listed` (what was beside the record before its write): when the
-/// edit cut into the video's start (`start_cut`), Copy thumbnail's pictures first — all but
-/// the record's own, drawn from the poster it shows now — then the original's files and every
-/// copy's file `record`'s media doesn't name. A bake cut off part-way so always leaves an
-/// original's or a copy's file behind, which the cleanup sweep finds. How many went.
+/// edit cut into the video's start (`start_cut`), Copy thumbnail's pictures — all but the
+/// record's own, drawn from the poster it shows now — then the original's files and every
+/// copy's file `record`'s media doesn't name. The pictures go first: a bake cut off part-way
+/// always leaves one of the others behind, which the cleanup sweep finds. How many went.
 fn bake_deletes(s3: &Client, id: &str, listed: &[Object], record: &Meta, start_cut: bool) -> Result<usize, UploadError> {
     let prefix = keys::prefix(id);
     let playing = media_keys(record);
