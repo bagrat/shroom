@@ -282,7 +282,7 @@
       <span class="time" data-measured>{time}</span>
       {#if was}<span class="was" data-measured>{was}</span>{/if}
       <span class="grow"></span>
-      {#if media === "ready" || media === "opening"}
+      {#if (media === "ready" || media === "opening") && !b.after}
         <span class="hint">{b.hint}</span>
         <button type="button" class="icon" aria-label={b.labels.undo} title={b.labels.undo} disabled={!(b.editable && b.can_undo)} onclick={() => step({ op: "undo" })}>
           <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 4L2.5 7l3 3" /><path d="M2.5 7h7a4 4 0 0 1 0 8H7" /></svg>
@@ -294,7 +294,16 @@
     </div>
 
     <div class="timeline">
-      {#if b.media.state === "getting" || b.media.state === "failed"}
+      {#if b.after?.state === "making"}
+        <!-- Saved: the final video being made, where the track was (B197). -->
+        <div class="ruler-room"></div>
+        <div class="note making" role="status">
+          <span data-measured>{b.after.line}</span>
+          <div class="fill" role="progressbar" aria-valuenow={b.after.pct} aria-valuemin={0} aria-valuemax={100}>
+            <span style="width: {Math.max(0, Math.min(100, b.after.pct))}%"></span>
+          </div>
+        </div>
+      {:else if b.media.state === "getting" || b.media.state === "failed"}
         <!-- Where the track goes: the line, and the bar that fills or Try again. -->
         <div class="ruler-room"></div>
         <div class="note" class:row={b.media.state === "failed"} role="status">
@@ -331,11 +340,28 @@
 
     <div class="grow"></div>
 
-    <footer class="foot">
-      <span class="line" class:amber={b.footer_tone === "amber"} role="status">{b.footer}</span>
-      {#if media !== "failed"}<Btn b={b.revert} {send} inlineNote={false} />{/if}
-      <Btn b={b.done} {send} inlineNote={false} />
-    </footer>
+    {#if b.after?.state === "asking"}
+      <!-- The final video is up: what becomes of the original, in the footer's place. Yes,
+           delete leads, filled — a click only; Return does nothing here (law 9). -->
+      <section class="ask" role="group" aria-label={b.after.title}>
+        <div class="words">
+          <h2>{b.after.title}</h2>
+          <p>{b.after.line}</p>
+        </div>
+        <Btn b={b.after.keep} {send} inlineNote={false} />
+        <Btn b={b.after.delete} {send} inlineNote={false} />
+      </section>
+    {:else}
+      <footer class="foot">
+        <span class="line" class:amber={b.footer_tone === "amber"} role="status">{b.footer}</span>
+        <!-- After a save the edit is the video's own: nothing is reverted from here. -->
+        {#if media !== "failed" && !b.after}
+          {#if b.original_kept}<span class="kept">{b.original_kept}</span>{/if}
+          <Btn b={b.revert} {send} inlineNote={false} />
+        {/if}
+        <Btn b={b.done} {send} inlineNote={false} />
+      </footer>
+    {/if}
   </main>
 {/if}
 
@@ -514,6 +540,52 @@
   }
   .foot .line.amber {
     color: var(--amber);
+  }
+  /* The time the original has left, by Revert: small and dim (B197 (e)). */
+  .foot .kept {
+    color: var(--dim);
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  .note.making span {
+    color: var(--fg);
+  }
+  /* “Delete the original?”, in the footer's place: one card, its words, then its answers. */
+  .ask {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 16px;
+    border-radius: 10px;
+    background: var(--card);
+    box-shadow: 0 0 0 1px var(--line);
+  }
+  .ask .words {
+    flex: 1 1 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .ask h2 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .ask p {
+    margin: 0;
+    color: var(--muted);
+  }
+  .ask :global(.b) {
+    min-height: 30px;
+    border-radius: 7px;
+    flex: none;
+  }
+  .ask :global(.b.filled) {
+    padding: 0 16px;
+  }
+  .ask :global(.b.plain) {
+    color: var(--fg-3);
   }
   .foot :global(.b),
   .note :global(.b) {

@@ -6,11 +6,12 @@
 
 export const REC = "k3v9q2mz7x";
 
-const labels = { play: "Play", pause: "Pause", undo: "Undo", redo: "Redo", cut: "Cut {} s", put_back: "Put back {} s", was: "was {}", time: "{} / {}" };
+const labels = { play: "Play", pause: "Pause", undo: "Undo", redo: "Redo", cut: "Cut {} s", put_back: "Put back {} s", was: "was {}", time: "{} / {}", cut_it_too: "Cut it too" };
 const button = (label, action, style, enabled = true) => ({ action, label, style, enabled, note: null });
 const FOOTER = "Your link stays the same. Viewers see the edit once it's saved.";
 const DONE = { do: "editor-done" };
 const CLOSE = { do: "editor-close" };
+const KEEP = { do: "keep-original" };
 
 /** What a list plays (the core's `keep`): the trim minus the applied cuts. */
 function keepOf(list) {
@@ -40,7 +41,7 @@ export function editorScenes(
   const edited = { in: edit.in, out: edit.out, cuts: edit.cuts.map((c) => ({ applied: true, kind: "manual", ...c })) };
   const untouched = { in: 0, out: duration, cuts: [] };
   const window = (id, body, { ret = DONE, esc = null } = {}) => ({ id, faces: [], body, ret, esc, activates: true });
-  const body = ({ list = edited, media = { state: "ready", duration }, editable = true, can_undo = list === edited, can_redo = false, footer = FOOTER, footer_tone = "plain", done = button("Done", DONE, "filled") } = {}) => {
+  const body = ({ list = edited, media = { state: "ready", duration }, editable = true, can_undo = list === edited, can_redo = false, footer = FOOTER, footer_tone = "plain", done = button("Done", DONE, "filled"), original_kept = null, after = null } = {}) => {
     const keep = list ? keepOf(list) : [];
     return {
       title: "Edit — Setting up shroom in two minutes",
@@ -60,6 +61,8 @@ export function editorScenes(
       can_redo,
       revert: button("Revert to original", { do: "editor-revert" }, "plain", editable && list !== untouched && !!list),
       done,
+      original_kept,
+      after,
     };
   };
   const greyed = (label) => button(label, DONE, "filled", false);
@@ -90,6 +93,48 @@ export function editorScenes(
     {
       variant: "editor-save-failed",
       scene: window("editor-save-failed", body({ footer: "Couldn't save your edit. Check your connection, then press Done again.", footer_tone: "amber" })),
+    },
+    // Editing again while an earlier edit's original is kept: the time it has left (B197 (e)).
+    ...[["2-days", "2 more days"], ["1-day", "1 more day"], ["hours", "a few more hours"]].map(([v, left]) => ({
+      variant: `editor-original-kept-${v}`,
+      scene: window("editor", body({ original_kept: `The original is kept ${left}` })),
+    })),
+    // Saved: the final video being made, where the track was; Close leaves it to finish.
+    {
+      variant: "editor-making",
+      scene: window(
+        "editor-making",
+        body({ editable: false, footer: "The link already plays your edit. You can close this window: shroom finishes it.", done: button("Close", CLOSE, "filled"), after: { state: "making", pct: 40, line: "Making the final video… 40%" } }),
+        { ret: CLOSE, esc: CLOSE },
+      ),
+    },
+    {
+      variant: "editor-making-failed",
+      scene: window(
+        "editor-making-failed",
+        body({ editable: false, footer: "Couldn't make the final video. The link plays your edit anyway, and shroom tries again later.", footer_tone: "amber", done: button("Close", CLOSE, "filled"), after: { state: "failed" } }),
+        { ret: CLOSE, esc: CLOSE },
+      ),
+    },
+    // It's up: “Delete the original?” in the footer's place — Yes, delete leads, never on
+    // Return; Esc is Keep for 2 days.
+    {
+      variant: "editor-keep-original",
+      scene: window(
+        "editor-keep-original",
+        body({
+          editable: false,
+          done: button("Close", CLOSE, "filled", false),
+          after: {
+            state: "asking",
+            title: "Delete the original?",
+            line: "Your edit is the video now. The original is only kept so you can revert to it.",
+            keep: button("Keep for 2 days", KEEP, "plain"),
+            delete: button("Yes, delete", { do: "delete-original" }, "filled"),
+          },
+        }),
+        { ret: null, esc: KEEP },
+      ),
     },
   ].map((e) => ({ window: "editor", ...e }));
 }

@@ -47,7 +47,7 @@
     editable: boolean;
     /** A click moves the playhead (the video is here). */
     seekable: boolean;
-    labels: { cut: string; put_back: string };
+    labels: { cut: string; put_back: string; cut_it_too?: string };
     selection?: Selection | null;
     /** The ends while one is dragged (and until the core answers): what plays meanwhile. */
     trim?: Trim | null;
@@ -87,13 +87,14 @@
   });
 
   // The chip under what's selected: Cut <length> under a part, Put back <length> under an
-  // applied cut, Cut <length> under a suggestion (applying it).
+  // applied cut, Cut it too under a suggestion (applying it).
   let chip = $derived.by(() => {
     if (!selection || !editable || !list) return null;
     if (selection.kind === "range") return { kind: "cut" as const, at: (selection.start + selection.end) / 2, label: fill(labels.cut, seconds(selection.end - selection.start)) };
     const c = list.cuts[selection.index];
     if (!c) return null;
-    return { kind: c.applied ? ("put-back" as const) : ("apply" as const), at: (c.start + c.end) / 2, label: fill(c.applied ? labels.put_back : labels.cut, seconds(c.end - c.start)) };
+    if (c.applied) return { kind: "put-back" as const, at: (c.start + c.end) / 2, label: fill(labels.put_back, seconds(c.end - c.start)) };
+    return { kind: "apply" as const, at: (c.start + c.end) / 2, label: labels.cut_it_too ?? fill(labels.cut, seconds(c.end - c.start)) };
   });
   let chipLeft = $derived(chip ? Math.min(Math.max(x(chip.at) - chipWidth / 2, 0), Math.max(0, width - chipWidth)) : 0);
 

@@ -106,6 +106,9 @@ export async function openEditor(browser, origin, mediaOrigin, scene, { colorSch
   await page.waitForSelector("main.ed");
   if (scene.body.media.state === "ready") {
     await page.waitForFunction(() => (document.querySelector("video")?.readyState ?? 0) >= 2);
+  }
+  // The track, with its waveform, unless the final video's bar stands in its place.
+  if (scene.body.media.state === "ready" && scene.body.after?.state !== "making") {
     // The peaks are drawn: some pixel of the waveform is painted.
     await page.waitForFunction(() => {
       const c = document.querySelector("canvas.wave");
@@ -161,10 +164,16 @@ export async function editorLooks({ browser, origin, mediaOrigin, entries, check
       check(`${tag}: the face is the Scene's`, (await page.locator("main.ed").getAttribute("data-state")) === w.id);
       check(`${tag}: titled as the Scene says`, (await page.title()) === b.title);
       const body = norm(await page.locator("body").innerText());
-      const lines = [b.footer, ...(["ready", "opening"].includes(b.media.state) ? [b.hint] : []), ...(b.media.line ? [b.media.line] : [])];
+      // After a save (B197): the final video being made where the track was, its failure in
+      // the footer, then the question in the footer's place; Revert is gone.
+      const after = b.after ?? null;
+      const asking = after?.state === "asking";
+      const lines = asking
+        ? [after.title, after.line]
+        : [b.footer, ...(["ready", "opening"].includes(b.media.state) && !after ? [b.hint] : []), ...(b.media.line ? [b.media.line] : []), ...(after?.state === "making" ? [after.line] : []), ...(b.original_kept && !after ? [b.original_kept] : [])];
       const missing = lines.filter((l) => !body.includes(norm(l)));
       check(`${tag}: every line is visible`, missing.length === 0, missing.join(" | "));
-      const want = [...(b.media.state === "failed" ? [b.media.retry] : []), ...(b.media.state === "failed" ? [] : [b.revert]), b.done];
+      const want = asking ? [after.keep, after.delete] : [...(b.media.state === "failed" ? [b.media.retry] : []), ...(b.media.state === "failed" || after ? [] : [b.revert]), b.done];
       const shown = (await page.locator("button:visible").evaluateAll((els) => els.map((e) => e.innerText.trim()).filter(Boolean))).map(norm);
       check(`${tag}: the Scene's buttons, no others with words`, shown.sort().join("|") === want.map((x) => x.label).sort().join("|"), shown.join("|"));
       for (const x of want) {
@@ -172,19 +181,35 @@ export async function editorLooks({ browser, origin, mediaOrigin, entries, check
         const ok = (await loc.count()) === 1 && (await loc.isEnabled()) === x.enabled && (await loc.getAttribute("class")).split(/\s+/).includes(x.style);
         check(`${tag}: “${x.label}” ${x.enabled ? "enabled" : "greyed"}, ${x.style}`, ok);
       }
-      const amber = await page.locator(".foot .line").evaluate((e) => getComputedStyle(e).color === getComputedStyle(document.documentElement).getPropertyValue("--amber").trim() || e.classList.contains("amber"));
-      check(`${tag}: the footer line's tone`, amber === (b.footer_tone === "amber"));
+      if (asking) {
+        check(`${tag}: the question takes the footer's place`, (await page.locator(".foot").count()) === 0 && (await page.locator(".ask").count()) === 1);
+        const order = await page.locator(".ask button").allInnerTexts();
+        check(`${tag}: Keep for 2 days, then Yes, delete — filled, leading`, order.map(norm).join("|") === [after.keep.label, after.delete.label].join("|") && after.delete.style === "filled", order.join("|"));
+        check(`${tag}: Return isn't Yes, delete (law 9)`, w.ret === null);
+      } else {
+        const amber = await page.locator(".foot .line").evaluate((e) => getComputedStyle(e).color === getComputedStyle(document.documentElement).getPropertyValue("--amber").trim() || e.classList.contains("amber"));
+        check(`${tag}: the footer line's tone`, amber === (b.footer_tone === "amber"));
+      }
+      if (after?.state === "making") {
+        const pct = await page.locator(".note.making .fill span").evaluate((e) => e.style.width);
+        check(`${tag}: the final video's bar fills as the Scene says, where the track was`, pct === `${after.pct}%` && (await page.locator(".track").count()) === 0, pct);
+      }
+      if (b.original_kept && !after) {
+        const kept = await page.locator(".foot .kept").evaluate((e) => ({ text: e.innerText, size: getComputedStyle(e).fontSize }));
+        const next = await page.locator(".foot .kept + button").innerText();
+        check(`${tag}: the time the original has left, small, by Revert`, kept.text === b.original_kept && kept.size === "12px" && norm(next) === b.revert.label, JSON.stringify(kept));
+      }
       const wide = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1 || document.documentElement.scrollHeight > window.innerHeight + 1);
       check(`${tag}: nothing scrolls`, !wide);
       // The system font, as every window has it (theme.css's --font): a browser's default
       // here would be a serif in a Mac's webview.
-      const fonts = await page.evaluate(() => [".ed", ".time", ".hint", ".foot .line", ".foot button"].map((q) => document.querySelector(q)).filter(Boolean).map((e) => getComputedStyle(e).fontFamily));
+      const fonts = await page.evaluate(() => [".ed", ".time", ".hint", ".foot .line", ".foot button", ".ask h2", ".ask button"].map((q) => document.querySelector(q)).filter(Boolean).map((e) => getComputedStyle(e).fontFamily));
       check(`${tag}: its words in the system font`, fonts.length >= 3 && fonts.every((f) => f.includes("-apple-system")), fonts.join(" | "));
       check(`${tag}: no page errors`, errors.length === 0, errors.join(" | "));
       check(`${tag}: listens to its own slice`, (await page.evaluate(() => window.__listenTarget()))?.label === "editor");
       const c = await calls(page);
       check(`${tag}: rendering calls nothing`, c.length === 0, JSON.stringify(c));
-      if (b.media.state === "ready") {
+      if (b.media.state === "ready" && after?.state !== "making") {
         const cv = await page.locator("canvas.wave").evaluate((e) => ({ w: e.width, h: e.height, cw: e.clientWidth, ch: e.clientHeight }));
         check(`${tag}: the waveform is drawn at the display's density`, cv.w === Math.round(cv.cw * 2) && cv.h === Math.round(cv.ch * 2), JSON.stringify(cv));
         const len = b.edited_duration;
@@ -290,7 +315,7 @@ export async function editorDrives({ browser, origin, mediaOrigin, entries, chec
     await clear(page);
     await page.locator(".chip button").click();
     s = steps(await calls(page));
-    check("editor: a suggestion clicked offers Cut <its length>, which applies it", apply === `Cut ${(o.end - o.start).toFixed(1)} s` && s.length === 1 && s[0].op === "apply" && s[0].index === offer, `${apply} ${JSON.stringify(s)}`);
+    check("editor: a suggestion clicked offers Cut it too, which applies it", apply === (b.labels.cut_it_too ?? `Cut ${(o.end - o.start).toFixed(1)} s`) && s.length === 1 && s[0].op === "apply" && s[0].index === offer, `${apply} ${JSON.stringify(s)}`);
   }
 
   // A yellow end dragged: the trim, sent once on release; the ends hold where they were
@@ -444,6 +469,34 @@ export async function editorDrives({ browser, origin, mediaOrigin, entries, chec
     c = await calls(page);
     check("editor-cant-get: Try again and Close send their actions; Return and Esc the Scene's", acted(c, w.body.media.retry.action) && acted(c, w.body.done.action) && keyed(c, "return") && keyed(c, "esc"), JSON.stringify(c));
     check("editor-cant-get: no Revert to original", (await page.getByRole("button", { name: w.body.revert.label }).count()) === 0);
+    await ctx.close();
+  }
+  // The final video being made: Close (and Return, and Esc) are the Scene's; nothing edits.
+  {
+    const w = face("editor-making");
+    const { ctx, page } = await openEditor(browser, origin, mediaOrigin, w);
+    await clear(page);
+    await page.getByRole("button", { name: w.body.done.label, exact: true }).click();
+    await page.keyboard.press("Enter");
+    await page.keyboard.press("Escape");
+    c = await calls(page);
+    check("editor-making: Close, Return and Esc are the Scene's", acted(c, w.body.done.action) && keyed(c, "return") && keyed(c, "esc"), JSON.stringify(c));
+    check("editor-making: no Revert to original, no Undo, no hint", (await page.getByRole("button", { name: w.body.revert.label }).count()) === 0 && (await page.locator(".hint, .icon").count()) === 0);
+    await ctx.close();
+  }
+  // “Delete the original?”: Yes, delete and Keep send theirs; Return sends nothing (law 9),
+  // Esc is the Scene's (Keep for 2 days).
+  {
+    const w = face("editor-keep-original");
+    const { ctx, page } = await openEditor(browser, origin, mediaOrigin, w);
+    await clear(page);
+    await page.keyboard.press("Enter");
+    check("editor-keep-original: Return does nothing", (await calls(page)).length === 0, JSON.stringify(await calls(page)));
+    await page.keyboard.press("Escape");
+    await page.getByRole("button", { name: w.body.after.delete.label, exact: true }).click();
+    await page.getByRole("button", { name: w.body.after.keep.label, exact: true }).click();
+    c = await calls(page);
+    check("editor-keep-original: Esc, Yes, delete and Keep for 2 days send the Scene's", keyed(c, "esc") && acted(c, w.body.after.delete.action) && acted(c, w.body.after.keep.action), JSON.stringify(c));
     await ctx.close();
   }
   // Getting: Space does nothing, the play button waits.

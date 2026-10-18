@@ -9,14 +9,24 @@ export type EditorMedia =
   | { state: "getting"; pct: number; line: string }
   | { state: "failed"; line: string; retry: Button }
   | { state: "ready"; duration: number };
+/** After a save that leaves something out (B197): the final video being made, its failure,
+ * then the question of the original. */
+export type EditorAfter =
+  | { state: "making"; pct: number; line: string }
+  | { state: "failed" }
+  | { state: "asking"; title: string; line: string; keep: Button; delete: Button };
 export type EditorBody = {
   title: string; rec: string; media: EditorMedia; hint: string;
   footer: string; footer_tone: string;
-  /** `time` is “{} / {}”: the edited position, then the edited length. */
-  labels: { play: string; pause: string; undo: string; redo: string; cut: string; put_back: string; was: string; time?: string };
+  /** `time` is “{} / {}”: the edited position, then the edited length; `cut_it_too` the
+   * chip under a dashed suggestion. */
+  labels: { play: string; pause: string; undo: string; redo: string; cut: string; put_back: string; was: string; time?: string; cut_it_too?: string };
   list: { in: number; out: number; cuts: { start: number; end: number; applied: boolean; kind: string }[] } | null;
   keep: [number, number][]; edited_duration: number; source_duration: number; markers: number[];
   editable: boolean; can_undo: boolean; can_redo: boolean; revert: Button; done: Button;
+  /** By Revert, while an earlier edit's original is kept: the time it has left. */
+  original_kept?: string | null;
+  after?: EditorAfter | null;
 };
 export type EditorWindow = { id: string; faces: string[]; body: EditorBody; ret: Action | null; esc: Action | null; activates: boolean };
 

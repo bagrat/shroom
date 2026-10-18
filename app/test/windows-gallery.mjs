@@ -1271,7 +1271,7 @@ for (const entry of feedbacks) {
       return (a === null) === (b === null) && typeof a === typeof b ? null : `${at}: ${JSON.stringify(a)} vs ${JSON.stringify(b)}`;
     };
     const canonical = (v) => JSON.stringify(v, (_, x) => (x && typeof x === "object" && !Array.isArray(x) ? Object.fromEntries(Object.entries(x).sort(([a], [b]) => a.localeCompare(b))) : x));
-    const words = (w) => canonical([w.id, w.ret, w.esc, w.body.title, w.body.hint, w.body.footer, w.body.footer_tone, w.body.media.line, w.body.media.retry, w.body.revert.label, w.body.revert.action, w.body.done, w.body.labels]);
+    const words = (w) => canonical([w.id, w.ret, w.esc, w.body.title, w.body.hint, w.body.footer, w.body.footer_tone, w.body.media.line, w.body.media.retry, w.body.revert.label, w.body.revert.action, w.body.done, w.body.labels, w.body.original_kept, w.body.after]);
     for (const f of fixture) {
       const c = editors.find((e) => e.variant === f.variant);
       if (!c) continue;
