@@ -531,7 +531,7 @@ fn the_final_video_lands_and_yes_delete_bakes_it() {
     assert_eq!(r.w.session.fields.editor.as_ref().unwrap().save, EditorSave::Making { pct: 100 }, "a share is at most all of it");
     assert!(r.effects.is_empty());
 
-    r.news(EditorNews::CopyDone { rec: rec(), rev: 4 });
+    r.news(EditorNews::CopyDone { rec: rec(), rev: 4, named: true });
     assert_eq!(r.arm.edge, Some(("editor-making", "editor-keep-original")));
     assert_eq!(face(&r), "editor-keep-original");
     assert!(r.w.library_ops.copies.is_empty() && !r.w.inflight.ops.contains_key(&Op::EditorCopy));
@@ -564,7 +564,7 @@ fn keep_esc_and_close_on_the_question_keep_the_original() {
         let mut r = dirty();
         r.ed(Action::EditorDone);
         r.news(EditorNews::Saved { rec: rec(), rev: 4 });
-        r.news(EditorNews::CopyDone { rec: rec(), rev: 4 });
+        r.news(EditorNews::CopyDone { rec: rec(), rev: 4, named: true });
         assert_eq!(face(&r), "editor-keep-original");
         r
     };
@@ -611,7 +611,7 @@ fn closing_while_the_final_video_is_made_leaves_it_to_finish() {
         // Its progress, and its landing, find no window: nothing is asked.
         r.news(EditorNews::Making { rec: rec(), pct: 80 });
         assert!(r.scene.editor.is_none() && r.effects.is_empty());
-        r.news(EditorNews::CopyDone { rec: rec(), rev: 4 });
+        r.news(EditorNews::CopyDone { rec: rec(), rev: 4, named: true });
         assert!(r.scene.editor.is_none() && r.effects.is_empty());
         assert!(r.w.library_ops.copies.is_empty() && !r.w.inflight.ops.contains_key(&Op::EditorCopy));
     }
@@ -681,6 +681,49 @@ fn a_final_video_that_cant_be_made_says_so() {
     assert_eq!(face(&r), "editor-making");
 }
 
+/// A copy the lane dropped, never named — the record moved on first, a newer save landing —
+/// is no final video: the window says it couldn't be made, as for one that failed, and
+/// nothing asks about the original (B199).
+#[test]
+fn a_dropped_copy_asks_nothing_about_the_original() {
+    // The path that gets there: a save that ran out of time lands late while its retry is
+    // on its way; the window takes it and makes revision 4's copy; the retry lands as 5,
+    // and the lane drops 4's copy unnamed.
+    let mut r = dirty();
+    r.ed(Action::EditorDone);
+    let deadline = r.w.inflight.ops[&Op::EditorSave];
+    r.tick_to(deadline.0 + 10);
+    assert_eq!(face(&r), "editor-save-failed");
+    r.ed(Action::EditorDone);
+    r.news(EditorNews::Saved { rec: rec(), rev: 4 });
+    assert_eq!(face(&r), "editor-making");
+    assert_eq!(r.effects, vec![Effect::Editor(EditCmd::Copy { rec: rec(), rev: 4 })]);
+    r.news(EditorNews::Saved { rec: rec(), rev: 5 });
+    assert_eq!(r.arm.name, "editor-stale", "the window took the first answer");
+    r.news(EditorNews::Making { rec: rec(), pct: 80 });
+    r.news(EditorNews::CopyDone { rec: rec(), rev: 4, named: false });
+    assert_eq!(r.arm.edge, Some(("editor-making", "editor-making-failed")));
+    assert_eq!(face(&r), "editor-making-failed", "no “Delete the original?” over a final video that isn't there");
+    let b = body(&r);
+    assert_eq!(b.after, Some(EditorAfterView::Failed));
+    assert_eq!((b.footer.as_str(), b.footer_tone), (MAKING_FAILED, LineTone::Amber));
+    assert!(r.effects.is_empty(), "nothing is made the video: {:?}", r.effects);
+    assert!(!r.w.inflight.ops.contains_key(&Op::EditorCopy) && r.w.library_ops.copies.is_empty(), "the copy answered");
+    assert!(!r.scene.offers(Surface::Editor, &Action::DeleteOriginal) && !r.scene.offers(Surface::Editor, &Action::KeepOriginal));
+    r.ed(Action::EditorClose);
+    assert!(r.scene.editor.is_none() && r.effects.is_empty());
+    assert_eq!(r.arm.edge, Some(("editor-making-failed", "library")));
+
+    // With the window gone, a dropped copy answers and moves nothing.
+    let mut r = dirty();
+    r.ed(Action::EditorDone);
+    r.news(EditorNews::Saved { rec: rec(), rev: 4 });
+    r.ed(Action::EditorClose);
+    r.news(EditorNews::CopyDone { rec: rec(), rev: 4, named: false });
+    assert!(r.scene.editor.is_none() && r.effects.is_empty());
+    assert!(!r.w.inflight.ops.contains_key(&Op::EditorCopy) && r.w.library_ops.copies.is_empty());
+}
+
 /// News of a copy for another video, of an older revision, or for a window already gone,
 /// asks nothing and moves no face.
 #[test]
@@ -691,7 +734,7 @@ fn a_copy_for_another_video_or_revision_moves_nothing() {
     let other = RecId(OTHER.into());
     r.news(EditorNews::Making { rec: other.clone(), pct: 70 });
     assert_eq!(body(&r).after, Some(EditorAfterView::Making { pct: 0, line: "Making the final video… 0%".into() }));
-    r.news(EditorNews::CopyDone { rec: other, rev: 4 });
+    r.news(EditorNews::CopyDone { rec: other, rev: 4, named: true });
     assert_eq!(face(&r), "editor-making");
     assert!(r.w.inflight.ops.contains_key(&Op::EditorCopy), "this video's copy is still being cut");
     assert_eq!(r.w.library_ops.copies.get(&rec()), Some(&CopyOwed { rev: 4, asked: true }));
@@ -709,10 +752,10 @@ fn a_copy_for_another_video_or_revision_moves_nothing() {
     assert!(!r.has(|e| matches!(e, Effect::Editor(EditCmd::Copy { .. }))), "one at a time: 4's is still being cut");
     r.news(EditorNews::Making { rec: rec(), pct: 60 });
     assert_eq!(body(&r).after, Some(EditorAfterView::Making { pct: 0, line: "Making the final video… 0%".into() }), "4's share isn't 5's");
-    r.news(EditorNews::CopyDone { rec: rec(), rev: 4 });
+    r.news(EditorNews::CopyDone { rec: rec(), rev: 4, named: true });
     assert_eq!(face(&r), "editor-making", "an older revision's copy isn't this save's");
     assert_eq!(r.effects, vec![Effect::Editor(EditCmd::Copy { rec: rec(), rev: 5 })]);
-    r.news(EditorNews::CopyDone { rec: rec(), rev: 5 });
+    r.news(EditorNews::CopyDone { rec: rec(), rev: 5, named: true });
     assert_eq!(face(&r), "editor-keep-original");
 
     // A copy that didn't come out for another video says nothing here.
@@ -732,11 +775,11 @@ fn a_copy_for_another_video_or_revision_moves_nothing() {
     r.ed(Action::EditorDone);
     r.news(EditorNews::Saved { rec: rec(), rev: 4 });
     r.ed(Action::EditorClose);
-    r.news(EditorNews::CopyDone { rec: rec(), rev: 4 });
+    r.news(EditorNews::CopyDone { rec: rec(), rev: 4, named: true });
     assert!(r.scene.editor.is_none() && r.effects.is_empty());
     // …nor once another video's editor is open.
     r.lib(Action::EditRow(RecId(OTHER.into())));
-    r.news(EditorNews::CopyDone { rec: rec(), rev: 4 });
+    r.news(EditorNews::CopyDone { rec: rec(), rev: 4, named: true });
     assert_eq!(face(&r), "editor");
 }
 
@@ -950,7 +993,7 @@ fn copies_wait_for_the_take_and_go_one_at_a_time() {
     let retry = r.w.inflight.failures[&Op::EditorCopy].retry_at();
     r.tick_to(retry.0);
     assert!(r.has(|e| *e == Effect::Editor(EditCmd::Copy { rec: RecId(OTHER.into()), rev: 1 })), "the next copy: {:?}", r.effects);
-    r.news(EditorNews::CopyDone { rec: RecId(OTHER.into()), rev: 1 });
+    r.news(EditorNews::CopyDone { rec: RecId(OTHER.into()), rev: 1, named: true });
     assert!(r.w.library_ops.copies.is_empty() && !r.w.inflight.failures.contains_key(&Op::EditorCopy));
     assert_eq!(face(&r), "editor-keep-original");
 }
@@ -1153,7 +1196,7 @@ fn the_upkeep_waits_for_the_take_the_network_and_the_editor() {
     let mut r = Run::new(w);
     r.send(Event::Tick);
     assert!(r.has(|e| matches!(e, Effect::Editor(EditCmd::Copy { .. }))) && !upkeeps(&r), "one lane step at a time: {:?}", r.effects);
-    r.news(EditorNews::CopyDone { rec: rec(), rev: 4 });
+    r.news(EditorNews::CopyDone { rec: rec(), rev: 4, named: true });
     assert!(upkeeps(&r), "the copy is up: {:?}", r.effects);
     // …and while the upkeep runs, an owed copy waits for it.
     let mut w = r.w.clone();
@@ -1479,7 +1522,7 @@ fn the_slice_is_the_webviews_json() {
     failed.send(Event::Failed { op: Op::EditorCopy, class: FailClass::Transport });
     let b = serde_json::to_value(&failed.scene.editor.as_ref().unwrap().body).unwrap();
     assert_eq!((b["after"].clone(), b["footer_tone"].clone()), (json!({ "state": "failed" }), json!("amber")));
-    r.news(EditorNews::CopyDone { rec: rec(), rev: 4 });
+    r.news(EditorNews::CopyDone { rec: rec(), rev: 4, named: true });
     let v = serde_json::to_value(r.scene.editor.as_ref().unwrap()).unwrap();
     let a = &v["body"]["after"];
     assert_eq!(keys(a), ["delete", "keep", "line", "state", "title"]);
