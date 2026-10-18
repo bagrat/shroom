@@ -57,8 +57,10 @@ export const COPY = {
   // The spec's upload truth ends here, but the page no longer says it: once every file is
   // up, the upload line simply goes (the restyle — Bagrat's call). The popover still does.
   fullyLive: "Fully live ✓",
-  // The owner page's upload line, for a few seconds once the last file is up (B142).
-  ready: "Ready ✓",
+  // The owner page's one line from go-live, through the upload and, in a space that listens,
+  // while the take is heard (N65 (7); Bagrat, 2026-10-18). It took the place of “Uploading —
+  // 40%. Your link already works.” and of B142's “Ready ✓”.
+  finishing: "Finishing your video — the link already works, share it anytime.",
   // The join page (r6: join-landing and its faces).
   getShroom: "Get shroom",
   pasteThis: "Paste this into Terminal (⌘ space, type “Terminal”) and press Return — it installs shroom and opens it, already knowing it's you.",
@@ -109,9 +111,6 @@ export const COPY = {
   cueHintGotIt: "Got it",
 };
 
-/** The upload line while bytes arrive: "Uploading — 40%. Your link already works." */
-/** @param {number} pct */
-export const uploadingLine = (pct) => `Uploading — ${pct}%. Your link already works.`;
 /** A member's own stalled video while the space can't take uploads (N40, r4). */
 /** @param {string} name */
 export const waitingFor = (name) => `Waiting for ${name}'s space — your link already works.`;
@@ -1491,7 +1490,7 @@ h1{flex:1 1 0;min-width:0;margin:0;font-size:1.75rem;font-weight:600;line-height
 .copy.done::after{display:none}
 .copy.done{width:auto;padding:0 12px 0 8px;flex-direction:row-reverse;font-size:13px;color:var(--accent);--i:${I_CHECK}}
 #dl{display:flex}#dl:empty{display:none}
-.upl{display:flex;flex-direction:column;gap:6px;color:var(--soft);transition:opacity .4s}.upl[hidden]{display:none}.upl.done{color:var(--green);--fill:var(--green)}.upl.fade{opacity:0}
+.upl{display:flex;flex-direction:column;gap:6px;color:var(--soft);transition:opacity .4s}.upl[hidden]{display:none}.upl.fade{opacity:0}
 .cuts{background:var(--card);border:1px solid var(--card-edge);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:10px}.cuts[hidden]{display:none}
 .cuts-head{display:flex;align-items:center;gap:10px}.cuts h2{flex:1 1 auto;margin:0;font-size:15px;font-weight:600;display:flex;align-items:center;gap:10px}
 .cuts h2::before{content:"";width:16px;height:16px;flex:none;background:var(--cut);-webkit-mask:${I_CUT} center/contain no-repeat;mask:${I_CUT} center/contain no-repeat}
@@ -2009,9 +2008,13 @@ function ownerPage(id, meta, now, face, waiting, blocked = false, pending = fals
   const st = status(meta, now);
   const stalled = blocked || !!st.stalled;
   const drainedNow = live && st.drained;
-  // Drained, the upload line has nothing left to say and goes (no “Fully live ✓” on the page);
-  // an open page that saw it drain says “Ready ✓” for a few seconds first (B142).
-  const line = drainedNow ? "" : stalled ? waiting : uploadingLine(st.pct ?? 0);
+  // The page's one line (N65 (7)): “Finishing your video …” from go-live, its bar filling with
+  // the upload. While a space that listens hears the take (the cuts are coming) it stays after
+  // the upload, its bar full and breathing; otherwise, drained, it has nothing left to say and
+  // goes — no “Fully live ✓”, no “Ready ✓”.
+  const cutsTag = cutsField(meta, now, listens).cuts ?? null;
+  const hearing = drainedNow && cutsTag === "coming";
+  const line = drainedNow ? (hearing ? COPY.finishing : "") : stalled ? waiting : COPY.finishing;
   const field = `<input class="title" id="t" maxlength="${TITLE_MAX}" aria-label="Title" value="${escapeHtml(value)}" placeholder="${escapeHtml(placeholder)}"${meta.titled ? "" : " autofocus"}>`;
   const frame = meta.media?.poster ? `<img src="/m/${id}/poster.jpg" alt="">` : "";
   const stage = live ? playerHtml(id, meta) : `<div class="wait" id="w">${frame}</div>`;
@@ -2024,20 +2027,24 @@ function ownerPage(id, meta, now, face, waiting, blocked = false, pending = fals
   const ready = thumbs.gif || (drainedNow && !thumbs.teaser && !!thumbs.thumb);
   // Copy link and Download are quiet icons beside the title; their words name them.
   const head = `<div class="head">${field}${copyButtons(live, !ready)}<span id="dl" data-tip="${COPY.download}">${download}</span></div>`;
-  const upload = `<div class="upl" id="ul"${drainedNow ? " hidden" : ""}><span class="up" id="u">${escapeText(line)}</span>${drainedNow ? "" : thinBar(st.pct ?? 0, stalled, "b")}</div>`;
+  const gone = drainedNow && !hearing;
+  const upload = `<div class="upl" id="ul"${gone ? " hidden" : ""}><span class="up" id="u">${escapeText(line)}</span>${gone ? "" : thinBar(drainedNow ? 100 : st.pct ?? 0, stalled, "b")}</div>`;
+  // The wait's five minutes, counted down by the page itself from the take's go-live, so the
+  // line never hangs on a status it can no longer reach.
+  const listenFor = cutsTag === "coming" ? Math.max(0, VOICE_WAIT_MS - (now - Date.parse(meta.publishedAt))) : 0;
   // Voice cuts (N65): what was cut where the speaker said “shroom cut”, under the player —
   // this page is the maker's or an owner-class browser's. While the cues are still coming,
   // an empty strip waits for the page's poll to fill it.
-  const cutsTag = cutsField(meta, now, listens).cuts ?? null;
-  const cuts = cutsStrip(meta.edits) || (cutsTag === "coming" ? `<section class="cuts" id="cuts" hidden></section>` : "");
-  // The hint (owner-page-cue-hint): no voice cuts and none coming, in a space that listens.
-  // Hidden until the page's own check: this browser may have put it away, or seen a strip.
-  const hint = listens && !cuts ? `<div class="cue-hint" role="note" hidden><span>${escapeText(COPY.cueHint)}</span><button type="button">${escapeText(COPY.cueHintGotIt)}</button></div>` : "";
-  const [upA, upB] = uploadingLine(0).split("0%");
+  const rows = cutsStrip(meta.edits);
+  const cuts = rows || (cutsTag === "coming" ? `<section class="cuts" id="cuts" hidden></section>` : "");
+  // The hint (owner-page-cue-hint): no voice cuts, in a space that listens. Hidden until the
+  // page's own check: this browser may have put it away, or seen a strip; while the cues are
+  // coming, it waits for the line to end with none.
+  const hint = listens && !rows ? `<div class="cue-hint" role="note" hidden><span>${escapeText(COPY.cueHint)}</span><button type="button">${escapeText(COPY.cueHintGotIt)}</button></div>` : "";
   const cfg = JSON.stringify({
     id, live, drained: drainedNow, pending, mp4: view.download, saved: meta.titled ? meta.title : "", copied: COPY.copied, copy: COPY.copyLink, waiting,
-    copyThumb: COPY.copyThumbnail, preparing: COPY.preparingThumbnail, thumbs, dl: COPY.download, ready: COPY.ready, notFound: COPY.notFound, unavailable: COPY.unavailable, upA, upB, labels: LABELS, player: live ? "" : playerHtml(id, { ...meta, media: { ...meta.media, poster: null } }),
-    cutsTag, cutLabels: { back: COPY.putBack, again: COPY.cutAgain, too: COPY.cutItToo },
+    copyThumb: COPY.copyThumbnail, preparing: COPY.preparingThumbnail, thumbs, dl: COPY.download, finishing: COPY.finishing, notFound: COPY.notFound, unavailable: COPY.unavailable, labels: LABELS, player: live ? "" : playerHtml(id, { ...meta, media: { ...meta.media, poster: null } }),
+    cutsTag, listenFor, cutLabels: { back: COPY.putBack, again: COPY.cutAgain, too: COPY.cutItToo },
   });
   const script = `<script>${PLAYER_JS}
 ${COPY_JS}
@@ -2064,7 +2071,10 @@ if(j.strip){var h=document.createElement("div");h.innerHTML=j.strip;var n=h.firs
 wire();
 var HK="shroom:cue-hint";function hintAway(){try{return localStorage.getItem(HK)==="1"}catch(e){return false}}function putHintAway(){try{localStorage.setItem(HK,"1")}catch(e){}}
 function stripSeen(){var cu=document.getElementById("cuts");if(cu&&!cu.hidden){putHintAway();var h=document.querySelector(".cue-hint");if(h)h.remove()}}
-var hn=document.querySelector(".cue-hint");if(hn){if(!hintAway())hn.hidden=false;hn.querySelector("button").onclick=function(){hn.remove();putHintAway()}}stripSeen();
+var hn=document.querySelector(".cue-hint");function hintDue(){if(hn&&hn.isConnected&&!hintAway())hn.hidden=false}
+if(hn){hn.querySelector("button").onclick=function(){hn.remove();putHintAway()};if(c.cutsTag!=="coming")hintDue()}stripSeen();
+function done(then){if(c.done)return;c.done=true;if(ul.hidden){if(then)then();return}if(bar)bar.style.width="100%";ul.classList.add("fade");setTimeout(function(){ul.hidden=true;up.textContent="";if(bar){bar.parentNode.remove();bar=null}if(then)then()},400)}
+if(c.listenFor)setTimeout(function(){c.waitOver=true;if(c.drained)done(hintDue)},c.listenFor);
 function next(ms){setTimeout(poll,ms)}
 function showBar(on,moving){if(bar){bar.parentNode.style.display=on?"":"none";bar.parentNode.className="bar"+(moving?" go":"")}}
 function say(x){var w=document.getElementById("w");if(!w||(!x&&!c.said))return;c.said=!!x;w.textContent="";if(x){var p=document.createElement("p");p.className="line";p.textContent=x;w.appendChild(p)}}
@@ -2076,11 +2086,12 @@ var cp=s.copy,ps=cp&&cp.poster||(s.poster?"/m/"+c.id+"/poster.jpg":"");if(s.dur)
 shroomPlayer(pl,cp?cp.src:src,c.labels,{keep:cp?null:s.keep||null,st:"/_shroom/status/"+c.id,copy:!!cp})}
 if(s.drained)th.drained();
 if(s.cuts&&s.cuts!=="coming"&&s.cuts!==c.cutsTag)pull(s.cuts);if(!s.cuts&&c.cutsTag==="coming"){c.cutsTag=null;var cw=document.getElementById("cuts");if(cw&&cw.hidden)cw.remove()}
-if(s.drained){if(bar&&!c.done){c.done=true;up.textContent=c.ready;ul.classList.add("done");showBar(true,false);bar.style.width="100%";setTimeout(function(){ul.classList.add("fade");setTimeout(function(){ul.hidden=true;up.textContent="";if(bar){bar.parentNode.remove();bar=null}},400)},3000)}else if(!c.done){ul.hidden=true;up.textContent="";if(bar){bar.parentNode.remove();bar=null}}}else{ul.hidden=false;up.textContent=s.stalled?c.waiting:c.upA+s.pct+"%"+c.upB;showBar(true,!s.stalled);if(bar)bar.style.width=s.pct+"%"}
+if(s.drained){c.drained=true;if(s.cuts==="coming"&&!c.waitOver){if(!c.done){ul.hidden=false;up.textContent=c.finishing;showBar(true,true);if(bar)bar.style.width="100%"}}else done(s.cuts?null:hintDue)}
+else{ul.hidden=false;up.textContent=s.stalled?c.waiting:c.finishing;showBar(true,!s.stalled);if(bar)bar.style.width=s.pct+"%"}
 if(s.mp4){if(!dl.firstChild){var a=document.createElement("a");a.href="/d/"+c.id;a.textContent=c.dl;dl.appendChild(a)}if(s.drained&&s.cuts!=="coming")return}
 if(!s.drained||s.cuts==="coming")return next(2000);gap=Math.min(gap*2,30000);return next(gap)}
 if(s.state==="unavailable"){if(!c.live){say(c.unavailable);up.textContent="";showBar(false,false)}return next(30000)}
-if(s.state==="uploading"){say("");ul.hidden=false;up.textContent=s.stalled?c.waiting:c.upA+s.pct+"%"+c.upB;showBar(true,!s.stalled);if(bar)bar.style.width=s.pct+"%"}
+if(s.state==="uploading"){say("");ul.hidden=false;up.textContent=s.stalled?c.waiting:c.finishing;showBar(true,!s.stalled);if(bar)bar.style.width=s.pct+"%"}
 next(2000)}).catch(function(){next(5000)})}
 if(!c.live||!c.mp4||!c.drained)next(2000);else if(c.cutsTag==="coming")next(2000)})();</script>`;
   return shell(meta.title || "shroom", `${head}${stage}${cuts}${hint}${upload}`, face, "", script);
