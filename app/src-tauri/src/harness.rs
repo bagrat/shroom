@@ -98,8 +98,21 @@ pub enum Mode {
     DriveTake { which: crate::take_drive::TakeDrive, out: PathBuf },
 }
 
+/// The voice-cut drive's speech (`--voice <wav>`, spec N65): what a drive's take says in
+/// place of the beep, so the space's hearing and the voice lane have a cue to find. A quiet
+/// harness run only, as the beep is (`runtime::recorder`'s ears).
+static DRIVE_VOICE: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
+
+/// The speech a drive's take plays in place of the beep, when `--voice` named one.
+pub fn drive_voice() -> Option<&'static Path> {
+    DRIVE_VOICE.get().map(PathBuf::as_path)
+}
+
 pub fn from_args(args: Vec<String>) -> Mode {
     let after = |flag: &str| args.iter().position(|a| a == flag).map(|i| args[i + 1..].to_vec());
+    if let Some(wav) = after("--voice").and_then(|rest| rest.first().cloned()) {
+        let _ = DRIVE_VOICE.set(PathBuf::from(wav));
+    }
     if let Some(rest) = after("--selftest") {
         return Mode::Selftest(PathBuf::from(rest.first().expect("--selftest needs an output path")));
     }
@@ -808,6 +821,9 @@ struct DriveReport {
     take: Option<String>,
     rec: Option<String>,
     host: Option<String>,
+    /// Stop, on the wall clock (ms since the epoch): what a page's later changes are timed
+    /// from (the voice-cut drive's strip, N65).
+    stop_at_ms: Option<u128>,
     stop_to_published_ms: Option<u128>,
     stop_to_uploaded_ms: Option<u128>,
     /// Stop → the app opens the owner's page (a quiet run logs the open instead of doing
@@ -1135,6 +1151,7 @@ fn run_drive(app: &AppHandle, rt: &crate::runtime::Runtime, out: &Path, seconds:
         let log_from = log_len(rt);
         let stop = std::time::Instant::now();
         let stop_mono = rt.mono().0;
+        report.stop_at_ms = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).ok().map(|d| d.as_millis());
         let page_200 = first_200(format!("https://{}/{rec_id}", identity.host), stop);
         rt.post(Event::Act { surface: Surface::Popover, action: Action::Stop, rev: 0 });
         // The app opens the owner's page: when it would, the drive does what the browser does.

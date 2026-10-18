@@ -11,6 +11,12 @@
 # warning on the run and the status; a Mac decides them (heartbeat.mjs, never loosened).
 SHROOM_INSTALLED="$MAC_APP" node tests/e2e/full.mjs 10
 code=$?
+# Voice cuts end to end (N65, tests/e2e/voice-cut.mjs), when the request asks for them (a
+# line `voice-cut` in dev/e2e/request): after the heartbeat, in the run's own space, on a build
+# that turns the AI on (N66). A voice-cut run that didn't hold fails the scenario.
+if grep -qx 'voice-cut' dev/e2e/request 2>/dev/null; then
+  SHROOM_INSTALLED="$MAC_APP" node tests/e2e/voice-cut.mjs || code=1
+fi
 # What the browsers saw, as MP4s a phone plays (Playwright keeps WebM).
 for f in "$MAC_OUT"/page/*.webm; do
   [ -f "$f" ] || continue
