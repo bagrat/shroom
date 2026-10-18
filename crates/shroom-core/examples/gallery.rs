@@ -496,7 +496,7 @@ fn settings_rows() -> Vec<(&'static str, &'static str, World)> {
     rows.push(("settings-general", "general-agent-lit", {
         let mut w = settings(ready(), SettingsTab::General);
         w.launch.version = "1.2.0".into();
-        w.session.lit = Some((SettingsSpot::AgentRecording, w.now));
+        w.session.fields.settings.lit = Some((SettingsSpot::AgentRecording, w.now));
         w
     }));
     rows.push(("settings-space-inspection", "space-inspection", space()));

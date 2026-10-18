@@ -27,8 +27,9 @@ export type GeneralPane = {
 };
 
 /** General's card for a coding agent: the prompt, Copy, Read it first, the line, and
- * whether the agent may start and stop recordings (off by default). */
-export type AgentCard = { label: string; prompt: string; copy: Button; read_first: Button; line: string; recording: Toggle };
+ * whether the agent may start and stop recordings (off by default). `lit`: the command's
+ * settings link opened Settings here, so the switch's row is lit for a moment (B216). */
+export type AgentCard = { label: string; prompt: string; copy: Button; read_first: Button; line: string; recording: Toggle; lit: boolean };
 
 export type SpacePane = {
   kind: "space";

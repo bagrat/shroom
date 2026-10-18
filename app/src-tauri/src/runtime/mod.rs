@@ -837,6 +837,20 @@ pub fn start_traced(app: &AppHandle, launch: LaunchKind, flags: &DevFlags, probe
     start_inner(app, launch, true, flags, Some(probe))
 }
 
+/// A link macOS handed shroom as it opened (`RunEvent::Opened`, held until the core is up):
+/// Settings' own — `shroom://settings/agent`, which the command's recording refusal carries
+/// (spec N62, DECISIONS B216) — goes to the core, which opens Settings there; anything else
+/// is the member lane's, an invite (N50).
+pub fn opened(rt: &Runtime, url: &str) {
+    match shroom_core::event::SettingsSpot::of_link(url) {
+        Some(spot) => {
+            rt.log(&format!("link: Settings at {spot:?}"));
+            rt.post(Event::SettingsLink(spot));
+        }
+        None => member::deep_link(rt, url),
+    }
+}
+
 /// The process is ending. An end shroom didn't ask for is macOS's (Dock quit, logout,
 /// System Settings' quit-and-reopen): the core hears `Terminating { ours: false }` and
 /// gets a moment to write what it must (restore.json at perm-screen). The status seam

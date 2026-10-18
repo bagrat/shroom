@@ -9,6 +9,12 @@
   import type { GeneralPane } from "./types";
 
   let { g, send }: { g: GeneralPane; send: (a: Action) => void } = $props();
+  let agentRow: HTMLLabelElement | undefined = $state();
+  // The command's settings link (spec N62, DECISIONS B216): while the Scene lights the
+  // switch's row, the row is brought into view; the light fades as the Scene puts it out.
+  $effect(() => {
+    if (g.agent.lit) agentRow?.scrollIntoView({ block: "nearest" });
+  });
 
   /** The help line cut at each door's label, in order; a door the line doesn't carry
    * follows it. */
@@ -93,7 +99,7 @@
       </div>
       <p class="agent-line">{g.agent.line}</p>
     </div>
-    <label class="srow" class:off={!g.agent.recording.enabled}>
+    <label class="srow agent-switch" class:off={!g.agent.recording.enabled} class:lit={g.agent.lit} bind:this={agentRow}>
       <span class="grow">{g.agent.recording.label}</span>
       <input
         type="checkbox"

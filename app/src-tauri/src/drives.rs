@@ -914,7 +914,8 @@ fn settings(d: &Drive) -> Result<(), String> {
 /// General's “Let it start and stop recordings” (spec N62, DECISIONS B216), in the real app:
 /// off by default; turned on, the app keeps it (`prefs.json`) and the control socket lets the
 /// command's ask through to the core (a stop with nothing recording: `no_take`); off again,
-/// refused again (`recording_off`).
+/// refused again (`recording_off`). Then the refusal's link, through the router every opened
+/// link takes: the switch's row lit, then not, and the switch still off.
 fn agent_switch(d: &Drive, general: Option<&shroom_core::scene::GeneralBody>) -> Result<(), String> {
     let on = |s: &Scene| matches!(s.settings.as_ref().map(|w| &w.body.pane), Some(SettingsPane::General(g)) if g.agent.recording.on);
     d.check("the coding agent's switch is off by default", general.is_some_and(|g| !g.agent.recording.on), format!("{:?}", general.map(|g| &g.agent.recording)));
@@ -931,6 +932,15 @@ fn agent_switch(d: &Drive, general: Option<&shroom_core::scene::GeneralBody>) ->
     d.wait("the switch off", 5, |s| !on(s))?;
     let answer = ask_socket(d, "record.stop");
     d.check("off again, refused again", answer.contains("\"recording_off\""), answer);
+    let lit = |s: &Scene| matches!(s.settings.as_ref().map(|w| &w.body.pane), Some(SettingsPane::General(g)) if g.agent.lit);
+    crate::runtime::opened(&d.rt, shroom_core::event::SettingsSpot::AgentRecording.link());
+    let shown = d.wait("the settings link lights the switch's row", 5, lit);
+    d.check("the settings link opens General with the switch's row lit", shown.is_ok(), shown.as_ref().err().cloned().unwrap_or_default());
+    d.check("the link flips nothing", shown.as_ref().is_ok_and(|s| !on(s)), "the switch read on");
+    let out = d.wait("the light goes out", 5, |s| s.settings.is_some() && !lit(s));
+    d.check("the link's light goes out by itself, Settings stays", out.is_ok(), out.err().unwrap_or_default());
+    let answer = ask_socket(d, "record.stop");
+    d.check("after the link, still refused", answer.contains("\"recording_off\""), answer);
     Ok(())
 }
 
