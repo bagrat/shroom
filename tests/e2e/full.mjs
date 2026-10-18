@@ -189,6 +189,17 @@ if (summary.wizard.ok && process.env.E2E_CLI !== "0") {
   leg.stdout.on("data", (d) => { text += d; });
   const legCode = await exited(leg);
   fs.writeFileSync(path.join(out, "cli.json"), text);
+  // The leg's own logs, for the evidence: the app's run log from the leg's start (every
+  // line stamped UTC, the account's id scrubbed out as the wizard's is) and the command's own
+  // log (DECISIONS B215), so a failed take shows what the app and the command did.
+  try {
+    const id = fs.readFileSync(path.join(home, "e2e-account-id"), "utf8").trim();
+    const since = new Date(cliFrom).toISOString().slice(0, 19) + "Z";
+    const lines = fs.readFileSync(path.join(home, "logs/run.log"), "utf8").split("\n");
+    const first = lines.findIndex((l) => /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ/.test(l) && l.slice(0, 20) >= since);
+    fs.writeFileSync(path.join(out, "cli-run.log"), lines.slice(first < 0 ? Math.max(0, lines.length - 600) : first).join("\n").split(id).join("<ACCOUNT_ID>"));
+  } catch { /* no log */ }
+  try { fs.copyFileSync(path.join(home, "logs/cli.log"), path.join(out, "cli.log")); } catch { /* no log */ }
   try { summary.cli = JSON.parse(text); } catch { summary.cli = { ok: false, problems: ["no summary"], tail: text.slice(-800) }; }
   chapter(cliFrom, Date.now(), "The shroom command, as an agent runs it: on PATH, refused until the switch is on, then a take started, paused, resumed and stopped, renamed and deleted");
   if (legCode !== 0) {
