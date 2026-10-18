@@ -112,8 +112,11 @@ describe("the ping (B206 a)", () => {
 });
 
 describe("hearing (B205 a, b)", () => {
+  // A titled take, so no early title (B205 f) steps in: these are about hearing.
+  const TYPED = { title: "Mine", titled: true };
+
   it("hears each full minute as it's asked, then the rest once the take is done: every word once, on the recording's clock", async () => {
-    const env = await aiSpace();
+    const env = await aiSpace({ meta: TYPED });
     expect(await answerOf(env, { rec: REC, through: 9 })).toEqual({ shroom: 1, ai: true, step: "idle", more: false });
     expect(whisperCalls(env)).toHaveLength(0);
     expect(await answerOf(env, { rec: REC, through: 10 })).toEqual({ shroom: 1, ai: true, step: "heard", more: false });
@@ -139,7 +142,7 @@ describe("hearing (B205 a, b)", () => {
   });
 
   it("leads each window after the first with the last piece of the one before, and sends sound only, as a stream", async () => {
-    const env = await aiSpace();
+    const env = await aiSpace({ meta: TYPED });
     await answerOf(env, { rec: REC, through: 10 });
     await answerOf(env, { rec: REC, through: 20 });
     await answerOf(env, { rec: REC, done: true });
@@ -161,7 +164,7 @@ describe("hearing (B205 a, b)", () => {
 
   it("keeps the words of a take that ends on a window's edge", async () => {
     const words = script(sentences(31), { from: 2.4 }); // to 119.55 s: the last two words past 118.5 s
-    const env = await aiSpace({ pieces: 20, words });
+    const env = await aiSpace({ pieces: 20, words, meta: TYPED });
     await answerOf(env, { rec: REC, through: 10 });
     await answerOf(env, { rec: REC, through: 20 });
     // Nothing left to hear: the held words become final and the take is named in the same ask.
@@ -272,6 +275,7 @@ describe("naming (B205 c, d; B206 d)", () => {
   it("a title typed while the name was on its way wins", async () => {
     const env = await aiSpace();
     await answerOf(env, { rec: REC, through: 10 });
+    expect(await answerOf(env, { rec: REC, through: 20 })).toMatchObject({ step: "titled" }); // the early title (B205 f)
     await answerOf(env, { rec: REC, through: 20 });
     await answerOf(env, { rec: REC, done: true });
     let raced = false;
@@ -344,11 +348,131 @@ describe("naming (B205 c, d; B206 d)", () => {
   });
 });
 
+describe("the early title (B205 f)", () => {
+  // Bagrat, 2026-10-18: the page opens named. Once the first minute is heard while the take
+  // records, a title from it alone; the full name at done replaces it, never a typed title.
+  const EARLY = "Where the launch stands";
+  const FULL = "Planning the spring launch";
+  /** A title-only ask (the early one) gets EARLY; the full one, FULL and its chapters. */
+  const answers = (input) => (/Return no chapters/.test(input.messages[0].content) ? chat({ title: EARLY, chapters: [] }) : chat({ title: FULL, chapters: [{ start: "0:00", title: "Where we are" }, { start: "1:02", title: "the budget" }] }));
+  /** The first minute up, asked as a Mac asks: again while the answer says there's more. */
+  async function firstMinute(env) {
+    const heard = await answerOf(env, { rec: REC, through: 10 });
+    expect(heard).toMatchObject({ ai: true, step: "heard", more: true });
+    return answerOf(env, { rec: REC, through: 10 });
+  }
+  const userOf = (call) => call.input.messages.find((m) => m.role === "user").content;
+
+  it("names the take from its first minute while it records, so its page opens with that title", async () => {
+    const env = await aiSpace({ name: answers });
+    expect(await firstMinute(env)).toMatchObject({ ai: true, step: "titled", more: false });
+    const calls = namingCalls(env);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].model).toBe(AI_MODELS.name);
+    expect(calls[0].input.messages[0].content).toContain("Return no chapters.");
+    expect(userOf(calls[0])).toContain("[0:00] s0a");
+    expect(userOf(calls[0])).toContain("s14h.");
+    expect(userOf(calls[0])).not.toContain("s16a"); // 61.3 s: the next minute, not heard yet
+    expect(record(env)).toMatchObject({ title: EARLY, named: { by: "ai", early: true, title: EARLY, chapters: [] } });
+    expect(record(env).titled ?? false).toBe(false);
+    // The owner's page has it from the start, in its field, and says where it came from.
+    const html = await (await call(env, "GET", `/${REC}`, { headers: { cookie: cookieFor(M1, OWNER_MAC) } })).text();
+    expect(html).toContain(`placeholder="${EARLY}"`);
+    expect(textOf(html)).toContain(COPY.named);
+    // Nothing more until the next minute is up: one early title a take.
+    expect(await answerOf(env, { rec: REC, through: 10 })).toMatchObject({ step: "idle", more: false });
+    expect(await answerOf(env, { rec: REC, through: 20 })).toMatchObject({ step: "heard" });
+    expect(namingCalls(env)).toHaveLength(1);
+  });
+
+  it("the full name at done replaces it, with the chapters", async () => {
+    const env = await aiSpace({ name: answers });
+    await firstMinute(env);
+    await finish(env);
+    expect(namingCalls(env)).toHaveLength(2);
+    expect(record(env)).toMatchObject({ title: FULL, named: { title: FULL, chapters: [[0, "Where we are"], [61.3, "The budget"]] } });
+    expect(record(env).named.early).toBeUndefined();
+  });
+
+  it("a title typed after the early one wins for good; one typed before it costs no call", async () => {
+    let env = await aiSpace({ name: answers });
+    await firstMinute(env);
+    await env.BUCKET.put(metaKey(REC), JSON.stringify({ ...record(env), title: "Mine", titled: true }));
+    await finish(env);
+    expect(record(env)).toMatchObject({ title: "Mine", titled: true, named: { title: FULL } });
+    env = await aiSpace({ name: answers, meta: { title: "Mine", titled: true } });
+    expect(await answerOf(env, { rec: REC, through: 10 })).toMatchObject({ step: "heard", more: false });
+    expect(namingCalls(env)).toHaveLength(0);
+  });
+
+  it("a take shorter than a minute is named once, at Stop", async () => {
+    const env = await aiSpace({ pieces: 8, name: answers, words: script(sentences(11)) });
+    expect(await answerOf(env, { rec: REC, through: 8 })).toMatchObject({ step: "idle", more: false });
+    await finish(env);
+    expect(namingCalls(env)).toHaveLength(1);
+    expect(record(env).named.early).toBeUndefined();
+  });
+
+  it("with no speech in the first minute, it comes once there is some", async () => {
+    const env = await aiSpace({ name: answers, words: script(sentences(18), { from: 70 }) });
+    expect(await answerOf(env, { rec: REC, through: 10 })).toMatchObject({ step: "heard", more: false });
+    expect(namingCalls(env)).toHaveLength(0);
+    expect(await answerOf(env, { rec: REC, through: 20 })).toMatchObject({ step: "heard", more: true });
+    expect(await answerOf(env, { rec: REC, through: 20 })).toMatchObject({ step: "titled" });
+    expect(userOf(namingCalls(env)[0])).toContain("[1:10] s0a");
+    expect(record(env).title).toBe(EARLY);
+  });
+
+  it("a slip cut with “shroom cut” in the first minute never reaches it", async () => {
+    const lines = [...sentences(5), "Click on this link and you will.", "Shroom cut.", "To get your video use this link.", ...sentences(8, 10)];
+    const env = await aiSpace({ name: answers, words: script(lines) });
+    await firstMinute(env);
+    const user = userOf(namingCalls(env)[0]);
+    expect(user).toContain("s4h.");
+    expect(user).toContain("To get your video use this link.");
+    for (const gone of ["Click", "will.", "Shroom", "cut."]) expect(user).not.toContain(gone);
+  });
+
+  it("the owner's page keeps asking while the name is early, and takes the full one in place", async () => {
+    const env = await aiSpace({ name: answers });
+    await firstMinute(env);
+    const cookie = cookieFor(M1, OWNER_MAC);
+    expect(await (await call(env, "GET", `/_shroom/named/${REC}`, { headers: { cookie } })).json()).toEqual({ named: EARLY, titled: false, later: false, early: true });
+    expect(await (await call(env, "GET", `/${REC}`, { headers: { cookie } })).text()).toContain("/_shroom/named/");
+    await finish(env);
+    expect(await (await call(env, "GET", `/_shroom/named/${REC}`, { headers: { cookie } })).json()).toEqual({ named: FULL, titled: false, later: false, early: false });
+  });
+
+  it("an early title that fails is let go, and holds nothing up", async () => {
+    const env = await aiSpace({ name: answers, fail: (model, input) => { if (!model.includes("whisper") && /Return no chapters/.test(input.messages[0].content)) throw new Error("5006: the model said nothing useful"); } });
+    expect(await firstMinute(env)).toMatchObject({ step: "titled", more: false });
+    expect(record(env).named).toBeUndefined();
+    expect(record(env).title).toBe("Untitled — Oct 2");
+    expect(env.BUCKET.json(LATER)).toBeNull();
+    // Tried once: the next minute is heard, and done names the take as ever.
+    expect(await answerOf(env, { rec: REC, through: 20 })).toMatchObject({ step: "heard" });
+    await finish(env);
+    expect(record(env)).toMatchObject({ title: FULL, named: { title: FULL } });
+  });
+
+  it("a used-up free day holds the early title like any step, and the schedule takes it after 00:00 UTC", async () => {
+    let capped = true;
+    const env = await aiSpace({ name: answers, fail: (model) => { if (capped && !model.includes("whisper")) throw new Error("3036: You have used up your daily free allocation of 10,000 neurons."); } });
+    expect(await firstMinute(env)).toEqual({ shroom: 1, ai: true, later: "daily" });
+    expect(env.BUCKET.json(LATER)).toMatchObject({ reason: "daily", after: MIDNIGHT, through: 10 });
+    capped = false;
+    await aiTick(env, MIDNIGHT + MIN);
+    expect(record(env)).toMatchObject({ title: EARLY, named: { early: true } });
+  });
+});
+
 describe("the free day (B207)", () => {
   const usedUp = () => { throw new Error("3036: You have used up your daily free allocation of 10,000 neurons. Please upgrade to Cloudflare's Workers Paid plan if you would like to continue usage."); };
 
   it("knows a used-up day from a busy model and from anything else", () => {
     expect(aiRefusal(new Error("AiError: 3036: You have used up your daily free allocation of 10,000 neurons."))).toBe("daily");
+    // The code an account at its cap answered with on 2026-10-18 (the voice-cut tester's), however it's worded.
+    expect(aiRefusal(new Error("AiError: 4006: Account limited"))).toBe("daily");
     expect(aiRefusal(new Error("3040: Capacity temporarily exceeded, please try again."))).toBe("busy");
     expect(aiRefusal(new Error("3007: Request timeout"))).toBe("busy");
     expect(aiRefusal(new Error("5007: No such model"))).toBe("error");
@@ -391,8 +515,11 @@ describe("the free day (B207)", () => {
     busy = false;
     await aiTick(env, NOW + 6 * MIN);
     expect(env.BUCKET.json(TRANSCRIPT)).toMatchObject({ windows: 1 });
-    // Nothing more to hear until the Mac asks again: the mark goes.
+    // Then the early title, a step of its own (B205 f).
     await aiTick(env, NOW + 7 * MIN);
+    expect(record(env).named).toMatchObject({ early: true });
+    // Nothing more to hear until the Mac asks again: the mark goes.
+    await aiTick(env, NOW + 8 * MIN);
     expect(env.BUCKET.json(LATER)).toBeNull();
   });
 
@@ -636,6 +763,24 @@ describe("edits (B208)", () => {
     expect(aiChapters({ durationSec: 130, named: before.named, bakedFrom: { at: AT, keep: [[0, 30], [50, 150]] } }).map((c) => c[1])).toEqual(["Where we are", "The budget", "Next steps"]);
   });
 
+  it("words and chapters on a clock the bake list no longer holds aren't shown, rather than shown wrong", async () => {
+    const env = await namedSpace();
+    const AT = "2026-10-04T10:00:00Z";
+    await env.BUCKET.put(metaKey(REC), JSON.stringify({ ...record(env), durationSec: 130, bakedFrom: [{ at: AT, keep: [[0, 30], [50, 150]] }] }));
+    await call(env, "GET", `/${REC}`);
+    expect(record(env).named.clock).toBe(AT);
+    // Twenty more bakes later the editor's list has dropped this one (it keeps the last 20).
+    const later = Array.from({ length: 20 }, (_, i) => ({ at: `2026-10-05T10:${String(i).padStart(2, "0")}:00Z`, keep: [[0, 130]] }));
+    await env.BUCKET.put(metaKey(REC), JSON.stringify({ ...record(env), bakedFrom: later }));
+    const transcript = JSON.stringify(env.BUCKET.json(TRANSCRIPT));
+    const html = await (await call(env, "GET", `/${REC}`)).text();
+    expect(html).not.toMatch(/shroomChapters\(p,\[/);
+    expect((await vtt(env, "?e=1")).res.status).toBe(404);
+    // The view weighs nothing and rewrites nothing.
+    expect(JSON.stringify(env.BUCKET.json(TRANSCRIPT))).toBe(transcript);
+    expect(env.BUCKET.json(LATER)).toBeNull();
+  });
+
   it("a bake that cuts a fifth of what was said names the video again", async () => {
     const env = await namedSpace();
     await env.BUCKET.put(metaKey(REC), JSON.stringify({ ...record(env), durationSec: 120, bakedFrom: [{ at: "2026-10-04T10:00:00Z", keep: [[0, 30], [60, 150]] }] }));
@@ -699,11 +844,11 @@ describe("the page (B209)", () => {
     expect(html).toContain("/_shroom/named/");
     const res = await call(env, "GET", `/_shroom/named/${REC}`, { headers: { cookie } });
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ named: "", titled: false, later: false });
+    expect(await res.json()).toEqual({ named: "", titled: false, later: false, early: false });
     expect((await call(env, "GET", `/_shroom/named/${REC}`)).status).toBe(403);
     expect((await call(env, "GET", `/_shroom/named/${REC}`, { headers: { cookie: cookieFor(MHER, MHER_MAC) } })).status).toBe(403);
     await finish(env);
-    expect(await (await call(env, "GET", `/_shroom/named/${REC}`, { headers: { cookie } })).json()).toEqual({ named: "Planning the spring launch", titled: false, later: false });
+    expect(await (await call(env, "GET", `/_shroom/named/${REC}`, { headers: { cookie } })).json()).toEqual({ named: "Planning the spring launch", titled: false, later: false, early: false });
   });
 
   it("a space without the AI never asks", async () => {
