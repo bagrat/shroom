@@ -10,7 +10,7 @@ use std::sync::{Arc, Mutex};
 
 use serde_json::{Value, json};
 use shroom_cloud::device::DeviceKey;
-use shroom_cloud::member::{AiAuth, AiSignal, AiSent, Space, ai_signal, parent_proof};
+use shroom_cloud::member::{AiAuth, AiSignal, AiSent, Space, ai_log_lines, ai_signal, ai_signal_noted, parent_proof};
 
 const HOST: &str = "v.myshroom.workers.dev";
 const REC: &str = "AbCdEfGhIjKlMnOp";
@@ -144,4 +144,39 @@ fn it_never_asks_without_end() {
     let (base, got) = stand_in((0..40).map(|_| (200, json!({"shroom": 1, "ai": true, "step": "heard", "more": true}))).collect());
     assert_eq!(ai_signal(&Space::at(HOST, &base), &AiAuth::Device(&key()), REC, AiSignal::Done), AiSent::On);
     assert!(got.lock().unwrap().len() <= 12, "the space's schedule finishes what's left");
+}
+
+/// Bagrat, 2026-10-18: a report from a Mac shows what happened in the space too. Each answer's
+/// note (the window heard, the name and its model, a wait and its code) reaches the Mac's log,
+/// in order, in lines the report's cleaning leaves as they are.
+#[test]
+fn each_answers_note_reaches_the_log_cleaned_as_it_is() {
+    let (base, _) = stand_in(vec![
+        (200, json!({"shroom": 1, "ai": true, "step": "heard", "more": true, "note": "heard window 3 in 812 ms, 412 words so far"})),
+        (200, json!({"shroom": 1, "ai": true, "step": "named", "more": false, "note": "named by gpt-oss-120b in 1530 ms: 4 chapters from 412 words, 900+80 tokens"})),
+    ]);
+    let (sent, notes) = ai_signal_noted(&Space::at(HOST, &base), &AiAuth::Device(&key()), REC, AiSignal::Done);
+    assert_eq!(sent, AiSent::On);
+    let lines = ai_log_lines("2026-10-18 14.02.11", AiSignal::Done, sent, &notes);
+    assert_eq!(lines, ["naming 2026-10-18 14.02.11: Done → On · heard window 3 in 812 ms, 412 words so far · named by gpt-oss-120b in 1530 ms: 4 chapters from 412 words, 900+80 tokens"]);
+    for l in &lines {
+        assert_eq!(shroom_core::report::clean_line(l), *l, "cleaned as it is");
+    }
+
+    let (base, _) = stand_in(vec![(200, json!({"shroom": 1, "ai": true, "later": "daily", "note": "waits for 00:00 UTC: the free day is used up (4006)"}))]);
+    let (sent, notes) = ai_signal_noted(&Space::at(HOST, &base), &AiAuth::Device(&key()), REC, AiSignal::Through(10));
+    assert_eq!(ai_log_lines("t", AiSignal::Through(10), sent, &notes), ["naming t: Through(10) → On · waits for 00:00 UTC: the free day is used up (4006)"]);
+
+    // No answer: the line says so, with nothing else.
+    let free = TcpListener::bind("127.0.0.1:0").unwrap();
+    let nobody = format!("http://{}", free.local_addr().unwrap());
+    drop(free);
+    let (sent, notes) = ai_signal_noted(&Space::at(HOST, &nobody), &AiAuth::Device(&key()), REC, AiSignal::Done);
+    assert_eq!(ai_log_lines("t", AiSignal::Done, sent, &notes), ["naming t: Done → Owed"]);
+
+    // A long run of notes goes on more lines, each under the report's cut.
+    let many: Vec<String> = (1..=12).map(|i| format!("heard window {i} in 1234 ms, {} words so far", i * 150)).collect();
+    let lines = ai_log_lines("t", AiSignal::Done, AiSent::On, &many);
+    assert!(lines.len() > 1 && lines.iter().all(|l| l.chars().count() <= 380 && l.starts_with("naming t: ")), "{lines:?}");
+    assert_eq!(lines.iter().map(|l| l.matches("heard window").count()).sum::<usize>(), 12);
 }

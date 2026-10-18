@@ -963,6 +963,10 @@ pub struct AiAnswer {
     /// Why it waits, when it does (the free day, a busy model): the space's schedule finishes it.
     #[serde(default)]
     pub later: Option<String>,
+    /// The step's line for this Mac's log: counts, times, models and codes, never a word said
+    /// or a title (DECISIONS B206 f).
+    #[serde(default)]
+    pub note: Option<String>,
 }
 
 /// How a signal went.
@@ -981,28 +985,54 @@ pub enum AiSent {
 /// Tells the space, a step at a time, asking again while it says there's more — a few times
 /// for a minute, more for a done take, then the space's own schedule finishes what's left.
 pub fn ai_signal(space: &Space, auth: &AiAuth, rec: &str, signal: AiSignal) -> AiSent {
+    ai_signal_noted(space, auth, rec, signal).0
+}
+
+/// [`ai_signal`], with each answer's note for this Mac's log, in order.
+pub fn ai_signal_noted(space: &Space, auth: &AiAuth, rec: &str, signal: AiSignal) -> (AiSent, Vec<String>) {
     let most = match signal {
         AiSignal::Through(_) => 3,
         AiSignal::Done => 12,
     };
     let mut sent = AiSent::Owed;
+    let mut notes = Vec::new();
     for _ in 0..most {
         let ts = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs());
         match space.ai(auth, rec, signal, ts) {
-            Answer::Ok(a) if !a.ai => return AiSent::Off,
+            Answer::Ok(a) if !a.ai => return (AiSent::Off, notes),
             Answer::Ok(a) => {
                 sent = AiSent::On;
+                notes.extend(a.note);
                 if !a.more {
-                    return sent;
+                    return (sent, notes);
                 }
             }
             Answer::Refused(r) if !(r.is_transient() || r.is_space() || r.status >= 500 || r.class == Class::StaleParent) => {
-                return if sent == AiSent::On { sent } else { AiSent::Settled };
+                return (if sent == AiSent::On { sent } else { AiSent::Settled }, notes);
             }
-            _ => return sent,
+            _ => return (sent, notes),
         }
     }
-    sent
+    (sent, notes)
+}
+
+/// A signal's lines for this Mac's log: `naming <take>: <signal> → <how it went>`, then each
+/// answer's note, as many lines as keep each under the report's cut (B206 f).
+pub fn ai_log_lines(take: &str, signal: AiSignal, sent: AiSent, notes: &[String]) -> Vec<String> {
+    const MOST: usize = 380;
+    let head = format!("naming {take}: ");
+    let mut lines = vec![format!("{head}{signal:?} → {sent:?}")];
+    for n in notes {
+        let n: String = n.chars().filter(|c| !c.is_control()).take(200).collect();
+        let last = lines.last_mut().expect("a line");
+        if last.chars().count() + 3 + n.chars().count() <= MOST {
+            last.push_str(" · ");
+            last.push_str(&n);
+        } else {
+            lines.push(format!("{head}… {n}"));
+        }
+    }
+    lines
 }
 
 #[cfg(test)]

@@ -3088,6 +3088,10 @@ RslHrCbxRkJfNecBV6RIWHCo9gM6R87CBKkcv0DIvmsxtgOIAVwhvDhCtPMz//hG3MTFq/jf1U9bMGJH
 const AI_LATER = ".shroom/ai/later/";
 /** The models (B205): hearing, naming, and naming's fallback. */
 export const AI_MODELS = { hear: "@cf/openai/whisper-large-v3-turbo", name: "@cf/openai/gpt-oss-120b", fallback: "@cf/google/gemma-4-26b-a4b-it" };
+/** What Whisper is told to expect before each window (B205 a): the voice cuts' cue, and the
+ * hesitations their planner reads, so it writes them down rather than tidying them away. Heard
+ * only with the voice-activity filter: without it a prime is echoed into minutes nobody speaks in. */
+export const AI_HEAR_PRIME = "Shroom cut. Um, uh, so, so I, I mean, shroom cut.";
 /** The rules held in code (B205 a, d; B208 c): ten pieces a window, 1.5 s at its edges. */
 const AI_RULES = { window: 10, edge: 1.5, minChapter: 20, minVideo: 90, maxChapters: 12, minWords: 12, earlyWords: 20, renameShare: 0.2, titleMax: 60 };
 /** How long a step holds its take, so the schedule and a Mac never take the same one. */
@@ -3501,6 +3505,9 @@ function vttTime(t) {
   return `${two(Math.floor(ms / 3600000))}:${two(Math.floor((ms % 3600000) / 60000))}:${two(Math.floor((ms % 60000) / 1000))}.${two(ms % 1000, 3)}`;
 }
 
+/** A word that's only a hesitation, which captions leave out (B205 e). */
+const AI_FILLER = /^(?:u+m+|u+h+m*|e+r+m*|h+m+|m{2,})[.,?!…]*$/i;
+
 /** Captions as WebVTT from the words that play (B205 e, B208 b): a cue ends at a sentence's
  * end, a pause over 1 s, a cut, 6 s, or two lines of 42 characters, and breaks its line at
  * the space nearest its middle. `edited`: timed on the edited clock (the editor's copy plays);
@@ -3512,6 +3519,11 @@ export function aiCaptions(words, keep, edited) {
   /** @type {{ s: number, e: number, text: string, range: number } | null} */
   let cur = null;
   for (const p of aiPlaying(words, keep)) {
+    // A lone hesitation is left out (the words keep it, for voice cuts); a sentence it ended still ends.
+    if (AI_FILLER.test(p.w)) {
+      if (cur && /[.?!…]$/.test(p.w)) { if (!/[.?!…]$/.test(cur.text)) cur.text = cur.text.replace(/[,;:]$/, "") + p.w.slice(-1); cues.push(cur); cur = null; }
+      continue;
+    }
     const s = edited ? p.s : p.src, e = s + (p.e - p.s);
     if (cur && (p.range !== cur.range || s - cur.e > 1 || e - cur.s > 6 || cur.text.length + 1 + p.w.length > 84)) { cues.push(cur); cur = null; }
     if (!cur) cur = { s, e, text: p.w, range: p.range };
@@ -3638,13 +3650,16 @@ export function aiAskInput(model, sents, chapters) {
   };
 }
 
-/** One naming call. @param {Ai} ai @param {string} model @param {{ s: number, text: string }[]} sents @param {boolean} chapters */
+/** One naming call: the answer, and the tokens it took when the model says (for the log).
+ * @param {Ai} ai @param {string} model @param {{ s: number, text: string }[]} sents @param {boolean} chapters
+ * @returns {Promise<{ answer: any, tokens: [number, number] | null }>} */
 async function aiAsk(ai, model, sents, chapters) {
   const out = await ai.run(model, aiAskInput(model, sents, chapters));
   const text = aiText(out);
   const json = JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1));
   if (!json || typeof json !== "object" || typeof json.title !== "string") throw new Error("no answer");
-  return json;
+  const u = /** @type {any} */ (out)?.usage;
+  return { answer: json, tokens: Number.isInteger(u?.prompt_tokens) && Number.isInteger(u?.completion_tokens) ? [u.prompt_tokens, u.completion_tokens] : null };
 }
 
 /** Names the take (B205 c, d; B206 d): one model call on the words that play under the edit
@@ -3659,21 +3674,29 @@ async function aiName(env, id, t, meta, now) {
   const base = { by: "ai", at: iso(now), rev: aiRev(meta), clock: aiClock(meta), words: playing.length, language: t.language };
   /** @type {Record<string, unknown>} */
   let named = { ...base, model: null, title: null, chapters: [] };
+  let note = `not named: ${playing.length} words, under ${AI_RULES.minWords}`;
   if (playing.length >= AI_RULES.minWords) {
     const sents = aiSentences(playing.map((p) => /** @type {Word} */ ([p.w, p.s, p.e])));
     const want = total >= AI_RULES.minVideo;
+    const t0 = Date.now();
     let model = AI_MODELS.name;
-    /** @type {any} */
-    let answer;
+    /** @type {string | null} */
+    let fallback = null;
+    /** @type {{ answer: any, tokens: [number, number] | null }} */
+    let asked;
     try {
-      answer = await aiAsk(ai, model, sents, want);
+      asked = await aiAsk(ai, model, sents, want);
     } catch (e) {
       if (aiRefusal(e) !== "error") throw e;
+      fallback = aiCode(e);
       model = AI_MODELS.fallback;
-      answer = await aiAsk(ai, model, sents, want);
+      asked = await aiAsk(ai, model, sents, want);
     }
+    const ms = Date.now() - t0;
+    const { answer, tokens } = asked;
     const chapters = want ? aiCleanChapters(answer.chapters, sents, total).map(([s, title]) => [Math.round(aiToSource(keep, s) * 10) / 10, title]) : [];
-    named = { ...base, model, title: aiTitle(answer.title) || null, chapters };
+    named = { ...base, model, title: aiTitle(answer.title) || null, chapters, ms, ...(tokens ? { tokens } : {}), ...(fallback ? { fallback } : {}) };
+    note = `named by ${aiModelName(model)} in ${ms} ms: ${chapters.length} chapters from ${playing.length} words${tokens ? `, ${tokens[0]}+${tokens[1]} tokens` : ""}${fallback ? ` (${aiModelName(AI_MODELS.name)} failed: ${fallback})` : ""}`;
   }
   await aiWriteMeta(env, id, (m) => {
     if (typeof named.title === "string" && !m.titled) m.title = named.title;
@@ -3682,6 +3705,7 @@ async function aiName(env, id, t, meta, now) {
     delete m.naming;
     return true;
   });
+  return note;
 }
 
 /** Whether the early title is due (B205 f): the take still recording (no rename, not done),
@@ -3722,31 +3746,37 @@ async function aiNameEarly(env, id, t, etag, now) {
   const ai = /** @type {Ai} */ (env.AI);
   const words = aiWithoutSlips([...t.words, ...(t.tail ?? [])]);
   const sents = aiSentences(words);
+  const t0 = Date.now();
   let model = AI_MODELS.name;
   /** @type {string | null} */
   let title = null;
+  let note;
   try {
     /** @type {any} */
-    let answer;
+    let asked;
     try {
-      answer = await aiAsk(ai, model, sents, false);
+      asked = await aiAsk(ai, model, sents, false);
     } catch (e) {
       if (aiRefusal(e) !== "error") throw e;
       model = AI_MODELS.fallback;
-      answer = await aiAsk(ai, model, sents, false);
+      asked = await aiAsk(ai, model, sents, false);
     }
-    title = aiTitle(answer?.title) || null;
+    title = aiTitle(asked.answer?.title) || null;
+    note = title ? `early title by ${aiModelName(model)} in ${Date.now() - t0} ms` : `no early title: ${aiModelName(model)} gave none`;
   } catch (e) {
     if (aiRefusal(e) !== "error") throw e;
+    note = `no early title: error ${aiCode(e)}`;
   }
+  const ms = Date.now() - t0;
   await casPut(env, aiTranscriptKey(id), JSON.stringify({ ...t, early: true }), etag ? { etagMatches: etag } : { etagDoesNotMatch: "*" });
-  if (!title) return;
+  if (!title) return note;
   await aiWriteMeta(env, id, (m) => {
     if (m.titled || m.named) return false;
     m.title = title;
-    m.named = { by: "ai", early: true, model, at: iso(now), rev: aiRev(m), clock: aiClock(m), words: words.length, title, chapters: [], language: t.language };
+    m.named = { by: "ai", early: true, model, at: iso(now), rev: aiRev(m), clock: aiClock(m), words: words.length, title, chapters: [], language: t.language, ms };
     return true;
   });
+  return note;
 }
 
 // ───────── a used-up free day, a busy model (B207) ─────────
@@ -3761,6 +3791,12 @@ export function aiRefusal(e) {
   if (/\b(3040|3007|3008|429)\b|capacity|rate.?limit|too many requests|timed? ?out|overloaded/i.test(m)) return "busy";
   return "error";
 }
+
+/** A refused call's code for the log: Workers AI's number, never its words. @param {unknown} e */
+export const aiCode = (e) => String(/** @type {any} */ (e)?.message ?? e ?? "").match(/\b(\d{4}|429)\b/)?.[1] ?? "no code";
+
+/** A model's name without its catalogue prefix, for the log. @param {string} model */
+const aiModelName = (model) => model.replace(/^@cf\/[^/]+\//, "");
 
 /** The first 00:00 UTC after `now`. @param {number} now */
 const nextMidnight = (now) => Math.floor(now / DAY_MS) * DAY_MS + DAY_MS;
@@ -3876,11 +3912,13 @@ async function aiHear(env, id, meta, pieces, w, t, etag, last) {
   let language = null;
   if (parts.length) {
     const body = new ReadableStream({ start(c) { for (const p of parts) c.enqueue(p); c.close(); } });
-    const out = await ai.run(AI_MODELS.hear, { audio: { body, contentType: "audio/aac" } });
+    // The filter keeps Whisper from writing into silence and music ("Thank you."), which a
+    // prime would otherwise be echoed into (measured 2026-10-18, B205 a).
+    const out = await ai.run(AI_MODELS.hear, { audio: { body, contentType: "audio/aac" }, vad_filter: true, initial_prompt: AI_HEAR_PRIME });
     for (const seg of Array.isArray(out?.segments) ? out.segments : []) {
       for (const x of Array.isArray(seg?.words) ? seg.words : []) {
         const text = String(x?.word ?? "").trim(), s = Number(x?.start), e = Number(x?.end);
-        if (text && Number.isFinite(s) && Number.isFinite(e)) words.push([text, Math.round((clip + s) * 100) / 100, Math.round((clip + Math.max(s, e)) * 100) / 100]);
+        if (/[\p{L}\p{N}]/u.test(text) && Number.isFinite(s) && Number.isFinite(e)) words.push([text, Math.round((clip + s) * 100) / 100, Math.round((clip + Math.max(s, e)) * 100) / 100]);
       }
     }
     const lang = out?.transcription_info?.language;
@@ -3900,7 +3938,7 @@ async function aiHear(env, id, meta, pieces, w, t, etag, last) {
  * first minute is heard (B205 f), else the next window that's up; once the take is done and
  * all of it heard, its name (or the name again after an edit, B208 c). `more`: another step
  * can be taken now. @param {Env} env @param {string} id @param {Later} want @param {number} now
- * @returns {Promise<{ step: "heard" | "titled" | "named" | "idle", more: boolean }>} */
+ * @returns {Promise<{ step: "heard" | "titled" | "named" | "idle", more: boolean, note?: string }>} */
 async function aiStep(env, id, want, now) {
   const [meta, read] = await Promise.all([readMeta(env, id), aiTranscriptOf(env, id)]);
   if (!meta || meta.state === "deleted") return { step: "idle", more: false };
@@ -3912,13 +3950,15 @@ async function aiStep(env, id, want, now) {
     const w = aiWindow(k, n);
     // The title the page opens with comes before more hearing (it's the one the free day favours).
     if (t && aiEarlyDue(meta, t, want)) {
-      await aiNameEarly(env, id, t, read?.etag ?? null, now);
-      return { step: "titled", more: w.from < n && w.to - w.from === AI_RULES.window };
+      const note = await aiNameEarly(env, id, t, read?.etag ?? null, now);
+      return { step: "titled", more: w.from < n && w.to - w.from === AI_RULES.window, note };
     }
     if (w.from < n && (w.to - w.from === AI_RULES.window || want.done)) {
+      const t0 = Date.now();
       const heard = await aiHear(env, id, meta, pieces, w, t, read?.etag ?? null, want.done && w.to >= pieces.length);
       const next = aiWindow(k + 1, n);
-      return { step: "heard", more: want.done || next.to - next.from === AI_RULES.window || (!!heard && aiEarlyDue(meta, heard, want)) };
+      const note = heard ? `heard window ${heard.windows} in ${Date.now() - t0} ms, ${heard.words.length + (heard.tail?.length ?? 0)} words so far` : `window ${k + 1}: another step wrote it first`;
+      return { step: "heard", more: want.done || next.to - next.from === AI_RULES.window || (!!heard && aiEarlyDue(meta, heard, want)), note };
     }
     if (!want.done) return { step: "idle", more: false };
     // Nothing left to hear: what the last window held back is final now.
@@ -3930,12 +3970,13 @@ async function aiStep(env, id, want, now) {
     t = done;
   }
   if ((meta.named && !meta.named.early && !want.rename) || !aiPlaced(meta, t.clock)) return { step: "idle", more: false };
-  await aiName(env, id, t, meta, now);
-  return { step: "named", more: false };
+  const note = await aiName(env, id, t, meta, now);
+  return { step: "named", more: false, note };
 }
 
 /** @typedef {{ through: number | null, done: boolean, rename?: boolean }} AiAsk */
-/** @typedef {{ step: "heard" | "titled" | "named" | "idle", more: boolean } | { later: string }} AiRun */
+/** What a run did, and its line for the Mac's log (`note`: counts, times, models and codes; never a word said or a title).
+ * @typedef {{ step: "heard" | "titled" | "named" | "idle", more: boolean, note?: string } | { later: string, note: string }} AiRun */
 
 /** Runs one step for a take, if it may take one now. A take waiting for the next free day
  * or a busy model only notes what was asked. A done take, a rename, or a take already
@@ -3956,10 +3997,10 @@ async function aiRun(env, id, ask, now) {
     run.held = true;
     return { ...want, after: now + AI_LEASE_MS, reason: "running" };
   });
-  if (!ok) return { later: "running" };
-  if (run.waiting) return { later: run.waiting };
+  if (!ok) return { later: "running", note: "another step holds it" };
+  if (run.waiting) return { later: run.waiting, note: `waiting (${run.waiting})` };
   const { want } = run;
-  /** @type {{ step: "heard" | "titled" | "named" | "idle", more: boolean }} */
+  /** @type {{ step: "heard" | "titled" | "named" | "idle", more: boolean, note?: string }} */
   let out;
   try {
     out = await aiStep(env, id, want, now);
@@ -3978,27 +4019,30 @@ async function aiRun(env, id, ask, now) {
  * @param {Env} env @param {string} id @param {Later} want @param {number} now @param {unknown} e @returns {Promise<AiRun>} */
 async function aiRefused(env, id, want, now, e) {
   const reason = aiRefusal(e);
+  const code = aiCode(e);
   const tries = reason === "error" ? want.tries + 1 : want.tries;
   if (reason === "error" && tries >= AI_TRIES) {
     await aiMark(env, id, () => null);
     await aiWriteMeta(env, id, (m) => {
       if (m.named && !want.rename) return false;
-      m.named = { ...(m.named ?? { by: "ai", model: null, words: 0, title: null, chapters: [] }), at: iso(now), rev: aiRev(m), clock: aiClock(m), failed: true };
+      m.named = { ...(m.named ?? { by: "ai", model: null, words: 0, title: null, chapters: [] }), at: iso(now), rev: aiRev(m), clock: aiClock(m), failed: true, code };
       delete m.naming;
       return true;
     }).catch(() => false);
-    return { later: "error" };
+    return { later: "error", note: `let go after ${AI_TRIES} tries: error ${code}` };
   }
-  const after = reason === "daily" ? nextMidnight(now) : now + (reason === "busy" ? 5 : 5 * tries) * AI_MIN;
+  const wait = reason === "busy" ? 5 : 5 * tries;
+  const after = reason === "daily" ? nextMidnight(now) : now + wait * AI_MIN;
   await aiMark(env, id, (l) => ({ ...want, ...(l ?? {}), done: !!(want.done || l?.done), through: Math.max(want.through, l?.through ?? 0), after, reason, tries }));
   if (reason === "daily") {
     await aiWriteMeta(env, id, (m) => {
       if (m.titled || m.named || m.naming?.later === "daily") return false;
-      m.naming = { later: "daily", at: iso(now) };
+      m.naming = { later: "daily", at: iso(now), code };
       return true;
     }).catch(() => false);
   }
-  return { later: reason };
+  const note = reason === "daily" ? `waits for 00:00 UTC: the free day is used up (${code})` : reason === "busy" ? `waits ${wait} min: busy (${code})` : `waits ${wait} min: error ${code}, try ${tries} of ${AI_TRIES}`;
+  return { later: reason, note };
 }
 
 /** POST /_shroom/api/ai {rec, through} | {rec, done: true} (B206 b): a Mac saying another

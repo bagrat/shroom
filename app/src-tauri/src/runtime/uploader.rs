@@ -11,7 +11,7 @@ use std::time::{Duration, Instant};
 
 use shroom_cloud::Cloud;
 use shroom_cloud::device::{CredFile, DeviceKey};
-use shroom_cloud::member::{AiAuth, AiSent, AiSignal, MintNext, Ping, Purpose, Space, ai_signal};
+use shroom_cloud::member::{AiAuth, AiSent, AiSignal, MintNext, Ping, Purpose, Space, ai_log_lines, ai_signal_noted};
 use shroom_cloud::mint::{self, Grant, Paths};
 use shroom_core::effect::UpCmd;
 use shroom_core::event::{Event, MemberNews, StandingAnswer, UploadNews};
@@ -511,8 +511,11 @@ fn ai_lane(rt: Runtime) -> Sender<AiJob> {
                         AiDoor::Device(k) => AiAuth::Device(k),
                         AiDoor::Parent(secret) => AiAuth::Parent(secret),
                     };
-                    let sent = ai_signal(&space, &auth, &job.rec, job.signal);
-                    rt.log(&format!("naming {take}: {:?} → {sent:?}", job.signal));
+                    // Each step's note from the space (B206 f): what a report shows of it.
+                    let (sent, notes) = ai_signal_noted(&space, &auth, &job.rec, job.signal);
+                    for line in ai_log_lines(&take, job.signal, sent, &notes) {
+                        rt.log(&line);
+                    }
                     sent
                 } else {
                     continue;

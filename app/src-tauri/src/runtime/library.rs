@@ -355,11 +355,31 @@ fn spawn_with(rt: Runtime, sweep: impl FnMut(&Runtime, &SpaceIdentity) -> Result
     tx
 }
 
+/// Each take's AI line as the cache holds it, to tell what a refresh changed.
+fn ai_lines(rows: &BTreeMap<String, (String, Row)>) -> BTreeMap<String, Option<String>> {
+    rows.iter().map(|(id, (_, r))| (id.clone(), r.ai.clone())).collect()
+}
+
+/// What the space's AI did with each take, as its record now says (DECISIONS B206 f): one line
+/// for each that changed since `before`, so a report shows the steps the space's schedule took
+/// on its own too.
+fn log_ai(rt: &Runtime, before: &BTreeMap<String, Option<String>>, rows: &BTreeMap<String, (String, Row)>) {
+    for (id, (_, r)) in rows {
+        if let Some(note) = &r.ai {
+            if before.get(id).and_then(Option::as_ref) != Some(note) {
+                rt.log(&format!("naming {}: {note}", super::short(id)));
+            }
+        }
+    }
+}
+
 fn refresh(rt: &Runtime, space: &SpaceIdentity, s3: &Client, generation: u64) -> Result<(), FailClass> {
     let mut file = load_file(rt, space);
+    let before = ai_lines(&file.cache.rows);
     match library::refresh(s3, &mut file.cache) {
         Ok(d) => {
             rt.log(&format!("library refreshed: {} new, {} changed, {} gone, {} read", d.added.len(), d.changed.len(), d.gone.len(), d.reads));
+            log_ai(rt, &before, &file.cache.rows);
             // Who made each video: the ledger, never the record (§4.10, b4 #5).
             learn_owners(rt, space, s3, &mut file);
             save_with(rt, space, &file.cache, file.owners.clone(), generation);
@@ -383,6 +403,7 @@ fn refresh(rt: &Runtime, space: &SpaceIdentity, s3: &Client, generation: u64) ->
 fn refresh_device(rt: &Runtime, space: &SpaceIdentity, key: &DeviceKey, page: &Space, generation: u64) -> Result<(), FailClass> {
     const SLICE: usize = 1000;
     let mut cache = load(rt, space);
+    let before = ai_lines(&cache.rows);
     let scope = if space.role == Role::Member { Scope::Mine } else { Scope::Everyone };
     let ids: Vec<String> = cache.rows.keys().cloned().collect();
     let mut seen = BTreeSet::new();
@@ -404,6 +425,7 @@ fn refresh_device(rt: &Runtime, space: &SpaceIdentity, key: &DeviceKey, page: &S
             let meta = item.meta.and_then(shroom_upload::meta::listed);
             match meta {
                 Some(m) => {
+                    let ai = shroom_upload::meta::ai_note(&m);
                     let row = Row {
                         id: item.id.clone(),
                         title: m.title,
@@ -413,6 +435,7 @@ fn refresh_device(rt: &Runtime, space: &SpaceIdentity, key: &DeviceKey, page: &S
                         // The ledger's owner, never the record's (member-writable, H3).
                         owner: Some(item.owner),
                         poster: m.media.and_then(|x| x.poster),
+                        ai,
                     };
                     if cache.rows.insert(item.id, (item.etag, row)).is_some() {
                         changed += 1;
@@ -438,6 +461,7 @@ fn refresh_device(rt: &Runtime, space: &SpaceIdentity, key: &DeviceKey, page: &S
         cache.rows.remove(g);
     }
     rt.log(&format!("library refreshed through the space ({scope:?}): {added} new, {changed} changed, {} gone, {calls} call(s)", gone.len()));
+    log_ai(rt, &before, &cache.rows);
     save(rt, space, &cache, generation);
     post_rows(rt, space, true);
     if super::posters::fetch_missing(rt, space, None, &cache) {
@@ -808,7 +832,7 @@ mod tests {
             foreign_v: false,
         };
         rt.home.write_json("token.json", &serde_json::json!({ "v": 1, "token": "t", "account_id": "acct" })).unwrap();
-        let rec = |id: &str, forged: Option<&str>| Row { id: id.into(), title: id.into(), state: State::Live, created_at: "2026-10-02T12:00:00Z".into(), duration_sec: None, owner: forged.map(Into::into), poster: None };
+        let rec = |id: &str, forged: Option<&str>| Row { id: id.into(), title: id.into(), state: State::Live, created_at: "2026-10-02T12:00:00Z".into(), duration_sec: None, owner: forged.map(Into::into), poster: None, ai: None };
         let mut file = CacheFile { v: 1, space: space_key(&space), ..CacheFile::default() };
         file.cache.rows.insert("mine".into(), ("e".into(), rec("mine", None)));
         file.cache.rows.insert("forged".into(), ("e".into(), rec("forged", Some("m1"))));
@@ -829,6 +853,7 @@ mod tests {
             duration_sec: Some(272.4),
             owner: Some("m1".into()),
             poster: None,
+            ai: None,
         };
         let l = row(&r);
         assert_eq!(l.rec, RecId("AbCd".into()));

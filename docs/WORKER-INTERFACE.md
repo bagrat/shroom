@@ -965,6 +965,10 @@ meta → 404 `absent`; a tombstone → 410 `deleted`; a bad body → 400. One st
   (until 00:00 UTC), a busy model (five minutes), another failure (a little longer each time;
   after five, the take is let go), or another step holds it.
 
+Every answer but idle also carries `note`: one short line for the Mac's log (the window heard,
+the early title, the name with its model, time, chapters and tokens, or the wait with Workers
+AI's code alone; never a word said or a title, B206 f).
+
 The app's caller is `shroom_cloud::member::ai_signal` (asked again while `more`).
 
 **The schedule** (`scheduled`): the marks under `.shroom/ai/later/<id>` whose `after` (custom
@@ -973,12 +977,17 @@ metadata, beside `since`) has come, oldest first; one step a tick.
 **Stored.** `rec/<id>/ai/transcript.json` = `{v:1, model, language, duration, heard_through,
 done, windows, clock, words:[[text, start, end],…], tail}`: seconds on the recording's clock
 (`clock`: the last bake it's on, null for the original), final up to `heard_through`, the
-window's last 1.5 s in `tail` until the next window hears it. The mark
+window's last 1.5 s in `tail` until the next window hears it. Whisper is asked with
+`vad_filter: true` and `initial_prompt: AI_HEAR_PRIME` (the cue and the hesitations, kept in
+the words for voice cuts; captions leave lone hesitations out), and a word with no letter or
+digit isn't kept (B205 a, e). The mark
 `.shroom/ai/later/<id>` = `{v:1, since, after, done, through, rename, reason, tries}`. The
 record: `title` (only while not `titled`), `named` = `{by:"ai", model, at, rev, clock,
-words, title, chapters:[[start, title],…], language}` (with `early: true` and no chapters while
-it's the early title, until the full name at done replaces it), `captions` = `{language}`, and
-`naming` = `{later:"daily", at}` while the free day is used up. The transcript's `early: true`
+words, title, chapters:[[start, title],…], language, ms, tokens?:[in, out], fallback?}`
+(`fallback`: the first model's code when the second answered; with `early: true` and no
+chapters while it's the early title, until the full name at done replaces it; `failed: true`
+and `code` for a take let go), `captions` = `{language}`, and `naming` = `{later:"daily", at,
+code}` while the free day is used up. The transcript's `early: true`
 says the early title was tried.
 
 **Bakes.** Whoever bakes an edit (N63: the editor's copy becomes the video, `meta.edits`
