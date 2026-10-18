@@ -1,0 +1,91 @@
+{
+ "at": "2026-10-18T17:27:57.677Z",
+ "model": "@cf/openai/whisper-large-v3-turbo",
+ "prime": "Shroom cut. Um, uh, so, so I, I mean, shroom cut.",
+ "clips": {
+  "silence": {
+   "no prime": {
+    "words": 4,
+    "text": "Thank you. Thank you."
+   },
+   "VAD only": {
+    "words": 0,
+    "text": ""
+   },
+   "prime + VAD": {
+    "words": 0,
+    "text": ""
+   }
+  },
+  "room noise": {
+   "no prime": {
+    "words": 2,
+    "text": ". ."
+   },
+   "VAD only": {
+    "words": 0,
+    "text": ""
+   },
+   "prime + VAD": {
+    "words": 0,
+    "text": ""
+   }
+  },
+  "music (chords and a beat)": {
+   "no prime": {
+    "words": 4,
+    "text": "Thank you. Thank you."
+   },
+   "VAD only": {
+    "words": 0,
+    "text": ""
+   },
+   "prime + VAD": {
+    "words": 0,
+    "text": ""
+   }
+  },
+  "music (a slow pad)": {
+   "no prime": {
+    "words": 4,
+    "text": "Thank you. Thank you."
+   },
+   "VAD only": {
+    "words": 0,
+    "text": ""
+   },
+   "prime + VAD": {
+    "words": 0,
+    "text": ""
+   }
+  },
+  "how-to (speech)": {
+   "no prime": {
+    "words": 239,
+    "text": "Hi, this is a quick walkthrough of how to set up and use Shroom, the screen recorder. You record your screen, stop and get a link to share it right away. Your videos live in your own Cloudflare accoun"
+   },
+   "VAD only": {
+    "words": 237,
+    "text": "Hi, this is a quick walkthrough of how to set up and use Shroom, the screen recorder. You record your screen, stop and get a link to share it right away. Your videos live in your own Cloudflare accoun"
+   },
+   "prime + VAD": {
+    "words": 240,
+    "text": "Hi, this is a quick walkthrough of how to set up and use Shroom, the screen recorder. You record your screen, stop and get a link to share it right away. Your videos live in your own Cloudflare accoun"
+   }
+  }
+ },
+ "speech VAD only": {
+  "paired": 235,
+  "of": 239,
+  "median": 0,
+  "p05": -0.03,
+  "p95": 0.03
+ },
+ "speech prime + VAD": {
+  "paired": 237,
+  "of": 239,
+  "median": 0,
+  "p05": -0.02,
+  "p95": 0.03
+ }
+}

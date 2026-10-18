@@ -937,7 +937,10 @@ metadata, beside `since`) has come, oldest first; one step a tick.
 **Stored.** `rec/<id>/ai/transcript.json` = `{v:1, model, language, duration, heard_through,
 done, windows, clock, words:[[text, start, end],…], tail}`: seconds on the recording's clock
 (`clock`: the last bake it's on, null for the original), final up to `heard_through`, the
-window's last 1.5 s in `tail` until the next window hears it. The mark
+window's last 1.5 s in `tail` until the next window hears it. Whisper is asked with
+`vad_filter: true` and `initial_prompt: AI_HEAR_PRIME` (the cue and the hesitations, kept in
+the words for voice cuts; captions leave lone hesitations out), and a word with no letter or
+digit isn't kept (B205 a, e). The mark
 `.shroom/ai/later/<id>` = `{v:1, since, after, done, through, rename, reason, tries}`. The
 record: `title` (only while not `titled`), `named` = `{by:"ai", model, at, rev, clock,
 words, title, chapters:[[start, title],…], language}` (with `early: true` and no chapters while
