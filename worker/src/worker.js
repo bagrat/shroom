@@ -222,7 +222,9 @@ export async function handle(request, env, now, ctx) {
       readMeta(env, m[1]).then((v) => ({ v }), () => null),
       media(request, env, `rec/${m[1]}/${file}`, type, "public, max-age=3600"),
     ]);
-    if (!meta || meta.v?.state === "deleted") {
+    // Once an edit's permanent copy is up, the original is out of reach (N63, step 3).
+    const copy = meta && meta.v?.state !== "deleted" ? editsOf(meta.v, m[1])?.copy : null;
+    if (!meta || meta.v?.state === "deleted" || (copy && !besideCopy(copy, file))) {
       try { await res.body?.cancel(); } catch { /* nothing to release */ }
       // A record that can't be read can't vouch the video still exists: fail closed.
       return meta ? plain(404, "") : plain(503, "");
@@ -300,7 +302,8 @@ export function status(meta, now, id = meta?.id) {
     // `thumb`: Copy thumbnail's newest picture for the title (N46) — what the Library copies.
     // `dur`: the length as it plays (N63: the edited one), which a page opened while the
     // video uploaded draws on its picture. With an edit (N63), `keep`: the ranges that
-    // play; and once its permanent copy is up, `copy`: where it is.
+    // play; and once its permanent copy is up, `copy`: where it is — a player that was
+    // playing the original when the copy took its place moves over to it.
     const view = viewOf(String(id), meta);
     const live = { state: "live", poster: !!view.poster, mp4: view.download, teaser: !!view.teaser, thumb: newestThumb(meta), dur: view.dur, drained: drained(meta),
       ...(view.edit ? { keep: view.edit.keep } : {}), ...(view.copy ? { copy: { src: view.copy.src, dur: view.copy.dur, poster: view.copy.poster ?? null } } : {}) };
@@ -831,6 +834,17 @@ function viewOf(id, meta) {
   };
 }
 
+/** Step 3 of the edit (N63): once the permanent copy is up, the recording's address serves
+ * only the copy's own files, the original's first frame (`poster.jpg`, which the Library
+ * and a copy with no poster of its own still show) and Copy thumbnail's pictures (a paste
+ * already sent keeps its picture) — never the original stream, its teaser or `video.mp4`,
+ * so a cut part is out of a viewer's reach. The Macs read originals over S3, not here.
+ * @param {EditCopy} copy @param {string} file */
+function besideCopy(copy, file) {
+  if (file === "poster.jpg" || /^thumb-[0-9a-f]{16}\.(gif|jpg)$/.test(file)) return true;
+  return [copy.src, copy.poster, copy.teaser].some((s) => s !== undefined && s.slice(s.lastIndexOf("/") + 1) === file);
+}
+
 /** @param {Env} env @param {string} id */
 async function readMeta(env, id) {
   if (!ID.test(id)) return null;
@@ -1328,16 +1342,18 @@ export function playerHtml(id, meta, base = "") {
  * frames): outside every range — a range's last 30 ms counting as past it — it seeks to the
  * next range's start. The time, the seek bar, ←/→ and Home/End all count edited time
  * (`shroomAt`/`shroomToSource`, held with `editsOf` to crates/shroom-edit's vectors). A
- * permanent copy plays as it is. */
-export const PLAYER_JS = `function shroomPlay(v,s){if(/\\.mp4$/.test(s)||v.canPlayType("application/vnd.apple.mpegurl")){v.src=s;return}
-var t=document.createElement("script");t.src="/_shroom/hls.js";t.onload=function(){var h=new Hls({backBufferLength:90,maxBufferLength:6,maxMaxBufferLength:6});
-v.addEventListener("play",function(){h.config.maxBufferLength=30;h.config.maxMaxBufferLength=600},{once:true});h.loadSource(s);h.attachMedia(v)};document.head.appendChild(t)}
+ * permanent copy plays as it is. And once the copy is up the original is out of reach
+ * (`besideCopy`): a player that was playing the original asks `E.st`, the status, when its
+ * media fails, and moves over to the copy at the same edited moment. */
+export const PLAYER_JS = `function shroomPlay(v,s,f){if(/\\.mp4$/.test(s)||v.canPlayType("application/vnd.apple.mpegurl")){v.src=s;return}
+var t=document.createElement("script");t.src="/_shroom/hls.js";t.onload=function(){var h=new Hls({backBufferLength:90,maxBufferLength:6,maxMaxBufferLength:6});v.hls=h;
+v.addEventListener("play",function(){h.config.maxBufferLength=30;h.config.maxMaxBufferLength=600},{once:true});if(f)h.on(Hls.Events.ERROR,function(e,d){if(d&&(d.fatal||d.response&&d.response.code===404))f()});h.loadSource(s);h.attachMedia(v)};document.head.appendChild(t)}
 function shroomClock(s,l){s=Math.max(0,+s||0);s=l?Math.round(s):Math.floor(s);var h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60,two=function(n){return(n<10?"0":"")+n};return h?h+":"+two(m)+":"+two(x):m+":"+two(x)}
 function shroomLength(K){for(var a=0,i=0;i<K.length;i++)a+=K[i][1]-K[i][0];return a}
 function shroomAt(K,t){for(var a=0,i=0;i<K.length;i++){if(t<K[i][1])return a+Math.max(0,t-K[i][0]);a+=K[i][1]-K[i][0]}return a}
 function shroomToSource(K,e){for(var a=0,i=0;i<K.length;i++){var n=K[i][1]-K[i][0];if(e<a+n)return K[i][0]+Math.max(0,e-a);a+=n}return K.length?K[K.length-1][1]:0}
 function shroomPlayer(p,s,L,E){var v=p.querySelector("video"),pp=p.querySelector(".pp"),sk=p.querySelector(".seek"),tm=p.querySelector(".time"),fs=p.querySelector(".fs"),sp=p.querySelector(".sp"),mu=p.querySelector(".mu"),known=+p.getAttribute("data-dur")||0,held=false,idle=0,R=[1,1.25,1.5,2],
-K=E&&E.keep&&E.keep.length?E.keep:null,fin=false,aim=-1,raf=0;
+K=E&&E.keep&&E.keep.length?E.keep:null,fin=false,aim=-1,raf=0,busy=false;
 function dur(){return K?shroomLength(K):isFinite(v.duration)&&v.duration>0?v.duration:known}
 function at(){var t=v.currentTime||0;return K?shroomAt(K,t):t}
 function ahead(t){var b=v.buffered,e=0;try{for(var i=0;i<b.length;i++)if(b.start(i)<=t+1&&b.end(i)>e)e=b.end(i)}catch(x){}return e}
@@ -1346,6 +1362,9 @@ var b=K?shroomAt(K,ahead(v.currentTime||0)):ahead(t);sk.style.setProperty("--p",
 function skip(){if(!K)return;var t=v.currentTime||0,n=K.length,i=0;while(i<n&&t>=K[i][1]-.03)i++;
 if(i===n){fin=true;if(!v.paused)v.pause();paint();return}if(t<K[i][0]-.001&&Math.abs(t-aim)>.05){aim=K[i][0];v.currentTime=aim}}
 function tick(){raf=0;if(!K||v.paused||v.ended)return;skip();if(!v.paused)raf=requestAnimationFrame(tick)}
+function fail(){if(busy||!E||!E.st)return;busy=true;fetch(E.st,{cache:"no-store"}).then(function(r){return r.json()}).then(function(x){var c=x&&x.copy;if(!c||!c.src||c.src===s)return;
+var t=v.currentTime||0,e=K?shroomAt(K,t):x.keep&&x.keep.length?shroomAt(x.keep,t):0,go=!v.paused&&!fin;K=null;fin=false;s=c.src;known=+c.dur||known;if(c.poster)v.poster=c.poster;if(v.hls){v.hls.destroy();v.hls=null}
+v.addEventListener("loadedmetadata",function(){v.currentTime=e;if(go){var r=v.play();if(r&&r.catch)r.catch(function(){})}},{once:true});shroomPlay(v,s,fail);paint()}).catch(function(){}).then(function(){busy=false})}
 function wake(){p.classList.remove("idle");clearTimeout(idle);if(!v.paused&&!v.ended)idle=setTimeout(function(){var a=document.activeElement;if(!(a&&a!==v&&p.contains(a)))p.classList.add("idle")},2500)}
 function mode(){var on=!v.paused&&!v.ended;p.classList.toggle("playing",on);if(on)p.classList.add("started");pp.setAttribute("aria-label",on?L.pause:L.play);wake()}
 function toggle(){if(v.paused||v.ended){if(K){if(fin||v.ended)v.currentTime=K[0][0];fin=false;skip()}var r=v.play();if(r&&r.catch)r.catch(function(){})}else v.pause()}
@@ -1363,7 +1382,7 @@ if(k===" "||k==="k"||k==="K")toggle();else if(k==="ArrowLeft"||k==="ArrowRight")
 else if(k==="Home")to(0);else if(k==="End")to(dur());else if(k==="f"||k==="F")fsToggle();else if(k==="m"||k==="M")hush();else return;e.preventDefault();wake()}
 pp.addEventListener("click",toggle);v.addEventListener("click",toggle);v.addEventListener("dblclick",fsToggle);fs.addEventListener("click",fsToggle);sp.addEventListener("click",faster);mu.addEventListener("click",hush);
 v.addEventListener("play",function(){if(!K)return;if(fin){fin=false;v.currentTime=K[0][0]}skip();if(!raf)raf=requestAnimationFrame(tick)});
-v.addEventListener("seeking",function(){if(!K)return;fin=false;skip()});v.addEventListener("timeupdate",skip);
+v.addEventListener("seeking",function(){if(!K)return;fin=false;skip()});v.addEventListener("timeupdate",skip);v.addEventListener("error",fail);
 ["play","pause","ended"].forEach(function(e){v.addEventListener(e,mode)});
 ["timeupdate","durationchange","loadedmetadata","seeked","emptied","progress"].forEach(function(e){v.addEventListener(e,paint)});
 v.addEventListener("ratechange",rate);v.addEventListener("volumechange",sound);
@@ -1371,12 +1390,12 @@ sk.addEventListener("input",function(){held=true;to(+sk.value)});sk.addEventList
 document.addEventListener("fullscreenchange",fsMode);document.addEventListener("webkitfullscreenchange",fsMode);
 p.addEventListener("mousemove",wake);p.addEventListener("touchstart",wake,{passive:true});p.addEventListener("focusin",wake);p.addEventListener("keydown",key);
 document.addEventListener("keydown",function(e){if(e.target===document.body)key(e)});
-shroomPlay(v,s);paint();rate();sound()}`;
+shroomPlay(v,s,fail);paint();rate();sound()}`;
 
 /** The player's last argument (N63): the ranges that play, when an edit plays over the
- * original — numbers only.
+ * original — numbers only — and the status it asks when its media fails.
  * @param {string} id @param {View} view */
-const playing = (id, view) => jsonForScript(JSON.stringify({ keep: view.keep }));
+const playing = (id, view) => jsonForScript(JSON.stringify({ keep: view.keep, st: `/_shroom/status/${id}` }));
 
 /** Copy to the clipboard, saying whether it happened: the Clipboard API, else the older
  * copy command; when neither works, the visible text (if any) is selected so ⌘C does
@@ -1569,7 +1588,7 @@ if(s.state==="removed"){var m=document.querySelector("main"),p=document.createEl
 if(c.pend&&s.state!=="waiting")send(c.pend);
 if(s.state==="live"){if(s.dur)th.length(shroomClock(s.dur,true));if(s.teaser)th.teaser();if(!c.live){c.live=true;tb.hidden=false;th.live();var w=document.getElementById("w"),h=document.createElement("div");h.innerHTML=c.player;var pl=h.firstChild;
 var cp=s.copy,ps=cp&&cp.poster||(s.poster?"/m/"+c.id+"/poster.jpg":"");if(s.dur)pl.setAttribute("data-dur",s.dur);if(ps)pl.querySelector("video").poster=ps;w.replaceWith(pl);
-shroomPlayer(pl,cp?cp.src:src,c.labels,{keep:cp?null:s.keep||null})}
+shroomPlayer(pl,cp?cp.src:src,c.labels,{keep:cp?null:s.keep||null,st:"/_shroom/status/"+c.id})}
 if(s.drained)th.drained();
 if(s.drained){if(bar&&!c.done){c.done=true;up.textContent=c.ready;ul.classList.add("done");showBar(true,false);bar.style.width="100%";setTimeout(function(){ul.classList.add("fade");setTimeout(function(){ul.hidden=true;up.textContent="";if(bar){bar.parentNode.remove();bar=null}},400)},3000)}else if(!c.done){ul.hidden=true;up.textContent="";if(bar){bar.parentNode.remove();bar=null}}}else{ul.hidden=false;up.textContent=s.stalled?c.waiting:c.upA+s.pct+"%"+c.upB;showBar(true,!s.stalled);if(bar)bar.style.width=s.pct+"%"}
 if(s.mp4){if(!dl.firstChild){var a=document.createElement("a");a.href="/d/"+c.id;a.textContent=c.dl;dl.appendChild(a)}if(s.drained)return}
