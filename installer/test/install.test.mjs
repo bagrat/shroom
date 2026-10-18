@@ -111,7 +111,10 @@ const manifest = () => {
 const served = () => (mode.hollow ? v120hollow : v120);
 const server = createServer((req, res) => {
   hits++;
-  if (req.url === "/latest/download/manifest.txt") {
+  // The early channel's pointer (DECISIONS B220): served only when a test asks for it.
+  if (req.url === "/download/early/manifest.txt" && mode.early) {
+    res.end(manifest());
+  } else if (req.url === "/latest/download/manifest.txt") {
     if (mode.manifestStatus) { res.statusCode = mode.manifestStatus; return res.end(); }
     res.end(manifest());
   } else if (req.url === `/download/v${v120.version}/${v120.file}`) {
@@ -223,6 +226,33 @@ describe("installing", () => {
     const r = await run({ env: { FAKE_ARCH: "x86_64", FAKE_ARM64: "1" } });
     assert.equal(r.code, 0);
     assert.equal(r.installed, "1.2.0");
+  });
+});
+
+describe("--early (DECISIONS B220)", () => {
+  it("installs from the early channel's pointer and leaves the app on that channel", async () => {
+    // The latest release isn't asked: here it isn't even there.
+    const r = await run({ args: ["--early"], with: { early: true, manifestStatus: 404 } });
+    assert.equal(r.code, 0);
+    assert.deepEqual(r.out, ["Getting shroom…", "verified ✓", "Installed — opening shroom now."]);
+    assert.equal(r.installed, "1.2.0");
+    const file = join(r.home, ".shroom/channel");
+    assert.equal(readFileSync(file, "utf8"), "early\n");
+    assert.equal(statSync(file).mode & 0o777, 0o600);
+    quiet(r);
+  });
+
+  it("updates an installed shroom onto the early channel, and still carries a join link", async () => {
+    const r = await run({ args: ["--early", "--join", "https://v.myshroom.workers.dev/join/abc"], setup: runningOld, with: { early: true } });
+    assert.equal(r.code, 0);
+    assert.match(r.log, /open .*shroom\.app --args --relaunched=install-update --invite\n$/);
+    assert.equal(readFileSync(join(r.home, ".shroom/channel"), "utf8"), "early\n");
+  });
+
+  it("the plain install line reads the latest release and writes no channel", async () => {
+    const r = await run({ with: { early: true } });
+    assert.equal(r.code, 0);
+    assert.ok(!existsSync(join(r.home, ".shroom/channel")));
   });
 });
 

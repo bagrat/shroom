@@ -24,6 +24,10 @@
 # repository. Each one carries manifest.txt — the version, the oldest macOS it runs
 # on, and for each kind of Mac the file to download and its SHA-256 fingerprint.
 # Everything runs inside main(), so a half-downloaded copy of this script does nothing.
+#
+# --early (DECISIONS B220) takes the early channel: shroom's pre-releases, signed like every
+# release, and the official release once it's newer. It leaves ~/.shroom/channel saying
+# so, and the app's own updater keeps to that channel; remove the file to leave it.
 
 set -u
 
@@ -195,6 +199,8 @@ uninstall() {
 main() {
   join=""
   was_running=""
+  early=""
+  if [ "${1:-}" = "--early" ]; then early=1; shift; fi
   if [ "${1:-}" = "--join" ]; then join="${2:-}"; fi
 
   # This Mac, before anything is fetched. A machine that isn't a Mac (a server, a Linux
@@ -212,8 +218,12 @@ main() {
   # folder and goes away when the script ends.
   work=$(mktemp -d "$HOME/.shroom-install.XXXXXX" 2>&1) || cant_place "$work"
   trap 'rm -rf "$work"' EXIT
+  # --early (DECISIONS B220): the early channel's pointer, which names the newest build —
+  # an early one, or the official release once it's newer.
+  from="$RELEASES/latest/download/manifest.txt"
+  [ -z "$early" ] || from="$RELEASES/download/early/manifest.txt"
   code=$(curl -fsL -w '%{http_code}' --retry 2 --connect-timeout 15 --max-time 60 \
-    -o "$work/manifest.txt" "$RELEASES/latest/download/manifest.txt" </dev/null 2>/dev/null) || fetch_failed "$code"
+    -o "$work/manifest.txt" "$from" </dev/null 2>/dev/null) || fetch_failed "$code"
   version=$(field version)
   floor=$(field macos)
   [ -n "$version" ] || fail "$NET_DROP"
@@ -300,6 +310,11 @@ main() {
 #    where it would sit for as long as shroom runs.
 launch() {
   how=$1
+  # The app's own updater keeps this Mac on the early channel from here on (B220).
+  if [ -n "$early" ]; then
+    dir=$(state_dir)
+    ( umask 077 && mkdir -p "$dir" && printf 'early\n' > "$dir/channel" ) 2>/dev/null
+  fi
   case "$join" in
     *[!A-Za-z0-9._:/-]*) join="" ;;   # not a link's shape: open shroom plainly
   esac
