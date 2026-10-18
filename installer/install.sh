@@ -40,6 +40,8 @@ RELEASE_LEAF=8344cbe040722ea0a5632320c1d0d4348eaa3af3
 CLI_DIR="$HOME/.local/bin"
 CLI_LINK="$CLI_DIR/shroom"
 CLI_MARK="# shroom's command line (shroom.am) — run shroom --help"
+# Appended, never first: nothing already in ~/.local/bin stands in for a system command.
+CLI_LINE='export PATH="$PATH:$HOME/.local/bin"'
 
 NET_DROP="Couldn't finish the download — check your connection and run the same command again."
 CHECKSUM="The download didn't check out, so nothing was installed. Run it once more — if it repeats, tell us: https://github.com/bagrat/shroom/issues/new — no GitHub? hi@shroom.am works too."
@@ -169,16 +171,17 @@ link_cli() {
     *) return 0 ;;
   esac
   grep -qF "$CLI_MARK" "$profile" 2>/dev/null && return 0
-  printf '\n%s\nexport PATH="$HOME/.local/bin:$PATH"\n' "$CLI_MARK" >>"$profile" 2>/dev/null || true
+  printf '\n%s\n%s\n' "$CLI_MARK" "$CLI_LINE" >>"$profile" 2>/dev/null || true
 }
 
-# Takes back exactly what link_cli made: the link (only if it's ours) and the marked line
-# with the one after it; the rest of the profile is left as it was.
+# Takes back exactly what link_cli made: the link (only if it's ours), the mark, and the
+# line after it only when that is still shroom's own; the rest of the profile is left as
+# it was.
 unlink_cli() {
   [ "$(readlink "$CLI_LINK" 2>/dev/null)" = "$APP/Contents/MacOS/shroom-cli" ] && rm -f "$CLI_LINK"
   for profile in "$HOME/.zprofile" "$HOME/.bash_profile"; do
     grep -qF "$CLI_MARK" "$profile" 2>/dev/null || continue
-    awk -v m="$CLI_MARK" '$0 == m { skip = 1; next } skip { skip = 0; next } { print }' "$profile" >"$profile.shroom-tmp" &&
+    awk -v m="$CLI_MARK" -v l="$CLI_LINE" '$0 == m { held = 1; next } held { held = 0; if ($0 == l) next } { print }' "$profile" >"$profile.shroom-tmp" &&
       cat "$profile.shroom-tmp" >"$profile"
     rm -f "$profile.shroom-tmp"
   done
