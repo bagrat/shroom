@@ -223,9 +223,17 @@ export async function handle(request, env, now, ctx) {
       media(request, env, `rec/${m[1]}/${file}`, type, "public, max-age=3600"),
     ]);
     // Once an edit's permanent copy is up, the original is out of reach (N63, step 3); a
-    // baked recording is the files its record names (B197).
-    const only = meta && meta.v?.state !== "deleted" ? servedOnly(m[1], meta.v) : null;
-    if (!meta || meta.v?.state === "deleted" || (only && !only.has(file) && !THUMB_FILE.test(file))) {
+    // baked recording is the files its record names (B197). Copy thumbnail's pictures stay,
+    // so a paste already sent keeps its picture (B164) — unless an edit took something from
+    // the start they show: then only the video's own picture.
+    const v = meta?.v;
+    const allowed = () => {
+      if (!v) return true;
+      if (THUMB_FILE.test(file)) return startKept(m[1], v) || currentThumbFiles(m[1], v).includes(file);
+      const only = servedOnly(m[1], v);
+      return !only || only.has(file);
+    };
+    if (!meta || v?.state === "deleted" || !allowed()) {
       try { await res.body?.cancel(); } catch { /* nothing to release */ }
       // A record that can't be read can't vouch the video still exists: fail closed.
       return meta ? plain(404, "") : plain(503, "");
@@ -300,7 +308,8 @@ export function status(meta, now, id = meta?.id) {
   // second-class files too, which the Mac counts in `progress.total` and sends after the
   // go-live (r4 `fully-live`: the queue drained; DECISIONS B49). A record without a count is drained.
   if (playable(String(id), meta)) {
-    // `thumb`: Copy thumbnail's newest picture for the title (N46) — what the Library copies.
+    // `thumb`: Copy thumbnail's newest picture for the title (N46) — what the Library copies
+    // — only one drawn from what the video shows now (`currentThumb`).
     // `dur`: the length as it plays (N63: the edited one), which a page opened while the
     // video uploaded draws on its picture. With an edit (N63), `keep`: the ranges that
     // play; and once its permanent copy is up, `copy`: where it is — a player that was
@@ -310,7 +319,7 @@ export function status(meta, now, id = meta?.id) {
     const view = viewOf(String(id), meta);
     const moved = view.copy ?? (view.baked && !view.edit && Array.isArray(meta.bakedFrom) && meta.bakedFrom.length > 0
       ? { src: `/m/${id}/${view.file}`, dur: view.dur, poster: view.poster ?? undefined } : null);
-    const live = { state: "live", poster: !!view.poster, mp4: view.download, teaser: !!view.teaser, thumb: newestThumb(meta), dur: view.dur, drained: drained(meta),
+    const live = { state: "live", poster: !!view.poster, mp4: view.download, teaser: !!view.teaser, thumb: newestThumb(String(id), meta), dur: view.dur, drained: drained(meta),
       ...(view.edit ? { keep: view.edit.keep } : {}), ...(moved ? { copy: { src: moved.src, dur: moved.dur, poster: moved.poster ?? null } } : {}) };
     return live.drained ? live : { ...live, pct: pct(meta), stalled: stalledAt(meta, now) };
   }
@@ -580,11 +589,17 @@ async function writeTitle(env, id, title, owner) {
 /** Copy thumbnail's caps (N46, B164, B165): a loop 640 wide (the teaser's own width), a still 1200 wide; a title's two
  * pictures, twenty titles' worth. */
 export const THUMB = { gifMax: 800 * 1024, jpgMax: 300 * 1024, gifWidth: 640, jpgWidth: 1200, perVideo: 40 };
+/** How much of the video's start Copy thumbnail's pictures show: the still is its first
+ * frame, the loop its teaser's first 3 s (30 frames at 10 fps, `THUMB_JS`'s `loop`). */
+const THUMB_SECONDS = 3;
 
 /** The owner page stores the picture it drew for a title (N46, B164): a title save's
  * checks, then a GIF or a JPEG by its first bytes, under its caps, named by its contents,
- * and pointed at by the record only while the video still has that title. The one byte
- * write a cookie has — never over anything else, never a delete. */
+ * and pointed at by the record only while the video still has that title and shows the
+ * first frame it was drawn from: `x-shroom-from` names it (a page from before the header
+ * drew from `poster.jpg`), and it must be the one Copy thumbnail draws from now
+ * (`thumbSource`), else nothing is stored. The record's `thumb` carries it as `from`. The
+ * one byte write a cookie has — never over anything else, never a delete. */
 /** @param {Request} request @param {Env} env @param {URL} url */
 async function thumbPost(request, env, url) {
   if (request.headers.get("origin") !== url.origin) return plain(403, "");
@@ -605,6 +620,7 @@ async function thumbPost(request, env, url) {
   let drawnFor;
   try { drawnFor = decodeURIComponent(request.headers.get("x-shroom-title") ?? ""); } catch { return plain(400, ""); }
   drawnFor = drawnFor || null;
+  const drawnFrom = request.headers.get("x-shroom-from") ?? "poster.jpg";
 
   const key = `meta/${id}.json`;
   /** @type {boolean | null} */
@@ -627,6 +643,9 @@ async function thumbPost(request, env, url) {
     // Drawn for the title the video has now — an untitled video's picture has no band.
     const current = meta.titled ? meta.title : null;
     if (drawnFor !== current) return plain(409, "");
+    // Drawn from the first frame the video shows now (N63): never one an edit, its copy or
+    // its bake has left behind.
+    if (drawnFrom !== thumbSource(id, meta)) return plain(409, "");
     if (!stored) {
       const listed = await env.BUCKET.list({ prefix: `rec/${id}/thumb-` });
       const have = listed.objects.map((/** @type {{ key: string }} */ o) => o.key);
@@ -636,8 +655,7 @@ async function thumbPost(request, env, url) {
       }
       stored = true;
     }
-    const prev = meta.thumb && typeof meta.thumb === "object" && meta.thumb.title === current ? meta.thumb : {};
-    meta.thumb = { ...prev, title: current, [kind]: name };
+    meta.thumb = { ...(currentThumb(id, meta) ?? {}), title: current, from: drawnFrom, [kind]: name };
     const written = await env.BUCKET.put(key, JSON.stringify(meta), { onlyIf: { etagMatches: object.etag }, httpMetadata: { contentType: "application/json" } });
     if (written) return json({ url: `/m/${id}/${name}` });
   }
@@ -749,7 +767,7 @@ async function sourceOf(id, meta, oneP, view = viewOf(id, meta)) {
 
 // ───────── the recording's own files (B197) ─────────
 
-/** Copy thumbnail's pictures beside a recording (N46): served whatever else is. */
+/** Copy thumbnail's pictures beside a recording (N46): served by their own rule (`startKept`). */
 const THUMB_FILE = /^thumb-[0-9a-f]{16}\.(gif|jpg)$/;
 /** Each `media` slot's fixed name in the original, and the name's end in a baked edit. */
 const SLOTS = { mp4: ["video.mp4", ".mp4"], poster: ["poster.jpg", "-poster.jpg"], teaser: ["teaser.mp4", "-teaser.mp4"] };
@@ -786,14 +804,14 @@ function playable(id, meta) {
   return meta?.state === "live" && (!!meta.media?.hls || baked(id, meta)) && editsOf(meta, id)?.keep.length !== 0;
 }
 
-/** What `/m/<id>/` serves when it isn't everything (Copy thumbnail's pictures besides, a
- * paste already sent keeping its picture), or null. Once an edit's permanent copy is up
- * (N63 step 3): the copy's own files, and the recording's own first frame — `poster.jpg`,
- * or a baked recording's own poster, which a token-less Mac's Library fetches here until
- * the bake names the copy's — only while the edit keeps that frame; never the stream,
- * `video.mp4`, the teaser or an earlier bake's video, so a cut part is out of a viewer's
- * reach. A baked recording (B197) otherwise: exactly the files its record names. The Macs
- * read originals over S3, not here.
+/** What `/m/<id>/` serves when it isn't everything (Copy thumbnail's pictures aside: they
+ * follow `startKept`), or null. Once an edit's permanent copy is up (N63 step 3): the
+ * copy's own files, and the recording's own first frame — `poster.jpg`, or a baked
+ * recording's own poster, which a token-less Mac's Library fetches here until the bake
+ * names the copy's — only while the edit keeps that frame; never the stream, `video.mp4`,
+ * the teaser or an earlier bake's video, so a cut part is out of a viewer's reach. A baked
+ * recording (B197) otherwise: exactly the files its record names. The Macs read originals
+ * over S3, not here.
  * @param {string} id @param {any} meta @returns {Set<string> | null} */
 function servedOnly(id, meta) {
   const edit = editsOf(meta, id);
@@ -1536,7 +1554,10 @@ return navigator.clipboard&&navigator.clipboard.writeText?navigator.clipboard.wr
  * the frames' colours (median cut on 5 bits a channel, weighted so a small coloured text
  * keeps its colour), an ordered dither so the band's shade doesn't step, unchanged pixels
  * left out of each frame, LZW (Bagrat on 0.1.15: "gif quality is pretty low"). Each picture is stored for the title it was drawn for; the
- * copy wraps the newest in the link. */
+ * copy wraps the newest in the link. Each is drawn from the first frame and teaser `thumbsOf`
+ * names, and says which first frame (`x-shroom-from`), so the Worker keeps only one of what
+ * the video shows now (N63); with none to draw from, nothing is drawn, and a copy with no
+ * picture is the link alone. */
 export const THUMB_JS = `function shroomGif(frames,w,h,delay){var n=w*h,hist=new Uint32Array(32768),i,f,k,d;
 for(f=0;f<frames.length;f+=Math.max(1,Math.floor(frames.length/6))){d=frames[f];for(k=0;k<n*4;k+=4)hist[((d[k]>>3)<<10)|((d[k+1]>>3)<<5)|(d[k+2]>>3)]++}
 var cols=[];for(i=0;i<32768;i++)if(hist[i])cols.push(i);
@@ -1579,10 +1600,10 @@ var s=size(c.caps.gifWidth),k=canvas(s[0],s[1]),x=k.getContext("2d",{willReadFre
 function step(){if(i>=n)return Promise.resolve();return new Promise(function(ok){v.addEventListener("seeked",ok,{once:true});v.currentTime=i/10}).then(function(){x.clearRect(0,0,s[0],s[1]);draw(x,s[0],s[1],v,title);
 if(!i&&!x.getImageData(Math.round(s[0]*.05),Math.round(s[1]*.05),1,1).data[3])throw new Error("no frames");frames.push(x.getImageData(0,0,s[0],s[1]).data);i++;return step()})}
 return step().then(function(){var g=shroomGif(frames,s[0],s[1],10);if(g.length>c.caps.gifMax){g=shroomGif(frames.filter(function(_,j){return j%2===0}),s[0],s[1],20)}v.removeAttribute("src");return g.length>c.caps.gifMax?null:new Blob([g],{type:"image/gif"})})})}
-function store(b,title){if(!b)return null;return fetch("/_shroom/thumb/"+c.id,{method:"POST",headers:{"content-type":b.type,"x-shroom-title":encodeURIComponent(title)},body:b})
+function store(b,title){if(!b)return null;return fetch("/_shroom/thumb/"+c.id,{method:"POST",headers:{"content-type":b.type,"x-shroom-title":encodeURIComponent(title),"x-shroom-from":c.from},body:b})
 .then(function(r){return r.ok?r.json():null}).then(function(j){return j&&j.url},function(){return null})}
 function wake(my){if(my===gen){clearTimeout(guard);cb(true)}}
-function make(){var my=++gen,title=c.titled?c.title:"";
+function make(){if(!c.from)return Promise.resolve(null);var my=++gen,title=c.titled?c.title:"";
 var first=c.thumb?Promise.resolve(c.thumb):still(title).then(function(b){return store(b,title)}).then(function(u){if(my===gen&&u&&!c.thumb)c.thumb=u;return u},function(){return null});
 making=first;first.then(function(){if(my!==gen)return;if(c.gif)return wake(my);if(!c.teaser){if(c.drained)wake(my);return}
 clearTimeout(guard);guard=setTimeout(function(){wake(my)},20000);
@@ -1595,7 +1616,7 @@ return{length:function(l){if(l)c.len=l},retitle:function(t){c.title=t;c.titled=t
 drained:function(){if(c.drained)return;c.drained=true;var my=gen;if(!c.teaser&&making)making.then(function(){if(!c.teaser)wake(my)})},
 live:function(){c.live=true;if(!c.thumb||!c.gif)make()},
 teaser:function(){if(c.teaser)return;c.teaser=true;if(c.live&&!c.gif)make()},
-copy:function(){var link=location.origin+"/"+c.id;return shroomCopyRich(c.thumb?html(c.thumb):(making||make()).then(function(u){return html(u||c.psrc)}),link)}}}
+copy:function(){var link=location.origin+"/"+c.id;if(!c.thumb&&!c.psrc)return shroomCopy(link,null);return shroomCopyRich(c.thumb?html(c.thumb):(making||make()).then(function(u){return html(u||c.psrc)}),link)}}}
 function shroomCopyRich(h,t){var hp=Promise.resolve(h);
 function old(x){var ok=false;function on(e){e.preventDefault();e.clipboardData.setData("text/html",x);e.clipboardData.setData("text/plain",t);ok=true}document.addEventListener("copy",on);try{document.execCommand("copy")}catch(e){}document.removeEventListener("copy",on);return ok}
 if(navigator.clipboard&&navigator.clipboard.write&&window.ClipboardItem){try{return navigator.clipboard.write([new ClipboardItem({"text/html":hp.then(function(x){return new Blob([x],{type:"text/html"})}),"text/plain":new Blob([t],{type:"text/plain"})})]).then(function(){return true},function(){return hp.then(old)})}catch(e){}}
@@ -1630,26 +1651,78 @@ var tb=document.getElementById("th");tb.onclick=function(){th.copy().then(copied
 const copyButtons = (shown, waiting = false) => `<button class="copy" id="c" data-tip="${COPY.copyLink}">${COPY.copyLink}</button>`
   + `<button class="copy thumb" id="th" data-tip="${waiting ? COPY.preparingThumbnail : COPY.copyThumbnail}"${waiting ? ' aria-disabled="true"' : ""}${shown ? "" : " hidden"}>${COPY.copyThumbnail}</button>`;
 
-/** The newest picture made for the title a video has now (N46), as its address, or null. */
-/** @param {any} meta @returns {string | null} */
-function newestThumb(meta) {
-  const title = meta.titled ? meta.title : null;
-  const t = meta.thumb && typeof meta.thumb === "object" && meta.thumb.title === title ? meta.thumb : null;
-  const file = t && (typeof t.gif === "string" ? t.gif : typeof t.jpg === "string" ? t.jpg : null);
-  return typeof file === "string" && ID.test(String(meta.id)) && THUMB_FILE.test(file) ? `/m/${meta.id}/${file}` : null;
+/** The first frame Copy thumbnail draws from now (N46) — its still is that frame, its loop
+ * the start of the teaser beside it — as its name under `rec/<id>/`, or null when there's
+ * none to draw from (N63): with no edit, the recording's own poster (`media.poster`'s file,
+ * `poster.jpg` when the record names none; a baked recording only its own); once an edit's
+ * copy is up, the copy's own first frame (`edit-<rev>-poster.jpg`), none when it has none;
+ * while an edit waits for its copy, none. The stamp a picture carries (`meta.thumb.from`)
+ * is held to it. @param {string} id @param {any} meta @returns {string | null} */
+function thumbSource(id, meta) {
+  const edit = editsOf(meta, id);
+  if (edit) {
+    const p = edit.copy?.poster;
+    return p ? p.slice(p.lastIndexOf("/") + 1) : null;
+  }
+  return ownFile(id, meta, "poster") ?? (baked(id, meta) ? null : "poster.jpg");
 }
 
-/** What a page's Copy thumbnail starts from (N46): the picture made for the title the video
- * has now — the loop over the still — and what drawing the next one needs: the length and
- * the pictures as the video plays (N63: the edited length, and an edit's permanent copy's
- * own first frame and teaser once it's up — the original's teaser is then out of reach). */
+/** The video's picture (N46): `meta.thumb` while it was made for the title the video has
+ * now and drawn from the first frame Copy thumbnail draws from now (`from`, which a picture
+ * made before the stamp lacks: it was drawn from `poster.jpg`), else null — so a picture of
+ * the original never outlives an edit, its copy or its bake (N63, B197).
+ * @param {string} id @param {any} meta */
+function currentThumb(id, meta) {
+  const t = meta?.thumb;
+  if (!t || typeof t !== "object" || t.title !== (meta.titled ? meta.title : null)) return null;
+  const source = thumbSource(id, meta);
+  return source !== null && (t.from === undefined ? "poster.jpg" : t.from) === source ? t : null;
+}
+
+/** The video's pictures' own names, the loop first. @param {string} id @param {any} meta @returns {string[]} */
+function currentThumbFiles(id, meta) {
+  const t = currentThumb(id, meta);
+  return t ? [t.gif, t.jpg].filter((f) => typeof f === "string" && THUMB_FILE.test(f)) : [];
+}
+
+/** The newest picture for the video as it is now (N46), as its address, or null.
+ * @param {string} id @param {any} meta @returns {string | null} */
+function newestThumb(id, meta) {
+  const file = currentThumbFiles(id, meta)[0];
+  return file && ID.test(id) ? `/m/${id}/${file}` : null;
+}
+
+/** Whether every edit the recording has been through kept its first `THUMB_SECONDS` whole —
+ * all a picture Copy thumbnail ever drew can show (the first frame, and the teaser's first
+ * 3 s), whatever it was drawn from: the edit it has now (on its own clock) and each bake's
+ * (`bakedFrom[].keep`, on the clock it was cut from), each starting with a range from 0 to
+ * at least 3 s. A video shorter than that keeps it only with no edit at all. While they all
+ * do, every picture stays served (a paste already sent keeps it, B164); once one doesn't,
+ * only the video's own picture is (`currentThumb`). @param {string} id @param {any} meta */
+function startKept(id, meta) {
+  const whole = (/** @type {unknown} */ keep) => Array.isArray(keep) && Array.isArray(keep[0])
+    && typeof keep[0][0] === "number" && typeof keep[0][1] === "number" && keep[0][0] <= 0 && keep[0][1] >= THUMB_SECONDS;
+  const edit = editsOf(meta, id);
+  if (edit && !whole(edit.keep)) return false;
+  const bakes = meta?.bakedFrom;
+  return bakes === undefined || bakes === null || (Array.isArray(bakes) && bakes.every((b) => whole(b?.keep)));
+}
+
+/** What a page's Copy thumbnail starts from (N46): the video's picture — the loop over the
+ * still — and what drawing the next one needs: the length as it plays (N63: the edited
+ * one) and the first frame and teaser it draws from (`from`, `psrc`, `tsrc`: an edit's
+ * permanent copy's own once it's up; nothing while an edit waits for it, so nothing is
+ * drawn). `psrc` is also what a copy pastes when no picture could be stored: never a frame
+ * that's cut or out of reach. */
 /** @param {string} id @param {any} meta @param {boolean} live */
 function thumbsOf(id, meta, live, store = true) {
-  const thumb = newestThumb({ ...meta, id });
+  const thumb = newestThumb(id, meta);
   const view = viewOf(id, meta);
+  const from = thumbSource(id, meta);
+  const tsrc = !from ? "" : view.teaser ?? (view.copy || view.baked ? "" : `/m/${id}/teaser.mp4`);
   return { id, live, store, title: meta.titled ? meta.title : "", titled: !!meta.titled, thumb, gif: !!thumb?.endsWith(".gif"),
-    teaser: !!view.teaser, len: view.dur > 0 ? clock(view.dur, true) : "",
-    psrc: view.poster ?? (view.baked ? "" : `/m/${id}/poster.jpg`), tsrc: view.teaser ?? (view.copy || view.baked ? "" : `/m/${id}/teaser.mp4`),
+    teaser: !!from && !!view.teaser, len: view.dur > 0 ? clock(view.dur, true) : "",
+    from: from ?? "", psrc: from ? `/m/${id}/${from}` : "", tsrc,
     rw: meta.media?.width || 16, rh: meta.media?.height || 9, caps: THUMB };
 }
 

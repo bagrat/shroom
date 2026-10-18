@@ -523,7 +523,8 @@ Registry ids are `d_`/`m_`/`i_` + 16 chars.
   "captions": null, "owner": null|"<member>",   // informational; ownership is the ledger (D:B54 f)
   "progress": null | { "done", "total", "updatedAt" }, "markers"?: [seconds],
   "titled"?: true,                                  // the Worker's title save (N26)
-  "thumb"?: { "title": null|"…", "gif"?: "thumb-<16 hex>.gif", "jpg"?: "thumb-<16 hex>.jpg", "from"? },  // Copy thumbnail, the Worker's (D:B164, B198)
+  "thumb"?: { "title": null|"…", "from"?: "poster.jpg"|"edit-<rev>-poster.jpg",    // Copy thumbnail, the Worker's (D:B164, B198):
+              "gif"?: "thumb-<16 hex>.gif", "jpg"?: "thumb-<16 hex>.jpg" },        // `from` the first frame drawn from (N63)
   "edits"?: { "version": 1, "source_duration", "in", "out",                    // the editor's (N63, D:B195)
               "cuts": [{ "id"?, "start", "end", "kind", "confidence", "applied", "leads"?, "removed", "resumes"?, "why"? }],
               "voice"?: { "planned_at", "cues" },                              // the voice cues' plan (N65)
@@ -670,7 +671,7 @@ foreign `v`. `VERSION` 0.1.9, `IFACE` 2.
 |---|---|
 | `GET /<id>` / `?embed=1` | the page by record face (§10) / the embed face, no `X-Frame-Options` |
 | `GET /<id>?k=<key>` | spend the grant by CAS → `shroom_owner` cookie → 302 to the clean URL |
-| `GET /m/<id>/<file>` | `rec/<id>/…` with Range/HEAD; only `.m3u8 .m4s .mp4 .jpg .vtt`; `nosniff`, `CSP: sandbox`; record read beside: deleted → 404, unreadable → 503; an edit's copy current → only its files, the recording's own poster while the edit keeps its first frame, and `thumb-*` (N63); baked → only what `media` names and `thumb-*` (D:B197) |
+| `GET /m/<id>/<file>` | `rec/<id>/…` with Range/HEAD; only `.m3u8 .m4s .mp4 .jpg .vtt`; `nosniff`, `CSP: sandbox`; record read beside: deleted → 404, unreadable → 503; an edit's copy current → only its files and the recording's own poster while the edit keeps its first frame (N63); baked → only what `media` names (D:B197); `thumb-*` whatever else is (D:B164), but only the record's current picture once an edit or a bake took something from the first 3 s |
 | `GET /d/<id>` | the recording's own file (`video.mp4`, or a baked `edit-<n>.mp4`) — or an edit's current copy; nothing while an edit waits for one — named from the live title, Range forwarded |
 | `GET /oembed?url=` | iframe of the embed face |
 | `GET /_shroom/hls.js`, `/_shroom/ping`, `/_shroom/status/<id>` | the player (immutable); `{shroom, iface, version}` without storage; the page's poll (`drained`, `pct`, `stalled`; an edit's `keep` and `copy`) |
@@ -784,15 +785,20 @@ part: until the copy is up the unfurl, oEmbed and the player's poster show the r
 first frame only while the edit keeps it, and no teaser, and a loaded player waits at its
 first kept moment. Once the edit's permanent copy is current the page and the embed play it
 as it is, with its own poster and teaser (none when it has none, never the original's), and
-`/d/` hands it over. Then (step 3) `/m/` serves only the copy's files, the recording's own
-first frame while the edit keeps it (a token-less Mac's Library shows it until the bake) and
-`thumb-*`: the original's stream, teaser and `video.mp4` answer 404, and a player still on
+`/d/` hands it over. Then (step 3) `/m/` serves only the copy's files and the recording's
+own first frame while the edit keeps it (a token-less Mac's Library shows it until the
+bake): the original's stream, teaser and `video.mp4` answer 404, and a player still on
 the original moves over to the copy at the same edited moment when they do. Until the copy lands the
 original stays reachable at its addresses, so the edit holds only for what the page plays.
 A baked recording (D:B197) is an ordinary live video of one file: the page, the unfurl,
 Download and `/m/` follow `media`'s keys, each only when it is the recording's own file of
-its slot's kind. The voice-cut build's `shroom:keep` event (#59) hands the player new ranges
-on the recording's clock, made safe as `editsOf` makes an edit, in place of the edit.
+its slot's kind. Copy thumbnail's picture (`thumb`) carries the first frame it was drawn
+from (`from`); only one drawn from what the video shows now is handed out, so the owner's
+page draws a new one from the copy's own pictures, with the edited length. The earlier
+pictures stay served (D:B164) unless an edit or a bake took something from the first 3 s
+they show; then only the current one is. The voice-cut build's `shroom:keep` event (#59)
+hands the player new ranges on the recording's clock, made safe as `editsOf` makes an edit,
+in place of the edit.
 
 **Owner faces (cookie):** editable title (placeholder kept if untouched; Enter or click-away
 saves; emptied restores), player, Copy link and Download as icons, the upload line; members

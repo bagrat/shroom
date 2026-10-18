@@ -303,6 +303,22 @@ describe("the edit (N63) over R2's own reads", () => {
     assert.equal(poster.status, 404, "the trimmed-off first frame goes with the rest");
     await poster.arrayBuffer();
   });
+
+  it("Copy thumbnail: only a picture drawn from the copy's own first frame is the video's, and served", async () => {
+    const [OLD, NEW] = ["thumb-0123456789abcdef.gif", "thumb-fedcba9876543210.gif"];
+    for (const f of [OLD, NEW]) await bucket.put(`rec/${EDIT_ID}/${f}`, f);
+    // The picture made before the edit (no stamp: drawn from the original's first frame).
+    await put({ edits: edits({ copy: COPY_OF }), thumb: { title: null, gif: OLD } });
+    assert.equal((await jsonOf(await fetchW(`/_shroom/status/${EDIT_ID}`))).thumb, null);
+    // One drawn from the copy's: the video's; the original's goes (the edit trims its start).
+    await put({ edits: edits({ copy: COPY_OF }), thumb: { title: null, from: "edit-3-poster.jpg", gif: NEW } });
+    assert.equal((await jsonOf(await fetchW(`/_shroom/status/${EDIT_ID}`))).thumb, `/m/${EDIT_ID}/${NEW}`);
+    for (const [f, code] of [[NEW, 200], [OLD, 404]]) {
+      const res = await fetchW(`/m/${EDIT_ID}/${f}`);
+      assert.equal(res.status, code, f);
+      await res.arrayBuffer();
+    }
+  });
 });
 
 // B197: a baked recording — `media` names the edit's own files, no stream — read from R2.

@@ -371,11 +371,13 @@ describe("once the permanent copy is up, the page plays it as it is (N63)", () =
 });
 
 describe("step 3: once the copy is up, the cut parts are out of reach (N63)", () => {
-  const SERVED = ["edit-3.mp4", "edit-3-poster.jpg", "edit-3-teaser.mp4", "thumb-0123456789abcdef.gif"];
-  // LIST trims 0–8 off: the recording's first frame goes with the rest of what's cut.
-  const GONE = ["master.m3u8", "v0/stream.m3u8", "v0/init.mp4", "v0/seg_00000.m4s", "video.mp4", "poster.jpg", "teaser.mp4", "captions.vtt", "edit-2.mp4"];
+  const SERVED = ["edit-3.mp4", "edit-3-poster.jpg", "edit-3-teaser.mp4"];
+  // LIST trims 0–8 off: the recording's first frame goes with the rest of what's cut, and so
+  // does a Copy thumbnail picture that isn't the video's (below).
+  const GONE = ["master.m3u8", "v0/stream.m3u8", "v0/init.mp4", "v0/seg_00000.m4s", "video.mp4", "poster.jpg", "teaser.mp4", "captions.vtt", "edit-2.mp4",
+    "thumb-0123456789abcdef.gif"];
 
-  it("serves only the copy's files and Copy thumbnail's pictures", async () => {
+  it("serves only the copy's files", async () => {
     const env = copied();
     for (const f of SERVED) {
       const res = await get(env, `/m/${REC}/${f}`);
@@ -767,7 +769,7 @@ describe("a baked recording: the edit became the video (B197)", () => {
     expect(mine).toContain(`class="title"`);
     expect(mine).toContain(`src="/m/${REC}/edit-3.mp4"`);
     expect(mine).toContain(`"mp4":true`);
-    expect(mine).toContain(`"len":"3:41","psrc":"/m/${REC}/edit-3-poster.jpg","tsrc":"/m/${REC}/edit-3-teaser.mp4"`);
+    expect(mine).toContain(`"len":"3:41","from":"edit-3-poster.jpg","psrc":"/m/${REC}/edit-3-poster.jpg","tsrc":"/m/${REC}/edit-3-teaser.mp4"`);
     expect(JSON.parse(await text(env, `/_shroom/status/${REC}`))).toEqual({ state: "live", poster: true, mp4: true, teaser: true, thumb: null, dur: 220.9, drained: true,
       copy: { src: `/m/${REC}/edit-3.mp4`, dur: 220.9, poster: `/m/${REC}/edit-3-poster.jpg` } });
   });
@@ -825,11 +827,13 @@ describe("a baked recording: the edit became the video (B197)", () => {
     expect((await get(baked(), `/d/${REC}`, { headers: { range: "bytes=0-3" } })).status).toBe(206);
   });
 
-  it("serves exactly the files its record names, and Copy thumbnail's pictures", async () => {
+  it("serves exactly the files its record names", async () => {
     const env = baked();
-    for (const f of ["edit-3.mp4", "edit-3-poster.jpg", "edit-3-teaser.mp4", "thumb-0123456789abcdef.gif"]) expect((await get(env, `/m/${REC}/${f}`)).status, f).toBe(200);
-    // What a bake left behind, or an earlier one's file: none of it is the video now.
-    for (const f of ["master.m3u8", "v0/stream.m3u8", "v0/seg_00000.m4s", "video.mp4", "poster.jpg", "teaser.mp4", "edit-2.mp4", "edit-5.mp4", "captions.vtt"]) {
+    for (const f of ["edit-3.mp4", "edit-3-poster.jpg", "edit-3-teaser.mp4"]) expect((await get(env, `/m/${REC}/${f}`)).status, f).toBe(200);
+    // What a bake left behind, or an earlier one's file: none of it is the video now — nor,
+    // the bake having trimmed 8 s off, a Copy thumbnail picture that isn't the video's.
+    for (const f of ["master.m3u8", "v0/stream.m3u8", "v0/seg_00000.m4s", "video.mp4", "poster.jpg", "teaser.mp4", "edit-2.mp4", "edit-5.mp4", "captions.vtt",
+      "thumb-0123456789abcdef.gif"]) {
       for (const init of [{}, { method: "HEAD" }, { headers: { range: "bytes=0-0" } }]) {
         const res = await get(env, `/m/${REC}/${f}`, init);
         expect(res.status, `${init.method ?? "GET"} ${f}`).toBe(404);
@@ -898,10 +902,12 @@ describe("a baked recording: the edit became the video (B197)", () => {
     expect(body.match(/<video[^>]*>/)?.[0]).toContain(`poster="/m/${REC}/edit-5-poster.jpg"`);
     expect(body).toContain(`<span class="time">0:00 / 3:08</span>`);
     expect(await (await get(env, `/d/${REC}`)).text()).toBe("edit-5.mp4");
-    // The copy's files and the pictures Copy thumbnail made; the earlier video, its teaser
-    // and — AGAIN trims its first 2 s — its first frame are out of reach.
-    for (const f of ["edit-5.mp4", "edit-5-poster.jpg", "edit-5-teaser.mp4", "thumb-0123456789abcdef.gif"]) expect((await get(env, `/m/${REC}/${f}`)).status, f).toBe(200);
-    for (const f of ["edit-3.mp4", "edit-3-teaser.mp4", "edit-3-poster.jpg", "poster.jpg", "video.mp4", "master.m3u8"]) expect((await get(env, `/m/${REC}/${f}`)).status, f).toBe(404);
+    // The copy's files; the earlier video, its teaser and — AGAIN trims its first 2 s — its
+    // first frame and a Copy thumbnail picture that isn't the video's are out of reach.
+    for (const f of ["edit-5.mp4", "edit-5-poster.jpg", "edit-5-teaser.mp4"]) expect((await get(env, `/m/${REC}/${f}`)).status, f).toBe(200);
+    for (const f of ["edit-3.mp4", "edit-3-teaser.mp4", "edit-3-poster.jpg", "poster.jpg", "video.mp4", "master.m3u8", "thumb-0123456789abcdef.gif"]) {
+      expect((await get(env, `/m/${REC}/${f}`)).status, f).toBe(404);
+    }
     // Edited again keeping its first frame: that frame, the recording's own poster, stays.
     expect((await get(baked({ edits: { ...AGAIN, in: 0, copy: COPY5 } }), `/m/${REC}/edit-3-poster.jpg`)).status).toBe(200);
     // A stale copy: the list over the recording's own file again.
@@ -919,6 +925,123 @@ describe("a baked recording: the edit became the video (B197)", () => {
     expect(body).toContain(`<meta property="og:video" content="${ORIGIN}/m/${REC}/teaser.mp4">`);
     expect(await (await get(env, `/d/${REC}`)).text()).toBe("video.mp4");
     expect((await get(env, `/m/${REC}/v0/seg_00000.m4s`)).status).toBe(200);
+  });
+});
+
+/** Copy thumbnail's start on a page (`thumbsOf`), read from the page's own settings. */
+function thumbsIn(body) {
+  const at = body.indexOf('"thumbs":{');
+  if (at < 0) return null;
+  const from = at + '"thumbs":'.length;
+  for (let i = from, depth = 0; i < body.length; i++) {
+    if (body[i] === "{") depth++;
+    else if (body[i] === "}" && --depth === 0) return JSON.parse(body.slice(from, i + 1));
+  }
+  return null;
+}
+
+// Copy thumbnail's pictures (N46) show the video's first frame and its teaser's first 3 s,
+// with its length. Each carries the first frame it was drawn from (`meta.thumb.from`; one
+// made before the stamp was drawn from `poster.jpg`), and only one drawn from what the video
+// shows now is the video's: the status's, the pages'. The files stay served — a paste
+// already sent keeps its picture (B164) — unless an edit took something from those 3 s.
+describe("Copy thumbnail follows the edit: a picture of the original never outlives it (N46, N63)", () => {
+  const OLD = "thumb-0123456789abcdef.gif";
+  const NEW = "thumb-fedcba9876543210.gif";
+  const LEGACY = { title: "Where the 502s come from", gif: OLD };
+  const OF_COPY = { title: "Where the 502s come from", from: "edit-3-poster.jpg", gif: NEW };
+  const COPIED = { ...LIST, rev: 3, copy: COPY3 };
+  const BAKED_MEDIA = { hls: null, mp4: `rec/${REC}/edit-3.mp4`, poster: `rec/${REC}/edit-3-poster.jpg`, teaser: `rec/${REC}/edit-3-teaser.mp4`, width: 1920, height: 1080 };
+  const AT = "2026-10-18T09:00:00.123Z";
+  const envOf = (edits, thumb, over = {}) => space({ objects: { [metaKey(REC)]: record(edits, { thumb, ...over }), ...files(), [`rec/${REC}/${NEW}`]: NEW } });
+  const bakedOf = (thumb, bakedFrom = [{ at: AT, rev: 3, keep: KEEP }], over = {}) => envOf(undefined, thumb, { durationSec: 220.9, media: BAKED_MEDIA, bakedFrom, ...over });
+  const statusThumb = async (env) => JSON.parse(await text(env, `/_shroom/status/${REC}`)).thumb;
+  const served = async (env, f) => (await get(env, `/m/${REC}/${f}`)).status;
+
+  it("hands out a picture made before the stamp while the video plays as recorded", async () => {
+    const env = envOf(undefined, LEGACY);
+    expect(await statusThumb(env)).toBe(`/m/${REC}/${OLD}`);
+    expect(thumbsIn(await text(env, `/${REC}`, owner))).toMatchObject({ thumb: `/m/${REC}/${OLD}`, gif: true, from: "poster.jpg",
+      psrc: `/m/${REC}/poster.jpg`, tsrc: `/m/${REC}/teaser.mp4`, teaser: true, len: "4:32" });
+    // An edit put back to the whole is no edit: the picture is the video's again.
+    expect(await statusThumb(envOf({ ...LIST, in: 0, out: 272.4, cuts: [], rev: 4 }, LEGACY))).toBe(`/m/${REC}/${OLD}`);
+  });
+
+  it("hands out none of the original once the video is edited, and draws none until the copy is up", async () => {
+    for (const edits of [{ ...LIST, rev: 3 }, { ...LIST, in: 0, rev: 3 }]) {
+      const env = envOf(edits, LEGACY);
+      expect(await statusThumb(env)).toBeNull();
+      expect(thumbsIn(await text(env, `/${REC}`, owner))).toMatchObject({ thumb: null, gif: false, from: "", psrc: "", tsrc: "", teaser: false });
+      // A viewer gets no Copy thumbnail, and no first frame to paste in its place.
+      const page = await text(env, `/${REC}`);
+      expect(page).toMatch(/id="th" [^>]* hidden>/);
+      expect(thumbsIn(page)).toMatchObject({ thumb: null, psrc: "" });
+    }
+  });
+
+  it("draws it again from the copy's own first frame and teaser, with the edited length, once the copy is up", async () => {
+    const env = envOf(COPIED, LEGACY);
+    expect(await statusThumb(env)).toBeNull();
+    expect(thumbsIn(await text(env, `/${REC}`, owner))).toMatchObject({ thumb: null, from: "edit-3-poster.jpg",
+      psrc: `/m/${REC}/edit-3-poster.jpg`, tsrc: `/m/${REC}/edit-3-teaser.mp4`, teaser: true, len: "3:41" });
+    // The picture drawn from the copy's is the video's, a viewer's to copy too.
+    const now = envOf(COPIED, OF_COPY);
+    expect(await statusThumb(now)).toBe(`/m/${REC}/${NEW}`);
+    const page = await text(now, `/${REC}`);
+    expect(thumbsIn(page)).toMatchObject({ thumb: `/m/${REC}/${NEW}`, gif: true });
+    expect(page).not.toMatch(/id="th" [^>]* hidden>/);
+    // A newer revision's copy is drawn from afresh; a copy with no first frame of its own
+    // gives nothing to draw from.
+    const four = { ...COPY3, rev: 4, file: "edit-4.mp4", poster: "edit-4-poster.jpg", teaser: "edit-4-teaser.mp4" };
+    expect(await statusThumb(envOf({ ...COPIED, rev: 4, copy: four }, OF_COPY))).toBeNull();
+    const bare = envOf({ ...LIST, rev: 3, copy: { rev: 3, file: "edit-3.mp4", duration: 220.9, teaser: "edit-3-teaser.mp4" } }, LEGACY);
+    expect(thumbsIn(await text(bare, `/${REC}`, owner))).toMatchObject({ thumb: null, from: "", psrc: "", tsrc: "", teaser: false });
+  });
+
+  it("after the bake, the picture drawn from the copy's first frame stays the video's; one of the original never comes back", async () => {
+    expect(await statusThumb(bakedOf(OF_COPY))).toBe(`/m/${REC}/${NEW}`);
+    expect(await statusThumb(bakedOf(LEGACY))).toBeNull();
+    expect(await statusThumb(bakedOf({ ...LEGACY, from: "poster.jpg" }))).toBeNull();
+    expect(thumbsIn(await text(bakedOf(LEGACY), `/${REC}`, owner))).toMatchObject({ thumb: null, from: "edit-3-poster.jpg",
+      psrc: `/m/${REC}/edit-3-poster.jpg`, tsrc: `/m/${REC}/edit-3-teaser.mp4` });
+    // A baked recording with no first frame of its own has nothing to draw from.
+    const bare = bakedOf(OF_COPY, undefined, { media: { ...BAKED_MEDIA, poster: null } });
+    expect(await statusThumb(bare)).toBeNull();
+    expect(thumbsIn(await text(bare, `/${REC}`, owner))).toMatchObject({ thumb: null, from: "", psrc: "", tsrc: "" });
+  });
+
+  it("keeps serving every picture while the edit keeps the first 3 s whole: a paste already sent keeps its picture (B164)", async () => {
+    // Only 150–162 and the end go; or a cut starting at 3 s; the copy up or not.
+    for (const edits of [{ ...LIST, in: 0, rev: 3 }, { ...LIST, in: 0, rev: 3, copy: COPY3 }, { ...LIST, in: 0, cuts: [{ start: 3, end: 5, applied: true }], rev: 3, copy: COPY3 }]) {
+      const env = envOf(edits, OF_COPY);
+      expect(await served(env, OLD), JSON.stringify(edits.cuts)).toBe(200);
+      expect(await served(env, NEW)).toBe(200);
+    }
+    expect(await served(envOf(undefined, LEGACY), NEW)).toBe(200);
+    // Baked from an edit that kept them.
+    expect(await served(bakedOf(OF_COPY, [{ at: AT, rev: 3, keep: [[0, 150], [162, 241]] }]), OLD)).toBe(200);
+  });
+
+  it("serves only the video's own picture once an edit took anything from the first 3 s", async () => {
+    // The trim's in at 8 s; a cut at 2.5–5 s; a cut at 0–1 s.
+    const cutting = [COPIED, { ...COPIED, in: 0, cuts: [{ start: 2.5, end: 5, applied: true }] }, { ...COPIED, in: 0, cuts: [{ start: 0, end: 1, applied: true }] }];
+    for (const edits of cutting) {
+      const env = envOf(edits, OF_COPY);
+      expect(await served(env, OLD), JSON.stringify(edits.cuts)).toBe(404);
+      expect(await served(env, NEW)).toBe(200);
+      expect(await (await get(env, `/m/${REC}/${OLD}`, { method: "HEAD" })).status).toBe(404);
+    }
+    // Waiting for its copy, the video has no picture yet: none is served.
+    for (const f of [OLD, NEW]) expect(await served(envOf({ ...LIST, rev: 3 }, LEGACY), f)).toBe(404);
+    // Baked from a trimmed edit — also when a later bake kept its own start: the earlier
+    // pictures still show what the first one cut.
+    for (const bakedFrom of [[{ at: AT, rev: 3, keep: KEEP }], [{ at: AT, rev: 3, keep: KEEP }, { at: AT, rev: 5, keep: [[0, 150]] }]]) {
+      const env = bakedOf(OF_COPY, bakedFrom);
+      expect(await served(env, OLD)).toBe(404);
+      expect(await served(env, NEW)).toBe(200);
+    }
+    // A record that can't say what its bakes kept vouches for nothing.
+    for (const bakedFrom of [[{ at: AT }], [{ keep: [["0", 9]] }], "kept"]) expect(await served(bakedOf(OF_COPY, bakedFrom), OLD)).toBe(404);
   });
 });
 
