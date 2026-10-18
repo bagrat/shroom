@@ -282,6 +282,40 @@ thread):
   - **What was created:** one Worker, `poc-voice-cut-ai`, guarded by a throwaway key,
     deleted after the probe (the API answers 404 for it now). Nothing else was touched.
 - SpeechAnalyzer stays the on-device option for macOS 26 and later.
+- **Reading the audio from the take itself.** The sibling Cloudflare AI POC (PR #60)
+  already pulls only the audio out of a take's fMP4 pieces in R2, with ranged reads. Its
+  `fmp4.js` does that; its `windows()` and `hear()` turn the pieces into ~60 s Whisper
+  windows and give the words on the take's own clock, with none doubled at a window's edge.
+  - **Decided:** the listen route reuses that code, and the Worker reads the pieces it
+    already stores. The app then uploads nothing new; it only asks the Worker to listen.
+    This replaces “the app extracts and posts chunks” above.
+
+### A second opinion on each cue: Clef
+
+Cloudflare's decision model, Clef, answers typed questions about a text with a
+probability. It was asked whether each candidate is “the speaker telling the editor to cut
+out a mistake, rather than talking about the phrase, a feature, or cutting something else”.
+
+- **The candidates** were all 133 places in the fixtures where the code word, or a
+  sound-alike, met “cut”, labelled by the script. To those were added 15 hand-written
+  sentences, such as “just say shroom cut and…”, “Shroom, cut the long silence…” and “drum
+  cut loops”.
+- **The state** explained the convention in two sentences
+  ([`poc/clef.py`](voice-cut/poc/clef.py)).
+
+| Model | Cues (99): lowest | Non-cues (34): highest | At 0.3: cues kept / non-cues through | Time |
+|---|---|---|---|---|
+| **`@cf/cloudflare/clef`** (27B) | **0.20** (median 0.83) | **0.08** | **98/99 · 0/34** | 2.5 s for all, 32 a call |
+| `@cf/cloudflare/clef-flash` (9B) | 0.04 (median 0.15) | 0.91 | 15/99 · 2/34 | 5 s; one per call didn't help (46/99 · 9/34) |
+
+- **Decided: Clef, not Clef-flash, as a gate on each cue the rules find.** A cue counts
+  when Clef gives it at least 0.15, which separates every case above.
+- **Why a gate and not a replacement.** The rules (sound match, mention words, the pause,
+  the retake alignment) already got every fixture right. Clef covers phrasings the rules
+  have never seen, like “We added shroom cut in the last release”.
+- **The cost** is one call per take, about 30 neurons, a fraction of a cent.
+- **What Clef can't fix.** It reads text, so it can't help when Whisper wrote the line as
+  meant and dropped the cue. Clef-omni hears audio and might; it wasn't tried.
 
 ## Spec sketch (provisional, not in `machine.json` yet)
 
