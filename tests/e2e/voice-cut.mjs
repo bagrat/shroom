@@ -11,7 +11,8 @@
 //   node tests/e2e/voice-cut.mjs
 //
 // Needs SHROOM_INSTALLED (the installed dev app), MAC_OUT (where the evidence goes:
-// voice-cut/summary.json, strip.webm — the owner page as the cuts land —, strip.png,
+// voice-cut/summary.json — each check, the status as it changed, the lane's and the AI's
+// lines in the app's log —, drive.json, the drive's report, strip.webm — the owner page as the cuts land —, strip.png,
 // before.wav and after.wav — the take's sound as recorded, and cut where the strip says with
 // the editor's 30 ms fades at each join —, and voice-cut.mp4, the strip over the cut sound)
 // and a build whose live drive turns the AI on (`--ai`, N66). Prints one JSON summary. Exit 0:
@@ -83,7 +84,18 @@ async function answerAlerts() {
   return answered;
 }
 
+// The voice lane's and the AI's own lines in the app's log (B201 e, B206 f): counts, scores
+// and states, never a word said. Kept however the run ends: they say where a take stopped.
+const laneLines = () => {
+  try {
+    return fs.readFileSync(path.join(os.homedir(), ".shroom-dev/logs/run.log"), "utf8").split("\n").filter((l) => / (voice: |naming[ :])/.test(l)).slice(-40);
+  } catch {
+    return [];
+  }
+};
+
 let driving = null;
+const report = path.join(work, "drive.json");
 try {
   // 1. The speech, in the Mac's own stock voice, as a 48 kHz WAV.
   const aiff = path.join(work, "speech.aiff");
@@ -101,7 +113,6 @@ try {
   // Mac's voice lane runs. (A drive of the AI alone, `--drive ai`, is the fake's only.)
   spawnSync("pkill", ["-f", DRIVE_PROC]);
   summary.alertsAnswered = await answerAlerts();
-  const report = path.join(work, "drive.json");
   driving = spawn("open", ["-W", "-n", installed, "--args", "--e2e", "--drive", report, String(SECONDS), "--voice", wav, "--ai"], { stdio: "ignore" });
   let drive = null;
   for (const until = Date.now() + (SECONDS + 300) * 1000; Date.now() < until;) {
@@ -120,16 +131,21 @@ try {
   check("the take went live", true, pageUrl.replace(drive.rec, "<id>"));
 
   // 4. The status says cuts are coming, then gives their tag (what the owner page polls).
+  // Each change it shows is kept, by seconds since Stop. The lane looks for its words for up
+  // to 15 minutes; a short take's are there in seconds.
   const status = async () => (await fetch(`${origin}/_shroom/status/${drive.rec}`, { cache: "no-store" }).then((r) => r.json()).catch(() => ({})));
   let coming = false, tag = null;
-  for (const until = Date.now() + 300_000; Date.now() < until && !tag;) {
+  summary.status = [];
+  for (const until = Date.now() + 540_000; Date.now() < until && !tag;) {
     const s = await status();
+    const word = `${s.state ?? "no answer"}${s.cuts ? ` · cuts ${s.cuts === "coming" ? "coming" : "tagged"}` : ""}`;
+    if (summary.status.at(-1)?.[1] !== word) summary.status.push([Math.round((Date.now() - stopAt) / 1000), word]);
     if (s.cuts === "coming") coming = true;
     else if (s.cuts) tag = s.cuts;
     if (!tag) await sleep(1000);
   }
   check("the status said cuts were coming", coming, coming ? "coming" : "never seen");
-  check("the cuts landed", !!tag, tag ? "a tag" : "no tag within 5 minutes of go-live");
+  check("the cuts landed", !!tag, tag ? "a tag" : "no tag within 9 minutes of go-live");
   if (tag) summary.ms.stopToLanded = Date.now() - stopAt;
 
   // 5. The owner page, open as the owner (the app's one-time key): the strip under the player.
@@ -177,14 +193,15 @@ try {
   await Promise.race([new Promise((ok) => driving.once("exit", ok)), sleep(120_000)]);
   const final = readJson(report);
   check("the take was deleted", final?.phase === "deleted" && !final?.error, final?.error ?? final?.phase);
-  // How the lane went, from the app's own log (scores, never words).
-  const log = fs.readFileSync(path.join(os.homedir(), ".shroom-dev/logs/run.log"), "utf8").split("\n").filter((l) => /\bvoice: /.test(l));
-  summary.lane = log.slice(-12);
   summary.ok = Object.values(summary.checks).every((c) => c.ok);
 } catch (e) {
   summary.error = String(e.message ?? e).slice(0, 1500);
 } finally {
   if (driving && driving.exitCode === null) spawnSync("pkill", ["-f", DRIVE_PROC]);
+  // How the lane and the AI went, and the drive's report (its take's id left out, as above).
+  summary.lane = laneLines();
+  const drove = readJson(report);
+  if (drove) fs.writeFileSync(path.join(out, "drive.json"), JSON.stringify({ ...drove, rec: drove.rec && "<id>" }, null, 2));
   summary.seconds = Math.round((Date.now() - t0) / 1000);
   fs.writeFileSync(path.join(out, "summary.json"), JSON.stringify(summary, null, 2));
   fs.rmSync(work, { recursive: true, force: true });

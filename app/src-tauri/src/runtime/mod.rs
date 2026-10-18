@@ -775,6 +775,15 @@ pub fn log_line(dir: &Path, line: &str) {
     }
 }
 
+/// One `run.log` line as `Runtime::log` wrote it: its monotonic ms and its text, past the
+/// wall clock `log_line` opens it with (a line from before the stamps has none). A line
+/// with no ms (the trace ring's, a continuation) is `None`.
+pub fn read_log_line(line: &str) -> Option<(u64, &str)> {
+    let line = line.split_once(' ').filter(|(wall, _)| wall.ends_with('Z')).map_or(line, |(_, rest)| rest);
+    let (mono, text) = line.trim_start().split_once(' ')?;
+    Some((mono.parse().ok()?, text))
+}
+
 /// A recording id as the run log names it: enough to tell takes apart, never the whole
 /// link (`AbCd…`).
 pub fn short(id: &str) -> String {
@@ -1598,6 +1607,26 @@ mod tests {
         assert!(lines.iter().all(|l| stamped(l)), "{fresh}");
         assert!(lines[0].ends_with(&format!(" rolled: {}", BUILD.get().unwrap())) && lines[0].contains(" rolled: shroom "), "{fresh}");
         assert!(lines[1].ends_with(" after the roll"));
+    }
+
+    /// The harness's live drive reads the run log back: each line's monotonic ms and its
+    /// text, past the wall clock it opens with, as a line from before the stamps reads —
+    /// the drive waits on these to see the page opened after Stop.
+    #[test]
+    fn a_run_log_line_reads_back_its_ms_and_text_with_or_without_its_wall_clock() {
+        let tmp = tempfile::tempdir().unwrap();
+        let (rt, _rx) = Runtime::for_test(tmp.path().join("home"), None, None);
+        rt.log("cloud would open the owner page for AbCd…");
+        let log = std::fs::read_to_string(rt.home.root.join("logs/run.log")).unwrap();
+        let stamped = log.lines().last().unwrap();
+        assert!(matches!(read_log_line(stamped), Some((_, "cloud would open the owner page for AbCd…"))), "{stamped}");
+        assert_eq!(read_log_line("2026-10-18T18:40:03Z    19175 recorder: finalized in 412 ms"), Some((19175, "recorder: finalized in 412 ms")));
+        // A line from before the stamps reads the same.
+        assert_eq!(read_log_line("   19175 recorder: finalized in 412 ms"), Some((19175, "recorder: finalized in 412 ms")));
+        // A line with no ms (the trace ring's, a stamp alone) is none of the drive's.
+        for l in ["2026-10-18T18:40:03Z trace     1535 Booted.Disk → first-launch", "trace: end", "2026-10-18T18:40:03Z", ""] {
+            assert_eq!(read_log_line(l), None, "{l}");
+        }
     }
 
     /// Law 13 at the door: of a pasted token the core is told its handle and its shape,
