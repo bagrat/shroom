@@ -33,8 +33,9 @@ cask "shroom" do
 
   app "shroom.app", target: "~/Applications/shroom.app"
   # The `shroom` command the app carries, linked into Homebrew's bin (Bagrat, 2026-10-18:
-  # always installed; dev/proposals/cli-agent-skill.md).
-  binary "#{Dir.home}/Applications/shroom.app/Contents/MacOS/shroom-cli", target: "shroom"
+  # always installed; DECISIONS B217). render-cask.sh keeps the line below for a release
+  # whose manifest says it carries the command (cli=shroom-cli), and drops it for one before.
+  #cli: binary "#{Dir.home}/Applications/shroom.app/Contents/MacOS/shroom-cli", target: "shroom"
 
   # Before anything is placed, the staged copy is held to the release's signer, and only
   # then is Homebrew's quarantine mark lifted from it. The pin is the release certificate's

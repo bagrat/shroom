@@ -1,7 +1,8 @@
 #!/bin/sh
 # Prints the tap's Casks/shroom.rb: installer/homebrew/shroom.rb with a release's version
 # and SHA-256, read from that release's manifest.txt — the same file, and the same checks
-# on it, as installer/install.sh. With no argument it asks the public releases for the
+# on it, as installer/install.sh — and its `shroom` command linked when the manifest says
+# the release carries it (cli=shroom-cli). With no argument it asks the public releases for the
 # latest one; with a path, it reads that manifest instead.
 #
 #   installer/homebrew/render-cask.sh > Casks/shroom.rb
@@ -22,5 +23,9 @@ case "$version" in ""|.*|*.|*..*|*.*.*.*|*[!0-9.]*) echo "render-cask: no versio
 [ "$file" = "shroom-$version-arm64.zip" ] || { echo "render-cask: the arm64 file isn't shroom-$version-arm64.zip" >&2; exit 1; }
 case "$sum" in *[!0-9a-f]*) echo "render-cask: the fingerprint isn't hex" >&2; exit 1 ;; esac
 [ "${#sum}" -eq 64 ] || { echo "render-cask: the fingerprint isn't 64 characters" >&2; exit 1; }
+# The `shroom` command (DECISIONS B217): linked for a release that carries it, and its line
+# dropped for one before — Homebrew fails an install whose binary isn't there.
+if [ "$(field cli)" = shroom-cli ]; then cli='s/^  #cli: /  /'; else cli='/^  #cli: /d'; fi
 sed -e "s/^  version \"[0-9.]*\"$/  version \"$version\"/" \
-    -e "s/^  sha256 \"[0-9a-f]*\"$/  sha256 \"$sum\"/" "$here/shroom.rb"
+    -e "s/^  sha256 \"[0-9a-f]*\"$/  sha256 \"$sum\"/" \
+    -e "$cli" "$here/shroom.rb"
