@@ -35,8 +35,8 @@ MIN_MACOS=14
 # The release certificate's SHA-1 (tools/release-identity.sha1; its test holds them equal):
 # a public release's shroom.app must be signed by it, as am.shroom (DECISIONS B125).
 RELEASE_LEAF=8344cbe040722ea0a5632320c1d0d4348eaa3af3
-# The `shroom` command (dev/proposals/cli-agent-skill.md; Bagrat, 2026-10-18: always
-# installed): a link in your home folder to the one inside the app, so it updates with it.
+# The `shroom` command (spec N62, DECISIONS B217; Bagrat, 2026-10-18: always installed):
+# a link in your home folder to the one inside the app, so it updates with it.
 CLI_DIR="$HOME/.local/bin"
 CLI_LINK="$CLI_DIR/shroom"
 CLI_MARK="# shroom's command line (shroom.am) — run shroom --help"
