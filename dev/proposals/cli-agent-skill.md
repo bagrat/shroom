@@ -134,10 +134,24 @@ The competitor comparison is in shroom-private (`strategy/research/`), not here.
   | 9 | `take_open` | a recording is open |
 
 - **The cleanup hook.** The sibling cleanup-score proposal (view analytics) is the source
-  for `views`, `last_viewed` and `score`. When it lands, `cleanup()` in
-  `crates/shroom-cli/src/main.rs` ranks by `score` and `signals` becomes its name. The
-  JSON shape doesn't change. The guide tells an agent that `null` means *not known*,
-  never zero (the first demo run read it as "none viewed").
+  for `views`, `last_viewed` and `score`. The guide tells an agent that `null` means
+  *not known*, never zero (the first demo run read it as "none viewed").
+
+  Once that proposal's `POST /_shroom/api/cleanup` lands (draft #57, its §6), `cleanup()`
+  in `crates/shroom-cli/src/main.rs` changes as follows:
+  - It asks the route under the device key, with `{"scope": "mine" | "everyone"}` (by
+    role, as `list` does), `--formula` passed through, and pages on `next`.
+  - It keeps the items whose `candidate` is true, ranked by `score`.
+  - Its fields map as: `plays` → `views`, `lastPlayedAt` → `last_viewed`, `score` →
+    `score`, and the route's `reason.code` (`never-played` · `stopped-early` ·
+    `not-lately` · `big-and-quiet`) → `reasons`.
+  - `signals` becomes the formula's name, and `bytes` and `usdPerMonth` ride along.
+  - On a 404 (a page from before the route) it keeps today's age-only list, with the
+    view fields `null`.
+  - An agent's reading of the JSON doesn't change shape.
+
+  It isn't wired now because the route isn't merged, and whether to count plays at all is
+  still Bagrat's call.
 
 ## 4. Getting it on PATH
 
