@@ -1406,7 +1406,9 @@ export function playerHtml(id, meta, base = "") {
  * (`shroomAt`/`shroomToSource`, held with `editsOf` to crates/shroom-edit's vectors). A
  * permanent copy plays as it is. And once the copy is up the original is out of reach
  * (`servedOnly`): a player that was playing the original asks `E.st`, the status, when its
- * media fails, and moves over to the copy at the same edited moment.
+ * media fails, and moves over to the copy at the same edited moment. A player already on a
+ * copy that a newer one replaced keeps its moment as it is: its time is edited time, and
+ * the status's ranges count on the recording's own clock.
  *
  * A `shroom:keep` event on the document (agreed with the voice-cut build, #59) hands the
  * player new ranges to play, `detail: [[s, e], …]` on the recording's own clock: made safe
@@ -1437,7 +1439,7 @@ function skip(){if(!K){if(v.volume!==1)level(1);return}var t=v.currentTime||0,n=
 if(i===n){fin=true;if(!v.paused)v.pause();level(1);paint();return}if(t<K[i][0]-.001&&(aim!==K[i][0]||Math.abs(t-aim)>.05)){level(0);aim=K[i][0];v.currentTime=aim;return}level(v.paused?1:shroomGain(K,t,.05))}
 function tick(){raf=0;if(!K||v.paused||v.ended)return;skip();if(!v.paused)raf=requestAnimationFrame(tick)}
 function fail(){if(busy||!E||!E.st)return;busy=true;fetch(E.st,{cache:"no-store"}).then(function(r){return r.json()}).then(function(x){var c=x&&x.copy;if(!c||!c.src||c.src===s)return;
-var t=v.currentTime||0,e=K?shroomAt(K,t):x.keep&&x.keep.length?shroomAt(x.keep,t):0,go=!v.paused&&!fin;K=null;cp=true;fin=false;s=c.src;known=+c.dur||known;if(c.poster)v.poster=c.poster;if(v.hls){v.hls.destroy();v.hls=null}
+var t=v.currentTime||0,e=K?shroomAt(K,t):cp?t:x.keep&&x.keep.length?shroomAt(x.keep,t):0,go=!v.paused&&!fin;K=null;cp=true;fin=false;s=c.src;known=+c.dur||known;if(c.poster)v.poster=c.poster;if(v.hls){v.hls.destroy();v.hls=null}
 v.addEventListener("loadedmetadata",function(){v.currentTime=e;if(go){var r=v.play();if(r&&r.catch)r.catch(function(){})}},{once:true});shroomPlay(v,s,fail);paint()}).catch(function(){}).then(function(){busy=false})}
 function wake(){p.classList.remove("idle");clearTimeout(idle);if(!v.paused&&!v.ended)idle=setTimeout(function(){var a=document.activeElement;if(!(a&&a!==v&&p.contains(a)))p.classList.add("idle")},2500)}
 function mode(){var on=!v.paused&&!v.ended;p.classList.toggle("playing",on);if(on)p.classList.add("started");pp.setAttribute("aria-label",on?L.pause:L.play);wake()}

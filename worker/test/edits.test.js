@@ -526,6 +526,27 @@ describe("the player applies the edit as it plays (the skip, the time, the seek 
     expect(s.time()).toBe("0:09 / 0:11");
   });
 
+  it("moving from a copy to a newer one keeps its moment: the status's ranges count on the recording's clock, not the copy's", async () => {
+    // Playing revision 3's copy, 60 s in; revision 4's copy lands and 3's goes.
+    const keep4 = [[8, 150], [162, 231]];
+    const s = stage(null, { dur: 220, copy: true, answer: { state: "live", keep: keep4, copy: { src: "/m/x/edit-4.mp4", dur: 211 } } });
+    s.click();
+    s.at(60);
+    s.emit("error");
+    await new Promise((ok) => setImmediate(ok));
+    expect(s.video.src).toBe("/m/x/edit-4.mp4");
+    s.emit("loadedmetadata");
+    expect(s.video.currentTime).toBe(60);
+    // A player on the recording itself is on that clock: its moment maps through the ranges.
+    const o = stage(null, { answer: { state: "live", keep: [[2, 6], [9, 12]], copy: { src: "/m/x/edit-3.mp4", dur: 7 } } });
+    o.click();
+    o.at(10);
+    o.emit("error");
+    await new Promise((ok) => setImmediate(ok));
+    o.emit("loadedmetadata");
+    expect(o.video.currentTime).toBe(5);
+  });
+
   it("stays put when the status names no copy", async () => {
     const s = stage(K, { answer: { state: "live", keep: K } });
     s.click();
