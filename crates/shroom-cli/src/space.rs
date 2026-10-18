@@ -9,7 +9,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use serde_json::{Value, json};
 use shroom_cloud::device::DeviceKey;
-use shroom_cloud::member::{Answer, LibraryRequest, MintNext, Purpose, Scope, Space};
+use shroom_cloud::member::{Answer, CleanupItem, LibraryRequest, MintNext, Purpose, Scope, Space};
 use shroom_core::world::{Role, SpaceIdentity};
 use shroom_storage::s3::{Bucket, Client};
 use shroom_storage::sigv4::Credentials;
@@ -17,6 +17,7 @@ use shroom_upload::library::{self, Row};
 use shroom_upload::meta::State;
 
 use crate::out::Fail;
+use crate::say;
 
 pub struct Door {
     pub identity: SpaceIdentity,
@@ -26,6 +27,9 @@ pub struct Door {
     /// `<base>/<host>/…`, its bucket at `<base>/_s3/<host>/…`. `None`: the real space.
     base: Option<String>,
 }
+
+/// The page's suggestions: since when plays are counted, and every video it looked at.
+pub type Suggestions = (Option<String>, Vec<CleanupItem>);
 
 /// One video, as the CLI shows it.
 #[derive(Debug, Clone, PartialEq)]
@@ -113,11 +117,11 @@ impl Door {
     fn manage(&self, id: &str) -> Result<Client, Fail> {
         let m = match MintNext::of(self.page.mint(&self.key, id, Purpose::Manage)) {
             MintNext::Minted(m) => m,
-            MintNext::Revoked => return Err(Fail::Refused("This Mac is no longer in the space.".into())),
-            MintNext::NotYours => return Err(Fail::Refused("That video is someone else's: only they or the space's owner can change it.".into())),
-            MintNext::Deleted | MintNext::Absent => return Err(Fail::NotFound("That video is already gone.".into())),
-            MintNext::Backoff => return Err(Fail::Offline("The space is busy or out of reach. Try again in a minute.".into())),
-            _ => return Err(Fail::Other("The space didn't answer as expected.".into())),
+            MintNext::Revoked => return Err(Fail::Refused(say::not_in_the_space())),
+            MintNext::NotYours => return Err(Fail::Refused(say::someone_elses())),
+            MintNext::Deleted | MintNext::Absent => return Err(Fail::NotFound(say::already_gone())),
+            MintNext::Backoff => return Err(Fail::Offline(say::busy_or_unreachable())),
+            _ => return Err(Fail::Other(say::unexpected_answer())),
         };
         let endpoint = match &self.base {
             Some(b) => format!("{}/_s3/{}", b.trim_end_matches('/'), self.identity.host),
@@ -183,6 +187,30 @@ impl Door {
         answer(self.page.remove_member(&self.key, id))
     }
 
+    /// The page's own suggestions of what to delete, every page of them (`POST cleanup`,
+    /// paged by `after`) — only this Mac's person's videos for a member, or with `mine`;
+    /// `None` when the page doesn't make them (404: an older page).
+    pub fn suggestions(&self, mine: bool) -> Result<Option<Suggestions>, Fail> {
+        let scope = if mine || self.identity.role == Role::Member { Scope::Mine } else { Scope::Everyone };
+        let mut items = Vec::new();
+        let mut since = None;
+        let mut after: Option<String> = None;
+        for _ in 0..10_000 {
+            let page = match self.page.cleanup(&self.key, scope, after.as_deref()) {
+                Answer::Refused(r) if r.status == 404 => return Ok(None),
+                Answer::NotShroom { status: 404 } => return Ok(None),
+                a => answer(a)?,
+            };
+            since = page.counting_since;
+            items.extend(page.items);
+            match page.next {
+                Some(n) if after.as_deref() != Some(n.as_str()) => after = Some(n),
+                _ => break,
+            }
+        }
+        Ok(Some((since, items)))
+    }
+
     /// The space's people (owner-class only, §4.11).
     pub fn members(&self) -> Result<shroom_cloud::member::Members, Fail> {
         answer(self.page.members(&self.key))
@@ -192,17 +220,17 @@ impl Door {
 fn answer<T>(a: Answer<T>) -> Result<T, Fail> {
     match a {
         Answer::Ok(t) => Ok(t),
-        Answer::Unanswered(_) => Err(Fail::Offline("The space can't be reached. Check the connection and try again.".into())),
-        Answer::Refused(r) if r.status == 503 || r.is_transient() => Err(Fail::Offline("The space is busy. Try again in a minute.".into())),
-        Answer::Refused(r) if r.status == 403 && r.is_revoked() => Err(Fail::Refused("This Mac is no longer in the space.".into())),
-        Answer::Refused(r) if r.status == 401 => Err(Fail::NotSetUp("The space doesn't know this Mac yet. Open shroom once, then try again.".into())),
-        Answer::Refused(r) if r.status == 403 => Err(Fail::Refused("Only the space's owner can do that.".into())),
-        Answer::Refused(r) if r.status == 404 => Err(Fail::NotFound("There's no such invite or member.".into())),
-        Answer::Refused(r) if r.class == shroom_cloud::member::Class::Full => Err(Fail::Refused("Too many invites are waiting. Cancel one first.".into())),
-        Answer::Refused(r) if r.status == 409 => Err(Fail::Refused("That can't change now: the invite was already used, or that's the owner.".into())),
-        Answer::Refused(r) if r.status == 400 => Err(Fail::Usage("The space didn't take that. A name is 1 to 64 characters.".into())),
-        Answer::Refused(_) => Err(Fail::Other("The space said no.".into())),
-        Answer::NotShroom { .. } => Err(Fail::Offline("The space's page isn't answering as shroom. Open shroom to check on it.".into())),
+        Answer::Unanswered(_) => Err(Fail::Offline(say::unreachable())),
+        Answer::Refused(r) if r.status == 503 || r.is_transient() => Err(Fail::Offline(say::busy_space())),
+        Answer::Refused(r) if r.status == 403 && r.is_revoked() => Err(Fail::Refused(say::not_in_the_space())),
+        Answer::Refused(r) if r.status == 401 => Err(Fail::NotSetUp(say::unknown_mac())),
+        Answer::Refused(r) if r.status == 403 => Err(Fail::Refused(say::owner_only())),
+        Answer::Refused(r) if r.status == 404 => Err(Fail::NotFound(say::no_such_invite_or_member())),
+        Answer::Refused(r) if r.class == shroom_cloud::member::Class::Full => Err(Fail::Refused(say::too_many_invites())),
+        Answer::Refused(r) if r.status == 409 => Err(Fail::Refused(say::cant_change_now())),
+        Answer::Refused(r) if r.status == 400 => Err(Fail::Usage(say::name_too_long())),
+        Answer::Refused(_) => Err(Fail::Other(say::space_said_no())),
+        Answer::NotShroom { .. } => Err(Fail::Offline(say::not_answering_as_shroom())),
     }
 }
 
@@ -210,9 +238,11 @@ fn upload_fail(e: shroom_upload::upload::UploadError) -> Fail {
     use shroom_storage::s3::S3Error;
     use shroom_upload::upload::UploadError as U;
     match e {
-        U::S3(S3Error::Transport(_)) => Fail::Offline("The space can't be reached. Check the connection and try again.".into()),
-        U::Tombstoned => Fail::NotFound("That video is already gone.".into()),
-        U::S3(S3Error::Status { status: 401 | 403, .. }) => Fail::Refused("The space said no.".into()),
-        other => Fail::Other(format!("It didn't finish: {other}")),
+        U::S3(S3Error::Transport(_)) => Fail::Offline(say::unreachable()),
+        U::Tombstoned => Fail::NotFound(say::already_gone()),
+        U::S3(S3Error::Status { status: 401 | 403, .. }) => Fail::Refused(say::space_said_no()),
+        // Never the storage's own words (law 15): the step that stopped, and that a re-run
+        // finishes it.
+        _ => Fail::Other(say::didnt_finish()),
     }
 }

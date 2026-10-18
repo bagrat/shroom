@@ -9,6 +9,7 @@
 use serde_json::{Value, json};
 
 use crate::out::{Done, Fail};
+use crate::say;
 
 /// The most items one call takes: a space holds at most 20 pending invites (WORKER-INTERFACE
 /// §4.12), and a hundred of anything is more than a person checks before saying yes.
@@ -38,20 +39,20 @@ pub fn items(args: &[String], from: Option<&str>) -> Result<Vec<Item>, Fail> {
         Some(path) => {
             let text = if path == "-" {
                 let mut s = String::new();
-                std::io::Read::read_to_string(&mut std::io::stdin(), &mut s).map_err(|_| Fail::Usage("Couldn't read the list from stdin.".into()))?;
+                std::io::Read::read_to_string(&mut std::io::stdin(), &mut s).map_err(|_| Fail::Usage(say::couldnt_read_stdin()))?;
                 s
             } else {
-                std::fs::read_to_string(path).map_err(|_| Fail::Usage(format!("Couldn't read {path}.")))?
+                std::fs::read_to_string(path).map_err(|_| Fail::Usage(say::couldnt_read(path)))?
             };
             parse(&text)?
         }
         None => args.iter().map(|a| Item::Text(a.trim().to_string())).filter(|i| *i != Item::Text(String::new())).collect(),
     };
     if items.is_empty() {
-        return Err(Fail::Usage("Nothing to do: give the items as arguments with --batch, or --from <file>.".into()));
+        return Err(Fail::Usage(say::nothing_to_do()));
     }
     if items.len() > MAX {
-        return Err(Fail::Usage(format!("At most {MAX} at a time; this has {}. Split it.", items.len())));
+        return Err(Fail::Usage(say::too_many_items(MAX, items.len())));
     }
     Ok(items)
 }
@@ -61,13 +62,13 @@ pub fn items(args: &[String], from: Option<&str>) -> Result<Vec<Item>, Fail> {
 pub fn parse(text: &str) -> Result<Vec<Item>, Fail> {
     let t = text.trim();
     if t.starts_with('[') {
-        let v: Vec<Value> = serde_json::from_str(t).map_err(|_| Fail::Usage("The list starts like JSON but isn't a JSON array.".into()))?;
+        let v: Vec<Value> = serde_json::from_str(t).map_err(|_| Fail::Usage(say::not_a_json_array()))?;
         return v
             .into_iter()
             .map(|x| match x {
                 Value::String(s) => Ok(Item::Text(s.trim().to_string())),
                 Value::Object(o) => Ok(Item::Obj(o)),
-                _ => Err(Fail::Usage("Each item is a string or an object.".into())),
+                _ => Err(Fail::Usage(say::item_shape())),
             })
             .collect();
     }
@@ -110,7 +111,7 @@ pub fn finish(key: &str, outcomes: Vec<Outcome>, head: String, tail: &str) -> Re
     if failed == 0 {
         return Ok(Done::new(results, text));
     }
-    Err(Fail::Partial { message: format!("{failed} of {} didn't go through; the rest did. Run it again for the ones that failed.\n{lines}", outcomes.len()), results })
+    Err(Fail::Partial { message: say::partly(failed, outcomes.len(), &lines), results })
 }
 
 #[cfg(test)]

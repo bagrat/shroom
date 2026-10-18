@@ -11,6 +11,7 @@ mod app;
 mod batch;
 mod home;
 mod out;
+mod say;
 mod space;
 
 use serde_json::{Value, json};
@@ -21,53 +22,6 @@ use space::{Door, Video};
 
 const GUIDE: &str = include_str!("../../../site/cli.md");
 
-const HELP: &str = "\
-shroom — your shroom videos from the command line.
-
-  shroom list                         your videos, newest first
-  shroom list --search demo --limit 5
-  shroom info <video>                 one video: title, date, length, link
-  shroom link <video>                 just its link
-  shroom open <video>                 open it in the browser
-  shroom rename <video> <new title>
-  shroom delete <id-or-link>... --yes delete for good (try --dry-run first)
-  shroom cleanup-candidates           old videos worth a look before deleting
-  shroom members                      who is in your space (the owner's Macs)
-  shroom invite <name>                a link that lets one person join (7 days, once)
-  shroom invite cancel <invite-id>... those links stop working
-  shroom members remove <member-id>... --yes
-                                      they leave the space; their videos stay
-  shroom record start|pause|resume|stop
-                                      asks the shroom app (opens it if needed)
-  shroom status                       is shroom running, recording, set up?
-  shroom guide                        how a coding agent should use this tool
-
-Many at once (each item its own result; safe to run again; --dry-run first)
-  shroom invite --batch \"Ann Lee\" \"Sam Ng\" ... --yes   a link each (at most 20)
-  shroom delete <id>... --yes                     several videos, one confirmation
-  shroom rename --batch \"<id>=<new title>\" ...    several titles
-  shroom links <video>...                         the links of several videos
-  shroom list --mine --since 7d                   what you made this week
-  --from <file>   the items from a file (- for stdin): a JSON array, or one per line
-
-<video> is an id, a link, or words from its title (one match only).
-A delete takes an id or a link, never title words.
-
-Options
-  --json          one JSON object on stdout: {\"ok\":true,…} or
-                  {\"ok\":false,\"error\":\"<code>\",\"message\":\"…\"}
-  --limit N       at most N rows          --search TEXT  titles containing TEXT
-  --mine          only videos you made    --older-than DAYS (cleanup, default 90)
-  --since 7d|DATE only videos since then  --renew  a new link for someone already invited
-  --dry-run       say what would change, change nothing
-  --yes           confirm a delete, a removal or a batch invite
-  --no-launch     don't open the app to record
-
-Exit codes
-  0 ok · 1 failed · 2 usage · 3 not set up · 4 not found or ambiguous · 5 offline
-  6 refused · 7 needs --yes · 8 the app is needed and didn't answer · 9 recording now
-  10 recording from here is off (Settings → General) · 11 a batch partly went through
-";
 
 /// The command line, parsed: the verb, its words, and the options.
 #[derive(Debug, Default)]
@@ -97,14 +51,14 @@ fn parse(argv: Vec<String>) -> Result<Args, Fail> {
     let mut a = Args::default();
     let mut it = argv.into_iter();
     while let Some(w) = it.next() {
-        let mut value = |name: &str| it.next().ok_or_else(|| Fail::Usage(format!("{name} needs a value.")));
+        let mut value = |name: &str| it.next().ok_or_else(|| Fail::Usage(say::needs_value(name)));
         match w.as_str() {
             "--json" => a.json = true,
             "--yes" | "-y" => a.yes = true,
             "--dry-run" => a.dry_run = true,
             "--mine" => a.mine = true,
             "--no-launch" => a.no_launch = true,
-            "--limit" => a.limit = Some(value("--limit")?.parse().map_err(|_| Fail::Usage("--limit takes a number.".into()))?),
+            "--limit" => a.limit = Some(value("--limit")?.parse().map_err(|_| Fail::Usage(say::limit_is_a_number()))?),
             "--search" => a.search = Some(value("--search")?),
             "--batch" => a.batch = true,
             "--from" => a.from = Some(value("--from")?),
@@ -112,14 +66,14 @@ fn parse(argv: Vec<String>) -> Result<Args, Fail> {
             "--since" => a.since = Some(value("--since")?),
             "--older-than" => {
                 let v = value("--older-than")?;
-                a.older_than = Some(v.trim_end_matches('d').parse().map_err(|_| Fail::Usage("--older-than takes a number of days.".into()))?)
+                a.older_than = Some(v.trim_end_matches('d').parse().map_err(|_| Fail::Usage(say::older_than_is_days()))?)
             }
             // Debug builds only (tests and the cloud demo): another home, a local space.
             "--home" if cfg!(debug_assertions) => a.home = Some(value("--home")?),
             "--space-base" if cfg!(debug_assertions) => a.space_base = Some(value("--space-base")?),
             "-h" | "--help" => a.words.insert(0, "help".into()),
             "-V" | "--version" => a.words.insert(0, "version".into()),
-            s if s.starts_with("--") => return Err(Fail::Usage(format!("{s} isn't an option. See shroom --help."))),
+            s if s.starts_with("--") => return Err(Fail::Usage(say::not_an_option(s))),
             _ => a.words.push(w),
         }
     }
@@ -153,8 +107,8 @@ fn run(a: &Args) -> Result<Done, Fail> {
     let verb = a.words.first().map(String::as_str).unwrap_or("help");
     let rest = &a.words[a.words.len().min(1)..];
     match verb {
-        "help" => Ok(Done::new(json!({"help": HELP}), HELP)),
-        "version" => Ok(Done::new(json!({"version": env!("CARGO_PKG_VERSION")}), format!("shroom {}", env!("CARGO_PKG_VERSION")))),
+        "help" => Ok(Done::new(json!({"help": say::HELP}), say::HELP)),
+        "version" => Ok(Done::new(json!({"version": env!("CARGO_PKG_VERSION")}), say::version(env!("CARGO_PKG_VERSION")))),
         "guide" | "skill" => Ok(Done::new(json!({"guide": GUIDE}), GUIDE)),
         "status" => status(a),
         "list" | "ls" => list(a),
@@ -163,7 +117,7 @@ fn run(a: &Args) -> Result<Done, Fail> {
         "link" => one(a, rest, |v, _| Ok(Done::new(json!({"id": v.row.id, "link": v.link}), v.link.clone()))),
         "open" => one(a, rest, |v, _| {
             open_url(&v.link)?;
-            Ok(Done::new(json!({"id": v.row.id, "link": v.link, "opened": true}), format!("Opened {}", v.link)))
+            Ok(Done::new(json!({"id": v.row.id, "link": v.link, "opened": true}), say::opened(&v.link)))
         }),
         "rename" if a.batch || a.from.is_some() => rename_batch(a, rest),
         "rename" => rename(a, rest),
@@ -171,7 +125,7 @@ fn run(a: &Args) -> Result<Done, Fail> {
         "cleanup-candidates" | "cleanup" => cleanup(a),
         "members" => match rest.first().map(String::as_str) {
             Some("remove") => remove_member(a, &rest[1..]),
-            Some(other) => Err(Fail::Usage(format!("members {other} isn't a command. See shroom --help."))),
+            Some(other) => Err(Fail::Usage(say::not_a_members_command(other))),
             None => members(a),
         },
         "invite" => match rest.first().map(String::as_str) {
@@ -180,18 +134,18 @@ fn run(a: &Args) -> Result<Done, Fail> {
             _ => invite(a, rest),
         },
         "record" => record(a, rest),
-        other => Err(Fail::Usage(format!("{other} isn't a shroom command. See shroom --help."))),
+        other => Err(Fail::Usage(say::not_a_command(other))),
     }
 }
 
 fn home(a: &Args) -> Result<Home, Fail> {
-    Home::locate(a.home.as_deref()).ok_or_else(|| Fail::NotSetUp("No home folder found.".into()))
+    Home::locate(a.home.as_deref()).ok_or_else(|| Fail::NotSetUp(say::no_home_folder()))
 }
 
 fn door(a: &Args) -> Result<(Home, Door), Fail> {
     let h = home(a)?;
-    let space = h.space().ok_or_else(|| Fail::NotSetUp("shroom isn't set up on this Mac yet. Open shroom to set it up, or install it from https://shroom.am.".into()))?;
-    let key = h.device_key(&space).ok_or_else(|| Fail::NotSetUp("This Mac hasn't finished joining its space. Open shroom once, then try again.".into()))?;
+    let space = h.space().ok_or_else(|| Fail::NotSetUp(say::not_set_up()))?;
+    let key = h.device_key(&space).ok_or_else(|| Fail::NotSetUp(say::not_joined()))?;
     let base = if cfg!(debug_assertions) { a.space_base.clone().or_else(|| std::env::var("SHROOM_SPACE_BASE").ok()) } else { None };
     Ok((h, Door::open(space, key, base)))
 }
@@ -199,7 +153,7 @@ fn door(a: &Args) -> Result<(Home, Door), Fail> {
 /// A change waits while a recording is open: shroom stays quiet mid-take (law 4).
 fn quiet(h: &Home) -> Result<(), Fail> {
     match h.app_status() {
-        Some(s) if s["take_open"] == true => Err(Fail::TakeOpen("A recording is open. Try again once it has stopped.".into())),
+        Some(s) if s["take_open"] == true => Err(Fail::TakeOpen(say::take_open())),
         _ => Ok(()),
     }
 }
@@ -209,32 +163,20 @@ fn status(a: &Args) -> Result<Done, Fail> {
     let app = h.app_status();
     let space = h.space();
     let key = space.as_ref().and_then(|s| h.device_key(s));
-    let role = space.as_ref().map(|s| match s.role {
-        shroom_core::world::Role::TokenHolder | shroom_core::world::Role::OwnerClass => "owner",
-        shroom_core::world::Role::Member => "member",
-    });
+    let owner = space.as_ref().map(|s| s.role != shroom_core::world::Role::Member);
     let take = app.as_ref().and_then(|s| s["take"].as_str()).unwrap_or("none").to_string();
     let json = json!({
         "app": {
+            "id": h.app_id,
             "running": app.is_some(),
             "version": app.as_ref().and_then(|s| s["app"].as_str()),
             "take": take,
             "setup": app.as_ref().and_then(|s| s["setup"].as_str()),
         },
-        "space": space.as_ref().map(|s| json!({"host": s.host, "role": role, "ready": key.is_some()})),
+        "space": space.as_ref().map(|s| json!({"host": s.host, "role": if owner == Some(true) { "owner" } else { "member" }, "ready": key.is_some()})),
         "cli": env!("CARGO_PKG_VERSION"),
     });
-    let mut text = Vec::new();
-    text.push(match (&app, take.as_str()) {
-        (None, _) => "shroom isn't running.".to_string(),
-        (Some(_), "none") => "shroom is running.".to_string(),
-        (Some(_), t) => format!("shroom is running — {t}."),
-    });
-    text.push(match (&space, &key) {
-        (None, _) => "Not set up on this Mac yet.".to_string(),
-        (Some(s), None) => format!("In {} — not finished joining; open shroom once.", s.host),
-        (Some(s), Some(_)) => format!("Your space: {} ({}).", s.host, role.unwrap_or("")),
-    });
+    let text = [say::status_app(app.is_some(), &take), say::status_space(space.as_ref().map(|s| s.host.as_str()), key.is_some(), owner == Some(true))];
     Ok(Done::new(json, text.join("\n")))
 }
 
@@ -259,7 +201,7 @@ fn videos(a: &Args) -> Result<(Home, Door, Vec<Video>), Fail> {
 /// `--since 7d` (that many days back from now) or `--since 2026-10-01` (that day, UTC), as
 /// Unix milliseconds.
 fn since_ms(since: &str) -> Result<i64, Fail> {
-    let bad = || Fail::Usage("--since takes days (7d) or a date (2026-10-01).".into());
+    let bad = || Fail::Usage(say::since_is_days_or_a_date());
     if let Some(days) = since.strip_suffix('d') {
         let n: i64 = days.parse().map_err(|_| bad())?;
         let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as i64).unwrap_or(0);
@@ -279,14 +221,15 @@ fn list(a: &Args) -> Result<Done, Fail> {
     let scope = if a.mine || d.identity.role == shroom_core::world::Role::Member { "mine" } else { "everyone" };
     let mut text = String::new();
     if v.is_empty() {
-        text.push_str(if a.search.is_some() || a.mine || a.since.is_some() { "No videos match." } else { "No videos yet." });
+        text.push_str(&if a.search.is_some() || a.mine || a.since.is_some() { say::none_match() } else { say::no_videos_yet() });
     } else {
-        text.push_str(&format!("{}  {}  {}  TITLE\n", col("ID", 16), col("DATE", 10), col("LENGTH", 7)));
+        let [id, date, len, title] = say::LIST_HEAD;
+        text.push_str(&format!("{}  {}  {}  {title}\n", col(id, 16), col(date, 10), col(len, 7)));
         for x in &v {
             text.push_str(&format!("{}  {}  {}  {}\n", x.row.id, day(&x.row.created_at), col(&length(x.row.duration_sec), 7), x.row.title));
         }
         if v.len() < total {
-            text.push_str(&format!("({} of {total})", v.len()));
+            text.push_str(&say::shown_of(v.len(), total));
         }
     }
     let mut j = json!({"scope": scope, "count": v.len(), "total": total, "videos": v.iter().map(Video::json).collect::<Vec<_>>()});
@@ -326,17 +269,17 @@ fn titled(title: &str, words: &str) -> bool {
 /// Finds the one video `words` names: an id, a link, or words from its title.
 fn find(v: Vec<Video>, words: &str, host: &str, titles: bool) -> Result<Video, Fail> {
     if let Some(id) = id_of(words, host) {
-        return v.into_iter().find(|x| x.row.id == id).ok_or_else(|| Fail::NotFound(format!("No video {id} in your space.")));
+        return v.into_iter().find(|x| x.row.id == id).ok_or_else(|| Fail::NotFound(say::no_video(&id)));
     }
     if !titles {
-        return Err(Fail::Usage("Name the video by its id or link (see shroom list).".into()));
+        return Err(Fail::Usage(say::by_id_or_link()));
     }
     let mut hits: Vec<Video> = v.into_iter().filter(|x| titled(&x.row.title, words)).collect();
     match hits.len() {
-        0 => Err(Fail::NotFound(format!("No video's title has “{words}” in it."))),
+        0 => Err(Fail::NotFound(say::no_title_has(words))),
         1 => Ok(hits.remove(0)),
         n => Err(Fail::Ambiguous {
-            message: format!("{n} videos match “{words}”. Name one by its id."),
+            message: say::several_match(n, words),
             matches: hits.iter().map(Video::json).collect(),
         }),
     }
@@ -344,7 +287,7 @@ fn find(v: Vec<Video>, words: &str, host: &str, titles: bool) -> Result<Video, F
 
 fn one(a: &Args, rest: &[String], then: impl FnOnce(&Video, &Door) -> Result<Done, Fail>) -> Result<Done, Fail> {
     if rest.is_empty() {
-        return Err(Fail::Usage("Which video? Give its id, link or title words.".into()));
+        return Err(Fail::Usage(say::which_video()));
     }
     let (_, d, v) = videos(a)?;
     let hit = find(v, &rest.join(" "), &d.identity.host, true)?;
@@ -352,15 +295,15 @@ fn one(a: &Args, rest: &[String], then: impl FnOnce(&Video, &Door) -> Result<Don
 }
 
 fn rename(a: &Args, rest: &[String]) -> Result<Done, Fail> {
-    let [which, title @ ..] = rest else { return Err(Fail::Usage("shroom rename <video> <new title>".into())) };
+    let [which, title @ ..] = rest else { return Err(Fail::Usage(say::rename_usage())) };
     if title.is_empty() {
-        return Err(Fail::Usage("shroom rename <video> <new title>".into()));
+        return Err(Fail::Usage(say::rename_usage()));
     }
     let (h, d, v) = videos(a)?;
     quiet(&h)?;
     let hit = find(v, which, &d.identity.host, true)?;
     let saved = d.rename(&hit.row.id, &title.join(" "))?;
-    Ok(Done::new(json!({"id": hit.row.id, "title": saved, "link": hit.link}), format!("Renamed to “{saved}”.")))
+    Ok(Done::new(json!({"id": hit.row.id, "title": saved, "link": hit.link}), say::renamed(&saved)))
 }
 
 /// Several titles at once: `--batch "<id>=<title>" …`, or `--from` a JSON array of
@@ -376,7 +319,7 @@ fn rename_batch(a: &Args, rest: &[String]) -> Result<Done, Fail> {
         };
         match pair {
             Some((id, title)) if !id.is_empty() && !title.is_empty() => pairs.push((id, title)),
-            _ => return Err(Fail::Usage("Each rename is <id>=<new title> (or {\"id\", \"title\"}).".into())),
+            _ => return Err(Fail::Usage(say::rename_item_shape())),
         }
     }
     let (h, d, v) = videos(a)?;
@@ -389,7 +332,7 @@ fn rename_batch(a: &Args, rest: &[String]) -> Result<Done, Fail> {
         let hit = match find(v.clone(), w, &d.identity.host, false) {
             Ok(h) => h,
             Err(f) => {
-                outcomes.push(batch::Outcome::failed(json!({"id": w, "title": title}), &f, format!("  {w} — {}", f.message())));
+                outcomes.push(batch::Outcome::failed(json!({"id": w, "title": title}), &f, say::line_failed(w, f.message())));
                 continue;
             }
         };
@@ -397,25 +340,24 @@ fn rename_batch(a: &Args, rest: &[String]) -> Result<Done, Fail> {
         if hit.row.title == title {
             let mut j = base;
             j["status"] = "unchanged".into();
-            outcomes.push(batch::Outcome::ok(j, format!("  “{title}” — already so")));
+            outcomes.push(batch::Outcome::ok(j, say::line_already_so(&title)));
         } else if a.dry_run {
             let mut j = base;
             j["status"] = "would_rename".into();
-            outcomes.push(batch::Outcome::ok(j, format!("  “{}” → “{title}”", hit.row.title)));
+            outcomes.push(batch::Outcome::ok(j, say::line_renamed(&hit.row.title, &title)));
         } else {
             match d.rename(&hit.row.id, &title) {
                 Ok(saved) => {
                     let mut j = base;
                     j["title"] = saved.clone().into();
                     j["status"] = "renamed".into();
-                    outcomes.push(batch::Outcome::ok(j, format!("  “{}” → “{saved}”", hit.row.title)));
+                    outcomes.push(batch::Outcome::ok(j, say::line_renamed(&hit.row.title, &saved)));
                 }
-                Err(f) => outcomes.push(batch::Outcome::failed(base, &f, format!("  “{}” — {}", hit.row.title, f.message()))),
+                Err(f) => outcomes.push(batch::Outcome::failed(base, &f, say::line_failed(&format!("“{}”", hit.row.title), f.message()))),
             }
         }
     }
-    let head = if a.dry_run { "Would rename (nothing was changed):" } else { "Renamed:" };
-    let mut done = batch::finish("results", outcomes, head.into(), "")?;
+    let mut done = batch::finish("results", outcomes, say::renames_head(a.dry_run), "")?;
     if a.dry_run {
         done.json["dry_run"] = true.into();
     }
@@ -435,18 +377,18 @@ fn links(a: &Args, rest: &[String]) -> Result<Done, Fail> {
                 let mut j = hit.json();
                 j["asked"] = w.clone().into();
                 j["status"] = "found".into();
-                outcomes.push(batch::Outcome::ok(j, format!("  {}  {}", hit.row.title, hit.link)));
+                outcomes.push(batch::Outcome::ok(j, say::line_link(&hit.row.title, &hit.link)));
             }
             Err(f) => {
                 let mut j = json!({"asked": w});
                 if let Fail::Ambiguous { matches, .. } = &f {
                     j["matches"] = Value::Array(matches.clone());
                 }
-                outcomes.push(batch::Outcome::failed(j, &f, format!("  {w} — {}", f.message())));
+                outcomes.push(batch::Outcome::failed(j, &f, say::line_failed(w, f.message())));
             }
         }
     }
-    batch::finish("links", outcomes, "Links:".into(), "")
+    batch::finish("links", outcomes, say::links_head(), "")
 }
 
 fn delete(a: &Args, rest: &[String]) -> Result<Done, Fail> {
@@ -455,7 +397,7 @@ fn delete(a: &Args, rest: &[String]) -> Result<Done, Fail> {
         None => rest.to_vec(),
     };
     if words.is_empty() {
-        return Err(Fail::Usage("shroom delete <id-or-link>... --yes".into()));
+        return Err(Fail::Usage(say::delete_usage()));
     }
     let (h, d, v) = videos(a)?;
     // Each word: a video of this space (by id or link — never title words), or one that
@@ -471,20 +413,20 @@ fn delete(a: &Args, rest: &[String]) -> Result<Done, Fail> {
         }
     }
     let would: Vec<Value> = targets.iter().map(Video::json).collect();
-    let names = targets.iter().map(|t| format!("  {}  {}", t.row.id, t.row.title)).collect::<Vec<_>>().join("\n");
-    let gone_note = if missing.is_empty() { String::new() } else { format!("\nNot in your space (already gone?): {}", missing.join(", ")) };
+    let names = targets.iter().map(|t| say::line_video(&t.row.id, &t.row.title)).collect::<Vec<_>>().join("\n");
+    let gone_note = say::not_here_already_gone(&missing);
     if a.dry_run {
-        return Ok(Done::new(json!({"dry_run": true, "would_delete": would, "not_found": missing}), format!("Would delete, for good:\n{names}{gone_note}")));
+        return Ok(Done::new(json!({"dry_run": true, "would_delete": would, "not_found": missing}), say::would_delete(&names, &gone_note)));
     }
     if targets.is_empty() {
-        let outcomes = missing.iter().map(|id| batch::Outcome::ok(json!({"id": id, "status": "not_found"}), format!("  not found  {id}"))).collect();
-        let mut done = batch::finish("results", outcomes, "Nothing to delete: none of these is in your space (already gone?).".into(), "")?;
+        let outcomes = missing.iter().map(|id| batch::Outcome::ok(json!({"id": id, "status": "not_found"}), say::line_not_found(id))).collect();
+        let mut done = batch::finish("results", outcomes, say::nothing_to_delete(), "")?;
         done.json["deleted"] = json!([]);
         return Ok(done);
     }
     if !a.yes {
         return Err(Fail::NeedsConfirmation {
-            message: format!("This deletes for good — each link will say it was removed:\n{names}{gone_note}\nRun it again with --yes once that's what you want."),
+            message: say::confirm_delete(&names, &gone_note),
             what: "would_delete",
             would,
         });
@@ -500,25 +442,58 @@ fn delete(a: &Args, rest: &[String]) -> Result<Done, Fail> {
                 deleted.push(t.row.id.clone());
                 let mut j = item;
                 j["status"] = "deleted".into();
-                outcomes.push(batch::Outcome::ok(j, format!("  deleted  {}  {}", t.row.id, t.row.title)));
+                outcomes.push(batch::Outcome::ok(j, say::line_deleted(&t.row.id, &t.row.title)));
             }
-            Err(f) => outcomes.push(batch::Outcome::failed(item, &f, format!("  failed   {}  {} — {}", t.row.id, t.row.title, f.message()))),
+            Err(f) => outcomes.push(batch::Outcome::failed(item, &f, say::line_failed(&say::line_video(&t.row.id, &t.row.title), f.message()))),
         }
     }
     for id in &missing {
-        outcomes.push(batch::Outcome::ok(json!({"id": id, "status": "not_found"}), format!("  not found  {id}")));
+        outcomes.push(batch::Outcome::ok(json!({"id": id, "status": "not_found"}), say::line_not_found(id)));
     }
-    let n = deleted.len();
-    let mut done = batch::finish("results", outcomes, format!("Deleted {n} video{}.", if n == 1 { "" } else { "s" }), "")?;
+    let mut done = batch::finish("results", outcomes, say::deleted(deleted.len()), "")?;
     done.json["deleted"] = json!(deleted);
     Ok(done)
 }
 
-/// What says a video may be worth deleting. Today only its age; when the space counts
-/// views (the cleanup-score proposal, a sibling POC), `views`, `last_viewed` and `score`
-/// come from there and the ranking follows the score. The JSON keeps the fields now so an
-/// agent's reading of it doesn't change shape later.
+/// What may be worth deleting (spec N62, DECISIONS B215): the page's own suggestions where
+/// the page makes them — with plays, when last played and why — most likely first, narrowed
+/// to `--older-than` days when given; and on a page that doesn't make them, the videos older
+/// than `--older-than` days (90), oldest first. The same fields either way, unknown `null`,
+/// and `by` says which it was.
 fn cleanup(a: &Args) -> Result<Done, Fail> {
+    let (_, d) = door(a)?;
+    let Some((since, items)) = d.suggestions(a.mine)? else { return cleanup_by_age(a) };
+    let mut rows: Vec<_> = items.into_iter().filter(|i| i.candidate && a.older_than.is_none_or(|n| i.age_days.is_some_and(|age| age >= n))).collect();
+    // Most likely first; between equals, the older.
+    rows.sort_by(|x, y| y.score.total_cmp(&x.score).then(y.age_days.cmp(&x.age_days)));
+    if let Some(n) = a.limit {
+        rows.truncate(n);
+    }
+    let candidates: Vec<Value> = rows
+        .iter()
+        .map(|i| {
+            let code = i.reason.as_ref().and_then(|r| r["code"].as_str()).unwrap_or("suggested");
+            json!({
+                "id": i.id, "title": i.title, "state": "live", "created_at": i.created_at, "duration_sec": i.duration_sec,
+                "owner": i.owner, "link": d.link(&i.id), "age_days": i.age_days, "plays": i.plays, "last_played": i.last_played_at,
+                "quiet_days": i.quiet_days, "score": i.score, "reason": code, "why": say::why(code, i.quiet_days),
+            })
+        })
+        .collect();
+    let text = if rows.is_empty() {
+        say::no_suggestions(a.older_than)
+    } else {
+        let lines: Vec<String> = candidates
+            .iter()
+            .map(|c| say::line_candidate(c["id"].as_str().unwrap_or(""), day(c["created_at"].as_str().unwrap_or("")), c["title"].as_str().unwrap_or(""), c["why"].as_str().unwrap_or("")))
+            .collect();
+        format!("{}\n{}\n{}", say::suggestions_head(rows.len()), lines.join("\n"), say::nothing_was_deleted())
+    };
+    Ok(Done::new(json!({"by": "suggestions", "counting_since": since, "older_than_days": a.older_than, "candidates": candidates}), text))
+}
+
+/// Without the page's suggestions: age alone, oldest first.
+fn cleanup_by_age(a: &Args) -> Result<Done, Fail> {
     let days = a.older_than.unwrap_or(90);
     let (_, _, v) = videos(a)?;
     let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as i64).unwrap_or(0);
@@ -535,25 +510,22 @@ fn cleanup(a: &Args) -> Result<Done, Fail> {
         .iter()
         .map(|(age, x)| {
             let mut j = x.json();
+            for unknown in ["plays", "last_played", "quiet_days", "score"] {
+                j[unknown] = Value::Null;
+            }
             j["age_days"] = json!(age);
-            j["views"] = Value::Null;
-            j["last_viewed"] = Value::Null;
-            j["score"] = Value::Null;
-            j["reasons"] = json!([format!("older than {days} days")]);
+            j["reason"] = "old".into();
+            j["why"] = say::why_old(days).into();
             j
         })
         .collect();
     let text = if rows.is_empty() {
-        format!("Nothing older than {days} days.")
+        say::nothing_older(days)
     } else {
-        let mut t = format!("{} video{} older than {days} days (oldest first):\n", rows.len(), if rows.len() == 1 { "" } else { "s" });
-        for (age, x) in &rows {
-            t.push_str(&format!("  {}  {}  {:>4} days  {}\n", x.row.id, day(&x.row.created_at), age, x.row.title));
-        }
-        t.push_str("Nothing was deleted. shroom delete <id> --yes removes one for good.");
-        t
+        let lines: Vec<String> = rows.iter().map(|(_, x)| say::line_candidate(&x.row.id, day(&x.row.created_at), &x.row.title, &say::why_old(days))).collect();
+        format!("{}\n{}\n{}", say::old_head(rows.len(), days), lines.join("\n"), say::nothing_was_deleted())
     };
-    Ok(Done::new(json!({"signals": "age", "older_than_days": days, "candidates": candidates}), text))
+    Ok(Done::new(json!({"by": "age", "counting_since": null, "older_than_days": days, "candidates": candidates}), text))
 }
 
 fn members(a: &Args) -> Result<Done, Fail> {
@@ -563,12 +535,12 @@ fn members(a: &Args) -> Result<Done, Fail> {
     let invites: Vec<Value> =
         m.invites.iter().map(|i| json!({"id": i.id, "kind": i.kind, "name": i.label, "expires_at": i.expires_at, "expired": i.expired})).collect();
     let macs: Vec<Value> = m.owner.devices.iter().map(|x| json!({"id": x.id, "name": x.name, "this_mac": x.this_mac})).collect();
-    let mut text = format!("{} (owner) · {} Mac{}\n", m.owner.name.clone().unwrap_or_else(|| "You".into()), macs.len(), if macs.len() == 1 { "" } else { "s" });
+    let mut text = format!("{}\n", say::owner_line(m.owner.name.as_deref(), macs.len()));
     for x in &m.members {
-        text.push_str(&format!("{}  {}  joined {}\n", x.id, x.label, day(&x.joined_at)));
+        text.push_str(&format!("{}\n", say::member_line(&x.id, &x.label, day(&x.joined_at))));
     }
     for i in m.invites.iter().filter(|i| !i.expired) {
-        text.push_str(&format!("{}  {}  invited, waiting\n", i.id, i.label.clone().unwrap_or_else(|| "Another Mac".into())));
+        text.push_str(&format!("{}\n", say::invited_line(&i.id, i.label.as_deref())));
     }
     Ok(Done::new(json!({"owner": {"id": m.owner.id, "name": m.owner.name, "macs": macs}, "members": people, "invites": invites}), text))
 }
@@ -580,14 +552,14 @@ fn invite(a: &Args, rest: &[String]) -> Result<Done, Fail> {
     let name = rest.join(" ");
     let name = name.trim();
     if name.is_empty() {
-        return Err(Fail::Usage("Who is it for? shroom invite <their name>".into()));
+        return Err(Fail::Usage(say::invite_who()));
     }
     let (h, d) = door(a)?;
     quiet(&h)?;
     let (row, link) = d.invite(name)?;
     Ok(Done::new(
         json!({"id": row.id, "name": row.label, "link": link, "expires_at": row.expires_at}),
-        format!("An invite for {name}, good until {} and for one use:\n{link}\nSend it to them yourself.", day(&row.expires_at)),
+        say::invite_made(name, day(&row.expires_at), &link),
     ))
 }
 
@@ -601,7 +573,7 @@ fn cancel_invite(a: &Args, rest: &[String]) -> Result<Done, Fail> {
         None => rest.to_vec(),
     };
     if ids.is_empty() {
-        return Err(Fail::Usage("shroom invite cancel <invite-id>... (see shroom members)".into()));
+        return Err(Fail::Usage(say::cancel_usage()));
     }
     let (h, d) = door(a)?;
     quiet(&h)?;
@@ -612,17 +584,17 @@ fn cancel_invite(a: &Args, rest: &[String]) -> Result<Done, Fail> {
             Ok(()) => {
                 let mut j = item;
                 j["status"] = "cancelled".into();
-                outcomes.push(batch::Outcome::ok(j, format!("  cancelled  {id}")));
+                outcomes.push(batch::Outcome::ok(j, say::line_cancelled(id)));
             }
             Err(f) if f.code() == "not_found" => {
                 let mut j = item;
                 j["status"] = "not_found".into();
-                outcomes.push(batch::Outcome::ok(j, format!("  not found  {id}")));
+                outcomes.push(batch::Outcome::ok(j, say::line_not_found(id)));
             }
-            Err(f) => outcomes.push(batch::Outcome::failed(item, &f, format!("  {id} — {}", f.message()))),
+            Err(f) => outcomes.push(batch::Outcome::failed(item, &f, say::line_failed(id, f.message()))),
         }
     }
-    let mut done = batch::finish("results", outcomes, "Those invite links no longer work:".into(), "")?;
+    let mut done = batch::finish("results", outcomes, say::cancelled_head(), "")?;
     if let [one] = ids.as_slice() {
         done.json["cancelled"] = one.clone().into();
     }
@@ -637,7 +609,7 @@ fn remove_member(a: &Args, rest: &[String]) -> Result<Done, Fail> {
         None => rest.to_vec(),
     };
     if ids.is_empty() {
-        return Err(Fail::Usage("shroom members remove <member-id>... --yes (see shroom members)".into()));
+        return Err(Fail::Usage(say::remove_usage()));
     }
     let (h, d) = door(a)?;
     let m = d.members()?;
@@ -651,17 +623,17 @@ fn remove_member(a: &Args, rest: &[String]) -> Result<Done, Fail> {
         }
     }
     let would: Vec<Value> = who.iter().map(|x| json!({"id": x.id, "name": x.label})).collect();
-    let names = who.iter().map(|x| format!("  {}  {}", x.id, x.label)).collect::<Vec<_>>().join("\n");
-    let gone_note = if missing.is_empty() { String::new() } else { format!("\nNot in your space (already removed?): {}", missing.join(", ")) };
+    let names = who.iter().map(|x| say::line_video(&x.id, &x.label)).collect::<Vec<_>>().join("\n");
+    let gone_note = say::not_here_already_removed(&missing);
     if a.dry_run {
-        return Ok(Done::new(json!({"dry_run": true, "would_remove": would, "not_found": missing}), format!("Would remove from the space:\n{names}{gone_note}")));
+        return Ok(Done::new(json!({"dry_run": true, "would_remove": would, "not_found": missing}), say::would_remove(&names, &gone_note)));
     }
     if who.is_empty() {
-        return Err(Fail::NotFound(format!("No such member in your space (see shroom members).{gone_note}")));
+        return Err(Fail::NotFound(say::no_such_member(&gone_note)));
     }
     if !a.yes {
         return Err(Fail::NeedsConfirmation {
-            message: format!("This removes them from the space: their Macs stop recording into it. Their videos stay.\n{names}{gone_note}\nRun it again with --yes once that's what you want."),
+            message: say::confirm_remove(&names, &gone_note),
             what: "would_remove",
             would,
         });
@@ -674,15 +646,15 @@ fn remove_member(a: &Args, rest: &[String]) -> Result<Done, Fail> {
             Ok(()) => {
                 let mut j = item;
                 j["status"] = "removed".into();
-                outcomes.push(batch::Outcome::ok(j, format!("  removed  {}", x.label)));
+                outcomes.push(batch::Outcome::ok(j, say::line_removed(&x.label)));
             }
-            Err(f) => outcomes.push(batch::Outcome::failed(item, &f, format!("  failed   {} — {}", x.label, f.message()))),
+            Err(f) => outcomes.push(batch::Outcome::failed(item, &f, say::line_failed(&x.label, f.message()))),
         }
     }
     for id in &missing {
-        outcomes.push(batch::Outcome::ok(json!({"id": id, "status": "not_found"}), format!("  not found  {id}")));
+        outcomes.push(batch::Outcome::ok(json!({"id": id, "status": "not_found"}), say::line_not_found(id)));
     }
-    let mut done = batch::finish("results", outcomes, "No longer in the space:".into(), "")?;
+    let mut done = batch::finish("results", outcomes, say::removed_head(), "")?;
     if let [one] = who.as_slice() {
         done.json["removed"] = json!(one.id);
     }
@@ -705,17 +677,17 @@ fn invite_batch(a: &Args, rest: &[String]) -> Result<Done, Fail> {
     let mut names: Vec<String> = Vec::new();
     for i in &items {
         let Some(n) = i.field("name").map(|n| n.split_whitespace().collect::<Vec<_>>().join(" ")) else {
-            return Err(Fail::Usage("Each person is a name (or {\"name\": …}).".into()));
+            return Err(Fail::Usage(say::invite_item_shape()));
         };
         if n.is_empty() || n.chars().count() > 64 {
-            return Err(Fail::Usage(format!("“{n}” isn't a name shroom can keep: 1 to 64 characters.")));
+            return Err(Fail::Usage(say::not_a_name(&n)));
         }
         if !names.iter().any(|x| x.to_lowercase() == n.to_lowercase()) {
             names.push(n);
         }
     }
     if names.len() > batch::MAX_INVITES {
-        return Err(Fail::Usage(format!("At most {} invites wait at once in a space; this asks for {}. Send the first {} now.", batch::MAX_INVITES, names.len(), batch::MAX_INVITES)));
+        return Err(Fail::Usage(say::too_many_at_once(batch::MAX_INVITES, names.len())));
     }
     let (h, d) = door(a)?;
     let m = d.members()?;
@@ -734,7 +706,7 @@ fn invite_batch(a: &Args, rest: &[String]) -> Result<Done, Fail> {
             let mut j = base;
             j["status"] = "already_member".into();
             j["member_id"] = x.id.clone().into();
-            outcomes.push(batch::Outcome::ok(j, format!("  {n} — already in the space")));
+            outcomes.push(batch::Outcome::ok(j, say::line_already_member(n)));
             continue;
         }
         if let Some(i) = waiting(n) {
@@ -743,13 +715,13 @@ fn invite_batch(a: &Args, rest: &[String]) -> Result<Done, Fail> {
                 j["status"] = "already_invited".into();
                 j["invite_id"] = i.id.clone().into();
                 j["expires_at"] = i.expires_at.clone().into();
-                outcomes.push(batch::Outcome::ok(j, format!("  {n} — already invited, waiting (--renew for a new link)")));
+                outcomes.push(batch::Outcome::ok(j, say::line_already_invited(n)));
                 continue;
             }
             if plan_only {
                 let mut j = base;
                 j["status"] = "would_renew".into();
-                outcomes.push(batch::Outcome::ok(j, format!("  {n} — would get a new link")));
+                outcomes.push(batch::Outcome::ok(j, say::line_would_renew(n)));
                 continue;
             }
             match d.renew(&i.id) {
@@ -759,16 +731,16 @@ fn invite_batch(a: &Args, rest: &[String]) -> Result<Done, Fail> {
                     j["invite_id"] = row.id.into();
                     j["link"] = link.clone().into();
                     j["expires_at"] = row.expires_at.into();
-                    outcomes.push(batch::Outcome::ok(j, format!("  {n}  {link}")));
+                    outcomes.push(batch::Outcome::ok(j, say::line_invite(n, &link)));
                 }
-                Err(f) => outcomes.push(batch::Outcome::failed(base, &f, format!("  {n} — {}", f.message()))),
+                Err(f) => outcomes.push(batch::Outcome::failed(base, &f, say::line_failed(n, f.message()))),
             }
             continue;
         }
         if plan_only {
             let mut j = base;
             j["status"] = "would_invite".into();
-            outcomes.push(batch::Outcome::ok(j, format!("  {n} — would get a link")));
+            outcomes.push(batch::Outcome::ok(j, say::line_would_invite(n)));
             continue;
         }
         match d.invite(n) {
@@ -778,28 +750,22 @@ fn invite_batch(a: &Args, rest: &[String]) -> Result<Done, Fail> {
                 j["invite_id"] = row.id.into();
                 j["link"] = link.clone().into();
                 j["expires_at"] = row.expires_at.into();
-                outcomes.push(batch::Outcome::ok(j, format!("  {n}  {link}")));
+                outcomes.push(batch::Outcome::ok(j, say::line_invite(n, &link)));
             }
-            Err(f) => outcomes.push(batch::Outcome::failed(base, &f, format!("  {n} — {}", f.message()))),
+            Err(f) => outcomes.push(batch::Outcome::failed(base, &f, say::line_failed(n, f.message()))),
         }
     }
     let would = |o: &batch::Outcome| matches!(o.json["status"].as_str(), Some("would_invite" | "would_renew"));
     if !a.dry_run && !a.yes && outcomes.iter().any(would) {
         let lines = outcomes.iter().map(|o| o.line.clone()).collect::<Vec<_>>().join("\n");
         return Err(Fail::NeedsConfirmation {
-            message: format!("This gives each of these people their own link to join your space, for 7 days:\n{lines}\nRun it again with --yes once that's who you mean."),
+            message: say::confirm_invites(&lines),
             what: "would_invite",
             would: outcomes.into_iter().map(|o| o.json).collect(),
         });
     }
-    let (head, tail) = if a.dry_run {
-        ("Would invite (nothing was made):".to_string(), "")
-    } else if plan_only {
-        ("Nothing to make: each is already in the space or invited.".to_string(), "")
-    } else {
-        ("Invites, each for one person, good for 7 days:".to_string(), "Send each link to its person yourself; each works once.")
-    };
-    let mut done = batch::finish("invites", outcomes, head, tail)?;
+    let tail = if plan_only { String::new() } else { say::invites_tail() };
+    let mut done = batch::finish("invites", outcomes, say::invites_head(a.dry_run, plan_only), &tail)?;
     if a.dry_run {
         done.json["dry_run"] = true.into();
     }
@@ -810,19 +776,17 @@ fn record(a: &Args, rest: &[String]) -> Result<Done, Fail> {
     let what = rest.first().map(String::as_str).unwrap_or("");
     let op = format!("record.{what}");
     if !app::OPS.contains(&op.as_str()) {
-        return Err(Fail::Usage("shroom record start|pause|resume|stop".into()));
+        return Err(Fail::Usage(say::record_usage()));
     }
     let h = home(a)?;
-    let v = app::ask(&h.control_socket(), &op, !a.no_launch && what == "start")?;
+    let launch = (!a.no_launch && what == "start").then_some(h.app_id.as_str());
+    let v = app::ask(&h.control_socket(), &op, launch)?;
     let take = v["take"].as_str().unwrap_or("").to_string();
     let text = match what {
-        "start" => "Recording starts after the countdown.".to_string(),
-        "pause" => "Paused.".to_string(),
-        "resume" => "Recording again.".to_string(),
-        _ => match v["link"].as_str() {
-            Some(l) => format!("Stopped. Its link: {l}"),
-            None => "Stopped.".to_string(),
-        },
+        "start" => say::started(),
+        "pause" => say::paused(),
+        "resume" => say::resumed(),
+        _ => say::stopped(v["link"].as_str()),
     };
     let mut j = json!({"op": op, "take": take});
     if let Some(l) = v.get("link") {
@@ -835,7 +799,7 @@ fn open_url(url: &str) -> Result<(), Fail> {
     let opener = if cfg!(target_os = "macos") { "open" } else { "xdg-open" };
     match std::process::Command::new(opener).arg(url).status() {
         Ok(s) if s.success() => Ok(()),
-        _ => Err(Fail::Other(format!("Couldn't open a browser here. The link: {url}"))),
+        _ => Err(Fail::Other(say::no_browser(url))),
     }
 }
 
