@@ -212,7 +212,7 @@ and shroom sends nothing. He asked for the other batch cases worth having too.
 
 | They ask | Command | Each item says |
 |---|---|---|
-| Invite the engineering team | `shroom invite --batch "Ann Lee" "Sam Ng" …` | `invited` + `link`, `already_member`, `already_invited` (+ `--renew` → `renewed`, a new link), `failed` |
+| Invite the engineering team | `shroom invite --batch "Ann Lee" "Sam Ng" …` → the list to confirm, then `--yes` | `invited` + `link`, `already_member`, `already_invited` (+ `--renew` → `renewed`, a new link), `failed` |
 | Delete these old ones | `shroom delete <id> <id> … [--dry-run] [--yes]` | `deleted`, `not_found` (a re-run), `failed` |
 | Give these better titles (say, from AI titles) | `shroom rename --batch "<id>=<title>" …` | `renamed`, `unchanged`, `would_rename` |
 | The links to these, for a message | `shroom links "<words>" "<words>" …` | `found` + `link`, `ambiguous` (+ its matches), `not_found` |
@@ -222,6 +222,16 @@ and shroom sends nothing. He asked for the other batch cases worth having too.
 
 **Calls (decided X because Y):**
 
+- **Decided: a batch invite asks first, like a delete.** Without `--yes` it makes nothing
+  and answers `needs_confirmation` with each name's plan.
+  - **Why:** the first run of the batch demo. Told to invite "the engineering team", the
+    agent looked the team up in the directory and skipped the list the guide told it to
+    show. It invited and emailed everyone, including someone on leave. When told, it
+    cancelled that invite at once, but the email had gone.
+  - **The lesson** is the old POC's: a rule written for the agent isn't a guard; the
+    mechanism must be.
+  - **Since the fix,** the same demo shows the list and asks before anything is made.
+  - **A single `shroom invite "<name>"` doesn't ask:** the person named that one person.
 - **Decided: a person already invited gets `already_invited` and no link, unless
   `--renew`.** The space keeps only an invite code's hash, so a sent link can't be shown
   again. Renewing silently would break a link that may already be in someone's inbox.
