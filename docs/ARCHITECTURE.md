@@ -235,14 +235,17 @@ anything else it runs: Open, Save and Copy answer while a bake or an upkeep pass
   answers nothing (the window has closed), logs what happened, and on success drops
   `edits/<rec>/`. A bake that didn't land is the upkeep's after the two days.
 - *Upkeep* (`settle::due_edit_upkeep`: at launch, then every 6 h awake, not over a take, not
-  offline, the editor closed and its lane idle). It reads the records of this Mac's edited
-  rows in the Library cache (a member's own, every row on an owner-class Mac) over the
-  token's pair or a `manage` mint per record, then runs `upkeep_plan`. It bakes the due ones
-  and makes the missing copies when their video is on this Mac, through the same copy code
-  with no `Making` news. Then it prunes `edits/` (§3.4) and answers
-  `UpkeepDone { baked, copies }` or `Failed { EditorUpkeep }`: Transport ends the pass, and a
-  record that can't be read is skipped. The token Mac's cleanup sweep bakes every record in
-  the space that's due (`shroom_upload::library::cleanup`).
+  offline, the editor closed and its lane idle). It reads the space's records now, never
+  only `library.json` (which hears of an edit only when the Library refreshes) and without
+  writing it (`library::Doorway::listed`). The token Mac lists `meta/` over its pair, reads
+  what changed since the cache, then each record that holds an edit. Any other Mac pages the
+  Library API (§13; `mine` for a member, `everyone` for the owner's Macs), sending the
+  cache's ETags only for rows without an edit, so each record holding one comes back whole.
+  Then `upkeep_plan`: it bakes the due ones and makes the missing copies when their video is
+  on this Mac, through the same copy code with no `Making` news. Last, it prunes `edits/`
+  (§3.4) and answers `UpkeepDone { baked, copies }` or `Failed { EditorUpkeep }`. Transport
+  ends the pass; a bake or copy that fails is left for the next. The token Mac's cleanup
+  sweep also bakes every record in the space that's due (`shroom_upload::library::cleanup`).
 
 **Trace.** `logs/run.log` (600, rolled at 5 MB) logs each event, arm and effect kinds.
 `trace::Ring` keeps the last 512 steps (kinds, arm, edge, state ids on change), names read at
