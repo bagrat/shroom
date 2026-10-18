@@ -102,6 +102,9 @@ export const COPY = {
   cutItToo: "Cut it too",
   cutsOffer: "Nothing was said again after it, so only “shroom cut” went. Cut the line before it too?",
   cutsCouldntSave: "Couldn't save that. Check your connection, then try again.",
+  // The hint, on a take with no voice cuts in a space that listens (owner-page-cue-hint).
+  cueHint: "Slipped? Say “shroom cut”, then say the line again.",
+  cueHintGotIt: "Got it",
 };
 
 /** The upload line while bytes arrive: "Uploading — 40%. Your link already works." */
@@ -1238,6 +1241,9 @@ h1{flex:1 1 0;min-width:0;margin:0;font-size:1.75rem;font-weight:600;line-height
 .cut .said{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:2px}.cut q{quotes:none;overflow-wrap:anywhere;color:var(--quiet)}.cut q .w{color:var(--text)}.cut.on q .w{color:var(--quiet);text-decoration:line-through;text-decoration-color:var(--cut)}
 .cut .why,.cuts .unsaved{color:var(--warn);font-size:13px}.cut.on .why{display:none}.cuts .unsaved{margin:0}.cuts .unsaved[hidden]{display:none}
 .cut button{flex:none;font:inherit;font-size:13px;min-height:32px;padding:0 12px;border:1px solid var(--edge);border-radius:8px;background:transparent;color:var(--text);cursor:pointer}.cut button:hover{background:var(--hover)}.cut button[aria-busy]{opacity:.6}
+.cue-hint{background:var(--card);border:1px solid var(--card-edge);border-radius:12px;padding:10px 12px 10px 16px;display:flex;align-items:center;gap:10px;color:var(--muted)}.cue-hint[hidden]{display:none}
+.cue-hint::before{content:"";width:16px;height:16px;flex:none;background:var(--cut);-webkit-mask:${I_CUT} center/contain no-repeat;mask:${I_CUT} center/contain no-repeat}.cue-hint span{flex:1 1 auto;min-width:0}
+.cue-hint button{flex:none;font:inherit;font-size:13px;min-height:32px;padding:0 12px;border:1px solid var(--edge);border-radius:8px;background:transparent;color:var(--text);cursor:pointer}.cue-hint button:hover{background:var(--hover)}
 .wait{position:relative;aspect-ratio:var(--ar);border-radius:12px;background:var(--player);color:var(--player-text);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px;text-align:center;overflow:hidden;--track:var(--player-track);--fill:var(--player-fill)}
 .wait .line{margin:0;max-width:420px;font-size:1.0625rem}.wait .bar{max-width:320px}
 .wait img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
@@ -1648,6 +1654,9 @@ function ownerPage(id, meta, now, face, waiting, blocked = false, pending = fals
   // an empty strip waits for the page's poll to fill it.
   const cutsTag = cutsField(meta, now, listens).cuts ?? null;
   const cuts = cutsStrip(meta.edits) || (cutsTag === "coming" ? `<section class="cuts" id="cuts" hidden></section>` : "");
+  // The hint (owner-page-cue-hint): no voice cuts and none coming, in a space that listens.
+  // Hidden until the page's own check: this browser may have put it away, or seen a strip.
+  const hint = listens && !cuts ? `<div class="cue-hint" role="note" hidden><span>${escapeText(COPY.cueHint)}</span><button type="button">${escapeText(COPY.cueHintGotIt)}</button></div>` : "";
   const [upA, upB] = uploadingLine(0).split("0%");
   const cfg = JSON.stringify({
     id, live, drained: drainedNow, pending, mp4: !!meta.media?.mp4, saved: meta.titled ? meta.title : "", copied: COPY.copied, copy: COPY.copyLink, waiting,
@@ -1675,8 +1684,11 @@ var li=b.closest("li"),on=b.getAttribute("data-press")==="1",un=cu.querySelector
 fetch("/_shroom/edits/"+c.id,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({cut:li.getAttribute("data-cut"),applied:on})})
 .then(function(r){return r.ok?r.json():null},function(){return null}).then(function(j){b.removeAttribute("aria-busy");if(!j){if(un)un.hidden=false;return}row(li,j.applied);if(j.cuts)c.cuts=j.cuts;keepTo(j.keep)})}}
 function pull(tag){fetch("/_shroom/edits/"+c.id,{cache:"no-store"}).then(function(r){return r.ok?r.json():null}).then(function(j){if(!j)return;c.cuts=j.cuts||tag;var cu=document.getElementById("cuts");
-if(j.strip){var h=document.createElement("div");h.innerHTML=j.strip;var n=h.firstChild;if(cu)cu.replaceWith(n);else{var at=document.querySelector(".player")||document.getElementById("w");if(at)at.after(n)}wire()}else if(cu&&c.cuts!=="coming")cu.remove();keepTo(j.keep)})}
+if(j.strip){var h=document.createElement("div");h.innerHTML=j.strip;var n=h.firstChild;if(cu)cu.replaceWith(n);else{var at=document.querySelector(".player")||document.getElementById("w");if(at)at.after(n)}wire();stripSeen()}else if(cu&&c.cuts!=="coming")cu.remove();keepTo(j.keep)})}
 wire();
+var HK="shroom:cue-hint";function hintAway(){try{return localStorage.getItem(HK)==="1"}catch(e){return false}}function putHintAway(){try{localStorage.setItem(HK,"1")}catch(e){}}
+function stripSeen(){var cu=document.getElementById("cuts");if(cu&&!cu.hidden){putHintAway();var h=document.querySelector(".cue-hint");if(h)h.remove()}}
+var hn=document.querySelector(".cue-hint");if(hn){if(!hintAway())hn.hidden=false;hn.querySelector("button").onclick=function(){hn.remove();putHintAway()}}stripSeen();
 function next(ms){setTimeout(poll,ms)}
 function showBar(on,moving){if(bar){bar.parentNode.style.display=on?"":"none";bar.parentNode.className="bar"+(moving?" go":"")}}
 function say(x){var w=document.getElementById("w");if(!w||(!x&&!c.said))return;c.said=!!x;w.textContent="";if(x){var p=document.createElement("p");p.className="line";p.textContent=x;w.appendChild(p)}}
@@ -1694,7 +1706,7 @@ if(s.state==="unavailable"){if(!c.live){say(c.unavailable);up.textContent="";sho
 if(s.state==="uploading"){say("");ul.hidden=false;up.textContent=s.stalled?c.waiting:c.upA+s.pct+"%"+c.upB;showBar(true,!s.stalled);if(bar)bar.style.width=s.pct+"%"}
 next(2000)}).catch(function(){next(5000)})}
 if(!c.live||!c.mp4||!c.drained)next(2000);else if(c.cuts==="coming")next(2000)})();</script>`;
-  return shell(meta.title || "shroom", `${head}${stage}${cuts}${upload}`, face, "", script);
+  return shell(meta.title || "shroom", `${head}${stage}${cuts}${hint}${upload}`, face, "", script);
 }
 
 /** A JSON island safe inside <script>: <, >, & and the two line separators escaped. */
