@@ -2,9 +2,9 @@
 //! `ListObjectsV2 prefix=meta/` and an ETag delta — only records that changed are read
 //! again — plus the three writes a token-holding Mac makes from a row: rename (a record
 //! rewrite), delete (a tombstone **first**, then the bytes — §5.5), and the clean delete
-//! of a take that was never shared (no tombstone) — and the editor's two (N63): saving an
-//! edit and naming its permanent copy. Every rewrite is read-modify-write under `If-Match`
-//! (B21).
+//! of a take that was never shared (no tombstone) — and the editor's three (N63, B197):
+//! saving an edit, naming its permanent copy, and making that copy the video (the bake).
+//! Every rewrite is read-modify-write under `If-Match` (B21).
 
 use std::collections::BTreeMap;
 
@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use shroom_storage::s3::Client;
 
 use crate::keys;
-use crate::meta::{Meta, State, iso_at, now_iso};
+use crate::meta::{Media, Meta, State, iso_at, now_iso};
 use crate::upload::{UploadError, update_meta, with_retry};
 
 /// What a Library row needs from a record.
@@ -136,12 +136,23 @@ pub fn is_copy_file(name: &str) -> bool {
     (1..=9).contains(&digits) && matches!(&rest[digits..], ".mp4" | "-poster.jpg" | "-teaser.mp4")
 }
 
-/// Removes these files from beside the recording, skipping any name that isn't a copy's.
-/// Best effort: the record no longer names them, so one left behind is only bytes.
-fn delete_copy_files(s3: &Client, id: &str, names: &[String]) {
+/// Removes these files from beside the recording, skipping any name that isn't a copy's and
+/// any the record's `media` names (a baked video plays a copy's files: a late or repeated
+/// write about that copy must never take them). Best effort: the record no longer names
+/// them, so one left behind is only bytes.
+fn delete_copy_files(s3: &Client, id: &str, names: &[String], record: &Meta) {
+    let playing = media_keys(record);
     for name in names.iter().filter(|n| is_copy_file(n)) {
-        let _ = with_retry(|| s3.delete(&format!("{}{name}", keys::prefix(id))));
+        let key = format!("{}{name}", keys::prefix(id));
+        if !playing.contains(&key) {
+            let _ = with_retry(|| s3.delete(&key));
+        }
     }
+}
+
+/// Every key the record's `media` names: the files the link plays and shows.
+fn media_keys(m: &Meta) -> Vec<String> {
+    m.media.iter().flat_map(|x| [&x.hls, &x.mp4, &x.poster, &x.teaser]).flatten().cloned().collect()
 }
 
 /// [`update_meta`] for an edit's write: a record that turned into a tombstone (which keeps no
@@ -154,9 +165,13 @@ fn update_edit(s3: &Client, id: &str, change: impl FnMut(&mut Meta)) -> Result<M
 }
 
 /// The revision an edit's record holds: its `edits.rev`, also when this version can't read
-/// the rest of that `edits` (kept as it was in `extra`).
+/// the rest of that `edits` (kept as it was in `extra`) — and never below a revision a bake
+/// made the video (`bakedFrom`), so an edit of a baked video never reuses the file names the
+/// video now plays from.
 fn record_rev(m: &Meta) -> u64 {
-    m.edits.as_ref().map(|s| s.rev).or_else(|| m.extra.get("edits").and_then(|e| e.get("rev")).and_then(serde_json::Value::as_u64)).unwrap_or(0)
+    let edits = m.edits.as_ref().map(|s| s.rev).or_else(|| m.extra.get("edits").and_then(|e| e.get("rev")).and_then(serde_json::Value::as_u64)).unwrap_or(0);
+    let baked = m.extra.get(BAKED_FROM).and_then(serde_json::Value::as_array).into_iter().flatten().filter_map(|b| b.get("rev")?.as_u64()).max().unwrap_or(0);
+    edits.max(baked)
 }
 
 /// Saves an edit (N63's Done; DECISIONS B195): the record's `edits` becomes `list` as the
@@ -172,7 +187,7 @@ fn record_rev(m: &Meta) -> u64 {
 pub fn save_edits(s3: &Client, id: &str, list: &shroom_edit::EditList, asked_rev: u64) -> Result<u64, UploadError> {
     let mut rev = 0;
     let mut dropped: Vec<String> = Vec::new();
-    update_edit(s3, id, |m| {
+    let meta = update_edit(s3, id, |m| {
         rev = record_rev(m).max(asked_rev.saturating_sub(1)) + 1;
         let before = m.edits.take();
         let list = with_voice_plan(list, before.as_ref().map(|s| &s.list)).checked();
@@ -191,7 +206,7 @@ pub fn save_edits(s3: &Client, id: &str, list: &shroom_edit::EditList, asked_rev
         m.extra.remove("edits");
         m.edits = Some(shroom_edit::Saved { copy, keep_until, extra, ..shroom_edit::Saved::new(list, rev) });
     })?;
-    delete_copy_files(s3, id, &dropped);
+    delete_copy_files(s3, id, &dropped, &meta);
     Ok(rev)
 }
 
@@ -247,7 +262,7 @@ pub fn set_edit_copy(s3: &Client, id: &str, copy: &shroom_edit::EditCopy, now: &
     let seen: Meta = serde_json::from_value(raw).map_err(|e| UploadError::Incomplete(format!("unreadable meta: {e}")))?;
     if !holds(&seen) {
         let keep = named(&seen);
-        delete_copy_files(s3, id, &mine.into_iter().filter(|f| !keep.contains(f)).collect::<Vec<_>>());
+        delete_copy_files(s3, id, &mine.into_iter().filter(|f| !keep.contains(f)).collect::<Vec<_>>(), &seen);
         return Ok(false);
     }
     let mut current = false;
@@ -269,8 +284,128 @@ pub fn set_edit_copy(s3: &Client, id: &str, copy: &shroom_edit::EditCopy, now: &
         let keep = named(&meta);
         doomed = mine.into_iter().filter(|f| !keep.contains(f)).collect();
     }
-    delete_copy_files(s3, id, &doomed);
+    delete_copy_files(s3, id, &doomed, &meta);
     Ok(current)
+}
+
+/// Where a record remembers its bakes (B197, agreed with the AI build): a list, oldest
+/// first, `{"at": <iso>, "rev": <the edit's revision>, "keep": [[s, e], …]}` — the ranges
+/// that played on the clock before that bake — so data kept on an older clock (a
+/// transcript) maps through every later bake in order.
+pub const BAKED_FROM: &str = "bakedFrom";
+/// The most bakes a record remembers: the oldest drop off (a reader that finds its stamp
+/// gone re-derives from the video).
+pub const BAKED_FROM_MAX: usize = 20;
+
+/// A file of the original recording beside its record: the stream (`master.m3u8`, `v0/…`),
+/// its single-file copy, poster and teaser (B13). Never a thumbnail (`thumb-…`).
+fn is_original_file(name: &str) -> bool {
+    matches!(name, "master.m3u8" | "video.mp4" | "poster.jpg" | "teaser.mp4") || name.strip_prefix(keys::VARIANT).is_some_and(|r| r.starts_with('/'))
+}
+
+/// The copy a bake makes the video: the saved revision's, with a copy's own file names and a
+/// length.
+fn bakeable(saved: &shroom_edit::Saved) -> Option<&shroom_edit::EditCopy> {
+    saved.current_copy().filter(|c| c.files().iter().all(|f| is_copy_file(f)) && c.duration.is_finite() && c.duration > 0.0)
+}
+
+/// Whether the record is already baked: no edit, no stream, and its file one of its own
+/// copies' (its poster and teaser too, when it names them).
+fn baked(m: &Meta, id: &str) -> bool {
+    let prefix = keys::prefix(id);
+    let own = |k: &String| k.strip_prefix(&prefix).is_some_and(is_copy_file);
+    m.edits.is_none()
+        && !m.extra.contains_key("edits")
+        && m.media.as_ref().is_some_and(|x| x.hls.is_none() && x.mp4.as_ref().is_some_and(own) && x.poster.as_ref().is_none_or(own) && x.teaser.as_ref().is_none_or(own))
+}
+
+/// The record's half of a bake: `media` becomes `copy`'s own files (its stream null, the
+/// picture's size kept), the length the copy's, every marker moved onto the edited clock
+/// (one inside a cut or outside the trim goes; none past the copy's end), the edit gone,
+/// and the bake remembered in [`BAKED_FROM`]. `false`, changing nothing, unless `copy` is
+/// still the record's current copy.
+fn bake_record(m: &mut Meta, id: &str, copy: &shroom_edit::EditCopy, now: &str) -> bool {
+    let Some(saved) = m.edits.clone().filter(|s| bakeable(s) == Some(copy)) else { return false };
+    // The list as the page plays it: on the record's own clock.
+    let mut list = saved.list;
+    if let Some(d) = m.duration_sec.filter(|d| d.is_finite() && *d > 0.0) {
+        list.source_duration = d;
+    }
+    let list = list.checked();
+    let key = |name: &String| format!("{}{name}", keys::prefix(id));
+    let (width, height) = m.media.as_ref().map_or((0, 0), |x| (x.width, x.height));
+    m.media = Some(Media { hls: None, mp4: Some(key(&copy.file)), poster: copy.poster.as_ref().map(key), teaser: copy.teaser.as_ref().map(key), width, height });
+    m.duration_sec = Some(copy.duration);
+    m.markers = m.markers.take().map(|all| all.into_iter().filter_map(|t| list.to_edited(t)).map(|e| ((e * 1000.0).round() / 1000.0).min(copy.duration)).collect());
+    let keep: Vec<[f64; 2]> = list.keep().into_iter().map(|(s, e)| [s, e]).collect();
+    let mut from = m.extra.get(BAKED_FROM).and_then(serde_json::Value::as_array).cloned().unwrap_or_default();
+    from.push(serde_json::json!({ "at": now, "rev": saved.rev, "keep": keep }));
+    let over = from.len().saturating_sub(BAKED_FROM_MAX);
+    from.drain(..over);
+    m.extra.insert(BAKED_FROM.into(), serde_json::Value::Array(from));
+    m.edits = None;
+    true
+}
+
+/// “The edit becomes the video” (B197 (c)): once the record's copy is current, one
+/// read-modify-write points `media` at the copy's own files ([`bake_record`]) and drops the
+/// edit; then the original's files go (`master.m3u8`, `v0/…`, `video.mp4`, `poster.jpg`,
+/// `teaser.mp4`) and every copy's file the record no longer names (an earlier bake's).
+/// Never a file `media` names after the write, never a thumbnail. Nothing is renamed, so
+/// any of the space's Macs can do it without the video in hand.
+///
+/// Idempotent and safe to repeat after any interruption — the record first, then the
+/// deletes: a record already baked (no edit, `media` one of its own copies) writes nothing
+/// and finishes the deletes. `Ok(true)`: baked, now or before. `Ok(false)`, nothing written
+/// or deleted: no edit, no current copy (not made yet, or a newer save came first), or an
+/// edit this build can't read. A copy the record names but the space doesn't hold is an
+/// error, before anything is written. A tombstone stops it. `now` (ISO 8601, UTC) is when.
+pub fn bake(s3: &Client, id: &str, now: &str) -> Result<bool, UploadError> {
+    iso_ms(now).ok_or_else(|| UploadError::Incomplete(format!("not a time: {now:?}")))?;
+    let prefix = keys::prefix(id);
+    // A look first: a record with nothing to bake costs one read.
+    let bytes = with_retry(|| s3.get(&keys::meta(id)))?.ok_or(UploadError::Collision)?;
+    let raw: serde_json::Value = serde_json::from_slice(&bytes).map_err(|e| UploadError::Incomplete(format!("unreadable meta: {e}")))?;
+    if raw.get("state").and_then(|s| s.as_str()) == Some("deleted") {
+        return Err(UploadError::Tombstoned);
+    }
+    let seen: Meta = serde_json::from_value(raw).map_err(|e| UploadError::Incomplete(format!("unreadable meta: {e}")))?;
+    let copy = match seen.edits.as_ref() {
+        Some(saved) => match bakeable(saved) {
+            Some(c) => Some(c.clone()),
+            None => return Ok(false),
+        },
+        None if baked(&seen, id) => None,
+        None => return Ok(false),
+    };
+    // What's beside the record before the write: the deletes take only from this, so a
+    // file sent after it (a later edit's copy) is never one of them.
+    let listed = with_retry(|| s3.list(&prefix))?;
+    let now_named = match copy {
+        None => seen,
+        Some(copy) => {
+            let file = format!("{prefix}{}", copy.file);
+            if !listed.iter().any(|o| o.key == file && o.size > 0) {
+                return Err(UploadError::Incomplete(format!("the copy {} isn't in the space", copy.file)));
+            }
+            let mut done = false;
+            let meta = update_edit(s3, id, |m| done = bake_record(m, id, &copy, now))?;
+            // Between the look and the write: another Mac's bake (finish it), or a newer
+            // save (nothing to do).
+            if !done && !baked(&meta, id) {
+                return Ok(false);
+            }
+            meta
+        }
+    };
+    let playing = media_keys(&now_named);
+    for o in &listed {
+        let Some(name) = o.key.strip_prefix(&prefix) else { continue };
+        if (is_original_file(name) || is_copy_file(name)) && !playing.contains(&o.key) {
+            with_retry(|| s3.delete(&o.key))?;
+        }
+    }
+    Ok(true)
 }
 
 /// Deletes a shared recording: the record becomes a tombstone first (the link answers
