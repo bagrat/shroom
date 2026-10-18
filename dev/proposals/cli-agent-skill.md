@@ -165,6 +165,7 @@ The competitor comparison is in shroom-private (`strategy/research/`), not here.
   | 8 | `app_unreachable` | the app is needed and didn't answer |
   | 9 | `take_open` | a recording is open |
   | 10 | `recording_off` | General's switch is off: the agent may not record |
+  | 11 | `partial` | a batch: some items went through, some didn't (every result is in the answer) |
 
 - **The cleanup hook.** The sibling cleanup-score proposal (view analytics) is the source
   for `views`, `last_viewed` and `score`. The guide tells an agent that `null` means
@@ -185,6 +186,59 @@ The competitor comparison is in shroom-private (`strategy/research/`), not here.
 
   It isn't wired now because the route isn't merged, and whether to count plays at all is
   still Bagrat's call.
+
+## 3b. Many at once (batch — built)
+
+**Bagrat, 2026-10-18:** a team lead asks their agent to invite the engineering team. The
+agent works out who (or asks), the lead confirms, and one shroom call returns a name and a
+link for each person. The agent then mails each person themselves with its own mail tool,
+and shroom sends nothing. He asked for the other batch cases worth having too.
+
+**The shape** (`crates/shroom-cli/src/batch.rs`), the same for every batch command:
+
+- **Items:** each argument is one item (`--batch`), or `--from <file>` (a JSON array, or
+  one item per line; `-` reads stdin, for agents that can pipe).
+- **Results:** an answer per item, in the order given, each with a stable `status`, plus
+  `counts`.
+- **Safe to run again:** nothing is done twice. A re-run after a lost answer or a partial
+  failure reports what's already done (`already_invited`, `not_found`, `unchanged`) and
+  does the rest.
+- **`partial`** (exit 11) when any item failed. The answer still carries every result, so
+  the agent can say which failed and run it again for those.
+- **`--dry-run`** for every batch that changes anything. A delete or a removal still needs
+  one `--yes` for the whole list.
+- **Caps:** at most 100 items a call, and 20 invites (a space holds at most 20 pending
+  invites, WORKER-INTERFACE §4.12). Over the cap is refused before anything is made.
+
+| They ask | Command | Each item says |
+|---|---|---|
+| Invite the engineering team | `shroom invite --batch "Ann Lee" "Sam Ng" …` | `invited` + `link`, `already_member`, `already_invited` (+ `--renew` → `renewed`, a new link), `failed` |
+| Delete these old ones | `shroom delete <id> <id> … [--dry-run] [--yes]` | `deleted`, `not_found` (a re-run), `failed` |
+| Give these better titles (say, from AI titles) | `shroom rename --batch "<id>=<title>" …` | `renamed`, `unchanged`, `would_rename` |
+| The links to these, for a message | `shroom links "<words>" "<words>" …` | `found` + `link`, `ambiguous` (+ its matches), `not_found` |
+| What did I record this week? (a digest) | `shroom list --mine --since 7d` | — |
+| Who's in, who's still invited? (reconcile against a team list) | `shroom members --json` | — |
+| Remove these people | `shroom members remove <id> <id> … [--dry-run] [--yes]` | `removed`, `not_found`, `failed` |
+
+**Calls (decided X because Y):**
+
+- **Decided: a person already invited gets `already_invited` and no link, unless
+  `--renew`.** The space keeps only an invite code's hash, so a sent link can't be shown
+  again. Renewing silently would break a link that may already be in someone's inbox.
+- **Decided: names only.** The guide tells the agent to keep email addresses itself and
+  never pass them to shroom. A label is admin-private in the roster, and an address there
+  would be a person's data shroom has no use for.
+- **Decided: a name given twice in one call is asked once** (case aside), and a name that
+  is already a member's is `already_member`. A team list often repeats people who already
+  joined.
+- **Decided: the mailing stays the agent's.** shroom never sends mail (no send-as, and
+  nothing we operate). Each person gets their own link in their own message, and the
+  guide holds the one-link-per-person rule.
+- **Decided: a delete's unknown id is `not_found`, not fatal.** That keeps a re-run after
+  a partial delete safe. Title words are still refused for deletes.
+- **Not built: a scheduled weekly digest.** `list --mine --since 7d --json` is the data;
+  the agent's own scheduler (or the person asking each week) does the sending. A
+  shroom-side schedule would be a service we operate.
 
 ## 4. Getting it on PATH (always installed — built)
 
