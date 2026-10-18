@@ -27,6 +27,10 @@ spec rows are Bagrat's call. The words on the boards are placeholders.*
 >   the cut through Web Audio, each join a 60 ms equal-power crossfade, the knee of
 >   `voice-cut/poc/joins.py` (the median click falls fourfold by then). The share page's
 >   playback and the final copy are the editor's (N63), handed these numbers.
+> - **What to say** (B203): “shroom cut” stays the cue. Plain “cut” and a relaxed set
+>   (“cut here”, “scratch that”, “let me redo that”…) are built behind a choice, each heard
+>   only said apart and only when Clef says it was meant for the editor; measured by
+>   `voice-cut/poc/cues.py`, awaiting Bagrat's pick. On the tester as “Listen for”.
 > - **Clef weighs how far back a redo reaches** (B202). A line said again in other words
 >   shares too few words to line up (Bagrat's reworded redo on the tester), so the Mac lists
 >   where the redone stretch might begin and Clef, on the space's own account, scores each;
