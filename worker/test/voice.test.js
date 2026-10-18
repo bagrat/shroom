@@ -29,10 +29,11 @@ const sha = (s) => createHash("sha256").update(s).digest("hex");
 const SECRET = Buffer.alloc(32, 7).toString("base64url");
 
 /** A take's edit list as the Mac lands it: two retakes cut, a cue with nothing said again
- * after it (its own words cut, the line before it offered), and a hand cut from the editor. */
+ * after it (its own words cut, the line before it offered), and a hand cut from the editor.
+ * `voice` is the editor's mark that the cues were planned (N63's `Voice`); `rev` its save count. */
 const EDITS = {
-  version: 1, source_duration: 272, in: 0, out: 272,
-  voice: { state: "planned", at: NOW - 60_000, cues: 3 },
+  version: 1, source_duration: 272, in: 0, out: 272, rev: 2,
+  voice: { planned_at: NOW - 60_000, cues: 3 },
   cuts: [
     { id: "v1", start: 4.1, end: 7.5, kind: "retake", confidence: "high", applied: true, removed: "Hello, that is shroom. Shroom cut.", resumes: "Hello, this is shroom." },
     { id: "v2", start: 72.0, end: 76.1, kind: "retake", confidence: "high", applied: true, removed: "Then you pick the, the window you, um, shroom cut.", resumes: "So, then you pick the window" },
@@ -41,13 +42,14 @@ const EDITS = {
     { id: "m1", start: 100.0, end: 106.0, kind: "manual", confidence: "high", applied: true, removed: "" },
   ],
 };
-const metaOf = (over = {}) => JSON.stringify({ schema: 1, id: ID, state: "live", createdAt: "2026-10-02T11:00:00Z", title: "Setting up shroom",
+const metaOf = (over = {}) => JSON.stringify({ schema: 1, id: ID, state: "live", createdAt: "2026-10-02T11:00:00Z", publishedAt: "2026-10-02T11:05:00Z", title: "Setting up shroom",
   media: { hls: `rec/${ID}/master.m3u8`, mp4: null, width: 1920, height: 1080 }, owner: "m1", edits: EDITS, ...over });
 const grant = (over = {}) => JSON.stringify({ member: "m1", role: "owner", device: OWNER_MAC.id, exp: new Date(NOW + 600_000).toISOString(), ...over });
 const memberGrant = () => grant({ member: MHER, role: "member", device: MHER_MAC.id });
 
 const req = (env, path, init = {}) => handle(new Request(`${HOST}${path}`, init), env, NOW);
-const space = (extra = {}) => ({ BUCKET: fakeBucket({ ".shroom/cookie.key": SECRET, [ROSTER]: JSON.stringify(roster()), [`meta/${ID}.json`]: metaOf(), ...extra }) });
+/** A space that listens (N66) has Cloudflare's AI bound to its page. */
+const space = (extra = {}, listens = false) => ({ ...(listens ? { AI: {} } : {}), BUCKET: fakeBucket({ ".shroom/cookie.key": SECRET, [ROSTER]: JSON.stringify(roster()), [`meta/${ID}.json`]: metaOf(), ...extra }) });
 async function cookieFor(env, g = grant()) {
   const k = `${K.slice(0, 42)}Q`;
   env.BUCKET.store.set(`.shroom/keys/${sha(k)}`, new TextEncoder().encode(g));
@@ -110,7 +112,7 @@ describe("the owner page shows the voice cuts under the player (owner-page-cuts)
   });
 
   it("shows no strip when the take has no voice cuts, or no edit list", async () => {
-    for (const edits of [undefined, { ...EDITS, voice: { state: "planned", at: NOW, cues: 0 }, cuts: [EDITS.cuts[4]] }]) {
+    for (const edits of [undefined, { ...EDITS, voice: { planned_at: NOW, cues: 0 }, cuts: [EDITS.cuts[4]] }]) {
       const env = space({ [`meta/${ID}.json`]: metaOf({ edits }) });
       const body = await page(env, await cookieFor(env));
       expect(body).not.toContain('class="cuts"');
@@ -165,6 +167,9 @@ describe("a press saves at once (POST /_shroom/edits/<id>)", () => {
     const meta = stored(env);
     expect(meta.edits.cuts.find((c) => c.id === "v1").applied).toBe(false);
     expect(meta.edits.cuts.filter((c) => c.id !== "v1")).toEqual(EDITS.cuts.filter((c) => c.id !== "v1"));
+    // A press is a save: the revision moves on, so a copy cut from the list before reads as stale.
+    expect(meta.edits.rev).toBe(EDITS.rev + 1);
+    expect(meta.edits.voice).toEqual(EDITS.voice);
     expect(meta).toMatchObject({ title: "Setting up shroom", state: "live", owner: "m1" });
   });
 
@@ -221,13 +226,22 @@ describe("a press saves at once (POST /_shroom/edits/<id>)", () => {
 });
 
 describe("a page already open when the cuts land (the edge owner-page → owner-page-cuts)", () => {
-  it("the status says cuts are coming while the Mac listens, and names the plan once it lands", () => {
-    const listening = JSON.parse(metaOf({ edits: { ...EDITS, voice: { state: "listening", since: NOW - 10_000 }, cuts: [] } }));
-    expect(status(listening, NOW)).toMatchObject({ cuts: "coming" });
-    // A Mac that went quiet stops the wait after five minutes.
-    const stale = JSON.parse(metaOf({ edits: { ...EDITS, voice: { state: "listening", since: NOW - 6 * 60_000 }, cuts: [] } }));
-    expect(status(stale, NOW).cuts).toBeUndefined();
-    const planned = status(JSON.parse(metaOf()), NOW);
+  it("the status says cuts are coming while a space that listens hears a fresh take, and names the plan once it lands", () => {
+    const fresh = (over = {}) => JSON.parse(metaOf({ publishedAt: new Date(NOW - 10_000).toISOString(), edits: undefined, ...over }));
+    expect(status(fresh(), NOW, true)).toMatchObject({ cuts: "coming" });
+    // An edit saved before the plan lands doesn't end the wait; the plan's mark does.
+    expect(status(fresh({ edits: { ...EDITS, voice: undefined, cuts: [EDITS.cuts[4]] } }), NOW, true)).toMatchObject({ cuts: "coming" });
+    // A space that doesn't listen never makes a page wait.
+    expect(status(fresh(), NOW, false).cuts).toBeUndefined();
+    expect(status(fresh(), NOW).cuts).toBeUndefined();
+    // A Mac that went quiet stops the wait five minutes after the go-live.
+    expect(status(fresh({ publishedAt: new Date(NOW - 6 * 60_000).toISOString() }), NOW, true).cuts).toBeUndefined();
+    // Words left for tomorrow's free day (N66) don't keep a page polling.
+    expect(status(fresh({ naming: { later: "daily", at: new Date(NOW).toISOString() } }), NOW, true).cuts).toBeUndefined();
+    // A plan with no cues ends the wait and shows nothing.
+    expect(status(fresh({ edits: { ...EDITS, voice: { planned_at: NOW, cues: 0 }, cuts: [] } }), NOW, true).cuts).toBeUndefined();
+    const planned = status(JSON.parse(metaOf()), NOW, true);
+    expect(status(JSON.parse(metaOf()), NOW).cuts).toBe(planned.cuts);
     expect(planned.cuts).toMatch(/^[0-9a-z]+$/);
     // Any press changes it, so the page knows to fetch the strip again.
     const pressed = JSON.parse(metaOf());
@@ -250,10 +264,16 @@ describe("a page already open when the cuts land (the edge owner-page → owner-
   });
 
   it("the page polls on while cuts are coming, and swaps the strip in when they land", async () => {
-    const env = space({ [`meta/${ID}.json`]: metaOf({ edits: { ...EDITS, voice: { state: "listening", since: NOW - 5_000 }, cuts: [] } }) });
+    const fresh = metaOf({ publishedAt: new Date(NOW - 5_000).toISOString(), edits: undefined });
+    const env = space({ [`meta/${ID}.json`]: fresh }, true);
     const body = await page(env, await cookieFor(env));
     // An empty strip waits under the player for the page's poll to fill it.
     expect(body).toContain('<section class="cuts" id="cuts" hidden');
     expect(body).toContain("/_shroom/edits/");
+    // The status route gives the page the same word.
+    expect(await (await req(env, `/_shroom/status/${ID}`)).json()).toMatchObject({ cuts: "coming" });
+    // Without the space listening, the page doesn't wait.
+    const quiet = space({ [`meta/${ID}.json`]: fresh });
+    expect(await page(quiet, await cookieFor(quiet))).not.toContain('id="cuts"');
   });
 });
