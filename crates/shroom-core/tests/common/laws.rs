@@ -24,13 +24,13 @@ pub const SECRET_CANARY: &str = "cfat_";
 /// only the World can say it is wrong. On its own so that a test can hand it a Scene
 /// `derive` never made — `check` turns every such Scene away at law 1.
 pub fn law_6(nw: &World, ns: &Scene) -> Option<String> {
-    let open = [WindowKind::Onboarding, WindowKind::Library, WindowKind::Settings, WindowKind::Feedback].into_iter().any(|k| entry::shows(nw, k));
+    let open = [WindowKind::Onboarding, WindowKind::Library, WindowKind::Settings, WindowKind::Feedback, WindowKind::Editor].into_iter().any(|k| entry::shows(nw, k));
     if ns.dock != open {
         let dock = if ns.dock { "a Dock icon" } else { "no Dock icon" };
         let window = if open { "a window of shroom's is open" } else { "no window of shroom's is open" };
         return Some(format!("law 6: {dock}, and in the World {window}"));
     }
-    if ns.dock != (ns.onboarding.is_some() || ns.library.is_some() || ns.settings.is_some() || ns.feedback.is_some()) {
+    if ns.dock != (ns.onboarding.is_some() || ns.library.is_some() || ns.settings.is_some() || ns.feedback.is_some() || ns.editor.is_some()) {
         return Some("law 6: the Dock and the windows disagree".into());
     }
     for (shown, kind) in [
@@ -38,6 +38,7 @@ pub fn law_6(nw: &World, ns: &Scene) -> Option<String> {
         (ns.library.is_some(), WindowKind::Library),
         (ns.settings.is_some(), WindowKind::Settings),
         (ns.feedback.is_some(), WindowKind::Feedback),
+        (ns.editor.is_some(), WindowKind::Editor),
     ] {
         if shown && !nw.session.windows.contains_key(&kind) {
             return Some("law 6: a window without a door".into());
@@ -139,6 +140,8 @@ pub fn check(pw: &World, ps: &Scene, ev: &Event, nw: &World, ns: &Scene, fx: &[E
         assert!(ns.onboarding.is_none() || ps.onboarding.is_some(), "law 4: a window appeared mid-take — {}", ctx());
         assert!(ns.library.is_none() || ps.library.is_some(), "law 4: the Library appeared mid-take — {}", ctx());
         assert!(ns.settings.is_none() || ps.settings.is_some(), "law 4: Settings appeared mid-take — {}", ctx());
+        assert!(ns.feedback.is_none() || ps.feedback.is_some(), "law 4: Send feedback appeared mid-take — {}", ctx());
+        assert!(ns.editor.is_none() || ps.editor.is_some(), "law 4: the editor appeared mid-take — {}", ctx());
         for e in fx {
             // Nothing that would end, move or replace the app runs mid-take.
             assert!(!matches!(e, Effect::Updater(UpdCmd::Apply(_))), "law 4: an update applied mid-take — {}", ctx());
@@ -188,6 +191,7 @@ pub fn check(pw: &World, ps: &Scene, ev: &Event, nw: &World, ns: &Scene, fx: &[E
         (ns.library.as_ref().map(|l| l.activates), WindowKind::Library),
         (ns.settings.as_ref().map(|s| s.activates), WindowKind::Settings),
         (ns.feedback.as_ref().map(|f| f.activates), WindowKind::Feedback),
+        (ns.editor.as_ref().map(|e| e.activates), WindowKind::Editor),
     ] {
         if let (Some(a), Some(d)) = (activates, nw.session.windows.get(&kind)) {
             assert!(d.asked || !a, "law 5: an unasked {kind:?} window activates — {}", ctx());
@@ -271,6 +275,12 @@ pub fn check(pw: &World, ps: &Scene, ev: &Event, nw: &World, ns: &Scene, fx: &[E
     if let Some(st) = &ns.settings {
         if let Some(r) = &st.ret {
             assert!(st.buttons().iter().any(|b| &b.action == r), "law 8: Settings' Return {r:?} isn't on the window — {}", ctx());
+        }
+    }
+    // The editor's Return is its Done (or cant-get's Close), live, on the window (N63).
+    if let Some(e) = &ns.editor {
+        if let Some(r) = &e.ret {
+            assert!(e.buttons().iter().any(|b| b.enabled && &b.action == r), "law 8: the editor's Return {r:?} isn't a live button of its own — {}", ctx());
         }
     }
     // Law 9 — the windows' destructive entry points are red text; their questions are
@@ -437,9 +447,11 @@ pub fn failure_state(id: &str) -> bool {
     IDS.get_or_init(|| shroom_spec::Spec::load().states().filter(|s| s.kind == "failure-state").map(|s| s.id.clone()).collect()).iter().any(|s| s == id)
 }
 
-/// The background work law 12 lets go quietly once nothing wants it any more: reads, and
-/// the uploader — never a write a person asked for.
-const BACKGROUND: &[Op] = &[Op::Standing, Op::Roster, Op::Peek, Op::LibCache, Op::LibRefresh, Op::Reach, Op::Sweep, Op::Refresh, Op::UpdateCheck, Op::UpdateDownload, Op::Upload];
+/// The background work law 12 lets go quietly once nothing wants it any more: reads, the
+/// uploader, and a saved edit's permanent copy (N63: the save the person asked for has
+/// landed; the page plays the saved list over the original until a copy is up) — never a
+/// write a person asked for.
+const BACKGROUND: &[Op] = &[Op::Standing, Op::Roster, Op::Peek, Op::LibCache, Op::LibRefresh, Op::Reach, Op::Sweep, Op::Refresh, Op::UpdateCheck, Op::UpdateDownload, Op::Upload, Op::EditorCopy];
 
 /// An op whose failure another op covers, with why.
 const COVERED: &[(Op, Op, &str)] = &[(Op::LibCache, Op::LibRefresh, "the remembered list is a head start; the bucket refresh fills the same list")];
@@ -612,10 +624,11 @@ pub fn voice_failures(scene: &Scene, row: &str) -> Vec<String> {
 /// not ids, actions, kinds, device ids or what the person typed.
 pub fn user_strings(scene: &Scene) -> Vec<String> {
     // `preview` is Report a problem's disclosure: the person's words and their log, quoted
-    // as they go — data, as a field's `value` is (B180).
+    // as they go — data, as a field's `value` is (B180). The editor's `rec` is the video's
+    // id, for its media; `footer_tone` the line's colour (N63).
     const NOT_COPY: &[&str] = &[
         "id", "faces", "do", "arg", "kind", "key", "camera", "poster", "value", "style", "tone", "face", "click", "glyph", "em", "action", "anchor", "state",
-        "preview",
+        "preview", "rec", "footer_tone",
     ];
     fn walk(v: &serde_json::Value, out: &mut Vec<String>) {
         match v {
