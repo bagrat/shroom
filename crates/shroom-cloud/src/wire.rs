@@ -118,9 +118,19 @@ pub fn semver(v: &str) -> Option<Vec<u64>> {
     parts.filter(|p| !p.is_empty())
 }
 
+/// Where a version stands among its own builds (DECISIONS B220): an early build
+/// (`-early.<n>`) below the release, the release itself highest; any other suffix lowest.
+fn stage(v: &str) -> u64 {
+    match v.trim().split_once('-') {
+        None => u64::MAX,
+        Some((_, pre)) => pre.strip_prefix("early.").and_then(|n| n.parse().ok()).unwrap_or(0),
+    }
+}
+
 /// Whether a page answering at `live` may be replaced by this app's `bundled` page: only
-/// when it's strictly older. A version that can't be read is never overwritten (the page
-/// refuses a downgrade, SM:1754-1756).
+/// when it's strictly older — by its numbers, then its stage, so `0.1.25-early.1` <
+/// `0.1.25-early.2` < `0.1.25` (B220). A version that can't be read is never overwritten
+/// (the page refuses a downgrade, SM:1754-1756).
 pub fn may_deploy_over(live: &str, bundled: &str) -> bool {
     match (semver(live), semver(bundled)) {
         (Some(l), Some(b)) => {
@@ -129,7 +139,7 @@ pub fn may_deploy_over(live: &str, bundled: &str) -> bool {
                 v.resize(n, 0);
                 v
             };
-            pad(l) < pad(b)
+            (pad(l), stage(live)) < (pad(b), stage(bundled))
         }
         _ => false,
     }
