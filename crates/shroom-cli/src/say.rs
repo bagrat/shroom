@@ -1,6 +1,6 @@
 //! Every line the `shroom` command says (spec N62, DECISIONS B215) — to a person in a
-//! terminal, and in `--json`'s `message` to their coding agent — in one place, for Bagrat to
-//! read and ratify with N62. The product's voice: warm, brief, product words only; a code
+//! terminal, and in `--json`'s `message` to their coding agent — in one place, where Bagrat
+//! read and ratified them with N62. The product's voice: warm, brief, product words only; a code
 //! an agent branches on is never here (`out.rs`). No other file of the command writes a
 //! sentence of its own (`tests/voice.rs`).
 

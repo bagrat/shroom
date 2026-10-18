@@ -1,5 +1,5 @@
 //! Every line the command says is in `src/say.rs` (spec N62, DECISIONS B215), where Bagrat
-//! reads them all to ratify with N62: no other file of the command writes a sentence of its
+//! read and ratified them with N62: no other file of the command writes a sentence of its
 //! own. A sentence, here: a string with at least three words in it. Tests aside.
 
 /// The string literals on one line of Rust: what's between unescaped quotes.

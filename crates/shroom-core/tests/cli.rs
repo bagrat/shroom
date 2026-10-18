@@ -1,4 +1,4 @@
-//! The `shroom` command's recording asks (spec N62, provisional; dev/proposals/cli-agent-skill.md):
+//! The `shroom` command's recording asks (spec N62; dev/proposals/cli-agent-skill.md):
 //! refused while General's switch is off (the default), and otherwise exactly what each
 //! click does — answered once, with a code. And the refusal's link, which opens Settings at
 //! that switch and lights it, never flipping it (Bagrat, 2026-10-18; DECISIONS B216).
