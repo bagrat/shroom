@@ -15,6 +15,7 @@
     "drive:onboarding": "node test/onboarding-drive.mjs",
     "drive:library": "node test/region5-drive.mjs library",
     "drive:settings": "node test/region5-drive.mjs settings",
+    "drive:editor": "node test/editor-drive.mjs",
     "drive:update": "sh test/update-drive.sh",
     "drive:take": "node test/take-drive.mjs",
     "record-check": "node ../tests/e2e/record-check.mjs",
