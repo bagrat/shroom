@@ -941,6 +941,14 @@ record: `title` (only while not `titled`), `named` = `{by:"ai", model, at, rev, 
 words, title, chapters:[[start, title],…], language}`, `captions` = `{language}`, and
 `naming` = `{later:"daily", at}` while the free day is used up.
 
+**Bakes.** Whoever bakes an edit (N63: the editor's copy becomes the video, `meta.edits`
+dropped) appends to the record's `bakedFrom` in the same write: `[{at, keep:[[start, end],…]},
+…]`, one entry per bake in order, `at` a string naming the bake and `keep` the ranges kept, in
+seconds on the clock before it (a lone `{at, keep}` reads as a list of one). It's the only way
+the words, chapters and captions cross a bake: each is carried through the bakes made since
+its own `clock` (a word goes when most of it went), and the transcript is rewritten on the
+new clock once, after a view. A baked record without it keeps its words on the old clock.
+
 **After a view** (in `waitUntil`): an edit saved since the naming (`named.rev` ≠ the bakes
 and `meta.edits.rev`) that removes at least a fifth of the words it saw, or a whole
 chapter, marks the take to be named again; else the revision is stamped.

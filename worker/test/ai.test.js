@@ -600,6 +600,48 @@ describe("edits (B208)", () => {
     await aiTick(env, NOW + MIN);
     expect(record(env)).toMatchObject({ title: "Mine", titled: true });
   });
+
+  it("carries the chapters, captions and words across a baked edit, by the record's bakedFrom", async () => {
+    const env = await namedSpace();
+    const before = record(env);
+    expect(before.named.chapters.map((c) => c[0])).toEqual([0, 42.3, 99.3]);
+    // The editor's bake (N63): the copy becomes the video, `edits` goes with it, and the bake
+    // says what it kept — here 30 s … 50 s went, sentences 8–12. (Which file plays is the
+    // editor's; the times are this one's.)
+    const AT = "2026-10-04T10:00:00Z";
+    await env.BUCKET.put(metaKey(REC), JSON.stringify({ ...before, durationSec: 130, bakedFrom: [{ at: AT, keep: [[0, 30], [50, 150]] }] }));
+    const html = await (await call(env, "GET", `/${REC}`)).text();
+    // "The budget" began at 42.3 s, inside the cut: it begins where the cut ends, on the copy's clock.
+    const shown = JSON.parse(html.match(/shroomChapters\(p,(\[\[.*?\]\])\)/)[1]);
+    expect(shown.map((c) => c[1])).toEqual(["Where we are", "The budget", "Next steps"]);
+    [0, 30, 79.3].forEach((t, i) => expect(shown[i][0]).toBeCloseTo(t, 6));
+    // The captions play on the copy's clock and say no word that was cut.
+    const { res, text } = await vtt(env, "?e=1");
+    expect(res.status).toBe(200);
+    const cues = cuesOf(text);
+    const said = cues.map((c) => c[2].replace(/\n/g, " ")).join(" ");
+    for (const w of ["s8a", "s10d", "s12h"]) expect(said).not.toContain(w);
+    for (const w of ["s0a", "s14a", "s38h."]) expect(said).toContain(w);
+    const at14 = cues.find((c) => c[2].includes("s14a"));
+    expect(at14[0]).toBeGreaterThan(29.5);
+    expect(at14[0]).toBeLessThan(33.8); // 53.7 s on the recording's clock
+    for (const [, e] of cues) expect(e).toBeLessThanOrEqual(130);
+    // After the view the stored words and the chapters are on the copy's clock, once; under a
+    // fifth went, so the name stays and the bake is stamped.
+    expect(env.BUCKET.json(TRANSCRIPT).clock).toBe(AT);
+    expect(env.BUCKET.json(TRANSCRIPT).words.some(([w]) => w === "s8a")).toBe(false);
+    expect(record(env).named).toMatchObject({ rev: "1:0", clock: AT, chapters: [[0, "Where we are"], [30, "The budget"], [79.3, "Next steps"]] });
+    expect(env.BUCKET.json(LATER)).toBeNull();
+    // A lone bake, not in a list, reads the same.
+    expect(aiChapters({ durationSec: 130, named: before.named, bakedFrom: { at: AT, keep: [[0, 30], [50, 150]] } }).map((c) => c[1])).toEqual(["Where we are", "The budget", "Next steps"]);
+  });
+
+  it("a bake that cuts a fifth of what was said names the video again", async () => {
+    const env = await namedSpace();
+    await env.BUCKET.put(metaKey(REC), JSON.stringify({ ...record(env), durationSec: 120, bakedFrom: [{ at: "2026-10-04T10:00:00Z", keep: [[0, 30], [60, 150]] }] }));
+    await call(env, "GET", `/${REC}`);
+    expect(env.BUCKET.json(LATER)).toMatchObject({ rename: true });
+  });
 });
 
 describe("the page (B209)", () => {
