@@ -16383,7 +16383,7 @@
    "to": "library",
    "kind": "flow",
    "label": "‹ Library",
-   "trigger": "‹ Library, or Esc",
+   "trigger": "‹ Library",
    "status": "provisional",
    "cites": [
     "N68"
