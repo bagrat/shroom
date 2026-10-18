@@ -183,6 +183,13 @@ Not built; P1 passed (D:B35). See history/design/WORKER-INTERFACE.md §2.5.
 No credential is needed for the public pages, `/m/`, `/d/`, status, `/oembed`, ping, the
 icon, or `/join/<code>` (which reads a cookie only to pick a face).
 
+**The `shroom` command** (spec N62, D:B215) calls these routes under its Mac's device key,
+exactly as that Mac's app does — `library`, `mint` (a `manage` credential for a rename or a
+delete), `gone`, `members`, `invites` and their deletes — so the page holds it to the same
+role. It never holds the parent proof or the token. Where a page makes cleanup suggestions
+(`POST /_shroom/api/cleanup`, the cleanup proposal's route) it reads them; a page that answers
+404 there gets age alone.
+
 ### 3.2 Device key and parent proof
 
 **Device key.** The Mac makes `did` (`d_` + 12 bytes) and `secret` (32 bytes, 43 characters)

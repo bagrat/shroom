@@ -36,7 +36,9 @@ flowchart LR
     Shell --> Up["shroom-upload / shroom-storage"]
     Shell --> Cl["shroom-cloud"]
     Shell --> Upd["shroom-update"]
+    CLI["the shroom command<br/>Contents/MacOS/shroom-cli"] -->|control.sock: record| Shell
   end
+  CLI -->|device key| W
   Up -->|SigV4, temp creds| B[("R2 bucket shroom-space")]
   Cl -->|REST: sweep, wire| API["Cloudflare API"]
   Cl -->|device key| W["Worker v (worker/src/worker.js)"]
@@ -66,12 +68,13 @@ at `bf84b67079a8` (D:B2). Svelte 5, TypeScript 5.9.
 | `crates/shroom-cloud` | REST client behind `Policy`; `sweep`, `wire`, `mint`, `owner`, `member` (client for `/_shroom/api/`), `registry`, `device` | L1 fake; `SHROOM_LIVE=1` |
 | `crates/shroom-cloudfake` | L1 Cloudflare + R2 stand-in, fault seam (D:B64) | tests |
 | `crates/shroom-update` | manifest, `offer`, verified download, `same_signer`, `SWAP_SH` (D:B31, B125) | `tests/release.rs` |
+| `crates/shroom-cli` | the `shroom` command (spec N62; D:B215–B219): `home` (its app's folder, from the bundle it ships in), `space` (the page under the device key: list, rename, delete, members, invites, cleanup suggestions), `app` (asks the running app over `control.sock`), `batch` (many at once), `say` (every line it says), `out` (codes and exit statuses) | unit; `tests/space.rs` on the real `worker.js` (`worker/dev/serve.mjs`); `tests/flavor.rs`, `cleanup.rs`, `voice.rs` |
 | `crates/shroom-testpattern`, `shroom-spec`, `shroom-devtool` | media-truth strip (D:B59 d); spec fixtures as types; the heartbeat's test space up/down | dev only |
 | `tests/e2e-live` | L2 on the dedicated test account | live |
 | `app/src-tauri` | `main.rs`, `commands.rs` (IPC), `runtime/` (runner, lanes, presenter, overlays, observers, seam), `harness.rs`/`drives.rs` (only with `dev-harness` in a `.dev` build — D:B5, B55, B62) | drives, `tests/l5/` |
 | `app/src` | webviews (`Popover`, `Onboarding`, `Library`, `Settings`, `members/`, `join/`, countdown), `lib/ipc.ts`, `lib/typed.ts`, `lib/theme.css` (D:B122) | galleries |
 | `worker/` | `src/worker.js` (one dependency-free module), `vendor/hls.min.js`, `page-version.json`, `dev/serve.mjs` | vitest + workerd contract (D:B63) |
-| `installer/`, `site/` | `install.sh` (D:B29, B44); the Homebrew cask and its renderer, `homebrew/` (D:B175); shroom.am Worker, with `/agent` for a coding agent (D:B132), and `/report` with its `/feedback` form (D:B180) | their `test/` |
+| `installer/`, `site/` | `install.sh` (D:B29, B44; links the `shroom` command, D:B217); the Homebrew cask and its renderer, `homebrew/` (D:B175); shroom.am Worker, with `/agent` for a coding agent (D:B132), `/cli` its guide to the command (D:B219), and `/report` with its `/feedback` form (D:B180) | their `test/` |
 | `tools/`, `.github/workflows/` | release build, packaging, identity, ffmpeg, notices; `ci.yml`, `release.yml`, `site.yml`, `e2e.yml`, `e2e-full.yml`, `mac.yml` | CI |
 
 **Flavors** come from the bundle identifier alone (`runtime::Flavor::of`, D:B97; the
@@ -79,6 +82,8 @@ Preview flavor retired, D:B148): Release `am.shroom` (`~/.shroom`); Dev `am.shro
 shell, fenced to `shroom-test-…`, the only flavor taking dev flags: `--home`, `--cloud-fake`,
 `--space-base`, `--releases`, `--update-target`, `--as-version`, `--live-shell`,
 `--e2e` (D:B127; its space is the run's own, `v-<run>` over `shroom-space-<run>`, D:B131)).
+The `shroom` command inside a bundle takes that bundle's identifier by the same rule, so a dev
+build's command reads `~/.shroom-dev` and opens the dev app (D:B215).
 
 ---
 
@@ -238,6 +243,7 @@ and `Scanned` and writes only via effects; `home::FILES` whitelists top-level na
 | `invite`, `join.json` | an invite held; a join asked for (replayed at launch) / removed when behind |
 | `library.json`, `posters/` | library lane / exit |
 | `status.json` | §11.2 |
+| `control.sock` | the `shroom` command's door into the running app (§3.5, D:B216): made at start (600; one a crash left is replaced), never read by anything else |
 | `forget/<rec>` | owed remote discards (D:B52 e) |
 | `updates/<version>/shroom.app` | a verified staged update |
 | `logs/run.log` | §3.3 |
@@ -294,6 +300,16 @@ composes no sentences and decides nothing.
 | `scene_get`, `dismiss`, `popover_keyed`, `popover_fit` | snapshot slice; `PopoverDismissed`; first key makes an unasked popover asked; panel height |
 
 Window lifecycle comes from Rust window events.
+
+**The `shroom` command → core** (`runtime/control.rs`, spec N62, D:B216). `control.sock` in
+the flavor's home: the socket 600 in the 700 folder, each connection's peer uid checked
+(`getpeereid`), one JSON line each way, at most 1 KB in: `{"v":1,"op":"record.start"}`
+(`.pause`, `.resume`, `.stop`) → `{"ok", "take", "error"?, "link"?}`. The runtime holds the
+connection and posts `Event::Cli {id, op}` (a start posts fresh `Os(Grants)` first, as the
+popover's does); the core answers each once with `Effect::Cli` — a code, never words, and
+`recording_off` for all four while General's switch (`Prefs.agent_recording`) is off.
+Otherwise each ask is its click (the popover's Start, open or not; the tray's pause; the
+paused popover's Resume and Stop); a stop answers with its link and copies nothing.
 
 **Law 13 by type.** No Scene field can hold a secret; `Secret` is not `Serialize` and `Debug`
 redacts. The `?k=` URL exists only inside `OpenOwnerPage`, opened through NSWorkspace. A
@@ -789,7 +805,9 @@ thread's 2 s grants re-read (`GRANTS_EVERY`; preflight only). Each write is logg
 Never a host, name, link, code, token, credential or path (law 13). Adding a field keeps
 `v`; removing, renaming or changing a meaning bumps it; the installer reads only `pid` and
 `take_open` and is tested on v1 and v2. Readers: `install.sh:recording`,
-`app/test/onboarding-drive.mjs`, `worker/dev/region6-drive.mjs`, `tests/e2e/kill-relaunch.mjs`.
+`app/test/onboarding-drive.mjs`, `worker/dev/region6-drive.mjs`, `tests/e2e/kill-relaunch.mjs`,
+and the `shroom` command (`crates/shroom-cli/src/home.rs`: `status`, and law 4's wait before
+a rename, delete, invite or removal).
 
 ---
 

@@ -227,6 +227,21 @@ straight in; then every path of the drive in one command. A drive never asks mac
 anything, so a clone without both stops at the permissions chapter; the asks themselves,
 answered by a person as a fresh principal, stay with §8.
 
+*The `shroom` command (spec N62; DECISIONS B215–B219):* **L0** — its unit tests, and
+`tests/voice.rs` (every line it says is in `say.rs`); the core's `tests/cli.rs` (every
+recording ask, in every moment of a take, answered once as the click it stands for). **L1** —
+`crates/shroom-cli/tests/space.rs` on the real `worker.js` (`worker/dev/serve.mjs`: list,
+find, rename, delete with its tombstone and seal, invites, removal, batches and their
+re-runs); `cleanup.rs` on a stand-in for the page's cleanup suggestions; `flavor.rs` (a
+bundle's command reads its own app's folder, through its link too); `site/test/cli.test.mjs`
+(the guide held to `main.rs` and `out.rs`); the cask's renderer (`installer/test/cask.test.mjs`).
+**L2** — on the hosted Mac, `cli-socket` (the bundled command, the socket's mode, the switch's
+refusal, opening the app) and the `settings` drive's switch (kept in `prefs.json`, the ask let
+through and refused again); and the full e2e's command leg (`tests/e2e/cli-leg.mjs`): on PATH
+from the install line, refused until the switch is on, then a take it starts, pauses,
+resumes and stops, renamed and deleted, on the test account. A real `brew install` linking
+the command waits for the first release that carries it (B217).
+
 **The heartbeat:** record (test pattern) → Stop → the page is live → a recipient browser
 plays it → title set via the owner cookie → delete → the tombstone face. Green from day
 one; every region extends it.
