@@ -722,17 +722,27 @@ impl Space {
 
     /// `DELETE invites/<iid>` (§4.13).
     pub fn cancel_invite(&self, key: &DeviceKey, iid: &str) -> Answer<()> {
-        self.call::<Value>("DELETE", &format!("invites/{iid}"), None, Some(key)).map(|_| ())
+        self.delete_id('i', "invites", iid, key)
     }
 
     /// `DELETE members/<mid>` (§4.14).
     pub fn remove_member(&self, key: &DeviceKey, mid: &str) -> Answer<()> {
-        self.call::<Value>("DELETE", &format!("members/{mid}"), None, Some(key)).map(|_| ())
+        self.delete_id('m', "members", mid, key)
     }
 
     /// `DELETE devices/<did>` (§4.15): another owner Mac.
     pub fn remove_device(&self, key: &DeviceKey, did: &str) -> Answer<()> {
-        self.call::<Value>("DELETE", &format!("devices/{did}"), None, Some(key)).map(|_| ())
+        self.delete_id('d', "devices", did, key)
+    }
+
+    /// `DELETE <what>/<id>`, only for an id of the route's shape: anything else — a typed
+    /// `../members/…`, whose dot segments would name another route — is refused here, and
+    /// nothing is sent.
+    fn delete_id(&self, prefix: char, what: &str, id: &str, key: &DeviceKey) -> Answer<()> {
+        if !crate::device::is_registry_id(id, prefix) {
+            return Answer::Refused(Refusal { status: 400, class: Class::BadRequest, reason: None, why: None, member: None, retry_after: None, date: None });
+        }
+        self.call::<Value>("DELETE", &format!("{what}/{id}"), None, Some(key)).map(|_| ())
     }
 
     /// `DELETE devices/self` — Leave, Disconnect, the switch's deregistration (§16 #57).
