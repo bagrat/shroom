@@ -1,7 +1,8 @@
 //! The editor (spec N63, DECISIONS B195, B197) and markers (N64, B196): Edit… on a live
 //! Library row, the editor window's faces, its steps and their undo, Done's save, the final
 //! video it then makes and the question of the original, the time a kept original has left,
-//! the record's answers and failures, every Mac's upkeep, and the markers a take drops —
+//! the record's answers and failures, a save the space turns down (B199), every Mac's
+//! upkeep, and the markers a take drops —
 //! every step through `Run::send`, the laws, the entry oracle and the machine's edges
 //! checked at each.
 
@@ -33,6 +34,7 @@ const GETTING: &str = "Getting the video from your space…";
 const CANT_GET: &str = "Couldn't get the video. Check your connection, then try again.";
 const SAVING: &str = "Saving your edit…";
 const SAVE_FAILED: &str = "Couldn't save your edit. Check your connection, then press Done again.";
+const SAVE_REFUSED: &str = "This video changed since you opened it, so this edit can't be saved.";
 const MAKING_LINE: &str = "The link already plays your edit. You can close this window: shroom finishes it.";
 const MAKING_FAILED: &str = "Couldn't make the final video. The link plays your edit anyway, and shroom tries again later.";
 const ASK_TITLE: &str = "Delete the original?";
@@ -149,6 +151,11 @@ fn list(r: &Run) -> EditListView {
 
 fn button(b: &Button) -> (&str, Style, bool) {
     (b.label.as_str(), b.style, b.enabled)
+}
+
+/// Revert to original, where the window offers it (a save the space turned down has none).
+fn revert(b: &EditorBody) -> &Button {
+    b.revert.as_ref().expect("Revert to original")
 }
 
 fn lib_row<'a>(r: &'a Run, title: &str) -> &'a LibraryRowView {
@@ -272,7 +279,7 @@ fn edit_opens_the_editor_on_the_row_and_asks_for_its_record() {
     assert_eq!((b.edited_duration, b.source_duration), (272.4, 272.4), "the row's length until the record answers");
     assert!(b.markers.is_empty());
     assert!(!b.editable && !b.can_undo && !b.can_redo);
-    assert_eq!(button(&b.revert), ("Revert to original", Style::Plain, false));
+    assert_eq!(button(revert(&b)), ("Revert to original", Style::Plain, false));
     assert_eq!(button(&b.done), ("Done", Style::Filled, false));
     assert_eq!(b.done.action, Action::EditorDone);
     assert_eq!((r.scene.ret(Surface::Editor), r.scene.esc(Surface::Editor)), (None, None), "Done waits; Esc is the webview's");
@@ -314,7 +321,7 @@ fn the_record_then_the_video_make_the_editor_live() {
     assert_eq!(b.media, EditorMediaView::Ready { duration: 272.4 });
     assert!(b.editable && !b.can_undo && !b.can_redo);
     assert_eq!(button(&b.done), ("Done", Style::Filled, true));
-    assert_eq!(button(&b.revert), ("Revert to original", Style::Plain, true), "the saved trim and cut can be put back");
+    assert_eq!(button(revert(&b)), ("Revert to original", Style::Plain, true), "the saved trim and cut can be put back");
     assert_eq!(r.scene.ret(Surface::Editor), Some(Action::EditorDone));
     assert!(!r.w.inflight.ops.contains_key(&Op::EditorOpen), "the open answered");
 }
@@ -328,7 +335,7 @@ fn a_video_never_edited_opens_whole() {
     let b = body(&r);
     assert_eq!(b.keep, vec![[0.0, 272.4]]);
     assert_eq!(b.edited_duration, 272.4);
-    assert!(!b.revert.enabled, "nothing to put back");
+    assert!(!revert(&b).enabled, "nothing to put back");
     assert_eq!(r.w.session.fields.editor.as_ref().unwrap().rev, 0);
 }
 
@@ -373,7 +380,7 @@ fn steps_change_the_list_and_undo_and_redo_walk_them() {
     // Revert to original, the button: undoable like any step.
     r.ed(Action::EditorRevert);
     assert_eq!(body(&r).keep, vec![[0.0, 272.4]]);
-    assert!(!body(&r).revert.enabled, "nothing left to put back");
+    assert!(!revert(&body(&r)).enabled, "nothing left to put back");
     r.step(EditStep::Undo);
     assert_eq!(body(&r).keep, vec![[8.0, 241.0]]);
     // A suggestion is applied and put back, never removed.
@@ -419,7 +426,7 @@ fn steps_are_refused_until_ready_while_saving_and_when_the_model_refuses_them() 
     r.step(EditStep::Undo);
     assert_eq!(r.arm.name, "dropped");
     assert_eq!(list(&r), before);
-    assert!(!body(&r).editable && !body(&r).can_undo && !body(&r).revert.enabled);
+    assert!(!body(&r).editable && !body(&r).can_undo && !revert(&body(&r)).enabled);
 
     // No editor at all.
     let mut r = Run::new(library());
@@ -507,7 +514,7 @@ fn saved_with_something_left_out_makes_the_final_video() {
     assert_eq!(b.after, Some(EditorAfterView::Making { pct: 0, line: "Making the final video… 0%".into() }));
     assert_eq!((b.footer.as_str(), b.footer_tone), (MAKING_LINE, LineTone::Plain));
     assert_eq!((button(&b.done), &b.done.action), (("Close", Style::Filled, true), &Action::EditorClose));
-    assert!(!b.editable && !b.can_undo && !b.revert.enabled, "the edit is saved: nothing more to step");
+    assert!(!b.editable && !b.can_undo && !revert(&b).enabled, "the edit is saved: nothing more to step");
     assert_eq!(b.original_kept, None);
     assert_eq!((r.scene.ret(Surface::Editor), r.scene.esc(Surface::Editor)), (Some(Action::EditorClose), Some(Action::EditorClose)));
     assert_eq!(b.keep, vec![[8.0, 20.0], [30.0, 150.0], [162.0, 241.0]], "what plays is what was saved");
@@ -824,6 +831,82 @@ fn a_failed_save_says_so_and_done_tries_again() {
     assert_eq!(face(&r), "editor-save-failed");
 }
 
+// ── a save the space turns down (B199) ──
+
+/// The space turned the save down — the video is gone (another Mac deleted it), or another
+/// Mac made an edit the video while this window was open: nothing can be saved over it.
+/// editor-save-refused says so in amber in the save-failed line's place; Revert to original
+/// is gone, nothing steps, Close stands in Done's place, and Return and Esc are Close.
+#[test]
+fn a_save_the_space_turns_down_says_so_and_only_closes() {
+    let mut r = dirty();
+    r.ed(Action::EditorDone);
+    r.send(Event::Failed { op: Op::EditorSave, class: FailClass::Refused });
+    assert_eq!(r.arm.edge, Some(("editor-saving", "editor-save-refused")));
+    assert_eq!(face(&r), "editor-save-refused");
+    let b = body(&r);
+    assert_eq!((b.footer.as_str(), b.footer_tone), (SAVE_REFUSED, LineTone::Amber));
+    assert_eq!((button(&b.done), &b.done.action), (("Close", Style::Filled, true), &Action::EditorClose));
+    assert_eq!(b.revert, None, "Revert to original is gone");
+    assert!(!b.editable && !b.can_undo && !b.can_redo, "nothing steps");
+    assert_eq!((b.after.clone(), b.original_kept.clone()), (None, None));
+    assert_eq!(b.keep, vec![[8.0, 20.0], [30.0, 150.0], [162.0, 241.0]], "the edit still plays as it stood");
+    assert_eq!((r.scene.ret(Surface::Editor), r.scene.esc(Surface::Editor)), (Some(Action::EditorClose), Some(Action::EditorClose)));
+    assert!(!r.w.inflight.failures.contains_key(&Op::EditorSave), "nothing tries again behind it");
+    r.op(EditOp::Cut { start: 40.0, end: 50.0 });
+    assert_eq!(r.arm.name, "dropped");
+    r.ed(Action::EditorDone);
+    assert_eq!(r.arm.name, "dropped", "Done isn't offered");
+    assert!(r.effects.is_empty());
+
+    // An earlier edit's original still counted down when it opened: nothing is said of it.
+    let mut r = kept_for(with_copy(3), 20 * HOUR);
+    r.op(EditOp::Cut { start: 20.0, end: 30.0 });
+    r.ed(Action::EditorDone);
+    r.send(Event::Failed { op: Op::EditorSave, class: FailClass::Refused });
+    assert_eq!((face(&r), body(&r).original_kept), ("editor-save-refused", None));
+}
+
+/// Close, Return, Esc and ✕ close it, and nothing is saved.
+#[test]
+fn a_refused_save_closes_without_saving() {
+    for close in [
+        Event::Act { surface: Surface::Editor, action: Action::EditorClose, rev: 0 },
+        Event::Key { surface: Surface::Editor, key: Key::Return },
+        Event::Key { surface: Surface::Editor, key: Key::Esc },
+        Event::WindowClosed(WindowKind::Editor),
+    ] {
+        let mut r = dirty();
+        r.ed(Action::EditorDone);
+        r.send(Event::Failed { op: Op::EditorSave, class: FailClass::Refused });
+        r.send(close.clone());
+        assert!(r.effects.is_empty(), "{close:?}: nothing is saved — {:?}", r.effects);
+        assert_eq!(r.arm.edge, Some(("editor-save-refused", "library")), "{close:?}");
+        assert!(r.scene.editor.is_none() && r.w.session.fields.editor.is_none(), "{close:?}");
+        assert!(r.scene.library.is_some(), "{close:?}: the Library stays");
+    }
+}
+
+/// Turned down on Done's retry after a save that couldn't get through: the same face. Any
+/// failure but a refusal stays editor-save-failed's, and Done tries again.
+#[test]
+fn only_a_refusal_is_final() {
+    let mut r = dirty();
+    r.ed(Action::EditorDone);
+    r.send(Event::Failed { op: Op::EditorSave, class: FailClass::Transport });
+    assert_eq!(face(&r), "editor-save-failed");
+    r.ed(Action::EditorDone);
+    assert_eq!(face(&r), "editor-saving");
+    r.send(Event::Failed { op: Op::EditorSave, class: FailClass::Refused });
+    assert_eq!(r.arm.edge, Some(("editor-saving", "editor-save-refused")));
+    for class in [FailClass::Transport, FailClass::Timeout, FailClass::Panicked, FailClass::Unclassified] {
+        let mut r = dirty();
+        r.ed(Action::EditorDone);
+        r.send(Event::Failed { op: Op::EditorSave, class });
+        assert_eq!(face(&r), "editor-save-failed", "{class:?}");
+    }
+}
+
 // ── the video that can't come ──
 
 /// The fetch failed: one line and Try again where the timeline goes, Close (Return, Esc, ✕)
@@ -1036,7 +1119,7 @@ fn the_time_the_original_has_left_sits_by_revert() {
         let r = kept_for(with_copy(3), left);
         assert_eq!(body(&r).original_kept.as_deref(), Some(words), "{left} ms left");
         assert_eq!(face(&r), "editor");
-        assert!(body(&r).revert.enabled, "Revert works while it's kept");
+        assert!(revert(&body(&r)).enabled, "Revert works while it's kept");
     }
 }
 
@@ -1508,6 +1591,16 @@ fn the_slice_is_the_webviews_json() {
     r.ed(Action::EditorDone);
     r.send(Event::Failed { op: Op::EditorSave, class: FailClass::Transport });
     assert_eq!(serde_json::to_value(&r.scene.editor.as_ref().unwrap().body).unwrap()["footer_tone"], "amber");
+
+    // A save the space turned down (B199): no Revert, Close in Done's place, Return and Esc
+    // Close.
+    let mut r = dirty();
+    r.ed(Action::EditorDone);
+    r.send(Event::Failed { op: Op::EditorSave, class: FailClass::Refused });
+    let v = serde_json::to_value(r.scene.editor.as_ref().unwrap()).unwrap();
+    assert_eq!((v["body"]["revert"].clone(), v["body"]["footer_tone"].clone()), (serde_json::Value::Null, json!("amber")));
+    assert_eq!(v["body"]["done"]["action"], json!({ "do": "editor-close" }));
+    assert_eq!((v["ret"].clone(), v["esc"].clone()), (json!({ "do": "editor-close" }), json!({ "do": "editor-close" })));
 
     // After the save (B197): the final video's bar, its failure, then the question.
     let mut r = dirty();

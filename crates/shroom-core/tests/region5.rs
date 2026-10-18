@@ -515,6 +515,8 @@ fn rows() -> Vec<(&'static str, World)> {
         w
     }));
     rows.push(("editor-save-failed", editor_open(live(), EditorSave::Failed, true)));
+    // The space turned the save down (B199): nothing to save over, Close only.
+    rows.push(("editor-save-refused", editor_open(live(), EditorSave::Refused, true)));
     rows.push(("editor", {
         // Edited again while an earlier edit's original is kept (B197 (e)): 30 hours left,
         // a day as the line says it (B199).
@@ -671,9 +673,10 @@ fn every_region5_state_derives_with_its_return_default_and_its_lines() {
             if scene.ret(surface) != want {
                 failures.push(format!("{id}: Return is {:?}, want {want:?}", scene.ret(surface)));
             }
-            // After a save, Esc is Close — Keep for 2 days on the question (B197 (b)).
+            // After a save, Esc is Close — Keep for 2 days on the question (B197 (b)) — and on
+            // a save the space turned down, Close too (B199).
             let want_esc = match id {
-                "editor-cant-get" | "editor-making" | "editor-making-failed" => Some(Action::EditorClose),
+                "editor-cant-get" | "editor-making" | "editor-making-failed" | "editor-save-refused" => Some(Action::EditorClose),
                 "editor-keep-original" => Some(Action::KeepOriginal),
                 _ => None,
             };

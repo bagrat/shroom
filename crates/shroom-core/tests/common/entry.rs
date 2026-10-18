@@ -129,6 +129,7 @@ pub const READS: &[Read] = &[
     r("editor-cant-get", "The fetch in editor-getting failed."),
     r("editor-saving", "Done (or ✕) in editor with changes, or Done again in editor-save-failed."),
     r("editor-save-failed", "A save from editor-saving failed."),
+    r("editor-save-refused", "A save from editor-saving the space turned down"),
     r("editor-making", "The save landed in editor-saving with something left out."),
     r("editor-making-failed", "Making the final video failed in editor-making."),
     r("editor-keep-original", "The final video landed while the editor was open."),
@@ -669,13 +670,13 @@ fn feedback(w: &World) -> Option<Win> {
 }
 
 /// The editor, open from a live row's Edit… once a space exists (N63), its state by the
-/// fixtures' entries: Done with changes is saving until the save answers, and “a save from
-/// editor-saving failed” rests on its own face; “the save landed … with something left
-/// out” is the final video being made, “making the final video failed” its own face, and
-/// “the final video landed while the editor was open” the question (B197); before any
-/// save, the video “isn't on this Mac” while the space hands it over, “the fetch … failed”
-/// when it didn't, and otherwise the editor itself — the video here, or its record still
-/// being read.
+/// fixtures' entries: Done with changes is saving until the save answers, “a save from
+/// editor-saving failed” rests on its own face, and one “the space turned down” on its own
+/// (B199); “the save landed … with something left out” is the final video being made,
+/// “making the final video failed” its own face, and “the final video landed while the
+/// editor was open” the question (B197); before any save, the video “isn't on this Mac”
+/// while the space hands it over, “the fetch … failed” when it didn't, and otherwise the
+/// editor itself — the video here, or its record still being read.
 fn editor(w: &World) -> Option<Win> {
     if !shows(w, WindowKind::Editor) || !has_space(w) {
         return None;
@@ -684,6 +685,7 @@ fn editor(w: &World) -> Option<Win> {
     let id = match (e.save, e.media) {
         (EditorSave::Saving, _) => "editor-saving",
         (EditorSave::Failed, _) => "editor-save-failed",
+        (EditorSave::Refused, _) => "editor-save-refused",
         (EditorSave::Making { .. }, _) => "editor-making",
         (EditorSave::MakingFailed, _) => "editor-making-failed",
         (EditorSave::Asking, _) => "editor-keep-original",
