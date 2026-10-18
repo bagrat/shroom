@@ -121,6 +121,38 @@ describe("the owner page shows the voice cuts under the player (owner-page-cuts)
     expect(row).toContain(`>${html(say("cut-again"))}</button>`);
   });
 
+  it("gives a cut changed in the editor its length and where it now ends, in place of its words", async () => {
+    // v1 dragged to 4.4–9.0 s and the offered v4 to 160.0–166.5 s in the editor (its resize
+    // sets `adjusted`, N63): the words they carry are the ones first heard.
+    const moved = { v1: { start: 4.4, end: 9.0 }, v4: { start: 160.0, end: 166.5 } };
+    const edits = { ...EDITS, cuts: EDITS.cuts.map((c) => (moved[c.id] ? { ...c, ...moved[c.id], adjusted: true } : c)) };
+    const env = space({ [`meta/${ID}.json`]: metaOf({ edits }) });
+    const body = await page(env, await cookieFor(env));
+    const row = body.match(/<li[^>]*data-cut="v1"[^>]*>[\s\S]*?<\/li>/)?.[0] ?? "";
+    expect(row).toContain('class="cut on"');
+    expect(row).toContain("0:04");
+    // The board's own numbers (OwnerPageCutAdjusted): 4.6 s, ending at 0:09.
+    expect(row).toContain(html(say("changed-length")));
+    expect(row).toContain(html(say("changed-in-the-editor")));
+    // None of the words it was first heard with, nor a quote around them.
+    expect(row).not.toContain("<q>");
+    for (const w of ["Hello, that is shroom.", "Hello, this is shroom."]) expect(row).not.toContain(w);
+    expect(row).toContain(`>${html(say("put-back"))}</button>`);
+    // An offered one keeps its note and Cut it too.
+    const offer = body.match(/<li[^>]*data-cut="v4"[^>]*>[\s\S]*?<\/li>/)?.[0] ?? "";
+    expect(offer).toContain('class="cut offer"');
+    expect(offer).toContain(html(say("only-the-words-went")));
+    expect(offer).toContain("6.5 s, to 2:46");
+    expect(offer).not.toContain("The second one is");
+    expect(offer).toContain(`>${html(say("cut-it-too"))}</button>`);
+    // Its cue's own cut no longer lies inside it: two cuts now, two rows.
+    expect(body).toMatch(/data-cut="v3"/);
+    // A row not changed still quotes its words.
+    const v2 = body.match(/<li[^>]*data-cut="v2"[^>]*>[\s\S]*?<\/li>/)?.[0] ?? "";
+    expect(own(v2)).toBe("Then you pick the, the window you, um, shroom cut.");
+    expect(v2).not.toContain(html(say("changed-in-the-editor")));
+  });
+
   it("leaves hand cuts to the editor: no row for them", async () => {
     const env = space();
     const body = await page(env, await cookieFor(env));
@@ -220,6 +252,14 @@ describe("a press saves at once (POST /_shroom/edits/<id>)", () => {
     expect(meta.edits.rev).toBe(EDITS.rev + 1);
     expect(meta.edits.voice).toEqual(EDITS.voice);
     expect(meta).toMatchObject({ title: "Setting up shroom", state: "live", owner: "m1" });
+  });
+
+  it("keeps what the editor made of a cut: its moved edges and its `adjusted`", async () => {
+    const edits = { ...EDITS, cuts: EDITS.cuts.map((c) => (c.id === "v1" ? { ...c, start: 4.4, end: 9.0, adjusted: true } : c)) };
+    const env = space({ [`meta/${ID}.json`]: metaOf({ edits }) });
+    const cookie = await cookieFor(env);
+    expect((await post(env, `/_shroom/edits/${ID}`, { cut: "v1", applied: false }, cookie)).status).toBe(200);
+    expect(stored(env).edits.cuts.find((c) => c.id === "v1")).toEqual({ ...edits.cuts[0], applied: false });
   });
 
   it("Cut it too applies the offered line, and Cut again puts a cut back in", async () => {
