@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Writes the editor's extra canvas boards into <root>/project/: EditorCuts, EditorStates, EditorAfterSave and PausedMarker.
+"""Writes the editor's extra canvas boards into <root>/project/: EditorCuts, EditorStates, EditorAfterSave, PausedMarker and EditorCutEdges.
 
 They draw what the "Editing (a proposal)" boards leave out (DECISIONS B195): Undo and
 Redo, a cut put back, the video fetched from the space, saving, and a save that did not
@@ -121,8 +121,9 @@ def transport(now, total, was=None):
             f'<span style="font-variant-numeric: tabular-nums">{now} / {total}</span>{was_s}</div>')
 
 
-def timeline(w, total_s, cuts=(), offered=(), trim=None, markers=(), playhead=None, select=None, seed=7):
-    """The timeline: ruler, waveform, cuts (red), offered cuts (amber), trim handles."""
+def timeline(w, total_s, cuts=(), offered=(), trim=None, markers=(), playhead=None, select=None, seed=7, extra=()):
+    """The timeline: ruler, waveform, cuts (red), offered cuts (amber), trim handles; `extra`
+    is drawn over the rest, in the track's own coordinates."""
     x = lambda t: t / total_s * w
     quiet = [(a / total_s, b / total_s) for a, b in []]
     wav = waveform(w, 66, bars(int(w / 4), seed, quiet))
@@ -154,6 +155,7 @@ def timeline(w, total_s, cuts=(), offered=(), trim=None, markers=(), playhead=No
         layers.append(f'<div style="position: absolute; left: {x(t) - 1:.0f}px; top: -16px; bottom: 0; border-left: 1px dashed {ACCENT}"><div style="position: absolute; left: 0; top: 0">{flag(ACCENT)}</div></div>')
     if playhead is not None:
         layers.append(f'<div style="position: absolute; left: {x(playhead):.0f}px; top: -8px; bottom: -8px; width: 2px; background: {FG}"><span style="position: absolute; left: -5px; top: -4px; width: 12px; height: 12px; border-radius: 6px; background: {FG}; display: block"></span></div>')
+    layers.extend(extra)
     return (f'<div style="width: {w}px; display: flex; flex-direction: column; gap: 10px; flex: none">'
             f'<div style="position: relative; height: 18px">{"".join(ticks)}</div>'
             f'<div style="position: relative; height: 66px; border-radius: 6px; background: {FIELD}">{wav}{"".join(layers)}</div></div>')
@@ -291,6 +293,71 @@ def board_paused_marker():
     return page("shroom Popover, paused, a marker dropped", 1100, 360, body)
 
 
+def edge_handle(left, colour=RED):
+    """A cut's edge under the pointer: a wider bar with a grip, the full height of the sound."""
+    return (f'<div style="position: absolute; left: {left - 4:.0f}px; top: -6px; bottom: -6px; width: 8px; border-radius: 4px; background: {colour}; box-shadow: 0 0 0 2px rgba(31, 34, 40, 0.9); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px">'
+            + "".join(f'<span style="width: 2px; height: 2px; border-radius: 1px; background: {BG}; display: block"></span>' for _ in range(3)) + '</div>')
+
+
+def resize_cursor(left, top=24):
+    """macOS's resize pointer (↔ with a bar), drawn where the pointer is."""
+    path = '<path d="M11 2v18"></path><path d="M7 11H2m0 0l3-3m-3 3l3 3M15 11h5m0 0l-3-3m3 3l-3 3"></path>'
+    return (f'<svg viewBox="0 0 22 22" aria-hidden="true" style="position: absolute; left: {left - 11:.0f}px; top: {top}px; width: 22px; height: 22px; overflow: visible; fill: none; stroke-linecap: round; stroke-linejoin: round">'
+            f'<g stroke="#1f2228" stroke-width="4">{path}</g><g stroke="{FG}" stroke-width="1.6">{path}</g></svg>')
+
+
+def ghost(left):
+    """Where the edge was when the drag began."""
+    return f'<div style="position: absolute; left: {left - 1:.0f}px; top: 0; bottom: 0; border-left: 2px dotted {FG3}; opacity: 0.8"></div>'
+
+
+def chip_at(centre, label, colour=RED, ink=BG, icon=True):
+    """The chip under what's selected or dragged."""
+    sc = scissors(ink, 12) if icon else ""
+    return (f'<div style="position: absolute; left: {centre - 58:.0f}px; top: 76px; display: flex; flex-direction: row; gap: 6px; padding: 4px; border-radius: 8px; background: {MENU}; border: 1px solid rgba(255, 255, 255, 0.12); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35)">'
+            f'<button style="font: inherit; height: 26px; padding: 0 10px; border: 0; border-radius: 6px; background: {colour}; color: {ink}; font-weight: 600; display: flex; flex-direction: row; align-items: center; gap: 6px; white-space: nowrap">{sc}{label}</button></div>')
+
+
+def board_cut_edges():
+    w, total = 1004, 60
+    x = lambda t: t / total * w
+    cuts, trim = [(20, 28), (36, 40)], (3, 55)
+    tl = lambda width=w, **k: timeline(width, total, trim=trim, seed=11, **{"cuts": cuts, **k})
+    hover = tl(extra=[edge_handle(x(28)), resize_cursor(x(28) + 18)])
+    # Dragging the right edge out to 30.4 s: the cut grows, the chip says how long it is now, the
+    # picture shows the frame at the edge.
+    wd = 760
+    xd = lambda t: t / total * wd
+    drag = timeline(wd, total, cuts=[(20, 30.4), (36, 40)], trim=trim, seed=11,
+                    extra=[ghost(xd(28)), edge_handle(xd(30.4)), resize_cursor(xd(30.4) + 14), chip_at(xd(25.2), "Cut 10.4 s")])
+    frame = (f'<div style="display: flex; flex-direction: column; gap: 6px; flex: none">{preview(214, 120, "0:30.4")}'
+             f'<span style="color: {DIM}; font-size: 12px">the picture follows the edge</span></div>')
+    # It stops: flush against the next cut, and at the trim's end.
+    wh = 470
+    xh = lambda t: t / total * wh
+    at_cut = timeline(wh, total, cuts=[(20, 36), (36, 40)], trim=trim, seed=11, extra=[edge_handle(xh(36)), resize_cursor(xh(36) + 14)])
+    at_end = timeline(wh, total, cuts=[(20, 28), (36, 55)], trim=trim, seed=11, extra=[edge_handle(xh(55)), resize_cursor(xh(55) - 18)])
+    stops = (f'<div style="display: flex; flex-direction: row; gap: 64px">'
+             f'<div style="display: flex; flex-direction: column; gap: 8px">{at_cut}<span style="color: {DIM}; font-size: 12px; padding-top: 4px">at the next cut: they touch and stay two cuts</span></div>'
+             f'<div style="display: flex; flex-direction: column; gap: 8px">{at_end}<span style="color: {DIM}; font-size: 12px; padding-top: 4px">at the yellow end of the trim</span></div></div>')
+    # Let go: one step. The cut stays picked, Put back says its new length; Undo puts the edge back.
+    done = tl(cuts=[(20, 30.4), (36, 40)], extra=[])
+    done = done[: done.rfind("</div></div>")] + put_back_chip((x(20) + x(30.4)) / 2, 10.4) + "</div></div>"
+    undo_row = (f'<div style="display: flex; flex-direction: row; align-items: center; gap: 10px; justify-content: flex-end">'
+                f'<span style="color: {DIM}; font-size: 12px">Undo (⌘Z) puts the edge back where it was; Redo moves it again</span>{icon_button("Undo", UNDO)}{icon_button("Redo", REDO, enabled=False)}</div>')
+    # A suggestion (dashed amber) the same way: its edges move, it stays offered, Cut it too takes it as it now is.
+    offered = timeline(w, total, cuts=cuts, offered=[(42.5, 49)], trim=trim, seed=11,
+                       extra=[ghost(x(44)), edge_handle(x(42.5), AMBER), resize_cursor(x(42.5) - 18), chip_at((x(42.5) + x(49)) / 2, "Cut it too")])
+    body = f'''<div style="flex: 1 1 0; padding: 24px; display: flex; flex-direction: column; gap: 22px">
+{strip("A cut's edge under the pointer: the pointer becomes ↔ and the edge stands out (either edge of any red cut)", f'<div style="padding-top: 26px">{hover}</div><div style="height: 18px"></div>')}
+{strip("Dragging it: the cut grows or shrinks as it goes, its chip says the length it has now, and the picture shows the frame at the edge", f'<div style="display: flex; flex-direction: row; gap: 30px; align-items: flex-start">{frame}<div style="padding-top: 26px">{drag}</div></div><div style="height: 22px"></div>')}
+{strip("It stops where a part already goes: at the next cut, the end of the trim, a tenth of a second from its other edge, or where a second would be all that's left", f'<div style="padding-top: 26px">{stops}</div>')}
+{strip("Let go: one step, like any other. The cut stays picked, and Put back says its new length", f'<div style="padding-top: 26px">{done}</div><div style="height: 30px"></div>{undo_row}')}
+{strip("A suggestion (dashed) moves the same way: it stays a suggestion, and Cut it too takes it as it now is", f'<div style="padding-top: 26px">{offered}</div><div style="height: 30px"></div>')}
+</div>'''
+    return page("shroom Editor, adjusting a cut", 1100, 1290, body)
+
+
 def mini(title, inner, w):
     return (f'<div style="width: {w}px; display: flex; flex-direction: column; gap: 10px; flex: none">'
             f'<span style="color: {MUTED}; font-size: 12px">{title}</span>{inner}</div>')
@@ -303,6 +370,7 @@ def main():
     (root / "EditorStates.dc.html").write_text(board_states())
     (root / "PausedMarker.dc.html").write_text(board_paused_marker())
     (root / "EditorAfterSave.dc.html").write_text(board_after_save())
+    (root / "EditorCutEdges.dc.html").write_text(board_cut_edges())
 
 
 if __name__ == "__main__":
