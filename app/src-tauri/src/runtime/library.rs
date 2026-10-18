@@ -243,9 +243,8 @@ pub fn parse_iso(s: &str) -> Option<i64> {
     Some(((days * 86_400 + h * 3_600 + mi * 60 + sec) * 1_000) + ms)
 }
 
-/// A record as the core knows a Library row (its poster as `rows_of` finds it). The edited
-/// length (N63) isn't in the cached row yet (`shroom_upload::library::Row` doesn't carry the
-/// record's `edits`): the core keeps the length a save of this Mac's gave it.
+/// A record as the core knows a Library row (its poster as `rows_of` finds it), its edited
+/// length when the record holds an edit that leaves something out (N63).
 pub fn row(r: &Row) -> LibraryRow {
     LibraryRow {
         rec: RecId(r.id.clone()),
@@ -255,8 +254,26 @@ pub fn row(r: &Row) -> LibraryRow {
         live: r.state == State::Live,
         owner: r.owner.clone(),
         poster: false,
-        edited_ms: None,
+        edited_ms: r.edited_sec.filter(|s| s.is_finite() && *s >= 0.0).map(|s| (s * 1000.0).round() as u64),
     }
+}
+
+/// The records this Mac's Library shows, as cached, each with its owner as the rows read it
+/// (a token Mac's from the ledger it learned): what the editor's upkeep walks (B197 (d)).
+pub(super) fn cached(rt: &Runtime, space: &SpaceIdentity) -> Vec<Row> {
+    let file = load_file(rt, space);
+    let token = super::uploader::token_door(rt, space).is_some();
+    file.cache
+        .visible()
+        .into_iter()
+        .map(|r| {
+            let mut r = r.clone();
+            if token {
+                r.owner = file.owners.get(&r.id).cloned();
+            }
+            r
+        })
+        .collect()
 }
 
 /// What the core is told after a write or a refresh: the file as it now stands.
@@ -429,16 +446,8 @@ fn refresh_device(rt: &Runtime, space: &SpaceIdentity, key: &DeviceKey, page: &S
             let meta = item.meta.and_then(shroom_upload::meta::listed);
             match meta {
                 Some(m) => {
-                    let row = Row {
-                        id: item.id.clone(),
-                        title: m.title,
-                        state: m.state,
-                        created_at: m.created_at,
-                        duration_sec: m.duration_sec,
-                        // The ledger's owner, never the record's (member-writable, H3).
-                        owner: Some(item.owner),
-                        poster: m.media.and_then(|x| x.poster),
-                    };
+                    // The ledger's owner, never the record's (member-writable, H3).
+                    let row = Row { id: item.id.clone(), owner: Some(item.owner), ..Row::of(&m) };
                     if cache.rows.insert(item.id, (item.etag, row)).is_some() {
                         changed += 1;
                     } else {
@@ -833,7 +842,7 @@ mod tests {
             foreign_v: false,
         };
         rt.home.write_json("token.json", &serde_json::json!({ "v": 1, "token": "t", "account_id": "acct" })).unwrap();
-        let rec = |id: &str, forged: Option<&str>| Row { id: id.into(), title: id.into(), state: State::Live, created_at: "2026-10-02T12:00:00Z".into(), duration_sec: None, owner: forged.map(Into::into), poster: None };
+        let rec = |id: &str, forged: Option<&str>| Row { id: id.into(), title: id.into(), state: State::Live, created_at: "2026-10-02T12:00:00Z".into(), duration_sec: None, owner: forged.map(Into::into), poster: None, edited_sec: None, poster_file: None };
         let mut file = CacheFile { v: 1, space: space_key(&space), ..CacheFile::default() };
         file.cache.rows.insert("mine".into(), ("e".into(), rec("mine", None)));
         file.cache.rows.insert("forged".into(), ("e".into(), rec("forged", Some("m1"))));
@@ -854,11 +863,16 @@ mod tests {
             duration_sec: Some(272.4),
             owner: Some("m1".into()),
             poster: None,
+            edited_sec: None,
+            poster_file: None,
         };
         let l = row(&r);
         assert_eq!(l.rec, RecId("AbCd".into()));
         assert_eq!(l.length_ms, Some(272_400));
+        assert_eq!(l.edited_ms, None);
         assert!(l.live);
+        // An edit that leaves something out: the row reads its length after every refresh.
+        assert_eq!(row(&Row { edited_sec: Some(221.04), ..r.clone() }).edited_ms, Some(221_040));
         assert_eq!(l.created, Wall(parse_iso("2026-08-21T12:00:00Z").unwrap()));
         assert!(!row(&Row { state: State::Uploading, duration_sec: Some(f64::NAN), ..r }).live);
     }

@@ -510,7 +510,7 @@ fn seed_videos(s3: &Client) -> Result<(), String> {
         m.published_at = Some(at.into());
         m.duration_sec = Some(secs);
         m.owner = Some("m1".into());
-        m.media = Some(meta::Media { hls: keys::master(id), mp4: None, poster: None, teaser: None, width: 1920, height: 1080 });
+        m.media = Some(meta::Media { hls: Some(keys::master(id)), mp4: None, poster: None, teaser: None, width: 1920, height: 1080 });
         s3.put(&keys::master(id), b"#EXTM3U\n", "application/vnd.apple.mpegurl").map_err(|e| e.to_string())?;
         s3.put(&format!("{}v0/seg0.m4s", keys::prefix(id)), &[0u8; 512], "video/iso.segment").map_err(|e| e.to_string())?;
         s3.put(&keys::meta(id), &serde_json::to_vec(&m).map_err(|e| e.to_string())?, "application/json").map_err(|e| e.to_string())?;
@@ -1146,7 +1146,7 @@ fn seed_edit_video(s3: &Client, (id, title): (&str, &str), video: &std::path::Pa
     m.duration_sec = Some(length);
     m.owner = Some("m1".into());
     m.markers = (!markers.is_empty()).then(|| markers.to_vec());
-    m.media = Some(meta::Media { hls: keys::master(id), mp4: Some(keys::mp4(id)), poster: Some(keys::poster(id)), teaser: None, width: 1280, height: 720 });
+    m.media = Some(meta::Media { hls: Some(keys::master(id)), mp4: Some(keys::mp4(id)), poster: Some(keys::poster(id)), teaser: None, width: 1280, height: 720 });
     let e = |e: shroom_storage::s3::S3Error| e.to_string();
     s3.put(&keys::master(id), b"#EXTM3U\n", "application/vnd.apple.mpegurl").map_err(e)?;
     s3.put_file(&keys::mp4(id), video, "video/mp4", shroom_upload::upload::SINGLE_PUT_MAX, shroom_upload::upload::PART_SIZE).map_err(e)?;
