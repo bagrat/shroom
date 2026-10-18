@@ -229,16 +229,23 @@ answered by a person as a fresh principal, stay with §8.
 
 *The `shroom` command (spec N62; DECISIONS B215–B219):* **L0** — its unit tests, and
 `tests/voice.rs` (every line it says is in `say.rs`); the core's `tests/cli.rs` (every
-recording ask, in every moment of a take, answered once as the click it stands for). **L1** —
+recording ask, in every moment of a take, answered once as the click it stands for; the
+refusal's settings link: General at the switch, lit, never flipped, nothing mid-take), and
+the enumeration sending that link from every face. **L1** — `record.rs` (the refusal's
+three lines and `settings_link`, against a stand-in socket);
 `crates/shroom-cli/tests/space.rs` on the real `worker.js` (`worker/dev/serve.mjs`: list,
 find, rename, delete with its tombstone and seal, invites, removal, batches and their
 re-runs); `cleanup.rs` on a stand-in for the page's cleanup suggestions; `flavor.rs` (a
 bundle's command reads its own app's folder, through its link too); `site/test/cli.test.mjs`
-(the guide held to `main.rs` and `out.rs`); the cask's renderer (`installer/test/cask.test.mjs`).
-**L2** — on the hosted Mac, `cli-socket` (the bundled command, the socket's mode, the switch's
-refusal, opening the app) and the `settings` drive's switch (kept in `prefs.json`, the ask let
-through and refused again); and the full e2e's command leg (`tests/e2e/cli-leg.mjs`): on PATH
-from the install line, refused until the switch is on, then a take it starts, pauses,
+(the guide held to `main.rs` and `out.rs`); the cask's renderer (`installer/test/cask.test.mjs`);
+the windows gallery's General with the switch lit.
+**L2** — on the hosted Mac, `cli-socket` (the bundled command, the socket's mode, set up
+first, the switch's refusal, opening the app), `settings-link` (the refusal's link opened
+with the app, cold and warm: Settings on screen at the switch, the switch still off) and the
+`settings` drive's switch (kept in `prefs.json`, the ask let through and refused again, the
+link's light on and off); and the full e2e's command leg (`tests/e2e/cli-leg.mjs`): on PATH
+from the install line, refused until the switch is on (the link followed, nothing flipped),
+then a take it starts, pauses,
 resumes and stops, renamed and deleted, on the test account. A real `brew install` linking
 the command waits for the first release that carries it (B217).
 

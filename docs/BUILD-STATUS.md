@@ -42,8 +42,8 @@
 5. **The `shroom` command for coding agents is built** (N62, provisional; B215–B219;
    [#58](https://github.com/bagrat/shroom/pull/58) *(the shroom command for coding agents)*):
    the command inside the app and on PATH, many at once, the app's control socket behind
-   General's switch, the guide at shroom.am/cli. Open for review; when it ships is his
-   call (item 37).
+   General's switch — its refusal carrying the link that opens Settings at the switch — and
+   the guide at shroom.am/cli. Open for review; when it ships is his call (item 37).
 
 
 ## Waiting for Bagrat
@@ -291,8 +291,11 @@ retired, B148.)
     item: [`history/build-status/waiting-35-36.md`](../history/build-status/waiting-35-36.md).
 
 37. **The `shroom` command (N62, B215–B219), built in full on his ask (2026-10-18).** To
-    ratify: N62 and its decisions; the command's words (`crates/shroom-cli/src/say.rs`) and
-    the guide (`site/cli.md`), both in the copy awaiting ratification; and when it ships —
-    merging deploys shroom.am/cli, and the cask links the command from the first release
-    that carries it. Proven: CI, the hosted Mac's `cli-socket` and `settings` drive, and the
-    full e2e's command leg on the test account.
+    ratify: N62 and its decisions; the command's words (`crates/shroom-cli/src/say.rs`) —
+    the recording refusal's three lines drawn on the canvas's “The shroom command —
+    recording off” board for his OK — and the guide (`site/cli.md`), both in the copy
+    awaiting ratification; whether to seal General's switch before release (B216: today it
+    is the person's consent, not a wall against code already running as them); and when it
+    ships — merging deploys shroom.am/cli, and the cask links the command from the first
+    release that carries it. Proven: CI, the hosted Mac's `cli-socket`, `settings-link` and
+    `settings` drive, and the full e2e's command leg on the test account.

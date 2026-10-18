@@ -306,10 +306,15 @@ the flavor's home: the socket 600 in the 700 folder, each connection's peer uid 
 (`getpeereid`), one JSON line each way, at most 1 KB in: `{"v":1,"op":"record.start"}`
 (`.pause`, `.resume`, `.stop`) → `{"ok", "take", "error"?, "link"?}`. The runtime holds the
 connection and posts `Event::Cli {id, op}` (a start posts fresh `Os(Grants)` first, as the
-popover's does); the core answers each once with `Effect::Cli` — a code, never words, and
-`recording_off` for all four while General's switch (`Prefs.agent_recording`) is off.
-Otherwise each ask is its click (the popover's Start, open or not; the tray's pause; the
-paused popover's Resume and Stop); a stop answers with its link and copies nothing.
+popover's does); the core answers each once with `Effect::Cli` — a code, never words:
+`not_set_up` for all four on a Mac with no space, then `recording_off` while General's
+switch (`Prefs.agent_recording`) is off. Otherwise each ask is its click (the popover's
+Start, open or not; the tray's pause; the paused popover's Resume and Stop); a stop answers
+with its link and copies nothing. The command words `recording_off` with the settings link,
+`shroom://settings/agent`: it reaches the app as any link it's opened with
+(`RunEvent::Opened` → `runtime::opened`, held until the core is up) and the core as
+`Event::SettingsLink` — Settings on General, the switch's row lit for a moment
+(`SettingsFields.lit`); it never flips the switch, and mid-take it opens nothing.
 
 **Law 13 by type.** No Scene field can hold a secret; `Secret` is not `Serialize` and `Debug`
 redacts. The `?k=` URL exists only inside `OpenOwnerPage`, opened through NSWorkspace. A

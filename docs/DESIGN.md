@@ -41,6 +41,7 @@ Board titles read "Surface — state" (e.g. "Popover — paused", "The page — 
 | Popover, tray, countdown, bubble | `app/src/Popover.svelte`, `app/src/popover/`, `app/countdown.html` (the tray and bubble are native: `app/src-tauri/`) |
 | Setup and joining | `app/src/Onboarding.svelte`, `app/src/onboarding/`, `app/src/join/` |
 | Library and Settings | `app/src/library/`, `app/src/settings/`, `app/src/members/` |
+| The shroom command (“The shroom command — recording off…”) | its words, `crates/shroom-cli/src/say.rs`; the switch's light, `app/src/settings/General.svelte` |
 | The page, embed, invite page | `worker/src/worker.js` |
 | shroom.am (the boards “shroom.am — the index page, as built” and “shroom.am on a phone, as built”) | `site/index.html`; the other pages' header and footer, and what's new, `site/build.mjs` (`HEADER`, `FOOTER`, `whatsNewPage`) |
 | Tokens (both themes) | `app/src/lib/theme.css` |

@@ -104,7 +104,9 @@ The competitor comparison is in shroom-private (`strategy/research/`), not here.
     (`getpeereid`).
   - **What the core does with an ask.** It answers `Event::Cli` with `Effect::Cli`
     (`crates/shroom-core/src/apply.rs:cli`):
-    - **refused** with `recording_off` while General's switch is off;
+    - **refused** with `not_set_up` on a Mac with no space, then with `recording_off` while
+      General's switch is off — the command's words carry `shroom://settings/agent`, which
+      opens Settings at the switch, lit, and never flips it (Bagrat, 2026-10-18; B216);
     - **start** is the popover's Start, exactly as if the popover were open: its
       countdown, its permission beat, its grants re-read first;
     - **pause** is the tray's pause;
@@ -122,8 +124,9 @@ The competitor comparison is in shroom-private (`strategy/research/`), not here.
     was answered `not_set_up` (that throwaway home has no space).
   - **Not yet shown:** a take started through the socket in a wired space. That needs the
     test account's e2e space (the heartbeat's setup).
-  - Rejected: the `shroom://` URL scheme. Any web page can fire it, and nothing comes
-    back.
+  - Rejected for the asks: the `shroom://` URL scheme. Any web page can fire it, and
+    nothing comes back. (The refusal's settings link is one: it only opens Settings at the
+    switch, so a page that fires it changes nothing.)
   - Rejected: localhost HTTP. It needs a token file, and it is reachable from more than
     this user.
   - Rejected: XPC with signature checks. It is the strongest option, but heavy for a
