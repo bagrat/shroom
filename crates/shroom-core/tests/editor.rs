@@ -1770,7 +1770,10 @@ fn markers_show_as_flags_in_the_editor() {
 /// walked above, where `Run::send` holds it to the machine) — but the one the facts derive.
 #[test]
 fn every_editor_edge_is_named_by_an_arm() {
-    const DERIVED: &[(&str, &str, &str)] = &[("library", "editor-getting", "Edit… names library → editor; the lane's Getting news turns the face")];
+    const DERIVED: &[(&str, &str, &str)] = &[
+        ("library", "editor-getting", "Edit… names library → editor; the lane's Getting news turns the face"),
+        ("owner-page", "editor-getting", "the page's Edit in shroom names owner-page → editor; the lane's Getting news turns the face (N69)"),
+    ];
     let src = include_str!("../src/apply.rs");
     let mut missing = Vec::new();
     for e in spec().edges.iter().filter(|e| e.from.starts_with("editor") || e.to.starts_with("editor")) {
