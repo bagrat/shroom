@@ -9,10 +9,13 @@ mod laws;
 #[path = "common/support.rs"]
 mod support;
 
+use std::sync::Arc;
+
 use shroom_core::derive::{CLEANUP_FIRST_MS, CLEANUP_MS, SLEEP_HOLD_MS};
 use shroom_core::effect::{Effect, LibCmd, RecCmd, ShellCmd};
-use shroom_core::event::{CloudNews, Event, LibraryNews, OsNews, RecNews, SweepAnswer};
-use shroom_core::time::Mono;
+use shroom_core::event::{CloudNews, EditorNews, Event, LibraryNews, OsNews, RecNews, Surface, SweepAnswer};
+use shroom_core::scene::Action;
+use shroom_core::time::{Fact, Mono, Wall};
 use shroom_core::world::*;
 use support::*;
 
@@ -136,6 +139,31 @@ fn only_the_token_mac_sweeps_and_never_over_a_take_offline_or_a_broken_space() {
     r.scene = shroom_core::derive(&r.w);
     r.tick_to(pass + CLEANUP_FIRST_MS + 1_000);
     assert_eq!(cleanups(&r), 0, "never over a take");
+}
+
+/// The sweep makes every edit past its two days the video (B197): never while the editor is
+/// open — it may be on one of those videos, its list on the old video's clock — and once the
+/// window closes it runs (B199).
+#[test]
+fn the_sweep_waits_while_the_editor_is_open() {
+    let mut r = proved();
+    let pass = r.w.sweep.pass.unwrap().0;
+    // The Library open on a live video, and Edit… on it: its record read, the video here.
+    let rec = RecId("Sx4kq9dLmNpQrStU".into());
+    let row = LibraryRow { rec: rec.clone(), title: "Setting up shroom in two minutes".into(), created: Wall(1_787_313_600_000), length_ms: Some(272_400), live: true, owner: Some("m1".into()), poster: false, edited_ms: None };
+    r.w.session.windows.insert(WindowKind::Library, Door::asked(Mono(r.t)));
+    r.w.library = Fact::known(Arc::new(vec![row]), Mono(r.t));
+    r.w.library_ops.refreshed = Some(Mono(r.t));
+    r.scene = shroom_core::derive(&r.w);
+    r.send(Event::Act { surface: Surface::Library, action: Action::EditRow(rec.clone()), rev: 0 });
+    r.send(Event::Editor(EditorNews::Opened { rec: rec.clone(), saved: None, markers: vec![], duration_sec: Some(272.4), keep_until: None }));
+    r.send(Event::Editor(EditorNews::Ready { rec, duration: 272.4 }));
+    assert_eq!(r.scene.editor.as_ref().map(|e| e.id), Some("editor"));
+    r.tick_to(pass + CLEANUP_FIRST_MS + 1_000);
+    assert_eq!(cleanups(&r), 0, "never while the editor is open");
+    r.send(Event::Act { surface: Surface::Editor, action: Action::EditorDone, rev: 0 });
+    assert!(r.scene.editor.is_none());
+    assert_eq!(cleanups(&r), 1, "the window closed: the sweep runs");
 }
 
 #[test]
