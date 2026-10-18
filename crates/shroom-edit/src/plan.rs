@@ -24,6 +24,10 @@ const LEAVES: usize = 3;
 /// A cut's words either side, for a review list (`leads`, `resumes`): a few, so its row
 /// says where it joins. The owner page marks a full six as more said (worker.js `AROUND`).
 const AROUND: usize = 6;
+/// Where no silence was found, a cut's edge goes to the latest step at most this much
+/// louder than the quietest one between the words (dB): just before what follows, and never
+/// in the closure of a "t" or a "k" the word still has to release.
+const NEAR_QUIETEST: f32 = 3.0;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Options {
@@ -92,12 +96,44 @@ impl Ctx<'_> {
     }
 
     /// A cut from the quiet before word `from` to the quiet after word `to` (inclusive).
+    /// An edge with no silence under it goes to the quietest point between the words, when
+    /// the take's loudness is known: word times drift, and the tail of a cut word must not
+    /// play.
     fn span(&self, from: usize, to: usize) -> (f64, f64) {
-        let (q0a, q0b) = self.quiet(self.word_end_before(from), self.t.words[from].start, true);
-        let (q1a, q1b) = self.quiet(self.t.words[to].end, self.word_start_at(to + 1), false);
-        let start = q0a + self.o.pad.min((q0b - q0a) / 2.0);
-        let end = q1b - self.o.pad.min((q1b - q1a) / 2.0);
+        let (a0, b0) = (self.word_end_before(from), self.t.words[from].start);
+        let (a1, b1) = (self.t.words[to].end, self.word_start_at(to + 1));
+        let (q0a, q0b) = self.quiet(a0, b0, true);
+        let (q1a, q1b) = self.quiet(a1, b1, false);
+        let mut start = q0a + self.o.pad.min((q0b - q0a) / 2.0);
+        let mut end = q1b - self.o.pad.min((q1b - q1a) / 2.0);
+        if !self.in_silence(start) {
+            start = self.quietest(near(a0, b0, true)).unwrap_or(start);
+        }
+        if !self.in_silence(end) {
+            end = self.quietest(near(a1, b1, false)).unwrap_or(end);
+        }
         (start.max(0.0), end.min(self.t.duration))
+    }
+
+    fn in_silence(&self, t: f64) -> bool {
+        self.t.silences.iter().any(|s| s.start <= t && t <= s.end)
+    }
+
+    /// The latest step in `(from, to)` within [`NEAR_QUIETEST`] of the quietest one there,
+    /// by the take's loudness (its middle, in seconds); none without the loudness.
+    fn quietest(&self, (from, to): (f64, f64)) -> Option<f64> {
+        let l = self.t.levels.as_ref()?;
+        if !(l.step > 0.0) {
+            return None;
+        }
+        let i0 = (from.max(0.0) / l.step).floor() as usize;
+        let i1 = ((to.max(0.0) / l.step).ceil() as usize).min(l.db.len());
+        if i0 >= i1 {
+            return None;
+        }
+        let low = l.db[i0..i1].iter().copied().fold(f32::INFINITY, f32::min);
+        let i = (i0..i1).rev().find(|&i| l.db[i] <= low + NEAR_QUIETEST)?;
+        Some((i as f64 + 0.5) * l.step)
     }
 
     fn said(&self, from: usize, to: usize) -> String {
@@ -287,6 +323,19 @@ impl Ctx<'_> {
 /// The code's own plan: [`plan_with`] and no judgment.
 pub fn plan(t: &Transcript, o: Options) -> EditList {
     plan_with(t, o, &[])
+}
+
+/// Where to look for an edge's quietest point between a word ending at `a` and the next
+/// starting at `b`: the gap and a little either side; in a long gap the transcriber may have
+/// missed speech in, only near the word on the cut's side (`hug_b` for a cut starting at `b`).
+fn near(a: f64, b: f64, hug_b: bool) -> (f64, f64) {
+    if b - a <= 0.6 {
+        (a - 0.08, b + 0.04)
+    } else if hug_b {
+        (b - 0.28, b + 0.04)
+    } else {
+        (a - 0.08, a + 0.24)
+    }
 }
 
 /// The words before cue `k` it may reach back to (the previous cue's end), and the words

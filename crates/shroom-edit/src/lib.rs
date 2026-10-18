@@ -47,13 +47,25 @@ pub struct Silence {
     pub end: f64,
 }
 
-/// The planner's input: a transcript and, when known, the silences.
+/// How loud a take is, step by step: where no silence was found between two words, a cut's
+/// edge goes to the quietest point between them.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct Levels {
+    /// Seconds per step.
+    pub step: f64,
+    /// Each step's loudness, dBFS.
+    pub db: Vec<f32>,
+}
+
+/// The planner's input: a transcript and, when known, the silences and the loudness.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Transcript {
     pub duration: f64,
     pub words: Vec<Word>,
     #[serde(default)]
     pub silences: Vec<Silence>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub levels: Option<Levels>,
 }
 
 impl Transcript {
@@ -88,7 +100,14 @@ impl Transcript {
             duration,
             words,
             silences,
+            levels: None,
         }
+    }
+
+    /// With the take's loudness beside its words.
+    pub fn with_levels(mut self, levels: Levels) -> Transcript {
+        self.levels = Some(levels);
+        self
     }
 }
 
