@@ -8,7 +8,7 @@ import { join } from "node:path";
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { build, FOOTER, HEADER, noteVersions, whatsNewPage } from "../build.mjs";
-import worker, { clientKind, refTag, referrerHost, wantsMarkdown } from "../worker.js";
+import worker, { byteRange, clientKind, refTag, referrerHost, wantsMarkdown } from "../worker.js";
 
 const ROOT = new URL("../..", import.meta.url).pathname;
 const out = build(join(mkdtempSync(join(tmpdir(), "shroom-site-")), "public"));
@@ -183,6 +183,79 @@ describe("nothing else", () => {
     const res = await get("/install?x=1", {}, "GET", "www.shroom.am");
     assert.equal(res.status, 301);
     assert.equal(res.headers.get("location"), "https://shroom.am/install?x=1");
+  });
+});
+
+describe("the how-to video", () => {
+  const mp4 = readFileSync(join(ROOT, "site/how-to.mp4"));
+  const size = mp4.byteLength;
+  // The assets binding as Cloudflare's answers a file: with its length, in pieces, and the
+  // whole file whatever Range it's asked for.
+  const STREAMED = {
+    /** @param {Request} r */
+    async fetch(r) {
+      if (new URL(r.url).pathname !== "/_/how-to.mp4") return ASSETS.fetch(r);
+      let at = 0;
+      const body = new ReadableStream({
+        pull(c) {
+          if (at >= size) return c.close();
+          c.enqueue(new Uint8Array(mp4.subarray(at, at + 65536)));
+          at += 65536;
+        },
+      });
+      return new Response(body, { headers: { "content-length": String(size) } });
+    },
+  };
+  for (const [name, assets] of /** @type {const} */ ([["a file sent with its length", STREAMED], ["a file sent without one", ASSETS]])) {
+    const ask = (/** @type {Record<string, string>} */ headers = {}, method = "GET") =>
+      worker.fetch(new Request("https://shroom.am/how-to.mp4", { method, headers }), { ASSETS: assets, STATS });
+
+    it(`answers the whole file, and says it takes ranges (${name})`, async () => {
+      const res = await ask();
+      assert.equal(res.status, 200);
+      assert.equal(res.headers.get("content-type"), "video/mp4");
+      assert.equal(res.headers.get("accept-ranges"), "bytes");
+      assert.equal(res.headers.get("content-length"), String(size));
+      assert.ok(Buffer.from(await res.arrayBuffer()).equals(mp4));
+    });
+
+    it(`answers a range with exactly its bytes, 206 (${name})`, async () => {
+      for (const [range, first, last] of /** @type {[string, number, number][]} */ ([["bytes=0-1", 0, 1], ["bytes=100000-299999", 100000, 299999], [`bytes=${size - 10}-`, size - 10, size - 1], ["bytes=-500", size - 500, size - 1], [`bytes=5-${size + 99}`, 5, size - 1]])) {
+        const res = await ask({ range });
+        assert.equal(res.status, 206, range);
+        assert.equal(res.headers.get("content-range"), `bytes ${first}-${last}/${size}`, range);
+        assert.equal(res.headers.get("content-length"), String(last - first + 1), range);
+        assert.ok(Buffer.from(await res.arrayBuffer()).equals(mp4.subarray(first, last + 1)), range);
+      }
+    });
+
+    it(`refuses a range past the end, 416 (${name})`, async () => {
+      const res = await ask({ range: `bytes=${size}-` });
+      assert.equal(res.status, 416);
+      assert.equal(res.headers.get("content-range"), `bytes */${size}`);
+    });
+
+    it(`answers HEAD with the length and no body (${name})`, async () => {
+      const res = await ask({}, "HEAD");
+      assert.equal(res.status, 200);
+      assert.equal(res.headers.get("content-length"), String(size));
+      assert.equal(await res.text(), "");
+    });
+  }
+
+  it("reads a Range header the way players send it", () => {
+    assert.deepEqual(byteRange("bytes=0-", 10), [0, 9]);
+    assert.equal(byteRange(null, 10), null);
+    assert.equal(byteRange("bytes=0-1,4-5", 10), null, "several ranges: the whole file");
+    assert.equal(byteRange("items=0-1", 10), null);
+    assert.equal(byteRange("bytes=-0", 10), "unsatisfiable");
+    assert.deepEqual(byteRange("bytes=-20", 10), [0, 9]);
+  });
+
+  it("isn't counted: the landing's visit is", async () => {
+    counted = [];
+    await (await get("/how-to.mp4", { range: "bytes=0-1" })).arrayBuffer();
+    assert.deepEqual(counted, []);
   });
 });
 
