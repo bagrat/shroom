@@ -1127,6 +1127,18 @@
     "N7 (the landing's video is no longer a self-recorded take)"
    ],
    "amended_by": []
+  },
+  {
+   "id": "N62",
+   "title": "shroom on the command line, for a person or their coding agent",
+   "decision": "**Proposed 2026-10-18 (dev/proposals/cli-agent-skill.md); Bagrat's calls the same day, relayed by the orchestrator: an agent may start and stop recordings only once a Settings switch is on, off by default; the command may make invites; the command is always installed.** (1) **The `shroom` command** ships inside the app (`Contents/MacOS/shroom-cli`), linked into `~/.local/bin` by the install line (and its PATH put in the login profile when it isn't there) and into Homebrew's bin by the cask; `--uninstall` takes both back. (2) **It works whether the app runs or not:** list, info, link, open, rename, delete, cleanup candidates, members, invites — through the space's own page under this Mac's device key, never the Cloudflare token. A delete or a member's removal changes nothing without `--yes`; a rename, delete, invite or removal waits while a take is open (law 4). (3) **Recording goes through the running app** (its control socket in shroom's folder, this user only): start is the popover's Start, countdown and permission beat included; pause the tray's; Resume and Stop the paused popover's; a stop answers with its link (law 3: this stop made it; law 10: nothing is copied). The app answers with a code, the command says the words. (4) **Settings → General gains “Your coding agent”**: the prompt to paste, Copy (“Copied”, law 10), Read it first (shroom.am/cli), the line under them, and the switch “Let it start and stop recordings”, off by default; while it's off the app refuses every recording ask. (5) **shroom.am/cli** is the guide an agent reads (a skill's SKILL.md); /agent points there. Provisional: built as a POC, awaiting ratification.",
+   "status": "provisional",
+   "date": "2026-10-18",
+   "amends": [
+    "N36 (General gains the coding agent's card)",
+    "N59 (shroom.am gains /cli beside /agent)"
+   ],
+   "amended_by": []
   }
  ],
  "surfaces": [
@@ -7978,6 +7990,66 @@
      "copy": "ratified",
      "note": "Quiet text at the tab's foot. Greys mid-take (law 4).",
      "id": "settings-general.uninstall-shroom"
+    },
+    {
+     "text": "Your coding agent",
+     "role": "field-label",
+     "copy": "provisional",
+     "note": "The card's label, under the help row (N62).",
+     "cites": [
+      "N62"
+     ],
+     "id": "settings-general.your-coding-agent"
+    },
+    {
+     "text": "Use shroom on my Mac: read https://shroom.am/cli and follow it.",
+     "role": "line",
+     "copy": "provisional",
+     "note": "The prompt itself, in a code well; what Copy puts on the clipboard (N62).",
+     "cites": [
+      "N62"
+     ],
+     "id": "settings-general.use-shroom-on-my"
+    },
+    {
+     "text": "Copy",
+     "role": "button",
+     "copy": "provisional",
+     "note": "Copies the prompt; reads Copied for a moment after its click, as Copy diagnostics does (law 10).",
+     "cites": [
+      "N62"
+     ],
+     "id": "settings-general.copy"
+    },
+    {
+     "text": "Read it first",
+     "role": "link",
+     "copy": "provisional",
+     "note": "Opens shroom.am/cli in the browser: what the agent will read, word for word.",
+     "cites": [
+      "N62"
+     ],
+     "id": "settings-general.read-it-first"
+    },
+    {
+     "text": "Paste it into your coding agent. It can find, share and tidy your videos, and asks you before it deletes anything.",
+     "role": "line",
+     "copy": "provisional",
+     "note": "Under the prompt.",
+     "cites": [
+      "N62"
+     ],
+     "id": "settings-general.paste-it-into-your"
+    },
+    {
+     "text": "Let it start and stop recordings",
+     "role": "field-label",
+     "copy": "provisional",
+     "note": "A switch, off by default (Bagrat, 2026-10-18). While it's off, the app refuses the command's recording asks.",
+     "cites": [
+      "N62"
+     ],
+     "id": "settings-general.let-it-start-and"
     }
    ],
    "actions": [
@@ -8035,7 +8107,8 @@
     "U7",
     "B135",
     "B180",
-    "N53"
+    "N53",
+    "N62"
    ],
    "was": {
     "fixture": "r5.json",
