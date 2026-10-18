@@ -1887,7 +1887,7 @@ The voice-cut hint (N65): in a space that listens, the owner page of a take with
 
 | Said | Role | Copy | Note |
 |---|---|---|---|
-| “Slipped? Say “shroom cut”, then say the line again.” | note | provisional | Under the player, where the strip would be, with the scissors. OK'd by Bagrat 2026-10-18 (relayed by the orchestrator), with whichever cue word wins (B203: “shroom cut” until he picks). |
+| “Slipped? Say “shroom cut”, then say the line again.” | note | provisional | Under the player, where the strip would be, with the scissors. OK'd by Bagrat 2026-10-18 (relayed by the orchestrator), with whichever cue word wins: “shroom cut”, his pick the same day (B203). |
 | “Got it” | button | provisional | At the line's right: the hint goes, for good in this browser. Proposed 2026-10-18; awaiting Bagrat. |
 
 | Action | Kind | Return | Goes to | Note |
