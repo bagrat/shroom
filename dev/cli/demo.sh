@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Dev only, a cloud session: a coding agent (Claude Code, headless) uses the shroom CLI
 # the way a person's agent would — it reads the guide shroom.am will serve at /cli, then
-# lists, links, finds cleanup candidates, deletes (after asking) and records.
+# lists, links, finds cleanup candidates, deletes (after asking), invites, and records once
+# the person has let it.
 # Everything is local and invented: the real Worker over an in-memory space
 # (worker/dev/serve.mjs), shroom.am's Worker over a fresh site build (dev/cli/site.mjs),
 # and a stand-in for the app's control socket (crates/shroom-cli/examples/fake_app.rs).
@@ -36,5 +37,10 @@ turn() { # turn <n> <prompt> [--continue]
 turn 1 "Use shroom on my Mac: read http://127.0.0.1:8788/cli and follow it. (That address stands in for https://shroom.am/cli.) Which of my videos are old enough to clean up? And send me the link to the login bug repro."
 turn 2 "Delete the old demo for the prospect." --continue
 turn 3 "Yes, delete it." --continue
-turn 4 "Now record my screen for about five seconds, then stop and give me the link. Then show me my three newest videos." --continue
+turn 4 "Invite Sam Lee to my space." --continue
+turn 5 "Now record my screen for about five seconds, then stop and give me the link." --continue
+# The person turns on Settings → General's “Let it start and stop recordings” (off by
+# default): the stand-in app reads it from prefs.json, as the app keeps it.
+printf '{"agent_recording":true}\n' >"$W/home/prefs.json"
+turn 6 "I turned it on. Try again, then show me my three newest videos." --continue
 echo "done: $OUT"

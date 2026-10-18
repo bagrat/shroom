@@ -1,7 +1,19 @@
 # shroom on the command line, for coding agents (a proposal and a POC)
 
-**Status: proposal + POC, for Bagrat (2026-10-18). Nothing here is ratified.** Branch
-`claude/cli-agent-skill`, draft PR. New features, product copy and spec rows are his call.
+**Status: POC, built end to end, for Bagrat (2026-10-18). Provisional: spec N62.** Branch
+`claude/cli-agent-skill`, draft PR #58, not to merge yet (merging deploys `/cli`).
+
+**Bagrat's calls, 2026-10-18** (relayed by the orchestrator, from options he picked):
+
+- An agent may start and stop recordings only once a Settings switch is on. It is off by
+  default.
+- The command may make invites.
+- The command is always installed: by the install line, inside the bundle, and with
+  Homebrew.
+- Rename and delete keep refusing while a take is open (law 4).
+- The card's words and place were left to this session.
+
+He also asked the threads to decide the rest themselves; those calls are in §9.
 
 **The ask (Bagrat, 2026-10-18, paraphrased).** A quick win: shroom usable from the command
 line whether the app is running or not, so someone who already works with a coding agent
@@ -14,7 +26,8 @@ space's own page under this Mac's device key, and asks the running app to record
 answer is JSON on request, with fixed error codes. A one-page guide at
 **shroom.am/cli**, in Agent Skills form, tells an agent how to use it and when to ask
 first. In the app, Settings → General gets a "Your coding agent" card with
-`Use shroom on my Mac: read https://shroom.am/cli and follow it.` and [ Copy ].
+`Use shroom on my Mac: read https://shroom.am/cli and follow it.`, [ Copy ], and the switch
+“Let it start and stop recordings” (off by default).
 
 ---
 
@@ -63,7 +76,7 @@ The competitor comparison is in shroom-private (`strategy/research/`), not here.
  coding agent ──runs──▶ shroom (CLI, in the bundle)
                           │  reads ~/.shroom: space.json, device.key, status.json, library.json
                           │  (never token.json)
-                          ├──▶ the space's page  POST /_shroom/api/library · /mint (manage) · /gone · GET /members
+                          ├──▶ the space's page  POST /_shroom/api/library · /mint (manage) · /gone · /invites · GET /members
                           │      └─ a manage credential ──▶ the bucket (rename / delete, 15 min, memory only)
                           └──▶ shroom.app over ~/.shroom/control.sock  (record start · pause · resume · stop)
 ```
@@ -81,14 +94,27 @@ The competitor comparison is in shroom-private (`strategy/research/`), not here.
 - **Deletes the way the Library does.** It mints a `manage` credential, writes the
   tombstone first, deletes the bytes, then seals with `/gone` (B125). The test checks all
   three on the real `worker.js`.
-- **Quiet while recording (law 4).** A rename or delete refuses with `take_open` while
-  `status.json` says a take is open.
-- **Recording goes through the app.** The CLI writes one JSON line to
-  `~/.shroom/control.sock` and reads one line back. The folder is 700, and the app would
-  check the peer's uid. If the app isn't running, `record start` opens it (`open -g -b
-  am.shroom`) and waits up to 15 s. The ops are exactly the popover's: start (with its
-  countdown), pause, resume, stop. **The app side is not built**: the app runs only on a
-  Mac. The demo uses a stand-in, `crates/shroom-cli/examples/fake_app.rs`.
+- **Quiet while recording (law 4).** A rename, delete, invite or removal refuses with
+  `take_open` while `status.json` says a take is open.
+- **Recording goes through the app** (`app/src-tauri/src/runtime/control.rs`, built).
+  - **The socket.** The CLI writes one JSON line to `~/.shroom/control.sock` and reads one
+    line back. The folder is 700 and the socket 600, and the app checks every peer's uid
+    (`getpeereid`).
+  - **What the core does with an ask.** It answers `Event::Cli` with `Effect::Cli`
+    (`crates/shroom-core/src/apply.rs:cli`):
+    - **refused** with `recording_off` while General's switch is off;
+    - **start** is the popover's Start, exactly as if the popover were open: its
+      countdown, its permission beat, its grants re-read first;
+    - **pause** is the tray's pause;
+    - **resume and stop** are the paused popover's;
+    - **between two steps** (pausing, resuming, stopping) it answers `busy`;
+    - **a stop** answers its link.
+  - **Codes, not words.** The app answers with a code, and the command says the words.
+  - **When the app isn't running**, `record start` opens it (`open -g -b am.shroom`) and
+    waits up to 15 s.
+  - **The demo** uses a stand-in with the same answers,
+    `crates/shroom-cli/examples/fake_app.rs`. The real socket needs the Mac: CI compiles it,
+    and its unit tests run there.
   - Rejected: the `shroom://` URL scheme. Any web page can fire it, and nothing comes
     back.
   - Rejected: localhost HTTP. It needs a token file, and it is reachable from more than
@@ -109,9 +135,10 @@ The competitor comparison is in shroom-private (`strategy/research/`), not here.
 | `shroom delete <id-or-link>… [--dry-run] [--yes]` | delete for good; without `--yes`, exit 7 and nothing changes | built |
 | `shroom cleanup-candidates [--older-than D]` | old videos, oldest first; `views`/`last_viewed`/`score` reserved (null) | built (age only) |
 | `shroom members` | owner, their Macs, members, open invites (owner-class) | built |
-| `shroom record start\|pause\|resume\|stop` | asks the app; `stop` returns the new link | CLI side built; app side proposed |
+| `shroom invite <name>` · `shroom invite cancel <id>` | a member invite link (7 days, one use) · cancel it | built |
+| `shroom members remove <member-id> [--dry-run] [--yes]` | they leave the space; their videos stay | built |
+| `shroom record start\|pause\|resume\|stop` | asks the app, once the switch is on; `stop` returns the new link | built (both sides) |
 | `shroom guide` | prints the guide (the same text as shroom.am/cli, built in) | built |
-| `shroom invite [--name N]` · `shroom invite cancel <id>` · `shroom members remove <id>` | invites and members | designed, not built (§9 Q3) |
 | `shroom save <video>` (Save to Movies), `shroom doctor` | later | — |
 
 - **`<video>`** is an id, a link to this space, or title words in any order. Several
@@ -132,6 +159,7 @@ The competitor comparison is in shroom-private (`strategy/research/`), not here.
   | 7 | `needs_confirmation` | a delete without `--yes` |
   | 8 | `app_unreachable` | the app is needed and didn't answer |
   | 9 | `take_open` | a recording is open |
+  | 10 | `recording_off` | General's switch is off: the agent may not record |
 
 - **The cleanup hook.** The sibling cleanup-score proposal (view analytics) is the source
   for `views`, `last_viewed` and `score`. The guide tells an agent that `null` means
@@ -153,25 +181,35 @@ The competitor comparison is in shroom-private (`strategy/research/`), not here.
   It isn't wired now because the route isn't merged, and whether to count plays at all is
   still Bagrat's call.
 
-## 4. Getting it on PATH
+## 4. Getting it on PATH (always installed — built)
 
-The CLI ships **inside the bundle**, at `shroom.app/Contents/Resources/bin/shroom`, so it
-is signed with the app and updated with it. It never drifts from the app.
-
-1. **No install at all.** The guide tells the agent to try `shroom`, then the full bundle
-   path. Nothing touches the machine.
-2. **Homebrew.** The cask (B175) gains `binary "#{appdir}/shroom.app/Contents/Resources/bin/shroom"`.
-   It is linked into brew's bin, with no sudo.
-3. **The install line.** `install.sh --cli`, or a step in the agent's install flow, links
-   it into `~/.local/bin`, only when asked ("never silently mutate the machine").
-4. **Later, a Settings switch** ("Use shroom from Terminal"), as VS Code and Docker do.
-
-Recommendation: (1) and (2) at once. (3) only on an explicit flag. (4) waits for demand.
-
-Packaging is not built: `tools/release-build.sh` would build and sign `shroom-cli` into
-`Resources/bin`. There is one release-only snag: the CLI's debug-only flags (`--home`,
-`--space-base`, `SHROOM_HOME`) are compiled out of a release build, as the app's dev
-flags are fenced to the dev flavor.
+- **In the bundle.** The command ships inside it as a second external binary, beside the
+  encoder: `Contents/MacOS/shroom-cli` (`tauri.release.conf.json`).
+  - `tools/release-build.sh` builds it for the bundle's macOS floor, and the bundler signs
+    it.
+  - The build checks it is there, signed, answers `--version`, and refuses the dev-only
+    `--home` (a release build compiles the dev options out).
+  - It updates with the app, so it never drifts from it.
+- **The install line** (`installer/install.sh`, `link_cli`):
+  - It links `~/.local/bin/shroom` to the bundle's binary: inside the home folder, as the
+    script promises.
+  - When that folder isn't on PATH, it adds one marked line to the login profile
+    (`~/.zprofile` for zsh, `~/.bash_profile` for bash), for new Terminal windows.
+  - It never touches a file of someone else's named `shroom`, and it never fails an
+    install.
+  - `--uninstall` takes back exactly the link and the marked line (`unlink_cli`).
+  - The script's opening comment is ratified copy (`source-view`), so it is unchanged.
+    The command is named in its "how it works" note instead. A proposed header line for
+    step 3, for Bagrat: "Place it in ~/Applications — no admin password, nothing outside
+    your home folder — with its `shroom` command beside it in ~/.local/bin."
+  - Tests in `installer/test/install.test.mjs` (they run on the Mac).
+- **Homebrew.** The cask links the same binary into brew's bin:
+  `binary "#{Dir.home}/Applications/shroom.app/Contents/MacOS/shroom-cli", target: "shroom"`.
+  `cask.test.mjs` holds it equal to the install line's path. Not yet tried with a real
+  `brew install`, which needs a Mac.
+- **The guide's fallbacks.** A Terminal opened before the install doesn't see the new
+  PATH, so the guide tells the agent to try `~/.local/bin/shroom`, then the bundle's
+  path.
 
 ## 5. The guide, served (shroom.am/cli)
 
@@ -201,25 +239,35 @@ flags are fenced to the dev flavor.
   installs it once the draft RFC settles. Also `shroom agents install --target claude`,
   which writes `~/.claude/skills/shroom/SKILL.md`, on an explicit ask only.
 
-## 6. In the app: a prompt for your agent (design first)
+## 6. In the app: "Your coding agent" (designed, then built)
 
-The board is on the canvas: **“Settings — General, with a prompt for your coding agent
-(a proposal, for Bagrat)”**, below the cleanup boards in the Library and Settings column.
-
-- A new card, **Your coding agent**:
-  - the prompt in a code well with [ Copy ], which reads "Copied ✓" after the click (law
-    10);
-  - **Read it first**, linking shroom.am/cli;
-  - the line "Paste it into your coding agent. It can find, share and tidy your videos,
-    and asks you before it deletes or records."
-- It mirrors the landing's Coding agent tab (N59).
-- The board also draws the Help row as the app has it today (B180), which the old
-  "Settings — General" board predates.
-- No code yet. It waits for his look at the board.
+- **The board** is on the canvas: **“Settings — General: your coding agent (N62,
+  provisional; as built on the CLI branch)”**, under the cleanup boards in the Library and
+  Settings column. It shows two states: as the window opens, and after Copy with the
+  switch on.
+- **The card sits under the help line** (my call), so “Something off?” keeps its line
+  beneath it. It holds:
+  - the label **Your coding agent**;
+  - **Read it first** → shroom.am/cli;
+  - the prompt in a code well, with [ Copy ] → “Copied” (law 10);
+  - the line “Paste it into your coding agent. It can find, share and tidy your videos,
+    and asks you before it deletes anything.”;
+  - under a hairline, the switch **Let it start and stop recordings**, off by default
+    (`prefs.json` `agent_recording`).
+- **Rejected:**
+  - a line in the Library's footer: the Library is for videos, and Settings is where a
+    setting lives;
+  - the card above the login row: it pushed the everyday rows down.
+- **Built:**
+  - `General.svelte` and `settings.css`;
+  - the core's `GeneralBody.agent` (`derive/settings.rs`);
+  - its six said-lines, as provisional rows of `settings-general` in `spec/machine.json`;
+  - `windows-gallery.mjs`: the card, its Copy, Read it first and the switch, in both
+    themes (6,579 checks pass).
 
 ## 7. The demo (cloud, real agent)
 
-`bash dev/cli/demo.sh <out>` runs **Claude Code headless** (`claude -p`, four turns) with
+`bash dev/cli/demo.sh <out>` runs **Claude Code headless** (`claude -p`, six turns) with
 only `shroom`, `curl` and `sleep` allowed, against:
 
 - the real `worker.js` over an in-memory space (`worker/dev/serve.mjs`), seeded by
@@ -234,94 +282,107 @@ The final run, as the agent did it:
 1. It read `/cli`, ran `shroom --version`, `cleanup-candidates --json` and
    `link "login bug repro" --json`. It answered with the link and a table of three
    candidates, said views aren't counted yet, and deleted nothing.
-2. Asked to delete "the old demo for the prospect", it ran `delete <id> --dry-run --json`,
-   showed the title, date and length, and asked "Delete it for good?".
+2. Asked to delete "the old demo for the prospect", it dry-ran it, showed the title, date
+   and length, and asked "Delete it for good?".
 3. On "Yes", it ran `delete <id> --yes --json`.
-4. It ran `record start`, `sleep 5`, `record stop`, then `list --limit 3`, and returned the
-   new link.
+4. Asked to invite Sam Lee, it made the link and handed it over once. It said it hadn't
+   sent it anywhere and that anyone holding the link can join, and it named the invite's
+   id for a cancel.
+5. Asked to record, it got `recording_off`. It told the person where the switch is and
+   tried nothing else.
+6. After "I turned it on", it recorded, stopped, returned the new link, and listed the
+   three newest videos.
 
-The run took 14 steps over 4 turns (about 35 s). The first run found two snags, both
-fixed:
+The first runs found two snags, both fixed:
 
 - Title words had to be contiguous, so "login bug repro" missed. They now match in any
   order.
 - The agent chained `||` and `;`, and its tool stopped each chain for approval. The guide
   now says one command per call.
 
-## 8. Spec sketch (provisional, for `spec/machine.json` once ratified)
+## 8. In the spec (provisional)
 
-- **N62 (provisional) — the command line.**
-  - `shroom` acts for the person, from a terminal or their agent.
-  - Reads and Library writes (rename, delete) go through the space's page under the
-    Mac's device key, app running or not.
-  - Recording goes through the running app's control socket, and is opened if needed;
-    each op equals its popover action, countdown included.
-  - It never reads the token.
-  - A delete needs `--yes`; without it, nothing changes (exit 7).
-  - Writes refuse mid-take (law 4).
-  - Its messages are said-lines (law 15); its JSON codes are a contract.
-  - Edges:
-    - `cli.record.start` → the same edge as popover Start (`idle → countdown`);
-    - `cli.record.stop` → popover Stop (`recording|paused → stopping`; its link is
-      returned to the caller instead of copied: law 10 holds, nothing auto-copies);
-    - `cli.delete` → Library Delete… (the tombstone first).
-- **N63 (provisional) — "Your coding agent"** in Settings → General: the prompt, [ Copy ] →
-  "Copied ✓", "Read it first" → shroom.am/cli, the line under it.
-- **Landing / shroom.am:** `/cli` beside `/agent` (N59's agent door), and `/agent`'s
-  one-line pointer.
-- **Laws touched:**
-  - 3 ("only you make a link"): `record stop` makes a link on the person's ask, relayed
-    by their agent.
-  - 10: nothing auto-copies; the CLI prints, never copies.
-  - 11 ("no dialog to an empty chair"): the CLI never prompts; it refuses with a code.
-  - 13: no secret on argv or in output, except the invite link (Q3).
+- **N62** is in `spec/machine.json` as a provisional ledger row: the command, its two
+  doors, the switch, the card, and shroom.am/cli. It amends N36 and N59.
+- **`settings-general`** gains the card's six said-lines, each `provisional` and citing
+  N62.
+- **No new states or edges.** Each recording ask takes the edge its click takes:
+  - `config → countdown` for start;
+  - `paused → recording` for resume;
+  - `paused → stopping` for stop;
+  - the tray's arm for pause.
+- **Laws:**
+  - 3: a stop makes the link on the person's ask, relayed by their agent.
+  - 4: changes wait mid-take.
+  - 10: nothing is copied but by Copy's click; a stop's link is returned, not copied.
+  - 11: the command never prompts; it refuses with a code.
+  - 13: no secret on argv or in output. The one exception is an invite link, by Bagrat's
+    call, and the guide tells an agent to hand it over once.
 
-## 9. Open questions for Bagrat
+## 9. Calls made on my own judgment (decided X because Y)
 
-1. **Can an agent start a recording with no click?** The POC lets it: `record start`
-   shows the 3-2-1 countdown, then records. The POC in the archive only armed the
-   recorder, and a human click started it. Options:
-   - (a) as built;
-   - (b) `record start` opens the popover, ready, and the person clicks Start;
-   - (c) a Settings switch "Let my coding agent start recordings", off by default.
+- **Decided: the device key is the only door**, because every Mac has one and it keeps the
+  Cloudflare token out of the command entirely. A token Mac that never enrolled gets
+  `not_set_up` ("open shroom once").
+- **Decided: a Unix socket for the app**, because it is this user's only and answers
+  back. Rejected:
+  - the URL scheme: any page can fire it, and nothing comes back;
+  - localhost HTTP: reachable beyond this user;
+  - XPC with signature checks: heavy for a self-signed app.
+- **Decided: the switch gates all four recording asks**, not only start, because a stop
+  makes a link (law 3) and pause/resume act on someone's live screen.
+- **Decided: start is the popover's Start, the countdown included**, because the
+  countdown and the tray make an agent's recording visible.
+- **Decided: a member's removal asks first, like a delete** (`--dry-run`, `--yes`),
+  because it can't be undone from the command.
+- **Decided: the app answers in codes and the command says the words**, because the
+  core's said-lines are the spec's, and the command's words live with the command and its
+  guide, as the installer's do.
+- **Decided: the install line edits the login profile only when `~/.local/bin` isn't on
+  PATH, with a marked line `--uninstall` removes**, because "always installed" must work
+  in a new Terminal without admin rights.
+- **Decided: no MCP server now**, because a CLI covers coding agents at a fraction of the
+  tokens. A thin `shroom mcp serve` over the same binary can come later for shell-less
+  clients.
+- **Decided: no auto-install of the skill** into `~/.claude/skills`, because the prompt
+  door needs nothing installed. `/.well-known/agent-skills/` can come once the draft RFC
+  settles.
 
-   Recommendation: (a), because the countdown and the tray make it visible. (c) is the
-   fallback if it feels too much.
-2. **Mid-take writes.** Rename and delete refuse while recording (law 4, conservative).
-   Is a rename of a *past* video mid-take fine?
-3. **Invites from the CLI.** An invite link is a secret until used. Printing it puts it in
-   the agent's transcript, which goes to the agent's provider. Options:
-   - (a) don't offer invites in the CLI;
-   - (b) print it only with `--show-link`;
-   - (c) the app shows the link, and the CLI only opens Settings → Members.
+**Left for Bagrat when he reviews:**
 
-   Recommendation: (c) for v1.
-4. **The card's words and place.** "Your coding agent" in Settings → General, or a line in
-   the Library's footer, or both?
-5. **On PATH.** The bundle plus the Homebrew `binary` stanza now, and `install.sh --cli`
-   only on a flag. OK?
-6. **MCP.** Not proposed for now: the CLI covers coding agents. A thin `shroom mcp serve`
-   over the same binary could come later for Claude Desktop and ChatGPT.
+- the card's words;
+- whether invites should also be cancellable from the card (today it's Members);
+- the profile edit on install.
 
 ## 10. What's in the PR
 
-- `crates/shroom-cli/`: the binary (`src/main.rs`, `out.rs`, `home.rs`, `space.rs`,
-  `app.rs`).
-  - Tests: 10 unit tests, plus `tests/space.rs`, which runs end to end on the real
-    `worker.js` (skipped without node).
-  - Examples: `demo_space.rs` and `fake_app.rs`, dev only.
-- `site/cli.md`, the `/cli` and `/cli.md` routes (`site/worker.js`, `site/build.mjs`,
-  `site/wrangler.jsonc`), and `/agent`'s pointer line. Tests: `site/test/cli.test.mjs`,
-  plus cases in `worker.test.mjs`.
-- `dev/cli/`: `demo.sh`, `site.mjs`, `transcript.py`.
-- **Not in it:**
-  - the app's control socket;
-  - the Settings card's code;
-  - packaging into the bundle;
-  - the cask stanza;
-  - spec rows.
-
-  All wait on §9.
+- **`spec/machine.json`:** N62 (provisional), and the card's said-lines; `MACHINE.md`
+  regenerated.
+- **`crates/shroom-core`:**
+  - `Event::Cli` and `Effect::Cli`;
+  - `Prefs.agent_recording`;
+  - General's `AgentCard` and its actions;
+  - tests in `tests/cli.rs`.
+- **`app/`:**
+  - `runtime/control.rs` (the socket);
+  - the clipboard and URL wiring;
+  - `General.svelte`, `settings.css` and `types.ts`;
+  - the windows gallery's checks.
+- **`crates/shroom-cli/`:**
+  - the binary;
+  - tests: unit tests, plus `tests/space.rs`, end to end on the real `worker.js` (list,
+    find, rename, delete, invite, cancel, remove);
+  - dev-only examples `demo_space.rs` and `fake_app.rs`.
+- **Packaging:**
+  - `tools/release-build.sh` and `tauri.release.conf.json` (the binary in the bundle);
+  - `installer/install.sh` (`link_cli` and `unlink_cli`) and its tests;
+  - the cask's `binary` stanza and its test.
+- **`site/`:**
+  - `cli.md` (the guide);
+  - the `/cli` and `/cli.md` routes;
+  - `/agent`'s pointer;
+  - `test/cli.test.mjs` and the `worker.test.mjs` cases.
+- **`dev/cli/`:** `demo.sh`, `site.mjs` and `transcript.py`.
 
 **Merging this PR deploys `/cli` to shroom.am** (site.yml). It stays a draft until
 Bagrat says so.
