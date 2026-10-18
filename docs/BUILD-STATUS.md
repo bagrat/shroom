@@ -292,13 +292,13 @@ retired, B148.)
 
 37. **The `shroom` command (N62, B215–B219), built in full on his ask (2026-10-18).** To
     ratify: N62 and its decisions; the rest of the command's words
-    (`crates/shroom-cli/src/say.rs`; the recording refusal's three lines and the switch's
-    label he approved as drawn, 2026-10-18) and the guide (`site/cli.md`), both in the copy
-    awaiting ratification; the agent label's words and look and the start without the count
-    (“Your coding agent is recording your screen”, “Recording now.”; the canvas's
-    CliAgentLabel board), built on his ask the same day; and when it ships — merging deploys shroom.am/cli, and the cask
-    links the command from the first release that carries it. The security review's one
-    open point, the switch being consent rather than a wall against code already running as
-    the person, he accepted as a risk (2026-10-18, B216). Proven: CI, the hosted Mac's
-    `cli-socket`, `settings-link` and `settings` drive, and the full e2e's command leg on
+    (`crates/shroom-cli/src/say.rs`; the recording refusal's three lines, the switch's
+    label and the agent label's board — its look, “Your coding agent is recording your
+    screen”, “Recording now.”, the label on by default — he approved as drawn, 2026-10-18)
+    and the guide (`site/cli.md`), both in the copy awaiting ratification; and when it
+    ships — merging deploys shroom.am/cli, and the cask links the command from the first
+    release that carries it. The security review's one open point, the switch being consent
+    rather than a wall against code already running as the person, he accepted as a risk
+    (2026-10-18, B216). Proven: CI, the hosted Mac's `cli-socket`, `settings-link`,
+    `settings`, `cli-label` and `take-left-out` drives, and the full e2e's command leg on
     the test account.

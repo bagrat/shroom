@@ -108,7 +108,10 @@ The competitor comparison is in shroom-private (`strategy/research/`), not here.
       General's switch is off — the command's words carry `shroom://settings/agent`, which
       opens Settings at the switch, lit, and never flips it (Bagrat, 2026-10-18; B216);
     - **start** is the popover's Start, exactly as if the popover were open: its
-      countdown, its permission beat, its grants re-read first;
+      countdown, its permission beat, its grants re-read first. With `--no-countdown` it
+      records at once; and while a take the command started records, a label at the top
+      right of its display says “Your coding agent is recording your screen” — left out
+      of the video, taking no clicks, hidden with `--no-label` (Bagrat, 2026-10-18; B216);
     - **pause** is the tray's pause;
     - **resume and stop** are the paused popover's;
     - **between two steps** (pausing, resuming, stopping) it answers `busy`;
@@ -484,8 +487,8 @@ email had gone.
 - **`dev/cli/`:** `demo.sh`, `demo-batch.sh` with its stand-ins (`directory`,
   `send-mail`), `site.mjs` and `transcript.py`.
 
-**Merging this PR deploys `/cli` to shroom.am** (site.yml). It stays a draft until
-Bagrat says so.
+**Merging this PR deploys `/cli` to shroom.am** (site.yml). It stays open and unmerged
+until Bagrat times the release.
 
 ## 11. From the POC to the build (2026-10-18)
 
@@ -512,6 +515,14 @@ Bagrat asked for the POC to become the real build the same day. What that added:
   (`../members/<id>`), a removal that failed when run again, `--from` items of the wrong
   shape dropped quietly, the invite cap counting people already in, a stop's edge misnamed,
   the space's refusals in the wrong words.
+- **Bagrat's calls during the build** (2026-10-18, relayed by the orchestrator): a refused
+  recording gives a link that opens Settings at the switch (its words and the switch's
+  label approved as drawn); the switch is consent, not a wall against code already running
+  as the person — an accepted risk; and a start without the countdown, with the agent
+  label on the screen it records (its board approved as drawn: the look, the words, the
+  label on by default). Each was drawn on the canvas first, then built, and proven on the
+  hosted Mac: the link opening Settings cold and warm, and the label on screen but never in
+  the take.
 - **Two things outside the command, met on the way:** the release build's floor probe
   read the string `library` as a macOS 26 selector (it joins its known names), and the
   Settings drive still expected ⌘Q to quit with Settings in front, which B145 changed.
