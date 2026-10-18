@@ -700,7 +700,7 @@ fn upkeep(rt: &Runtime, door: &mut Doorway) -> Result<(u32, u32), FailClass> {
             rt.log(&format!("editor upkeep: {} is open in the editor — its bake waits for a later pass", short(id)));
             continue;
         }
-        let done = door.client(rt, &space, id).and_then(|s3| records::bake(&s3, id, &now).map_err(|e| class(&e)));
+        let done = door.client(rt, &space, id).and_then(|s3| records::bake_when_due(&s3, id, &now).map_err(|e| class(&e)));
         match done {
             Ok(Some(_)) => {
                 baked += 1;

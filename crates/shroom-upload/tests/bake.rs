@@ -197,6 +197,37 @@ fn a_bake_that_kept_the_start_keeps_every_picture() {
     }
 }
 
+/// The upkeep's and the sweep's bake: a pass that read the record while its copy was due,
+/// then found a newer revision's copy landed meanwhile, leaves that one its own two days;
+/// Yes, delete bakes it at once.
+#[test]
+fn a_bake_when_due_leaves_a_newer_copy_its_two_days() {
+    let (fake, s3) = space();
+    record(&s3, A);
+    save_and_copy(&s3, A, &edited(60.0), 38.0);
+    let due = library::upkeep_plan(&[(A.to_string(), serde_json::from_value::<Meta>(read(&s3, A)).unwrap())], DUE, &|_| true, &|_| false).bake;
+    assert_eq!(due, [A], "the pass reads it as due");
+    // Meanwhile: revision 2 saved, its copy landed a minute before the pass bakes.
+    let mut again = History::new(edited(60.0));
+    assert!(again.act(&Op::Cut { start: 30.0, end: 35.0 }));
+    let rev = library::save_edits(&s3, A, &again.now, 2).unwrap();
+    let copy = EditCopy { rev, file: EditCopy::file_for(rev), duration: 33.0, poster: Some(EditCopy::poster_for(rev)), teaser: None };
+    for f in copy.files() {
+        s3.put(&format!("rec/{A}/{f}"), f.as_bytes(), "application/octet-stream").unwrap();
+    }
+    assert!(library::set_edit_copy(&s3, A, &copy, "2026-10-20T09:29:00Z").unwrap());
+    let before = (read(&s3, A), files(&fake, A));
+    assert_eq!(library::bake_when_due(&s3, A, DUE).unwrap(), None, "revision 2's original is kept two days from its own copy");
+    assert_eq!((read(&s3, A), files(&fake, A)), before, "nothing written, nothing deleted");
+    assert_eq!(library::bake_when_due(&s3, A, "2026-10-22T09:29:00Z").unwrap().map(|b| (b.rev, b.written)), Some((2, true)), "once they're up");
+    let (fake, s3) = space();
+    record(&s3, A);
+    save_and_copy(&s3, A, &edited(60.0), 38.0);
+    assert_eq!(library::bake_when_due(&s3, A, LANDED).unwrap(), None, "never before its two days");
+    assert!(library::bake(&s3, A, LANDED).unwrap().is_some(), "Yes, delete: at once");
+    assert!(files(&fake, A).iter().all(|f| f.starts_with("edit-1")));
+}
+
 #[test]
 fn only_a_current_copy_is_baked() {
     let (fake, s3) = space();

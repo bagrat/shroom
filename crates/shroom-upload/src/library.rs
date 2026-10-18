@@ -485,14 +485,31 @@ pub struct Baked {
 /// copy the record names but the space doesn't hold is an error, before anything is
 /// written. A tombstone stops it. `now` (ISO 8601, UTC) is when.
 pub fn bake(s3: &Client, id: &str, now: &str) -> Result<Option<Baked>, UploadError> {
-    iso_ms(now).ok_or_else(|| UploadError::Incomplete(format!("not a time: {now:?}")))?;
+    bake_as(s3, id, now, false)
+}
+
+/// The upkeep's and the cleanup sweep's [`bake`]: only while the record's current copy is
+/// past its `keep_until`, checked again inside the write. A newer revision whose copy landed
+/// after the pass read the record keeps its own two days (`Ok(None)`, nothing written).
+pub fn bake_when_due(s3: &Client, id: &str, now: &str) -> Result<Option<Baked>, UploadError> {
+    bake_as(s3, id, now, true)
+}
+
+/// Whether a saved edit's original has had its two days by `at` (ms): a `keep_until` that
+/// reads, at or before it.
+fn due(saved: &shroom_edit::Saved, at: i64) -> bool {
+    saved.keep_until.as_deref().and_then(iso_ms).is_some_and(|k| k <= at)
+}
+
+fn bake_as(s3: &Client, id: &str, now: &str, due_only: bool) -> Result<Option<Baked>, UploadError> {
+    let at = iso_ms(now).ok_or_else(|| UploadError::Incomplete(format!("not a time: {now:?}")))?;
     let prefix = keys::prefix(id);
     // A look first: a record with nothing to bake costs one read.
     let seen = look(s3, id)?;
     let copy = match seen.edits.as_ref() {
         Some(saved) => match bakeable(saved) {
-            Some(c) => c.clone(),
-            None => return Ok(None),
+            Some(c) if !due_only || due(saved, at) => c.clone(),
+            _ => return Ok(None),
         },
         None if baked(&seen, id) => return finish(s3, id, &seen),
         None => return Ok(None),
@@ -507,7 +524,7 @@ pub fn bake(s3: &Client, id: &str, now: &str) -> Result<Option<Baked>, UploadErr
     // The length the video had before the bake, on whose clock its list plays.
     let before = seen.duration_sec.filter(|d| d.is_finite() && *d > 0.0).or_else(|| seen.edits.as_ref().map(|s| s.list.source_duration));
     let mut done = false;
-    let meta = update_edit(s3, id, |m| done = bake_record(m, id, &copy, now))?;
+    let meta = update_edit(s3, id, |m| done = (!due_only || m.edits.as_ref().is_some_and(|s| due(s, at))) && bake_record(m, id, &copy, now))?;
     // Between the look and the write: another Mac's bake (finish it), or a newer save
     // (nothing to do).
     if !done && !baked(&meta, id) {
@@ -823,7 +840,7 @@ pub fn cleanup_sparing(s3: &Client, here: &Here, open: &dyn Fn(&str) -> bool) ->
             continue;
         }
         // One that fails waits for the next pass; the rest of this one stands.
-        if let Ok(Some(b)) = bake(s3, &id, &now) {
+        if let Ok(Some(b)) = bake_when_due(s3, &id, &now) {
             baked.push((id, b));
         }
     }
