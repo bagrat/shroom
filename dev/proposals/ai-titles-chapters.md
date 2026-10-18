@@ -419,8 +419,8 @@ The titles and chapters on the boards are the pages gallery's invented take.
   after the time; beside the row's five controls (play, Captions, speed, sound, full
   screen) a phone has no room for it, so there the finger's tip and the bar's spoken
   value name it, and the thumb grows while the finger is on it, as drawn. The name after
-  the time stays from 480 px up. If Bagrat wants it on phones too, the room would come from
-  a second line under the controls, or from dropping the sound button there.
+  the time stays from 480 px up. Bagrat kept it so (2026-10-18), over a second line under
+  the controls or dropping the sound button on phones.
 - **The owner's title field holds the name as its placeholder**, as it holds the date
   today, so it reads quieter than a typed title; the line under it has no icon, like the
   page's other lines.

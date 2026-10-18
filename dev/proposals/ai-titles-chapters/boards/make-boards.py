@@ -219,7 +219,7 @@ def phone_body(now):
 <div style="flex: 1 1 auto; display: flex; flex-direction: column; gap: 20px">
 {viewer_head(TITLE)}
 {player(now, tip=now, held=True, cc=False, phone=True)}
-{note("No hover on a phone: a finger on the bar shows the time and chapter above the thumb, and the thumb grows while the finger is on it; the tip stays about 1.5 s after a tap. The bar's touch area is 44 px tall. The row has no room for the chapter's name beside its five controls, so the tip and the bar's spoken value name it. (Changed from the board as approved, where the name sat after the time: found while building.)")}
+{note("No hover on a phone: a finger on the bar shows the time and chapter above the thumb, and the thumb grows while the finger is on it; the tip stays about 1.5 s after a tap. The bar's touch area is 44 px tall. The row has no room for the chapter's name beside its five controls, so the tip and the bar's spoken value name it. (Changed from the board as approved, where the name sat after the time: found while building. Bagrat kept it so, 2026-10-18.)")}
 </div>
 <div style="display: flex; flex-direction: row; justify-content: flex-end; padding: 24px 0 0 0">
 <a href="https://shroom.am" style="display: flex; flex-direction: row; align-items: center; gap: 8px; font-size: 13px; text-decoration: none; min-height: 44px">{MARK}<span data-said="live.made-with-shroom">made with shroom</span></a>
