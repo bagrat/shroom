@@ -1,11 +1,12 @@
 //! The editor's operations and their undo history (N63).
 //!
-//! An operation either changes the list or is refused (`None`): out of range, nothing to
-//! change, or it would leave less than [`MIN_KEEP`] playing. The history holds whole lists:
-//! they are small, and Undo then can't drift from what was on screen.
+//! An operation either changes what plays or is refused ([`Refusal`]): out of range, too
+//! short a cut, nothing that plays changes, or it would leave less than [`MIN_KEEP`]
+//! playing. The history holds whole lists: they are small, and Undo then can't drift from
+//! what was on screen.
 
 use crate::{Cut, CutKind, EditList, MIN_HAND_CUT, MIN_KEEP};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// One change asked for in the editor. Times are seconds on the source timeline.
 #[derive(Debug, Clone, PartialEq, Deserialize)]
@@ -29,28 +30,48 @@ pub enum Op {
     Revert,
 }
 
-/// What the list becomes under `op`, or `None` when it's refused or changes nothing.
-pub fn apply(list: &EditList, op: &Op) -> Option<EditList> {
+/// Why an operation was refused. The editor snaps back or greys; the CLI says which.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum Refusal {
+    /// A time that isn't a number, a part backwards, or a part wholly outside what plays
+    /// between the ends.
+    OutOfRange,
+    /// It would leave less than [`MIN_KEEP`] playing.
+    LeavesTooLittle,
+    /// A hand cut shorter than [`MIN_HAND_CUT`].
+    TooShort,
+    /// Nothing that plays would change: a part already cut, an end moved within a cut.
+    NothingChanges,
+    /// No cut at that index in the state the op needs: put back one that's cut, apply a
+    /// suggestion that isn't.
+    NoSuchCut,
+}
+
+/// What the list becomes under `op`, or why it's refused. An op that changes the list but
+/// not what plays (a cut inside a cut, an end moved within one) is refused too: it would
+/// leave Done something to save, and a final video to make, that no viewer could tell.
+pub fn check(list: &EditList, op: &Op) -> Result<EditList, Refusal> {
     let d = list.source_duration;
     let mut next = list.clone();
     match *op {
         Op::Trim { in_, out } => {
             if !in_.is_finite() || !out.is_finite() {
-                return None;
+                return Err(Refusal::OutOfRange);
             }
             next.in_ = in_.clamp(0.0, d);
             next.out = out.clamp(0.0, d);
             if next.out - next.in_ < MIN_KEEP.min(d) {
-                return None;
+                return Err(Refusal::LeavesTooLittle);
             }
         }
         Op::Cut { start, end } => {
-            if !start.is_finite() || !end.is_finite() {
-                return None;
+            if !start.is_finite() || !end.is_finite() || end < start || end <= next.in_ || start >= next.out {
+                return Err(Refusal::OutOfRange);
             }
             let (s, e) = (start.max(next.in_).max(0.0), end.min(next.out).min(d));
             if e - s < MIN_HAND_CUT {
-                return None;
+                return Err(Refusal::TooShort);
             }
             let id = next.next_manual_id();
             next.cuts.push(Cut {
@@ -59,7 +80,7 @@ pub fn apply(list: &EditList, op: &Op) -> Option<EditList> {
             });
         }
         Op::PutBack { index } => {
-            let c = next.cuts.get(index).filter(|c| c.applied)?;
+            let c = next.cuts.get(index).filter(|c| c.applied).ok_or(Refusal::NoSuchCut)?;
             if c.kind == CutKind::Manual {
                 next.cuts.remove(index);
             } else {
@@ -67,7 +88,7 @@ pub fn apply(list: &EditList, op: &Op) -> Option<EditList> {
             }
         }
         Op::Apply { index } => {
-            let c = next.cuts.get_mut(index).filter(|c| !c.applied)?;
+            let c = next.cuts.get_mut(index).filter(|c| !c.applied).ok_or(Refusal::NoSuchCut)?;
             c.applied = true;
         }
         Op::Revert => {
@@ -79,10 +100,18 @@ pub fn apply(list: &EditList, op: &Op) -> Option<EditList> {
             }
         }
     }
-    if next == *list || next.edited_duration() < MIN_KEEP.min(d) {
-        return None;
+    if next == *list || next.keep() == list.keep() {
+        return Err(Refusal::NothingChanges);
     }
-    Some(next)
+    if next.edited_duration() < MIN_KEEP.min(d) {
+        return Err(Refusal::LeavesTooLittle);
+    }
+    Ok(next)
+}
+
+/// What the list becomes under `op`, or `None` when it's refused ([`check`] says why).
+pub fn apply(list: &EditList, op: &Op) -> Option<EditList> {
+    check(list, op).ok()
 }
 
 /// How many steps Undo reaches back.
@@ -241,6 +270,48 @@ mod tests {
         assert!(!h.act(&Op::PutBack { index: 3 }));
         assert!(!h.act(&Op::Revert));
         assert!(!h.can_undo());
+    }
+
+    #[test]
+    fn what_changes_nothing_that_plays_is_refused() {
+        let mut h = History::new(list());
+        assert!(h.act(&Op::Cut { start: 10.0, end: 22.0 }));
+        h.saved_as_now();
+        let cut = |start, end| Op::Cut { start, end };
+        assert_eq!(check(&h.now, &cut(12.0, 15.0)), Err(Refusal::NothingChanges), "a part already cut");
+        assert!(!h.act(&cut(12.0, 15.0)) && !h.dirty());
+        assert!(h.act(&Op::Trim { in_: 0.0, out: 30.0 }));
+        h.saved_as_now();
+        let (cuts, keep) = (h.now.cuts.clone(), h.now.keep());
+        assert_eq!(check(&h.now, &cut(25.0, 31.0)).map(|l| l.keep()), Ok(vec![(0.0, 10.0), (22.0, 25.0)]), "held to the end");
+        let mut l = EditList::new(60.0);
+        l.cuts.push(Cut::manual(0.0, 5.0));
+        assert_eq!(check(&l, &Op::Trim { in_: 3.0, out: 60.0 }), Err(Refusal::NothingChanges), "an end moved within a cut");
+        assert_eq!(check(&l, &Op::Trim { in_: 6.0, out: 60.0 }).map(|l| l.keep()), Ok(vec![(6.0, 60.0)]));
+        let mut inner = l.clone();
+        inner.cuts.push(Cut { id: "m2".into(), ..Cut::manual(1.0, 2.0) });
+        assert_eq!(check(&inner, &Op::PutBack { index: 1 }), Err(Refusal::NothingChanges), "a cut inside a cut put back");
+        assert_eq!((h.now.cuts.clone(), h.now.keep()), (cuts, keep));
+    }
+
+    #[test]
+    fn a_refusal_says_why() {
+        let l = list();
+        let cut = |start, end| Op::Cut { start, end };
+        assert_eq!(check(&l, &cut(f64::NAN, 3.0)), Err(Refusal::OutOfRange));
+        assert_eq!(check(&l, &cut(9.0, 3.0)), Err(Refusal::OutOfRange), "backwards");
+        assert_eq!(check(&l, &cut(61.0, 70.0)), Err(Refusal::OutOfRange), "past the end");
+        assert_eq!(check(&l, &cut(5.0, 5.05)), Err(Refusal::TooShort));
+        assert_eq!(check(&l, &cut(0.0, 59.5)), Err(Refusal::LeavesTooLittle));
+        assert_eq!(check(&l, &Op::Trim { in_: 30.0, out: 30.5 }), Err(Refusal::LeavesTooLittle));
+        assert_eq!(check(&l, &Op::Trim { in_: 0.0, out: 60.0 }), Err(Refusal::NothingChanges));
+        assert_eq!(check(&l, &Op::PutBack { index: 0 }), Err(Refusal::NoSuchCut));
+        assert_eq!(check(&l, &Op::Apply { index: 0 }), Err(Refusal::NoSuchCut));
+        assert_eq!(check(&l, &Op::Revert), Err(Refusal::NothingChanges));
+        assert_eq!(serde_json::to_string(&Refusal::LeavesTooLittle).unwrap(), r#""leaves-too-little""#);
+        let trimmed = check(&l, &Op::Trim { in_: 10.0, out: 50.0 }).unwrap();
+        assert_eq!(check(&trimmed, &cut(2.0, 8.0)), Err(Refusal::OutOfRange), "wholly before the trim's in");
+        assert_eq!(check(&trimmed, &cut(8.0, 12.0)).map(|l| l.keep()), Ok(vec![(12.0, 50.0)]), "held to the in");
     }
 
     #[test]

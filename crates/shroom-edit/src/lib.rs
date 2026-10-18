@@ -14,7 +14,7 @@
 
 pub mod edit;
 
-pub use edit::{History, Op};
+pub use edit::{History, Op, Refusal};
 
 use serde::{Deserialize, Serialize};
 
