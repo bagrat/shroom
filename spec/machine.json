@@ -7801,10 +7801,10 @@
      "id": "editor.footer"
     },
     {
-     "text": "The original is kept 1 more day",
+     "text": "The original is kept one more day",
      "role": "line",
      "copy": "provisional",
-     "note": "by Revert, only while an earlier edit's original is kept (B197); also “2 more days” and “a few more hours”",
+     "note": "by Revert, only while an earlier edit's original is kept (B197); never more than it has left (B199): “two more days” from 47 hours, “one more day” from a day, “<n> more hours” from 2 hours (whole hours, rounded down; two to nine in words, figures from 10, law 16), “one more hour” from an hour, and “less than an hour” under one",
      "id": "editor.original-kept"
     },
     {
@@ -7888,7 +7888,8 @@
    "cites": [
     "N63",
     "B195",
-    "B197"
+    "B197",
+    "B199"
    ]
   },
   "editor-getting": {

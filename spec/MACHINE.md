@@ -2234,7 +2234,7 @@ Member-revoked or space-gone: the list this Mac remembers, and only Copy link an
 
 ### `editor`
 
-state · window · **provisional** · board: EditorCuts · cites N63, B195, B197
+state · window · **provisional** · board: EditorCuts · cites N63, B195, B197, B199
 
 The editor (N63): a window of its own, titled “Edit — <the video's title>”, one at a time. Top to bottom: the video, playing the edit (cuts skipped, held to the trim); the play button and the time, edited position / edited length, with “was <the recording's length>” once the edit changes it; on the right the hint and Undo · Redo; then the timeline, the whole recording's sound as a waveform with the playhead: two yellow ends that drag to trim, a drag across the sound that selects a part with Cut <its length> under it, every cut red and hatched (clicking one offers Put back <its length>), every suggestion not yet taken dashed amber (clicking one offers Cut it too), and every marker (N64) a flag at its time. The footer: the line that the link stays the same, Revert to original and Done. The waveform fills in once the sound is read; until then the timeline is empty and the ends wait. Every change can be undone, Put back and Revert included; the changes stay in the window until Done saves them. While an earlier edit's original is still kept, the time it has left sits by Revert to original; once it is gone, Revert to original only undoes what changed since the window opened.
 
@@ -2254,7 +2254,7 @@ The editor (N63): a window of its own, titled “Edit — <the video's title>”
 | “Put back 12.0 s” | button | provisional | under a cut that was clicked; the length varies |
 | “Cut it too” | button | provisional | under a dashed suggestion that was clicked (a voice cue's offer, N65); the voice-cut proposal's words |
 | “Your link stays the same. Viewers see the edit once it's saved.” | line | provisional |  |
-| “The original is kept 1 more day” | line | provisional | by Revert, only while an earlier edit's original is kept (B197); also “2 more days” and “a few more hours” |
+| “The original is kept one more day” | line | provisional | by Revert, only while an earlier edit's original is kept (B197); never more than it has left (B199): “two more days” from 47 hours, “one more day” from a day, “<n> more hours” from 2 hours (whole hours, rounded down; two to nine in words, figures from 10, law 16), “one more hour” from an hour, and “less than an hour” under one |
 | “Revert to original” | button | provisional |  |
 | “Done” | button | provisional | filled; Return |
 
