@@ -1071,6 +1071,7 @@ mod tests {
             kept_until: None,
             media: EditorMedia::Opening,
             save: EditorSave::Idle,
+            leaving: None,
         });
         *rt.snapshot.lock().unwrap() = Some(shroom_core::derive(&w));
         assert_eq!(open_in_editor(&rt).as_deref(), Some("AbCdEfGhIjKlMnOp"));
