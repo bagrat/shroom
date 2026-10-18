@@ -94,8 +94,12 @@ pub fn part_args(src: &Path, start: f64, len: f64, kbps: u32, enc: Encoder, out:
 }
 
 /// The parts named in `list` (see [`concat_list`]) joined into `out`: stream copy, faststart.
+/// Each part's timestamps go through as the demuxer reads them (`-copyts`): shifted to start
+/// at zero instead, a part's AAC priming (its first packet, before zero) pushed the whole
+/// picture ~23 ms late behind an empty edit — WebKit then shows no frame at the copy's start
+/// — and lengthened the sound by as much at every join.
 pub fn concat_args(list: &Path, out: &Path) -> Vec<OsString> {
-    let mut a = os(&["-hide_banner", "-loglevel", "error", "-nostdin", "-y", "-f", "concat", "-safe", "0", "-i"]);
+    let mut a = os(&["-hide_banner", "-loglevel", "error", "-nostdin", "-y", "-copyts", "-f", "concat", "-safe", "0", "-i"]);
     a.push(path_arg(list));
     a.extend(os(&["-map", "0", "-c", "copy", "-movflags", "+faststart", "-f", "mp4"]));
     a.push(path_arg(out));
@@ -309,7 +313,7 @@ mod tests {
     #[test]
     fn the_join_is_the_concat_demuxer_with_stream_copy() {
         let a = concat_args(Path::new("/w/parts.ffconcat"), Path::new("/w/joined.mp4"));
-        assert_eq!(line(&a), "-hide_banner -loglevel error -nostdin -y -f concat -safe 0 -i /w/parts.ffconcat -map 0 -c copy -movflags +faststart -f mp4 /w/joined.mp4");
+        assert_eq!(line(&a), "-hide_banner -loglevel error -nostdin -y -copyts -f concat -safe 0 -i /w/parts.ffconcat -map 0 -c copy -movflags +faststart -f mp4 /w/joined.mp4");
         // No filter graph at all: the release's encoder has no concat filter.
         assert!(!a.iter().any(|s| s == "-filter_complex" || s == "-vf" || s == "-af"));
     }

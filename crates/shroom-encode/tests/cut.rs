@@ -66,10 +66,19 @@ fn stand_in(dir: &Path) -> PathBuf {
     src
 }
 
+/// When the file's first picture shows (seconds), as ffprobe (beside the oracle) reads it.
+fn picture_start(file: &Path) -> Option<f64> {
+    let probe = oracle().with_file_name("ffprobe");
+    let out = Command::new(if probe.exists() { probe } else { PathBuf::from("ffprobe") })
+        .args(["-v", "error", "-select_streams", "v:0", "-show_entries", "frame=pts_time", "-of", "csv=p=0", "-read_intervals", "%+#1"])
+        .arg(file)
+        .output()
+        .ok()?;
+    String::from_utf8_lossy(&out.stdout).lines().next()?.trim().trim_end_matches(',').parse().ok()
+}
+
 /// Every frame as it's stored, read back by its counter. Passthrough, never a constant rate:
-/// the joined copy's picture starts 21 ms in (behind the first part's AAC priming, which
-/// the concat demuxer keeps: the sound stays with the picture), and a constant-rate read
-/// would show its first frame twice.
+/// a constant-rate read of a picture that starts late would show its first frame twice.
 fn counters(file: &Path) -> Vec<Option<u32>> {
     let mut child = Command::new(oracle())
         .args(["-hide_banner", "-loglevel", "error", "-i"])
@@ -110,6 +119,10 @@ fn the_copy_holds_only_the_kept_frames_and_its_sound_keeps_to_them() {
     let keep = [(0.2, 0.6), (0.9, 1.5), (3.3, 4.0)];
     let mut told = Vec::new();
     let secs = cut::render_with(&ffmpeg, &src, &keep, &out, &enc, &mut |f| told.push(f)).expect("the copy is cut");
+    // The picture starts the copy: no empty edit in front of its first frame (WebKit shows
+    // nothing there), and the sound isn't longer than the picture by a priming per join.
+    let first = picture_start(&out);
+    assert!(first.is_some_and(|t| t.abs() < 0.002), "the picture starts at {first:?}");
     // How far it came, as it went: forward only, a part at a time, whole at the end.
     assert!(told.len() >= 3, "a step at least per part: {told:?}");
     assert!(told.windows(2).all(|w| w[0] < w[1]) && told.iter().all(|f| (0.0..=1.0).contains(f)), "{told:?}");
