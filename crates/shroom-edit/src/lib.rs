@@ -19,14 +19,16 @@
 mod align;
 mod cue;
 pub mod edit;
+mod judge;
 mod land;
 mod plan;
 mod text;
 
 pub use cue::{Cue, find_cues};
 pub use edit::{History, Op};
+pub use judge::{Answer, JUDGED, Question};
 pub use land::land;
-pub use plan::{Options, plan};
+pub use plan::{Options, plan, plan_with, questions};
 
 use serde::{Deserialize, Serialize};
 

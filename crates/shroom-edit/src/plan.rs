@@ -2,12 +2,22 @@
 
 use crate::align::find_restart;
 use crate::cue::{Cue, find_cues};
+use crate::judge::{Answer, Question, pick};
+use crate::text::is_filler;
 use crate::text::{ends_cleanly, ends_sentence, is_hesitation, norm};
 use crate::{Confidence, Cut, CutKind, EditList, Silence, Transcript, Word};
 
 /// A sentence the cue broke off goes with it only when it began at most this long before the
 /// cue (seconds): a run-on the transcriber never stopped is not one sentence.
 const SENTENCE_MAX: f64 = 20.0;
+/// Where a redone stretch might begin, for the judgment: a pause at least this long
+/// (seconds) begins one, as a sentence start does…
+const START_PAUSE: f64 = 0.4;
+/// …back this many sentences, or this many seconds, whichever comes first, and at most
+/// this many starts.
+const REACH_SENTENCES: usize = 3;
+const REACH_BACK: f64 = 20.0;
+const MOST_STARTS: usize = 6;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Options {
@@ -113,6 +123,82 @@ impl Ctx<'_> {
         (b - a).max(self.t.words[i].start - self.t.words[i - 1].end)
     }
 
+    /// Said apart from the speech: a pause before it or after it.
+    fn apart(&self, cue: &Cue) -> bool {
+        self.pause_before(cue.first) >= self.o.cue_pause
+            || self.pause_after(cue.last) >= self.o.cue_pause
+    }
+
+    /// Where the stretch a cue redoes might begin, nearest first: each sentence start and
+    /// each long pause behind it (and the earliest word it may reach), back
+    /// [`REACH_SENTENCES`] sentences or [`REACH_BACK`] seconds, never past `floor`. A start
+    /// with nothing but filler between it and the cue is none.
+    fn starts(&self, cue: &Cue, floor: usize) -> Vec<usize> {
+        let words = &self.t.words;
+        let mut out = Vec::new();
+        let mut sentences = 0;
+        let mut k = cue.first;
+        while k > floor && out.len() < MOST_STARTS {
+            k -= 1;
+            if words[k].start < cue.start - REACH_BACK {
+                break;
+            }
+            let sentence = k > floor && ends_sentence(&words[k - 1].text);
+            let begins = k == floor || sentence || self.gap(k) >= START_PAUSE;
+            if begins
+                && words[k..cue.first]
+                    .iter()
+                    .any(|w| !is_filler(&norm(&w.text)))
+            {
+                out.push(k);
+            }
+            if sentence {
+                sentences += 1;
+                if sentences >= REACH_SENTENCES {
+                    break;
+                }
+            }
+        }
+        out
+    }
+
+    /// The pause before word `i` as heard there: the gap between the words, or the detected
+    /// silence inside it (a little past either word). Unlike [`Ctx::pause_before`] it never
+    /// borrows a silence from nearby, so the quiet before a cue doesn't make the word ahead
+    /// of it look like the start of something.
+    fn gap(&self, i: usize) -> f64 {
+        let (a, b) = (self.t.words[i - 1].end, self.t.words[i].start);
+        let inside = self
+            .t
+            .silences
+            .iter()
+            .map(|s| s.end.min(b + 0.1) - s.start.max(a - 0.1))
+            .fold(0.0, f64::max);
+        (b - a).max(inside)
+    }
+
+    /// What was said after the cue, its hesitations aside: up to two sentences, 30 words
+    /// at most, never past `ceil`.
+    fn after(&self, cue: &Cue, ceil: usize) -> String {
+        let words = &self.t.words;
+        let mut i = cue.last + 1;
+        while i < ceil && is_hesitation(&norm(&words[i].text)) {
+            i += 1;
+        }
+        let (mut said, mut sentences) = (Vec::new(), 0);
+        while i < ceil && said.len() < 30 {
+            said.push(words[i].text.trim());
+            if ends_cleanly(&words[i].text) {
+                sentences += 1;
+                if sentences == 2 {
+                    break;
+                }
+            }
+            i += 1;
+        }
+        said.join(" ")
+    }
+
     fn pause_after(&self, i: usize) -> f64 {
         if i + 1 >= self.t.words.len() {
             f64::INFINITY
@@ -142,14 +228,62 @@ impl Ctx<'_> {
 
 /// Suggested cuts for every cue in the transcript, named `v1`… in the order of their cues.
 /// Retakes found with confidence come applied; the rest come as suggestions to look at.
+/// The code's own plan: [`plan_with`] and no judgment.
 pub fn plan(t: &Transcript, o: Options) -> EditList {
+    plan_with(t, o, &[])
+}
+
+/// The words before cue `k` it may reach back to (the previous cue's end), and the words
+/// after it it may run to (the next cue).
+fn bounds(cues: &[Cue], k: usize, len: usize) -> (usize, usize) {
+    let floor = if k == 0 { 0 } else { cues[k - 1].last + 1 };
+    (floor, cues.get(k + 1).map_or(len, |c| c.first))
+}
+
+/// The planner's questions for the judgment above it: one for each cue said apart from the
+/// speech that has somewhere to reach back to.
+pub fn questions(t: &Transcript, o: Options) -> Vec<Question> {
+    let cx = Ctx { t, o };
+    let cues = find_cues(&t.words);
+    let mut out = Vec::new();
+    for (k, cue) in cues.iter().enumerate() {
+        let (floor, ceil) = bounds(&cues, k, t.words.len());
+        let starts = if cx.apart(cue) {
+            cx.starts(cue, floor)
+        } else {
+            Vec::new()
+        };
+        if !starts.is_empty() {
+            let candidates = starts.iter().map(|&s| cx.said(s, cue.first - 1)).collect();
+            out.push(Question {
+                cue: k,
+                after: cx.after(cue, ceil),
+                candidates,
+            });
+        }
+    }
+    out
+}
+
+/// The plan with the judgment's answers (see [`crate::judge`]): a cue whose answer scores a
+/// start past the bar has its cut reach back to the farthest such start; one with no answer,
+/// or an answer that doesn't fit its question, keeps the code's own plan. A judgment only
+/// ever reaches further back: it never shortens a cut the words themselves set.
+pub fn plan_with(t: &Transcript, o: Options, answers: &[Answer]) -> EditList {
     let cx = Ctx { t, o };
     let cues = find_cues(&t.words);
     let mut list = EditList::new(t.duration);
     for (k, cue) in cues.iter().enumerate() {
-        let floor = if k == 0 { 0 } else { cues[k - 1].last + 1 };
-        let ceil = cues.get(k + 1).map_or(t.words.len(), |c| c.first);
-        list.cuts.extend(plan_one(&cx, cue, floor, ceil));
+        let (floor, ceil) = bounds(&cues, k, t.words.len());
+        let judged = answers.iter().find(|a| a.cue == k).and_then(|a| {
+            let starts = if cx.apart(cue) {
+                cx.starts(cue, floor)
+            } else {
+                Vec::new()
+            };
+            pick(a, starts.len()).map(|i| starts[i])
+        });
+        list.cuts.extend(plan_one(&cx, cue, floor, ceil, judged));
     }
     for (n, cut) in list.cuts.iter_mut().enumerate() {
         cut.id = format!("v{}", n + 1);
@@ -157,7 +291,8 @@ pub fn plan(t: &Transcript, o: Options) -> EditList {
     list
 }
 
-fn plan_one(cx: &Ctx, cue: &Cue, floor: usize, ceil: usize) -> Vec<Cut> {
+/// One cue's cuts. `judged`: where the judgment put the start of the stretch it redoes.
+fn plan_one(cx: &Ctx, cue: &Cue, floor: usize, ceil: usize, judged: Option<usize>) -> Vec<Cut> {
     let words = &cx.t.words;
     let lo = (floor..cue.first)
         .find(|&i| words[i].start >= cue.start - cx.o.lookback)
@@ -171,20 +306,22 @@ fn plan_one(cx: &Ctx, cue: &Cue, floor: usize, ceil: usize) -> Vec<Cut> {
         .map(|i| (i, norm(&words[i].text)))
         .filter(|(_, w)| !w.is_empty())
         .unzip();
-    let apart =
-        cx.pause_before(cue.first) >= cx.o.cue_pause || cx.pause_after(cue.last) >= cx.o.cue_pause;
+    let apart = cx.apart(cue);
 
     if let Some(rs) = find_restart(&pre, &post) {
         let flub = pre.len() - rs.r;
         let coverage = rs.matched as f64 / flub as f64;
-        let from = pre_ix[rs.r];
-        let long = cue.start - words[from].start > 40.0;
+        let restart = pre_ix[rs.r];
+        let long = cue.start - words[restart].start > 40.0;
         let found = !long && coverage >= 0.4 && (rs.matched >= 2 || flub <= 2);
         if found {
-            let high = apart
-                && ((rs.matched >= 3 && coverage >= 0.5)
-                    || (rs.matched >= 2 && coverage >= 0.66)
-                    || flub <= 2);
+            // The judgment can say more was said again than the words line up.
+            let from = judged.map_or(restart, |j| j.min(restart));
+            let high = judged.is_some()
+                || apart
+                    && ((rs.matched >= 3 && coverage >= 0.5)
+                        || (rs.matched >= 2 && coverage >= 0.66)
+                        || flub <= 2);
             // Hesitations between the cue and the retake go with the cue; "so", "okay"
             // and the like are the retake's own opening and stay.
             let mut resume = cue.last + 1;
@@ -205,7 +342,14 @@ fn plan_one(cx: &Ctx, cue: &Cue, floor: usize, ceil: usize) -> Vec<Cut> {
                 applied: high,
                 removed: cx.said(from, resume - 1),
                 resumes: cx.resumes(resume),
-                why: format!("retake: {} of {} words said again", rs.matched, flub),
+                why: if from < restart {
+                    format!(
+                        "retake: {} of {} words said again, and more by the judgment",
+                        rs.matched, flub
+                    )
+                } else {
+                    format!("retake: {} of {} words said again", rs.matched, flub)
+                },
             }];
         }
     }
@@ -216,9 +360,22 @@ fn plan_one(cx: &Ctx, cue: &Cue, floor: usize, ceil: usize) -> Vec<Cut> {
     }
     // It broke off a sentence: whatever was said after it, in the same words or others,
     // that sentence is the slip, and it goes with the cue.
-    if cue.first > floor && !ends_cleanly(&words[cue.first - 1].text) {
-        let from = cx.line_start(cue.first - 1, floor);
-        if cue.start - words[from].start <= SENTENCE_MAX {
+    let broken = cue.first > floor && !ends_cleanly(&words[cue.first - 1].text);
+    let sentence = broken.then(|| cx.line_start(cue.first - 1, floor));
+    let sentence = sentence.filter(|&s| cue.start - words[s].start <= SENTENCE_MAX);
+    // The judgment heard a stretch said again in other words: it goes with the cue, as far
+    // back as the judgment put its start, and never less than the sentence the cue broke off.
+    let reach = match (sentence, judged) {
+        (Some(s), Some(j)) => Some((
+            s.min(j),
+            "the sentence the cue broke off, and more by the judgment",
+        )),
+        (Some(s), None) => Some((s, "the sentence the cue broke off")),
+        (None, Some(j)) => Some((j, "said again in other words, by the judgment")),
+        (None, None) => None,
+    };
+    if let Some((from, why)) = reach {
+        {
             let mut resume = cue.last + 1;
             while resume < ceil && is_hesitation(&norm(&words[resume].text)) {
                 resume += 1;
@@ -233,7 +390,7 @@ fn plan_one(cx: &Ctx, cue: &Cue, floor: usize, ceil: usize) -> Vec<Cut> {
                 applied: true,
                 removed: cx.said(from, resume - 1),
                 resumes: cx.resumes(resume),
-                why: "the sentence the cue broke off".into(),
+                why: why.into(),
             }];
         }
     }
