@@ -427,8 +427,16 @@ pub fn finish(s3: &Client, id: &str, dir: &Path, done: u32, total: u32, beat: &B
         }
         Ok(false)
     })?;
-    // The last word, after the beat stopped: drained.
-    update_meta(s3, id, |m| m.progress = Some(Progress { done: total, total, updated_at: now_iso() }))?;
+    // The last word, after the beat stopped: drained — and what the video holds in the
+    // bucket, read once, for the suggestions to clean up (N68). A listing that fails leaves
+    // the size out: the Worker estimates it from the length.
+    let stored: Option<u64> = s3.list(&keys::prefix(id)).ok().map(|objs| objs.iter().map(|o| o.size).sum());
+    update_meta(s3, id, |m| {
+        m.progress = Some(Progress { done: total, total, updated_at: now_iso() });
+        if let Some(b) = stored {
+            m.extra.insert("bytes".into(), serde_json::Value::from(b));
+        }
+    })?;
     progress(total, total);
     Ok(mp4)
 }
