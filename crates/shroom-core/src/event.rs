@@ -451,8 +451,10 @@ pub enum EditorNews {
     Saved { rec: RecId, rev: u64 },
     /// The final video — the permanent copy being cut and put up — this far (B197).
     Making { rec: RecId, pct: u8 },
-    /// The permanent copy of this revision is up (or was dropped: a newer save came first).
-    CopyDone { rec: RecId, rev: u64 },
+    /// The permanent copy of this revision is done with: `named` — up and named in the
+    /// record; else dropped, the record having moved on first (a newer save landed, from
+    /// this Mac or another), so there's no final video to ask about (B199).
+    CopyDone { rec: RecId, rev: u64, named: bool },
     /// The upkeep answered (B197 (d)): how many originals it baked, how many copies it made.
     UpkeepDone { baked: u32, copies: u32 },
 }

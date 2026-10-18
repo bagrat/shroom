@@ -2195,7 +2195,7 @@ fn editor_news(w: &mut World, news: EditorNews) -> Out {
             e.save = EditorSave::Making { pct: pct.min(100) };
             (vec![], Arm::named("editor-making"))
         }
-        EditorNews::CopyDone { rec, rev } => {
+        EditorNews::CopyDone { rec, rev, named } => {
             // Copies go one at a time: news of another video's, while this one is cut (a
             // late answer from one that ran out of time), leaves the running one alone.
             if w.library_ops.copies.iter().any(|(r, c)| c.asked && *r != rec) {
@@ -2206,10 +2206,18 @@ fn editor_news(w: &mut World, news: EditorNews) -> Out {
             if w.library_ops.copies.get(&rec).is_some_and(|c| c.asked && c.rev <= rev) {
                 w.library_ops.copies.remove(&rec);
             }
-            // The final video the window is making is up: it asks about the original (B197 (b)).
             if let Some(e) = editor_on(w, &rec).filter(|e| matches!(e.save, EditorSave::Making { .. }) && e.rev == rev) {
-                e.save = EditorSave::Asking;
-                return (vec![], Arm { name: "editor-copied", edge: Some(("editor-making", "editor-keep-original")) });
+                // The final video the window is making is up: it asks about the original
+                // (B197 (b)).
+                if named {
+                    e.save = EditorSave::Asking;
+                    return (vec![], Arm { name: "editor-copied", edge: Some(("editor-making", "editor-keep-original")) });
+                }
+                // Dropped, never named — the record moved on first: there's no final video to
+                // ask about, and the window says it couldn't be made (B199); an upkeep makes
+                // the newer revision's.
+                e.save = EditorSave::MakingFailed;
+                return (vec![], Arm { name: "editor-copy-dropped", edge: Some(("editor-making", "editor-making-failed")) });
             }
             (vec![], Arm::named("editor-copied"))
         }

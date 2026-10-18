@@ -209,7 +209,7 @@ fn spawn_copier(rt: Runtime) -> Sender<(RecId, u64)> {
             for (rec, rev) in rx {
                 let mut making = Making::window(&rt, &rec);
                 match copy(&rt, &mut door, &rec, rev, &mut making) {
-                    Ok(_) => rt.post(Event::Editor(EditorNews::CopyDone { rec, rev })),
+                    Ok(named) => rt.post(Event::Editor(EditorNews::CopyDone { rec, rev, named })),
                     Err(e) => {
                         door.forget();
                         rt.post(Event::Failed { op: Op::EditorCopy, class: e.class() });
