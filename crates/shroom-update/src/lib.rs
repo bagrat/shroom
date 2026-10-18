@@ -169,15 +169,65 @@ pub fn same_signer(staged: &Path, replaced: &Path) -> Result<(), UpdateError> {
     if status.success() { Ok(()) } else { Err(UpdateError::Signature(format!("the update doesn't meet {req}"))) }
 }
 
-/// The latest release's manifest — the installer's first request, with a short budget.
-/// The app asks for it as `update.txt` (the same bytes as `manifest.txt`, DECISIONS B136),
-/// so a release's download counts tell the app's checks from the install line's runs; a
-/// release without one (before 0.1.11, or a test's folder) answers 404, and then it's
-/// `manifest.txt`.
+/// Which releases a Mac takes (DECISIONS B220): the official ones, or the early channel's
+/// signed pre-releases as well. Set by a file in the app's folder, `channel`, holding the
+/// one word `early` — written by `install.sh --early`; anything else, or no file, is the
+/// official channel.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Channel {
+    Official,
+    Early,
+}
+
+impl Channel {
+    /// The channel file's words (None: no file).
+    pub fn from_file(text: Option<&str>) -> Channel {
+        match text.map(str::trim) {
+            Some("early") => Channel::Early,
+            _ => Channel::Official,
+        }
+    }
+
+    /// The word the log and Copy diagnostics carry.
+    pub fn word(self) -> &'static str {
+        match self {
+            Channel::Official => "official",
+            Channel::Early => "early",
+        }
+    }
+}
+
+/// The newest release this channel takes, as its manifest: for the official channel the
+/// latest release's — the installer's first request, with a short budget. The app asks for
+/// it as `update.txt` (the same bytes as `manifest.txt`, DECISIONS B136), so a release's
+/// download counts tell the app's checks from the install line's runs; a release without
+/// one (before 0.1.11, or a test's folder) answers 404, and then it's `manifest.txt`.
+///
+/// The early channel reads the `early` pointer too — a pre-release GitHub keeps beside the
+/// releases, whose files `release.yml` replaces with each publish's manifest, pre-release or
+/// not — and takes whichever of the two is newer, so an early Mac takes an official release
+/// that is out, and a pointer that couldn't be read leaves it on the official channel's.
 pub fn check(base: &str) -> Result<Manifest, UpdateError> {
+    check_channel(base, Channel::Official)
+}
+
+pub fn check_channel(base: &str, channel: Channel) -> Result<Manifest, UpdateError> {
     let base = base.trim_end_matches('/');
     let agent = agent(CHECK_TIMEOUT);
-    let get = |name: &str| agent.get(&format!("{base}/latest/download/{name}")).call();
+    let latest = manifest_in(&agent, &format!("{base}/latest/download"));
+    if channel == Channel::Official {
+        return latest;
+    }
+    match (latest, manifest_in(&agent, &format!("{base}/download/early"))) {
+        (Ok(l), Ok(e)) => Ok(if e.version > l.version { e } else { l }),
+        (Ok(m), Err(_)) | (Err(_), Ok(m)) => Ok(m),
+        (Err(e), Err(_)) => Err(e),
+    }
+}
+
+/// One release folder's manifest: `update.txt`, or on a 404 `manifest.txt`.
+fn manifest_in(agent: &ureq::Agent, dir: &str) -> Result<Manifest, UpdateError> {
+    let get = |name: &str| agent.get(&format!("{dir}/{name}")).call();
     let mut res = match get("update.txt") {
         Err(ureq::Error::StatusCode(404)) => get("manifest.txt"),
         asked => asked,
@@ -278,6 +328,24 @@ mod tests {
     fn same_signer_asks_codesign_in_a_form_it_reads() {
         assert!(same_signer(Path::new("/bin/ls"), Path::new("/bin/ls")).is_ok());
         assert!(matches!(same_signer(Path::new("/bin/cat"), Path::new("/bin/ls")), Err(UpdateError::Signature(_))));
+    }
+
+    #[test]
+    fn the_channel_is_early_only_when_its_file_says_so() {
+        assert_eq!(Channel::from_file(Some("early\n")), Channel::Early);
+        assert_eq!(Channel::from_file(Some("  early ")), Channel::Early);
+        for other in [None, Some(""), Some("official"), Some("Early"), Some("early please")] {
+            assert_eq!(Channel::from_file(other), Channel::Official, "{other:?}");
+        }
+    }
+
+    /// A pre-release takes the next plain version (DECISIONS B220): above the release it
+    /// follows, below the official release after it — the order every reader already uses.
+    #[test]
+    fn a_pre_release_sorts_between_the_releases_around_it() {
+        let (official, early, next) = (Version::parse("0.1.24").unwrap(), Version::parse("0.1.25").unwrap(), Version::parse("0.1.26").unwrap());
+        assert!(official < early && early < next);
+        assert!(Version::parse("0.1.25-early.1").is_none(), "a suffixed version is no version to this updater, nor to 0.1.24's");
     }
 
     #[test]

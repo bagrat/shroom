@@ -909,6 +909,8 @@ fn log_boot(rt: &Runtime, home_override: bool, quiet: bool, launch: LaunchKind) 
     let _ = BUILD.set(build.clone());
     rt.log(&format!("boot: {build}"));
     rt.log(&format!("boot: launch {}", launch_word(launch)));
+    // Which releases this Mac takes (B220): a report's log says whether it ran a pre-release.
+    rt.log(&format!("boot: channel {}", updater::channel(rt).word()));
     rt.log(&format!(
         "boot: home {} · shell {} · cloud {}",
         if home_override { "override" } else { "default" },
