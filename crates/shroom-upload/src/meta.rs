@@ -2,7 +2,7 @@
 //! authoritative record — and, once deleted, its tombstone. Additive evolution only;
 //! readers ignore unknown fields; every rewrite is read-modify-write.
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{Map, Value};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -26,8 +26,11 @@ pub struct Media {
     pub height: u32,
 }
 
+/// The record. Read through [`Meta`]'s own `Deserialize` (below): an `edits` this version
+/// can't read stays in [`Meta::extra`] as it was, so the record still reads, and a rewrite
+/// keeps it.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", remote = "Self")]
 pub struct Meta {
     pub schema: u32,
     pub id: String,
@@ -49,9 +52,44 @@ pub struct Meta {
     /// “metadata-only in v1”, ARCHITECTURE §16 #30, DECISIONS B49). Additive.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub markers: Option<Vec<f64>>,
+    /// The saved edit (N63, DECISIONS B195): the list the page and the embed apply as they
+    /// play, its revision, and the permanent copy once one is up. Written only by a Mac's
+    /// editor ([`crate::library::save_edits`], [`crate::library::set_edit_copy`]). Additive.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub edits: Option<shroom_edit::Saved>,
     /// Fields this version doesn't know — kept on rewrite.
     #[serde(flatten)]
     pub extra: Map<String, Value>,
+}
+
+impl Serialize for Meta {
+    fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        if self.edits.is_some() && self.extra.contains_key("edits") {
+            // A typed edit replaces one kept as it was read: never two `edits` keys.
+            let mut clean = self.clone();
+            clean.extra.remove("edits");
+            return Meta::serialize(&clean, s);
+        }
+        Meta::serialize(self, s)
+    }
+}
+
+impl<'de> Deserialize<'de> for Meta {
+    fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Meta, D::Error> {
+        let mut fields = Map::<String, Value>::deserialize(d)?;
+        let edits = fields.remove("edits");
+        let mut meta = Meta::deserialize(Value::Object(fields)).map_err(serde::de::Error::custom)?;
+        match edits {
+            None | Some(Value::Null) => {}
+            Some(raw) => match serde_json::from_value::<shroom_edit::Saved>(raw.clone()) {
+                Ok(saved) => meta.edits = Some(saved),
+                Err(_) => {
+                    meta.extra.insert("edits".into(), raw);
+                }
+            },
+        }
+        Ok(meta)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -78,8 +116,22 @@ impl Meta {
             owner: None,
             progress: None,
             markers: None,
+            edits: None,
             extra: Map::new(),
         }
+    }
+
+    /// How long the video plays edited (seconds), when the record holds an edit that changes
+    /// what plays: its list made safe against the record's own `durationSec` (the Worker
+    /// trusts that clock too), its edited length. `None` for no edit or the identity.
+    pub fn edited_sec(&self) -> Option<f64> {
+        let saved = self.edits.as_ref()?;
+        let mut list = saved.list.clone();
+        if let Some(d) = self.duration_sec.filter(|d| d.is_finite() && *d > 0.0) {
+            list.source_duration = d;
+        }
+        let list = list.checked();
+        (!list.is_identity()).then(|| list.edited_duration())
     }
 }
 
@@ -118,6 +170,64 @@ mod tests {
         let back = serde_json::to_value(&m).unwrap();
         assert_eq!(back["markers"], serde_json::json!([12.5]));
         assert_eq!(back["createdAt"], "2026-10-02T00:00:00Z");
+    }
+
+    const EDITED: &str = r#"{"schema":1,"id":"x","state":"live","createdAt":"2026-10-02T00:00:00Z","publishedAt":null,
+        "deletedAt":null,"title":"T","durationSec":272.4,"media":null,"captions":null,"owner":null,"progress":null,
+        "titled":true,"thumb":{"at":3},
+        "edits":{"version":1,"source_duration":272.4,"in":8.0,"out":241.0,
+          "cuts":[{"start":150.0,"end":162.0,"kind":"manual","confidence":"high","applied":true,"removed":""}],
+          "rev":3,"copy":{"rev":3,"file":"edit-3.mp4","duration":221.0,"poster":"edit-3-poster.jpg"}}}"#;
+
+    #[test]
+    fn an_edit_round_trips_with_the_record_and_its_unknown_fields() {
+        let m: Meta = serde_json::from_str(EDITED).unwrap();
+        let saved = m.edits.as_ref().expect("the edit reads");
+        assert_eq!((saved.list.in_, saved.list.out, saved.rev, saved.list.cuts.len()), (8.0, 241.0, 3, 1));
+        assert_eq!(saved.current_copy().map(|c| c.file.as_str()), Some("edit-3.mp4"));
+        assert!(!m.extra.contains_key("edits"), "a readable edit isn't kept twice");
+        let back = serde_json::to_value(&m).unwrap();
+        let was: Value = serde_json::from_str(EDITED).unwrap();
+        assert_eq!(back["edits"], was["edits"], "written back as it was read");
+        assert_eq!((back["titled"].clone(), back["thumb"].clone()), (Value::Bool(true), serde_json::json!({"at": 3})));
+        assert_eq!(m.edited_sec(), Some(221.0));
+        // No edit: no key at all.
+        let plain = serde_json::to_value(Meta::uploading("x", "T", "2026-10-02T00:00:00Z")).unwrap();
+        assert!(plain.get("edits").is_none());
+    }
+
+    #[test]
+    fn an_edit_this_version_cant_read_never_costs_the_record() {
+        let mut v: Value = serde_json::from_str(EDITED).unwrap();
+        v["edits"] = serde_json::json!({ "version": 2, "spans": [[1, 2]], "rev": 7 });
+        let m: Meta = serde_json::from_value(v.clone()).expect("the record still reads");
+        assert!(m.edits.is_none());
+        assert_eq!(m.edited_sec(), None);
+        assert_eq!(serde_json::to_value(&m).unwrap()["edits"], v["edits"], "kept as it was on a rewrite");
+        // A typed edit written over it replaces it: one key, the new one.
+        let mut m2 = m.clone();
+        m2.edits = serde_json::from_str::<Meta>(EDITED).unwrap().edits;
+        let text = serde_json::to_string(&m2).unwrap();
+        assert_eq!(text.matches("\"edits\"").count(), 1, "{text}");
+        assert_eq!(serde_json::from_str::<Meta>(&text).unwrap().edits.unwrap().rev, 3);
+        // A null reads as none.
+        v["edits"] = Value::Null;
+        let m: Meta = serde_json::from_value(v).unwrap();
+        assert!(m.edits.is_none() && !m.extra.contains_key("edits"));
+    }
+
+    #[test]
+    fn the_edited_length_is_on_the_records_own_clock() {
+        let mut m: Meta = serde_json::from_str(EDITED).unwrap();
+        // The list says 272.4 s; the record says 200: the record's clock wins, as the page's.
+        m.duration_sec = Some(200.0);
+        assert_eq!(m.edited_sec(), Some(200.0 - 8.0 - 12.0));
+        let s = m.edits.as_mut().unwrap();
+        s.list.in_ = 0.0;
+        s.list.out = 272.4;
+        s.list.cuts[0].applied = false;
+        m.duration_sec = Some(272.4);
+        assert_eq!(m.edited_sec(), None, "the identity is no edit");
     }
 
     #[test]
