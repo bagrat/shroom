@@ -284,8 +284,8 @@ retired, B148.)
     on it; **(b)** the four L5 lanes the branch touched, both images (“After the close”
     in [`history/build-log/2026-10-13.md`](../history/build-log/2026-10-13.md)). The full
     item: [`history/build-status/waiting-35-36.md`](../history/build-status/waiting-35-36.md).
-37. **N68 — the page counts plays, and the Library suggests videos to clean up** (built,
-    provisional; B210–B214). Its privacy line he approved on 2026-10-18, and the page
-    carries it in the same PR, so it ships with counting; each row's cost past the free
-    10 GB too. Waits on his timing of the release (with the other four builds). **Ratify:** N68's rows and their words (the
-    Library's line, Suggested to clean up, Your videos), and the 1¢ size gate (B211).
+37. **N68 — the page counts plays, and the Library suggests videos to clean up** (built;
+    B210–B214). He ratified it as built on 2026-10-18: its words and rules, the privacy
+    line (the page carries it in the same PR, so it ships with counting), each row's cost
+    past the free 10 GB, and the 1¢ size gate (B211). Proved on the hosted Mac (the cleanup
+    drive, 22 checks). Waits only on his timing of the release, with the other four builds.
