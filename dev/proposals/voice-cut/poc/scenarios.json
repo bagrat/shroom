@@ -1,0 +1,50 @@
+{
+  "_": "Invented scripts for the voice-cue POC. role: keep (should stay), flub (should go), cue (should go), mention (stays: the cue words said as speech). pause: silence after the line, seconds.",
+  "scenarios": [
+    {"id": "1-the-example", "about": "The line from the brief: a fluffed opener, the cue, the opener again.", "lines": [
+      {"say": "Hello, that is shroom.", "role": "flub", "pause": 0.5},
+      {"say": "Shroom cut.", "role": "cue", "pause": 0.6},
+      {"say": "Hello, this is shroom.", "role": "keep", "pause": 0.4},
+      {"say": "Today I'll show you how to share a recording in one click.", "role": "keep", "pause": 0.8}
+    ]},
+    {"id": "2-mid-paragraph", "about": "The retake restarts mid-paragraph, after a filler, with a 'so' in front.", "lines": [
+      {"say": "To share a recording, you click the mushroom in the menu bar.", "role": "keep", "pause": 0.45},
+      {"say": "Then you pick the, the window you, um,", "role": "flub", "pause": 0.6},
+      {"say": "shroom cut.", "role": "cue", "pause": 0.7},
+      {"say": "So, then you pick the window you want to share.", "role": "keep", "pause": 0.4},
+      {"say": "And that's really all there is to it.", "role": "keep", "pause": 0.8}
+    ]},
+    {"id": "3-mid-sentence", "about": "The flub is the second half of a sentence; the retake restarts from that half, not the sentence start.", "lines": [
+      {"say": "Your video uploads while you talk, so the link is ready the moment you stop.", "role": "keep", "pause": 0.4},
+      {"say": "It goes straight to your own bucket, on your own account, which is, hmm, wait.", "role": "flub", "pause": 0.6},
+      {"say": "Shroom cut.", "role": "cue", "pause": 0.6},
+      {"say": "It goes straight to your own bucket, in your own cloud account, and nowhere else.", "role": "keep", "pause": 0.8}
+    ]},
+    {"id": "4-no-retake", "about": "The cue with nothing retaken after it: cut the cue, offer the line before.", "lines": [
+      {"say": "The settings window has three tabs.", "role": "keep", "pause": 0.45},
+      {"say": "The second one is, hmm, I forget what it's called.", "role": "flub", "pause": 0.6},
+      {"say": "Shroom cut.", "role": "cue", "pause": 0.7},
+      {"say": "Let's move on to the library instead.", "role": "keep", "pause": 0.8}
+    ]},
+    {"id": "5-two-cues", "about": "Two flubs in a row, a cue after each, then the clean take.", "lines": [
+      {"say": "Welcome to the tour.", "role": "keep", "pause": 0.5},
+      {"say": "Press stop, and your link is pasted.", "role": "flub", "pause": 0.5},
+      {"say": "Shroom cut.", "role": "cue", "pause": 0.6},
+      {"say": "Press stop, and your link is, uh,", "role": "flub", "pause": 0.5},
+      {"say": "shroom cut.", "role": "cue", "pause": 0.6},
+      {"say": "Press stop, and your link is copied to the clipboard.", "role": "keep", "pause": 0.8}
+    ]},
+    {"id": "6-said-not-meant", "about": "Cut and the code word said in normal speech: nothing should go.", "lines": [
+      {"say": "You can cut the start of a video in the editor.", "role": "keep", "pause": 0.4},
+      {"say": "Or just say shroom cut, and shroom trims the mistake for you.", "role": "mention", "pause": 0.4},
+      {"say": "The shroom cut feature works on every recording.", "role": "mention", "pause": 0.8}
+    ]},
+    {"id": "7-cue-at-the-end", "about": "A fluffed sign-off retaken, then a cue as the very last words.", "lines": [
+      {"say": "Thanks for watching, and see you in the next.", "role": "flub", "pause": 0.5},
+      {"say": "Shroom cut.", "role": "cue", "pause": 0.6},
+      {"say": "Thanks for watching, see you next time!", "role": "keep", "pause": 0.6},
+      {"say": "Oh, and one more thing, uh,", "role": "flub", "pause": 0.5},
+      {"say": "shroom cut.", "role": "cue", "pause": 1.0}
+    ]}
+  ]
+}
