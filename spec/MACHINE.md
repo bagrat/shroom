@@ -2380,17 +2380,17 @@ Saved: the final video is being made on this Mac and put up beside the original.
 
 | → | Kind | Label | Status | Cites |
 |---|---|---|---|---|
-| `editor-keep-original` | flow | the final video is up | provisional | N63, B197 |
-| `editor-making-failed` | flow | it couldn't be made or put up | provisional | N63, B197 |
+| `editor-keep-original` | flow | the final video is up, named in the video's record | provisional | N63, B197, B199 |
+| `editor-making-failed` | flow | it couldn't be made or put up — or it was dropped, never named: the video's record moved on first, a newer save landing (B199) | provisional | N63, B197, B199 |
 | `library` | flow | Close | provisional | N63, B197 |
 
 ### `editor-making-failed`
 
-state · window · **provisional** · board: EditorAfterSave · cites N63, B197
+state · window · **provisional** · board: EditorAfterSave · cites N63, B197, B199
 
-The final video couldn't be made or put up (offline, the space didn't answer, the encoder failed): one amber line and Close. The link keeps playing the edit over the original; shroom tries again later.
+The final video couldn't be made or put up (offline, the space didn't answer, the encoder failed), or a newer save landed first and it was dropped (B199): one amber line and Close. The link keeps playing the edit over the original; shroom tries again later.
 
-**Entry.** Making the final video failed in editor-making.
+**Entry.** Making the final video failed in editor-making. Also: it was made but dropped, never named — the video's record moved on first, a newer save landing from this Mac or another (B199).
 
 | Said | Role | Copy | Note |
 |---|---|---|---|
