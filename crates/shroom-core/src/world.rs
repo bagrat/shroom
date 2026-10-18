@@ -1181,6 +1181,8 @@ pub struct Fields {
     /// The editor's own fields (N63): `Some` exactly while its window is open — they clear
     /// when it closes.
     pub editor: Option<EditorFields>,
+    /// The owner page's Edit in shroom (N69): a press waiting, or why it opened nothing.
+    pub edit_link: Option<EditLink>,
 }
 
 /// What the editor holds (N63, B195): the video it's on, what its record said, every step
@@ -1210,6 +1212,9 @@ pub struct EditorFields {
     /// on the save, goes on once the save lands, and is dropped if it doesn't — the window
     /// says why.
     pub leaving: Option<Leaving>,
+    /// The owner page's Edit in shroom asked for another video while this one is open
+    /// (N69): the footer says why it came forward as it is, until the next change.
+    pub elsewhere: bool,
 }
 
 /// What waits on the editor's save (B199).
@@ -1379,6 +1384,28 @@ pub struct Session {
     /// The popover an update relaunch opened by itself (its door's opening instant): news
     /// that a click away puts away. A popover opened since is another door.
     pub news: Option<Mono>,
+}
+
+/// The owner page's Edit in shroom (N69), its latest press (B221 (c), (d)).
+#[derive(Debug, Clone, PartialEq)]
+pub enum EditLink {
+    /// Waiting: for a take to end (law 4), or — `asked` — for the Library's answer about a
+    /// video it didn't know.
+    Waiting { host: String, rec: RecId, asked: bool },
+    /// This Mac can't edit it: said once in `config`'s status line, gone when the popover
+    /// that said it closes.
+    Said(EditLinkNo),
+}
+
+/// Why the page's Edit in shroom opened nothing (N69).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EditLinkNo {
+    /// This Mac is set up for another space.
+    OtherSpace,
+    /// A member's Mac, and a video that isn't theirs (or one it can't see any more).
+    NotYours,
+    /// An owner's Mac, and a video no longer in the space.
+    Gone,
 }
 
 /// The display a click brings to `config` (N56).

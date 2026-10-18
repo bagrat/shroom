@@ -127,6 +127,9 @@ pub enum Event {
     /// A change the editor's webview asks for (N63): a trim, a cut, Put back, Revert, Undo,
     /// Redo. The core takes it or refuses it; the webview decides nothing.
     Edit(EditStep),
+    /// The owner page's Edit in shroom (N69): `shroom://edit/<host>/<id>`, read by the app.
+    /// It only asks: the core decides by this Mac's own state (B221).
+    EditLink { host: String, rec: RecId },
     /// The one inbound path for secret text: the shell moved it into the stash and sends
     /// only the handle and its shape (law 13).
     SecretPasted { field: SecretField, id: SecretId, shape: Shape },

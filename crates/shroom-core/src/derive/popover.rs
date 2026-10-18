@@ -5,7 +5,7 @@ use crate::copy;
 use crate::scene::{
     Action, Banner, Button, Choice, ConfigBody, PausedBody, Popover, PopoverBody, QuestionBody, StoppedBody, Style, Tone,
 };
-use crate::world::{Access, Cause, Confirm, Device, Phase, Quality, SavedCause, SourceId, StopOutcome, TakeLost, World};
+use crate::world::{Access, Cause, Confirm, Device, EditLink, EditLinkNo, Phase, Quality, SavedCause, SourceId, StopOutcome, TakeLost, World};
 
 pub fn derive(w: &World) -> Option<Popover> {
     let door = w.session.popover?;
@@ -424,7 +424,7 @@ fn one_shot_line(w: &World, shot: OneShot) -> String {
 /// The status line's dot (DEVIATIONS #45): uploads moving, waiting on something, or done.
 fn status_tone(w: &World) -> crate::scene::StatusTone {
     use crate::scene::StatusTone;
-    if lost_line(w).is_some() {
+    if edit_line(w).is_some() || lost_line(w).is_some() {
         return StatusTone::Waiting;
     }
     if !w.queue.is_empty() && !super::members::stranded_by_space(w) {
@@ -437,7 +437,12 @@ fn status_tone(w: &World) -> crate::scene::StatusTone {
 /// One status line — a fact: uploads in flight, waiting, or an update just done. A drained
 /// queue says nothing: the line just goes (DEVIATIONS #52).
 fn status_line(w: &World) -> Option<String> {
-    // A take that died with nothing to keep comes first: it's what just happened (#53).
+    // Why the page's Edit in shroom opened nothing comes first: it answers the press just
+    // made (N69).
+    if let Some(line) = edit_line(w) {
+        return Some(line);
+    }
+    // A take that died with nothing to keep: it's what just happened (#53).
     if let Some(line) = lost_line(w) {
         return Some(line);
     }
@@ -451,6 +456,16 @@ fn status_line(w: &World) -> Option<String> {
         return Some(if w.queue.len() == 1 { copy::uploading_one(pct) } else { copy::uploading_many(w.queue.len() as u64, pct) });
     }
     one_shot(w).map(|s| one_shot_line(w, s))
+}
+
+/// Why the owner page's Edit in shroom opened nothing (N69), said once.
+fn edit_line(w: &World) -> Option<String> {
+    match w.session.fields.edit_link {
+        Some(EditLink::Said(EditLinkNo::OtherSpace)) => Some(copy::edit_other_space()),
+        Some(EditLink::Said(EditLinkNo::NotYours)) => Some(copy::edit_not_yours()),
+        Some(EditLink::Said(EditLinkNo::Gone)) => Some(copy::edit_gone()),
+        _ => None,
+    }
 }
 
 /// The line about a take capture let go of with nothing to keep (DEVIATIONS #53).

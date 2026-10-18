@@ -23,7 +23,8 @@
 //! recording machine (config and its variants, disk-low, recording-off, the paused faces,
 //! the questions, the stops) and the countdown, each with its `window` (`popover` or
 //! `countdown`). The bubble and Camera's preview are native panels (no webview to render).
-//! The paused face shows Drop a marker, and again once one is dropped (N64).
+//! The paused face shows Drop a marker, and again once one is dropped (N64). `config` says,
+//! once, why the owner page's Edit in shroom opened nothing (N69).
 //!
 //! `… --example gallery -- editor` prints the editor's faces (N63), from the worlds of
 //! `tests/region5.rs`'s editor rows: ready on a trimmed video with a cut applied, a
@@ -31,7 +32,8 @@
 //! earlier edit's original is kept, with each of the time-left lines by Revert; the video
 //! coming at 40%; couldn't come; saving; the save that didn't go through, and the one the
 //! space turned down (B199); and after a save (B197), the final video being made at 40%, the
-//! one that couldn't be made, and “Delete the original?”.
+//! one that couldn't be made, and “Delete the original?”; and the window brought forward by the
+//! owner page's Edit in shroom for another video (N69).
 //!
 //! Examples can't import tests, so the builders are copied from
 //! `tests/common/support.rs` and `tests/onboarding.rs`; keep them in step.
@@ -1022,6 +1024,18 @@ fn region3_rows() -> Vec<(&'static str, &'static str, &'static str, World)> {
         w.session.take_lost = Some(shroom_core::world::TakeLost::Said { camera: false });
         w
     }));
+    // The owner page's Edit in shroom, for a video this Mac can't edit (N69): the popover
+    // opens by itself, without the keyboard, the line said once.
+    for (variant, no) in [("edit-link-other-space", EditLinkNo::OtherSpace), ("edit-link-not-yours", EditLinkNo::NotYours), ("edit-link-gone", EditLinkNo::Gone)] {
+        rows.push(("popover", "config", variant, {
+            let mut w = ready();
+            let door = Door::unasked(Mono(900));
+            w.session.popover = Some(door);
+            w.session.news = Some(door.opened);
+            w.session.fields.edit_link = Some(EditLink::Said(no));
+            w
+        }));
+    }
     rows.push(("popover", "disk-low", "disk-low", {
         let mut w = popover(ready());
         w.mac.disk_free = Fact::known(1_000_000_000 + 20 * 54_960_000, Mono(0));
@@ -1201,6 +1215,7 @@ fn editor_rows() -> Vec<(&'static str, &'static str, World)> {
             media,
             save,
             leaving: None,
+            elsewhere: false,
         });
         w
     };
@@ -1220,6 +1235,12 @@ fn editor_rows() -> Vec<(&'static str, &'static str, World)> {
     vec![
         ("editor", "editor-ready", open(here(), EditorSave::Idle, Some(stepped()))),
         ("editor", "editor-opening", open(EditorMedia::Opening, EditorSave::Idle, None)),
+        // The owner page's Edit in shroom asked for another video while this one is open (N69).
+        ("editor", "editor-editing-another", {
+            let mut w = open(here(), EditorSave::Idle, Some(stepped()));
+            w.session.fields.editor.as_mut().unwrap().elsewhere = true;
+            w
+        }),
         ("editor", "editor-original-kept-2-days", kept(47 * 3_600_000 + 30 * 60_000)),
         ("editor", "editor-original-kept-1-day", kept(30 * 3_600_000)),
         ("editor", "editor-original-kept-hours", kept(20 * 3_600_000)),
