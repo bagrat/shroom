@@ -475,52 +475,6 @@ pub struct LibraryPage {
     pub next: Option<String>,
 }
 
-/// One page of `cleanup`, the page's own suggestions of what to delete (where the page makes
-/// them: an older page answers 404). Read by the `shroom` command (spec N62, DECISIONS B215).
-#[derive(Debug, Clone, PartialEq, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CleanupPage {
-    /// Since when plays are counted; `None` before counting began.
-    #[serde(default)]
-    pub counting_since: Option<String>,
-    #[serde(default)]
-    pub items: Vec<CleanupItem>,
-    pub next: Option<String>,
-}
-
-/// One live video, with how it's watched and whether it's worth a look before deleting.
-#[derive(Debug, Clone, PartialEq, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CleanupItem {
-    pub id: String,
-    #[serde(default)]
-    pub title: String,
-    #[serde(default)]
-    pub created_at: String,
-    #[serde(default)]
-    pub owner: Option<String>,
-    #[serde(default)]
-    pub age_days: Option<u64>,
-    #[serde(default)]
-    pub duration_sec: Option<f64>,
-    #[serde(default)]
-    pub plays: Option<u64>,
-    #[serde(default)]
-    pub last_played_at: Option<String>,
-    /// Days since it was last played (or made); `None` where counting can't tell yet.
-    #[serde(default)]
-    pub quiet_days: Option<u64>,
-    /// The page suggests it.
-    #[serde(default)]
-    pub candidate: bool,
-    /// Only a ranking key: higher is sooner.
-    #[serde(default)]
-    pub score: f64,
-    /// `{code, …facts}`: the code is stable, the words are the reader's.
-    #[serde(default)]
-    pub reason: Option<Value>,
-}
-
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct KeyGrant {
     pub exp: String,
@@ -529,6 +483,67 @@ pub struct KeyGrant {
 #[derive(Deserialize)]
 struct MarkAnswer {
     on: bool,
+}
+
+/// One page of `POST cleanup` (N68): the live videos in scope, their plays, and the
+/// Worker's verdict on each. Fields this build doesn't read are left as they come.
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+pub struct CleanupPage {
+    /// The space's play-count switch.
+    #[serde(default = "yes")]
+    pub counting: bool,
+    #[serde(default)]
+    pub items: Vec<CleanupItem>,
+    pub next: Option<String>,
+    /// Since when plays are counted (`None`: not yet), for the `shroom` command (N62, B215).
+    #[serde(default, rename = "countingSince")]
+    pub counting_since: Option<String>,
+}
+
+fn yes() -> bool {
+    true
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CleanupItem {
+    pub id: String,
+    /// The record's size, or the Worker's estimate from its length.
+    #[serde(default)]
+    pub bytes: u64,
+    #[serde(default)]
+    pub plays: u32,
+    /// Days nobody has played it, as far as counting can tell (`None`: it can't yet).
+    #[serde(default)]
+    pub quiet_days: Option<f64>,
+    /// The share most plays reached, 0–1 (`None`: no play ended yet).
+    #[serde(default)]
+    pub median_watched: Option<f64>,
+    #[serde(default)]
+    pub candidate: bool,
+    #[serde(default)]
+    pub score: f64,
+    /// Why, by code (`never-played`, `stopped-early`, `not-lately`, `kept`, …).
+    #[serde(default)]
+    pub reason: Option<CleanupReason>,
+    // What the `shroom` command shows of each, as the Worker sends it (N62, B215).
+    #[serde(default)]
+    pub title: String,
+    #[serde(default)]
+    pub created_at: Option<String>,
+    #[serde(default)]
+    pub owner: Option<String>,
+    #[serde(default)]
+    pub age_days: Option<f64>,
+    #[serde(default)]
+    pub duration_sec: Option<f64>,
+    #[serde(default)]
+    pub last_played_at: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+pub struct CleanupReason {
+    pub code: String,
 }
 
 /// One space's Worker, by host.
@@ -694,16 +709,6 @@ impl Space {
         self.call("POST", "library", Some(body), Some(key))
     }
 
-    /// `POST cleanup`: the page's suggestions of what to delete, `after` the last id of the
-    /// page before. A page that doesn't make them answers 404.
-    pub fn cleanup(&self, key: &DeviceKey, scope: Scope, after: Option<&str>) -> Answer<CleanupPage> {
-        let mut body = json!({"scope": if scope == Scope::Mine { "mine" } else { "everyone" }});
-        if let Some(a) = after {
-            body["after"] = a.into();
-        }
-        self.call("POST", "cleanup", Some(body), Some(key))
-    }
-
     /// `GET members` (§4.11), owner-class.
     pub fn members(&self, key: &DeviceKey) -> Answer<Members> {
         self.call("GET", "members", None, Some(key))
@@ -762,6 +767,13 @@ impl Space {
     /// `POST mark` (§4.16), owner-class.
     pub fn mark(&self, key: &DeviceKey, on: bool) -> Answer<bool> {
         self.call::<MarkAnswer>("POST", "mark", Some(json!({"on": on})), Some(key)).map(|a| a.on)
+    }
+
+    /// `POST cleanup` (N68): one page of the live videos in scope (`everyone`: owner-class
+    /// only), their plays and the Worker's verdict; page with `after` until `next` is null.
+    pub fn cleanup(&self, key: &DeviceKey, everyone: bool, after: Option<&str>) -> Answer<CleanupPage> {
+        let scope = if everyone { "everyone" } else { "mine" };
+        self.call("POST", "cleanup", Some(json!({"scope": scope, "after": after})), Some(key))
     }
 
     /// `POST health` (§4.18): `refused` after the debounce's second answer, `ok` once the
