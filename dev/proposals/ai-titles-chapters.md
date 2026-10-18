@@ -145,8 +145,8 @@ an account with a third party.
 - **Naming a long take:** one hour of talk is ~15–17K tokens of transcript, well inside
   gpt-oss's window (128K) and Clef's (64K).
 - **Not measured yet:** CPU per invocation on a free-plan account. Workers time CPU only
-  between I/O, so it can't be read from inside. Reading it needs Workers analytics (a
-  token with Analytics Read on the test account; see the open questions). The likely cost
+  between I/O, so it can't be read from inside. Reading it needs Workers analytics during
+  a run (§9.7). The likely cost
   is the base64 of ~1 MB of audio, a few ms. If that's too much, 30 s windows halve it.
 
 ## 2. Where each one helps shroom
@@ -262,9 +262,14 @@ as "GHT"). The real voice didn't. Not tried yet:
 
 ## 5. Cost per recorded hour, and speed
 
-Neurons are computed from the pricing page's rates, not read back from Cloudflare's meter
-(that needs Analytics Read; see the open questions). The measured 4-minute runs add up to
-those rates.
+Neurons are computed from the pricing page's rates. **Checked against Cloudflare's meter**
+(a one-hour Account Analytics Read token on the test account, deleted after use,
+2026-10-18). Clef-flash metered **49.5 neurons over 6 calls**,
+exactly the computed figure. gpt-oss-120b metered 581 over 5 calls: the 3 that answered
+match the computed ones, and the 2 that ran out of tokens while reasoning billed ~140
+each. Whisper's total couldn't be told apart from the sibling sessions' runs on the same
+account; it bills by the audio minute. The probe Worker's CPU time came back empty, so
+it's still unmeasured (§1.7).
 
 | Per recorded hour | Neurons | $ on the paid plan |
 |---|---|---|
@@ -303,6 +308,8 @@ those rates.
    Settings · Space, each with one plain cost line. Members never see a cost.
 6. **Hand the sibling features Clef-flash** for per-sentence judgments, and Whisper
    turbo's word times to the voice-cue editor.
+7. **Captions ship with it:** `rec/<id>/ai/captions.vtt`, from the same transcript, as a
+   track viewers can turn on in the player (§9.6).
 
 ## 7. Spec sketch (provisional, numbers at ratification)
 
@@ -332,7 +339,9 @@ Said-lines are drafts, copy for Bagrat.
   change it."
 - **N-ai-4 — Chapters.** After Stop, on a take of 90 s or more with 2 or more chapters,
   the Worker writes `rec/<id>/ai/chapters.vtt`. The page shows them as option A or B.
-  Viewers need no account, as today. *Said:* `page.chapters` "Chapters".
+  Viewers need no account, as today. *Said:* `page.chapters` "Chapters". The same step
+  writes `rec/<id>/ai/captions.vtt`, a captions track the player offers (off until a
+  viewer turns it on).
 - **N-ai-5 — The free day runs out.** A Workers AI refusal for the daily allocation marks
   the take *naming later*. A Cron Trigger on the space's Worker (free on both plans)
   catches up after 00:00 UTC, oldest first. No error shows anywhere; the date stays until
@@ -358,18 +367,36 @@ new column right of the editor's boards (x = 11600). PNGs are in
 The titles and chapters on the boards are the POC's real output on the invented
 walkthrough.
 
-## 9. Open questions for Bagrat
+## 9. Calls made, and what's left for Bagrat
 
-1. **Where chapters show:** A (a list under the player, and the bar cut into chapters)
-   or B (the bar only, named on hover)? The recommendation is A.
-2. **The naming model:** gpt-oss-120b (best, ~$0.007/h) or gemma-4 (nearly as good, about
-   a quarter of the cost, 3 s)?
-3. **The owner's monthly limit** (paid plan only): leave it out, or "Set a monthly
-   limit…" as drawn?
-4. **Past videos:** offer to name the videos made before Turn on, at the free day's pace?
-5. **Can people edit chapters?** It's left out of v-next as drawn.
-6. **Captions and a summary**, from the same transcript: in the same first cut, or later?
-7. **A metered check:** may a session make one short-lived token with *Account Analytics
-   Read* on the test account? It would read the real neurons and the CPU per invocation
-   on the free plan. (A session's attempt to make a token was stopped by its own
-   permission guard, so this was not done.)
+The POC needed an answer to each question below, so each one is decided here, with its
+alternative, as a recommendation. All of them are Bagrat's to ratify or overturn.
+
+1. **Chapters show as option A**, a list under the player plus the seek bar cut into
+   chapters. Decided because a list is readable at a glance and reachable on a phone.
+   B (the bar only, named on hover) hides the names behind hover. B stays on the canvas
+   for comparison.
+2. **Name with gpt-oss-120b, falling back to gemma-4.** Decided because it gave the best
+   titles in 3 of 3 takes, at ~$0.007 an hour, under a fifth of the total. gemma-4 is
+   ~4× cheaper and faster, and nearly as good: it is the fallback, and the obvious
+   switch if cost ever matters.
+3. **An optional monthly limit, off by default.** It shows only on Cloudflare's paid
+   plan, where spend can grow, as drawn ("Set a monthly limit…"). On the free plan the
+   daily allowance already caps it. Decided because owners on the paid plan may want a
+   ceiling, while a forced default limit would quietly stop naming for busy teams.
+   Alternative: no limit at all.
+4. **Past videos: offered once.** Turn on is followed by one line, "Name my past videos
+   too", with its cost stated, run at the free day's pace. Decided because the owner's
+   Library otherwise stays half dated, half named. The alternative was leaving past
+   videos alone. (Not drawn yet: a follow-up board.)
+5. **Chapters will be editable**, but not in the first cut. The page's owner could rename
+   or remove a chapter later; v-next ships them read-only. Decided because typed edits
+   need their own rules (like `titled`) and boards, and the AI chapters were good enough
+   in testing to ship read-only first.
+6. **Captions: yes, in the same first cut.** They are a WebVTT track from the transcript
+   that already exists, at no extra AI cost. **Summary: later.** It's new copy on the page
+   and the least needed. Decided because captions are nearly free and help viewers
+   (sound off, accessibility).
+7. **The metered check is done** (§5). Left open: CPU per invocation on a free-plan
+   account. The next live run should read it from the Worker's own analytics, or
+   `wrangler tail`, during the run rather than after.
