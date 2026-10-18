@@ -3526,6 +3526,7 @@ dependencies = [
  "serde",
  "serde_json",
  "shroom-cloudfake",
+ "shroom-core",
  "shroom-storage",
  "ureq",
 ]
@@ -3629,6 +3630,7 @@ dependencies = [
  "serde",
  "serde_json",
  "shroom-cloudfake",
+ "shroom-core",
  "shroom-encode",
  "shroom-storage",
  "tempfile",
