@@ -37,6 +37,10 @@ shroom — your shroom videos from the command line.
   shroom invite cancel <invite-id>... those links stop working
   shroom members remove <member-id>... --yes
                                       they leave the space; their videos stay
+  shroom record start|pause|resume|stop
+                                      asks the shroom app (opens it if needed)
+  shroom status                       is shroom running, recording, set up?
+  shroom guide                        how a coding agent should use this tool
 
 Many at once (each item its own result; safe to run again; --dry-run first)
   shroom invite --batch \"Ann Lee\" \"Sam Ng\" ... --yes   a link each (at most 20)
@@ -44,11 +48,7 @@ Many at once (each item its own result; safe to run again; --dry-run first)
   shroom rename --batch \"<id>=<new title>\" ...    several titles
   shroom links <video>...                         the links of several videos
   shroom list --mine --since 7d                   what you made this week
-  --from <file>   the items from a file instead: a JSON array, or one per line
-  shroom record start|pause|resume|stop
-                                      asks the shroom app (opens it if needed)
-  shroom status                       is shroom running, recording, set up?
-  shroom guide                        how a coding agent should use this tool
+  --from <file>   the items from a file (- for stdin): a JSON array, or one per line
 
 <video> is an id, a link, or words from its title (one match only).
 A delete takes an id or a link, never title words.
@@ -59,8 +59,9 @@ Options
   --limit N       at most N rows          --search TEXT  titles containing TEXT
   --mine          only videos you made    --older-than DAYS (cleanup, default 90)
   --since 7d|DATE only videos since then  --renew  a new link for someone already invited
-  --dry-run       say what a delete would remove, remove nothing
-  --yes           confirm a delete        --no-launch   don't open the app to record
+  --dry-run       say what would change, change nothing
+  --yes           confirm a delete, a removal or a batch invite
+  --no-launch     don't open the app to record
 
 Exit codes
   0 ok · 1 failed · 2 usage · 3 not set up · 4 not found or ambiguous · 5 offline
