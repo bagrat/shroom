@@ -458,7 +458,7 @@ Macs write over S3 (SigV4, `https://<account>.r2.cloudflarestorage.com`, region 
 | `meta/<id>.json` | the record and tombstone; the recording Mac, Library, the Worker's title (D:B21) |
 | `rec/<id>/master.m3u8`, `rec/<id>/v0/{init.mp4, init_<k>.mp4, seg_NNNNN.m4s, stream.m3u8}` | the stream (local names kept) |
 | `rec/<id>/poster.jpg`, `teaser.mp4`, `video.mp4` | unfurl poster and teaser (D:B27); the single-file copy, title-independent |
-| `rec/<id>/edit-<rev>.mp4`, `edit-<rev>-poster.jpg`, `edit-<rev>-teaser.mp4` | an edit's permanent copy, its first frame and teaser, cut by the Mac after a save and named in `meta.edits.copy`; the previous revision's go once a newer copy lands or the edit is reverted (N63, D:B195) |
+| `rec/<id>/edit-<rev>.mp4`, `edit-<rev>-poster.jpg`, `edit-<rev>-teaser.mp4` | an edit's permanent copy, its first frame and teaser, cut by the Mac after a save and named in `meta.edits.copy`; the previous revision's go once a newer copy lands or the edit is reverted (N63, D:B195). After the bake `media` names them and the original's files go (D:B197) |
 | `rec/<id>/tx/*` | reserved, never written |
 | `.shroom/manifest.json` | `{schema:1, createdAt}`; a bucket is a shroom space iff it holds it; wiring, last, create-only |
 | `.shroom/player/hls.min.js`, `.shroom/cookie.key` | the pinned player (D:B30); the cookie's HMAC key (create-only) |
@@ -491,7 +491,8 @@ Registry ids are `d_`/`m_`/`i_` + 16 chars.
   "thumb"?: { "title": null|"…", "gif"?: "thumb-<16 hex>.gif", "jpg"?: "thumb-<16 hex>.jpg" },  // Copy thumbnail, the Worker's (D:B164)
   "edits"?: { "version": 1, "source_duration", "in", "out",                    // the editor's (N63, D:B195)
               "cuts": [{ "start", "end", "kind", "confidence", "applied", "removed", "resumes"?, "why"? }],
-              "rev", "copy"?: { "rev", "file": "edit-<rev>.mp4", "duration", "poster"?, "teaser"? } } }
+              "rev", "copy"?: { "rev", "file": "edit-<rev>.mp4", "duration", "poster"?, "teaser"? } },
+  "bakedFrom"?: [{ "at": "iso", "keep": [[s, e]] }] }                              // the bake's (D:B197), never served
 ```
 
 `media` holds keys. Additive only; unknown fields kept (`extra`). **Every rewrite is
@@ -503,7 +504,10 @@ read-modify-write under `If-Match`** (`upload::update_meta`), retried on 412, st
 rename's door; the Worker's title and thumbnail rewrites keep it as written. The Worker
 reads from it only the ranges that play and the current copy's names (`worker.js`
 `editsOf`, §10): the cuts' transcript text (`removed`, `resumes`, `why`, a later voice
-cut's) never reaches a viewer. An edit that leaves everything in is no edit.
+cut's) never reaches a viewer. An edit that leaves everything in is no edit. **The bake**
+(D:B197) makes the edit the video: `media` names the copy's own files with `hls: null`,
+`durationSec` is the copy's length, `edits` goes and `bakedFrom` keeps each earlier clock's
+ranges; a later edit counts on the new clock.
 
 ### 5.4 Index, list-on-read, multi-writer safety
 
@@ -610,8 +614,8 @@ foreign `v`. `VERSION` 0.1.9, `IFACE` 2.
 |---|---|
 | `GET /<id>` / `?embed=1` | the page by record face (§10) / the embed face, no `X-Frame-Options` |
 | `GET /<id>?k=<key>` | spend the grant by CAS → `shroom_owner` cookie → 302 to the clean URL |
-| `GET /m/<id>/<file>` | `rec/<id>/…` with Range/HEAD; only `.m3u8 .m4s .mp4 .jpg .vtt`; `nosniff`, `CSP: sandbox`; record read beside: deleted → 404, unreadable → 503; an edit's copy current → only its files, `poster.jpg` and `thumb-*` (N63) |
-| `GET /d/<id>` | `video.mp4` — or an edit's current copy; nothing while an edit waits for one — named from the live title, Range forwarded |
+| `GET /m/<id>/<file>` | `rec/<id>/…` with Range/HEAD; only `.m3u8 .m4s .mp4 .jpg .vtt`; `nosniff`, `CSP: sandbox`; record read beside: deleted → 404, unreadable → 503; an edit's copy current → only its files, the recording's own poster and `thumb-*` (N63); baked → only what `media` names and `thumb-*` (D:B197) |
+| `GET /d/<id>` | the recording's own file (`video.mp4`, or a baked `edit-<n>.mp4`) — or an edit's current copy; nothing while an edit waits for one — named from the live title, Range forwarded |
 | `GET /oembed?url=` | iframe of the embed face |
 | `GET /_shroom/hls.js`, `/_shroom/ping`, `/_shroom/status/<id>` | the player (immutable); `{shroom, iface, version}` without storage; the page's poll (`drained`, `pct`, `stalled`; an edit's `keep` and `copy`) |
 | `POST /_shroom/title/<id>`, `/_shroom/mark` | cookie title edit (`etagMatches`); the mark switch (owner-class) |
@@ -719,6 +723,10 @@ over. Then (step 3) `/m/` serves only the copy's files, `poster.jpg` and `thumb-
 original's stream, teaser and `video.mp4` answer 404, and a player still on the original
 moves over to the copy at the same edited moment when they do. Until the copy lands the
 original stays reachable at its addresses, so the edit holds only for what the page plays.
+A baked recording (D:B197) is an ordinary live video of one file: the page, the unfurl,
+Download and `/m/` follow `media`'s keys, each only when it is the recording's own file of
+its slot's kind. The voice-cut build's `shroom:keep` event (#59) hands the player new ranges
+on the recording's clock, made safe as `editsOf` makes an edit, in place of the edit.
 
 **Owner faces (cookie):** editable title (placeholder kept if untouched; Enter or click-away
 saves; emptied restores), player, Copy link and Download as icons, the upload line; members
