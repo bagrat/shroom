@@ -59,6 +59,23 @@ export const length = (k: Keep) => k.reduce((acc, [s, e]) => acc + (e - s), 0);
 /** No shorter part is cut by hand (seconds): `MIN_HAND_CUT` in shroom-edit. */
 export const MIN_HAND_CUT = 0.1;
 
+/** How far a cut's edge may be dragged (B195 (g)): out to the next cut or suggestion and the
+ * trim's end, and never nearer its other edge than `MIN_HAND_CUT`. `[lowest, highest]`. */
+export function edgeRoom(cuts: { start: number; end: number }[], index: number, side: "start" | "end", ends: { in: number; out: number }): [number, number] {
+  const c = cuts[index];
+  const others = cuts.filter((_, i) => i !== index);
+  if (side === "start") return [Math.max(ends.in, ...others.map((o) => o.end).filter((t) => t <= c.start)), c.end - MIN_HAND_CUT];
+  return [c.start + MIN_HAND_CUT, Math.min(ends.out, ...others.map((o) => o.start).filter((t) => t >= c.end))];
+}
+
+/** Whether the cut at `index` moved to `start`–`end` still leaves a second playing (or the
+ * whole of a shorter recording). A suggestion not taken plays nothing either way. */
+export function leavesEnough(list: Omit<List, "source_duration">, index: number, start: number, end: number, duration: number): boolean {
+  if (!list.cuts[index]?.applied) return true;
+  const cuts = list.cuts.map((c, i) => (i === index ? { ...c, start, end } : c));
+  return editedDuration({ in: list.in, out: list.out, cuts }) >= Math.min(MIN_KEEP, duration);
+}
+
 /** How much of the source part `start`–`end` plays: what cutting it would take out. */
 export const played = (k: Keep, start: number, end: number) => k.reduce((acc, [s, e]) => acc + Math.max(0, Math.min(e, end) - Math.max(s, start)), 0);
 

@@ -318,6 +318,26 @@ export async function editorDrives({ browser, origin, mediaOrigin, entries, chec
     check("editor: a suggestion clicked offers Cut it too, which applies it", apply === (b.labels.cut_it_too ?? `Cut ${(o.end - o.start).toFixed(1)} s`) && s.length === 1 && s[0].op === "apply" && s[0].index === offer, `${apply} ${JSON.stringify(s)}`);
   }
 
+  // A cut's edge dragged (B195 (g)): ↔ over it, the chip says the cut's length as it goes,
+  // nothing is sent until it's let go, then one resize for that cut.
+  const edgeEl = page.locator(`[data-edge="0-end"]`);
+  const eb = await edgeEl.boundingBox();
+  const pointer = await edgeEl.evaluate((el) => getComputedStyle(el).cursor);
+  check("editor: a cut's edge shows the ↔ pointer", pointer === "ew-resize", pointer);
+  const edgeTo = await at(page, cut.end + 4, d);
+  await clear(page);
+  await page.mouse.move(eb.x + eb.width / 2, eb.y + eb.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(edgeTo.x, edgeTo.y, { steps: 6 });
+  const live = norm(await page.locator(".chip button").innerText());
+  const mid = steps(await calls(page));
+  await page.mouse.up();
+  s = steps(await calls(page));
+  check("editor: a cut's edge dragged shows its length live and sends nothing yet", mid.length === 0 && near(Number(/(\d+\.\d)/.exec(live)?.[1]), cut.end + 4 - cut.start, 0.4), `${live} ${JSON.stringify(mid)}`);
+  check("editor: … let go, it sends one resize for that cut", s.length === 1 && s[0].op === "resize" && s[0].index === 0 && s[0].start === cut.start && near(s[0].end, cut.end + 4, 0.4), JSON.stringify(s));
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(1100);
+
   // A yellow end dragged: the trim, sent once on release; the ends hold where they were
   // let go until the core answers.
   const inBox = await page.locator(".end.in").boundingBox();

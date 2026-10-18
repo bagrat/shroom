@@ -14,7 +14,7 @@
   // the window sends to the core (Editor.svelte), and the core's next slice is the truth.
   import { onMount } from "svelte";
   import { clock, fill, seconds } from "./clock";
-  import { keep, MIN_HAND_CUT, MIN_KEEP, played } from "./keep";
+  import { edgeRoom, keep, leavesEnough, MIN_HAND_CUT, MIN_KEEP, played } from "./keep";
   import { draw } from "./waveform";
   import type { EditorBody } from "./types";
 
@@ -35,6 +35,7 @@
     oncut,
     onputback,
     onapply,
+    onresize,
   }: {
     /** The recording's length: the timeline's scale. */
     duration: number;
@@ -57,6 +58,7 @@
     oncut: (start: number, end: number) => void;
     onputback: (index: number) => void;
     onapply: (index: number) => void;
+    onresize: (index: number, start: number, end: number) => void;
   } = $props();
 
   /** A press that moves less than this is a click (px). */
@@ -88,8 +90,14 @@
 
   // The chip under what's selected: Cut <length> under a part (what of it plays: none, no
   // chip, since cutting it would change nothing), Put back <length> under an applied cut,
-  // Cut it too under a suggestion (applying it).
+  // Cut it too under a suggestion (applying it). While a cut's edge is dragged: its length as
+  // it goes, or Cut it too under a suggestion.
   let chip = $derived.by(() => {
+    if (edge && moved && list?.cuts[moved.index]) {
+      const at = (moved.start + moved.end) / 2;
+      if (!list.cuts[moved.index].applied) return { kind: "apply" as const, at, label: labels.cut_it_too ?? fill(labels.cut, seconds(moved.end - moved.start)) };
+      return { kind: "cut" as const, at, label: fill(labels.cut, seconds(moved.end - moved.start)) };
+    }
     if (!selection || !editable || !list) return null;
     if (selection.kind === "range") {
       const plays = played(keep(list), selection.start, selection.end);
@@ -103,7 +111,7 @@
   let chipLeft = $derived(chip ? Math.min(Math.max(x(chip.at) - chipWidth / 2, 0), Math.max(0, width - chipWidth)) : 0);
 
   function chipClick() {
-    if (!chip || !selection) return;
+    if (!chip || !selection || edge) return;
     if (selection.kind === "range") oncut(selection.start, selection.end);
     else if (chip.kind === "put-back") onputback(selection.index);
     else onapply(selection.index);
@@ -193,6 +201,69 @@
     else trim = null;
   }
 
+  // ── a cut's edge, dragged (B195 (g)) ──
+
+  /** Where the cut being moved is now, until the core's list has it. */
+  let moved = $state.raw<{ index: number; start: number; end: number } | null>(null);
+  /** The edge held: its cut, which side, where the cut was, where the pointer took hold (s),
+   * and how far it may go — the next cut or suggestion, the trim's end, a tenth of a second
+   * from its other edge. */
+  let edge = $state.raw<{ id: number; index: number; side: "start" | "end"; from: { start: number; end: number }; by: number; lo: number; hi: number; x0: number; went: boolean } | null>(null);
+
+  // The core's list has the move (or something else changed it): it's drawn from there.
+  $effect(() => {
+    void list;
+    if (!edge) moved = null;
+  });
+
+  function edgeDown(e: PointerEvent, index: number, side: "start" | "end") {
+    if (e.button !== 0 || !editable || !list || !ends) return;
+    const c = list.cuts[index];
+    if (!c) return;
+    e.preventDefault();
+    e.stopPropagation();
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    const [lo, hi] = edgeRoom(list.cuts, index, side, ends);
+    edge = { id: e.pointerId, index, side, from: { start: c.start, end: c.end }, by: timeAt(e.clientX) - c[side], lo, hi, x0: e.clientX, went: false };
+    moved = null;
+    selection = null;
+  }
+
+  function edgeMove(e: PointerEvent) {
+    if (!edge || e.pointerId !== edge.id || !list || !ends) return;
+    if (!edge.went && Math.abs(e.clientX - edge.x0) < CLICK) return;
+    edge = { ...edge, went: true };
+    const t = Math.min(Math.max(timeAt(e.clientX) - edge.by, edge.lo), edge.hi);
+    const next = edge.side === "start" ? { index: edge.index, start: t, end: edge.from.end } : { index: edge.index, start: edge.from.start, end: t };
+    // Never past where a second would be all that plays.
+    if (!leavesEnough({ in: ends.in, out: ends.out, cuts: list.cuts }, edge.index, next.start, next.end, duration)) return;
+    moved = next;
+    onscrub(t);
+  }
+
+  function edgeUp(e: PointerEvent) {
+    if (!edge || e.pointerId !== edge.id) return;
+    const g = edge;
+    edge = null;
+    if (!g.went) {
+      moved = null;
+      pickCut(g.index);
+      return;
+    }
+    const m = moved;
+    if (m && (m.start !== g.from.start || m.end !== g.from.end)) {
+      onresize(g.index, m.start, m.end);
+      selection = { kind: "cut", index: g.index, start: m.start, end: m.end };
+      // Shown where it was let go until the core's list has it; a move it refused goes back.
+      setTimeout(() => {
+        if (!edge) moved = null;
+      }, 1000);
+    } else moved = null;
+  }
+
+  /** A cut as it's drawn: where it's being moved, else where the list has it. */
+  const at = (c: { start: number; end: number }, i: number) => (moved && moved.index === i ? moved : c);
+
   // ── the waveform: drawn once the peaks are here, again when the box or the theme changes ──
 
   let tint = $state(0);
@@ -251,14 +322,31 @@
       {/each}
     {/if}
     {#if list && width}
-      {#each list.cuts as c, i}
-        {#if c.applied}
+      {#each list.cuts as cut, i}
+        {@const c = at(cut, i)}
+        {#if cut.applied}
           <div class="cut" class:picked={selection?.kind === "cut" && selection.index === i} style="left: {x(c.start)}px; width: {Math.max(4, x(c.end) - x(c.start))}px"></div>
           <span class="badge" role="presentation" style="left: {(x(c.start) + x(c.end)) / 2 - 10}px" onpointerdown={(e) => (e.stopPropagation(), pickCut(i))}
             ><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="4.5" cy="4.5" r="2" /><circle cx="4.5" cy="11.5" r="2" /><path d="M6.2 5.6L13 11.8M6.2 10.4L13 4.2" /></svg></span
           >
         {:else}
           <div class="offer" class:picked={selection?.kind === "cut" && selection.index === i} style="left: {x(c.start)}px; width: {Math.max(4, x(c.end) - x(c.start))}px"></div>
+        {/if}
+        {#if editable}
+          {#each ["start", "end"] as const as side}
+            <div
+              class="edge"
+              class:offered={!cut.applied}
+              class:held={edge?.index === i && edge.side === side}
+              style="left: {x(c[side]) - 5}px"
+              role="presentation"
+              data-edge="{i}-{side}"
+              onpointerdown={(e) => edgeDown(e, i, side)}
+              onpointermove={edgeMove}
+              onpointerup={edgeUp}
+              onpointercancel={edgeUp}
+            ><span></span></div>
+          {/each}
         {/if}
       {/each}
       {#if selection?.kind === "range"}
@@ -429,6 +517,33 @@
   }
   .offer.picked {
     background: color-mix(in srgb, var(--amber) 22%, transparent);
+  }
+  /* A cut's edge: a grip shows under the pointer, ↔ (B195 (g)). */
+  .edge {
+    position: absolute;
+    top: -6px;
+    bottom: -6px;
+    width: 10px;
+    cursor: ew-resize;
+    touch-action: none;
+    display: flex;
+    justify-content: center;
+    z-index: 2;
+  }
+  .edge span {
+    width: 6px;
+    border-radius: 3px;
+    background: var(--red);
+    box-shadow: 0 0 0 2px var(--field);
+    opacity: 0;
+    transition: opacity 80ms;
+  }
+  .edge.offered span {
+    background: var(--amber);
+  }
+  .edge:hover span,
+  .edge.held span {
+    opacity: 1;
   }
   .sel {
     position: absolute;

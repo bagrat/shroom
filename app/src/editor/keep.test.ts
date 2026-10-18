@@ -4,7 +4,7 @@
 // the same list the same way. Then the playback helpers the preview's skip loop runs on.
 import { describe, expect, it } from "vitest";
 import text from "../../../crates/shroom-edit/tests/keep-vectors.json?raw";
-import { checked, editedAt, editedDuration, END_SLACK, gain, isIdentity, keep, keepToEdited, keepToSource, length, nextPlay, played, snap, toEdited, toSource, type List } from "./keep";
+import { checked, edgeRoom, editedAt, editedDuration, END_SLACK, gain, isIdentity, keep, keepToEdited, keepToSource, leavesEnough, length, nextPlay, played, snap, toEdited, toSource, type List } from "./keep";
 
 type Vector = {
   name: string;
@@ -63,6 +63,29 @@ describe("the edit model, as shroom-edit's own tests", () => {
   it("is the identity only when nothing is left out", () => {
     expect(isIdentity(list(10, { cuts: [cut(2, 3, false)] }))).toBe(true);
     expect(isIdentity(list(10, { out: 9.5 }))).toBe(false);
+  });
+});
+
+describe("a cut's edge, dragged", () => {
+  const cuts = [
+    { start: 20, end: 28, applied: true },
+    { start: 36, end: 40, applied: true },
+    { start: 44, end: 49, applied: false },
+  ];
+  const ends = { in: 3, out: 55 };
+  it("stops at the next cut or suggestion, the trim's end, and a tenth of a second from its other edge", () => {
+    expect(edgeRoom(cuts, 0, "end", ends)).toEqual([20.1, 36]);
+    expect(edgeRoom(cuts, 0, "start", ends)).toEqual([3, 27.9]);
+    expect(edgeRoom(cuts, 1, "end", ends)).toEqual([36.1, 44]);
+    expect(edgeRoom(cuts, 2, "end", ends)).toEqual([44.1, 55]);
+    expect(edgeRoom(cuts, 2, "start", ends)).toEqual([40, 48.9]);
+  });
+  it("never leaves less than a second playing; a suggestion moved plays nothing new", () => {
+    const list = { in: 0, out: 10, cuts: [{ start: 2, end: 8, applied: true }, { start: 8.5, end: 9, applied: false }] };
+    expect(leavesEnough(list, 0, 0.3, 9.9, 10)).toBe(false);
+    expect(leavesEnough(list, 0, 0.5, 9.5, 10)).toBe(true);
+    expect(leavesEnough(list, 0, 1, 9, 10)).toBe(true);
+    expect(leavesEnough(list, 1, 0, 10, 10)).toBe(true);
   });
 });
 

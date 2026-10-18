@@ -25,6 +25,7 @@ export type EditStep =
   | { op: "cut"; start: number; end: number }
   | { op: "put-back"; index: number }
   | { op: "apply"; index: number }
+  | { op: "resize"; index: number; start: number; end: number }
   | { op: "revert" }
   | { op: "undo" }
   | { op: "redo" };

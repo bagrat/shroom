@@ -364,6 +364,7 @@
           oncut={(start, end) => step({ op: "cut", start, end })}
           onputback={(index) => step({ op: "put-back", index })}
           onapply={(index) => step({ op: "apply", index })}
+          onresize={(index, start, end) => step({ op: "resize", index, start, end })}
         />
       {/if}
     </div>
