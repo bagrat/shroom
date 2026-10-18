@@ -304,7 +304,7 @@ boards["AiSettingsFailed.dc.html"] = (
     "Settings — Space: AI couldn't change (the switch as the page has it, until the next try)", 600, 760,
     page("shroom Settings, Space, AI couldn't change", 600, 760, settings_body(False, FAILED, "settings-space.couldnt-change-that-just")))
 
-def library_body(line, line_id):
+def library_body(line):
     def row(t, meta, first=False):
         return f'''<div style="height: 50px; padding: 0 12px 0 10px;{'' if first else ' border-top: 1px solid #434a56;'} display: flex; flex-direction: row; align-items: center; gap: 10px">
 <div style="width: 64px; height: 36px; border-radius: 5px; background: #262a31; display: flex; align-items: center; justify-content: center; flex: none"><svg viewBox="0 0 16 16" aria-hidden="true" style="width: 12px; height: 12px; fill: #7b8494; display: block"><path d="M5 3.5v9l7.5-4.5z"></path></svg></div>
@@ -322,9 +322,9 @@ def library_body(line, line_id):
 </div>
 <div role="group" aria-label="shroom can name your videos and add chapters" style="background: rgba(136, 192, 208, 0.10); border: 1px solid rgba(136, 192, 208, 0.35); border-radius: 9px; padding: 12px 14px; display: flex; flex-direction: row; align-items: center; gap: 14px">
 <svg viewBox="0 0 16 16" aria-hidden="true" style="width: 20px; height: 20px; fill: none; stroke: #88c0d0; stroke-width: 1.3; stroke-linecap: round; stroke-linejoin: round; display: block; flex: none">{SPARK}</svg>
-<div style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-weight: 600" data-said="library-ai-offer.shroom-can-name-your">shroom can name your videos and add chapters</span><span style="color: #d8dee9; font-size: 12px" data-said="{line_id}">{line}</span></div>
-<button style="font: inherit; font-weight: 600; height: 28px; padding: 0 12px; border: 0; border-radius: 7px; background: #88c0d0; color: #2b2f36; white-space: nowrap; flex: none" data-said="library-ai-offer.turn-on">Turn on</button>
-<button style="font: inherit; border: 0; padding: 0 4px; background: transparent; color: #aeb6c4; white-space: nowrap; flex: none" data-said="library-ai-offer.not-now">Not now</button>
+<div style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-weight: 600">shroom can name your videos and add chapters</span><span style="color: #d8dee9; font-size: 12px">{line}</span></div>
+<button style="font: inherit; font-weight: 600; height: 28px; padding: 0 12px; border: 0; border-radius: 7px; background: #88c0d0; color: #2b2f36; white-space: nowrap; flex: none">Turn on</button>
+<button style="font: inherit; border: 0; padding: 0 4px; background: transparent; color: #aeb6c4; white-space: nowrap; flex: none">Not now</button>
 </div>
 <div style="background: #333944; border-radius: 9px; display: flex; flex-direction: column; overflow: hidden">
 {row("Where the 502s come from", "Oct 18 · 4:32", first=True)}
@@ -337,7 +337,7 @@ def library_body(line, line_id):
 
 boards["AiOffer.dc.html"] = (
     "Library — the naming card (replaced by the popover's banner, Bagrat 2026-10-18: too hidden; kept for the record)", 760, 560,
-    page("shroom Library, naming card", 760, 560, library_body("From what’s said in them, by your own Cloudflare account. Free for about three hours of video a day; past that, about 4¢ an hour.", "library-ai-offer.from-whats-said-in")))
+    page("shroom Library, naming card", 760, 560, library_body("From what’s said in them, by your own Cloudflare account. Free for about three hours of video a day; past that, about 4¢ an hour.")))
 # ───────── the popover: the AI banner (Bagrat, 2026-10-18: visible, off by default) ─────────
 
 MENU_MARK = MARK.replace('style="width: 17px; height: 18px; display: block"', 'role="img" aria-label="shroom" style="width: 16px; height: 17px; display: block"')
@@ -434,7 +434,7 @@ def landing_body():
 <div style="display: flex; flex-direction: row; justify-content: space-between; gap: 12px; font-size: 15px; color: #aeb6c4"><span><strong style="color: #88c0d0; font-weight: 600">$0</strong> · about three hours of video</span><span><strong style="color: #eceff4; font-weight: 600">$1.50 /month</strong> · about thirty hours</span></div>
 <div style="display: flex; flex-direction: row; align-items: flex-start; gap: 8px; margin-top: 10px; font-size: 15px; color: #aeb6c4">
 <svg viewBox="0 0 16 16" aria-hidden="true" style="width: 16px; height: 16px; fill: none; stroke: #88c0d0; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; display: block; flex: none; margin-top: 3px">{SPARK}</svg>
-<span data-said="landing.ai-titles-chapters-and">AI titles, chapters and captions are free for about 2½ hours of new video a day. Recording more? About 4¢ an hour on Cloudflare’s $5 plan.</span>
+<span>AI titles, chapters and captions are free for about 2½ hours of new video a day. Recording more? About 4¢ an hour on Cloudflare’s $5 plan.</span>
 </div>
 </div>
 {note("A proposal for where the line sits: under the price gauge, the storage price above it, in the gauge's own grey. The rest of the page as it is.")}
