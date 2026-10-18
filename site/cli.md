@@ -34,7 +34,7 @@ wording of `message`; pass `message` on to the person when it helps.
 | The link to the demo | `shroom link "<title words>" --json` |
 | Open it | `shroom open <id> --json` |
 | Rename it | `shroom rename <id> "<new title>" --json` |
-| Which old videos could go? | `shroom cleanup-candidates --json` (`--older-than 180`) — see below |
+| Which videos could go? | `shroom cleanup-candidates --json` (`--older-than 180`) — see below |
 | Delete it | see *Deleting* below |
 | Who's in my space? | `shroom members --json` |
 | Invite Sam | `shroom invite "Sam" --json` — see *Invites* below |
@@ -45,9 +45,12 @@ wording of `message`; pass `message` on to the person when it helps.
 A video is named by its id, its link, or words from its title (in any order). When words match more
 than one, you get `ambiguous` with the matches: show them, ask which, then use the id.
 
-A cleanup candidate is only old, for now. Its `views`, `last_viewed` and `score` are
-`null` while shroom doesn't count views: that means *not known*, never zero, so don't
-say nobody watched it.
+Cleanup candidates are their space's own suggestions where it makes them (`"by":
+"suggestions"`), most likely first: each with `plays`, `last_played`, `quiet_days`, a
+`reason` (`never-played`, `stopped-early`, `not-lately`, `big-and-quiet`) and its words in
+`why`. A space that doesn't make them answers by age alone (`"by": "age"`, `reason`
+`old`), and then `plays`, `last_played` and `quiet_days` are `null`: that means *not
+known*, never zero, so don't say nobody watched it.
 
 ## Many at once
 
@@ -105,7 +108,9 @@ lists every item. Tell them which failed and why, and run it again for those onl
   clear yes. They leave the space; the videos they made stay.
 - **Recording is theirs.** Start a recording only when they asked you to, right now.
   `record start` opens shroom if needed, shows its countdown, then records their
-  screen. `record stop` ends it and makes its link: give them the link. shroom lets you
+  screen. `record stop` ends it and makes its link: give them the link. During the
+  countdown, and between two steps, a `pause`, `resume` or `stop` answers `refused`
+  (shroom is between two steps): wait a moment and ask again. shroom lets you
   record only once they've turned on “Let it start and stop recordings” in its Settings,
   under General — until then you get `recording_off`: tell them where the switch is,
   and never look for another way to record.
