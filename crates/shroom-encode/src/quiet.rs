@@ -1,4 +1,5 @@
-//! The quiet in a take's sound (spec N65): the stretches a voice cut's edges are set in.
+//! The quiet in a take's sound (spec N65): the stretches a voice cut's edges are set in, and
+//! its loudness step by step, for an edge where no stretch was found.
 
 use std::io;
 use std::path::Path;
@@ -10,17 +11,69 @@ use crate::sound;
 pub const NOISE: f32 = 0.012_589_254;
 /// A quiet stretch is at least this long (seconds).
 pub const LEAST: f64 = 0.12;
+/// The loudness's step (seconds).
+pub const STEP: f64 = 0.01;
+
+/// A take's quiet and its loudness, from one read of its sound.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct Quiet {
+    /// The quiet stretches, as [`silences`] gives them.
+    pub silences: Vec<(f64, f64)>,
+    /// Every [`STEP`] from its start, how loud it was: the step's RMS in dBFS. A step whose
+    /// sound never came reads 0 dBFS, loud, so no edge is ever set there.
+    pub db: Vec<f32>,
+}
 
 /// The quiet stretches of `path`'s sound, `(start, end)` in seconds on its own clock, in
 /// order; one the take ends on closes at its end. A file with no sound has none. Sound that
 /// is missing between two blocks (a packet that wouldn't decode) is never counted as quiet.
 pub fn silences(path: &Path) -> io::Result<Vec<(f64, f64)>> {
+    Ok(read(path)?.silences)
+}
+
+/// [`silences`] and the loudness, in one pass over `path`'s sound.
+pub fn read(path: &Path) -> io::Result<Quiet> {
     let mut runs = Runs::default();
-    let Some(rate) = sound::each_block(path, |at, rate, levels| runs.block(at, rate, levels))? else {
-        return Ok(Vec::new());
+    let mut loud = Loudness::default();
+    let Some(rate) = sound::each_block(path, |at, rate, levels| {
+        runs.block(at, rate, levels);
+        loud.block(at, rate, levels);
+    })?
+    else {
+        return Ok(Quiet::default());
     };
     runs.end(rate);
-    Ok(runs.found)
+    Ok(Quiet { silences: runs.found, db: loud.db() })
+}
+
+/// Each step's sum of squares and how many frames came in it.
+#[derive(Default)]
+struct Loudness {
+    sum: Vec<f64>,
+    frames: Vec<u32>,
+}
+
+impl Loudness {
+    fn block(&mut self, at: u64, rate: u32, levels: &[f32]) {
+        let per = (rate as f64 * STEP).round().max(1.0) as u64;
+        for (i, &l) in levels.iter().enumerate() {
+            let k = ((at + i as u64) / per) as usize;
+            if k >= self.sum.len() {
+                self.sum.resize(k + 1, 0.0);
+                self.frames.resize(k + 1, 0);
+            }
+            self.sum[k] += f64::from(l) * f64::from(l);
+            self.frames[k] += 1;
+        }
+    }
+
+    fn db(&self) -> Vec<f32> {
+        self.sum
+            .iter()
+            .zip(&self.frames)
+            .map(|(&s, &n)| if n == 0 { 0.0 } else { (10.0 * (s / f64::from(n) + 1e-12).log10()) as f32 })
+            .collect()
+    }
 }
 
 #[derive(Default)]
