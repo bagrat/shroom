@@ -1097,15 +1097,22 @@ fn editor_layout(d: &Drive) -> Result<serde_json::Value, String> {
 }
 
 /// The editor's page's top-left on screen, in points from the top-left of the main display
-/// (what `cliclick` takes).
+/// (what `cliclick` takes): the window's content, under its title bar, as AppKit has it.
+/// (Tauri's inner position read the title bar's top on the hosted Mac: 32 pt too high.)
 fn editor_origin(d: &Drive) -> Result<(f64, f64), String> {
     use tauri::Manager;
     let app = d.app.clone();
     d.on_main(move || {
+        let mtm = objc2_foundation::MainThreadMarker::new()?;
         let w = app.get_webview_window(crate::runtime::presenter::EDITOR)?;
-        let scale = w.scale_factor().ok()?;
-        let p = w.inner_position().ok()?;
-        Some((f64::from(p.x) / scale, f64::from(p.y) / scale))
+        let ns = w.ns_window().ok()?;
+        // SAFETY: Tauri's own NSWindow for this webview window, read on the main thread.
+        let ns: &objc2_app_kit::NSWindow = unsafe { &*(ns as *const objc2_app_kit::NSWindow) };
+        let content = ns.contentRectForFrameRect(ns.frame());
+        // AppKit's y runs up from the bottom of the main display (the first screen).
+        let screens = objc2_app_kit::NSScreen::screens(mtm);
+        let main_h = (screens.count() > 0).then(|| screens.objectAtIndex(0).frame().size.height)?;
+        Some((content.origin.x, main_h - (content.origin.y + content.size.height)))
     })
     .flatten()
     .ok_or_else(|| "the editor's window isn't on screen".into())
@@ -1280,7 +1287,8 @@ fn editor(d: &Drive) -> Result<(), String> {
     let row = s.library.as_ref().and_then(|l| l.body.rows.iter().find(|r| r.key == here.0)).map(|r| r.meta.clone()).unwrap_or_default();
     let len = shroom_core::copy::length((want.1 * 1000.0).round() as u64);
     d.check("the Library row reads the edited length", row.ends_with(&format!("· {len}")), format!("{row} (want {len})"));
-    std::thread::sleep(Duration::from_millis(800));
+    // The Library was behind the editor all along: macOS paints it again once it shows.
+    std::thread::sleep(Duration::from_secs(4));
     runner.shot(d, LIBRARY, "library-edited")?;
 
     // The permanent copy, cut on this Mac with the encoder and put beside the recording.
