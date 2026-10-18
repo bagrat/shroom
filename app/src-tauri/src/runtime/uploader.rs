@@ -11,7 +11,7 @@ use std::time::{Duration, Instant};
 
 use shroom_cloud::Cloud;
 use shroom_cloud::device::{CredFile, DeviceKey};
-use shroom_cloud::member::{MintNext, Ping, Purpose, Space};
+use shroom_cloud::member::{AiAuth, AiSent, AiSignal, MintNext, Ping, Purpose, Space, ai_signal};
 use shroom_cloud::mint::{self, Grant, Paths};
 use shroom_core::effect::UpCmd;
 use shroom_core::event::{Event, MemberNews, StandingAnswer, UploadNews};
@@ -262,6 +262,7 @@ pub fn spawn(rt: Runtime, live: Arc<Mutex<Option<LiveTake>>>) -> Sender<UpCmd> {
         .name("shroom-uploader".into())
         .spawn(move || {
             let mut lives: HashMap<PathBuf, LiveUpload> = HashMap::new();
+            let mut naming = Naming::new(&rt);
             let mut cached: Option<Ctx> = None;
             let mut working = false;
             // Discards whose remote delete hasn't landed (`forget/<rec>`): retried on a
@@ -301,7 +302,7 @@ pub fn spawn(rt: Runtime, live: Arc<Mutex<Option<LiveTake>>>) -> Sender<UpCmd> {
                                 }
                             }
                         }
-                        let (more, ok) = pass(&rt, cached.as_ref().expect("set above"), &live, &mut lives);
+                        let (more, ok) = pass(&rt, cached.as_ref().expect("set above"), &live, &mut lives, &mut naming);
                         working = more;
                         if !ok {
                             cached = None;
@@ -325,7 +326,9 @@ fn has_live_cred(dir: &Path) -> bool {
 /// One pass over the open take and the published ones. Returns whether work remains
 /// (a take still open) — otherwise it reports Idle, ending the core's upload op — and
 /// whether the pass went cleanly.
-fn pass(rt: &Runtime, c: &Ctx, live: &Arc<Mutex<Option<LiveTake>>>, lives: &mut HashMap<PathBuf, LiveUpload>) -> (bool, bool) {
+fn pass(rt: &Runtime, c: &Ctx, live: &Arc<Mutex<Option<LiveTake>>>, lives: &mut HashMap<PathBuf, LiveUpload>, naming: &mut Naming) -> (bool, bool) {
+    // Takes whose space hasn't yet answered that they're done (N66): said again now and then.
+    naming.owed(rt, c);
     // The open take: its finished segments, as they finish. No meta claim — a recording
     // becomes a link only by Stop or Get link (law 3, DEVIATIONS #4).
     let open = live.lock().unwrap().clone();
@@ -341,6 +344,8 @@ fn pass(rt: &Runtime, c: &Ctx, live: &Arc<Mutex<Option<LiveTake>>>, lives: &mut 
                     rt.log(&format!("uploader sent {n} while recording"));
                 }
             }
+            // Another ten pieces up: another minute for the space to hear (N66).
+            naming.minute(c, &l.dir, &l.rec, up.pieces_up());
         }
         let name = TakeDir(l.dir.file_name().unwrap().to_string_lossy().into_owned());
         rt.post(Event::Upload(UploadNews::Progress { dir: name, done: 0, total: 0 }));
@@ -372,6 +377,8 @@ fn pass(rt: &Runtime, c: &Ctx, live: &Arc<Mutex<Option<LiveTake>>>, lives: &mut 
             Ok(()) => {
                 let _ = std::fs::write(dir.join("uploaded"), b"");
                 lives.remove(&dir);
+                // Every piece is up: the space hears the rest and names it (N66).
+                naming.done(c, &dir, &q.rec.0);
                 rt.post(Event::Upload(UploadNews::Live(q.dir)));
             }
             Err(UploadError::Tombstoned) => {
@@ -408,6 +415,118 @@ fn pass(rt: &Runtime, c: &Ctx, live: &Arc<Mutex<Option<LiveTake>>>, lives: &mut 
     }
     rt.post(Event::Upload(UploadNews::Idle));
     (false, true)
+}
+
+/// A take whose space hasn't yet answered that it's done (N66): `ai-owed` beside it.
+const AI_OWED: &str = "ai-owed";
+/// How often an owed done is said again: the space's own schedule does the rest once it's in.
+const AI_AGAIN: Duration = Duration::from_secs(600);
+
+/// One word for the space about a take (N66, DECISIONS B206 b).
+struct AiJob {
+    host: String,
+    door: AiDoor,
+    rec: String,
+    /// The take, for its owed marker and the log (never the link's id).
+    dir: PathBuf,
+    signal: AiSignal,
+}
+
+/// The door naming's words go through: this Mac's device key, or the setup Mac's parent
+/// proof — the token's derived S3 secret, as enroll signs with it.
+enum AiDoor {
+    Device(DeviceKey),
+    Parent(String),
+}
+
+/// What the uploader keeps for naming: its own lane — one word at a time, off the
+/// uploader's thread, since a step can take half a minute and the upload never waits on it —
+/// how far each open take was told, and when an owed done was last said.
+struct Naming {
+    lane: Sender<AiJob>,
+    told: HashMap<PathBuf, u32>,
+    tried: HashMap<PathBuf, Instant>,
+}
+
+impl Naming {
+    fn new(rt: &Runtime) -> Naming {
+        Naming { lane: ai_lane(rt.clone()), told: HashMap::new(), tried: HashMap::new() }
+    }
+
+    fn door(c: &Ctx) -> AiDoor {
+        match &c.door {
+            Door::Device { key, .. } => AiDoor::Device(key.clone()),
+            Door::Token { cloud, token_id } => AiDoor::Parent(cloud.s3_credentials(token_id).secret_access_key),
+        }
+    }
+
+    /// The open take has another ten pieces up: another minute to hear.
+    fn minute(&mut self, c: &Ctx, dir: &Path, rec: &str, pieces: u32) {
+        let told = self.told.get(dir).copied().unwrap_or(0);
+        if pieces / 10 > told / 10 {
+            self.told.insert(dir.to_path_buf(), pieces);
+            self.send(c, dir, rec, AiSignal::Through(pieces));
+        }
+    }
+
+    /// The take is live: owed until the space answers.
+    fn done(&mut self, c: &Ctx, dir: &Path, rec: &str) {
+        self.told.remove(dir);
+        let _ = std::fs::write(dir.join(AI_OWED), b"");
+        self.tried.insert(dir.to_path_buf(), Instant::now());
+        self.send(c, dir, rec, AiSignal::Done);
+    }
+
+    /// Owed dones, said again — from launch, then no oftener than every ten minutes a take.
+    fn owed(&mut self, rt: &Runtime, c: &Ctx) {
+        for dir in dirs(&rt.home.takes()) {
+            if !dir.join(AI_OWED).is_file() || self.tried.get(&dir).is_some_and(|t| t.elapsed() < AI_AGAIN) {
+                continue;
+            }
+            let Some(p) = super::home::read_json::<super::takes::PublishJson>(&dir.join("publish.json")) else { continue };
+            self.tried.insert(dir.clone(), Instant::now());
+            self.send(c, &dir, &p.rec, AiSignal::Done);
+        }
+    }
+
+    fn send(&self, c: &Ctx, dir: &Path, rec: &str, signal: AiSignal) {
+        let _ = self.lane.send(AiJob { host: c.identity.host.clone(), door: Self::door(c), rec: rec.to_string(), dir: dir.to_path_buf(), signal });
+    }
+}
+
+/// Naming's lane: each word in turn. A take whose space doesn't name videos is left be; a
+/// done take's marker goes once the space has answered at all.
+fn ai_lane(rt: Runtime) -> Sender<AiJob> {
+    let (tx, rx) = channel::<AiJob>();
+    std::thread::Builder::new()
+        .name("shroom-naming".into())
+        .spawn(move || {
+            let mut off: std::collections::HashSet<String> = std::collections::HashSet::new();
+            for job in rx {
+                let take = job.dir.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+                let sent = if off.contains(&job.rec) {
+                    AiSent::Off
+                } else if let Some(space) = rt.space(&job.host) {
+                    let auth = match &job.door {
+                        AiDoor::Device(k) => AiAuth::Device(k),
+                        AiDoor::Parent(secret) => AiAuth::Parent(secret),
+                    };
+                    let sent = ai_signal(&space, &auth, &job.rec, job.signal);
+                    rt.log(&format!("naming {take}: {:?} → {sent:?}", job.signal));
+                    sent
+                } else {
+                    continue;
+                };
+                if sent == AiSent::Off {
+                    off.insert(job.rec.clone());
+                }
+                if job.signal == AiSignal::Done && sent != AiSent::Owed {
+                    let _ = std::fs::remove_file(job.dir.join(AI_OWED));
+                }
+            }
+        })
+        .expect("the naming lane starts");
+    tx
 }
 
 /// `live`: the stream went live on an earlier pass, with this count — a resume sends only

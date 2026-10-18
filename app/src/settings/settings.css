@@ -248,6 +248,11 @@
   opacity: 0.5;
 }
 
+/* Naming's switch (N66) under the mark's, in the same card. */
+.beneath .mark + .mark {
+  border-top: 1px solid var(--border);
+}
+
 .mark-text {
   flex: 1 1 auto;
   min-width: 0;

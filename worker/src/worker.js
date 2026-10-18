@@ -105,6 +105,11 @@ export const COPY = {
   // The hint, on a take with no voice cuts in a space that listens (owner-page-cue-hint).
   cueHint: "Slipped? Say “shroom cut”, then say the line again.",
   cueHintGotIt: "Got it",
+  // Names, chapters and captions (N66, N67): the owner page's two lines, and the player's
+  // Captions button, in DECISIONS' copy table too.
+  named: "Named from what you said. Click the title to change it.",
+  namingLater: "Its name and chapters come a little later, once your free hours are back.",
+  captions: "Captions",
 };
 
 /** The upload line while bytes arrive: "Uploading — 40%. Your link already works." */
@@ -174,10 +179,16 @@ export default {
   async fetch(request, env, ctx) {
     return handle(request, env, Date.now(), ctx);
   },
+  /** The schedule each minute, on a space with naming on (B206 c).
+   * @param {{ scheduledTime: number }} controller @param {Env} env @param {Ctx} ctx */
+  async scheduled(controller, env, ctx) {
+    if (env.AI) ctx.waitUntil(aiTick(env, controller.scheduledTime || Date.now()));
+  },
 };
 
 /**
- * @typedef {{ BUCKET: R2Bucket, R2_PARENT?: string }} Env
+ * @typedef {{ BUCKET: R2Bucket, R2_PARENT?: string, AI?: Ai }} Env
+ * @typedef {{ run(model: string, input: Record<string, unknown>): Promise<any> }} Ai
  * @typedef {{ waitUntil(p: Promise<unknown>): void }} Ctx
  * @typedef {{ etagMatches?: string, etagDoesNotMatch?: string }} R2Conditional
  * @typedef {{ prefix?: string, startAfter?: string, cursor?: string, limit?: number, include?: string[] }} R2ListOptions
@@ -187,7 +198,7 @@ export default {
  *   delete(key: string): Promise<void>, list(options?: R2ListOptions): Promise<R2Objects> }} R2Bucket
  * @typedef {{ member: string, device: string, ownerClass: boolean, roster: any }} Owner
  * @typedef {{ key: string, size: number, etag: string, httpEtag?: string, customMetadata?: Record<string, string>, range?: { offset?: number, length?: number, suffix?: number } }} R2Object
- * @typedef {R2Object & { body: ReadableStream, text(): Promise<string> }} R2ObjectBody
+ * @typedef {R2Object & { body: ReadableStream, text(): Promise<string>, arrayBuffer?(): Promise<ArrayBuffer> }} R2ObjectBody
  */
 
 /** `ctx` is the runtime's (its `waitUntil` lets a reply leave before its housekeeping);
@@ -205,11 +216,18 @@ export async function handle(request, env, now, ctx) {
 
   // The stop's reachability probe: "this address answers as a shroom space" — no storage
   // read, so it stays inside the probe's budget (DV #8).
-  if (path === "/_shroom/ping") return json({ shroom: true, iface: IFACE, version: VERSION });
+  // A page carrying Cloudflare's AI says so (N66): the setup Mac reads naming's switch here.
+  if (path === "/_shroom/ping") return json({ shroom: true, iface: IFACE, version: VERSION, ...(env.AI ? { ai: true } : {}) });
   if (path === "/_shroom/hls.js") return media(request, env, HLS_JS_KEY, "text/javascript", "public, max-age=31536000, immutable");
   // The tab icon, answered here so the page below never takes "favicon.ico" for a video's
   // id (a browser asks for that one unprompted) — whatever rides the address.
   if (path === "/favicon.svg" || path === "/favicon.png" || path === "/favicon.ico") return tabIcon(request, path);
+
+  // Names, chapters and captions (N66, N67): the captions file, and the owner page's ask for a name on its way.
+  const cc = path.match(/^\/_shroom\/cc\/([A-Za-z0-9_-]{16})$/);
+  if (cc) return aiCaptionsRoute(request, env, cc[1], url).catch(() => plain(503, ""));
+  const named = path.match(/^\/_shroom\/named\/([A-Za-z0-9_-]{16})$/);
+  if (named) return aiNamedRoute(request, env, named[1]).catch(() => plain(503, ""));
 
   const st = path.match(/^\/_shroom\/status\/([A-Za-z0-9_-]{16})$/);
   // A record that can't be read right now is the unavailable face, never Cloudflare's own
@@ -256,7 +274,7 @@ export async function handle(request, env, now, ctx) {
     // The space's storage failing under the read is the spec's unavailable face (B94).
     if (url.searchParams.get("embed") === "1") return embed(env, p[1], now, url.origin).catch((e) => unavailableEmbed(e));
     // Who this browser is, read beside the record rather than before it (DECISIONS B59 g).
-    return page(env, p[1], now, ownerOf(request, env), url.origin).catch((e) => unavailableFace(e));
+    return page(env, p[1], now, ownerOf(request, env), url.origin, ctx).catch((e) => unavailableFace(e));
   }
 
   return plain(404, "");
@@ -996,13 +1014,18 @@ async function download(request, env, id) {
   return media(request, env, `rec/${id}/video.mp4`, "video/mp4", "private, max-age=0", { "content-disposition": disposition });
 }
 
-/** @param {Env} env @param {string} id @param {number} now @param {Promise<Owner | null>} ownerP @param {string} origin */
-async function page(env, id, now, ownerP, origin) {
+/** @param {Env} env @param {string} id @param {number} now @param {Promise<Owner | null>} ownerP @param {string} origin @param {Ctx} [ctx] */
+async function page(env, id, now, ownerP, origin, ctx) {
   // Only the record's own read decides the face: a mark that can't be read is the default.
   // The stream's playlist is read beside the record, never after it: whether the copy may
   // play costs no round of its own (B177).
   const oneP = onePicture(env, id);
   const [meta, mark, owner] = await Promise.all([readMeta(env, id), markOn(env).catch(() => true), ownerP]);
+  // An edit saved since the space named the video is weighed after the view (B208 c).
+  if (env.AI && meta?.named && meta.state === "live") {
+    const weighed = aiAfterView(env, id, meta, now).catch(() => {});
+    if (ctx) ctx.waitUntil(weighed); else await weighed;
+  }
   const face = { mark, owner: owner?.ownerClass ? { switchOn: mark } : null, head: meta && meta.state !== "deleted" ? unfurl(id, meta, origin) : "", ratio: ratioOf(meta) };
   if (meta && meta.state === "deleted") return html(notFoundPage(face), false, 404);
   const mine = owner !== null && (await mayEdit(env, owner, id, !!meta));
@@ -1032,13 +1055,17 @@ async function page(env, id, now, ownerP, origin) {
   }
   if (owner && mine && (meta.state === "uploading" || (meta.state === "live" && meta.media?.hls))) {
     const blocked = stalledAt(meta, now) && !drained(meta) && (await uploadsBlocked(env));
-    return html(ownerPage(id, meta, now, face, blocked ? waitingWords(owner) : COPY.waitingConnection, false, false, await sourceOf(id, meta, oneP), listensOf(env)));
+    const src = await sourceOf(id, meta, oneP);
+    return html(ownerPage(id, meta, now, face, blocked ? waitingWords(owner) : COPY.waitingConnection, false, false, src, aiFace(id, meta, src, !!env.AI, now), listensOf(env)));
   }
   if (meta.state === "uploading") {
     const st = status(meta, now);
     return html(onItsWayPage(meta.title, st.stalled ? COPY.stalled : COPY.onItsWay, face, st.pct ?? 0, !!st.stalled));
   }
-  if (meta.state === "live" && meta.media?.hls) return html(livePage(id, meta, face, await sourceOf(id, meta, oneP)));
+  if (meta.state === "live" && meta.media?.hls) {
+    const src = await sourceOf(id, meta, oneP);
+    return html(livePage(id, meta, face, src, aiFace(id, meta, src, !!env.AI, now)));
+  }
   return html(unavailablePage(face));
 }
 
@@ -1139,8 +1166,8 @@ async function embed(env, id, now, origin) {
   // The mark sits at the end of the player's control row (it hides with the controls), or
   // in the corner of a line.
   const corner = mark ? `<a class="mark" href="https://shroom.am" target="_blank" rel="noopener" title="${COPY.mark}" aria-label="${COPY.mark}">${LOGO}</a>` : "";
-  const frame = (/** @type {string} */ inner, refresh = 0, code = 200) => html(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="robots" content="noindex"><title>${escapeText((meta?.state !== "deleted" && meta?.title) || "shroom")}</title>${refresh ? `<meta http-equiv="refresh" content="${refresh}">` : ""}<style>${EMBED_TOKENS}${PLAYER_STYLE}${EMBED_STYLE}</style></head>
+  const frame = (/** @type {string} */ inner, refresh = 0, code = 200, css = "") => html(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex"><title>${escapeText((meta?.state !== "deleted" && meta?.title) || "shroom")}</title>${refresh ? `<meta http-equiv="refresh" content="${refresh}">` : ""}<style>${EMBED_TOKENS}${PLAYER_STYLE}${EMBED_STYLE}${css}</style></head>
 <body${mark ? ` class="marked"` : ""}>${inner}${corner}</body></html>`, true, code);
   /** The line where the player will be; on its way, over the thin bar (N27). */
   const line = (/** @type {string} */ text, /** @type {string} */ bar = "") => `<div class="line"><p>${escapeText(text)}</p>${bar}</div>`;
@@ -1152,8 +1179,9 @@ async function embed(env, id, now, origin) {
   }
   if (meta.state !== "live" || !meta.media?.hls) return frame(line(COPY.unavailable), 30);
   const src = await sourceOf(id, meta, oneP);
-  return frame(`${playerHtml(id, meta, origin)}
-<script>${PLAYER_JS};shroomPlayer(document.querySelector(".player"),${JSON.stringify(src)},${jsonForScript(JSON.stringify(LABELS))})</script>`);
+  const ai = aiFace(id, meta, src, !!env.AI, now);
+  return frame(`${aiPlayer(playerHtml(id, meta, origin), ai)}
+<script>${PLAYER_JS};shroomPlayer(document.querySelector(".player"),${JSON.stringify(src)},${jsonForScript(JSON.stringify(LABELS))})${aiWire(".player", ai)}</script>`, 0, 200, aiCss(ai));
 }
 
 /** The embed is the player alone, and the player stays dark whatever the viewer's scheme. */
@@ -1572,7 +1600,7 @@ if(navigator.clipboard&&navigator.clipboard.write&&window.ClipboardItem){try{ret
 return hp.then(old)}`;
 
 /** @param {string} id @param {any} meta @param {Face} face @param {string} src what the player plays (B177) */
-function livePage(id, meta, face, src) {
+function livePage(id, meta, face, src, ai = AI_NONE) {
   const title = meta.title || "";
   // Download is a quiet icon beside the title: its word names it.
   const download = meta.media.mp4 ? `<span class="dl" data-tip="${COPY.download}"><a href="/d/${id}">${COPY.download}</a></span>` : "";
@@ -1580,15 +1608,15 @@ function livePage(id, meta, face, src) {
   // thumbnail shows only once the owner's page has made a picture for the title.
   const thumbs = thumbsOf(id, meta, true, false);
   const cfg = JSON.stringify({ copied: COPY.copied, copy: COPY.copyLink, copyThumb: COPY.copyThumbnail, thumbs });
-  const player = `${playerHtml(id, meta)}
-<script>${PLAYER_JS};shroomPlayer(document.querySelector(".player"),${JSON.stringify(src)},${jsonForScript(JSON.stringify(LABELS))})
+  const player = `${aiPlayer(playerHtml(id, meta), ai)}
+<script>${PLAYER_JS};shroomPlayer(document.querySelector(".player"),${JSON.stringify(src)},${jsonForScript(JSON.stringify(LABELS))})${aiWire(".player", ai)}
 ${COPY_JS}
 ${THUMB_JS}
 (function(){var c=${jsonForScript(cfg)},th=shroomThumbs(c.thumbs);
 function copied(el,label){return function(ok){if(!ok)return;el.textContent=c.copied;el.classList.add("done");setTimeout(function(){el.textContent=label;el.classList.remove("done")},1500)}}
 var b=document.getElementById("c");b.onclick=function(){shroomCopy(location.origin+"/"+c.thumbs.id,null).then(copied(b,c.copy))};
 var tb=document.getElementById("th");tb.onclick=function(){th.copy().then(copied(tb,c.copyThumb))}})()</script>`;
-  return shell(title || "shroom", `<div class="head"><h1>${escapeText(title)}</h1>${copyButtons(!!thumbs.thumb)}${download}</div>${player}`, face);
+  return shell(title || "shroom", `<div class="head"><h1>${escapeText(title)}</h1>${copyButtons(!!thumbs.thumb)}${download}</div>${player}`, face, aiHead(ai));
 }
 
 /** Copy link and Copy thumbnail, each named by its words and with them as its tooltip (the
@@ -1627,8 +1655,8 @@ function thumbsOf(id, meta, live, store = true) {
 /** @param {string} id @param {any} meta @param {number} now @param {Face} face @param {string} waiting the stalled line
  * @param {boolean} [blocked] the space can't take uploads: the waiting line from the start
  * @param {boolean} [pending] no record yet (its claim is still on its way)
- * @param {string} [src] @param {boolean} [listens] the space hears its takes (N66) */
-function ownerPage(id, meta, now, face, waiting, blocked = false, pending = false, src = `/m/${id}/master.m3u8`, listens = false) {
+ * @param {string} [src] @param {any} [ai] the AI's face (N66) @param {boolean} [listens] the space hears its takes (N66) */
+function ownerPage(id, meta, now, face, waiting, blocked = false, pending = false, src = `/m/${id}/master.m3u8`, ai = AI_NONE, listens = false) {
   const live = meta.state === "live";
   const placeholder = meta.titled ? untitled(meta.createdAt ?? new Date(now).toISOString()) : meta.title || untitled(meta.createdAt);
   const value = meta.titled ? meta.title : "";
@@ -1640,7 +1668,7 @@ function ownerPage(id, meta, now, face, waiting, blocked = false, pending = fals
   const line = drainedNow ? "" : stalled ? waiting : uploadingLine(st.pct ?? 0);
   const field = `<input class="title" id="t" maxlength="${TITLE_MAX}" aria-label="Title" value="${escapeHtml(value)}" placeholder="${escapeHtml(placeholder)}"${meta.titled ? "" : " autofocus"}>`;
   const frame = meta.media?.poster ? `<img src="/m/${id}/poster.jpg" alt="">` : "";
-  const stage = live ? playerHtml(id, meta) : `<div class="wait" id="w">${frame}</div>`;
+  const stage = live ? aiPlayer(playerHtml(id, meta), ai) : `<div class="wait" id="w">${frame}</div>`;
   const download = meta.media?.mp4 ? `<a href="/d/${id}">${COPY.download}</a>` : "";
   // Copy thumbnail waits for the loop made for this title — or, when none can be made (the
   // upload finished with no teaser), for the still (N46).
@@ -1706,7 +1734,8 @@ if(s.state==="unavailable"){if(!c.live){say(c.unavailable);up.textContent="";sho
 if(s.state==="uploading"){say("");ul.hidden=false;up.textContent=s.stalled?c.waiting:c.upA+s.pct+"%"+c.upB;showBar(true,!s.stalled);if(bar)bar.style.width=s.pct+"%"}
 next(2000)}).catch(function(){next(5000)})}
 if(!c.live||!c.mp4||!c.drained)next(2000);else if(c.cuts==="coming")next(2000)})();</script>`;
-  return shell(meta.title || "shroom", `${head}${stage}${cuts}${hint}${upload}`, face, "", script);
+  const wire = aiWire(".player", ai);
+  return shell(meta.title || "shroom", `${head}${aiNote(ai)}${stage}${cuts}${hint}${upload}`, face, aiHead(ai), `${script}${wire ? `<script>${wire}</script>` : ""}${aiOwnerScript(id, ai)}`);
 }
 
 /** A JSON island safe inside <script>: <, >, & and the two line separators escaped. */
@@ -1825,6 +1854,7 @@ async function route(request, env, url, now) {
     case "health": only("POST"); return health(request, env, await body(request), now);
     case "gone": only("POST"); return gone(request, env, await body(request), now);
     case "cue": only("POST"); return cue(request, env, await body(request), now);
+    case "ai": only("POST"); return aiAskRoute(request, env, url, now);
   }
   const target = path.match(/^(invites|members|devices)\/([^/]+)$/);
   if (target) {
@@ -2149,9 +2179,9 @@ async function join(env, url, b, now) {
 
 // ───────── enroll: a Mac holding the token (§3.2, §4.6) ─────────
 
-/** @param {Request} request @param {Env} env @param {URL} url @param {number} now */
-async function enroll(request, env, url, now) {
-  const { value: b, bytes } = await rawBody(request);
+/** The parent proof (§3.2): the Mac holding the token signs the request with its derived
+ * S3 secret. The parent, once it's proven. @param {Request} request @param {Env} env @param {URL} url @param {number} now @param {Uint8Array<ArrayBuffer>} bytes */
+async function parentProven(request, env, url, now, bytes) {
   const proof = (request.headers.get("authorization") ?? "").match(/^ShroomParent (\d{1,12})\.([A-Za-z0-9_-]{16,128})$/);
   if (!proof) throw new Refusal(401, "unauthorized");
   const parent = parentOf(env);
@@ -2164,6 +2194,13 @@ async function enroll(request, env, url, now) {
   let ok = false;
   try { ok = await crypto.subtle.verify("HMAC", key, fromB64url(proof[2]), new TextEncoder().encode(msg)); } catch { ok = false; }
   if (!ok) throw new Refusal(401, "stale-parent");
+  return parent;
+}
+
+/** @param {Request} request @param {Env} env @param {URL} url @param {number} now */
+async function enroll(request, env, url, now) {
+  const { value: b, bytes } = await rawBody(request);
+  const parent = await parentProven(request, env, url, now, bytes);
 
   const d = b.device;
   if (!d || typeof d !== "object" || typeof d.id !== "string" || !DEVICE_ID.test(d.id) || typeof d.verifier !== "string" || !HEX64.test(d.verifier)) throw bad();
@@ -3031,3 +3068,1130 @@ sfBf8gQhdc6ujGuH90cIZ5+w9jP/D0QV/Jt/7q19zj7En1whM85/9QP4BTmb/gL4S+A7dnnUO7w/5qyD
 /ul3/3Dp8W0QbIEkh1Ssy2GeAo8Rov8KIfvTW/q+He42VohM/QHRxb8g/HmGSNcXyKRw+SEffhsEa5AzKRTa/sC60PYvEe2zh+RV77BDhfDke2Qe9ntEXgQP
 RslHrCbxRkJfNecBV6RIWHCo9gM6R87CBKkcv0DIvmsxtgOIAVwhvDhCtPMz//hG3MTFq/jf1U9bMGJHcE0AAAAASUVORK5CYII=
 `;
+
+// ════════════════════════════════════════════════════════════════════════════════════
+// Names, chapters and captions (spec N66, N67; DECISIONS B205–B209)
+// ════════════════════════════════════════════════════════════════════════════════════
+//
+// With naming on, the space's page carries Cloudflare's AI (the `AI` binding) and a
+// schedule each minute. A Mac says when another minute of a take is up (POST
+// /_shroom/api/ai {rec, through}) and when the take is done ({rec, done}); each call takes
+// one step: hear the next minute (Whisper), or name the done take and place its chapters
+// (one model call). Captions come from the same words. A step the account can't take now —
+// its free day used up, a model busy — leaves a mark under .shroom/ai/later/, and the
+// schedule gives the oldest mark that's due one step a minute. Without the binding nothing
+// here runs, and every page looks as it did.
+
+const AI_LATER = ".shroom/ai/later/";
+/** The models (B205): hearing, naming, and naming's fallback. */
+export const AI_MODELS = { hear: "@cf/openai/whisper-large-v3-turbo", name: "@cf/openai/gpt-oss-120b", fallback: "@cf/google/gemma-4-26b-a4b-it" };
+/** The rules held in code (B205 a, d; B208 c): ten pieces a window, 1.5 s at its edges. */
+const AI_RULES = { window: 10, edge: 1.5, minChapter: 20, minVideo: 90, maxChapters: 12, minWords: 12, earlyWords: 20, renameShare: 0.2, titleMax: 60 };
+/** How long a step holds its take, so the schedule and a Mac never take the same one. */
+const AI_LEASE_MS = 2 * 60 * 1000;
+/** Tries of one step that keeps failing (not a free day, not a busy model) before the take is let go. */
+const AI_TRIES = 5;
+/** The smallest ranged read of a piece: a box's header, and the moof after a run of sound, ride along. */
+const AI_READ = 32 * 1024;
+const AI_MIN = 60 * 1000;
+
+// ───────── the take's sound, read out of its pieces (B205 a) ─────────
+
+/** @param {Uint8Array} b @param {number} o */
+const mp4U32 = (b, o) => ((b[o] << 24) | (b[o + 1] << 16) | (b[o + 2] << 8) | b[o + 3]) >>> 0;
+/** @param {Uint8Array} b @param {number} o */
+const mp4U64 = (b, o) => mp4U32(b, o) * 2 ** 32 + mp4U32(b, o + 4);
+/** @param {Uint8Array} b @param {number} o */
+const mp4Type = (b, o) => String.fromCharCode(b[o], b[o + 1], b[o + 2], b[o + 3]);
+
+/** @typedef {{ type: string, start: number, body: number, end: number }} Mp4Box */
+/** The boxes in b[from, to). @param {Uint8Array} b @returns {Mp4Box[]} */
+function mp4Boxes(b, from = 0, to = b.length) {
+  /** @type {Mp4Box[]} */
+  const out = [];
+  for (let o = from; o + 8 <= to;) {
+    let size = mp4U32(b, o), head = 8;
+    if (size === 1) { size = mp4U64(b, o + 8); head = 16; } else if (size === 0) size = to - o;
+    if (size < head || o + size > to) throw new Error("box");
+    out.push({ type: mp4Type(b, o + 4), start: o, body: o + head, end: o + size });
+    o += size;
+  }
+  return out;
+}
+/** @param {Uint8Array} b @param {Mp4Box} box @param {string} type */
+const mp4Child = (b, box, type) => mp4Boxes(b, box.body, box.end).find((x) => x.type === type);
+
+/** An MPEG-4 descriptor at `o`: its tag, and where its body starts and ends. @param {Uint8Array} b @param {number} o */
+function mp4Descriptor(b, o) {
+  const tag = b[o++];
+  let len = 0;
+  for (let i = 0; i < 4; i++) {
+    const c = b[o++];
+    len = (len << 7) | (c & 0x7f);
+    if (!(c & 0x80)) break;
+  }
+  return { tag, body: o, end: o + len };
+}
+
+/** @typedef {{ id: number, timescale: number }} Mp4Track */
+/** @typedef {Mp4Track & { objectType: number, freqIndex: number, channels: number }} SoundTrack */
+/** @typedef {{ sound: SoundTrack | null, picture: Mp4Track | null, defaults: Record<number, { dur: number, size: number }> }} Mp4Tracks */
+
+/** The init segment's sound track (AAC, as its esds describes it), its picture track (whose
+ * clock times a piece with no sound) and every track's sample defaults. @param {Uint8Array} init @returns {Mp4Tracks} */
+export function mp4Tracks(init) {
+  const moov = mp4Boxes(init).find((x) => x.type === "moov");
+  if (!moov) throw new Error("moov");
+  /** @type {Mp4Tracks} */
+  const out = { sound: null, picture: null, defaults: {} };
+  const mvex = mp4Child(init, moov, "mvex");
+  for (const trex of mvex ? mp4Boxes(init, mvex.body, mvex.end).filter((x) => x.type === "trex") : []) {
+    out.defaults[mp4U32(init, trex.body + 4)] = { dur: mp4U32(init, trex.body + 12), size: mp4U32(init, trex.body + 16) };
+  }
+  for (const trak of mp4Boxes(init, moov.body, moov.end).filter((x) => x.type === "trak")) {
+    const tkhd = mp4Child(init, trak, "tkhd"), mdia = mp4Child(init, trak, "mdia");
+    const hdlr = mdia && mp4Child(init, mdia, "hdlr"), mdhd = mdia && mp4Child(init, mdia, "mdhd");
+    if (!tkhd || !mdia || !hdlr || !mdhd) continue;
+    /** @type {Mp4Track} */
+    const track = { id: mp4U32(init, tkhd.body + (init[tkhd.body] === 1 ? 20 : 12)), timescale: mp4U32(init, mdhd.body + (init[mdhd.body] === 1 ? 20 : 12)) };
+    const kind = mp4Type(init, hdlr.body + 8);
+    if (kind === "vide" && !out.picture) out.picture = track;
+    if (kind !== "soun" || out.sound) continue;
+    const minf = mp4Child(init, mdia, "minf");
+    const stbl = minf && mp4Child(init, minf, "stbl");
+    const stsd = stbl && mp4Child(init, stbl, "stsd");
+    const entry = stsd ? mp4Boxes(init, stsd.body + 8, stsd.end)[0] : undefined;
+    // An AudioSampleEntry's own fields take 28 bytes; its esds follows them.
+    const esds = entry?.type === "mp4a" ? mp4Boxes(init, entry.body + 28, entry.end).find((x) => x.type === "esds") : undefined;
+    if (!esds) continue;
+    const es = mp4Descriptor(init, esds.body + 4);
+    if (es.tag !== 3) continue;
+    let o = es.body + 2;
+    const flags = init[o++];
+    if (flags & 0x80) o += 2;
+    if (flags & 0x40) o += 1 + init[o];
+    if (flags & 0x20) o += 2;
+    const dc = mp4Descriptor(init, o);
+    const dsi = dc.tag === 4 ? mp4Descriptor(init, dc.body + 13) : null;
+    if (!dsi || dsi.tag !== 5) continue;
+    const asc = [init[dsi.body], init[dsi.body + 1]];
+    out.sound = { ...track, objectType: asc[0] >> 3, freqIndex: ((asc[0] & 7) << 1) | (asc[1] >> 7), channels: (asc[1] >> 3) & 15 };
+  }
+  return out;
+}
+
+/** One track's samples in the moof boxes of `b` (which starts at byte `at` of its piece):
+ * where each sits in the piece, its size, and their length in the track's ticks. A run says
+ * where it starts or follows the run before; a fragment's first track starts at its moof
+ * (or where its header says), the next one where the data before it ended (ISO/IEC
+ * 14496-12, 8.8.7). @param {Uint8Array} b @param {Mp4Track} track @param {Mp4Tracks} tracks @param {number} at */
+export function mp4Samples(b, track, tracks, at = 0) {
+  /** @type {{ at: number, size: number }[]} */
+  const samples = [];
+  let ticks = 0;
+  for (const moof of mp4Boxes(b).filter((x) => x.type === "moof")) {
+    let end = at + moof.start;
+    for (const [i, traf] of mp4Boxes(b, moof.body, moof.end).filter((x) => x.type === "traf").entries()) {
+      const tfhd = mp4Child(b, traf, "tfhd");
+      if (!tfhd) continue;
+      const tf = mp4U32(b, tfhd.body) & 0xffffff, id = mp4U32(b, tfhd.body + 4), mine = id === track.id;
+      let o = tfhd.body + 8;
+      let base = i === 0 || tf & 0x20000 ? at + moof.start : end;
+      if (tf & 0x1) { base = mp4U64(b, o); o += 8; }
+      if (tf & 0x2) o += 4;
+      let dur = tracks.defaults[id]?.dur ?? 0, size = tracks.defaults[id]?.size ?? 0;
+      if (tf & 0x8) { dur = mp4U32(b, o); o += 4; }
+      if (tf & 0x10) size = mp4U32(b, o);
+      let next = base;
+      for (const trun of mp4Boxes(b, traf.body, traf.end).filter((x) => x.type === "trun")) {
+        const rf = mp4U32(b, trun.body) & 0xffffff, count = mp4U32(b, trun.body + 4);
+        let p = trun.body + 8, data = next;
+        if (rf & 0x1) { data = base + (mp4U32(b, p) | 0); p += 4; }
+        if (rf & 0x4) p += 4;
+        for (let k = 0; k < count; k++) {
+          let d = dur, s = size;
+          if (rf & 0x100) { d = mp4U32(b, p); p += 4; }
+          if (rf & 0x200) { s = mp4U32(b, p); p += 4; }
+          if (rf & 0x400) p += 4;
+          if (rf & 0x800) p += 4;
+          if (mine) { samples.push({ at: data, size: s }); ticks += d; }
+          data += s;
+        }
+        next = data;
+      }
+      end = next;
+    }
+  }
+  return { samples, ticks };
+}
+
+/** Samples as ADTS frames, a stream Whisper hears as it is. `data` holds the piece from byte
+ * `from`. @param {SoundTrack} t @param {{ at: number, size: number }[]} samples @param {Uint8Array} data @param {number} from */
+function mp4Adts(t, samples, data, from) {
+  const out = new Uint8Array(samples.reduce((n, x) => n + x.size + 7, 0));
+  let o = 0;
+  for (const x of samples) {
+    const len = x.size + 7;
+    out.set([0xff, 0xf1, ((t.objectType - 1) << 6) | (t.freqIndex << 2) | (t.channels >> 2), ((t.channels & 3) << 6) | (len >> 11), (len >> 3) & 0xff, ((len & 7) << 5) | 0x1f, 0xfc], o);
+    out.set(data.subarray(x.at - from, x.at - from + x.size), o + 7);
+    o += len;
+  }
+  return out;
+}
+
+/** A body's bytes: R2's own read where it has one. @param {R2ObjectBody} object */
+const aiBytes = async (object) => new Uint8Array(typeof object.arrayBuffer === "function" ? await object.arrayBuffer() : await new Response(object.body).arrayBuffer());
+
+/** One piece's sound, as ADTS frames a fragment at a time, and its length in seconds (its
+ * sound's, or its picture's when the take has none). It reads the boxes' headers, each moof
+ * and one run of sound a fragment, in ranged reads of at least 32 KiB: the picture is never
+ * read for itself. @param {{ BUCKET: Pick<R2Bucket, "get"> }} env @param {string} key @param {number} size @param {Mp4Tracks} tracks */
+export async function aiPiece(env, key, size, tracks) {
+  /** @type {{ at: number, bytes: Uint8Array }[]} */
+  const held = [];
+  /** @param {number} at @param {number} n */
+  const read = async (at, n) => {
+    for (const h of held) if (at >= h.at && at + n <= h.at + h.bytes.length) return h.bytes.subarray(at - h.at, at - h.at + n);
+    const length = Math.min(Math.max(n, AI_READ), size - at);
+    const object = length > 0 ? await env.BUCKET.get(key, { range: new Headers({ range: `bytes=${at}-${at + length - 1}` }) }) : null;
+    const bytes = object ? await aiBytes(object) : new Uint8Array(0);
+    if (bytes.length < n) throw new Error("piece");
+    held.unshift({ at, bytes });
+    held.length = Math.min(held.length, 3);
+    return bytes.subarray(0, n);
+  };
+  /** @type {Uint8Array[]} */
+  const frames = [];
+  let sound = 0, picture = 0;
+  for (let o = 0; o + 8 <= size;) {
+    const h = await read(o, Math.min(16, size - o));
+    let len = mp4U32(h, 0);
+    if (len === 1) len = mp4U64(h, 8);
+    else if (len === 0) len = size - o;
+    if (len < 8 || o + len > size) throw new Error("box");
+    if (mp4Type(h, 4) === "moof") {
+      const moof = await read(o, len);
+      if (tracks.sound) {
+        const s = mp4Samples(moof, tracks.sound, tracks, o);
+        sound += s.ticks;
+        if (s.samples.length) {
+          const first = Math.min(...s.samples.map((x) => x.at)), last = Math.max(...s.samples.map((x) => x.at + x.size));
+          frames.push(mp4Adts(tracks.sound, s.samples, await read(first, last - first), first));
+        }
+      } else if (tracks.picture) picture += mp4Samples(moof, tracks.picture, tracks, o).ticks;
+    }
+    o += len;
+  }
+  const secs = tracks.sound ? sound / (tracks.sound.timescale || 1) : tracks.picture ? picture / (tracks.picture.timescale || 1) : 0;
+  return { parts: frames, bytes: frames.reduce((n, f) => n + f.length, 0), secs };
+}
+
+// ───────── words and sentences (B205) ─────────
+
+/** @typedef {[string, number, number]} Word [text, start, end]: seconds on the recording's clock */
+/** The take's words, grown a window at a time (B206 d): final up to `heard_through`, the
+ * window's last 1.5 s held in `tail` until the next window hears them whole; `early`, the
+ * early title was tried (B205 f).
+ * @typedef {{ v: 1, model: string, language: string | null, duration: number, heard_through: number, done: boolean, windows: number, clock: string | null, words: Word[], tail?: Word[], early?: boolean }} Transcript */
+
+/** Window k of a take `n` pieces long: its own pieces [from, to), and the piece that leads
+ * it (the last of the window before). @param {number} k @param {number} n */
+function aiWindow(k, n) {
+  const from = k * AI_RULES.window;
+  return { from, to: Math.min(n, from + AI_RULES.window), lead: k > 0 ? from - 1 : -1 };
+}
+
+/** Words into sentences: a full stop or a question, a pause over 1.2 s; a run-on (Whisper
+ * sometimes runs a minute together with commas) ends at its next comma or breath after 15 s,
+ * and at the next word after 25 s. @param {Word[]} words */
+export function aiSentences(words) {
+  /** @type {{ s: number, e: number, text: string }[]} */
+  const out = [];
+  /** @type {{ s: number, e: number, text: string } | null} */
+  let cur = null;
+  for (let i = 0; i < words.length; i++) {
+    const [w, s, e] = words[i];
+    if (cur && s - cur.e > 1.2) { out.push(cur); cur = null; }
+    if (!cur) cur = { s, e, text: w };
+    else { cur.e = e; cur.text += ` ${w}`; }
+    const len = cur.e - cur.s, next = words[i + 1];
+    const runOn = (len >= 15 && (/,$/.test(w) || (next !== undefined && next[1] - e >= 0.25))) || len >= 25;
+    if (/[.?!…]["')\]”’]?$/.test(w) || runOn) { out.push(cur); cur = null; }
+  }
+  if (cur) out.push(cur);
+  return out;
+}
+
+// ───────── edits (B208): one clock, mapped on every view ─────────
+
+/** The ranges of the recording that play under its saved edit (the editor's `meta.edits`,
+ * N63), as shroom-edit's `EditList::checked().keep()` gives them: the trim minus the applied
+ * cuts, merged. null when it all plays, as recorded. @param {any} meta @returns {[number, number][] | null} */
+export function aiKeep(meta) {
+  const e = meta?.edits;
+  if (!e || typeof e !== "object") return null;
+  const d = Number(e.source_duration) > 0 ? Number(e.source_duration) : 0;
+  if (!d) return null;
+  const clamp = (/** @type {unknown} */ t) => (t !== null && t !== "" && Number.isFinite(Number(t)) ? Math.min(d, Math.max(0, Number(t))) : NaN);
+  let a = clamp(e.in), b = clamp(e.out);
+  if (Number.isNaN(a)) a = 0;
+  if (Number.isNaN(b)) b = d;
+  if (b - a < Math.min(1, d)) { a = 0; b = d; }
+  /** @type {[number, number][]} */
+  const applied = (Array.isArray(e.cuts) ? e.cuts : [])
+    .filter((/** @type {any} */ c) => c && c.applied === true)
+    .map((/** @type {any} */ c) => [clamp(c.start), clamp(c.end)]);
+  const cuts = applied
+    .filter(([s, t]) => !Number.isNaN(s) && !Number.isNaN(t) && t > s)
+    .map(([s, t]) => /** @type {[number, number]} */ ([Math.max(s, a), Math.min(t, b)]))
+    .filter(([s, t]) => t > s)
+    .sort((x, y) => x[0] - y[0]);
+  /** @type {[number, number][]} */
+  const keep = [];
+  let at = a;
+  for (const [s, t] of cuts) {
+    if (t <= at) continue;
+    if (s > at) keep.push([at, s]);
+    at = Math.max(at, t);
+  }
+  if (at < b) keep.push([at, b]);
+  return keep.length === 1 && keep[0][0] <= 0 && keep[0][1] >= d ? null : keep;
+}
+
+/** A recording time on the edited clock; null in a cut or outside the trim.
+ * @param {[number, number][] | null} keep @param {number} t */
+export function aiToEdited(keep, t) {
+  if (!keep) return t;
+  let acc = 0;
+  for (const [s, e] of keep) {
+    if (t >= s && t < e) return acc + (t - s);
+    acc += e - s;
+  }
+  return null;
+}
+
+/** An edited time on the recording's clock (past the end, the trim's out).
+ * @param {[number, number][] | null} keep @param {number} e */
+export function aiToSource(keep, e) {
+  if (!keep) return e;
+  let acc = 0;
+  for (const [s, t] of keep) {
+    if (e < acc + (t - s)) return s + Math.max(0, e - acc);
+    acc += t - s;
+  }
+  return keep.length ? keep[keep.length - 1][1] : e;
+}
+
+/** How long it plays. @param {[number, number][] | null} keep @param {any} meta @param {number} [fallback] */
+const aiLength = (keep, meta, fallback = 0) => (keep ? keep.reduce((n, [s, e]) => n + (e - s), 0) : Number(meta?.durationSec) > 0 ? Number(meta.durationSec) : fallback);
+
+/** The record's bakes (the editor's permanent copy made the video, B197), oldest first: each
+ * the ranges it kept, on the clock before it. Those after the one `since` names.
+ * @param {any} meta @param {string | null | undefined} since @returns {{ at: string, keep: [number, number][] }[]} */
+function aiBakes(meta, since) {
+  const raw = meta?.bakedFrom;
+  const list = (Array.isArray(raw) ? raw : raw && typeof raw === "object" ? [raw] : [])
+    .filter((/** @type {any} */ b) => b && typeof b.at === "string" && Array.isArray(b.keep))
+    .map((/** @type {any} */ b) => ({ at: String(b.at), keep: b.keep.filter((/** @type {any} */ r) => Array.isArray(r) && Number.isFinite(Number(r[0])) && Number.isFinite(Number(r[1]))).map((/** @type {any} */ r) => /** @type {[number, number]} */ ([Number(r[0]), Number(r[1])])) }));
+  const i = since ? list.findIndex((b) => b.at === since) : -1;
+  return list.slice(i + 1);
+}
+/** Whether times stamped with clock `since` can be carried onto the record's: the original's
+ * (null), or a bake the record's list still holds. The editor keeps its last 20 bakes; past
+ * that, words and chapters on an older clock aren't shown rather than shown wrong.
+ * @param {any} meta @param {string | null | undefined} since */
+const aiPlaced = (meta, since) => !since || aiBakes(meta, null).some((b) => b.at === since);
+/** What stamps the clock the record's times are on: its last bake, or null for the original's. @param {any} meta */
+function aiClock(meta) {
+  const all = aiBakes(meta, null);
+  return all.length ? all[all.length - 1].at : null;
+}
+/** Which edit a naming or a view saw: the bakes, and the saved edit's revision. @param {any} meta */
+function aiRev(meta) {
+  return `${aiBakes(meta, null).length}:${Number(meta?.edits?.rev) || 0}`;
+}
+
+/** Words carried over the bakes made since `since`: a word goes when most of it went.
+ * @param {Word[]} words @param {any} meta @param {string | null | undefined} since */
+function aiOverBakes(words, meta, since) {
+  let out = words;
+  for (const b of aiBakes(meta, since)) out = aiPlaying(out, b.keep).map((p) => /** @type {Word} */ ([p.w, p.s, p.e]));
+  return out;
+}
+
+/** The words that play under an edit, timed on the edited clock: a word goes when most of it
+ * is cut, and one across a cut's edge keeps its kept part. `src` is where it starts on the
+ * recording; `range`, which kept range it plays in (a cue never runs across a cut).
+ * @param {Word[]} words @param {[number, number][] | null} keep */
+function aiPlaying(words, keep) {
+  /** @type {{ w: string, s: number, e: number, src: number, range: number }[]} */
+  const out = [];
+  for (const [w, s, e] of words) {
+    if (!keep) { out.push({ w, s, e, src: s, range: 0 }); continue; }
+    const mid = (s + e) / 2;
+    const r = keep.findIndex(([a, b]) => mid >= a && mid < b);
+    if (r < 0) continue;
+    const [a, b] = keep[r];
+    const from = Math.max(a, s), es = /** @type {number} */ (aiToEdited(keep, from));
+    out.push({ w, s: es, e: es + Math.max(0, Math.min(b, e) - from), src: from, range: r });
+  }
+  return out;
+}
+
+// ───────── chapters and captions, per view (B208 b, B209) ─────────
+
+/** The record's chapters on its clock now, carried over any bake since they were placed.
+ * @param {any} meta @returns {[number, string][]} */
+function aiChaptersNow(meta) {
+  const named = meta?.named;
+  /** @type {[number, string][]} */
+  let out = (Array.isArray(named?.chapters) ? named.chapters : [])
+    .filter((/** @type {any} */ c) => Array.isArray(c) && Number.isFinite(Number(c[0])) && typeof c[1] === "string")
+    .map((/** @type {any} */ c) => /** @type {[number, string]} */ ([Number(c[0]), String(c[1])]));
+  if (!aiPlaced(meta, named?.clock)) return [];
+  for (const b of aiBakes(meta, named?.clock)) out = aiChaptersThrough(out, b.keep, Infinity).map(([s, t]) => [s, t]);
+  return out;
+}
+
+/** Chapters through a keep: each starts where its own span first plays (a start inside a
+ * cut moves to where the cut ends); one that doesn't play at all goes.
+ * @param {[number, string][]} chapters @param {[number, number][] | null} keep @param {number} total @returns {[number, string][]} */
+function aiChaptersThrough(chapters, keep, total) {
+  /** @type {[number, string][]} */
+  const out = [];
+  for (let i = 0; i < chapters.length; i++) {
+    const [s, t] = chapters[i];
+    const end = i + 1 < chapters.length ? chapters[i + 1][0] : Infinity;
+    let at = null;
+    if (!keep) at = s < total ? s : null;
+    else for (const [a, b] of keep) { const from = Math.max(a, s); if (from < Math.min(b, end)) { at = aiToEdited(keep, from); break; } }
+    if (at !== null && (!out.length || at > out[out.length - 1][0])) out.push([at, t]);
+  }
+  return out;
+}
+
+/** The chapters as the page's bar shows them (B208 b, B209 a): on the edited clock, the
+ * first at 0, one left under 20 s folding into the one before (the first into the second),
+ * none on a video under 90 s or with fewer than two. @param {any} meta @returns {[number, string][]} */
+export function aiChapters(meta) {
+  const keep = aiKeep(meta);
+  const total = aiLength(keep, meta);
+  if (total < AI_RULES.minVideo) return [];
+  const shown = aiChaptersThrough(aiChaptersNow(meta), keep, total);
+  if (shown.length < 2) return [];
+  shown[0][0] = 0;
+  for (let i = 0; i < shown.length && shown.length > 1;) {
+    const len = (i + 1 < shown.length ? shown[i + 1][0] : total) - shown[i][0];
+    if (len >= AI_RULES.minChapter) { i++; continue; }
+    // The short one's span goes to its neighbour: the one before it, or for the first, the one after.
+    shown.splice(i, 1);
+    shown[0][0] = 0;
+    i = 0;
+  }
+  return shown.length >= 2 ? shown.map(([s, t]) => /** @type {[number, string]} */ ([Math.round(s * 10) / 10, t])) : [];
+}
+
+/** @param {number} t */
+function vttTime(t) {
+  const ms = Math.max(0, Math.round(t * 1000));
+  const two = (/** @type {number} */ n, w = 2) => String(n).padStart(w, "0");
+  return `${two(Math.floor(ms / 3600000))}:${two(Math.floor((ms % 3600000) / 60000))}:${two(Math.floor((ms % 60000) / 1000))}.${two(ms % 1000, 3)}`;
+}
+
+/** Captions as WebVTT from the words that play (B205 e, B208 b): a cue ends at a sentence's
+ * end, a pause over 1 s, a cut, 6 s, or two lines of 42 characters, and breaks its line at
+ * the space nearest its middle. `edited`: timed on the edited clock (the editor's copy plays);
+ * otherwise on the recording's, which the page plays with the cuts skipped.
+ * @param {Word[]} words @param {[number, number][] | null} keep @param {boolean} edited */
+export function aiCaptions(words, keep, edited) {
+  /** @type {{ s: number, e: number, text: string, range: number }[]} */
+  const cues = [];
+  /** @type {{ s: number, e: number, text: string, range: number } | null} */
+  let cur = null;
+  for (const p of aiPlaying(words, keep)) {
+    const s = edited ? p.s : p.src, e = s + (p.e - p.s);
+    if (cur && (p.range !== cur.range || s - cur.e > 1 || e - cur.s > 6 || cur.text.length + 1 + p.w.length > 84)) { cues.push(cur); cur = null; }
+    if (!cur) cur = { s, e, text: p.w, range: p.range };
+    else { cur.e = e; cur.text += ` ${p.w}`; }
+    if (/[.?!…]["')\]”’]?$/.test(p.w)) { cues.push(cur); cur = null; }
+  }
+  if (cur) cues.push(cur);
+  /** @param {string} t */
+  const lines = (t) => {
+    if (t.length <= 42) return t;
+    let at = -1;
+    for (let i = 0; i < t.length; i++) if (t[i] === " " && (at < 0 || Math.abs(i - t.length / 2) < Math.abs(at - t.length / 2))) at = i;
+    return at < 0 ? t : `${t.slice(0, at)}\n${t.slice(at + 1)}`;
+  };
+  // A cue's words are text, never markup: WebVTT reads <, > and & as tags and entities.
+  /** @param {string} t */
+  const text = (t) => t.replace(/-->/g, "→").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return `WEBVTT\n\n${cues.map((c, i) => `${i + 1}\n${vttTime(c.s)} --> ${vttTime(Math.max(c.e, c.s + 0.5))}\n${text(lines(c.text))}\n`).join("\n")}`;
+}
+
+/** @typedef {{ chapters: [number, string][], captions: { src: string, lang: string } | null, line: string, waiting: boolean }} AiFace */
+/** @type {AiFace} */
+const AI_NONE = { chapters: [], captions: null, line: "", waiting: false };
+
+/** What a page shows of the AI's work (B209), from the record alone: the chapters, the
+ * captions' address (on the clock of what `src` plays), and the owner's line. `waiting`: the
+ * owner's page asks for a name on its way (naming on, a recent take, not yet named or titled).
+ * @param {string} id @param {any} meta @param {string} src @param {boolean} on @param {number} now @returns {AiFace} */
+function aiFace(id, meta, src, on, now) {
+  if (!meta || meta.state === "deleted") return AI_NONE;
+  const live = meta.state === "live";
+  const lang = typeof meta.captions?.language === "string" && /^[a-z]{2,3}$/.test(meta.captions.language) ? meta.captions.language : "";
+  // The editor's own copy plays the edited clock; the original plays with its cuts skipped.
+  const edited = /\/edit-\d+\.mp4$/.test(src);
+  const captions = live && meta.captions && typeof meta.captions === "object" ? { src: `/_shroom/cc/${id}?r=${encodeURIComponent(aiRev(meta))}${edited ? "&e=1" : ""}`, lang } : null;
+  const named = meta.named?.by === "ai" && typeof meta.named.title === "string";
+  const line = meta.titled ? "" : named ? COPY.named : meta.naming?.later === "daily" ? COPY.namingLater : "";
+  const created = Date.parse(String(meta.createdAt ?? ""));
+  const waiting = on && !meta.titled && (!meta.named || !!meta.named.early) && Number.isFinite(created) && now - created < 2 * HOUR_MS;
+  return { chapters: live ? aiChapters(meta) : [], captions, line, waiting };
+}
+
+// ───────── naming (B205 c, d) ─────────
+
+const AI_TITLE = `The title says what the video is about (its subject, or the two or three things it covers), not the occasion, the greeting or who it is for, the way its maker would name it for a teammate: 3 to 8 words, sentence case, plain words from the video, no quotes, no emoji, no full stop at the end, no "video", "recording" or "walkthrough of" filler. Written in the language spoken.`;
+const AI_CHAPTERS = `Chapters split the video where the speaker moves to a new topic. The first starts at 0:00. Each lasts at least 20 seconds. Use about one chapter per 1 to 3 minutes of talk in a short video and one per 3 to 5 minutes in a long one, never more than 12, spread over the whole video. Each chapter title is 2 to 6 words, sentence case, no full stop, written in the language spoken. A greeting or wrap-up is its own chapter only when it lasts 20 seconds or more.`;
+const AI_SCHEMA = {
+  type: "object",
+  properties: { title: { type: "string" }, chapters: { type: "array", items: { type: "object", properties: { start: { type: "string" }, title: { type: "string" } }, required: ["start", "title"] } } },
+  required: ["title", "chapters"],
+};
+
+/** A title fit to show (B205 d): one line, no wrapping quotes or full stop, at most 60
+ * characters, its first letter a capital. @param {unknown} t */
+export function aiTitle(t) {
+  let s = String(t ?? "").replace(/\s+/g, " ").trim().replace(/^["'“‘«]+|["'”’»]+$/g, "").replace(/[.。]+$/, "").trim();
+  if (s.length > AI_RULES.titleMax) s = `${s.slice(0, AI_RULES.titleMax - 1).replace(/\s+\S*$/, "")}…`;
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+/** "1:02", "62" or 62 as seconds; NaN for anything else. @param {unknown} v */
+function aiSecs(v) {
+  if (typeof v === "number") return v;
+  const s = String(v ?? "").trim();
+  return /^\d+(:\d{1,2}){0,2}(\.\d+)?$/.test(s) ? s.split(":").reduce((n, p) => n * 60 + Number(p), 0) : NaN;
+}
+
+/** The model's chapters held to the rules (B205 d), on the clock its lines were given on:
+ * snapped to the nearest sentence start, the first at 0:00, none under 20 s (a short one
+ * gives its place to the one after it, and a last one too short folds into the one before),
+ * at most 12 (the shortest fold into the one before), none on a video under 90 s or with
+ * fewer than two. @param {unknown} raw @param {{ s: number }[]} sents @param {number} duration @returns {[number, string][]} */
+export function aiCleanChapters(raw, sents, duration) {
+  if (duration < AI_RULES.minVideo || !Array.isArray(raw)) return [];
+  const snap = (/** @type {number} */ t) => sents.reduce((best, x) => (Math.abs(x.s - t) < Math.abs(best - t) ? x.s : best), 0);
+  const ch = raw
+    .map((/** @type {any} */ c) => ({ start: aiSecs(c?.start), title: aiTitle(c?.title) }))
+    .filter((c) => Number.isFinite(c.start) && c.start >= 0 && c.start < duration && c.title)
+    .map((c) => ({ ...c, start: snap(c.start) }))
+    .sort((a, b) => a.start - b.start);
+  if (!ch.length) return [];
+  ch[0].start = 0;
+  /** @type {{ start: number, title: string }[]} */
+  const kept = [];
+  for (const c of ch) {
+    const prev = kept[kept.length - 1];
+    if (prev && c.start - prev.start < AI_RULES.minChapter) prev.title = c.title;
+    else kept.push({ ...c });
+  }
+  while (kept.length > 1 && duration - kept[kept.length - 1].start < AI_RULES.minChapter) kept.pop();
+  while (kept.length > AI_RULES.maxChapters) {
+    const len = (/** @type {number} */ i) => (i + 1 < kept.length ? kept[i + 1].start : duration) - kept[i].start;
+    let i = 0;
+    for (let j = 1; j < kept.length; j++) if (len(j) < len(i)) i = j;
+    kept.splice(i === 0 ? 1 : i, 1);
+  }
+  return kept.length >= 2 ? kept.map((c) => /** @type {[number, string]} */ ([c.start, c.title])) : [];
+}
+
+/** The model's answer text, whichever shape it comes in. @param {any} out */
+export function aiText(out) {
+  if (typeof out === "string") return out;
+  if (out?.response !== undefined && out.response !== null) return typeof out.response === "string" ? out.response : JSON.stringify(out.response);
+  const msg = out?.choices?.[0]?.message;
+  if (typeof msg?.content === "string" && msg.content) return msg.content;
+  const item = Array.isArray(out?.output) ? out.output.find((/** @type {any} */ o) => o?.type === "message") : null;
+  const part = Array.isArray(item?.content) ? item.content.find((/** @type {any} */ c) => c?.type === "output_text") : null;
+  if (typeof part?.text === "string") return part.text;
+  throw new Error("no answer");
+}
+
+/** What one naming call sends: the title and, on a video long enough, the chapters, as JSON
+ * (the measuring tools in worker/dev send the same). @param {string} model
+ * @param {{ s: number, text: string }[]} sents @param {boolean} chapters */
+export function aiAskInput(model, sents, chapters) {
+  const system = `You name screen recordings from their transcript. ${AI_TITLE}${chapters ? ` ${AI_CHAPTERS}` : " Return no chapters."} Answer with JSON only: {"title": "...", "chapters": [{"start": "m:ss", "title": "..."}]}.`;
+  const user = `Transcript, each line with its start time:\n\n${sents.map((x) => `[${clock(x.s)}] ${x.text}`).join("\n")}`;
+  return {
+    messages: [{ role: "system", content: system }, { role: "user", content: user }],
+    response_format: { type: "json_schema", json_schema: AI_SCHEMA },
+    // Room for a thinking model's reasoning before its answer; thinking kept short or off.
+    max_tokens: 4000, temperature: 0.2,
+    ...(model.includes("gpt-oss") ? { reasoning: { effort: "low" } } : { chat_template_kwargs: { enable_thinking: false } }),
+  };
+}
+
+/** One naming call. @param {Ai} ai @param {string} model @param {{ s: number, text: string }[]} sents @param {boolean} chapters */
+async function aiAsk(ai, model, sents, chapters) {
+  const out = await ai.run(model, aiAskInput(model, sents, chapters));
+  const text = aiText(out);
+  const json = JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1));
+  if (!json || typeof json !== "object" || typeof json.title !== "string") throw new Error("no answer");
+  return json;
+}
+
+/** Names the take (B205 c, d; B206 d): one model call on the words that play under the edit
+ * standing now, the second model if the first fails, then the record — a typed title is
+ * never touched. Under twelve words, nothing is asked and the take stays as it is titled.
+ * @param {Env} env @param {string} id @param {Transcript} t @param {any} meta @param {number} now */
+async function aiName(env, id, t, meta, now) {
+  const ai = /** @type {Ai} */ (env.AI);
+  const keep = aiKeep(meta);
+  const playing = aiPlaying(aiOverBakes(t.words, meta, t.clock), keep);
+  const total = aiLength(keep, meta, t.duration);
+  const base = { by: "ai", at: iso(now), rev: aiRev(meta), clock: aiClock(meta), words: playing.length, language: t.language };
+  /** @type {Record<string, unknown>} */
+  let named = { ...base, model: null, title: null, chapters: [] };
+  if (playing.length >= AI_RULES.minWords) {
+    const sents = aiSentences(playing.map((p) => /** @type {Word} */ ([p.w, p.s, p.e])));
+    const want = total >= AI_RULES.minVideo;
+    let model = AI_MODELS.name;
+    /** @type {any} */
+    let answer;
+    try {
+      answer = await aiAsk(ai, model, sents, want);
+    } catch (e) {
+      if (aiRefusal(e) !== "error") throw e;
+      model = AI_MODELS.fallback;
+      answer = await aiAsk(ai, model, sents, want);
+    }
+    const chapters = want ? aiCleanChapters(answer.chapters, sents, total).map(([s, title]) => [Math.round(aiToSource(keep, s) * 10) / 10, title]) : [];
+    named = { ...base, model, title: aiTitle(answer.title) || null, chapters };
+  }
+  await aiWriteMeta(env, id, (m) => {
+    if (typeof named.title === "string" && !m.titled) m.title = named.title;
+    m.named = named;
+    if (t.words.length) m.captions = { language: t.language ?? "" };
+    delete m.naming;
+    return true;
+  });
+}
+
+/** Whether the early title is due (B205 f): the take still recording (no rename, not done),
+ * a minute of it heard, untitled and unnamed, with enough words for a title, not tried yet.
+ * @param {any} meta @param {Transcript} t @param {Later} want */
+const aiEarlyDue = (meta, t, want) => !want.done && !want.rename && !t.done && !t.early && !meta.titled && !meta.named && t.windows >= 1 && t.words.length + (t.tail?.length ?? 0) >= AI_RULES.earlyWords;
+
+/** The words with the slips cut by voice taken out (N65), roughly, for the early title: each
+ * “shroom cut” and the sentence it breaks off, back to the sentence before it (at most 20 s).
+ * The take's own cuts come later, from its Mac; this only keeps a slip out of the first name.
+ * @param {Word[]} words */
+export function aiWithoutSlips(words) {
+  const bare = (/** @type {unknown} */ w) => String(w).toLowerCase().replace(/[^a-z]/g, "");
+  /** @type {Word[]} */
+  const out = [];
+  for (let i = 0; i < words.length; i++) {
+    const one = bare(words[i][0]) === "shroomcut";
+    if (one || (bare(words[i][0]) === "shroom" && /^cut/.test(bare(words[i + 1]?.[0] ?? "")))) {
+      const at = words[i][1];
+      // The sentence broken off: back past its own end, if the speaker stopped on one, to the end before it.
+      if (out.length && /[.!?…]$/.test(out[out.length - 1][0])) out.pop();
+      while (out.length && !/[.!?…]$/.test(out[out.length - 1][0]) && at - out[out.length - 1][1] <= 20) out.pop();
+      if (!one) i++;
+      continue;
+    }
+    out.push(words[i]);
+  }
+  return out;
+}
+
+/** The early title (B205 f; Bagrat, 2026-10-18: the page opens named): once the first minute
+ * is heard while the take records, one title-only call on the words so far, a slip cut by
+ * voice left out. It's the record's title until the full name at done replaces it, never over
+ * one typed meanwhile (`named.early` says which it is). Tried once a take: a model that fails
+ * it is let go, holding nothing up; a used-up free day or a busy model waits like any step.
+ * @param {Env} env @param {string} id @param {Transcript} t @param {string | null} etag @param {number} now */
+async function aiNameEarly(env, id, t, etag, now) {
+  const ai = /** @type {Ai} */ (env.AI);
+  const words = aiWithoutSlips([...t.words, ...(t.tail ?? [])]);
+  const sents = aiSentences(words);
+  let model = AI_MODELS.name;
+  /** @type {string | null} */
+  let title = null;
+  try {
+    /** @type {any} */
+    let answer;
+    try {
+      answer = await aiAsk(ai, model, sents, false);
+    } catch (e) {
+      if (aiRefusal(e) !== "error") throw e;
+      model = AI_MODELS.fallback;
+      answer = await aiAsk(ai, model, sents, false);
+    }
+    title = aiTitle(answer?.title) || null;
+  } catch (e) {
+    if (aiRefusal(e) !== "error") throw e;
+  }
+  await casPut(env, aiTranscriptKey(id), JSON.stringify({ ...t, early: true }), etag ? { etagMatches: etag } : { etagDoesNotMatch: "*" });
+  if (!title) return;
+  await aiWriteMeta(env, id, (m) => {
+    if (m.titled || m.named) return false;
+    m.title = title;
+    m.named = { by: "ai", early: true, model, at: iso(now), rev: aiRev(m), clock: aiClock(m), words: words.length, title, chapters: [], language: t.language };
+    return true;
+  });
+}
+
+// ───────── a used-up free day, a busy model (B207) ─────────
+
+/** What a refused call means (Workers AI's errors): `daily`, the account's free daily neurons
+ * are spent (3036) — wait for 00:00 UTC; `busy`, out of capacity, a rate limit or a timeout
+ * (3040, 3007, 3008, 429) — try again in a few minutes; `error`, anything else.
+ * @param {unknown} e */
+export function aiRefusal(e) {
+  const m = String(/** @type {any} */ (e)?.message ?? e ?? "");
+  if (/\b(3036|4006)\b|daily free allocation/i.test(m)) return "daily";
+  if (/\b(3040|3007|3008|429)\b|capacity|rate.?limit|too many requests|timed? ?out|overloaded/i.test(m)) return "busy";
+  return "error";
+}
+
+/** The first 00:00 UTC after `now`. @param {number} now */
+const nextMidnight = (now) => Math.floor(now / DAY_MS) * DAY_MS + DAY_MS;
+
+/** A take's mark: what's left to do for it, and when it may next be tried.
+ * @typedef {{ v: 1, since: number, after: number, done: boolean, through: number, rename: boolean, reason: string, tries: number }} Later */
+/** @param {number} now @returns {Later} */
+const aiFresh = (now) => ({ v: 1, since: now, after: 0, done: false, through: 0, rename: false, reason: "more", tries: 0 });
+
+/** Changes the take's mark under If-Match: `fn` gets what's there (null for none) and returns
+ * the new mark, null to remove it, or undefined to leave it. False when it couldn't.
+ * @param {Env} env @param {string} id @param {(l: Later | null) => Later | null | undefined} fn */
+async function aiMark(env, id, fn) {
+  const key = `${AI_LATER}${id}`;
+  for (let attempt = 0; attempt < CAS_TRIES; attempt++) {
+    const object = await env.BUCKET.get(key);
+    /** @type {Later | null} */
+    let l = null;
+    if (object) { try { const v = JSON.parse(await object.text()); l = v && typeof v === "object" ? v : null; } catch { l = null; } }
+    const next = fn(l);
+    if (next === undefined) return true;
+    if (next === null) { if (object) await env.BUCKET.delete(key); return true; }
+    if (await casPut(env, key, JSON.stringify(next), object ? { etagMatches: object.etag } : { etagDoesNotMatch: "*" }, { since: String(next.since), after: String(next.after) })) return true;
+  }
+  return false;
+}
+
+/** Writes the record under If-Match (the same read-modify-write as a rename, B21): `fn`
+ * changes it, or returns false to leave it; a tombstone or a deletion record stops it.
+ * @param {Env} env @param {string} id @param {(meta: any) => boolean} fn */
+async function aiWriteMeta(env, id, fn) {
+  const key = `meta/${id}.json`;
+  for (let attempt = 0; attempt < CAS_TRIES; attempt++) {
+    const [object, gone] = await Promise.all([env.BUCKET.get(key), env.BUCKET.head(`${GONE}${id}`)]);
+    if (gone || !object) { try { await object?.body?.cancel(); } catch { /* nothing to release */ } return false; }
+    /** @type {any} */
+    let meta;
+    try { meta = JSON.parse(await object.text()); } catch { return false; }
+    if (!meta || meta.state === "deleted" || !fn(meta)) return false;
+    if (await casPut(env, key, JSON.stringify(meta), { etagMatches: object.etag })) return true;
+  }
+  return false;
+}
+
+// ───────── the steps (B206) ─────────
+
+/** @param {string} id */
+const aiTranscriptKey = (id) => `rec/${id}/ai/transcript.json`;
+
+/** The take's transcript and its etag, or null. @param {Env} env @param {string} id */
+async function aiTranscriptOf(env, id) {
+  const object = await env.BUCKET.get(aiTranscriptKey(id));
+  if (!object) return null;
+  try {
+    const t = JSON.parse(await object.text());
+    return t && typeof t === "object" && Array.isArray(t.words) ? { t: /** @type {Transcript} */ (t), etag: object.etag } : null;
+  } catch {
+    return null;
+  }
+}
+
+/** @param {any} meta @returns {Transcript} */
+const aiEmpty = (meta) => ({ v: 1, model: AI_MODELS.hear, language: null, duration: 0, heard_through: 0, done: false, windows: 0, clock: aiClock(meta), words: [] });
+
+/** The take's pieces in order, as far as they run unbroken from the first.
+ * @param {Env} env @param {string} id @returns {Promise<R2Object[]>} */
+async function aiPieces(env, id) {
+  const prefix = `rec/${id}/v0/seg_`;
+  /** @type {R2Object[]} */
+  const all = [];
+  /** @type {string | undefined} */
+  let cursor;
+  do {
+    const page = await env.BUCKET.list({ prefix, cursor });
+    all.push(...page.objects);
+    cursor = page.truncated ? page.cursor : undefined;
+  } while (cursor);
+  all.sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
+  /** @type {R2Object[]} */
+  const out = [];
+  for (const o of all) {
+    if (o.key !== `${prefix}${String(out.length).padStart(5, "0")}.m4s`) break;
+    out.push(o);
+  }
+  return out;
+}
+
+/** Hears window `w` (B205 a, b): its pieces' sound, led by the window before's last piece,
+ * sent to Whisper as a stream (raw bytes are refused; a stream needs no base64). A word is
+ * this window's from where the window before stopped (1.5 s before this one's own first
+ * piece) to 1.5 s before its end, and is kept on the recording's clock; the rest of its last
+ * 1.5 s is held for the next window, which hears it whole. All of it, for the last window.
+ * @param {Env} env @param {string} id @param {any} meta @param {R2Object[]} pieces @param {{ from: number, to: number, lead: number }} w
+ * @param {Transcript | null} t @param {string | null} etag @param {boolean} last */
+async function aiHear(env, id, meta, pieces, w, t, etag, last) {
+  const ai = /** @type {Ai} */ (env.AI);
+  const init = await env.BUCKET.get(`rec/${id}/v0/init.mp4`);
+  if (!init) throw new Error("init");
+  // Every take of a recording is encoded alike (its rate pinned to the first's), so the first take's init describes them all.
+  const tracks = mp4Tracks(await aiBytes(init));
+  const read = (/** @type {R2Object} */ p) => aiPiece(env, p.key, p.size, tracks);
+  const [own, lead] = await Promise.all([Promise.all(pieces.slice(w.from, w.to).map(read)), w.lead >= 0 ? read(pieces[w.lead]) : Promise.resolve(null)]);
+  const start = t?.duration ?? 0;
+  const end = start + own.reduce((n, p) => n + p.secs, 0);
+  const clip = start - (lead?.secs ?? 0);
+  const from = t ? t.heard_through : -Infinity;
+  const until = last ? Infinity : end - AI_RULES.edge;
+  // The window's frames, handed over as they are: one stream, no copy of the whole.
+  const parts = [...(lead ? lead.parts : []), ...own.flatMap((p) => p.parts)];
+  /** @type {Word[]} */
+  const words = [];
+  /** @type {string | null} */
+  let language = null;
+  if (parts.length) {
+    const body = new ReadableStream({ start(c) { for (const p of parts) c.enqueue(p); c.close(); } });
+    const out = await ai.run(AI_MODELS.hear, { audio: { body, contentType: "audio/aac" } });
+    for (const seg of Array.isArray(out?.segments) ? out.segments : []) {
+      for (const x of Array.isArray(seg?.words) ? seg.words : []) {
+        const text = String(x?.word ?? "").trim(), s = Number(x?.start), e = Number(x?.end);
+        if (text && Number.isFinite(s) && Number.isFinite(e)) words.push([text, Math.round((clip + s) * 100) / 100, Math.round((clip + Math.max(s, e)) * 100) / 100]);
+      }
+    }
+    const lang = out?.transcription_info?.language;
+    if (words.length && typeof lang === "string" && /^[a-z]{2,3}$/.test(lang)) language = lang;
+  }
+  /** @type {Transcript} */
+  const next = {
+    ...(t ?? aiEmpty(meta)), language: t?.language ?? language, duration: end, heard_through: last ? end : until, done: last, windows: w.from / AI_RULES.window + 1,
+    words: [...(t?.words ?? []), ...words.filter(([, s]) => s >= from && s < until)],
+  };
+  if (last) delete next.tail;
+  else next.tail = words.filter(([, s]) => s >= until);
+  return (await casPut(env, aiTranscriptKey(id), JSON.stringify(next), etag ? { etagMatches: etag } : { etagDoesNotMatch: "*" })) ? next : null;
+}
+
+/** One step for a take, the next thing it needs: while it records, the early title once its
+ * first minute is heard (B205 f), else the next window that's up; once the take is done and
+ * all of it heard, its name (or the name again after an edit, B208 c). `more`: another step
+ * can be taken now. @param {Env} env @param {string} id @param {Later} want @param {number} now
+ * @returns {Promise<{ step: "heard" | "titled" | "named" | "idle", more: boolean }>} */
+async function aiStep(env, id, want, now) {
+  const [meta, read] = await Promise.all([readMeta(env, id), aiTranscriptOf(env, id)]);
+  if (!meta || meta.state === "deleted") return { step: "idle", more: false };
+  let t = read?.t ?? null;
+  if (!t?.done) {
+    const pieces = await aiPieces(env, id);
+    const n = want.done ? pieces.length : Math.min(want.through, pieces.length);
+    const k = t?.windows ?? 0;
+    const w = aiWindow(k, n);
+    // The title the page opens with comes before more hearing (it's the one the free day favours).
+    if (t && aiEarlyDue(meta, t, want)) {
+      await aiNameEarly(env, id, t, read?.etag ?? null, now);
+      return { step: "titled", more: w.from < n && w.to - w.from === AI_RULES.window };
+    }
+    if (w.from < n && (w.to - w.from === AI_RULES.window || want.done)) {
+      const heard = await aiHear(env, id, meta, pieces, w, t, read?.etag ?? null, want.done && w.to >= pieces.length);
+      const next = aiWindow(k + 1, n);
+      return { step: "heard", more: want.done || next.to - next.from === AI_RULES.window || (!!heard && aiEarlyDue(meta, heard, want)) };
+    }
+    if (!want.done) return { step: "idle", more: false };
+    // Nothing left to hear: what the last window held back is final now.
+    const base = t ?? aiEmpty(meta);
+    /** @type {Transcript} */
+    const done = { ...base, done: true, heard_through: base.duration, words: [...base.words, ...(base.tail ?? [])] };
+    delete done.tail;
+    if (!(await casPut(env, aiTranscriptKey(id), JSON.stringify(done), read ? { etagMatches: read.etag } : { etagDoesNotMatch: "*" }))) return { step: "heard", more: true };
+    t = done;
+  }
+  if ((meta.named && !meta.named.early && !want.rename) || !aiPlaced(meta, t.clock)) return { step: "idle", more: false };
+  await aiName(env, id, t, meta, now);
+  return { step: "named", more: false };
+}
+
+/** @typedef {{ through: number | null, done: boolean, rename?: boolean }} AiAsk */
+/** @typedef {{ step: "heard" | "titled" | "named" | "idle", more: boolean } | { later: string }} AiRun */
+
+/** Runs one step for a take, if it may take one now. A take waiting for the next free day
+ * or a busy model only notes what was asked. A done take, a rename, or a take already
+ * marked is held (its mark leased) while its step runs, so the schedule and a Mac never take
+ * the same step; a minute while recording needs no mark. A step refused leaves the mark for
+ * later (B207). @param {Env} env @param {string} id @param {AiAsk} ask @param {number} now @returns {Promise<AiRun>} */
+async function aiRun(env, id, ask, now) {
+  /** What this run will do, read with the mark: `held`, it leased the mark; `waiting`, why it may not run now. */
+  const run = { want: aiFresh(now), held: false, waiting: /** @type {string | null} */ (null) };
+  const ok = await aiMark(env, id, (l) => {
+    const want = { ...aiFresh(now), ...(l ?? {}), done: !!(l?.done || ask.done), through: Math.max(l?.through ?? 0, ask.through ?? 0), rename: !!(l?.rename || ask.rename) };
+    Object.assign(run, { want, held: false, waiting: null });
+    if (l && l.after > now) {
+      run.waiting = l.reason;
+      return want.done === l.done && want.through === l.through && want.rename === l.rename ? undefined : { ...l, done: want.done, through: want.through, rename: want.rename };
+    }
+    if (!l && !want.done && !want.rename) return undefined;
+    run.held = true;
+    return { ...want, after: now + AI_LEASE_MS, reason: "running" };
+  });
+  if (!ok) return { later: "running" };
+  if (run.waiting) return { later: run.waiting };
+  const { want } = run;
+  /** @type {{ step: "heard" | "titled" | "named" | "idle", more: boolean }} */
+  let out;
+  try {
+    out = await aiStep(env, id, want, now);
+  } catch (e) {
+    return aiRefused(env, id, want, now, e);
+  }
+  // Heard: the mark goes back to waiting its turn, with whatever was asked meanwhile. Named, or nothing to do: it goes.
+  const step = out.step;
+  if (run.held) await aiMark(env, id, (l) => (step === "heard" || step === "titled" ? { ...want, ...(l ?? {}), after: 0, reason: "more", tries: 0 } : null));
+  return out;
+}
+
+/** A step refused (B207): a used-up free day waits for 00:00 UTC, and the owner's page says
+ * so; a busy model, five minutes; anything else, a little longer each try, and after five
+ * the take is let go (no name, no captions). Nothing is ever said as an error.
+ * @param {Env} env @param {string} id @param {Later} want @param {number} now @param {unknown} e @returns {Promise<AiRun>} */
+async function aiRefused(env, id, want, now, e) {
+  const reason = aiRefusal(e);
+  const tries = reason === "error" ? want.tries + 1 : want.tries;
+  if (reason === "error" && tries >= AI_TRIES) {
+    await aiMark(env, id, () => null);
+    await aiWriteMeta(env, id, (m) => {
+      if (m.named && !want.rename) return false;
+      m.named = { ...(m.named ?? { by: "ai", model: null, words: 0, title: null, chapters: [] }), at: iso(now), rev: aiRev(m), clock: aiClock(m), failed: true };
+      delete m.naming;
+      return true;
+    }).catch(() => false);
+    return { later: "error" };
+  }
+  const after = reason === "daily" ? nextMidnight(now) : now + (reason === "busy" ? 5 : 5 * tries) * AI_MIN;
+  await aiMark(env, id, (l) => ({ ...want, ...(l ?? {}), done: !!(want.done || l?.done), through: Math.max(want.through, l?.through ?? 0), after, reason, tries }));
+  if (reason === "daily") {
+    await aiWriteMeta(env, id, (m) => {
+      if (m.titled || m.named || m.naming?.later === "daily") return false;
+      m.naming = { later: "daily", at: iso(now) };
+      return true;
+    }).catch(() => false);
+  }
+  return { later: reason };
+}
+
+/** POST /_shroom/api/ai {rec, through} | {rec, done: true} (B206 b): a Mac saying another
+ * minute of a take is up, or that the take is done. The device key is the door; the setup
+ * Mac, which may hold none, signs with the parent proof enroll takes. Only the take's maker
+ * or the owner may ask. Without the AI binding it answers `{"ai": false}` and reads nothing.
+ * @param {Request} request @param {Env} env @param {URL} url @param {number} now */
+async function aiAskRoute(request, env, url, now) {
+  const { value: b, bytes } = await rawBody(request);
+  if (!env.AI) return answer({ ai: false });
+  const rec = b.rec, through = b.through ?? null, done = b.done ?? false;
+  if (typeof rec !== "string" || !ID.test(rec) || typeof done !== "boolean" || (through !== null && !(Number.isInteger(through) && through >= 0 && through <= 100000)) || (through === null && !done)) throw bad();
+  /** @type {{ mid: string, ownerClass: boolean }} */
+  let who;
+  if (/^ShroomParent /.test(request.headers.get("authorization") ?? "")) {
+    await parentProven(request, env, url, now, bytes);
+    who = { mid: M1, ownerClass: true };
+  } else {
+    who = (await authed(request, env)).who;
+  }
+  const [ledger, meta] = await Promise.all([ledgerGet(env, rec), metaFact(env, rec)]);
+  const owner = ledger ? ledger.member : meta.exists ? M1 : null;
+  if (owner === null) throw new Refusal(404, "absent");
+  if (owner !== who.mid && !who.ownerClass) throw new Refusal(403, "not-yours");
+  if (meta.deleted) throw new Refusal(410, "deleted");
+  return answer({ ai: true, ...(await aiRun(env, rec, { through, done }, now)) });
+}
+
+/** The schedule each minute (B206 c, B207): the oldest take whose mark is due gets one step.
+ * A take held by another step, or left with nothing to do, passes to the next; a step taken
+ * or refused ends the tick. @param {Env} env @param {number} now */
+export async function aiTick(env, now) {
+  if (!env.AI) return;
+  /** @type {{ id: string, since: number }[]} */
+  const due = [];
+  /** @type {string | undefined} */
+  let cursor;
+  do {
+    const page = await env.BUCKET.list({ prefix: AI_LATER, cursor, include: ["customMetadata"] });
+    for (const o of page.objects) {
+      const id = o.key.slice(AI_LATER.length);
+      if (ID.test(id) && (Number(o.customMetadata?.after) || 0) <= now) due.push({ id, since: Number(o.customMetadata?.since) || 0 });
+    }
+    cursor = page.truncated ? page.cursor : undefined;
+  } while (cursor);
+  due.sort((a, b) => a.since - b.since);
+  for (const x of due.slice(0, 10)) {
+    const r = await aiRun(env, x.id, { through: null, done: false }, now);
+    if ("later" in r ? r.later !== "running" : r.step !== "idle") return;
+  }
+}
+
+/** After a view (B208 c, e), in the background: a bake since the words were heard is applied
+ * to them once and stamped; an edit saved since the naming that removes at least a fifth of
+ * the words it saw, or a whole chapter, queues the naming again; one that doesn't is stamped
+ * as weighed, so it isn't weighed again. @param {Env} env @param {string} id @param {any} meta @param {number} now */
+async function aiAfterView(env, id, meta, now) {
+  const rev = aiRev(meta);
+  if (!meta?.named || meta.named.early || meta.named.rev === rev) return;
+  const read = await aiTranscriptOf(env, id);
+  if (!read?.t.done || !aiPlaced(meta, read.t.clock)) return;
+  const { t } = read;
+  const clockNow = aiClock(meta);
+  const words = aiOverBakes(t.words, meta, t.clock);
+  if ((t.clock ?? null) !== clockNow) await casPut(env, aiTranscriptKey(id), JSON.stringify({ ...t, words, clock: clockNow }), { etagMatches: read.etag });
+  const playing = aiPlaying(words, aiKeep(meta)).length;
+  const saw = Number(meta.named.words) || 0;
+  const had = Array.isArray(meta.named.chapters) ? meta.named.chapters.length : 0;
+  if ((saw > 0 && playing <= saw * (1 - AI_RULES.renameShare)) || (had >= 2 && aiChapters(meta).length < had)) {
+    await aiMark(env, id, (l) => (l?.rename ? undefined : { ...aiFresh(now), ...(l ?? {}), done: true, rename: true }));
+    return;
+  }
+  await aiWriteMeta(env, id, (m) => {
+    if (!m.named || m.named.rev === rev) return false;
+    m.named.rev = rev;
+    if ((m.named.clock ?? null) !== clockNow) { m.named.chapters = aiChaptersNow(m).map(([s, title]) => [Math.round(s * 10) / 10, title]); m.named.clock = clockNow; }
+    return true;
+  });
+}
+
+/** GET /_shroom/cc/<id> (B209 b): the video's captions as WebVTT, written per view from its
+ * words and its saved edit: `e=1` on the edited clock (the editor's copy plays), otherwise
+ * on the recording's. Removed with the video. @param {Request} request @param {Env} env @param {string} id @param {URL} url */
+async function aiCaptionsRoute(request, env, id, url) {
+  const [meta, read] = await Promise.all([readMeta(env, id), aiTranscriptOf(env, id)]);
+  if (!meta || meta.state !== "live" || !meta.captions || !read?.t.done || !aiPlaced(meta, read.t.clock)) return plain(404, "");
+  const body = aiCaptions(aiOverBakes(read.t.words, meta, read.t.clock), aiKeep(meta), url.searchParams.get("e") === "1");
+  return new Response(request.method === "HEAD" ? null : body, {
+    headers: { "content-type": "text/vtt; charset=utf-8", "cache-control": "public, max-age=300", "x-robots-tag": "noindex", "x-content-type-options": "nosniff" },
+  });
+}
+
+/** GET /_shroom/named/<id> (B209 c): the name the space gave the video, for its own owner's
+ * page left open while it was on its way — the maker's or an owner's browser only.
+ * @param {Request} request @param {Env} env @param {string} id */
+async function aiNamedRoute(request, env, id) {
+  const owner = await ownerOf(request, env);
+  if (!owner) return plain(403, "");
+  const meta = await readMeta(env, id);
+  if (!meta || meta.state === "deleted") return plain(404, "");
+  if (!(await mayEdit(env, owner, id, true))) return plain(403, "");
+  const named = !meta.titled && meta.named?.by === "ai" && typeof meta.named.title === "string" ? String(meta.title || "") : "";
+  return json({ named, titled: !!meta.titled, later: !named && !meta.titled && meta.naming?.later === "daily", early: !!named && !!meta.named.early });
+}
+
+// ───────── the page's player: chapters in the seek bar, captions (B209) ─────────
+
+/** The bar drawn as one section a chapter (a layer behind the native slider, which keeps its
+ * keyboard and screen-reader ways), its tip, the chapter after the time; the Captions button;
+ * the owner's line under the title. */
+const AI_STYLE = `.player.ch .seek::-webkit-slider-runnable-track{background:transparent}.player.ch .seek::-moz-range-track{background:transparent}
+.chs{position:absolute;left:0;right:0;top:0;height:4px;display:flex;gap:2px;pointer-events:none}
+.chs i{display:block;height:4px;min-width:1px;border-radius:2px;transition:transform .12s;background:linear-gradient(to right,var(--player-fill) calc(var(--f,0)*100%),var(--player-buf) 0 calc(var(--g,0)*100%),var(--player-track) 0)}
+.chs i.on{transform:scaleY(1.75)}
+.chtip{position:absolute;bottom:calc(100% + 10px);left:0;transform:translateX(-50%);z-index:3;max-width:min(360px,80%);padding:4px 9px;border-radius:7px;background:var(--player);border:1px solid var(--player-track);color:var(--player-hi);font-size:12px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
+.chtip[hidden]{display:none}.chtip .cht{color:var(--player-text);font-variant-numeric:tabular-nums;margin-right:6px}
+.chn{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:.8}
+.row .cc[aria-pressed=true]{color:var(--player-fill)}
+.ainote{margin:-12px 0 0;color:var(--soft);font-size:.9375rem}.ainote[hidden]{display:none}
+@media (pointer:coarse){.player.ch .seek{top:-20px;height:44px}}
+.player.ch .seek.held::-webkit-slider-thumb{width:20px;height:20px;margin-top:-8px;box-shadow:0 0 0 6px rgba(236,239,244,.18)}.player.ch .seek.held::-moz-range-thumb{width:20px;height:20px;box-shadow:0 0 0 6px rgba(236,239,244,.18)}
+@media (max-width:479px){.chn{display:none}}
+@media (prefers-reduced-motion:reduce){.chs i{transition:none}}`;
+
+const ICON_CC = `<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="3" width="13" height="10" rx="2"/><path d="M7.2 6.6a1.8 1.8 0 1 0 0 2.8M11.7 6.6a1.8 1.8 0 1 0 0 2.8"/></svg>`;
+
+/** The player's markup with what the record names (B209 b): its captions track, and the
+ * Captions button before the speed. @param {string} html playerHtml's @param {AiFace} ai */
+function aiPlayer(html, ai) {
+  if (!ai.captions) return html;
+  const track = `<track kind="captions" src="${escapeHtml(ai.captions.src)}"${ai.captions.lang ? ` srclang="${ai.captions.lang}"` : ""} label="${escapeHtml(COPY.captions)}">`;
+  const button = `<button type="button" class="cc" aria-label="${escapeHtml(COPY.captions)}" aria-pressed="false">${ICON_CC}</button>`;
+  return html.replace("></video>", `>${track}</video>`).replace(`<button type="button" class="sp"`, `${button}<button type="button" class="sp"`);
+}
+
+/** The bar's chapters and the Captions button, wired after `shroomPlayer` (B209 a, b). `ch`:
+ * [[start on the bar's clock, title], …]. A tip shows the time and chapter under the
+ * pointer, or above the thumb while a finger drags it and for 1.5 s after, the thumb grown
+ * while the finger is on it; the chapter playing follows the time and joins the bar's
+ * spoken value. Captions are off until pressed, and the browser remembers. */
+const AI_PLAYER_JS = `function shroomChapters(p,ch){var sk=p.querySelector(".seek"),v=p.querySelector("video"),ctl=p.querySelector(".ctl"),tm=p.querySelector(".time");if(!sk||!ch||ch.length<2)return;
+var bar=document.createElement("div"),tip=document.createElement("div"),n=document.createElement("span"),secs=[],hide=0,touch=false,built=-1;
+bar.className="chs";bar.setAttribute("aria-hidden","true");tip.className="chtip";tip.hidden=true;tip.setAttribute("aria-hidden","true");n.className="chn";
+sk.parentNode.insertBefore(bar,sk);ctl.appendChild(tip);tm.parentNode.insertBefore(n,tm.nextSibling);p.classList.add("ch");
+function len(){return +sk.max||0}
+function at(t){var i=0;for(var j=0;j<ch.length;j++)if(ch[j][0]<=t+.05)i=j;return i}
+function build(){var d=len();built=d;bar.textContent="";secs=[];if(!d)return;for(var i=0;i<ch.length;i++){var s=Math.min(ch[i][0],d),e=i+1<ch.length?Math.min(ch[i+1][0],d):d,x=document.createElement("i");x.style.flex=Math.max(.001,e-s)+" 1 0";bar.appendChild(x);secs.push([s,e,x])}}
+function paint(){var d=len();if(d!==built)build();var t=+sk.value||0,pt=(parseFloat(sk.style.getPropertyValue("--p"))||0)*d,bt=(parseFloat(sk.style.getPropertyValue("--b"))||0)*d;
+for(var i=0;i<secs.length;i++){var s=secs[i],w=(s[1]-s[0])||1;s[2].style.setProperty("--f",String(Math.max(0,Math.min(1,(pt-s[0])/w))));s[2].style.setProperty("--g",String(Math.max(0,Math.min(1,(bt-s[0])/w))))}
+var c=ch[at(t)][1];n.textContent="\\u00b7 "+c;n.title=c;sk.setAttribute("aria-valuetext",tm.textContent+", "+c)}
+function show(t,x){var i=at(t),r=sk.getBoundingClientRect(),a=document.createElement("span");tip.textContent="";a.className="cht";a.textContent=shroomClock(t,false);tip.appendChild(a);tip.appendChild(document.createTextNode(ch[i][1]));tip.hidden=false;
+var w=tip.offsetWidth;tip.style.left=Math.max(w/2,Math.min(r.width-w/2,x))+"px";for(var j=0;j<secs.length;j++)secs[j][2].classList.toggle("on",j===i)}
+function off(){tip.hidden=true;for(var j=0;j<secs.length;j++)secs[j][2].classList.remove("on")}
+function thumb(){var d=len(),r=sk.getBoundingClientRect();return d?(+sk.value/d)*r.width:0}
+sk.addEventListener("pointermove",function(e){if(e.pointerType==="touch"||touch)return;var r=sk.getBoundingClientRect(),x=Math.max(0,Math.min(r.width,e.clientX-r.left));show(len()*x/(r.width||1),x)});
+sk.addEventListener("pointerleave",function(e){if(e.pointerType!=="touch"&&!touch)off()});
+sk.addEventListener("pointerdown",function(e){if(e.pointerType!=="touch")return;touch=true;clearTimeout(hide);sk.classList.add("held");show(+sk.value||0,thumb())});
+function lift(e){if(e.pointerType!=="touch"||!touch)return;touch=false;sk.classList.remove("held");clearTimeout(hide);hide=setTimeout(off,1500)}
+sk.addEventListener("pointerup",lift);sk.addEventListener("pointercancel",lift);
+sk.addEventListener("input",function(){if(touch)show(+sk.value||0,thumb());paint()});
+["timeupdate","durationchange","loadedmetadata","seeked","emptied","progress"].forEach(function(e){v.addEventListener(e,paint)});
+window.addEventListener("resize",function(){built=-1;paint()});paint()}
+function shroomCaptions(p){var v=p.querySelector("video"),b=p.querySelector(".cc"),k="shroom-captions",on=false;if(!b||!v.textTracks)return;
+function set(x){on=x;for(var i=0;i<v.textTracks.length;i++)v.textTracks[i].mode=x?"showing":"hidden";b.setAttribute("aria-pressed",x?"true":"false")}
+try{on=localStorage.getItem(k)==="1"}catch(e){}
+b.addEventListener("click",function(){set(!on);try{localStorage.setItem(k,on?"1":"0")}catch(e){}});
+if(v.textTracks.addEventListener)v.textTracks.addEventListener("addtrack",function(){set(on)});set(on)}`;
+
+/** The page's call for a player's chapters and captions, when it has either.
+ * @param {string} sel the player's selector @param {AiFace} ai */
+function aiWire(sel, ai) {
+  if (!ai.chapters.length && !ai.captions) return "";
+  return `
+${AI_PLAYER_JS}
+(function(){var p=document.querySelector(${jsonForScript(JSON.stringify(sel))});if(!p)return;${ai.chapters.length ? `shroomChapters(p,${jsonForScript(JSON.stringify(ai.chapters))});` : ""}${ai.captions ? "shroomCaptions(p)" : ""}})()`;
+}
+
+/** The AI's style, on a page that shows any of it. @param {AiFace} ai */
+const aiCss = (ai) => (ai.chapters.length || ai.captions || ai.line || ai.waiting ? AI_STYLE : "");
+/** @param {AiFace} ai */
+const aiHead = (ai) => (aiCss(ai) ? `<style>${AI_STYLE}</style>` : "");
+
+/** The owner's line under the title (B209 c): where the name came from, or that it comes
+ * later; a slot for it while a name is on its way. @param {AiFace} ai */
+const aiNote = (ai) => (ai.line || ai.waiting ? `<p class="ainote" id="ainote"${ai.line ? "" : " hidden"}>${escapeText(ai.line)}</p>` : "");
+
+/** The owner's page while a name is on its way (B209 c): it asks now and then, and shows
+ * the name in the title field (as its placeholder, so it stays the space's until it's typed
+ * over) unless a title was typed meanwhile; an early title (B205 f) is shown and asked past,
+ * till the full name takes its place. @param {string} id @param {AiFace} ai */
+function aiOwnerScript(id, ai) {
+  if (!ai.waiting) return "";
+  return `<script>(function(){var t=document.getElementById("t"),l=document.getElementById("ainote"),n=0,c=${jsonForScript(JSON.stringify({ id, named: COPY.named, later: COPY.namingLater }))};
+function say(x){if(l){l.textContent=x;l.hidden=!x}}
+function poll(){if(++n>60)return;fetch("/_shroom/named/"+c.id,{cache:"no-store"}).then(function(r){return r.ok?r.json():null}).then(function(j){if(!j||j.titled){say("");return}
+if(j.named){t.placeholder=j.named;if(!t.value)document.title=j.named;say(c.named);if(!j.early)return}
+if(j.later)say(c.later);setTimeout(poll,n<12?5000:30000)}).catch(function(){setTimeout(poll,30000)})}
+t.addEventListener("change",function(){say("")});setTimeout(poll,5000)})()</script>`;
+}

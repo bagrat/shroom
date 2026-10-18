@@ -1,0 +1,225 @@
+{
+ "note": "A real 35:39 recording (LibriVox, public domain: The Art of War, chapters 1-8, read by a human voice), cut into 357 pieces in shroom's encoding, run live on the test account on 2026-10-18 one ~60 s window per Worker invocation. Neurons are Cloudflare's meter, read back with a one-hour Account Analytics Read token (deleted after); they equal the computed figures.",
+ "take": {
+  "seconds": 2139.5,
+  "pieces": 357
+ },
+ "hear": {
+  "windows": 36,
+  "failed": 0,
+  "audioSecondsSent": 2349.3,
+  "neurons": 1825.79,
+  "msEach": [
+   8667,
+   2307,
+   3788,
+   3736,
+   2090,
+   9616,
+   3295,
+   5231,
+   6460,
+   8164,
+   6883,
+   7642,
+   6826,
+   3944,
+   3435,
+   3046,
+   1760,
+   2301,
+   6927,
+   2608,
+   9620,
+   4222,
+   6738,
+   4302,
+   3780,
+   5233,
+   9004,
+   9737,
+   2709,
+   2935,
+   3180,
+   4521,
+   3822,
+   11921,
+   11360,
+   3111
+  ]
+ },
+ "name": [
+  {
+   "llm": "@cf/openai/gpt-oss-120b",
+   "title": "Sun Tzu The Art of War Complete",
+   "chapters": [
+    {
+     "start": 0,
+     "end": 283,
+     "title": "Part 1 Laying Plans"
+    },
+    {
+     "start": 283,
+     "end": 523,
+     "title": "Part 2 Waging War"
+    },
+    {
+     "start": 523,
+     "end": 779,
+     "title": "Part 3 Attack by Stratagem"
+    },
+    {
+     "start": 779,
+     "end": 984,
+     "title": "Part 4 Tactical Dispositions"
+    },
+    {
+     "start": 984,
+     "end": 1235,
+     "title": "Part 5 Energy"
+    },
+    {
+     "start": 1235,
+     "end": 1630,
+     "title": "Part 6 Weak Points and Strong"
+    },
+    {
+     "start": 1630,
+     "end": 1976,
+     "title": "Part 7 Maneuvering"
+    },
+    {
+     "start": 1976,
+     "end": 2085,
+     "title": "Part 8 Variation in Tactics"
+    },
+    {
+     "start": 2085,
+     "end": 2139,
+     "title": "Part 9 Dangerous Faults"
+    }
+   ],
+   "steps": [
+    {
+     "step": "name",
+     "model": "@cf/openai/gpt-oss-120b",
+     "calls": 1,
+     "ms": 16435,
+     "inTokens": 8053,
+     "outTokens": 1404,
+     "neurons": 351.96
+    }
+   ],
+   "words": 5371,
+   "sentences": 290,
+   "captionCues": 503,
+   "captionsBytes": 47584
+  },
+  {
+   "llm": "@cf/google/gemma-4-26b-a4b-it",
+   "title": "The Art of War by Sun Tzu",
+   "chapters": [
+    {
+     "start": 0,
+     "end": 187,
+     "title": "Laying plans and military conditions"
+    },
+    {
+     "start": 187,
+     "end": 283,
+     "title": "Deception and military calculations"
+    },
+    {
+     "start": 283,
+     "end": 449,
+     "title": "Waging war and costs of campaign"
+    },
+    {
+     "start": 449,
+     "end": 523,
+     "title": "Rewards and using the conquered foe"
+    },
+    {
+     "start": 523,
+     "end": 632,
+     "title": "Attack by stratagem and siege warfare"
+    },
+    {
+     "start": 632,
+     "end": 765,
+     "title": "Numerical ratios and the general's role"
+    },
+    {
+     "start": 765,
+     "end": 908,
+     "title": "Tactical dispositions and defensive tactics"
+    },
+    {
+     "start": 908,
+     "end": 984,
+     "title": "Military method and measurement"
+    },
+    {
+     "start": 984,
+     "end": 1119,
+     "title": "Energy and direct indirect methods"
+    },
+    {
+     "start": 1119,
+     "end": 1235,
+     "title": "Simulated disorder and combined energy"
+    },
+    {
+     "start": 1235,
+     "end": 1331,
+     "title": "Weak points and strong"
+    },
+    {
+     "start": 1331,
+     "end": 2139,
+     "title": "Concentrating forces and attacking weak points"
+    }
+   ],
+   "steps": [
+    {
+     "step": "name",
+     "model": "@cf/google/gemma-4-26b-a4b-it",
+     "calls": 1,
+     "ms": 6780,
+     "inTokens": 8634,
+     "outTokens": 325,
+     "neurons": 87.36
+    }
+   ],
+   "words": 5371,
+   "sentences": 290,
+   "captionCues": 503,
+   "captionsBytes": 47584
+  }
+ ],
+ "meter": {
+  "from": "2026-10-18T12:58:00Z",
+  "to": "2026-10-18T13:08:00Z",
+  "rows": [
+   {
+    "model": "@cf/openai/whisper-large-v3-turbo",
+    "calls": 36,
+    "neurons": 1825.8
+   },
+   {
+    "model": "@cf/openai/gpt-oss-120b",
+    "calls": 1,
+    "neurons": 351.96,
+    "inTokens": 8053,
+    "outTokens": 1404
+   },
+   {
+    "model": "@cf/google/gemma-4-26b-a4b-it",
+    "calls": 1,
+    "neurons": 87.35,
+    "inTokens": 8634,
+    "outTokens": 325
+   }
+  ]
+ }
+}

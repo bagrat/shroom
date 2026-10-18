@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>shroom popover, the AI banner's states</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#88c0d0}a:hover{color:#8fbcbb}
+</style>
+</helmet>
+<div style="width: 520px; height: 900px; box-sizing: border-box; background: #3b4252; padding: 28px 0; display: flex; flex-direction: column; align-items: center; gap: 22px; font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif; font-size: 13px; line-height: 1.45; color: #eceff4">
+<div style="display: flex; flex-direction: column; gap: 8px"><div style="color: #aeb6c4; font-size: 12px">After Turn on: the space's page is put up again with AI, a few seconds</div>
+<div style="width: 300px; box-sizing: border-box; background: #2b2f36; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 12px 14px 14px 14px; display: flex; flex-direction: column; gap: 12px"><div style="background: #33424f; border-radius: 9px; padding: 8px 10px; display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px">
+<div style="flex: 1 1 140px; display: flex; flex-direction: row; align-items: center; gap: 8px">
+<span style="width: 8px; height: 8px; border-radius: 4px; background: #88c0d0; display: block; flex: none"></span>
+<div data-said="ai-turning-on.turning-on-a-few">Turning on — a few seconds.</div>
+</div>
+
+</div></div></div>
+<div style="display: flex; flex-direction: column; gap: 8px"><div style="color: #aeb6c4; font-size: 12px">When it didn't go through: Turn on… is live again (law 12)</div>
+<div style="width: 300px; box-sizing: border-box; background: #2b2f36; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 12px 14px 14px 14px; display: flex; flex-direction: column; gap: 12px"><div style="background: #33424f; border-radius: 9px; padding: 8px 10px; display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px">
+<div style="flex: 1 1 140px; display: flex; flex-direction: row; align-items: center; gap: 8px">
+<span style="width: 8px; height: 8px; border-radius: 4px; background: #88c0d0; display: block; flex: none"></span>
+<div data-said="ai-offer-failed.couldnt-change-that-just">Couldn't change that just now — try again in a moment.</div>
+</div>
+<div style="display: flex; flex-direction: row; align-items: center; gap: 10px; margin-left: auto">
+<button style="font: inherit; border: 0; padding: 0; background: transparent; color: #c3cad6" data-said="ai-offer.not-now">Not now</button>
+<button style="font: inherit; font-weight: 600; height: 28px; padding: 0 12px; border: 0; border-radius: 7px; background: #88c0d0; color: #2b2f36" data-said="ai-offer.turn-on">Turn on…</button>
+</div>
+</div></div></div>
+<div style="display: flex; flex-direction: column; gap: 8px"><div style="color: #aeb6c4; font-size: 12px">Once it's on: said once, where the update's “Updated ✓” goes</div>
+<div style="width: 300px; box-sizing: border-box; background: #2b2f36; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 12px 14px 14px 14px; display: flex; flex-direction: column; gap: 12px"><div style="background: #333944; border-radius: 9px; display: flex; flex-direction: column">
+<div style="height: 38px; padding: 0 10px; display: flex; flex-direction: row; align-items: center; gap: 10px">
+<svg viewBox="0 0 16 16" aria-hidden="true" style="width: 16px; height: 16px; fill: none; stroke: #aeb6c4; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; display: block; flex: none"><rect x="1.5" y="2.5" width="13" height="9" rx="1.5"></rect><path d="M6 14h4M8 11.5V14"></path></svg>
+<span style="flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">Built-in Display</span><svg viewBox="0 0 12 12" aria-hidden="true" style="width: 10px; height: 10px; fill: none; stroke: #aeb6c4; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; display: block; flex: none"><path d="M3 4.5l3 3 3-3"></path></svg></div>
+<div style="height: 38px; padding: 0 10px; border-top: 1px solid #434a56; display: flex; flex-direction: row; align-items: center; gap: 10px">
+<svg viewBox="0 0 16 16" aria-hidden="true" style="width: 16px; height: 16px; fill: none; stroke: #aeb6c4; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; display: block; flex: none"><rect x="6" y="1.5" width="4" height="8" rx="2"></rect><path d="M3.5 7.5a4.5 4.5 0 0 0 9 0M8 12v2.5"></path></svg>
+<span style="flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">MacBook Pro Microphone</span><svg viewBox="0 0 12 12" aria-hidden="true" style="width: 10px; height: 10px; fill: none; stroke: #aeb6c4; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; display: block; flex: none"><path d="M3 4.5l3 3 3-3"></path></svg></div>
+<div style="height: 38px; padding: 0 10px; border-top: 1px solid #434a56; display: flex; flex-direction: row; align-items: center; gap: 10px">
+<svg viewBox="0 0 16 16" aria-hidden="true" style="width: 16px; height: 16px; fill: none; stroke: #aeb6c4; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; display: block; flex: none"><rect x="1.5" y="4" width="9" height="8" rx="1.8"></rect><path d="M10.5 7l4-2v6l-4-2"></path></svg>
+<span style="flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">FaceTime HD Camera</span><svg viewBox="0 0 12 12" aria-hidden="true" style="width: 10px; height: 10px; fill: none; stroke: #aeb6c4; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; display: block; flex: none"><path d="M3 4.5l3 3 3-3"></path></svg></div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<button style="font: inherit; font-weight: 600; height: 36px; border: 0; border-radius: 8px; background: #88c0d0; color: #2b2f36" data-said="config.start-recording">Start recording</button>
+<div style="color: #aeb6c4; font-size: 12px; text-align: center" data-said="config.starts-after-3-2">Starts after 3-2-1 — click anywhere to cancel.</div>
+</div><div style="display: flex; flex-direction: row; align-items: center; gap: 7px; color: #aeb6c4; font-size: 12px">
+<span style="width: 6px; height: 6px; border-radius: 3px; background: #a3be8c; display: block; flex: none"></span>
+<div data-said="ai-on.ai-is-on-for">AI is on for new videos ✓</div>
+</div></div></div>
+<div style="width: 300px"><div style="padding: 10px 12px; border: 1px dashed #4c566a; border-radius: 9px; color: #aeb6c4; font-size: 12px; line-height: 1.5">Only on the Mac that holds the setup key, and only while AI is off; members' Macs never show it. It sits under the other banners (a saved take, the space, recording off, an update come first). <b>Not now</b> hides it for good on this Mac (Bagrat, 2026-10-18): from then on the switch in Settings · Space turns AI on. New videos only: earlier ones keep their titles (Bagrat, 2026-10-18).</div></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":520,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

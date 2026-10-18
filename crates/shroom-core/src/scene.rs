@@ -188,6 +188,15 @@ pub enum Action {
     AddToken,
     /// Settings · Space's “made with shroom” switch (owner-class, U3).
     SetMark(bool),
+    /// Settings · Space's AI switch (N66): the setup Mac re-wires the page with the AI and
+    /// its schedule, or without them.
+    SetAi(bool),
+    /// The popover's AI banner (N66): Turn on… — its confirm, which says the cost.
+    AiAsk,
+    /// The confirm's Turn on — as the switch.
+    AiOn,
+    /// The banner's Not now: hidden for good on this Mac; the switch in Settings · Space stays.
+    AiNotNow,
     /// The Library's *Mine · Everyone*.
     SetScope(LibraryScope),
 }
@@ -907,6 +916,10 @@ pub struct SpaceBody {
     /// where it stands (U3, DEVIATIONS #19).
     pub mark: Option<Toggle>,
     pub mark_line: Option<String>,
+    /// Naming's switch and its line (N66) — the Mac that holds the setup key, once its page
+    /// said whether it names videos.
+    pub ai: Option<Toggle>,
+    pub ai_line: Option<String>,
     /// Quiet text at the foot.
     pub exits: Vec<Button>,
 }
@@ -1084,7 +1097,7 @@ impl Window<SettingsBody> {
         }
         match &self.body.pane {
             SettingsPane::General(g) => g.login.enabled && &g.login.action == action,
-            SettingsPane::Space(sp) => sp.mark.as_ref().is_some_and(|t| t.enabled && &t.action == action),
+            SettingsPane::Space(sp) => [&sp.mark, &sp.ai].into_iter().flatten().any(|t| t.enabled && &t.action == action),
             // Esc in the name being changed puts it back (B158).
             SettingsPane::Members(m) => *action == Action::KeepFrom && matches!(m.from, FromName::Changing { .. }),
         }

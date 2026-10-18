@@ -1,0 +1,126 @@
+{
+ "at": "2026-10-18T15:43:47.168Z",
+ "model": "@cf/openai/gpt-oss-120b",
+ "talks": {
+  "how-to (real)": {
+   "seconds": 249,
+   "words": 615,
+   "full": {
+    "title": "Setting up and using Shroom",
+    "tokensIn": 1316,
+    "tokensOut": 1407,
+    "neurons": 137.8
+   },
+   "early": {
+    "30": {
+     "words": 81,
+     "title": "Setting up and using Shroom screen recorder",
+     "tokensIn": 341,
+     "tokensOut": 478,
+     "neurons": 43.4
+    },
+    "45": {
+     "words": 122,
+     "title": "Setting up and using Shroom",
+     "tokensIn": 403,
+     "tokensOut": 585,
+     "neurons": 52.7
+    },
+    "60": {
+     "words": 154,
+     "title": "Setting up Shroom screen recorder",
+     "tokensIn": 455,
+     "tokensOut": 425,
+     "neurons": 43.5
+    },
+    "90": {
+     "words": 238,
+     "title": "Setting up Shroom screen recorder",
+     "tokensIn": 588,
+     "tokensOut": 460,
+     "neurons": 50.1
+    }
+   }
+  },
+  "walkthrough": {
+   "seconds": 185,
+   "words": 507,
+   "full": {
+    "title": "New sign‑up screen, invoice bug, and trial results",
+    "tokensIn": 997,
+    "tokensOut": 682,
+    "neurons": 78.2
+   },
+   "early": {
+    "30": {
+     "words": 81,
+     "title": "New sign‑up screen, invoice bug, trial numbers",
+     "tokensIn": 313,
+     "tokensOut": 475,
+     "neurons": 42.3
+    },
+    "45": {
+     "words": 126,
+     "title": "Sign up screen, invoice bug, trial numbers",
+     "tokensIn": 378,
+     "tokensOut": 952,
+     "neurons": 76.9
+    },
+    "60": {
+     "words": 170,
+     "title": "Sign up screen, invoice bug, trial numbers",
+     "tokensIn": 444,
+     "tokensOut": 1159,
+     "neurons": 93.2
+    },
+    "90": {
+     "words": 251,
+     "title": "New sign‑up screen, invoice total bug, trial numbers",
+     "tokensIn": 551,
+     "tokensOut": 548,
+     "neurons": 54.9
+    }
+   }
+  },
+  "onboarding": {
+   "seconds": 249,
+   "words": 686,
+   "full": {
+    "title": "Onboarding: code layout, testing, deployment, on-call",
+    "tokensIn": 1271,
+    "tokensOut": 669,
+    "neurons": 86.1
+   },
+   "early": {
+    "30": {
+     "words": 83,
+     "title": "Code layout, testing, deployment, on‑call overview",
+     "tokensIn": 336,
+     "tokensOut": 1196,
+     "neurons": 92.2
+    },
+    "45": {
+     "words": 122,
+     "title": "Onboarding: code layout, testing, deployment, on-call",
+     "tokensIn": 388,
+     "tokensOut": 585,
+     "neurons": 52.2
+    },
+    "60": {
+     "words": 169,
+     "title": "Code layout, testing, deployment, and on-call overview",
+     "tokensIn": 456,
+     "tokensOut": 425,
+     "neurons": 43.5
+    },
+    "90": {
+     "words": 250,
+     "title": "Onboarding repo layout and testing",
+     "tokensIn": 582,
+     "tokensOut": 382,
+     "neurons": 44.6
+    }
+   }
+  }
+ }
+}

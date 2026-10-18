@@ -229,6 +229,10 @@ fn next_wake(w: &World) -> Option<Mono> {
         wakes.extend(w.net.not_shroom_reprobe());
     }
     wakes.extend(w.inflight.failures.values().map(|f| f.retry_at()));
+    // The AI banner's Turn on, tried again quietly (N66).
+    if w.space.ai_turn == Some(crate::world::AiTurn::Turning) {
+        wakes.extend(w.inflight.failures.get(&Op::Ai).map(|f| f.ai_retry_at()));
+    }
     onboarding::wakes(w, &mut wakes);
     settings::wakes(w, &mut wakes);
     members::wakes(w, &mut wakes);
@@ -240,4 +244,11 @@ fn next_wake(w: &World) -> Option<Mono> {
     wakes.extend(w.mac.sleep_hold.map(|t| t.plus(SLEEP_HOLD_MS)));
     wakes.extend(next_download(w).map(|(t, _)| t));
     wakes.into_iter().filter(|t| *t > w.now).min()
+}
+
+/// Naming's last re-wiring didn't go through (N66, law 12) and nothing runs since: said in the
+/// window it was asked from, for this visit to it.
+pub fn ai_fell_through(w: &World, window: crate::world::WindowKind) -> bool {
+    let entered = w.session.windows.get(&window).map(|d| d.entered);
+    !w.inflight.ops.contains_key(&Op::Ai) && w.inflight.failures.get(&Op::Ai).is_some_and(|f| entered.is_some_and(|e| f.at >= e))
 }

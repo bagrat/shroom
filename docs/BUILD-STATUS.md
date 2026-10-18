@@ -44,6 +44,12 @@
    words reaches weighed by Clef on the space's own account (B202); the cue is “shroom cut”, his pick (B203). They come alive with N66's transcript
    (the AI build) and N63's edit list (the editor's build, whose final copy lets Download
    follow them). Built ahead of the release call, which is Bagrat's.
+   Nothing else in-frame is queued: the build resumes on his answers.
+5. **Names, chapters and captions** (N66, N67, B205–B209) are built on their branch, off
+   by default, waiting for his review and the release call: the space names its videos,
+   places chapters in the seek bar and writes captions through the owner's own Cloudflare
+   account; a switch in Settings · Space on the setup Mac and a one-time card in its
+   Library turn it on. Checked live on the free-plan test account (B206).
 
 
 ## Waiting for Bagrat

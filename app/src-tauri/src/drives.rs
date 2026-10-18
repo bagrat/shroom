@@ -98,6 +98,8 @@ pub enum Region5 {
     UpdateRelaunched,
     /// Uninstall shroom… from a throwaway copy (B135): its runner checks what's left.
     Uninstall,
+    /// The popover's AI banner, turned on (N66), paced for its video.
+    Ai,
 }
 
 impl Region5 {
@@ -108,6 +110,7 @@ impl Region5 {
             "update" => Region5::Update,
             "update-relaunched" => Region5::UpdateRelaunched,
             "uninstall" => Region5::Uninstall,
+            "ai" => Region5::Ai,
             _ => return None,
         })
     }
@@ -119,6 +122,7 @@ impl Region5 {
             Region5::Update => "update",
             Region5::UpdateRelaunched => "update-relaunched",
             Region5::Uninstall => "uninstall",
+            Region5::Ai => "ai",
         }
     }
 
@@ -127,7 +131,7 @@ impl Region5 {
         match self {
             Region5::Library => |s| window_ids(s.library.as_ref(), s.library.as_ref().and_then(|l| l.body.sheet.as_ref())),
             Region5::Settings | Region5::Uninstall => |s| window_ids(s.settings.as_ref(), s.settings.as_ref().and_then(|w| w.body.sheet.as_ref())),
-            Region5::Update | Region5::UpdateRelaunched => |s| s.state_ids().join(" | "),
+            Region5::Update | Region5::UpdateRelaunched | Region5::Ai => |s| s.state_ids().join(" | "),
         }
     }
 }
@@ -444,6 +448,7 @@ pub fn drive_region5(app: AppHandle, rt: Runtime, which: Region5, out: PathBuf) 
         Region5::Update => update(&d),
         Region5::UpdateRelaunched => update_relaunched(&d),
         Region5::Uninstall => uninstall(&d),
+        Region5::Ai => ai(&d),
     };
     if matches!(which, Region5::Update | Region5::Uninstall) && result.is_ok() {
         // The quit for the swap (or the uninstall) is under way: the exit hook writes the report.
@@ -962,6 +967,62 @@ fn uninstall(d: &Drive) -> Result<(), String> {
     d.check("the sheet says the space stays", sheet.lines.first().is_some_and(|l| l.starts_with("Your space, every video in it")), format!("{:?}", sheet.lines));
     d.act(Surface::Settings, Action::ConfirmUninstall);
     d.wait("Uninstalling…", 10, |s| s.settings.as_ref().and_then(|w| w.body.sheet.as_ref()).is_some_and(|sh| sh.buttons.iter().any(|b| b.label == "Uninstalling…")))?;
+    Ok(())
+}
+
+/// N66, walked as a person does on the Mac that holds the setup key, paced so its video reads:
+/// the popover offers AI (the launch's page check says it's off), Turn on… asks with the cost,
+/// Back keeps the banner, Turn on re-wires the page with Cloudflare's AI, the status line says
+/// so once, and Settings · Space shows the switch on. Against the fake: the page it re-wires
+/// is the fake's, and its ping then says the AI is there.
+fn ai(d: &Drive) -> Result<(), String> {
+    use shroom_core::scene::PopoverBody;
+    let pause = || std::thread::sleep(Duration::from_millis(1800));
+    let banner = |s: &Scene| s.popover.as_ref().and_then(|p| p.banner.as_ref()).map(|b| b.id);
+    d.wait("ready", 20, |s| s.tray.click == shroom_core::scene::Click::OpenPopover)?;
+    click(&d.app, &d.rt);
+    let s = d.wait("the AI banner", 60, |s| banner(s) == Some("ai-offer"))?;
+    let b = s.popover.as_ref().and_then(|p| p.banner.clone()).expect("the banner");
+    d.check("the banner says what shroom can do", b.line == shroom_core::copy::ai_banner(), b.line.clone());
+    d.check("Turn on… and Not now", b.buttons.iter().map(|x| x.label.as_str()).collect::<Vec<_>>() == ["Turn on…", "Not now"], format!("{:?}", b.buttons.iter().map(|x| &x.label).collect::<Vec<_>>()));
+    pause();
+
+    d.act(Surface::Popover, Action::AiAsk);
+    let s = d.wait("ai-confirm", 10, |s| s.popover.as_ref().is_some_and(|p| p.id == "ai-confirm"))?;
+    let line = match s.popover.as_ref().map(|p| &p.body) {
+        Some(PopoverBody::Question(q)) => q.line.clone(),
+        _ => String::new(),
+    };
+    d.check("the confirm says what it costs, per video hour", line == shroom_core::copy::ai_cost() && line.contains("per video hour"), line);
+    d.check("no Return default (law 9)", s.popover.as_ref().is_some_and(|p| p.ret.is_none()), "ret");
+    pause();
+    d.act(Surface::Popover, Action::Back);
+    d.wait("back: the banner stays", 10, |s| banner(s) == Some("ai-offer"))?;
+    pause();
+
+    d.act(Surface::Popover, Action::AiAsk);
+    d.wait("ai-confirm again", 10, |s| s.popover.as_ref().is_some_and(|p| p.id == "ai-confirm"))?;
+    pause();
+    d.act(Surface::Popover, Action::AiOn);
+    d.wait("turning on, or on", 10, |s| matches!(banner(s), Some("ai-turning-on")) || s.popover.as_ref().is_some_and(|p| p.status_line.is_some()))?;
+    let s = d.wait("AI is on", 60, |s| s.popover.as_ref().and_then(|p| p.status_line.as_deref()) == Some(shroom_core::copy::ai_on_said().as_str()))?;
+    d.check("the banner is gone once it's on", banner(&s).is_none(), format!("{:?}", banner(&s)));
+    let host = d.rt.home.read_json::<SpaceIdentity>("space.json").map(|s| s.host).unwrap_or_default();
+    let ping = d.rt.page_at(&host).ping();
+    d.check("the space's page now carries the AI", matches!(ping, shroom_cloud::member::Ping::Shroom { ai: true, .. }), format!("{ping:?}"));
+    pause();
+
+    d.act(Surface::Popover, Action::OpenSettings);
+    d.wait("settings", 10, |s| s.settings.is_some())?;
+    d.act(Surface::Settings, Action::SettingsTab(SettingsTab::Space));
+    let s = d.wait("the switch on in Settings · Space", 30, |s| match s.settings.as_ref().map(|w| &w.body.pane) {
+        Some(SettingsPane::Space(sp)) => sp.ai.as_ref().is_some_and(|t| t.on),
+        _ => false,
+    })?;
+    let _ = s;
+    pause();
+    d.rt.post(Event::WindowClosed(WindowKind::Settings));
+    d.wait("closed", 5, |s| s.settings.is_none())?;
     Ok(())
 }
 
