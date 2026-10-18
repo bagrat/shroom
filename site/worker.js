@@ -11,6 +11,9 @@
 //                browser shows the source and curl gets the script
 //   /agent       what a coding agent reads (markdown); a browser gets it as a page
 //   /agent.md    the markdown, whoever asks
+//   /cli         what a coding agent reads to use the `shroom` command for the person
+//                (site/cli.md, a skill's SKILL.md); a browser gets it as a page
+//   /cli.md      the markdown, whoever asks
 //   /whats-new   the newest release's "What's new" (DECISIONS B152)
 //   /whats-new/<version>
 //                that release's — what the app's "What's new" opens; a version with no
@@ -258,6 +261,12 @@ export default {
           : serve(env, request, url, "/_/agent.html", HTML, true);
       case "/agent.md":
         return serve(env, request, url, "/_/agent.md", MARKDOWN);
+      case "/cli":
+        return wantsMarkdown(request, url)
+          ? serve(env, request, url, "/_/cli.md", MARKDOWN, true)
+          : serve(env, request, url, "/_/cli.html", HTML, true);
+      case "/cli.md":
+        return serve(env, request, url, "/_/cli.md", MARKDOWN);
       case "/whats-new":
         return serve(env, request, url, "/_/whats-new/latest.html", HTML);
       case "/faq":
