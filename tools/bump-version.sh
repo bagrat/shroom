@@ -18,6 +18,8 @@
 # (its test, the_checkpoint_script_tells_the_truth_about_the_build, holds it to that).
 #
 #   tools/bump-version.sh <x.y.z>           move everything to x.y.z — it must be higher
+#   tools/bump-version.sh <x.y.z-early.n>   an early build (DECISIONS B220): below x.y.z, above
+#                                           x.y.z-early.(n-1); also from an unreleased x.y.z
 #   tools/bump-version.sh --check [x.y.z]   change nothing: do all seven agree (on x.y.z)?
 #
 # --check prints one plain line and fails when they don't; the tag workflow runs it with the
@@ -32,9 +34,16 @@ ROOT=$(cd "$(dirname "$0")/.." && pwd)
 fail() { echo "bump-version: $*" >&2; exit 1; }
 usage() { echo "usage: tools/bump-version.sh <x.y.z> | --check [x.y.z]" >&2; exit 64; }
 
-# Three whole numbers, no leading zeros: the shape every reader of it takes.
+# Three whole numbers, no leading zeros, and for an early build `-early.<n>` (n ≥ 1, B220):
+# the shape every reader of it takes.
 shaped() {
-  printf '%s\n' "$1" | grep -Eq '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'
+  printf '%s\n' "$1" | grep -Eq '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-early\.[1-9][0-9]*)?$'
+}
+
+# A version's sort key, "major minor patch stage": an early build's stage is its n, a
+# release's above every n — 0.1.25-early.1 < 0.1.25-early.2 < 0.1.25 < 0.1.26-early.1.
+key() {
+  printf '%s\n' "$1" | awk -F'[.-]' '{print $1, $2, $3, (NF > 3 ? $5 : 999999999)}'
 }
 
 # Where the version is, file by file — read exactly as the line is written there.
@@ -45,7 +54,7 @@ in_cargo_lock() { awk '/^name = "shroom-app"$/{f=1; next} f && /^version = "/{gs
 in_package_lock() { awk '$0 == "    \"app\": {" {f=1; next} f && index($0, "      \"version\": \"") == 1 {gsub(/[",]/,"",$2); print $2; exit} f && index($0, "    }") == 1 {exit}' "$ROOT/package-lock.json"; }
 in_worker() { sed -n 's/^export const VERSION = "\(.*\)";$/\1/p' "$ROOT/worker/src/worker.js"; }
 # The newest row of the page's fingerprints (the last one: rows are only ever added).
-in_page_rows() { sed -n 's/^  "\([0-9][0-9.]*\)": "[0-9a-f]\{64\}",\{0,1\}$/\1/p' "$ROOT/worker/page-version.json" | tail -n 1; }
+in_page_rows() { sed -n 's/^  "\([0-9][0-9a-z.-]*\)": "[0-9a-f]\{64\}",\{0,1\}$/\1/p' "$ROOT/worker/page-version.json" | tail -n 1; }
 
 # Every holder and what it says, one per line: "<file> <version>".
 holders() {
@@ -69,7 +78,7 @@ case "${1-}" in
   --check)
     [ $# -le 2 ] || usage
     want=${2-$(in_tauri)}
-    shaped "$want" || fail "'$want' isn't a version — it looks like 1.2.3"
+    shaped "$want" || fail "'$want' isn't a version — it looks like 1.2.3, or 1.2.3-early.1"
     why=$(agree "$want") || fail "$why — every version file moves together: tools/bump-version.sh $want"
     echo "$want"
     exit 0
@@ -78,12 +87,15 @@ case "${1-}" in
 esac
 [ $# -eq 1 ] || usage
 new=$1
-shaped "$new" || fail "'$new' isn't a version — it looks like 1.2.3"
+shaped "$new" || fail "'$new' isn't a version — it looks like 1.2.3, or 1.2.3-early.1"
 
 old=$(in_tauri)
 shaped "$old" || fail "couldn't read the current version from app/src-tauri/tauri.conf.json"
 why=$(agree "$old") || fail "the tree doesn't agree on its version yet ($why) — nothing changed"
-higher=$(printf '%s\n%s\n' "$old" "$new" | awk -F. 'NR==1{a=$1; b=$2; c=$3} NR==2{print ($1>a || ($1==a && ($2>b || ($2==b && $3>c)))) ? "yes" : "no"}')
+higher=$(printf '%s\n%s\n' "$(key "$old")" "$(key "$new")" | awk 'NR==1{a=$1; b=$2; c=$3; d=$4} NR==2{print ($1>a || ($1==a && ($2>b || ($2==b && ($3>c || ($3==c && $4>d)))))) ? "yes" : "no"}')
+# The one move down: a tree at x.y.z that isn't out yet takes an early build of it
+# (B220) — release.yml refuses any version already tagged, and no Mac has x.y.z.
+case "$new" in "$old"-early.*) higher=yes ;; esac
 [ "$higher" = yes ] || fail "$new isn't higher than $old — a version only goes up (an installed shroom takes a newer one only)"
 command -v node >/dev/null 2>&1 || fail "needs node, for the page's fingerprint"
 
@@ -124,8 +136,9 @@ const grown = rows.replace(/"\n\}\s*$/, `",\n  "${next}": "${print}"\n}\n`);
 if (grown === rows || JSON.parse(grown)[next] !== print) throw new Error(`${rowsFile}: couldn't add the row for ${next}`);
 writeFileSync(at(rowsFile), grown);
 
-// The checkpoint's rehearsal names the version one patch above the tree's.
-const patch = (v) => v.replace(/\d+$/, (n) => String(Number(n) + 1));
+// The checkpoint's rehearsal names the release one patch above the tree's (an early build's
+// own release counts: 0.1.25-early.1 → 0.1.26, as 0.1.25 does).
+const patch = (v) => v.replace(/-early\.\d+$/, "").replace(/\d+$/, (n) => String(Number(n) + 1));
 if (existsSync(at("docs/CHECKPOINT.md"))) {
   const doc = readFileSync(at("docs/CHECKPOINT.md"), "utf8");
   const moved = doc.replace(new RegExp(`(?<![0-9.])${esc(patch(old))}(?![0-9]|\\.[0-9])`, "g"), patch(next));
