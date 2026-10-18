@@ -1127,6 +1127,20 @@
     "N7 (the landing's video is no longer a self-recorded take)"
    ],
    "amended_by": []
+  },
+  {
+   "id": "N68",
+   "title": "The page counts plays in the owner's own account, and the Library suggests videos to clean up",
+   "decision": "**Bagrat asked for it, 2026-10-18**: shroom is pay-as-you-go, so it should say which videos are worth deleting, from how old they are, how often and how far they've been watched and when last. **The same day he chose**: plays counted **on by default**, with the switch in Settings; **plays and unique-ish viewers** both counted; the score is **fading and cost together**; deleting from the suggestions is **one tap with Undo**; and the rest to the build's judgment (B210–B214). (1) **The page counts plays.** A viewer's page and the embed send one beacon at the first play and one each time the tab hides, saying how much was watched; the Worker keeps per-video counts in the space's own bucket — plays, unique-ish viewers (a day-only hash under a salt replaced daily), how far each was watched in tenths, plays per day, last played. No cookie, nothing stored on the viewer's device, nothing kept that says who watched. The maker's own page never counts. A video that isn't live gets no record; a deleted one's record goes with its seal. (2) **Settings → General gains a group, Your videos**: **Count plays** (on; the space's switch, owner-class only, as the mark's is), **Suggest videos to clean up** (on; this Mac's), and **Space used** (the space's size, and what it costs past Cloudflare's free 10 GB). (3) **A video is suggested** when counting has watched it at least 30 days, it is at least 30 days old and nobody has played it in 30, its plays have faded (each counts half as much every 30 days, weighted by how far it was watched: 0.3 + 0.7 × its median share) below a quarter of one fresh full watch, and it takes at least a cent a month to keep at list price (about 0.67 GB). Never one marked Keep. The costliest per remaining play comes first. (4) **The Library says so in one line** above the rows, with Review… and ✕ (not now, until the list changes). (5) **Suggested to clean up** is the Library's own view: what deleting all of them frees and saves, then each video with when it was made, its size and why (\"Watched 4 times, the last 10 months ago\"), with Open page, Keep and Delete. **Delete is one tap**: the row goes and an Undo line stays a few seconds before the delete is sent; Delete all… asks once with the several-videos sheet. Keep takes a video off the list for good (the record's `keep`). (6) **The money line** gives sizes always, and cents only past the free 10 GB; inside it, the saving reads as nothing yet, and a clean-up that brings the space back inside it says so. (7) **shroom.am/privacy's line on viewers changes**; its new words are drafted on the board \"shroom.am/privacy — the viewers' line once plays are counted\" for Bagrat to rule. Built: DECISIONS B210–B214. Provisional.",
+   "status": "provisional",
+   "date": "2026-10-18",
+   "amends": [
+    "The Library (a line above the rows, and a view of its own; the footer's 'no sizes or prices', P13 parked, gives way to sizes in the suggestions)",
+    "Settings · General (the group Your videos)",
+    "The page and the embed (they count plays)",
+    "shroom.am/privacy (the viewers' line, to be ruled)"
+   ],
+   "amended_by": []
   }
  ],
  "surfaces": [
@@ -7377,6 +7391,27 @@
       "copy table"
      ],
      "id": "library.aug-21-4-32"
+    },
+    {
+     "text": "Six videos you've stopped watching take 11 GB.",
+     "role": "line",
+     "copy": "provisional",
+     "note": "N68's line above the rows, when the suggestions hold at least one video and Suggest videos to clean up is on. The count and the size vary: the count is a word up to nine (Law 16), the size the suggestions' total.",
+     "id": "library.cleanup-line"
+    },
+    {
+     "text": "Review…",
+     "role": "button",
+     "copy": "provisional",
+     "note": "Opens Suggested to clean up (N68).",
+     "id": "library.review"
+    },
+    {
+     "text": "Not now",
+     "role": "tooltip",
+     "copy": "provisional",
+     "note": "The ✕ at the line's end, named for VoiceOver. Hides the line until the suggestions change (N68).",
+     "id": "library.not-now"
     }
    ],
    "actions": [
@@ -7473,7 +7508,8 @@
     "§5.6",
     "R10",
     "P13",
-    "N46"
+    "N46",
+    "N68"
    ],
    "was": {
     "fixture": "r5.json",
@@ -7978,6 +8014,59 @@
      "copy": "ratified",
      "note": "Quiet text at the tab's foot. Greys mid-take (law 4).",
      "id": "settings-general.uninstall-shroom"
+    },
+    {
+     "text": "Your videos",
+     "role": "field-label",
+     "copy": "provisional",
+     "note": "The group's heading (N68).",
+     "id": "settings-general.your-videos"
+    },
+    {
+     "text": "Count plays",
+     "role": "field-label",
+     "copy": "provisional",
+     "note": "Switch, on by default. The space's: owner-class Macs change it; elsewhere it shows greyed (N68).",
+     "id": "settings-general.count-plays"
+    },
+    {
+     "text": "How often each video is played and how far, kept in your Cloudflare account. No cookies, nothing about who watched.",
+     "role": "line",
+     "copy": "provisional",
+     "id": "settings-general.how-often-each-video"
+    },
+    {
+     "text": "Suggest videos to clean up",
+     "role": "field-label",
+     "copy": "provisional",
+     "note": "Switch, on by default; this Mac's (N68).",
+     "id": "settings-general.suggest-videos-to-clean-up"
+    },
+    {
+     "text": "Videos you've stopped watching that take real room, in the Library.",
+     "role": "line",
+     "copy": "provisional",
+     "id": "settings-general.videos-youve-stopped-watching"
+    },
+    {
+     "text": "Space used",
+     "role": "field-label",
+     "copy": "provisional",
+     "id": "settings-general.space-used"
+    },
+    {
+     "text": "34 GB — about 36¢ a month past Cloudflare's free 10 GB",
+     "role": "status",
+     "copy": "provisional",
+     "note": "Past the free 10 GB; the size and the cents vary (B212).",
+     "id": "settings-general.34-gb"
+    },
+    {
+     "text": "8.2 GB — inside Cloudflare's free 10 GB",
+     "role": "status",
+     "copy": "provisional",
+     "note": "Inside the free 10 GB; the size varies (B212).",
+     "id": "settings-general.8-2-gb"
     }
    ],
    "actions": [
@@ -8035,7 +8124,8 @@
     "U7",
     "B135",
     "B180",
-    "N53"
+    "N53",
+    "N68"
    ],
    "was": {
     "fixture": "r5.json",
@@ -11593,6 +11683,137 @@
     "N12",
     "N41"
    ]
+  },
+  "library-cleanup": {
+   "region": 5,
+   "kind": "face",
+   "parent": "library",
+   "surface": "window",
+   "status": "provisional",
+   "board": "CleanupView",
+   "summary": "Suggested to clean up (N68): the Library's own view of the videos worth deleting, costliest per remaining play first. A line says what deleting all of them frees and saves; each row shows the poster, the title, then when it was made · its size · why it's suggested, with Open page, Keep and Delete (red text). Delete is one tap: the row leaves and an Undo line stays a few seconds before the delete is sent (a sealed delete can't be taken back, B125). Delete all… opens the several-videos sheet. Keep sets the record's keep and the row leaves for good. Members see their own; owner-class Macs follow Mine · Everyone.",
+   "entry": "Review… on the Library's suggestion line.",
+   "said": [
+    {
+     "text": "Suggested to clean up",
+     "role": "title",
+     "copy": "provisional",
+     "id": "library-cleanup.suggested-to-clean-up"
+    },
+    {
+     "text": "‹ Library",
+     "role": "button",
+     "copy": "provisional",
+     "note": "Back to the Library.",
+     "id": "library-cleanup.library"
+    },
+    {
+     "text": "Videos you've stopped watching that take real room. Deleting all six frees 11 GB — about 17¢ a month off your Cloudflare bill.",
+     "role": "line",
+     "copy": "provisional",
+     "note": "Past the free 10 GB. The count, sizes and cents vary: the count is a word up to nine (Law 16).",
+     "id": "library-cleanup.videos-youve-stopped-watching"
+    },
+    {
+     "text": "Videos you've stopped watching that take real room. Deleting all six frees 5 GB. Your space is inside Cloudflare's free 10 GB, so this saves nothing yet.",
+     "role": "line",
+     "copy": "provisional",
+     "note": "Inside the free 10 GB (B212). The count and size vary.",
+     "id": "library-cleanup.inside-free"
+    },
+    {
+     "text": "Videos you've stopped watching that take real room. Deleting all six frees 3 GB and brings your space back inside Cloudflare's free 10 GB.",
+     "role": "line",
+     "copy": "provisional",
+     "note": "When deleting them all would take the space back under 10 GB (B212). The count and size vary.",
+     "id": "library-cleanup.back-inside-free"
+    },
+    {
+     "text": "Watched 4 times, the last 10 months ago",
+     "role": "line",
+     "copy": "provisional",
+     "note": "A row's reason (B211); the counts and times vary. Counts are figures here: a row fact (Law 16). Shapes: 'Watched once, 5 months ago' · 'Watched twice, stopped early, 4 months ago' (most stopped in the first quarter) · 'Nobody has watched it'.",
+     "id": "library-cleanup.watched-4-times"
+    },
+    {
+     "text": "Nobody has watched it",
+     "role": "line",
+     "copy": "provisional",
+     "note": "The reason when counting never saw a play.",
+     "id": "library-cleanup.nobody-has-watched-it"
+    },
+    {
+     "text": "Open page",
+     "role": "button",
+     "copy": "provisional",
+     "id": "library-cleanup.open-page"
+    },
+    {
+     "text": "Keep",
+     "role": "button",
+     "copy": "provisional",
+     "note": "Takes the video off the list for good.",
+     "id": "library-cleanup.keep"
+    },
+    {
+     "text": "Delete",
+     "role": "button",
+     "copy": "provisional",
+     "note": "Red text, never a button (Law 9); one tap, then Undo.",
+     "id": "library-cleanup.delete"
+    },
+    {
+     "text": "Deleted “Old onboarding take”.",
+     "role": "line",
+     "copy": "provisional",
+     "note": "The Undo line, a few seconds; the delete is sent when it goes. The title varies.",
+     "id": "library-cleanup.deleted"
+    },
+    {
+     "text": "Undo",
+     "role": "button",
+     "copy": "provisional",
+     "id": "library-cleanup.undo"
+    },
+    {
+     "text": "Delete all six…",
+     "role": "button",
+     "copy": "provisional",
+     "note": "Red text; opens delete-confirm-several. The count varies, a word up to nine.",
+     "id": "library-cleanup.delete-all-six"
+    },
+    {
+     "text": "Keep takes a video off this list for good. Plays are counted in your own Cloudflare account.",
+     "role": "line",
+     "copy": "provisional",
+     "id": "library-cleanup.keep-takes-a-video"
+    },
+    {
+     "text": "Nothing to clean up right now.",
+     "role": "line",
+     "copy": "provisional",
+     "note": "Once the last suggestion is kept or deleted.",
+     "id": "library-cleanup.nothing-to-clean-up"
+    }
+   ],
+   "actions": [
+    {
+     "label": "‹ Library",
+     "kind": "secondary",
+     "return_default": false,
+     "goes_to": "library"
+    },
+    {
+     "label": "Delete all six…",
+     "kind": "destructive",
+     "return_default": false,
+     "goes_to": "delete-confirm-several"
+    }
+   ],
+   "cites": [
+    "N68"
+   ],
+   "was": null
   }
  },
  "edges": [
@@ -16124,6 +16345,57 @@
    ],
    "on": [
     "Act(OpenFeedback)"
+   ]
+  },
+  {
+   "from": "library",
+   "to": "library-cleanup",
+   "kind": "flow",
+   "label": "Review…",
+   "trigger": "Review… on the suggestion line",
+   "status": "provisional",
+   "cites": [
+    "N68"
+   ],
+   "source": [
+    "core-arm"
+   ],
+   "on": [
+    "Act(ReviewCleanup)"
+   ]
+  },
+  {
+   "from": "library-cleanup",
+   "to": "library",
+   "kind": "flow",
+   "label": "‹ Library",
+   "trigger": "‹ Library, or Esc",
+   "status": "provisional",
+   "cites": [
+    "N68"
+   ],
+   "source": [
+    "core-arm"
+   ],
+   "on": [
+    "Act(Back)"
+   ]
+  },
+  {
+   "from": "library-cleanup",
+   "to": "delete-confirm-several",
+   "kind": "flow",
+   "label": "Delete all…",
+   "trigger": "Delete all… under the suggestions",
+   "status": "provisional",
+   "cites": [
+    "N68"
+   ],
+   "source": [
+    "core-arm"
+   ],
+   "on": [
+    "Act(DeleteAllSuggested)"
    ]
   }
  ],

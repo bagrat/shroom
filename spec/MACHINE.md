@@ -4,7 +4,7 @@
 
 The machine: every state, edge, rule, said-line and law of shroom v1 — the spec (DECISIONS B133). Sessions edit it; MACHINE.md and the canvas's machine boards are generated from it.
 
-144 states · 296 edges · 23 rules · 574 said-lines · 16 laws · 72 ledger rows.
+145 states · 299 edges · 23 rules · 600 said-lines · 16 laws · 73 ledger rows.
 
 Status: **ratified** is Bagrat's; **provisional** is designed or built and awaits him (each cites its row: `#n` is a DEVIATIONS row of docs/DECISIONS.md, `Bn` a decision, `Nn`/`Un`/`Pn` a ledger row below). `SM:n` in older citations is a line of the retired spec text, kept in history/spec/UX-STATEMACHINE.md.
 
@@ -2089,7 +2089,7 @@ web-page · web-page · **provisional** · cites N40, §5.4, R4, R5
 
 ### `library`
 
-state · window · **provisional** · board: Library · cites N35, N5, N33, N25, N26, N28, N34, N41, U2, §5.6, R10, P13, N46
+state · window · **provisional** · board: Library · cites N35, N5, N33, N25, N26, N28, N34, N41, U2, §5.6, R10, P13, N46, N68
 
 The Library window, thin by design (§5.6), built for two jobs: re-share an old video and clean up. It is a list, newest first. Each row shows a small poster, the title, then date · length; in Everyone, other members' rows add their admin-private label (N28; removed members keep it). Copy link is always visible; Copy thumbnail sits under it in the row's menu (N46). Open page and Delete… show on hover or selection. State words appear only when a video isn't live (no word means live). A recovered take pins to the top under the amber dot, mirroring N25's banner. The full macOS idiom applies: click a title to rename it, double-click to open, ⌘C copies, the Delete key deletes, right-click opens a menu, ⌘/⇧-click multi-selects. Mine · Everyone shows only on owner-class Macs once someone else has a video here, and Mine is the default. Search is local and instant, over titles only. The window opens on the local cache, and the bucket refresh (R10 delta sync) runs behind it, sliding new rows in, including videos from your other Macs. Footer: the count only, with no sizes or prices (P13 parked). Scope: members see their own videos, owner-class Macs see the whole space. If another Mac deletes a video while this Mac is uploading it, the tombstone check at resume stops the upload and this row turns to 'Removed from the space' with Save to Movies · Discard…. Mocked row shape: '<title> — Aug 21 · 4:32' (+ ' · Mher' in Everyone).
 
@@ -2123,6 +2123,9 @@ The Library window, thin by design (§5.6), built for two jobs: re-share an old 
 | “1 video” | line | provisional | one case the spec didn't print, so it varies by case — the copy table: The Library footer, one video · copy table |
 | “Aug 21” | line | provisional | one case the spec didn't print, so it varies by case — the copy table: The Library's dates · copy table |
 | “Aug 21 · 4:32” | line | provisional | one case the spec didn't print, so it varies by case — the copy table: The Library's dates · copy table |
+| “Six videos you've stopped watching take 11 GB.” | line | provisional | N68's line above the rows, when the suggestions hold at least one video and Suggest videos to clean up is on. The count and the size vary: the count is a word up to nine (Law 16), the size the suggestions' total. |
+| “Review…” | button | provisional | Opens Suggested to clean up (N68). |
+| “Not now” | tooltip | provisional | The ✕ at the line's end, named for VoiceOver. Hides the line until the suggestions change (N68). |
 
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
@@ -2149,6 +2152,7 @@ The Library window, thin by design (§5.6), built for two jobs: re-share an old 
 | `library-offline` | flow | Mac goes offline | provisional |  |
 | `library-unreachable` | flow | member-revoked or space-gone (N34) | provisional |  |
 | `delete-confirm` | side | Delete… · Delete key | provisional |  |
+| `library-cleanup` | flow | Review… | provisional | N68 |
 
 ### `library-empty`
 
@@ -2324,7 +2328,7 @@ One standard macOS settings window with toolbar tabs General · Space · Members
 
 ### `settings-general`
 
-face · window · **provisional** · a face of `settings` · board: SettingsGeneral · cites N36, U4, N8, N37, U7, B135, B180, N53
+face · window · **provisional** · a face of `settings` · board: SettingsGeneral · cites N36, U4, N8, N37, U7, B135, B180, N53, N68
 
 The General tab: U4's login checkbox at home at last (it reads the system's truth: if the login item is removed in System Settings, the box shows unchecked), the update row mirroring config's banner, and the help row: Copy diagnostics and Report a problem… (B180), with GitHub's new-issue link under it as the public door (N8). Past this Mac's macOS, General carries the only update line: no banner, no dot.
 
@@ -2346,6 +2350,14 @@ The General tab: U4's login checkbox at home at last (it reads the system's trut
 | “You can do this once your recording is finished.” | line | provisional | Law 4: mid-take, Update greys with this line (only possible if the window was open before the take). |
 | “shroom 1.2.0.” | line | provisional | one case the spec didn't print, so it varies by case — the copy table: Settings · General, nothing known about a newer version (no check answered yet, or one couldn't run) · copy table |
 | “Uninstall shroom…” | link | ratified | Quiet text at the tab's foot. Greys mid-take (law 4). |
+| “Your videos” | field-label | provisional | The group's heading (N68). |
+| “Count plays” | field-label | provisional | Switch, on by default. The space's: owner-class Macs change it; elsewhere it shows greyed (N68). |
+| “How often each video is played and how far, kept in your Cloudflare account. No cookies, nothing about who watched.” | line | provisional |  |
+| “Suggest videos to clean up” | field-label | provisional | Switch, on by default; this Mac's (N68). |
+| “Videos you've stopped watching that take real room, in the Library.” | line | provisional |  |
+| “Space used” | field-label | provisional |  |
+| “34 GB — about 36¢ a month past Cloudflare's free 10 GB” | status | provisional | Past the free 10 GB; the size and the cents vary (B212). |
+| “8.2 GB — inside Cloudflare's free 10 GB” | status | provisional | Inside the free 10 GB; the size varies (B212). |
 
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
@@ -2790,6 +2802,42 @@ Send feedback (N60): a small window of its own, opened from the popover's first 
 | Send | filled-default |  |  | ⌘Return; plain Return types a new line. Grey until something is typed and, with the box ticked, the report is gathered. |
 | email it to hi@shroom.am | text-link |  |  | Only once a send failed: a mail draft to hi@shroom.am with the words and the version (N48). |
 | Done | filled-default | ↵ |  | The sent face only: closes the window. Esc and ✕ too. |
+
+### `library-cleanup`
+
+face · window · **provisional** · a face of `library` · board: CleanupView · cites N68
+
+Suggested to clean up (N68): the Library's own view of the videos worth deleting, costliest per remaining play first. A line says what deleting all of them frees and saves; each row shows the poster, the title, then when it was made · its size · why it's suggested, with Open page, Keep and Delete (red text). Delete is one tap: the row leaves and an Undo line stays a few seconds before the delete is sent (a sealed delete can't be taken back, B125). Delete all… opens the several-videos sheet. Keep sets the record's keep and the row leaves for good. Members see their own; owner-class Macs follow Mine · Everyone.
+
+**Entry.** Review… on the Library's suggestion line.
+
+| Said | Role | Copy | Note |
+|---|---|---|---|
+| “Suggested to clean up” | title | provisional |  |
+| “‹ Library” | button | provisional | Back to the Library. |
+| “Videos you've stopped watching that take real room. Deleting all six frees 11 GB — about 17¢ a month off your Cloudflare bill.” | line | provisional | Past the free 10 GB. The count, sizes and cents vary: the count is a word up to nine (Law 16). |
+| “Videos you've stopped watching that take real room. Deleting all six frees 5 GB. Your space is inside Cloudflare's free 10 GB, so this saves nothing yet.” | line | provisional | Inside the free 10 GB (B212). The count and size vary. |
+| “Videos you've stopped watching that take real room. Deleting all six frees 3 GB and brings your space back inside Cloudflare's free 10 GB.” | line | provisional | When deleting them all would take the space back under 10 GB (B212). The count and size vary. |
+| “Watched 4 times, the last 10 months ago” | line | provisional | A row's reason (B211); the counts and times vary. Counts are figures here: a row fact (Law 16). Shapes: 'Watched once, 5 months ago' · 'Watched twice, stopped early, 4 months ago' (most stopped in the first quarter) · 'Nobody has watched it'. |
+| “Nobody has watched it” | line | provisional | The reason when counting never saw a play. |
+| “Open page” | button | provisional |  |
+| “Keep” | button | provisional | Takes the video off the list for good. |
+| “Delete” | button | provisional | Red text, never a button (Law 9); one tap, then Undo. |
+| “Deleted “Old onboarding take”.” | line | provisional | The Undo line, a few seconds; the delete is sent when it goes. The title varies. |
+| “Undo” | button | provisional |  |
+| “Delete all six…” | button | provisional | Red text; opens delete-confirm-several. The count varies, a word up to nine. |
+| “Keep takes a video off this list for good. Plays are counted in your own Cloudflare account.” | line | provisional |  |
+| “Nothing to clean up right now.” | line | provisional | Once the last suggestion is kept or deleted. |
+
+| Action | Kind | Return | Goes to | Note |
+|---|---|---|---|---|
+| ‹ Library | secondary |  | `library` |  |
+| Delete all six… | destructive |  | `delete-confirm-several` |  |
+
+| → | Kind | Label | Status | Cites |
+|---|---|---|---|---|
+| `library` | flow | ‹ Library | provisional | N68 |
+| `delete-confirm-several` | flow | Delete all… | provisional | N68 |
 
 #### Region 5's amendments
 
@@ -3847,6 +3895,7 @@ A move that holds for a whole group of states, written once (B133). The tests ex
 | N59 | shroom.am, redesigned: two columns, the price as one bar, install in tabs | **Bagrat approved the canvas board “shroom.am redesign — B8-box”, 2026-10-17**, after eight rounds from his ask for a page with less text that shows the demo and install without scrolling. (1) **Two columns on a laptop.** Left: the shroom mark and wordmark, large, at the top; then the headline “Record. Share. Pay-as-you-go.” on one line with its line under it; then one thin price bar, 0 to 30 hours to scale, as wide as the headline, its first tenth lit, labelled “$0 · about three hours of video” and “$1.50 /month · about thirty hours” (it replaces the two price tiles, which read as two plans); then seven terms with green ticks, in his order: “Your videos live in your own Cloudflare account”, “You pay only Cloudflare, for the storage”, “Invite your team with a link”, “No price per person — the bill counts video, not people”, “Delete old videos and pay less”, “About ten minutes of guided setup, once”, “Open source — every line on GitHub”. Spacing: brand to headline 70 px, headline's line to the bar 48, bar to terms 48. Right: one box, corners 10 px, its top level with the wordmark's baseline and its bottom with the last term's: the demo (N58), then Install. (2) **Install is one command at a time, in tabs: Terminal (chosen), Homebrew, Coding agent**, amending N52's Homebrew-first stack; under each, “Read it first” alone, and in the agent's tab “Your agent asks you before it runs anything.”; the system-requirements line under all three. (3) **No header and no trust strip.** The page's foot, under the left column at the bottom of the first screen (after the content when it runs longer), holds Send feedback · GitHub · Questions and limits · Privacy · Terms, then the visits line; “Trouble, questions” goes (it opened /feedback, as Send feedback does), and so do “Your storage, your bill” (term 2 says it) and “Built to outlive us”. The other shroom.am pages keep their header and footer. **The demo's caption, “Recorded with shroom.”, goes** (his later note, the same day), with no link to the take in its place: the video is to be replaced by a generated one; the still and play-in-place stay. (4) **On a phone** it stacks, and by his phone notes the same day the terms come before the demo and install goes last: the brand, the headline, the bar, the terms, the box (the demo, then install), the foot, its links wrapping to fit. The bar's labels are short there, “$0 / 3h video” and “$1.50 / 30h”, because the long ones wrapped; the laptop keeps the long ones. Built: DECISIONS B191. | ratified | 2026-10-17 |
 | N60 | Send feedback from the popover, in its own window, the log going along | **Bagrat asked for it, 2026-10-17**: feedback is worth most from people who have installed shroom, it is easier to send from inside the app than from the web form, and the log should go without anyone attaching it by hand (it makes N53's in-app door easier to reach). **The same day he chose design A** of three on the canvas (“Send feedback — A”) and **the log box ticked by default**. **The popover's header gains a fourth icon, first: Send feedback · Library · Settings · Quit**, named “Send feedback” on hover and to VoiceOver; its glyph a waving hand, his pick from 28 on the canvas (“Send feedback — A: the icon” boards, #23), 2026-10-17. It opens **its own small window, Send feedback**: one line on where it goes, the words, the optional email for an answer, **Include shroom’s recent log** (ticked) with a line on what goes and what never goes, and N53's “See exactly what’s sent”. Unticked, the report carries the words and the version only. **Send** posts to N53's `shroom.am/report` as kind feedback, from the app; Sending… and a send that didn't go through are N53's, word for word, mail link included. **Sent**, the window says so and offers Done. Settings · General's Report a problem… stays as it is (a problem, the log always). The icon sits in the ready popover only, so it never shows mid-take (law 4). Bagrat OK'd the window's words the same day (“its recent log” for “its last 200 lines” among them). Built: DECISIONS B193. Ratified by Bagrat, 2026-10-17. | ratified | 2026-10-17 |
 | N61 | The landing's video becomes “How to set up and use shroom”, served by shroom.am | **Bagrat approved the new video and asked for it to go up, 2026-10-18.** (1) **The video in the landing's box is now “How to set up and use shroom”** (four minutes): a walkthrough drawn from the design boards, with his own narration, replacing the 15-minute take N58 placed there. It is not a shroom recording, so nothing on the page or in the README says it was recorded with shroom. (2) **Its still** is a frame of the video itself: the setup window at “You're all set — ready to record.”, on the landing's dark ground, the same size as before. The play button reads “Play how to set up and use shroom, 4 minutes” to VoiceOver; the length shown is “4 mins”, in minutes rather than to the second (his note the same day). (3) **shroom.am serves it** as its own file (`/how-to.mp4`), no longer from the maker's shroom space; it still loads only as its block nears the screen, and plays in place on a click. (4) **The word “demo” leaves the page** where it meant this video. (5) **While it plays, its controls hide** when the pointer is idle for a few seconds or leaves the video, and come back on a move, a tap or the keyboard (his ask, the same day): the browser's own controls, which do this in Chromium and WebKit and keep keyboard and VoiceOver access. The layout of N59 is unchanged. Built: DECISIONS B194. Ratified by Bagrat, 2026-10-18. | ratified | 2026-10-18 |
+| N68 | The page counts plays in the owner's own account, and the Library suggests videos to clean up | **Bagrat asked for it, 2026-10-18**: shroom is pay-as-you-go, so it should say which videos are worth deleting, from how old they are, how often and how far they've been watched and when last. **The same day he chose**: plays counted **on by default**, with the switch in Settings; **plays and unique-ish viewers** both counted; the score is **fading and cost together**; deleting from the suggestions is **one tap with Undo**; and the rest to the build's judgment (B210–B214). (1) **The page counts plays.** A viewer's page and the embed send one beacon at the first play and one each time the tab hides, saying how much was watched; the Worker keeps per-video counts in the space's own bucket — plays, unique-ish viewers (a day-only hash under a salt replaced daily), how far each was watched in tenths, plays per day, last played. No cookie, nothing stored on the viewer's device, nothing kept that says who watched. The maker's own page never counts. A video that isn't live gets no record; a deleted one's record goes with its seal. (2) **Settings → General gains a group, Your videos**: **Count plays** (on; the space's switch, owner-class only, as the mark's is), **Suggest videos to clean up** (on; this Mac's), and **Space used** (the space's size, and what it costs past Cloudflare's free 10 GB). (3) **A video is suggested** when counting has watched it at least 30 days, it is at least 30 days old and nobody has played it in 30, its plays have faded (each counts half as much every 30 days, weighted by how far it was watched: 0.3 + 0.7 × its median share) below a quarter of one fresh full watch, and it takes at least a cent a month to keep at list price (about 0.67 GB). Never one marked Keep. The costliest per remaining play comes first. (4) **The Library says so in one line** above the rows, with Review… and ✕ (not now, until the list changes). (5) **Suggested to clean up** is the Library's own view: what deleting all of them frees and saves, then each video with when it was made, its size and why ("Watched 4 times, the last 10 months ago"), with Open page, Keep and Delete. **Delete is one tap**: the row goes and an Undo line stays a few seconds before the delete is sent; Delete all… asks once with the several-videos sheet. Keep takes a video off the list for good (the record's `keep`). (6) **The money line** gives sizes always, and cents only past the free 10 GB; inside it, the saving reads as nothing yet, and a clean-up that brings the space back inside it says so. (7) **shroom.am/privacy's line on viewers changes**; its new words are drafted on the board "shroom.am/privacy — the viewers' line once plays are counted" for Bagrat to rule. Built: DECISIONS B210–B214. Provisional. | provisional | 2026-10-18 |
 
 ## Surfaces
 
