@@ -84,7 +84,7 @@ EOF
   sx=$(awk -v a="$sw" -v p="$pw" 'BEGIN { print a / p }'); vx=$(awk -v a="$vw" -v p="$pw" 'BEGIN { print a / p }')
   on_screen=$(bright "$OUT/label-on.png" "$(awk -v v="$1" -v s="$sx" 'BEGIN{printf "%d", v*s}')" "$(awk -v v="$2" -v s="$sx" 'BEGIN{printf "%d", v*s}')" "$(awk -v v="$3" -v s="$sx" 'BEGIN{printf "%d", v*s}')" "$(awk -v v="$4" -v s="$sx" 'BEGIN{printf "%d", v*s}')")
   in_take=$(bright "$OUT/take-frame.png" "$(awk -v v="$1" -v s="$vx" 'BEGIN{printf "%d", v*s}')" "$(awk -v v="$2" -v s="$vx" 'BEGIN{printf "%d", v*s}')" "$(awk -v v="$3" -v s="$vx" 'BEGIN{printf "%d", v*s}')" "$(awk -v v="$4" -v s="$vx" 'BEGIN{printf "%d", v*s}')")
-  echo "  the label's rectangle: $on_screen bright pixels on screen ($sw×$sh), $in_take in the take ($vw×$vh)"
+  echo "  the label's rectangle: $on_screen bright pixels on screen (${sw}×${sh}), $in_take in the take (${vw}×${vh})"
   [ "${on_screen:-0}" -ge 40 ] || no "the screenshot shows no label where the window server has it"
   [ "${in_take:-0}" -le 4 ] || no "the label is in the take"
 else
