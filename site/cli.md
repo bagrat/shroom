@@ -109,7 +109,9 @@ lists every item. Tell them which failed and why, and run it again for those onl
   clear yes. They leave the space; the videos they made stay.
 - **Recording is theirs.** Start a recording only when they asked you to, right now.
   `record start` opens shroom if needed, shows its countdown, then records their
-  screen. `record stop` ends it and makes its link: give them the link. During the
+  screen. Add `--no-countdown` only when they asked to skip the countdown. While it
+  records, a label at the top right of their screen says you're recording: leave it on
+  unless they ask you to hide it (`--no-label`). `record stop` ends it and makes its link: give them the link. During the
   countdown, and between two steps, a `pause`, `resume` or `stop` answers `refused`
   (shroom is between two steps): wait a moment and ask again. shroom lets you
   record only once they've turned on “Let it start and stop recordings” in its Settings,
