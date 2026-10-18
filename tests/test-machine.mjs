@@ -1,8 +1,8 @@
 // Where a dev build may be launched (dev/proposals/heartbeat-in-vm.md §3): a test machine
 // only — the GitHub-hosted Mac or a Tart clone of a golden image, both with System
 // Integrity Protection off (their privacy grants are written straight into TCC.db). Bagrat's
-// Mac keeps SIP on and carries only the official release: nothing dev is installed or
-// launched on it, so every script that would is refused there before it starts.
+// Mac keeps SIP on and carries only signed releases (the official one, or an early-channel
+// pre-release, DECISIONS B220): nothing dev is installed or launched on it, so every script that would is refused there before it starts.
 
 import { spawnSync } from "node:child_process";
 

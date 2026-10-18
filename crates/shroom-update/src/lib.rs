@@ -15,20 +15,55 @@ pub const RELEASES: &str = "https://github.com/bagrat/shroom/releases";
 /// A quiet check gives up fast (the POC's fail-soft budget).
 pub const CHECK_TIMEOUT: Duration = Duration::from_millis(2500);
 
+/// A release's version: three whole numbers, and for an early build its stage (DECISIONS
+/// B220): `0.1.25-early.1` < `0.1.25-early.2` < `0.1.25` < `0.1.26-early.1`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Version(pub u32, pub u32, pub u32);
+pub struct Version(pub u32, pub u32, pub u32, pub Stage);
+
+/// Where a version stands: an early build of it (`-early.<n>`, n ≥ 1), or the release
+/// itself, which every early build of it sorts below.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Stage {
+    Early(u32),
+    Final,
+}
 
 impl Version {
+    /// A release (no early stage).
+    pub const fn new(major: u32, minor: u32, patch: u32) -> Version {
+        Version(major, minor, patch, Stage::Final)
+    }
+
+    /// `1.2.3`, `v1.2` or `1.2.3-early.4`; any other suffix is no version.
     pub fn parse(s: &str) -> Option<Version> {
-        let mut it = s.trim().trim_start_matches('v').split('.').map(|p| p.parse::<u32>().ok());
-        let v = Version(it.next()??, it.next().unwrap_or(Some(0))?, it.next().unwrap_or(Some(0))?);
+        let s = s.trim().trim_start_matches('v');
+        let (core, stage) = match s.split_once('-') {
+            None => (s, Stage::Final),
+            Some((core, pre)) => {
+                let n = pre.strip_prefix("early.")?;
+                if n.is_empty() || !n.bytes().all(|b| b.is_ascii_digit()) {
+                    return None;
+                }
+                (core, Stage::Early(n.parse().ok().filter(|n| *n >= 1)?))
+            }
+        };
+        let mut it = core.split('.').map(|p| p.parse::<u32>().ok());
+        let v = Version(it.next()??, it.next().unwrap_or(Some(0))?, it.next().unwrap_or(Some(0))?, stage);
         it.next().is_none().then_some(v)
+    }
+
+    pub fn is_early(&self) -> bool {
+        matches!(self.3, Stage::Early(_))
     }
 }
 
 impl std::fmt::Display for Version {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}.{}.{}", self.0, self.1, self.2)
+        write!(f, "{}.{}.{}", self.0, self.1, self.2)?;
+        match self.3 {
+            Stage::Early(n) => write!(f, "-early.{n}"),
+            Stage::Final => Ok(()),
+        }
     }
 }
 
@@ -169,15 +204,65 @@ pub fn same_signer(staged: &Path, replaced: &Path) -> Result<(), UpdateError> {
     if status.success() { Ok(()) } else { Err(UpdateError::Signature(format!("the update doesn't meet {req}"))) }
 }
 
-/// The latest release's manifest — the installer's first request, with a short budget.
-/// The app asks for it as `update.txt` (the same bytes as `manifest.txt`, DECISIONS B136),
-/// so a release's download counts tell the app's checks from the install line's runs; a
-/// release without one (before 0.1.11, or a test's folder) answers 404, and then it's
-/// `manifest.txt`.
+/// Which releases a Mac takes (DECISIONS B220): the official ones, or the early channel's
+/// signed pre-releases as well. Set by a file in the app's folder, `channel`, holding the
+/// one word `early` — written by `install.sh --early`; anything else, or no file, is the
+/// official channel.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Channel {
+    Official,
+    Early,
+}
+
+impl Channel {
+    /// The channel file's words (None: no file).
+    pub fn from_file(text: Option<&str>) -> Channel {
+        match text.map(str::trim) {
+            Some("early") => Channel::Early,
+            _ => Channel::Official,
+        }
+    }
+
+    /// The word the log and Copy diagnostics carry.
+    pub fn word(self) -> &'static str {
+        match self {
+            Channel::Official => "official",
+            Channel::Early => "early",
+        }
+    }
+}
+
+/// The newest release this channel takes, as its manifest: for the official channel the
+/// latest release's — the installer's first request, with a short budget. The app asks for
+/// it as `update.txt` (the same bytes as `manifest.txt`, DECISIONS B136), so a release's
+/// download counts tell the app's checks from the install line's runs; a release without
+/// one (before 0.1.11, or a test's folder) answers 404, and then it's `manifest.txt`.
+///
+/// The early channel reads the `early` pointer too — a pre-release GitHub keeps beside the
+/// releases, whose files `release.yml` replaces with each publish's manifest, pre-release or
+/// not — and takes whichever of the two is newer, so an early Mac takes an official release
+/// that is out, and a pointer that couldn't be read leaves it on the official channel's.
 pub fn check(base: &str) -> Result<Manifest, UpdateError> {
+    check_channel(base, Channel::Official)
+}
+
+pub fn check_channel(base: &str, channel: Channel) -> Result<Manifest, UpdateError> {
     let base = base.trim_end_matches('/');
     let agent = agent(CHECK_TIMEOUT);
-    let get = |name: &str| agent.get(&format!("{base}/latest/download/{name}")).call();
+    let latest = manifest_in(&agent, &format!("{base}/latest/download"));
+    if channel == Channel::Official {
+        return latest;
+    }
+    match (latest, manifest_in(&agent, &format!("{base}/download/early"))) {
+        (Ok(l), Ok(e)) => Ok(if e.version > l.version { e } else { l }),
+        (Ok(m), Err(_)) | (Err(_), Ok(m)) => Ok(m),
+        (Err(e), Err(_)) => Err(e),
+    }
+}
+
+/// One release folder's manifest: `update.txt`, or on a 404 `manifest.txt`.
+fn manifest_in(agent: &ureq::Agent, dir: &str) -> Result<Manifest, UpdateError> {
+    let get = |name: &str| agent.get(&format!("{dir}/{name}")).call();
     let mut res = match get("update.txt") {
         Err(ureq::Error::StatusCode(404)) => get("manifest.txt"),
         asked => asked,
@@ -281,17 +366,45 @@ mod tests {
     }
 
     #[test]
+    fn the_channel_is_early_only_when_its_file_says_so() {
+        assert_eq!(Channel::from_file(Some("early\n")), Channel::Early);
+        assert_eq!(Channel::from_file(Some("  early ")), Channel::Early);
+        for other in [None, Some(""), Some("official"), Some("Early"), Some("early please")] {
+            assert_eq!(Channel::from_file(other), Channel::Official, "{other:?}");
+        }
+    }
+
+    /// An early build sorts above the release before it and below its own final, and the
+    /// next version's early builds above that (DECISIONS B220) — the order the updater, the
+    /// page compare (`shroom_cloud::wire`), `bump-version.sh` and the installer all keep.
+    #[test]
+    fn early_builds_sort_between_the_releases_around_them() {
+        let v = |s: &str| Version::parse(s).unwrap_or_else(|| panic!("{s}"));
+        let order = ["0.1.24", "0.1.25-early.1", "0.1.25-early.2", "0.1.25-early.10", "0.1.25", "0.1.26-early.1", "0.1.26"];
+        for w in order.windows(2) {
+            assert!(v(w[0]) < v(w[1]), "{} < {}", w[0], w[1]);
+        }
+        for s in order {
+            assert_eq!(v(s).to_string(), s, "it prints as it reads");
+        }
+        assert!(v("0.1.25-early.1").is_early() && !v("0.1.25").is_early());
+        for bad in ["0.1.25-early", "0.1.25-early.0", "0.1.25-early.x", "0.1.25-beta.1", "0.1.25-early.1.2", "0.1.25-"] {
+            assert!(Version::parse(bad).is_none(), "{bad}");
+        }
+    }
+
+    #[test]
     fn versions_order_and_parse() {
-        assert_eq!(Version::parse("1.3.0"), Some(Version(1, 3, 0)));
-        assert_eq!(Version::parse("v1.10"), Some(Version(1, 10, 0)));
+        assert_eq!(Version::parse("1.3.0"), Some(Version::new(1, 3, 0)));
+        assert_eq!(Version::parse("v1.10"), Some(Version::new(1, 10, 0)));
         assert!(Version::parse("1.2.3.4").is_none() && Version::parse("x").is_none());
-        assert!(Version(1, 10, 0) > Version(1, 9, 9));
+        assert!(Version::new(1, 10, 0) > Version::new(1, 9, 9));
     }
 
     #[test]
     fn reads_the_installers_manifest() {
         let m = Manifest::parse(&format!("version=1.3.0\nmacos=14\narm64=shroom-1.3.0-arm64.zip {SUM}\nx86_64=../evil {SUM}\n")).unwrap();
-        assert_eq!(m.version, Version(1, 3, 0));
+        assert_eq!(m.version, Version::new(1, 3, 0));
         assert_eq!(m.assets.len(), 1, "a file name with a path in it is ignored");
         assert!(Manifest::parse("macos=14\n").is_none());
     }
@@ -299,9 +412,9 @@ mod tests {
     #[test]
     fn offers_only_what_this_mac_can_run() {
         let m = Manifest::parse(&format!("version=1.4.0\nmacos=15\narm64=shroom-1.4.0-arm64.zip {SUM}\n")).unwrap();
-        assert_eq!(offer(&m, Version(1, 3, 2), "arm64", 14), Offer::NeedsMacos { version: Version(1, 4, 0), macos: 15 });
-        assert!(matches!(offer(&m, Version(1, 3, 2), "arm64", 15), Offer::Ready(r) if r.file == "shroom-1.4.0-arm64.zip"));
-        assert_eq!(offer(&m, Version(1, 4, 0), "arm64", 15), Offer::Nothing);
-        assert_eq!(offer(&m, Version(1, 3, 2), "x86_64", 15), Offer::Nothing);
+        assert_eq!(offer(&m, Version::new(1, 3, 2), "arm64", 14), Offer::NeedsMacos { version: Version::new(1, 4, 0), macos: 15 });
+        assert!(matches!(offer(&m, Version::new(1, 3, 2), "arm64", 15), Offer::Ready(r) if r.file == "shroom-1.4.0-arm64.zip"));
+        assert_eq!(offer(&m, Version::new(1, 4, 0), "arm64", 15), Offer::Nothing);
+        assert_eq!(offer(&m, Version::new(1, 3, 2), "x86_64", 15), Offer::Nothing);
     }
 }
