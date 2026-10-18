@@ -51,6 +51,8 @@ export const COPY = {
   copied: "Copied",
   // Copy thumbnail (N46): the video's picture, wrapped in the link.
   copyThumbnail: "Copy thumbnail",
+  // Edit in shroom (N69): the owner page's scissors, opening the video in shroom's editor.
+  editInShroom: "Edit in shroom",
   preparingThumbnail: "Preparing the thumbnail…",
   waitingConnection: "Waiting for connection — your link already works.",
   waitingSpace: "Waiting for your space — your link already works.",
@@ -1005,7 +1007,7 @@ async function page(env, id, now, ownerP, origin) {
   // play costs no round of its own (B177).
   const oneP = onePicture(env, id);
   const [meta, mark, owner] = await Promise.all([readMeta(env, id), markOn(env).catch(() => true), ownerP]);
-  const face = { mark, owner: owner?.ownerClass ? { switchOn: mark } : null, head: meta && meta.state !== "deleted" ? unfurl(id, meta, origin) : "", ratio: ratioOf(meta) };
+  const face = { mark, owner: owner?.ownerClass ? { switchOn: mark } : null, head: meta && meta.state !== "deleted" ? unfurl(id, meta, origin) : "", ratio: ratioOf(meta), host: new URL(origin).host };
   if (meta && meta.state === "deleted") return html(notFoundPage(face), false, 404);
   const mine = owner !== null && (await mayEdit(env, owner, id, !!meta));
   // Unknown or malformed ids look exactly like a video still uploading: a guessed link
@@ -1209,6 +1211,8 @@ const maskIcon = (d, w = 1.4) => `url("data:image/svg+xml,${encodeURIComponent(`
 const I_LINK = maskIcon("M6.8 9.2a2.8 2.8 0 0 0 4 0l2.2-2.2a2.8 2.8 0 0 0-4-4l-.8.8M9.2 6.8a2.8 2.8 0 0 0-4 0L3 9a2.8 2.8 0 0 0 4 4l.8-.8");
 const I_CHECK = maskIcon("M3 8.6l3.2 3.1L13 4.6", 1.6);
 const I_SAVE = maskIcon("M8 2.5v8M4.5 7.5L8 11l3.5-3.5M3 13.5h10");
+// Edit in shroom's scissors (N69): the editor's own mark, the one its cuts carry.
+const I_EDIT = maskIcon("M2.5 4.5a2 2 0 1 0 4 0a2 2 0 1 0-4 0M2.5 11.5a2 2 0 1 0 4 0a2 2 0 1 0-4 0M6.2 5.6L13 11.8M6.2 10.4L13 4.2");
 // Copy thumbnail's icon (Bagrat's pick, “7a”): a frame with the play mark, Copy link's chain at its corner.
 const I_THUMB = maskIcon("M8.2 12.8H3.3a1.5 1.5 0 0 1-1.5-1.5V4.7a1.5 1.5 0 0 1 1.5-1.5h9.4a1.5 1.5 0 0 1 1.5 1.5v3.5M7 6.2v3.6l3-1.8zM11.89 12.95a1.232 1.232 0 0 0 1.76 0l.968-.968a1.232 1.232 0 0 0-1.76-1.76l-.352.352M12.95 11.89a1.232 1.232 0 0 0-1.76 0L10.22 12.86a1.232 1.232 0 0 0 1.76 1.76l.352-.352");
 
@@ -1224,7 +1228,7 @@ h1{flex:1 1 0;min-width:0;margin:0;font-size:1.75rem;font-weight:600;line-height
 .title:not(:focus):not(:placeholder-shown){padding:0;background:transparent;border-color:transparent}
 .copy,#dl a,.dl a{flex:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;width:44px;height:44px;padding:0;border:0;border-radius:9px;background:transparent;color:var(--soft);font-family:inherit;font-size:0;text-decoration:none;cursor:pointer;--i:${I_LINK}}
 #dl a,.dl a{--i:${I_SAVE}}
-.copy.thumb{--i:${I_THUMB}}.copy[hidden]{display:none}
+.copy.thumb{--i:${I_THUMB}}.copy.edit{--i:${I_EDIT}}.copy[hidden]{display:none}
 .copy::before,#dl a::before,.dl a::before{content:"";flex:none;width:18px;height:18px;background:currentColor;-webkit-mask:var(--i) center/18px 18px no-repeat;mask:var(--i) center/18px 18px no-repeat}
 .copy:hover,#dl a:hover,.dl a:hover{background:var(--hover);color:var(--text)}
 .copy[aria-disabled=true]{cursor:default}.copy[aria-disabled=true]::before{opacity:.4}.copy[aria-disabled=true]:hover{background:transparent;color:var(--soft)}
@@ -1295,7 +1299,7 @@ const PLAYER_STYLE = `.bar{display:block;width:100%;height:3px;border-radius:2px
 @media (max-width:359px){.row .sp{display:none}}
 @media (prefers-reduced-motion:reduce){.bar.go i{animation:none}.bar i,.ctl,.big,.upl{transition:none}}`;
 
-/** @typedef {{ mark: boolean, owner: { switchOn: boolean } | null, head: string, ratio?: string }} Face */
+/** @typedef {{ mark: boolean, owner: { switchOn: boolean } | null, head: string, ratio?: string, host?: string }} Face */
 
 /** The recording's shape as CSS reads it (`1024/768`), when its record says. @param {any} meta */
 function ratioOf(meta) {
@@ -1756,8 +1760,12 @@ function ownerPage(id, meta, now, face, waiting, blocked = false, pending = fals
   // upload finished with no teaser), for the still (N46).
   const thumbs = { ...thumbsOf(id, meta, live), drained: drainedNow };
   const ready = thumbs.gif || (drainedNow && !thumbs.teaser && !!thumbs.thumb);
+  // Edit in shroom (N69): the last quiet icon, a plain link that opens the video in shroom's
+  // editor — once the video is fully up, as Edit… in the Library (the poll brings it in at
+  // the drain). The browser asks before shroom opens; nothing on the page tests for it.
+  const edit = face.host ? `<a class="copy edit" id="ed" href="${escapeHtml(`shroom://edit/${face.host}/${id}`)}" data-tip="${COPY.editInShroom}" aria-label="${COPY.editInShroom}"${drainedNow ? "" : " hidden"}>${COPY.editInShroom}</a>` : "";
   // Copy link and Download are quiet icons beside the title; their words name them.
-  const head = `<div class="head">${field}${copyButtons(live, !ready)}<span id="dl" data-tip="${COPY.download}">${download}</span></div>`;
+  const head = `<div class="head">${field}${copyButtons(live, !ready)}<span id="dl" data-tip="${COPY.download}">${download}</span>${edit}</div>`;
   const upload = `<div class="upl" id="ul"${drainedNow ? " hidden" : ""}><span class="up" id="u">${escapeText(line)}</span>${drainedNow ? "" : thinBar(st.pct ?? 0, stalled, "b")}</div>`;
   const [upA, upB] = uploadingLine(0).split("0%");
   const cfg = JSON.stringify({
@@ -1787,7 +1795,7 @@ if(c.pend&&s.state!=="waiting")send(c.pend);
 if(s.state==="live"){if(s.dur)th.length(shroomClock(s.dur,true));if(s.teaser)th.teaser();if(!c.live){c.live=true;tb.hidden=false;th.live();var w=document.getElementById("w"),h=document.createElement("div");h.innerHTML=c.player;var pl=h.firstChild;
 var cp=s.copy,ps=cp&&cp.poster||(s.poster?"/m/"+c.id+"/poster.jpg":"");if(s.dur)pl.setAttribute("data-dur",s.dur);if(ps)pl.querySelector("video").poster=ps;w.replaceWith(pl);
 shroomPlayer(pl,cp?cp.src:src,c.labels,{keep:cp?null:s.keep||null,st:"/_shroom/status/"+c.id,copy:!!cp})}
-if(s.drained)th.drained();
+if(s.drained)th.drained();var ed=document.getElementById("ed");if(ed&&s.drained)ed.hidden=false;
 if(s.drained){if(bar&&!c.done){c.done=true;up.textContent=c.ready;ul.classList.add("done");showBar(true,false);bar.style.width="100%";setTimeout(function(){ul.classList.add("fade");setTimeout(function(){ul.hidden=true;up.textContent="";if(bar){bar.parentNode.remove();bar=null}},400)},3000)}else if(!c.done){ul.hidden=true;up.textContent="";if(bar){bar.parentNode.remove();bar=null}}}else{ul.hidden=false;up.textContent=s.stalled?c.waiting:c.upA+s.pct+"%"+c.upB;showBar(true,!s.stalled);if(bar)bar.style.width=s.pct+"%"}
 if(s.mp4){if(!dl.firstChild){var a=document.createElement("a");a.href="/d/"+c.id;a.textContent=c.dl;dl.appendChild(a)}if(s.drained)return}
 if(!s.drained)return next(2000);gap=Math.min(gap*2,30000);return next(gap)}
