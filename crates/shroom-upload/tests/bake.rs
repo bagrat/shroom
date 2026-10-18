@@ -299,6 +299,36 @@ fn the_cleanup_sweep_finishes_a_bake_cut_off_after_its_write() {
     assert_eq!(library::cleanup(&s3, &here).unwrap(), library::Cleaned::default());
 }
 
+/// The sweep never bakes the video this Mac's editor has open, nor finishes a bake of it
+/// (B197): asked just before each — here B opens once A has been baked, mid-pass — and a later
+/// pass, the editor closed, bakes what it spared.
+#[test]
+fn the_cleanup_sweep_never_bakes_the_video_the_editor_has_open() {
+    const B: &str = "BBBBBBBBBBBBBBBB";
+    const C: &str = "CCCCCCCCCCCCCCCC";
+    let (fake, s3) = space();
+    for id in [A, B, C] {
+        record(&s3, id);
+        save_and_copy(&s3, id, &edited(60.0), 38.0);
+    }
+    // C's bake was cut off after its write.
+    fake.with(|s| s.control(&format!("fault 403 DELETE /s3/{BUCKET}/rec/{C}/ always")).unwrap());
+    assert!(library::bake(&s3, C, DUE).is_err());
+    fake.with(|s| s.control("faults-clear").unwrap());
+    let holds = |_: &str| false;
+    let here = library::Here { now_ms: library::iso_ms(DUE).unwrap(), device: None, holds: &holds };
+    let open = |id: &str| id == C || (id == B && read(&s3, A).get("edits").is_none());
+    let ids = |c: &library::Cleaned| c.baked.iter().map(|(id, _)| id.clone()).collect::<Vec<_>>();
+    let cleaned = library::cleanup_sparing(&s3, &here, &open).unwrap();
+    assert_eq!(ids(&cleaned), [A]);
+    assert!(read(&s3, B)["edits"].is_object() && ORIGINAL.iter().all(|f| files(&fake, B).contains(&f.to_string())), "B, opened mid-pass, was spared");
+    assert!(ORIGINAL.iter().all(|f| files(&fake, C).contains(&f.to_string())), "C's deletes wait");
+    // The editor closed: the next pass bakes B and finishes C.
+    let cleaned = library::cleanup(&s3, &here).unwrap();
+    assert_eq!(ids(&cleaned), [B, C]);
+    assert_eq!((files(&fake, B), files(&fake, C)), (files(&fake, A), files(&fake, A)));
+}
+
 /// A baked video is an ordinary one-file recording: edited again, its revisions carry on
 /// past the one it plays (so no copy is ever cut over the file it plays), a copy record
 /// naming the file it plays never gets that file deleted, the second bake moves it to the

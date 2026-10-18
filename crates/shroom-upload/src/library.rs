@@ -783,6 +783,14 @@ pub struct Cleaned {
 /// original's files still beside it) has its deletes finished. No other record is touched,
 /// and nothing a live record names: a link that was made keeps answering as it did.
 pub fn cleanup(s3: &Client, here: &Here) -> Result<Cleaned, UploadError> {
+    cleanup_sparing(s3, here, &|_| false)
+}
+
+/// [`cleanup`], never baking — nor finishing a bake of — a recording `open` says this Mac's
+/// editor has open: its list is on the clock it opened on (B197). Asked just before each, so
+/// a video opened while the sweep reads the space is spared too; a later pass bakes it once
+/// the editor has closed.
+pub fn cleanup_sparing(s3: &Client, here: &Here, open: &dyn Fn(&str) -> bool) -> Result<Cleaned, UploadError> {
     // An unreadable roster reaps no orphan at all (fail closed): who can still finish one
     // is the roster's to say.
     let roster: Option<serde_json::Value> = with_retry(|| s3.get(ROSTER))?.and_then(|b| serde_json::from_slice(&b).ok());
@@ -811,12 +819,18 @@ pub fn cleanup(s3: &Client, here: &Here) -> Result<Cleaned, UploadError> {
     let now = iso_at(u64::try_from(here.now_ms.div_euclid(1000)).unwrap_or(0));
     let mut baked = Vec::new();
     for id in upkeep_plan(&edited, &now, &|_| true, &|_| false).bake {
+        if open(&id) {
+            continue;
+        }
         // One that fails waits for the next pass; the rest of this one stands.
         if let Ok(Some(b)) = bake(s3, &id, &now) {
             baked.push((id, b));
         }
     }
     for id in unfinished {
+        if open(&id) {
+            continue;
+        }
         if let Ok(Some(b)) = finish_bake(s3, &id) {
             baked.push((id, b));
         }
