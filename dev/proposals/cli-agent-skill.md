@@ -113,8 +113,13 @@ The competitor comparison is in shroom-private (`strategy/research/`), not here.
   - **When the app isn't running**, `record start` opens it (`open -g -b am.shroom`) and
     waits up to 15 s.
   - **The demo** uses a stand-in with the same answers,
-    `crates/shroom-cli/examples/fake_app.rs`. The real socket needs the Mac: CI compiles it,
-    and its unit tests run there.
+    `crates/shroom-cli/examples/fake_app.rs`.
+  - **On a real Mac** (`dev/mac/scenarios/cli-socket.sh`, the hosted Mac, 2026-10-18, all
+    7 checks pass): the dev app made the socket at 600; the command's four asks were
+    refused as `recording_off` with the switch off; with it on, start reached the core and
+    was answered `not_set_up` (that throwaway home has no space).
+  - **Not yet shown:** a take started through the socket in a wired space. That needs the
+    test account's e2e space (the heartbeat's setup).
   - Rejected: the `shroom://` URL scheme. Any web page can fire it, and nothing comes
     back.
   - Rejected: localhost HTTP. It needs a token file, and it is reachable from more than
