@@ -22,6 +22,11 @@ spec rows are Bagrat's call. The words on the boards are placeholders.*
 > - **A cue that breaks off a sentence takes the sentence with it** (B201 (c)), back to its
 >   start; so does a sentence that ends on a word no sentence ends on, since Whisper puts a
 >   full stop wherever a speaker stops.
+> - **The joins** (Bagrat heard tails and glitches on the tester): an edge with no silence
+>   under it goes to the quietest point by the take's loudness (B201 (b)); the tester plays
+>   the cut through Web Audio, each join a 60 ms equal-power crossfade, the knee of
+>   `voice-cut/poc/joins.py` (the median click falls fourfold by then). The share page's
+>   playback and the final copy are the editor's (N63), handed these numbers.
 > - **Clef weighs how far back a redo reaches** (B202). A line said again in other words
 >   shares too few words to line up (Bagrat's reworded redo on the tester), so the Mac lists
 >   where the redone stretch might begin and Clef, on the space's own account, scores each;
