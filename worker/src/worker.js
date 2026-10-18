@@ -3329,7 +3329,7 @@ export function aiCleanChapters(raw, sents, duration) {
 }
 
 /** The model's answer text, whichever shape it comes in. @param {any} out */
-function aiText(out) {
+export function aiText(out) {
   if (typeof out === "string") return out;
   if (out?.response !== undefined && out.response !== null) return typeof out.response === "string" ? out.response : JSON.stringify(out.response);
   const msg = out?.choices?.[0]?.message;
@@ -3340,18 +3340,24 @@ function aiText(out) {
   throw new Error("no answer");
 }
 
-/** One naming call: the title and, on a video long enough, the chapters, as JSON.
- * @param {Ai} ai @param {string} model @param {{ s: number, text: string }[]} sents @param {boolean} chapters */
-async function aiAsk(ai, model, sents, chapters) {
+/** What one naming call sends: the title and, on a video long enough, the chapters, as JSON
+ * (the measuring tools in worker/dev send the same). @param {string} model
+ * @param {{ s: number, text: string }[]} sents @param {boolean} chapters */
+export function aiAskInput(model, sents, chapters) {
   const system = `You name screen recordings from their transcript. ${AI_TITLE}${chapters ? ` ${AI_CHAPTERS}` : " Return no chapters."} Answer with JSON only: {"title": "...", "chapters": [{"start": "m:ss", "title": "..."}]}.`;
   const user = `Transcript, each line with its start time:\n\n${sents.map((x) => `[${clock(x.s)}] ${x.text}`).join("\n")}`;
-  const out = await ai.run(model, {
+  return {
     messages: [{ role: "system", content: system }, { role: "user", content: user }],
     response_format: { type: "json_schema", json_schema: AI_SCHEMA },
     // Room for a thinking model's reasoning before its answer; thinking kept short or off.
     max_tokens: 4000, temperature: 0.2,
     ...(model.includes("gpt-oss") ? { reasoning: { effort: "low" } } : { chat_template_kwargs: { enable_thinking: false } }),
-  });
+  };
+}
+
+/** One naming call. @param {Ai} ai @param {string} model @param {{ s: number, text: string }[]} sents @param {boolean} chapters */
+async function aiAsk(ai, model, sents, chapters) {
+  const out = await ai.run(model, aiAskInput(model, sents, chapters));
   const text = aiText(out);
   const json = JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1));
   if (!json || typeof json !== "object" || typeof json.title !== "string") throw new Error("no answer");
