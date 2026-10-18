@@ -749,15 +749,24 @@ fn cleanup(rt: &Runtime, space: &SpaceIdentity, s3: &Client) -> Result<(), FailC
     let device = super::member::device_key(rt).filter(|k| k.host == space.host).map(|k| k.device);
     let now_ms = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as i64).unwrap_or(0);
     let here = library::Here { now_ms, device: device.as_deref(), holds: &|id: &str| held.contains(id) };
-    let editing = |id: &str| super::editor::open_in_editor(rt).as_deref() == Some(id);
+    // A page older than this app's plays only the stream a bake deletes: every bake waits
+    // for its refresh (the editor's, DECISIONS B199 (s)).
+    let page = super::editor::page_takes_bakes(rt, &space.host);
+    if let Err(why) = &page {
+        rt.log(&format!("library: the sweep's bakes wait — {why}"));
+    }
+    let editing = |id: &str| page.is_err() || super::editor::open_in_editor(rt).as_deref() == Some(id);
     match library::cleanup_sparing(s3, &here, &editing) {
         Ok(c) => {
+            let made = c.baked.iter().filter(|(_, b)| b.written).count();
             rt.log(&format!(
-                "library: cleanup reaped {} under tombstones, {} no Mac can finish, {} page keys ({} held here spared)",
+                "library: cleanup reaped {} under tombstones, {} no Mac can finish, {} page keys ({} held here spared); {made} baked, {} bake(s) finished, {} file(s) of originals deleted",
                 c.swept.under_tombstones.len(),
                 c.swept.orphans.len(),
                 c.keys,
-                held.len()
+                held.len(),
+                c.baked.len() - made,
+                c.baked.iter().map(|(_, b)| b.deleted).sum::<usize>()
             ));
             let n = |v: usize| u32::try_from(v).unwrap_or(u32::MAX);
             rt.post(Event::Library(LibraryNews::Cleaned { under_tombstones: n(c.swept.under_tombstones.len()), orphans: n(c.swept.orphans.len()), keys: n(c.keys) }));

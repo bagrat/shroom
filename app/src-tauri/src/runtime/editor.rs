@@ -415,6 +415,7 @@ fn opened(rt: &Runtime, rec: &RecId, stop: &Stop) -> Result<(), Ended> {
     let dir = folder(rt, &rec.0)?;
     let mut door = Doorway::default();
     let meta = record(rt, &mut door, &space, &rec.0)?;
+    rt.log(&said::opened(&rec.0, &meta));
     let said = stop.unless_stopped(|| {
         OPENED.lock().unwrap().get_or_insert_with(HashMap::new).insert(rec.0.clone(), Plays::of(&meta));
         rt.post(Event::Editor(EditorNews::Opened {
@@ -474,21 +475,22 @@ fn opened(rt: &Runtime, rec: &RecId, stop: &Stop) -> Result<(), Ended> {
 }
 
 fn save(rt: &Runtime, door: &mut Doorway, rec: &RecId, saved: &shroom_edit::Saved) {
+    let t0 = Instant::now();
     let result = space(rt).and_then(|space| {
         let s3 = door.client(rt, &space, &rec.0)?;
         // The guard against a bake under the editor (another Mac's, or this one's sweep) is
         // inside the write: none can slip in between a look and it.
         records::save_edits_over(&s3, &rec.0, &saved.list, saved.rev, opened_as(&rec.0).as_ref()).map_err(|e| {
             match e {
-                UploadError::MovedOn => rt.log(&format!("editor: {} was made the video from its edit while the editor was open — this edit wasn't saved over it", short(&rec.0))),
-                _ => rt.log(&format!("editor: {}'s save: {e}", short(&rec.0))),
+                UploadError::MovedOn => rt.log(&format!("editor: {} was made the video from its edit while the editor was open — this edit wasn't saved over it ({} ms)", short(&rec.0), t0.elapsed().as_millis())),
+                _ => rt.log(&format!("editor: {}'s save failed in {} ms: {e}", short(&rec.0), t0.elapsed().as_millis())),
             }
             class(&e)
         })
     });
     match result {
         Ok(rev) => {
-            rt.log(&format!("editor: {} saved as revision {rev}", short(&rec.0)));
+            rt.log(&said::saved(&rec.0, rev, &saved.list, t0.elapsed().as_millis()));
             rt.post(Event::Editor(EditorNews::Saved { rec: rec.clone(), rev }));
         }
         Err(class) => {
@@ -604,7 +606,9 @@ fn copy(rt: &Runtime, door: &mut Doorway, rec: &RecId, rev: u64, making: &mut Ma
         let poster = shroom_encode::take::poster_of(&ffmpeg, &out, &dir.join(&names[1])).map_err(|e| rt.log(&format!("editor: the copy's poster: {e}"))).ok().map(|()| names[1].clone());
         let teaser = shroom_encode::take::teaser_of(&ffmpeg, &out, &dir.join(&names[2]), &enc).map_err(|e| rt.log(&format!("editor: the copy's teaser: {e}"))).ok().map(|()| names[2].clone());
         making.tell(CUT_SHARE as u8);
-        rt.log(&format!("editor: {}'s copy of revision {rev} cut — {duration:.1} s, in {} ms", short(&rec.0), t0.elapsed().as_millis()));
+        let bytes = |name: &str| std::fs::metadata(dir.join(name)).map_or(0, |m| m.len());
+        rt.log(&said::cut(&rec.0, rev, enc.codec(), keep.len(), duration, bytes(&names[0]), t0.elapsed().as_millis()));
+        let sent: u64 = std::iter::once(&names[0]).chain(poster.iter()).chain(teaser.iter()).map(|n| bytes(n)).sum();
         // The bytes go up under a door opened now: a `manage` credential lives 15 minutes,
         // and a long recording's cut can take longer.
         let s3 = door.client(rt, &space, &rec.0)?;
@@ -630,12 +634,7 @@ fn copy(rt: &Runtime, door: &mut Doorway, rec: &RecId, rev: u64, making: &mut Ma
             Ended::Failed(class(&e))
         })?;
         making.tell(100);
-        rt.log(&format!(
-            "editor: {}'s copy of revision {rev} {} in {} ms",
-            short(&rec.0),
-            if current { "is up and named, its original kept two days" } else { "was dropped — a newer save came first" },
-            t0.elapsed().as_millis()
-        ));
+        rt.log(&said::named(&rec.0, rev, current, sent, t0.elapsed().as_millis()));
         Ok(current)
     })();
     for name in &names {
@@ -647,8 +646,15 @@ fn copy(rt: &Runtime, door: &mut Doorway, rec: &RecId, rev: u64, making: &mut Ma
 /// “Yes, delete” (B197 (c)): the edit becomes the video, now. What this Mac kept of the
 /// original goes with it.
 fn bake(rt: &Runtime, rec: &RecId) {
+    let t0 = Instant::now();
     let mut door = Doorway::default();
     let baked = space(rt).and_then(|space| {
+        // A page older than this app's plays only the stream a bake deletes: the original
+        // stays, and a later pass bakes it once the page is refreshed and its two days are up.
+        if let Err(why) = page_takes_bakes(rt, &space.host) {
+            rt.log(&format!("editor: {}'s bake waits — {why}", short(&rec.0)));
+            return Ok(None);
+        }
         let s3 = door.client(rt, &space, &rec.0)?;
         records::bake(&s3, &rec.0, &now_iso()).map_err(|e| {
             rt.log(&format!("editor: {}'s bake: {e}", short(&rec.0)));
@@ -656,8 +662,8 @@ fn bake(rt: &Runtime, rec: &RecId) {
         })
     });
     match baked {
-        Ok(Some(_)) => {
-            rt.log(&format!("editor: {}'s edit is the video now — its original deleted", short(&rec.0)));
+        Ok(Some(b)) => {
+            rt.log(&said::baked(&rec.0, &b, t0.elapsed().as_millis()));
             forget_folder(rt, &rec.0);
         }
         Ok(None) => rt.log(&format!("editor: {} had nothing to bake (no current copy)", short(&rec.0))),
@@ -693,17 +699,25 @@ fn upkeep(rt: &Runtime, door: &mut Doorway) -> Result<(u32, u32), FailClass> {
     let now = now_iso();
     let local: HashMap<String, bool> = read.iter().map(|(id, m)| (id.clone(), !on_this_mac(&rt.home.takes(), &rt.home.edits(), m).is_empty())).collect();
     let plan = records::upkeep_plan(&read, &now, &|_| true, &|id| local.get(id).copied().unwrap_or(false));
-    let (mut baked, mut copies) = (0u32, 0u32);
-    for id in &plan.bake {
+    let (mut baked, mut copies, mut deleted) = (0u32, 0u32, 0usize);
+    // Once a pass: a page older than this app's plays only the stream a bake deletes.
+    let page = if plan.bake.is_empty() { Ok(()) } else { page_takes_bakes(rt, &space.host) };
+    if let Err(why) = &page {
+        rt.log(&format!("editor upkeep: {} bake(s) wait — {why}", plan.bake.len()));
+    }
+    for id in plan.bake.iter().filter(|_| page.is_ok()) {
         // Asked before each: the editor may have opened on it since the pass began.
         if open_in_editor(rt).as_deref() == Some(id.as_str()) {
             rt.log(&format!("editor upkeep: {} is open in the editor — its bake waits for a later pass", short(id)));
             continue;
         }
+        let t1 = Instant::now();
         let done = door.client(rt, &space, id).and_then(|s3| records::bake_when_due(&s3, id, &now).map_err(|e| class(&e)));
         match done {
-            Ok(Some(_)) => {
+            Ok(Some(b)) => {
                 baked += 1;
+                deleted += b.deleted;
+                rt.log(&format!("editor upkeep: {}", said::baked(id, &b, t1.elapsed().as_millis()).trim_start_matches("editor: ")));
                 forget_folder(rt, id);
             }
             Ok(None) => {}
@@ -737,9 +751,11 @@ fn upkeep(rt: &Runtime, door: &mut Doorway) -> Result<(u32, u32), FailClass> {
         }
     });
     rt.log(&format!(
-        "editor upkeep: {} edited record(s) read, {baked} baked, {copies} cop{} made, {pruned} folder(s) dropped, in {} ms",
+        "editor upkeep: {} edited record(s) read, {} due, {baked} baked ({deleted} file(s) of originals deleted), {} cop{} owed, {copies} made, {pruned} folder(s) dropped, in {} ms",
         read.len(),
-        if copies == 1 { "y" } else { "ies" },
+        plan.bake.len(),
+        plan.copy.len(),
+        if plan.copy.len() == 1 { "y" } else { "ies" },
         t0.elapsed().as_millis()
     ));
     Ok((baked, copies))
@@ -783,9 +799,144 @@ pub fn unused(last: Option<SystemTime>, now: SystemTime) -> bool {
     last.is_none_or(|t| now.duration_since(t).is_ok_and(|d| d >= UNUSED))
 }
 
+/// Whether the space's page plays a baked video (DECISIONS B199 (s)): it answers as this
+/// app's page or a newer one. An older page plays only the original's stream, which a bake
+/// deletes, so its share page and embed would read the video as unavailable. `Err` says why,
+/// for the run log.
+pub(super) fn page_takes_bakes(rt: &Runtime, host: &str) -> Result<(), String> {
+    let url = super::posters::reachable(rt, host, "/_shroom/ping").ok_or("the space's page can't be reached from this build")?;
+    let body = super::posters::get(&url).ok_or("the space's page didn't answer")?;
+    page_verdict(&body, super::cloud::page_version())
+}
+
+/// [`page_takes_bakes`]'s judgment of the page's ping (`{"shroom":true,…,"version"}`).
+fn page_verdict(ping: &[u8], bundled: &str) -> Result<(), String> {
+    let v: serde_json::Value = serde_json::from_slice(ping).map_err(|_| "the space's page answered something else".to_string())?;
+    let live = v.get("version").and_then(serde_json::Value::as_str).filter(|_| v.get("shroom").and_then(serde_json::Value::as_bool) == Some(true));
+    let Some(live) = live.filter(|l| shroom_cloud::wire::semver(l).is_some()) else {
+        return Err("the space's page says no version it can read".into());
+    };
+    if shroom_cloud::wire::may_deploy_over(live, bundled) {
+        return Err(format!("the space's page is {live}, older than this app's {bundled}"));
+    }
+    Ok(())
+}
+
+/// The run log's words for the editor's steps (DECISIONS B199 (t)): ids cut to four, counts,
+/// seconds and times; never a title, a key, a link or a word said. A line a step, so a report
+/// shows what an edit did.
+pub mod said {
+    use shroom_edit::{CutKind, EditList};
+    use shroom_upload::library::{Baked, Plays};
+    use shroom_upload::meta::Meta;
+
+    use super::short;
+
+    /// What a list plays: the ranges kept, its seconds of the recording's, the ends, the cuts
+    /// by hand, the suggestions taken and the ones only offered.
+    pub fn list(l: &EditList) -> String {
+        let l = l.clone().checked();
+        if l.is_identity() {
+            return format!("the whole {:.1} s", l.source_duration);
+        }
+        let ranges = l.keep().len();
+        let count = |hand: bool, applied: bool| l.cuts.iter().filter(|c| (c.kind == CutKind::Manual) == hand && c.applied == applied).count();
+        format!(
+            "{ranges} kept range{}, {:.1} of {:.1} s ({:.1} s out), ends {:.1}-{:.1}, {} cut by hand, {} suggested taken, {} offered",
+            if ranges == 1 { "" } else { "s" },
+            l.edited_duration(),
+            l.source_duration,
+            l.source_duration - l.edited_duration(),
+            l.in_,
+            l.out,
+            count(true, true),
+            count(false, true),
+            count(false, false)
+        )
+    }
+
+    /// The record as the editor opens on it.
+    pub fn opened(rec: &str, m: &Meta) -> String {
+        let bakes = Plays::of(m).bakes;
+        let Some(s) = m.edits.as_ref() else {
+            return format!("editor: {} opened: no edit, {:.1} s, baked {bakes} time(s) before", short(rec), m.duration_sec.unwrap_or(0.0));
+        };
+        let copy = if s.current_copy().is_some() { "current" } else if s.copy.is_some() { "stale" } else { "not made" };
+        let kept = s.keep_until.as_deref().filter(|k| k.len() <= 30 && k.chars().all(|c| c.is_ascii_alphanumeric() || ":-.+".contains(c))).map_or(String::new(), |k| format!(", the original kept until {k}"));
+        format!("editor: {} opened: revision {}, {}; its final video {copy}{kept}; baked {bakes} time(s) before", short(rec), s.rev, list(&s.list))
+    }
+
+    /// Done's save landed.
+    pub fn saved(rec: &str, rev: u64, l: &EditList, ms: u128) -> String {
+        format!("editor: {} saved as revision {rev} in {ms} ms: {}", short(rec), list(l))
+    }
+
+    /// The final video's cut.
+    pub fn cut(rec: &str, rev: u64, codec: &str, parts: usize, seconds: f64, bytes: u64, ms: u128) -> String {
+        format!("editor: {}'s final video of revision {rev} cut with {codec}: {parts} part(s), {seconds:.1} s, {:.1} MB, in {ms} ms", short(rec), mb(bytes))
+    }
+
+    /// The final video named in the record (`current`), or dropped: a newer save came first.
+    pub fn named(rec: &str, rev: u64, current: bool, sent: u64, ms: u128) -> String {
+        if current {
+            format!("editor: {}'s final video of revision {rev} is up and named, {:.1} MB sent, its original kept two days; {ms} ms in all", short(rec), mb(sent))
+        } else {
+            format!("editor: {}'s final video of revision {rev} was dropped: a newer save came first; {ms} ms in all", short(rec))
+        }
+    }
+
+    /// A bake: made now, or one already made whose deletes it finished.
+    pub fn baked(rec: &str, b: &Baked, ms: u128) -> String {
+        if b.written {
+            format!("editor: {}'s edit is the video now (revision {}): {} file(s) of its original deleted, in {ms} ms", short(rec), b.rev, b.deleted)
+        } else {
+            format!("editor: {} was its edit already (revision {}): {} file(s) left over deleted, in {ms} ms", short(rec), b.rev, b.deleted)
+        }
+    }
+
+    fn mb(bytes: u64) -> f64 {
+        bytes as f64 / 1_000_000.0
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_run_log_says_each_step_in_numbers_and_never_more() {
+        let rec = "AbCdEfGhIjKlMnOp";
+        let mut h = shroom_edit::History::new(shroom_edit::EditList::new(60.0));
+        assert!(h.act(&shroom_edit::Op::Trim { in_: 2.0, out: 50.0 }) && h.act(&shroom_edit::Op::Cut { start: 10.0, end: 20.0 }));
+        let lines = [
+            said::saved(rec, 4, &h.now, 412),
+            said::cut(rec, 4, "h264_videotoolbox", 2, 38.02, 12_400_000, 9_120),
+            said::named(rec, 4, true, 13_060_000, 15_300),
+            said::named(rec, 4, false, 0, 15_300),
+            said::baked(rec, &records::Baked { rev: 4, written: true, deleted: 8 }, 640),
+            said::baked(rec, &records::Baked { rev: 4, written: false, deleted: 2 }, 90),
+        ];
+        assert_eq!(lines[0], "editor: AbCd… saved as revision 4 in 412 ms: 2 kept ranges, 38.0 of 60.0 s (22.0 s out), ends 2.0-50.0, 1 cut by hand, 0 suggested taken, 0 offered");
+        assert_eq!(lines[1], "editor: AbCd…'s final video of revision 4 cut with h264_videotoolbox: 2 part(s), 38.0 s, 12.4 MB, in 9120 ms");
+        assert_eq!(lines[2], "editor: AbCd…'s final video of revision 4 is up and named, 13.1 MB sent, its original kept two days; 15300 ms in all");
+        assert!(lines[3].contains("dropped") && lines[4].contains("8 file(s) of its original deleted") && lines[5].contains("2 file(s) left over"));
+        assert_eq!(said::list(&shroom_edit::EditList::new(60.0)), "the whole 60.0 s", "Revert to original");
+        for line in &lines {
+            assert_eq!(&shroom_core::report::clean_line(line), line, "a report keeps every word of it");
+            assert!(!line.contains(rec), "the id cut to four");
+        }
+    }
+
+    #[test]
+    fn a_bake_waits_for_a_page_that_plays_it() {
+        let ping = |v: &str| format!(r#"{{"shroom":true,"iface":2,"version":"{v}"}}"#);
+        assert_eq!(page_verdict(ping("0.1.25").as_bytes(), "0.1.25"), Ok(()));
+        assert_eq!(page_verdict(ping("0.1.26").as_bytes(), "0.1.25"), Ok(()), "a newer page plays it too");
+        assert_eq!(page_verdict(ping("0.1.24").as_bytes(), "0.1.25"), Err("the space's page is 0.1.24, older than this app's 0.1.25".into()));
+        for odd in [&b"<html>"[..], br#"{"shroom":false,"version":"0.1.25"}"#, br#"{"shroom":true,"version":"<b>"}"#, br#"{"shroom":true}"#] {
+            assert!(page_verdict(odd, "0.1.25").is_err(), "{}", String::from_utf8_lossy(odd));
+        }
+    }
 
     fn meta(id: &str, mp4: Option<&str>, duration: Option<f64>) -> Meta {
         let mut m = Meta::uploading(id, "t", "2026-10-02T00:00:00Z");
