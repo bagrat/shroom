@@ -46,6 +46,8 @@ pub struct State {
     pub versions: BTreeMap<String, String>,
     /// Worker name → the secrets placed through the script-secrets endpoint (names only).
     pub secrets: BTreeMap<String, BTreeSet<String>>,
+    /// Worker name → its Cron Triggers, as last put (N66's schedule each minute).
+    pub schedules: BTreeMap<String, Vec<String>>,
     /// workers.dev propagation (RESEARCH L2005, ~40 s on a fresh name): a route switched on
     /// answers this many pings with workers.dev's own 404 before its page does. The knob
     /// `propagation <n>`; applies to routes switched on afterwards.
@@ -157,6 +159,7 @@ impl Default for State {
             dropped: BTreeMap::new(),
             versions: BTreeMap::new(),
             secrets: BTreeMap::new(),
+            schedules: BTreeMap::new(),
             propagation: 0,
             pending: BTreeMap::new(),
             pings: BTreeMap::new(),
@@ -541,8 +544,25 @@ fn account(s: &mut State, r: &Request, rest: &[&str]) -> Reply {
         ("DELETE", ["workers", "scripts", name]) => {
             s.scripts.remove(*name);
             s.routes.remove(*name);
+            s.schedules.remove(*name);
             ok(json!(null))
         }
+        ("PUT", ["workers", "scripts", name, "schedules"]) => {
+            if let Some(e) = workers(s) {
+                return e;
+            }
+            if !s.scripts.contains_key(*name) {
+                return err(404, 10007, "workers.api.error.script_not_found");
+            }
+            let crons: Vec<String> = serde_json::from_slice::<Value>(&r.body).ok().and_then(|v| v.as_array().cloned()).unwrap_or_default()
+                .iter().filter_map(|c| c.get("cron").and_then(Value::as_str).map(String::from)).collect();
+            s.schedules.insert(name.to_string(), crons.clone());
+            ok(json!({"schedules": crons.iter().map(|c| json!({"cron": c})).collect::<Vec<_>>()}))
+        }
+        ("GET", ["workers", "scripts", name, "schedules"]) => match s.schedules.get(*name) {
+            Some(c) => ok(json!({"schedules": c.iter().map(|c| json!({"cron": c})).collect::<Vec<_>>()})),
+            None => ok(json!({"schedules": []})),
+        },
         ("GET", ["workers", "scripts", name, "settings"]) => match s.scripts.get(*name) {
             Some(b) => ok(json!({"bindings": b})),
             None => err(404, 10007, "workers.api.error.script_not_found"),
@@ -633,7 +653,13 @@ fn page(s: &mut State, rest: &str) -> Reply {
         return not_there();
     }
     let version = s.versions.get(&label).cloned().unwrap_or_else(|| "0.0.0".into());
-    (200, "application/json", json!({"shroom": true, "iface": 2, "version": version}).to_string().into_bytes(), vec![])
+    // A page carrying Cloudflare's AI says so (N66); one without says nothing more.
+    let ai = s.scripts.get(&label).is_some_and(|bs| bs.iter().any(|b| b.get("type").and_then(Value::as_str) == Some("ai")));
+    let mut body = json!({"shroom": true, "iface": 2, "version": version});
+    if ai {
+        body["ai"] = json!(true);
+    }
+    (200, "application/json", body.to_string().into_bytes(), vec![])
 }
 
 /// The `VERSION` constant a deployed module carries (`export const VERSION = "x.y.z";`).

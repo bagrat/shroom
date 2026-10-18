@@ -954,7 +954,7 @@ mod tests {
     fn a_page_that_didnt_answer_fails_the_refresh_so_it_runs_again() {
         use shroom_cloud::member::Ping;
         use shroom_core::world::FailClass;
-        assert_eq!(super::live_version(Ping::Shroom { iface: 2, version: "1.2.3".into() }), Ok("1.2.3".into()));
+        assert_eq!(super::live_version(Ping::Shroom { iface: 2, version: "1.2.3".into(), ai: false }), Ok("1.2.3".into()));
         assert_eq!(super::live_version(Ping::Unanswered("connection refused".into())), Err(FailClass::Transport));
         assert_eq!(super::live_version(Ping::NotShroom { status: 404 }), Err(FailClass::Refused));
 

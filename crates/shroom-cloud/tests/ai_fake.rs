@@ -120,7 +120,7 @@ fn naming_is_only_ever_turned_on_for_shrooms_own_page() {
     let (acc, tok) = fake.with(|s| (s.account_id(), s.token_id.clone()));
     let m = module("0.4.0");
     assert!(matches!(wire::set_ai(&c, &spec(&acc, &tok, &m), true), Err(WireError::Foreign)));
-    assert!(fake.with(|s| s.schedules.get("v").is_none()), "no schedule on someone else's Worker");
+    assert!(fake.with(|s| !s.schedules.contains_key("v")), "no schedule on someone else's Worker");
 }
 
 #[test]

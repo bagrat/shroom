@@ -199,8 +199,9 @@ impl<T> Answer<T> {
 /// The ping (§4.2) — the one route that keeps `"shroom":true`.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Ping {
-    /// A shroom space, its page's interface and the version of the app that deployed it.
-    Shroom { iface: u32, version: String },
+    /// A shroom space, its page's interface and the version of the app that deployed it,
+    /// and whether it carries Cloudflare's AI (N66: naming on).
+    Shroom { iface: u32, version: String, ai: bool },
     /// Answered, but not as a shroom space: workers.dev's 404 (`error code: 1042`), another
     /// Worker, an error page.
     NotShroom { status: u16 },
@@ -584,6 +585,7 @@ impl Space {
                     (200, Some(true)) => Ping::Shroom {
                         iface: v.get("iface").and_then(Value::as_u64).unwrap_or(1) as u32,
                         version: v.get("version").and_then(Value::as_str).unwrap_or("0.0.0").to_string(),
+                        ai: v.get("ai").and_then(Value::as_bool).unwrap_or(false),
                     },
                     _ => Ping::NotShroom { status },
                 }

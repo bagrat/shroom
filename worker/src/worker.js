@@ -205,7 +205,8 @@ export async function handle(request, env, now, ctx) {
 
   // The stop's reachability probe: "this address answers as a shroom space" — no storage
   // read, so it stays inside the probe's budget (DV #8).
-  if (path === "/_shroom/ping") return json({ shroom: true, iface: IFACE, version: VERSION });
+  // A page carrying Cloudflare's AI says so (N66): the setup Mac reads naming's switch here.
+  if (path === "/_shroom/ping") return json({ shroom: true, iface: IFACE, version: VERSION, ...(env.AI ? { ai: true } : {}) });
   if (path === "/_shroom/hls.js") return media(request, env, HLS_JS_KEY, "text/javascript", "public, max-age=31536000, immutable");
   // The tab icon, answered here so the page below never takes "favicon.ico" for a video's
   // id (a browser asks for that one unprompted) — whatever rides the address.

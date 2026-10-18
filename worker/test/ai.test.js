@@ -101,6 +101,16 @@ describe("the route: POST /_shroom/api/ai {rec, through} | {rec, done}", () => {
   });
 });
 
+describe("the ping (B206 a)", () => {
+  it("says the page carries the AI, so the setup Mac knows naming is on; without it the ping is as it was", async () => {
+    const on = await aiSpace();
+    expect(await bodyOf(await call(on, "GET", "/_shroom/ping"))).toMatchObject({ shroom: true, ai: true });
+    expect(on.BUCKET.ops).toEqual([]);
+    const off = await aiSpace({ ai: false });
+    expect(Object.keys(await bodyOf(await call(off, "GET", "/_shroom/ping")))).toEqual(["shroom", "iface", "version"]);
+  });
+});
+
 describe("hearing (B205 a, b)", () => {
   it("hears each full minute as it's asked, then the rest once the take is done: every word once, on the recording's clock", async () => {
     const env = await aiSpace();
