@@ -49,10 +49,72 @@ pub fn ends_cleanly(raw: &str) -> bool {
     ends_sentence(t) && !t.ends_with("...") && !t.ends_with('…') && !dangles(&norm(t))
 }
 
+/// A sentence, its words as transcribed, ended as said ([`ends_cleanly`]), and not on "is",
+/// "are", "was" or "were" left hanging: one says what something is after a pronoun ("that's
+/// what it is.") or under a question word in the same clause ("where your files are."), and
+/// "…and your link is." says neither, so it was broken off.
+pub fn ends_whole(said: &[&str]) -> bool {
+    let Some((last, before)) = said.split_last() else {
+        return false;
+    };
+    if !ends_cleanly(last) || !matches!(norm(last).as_str(), "is" | "are" | "was" | "were") {
+        return ends_cleanly(last);
+    }
+    if before.last().is_some_and(|w| says_what(&norm(w))) {
+        return true;
+    }
+    // The clause it ends: back to a comma, or to a word joining two.
+    let clause = before
+        .iter()
+        .rev()
+        .take_while(|w| {
+            !w.trim_end().ends_with([',', ';', ':'])
+                && !matches!(norm(w).as_str(), "and" | "but" | "or" | "so" | "because")
+        })
+        .map(|w| norm(w))
+        .collect::<Vec<_>>();
+    clause.iter().any(|w| {
+        matches!(
+            w.as_str(),
+            "what"
+                | "where"
+                | "how"
+                | "who"
+                | "whom"
+                | "which"
+                | "whatever"
+                | "wherever"
+                | "whoever"
+        )
+    })
+}
+
+/// A word that can stand before "is" at a sentence's end ("it is.", "here you are.").
+fn says_what(w: &str) -> bool {
+    matches!(
+        w,
+        "it" | "that"
+            | "this"
+            | "these"
+            | "those"
+            | "there"
+            | "here"
+            | "what"
+            | "who"
+            | "which"
+            | "he"
+            | "she"
+            | "they"
+            | "we"
+            | "you"
+            | "i"
+    )
+}
+
 /// A word an English sentence doesn't end on: an article, a joining word, "to" or "of", a
 /// modal ("you will"), a possessive ("your"). Words that often do end one ("it", "that",
 /// "on", "in", "is") aren't here: a sentence wrongly read as broken off loses words it
-/// kept.
+/// kept ("is" left hanging is [`ends_whole`]'s, with the word before it).
 pub fn dangles(w: &str) -> bool {
     matches!(
         w,

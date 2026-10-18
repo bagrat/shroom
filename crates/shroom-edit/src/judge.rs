@@ -6,10 +6,10 @@
 use serde::{Deserialize, Serialize};
 
 /// A start scored at least this is said again after the cue: cutting from it loses nothing
-/// the speaker meant to keep. Measured on 70 starts in 30 takes
-/// (dev/proposals/voice-cut/poc/judge.py, 2026-10-18): the 34 said again scored 0.32–0.95,
-/// the 36 others at most 0.31; at 0.4 Clef took 30 of the 34 and none of the 36, and the four
-/// it left were redos said again word for word, which the words already cut.
+/// the speaker meant to keep. Measured on 78 starts in 32 takes, Bagrat's two tester takes
+/// among them (dev/proposals/voice-cut/poc/judge.py, 2026-10-18): the 39 said again scored
+/// 0.17–0.95, the 39 others at most 0.18; at 0.4 Clef took 32 of the 39 and none of the 39,
+/// and the seven it left were redos the words already cut.
 pub const JUDGED: f64 = 0.4;
 
 /// For one cue: what was said after it, and the places behind it where the stretch it

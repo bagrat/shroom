@@ -4,7 +4,7 @@ use crate::align::find_restart;
 use crate::cue::{Cue, find_cues};
 use crate::judge::{Answer, Question, pick};
 use crate::text::is_filler;
-use crate::text::{ends_cleanly, ends_sentence, is_hesitation, norm};
+use crate::text::{ends_cleanly, ends_sentence, ends_whole, is_hesitation, norm};
 use crate::{Confidence, Cut, CutKind, EditList, Silence, Transcript, Word};
 
 /// A sentence the cue broke off goes with it only when it began at most this long before the
@@ -18,6 +18,9 @@ const START_PAUSE: f64 = 0.4;
 const REACH_SENTENCES: usize = 3;
 const REACH_BACK: f64 = 20.0;
 const MOST_STARTS: usize = 6;
+/// A pause inside a sentence begins a redone stretch only with at least this many words of
+/// the sentence (fillers aside) before it: a word or two left behind is a stranded scrap.
+const LEAVES: usize = 3;
 /// A cut's words either side, for a review list (`leads`, `resumes`): a few, so its row
 /// says where it joins. The owner page marks a full six as more said (worker.js `AROUND`).
 const AROUND: usize = 6;
@@ -145,10 +148,12 @@ impl Ctx<'_> {
             || self.pause_after(cue.last) >= self.o.cue_pause
     }
 
-    /// Where the stretch a cue redoes might begin, nearest first: each sentence start and
-    /// each long pause behind it (and the earliest word it may reach), back
-    /// [`REACH_SENTENCES`] sentences or [`REACH_BACK`] seconds, never past `floor`. A start
-    /// with nothing but filler between it and the cue is none.
+    /// Where the stretch a cue redoes might begin, nearest first: each sentence start, and
+    /// each long pause inside the cue's own sentence that leaves [`LEAVES`] words of it
+    /// before it (and the earliest word it may reach), back [`REACH_SENTENCES`] sentences or
+    /// [`REACH_BACK`] seconds, never past `floor`. A finished sentence before the cue's own
+    /// is redone whole or not at all, so nothing begins inside one. A start with nothing but
+    /// filler between it and the cue is none.
     fn starts(&self, cue: &Cue, floor: usize) -> Vec<usize> {
         let words = &self.t.words;
         let mut out = Vec::new();
@@ -160,7 +165,9 @@ impl Ctx<'_> {
                 break;
             }
             let sentence = k > floor && ends_sentence(&words[k - 1].text);
-            let begins = k == floor || sentence || self.gap(k) >= START_PAUSE;
+            let pause =
+                k > floor && sentences == 0 && self.gap(k) >= START_PAUSE && self.leaves(k, floor);
+            let begins = k == floor || sentence || pause;
             if begins
                 && words[k..cue.first]
                     .iter()
@@ -176,6 +183,24 @@ impl Ctx<'_> {
             }
         }
         out
+    }
+
+    /// Whether a pause before word `k` leaves [`LEAVES`] words of its sentence (fillers
+    /// aside) behind it.
+    fn leaves(&self, k: usize, floor: usize) -> bool {
+        let words = &self.t.words;
+        let mut n = 0;
+        let mut i = k;
+        while i > floor && !ends_sentence(&words[i - 1].text) {
+            i -= 1;
+            if !is_filler(&norm(&words[i].text)) {
+                n += 1;
+                if n >= LEAVES {
+                    return true;
+                }
+            }
+        }
+        false
     }
 
     /// The pause before word `i` as heard there: the gap between the words, or the detected
@@ -221,6 +246,21 @@ impl Ctx<'_> {
         } else {
             self.pause_before(i + 1)
         }
+    }
+
+    /// Where the sentence holding word `i` began: just after the last one that ended as said,
+    /// or after a long pause, never before `floor`. Unlike [`Ctx::line_start`] a finished
+    /// sentence needs no pause after it: a speaker may run a good sentence straight into the
+    /// one a cue breaks off, and the good one stays.
+    fn sentence_start(&self, i: usize, floor: usize) -> usize {
+        let mut k = i;
+        while k > floor
+            && !ends_cleanly(&self.t.words[k - 1].text)
+            && self.pause_before(k) < self.o.line_pause
+        {
+            k -= 1;
+        }
+        k
     }
 
     /// Where the line before word `i` began: back to a sentence end with a pause after it,
@@ -331,8 +371,12 @@ fn plan_one(cx: &Ctx, cue: &Cue, floor: usize, ceil: usize, judged: Option<usize
         let long = cue.start - words[restart].start > 40.0;
         let found = !long && coverage >= 0.4 && (rs.matched >= 2 || flub <= 2);
         if found {
-            // The judgment can say more was said again than the words line up.
-            let from = judged.map_or(restart, |j| j.min(restart));
+            // The judgment can say more was said again than the words line up. A hesitation
+            // right before the restart ("Um, today I'll…") goes with it.
+            let mut from = judged.map_or(restart, |j| j.min(restart));
+            while from > floor && is_hesitation(&norm(&words[from - 1].text)) {
+                from -= 1;
+            }
             let high = judged.is_some()
                 || apart
                     && ((rs.matched >= 3 && coverage >= 0.5)
@@ -376,9 +420,17 @@ fn plan_one(cx: &Ctx, cue: &Cue, floor: usize, ceil: usize, judged: Option<usize
         return Vec::new();
     }
     // It broke off a sentence: whatever was said after it, in the same words or others,
-    // that sentence is the slip, and it goes with the cue.
-    let broken = cue.first > floor && !ends_cleanly(&words[cue.first - 1].text);
-    let sentence = broken.then(|| cx.line_start(cue.first - 1, floor));
+    // that sentence is the slip, and it goes with the cue; the one before it, finished,
+    // stays.
+    let sentence = (cue.first > floor)
+        .then(|| cx.sentence_start(cue.first - 1, floor))
+        .filter(|&s| {
+            let said: Vec<&str> = words[s..cue.first]
+                .iter()
+                .map(|w| w.text.as_str())
+                .collect();
+            !ends_whole(&said)
+        });
     let sentence = sentence.filter(|&s| cue.start - words[s].start <= SENTENCE_MAX);
     // The judgment heard a stretch said again in other words: it goes with the cue, as far
     // back as the judgment put its start, and never less than the sentence the cue broke off.

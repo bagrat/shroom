@@ -7,7 +7,10 @@ held to the take's script. A candidate is right when every word of it is a slip 
 says was said again after the cue. Prints a table and a threshold; writes every score.
 
     TESTER_URL_FILE=… python3 judge.py make --voices DIR      # the new takes, as fixtures
-    TESTER_URL_FILE=… python3 judge.py run [--out results.json]
+    TESTER_URL_FILE=… python3 judge.py run [--out results.json] [--write]
+
+`--write` records each take's answers beside it (`judged.json`), as the planner's tests read
+them: run it whenever the planner's questions change.
 
 TESTER_URL_FILE names a file holding the tester's link (with its key); the key never goes
 on a command line. Stock voices only (piper); no one's voice is cloned.
@@ -49,10 +52,13 @@ SCRIPTS = [
         ("Then click the green button.", "keep", 0)]),
 ]
 VOICES = ["en_US-ryan-medium", "en_US-amy-medium"]
-# The existing takes measured beside them, by script (the 7 POC scripts and Bagrat's words).
-# A cue with nothing said after it (the end of a take) redoes nothing, whatever the script.
+# The existing takes measured beside them, by script (the 7 POC scripts and Bagrat's words),
+# and Bagrat's two tester takes rebuilt from his words, cue by cue. A cue with nothing said
+# after it (the end of a take) redoes nothing, whatever the script.
 EXISTING = {"1-the-example": True, "2-mid-paragraph": True, "3-mid-sentence": True, "4-no-retake": False,
-            "5-two-cues": True, "7-cue-at-the-end": True, "8-reworded-redo": True}
+            "5-two-cues": True, "7-cue-at-the-end": True, "8-reworded-redo": True,
+            "hand-bagrat-tester-1": [True, True, False], "hand-bagrat-tester-2": [True, True, True]}
+CUE_WORDS = ("shroom", "troom", "drum", "strum")
 
 
 def tester():
@@ -127,9 +133,12 @@ def role_at(lines, t):
 def judge_takes():
     names = []
     for d in sorted(TAKES.iterdir()):
-        if not d.name.startswith("wai-"):
+        if d.name.startswith("hand-"):
+            script = d.name
+        elif d.name.startswith("wai-"):
+            script = d.name.split("-medium-", 1)[1]
+        else:
             continue
-        script = d.name.split("-medium-", 1)[1]
         redone = EXISTING.get(script, next((r for n, r, _ in SCRIPTS if n == script), None))
         if redone is not None:
             names.append((d, redone))
@@ -153,7 +162,7 @@ def held(lines, cuts, words):
     return bad
 
 
-def run(out_path):
+def run(out_path, write=False):
     rows, log = [], []
     for d, redone in judge_takes():
         t = json.loads((d / "transcript.json").read_text())
@@ -163,24 +172,30 @@ def run(out_path):
         answers = post("/judge", json.dumps({"questions": qs}).encode(), "application/json")["answers"] if qs else []
         judged = plan(t, answers)
         words = t["words"]
+        if write and qs:
+            (d / "judged.json").write_text(json.dumps({"model": "@cf/cloudflare/clef", "on": "2026-10-18", "answers": answers}, indent=1) + "\n")
         for q in qs:
             a = next((a for a in answers if a["cue"] == q["cue"]), {"scores": []})
             for k, (cand, score) in enumerate(zip(q["candidates"], a["scores"])):
                 n = len(cand.split())
                 # The candidate's words are the n words before the cue's first word.
-                cue_words = [i for i, w in enumerate(words) if re.sub(r"\W", "", w["text"].lower()) in ("shroom", "troom", "drum")]
+                cue_words = [i for i, w in enumerate(words) if re.sub(r"\W", "", w["text"].lower()) in CUE_WORDS]
+                said_again = redone[q["cue"]] if isinstance(redone, list) else redone
                 right = None
                 for ci in cue_words:
                     span = words[max(0, ci - n):ci]
                     if " ".join(w["text"] for w in span) == cand:
                         roles = {role_at(lines, (w["start"] + w["end"]) / 2) for w in span}
-                        right = redone and bool(q["after"].strip()) and roles <= {"flub"}
+                        right = said_again and bool(q["after"].strip()) and roles <= {"flub"}
                         break
                 rows.append((d.name, q["cue"], k, score, right, cand))
         log.append({"take": d.name, "questions": qs, "answers": answers,
                     "own": [c["kind"] + (" applied" if c["applied"] else " offered") + ": " + c["removed"] for c in own["edit_list"]["cuts"]],
                     "judged": [c["kind"] + (" applied" if c["applied"] else " offered") + ": " + c["removed"] for c in judged["edit_list"]["cuts"]],
                     "own_held": held(lines, own["edit_list"]["cuts"], words), "judged_held": held(lines, judged["edit_list"]["cuts"], words)})
+    if out_path:
+        Path(out_path).write_text(json.dumps({"model": "@cf/cloudflare/clef", "rows": [
+            {"take": n, "cue": c, "candidate": k, "score": s, "right": r, "text": t} for n, c, k, s, r, t in rows], "takes": log}, indent=1))
     pos = sorted(s for *_, s, r, _ in [(r[0], r[1], r[2], r[3], r[4], r[5]) for r in rows] if r is True)
     neg = sorted(s for *_, s, r, _ in [(r[0], r[1], r[2], r[3], r[4], r[5]) for r in rows] if r is False)
     print(f"{len(rows)} candidates: {len(pos)} right, {len(neg)} wrong")
@@ -196,9 +211,6 @@ def run(out_path):
     for name, cue, k, score, right, cand in rows:
         mark = {True: "RIGHT", False: "wrong", None: "?"}[right]
         print(f"  {score:5.3f} {mark:5s} {name[4:40]:36s} cue {cue} #{k + 1} {cand[:80]}")
-    if out_path:
-        Path(out_path).write_text(json.dumps({"model": "@cf/cloudflare/clef", "rows": [
-            {"take": n, "cue": c, "candidate": k, "score": s, "right": r, "text": t} for n, c, k, s, r, t in rows], "takes": log}, indent=1))
 
 
 if __name__ == "__main__":
@@ -206,8 +218,9 @@ if __name__ == "__main__":
     ap.add_argument("what", choices=["make", "run"])
     ap.add_argument("--voices", type=Path)
     ap.add_argument("--out")
+    ap.add_argument("--write", action="store_true")
     a = ap.parse_args()
     if a.what == "make":
         make(a.voices)
     else:
-        run(a.out)
+        run(a.out, a.write)
