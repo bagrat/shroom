@@ -831,9 +831,11 @@ fn windows_excluded(d: &D) -> Result<(), String> {
     d.act(Action::OpenSettings);
     d.wait("Settings", 10, |s| s.settings.is_some())?;
     std::thread::sleep(Duration::from_millis(300));
+    // Each window joins the list on the main thread as it's made: read after the windows
+    // themselves are (a loaded Mac can still be making one when the Scene shows it).
+    let numbers: Vec<_> = [("library", "the Library"), ("settings", "Settings")].into_iter().map(|(label, name)| (name, crate::drives::poll(5, || window_number(&d.app, label)))).collect();
     let excluded = d.rt.excluded.lock().unwrap().clone();
-    for (label, name) in [("library", "the Library"), ("settings", "Settings")] {
-        let n = window_number(&d.app, label);
+    for (name, n) in numbers {
         d.check(&format!("{name}'s window is excluded from capture"), n.is_some_and(|n| excluded.contains(&n)), format!("{n:?} in {excluded:?}"));
     }
     // The popover's own panel — the window that shows — not the hidden host of its page.
