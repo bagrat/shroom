@@ -3,6 +3,25 @@
 *Proposal and POC, 2026-10-18. Draft PR, not for merging: the feature, its words and its
 spec rows are Bagrat's call. The words on the boards are placeholders.*
 
+> **Built, 2026-10-18** (Bagrat: build everything now, decide the release later; relayed
+> by the orchestrator). The voice cuts are spec N65 (provisional) and DECISIONS
+> [B200](../../docs/DECISIONS.md) (the owner page) and B201 (the Mac). Where the build
+> parts from what follows:
+>
+> - **Reviewed on the owner page, not in a window after Stop.** An owner-only strip under
+>   the player lists each cut with Put back, and an offered line with Cut it too
+>   (`OwnerPageCuts`, `OwnerPageCutRows` on the canvas).
+> - **No switch of its own.** The space's listening (N66, the AI build) is the one switch.
+> - **The words are the space's**, heard as the take uploads (N66's transcript). The Mac
+>   that made the take plans the cues; nothing new goes up.
+> - **The quiet is read in Rust** from the take's own sound: the bundled encoder has no
+>   `silencedetect`. It matches ffmpeg's on the same speech to a constant 21 ms.
+> - **The cuts land in the editor's list** (N63's `meta.edits`): ids `v1`…, the plan's mark
+>   set once, so a cut put back stays put back.
+> - **No Clef gate yet.** The rules alone made no wrong cut; full Clef stays the option
+>   measured below.
+> - The trim timeline and markers are the editor's build (N63, N64), not this PR's.
+
 > **Working rule** (Bagrat, 2026-10-18, relayed by the orchestrator). These POCs run on
 > best judgment, without stopping to ask, and may use the Cloudflare token for POC work. The
 > calls below are written as “decided X because Y” for him to overturn.
