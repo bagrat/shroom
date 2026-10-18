@@ -1,7 +1,9 @@
 # shroom on the command line, for coding agents (a proposal and a POC)
 
-**Status: POC, built end to end, for Bagrat (2026-10-18). Provisional: spec N62.** Branch
-`claude/cli-agent-skill`, draft PR #58, not to merge yet (merging deploys `/cli`).
+**Status: built in full (2026-10-18), on Bagrat's ask the same day to build it now and
+decide the release later. Provisional: spec N62; DECISIONS B215–B219.** Branch
+`claude/cli-agent-skill`, PR #58, open for review and not to merge until he says
+(merging deploys `/cli`). What changed from the POC to the build: §11.
 
 **Bagrat's calls, 2026-10-18** (relayed by the orchestrator, from options he picked):
 
@@ -481,3 +483,32 @@ email had gone.
 
 **Merging this PR deploys `/cli` to shroom.am** (site.yml). It stays a draft until
 Bagrat says so.
+
+## 11. From the POC to the build (2026-10-18)
+
+Bagrat asked for the POC to become the real build the same day. What that added:
+
+- **The spec first.** N62 written for the build, with the command line as a surface of the
+  machine and the command's start as an edge (`idle-ready → countdown`); DECISIONS B215–B219
+  (the door, the socket, PATH, many at once, the guide); spec tests committed before the
+  code (`crates/shroom-core/tests/cli.rs`: every ask in every moment answered once as its
+  click; `crates/shroom-cli/tests/flavor.rs`, `cleanup.rs`, `voice.rs`).
+- **The command follows the app it ships in.** Its folder and the app it opens come from
+  its bundle's identifier, so a dev build's command reads `~/.shroom-dev`. Its binary is
+  `shroom-cli`, as in the bundle, so it never shares a name with the app's binary.
+- **Cleanup candidates** read the page's own suggestions (the cleanup proposal's route)
+  where the page makes them, and age alone where it doesn't.
+- **Every line it says** is in `crates/shroom-cli/src/say.rs`, for ratification.
+- **The dev build carries the command**, so the full e2e installs it with the real install
+  line and runs a command leg on the test account (`tests/e2e/cli-leg.mjs`).
+- **The cask** links the command only for a release whose manifest says it carries it: the
+  tap renders `main`'s cask for the latest release, and an unconditional `binary` line
+  would have broken `brew install` until the first such release.
+- **A code review** found the rest, each fixed with a test first: dry runs that changed
+  things (`invite`, `rename`, `invite cancel`), an invite id that could become a path
+  (`../members/<id>`), a removal that failed when run again, `--from` items of the wrong
+  shape dropped quietly, the invite cap counting people already in, a stop's edge misnamed,
+  the space's refusals in the wrong words.
+- **Two things outside the command, met on the way:** the release build's floor probe
+  read the string `library` as a macOS 26 selector (it joins its known names), and the
+  Settings drive still expected ⌘Q to quit with Settings in front, which B145 changed.
