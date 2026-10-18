@@ -428,6 +428,45 @@ pub fn bake(s3: &Client, id: &str, now: &str) -> Result<bool, UploadError> {
     Ok(true)
 }
 
+/// What one upkeep pass does with the space's edited videos (B197 (d)).
+#[derive(Debug, Default, PartialEq)]
+pub struct UpkeepPlan {
+    /// Videos to [`bake`]: their copy is current and the two days their original is kept
+    /// are up.
+    pub bake: Vec<String>,
+    /// Copies to make, `(id, the saved revision)`: an edit that leaves something out with no
+    /// current copy (a copy that failed, an edit saved by another tool), whose video is on
+    /// this Mac.
+    pub copy: Vec<(String, u64)>,
+}
+
+/// The upkeep pass's plan (B197 (d)), pure: of the live records, those `mine` names, the
+/// ones to bake — a current copy, `keep_until` at or before `now` (ISO 8601, UTC) — and the
+/// copies to make — a non-identity edit without a current copy, its video on this Mac
+/// (`local`). A Mac passes its own videos as `mine` (a member's own; every video on an
+/// owner-class Mac); the token Mac's cleanup sweep passes every record (`|_| true`, and no
+/// video as local). Never a bake without a `keep_until` it can read: the original goes
+/// only when a copy's landing set when.
+pub fn upkeep_plan(records: &[(String, Meta)], now: &str, mine: &dyn Fn(&str) -> bool, local: &dyn Fn(&str) -> bool) -> UpkeepPlan {
+    let now = iso_ms(now);
+    let mut plan = UpkeepPlan::default();
+    for (id, m) in records {
+        if m.state != State::Live || !mine(id) {
+            continue;
+        }
+        let Some(saved) = m.edits.as_ref() else { continue };
+        if bakeable(saved).is_some() {
+            let due = saved.keep_until.as_deref().and_then(iso_ms);
+            if due.zip(now).is_some_and(|(due, now)| due <= now) {
+                plan.bake.push(id.clone());
+            }
+        } else if saved.current_copy().is_none() && m.edited_sec().is_some() && local(id) {
+            plan.copy.push((id.clone(), saved.rev));
+        }
+    }
+    plan
+}
+
 /// Deletes a shared recording: the record becomes a tombstone first (the link answers
 /// “removed” forever and every uploading Mac stops), then every byte under `rec/<id>/`.
 /// Safe to run again after an interruption.
@@ -744,6 +783,56 @@ mod tests {
         let mut m = Meta::uploading("AbCdEfGhIjKlMnOp", "Mher's notes", "2026-10-02T12:00:00Z");
         m.owner = Some("m1".into());
         assert_eq!(Row::of(&m).owner, None);
+    }
+
+    /// B197 (d): which videos the upkeep pass bakes and which copies it makes.
+    #[test]
+    fn the_upkeep_plan_bakes_what_is_due_and_copies_what_is_missing() {
+        let now = "2026-10-20T09:30:00Z";
+        let rec = |id: &str, state: State, rev: u64, copy: Option<u64>, keep_until: Option<&str>, trimmed: bool| {
+            let mut m = Meta::uploading(id, id, "2026-10-02T12:00:00Z");
+            m.state = state;
+            m.duration_sec = Some(60.0);
+            let mut list = shroom_edit::EditList::new(60.0);
+            if trimmed {
+                list.in_ = 8.0;
+            }
+            let mut saved = shroom_edit::Saved::new(list, rev);
+            saved.copy = copy.map(|r| shroom_edit::EditCopy { rev: r, file: shroom_edit::EditCopy::file_for(r), duration: 52.0, poster: None, teaser: None });
+            saved.keep_until = keep_until.map(str::to_string);
+            m.edits = Some(saved);
+            (id.to_string(), m)
+        };
+        let records = vec![
+            rec("DueLongAgo000000", State::Live, 2, Some(2), Some("2026-10-19T09:30:00Z"), true),
+            rec("DueNow0000000000", State::Live, 1, Some(1), Some(now), true),
+            rec("NotYet0000000000", State::Live, 1, Some(1), Some("2026-10-20T09:30:01Z"), true),
+            rec("NoKeepUntil00000", State::Live, 1, Some(1), None, true),
+            rec("GarbledKeep00000", State::Live, 1, Some(1), Some("Tuesday"), true),
+            rec("AnisDueVideo0000", State::Live, 1, Some(1), Some("2026-10-01T00:00:00Z"), true),
+            rec("NoCopyYet0000000", State::Live, 3, None, None, true),
+            rec("StaleCopy0000000", State::Live, 4, Some(3), Some("2026-10-01T00:00:00Z"), true),
+            rec("NoCopyElsewhere0", State::Live, 1, None, None, true),
+            rec("Identity00000000", State::Live, 2, None, None, false),
+            rec("StillUploading00", State::Uploading, 1, None, None, true),
+            rec("Tombstone0000000", State::Deleted, 1, Some(1), Some("2026-10-01T00:00:00Z"), true),
+            ("NoEdit0000000000".to_string(), Meta { state: State::Live, ..Meta::uploading("NoEdit0000000000", "x", "2026-10-02T12:00:00Z") }),
+        ];
+        let mine = |id: &str| !id.starts_with("Anis");
+        let local = |id: &str| id != "NoCopyElsewhere0";
+        let plan = upkeep_plan(&records, now, &mine, &local);
+        assert_eq!(plan.bake, ["DueLongAgo000000", "DueNow0000000000"]);
+        assert_eq!(plan.copy, [("NoCopyYet0000000".to_string(), 3), ("StaleCopy0000000".to_string(), 4)]);
+
+        // The token Mac's sweep: every record in the space, no copies (it holds no videos).
+        let plan = upkeep_plan(&records, now, &|_| true, &|_| false);
+        assert_eq!(plan.bake, ["DueLongAgo000000", "DueNow0000000000", "AnisDueVideo0000"]);
+        assert!(plan.copy.is_empty());
+
+        // A clock it can't read bakes nothing; the copies are still made.
+        let plan = upkeep_plan(&records, "later", &mine, &local);
+        assert!(plan.bake.is_empty());
+        assert_eq!(plan.copy.len(), 2);
     }
 
     /// N63, B197: a row carries the edited length (none for the identity) and its poster's
