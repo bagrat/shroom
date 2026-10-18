@@ -221,13 +221,15 @@ def board_states():
 {footer("Your link stays the same. Viewers see the edit once it's saved.", done="Close", revert=False)}'''
     saving = footer("Saving your edit…", done="Saving…", done_enabled=False)
     failed = footer("Couldn't save your edit. Check your connection, then press Done again.", line_colour=AMBER)
+    refused = footer("This video changed since you opened it, so this edit can't be saved.", done="Close", revert=False, line_colour=AMBER)
     body = f'''<div style="flex: 1 1 0; padding: 24px; display: flex; flex-direction: column; gap: 20px">
 {strip("When the video isn't on this Mac: it comes from your space first (the waveform waits for it; Done waits too)", getting)}
 {strip("When it can't be fetched", no_video)}
 {strip("Done, while the edit saves (the window closes when it's saved)", saving)}
 {strip("Done, when the save didn't go through (the window stays open, nothing is lost)", failed)}
+{strip("Done, when the space refused it: another Mac made the edit the video, or it was deleted (Close, Return or Esc closes; nothing is saved)", refused)}
 </div>'''
-    return page("shroom Editor, getting ready and saving", 1100, 700, body)
+    return page("shroom Editor, getting ready and saving", 1100, 820, body)
 
 
 def board_after_save():
