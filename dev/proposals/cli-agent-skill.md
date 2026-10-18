@@ -370,6 +370,29 @@ The first runs found two snags, both fixed:
 - The agent chained `||` and `;`, and its tool stopped each chain for approval. The guide
   now says one command per call.
 
+### The batch demo
+
+`bash dev/cli/demo-batch.sh <out>` uses the same setup over five turns and adds two
+stand-ins: `directory`, the person's team directory (invented people), and `send-mail`,
+the person's mail tool, which only writes `outbox.jsonl`. The final run:
+
+1. Asked to invite the engineering team and email each person their own invite, it read
+   `/cli`, looked the team up, and ran `invite --batch` with all five names and no
+   `--yes`. shroom made nothing and answered `needs_confirmation`: four would get a link,
+   and one was already a member. The agent showed the four and asked.
+2. On "all of them except Dana, she's on leave", it ran `invite --batch` for the other
+   three with `--yes`, then mailed each of them their own link, one message each. The
+   outbox holds exactly those three messages.
+3. Asked for a digest of the last ten days, it ran `list --mine --since 10d --json` and
+   listed the two videos with their links.
+4. Asked to delete everything older than 200 days, it ran `cleanup-candidates
+   --older-than 200`, dry-ran deleting both, and asked "Delete these two for good?".
+5. On "yes", it deleted both in one call.
+
+The first run is why a batch invite asks first (§3b). It skipped showing the list,
+invited and mailed all five, and cancelled the invite of the one on leave only after her
+email had gone.
+
 ## 8. In the spec (provisional)
 
 - **N62** is in `spec/machine.json` as a provisional ledger row: the command, its two
@@ -439,9 +462,10 @@ The first runs found two snags, both fixed:
   - `General.svelte`, `settings.css` and `types.ts`;
   - the windows gallery's checks.
 - **`crates/shroom-cli/`:**
-  - the binary;
+  - the binary, with `batch.rs` for many at once;
   - tests: unit tests, plus `tests/space.rs`, end to end on the real `worker.js` (list,
-    find, rename, delete, invite, cancel, remove);
+    find, rename, delete, invite, cancel, remove, a team invited in one call and run
+    again, many videos at once);
   - dev-only examples `demo_space.rs` and `fake_app.rs`.
 - **Packaging:**
   - `tools/release-build.sh` and `tauri.release.conf.json` (the binary in the bundle);
@@ -452,7 +476,8 @@ The first runs found two snags, both fixed:
   - the `/cli` and `/cli.md` routes;
   - `/agent`'s pointer;
   - `test/cli.test.mjs` and the `worker.test.mjs` cases.
-- **`dev/cli/`:** `demo.sh`, `site.mjs` and `transcript.py`.
+- **`dev/cli/`:** `demo.sh`, `demo-batch.sh` with its stand-ins (`directory`,
+  `send-mail`), `site.mjs` and `transcript.py`.
 
 **Merging this PR deploys `/cli` to shroom.am** (site.yml). It stays a draft until
 Bagrat says so.
