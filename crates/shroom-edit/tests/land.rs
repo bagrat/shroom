@@ -76,9 +76,8 @@ fn the_editors_cuts_trim_and_copy_are_kept_and_the_copy_goes_stale() {
         teaser: None,
     };
     let saved = Saved {
-        list,
-        rev: 3,
         copy: Some(copy.clone()),
+        ..Saved::new(list, 3)
     };
     let s = land(
         Some(saved),
@@ -142,8 +141,6 @@ fn a_take_with_no_cue_is_marked_and_nothing_that_plays_moves() {
         ..EditList::new(10.11)
     };
     let saved = Saved {
-        list,
-        rev: 2,
         copy: Some(EditCopy {
             rev: 2,
             file: EditCopy::file_for(2),
@@ -151,6 +148,7 @@ fn a_take_with_no_cue_is_marked_and_nothing_that_plays_moves() {
             poster: None,
             teaser: None,
         }),
+        ..Saved::new(list, 2)
     };
     let s = land(Some(saved), &t, 10.11, NOW).unwrap();
     assert_eq!((s.rev, s.list.out), (2, 9.0));

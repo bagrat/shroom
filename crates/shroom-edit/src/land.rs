@@ -29,11 +29,7 @@ pub fn land_with(
     if saved.as_ref().is_some_and(|s| s.list.voice.is_some()) {
         return None;
     }
-    let mut s = saved.unwrap_or_else(|| Saved {
-        list: EditList::new(source_duration),
-        rev: 0,
-        copy: None,
-    });
+    let mut s = saved.unwrap_or_else(|| Saved::new(EditList::new(source_duration), 0));
     let plays = s.list.clone().checked().keep();
     // A list written by hand might hold voice ids already: never name two cuts alike.
     let mut n = s
