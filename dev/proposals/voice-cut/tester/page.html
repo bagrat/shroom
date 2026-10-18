@@ -106,7 +106,7 @@ pre { margin: 8px 0 0; overflow-x: auto; font: 12px/1.5 var(--mono); color: var(
     <h2>Cuts</h2>
     <p class="muted small" id="sum"></p>
     <div id="cards" style="display:flex;flex-direction:column;gap:10px"></div>
-    <details><summary>What Whisper heard, and the edit list</summary><pre id="json"></pre></details>
+    <details><summary>What Whisper heard, how each cue was weighed, and the edit list</summary><pre id="json"></pre></details>
     <div class="row"><button class="btn" id="again">Try another</button></div>
   </section>
 </main>
@@ -117,7 +117,7 @@ const key = new URLSearchParams(location.hash.slice(1)).get('k') || '';
 const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const fmt = (t) => { t = Math.max(0, t); const m = Math.floor(t / 60); return `${m}:${(t - m * 60).toFixed(1).padStart(4, '0')}`; };
 const scissors = '<svg viewBox="0 0 16 16" aria-hidden="true" style="width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;flex:none"><circle cx="4.5" cy="4.5" r="2"/><circle cx="4.5" cy="11.5" r="2"/><path d="M6.2 5.6L13 11.8M6.2 10.4L13 4.2"/></svg>';
-let take = null, list = null, media = null, mode = 'edited', heard = null;
+let take = null, list = null, media = null, mode = 'edited', heard = null, judged = null;
 
 function say(text, bad) { $('status').textContent = text; $('status').classList.toggle('bad', !!bad); }
 if (!key) say('This page needs its link with the key on the end. Open the link you were sent.', true);
@@ -156,8 +156,21 @@ async function go(blob, isVideo) {
     heard = await r.json();
     if (heard.error) { say(`Listening failed: ${heard.error}`, true); return; }
     const transcript = { duration: dur, words: heard.words, silences: silences(pcm) };
-    const planned = await plan(transcript);
+    let planned = await plan(transcript);
     if (planned.error) { say(`The planner said: ${planned.error}`, true); return; }
+    // The judgment above the planner: Clef weighs how far back each redo reaches; the
+    // planner picks, and keeps its own plan if the judgment doesn't come.
+    judged = null;
+    if (planned.questions && planned.questions.length) {
+      say('Weighing each “shroom cut” in the test Cloudflare account…');
+      const j = await fetch('/judge', { method: 'POST', headers: { 'x-key': key, 'content-type': 'application/json' }, body: JSON.stringify({ questions: planned.questions }) })
+        .then((res) => (res.ok ? res.json() : null), () => null);
+      if (j && j.answers) {
+        judged = { ms: j.ms, model: j.model, questions: planned.questions, answers: j.answers };
+        const again = await plan({ ...transcript, answers: j.answers });
+        if (!again.error) planned = again;
+      }
+    }
     take = { duration: dur, peaks: peaks(pcm, 500), words: heard.words, cuts: planned.edit_list.cuts };
     list = { version: 1, source_duration: dur, in: 0, out: dur, cuts: take.cuts.map((c) => ({ ...c })) };
     show(blob, isVideo);
@@ -242,7 +255,7 @@ function keep() {
 const editedLen = () => keep().reduce((a, [s, e]) => a + e - s, 0);
 function toEdited(t) { let acc = 0; for (const [s, e] of keep()) { if (t < s) return acc; if (t < e) return acc + t - s; acc += e - s; } return acc; }
 
-function render() { draw(); cards(); words(); clock(); $('json').textContent = JSON.stringify({ heard: heard && heard.text, whisper_ms: heard && heard.ms, edit_list: list }, (k, x) => typeof x === 'number' ? Math.round(x * 1000) / 1000 : x, 2); }
+function render() { draw(); cards(); words(); clock(); $('json').textContent = JSON.stringify({ heard: heard && heard.text, whisper_ms: heard && heard.ms, judged, edit_list: list }, (k, x) => typeof x === 'number' ? Math.round(x * 1000) / 1000 : x, 2); }
 
 function draw() {
   const cv = $('cv'), ctx = cv.getContext('2d'), dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = 84;

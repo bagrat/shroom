@@ -1,0 +1,1646 @@
+{
+ "model": "@cf/cloudflare/clef",
+ "rows": [
+  {
+   "take": "wai-en_GB-alan-medium-1-the-example",
+   "cue": 0,
+   "candidate": 0,
+   "score": 0.9171,
+   "right": true,
+   "text": "Hello, that is shroom."
+  },
+  {
+   "take": "wai-en_GB-alan-medium-2-mid-paragraph",
+   "cue": 0,
+   "candidate": 0,
+   "score": 0.8966,
+   "right": true,
+   "text": "Then you pick the, the window you, um,"
+  },
+  {
+   "take": "wai-en_GB-alan-medium-2-mid-paragraph",
+   "cue": 0,
+   "candidate": 1,
+   "score": 0.0846,
+   "right": false,
+   "text": "To share a recording, you click the mushroom in the menu bar. Then you pick the, the window you, um,"
+  },
+  {
+   "take": "wai-en_GB-alan-medium-3-mid-sentence",
+   "cue": 0,
+   "candidate": 0,
+   "score": 0.7077,
+   "right": true,
+   "text": "It goes straight to your own bucket on your own account, which is, hum, wait."
+  },
+  {
+   "take": "wai-en_GB-alan-medium-3-mid-sentence",
+   "cue": 0,
+   "candidate": 1,
+   "score": 0.0316,
+   "right": false,
+   "text": "Your video uploads while you talk, so the link is ready the moment you stop. It goes straight to your own bucket on your own account, which is, hum, wait."
+  },
+  {
+   "take": "wai-en_GB-alan-medium-4-no-retake",
+   "cue": 0,
+   "candidate": 0,
+   "score": 0.1559,
+   "right": false,
+   "text": "The second one is, um, I forget what it's called."
+  },
+  {
+   "take": "wai-en_GB-alan-medium-4-no-retake",
+   "cue": 0,
+   "candidate": 1,
+   "score": 0.0256,
+   "right": false,
+   "text": "The settings window has three tabs. The second one is, um, I forget what it's called."
+  },
+  {
+   "take": "wai-en_GB-alan-medium-5-two-cues",
+   "cue": 0,
+   "candidate": 0,
+   "score": 0.319,
+   "right": true,
+   "text": "Press stop and your link is pasted."
+  },
+  {
+   "take": "wai-en_GB-alan-medium-5-two-cues",
+   "cue": 0,
+   "candidate": 1,
+   "score": 0.0367,
+   "right": false,
+   "text": "Welcome to the tour. Press stop and your link is pasted."
+  },
+  {
+   "take": "wai-en_GB-alan-medium-5-two-cues",
+   "cue": 1,
+   "candidate": 0,
+   "score": 0.9091,
+   "right": true,
+   "text": "Press stop and your link is, oh,"
+  },
+  {
+   "take": "wai-en_GB-alan-medium-7-cue-at-the-end",
+   "cue": 0,
+   "candidate": 0,
+   "score": 0.4583,
+   "right": true,
+   "text": "Thanks for watching, and see you in the next."
+  },
+  {
+   "take": "wai-en_GB-alan-medium-7-cue-at-the-end",
+   "cue": 1,
+   "candidate": 0,
+   "score": 0.0738,
+   "right": false,
+   "text": "Oh, and one more thing, uh,"
+  },
+  {
+   "take": "wai-en_GB-alan-medium-7-cue-at-the-end",
+   "cue": 1,
+   "candidate": 1,
+   "score": 0.0265,
+   "right": false,
+   "text": "Thanks for watching, see you next time. Oh, and one more thing, uh,"
+  },
+  {
+   "take": "wai-en_US-amy-medium-1-the-example",
+   "cue": 0,
+   "candidate": 0,
+   "score": 0.9199,
+   "right": true,
+   "text": "that is shroom."
+  },
+  {
+   "take": "wai-en_US-amy-medium-1-the-example",
+   "cue": 0,
+   "candidate": 1,
+   "score": 0.954,
+   "right": true,
+   "text": "Hello, that is shroom."
+  },
+  {
+   "take": "wai-en_US-amy-medium-10-long-stretch",
+   "cue": 0,
+   "candidate": 0,
+   "score": 0.5001,
+   "right": true,
+   "text": "Then you type a name and hit the, uh, the button."
+  },
+  {
+   "take": "wai-en_US-amy-medium-10-long-stretch",
+   "cue": 0,
+   "candidate": 1,
+   "score": 0.6597,
+   "right": true,
+   "text": "You open the menu and choose the, the share thing. Then you type a name and hit the, uh, the button."
+  },
+  {
+   "take": "wai-en_US-amy-medium-10-long-stretch",
+   "cue": 0,
+   "candidate": 2,
+   "score": 0.1501,
+   "right": false,
+   "text": "let's set up sharing. You open the menu and choose the, the share thing. Then you type a name and hit the, uh, the button."
+  },
+  {
+   "take": "wai-en_US-amy-medium-10-long-stretch",
+   "cue": 0,
+   "candidate": 3,
+   "score": 0.0847,
+   "right": false,
+   "text": "Okay, let's set up sharing. You open the menu and choose the, the share thing. Then you type a name and hit the, uh, the button."
+  },
+  {
+   "take": "wai-en_US-amy-medium-11-good-then-broken",
+   "cue": 0,
+   "candidate": 0,
+   "score": 0.3192,
+   "right": true,
+   "text": "Then click the, the blue."
+  },
+  {
+   "take": "wai-en_US-amy-medium-11-good-then-broken",
+   "cue": 0,
+   "candidate": 1,
+   "score": 0.0315,
+   "right": false,
+   "text": "Open the settings window. Then click the, the blue."
+  },
+  {
+   "take": "wai-en_US-amy-medium-2-mid-paragraph",
+   "cue": 0,
+   "candidate": 0,
+   "score": 0.8047,
+   "right": true,
+   "text": "Then you pick the window you thumb."
+  },
+  {
+   "take": "wai-en_US-amy-medium-2-mid-paragraph",
+   "cue": 0,
+   "candidate": 1,
+   "score": 0.3059,
+   "right": false,
+   "text": "you click the mushroom in the menu bar. Then you pick the window you thumb."
+  },
+  {
+   "take": "wai-en_US-amy-medium-2-mid-paragraph",
+   "cue": 0,
+   "candidate": 2,
+   "score": 0.0401,
+   "right": false,
+   "text": "To share a recording, you click the mushroom in the menu bar. Then you pick the window you thumb."
+  },
+  {
+   "take": "wai-en_US-amy-medium-3-mid-sentence",
+   "cue": 0,
+   "candidate": 0,
+   "score": 0.8882,
+   "right": true,
+   "text": "It goes straight to your own bucket, on your own account, which is, hum, wait."
+  },
+  {
+   "take": "wai-en_US-amy-medium-3-mid-sentence",
+   "cue": 0,
+   "candidate": 1,
+   "score": 0.0401,
+   "right": false,
+   "text": "Your video uploads while you talk, so the link is ready the moment you stop. It goes straight to your own bucket, on your own account, which is, hum, wait."
+  },
+  {
+   "take": "wai-en_US-amy-medium-4-no-retake",
+   "cue": 0,
+   "candidate": 0,
+   "score": 0.1559,
+   "right": false,
+   "text": "The second one is, um, I forget what it's called."
+  },
+  {
+   "take": "wai-en_US-amy-medium-4-no-retake",
+   "cue": 0,
+   "candidate": 1,
+   "score": 0.0256,
+   "right": false,
+   "text": "The settings window has three tabs. The second one is, um, I forget what it's called."
+  },
+  {
+   "take": "wai-en_US-amy-medium-5-two-cues",
+   "cue": 0,
+   "candidate": 0,
+   "score": 0.4735,
+   "right": true,
+   "text": "Press stop, and your link is pasted."
+  },
+  {
+   "take": "wai-en_US-amy-medium-5-two-cues",
+   "cue": 0,
+   "candidate": 1,
+   "score": 0.044,
+   "right": false,
+   "text": "Welcome to the tour. Press stop, and your link is pasted."
+  },
+  {
+   "take": "wai-en_US-amy-medium-5-two-cues",
+   "cue": 1,
+   "candidate": 0,
+   "score": 0.9487,
+   "right": true,
+   "text": "Press stop, and your link is a."
+  },
+  {
+   "take": "wai-en_US-amy-medium-7-cue-at-the-end",
+   "cue": 0,
+   "candidate": 0,
+   "score": 0.4583,
+   "right": true,
+   "text": "Thanks for watching, and see you in the next."
+  },
+  {
+   "take": "wai-en_US-amy-medium-7-cue-at-the-end",
+   "cue": 1,
+   "candidate": 0,
+   "score": 0.0738,
+   "right": false,
+   "text": "Oh, and one more thing, uh,"
+  },
+  {
+   "take": "wai-en_US-amy-medium-7-cue-at-the-end",
+   "cue": 1,
+   "candidate": 1,
+   "score": 0.0265,
+   "right": false,
+   "text": "Thanks for watching, see you next time. Oh, and one more thing, uh,"
+  },
+  {
+   "take": "wai-en_US-amy-medium-9-clean-reworded",
+   "cue": 0,
+   "candidate": 0,
+   "score": 0.753,
+   "right": true,
+   "text": "Click on this link to see it."
+  },
+  {
+   "take": "wai-en_US-amy-medium-9-clean-reworded",
+   "cue": 0,
+   "candidate": 1,
+   "score": 0.0332,
+   "right": false,
+   "text": "Hi, this is a quick test of the voice cut. Click on this link to see it."
+  },
+  {
+   "take": "wai-en_US-lessac-medium-1-the-example",
+   "cue": 0,
+   "candidate": 0,
+   "score": 0.9191,
+   "right": true,
+   "text": "Hello, that is Shroom."
+  },
+  {
+   "take": "wai-en_US-lessac-medium-3-mid-sentence",
+   "cue": 0,
+   "candidate": 0,
+   "score": 0.8137,
+   "right": true,
+   "text": "It goes straight to your own bucket, on your own account, which is, um, wait,"
+  },
+  {
+   "take": "wai-en_US-lessac-medium-3-mid-sentence",
+   "cue": 0,
+   "candidate": 1,
+   "score": 0.0283,
+   "right": false,
+   "text": "Your video uploads while you talk, so the link is ready the moment you stop. It goes straight to your own bucket, on your own account, which is, um, wait,"
+  },
+  {
+   "take": "wai-en_US-lessac-medium-4-no-retake",
+   "cue": 0,
+   "candidate": 0,
+   "score": 0.1559,
+   "right": false,
+   "text": "The second one is, um, I forget what it's called."
+  },
+  {
+   "take": "wai-en_US-lessac-medium-4-no-retake",
+   "cue": 0,
+   "candidate": 1,
+   "score": 0.0256,
+   "right": false,
+   "text": "The settings window has three tabs. The second one is, um, I forget what it's called."
+  },
+  {
+   "take": "wai-en_US-lessac-medium-5-two-cues",
+   "cue": 0,
+   "candidate": 0,
+   "score": 0.4091,
+   "right": true,
+   "text": "Press stop, and your link is pasted."
+  },
+  {
+   "take": "wai-en_US-lessac-medium-5-two-cues",
+   "cue": 0,
+   "candidate": 1,
+   "score": 0.029,
+   "right": false,
+   "text": "Welcome to the tour. Press stop, and your link is pasted."
+  },
+  {
+   "take": "wai-en_US-lessac-medium-5-two-cues",
+   "cue": 1,
+   "candidate": 0,
+   "score": 0.9478,
+   "right": true,
+   "text": "Press stop, and your link is, ah,"
+  },
+  {
+   "take": "wai-en_US-lessac-medium-7-cue-at-the-end",
+   "cue": 0,
+   "candidate": 0,
+   "score": 0.4583,
+   "right": true,
+   "text": "Thanks for watching, and see you in the next."
+  },
+  {
+   "take": "wai-en_US-lessac-medium-7-cue-at-the-end",
+   "cue": 1,
+   "candidate": 0,
+   "score": 0.0738,
+   "right": false,
+   "text": "Oh, and one more thing, uh,"
+  },
+  {
+   "take": "wai-en_US-lessac-medium-7-cue-at-the-end",
+   "cue": 1,
+   "candidate": 1,
+   "score": 0.0265,
+   "right": false,
+   "text": "Thanks for watching, see you next time. Oh, and one more thing, uh,"
+  },
+  {
+   "take": "wai-en_US-ryan-medium-1-the-example",
+   "cue": 0,
+   "candidate": 0,
+   "score": 0.8858,
+   "right": true,
+   "text": "that is Shroom."
+  },
+  {
+   "take": "wai-en_US-ryan-medium-1-the-example",
+   "cue": 0,
+   "candidate": 1,
+   "score": 0.9314,
+   "right": true,
+   "text": "Hello, that is Shroom."
+  },
+  {
+   "take": "wai-en_US-ryan-medium-10-long-stretch",
+   "cue": 0,
+   "candidate": 0,
+   "score": 0.6531,
+   "right": true,
+   "text": "Then you type a name and hit the, the button."
+  },
+  {
+   "take": "wai-en_US-ryan-medium-10-long-stretch",
+   "cue": 0,
+   "candidate": 1,
+   "score": 0.5125,
+   "right": true,
+   "text": "You open the menu and choose the, the share thing. Then you type a name and hit the, the button."
+  },
+  {
+   "take": "wai-en_US-ryan-medium-10-long-stretch",
+   "cue": 0,
+   "candidate": 2,
+   "score": 0.0461,
+   "right": false,
+   "text": "Okay, let's set up sharing. You open the menu and choose the, the share thing. Then you type a name and hit the, the button."
+  },
+  {
+   "take": "wai-en_US-ryan-medium-11-good-then-broken",
+   "cue": 0,
+   "candidate": 0,
+   "score": 0.3192,
+   "right": true,
+   "text": "Then click the, the blue."
+  },
+  {
+   "take": "wai-en_US-ryan-medium-11-good-then-broken",
+   "cue": 0,
+   "candidate": 1,
+   "score": 0.0315,
+   "right": false,
+   "text": "Open the settings window. Then click the, the blue."
+  },
+  {
+   "take": "wai-en_US-ryan-medium-2-mid-paragraph",
+   "cue": 0,
+   "candidate": 0,
+   "score": 0.8966,
+   "right": true,
+   "text": "Then you pick the, the window you, um,"
+  },
+  {
+   "take": "wai-en_US-ryan-medium-2-mid-paragraph",
+   "cue": 0,
+   "candidate": 1,
+   "score": 0.0846,
+   "right": false,
+   "text": "To share a recording, you click the mushroom in the menu bar. Then you pick the, the window you, um,"
+  },
+  {
+   "take": "wai-en_US-ryan-medium-3-mid-sentence",
+   "cue": 0,
+   "candidate": 0,
+   "score": 0.8882,
+   "right": true,
+   "text": "It goes straight to your own bucket, on your own account, which is, hum, wait."
+  },
+  {
+   "take": "wai-en_US-ryan-medium-3-mid-sentence",
+   "cue": 0,
+   "candidate": 1,
+   "score": 0.0401,
+   "right": false,
+   "text": "Your video uploads while you talk, so the link is ready the moment you stop. It goes straight to your own bucket, on your own account, which is, hum, wait."
+  },
+  {
+   "take": "wai-en_US-ryan-medium-4-no-retake",
+   "cue": 0,
+   "candidate": 0,
+   "score": 0.1817,
+   "right": false,
+   "text": "The second one is, hum, I forget what it's called."
+  },
+  {
+   "take": "wai-en_US-ryan-medium-4-no-retake",
+   "cue": 0,
+   "candidate": 1,
+   "score": 0.0248,
+   "right": false,
+   "text": "The settings window has three tabs. The second one is, hum, I forget what it's called."
+  },
+  {
+   "take": "wai-en_US-ryan-medium-5-two-cues",
+   "cue": 0,
+   "candidate": 0,
+   "score": 0.3814,
+   "right": true,
+   "text": "Press stop and your link is pasted."
+  },
+  {
+   "take": "wai-en_US-ryan-medium-5-two-cues",
+   "cue": 0,
+   "candidate": 1,
+   "score": 0.0416,
+   "right": false,
+   "text": "Welcome to the tour. Press stop and your link is pasted."
+  },
+  {
+   "take": "wai-en_US-ryan-medium-5-two-cues",
+   "cue": 1,
+   "candidate": 0,
+   "score": 0.9337,
+   "right": true,
+   "text": "Press stop and your link is, uh,"
+  },
+  {
+   "take": "wai-en_US-ryan-medium-7-cue-at-the-end",
+   "cue": 0,
+   "candidate": 0,
+   "score": 0.682,
+   "right": true,
+   "text": "Thanks for watching, and see you in the next,"
+  },
+  {
+   "take": "wai-en_US-ryan-medium-7-cue-at-the-end",
+   "cue": 1,
+   "candidate": 0,
+   "score": 0.0738,
+   "right": false,
+   "text": "Oh, and one more thing, uh,"
+  },
+  {
+   "take": "wai-en_US-ryan-medium-7-cue-at-the-end",
+   "cue": 1,
+   "candidate": 1,
+   "score": 0.0265,
+   "right": false,
+   "text": "Thanks for watching, see you next time. Oh, and one more thing, uh,"
+  },
+  {
+   "take": "wai-en_US-ryan-medium-8-reworded-redo",
+   "cue": 0,
+   "candidate": 0,
+   "score": 0.7876,
+   "right": true,
+   "text": "Click on this link and you will."
+  },
+  {
+   "take": "wai-en_US-ryan-medium-8-reworded-redo",
+   "cue": 0,
+   "candidate": 1,
+   "score": 0.055,
+   "right": false,
+   "text": "Hi, this is a quick test of the voice cut. Click on this link and you will."
+  },
+  {
+   "take": "wai-en_US-ryan-medium-9-clean-reworded",
+   "cue": 0,
+   "candidate": 0,
+   "score": 0.753,
+   "right": true,
+   "text": "Click on this link to see it."
+  },
+  {
+   "take": "wai-en_US-ryan-medium-9-clean-reworded",
+   "cue": 0,
+   "candidate": 1,
+   "score": 0.0332,
+   "right": false,
+   "text": "Hi, this is a quick test of the voice cut. Click on this link to see it."
+  }
+ ],
+ "takes": [
+  {
+   "take": "wai-en_GB-alan-medium-1-the-example",
+   "questions": [
+    {
+     "after": "Hello, this is shroom. Today I'll show you how to share a recording in one click.",
+     "candidates": [
+      "Hello, that is shroom."
+     ],
+     "cue": 0
+    }
+   ],
+   "answers": [
+    {
+     "cue": 0,
+     "scores": [
+      0.9171
+     ]
+    }
+   ],
+   "own": [
+    "retake applied: Hello, that is shroom. Shroom cut."
+   ],
+   "judged": [
+    "retake applied: Hello, that is shroom. Shroom cut."
+   ],
+   "own_held": [],
+   "judged_held": []
+  },
+  {
+   "take": "wai-en_GB-alan-medium-2-mid-paragraph",
+   "questions": [
+    {
+     "after": "So, then you pick the window you want to share. And that's really all there is to it.",
+     "candidates": [
+      "Then you pick the, the window you, um,",
+      "To share a recording, you click the mushroom in the menu bar. Then you pick the, the window you, um,"
+     ],
+     "cue": 0
+    }
+   ],
+   "answers": [
+    {
+     "cue": 0,
+     "scores": [
+      0.8966,
+      0.0846
+     ]
+    }
+   ],
+   "own": [
+    "retake applied: Then you pick the, the window you, um, shroom cut."
+   ],
+   "judged": [
+    "retake applied: Then you pick the, the window you, um, shroom cut."
+   ],
+   "own_held": [],
+   "judged_held": []
+  },
+  {
+   "take": "wai-en_GB-alan-medium-3-mid-sentence",
+   "questions": [
+    {
+     "after": "It goes straight to your own bucket in your own cloud account and nowhere else.",
+     "candidates": [
+      "It goes straight to your own bucket on your own account, which is, hum, wait.",
+      "Your video uploads while you talk, so the link is ready the moment you stop. It goes straight to your own bucket on your own account, which is, hum, wait."
+     ],
+     "cue": 0
+    }
+   ],
+   "answers": [
+    {
+     "cue": 0,
+     "scores": [
+      0.7077,
+      0.0316
+     ]
+    }
+   ],
+   "own": [
+    "retake applied: It goes straight to your own bucket on your own account, which is, hum, wait. Shroom cut."
+   ],
+   "judged": [
+    "retake applied: It goes straight to your own bucket on your own account, which is, hum, wait. Shroom cut."
+   ],
+   "own_held": [],
+   "judged_held": []
+  },
+  {
+   "take": "wai-en_GB-alan-medium-4-no-retake",
+   "questions": [
+    {
+     "after": "Let's move on to the library instead.",
+     "candidates": [
+      "The second one is, um, I forget what it's called.",
+      "The settings window has three tabs. The second one is, um, I forget what it's called."
+     ],
+     "cue": 0
+    }
+   ],
+   "answers": [
+    {
+     "cue": 0,
+     "scores": [
+      0.1559,
+      0.0256
+     ]
+    }
+   ],
+   "own": [
+    "cue-only applied: Shroom cut.",
+    "line-before-cue offered: The second one is, um, I forget what it's called. Shroom cut."
+   ],
+   "judged": [
+    "cue-only applied: Shroom cut.",
+    "line-before-cue offered: The second one is, um, I forget what it's called. Shroom cut."
+   ],
+   "own_held": [
+    "a slip only offered"
+   ],
+   "judged_held": [
+    "a slip only offered"
+   ]
+  },
+  {
+   "take": "wai-en_GB-alan-medium-5-two-cues",
+   "questions": [
+    {
+     "after": "Press stop and your link is, oh,",
+     "candidates": [
+      "Press stop and your link is pasted.",
+      "Welcome to the tour. Press stop and your link is pasted."
+     ],
+     "cue": 0
+    },
+    {
+     "after": "Press stop and your link is copied to the clipboard.",
+     "candidates": [
+      "Press stop and your link is, oh,"
+     ],
+     "cue": 1
+    }
+   ],
+   "answers": [
+    {
+     "cue": 0,
+     "scores": [
+      0.319,
+      0.0367
+     ]
+    },
+    {
+     "cue": 1,
+     "scores": [
+      0.9091
+     ]
+    }
+   ],
+   "own": [
+    "retake applied: Press stop and your link is pasted. Shroom cut.",
+    "retake applied: Press stop and your link is, oh, shroom cut."
+   ],
+   "judged": [
+    "retake applied: Press stop and your link is pasted. Shroom cut.",
+    "retake applied: Press stop and your link is, oh, shroom cut."
+   ],
+   "own_held": [],
+   "judged_held": []
+  },
+  {
+   "take": "wai-en_GB-alan-medium-7-cue-at-the-end",
+   "questions": [
+    {
+     "after": "Thanks for watching, see you next time. Oh, and one more thing, uh,",
+     "candidates": [
+      "Thanks for watching, and see you in the next."
+     ],
+     "cue": 0
+    },
+    {
+     "after": "",
+     "candidates": [
+      "Oh, and one more thing, uh,",
+      "Thanks for watching, see you next time. Oh, and one more thing, uh,"
+     ],
+     "cue": 1
+    }
+   ],
+   "answers": [
+    {
+     "cue": 0,
+     "scores": [
+      0.4583
+     ]
+    },
+    {
+     "cue": 1,
+     "scores": [
+      0.0738,
+      0.0265
+     ]
+    }
+   ],
+   "own": [
+    "retake applied: Thanks for watching, and see you in the next. Shroom cut.",
+    "retake applied: Oh, and one more thing, uh, shroom cut."
+   ],
+   "judged": [
+    "retake applied: Thanks for watching, and see you in the next. Shroom cut.",
+    "retake applied: Oh, and one more thing, uh, shroom cut."
+   ],
+   "own_held": [],
+   "judged_held": []
+  },
+  {
+   "take": "wai-en_US-amy-medium-1-the-example",
+   "questions": [
+    {
+     "after": "Hello, this is shroom. Today I'll show you how to share a recording in one click.",
+     "candidates": [
+      "that is shroom.",
+      "Hello, that is shroom."
+     ],
+     "cue": 0
+    }
+   ],
+   "answers": [
+    {
+     "cue": 0,
+     "scores": [
+      0.9199,
+      0.954
+     ]
+    }
+   ],
+   "own": [
+    "retake applied: Hello, that is shroom. Shroom cut."
+   ],
+   "judged": [
+    "retake applied: Hello, that is shroom. Shroom cut."
+   ],
+   "own_held": [],
+   "judged_held": []
+  },
+  {
+   "take": "wai-en_US-amy-medium-10-long-stretch",
+   "questions": [
+    {
+     "after": "To share, open the menu and pick share. Type a name and press enter.",
+     "candidates": [
+      "Then you type a name and hit the, uh, the button.",
+      "You open the menu and choose the, the share thing. Then you type a name and hit the, uh, the button.",
+      "let's set up sharing. You open the menu and choose the, the share thing. Then you type a name and hit the, uh, the button.",
+      "Okay, let's set up sharing. You open the menu and choose the, the share thing. Then you type a name and hit the, uh, the button."
+     ],
+     "cue": 0
+    }
+   ],
+   "answers": [
+    {
+     "cue": 0,
+     "scores": [
+      0.5001,
+      0.6597,
+      0.1501,
+      0.0847
+     ]
+    }
+   ],
+   "own": [
+    "cue-only applied: Shroom cut.",
+    "line-before-cue offered: Then you type a name and hit the, uh, the button. Shroom cut."
+   ],
+   "judged": [
+    "retake applied: You open the menu and choose the, the share thing. Then you type a name and hit the, uh, the button. Shroom cut."
+   ],
+   "own_held": [
+    "left a slip",
+    "a slip only offered",
+    "a slip only offered"
+   ],
+   "judged_held": []
+  },
+  {
+   "take": "wai-en_US-amy-medium-11-good-then-broken",
+   "questions": [
+    {
+     "after": "Then click the green button.",
+     "candidates": [
+      "Then click the, the blue.",
+      "Open the settings window. Then click the, the blue."
+     ],
+     "cue": 0
+    }
+   ],
+   "answers": [
+    {
+     "cue": 0,
+     "scores": [
+      0.3192,
+      0.0315
+     ]
+    }
+   ],
+   "own": [
+    "retake applied: Then click the, the blue. Shroom cut."
+   ],
+   "judged": [
+    "retake applied: Then click the, the blue. Shroom cut."
+   ],
+   "own_held": [],
+   "judged_held": []
+  },
+  {
+   "take": "wai-en_US-amy-medium-2-mid-paragraph",
+   "questions": [
+    {
+     "after": "So, then you pick the window you want to share. And that's really all there is to it.",
+     "candidates": [
+      "Then you pick the window you thumb.",
+      "you click the mushroom in the menu bar. Then you pick the window you thumb.",
+      "To share a recording, you click the mushroom in the menu bar. Then you pick the window you thumb."
+     ],
+     "cue": 0
+    }
+   ],
+   "answers": [
+    {
+     "cue": 0,
+     "scores": [
+      0.8047,
+      0.3059,
+      0.0401
+     ]
+    }
+   ],
+   "own": [
+    "retake applied: Then you pick the window you thumb. Shroom cut."
+   ],
+   "judged": [
+    "retake applied: Then you pick the window you thumb. Shroom cut."
+   ],
+   "own_held": [],
+   "judged_held": []
+  },
+  {
+   "take": "wai-en_US-amy-medium-3-mid-sentence",
+   "questions": [
+    {
+     "after": "It goes straight to your own bucket, in your own cloud account, and nowhere else.",
+     "candidates": [
+      "It goes straight to your own bucket, on your own account, which is, hum, wait.",
+      "Your video uploads while you talk, so the link is ready the moment you stop. It goes straight to your own bucket, on your own account, which is, hum, wait."
+     ],
+     "cue": 0
+    }
+   ],
+   "answers": [
+    {
+     "cue": 0,
+     "scores": [
+      0.8882,
+      0.0401
+     ]
+    }
+   ],
+   "own": [
+    "retake applied: It goes straight to your own bucket, on your own account, which is, hum, wait. Shroom cut."
+   ],
+   "judged": [
+    "retake applied: It goes straight to your own bucket, on your own account, which is, hum, wait. Shroom cut."
+   ],
+   "own_held": [],
+   "judged_held": []
+  },
+  {
+   "take": "wai-en_US-amy-medium-4-no-retake",
+   "questions": [
+    {
+     "after": "Let's move on to the library instead.",
+     "candidates": [
+      "The second one is, um, I forget what it's called.",
+      "The settings window has three tabs. The second one is, um, I forget what it's called."
+     ],
+     "cue": 0
+    }
+   ],
+   "answers": [
+    {
+     "cue": 0,
+     "scores": [
+      0.1559,
+      0.0256
+     ]
+    }
+   ],
+   "own": [
+    "cue-only applied: Shroom cut.",
+    "line-before-cue offered: The second one is, um, I forget what it's called. Shroom cut."
+   ],
+   "judged": [
+    "cue-only applied: Shroom cut.",
+    "line-before-cue offered: The second one is, um, I forget what it's called. Shroom cut."
+   ],
+   "own_held": [
+    "a slip only offered"
+   ],
+   "judged_held": [
+    "a slip only offered"
+   ]
+  },
+  {
+   "take": "wai-en_US-amy-medium-5-two-cues",
+   "questions": [
+    {
+     "after": "Press stop, and your link is a.",
+     "candidates": [
+      "Press stop, and your link is pasted.",
+      "Welcome to the tour. Press stop, and your link is pasted."
+     ],
+     "cue": 0
+    },
+    {
+     "after": "Press stop, and your link is copied to the clipboard.",
+     "candidates": [
+      "Press stop, and your link is a."
+     ],
+     "cue": 1
+    }
+   ],
+   "answers": [
+    {
+     "cue": 0,
+     "scores": [
+      0.4735,
+      0.044
+     ]
+    },
+    {
+     "cue": 1,
+     "scores": [
+      0.9487
+     ]
+    }
+   ],
+   "own": [
+    "retake applied: Press stop, and your link is pasted. Shroom cut.",
+    "retake applied: Press stop, and your link is a. Shroom cut."
+   ],
+   "judged": [
+    "retake applied: Press stop, and your link is pasted. Shroom cut.",
+    "retake applied: Press stop, and your link is a. Shroom cut."
+   ],
+   "own_held": [],
+   "judged_held": []
+  },
+  {
+   "take": "wai-en_US-amy-medium-7-cue-at-the-end",
+   "questions": [
+    {
+     "after": "Thanks for watching, see you next time. Oh, and one more thing, uh,",
+     "candidates": [
+      "Thanks for watching, and see you in the next."
+     ],
+     "cue": 0
+    },
+    {
+     "after": "",
+     "candidates": [
+      "Oh, and one more thing, uh,",
+      "Thanks for watching, see you next time. Oh, and one more thing, uh,"
+     ],
+     "cue": 1
+    }
+   ],
+   "answers": [
+    {
+     "cue": 0,
+     "scores": [
+      0.4583
+     ]
+    },
+    {
+     "cue": 1,
+     "scores": [
+      0.0738,
+      0.0265
+     ]
+    }
+   ],
+   "own": [
+    "retake applied: Thanks for watching, and see you in the next. Shroom cut.",
+    "retake applied: Oh, and one more thing, uh, shroom cut."
+   ],
+   "judged": [
+    "retake applied: Thanks for watching, and see you in the next. Shroom cut.",
+    "retake applied: Oh, and one more thing, uh, shroom cut."
+   ],
+   "own_held": [],
+   "judged_held": []
+  },
+  {
+   "take": "wai-en_US-amy-medium-9-clean-reworded",
+   "questions": [
+    {
+     "after": "To get your video, use this link and you'll see it right away.",
+     "candidates": [
+      "Click on this link to see it.",
+      "Hi, this is a quick test of the voice cut. Click on this link to see it."
+     ],
+     "cue": 0
+    }
+   ],
+   "answers": [
+    {
+     "cue": 0,
+     "scores": [
+      0.753,
+      0.0332
+     ]
+    }
+   ],
+   "own": [
+    "cue-only applied: Shroom cut.",
+    "line-before-cue offered: Click on this link to see it. Shroom cut."
+   ],
+   "judged": [
+    "retake applied: Click on this link to see it. Shroom cut."
+   ],
+   "own_held": [
+    "a slip only offered"
+   ],
+   "judged_held": []
+  },
+  {
+   "take": "wai-en_US-lessac-medium-1-the-example",
+   "questions": [
+    {
+     "after": "Hello, this is Shroom. Today I'll show you how to share a recording in one click.",
+     "candidates": [
+      "Hello, that is Shroom."
+     ],
+     "cue": 0
+    }
+   ],
+   "answers": [
+    {
+     "cue": 0,
+     "scores": [
+      0.9191
+     ]
+    }
+   ],
+   "own": [
+    "retake applied: Hello, that is Shroom. Shroom cut."
+   ],
+   "judged": [
+    "retake applied: Hello, that is Shroom. Shroom cut."
+   ],
+   "own_held": [],
+   "judged_held": []
+  },
+  {
+   "take": "wai-en_US-lessac-medium-2-mid-paragraph",
+   "questions": [],
+   "answers": [],
+   "own": [],
+   "judged": [],
+   "own_held": [
+    "left a slip",
+    "a slip only offered"
+   ],
+   "judged_held": [
+    "left a slip",
+    "a slip only offered"
+   ]
+  },
+  {
+   "take": "wai-en_US-lessac-medium-3-mid-sentence",
+   "questions": [
+    {
+     "after": "It goes straight to your own bucket, in your own cloud account, and nowhere else.",
+     "candidates": [
+      "It goes straight to your own bucket, on your own account, which is, um, wait,",
+      "Your video uploads while you talk, so the link is ready the moment you stop. It goes straight to your own bucket, on your own account, which is, um, wait,"
+     ],
+     "cue": 0
+    }
+   ],
+   "answers": [
+    {
+     "cue": 0,
+     "scores": [
+      0.8137,
+      0.0283
+     ]
+    }
+   ],
+   "own": [
+    "retake applied: It goes straight to your own bucket, on your own account, which is, um, wait, shroom cut."
+   ],
+   "judged": [
+    "retake applied: It goes straight to your own bucket, on your own account, which is, um, wait, shroom cut."
+   ],
+   "own_held": [],
+   "judged_held": []
+  },
+  {
+   "take": "wai-en_US-lessac-medium-4-no-retake",
+   "questions": [
+    {
+     "after": "Let's move on to the library instead.",
+     "candidates": [
+      "The second one is, um, I forget what it's called.",
+      "The settings window has three tabs. The second one is, um, I forget what it's called."
+     ],
+     "cue": 0
+    }
+   ],
+   "answers": [
+    {
+     "cue": 0,
+     "scores": [
+      0.1559,
+      0.0256
+     ]
+    }
+   ],
+   "own": [
+    "cue-only applied: Shroom cut.",
+    "line-before-cue offered: The second one is, um, I forget what it's called. Shroom cut."
+   ],
+   "judged": [
+    "cue-only applied: Shroom cut.",
+    "line-before-cue offered: The second one is, um, I forget what it's called. Shroom cut."
+   ],
+   "own_held": [
+    "a slip only offered"
+   ],
+   "judged_held": [
+    "a slip only offered"
+   ]
+  },
+  {
+   "take": "wai-en_US-lessac-medium-5-two-cues",
+   "questions": [
+    {
+     "after": "Press stop, and your link is, ah,",
+     "candidates": [
+      "Press stop, and your link is pasted.",
+      "Welcome to the tour. Press stop, and your link is pasted."
+     ],
+     "cue": 0
+    },
+    {
+     "after": "Press stop, and your link is copied to the clipboard.",
+     "candidates": [
+      "Press stop, and your link is, ah,"
+     ],
+     "cue": 1
+    }
+   ],
+   "answers": [
+    {
+     "cue": 0,
+     "scores": [
+      0.4091,
+      0.029
+     ]
+    },
+    {
+     "cue": 1,
+     "scores": [
+      0.9478
+     ]
+    }
+   ],
+   "own": [
+    "retake applied: Press stop, and your link is pasted. Shroom cut.",
+    "retake applied: Press stop, and your link is, ah, Shroom cut."
+   ],
+   "judged": [
+    "retake applied: Press stop, and your link is pasted. Shroom cut.",
+    "retake applied: Press stop, and your link is, ah, Shroom cut."
+   ],
+   "own_held": [],
+   "judged_held": []
+  },
+  {
+   "take": "wai-en_US-lessac-medium-7-cue-at-the-end",
+   "questions": [
+    {
+     "after": "Thanks for watching, see you next time. Oh, and one more thing, uh,",
+     "candidates": [
+      "Thanks for watching, and see you in the next."
+     ],
+     "cue": 0
+    },
+    {
+     "after": "",
+     "candidates": [
+      "Oh, and one more thing, uh,",
+      "Thanks for watching, see you next time. Oh, and one more thing, uh,"
+     ],
+     "cue": 1
+    }
+   ],
+   "answers": [
+    {
+     "cue": 0,
+     "scores": [
+      0.4583
+     ]
+    },
+    {
+     "cue": 1,
+     "scores": [
+      0.0738,
+      0.0265
+     ]
+    }
+   ],
+   "own": [
+    "retake applied: Thanks for watching, and see you in the next. Troom cut.",
+    "retake applied: Oh, and one more thing, uh, Troom cut."
+   ],
+   "judged": [
+    "retake applied: Thanks for watching, and see you in the next. Troom cut.",
+    "retake applied: Oh, and one more thing, uh, Troom cut."
+   ],
+   "own_held": [],
+   "judged_held": []
+  },
+  {
+   "take": "wai-en_US-ryan-medium-1-the-example",
+   "questions": [
+    {
+     "after": "Hello, this is Shroom. Today, I'll show you how to share a recording in one click.",
+     "candidates": [
+      "that is Shroom.",
+      "Hello, that is Shroom."
+     ],
+     "cue": 0
+    }
+   ],
+   "answers": [
+    {
+     "cue": 0,
+     "scores": [
+      0.8858,
+      0.9314
+     ]
+    }
+   ],
+   "own": [
+    "retake applied: Hello, that is Shroom. Shroom cut."
+   ],
+   "judged": [
+    "retake applied: Hello, that is Shroom. Shroom cut."
+   ],
+   "own_held": [],
+   "judged_held": []
+  },
+  {
+   "take": "wai-en_US-ryan-medium-10-long-stretch",
+   "questions": [
+    {
+     "after": "To share, open the menu and pick share. Type a name and press enter.",
+     "candidates": [
+      "Then you type a name and hit the, the button.",
+      "You open the menu and choose the, the share thing. Then you type a name and hit the, the button.",
+      "Okay, let's set up sharing. You open the menu and choose the, the share thing. Then you type a name and hit the, the button."
+     ],
+     "cue": 0
+    }
+   ],
+   "answers": [
+    {
+     "cue": 0,
+     "scores": [
+      0.6531,
+      0.5125,
+      0.0461
+     ]
+    }
+   ],
+   "own": [
+    "cue-only applied: Shroom cut.",
+    "line-before-cue offered: Then you type a name and hit the, the button. Shroom cut."
+   ],
+   "judged": [
+    "retake applied: You open the menu and choose the, the share thing. Then you type a name and hit the, the button. Shroom cut."
+   ],
+   "own_held": [
+    "left a slip",
+    "a slip only offered",
+    "a slip only offered"
+   ],
+   "judged_held": []
+  },
+  {
+   "take": "wai-en_US-ryan-medium-11-good-then-broken",
+   "questions": [
+    {
+     "after": "Then click the green button.",
+     "candidates": [
+      "Then click the, the blue.",
+      "Open the settings window. Then click the, the blue."
+     ],
+     "cue": 0
+    }
+   ],
+   "answers": [
+    {
+     "cue": 0,
+     "scores": [
+      0.3192,
+      0.0315
+     ]
+    }
+   ],
+   "own": [
+    "retake applied: Then click the, the blue. Shroom cut."
+   ],
+   "judged": [
+    "retake applied: Then click the, the blue. Shroom cut."
+   ],
+   "own_held": [],
+   "judged_held": []
+  },
+  {
+   "take": "wai-en_US-ryan-medium-2-mid-paragraph",
+   "questions": [
+    {
+     "after": "So, then you pick the window you want to share. And that's really all there is to it.",
+     "candidates": [
+      "Then you pick the, the window you, um,",
+      "To share a recording, you click the mushroom in the menu bar. Then you pick the, the window you, um,"
+     ],
+     "cue": 0
+    }
+   ],
+   "answers": [
+    {
+     "cue": 0,
+     "scores": [
+      0.8966,
+      0.0846
+     ]
+    }
+   ],
+   "own": [
+    "retake applied: Then you pick the, the window you, um, shroom cut."
+   ],
+   "judged": [
+    "retake applied: Then you pick the, the window you, um, shroom cut."
+   ],
+   "own_held": [],
+   "judged_held": []
+  },
+  {
+   "take": "wai-en_US-ryan-medium-3-mid-sentence",
+   "questions": [
+    {
+     "after": "It goes straight to your own bucket, in your own cloud account, and nowhere else.",
+     "candidates": [
+      "It goes straight to your own bucket, on your own account, which is, hum, wait.",
+      "Your video uploads while you talk, so the link is ready the moment you stop. It goes straight to your own bucket, on your own account, which is, hum, wait."
+     ],
+     "cue": 0
+    }
+   ],
+   "answers": [
+    {
+     "cue": 0,
+     "scores": [
+      0.8882,
+      0.0401
+     ]
+    }
+   ],
+   "own": [
+    "retake applied: It goes straight to your own bucket, on your own account, which is, hum, wait. Shroom cut."
+   ],
+   "judged": [
+    "retake applied: It goes straight to your own bucket, on your own account, which is, hum, wait. Shroom cut."
+   ],
+   "own_held": [],
+   "judged_held": []
+  },
+  {
+   "take": "wai-en_US-ryan-medium-4-no-retake",
+   "questions": [
+    {
+     "after": "Let's move on to the library instead.",
+     "candidates": [
+      "The second one is, hum, I forget what it's called.",
+      "The settings window has three tabs. The second one is, hum, I forget what it's called."
+     ],
+     "cue": 0
+    }
+   ],
+   "answers": [
+    {
+     "cue": 0,
+     "scores": [
+      0.1817,
+      0.0248
+     ]
+    }
+   ],
+   "own": [
+    "cue-only applied: Shroom cut.",
+    "line-before-cue offered: The second one is, hum, I forget what it's called. Shroom cut."
+   ],
+   "judged": [
+    "cue-only applied: Shroom cut.",
+    "line-before-cue offered: The second one is, hum, I forget what it's called. Shroom cut."
+   ],
+   "own_held": [
+    "a slip only offered"
+   ],
+   "judged_held": [
+    "a slip only offered"
+   ]
+  },
+  {
+   "take": "wai-en_US-ryan-medium-5-two-cues",
+   "questions": [
+    {
+     "after": "Press stop and your link is, uh,",
+     "candidates": [
+      "Press stop and your link is pasted.",
+      "Welcome to the tour. Press stop and your link is pasted."
+     ],
+     "cue": 0
+    },
+    {
+     "after": "Press stop and your link is copied to the clipboard.",
+     "candidates": [
+      "Press stop and your link is, uh,"
+     ],
+     "cue": 1
+    }
+   ],
+   "answers": [
+    {
+     "cue": 0,
+     "scores": [
+      0.3814,
+      0.0416
+     ]
+    },
+    {
+     "cue": 1,
+     "scores": [
+      0.9337
+     ]
+    }
+   ],
+   "own": [
+    "retake applied: Press stop and your link is pasted. Shroom cut.",
+    "retake applied: Press stop and your link is, uh, shroom cut."
+   ],
+   "judged": [
+    "retake applied: Press stop and your link is pasted. Shroom cut.",
+    "retake applied: Press stop and your link is, uh, shroom cut."
+   ],
+   "own_held": [],
+   "judged_held": []
+  },
+  {
+   "take": "wai-en_US-ryan-medium-7-cue-at-the-end",
+   "questions": [
+    {
+     "after": "Thanks for watching, see you next time. Oh, and one more thing, uh,",
+     "candidates": [
+      "Thanks for watching, and see you in the next,"
+     ],
+     "cue": 0
+    },
+    {
+     "after": "",
+     "candidates": [
+      "Oh, and one more thing, uh,",
+      "Thanks for watching, see you next time. Oh, and one more thing, uh,"
+     ],
+     "cue": 1
+    }
+   ],
+   "answers": [
+    {
+     "cue": 0,
+     "scores": [
+      0.682
+     ]
+    },
+    {
+     "cue": 1,
+     "scores": [
+      0.0738,
+      0.0265
+     ]
+    }
+   ],
+   "own": [
+    "retake applied: Thanks for watching, and see you in the next, shroom cut.",
+    "retake applied: Oh, and one more thing, uh, shroom cut."
+   ],
+   "judged": [
+    "retake applied: Thanks for watching, and see you in the next, shroom cut.",
+    "retake applied: Oh, and one more thing, uh, shroom cut."
+   ],
+   "own_held": [],
+   "judged_held": []
+  },
+  {
+   "take": "wai-en_US-ryan-medium-8-reworded-redo",
+   "questions": [
+    {
+     "after": "To get your video, use this link and you'll see it right away.",
+     "candidates": [
+      "Click on this link and you will.",
+      "Hi, this is a quick test of the voice cut. Click on this link and you will."
+     ],
+     "cue": 0
+    }
+   ],
+   "answers": [
+    {
+     "cue": 0,
+     "scores": [
+      0.7876,
+      0.055
+     ]
+    }
+   ],
+   "own": [
+    "retake applied: Click on this link and you will. Shroom cut."
+   ],
+   "judged": [
+    "retake applied: Click on this link and you will. Shroom cut."
+   ],
+   "own_held": [],
+   "judged_held": []
+  },
+  {
+   "take": "wai-en_US-ryan-medium-9-clean-reworded",
+   "questions": [
+    {
+     "after": "To get your video, use this link and you'll see it right away.",
+     "candidates": [
+      "Click on this link to see it.",
+      "Hi, this is a quick test of the voice cut. Click on this link to see it."
+     ],
+     "cue": 0
+    }
+   ],
+   "answers": [
+    {
+     "cue": 0,
+     "scores": [
+      0.753,
+      0.0332
+     ]
+    }
+   ],
+   "own": [
+    "cue-only applied: Shroom cut.",
+    "line-before-cue offered: Click on this link to see it. Shroom cut."
+   ],
+   "judged": [
+    "retake applied: Click on this link to see it. Shroom cut."
+   ],
+   "own_held": [
+    "a slip only offered"
+   ],
+   "judged_held": []
+  }
+ ]
+}
