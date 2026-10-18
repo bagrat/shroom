@@ -1090,7 +1090,8 @@ fn editor_layout(d: &Drive) -> Result<serde_json::Value, String> {
         for (const t of ["pointerdown", "pointerup", "lostpointercapture", "click"]) addEventListener(t, (e) => window.__drive.presses.push(`${t} ${e.target.className?.baseVal ?? e.target.className} ${Math.round(e.clientX)},${Math.round(e.clientY)}`), true);
       }
       const r = (q) => { const e = document.querySelector(q); if (!e) return null; const b = e.getBoundingClientRect(); return [b.left, b.top, b.width, b.height]; };
-      return JSON.stringify({ track: r(".track"), chip: r(".chip button"), screen: r(".screen"), delete: r(".ask .b.filled"), pointer: window.__drive.at, presses: window.__drive.presses.slice(-12) });
+      const v = document.querySelector("video");
+      return JSON.stringify({ track: r(".track"), chip: r(".chip button"), screen: r(".screen"), delete: r(".ask .b.filled"), video: v ? [v.duration, v.readyState] : null, pointer: window.__drive.at, presses: window.__drive.presses.slice(-12) });
     })()"#;
     let w = d.app.get_webview_window(crate::runtime::presenter::EDITOR).ok_or("no editor window")?;
     let (tx, rx) = std::sync::mpsc::channel();
@@ -1315,8 +1316,20 @@ fn editor(d: &Drive) -> Result<(), String> {
     let row = |s: &Scene| s.library.as_ref().and_then(|l| l.body.rows.iter().find(|r| r.key == here.0)).map(|r| r.meta.clone()).unwrap_or_default();
     d.check("the Library row reads the edited length", row(&s).ends_with(&format!("· {len}")), format!("{} (want {len})", row(&s)));
 
-    // The copy is up: the window asks about the original (B197 (b)).
-    let s = d.wait("“Delete the original?”", 240, |s| s.editor.as_ref().is_some_and(|e| e.id == "editor-keep-original"))?;
+    // The copy is up: the window asks about the original (B197 (b)). Meanwhile its bar
+    // fills as the copy is cut and sent.
+    let shares = Mutex::new(Vec::<u8>::new());
+    let s = d.wait("“Delete the original?”", 240, |s| {
+        if let Some(shroom_core::scene::EditorAfterView::Making { pct, .. }) = s.editor.as_ref().and_then(|e| e.body.after.as_ref()) {
+            let mut v = shares.lock().unwrap();
+            if v.last() != Some(pct) {
+                v.push(*pct);
+            }
+        }
+        s.editor.as_ref().is_some_and(|e| e.id == "editor-keep-original")
+    })?;
+    let shares = shares.into_inner().unwrap();
+    d.check("the bar fills as the final video is made, forward only", shares.iter().any(|p| (1..100).contains(p)) && shares.windows(2).all(|w| w[0] < w[1]), format!("{shares:?}"));
     std::thread::sleep(Duration::from_millis(600));
     runner.shot(d, crate::runtime::presenter::EDITOR, "editor-asking")?;
     let asked = s.editor.as_ref().and_then(|e| match &e.body.after {
@@ -1399,6 +1412,9 @@ fn editor(d: &Drive) -> Result<(), String> {
     );
     let fetched_key = std::fs::read_to_string(edits.join(crate::runtime::editor::SOURCE_KEY)).unwrap_or_default();
     d.check("… from its own file, fetched — never the take's original", fetched_key.trim() == key("edit-1.mp4"), fetched_key);
+    // The window held the original under the same name: its page reads the new file.
+    let played = poll(10, || editor_layout(d).ok().and_then(|l| l.get("video")?.get(0)?.as_f64()).filter(|t| near(*t, want.1, 0.6)));
+    d.check("… and the window plays that file, not the one it held before", played.is_some(), format!("{:?}", editor_layout(d).ok().and_then(|l| l.get("video").cloned())));
     std::thread::sleep(Duration::from_secs(3));
     runner.shot(d, crate::runtime::presenter::EDITOR, "editor-baked")?;
     d.rt.post(Event::WindowClosed(WindowKind::Editor));
