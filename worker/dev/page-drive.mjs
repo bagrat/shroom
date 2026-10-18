@@ -40,7 +40,7 @@
 //   copy       with the single-file copy up, the page plays it and asks for no piece of the
 //              stream (DECISIONS B177); every check above plays the stream, as before it's up
 //   cuts       the owner page's voice cuts (N65, DECISIONS B200): under the player, a row per
-//              voice cut, an applied one struck through; Put back and Cut it too save at once,
+//              voice cut between the words around it, an applied one struck through; Put back and Cut it too save at once,
 //              the row then saying what it is and what plays reaching the player; a press
 //              that doesn't save leaves its row and says so; a recipient's page carries none
 //              of it; a page open while the cues are coming takes the strip in when they land
@@ -399,14 +399,15 @@ async function main() {
           cuts: [
             { id: "v1", start: 1.2, end: 3.4, kind: "retake", confidence: "high", applied: true, removed: WORDS.v1, resumes: "Hello, this is shroom." },
             { id: "v2", start: 12, end: 13.1, kind: "cue-only", confidence: "high", applied: true, removed: "Shroom cut.", resumes: "Let's move on to the Library." },
-            { id: "v3", start: 9.6, end: 13.1, kind: "line-before-cue", confidence: "low", applied: false, removed: `${WORDS.v3} Shroom cut.`, resumes: "Let's move on to the Library." },
+            { id: "v3", start: 9.6, end: 13.1, kind: "line-before-cue", confidence: "low", applied: false, leads: "The settings window has three tabs.", removed: `${WORDS.v3} Shroom cut.`, resumes: "Let's move on to the Library." },
           ] });
         const strip = () => page.evaluate(() => {
           const s = document.getElementById("cuts"), p = document.querySelector(".player");
           if (!s || s.hidden) return null;
           return {
             below: !!p && s.getBoundingClientRect().top >= p.getBoundingClientRect().bottom - 1,
-            rows: [...s.querySelectorAll("li")].map((li) => ({ id: li.dataset.cut, cls: li.className, button: li.querySelector("button").textContent, said: li.querySelector("q").textContent, struck: getComputedStyle(li.querySelector("q")).textDecorationLine.includes("line-through"), asks: li.querySelector(".why")?.getClientRects().length > 0 })),
+            rows: [...s.querySelectorAll("li")].map((li) => ({ id: li.dataset.cut, cls: li.className, button: li.querySelector("button").textContent, said: li.querySelector("q").textContent, struck: getComputedStyle(li.querySelector("q .w")).textDecorationLine.includes("line-through"),
+              around: [...li.querySelectorAll("q .by")].some((e) => getComputedStyle(e).textDecorationLine.includes("line-through")) ? "struck" : "plain", asks: li.querySelector(".why")?.getClientRects().length > 0 })),
             unsaved: !s.querySelector(".unsaved").hidden,
           };
         });
@@ -418,8 +419,11 @@ async function main() {
         await page.goto(`${origin}/${ids.cuts}`);
         await page.evaluate(() => { window.__keeps = []; document.addEventListener("shroom:keep", (e) => window.__keeps.push(e.detail)); });
         const shown = await strip();
-        check("cuts: under the player, a row per voice cut — an applied one struck through with Put back, the offered line with Cut it too",
-          !!shown?.below && same(shown.rows.map((r) => [r.id, r.cls, r.button, r.struck, r.said, r.asks]), [["v1", "cut on", COPY.putBack, true, `“${WORDS.v1}”`, false], ["v3", "cut offer", COPY.cutItToo, false, `“${WORDS.v3}”`, true]]), true, shown);
+        check("cuts: under the player, a row per voice cut — an applied one struck through with Put back, the offered line with Cut it too, each between the words around it, unstruck",
+          !!shown?.below && same(shown.rows.map((r) => [r.id, r.cls, r.button, r.struck, r.around, r.said, r.asks]), [
+            ["v1", "cut on", COPY.putBack, true, "plain", `“${WORDS.v1} Hello, this is shroom.”`, false],
+            ["v3", "cut offer", COPY.cutItToo, false, "plain", `“…The settings window has three tabs. ${WORDS.v3} Let's move on to the Library.”`, true],
+          ]), true, shown);
         await shot("owner-cuts");
         await page.emulateMedia({ colorScheme: "dark" });
         await shot("owner-cuts-dark");

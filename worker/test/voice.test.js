@@ -36,9 +36,9 @@ const EDITS = {
   voice: { planned_at: NOW - 60_000, cues: 3 },
   cuts: [
     { id: "v1", start: 4.1, end: 7.5, kind: "retake", confidence: "high", applied: true, removed: "Hello, that is shroom. Shroom cut.", resumes: "Hello, this is shroom." },
-    { id: "v2", start: 72.0, end: 76.1, kind: "retake", confidence: "high", applied: true, removed: "Then you pick the, the window you, um, shroom cut.", resumes: "So, then you pick the window" },
-    { id: "v3", start: 165.0, end: 167.0, kind: "cue-only", confidence: "high", applied: true, removed: "Shroom cut.", resumes: "Let's move on to the Library" },
-    { id: "v4", start: 160.4, end: 167.0, kind: "line-before-cue", confidence: "low", applied: false, removed: "The second one is, um, I forget what it's called. Shroom cut.", resumes: "Let's move on to the Library" },
+    { id: "v2", start: 72.0, end: 76.1, kind: "retake", confidence: "high", applied: true, leads: "the mushroom in the menu bar.", removed: "Then you pick the, the window you, um, shroom cut.", resumes: "So, then you pick the window" },
+    { id: "v3", start: 165.0, end: 167.0, kind: "cue-only", confidence: "high", applied: true, leads: "um, I forget what it's called.", removed: "Shroom cut.", resumes: "Let's move on to the Library." },
+    { id: "v4", start: 160.4, end: 167.0, kind: "line-before-cue", confidence: "low", applied: false, leads: "The settings window has three tabs.", removed: "The second one is, um, I forget what it's called. Shroom cut.", resumes: "Let's move on to the Library." },
     { id: "m1", start: 100.0, end: 106.0, kind: "manual", confidence: "high", applied: true, removed: "" },
   ],
 };
@@ -62,6 +62,9 @@ const post = (env, path, body, cookie, origin = HOST) =>
 const stored = (env) => JSON.parse(new TextDecoder().decode(env.BUCKET.store.get(`meta/${ID}.json`)));
 const page = async (env, cookie) => (await req(env, `/${ID}`, cookie ? { headers: { cookie } } : {})).text();
 const WORDS_CUT = EDITS.cuts.map((c) => c.removed).filter(Boolean);
+/** A row's quoted words, as read: the cut's own (`.w`) between the words around it (`.by`). */
+const quoted = (row) => (row.match(/<q>([\s\S]*?)<\/q>/)?.[1] ?? "").replace(/<[^>]+>/g, "").replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, "&");
+const own = (row) => (row.match(/<span class="w">([\s\S]*?)<\/span>/)?.[1] ?? "").replace(/&#39;/g, "'");
 
 beforeEach(() => forgetSecret());
 
@@ -73,12 +76,17 @@ describe("the owner page shows the voice cuts under the player (owner-page-cuts)
     expect(body).toContain(html(say("only-you-see-this")));
     // The strip sits under the player, before the upload line.
     expect(body.indexOf('class="cuts"')).toBeGreaterThan(body.indexOf('class="player"'));
-    // Each retake is struck, with Put back; times are on the video (m:ss).
-    for (const [id, at, words] of [["v1", "0:04", "Hello, that is shroom. Shroom cut."], ["v2", "1:12", "Then you pick the, the window you, um, shroom cut."]]) {
+    // Each retake is struck, with Put back; times are on the video (m:ss). Its words sit between
+    // a few of what plays around it, unstruck: six at most either side, “…” where more were said.
+    for (const [id, at, words, read] of [
+      ["v1", "0:04", "Hello, that is shroom. Shroom cut.", "“Hello, that is shroom. Shroom cut. Hello, this is shroom.”"],
+      ["v2", "1:12", "Then you pick the, the window you, um, shroom cut.", "“…the mushroom in the menu bar. Then you pick the, the window you, um, shroom cut. So, then you pick the window…”"],
+    ]) {
       const row = body.match(new RegExp(`<li[^>]*data-cut="${id}"[^>]*>[\\s\\S]*?</li>`))?.[0] ?? "";
       expect(row, id).toContain('class="cut on"');
       expect(row).toContain(at);
-      expect(row).toContain(html(`“${words}”`));
+      expect(own(row), id).toBe(words);
+      expect(quoted(row), id).toBe(read);
       expect(row).toContain(`>${html(say("put-back"))}</button>`);
     }
   });
@@ -90,8 +98,10 @@ describe("the owner page shows the voice cuts under the player (owner-page-cuts)
     expect(offer).toContain('class="cut offer"');
     expect(offer).toContain(html(say("only-the-words-went")));
     expect(offer).toContain(`>${html(say("cut-it-too"))}</button>`);
-    // The offered line is shown without the cue's own words, which are already gone.
-    expect(offer).toContain(html("“The second one is, um, I forget what it's called.”"));
+    // The offered line is shown without the cue's own words, which are already gone, between
+    // what leads into it and what plays after the cue; a sentence's end needs no “…”.
+    expect(own(offer)).toBe("The second one is, um, I forget what it's called.");
+    expect(quoted(offer)).toBe("“…The settings window has three tabs. The second one is, um, I forget what it's called. Let's move on to the Library.”");
     // The cue's own cut rides on its offer: no row of its own.
     expect(body).not.toMatch(/data-cut="v3"/);
   });
@@ -135,6 +145,7 @@ describe("viewers get the cut video, and nothing else", () => {
     expect(body).not.toContain(html(say("cut-where-you-said")));
     for (const words of WORDS_CUT) expect(body).not.toContain(html(words));
     expect(body).not.toContain("resumes");
+    expect(body).not.toContain(html("the mushroom in the menu bar."));
   });
 
   it("nor does a member's page for a video they didn't make, nor the embed", async () => {
