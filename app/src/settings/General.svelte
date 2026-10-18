@@ -71,8 +71,6 @@
     </div>
   </div>
   {#if g.sent}<p class="sent" role="status">{g.sent}</p>{/if}
-    </div>
-  {/if}
   <p class="help">
     {#each help as part}{#if typeof part === "string"}{part}{:else}<button
           type="button"
@@ -109,6 +107,8 @@
           <span class="used">{v.used}</span>
         </div>
       {/if}
+    </div>
+  {/if}
   <!-- Uninstall shroom…, quiet text at the tab's foot (B135); greyed mid-take with its line. -->
   <div class="uninstall"><Btn b={g.uninstall} {send} /></div>
 </section>
