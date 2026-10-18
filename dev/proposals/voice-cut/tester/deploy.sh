@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Deploys the "shroom cut" tester to the Cloudflare TEST account as the Worker
-# poc-voice-cut-tester, under a new throwaway key, and prints the link to open.
-# Needs SHROOM_E2E_TOKEN and SHROOM_E2E_ACCOUNT_ID in the environment (never on a command
-# line). `deploy.sh down` deletes it.
+# poc-voice-cut-tester, under a new throwaway key (or TESTER_KEY's, so a link already
+# handed out keeps working), and prints the link to open. Needs SHROOM_E2E_TOKEN and
+# SHROOM_E2E_ACCOUNT_ID in the environment (never on a command line). `deploy.sh down`
+# deletes it.
 set -euo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
 name=poc-voice-cut-tester
@@ -18,7 +19,7 @@ fi
 (cd "$here/wasm" && cargo build -q --release --target wasm32-unknown-unknown)
 work=$(mktemp -d); trap 'rm -rf "$work"' EXIT
 cp "$here/wasm/target/wasm32-unknown-unknown/release/shroom_cut_wasm.wasm" "$work/planner.wasm"
-key=$(python3 -c 'import secrets; print(secrets.token_urlsafe(18))')
+key=${TESTER_KEY:-$(python3 -c 'import secrets; print(secrets.token_urlsafe(18))')}
 KEY="$key" python3 - "$work/meta.json" <<'PY'
 import json, os, sys
 json.dump({"main_module": "worker.js", "compatibility_date": "2026-09-01",
