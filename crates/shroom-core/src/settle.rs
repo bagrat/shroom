@@ -36,18 +36,35 @@ pub fn settle(w: &World) -> Vec<Effect> {
     due_cleanup(w, &mut fx);
     due_sleep_ack(w, &mut fx);
     due_edit_copy(w, &mut fx);
+    due_edit_upkeep(w, &mut fx);
     fx
 }
 
 /// A saved edit's permanent copy (N63, B195 (f)): owed copies are cut one at a time, never
-/// over a take — the Mac's encoder and its bandwidth are the take's — never offline, and a
-/// copy that didn't come out holds the next back by its backoff.
+/// over a take — the Mac's encoder and its bandwidth are the take's — never offline, never
+/// while the upkeep holds the editor's lane, and a copy that didn't come out holds the next
+/// back by its backoff.
 fn due_edit_copy(w: &World, fx: &mut Vec<Effect>) {
-    if w.take_open() || w.online() == Some(false) || !w.provisioned() || !idle(w, Op::EditorCopy) {
+    if w.take_open() || w.online() == Some(false) || !w.provisioned() || !idle(w, Op::EditorCopy) || w.inflight.ops.contains_key(&Op::EditorUpkeep) {
         return;
     }
     if let Some((rec, c)) = w.library_ops.copies.iter().find(|(_, c)| !c.asked) {
         fx.push(Effect::Editor(EditCmd::Copy { rec: rec.clone(), rev: c.rev }));
+    }
+}
+
+/// The editor's upkeep (B197 (d)): on every Mac, once a launch and then on the cleanup
+/// sweep's cadence, this Mac's originals past their two days are baked and the copies its
+/// edits are missing made — the lane decides which. Never over a take (the encoder and the
+/// bandwidth are the take's), never offline, never while the editor is open (it may be on
+/// one of them) or while the editor's lane runs anything else; one that couldn't run waits
+/// for the next turn.
+fn due_edit_upkeep(w: &World, fx: &mut Vec<Effect>) {
+    let Some(at) = crate::derive::next_upkeep(w) else { return };
+    let lane_busy = [Op::EditorOpen, Op::EditorSave, Op::EditorCopy, Op::EditorUpkeep].iter().any(|op| w.inflight.ops.contains_key(op));
+    let owed = w.library_ops.copies.values().any(|c| !c.asked);
+    if w.now >= at && !w.take_open() && w.online() != Some(false) && w.session.fields.editor.is_none() && !lane_busy && !owed {
+        fx.push(Effect::Editor(EditCmd::Upkeep));
     }
 }
 

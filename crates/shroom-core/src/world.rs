@@ -613,6 +613,9 @@ pub struct LibraryOps {
     /// When the token Mac's cleanup sweep last answered (DECISIONS B91): bytes under a
     /// tombstone, bytes no Mac can still finish, and spent or expired page keys reaped.
     pub cleaned: Option<Mono>,
+    /// When the editor's upkeep last answered (B197 (d)): originals kept past their two days
+    /// baked, and copies an edit is missing made.
+    pub upkept: Option<Mono>,
 }
 
 /// A permanent copy owed (N63): the saved revision to cut, and whether the editor lane was
@@ -911,6 +914,9 @@ pub enum Op {
     EditorSave,
     /// A saved revision's permanent copy cut, put up and named in the record.
     EditorCopy,
+    /// The upkeep (B197 (d)): this Mac's videos past their two days baked, their missing
+    /// copies made.
+    EditorUpkeep,
 }
 
 impl Op {
@@ -937,6 +943,8 @@ impl Op {
             Op::EditorOpen => 1_800_000,
             Op::EditorSave => 60_000,
             Op::EditorCopy => 3_600_000,
+            // Bakes are record writes and deletes; a missing copy is a copy's re-encode.
+            Op::EditorUpkeep => 3_600_000,
         }
     }
 

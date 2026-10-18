@@ -448,10 +448,11 @@ pub fn failure_state(id: &str) -> bool {
 }
 
 /// The background work law 12 lets go quietly once nothing wants it any more: reads, the
-/// uploader, and a saved edit's permanent copy (N63: the save the person asked for has
-/// landed; the page plays the saved list over the original until a copy is up) — never a
-/// write a person asked for.
-const BACKGROUND: &[Op] = &[Op::Standing, Op::Roster, Op::Peek, Op::LibCache, Op::LibRefresh, Op::Reach, Op::Sweep, Op::Refresh, Op::UpdateCheck, Op::UpdateDownload, Op::Upload, Op::EditorCopy];
+/// uploader, a saved edit's permanent copy (N63: the save the person asked for has
+/// landed; the page plays the saved list over the original until a copy is up) and the
+/// editor's upkeep (B197 (d): the next turn bakes and copies what this one didn't) — never
+/// a write a person asked for.
+const BACKGROUND: &[Op] = &[Op::Standing, Op::Roster, Op::Peek, Op::LibCache, Op::LibRefresh, Op::Reach, Op::Sweep, Op::Refresh, Op::UpdateCheck, Op::UpdateDownload, Op::Upload, Op::EditorCopy, Op::EditorUpkeep];
 
 /// An op whose failure another op covers, with why.
 const COVERED: &[(Op, Op, &str)] = &[(Op::LibCache, Op::LibRefresh, "the remembered list is a head start; the bucket refresh fills the same list")];

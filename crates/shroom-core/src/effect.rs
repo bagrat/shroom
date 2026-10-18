@@ -60,6 +60,7 @@ impl Effect {
             Effect::Editor(EditCmd::Open { .. }) => Some(Op::EditorOpen),
             Effect::Editor(EditCmd::Save { .. }) => Some(Op::EditorSave),
             Effect::Editor(EditCmd::Copy { .. }) => Some(Op::EditorCopy),
+            Effect::Editor(EditCmd::Upkeep) => Some(Op::EditorUpkeep),
             _ => None,
         }
     }
@@ -262,6 +263,10 @@ pub enum EditCmd {
     /// copy's files, then the original's go. Answers nothing: one that doesn't land is baked
     /// by an upkeep once its two days are up.
     Bake { rec: RecId },
+    /// The upkeep (B197 (d)): bake this Mac's videos whose original is past `keep_until`,
+    /// make the copies its edits are missing — the lane decides which. Answers
+    /// `UpkeepDone` — or `Failed { op: EditorUpkeep }`.
+    Upkeep,
 }
 
 /// The updater (`shroom-update`, B31).

@@ -453,6 +453,8 @@ pub enum EditorNews {
     Making { rec: RecId, pct: u8 },
     /// The permanent copy of this revision is up (or was dropped: a newer save came first).
     CopyDone { rec: RecId, rev: u64 },
+    /// The upkeep answered (B197 (d)): how many originals it baked, how many copies it made.
+    UpkeepDone { baked: u32, copies: u32 },
 }
 
 /// What the shell says about a report (B180).

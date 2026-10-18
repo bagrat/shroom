@@ -238,8 +238,8 @@ fn lane_fails(op: Op) -> &'static [FailClass] {
         Op::LibRefresh | Op::Rename | Op::Delete | Op::UpdateCheck | Op::UpdateDownload | Op::UpdateApply => FAIL_CLASSES,
         // The token Mac's cleanup sweep (B91): the Library lane's classes.
         Op::Cleanup => FAIL_CLASSES,
-        // The editor lane (N63): the record, the video, the save and the copy.
-        Op::EditorOpen | Op::EditorSave | Op::EditorCopy => FAIL_CLASSES,
+        // The editor lane (N63, B197): the record, the video, the save, the copy, the upkeep.
+        Op::EditorOpen | Op::EditorSave | Op::EditorCopy | Op::EditorUpkeep => FAIL_CLASSES,
         // No space on this Mac is the cache read's one failure.
         Op::LibCache => &[FailClass::Refused],
         Op::Upload => &[FailClass::Transport, FailClass::Refused],

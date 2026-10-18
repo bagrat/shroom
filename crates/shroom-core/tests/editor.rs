@@ -1,8 +1,9 @@
-//! The editor (spec N63, DECISIONS B195) and markers (N64, B196): Edit… on a live Library
-//! row, the editor window's five faces, its steps and their undo, Done's save and the
-//! permanent copy it asks for, the record's answers and failures, and the markers a take
-//! drops — every step through `Run::send`, the laws, the entry oracle and the machine's
-//! edges checked at each.
+//! The editor (spec N63, DECISIONS B195, B197) and markers (N64, B196): Edit… on a live
+//! Library row, the editor window's faces, its steps and their undo, Done's save, the final
+//! video it then makes and the question of the original, the time a kept original has left,
+//! the record's answers and failures, every Mac's upkeep, and the markers a take drops —
+//! every step through `Run::send`, the laws, the entry oracle and the machine's edges
+//! checked at each.
 
 #[path = "common/laws.rs"]
 mod laws;
@@ -1036,6 +1037,146 @@ fn a_suggestion_offers_cut_it_too() {
     assert!(!list(&r).cuts[1].applied);
     r.op(EditOp::Apply { index: 1 });
     assert!(list(&r).cuts[1].applied, "it's cut, red");
+}
+
+// ── the upkeep (B197 (d)) ──
+
+/// A Mac booted in a space: the launch's version known (the upkeep's cadence starts at boot).
+fn booted() -> World {
+    let mut w = ready();
+    w.launch.version = "1.3.0".into();
+    w.once.seen_version = Some("1.3.0".into());
+    w
+}
+
+fn upkeeps(r: &Run) -> bool {
+    r.has(|e| *e == Effect::Editor(EditCmd::Upkeep))
+}
+
+/// Once a launch, at once, then every six hours awake after the last one answered: the
+/// lane bakes and copies what it finds; nothing on screen moves.
+#[test]
+fn the_upkeep_runs_once_a_launch_then_every_six_hours() {
+    let mut r = Run::new(booted());
+    r.send(Event::Tick);
+    assert!(upkeeps(&r), "at launch: {:?}", r.effects);
+    assert_eq!(r.w.inflight.ops.get(&Op::EditorUpkeep), Some(&Mono(r.t + 3_600_000)), "an hour, a copy's length");
+    let before = r.scene.clone();
+    r.news(EditorNews::UpkeepDone { baked: 2, copies: 1 });
+    assert_eq!(r.arm.name, "editor-upkept");
+    assert!(r.effects.is_empty());
+    assert_eq!(r.scene.state_ids(), before.state_ids(), "nothing on screen moves");
+    let done = r.t;
+    assert!(r.scene.next_wake.is_some_and(|t| t.0 <= done + 6 * HOUR as u64));
+    r.tick_to(done + 6 * HOUR as u64 - 1_000);
+    assert!(!upkeeps(&r), "not before six hours");
+    r.tick_to(done + 6 * HOUR as u64);
+    assert!(upkeeps(&r), "six hours on: {:?}", r.effects);
+    // Not before a space, nor before the launch is known.
+    let mut w = booted();
+    w.space.identity = None;
+    w.space.token = false;
+    let mut r = Run::new(w);
+    r.send(Event::Tick);
+    assert!(!upkeeps(&r));
+    let mut r = Run::new(ready());
+    r.send(Event::Tick);
+    assert!(!upkeeps(&r), "not booted yet");
+}
+
+/// Never over a take, never offline, never while the editor is open or its lane runs
+/// anything else — each waits, then the upkeep runs.
+#[test]
+fn the_upkeep_waits_for_the_take_the_network_and_the_editor() {
+    // A take open: after it.
+    let mut w = booted();
+    w.take = Some(take(Phase::Recording, 10_000));
+    let mut r = Run::new(w);
+    r.send(Event::Tick);
+    assert!(!upkeeps(&r), "never mid-take");
+    r.click();
+    r.send(Event::Rec(RecNews::Paused { length_ms: 10_000 }));
+    r.act(Action::Discard);
+    r.act(Action::ConfirmDiscard);
+    assert!(upkeeps(&r), "the take is over: {:?}", r.effects);
+
+    // Offline: once back.
+    let mut w = booted();
+    w.net.online = Fact::known(false, Mono(0));
+    let mut r = Run::new(w);
+    r.send(Event::Tick);
+    assert!(!upkeeps(&r), "never offline");
+    r.send(Event::Os(shroom_core::event::OsNews::NetPath(true)));
+    assert!(upkeeps(&r), "back online: {:?}", r.effects);
+
+    // The editor open: once it closes.
+    let mut w = booted();
+    w.library_ops.upkept = Some(Mono(0));
+    w.session.windows.insert(WindowKind::Library, Door::asked(Mono(900)));
+    w.library = Fact::known(Arc::new(vec![row(REC, TITLE, true, "m1")]), Mono(950));
+    w.library_ops.refreshed = Some(Mono(950));
+    let mut r = Run::new(w);
+    r.lib(Action::EditRow(rec()));
+    r.news(EditorNews::Opened { rec: rec(), saved: None, markers: vec![], duration_sec: Some(272.4), keep_until: None });
+    r.news(EditorNews::Ready { rec: rec(), duration: 272.4 });
+    r.tick_to(6 * HOUR as u64 + 1_000);
+    assert!(!upkeeps(&r), "never while the editor is open");
+    r.ed(Action::EditorDone);
+    assert!(r.scene.editor.is_none());
+    assert!(upkeeps(&r), "the editor closed: {:?}", r.effects);
+
+    // The lane busy with a copy: after it — and a copy owed goes first.
+    let mut w = booted();
+    w.library_ops.copies.insert(rec(), CopyOwed { rev: 4, asked: false });
+    let mut r = Run::new(w);
+    r.send(Event::Tick);
+    assert!(r.has(|e| matches!(e, Effect::Editor(EditCmd::Copy { .. }))) && !upkeeps(&r), "one lane step at a time: {:?}", r.effects);
+    r.news(EditorNews::CopyDone { rec: rec(), rev: 4 });
+    assert!(upkeeps(&r), "the copy is up: {:?}", r.effects);
+    // …and while the upkeep runs, an owed copy waits for it.
+    let mut w = r.w.clone();
+    w.library_ops.copies.insert(RecId(OTHER.into()), CopyOwed { rev: 1, asked: false });
+    let mut r = Run::new(w);
+    r.send(Event::Tick);
+    assert!(!r.has(|e| matches!(e, Effect::Editor(EditCmd::Copy { .. }))), "the upkeep holds the lane");
+    r.news(EditorNews::UpkeepDone { baked: 0, copies: 0 });
+    assert!(r.has(|e| matches!(e, Effect::Editor(EditCmd::Copy { .. }))), "{:?}", r.effects);
+}
+
+/// An upkeep that couldn't run is noted and tried at the next turn — six hours on, not at a
+/// backoff; one asked before this Mac left its space answers no one.
+#[test]
+fn a_failed_upkeep_waits_for_the_next_turn() {
+    let mut r = Run::new(booted());
+    r.send(Event::Tick);
+    assert!(upkeeps(&r));
+    r.send(Event::Failed { op: Op::EditorUpkeep, class: FailClass::Transport });
+    let failed = r.t;
+    assert!(r.w.inflight.failures.contains_key(&Op::EditorUpkeep), "noted");
+    assert!(r.scene.editor.is_none() && r.scene.popover.is_none(), "nothing on screen");
+    let backoff = r.w.inflight.failures[&Op::EditorUpkeep].retry_at();
+    r.tick_to(backoff.0 + 1_000);
+    assert!(!upkeeps(&r), "not at a backoff");
+    r.tick_to(failed + 6 * HOUR as u64);
+    assert!(upkeeps(&r), "the next turn: {:?}", r.effects);
+    r.news(EditorNews::UpkeepDone { baked: 1, copies: 0 });
+    assert!(!r.w.inflight.failures.contains_key(&Op::EditorUpkeep));
+    // One that never answers fails at its deadline the same way.
+    let mut r = Run::new(booted());
+    r.send(Event::Tick);
+    let deadline = r.w.inflight.ops[&Op::EditorUpkeep];
+    r.tick_to(deadline.0 + 10);
+    assert!(r.w.inflight.failures.contains_key(&Op::EditorUpkeep) && !upkeeps(&r));
+    // A late answer with nothing asked is stale.
+    let mut r = Run::new(booted());
+    r.news(EditorNews::UpkeepDone { baked: 0, copies: 0 });
+    assert_eq!(r.arm.name, "editor-stale");
+}
+
+#[test]
+fn the_upkeeps_deadline_is_an_hour() {
+    assert_eq!(Op::EditorUpkeep.deadline_ms(), 3_600_000);
+    assert_eq!(shroom_core::derive::UPKEEP_MS, 6 * HOUR as u64);
 }
 
 // ── leaving ──

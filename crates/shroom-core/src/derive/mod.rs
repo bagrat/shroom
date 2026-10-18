@@ -134,6 +134,24 @@ pub fn next_cleanup(w: &World) -> Option<Mono> {
     })
 }
 
+/// How often every Mac's editor upkeep runs (B197 (d)): with the cleanup sweep's cadence —
+/// six hours of awake time — after the last one that answered or couldn't run.
+pub const UPKEEP_MS: u64 = CLEANUP_MS;
+
+/// When the editor's upkeep is due (B197 (d)): once a launch — at once, booted on a Mac in a
+/// space — then `UPKEEP_MS` after the last one (fail-soft: one that couldn't run waits as
+/// long). Every Mac, token or not: each bakes and copies its own videos.
+pub fn next_upkeep(w: &World) -> Option<Mono> {
+    if !w.provisioned() || w.launch.version.is_empty() {
+        return None;
+    }
+    let failed = w.inflight.failures.get(&Op::EditorUpkeep).map(|f| f.at);
+    Some(match w.library_ops.upkept.max(failed) {
+        Some(t) => t.plus(UPKEEP_MS),
+        None => Mono(0),
+    })
+}
+
 /// When the token Mac's page refresh is due (§6.10, B50): once a launch, an hour after one
 /// that couldn't run. Only once booted, provisioned, on the Mac that keeps the token.
 pub fn next_refresh(w: &World) -> Option<Mono> {
@@ -239,6 +257,7 @@ fn next_wake(w: &World) -> Option<Mono> {
     wakes.extend(next_self_check(w));
     wakes.extend(next_refresh(w));
     wakes.extend(next_cleanup(w));
+    wakes.extend(next_upkeep(w));
     // The editor's time-left line by Revert changes its words (B197 (e)).
     editor::wakes(w, &mut wakes);
     // macOS waits on the will-sleep answer: it goes at the hold's end at the latest.

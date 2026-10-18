@@ -2025,11 +2025,12 @@ fn close_after_save(w: &mut World) -> Out {
 }
 
 /// The space is left (Disconnect, Leave, a switch): the editor closes with it, a video still
-/// coming stops, and a save or a copy in flight was the old space's — its answer is stale.
+/// coming stops, and a save, a copy or an upkeep in flight was the old space's — its answer
+/// is stale.
 fn leave_editor(w: &mut World) -> Vec<Effect> {
     let coming = w.session.fields.editor.as_ref().is_some_and(|e| !crate::derive::editor::ready(e));
     let fx = close_editor(w, coming);
-    for op in [Op::EditorSave, Op::EditorCopy] {
+    for op in [Op::EditorSave, Op::EditorCopy, Op::EditorUpkeep] {
         w.inflight.ops.remove(&op);
         w.inflight.failures.remove(&op);
     }
@@ -2211,6 +2212,16 @@ fn editor_news(w: &mut World, news: EditorNews) -> Out {
                 return (vec![], Arm { name: "editor-copied", edge: Some(("editor-making", "editor-keep-original")) });
             }
             (vec![], Arm::named("editor-copied"))
+        }
+        EditorNews::UpkeepDone { .. } => {
+            // Nothing on screen moves: the next one is due `UPKEEP_MS` from now. One asked
+            // before this Mac left its space is stale.
+            if !w.inflight.ops.contains_key(&Op::EditorUpkeep) {
+                return stale();
+            }
+            answered(w, Op::EditorUpkeep);
+            w.library_ops.upkept = Some(now);
+            (vec![], Arm::named("editor-upkept"))
         }
     }
 }
