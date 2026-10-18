@@ -70,3 +70,48 @@ fn no_other_refusal_carries_the_link() {
         assert!(!v["message"].as_str().unwrap().contains(LINK), "{code}: {v}");
     }
 }
+
+/// Runs `shroom record start` and `flags` against a stand-in app that answers ok with `take`:
+/// what the app heard, and what the command said.
+fn started(take: &str, flags: &[&str]) -> (String, Output) {
+    let tmp = tempfile::tempdir().unwrap();
+    let home = tmp.path();
+    let listener = UnixListener::bind(home.join("control.sock")).unwrap();
+    let answer = format!("{{\"ok\":true,\"take\":\"{take}\"}}\n");
+    let app = std::thread::spawn(move || {
+        let (mut s, _) = listener.accept().unwrap();
+        let mut ask = String::new();
+        BufReader::new(s.try_clone().unwrap()).read_line(&mut ask).unwrap();
+        s.write_all(answer.as_bytes()).unwrap();
+        ask
+    });
+    let out = run(home, &[&["record", "start", "--no-launch"], flags].concat());
+    (app.join().unwrap(), out)
+}
+
+/// Bagrat, 2026-10-18 (N62, B216): `--no-countdown` and `--no-label` ride on the ask; the
+/// default asks nothing more, so the app's defaults (the count, the label) hold.
+#[test]
+fn no_countdown_and_no_label_ride_on_the_ask() {
+    let (ask, out) = started("recording", &["--no-countdown", "--no-label", "--json"]);
+    let v: Value = serde_json::from_str(ask.trim()).unwrap();
+    assert_eq!((v["op"].as_str(), v["countdown"].as_bool(), v["label"].as_bool()), (Some("record.start"), Some(false), Some(false)), "{v}");
+    assert_eq!(out.status.code(), Some(0));
+    let j: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(j["take"], "recording");
+    let (ask, _) = started("countdown", &["--json"]);
+    let v: Value = serde_json::from_str(ask.trim()).unwrap();
+    assert!(v.get("countdown").is_none() && v.get("label").is_none(), "the default asks nothing more: {v}");
+    let (ask, _) = started("countdown", &["--no-label", "--json"]);
+    let v: Value = serde_json::from_str(ask.trim()).unwrap();
+    assert_eq!((v.get("countdown"), v["label"].as_bool()), (None, Some(false)), "{v}");
+}
+
+#[test]
+fn a_person_reads_whether_it_records_now_or_after_the_count() {
+    let (_, out) = started("recording", &["--no-countdown"]);
+    assert_eq!(String::from_utf8_lossy(&out.stdout).trim(), "Recording now.");
+    let (_, out) = started("countdown", &[]);
+    assert_eq!(String::from_utf8_lossy(&out.stdout).trim(), "Recording starts after the countdown.");
+}
+

@@ -92,6 +92,7 @@ fn projection_fields(w: &World) {
         session: _,        // walked: fork, chapter, the name field, settings.add_token/fresh, door asked;
                            // (popover/tray) the popover's door, its questions, the last stop, the countdown
         display_pick: _,   // fixed: no click's display, no hand pick (region3.rs walks N56)
+        agent: _,          // fixed: no take the command started (cli.rs walks its label)
     } = w;
 }
 

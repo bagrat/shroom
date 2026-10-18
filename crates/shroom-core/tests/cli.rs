@@ -10,7 +10,8 @@ mod support;
 
 use shroom_core::effect::{CliAnswer, Effect, PersistOp, PublicUrl, ShellCmd};
 use shroom_core::derive::LIT_MS;
-use shroom_core::event::{CliOp, Event, SettingsSpot, Surface};
+use shroom_core::effect::RecCmd;
+use shroom_core::event::{CliOp, Event, RecNews, SettingsSpot, StartAsk, Surface};
 use shroom_core::scene::{Action, SettingsPane};
 use shroom_core::world::{Cause, Why};
 use shroom_core::time::Mono;
@@ -39,7 +40,7 @@ fn allowed() -> World {
 fn the_switch_is_off_by_default_and_every_ask_is_refused_while_it_is() {
     assert!(!Prefs::default().agent_recording);
     let mut r = Run::new(ready());
-    for (id, op) in [(1, CliOp::Start), (2, CliOp::Pause), (3, CliOp::Resume), (4, CliOp::Stop)] {
+    for (id, op) in [(1, CliOp::START), (2, CliOp::Pause), (3, CliOp::Resume), (4, CliOp::Stop)] {
         let a = ask(&mut r, id, op);
         assert_eq!((a.ok, a.error), (false, Some("recording_off")));
     }
@@ -49,12 +50,12 @@ fn the_switch_is_off_by_default_and_every_ask_is_refused_while_it_is() {
 #[test]
 fn start_is_the_popovers_start_its_countdown_and_all() {
     let mut r = Run::new(allowed());
-    let a = ask(&mut r, 7, CliOp::Start);
+    let a = ask(&mut r, 7, CliOp::START);
     assert_eq!((a.ok, a.take, a.error), (true, "countdown", None));
     assert!(r.w.session.arming.is_some(), "the count runs, as after a click on Start");
     assert!(r.w.session.popover.is_none(), "no popover left open by the ask");
     // A second start while the count runs is a take already open.
-    let b = ask(&mut r, 8, CliOp::Start);
+    let b = ask(&mut r, 8, CliOp::START);
     assert_eq!(b.error, Some("take_open"));
 }
 
@@ -146,7 +147,7 @@ fn every_ask_in_every_moment_is_answered_once_as_its_click() {
     let mut no_space_off = ready();
     no_space_off.space.identity = None;
     let mut counting = Run::new(allowed());
-    counting.send(Event::Cli { id: 99, op: CliOp::Start });
+    counting.send(Event::Cli { id: 99, op: CliOp::START });
     assert!(counting.w.session.arming.is_some(), "the count runs");
     let mut open = Run::new(allowed());
     open.click();
@@ -173,7 +174,7 @@ fn every_ask_in_every_moment_is_answered_once_as_its_click() {
         ("stopping", with(Phase::Finalizing(Why::Stop)), ["busy"; 4]),
     ];
     for (moment, base, want) in table {
-        for (i, op) in [CliOp::Start, CliOp::Pause, CliOp::Resume, CliOp::Stop].into_iter().enumerate() {
+        for (i, op) in [CliOp::START, CliOp::Pause, CliOp::Resume, CliOp::Stop].into_iter().enumerate() {
             let mut r = base.clone_run();
             let a = ask(&mut r, 10 + i as u64, op);
             assert_eq!(heard(&a), want[i], "{moment}, {op:?}");
@@ -188,12 +189,12 @@ fn every_ask_in_every_moment_is_answered_once_as_its_click() {
 fn start_names_the_edge_it_takes() {
     let mut r = Run::new(allowed());
     assert!(r.ids().contains(&"idle-ready"), "{:?}", r.ids());
-    ask(&mut r, 1, CliOp::Start);
+    ask(&mut r, 1, CliOp::START);
     assert_eq!(r.arm.edge, Some(("idle-ready", "countdown")));
     let mut r = Run::new(allowed());
     r.click();
     assert!(r.ids().contains(&"config"), "{:?}", r.ids());
-    ask(&mut r, 2, CliOp::Start);
+    ask(&mut r, 2, CliOp::START);
     assert_eq!(r.arm.edge, Some(("config", "countdown")));
 }
 
@@ -207,7 +208,7 @@ fn turned_off_again_every_ask_is_refused_again() {
     r.send(Event::Act { surface: Surface::Settings, action: Action::SetAgentRecording(false), rev: 0 });
     assert!(!r.w.prefs.agent_recording);
     assert!(r.effects.iter().any(|e| matches!(e, Effect::Persist(PersistOp::Prefs(p)) if !p.agent_recording)), "kept for the next launch");
-    assert_eq!(ask(&mut r, 1, CliOp::Start).error, Some("recording_off"));
+    assert_eq!(ask(&mut r, 1, CliOp::START).error, Some("recording_off"));
 }
 
 /// A stop while recording, not paused, is the take's own stop: the machine's edge
@@ -271,7 +272,7 @@ fn the_link_opens_general_at_the_switch_lit_and_flips_nothing() {
     assert!(!general(&r).agent.lit, "out after {LIT_MS} ms");
     assert!(r.scene.settings.is_some());
     // The command's next ask is still refused: the link changed nothing.
-    assert_eq!(ask(&mut r, 1, CliOp::Start).error, Some("recording_off"));
+    assert_eq!(ask(&mut r, 1, CliOp::START).error, Some("recording_off"));
 }
 
 /// Settings open on another tab: the link takes it to General, as a click on the tab would,
@@ -311,7 +312,7 @@ fn mid_take_the_link_opens_nothing() {
     assert!(r.scene.settings.is_none() && !r.has(|e| matches!(e, Effect::Shell(ShellCmd::OpenSettings))), "{:?}", r.effects);
     assert_eq!(r.arm.name, "dropped");
     let mut r = Run::new(allowed());
-    ask(&mut r, 1, CliOp::Start);
+    ask(&mut r, 1, CliOp::START);
     assert!(r.w.session.arming.is_some(), "the count runs");
     link(&mut r);
     assert!(r.scene.settings.is_none() && !r.has(|e| matches!(e, Effect::Shell(ShellCmd::OpenSettings))), "{:?}", r.effects);
@@ -326,7 +327,7 @@ fn a_mac_with_no_space_has_no_settings_for_the_link_to_open() {
     let mut r = Run::new(w);
     link(&mut r);
     assert!(r.scene.settings.is_none() && !r.has(|e| matches!(e, Effect::Shell(ShellCmd::OpenSettings))), "{:?}", r.effects);
-    assert_eq!(ask(&mut r, 1, CliOp::Start).error, Some("not_set_up"));
+    assert_eq!(ask(&mut r, 1, CliOp::START).error, Some("not_set_up"));
 }
 
 /// A sheet open in Settings is a question the person is in the middle of: the link leaves
@@ -369,5 +370,129 @@ fn a_flip_or_another_tab_puts_the_light_out() {
 #[test]
 fn the_light_outlasts_a_window_opening_cold() {
     assert!(LIT_MS >= 5_000, "LIT_MS {LIT_MS}: a window opened cold can take seconds to draw");
+}
+
+// ── without the count, and the label (Bagrat, 2026-10-18; N62, B216) ──
+
+fn start(countdown: bool, label: bool) -> CliOp {
+    CliOp::Start(StartAsk { countdown, label })
+}
+
+/// The recorder says capture began.
+fn started(r: &mut Run) {
+    r.send(Event::Rec(RecNews::Started { dir: TakeDir("20261018-145200-ab12".into()), rec: RecId("AgEnTlAbElTaKe01".into()) }));
+}
+
+fn label(r: &Run) -> Option<String> {
+    r.scene.label.as_ref().map(|l| l.line.clone())
+}
+
+const LABEL: &str = "Your coding agent is recording your screen";
+
+#[test]
+fn the_default_start_keeps_the_count_and_the_label() {
+    assert_eq!(CliOp::START, start(true, true));
+    assert_eq!(StartAsk::default(), StartAsk { countdown: true, label: true });
+}
+
+/// `--no-countdown`: the take starts at once — the count's end fired now, no scrim — and the
+/// answer says it records.
+#[test]
+fn without_the_count_the_take_starts_at_once() {
+    let mut r = Run::new(allowed());
+    let a = ask(&mut r, 1, start(false, true));
+    assert_eq!((a.ok, a.take, a.error), (true, "recording", None));
+    assert!(r.scene.countdown.is_none(), "no count on screen");
+    assert!(r.has(|e| matches!(e, Effect::Recorder(RecCmd::Start { .. }))), "the recorder starts now: {:?}", r.effects);
+    started(&mut r);
+    assert!(r.ids().contains(&"recording"), "{:?}", r.ids());
+    assert_eq!(r.w.take.as_ref().map(|t| t.phase), Some(Phase::Recording));
+}
+
+/// A take the command starts wears the label while it records, on the display it records:
+/// paused, it goes; resumed, it's back; stopped, it's gone.
+#[test]
+fn a_take_the_command_starts_wears_the_label_while_it_records() {
+    let mut r = Run::new(allowed());
+    ask(&mut r, 1, start(false, true));
+    started(&mut r);
+    assert_eq!(label(&r).as_deref(), Some(LABEL));
+    let on = r.scene.label.as_ref().unwrap().display;
+    assert_eq!(Some(SourceId::Display(on)), r.w.take.as_ref().map(|t| t.source), "on the display being recorded");
+    assert!(ask(&mut r, 2, CliOp::Pause).ok);
+    r.send(Event::Rec(RecNews::Paused { length_ms: 4_000 }));
+    assert_eq!(label(&r), None, "paused: nothing is recording, so no label says so");
+    assert!(ask(&mut r, 3, CliOp::Resume).ok);
+    r.send(Event::Rec(RecNews::Resumed));
+    assert_eq!(label(&r).as_deref(), Some(LABEL), "back when it records again");
+    assert!(ask(&mut r, 4, CliOp::Stop).ok);
+    assert_eq!(label(&r), None, "stopped");
+}
+
+/// With the count (the default), the label comes with capture, once the count has run.
+#[test]
+fn with_the_count_the_label_comes_with_capture() {
+    let mut r = Run::new(allowed());
+    let a = ask(&mut r, 1, CliOp::START);
+    assert_eq!(a.take, "countdown");
+    assert!(r.scene.countdown.is_some());
+    assert_eq!(label(&r), None, "not over the count");
+    let end = r.w.session.arming.as_ref().unwrap().deadline.0;
+    r.tick_to(end + 10);
+    started(&mut r);
+    assert_eq!(label(&r).as_deref(), Some(LABEL));
+}
+
+/// `--no-label`: no label, the count skipped or not; the tray still shows the take.
+#[test]
+fn no_label_with_no_label() {
+    for countdown in [false, true] {
+        let mut r = Run::new(allowed());
+        ask(&mut r, 1, start(countdown, false));
+        if countdown {
+            let end = r.w.session.arming.as_ref().unwrap().deadline.0;
+            r.tick_to(end + 10);
+        }
+        started(&mut r);
+        assert_eq!(label(&r), None, "countdown {countdown}");
+        assert!(r.ids().contains(&"tray-red-dot"), "the tray shows it: {:?}", r.ids());
+    }
+}
+
+/// The person's own Start keeps its count and never wears the label — not even after a take
+/// the command started.
+#[test]
+fn the_persons_own_start_never_wears_the_label() {
+    // A take the command started, with its label, has come and gone.
+    let mut w = allowed();
+    w.agent = Some(Mono(500));
+    let mut r = Run::new(w);
+    r.click();
+    assert!(r.ids().contains(&"config"), "{:?}", r.ids());
+    r.act(Action::Start);
+    assert!(r.scene.countdown.is_some(), "the popover's Start keeps its count");
+    let end = r.w.session.arming.as_ref().unwrap().deadline.0;
+    r.tick_to(end + 10);
+    started(&mut r);
+    assert!(r.w.take.is_some());
+    assert_eq!(label(&r), None);
+}
+
+/// A take of the camera only wears no label: it records no screen.
+#[test]
+fn a_take_of_the_camera_only_wears_no_label() {
+    let mut w = allowed();
+    let mut t = take(Phase::Recording, 4_000);
+    t.source = SourceId::Camera;
+    t.camera = Some("cam".into());
+    w.agent = Some(t.opened);
+    w.take = Some(t);
+    let r = Run::new(w);
+    assert_eq!(label(&r), None);
+    let mut w = allowed();
+    let t = take(Phase::Recording, 4_000);
+    w.agent = Some(t.opened);
+    w.take = Some(t);
+    assert_eq!(label(&Run::new(w)).as_deref(), Some(LABEL), "a display's take does");
 }
 

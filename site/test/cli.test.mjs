@@ -60,6 +60,11 @@ describe("the CLI guide", () => {
     assert.match(flat, /never look for another way to record\./);
   });
 
+  // Bagrat, 2026-10-18: the countdown can be skipped, and a label says the agent records.
+  it("skips the countdown and hides the label only when the person asks", () => {
+    assert.match(flat, /Add `--no-countdown` only when they asked to skip the countdown\. While it records, a label at the top right of their screen says you're recording: leave it on unless they ask you to hide it \(`--no-label`\)\./);
+  });
+
   // Bagrat, 2026-10-18: the refusal says how to turn it on, with a link that opens Settings
   // right at the switch; the person flips it.
   it("gives the person the refusal's link to the switch, for them to turn it on", () => {

@@ -124,7 +124,10 @@ mod tests {
 
     #[test]
     fn only_the_four_ops_of_this_version_are_read() {
-        assert_eq!(op_of(r#"{"v":1,"op":"record.start"}"#), Some(CliOp::Start));
+        assert_eq!(op_of(r#"{"v":1,"op":"record.start"}"#), Some(CliOp::START));
+        // The command's flags (N62, B216): each only when the person or agent turned it off.
+        assert_eq!(op_of(r#"{"v":1,"op":"record.start","countdown":false,"label":false}"#), Some(CliOp::Start(StartAsk { countdown: false, label: false })));
+        assert_eq!(op_of(r#"{"v":1,"op":"record.start","label":false}"#), Some(CliOp::Start(StartAsk { countdown: true, label: false })));
         assert_eq!(op_of(r#"{"v":1,"op":"record.stop"}"#), Some(CliOp::Stop));
         assert_eq!(op_of(r#"{"v":2,"op":"record.start"}"#), None);
         assert_eq!(op_of(r#"{"v":1,"op":"delete"}"#), None);
