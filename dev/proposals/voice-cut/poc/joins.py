@@ -13,6 +13,13 @@ measures at each join:
 
     TESTER_URL_FILE=… python3 joins.py --voices DIR [--out results/joins-….json]
 
+With --breath (Bagrat heard a breath play after a cue's cut, 2026-10-18), each cue is
+followed by what a speaker leaves there: the word's release and a breath out, a pause, and
+a breath in before the next line; once as a browser hears it (its noise suppression leaves
+true silence between words) and once with a room's noise. It measures, for each planner
+given with --cut: how much of the breath out still plays, and how much of the breath in
+before the next line is cut.
+
 The words come from Whisper on the test account (the tester's /listen); stock voices only.
 """
 import argparse
@@ -86,18 +93,55 @@ def say(voice, text, tmp):
     return np.frombuffer(out, dtype="<f4").astype(np.float64)
 
 
-def make(voice, script, rng):
+def is_cue(text):
+    t = text.lower()
+    return "shroom cut" in t or "strum cut" in t
+
+
+def breath(rng, seconds, peak_db, rise, fall):
+    """Noise shaped like a breath: up over `rise` seconds, then dying away over `fall`."""
+    n = int(seconds * RATE)
+    k = np.arange(n) / RATE
+    x = np.convolve(rng.standard_normal(n), np.ones(4) / 4, mode="same")
+    x *= np.minimum(1, k / rise) * np.exp(-np.maximum(0, k - rise) / fall)
+    return x * 10 ** (peak_db / 20) / (np.max(np.abs(x)) + 1e-12)
+
+
+def make(voice, script, rng, breaths=None):
+    """A take of `script`. With `breaths` ("browser" or "room"), each cue is followed by a
+    breath out, the pause, and a breath in before the next line; their times are returned."""
+    marks = []
     with tempfile.TemporaryDirectory() as tmp:
-        parts = []
+        parts, at = [np.zeros(int(0.4 * RATE))], 0.4
         for text, pause in script:
-            parts += [say(voice, text, tmp), np.zeros(int(pause * RATE))]
-    pcm = np.concatenate([np.zeros(int(0.4 * RATE))] + parts + [np.zeros(int(0.6 * RATE))])
+            p = say(voice, text, tmp) * 0.7
+            parts.append(p)
+            at += len(p) / RATE
+            if breaths and is_cue(text):
+                out = breath(rng, 0.55, -30, 0.03, 0.09)
+                gap = np.zeros(int(max(pause, 0.35) * RATE))
+                inn = breath(rng, 0.35, -70, 0.3, 1.0)
+                parts += [out, gap, inn]
+                marks.append({"out": (at, at + len(out) / RATE), "in": (at + (len(out) + len(gap)) / RATE, at + (len(out) + len(gap) + len(inn)) / RATE)})
+                at += (len(out) + len(gap) + len(inn)) / RATE
+            else:
+                parts.append(np.zeros(int(pause * RATE)))
+                at += pause
+    pcm = np.concatenate(parts + [np.zeros(int(0.6 * RATE))])
+    if breaths == "browser":
+        # Noise suppression: true silence between words, as Bagrat's browser gave (-118 dB).
+        return pcm + 10 ** (-118 / 20) * rng.standard_normal(len(pcm)), marks
     # A room under it: pinkish noise about -50 dBFS and a little hum, as a laptop's microphone hears.
     white = rng.standard_normal(len(pcm))
     pink = np.convolve(white, np.ones(8) / 8, mode="same")
     pink *= 10 ** (-50 / 20) / (np.sqrt(np.mean(pink ** 2)) + 1e-12)
     hum = 10 ** (-56 / 20) * np.sqrt(2) * np.sin(2 * np.pi * 50 * np.arange(len(pcm)) / RATE)
-    return pcm * 0.7 + pink + hum
+    return pcm + pink + hum, marks
+
+
+def kept(keep, span):
+    """How much of `span` (seconds) still plays."""
+    return sum(max(0.0, min(e, span[1]) - max(s, span[0])) for s, e in keep)
 
 
 def loudness(pcm):
@@ -122,8 +166,8 @@ def silences(db):
     return out, thr
 
 
-def plan(t):
-    return json.loads(subprocess.run([str(CUT)], input=json.dumps(t), capture_output=True, text=True, check=True).stdout)
+def plan(t, cut=CUT):
+    return json.loads(subprocess.run([str(cut)], input=json.dumps(t), capture_output=True, text=True, check=True).stdout)
 
 
 def render(pcm, keep, fade):
@@ -162,12 +206,16 @@ def main():
     ap.add_argument("--voices", type=Path, required=True)
     ap.add_argument("--out")
     ap.add_argument("--heard", type=Path, default=Path(tempfile.gettempdir()) / "shroom-joins-heard", help="where Whisper's answers are kept between runs")
+    ap.add_argument("--breath", action="store_true", help="a breath after each cue, as a browser and a room hear it")
+    ap.add_argument("--cut", action="append", type=Path, help="a planner to measure (more than one to compare); the built one by default")
     a = ap.parse_args()
+    if a.breath:
+        return breaths(a)
     rng = np.random.default_rng(18)
     rows = []
     for name, script in SCRIPTS.items():
         for voice in VOICES:
-            pcm = make(a.voices / f"{voice}.onnx", script, rng)
+            pcm, _ = make(a.voices / f"{voice}.onnx", script, rng)
             heard = listen(pcm, a.heard / f"{name}-{voice}.json")
             db = loudness(pcm)
             sil, thr = silences(db)
@@ -201,6 +249,45 @@ def main():
             med = [r["clicks"][str(fade)]["median"] for r in rs if r["clicks"][str(fade)]["median"] is not None]
             mx = [r["clicks"][str(fade)]["max"] for r in rs if r["clicks"][str(fade)]["max"] is not None]
             print(f"   fade {fade * 1000:4.0f} ms: click median {np.median(med):.2f}, worst {np.max(mx):.2f}")
+
+
+def breaths(a):
+    """The breath after each cue: how much of it plays, per planner, per way of hearing."""
+    cuts = a.cut or [CUT]
+    rows = []
+    for heard_as in ("browser", "room"):
+        rng = np.random.default_rng(18)
+        for name, script in SCRIPTS.items():
+            if not any(is_cue(text) for text, _ in script):
+                continue
+            for voice in VOICES:
+                pcm, marks = make(a.voices / f"{voice}.onnx", script, rng, heard_as)
+                heard = listen(pcm, a.heard / f"breath-{heard_as}-{name}-{voice}.json")
+                db = loudness(pcm)
+                sil, thr = silences(db)
+                t = {"duration": len(pcm) / RATE, "words": heard["words"], "silences": sil,
+                     "levels": {"step": 0.01, "db": [round(float(x), 1) for x in db]}}
+                for cut in cuts:
+                    p = plan(t, cut)
+                    keep = p["keep"]
+                    for m in marks:
+                        # Only a breath after a cue that was cut: one Whisper didn't write isn't the planner's.
+                        cue_cut = kept(keep, (m["out"][0] - 0.3, m["out"][0])) < 0.15
+                        rows.append({"heard_as": heard_as, "take": f"{name}/{voice}", "cut": cut.name, "cue_cut": cue_cut,
+                                     "out_played": round(kept(keep, m["out"]), 3),
+                                     "in_cut": round((m["in"][1] - m["in"][0]) - kept(keep, m["in"]), 3)})
+                    print(f"{heard_as:8s} {name + '/' + voice:40s} {cut.name:16s} "
+                          + "  ".join(f"out {r['out_played']:.2f} in-cut {r['in_cut']:.2f}{'' if r['cue_cut'] else ' (cue kept)'}"
+                                      for r in rows[-len(marks):]))
+    if a.out:
+        Path(a.out).write_text(json.dumps({"breath": {"out": "0.55 s, -30 dBFS peak", "in": "0.35 s, -70 dBFS peak"}, "rows": rows}, indent=1))
+    for heard_as in ("browser", "room"):
+        for cut in cuts:
+            rs = [r for r in rows if r["heard_as"] == heard_as and r["cut"] == cut.name and r["cue_cut"]]
+            played = [r["out_played"] for r in rs]
+            print(f"{heard_as:8s} {cut.name:16s} {len(rs)} breaths after a cut cue: breath out still playing in "
+                  f"{sum(p > 0.05 for p in played)} (median {np.median(played):.2f} s, worst {max(played):.2f} s); "
+                  f"breath in cut in {sum(r['in_cut'] > 0.05 for r in rs)}")
 
 
 if __name__ == "__main__":

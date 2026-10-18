@@ -28,6 +28,10 @@ const AROUND: usize = 6;
 /// louder than the quietest one between the words (dB): just before what follows, and never
 /// in the closure of a "t" or a "k" the word still has to release.
 const NEAR_QUIETEST: f32 = 3.0;
+/// After a cut's last word, what still sounds (the word's release, a breath) goes with the
+/// cut, to the first pause, when that pause begins at most this long after the word
+/// (seconds): sound that runs on longer may be speech the transcriber missed.
+const TAIL: f64 = 1.0;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Options {
@@ -75,7 +79,9 @@ impl Ctx<'_> {
     /// The quiet stretch between a word ending at `a` and the next starting at `b`: the
     /// detected silence that best covers the gap, else the gap itself. A long gap with no
     /// silence in it isn't quiet (the transcriber missed speech there), so then the edge
-    /// hugs the word on the cut's side: `hug_b` for a cut that starts at `b`.
+    /// hugs the word on the cut's side: `hug_b` for a cut that starts at `b`. A cut that
+    /// ends at `a` runs through what sounds after its last word to the first pause there
+    /// ([`TAIL`]).
     fn quiet(&self, a: f64, b: f64, hug_b: bool) -> (f64, f64) {
         // Word times drift (by a few tenths on long audio), so a silence near the gap
         // counts, and keeps its own extent up to 0.6 s past the words.
@@ -94,8 +100,20 @@ impl Ctx<'_> {
             Some(q) => q,
             None if b - a <= 0.6 || self.t.silences.is_empty() => (a, b.max(a)),
             None if hug_b => (b - 0.2, b),
-            None => (a, a + 0.2),
+            None => self.first_pause(a, b).unwrap_or((a, a + 0.2)),
         }
+    }
+
+    /// The first silence after a word ending at `a`, beginning within [`TAIL`] of it and
+    /// before the next word starts at `b`, with its extent kept as in [`Ctx::quiet`].
+    fn first_pause(&self, a: f64, b: f64) -> Option<(f64, f64)> {
+        self.t
+            .silences
+            .iter()
+            .filter(|s| s.end > a && s.start < b && s.start <= a + TAIL)
+            .map(|s| (s.start.max(a - 0.6), s.end.min(b + 0.6)))
+            .filter(|(s, e)| e > s)
+            .min_by(|x, y| x.0.total_cmp(&y.0))
     }
 
     /// A cut from the quiet before word `from` to the quiet after word `to` (inclusive).

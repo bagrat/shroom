@@ -23,7 +23,8 @@ spec rows are Bagrat's call. The words on the boards are placeholders.*
 >   start; so does a sentence that ends on a word no sentence ends on, since Whisper puts a
 >   full stop wherever a speaker stops.
 > - **The joins** (Bagrat heard tails and glitches on the tester): an edge with no silence
->   under it goes to the quietest point by the take's loudness (B201 (b)); the tester plays
+>   under it goes to the quietest point by the take's loudness, and a cut's end runs through
+>   a breath after its last word to the first pause (B201 (b)); the tester plays
 >   the cut through Web Audio, each join a 60 ms equal-power crossfade, the knee of
 >   `voice-cut/poc/joins.py` (the median click falls fourfold by then). The share page's
 >   playback and the final copy are the editor's (N63), handed these numbers.
