@@ -24,7 +24,7 @@ const SETUP_CHARS: usize = 300;
 pub fn gather(rt: &Runtime, role: &str) -> Diagnostics {
     Diagnostics {
         // An early-channel Mac says so beside its version (B220): it may run a pre-release.
-        shroom: match super::updater::channel(rt) {
+        shroom: match super::updater::mac_channel(rt) {
             shroom_update::Channel::Early => format!("{} (early channel)", rt.version),
             shroom_update::Channel::Official => rt.version.clone(),
         },
