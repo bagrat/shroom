@@ -103,6 +103,14 @@ Each of these cost time on 2026-10-13 when it was broken.
   rather than relying on the replay.
 - **One agent per working tree at a time.** Parallel work goes in separate worktrees, and
   only one tree builds the app.
+- **Never share a Cargo target dir between worktrees.** Cargo names a workspace crate's
+  artifacts by a hash of its path *relative to the workspace root*, so every worktree's
+  `libshroom_core-<hash>` is the same file: lanes overwrite each other's builds, and a build
+  whose own sources look older takes another tree's artifact as fresh. A test then runs, or
+  a check fails, against code that isn't in the tree (2026-10-18: a macOS check linked another
+  lane's half-changed library). Each worktree builds in its own target dir; the cost is one
+  dependency build per lane, a few minutes. Before trusting a result from a tree that ever
+  shared one, touch its sources.
 - **To change the rest of a running run**, wait until the tree is clean between two steps,
   stop the run, edit the script, start it again.
 
@@ -126,6 +134,10 @@ them larger than the clock.
 | 2026-10-13 | canvas design pass, built | 9 subagents from the main session (Agent tool, no workflow): 1 inventory, 2 frame drawers, 3 build lanes in their own worktrees (setup window · Library and Settings · page and site), 2 audits, 1 frame updater; the main session did the core and the popover | 1 h 42 | 195 | 61% | build lanes in worktrees sharing one cargo target; briefs named their own files, theme tokens and checks | Drawing, audits and frame updates are all model time and short (4–13 min each). The build lanes are where the clock goes: the setup lane 75 min, 46 of them commands — its whole gallery run (5 min a run, the popover section included, which wasn't its own) again and again, and a shared target dir another lane's half-merged core kept breaking. The lanes also had to be told mid-run about shared files (the theme, the gallery); a lane's base should be the branch's head at spawn, not `main`. For the next run of this kind: give a build lane a way to run only its own gallery section, and a private cargo target. |
 | 2026-10-14 | docs rewrite (ARCHITECTURE, WORKER-INTERFACE) | 2 general-purpose subagents in parallel, no reviewers; the lead checked cited § numbers | 0 h 17 | 32 | not measured (Agent tool, no journal) | a hard size cap (60 KB) and "keep every § number" in the brief | Both landed just under the cap on one pass; 88 and 75 tool calls. Most turns went to checking the old text against the code. |
 | 2026-10-16 | public snapshot: scrub quotes, links and citations | 3 general-purpose subagents in parallel, one per file set (DECISIONS · the spec · history, dev and other docs), no reviewers; the lead ran the tripwire and the suites | 0 h 05 | 13 | not measured (Agent tool, no journal) | each brief named the files it owned, the exact grep that must come back empty and the tests to run | All three came back clean on their own grep in under five minutes; the cross-file leftovers (`?ref=hn` in the site, the migration notes' copies of spec quotes) were found by the lead's whole-tree tripwire, so a whole-tree check after parallel file-scoped lanes is the step to keep. |
+| 2026-10-18 | editor (#61): wave 1 | 2 build lanes in parallel in worktrees (workflow): the core's editor track; the media track (peaks, the cut, the window's protocol) | 0 h 41 | 73 | 84% | briefs pointing at one shared contract file (the edit list's shape, the ops, the effects) instead of each restating it | Model-bound: 233 and 159 turns at 9–10 s a turn; commands only 12 of 73 min. |
+| 2026-10-18 | editor (#61): wave 2 | the same two lanes again for the after-save flow (B197) | 0 h 42 | 65 | 67% | — | The core lane's commands rose to 18 of its 42 min: it ran the core suite (about 40 s plus builds) after each change. |
+| 2026-10-18 | editor (#61): tracks from the main session | 3 Explore mappers (3–7 min), then 3 lanes by the Agent tool: the webview (28 min), the Worker and page (75 min), the app shell (185 min over two rounds) | about 4 h | about 300 | not measured (Agent tool, no journal) | the Mac-only lane type-checked by a cross-compile from Linux (stub headers) before each hosted-Mac run | The app shell was the long pole: each hosted-Mac round is 15–20 min, and the cross-check caught every compile error before a round was spent. |
+| 2026-10-18 | editor (#61): adversarial review | 5 finders by area (Worker, upload, core, edit, privacy), then one verifier per finding, pipelined (workflow) | 2 h 07 | 234 | 89% | pipelined: an area's verifiers start as its finder ends | 30 findings: 20 held up, 3 were refuted, and 7 had already been fixed by a build lane that landed while the review read an older snapshot, so a quarter of the verifiers' time went on fixed code. Finders took 11–26 min, verifiers 2–8 min each. |
 
 Next to try, one at a time: suites once per run instead of per step; `effort` lowered on
 the closing step; fast mode on one comparable step; the one-hour subagent cache. For
