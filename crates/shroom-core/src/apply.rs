@@ -3090,6 +3090,13 @@ fn library(w: &mut World, news: LibraryNews) -> Out {
             if let Fact::Known { v, .. } = &mut w.library {
                 Arc::make_mut(v).retain(|r| !recs.contains(&r.rec));
             }
+            // A suggested one's bytes leave the space's size now, not at the next read: Space
+            // used and the money line say what's left (N68).
+            if let Fact::Known { v, .. } = &mut w.suggestions {
+                let freed: u64 = v.rows.iter().filter(|s| recs.contains(&s.rec)).map(|s| s.bytes).sum();
+                v.space_bytes = v.space_bytes.saturating_sub(freed);
+                v.rows.retain(|s| !recs.contains(&s.rec));
+            }
             // Removed everywhere — this Mac's copy of one still uploading too (the person
             // asked; the tombstone came first — DEVIATIONS #16).
             let mut fx = Vec::new();
