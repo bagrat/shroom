@@ -225,13 +225,16 @@ anything else it runs: Open, Save and Copy answer while a bake or an upkeep pass
 - *Save* is one record write (`save_edits_over`). It writes nothing and fails as `Refused`
   (logged) when the video moved on since the open — `bakedFrom` grew or `media.mp4` changed:
   it was baked while the window was open. That is judged inside the write, on the record it
-  would replace.
+  would replace. A `Refused` save (that, or a tombstone) is the core's `editor-save-refused`:
+  nothing can be saved, and the window only closes (B199).
 - *Copy* (one at a time): `shroom_encode::cut::render_with` (VideoToolbox, then libx264 if that
   fails), the poster and teaser best-effort, three PUTs, then `set_edit_copy` writes `copy` and
   `keep_until` (now + 2 days). `EditorNews::Making { rec, pct }` goes at most every 250 ms and
   only forward: ffmpeg's `-progress` over the kept seconds is 0–80, each file's PUT 95, 97,
-  99, and the record 100. It answers `CopyDone` or `Failed { EditorCopy }`; a closed window
-  doesn't stop it.
+  99, and the record 100. It answers `CopyDone { named }` — `named: false` when it dropped
+  the copy instead, the record having moved on (a newer save, the edit gone) or the revision
+  leaving nothing out, and the window then asks nothing about the original (B199) — or
+  `Failed { EditorCopy }`; a closed window doesn't stop it.
 - *Bake* (Yes, delete): `shroom_upload::library::bake` over the door, on its own thread. It
   answers nothing (the window has closed), logs what happened, and on success drops
   `edits/<rec>/`. A bake that didn't land is the upkeep's after the two days.
