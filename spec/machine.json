@@ -1127,6 +1127,35 @@
     "N7 (the landing's video is no longer a self-recorded take)"
    ],
    "amended_by": []
+  },
+  {
+   "id": "N63",
+   "title": "The editor: trim, cut, undo, and edits the link plays",
+   "decision": "**Bagrat asked for it, 2026-10-18** (relayed by the orchestrator): a real editor, apart from AI, that the spoken-cue layer can plug into later. **Edit… in a Library row's menu** opens the **editor**, a window of its own (one at a time), on a live video in this Mac's scope, renamable here: the video plays at the top; under it the play button and the time, edited position / edited length, with “was 4:32” once the edit changes the length; then the **timeline**: the whole recording's sound as a waveform with the playhead, **yellow ends that drag to trim**, and **a drag across the sound that selects a part**, with **Cut 12.0 s** under it. **A cut shows red** and the preview skips it as it plays; clicking a cut offers **Put back**. **Undo and Redo** (also ⌘Z and ⇧⌘Z) step through every change made in the window, Put back and Revert included. **Revert to original** puts back every cut and both ends. **Done** (Return) saves the edit and closes the window; ✕ is Done. The footer says the link stays the same. Saving is a small edit list kept in the video's record; **the share page and the embed apply it as they play** (they skip the cuts, hold to the trim, and show the edited length), so **the link never changes** and nothing is re-encoded first. The original stays in the space, so Revert works from any Mac. Afterwards the Mac makes **a permanent copy of the edit** with its own encoder and puts it up beside the original under the same link; once it is up, Download and the page use it. A video that isn't on this Mac comes from the space first (“Getting the video from your space…”); if that fails the window says so and offers Try again. While it saves, Done reads Saving…; if the save doesn't go through, the window stays open and says so, and Done tries again. Edit… greys offline and while a take is open (law 4), as Rename does. Built: DECISIONS B195.",
+   "status": "provisional",
+   "date": "2026-10-18",
+   "amends": [
+    "absent_from_v1 (trim, the editor and marker surfacing join v1; anything beyond trim and cut stays out)",
+    "library (a row's menu gains Edit…)",
+    "The window (Opens: also the editor)"
+   ],
+   "amended_by": []
+  },
+  {
+   "id": "N64",
+   "title": "Markers: Drop a marker comes back while paused, and ⌥⌘M drops one while recording",
+   "decision": "**Bagrat asked for markers dropped while recording, 2026-10-18** (relayed by the orchestrator), as the POC once had. (1) **Drop a marker comes back to the paused popover**, between Finish & Share and Restart, reversing B143's hiding now that the editor (N63) shows markers. It lands a marker at the pause point; once dropped, the row reads **Marker dropped** and greys until the take resumes (a second marker at the same point says nothing). (2) **⌥⌘M drops a marker while recording**, at that moment of the take, held only while a take is open, exactly as N54's ⌥⌘P (no new permission, let go when the take closes, nothing on screen names it in v1, and nothing on screen answers it: the take goes on). (3) **Markers show as flags on the editor's timeline**, at their times on the recording. They never reach viewers in v1. Built: DECISIONS B196.",
+   "status": "provisional",
+   "date": "2026-10-18",
+   "amends": [
+    "B143 (Drop a marker comes back to the paused popover)",
+    "N24 (Drop a marker, metadata-only in v1, now shows in the editor)",
+    "N54 (a second shortcut held while a take is open)",
+    "absent_from_v1 (global hotkeys: ⌥⌘M joins ⌥⌘P)",
+    "paused (Drop a marker shows)",
+    "recording (⌥⌘M)"
+   ],
+   "amended_by": []
   }
  ],
  "surfaces": [
@@ -1140,7 +1169,7 @@
   },
   {
    "name": "The window",
-   "may_do": "Lives: centered on the mushroom's display (N57), one at a time per kind | Opens: onboarding, Library, Settings, Send feedback (N60) | Rules: the dock icon while open; ✕ ≡ the retreat (N12); survives a browser round-trip  [UX-STATEMACHINE.md L1717]"
+   "may_do": "Lives: centered on the mushroom's display (N57), one at a time per kind | Opens: the editor (Edit…, N63), onboarding, Library, Settings, Send feedback (N60) | Rules: the dock icon while open; ✕ ≡ the retreat (N12); survives a browser round-trip  [UX-STATEMACHINE.md L1717]"
   },
   {
    "name": "The page",
@@ -1159,9 +1188,9 @@
   "Local recording before setup and any local library (U1)  [L1724]",
   "the .dmg (P17; brew joined v1 by N49)  [L1724]",
   "macOS notifications (U9)  [L1724-1725]",
-  "global hotkeys, save ⌥⌘P's pause and resume during a take (N54) (the reopen door covers a hidden mushroom, N41)  [L1725-1726]",
+  "global hotkeys, save ⌥⌘P's pause and resume and ⌥⌘M's marker during a take (N54, N64) (the reopen door covers a hidden mushroom, N41)  [L1725-1726]",
   "the tray's Copy last link and any auto-copy (N21, N1)  [L1726]",
-  "trim, the editor, marker surfacing (P11)  [L1726-1727]",
+  "an editor beyond trim and cut: titles, overlays, transitions, a second track (P11; trim, cut and markers joined v1 with N63 and N64)  [L1726-1727]",
   "captions and transcript search (P8)  [L1727]",
   "a sender name or avatar (U3)  [L1727-1728]",
   "passwords or expiry on links (P1)  [L1728]",
@@ -2294,6 +2323,20 @@
    ],
    "cites": [
     "N38"
+   ]
+  },
+  {
+   "id": "editor-faces",
+   "title": "the editor's faces",
+   "states": [
+    "editor",
+    "editor-getting",
+    "editor-cant-get",
+    "editor-saving",
+    "editor-save-failed"
+   ],
+   "cites": [
+    "N63"
    ]
   }
  ],
@@ -5373,6 +5416,13 @@
      "note": "the tray click's pause, from the keyboard; the popover opens after the pause is confirmed (N54)"
     },
     {
+     "label": "⌥⌘M",
+     "kind": "other",
+     "return_default": false,
+     "goes_to": "recording",
+     "note": "drops a marker at this moment of the take; nothing on screen answers, the take goes on (N64)"
+    },
+    {
      "label": "⌘Q / Dock Quit",
      "kind": "other",
      "return_default": false,
@@ -5384,7 +5434,8 @@
     "N39",
     "N41",
     "N25",
-    "N54"
+    "N54",
+    "N64"
    ],
    "was": {
     "fixture": "r3.json",
@@ -5399,7 +5450,7 @@
    "surface": "popover",
    "status": "ratified",
    "board": "Paused",
-   "summary": "The same custom popover, with the icon wearing the pause bars. Top to bottom: the header with the length, Resume (the one filled action, Return default), Finish & Share and Restart as plain rows (Finish & Share was Stop, with a line beneath it; B143), and Discard… as red text at the bottom beside a grey no-Quit note. Quit is absent by law. Drop a marker is hidden until the editor ships (B143): the core still lands a marker at the pause point, metadata-only, but no surface offers it. Restart re-arms with the countdown already running. The count is Restart's undo (N39, provisional): the old take is discarded only the instant the new capture begins.",
+   "summary": "The same custom popover, with the icon wearing the pause bars. Top to bottom: the header with the length, Resume (the one filled action, Return default), Finish & Share and Restart as plain rows (Finish & Share was Stop, with a line beneath it; B143), and Discard… as red text at the bottom beside a grey no-Quit note. Quit is absent by law. Drop a marker sits between Finish & Share and Restart (N64, reversing B143's hiding): it lands a marker at the pause point, and the row then reads Marker dropped, greyed until the take resumes. Markers show in the editor (N63). Restart re-arms with the countdown already running. The count is Restart's undo (N39, provisional): the old take is discarded only the instant the new capture begins.",
    "entry": "Tray click while recording, after the pause is confirmed (a right-click counts the same, N39). Also: Back (or click-away / Esc) from discard-confirm; a cancelled Restart count; a Quit request while paused, which opens this popover (law 4).",
    "said": [
     {
@@ -5428,6 +5479,20 @@
      "copy": "ratified",
      "id": "paused.stop",
      "note": "was “Stop” (B143)"
+    },
+    {
+     "text": "Drop a marker",
+     "role": "button",
+     "copy": "provisional",
+     "note": "N64; between Finish & Share and Restart",
+     "id": "paused.drop-marker"
+    },
+    {
+     "text": "Marker dropped",
+     "role": "button",
+     "copy": "provisional",
+     "note": "N64; the same row, greyed, once a marker is dropped at this pause",
+     "id": "paused.marker-dropped"
     },
     {
      "text": "Discard…",
@@ -5470,8 +5535,8 @@
      "label": "Drop a marker",
      "kind": "secondary",
      "return_default": false,
-     "note": "Hidden from the UI until the editor ships (B143). The core keeps it: it lands a marker at the pause point, metadata-only in v1. No state change.",
-     "hidden": "until the editor ships (B143)"
+     "note": "A plain row between Finish & Share and Restart (N64). Lands a marker at the pause point; the row then reads Marker dropped and greys until Resume. No state change.",
+     "goes_to": "paused"
     },
     {
      "label": "Discard…",
@@ -5492,7 +5557,8 @@
     "N39",
     "N41",
     "B143",
-    "N54"
+    "N54",
+    "N64"
    ],
    "was": {
     "fixture": "r3.json",
@@ -7181,7 +7247,7 @@
    "surface": "window",
    "status": "provisional",
    "board": "Library",
-   "summary": "The Library window, thin by design (§5.6), built for two jobs: re-share an old video and clean up. It is a list, newest first. Each row shows a small poster, the title, then date · length; in Everyone, other members' rows add their admin-private label (N28; removed members keep it). Copy link is always visible; Copy thumbnail sits under it in the row's menu (N46). Open page and Delete… show on hover or selection. State words appear only when a video isn't live (no word means live). A recovered take pins to the top under the amber dot, mirroring N25's banner. The full macOS idiom applies: click a title to rename it, double-click to open, ⌘C copies, the Delete key deletes, right-click opens a menu, ⌘/⇧-click multi-selects. Mine · Everyone shows only on owner-class Macs once someone else has a video here, and Mine is the default. Search is local and instant, over titles only. The window opens on the local cache, and the bucket refresh (R10 delta sync) runs behind it, sliding new rows in, including videos from your other Macs. Footer: the count only, with no sizes or prices (P13 parked). Scope: members see their own videos, owner-class Macs see the whole space. If another Mac deletes a video while this Mac is uploading it, the tombstone check at resume stops the upload and this row turns to 'Removed from the space' with Save to Movies · Discard…. Mocked row shape: '<title> — Aug 21 · 4:32' (+ ' · Mher' in Everyone).",
+   "summary": "The Library window, thin by design (§5.6), built for two jobs: re-share an old video and clean up. It is a list, newest first. Each row shows a small poster, the title, then date · length; in Everyone, other members' rows add their admin-private label (N28; removed members keep it). Copy link is always visible; Copy thumbnail sits under it in the row's menu (N46), and Edit… after Open page (N63). Open page and Delete… show on hover or selection. State words appear only when a video isn't live (no word means live). A recovered take pins to the top under the amber dot, mirroring N25's banner. The full macOS idiom applies: click a title to rename it, double-click to open, ⌘C copies, the Delete key deletes, right-click opens a menu, ⌘/⇧-click multi-selects. Mine · Everyone shows only on owner-class Macs once someone else has a video here, and Mine is the default. Search is local and instant, over titles only. The window opens on the local cache, and the bucket refresh (R10 delta sync) runs behind it, sliding new rows in, including videos from your other Macs. Footer: the count only, with no sizes or prices (P13 parked). Scope: members see their own videos, owner-class Macs see the whole space. If another Mac deletes a video while this Mac is uploading it, the tombstone check at resume stops the upload and this row turns to 'Removed from the space' with Save to Movies · Discard…. Mocked row shape: '<title> — Aug 21 · 4:32' (+ ' · Mher' in Everyone).",
    "entry": "A space exists, so config is reachable: idle-ready, not mid-take. The user clicks the Library (folder) icon in config's footer. One instance: clicking the icon again brings the open window forward. A window opened before a take stays open through it (N41's quiet-take law covers only what shroom would newly show). It is also restored at its derived state after an update relaunch if it was open when Update ran. The dock icon shows while it is open (Region 1 dock rule).",
    "said": [
     {
@@ -7377,6 +7443,13 @@
       "copy table"
      ],
      "id": "library.aug-21-4-32"
+    },
+    {
+     "text": "Edit…",
+     "role": "menu-item",
+     "copy": "provisional",
+     "note": "N63; a live row's menu, after Open page",
+     "id": "library.edit"
     }
    ],
    "actions": [
@@ -7400,6 +7473,13 @@
      "return_default": false,
      "note": "On hover or selection. Also double-click a row and right-click → Open page. Opens the owner-keyed URL (U2): the page arrives in owner-mode and the default browser gets the cookie, which is also the door for a new browser or a new Mac.",
      "goes_to": "owner-page"
+    },
+    {
+     "label": "Edit…",
+     "kind": "other",
+     "return_default": false,
+     "goes_to": "editor",
+     "note": "N63. Right-click → Edit…, after Open page. Live rows only, in this Mac's scope. Greys out offline and while a take is open (law 4), as Rename does. One editor at a time: Edit… while it is open brings it forward."
     },
     {
      "label": "Delete…",
@@ -7473,7 +7553,8 @@
     "§5.6",
     "R10",
     "P13",
-    "N46"
+    "N46",
+    "N63"
    ],
    "was": {
     "fixture": "r5.json",
@@ -7623,6 +7704,313 @@
     "id": "library · the space can't be reached",
     "lines": "1142-1149"
    }
+  },
+  "editor": {
+   "region": 5,
+   "kind": "state",
+   "parent": null,
+   "surface": "window",
+   "status": "provisional",
+   "board": "EditorCuts",
+   "summary": "The editor (N63): a window of its own, titled “Edit — <the video's title>”, one at a time. Top to bottom: the video, playing the edit (cuts skipped, held to the trim); the play button and the time, edited position / edited length, with “was <the recording's length>” once the edit changes it; on the right the hint and Undo · Redo; then the timeline, the whole recording's sound as a waveform with the playhead: two yellow ends that drag to trim, a drag across the sound that selects a part with Cut <its length> under it, every cut red and hatched (clicking one offers Put back <its length>), and every marker (N64) a flag at its time. The footer: the line that the link stays the same, Revert to original and Done. The waveform fills in once the sound is read; until then the timeline is empty and the ends wait. Every change can be undone, Put back and Revert included; the changes stay in the window until Done saves them.",
+   "entry": "Edit… on a live row in the Library (N63), when the video is on this Mac: its take was recorded here and is still here, or it came from the space before. One instance: Edit… again brings the open editor forward, on the video it holds. A take started while it is open leaves it open (law 4 covers only what shroom would newly show). The dock icon shows while it is open.",
+   "said": [
+    {
+     "text": "Edit — Setting up shroom in two minutes",
+     "role": "window-title",
+     "copy": "provisional",
+     "note": "“Edit — ” and the video's title",
+     "id": "editor.title"
+    },
+    {
+     "text": "1:16 / 3:39",
+     "role": "line",
+     "copy": "provisional",
+     "note": "the edited position / the edited length; varies",
+     "id": "editor.time"
+    },
+    {
+     "text": "was 4:32",
+     "role": "line",
+     "copy": "provisional",
+     "note": "the recording's own length; only when the edit changes the length",
+     "id": "editor.was"
+    },
+    {
+     "text": "Drag the yellow ends to trim. Drag across the sound to cut a part.",
+     "role": "line",
+     "copy": "provisional",
+     "id": "editor.hint"
+    },
+    {
+     "text": "Play",
+     "role": "label",
+     "copy": "provisional",
+     "note": "the play button's name on hover and to VoiceOver; “Pause” while playing",
+     "id": "editor.play"
+    },
+    {
+     "text": "Pause",
+     "role": "label",
+     "copy": "provisional",
+     "id": "editor.pause"
+    },
+    {
+     "text": "Undo",
+     "role": "label",
+     "copy": "provisional",
+     "note": "the button's name on hover and to VoiceOver; also ⌘Z",
+     "id": "editor.undo"
+    },
+    {
+     "text": "Redo",
+     "role": "label",
+     "copy": "provisional",
+     "note": "also ⇧⌘Z",
+     "id": "editor.redo"
+    },
+    {
+     "text": "Cut 12.0 s",
+     "role": "button",
+     "copy": "provisional",
+     "note": "under a selected part; the length varies",
+     "id": "editor.cut"
+    },
+    {
+     "text": "Put back 12.0 s",
+     "role": "button",
+     "copy": "provisional",
+     "note": "under a cut that was clicked; the length varies",
+     "id": "editor.put-back"
+    },
+    {
+     "text": "Your link stays the same. Viewers see the edit once it's saved.",
+     "role": "line",
+     "copy": "provisional",
+     "id": "editor.footer"
+    },
+    {
+     "text": "Revert to original",
+     "role": "button",
+     "copy": "provisional",
+     "id": "editor.revert"
+    },
+    {
+     "text": "Done",
+     "role": "button",
+     "copy": "provisional",
+     "note": "filled; Return",
+     "id": "editor.done"
+    }
+   ],
+   "actions": [
+    {
+     "label": "Play / Pause",
+     "kind": "other",
+     "return_default": false,
+     "note": "Space too. Plays the edit: the cuts are skipped and it holds to the trim."
+    },
+    {
+     "label": "drag a yellow end",
+     "kind": "other",
+     "return_default": false,
+     "goes_to": "editor",
+     "note": "trims; a click on the timeline moves the playhead"
+    },
+    {
+     "label": "drag across the sound",
+     "kind": "other",
+     "return_default": false,
+     "goes_to": "editor",
+     "note": "selects a part; Cut <length> cuts it (the Delete key too)"
+    },
+    {
+     "label": "Cut",
+     "kind": "secondary",
+     "return_default": false,
+     "goes_to": "editor",
+     "note": "red, and skipped as it plays"
+    },
+    {
+     "label": "Put back",
+     "kind": "secondary",
+     "return_default": false,
+     "goes_to": "editor",
+     "note": "after a click on a cut"
+    },
+    {
+     "label": "Undo · Redo",
+     "kind": "other",
+     "return_default": false,
+     "goes_to": "editor",
+     "note": "⌘Z · ⇧⌘Z; every change made in the window"
+    },
+    {
+     "label": "Revert to original",
+     "kind": "secondary",
+     "return_default": false,
+     "goes_to": "editor",
+     "note": "puts back every cut and both ends; undoable"
+    },
+    {
+     "label": "Done",
+     "kind": "filled-default",
+     "return_default": true,
+     "goes_to": "editor-saving",
+     "note": "Return. With nothing changed it closes the window at once. ✕ is Done."
+    }
+   ],
+   "cites": [
+    "N63",
+    "B195"
+   ]
+  },
+  "editor-getting": {
+   "region": 5,
+   "kind": "state",
+   "parent": null,
+   "surface": "window",
+   "status": "provisional",
+   "board": "EditorStates",
+   "summary": "The editor while the video comes from the space: it isn't on this Mac (another Mac recorded it, or its take is gone). The time reads 0:00 / the recording's length; where the timeline goes, “Getting the video from your space…” over a bar that fills; Done waits.",
+   "entry": "Edit… on a live row whose video isn't on this Mac.",
+   "said": [
+    {
+     "text": "Getting the video from your space…",
+     "role": "line",
+     "copy": "provisional",
+     "id": "editor-getting.getting"
+    },
+    {
+     "text": "Your link stays the same. Viewers see the edit once it's saved.",
+     "role": "line",
+     "copy": "provisional",
+     "id": "editor-getting.footer"
+    }
+   ],
+   "actions": [
+    {
+     "label": "Done",
+     "kind": "filled-default",
+     "return_default": false,
+     "note": "greyed until the video is here"
+    }
+   ],
+   "cites": [
+    "N63",
+    "B195"
+   ]
+  },
+  "editor-cant-get": {
+   "region": 5,
+   "kind": "state",
+   "parent": null,
+   "surface": "window",
+   "status": "provisional",
+   "board": "EditorStates",
+   "summary": "The editor when the video couldn't come from the space (offline, or the space didn't answer): one line and Try again where the timeline goes; Close closes the window.",
+   "entry": "The fetch in editor-getting failed.",
+   "said": [
+    {
+     "text": "Couldn't get the video. Check your connection, then try again.",
+     "role": "line",
+     "copy": "provisional",
+     "id": "editor-cant-get.cant-get"
+    },
+    {
+     "text": "Try again",
+     "role": "button",
+     "copy": "provisional",
+     "id": "editor-cant-get.try-again"
+    },
+    {
+     "text": "Close",
+     "role": "button",
+     "copy": "provisional",
+     "note": "filled; Return",
+     "id": "editor-cant-get.close"
+    }
+   ],
+   "actions": [
+    {
+     "label": "Try again",
+     "kind": "secondary",
+     "return_default": false,
+     "goes_to": "editor-getting"
+    },
+    {
+     "label": "Close",
+     "kind": "filled-default",
+     "return_default": true,
+     "note": "closes the window; ✕ and Esc too"
+    }
+   ],
+   "cites": [
+    "N63",
+    "B195"
+   ]
+  },
+  "editor-saving": {
+   "region": 5,
+   "kind": "state",
+   "parent": null,
+   "surface": "window",
+   "status": "provisional",
+   "board": "EditorStates",
+   "summary": "Done pressed with changes: the footer says the edit is saving and Done reads Saving…, greyed. Saved, the window closes; the share page plays the edit from its next load.",
+   "entry": "Done (or ✕) in editor with changes, or Done again in editor-save-failed.",
+   "said": [
+    {
+     "text": "Saving your edit…",
+     "role": "line",
+     "copy": "provisional",
+     "id": "editor-saving.saving"
+    },
+    {
+     "text": "Saving…",
+     "role": "button",
+     "copy": "provisional",
+     "note": "Done, greyed while it saves",
+     "id": "editor-saving.saving-button"
+    }
+   ],
+   "actions": [],
+   "cites": [
+    "N63",
+    "B195"
+   ]
+  },
+  "editor-save-failed": {
+   "region": 5,
+   "kind": "state",
+   "parent": null,
+   "surface": "window",
+   "status": "provisional",
+   "board": "EditorStates",
+   "summary": "The save didn't go through (offline, or the space didn't answer): the window stays open with every change in it, the footer line says so in amber, and Done tries again.",
+   "entry": "A save from editor-saving failed.",
+   "said": [
+    {
+     "text": "Couldn't save your edit. Check your connection, then press Done again.",
+     "role": "line",
+     "copy": "provisional",
+     "note": "amber, in the footer's place",
+     "id": "editor-save-failed.failed"
+    }
+   ],
+   "actions": [
+    {
+     "label": "Done",
+     "kind": "filled-default",
+     "return_default": true,
+     "goes_to": "editor-saving",
+     "note": "tries the save again"
+    }
+   ],
+   "cites": [
+    "N63",
+    "B195"
+   ]
   },
   "delete-confirm": {
    "region": 5,
@@ -16124,6 +16512,197 @@
    ],
    "on": [
     "Act(OpenFeedback)"
+   ]
+  },
+  {
+   "from": "library",
+   "to": "editor",
+   "kind": "side",
+   "label": "Edit…",
+   "trigger": "Edit… on a live row whose video is on this Mac",
+   "status": "provisional",
+   "cites": [
+    "N63"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Act(EditRow)"
+   ]
+  },
+  {
+   "from": "library",
+   "to": "editor-getting",
+   "kind": "side",
+   "label": "Edit…",
+   "trigger": "Edit… on a live row whose video isn't on this Mac",
+   "status": "provisional",
+   "cites": [
+    "N63"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Act(EditRow)"
+   ]
+  },
+  {
+   "from": "editor-getting",
+   "to": "editor",
+   "kind": "flow",
+   "label": "",
+   "trigger": "the video is here and its sound read",
+   "status": "provisional",
+   "cites": [
+    "N63"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Editor"
+   ]
+  },
+  {
+   "from": "editor-getting",
+   "to": "editor-cant-get",
+   "kind": "flow",
+   "label": "",
+   "trigger": "the space didn't hand the video over",
+   "status": "provisional",
+   "cites": [
+    "N63"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Failed"
+   ]
+  },
+  {
+   "from": "editor-cant-get",
+   "to": "editor-getting",
+   "kind": "flow",
+   "label": "Try again",
+   "trigger": "Try again",
+   "status": "provisional",
+   "cites": [
+    "N63"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Act(EditorRetry)"
+   ]
+  },
+  {
+   "from": "editor",
+   "to": "editor-saving",
+   "kind": "flow",
+   "label": "Done",
+   "trigger": "Done, Return or ✕ with changes",
+   "status": "provisional",
+   "cites": [
+    "N63"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Act(EditorDone)",
+    "WindowClosed"
+   ]
+  },
+  {
+   "from": "editor-saving",
+   "to": "library",
+   "kind": "flow",
+   "label": "",
+   "trigger": "saved: the editor closes",
+   "status": "provisional",
+   "cites": [
+    "N63"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Editor"
+   ]
+  },
+  {
+   "from": "editor-saving",
+   "to": "editor-save-failed",
+   "kind": "flow",
+   "label": "",
+   "trigger": "the save didn't go through",
+   "status": "provisional",
+   "cites": [
+    "N63"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Failed"
+   ]
+  },
+  {
+   "from": "editor-save-failed",
+   "to": "editor-saving",
+   "kind": "flow",
+   "label": "Done",
+   "trigger": "Done again",
+   "status": "provisional",
+   "cites": [
+    "N63"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Act(EditorDone)",
+    "WindowClosed"
+   ]
+  },
+  {
+   "from": "editor",
+   "to": "library",
+   "kind": "flow",
+   "label": "Done",
+   "trigger": "Done, Return or ✕ with nothing changed: the editor closes",
+   "status": "provisional",
+   "cites": [
+    "N63"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Act(EditorDone)",
+    "WindowClosed"
+   ]
+  },
+  {
+   "from": "editor-cant-get",
+   "to": "library",
+   "kind": "flow",
+   "label": "Close",
+   "trigger": "Close, Return, Esc or ✕",
+   "status": "provisional",
+   "cites": [
+    "N63"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Act(EditorClose)",
+    "WindowClosed"
    ]
   }
  ],
