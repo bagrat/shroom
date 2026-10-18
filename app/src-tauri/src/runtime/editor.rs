@@ -19,8 +19,9 @@
 //!   edit became the video since, on this Mac or another): the list was made on a clock the
 //!   record no longer has. Judged inside the write, so no bake slips in between.
 //! - `Copy`: on a lane of its own, one at a time, never holding the window's commands up:
-//!   the saved list's kept ranges cut from the video (the registered one, else found or
-//!   fetched again — an app that restarted has none registered) by the encoder
+//!   the saved list's kept ranges cut from the video (the registered one while the record
+//!   still plays what the editor opened on, else found or fetched again — an app that
+//!   restarted has none registered) by the encoder
 //!   `find_encoder` finds, with the copy's own poster and teaser; all three put beside the
 //!   recording, then named in the record with when the original goes (`set_edit_copy`,
 //!   two days on) — `Making` as it goes (the cut to 80%, the files sent to 100%), then
@@ -540,6 +541,14 @@ fn encoders(ffmpeg: &Path) -> Vec<shroom_encode::cut::Encoder> {
     std::iter::once(Encoder::VideoToolbox).chain(has_encoder(ffmpeg, Encoder::Libx264.codec()).then_some(Encoder::Libx264)).collect()
 }
 
+/// The video the window registered, as a copy's source: only while the record (`meta`, read
+/// for the copy) still plays what the editor opened on (`opened`). Once it moved on — an edit
+/// became the video since — that file is on the old clock, and a copy cut from it with the
+/// record's ranges would show what neither clock holds.
+fn registered_source(registered: Option<PathBuf>, opened: Option<&Plays>, meta: &Meta) -> Option<PathBuf> {
+    registered.filter(|_| opened.is_some_and(|o| *o == Plays::of(meta)))
+}
+
 /// Cuts the permanent copy of `rev` and puts it up. `Ok(true)`: named in the record (with
 /// when the original goes); `Ok(false)`: dropped — the record moved on, or there's nothing
 /// to cut.
@@ -563,9 +572,11 @@ fn copy(rt: &Runtime, door: &mut Doorway, rec: &RecId, rev: u64, making: &mut Ma
         return Ok(false);
     }
     let keep = list.keep();
-    // The registered video (the window's, found or fetched as the record plays now), else
-    // the same search an open makes, else the space's.
-    let here = MEDIA.video(&rec.0).filter(|p| p.is_file()).into_iter().chain(on_this_mac(&rt.home.takes(), &rt.home.edits(), &meta)).next();
+    // The registered video (the window's, found or fetched as the record played when it
+    // opened) while the record still plays that, else the same search an open makes, else
+    // the space's.
+    let registered = registered_source(MEDIA.video(&rec.0).filter(|p| p.is_file()), opened_as(&rec.0).as_ref(), &meta);
+    let here = registered.into_iter().chain(on_this_mac(&rt.home.takes(), &rt.home.edits(), &meta)).next();
     let source = match here {
         Some(p) => p,
         None => fetch(rt, door, &space, &meta, &dir, None, false)?,
@@ -850,6 +861,26 @@ mod tests {
         saved.keep_until = Some("soon".into());
         m.edits = Some(saved);
         assert_eq!(kept_until(&m), None, "a time that doesn't read");
+    }
+
+    /// A copy cuts from the video the window registered only while the record still plays what
+    /// the editor opened on: a rename moves nothing; once an edit became the video since, the
+    /// copy looks again (this Mac's copies of what it plays now, else the space's).
+    #[test]
+    fn a_copy_cuts_from_the_windows_video_only_while_the_record_plays_what_it_opened_on() {
+        let video = Some(PathBuf::from("/takes/20261002-120000-0001/preview.mp4"));
+        let original = meta("AbCd", Some("rec/AbCd/video.mp4"), Some(10.0));
+        let opened = Plays::of(&original);
+        assert_eq!(registered_source(video.clone(), Some(&opened), &original), video);
+        let mut renamed = original.clone();
+        renamed.title = "New".into();
+        assert_eq!(registered_source(video.clone(), Some(&opened), &renamed), video, "a rename moves nothing");
+        let mut baked = meta("AbCd", Some("rec/AbCd/edit-1.mp4"), Some(6.0));
+        baked.extra.insert(records::BAKED_FROM.into(), serde_json::json!([{ "at": "2026-10-18T00:00:00Z", "rev": 1, "keep": [[2.0, 8.0]] }]));
+        assert_eq!(registered_source(video.clone(), Some(&opened), &baked), None, "baked since the window opened");
+        assert_eq!(registered_source(video.clone(), Some(&Plays::of(&baked)), &baked), video, "opened on the baked video");
+        assert_eq!(registered_source(video.clone(), None, &original), None, "no open known");
+        assert_eq!(registered_source(None, Some(&opened), &original), None, "nothing registered");
     }
 
     /// B197: nothing bakes under the editor. The recording it holds is the one its window is
