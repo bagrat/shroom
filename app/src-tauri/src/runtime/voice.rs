@@ -6,7 +6,9 @@
 //! every six hours awake, for two days after its go-live. Each cue's plan is weighed by the
 //! judgment above the planner, asked of the space with this Mac's key (DECISIONS B202); when
 //! it can't answer, the code's own plan stands. Nothing on screen answers it: the owner page
-//! shows the cuts (N65 (5)).
+//! shows the cuts (N65 (5)). Each step leaves a line in the run log under the take's short id
+//! — what was heard, each cue's judgment and cuts, a press on the owner page — never a word
+//! said, so a report shows what the lane did (Bagrat, 2026-10-18).
 
 use std::path::Path;
 use std::time::Duration;
@@ -16,7 +18,7 @@ use shroom_cloud::member::Space;
 use shroom_core::world::SpaceIdentity;
 use shroom_edit::Question;
 use shroom_storage::s3::Client;
-use shroom_upload::voice::{self, Clock, Mark, Wait, Wall};
+use shroom_upload::voice::{self, Clock, Mark, Wait, Wall, Weighed};
 
 use super::Runtime;
 use super::takes::{Kind, PublishJson, classify, dirs};
@@ -49,21 +51,23 @@ fn door(rt: &Runtime) -> Door {
 }
 
 /// The judgment above the planner for `rec`'s cues (DECISIONS B202): a score per candidate
-/// start, or none — no space, no key for it, or the space can't answer now — and the cue
-/// keeps the code's own plan. The log holds the scores, never the words.
-fn judgment<'a>(rt: &'a Runtime, door: &'a Door, rec: &'a str) -> impl Fn(&Question) -> Option<Vec<f64>> + 'a {
-    move |q: &Question| {
-        let scores = door.space.as_ref().zip(door.key.as_ref()).and_then(|(s, k)| s.judge(k, rec, q.cue, &q.after, &q.candidates));
-        let short = super::short(rec);
-        match &scores {
-            Some(s) => {
-                let s: Vec<String> = s.iter().map(|x| format!("{x:.2}")).collect();
-                rt.log(&format!("voice: {short} cue {} weighed ({})", q.cue + 1, s.join(" ")));
-            }
-            None => rt.log(&format!("voice: {short} cue {} keeps the code's own plan", q.cue + 1)),
-        }
-        scores
+/// start and how long the space took, or why it can't answer — no space, no key for it, or
+/// the space can't answer now — and the cue keeps the code's own plan. The lane notes it.
+fn judgment<'a>(door: &'a Door, rec: &'a str) -> impl Fn(&Question) -> Weighed + 'a {
+    move |q: &Question| match (door.space.as_ref(), door.key.as_ref()) {
+        (Some(s), Some(k)) => match s.judge(k, rec, q.cue, &q.after, &q.candidates) {
+            Ok((scores, ms)) => Weighed::scored(scores, ms),
+            Err(why) => Weighed::unanswered(why),
+        },
+        (None, _) => Weighed::unanswered("no space"),
+        (_, None) => Weighed::unanswered("no key for the space"),
     }
+}
+
+/// The lane's lines, in the run log under the take's short id.
+fn noting<'a>(rt: &'a Runtime, rec: &'a str) -> impl Fn(&str) + 'a {
+    let short = super::short(rec);
+    move |line: &str| rt.log(&format!("voice: {short} {line}"))
 }
 
 /// Right after `rec`'s go-live, from the uploader (its single-file copy and teaser still to
@@ -82,8 +86,11 @@ pub(crate) fn after_go_live(rt: &Runtime, dir: &Path, rec: &str) {
         };
         let door = door(&rt);
         let coming = door.space.as_ref().and_then(|s| s.cuts_coming(&rec));
-        let m = voice::after_go_live_judged(&s3, &rec, &dir, coming, Wait::default(), &mut Wall, &judgment(&rt, &door, &rec));
-        say(&rt, &rec, &m);
+        let m = voice::after_go_live_judged(&s3, &rec, &dir, coming, Wait::default(), &mut Wall, &judgment(&door, &rec), &noting(&rt, &rec));
+        // Waiting, the lane has said how long it looked.
+        if !matches!(m, Mark::Waiting { .. }) {
+            say(&rt, &rec, &m);
+        }
     });
     if spawned.is_err() {
         rt.log("voice: the lane didn't start");
@@ -102,12 +109,23 @@ pub(crate) fn spawn_sweep(rt: Runtime) {
 }
 
 /// One look at every take still waiting for its words: uploaded, its record's id in its
-/// `publish.json`; past two days it stops waiting.
+/// `publish.json`; past two days it stops waiting. A take planned in those two days has its
+/// cuts read back, so a press on the owner page since shows in the log.
 fn sweep(rt: &Runtime) {
     let now = Wall.now_ms();
     let door = door(rt);
     for dir in dirs(&rt.home.takes()) {
-        let Some(Mark::Waiting { since }) = voice::mark(&dir) else { continue };
+        let since = match voice::mark(&dir) {
+            Some(Mark::Waiting { since }) => since,
+            Some(Mark::Planned { at, .. }) if now.saturating_sub(at) <= LOOK_FOR_MS => {
+                let Some(p) = super::home::read_json::<PublishJson>(&dir.join("publish.json")) else { continue };
+                if let Some(s3) = client(rt, &dir) {
+                    voice::pressed(&s3, &p.rec, &dir, &noting(rt, &p.rec));
+                }
+                continue;
+            }
+            _ => continue,
+        };
         if classify(&dir) != Kind::Done {
             continue;
         }
@@ -115,7 +133,7 @@ fn sweep(rt: &Runtime) {
         let m = if now.saturating_sub(since) > LOOK_FOR_MS {
             voice::give_up(&dir, now)
         } else if let Some(s3) = client(rt, &dir) {
-            voice::look_again_judged(&s3, &p.rec, &dir, now, &judgment(rt, &door, &p.rec))
+            voice::look_again_judged(&s3, &p.rec, &dir, now, &judgment(&door, &p.rec), &noting(rt, &p.rec))
         } else {
             continue;
         };
@@ -123,10 +141,12 @@ fn sweep(rt: &Runtime) {
     }
 }
 
+/// What the lane came to, when its own lines haven't said it: a take planned has (what was
+/// heard, landed and cut).
 fn say(rt: &Runtime, rec: &str, m: &Mark) {
     let rec = super::short(rec);
     match m {
-        Mark::Planned { cues, .. } => rt.log(&format!("voice: {rec} planned ({cues} cue{})", if *cues == 1 { "" } else { "s" })),
+        Mark::Planned { .. } => {}
         Mark::Skipped { why, .. } => rt.log(&format!("voice: {rec} left as it is ({why})")),
         Mark::Waiting { .. } => rt.log(&format!("voice: {rec} waits for its words")),
     }

@@ -918,13 +918,15 @@ else → 400, before the ledger is read or the model called.
 
 **Steps:**
 1. Someone else's take (§2.4) and the caller isn't owner-class → 403 `not-yours`.
-2. No AI bound (a space that doesn't listen) → `{"later":true}`, spending nothing.
+2. No AI bound (a space that doesn't listen) → `{"later":true,"why":"no-ai"}`, spending nothing.
 3. Spend the device's `c` budget (§3.4): over it → 429 `too-many`.
 4. One Clef call (`@cf/cloudflare/clef`): the words as its state, never its questions; one
    `noul` question per candidate (is everything from this start said again after the
    command?).
-5. → `{"scores":[…]}`, one per candidate in its order, each held to 0–1, one Clef left out
-   0. A model error (the free day used up, `4006`; a busy model) → `{"later":true}`.
+5. → `{"scores":[…],"ms":<n>}`, one score per candidate in its order, each held to 0–1, one
+   Clef left out 0; `ms`, how long Clef took, for the Mac's log. A model error →
+   `{"later":true,"why":"daily"}` (the free day used up: `3036`, `4006` or its words, as the
+   AI build reads them) or `{"later":true,"why":"busy"}` (anything else).
 
 It writes nothing but the budget: the words go to the model and back, never to the bucket
 or a log.
@@ -932,7 +934,9 @@ or a log.
 **Callers.** `runtime/voice.rs`, through `shroom_upload::voice::after_go_live_judged` and
 `look_again_judged`, once per question of a take's plan. `Space::judge` takes only one score
 per candidate, each 0–1, and `shroom-edit` cuts from the farthest start scored 0.4 or more
-(`JUDGED`). `later`, a refusal or no answer: the cue keeps the code's own plan.
+(`JUDGED`). `later`, a refusal or no answer: the cue keeps the code's own plan. The Mac's run
+log keeps, per cue, the scores and `ms`, or the `why` (`later: busy`, `refused 429`, `no
+answer`), never the words.
 
 ---
 

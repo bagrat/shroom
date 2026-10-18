@@ -762,10 +762,10 @@ const cueAsk = (k) =>
   `Is everything in stretch ${k + 1} said again after the command, in the same or other words, so that cutting all of stretch ${k + 1} would lose nothing the speaker meant to keep?`;
 
 /** POST /_shroom/api/cue {rec, cue, after, candidates} (N65, DECISIONS B202): the judgment
- * above the Mac's voice-cue planner — one Clef call, a score from 0 to 1 per start; the Mac
- * picks. The take's maker or an owner-class Mac may ask, within its hour's budget. Whatever
- * Clef can't answer (the free day used up, a busy model, a space that doesn't listen) is
- * `later`: the Mac keeps its own plan.
+ * above the Mac's voice-cue planner — one Clef call, a score from 0 to 1 per start and how
+ * long Clef took (`ms`, for the Mac's log); the Mac picks. The take's maker or an owner-class
+ * Mac may ask, within its hour's budget. Whatever Clef can't answer is `later`, with why in a
+ * word (`no-ai`, `daily`: the free day used up, `busy`): the Mac keeps its own plan.
  * @param {Request} request @param {Env} env @param {any} b @param {number} now */
 async function cue(request, env, b, now) {
   const { who } = await authed(request, env);
@@ -776,8 +776,9 @@ async function cue(request, env, b, now) {
   const ledger = await ledgerGet(env, b.rec);
   if ((ledger ? ledger.member : M1) !== who.mid && !who.ownerClass) throw new Refusal(403, "not-yours");
   const ai = /** @type {{ AI?: { run: (model: string, input: unknown) => Promise<any> } }} */ (env).AI;
-  if (!ai) return answer({ later: true });
+  if (!ai) return answer({ later: true, why: "no-ai" });
   await spendBudget(env, who.did, now, "c", CUE_BUDGET);
+  const asked = Date.now();
   try {
     const questions = Object.fromEntries(starts.map((/** @type {string} */ _, /** @type {number} */ k) => [`s${k + 1}`, { type: "noul", instructions: cueAsk(k) }]));
     const out = await ai.run(CUE_JUDGE, { model: "clef", state: cueState({ after: b.after, candidates: starts }), questions });
@@ -785,9 +786,11 @@ async function cue(request, env, b, now) {
       const n = Number(out?.answers?.[`s${k + 1}`]?.noul);
       return Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : 0;
     });
-    return answer({ scores });
-  } catch {
-    return answer({ later: true });
+    return answer({ scores, ms: Date.now() - asked });
+  } catch (e) {
+    // The free day used up reads as the AI build's does (its `aiRefusal`); anything else is busy.
+    const daily = /\b(3036|4006)\b|daily free allocation/i.test(String(/** @type {any} */ (e)?.message ?? e));
+    return answer({ later: true, why: daily ? "daily" : "busy" });
   }
 }
 

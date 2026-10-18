@@ -615,13 +615,17 @@ impl Space {
     }
 
     /// `POST cue` (N65, DECISIONS B202): the judgment above the voice-cue planner, on the
-    /// space's own account — a score per candidate start, or `None` when it can't answer now
-    /// (the free day used up, a busy model, not reachable), and the Mac keeps its own plan.
-    pub fn judge(&self, key: &DeviceKey, rec: &str, cue: usize, after: &str, candidates: &[String]) -> Option<Vec<f64>> {
+    /// space's own account — a score per candidate start and how long the space took (ms), or,
+    /// when it can't answer now, why in a word or two (`later: daily`, `refused 429`, `no
+    /// answer`…, never an address), and the Mac keeps its own plan.
+    pub fn judge(&self, key: &DeviceKey, rec: &str, cue: usize, after: &str, candidates: &[String]) -> Result<(Vec<f64>, Option<u64>), String> {
         let body = json!({"rec": rec, "cue": cue, "after": after, "candidates": candidates});
         match self.call::<Value>("POST", "cue", Some(body), Some(key)) {
-            Answer::Ok(v) => scores_of(&v, candidates.len()),
-            _ => None,
+            Answer::Ok(v) if v.get("later").and_then(Value::as_bool) == Some(true) => Err(format!("later: {}", v.get("why").and_then(Value::as_str).unwrap_or("no reason"))),
+            Answer::Ok(v) => scores_of(&v, candidates.len()).map(|s| (s, v.get("ms").and_then(Value::as_u64))).ok_or_else(|| "an answer that doesn't fit".into()),
+            Answer::Refused(r) => Err(format!("refused {}", r.status)),
+            Answer::NotShroom { status } => Err(format!("not the space's answer ({status})")),
+            Answer::Unanswered(_) => Err("no answer".into()),
         }
     }
 
