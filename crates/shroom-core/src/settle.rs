@@ -70,11 +70,14 @@ fn due_edit_upkeep(w: &World, fx: &mut Vec<Effect>) {
 
 /// The token Mac's cleanup sweep (DECISIONS B91; ARCHITECTURE §5.5's GC, §16 #49): on the
 /// self-check's slow cadence, over the token's own pair, fail-soft — never offline, never
-/// over a take (its bandwidth is the take's), never while a paste is being checked.
+/// over a take (its bandwidth is the take's), never while a paste is being checked, and
+/// never while the editor is open: the sweep makes every edit past its two days the video
+/// (B197), and the editor may be on one of them, its list on the old video's clock (B199).
 fn due_cleanup(w: &World, fx: &mut Vec<Effect>) {
     let Some(at) = crate::derive::next_cleanup(w) else { return };
     let pasting = matches!(w.sweep.paste, Some(Paste::Checking(_) | Paste::Saving { .. } | Paste::PickAccount { .. }));
-    if w.now >= at && !pasting && !w.take_open() && w.online() != Some(false) && !w.inflight.ops.contains_key(&Op::Cleanup) {
+    let editing = w.session.fields.editor.is_some();
+    if w.now >= at && !pasting && !editing && !w.take_open() && w.online() != Some(false) && !w.inflight.ops.contains_key(&Op::Cleanup) {
         fx.push(Effect::Library(LibCmd::Cleanup));
     }
 }
