@@ -947,7 +947,11 @@ fn library_rows_carry_their_state_words_and_their_doors() {
     assert_eq!(gone.buttons.iter().map(|b| b.label.as_str()).collect::<Vec<_>>(), ["Save to Movies", "Discard…"], "always visible, as the spec writes it");
     assert_eq!(gone.meta, "Aug 19 · 0:48", "date · length — the length known here since the stop");
     let live = row(&s, "Where the 502s come from");
-    assert_eq!(live.menu.iter().map(|b| b.label.as_str()).collect::<Vec<_>>(), ["Copied", "Copy thumbnail", "Open page", "Rename", "Delete…"], "N46: Copy thumbnail under Copy link");
+    assert_eq!(
+        live.menu.iter().map(|b| b.label.as_str()).collect::<Vec<_>>(),
+        ["Copied", "Copy thumbnail", "Open page", "Edit…", "Rename", "Delete…"],
+        "N46: Copy thumbnail under Copy link; N63: Edit… after Open page"
+    );
     assert_eq!(live.gestures.double_click, Some(Action::OpenPage(rec("r502"))));
     assert_eq!(s.library.as_ref().unwrap().body.footer.as_deref(), Some("12 videos"));
 

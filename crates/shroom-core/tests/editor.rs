@@ -202,7 +202,7 @@ fn edit_greys_offline_and_mid_take() {
     assert!(!edit.enabled);
     assert_eq!(edit.note.as_deref(), Some("You can do this once your recording is finished."));
     r.lib(Action::EditRow(rec()));
-    assert!(r.scene.editor.is_none() && r.effects.is_empty(), "law 4: nothing new shows mid-take");
+    assert!(r.scene.editor.is_none() && !opens(&r) && r.w.session.fields.editor.is_none(), "law 4: nothing new shows mid-take");
 }
 
 /// In this Mac's scope (N5, N33): a member edits its own videos — it sees no one else's —
@@ -460,7 +460,7 @@ fn done_with_changes_saves_the_checked_list_as_the_next_revision() {
 fn the_windows_close_is_done() {
     let mut r = dirty();
     r.send(Event::WindowClosed(WindowKind::Editor));
-    assert!(r.has(|e| matches!(e, Effect::Editor(EditCmd::Save { rev: _, .. }))), "{:?}", r.effects);
+    assert!(r.has(|e| matches!(e, Effect::Editor(EditCmd::Save { saved: Saved { rev: 4, .. }, .. }))), "{:?}", r.effects);
     assert_eq!(r.arm.edge, Some(("editor", "editor-saving")));
     assert_eq!(face(&r), "editor-saving");
     r.news(EditorNews::Saved { rec: rec(), rev: 4 });
@@ -766,6 +766,7 @@ fn labels(r: &Run) -> Vec<String> {
 #[test]
 fn drop_a_marker_sits_between_finish_and_restart_and_says_once_its_dropped() {
     let mut r = Run::new(paused_popover(Cause::User));
+    r.send(Event::Tick);
     assert_eq!(labels(&r), ["Resume", "Finish & Share", "Drop a marker", "Restart", "Discard…"]);
     let m = paused_body(&r).marker.expect("the marker row");
     assert_eq!((button(&m), &m.action), (("Drop a marker", Style::Plain, true), &Action::DropMarker));
