@@ -296,3 +296,20 @@ fn an_open_window_stays_through_a_take() {
     let r = Run::new(w);
     assert!(r.scene.feedback.is_some());
 }
+
+/// Setup ending doesn't touch the Send feedback window: open over the all-set face, it
+/// stays open as typed when Record now (or ✕) closes the onboarding window (N60: only
+/// Cancel and Done drop the words).
+#[test]
+fn leaving_the_setup_keeps_what_was_typed() {
+    for action in [Action::RecordNow, Action::CloseWindow] {
+        let mut r = ready_to_send();
+        r.field(Field::FeedbackReplyTo, "jane@example.com");
+        r.w.session.windows.insert(WindowKind::Onboarding, Door::asked(Mono(900)));
+        let typed = r.w.session.fields.feedback.clone();
+        r.send(Event::Act { surface: Surface::Onboarding, action: action.clone(), rev: 0 });
+        assert!(!r.w.session.windows.contains_key(&WindowKind::Onboarding), "{action:?}: setup ended");
+        assert!(r.scene.feedback.is_some(), "{action:?}: the window stays open");
+        assert_eq!(r.w.session.fields.feedback, typed, "{action:?}: as typed");
+    }
+}
