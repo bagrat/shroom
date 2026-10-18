@@ -31,7 +31,7 @@ describe("the landing with the hero (/next)", () => {
     const at = (/** @type {string} */ s) => box.indexOf(s);
     assert.ok(at('id="hero"') > 0 && at('class="walk"') > at('id="hero"') && at('class="cut"') > at('class="walk"'));
     assert.match(box, /<span>Setup walkthrough<\/span>/);
-    assert.match(box, />1½ mins</);
+    assert.match(box, />2 min</);
   });
 
   it("opens the walkthrough, the site's own /how-to.mp4, only when asked", () => {
