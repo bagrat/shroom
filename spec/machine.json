@@ -1131,7 +1131,7 @@
   {
    "id": "N62",
    "title": "shroom on the command line, for a person or their coding agent",
-   "decision": "**Proposed 2026-10-18 (dev/proposals/cli-agent-skill.md). Bagrat's calls the same day, relayed by the orchestrator:** an agent may start and stop recordings only once a Settings switch is on, off by default; a refused recording says so, says that switch turns it on, and gives a link that opens Settings right at it; the command may make invites; the command is always installed; it does things many at once, so an agent can invite a team or tidy many videos in one step; and it is built in full now, its release his to time. (1) **The `shroom` command** ships inside the app (`Contents/MacOS/shroom-cli`) and follows the app it ships in: that app's folder (a dev build's command reads `~/.shroom-dev`) and that app to open. The install line links it into `~/.local/bin` (and puts that folder on the login profile's PATH when it isn't there), the cask into Homebrew's bin; `--uninstall` takes both back. (2) **It works whether the app runs or not:** list, info, links, open, rename, delete, cleanup candidates, members, invites — through the space's own page under this Mac's device key, never the Cloudflare token. A delete, a member's removal or a batch invite changes nothing without `--yes`; a rename, delete, invite or removal waits while a take is open (law 4). (3) **Many at once:** a batch takes its items as arguments or from a file and answers each with its own status; it is safe to run again (nothing is done twice), and says so when only some went through. At most 20 invites or 100 items a call. Each person invited gets their own link: shroom sends nothing. (4) **Cleanup candidates** are the page's own suggestions where the page makes them, and otherwise the videos older than a number of days. (5) **Recording goes through the running app** (its control socket in shroom's folder, this user only): start is the popover's Start, countdown and permission beat included, the popover open or not; pause is the tray's; Resume and Stop are the paused popover's; a stop answers with its link (law 3: this stop made it; law 10: nothing is copied). The app answers with a code, and the command says the words. (6) **Settings → General gains “Your coding agent”**: the prompt to paste, Copy (“Copied”, law 10), Read it first (shroom.am/cli), the line under them, and the switch “Let it start and stop recordings”, off by default; while it's off the app refuses every recording ask. **The refusal is three lines:** recording from a coding agent is off; the switch in Settings, under General, turns it on; and the link `shroom://settings/agent` (with `--json`, also its own field, `settings_link`; exit 10 as before). Bagrat approved its words and the switch's label as drawn, 2026-10-18. Clicked, the link opens shroom if it isn't running, and Settings on General with the switch's row in view and lit for a moment; the switch stays as it was — only the person flips it. Mid-take it opens nothing (law 4); a sheet open in Settings stays, and Settings comes forward as it stands. Settings needs a space (B160), so a Mac without one is told to set shroom up first, before the switch comes up. (7) **shroom.am/cli** is the guide an agent reads (a skill's SKILL.md), and `shroom guide` prints the same; /agent points there. Built: DECISIONS B215–B219. Provisional: awaiting ratification.",
+   "decision": "**Proposed 2026-10-18 (dev/proposals/cli-agent-skill.md). Bagrat's calls the same day, relayed by the orchestrator:** an agent may start and stop recordings only once a Settings switch is on, off by default; a refused recording says so, says that switch turns it on, and gives a link that opens Settings right at it; the command may make invites; the command is always installed; it does things many at once, so an agent can invite a team or tidy many videos in one step; and it is built in full now, its release his to time. (1) **The `shroom` command** ships inside the app (`Contents/MacOS/shroom-cli`) and follows the app it ships in: that app's folder (a dev build's command reads `~/.shroom-dev`) and that app to open. The install line links it into `~/.local/bin` (and puts that folder on the login profile's PATH when it isn't there), the cask into Homebrew's bin; `--uninstall` takes both back. (2) **It works whether the app runs or not:** list, info, links, open, rename, delete, cleanup candidates, members, invites — through the space's own page under this Mac's device key, never the Cloudflare token. A delete, a member's removal or a batch invite changes nothing without `--yes`; a rename, delete, invite or removal waits while a take is open (law 4). (3) **Many at once:** a batch takes its items as arguments or from a file and answers each with its own status; it is safe to run again (nothing is done twice), and says so when only some went through. At most 20 invites or 100 items a call. Each person invited gets their own link: shroom sends nothing. (4) **Cleanup candidates** are the page's own suggestions where the page makes them, and otherwise the videos older than a number of days. (5) **Recording goes through the running app** (its control socket in shroom's folder, this user only): start is the popover's Start, countdown and permission beat included, the popover open or not; pause is the tray's; Resume and Stop are the paused popover's; a stop answers with its link (law 3: this stop made it; law 10: nothing is copied). The app answers with a code, and the command says the words. (6) **Settings → General gains “Your coding agent”**: the prompt to paste, Copy (“Copied”, law 10), Read it first (shroom.am/cli), the line under them, and the switch “Let it start and stop recordings”, off by default; while it's off the app refuses every recording ask. **The refusal is three lines:** recording from a coding agent is off; the switch in Settings, under General, turns it on; and the link `shroom://settings/agent` (with `--json`, also its own field, `settings_link`; exit 10 as before). Bagrat approved its words and the switch's label as drawn, 2026-10-18. Clicked, the link opens shroom if it isn't running, and Settings on General with the switch's row in view and lit for a moment; the switch stays as it was — only the person flips it. Mid-take it opens nothing (law 4); a sheet open in Settings stays, and Settings comes forward as it stands. Settings needs a space (B160), so a Mac without one is told to set shroom up first, before the switch comes up. (8) **Without the count, and the label** (Bagrat, 2026-10-18): `record start --no-countdown` starts the take at once, capture beginning as the count's end would; the app's own Start keeps its count. A take the command starts shows a small label at the top right of the display it records — “Your coding agent is recording your screen” — while it records (paused, it goes; a take of the camera only has none), left out of the video and taking no clicks; `--no-label` leaves it off. The tray shows every take, whatever the flags. (7) **shroom.am/cli** is the guide an agent reads (a skill's SKILL.md), and `shroom guide` prints the same; /agent points there. Built: DECISIONS B215–B219. Provisional: awaiting ratification.",
    "status": "provisional",
    "date": "2026-10-18",
    "amends": [
@@ -1164,7 +1164,7 @@
   },
   {
    "name": "The overlays",
-   "may_do": "Lives: the chosen display | Opens: the countdown scrim; the bubble from `config` through the take | Rules: never windows, never the dock icon; the bubble never takes focus, while the countdown does — you just started it, and its Esc must work without any extra macOS permission; the bubble is the only thing of ours ever in a take  [UX-STATEMACHINE.md L1720]"
+   "may_do": "Lives: the chosen display | Opens: the countdown scrim; the bubble from `config` through the take; the agent label while a take the shroom command started records (N62) | Rules: never windows, never the dock icon; the bubble never takes focus, while the countdown does — you just started it, and its Esc must work without any extra macOS permission; the bubble is the only thing of ours ever in a take (the label, like the countdown, is left out of it)  [UX-STATEMACHINE.md L1720]"
   },
   {
    "name": "The command line",
@@ -5364,8 +5364,19 @@
    "status": "ratified",
    "board": "TrayFaces",
    "summary": "The tray is the whole surface and there is no popover. The icon wears the red dot. A click is an instant pause, and the popover opens only after the pause is confirmed (never catch a menu in the last frame, POC §8). No timer in the menu bar. Network is never the recording's problem: capture writes locally regardless, and upload is opportunistic in the background. A right-click mid-take is the same as a left click (N39). ⌘Q and the Dock's Quit are declined silently (law 4).",
-   "entry": "`countdown` elapsed and capture began, or Resume from `paused`.",
-   "said": [],
+   "entry": "`countdown` elapsed and capture began, or Resume from `paused`. Or capture began at once: the shroom command's start without the count (N62).",
+   "said": [
+    {
+     "text": "Your coding agent is recording your screen",
+     "role": "label",
+     "copy": "provisional",
+     "note": "The agent label: a small label at the top right of the display being recorded, while a take the shroom command started records (N62, B216). Left out of the video, as the countdown and the bubble's controls are; it takes no clicks. Not with --no-label; never on a take the person started, nor on one of the camera only; paused, it goes.",
+     "cites": [
+      "N62"
+     ],
+     "id": "recording.your-coding-agent-is"
+    }
+   ],
    "actions": [
     {
      "label": "tray click",
@@ -5400,7 +5411,8 @@
     "N39",
     "N41",
     "N25",
-    "N54"
+    "N54",
+    "N62"
    ],
    "was": {
     "fixture": "r3.json",
