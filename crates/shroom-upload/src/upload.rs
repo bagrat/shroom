@@ -379,12 +379,16 @@ pub fn go_live(
         };
 
         // 5. The record flips to live (read-modify-write; stops if it was deleted meanwhile).
+        // A pass run again over a video whose edit already became it (B197) never points it
+        // back at the stream, nor its length at the recording's.
         let duration: f64 = local.segments.iter().map(|s| s.seconds).sum();
         update_meta(s3, id, |m| {
             m.state = State::Live;
             m.published_at.get_or_insert_with(now_iso);
-            m.duration_sec = Some((duration * 1000.0).round() / 1000.0);
-            m.media = Some(Media { hls: Some(keys::master(id)), mp4: None, poster: poster.clone(), teaser: None, width, height });
+            if !baked(m) {
+                m.duration_sec = Some((duration * 1000.0).round() / 1000.0);
+                m.media = Some(Media { hls: Some(keys::master(id)), mp4: None, poster: poster.clone(), teaser: None, width, height });
+            }
             m.progress = Some(Progress { done: stream, total, updated_at: now_iso() });
         })?;
         report.duration_sec = duration;
@@ -395,11 +399,34 @@ pub fn go_live(
     Ok(report)
 }
 
+/// Whether the record's video is one file and no stream any more: an edit became it (B197's
+/// bake, `media.hls` null). The uploader never moves such a record's `media`.
+fn baked(m: &Meta) -> bool {
+    m.media.as_ref().is_some_and(|x| x.hls.is_none())
+}
+
+/// Names `key` in the record's `media` (as `set` does) unless the video is baked; then the
+/// file just sent is the original's, which the bake deletes, and it goes here too (never a
+/// file `media` names).
+fn name_extra(s3: &Client, id: &str, key: &str, set: impl Fn(&mut Media)) -> Result<(), UploadError> {
+    let m = update_meta(s3, id, |m| {
+        if let Some(media) = m.media.as_mut().filter(|x| x.hls.is_some()) {
+            set(media);
+        }
+    })?;
+    let named = m.media.as_ref().is_some_and(|x| [&x.mp4, &x.poster, &x.teaser].iter().any(|k| k.as_deref() == Some(key)));
+    if baked(&m) && !named {
+        with_retry(|| s3.delete(key))?;
+    }
+    Ok(())
+}
+
 /// Step 6, the second-class files, after the stream is live and never gating it: the unfurl
 /// teaser (small), then the single-file copy — each only if it's on this Mac. Then the
 /// record says the upload drained (`progress.done = total`), the page's “Fully live ✓”,
 /// whether or not every extra could be made. `done`/`total` continue [`go_live`]'s count.
-/// Returns whether the single-file copy went up.
+/// A video whose edit became it meanwhile (B197) keeps its `media`: what this sends is then
+/// removed again. Returns whether the single-file copy went up.
 pub fn finish(s3: &Client, id: &str, dir: &Path, done: u32, total: u32, beat: &Beat, mut progress: impl FnMut(u32, u32)) -> Result<bool, UploadError> {
     let counter = Counter { done: AtomicU32::new(done), total };
     let mp4 = with_beat(s3, id, beat, &counter, || {
@@ -407,22 +434,14 @@ pub fn finish(s3: &Client, id: &str, dir: &Path, done: u32, total: u32, beat: &B
         if teaser.is_file() {
             let bytes = std::fs::read(&teaser)?;
             with_retry(|| s3.put(&keys::teaser(id), &bytes, "video/mp4"))?;
-            update_meta(s3, id, |m| {
-                if let Some(media) = m.media.as_mut() {
-                    media.teaser = Some(keys::teaser(id));
-                }
-            })?;
+            name_extra(s3, id, &keys::teaser(id), |media| media.teaser = Some(keys::teaser(id)))?;
             let d = counter.done.fetch_add(1, Ordering::SeqCst) + 1;
             progress(d.min(total), total);
         }
         let mp4 = dir.join(files::PREVIEW);
         if mp4.is_file() {
             with_retry(|| s3.put_file(&keys::mp4(id), &mp4, "video/mp4", SINGLE_PUT_MAX, PART_SIZE))?;
-            update_meta(s3, id, |m| {
-                if let Some(media) = m.media.as_mut() {
-                    media.mp4 = Some(keys::mp4(id));
-                }
-            })?;
+            name_extra(s3, id, &keys::mp4(id), |media| media.mp4 = Some(keys::mp4(id)))?;
             let d = counter.done.fetch_add(1, Ordering::SeqCst) + 1;
             progress(d.min(total), total);
             return Ok(true);

@@ -9,7 +9,7 @@ use shroom_storage::s3::{Bucket, Client};
 use shroom_storage::sigv4::Credentials;
 use shroom_upload::library;
 use shroom_upload::meta::{Media, Meta, State as MetaState};
-use shroom_upload::upload::UploadError;
+use shroom_upload::upload::{self, UploadError};
 
 const A: &str = "AAAAAAAAAAAAAAAA";
 const BUCKET: &str = "shroom-space";
@@ -296,4 +296,50 @@ fn a_librarys_row_follows_the_edit_and_the_bake() {
     let r = row(&cache);
     assert_eq!((r.duration_sec, r.edited_sec, r.poster_file.as_deref()), (Some(38.0), None, Some("edit-1-poster.jpg")));
     assert_eq!(r.poster, Some(format!("rec/{A}/edit-1-poster.jpg")));
+}
+
+/// The uploader never moves a baked video back (B197): a take whose teaser and single-file
+/// copy were still being made when its edit became the video keeps playing the edit, and
+/// what it sends then goes again; so does a pass run again from the start.
+#[test]
+fn the_uploader_never_moves_a_baked_video_back() {
+    let (fake, s3) = space();
+    let take = tempfile::tempdir().unwrap();
+    let dir = take.path();
+    let mut playlist = String::from("#EXTM3U\n#EXT-X-VERSION:7\n#EXT-X-TARGETDURATION:6\n#EXT-X-MAP:URI=\"init.mp4\"\n");
+    for i in 0..2 {
+        playlist.push_str(&format!("#EXTINF:6.000,\nseg_{i:05}.m4s\n"));
+        std::fs::write(dir.join(format!("seg_{i:05}.m4s")), vec![i as u8; 64]).unwrap();
+    }
+    playlist.push_str("#EXT-X-ENDLIST\n");
+    std::fs::write(dir.join("stream.m3u8"), playlist).unwrap();
+    std::fs::write(dir.join("init.mp4"), b"not a real init").unwrap();
+    upload::upload_recording(&s3, A, dir, "Setting up shroom", |_, _| {}).unwrap();
+    assert_eq!((read(&s3, A)["media"]["hls"].as_str(), read(&s3, A)["durationSec"].as_f64()), (Some(&*format!("rec/{A}/master.m3u8")), Some(12.0)));
+
+    let mut h = History::new(EditList::new(12.0));
+    assert!(h.act(&Op::Trim { in_: 2.0, out: 10.0 }));
+    save_and_copy(&s3, A, &h.now, 8.0);
+    assert!(library::bake(&s3, A, DUE).unwrap());
+    let baked = |s3: &Client| {
+        let v = read(s3, A);
+        assert_eq!(v["media"]["hls"], serde_json::Value::Null, "{v}");
+        assert_eq!((v["media"]["mp4"].as_str(), v["media"]["teaser"].as_str()), (Some(&*format!("rec/{A}/edit-1.mp4")), Some(&*format!("rec/{A}/edit-1-teaser.mp4"))));
+        assert_eq!(v["durationSec"], 8.0);
+    };
+    baked(&s3);
+
+    // The extras were still being made: now they go up.
+    std::fs::write(dir.join("teaser.mp4"), b"the teaser").unwrap();
+    std::fs::write(dir.join("preview.mp4"), b"the single-file copy").unwrap();
+    assert!(upload::finish(&s3, A, dir, 5, 7, &upload::Beat::default(), |_, _| {}).unwrap());
+    baked(&s3);
+    assert_eq!(read(&s3, A)["progress"]["done"], 7, "drained all the same");
+    assert!(files(&fake, A).iter().all(|f| f != "video.mp4" && f != "teaser.mp4"), "{:?}", files(&fake, A));
+
+    // The whole pass again (its live marker lost): the record stays the edit.
+    upload::upload_recording(&s3, A, dir, "Setting up shroom", |_, _| {}).unwrap();
+    baked(&s3);
+    assert!(files(&fake, A).iter().all(|f| f != "video.mp4" && f != "teaser.mp4"));
+    assert!(["edit-1.mp4", "edit-1-poster.jpg", "edit-1-teaser.mp4"].iter().all(|f| files(&fake, A).contains(&f.to_string())));
 }
