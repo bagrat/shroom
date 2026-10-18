@@ -890,13 +890,7 @@ fn log_since(rt: &crate::runtime::Runtime, from: u64) -> Vec<(u64, String)> {
     let _ = f.seek(SeekFrom::Start(from));
     let mut text = String::new();
     let _ = f.read_to_string(&mut text);
-    text.lines()
-        .filter_map(|l| {
-            let l = l.trim_start();
-            let (mono, rest) = l.split_once(' ')?;
-            Some((mono.parse().ok()?, rest.to_string()))
-        })
-        .collect()
+    text.lines().filter_map(crate::runtime::read_log_line).map(|(mono, rest)| (mono, rest.to_string())).collect()
 }
 
 fn log_len(rt: &crate::runtime::Runtime) -> u64 {
