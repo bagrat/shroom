@@ -15,10 +15,10 @@ spec rows are Bagrat's call. The words on the boards are placeholders.*
 **In short.** The cue works. A pure-Rust planner (`crates/shroom-edit`) takes a transcript
 with word times and returns an edit list. The cloud harness speaks seven invented takes with
 four stock voices, transcribes them with Whisper and plans them, then scores the cuts
-against the script. **With the code word in Whisper's prompt, every take passed: 28 of 28
-on large-v3-turbo, the model Cloudflare's Workers AI runs, and 28 of 28 on small.en.**
-Without the prompt, only 15 of 28 passed: Whisper hears “shroom cut” as “Trume cut” or
-“drum cut”. Cuts are suggestions on an edit list: nothing is re-encoded, and any cut can
+against the script. **With the code word in Whisper's prompt, 27 of 28 takes passed on
+large-v3-turbo, the model Cloudflare's Workers AI runs, and 27 of 28 on small.en. Neither
+miss cut a word that should stay.** Without the prompt, 19 of 28 passed: Whisper hears
+“shroom cut” as “Trume cut”, “Troom cut” or “drum cut”. Cuts are suggestions on an edit list: nothing is re-encoded, and any cut can
 be undone. A working editor prototype plays the takes with their cuts applied.
 
 ## Boards
@@ -76,20 +76,37 @@ The boards come from [`voice-cut/make-boards.py`](voice-cut/make-boards.py).
 
 | Transcriber | Prompt | Passed |
 |---|---|---|
-| Whisper large-v3-turbo (int8, CPU) | “Shroom cut.” plus a disfluent sample | **28/28** |
-| Whisper small.en | the same | **28/28** |
-| Whisper small.en | none | 15/28: the cue is heard as “Trume cut”, “Trumcut”, “Trung cut” or “drum cut” |
+| Whisper large-v3-turbo (int8, CPU) | “Shroom cut.” plus a disfluent sample | **27/28** |
+| Whisper small.en | the same | **27/28** |
+| Whisper small.en | none | 19/28: the cue is heard as “Trume cut”, “Trumcut”, “Trung cut” or “drum cut” |
+
+**The two misses.**
+
+- **Turbo left the first 8 s out of one transcript**: the slip, the first cue and the
+  retake. Nothing was heard there, so nothing was cut.
+- **On one small.en take, Whisper wrote “hmm” as “him.”** The offered line before a cue
+  with no retake then started one clause late.
+
+Neither cut a kept word. Both stay in the fixtures as known misses, each with its reason
+(`crates/shroom-edit/tests/takes.rs`). The test holds the other 54 transcripts to the
+script.
 
 **What the runs taught:**
 
 - The code word needs biasing. Whisper's `initial_prompt` does it, and Cloudflare's Whisper
   takes the same option. Deepgram takes `keyterm`.
-- **The prompt has a cost.** On one take, small.en with the prompt dropped the first ten
-  seconds of speech and began its transcript at the cue.
+  - Even with the prompt, one voice came out as “Troom cut”.
+  - So a looser sound-alike (“troom”, “drum”, “trung”) also counts, but only when it stands
+    as its own sentence: after a sentence end, and followed by a full stop or a pause.
+    “The drum cut was loud” stays speech.
+- **The prompt has a cost**, and Whisper sometimes skips speech: two takes (one on small.en,
+  one on turbo) lost their first 8–10 s.
   - The planner now refuses to treat a long gap with sound in it as silence, so that take
     lost only the cue, not the missed speech.
-  - The real fix is to transcribe in chunks of about 30 s with a little overlap, which
-    Workers AI needs anyway.
+  - The real fix is to transcribe in chunks of about 30 s with a little overlap, and VAD.
+    Workers AI needs chunks anyway.
+  - The app could also flag a take whose transcript has a long stretch of sound with no
+    words in it.
 - **Whisper kept the repeated words and the fillers** (“the, the window”, “um”) on these
   takes. Research says Whisper often tidies repetitions away. Here it didn't, but these are
   clean synthetic voices; a real one is the next probe.
@@ -160,7 +177,8 @@ The prototype is [`prototype/index.html`](voice-cut/prototype/index.html), and
 - You can drag the ends to trim, or drag across the sound to cut a part.
 - An Edited / Original switch, and the live edit list underneath.
 
-It is published privately for Bagrat as an Artifact (link in the PR's report).
+Bagrat has it as a private page, and the link is in the report to him. A before-and-after
+video of four takes sits beside it (also private).
 
 ## How editing fits the link and the storage
 
@@ -217,7 +235,7 @@ thread):
 **Recommendation: Workers AI whisper-large-v3-turbo**, from the person's own Worker.
 
 - It fits BYO: it runs in their account, under their free allowance, with no model download
-  and no new macOS prompt. It is the model behind the 28/28 above.
+  and no new macOS prompt. It is the model behind the 27/28 above.
 - **How it would work.** After Finish & Share, the app extracts the take's audio (16 kHz
   mono, about 30 s chunks with 2 s of overlap). It posts each chunk to a new Worker route,
   `POST /_shroom/listen/<id>`, under the app's existing key. The Worker runs

@@ -1,0 +1,165 @@
+{
+ "duration": 10.960453514739228,
+ "words": [
+  {
+   "text": "Thanks",
+   "start": 0.0,
+   "end": 0.84
+  },
+  {
+   "text": "for",
+   "start": 0.84,
+   "end": 1.02
+  },
+  {
+   "text": "watching,",
+   "start": 1.02,
+   "end": 1.4
+  },
+  {
+   "text": "and",
+   "start": 1.72,
+   "end": 1.82
+  },
+  {
+   "text": "see",
+   "start": 1.82,
+   "end": 2.06
+  },
+  {
+   "text": "you",
+   "start": 2.06,
+   "end": 2.26
+  },
+  {
+   "text": "in",
+   "start": 2.26,
+   "end": 2.36
+  },
+  {
+   "text": "the",
+   "start": 2.36,
+   "end": 2.44
+  },
+  {
+   "text": "next.",
+   "start": 2.44,
+   "end": 2.8
+  },
+  {
+   "text": "Troom",
+   "start": 3.08,
+   "end": 3.6
+  },
+  {
+   "text": "cut.",
+   "start": 3.6,
+   "end": 3.9
+  },
+  {
+   "text": "Thanks",
+   "start": 4.22,
+   "end": 4.76
+  },
+  {
+   "text": "for",
+   "start": 4.76,
+   "end": 5.0
+  },
+  {
+   "text": "watching,",
+   "start": 5.0,
+   "end": 5.36
+  },
+  {
+   "text": "see",
+   "start": 5.6,
+   "end": 5.72
+  },
+  {
+   "text": "you",
+   "start": 5.72,
+   "end": 5.86
+  },
+  {
+   "text": "next",
+   "start": 5.86,
+   "end": 6.1
+  },
+  {
+   "text": "time.",
+   "start": 6.1,
+   "end": 6.46
+  },
+  {
+   "text": "Oh,",
+   "start": 6.88,
+   "end": 7.42
+  },
+  {
+   "text": "and",
+   "start": 7.62,
+   "end": 7.72
+  },
+  {
+   "text": "one",
+   "start": 7.72,
+   "end": 7.94
+  },
+  {
+   "text": "more",
+   "start": 7.94,
+   "end": 8.14
+  },
+  {
+   "text": "thing,",
+   "start": 8.14,
+   "end": 8.42
+  },
+  {
+   "text": "uh,",
+   "start": 8.6,
+   "end": 8.68
+  },
+  {
+   "text": "Troom",
+   "start": 9.18,
+   "end": 9.5
+  },
+  {
+   "text": "cut.",
+   "start": 9.5,
+   "end": 9.86
+  }
+ ],
+ "silences": [
+  {
+   "start": 0.0,
+   "end": 0.614785
+  },
+  {
+   "start": 1.56122,
+   "end": 1.71828
+  },
+  {
+   "start": 2.87887,
+   "end": 3.39533
+  },
+  {
+   "start": 3.99451,
+   "end": 4.61701
+  },
+  {
+   "start": 6.5766,
+   "end": 7.19755
+  },
+  {
+   "start": 8.76562,
+   "end": 9.28059
+  },
+  {
+   "start": 9.93193,
+   "end": 10.9605
+  }
+ ]
+}

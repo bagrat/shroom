@@ -21,11 +21,18 @@ fn overlap(a: (f64, f64), b: (f64, f64)) -> f64 {
 }
 
 /// Takes the planner gets wrong today, and why. Each still must not cut a kept line.
-const KNOWN: &[(&str, &str)] = &[(
-    "small-en_US-amy-medium-4-no-retake",
-    "Whisper wrote the hesitation \"hmm\" as \"him.\", with a real pause after it, so the \
+const KNOWN: &[(&str, &str)] = &[
+    (
+        "small-en_US-amy-medium-4-no-retake",
+        "Whisper wrote the hesitation \"hmm\" as \"him.\", with a real pause after it, so the \
      offered line before the cue starts after it and leaves \"The second one is\"",
-)];
+    ),
+    (
+        "turbo-en_US-ryan-medium-7-cue-at-the-end",
+        "Whisper left the first 8 s out of the transcript (the slip, the first cue and the \
+         retake): nothing heard, nothing cut. Chunked transcription with VAD is the fix",
+    ),
+];
 
 #[test]
 fn every_take() {
