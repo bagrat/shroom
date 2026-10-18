@@ -70,7 +70,7 @@ describe("counting plays", () => {
     const env = space({ objects: { [metaKey(VID)]: live(VID), [metaKey(up)]: live(up, { state: "uploading" }), [`.shroom/gone/${gone}`]: "", [metaKey(gone)]: live(gone) } });
     for (const id of [gone, up, recId(4)]) expect((await beacon(env, id, { e: "play", t: "tok_aaaaaaaa" })).status).toBe(204);
     expect(env.BUCKET.written().filter((k) => k.startsWith(".shroom/views/"))).toEqual([]);
-    await env.BUCKET.put(".shroom/views.off", "");
+    await env.BUCKET.put(".shroom/plays.json", JSON.stringify({ on: false }));
     await beacon(env, VID, { e: "play", t: "tok_aaaaaaaa" });
     expect(env.BUCKET.json(viewsKey(VID))).toBeNull();
   });
@@ -108,6 +108,30 @@ describe("counting plays", () => {
     expect(textOf(mine)).toBeTruthy();
     expect(mine).not.toContain("shroomCount(");
     expect(VIEW_JS).not.toMatch(/cookie|localStorage|sessionStorage/);
+  });
+});
+
+describe("the space's switch, and a delete", () => {
+  it("any device reads it; owner-class alone sets it; off stops counting and keeps what was counted", async () => {
+    const env = space({ objects: { [metaKey(VID)]: live(VID) } });
+    expect(await bodyOf(await call(env, "GET", "/_shroom/api/plays", { auth: MHER_MAC.bearer }))).toMatchObject({ on: true });
+    expect((await call(env, "POST", "/_shroom/api/plays", { auth: MHER_MAC.bearer, body: { on: false } })).status).toBe(403);
+    await beacon(env, VID, { e: "play", t: "tok_aaaaaaaa" });
+    expect(await bodyOf(await call(env, "POST", "/_shroom/api/plays", { auth: OWNER_MAC.bearer, body: { on: false } }))).toMatchObject({ on: false });
+    await beacon(env, VID, { e: "play", t: "tok_bbbbbbbb" });
+    expect(env.BUCKET.json(viewsKey(VID))).toMatchObject({ plays: 1 });
+    expect(await bodyOf(await call(env, "GET", "/_shroom/api/plays", { auth: MHER_MAC.bearer }))).toMatchObject({ on: false });
+    expect((await call(env, "POST", "/_shroom/api/plays", { auth: OWNER_MAC.bearer, body: { on: "no" } })).status).toBe(400);
+    expect((await call(env, "PUT", "/_shroom/api/plays", { auth: OWNER_MAC.bearer, body: { on: true } })).status).toBe(405);
+  });
+
+  it("a sealed delete takes the video's plays with it", async () => {
+    const env = space({ objects: { [metaKey(VID)]: live(VID) } });
+    await ledger(env, VID, M1, OWNER_MAC.id);
+    await beacon(env, VID, { e: "play", t: "tok_aaaaaaaa" });
+    await env.BUCKET.put(metaKey(VID), live(VID, { state: "deleted" }));
+    expect((await call(env, "POST", "/_shroom/api/gone", { auth: OWNER_MAC.bearer, body: { rec: VID } })).status).toBe(204);
+    expect(env.BUCKET.json(viewsKey(VID))).toBeNull();
   });
 });
 
