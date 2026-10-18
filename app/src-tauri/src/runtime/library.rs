@@ -8,7 +8,11 @@
 //! - `Rename`: the record rewritten under `If-Match` — `Renamed`;
 //! - `Delete`: per video, the tombstone first, then the bytes — `Deleted`;
 //! - `Cleanup`: the token Mac's sweep (B91), handed at once to a lane of its own — a sweep
-//!   reads the whole space and never holds the commands above up — `Cleaned`.
+//!   reads the whole space and never holds the commands above up — `Cleaned`;
+//! - `Suggest`: what the space says is worth deleting (N68), `POST /cleanup` paged to its
+//!   end under this Mac's device key, every Mac alike — `Suggested`;
+//! - `Keep`: the record's `keep` rewritten under `If-Match`, as a rename is — `Kept`;
+//! - `Plays`: the space's play-count switch, `POST /plays` (owner-class) — `Plays`.
 //!
 //! A token Mac reaches the bucket the way it does everywhere else: the token's own derived
 //! S3 credentials over the space's bucket (as the owner page's grant does). Those keys go
@@ -27,11 +31,11 @@ use std::sync::mpsc::{Sender, channel};
 use std::collections::{BTreeMap, BTreeSet};
 
 use shroom_cloud::device::DeviceKey;
-use shroom_cloud::member::{Answer, LibraryRequest, MintNext, Purpose, Scope, Space};
+use shroom_cloud::member::{Answer, CleanupPage, LibraryRequest, MintNext, Purpose, Scope, Space};
 use shroom_core::effect::LibCmd;
 use shroom_core::event::{Event, LibraryNews};
 use shroom_core::time::Wall;
-use shroom_core::world::{FailClass, LibraryRow, Op, RecId, Role, SpaceIdentity};
+use shroom_core::world::{FailClass, LibraryRow, Op, RecId, Role, SpaceIdentity, Suggestion, Suggestions};
 use shroom_storage::s3::{Client, S3Error};
 use shroom_upload::library::{self, Cache, Row};
 use shroom_upload::meta::State;
@@ -308,6 +312,9 @@ fn spawn_with(rt: Runtime, sweep: impl FnMut(&Runtime, &SpaceIdentity) -> Result
                     LibCmd::Rename(..) => Op::Rename,
                     LibCmd::Delete(_) => Op::Delete,
                     LibCmd::Cleanup => Op::Cleanup,
+                    LibCmd::Suggest { .. } => Op::Suggest,
+                    LibCmd::Keep(_) => Op::Keep,
+                    LibCmd::Plays(_) => Op::Plays,
                 };
                 // Read before the space: a wipe between the two shows as a newer generation.
                 let generation = *rt.space_gen.lock().unwrap();
@@ -322,14 +329,29 @@ fn spawn_with(rt: Runtime, sweep: impl FnMut(&Runtime, &SpaceIdentity) -> Result
                     post_rows(&rt, &space, false);
                     continue;
                 }
+                // The space's Worker under this Mac's device key, whatever its door (N68).
+                if matches!(cmd, LibCmd::Suggest { .. } | LibCmd::Plays(_)) {
+                    let asked = worker_door(&rt, &space).and_then(|(key, page)| match cmd {
+                        LibCmd::Suggest { everyone } => suggest(&rt, &key, &page, everyone),
+                        LibCmd::Plays(on) => plays(&rt, &key, &page, on),
+                        _ => Ok(()),
+                    });
+                    if let Err(class) = asked {
+                        rt.post(Event::Failed { op, class });
+                    }
+                    continue;
+                }
                 if let Err(class) = ctx(&rt, &space, &mut cached) {
                     rt.log(&format!("library {op:?}: no client ({class:?})"));
                     rt.post(Event::Failed { op, class });
                     continue;
                 }
                 let ok = match (&cached.as_ref().expect("a door").door, cmd) {
-                    // Both answered above: a cache load at once, a sweep on its own lane.
-                    (_, LibCmd::LoadCache | LibCmd::Cleanup) => Ok(()),
+                    // Answered above: a cache load at once, a sweep on its own lane, and
+                    // what goes to the space's Worker whatever the door.
+                    (_, LibCmd::LoadCache | LibCmd::Cleanup | LibCmd::Suggest { .. } | LibCmd::Plays(_)) => Ok(()),
+                    (Door::Token(s3), LibCmd::Keep(rec)) => keep(&rt, s3, rec),
+                    (Door::Device { key, page }, LibCmd::Keep(rec)) => manage(&rt, &space, key, page, &rec.0).and_then(|s3| keep(&rt, &s3, rec)),
                     (Door::Token(s3), LibCmd::Refresh) => refresh(&rt, &space, s3, generation),
                     (Door::Token(s3), LibCmd::Rename(rec, title)) => rename(&rt, &space, s3, rec, &title, generation),
                     (Door::Token(s3), LibCmd::Delete(recs)) => delete(&rt, &space, |_| Ok(Held::Shared(s3)), |id| seal_here(s3, id), recs, generation),
@@ -353,6 +375,87 @@ fn spawn_with(rt: Runtime, sweep: impl FnMut(&Runtime, &SpaceIdentity) -> Result
         })
         .expect("the library lane starts");
     tx
+}
+
+/// This Mac's device key and its space's Worker (N68): every Mac has both once enrolled,
+/// the token Mac too.
+fn worker_door(rt: &Runtime, space: &SpaceIdentity) -> Result<(DeviceKey, Space), FailClass> {
+    let key = super::member::device_key(rt).filter(|k| k.host == space.host).ok_or_else(|| {
+        rt.log("library: no device key for this Mac's space");
+        FailClass::Refused
+    })?;
+    let page = rt.space(&space.host).ok_or_else(|| {
+        rt.log("library: a dev build reaches a space's page only through --space-base — refused");
+        FailClass::Refused
+    })?;
+    Ok((key, page))
+}
+
+/// The most pages one read of the suggestions follows (40 records each: 20,000 videos).
+const SUGGEST_PAGES: usize = 500;
+
+/// What the space says is worth deleting (N68): every page of `POST /cleanup`, the
+/// candidates in the Worker's order (its score, highest first), and the bytes of every
+/// live video read — the space's size on an owner-class Mac.
+fn suggest(rt: &Runtime, key: &DeviceKey, page: &Space, everyone: bool) -> Result<(), FailClass> {
+    let mut after: Option<String> = None;
+    let mut counting = true;
+    let mut space_bytes = 0u64;
+    let mut found: Vec<(f64, Suggestion)> = Vec::new();
+    for _ in 0..SUGGEST_PAGES {
+        let p: CleanupPage = match page.cleanup(key, everyone, after.as_deref()) {
+            Answer::Ok(p) => p,
+            other => return Err(answer_class(rt, "suggest", &other)),
+        };
+        counting = p.counting;
+        for item in &p.items {
+            space_bytes += item.bytes;
+            if item.candidate {
+                let stopped_early = item.reason.as_ref().is_some_and(|r| r.code == "stopped-early");
+                let quiet_days = item.quiet_days.unwrap_or(0.0).max(0.0) as u32;
+                found.push((item.score, Suggestion { rec: RecId(item.id.clone()), bytes: item.bytes, plays: item.plays, quiet_days, stopped_early }));
+            }
+        }
+        match p.next {
+            Some(next) if Some(&next) != after.as_ref() => after = Some(next),
+            _ => {
+                found.sort_by(|a, b| b.0.total_cmp(&a.0));
+                rt.log(&format!("library suggestions: {} of the space's videos, counting {}", found.len(), if counting { "on" } else { "off" }));
+                let rows = found.into_iter().map(|(_, s)| s).collect();
+                rt.post(Event::Library(LibraryNews::Suggested(Suggestions { counting, space_bytes, rows })));
+                return Ok(());
+            }
+        }
+    }
+    rt.log("library suggestions: more pages than one read follows");
+    Err(FailClass::Unclassified)
+}
+
+/// The space's play-count switch (N68): answers where it stands now.
+fn plays(rt: &Runtime, key: &DeviceKey, page: &Space, on: bool) -> Result<(), FailClass> {
+    match page.plays(key, on) {
+        Answer::Ok(now) => {
+            rt.log(&format!("library: the space counts plays {}", if now { "on" } else { "off" }));
+            rt.post(Event::Library(LibraryNews::Plays(now)));
+            Ok(())
+        }
+        other => Err(answer_class(rt, "plays", &other)),
+    }
+}
+
+/// Keep (N68): `keep: true` on the record, under `If-Match`.
+fn keep(rt: &Runtime, s3: &Client, rec: RecId) -> Result<(), FailClass> {
+    match library::keep(s3, &rec.0) {
+        Ok(_) => {
+            rt.log(&format!("library kept {}", super::short(&rec.0)));
+            rt.post(Event::Library(LibraryNews::Kept(rec)));
+            Ok(())
+        }
+        Err(e) => {
+            rt.log(&format!("library keep {}: {e}", super::short(&rec.0)));
+            Err(class(&e))
+        }
+    }
 }
 
 fn refresh(rt: &Runtime, space: &SpaceIdentity, s3: &Client, generation: u64) -> Result<(), FailClass> {
@@ -718,6 +821,9 @@ mod tests {
             (LibCmd::Refresh, Op::LibRefresh),
             (LibCmd::Rename(RecId("r1".into()), "t".into()), Op::Rename),
             (LibCmd::Delete(vec![RecId("r1".into())]), Op::Delete),
+            (LibCmd::Suggest { everyone: true }, Op::Suggest),
+            (LibCmd::Keep(RecId("r1".into())), Op::Keep),
+            (LibCmd::Plays(false), Op::Plays),
         ] {
             lane.send(cmd).unwrap();
             // No door on this Mac (no token, no device key): refused — but answered now.
