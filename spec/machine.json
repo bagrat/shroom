@@ -1157,6 +1157,19 @@
     "recording (⌥⌘M)"
    ],
    "amended_by": []
+  },
+  {
+   "id": "N69",
+   "title": "Edit in shroom: the owner's page opens the video in shroom's editor",
+   "decision": "**Bagrat asked for an Edit button on the video's page that opens it in the editor, 2026-10-18** (relayed by the orchestrator), and approved the boards “The page — Edit in shroom” and “Editor — opened from the page's Edit” as drawn, with their lines, option A and the tooltip “Edit in shroom” (2026-10-18). (1) **The owner page gains Edit in shroom**: the scissors, the last of the quiet icons beside the title, after Download, its tooltip “Edit in shroom”. It shows only on the owner page (the space's owners on every video, a member on their own) and only once the video is fully up, as Edit… in the Library; a recipient's page and the embed never have it. (2) **It opens `shroom://edit/<the space's address>/<the video>`**, with nothing secret in it: the browser asks first (its own “Open shroom?”), and the Mac decides by its own state. (3) **The Mac's answers.** A video this Mac can edit (the owner's Macs: every video in the space; a member's Mac: their own) opens in the editor as Edit… opens it. The editor already open comes forward as it is, one at a time; holding another video, its footer says “You're editing another video — press Done, then Edit again.” While a take is open the press waits (law 4), and the editor opens once the take ends. Otherwise the popover opens by itself under the mushroom with one line, said once: “This Mac isn't set up for that video's space.”, “Only whoever recorded this video, or the space's owner, can edit it.” or “That video isn't in your space anymore.” A Mac not set up at all opens its welcome window, as a click on the mushroom does. (4) **Where shroom isn't on the Mac, the page says nothing** (option A): only a Mac running shroom makes a browser the owner's, so the button shows only where it can work. Built: DECISIONS B221.",
+   "status": "provisional",
+   "date": "2026-10-18",
+   "amends": [
+    "owner-page (Edit in shroom)",
+    "editor (the line when the page asks for another video)",
+    "config (three one-shot status lines)"
+   ],
+   "amended_by": []
   }
  ],
  "surfaces": [
@@ -4825,7 +4838,7 @@
    "surface": "popover",
    "status": "ratified",
    "board": "Main",
-   "summary": "A same-themed custom popover under the tray (Loom-style). It is never a native menu and never a window, so the dock stays clear. Click-away or Esc dismisses it with nothing lost. It is pre-filled with last-used values and never skipped: a confirm, not a form. Rows run top to bottom, each a picker (an icon, the pick's name, a chevron; its label is the row's accessible name, DEVIATIONS #45): Record (one source picker: displays by human name first, then Camera only), the camera (every camera here, then Camera off — a camera turns the bubble on with it, Camera off turns it off; DEVIATIONS #43), Microphone (every microphone, then No mic), Quality, then Start recording (filled, full width) with a quiet line beneath. The footer holds four icons with tooltips: Send feedback, Library, Settings, Quit (N60). The grammar is N38's (provisional): a banner slot at the top for asks, a status line above the footer for facts, and disk-low under Start. When it opens, the grant probe runs (`recording-off`), and a due monthly re-confirm runs perm-priming's warm-up. The device rules are N39's (provisional): never auto-pick an iPhone (mic or camera); a click picks the display it came from as the source, over a remembered display but never over a hand pick in this take's Record picker or Camera only (N56); a gone last-used display falls back silently to the menu-bar display; same-named displays are labeled by position; Camera as the source previews here; with a camera picked for the bubble, picking another display moves the bubble there. If the camera is denied, the camera picker shows Camera off and Camera as the source greys Start. Since N44 both pickers start with System default: it follows macOS's default input and its preferred camera (never an iPhone by itself), and a take keeps the device it started with.",
+   "summary": "A same-themed custom popover under the tray (Loom-style). It is never a native menu and never a window, so the dock stays clear. Click-away or Esc dismisses it with nothing lost. It is pre-filled with last-used values and never skipped: a confirm, not a form. Rows run top to bottom, each a picker (an icon, the pick's name, a chevron; its label is the row's accessible name, DEVIATIONS #45): Record (one source picker: displays by human name first, then Camera only), the camera (every camera here, then Camera off — a camera turns the bubble on with it, Camera off turns it off; DEVIATIONS #43), Microphone (every microphone, then No mic), Quality, then Start recording (filled, full width) with a quiet line beneath. The footer holds four icons with tooltips: Send feedback, Library, Settings, Quit (N60). The grammar is N38's (provisional): a banner slot at the top for asks, a status line above the footer for facts, and disk-low under Start. When it opens, the grant probe runs (`recording-off`), and a due monthly re-confirm runs perm-priming's warm-up. The device rules are N39's (provisional): never auto-pick an iPhone (mic or camera); a click picks the display it came from as the source, over a remembered display but never over a hand pick in this take's Record picker or Camera only (N56); a gone last-used display falls back silently to the menu-bar display; same-named displays are labeled by position; Camera as the source previews here; with a camera picked for the bubble, picking another display moves the bubble there. If the camera is denied, the camera picker shows Camera off and Camera as the source greys Start. Since N44 both pickers start with System default: it follows macOS's default input and its preferred camera (never an iPhone by itself), and a take keeps the device it started with. The owner page's Edit in shroom, for a video this Mac can't edit (N69), opens it by itself under the mushroom — the app you were in keeps the keyboard — with one line in the status line's place, said once until the popover closes.",
    "entry": "Not mid-take, and the tray clicked in idle-ready (or a launch you did, or all-set's Record now, or a cancelled countdown, which returns here still armed). Popover banners stack one at a time, highest first: saved take (recovered-take / disk-full-stop), the space can't take videos (other regions), recording-off, update-ready (Region 5).",
    "said": [
     {
@@ -5106,6 +5119,36 @@
       "#53"
      ],
      "id": "config.your-screen-didnt-send-a"
+    },
+    {
+     "text": "This Mac isn't set up for that video's space.",
+     "role": "status",
+     "copy": "provisional",
+     "note": "The owner page's Edit in shroom (N69), on a Mac set up for another space: the popover opens by itself under the mushroom, the app you were in keeping the keyboard; said once in the status line, first in its order, until the popover closes. Approved as drawn (Bagrat, 2026-10-18).",
+     "cites": [
+      "N69"
+     ],
+     "id": "config.this-mac-isnt-set-up"
+    },
+    {
+     "text": "Only whoever recorded this video, or the space's owner, can edit it.",
+     "role": "status",
+     "copy": "provisional",
+     "note": "The owner page's Edit in shroom (N69), on a member's Mac, for someone else's video: the popover opens by itself under the mushroom, the app you were in keeping the keyboard; said once in the status line, first in its order, until the popover closes. Approved as drawn (Bagrat, 2026-10-18).",
+     "cites": [
+      "N69"
+     ],
+     "id": "config.only-whoever-recorded-this-video"
+    },
+    {
+     "text": "That video isn't in your space anymore.",
+     "role": "status",
+     "copy": "provisional",
+     "note": "The owner page's Edit in shroom (N69), for a video deleted since its page opened: the popover opens by itself under the mushroom, the app you were in keeping the keyboard; said once in the status line, first in its order, until the popover closes. Approved as drawn (Bagrat, 2026-10-18).",
+     "cites": [
+      "N69"
+     ],
+     "id": "config.that-video-isnt-in-your"
     }
    ],
    "actions": [
@@ -5193,7 +5236,8 @@
     "N44",
     "#43",
     "N56",
-    "N60"
+    "N60",
+    "N69"
    ],
    "was": {
     "fixture": "r3.json",
@@ -6397,7 +6441,7 @@
    "surface": "web-page",
    "status": "ratified",
    "board": "OwnerPage",
-   "summary": "The real shareable page, opened in the browser at stop. It is never a preview or a processing screen. From top to bottom: the editable title field, which is the only chrome (no header, no wordmark, no name, per U3); the player (first frame, play, scrub bar, `0:00 / 4:32`, fullscreen); [ Copy link ] and, once the video plays, [ Copy thumbnail ] beside it (N46), the page's copy doors, with the upload line and a thin bar beside it; then, bottom-right, the owner switch, “made with shroom”, and the mark. Download appears only once the single-file MP4 exists, and it is second-class (R11). Only the editable title and the switch are owner-only. The address bar shows the clean link because the key died at the 302. The clipboard is never touched (N1). Rename at any time later is a metadata write, live worldwide on the next load (R4). It works from this page in owner-mode or from the Library. Owner-mode by role is N40 and still provisional: the cookie names a member, a member's own pages give them the title only, and owner-class browsers get full owner-mode on every page of the space.",
+   "summary": "The real shareable page, opened in the browser at stop. It is never a preview or a processing screen. From top to bottom: the editable title field, which is the only chrome (no header, no wordmark, no name, per U3); the player (first frame, play, scrub bar, `0:00 / 4:32`, fullscreen); [ Copy link ] and, once the video plays, [ Copy thumbnail ] beside it (N46), the page's copy doors, with the upload line and a thin bar beside it; then, bottom-right, the owner switch, “made with shroom”, and the mark. Download appears only once the single-file MP4 exists, and it is second-class (R11). Only the editable title and the switch are owner-only. The address bar shows the clean link because the key died at the 302. The clipboard is never touched (N1). Rename at any time later is a metadata write, live worldwide on the next load (R4). It works from this page in owner-mode or from the Library. Owner-mode by role is N40 and still provisional: the cookie names a member, a member's own pages give them the title only, and owner-class browsers get full owner-mode on every page of the space. Edit in shroom (N69): the scissors, the last of the quiet icons beside the title, after Download, only on the owner page and only once the video is fully up (as Edit… in the Library); it opens the video in shroom's editor on this Mac.",
    "entry": "Stop finalized and the space's page is reachable and can fill. The app opens `v.<name>.workers.dev/<id>?k=<one-time-key>`. The Worker validates k, sets a long-lived owner cookie that names the member, and 302-redirects to the clean URL. The page also opens later on any visit from a browser carrying a qualifying cookie (owner-mode persists per-browser, rendered server-side), when stopped-offline reconnects, and through the Library's Open page (the owner-keyed door, N35).",
    "said": [
     {
@@ -6454,6 +6498,16 @@
      "copy": "ratified",
      "note": "The owner switch's label, beside the mark. The same three words are the hover tooltip recipients get.",
      "id": "owner-page.made-with-shroom"
+    },
+    {
+     "text": "Edit in shroom",
+     "role": "tooltip",
+     "copy": "provisional",
+     "note": "The scissors' tooltip, and its name for screen readers (N69). Approved as drawn (Bagrat, 2026-10-18).",
+     "cites": [
+      "N69"
+     ],
+     "id": "owner-page.edit-in-shroom"
     }
    ],
    "actions": [
@@ -6483,6 +6537,13 @@
      "kind": "secondary",
      "return_default": false,
      "note": "Appears only when the single-file MP4 exists; second-class (R11)."
+    },
+    {
+     "label": "Edit in shroom",
+     "kind": "secondary",
+     "return_default": false,
+     "goes_to": "editor",
+     "note": "N69. The scissors, the last of the quiet icons beside the title: the shroom://edit/<host>/<id> link, with nothing secret in it. Shown only on the owner page (the space's owners on every video, a member on their own), once the video is fully up, as Edit… in the Library. The browser's own “Open shroom?” is the only step it adds; the Mac decides by its own state: the editor, or the popover's one line. Where shroom isn't on the Mac, the page says nothing (only a Mac running shroom makes a browser the owner's)."
     },
     {
      "label": "made with shroom",
@@ -6525,7 +6586,8 @@
     "N35",
     "N40",
     "R11",
-    "N46"
+    "N46",
+    "N69"
    ],
    "was": {
     "fixture": "r4.json",
@@ -7719,7 +7781,7 @@
    "surface": "window",
    "status": "ratified",
    "board": "EditorCuts",
-   "summary": "The editor (N63): a window of its own, titled “Edit — <the video's title>”, one at a time. Top to bottom: the video, playing the edit (cuts skipped, held to the trim); the play button and the time, edited position / edited length, with “was <the recording's length>” once the edit changes it; on the right the hint and Undo · Redo; then the timeline, the whole recording's sound as a waveform with the playhead: two yellow ends that drag to trim, a drag across the sound that selects a part with Cut <its length> under it, every cut red and hatched (clicking one offers Put back <its length>), every suggestion not yet taken dashed amber (clicking one offers Cut it too); either edge of a cut or a suggestion drags to move it, the pointer ↔ over it, its length shown live under it and the picture at the edge as it goes, stopping at the next cut or suggestion, the trim's end, a tenth of a second from its other edge, or where a second would be all that's left, one step for Undo (B195 (g)), and every marker (N64) a flag at its time. The footer: the line that the link stays the same, Revert to original and Done. The waveform fills in once the sound is read; until then the timeline is empty and the ends wait. Every change can be undone, Put back and Revert included; the changes stay in the window until Done saves them. While an earlier edit's original is still kept, the time it has left sits by Revert to original; once it is gone, Revert to original only undoes what changed since the window opened. While it is open, no edit becomes a video behind it on this Mac: the upkeep, and on the Mac holding the token the cleanup sweep, wait until the window closes (B199).",
+   "summary": "The editor (N63): a window of its own, titled “Edit — <the video's title>”, one at a time. Top to bottom: the video, playing the edit (cuts skipped, held to the trim); the play button and the time, edited position / edited length, with “was <the recording's length>” once the edit changes it; on the right the hint and Undo · Redo; then the timeline, the whole recording's sound as a waveform with the playhead: two yellow ends that drag to trim, a drag across the sound that selects a part with Cut <its length> under it, every cut red and hatched (clicking one offers Put back <its length>), every suggestion not yet taken dashed amber (clicking one offers Cut it too); either edge of a cut or a suggestion drags to move it, the pointer ↔ over it, its length shown live under it and the picture at the edge as it goes, stopping at the next cut or suggestion, the trim's end, a tenth of a second from its other edge, or where a second would be all that's left, one step for Undo (B195 (g)), and every marker (N64) a flag at its time. The footer: the line that the link stays the same, Revert to original and Done. The waveform fills in once the sound is read; until then the timeline is empty and the ends wait. Every change can be undone, Put back and Revert included; the changes stay in the window until Done saves them. While an earlier edit's original is still kept, the time it has left sits by Revert to original; once it is gone, Revert to original only undoes what changed since the window opened. While it is open, no edit becomes a video behind it on this Mac: the upkeep, and on the Mac holding the token the cleanup sweep, wait until the window closes (B199). The owner page's Edit in shroom (N69) opens this same window; while it holds another video, that press brings it forward as it is, one at a time, the footer line saying why until the next change.",
    "entry": "Edit… on a live row in the Library (N63), when the video is on this Mac: its take was recorded here and is still here, or it came from the space before. One instance: Edit… again brings the open editor forward, on the video it holds. A take started while it is open leaves it open (law 4 covers only what shroom would newly show). The dock icon shows while it is open.",
    "said": [
     {
@@ -7802,6 +7864,16 @@
      "role": "line",
      "copy": "ratified",
      "id": "editor.footer"
+    },
+    {
+     "text": "You're editing another video — press Done, then Edit again.",
+     "role": "line",
+     "copy": "provisional",
+     "note": "In the footer line's place when the owner page's Edit in shroom asks for another video while the editor holds this one (N69): the window comes forward as it is, and the line goes with the next change. Approved as drawn (Bagrat, 2026-10-18).",
+     "cites": [
+      "N69"
+     ],
+     "id": "editor.editing-another"
     },
     {
      "text": "The original is kept one more day",
@@ -7899,7 +7971,8 @@
     "N63",
     "B195",
     "B197",
-    "B199"
+    "B199",
+    "N69"
    ]
   },
   "editor-getting": {
@@ -16772,6 +16845,57 @@
    ],
    "on": [
     "Act(EditRow)"
+   ]
+  },
+  {
+   "from": "owner-page",
+   "to": "editor",
+   "kind": "side",
+   "label": "Edit in shroom",
+   "trigger": "Edit in shroom, for a video this Mac can edit whose video is on this Mac; the editor already open comes forward as it is (one at a time), saying so when it holds another video",
+   "status": "provisional",
+   "cites": [
+    "N69"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "EditLink"
+   ]
+  },
+  {
+   "from": "owner-page",
+   "to": "editor-getting",
+   "kind": "side",
+   "label": "Edit in shroom",
+   "trigger": "Edit in shroom, for a video this Mac can edit whose video isn't on this Mac",
+   "status": "provisional",
+   "cites": [
+    "N69"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "EditLink"
+   ]
+  },
+  {
+   "from": "owner-page",
+   "to": "config",
+   "kind": "side",
+   "label": "Edit in shroom",
+   "trigger": "Edit in shroom, for a video this Mac can't edit: the popover opens by itself with one line, said once",
+   "status": "provisional",
+   "cites": [
+    "N69"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "EditLink"
    ]
   },
   {
