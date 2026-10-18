@@ -207,6 +207,37 @@ The prototype is [`prototype/index.html`](voice-cut/prototype/index.html), and
 Bagrat has it as a private page, and the link is in the report to him. A before-and-after
 video of four takes sits beside it (also private).
 
+## Trying it with a real voice
+
+**Now, with nothing to install: the tester** ([`voice-cut/tester/`](voice-cut/tester/README.md)).
+
+- It's a private page on the Cloudflare test account, behind a throwaway key, and it works
+  from a phone or a laptop.
+- Record (or pick an audio or video file), slip, say “shroom cut”, say the line again, and
+  press Stop.
+- Whisper on Workers AI hears it, and the real planner runs in the page as WebAssembly.
+- The page shows the transcript with the cuts struck through and the cuts themselves, and
+  plays the take cut.
+- Checked in headless Chromium, both ways:
+  - an uploaded take: one cut, the right one;
+  - a recording through a fake microphone: two cuts, the right ones. This one turned up a
+    planner bug, below.
+
+**The full path, recording in the app to cuts on the share page, can't be tested yet.**
+The app, the Worker and the page don't do any of this until the integration is built
+(about 7.5 days, above). Then:
+
+- the hosted Mac runs the app side, recording a take with a spoken “shroom cut” played in
+  through its audio loopback, as the system-audio scenario does today (B172);
+- CI and the cloud fakes run the Worker and the page;
+- a Tart VM on Bagrat's Mac stays the last resort, and isn't needed for this.
+
+**The bug the tester found.** A line said correctly earlier in the take, then slipped and
+retaken, made the aligner pick the earlier, exact repeat. That made the “slip” the whole
+stretch in between, so it was too long to cut. Each candidate restart now pays for the
+words between it and the cue that the retake doesn't say again. A unit test holds this,
+and every fixture still passes.
+
 ## How editing fits the link and the storage
 
 What's true today (ARCHITECTURE §4, §5, §14; WORKER-INTERFACE):

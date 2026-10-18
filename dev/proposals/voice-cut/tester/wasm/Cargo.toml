@@ -1,0 +1,20 @@
+[package]
+name = "shroom-cut-wasm"
+version = "0.1.0"
+edition = "2024"
+publish = false
+description = "The voice-cue planner (crates/shroom-edit) for the browser: JSON in, JSON out, no bindings crate."
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+shroom-edit = { path = "../../../../../crates/shroom-edit" }
+serde_json = "1"
+
+[profile.release]
+opt-level = "s"
+lto = true
+
+# Not a member of the repo's workspace: it builds for wasm32 on its own.
+[workspace]

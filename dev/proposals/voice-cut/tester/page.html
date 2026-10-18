@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>shroom cut tester</title>
+<style>
+/* shroom's Nord tokens (app/src/lib/theme.css), dark first. One column: record, then the result. */
+:root {
+  --bg: #2b2f36; --well: #1f2228; --card: #333944; --line: #434a56; --field: #262a31; --border: #4c566a;
+  --fg: #eceff4; --fg-3: #c3cad6; --muted: #aeb6c4; --dim: #7b8494;
+  --accent: #88c0d0; --on-accent: #2b2f36; --red: #e88790; --red-fill: rgba(232,135,144,.42); --red-fill-2: rgba(232,135,144,.16);
+  --amber: #ebcb8b; --amber-fill: rgba(235,203,139,.12); --wave: #aeb6c4;
+  --font: -apple-system, BlinkMacSystemFont, system-ui, sans-serif; --mono: ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) { :root {
+  --bg: #f6f7f9; --well: #e9ecf1; --card: #ffffff; --line: #dfe3ea; --field: #ffffff; --border: #c9d1dd;
+  --fg: #2e3440; --fg-3: #3b4252; --muted: #4c566a; --dim: #6b7484;
+  --accent: #4c6f9a; --on-accent: #ffffff; --red: #a3474f; --red-fill: rgba(163,71,79,.34); --red-fill-2: rgba(163,71,79,.12);
+  --amber: #b4821f; --amber-fill: rgba(180,130,31,.12); --wave: #7b8494; color-scheme: light; } }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body { background: var(--well); color: var(--fg); font: 15px/1.5 var(--font); }
+main { max-width: 760px; margin: 0 auto; padding: max(20px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 48px max(16px, env(safe-area-inset-left)); display: flex; flex-direction: column; gap: 16px; }
+h1 { margin: 0; font-size: 21px; font-weight: 650; }
+h2 { margin: 0; font-size: 16px; font-weight: 650; }
+p { margin: 0; }
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+.panel { background: var(--bg); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.script { background: var(--field); border-radius: 8px; padding: 10px 12px; color: var(--fg-3); font-size: 14px; }
+.script b { color: var(--amber); font-weight: 600; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.btn { font: inherit; min-height: 44px; padding: 0 18px; border-radius: 10px; border: 1px solid var(--border); background: transparent; color: var(--fg); cursor: pointer; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 650; }
+.btn.rec { background: var(--red); border-color: var(--red); color: var(--on-accent); font-weight: 650; }
+.btn.small { min-height: 30px; padding: 0 11px; font-size: 13px; border-radius: 7px; }
+.btn.quiet { border-color: transparent; color: var(--fg-3); padding: 0 6px; }
+.btn:disabled { opacity: .5; cursor: default; }
+label.file { display: inline-flex; align-items: center; }
+label.file input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.status { min-height: 1.5em; color: var(--muted); font-variant-numeric: tabular-nums; }
+.status.bad { color: var(--red); }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 5px; background: var(--red); margin-right: 6px; animation: blink 1s infinite; }
+@keyframes blink { 50% { opacity: .25; } }
+@media (prefers-reduced-motion: reduce) { .dot { animation: none; } }
+video, audio { width: 100%; display: block; border-radius: 8px; }
+video { background: #000; max-height: 50vh; }
+.transport { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.time { font-variant-numeric: tabular-nums; }
+.seg { margin-left: auto; display: flex; background: var(--field); border-radius: 8px; padding: 2px; gap: 2px; }
+.seg button { font: inherit; font-size: 13px; border: 0; border-radius: 6px; background: transparent; color: var(--fg-3); padding: 5px 12px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--border); color: var(--fg); font-weight: 600; }
+canvas { width: 100%; height: 84px; display: block; border-radius: 6px; touch-action: none; }
+.words { padding: 12px 14px; background: var(--field); border-radius: 8px; line-height: 1.9; }
+.words span { cursor: pointer; border-radius: 3px; }
+.words .cut { text-decoration: line-through; text-decoration-color: var(--red); color: var(--dim); background: var(--red-fill-2); }
+.words .offer { text-decoration: underline dashed var(--amber); text-underline-offset: 4px; }
+.words .now { background: var(--accent); color: var(--on-accent); text-decoration: none; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px; display: flex; flex-direction: column; gap: 5px; }
+.card.offered { border: 1px dashed var(--amber); }
+.card .row { gap: 8px; }
+.when { font-weight: 650; font-variant-numeric: tabular-nums; }
+.len { color: var(--dim); font-variant-numeric: tabular-nums; }
+.gone.struck { text-decoration: line-through; text-decoration-color: var(--red); }
+.then { color: var(--muted); font-size: 13px; }
+.note { color: var(--amber); font-size: 13px; }
+.grow { flex: 1; }
+details summary { cursor: pointer; color: var(--fg-3); }
+pre { margin: 8px 0 0; overflow-x: auto; font: 12px/1.5 var(--mono); color: var(--fg-3); max-height: 320px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Try “shroom cut”</h1>
+  <p class="muted">Record a few sentences, slip once, say <b>“shroom cut”</b> on its own, then say the line again. Or pick an audio or video file. shroom hears it in the test Cloudflare account and cuts the slip. Nothing is kept.</p>
+
+  <section class="panel" id="start">
+    <h2>Something to say</h2>
+    <p class="script">Hi, this is a quick test of shroom. Today I'll show you how to share, um, how to sh… <b>Shroom cut.</b> Today I'll show you how to share a recording in one click. You press stop and the link is pasted. <b>Shroom cut.</b> You press stop and the link is copied. That's it.</p>
+    <p class="muted small">Any words work. Say “shroom cut” as its own sentence, with a breath before and after.</p>
+    <div class="row">
+      <button class="btn rec" id="rec">Record</button>
+      <button class="btn" id="stop" hidden>Stop</button>
+      <label class="file btn" for="file">Pick a file<input type="file" id="file" accept="audio/*,video/*"></label>
+    </div>
+    <p class="status" id="status" aria-live="polite"></p>
+  </section>
+
+  <section class="panel" id="result" hidden>
+    <div id="mediaBox"></div>
+    <div class="transport">
+      <button class="btn small primary" id="play">Play</button>
+      <span class="time" id="time"></span>
+      <div class="seg" role="group" aria-label="What plays">
+        <button id="mEdited" aria-pressed="true">Cut</button><button id="mOriginal" aria-pressed="false">As recorded</button>
+      </div>
+    </div>
+    <canvas id="cv" aria-label="The sound, with the cuts in red and suggestions in amber"></canvas>
+    <p class="muted small">Red is cut, and playback skips it. Dashed amber is a suggestion. Tap a word to jump there.</p>
+    <div class="words" id="words"></div>
+    <h2>Cuts</h2>
+    <p class="muted small" id="sum"></p>
+    <div id="cards" style="display:flex;flex-direction:column;gap:10px"></div>
+    <details><summary>What Whisper heard, and the edit list</summary><pre id="json"></pre></details>
+    <div class="row"><button class="btn" id="again">Try another</button></div>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const key = new URLSearchParams(location.hash.slice(1)).get('k') || '';
+const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const fmt = (t) => { t = Math.max(0, t); const m = Math.floor(t / 60); return `${m}:${(t - m * 60).toFixed(1).padStart(4, '0')}`; };
+const scissors = '<svg viewBox="0 0 16 16" aria-hidden="true" style="width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;flex:none"><circle cx="4.5" cy="4.5" r="2"/><circle cx="4.5" cy="11.5" r="2"/><path d="M6.2 5.6L13 11.8M6.2 10.4L13 4.2"/></svg>';
+let take = null, list = null, media = null, mode = 'edited', heard = null;
+
+function say(text, bad) { $('status').textContent = text; $('status').classList.toggle('bad', !!bad); }
+if (!key) say('This page needs its link with the key on the end. Open the link you were sent.', true);
+
+// ── Recording ────────────────────────────────────────────────────────────────────────
+let rec = null, chunks = [], t0 = 0, ticker = 0;
+$('rec').onclick = async () => {
+  let stream;
+  try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } }); }
+  catch { say('The microphone was not allowed. Allow it for this page, or pick a file.', true); return; }
+  chunks = [];
+  rec = new MediaRecorder(stream);
+  rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+  rec.onstop = () => { stream.getTracks().forEach((t) => t.stop()); clearInterval(ticker); go(new Blob(chunks, { type: rec.mimeType || 'audio/webm' }), false); };
+  rec.start(250); t0 = Date.now();
+  $('rec').hidden = true; $('stop').hidden = false;
+  ticker = setInterval(() => { const s = (Date.now() - t0) / 1000; $('status').innerHTML = `<span class="dot"></span>Recording ${fmt(s)}`; if (s > 295) $('stop').click(); }, 200);
+};
+$('stop').onclick = () => { rec && rec.state !== 'inactive' && rec.stop(); $('stop').hidden = true; $('rec').hidden = false; };
+$('file').onchange = (e) => { const f = e.target.files[0]; if (f) go(f, f.type.startsWith('video/')); e.target.value = ''; };
+$('again').onclick = () => { $('result').hidden = true; $('start').hidden = false; say(''); if (media) media.pause(); window.scrollTo(0, 0); };
+
+// ── Hearing and planning ─────────────────────────────────────────────────────────────
+async function go(blob, isVideo) {
+  try {
+    say('Reading the sound…');
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const decoded = await ctx.decodeAudioData(await blob.arrayBuffer());
+    ctx.close();
+    if (decoded.duration > 300) { say('Five minutes at most, please. Trim it and try again.', true); return; }
+    const pcm = await to16k(decoded);
+    const dur = pcm.length / 16000;
+    say('Listening in the test Cloudflare account…');
+    const r = await fetch('/listen', { method: 'POST', headers: { 'x-key': key, 'content-type': 'audio/wav' }, body: wav(pcm) });
+    if (!r.ok) { say(r.status === 403 ? 'That key is not right. Open the link you were sent.' : `Listening failed (${r.status}). Try again in a moment.`, true); return; }
+    heard = await r.json();
+    if (heard.error) { say(`Listening failed: ${heard.error}`, true); return; }
+    const transcript = { duration: dur, words: heard.words, silences: silences(pcm) };
+    const planned = await plan(transcript);
+    if (planned.error) { say(`The planner said: ${planned.error}`, true); return; }
+    take = { duration: dur, peaks: peaks(pcm, 500), words: heard.words, cuts: planned.edit_list.cuts };
+    list = { version: 1, source_duration: dur, in: 0, out: dur, cuts: take.cuts.map((c) => ({ ...c })) };
+    show(blob, isVideo);
+    say('');
+  } catch (e) { say(`Something went wrong: ${e.message || e}`, true); }
+}
+
+async function to16k(buf) {
+  const off = new OfflineAudioContext(1, Math.ceil(buf.duration * 16000), 16000);
+  const src = off.createBufferSource(); src.buffer = buf; src.connect(off.destination); src.start();
+  return (await off.startRendering()).getChannelData(0);
+}
+
+function wav(pcm) {
+  const out = new DataView(new ArrayBuffer(44 + pcm.length * 2));
+  const w = (o, s) => [...s].forEach((c, i) => out.setUint8(o + i, c.charCodeAt(0)));
+  w(0, 'RIFF'); out.setUint32(4, 36 + pcm.length * 2, true); w(8, 'WAVEfmt ');
+  out.setUint32(16, 16, true); out.setUint16(20, 1, true); out.setUint16(22, 1, true);
+  out.setUint32(24, 16000, true); out.setUint32(28, 32000, true); out.setUint16(32, 2, true); out.setUint16(34, 16, true);
+  w(36, 'data'); out.setUint32(40, pcm.length * 2, true);
+  for (let i = 0; i < pcm.length; i++) out.setInt16(44 + i * 2, Math.max(-1, Math.min(1, pcm[i])) * 0x7fff, true);
+  return out.buffer;
+}
+
+/** Quiet stretches of at least 0.12 s, 10 ms frames, against the take's own noise floor. */
+function silences(pcm) {
+  const frame = 160, db = [];
+  for (let i = 0; i + frame <= pcm.length; i += frame) {
+    let s = 0; for (let j = i; j < i + frame; j++) s += pcm[j] * pcm[j];
+    db.push(10 * Math.log10(s / frame + 1e-12));
+  }
+  const floor = [...db].sort((a, b) => a - b)[Math.floor(db.length * 0.1)] ?? -60;
+  const thr = Math.min(-30, floor + 10);
+  const out = []; let from = -1;
+  db.forEach((d, k) => {
+    if (d < thr) { if (from < 0) from = k; }
+    else if (from >= 0) { if ((k - from) * 0.01 >= 0.12) out.push({ start: from * 0.01, end: k * 0.01 }); from = -1; }
+  });
+  if (from >= 0 && (db.length - from) * 0.01 >= 0.12) out.push({ start: from * 0.01, end: db.length * 0.01 });
+  return out;
+}
+
+function peaks(pcm, n) {
+  const step = Math.max(1, Math.floor(pcm.length / n)), out = [];
+  for (let i = 0; i < n; i++) { let m = 0; for (let j = i * step; j < Math.min(pcm.length, (i + 1) * step); j++) m = Math.max(m, Math.abs(pcm[j])); out.push(m); }
+  const top = Math.max(...out) || 1; return out.map((p) => p / top);
+}
+
+let wasm = null;
+async function plan(transcript) {
+  if (!wasm) wasm = (await WebAssembly.instantiateStreaming(fetch('/planner.wasm'), {})).instance.exports;
+  const input = new TextEncoder().encode(JSON.stringify(transcript));
+  const ptr = wasm.alloc(input.length);
+  new Uint8Array(wasm.memory.buffer, ptr, input.length).set(input);
+  const out = wasm.plan(ptr, input.length);
+  wasm.free(ptr, input.length);
+  const len = new DataView(wasm.memory.buffer).getUint32(out, true);
+  const text = new TextDecoder().decode(new Uint8Array(wasm.memory.buffer, out + 4, len));
+  wasm.free(out, len + 4);
+  return JSON.parse(text);
+}
+
+// ── Showing it ───────────────────────────────────────────────────────────────────────
+function show(blob, isVideo) {
+  const box = $('mediaBox'); box.textContent = '';
+  media = document.createElement(isVideo ? 'video' : 'audio');
+  media.src = URL.createObjectURL(blob); media.playsInline = true; media.preload = 'auto';
+  media.onplay = () => { $('play').textContent = 'Pause'; };
+  media.onpause = () => { $('play').textContent = 'Play'; };
+  box.append(media);
+  $('start').hidden = true; $('result').hidden = false; setMode('edited'); render();
+  window.scrollTo(0, 0);
+}
+
+function keep() {
+  const cuts = list.cuts.filter((c) => c.applied).map((c) => [c.start, c.end]).sort((a, b) => a[0] - b[0]);
+  const out = []; let at = list.in;
+  for (let [s, e] of cuts) { s = Math.max(s, list.in); e = Math.min(e, list.out); if (e <= at) continue; if (s > at) out.push([at, s]); at = Math.max(at, e); }
+  if (at < list.out) out.push([at, list.out]);
+  return out;
+}
+const editedLen = () => keep().reduce((a, [s, e]) => a + e - s, 0);
+function toEdited(t) { let acc = 0; for (const [s, e] of keep()) { if (t < s) return acc; if (t < e) return acc + t - s; acc += e - s; } return acc; }
+
+function render() { draw(); cards(); words(); clock(); $('json').textContent = JSON.stringify({ heard: heard && heard.text, whisper_ms: heard && heard.ms, edit_list: list }, (k, x) => typeof x === 'number' ? Math.round(x * 1000) / 1000 : x, 2); }
+
+function draw() {
+  const cv = $('cv'), ctx = cv.getContext('2d'), dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = 84;
+  cv.width = w * dpr; cv.height = h * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const x = (t) => (t / take.duration) * w;
+  ctx.fillStyle = css('--field'); ctx.fillRect(0, 0, w, h);
+  const n = take.peaks.length, bw = w / n; ctx.fillStyle = css('--wave');
+  take.peaks.forEach((p, i) => { const bh = Math.max(1.5, p * (h - 10)); ctx.fillRect(i * bw, (h - bh) / 2, Math.max(1, bw - 0.5), bh); });
+  for (const c of list.cuts) {
+    const a = x(c.start), b = x(c.end);
+    if (c.applied) {
+      ctx.fillStyle = css('--red-fill'); ctx.fillRect(a, 0, b - a, h);
+      ctx.fillStyle = css('--red'); ctx.fillRect(a, 0, 2, h); ctx.fillRect(b - 2, 0, 2, h);
+    } else {
+      ctx.setLineDash([5, 4]); ctx.strokeStyle = css('--amber'); ctx.lineWidth = 2; ctx.strokeRect(a + 1, 1, b - a - 2, h - 2); ctx.setLineDash([]);
+    }
+  }
+  if (media) { ctx.fillStyle = css('--fg'); ctx.fillRect(x(media.currentTime) - 1, 0, 2, h); }
+}
+
+function cards() {
+  const el = $('cards'); el.textContent = '';
+  const made = list.cuts.filter((c) => c.applied).length, offered = list.cuts.length - made;
+  $('sum').textContent = list.cuts.length
+    ? `${made} cut${made === 1 ? '' : 's'} made${offered ? `, ${offered} suggested` : ''}. ${fmt(take.duration)} becomes ${fmt(editedLen())}.`
+    : 'No “shroom cut” heard, so nothing was cut. Open “What Whisper heard” below to see how it came out.';
+  list.cuts.slice().sort((a, b) => a.start - b.start).forEach((c) => {
+    const d = document.createElement('div');
+    d.className = 'card' + (c.kind === 'line-before-cue' ? ' offered' : '');
+    const note = c.kind === 'line-before-cue' ? 'Nothing was said again after this cue, so only “shroom cut” went. The line before it too?'
+      : c.kind === 'cue-only' ? 'Only the words “shroom cut”: nothing was said again after them.' : '';
+    d.innerHTML = `<div class="row"><span style="color:var(${c.applied ? '--red' : '--amber'})">${scissors}</span><span class="when"></span><span class="len"></span><span class="grow"></span><button class="btn small quiet" data-a="hear">Play</button><button class="btn small" data-a="toggle"></button></div>${note ? '<span class="note"></span>' : ''}<span class="gone"></span>${c.resumes ? '<span class="then"></span>' : ''}`;
+    d.querySelector('.when').textContent = fmt(c.start);
+    d.querySelector('.len').textContent = `· ${(c.end - c.start).toFixed(1)} s`;
+    if (note) d.querySelector('.note').textContent = note;
+    const g = d.querySelector('.gone'); g.textContent = `“${c.removed}”`; g.classList.toggle('struck', c.applied);
+    if (c.resumes) d.querySelector('.then').textContent = `then: “${c.resumes}…”`;
+    const t = d.querySelector('[data-a="toggle"]'); t.textContent = c.applied ? 'Undo' : c.kind === 'line-before-cue' ? 'Cut it too' : 'Cut';
+    t.onclick = () => { c.applied = !c.applied; render(); };
+    d.querySelector('[data-a="hear"]').onclick = () => { setMode('edited'); media.currentTime = Math.max(0, c.start - 2.5); media.play(); };
+    el.append(d);
+  });
+}
+
+function words() {
+  const el = $('words'); el.textContent = '';
+  take.words.forEach((w) => {
+    const s = document.createElement('span'), mid = (w.start + w.end) / 2;
+    s.textContent = w.text + ' ';
+    if (list.cuts.some((c) => c.applied && mid >= c.start && mid < c.end)) s.className = 'cut';
+    else if (list.cuts.some((c) => !c.applied && mid >= c.start && mid < c.end)) s.className = 'offer';
+    s.dataset.t = w.start; s.dataset.e = w.end;
+    s.onclick = () => { media.currentTime = w.start; draw(); };
+    el.append(s);
+  });
+  if (!take.words.length) el.textContent = 'Whisper heard no words.';
+}
+
+function clock() {
+  if (!media) return;
+  const t = media.currentTime;
+  $('time').textContent = mode === 'edited' ? `${fmt(toEdited(t))} / ${fmt(editedLen())}` : `${fmt(t)} / ${fmt(take.duration)}`;
+  document.querySelectorAll('#words span').forEach((s) => s.classList.toggle('now', t >= +s.dataset.t && t < +s.dataset.e));
+}
+
+function setMode(m) { mode = m; $('mEdited').setAttribute('aria-pressed', String(m === 'edited')); $('mOriginal').setAttribute('aria-pressed', String(m !== 'edited')); clock(); }
+$('mEdited').onclick = () => setMode('edited');
+$('mOriginal').onclick = () => setMode('original');
+$('play').onclick = () => { if (media.paused) { if (mode === 'edited' && media.currentTime >= list.out - 0.05) media.currentTime = 0; media.play(); } else media.pause(); };
+$('cv').addEventListener('pointerdown', (e) => { const r = e.target.getBoundingClientRect(); media.currentTime = ((e.clientX - r.left) / r.width) * take.duration; draw(); });
+window.addEventListener('resize', () => take && draw());
+
+(function tick() {
+  if (media && take && mode === 'edited' && !media.paused) {
+    const t = media.currentTime, c = list.cuts.find((x) => x.applied && t >= x.start && t < x.end);
+    if (c) media.currentTime = c.end;
+  }
+  if (take) { draw(); clock(); }
+  requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>
