@@ -86,18 +86,20 @@ fn main() {
     let json_wanted = argv.iter().any(|a| a == "--json");
     let result = parse(argv).and_then(|a| run(&a).map(|d| (a.json, d)));
     match result {
+        // Titles and names come from other people in the space: nothing a terminal would act
+        // on gets through (out::clean, out::json_safe).
         Ok((json, done)) => {
             if json {
-                println!("{}", done.json);
+                println!("{}", out::json_safe(&done.json.to_string()));
             } else if !done.text.is_empty() {
-                println!("{}", done.text.trim_end());
+                println!("{}", out::clean(done.text.trim_end()));
             }
         }
         Err(f) => {
             if json_wanted {
-                println!("{}", f.json());
+                println!("{}", out::json_safe(&f.json().to_string()));
             } else {
-                eprintln!("{}", f.message());
+                eprintln!("{}", out::clean(f.message()));
             }
             std::process::exit(f.exit());
         }

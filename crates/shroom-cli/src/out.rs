@@ -121,6 +121,34 @@ impl Done {
     }
 }
 
+/// A character a terminal acts on rather than shows: C0 controls but tab and line feed (the
+/// escape that starts a clipboard write or a cursor move, the carriage return that rewrites a
+/// line), DEL, C1 controls, and the bidi marks and overrides that reorder what's shown.
+fn acts_on_terminal(c: char) -> bool {
+    matches!(c, '\u{0}'..='\u{8}' | '\u{b}'..='\u{1f}' | '\u{7f}'..='\u{9f}' | '\u{61c}' | '\u{200e}' | '\u{200f}' | '\u{202a}'..='\u{202e}' | '\u{2066}'..='\u{2069}')
+}
+
+/// What a person's terminal is given: titles and names are written by the people in a space,
+/// so each character a terminal would act on shows as � (the security review, 2026-10-18).
+pub fn clean(text: &str) -> String {
+    text.chars().map(|c| if acts_on_terminal(c) { '\u{fffd}' } else { c }).collect()
+}
+
+/// An answer's JSON with every character a terminal would act on escaped (`\u001b`, `\u202e`):
+/// still exactly what the space holds once parsed, and nothing raw on the terminal.
+/// serde_json escapes the C0 controls itself; this adds DEL, C1 and the bidi marks.
+pub fn json_safe(json: &str) -> String {
+    let mut out = String::with_capacity(json.len());
+    for c in json.chars() {
+        if acts_on_terminal(c) {
+            out.push_str(&format!("\\u{:04x}", c as u32));
+        } else {
+            out.push(c);
+        }
+    }
+    out
+}
+
 /// `93` → `1:33`; `3725` → `1:02:05`.
 pub fn length(sec: Option<f64>) -> String {
     let Some(s) = sec else { return "–".into() };
