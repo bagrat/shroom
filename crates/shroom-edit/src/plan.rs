@@ -18,6 +18,9 @@ const START_PAUSE: f64 = 0.4;
 const REACH_SENTENCES: usize = 3;
 const REACH_BACK: f64 = 20.0;
 const MOST_STARTS: usize = 6;
+/// A cut's words either side, for a review list (`leads`, `resumes`): a few, so its row
+/// says where it joins. The owner page marks a full six as more said (worker.js `AROUND`).
+const AROUND: usize = 6;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Options {
@@ -102,11 +105,24 @@ impl Ctx<'_> {
             .join(" ")
     }
 
+    /// Up to [`AROUND`] words right before word `first`: what leads into a cut there.
+    fn leads(&self, first: usize) -> Option<String> {
+        let end = first.min(self.t.words.len());
+        let ws = &self.t.words[end.saturating_sub(AROUND)..end];
+        (!ws.is_empty()).then(|| {
+            ws.iter()
+                .map(|w| w.text.trim())
+                .collect::<Vec<_>>()
+                .join(" ")
+        })
+    }
+
+    /// Up to [`AROUND`] words from word `at` on: what plays after a cut that ends before it.
     fn resumes(&self, at: usize) -> Option<String> {
         let ws = &self.t.words[at.min(self.t.words.len())..];
         (!ws.is_empty()).then(|| {
             ws.iter()
-                .take(6)
+                .take(AROUND)
                 .map(|w| w.text.trim())
                 .collect::<Vec<_>>()
                 .join(" ")
@@ -340,6 +356,7 @@ fn plan_one(cx: &Ctx, cue: &Cue, floor: usize, ceil: usize, judged: Option<usize
                     Confidence::Low
                 },
                 applied: high,
+                leads: cx.leads(from),
                 removed: cx.said(from, resume - 1),
                 resumes: cx.resumes(resume),
                 why: if from < restart {
@@ -388,6 +405,7 @@ fn plan_one(cx: &Ctx, cue: &Cue, floor: usize, ceil: usize, judged: Option<usize
                 kind: CutKind::Retake,
                 confidence: Confidence::High,
                 applied: true,
+                leads: cx.leads(from),
                 removed: cx.said(from, resume - 1),
                 resumes: cx.resumes(resume),
                 why: why.into(),
@@ -408,6 +426,7 @@ fn plan_one(cx: &Ctx, cue: &Cue, floor: usize, ceil: usize, judged: Option<usize
         kind: CutKind::CueOnly,
         confidence: Confidence::High,
         applied: true,
+        leads: cx.leads(cue.first),
         removed: cx.said(cue.first, last),
         resumes: cx.resumes(last + 1),
         why: "cue with no retake after it".into(),
@@ -422,6 +441,7 @@ fn plan_one(cx: &Ctx, cue: &Cue, floor: usize, ceil: usize, judged: Option<usize
             kind: CutKind::LineBeforeCue,
             confidence: Confidence::Low,
             applied: false,
+            leads: cx.leads(line),
             removed: cx.said(line, last),
             resumes: cx.resumes(last + 1),
             why: "the line before a cue with no retake".into(),

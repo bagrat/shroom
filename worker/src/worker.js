@@ -617,8 +617,9 @@ export function keepOf(edits) {
 
 /** The strip's rows: voice cuts in time order. A cue with nothing said again after it
  * comes as two cuts, its own words (cut) and the line before it (offered); the row is the
- * offer, showing the line without the cue's words, which are gone either way.
- * @param {any} edits @returns {{ id: string, at: number, words: string, kind: string, on: boolean, offer: boolean }[]} */
+ * offer, showing the line without the cue's words, which are gone either way. Each row has
+ * the planner's words around its cut (`leads`, `resumes`), for where it joins.
+ * @param {any} edits @returns {{ id: string, at: number, words: string, leads: string, resumes: string, kind: string, on: boolean, offer: boolean }[]} */
 function voiceRows(edits) {
   const cuts = (Array.isArray(edits?.cuts) ? edits.cuts : []).filter((/** @type {any} */ c) => c && VOICE_KINDS.has(c.kind) && typeof c.id === "string");
   const offers = cuts.filter((/** @type {any} */ c) => c.kind === "line-before-cue");
@@ -631,9 +632,24 @@ function voiceRows(edits) {
       const own = typeof cue?.removed === "string" ? cue.removed.trim() : "";
       if (own && words.endsWith(own)) words = words.slice(0, -own.length).trim();
     }
-    rows.push({ id: c.id, at: Number(c.start) || 0, words, kind: c.kind, on: c.applied === true, offer: c.kind === "line-before-cue" && c.applied !== true });
+    const text = (/** @type {unknown} */ x) => (typeof x === "string" ? x.trim() : "");
+    rows.push({ id: c.id, at: Number(c.start) || 0, words, leads: text(c.leads), resumes: text(c.resumes), kind: c.kind, on: c.applied === true, offer: c.kind === "line-before-cue" && c.applied !== true });
   }
   return rows.sort((a, b) => a.at - b.at);
+}
+
+/** The planner's words either side of a cut at most (shroom-edit's `AROUND`): a full six
+ * were cut short, and more was said. */
+const AROUND = 6;
+
+/** A row's quoted words: the cut's own (`.w`, struck while it is cut) between a few of what
+ * plays around it (`.by`, never struck), `…` where more was said, none after a sentence's end.
+ * @param {{ words: string, leads: string, resumes: string }} r */
+function aroundCut(r) {
+  const full = (/** @type {string} */ s) => s.split(/\s+/).length >= AROUND;
+  const lead = r.leads ? `<span class="by">${escapeText(`${full(r.leads) ? "…" : ""}${r.leads}`)}</span> ` : "";
+  const then = r.resumes ? ` <span class="by">${escapeText(`${r.resumes}${full(r.resumes) && !/[.?!…]$/.test(r.resumes) ? "…" : ""}`)}</span>` : "";
+  return `<q>“${lead}<span class="w">${escapeText(r.words)}</span>${then}”</q>`;
 }
 
 /** The owner page's voice cuts under the player (owner-page-cuts): "" when the take has
@@ -647,7 +663,7 @@ export function cutsStrip(edits) {
     const cls = r.offer ? "cut offer" : r.on ? "cut on" : "cut";
     const label = r.offer ? COPY.cutItToo : r.on ? COPY.putBack : COPY.cutAgain;
     const note = r.kind === "line-before-cue" ? `<span class="why">${escapeText(COPY.cutsOffer)}</span>` : "";
-    return `<li class="${cls}" data-cut="${escapeHtml(r.id)}"><span class="at">${escapeText(shroomClockText(r.at))}</span><span class="said">${note}<q>${escapeText(`“${r.words}”`)}</q></span><button type="button" data-press="${r.on ? "0" : "1"}">${escapeText(label)}</button></li>`;
+    return `<li class="${cls}" data-cut="${escapeHtml(r.id)}"><span class="at">${escapeText(shroomClockText(r.at))}</span><span class="said">${note}${aroundCut(r)}</span><button type="button" data-press="${r.on ? "0" : "1"}">${escapeText(label)}</button></li>`;
   }).join("");
   return `<section class="cuts" id="cuts" aria-label="${escapeHtml(COPY.cutsHeading)}"><div class="cuts-head"><h2>${escapeText(COPY.cutsHeading)}</h2><span class="only">${escapeText(COPY.cutsOnlyYou)}</span></div><ol>${li}</ol><p class="unsaved" role="status" hidden>${escapeText(COPY.cutsCouldntSave)}</p></section>`;
 }
@@ -1219,7 +1235,7 @@ h1{flex:1 1 0;min-width:0;margin:0;font-size:1.75rem;font-weight:600;line-height
 .cuts h2::before{content:"";width:16px;height:16px;flex:none;background:var(--cut);-webkit-mask:${I_CUT} center/contain no-repeat;mask:${I_CUT} center/contain no-repeat}
 .cuts .only{color:var(--quiet);font-size:13px}.cuts ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
 .cut{display:flex;align-items:center;gap:14px;padding-top:10px;border-top:1px solid var(--hair)}.cut .at{flex:none;width:40px;color:var(--soft);font-variant-numeric:tabular-nums}
-.cut .said{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:2px}.cut q{quotes:none;overflow-wrap:anywhere}.cut.on q{color:var(--quiet);text-decoration:line-through;text-decoration-color:var(--cut)}
+.cut .said{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:2px}.cut q{quotes:none;overflow-wrap:anywhere;color:var(--quiet)}.cut q .w{color:var(--text)}.cut.on q .w{color:var(--quiet);text-decoration:line-through;text-decoration-color:var(--cut)}
 .cut .why,.cuts .unsaved{color:var(--warn);font-size:13px}.cut.on .why{display:none}.cuts .unsaved{margin:0}.cuts .unsaved[hidden]{display:none}
 .cut button{flex:none;font:inherit;font-size:13px;min-height:32px;padding:0 12px;border:1px solid var(--edge);border-radius:8px;background:transparent;color:var(--text);cursor:pointer}.cut button:hover{background:var(--hover)}.cut button[aria-busy]{opacity:.6}
 .wait{position:relative;aspect-ratio:var(--ar);border-radius:12px;background:var(--player);color:var(--player-text);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px;text-align:center;overflow:hidden;--track:var(--player-track);--fill:var(--player-fill)}
