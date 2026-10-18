@@ -1288,7 +1288,7 @@ The tray is the whole surface and there is no popover. The icon wears the red do
 
 ### `paused`
 
-state · popover · **ratified** · board: Paused · cites N24, N38, N39, N41, B143, N54, N64
+state · popover · **ratified** · board: Paused · cites N24, N38, N39, N41, B143, N54, N64, B199
 
 The same custom popover, with the icon wearing the pause bars. Top to bottom: the header with the length, Resume (the one filled action, Return default), Finish & Share and Restart as plain rows (Finish & Share was Stop, with a line beneath it; B143), and Discard… as red text at the bottom beside a grey no-Quit note. Quit is absent by law. Drop a marker sits between Finish & Share and Restart (N64, reversing B143's hiding): it lands a marker at the pause point, and the row then reads Marker dropped, greyed until the take resumes. Markers show in the editor (N63). Restart re-arms with the countdown already running. The count is Restart's undo (N39, provisional): the old take is discarded only the instant the new capture begins.
 
@@ -1300,8 +1300,8 @@ The same custom popover, with the icon wearing the pause bars. Top to bottom: th
 | “Resume” | button | ratified | filled |
 | “Restart” | button | ratified |  |
 | “Finish & Share” | button | ratified | was “Stop” (B143) |
-| “Drop a marker” | button | provisional | N64; between Finish & Share and Restart |
-| “Marker dropped” | button | provisional | N64; the same row, greyed, once a marker is dropped at this pause |
+| “Drop a marker” | button | provisional | N64; between Finish & Share and Restart; greyed in these words while a window's question is open, a marker not dropped (B199) |
+| “Marker dropped” | button | provisional | N64; the same row, greyed, once a marker is dropped at this pause — only then (B199) |
 | “Discard…” | link | ratified | red text at the bottom, never a button |
 
 | Action | Kind | Return | Goes to | Note |
@@ -1310,7 +1310,7 @@ The same custom popover, with the icon wearing the pause bars. Top to bottom: th
 | ⌥⌘P | other |  | `recording` | Resume from the keyboard, wherever focus is; nothing while Resume is greyed (N54) |
 | Finish & Share | secondary |  | `stopping` | deliberate but visible; a plain row like Restart, with no line beneath (B143) |
 | Restart | secondary |  | `restart-confirm` | Restart asks first (DEVIATIONS #44, B134); its count is still Restart's undo (N39). The old take dies only when the new capture begins. |
-| Drop a marker | secondary |  | `paused` | A plain row between Finish & Share and Restart (N64). Lands a marker at the pause point; the row then reads Marker dropped and greys until Resume. No state change. |
+| Drop a marker | secondary |  | `paused` | A plain row between Finish & Share and Restart (N64). Lands a marker at the pause point; the row then reads Marker dropped and greys until Resume. No state change. A question open in a window (the Library's delete sheet, a Settings sheet) greys it, its words unchanged (B199). |
 | Discard… | red-text |  | `discard-confirm` |  |
 | Esc | other |  |  | N38's keyboard bullet says Esc dismisses the popover. The spec says nothing more for paused. |
 

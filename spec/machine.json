@@ -5488,14 +5488,14 @@
      "text": "Drop a marker",
      "role": "button",
      "copy": "provisional",
-     "note": "N64; between Finish & Share and Restart",
+     "note": "N64; between Finish & Share and Restart; greyed in these words while a window's question is open, a marker not dropped (B199)",
      "id": "paused.drop-marker"
     },
     {
      "text": "Marker dropped",
      "role": "button",
      "copy": "provisional",
-     "note": "N64; the same row, greyed, once a marker is dropped at this pause",
+     "note": "N64; the same row, greyed, once a marker is dropped at this pause — only then (B199)",
      "id": "paused.marker-dropped"
     },
     {
@@ -5539,7 +5539,7 @@
      "label": "Drop a marker",
      "kind": "secondary",
      "return_default": false,
-     "note": "A plain row between Finish & Share and Restart (N64). Lands a marker at the pause point; the row then reads Marker dropped and greys until Resume. No state change.",
+     "note": "A plain row between Finish & Share and Restart (N64). Lands a marker at the pause point; the row then reads Marker dropped and greys until Resume. No state change. A question open in a window (the Library's delete sheet, a Settings sheet) greys it, its words unchanged (B199).",
      "goes_to": "paused"
     },
     {
@@ -5562,7 +5562,8 @@
     "N41",
     "B143",
     "N54",
-    "N64"
+    "N64",
+    "B199"
    ],
    "was": {
     "fixture": "r3.json",
