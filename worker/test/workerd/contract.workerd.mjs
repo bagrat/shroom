@@ -270,7 +270,7 @@ describe("the edit (N63) over R2's own reads", () => {
   it("plays the original with the ranges that play until the copy is up, with no Download", async () => {
     await put({ edits: edits() });
     const page = await (await fetchW(`/${EDIT_ID}`)).text();
-    assert.ok(page.includes(`{"keep":[[2,10],[20,50]],"st":"/_shroom/status/${EDIT_ID}"}`), "the ranges that play");
+    assert.ok(page.includes(`{"keep":[[2,10],[20,50]],"len":60,"st":"/_shroom/status/${EDIT_ID}","copy":false}`), "the ranges that play");
     assert.ok(page.includes(`<span class="time">0:00 / 0:38</span>`), "the edited length");
     assert.ok(!page.includes(`/d/${EDIT_ID}`) && !page.includes(SAID));
     assert.equal((await fetchW(`/d/${EDIT_ID}`)).status, 404);
@@ -282,7 +282,7 @@ describe("the edit (N63) over R2's own reads", () => {
   it("once the copy is up: plays it, Download hands it over, and the original answers 404", async () => {
     await put({ edits: edits({ copy: COPY_OF }) });
     const page = await (await fetchW(`/${EDIT_ID}`)).text();
-    assert.ok(page.includes(`"/m/${EDIT_ID}/edit-3.mp4",`) && page.includes(`{"keep":null,"st":"/_shroom/status/${EDIT_ID}"}`));
+    assert.ok(page.includes(`"/m/${EDIT_ID}/edit-3.mp4",`) && page.includes(`{"keep":null,"len":60,"st":"/_shroom/status/${EDIT_ID}","copy":true}`));
     assert.ok(page.includes(`poster="/m/${EDIT_ID}/edit-3-poster.jpg"`) && !page.includes(SAID));
     const st = await jsonOf(await fetchW(`/_shroom/status/${EDIT_ID}`));
     assert.deepEqual(st.copy, { src: `/m/${EDIT_ID}/edit-3.mp4`, dur: 37.9, poster: `/m/${EDIT_ID}/edit-3-poster.jpg` });
@@ -300,6 +300,39 @@ describe("the edit (N63) over R2's own reads", () => {
     const poster = await fetchW(`/m/${EDIT_ID}/poster.jpg`);
     assert.equal(poster.status, 200, "the original's first frame stays");
     await poster.arrayBuffer();
+  });
+});
+
+// B197: a baked recording — `media` names the edit's own files, no stream — read from R2.
+describe("a baked recording (B197) over R2's own reads", () => {
+  const BAKED_ID = "BaKeBaKeBaKeBaKe";
+
+  before(async () => {
+    await bucket.put(`meta/${BAKED_ID}.json`, metaOf(BAKED_ID, { durationSec: 37.9, title: "Baked",
+      media: { hls: null, mp4: `rec/${BAKED_ID}/edit-3.mp4`, poster: `rec/${BAKED_ID}/edit-3-poster.jpg`, width: 1920, height: 1080 },
+      bakedFrom: [{ at: "2026-10-18T09:00:00.000Z", keep: [[2.125, 10.375], [20, 50]] }] }));
+    for (const f of ["edit-3.mp4", "edit-3-poster.jpg", "video.mp4", "master.m3u8"]) await bucket.put(`rec/${BAKED_ID}/${f}`, f);
+  });
+
+  it("plays its one file as a live video, hands it over, and serves nothing it doesn't name", async () => {
+    const page = await (await fetchW(`/${BAKED_ID}`)).text();
+    assert.ok(page.includes(`shroomPlayer(document.querySelector(".player"),"/m/${BAKED_ID}/edit-3.mp4",`), "its own file plays");
+    assert.ok(page.includes(`poster="/m/${BAKED_ID}/edit-3-poster.jpg"`) && page.includes(`<span class="time">0:00 / 0:38</span>`));
+    assert.ok(!page.includes("10.375") && !page.includes("bakedFrom"), "bakedFrom stays in the record");
+    const st = await jsonOf(await fetchW(`/_shroom/status/${BAKED_ID}`));
+    assert.equal(st.state, "live");
+    assert.equal(st.mp4, true);
+    const d = await fetchW(`/d/${BAKED_ID}`);
+    assert.equal(d.status, 200);
+    assert.equal(await d.text(), "edit-3.mp4");
+    const part = await fetchW(`/m/${BAKED_ID}/edit-3.mp4`, { headers: { range: "bytes=0-3" } });
+    assert.equal(part.status, 206);
+    assert.equal(await part.text(), "edit");
+    for (const f of ["video.mp4", "master.m3u8"]) {
+      const res = await fetchW(`/m/${BAKED_ID}/${f}`);
+      assert.equal(res.status, 404, `${f}: what a bake left behind isn't the video`);
+      await res.arrayBuffer();
+    }
   });
 });
 

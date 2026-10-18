@@ -158,7 +158,7 @@ describe("editsOf takes nothing on trust", () => {
 describe("the page applies the edit until the copy is up (N63)", () => {
   it("plays the original held to the trim, every cut skipped, and shows the edited length", async () => {
     const body = await text(edited(), `/${REC}`);
-    expect(playerArg(body)).toEqual({ keep: KEEP, st: `/_shroom/status/${REC}` });
+    expect(playerArg(body)).toEqual({ keep: KEEP, len: 272.4, st: `/_shroom/status/${REC}`, copy: false });
     expect(body).toContain(`class="player" data-dur="221"`);
     expect(body).toMatch(/<input type="range" class="seek" min="0" max="221"/);
     expect(body).toContain(`<span class="time">0:00 / 3:41</span>`);
@@ -169,11 +169,11 @@ describe("the page applies the edit until the copy is up (N63)", () => {
 
   it("is the same on the embed and the owner page", async () => {
     const embed = await text(edited(), `/${REC}?embed=1`);
-    expect(playerArg(embed)).toEqual({ keep: KEEP, st: `/_shroom/status/${REC}` });
+    expect(playerArg(embed)).toEqual({ keep: KEEP, len: 272.4, st: `/_shroom/status/${REC}`, copy: false });
     expect(embed).toContain(`<span class="time">0:00 / 3:41</span>`);
     const mine = await text(edited(), `/${REC}`, owner);
     expect(mine).toContain(`class="title"`);
-    expect(mine).toContain(`shroomPlayer(document.querySelector(".player"),src,c.labels,{"keep":[[8,150],[162,241]],"st":"/_shroom/status/${REC}"})`);
+    expect(mine).toContain(`shroomPlayer(document.querySelector(".player"),src,c.labels,{"keep":[[8,150],[162,241]],"len":272.4,"st":"/_shroom/status/${REC}","copy":false})`);
     expect(mine).toContain(`<span class="time">0:00 / 3:41</span>`);
     // Copy thumbnail's picture carries the edited length.
     expect(mine).toContain(`"len":"3:41"`);
@@ -244,7 +244,7 @@ describe("once the permanent copy is up, the page plays it as it is (N63)", () =
   it("plays the copy with nothing to skip, its own first frame and its own length", async () => {
     const body = await text(copied(), `/${REC}`);
     expect(playerSrc(body)).toBe(`/m/${REC}/edit-3.mp4`);
-    expect(playerArg(body)).toEqual({ keep: null, st: `/_shroom/status/${REC}` });
+    expect(playerArg(body)).toEqual({ keep: null, len: 272.4, st: `/_shroom/status/${REC}`, copy: true });
     expect(body.match(/<video[^>]*>/)?.[0]).toContain(`poster="/m/${REC}/edit-3-poster.jpg"`);
     expect(body).toContain(`class="player" data-dur="220.9"`);
     expect(body).toContain(`<span class="time">0:00 / 3:41</span>`);
@@ -253,7 +253,7 @@ describe("once the permanent copy is up, the page plays it as it is (N63)", () =
     expect(embed.match(/<video[^>]*>/)?.[0]).toContain(`poster="${ORIGIN}/m/${REC}/edit-3-poster.jpg"`);
     const mine = await text(copied(), `/${REC}`, owner);
     expect(mine).toContain(`src="/m/${REC}/edit-3.mp4"`);
-    expect(mine).toContain(`shroomPlayer(document.querySelector(".player"),src,c.labels,{"keep":null,"st":"/_shroom/status/${REC}"})`);
+    expect(mine).toContain(`shroomPlayer(document.querySelector(".player"),src,c.labels,{"keep":null,"len":272.4,"st":"/_shroom/status/${REC}","copy":true})`);
     // Copy thumbnail draws from the copy's own pictures.
     expect(mine).toContain(`"psrc":"/m/${REC}/edit-3-poster.jpg","tsrc":"/m/${REC}/edit-3-teaser.mp4"`);
   });
@@ -378,7 +378,7 @@ describe("the transcript a voice cut carries never reaches a viewer", () => {
 
 /** The player against a stand-in browser: a video element whose clock the test moves, the
  * frames the player asks for run by hand, and the status it asks when its media fails. */
-function stage(keep, { dur = 20, answer = null } = {}) {
+function stage(keep, { dur = 20, answer = null, len = dur, copy = false } = {}) {
   const node = () => ({ attrs: {}, on: {}, textContent: "", value: "0", max: "0", style: { setProperty() {} }, classList: { toggle() {}, add() {}, remove() {}, contains: () => false },
     setAttribute(k, v) { this.attrs[k] = String(v); }, getAttribute(k) { return this.attrs[k] ?? null; }, addEventListener(e, f) { (this.on[e] ??= []).push(f); } });
   const emit = (n, e, ev = {}) => (n.on[e] ?? []).forEach((f) => f({ type: e, target: { tagName: "DIV" }, preventDefault() {}, ...ev }));
@@ -390,12 +390,17 @@ function stage(keep, { dur = 20, answer = null } = {}) {
   p.attrs["data-dur"] = String(keep ? keep.reduce((n, [s, e]) => n + e - s, 0) : dur);
   let frame = null;
   const asked = [];
-  const document = { addEventListener() {}, createElement: () => ({}), head: { appendChild() {} }, activeElement: null, fullscreenElement: null };
+  const docOn = {};
+  const document = { addEventListener(e, f) { (docOn[e] ??= []).push(f); }, createElement: () => ({}), head: { appendChild() {} }, activeElement: null, fullscreenElement: null };
   const fetch = (url) => { asked.push(url); return Promise.resolve({ json: () => Promise.resolve(answer) }); };
   const shroomPlayer = new Function("document", "requestAnimationFrame", "fetch", "setTimeout", "clearTimeout", `${PLAYER_JS};return shroomPlayer`)(
     document, (f) => { frame = f; return 1; }, fetch, () => 0, () => {});
-  shroomPlayer(p, "/m/x/video.mp4", { play: "Play", pause: "Pause", full: "", exit: "", speed: "", mute: "", unmute: "" }, { keep, st: "/_shroom/status/x" });
+  shroomPlayer(p, "/m/x/video.mp4", { play: "Play", pause: "Pause", full: "", exit: "", speed: "", mute: "", unmute: "" }, { keep, len, st: "/_shroom/status/x", copy });
   return {
+    /** A `shroom:keep` event on the document, as the voice-cut build sends it (#59). */
+    keepEvent: (detail) => (docOn["shroom:keep"] ?? []).forEach((f) => f({ type: "shroom:keep", detail })),
+    /** The player has asked for a frame. */
+    framing: () => frame !== null,
     video, asked, time: () => parts[".time"].textContent, seek: parts[".seek"],
     /** The clock reaches `t` while playing: the frame the player asked for runs, then `timeupdate`. */
     at(t) { video.currentTime = t; const f = frame; frame = null; if (f) f(); emit(video, "timeupdate"); },
@@ -513,5 +518,253 @@ describe("the player applies the edit as it plays (the skip, the time, the seek 
     await new Promise((ok) => setImmediate(ok));
     expect(s.asked).toEqual(["/_shroom/status/x"]);
     expect(s.video.src).toBe("/m/x/video.mp4");
+  });
+});
+
+describe("the player takes new ranges from the page (shroom:keep, agreed with the voice-cut build #59)", () => {
+  const { shroomKeep } = new Function(`${PLAYER_JS};return { shroomKeep }`)();
+
+  it("makes the ranges safe as editsOf makes an edit: numbers only, held to the recording, merged, at most 500", () => {
+    expect(shroomKeep([[15, 30], ["x", 3], [5, 4], [1, 3], [2.5, 6], [NaN, 1], null, [Infinity, 2], [-4, 0.5], { 0: 7, 1: 8 }], 20)).toEqual([[0, 0.5], [1, 6], [15, 20]]);
+    expect(shroomKeep([[5, 8], [0, 5]], 20)).toEqual([[0, 8]]);
+    for (const bad of ["nope", null, undefined, 3, {}, [[]], [["1", "2"]]]) expect(shroomKeep(bad, 20), JSON.stringify(bad)).toEqual([]);
+    const many = Array.from({ length: 2000 }, (_, i) => [i * 0.04, i * 0.04 + 0.02]);
+    expect(shroomKeep(many, 100)).toHaveLength(500);
+    // A recording whose length isn't known yet isn't held at the top.
+    expect(shroomKeep([[1, 50]], 0)).toEqual([[1, 50]]);
+  });
+
+  it("swaps them in: the length, the seek bar and the playhead follow", () => {
+    const s = stage(null);
+    expect(s.time()).toBe("0:00 / 0:20");
+    s.keepEvent([[2, 6], [9, 12]]);
+    expect(s.time()).toBe("0:00 / 0:07");
+    expect(s.seek.max).toBe("7");
+    expect(s.video.currentTime).toBe(2);
+    s.click();
+    // Playing, the frames run the skip from here on.
+    expect(s.framing()).toBe(true);
+    s.at(5.98);
+    expect(s.video.currentTime).toBe(9);
+    s.at(11.98);
+    expect(s.video.paused).toBe(true);
+    expect(s.time()).toBe("0:07 / 0:07");
+  });
+
+  it("moves a playhead a new cut covers on to the next range's start; past the last, it ends there", () => {
+    const s = stage([[2, 6], [9, 12], [13.5, 18]]);
+    s.click();
+    s.at(10);
+    s.keepEvent([[0, 9.5], [11, 20]]);
+    expect(s.video.currentTime).toBe(11);
+    expect(s.time()).toBe("0:09 / 0:19");
+    s.keepEvent([[0, 5]]);
+    expect(s.video.paused).toBe(true);
+    expect(s.time()).toBe("0:05 / 0:05");
+  });
+
+  it("starts the frames when ranges arrive mid-play", () => {
+    const s = stage(null);
+    s.click();
+    s.at(1);
+    expect(s.framing()).toBe(false);
+    s.keepEvent([[0, 3], [6, 20]]);
+    expect(s.framing()).toBe(true);
+    s.at(2.98);
+    expect(s.video.currentTime).toBe(6);
+  });
+
+  it("ranges that leave everything in put the recording back as it was", () => {
+    const s = stage([[2, 6], [9, 12]]);
+    s.keepEvent([[0, 20]]);
+    expect(s.time()).toBe("0:00 / 0:20");
+    s.click();
+    s.at(7);
+    expect(s.video.currentTime).toBe(7);
+  });
+
+  it("a detail that holds nothing to play changes nothing", () => {
+    const s = stage([[2, 6], [9, 12]]);
+    for (const detail of ["nope", [], [[5, 5]], [[30, 40]], null]) s.keepEvent(detail);
+    expect(s.time()).toBe("0:00 / 0:07");
+  });
+
+  it("does nothing while the permanent copy plays: it is the edit already", async () => {
+    const s = stage(null, { copy: true });
+    s.keepEvent([[2, 6]]);
+    expect(s.time()).toBe("0:00 / 0:20");
+    expect(s.video.currentTime).toBe(0);
+    // Nor once a player has moved over to the copy.
+    const moved = stage([[2, 6], [9, 12], [13.5, 18]], { answer: { state: "live", copy: { src: "/m/x/edit-3.mp4", dur: 11.4 } } });
+    moved.click();
+    moved.at(4);
+    moved.emit("error");
+    await new Promise((ok) => setImmediate(ok));
+    expect(moved.video.src).toBe("/m/x/edit-3.mp4");
+    moved.video.duration = 11.4;
+    moved.emit("loadedmetadata");
+    moved.keepEvent([[0, 1]]);
+    moved.at(5);
+    expect(moved.video.currentTime).toBe(5);
+    expect(moved.time()).toBe("0:05 / 0:11");
+  });
+
+  it("hands every player the recording's own length and whether it plays the copy", async () => {
+    expect(playerArg(await text(edited(), `/${REC}`))).toMatchObject({ len: 272.4, copy: false });
+    expect(playerArg(await text(copied(), `/${REC}?embed=1`))).toMatchObject({ len: 272.4, copy: true });
+    expect(await text(space({ objects: { [metaKey(REC)]: uploadingRecord() } }), `/${REC}`, owner)).toContain(`st:"/_shroom/status/"+c.id,copy:!!cp}`);
+  });
+});
+
+/** A record still uploading: its owner page swaps the player in at the go-live. */
+const uploadingRecord = () => metaOf(REC, { state: "uploading", media: null, progress: { done: 1, total: 4, updatedAt: new Date(NOW).toISOString() } });
+
+// B197: after an edit, the original goes and the edit becomes the video — the bake points
+// `media` at the copy's own files (`hls: null`), sets `durationSec` to the copy's length and
+// drops `edits`. The page, Download and `/m/` follow `media`'s keys from then on.
+describe("a baked recording: the edit became the video (B197)", () => {
+  const BAKED_MEDIA = { hls: null, mp4: `rec/${REC}/edit-3.mp4`, poster: `rec/${REC}/edit-3-poster.jpg`, teaser: `rec/${REC}/edit-3-teaser.mp4`, width: 1920, height: 1080 };
+  const BAKED_FROM = [{ at: "2026-10-18T09:00:00.123Z", keep: [[8.125, 150.375], [162, 241]] }];
+  const bakedRecord = (over = {}) => metaOf(REC, { title: "Where the 502s come from", titled: true, durationSec: 220.9, media: BAKED_MEDIA, bakedFrom: BAKED_FROM, ...over });
+  const EDIT5 = { [`rec/${REC}/edit-5.mp4`]: "edit-5.mp4", [`rec/${REC}/edit-5-poster.jpg`]: "edit-5-poster.jpg", [`rec/${REC}/edit-5-teaser.mp4`]: "edit-5-teaser.mp4" };
+  const baked = (over) => space({ objects: { [metaKey(REC)]: bakedRecord(over), ...files(), ...EDIT5 } });
+  /** Edited again, over its own clock: 2–50 and 60–200 of its 220.9 s play — 188 s, 3:08. */
+  const AGAIN = { version: 1, source_duration: 220.9, in: 2, out: 200, cuts: [{ id: "m1", start: 50, end: 60, kind: "manual", confidence: "high", applied: true, removed: SAID[0] }], rev: 5 };
+  const COPY5 = { rev: 5, file: "edit-5.mp4", duration: 187.9, poster: "edit-5-poster.jpg", teaser: "edit-5-teaser.mp4" };
+
+  it("is a live video that plays its one file, with its own first frame, teaser and length", async () => {
+    const env = baked();
+    const body = await text(env, `/${REC}`);
+    expect(playerSrc(body)).toBe(`/m/${REC}/edit-3.mp4`);
+    expect(playerArg(body)).toEqual({ keep: null, len: 220.9, st: `/_shroom/status/${REC}`, copy: false });
+    expect(body.match(/<video[^>]*>/)?.[0]).toContain(`poster="/m/${REC}/edit-3-poster.jpg"`);
+    expect(body).toContain(`class="player" data-dur="220.9"`);
+    expect(body).toContain(`<span class="time">0:00 / 3:41</span>`);
+    expect(body).toContain(`<a href="/d/${REC}">${COPY.download}</a>`);
+    const embed = await text(env, `/${REC}?embed=1`);
+    expect(playerSrc(embed)).toBe(`/m/${REC}/edit-3.mp4`);
+    expect(embed.match(/<video[^>]*>/)?.[0]).toContain(`poster="${ORIGIN}/m/${REC}/edit-3-poster.jpg"`);
+    const mine = await text(env, `/${REC}`, owner);
+    expect(mine).toContain(`class="title"`);
+    expect(mine).toContain(`src="/m/${REC}/edit-3.mp4"`);
+    expect(mine).toContain(`"mp4":true`);
+    expect(mine).toContain(`"len":"3:41","psrc":"/m/${REC}/edit-3-poster.jpg","tsrc":"/m/${REC}/edit-3-teaser.mp4"`);
+    expect(JSON.parse(await text(env, `/_shroom/status/${REC}`))).toEqual({ state: "live", poster: true, mp4: true, teaser: true, thumb: null, dur: 220.9, drained: true });
+  });
+
+  it("unfurls with its own pictures and length", async () => {
+    const body = await text(baked(), `/${REC}`);
+    expect(body).toContain(`<meta property="og:image" content="${ORIGIN}/m/${REC}/edit-3-poster.jpg">`);
+    expect(body).toContain(`<meta property="og:video" content="${ORIGIN}/m/${REC}/edit-3-teaser.mp4">`);
+    expect(body).toContain(`<meta property="og:video:duration" content="221">`);
+    const oembed = JSON.parse(await text(baked(), `/oembed?url=${encodeURIComponent(`${ORIGIN}/${REC}`)}`));
+    expect(oembed.thumbnail_url).toBe(`${ORIGIN}/m/${REC}/edit-3-poster.jpg`);
+    // No teaser, no poster of its own: none shown, and no original's in their place.
+    const bare = await text(baked({ media: { ...BAKED_MEDIA, poster: null, teaser: undefined } }), `/${REC}`);
+    expect(bare).not.toContain("og:image");
+    expect(bare).not.toContain("og:video");
+    expect(bare.match(/<video[^>]*>/)?.[0]).not.toContain("poster=");
+  });
+
+  it("hands its file over as the download, named after the title", async () => {
+    const res = await get(baked(), `/d/${REC}`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-disposition")).toContain(`filename*=UTF-8''Where%20the%20502s%20come%20from.mp4`);
+    expect(await res.text()).toBe("edit-3.mp4");
+    expect((await get(baked(), `/d/${REC}`, { headers: { range: "bytes=0-3" } })).status).toBe(206);
+  });
+
+  it("serves exactly the files its record names, and Copy thumbnail's pictures", async () => {
+    const env = baked();
+    for (const f of ["edit-3.mp4", "edit-3-poster.jpg", "edit-3-teaser.mp4", "thumb-0123456789abcdef.gif"]) expect((await get(env, `/m/${REC}/${f}`)).status, f).toBe(200);
+    // What a bake left behind, or an earlier one's file: none of it is the video now.
+    for (const f of ["master.m3u8", "v0/stream.m3u8", "v0/seg_00000.m4s", "video.mp4", "poster.jpg", "teaser.mp4", "edit-2.mp4", "edit-5.mp4", "captions.vtt"]) {
+      for (const init of [{}, { method: "HEAD" }, { headers: { range: "bytes=0-0" } }]) {
+        const res = await get(env, `/m/${REC}/${f}`, init);
+        expect(res.status, `${init.method ?? "GET"} ${f}`).toBe(404);
+        await res.arrayBuffer();
+      }
+    }
+  });
+
+  it("never waits on a stream it doesn't have: the playlist's answer, there or not, changes nothing", async () => {
+    for (const playlist of [null, ONE_MAP, "#EXTM3U\n#EXT-X-MAP:URI=\"a\"\n#EXT-X-MAP:URI=\"b\"\n"]) {
+      const objects = { [metaKey(REC)]: bakedRecord(), [`rec/${REC}/edit-3.mp4`]: "x" };
+      if (playlist) objects[`rec/${REC}/v0/stream.m3u8`] = playlist;
+      const env = space({ objects });
+      expect(playerSrc(await text(env, `/${REC}`))).toBe(`/m/${REC}/edit-3.mp4`);
+      expect(playerSrc(await text(env, `/${REC}?embed=1`))).toBe(`/m/${REC}/edit-3.mp4`);
+    }
+    const env = baked();
+    const failing = env.BUCKET.get.bind(env.BUCKET);
+    env.BUCKET.get = (key, opts) => key.endsWith("stream.m3u8") ? Promise.reject(new Error("get: internal error (10001)")) : failing(key, opts);
+    expect(playerSrc(await text(env, `/${REC}`))).toBe(`/m/${REC}/edit-3.mp4`);
+    // Nothing but the page's own read beside the record ever asks for it.
+    const quiet = baked();
+    for (const path of [`/d/${REC}`, `/_shroom/status/${REC}`, `/oembed?url=${encodeURIComponent(`${ORIGIN}/${REC}`)}`, `/m/${REC}/edit-3.mp4`]) await get(quiet, path);
+    expect(quiet.BUCKET.read().filter((k) => k.endsWith("stream.m3u8"))).toEqual([]);
+  });
+
+  it("takes no key at its word: a key that isn't the recording's own file of its slot's kind is no file", async () => {
+    for (const mp4 of [`rec/AAAAAAAAAAAAAAAA/edit-3.mp4`, `rec/${REC}/v0/edit-3.mp4`, `rec/${REC}/../${REC}/edit-3.mp4`, ".shroom/cookie.key", `rec/${REC}/edit-3.mp4.json`,
+      `rec/${REC}/edit-3-poster.jpg`, `meta/${REC}.json`, `rec/${REC}/edit-.mp4`, 42, ["x"], {}]) {
+      const env = baked({ media: { ...BAKED_MEDIA, mp4 } });
+      expect(await text(env, `/${REC}`), JSON.stringify(mp4)).toContain(COPY.unavailable);
+      expect(JSON.parse(await text(env, `/_shroom/status/${REC}`))).toEqual({ state: "unavailable" });
+      expect((await get(env, `/d/${REC}`)).status).toBe(404);
+      expect(env.BUCKET.read().filter((k) => !k.startsWith(`rec/${REC}/`) && ![metaKey(REC), `.shroom/gone/${REC}`, ".shroom/mark.json"].includes(k))).toEqual([]);
+    }
+    const wrongKinds = await text(baked({ media: { ...BAKED_MEDIA, poster: `rec/${REC}/edit-3.mp4`, teaser: `rec/${REC}/edit-3-poster.jpg` } }), `/${REC}`);
+    expect(wrongKinds.match(/<video[^>]*>/)?.[0]).not.toContain("poster=");
+    expect(wrongKinds).not.toContain("og:video");
+  });
+
+  it("keeps bakedFrom to itself: none of it reaches a viewer", async () => {
+    const env = baked();
+    const seen = [await text(env, `/${REC}`), await text(env, `/${REC}?embed=1`), await text(env, `/${REC}`, owner), await text(env, `/_shroom/status/${REC}`),
+      await text(env, `/oembed?url=${encodeURIComponent(`${ORIGIN}/${REC}`)}`)].join("\n");
+    for (const s of ["bakedFrom", "150.375", "8.125", BAKED_FROM[0].at]) expect(seen).not.toContain(s);
+  });
+
+  it("can be edited again, over its own clock: the list plays over its file until a newer copy is up", async () => {
+    const env = baked({ edits: AGAIN });
+    const body = await text(env, `/${REC}`);
+    expect(playerSrc(body)).toBe(`/m/${REC}/edit-3.mp4`);
+    expect(playerArg(body)).toEqual({ keep: [[2, 50], [60, 200]], len: 220.9, st: `/_shroom/status/${REC}`, copy: false });
+    expect(body).toContain(`<span class="time">0:00 / 3:08</span>`);
+    expect(body).not.toContain(`href="/d/${REC}"`);
+    expect((await get(env, `/d/${REC}`)).status).toBe(404);
+    for (const f of ["edit-3.mp4", "edit-3-poster.jpg", "edit-3-teaser.mp4"]) expect((await get(env, `/m/${REC}/${f}`)).status, f).toBe(200);
+    for (const f of ["edit-5.mp4", "video.mp4", "master.m3u8"]) expect((await get(env, `/m/${REC}/${f}`)).status, f).toBe(404);
+    for (const s of SAID) expect(body).not.toContain(s);
+  });
+
+  it("once the newer copy is up: plays it, hands it over, and the earlier video is out of reach", async () => {
+    const env = baked({ edits: { ...AGAIN, copy: COPY5 } });
+    const body = await text(env, `/${REC}`);
+    expect(playerSrc(body)).toBe(`/m/${REC}/edit-5.mp4`);
+    expect(playerArg(body)).toEqual({ keep: null, len: 220.9, st: `/_shroom/status/${REC}`, copy: true });
+    expect(body.match(/<video[^>]*>/)?.[0]).toContain(`poster="/m/${REC}/edit-5-poster.jpg"`);
+    expect(body).toContain(`<span class="time">0:00 / 3:08</span>`);
+    expect(await (await get(env, `/d/${REC}`)).text()).toBe("edit-5.mp4");
+    // The copy's files, the recording's own first frame (the Library shows it) and the
+    // pictures Copy thumbnail made; the earlier video and its teaser are out of reach.
+    for (const f of ["edit-5.mp4", "edit-5-poster.jpg", "edit-5-teaser.mp4", "edit-3-poster.jpg", "thumb-0123456789abcdef.gif"]) expect((await get(env, `/m/${REC}/${f}`)).status, f).toBe(200);
+    for (const f of ["edit-3.mp4", "edit-3-teaser.mp4", "poster.jpg", "video.mp4", "master.m3u8"]) expect((await get(env, `/m/${REC}/${f}`)).status, f).toBe(404);
+    // A stale copy: the list over the recording's own file again.
+    const stale5 = baked({ edits: { ...AGAIN, rev: 6, copy: COPY5 } });
+    expect(playerSrc(await text(stale5, `/${REC}`))).toBe(`/m/${REC}/edit-3.mp4`);
+    expect((await get(stale5, `/m/${REC}/edit-3.mp4`)).status).toBe(200);
+    expect((await get(stale5, `/m/${REC}/edit-5.mp4`)).status).toBe(404);
+  });
+
+  it("leaves a record that still has its stream as it was: a set slot is the original's fixed file", async () => {
+    // The Worker never took those keys at their word, and doesn't now.
+    const env = space({ objects: { [metaKey(REC)]: record(undefined, { media: { ...MEDIA, mp4: ".shroom/cookie.key", poster: "p", teaser: "t" } }), ...files() } });
+    const body = await text(env, `/${REC}`);
+    expect(body.match(/<video[^>]*>/)?.[0]).toContain(`poster="/m/${REC}/poster.jpg"`);
+    expect(body).toContain(`<meta property="og:video" content="${ORIGIN}/m/${REC}/teaser.mp4">`);
+    expect(await (await get(env, `/d/${REC}`)).text()).toBe("video.mp4");
+    expect((await get(env, `/m/${REC}/v0/seg_00000.m4s`)).status).toBe(200);
   });
 });

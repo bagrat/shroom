@@ -49,6 +49,12 @@
 //              404 (step 3). The copy landing under an open page: its next piece of the
 //              original answers 404 and the player moves over to the copy (hls.js; native
 //              engines that fetched the whole file have nothing to miss — reported only)
+//   baked      a baked recording (B197: media names the edit's own files, no stream) plays its
+//              one file to its end, its own first frame and length, asks for nothing of the
+//              stream, and what the bake left behind answers 404 while its own files are served
+//   keep       shroom:keep (the voice-cut build's event, #59) hands an unedited page the
+//              edit's ranges: it then plays them at 2× as a saved edit plays, never a cut
+//              moment, the time reading 0:12
 //   bytes      a tombstoned recording's playlist answers 404
 //
 // Prints one JSON summary and exits 0 only when every required check passed.
@@ -65,7 +71,7 @@ const here = path.dirname(new URL(import.meta.url).pathname);
 const work = fs.mkdtempSync(path.join(os.tmpdir(), "shroom-page-drive-"));
 const summary = { ok: false, engines: {} };
 const ids = { live: "LiveLiveLiveLive", wait: "WaitWaitWaitWait", stall: "StalStalStalStal", own: "OwnrOwnrOwnrOwnr", gone: "GoneGoneGoneGone", off: "OffxOffxOffxOffx",
-  edit: "EditEditEditEdit", cut: "CutsCutsCutsCuts", land: "LandLandLandLand" };
+  edit: "EditEditEditEdit", cut: "CutsCutsCutsCuts", land: "LandLandLandLand", bake: "BakeBakeBakeBake" };
 const DURATION = 20;
 /** The edit the drive plays (N63), as the Mac's editor saves it: 2–6, 9–12 and 13.5–18 of
  * the 20 s recording play — 11.5 s, which reads 0:12. */
@@ -126,7 +132,7 @@ async function main() {
   const put = (k, v) => env.BUCKET.put(k, v);
   await put(".shroom/player/hls.min.js", new Uint8Array(fs.readFileSync(path.join(here, "../vendor/hls.min.js"))));
   for (const id of Object.values(ids)) for (const [f, bytes] of Object.entries(files)) await put(`rec/${id}/${f}`, bytes);
-  for (const [f, bytes] of Object.entries(encodeCopy())) for (const id of [ids.edit, ids.cut, ids.land]) await put(`rec/${id}/${f}`, bytes);
+  for (const [f, bytes] of Object.entries(encodeCopy())) for (const id of [ids.edit, ids.cut, ids.land, ids.bake]) await put(`rec/${id}/${f}`, bytes);
   for (const [id, size] of Object.values(SHAPES)) {
     const [width, height] = size.split("x").map(Number);
     for (const [f, bytes] of Object.entries(encode(size, 4))) await put(`rec/${id}/${f}`, bytes);
@@ -219,12 +225,14 @@ async function main() {
         const stream = (id) => ({ hls: `rec/${id}/master.m3u8`, mp4: null, poster: `rec/${id}/poster.jpg`, width: 640, height: 400 });
         const single = (id) => ({ ...stream(id), mp4: `rec/${id}/video.mp4` });
         /** Opens the page, plays it at 2× from Play, and samples where the video is — every
-         * frame, every 4 ms and on every timeupdate — until it stops by itself. */
-        const playThrough = async (id, ended) => {
+         * frame, every 4 ms and on every timeupdate — until it stops by itself. `keep`: ranges
+         * handed to the page first, as the voice-cut build's `shroom:keep` event does (#59). */
+        const playThrough = async (id, ended, keep = null) => {
           const asked = [];
           const onRequest = (/** @type {any} */ r) => asked.push(new URL(r.url()).pathname);
           page.on("request", onRequest);
           await page.goto(`${origin}/${id}`);
+          if (keep) await page.evaluate((detail) => document.dispatchEvent(new CustomEvent("shroom:keep", { detail })), keep);
           const before = await page.evaluate(() => ({ time: document.querySelector(".time").textContent, poster: document.getElementById("v").getAttribute("poster") }));
           await page.evaluate(() => {
             const v = document.getElementById("v");
@@ -269,6 +277,32 @@ async function main() {
         }, ids.cut);
         check("the edit's copy up: the original's stream and file answer 404, the copy and the first frames are served (step 3)",
           same(reach, { "master.m3u8": 404, "v0/stream.m3u8": 404, "v0/init.mp4": 404, "v0/seg_00000.m4s": 404, "video.mp4": 404, "poster.jpg": 200, "edit-1.mp4": 200, "edit-1-poster.jpg": 200 }), true, reach);
+
+        // ── shroom:keep: the page handed new ranges (#59) ──
+        await put(metaKey(ids.edit), meta(ids.edit, { media: stream(ids.edit) }));
+        const handed = await playThrough(ids.edit, false, KEEP);
+        const handedWrong = inCut(handed.seen);
+        check("shroom:keep hands an unedited page the ranges: at 2×, never a moment of a cut, every range plays, it stops at the last one's end, the time reads 0:12",
+          handed.done && handedWrong.length === 0 && KEEP.every(([s, e]) => handed.seen.some((t) => t >= s && t < e)) && handed.max >= 17.8 && handed.max <= 18.05
+            && handed.before.time === "0:00 / 0:12" && handed.after.time === "0:12 / 0:12", true,
+          { n: handed.seen.length, min: handed.min, max: handed.max, wrong: handedWrong.slice(0, 8), before: handed.before, after: handed.after });
+
+        // ── a baked recording (B197): the edit became the video ──
+        await put(metaKey(ids.bake), meta(ids.bake, { durationSec: EDIT_COPY.duration,
+          media: { hls: null, mp4: `rec/${ids.bake}/${EDIT_COPY.file}`, poster: `rec/${ids.bake}/${EDIT_COPY.poster}`, width: 640, height: 400 } }));
+        const bakeRun = await playThrough(ids.bake, true);
+        const bakeJumps = bakeRun.seen.filter((t, i) => i > 0 && t - bakeRun.seen[i - 1] > 0.5);
+        const bakeAsked = bakeRun.asked.filter((p) => /\/(master\.m3u8|stream\.m3u8|[^/]+\.m4s|video\.mp4)$/.test(p));
+        check("a baked recording plays its one file to its end, its own first frame and length, and asks for nothing of a stream",
+          bakeRun.done && bakeJumps.length === 0 && bakeRun.max >= 11.3 && bakeRun.after.src.endsWith(`/${EDIT_COPY.file}`) && bakeRun.before.poster?.endsWith(`/${EDIT_COPY.poster}`)
+            && bakeRun.before.time === "0:00 / 0:12" && bakeAsked.length === 0, true, { done: bakeRun.done, jumps: bakeJumps, max: bakeRun.max, before: bakeRun.before, after: bakeRun.after, asked: bakeAsked });
+        const bakeReach = await page.evaluate(async (id) => {
+          const out = {};
+          for (const f of ["master.m3u8", "v0/stream.m3u8", "v0/seg_00000.m4s", "video.mp4", "poster.jpg", "edit-1.mp4", "edit-1-poster.jpg"]) out[f] = (await fetch(`/m/${id}/${f}`, { method: "HEAD" })).status;
+          return out;
+        }, ids.bake);
+        check("a baked recording: its own files are served, what the bake left behind answers 404",
+          same(bakeReach, { "master.m3u8": 404, "v0/stream.m3u8": 404, "v0/seg_00000.m4s": 404, "video.mp4": 404, "poster.jpg": 404, "edit-1.mp4": 200, "edit-1-poster.jpg": 200 }), true, bakeReach);
 
         // ── the copy lands under an open page (N63, step 3) ──
         // Opened on the original, the edit applied — a recording this browser hasn't played,
