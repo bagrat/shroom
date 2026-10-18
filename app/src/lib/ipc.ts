@@ -4,7 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 
 export type Action = { do: string; arg?: unknown };
-export type Surface = "popover" | "countdown" | "onboarding" | "library" | "settings" | "feedback";
+export type Surface = "popover" | "countdown" | "onboarding" | "library" | "settings" | "feedback" | "editor";
 
 export const act = (surface: Surface, action: Action) => invoke("act", { surface, action });
 export const key = (surface: Surface, key: "return" | "esc") => invoke("key", { surface, key });
@@ -16,6 +16,19 @@ export const sceneGet = <T>(surface: Surface) => invoke<T | null>("scene_get", {
 // hears only that slice (an untargeted listener would hear every surface's).
 export const onScene = <T>(f: (slice: T) => void, label: Surface) => listen<T>("scene", (e) => f(e.payload), { target: label });
 export const fit = (height: number) => invoke("popover_fit", { height });
+
+/** One step in the editor (N63), times in seconds on the recording's own timeline. The core
+ * takes it into the edit's history, or refuses it (a trim that leaves too little, a step
+ * while the editor saves): the next slice says what the edit is. */
+export type EditStep =
+  | { op: "trim"; in: number; out: number }
+  | { op: "cut"; start: number; end: number }
+  | { op: "put-back"; index: number }
+  | { op: "apply"; index: number }
+  | { op: "revert" }
+  | { op: "undo" }
+  | { op: "redo" };
+export const edit = (step: EditStep) => invoke("edit", { step });
 
 // A pasted secret goes to the runner and nowhere else: the webview never keeps it (law 13).
 // The runner stashes the text, classifies its shape, and the Scene answers.
