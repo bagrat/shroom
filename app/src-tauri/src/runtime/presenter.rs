@@ -764,11 +764,17 @@ fn apply(app: &AppHandle, rt: &Runtime, prev: Option<&Scene>, s: &Scene, exclude
                 let _ = app.emit_to(LABEL, "scene", l);
                 if !panel.isVisible() {
                     overlay::show(&panel, false);
+                    rt.log(&format!("label: shown on display {}", l.display));
                 }
+            } else if prev.is_none_or(|p| p.label.is_none()) {
+                rt.log("label: no panel made at start, none shown (the tray shows the take)");
             }
         }
         None => {
             if let Some(panel) = overlay::get(Overlay::Label) {
+                if panel.isVisible() {
+                    rt.log("label: gone");
+                }
                 overlay::hide(&panel);
             }
         }

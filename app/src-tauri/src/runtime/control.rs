@@ -10,6 +10,10 @@
 //! start, pause, resume and stop, and the core answers each exactly as the click it stands
 //! for, refusing all of them while General's “Let it start and stop recordings” is off.
 //! The answer is a code, never words: the command says them. Nothing secret crosses here.
+//!
+//! The run log has every ask and its answer, by the ask's number: the op and how a start
+//! goes, then the answer's code and how long the core took (`asked`, `answered`) — and any
+//! connection dropped or ask not read, with why. Never the link a stop answers with.
 
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Read, Write};
@@ -18,7 +22,7 @@ use std::os::unix::io::AsRawFd;
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use shroom_core::effect::CliAnswer;
 use shroom_core::event::{CliOp, Event, StartAsk};
@@ -29,7 +33,7 @@ use super::Runtime;
 #[derive(Clone, Default)]
 pub struct Pending {
     next: Arc<AtomicU64>,
-    open: Arc<Mutex<HashMap<u64, UnixStream>>>,
+    open: Arc<Mutex<HashMap<u64, (UnixStream, Instant)>>>,
 }
 
 /// The longest ask read: the op and its version, nothing more.
@@ -48,6 +52,24 @@ pub fn op_of(line: &str) -> Option<CliOp> {
         "record.stop" => Some(CliOp::Stop),
         _ => None,
     }
+}
+
+/// An ask, as the run log has it: its number, the op, and how a start goes when it isn't
+/// the app's default.
+pub fn asked(id: u64, op: &CliOp) -> String {
+    let (name, how) = match op {
+        CliOp::Start(a) => ("record.start", [(!a.countdown).then_some(" no-count"), (!a.label).then_some(" no-label")].into_iter().flatten().collect::<String>()),
+        CliOp::Pause => ("record.pause", String::new()),
+        CliOp::Resume => ("record.resume", String::new()),
+        CliOp::Stop => ("record.stop", String::new()),
+    };
+    format!("control: ask {id} {name}{how}")
+}
+
+/// An answer, as the run log has it: its ask's number, ok or no, the take or the refusal's
+/// code, and how long it took — never the link.
+pub fn answered(a: &CliAnswer, took: Duration) -> String {
+    format!("control: answer {} {} {} ({} ms)", a.id, if a.ok { "ok" } else { "no" }, a.error.unwrap_or(a.take), took.as_millis())
 }
 
 pub fn line_of(a: &CliAnswer) -> String {
@@ -96,6 +118,7 @@ pub fn spawn(rt: Runtime, pending: Pending) {
             let mut line = String::new();
             let read = conn.try_clone().map(|c| BufReader::new(c.take(MAX_ASK)).read_line(&mut line));
             let Some(op) = read.ok().and_then(|r| r.ok()).and_then(|_| op_of(&line)) else {
+                rt.log(&format!("control: an ask it couldn't read ({} bytes), answered usage", line.len()));
                 let _ = conn.write_all(b"{\"ok\":false,\"take\":\"none\",\"error\":\"usage\"}\n");
                 continue;
             };
@@ -105,8 +128,8 @@ pub fn spawn(rt: Runtime, pending: Pending) {
                 rt.post(Event::Os(super::os::grants()));
             }
             let id = pending.next.fetch_add(1, Ordering::SeqCst) + 1;
-            pending.open.lock().unwrap().insert(id, conn);
-            rt.log(&format!("control: the shroom command asks {op:?}"));
+            pending.open.lock().unwrap().insert(id, (conn, Instant::now()));
+            rt.log(&asked(id, &op));
             rt.post(Event::Cli { id, op });
         }
     });
@@ -114,9 +137,11 @@ pub fn spawn(rt: Runtime, pending: Pending) {
 
 /// The core's answer, onto the connection that asked; then it closes.
 pub fn answer(rt: &Runtime, pending: &Pending, a: CliAnswer) {
-    let Some(mut conn) = pending.open.lock().unwrap().remove(&a.id) else { return };
-    rt.log(&format!("control: answered {} {}", if a.ok { "ok" } else { "no" }, a.error.unwrap_or(a.take)));
-    let _ = conn.write_all(line_of(&a).as_bytes());
+    let Some((mut conn, at)) = pending.open.lock().unwrap().remove(&a.id) else { return };
+    rt.log(&answered(&a, at.elapsed()));
+    if conn.write_all(line_of(&a).as_bytes()).is_err() {
+        rt.log(&format!("control: answer {} not delivered: the command had gone", a.id));
+    }
 }
 
 #[cfg(test)]
@@ -133,6 +158,22 @@ mod tests {
         assert_eq!(op_of(r#"{"v":2,"op":"record.start"}"#), None);
         assert_eq!(op_of(r#"{"v":1,"op":"delete"}"#), None);
         assert_eq!(op_of("not json"), None);
+    }
+
+    /// What the run log keeps of an ask and its answer (Bagrat, 2026-10-18: enough to report
+    /// a problem): the op, how a start goes, the code, the time — never the link.
+    #[test]
+    fn the_log_has_each_ask_and_its_answer_by_number() {
+        assert_eq!(asked(3, &CliOp::START), "control: ask 3 record.start");
+        assert_eq!(asked(4, &CliOp::Start(StartAsk { countdown: false, label: false })), "control: ask 4 record.start no-count no-label");
+        assert_eq!(asked(5, &CliOp::Stop), "control: ask 5 record.stop");
+        let ok = CliAnswer { id: 5, ok: true, take: "stopping", error: None, link: Some("https://v.x.workers.dev/AbCdEfGhIjKlMnOp".into()) };
+        assert_eq!(answered(&ok, Duration::from_millis(41)), "control: answer 5 ok stopping (41 ms)");
+        let no = CliAnswer { id: 6, ok: false, take: "none", error: Some("recording_off"), link: None };
+        assert_eq!(answered(&no, Duration::from_millis(3)), "control: answer 6 no recording_off (3 ms)");
+        for l in [asked(4, &CliOp::Start(StartAsk { countdown: false, label: true })), answered(&ok, Duration::ZERO)] {
+            assert_eq!(shroom_core::report::clean_line(&l), l, "nothing in it for the report to take out");
+        }
     }
 
     #[test]
