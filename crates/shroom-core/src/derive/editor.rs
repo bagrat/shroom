@@ -1,10 +1,13 @@
-//! The editor (N63, B195): one window, on one video — `editor` (the video here, or its
+//! The editor (N63, B195, B197): one window, on one video — `editor` (the video here, or its
 //! record still being read), `editor-getting` (it comes from the space), `editor-cant-get`,
-//! `editor-saving` and `editor-save-failed`. It shows the list as it stands, what plays,
-//! and what can be done; the webview plays, draws and sends steps, and decides nothing.
+//! `editor-saving` and `editor-save-failed`; then, once a save leaves something out,
+//! `editor-making` (the final video being made), `editor-making-failed` and
+//! `editor-keep-original` (“Delete the original?”). It shows the list as it stands, what
+//! plays, and what can be done; the webview plays, draws and sends steps, and decides
+//! nothing.
 
 use crate::copy;
-use crate::scene::{Action, Button, CutView, EditListView, EditorBody, EditorLabels, EditorMediaView, LineTone, Style, Window};
+use crate::scene::{Action, Button, CutView, EditListView, EditorAfterView, EditorBody, EditorLabels, EditorMediaView, LineTone, Style, Window};
 use crate::time::Mono;
 use crate::world::{EditorFields, EditorMedia, EditorSave, WindowKind, World};
 
@@ -25,15 +28,33 @@ pub fn derive(w: &World) -> Option<Window<EditorBody>> {
         EditorMedia::Ready { duration } => EditorMediaView::Ready { duration },
     };
     let (footer, footer_tone) = match e.save {
-        EditorSave::Idle => (copy::editor_footer(), LineTone::Plain),
+        EditorSave::Idle | EditorSave::Asking => (copy::editor_footer(), LineTone::Plain),
         EditorSave::Saving => (copy::saving_edit(), LineTone::Plain),
         EditorSave::Failed => (copy::save_failed(), LineTone::Amber),
+        EditorSave::Making { .. } => (copy::making_line(), LineTone::Plain),
+        EditorSave::MakingFailed => (copy::making_failed(), LineTone::Amber),
     };
+    let close = || Button::new(Action::EditorClose, copy::close(), Style::Filled);
     let done = match (e.media, e.save) {
+        // Saved, the final video being made or not made: Close leaves it to finish.
+        (_, EditorSave::Making { .. } | EditorSave::MakingFailed) => close(),
+        // The question's own buttons answer it (in the footer's place).
+        (_, EditorSave::Asking) => close().enabled(false),
         // The video couldn't come: Close is the way out.
-        (EditorMedia::Failed, _) => Button::new(Action::EditorClose, copy::close(), Style::Filled),
+        (EditorMedia::Failed, _) => close(),
         (_, EditorSave::Saving) => Button::new(Action::EditorDone, copy::saving_done(), Style::Filled).enabled(false),
         _ => Button::new(Action::EditorDone, copy::done(), Style::Filled).enabled(live),
+    };
+    let after = match e.save {
+        EditorSave::Making { pct } => Some(EditorAfterView::Making { pct, line: copy::making_video(pct) }),
+        EditorSave::MakingFailed => Some(EditorAfterView::Failed),
+        EditorSave::Asking => Some(EditorAfterView::Asking {
+            title: copy::delete_original_title(),
+            line: copy::delete_original_line(),
+            keep: Button::new(Action::KeepOriginal, copy::keep_two_days(), Style::Plain),
+            delete: Button::new(Action::DeleteOriginal, copy::yes_delete(), Style::Filled),
+        }),
+        EditorSave::Idle | EditorSave::Saving | EditorSave::Failed => None,
     };
     let now = history.map(|h| &h.now);
     let body = EditorBody {
@@ -69,11 +90,15 @@ pub fn derive(w: &World) -> Option<Window<EditorBody>> {
         revert: Button::new(Action::EditorRevert, copy::revert_to_original(), Style::Plain).enabled(editable && history.is_some_and(|h| h.can_revert())),
         done,
         original_kept: kept_left(w, e).map(copy::original_kept),
+        after,
     };
     // Return is Done once there's a video to save over (cant-get's Close); Esc is the
-    // webview's own — it drops a selection — except where Close is the one way on.
+    // webview's own — it drops a selection — except where Close is the one way on. After a
+    // save, Close, Esc and ✕ all leave the original for two days (B197 (b)); the question's
+    // Return is Yes, delete.
     let (ret, esc) = match id {
-        "editor-cant-get" => (Some(Action::EditorClose), Some(Action::EditorClose)),
+        "editor-cant-get" | "editor-making" | "editor-making-failed" => (Some(Action::EditorClose), Some(Action::EditorClose)),
+        "editor-keep-original" => (Some(Action::DeleteOriginal), Some(Action::KeepOriginal)),
         "editor" | "editor-save-failed" if live => (Some(Action::EditorDone), None),
         _ => (None, None),
     };
@@ -85,6 +110,9 @@ pub fn state(e: &EditorFields) -> &'static str {
     match (e.save, e.media) {
         (EditorSave::Saving, _) => "editor-saving",
         (EditorSave::Failed, _) => "editor-save-failed",
+        (EditorSave::Making { .. }, _) => "editor-making",
+        (EditorSave::MakingFailed, _) => "editor-making-failed",
+        (EditorSave::Asking, _) => "editor-keep-original",
         (_, EditorMedia::Getting { .. }) => "editor-getting",
         (_, EditorMedia::Failed) => "editor-cant-get",
         (EditorSave::Idle, EditorMedia::Opening | EditorMedia::Ready { .. }) => "editor",
@@ -96,9 +124,15 @@ pub fn ready(e: &EditorFields) -> bool {
     matches!(e.media, EditorMedia::Ready { .. }) && e.history.is_some()
 }
 
-/// Steps are taken: ready, and nothing saving.
+/// Steps are taken: ready, and nothing saving or saved.
 pub fn editable(e: &EditorFields) -> bool {
-    ready(e) && e.save != EditorSave::Saving
+    ready(e) && matches!(e.save, EditorSave::Idle | EditorSave::Failed)
+}
+
+/// The save landed and something follows it in the window: the final video being made, its
+/// failure, or the question of the original (B197).
+pub fn after_save(e: &EditorFields) -> bool {
+    matches!(e.save, EditorSave::Making { .. } | EditorSave::MakingFailed | EditorSave::Asking)
 }
 
 /// How long the original has left beside its copy (ms), while it's kept (B197 (e)).

@@ -521,6 +521,15 @@ fn rows() -> Vec<(&'static str, World)> {
         w.session.fields.editor.as_mut().unwrap().kept_until = Some(Wall(w.wall.0 + 20 * 3_600_000));
         w
     }));
+    // ── after the save (B197) ──
+    rows.push(("editor-making", {
+        let mut w = editor_open(live(), EditorSave::Making { pct: 40 }, false);
+        w.library_ops.copies.insert(rec("set2"), CopyOwed { rev: 3, asked: true });
+        w.inflight.ops.insert(Op::EditorCopy, Mono(3_601_000));
+        w
+    }));
+    rows.push(("editor-making-failed", editor_open(live(), EditorSave::MakingFailed, false)));
+    rows.push(("editor-keep-original", editor_open(live(), EditorSave::Asking, false)));
     rows.push(("uninstall-confirm", uninstall_asked()));
     rows.push(("uninstall-confirm", {
         let mut w = uninstall_asked();
@@ -655,12 +664,18 @@ fn every_region5_state_derives_with_its_return_default_and_its_lines() {
             let want = fixture.return_default().and_then(|a| match a.label.as_str() {
                 "Done" => live.then_some(Action::EditorDone),
                 "Close" => Some(Action::EditorClose),
+                "Yes, delete" => Some(Action::DeleteOriginal),
                 other => panic!("no mapping for the editor's Return default {other:?}"),
             });
             if scene.ret(surface) != want {
                 failures.push(format!("{id}: Return is {:?}, want {want:?}", scene.ret(surface)));
             }
-            let want_esc = (id == "editor-cant-get").then_some(Action::EditorClose);
+            // After a save, Esc is Close — Keep for 2 days on the question (B197 (b)).
+            let want_esc = match id {
+                "editor-cant-get" | "editor-making" | "editor-making-failed" => Some(Action::EditorClose),
+                "editor-keep-original" => Some(Action::KeepOriginal),
+                _ => None,
+            };
             if scene.esc(surface) != want_esc {
                 failures.push(format!("{id}: Esc is {:?}, want {want_esc:?}", scene.esc(surface)));
             }

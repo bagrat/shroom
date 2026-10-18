@@ -1213,7 +1213,7 @@ pub enum EditorMedia {
     Ready { duration: f64 },
 }
 
-/// Where Done's save stands.
+/// Where Done's save stands, and what follows it (B197).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum EditorSave {
     #[default]
@@ -1222,6 +1222,13 @@ pub enum EditorSave {
     Saving,
     /// It didn't go through: every change is still here, and Done tries again.
     Failed,
+    /// Saved with something left out: the final video (the permanent copy of the saved
+    /// revision) is being made, this far.
+    Making { pct: u8 },
+    /// It couldn't be made or put up: the link plays the edit over the original meanwhile.
+    MakingFailed,
+    /// The final video is up: “Delete the original?”.
+    Asking,
 }
 
 /// What the Send feedback window holds (N60): the words and the reply-to as typed, the log

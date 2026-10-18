@@ -450,6 +450,17 @@ pub fn original_kept(left_ms: i64) -> String {
     };
     format!("The original is kept {left}")
 }
+/// editor-making (B197): the final video, this far — in the timeline's place.
+pub fn making_video(pct: u8) -> String { format!("Making the final video… {pct}%") }
+/// editor-making: the footer's line.
+pub fn making_line() -> String { "The link already plays your edit. You can close this window: shroom finishes it.".into() }
+/// editor-making-failed: amber, in the footer's place.
+pub fn making_failed() -> String { "Couldn't make the final video. The link plays your edit anyway, and shroom tries again later.".into() }
+/// editor-keep-original: the question once the final video is up.
+pub fn delete_original_title() -> String { "Delete the original?".into() }
+pub fn delete_original_line() -> String { "Your edit is the video now. The original is only kept so you can revert to it.".into() }
+pub fn keep_two_days() -> String { "Keep for 2 days".into() }
+pub fn yes_delete() -> String { "Yes, delete".into() }
 pub fn needs_macos(version: &str, macos: u32, running: &str) -> String {
     format!("shroom {version} needs macOS {macos} — this Mac stays on {running}.")
 }
@@ -1243,5 +1254,14 @@ pub fn registry() -> Vec<(&'static str, String)> {
         ("editor-save-failed", save_failed()),
         ("editor", cut_it_too()),
         ("editor", original_kept(12 * 3_600_000)),
+        ("editor-making", making_video(40)),
+        ("editor-making", making_line()),
+        ("editor-making", close()),
+        ("editor-making-failed", making_failed()),
+        ("editor-making-failed", close()),
+        ("editor-keep-original", delete_original_title()),
+        ("editor-keep-original", delete_original_line()),
+        ("editor-keep-original", keep_two_days()),
+        ("editor-keep-original", yes_delete()),
     ]
 }

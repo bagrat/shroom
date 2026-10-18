@@ -241,8 +241,8 @@ pub enum LibCmd {
     Cleanup,
 }
 
-/// The editor's lane (`runtime/editor.rs`, N63, B195): each answered once, by its news or
-/// `Failed` with its op (a Cancel answers nothing).
+/// The editor's lane (`runtime/editor.rs`, N63, B195, B197): each answered once, by its news
+/// or `Failed` with its op (a Cancel and a Bake answer nothing).
 #[derive(Debug, Clone, PartialEq)]
 pub enum EditCmd {
     /// Read the record; find the video on this Mac or fetch it from the space; read its
@@ -254,9 +254,14 @@ pub enum EditCmd {
     /// Write `meta.edits` (read-modify-write, as a rename): `saved.rev` is the revision the
     /// editor opened on, plus one. Answers `Saved` — or `Failed { op: EditorSave }`.
     Save { rec: RecId, saved: shroom_edit::Saved },
-    /// Cut this revision's permanent copy, put it up and name it in the record, in the
-    /// background. Answers `CopyDone` — or `Failed { op: EditorCopy }`.
+    /// Cut this revision's permanent copy, put it up and name it in the record (with
+    /// `keep_until`, two days on), in the background. Answers `Making`…, then `CopyDone` —
+    /// or `Failed { op: EditorCopy }`.
     Copy { rec: RecId, rev: u64 },
+    /// “Yes, delete” (B197 (c)): the edit becomes the video — the record points at the
+    /// copy's files, then the original's go. Answers nothing: one that doesn't land is baked
+    /// by an upkeep once its two days are up.
+    Bake { rec: RecId },
 }
 
 /// The updater (`shroom-update`, B31).

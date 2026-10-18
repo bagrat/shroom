@@ -449,6 +449,8 @@ pub enum EditorNews {
     Ready { rec: RecId, duration: f64 },
     /// The save landed as this revision.
     Saved { rec: RecId, rev: u64 },
+    /// The final video — the permanent copy being cut and put up — this far (B197).
+    Making { rec: RecId, pct: u8 },
     /// The permanent copy of this revision is up (or was dropped: a newer save came first).
     CopyDone { rec: RecId, rev: u64 },
 }

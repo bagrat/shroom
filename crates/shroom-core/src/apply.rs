@@ -1125,9 +1125,26 @@ fn act(w: &mut World, action: Action) -> Out {
         }
         Action::EditorClose => {
             // editor-cant-get's Close (Return, Esc): the window goes, and nothing more comes.
+            // After a save (B197): the window goes, and the final video is still made.
             let Some(e) = w.session.fields.editor.as_ref() else { return (vec![], Arm::DROPPED) };
+            if crate::derive::editor::after_save(e) {
+                return close_after_save(w);
+            }
             let edge = (crate::derive::editor::state(e) == "editor-cant-get").then_some(("editor-cant-get", "library"));
             (close_editor(w, true), Arm { name: "editor-closed", edge })
+        }
+        Action::DeleteOriginal => {
+            // Yes, delete (B197 (c)): the edit becomes the video, and the original goes now.
+            let Some(rec) = w.session.fields.editor.as_ref().filter(|e| e.save == EditorSave::Asking).map(|e| e.rec.clone()) else { return (vec![], Arm::DROPPED) };
+            close_editor(w, false);
+            (vec![Effect::Editor(EditCmd::Bake { rec })], Arm { name: "original-deleted", edge: Some(("editor-keep-original", "library")) })
+        }
+        Action::KeepOriginal => {
+            // Keep for 2 days (Esc, ✕): the copy's landing already set when it goes.
+            if !w.session.fields.editor.as_ref().is_some_and(|e| e.save == EditorSave::Asking) {
+                return (vec![], Arm::DROPPED);
+            }
+            close_after_save(w)
         }
         Action::Disconnect => {
             if w.take_open() {
@@ -1992,6 +2009,21 @@ fn close_editor(w: &mut World, cancel: bool) -> Vec<Effect> {
     }
 }
 
+/// After a save (B197): Close, Esc, ✕ or Keep for 2 days — the window goes, and nothing
+/// stops: a final video still being made is finished behind it, and the original is kept
+/// until the two days its landing set are up.
+fn close_after_save(w: &mut World) -> Out {
+    let from = w.session.fields.editor.as_ref().map(crate::derive::editor::state);
+    close_editor(w, false);
+    let edge = match from {
+        Some("editor-making") => Some(("editor-making", "library")),
+        Some("editor-making-failed") => Some(("editor-making-failed", "library")),
+        Some("editor-keep-original") => Some(("editor-keep-original", "library")),
+        _ => None,
+    };
+    (vec![], Arm { name: "editor-closed", edge })
+}
+
 /// The space is left (Disconnect, Leave, a switch): the editor closes with it, a video still
 /// coming stops, and a save or a copy in flight was the old space's — its answer is stale.
 fn leave_editor(w: &mut World) -> Vec<Effect> {
@@ -2007,7 +2039,8 @@ fn leave_editor(w: &mut World) -> Vec<Effect> {
 /// Done — its button, Return, or the window's ✕: with no video to save over, the window
 /// closes at once and what's coming stops; with nothing changed it closes; with changes, the
 /// checked list is saved as the next revision, and the window stays until the save answers.
-/// While it saves, nothing.
+/// While it saves, nothing. After the save (the window's ✕ only: Done is gone by then), it
+/// closes and leaves the original for two days (B197 (b)).
 fn editor_done(w: &mut World) -> Out {
     let Some(e) = w.session.fields.editor.as_ref() else {
         w.session.windows.remove(&WindowKind::Editor);
@@ -2016,6 +2049,9 @@ fn editor_done(w: &mut World) -> Out {
     let face = crate::derive::editor::state(e);
     if e.save == EditorSave::Saving {
         return (vec![], Arm::named("editor-done-while-saving"));
+    }
+    if crate::derive::editor::after_save(e) {
+        return close_after_save(w);
     }
     let Some(h) = e.history.as_ref().filter(|_| crate::derive::editor::ready(e)) else {
         let edge = match face {
@@ -2035,8 +2071,8 @@ fn editor_done(w: &mut World) -> Out {
         e.save = EditorSave::Saving;
     }
     w.inflight.failures.remove(&Op::EditorSave);
-    let from = if face == "editor-save-failed" { "editor-save-failed" } else { "editor" };
-    (vec![Effect::Editor(EditCmd::Save { rec, saved })], Arm { name: "editor-saving", edge: Some((from, "editor-saving")) })
+    let edge = if face == "editor-save-failed" { ("editor-save-failed", "editor-saving") } else { ("editor", "editor-saving") };
+    (vec![Effect::Editor(EditCmd::Save { rec, saved })], Arm { name: "editor-saving", edge: Some(edge) })
 }
 
 /// A step from the editor's webview, or its Revert button: taken while the editor can take
@@ -2112,12 +2148,13 @@ fn editor_news(w: &mut World, news: EditorNews) -> Out {
         EditorNews::Saved { rec, rev } => {
             let Some(e) = editor_on(w, &rec).filter(|e| e.save == EditorSave::Saving) else { return stale() };
             e.rev = rev;
+            // Whatever copy the record held is an older revision's now.
+            e.kept_until = None;
             let list = e.history.as_mut().map(|h| {
                 h.saved_as_now();
                 h.now.clone()
             });
             answered(w, Op::EditorSave);
-            close_editor(w, false);
             // The row reads what plays now, at once; the permanent copy of this revision is
             // owed — none for a list back to the original (the lane dropped the old one).
             let edited_ms = list.as_ref().filter(|l| !l.is_identity()).map(|l| (l.edited_duration() * 1000.0).round() as u64);
@@ -2127,18 +2164,51 @@ fn editor_news(w: &mut World, news: EditorNews) -> Out {
                     r.edited_ms = edited_ms;
                 }
             }
-            if edited_ms.is_some() {
-                w.library_ops.copies.insert(rec, CopyOwed { rev, asked: false });
-            } else {
+            if edited_ms.is_none() {
+                // Nothing left out any more: the window closes.
                 w.library_ops.copies.remove(&rec);
+                close_editor(w, false);
+                return (vec![], Arm { name: "editor-saved", edge: Some(("editor-saving", "library")) });
             }
-            (vec![], Arm { name: "editor-saved", edge: Some(("editor-saving", "library")) })
+            // Something left out (B197 (a)): the window stays and makes the final video —
+            // asked as any owed copy is, one at a time and never over a take.
+            if let Some(e) = w.session.fields.editor.as_mut() {
+                e.save = EditorSave::Making { pct: 0 };
+            }
+            w.library_ops.copies.insert(rec, CopyOwed { rev, asked: false });
+            (vec![], Arm { name: "editor-saved", edge: Some(("editor-saving", "editor-making")) })
+        }
+        EditorNews::Making { rec, pct } => {
+            // Bytes moving keep the copy alive: a long one isn't cut off mid-way — unless
+            // it's news of another video's than the one being cut.
+            let another = w.library_ops.copies.iter().any(|(r, c)| c.asked && *r != rec);
+            if another || !w.inflight.ops.contains_key(&Op::EditorCopy) {
+                return stale();
+            }
+            w.inflight.ops.insert(Op::EditorCopy, now.plus(Op::EditorCopy.deadline_ms()));
+            // The window fills with the copy it waits for: its own revision's, being cut.
+            let cutting = w.library_ops.copies.get(&rec).copied().filter(|c| c.asked);
+            let Some(e) = editor_on(w, &rec).filter(|e| matches!(e.save, EditorSave::Making { .. }) && cutting.is_some_and(|c| c.rev == e.rev)) else {
+                return (vec![], Arm::named("editor-making-unseen"));
+            };
+            e.save = EditorSave::Making { pct: pct.min(100) };
+            (vec![], Arm::named("editor-making"))
         }
         EditorNews::CopyDone { rec, rev } => {
+            // Copies go one at a time: news of another video's, while this one is cut (a
+            // late answer from one that ran out of time), leaves the running one alone.
+            if w.library_ops.copies.iter().any(|(r, c)| c.asked && *r != rec) {
+                return stale();
+            }
             answered(w, Op::EditorCopy);
             // A newer save of the same video while it ran is still owed.
             if w.library_ops.copies.get(&rec).is_some_and(|c| c.asked && c.rev <= rev) {
                 w.library_ops.copies.remove(&rec);
+            }
+            // The final video the window is making is up: it asks about the original (B197 (b)).
+            if let Some(e) = editor_on(w, &rec).filter(|e| matches!(e.save, EditorSave::Making { .. }) && e.rev == rev) {
+                e.save = EditorSave::Asking;
+                return (vec![], Arm { name: "editor-copied", edge: Some(("editor-making", "editor-keep-original")) });
             }
             (vec![], Arm::named("editor-copied"))
         }
@@ -3169,8 +3239,16 @@ fn failed(w: &mut World, op: Op, class: crate::world::FailClass) -> Out {
             }
         }
         // A copy that didn't come out is noted, and the next owed waits its backoff; the
-        // page plays the saved list over the original meanwhile (B195 (f)).
-        Op::EditorCopy => w.library_ops.copies.retain(|_, c| !c.asked),
+        // page plays the saved list over the original meanwhile (B195 (f)), and an upkeep
+        // makes it later (B197 (d)). The window making it says so.
+        Op::EditorCopy => {
+            let asked: Vec<(RecId, u64)> = w.library_ops.copies.iter().filter(|(_, c)| c.asked).map(|(r, c)| (r.clone(), c.rev)).collect();
+            w.library_ops.copies.retain(|_, c| !c.asked);
+            if let Some(e) = w.session.fields.editor.as_mut().filter(|e| matches!(e.save, EditorSave::Making { .. }) && asked.contains(&(e.rec.clone(), e.rev))) {
+                e.save = EditorSave::MakingFailed;
+                return (fx, Arm { name: "editor-making-failed", edge: Some(("editor-making", "editor-making-failed")) });
+            }
+        }
         // An invite the person opened whose peek couldn't get through: its window opens on
         // join-waiting's posture (N31: offline or unanswered) — never over a take (law 4) —
         // and peek keeps trying behind it.

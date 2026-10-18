@@ -158,10 +158,17 @@ pub enum Action {
     EditorDone,
     /// editor-cant-get's Try again: the video is asked for again.
     EditorRetry,
-    /// editor-cant-get's Close (Return, Esc): the window closes.
+    /// Close (Return, Esc) in editor-cant-get, and after a save while the final video is
+    /// made or couldn't be: the window closes (the copy goes on behind it).
     EditorClose,
     /// Revert to original — the list's own Revert, as a click (undoable like any step).
     EditorRevert,
+    /// editor-keep-original's Yes, delete (Return): the edit becomes the video, and the
+    /// original's files go now (B197).
+    DeleteOriginal,
+    /// editor-keep-original's Keep for 2 days (Esc, ✕ too): the window closes; the original
+    /// goes two days on.
+    KeepOriginal,
     /// “Disconnect this Mac…” — opens its sheet.
     Disconnect,
     ConfirmDisconnect,
@@ -956,11 +963,29 @@ pub struct EditorBody {
     pub can_redo: bool,
     /// Revert to original: live when there's something to put back.
     pub revert: Button,
-    /// Done (Saving…, greyed, while it saves; Close in editor-cant-get); greyed until the
-    /// video is here.
+    /// Done (Saving…, greyed, while it saves; Close in editor-cant-get and while the final
+    /// video is made or couldn't be); greyed until the video is here.
     pub done: Button,
     /// By Revert, while an earlier edit's original is kept: the time it has left (B197 (e)).
     pub original_kept: Option<String>,
+    /// After a save with something left out (B197): the final video being made, its
+    /// failure, then the question of the original — in the timeline's place. `None` until
+    /// then.
+    pub after: Option<EditorAfterView>,
+}
+
+/// What follows a save that leaves something out (B197).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case", tag = "state")]
+pub enum EditorAfterView {
+    /// The final video is being made: the bar's fill, and its line (the share filled in).
+    /// The footer says the window can be closed; Done is Close.
+    Making { pct: u8, line: String },
+    /// It couldn't be made or put up: the footer's amber line says so; Done is Close.
+    Failed,
+    /// It's up: “Delete the original?”, its line, then Keep for 2 days and Yes, delete
+    /// (filled, Return) — in the footer's place.
+    Asking { title: String, line: String, keep: Button, delete: Button },
 }
 
 /// The video's state, for the preview and the timeline's place.
@@ -1163,6 +1188,9 @@ impl Window<EditorBody> {
         let mut out = vec![&self.body.revert, &self.body.done];
         if let EditorMediaView::Failed { retry, .. } = &self.body.media {
             out.push(retry);
+        }
+        if let Some(EditorAfterView::Asking { keep, delete, .. }) = &self.body.after {
+            out.extend([keep, delete]);
         }
         out
     }
