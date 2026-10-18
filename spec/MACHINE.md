@@ -4,7 +4,7 @@
 
 The machine: every state, edge, rule, said-line and law of shroom v1 — the spec (DECISIONS B133). Sessions edit it; MACHINE.md and the canvas's machine boards are generated from it.
 
-152 states · 313 edges · 23 rules · 608 said-lines · 16 laws · 74 ledger rows.
+152 states · 313 edges · 23 rules · 609 said-lines · 16 laws · 74 ledger rows.
 
 Status: **ratified** is Bagrat's; **provisional** is designed or built and awaits him (each cites its row: `#n` is a DEVIATIONS row of docs/DECISIONS.md, `Bn` a decision, `Nn`/`Un`/`Pn` a ledger row below). `SM:n` in older citations is a line of the retired spec text, kept in history/spec/UX-STATEMACHINE.md.
 
@@ -2236,7 +2236,7 @@ Member-revoked or space-gone: the list this Mac remembers, and only Copy link an
 
 state · window · **provisional** · board: EditorCuts · cites N63, B195, B197
 
-The editor (N63): a window of its own, titled “Edit — <the video's title>”, one at a time. Top to bottom: the video, playing the edit (cuts skipped, held to the trim); the play button and the time, edited position / edited length, with “was <the recording's length>” once the edit changes it; on the right the hint and Undo · Redo; then the timeline, the whole recording's sound as a waveform with the playhead: two yellow ends that drag to trim, a drag across the sound that selects a part with Cut <its length> under it, every cut red and hatched (clicking one offers Put back <its length>), and every marker (N64) a flag at its time. The footer: the line that the link stays the same, Revert to original and Done. The waveform fills in once the sound is read; until then the timeline is empty and the ends wait. Every change can be undone, Put back and Revert included; the changes stay in the window until Done saves them. While an earlier edit's original is still kept, the time it has left sits by Revert to original; once it is gone, Revert to original only undoes what changed since the window opened.
+The editor (N63): a window of its own, titled “Edit — <the video's title>”, one at a time. Top to bottom: the video, playing the edit (cuts skipped, held to the trim); the play button and the time, edited position / edited length, with “was <the recording's length>” once the edit changes it; on the right the hint and Undo · Redo; then the timeline, the whole recording's sound as a waveform with the playhead: two yellow ends that drag to trim, a drag across the sound that selects a part with Cut <its length> under it, every cut red and hatched (clicking one offers Put back <its length>), every suggestion not yet taken dashed amber (clicking one offers Cut it too), and every marker (N64) a flag at its time. The footer: the line that the link stays the same, Revert to original and Done. The waveform fills in once the sound is read; until then the timeline is empty and the ends wait. Every change can be undone, Put back and Revert included; the changes stay in the window until Done saves them. While an earlier edit's original is still kept, the time it has left sits by Revert to original; once it is gone, Revert to original only undoes what changed since the window opened.
 
 **Entry.** Edit… on a live row in the Library (N63), when the video is on this Mac: its take was recorded here and is still here, or it came from the space before. One instance: Edit… again brings the open editor forward, on the video it holds. A take started while it is open leaves it open (law 4 covers only what shroom would newly show). The dock icon shows while it is open.
 
@@ -2252,6 +2252,7 @@ The editor (N63): a window of its own, titled “Edit — <the video's title>”
 | “Redo” | label | provisional | also ⇧⌘Z |
 | “Cut 12.0 s” | button | provisional | under a selected part; the length varies |
 | “Put back 12.0 s” | button | provisional | under a cut that was clicked; the length varies |
+| “Cut it too” | button | provisional | under a dashed suggestion that was clicked (a voice cue's offer, N65); the voice-cut proposal's words |
 | “Your link stays the same. Viewers see the edit once it's saved.” | line | provisional |  |
 | “The original is kept 1 more day” | line | provisional | by Revert, only while an earlier edit's original is kept (B197); also “2 more days” and “a few more hours” |
 | “Revert to original” | button | provisional |  |
@@ -2264,6 +2265,7 @@ The editor (N63): a window of its own, titled “Edit — <the video's title>”
 | drag across the sound | other |  | `editor` | selects a part; Cut <length> cuts it (the Delete key too) |
 | Cut | secondary |  | `editor` | red, and skipped as it plays |
 | Put back | secondary |  | `editor` | after a click on a cut |
+| Cut it too | secondary |  | `editor` | after a click on a dashed suggestion: it's cut, red |
 | Undo · Redo | other |  | `editor` | ⌘Z · ⇧⌘Z; every change made in the window |
 | Revert to original | secondary |  | `editor` | puts back every cut and both ends; undoable |
 | Done | filled-default | ↵ | `editor-saving` | Return. With nothing changed it closes the window at once. ✕ is Done. |
