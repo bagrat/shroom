@@ -445,6 +445,11 @@ fn rows() -> Vec<(&'static str, World)> {
         w
     }));
     rows.push(("settings-general", suggested(settings_on(ready(), SettingsTab::General), vec![], 34_000_000_000)));
+    rows.push(("settings-general", {
+        let mut w = suggested(settings_on(ready(), SettingsTab::General), vec![], 34_000_000_000);
+        w.inflight.failures.insert(Op::Plays, Failure { class: FailClass::Transport, at: Mono(970), tries: 1 });
+        w
+    }));
     rows.push(("report-problem", report_asked()));
     rows.push(("report-problem", {
         let mut w = report_asked();
@@ -1617,7 +1622,8 @@ fn uninstall_link(s: &Scene) -> shroom_core::scene::Button {
 /// Mac lets go, how to come back; Cancel and a red-outlined Uninstall, no Return default.
 #[test]
 fn uninstall_asks_first_and_says_the_space_stays() {
-    let mut r = Run::new(settings_on(ready(), SettingsTab::General));
+    // Your videos has read the space already (N68): asking and cancelling read nothing more.
+    let mut r = Run::new(suggested(settings_on(ready(), SettingsTab::General), vec![], 34_000_000_000));
     let link = uninstall_link(&r.scene);
     assert_eq!((link.label.as_str(), link.style, link.enabled), ("Uninstall shroom…", Style::Quiet, true));
     r.set(Action::Uninstall);

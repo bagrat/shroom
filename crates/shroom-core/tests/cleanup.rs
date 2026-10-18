@@ -60,6 +60,11 @@ fn library(rows: Vec<Suggestion>, space_bytes: u64) -> World {
     w
 }
 
+fn with_popover(mut w: World) -> World {
+    w.session.popover = Some(Door::asked(Mono(900)));
+    w
+}
+
 fn general(w: World) -> World {
     let mut w = w;
     w.prefs.settings_tab = Some(SettingsTab::General);

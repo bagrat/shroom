@@ -4,7 +4,7 @@
 
 The machine: every state, edge, rule, said-line and law of shroom v1 — the spec (DECISIONS B133). Sessions edit it; MACHINE.md and the canvas's machine boards are generated from it.
 
-145 states · 299 edges · 23 rules · 601 said-lines · 16 laws · 73 ledger rows.
+145 states · 299 edges · 23 rules · 602 said-lines · 16 laws · 73 ledger rows.
 
 Status: **ratified** is Bagrat's; **provisional** is designed or built and awaits him (each cites its row: `#n` is a DEVIATIONS row of docs/DECISIONS.md, `Bn` a decision, `Nn`/`Un`/`Pn` a ledger row below). `SM:n` in older citations is a line of the retired spec text, kept in history/spec/UX-STATEMACHINE.md.
 
@@ -2123,7 +2123,7 @@ The Library window, thin by design (§5.6), built for two jobs: re-share an old 
 | “1 video” | line | provisional | one case the spec didn't print, so it varies by case — the copy table: The Library footer, one video · copy table |
 | “Aug 21” | line | provisional | one case the spec didn't print, so it varies by case — the copy table: The Library's dates · copy table |
 | “Aug 21 · 4:32” | line | provisional | one case the spec didn't print, so it varies by case — the copy table: The Library's dates · copy table |
-| “Six videos you've stopped watching take 11 GB.” | line | provisional | N68's line above the rows, when the suggestions hold at least one video and Suggest videos to clean up is on. The count and the size vary: the count is a word up to nine (Law 16), the size the suggestions' total. One suggestion reads 'One video you've stopped watching takes 3.2 GB.' |
+| “Six videos you've stopped watching take 11 GB.” | line | provisional | N68's line above the rows, when the suggestions hold at least one video and Suggest videos to clean up is on. The count varies (a word up to nine, Law 16), and so does the size, the suggestions' total. One suggestion reads 'One video you've stopped watching takes 3.2 GB.' |
 | “Review…” | button | provisional | Opens Suggested to clean up (N68). |
 | “Not now” | tooltip | provisional | The ✕ at the line's end, named for VoiceOver. Hides the line until the suggestions change (N68). |
 
@@ -2353,6 +2353,7 @@ The General tab: U4's login checkbox at home at last (it reads the system's trut
 | “Your videos” | field-label | provisional | The group's heading (N68). |
 | “Count plays” | field-label | provisional | Switch, on by default. The space's: owner-class Macs change it; elsewhere it shows greyed (N68). |
 | “How often each video is played and how far, kept in your Cloudflare account. No cookies, nothing about who watched.” | line | provisional |  |
+| “Couldn't change that just now — try again in a moment.” | line | provisional | Under Count plays, when the space didn't take the switch (law 12); the switch reads as the space has it. |
 | “Suggest videos to clean up” | field-label | provisional | Switch, on by default; this Mac's (N68). |
 | “Videos you've stopped watching that take real room, in the Library.” | line | provisional |  |
 | “Space used” | field-label | provisional |  |
@@ -2815,10 +2816,10 @@ Suggested to clean up (N68): the Library's own view of the videos worth deleting
 |---|---|---|---|
 | “Suggested to clean up” | title | provisional |  |
 | “‹ Library” | button | provisional | Back to the Library. |
-| “Videos you've stopped watching that take real room. Deleting all six frees 11 GB — about 17¢ a month off your Cloudflare bill.” | line | provisional | Past the free 10 GB. The count, sizes and cents vary: the count is a word up to nine (Law 16). |
-| “Videos you've stopped watching that take real room. Deleting all six frees 5 GB. Your space is inside Cloudflare's free 10 GB, so this saves nothing yet.” | line | provisional | Inside the free 10 GB (B212). The count and size vary. |
-| “Videos you've stopped watching that take real room. Deleting all six frees 3 GB and brings your space back inside Cloudflare's free 10 GB.” | line | provisional | When deleting them all would take the space back under 10 GB (B212). The count and size vary. |
-| “Videos you've stopped watching that take real room. Deleting all six frees 11 GB.” | line | provisional | On a member's Mac: the bill is the space owner's, so no money is said. The count and size vary. |
+| “Videos you've stopped watching that take real room. Deleting all six frees 11 GB — about 17¢ a month off your Cloudflare bill.” | line | provisional | Past the free 10 GB. The count varies (a word up to nine, Law 16), and so do the size and the cents. |
+| “Videos you've stopped watching that take real room. Deleting all six frees 5 GB. Your space is inside Cloudflare's free 10 GB, so this saves nothing yet.” | line | provisional | Inside the free 10 GB (B212). The count and the size: each varies. |
+| “Videos you've stopped watching that take real room. Deleting all six frees 3 GB and brings your space back inside Cloudflare's free 10 GB.” | line | provisional | When deleting them all would take the space back under 10 GB (B212). The count and the size: each varies. |
+| “Videos you've stopped watching that take real room. Deleting all six frees 11 GB.” | line | provisional | On a member's Mac: the bill is the space owner's, so no money is said. The count and the size: each varies. |
 | “Watched 4 times, the last 10 months ago” | line | provisional | A row's reason (B211); the counts and times vary. Counts are figures here: a row fact (Law 16). Shapes: 'Watched once, 5 months ago' · 'Watched twice, the last 2 months ago' · 'Watched twice, stopped early, the last 4 months ago' (most stopped in the first quarter) · 'Nobody has watched it'. Times: days under 60, months under 24, then years. |
 | “Nobody has watched it” | line | provisional | The reason when counting never saw a play. |
 | “Open page” | button | provisional |  |
