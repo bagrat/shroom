@@ -17,7 +17,7 @@ curl -fsSL https://shroom.am/install | sh
 Read it first — the same address opens as readable source. For macOS 14 or newer, Apple
 silicon. More at [shroom.am](https://shroom.am).
 
-See it first: [the demo](https://v.myshroom.workers.dev/ao_nEWdnMegiXNjz), recorded with shroom itself.
+See it first: [how to set up and use shroom](https://shroom.am/how-to.mp4) (4 minutes).
 
 ## In this repo
 

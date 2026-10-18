@@ -18,6 +18,10 @@
 //   /faq, /privacy, /terms, /feedback
 //                questions and known limits, privacy, terms, and the feedback form:
 //                site/pages, as pages
+//   /how-to.mp4  the landing's how-to video, whole or in the pieces a player asks for
+//                (Range): Safari plays a video only from an address that answers 206,
+//                and the assets binding answers a Range with the whole file (B194).
+//                Not counted: the landing's own visit is
 //   POST /report a report or feedback, emailed to the one inbox that reads them and kept
 //                nowhere (site/report.js); the only address that takes anything in
 //   www.…        a permanent redirect to shroom.am
@@ -147,6 +151,72 @@ async function serve(env, request, url, file, type, negotiated = false) {
   return new Response(request.method === "HEAD" ? null : res.body, { status: 200, headers });
 }
 
+/** The bytes a `Range: bytes=…` header asks for, as [first, last], within a file of `size`
+ * bytes. null: answer with the whole file (no header, or one this answer doesn't take, such as
+ * several ranges). "unsatisfiable": a range that starts past the end.
+ * @param {string | null} header @param {number} size
+ * @returns {[number, number] | null | "unsatisfiable"} */
+export function byteRange(header, size) {
+  const m = /^bytes=(\d*)-(\d*)$/.exec((header ?? "").trim());
+  if (!m || (m[1] === "" && m[2] === "")) return null;
+  if (m[1] === "") {
+    const n = Number(m[2]); // the last n bytes
+    return n === 0 ? "unsatisfiable" : [Math.max(0, size - n), size - 1];
+  }
+  const first = Number(m[1]);
+  if (first >= size) return "unsatisfiable";
+  return [first, m[2] === "" ? size - 1 : Math.min(Number(m[2]), size - 1)];
+}
+
+/** `body` from byte `first` to byte `last`, read through once.
+ * @param {ReadableStream<Uint8Array>} body @param {number} first @param {number} last */
+function slice(body, first, last) {
+  let at = 0;
+  return body.pipeThrough(new TransformStream({
+    transform(chunk, out) {
+      const from = Math.max(first - at, 0), to = Math.min(last + 1 - at, chunk.byteLength);
+      at += chunk.byteLength;
+      if (from < to) out.enqueue(chunk.subarray(from, to));
+    },
+  }));
+}
+
+/** The how-to video: the whole file, or the bytes a Range asks for (206).
+ * @param {any} env @param {Request} request @param {URL} url */
+async function video(env, request, url) {
+  let res = await env.ASSETS.fetch(new Request(new URL("/_/how-to.mp4", url)));
+  if (!res.ok || !res.body) return plain(503);
+  let size = Number(res.headers.get("content-length") ?? NaN);
+  if (!Number.isFinite(size)) {
+    // A file sent without its length is read whole once, to learn it.
+    const bytes = await res.arrayBuffer();
+    size = bytes.byteLength;
+    res = new Response(bytes);
+  }
+  const headers = new Headers({
+    "content-type": "video/mp4",
+    "accept-ranges": "bytes",
+    "cache-control": "public, max-age=3600",
+    "x-content-type-options": "nosniff",
+  });
+  const range = byteRange(request.headers.get("range"), size);
+  if (range === "unsatisfiable") {
+    res.body?.cancel();
+    headers.set("content-range", `bytes */${size}`);
+    return new Response(null, { status: 416, headers });
+  }
+  const [first, last] = range ?? [0, size - 1];
+  headers.set("content-length", String(last - first + 1));
+  if (range) headers.set("content-range", `bytes ${first}-${last}/${size}`);
+  if (request.method === "HEAD") res.body?.cancel();
+  let body = request.method === "HEAD" || !res.body ? null : range ? slice(res.body, first, last) : res.body;
+  // A streamed body goes out chunked unless it is a FixedLengthStream (Cloudflare's own), and
+  // Safari wants the length.
+  // @ts-ignore — FixedLengthStream exists only in Cloudflare's runtime.
+  if (body && typeof FixedLengthStream === "function") body = body.pipeThrough(new FixedLengthStream(last - first + 1));
+  return new Response(body, { status: range ? 206 : 200, headers });
+}
+
 /** `/whats-new/<version>`: that release's notes, or the newest when it has none.
  * @param {any} env @param {Request} request @param {URL} url */
 function whatsNew(env, request, url) {
@@ -195,6 +265,8 @@ export default {
       case "/terms":
       case "/feedback":
         return serve(env, request, url, `/_${url.pathname}.html`, HTML);
+      case "/how-to.mp4":
+        return video(env, request, url);
       default:
         return whatsNew(env, request, url) ?? plain(404);
     }
