@@ -295,10 +295,10 @@ def settings_body(ai_on, ai_line, ai_line_id):
 </div></div>'''
 
 AI_LABEL = "AI for new videos"
-AI_LINE = "Titles, chapters and captions from what’s said, and your “shroom cut” slips cut — on your own Cloudflare account. Free for about 2½ hours of new video a day; more is about 4¢ an hour on Cloudflare’s $5 plan."
+AI_LINE = "Titles, chapters and captions from what’s said, and your “shroom cut” slips cut — on your own Cloudflare account. Free for about 2½ hours of new video a day; more is about 4¢ per video hour on Cloudflare’s $5 plan."
 FAILED = "Couldn't change that just now — try again in a moment."
 boards["AiSettings.dc.html"] = (
-    "Settings — Space: AI for new videos, one switch for every AI feature, off as it ships (the Mac that holds the setup key; N66, words are drafts)", 600, 760,
+    "Settings — Space: AI for new videos, one switch for every AI feature, off as it ships (the Mac that holds the setup key; N66, approved as drawn, Bagrat 2026-10-18; he may tweak the words later)", 600, 760,
     page("shroom Settings, Space, AI", 600, 760, settings_body(False, AI_LINE, "settings-space.titles-chapters-and-captions")))
 boards["AiSettingsFailed.dc.html"] = (
     "Settings — Space: AI couldn't change (the switch as the page has it, until the next try)", 600, 760,
@@ -392,12 +392,12 @@ def frost(line, line_id, buttons=True):
 </div>'''
 
 boards["AiBanner.dc.html"] = (
-    "Popover — the AI banner: shroom can name, chapter and cut your videos (the Mac that holds the setup key, while AI is off; N66, words are drafts)", 520, 520,
+    "Popover — the AI banner: shroom can name, chapter and cut your videos (the Mac that holds the setup key, while AI is off; N66, approved as drawn, Bagrat 2026-10-18; he may tweak the words later)", 520, 520,
     page("shroom popover, the AI banner", 520, 520, popover_frame(HEADER + "\n" + frost(BANNER_LINE, "ai-offer.shroom-can-name-your") + "\n" + CONFIG)))
 
 CONFIRM_TITLE = "Turn on AI for new videos?"
 boards["AiConfirm.dc.html"] = (
-    "Popover — Turn on…: what it does and costs, once (N66, words are drafts)", 520, 520,
+    "Popover — Turn on…: what it does and costs, once (N66, approved as drawn, Bagrat 2026-10-18; he may tweak the words later)", 520, 520,
     page("shroom popover, turn on AI", 520, 520, popover_frame(f'''<div style="display: flex; flex-direction: column; gap: 6px">
 <h1 style="margin: 0; font-size: 15px; font-weight: 600; line-height: 1.35" data-said="ai-confirm.turn-on-ai-for">{CONFIRM_TITLE}</h1>
 <div style="color: #c3cad6" data-said="ai-confirm.titles-chapters-and-captions">{AI_LINE}</div>
@@ -419,13 +419,13 @@ def states_body():
 {panel("After Turn on: the space's page is put up again with AI, a few seconds", frost("Turning on — a few seconds.", "ai-turning-on.turning-on-a-few", buttons=False))}
 {panel("When it didn't go through: Turn on… is live again (law 12)", frost(FAILED, "ai-offer-failed.couldnt-change-that-just"))}
 {panel("Once it's on: said once, where the update's “Updated ✓” goes", CONFIG + status)}
-<div style="width: 300px">{note("Only on the Mac that holds the setup key, and only while AI is off; members' Macs never show it. It sits under the other banners (a saved take, the space, recording off, an update come first). <b>Not now</b> hides it; it comes back once more after five more recordings on this Mac, then never: the switch in Settings · Space stays. New videos only: earlier ones keep their titles (Bagrat, 2026-10-18).")}</div>
+<div style="width: 300px">{note("Only on the Mac that holds the setup key, and only while AI is off; members' Macs never show it. It sits under the other banners (a saved take, the space, recording off, an update come first). <b>Not now</b> hides it for good on this Mac (Bagrat, 2026-10-18): from then on the switch in Settings · Space turns AI on. New videos only: earlier ones keep their titles (Bagrat, 2026-10-18).")}</div>
 </div>'''
 boards["AiBannerStates.dc.html"] = (
-    "Popover — the AI banner's states: turning on, didn't go through, on (N66, words are drafts)", 520, 900,
+    "Popover — the AI banner's states: turning on, didn't go through, on (N66, approved as drawn, Bagrat 2026-10-18; he may tweak the words later)", 520, 900,
     page("shroom popover, the AI banner's states", 520, 900, states_body()))
 
-# ───────── shroom.am: where AI's price sits (a proposal; the line is the one Bagrat saw) ─────────
+# ───────── shroom.am: where AI's price sits (the agreed line; it goes up with the homepage's redesign) ─────────
 
 def landing_body():
     return f'''<div style="width: 840px; height: 300px; box-sizing: border-box; background: #2b2f36; padding: 40px 48px; display: flex; flex-direction: column; gap: 14px; font-family: {FONT}; font-size: 16px; line-height: 1.5; color: #eceff4">
@@ -434,16 +434,16 @@ def landing_body():
 <div style="display: flex; flex-direction: row; justify-content: space-between; gap: 12px; font-size: 15px; color: #aeb6c4"><span><strong style="color: #88c0d0; font-weight: 600">$0</strong> · about three hours of video</span><span><strong style="color: #eceff4; font-weight: 600">$1.50 /month</strong> · about thirty hours</span></div>
 <div style="display: flex; flex-direction: row; align-items: flex-start; gap: 8px; margin-top: 10px; font-size: 15px; color: #aeb6c4">
 <svg viewBox="0 0 16 16" aria-hidden="true" style="width: 16px; height: 16px; fill: none; stroke: #88c0d0; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; display: block; flex: none; margin-top: 3px">{SPARK}</svg>
-<span>AI titles, chapters and captions are free for about 2½ hours of new video a day. Recording more? About 4¢ an hour on Cloudflare’s $5 plan.</span>
+<span>AI titles, chapters and captions are free for about 2½ hours of new video a day. Recording more? About 4¢ per video hour on Cloudflare’s $5 plan.</span>
 </div>
 </div>
-{note("A proposal for where the line sits: under the price gauge, the storage price above it, in the gauge's own grey. The rest of the page as it is.")}
+{note("The agreed line (Bagrat, 2026-10-18). It goes up with the homepage's redesign, not before; this board shows one place it could sit: under the price gauge, in the gauge's own grey.")}
 </div>'''
 boards["LandingAiLine.dc.html"] = (
-    "shroom.am — the AI line under the price gauge (a proposal; the line as Bagrat saw it, 2026-10-18)", 840, 300,
+    "shroom.am — the AI line, agreed (Bagrat, 2026-10-18; it goes up with the homepage's redesign)", 840, 300,
     page("shroom.am, the AI line", 840, 300, landing_body()))
 
-# ───────── shroom.am/privacy: what the AI hears (a draft; the page's words change only with Bagrat's OK, as B180's did) ─────────
+# ───────── shroom.am/privacy: what the AI hears (approved as drafted, Bagrat 2026-10-18) ─────────
 
 PRIVACY_AI = "runs in your own Cloudflare account: it hears what’s said in your new videos to name them and add chapters and captions. What it hears stays in your space and goes when you delete the video; it never reaches us."
 PRIVACY_CUT = "When you say “shroom cut”, the slip is cut from what viewers get; the words cut stay in your space, and only you see them."
@@ -459,10 +459,10 @@ def privacy_body():
 <li><div style="margin-left: -6px; padding: 8px 12px 8px 10px; border-left: 3px solid #88c0d0; border-radius: 0 9px 9px 0; background: rgba(136, 192, 208, 0.08)"><b style="color: #eceff4; font-weight: 600">AI, if you turn it on,</b> {PRIVACY_AI} <span style="color: #aeb6c4; font-style: italic">{PRIVACY_CUT}</span></div></li>
 {li("The app", "talks to your Cloudflare account (to set it up, upload your videos and manage your space) and to GitHub (to check for updates, sending no ID or version) …")}
 </ul>
-{note("A draft for Bagrat’s OK: one new point, right after “Your videos”, in the page’s own words (true to the build: the space hears new videos only while AI is on, keeps the words at rec/&lt;id&gt;/ai/, and deleting a video clears everything under it). The grey sentence after it is the voice cuts’ line (N65, theirs), so the two read as one point. The rest of the page as it is; its date moves to the day this lands.")}
+{note("Approved as drafted (Bagrat, 2026-10-18) and built (site/pages/privacy.html): one new point, right after “Your videos”, in the page’s own words (true to the build: the space hears new videos only while AI is on, keeps the words at rec/&lt;id&gt;/ai/, and deleting a video clears everything under it). The grey sentence after it is the voice cuts’ line (N65, theirs), so the two read as one point. The rest of the page as it is; its date reads 18 October 2026.")}
 </div>'''
 boards["AiPrivacy.dc.html"] = (
-    "shroom.am/privacy — what the AI hears (a draft, 2026-10-18)", 760, 560,
+    "shroom.am/privacy — what the AI hears (approved as drafted, Bagrat 2026-10-18)", 760, 560,
     page("shroom.am/privacy, the AI point", 760, 560, privacy_body()))
 
 # One column right of the editor's, top to bottom: the Mac's boards, then the page's.
