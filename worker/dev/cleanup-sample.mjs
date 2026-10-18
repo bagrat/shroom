@@ -3,7 +3,7 @@
 // `cleanupScore`, and the month's saving each formula could state. Prints Markdown.
 //
 //   node dev/cleanup-sample.mjs   (from worker/)
-import { FORMULAS, cleanupFacts, cleanupScore, monthlySaving } from "../src/worker.js";
+import { FADING_COST, FORMULAS, cleanupFacts, cleanupScore, monthlySaving } from "../src/worker.js";
 
 const DAY = 86_400_000;
 const NOW = Date.parse("2026-10-18T12:00:00Z");
@@ -48,6 +48,18 @@ function line(r) {
   }
 }
 
+/** fading-cost's line: the room it takes, then the plays a person can check. */
+function costLine(r) {
+  const plays = r.plays === 0 ? `nobody has watched it in ${ago(r.quietDays)}` : `watched ${r.plays === 1 ? "once" : `${r.plays} times`}, the last ${ago(r.quietDays)} ago`;
+  const early = r.code === "stopped-early" ? ", most stopping in the first quarter" : "";
+  return `Takes ${gb(r.bytes)}; ${plays}${early}.`;
+}
+function unused() {
+  switch (0) {
+    default: return "";
+  }
+}
+
 const out = [`Library: ${videos.length} videos, ${gb(total)} in all (${usd(monthlySaving(total, total))} a month past the free 10 GB). Counting began 6 months ago.`, ""];
 out.push("| Video | Age | Size | Plays | Median watched | Last played |", "|---|---|---|---|---|---|");
 for (const { title, facts: x } of videos) {
@@ -57,6 +69,18 @@ for (const f of FORMULAS) {
   const picked = videos.map((v) => ({ ...v, verdict: cleanupScore(v.facts, f, NOW) })).filter((v) => v.verdict.candidate).sort((a, b) => b.verdict.score - a.verdict.score);
   const freed = picked.reduce((a, v) => a + v.facts.bytes, 0);
   out.push("", `### ${f}: ${picked.length} suggested, frees ${gb(freed)} — saves ${usd(monthlySaving(total, freed))} a month (${usd(freed / 1e9 * 0.015)} at list price)`, "");
-  for (const v of picked) out.push(`- **${v.title}** (${gb(v.facts.bytes)}) — ${line(v.verdict.reason)}`);
+  for (const v of picked) out.push(`- **${v.title}** (${gb(v.facts.bytes)}) — ${f === "fading-cost" ? costLine(v.verdict.reason) : line(v.verdict.reason)}`);
 }
+
+// Inside the free 10 GB: the same Library less its two biggest videos still in use.
+const small = videos.filter((v) => !["How the deploy pipeline works", "Onboarding: setting up your laptop"].includes(v.title));
+const smallTotal = small.reduce((a, v) => a + v.facts.bytes, 0);
+const smallPicked = small.filter((v) => cleanupScore(v.facts, "fading-cost", NOW).candidate);
+const smallFreed = smallPicked.reduce((a, v) => a + v.facts.bytes, 0);
+out.push("", `### Inside the free 10 GB (the same Library less the deploy and onboarding videos: ${gb(smallTotal)})`, "",
+  `fading-cost still suggests ${smallPicked.length} (${smallPicked.map((v) => v.title).join(", ")}), freeing ${gb(smallFreed)} — saves ${usd(monthlySaving(smallTotal, smallFreed))} a month: the space is inside Cloudflare's free 10 GB.`);
+// How the size gate moves it: half a cent a month (≈ 0.33 GB, about 6 minutes) instead of one.
+FADING_COST.usdAtLeast = 0.005;
+const looser = videos.filter((v) => cleanupScore(v.facts, "fading-cost", NOW).candidate);
+out.push("", `With the gate at half a cent a month (≈ 0.33 GB), fading-cost suggests ${looser.length}: ${looser.map((v) => v.title).join(", ")} (${gb(looser.reduce((a, v) => a + v.facts.bytes, 0))}).`);
 console.log(out.join("\n"));

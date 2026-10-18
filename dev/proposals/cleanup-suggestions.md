@@ -4,6 +4,16 @@
 privacy page promises, and the new rows, words and setting are all Bagrat's call. The words on
 the boards and in the reasons are drafts.*
 
+> **Bagrat's answers (2026-10-18), relayed by the orchestrator:**
+> 1. **Count plays: on by default**, with the switch in Settings.
+> 2. **Count plays and unique-ish viewers** (the daily-salted hash).
+> 3. **The formula: fading and cost together** (B + C). Built as `fading-cost`, now the
+>    route's default; see §3.
+> 4. **Delete: one tap, with Undo.**
+>
+> Questions 5–7 (the money line, who sees whose, the Mac writing `bytes`) stand as drafted
+> below. The privacy wording waits on his words.
+
 Bagrat asked (2026-10-18) for shroom to work out which videos are worth deleting. Storage is
 what costs money, so shroom should be able to say *these ones, and why*. He suggested
 a formula built from when a video was added, how often it's been watched, how much of it
@@ -19,9 +29,11 @@ people watch and when it was last watched, and asked for several versions.
   a verdict: a candidate or not, a score to rank by, and a reason code with the facts its line
   needs. The app's Library and the agent CLI (`shroom cleanup-candidates --json`) both read
   it.
-- **Four formulas**, run over the same invented Library in §3. **The recommendation is `idle`**:
-  nobody has played it in 60 days (30 if nobody ever has), with the biggest and quietest
-  first. It's the only one whose reason a person can check in their head.
+- **Five formulas**, run over the same invented Library in §3. **Bagrat picked fading and cost
+  together**, built as `fading-cost`: a video is suggested when its plays have faded (a
+  30-day half-life, weighted by how far people watched) *and* it takes at least a cent a
+  month to keep (≈ 0.67 GB). The dearest per remaining play goes first. Its reason line is
+  checkable: "Takes 3.2 GB; watched 4 times, the last 10 months ago."
 - **The money is small, so say so.** At Cloudflare's $0.015 per GB a month, with the first
   10 GB free, a 12 GB space saves about 4¢ a month by deleting 8.6 GB. The suggestion has to
   earn its place on tidiness and on staying inside the free tier, not on the saving. Every
@@ -104,13 +116,13 @@ each, so even a thousand of them is far under a cent of storage.
 | `POST /_shroom/view/<id>`: same-site only (`Origin` itself, `Origin: null` from WebKit's unload beacons, never `Sec-Fetch-Site: cross-site`), at most 512 bytes, always 204 | `viewBeacon`, `daySalt`, `viewerHash`, `countView`, `applyView` |
 | The scores and the saving | `cleanupFacts`, `cleanupScore`, `monthlySaving`, `FORMULAS` |
 | `POST /_shroom/api/cleanup` `{scope: "mine"\|"everyone", formula?, after?}` → `{countingSince, formula, items, next}`: device key; a member sees their own; paged like the Library (40 records a call) | `cleanup` |
-| 23 unit tests: counting, dedupe, the day's salt, CAS races, refusals, the owner page, the formulas, the route's scopes and paging | `worker/test/views.test.js` |
+| 24 unit tests: counting, dedupe, the day's salt, CAS races, refusals, the owner page, the formulas, the route's scopes and paging | `worker/test/views.test.js` |
 | Real browsers: a bounce, a half watch, a full watch, the owner's own watch, in headless Chromium and WebKit | `worker/dev/views-drive.mjs` |
 | The four formulas over an invented Library | `worker/dev/cleanup-sample.mjs` |
 
 ```sh
 cd worker
-npx vitest run test/views.test.js        # 23/23
+npx vitest run test/views.test.js        # 24/24
 node dev/views-drive.mjs                 # Chromium and WebKit: 12/12 checks
 node dev/cleanup-sample.mjs              # §3's tables
 ```
@@ -125,7 +137,7 @@ switch's write (`.shroom/views.off` is honoured, but nothing writes it yet), and
 video's record when it's deleted (the token Mac's sweep would; a stale record is harmless
 because `cleanup` lists only live videos).
 
-## 3. Four formulas, worked
+## 3. Five formulas, worked
 
 Every formula shares the same guards. **Never suggest:** a video marked **Keep** (a new
 `keep: true` on its record); one under 14 days old; one played in the last 14 days; one still
@@ -142,7 +154,8 @@ single-file copy together).
 
 | | Rule | Ranks by | Good at | Weak at |
 |---|---|---|---|---|
-| **A. `idle`** (recommended) | Nobody has played it in 60 days, or 30 if nobody ever has | quiet days × GB | Easy to explain: "Last watched 4 months ago." Anyone can check it. | Ignores how popular it once was |
+| **B + C. `fading-cost`** (Bagrat's pick, the default) | B's heat under 0.25 **and** at least 1¢ a month at list price (≈ 0.67 GB); at least 30 days old and quiet | $/month ÷ (heat + 0.05) | Suggests only what has faded *and* takes real room; protects past hits; the line reads "Takes 3.2 GB; watched 4 times, the last 10 months ago" | Conservative: small clutter (drafts, test takes) is never suggested at 1¢ |
+| **A. `idle`** | Nobody has played it in 60 days, or 30 if nobody ever has | quiet days × GB | Easy to explain: "Last watched 4 months ago." Anyone can check it. | Ignores how popular it once was |
 | **B. `fading`** | Plays fade with a 30-day half-life, each weighted by how far it was watched (0.3 + 0.7 × median); suggested once below 0.25, which is one full watch two months ago | GB ÷ heat | Respects a past hit: 30 plays five months ago aren't suggested yet | Hard to say in a line; the knobs are arbitrary |
 | **C. `cost`** | Costs at least 1¢ a month and drew under one play a month over 90 days | $/month ÷ plays per month | Goes straight for the money, big files only | Never suggests the small clutter (test takes, drafts) |
 | **D. `gravity`** | Hacker News's gravity turned round: (plays × (0.5 + median) + 1) ÷ (age + 2)^1.5, below 0.004 | GB ÷ pull | One number, well known | Opaque, and age keeps penalising a video that's still in use |
@@ -168,7 +181,8 @@ Twelve made-up videos, 12.4 GB in all; counting began six months ago; today is 2
 
 | Formula | Suggests | Frees | Saves a month (past the free 10 GB) | At list price |
 |---|---|---|---|---|
-| **A. idle** | 8: billing walkthrough, Q3 roadmap, Release 1.4 demo, Acme recap, design review, weekly update, bug repro, draft | 8.61 GB | **4¢** | 13¢ |
+| **B + C. fading-cost** | 2: billing walkthrough ("Takes 3.22 GB; watched 4 times, the last 10 months ago"), Acme recap ("Takes 1.78 GB; nobody has watched it in 45 days") | 5.00 GB | **4¢** | 8¢ |
+| A. idle | 8: billing walkthrough, Q3 roadmap, Release 1.4 demo, Acme recap, design review, weekly update, bug repro, draft | 8.61 GB | 4¢ | 13¢ |
 | B. fading | 5: billing walkthrough, Acme recap, draft, bug repro, design review | 6.11 GB | 4¢ | 9¢ |
 | C. cost | 4: billing walkthrough, Acme recap, Q3 roadmap, Release 1.4 demo | 7.11 GB | 4¢ | 11¢ |
 | D. gravity | 4: billing walkthrough, Acme recap, draft, bug repro | 5.50 GB | 4¢ | 8¢ |
@@ -183,6 +197,17 @@ because only 2.4 GB sits past the free 10 GB. **That's the real finding**:
 - **The saving is small at R2's prices.** A heavy space of 100 GB costs $1.35 a month in all;
   clearing 30 GB saves 45¢. Suggestions should name the number honestly. Inside the free
   10 GB they should say it frees space and saves nothing yet, not pretend otherwise.
+- **`fading-cost` is strict on purpose.** It suggests two of twelve here: the two that
+  faded and take real room. Q3 roadmap and Release 1.4 demo were big hits a few months ago
+  and their plays haven't faded below the line yet. The draft and the design review are under
+  a cent a month. With the gate at half a cent (≈ 0.33 GB, about 6 minutes) it would add the
+  draft and the design review: 4 videos, 5.9 GB. The gate is one constant
+  (`FADING_COST.usdAtLeast`); open question 8.
+- **Inside the free 10 GB** (the same Library less the deploy and onboarding videos, 9.2 GB),
+  `fading-cost` still suggests the same two. Its cost gate reads the *list price* (the room a
+  video takes), not the bill. So inside the free tier it still names what takes the room,
+  and the saving line says honestly that it saves nothing yet. Gating on the bill instead
+  would suggest nothing until a space passed 10 GB, and then everything at once.
 - **The pull is staying inside the free tier.** The FAQ says about three hours of video fit in
   the free 10 GB. "Delete these 8 and you're back inside Cloudflare's free space" is a line
   that saves the whole bill. Proposed: when the suggestions would bring a space under 10 GB,
@@ -190,9 +215,11 @@ because only 2.4 GB sits past the free 10 GB. **That's the real finding**:
 
 ## 4. Where it shows
 
-The boards, under *Library and Settings*, at the bottom of the column:
+The boards, under *Library and Settings*, at the bottom of the column. They show a bigger
+invented space than §3's (34 GB, six suggestions under `fading-cost`), so the view has
+rows to show:
 
-1. **The Library's quiet line**: "8 videos nobody has watched lately take 8.6 GB.
+1. **The Library's quiet line**: "6 videos you've stopped watching take 11 GB.
    Review…", with ✕ for not now. It shows above the rows when there's at least one candidate
    and the switch is on. ✕ hides it until the list changes.
 2. **Suggested to clean up**: a view of its own (‹ Library to go back). A line on the total
@@ -200,7 +227,7 @@ The boards, under *Library and Settings*, at the bottom of the column:
    words**, plus **Keep**, **Delete** and Open page. **Delete is one tap, with Undo**: the
    video leaves the list, a line says "Deleted “…”. Undo" for a few seconds, and only then is
    the delete sent. Undo after the seal isn't possible (B125), so the delay *is* the undo.
-   **Delete all 8…** asks once, with the delete sheet's own words.
+   **Delete all 6…** asks once, with the delete sheet's own words.
 3. **Settings → General**, a group called *Your videos* with three rows. **Count plays**
    (on by default; the line under it says what's kept and that no cookie is used), **Suggest
    videos to clean up** (on), and **Space used** with the honest cost line.
@@ -243,7 +270,9 @@ Points behind it:
   mid-take surprises) is untouched; the "never silently" principle is kept by the privacy
   page and the Settings line.*
 - **N-cleanup-b. The Library suggests videos to clean up.** When counting has seen a video
-  long enough, and nobody has played it in 60 days (30 if never), it's suggested. Never
+  long enough, its plays have faded (a 30-day half-life, weighted by how far they watched,
+  below a quarter of one fresh full watch) and it takes at least a cent a month to keep,
+  it's suggested. Never
   within 14 days of its making or a play, and never one marked Keep. New Library state:
   `library-cleanup` (the view), reached from the quiet line's **Review…**. Edges: **Keep** →
   the row leaves, for good. **Delete** → the row leaves, the Undo line shows, then the existing
@@ -253,24 +282,27 @@ Points behind it:
 - **The record gains `keep: true` and `bytes`** (additive; the Mac writes them under
   If-Match).
 - **For agents:** `POST /_shroom/api/cleanup` is the CLI's source. `shroom
-  cleanup-candidates --json [--formula idle|fading|cost|gravity] [--everyone]` pages it with
+  cleanup-candidates --json [--formula fading-cost|idle|fading|cost|gravity] [--everyone]` pages it with
   the device key until `next` is null, then prints the candidates with their reason codes,
   facts and `usdPerMonth`. The reason codes are stable; the words aren't, so an agent writes
   its own. Deleting stays the existing delete path (an agent proposes, the person confirms).
 
 ## 7. Open questions for Bagrat
 
-1. **Count plays on by default, or ask?** The recommendation is on, with the privacy line
+*Answered 2026-10-18: 1 (on by default), 2 (plays and unique-ish viewers), 3 (fading and cost
+together), 4 (one tap with Undo). Still open: 5–8, and the privacy wording.*
+
+1. *(Answered: on by default.)* **Count plays on by default, or ask?** The recommendation is on, with the privacy line
    changed and the switch in Settings. It's the owner's data in the owner's account, and
    cleanup is useless without it. The alternative is a one-time question when the
    suggestions first have something to say.
-2. **Unique-ish viewers, or plays only?** Viewers is nice to show ("23 people") but needs the
+2. *(Answered: both.)* **Unique-ish viewers, or plays only?** Viewers is nice to show ("23 people") but needs the
    daily hash. Plays only means nothing about the viewer is even read, and the privacy line
    gets simpler. The formulas don't need viewers.
-3. **Which formula?** The recommendation is **A, `idle`**, because its reason is a sentence a
+3. *(Answered: fading and cost together, `fading-cost`.)* **Which formula?** The recommendation was **A, `idle`**, because its reason is a sentence a
    person can check. B (`fading`) is the alternative if past hits should be protected
    longer.
-4. **One-tap Delete with Undo, or the existing confirm sheet per video?** The brief said
+4. *(Answered: one tap with Undo.)* **One-tap Delete with Undo, or the existing confirm sheet per video?** The brief said
    one-tap; drawn as one tap with a few seconds' Undo before the delete is sent.
 5. **The money line.** Show cents ("about 4¢ a month"), only the GB, or the free-tier line
    when it applies? The recommendation is GB always, cents only past the free tier, and the
@@ -279,3 +311,7 @@ Points behind it:
    only their own. Should an owner be nudged about a member's old videos, or only their own?
 7. **Should old videos' size come from the bucket?** A Mac can sum `rec/<id>/` once and
    write `bytes`; the estimate from duration is within about 20% at Normal quality.
+8. **fading-cost's size gate: 1¢ a month (≈ 0.67 GB, about 12 minutes), or half a cent
+   (≈ 0.33 GB, about 6)?** At 1¢ it suggests 2 of the sample's 12; at half a cent, 4. The
+   recommendation is to keep 1¢ for now (fewer, surer suggestions) and revisit with real
+   counts.
