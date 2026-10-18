@@ -39,6 +39,16 @@
 //              control bar is below it, never over it
 //   copy       with the single-file copy up, the page plays it and asks for no piece of the
 //              stream (DECISIONS B177); every check above plays the stream, as before it's up
+//   edit       a saved edit (N63, DECISIONS B195: 2–6, 9–12 and 13.5–18 of the 20 s) played
+//              at 2× over the stream and over the single-file copy: the position, sampled
+//              every frame and every 4 ms, never falls inside a cut (0.05 s past a cut's start
+//              allowed), every kept range plays, it stops at the out, and the time reads the
+//              edited length, 0:00 / 0:12 then 0:12 / 0:12. With the edit's permanent copy up:
+//              the page plays the copy to its end with nothing skipped, its own first frame,
+//              asks for nothing of the original, and the original's stream and file answer
+//              404 (step 3). The copy landing under an open page: its next piece of the
+//              original answers 404 and the player moves over to the copy (hls.js; native
+//              engines that fetched the whole file have nothing to miss — reported only)
 //   bytes      a tombstoned recording's playlist answers 404
 //
 // Prints one JSON summary and exits 0 only when every required check passed.
@@ -54,8 +64,18 @@ import { CODE, INV, M1, OWNER_AIR, OWNER_MAC, cookieFor, metaKey, roster, sha, s
 const here = path.dirname(new URL(import.meta.url).pathname);
 const work = fs.mkdtempSync(path.join(os.tmpdir(), "shroom-page-drive-"));
 const summary = { ok: false, engines: {} };
-const ids = { live: "LiveLiveLiveLive", wait: "WaitWaitWaitWait", stall: "StalStalStalStal", own: "OwnrOwnrOwnrOwnr", gone: "GoneGoneGoneGone", off: "OffxOffxOffxOffx" };
+const ids = { live: "LiveLiveLiveLive", wait: "WaitWaitWaitWait", stall: "StalStalStalStal", own: "OwnrOwnrOwnrOwnr", gone: "GoneGoneGoneGone", off: "OffxOffxOffxOffx",
+  edit: "EditEditEditEdit", cut: "CutsCutsCutsCuts", land: "LandLandLandLand" };
 const DURATION = 20;
+/** The edit the drive plays (N63), as the Mac's editor saves it: 2–6, 9–12 and 13.5–18 of
+ * the 20 s recording play — 11.5 s, which reads 0:12. */
+const cut = (start, end) => ({ start, end, kind: "manual", confidence: "high", applied: true, removed: "" });
+const EDIT = { version: 1, source_duration: DURATION, in: 2, out: 18, cuts: [cut(6, 9), cut(12, 13.5)], rev: 1 };
+const KEEP = [[2, 6], [9, 12], [13.5, 18]];
+/** What a viewer must never see: the trimmed ends and the cuts. */
+const CUT_OUT = [[0, 2], [6, 9], [12, 13.5], [18, DURATION]];
+/** The edit's permanent copy, as the Mac puts it up beside the original. */
+const EDIT_COPY = { rev: 1, file: "edit-1.mp4", duration: 11.5, poster: "edit-1-poster.jpg" };
 /** The shapes the whole-frame check plays (a recording of each, a few seconds long): a
  * MacBook's 16:10 screen, a 16:9 display, a tall portrait window. */
 const SHAPES = { "16:10": ["Sh1610Sh1610Sh16", "640x400"], "16:9": ["Sh169xSh169xSh16", "640x360"], portrait: ["ShTallShTallShTa", "360x640"] };
@@ -82,6 +102,16 @@ function encode(size = "640x400", seconds = DURATION) {
   return files;
 }
 
+/** An edit's permanent copy and its first frame (N63): its own picture, the edit's length. */
+function encodeCopy() {
+  const dir = path.join(work, "copy");
+  fs.mkdirSync(dir, { recursive: true });
+  execFileSync("ffmpeg", ["-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc=size=640x400:rate=30", "-an", "-t", String(EDIT_COPY.duration),
+    "-c:v", "libx264", "-pix_fmt", "yuv420p", "-g", "30", "-movflags", "+faststart", path.join(dir, EDIT_COPY.file)]);
+  execFileSync("ffmpeg", ["-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc=size=640x400", "-frames:v", "1", path.join(dir, EDIT_COPY.poster)]);
+  return Object.fromEntries([EDIT_COPY.file, EDIT_COPY.poster].map((f) => [f, new Uint8Array(fs.readFileSync(path.join(dir, f)))]));
+}
+
 const iso = (ms) => new Date(ms).toISOString();
 const meta = (id, over) => JSON.stringify({ schema: 1, id, state: "live", createdAt: iso(Date.now() - 60_000), title: "Where the 502s come from", durationSec: DURATION,
   media: { hls: `rec/${id}/master.m3u8`, mp4: null, poster: `rec/${id}/poster.jpg`, width: 640, height: 400 }, owner: M1, ...over });
@@ -96,6 +126,7 @@ async function main() {
   const put = (k, v) => env.BUCKET.put(k, v);
   await put(".shroom/player/hls.min.js", new Uint8Array(fs.readFileSync(path.join(here, "../vendor/hls.min.js"))));
   for (const id of Object.values(ids)) for (const [f, bytes] of Object.entries(files)) await put(`rec/${id}/${f}`, bytes);
+  for (const [f, bytes] of Object.entries(encodeCopy())) for (const id of [ids.edit, ids.cut, ids.land]) await put(`rec/${id}/${f}`, bytes);
   for (const [id, size] of Object.values(SHAPES)) {
     const [width, height] = size.split("x").map(Number);
     for (const [f, bytes] of Object.entries(encode(size, 4))) await put(`rec/${id}/${f}`, bytes);
@@ -178,6 +209,77 @@ async function main() {
         page.off("request", onRequest);
         check("with the copy up, the page plays it and asks for no piece of the stream", copyPlays && asked.some((p) => p.endsWith("/video.mp4")) && !asked.some((p) => /\.(m3u8|m4s)$/.test(p)), true, { copyPlays, asked });
         await put(metaKey(ids.live), meta(ids.live, {}));
+
+        // ── a saved edit (N63, DECISIONS B195) ──
+        const stream = (id) => ({ hls: `rec/${id}/master.m3u8`, mp4: null, poster: `rec/${id}/poster.jpg`, width: 640, height: 400 });
+        const single = (id) => ({ ...stream(id), mp4: `rec/${id}/video.mp4` });
+        /** Opens the page, plays it at 2× from Play, and samples where the video is — every
+         * frame, every 4 ms and on every timeupdate — until it stops by itself. */
+        const playThrough = async (id, ended) => {
+          const asked = [];
+          const onRequest = (/** @type {any} */ r) => asked.push(new URL(r.url()).pathname);
+          page.on("request", onRequest);
+          await page.goto(`${origin}/${id}`);
+          const before = await page.evaluate(() => ({ time: document.querySelector(".time").textContent, poster: document.getElementById("v").getAttribute("poster") }));
+          await page.evaluate(() => {
+            const v = document.getElementById("v");
+            const w = /** @type {any} */ (window);
+            w.seen = [];
+            const take = () => { if (!v.paused) w.seen.push(v.currentTime); };
+            (function frame() { take(); requestAnimationFrame(frame); })();
+            setInterval(take, 4);
+            v.addEventListener("timeupdate", take);
+          });
+          for (let i = 0; i < 3; i++) await page.click(".sp");
+          await page.click(".pp");
+          const done = await page.waitForFunction((end) => { const v = document.getElementById("v"); return /** @type {any} */ (window).seen.length > 20 && v.paused && (!end || v.ended); }, ended, { timeout: 40_000 }).then(() => true, () => false);
+          const seen = /** @type {number[]} */ (await page.evaluate(() => /** @type {any} */ (window).seen));
+          const after = await page.evaluate(() => ({ time: document.querySelector(".time").textContent, rate: document.getElementById("v").playbackRate, src: document.getElementById("v").currentSrc }));
+          page.off("request", onRequest);
+          return { before, done, after, seen, asked, max: seen.length ? Math.max(...seen) : 0, min: seen.length ? Math.min(...seen) : 0 };
+        };
+        const inCut = (seen) => seen.filter((t) => CUT_OUT.some(([s, e]) => t > s + 0.05 && t < e - 0.001));
+        for (const [over, media] of [["the stream", stream], ["the single-file copy", single]]) {
+          await put(metaKey(ids.edit), meta(ids.edit, { media: media(ids.edit), edits: EDIT }));
+          const run = await playThrough(ids.edit, false);
+          const wrong = inCut(run.seen);
+          const detail = { n: run.seen.length, min: run.min, max: run.max, wrong: wrong.slice(0, 8), before: run.before, after: run.after };
+          check(`an edit over ${over}, at 2×: never a moment of a cut, every kept range plays, it stops at the out`,
+            run.done && run.after.rate === 2 && wrong.length === 0 && KEEP.every(([s, e]) => run.seen.some((t) => t >= s && t < e)) && run.max >= 17.8 && run.max <= 18.05, true, detail);
+          check(`an edit over ${over}: the time reads the edited length, 0:00 / 0:12, then 0:12 / 0:12`, run.before.time === "0:00 / 0:12" && run.after.time === "0:12 / 0:12", true, detail);
+        }
+
+        // ── the edit's permanent copy, up (N63) ──
+        await put(metaKey(ids.cut), meta(ids.cut, { media: single(ids.cut), edits: { ...EDIT, copy: EDIT_COPY } }));
+        const copyRun = await playThrough(ids.cut, true);
+        const jumps = copyRun.seen.filter((t, i) => i > 0 && t - copyRun.seen[i - 1] > 0.5);
+        const original = copyRun.asked.filter((p) => /\/(master\.m3u8|stream\.m3u8|[^/]+\.m4s|video\.mp4)$/.test(p));
+        check("the edit's copy up: the page plays it to its end with nothing skipped, its own first frame and length, and asks for nothing of the original",
+          copyRun.done && jumps.length === 0 && copyRun.max >= 11.3 && copyRun.after.src.endsWith(`/${EDIT_COPY.file}`) && copyRun.before.poster?.endsWith(`/${EDIT_COPY.poster}`)
+            && copyRun.before.time === "0:00 / 0:12" && original.length === 0, true, { done: copyRun.done, jumps, max: copyRun.max, before: copyRun.before, after: copyRun.after, original });
+        const reach = await page.evaluate(async (id) => {
+          const out = {};
+          for (const f of ["master.m3u8", "v0/stream.m3u8", "v0/init.mp4", "v0/seg_00000.m4s", "video.mp4", "poster.jpg", "edit-1.mp4", "edit-1-poster.jpg"]) out[f] = (await fetch(`/m/${id}/${f}`, { method: "HEAD" })).status;
+          return out;
+        }, ids.cut);
+        check("the edit's copy up: the original's stream and file answer 404, the copy and the first frames are served (step 3)",
+          same(reach, { "master.m3u8": 404, "v0/stream.m3u8": 404, "v0/init.mp4": 404, "v0/seg_00000.m4s": 404, "video.mp4": 404, "poster.jpg": 200, "edit-1.mp4": 200, "edit-1-poster.jpg": 200 }), true, reach);
+
+        // ── the copy lands under an open page (N63, step 3) ──
+        // Opened on the original, the edit applied — a recording this browser hasn't played,
+        // so nothing of it is in its cache; the copy lands before the first play, so the
+        // original's next piece answers 404 and the player moves over to the copy. Required
+        // where hls.js plays the stream (it asks piece by piece); a native player may hold it all.
+        await put(metaKey(ids.land), meta(ids.land, { media: stream(ids.land), edits: EDIT }));
+        await page.goto(`${origin}/${ids.land}`);
+        await page.waitForFunction(() => document.getElementById("v").readyState >= 1, null, { timeout: 15_000 }).catch(() => {});
+        const byHlsJs = await page.evaluate(() => document.getElementById("v").currentSrc.startsWith("blob:"));
+        await put(metaKey(ids.land), meta(ids.land, { media: stream(ids.land), edits: { ...EDIT, copy: EDIT_COPY } }));
+        await page.click(".pp");
+        const movedOver = await page.waitForFunction((file) => { const v = document.getElementById("v"); return v.currentSrc.endsWith(`/${file}`) && !v.paused && v.currentTime > 0.5; }, EDIT_COPY.file, { timeout: 30_000 }).then(() => true, () => false);
+        const landed = await page.evaluate(() => ({ src: document.getElementById("v").currentSrc, t: document.getElementById("v").currentTime, paused: document.getElementById("v").paused, time: document.querySelector(".time").textContent }));
+        check("the copy lands under an open page: the player moves over to it and plays on", movedOver, byHlsJs, { byHlsJs, ...landed });
+        await page.evaluate(() => document.getElementById("v").pause());
 
         // ── a short window (the canvas's "The page — a short window") ──
         // A 4:3 recording in a 1280×640 window: the player, its controls and the mark's foot

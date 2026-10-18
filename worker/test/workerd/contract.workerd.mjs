@@ -251,6 +251,58 @@ describe("media over R2's own reads", () => {
   });
 });
 
+// N63 (DECISIONS B195): the edit rides the record, and the module reads it from R2's own
+// bytes — the ranges that play onto the page, the copy as it is once it's up, the original
+// out of reach behind it and never a word of a voice cut's transcript.
+describe("the edit (N63) over R2's own reads", () => {
+  const EDIT_ID = "EdItEdItEdItEdIt";
+  const SAID = "THE-REMOVED-WORDS";
+  const edits = (over = {}) => ({ version: 1, source_duration: 60, in: 2, out: 50, cuts: [{ start: 10, end: 20, kind: "manual", confidence: "high", applied: true, removed: SAID }], rev: 3, ...over });
+  const COPY_OF = { rev: 3, file: "edit-3.mp4", duration: 37.9, poster: "edit-3-poster.jpg" };
+  const media = { hls: `rec/${EDIT_ID}/master.m3u8`, mp4: `rec/${EDIT_ID}/video.mp4`, poster: `rec/${EDIT_ID}/poster.jpg`, width: 1920, height: 1080 };
+  const put = (over) => bucket.put(`meta/${EDIT_ID}.json`, metaOf(EDIT_ID, { durationSec: 60, title: "Edited", media, ...over }));
+
+  before(async () => {
+    for (const f of ["master.m3u8", "video.mp4", "poster.jpg", "edit-3.mp4", "edit-3-poster.jpg"]) await bucket.put(`rec/${EDIT_ID}/${f}`, f);
+    await bucket.put(`rec/${EDIT_ID}/v0/seg_00000.m4s`, SEGMENT);
+  });
+
+  it("plays the original with the ranges that play until the copy is up, with no Download", async () => {
+    await put({ edits: edits() });
+    const page = await (await fetchW(`/${EDIT_ID}`)).text();
+    assert.ok(page.includes(`{"keep":[[2,10],[20,50]],"st":"/_shroom/status/${EDIT_ID}"}`), "the ranges that play");
+    assert.ok(page.includes(`<span class="time">0:00 / 0:38</span>`), "the edited length");
+    assert.ok(!page.includes(`/d/${EDIT_ID}`) && !page.includes(SAID));
+    assert.equal((await fetchW(`/d/${EDIT_ID}`)).status, 404);
+    const seg = await fetchW(`/m/${EDIT_ID}/v0/seg_00000.m4s`);
+    assert.equal(seg.status, 200, "the original is still reachable");
+    await seg.arrayBuffer();
+  });
+
+  it("once the copy is up: plays it, Download hands it over, and the original answers 404", async () => {
+    await put({ edits: edits({ copy: COPY_OF }) });
+    const page = await (await fetchW(`/${EDIT_ID}`)).text();
+    assert.ok(page.includes(`"/m/${EDIT_ID}/edit-3.mp4",`) && page.includes(`{"keep":null,"st":"/_shroom/status/${EDIT_ID}"}`));
+    assert.ok(page.includes(`poster="/m/${EDIT_ID}/edit-3-poster.jpg"`) && !page.includes(SAID));
+    const st = await jsonOf(await fetchW(`/_shroom/status/${EDIT_ID}`));
+    assert.deepEqual(st.copy, { src: `/m/${EDIT_ID}/edit-3.mp4`, dur: 37.9, poster: `/m/${EDIT_ID}/edit-3-poster.jpg` });
+    const d = await fetchW(`/d/${EDIT_ID}`);
+    assert.equal(d.status, 200);
+    assert.equal(await d.text(), "edit-3.mp4");
+    const part = await fetchW(`/m/${EDIT_ID}/edit-3.mp4`, { headers: { range: "bytes=0-3" } });
+    assert.equal(part.status, 206);
+    assert.equal(await part.text(), "edit");
+    for (const f of ["master.m3u8", "v0/seg_00000.m4s", "video.mp4"]) {
+      const res = await fetchW(`/m/${EDIT_ID}/${f}`);
+      assert.equal(res.status, 404, f);
+      await res.arrayBuffer();
+    }
+    const poster = await fetchW(`/m/${EDIT_ID}/poster.jpg`);
+    assert.equal(poster.status, 200, "the original's first frame stays");
+    await poster.arrayBuffer();
+  });
+});
+
 // DECISIONS B109: the art rides inside the module — what workerd decodes and sends is the
 // landing's own files, and no object in the bucket stands behind it.
 describe("the tab icon, carried in the module", () => {
