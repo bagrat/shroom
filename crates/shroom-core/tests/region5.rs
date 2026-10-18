@@ -82,6 +82,22 @@ fn library(w: World) -> World {
     library_with(w, space_rows())
 }
 
+/// One video worth deleting (N68).
+fn suggestion(id: &str, bytes: u64, plays: u32, quiet_days: u32) -> Suggestion {
+    Suggestion { rec: rec(id), bytes, plays, quiet_days, stopped_early: false }
+}
+
+/// What the space said is worth deleting, with the space's size (N68).
+fn suggested(mut w: World, rows: Vec<Suggestion>, space_bytes: u64) -> World {
+    w.suggestions = Fact::known(Suggestions { counting: true, space_bytes, rows }, Mono(960));
+    w
+}
+
+/// The Library over a space of 34 GB with three videos worth deleting.
+fn library_suggesting() -> World {
+    suggested(library(ready()), vec![suggestion("a3", 3_200_000_000, 4, 300), suggestion("onb", 1_800_000_000, 0, 45), suggestion("a1", 780_000_000, 2, 120)], 34_000_000_000)
+}
+
 fn queued(dir: &str, id: &str, title: &str, done: u32, total: u32, blocked: Option<Blocked>) -> Queued {
     Queued { dir: TakeDir(dir.into()), rec: rec(id), title: title.into(), stopped: Wall(SEP30), done, total, blocked, length_ms: Some(48_000) }
 }
@@ -332,6 +348,22 @@ fn rows() -> Vec<(&'static str, World)> {
         w.session.fields.library.renaming = Some((rec("r502"), "Where the 502s come from".into()));
         w
     }));
+    // ── Suggested to clean up (N68) ──
+    rows.push(("library", library_suggesting()));
+    rows.push(("library-cleanup", {
+        let mut w = library_suggesting();
+        w.session.fields.library.cleanup = true;
+        w.session.fields.library.undo = Some((rec("a1"), Mono(990)));
+        w
+    }));
+    rows.push(("library-cleanup", {
+        let mut w = library_suggesting();
+        w.session.fields.library.cleanup = true;
+        for id in ["a3", "onb", "a1"] {
+            w.library_ops.landed.insert(rec(id), (Landed::Kept, Mono(980)));
+        }
+        w
+    }));
     rows.push(("library-empty", library_with(ready(), vec![])));
     // N66 (Bagrat, 2026-10-18): the setup Mac's popover while the space's AI is off — its
     // banner, the confirm Turn on… opens, the banner while the page is re-wired and when that
@@ -490,6 +522,12 @@ fn rows() -> Vec<(&'static str, World)> {
     rows.push(("settings-general", {
         let mut w = settings_on(ready(), SettingsTab::General);
         w.session.fields.settings.sent = true;
+        w
+    }));
+    rows.push(("settings-general", suggested(settings_on(ready(), SettingsTab::General), vec![], 34_000_000_000)));
+    rows.push(("settings-general", {
+        let mut w = suggested(settings_on(ready(), SettingsTab::General), vec![], 34_000_000_000);
+        w.inflight.failures.insert(Op::Plays, Failure { class: FailClass::Transport, at: Mono(970), tries: 1 });
         w
     }));
     rows.push(("report-problem", report_asked()));
@@ -1531,7 +1569,7 @@ fn a_window_open_before_the_take_stays_and_greys_what_it_cant_do() {
 
 #[test]
 fn every_region5_op_has_a_deadline() {
-    for (op, ms) in [(Op::LibRefresh, 60_000), (Op::Rename, 60_000), (Op::Delete, 60_000), (Op::UpdateCheck, 10_000), (Op::UpdateDownload, 1_800_000), (Op::UpdateApply, 30_000)] {
+    for (op, ms) in [(Op::LibRefresh, 60_000), (Op::Rename, 60_000), (Op::Delete, 60_000), (Op::Suggest, 60_000), (Op::Keep, 60_000), (Op::Plays, 60_000), (Op::UpdateCheck, 10_000), (Op::UpdateDownload, 1_800_000), (Op::UpdateApply, 30_000)] {
         assert_eq!(op.deadline_ms(), ms, "{op:?}");
     }
     // A refresh that never answers ends at its deadline; the window still shows the cache.
@@ -1743,7 +1781,8 @@ fn uninstall_link(s: &Scene) -> shroom_core::scene::Button {
 /// Mac lets go, how to come back; Cancel and a red-outlined Uninstall, no Return default.
 #[test]
 fn uninstall_asks_first_and_says_the_space_stays() {
-    let mut r = Run::new(settings_on(ready(), SettingsTab::General));
+    // Your videos has read the space already (N68): asking and cancelling read nothing more.
+    let mut r = Run::new(suggested(settings_on(ready(), SettingsTab::General), vec![], 34_000_000_000));
     let link = uninstall_link(&r.scene);
     assert_eq!((link.label.as_str(), link.style, link.enabled), ("Uninstall shroom…", Style::Quiet, true));
     r.set(Action::Uninstall);

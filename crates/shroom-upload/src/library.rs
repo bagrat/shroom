@@ -641,6 +641,14 @@ pub fn upkeep_plan(records: &[(String, Meta)], now: &str, mine: &dyn Fn(&str) ->
     plan
 }
 
+/// Keeps a recording off the suggestions to clean up for good (N68): `keep: true` on its
+/// record, nothing else changed; a tombstone stops it.
+pub fn keep(s3: &Client, id: &str) -> Result<Meta, UploadError> {
+    update_meta(s3, id, |m| {
+        m.extra.insert("keep".into(), serde_json::Value::Bool(true));
+    })
+}
+
 /// Deletes a shared recording: the record becomes a tombstone first (the link answers
 /// “removed” forever and every uploading Mac stops), then every byte under `rec/<id>/`.
 /// Safe to run again after an interruption.

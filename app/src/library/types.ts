@@ -51,6 +51,28 @@ export type LibraryBody = {
   rows: Row[];
   footer: string | null;
   sheet: Sheet | null;
+  /** N68's line above the rows: the videos worth deleting, Review… and ✕ (“Not now”). */
+  cleanup_line: { line: string; review: Button; dismiss: Button } | null;
+  /** Suggested to clean up, in place of the list (N68). */
+  cleanup: CleanupBody | null;
+};
+
+/** One suggestion: the poster, the title, then when it was made · its size · why. */
+export type CleanupRow = { key: string; title: string | null; meta: string; poster: string | null; buttons: Button[] };
+
+export type CleanupBody = {
+  title: string;
+  /** “‹ Library”. */
+  back: Button;
+  intro: string | null;
+  rows: CleanupRow[];
+  /** Once the last suggestion is kept or deleted. */
+  empty: string | null;
+  foot: string | null;
+  /** “Delete all six…”, red text. */
+  delete_all: Button | null;
+  /** A one-tap delete waiting to be sent. */
+  undo: { line: string; undo: Button } | null;
 };
 
 /** A card's head, its line, and its two answers (N66's naming card). */

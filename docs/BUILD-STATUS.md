@@ -320,3 +320,9 @@ and edits on the share page)*)**
     - The upkeep on a Mac without the token (the space's records over the Library API, a
       15-minute `manage` credential for each bake and copy) is untested on a real second
       Mac: the hosted Mac's editor drive runs as a token Mac against the fake space.
+
+40. **N68 — the page counts plays, and the Library suggests videos to clean up** (built;
+    B210–B214). He ratified it as built on 2026-10-18: its words and rules, the privacy
+    line (the page carries it in the same PR, so it ships with counting), each row's cost
+    past the free 10 GB, and the 1¢ size gate (B211). Proved on the hosted Mac (the cleanup
+    drive, 22 checks). Waits only on his timing of the release, with the other four builds.

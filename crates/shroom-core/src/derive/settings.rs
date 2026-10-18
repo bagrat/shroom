@@ -5,7 +5,7 @@
 //! nests are the wizard's.
 
 use crate::copy;
-use crate::scene::{
+use crate::scene::{VideosGroup, 
     Action, Button, Choice, GeneralBody, Glyph, Nest, PlanRow, PlanView, ReportForm, SettingsBody, SettingsPane, Sheet, SpaceBody, Style,
     TextField, Toggle, Window,
 };
@@ -368,6 +368,36 @@ fn general(w: &World) -> GeneralBody {
         help: copy::help_line(),
         help_links: vec![Button::new(Action::ReportIssue, copy::github(), Style::Link)],
         uninstall: not_mid_take(w, Button::new(Action::Uninstall, copy::uninstall_ellipsis(), Style::Quiet)),
+        videos: w.provisioned().then(|| videos(w)),
+    }
+}
+
+/// Your videos (N68): the space's play-count switch (owner-class, once the space has said;
+/// a switch asked reads as asked, greyed until it answers), this Mac's suggestions switch,
+/// and what the space costs (owner-class: the bill is theirs).
+fn videos(w: &World) -> VideosGroup {
+    let known = w.suggestions.get();
+    let counting = w.library_ops.plays.or(known.map(|s| s.counting)).unwrap_or(true);
+    let online = w.online() != Some(false);
+    let owner = w.space.owner_class();
+    let used = known.filter(|_| owner).map(|s| match super::library::space_cents(s.space_bytes) {
+        0 => copy::space_used_free(s.space_bytes),
+        cents => copy::space_used_past(s.space_bytes, cents),
+    });
+    VideosGroup {
+        heading: copy::your_videos(),
+        count: Toggle {
+            action: Action::SetPlays(!counting),
+            label: copy::count_plays(),
+            on: counting,
+            enabled: owner && online && known.is_some() && w.library_ops.plays.is_none(),
+        },
+        count_hint: copy::count_plays_hint(),
+        count_note: (w.inflight.failures.contains_key(&Op::Plays) && w.library_ops.plays.is_none()).then(copy::plays_failed),
+        suggest: Toggle { action: Action::SetSuggestCleanup(!w.prefs.suggest_cleanup), label: copy::suggest_cleanup(), on: w.prefs.suggest_cleanup, enabled: true },
+        suggest_hint: copy::suggest_cleanup_hint(),
+        used_label: used.as_ref().map(|_| copy::space_used()),
+        used,
     }
 }
 

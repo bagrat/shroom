@@ -23,6 +23,8 @@ use crate::world::{Op, SourceId, UpdateOffer, World};
 
 /// How long "Copied" shows (DEVIATIONS #8).
 pub const COPIED_MS: u64 = 1_500;
+/// How long a one-tap delete's Undo line stands before the delete is sent (N68).
+pub const UNDO_MS: u64 = 5_000;
 /// The countdown: 3 · 2 · 1 (N22).
 pub const COUNTDOWN_MS: u64 = 3_000;
 /// “Every few hours”: how often the background update check runs, and how long a failed
@@ -243,6 +245,9 @@ fn next_wake(w: &World) -> Option<Mono> {
     }
     if let Some((_, at)) = &w.session.copied {
         wakes.push(at.plus(COPIED_MS));
+    }
+    if let Some((_, at)) = &w.session.fields.library.undo {
+        wakes.push(at.plus(UNDO_MS));
     }
     wakes.extend(w.inflight.ops.values().copied());
     // The stop's probe asking again after a “not shroom” that hasn't held (B60).

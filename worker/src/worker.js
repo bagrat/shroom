@@ -3,8 +3,8 @@
 // account. One dependency-free ES module (RESEARCH R7.1: provisioning has no bundler);
 // the app deploys this exact file. Recordings' bytes and records go straight from the
 // recording Mac to the bucket (N4); the Worker reads them, and writes only records of its
-// own: the space's roster and ownership ledger, one-time page keys, upload budgets and
-// one advisory health flag (WORKER-INTERFACE §4.1).
+// own: the space's roster and ownership ledger, one-time page keys, upload budgets, one
+// advisory health flag, and its videos' play counts (WORKER-INTERFACE §4.1, §4.22).
 //
 // Routes (ARCHITECTURE §8.1, WORKER-INTERFACE §4):
 //   GET /<id>                the page, its face chosen by meta/<id>.json
@@ -21,10 +21,11 @@
 //   GET /<id>?embed=1        the embed face: the player alone, the mark small (Notion, iframes)
 //   GET /oembed?url=…        oEmbed discovery's answer: an iframe of the embed face
 //   GET /join/<code>         the join page and its faces (Region 6, N29)
+//   POST /_shroom/view/<id>  a play's beacon: counted in .shroom/views/, nothing that names a viewer (N68)
 //   /_shroom/api/…           the app's door for members and Macs without the token:
 //                            peek · join · enroll · me · mint · key · library · members ·
 //                            invites · invites/<iid> · members/<mid> · devices/<did|self> ·
-//                            mark · health — JSON carrying "shroom":1, success or error
+//                            mark · health · cleanup · plays — JSON carrying "shroom":1, success or error
 //
 // Who is who (WORKER-INTERFACE §2, §3): the roster (.shroom/registry/roster.json) holds
 // members, Macs and invites, and every change to it is one compare-and-swap. A Mac proves
@@ -200,6 +201,8 @@ export async function handle(request, env, now, ctx) {
   if (path.startsWith(API)) return api(request, env, url, now);
   if (request.method === "POST" && (path === "/_shroom/mark" || path.startsWith("/_shroom/title/"))) return post(request, env, url, now);
   if (request.method === "POST" && path.startsWith("/_shroom/thumb/")) return thumbPost(request, env, url);
+  const vb = request.method === "POST" && path.match(/^\/_shroom\/view\/([A-Za-z0-9_-]{16})$/);
+  if (vb) return viewBeacon(request, env, url, vb[1], now);
   const join = path.match(/^\/join\/(.*)$/);
   if (join) return request.method === "GET" || request.method === "HEAD" ? joinPage(request, env, url, join[1], now) : plain(405, "");
   if (request.method !== "GET" && request.method !== "HEAD") return plain(405, "");
@@ -1188,7 +1191,8 @@ async function embed(env, id, now, origin) {
   const src = await sourceOf(id, meta, oneP, view);
   const ai = aiFace(id, meta, src, !!env.AI, now);
   return frame(`${aiPlayer(playerHtml(id, meta, origin), ai)}
-<script>${PLAYER_JS};shroomPlayer(document.querySelector(".player"),${JSON.stringify(src)},${jsonForScript(JSON.stringify(LABELS))},${playing(id, view)})${aiWire(".player", ai)}</script>`, 0, 200, aiCss(ai));
+<script>${PLAYER_JS};shroomPlayer(document.querySelector(".player"),${JSON.stringify(src)},${jsonForScript(JSON.stringify(LABELS))},${playing(id, view)})${aiWire(".player", ai)}
+${VIEW_JS};shroomCount(document.getElementById("v"),${JSON.stringify(id)})</script>`, 0, 200, aiCss(ai));
 }
 
 /** The embed is the player alone, and the player stays dark whatever the viewer's scheme. */
@@ -1663,6 +1667,7 @@ function livePage(id, meta, face, src, ai = AI_NONE) {
   const cfg = JSON.stringify({ copied: COPY.copied, copy: COPY.copyLink, copyThumb: COPY.copyThumbnail, thumbs });
   const player = `${aiPlayer(playerHtml(id, meta), ai)}
 <script>${PLAYER_JS};shroomPlayer(document.querySelector(".player"),${JSON.stringify(src)},${jsonForScript(JSON.stringify(LABELS))},${playing(id, view)})${aiWire(".player", ai)}
+${VIEW_JS};shroomCount(document.getElementById("v"),${JSON.stringify(id)})
 ${COPY_JS}
 ${THUMB_JS}
 (function(){var c=${jsonForScript(cfg)},th=shroomThumbs(c.thumbs);
@@ -1940,6 +1945,8 @@ async function route(request, env, url, now) {
     case "health": only("POST"); return health(request, env, await body(request), now);
     case "gone": only("POST"); return gone(request, env, await body(request), now);
     case "ai": only("POST"); return aiAskRoute(request, env, url, now);
+    case "cleanup": only("POST"); return cleanup(request, env, await body(request), now);
+    case "plays": return plays(request, env, url, now);
   }
   const target = path.match(/^(invites|members|devices)\/([^/]+)$/);
   if (target) {
@@ -2828,6 +2835,8 @@ async function gone(request, env, b, now) {
   if (owner !== who.mid && !who.ownerClass) throw new Refusal(403, "not-yours");
   if (meta.exists && !meta.deleted) throw new Refusal(409, "not-deleted");
   await env.BUCKET.put(`${GONE}${b.rec}`, JSON.stringify({ v: 1, by: who.did, at: iso(now) }), { httpMetadata: JSON_TYPE });
+  // Its plays go with it (N68): a deleted video's counts are no one's to keep.
+  await env.BUCKET.delete(`${VIEWS}${b.rec}.json`).catch(() => {});
   return noContent();
 }
 
@@ -2960,6 +2969,365 @@ const JOIN_STYLE = `body{padding:0 16px 24px;font-size:15px;line-height:1.55}
 .end{padding-top:32px;display:flex;justify-content:flex-end}
 .made{display:flex;align-items:center;gap:8px;min-height:44px;color:var(--quiet);font-size:13px;text-decoration:none}.made:hover{color:var(--text)}.made svg{display:block;width:17px;height:18px}
 @media (max-width:600px){.join{padding-top:24px;gap:24px}#get{gap:24px}#get>.line:first-child{margin-top:-12px}}`;
+
+// ════════════════════════════════════════════════════════════════════════════════════
+// Plays, and videos suggested to clean up (N68; WORKER-INTERFACE §4.22)
+// ════════════════════════════════════════════════════════════════════════════════════
+//
+// The page counts its own plays, in the owner's bucket, with nothing that names a viewer:
+// no cookie, no stored address. The player sends two beacons a page load — `play` at its
+// first play, `end` whenever the tab hides (the last one wins) — each carrying a random
+// token that lives only in that page's memory. The Worker keeps one record per video,
+// `.shroom/views/<id>.json`, written by compare-and-swap:
+//
+//   { "v": 1, "plays", "viewers", "ends", "watch": [10 counts by tenths watched],
+//     "watchedSec", "firstAt", "lastAt", "days": { "YYYY-MM-DD": plays },
+//     "today": { "d": "YYYY-MM-DD", "h": [viewer hashes], "t": { token: tenth } } }
+//
+// `viewers` is unique-ish: a viewer is the first 8 hex of SHA-256(the day's salt, the
+// address, the browser's name, the id), kept for that day only; the salt
+// (`.shroom/views/salt.json`) is replaced each day, so yesterday's hashes can't be
+// recomputed. `.shroom/views/since.json` remembers when counting began; `.shroom/plays.json`
+// (`{on, at}`, owner-class's switch, N68) turns counting off when `on` is false. Nothing under .shroom/ is ever served, and no recording credential
+// reaches it, so a Mac can't write plays either.
+
+const VIEWS = ".shroom/views/";
+const PLAYS_KEY = ".shroom/plays.json";
+const VIEW_SALT = `${VIEWS}salt.json`;
+const VIEW_SINCE = `${VIEWS}since.json`;
+const VIEW_BODY_MAX = 512;
+/** Hashes and tokens held for a day, per video: past these a play still counts, undeduped. */
+const VIEW_DAY_CAP = 1000;
+/** Days of per-day plays kept (the fading score reads them; older ones fold into `plays`). */
+const VIEW_DAYS_KEPT = 400;
+const VIEW_TOKEN = /^[A-Za-z0-9_-]{8,32}$/;
+
+/** The page's two beacons. Owner pages never carry it: a maker watching their own video
+ * isn't a play. `navigator.sendBeacon` with a text body is a simple request; the Worker
+ * checks the Origin beside it. */
+export const VIEW_JS = `function shroomCount(v,id){if(!navigator.sendBeacon)return;var t=Math.random().toString(36).slice(2,14)+Math.random().toString(36).slice(2,8),played=false;
+function send(e,f){try{navigator.sendBeacon("/_shroom/view/"+id,JSON.stringify(f==null?{e:e,t:t}:{e:e,t:t,f:f}))}catch(x){}}
+function seen(){var d=isFinite(v.duration)&&v.duration>0?v.duration:0,r=v.played,s=0;if(!d||!r)return 0;for(var i=0;i<r.length;i++)s+=r.end(i)-r.start(i);return Math.max(0,Math.min(1,s/d))}
+v.addEventListener("play",function(){if(!played){played=true;send("play")}});
+function hide(){if(played)send("end",Math.round(seen()*1000)/1000)}
+document.addEventListener("visibilitychange",function(){if(document.visibilityState==="hidden")hide()});window.addEventListener("pagehide",hide)}`;
+
+/** @param {number} ms */
+const dayOf = (ms) => iso(ms).slice(0, 10);
+
+/** `POST /_shroom/view/<id>`: one beacon. Always 204 unless the request is malformed or
+ * cross-site — a beacon learns nothing, and nobody waits on it. A video that isn't live
+ * gets no record (so a guessed id can't fill the bucket). */
+/** @param {Request} request @param {Env} env @param {URL} url @param {string} id @param {number} now */
+async function viewBeacon(request, env, url, id, now) {
+  // WebKit sends a beacon from a page being left as `Origin: null`; a named other origin,
+  // or the browser's own word that it's cross-site, is refused.
+  const origin = request.headers.get("origin");
+  if ((origin !== null && origin !== "null" && origin !== url.origin) || request.headers.get("sec-fetch-site") === "cross-site") return plain(403, "");
+  /** @type {any} */
+  let b;
+  try { b = JSON.parse(new TextDecoder().decode(await readCapped(request, VIEW_BODY_MAX))); } catch { return plain(400, ""); }
+  if (!b || (b.e !== "play" && b.e !== "end") || typeof b.t !== "string" || !VIEW_TOKEN.test(b.t)) return plain(400, "");
+  const f = b.e === "end" ? Number(b.f) : 0;
+  if (b.e === "end" && !(f >= 0 && f <= 1)) return plain(400, "");
+  const [meta, on] = await Promise.all([readMeta(env, id).catch(() => null), playsOn(env).catch(() => true)]);
+  if (!on || !meta || meta.state !== "live") return noContent();
+  const viewer = b.e === "play" ? await viewerHash(env, request, id, now) : null;
+  await countView(env, id, { e: b.e, t: b.t, f, viewer }, now, Number(meta.durationSec) > 0 ? Number(meta.durationSec) : 0).catch(() => {});
+  return noContent();
+}
+
+/** Whether the space counts plays: on unless owner-class turned it off (N68). @param {Env} env */
+async function playsOn(env) {
+  const object = await env.BUCKET.get(PLAYS_KEY);
+  if (!object) return true;
+  try { return JSON.parse(await object.text()).on !== false; } catch { return true; }
+}
+
+/** `GET /_shroom/api/plays` → `{on}`, any device; `POST {on}` sets it, owner-class only —
+ * the space-global switch beside the mark's (§4.15). Turning it off stops counting; what
+ * was counted stays, so the suggestions keep their history if it's turned on again.
+ * @param {Request} request @param {Env} env @param {URL} url @param {number} now */
+async function plays(request, env, url, now) {
+  if (request.method === "GET") {
+    await authed(request, env);
+    return answer({ on: await playsOn(env) });
+  }
+  if (request.method !== "POST") throw new Refusal(405, "method");
+  const { who } = await authed(request, env);
+  ownerClassOnly(who);
+  const b = await body(request);
+  if (typeof b.on !== "boolean") throw bad();
+  await env.BUCKET.put(PLAYS_KEY, JSON.stringify({ on: b.on, at: iso(now) }), { httpMetadata: JSON_TYPE });
+  return answer({ on: b.on });
+}
+
+/** The day's salt, made when the day turns (create-only, then by CAS: two isolates racing
+ * at midnight agree on one). @param {Env} env @param {number} now */
+async function daySalt(env, now) {
+  const day = dayOf(now);
+  for (let i = 0; i < CAS_TRIES; i++) {
+    const o = await env.BUCKET.get(VIEW_SALT);
+    /** @type {any} */
+    let cur = null;
+    if (o) { try { cur = JSON.parse(await o.text()); } catch { cur = null; } }
+    if (cur?.d === day && typeof cur.salt === "string") return cur.salt;
+    const salt = toB64url(crypto.getRandomValues(new Uint8Array(16)));
+    const put = await env.BUCKET.put(VIEW_SALT, JSON.stringify({ d: day, salt }), { onlyIf: o ? { etagMatches: o.etag } : { etagDoesNotMatch: "*" }, httpMetadata: JSON_TYPE }).catch(() => null);
+    if (put) return salt;
+  }
+  throw new Refusal(503, "busy");
+}
+
+/** @param {Env} env @param {Request} request @param {string} id @param {number} now */
+async function viewerHash(env, request, id, now) {
+  const salt = await daySalt(env, now);
+  const ip = request.headers.get("cf-connecting-ip") ?? "";
+  const ua = request.headers.get("user-agent") ?? "";
+  return (await sha256Hex(`${salt}\n${ip}\n${ua}\n${id}`)).slice(0, 8);
+}
+
+/** A fresh record. @param {number} now */
+const emptyViews = (now) => ({ v: 1, plays: 0, viewers: 0, ends: 0, watch: Array(10).fill(0), watchedSec: 0, firstAt: null, lastAt: null, days: {}, today: { d: dayOf(now), h: [], t: {} } });
+
+/** Applies one beacon to a record (pure; exported for the tests).
+ * @param {any} rec @param {{ e: string, t: string, f: number, viewer: string | null }} beacon @param {number} now @param {number} durationSec */
+export function applyView(rec, beacon, now, durationSec) {
+  const r = rec && rec.v === 1 ? structuredClone(rec) : emptyViews(now);
+  const day = dayOf(now);
+  if (r.today?.d !== day) r.today = { d: day, h: [], t: {} };
+  const tenth = (/** @type {number} */ f) => Math.min(9, Math.floor(f * 10));
+  const known = Object.prototype.hasOwnProperty.call(r.today.t, beacon.t);
+  if (beacon.e === "play") {
+    if (known) return null; // this page load's play already counted
+    r.plays += 1;
+    r.days[day] = (r.days[day] ?? 0) + 1;
+    r.firstAt ??= iso(now);
+    r.lastAt = iso(now);
+    if (beacon.viewer && !r.today.h.includes(beacon.viewer)) {
+      r.viewers += 1;
+      if (r.today.h.length < VIEW_DAY_CAP) r.today.h.push(beacon.viewer);
+    }
+    if (Object.keys(r.today.t).length < VIEW_DAY_CAP) r.today.t[beacon.t] = -1; // played, not yet ended
+  } else {
+    // An end counts once per page load, its latest value replacing the one before; an end
+    // whose play was another day (or past the cap) still lands, as a new one.
+    const before = known ? r.today.t[beacon.t] : -1;
+    const now10 = tenth(beacon.f);
+    if (before >= 0) {
+      r.watch[before] -= 1;
+      r.watchedSec -= (before + 0.5) / 10 * durationSec;
+    } else r.ends += 1;
+    r.watch[now10] += 1;
+    r.watchedSec = Math.max(0, r.watchedSec + (now10 + 0.5) / 10 * durationSec);
+    if (known || Object.keys(r.today.t).length < VIEW_DAY_CAP) r.today.t[beacon.t] = now10;
+  }
+  const days = Object.keys(r.days).sort();
+  for (const d of days.slice(0, Math.max(0, days.length - VIEW_DAYS_KEPT))) delete r.days[d];
+  return r;
+}
+
+/** @param {Env} env @param {string} id @param {{ e: string, t: string, f: number, viewer: string | null }} beacon @param {number} now @param {number} dur */
+async function countView(env, id, beacon, now, dur) {
+  const key = `${VIEWS}${id}.json`;
+  for (let i = 0; i < CAS_TRIES; i++) {
+    const o = await env.BUCKET.get(key);
+    // A video's first record: the day counting began is set too, once (create-only; a lost
+    // race means it's already there).
+    if (!o && i === 0) await env.BUCKET.put(VIEW_SINCE, JSON.stringify({ since: iso(now) }), { onlyIf: { etagDoesNotMatch: "*" }, httpMetadata: JSON_TYPE }).catch(() => null);
+    /** @type {any} */
+    let cur = null;
+    if (o) { try { cur = JSON.parse(await o.text()); } catch { cur = null; } }
+    const next = applyView(cur, beacon, now, dur);
+    if (!next) return;
+    if (await casPut(env, key, JSON.stringify(next), o ? { etagMatches: o.etag } : { etagDoesNotMatch: "*" })) return;
+    await new Promise((ok) => setTimeout(ok, 20 + Math.random() * 80));
+  }
+}
+
+/** The median share watched, from the tenths histogram (each tenth read at its middle),
+ * or null with no ends. @param {any} rec */
+export function medianWatched(rec) {
+  const w = Array.isArray(rec?.watch) ? rec.watch : [];
+  const n = w.reduce((/** @type {number} */ a, /** @type {number} */ b) => a + Math.max(0, b), 0);
+  if (!n) return null;
+  let seen = 0;
+  for (let i = 0; i < 10; i++) { seen += Math.max(0, w[i]); if (seen >= n / 2) return (i + 0.5) / 10; }
+  return 0.95;
+}
+
+/** Plays since `fromMs`, from the per-day counts. @param {any} rec @param {number} fromMs */
+const playsSince = (rec, fromMs) => Object.entries(rec?.days ?? {}).reduce((a, [d, n]) => (Date.parse(`${d}T00:00:00Z`) >= fromMs - DAY_MS ? a + Number(n) : a), 0);
+
+// ───────── the scores ─────────
+
+/** What a GB-month of R2 costs, and the free space, as Cloudflare lists them (Standard
+ * storage, 2026-10). The landing's “about 5 cents per hour of video” is this price at the
+ * byte rate below. */
+export const R2_PRICE = { usdPerGbMonth: 0.015, freeGb: 10 };
+/** Bytes a second of video takes in the bucket — the stream and its single-file copy at
+ * Normal — when the record doesn't say: the FAQ's “about three hours … in the free tier”. */
+export const BYTES_PER_SEC = Math.round(10e9 / (3 * 3600));
+/** No video is suggested younger than this, or played more recently. */
+export const CLEANUP_GRACE_DAYS = 14;
+
+/** The scores, each a rule that says why. `fading-cost` is Bagrat's pick (2026-10-18: fading
+ * and cost together); the other four are kept for comparison. */
+export const FORMULAS = ["fading-cost", "idle", "fading", "cost", "gravity"];
+/** fading-cost's two gates: what's left of its plays (a 30-day half-life, each weighted by
+ * how far it was watched) is under a quarter of one fresh full watch, and it takes at least
+ * a cent a month at list price (≈ 0.67 GB, about 12 minutes at Normal). */
+export const FADING_COST = { halfLifeDays: 30, heatBelow: 0.25, usdAtLeast: 0.01 };
+
+/** A video's facts, as the scores read them.
+ * @param {any} meta @param {any} rec the video's plays record, or null @param {number} now @param {number | null} sinceMs when counting began */
+export function cleanupFacts(meta, rec, now, sinceMs) {
+  const created = Date.parse(meta?.createdAt) || now;
+  const dur = Number(meta?.durationSec) > 0 ? Number(meta.durationSec) : 0;
+  const bytes = Number(meta?.bytes) > 0 ? Number(meta.bytes) : Math.round(dur * BYTES_PER_SEC);
+  const last = rec?.lastAt ? Date.parse(rec.lastAt) : null;
+  // What counting has seen of the video: from its making, or from when counting began.
+  const watchedFrom = sinceMs === null ? null : Math.max(created, sinceMs);
+  return {
+    ageDays: (now - created) / DAY_MS,
+    durationSec: dur,
+    bytes,
+    usdPerMonth: (bytes / 1e9) * R2_PRICE.usdPerGbMonth,
+    plays: Number(rec?.plays) || 0,
+    viewers: Number(rec?.viewers) || 0,
+    medianWatched: medianWatched(rec),
+    lastPlayedAt: last === null ? null : iso(last),
+    plays90: rec ? playsSince(rec, now - 90 * DAY_MS) : 0,
+    // Days nobody has played it, as far as counting can tell (null: it can't tell yet).
+    quietDays: last !== null ? (now - last) / DAY_MS : watchedFrom === null ? null : (now - watchedFrom) / DAY_MS,
+    keep: meta?.keep === true,
+    /** @type {Record<string, number>} */
+    days: rec?.days ?? {},
+  };
+}
+
+/** One video's verdict under a formula: `{ candidate, score, reason }`, where `reason` is a
+ * code and the facts its line needs — the words are the surface's. The higher the score,
+ * the sooner it's suggested.
+ * @param {ReturnType<typeof cleanupFacts>} x @param {string} formula @param {number} now */
+export function cleanupScore(x, formula, now) {
+  const no = (/** @type {string} */ why) => ({ candidate: false, score: 0, reason: { code: why } });
+  if (x.keep) return no("kept");
+  if (x.ageDays < CLEANUP_GRACE_DAYS) return no("new");
+  if (x.quietDays !== null && x.quietDays < CLEANUP_GRACE_DAYS) return no("watched-lately");
+  if (x.quietDays === null) return no("counting-too-new");
+  const facts = { plays: x.plays, lastPlayedAt: x.lastPlayedAt, quietDays: Math.floor(x.quietDays), ageDays: Math.floor(x.ageDays), bytes: x.bytes, medianWatched: x.medianWatched };
+  const code = x.plays === 0 ? "never-played" : x.medianWatched !== null && x.medianWatched < 0.25 ? "stopped-early" : "not-lately";
+  const gb = x.bytes / 1e9;
+  let heat = 0;
+  for (const [d, n] of Object.entries(x.days)) heat += Number(n) * 0.5 ** ((now - Date.parse(`${d}T12:00:00Z`)) / DAY_MS / FADING_COST.halfLifeDays);
+  heat *= 0.3 + 0.7 * (x.medianWatched ?? 0.5);
+  switch (formula) {
+    case "fading-cost": {
+      // B + C: its plays have faded and it takes room worth paying for. The dearest per unit
+      // of what's left of its plays goes first (cost ÷ heat, GreedyDual-Size's shape). The
+      // gate is the list price, not the bill: inside the free 10 GB it still names what
+      // takes the room, and the saving line says it saves nothing yet.
+      const yes = heat < FADING_COST.heatBelow && x.usdPerMonth >= FADING_COST.usdAtLeast && x.ageDays >= 30 && x.quietDays >= 30;
+      return { candidate: yes, score: yes ? x.usdPerMonth / (heat + 0.05) : 0, reason: { code, heat: Math.round(heat * 1000) / 1000, usdPerMonth: x.usdPerMonth, ...facts } };
+    }
+    case "idle": {
+      // A: nobody has played it in 60 days (30 if nobody ever has). Biggest and quietest first.
+      const due = x.plays === 0 ? 30 : 60;
+      const yes = x.quietDays >= due;
+      return { candidate: yes, score: yes ? x.quietDays * Math.max(gb, 0.01) : 0, reason: { code, ...facts } };
+    }
+    case "fading": {
+      // B: plays fade with a 30-day half-life, each worth more the further it's watched.
+      // Below a quarter of a fresh full watch, and at least 30 days old, it's suggested.
+      const yes = heat < 0.25 && x.ageDays >= 30;
+      return { candidate: yes, score: yes ? Math.max(gb, 0.01) / (heat + 0.05) : 0, reason: { code, heat: Math.round(heat * 1000) / 1000, ...facts } };
+    }
+    case "cost": {
+      // C: money first. It's suggested when it costs at least a cent a month and drew less
+      // than one play a month over the last 90 days; the dearest per play goes first.
+      const perMonth = x.plays90 / 3;
+      const yes = x.usdPerMonth >= 0.01 && perMonth < 1 && x.quietDays >= 30;
+      return { candidate: yes, score: yes ? x.usdPerMonth / Math.max(perMonth, 0.1) : 0, reason: { code: yes ? "big-and-quiet" : code, plays90: x.plays90, usdPerMonth: x.usdPerMonth, ...facts } };
+    }
+    case "gravity": {
+      // D: Hacker News's gravity turned round — watched plays over age^1.5. A video whose
+      // pull has sunk below a small floor is suggested.
+      const pull = (x.plays * (0.5 + (x.medianWatched ?? 0.5)) + 1) / (x.ageDays + 2) ** 1.5;
+      const yes = pull < 0.004 && x.quietDays >= 30;
+      return { candidate: yes, score: yes ? Math.max(gb, 0.01) / pull : 0, reason: { code, pull: Math.round(pull * 1e5) / 1e5, ...facts } };
+    }
+  }
+  throw bad();
+}
+
+/** What deleting `freed` bytes saves a month, given the space holds `total`: nothing while
+ * the space stays inside the free 10 GB. @param {number} total @param {number} freed */
+export function monthlySaving(total, freed) {
+  const free = R2_PRICE.freeGb * 1e9;
+  const billed = (/** @type {number} */ b) => Math.max(0, b - free);
+  return ((billed(total) - billed(Math.max(0, total - freed))) / 1e9) * R2_PRICE.usdPerGbMonth;
+}
+
+/** `POST /_shroom/api/cleanup` `{scope, formula?, after?}` → one page of the space's
+ * videos with their plays and verdicts: `{countingSince, counting, formula, items, next}`
+ * (`counting`: the space's switch, N68). Paged as
+ * the Library is (§4.10): at most 40 records a call; `next` is where the next call starts,
+ * null at the end. A member sees their own; owner-class may ask for everyone's.
+ * @param {Request} request @param {Env} env @param {any} b @param {number} now */
+async function cleanup(request, env, b, now) {
+  const { who } = await authed(request, env);
+  const scope = b.scope ?? "mine";
+  if (scope !== "mine" && scope !== "everyone") throw bad();
+  if (!who.ownerClass && scope !== "mine") throw new Refusal(403, "forbidden");
+  const formula = b.formula ?? "fading-cost";
+  if (!FORMULAS.includes(formula)) throw bad();
+  const after = b.after === undefined || b.after === null ? null : typeof b.after === "string" && ID.test(b.after) ? b.after : (() => { throw bad(); })();
+
+  const [ledgers, metas, sinceO, counting] = await Promise.all([
+    listPage(env, LEDGER, after ? `${LEDGER}${after}` : undefined, true),
+    listPage(env, "meta/", after ? `meta/${after}.json` : undefined, false),
+    env.BUCKET.get(VIEW_SINCE),
+    playsOn(env).catch(() => true),
+  ]);
+  /** @type {any} */
+  let since = null;
+  if (sinceO) { try { since = JSON.parse(await sinceO.text()); } catch { since = null; } }
+  const sinceMs = Date.parse(since?.since) || null;
+  /** @type {string | null} */
+  let end = null;
+  const bound = (/** @type {string | null} */ id) => { if (id !== null && (end === null || id < end)) end = id; };
+  if (ledgers.truncated) bound(lastId(ledgers, ledgerIdOf));
+  if (metas.truncated) bound(lastId(metas, metaIdOf));
+  const inPage = (/** @type {string} */ id) => (!after || id > after) && (end === null || id <= end);
+  const { owners, cut } = await ledgerOwners(env, ledgers, inPage);
+  bound(cut);
+  let ids = metas.objects.map((o) => metaIdOf(o.key)).filter((id) => id !== null && inPage(id)).map((id) => /** @type {string} */ (id))
+    .filter((id) => scope === "everyone" || (owners.get(id) ?? M1) === who.mid);
+  if (ids.length > LIBRARY_BODIES) { end = ids[LIBRARY_BODIES - 1]; ids = ids.slice(0, LIBRARY_BODIES); }
+  // Counting's health over this page, for the Mac's log: records read, ones that wouldn't
+  // read, and the newest play any of them saw (a stale one says counting stopped).
+  const views = { records: 0, unreadable: 0, newestPlayAt: /** @type {string | null} */ (null) };
+  const readViews = async (/** @type {string} */ id) => {
+    try {
+      const o = await env.BUCKET.get(`${VIEWS}${id}.json`);
+      if (!o) return null;
+      const r = JSON.parse(await o.text());
+      views.records += 1;
+      if (typeof r?.lastAt === "string" && (views.newestPlayAt === null || r.lastAt > views.newestPlayAt)) views.newestPlayAt = r.lastAt;
+      return r;
+    } catch { views.unreadable += 1; return null; }
+  };
+  const items = (await Promise.all(ids.map(async (id) => {
+    const [meta, rec] = await Promise.all([readMeta(env, id), readViews(id)]);
+    if (!meta || meta.state !== "live") return null;
+    const x = cleanupFacts(meta, rec, now, sinceMs);
+    const verdict = cleanupScore(x, formula, now);
+    const { days: _days, ...facts } = x;
+    return { id, title: typeof meta.title === "string" ? meta.title : "", createdAt: meta.createdAt ?? null, owner: owners.get(id) ?? M1, ...facts, ...verdict };
+  }))).filter((i) => i !== null);
+  return answer({ countingSince: sinceMs === null ? null : iso(sinceMs), counting, formula, views, items, next: end });
+}
 
 // ───────── the tab icon (DECISIONS B109) ─────────
 

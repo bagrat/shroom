@@ -447,6 +447,26 @@ fn library_rows() -> Vec<(&'static str, &'static str, World)> {
         w.net.online = Fact::known(false, Mono(0));
         w
     }));
+    // Suggested to clean up (N68): the line above the rows, the view, its Undo line, and
+    // the view once nothing is left.
+    rows.push(("library", "library-cleanup-line", suggesting(library(ready(), space_rows()))));
+    rows.push(("library-cleanup", "library-cleanup", {
+        let mut w = suggesting(library(ready(), space_rows()));
+        w.session.fields.library.cleanup = true;
+        w
+    }));
+    rows.push(("library-cleanup", "library-cleanup-undo", {
+        let mut w = suggesting(library(ready(), space_rows()));
+        w.session.fields.library.cleanup = true;
+        w.session.fields.library.undo = Some((RecId("r19".into()), Mono(990)));
+        w
+    }));
+    rows.push(("library-cleanup", "library-cleanup-empty", {
+        let mut w = library(ready(), space_rows());
+        w.suggestions = Fact::known(Suggestions { counting: true, space_bytes: 34_000_000_000, rows: vec![] }, Mono(960));
+        w.session.fields.library.cleanup = true;
+        w
+    }));
     rows.push(("delete-confirm", "library-delete-sheet", {
         let mut w = library(ready(), space_rows());
         w.session.confirm = Some(Confirm::Delete(vec![RecId("r502".into())]));
@@ -458,6 +478,16 @@ fn library_rows() -> Vec<(&'static str, &'static str, World)> {
         w
     }));
     rows
+}
+
+/// What the space said is worth deleting (N68): three of the space's videos, of 34 GB.
+fn suggesting(mut w: World) -> World {
+    let s = |id: &str, bytes: u64, plays: u32, quiet_days: u32| Suggestion { rec: RecId(id.into()), bytes, plays, quiet_days, stopped_early: false };
+    w.suggestions = Fact::known(
+        Suggestions { counting: true, space_bytes: 34_000_000_000, rows: vec![s("onb", 3_200_000_000, 4, 300), s("r19", 1_800_000_000, 0, 45), s("r502", 1_300_000_000, 2, 120)] },
+        Mono(960),
+    );
+    w
 }
 
 fn settings(mut w: World, tab: SettingsTab) -> World {
@@ -487,6 +517,15 @@ fn settings_rows() -> Vec<(&'static str, &'static str, World)> {
     rows.push(("settings-general", "general-up-to-date", {
         let mut w = settings(ready(), SettingsTab::General);
         w.launch.version = "1.2.0".into();
+        w
+    }));
+    // Your videos (N68): the space past the free 10 GB; and inside it, counting off, the
+    // switch's failed line.
+    rows.push(("settings-general", "general-your-videos", suggesting(settings(ready(), SettingsTab::General))));
+    rows.push(("settings-general", "general-your-videos-free", {
+        let mut w = settings(ready(), SettingsTab::General);
+        w.suggestions = Fact::known(Suggestions { counting: false, space_bytes: 8_200_000_000, rows: vec![] }, Mono(960));
+        w.inflight.failures.insert(Op::Plays, Failure { at: Mono(970), class: FailClass::Transport, tries: 1 });
         w
     }));
     rows.push(("settings-general", "general-update-ready", {

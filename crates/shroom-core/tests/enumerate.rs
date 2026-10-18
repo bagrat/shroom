@@ -84,6 +84,7 @@ fn projection_fields(w: &World) {
         removed: _,        // fixed: none
         library: _,        // fixed: unknown (so no row's edited_ms)
         library_ops: _,    // fixed: idle — no write landed, no edited length, no copy owed, no upkeep answered
+        suggestions: _,    // fixed: unknown (region5.rs walks N68)
         update: _,         // walked (popover/tray): ready, applying, failed, an update landed
         members: _,        // walked (popover/tray): standing — fine, revoked, a confirmed strike, behind; no invite (region6.rs's)
         inflight: _,       // walked: one failure class on the wizard's calls

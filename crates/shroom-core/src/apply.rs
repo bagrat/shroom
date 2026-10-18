@@ -8,7 +8,7 @@ use std::sync::Arc;
 use crate::copy;
 use crate::derive::onboarding::{self, At};
 use crate::derive::settings::{self as settings_view, SpaceAt};
-use crate::derive::{COPIED_MS, COUNTDOWN_MS, OneShot, derive, library as library_view};
+use crate::derive::{COPIED_MS, COUNTDOWN_MS, OneShot, UNDO_MS, derive, library as library_view};
 use crate::effect::{CloudCmd, EditCmd, Effect, LibCmd, MemberCmd, MoviesCopy, Perm, PersistOp, PublicUrl, RecCmd, ShellCmd, TakeCmd, UpCmd, UpdCmd};
 use crate::event::{
     ClaimFail, CloudNews, EditStep, EditorNews, Event, Field, JoinAnswer, Key, LibraryNews, MemberNews, OsNews, PeekAnswer, QuitVia, RecNews, ReportNews,
@@ -621,6 +621,11 @@ fn act(w: &mut World, action: Action) -> Out {
             // The AI banner's confirm: back to config, the banner still there (N66).
             if was == Some(Confirm::Ai) {
                 return (vec![], Arm { name: "ai-back", edge: Some(("ai-confirm", "config")) });
+            }
+            // No sheet to take back: it's Suggested to clean up's ‹ Library (N68).
+            if was.is_none() && w.session.fields.library.cleanup {
+                w.session.fields.library.cleanup = false;
+                return (vec![], Arm { name: "cleanup-closed", edge: Some(("library-cleanup", "library")) });
             }
             (vec![], Arm::named("back"))
         }
@@ -1355,7 +1360,56 @@ fn act(w: &mut World, action: Action) -> Out {
             w.session.fields.library.scope = scope;
             (vec![], Arm::named("set-scope"))
         }
+        // ── Suggested to clean up (N68) ──
+        Action::ReviewCleanup => {
+            w.session.fields.library.cleanup = true;
+            w.session.fields.library.renaming = None;
+            (vec![], Arm { name: "cleanup-opened", edge: Some(("library", "library-cleanup")) })
+        }
+        Action::DismissCleanup => {
+            w.prefs.cleanup_dismissed = library_view::suggested(w).iter().map(|(s, _)| s.rec.0.clone()).collect();
+            w.prefs.cleanup_dismissed.sort();
+            (vec![persist_prefs(w)], Arm::named("cleanup-dismissed"))
+        }
+        Action::KeepRow(rec) => {
+            w.library_ops.keeping.insert(rec.clone());
+            (vec![Effect::Library(LibCmd::Keep(rec))], Arm::named("keep"))
+        }
+        Action::DeleteSuggested(rec) => {
+            // One Undo line at a time: a delete it was holding goes now.
+            let fx = send_undone(w);
+            w.session.fields.library.undo = Some((rec, now));
+            (fx, Arm::named("delete-suggested"))
+        }
+        Action::UndoDelete => {
+            w.session.fields.library.undo = None;
+            (vec![], Arm::named("delete-undone"))
+        }
+        Action::DeleteAllSuggested => {
+            let targets: Vec<_> = library_view::suggested(w).into_iter().map(|(s, _)| s.rec).collect();
+            if targets.is_empty() || w.online() == Some(false) {
+                return (vec![], Arm::DROPPED);
+            }
+            w.session.confirm = Some(Confirm::Delete(targets));
+            (vec![], Arm { name: "delete-all-asked", edge: Some(("library-cleanup", "delete-confirm-several")) })
+        }
+        Action::SetPlays(on) => {
+            w.library_ops.plays = Some(on);
+            (vec![Effect::Library(LibCmd::Plays(on))], Arm::named("set-plays"))
+        }
+        Action::SetSuggestCleanup(on) => {
+            w.prefs.suggest_cleanup = on;
+            (vec![persist_prefs(w)], Arm::named("set-suggest-cleanup"))
+        }
     }
+}
+
+/// A one-tap delete waiting on its Undo line, sent now (N68): the line ran out, another
+/// tap took its place, or its window closed.
+fn send_undone(w: &mut World) -> Vec<Effect> {
+    let Some((rec, _)) = w.session.fields.library.undo.take() else { return vec![] };
+    w.library_ops.deleting.insert(rec.clone());
+    vec![Effect::Library(LibCmd::Delete(vec![rec]))]
 }
 
 /// An invite this Mac holds, from any door: a new one starts afresh. Offline, its window
@@ -1398,9 +1452,12 @@ fn forget_invite(w: &mut World, fx: &mut Vec<Effect>) {
 }
 
 /// The ops that speak for one space: a late answer after this Mac left it is stale.
-const SPACE_OPS: [Op; 16] = [
+const SPACE_OPS: [Op; 19] = [
     Op::Ai,
     Op::Cleanup,
+    Op::Suggest,
+    Op::Keep,
+    Op::Plays,
     Op::Validate,
     Op::SaveToken,
     Op::Sweep,
@@ -1966,11 +2023,13 @@ fn window_closed(w: &mut World, kind: WindowKind) -> Out {
         WindowKind::Onboarding => close_onboarding(w),
         WindowKind::Library => {
             w.session.windows.remove(&WindowKind::Library);
+            // A one-tap delete still on its Undo line goes: the tap meant delete (N68).
+            let fx = send_undone(w);
             w.session.fields.library = LibraryFields::default();
             if matches!(w.session.confirm, Some(Confirm::Delete(_) | Confirm::DiscardRow(_))) {
                 w.session.confirm = None;
             }
-            (vec![], Arm::named("library-closed"))
+            (fx, Arm::named("library-closed"))
         }
         WindowKind::Settings => {
             w.session.windows.remove(&WindowKind::Settings);
@@ -3407,6 +3466,9 @@ fn failed(w: &mut World, op: Op, class: crate::world::FailClass) -> Out {
         // A rename or delete that didn't land: the row reads as the space has it again.
         Op::Rename => w.library_ops.renaming.clear(),
         Op::Delete => w.library_ops.deleting.clear(),
+        // A keep or a switch that didn't land: it reads as the space has it (N68).
+        Op::Keep => w.library_ops.keeping.clear(),
+        Op::Plays => w.library_ops.plays = None,
         // The app never quit for the swap: nothing changed — say so once, try later.
         Op::UpdateApply => {
             w.update.applying = false;
@@ -3489,6 +3551,10 @@ fn tick(w: &mut World) -> Out {
     if w.session.copied.as_ref().is_some_and(|(_, at)| now >= at.plus(COPIED_MS)) {
         w.session.copied = None;
     }
+    // A one-tap delete's Undo line runs out: it's sent (N68).
+    if w.session.fields.library.undo.as_ref().is_some_and(|(_, at)| now >= at.plus(UNDO_MS)) {
+        fx.extend(send_undone(w));
+    }
     // Deadlines: nothing waits forever.
     let overdue: Vec<Op> = w.inflight.ops.iter().filter(|(_, d)| **d <= now).map(|(op, _)| *op).collect();
     for op in overdue {
@@ -3511,7 +3577,7 @@ fn library(w: &mut World, news: LibraryNews) -> Out {
     match news {
         // A listing asked before Disconnect is about a space this Mac no longer knows.
         _ if !w.provisioned() => {
-            for op in [Op::LibRefresh, Op::LibCache, Op::Rename, Op::Delete, Op::Cleanup] {
+            for op in [Op::LibRefresh, Op::LibCache, Op::Rename, Op::Delete, Op::Cleanup, Op::Suggest, Op::Keep, Op::Plays] {
                 w.inflight.ops.remove(&op);
             }
             (vec![], Arm::named("library-stale"))
@@ -3524,7 +3590,8 @@ fn library(w: &mut World, news: LibraryNews) -> Out {
                 // When this refresh began (its op's deadline, less its span): the writes
                 // that landed before then are in its listing; later ones still read over it.
                 let began = w.inflight.ops.get(&Op::LibRefresh).map(|d| Mono(d.0.saturating_sub(Op::LibRefresh.deadline_ms()))).unwrap_or(Mono(0));
-                w.library_ops.landed.retain(|_, (_, at)| *at >= began);
+                // A keep is the suggestions' to forget, not the listing's (N68).
+                w.library_ops.landed.retain(|_, (l, at)| *l == Landed::Kept || *at >= began);
                 w.library_ops.edited.retain(|_, (_, at)| *at >= began);
                 answered(w, Op::LibRefresh);
                 w.library_ops.refreshed = Some(now);
@@ -3551,6 +3618,30 @@ fn library(w: &mut World, news: LibraryNews) -> Out {
             }
             (vec![], Arm::named("renamed"))
         }
+        LibraryNews::Suggested(s) => {
+            answered(w, Op::Suggest);
+            // A keep that landed reads over a listing begun before it (as a delete does).
+            let began = Mono(now.0.saturating_sub(Op::Suggest.deadline_ms()));
+            w.library_ops.landed.retain(|_, (l, at)| *l != Landed::Kept || *at >= began);
+            w.suggestions = Fact::known(s, now);
+            (vec![], Arm::named("suggested"))
+        }
+        LibraryNews::Kept(rec) => {
+            w.library_ops.keeping.remove(&rec);
+            w.library_ops.landed.insert(rec, (Landed::Kept, now));
+            if w.library_ops.keeping.is_empty() {
+                answered(w, Op::Keep);
+            }
+            (vec![], Arm::named("kept"))
+        }
+        LibraryNews::Plays(on) => {
+            w.library_ops.plays = None;
+            answered(w, Op::Plays);
+            if let Fact::Known { v, .. } = &mut w.suggestions {
+                v.counting = on;
+            }
+            (vec![], Arm::named("plays-set"))
+        }
         LibraryNews::Deleted(recs) => {
             for r in &recs {
                 w.library_ops.deleting.remove(r);
@@ -3561,6 +3652,13 @@ fn library(w: &mut World, news: LibraryNews) -> Out {
             }
             if let Fact::Known { v, .. } = &mut w.library {
                 Arc::make_mut(v).retain(|r| !recs.contains(&r.rec));
+            }
+            // A suggested one's bytes leave the space's size now, not at the next read: Space
+            // used and the money line say what's left (N68).
+            if let Fact::Known { v, .. } = &mut w.suggestions {
+                let freed: u64 = v.rows.iter().filter(|s| recs.contains(&s.rec)).map(|s| s.bytes).sum();
+                v.space_bytes = v.space_bytes.saturating_sub(freed);
+                v.rows.retain(|s| !recs.contains(&s.rec));
             }
             // Removed everywhere — this Mac's copy of one still uploading too (the person
             // asked; the tombstone came first — DEVIATIONS #16).

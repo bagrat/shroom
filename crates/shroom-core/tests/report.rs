@@ -12,7 +12,7 @@ use shroom_core::effect::{Effect, PublicUrl, ShellCmd};
 use shroom_core::event::{Event, Field, Key, ReportNews, Surface};
 use shroom_core::report::{self, Diagnostics, Kind, Post};
 use shroom_core::scene::{Action, GeneralBody, ReportForm, Scene, SettingsPane, Sheet, Style};
-use shroom_core::time::Mono;
+use shroom_core::time::{Fact, Mono};
 use shroom_core::world::*;
 use support::*;
 
@@ -38,6 +38,8 @@ fn general_open() -> World {
     let mut w = ready();
     w.prefs.settings_tab = Some(SettingsTab::General);
     w.session.windows.insert(WindowKind::Settings, Door::asked(Mono(900)));
+    // Your videos read the space on entry (N68), before the steps here.
+    w.suggestions = Fact::known(Suggestions::default(), Mono(950));
     w
 }
 

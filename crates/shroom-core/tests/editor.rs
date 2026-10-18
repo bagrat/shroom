@@ -56,6 +56,9 @@ fn library() -> World {
     let rows = vec![row(REC, TITLE, true, "m1"), row(OTHER, "Release notes walkthrough", true, "m1"), row("UpLoAdInGrOwXyZ1", "Still going up", false, "m1")];
     w.library = Fact::known(Arc::new(rows), Mono(950));
     w.library_ops.refreshed = Some(Mono(950));
+    // The cleanup suggestions' own read (N68) is theirs to test: off here, so the editor's
+    // effects and wakes are the editor's alone.
+    w.prefs.suggest_cleanup = false;
     w
 }
 

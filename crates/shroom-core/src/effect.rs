@@ -48,6 +48,9 @@ impl Effect {
             Effect::Library(LibCmd::LoadCache) => Some(Op::LibCache),
             Effect::Library(LibCmd::Rename(..)) => Some(Op::Rename),
             Effect::Library(LibCmd::Delete(_)) => Some(Op::Delete),
+            Effect::Library(LibCmd::Suggest { .. }) => Some(Op::Suggest),
+            Effect::Library(LibCmd::Keep(_)) => Some(Op::Keep),
+            Effect::Library(LibCmd::Plays(_)) => Some(Op::Plays),
             Effect::Updater(UpdCmd::Check) => Some(Op::UpdateCheck),
             Effect::Updater(UpdCmd::Download(_)) => Some(Op::UpdateDownload),
             Effect::Updater(UpdCmd::Apply(_)) => Some(Op::UpdateApply),
@@ -244,6 +247,13 @@ pub enum LibCmd {
     /// can still finish (never one this Mac holds), spent or expired page keys. Answers
     /// `Cleaned`.
     Cleanup,
+    /// What the space says is worth deleting (N68): `POST /cleanup` paged to its end, the
+    /// whole space's (`everyone`) on owner-class Macs. Answers `Suggested`.
+    Suggest { everyone: bool },
+    /// Set the record's `keep` (read-modify-write under `If-Match`). Answers `Kept`.
+    Keep(RecId),
+    /// The space's play-count switch (owner-class). Answers `Plays`.
+    Plays(bool),
 }
 
 /// The editor's lane (`runtime/editor.rs`, N63, B195, B197): each answered once, by its news

@@ -1634,6 +1634,11 @@ pub enum Region6 {
     /// invite, records the pattern into it, and — once the owner removed it — reads
     /// `member-revoked` from the live page's `/me`. Live: no fake, no local Worker.
     HbMember,
+    /// N68 on the owner's token Mac: a space with videos nobody has watched in months, one
+    /// played today and one too small to matter. The Library's line, Suggested to clean up,
+    /// each row's cost past the free 10 GB, Keep, a one-tap Delete and its Undo, a Delete
+    /// that goes, and Settings · General's Your videos with Count plays switched off and on.
+    Cleanup,
 }
 
 impl Region6 {
@@ -1647,6 +1652,7 @@ impl Region6 {
             "l6-owner" => Region6::L6Owner,
             "l6-member" => Region6::L6Member,
             "hb-member" => Region6::HbMember,
+            "cleanup" => Region6::Cleanup,
             _ => return None,
         })
     }
@@ -1661,6 +1667,7 @@ impl Region6 {
             Region6::L6Owner => "l6-owner",
             Region6::L6Member => "l6-member",
             Region6::HbMember => "hb-member",
+            Region6::Cleanup => "cleanup",
         }
     }
 
@@ -1668,7 +1675,7 @@ impl Region6 {
         match self {
             Region6::Join | Region6::Switch => |s| window_ids(s.onboarding.as_ref(), None),
             Region6::Members | Region6::Token => |s| window_ids(s.settings.as_ref(), s.settings.as_ref().and_then(|w| w.body.sheet.as_ref())),
-            Region6::Stale | Region6::L6Owner | Region6::L6Member | Region6::HbMember => |s| s.state_ids().join(" | "),
+            Region6::Stale | Region6::L6Owner | Region6::L6Member | Region6::HbMember | Region6::Cleanup => |s| s.state_ids().join(" | "),
         }
     }
 }
@@ -1757,7 +1764,7 @@ pub fn seed_region6(which: Region6, flags: &crate::runtime::DevFlags) -> Result<
             h.write_json("invite", &installer).map_err(|e| e.to_string())?;
             seed.codes.push(code);
         }
-        Region6::Members => {
+        Region6::Members | Region6::Cleanup => {
             // The owner's token Mac, provisioned and enrolled (member #1, the token flag).
             seed_provisioned(flags)?;
             let mut space: SpaceIdentity = h.read_json("space.json").ok_or("no space.json")?;
@@ -1895,6 +1902,7 @@ pub fn drive_region6(app: AppHandle, rt: Runtime, which: Region6, out: PathBuf, 
         Region6::L6Owner => l6_owner(&d, out.parent().unwrap_or(std::path::Path::new("."))),
         Region6::L6Member => l6_member(&d, out.parent().unwrap_or(std::path::Path::new("."))),
         Region6::HbMember => hb_member(&d, out.parent().unwrap_or(std::path::Path::new("."))),
+        Region6::Cleanup => cleanup_drive(&d),
     };
     if let Err(e) = result {
         d.report.lock().unwrap().error = Some(e);
@@ -2214,6 +2222,205 @@ fn members_drive(d: &Drive, _seed: &Region6Seed) -> Result<(), String> {
     d.check("the space holds an own-Mac invite for the copied link", own, "own_mac");
     d.rt.post(Event::WindowClosed(WindowKind::Settings));
     d.wait("closed", 5, |s| s.settings.is_none())?;
+    Ok(())
+}
+
+// ── N68: suggested to clean up ──
+
+/// The cleanup drive's space: (id, title, days old, bytes, plays, days since the last play,
+/// tenth most plays reached). Plays `None`: never played. 10.6 GB in all, just past the free
+/// 10 GB, so the rows say their cost and deleting all three brings the space back inside.
+const CLEANUP_SEEDED: [(&str, &str, i64, u64, Option<(u32, i64, usize)>); 5] = [
+    ("Cdrive000billing", "Code walkthrough: billing service", 380, 3_200_000_000, Some((4, 300, 3))),
+    ("Cdrive00000recap", "Customer call recap (Acme)", 120, 1_800_000_000, None),
+    ("Cdrive00migrated", "Migration dry run", 140, 1_400_000_000, Some((2, 120, 1))),
+    ("Cdrive000000t502", "Where the 502s come from", 60, 4_200_000_000, None),
+    ("Cdrive000standup", "Standup notes", 50, 40_000_000, Some((3, 30, 9))),
+];
+const DAY_SECS: i64 = 86_400;
+
+/// One of the cleanup drive's videos, as a Mac's drained upload leaves its record (`bytes`).
+fn cleanup_meta(id: &str, title: &str, days: i64, bytes: u64, now: i64) -> shroom_upload::meta::Meta {
+    use shroom_upload::{keys, meta};
+    let at = shroom_cloud::registry::iso((now - days * DAY_SECS) as u64);
+    let mut m = meta::Meta::uploading(id, title, &at);
+    m.state = meta::State::Live;
+    m.published_at = Some(at);
+    m.duration_sec = Some(600.0);
+    m.owner = Some("m1".into());
+    m.media = Some(meta::Media { hls: keys::master(id), mp4: None, poster: None, teaser: None, width: 1920, height: 1080 });
+    m.extra.insert("bytes".into(), serde_json::json!(bytes));
+    m
+}
+
+/// The space the drive meets, in the local Worker's bucket: the one the Library reads over
+/// the token's pair (the space's parent, as wiring places it) and the one that counts plays
+/// and answers `/cleanup`.
+fn seed_cleanup(d: &Drive, base: &str) -> Result<(), String> {
+    use shroom_upload::keys;
+    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|t| t.as_secs() as i64).unwrap_or(0);
+    let token = d.rt.home.token().ok_or("no token")?;
+    let cloud = d.rt.cloud(&token);
+    let token_id = cloud.verify(ACCOUNT).map_err(|e| e.to_string())?.id;
+    let pair = cloud.s3_credentials(&token_id);
+    d.seen.lock().unwrap().push(pair.secret_access_key.clone());
+    knob(base, SPACE_A, "parent", serde_json::json!({ "account_id": ACCOUNT, "bucket": shroom_cloud::wire::BUCKET, "key_id": pair.access_key_id, "secret": pair.secret_access_key }))?;
+    knob(base, SPACE_A, "put", serde_json::json!({ "key": ".shroom/views/since.json", "json": { "since": shroom_cloud::registry::iso((now - 200 * DAY_SECS) as u64) } }))?;
+    for (id, title, days, bytes, plays) in CLEANUP_SEEDED {
+        let m = cleanup_meta(id, title, days, bytes, now);
+        knob(base, SPACE_A, "put", serde_json::json!({ "key": keys::meta(id), "json": m }))?;
+        if let Some((n, quiet, tenth)) = plays {
+            let last = now - quiet * DAY_SECS;
+            let day = |t: i64| shroom_cloud::registry::iso(t as u64)[..10].to_string();
+            let mut watch = [0u32; 10];
+            watch[tenth] = n;
+            knob(base, SPACE_A, "put", serde_json::json!({ "key": format!(".shroom/views/{id}.json"), "json": {
+                "v": 1, "plays": n, "viewers": n, "ends": n, "watch": watch, "watchedSec": 0,
+                "firstAt": shroom_cloud::registry::iso(last as u64), "lastAt": shroom_cloud::registry::iso(last as u64),
+                "days": serde_json::Map::from_iter([(day(last), serde_json::json!(n))]), "today": { "d": day(last), "h": [], "t": {} },
+            } }))?;
+        }
+    }
+    Ok(())
+}
+
+/// A viewer plays a video on its page today: the page's beacon, as a browser sends it.
+fn play_today(base: &str, id: &str) -> Result<(), String> {
+    let url = format!("{}/{SPACE_A}/_shroom/view/{id}", base.trim_end_matches('/'));
+    for body in [serde_json::json!({ "e": "play", "t": "drivePlay0001" }), serde_json::json!({ "e": "end", "t": "drivePlay0001", "f": 0.9 })] {
+        ureq::post(&url).header("origin", format!("https://{SPACE_A}")).header("content-type", "text/plain").send(body.to_string()).map_err(|e| format!("the page's beacon: {e}"))?;
+    }
+    Ok(())
+}
+
+fn cleanup_view(s: &Scene) -> Option<&shroom_core::scene::CleanupBody> {
+    s.library.as_ref()?.body.cleanup.as_ref()
+}
+
+fn cleanup_titles(s: &Scene) -> Vec<String> {
+    cleanup_view(s).map(|v| v.rows.iter().filter_map(|r| r.title.clone()).collect()).unwrap_or_default()
+}
+
+fn general_videos(s: &Scene) -> Option<shroom_core::scene::VideosGroup> {
+    match s.settings.as_ref().map(|w| &w.body.pane) {
+        Some(SettingsPane::General(g)) => g.videos.clone(),
+        _ => None,
+    }
+}
+
+fn worker_object(base: &str, key: &str) -> Option<serde_json::Value> {
+    objects(base, SPACE_A).ok()?.into_iter().find(|o| o["key"] == key).and_then(|o| serde_json::from_str(o["text"].as_str()?).ok())
+}
+
+fn cleanup_drive(d: &Drive) -> Result<(), String> {
+    use shroom_upload::keys;
+    let base = d.rt.space_base.clone().ok_or("no --space-base")?;
+    d.wait("ready", 20, |s| s.tray.click == shroom_core::scene::Click::OpenPopover)?;
+    seed_cleanup(d, &base)?;
+    play_today(&base, "Cdrive000000t502")?;
+    let rec = worker_object(&base, ".shroom/views/Cdrive000000t502.json");
+    d.check("the page's beacon is counted in the space", rec.as_ref().is_some_and(|r| r["plays"] == 1 && r["viewers"] == 1 && r["watch"][9] == 1), format!("{rec:?}"));
+    d.step("seeded five videos, their plays, and a play today");
+
+    // The Library: its rows, then the line once the space has said what's worth deleting.
+    d.open(Action::OpenLibrary)?;
+    let s = d.wait("the line above the rows", 30, |s| titles(s).len() == 5 && s.library.as_ref().is_some_and(|l| l.body.cleanup_line.is_some()))?;
+    let line = s.library.as_ref().and_then(|l| l.body.cleanup_line.clone()).expect("the line");
+    d.check("the line counts them and their size", line.line == "Three videos might be worth deleting — they take 6.4 GB.", line.line.clone());
+    d.check("Review… and Not now", line.review.label == "Review…" && line.dismiss.label == "Not now", format!("{} / {}", line.review.label, line.dismiss.label));
+    d.after(2500);
+
+    d.act(Surface::Library, line.review.action.clone());
+    let s = d.wait("library-cleanup", 10, |s| cleanup_view(s).is_some_and(|v| v.rows.len() == 3))?;
+    let v = cleanup_view(&s).expect("the view");
+    d.check("the space's order: the costliest per remaining play first", cleanup_titles(&s) == ["Code walkthrough: billing service", "Customer call recap (Acme)", "Migration dry run"], format!("{:?}", cleanup_titles(&s)));
+    d.check("the one played today and the tiny one aren't suggested", !cleanup_titles(&s).iter().any(|t| t.contains("502") || t.contains("Standup")), format!("{:?}", cleanup_titles(&s)));
+    d.check("the intro: deleting all three brings the space back inside the free 10 GB", v.intro.as_deref() == Some("These might be worth deleting: rarely watched lately, and taking real room. Deleting all three frees 6.4 GB and brings your space back inside Cloudflare's free 10 GB."), format!("{:?}", v.intro));
+    let metas: Vec<String> = v.rows.iter().map(|r| r.meta.clone()).collect();
+    d.check("each row: its size, its cost a month, and why", metas[0].ends_with("3.2 GB · 5¢ a month · Watched 4 times, the last 10 months ago") && metas[1].ends_with("1.8 GB · 3¢ a month · Nobody has watched it") && metas[2].contains("1.4 GB · 2¢ a month · Watched twice, stopped early"), metas.join(" / "));
+    d.check("Delete is red text, Delete all three… too (law 9)", v.rows[0].buttons.iter().any(|b| b.label == "Delete" && b.style == Style::RedText) && v.delete_all.as_ref().is_some_and(|b| b.label == "Delete all three…" && b.style == Style::RedText), "styles");
+    d.after(3000);
+
+    // Keep: off the list for good, and the record says so.
+    let migrated = RecId("Cdrive00migrated".into());
+    d.act(Surface::Library, Action::KeepRow(migrated.clone()));
+    let s = d.wait("kept", 15, |s| cleanup_view(s).is_some_and(|v| v.rows.len() == 2))?;
+    d.check("Keep takes it off the list", !cleanup_titles(&s).iter().any(|t| t == "Migration dry run"), format!("{:?}", cleanup_titles(&s)));
+    let kept = poll(10, || worker_object(&base, &keys::meta(&migrated.0)).filter(|m| m["keep"] == true));
+    d.check("the record says keep", kept.is_some(), "meta keep");
+    d.after(2000);
+
+    // Delete, then Undo: nothing is sent.
+    let recap = RecId("Cdrive00000recap".into());
+    d.act(Surface::Library, Action::DeleteSuggested(recap.clone()));
+    let s = d.wait("the Undo line", 5, |s| cleanup_view(s).is_some_and(|v| v.undo.is_some()))?;
+    let undo = cleanup_view(&s).and_then(|v| v.undo.clone()).expect("undo");
+    d.check("the Undo line names it", undo.line == "Deleted “Customer call recap (Acme)”." && undo.undo.label == "Undo", undo.line.clone());
+    d.after(1500);
+    d.act(Surface::Library, Action::UndoDelete);
+    d.wait("back on the list", 5, |s| cleanup_titles(s).iter().any(|t| t == "Customer call recap (Acme)") && cleanup_view(s).is_some_and(|v| v.undo.is_none()))?;
+    std::thread::sleep(Duration::from_secs(6));
+    let still = worker_object(&base, &keys::meta(&recap.0));
+    d.check("Undo sent nothing: the video is still live", still.as_ref().is_some_and(|m| m["state"] == "live"), format!("{:?}", still.as_ref().map(|m| m["state"].clone())));
+
+    // Delete again, and let it go.
+    d.act(Surface::Library, Action::DeleteSuggested(recap.clone()));
+    d.wait("the Undo line again", 5, |s| cleanup_view(s).is_some_and(|v| v.undo.is_some()))?;
+    let s = d.wait("the delete went", 20, |s| cleanup_view(s).is_some_and(|v| v.undo.is_none() && v.rows.len() == 1) && !titles(s).iter().any(|t| t == "Customer call recap (Acme)"))?;
+    let gone = poll(15, || worker_object(&base, &keys::meta(&recap.0)).filter(|m| m["state"] == "deleted"));
+    d.check("the record is a tombstone", gone.is_some(), "meta deleted");
+    d.check("one left, and no Delete all… for one", cleanup_titles(&s) == ["Code walkthrough: billing service"] && cleanup_view(&s).is_some_and(|v| v.delete_all.is_none()), format!("{:?}", cleanup_titles(&s)));
+    d.after(2500);
+
+    // Back to the Library.
+    d.act(Surface::Library, Action::Back);
+    d.wait("library", 5, |s| s.library.as_ref().is_some_and(|l| l.body.cleanup.is_none()))?;
+    d.after(1500);
+    d.rt.post(Event::WindowClosed(WindowKind::Library));
+    d.wait("closed", 5, |s| s.library.is_none())?;
+
+    // Settings · General: Your videos, the space's size, and Count plays off and on again.
+    // The read Settings asks for meets a busy space once: the failure is in the run log.
+    knob(&base, SPACE_A, "fault", serde_json::json!({ "prefix": "/_shroom/api/cleanup", "status": 500, "count": 1 }))?;
+    d.open(Action::OpenSettings)?;
+    let s = d.wait("Your videos", 30, |s| general_videos(s).is_some_and(|v| v.used.is_some()))?;
+    let v = general_videos(&s).expect("videos");
+    d.check("Your videos: both switches on", v.heading == "Your videos" && v.count.on && v.count.enabled && v.suggest.on, format!("count {} suggest {}", v.count.on, v.suggest.on));
+    d.check("Space used: inside the free 10 GB now", v.used.as_deref().is_some_and(|u| u.ends_with("inside Cloudflare's free 10 GB")), format!("{:?}", v.used));
+    d.after(2500);
+    d.act(Surface::Settings, v.count.action.clone());
+    // The switch moves at once and stays greyed until the space has taken it.
+    d.wait("Count plays off, taken", 20, |s| general_videos(s).is_some_and(|v| !v.count.on && v.count.enabled))?;
+    let sw = worker_object(&base, ".shroom/plays.json");
+    d.check("the space's switch is off", sw.as_ref().is_some_and(|o| o["on"] == false), format!("{sw:?}"));
+    play_today(&base, "Cdrive000billing")?;
+    let rec = worker_object(&base, ".shroom/views/Cdrive000billing.json");
+    d.check("with it off, a play isn't counted", rec.as_ref().is_some_and(|r| r["plays"] == 4), format!("{:?}", rec.as_ref().map(|r| r["plays"].clone())));
+    d.after(2000);
+    let s = snapshot(&d.rt).ok_or("no scene")?;
+    let v = general_videos(&s).ok_or("no Your videos")?;
+    d.act(Surface::Settings, v.count.action.clone());
+    d.wait("Count plays on again, taken", 20, |s| general_videos(s).is_some_and(|v| v.count.on && v.count.enabled))?;
+    let sw = worker_object(&base, ".shroom/plays.json");
+    d.check("the space's switch is on again", sw.as_ref().is_some_and(|o| o["on"] == true), format!("{sw:?}"));
+    d.after(2000);
+    d.rt.post(Event::WindowClosed(WindowKind::Settings));
+    d.wait("closed", 5, |s| s.settings.is_none())?;
+
+    // What a problem report would carry of all this: the run log's lines, as a report
+    // cleans them (no title, no link, no whole id).
+    let log = poll(10, || {
+        let text = std::fs::read_to_string(d.rt.home.root.join("logs/run.log")).ok()?;
+        text.contains("library Suggest: failed").then_some(text)
+    })
+    .unwrap_or_default();
+    let cleaned = shroom_core::report::clean_log(&log);
+    let has = |want: &str| cleaned.lines().any(|l| l.contains(want));
+    d.check("the log: the read, its size and how counting fares", has("library suggestions: 3 of 5 videos, 6.4 GB of 10.6 GB, counting on; plays read 4, unreadable 0, newest play 0h ago"), "library suggestions: …");
+    d.check("the log: each candidate by a short id, why, its score and facts", has("library suggested: Cdri… not-lately s0.") && has(" never-played s0.") && has(" stopped-early s0."), "library suggested: …");
+    d.check("the log: the line showing and going, Keep, the delete and its Undo", ["library: the cleanup line shows", "core cleanup-opened", "library kept Cdri…", "core delete-undone", "library deleted Cdri…"].iter().all(|w| has(w)), "the steps");
+    d.check("the log: the read that met a busy space", has("library Suggest: failed (Transport)"), "the failure");
+    d.check("the log names no video", !CLEANUP_SEEDED.iter().any(|(id, title, ..)| log.contains(title) || log.contains(id)), "no titles, no whole ids");
     Ok(())
 }
 
