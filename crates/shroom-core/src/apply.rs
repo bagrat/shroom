@@ -197,6 +197,7 @@ fn apply_event(w: &mut World, event: Event) -> Out {
             }
         }
         Event::PopoverDismissed => dismiss(w),
+        Event::Cli { id, op } => cli(w, id, op),
         Event::Field { field: Field::LibrarySearch, value } => {
             if derive(w).library.is_none() {
                 return (vec![], Arm::DROPPED);
@@ -470,6 +471,78 @@ fn pause(w: &mut World, cause: Cause) {
         t.phase = Phase::Pausing(cause);
         t.since = w.now;
     }
+}
+
+/// The `shroom` command's ask (dev/proposals/cli-agent-skill.md §3): each op is exactly
+/// what its click does — Start as the popover's (its countdown, its permission beat),
+/// pause as the tray's, Resume and Stop as the paused popover's — and only while the
+/// person has turned on General's “Let it start and stop recordings”. Answered once, with
+/// a code (the command says the words).
+fn cli(w: &mut World, id: u64, op: crate::event::CliOp) -> Out {
+    use crate::event::CliOp;
+    let face = |w: &World| -> &'static str {
+        match (w.session.arming.as_ref(), w.take.as_ref().map(|t| t.phase)) {
+            (Some(_), _) => "countdown",
+            (_, Some(Phase::Paused(_) | Phase::Pausing(_))) => "paused",
+            (_, Some(Phase::Finalizing(_))) => "stopping",
+            (_, Some(_)) => "recording",
+            _ => "none",
+        }
+    };
+    let answer = |w: &World, error: Option<&'static str>, link: Option<String>| {
+        Effect::Cli(crate::effect::CliAnswer { id, ok: error.is_none(), take: face(w), error, link })
+    };
+    let refuse = |w: &World, code: &'static str| (vec![answer(w, Some(code), None)], Arm::named("cli-refused"));
+    if !w.prefs.agent_recording {
+        return refuse(w, "recording_off");
+    }
+    if w.space.identity.is_none() {
+        return refuse(w, "not_set_up");
+    }
+    let phase = w.take.as_ref().map(|t| t.phase);
+    // Between two steps (pausing, resuming, stopping): ask again in a moment.
+    if matches!(phase, Some(Phase::Pausing(_) | Phase::Resuming | Phase::Finalizing(_))) {
+        return refuse(w, "busy");
+    }
+    let (mut fx, arm) = match op {
+        CliOp::Start => {
+            if w.take_open() {
+                return refuse(w, "take_open");
+            }
+            // Start only where the popover would offer it, as if it were open now.
+            let was = w.session.popover.take();
+            w.session.popover = Some(Door::asked(w.now));
+            let offered = derive(w).popover.as_ref().is_some_and(|p| p.offers(&Action::Start));
+            if !offered {
+                w.session.popover = was;
+                return refuse(w, "not_ready");
+            }
+            let out = act(w, Action::Start);
+            if w.session.arming.is_none() {
+                // Not started: a permission beat is asked first, or nothing at all.
+                w.session.popover = was;
+                let mut fx = out.0;
+                fx.push(answer(w, Some("not_ready"), None));
+                return (fx, out.1);
+            }
+            out
+        }
+        CliOp::Pause => match phase {
+            Some(Phase::Recording) => click(w, None),
+            _ => return refuse(w, "no_take"),
+        },
+        CliOp::Resume => match phase {
+            Some(Phase::Paused(cause)) if w.session.confirm.is_none() && crate::derive::resume_ok(w, cause) => act(w, Action::Resume),
+            _ => return refuse(w, "no_take"),
+        },
+        CliOp::Stop => match phase {
+            Some(Phase::Recording | Phase::Paused(_)) => act(w, Action::Stop),
+            _ => return refuse(w, "no_take"),
+        },
+    };
+    let link = (op == CliOp::Stop).then(|| crate::derive::cli_link(w)).flatten();
+    fx.push(answer(w, None, link));
+    (fx, arm)
 }
 
 fn act(w: &mut World, action: Action) -> Out {
@@ -999,6 +1072,19 @@ fn act(w: &mut World, action: Action) -> Out {
         Action::ReportIssue => {
             let version = w.launch.version.clone();
             (vec![Effect::Shell(ShellCmd::OpenUrl(PublicUrl::NewIssue { version }))], Arm::named("report-issue"))
+        }
+        // ── Your coding agent (dev/proposals/cli-agent-skill.md) ──
+        Action::CopyAgentPrompt => {
+            if !w.window_visible(WindowKind::Settings) {
+                return (vec![], Arm::DROPPED);
+            }
+            w.session.copied = Some((CopyTarget::AgentPrompt, w.now));
+            (vec![Effect::Shell(ShellCmd::CopyAgentPrompt)], Arm::named("copy-agent-prompt"))
+        }
+        Action::OpenAgentGuide => (vec![Effect::Shell(ShellCmd::OpenUrl(PublicUrl::AgentGuide))], Arm::named("agent-guide")),
+        Action::SetAgentRecording(on) => {
+            w.prefs.agent_recording = on;
+            (vec![persist_prefs(w)], Arm::named("agent-recording"))
         }
         // ── Report a problem (B180) ──
         Action::CopyDiagnostics => {

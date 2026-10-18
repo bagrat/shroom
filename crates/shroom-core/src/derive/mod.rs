@@ -241,3 +241,10 @@ fn next_wake(w: &World) -> Option<Mono> {
     wakes.extend(next_download(w).map(|(t, _)| t));
     wakes.into_iter().filter(|t| *t > w.now).min()
 }
+
+/// The open take's link, for the `shroom` command's stop (dev/proposals/cli-agent-skill.md):
+/// the page exists from the moment Stop is pressed (law 3: this stop made it).
+pub fn cli_link(w: &World) -> Option<String> {
+    let host = &w.space.identity.as_ref()?.host;
+    Some(format!("https://{host}/{}", w.take.as_ref()?.rec.0))
+}

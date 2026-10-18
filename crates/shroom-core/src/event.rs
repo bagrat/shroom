@@ -132,6 +132,9 @@ pub enum Event {
     /// top-left of the display it's on (N22: you place yourself before Start).
     BubbleMoved((i32, i32)),
     QuitRequested(QuitVia),
+    /// The `shroom` command asked to start, pause, resume or stop a recording, through the
+    /// app's control socket: `id` is the runner's, for its answer (`Effect::Cli`).
+    Cli { id: u64, op: CliOp },
     // ── the OS ──
     Os(OsNews),
     // ── the mechanism ──
@@ -426,4 +429,14 @@ pub enum ReportNews {
     Sent(crate::report::Kind),
     /// It didn't go through: offline, refused, rate-limited or switched off.
     NotSent(crate::report::Kind),
+}
+
+/// What the `shroom` command may ask of the recording — each one exactly what its click does
+/// in the popover or the tray (dev/proposals/cli-agent-skill.md §3).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CliOp {
+    Start,
+    Pause,
+    Resume,
+    Stop,
 }

@@ -966,6 +966,11 @@ pub struct Prefs {
     /// The Settings tab last used; `None` = never opened → General (N36).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub settings_tab: Option<SettingsTab>,
+    /// General's “Let it start and stop recordings”: a coding agent may record through the
+    /// `shroom` command (dev/proposals/cli-agent-skill.md). Off by default (Bagrat,
+    /// 2026-10-18: a Settings switch, off).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub agent_recording: bool,
 }
 
 impl Default for Prefs {
@@ -980,6 +985,7 @@ impl Default for Prefs {
             bubble_at: None,
             setup_chosen: false,
             settings_tab: None,
+            agent_recording: false,
         }
     }
 }
@@ -1093,6 +1099,8 @@ pub enum CopyTarget {
     Invite(SecretId),
     /// Settings · General's Copy diagnostics (B180).
     Diagnostics,
+    /// Settings · General's prompt for a coding agent.
+    AgentPrompt,
 }
 
 /// The account fork (N14's box 1, N19): the plan's one self-reported tick.

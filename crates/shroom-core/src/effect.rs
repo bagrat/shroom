@@ -19,6 +19,20 @@ pub enum Effect {
     Updater(UpdCmd),
     /// The space's Worker, Region 6 (WORKER-INTERFACE §4).
     Member(MemberCmd),
+    /// The answer to one `shroom` command's ask (`Event::Cli`), for the control socket.
+    Cli(CliAnswer),
+}
+
+/// What the app says back to the `shroom` command: a code, never words — the command says
+/// them (dev/proposals/cli-agent-skill.md §3). `take` is the take's face after the ask;
+/// `link` is a stopped take's link.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CliAnswer {
+    pub id: u64,
+    pub ok: bool,
+    pub take: &'static str,
+    pub error: Option<&'static str>,
+    pub link: Option<String>,
 }
 
 impl Effect {
@@ -143,6 +157,8 @@ pub enum PublicUrl {
     /// A send that didn't go through, by mail instead: a draft to hi@shroom.am (N48) with the
     /// words and the version (B180).
     MailReport { version: String, words: String },
+    /// shroom.am/cli: what a coding agent reads to use the `shroom` command.
+    AgentGuide,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -157,6 +173,9 @@ pub enum ShellCmd {
     SendReport(crate::report::Post),
     /// A public link onto the clipboard — only ever from a Copy click (law 10).
     Copy(RecId),
+    /// General's prompt for a coding agent onto the clipboard — only ever from its Copy
+    /// click (law 10).
+    CopyAgentPrompt,
     /// The video's picture wrapped in its link, and the link as text — only ever from a
     /// Copy thumbnail click (law 10, N46). The title names the picture for screen readers.
     CopyThumb(RecId, String),

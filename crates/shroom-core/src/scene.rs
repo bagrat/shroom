@@ -133,6 +133,12 @@ pub enum Action {
     SetLoginItem(bool),
     /// The help line's GitHub door.
     ReportIssue,
+    /// General's “Your coding agent” card: its prompt onto the clipboard (law 10).
+    CopyAgentPrompt,
+    /// The card's “Read it first”: shroom.am/cli in the browser.
+    OpenAgentGuide,
+    /// The card's “Let it start and stop recordings”.
+    SetAgentRecording(bool),
     /// General's “Copy diagnostics”: the report onto the clipboard (B180, law 10).
     CopyDiagnostics,
     /// General's “Report a problem…” — opens its sheet (B180).
@@ -844,6 +850,20 @@ pub struct GeneralBody {
     pub help_links: Vec<Button>,
     /// “Uninstall shroom…”, quiet text at the tab's foot (B135).
     pub uninstall: Button,
+    /// “Your coding agent” (dev/proposals/cli-agent-skill.md, provisional).
+    pub agent: AgentCard,
+}
+
+/// General's card for a coding agent: the prompt to paste, Copy, “Read it first”, the line
+/// under them, and whether the agent may start and stop recordings (off by default).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct AgentCard {
+    pub label: String,
+    pub prompt: String,
+    pub copy: Button,
+    pub read_first: Button,
+    pub line: String,
+    pub recording: Toggle,
 }
 
 /// The Report a problem sheet's form, between its line and its buttons (B180).
@@ -1047,7 +1067,14 @@ impl Window<SettingsBody> {
         }
         match &self.body.pane {
             SettingsPane::General(g) => {
-                g.update.iter().chain(&g.whats_new).chain([&g.copy_diagnostics, &g.report]).chain(&g.help_links).chain(std::iter::once(&g.uninstall)).collect()
+                g.update
+                    .iter()
+                    .chain(&g.whats_new)
+                    .chain([&g.copy_diagnostics, &g.report])
+                    .chain(&g.help_links)
+                    .chain([&g.agent.copy, &g.agent.read_first])
+                    .chain(std::iter::once(&g.uninstall))
+                    .collect()
             }
             SettingsPane::Space(sp) => {
                 let mut out = nest_buttons(&sp.plan.nest);
@@ -1083,7 +1110,7 @@ impl Window<SettingsBody> {
             return true;
         }
         match &self.body.pane {
-            SettingsPane::General(g) => g.login.enabled && &g.login.action == action,
+            SettingsPane::General(g) => [&g.login, &g.agent.recording].into_iter().any(|t| t.enabled && &t.action == action),
             SettingsPane::Space(sp) => sp.mark.as_ref().is_some_and(|t| t.enabled && &t.action == action),
             // Esc in the name being changed puts it back (B158).
             SettingsPane::Members(m) => *action == Action::KeepFrom && matches!(m.from, FromName::Changing { .. }),
