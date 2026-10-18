@@ -3,9 +3,9 @@
 //
 // One of the fixture's lines is ratified as a shape, not as words: the system-requirements
 // sentence (“fill the facts in, don't reword”). It is checked against its facts instead —
-// the floor and the kinds of Mac from what actually ships. The demo plays in place (N58):
-// its block names a real recording, and the page fetches the video only from script.
-import { existsSync, readFileSync } from "node:fs";
+// the floor and the kinds of Mac from what actually ships. The how-to video plays in place
+// (N58, N61): it is the site's own file, and the page fetches it only from script.
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
@@ -33,8 +33,7 @@ const shipped = [...archCase.matchAll(/^\s*([a-z0-9_|]+)\)\s*;;/gm)].flatMap((m)
 const KIND = { arm64: "Apple silicon", x86_64: "Intel" };
 const kinds = ["arm64", "x86_64"].filter((a) => shipped.includes(a)).map((a) => KIND[a]).join(" and ");
 
-const demo = html.match(/<section class="demo"[^>]*>[\s\S]*?<\/section>/)?.[0] ?? "";
-const ID = /^[A-Za-z0-9_-]{16}$/; // DECISIONS B14: 12 random bytes, base64url
+const video = html.match(/<section class="how-to"[^>]*>[\s\S]*?<\/section>/)?.[0] ?? "";
 
 describe("the landing", () => {
   it("says every ratified line verbatim", () => {
@@ -58,35 +57,38 @@ describe("the landing", () => {
     assert.deepEqual(said, [line], "no other version of the sentence is on the page");
   });
 
-  it("plays a real recording in place, right above Install (N58, N59)", () => {
-    assert.doesNotMatch(demo, /<section class="demo"[^>]*\bhidden\b/, "the demo block shows");
-    const id = demo.match(/data-id="([^"]*)"/)?.[1] ?? "";
-    assert.match(id, ID, "the demo is a real recording id");
-    assert.match(demo.match(/data-space="([^"]*)"/)?.[1] ?? "", /^v\.[a-z0-9-]+\.workers\.dev$/, "the space it plays from");
-    assert.doesNotMatch(demo, /href=/, "the demo links nowhere: it plays on the landing, never on the player page");
-    const words = visible(demo.replace(/<span[^>]*aria-hidden="true"[^>]*>[\s\S]*?<\/span>/g, "")).trim();
+  it("plays the how-to video in place, right above Install (N58, N59, N61)", () => {
+    assert.doesNotMatch(video, /<section class="how-to"[^>]*\bhidden\b/, "the video's block shows");
+    assert.equal(video.match(/data-src="([^"]*)"/)?.[1], "/how-to.mp4", "the video is shroom.am's own file");
+    assert.doesNotMatch(video, /href=/, "the video links nowhere: it plays on the landing");
+    const words = visible(video.replace(/<span[^>]*aria-hidden="true"[^>]*>[\s\S]*?<\/span>/g, "")).trim();
     assert.equal(words, "", "no caption (Bagrat, 2026-10-17): the still and its play button speak for it; the length is decoration");
     assert.ok(!landing.said.some((l) => l.id === "landing.recorded-with-shroom-itself"), "the caption's said-line is gone from the spec");
-    assert.match(demo, /<video\b[^>]*\bpreload="none"/, "nothing loads before the script asks");
-    assert.doesNotMatch(demo, /<video\b[^>]*\bsrc=/, "the video's address is set by script, as the block nears the screen");
-    assert.match(demo, /<img src="demo-poster\.webp"/, "the still is the site's own file");
-    const order = ['class="terms"', 'class="demo"', 'id="install"'].map((k) => html.indexOf(k));
-    assert.ok(order[0] < order[1] && order[1] < order[2], "the demo's box comes after the terms (beside them on a laptop), and Install under the demo (N59)");
+    assert.match(video, /<button type="button" class="still" aria-label="Play how to set up and use shroom, 4 minutes">/, "its name to VoiceOver (N61)");
+    assert.match(video, /<span class="len" aria-hidden="true">4 mins<\/span>/, "its length, in minutes (N61; Bagrat, 2026-10-18)");
+    assert.doesNotMatch(html, /\bdemo\b|recorded with shroom/i, "it isn't a shroom recording, and the page doesn't call it a demo (N61)");
+    assert.match(video, /<video\b[^>]*\bpreload="none"/, "nothing loads before the script asks");
+    assert.doesNotMatch(video, /<video\b[^>]*\bsrc=/, "the video's address is set by script, as the block nears the screen");
+    assert.match(video, /<img src="how-to-poster\.webp" alt="" width="1440" height="936"/, "the still is the site's own file");
+    const order = ['class="terms"', 'class="how-to"', 'id="install"'].map((k) => html.indexOf(k));
+    assert.ok(order[0] < order[1] && order[1] < order[2], "the video's box comes after the terms (beside them on a laptop), and Install under the video (N59)");
   });
 
-  it("ships the demo's still with the page", () => {
+  it("ships the video and its still with the page", () => {
     const build = readFileSync(`${ROOT}site/build.mjs`, "utf8");
-    assert.ok(existsSync(`${ROOT}site/demo-poster.webp`), "site/demo-poster.webp is there");
-    assert.match(build, /"demo-poster\.webp"/, "build.mjs copies it into what the site serves");
+    assert.ok(existsSync(`${ROOT}site/how-to-poster.webp`), "site/how-to-poster.webp is there");
+    assert.match(build, /"how-to-poster\.webp"/, "build.mjs copies it into what the site serves");
+    // Cloudflare serves no single file over 25 MiB.
+    assert.ok(statSync(`${ROOT}site/how-to.mp4`).size < 25 * 1024 * 1024, "site/how-to.mp4 is under the asset limit");
+    assert.match(build, /"how-to\.mp4"/, "build.mjs copies the video into what the site serves");
   });
 
-  it("loads nothing from anyone else, but the demo's video from the maker's own space", () => {
-    // Links people follow are fine; nothing the markup itself fetches may be remote.
+  it("loads nothing from anyone else", () => {
+    // Links people follow are fine; nothing the page fetches may be remote, the video included.
     assert.doesNotMatch(html, /<(?:script|link|img|video|source|iframe)[^>]*\b(?:src|href)="https?:/, "a remote fetch in the markup");
-    // The script's one remote address is the demo's video, in the space the block names (N58).
     const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]).join("\n");
-    assert.deepEqual([...scripts.matchAll(/https?:\/\/[^"'\s]*/g)].map((m) => m[0]), ["https://"], "only the demo's address is built in script");
-    assert.match(scripts, /"https:\/\/" \+ box\.getAttribute\("data-space"\) \+ "\/m\/" \+ box\.getAttribute\("data-id"\) \+ "\/video\.mp4"/);
+    assert.deepEqual([...scripts.matchAll(/https?:\/\/[^"'\s]*/g)].map((m) => m[0]), [], "no remote address is built in script");
+    assert.match(scripts, /var src = box\.getAttribute\("data-src"\);/);
   });
 
   it("offers the install line first, then Homebrew, then the agent, in tabs (N59)", () => {
@@ -108,9 +110,9 @@ describe("the landing", () => {
     assert.match(html, /<script>document\.documentElement\.className = "js";<\/script>/);
   });
 
-  it("puts the terms before the demo on a phone, and install last (Bagrat, 2026-10-17)", () => {
+  it("puts the terms before the video on a phone, and install last (Bagrat, 2026-10-17)", () => {
     assert.match(html, /grid-template-areas: "brand box" "pitch box" "terms box";/, "a laptop: the box beside the pitch and the terms");
-    assert.match(html, /@media \(max-width: 900px\) \{[\s\S]*?grid-template-areas: "brand" "pitch" "terms" "box";/, "a phone: the terms, then the demo and install");
+    assert.match(html, /@media \(max-width: 900px\) \{[\s\S]*?grid-template-areas: "brand" "pitch" "terms" "box";/, "a phone: the terms, then the video and install");
   });
 
   it("says the terms in Bagrat's order, under the price bar (N59)", () => {

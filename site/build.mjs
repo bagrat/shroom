@@ -2,7 +2,9 @@
 // Puts together what shroom.am serves, in site/public (never committed):
 //
 //   index.html, favicon.svg, favicon.png   the landing, as it is
-//   demo-poster.webp                       the demo's still (DECISIONS B190)
+//   how-to-poster.webp                     the how-to video's still (DECISIONS B194)
+//   _/how-to.mp4                           the how-to video, served at /how-to.mp4 by
+//                                          worker.js, in pieces (DECISIONS B194)
 //   og.png                                 the link preview card (tools/render-og-card.mjs)
 //   _/install.sh                           installer/install.sh, as it is
 //   _/agent.md                             site/agent.md, as it is
@@ -259,8 +261,9 @@ ${footer}
 export function build(out) {
   rmSync(out, { recursive: true, force: true });
   mkdirSync(join(out, "_"), { recursive: true });
-  for (const f of ["index.html", "favicon.svg", "favicon.png", "og.png", "demo-poster.webp"]) copyFileSync(join(SITE, f), join(out, f));
+  for (const f of ["index.html", "favicon.svg", "favicon.png", "og.png", "how-to-poster.webp"]) copyFileSync(join(SITE, f), join(out, f));
   copyFileSync(join(ROOT, "installer/install.sh"), join(out, "_/install.sh"));
+  copyFileSync(join(SITE, "how-to.mp4"), join(out, "_/how-to.mp4"));
   const markdown = readFileSync(join(SITE, "agent.md"), "utf8");
   writeFileSync(join(out, "_/agent.md"), markdown);
   const landing = readFileSync(join(SITE, "index.html"), "utf8");

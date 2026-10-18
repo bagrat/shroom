@@ -19,9 +19,9 @@
 <link rel="apple-touch-icon" href="favicon.png">
 <meta name="theme-color" content="#2b2f36" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#f6f7f9" media="(prefers-color-scheme: light)">
-<!-- No fonts, scripts or images from anyone else: the page you read is all there is. The one
-     exception is the demo's video, which plays from the maker's own shroom space, as any shroom
-     link does, and only once its block nears the screen (N58). -->
+<!-- No fonts, scripts, images or video from anyone else: the page you read is all there is. The
+     how-to video is this site's own file too, and loads only once its block nears the screen
+     (N58, N61). -->
 <script>document.documentElement.className = "js";</script>
 <style>
   /* Dark Nord, and its light variant for a browser set to light: every colour is one of these. */
@@ -129,8 +129,8 @@
   .side { grid-area: box; display: flex; flex-direction: column; padding-top: calc(var(--mark) * 45 / 84 + var(--word) * 0.355); }
   .box { flex: 1 1 auto; display: flex; flex-direction: column; gap: 24px; padding: 20px; border-radius: 10px; background: var(--card); border: 1px solid var(--card-edge); }
 
-  /* The demo: the still sits over the video, and fades once the video is playing. */
-  .demo { position: relative; }
+  /* The how-to video: the still sits over the video, and fades once the video is playing. */
+  .how-to { position: relative; }
   .stage { position: relative; aspect-ratio: 1280 / 832; border-radius: 10px; overflow: hidden; background: var(--well); border: 1px solid var(--line); }
   .stage video { position: absolute; inset: 0; width: 100%; height: 100%; background: #1f2228; }
   .still { position: absolute; inset: 0; padding: 0; border: 0; background: #2b2f36; cursor: pointer; transition: opacity .4s ease; }
@@ -165,7 +165,7 @@
 
   @media (max-width: 900px) {
     .page { padding: 0 16px; }
-    /* On a phone the terms come before the demo, and install goes last (Bagrat, 2026-10-17). */
+    /* On a phone the terms come before the video, and install goes last (Bagrat, 2026-10-17). */
     .split { --mark: 72px; --word: 60px; padding-top: 28px; grid-template-columns: minmax(0, 1fr); grid-template-areas: "brand" "pitch" "terms" "box"; grid-template-rows: none; }
     .split .brand { margin-bottom: 28px; }
     .pitch { width: auto; margin-bottom: 24px; }
@@ -227,14 +227,15 @@
 
   <div class="side">
     <div class="box">
-      <!-- The demo (N58, DECISIONS B190): a real shroom recording that plays here, never on the
-           player page. The still is shroom.am's own file; the video comes from the maker's own shroom
-           space, and only once the block is within 200 px of the screen (the script below), so a
-           visitor who never scrolls this far costs that space nothing. -->
-      <section class="demo" id="demo" data-id="ao_nEWdnMegiXNjz" data-space="v.myshroom.workers.dev">
+      <!-- How to set up and use shroom (N58, N61; DECISIONS B190, B194): a walkthrough that plays
+           here. The still and the video are both shroom.am's own files (/how-to.mp4, served in
+           pieces by site/worker.js); the video's address is set only once the block is within
+           200 px of the screen (the script below), so a visitor who never scrolls this far
+           fetches none of it. -->
+      <section class="how-to" id="how-to" data-src="/how-to.mp4">
         <div class="stage">
-          <video playsinline preload="none" width="1280" height="832"></video>
-          <button type="button" class="still" aria-label="Play the demo, 15 minutes"><img src="demo-poster.webp" alt="" width="1440" height="936" decoding="async"><span class="play" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M5 3v10l8.5-5z"/></svg></span><span class="len" aria-hidden="true">15:07</span></button>
+          <video playsinline preload="none" width="1920" height="1080"></video>
+          <button type="button" class="still" aria-label="Play how to set up and use shroom, 4 minutes"><img src="how-to-poster.webp" alt="" width="1440" height="936" decoding="async"><span class="play" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M5 3v10l8.5-5z"/></svg></span><span class="len" aria-hidden="true">4 mins</span></button>
         </div>
       </section>
 
@@ -274,7 +275,7 @@
 
 <script>
   // What runs on this page: a link's ?ref= tag (or utm_*) leaves the address bar once counted,
-  // so it isn't shared onward; the demo; the install tabs; and Copy, which reads "Copied" for a
+  // so it isn't shared onward; the how-to video; the install tabs; and Copy, which reads "Copied" for a
   // moment (law 10).
   (function () {
     var u = new URL(location.href), tagged = false;
@@ -283,14 +284,14 @@
     });
     if (tagged && history.replaceState) history.replaceState(null, "", u.pathname + u.search + u.hash);
   })();
-  // The demo (N58): the video's address is set only as its block nears the screen, and only its
+  // The how-to video (N58, N61): its address is set only as its block nears the screen, and only its
   // index is read then (preload "metadata"); a click plays it and fades the still away. Without
   // IntersectionObserver the click itself sets it.
   (function () {
-    var box = document.getElementById("demo");
+    var box = document.getElementById("how-to");
     if (!box) return;
     var v = box.querySelector("video"), still = box.querySelector(".still");
-    var src = "https://" + box.getAttribute("data-space") + "/m/" + box.getAttribute("data-id") + "/video.mp4";
+    var src = box.getAttribute("data-src");
     var load = function () { if (!v.getAttribute("src")) { v.preload = "metadata"; v.src = src; } };
     if ("IntersectionObserver" in window) {
       var io = new IntersectionObserver(function (es) {
