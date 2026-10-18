@@ -634,11 +634,11 @@ fn bake(rt: &Runtime, rec: &RecId) {
         })
     });
     match baked {
-        Ok(true) => {
+        Ok(Some(_)) => {
             rt.log(&format!("editor: {}'s edit is the video now — its original deleted", short(&rec.0)));
             forget_folder(rt, &rec.0);
         }
-        Ok(false) => rt.log(&format!("editor: {} had nothing to bake (no current copy)", short(&rec.0))),
+        Ok(None) => rt.log(&format!("editor: {} had nothing to bake (no current copy)", short(&rec.0))),
         Err(class) => rt.log(&format!("editor: {}'s bake didn't land ({class:?}) — the upkeep bakes it once its two days are up", short(&rec.0))),
     }
 }
@@ -675,11 +675,11 @@ fn upkeep(rt: &Runtime, door: &mut Doorway) -> Result<(u32, u32), FailClass> {
     for id in &plan.bake {
         let done = door.client(rt, &space, id).and_then(|s3| records::bake(&s3, id, &now).map_err(|e| class(&e)));
         match done {
-            Ok(true) => {
+            Ok(Some(_)) => {
                 baked += 1;
                 forget_folder(rt, id);
             }
-            Ok(false) => {}
+            Ok(None) => {}
             Err(c) => {
                 rt.log(&format!("editor upkeep: {}'s bake didn't land ({c:?})", short(id)));
                 door.forget();

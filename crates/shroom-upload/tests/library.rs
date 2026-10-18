@@ -299,7 +299,7 @@ fn the_cleanup_sweep_bakes_every_video_past_its_two_days() {
     let holds = |_: &str| false;
     let here = library::Here { now_ms: NOW, device: Some("d_this"), holds: &holds };
     let cleaned = library::cleanup(&s3, &here).unwrap();
-    assert_eq!(cleaned.baked, vec!["DueToBakeVideo00".to_string()]);
+    assert_eq!(cleaned.baked, vec![("DueToBakeVideo00".to_string(), library::Baked { rev: 1, written: true, deleted: original.len() })]);
     assert_eq!((cleaned.swept.under_tombstones.len(), cleaned.swept.orphans.len()), (0, 0));
 
     let v: serde_json::Value = serde_json::from_slice(&s3.get("meta/DueToBakeVideo00.json").unwrap().unwrap()).unwrap();

@@ -9,7 +9,7 @@
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
-use shroom_storage::s3::Client;
+use shroom_storage::s3::{Client, Object};
 
 use crate::keys;
 use crate::meta::{Media, Meta, State, iso_at, now_iso};
@@ -409,6 +409,18 @@ fn bake_record(m: &mut Meta, id: &str, copy: &shroom_edit::EditCopy, now: &str) 
     true
 }
 
+/// What a bake did (B197 (c)), for its caller's log.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Baked {
+    /// The revision of the edit the video is now (the newest bake [`BAKED_FROM`] remembers).
+    pub rev: u64,
+    /// Whether this call made the edit the video. `false`: it already was — a bake repeated,
+    /// or another Mac's that came first — and this call only finished its deletes.
+    pub written: bool,
+    /// How many files beside the record this call deleted.
+    pub deleted: usize,
+}
+
 /// “The edit becomes the video” (B197 (c)): once the record's copy is current, one
 /// read-modify-write points `media` at the copy's own files ([`bake_record`]) and drops the
 /// edit; then the original's files go (`master.m3u8`, `v0/…`, `video.mp4`, `poster.jpg`,
@@ -418,11 +430,12 @@ fn bake_record(m: &mut Meta, id: &str, copy: &shroom_edit::EditCopy, now: &str) 
 ///
 /// Idempotent and safe to repeat after any interruption — the record first, then the
 /// deletes: a record already baked (no edit, `media` one of its own copies) writes nothing
-/// and finishes the deletes. `Ok(true)`: baked, now or before. `Ok(false)`, nothing written
-/// or deleted: no edit, no current copy (not made yet, or a newer save came first), or an
-/// edit this build can't read. A copy the record names but the space doesn't hold is an
-/// error, before anything is written. A tombstone stops it. `now` (ISO 8601, UTC) is when.
-pub fn bake(s3: &Client, id: &str, now: &str) -> Result<bool, UploadError> {
+/// and finishes the deletes. `Ok(Some(_))`: baked, now or before ([`Baked`] says which, and
+/// what this call deleted). `Ok(None)`, nothing written or deleted: no edit, no current
+/// copy (not made yet, or a newer save came first), or an edit this build can't read. A
+/// copy the record names but the space doesn't hold is an error, before anything is
+/// written. A tombstone stops it. `now` (ISO 8601, UTC) is when.
+pub fn bake(s3: &Client, id: &str, now: &str) -> Result<Option<Baked>, UploadError> {
     iso_ms(now).ok_or_else(|| UploadError::Incomplete(format!("not a time: {now:?}")))?;
     let prefix = keys::prefix(id);
     // A look first: a record with nothing to bake costs one read.
@@ -435,16 +448,16 @@ pub fn bake(s3: &Client, id: &str, now: &str) -> Result<bool, UploadError> {
     let copy = match seen.edits.as_ref() {
         Some(saved) => match bakeable(saved) {
             Some(c) => Some(c.clone()),
-            None => return Ok(false),
+            None => return Ok(None),
         },
         None if baked(&seen, id) => None,
-        None => return Ok(false),
+        None => return Ok(None),
     };
     // What's beside the record before the write: the deletes take only from this, so a
     // file sent after it (a later edit's copy) is never one of them.
     let listed = with_retry(|| s3.list(&prefix))?;
-    let now_named = match copy {
-        None => seen,
+    let (now_named, written) = match copy {
+        None => (seen, false),
         Some(copy) => {
             let file = format!("{prefix}{}", copy.file);
             if !listed.iter().any(|o| o.key == file && o.size > 0) {
@@ -455,19 +468,34 @@ pub fn bake(s3: &Client, id: &str, now: &str) -> Result<bool, UploadError> {
             // Between the look and the write: another Mac's bake (finish it), or a newer
             // save (nothing to do).
             if !done && !baked(&meta, id) {
-                return Ok(false);
+                return Ok(None);
             }
-            meta
+            (meta, done)
         }
     };
-    let playing = media_keys(&now_named);
-    for o in &listed {
+    let deleted = bake_deletes(s3, id, &listed, &now_named)?;
+    Ok(Some(Baked { rev: baked_rev(&now_named), written, deleted }))
+}
+
+/// A bake's deletes, from `listed` (what was beside the record before its write): the
+/// original's files and every copy's file `record`'s media doesn't name. How many went.
+fn bake_deletes(s3: &Client, id: &str, listed: &[Object], record: &Meta) -> Result<usize, UploadError> {
+    let prefix = keys::prefix(id);
+    let playing = media_keys(record);
+    let mut deleted = 0;
+    for o in listed {
         let Some(name) = o.key.strip_prefix(&prefix) else { continue };
         if (is_original_file(name) || is_copy_file(name)) && !playing.contains(&o.key) {
             with_retry(|| s3.delete(&o.key))?;
+            deleted += 1;
         }
     }
-    Ok(true)
+    Ok(deleted)
+}
+
+/// The revision of the newest bake the record remembers (0 when it doesn't say).
+fn baked_rev(m: &Meta) -> u64 {
+    m.extra.get(BAKED_FROM).and_then(serde_json::Value::as_array).and_then(|from| from.last()).and_then(|b| b.get("rev")?.as_u64()).unwrap_or(0)
 }
 
 /// What one upkeep pass does with the space's edited videos (B197 (d)).
@@ -635,8 +663,9 @@ pub struct Cleaned {
     pub swept: Swept,
     /// Page keys (`.shroom/keys/<hash>`) spent or past their life.
     pub keys: usize,
-    /// Videos whose original's two days were up: their edit became the video (B197 (d)).
-    pub baked: Vec<String>,
+    /// Videos whose original's two days were up: their edit became the video (B197 (d)) —
+    /// each with what its bake did.
+    pub baked: Vec<(String, Baked)>,
 }
 
 /// The token Mac's cleanup sweep (DECISIONS B91; ARCHITECTURE §5.5's GC, §16 #49):
@@ -670,7 +699,13 @@ pub fn cleanup(s3: &Client, here: &Here) -> Result<Cleaned, UploadError> {
         }
     }
     let now = iso_at(u64::try_from(here.now_ms.div_euclid(1000)).unwrap_or(0));
-    let baked = upkeep_plan(&edited, &now, &|_| true, &|_| false).bake.into_iter().filter(|id| bake(s3, id, &now).unwrap_or(false)).collect();
+    let mut baked = Vec::new();
+    for id in upkeep_plan(&edited, &now, &|_| true, &|_| false).bake {
+        // One that fails waits for the next pass; the rest of this one stands.
+        if let Ok(Some(b)) = bake(s3, &id, &now) {
+            baked.push((id, b));
+        }
+    }
     Ok(Cleaned { swept, keys, baked })
 }
 

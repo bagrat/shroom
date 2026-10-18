@@ -7,7 +7,7 @@ use shroom_cloudfake::{Fake, State};
 use shroom_edit::{EditCopy, EditList, History, Op};
 use shroom_storage::s3::{Bucket, Client};
 use shroom_storage::sigv4::Credentials;
-use shroom_upload::library;
+use shroom_upload::library::{self, Baked};
 use shroom_upload::meta::{Media, Meta, State as MetaState};
 use shroom_upload::upload::{self, UploadError};
 
@@ -96,7 +96,7 @@ fn a_bake_makes_the_edit_the_video_and_deletes_the_original() {
     let (fake, s3) = space();
     record(&s3, A);
     assert_eq!(save_and_copy(&s3, A, &edited(60.0), 37.96), 1);
-    assert!(library::bake(&s3, A, DUE).unwrap());
+    assert_eq!(library::bake(&s3, A, DUE).unwrap(), Some(Baked { rev: 1, written: true, deleted: ORIGINAL.len() }));
 
     let v = read(&s3, A);
     assert_eq!(
@@ -119,7 +119,7 @@ fn a_bake_makes_the_edit_the_video_and_deletes_the_original() {
 
     // Again: nothing to write, nothing more to delete.
     let before = etag(&s3, A);
-    assert!(library::bake(&s3, A, "2026-10-21T00:00:00Z").unwrap());
+    assert_eq!(library::bake(&s3, A, "2026-10-21T00:00:00Z").unwrap(), Some(Baked { rev: 1, written: false, deleted: 0 }));
     assert_eq!(etag(&s3, A), before);
     assert_eq!(files(&fake, A).len(), 4);
 }
@@ -130,19 +130,19 @@ fn only_a_current_copy_is_baked() {
     // No edit at all.
     record(&s3, A);
     let before = etag(&s3, A);
-    assert!(!library::bake(&s3, A, DUE).unwrap());
+    assert_eq!(library::bake(&s3, A, DUE).unwrap(), None);
     // An edit whose copy isn't made yet.
     library::save_edits(&s3, A, &edited(60.0), 1).unwrap();
     let saved = etag(&s3, A);
     assert_ne!(saved, before);
-    assert!(!library::bake(&s3, A, DUE).unwrap());
+    assert_eq!(library::bake(&s3, A, DUE).unwrap(), None);
     // A copy made, then a newer save: the copy is stale.
     save_and_copy(&s3, A, &edited(60.0), 38.0);
     let mut later = edited(60.0);
     later.out = 45.0;
     library::save_edits(&s3, A, &later, 3).unwrap();
     let stale = etag(&s3, A);
-    assert!(!library::bake(&s3, A, DUE).unwrap());
+    assert_eq!(library::bake(&s3, A, DUE).unwrap(), None);
     assert_eq!(etag(&s3, A), stale, "nothing written");
     assert!(read(&s3, A)["media"]["hls"].is_string());
     for f in ORIGINAL {
@@ -180,7 +180,7 @@ fn a_bake_interrupted_after_its_write_finishes_when_repeated() {
     let written = etag(&s3, A);
 
     fake.with(|s| s.control("faults-clear").unwrap());
-    assert!(library::bake(&s3, A, "2026-10-20T10:00:00Z").unwrap());
+    assert_eq!(library::bake(&s3, A, "2026-10-20T10:00:00Z").unwrap(), Some(Baked { rev: 1, written: false, deleted: ORIGINAL.len() }));
     assert_eq!(etag(&s3, A), written, "the record was already baked");
     assert_eq!(read(&s3, A)["bakedFrom"].as_array().unwrap().len(), 1);
     assert_eq!(files(&fake, A), ["edit-1-poster.jpg", "edit-1-teaser.mp4", "edit-1.mp4", "thumb-0123456789abcdef.jpg"]);
@@ -195,7 +195,7 @@ fn a_baked_video_edited_again_bakes_again() {
     let (fake, s3) = space();
     record(&s3, A);
     save_and_copy(&s3, A, &edited(60.0), 38.0);
-    assert!(library::bake(&s3, A, DUE).unwrap());
+    assert!(library::bake(&s3, A, DUE).unwrap().is_some());
     let plays_edit_1 = |fake: &Fake| ["edit-1.mp4", "edit-1-poster.jpg", "edit-1-teaser.mp4"].iter().all(|f| files(fake, A).contains(&f.to_string()));
     // A stray copy record naming the files the video plays (as an older writer could leave).
     let stray = |s3: &Client| {
@@ -234,7 +234,7 @@ fn a_baked_video_edited_again_bakes_again() {
     v["bakedFrom"] = serde_json::Value::Array(from);
     s3.put(&format!("meta/{A}.json"), v.to_string().as_bytes(), "application/json").unwrap();
 
-    assert!(library::bake(&s3, A, "2026-10-24T08:00:00Z").unwrap());
+    assert_eq!(library::bake(&s3, A, "2026-10-24T08:00:00Z").unwrap(), Some(Baked { rev: 3, written: true, deleted: 3 }), "the first bake's three files");
     let v = read(&s3, A);
     assert_eq!(
         v["media"],
@@ -262,7 +262,7 @@ fn a_late_copy_of_the_baked_revision_never_takes_its_files() {
     let (fake, s3) = space();
     record(&s3, A);
     save_and_copy(&s3, A, &edited(60.0), 38.0);
-    assert!(library::bake(&s3, A, DUE).unwrap());
+    assert!(library::bake(&s3, A, DUE).unwrap().is_some());
     let late = EditCopy { rev: 1, file: EditCopy::file_for(1), duration: 38.0, poster: Some(EditCopy::poster_for(1)), teaser: Some(EditCopy::teaser_for(1)) };
     assert!(!library::set_edit_copy(&s3, A, &late, DUE).unwrap());
     assert_eq!(files(&fake, A), ["edit-1-poster.jpg", "edit-1-teaser.mp4", "edit-1.mp4", "thumb-0123456789abcdef.jpg"]);
@@ -283,7 +283,7 @@ fn a_save_from_an_editor_opened_before_the_bake_never_lands_on_the_baked_video()
     let mut h = History::new(edited(60.0));
     assert!(h.act(&Op::Cut { start: 30.0, end: 35.0 }));
     // Meanwhile the sweep makes the edit the video.
-    assert!(library::bake(&s3, A, DUE).unwrap());
+    assert!(library::bake(&s3, A, DUE).unwrap().is_some());
     let (baked, left) = (etag(&s3, A), files(&fake, A));
     assert!(matches!(library::save_edits_over(&s3, A, &h.now, 2, Some(&opened)), Err(UploadError::MovedOn)));
     assert_eq!(etag(&s3, A), baked, "nothing written");
@@ -324,7 +324,7 @@ fn a_librarys_row_follows_the_edit_and_the_bake() {
     save_and_copy(&s3, A, &edited(60.0), 38.0);
     library::refresh(&s3, &mut cache).unwrap();
     assert_eq!((row(&cache).duration_sec, row(&cache).edited_sec), (Some(60.0), Some(38.0)));
-    assert!(library::bake(&s3, A, DUE).unwrap());
+    assert!(library::bake(&s3, A, DUE).unwrap().is_some());
     library::refresh(&s3, &mut cache).unwrap();
     let r = row(&cache);
     assert_eq!((r.duration_sec, r.edited_sec, r.poster_file.as_deref()), (Some(38.0), None, Some("edit-1-poster.jpg")));
@@ -353,7 +353,7 @@ fn the_uploader_never_moves_a_baked_video_back() {
     let mut h = History::new(EditList::new(12.0));
     assert!(h.act(&Op::Trim { in_: 2.0, out: 10.0 }));
     save_and_copy(&s3, A, &h.now, 8.0);
-    assert!(library::bake(&s3, A, DUE).unwrap());
+    assert!(library::bake(&s3, A, DUE).unwrap().is_some());
     let baked = |s3: &Client| {
         let v = read(s3, A);
         assert_eq!(v["media"]["hls"], serde_json::Value::Null, "{v}");
