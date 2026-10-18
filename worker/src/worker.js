@@ -3752,6 +3752,7 @@ const AI_STYLE = `.player.ch .seek::-webkit-slider-runnable-track{background:tra
 .row .cc[aria-pressed=true]{color:var(--player-fill)}
 .ainote{margin:-12px 0 0;color:var(--soft);font-size:.9375rem}.ainote[hidden]{display:none}
 @media (pointer:coarse){.player.ch .seek{top:-20px;height:44px}}
+.player.ch .seek.held::-webkit-slider-thumb{width:20px;height:20px;margin-top:-8px;box-shadow:0 0 0 6px rgba(236,239,244,.18)}.player.ch .seek.held::-moz-range-thumb{width:20px;height:20px;box-shadow:0 0 0 6px rgba(236,239,244,.18)}
 @media (max-width:479px){.chn{display:none}}
 @media (prefers-reduced-motion:reduce){.chs i{transition:none}}`;
 
@@ -3768,9 +3769,9 @@ function aiPlayer(html, ai) {
 
 /** The bar's chapters and the Captions button, wired after `shroomPlayer` (B209 a, b). `ch`:
  * [[start on the bar's clock, title], …]. A tip shows the time and chapter under the
- * pointer, or above the thumb while a finger drags it and for 1.5 s after; the chapter
- * playing follows the time and joins the bar's spoken value. Captions are off until pressed,
- * and the browser remembers. */
+ * pointer, or above the thumb while a finger drags it and for 1.5 s after, the thumb grown
+ * while the finger is on it; the chapter playing follows the time and joins the bar's
+ * spoken value. Captions are off until pressed, and the browser remembers. */
 const AI_PLAYER_JS = `function shroomChapters(p,ch){var sk=p.querySelector(".seek"),v=p.querySelector("video"),ctl=p.querySelector(".ctl"),tm=p.querySelector(".time");if(!sk||!ch||ch.length<2)return;
 var bar=document.createElement("div"),tip=document.createElement("div"),n=document.createElement("span"),secs=[],hide=0,touch=false,built=-1;
 bar.className="chs";bar.setAttribute("aria-hidden","true");tip.className="chtip";tip.hidden=true;tip.setAttribute("aria-hidden","true");n.className="chn";
@@ -3787,8 +3788,8 @@ function off(){tip.hidden=true;for(var j=0;j<secs.length;j++)secs[j][2].classLis
 function thumb(){var d=len(),r=sk.getBoundingClientRect();return d?(+sk.value/d)*r.width:0}
 sk.addEventListener("pointermove",function(e){if(e.pointerType==="touch"||touch)return;var r=sk.getBoundingClientRect(),x=Math.max(0,Math.min(r.width,e.clientX-r.left));show(len()*x/(r.width||1),x)});
 sk.addEventListener("pointerleave",function(e){if(e.pointerType!=="touch"&&!touch)off()});
-sk.addEventListener("pointerdown",function(e){if(e.pointerType!=="touch")return;touch=true;clearTimeout(hide);show(+sk.value||0,thumb())});
-function lift(e){if(e.pointerType!=="touch"||!touch)return;touch=false;clearTimeout(hide);hide=setTimeout(off,1500)}
+sk.addEventListener("pointerdown",function(e){if(e.pointerType!=="touch")return;touch=true;clearTimeout(hide);sk.classList.add("held");show(+sk.value||0,thumb())});
+function lift(e){if(e.pointerType!=="touch"||!touch)return;touch=false;sk.classList.remove("held");clearTimeout(hide);hide=setTimeout(off,1500)}
 sk.addEventListener("pointerup",lift);sk.addEventListener("pointercancel",lift);
 sk.addEventListener("input",function(){if(touch)show(+sk.value||0,thumb());paint()});
 ["timeupdate","durationchange","loadedmetadata","seeked","emptied","progress"].forEach(function(e){v.addEventListener(e,paint)});
