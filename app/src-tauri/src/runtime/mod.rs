@@ -3,6 +3,7 @@
 
 pub mod camera;
 pub mod cloud;
+pub mod control;
 pub mod home;
 pub mod hotkey;
 pub mod launch;
@@ -508,6 +509,8 @@ pub struct Runtime {
     pub excluded: Arc<Mutex<Vec<u32>>>,
     /// The status seam (`status.json`, ARCHITECTURE §11.2): what it knows and last wrote.
     pub seam: status::Shared,
+    /// The `shroom` command's asks waiting on the core's answer (`control.rs`).
+    pub cli: control::Pending,
 }
 
 /// A drive's last words, run as the process ends.
@@ -947,6 +950,7 @@ fn start_inner(app: &AppHandle, launch: LaunchKind, quiet: bool, flags: &DevFlag
         space_base: if dev { flags.fake_space_base() } else { None },
         excluded: excluded.clone(),
         seam: Arc::new(Mutex::new(status::Seam::new(std::process::id(), version.clone()))),
+        cli: control::Pending::default(),
     };
 
     let quiet = shell_quiet(quiet, &rt);
@@ -967,6 +971,8 @@ fn start_inner(app: &AppHandle, launch: LaunchKind, quiet: bool, flags: &DevFlag
         updater: updater::spawn(rt.clone(), app.clone()),
         member: member::spawn(rt.clone()),
     };
+    // The `shroom` command's door (dev/proposals/cli-agent-skill.md §3).
+    control::spawn(rt.clone(), rt.cli.clone());
     // The core's trace ring, and the panic hook that writes it down (DECISIONS B93).
     ring::install(&rt);
     let presenter = presenter::Presenter::new(app.clone(), rt.clone(), excluded);
@@ -1098,6 +1104,7 @@ fn effect_kind(e: &Effect) -> &'static str {
         Effect::Library(_) => "library",
         Effect::Updater(_) => "updater",
         Effect::Member(_) => "member",
+        Effect::Cli(_) => "cli",
     }
 }
 
@@ -1150,6 +1157,7 @@ fn dispatch(rt: &Runtime, lanes: &Lanes, app: &AppHandle, e: Effect) {
         Effect::Member(cmd) => {
             let _ = lanes.member.send((Instant::now(), cmd));
         }
+        Effect::Cli(a) => control::answer(rt, &rt.cli, a),
     }
 }
 
@@ -1216,6 +1224,10 @@ fn shell(rt: &Runtime, app: &AppHandle, cmd: ShellCmd) {
         ShellCmd::RequestPermission(perm) => os::request_permission(rt, perm),
         ShellCmd::Copy(rec) => os::copy_link(rt, &rec),
         ShellCmd::CopyThumb(rec, title) => os::copy_thumb(rt, &rec, &title),
+        ShellCmd::CopyAgentPrompt => {
+            rt.log("shell: copied the prompt for a coding agent");
+            os::put_on_pasteboard(rt, shroom_core::copy::agent_prompt());
+        }
         ShellCmd::Reveal(dir) => os::reveal(rt, &dir),
         ShellCmd::PowerAssertion(on) => os::power_assertion(rt, on),
         // The take is safe: macOS's waiting will-sleep goes ahead (B92).

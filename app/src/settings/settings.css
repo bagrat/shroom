@@ -352,3 +352,56 @@
   padding: 0 2px;
   color: var(--green, var(--frost));
 }
+
+/* Your coding agent (dev/proposals/cli-agent-skill.md): the prompt in a well with its Copy,
+   as the landing's command blocks; the switch row under a hairline. */
+.agent-top {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+}
+
+.agent-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.agent-label {
+  flex: 1 1 auto;
+  font-weight: 600;
+}
+
+.prompt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 6px 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--field);
+}
+
+.prompt code {
+  flex: 1 1 auto;
+  min-width: 0;
+  font: 12px/1.5 var(--mono);
+  overflow-wrap: anywhere;
+}
+
+.prompt .b.plain {
+  min-height: 28px;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--fg);
+  box-shadow: none;
+  white-space: nowrap;
+}
+
+.agent-line {
+  color: var(--muted);
+}

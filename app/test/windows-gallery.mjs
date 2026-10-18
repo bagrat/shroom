@@ -83,6 +83,8 @@ const TEXT = new Set([
   "help_label", "sent", "reply_label", "disclosure", "preparing", "failed",
   // Send feedback (N60): the line under the log box.
   "log_note",
+  // Your coding agent (dev/proposals/cli-agent-skill.md): the prompt in its well.
+  "prompt",
 ]);
 
 /** The sheets that ask no destructive question: law 9's colours aren't theirs (B180, as
@@ -637,10 +639,28 @@ const set = (variant) => settings.find((e) => e.variant === variant).scene;
   let c = await calls(page);
   check("settings: a tab sends its action; the selected one nothing", acted(c, "settings", { do: "settings-tab", arg: "space" }) && c.length === 1, JSON.stringify(c));
   await clear(page);
-  await page.getByRole("checkbox").click();
+  const login = page.getByRole("checkbox", { name: "Start shroom when you log in" });
+  await login.click();
   c = await calls(page);
   check("settings: the login box sends its action", acted(c, "settings", { do: "set-login-item", arg: true }));
-  check("settings: the box keeps the Scene's state until the Scene changes", !(await page.getByRole("checkbox").isChecked()));
+  check("settings: the box keeps the Scene's state until the Scene changes", !(await login.isChecked()));
+  await clear(page);
+  // Your coding agent (dev/proposals/cli-agent-skill.md): the switch, off by default; Copy
+  // and Read it first.
+  const agent = page.getByRole("checkbox", { name: "Let it start and stop recordings" });
+  check("settings: the agent's recording switch is off by default", !(await agent.isChecked()));
+  await agent.click();
+  c = await calls(page);
+  check("settings: the agent's switch sends its action", acted(c, "settings", { do: "set-agent-recording", arg: true }), JSON.stringify(c));
+  await clear(page);
+  await page.getByRole("button", { name: "Copy", exact: true }).click();
+  await page.getByRole("button", { name: "Read it first", exact: true }).click();
+  c = await calls(page);
+  check(
+    "settings: the agent card's Copy and Read it first send their actions",
+    acted(c, "settings", { do: "copy-agent-prompt" }) && acted(c, "settings", { do: "open-agent-guide" }),
+    JSON.stringify(c),
+  );
   await clear(page);
   for (const name of ["Update", "What's new", "Copy diagnostics", "Report a problem…", "GitHub"]) await page.getByRole("button", { name, exact: true }).click();
   c = await calls(page);

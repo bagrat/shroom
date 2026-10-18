@@ -22,7 +22,13 @@ export type GeneralPane = {
   help_links: Button[];
   /** “Uninstall shroom…”, quiet text at the tab's foot (B135). */
   uninstall: Button;
+  /** “Your coding agent” (dev/proposals/cli-agent-skill.md, provisional). */
+  agent: AgentCard;
 };
+
+/** General's card for a coding agent: the prompt, Copy, Read it first, the line, and
+ * whether the agent may start and stop recordings (off by default). */
+export type AgentCard = { label: string; prompt: string; copy: Button; read_first: Button; line: string; recording: Toggle };
 
 export type SpacePane = {
   kind: "space";

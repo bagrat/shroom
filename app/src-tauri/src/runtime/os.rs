@@ -43,6 +43,7 @@ pub fn url(page: &PublicUrl) -> String {
             let words: String = words.chars().take(1_500).collect();
             format!("mailto:hi@shroom.am?subject={}&body={}", percent(&format!("shroom {version} — a problem")), percent(&format!("{words}\n\nshroom {version}")))
         }
+        PublicUrl::AgentGuide => "https://shroom.am/cli".to_string(),
     }
 }
 
@@ -70,6 +71,7 @@ pub fn open_url(rt: &Runtime, page: &PublicUrl) {
         PublicUrl::ReleaseNotes { .. } => "release-notes",
         PublicUrl::NewIssue { .. } => "new-issue",
         PublicUrl::MailReport { .. } => "mail-report",
+        PublicUrl::AgentGuide => "agent-guide",
     }));
     open_detached(u);
 }
