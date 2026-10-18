@@ -34,7 +34,7 @@
 2. The checkpoint sitting (`CHECKPOINT.md`, items 20–25 and the by-hand checks of
    28–35, plus what came since — B119, DEVIATIONS #42, B125), then the ratifications
    (1–6).
-3. The demo is recorded and plays on the landing (17, B190). Intel is decided: Apple
+3. “How to set up and use shroom” plays on the landing (17, B194). Intel is decided: Apple
    silicon only (7, B167). Identity and signing (8) are done: 0.1.5
    shipped signed.
 4. Send feedback from the popover is built (N60, B193), the waving hand his pick.
@@ -100,8 +100,9 @@ the build; the ones marked **release** block shipping. The numbers are the ones
     shroom.am are live, and 0.1.5 is the first GitHub release — **done.**
 
 **Supply**
-17. **The demo recording** (N7, DEVIATIONS 29) — **done** (2026-10-17): recorded on 0.1.22 in
-    his space; it plays in place on the landing, second, under “Recorded with shroom.” (N58, B190).
+17. **The landing's video** (N7, DEVIATIONS 29) — **done**: the 15-minute take recorded on
+    0.1.22 (2026-10-17, N58, B190) gave way on 2026-10-18 to “How to set up and use shroom”,
+    four minutes in his own voice, served by shroom.am at `/how-to.mp4` (N61, B194).
 18. **og:description** for a video page's link previews (B27, the copy table) — none is
     invented; R5.1's Teams card wants one. Whether “shroom” belongs on cards as a site name.
     The Teams rich-card probe needs a Teams tenant. (shroom.am's own pages have theirs,
