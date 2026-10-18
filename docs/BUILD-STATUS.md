@@ -39,7 +39,7 @@
    shipped signed.
 4. Send feedback from the popover is built (N60, B193), the waving hand his pick.
 5. **The editor is built** ([#61](https://github.com/bagrat/shroom/pull/61) *(the editor:
-   trim, cut, undo, markers, and edits on the share page)*; N63 and N64, provisional;
+   trim, cut, undo, markers, and edits on the share page)*; N63 and N64, ratified 2026-10-18;
    B195–B199). Edit… in a live Library row opens it in a window of its own: trim, cut,
    a cut's edges dragged to adjust it (B195 (g), Bagrat's ask once he'd seen it), Undo and
    Redo, Revert. Done saves the edit into the record, and the link, unchanged,
@@ -297,13 +297,13 @@ retired, B148.)
 
 **The editor ([#61](https://github.com/bagrat/shroom/pull/61) *(trim, cut, undo, markers,
 and edits on the share page)*)**
-37. **Its words, from use.** N63's, N64's and B197's drafts are built as drafted, on his
-    approval (2026-10-18), his feedback to come from using them; with them, the build's two
-    new lines: a save the space refused, and the time left by Revert counted by the hour
-    (B199 (k), (n)). All provisional, in DECISIONS' copy table.
-38. **Ratify N63 and N64** (provisional in the spec), and **B195–B199** as built: each is
-    his to overturn. DEVIATIONS #55 (Yes, delete filled and leading, but never on Return)
-    is ratified (2026-10-18).
+37. **Its words, from use.** N63's, N64's and B197's drafts, with the build's two new
+    lines (a save the space refused, and the time left by Revert counted by the hour; B199
+    (k), (n)), were **ratified by Bagrat as built** (2026-10-18), his feedback to come from
+    using them.
+38. **N63 and N64, and B195–B199, ratified by Bagrat as built** (2026-10-18), the cut-edge
+    drag (B195 (g)) built as the board he approved that day. DEVIATIONS #55 (Yes, delete
+    filled and leading, but never on Return) is ratified too.
 39. **Known gaps**, none blocking:
     - The final video's bar counts the upload by file, not by byte: once the cut is done it
       holds at 80% while the video goes up (minutes, for a long one), then 95, 97, 99, 100.

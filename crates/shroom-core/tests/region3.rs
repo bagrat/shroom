@@ -210,8 +210,8 @@ fn every_region3_state_derives_with_its_return_default_and_ratified_lines() {
     assert!(failures.is_empty(), "\n{}", failures.join("\n"));
 }
 
-/// N64's two lines on the paused popover — provisional, so the ratified lines' test above
-/// passes them by: Drop a marker, then Marker dropped once one is dropped at this pause.
+/// N64's two lines on the paused popover, ratified with N64 (2026-10-18): Drop a marker,
+/// then Marker dropped once one is dropped at this pause.
 #[test]
 fn the_paused_popover_says_drop_a_marker_then_marker_dropped() {
     let spec = Spec::load();
@@ -220,7 +220,7 @@ fn the_paused_popover_says_drop_a_marker_then_marker_dropped() {
     let json: String = rows().into_iter().filter(|(id, _)| *id == "paused").map(|(_, w)| serde_json::to_string(&derive(&w)).unwrap()).collect();
     for text in ["Drop a marker", "Marker dropped"] {
         let line = paused.said_lines.iter().find(|l| l.text == text).unwrap_or_else(|| panic!("the spec's paused doesn't say {text:?}"));
-        assert_eq!(line.copy_status, "provisional", "{text:?}");
+        assert_eq!(line.copy_status, "ratified", "{text:?}");
         assert!(json.contains(&format!("\"{text}\"")), "{text:?} missing from the paused popover");
     }
     // The pause you didn't make keeps its face as it was: no marker row there.
