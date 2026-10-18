@@ -30,7 +30,8 @@ pub enum Fail {
     /// by item, so a re-run can finish the rest.
     Partial { message: String, results: Value },
     /// The person hasn't let a coding agent record: Settings → General's switch is off,
-    /// as it is by default (exit 10).
+    /// as it is by default (exit 10). Its JSON carries `settings_link`, the link that opens
+    /// Settings at the switch, for the agent to hand over (DECISIONS B216).
     RecordingOff(String),
     /// Anything else (exit 1).
     Other(String),
@@ -90,6 +91,7 @@ impl Fail {
         match self {
             Fail::Ambiguous { matches, .. } => v["matches"] = Value::Array(matches.clone()),
             Fail::NeedsConfirmation { what, would, .. } => v[*what] = Value::Array(would.clone()),
+            Fail::RecordingOff(_) => v["settings_link"] = json!(shroom_core::event::SettingsSpot::AgentRecording.link()),
             Fail::Partial { results, .. } => {
                 if let (Some(o), Some(r)) = (v.as_object_mut(), results.as_object()) {
                     for (k, x) in r {

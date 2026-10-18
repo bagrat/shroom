@@ -588,8 +588,14 @@ pub fn app_not_set_up() -> String {
     "shroom isn't set up on this Mac yet. Open it to set it up.".into()
 }
 
+/// Recording refused while General's switch is off (Bagrat, 2026-10-18: it's off, the
+/// switch turns it on, and a link that opens Settings there; DECISIONS B216). The link is
+/// the last line, alone after its words, so a terminal makes it clickable.
 pub fn recording_off() -> String {
-    "shroom isn't set to let your coding agent record. Turn on “Let it start and stop recordings” in shroom's Settings, under General.".into()
+    format!(
+        "Recording from your coding agent is off.\nTurn on “Let it start and stop recordings” in shroom's Settings, under General.\nOpen it there: {}",
+        shroom_core::event::SettingsSpot::AgentRecording.link()
+    )
 }
 
 pub fn between_two_steps() -> String {
