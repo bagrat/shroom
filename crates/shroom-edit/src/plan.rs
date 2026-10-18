@@ -136,8 +136,8 @@ impl Ctx<'_> {
     }
 }
 
-/// Suggested cuts for every cue in the transcript. Retakes found with confidence come
-/// applied; the rest come as suggestions to look at.
+/// Suggested cuts for every cue in the transcript, named `v1`… in the order of their cues.
+/// Retakes found with confidence come applied; the rest come as suggestions to look at.
 pub fn plan(t: &Transcript, o: Options) -> EditList {
     let cx = Ctx { t, o };
     let cues = find_cues(&t.words);
@@ -146,6 +146,9 @@ pub fn plan(t: &Transcript, o: Options) -> EditList {
         let floor = if k == 0 { 0 } else { cues[k - 1].last + 1 };
         let ceil = cues.get(k + 1).map_or(t.words.len(), |c| c.first);
         list.cuts.extend(plan_one(&cx, cue, floor, ceil));
+    }
+    for (n, cut) in list.cuts.iter_mut().enumerate() {
+        cut.id = format!("v{}", n + 1);
     }
     list
 }

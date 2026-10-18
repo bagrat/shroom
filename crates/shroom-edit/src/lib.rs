@@ -19,11 +19,13 @@
 mod align;
 mod cue;
 pub mod edit;
+mod land;
 mod plan;
 mod text;
 
 pub use cue::{Cue, find_cues};
 pub use edit::{History, Op};
+pub use land::land;
 pub use plan::{Options, plan};
 
 use serde::{Deserialize, Serialize};
@@ -50,6 +52,42 @@ pub struct Transcript {
     pub words: Vec<Word>,
     #[serde(default)]
     pub silences: Vec<Silence>,
+}
+
+impl Transcript {
+    /// A take's words as the space keeps what it heard (N66: `[text, start, end]` in seconds
+    /// on the recording's clock), with the quiet found in the take's own sound. Blank or
+    /// timeless words go; the rest in time order, none ending before it starts. A length
+    /// short of the last word is the last word's end.
+    pub fn heard(
+        duration: f64,
+        words: &[(String, f64, f64)],
+        silences: Vec<Silence>,
+    ) -> Transcript {
+        let mut words: Vec<Word> = words
+            .iter()
+            .filter(|(text, start, end)| {
+                !text.trim().is_empty() && start.is_finite() && end.is_finite()
+            })
+            .map(|(text, start, end)| Word {
+                text: text.trim().to_string(),
+                start: *start,
+                end: end.max(*start),
+            })
+            .collect();
+        words.sort_by(|a, b| a.start.total_cmp(&b.start));
+        let last = words.iter().map(|w| w.end).fold(0.0, f64::max);
+        let duration = if duration.is_finite() && duration >= last {
+            duration
+        } else {
+            last
+        };
+        Transcript {
+            duration,
+            words,
+            silences,
+        }
+    }
 }
 
 /// Where a cut came from.

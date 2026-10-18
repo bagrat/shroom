@@ -12,6 +12,7 @@ pub mod live;
 pub mod master;
 pub mod meta;
 pub mod upload;
+pub mod voice;
 
 /// A new recording id: 12 random bytes, base64url without padding — 16 characters,
 /// 96 bits, no structure. The id is the link's only secret (RESEARCH R10.2, P1).

@@ -414,7 +414,7 @@ A status alone never maps to a state. Within `IFACE = 2`, routes and fields only
 | 4.14 | DELETE | `/_shroom/api/members/<mid>` | owner-class |
 | 4.15 | DELETE | `/_shroom/api/devices/<did \| self>` | owner-class / any device |
 | 4.16 | POST | `/_shroom/api/mark` | owner-class |
-| 4.17 | GET, HEAD, POST | `/<id>` (`?k=`, `?embed=1`), `/m/`, `/d/`, `/_shroom/status/`, `/_shroom/hls.js`, `/oembed`, `/_shroom/title/<id>`, `/_shroom/mark` | none / `k` / cookie |
+| 4.17 | GET, HEAD, POST | `/<id>` (`?k=`, `?embed=1`), `/m/`, `/d/`, `/_shroom/status/`, `/_shroom/hls.js`, `/oembed`, `/_shroom/title/<id>`, `/_shroom/edits/<id>`, `/_shroom/mark` | none / `k` / cookie |
 | 4.18 | POST | `/_shroom/api/health` | device key |
 | 4.19 | GET, HEAD | `/favicon.svg`, `.png`, `.ico` | none |
 | 4.20 | POST | `/_shroom/api/gone` | device key |
@@ -803,7 +803,7 @@ HTML answers are 200 `text/html`, `noindex`, `no-store`, `no-referrer`, CSP
 | Route | Behaviour |
 |---|---|
 | `/_shroom/hls.js` | `.shroom/player/hls.min.js`, immutable for a year |
-| `/_shroom/status/<id>` | Public JSON, not shroom-shaped. Absent → `waiting`. Deleted or sealed → `removed`. Live with HLS → `{live, poster, mp4, teaser, thumb, dur, drained}` (`thumb`: the newest Copy thumbnail picture for the title, or null; D:B164. `dur`: the length in seconds, 0 when unknown, which a page opened while the video uploaded draws on its picture; D:B165) (+ `pct`, `stalled` until drained). Uploading → `{uploading, pct, stalled}`. Else, or a throwing read → `unavailable` (D:B94). `pct` ≤ 99. `stalled` = `progress.updatedAt` (else `createdAt`) older than 120 s. |
+| `/_shroom/status/<id>` | Public JSON, not shroom-shaped. Absent → `waiting`. Deleted or sealed → `removed`. Live with HLS → `{live, poster, mp4, teaser, thumb, dur, drained}` (`thumb`: the newest Copy thumbnail picture for the title, or null; D:B164. `dur`: the length in seconds, 0 when unknown, which a page opened while the video uploaded draws on its picture; D:B165) (+ `pct`, `stalled` until drained). Uploading → `{uploading, pct, stalled}`. Else, or a throwing read → `unavailable` (D:B94). `pct` ≤ 99. `stalled` = `progress.updatedAt` (else `createdAt`) older than 120 s. Live, it may add `cuts` (N65, D:B200 c): `"coming"` while the space hears its takes (an `AI` binding, N66), the take went live under 5 min ago (`publishedAt`) and its edit list carries no plan mark (`edits.voice`), unless `naming.later` is set; once planned with voice cuts, a short base-36 tag of their rows, which any press changes. Never a word that was cut. |
 | `/m/<id>/<file>` | No empty/`.`/`..` segment; only `m3u8 m4s mp4 jpg gif vtt` (else 404, D:B125; `gif` for Copy thumbnail's loop, D:B164). Reads `rec/<id>/<file>` beside the record: deleted or sealed → 404, record throws → 503, absent → served. Range → 206. `public, max-age=3600`. Media answers are `nosniff` with `content-security-policy: sandbox; default-src 'none'`. |
 | `/d/<id>` | Needs a live record with `media.mp4` (else 404). Streams `rec/<id>/video.mp4` as an attachment named after the title. Storage failure → 503. |
 | `/oembed?url=` | This origin's `/<id>` → `{version, type:"video", width, height, html (iframe ?embed=1), title?, thumbnail_*?}`, else 404 |
@@ -812,6 +812,8 @@ HTML answers are 200 `text/html`, `noindex`, `no-store`, `no-referrer`, CSP
 | `/<id>` | The watch page (§4.18). Cookie checked live (§3.5). A storage failure → unavailable + `x-shroom-unavailable: storage[-<code>]` (D:B94). |
 | `POST /_shroom/title/<id>` | Same-origin and a live cookie, else 403. Title collapsed, trimmed, ≤ 200; empty → 400. Sealed (§4.20) → 409, whatever the meta says; no meta → 404; unparseable or deleted → 409; not `mayEdit` → 403. If-Match sets `title` and `titled:true` → `200 {"title"}`. 5 lost CAS → 503. |
 | `POST /_shroom/thumb/<id>` | Copy thumbnail's picture (N46, D:B164). Same-origin and a live cookie that may edit the video, else 403. The body is the picture: a GIF (`GIF87a`/`GIF89a`, ≤ 640 wide — the teaser's own width, D:B165 — ≤ 800 KiB) or a JPEG (`FF D8 FF`, its frame header ≤ 1200 wide, ≤ 300 KiB), its first bytes agreeing with `content-type` (else 415; too wide → 400; too big → 413). `x-shroom-title` (URI-encoded) is the title it was drawn for, empty for an untitled video; it must be the record's (`titled` and `title`) at the write, else 409. The video must be live and not sealed (else 409; no meta → 404). At most 40 `thumb-` files per video (else 429). Stored as `rec/<id>/thumb-<first 16 hex of SHA-256>.<gif\|jpg>` (`image/gif`/`image/jpeg`); the record's `thumb` becomes `{title, gif?, jpg?}` under If-Match, starting over when the title differs → `200 {"url"}`. Files of earlier titles stay, so a paste already sent keeps its picture. |
+| `POST /_shroom/edits/<id>` | A press on the owner page's voice cuts (N65, D:B200). Same-origin and a live cookie that may edit the video, else 403. Body `{cut, applied}` (`cut` `[A-Za-z0-9_-]{1,32}`, `applied` a boolean; else 400). Under If-Match: sealed or deleted → 409; no record → 404; no such cut in `edits.cuts` → 404; a hand cut (`kind: "manual"`, the editor's) → 403. Sets that cut's `applied`, moves `edits.rev` on, keeps the rest → `200 {cut, applied, keep, cuts}` (`keep`: what plays, `[[start, end]…]`; `cuts`: the status's tag), `no-store`. 5 lost CAS → 503. |
+| `GET /_shroom/edits/<id>` | The owner page's strip and what plays, for the page that sees the cuts land: an owner-class cookie, or the maker's (`mayEdit`), else 403; no record or deleted → 404 → `200 {strip, keep, cuts}` (`strip`: the section's HTML, empty with no voice cuts), `no-store`. |
 | `POST /_shroom/mark` | Same-origin, an owner-class cookie, `{on:bool}` (else 403) → `200 {"on"}` |
 
 **Redeem** (`worker.js:redeem`):
@@ -919,6 +921,7 @@ whitelist is `runtime/home.rs:FILES`: `prefs.json`, `once.json`, `space.json`,
 | `token.json` | `{v, token, account_id, several}` | token Macs; the parent pair is derived, never stored |
 | `library.json` | the cache + `owners` (id → member) | the Library lane |
 | `takes/<dir>/cred.json` | `{v, purpose:"upload", accessKeyId, secretAccessKey, sessionToken, expiresAt, bucket, endpoint}` | upload start, re-mint; removed by the wipe and a switch |
+| `takes/<dir>/voice.json` | the voice lane's mark (N65, D:B201): `{state:"planned", at, cues}`, `{state:"skipped", at, why}` or `{state:"waiting", since}` | written after the go-live and by the sweep; goes with the take |
 | `posters/<id>.jpg` | thumbnails (D:B54 g) | the Library lane |
 
 `manage` credentials and `k` are memory-only. Owner names = `os::short_user_name()`.
@@ -941,6 +944,7 @@ whitelist is `runtime/home.rs:FILES`: `prefs.json`, `once.json`, `space.json`,
 
 **Bucket writes by Macs:**
 - wiring: `cookie.key` and the roster (create-only), the manifest last;
+- the maker's Mac: a take's voice cuts into its record's `edits`, under If-Match, once (N65, D:B201);
 - token Macs: ledger entries, `gone/<id>`, fallback grants;
 - the sweep: deletions (§6.8).
 

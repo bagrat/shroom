@@ -60,9 +60,10 @@ at `bf84b67079a8` (D:B2). Svelte 5, TypeScript 5.9.
 | `crates/shroom-core` | `World`, `update`, `derive`, `settle`, `Scene`, events/effects as data, `copy.rs` (every said-line), `trace.rs` (D:B93), `derive/status.rs`. No Tauri, AppKit, network, threads or clock reads | §3.7 |
 | `crates/shroom-capture` | SCK capture, device lists, Continuity classifier (D:B48), cpal mic (D:B17), `CameraSource` (D:B33, B120), `CameraPreview`, harness beep/loopback | `devices::tests` |
 | `crates/shroom-record` | `Recording`: frame hand-off (D:B16), takes, audio clock (D:B18), finalize, `repair` (D:B23, B70), `stall` | synthetic seam |
-| `crates/shroom-encode` | `args::ffmpeg_args` (pure), `clock`, `take`, `playlist::assemble_mapped`, `quality`, `locate` (D:B82) | argv goldens |
+| `crates/shroom-encode` | `args::ffmpeg_args` (pure), `clock`, `take`, `playlist::assemble_mapped`, `quality`, `locate` (D:B82), `sound` and `quiet` (a take's sound read in Rust; D:B201) | argv goldens |
+| `crates/shroom-edit` | the edit list (`EditList`, `Saved`, `keep()`; D:B195), its operations, the voice-cue planner (`plan`, `land`; N65, D:B201) | keep vectors, the POC's takes |
 | `crates/shroom-storage` | SigV4 (session tokens); S3 put/get/head/delete/list, `put_if_absent`, `get_with_etag`/`put_if_match` (D:B21), multipart `put_file` | botocore vectors |
-| `crates/shroom-upload` | `new_id`, `keys`, `meta`, `master`, `upload` (`claim → go_live → finish`, the beat), `live`, `library` (+ `cleanup`) | L1 bucket |
+| `crates/shroom-upload` | `new_id`, `keys`, `meta`, `master`, `upload` (`claim → go_live → finish`, the beat), `live`, `library` (+ `cleanup`), `voice` (N65) | L1 bucket |
 | `crates/shroom-cloud` | REST client behind `Policy`; `sweep`, `wire`, `mint`, `owner`, `member` (client for `/_shroom/api/`), `registry`, `device` | L1 fake; `SHROOM_LIVE=1` |
 | `crates/shroom-cloudfake` | L1 Cloudflare + R2 stand-in, fault seam (D:B64) | tests |
 | `crates/shroom-update` | manifest, `offer`, verified download, `same_signer`, `SWAP_SH` (D:B31, B125) | `tests/release.rs` |
@@ -590,8 +591,9 @@ foreign `v`. `VERSION` 0.1.9, `IFACE` 2.
 | `GET /m/<id>/<file>` | `rec/<id>/…` with Range/HEAD; only `.m3u8 .m4s .mp4 .jpg .vtt`; `nosniff`, `CSP: sandbox`; record read beside: deleted → 404, unreadable → 503 |
 | `GET /d/<id>` | `video.mp4` named from the live title, Range forwarded |
 | `GET /oembed?url=` | iframe of the embed face |
-| `GET /_shroom/hls.js`, `/_shroom/ping`, `/_shroom/status/<id>` | the player (immutable); `{shroom, iface, version}` without storage; the page's poll (`drained`, `pct`, `stalled`) |
+| `GET /_shroom/hls.js`, `/_shroom/ping`, `/_shroom/status/<id>` | the player (immutable); `{shroom, iface, version}` without storage; the page's poll (`drained`, `pct`, `stalled`, `cuts`) |
 | `POST /_shroom/title/<id>`, `/_shroom/mark` | cookie title edit (`etagMatches`); the mark switch (owner-class) |
+| `POST`, `GET /_shroom/edits/<id>` | a voice cut on or off (`etagMatches`, the maker or owner-class); the owner page's strip and what plays (N65, D:B200) |
 | `GET /favicon.{svg,png,ico}` | the icon carried in the module (D:B109) |
 | `GET /join/<code>` | the join page faces; opening never uses the invite |
 | `/_shroom/api/` | `POST peek, join, enroll, mint, key, library, invites, mark, health, gone`; `GET me, members`; `DELETE invites/<iid>, members/<mid>, devices/<did\|self>` — JSON with `"shroom":1` |
@@ -630,8 +632,9 @@ and show needs-update below it (DV #30). `VERSION` moves with every page change;
 5. Make the poster if missing; `go_live`: missing media in order, the variant playlist
    **last of the stream** (the go-live), the master, the poster, then the record → `live`
    (`publishedAt`, `durationSec`, `media`); mark `live`.
-6. Build the MP4 and teaser (§4.6); `finish`: teaser, then `video.mp4`, each with a record
-   rewrite; then `done = total` (drained); mark `uploaded`.
+6. Build the MP4 and teaser (§4.6); start the take's voice lane (`runtime/voice.rs`, N65,
+   D:B201: its own thread, never waited on); `finish`: teaser, then `video.mp4`, each with a
+   record rewrite; then `done = total` (drained); mark `uploaded`.
 
 Each S3 call retries in place (`with_retry`: 6 tries, 500 ms doubling to 15 s; 4xx but
 408/429 not retried). A failed pass reports `Blocked`/`Idle`; the core owns the pass retry
@@ -852,6 +855,9 @@ owner-class: [ Add a token here ]; member: the address); row six live everywhere
   drop as seconds in the joined timeline, sent as `meta.markers` at the claim (D:B49 e);
   nothing surfaces them.
 - v1 doesn't transcribe (D:B168; §16 #29).
+- Voice cuts (N65, provisional; D:B200, B201) read the space's own transcript (N66) to cut
+  where the speaker said “shroom cut”: the maker's Mac plans them and lands them in
+  `meta.edits`; the words show only on the owner page.
 
 ---
 

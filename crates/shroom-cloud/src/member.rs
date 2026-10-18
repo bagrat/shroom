@@ -501,6 +501,12 @@ impl std::fmt::Debug for Space {
 /// What a body-less call carries.
 const EMPTY: &[u8] = b"";
 
+/// A take's status says its voice cuts are coming (`cuts: "coming"`); a status without the
+/// word, or one this build can't read, says they aren't.
+fn cuts_word(status: &[u8]) -> bool {
+    serde_json::from_slice::<Value>(status).ok().and_then(|v| v.get("cuts")?.as_str().map(|w| w == "coming")).unwrap_or(false)
+}
+
 impl Space {
     /// `https://<host>`.
     pub fn new(host: &str) -> Space {
@@ -588,6 +594,16 @@ impl Space {
                     _ => Ping::NotShroom { status },
                 }
             }
+        }
+    }
+
+    /// `GET /_shroom/status/<rec>`: whether the space says the take's voice cuts are coming
+    /// (spec N65: it hears its takes, and this one went live just now and isn't planned yet).
+    /// `None` when it can't be asked now.
+    pub fn cuts_coming(&self, rec: &str) -> Option<bool> {
+        match self.send("GET", &format!("/_shroom/status/{rec}"), EMPTY, None) {
+            Ok((200, bytes, _)) => Some(cuts_word(&bytes)),
+            _ => None,
         }
     }
 
@@ -881,6 +897,15 @@ pub fn machine_stamp(hardware: &str, home: &str, host: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_status_says_cuts_are_coming_only_in_so_many_words() {
+        assert!(cuts_word(br#"{"state":"live","drained":true,"cuts":"coming"}"#));
+        // Planned (a tag), a space that doesn't listen (no word), a Worker before N65, not JSON.
+        for status in [&br#"{"state":"live","cuts":"1x9k2"}"#[..], br#"{"state":"live","drained":true}"#, br#"{"state":"uploading","pct":40}"#, b"<html>", b""] {
+            assert!(!cuts_word(status), "{}", String::from_utf8_lossy(status));
+        }
+    }
 
     #[test]
     fn a_join_link_parses_in_all_three_forms() {
