@@ -68,7 +68,7 @@ at `bf84b67079a8` (D:B2). Svelte 5, TypeScript 5.9.
 | `crates/shroom-cloud` | REST client behind `Policy`; `sweep`, `wire`, `mint`, `owner`, `member` (client for `/_shroom/api/`), `registry`, `device` | L1 fake; `SHROOM_LIVE=1` |
 | `crates/shroom-cloudfake` | L1 Cloudflare + R2 stand-in, fault seam (D:B64) | tests |
 | `crates/shroom-update` | manifest, `offer`, verified download, `same_signer`, `SWAP_SH` (D:B31, B125) | `tests/release.rs` |
-| `crates/shroom-cli` | the `shroom` command (spec N62; D:B215–B219): `home` (its app's folder, from the bundle it ships in), `space` (the page under the device key: list, rename, delete, members, invites, cleanup suggestions), `app` (asks the running app over `control.sock`), `batch` (many at once), `say` (every line it says), `out` (codes and exit statuses) | unit; `tests/space.rs` on the real `worker.js` (`worker/dev/serve.mjs`); `tests/flavor.rs`, `cleanup.rs`, `voice.rs` |
+| `crates/shroom-cli` | the `shroom` command (spec N62; D:B215–B219): `home` (its app's folder, from the bundle it ships in), `space` (the page under the device key: list, rename, delete, members, invites, cleanup suggestions), `app` (asks the running app over `control.sock`), `batch` (many at once), `say` (every line it says), `out` (codes and exit statuses), `log` (its own `logs/cli.log`) | unit; `tests/space.rs` on the real `worker.js` (`worker/dev/serve.mjs`); `tests/flavor.rs`, `cleanup.rs`, `voice.rs`, `log.rs` |
 | `crates/shroom-testpattern`, `shroom-spec`, `shroom-devtool` | media-truth strip (D:B59 d); spec fixtures as types; the heartbeat's test space up/down | dev only |
 | `tests/e2e-live` | L2 on the dedicated test account | live |
 | `app/src-tauri` | `main.rs`, `commands.rs` (IPC), `runtime/` (runner, lanes, presenter, overlays, observers, seam), `harness.rs`/`drives.rs` (only with `dev-harness` in a `.dev` build — D:B5, B55, B62) | drives, `tests/l5/` |
@@ -222,7 +222,11 @@ Keep-awake (`os.rs`) is held while `settle::can_drain` (D:B34).
 `trace::Ring` keeps the last 512 steps (kinds, arm, edge, state ids on change), names read at
 most two variants deep so no value or secret enters; `runtime/ring.rs` writes it into
 `run.log` on a dev-build law breach, a rescued take, a panic and each harness run's end
-(D:B93).
+(D:B93). The `shroom` command keeps its own, `logs/cli.log` (600, rolled at 64 KB; D:B215):
+one line a run — UTC time, the verb and the options' names, `ok` or the code and exit, what
+it counted, the space's or the app's refusal, the time it took; never a word it was given.
+Report a problem and Copy diagnostics carry its last 30 lines after the app's
+(`report::clean_logs`), the whole within 200 lines.
 
 ### 3.4 Persistence under `~/.shroom`
 
@@ -247,6 +251,7 @@ and `Scanned` and writes only via effects; `home::FILES` whitelists top-level na
 | `forget/<rec>` | owed remote discards (D:B52 e) |
 | `updates/<version>/shroom.app` | a verified staged update |
 | `logs/run.log` | §3.3 |
+| `logs/cli.log` | the `shroom` command's own (§3.3, D:B215): the one file it writes, and only where shroom's folder exists |
 | `takes/<dir>/` | below |
 
 **A take dir is its own truth** (`runtime/takes.rs:classify`, pure). Markers: `LOCK` (flock:
@@ -322,7 +327,10 @@ with its link and copies nothing. The command words `recording_off` with the set
 `shroom://settings/agent`: it reaches the app as any link it's opened with
 (`RunEvent::Opened` → `runtime::opened`, held until the core is up) and the core as
 `Event::SettingsLink` — Settings on General, the switch's row lit for a moment
-(`SettingsFields.lit`); it never flips the switch, and mid-take it opens nothing.
+(`SettingsFields.lit`); it never flips the switch, and mid-take it opens nothing. The run
+log has each ask and its answer by number (`control: ask 4 record.start no-count`,
+`control: answer 4 no recording_off (3 ms)`), any connection dropped or ask not read, and
+the agent label shown and gone.
 
 **Law 13 by type.** No Scene field can hold a secret; `Secret` is not `Serialize` and `Debug`
 redacts. The `?k=` URL exists only inside `OpenOwnerPage`, opened through NSWorkspace. A
