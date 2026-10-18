@@ -293,6 +293,12 @@ fn rows() -> Vec<(&'static str, World)> {
         w
     }));
     rows.push(("library-empty", library_with(ready(), vec![])));
+    // N66: the setup Mac's Library, naming off and the card not yet answered.
+    rows.push(("library-ai-offer", {
+        let mut w = library(ready());
+        w.space.ai = Some(false);
+        w
+    }));
     rows.push(("library-no-match", {
         let mut w = library_with(ready(), space_rows().into_iter().filter(|r| !r.title.contains("502")).collect());
         w.session.fields.library.search = "502".into();
@@ -335,6 +341,12 @@ fn rows() -> Vec<(&'static str, World)> {
         w
     }));
     rows.push(("settings-space", space_tab()));
+    // The setup Mac, once its page said whether it names videos (N66).
+    rows.push(("settings-space", {
+        let mut w = space_tab();
+        w.space.ai = Some(true);
+        w
+    }));
     rows.push(("settings-space", {
         let mut w = space_tab();
         w.mac.mic = Fact::known(Access::Denied, Mono(0));
@@ -2003,4 +2015,113 @@ fn every_failure_from_every_row_lands() {
 fn every_failure_here_is_its_own_state() {
     let bad = laws::failures_are_states(&rows(), laws::failures_owned_by("region5"));
     assert!(bad.is_empty(), "law 12:\n{}", bad.join("\n"));
+}
+
+// ── Names, chapters and captions (N66) ──
+
+fn space_pane(scene: &Scene) -> &shroom_core::scene::SpaceBody {
+    match &scene.settings.as_ref().expect("Settings is open").body.pane {
+        SettingsPane::Space(sp) => sp,
+        _ => panic!("not the Space tab"),
+    }
+}
+
+/// N66: on the Mac that holds the setup key, Settings · Space has the switch once the page has
+/// said where it stands; on and off re-wire the page, the switch greying meanwhile and
+/// mid-take (law 4); a re-wiring that didn't go through leaves it as the page has it.
+#[test]
+fn naming_is_a_switch_on_the_setup_mac_that_re_wires_the_page() {
+    assert!(space_pane(&derive(&space_tab())).ai.is_none(), "not before the page said");
+    let mut w = space_tab();
+    w.space.ai = Some(false);
+    let mut r = Run::new(w);
+    let t = space_pane(&r.scene).ai.clone().expect("the switch");
+    assert_eq!((t.label.as_str(), t.on, t.enabled), (shroom_core::copy::ai_label().as_str(), false, true));
+    assert_eq!(space_pane(&r.scene).ai_line, Some(shroom_core::copy::ai_line()));
+    r.set(Action::SetAi(true));
+    assert!(r.has(|e| *e == Effect::Cloud(CloudCmd::SetAi(true))));
+    assert!(!space_pane(&r.scene).ai.as_ref().unwrap().enabled, "greys while the page is re-wired");
+    r.send(Event::Cloud(CloudNews::AiSet(true)));
+    let t = space_pane(&r.scene).ai.clone().unwrap();
+    assert!(t.on && t.enabled && t.action == Action::SetAi(false), "{t:?}");
+    r.set(Action::SetAi(false));
+    r.send(Event::Failed { op: Op::Ai, class: FailClass::Transport });
+    assert!(space_pane(&r.scene).ai.as_ref().is_some_and(|t| t.on && t.enabled), "as the page has it");
+    let mut w = space_tab();
+    w.space.ai = Some(true);
+    w.take = Some(take(Phase::Recording, 61_000));
+    assert!(!space_pane(&derive(&w)).ai.as_ref().unwrap().enabled, "never mid-take");
+}
+
+/// N66: the setup Mac's page check (B50) says whether the page names videos.
+#[test]
+fn the_page_check_says_whether_naming_is_on() {
+    let mut r = Run::new(space_tab());
+    r.send(Event::Cloud(CloudNews::Refreshed { deployed: false, ai: Some(true) }));
+    assert_eq!(r.w.space.ai, Some(true));
+    assert!(space_pane(&r.scene).ai.as_ref().is_some_and(|t| t.on));
+    // A check that couldn't tell leaves what was known.
+    r.send(Event::Cloud(CloudNews::Refreshed { deployed: false, ai: None }));
+    assert_eq!(r.w.space.ai, Some(true));
+}
+
+/// N66: the Library on the setup Mac offers naming once, at its top, until it's answered:
+/// Turn on does what the switch does; Not now puts it away for good on this Mac.
+#[test]
+fn the_library_offers_naming_once_on_the_setup_mac() {
+    let offered = || {
+        let mut w = library(ready());
+        w.space.ai = Some(false);
+        w
+    };
+    let r = Run::new(offered());
+    let o = r.scene.library.as_ref().unwrap().body.offer.clone().expect("the card");
+    assert_eq!((o.title.as_str(), o.line.as_str()), (shroom_core::copy::ai_offer_title().as_str(), shroom_core::copy::ai_offer_line().as_str()));
+    assert_eq!((o.on.label.as_str(), o.on.style, o.on.enabled), (shroom_core::copy::turn_on().as_str(), Style::Filled, true));
+    assert_eq!((o.not_now.label.as_str(), o.not_now.style), (shroom_core::copy::not_now().as_str(), Style::Quiet));
+    assert!(r.scene.state_ids().contains(&"library-ai-offer"));
+
+    let mut r = Run::new(offered());
+    r.lib(Action::AiNotNow);
+    assert!(r.scene.library.as_ref().unwrap().body.offer.is_none());
+    assert!(r.has(|e| matches!(e, Effect::Persist(PersistOp::Once(o)) if o.ai_offer)), "remembered on this Mac");
+    assert!(!r.has(|e| matches!(e, Effect::Cloud(CloudCmd::SetAi(_)))));
+
+    let mut r = Run::new(offered());
+    r.lib(Action::AiOn);
+    assert!(r.has(|e| *e == Effect::Cloud(CloudCmd::SetAi(true))));
+    assert!(r.has(|e| matches!(e, Effect::Persist(PersistOp::Once(o)) if o.ai_offer)));
+    assert!(r.scene.library.as_ref().unwrap().body.offer.is_none());
+
+    let not: [fn(&mut World); 3] = [|w| w.space.ai = Some(true), |w| w.space.ai = None, |w| w.once.ai_offer = true];
+    for f in not {
+        let mut w = offered();
+        f(&mut w);
+        assert!(derive(&w).library.unwrap().body.offer.is_none());
+    }
+    // Offline or mid-take, Turn on waits; Not now still answers it.
+    let mut w = offered();
+    w.net.online = Fact::known(false, Mono(900));
+    let o = derive(&w).library.unwrap().body.offer.unwrap();
+    assert!(!o.on.enabled && o.not_now.enabled);
+    let mut w = offered();
+    w.take = Some(take(Phase::Recording, 61_000));
+    assert!(!derive(&w).library.unwrap().body.offer.unwrap().on.enabled);
+}
+
+/// N66: only the Mac that holds the setup key can re-wire the page, so only it shows naming:
+/// never another of the owner's Macs, never a member's.
+#[test]
+fn naming_shows_only_where_the_setup_key_is() {
+    for role in [Role::OwnerClass, Role::Member] {
+        let mut w = space_tab();
+        w.space.token = false;
+        w.space.identity.as_mut().unwrap().role = role;
+        w.space.ai = Some(false);
+        if let Some(SettingsPane::Space(sp)) = derive(&w).settings.as_ref().map(|s| &s.body.pane) {
+            assert!(sp.ai.is_none(), "{role:?}");
+        }
+        let w = library(w);
+        assert!(derive(&w).library.unwrap().body.offer.is_none(), "{role:?}");
+    }
 }

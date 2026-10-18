@@ -2801,7 +2801,7 @@ Send feedback (N60): a small window of its own, opened from the popover's first 
 
 ### `library-ai-offer`
 
-banner · window · **provisional** · a face of `library` · board: AiOffer · cites N66, B171
+face · window · **provisional** · a face of `library` · board: AiOffer · cites N66, B171
 
 A card at the top of the Library on the Mac that holds the setup key, shown until it is answered: it says the space can name its videos and add chapters from what is said, by the owner's own Cloudflare account, with one line on what it costs, and offers Turn on and Not now (N66). Members' Macs and other Macs never show it.
 

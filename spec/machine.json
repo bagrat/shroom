@@ -11690,7 +11690,7 @@
   },
   "library-ai-offer": {
    "region": 5,
-   "kind": "banner",
+   "kind": "face",
    "parent": "library",
    "surface": "window",
    "status": "provisional",
