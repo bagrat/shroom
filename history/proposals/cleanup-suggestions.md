@@ -1,8 +1,12 @@
 # Suggesting videos to clean up: counting plays, and four ways to score them
 
-*Proposal and POC, 2026-10-18. A draft PR, not for merging: counting plays changes what the
-privacy page promises, and the new rows, words and setting are all Bagrat's call. The words on
-the boards and in the reasons are drafts.*
+> **Built, 2026-10-18** — spec N68, DECISIONS B210–B214, WORKER-INTERFACE §4.21. This is the
+> proposal and its POC as they stood, kept for the why; where they differ, the decisions and
+> the code win (the score is `fading-cost`, the line's ✕ became Not now, the Undo is 5 s).
+
+*Proposal and POC, 2026-10-18. Counting plays changes what the privacy page promises, and
+the new rows, words and setting were Bagrat's call. The words on the boards and in the
+reasons were drafts.*
 
 > **Bagrat's answers (2026-10-18), relayed by the orchestrator:**
 > 1. **Count plays: on by default**, with the switch in Settings.

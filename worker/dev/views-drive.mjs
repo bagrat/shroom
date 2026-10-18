@@ -1,4 +1,4 @@
-// The play counter in real browsers (POC, dev/proposals/cleanup-suggestions.md): the real
+// The play counter in real browsers (POC, history/proposals/cleanup-suggestions.md): the real
 // worker.js over loopback HTTP, a short recording encoded as the app encodes it, and
 // headless Chromium and WebKit. Per engine: a bounce (opened, never played — no play), a
 // half watch then leaving the page (a play, ended near half), and a full watch then

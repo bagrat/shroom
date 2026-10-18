@@ -955,7 +955,7 @@ The default formula is `fading-cost`. Its candidate is at least 14 days old (30 
 score), not played in 14 days, quiet 30 days, never kept, with heat < 0.25 and ≥ 1¢ a month
 at list price. Heat is plays halving every 30 days, × (0.3 + 0.7 × median watched). The
 score is cost ÷ (heat + 0.05). `idle`, `fading`, `cost` and `gravity` stay for comparison
-(`dev/proposals/cleanup-suggestions.md`). The reason codes are `never-played`,
+(`history/proposals/cleanup-suggestions.md`). The reason codes are `never-played`,
 `stopped-early`, `not-lately` and `big-and-quiet` (cost only), or, when the video isn't a
 candidate, `kept`, `new`, `watched-lately` and `counting-too-new`.
 

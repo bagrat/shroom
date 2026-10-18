@@ -1,4 +1,4 @@
-// The play counter on a real Cloudflare account (POC, dev/proposals/cleanup-suggestions.md):
+// The play counter on a real Cloudflare account (POC, history/proposals/cleanup-suggestions.md):
 // this branch's worker.js deployed as its own Worker over its own bucket, both named
 // `shroom-poc-views`, a short recording put in it, then played in headless Chromium and
 // WebKit through the workers.dev link; the plays record and POST /_shroom/api/cleanup are

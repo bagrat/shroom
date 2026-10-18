@@ -1,4 +1,4 @@
-// Plays and the videos suggested to clean up (POC, dev/proposals/cleanup-suggestions.md):
+// Plays and the videos suggested to clean up (POC, history/proposals/cleanup-suggestions.md):
 // the page's beacons are counted in .shroom/views/ with nothing that names a viewer, the
 // owner's own page never counts, and POST /_shroom/api/cleanup scores each video under
 // one of four formulas, with the reason and the facts its line needs.

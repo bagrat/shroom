@@ -1,4 +1,4 @@
-// The four cleanup scores over an invented Library (POC, dev/proposals/cleanup-suggestions.md):
+// The four cleanup scores over an invented Library (POC, history/proposals/cleanup-suggestions.md):
 // twelve made-up videos with made-up plays, scored by the Worker's own `cleanupFacts` and
 // `cleanupScore`, and the month's saving each formula could state. Prints Markdown.
 //
