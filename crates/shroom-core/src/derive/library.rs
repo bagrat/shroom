@@ -339,11 +339,13 @@ fn view(w: &World, r: &Row) -> LibraryRowView {
             if matches!(r.kind, Kind::Live) {
                 menu.push(Button::new(Action::CopyThumbRow(rec.clone()), copy::copy_thumbnail(), Style::Plain));
             }
-            menu.extend([
-                open_btn(),
-                Button::new(Action::StartRename(rec.clone()), copy::rename(), Style::Plain).enabled(reachable),
-                delete_btn(),
-            ]);
+            menu.push(open_btn());
+            // Edit… after Open page, on a live row (N63): greyed offline as Rename is, and
+            // mid-take with law 4's line.
+            if matches!(r.kind, Kind::Live) {
+                menu.push(after_take(Button::new(Action::EditRow(rec.clone()), copy::edit_ellipsis(), Style::Plain).enabled(reachable)));
+            }
+            menu.extend([Button::new(Action::StartRename(rec.clone()), copy::rename(), Style::Plain).enabled(reachable), delete_btn()]);
             let gestures = Gestures {
                 click: Some(Action::SelectRow(rec.clone())),
                 cmd_click: Some(Action::ToggleRow(rec.clone())),

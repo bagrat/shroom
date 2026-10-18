@@ -9,16 +9,17 @@ use crate::copy;
 use crate::derive::onboarding::{self, At};
 use crate::derive::settings::{self as settings_view, SpaceAt};
 use crate::derive::{COPIED_MS, COUNTDOWN_MS, OneShot, derive, library as library_view};
-use crate::effect::{CloudCmd, Effect, LibCmd, MemberCmd, MoviesCopy, Perm, PersistOp, PublicUrl, RecCmd, ShellCmd, TakeCmd, UpCmd, UpdCmd};
+use crate::effect::{CloudCmd, EditCmd, Effect, LibCmd, MemberCmd, MoviesCopy, Perm, PersistOp, PublicUrl, RecCmd, ShellCmd, TakeCmd, UpCmd, UpdCmd};
 use crate::event::{
-    ClaimFail, CloudNews, Event, Field, JoinAnswer, Key, LibraryNews, MemberNews, OsNews, PeekAnswer, QuitVia, RecNews, ReportNews, SecretField, Shape,
-    StandingAnswer, Surface, TokenFail, UpdateNews, UploadNews, WireFail,
+    ClaimFail, CloudNews, EditStep, EditorNews, Event, Field, JoinAnswer, Key, LibraryNews, MemberNews, OsNews, PeekAnswer, QuitVia, RecNews, ReportNews,
+    SecretField, Shape, StandingAnswer, Surface, TokenFail, UpdateNews, UploadNews, WireFail,
 };
 use crate::report::{Kind, Post};
 use crate::scene::{Action, Click};
 use crate::time::{Fact, Mono};
 use crate::world::{
-    Access, Arming, Blocked, Born, Cause, Confirm, CopyTarget, Door, FailClass, Failure, Fields, Fork, Invite, JoinRefusal, Landed, LaunchKind,
+    Access, Arming, Blocked, Born, Cause, Confirm, CopyOwed, CopyTarget, Door, EditorFields, EditorMedia, EditorSave, FailClass, Failure, Fields, Fork, Invite,
+    JoinRefusal, Landed, LaunchKind, RecId,
     LibraryFields, LibraryOps, Members, OpenTake, Op, PageOpen, Paste, Phase, QuickProbe, Reach, RelaunchWhy, Removal, ReportFields, FeedbackFields, Restore, Role, SavedCause,
     SavedTake, SecretId, SettingsFields, SettingsTab, SourceId, Space, SpaceIdentity, StopOutcome, Strike, Sweep, TakeDir, TakeLost, TokenVerdict,
     UpdateOffer, Why, WindowKind, WorkerFact, World,
@@ -102,7 +103,8 @@ fn apply_event(w: &mut World, event: Event) -> Out {
                 // An update relaunch brings back the window that was in front (law 5,
                 // N37) — without the keyboard…
                 LaunchKind::UpdateRelaunch | LaunchKind::UpdateFailed => {
-                    if let Some(kind) = updated {
+                    // Never the editor: its steps lived in the process that quit (N63).
+                    if let Some(kind) = updated.filter(|k| *k != WindowKind::Editor) {
                         w.session.windows.insert(kind, Door::unasked(w.now));
                     }
                     if disk.launch == LaunchKind::UpdateFailed {
@@ -299,6 +301,7 @@ fn apply_event(w: &mut World, event: Event) -> Out {
             // The charset guard is a note on the name row, not a move (N15): no edge either way.
             (vec![], Arm::named("name-typed"))
         }
+        Event::Edit(step) => edit_step(w, step),
         Event::SecretPasted { field, id, shape } => pasted(w, field, id, shape),
         Event::WindowClosed(kind) => window_closed(w, kind),
         Event::WindowFocused(kind, q) => {
@@ -347,6 +350,7 @@ fn apply_event(w: &mut World, event: Event) -> Out {
         Event::Update(news) => update_news(w, news),
         Event::Member(news) => member(w, news),
         Event::Report(news) => report(w, news),
+        Event::Editor(news) => editor_news(w, news),
         Event::Failed { op, class } => failed(w, op, class),
         Event::Tick => tick(w),
     }
@@ -870,8 +874,10 @@ fn act(w: &mut World, action: Action) -> Out {
             }
             w.update.applying = true;
             let mut fx = Vec::new();
-            // The window in front comes back after the relaunch, at its derived state.
-            if let Some(window) = w.front_window() {
+            // The window in front comes back after the relaunch, at its derived state — never
+            // the editor, whose steps live in this process (N63): the one behind it.
+            let front = w.session.windows.iter().filter(|(k, _)| **k != WindowKind::Editor).max_by_key(|(_, d)| d.entered).map(|(k, _)| *k);
+            if let Some(window) = front {
                 fx.push(Effect::Persist(PersistOp::Restore(Some(Restore { why: RelaunchWhy::Update, window, written: w.wall }))));
             }
             fx.push(Effect::Updater(UpdCmd::Apply(version)));
@@ -933,6 +939,7 @@ fn act(w: &mut World, action: Action) -> Out {
             (vec![Effect::Shell(ShellCmd::CopyThumb(rec, title))], Arm::named("copy-thumb-row"))
         }
         Action::OpenPage(rec) => (vec![Effect::Cloud(CloudCmd::OpenOwnerPage(rec))], Arm { name: "open-page", edge: Some(("library", "owner-page")) }),
+        Action::EditRow(rec) => open_editor(w, rec),
         Action::StartRename(rec) => {
             let title = library_view::title_of(w, &rec).unwrap_or_default();
             w.session.fields.library.renaming = Some((rec, title));
@@ -1104,6 +1111,23 @@ fn act(w: &mut World, action: Action) -> Out {
                 return (vec![], Arm::DROPPED);
             }
             window_closed(w, WindowKind::Feedback)
+        }
+        // ── the editor (N63) ──
+        Action::EditorDone => editor_done(w),
+        Action::EditorRevert => edit_step(w, EditStep::Op(shroom_edit::Op::Revert)),
+        Action::EditorRetry => {
+            // Try again: the video is asked for again — the person's retry, never one behind it.
+            let Some(e) = w.session.fields.editor.as_mut().filter(|e| e.media == EditorMedia::Failed) else { return (vec![], Arm::DROPPED) };
+            e.media = EditorMedia::Opening;
+            let rec = e.rec.clone();
+            w.inflight.failures.remove(&Op::EditorOpen);
+            (vec![Effect::Editor(EditCmd::Open { rec })], Arm { name: "editor-retry", edge: Some(("editor-cant-get", "editor-getting")) })
+        }
+        Action::EditorClose => {
+            // editor-cant-get's Close (Return, Esc): the window goes, and nothing more comes.
+            let Some(e) = w.session.fields.editor.as_ref() else { return (vec![], Arm::DROPPED) };
+            let edge = (crate::derive::editor::state(e) == "editor-cant-get").then_some(("editor-cant-get", "library"));
+            (close_editor(w, true), Arm { name: "editor-closed", edge })
         }
         Action::Disconnect => {
             if w.take_open() {
@@ -1386,6 +1410,8 @@ fn joined(w: &mut World, identity: SpaceIdentity) -> Out {
     if switch {
         w.inflight.ops.remove(&Op::Upload);
         w.inflight.failures.remove(&Op::Upload);
+        // The editor is on a video of the space left behind (N63).
+        gone.extend(leave_editor(w));
     }
     w.space = Space { identity: Some(identity.clone()), token: false, device_key: true, broken: Fact::Unknown, page_checked: None };
     w.sweep = Sweep::default();
@@ -1701,6 +1727,7 @@ fn disconnect(w: &mut World) -> Out {
         w.inflight.ops.remove(&op);
         w.inflight.failures.remove(&op);
     }
+    gone.extend(leave_editor(w));
     w.space = Space::default();
     // The invite, the roster and this Mac's standing go with the space (§5's exit recipe);
     // what this Mac's takes are waiting on (a copy to Movies) stays with them.
@@ -1761,10 +1788,12 @@ fn leave_onboarding(w: &mut World) {
     w.session.windows.remove(&WindowKind::Onboarding);
     w.session.chapter = false;
     w.session.fork = Fork::Virgin;
-    // The Library's and Settings' fields are their windows'; only the onboarding's go.
+    // The Library's, Settings' and the editor's fields are their windows'; only the
+    // onboarding's go.
     let library = std::mem::take(&mut w.session.fields.library);
     let settings = std::mem::take(&mut w.session.fields.settings);
-    w.session.fields = Fields { library, settings, ..Fields::default() };
+    let editor = w.session.fields.editor.take();
+    w.session.fields = Fields { library, settings, editor, ..Fields::default() };
     w.mac.mic_asked = false;
     w.mac.camera_asked = false;
 }
@@ -1913,6 +1942,201 @@ fn window_closed(w: &mut World, kind: WindowKind) -> Out {
             w.session.windows.remove(&WindowKind::Feedback);
             w.session.fields.feedback = FeedbackFields::default();
             (vec![], Arm::named("feedback-closed"))
+        }
+        // The editor's ✕ is Done (N63): it may stay open to save.
+        WindowKind::Editor => editor_done(w),
+    }
+}
+
+// ── the editor (N63, B195) ──
+
+/// Edit… on a live row: the editor opens on it and asks for its record and its video — or,
+/// open already, comes forward on the video it holds (one at a time).
+fn open_editor(w: &mut World, rec: RecId) -> Out {
+    if w.session.fields.editor.is_some() {
+        open_window(w, WindowKind::Editor);
+        return (vec![Effect::Shell(ShellCmd::OpenEditor)], Arm::named("editor-forward"));
+    }
+    let Some(row) = library_view::rows(w).into_iter().find(|r| r.rec == rec && r.kind == library_view::Kind::Live) else { return (vec![], Arm::DROPPED) };
+    open_window(w, WindowKind::Editor);
+    w.session.fields.editor = Some(EditorFields {
+        rec: rec.clone(),
+        title: row.title.unwrap_or_default(),
+        length_ms: row.length_ms,
+        source_duration: row.length_ms.map_or(0.0, |ms| ms as f64 / 1000.0),
+        markers: Vec::new(),
+        history: None,
+        rev: 0,
+        media: EditorMedia::Opening,
+        save: EditorSave::Idle,
+    });
+    w.inflight.failures.remove(&Op::EditorOpen);
+    (vec![Effect::Editor(EditCmd::Open { rec }), Effect::Shell(ShellCmd::OpenEditor)], Arm { name: "open-editor", edge: Some(("library", "editor")) })
+}
+
+/// The editor's fields while it's open on `rec`: news about any other video is stale.
+fn editor_on<'a>(w: &'a mut World, rec: &RecId) -> Option<&'a mut EditorFields> {
+    w.session.fields.editor.as_mut().filter(|e| &e.rec == rec)
+}
+
+/// The editor closes: its fields and its door go. `cancel` stops what its open asked for
+/// (a video still coming) and lets the lane forget the video.
+fn close_editor(w: &mut World, cancel: bool) -> Vec<Effect> {
+    w.session.windows.remove(&WindowKind::Editor);
+    w.inflight.ops.remove(&Op::EditorOpen);
+    w.inflight.failures.remove(&Op::EditorOpen);
+    match w.session.fields.editor.take() {
+        Some(e) if cancel => vec![Effect::Editor(EditCmd::Cancel { rec: e.rec })],
+        _ => vec![],
+    }
+}
+
+/// The space is left (Disconnect, Leave, a switch): the editor closes with it, a video still
+/// coming stops, and a save or a copy in flight was the old space's — its answer is stale.
+fn leave_editor(w: &mut World) -> Vec<Effect> {
+    let coming = w.session.fields.editor.as_ref().is_some_and(|e| !crate::derive::editor::ready(e));
+    let fx = close_editor(w, coming);
+    for op in [Op::EditorSave, Op::EditorCopy] {
+        w.inflight.ops.remove(&op);
+        w.inflight.failures.remove(&op);
+    }
+    fx
+}
+
+/// Done — its button, Return, or the window's ✕: with no video to save over, the window
+/// closes at once and what's coming stops; with nothing changed it closes; with changes, the
+/// checked list is saved as the next revision, and the window stays until the save answers.
+/// While it saves, nothing.
+fn editor_done(w: &mut World) -> Out {
+    let Some(e) = w.session.fields.editor.as_ref() else {
+        w.session.windows.remove(&WindowKind::Editor);
+        return (vec![], Arm::DROPPED);
+    };
+    let face = crate::derive::editor::state(e);
+    if e.save == EditorSave::Saving {
+        return (vec![], Arm::named("editor-done-while-saving"));
+    }
+    let Some(h) = e.history.as_ref().filter(|_| crate::derive::editor::ready(e)) else {
+        let edge = match face {
+            "editor" => Some(("editor", "library")),
+            "editor-cant-get" => Some(("editor-cant-get", "library")),
+            _ => None,
+        };
+        return (close_editor(w, true), Arm { name: "editor-closed", edge });
+    };
+    if !h.dirty() {
+        let edge = (face == "editor").then_some(("editor", "library"));
+        return (close_editor(w, false), Arm { name: "editor-closed", edge });
+    }
+    let saved = shroom_edit::Saved { list: h.now.clone().checked(), rev: e.rev + 1, copy: None };
+    let rec = e.rec.clone();
+    if let Some(e) = w.session.fields.editor.as_mut() {
+        e.save = EditorSave::Saving;
+    }
+    w.inflight.failures.remove(&Op::EditorSave);
+    let from = if face == "editor-save-failed" { "editor-save-failed" } else { "editor" };
+    (vec![Effect::Editor(EditCmd::Save { rec, saved })], Arm { name: "editor-saving", edge: Some((from, "editor-saving")) })
+}
+
+/// A step from the editor's webview, or its Revert button: taken while the editor can take
+/// steps (the video here, the record read, nothing saving), else dropped; the edit model
+/// refuses what changes nothing or leaves too little (`edit-refused`).
+fn edit_step(w: &mut World, step: EditStep) -> Out {
+    let open = w.window_visible(WindowKind::Editor);
+    let Some(h) = w.session.fields.editor.as_mut().filter(|e| open && crate::derive::editor::editable(e)).and_then(|e| e.history.as_mut()) else {
+        return (vec![], Arm::DROPPED);
+    };
+    let taken = match &step {
+        EditStep::Op(op) => h.act(op),
+        EditStep::Undo => h.undo(),
+        EditStep::Redo => h.redo(),
+    };
+    (vec![], Arm::named(if taken { "edit" } else { "edit-refused" }))
+}
+
+/// The editor's lane (N63): each answer lands on the editor open on its video, else it's stale.
+fn editor_news(w: &mut World, news: EditorNews) -> Out {
+    let now = w.now;
+    let stale = || (vec![], Arm::named("editor-stale"));
+    let seconds = |d: f64| (d.is_finite() && d > 0.0).then_some(d);
+    match news {
+        EditorNews::Opened { rec, saved, markers, duration_sec } => {
+            // Read once per open: a second reading over steps already taken changes nothing.
+            let Some(e) = editor_on(w, &rec).filter(|e| e.history.is_none() || matches!(e.media, EditorMedia::Opening | EditorMedia::Getting { .. })) else {
+                return stale();
+            };
+            let duration = duration_sec
+                .and_then(seconds)
+                .or_else(|| saved.as_ref().and_then(|s| seconds(s.list.source_duration)))
+                .or_else(|| e.length_ms.and_then(|ms| seconds(ms as f64 / 1000.0)))
+                .or_else(|| if let EditorMedia::Ready { duration } = e.media { seconds(duration) } else { None })
+                .unwrap_or(0.0);
+            e.rev = saved.as_ref().map_or(0, |s| s.rev);
+            let mut list = saved.map_or_else(|| shroom_edit::EditList::new(duration), |s| s.list);
+            if seconds(list.source_duration).is_none() {
+                list.source_duration = duration;
+            }
+            e.source_duration = duration;
+            e.markers = markers.into_iter().filter(|m| m.is_finite() && *m >= 0.0).collect();
+            e.history = Some(shroom_edit::History::new(list));
+            (vec![], Arm::named("editor-opened"))
+        }
+        EditorNews::Getting { rec, pct } => {
+            let Some(e) = editor_on(w, &rec).filter(|e| matches!(e.media, EditorMedia::Opening | EditorMedia::Getting { .. })) else { return stale() };
+            e.media = EditorMedia::Getting { pct: pct.min(100) };
+            // Bytes moving keep the open alive: a long video isn't cut off mid-way.
+            if w.inflight.ops.contains_key(&Op::EditorOpen) {
+                w.inflight.ops.insert(Op::EditorOpen, now.plus(Op::EditorOpen.deadline_ms()));
+            }
+            (vec![], Arm::named("editor-getting"))
+        }
+        EditorNews::Ready { rec, duration } => {
+            let Some(e) = editor_on(w, &rec).filter(|e| matches!(e.media, EditorMedia::Opening | EditorMedia::Getting { .. })) else { return stale() };
+            let came = matches!(e.media, EditorMedia::Getting { .. });
+            let duration = seconds(duration).unwrap_or(0.0);
+            e.media = EditorMedia::Ready { duration };
+            // A record that knew no length takes the video's own (no step could be taken yet).
+            if e.source_duration <= 0.0 {
+                e.source_duration = duration;
+            }
+            if duration > 0.0 && e.history.as_ref().is_some_and(|h| h.saved.source_duration <= 0.0) {
+                e.history = Some(shroom_edit::History::new(shroom_edit::EditList::new(duration)));
+            }
+            answered(w, Op::EditorOpen);
+            (vec![], Arm { name: "editor-ready", edge: came.then_some(("editor-getting", "editor")) })
+        }
+        EditorNews::Saved { rec, rev } => {
+            let Some(e) = editor_on(w, &rec).filter(|e| e.save == EditorSave::Saving) else { return stale() };
+            e.rev = rev;
+            let list = e.history.as_mut().map(|h| {
+                h.saved_as_now();
+                h.now.clone()
+            });
+            answered(w, Op::EditorSave);
+            close_editor(w, false);
+            // The row reads what plays now, at once; the permanent copy of this revision is
+            // owed — none for a list back to the original (the lane dropped the old one).
+            let edited_ms = list.as_ref().filter(|l| !l.is_identity()).map(|l| (l.edited_duration() * 1000.0).round() as u64);
+            w.library_ops.edited.insert(rec.clone(), (edited_ms, now));
+            if let Fact::Known { v, .. } = &mut w.library {
+                if let Some(r) = Arc::make_mut(v).iter_mut().find(|r| r.rec == rec) {
+                    r.edited_ms = edited_ms;
+                }
+            }
+            if edited_ms.is_some() {
+                w.library_ops.copies.insert(rec, CopyOwed { rev, asked: false });
+            } else {
+                w.library_ops.copies.remove(&rec);
+            }
+            (vec![], Arm { name: "editor-saved", edge: Some(("editor-saving", "library")) })
+        }
+        EditorNews::CopyDone { rec, rev } => {
+            answered(w, Op::EditorCopy);
+            // A newer save of the same video while it ran is still owed.
+            if w.library_ops.copies.get(&rec).is_some_and(|c| c.asked && c.rev <= rev) {
+                w.library_ops.copies.remove(&rec);
+            }
+            (vec![], Arm::named("editor-copied"))
         }
     }
 }
@@ -2923,6 +3147,26 @@ fn failed(w: &mut World, op: Op, class: crate::world::FailClass) -> Out {
             w.inflight.failures.remove(&Op::UpdateApply);
             fx.push(Effect::Persist(PersistOp::Restore(None)));
         }
+        // The editor (N63): the record or the video that couldn't come, and the save that
+        // didn't go through, each say so — their retry is the person's (Try again, Done).
+        Op::EditorOpen => {
+            w.inflight.failures.remove(&Op::EditorOpen);
+            if let Some(e) = w.session.fields.editor.as_mut().filter(|e| matches!(e.media, EditorMedia::Opening | EditorMedia::Getting { .. })) {
+                let came = matches!(e.media, EditorMedia::Getting { .. });
+                e.media = EditorMedia::Failed;
+                return (fx, Arm { name: "editor-cant-get", edge: came.then_some(("editor-getting", "editor-cant-get")) });
+            }
+        }
+        Op::EditorSave => {
+            w.inflight.failures.remove(&Op::EditorSave);
+            if let Some(e) = w.session.fields.editor.as_mut().filter(|e| e.save == EditorSave::Saving) {
+                e.save = EditorSave::Failed;
+                return (fx, Arm { name: "editor-save-failed", edge: Some(("editor-saving", "editor-save-failed")) });
+            }
+        }
+        // A copy that didn't come out is noted, and the next owed waits its backoff; the
+        // page plays the saved list over the original meanwhile (B195 (f)).
+        Op::EditorCopy => w.library_ops.copies.retain(|_, c| !c.asked),
         // An invite the person opened whose peek couldn't get through: its window opens on
         // join-waiting's posture (N31: offline or unanswered) — never over a take (law 4) —
         // and peek keeps trying behind it.

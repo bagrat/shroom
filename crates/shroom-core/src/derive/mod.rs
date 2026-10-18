@@ -1,5 +1,6 @@
 //! `derive(&World) -> Scene`: pure and total. Every surface comes from here.
 
+pub mod editor;
 pub mod feedback;
 pub mod library;
 pub mod members;
@@ -41,11 +42,12 @@ pub fn derive(w: &World) -> Scene {
     let library = library::derive(w);
     let settings = settings::derive(w);
     let feedback = feedback::derive(w);
+    let editor = editor::derive(w);
     // Law 6 (SM:133), as ratified: the Dock icon iff a window of shroom's is open —
-    // onboarding, the Library, Settings or Send feedback (DEVIATIONS #38's setup-only Dock
-    // was rejected).
-    let dock = onboarding.is_some() || library.is_some() || settings.is_some() || feedback.is_some();
-    Scene { tray: tray::derive(w), popover, onboarding, library, settings, feedback, countdown, bubble, preview, dock, next_wake: next_wake(w) }
+    // onboarding, the Library, Settings, Send feedback or the editor (DEVIATIONS #38's
+    // setup-only Dock was rejected).
+    let dock = onboarding.is_some() || library.is_some() || settings.is_some() || feedback.is_some() || editor.is_some();
+    Scene { tray: tray::derive(w), popover, onboarding, library, settings, feedback, editor, countdown, bubble, preview, dock, next_wake: next_wake(w) }
 }
 
 /// The update to offer now: downloaded, verified, a space to carry it (never before

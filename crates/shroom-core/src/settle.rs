@@ -4,7 +4,7 @@
 
 use crate::derive::onboarding::{self, At, GATE_POLL_MS};
 use crate::derive::settings::{self as settings_view, SpaceAt};
-use crate::effect::{CloudCmd, Effect, LibCmd, MemberCmd, RecCmd, ShellCmd, SweepPart, UpCmd, UpdCmd};
+use crate::effect::{CloudCmd, EditCmd, Effect, LibCmd, MemberCmd, RecCmd, ShellCmd, SweepPart, UpCmd, UpdCmd};
 use crate::time::Mono;
 use crate::world::{Op, Paste, Reach, SettingsTab, WindowKind, World};
 
@@ -35,7 +35,20 @@ pub fn settle(w: &World) -> Vec<Effect> {
     due_keep_awake(w, &mut fx);
     due_cleanup(w, &mut fx);
     due_sleep_ack(w, &mut fx);
+    due_edit_copy(w, &mut fx);
     fx
+}
+
+/// A saved edit's permanent copy (N63, B195 (f)): owed copies are cut one at a time, never
+/// over a take — the Mac's encoder and its bandwidth are the take's — never offline, and a
+/// copy that didn't come out holds the next back by its backoff.
+fn due_edit_copy(w: &World, fx: &mut Vec<Effect>) {
+    if w.take_open() || w.online() == Some(false) || !w.provisioned() || !idle(w, Op::EditorCopy) {
+        return;
+    }
+    if let Some((rec, c)) = w.library_ops.copies.iter().find(|(_, c)| !c.asked) {
+        fx.push(Effect::Editor(EditCmd::Copy { rec: rec.clone(), rev: c.rev }));
+    }
 }
 
 /// The token Mac's cleanup sweep (DECISIONS B91; ARCHITECTURE §5.5's GC, §16 #49): on the

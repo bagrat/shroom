@@ -606,9 +606,21 @@ pub struct LibraryOps {
     /// once (`None`: back to the recording's own), and — as `landed` keeps a new title — a
     /// refresh that began before the save landed doesn't bring the old length back.
     pub edited: BTreeMap<RecId, (Option<u64>, Mono)>,
+    /// The permanent copies owed (N63, B195 (f)): each saved revision whose copy isn't cut
+    /// yet, by its video. Asked one at a time, never over a take (the Mac's encoder is the
+    /// take's); a newer save of the same video replaces the revision owed.
+    pub copies: BTreeMap<RecId, CopyOwed>,
     /// When the token Mac's cleanup sweep last answered (DECISIONS B91): bytes under a
     /// tombstone, bytes no Mac can still finish, and spent or expired page keys reaped.
     pub cleaned: Option<Mono>,
+}
+
+/// A permanent copy owed (N63): the saved revision to cut, and whether the editor lane was
+/// asked for it (its answer, or its failure, settles it).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CopyOwed {
+    pub rev: u64,
+    pub asked: bool,
 }
 
 /// A Library write the space confirmed.
@@ -892,6 +904,13 @@ pub enum Op {
     Refresh,
     /// The token Mac's cleanup sweep over its own S3 pair (DECISIONS B91).
     Cleanup,
+    // ── the editor (N63) ──
+    /// The record read, the video found or fetched from the space, its sound read.
+    EditorOpen,
+    /// The edit list written into the record (read-modify-write, as a rename).
+    EditorSave,
+    /// A saved revision's permanent copy cut, put up and named in the record.
+    EditorCopy,
 }
 
 impl Op {
@@ -913,6 +932,11 @@ impl Op {
             Op::Peek | Op::Join | Op::Standing | Op::Roster | Op::Invite | Op::Remove | Op::Mark => 60_000,
             // A listing of every recording's bytes and each page key: slow on a big space.
             Op::Cleanup => 600_000,
+            // The editor (N63): a video can be long to come from the space (its progress
+            // keeps it alive); a save is a rename's write; a copy is a re-encode and its upload.
+            Op::EditorOpen => 1_800_000,
+            Op::EditorSave => 60_000,
+            Op::EditorCopy => 3_600_000,
         }
     }
 
@@ -1020,6 +1044,8 @@ pub enum WindowKind {
     Settings,
     /// Send feedback, from the popover's header (N60).
     Feedback,
+    /// The editor, from a live Library row's Edit… (N63) — one at a time.
+    Editor,
 }
 
 /// An open surface: when it opened (law 4 visibility), when it was last entered (probe
@@ -1144,6 +1170,55 @@ pub struct Fields {
     pub settings: SettingsFields,
     /// The Send feedback window's own fields (N60) — they clear when it closes.
     pub feedback: FeedbackFields,
+    /// The editor's own fields (N63): `Some` exactly while its window is open — they clear
+    /// when it closes.
+    pub editor: Option<EditorFields>,
+}
+
+/// What the editor holds (N63, B195): the video it's on, what its record said, every step
+/// since it opened (`shroom_edit::History`), and where the video and the save stand.
+#[derive(Debug, Clone, PartialEq)]
+pub struct EditorFields {
+    pub rec: RecId,
+    /// The row's title when it opened: the window's.
+    pub title: String,
+    /// The row's length when it opened — the length shown until the record answers.
+    pub length_ms: Option<u64>,
+    /// The recording's own length, in seconds: the record's `durationSec` once it's read
+    /// (until then the row's length).
+    pub source_duration: f64,
+    /// The take's markers (`meta.markers`, N64), seconds on the recording.
+    pub markers: Vec<f64>,
+    /// The list being edited, and every step: `None` until the record is read.
+    pub history: Option<shroom_edit::History>,
+    /// The saved revision the editor opened on (0: never saved) — a save asks for the next.
+    pub rev: u64,
+    pub media: EditorMedia,
+    pub save: EditorSave,
+}
+
+/// The video the editor plays and draws.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum EditorMedia {
+    /// Asked for: the lane is reading the record and looking for the video on this Mac.
+    Opening,
+    /// It isn't on this Mac: coming from the space, this far.
+    Getting { pct: u8 },
+    /// The record couldn't be read, or the video couldn't come.
+    Failed,
+    /// Here, its sound read: the editor can play it and draw it (seconds long).
+    Ready { duration: f64 },
+}
+
+/// Where Done's save stands.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum EditorSave {
+    #[default]
+    Idle,
+    /// Asked: the record's rewrite hasn't answered.
+    Saving,
+    /// It didn't go through: every change is still here, and Done tries again.
+    Failed,
 }
 
 /// What the Send feedback window holds (N60): the words and the reply-to as typed, the log

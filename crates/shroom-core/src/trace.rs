@@ -195,7 +195,7 @@ pub fn breach(take_was_open: bool, prev: &Scene, w: &World, next: &Scene, effect
     if !crate::settle::settle(w).is_empty() {
         return Some("law 1: settle isn't idempotent");
     }
-    if next.dock != (next.onboarding.is_some() || next.library.is_some() || next.settings.is_some() || next.feedback.is_some()) {
+    if next.dock != (next.onboarding.is_some() || next.library.is_some() || next.settings.is_some() || next.feedback.is_some() || next.editor.is_some()) {
         return Some("law 6: the dock and the windows disagree");
     }
     if take_was_open && w.take_open() {
@@ -204,6 +204,7 @@ pub fn breach(take_was_open: bool, prev: &Scene, w: &World, next: &Scene, effect
             || appeared(next.library.is_some(), prev.library.is_some())
             || appeared(next.settings.is_some(), prev.settings.is_some())
             || appeared(next.feedback.is_some(), prev.feedback.is_some())
+            || appeared(next.editor.is_some(), prev.editor.is_some())
         {
             return Some("law 4: a window appeared mid-take");
         }
