@@ -9,6 +9,7 @@
 pub mod args;
 pub mod clock;
 pub mod locate;
+pub mod peaks;
 pub mod playlist;
 pub mod quality;
 pub mod take;
