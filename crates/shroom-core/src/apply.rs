@@ -1889,10 +1889,12 @@ fn leave_onboarding(w: &mut World) {
     w.session.windows.remove(&WindowKind::Onboarding);
     w.session.chapter = false;
     w.session.fork = Fork::Virgin;
-    // The Library's and Settings' fields are their windows'; only the onboarding's go.
+    // The Library's, Settings' and Send feedback's fields are their windows'; only the
+    // onboarding's go.
     let library = std::mem::take(&mut w.session.fields.library);
     let settings = std::mem::take(&mut w.session.fields.settings);
-    w.session.fields = Fields { library, settings, ..Fields::default() };
+    let feedback = std::mem::take(&mut w.session.fields.feedback);
+    w.session.fields = Fields { library, settings, feedback, ..Fields::default() };
     w.mac.mic_asked = false;
     w.mac.camera_asked = false;
 }

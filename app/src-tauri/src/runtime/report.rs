@@ -23,7 +23,11 @@ const SETUP_CHARS: usize = 300;
 /// The report, gathered: never fails — a fact it can't read is left out.
 pub fn gather(rt: &Runtime, role: &str) -> Diagnostics {
     Diagnostics {
-        shroom: rt.version.clone(),
+        // An early-channel Mac says so beside its version (B220): it may run a pre-release.
+        shroom: match super::updater::mac_channel(rt) {
+            shroom_update::Channel::Early => format!("{} (early channel)", rt.version),
+            shroom_update::Channel::Official => rt.version.clone(),
+        },
         macos: command("sw_vers", &["-productVersion"]).unwrap_or_default(),
         chip: command("sysctl", &["-n", "machdep.cpu.brand_string"]).unwrap_or_default(),
         memory: command("sysctl", &["-n", "hw.memsize"]).and_then(|b| b.parse::<u64>().ok()).map(|b| format!("{} GB", b / (1 << 30))).unwrap_or_default(),
@@ -269,6 +273,18 @@ mod tests {
         assert!(include_str!("../../../../site/report.js").contains(&format!("log: {LOG_CHARS},")));
         assert!(kept.ends_with(&"x".repeat(10)) && kept.lines().last().unwrap().starts_with("   399"));
         assert!(!kept.starts_with("     0"), "the oldest lines go first");
+    }
+
+    /// An early-channel Mac's report says so beside its version (B220).
+    #[test]
+    fn the_report_names_an_early_channel() {
+        let tmp = tempfile::tempdir().unwrap();
+        let (mut rt, _rx) = super::super::Runtime::for_test(tmp.path().join("h"), None, None);
+        rt.version = "0.1.25".into();
+        assert_eq!(gather(&rt, "none").shroom, "0.1.25");
+        std::fs::write(rt.home.path("channel"), "early\n").unwrap();
+        assert_eq!(gather(&rt, "none").shroom, "0.1.25 (early channel)");
+        assert!(gather(&rt, "none").text().starts_with("shroom 0.1.25 (early channel)"));
     }
 
     #[test]
