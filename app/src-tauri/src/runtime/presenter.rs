@@ -753,10 +753,13 @@ fn apply(app: &AppHandle, rt: &Runtime, prev: Option<&Scene>, s: &Scene, exclude
 
     // The agent label (N62, B216): top right of the display a take the command started
     // records, while it records — over other apps' windows, taking no clicks, never the
-    // keyboard, and left out of every capture from the moment it's made.
+    // keyboard, and left out of every capture. Only the panel made as shroom started, never
+    // one made late: the label is wanted only once a take records, and a panel made then
+    // could miss the list of what that take leaves out. Without it, the tray still shows
+    // the take.
     match &s.label {
         Some(l) => {
-            if let Some(panel) = overlay::ensure(app, Overlay::Label, excluded) {
+            if let Some(panel) = overlay::get(Overlay::Label) {
                 place_label(&panel, l.display);
                 let _ = app.emit_to(LABEL, "scene", l);
                 if !panel.isVisible() {

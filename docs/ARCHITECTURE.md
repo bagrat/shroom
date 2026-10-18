@@ -283,7 +283,9 @@ stay. A switch keeps the old space's files until the new join's 200 (D:B42, B54 
   passing every click through (`setIgnoresMouseEvents`). While `Scene.label` is set — a take
   the `shroom` command started, recording — the presenter puts it at the top right of the
   take's display, 8 points under its menu bar (the screen's visible frame), 12 in from its
-  edge (`presenter::label_frame`).
+  edge (`presenter::label_frame`). It is never made late (`overlay::ensure`): wanted only
+  once capture runs, a panel made then could miss that take's list of what it leaves out.
+  Made at start or not at all; without it, the tray shows the take.
 - Windows: onboarding 600×680 (B189), Library 680×560 (resizable), Settings 600×620 — each its frame, macOS's 32 pt title bar inside it.
 - Camera panels (`runtime/camera.rs`): bubble and Camera-only preview (§4.4).
 - Every window and overlay joins `Runtime.excluded` when made and is left out of capture;
