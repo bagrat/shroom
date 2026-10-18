@@ -6,7 +6,8 @@
 #      recording ask is not_set_up — set up first: Settings, where the switch is, needs a
 #      space (B160, B216). Given a space (an invented member's; its host never resolves),
 #      with General's switch off (the default) every ask is recording_off; with it on
-#      (prefs.json, as the app keeps it), a pause with nothing recording is no_take — the
+#      (prefs.json, as the app keeps it), a pause with nothing recording is the core's own
+#      no (no_take, which the command says as “Nothing is recording.”, code refused) — the
 #      switch's gate passed and the core answered. Nothing is recorded.
 #   3. The app not running: `record start` opens it (open -b, the app it ships in) and waits
 #      for its socket — the dev app's own folder, nothing set up there on a fresh runner:
@@ -45,7 +46,8 @@ stop_app
 printf '%s\n' '{"source":null,"show_yourself":true,"mic":null,"quality":"normal","bubble_at":null,"setup_chosen":false,"agent_recording":true}' >"$home/prefs.json"
 chmod 600 "$home/prefs.json"
 launch
-check "record pause, the switch on, nothing recording" "$(ask pause)" no_take
+said=$(SHROOM_HOME="$home" "$cli" record pause --no-launch --json | sed -n 's/.*"message":"\([^"]*\)".*/\1/p')
+check "record pause, the switch on, nothing recording: the core answered" "$said" "Nothing is recording."
 stop_app
 grep -E "control:" "$home/logs/run.log" | tail -n 12
 
