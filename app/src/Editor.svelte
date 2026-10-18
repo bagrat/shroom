@@ -353,8 +353,8 @@
     display: flex;
     flex-direction: column;
     gap: 16px;
-    font-size: 13px;
-    line-height: 1.45;
+    font: 13px/1.45 var(--font);
+    -webkit-font-smoothing: antialiased;
     color: var(--fg);
     background: var(--bg);
     overflow: hidden;

@@ -176,6 +176,10 @@ export async function editorLooks({ browser, origin, mediaOrigin, entries, check
       check(`${tag}: the footer line's tone`, amber === (b.footer_tone === "amber"));
       const wide = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1 || document.documentElement.scrollHeight > window.innerHeight + 1);
       check(`${tag}: nothing scrolls`, !wide);
+      // The system font, as every window has it (theme.css's --font): a browser's default
+      // here would be a serif in a Mac's webview.
+      const fonts = await page.evaluate(() => [".ed", ".time", ".hint", ".foot .line", ".foot button"].map((q) => document.querySelector(q)).filter(Boolean).map((e) => getComputedStyle(e).fontFamily));
+      check(`${tag}: its words in the system font`, fonts.length >= 3 && fonts.every((f) => f.includes("-apple-system")), fonts.join(" | "));
       check(`${tag}: no page errors`, errors.length === 0, errors.join(" | "));
       check(`${tag}: listens to its own slice`, (await page.evaluate(() => window.__listenTarget()))?.label === "editor");
       const c = await calls(page);
