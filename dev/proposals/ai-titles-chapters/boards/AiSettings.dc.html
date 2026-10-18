@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>shroom Settings, Space, AI naming</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#88c0d0}a:hover{color:#8fbcbb}
+</style>
+</helmet>
+<div style="width: 600px; height: 700px; box-sizing: border-box; background: #2b2f36; display: flex; flex-direction: column; font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif; font-size: 13px; line-height: 1.5; color: #eceff4">
+<div style="height: 44px; padding: 0 14px; display: flex; flex-direction: row; align-items: center; gap: 8px; flex: none">
+<span style="width: 12px; height: 12px; border-radius: 6px; background: #4c566a; display: block"></span><span style="width: 12px; height: 12px; border-radius: 6px; background: #4c566a; display: block"></span><span style="width: 12px; height: 12px; border-radius: 6px; background: #4c566a; display: block"></span>
+<div style="flex: 1 1 0; display: flex; flex-direction: row; justify-content: center; padding: 0 52px 0 0"><div style="display: flex; flex-direction: row; background: #262a31; border-radius: 7px; padding: 2px; gap: 2px">
+<button aria-pressed="false" style="font: inherit; border: 0; border-radius: 5px; background: transparent; color: #c3cad6; padding: 3px 16px" data-said="settings.general">General</button>
+<button aria-pressed="true" style="font: inherit; border: 0; border-radius: 5px; background: #4c566a; color: #eceff4; padding: 3px 16px; font-weight: 600" data-said="settings.space">Space</button>
+<button aria-pressed="false" style="font: inherit; border: 0; border-radius: 5px; background: transparent; color: #c3cad6; padding: 3px 16px" data-said="settings.members">Members</button>
+</div></div></div>
+<div style="flex: 1 1 0; padding: 16px 32px 28px 32px; display: flex; flex-direction: column; gap: 12px">
+<div style="color: #aeb6c4; font-size: 12px; padding: 0 2px">Off (as it ships)</div>
+<div style="background: #333944; border-radius: 9px; display: flex; flex-direction: column">
+<div style="padding: 10px 12px; display: flex; flex-direction: row; align-items: center; gap: 10px">
+<span style="flex: 1 1 0; display: flex; flex-direction: column"><span id="ai-False" data-said="settings-space.name-videos">Name videos and add chapters</span><span style="color: #aeb6c4; font-size: 12px">From what's said in each video, by your own Cloudflare account. Everyone's videos in the space. A title someone types always wins. Free for about 3 hours of video a day; past that, about 4¢ an hour.</span></span>
+<button role="switch" aria-checked="false" aria-labelledby="ai-False" style="width: 36px; height: 20px; border: 0; border-radius: 10px; background: #4c566a; padding: 2px; display: flex; flex-direction: row; justify-content: flex-start; align-items: center; flex: none"><span style="width: 16px; height: 16px; border-radius: 8px; background: #d8dee9; display: block"></span></button>
+</div></div>
+<div style="color: #aeb6c4; font-size: 12px; padding: 12px 2px 0 2px">On</div>
+<div style="background: #333944; border-radius: 9px; display: flex; flex-direction: column">
+<div style="padding: 10px 12px; display: flex; flex-direction: row; align-items: center; gap: 10px">
+<span style="flex: 1 1 0; display: flex; flex-direction: column"><span id="ai-True" data-said="settings-space.name-videos">Name videos and add chapters</span><span style="color: #aeb6c4; font-size: 12px">From what's said in each video, by your own Cloudflare account. Everyone's videos in the space. A title someone types always wins.</span></span>
+<button role="switch" aria-checked="true" aria-labelledby="ai-True" style="width: 36px; height: 20px; border: 0; border-radius: 10px; background: #88c0d0; padding: 2px; display: flex; flex-direction: row; justify-content: flex-end; align-items: center; flex: none"><span style="width: 16px; height: 16px; border-radius: 8px; background: #2b2f36; display: block"></span></button>
+</div><div style="height: 40px; padding: 0 12px; border-top: 1px solid #434a56; display: flex; flex-direction: row; align-items: center; gap: 10px"><span style="flex: 1 1 0">This month</span><span style="color: #aeb6c4">11 h 20 min of video — free</span></div><div style="height: 40px; padding: 0 12px; border-top: 1px solid #434a56; display: flex; flex-direction: row; align-items: center; gap: 10px"><span style="flex: 1 1 0">Past the free hours</span><span style="color: #aeb6c4">about 4¢ an hour · <a href='#'>Set a monthly limit…</a></span></div></div>
+<div style="margin-top: 14px; padding: 10px 12px; border: 1px dashed #4c566a; border-radius: 9px; color: #aeb6c4; font-size: 12px; line-height: 1.5">Owner only: members' Settings don't show it, and members never see a cost. On a free Cloudflare plan the free hours are a daily cap: past it, naming waits until the next day (00:00 UTC) and catches up. The monthly limit is an open question (only matters on Cloudflare's paid plan).</div>
+</div></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":600,"height":700}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>
