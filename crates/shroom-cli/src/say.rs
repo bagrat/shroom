@@ -589,8 +589,9 @@ pub fn app_not_set_up() -> String {
 }
 
 /// Recording refused while General's switch is off (Bagrat, 2026-10-18: it's off, the
-/// switch turns it on, and a link that opens Settings there; DECISIONS B216). The link is
-/// the last line, alone after its words, so a terminal makes it clickable.
+/// switch turns it on, and a link that opens Settings there; DECISIONS B216). Ratified by
+/// Bagrat as drawn, 2026-10-18. The link is the last line, alone after its words, so a
+/// terminal makes it clickable.
 pub fn recording_off() -> String {
     format!(
         "Recording from your coding agent is off.\nTurn on “Let it start and stop recordings” in shroom's Settings, under General.\nOpen it there: {}",
