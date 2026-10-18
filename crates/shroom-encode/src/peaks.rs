@@ -121,6 +121,8 @@ pub fn read(path: &Path) -> Result<Peaks, PeaksError> {
     let mut peaks: Vec<f32> = Vec::new();
     let mut planes: Vec<Vec<f32>> = Vec::new();
     let (mut video_end, mut audio_end) = (0.0f64, 0.0f64);
+    // Where the next packet's sound starts when the track has no clock: right after the last.
+    let mut next_sample = 0i64;
     loop {
         let packet = match format.next_packet() {
             Ok(Some(p)) => p,
@@ -153,7 +155,9 @@ pub fn read(path: &Path) -> Result<Peaks, PeaksError> {
             continue;
         }
         buf.copy_to_vecs_planar::<f32>(&mut planes);
-        let first = (packet.pts.get() as f64 * audio_tb * rate as f64).round() as i64;
+        // Placed by its own timestamp, so a gap in the sound stays a gap.
+        let first = if audio_tb > 0.0 { (packet.pts.get() as f64 * audio_tb * rate as f64).round() as i64 } else { next_sample };
+        next_sample = first + buf.frames() as i64;
         for plane in &planes {
             fold_plane(&mut peaks, plane, first, rate);
         }
