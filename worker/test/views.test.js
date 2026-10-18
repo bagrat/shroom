@@ -250,7 +250,7 @@ describe("POST /_shroom/api/cleanup", () => {
     const res = await call(env, "POST", "/_shroom/api/cleanup", { auth: OWNER_MAC.bearer, body: { scope: "everyone" }, now: LATER });
     expect(res.status).toBe(200);
     const out = await bodyOf(res);
-    expect(out).toMatchObject({ shroom: 1, countingSince: iso(NOW), formula: "fading-cost", next: null });
+    expect(out).toMatchObject({ shroom: 1, countingSince: iso(NOW), counting: true, formula: "fading-cost", next: null });
     const by = Object.fromEntries(out.items.map((i) => [i.id, i]));
     expect(Object.keys(by).sort()).toEqual([a, b, c].sort());
     expect(by[a]).toMatchObject({ candidate: true, plays: 0, owner: M1, reason: { code: "never-played", quietDays: 100 } });

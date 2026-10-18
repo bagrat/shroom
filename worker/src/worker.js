@@ -2869,7 +2869,8 @@ export function monthlySaving(total, freed) {
 }
 
 /** `POST /_shroom/api/cleanup` `{scope, formula?, after?}` → one page of the space's
- * videos with their plays and verdicts: `{countingSince, formula, items, next}`. Paged as
+ * videos with their plays and verdicts: `{countingSince, counting, formula, items, next}`
+ * (`counting`: the space's switch, N68). Paged as
  * the Library is (§4.10): at most 40 records a call; `next` is where the next call starts,
  * null at the end. A member sees their own; owner-class may ask for everyone's.
  * @param {Request} request @param {Env} env @param {any} b @param {number} now */
@@ -2882,10 +2883,11 @@ async function cleanup(request, env, b, now) {
   if (!FORMULAS.includes(formula)) throw bad();
   const after = b.after === undefined || b.after === null ? null : typeof b.after === "string" && ID.test(b.after) ? b.after : (() => { throw bad(); })();
 
-  const [ledgers, metas, sinceO] = await Promise.all([
+  const [ledgers, metas, sinceO, counting] = await Promise.all([
     listPage(env, LEDGER, after ? `${LEDGER}${after}` : undefined, true),
     listPage(env, "meta/", after ? `meta/${after}.json` : undefined, false),
     env.BUCKET.get(VIEW_SINCE),
+    playsOn(env).catch(() => true),
   ]);
   /** @type {any} */
   let since = null;
@@ -2910,7 +2912,7 @@ async function cleanup(request, env, b, now) {
     const { days: _days, ...facts } = x;
     return { id, title: typeof meta.title === "string" ? meta.title : "", createdAt: meta.createdAt ?? null, owner: owners.get(id) ?? M1, ...facts, ...verdict };
   }))).filter((i) => i !== null);
-  return answer({ countingSince: sinceMs === null ? null : iso(sinceMs), formula, items, next: end });
+  return answer({ countingSince: sinceMs === null ? null : iso(sinceMs), counting, formula, items, next: end });
 }
 
 // ───────── the tab icon (DECISIONS B109) ─────────
