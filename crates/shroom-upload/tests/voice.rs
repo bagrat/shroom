@@ -12,6 +12,7 @@ use serde_json::{Value, json};
 use shroom_cloudfake::{Fake, Fault, FaultKind, State};
 use shroom_storage::s3::{Bucket, Client};
 use shroom_storage::sigv4::Credentials;
+use shroom_edit::Question;
 use shroom_upload::voice::{self, Clock, Mark, Wait};
 
 const ID: &str = "AbCdEfGhIjKlMnOp";
@@ -247,4 +248,47 @@ fn a_take_removed_baked_or_heard_on_another_clock_is_left_alone() {
         assert!(matches!(mark, Mark::Skipped { .. }), "{case}: {mark:?}");
         assert_eq!(fake.with(|s| s.object(BUCKET, &format!("meta/{ID}.json"))), before, "{case}: the record was touched");
     }
+}
+
+/// A take only the judgment cuts whole: “Click on this link to see it.” said again after the
+/// cue in other words. The judge answers as Clef did for it (its recorded judged.json).
+fn reworded(fake: &Fake) -> Vec<f64> {
+    put(fake, &transcript_key(), &heard("wai-en_US-ryan-medium-9-clean-reworded", true, None));
+    let judged: Value = serde_json::from_slice(&std::fs::read(Path::new(env!("CARGO_MANIFEST_DIR")).join("../shroom-edit/tests/takes/wai-en_US-ryan-medium-9-clean-reworded/judged.json")).unwrap()).unwrap();
+    serde_json::from_value(judged["answers"][0]["scores"].clone()).unwrap()
+}
+
+#[test]
+fn the_judgment_reaches_back_where_the_words_alone_dont_and_is_asked_once() {
+    let (fake, s3) = space();
+    record(&fake, json!({ "durationSec": 13.0 }));
+    let scores = reworded(&fake);
+    let asked = std::cell::RefCell::new(Vec::<Question>::new());
+    let judge = |q: &Question| {
+        asked.borrow_mut().push(q.clone());
+        Some(scores.clone())
+    };
+    let dir = take();
+    let mark = voice::after_go_live_judged(&s3, ID, dir.path(), Some(true), Wait::default(), &mut Turned::at(NOW), &judge);
+    assert_eq!(mark, Mark::Planned { at: NOW, cues: 1 });
+    let cuts = stored(&fake)["edits"]["cuts"].as_array().unwrap().clone();
+    assert_eq!(cuts.len(), 1, "{cuts:?}");
+    assert_eq!((cuts[0]["kind"].as_str(), cuts[0]["applied"].as_bool(), cuts[0]["removed"].as_str()), (Some("retake"), Some(true), Some("Click on this link to see it. Shroom cut.")));
+    let asked = asked.into_inner();
+    assert_eq!(asked.len(), 1);
+    assert_eq!(asked[0].after, "To get your video, use this link and you'll see it right away.");
+    assert_eq!(asked[0].candidates[0], "Click on this link to see it.");
+}
+
+#[test]
+fn a_judgment_that_doesnt_come_leaves_the_codes_own_plan() {
+    let (fake, s3) = space();
+    record(&fake, json!({ "durationSec": 13.0 }));
+    reworded(&fake);
+    let dir = take();
+    // The free day used up, a busy model, no answer: the cue goes and the line is offered.
+    let mark = voice::after_go_live_judged(&s3, ID, dir.path(), Some(true), Wait::default(), &mut Turned::at(NOW), &|_: &Question| None);
+    assert_eq!(mark, Mark::Planned { at: NOW, cues: 1 });
+    let kinds: Vec<(String, bool)> = stored(&fake)["edits"]["cuts"].as_array().unwrap().iter().map(|c| (c["kind"].as_str().unwrap().to_string(), c["applied"].as_bool().unwrap())).collect();
+    assert_eq!(kinds, [("cue-only".to_string(), true), ("line-before-cue".to_string(), false)]);
 }

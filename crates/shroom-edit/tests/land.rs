@@ -246,3 +246,54 @@ fn the_words_as_the_space_keeps_them() {
     // A length short of the last word is the last word's end.
     assert_eq!(Transcript::heard(f64::NAN, &words, vec![]).duration, 3.0);
 }
+
+#[test]
+fn the_judgment_the_take_got_lands_with_its_cues() {
+    // A whole line said again in other words: the code alone only offers it; with Clef's
+    // answer (recorded for this take) it goes with the cue.
+    let take = "wai-en_US-ryan-medium-9-clean-reworded";
+    let t = heard(take);
+    let judged: serde_json::Value = serde_json::from_str(
+        &fs::read_to_string(
+            Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("tests/takes")
+                .join(take)
+                .join("judged.json"),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    let answers: Vec<shroom_edit::Answer> =
+        serde_json::from_value(judged["answers"].clone()).unwrap();
+    let alone = land(None, &t, t.duration, NOW).unwrap();
+    assert_eq!(
+        alone
+            .list
+            .cuts
+            .iter()
+            .map(|c| (c.kind, c.applied))
+            .collect::<Vec<_>>(),
+        [(CutKind::CueOnly, true), (CutKind::LineBeforeCue, false)]
+    );
+    let s = shroom_edit::land_with(None, &t, t.duration, NOW, &answers).unwrap();
+    assert_eq!(s.list.cuts.len(), 1);
+    assert_eq!(
+        (
+            s.list.cuts[0].kind,
+            s.list.cuts[0].applied,
+            s.list.cuts[0].removed.as_str()
+        ),
+        (
+            CutKind::Retake,
+            true,
+            "Click on this link to see it. Shroom cut."
+        )
+    );
+    assert_eq!(
+        s.list.voice,
+        Some(Voice {
+            planned_at: NOW,
+            cues: 1
+        })
+    );
+}

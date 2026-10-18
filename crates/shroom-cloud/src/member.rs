@@ -899,6 +899,17 @@ mod tests {
     use super::*;
 
     #[test]
+    fn a_judgment_answers_a_score_per_start_or_nothing() {
+        let n = 2;
+        assert_eq!(scores_of(&json!({"shroom": 1, "scores": [0.75, 0.03]}), n), Some(vec![0.75, 0.03]));
+        // Later (the free day used up, a busy model), the wrong count, a score out of range,
+        // not a number: no judgment, and the Mac keeps its own plan.
+        for v in [json!({"shroom": 1, "later": true}), json!({"shroom": 1, "scores": [0.75]}), json!({"shroom": 1, "scores": [0.75, 1.5]}), json!({"shroom": 1, "scores": [0.75, "x"]}), json!({"shroom": 1})] {
+            assert_eq!(scores_of(&v, n), None, "{v}");
+        }
+    }
+
+    #[test]
     fn a_status_says_cuts_are_coming_only_in_so_many_words() {
         assert!(cuts_word(br#"{"state":"live","drained":true,"cuts":"coming"}"#));
         // Planned (a tag), a space that doesn't listen (no word), a Worker before N65, not JSON.
