@@ -1,0 +1,23 @@
+[package]
+name = "shroom-cli"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "shroom on the command line: what a person or their coding agent runs (dev/proposals/cli-agent-skill.md)"
+
+[[bin]]
+name = "shroom"
+path = "src/main.rs"
+
+[dependencies]
+shroom-core = { path = "../shroom-core" }
+shroom-cloud = { path = "../shroom-cloud" }
+shroom-upload = { path = "../shroom-upload" }
+shroom-storage = { path = "../shroom-storage" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[dev-dependencies]
+tempfile = "3"
+ureq = { version = "3", default-features = false }
