@@ -449,6 +449,22 @@ describe("the player applies the edit as it plays (the skip, the time, the seek 
     expect(s.video.currentTime).toBe(9);
   });
 
+  it("moves on at once past a range shorter than its lead: the last seek's target holds back only itself", () => {
+    // Cuts 10–20 and 20.01–30 leave 10 ms between them, less than the skip's 30 ms lead:
+    // landing there, the range after it is already due (the review's case held at 20.03).
+    const s = stage([[0, 10], [20, 20.01], [30, 40]], { dur: 40 });
+    s.click();
+    s.at(9.98);
+    expect(s.video.currentTime).toBe(30);
+    // A playhead just short of the start it was sent to is left to land there: no seek loop.
+    const t = stage([[0, 10], [20, 30]], { dur: 40 });
+    t.click();
+    t.at(9.98);
+    expect(t.video.currentTime).toBe(20);
+    t.at(19.995);
+    expect(t.video.currentTime).toBe(19.995);
+  });
+
   it("puts a moment a seek lands in a cut at the next range's start, and one past the out at the end", () => {
     const s = stage(K);
     s.click();

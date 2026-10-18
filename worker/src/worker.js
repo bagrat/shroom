@@ -1400,7 +1400,9 @@ export function playerHtml(id, meta, base = "") {
  * them and stops at the last one's end, showing it ended. The skip runs on every frame
  * while it plays, and on `timeupdate` and `seeking` besides (a background tab gets no
  * frames): outside every range — a range's last 30 ms counting as past it — it seeks to the
- * next range's start. The time, the seek bar, ←/→ and Home/End all count edited time
+ * next range's start. A playhead within 50 ms of the start it was last sent to is left to
+ * land there, but a new start is sought at once, even right after a range shorter than
+ * those 30 ms. The time, the seek bar, ←/→ and Home/End all count edited time
  * (`shroomAt`/`shroomToSource`, held with `editsOf` to crates/shroom-edit's vectors). A
  * permanent copy plays as it is. And once the copy is up the original is out of reach
  * (`servedOnly`): a player that was playing the original asks `E.st`, the status, when its
@@ -1432,7 +1434,7 @@ function paint(){var d=dur(),e=v.ended||fin,t=held?+sk.value:e&&d?d:at(),txt=shr
 var b=K?shroomAt(K,ahead(v.currentTime||0)):ahead(t);sk.style.setProperty("--p",String(d?Math.min(1,t/d):0));sk.style.setProperty("--b",String(d?Math.min(1,b/d):0))}
 function level(g){g=Math.round(g*20)/20;if(v.volume!==g)try{v.volume=g}catch(x){}}
 function skip(){if(!K){if(v.volume!==1)level(1);return}var t=v.currentTime||0,n=K.length,i=0;while(i<n&&t>=K[i][1]-.03)i++;
-if(i===n){fin=true;if(!v.paused)v.pause();level(1);paint();return}if(t<K[i][0]-.001&&Math.abs(t-aim)>.05){level(0);aim=K[i][0];v.currentTime=aim;return}level(v.paused?1:shroomGain(K,t,.05))}
+if(i===n){fin=true;if(!v.paused)v.pause();level(1);paint();return}if(t<K[i][0]-.001&&(aim!==K[i][0]||Math.abs(t-aim)>.05)){level(0);aim=K[i][0];v.currentTime=aim;return}level(v.paused?1:shroomGain(K,t,.05))}
 function tick(){raf=0;if(!K||v.paused||v.ended)return;skip();if(!v.paused)raf=requestAnimationFrame(tick)}
 function fail(){if(busy||!E||!E.st)return;busy=true;fetch(E.st,{cache:"no-store"}).then(function(r){return r.json()}).then(function(x){var c=x&&x.copy;if(!c||!c.src||c.src===s)return;
 var t=v.currentTime||0,e=K?shroomAt(K,t):x.keep&&x.keep.length?shroomAt(x.keep,t):0,go=!v.paused&&!fin;K=null;cp=true;fin=false;s=c.src;known=+c.dur||known;if(c.poster)v.poster=c.poster;if(v.hls){v.hls.destroy();v.hls=null}
