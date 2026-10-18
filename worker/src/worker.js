@@ -2805,6 +2805,10 @@ RslHrCbxRkJfNecBV6RIWHCo9gM6R87CBKkcv0DIvmsxtgOIAVwhvDhCtPMz//hG3MTFq/jf1U9bMGJH
 const AI_LATER = ".shroom/ai/later/";
 /** The models (B205): hearing, naming, and naming's fallback. */
 export const AI_MODELS = { hear: "@cf/openai/whisper-large-v3-turbo", name: "@cf/openai/gpt-oss-120b", fallback: "@cf/google/gemma-4-26b-a4b-it" };
+/** What Whisper is told to expect before each window (B205 a): the voice cuts' cue, and the
+ * hesitations their planner reads, so it writes them down rather than tidying them away. Heard
+ * only with the voice-activity filter: without it a prime is echoed into minutes nobody speaks in. */
+export const AI_HEAR_PRIME = "Shroom cut. Um, uh, so, so I, I mean, shroom cut.";
 /** The rules held in code (B205 a, d; B208 c): ten pieces a window, 1.5 s at its edges. */
 const AI_RULES = { window: 10, edge: 1.5, minChapter: 20, minVideo: 90, maxChapters: 12, minWords: 12, earlyWords: 20, renameShare: 0.2, titleMax: 60 };
 /** How long a step holds its take, so the schedule and a Mac never take the same one. */
@@ -3218,6 +3222,9 @@ function vttTime(t) {
   return `${two(Math.floor(ms / 3600000))}:${two(Math.floor((ms % 3600000) / 60000))}:${two(Math.floor((ms % 60000) / 1000))}.${two(ms % 1000, 3)}`;
 }
 
+/** A word that's only a hesitation, which captions leave out (B205 e). */
+const AI_FILLER = /^(?:u+m+|u+h+m*|e+r+m*|h+m+|m{2,})[.,?!…]*$/i;
+
 /** Captions as WebVTT from the words that play (B205 e, B208 b): a cue ends at a sentence's
  * end, a pause over 1 s, a cut, 6 s, or two lines of 42 characters, and breaks its line at
  * the space nearest its middle. `edited`: timed on the edited clock (the editor's copy plays);
@@ -3229,6 +3236,11 @@ export function aiCaptions(words, keep, edited) {
   /** @type {{ s: number, e: number, text: string, range: number } | null} */
   let cur = null;
   for (const p of aiPlaying(words, keep)) {
+    // A lone hesitation is left out (the words keep it, for voice cuts); a sentence it ended still ends.
+    if (AI_FILLER.test(p.w)) {
+      if (cur && /[.?!…]$/.test(p.w)) { if (!/[.?!…]$/.test(cur.text)) cur.text = cur.text.replace(/[,;:]$/, "") + p.w.slice(-1); cues.push(cur); cur = null; }
+      continue;
+    }
     const s = edited ? p.s : p.src, e = s + (p.e - p.s);
     if (cur && (p.range !== cur.range || s - cur.e > 1 || e - cur.s > 6 || cur.text.length + 1 + p.w.length > 84)) { cues.push(cur); cur = null; }
     if (!cur) cur = { s, e, text: p.w, range: p.range };
@@ -3593,11 +3605,13 @@ async function aiHear(env, id, meta, pieces, w, t, etag, last) {
   let language = null;
   if (parts.length) {
     const body = new ReadableStream({ start(c) { for (const p of parts) c.enqueue(p); c.close(); } });
-    const out = await ai.run(AI_MODELS.hear, { audio: { body, contentType: "audio/aac" } });
+    // The filter keeps Whisper from writing into silence and music ("Thank you."), which a
+    // prime would otherwise be echoed into (measured 2026-10-18, B205 a).
+    const out = await ai.run(AI_MODELS.hear, { audio: { body, contentType: "audio/aac" }, vad_filter: true, initial_prompt: AI_HEAR_PRIME });
     for (const seg of Array.isArray(out?.segments) ? out.segments : []) {
       for (const x of Array.isArray(seg?.words) ? seg.words : []) {
         const text = String(x?.word ?? "").trim(), s = Number(x?.start), e = Number(x?.end);
-        if (text && Number.isFinite(s) && Number.isFinite(e)) words.push([text, Math.round((clip + s) * 100) / 100, Math.round((clip + Math.max(s, e)) * 100) / 100]);
+        if (/[\p{L}\p{N}]/u.test(text) && Number.isFinite(s) && Number.isFinite(e)) words.push([text, Math.round((clip + s) * 100) / 100, Math.round((clip + Math.max(s, e)) * 100) / 100]);
       }
     }
     const lang = out?.transcription_info?.language;

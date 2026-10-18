@@ -606,7 +606,7 @@ const cuesOf = (text) => [...text.matchAll(/(\d\d):(\d\d):(\d\d)\.(\d\d\d) --> (
 describe("captions (B205 e, B208 b, B209 b)", () => {
   it("leaves lone hesitations out of the captions, which the words keep for voice cuts", () => {
     const words = [["So", 0, 0.3], ["um,", 0.4, 0.6], ["we", 0.7, 0.9], ["start", 1.0, 1.2], ["uh.", 1.3, 1.5], ["Then", 2.6, 2.8], ["Erm", 2.9, 3.0], ["umbrellas.", 3.1, 3.6]];
-    const cues = aiCaptions(words, null, false).split("\n\n").slice(1).map((c) => c.split("\n").slice(2).join(" "));
+    const cues = aiCaptions(words, null, false).trim().split("\n\n").slice(1).map((c) => c.split("\n").slice(2).join(" "));
     expect(cues).toEqual(["So we start.", "Then umbrellas."]);
   });
 
