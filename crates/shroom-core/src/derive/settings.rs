@@ -396,7 +396,7 @@ fn videos(w: &World) -> VideosGroup {
         count_note: (w.inflight.failures.contains_key(&Op::Plays) && w.library_ops.plays.is_none()).then(copy::plays_failed),
         suggest: Toggle { action: Action::SetSuggestCleanup(!w.prefs.suggest_cleanup), label: copy::suggest_cleanup(), on: w.prefs.suggest_cleanup, enabled: true },
         suggest_hint: copy::suggest_cleanup_hint(),
-        used_label: copy::space_used(),
+        used_label: used.as_ref().map(|_| copy::space_used()),
         used,
     }
 }

@@ -393,9 +393,13 @@ pub fn cleanup_back() -> String { "‹ Library".into() }
 
 const CLEANUP_WHY: &str = "Videos you've stopped watching that take real room.";
 
-/// “Deleting all six” — or “Deleting it”, for one.
+/// “Deleting all six” — “Deleting both” for two, “Deleting it” for one.
 fn deleting_all(n: u64) -> String {
-    if n == 1 { "Deleting it".into() } else { format!("Deleting all {}", count_word(n)) }
+    match n {
+        1 => "Deleting it".into(),
+        2 => "Deleting both".into(),
+        n => format!("Deleting all {}", count_word(n)),
+    }
 }
 
 /// The suggestions' line, past the free 10 GB: what deleting them saves.
@@ -439,7 +443,9 @@ pub fn cleanup_reason(plays: u32, quiet_days: u32, stopped_early: bool) -> Strin
 pub fn keep() -> String { "Keep".into() }
 pub fn deleted_title(title: &str) -> String { format!("Deleted “{title}”.") }
 pub fn undo() -> String { "Undo".into() }
-pub fn delete_all(n: u64) -> String { format!("Delete all {}…", count_word(n)) }
+pub fn delete_all(n: u64) -> String {
+    if n == 2 { "Delete both…".into() } else { format!("Delete all {}…", count_word(n)) }
+}
 pub fn cleanup_foot() -> String { "Keep takes a video off this list for good. Plays are counted in your own Cloudflare account.".into() }
 pub fn cleanup_empty() -> String { "Nothing to clean up right now.".into() }
 

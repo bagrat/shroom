@@ -927,7 +927,8 @@ pub struct VideosGroup {
     /// This Mac's.
     pub suggest: Toggle,
     pub suggest_hint: String,
-    pub used_label: String,
+    /// “Space used”, with `used`.
+    pub used_label: Option<String>,
     /// The space's size and what it costs — owner-class Macs, once the space has said.
     pub used: Option<String>,
 }

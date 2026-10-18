@@ -2816,7 +2816,7 @@ Suggested to clean up (N68): the Library's own view of the videos worth deleting
 |---|---|---|---|
 | “Suggested to clean up” | title | provisional |  |
 | “‹ Library” | button | provisional | Back to the Library. |
-| “Videos you've stopped watching that take real room. Deleting all six frees 11 GB — about 17¢ a month off your Cloudflare bill.” | line | provisional | Past the free 10 GB. The count varies (a word up to nine, Law 16), and so do the size and the cents. |
+| “Videos you've stopped watching that take real room. Deleting all six frees 11 GB — about 17¢ a month off your Cloudflare bill.” | line | provisional | Past the free 10 GB. The count varies (a word up to nine, Law 16), and so do the size and the cents. Two read 'Deleting both', one 'Deleting it'. |
 | “Videos you've stopped watching that take real room. Deleting all six frees 5 GB. Your space is inside Cloudflare's free 10 GB, so this saves nothing yet.” | line | provisional | Inside the free 10 GB (B212). The count and the size: each varies. |
 | “Videos you've stopped watching that take real room. Deleting all six frees 3 GB and brings your space back inside Cloudflare's free 10 GB.” | line | provisional | When deleting them all would take the space back under 10 GB (B212). The count and the size: each varies. |
 | “Videos you've stopped watching that take real room. Deleting all six frees 11 GB.” | line | provisional | On a member's Mac: the bill is the space owner's, so no money is said. The count and the size: each varies. |
@@ -2827,7 +2827,7 @@ Suggested to clean up (N68): the Library's own view of the videos worth deleting
 | “Delete” | button | provisional | Red text, never a button (Law 9); one tap, then Undo. |
 | “Deleted “Old onboarding take”.” | line | provisional | The Undo line, a few seconds; the delete is sent when it goes. The title varies. |
 | “Undo” | button | provisional |  |
-| “Delete all six…” | button | provisional | Red text; opens delete-confirm-several. The count varies, a word up to nine. |
+| “Delete all six…” | button | provisional | Red text; opens delete-confirm-several. The count varies, a word up to nine; two reads 'Delete both…'. |
 | “Keep takes a video off this list for good. Plays are counted in your own Cloudflare account.” | line | provisional |  |
 | “Nothing to clean up right now.” | line | provisional | Once the last suggestion is kept or deleted. |
 

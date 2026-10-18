@@ -321,7 +321,7 @@ fn settings_counts_plays_by_the_spaces_switch_and_suggests_by_this_macs() {
     assert_eq!(g.count_hint, "How often each video is played and how far, kept in your Cloudflare account. No cookies, nothing about who watched.");
     assert_eq!((g.suggest.label.as_str(), g.suggest.on, g.suggest.enabled), ("Suggest videos to clean up", true, true));
     assert_eq!(g.suggest_hint, "Videos you've stopped watching that take real room, in the Library.");
-    assert_eq!((g.used_label.as_str(), g.used.as_deref()), ("Space used", Some("34 GB — about 36¢ a month past Cloudflare's free 10 GB")));
+    assert_eq!((g.used_label.as_deref(), g.used.as_deref()), (Some("Space used"), Some("34 GB — about 36¢ a month past Cloudflare's free 10 GB")));
 
     r.set(Action::SetPlays(false));
     assert!(r.has(|e| *e == Effect::Library(LibCmd::Plays(false))));
@@ -381,4 +381,6 @@ fn reasons_read_as_row_facts() {
     assert_eq!(shroom_core::copy::size(780_000_000), "780 MB");
     assert_eq!(shroom_core::copy::size(999_700_000), "1 GB");
     assert_eq!(shroom_core::copy::size(10_400_000_000), "10 GB");
+    assert_eq!(shroom_core::copy::delete_all(2), "Delete both…");
+    assert!(shroom_core::copy::cleanup_frees(2, 4_500_000_000).ends_with("Deleting both frees 4.5 GB."));
 }
