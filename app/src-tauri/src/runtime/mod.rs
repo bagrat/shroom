@@ -569,6 +569,7 @@ impl Runtime {
             space_base,
             excluded: Arc::default(),
             seam: Arc::new(Mutex::new(status::Seam::new(std::process::id(), String::from("0.0.0")))),
+            cli: control::Pending::default(),
         };
         (rt, rx)
     }
