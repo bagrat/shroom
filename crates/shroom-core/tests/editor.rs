@@ -967,38 +967,58 @@ fn kept_for(saved: Saved, left: i64) -> Run {
     r
 }
 
-/// By Revert, while an earlier edit's original is kept: “2 more days” with more than a day
-/// left, “1 more day” with a day or less, “a few more hours” under an hour — and its words
-/// change as the time goes, by themselves.
+/// By Revert, while an earlier edit's original is kept: never more time than it has left
+/// (B199) — “two more days” from 47 hours, “one more day” from a day, then whole hours
+/// rounded down from 2 hours, “one more hour” from an hour, and “less than an hour” under
+/// one; a count to nine in words, from 10 in figures (law 16).
 #[test]
 fn the_time_the_original_has_left_sits_by_revert() {
     for (left, words) in [
-        (47 * HOUR, "The original is kept 2 more days"),
-        (24 * HOUR + 1, "The original is kept 2 more days"),
-        (24 * HOUR, "The original is kept 1 more day"),
-        (5 * HOUR, "The original is kept 1 more day"),
-        (HOUR, "The original is kept 1 more day"),
-        (HOUR - 1, "The original is kept a few more hours"),
-        (60_000, "The original is kept a few more hours"),
+        (48 * HOUR, "The original is kept two more days"),
+        (47 * HOUR, "The original is kept two more days"),
+        (47 * HOUR - 1, "The original is kept one more day"),
+        (30 * HOUR, "The original is kept one more day"),
+        (24 * HOUR, "The original is kept one more day"),
+        (24 * HOUR - 1, "The original is kept 23 more hours"),
+        (14 * HOUR + 30 * 60_000, "The original is kept 14 more hours"),
+        (10 * HOUR, "The original is kept 10 more hours"),
+        (10 * HOUR - 1, "The original is kept nine more hours"),
+        (5 * HOUR + 59 * 60_000, "The original is kept five more hours"),
+        (2 * HOUR, "The original is kept two more hours"),
+        (2 * HOUR - 1, "The original is kept one more hour"),
+        (HOUR, "The original is kept one more hour"),
+        (HOUR - 1, "The original is kept less than an hour"),
+        (60_000, "The original is kept less than an hour"),
     ] {
         let r = kept_for(with_copy(3), left);
         assert_eq!(body(&r).original_kept.as_deref(), Some(words), "{left} ms left");
         assert_eq!(face(&r), "editor");
         assert!(body(&r).revert.enabled, "Revert works while it's kept");
     }
-    // Its words follow the clock: a wake when a day is left, when an hour is, and at the end.
-    let mut r = kept_for(with_copy(3), 30 * HOUR);
-    assert_eq!(body(&r).original_kept.as_deref(), Some("The original is kept 2 more days"));
-    let wake = r.scene.next_wake.expect("a wake for the words");
-    assert_eq!(wake, Mono(r.t + 6 * HOUR as u64));
-    r.tick_to(wake.0);
-    assert_eq!(body(&r).original_kept.as_deref(), Some("The original is kept 1 more day"));
-    let wake = r.scene.next_wake.expect("the next");
-    r.tick_to(wake.0);
-    assert_eq!(body(&r).original_kept.as_deref(), Some("The original is kept a few more hours"));
-    let wake = r.scene.next_wake.expect("the last");
-    r.tick_to(wake.0);
-    assert_eq!(body(&r).original_kept, None, "its time is up");
+}
+
+/// Its words follow the clock by themselves, never early and never late: each change lands
+/// on a wake — two days to one at 47 hours less a moment, a day to hours, hour by hour, to
+/// less than an hour — and the line goes with the time.
+#[test]
+fn the_time_left_counts_down_on_its_wakes() {
+    let mut r = kept_for(with_copy(3), 48 * HOUR);
+    let mut said = vec![body(&r).original_kept.expect("kept")];
+    while let Some(words) = body(&r).original_kept {
+        let wake = r.scene.next_wake.expect("a wake while the line shows");
+        r.tick_to(wake.0 - 1);
+        assert_eq!(body(&r).original_kept.as_deref(), Some(words.as_str()), "never before its wake");
+        r.tick_to(wake.0);
+        let now = body(&r).original_kept;
+        assert_ne!(now.as_deref(), Some(words.as_str()), "the wake changes the words");
+        said.extend(now);
+    }
+    let mut want = vec!["The original is kept two more days".to_string(), "The original is kept one more day".to_string()];
+    want.extend((10..=23).rev().map(|n| format!("The original is kept {n} more hours")));
+    want.extend(["nine", "eight", "seven", "six", "five", "four", "three", "two"].map(|n| format!("The original is kept {n} more hours")));
+    want.extend(["The original is kept one more hour".to_string(), "The original is kept less than an hour".to_string()]);
+    assert_eq!(said, want);
+    assert_eq!(r.scene.next_wake, None, "nothing left to count");
 }
 
 /// No line at all: nothing kept, its time already up, or a copy that isn't the saved edit's
@@ -1439,12 +1459,12 @@ fn the_slice_is_the_webviews_json() {
     assert_eq!((a["keep"]["label"].clone(), a["keep"]["action"].clone()), (json!("Keep for 2 days"), json!({ "do": "keep-original" })));
     assert_eq!((a["delete"]["label"].clone(), a["delete"]["action"].clone()), (json!("Yes, delete"), json!({ "do": "delete-original" })));
     assert_eq!((v["ret"].clone(), v["esc"].clone()), (json!(null), json!({ "do": "keep-original" })));
-    // The time the original has left, by Revert.
+    // The time the original has left, by Revert: 20 hours less a moment, in whole hours.
     let mut r = opened();
     let until = Wall(r.w.wall.0 + 20 * HOUR);
     r.news(EditorNews::Opened { rec: rec(), saved: Some(with_copy(3)), markers: vec![], duration_sec: Some(272.4), keep_until: Some(until) });
     let b = serde_json::to_value(&r.scene.editor.as_ref().unwrap().body).unwrap();
-    assert_eq!(b["original_kept"], json!("The original is kept 1 more day"));
+    assert_eq!(b["original_kept"], json!("The original is kept 19 more hours"));
 
     assert_eq!(serde_json::to_value(Action::EditRow(rec())).unwrap(), json!({ "do": "edit-row", "arg": REC }));
     assert_eq!(serde_json::to_value(Surface::Editor).unwrap(), json!("editor"));

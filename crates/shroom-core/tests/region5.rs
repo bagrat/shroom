@@ -516,9 +516,10 @@ fn rows() -> Vec<(&'static str, World)> {
     }));
     rows.push(("editor-save-failed", editor_open(live(), EditorSave::Failed, true)));
     rows.push(("editor", {
-        // Edited again while an earlier edit's original is kept (B197 (e)): 20 hours left.
+        // Edited again while an earlier edit's original is kept (B197 (e)): 30 hours left,
+        // a day as the line says it (B199).
         let mut w = editor_open(live(), EditorSave::Idle, false);
-        w.session.fields.editor.as_mut().unwrap().kept_until = Some(Wall(w.wall.0 + 20 * 3_600_000));
+        w.session.fields.editor.as_mut().unwrap().kept_until = Some(Wall(w.wall.0 + 30 * 3_600_000));
         w
     }));
     // ── after the save (B197) ──
