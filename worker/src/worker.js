@@ -788,22 +788,23 @@ function playable(id, meta) {
 
 /** What `/m/<id>/` serves when it isn't everything (Copy thumbnail's pictures besides, a
  * paste already sent keeping its picture), or null. Once an edit's permanent copy is up
- * (N63 step 3): the copy's own files and the recording's own first frame — `poster.jpg`,
- * or a baked recording's own poster — which the Library and a copy with no poster of its
- * own still show; never the stream, `video.mp4`, the teaser or an earlier bake's video, so
- * a cut part is out of a viewer's reach. A baked recording (B197) otherwise: exactly the
- * files its record names. The Macs read originals over S3, not here.
+ * (N63 step 3): the copy's own files, and the recording's own first frame — `poster.jpg`,
+ * or a baked recording's own poster, which a token-less Mac's Library fetches here until
+ * the bake names the copy's — only while the edit keeps that frame; never the stream,
+ * `video.mp4`, the teaser or an earlier bake's video, so a cut part is out of a viewer's
+ * reach. A baked recording (B197) otherwise: exactly the files its record names. The Macs
+ * read originals over S3, not here.
  * @param {string} id @param {any} meta @returns {Set<string> | null} */
 function servedOnly(id, meta) {
-  const copy = editsOf(meta, id)?.copy;
+  const edit = editsOf(meta, id);
+  const copy = edit?.copy;
   const bakedNow = baked(id, meta);
   if (!copy && !bakedNow) return null;
   const names = new Set();
   const own = (/** @type {"mp4" | "poster" | "teaser"} */ slot) => { const f = ownFile(id, meta, slot); if (f) names.add(f); };
   if (copy) {
     for (const s of [copy.src, copy.poster, copy.teaser]) if (s) names.add(s.slice(s.lastIndexOf("/") + 1));
-    if (bakedNow) own("poster");
-    else names.add("poster.jpg");
+    if (keepsFirstFrame(edit)) own("poster");
   } else {
     own("mp4");
     own("poster");
@@ -913,12 +914,16 @@ function readEdit(meta, e, id) {
 
 /** What a viewer of the recording gets, its edit applied (N63): the permanent copy as-is
  * once it matches the saved edit; else the original with the ranges that play (`keep`).
- * `dur` is the length the page shows, `poster` and `teaser` the pictures it and its unfurl
- * show (the copy's own when it has them), each an address on this origin. `download`: what
- * Download hands over is the video as it plays — the original with no edit, the copy once
- * it's up, and nothing in between, so a cut part never leaves as a file. `file` is the
- * recording's own single file (`ownFile`), `whole` its own length — the clock its edit and
- * the player's ranges count on — and `baked` says it has no stream beside it (B197).
+ * `dur` is the length the page shows, `poster` and `teaser` the pictures it, its unfurl and
+ * oEmbed show, each an address on this origin, and never one of a part that's cut: with no
+ * edit, the recording's own; once the copy is up, the copy's own or none — never the
+ * original's in their place; while the edit waits for its copy, the recording's first
+ * frame only while the edit keeps it, and no teaser (the recording's first 15 s can hold a
+ * cut part). `download`: what Download hands over is the video as it plays — the original
+ * with no edit, the copy once it's up, and nothing in between, so a cut part never leaves
+ * as a file. `file` is the recording's own single file (`ownFile`), `whole` its own length
+ * — the clock its edit and the player's ranges count on — and `baked` says it has no
+ * stream beside it (B197).
  * @param {string} id @param {any} meta @returns {View} */
 function viewOf(id, meta) {
   const edit = editsOf(meta, id);
@@ -928,11 +933,17 @@ function viewOf(id, meta) {
   return {
     edit, copy, keep: edit && !copy ? edit.keep : null,
     dur: copy ? copy.dur : edit ? edit.dur : whole, whole,
-    poster: copy?.poster ?? (poster ? `/m/${id}/${poster}` : null),
-    teaser: copy ? copy.teaser ?? null : teaser ? `/m/${id}/${teaser}` : null,
+    poster: copy ? copy.poster ?? null : poster && (!edit || keepsFirstFrame(edit)) ? `/m/${id}/${poster}` : null,
+    teaser: copy ? copy.teaser ?? null : teaser && !edit ? `/m/${id}/${teaser}` : null,
     download: copy ? true : !edit && !!file,
     file, baked: baked(id, meta),
   };
+}
+
+/** Whether the edit plays the recording's first frame — what its poster is (`poster.jpg`:
+ * frame 0) — so the poster shows nothing that's cut. @param {Edit} edit */
+function keepsFirstFrame(edit) {
+  return edit.keep.length > 0 && edit.keep[0][0] <= 0;
 }
 
 /** @param {Env} env @param {string} id */
@@ -1051,7 +1062,8 @@ function html(body, frameable = false, status = 200) {
 /** The tags every platform reads, server-rendered (crawlers run no script), og first.
  * og:video is the small teaser, never HLS. No description or site name: nothing the
  * spec has said, and the sender stays anonymous (U3). With an edit (N63) the length is the
- * edited one, and once its permanent copy is up the pictures are the copy's own. */
+ * edited one, and the pictures never show a part that's cut (`viewOf`): the copy's own
+ * once it's up, none of the original's teaser before. */
 /** @param {string} id @param {any} meta @param {string} origin */
 export function unfurl(id, meta, origin) {
   const title = meta.title || "";
@@ -1428,7 +1440,9 @@ export function playerHtml(id, meta, base = "") {
  *
  * An edit (N63, DECISIONS B195) plays as the editor plays it: `E.keep` holds the ranges of
  * the recording that play, and the player starts at the first, skips every gap between
- * them and stops at the last one's end, showing it ended. The skip runs on every frame
+ * them and stops at the last one's end, showing it ended. Loaded, it waits at the first
+ * range's start, so a video with no poster (a trimmed-off first frame has none) shows its
+ * first kept frame, never the recording's own first one. The skip runs on every frame
  * while it plays, and on `timeupdate` and `seeking` besides (a background tab gets no
  * frames): outside every range — a range's last 30 ms counting as past it — it seeks to the
  * next range's start. A playhead within 50 ms of the start it was last sent to is left to
@@ -1490,6 +1504,7 @@ else if(k==="Home")to(0);else if(k==="End")to(dur());else if(k==="f"||k==="F")fs
 pp.addEventListener("click",toggle);v.addEventListener("click",toggle);v.addEventListener("dblclick",fsToggle);fs.addEventListener("click",fsToggle);sp.addEventListener("click",faster);mu.addEventListener("click",hush);
 v.addEventListener("play",function(){if(!K)return;if(fin){fin=false;v.currentTime=K[0][0]}skip();if(!raf)raf=requestAnimationFrame(tick)});
 v.addEventListener("seeking",function(){if(!K)return;fin=false;skip()});v.addEventListener("timeupdate",skip);v.addEventListener("error",fail);
+v.addEventListener("loadedmetadata",function(){if(K&&!v.currentTime)skip()});
 document.addEventListener("shroom:keep",function(ev){if(cp)return;var D=len>0?len:isFinite(v.duration)&&v.duration>0?v.duration:0,k=shroomKeep(ev&&ev.detail,D);if(!k.length)return;
 K=D&&k.length===1&&k[0][0]<=0&&k[0][1]>=D?null:k;if(!K)known=D||known;aim=-1;fin=false;skip();if(K&&!v.paused&&!raf)raf=requestAnimationFrame(tick);paint()});
 ["play","pause","ended"].forEach(function(e){v.addEventListener(e,mode)});

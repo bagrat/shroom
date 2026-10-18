@@ -273,6 +273,7 @@ describe("the edit (N63) over R2's own reads", () => {
     assert.ok(page.includes(`{"keep":[[2,10],[20,50]],"len":60,"st":"/_shroom/status/${EDIT_ID}","copy":false}`), "the ranges that play");
     assert.ok(page.includes(`<span class="time">0:00 / 0:38</span>`), "the edited length");
     assert.ok(!page.includes(`/d/${EDIT_ID}`) && !page.includes(SAID));
+    assert.ok(!page.includes("og:image") && !page.includes("og:video") && !/<video[^>]*poster=/.test(page), "no picture of the trimmed-off start");
     assert.equal((await fetchW(`/d/${EDIT_ID}`)).status, 404);
     const seg = await fetchW(`/m/${EDIT_ID}/v0/seg_00000.m4s`);
     assert.equal(seg.status, 200, "the original is still reachable");
@@ -297,8 +298,9 @@ describe("the edit (N63) over R2's own reads", () => {
       assert.equal(res.status, 404, f);
       await res.arrayBuffer();
     }
+    // The edit trims 0–2 off: the recording's first frame is a cut part, out of reach too.
     const poster = await fetchW(`/m/${EDIT_ID}/poster.jpg`);
-    assert.equal(poster.status, 200, "the original's first frame stays");
+    assert.equal(poster.status, 404, "the trimmed-off first frame goes with the rest");
     await poster.arrayBuffer();
   });
 });

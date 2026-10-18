@@ -45,8 +45,8 @@
 //              allowed), every kept range plays, it stops at the out, and the time reads the
 //              edited length, 0:00 / 0:12 then 0:12 / 0:12. With the edit's permanent copy up:
 //              the page plays the copy to its end with nothing skipped, its own first frame,
-//              asks for nothing of the original, and the original's stream and file answer
-//              404 (step 3). The copy landing under an open page: its next piece of the
+//              asks for nothing of the original, and the original's stream, file and
+//              trimmed-off first frame answer 404 (step 3). The copy landing under an open page: its next piece of the
 //              original answers 404 and the player moves over to the copy (hls.js; native
 //              engines that fetched the whole file have nothing to miss — reported only)
 //   baked      a baked recording (B197: media names the edit's own files, no stream) plays its
@@ -275,8 +275,8 @@ async function main() {
           for (const f of ["master.m3u8", "v0/stream.m3u8", "v0/init.mp4", "v0/seg_00000.m4s", "video.mp4", "poster.jpg", "edit-1.mp4", "edit-1-poster.jpg"]) out[f] = (await fetch(`/m/${id}/${f}`, { method: "HEAD" })).status;
           return out;
         }, ids.cut);
-        check("the edit's copy up: the original's stream and file answer 404, the copy and the first frames are served (step 3)",
-          same(reach, { "master.m3u8": 404, "v0/stream.m3u8": 404, "v0/init.mp4": 404, "v0/seg_00000.m4s": 404, "video.mp4": 404, "poster.jpg": 200, "edit-1.mp4": 200, "edit-1-poster.jpg": 200 }), true, reach);
+        check("the edit's copy up: the original's stream, file and trimmed-off first frame answer 404, the copy and its first frame are served (step 3)",
+          same(reach, { "master.m3u8": 404, "v0/stream.m3u8": 404, "v0/init.mp4": 404, "v0/seg_00000.m4s": 404, "video.mp4": 404, "poster.jpg": 404, "edit-1.mp4": 200, "edit-1-poster.jpg": 200 }), true, reach);
 
         // ── shroom:keep: the page handed new ranges (#59) ──
         await put(metaKey(ids.edit), meta(ids.edit, { media: stream(ids.edit) }));
