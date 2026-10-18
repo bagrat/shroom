@@ -4,7 +4,7 @@
 
 The machine: every state, edge, rule, said-line and law of shroom v1 — the spec (DECISIONS B133). Sessions edit it; MACHINE.md and the canvas's machine boards are generated from it.
 
-153 states · 315 edges · 23 rules · 611 said-lines · 16 laws · 74 ledger rows.
+153 states · 315 edges · 24 rules · 611 said-lines · 16 laws · 74 ledger rows.
 
 Status: **ratified** is Bagrat's; **provisional** is designed or built and awaits him (each cites its row: `#n` is a DEVIATIONS row of docs/DECISIONS.md, `Bn` a decision, `Nn`/`Un`/`Pn` a ledger row below). `SM:n` in older citations is a line of the retired spec text, kept in history/spec/UX-STATEMACHINE.md.
 
@@ -3895,6 +3895,7 @@ A move that holds for a whole group of states, written once (B133). The tests ex
 - **an invite opens its window** (`invite-arrives`, flow, **ratified**, N30, N31, #2, #20, B134): @join-doors → @join-arrival, on Member, Failed(Peek), SecretPasted(Invite), click, Scanned. An invite that arrives — the deep link, a paste, the installer's file, or one remembered at the tray click — opens the invite window at the face peek's answer derives: the welcome, waiting, a dead link's line, already here, or the switch's question.
 - **a face comes and goes with its cause** (`faces`, auto, **ratified**, N18, law 1, N34): * → * (a state and its own faces), on any. Faces are render properties of their state: a state and its faces, and one state's faces, re-derive into one another as their causes come and go.
 - **one banner at a time, the highest** (`banners`, auto, **ratified**, N38, law 1): @banners, none → @banners, none, on any. config's banner shows while its cause stands and clears by itself when it goes; a higher banner hides a lower one (one at a time).
+- **its video deleted, the editor closes** (`editor-video-deleted`, side, **provisional**, N63, B199): @editor-faces → library, on Act(ConfirmDelete), Library(Deleted). Deleting the video the editor holds — Delete… confirmed in the Library, or this Mac's delete landing — closes the editor: what its open asked for stops, a save on its way answers no one, and nothing is saved (B199). Another Mac's delete reaches it as a save the space turns down (editor-save-refused).
 
 ## Groups
 

@@ -17597,6 +17597,27 @@
     "law 1"
    ],
    "status": "ratified"
+  },
+  {
+   "id": "editor-video-deleted",
+   "label": "its video deleted, the editor closes",
+   "from": [
+    "@editor-faces"
+   ],
+   "to": [
+    "library"
+   ],
+   "on": [
+    "Act(ConfirmDelete)",
+    "Library(Deleted)"
+   ],
+   "kind": "side",
+   "says": "Deleting the video the editor holds — Delete… confirmed in the Library, or this Mac's delete landing — closes the editor: what its open asked for stops, a save on its way answers no one, and nothing is saved (B199). Another Mac's delete reaches it as a save the space turns down (editor-save-refused).",
+   "cites": [
+    "N63",
+    "B199"
+   ],
+   "status": "provisional"
   }
  ],
  "notes": [
