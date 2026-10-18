@@ -486,7 +486,7 @@ fn a_tombstone_stops_a_bake() {
 }
 
 /// The Library's rows follow the record: the edited length once an edit is saved, the
-/// copy's poster once baked (and then the length is the video's own).
+/// copy's poster once it lands (and once baked the length is the video's own).
 #[test]
 fn a_librarys_row_follows_the_edit_and_the_bake() {
     let (_fake, s3) = space();
@@ -498,6 +498,7 @@ fn a_librarys_row_follows_the_edit_and_the_bake() {
     save_and_copy(&s3, A, &edited(60.0), 38.0);
     library::refresh(&s3, &mut cache).unwrap();
     assert_eq!((row(&cache).duration_sec, row(&cache).edited_sec), (Some(60.0), Some(38.0)));
+    assert_eq!(row(&cache).poster_file.as_deref(), Some("edit-1-poster.jpg"), "the copy's own picture once it lands: the page's");
     assert!(library::bake(&s3, A, DUE).unwrap().is_some());
     library::refresh(&s3, &mut cache).unwrap();
     let r = row(&cache);

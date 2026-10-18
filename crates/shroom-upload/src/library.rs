@@ -58,11 +58,15 @@ impl Row {
     }
 }
 
-/// The name under `rec/<id>/` of the record's poster: one plain file name, never a path.
+/// The name under `rec/<id>/` of the record's poster: one plain file name, never a path. An
+/// edit's current copy has its own (the page shows it, and the original's may be one the
+/// edit trimmed off and the page no longer serves); else the media's.
 pub fn poster_file(m: &Meta) -> Option<String> {
-    let key = m.media.as_ref()?.poster.as_deref()?;
-    let name = key.strip_prefix(&keys::prefix(&m.id))?;
-    (!name.is_empty() && !name.starts_with('.') && !name.contains('/')).then(|| name.to_string())
+    let plain = |name: &str| (!name.is_empty() && !name.starts_with('.') && !name.contains('/')).then(|| name.to_string());
+    if let Some(name) = m.edits.as_ref().and_then(|s| s.current_copy()).and_then(|c| c.poster.as_deref()).and_then(plain) {
+        return Some(name);
+    }
+    plain(m.media.as_ref()?.poster.as_deref()?.strip_prefix(&keys::prefix(&m.id))?)
 }
 
 /// The local cache the Library opens on at once (kept by the caller, e.g. a file).
