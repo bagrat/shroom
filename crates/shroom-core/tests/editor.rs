@@ -541,9 +541,11 @@ fn the_final_video_lands_and_yes_delete_bakes_it() {
     assert_eq!((button(keep), &keep.action), (("Keep for 2 days", Style::Plain, true), &Action::KeepOriginal));
     assert_eq!((button(delete), &delete.action), (("Yes, delete", Style::Filled, true), &Action::DeleteOriginal));
     assert!(!b.done.enabled && !b.editable, "the question's own buttons answer it");
-    assert_eq!((r.scene.ret(Surface::Editor), r.scene.esc(Surface::Editor)), (Some(Action::DeleteOriginal), Some(Action::KeepOriginal)));
-
+    assert_eq!((r.scene.ret(Surface::Editor), r.scene.esc(Surface::Editor)), (None, Some(Action::KeepOriginal)), "deleting is a click, never Return (law 9)");
     r.key(Surface::Editor, Key::Return);
+    assert!(r.effects.is_empty() && face(&r) == "editor-keep-original", "Return asks nothing");
+
+    r.ed(Action::DeleteOriginal);
     assert_eq!(r.effects, vec![Effect::Editor(EditCmd::Bake { rec: rec() })]);
     assert_eq!(r.arm.edge, Some(("editor-keep-original", "library")));
     assert!(r.scene.editor.is_none() && r.w.session.fields.editor.is_none());
@@ -1436,7 +1438,7 @@ fn the_slice_is_the_webviews_json() {
     assert_eq!((a["state"].clone(), a["title"].clone(), a["line"].clone()), (json!("asking"), json!(ASK_TITLE), json!(ASK_LINE)));
     assert_eq!((a["keep"]["label"].clone(), a["keep"]["action"].clone()), (json!("Keep for 2 days"), json!({ "do": "keep-original" })));
     assert_eq!((a["delete"]["label"].clone(), a["delete"]["action"].clone()), (json!("Yes, delete"), json!({ "do": "delete-original" })));
-    assert_eq!((v["ret"].clone(), v["esc"].clone()), (json!({ "do": "delete-original" }), json!({ "do": "keep-original" })));
+    assert_eq!((v["ret"].clone(), v["esc"].clone()), (json!(null), json!({ "do": "keep-original" })));
     // The time the original has left, by Revert.
     let mut r = opened();
     let until = Wall(r.w.wall.0 + 20 * HOUR);

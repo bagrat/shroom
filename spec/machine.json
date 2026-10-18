@@ -8128,7 +8128,7 @@
    "surface": "window",
    "status": "provisional",
    "board": "EditorAfterSave",
-   "summary": "The final video is up: the window asks whether to delete the original. One card: “Delete the original?”, a line that the edit is the video now and the original is only kept for reverting, then Keep for 2 days and Yes, delete, which leads (filled, Return). Yes, delete makes the edit the video for good and deletes the original now; Keep for 2 days keeps it, and shroom deletes it two days on. ✕ or Esc is Keep for 2 days.",
+   "summary": "The final video is up: the window asks whether to delete the original. One card: “Delete the original?”, a line that the edit is the video now and the original is only kept for reverting, then Keep for 2 days and Yes, delete, which leads (filled, as Bagrat asked) but is never the Return default: Return does nothing here (law 9; DEVIATIONS #55). Yes, delete makes the edit the video for good and deletes the original now; Keep for 2 days keeps it, and shroom deletes it two days on. ✕ or Esc is Keep for 2 days.",
    "entry": "The final video landed while the editor was open.",
    "said": [
     {
@@ -8153,7 +8153,7 @@
      "text": "Yes, delete",
      "role": "button",
      "copy": "provisional",
-     "note": "filled; Return",
+     "note": "filled and leading; never the Return default (law 9; DEVIATIONS #55)",
      "id": "editor-keep-original.delete"
     }
    ],
@@ -8161,9 +8161,9 @@
     {
      "label": "Yes, delete",
      "kind": "filled-default",
-     "return_default": true,
+     "return_default": false,
      "goes_to": "library",
-     "note": "the edit becomes the video; the original's files are deleted"
+     "note": "the edit becomes the video; the original's files are deleted. Filled, as Bagrat asked, but a click only: Return does nothing (law 9; DEVIATIONS #55)"
     },
     {
      "label": "Keep for 2 days",
@@ -16975,7 +16975,7 @@
    "to": "library",
    "kind": "flow",
    "label": "Yes, delete · Keep for 2 days",
-   "trigger": "Yes, delete (Return): the edit becomes the video and the original is deleted; Keep for 2 days, Esc or ✕: the original is deleted two days on",
+   "trigger": "Yes, delete (a click): the edit becomes the video and the original is deleted; Keep for 2 days, Esc or ✕: the original is deleted two days on",
    "status": "provisional",
    "cites": [
     "N63",

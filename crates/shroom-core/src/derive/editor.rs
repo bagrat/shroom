@@ -98,7 +98,8 @@ pub fn derive(w: &World) -> Option<Window<EditorBody>> {
     // Return is Yes, delete.
     let (ret, esc) = match id {
         "editor-cant-get" | "editor-making" | "editor-making-failed" => (Some(Action::EditorClose), Some(Action::EditorClose)),
-        "editor-keep-original" => (Some(Action::DeleteOriginal), Some(Action::KeepOriginal)),
+        // Yes, delete leads but is never one keystroke away (law 9; DEVIATIONS #55).
+        "editor-keep-original" => (None, Some(Action::KeepOriginal)),
         "editor" | "editor-save-failed" if live => (Some(Action::EditorDone), None),
         _ => (None, None),
     };

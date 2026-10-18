@@ -2409,7 +2409,7 @@ The final video couldn't be made or put up (offline, the space didn't answer, th
 
 state · window · **provisional** · board: EditorAfterSave · cites N63, B197
 
-The final video is up: the window asks whether to delete the original. One card: “Delete the original?”, a line that the edit is the video now and the original is only kept for reverting, then Keep for 2 days and Yes, delete, which leads (filled, Return). Yes, delete makes the edit the video for good and deletes the original now; Keep for 2 days keeps it, and shroom deletes it two days on. ✕ or Esc is Keep for 2 days.
+The final video is up: the window asks whether to delete the original. One card: “Delete the original?”, a line that the edit is the video now and the original is only kept for reverting, then Keep for 2 days and Yes, delete, which leads (filled, as Bagrat asked) but is never the Return default: Return does nothing here (law 9; DEVIATIONS #55). Yes, delete makes the edit the video for good and deletes the original now; Keep for 2 days keeps it, and shroom deletes it two days on. ✕ or Esc is Keep for 2 days.
 
 **Entry.** The final video landed while the editor was open.
 
@@ -2418,11 +2418,11 @@ The final video is up: the window asks whether to delete the original. One card:
 | “Delete the original?” | title | provisional |  |
 | “Your edit is the video now. The original is only kept so you can revert to it.” | line | provisional |  |
 | “Keep for 2 days” | button | provisional |  |
-| “Yes, delete” | button | provisional | filled; Return |
+| “Yes, delete” | button | provisional | filled and leading; never the Return default (law 9; DEVIATIONS #55) |
 
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
-| Yes, delete | filled-default | ↵ | `library` | the edit becomes the video; the original's files are deleted |
+| Yes, delete | filled-default |  | `library` | the edit becomes the video; the original's files are deleted. Filled, as Bagrat asked, but a click only: Return does nothing (law 9; DEVIATIONS #55) |
 | Keep for 2 days | secondary |  | `library` | deleted two days on, by whichever of the space's Macs is open first (B197) |
 | Esc / ✕ | other |  | `library` | ≡ Keep for 2 days |
 
