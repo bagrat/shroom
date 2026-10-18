@@ -358,9 +358,7 @@ fn banner_ai(w: &World) -> Option<Banner> {
             return Some(Banner { id: "ai-offer-failed", tone: Tone::Frost, line: copy::ai_failed(), buttons: ask() });
         }
     }
-    let b = &w.once.ai_banner;
-    let due = !b.done && (b.not_now == 0 || (b.not_now == 1 && b.takes >= crate::world::AI_BANNER_AGAIN));
-    due.then(|| Banner { id: "ai-offer", tone: Tone::Frost, line: copy::ai_banner(), buttons: ask() })
+    (!w.once.ai_offer_answered).then(|| Banner { id: "ai-offer", tone: Tone::Frost, line: copy::ai_banner(), buttons: ask() })
 }
 
 /// Kind 2: the space can't take videos — on the token-holding Mac, `space-degraded` (N42).

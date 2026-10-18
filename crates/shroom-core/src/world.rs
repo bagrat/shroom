@@ -1009,27 +1009,12 @@ pub struct Once {
     /// launch other than an update relaunch found running): only an `--updated` relaunch
     /// leaves a newer running version unacknowledged, and that says once that it landed.
     pub seen_version: Option<String>,
-    /// The popover's AI banner on this Mac (N66).
+    /// The popover's AI banner was answered on this Mac (N66; Bagrat, 2026-10-18: off by
+    /// default, but visible): a Not now hides it for good, and so does AI on, from the banner
+    /// or the switch in Settings · Space.
     #[serde(default)]
-    pub ai_banner: AiBanner,
+    pub ai_offer_answered: bool,
 }
-
-/// How the popover's AI banner was answered on this Mac (N66; Bagrat, 2026-10-18: off by
-/// default, but visible): Not now once hides it until five more recordings, twice for good;
-/// AI on, from the banner or anywhere else, answers it for good.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct AiBanner {
-    #[serde(default)]
-    pub not_now: u8,
-    /// Recordings that made a link on this Mac since the first Not now.
-    #[serde(default)]
-    pub takes: u32,
-    #[serde(default)]
-    pub done: bool,
-}
-
-/// Recordings after a first Not now before the AI banner comes back, once (N66).
-pub const AI_BANNER_AGAIN: u32 = 5;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]

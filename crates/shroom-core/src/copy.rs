@@ -706,7 +706,7 @@ pub fn mark_line() -> String { "The small mark on every video page. You can flip
 // banner and its confirm. The cost line is said in the confirm and under the switch.
 pub fn ai_label() -> String { "AI for new videos".into() }
 pub fn ai_cost() -> String {
-    "Titles, chapters and captions from what’s said, and your “shroom cut” slips cut — on your own Cloudflare account. Free for about 2½ hours of new video a day; more is about 4¢ an hour on Cloudflare’s $5 plan.".into()
+    "Titles, chapters and captions from what’s said, and your “shroom cut” slips cut — on your own Cloudflare account. Free for about 2½ hours of new video a day; more is about 4¢ per video hour on Cloudflare’s $5 plan.".into()
 }
 pub fn ai_banner() -> String { "shroom can name your videos, add chapters and cut your slips for you.".into() }
 pub fn turn_on_ask() -> String { "Turn on…".into() }

@@ -1281,28 +1281,16 @@ fn act(w: &mut World, action: Action) -> Out {
             w.space.ai_turn = Some(AiTurn::Turning);
             (vec![Effect::Cloud(CloudCmd::SetAi(true))], Arm { name: "ai-on", edge: asked.then_some(("ai-confirm", "ai-turning-on")) })
         }
-        // Not now: hidden until five more recordings; the second time, for good.
+        // Not now: hidden for good on this Mac (Bagrat, 2026-10-18); the switch stays.
         Action::AiNotNow => {
             w.space.ai_turn = None;
-            let b = &mut w.once.ai_banner;
-            b.not_now = b.not_now.saturating_add(1);
-            b.takes = 0;
+            w.once.ai_offer_answered = true;
             (vec![Effect::Persist(PersistOp::Once(w.once.clone()))], Arm { name: "ai-not-now", edge: Some(("ai-offer", "config")) })
         }
         Action::SetScope(scope) => {
             w.session.fields.library.scope = scope;
             (vec![], Arm::named("set-scope"))
         }
-    }
-}
-
-/// A recording that made a link, after the AI banner's first Not now: five of them bring it
-/// back, once (N66).
-fn count_for_ai_banner(w: &mut World, fx: &mut Vec<Effect>) {
-    let b = &mut w.once.ai_banner;
-    if b.not_now == 1 && !b.done && b.takes < crate::world::AI_BANNER_AGAIN {
-        b.takes += 1;
-        fx.push(Effect::Persist(PersistOp::Once(w.once.clone())));
     }
 }
 
@@ -2276,7 +2264,6 @@ fn rec(w: &mut World, news: RecNews) -> Out {
                 }
                 (Ok(length_ms), Phase::Finalizing(Why::Stop | Why::GetLink)) => {
                     fx.push(Effect::Publish { dir: t.dir.clone(), rec: t.rec.clone() });
-                    count_for_ai_banner(w, &mut fx);
                     // Wake the uploader now: the link exists, its bytes should follow at once.
                     fx.push(Effect::Uploader(UpCmd::Kick));
                     fx.push(Effect::Takes(TakeCmd::Rescan));
@@ -2507,8 +2494,8 @@ fn cloud(w: &mut World, news: CloudNews) -> Out {
                 w.space.ai_turn = None;
             }
             let mut fx = Vec::new();
-            if on && !w.once.ai_banner.done {
-                w.once.ai_banner.done = true;
+            if on && !w.once.ai_offer_answered {
+                w.once.ai_offer_answered = true;
                 fx.push(Effect::Persist(PersistOp::Once(w.once.clone())));
             }
             if on && turning {

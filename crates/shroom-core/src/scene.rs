@@ -195,7 +195,7 @@ pub enum Action {
     AiAsk,
     /// The confirm's Turn on — as the switch.
     AiOn,
-    /// The banner's Not now: hidden until five more recordings, the second time for good.
+    /// The banner's Not now: hidden for good on this Mac; the switch in Settings · Space stays.
     AiNotNow,
     /// The Library's *Mine · Everyone*.
     SetScope(LibraryScope),
