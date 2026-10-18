@@ -3,7 +3,7 @@
 //! was given (never their words), how it ended (`ok` or the error code, and the exit), what
 //! it counted, what the space or the app said where it said no, and how long it took.
 //! Never a title, a name, a link or a key: an id as the run log names it (`AbCd…`).
-//! Report a problem and Copy diagnostics carry its last lines after the app's
+//! Report a problem and Copy diagnostics carry its last lines among the app's, by their time
 //! (`shroom_core::report::clean_logs`).
 //!
 //! The one file the command writes in shroom's folder, and only while that folder exists
@@ -134,7 +134,7 @@ fn append(home: &Path, line: &str) {
     }
 }
 
-/// A time as UTC: “2026-10-18 15:31:05 UTC”.
+/// A time as UTC to the second, as the app's run log stamps its lines: “2026-10-18T15:31:05Z”.
 fn utc(at: SystemTime) -> String {
     let secs = at.duration_since(UNIX_EPOCH).map(|d| d.as_secs() as i64).unwrap_or(0);
     let (days, rest) = (secs.div_euclid(86_400), secs.rem_euclid(86_400));
@@ -148,7 +148,7 @@ fn utc(at: SystemTime) -> String {
     let d = doy - (153 * mp + 2) / 5 + 1;
     let m = if mp < 10 { mp + 3 } else { mp - 9 };
     let y = yoe + era * 400 + i64::from(m <= 2);
-    format!("{y:04}-{m:02}-{d:02} {:02}:{:02}:{:02} UTC", rest / 3600, rest % 3600 / 60, rest % 60)
+    format!("{y:04}-{m:02}-{d:02}T{:02}:{:02}:{:02}Z", rest / 3600, rest % 3600 / 60, rest % 60)
 }
 
 #[cfg(test)]
@@ -157,9 +157,9 @@ mod tests {
 
     #[test]
     fn utc_reads_the_calendar() {
-        assert_eq!(utc(UNIX_EPOCH), "1970-01-01 00:00:00 UTC");
-        assert_eq!(utc(UNIX_EPOCH + Duration::from_secs(1_792_337_465)), "2026-10-18 15:31:05 UTC");
-        assert_eq!(utc(UNIX_EPOCH + Duration::from_secs(951_782_400)), "2000-02-29 00:00:00 UTC");
+        assert_eq!(utc(UNIX_EPOCH), "1970-01-01T00:00:00Z");
+        assert_eq!(utc(UNIX_EPOCH + Duration::from_secs(1_792_337_465)), "2026-10-18T15:31:05Z");
+        assert_eq!(utc(UNIX_EPOCH + Duration::from_secs(951_782_400)), "2000-02-29T00:00:00Z");
     }
 
     #[test]
@@ -189,7 +189,7 @@ mod tests {
     fn a_run_is_one_line_the_report_keeps_as_it_is() {
         let at = UNIX_EPOCH + Duration::from_secs(1_792_337_465);
         let l = line(at, "record start", &["no-countdown", "json"], "recording_off, exit 10", &[], &["app recording_off".into()], Duration::from_millis(12));
-        assert_eq!(l, "2026-10-18 15:31:05 UTC cli: record start --no-countdown --json: recording_off, exit 10, app recording_off (12ms)\n");
+        assert_eq!(l, "2026-10-18T15:31:05Z cli: record start --no-countdown --json: recording_off, exit 10, app recording_off (12ms)\n");
         assert_eq!(shroom_core::report::clean_line(l.trim_end()), l.trim_end(), "nothing in it for the report to take out");
     }
 
