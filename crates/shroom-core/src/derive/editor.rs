@@ -28,6 +28,8 @@ pub fn derive(w: &World) -> Option<Window<EditorBody>> {
         EditorMedia::Ready { duration } => EditorMediaView::Ready { duration },
     };
     let (footer, footer_tone) = match e.save {
+        // The page's Edit in shroom asked for another video while this one is open (N69).
+        EditorSave::Idle if e.elsewhere => (copy::editing_another(), LineTone::Amber),
         EditorSave::Idle | EditorSave::Asking => (copy::editor_footer(), LineTone::Plain),
         EditorSave::Saving => (copy::saving_edit(), LineTone::Plain),
         EditorSave::Failed => (copy::save_failed(), LineTone::Amber),

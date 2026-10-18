@@ -18,7 +18,7 @@ use crate::report::{Kind, Post};
 use crate::scene::{Action, Click};
 use crate::time::{Fact, Mono};
 use crate::world::{
-    Access, AiTurn, Arming, Blocked, Born, Cause, Confirm, CopyOwed, CopyTarget, Door, EditorFields, EditorMedia, EditorSave, FailClass, Failure, Fields, Fork, Invite,
+    Access, AiTurn, Arming, Blocked, Born, Cause, Confirm, CopyOwed, CopyTarget, Door, EditLink, EditLinkNo, EditorFields, EditorMedia, EditorSave, FailClass, Failure, Fields, Fork, Invite,
     JoinRefusal, Landed, LaunchKind, Leaving, RecId,
     LibraryFields, LibraryOps, Members, OpenTake, Op, PageOpen, Paste, Phase, QuickProbe, Reach, RelaunchWhy, Removal, ReportFields, FeedbackFields, Restore, Role, SavedCause,
     SavedTake, SecretId, SettingsFields, SettingsTab, SourceId, Space, SpaceIdentity, StopOutcome, Strike, Sweep, TakeDir, TakeLost, TokenVerdict,
@@ -48,11 +48,22 @@ pub fn apply(w: &mut World, event: Event) -> Out {
     // A one-shot status line (“Updated to … ✓”, the failed update) shows once: when the
     // popover that showed it closes, it's behind us.
     let shot = crate::derive::one_shot_showing(w);
-    // So does the line about a take that kept nothing (DEVIATIONS #53).
+    // So does the line about a take that kept nothing (DEVIATIONS #53), and the reason the
+    // page's Edit in shroom opened nothing (N69).
     let lost_said = w.session.popover.is_some() && matches!(w.session.take_lost, Some(TakeLost::Said { .. }));
+    let edit_said = w.session.popover.is_some() && matches!(w.session.fields.edit_link, Some(EditLink::Said(_)));
     let (mut fx, arm) = apply_event(w, event);
     if lost_said && w.session.popover.is_none() {
         w.session.take_lost = None;
+    }
+    if edit_said && w.session.popover.is_none() {
+        w.session.fields.edit_link = None;
+    }
+    // A press on the page's Edit in shroom held for a take goes on once it's over (law 4).
+    if !w.take_open() && matches!(w.session.fields.edit_link, Some(EditLink::Waiting { asked: false, .. })) {
+        if let Some(EditLink::Waiting { host, rec, .. }) = w.session.fields.edit_link.take() {
+            fx.extend(edit_link(w, host, rec).0);
+        }
     }
     if let Some(shot) = shot.filter(|_| w.session.popover.is_none()) {
         match shot {
@@ -305,6 +316,7 @@ fn apply_event(w: &mut World, event: Event) -> Out {
             (vec![], Arm::named("name-typed"))
         }
         Event::Edit(step) => edit_step(w, step),
+        Event::EditLink { host, rec } => edit_link(w, host, rec),
         Event::SecretPasted { field, id, shape } => pasted(w, field, id, shape),
         Event::WindowClosed(kind) => window_closed(w, kind),
         Event::WindowFocused(kind, q) => {
@@ -2054,12 +2066,13 @@ fn leave_onboarding(w: &mut World) {
     w.session.chapter = false;
     w.session.fork = Fork::Virgin;
     // The Library's, Settings', Send feedback's and the editor's fields are their windows';
-    // only the onboarding's go.
+    // only the onboarding's go. A press on the page's Edit in shroom isn't the setup's.
     let library = std::mem::take(&mut w.session.fields.library);
     let settings = std::mem::take(&mut w.session.fields.settings);
     let feedback = std::mem::take(&mut w.session.fields.feedback);
     let editor = w.session.fields.editor.take();
-    w.session.fields = Fields { library, settings, feedback, editor, ..Fields::default() };
+    let edit_link = w.session.fields.edit_link.take();
+    w.session.fields = Fields { library, settings, feedback, editor, edit_link, ..Fields::default() };
     w.mac.mic_asked = false;
     w.mac.camera_asked = false;
 }
@@ -2226,6 +2239,12 @@ fn open_editor(w: &mut World, rec: RecId) -> Out {
         return (vec![Effect::Shell(ShellCmd::OpenEditor)], Arm::named("editor-forward"));
     }
     let Some(row) = library_view::rows(w).into_iter().find(|r| r.rec == rec && r.kind == library_view::Kind::Live) else { return (vec![], Arm::DROPPED) };
+    open_editor_on(w, row)
+}
+
+/// The editor opening on a live row: Edit…'s, and the page's Edit in shroom's (N69).
+fn open_editor_on(w: &mut World, row: library_view::Row) -> Out {
+    let rec = row.rec.clone();
     open_window(w, WindowKind::Editor);
     w.session.fields.editor = Some(EditorFields {
         rec: rec.clone(),
@@ -2239,9 +2258,91 @@ fn open_editor(w: &mut World, rec: RecId) -> Out {
         media: EditorMedia::Opening,
         save: EditorSave::Idle,
         leaving: None,
+        elsewhere: false,
     });
     w.inflight.failures.remove(&Op::EditorOpen);
     (vec![Effect::Editor(EditCmd::Open { rec }), Effect::Shell(ShellCmd::OpenEditor)], Arm { name: "open-editor", edge: Some(("library", "editor")) })
+}
+
+/// The owner page's Edit in shroom (N69, B221 (c)): it only asks — the Mac decides by its
+/// own state, in this order.
+fn edit_link(w: &mut World, host: String, rec: RecId) -> Out {
+    // Not set up: the welcome window, as a click on the mushroom opens it.
+    if !w.provisioned() {
+        w.session.fields.edit_link = None;
+        return click(w, None);
+    }
+    // Nothing new while a take is open (law 4): the latest press waits for it to end.
+    if w.take_open() {
+        w.session.fields.edit_link = Some(EditLink::Waiting { host, rec, asked: false });
+        return (vec![], Arm::named("edit-link-held"));
+    }
+    w.session.fields.edit_link = None;
+    let ours = w.space.identity.as_ref().is_some_and(|i| i.host.eq_ignore_ascii_case(host.trim_end_matches('.')));
+    if !ours {
+        return edit_link_no(w, EditLinkNo::OtherSpace);
+    }
+    // The editor open: it comes forward as it is, one at a time (B195 (a)) — saying why when
+    // it holds another video and its changes are still to save.
+    if let Some(e) = w.session.fields.editor.as_mut() {
+        if e.rec != rec && e.save == EditorSave::Idle {
+            e.elsewhere = true;
+        }
+        open_window(w, WindowKind::Editor);
+        return (vec![Effect::Shell(ShellCmd::OpenEditor)], Arm { name: "edit-link-forward", edge: Some(("owner-page", "editor")) });
+    }
+    if let Some(row) = library_view::editable(w, &rec) {
+        let (fx, _) = open_editor_on(w, row);
+        return (fx, Arm { name: "edit-link-open", edge: Some(("owner-page", "editor")) });
+    }
+    // Not among the videos this Mac knows: the space's own list decides, asked once.
+    w.session.fields.edit_link = Some(EditLink::Waiting { host, rec, asked: true });
+    let mut fx = Vec::new();
+    if w.library.get().is_none() && !w.inflight.ops.contains_key(&Op::LibCache) {
+        fx.push(Effect::Library(LibCmd::LoadCache));
+    }
+    if !w.inflight.ops.contains_key(&Op::LibRefresh) {
+        fx.push(Effect::Library(LibCmd::Refresh));
+    }
+    (fx, Arm::named("edit-link-asking"))
+}
+
+/// The Library answered while the page's press waited on it (N69): there now, it opens;
+/// still not there once the space has answered, the popover says why.
+fn edit_link_answered(w: &mut World, fresh: bool) -> Vec<Effect> {
+    let Some(EditLink::Waiting { host, rec, asked: true }) = w.session.fields.edit_link.clone() else { return vec![] };
+    // A take began meanwhile: it waits for that too (law 4), and asks again after.
+    if w.take_open() {
+        w.session.fields.edit_link = Some(EditLink::Waiting { host, rec, asked: false });
+        return vec![];
+    }
+    if let Some(row) = library_view::editable(w, &rec) {
+        w.session.fields.edit_link = None;
+        return open_editor_on(w, row).0;
+    }
+    if !fresh {
+        return vec![];
+    }
+    // An owner's Mac lists every video in the space; a member's, only its own.
+    let no = if w.space.owner_class() { EditLinkNo::Gone } else { EditLinkNo::NotYours };
+    edit_link_no(w, no).0
+}
+
+/// Why this Mac can't edit the video the page asked for (N69): the popover opens by itself
+/// under the mushroom, without the keyboard (law 5), put away by a click elsewhere, and says
+/// it once in its status line.
+fn edit_link_no(w: &mut World, no: EditLinkNo) -> Out {
+    if w.session.popover.is_none() {
+        if derive(w).tray.click != Click::OpenPopover {
+            w.session.fields.edit_link = None;
+            return (vec![], Arm::named("edit-link-unsaid"));
+        }
+        let door = Door::unasked(w.now);
+        w.session.popover = Some(door);
+        w.session.news = Some(door.opened);
+    }
+    w.session.fields.edit_link = Some(EditLink::Said(no));
+    (vec![], Arm { name: "edit-link-no", edge: Some(("owner-page", "config")) })
 }
 
 /// The editor's fields while it's open on `rec`: news about any other video is stale.
@@ -2349,6 +2450,10 @@ fn editor_done(w: &mut World) -> Out {
 /// refuses what changes nothing or leaves too little (`edit-refused`).
 fn edit_step(w: &mut World, step: EditStep) -> Out {
     let open = w.window_visible(WindowKind::Editor);
+    // The next change puts the page's line away (N69).
+    if let Some(e) = w.session.fields.editor.as_mut() {
+        e.elsewhere = false;
+    }
     let Some(h) = w.session.fields.editor.as_mut().filter(|e| open && crate::derive::editor::editable(e)).and_then(|e| e.history.as_mut()) else {
         return (vec![], Arm::DROPPED);
     };
@@ -3594,6 +3699,10 @@ fn upload(w: &mut World, news: UploadNews) -> Out {
 fn failed(w: &mut World, op: Op, class: crate::world::FailClass) -> Out {
     w.inflight.ops.remove(&op);
     note_failure(w, op, class);
+    // The page's Edit in shroom waited on this refresh: nothing opens (B221 (c)).
+    if op == Op::LibRefresh && matches!(w.session.fields.edit_link, Some(EditLink::Waiting { asked: true, .. })) {
+        w.session.fields.edit_link = None;
+    }
     let mut fx = Vec::new();
     match op {
         Op::RecStart => {
@@ -3762,7 +3871,8 @@ fn library(w: &mut World, news: LibraryNews) -> Out {
                 return (vec![], Arm::named("library-cache-stale"));
             }
             w.library = Fact::known(Arc::new(rows), now);
-            (vec![], Arm::named(if fresh { "library-refreshed" } else { "library-cached" }))
+            let fx = edit_link_answered(w, fresh);
+            (fx, Arm::named(if fresh { "library-refreshed" } else { "library-cached" }))
         }
         LibraryNews::Renamed { rec, title } => {
             w.library_ops.renaming.remove(&rec);

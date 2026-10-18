@@ -973,6 +973,10 @@ Built provisionally (N29–N34; D:B37–B42; WI §4–§6) in `runtime/member.rs
 - **Three doors**, each `MemberNews::Arrived`: the page's Open shroom
   (`shroom://join/<host>/<code>`, claimed only by release and preview bundles; D:B66, B84),
   the installer's `--join`, a paste anywhere in the welcome or Settings → Space (no door shows, DECISIONS B159).
+- **The page's Edit in shroom** (N69, D:B221) rides the same scheme: `shroom://edit/<host>/<id>`,
+  read by `runtime::opened` (the one door for opened links; anything else is the member lane's)
+  into the core's `EditLink`, which opens the editor by Edit…'s own path or says in the popover
+  why it can't. It carries nothing secret; the log never names it.
 - **Peek** on arrival and each entry of the invite window (never mid-take): pending, expired,
   used or space missing, with inviter and kind.
 - **Join**: `join.json` first; on 200 `device.key`, `space.json`, then `invite`/`join.json`

@@ -201,6 +201,7 @@ fn editor_open(media: EditorMedia, save: EditorSave, changed: bool) -> World {
         media,
         save,
         leaving: None,
+        elsewhere: false,
     });
     w
 }
@@ -608,6 +609,13 @@ fn rows() -> Vec<(&'static str, World)> {
         // a day as the line says it (B199).
         let mut w = editor_open(live(), EditorSave::Idle, false);
         w.session.fields.editor.as_mut().unwrap().kept_until = Some(Wall(w.wall.0 + 30 * 3_600_000));
+        w
+    }));
+    rows.push(("editor", {
+        // The owner page's Edit in shroom asked for another video while this one is open
+        // (N69): it came forward as it is, its footer saying why.
+        let mut w = editor_open(live(), EditorSave::Idle, true);
+        w.session.fields.editor.as_mut().unwrap().elsewhere = true;
         w
     }));
     // ── after the save (B197) ──

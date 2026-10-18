@@ -860,17 +860,21 @@ pub fn start_traced(app: &AppHandle, launch: LaunchKind, flags: &DevFlags, probe
     start_inner(app, launch, true, flags, Some(probe))
 }
 
-/// A link macOS handed shroom as it opened (`RunEvent::Opened`, held until the core is up):
-/// Settings' own — `shroom://settings/agent`, which the command's recording refusal carries
-/// (spec N62, DECISIONS B216) — goes to the core, which opens Settings there; anything else
-/// is the member lane's, an invite (N50).
+/// A link macOS handed shroom as it opened (`RunEvent::Opened`, or one held from a cold
+/// launch): Settings' own — `shroom://settings/agent`, which the command's recording refusal
+/// carries (spec N62, DECISIONS B216) — goes to the core, which opens Settings there; the
+/// owner page's Edit in shroom (`shroom://edit/<host>/<id>`, N69) goes to the core, which
+/// decides what it opens; anything else is the member lane's, an invite (N50). The log
+/// never names the link, its space or its video (B221 (e)).
 pub fn opened(rt: &Runtime, url: &str) {
-    match shroom_core::event::SettingsSpot::of_link(url) {
-        Some(spot) => {
-            rt.log(&format!("link: Settings at {spot:?}"));
-            rt.post(Event::SettingsLink(spot));
-        }
-        None => member::deep_link(rt, url),
+    if let Some(spot) = shroom_core::event::SettingsSpot::of_link(url) {
+        rt.log(&format!("link: Settings at {spot:?}"));
+        rt.post(Event::SettingsLink(spot));
+    } else if let Some(event) = Event::edit_link(url) {
+        rt.log("link: the page's Edit in shroom");
+        rt.post(event);
+    } else {
+        member::deep_link(rt, url);
     }
 }
 

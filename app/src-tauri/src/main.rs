@@ -18,12 +18,12 @@ mod tray_probe;
 #[cfg(feature = "dev-harness")]
 static SHROOM_HARNESS_BUILD: [u8; 40] = *b"shroom:dev-harness-build:never-a-release";
 
-/// Links opened before the runtime exists (a cold launch by the page's Open shroom, or by
-/// the command's settings link): held in memory, handed on once it's up.
+/// Links opened before the runtime exists (a cold launch by the page's Open shroom or Edit
+/// in shroom, or by the command's settings link): held in memory, handed on once it's up.
 static EARLY_LINKS: std::sync::Mutex<Vec<String>> = std::sync::Mutex::new(Vec::new());
 
-/// Hands every early link on (`runtime::opened`: Settings' own to the core, an invite to the
-/// member lane), behind `Booted` on the main thread.
+/// Hands every early link on (`runtime::opened`: Settings' own and Edit in shroom to the
+/// core, an invite to the member lane), behind `Booted` on the main thread.
 fn drain_early_links(app: &tauri::AppHandle, rt: &runtime::Runtime) {
     let links = std::mem::take(&mut *EARLY_LINKS.lock().unwrap());
     if links.is_empty() {
@@ -352,8 +352,9 @@ fn main() {
             }
             // The page's Open shroom (`shroom://join/<host>/<code>`), or a join link handed
             // over by `open -a shroom <link>` (N50): an arrival, queued behind `Booted` on
-            // the main thread. Any other web address is ignored. The link's text goes to
-            // the stash and `~/.shroom/invite` only — never a log. The command's settings
+            // the main thread; the owner page's Edit in shroom (`shroom://edit/…`, N69) goes
+            // to the core the same way. Any other web address is ignored. The link's text goes
+            // to the stash and `~/.shroom/invite` only — never a log. The command's settings
             // link (`shroom://settings/agent`, N62) opens Settings at General's switch. The
             // `shroom` URL type belongs in the release bundle's Info.plist only: a dev bundle
             // never claims the scheme, so a real invite opened on this Mac can't launch a
