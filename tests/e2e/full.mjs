@@ -200,6 +200,14 @@ if (summary.wizard.ok && process.env.E2E_CLI !== "0") {
     fs.writeFileSync(path.join(out, "cli-run.log"), lines.slice(first < 0 ? Math.max(0, lines.length - 600) : first).join("\n").split(id).join("<ACCOUNT_ID>"));
   } catch { /* no log */ }
   try { fs.copyFileSync(path.join(home, "logs/cli.log"), path.join(out, "cli.log")); } catch { /* no log */ }
+  // An app that died during the leg (the command opens it again on its next ask): macOS's
+  // own report of the crash, the stack the run log can't hold.
+  try {
+    const reports = path.join(os.homedir(), "Library/Logs/DiagnosticReports");
+    for (const f of fs.readdirSync(reports).filter((f) => f.startsWith("shroom") && f.endsWith(".ips"))) {
+      if (fs.statSync(path.join(reports, f)).mtimeMs >= cliFrom) fs.copyFileSync(path.join(reports, f), path.join(out, `cli-crash-${f}`));
+    }
+  } catch { /* no reports */ }
   try { summary.cli = JSON.parse(text); } catch { summary.cli = { ok: false, problems: ["no summary"], tail: text.slice(-800) }; }
   chapter(cliFrom, Date.now(), "The shroom command, as an agent runs it: on PATH, refused until the switch is on, then a take started, paused, resumed and stopped, renamed and deleted");
   if (legCode !== 0) {
