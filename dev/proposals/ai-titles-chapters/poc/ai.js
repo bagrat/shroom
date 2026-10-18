@@ -64,6 +64,28 @@ export function windows(parts, secs = 60) {
   return out.map((w, k) => ({ ...w, until: k + 1 < out.length ? out[k + 1].cut : Infinity }));
 }
 
+/**
+ * The windows of a take of `n` pieces, by piece index: window k hears pieces [from, to),
+ * led by piece `lead` (the last of the window before; none for the first). `per` pieces of
+ * 6 s make a window of about a minute. The plan needs no audio, so each window can be heard
+ * in its own invocation as soon as its pieces have uploaded.
+ */
+export function windowPlan(n, per = 10) {
+  const out = [];
+  for (let k = 0, from = 0; from < n; k++, from += per) out.push({ k, lead: from > 0 ? from - 1 : null, from, to: Math.min(n, from + per), last: from + per >= n });
+  return out;
+}
+
+/**
+ * One planned window's audio and the span its words count for: from 1.5 s before its own
+ * first piece (none for the first window) to 1.5 s before the piece after its last (none
+ * for the last), so a word cut at an edge is kept from the window that heard it whole.
+ */
+export function planned(lead, own, last) {
+  const end = own[own.length - 1].start + own[own.length - 1].duration;
+  return { audio: joinAudio(lead ? [lead, ...own] : own), cut: lead ? own[0].start - 1.5 : -Infinity, until: last ? Infinity : end - 1.5 };
+}
+
 /** Whisper's words for one window, on the take's clock. */
 export async function hear(ai, win, { language, prompt } = {}) {
   const t0 = Date.now();
@@ -232,6 +254,38 @@ export function cleanChapters(raw, sents, duration) {
 export function chaptersVtt(chapters) {
   const ts = (t) => `${String(Math.floor(t / 3600)).padStart(2, '0')}:${String(Math.floor((t % 3600) / 60)).padStart(2, '0')}:${String(Math.floor(t % 60)).padStart(2, '0')}.000`;
   return 'WEBVTT\n\n' + chapters.map((c, i) => `${i + 1}\n${ts(c.start)} --> ${ts(c.end)}\n${c.title}\n`).join('\n');
+}
+
+const vttTime = (t) => {
+  const ms = Math.max(0, Math.round(t * 1000));
+  const p = (n, w = 2) => String(n).padStart(w, '0');
+  return `${p(Math.floor(ms / 3600000))}:${p(Math.floor((ms % 3600000) / 60000))}:${p(Math.floor((ms % 60000) / 1000))}.${p(ms % 1000, 3)}`;
+};
+
+/**
+ * Captions as WebVTT, from the same words the title and chapters came from: no second
+ * hearing. A cue ends at a sentence's end, a pause over 1 s, 6 s, or two lines of 42
+ * characters; its lines are broken at the space nearest the middle.
+ */
+export function captionsVtt(words, { most = 6, chars = 84 } = {}) {
+  const cues = [];
+  let cur = null;
+  for (let i = 0; i < words.length; i++) {
+    const w = words[i];
+    if (cur && (w.s - cur.e > 1 || w.e - cur.s > most || cur.text.length + 1 + w.w.length > chars)) cues.push(cur), (cur = null);
+    if (!cur) cur = { s: w.s, e: w.e, text: w.w };
+    else (cur.e = w.e), (cur.text += ' ' + w.w);
+    if (/[.?!]["')\]]?$/.test(w.w)) cues.push(cur), (cur = null);
+  }
+  if (cur) cues.push(cur);
+  const lines = (t) => {
+    if (t.length <= chars / 2) return t;
+    const mid = t.length / 2;
+    let at = -1;
+    for (let i = 0; i < t.length; i++) if (t[i] === ' ' && (at < 0 || Math.abs(i - mid) < Math.abs(at - mid))) at = i;
+    return at < 0 ? t : `${t.slice(0, at)}\n${t.slice(at + 1)}`;
+  };
+  return 'WEBVTT\n\n' + cues.map((c, i) => `${i + 1}\n${vttTime(c.s)} --> ${vttTime(Math.max(c.e, c.s + 0.5))}\n${lines(c.text)}\n`).join('\n');
 }
 
 // ── The System 1 way: a decision model places the cuts, the LLM only names them ───────────
