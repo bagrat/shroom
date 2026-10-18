@@ -162,19 +162,21 @@ fn record_rev(m: &Meta) -> u64 {
 /// Saves an edit (N63's Done; DECISIONS B195): the record's `edits` becomes `list` as the
 /// next revision — `max(the record's, asked_rev - 1) + 1`, so a save from an editor that
 /// opened on an older revision still lands after whatever another Mac saved since (the
-/// last save wins). A copy cut from an earlier revision stays named, now stale: readers
-/// ignore it until [`set_edit_copy`] names the new one. When `list` is the identity (nothing
-/// cut, the whole recording) there's no copy to make: the old copy is dropped from the
-/// record and then its files go. Read-modify-write under `If-Match`; a tombstone stops it.
-/// Returns the revision saved.
+/// last save wins). A voice plan that landed while the editor was open is kept
+/// ([`with_voice_plan`]). Whatever else the record's `edits` holds is kept: `keep_until`,
+/// and fields this build doesn't know. A copy cut from an earlier revision stays named, now
+/// stale: readers ignore it until [`set_edit_copy`] names the new one. When the list saved
+/// is the identity (nothing cut, the whole recording) there's no copy to make: the old copy
+/// and `keep_until` are dropped from the record and then the copy's files go.
+/// Read-modify-write under `If-Match`; a tombstone stops it. Returns the revision saved.
 pub fn save_edits(s3: &Client, id: &str, list: &shroom_edit::EditList, asked_rev: u64) -> Result<u64, UploadError> {
-    let list = list.clone().checked();
-    let identity = list.is_identity();
     let mut rev = 0;
     let mut dropped: Vec<String> = Vec::new();
     update_edit(s3, id, |m| {
         rev = record_rev(m).max(asked_rev.saturating_sub(1)) + 1;
         let before = m.edits.take();
+        let list = with_voice_plan(list, before.as_ref().map(|s| &s.list)).checked();
+        let identity = list.is_identity();
         let (old, keep_until, extra) = match before {
             Some(s) => (s.copy, s.keep_until, s.extra),
             None => (None, None, serde_json::Map::new()),
@@ -187,10 +189,31 @@ pub fn save_edits(s3: &Client, id: &str, list: &shroom_edit::EditList, asked_rev
             (old, keep_until)
         };
         m.extra.remove("edits");
-        m.edits = Some(shroom_edit::Saved { copy, keep_until, extra, ..shroom_edit::Saved::new(list.clone(), rev) });
+        m.edits = Some(shroom_edit::Saved { copy, keep_until, extra, ..shroom_edit::Saved::new(list, rev) });
     })?;
     delete_copy_files(s3, id, &dropped);
     Ok(rev)
+}
+
+/// The list an editor saves, merged with the record's by cut id (agreed with the voice-cut
+/// build): when the record holds a voice plan and the list none — the editor opened before
+/// the plan landed — the list takes the record's plan and every planned cut it doesn't
+/// have (a cut with an id, not drawn by hand). Otherwise the list wins as it is: a hand
+/// cut put back in the editor stays out, and so does a suggestion the editor saw and left.
+fn with_voice_plan(list: &shroom_edit::EditList, record: Option<&shroom_edit::EditList>) -> shroom_edit::EditList {
+    let mut list = list.clone();
+    let Some(record) = record else { return list };
+    if let (Some(voice), None) = (record.voice, list.voice) {
+        list.voice = Some(voice);
+        let planned: Vec<shroom_edit::Cut> = record
+            .cuts
+            .iter()
+            .filter(|c| !c.id.is_empty() && c.kind != shroom_edit::CutKind::Manual && !list.cuts.iter().any(|x| x.id == c.id))
+            .cloned()
+            .collect();
+        list.cuts.extend(planned);
+    }
+    list
 }
 
 /// How long the original stays beside a landed copy before a bake deletes it (B197 (b)):
