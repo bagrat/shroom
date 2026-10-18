@@ -153,6 +153,37 @@ pub fn listed(v: Value) -> Option<Meta> {
     Some(m)
 }
 
+/// What the space's AI did with a take, as the record says it, in one line for the Mac's log
+/// (N66, DECISIONS B206 f): named, the early title, let go, or waiting for the free day — its
+/// model, time, counts and codes, never a word said or a title. None for a take it hasn't touched.
+pub fn ai_note(m: &Meta) -> Option<String> {
+    let model = |n: &Value| n.get("model").and_then(Value::as_str).map(|s| s.rsplit('/').next().unwrap_or(s).to_string());
+    let num = |n: &Value, k: &str| n.get(k).and_then(Value::as_u64);
+    let text = |n: &Value, k: &str| n.get(k).and_then(Value::as_str).map(|s| s.chars().filter(|c| c.is_ascii_alphanumeric() || "-:.".contains(*c)).take(40).collect::<String>());
+    if let Some(n) = m.extra.get("named").filter(|n| n.is_object()) {
+        if n.get("failed").and_then(Value::as_bool) == Some(true) {
+            return Some(format!("let go: error {}", text(n, "code").unwrap_or_else(|| "no code".into())));
+        }
+        let ms = num(n, "ms").map(|ms| format!(" in {ms} ms")).unwrap_or_default();
+        let Some(by) = model(n) else {
+            return Some(format!("not named: {} words", num(n, "words").unwrap_or(0)));
+        };
+        if n.get("early").and_then(Value::as_bool) == Some(true) {
+            return Some(format!("early title by {by}{ms}"));
+        }
+        let chapters = n.get("chapters").and_then(Value::as_array).map_or(0, Vec::len);
+        let tokens = n.get("tokens").and_then(Value::as_array).and_then(|t| Some(format!(", {}+{} tokens", t.first()?.as_u64()?, t.get(1)?.as_u64()?))).unwrap_or_default();
+        let fallback = text(n, "fallback").map(|c| format!(" (the first model failed: {c})")).unwrap_or_default();
+        return Some(format!("named by {by}{ms}: {chapters} chapters from {} words{tokens}{fallback}", num(n, "words").unwrap_or(0)));
+    }
+    let naming = m.extra.get("naming")?;
+    (naming.get("later").and_then(Value::as_str) == Some("daily")).then(|| {
+        let since = text(naming, "at").map(|a| format!(" since {a}")).unwrap_or_default();
+        let code = text(naming, "code").map(|c| format!(" ({c})")).unwrap_or_default();
+        format!("waiting for the free day{since}{code}")
+    })
+}
+
 /// ISO-8601 UTC, seconds precision.
 pub fn now_iso() -> String {
     iso_at(std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0))
@@ -167,6 +198,36 @@ pub fn iso_at(unix_seconds: u64) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Bagrat, 2026-10-18: a report from a Mac shows what the space did with a take — the
+    /// steps its schedule took too, which reach the Mac only as the record. One line, no word
+    /// said and no title, as the report's cleaning leaves it.
+    #[test]
+    fn a_records_ai_state_is_one_line_with_nothing_said_in_it() {
+        let with = |extra: serde_json::Value| -> Meta {
+            let mut v = serde_json::json!({"schema":1,"id":"x","state":"live","createdAt":"2026-10-18T14:00:00Z","title":"Planning the spring launch"});
+            v.as_object_mut().unwrap().extend(extra.as_object().unwrap().clone());
+            serde_json::from_value(v).unwrap()
+        };
+        let named = serde_json::json!({"by":"ai","model":"@cf/openai/gpt-oss-120b","title":"Planning the spring launch","chapters":[[0,"Where we are"],[62,"The budget"]],"words":238,"ms":1530,"tokens":[900,80],"at":"2026-10-18T14:05:00Z"});
+        let cases = [
+            (serde_json::json!({"named": named}), Some("named by gpt-oss-120b in 1530 ms: 2 chapters from 238 words, 900+80 tokens")),
+            (serde_json::json!({"named": {"by":"ai","model":"@cf/google/gemma-4-26b-a4b-it","title":"T","chapters":[],"words":40,"ms":800,"fallback":"5007"}}), Some("named by gemma-4-26b-a4b-it in 800 ms: 0 chapters from 40 words (the first model failed: 5007)")),
+            (serde_json::json!({"named": {"by":"ai","early":true,"model":"@cf/openai/gpt-oss-120b","title":"Planning","chapters":[],"words":30,"ms":812}}), Some("early title by gpt-oss-120b in 812 ms")),
+            (serde_json::json!({"named": {"by":"ai","model":null,"title":null,"chapters":[],"words":0,"failed":true,"code":"5007"}}), Some("let go: error 5007")),
+            (serde_json::json!({"named": {"by":"ai","model":null,"title":null,"chapters":[],"words":8}}), Some("not named: 8 words")),
+            (serde_json::json!({"naming": {"later":"daily","at":"2026-10-18T23:14:00Z","code":"4006"}}), Some("waiting for the free day since 2026-10-18T23:14:00Z (4006)")),
+            (serde_json::json!({}), None),
+        ];
+        for (extra, want) in cases {
+            let got = ai_note(&with(extra.clone()));
+            assert_eq!(got.as_deref(), want, "{extra}");
+            if let Some(line) = got {
+                assert!(!line.contains("spring") && !line.contains("budget") && !line.contains("Where"), "{line}");
+                assert_eq!(shroom_core::report::clean_line(&line), line);
+            }
+        }
+    }
 
     #[test]
     fn round_trips_and_keeps_unknown_fields() {

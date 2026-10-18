@@ -1,0 +1,1752 @@
+{
+ "note": "Live runs of the POC route on the test account, 2026-10-18. Neurons are computed from the pricing page rates, not metered. walkthrough and onboarding are invented scripts read by a synthetic voice (sample/); howto is shroom.am/how-to.mp4, the public setup video (narration over music). Transcripts are kept for the invented takes only.",
+ "runs": [
+  {
+   "run": "live2",
+   "take": "walkthrough",
+   "way": "llm",
+   "llm": "@cf/openai/gpt-oss-20b",
+   "title": "New sign up screen, invoice bug, trial numbers",
+   "chapters": [
+    {
+     "start": 0,
+     "end": 68,
+     "title": "Intro and sign up screen"
+    },
+    {
+     "start": 68,
+     "end": 114,
+     "title": "Invoice bug fix"
+    },
+    {
+     "start": 114,
+     "end": 182,
+     "title": "Trial numbers and wrap up"
+    }
+   ],
+   "duration": 182.9,
+   "readMs": 2944,
+   "totalMs": 19226,
+   "steps": [
+    {
+     "step": "hear",
+     "model": "@cf/openai/whisper-large-v3-turbo",
+     "calls": 3,
+     "ms": 6578,
+     "msEach": [
+      3502,
+      6578,
+      5032
+     ],
+     "neurons": 151.52
+    },
+    {
+     "step": "name",
+     "model": "@cf/openai/gpt-oss-20b",
+     "calls": 1,
+     "ms": 9213,
+     "inTokens": 955,
+     "outTokens": 1144,
+     "neurons": 48.56
+    }
+   ]
+  },
+  {
+   "run": "live2",
+   "take": "walkthrough",
+   "way": "llm",
+   "llm": "@cf/meta/llama-3.2-3b-instruct",
+   "title": "Quick Walk Before Thursday Review",
+   "chapters": [
+    {
+     "start": 0,
+     "end": 34,
+     "title": "New Sign Up Screen"
+    },
+    {
+     "start": 34,
+     "end": 58,
+     "title": "Changes to Password Hint"
+    },
+    {
+     "start": 58,
+     "end": 86,
+     "title": "Bug on Invoices Page Fix"
+    },
+    {
+     "start": 86,
+     "end": 114,
+     "title": "Numbers from Last Week's Trial"
+    },
+    {
+     "start": 114,
+     "end": 156,
+     "title": "Numbers from Last Week's Trial Results"
+    },
+    {
+     "start": 156,
+     "end": 182,
+     "title": "Questions and Next Steps"
+    }
+   ],
+   "duration": 182.9,
+   "readMs": 1432,
+   "totalMs": 3298,
+   "steps": [
+    {
+     "step": "name",
+     "model": "@cf/meta/llama-3.2-3b-instruct",
+     "calls": 1,
+     "ms": 1250,
+     "inTokens": 919,
+     "outTokens": 336,
+     "neurons": 14.49
+    }
+   ]
+  },
+  {
+   "run": "live2",
+   "take": "walkthrough",
+   "way": "llm",
+   "llm": "@cf/ibm-granite/granite-4.0-h-micro",
+   "title": "App Updates Overview",
+   "chapters": [
+    {
+     "start": 0,
+     "end": 34,
+     "title": "New Sign Up Screen"
+    },
+    {
+     "start": 34,
+     "end": 58,
+     "title": "Error Message Changes"
+    },
+    {
+     "start": 58,
+     "end": 86,
+     "title": "Invoices Page Bug"
+    },
+    {
+     "start": 86,
+     "end": 114,
+     "title": "Invoice Fix Implementation"
+    },
+    {
+     "start": 114,
+     "end": 156,
+     "title": "Trial Numbers"
+    },
+    {
+     "start": 156,
+     "end": 182,
+     "title": "Conclusion"
+    }
+   ],
+   "duration": 182.9,
+   "readMs": 1281,
+   "totalMs": 7986,
+   "steps": [
+    {
+     "step": "name",
+     "model": "@cf/ibm-granite/granite-4.0-h-micro",
+     "calls": 1,
+     "ms": 6046,
+     "inTokens": 897,
+     "outTokens": 216,
+     "neurons": 3.58
+    }
+   ]
+  },
+  {
+   "run": "live2",
+   "take": "walkthrough",
+   "way": "llm",
+   "llm": "@cf/openai/gpt-oss-120b",
+   "title": "Sign up screen, invoice bug, trial numbers",
+   "chapters": [
+    {
+     "start": 0,
+     "end": 68,
+     "title": "Sign up screen changes"
+    },
+    {
+     "start": 68,
+     "end": 114,
+     "title": "Invoice page bug details"
+    },
+    {
+     "start": 114,
+     "end": 156,
+     "title": "Trial results and metrics"
+    },
+    {
+     "start": 156,
+     "end": 182,
+     "title": "Next steps and wrap up"
+    }
+   ],
+   "duration": 182.9,
+   "readMs": 1429,
+   "totalMs": 11470,
+   "steps": [
+    {
+     "step": "name",
+     "model": "@cf/openai/gpt-oss-120b",
+     "calls": 1,
+     "ms": 9459,
+     "inTokens": 949,
+     "outTokens": 596,
+     "neurons": 70.83
+    }
+   ]
+  },
+  {
+   "run": "live2",
+   "take": "walkthrough",
+   "way": "clef",
+   "llm": "@cf/openai/gpt-oss-20b",
+   "title": "New sign up screen invoice bug trial numbers",
+   "chapters": [
+    {
+     "start": 0,
+     "end": 68,
+     "title": "New sign up screen"
+    },
+    {
+     "start": 68,
+     "end": 114,
+     "title": "Invoice page bug"
+    },
+    {
+     "start": 114,
+     "end": 182,
+     "title": "Trial numbers"
+    }
+   ],
+   "duration": 182.9,
+   "readMs": 1714,
+   "totalMs": 5436,
+   "steps": [
+    {
+     "step": "cut",
+     "model": "@cf/cloudflare/clef-flash",
+     "calls": 1,
+     "ms": 498,
+     "inTokens": 1540,
+     "neurons": 5.32
+    },
+    {
+     "step": "name",
+     "model": "@cf/openai/gpt-oss-20b",
+     "calls": 1,
+     "ms": 2682,
+     "inTokens": 839,
+     "outTokens": 263,
+     "neurons": 22.43
+    }
+   ],
+   "cutChances": [
+    [
+     0,
+     0
+    ],
+    [
+     16.4,
+     0.17
+    ],
+    [
+     34.9,
+     0.061
+    ],
+    [
+     44.3,
+     0.142
+    ],
+    [
+     58.3,
+     0.071
+    ],
+    [
+     68.3,
+     0.924
+    ],
+    [
+     86.6,
+     0.119
+    ],
+    [
+     114.6,
+     0.758
+    ],
+    [
+     156.9,
+     0.165
+    ]
+   ]
+  },
+  {
+   "run": "live2",
+   "take": "onboarding",
+   "way": "llm",
+   "llm": "@cf/openai/gpt-oss-20b",
+   "title": "Onboarding guide for new team member",
+   "chapters": [
+    {
+     "start": 0,
+     "end": 21,
+     "title": "Welcome and overview"
+    },
+    {
+     "start": 21,
+     "end": 70,
+     "title": "Repository layout"
+    },
+    {
+     "start": 70,
+     "end": 90,
+     "title": "Running tests"
+    },
+    {
+     "start": 90,
+     "end": 121,
+     "title": "Test details and failures"
+    },
+    {
+     "start": 121,
+     "end": 192,
+     "title": "Deploying changes to production"
+    },
+    {
+     "start": 192,
+     "end": 250,
+     "title": "On call responsibilities"
+    }
+   ],
+   "duration": 250.6,
+   "readMs": 3640,
+   "totalMs": 18316,
+   "steps": [
+    {
+     "step": "hear",
+     "model": "@cf/openai/whisper-large-v3-turbo",
+     "calls": 4,
+     "ms": 8393,
+     "msEach": [
+      3798,
+      8393,
+      3626,
+      3937
+     ],
+     "neurons": 208.77
+    },
+    {
+     "step": "name",
+     "model": "@cf/openai/gpt-oss-20b",
+     "calls": 1,
+     "ms": 5810,
+     "inTokens": 1222,
+     "outTokens": 791,
+     "neurons": 43.79
+    }
+   ]
+  },
+  {
+   "run": "live2",
+   "take": "onboarding",
+   "way": "llm",
+   "llm": "@cf/meta/llama-3.2-3b-instruct",
+   "title": "Welcome to the Team",
+   "chapters": [
+    {
+     "start": 0,
+     "end": 21,
+     "title": "Welcome to the Team"
+    },
+    {
+     "start": 21,
+     "end": 46,
+     "title": "Layout of the Code"
+    },
+    {
+     "start": 46,
+     "end": 80,
+     "title": "Running the Tests"
+    },
+    {
+     "start": 80,
+     "end": 108,
+     "title": "End-to-End Tests"
+    },
+    {
+     "start": 108,
+     "end": 192,
+     "title": "Production Deployment Process"
+    },
+    {
+     "start": 192,
+     "end": 227,
+     "title": "Runbook and Troubleshooting"
+    },
+    {
+     "start": 227,
+     "end": 250,
+     "title": "Final Thoughts and Welcome"
+    }
+   ],
+   "duration": 250.6,
+   "readMs": 2046,
+   "totalMs": 4222,
+   "steps": [
+    {
+     "step": "name",
+     "model": "@cf/meta/llama-3.2-3b-instruct",
+     "calls": 1,
+     "ms": 1227,
+     "inTokens": 1187,
+     "outTokens": 292,
+     "neurons": 14.39
+    }
+   ]
+  },
+  {
+   "run": "live2",
+   "take": "onboarding",
+   "way": "llm",
+   "llm": "@cf/ibm-granite/granite-4.0-h-micro",
+   "title": "Team Onboarding Guide",
+   "chapters": [
+    {
+     "start": 0,
+     "end": 21,
+     "title": "Welcome and Overview"
+    },
+    {
+     "start": 21,
+     "end": 69,
+     "title": "Project Layout"
+    },
+    {
+     "start": 69,
+     "end": 90,
+     "title": "Running Tests"
+    },
+    {
+     "start": 90,
+     "end": 121,
+     "title": "Testing Guidelines"
+    },
+    {
+     "start": 121,
+     "end": 192,
+     "title": "Code Deployment Process"
+    },
+    {
+     "start": 192,
+     "end": 250,
+     "title": "On-Call Responsibilities"
+    }
+   ],
+   "duration": 250.6,
+   "readMs": 2290,
+   "totalMs": 7665,
+   "steps": [
+    {
+     "step": "name",
+     "model": "@cf/ibm-granite/granite-4.0-h-micro",
+     "calls": 1,
+     "ms": 4781,
+     "inTokens": 1165,
+     "outTokens": 151,
+     "neurons": 3.33
+    }
+   ]
+  },
+  {
+   "run": "live2",
+   "take": "onboarding",
+   "way": "llm",
+   "llm": "@cf/openai/gpt-oss-120b",
+   "title": "Onboarding: code layout, testing, deployment, on-call",
+   "chapters": [
+    {
+     "start": 0,
+     "end": 21,
+     "title": "Intro and overview"
+    },
+    {
+     "start": 21,
+     "end": 70,
+     "title": "Project layout"
+    },
+    {
+     "start": 70,
+     "end": 121,
+     "title": "Running tests"
+    },
+    {
+     "start": 121,
+     "end": 192,
+     "title": "Deploy process"
+    },
+    {
+     "start": 192,
+     "end": 250,
+     "title": "On-call responsibilities"
+    }
+   ],
+   "duration": 250.6,
+   "readMs": 1884,
+   "totalMs": 20148,
+   "steps": [
+    {
+     "step": "name",
+     "model": "@cf/openai/gpt-oss-120b",
+     "calls": 1,
+     "ms": 17663,
+     "inTokens": 1216,
+     "outTokens": 1133,
+     "neurons": 115.94
+    }
+   ]
+  },
+  {
+   "run": "live2",
+   "take": "onboarding",
+   "way": "clef",
+   "llm": "@cf/openai/gpt-oss-20b",
+   "title": "Welcome to the team onboarding guide",
+   "chapters": [
+    {
+     "start": 0,
+     "end": 69,
+     "title": "Code layout overview"
+    },
+    {
+     "start": 69,
+     "end": 121,
+     "title": "Running tests"
+    },
+    {
+     "start": 121,
+     "end": 250,
+     "title": "Deployments and on-call"
+    }
+   ],
+   "duration": 250.6,
+   "readMs": 1994,
+   "totalMs": 4901,
+   "steps": [
+    {
+     "step": "cut",
+     "model": "@cf/cloudflare/clef-flash",
+     "calls": 1,
+     "ms": 597,
+     "inTokens": 2185,
+     "neurons": 7.55
+    },
+    {
+     "step": "name",
+     "model": "@cf/openai/gpt-oss-20b",
+     "calls": 1,
+     "ms": 1694,
+     "inTokens": 1037,
+     "outTokens": 228,
+     "neurons": 25.07
+    }
+   ],
+   "cutChances": [
+    [
+     0,
+     0
+    ],
+    [
+     21.9,
+     0.227
+    ],
+    [
+     35,
+     0.162
+    ],
+    [
+     46.9,
+     0.175
+    ],
+    [
+     56.5,
+     0.251
+    ],
+    [
+     69.2,
+     0.871
+    ],
+    [
+     80,
+     0.124
+    ],
+    [
+     90.7,
+     0.19
+    ],
+    [
+     102,
+     0.136
+    ],
+    [
+     121.7,
+     0.78
+    ],
+    [
+     192.3,
+     0.662
+    ],
+    [
+     200.8,
+     0.217
+    ],
+    [
+     227.3,
+     0.471
+    ]
+   ]
+  },
+  {
+   "run": "live3",
+   "take": "howto",
+   "way": "llm",
+   "llm": "@cf/openai/gpt-oss-20b",
+   "title": "Shroom screen recorder setup and usage",
+   "chapters": [
+    {
+     "start": 0,
+     "end": 62,
+     "title": "Installing Shroom via terminal"
+    },
+    {
+     "start": 62,
+     "end": 83,
+     "title": "Creating Cloudflare account and verifying"
+    },
+    {
+     "start": 83,
+     "end": 111,
+     "title": "Connecting Cloudflare token and storage"
+    },
+    {
+     "start": 111,
+     "end": 140,
+     "title": "Pricing and recording permissions"
+    },
+    {
+     "start": 140,
+     "end": 174,
+     "title": "Recording and sharing videos"
+    },
+    {
+     "start": 174,
+     "end": 197,
+     "title": "Team collaboration and sharing"
+    },
+    {
+     "start": 197,
+     "end": 249,
+     "title": "Open source and support"
+    }
+   ],
+   "duration": 249.1,
+   "readMs": 4719,
+   "totalMs": 26810,
+   "steps": [
+    {
+     "step": "hear",
+     "model": "@cf/openai/whisper-large-v3-turbo",
+     "calls": 4,
+     "ms": 15257,
+     "msEach": [
+      15257,
+      5955,
+      7770,
+      10816
+     ],
+     "neurons": 211.95
+    },
+    {
+     "step": "name",
+     "model": "@cf/openai/gpt-oss-20b",
+     "calls": 1,
+     "ms": 6359,
+     "inTokens": 1130,
+     "outTokens": 559,
+     "neurons": 35.79
+    }
+   ]
+  },
+  {
+   "run": "live3",
+   "take": "howto",
+   "way": "clef",
+   "llm": "@cf/openai/gpt-oss-20b",
+   "title": "Shroom screen recorder setup and usage",
+   "chapters": [
+    {
+     "start": 0,
+     "end": 128,
+     "title": "Install Shroom and connect Cloudflare"
+    },
+    {
+     "start": 128,
+     "end": 190,
+     "title": "Grant permissions and start recording"
+    },
+    {
+     "start": 190,
+     "end": 249,
+     "title": "Invite team and share videos"
+    }
+   ],
+   "duration": 249.1,
+   "readMs": 3607,
+   "totalMs": 7188,
+   "steps": [
+    {
+     "step": "cut",
+     "model": "@cf/cloudflare/clef-flash",
+     "calls": 1,
+     "ms": 686,
+     "inTokens": 2542,
+     "neurons": 8.78
+    },
+    {
+     "step": "name",
+     "model": "@cf/openai/gpt-oss-20b",
+     "calls": 1,
+     "ms": 2110,
+     "inTokens": 925,
+     "outTokens": 251,
+     "neurons": 23.66
+    }
+   ],
+   "cutChances": [
+    [
+     0,
+     0
+    ],
+    [
+     9,
+     0.214
+    ],
+    [
+     18.1,
+     0.65
+    ],
+    [
+     28.7,
+     0.293
+    ],
+    [
+     62.8,
+     0.204
+    ],
+    [
+     73.9,
+     0.24
+    ],
+    [
+     83.8,
+     0.394
+    ],
+    [
+     112,
+     0.578
+    ],
+    [
+     122.7,
+     0.15
+    ],
+    [
+     128,
+     0.616
+    ],
+    [
+     137.1,
+     0.37
+    ],
+    [
+     174,
+     0.205
+    ],
+    [
+     177.6,
+     0.49
+    ],
+    [
+     190.3,
+     0.632
+    ],
+    [
+     197.6,
+     0.294
+    ],
+    [
+     233.2,
+     0.407
+    ],
+    [
+     245.9,
+     0.176
+    ]
+   ]
+  },
+  {
+   "run": "live3",
+   "take": "onboarding",
+   "way": "llm",
+   "llm": "@cf/openai/gpt-oss-20b",
+   "title": "Onboarding guide code layout tests deployment on-call",
+   "chapters": [
+    {
+     "start": 0,
+     "end": 21,
+     "title": "Welcome and overview"
+    },
+    {
+     "start": 21,
+     "end": 70,
+     "title": "Repository layout"
+    },
+    {
+     "start": 70,
+     "end": 121,
+     "title": "Running tests"
+    },
+    {
+     "start": 121,
+     "end": 190,
+     "title": "Change deployment process"
+    },
+    {
+     "start": 190,
+     "end": 250,
+     "title": "On-call responsibilities"
+    }
+   ],
+   "duration": 250.6,
+   "readMs": 4943,
+   "totalMs": 21285,
+   "steps": [
+    {
+     "step": "hear",
+     "model": "@cf/openai/whisper-large-v3-turbo",
+     "calls": 4,
+     "ms": 10026,
+     "msEach": [
+      4940,
+      10026,
+      3724,
+      5709
+     ],
+     "neurons": 208.77
+    },
+    {
+     "step": "name",
+     "model": "@cf/openai/gpt-oss-20b",
+     "calls": 1,
+     "ms": 5761,
+     "inTokens": 1253,
+     "outTokens": 1052,
+     "neurons": 51.47
+    }
+   ]
+  },
+  {
+   "run": "live3",
+   "take": "onboarding",
+   "way": "clef",
+   "llm": "@cf/openai/gpt-oss-20b",
+   "title": "New dev onboarding guide",
+   "chapters": [
+    {
+     "start": 0,
+     "end": 69,
+     "title": "Repository layout overview"
+    },
+    {
+     "start": 69,
+     "end": 121,
+     "title": "Running tests locally"
+    },
+    {
+     "start": 121,
+     "end": 169,
+     "title": "Deploying changes to production"
+    },
+    {
+     "start": 169,
+     "end": 190,
+     "title": "On-call responsibilities and timing"
+    },
+    {
+     "start": 190,
+     "end": 250,
+     "title": "Pager alerts and runbook usage"
+    }
+   ],
+   "duration": 250.6,
+   "readMs": 2669,
+   "totalMs": 5712,
+   "steps": [
+    {
+     "step": "cut",
+     "model": "@cf/cloudflare/clef-flash",
+     "calls": 1,
+     "ms": 659,
+     "inTokens": 2755,
+     "neurons": 9.52
+    },
+    {
+     "step": "name",
+     "model": "@cf/openai/gpt-oss-20b",
+     "calls": 1,
+     "ms": 1647,
+     "inTokens": 1054,
+     "outTokens": 236,
+     "neurons": 25.6
+    }
+   ],
+   "cutChances": [
+    [
+     0,
+     0
+    ],
+    [
+     17.8,
+     0.089
+    ],
+    [
+     21.9,
+     0.251
+    ],
+    [
+     35,
+     0.175
+    ],
+    [
+     46.9,
+     0.236
+    ],
+    [
+     56.5,
+     0.181
+    ],
+    [
+     69.2,
+     0.831
+    ],
+    [
+     80,
+     0.185
+    ],
+    [
+     90.7,
+     0.262
+    ],
+    [
+     102,
+     0.13
+    ],
+    [
+     121.7,
+     0.85
+    ],
+    [
+     149.7,
+     0.171
+    ],
+    [
+     169.8,
+     0.622
+    ],
+    [
+     190.8,
+     0.566
+    ],
+    [
+     200.8,
+     0.201
+    ],
+    [
+     223.4,
+     0.116
+    ],
+    [
+     227.3,
+     0.469
+    ],
+    [
+     243,
+     0.068
+    ]
+   ]
+  },
+  {
+   "run": "live4",
+   "take": "howto",
+   "way": "llm",
+   "llm": "@cf/openai/gpt-oss-20b",
+   "title": "Shroom screen recorder setup and usage",
+   "chapters": [
+    {
+     "start": 0,
+     "end": 22,
+     "title": "Intro and installing Shroom"
+    },
+    {
+     "start": 22,
+     "end": 54,
+     "title": "Setting up Cloudflare account"
+    },
+    {
+     "start": 54,
+     "end": 109,
+     "title": "Creating token and connecting"
+    },
+    {
+     "start": 109,
+     "end": 140,
+     "title": "Pricing and recording permissions"
+    },
+    {
+     "start": 140,
+     "end": 169,
+     "title": "Completing setup and recording"
+    },
+    {
+     "start": 169,
+     "end": 197,
+     "title": "Recording controls and sharing"
+    },
+    {
+     "start": 197,
+     "end": 249,
+     "title": "Team collaboration and open source support"
+    }
+   ],
+   "duration": 249.1,
+   "readMs": 4103,
+   "totalMs": 18545,
+   "steps": [
+    {
+     "step": "hear",
+     "model": "@cf/openai/whisper-large-v3-turbo",
+     "calls": 4,
+     "ms": 3975,
+     "msEach": [
+      3975,
+      3683,
+      3802,
+      2699
+     ],
+     "neurons": 211.95
+    },
+    {
+     "step": "name",
+     "model": "@cf/openai/gpt-oss-20b",
+     "calls": 1,
+     "ms": 9891,
+     "inTokens": 1144,
+     "outTokens": 1248,
+     "neurons": 54.84
+    }
+   ]
+  },
+  {
+   "run": "live4",
+   "take": "howto",
+   "way": "llm",
+   "llm": "@cf/openai/gpt-oss-120b",
+   "title": "How to set up and use Shroom",
+   "chapters": [
+    {
+     "start": 0,
+     "end": 28,
+     "title": "Introduction and overview"
+    },
+    {
+     "start": 28,
+     "end": 69,
+     "title": "Installing Shroom and creating account"
+    },
+    {
+     "start": 69,
+     "end": 111,
+     "title": "Connecting to Cloudflare and setting token"
+    },
+    {
+     "start": 111,
+     "end": 143,
+     "title": "Pricing, naming links, and permissions"
+    },
+    {
+     "start": 143,
+     "end": 181,
+     "title": "Using Shroom to record and share"
+    },
+    {
+     "start": 181,
+     "end": 249,
+     "title": "Team collaboration and final notes"
+    }
+   ],
+   "duration": 249.1,
+   "readMs": 3004,
+   "totalMs": 10476,
+   "steps": [
+    {
+     "step": "name",
+     "model": "@cf/openai/gpt-oss-120b",
+     "calls": 1,
+     "ms": 6892,
+     "inTokens": 1138,
+     "outTokens": 1146,
+     "neurons": 114.35
+    }
+   ]
+  },
+  {
+   "run": "live4",
+   "take": "howto",
+   "way": "llm",
+   "llm": "@cf/zai-org/glm-4.7-flash",
+   "title": "how to set up and use shroom screen recorder",
+   "chapters": [
+    {
+     "start": 0,
+     "end": 54,
+     "title": "installing shroom and creating cloudflare account"
+    },
+    {
+     "start": 54,
+     "end": 83,
+     "title": "verifying email and setting up cloudflare token"
+    },
+    {
+     "start": 83,
+     "end": 111,
+     "title": "activating cloudflare r2 storage"
+    },
+    {
+     "start": 111,
+     "end": 140,
+     "title": "claiming a name and granting permissions"
+    },
+    {
+     "start": 140,
+     "end": 190,
+     "title": "recording and sharing your screen"
+    },
+    {
+     "start": 190,
+     "end": 249,
+     "title": "adding team members"
+    }
+   ],
+   "duration": 249.1,
+   "readMs": 2398,
+   "totalMs": 11014,
+   "steps": [
+    {
+     "step": "name",
+     "model": "@cf/zai-org/glm-4.7-flash",
+     "calls": 1,
+     "ms": 8010,
+     "inTokens": 1092,
+     "outTokens": 191,
+     "neurons": 12.96
+    }
+   ]
+  },
+  {
+   "run": "live4",
+   "take": "howto",
+   "way": "llm",
+   "llm": "@cf/google/gemma-4-26b-a4b-it",
+   "title": "setting up and using Shroom",
+   "chapters": [
+    {
+     "start": 0,
+     "end": 22,
+     "title": "Shroom setup and overview"
+    },
+    {
+     "start": 22,
+     "end": 111,
+     "title": "Installing and connecting Cloudflare"
+    },
+    {
+     "start": 111,
+     "end": 177,
+     "title": "Permissions and recording process"
+    },
+    {
+     "start": 177,
+     "end": 249,
+     "title": "Sharing and team management"
+    }
+   ],
+   "duration": 249.1,
+   "readMs": 2651,
+   "totalMs": 6487,
+   "steps": [
+    {
+     "step": "name",
+     "model": "@cf/google/gemma-4-26b-a4b-it",
+     "calls": 1,
+     "ms": 3239,
+     "inTokens": 1179,
+     "outTokens": 127,
+     "neurons": 14.18
+    }
+   ]
+  },
+  {
+   "run": "live4",
+   "take": "howto",
+   "way": "llm",
+   "llm": "@cf/meta/llama-3.1-8b-instruct-fp8-fast",
+   "title": "Shroom Screen Recorder Setup and Use",
+   "chapters": [
+    {
+     "start": 0,
+     "end": 28,
+     "title": "Setting Up Shroom Step by Step"
+    },
+    {
+     "start": 28,
+     "end": 54,
+     "title": "Installing and Setting Up Shroom"
+    },
+    {
+     "start": 54,
+     "end": 83,
+     "title": "Granting Permissions to Cloudflare"
+    },
+    {
+     "start": 83,
+     "end": 109,
+     "title": "Connecting Shroom to Cloudflare"
+    },
+    {
+     "start": 109,
+     "end": 137,
+     "title": "Choosing a Name for Links and Claiming"
+    },
+    {
+     "start": 137,
+     "end": 169,
+     "title": "Enabling Screen Recording in Shroom"
+    },
+    {
+     "start": 169,
+     "end": 190,
+     "title": "Using Shroom to Record Screens"
+    },
+    {
+     "start": 190,
+     "end": 249,
+     "title": "Sharing and Inviting Team Members"
+    }
+   ],
+   "duration": 249.1,
+   "readMs": 2181,
+   "totalMs": 4868,
+   "steps": [
+    {
+     "step": "name",
+     "model": "@cf/meta/llama-3.1-8b-instruct-fp8-fast",
+     "calls": 1,
+     "ms": 2089,
+     "inTokens": 1121,
+     "outTokens": 319,
+     "neurons": 15.74
+    }
+   ]
+  },
+  {
+   "run": "live4",
+   "take": "howto",
+   "way": "llm",
+   "llm": "@cf/meta/llama-3.2-3b-instruct",
+   "title": "Shroom Screen Recorder Setup",
+   "chapters": [
+    {
+     "start": 0,
+     "end": 28,
+     "title": "Setting Up Shroom"
+    },
+    {
+     "start": 28,
+     "end": 54,
+     "title": "Installing Shroom"
+    },
+    {
+     "start": 54,
+     "end": 83,
+     "title": "Creating Cloudflare Token"
+    },
+    {
+     "start": 83,
+     "end": 109,
+     "title": "Activating Cloudflare Storage"
+    },
+    {
+     "start": 109,
+     "end": 137,
+     "title": "Claiming Link Name"
+    },
+    {
+     "start": 137,
+     "end": 169,
+     "title": "Enabling Shroom Permissions"
+    },
+    {
+     "start": 169,
+     "end": 197,
+     "title": "Sharing Recorded Videos"
+    },
+    {
+     "start": 197,
+     "end": 249,
+     "title": "Team Member Setup"
+    }
+   ],
+   "duration": 249.1,
+   "readMs": 1759,
+   "totalMs": 3593,
+   "steps": [
+    {
+     "step": "name",
+     "model": "@cf/meta/llama-3.2-3b-instruct",
+     "calls": 1,
+     "ms": 1267,
+     "inTokens": 1121,
+     "outTokens": 286,
+     "neurons": 13.9
+    }
+   ]
+  },
+  {
+   "run": "live4",
+   "take": "howto",
+   "way": "llm",
+   "llm": "@cf/ibm-granite/granite-4.0-h-micro",
+   "title": "Shroom Screen Recorder Setup and Usage",
+   "chapters": [
+    {
+     "start": 0,
+     "end": 69,
+     "title": "Cloudflare Storage"
+    },
+    {
+     "start": 69,
+     "end": 109,
+     "title": "Token Generation"
+    },
+    {
+     "start": 109,
+     "end": 137,
+     "title": "Link Naming"
+    },
+    {
+     "start": 137,
+     "end": 169,
+     "title": "Screen Permissions"
+    },
+    {
+     "start": 169,
+     "end": 191,
+     "title": "Sharing Videos"
+    },
+    {
+     "start": 191,
+     "end": 249,
+     "title": "Team Management"
+    }
+   ],
+   "duration": 249.1,
+   "readMs": 2227,
+   "totalMs": 11113,
+   "steps": [
+    {
+     "step": "name",
+     "model": "@cf/ibm-granite/granite-4.0-h-micro",
+     "calls": 1,
+     "ms": 8383,
+     "inTokens": 1099,
+     "outTokens": 298,
+     "neurons": 4.72
+    }
+   ]
+  },
+  {
+   "run": "live4",
+   "take": "howto",
+   "way": "clef",
+   "llm": "@cf/openai/gpt-oss-20b",
+   "title": "Shroom screen recorder setup and usage",
+   "chapters": [
+    {
+     "start": 0,
+     "end": 128,
+     "title": "Install Shroom and Cloudflare setup"
+    },
+    {
+     "start": 128,
+     "end": 190,
+     "title": "Grant permissions and start recording"
+    },
+    {
+     "start": 190,
+     "end": 249,
+     "title": "Invite team and share videos"
+    }
+   ],
+   "duration": 249.1,
+   "readMs": 1819,
+   "totalMs": 5201,
+   "steps": [
+    {
+     "step": "cut",
+     "model": "@cf/cloudflare/clef-flash",
+     "calls": 1,
+     "ms": 700,
+     "inTokens": 2656,
+     "neurons": 9.18
+    },
+    {
+     "step": "name",
+     "model": "@cf/openai/gpt-oss-20b",
+     "calls": 1,
+     "ms": 2117,
+     "inTokens": 925,
+     "outTokens": 278,
+     "neurons": 24.4
+    }
+   ],
+   "cutChances": [
+    [
+     0,
+     0
+    ],
+    [
+     9,
+     0.185
+    ],
+    [
+     18.1,
+     0.485
+    ],
+    [
+     28.7,
+     0.21
+    ],
+    [
+     54.3,
+     0.173
+    ],
+    [
+     69.5,
+     0.459
+    ],
+    [
+     78.7,
+     0.334
+    ],
+    [
+     109.4,
+     0.085
+    ],
+    [
+     112,
+     0.527
+    ],
+    [
+     122.7,
+     0.143
+    ],
+    [
+     128,
+     0.536
+    ],
+    [
+     137.1,
+     0.259
+    ],
+    [
+     169.9,
+     0.271
+    ],
+    [
+     177.6,
+     0.235
+    ],
+    [
+     190.3,
+     0.539
+    ],
+    [
+     197.6,
+     0.429
+    ],
+    [
+     229.1,
+     0.322
+    ],
+    [
+     245.9,
+     0.074
+    ]
+   ]
+  },
+  {
+   "run": "live4",
+   "take": "howto",
+   "way": "clef",
+   "llm": "@cf/meta/llama-3.2-3b-instruct",
+   "title": "Shroom Screen Recorder Setup and Use",
+   "chapters": [
+    {
+     "start": 0,
+     "end": 128,
+     "title": "Setting Up Shroom with Cloudflare Account"
+    },
+    {
+     "start": 128,
+     "end": 190,
+     "title": "Using Shroom for Recording and Sharing"
+    },
+    {
+     "start": 190,
+     "end": 249,
+     "title": "Team Collaboration with Shroom"
+    }
+   ],
+   "duration": 249.1,
+   "readMs": 1901,
+   "totalMs": 3662,
+   "steps": [
+    {
+     "step": "cut",
+     "model": "@cf/cloudflare/clef-flash",
+     "calls": 1,
+     "ms": 809,
+     "inTokens": 2656,
+     "neurons": 9.18
+    },
+    {
+     "step": "name",
+     "model": "@cf/meta/llama-3.2-3b-instruct",
+     "calls": 1,
+     "ms": 346,
+     "inTokens": 901,
+     "outTokens": 48,
+     "neurons": 5.63
+    }
+   ],
+   "cutChances": [
+    [
+     0,
+     0
+    ],
+    [
+     9,
+     0.185
+    ],
+    [
+     18.1,
+     0.485
+    ],
+    [
+     28.7,
+     0.21
+    ],
+    [
+     54.3,
+     0.173
+    ],
+    [
+     69.5,
+     0.459
+    ],
+    [
+     78.7,
+     0.334
+    ],
+    [
+     109.4,
+     0.085
+    ],
+    [
+     112,
+     0.527
+    ],
+    [
+     122.7,
+     0.143
+    ],
+    [
+     128,
+     0.536
+    ],
+    [
+     137.1,
+     0.259
+    ],
+    [
+     169.9,
+     0.271
+    ],
+    [
+     177.6,
+     0.235
+    ],
+    [
+     190.3,
+     0.539
+    ],
+    [
+     197.6,
+     0.429
+    ],
+    [
+     229.1,
+     0.322
+    ],
+    [
+     245.9,
+     0.074
+    ]
+   ]
+  }
+ ],
+ "failed": [
+  {
+   "run": "live2",
+   "take": "walkthrough",
+   "way": "llm",
+   "llm": "@cf/zai-org/glm-4.7-flash",
+   "status": 500,
+   "error": "Error: no text in the answer"
+  },
+  {
+   "run": "live2",
+   "take": "walkthrough",
+   "way": "llm",
+   "llm": "@cf/google/gemma-4-26b-a4b-it",
+   "status": 500,
+   "error": "Error: no text in the answer"
+  },
+  {
+   "run": "live2",
+   "take": "walkthrough",
+   "way": "llm",
+   "llm": "@cf/qwen/qwen3-30b-a3b-fp8",
+   "status": 500,
+   "error": "TypeError: Cannot read properties of null (reading 'title')"
+  },
+  {
+   "run": "live2",
+   "take": "onboarding",
+   "way": "llm",
+   "llm": "@cf/zai-org/glm-4.7-flash",
+   "status": 500,
+   "error": "Error: no text in the answer"
+  },
+  {
+   "run": "live2",
+   "take": "onboarding",
+   "way": "llm",
+   "llm": "@cf/google/gemma-4-26b-a4b-it",
+   "status": 500,
+   "error": "Error: no text in the answer"
+  },
+  {
+   "run": "live2",
+   "take": "onboarding",
+   "way": "llm",
+   "llm": "@cf/qwen/qwen3-30b-a3b-fp8",
+   "status": 500,
+   "error": "TypeError: Cannot read properties of null (reading 'title')"
+  },
+  {
+   "run": "live3",
+   "take": "howto",
+   "way": "llm",
+   "llm": "@cf/openai/gpt-oss-120b",
+   "status": 500,
+   "error": "Error: not JSON: {"
+  },
+  {
+   "run": "live3",
+   "take": "howto",
+   "way": "llm",
+   "llm": "@cf/zai-org/glm-4.7-flash",
+   "status": 500,
+   "error": "Error: no text in the answer: {\"id\":\"chatcmpl-9fa215652b398a57\",\"object\":\"chat.completion\",\"created\":1792297289,\"model\":\"@cf/zai-org/glm-4.7-flash\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":null,\"refusal\":null,\"annotatio"
+  },
+  {
+   "run": "live3",
+   "take": "howto",
+   "way": "llm",
+   "llm": "@cf/google/gemma-4-26b-a4b-it",
+   "status": 500,
+   "error": "Error: no text in the answer: {\"choices\":[{\"finish_reason\":\"length\",\"index\":0,\"logprobs\":null,\"message\":{\"content\":\"\",\"reasoning_content\":\"*   Task: Name a screen recording from its transcript and create chapters.\\n    *   Title constraints"
+  },
+  {
+   "run": "live3",
+   "take": "howto",
+   "way": "llm",
+   "llm": "@cf/qwen/qwen3-30b-a3b-fp8",
+   "status": 500,
+   "error": "Error: not a JSON object: {\"id\":\"chatcmpl-a0468b79-7de0-489f-a3a8-7eb203f3120e\",\"object\":\"chat.completion\",\"created\":1792297338,\"model\":\"@cf/qwen/qwen3-30b-a3b-fp8\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":null,\"refusal"
+  },
+  {
+   "run": "live3",
+   "take": "onboarding",
+   "way": "llm",
+   "llm": "@cf/openai/gpt-oss-120b",
+   "status": 500,
+   "error": "Error: no text in the answer: {\"id\":\"chatcmpl-e1191361-00a4-4fde-915b-d777cccdf862\",\"object\":\"chat.completion\",\"created\":1792297377,\"model\":\"@cf/openai/gpt-oss-120b\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":null,\"refusa"
+  },
+  {
+   "run": "live3",
+   "take": "onboarding",
+   "way": "llm",
+   "llm": "@cf/zai-org/glm-4.7-flash",
+   "status": 500,
+   "error": "Error: no text in the answer: {\"id\":\"chatcmpl-b3ab0574900241a1\",\"object\":\"chat.completion\",\"created\":1792297393,\"model\":\"@cf/zai-org/glm-4.7-flash\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":null,\"refusal\":null,\"annotatio"
+  },
+  {
+   "run": "live3",
+   "take": "onboarding",
+   "way": "llm",
+   "llm": "@cf/google/gemma-4-26b-a4b-it",
+   "status": 500,
+   "error": "Error: no text in the answer: {\"choices\":[{\"finish_reason\":\"length\",\"index\":0,\"logprobs\":null,\"message\":{\"content\":\"\",\"reasoning_content\":\"*   Input: A transcript with timestamps.\\n    *   Goal: Generate a JSON object containing a `title` a"
+  },
+  {
+   "run": "live3",
+   "take": "onboarding",
+   "way": "llm",
+   "llm": "@cf/qwen/qwen3-30b-a3b-fp8",
+   "status": 500,
+   "error": "Error: not a JSON object: {\"id\":\"chatcmpl-863a39ce-3981-4f45-a3a9-cbb22489517b\",\"object\":\"chat.completion\",\"created\":1792297433,\"model\":\"@cf/qwen/qwen3-30b-a3b-fp8\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":null,\"refusal"
+  },
+  {
+   "run": "live4",
+   "take": "howto",
+   "way": "llm",
+   "llm": "@cf/qwen/qwen3-30b-a3b-fp8",
+   "status": 500,
+   "error": "Error: not a JSON object: {\"id\":\"chatcmpl-3a8bbb79-d786-46d0-afa0-f9440b991c53\",\"object\":\"chat.completion\",\"created\":1792297594,\"model\":\"@cf/qwen/qwen3-30b-a3b-fp8\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":null,\"refusal"
+  }
+ ]
+}

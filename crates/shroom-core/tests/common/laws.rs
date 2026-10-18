@@ -824,8 +824,9 @@ pub fn carries_join_code(text: &str) -> bool {
 fn figure_counts(s: &str) -> bool {
     let b = s.as_bytes();
     (0..b.len()).any(|i| {
+        // A price (“$5 plan”) is no count.
         (b'1'..=b'9').contains(&b[i])
-            && (i == 0 || !b[i - 1].is_ascii_digit() && b[i - 1] != b'.' && b[i - 1] != b':')
+            && (i == 0 || !b[i - 1].is_ascii_digit() && b[i - 1] != b'.' && b[i - 1] != b':' && b[i - 1] != b'$')
             && i + 2 < b.len()
             && b[i + 1] == b' '
             && s[i + 2..].chars().next().is_some_and(|c| c.is_alphabetic())

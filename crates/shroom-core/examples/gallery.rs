@@ -503,6 +503,23 @@ fn settings_rows() -> Vec<(&'static str, &'static str, World)> {
         w
     }));
     rows.push(("settings-space-inspection", "space-inspection", space()));
+    // N66: naming's switch on the setup Mac, off and on, and a re-wiring that didn't go through.
+    rows.push(("settings-space", "space-ai-off", {
+        let mut w = space();
+        w.space.ai = Some(false);
+        w
+    }));
+    rows.push(("settings-space", "space-ai-on", {
+        let mut w = space();
+        w.space.ai = Some(true);
+        w
+    }));
+    rows.push(("settings-space", "space-ai-failed", {
+        let mut w = space();
+        w.space.ai = Some(true);
+        w.inflight.failures.insert(Op::Ai, Failure { at: Mono(990), class: FailClass::Transport, tries: 1 });
+        w
+    }));
     rows.push(("settings-space", "space-mic-off", {
         let mut w = space();
         w.mac.mic = Fact::known(Access::Denied, Mono(0));
@@ -1045,6 +1062,37 @@ fn region3_rows() -> Vec<(&'static str, &'static str, &'static str, World)> {
     rows.push(("popover", "recovered-take", "recovered-take", {
         let mut w = popover(ready());
         w.saved.push(saved_take(SavedCause::Interrupted, 272_000));
+        w
+    }));
+    // N66: the setup Mac's popover while the space's AI is off — the banner, its confirm,
+    // turning on, a Turn on that didn't go through, and on.
+    let ai_off = || {
+        let mut w = popover(ready());
+        w.space.ai = Some(false);
+        w
+    };
+    rows.push(("popover", "ai-offer", "ai-offer", ai_off()));
+    rows.push(("popover", "ai-confirm", "ai-confirm", {
+        let mut w = ai_off();
+        w.session.confirm = Some(Confirm::Ai);
+        w
+    }));
+    rows.push(("popover", "ai-turning-on", "ai-turning-on", {
+        let mut w = ai_off();
+        w.space.ai_turn = Some(AiTurn::Turning);
+        w.inflight.ops.insert(Op::Ai, Mono(990).plus(Op::Ai.deadline_ms()));
+        w
+    }));
+    rows.push(("popover", "ai-offer-failed", "ai-offer-failed", {
+        let mut w = ai_off();
+        w.space.ai_turn = Some(AiTurn::Turning);
+        w.inflight.failures.insert(Op::Ai, Failure { at: Mono(990), class: FailClass::Transport, tries: 1 });
+        w
+    }));
+    rows.push(("popover", "ai-on", "ai-on", {
+        let mut w = popover(ready());
+        w.space.ai = Some(true);
+        w.space.ai_turn = Some(AiTurn::On);
         w
     }));
     rows.push(("popover", "paused", "paused", paused_take(Cause::User, 272_000)));

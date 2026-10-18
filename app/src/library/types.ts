@@ -53,6 +53,8 @@ export type LibraryBody = {
   sheet: Sheet | null;
 };
 
+/** A card's head, its line, and its two answers (N66's naming card). */
+
 export type LibraryWindow = {
   id: string;
   faces: string[];

@@ -105,6 +105,8 @@ pub enum Binding {
     R2Bucket { name: String, bucket: String },
     SecretText { name: String, text: String },
     PlainText { name: String, text: String },
+    /// Cloudflare's AI (Workers AI), run on the owner's own account (N66).
+    Ai { name: String },
 }
 
 impl Binding {
@@ -113,6 +115,7 @@ impl Binding {
             Binding::R2Bucket { name, bucket } => json!({"type": "r2_bucket", "name": name, "bucket_name": bucket}),
             Binding::SecretText { name, text } => json!({"type": "secret_text", "name": name, "text": text}),
             Binding::PlainText { name, text } => json!({"type": "plain_text", "name": name, "text": text}),
+            Binding::Ai { name } => json!({"type": "ai", "name": name}),
         }
     }
 }
@@ -314,6 +317,14 @@ impl Cloud {
             json!({"name": name, "text": text, "type": "secret_text"}),
         )
         .map(|_| ())
+    }
+
+    /// Puts a Worker's Cron Triggers, replacing whatever it had; none clears them (N66's
+    /// schedule each minute).
+    pub fn put_schedules(&self, account_id: &str, script: &str, crons: &[&str]) -> Result<(), CloudError> {
+        self.fence("worker", script)?;
+        let body = Value::Array(crons.iter().map(|c| json!({"cron": c})).collect());
+        self.json("PUT", &format!("/accounts/{account_id}/workers/scripts/{script}/schedules"), body).map(|_| ())
     }
 
     pub fn delete_worker(&self, account_id: &str, name: &str) -> Result<(), CloudError> {

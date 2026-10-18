@@ -424,6 +424,13 @@ pub struct Space {
     /// When this process last heard the token Mac's page refresh answer (§6.10: the page
     /// follows the app — at launch, so after every update). `None`: not yet this process.
     pub page_checked: Option<Mono>,
+    /// Whether the space's page names its videos (N66: it carries Cloudflare's AI), as the
+    /// token Mac's page check or its own switch last left it. `None`: not known yet.
+    pub ai: Option<bool>,
+    /// The AI banner's Turn on (N66): re-wiring the page until it answers or the try fails;
+    /// then, once through, `config` says so once — behind us when the popover that said it
+    /// closes.
+    pub ai_turn: Option<AiTurn>,
 }
 
 impl Space {
@@ -917,6 +924,8 @@ pub enum Op {
     /// The upkeep (B197 (d)): this Mac's videos past their two days baked, their missing
     /// copies made.
     EditorUpkeep,
+    /// Naming on or off (N66): the space's page put up again with or without the AI.
+    Ai,
 }
 
 impl Op {
@@ -928,7 +937,7 @@ impl Op {
             Op::RecStart | Op::RecPause | Op::RecResume | Op::RecFinalize | Op::Prime => 5_000,
             Op::Reach => 600,
             Op::OpenPage | Op::Upload | Op::Validate | Op::SaveToken | Op::Sweep | Op::Claim => 60_000,
-            Op::Wire | Op::Refresh => 180_000,
+            Op::Wire | Op::Refresh | Op::Ai => 180_000,
             Op::Relaunch => 10_000,
             Op::LibRefresh | Op::Rename | Op::Delete => 60_000,
             Op::LibCache => 5_000,
@@ -1042,6 +1051,11 @@ pub struct Once {
     /// launch other than an update relaunch found running): only an `--updated` relaunch
     /// leaves a newer running version unacknowledged, and that says once that it landed.
     pub seen_version: Option<String>,
+    /// The popover's AI banner was answered on this Mac (N66; Bagrat, 2026-10-18: off by
+    /// default, but visible): a Not now hides it for good, and so does AI on, from the banner
+    /// or the switch in Settings · Space.
+    #[serde(default)]
+    pub ai_offer_answered: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -1097,6 +1111,8 @@ pub enum Confirm {
     /// Settings · General's Report a problem sheet (B180); `sending` once Send was clicked,
     /// until shroom.am answers.
     Report { sending: bool },
+    /// The AI banner's Turn on… (N66): what it does and costs, before it costs anything.
+    Ai,
 }
 
 /// The countdown: armed by Start, fired at its deadline, cancelled by any click or Esc.
@@ -1379,6 +1395,22 @@ pub struct Session {
     /// The popover an update relaunch opened by itself (its door's opening instant): news
     /// that a click away puts away. A popover opened since is another door.
     pub news: Option<Mono>,
+}
+
+/// The AI banner's Turn on, after it's pressed (N66): turning on — re-wiring the page, or
+/// waiting to try again after a try that didn't go through — then on, said once.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AiTurn {
+    Turning,
+    On,
+}
+
+impl Failure {
+    /// When the AI banner's Turn on that didn't go through is tried again, quietly (N66, law
+    /// 12): ten minutes, doubling, at most an hour — until it goes through, or Not now.
+    pub fn ai_retry_at(&self) -> Mono {
+        self.at.plus((600_000u64 << self.tries.min(3)).min(3_600_000))
+    }
 }
 
 /// The display a click brings to `config` (N56).

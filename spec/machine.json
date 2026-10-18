@@ -1129,6 +1129,32 @@
    "amended_by": []
   },
   {
+   "id": "N66",
+   "title": "The space names its videos, adds chapters and writes captions, through the owner's own Cloudflare",
+   "decision": "**B171's plan, built** (Bagrat, 2026-10-18, relayed by the orchestrator: build it now, decide the release later; the build's calls are made on judgment and listed in DECISIONS B205–B208 for him to overturn). (1) **Off until the owner turns it on, on the Mac that holds the setup key, and visible** (Bagrat, 2026-10-18: off by default, not to spend the AI allowance, but very visible; one switch for every AI feature): a banner in the popover, like the update's, says what shroom can do — name videos, add chapters, cut slips — and Turn on… opens a short confirm that says what it costs, once; the switch in Settings · Space, “AI for new videos”, is its home, and covers voice cuts (N65) too. Not now hides the banner for good on that Mac (Bagrat, 2026-10-18: from then on only the switch turns AI on). Turning it on re-wires the space's page with Cloudflare's AI and a schedule that runs each minute; the owner's key needs no new power (B171's live check 2). Turning it off takes them away; names, chapters and captions already made stay. Only new videos (Bagrat, 2026-10-18: no offer to name earlier ones). Members' Macs never show it and never see a cost. (2) **Each take is heard as it uploads**: every Mac tells the space when another minute of a take is up and once more after Stop, and the space hears that minute and keeps its words beside the take, on the recording's own clock. (3) **The title comes early, the rest after Stop** (Bagrat, 2026-10-18: the title must be there when the page opens): once the first minute is heard while the take records, a title from it alone, so the page opens named; after Stop the space names the take again from all of it and places its chapters, from the words that play: the title while nobody has typed one (a typed title always wins and is never written over), chapters only on a video of 90 s or more with two or more, and captions from the same words, never a second hearing. (4) **The free day**: every Cloudflare account gets 10,000 neurons a day (about 2½ hours of new video; Bagrat, 2026-10-18); when they run out, the rest waits and is finished after 00:00 UTC by the space's schedule, with no error anywhere; on a paid account it simply runs (about 4¢ per video hour). (5) **Edits never re-hear** (the editor, N63, when it lands): chapters and captions follow the saved edit on every view; the name and chapters are made again only when an edit removes at least a fifth of what was said or a whole chapter. **The turn-on, ratified** (Bagrat, 2026-10-18): he approved the banner, its confirm, its turning-on, failed and on faces and the switch in Settings · Space as drawn (AiBanner, AiConfirm, AiBannerStates, AiSettings), with the price said “per video hour” so it reads as hours of video, not of the day; he may tweak the words later. **The landing's line, agreed** (Bagrat, 2026-10-18), goes on shroom.am with the homepage's redesign, not before: “AI titles, chapters and captions are free for about 2½ hours of new video a day. Recording more? About 4¢ per video hour on Cloudflare’s $5 plan.” **The privacy page's AI point, approved** (Bagrat, 2026-10-18), as drafted on the board AiPrivacy. The rest is provisional: its words are drafts until he OKs them.",
+   "status": "provisional",
+   "date": "2026-10-18",
+   "amends": [
+    "B171 (built: names, chapters and captions after v1, on the owner's own Cloudflare)",
+    "settings-space (the naming switch, on the Mac that holds the setup key)",
+    "config (the AI banner and its confirm, on the Mac that holds the setup key)"
+   ],
+   "amended_by": []
+  },
+  {
+   "id": "N67",
+   "title": "Chapters in the seek bar, captions, and the named title on the page",
+   "decision": "**Chapters live in the page's seek bar** (Bagrat's ruling, 2026-10-18, relayed by the orchestrator; he approved the canvas boards “The page — chapters in the seek bar, named on hover” and “The page on a phone — chapters in the seek bar, named while a finger is on it” the same day). The bar splits into one section per chapter, 2 px apart. Hovering it, playing or paused, shows the time and the chapter's name at that point, and the section under the pointer grows a little. On a phone a finger on the bar shows the same above the thumb, while it drags and for a moment after a tap, and the thumb grows while the finger is on it. The chapter now playing is named after the time, cut short when long, where the player's row has room for it; a phone's row has none beside its five controls, so there the finger's tip names it (a change from the phone board as approved, found while building and put back on the canvas; Bagrat kept it so, 2026-10-18, over a line under the controls or no sound button on phones). The bar's spoken value names it everywhere. There is no chapter list. A video with fewer than two chapters keeps today's whole bar. **Captions**, when the space has them: a Captions button in the player's row turns them on; off by default, and remembered on that browser. **The named title** is the page's title, everywhere a title shows (the page, its tab, unfurls, the download's name, the Library). On the owner's page a line under the title says it was named from what was said, until the title is edited; while the free day is used up, it says the name comes a little later instead. Built: DECISIONS B209. Provisional: the words are drafts until he OKs them.",
+   "status": "provisional",
+   "date": "2026-10-18",
+   "amends": [
+    "owner-page (the named title's line; chapters in the bar; captions)",
+    "live (chapters in the bar; captions, where the summary said no captions in v1)",
+    "absent_from_v1 (captions join v1 with N67; transcript search stays out)"
+   ],
+   "amended_by": []
+  },
+  {
    "id": "N63",
    "title": "The editor: trim, cut, undo, and edits the link plays",
    "decision": "**Bagrat asked for it, 2026-10-18** (relayed by the orchestrator): a real editor, apart from AI, that the spoken-cue layer can plug into later. **Edit… in a Library row's menu** opens the **editor**, a window of its own (one at a time), on a live video in this Mac's scope, renamable here: the video plays at the top; under it the play button and the time, edited position / edited length, with “was 4:32” once the edit changes the length; then the **timeline**: the whole recording's sound as a waveform with the playhead, **yellow ends that drag to trim**, and **a drag across the sound that selects a part**, with **Cut 12.0 s** under it. **A cut shows red** and the preview skips it as it plays; clicking a cut offers **Put back**. **Undo and Redo** (also ⌘Z and ⇧⌘Z) step through every change made in the window, Put back and Revert included. **Revert to original** puts back every cut and both ends. **Done** (Return) saves the edit and closes the window; ✕ is Done. The footer says the link stays the same. Saving is a small edit list kept in the video's record; **the share page and the embed apply it as they play** (they skip the cuts, hold to the trim, and show the edited length), so **the link never changes** and nothing is re-encoded first. Until then the original stays in the space, so Revert works from any Mac. Then the window stays to make **the final video**: the Mac cuts the edit with its own encoder and puts it up beside the original under the same link (“Making the final video… 40%”; the window can be closed and shroom finishes it); once it is up, Download and the page use it. **Then it asks “Delete the original?”** (Bagrat, 2026-10-18: encourage deleting it soon; no 30-day keep): **Yes, delete** leads, filled — a click, never Return (law 9; DEVIATIONS #55, ratified 2026-10-18) — and the edit becomes the video for good; **Keep for 2 days** keeps the original so the edit can still be reverted, and shroom deletes it after two days, whether or not this Mac is open then; closing the window there means Keep for 2 days. While the original is kept, the editor says by Revert how long it has left; once it is gone, the edit is final and Revert to original only undoes what changed since the window opened. A video that isn't on this Mac comes from the space first (“Getting the video from your space…”); if that fails the window says so and offers Try again. While it saves, Done reads Saving…; if the save doesn't go through, the window stays open and says so, and Done tries again. Edit… greys offline and while a take is open (law 4), as Rename does. Built: DECISIONS B195, B197. **Ratified by Bagrat as built, 2026-10-18**, with B195–B199 and the build’s words.",
@@ -1191,8 +1217,8 @@
   "macOS notifications (U9)  [L1724-1725]",
   "global hotkeys, save ⌥⌘P's pause and resume and ⌥⌘M's marker during a take (N54, N64) (the reopen door covers a hidden mushroom, N41)  [L1725-1726]",
   "the tray's Copy last link and any auto-copy (N21, N1)  [L1726]",
+  "transcript search (P8; captions left this list with N67)  [L1727]",
   "an editor beyond trim and cut: titles, overlays, transitions, a second track (P11; trim, cut and markers joined v1 with N63 and N64)  [L1726-1727]",
-  "captions and transcript search (P8)  [L1727]",
   "a sender name or avatar (U3)  [L1727-1728]",
   "passwords or expiry on links (P1)  [L1728]",
   "storage sizes and cost figures (P13)  [L1728]",
@@ -6397,7 +6423,7 @@
    "surface": "web-page",
    "status": "ratified",
    "board": "OwnerPage",
-   "summary": "The real shareable page, opened in the browser at stop. It is never a preview or a processing screen. From top to bottom: the editable title field, which is the only chrome (no header, no wordmark, no name, per U3); the player (first frame, play, scrub bar, `0:00 / 4:32`, fullscreen); [ Copy link ] and, once the video plays, [ Copy thumbnail ] beside it (N46), the page's copy doors, with the upload line and a thin bar beside it; then, bottom-right, the owner switch, “made with shroom”, and the mark. Download appears only once the single-file MP4 exists, and it is second-class (R11). Only the editable title and the switch are owner-only. The address bar shows the clean link because the key died at the 302. The clipboard is never touched (N1). Rename at any time later is a metadata write, live worldwide on the next load (R4). It works from this page in owner-mode or from the Library. Owner-mode by role is N40 and still provisional: the cookie names a member, a member's own pages give them the title only, and owner-class browsers get full owner-mode on every page of the space.",
+   "summary": "The real shareable page, opened in the browser at stop. It is never a preview or a processing screen. From top to bottom: the editable title field, which is the only chrome (no header, no wordmark, no name, per U3); the player (first frame, play, scrub bar, `0:00 / 4:32`, fullscreen); [ Copy link ] and, once the video plays, [ Copy thumbnail ] beside it (N46), the page's copy doors, with the upload line and a thin bar beside it; then, bottom-right, the owner switch, “made with shroom”, and the mark. Download appears only once the single-file MP4 exists, and it is second-class (R11). Only the editable title and the switch are owner-only. The address bar shows the clean link because the key died at the 302. The clipboard is never touched (N1). Rename at any time later is a metadata write, live worldwide on the next load (R4). It works from this page in owner-mode or from the Library. Owner-mode by role is N40 and still provisional: the cookie names a member, a member's own pages give them the title only, and owner-class browsers get full owner-mode on every page of the space. When the space names its videos (N66), an untitled video takes the name made from what was said; a line under the title says so until the title is edited, or that the name comes a little later while the free day is used up; and the player gains the chapters and the Captions button the recipient sees (N67).",
    "entry": "Stop finalized and the space's page is reachable and can fill. The app opens `v.<name>.workers.dev/<id>?k=<one-time-key>`. The Worker validates k, sets a long-lived owner cookie that names the member, and 302-redirects to the clean URL. The page also opens later on any visit from a browser carrying a qualifying cookie (owner-mode persists per-browser, rendered server-side), when stopped-offline reconnects, and through the Library's Open page (the owner-keyed door, N35).",
    "said": [
     {
@@ -6454,6 +6480,27 @@
      "copy": "ratified",
      "note": "The owner switch's label, beside the mark. The same three words are the hover tooltip recipients get.",
      "id": "owner-page.made-with-shroom"
+    },
+    {
+     "text": "Named from what you said. Click the title to change it.",
+     "role": "line",
+     "copy": "provisional",
+     "note": "N67. Under the title while the space's name stands and nobody has typed one; gone once the title is edited. Proposed 2026-10-18 (AiOwnerNamed); awaiting Bagrat.",
+     "cites": [
+      "N67"
+     ],
+     "id": "owner-page.named-from-what-you-said"
+    },
+    {
+     "text": "Its name and chapters come a little later, once your free hours are back.",
+     "role": "line",
+     "copy": "provisional",
+     "note": "N66 (4), N67. Under the title while the take waits for the next free day (after 00:00 UTC); nothing reads as an error. Proposed 2026-10-18 (AiNamingLater); awaiting Bagrat.",
+     "cites": [
+      "N66",
+      "N67"
+     ],
+     "id": "owner-page.its-name-and-chapters-come"
     }
    ],
    "actions": [
@@ -6525,7 +6572,9 @@
     "N35",
     "N40",
     "R11",
-    "N46"
+    "N46",
+    "N66",
+    "N67"
    ],
    "was": {
     "fixture": "r4.json",
@@ -6866,7 +6915,7 @@
    "surface": "web-page",
    "status": "ratified",
    "board": "RecipientLive",
-   "summary": "The recipient's normal page: the owner page minus the owner's two controls. It shows the title as plain text, the minimal player (first frame well under 1 s per R6.2, custom controls), Copy link and Copy thumbnail (N46), Download (quiet and second-class, once the single-file MP4 exists), and the mark with its hover label. Nothing else: no comments, no sign-in, no name, no shroom account anywhere. Every page is `noindex`, with no passwords, no expiry and no captions in v1. Unfurls follow R5 honesty.",
+   "summary": "The recipient's normal page: the owner page minus the owner's two controls. It shows the title as plain text, the minimal player (first frame well under 1 s per R6.2, custom controls), Copy link and Copy thumbnail (N46), Download (quiet and second-class, once the single-file MP4 exists), and the mark with its hover label. Nothing else: no comments, no sign-in, no name, no shroom account anywhere. Every page is `noindex`, with no passwords and no expiry; captions only where the owner turned naming on (N67). Unfurls follow R5 honesty. When the space names its videos (N66), the seek bar splits into the video’s chapters, named on hover and above the thumb on a touch, and a Captions button joins the player’s row (N67).",
    "entry": "Someone opens the clean shared link without a qualifying owner cookie, and the video's content is ready and served (the normal case).",
    "said": [
     {
@@ -6990,6 +7039,17 @@
       "copy table"
      ],
      "id": "live.unmute"
+    },
+    {
+     "text": "Captions",
+     "role": "line",
+     "copy": "provisional",
+     "note": "one case the spec didn't print, so it varies by case — the copy table: The player's captions button, named for screen readers and keyboards (an icon on screen, never text); only where the video has captions (N67)",
+     "cites": [
+      "copy table",
+      "N67"
+     ],
+     "id": "live.captions"
     }
    ],
    "actions": [
@@ -7035,6 +7095,12 @@
      "return_default": false,
      "goes_to": "landing",
      "note": "Bottom-right; hover “made with shroom”; links home."
+    },
+    {
+     "label": "Captions",
+     "kind": "other",
+     "return_default": false,
+     "note": "N67. Only where the video has captions: turns them on and off, off by default and remembered on that browser."
     }
    ],
    "cites": [
@@ -7043,7 +7109,8 @@
     "P1",
     "R11",
     "R5",
-    "N46"
+    "N46",
+    "N67"
    ],
    "was": {
     "fixture": "r4.json",
@@ -8664,7 +8731,7 @@
    "surface": "window",
    "status": "provisional",
    "board": "SettingsSpace",
-   "summary": "The Space tab: one tab with a mood per kind of Mac (inspection · repair · owner-class-without-token · member). Beneath the rows, by role: the mark switch (owner-class only — a space setting, U3) and the exits as quiet text (Disconnect this Mac… for owners, Leave this space… for members). Row six is live on every Mac. A revoked grant un-ticks it (“screen recording is off”), with Turn it back on → the permissions chapter at exactly the missing beat, in this window. A denied microphone ticks the row with the fact, plus a quiet Turn on the microphone that opens System Settings' Microphone pane (a denied mic never blocks). Mid-take both exits grey (law 4). After Disconnect or Leave, the ~/.shroom secrets are wiped and the app returns to idle-unprovisioned; the login item stays as it was. No invite door shows (B159): an invite link pasted anywhere in the tab (⌘V) opens its invite, as the page's Open shroom does.",
+   "summary": "The Space tab: one tab with a mood per kind of Mac (inspection · repair · owner-class-without-token · member). Beneath the rows, by role: the mark switch (owner-class only — a space setting, U3) and the exits as quiet text (Disconnect this Mac… for owners, Leave this space… for members). Row six is live on every Mac. A revoked grant un-ticks it (“screen recording is off”), with Turn it back on → the permissions chapter at exactly the missing beat, in this window. A denied microphone ticks the row with the fact, plus a quiet Turn on the microphone that opens System Settings' Microphone pane (a denied mic never blocks). Mid-take both exits grey (law 4). After Disconnect or Leave, the ~/.shroom secrets are wiped and the app returns to idle-unprovisioned; the login item stays as it was. No invite door shows (B159): an invite link pasted anywhere in the tab (⌘V) opens its invite, as the page's Open shroom does. On the Mac that holds the setup key, a second switch turns the space's AI on for new videos — titles, chapters, captions and voice cuts (N66) — with one line on what it does and costs; turning it on or off re-wires the page.",
    "entry": "Settings window on the Space tab. Which mood shows is derived from the kind of Mac and the probe results.",
    "said": [
     {
@@ -8729,6 +8796,36 @@
      "copy": "provisional",
      "note": "Mid-take, both exits grey with this line (law 4).",
      "id": "settings-space.you-can-do-this"
+    },
+    {
+     "text": "AI for new videos",
+     "role": "field-label",
+     "copy": "ratified",
+     "note": "N66. Label of the AI switch, one switch for every AI feature (voice cuts, N65, included), on the Mac that holds the setup key only (it re-wires the page). Bagrat approved the board AiSettings as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later.",
+     "cites": [
+      "N66"
+     ],
+     "id": "settings-space.ai-for-new-videos"
+    },
+    {
+     "text": "Titles, chapters and captions from what’s said, and your “shroom cut” slips cut — on your own Cloudflare account. Free for about 2½ hours of new video a day; more is about 4¢ per video hour on Cloudflare’s $5 plan.",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N66. Description beside the AI switch: the one cost line, also in ai-confirm. Bagrat approved the board AiSettings as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later.",
+     "cites": [
+      "N66"
+     ],
+     "id": "settings-space.titles-chapters-and-captions"
+    },
+    {
+     "text": "Couldn't change that just now — try again in a moment.",
+     "role": "line",
+     "copy": "provisional",
+     "note": "N66. In place of the AI switch's line when a re-wiring didn't go through, until the next try or the next visit (law 12); the switch is as the page has it.",
+     "cites": [
+      "N66"
+     ],
+     "id": "settings-space.couldnt-change-that-just"
     }
    ],
    "actions": [
@@ -8737,6 +8834,12 @@
      "kind": "switch",
      "return_default": false,
      "note": "Owner-class only. A space-global setting (U3), also flippable on a page."
+    },
+    {
+     "label": "AI for new videos switch",
+     "kind": "switch",
+     "return_default": false,
+     "note": "N66. Only on the Mac that holds the setup key; one switch for every AI feature, voice cuts included. On re-wires the page with Cloudflare's AI and its schedule; off takes them away. Greys while the re-wire runs and mid-take (law 4)."
     },
     {
      "label": "⌘V (an invite link, pasted anywhere in the tab)",
@@ -8780,7 +8883,8 @@
     "N29",
     "N31",
     "law 4",
-    "B159"
+    "B159",
+    "N66"
    ],
    "was": {
     "fixture": "r5.json",
@@ -12206,6 +12310,252 @@
     "N48",
     "N12",
     "N41"
+   ]
+  },
+  "ai-offer": {
+   "region": 5,
+   "kind": "banner",
+   "parent": "config",
+   "surface": "banner",
+   "status": "ratified",
+   "board": "AiBanner",
+   "summary": "The AI offer (N66; Bagrat, 2026-10-18: off by default, but visible): a frost banner in the popover, like the update's, on the Mac that holds the setup key while the space's AI is off. It says what shroom can do — name videos, add chapters, cut slips — never what it costs: Turn on… opens the short confirm that says so. The lowest banner: a saved take, the space, recording off and an update come first. Not now hides it for good on this Mac (Bagrat, 2026-10-18): from then on only the switch in Settings · Space turns AI on. Members' Macs and the space's other Macs never show it, nor does a Mac once AI has been on there.",
+   "entry": "`config` opens on the Mac that holds the setup key while the space's AI is off and no higher banner shows, and the banner has never been answered on this Mac.",
+   "said": [
+    {
+     "text": "shroom can name your videos, add chapters and cut your slips for you.",
+     "role": "banner",
+     "copy": "ratified",
+     "note": "N66. The banner's line (AiBanner). Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later.",
+     "cites": [
+      "N66"
+     ],
+     "id": "ai-offer.shroom-can-name-your"
+    },
+    {
+     "text": "Turn on…",
+     "role": "button",
+     "copy": "ratified",
+     "note": "N66. Filled; a banner's own filled button is never the Return default (law 8). Opens ai-confirm. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later.",
+     "cites": [
+      "N66"
+     ],
+     "id": "ai-offer.turn-on"
+    },
+    {
+     "text": "Not now",
+     "role": "link",
+     "copy": "ratified",
+     "note": "N66. Quiet, left of Turn on…. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later.",
+     "cites": [
+      "N66"
+     ],
+     "id": "ai-offer.not-now"
+    }
+   ],
+   "actions": [
+    {
+     "label": "Turn on…",
+     "kind": "filled-default",
+     "return_default": false,
+     "goes_to": "ai-confirm",
+     "note": "The confirm says what it costs."
+    },
+    {
+     "label": "Not now",
+     "kind": "text-link",
+     "return_default": false,
+     "goes_to": "config",
+     "note": "Hidden for good on this Mac; the switch in Settings · Space stays."
+    }
+   ],
+   "cites": [
+    "N66"
+   ]
+  },
+  "ai-confirm": {
+   "region": 5,
+   "kind": "state",
+   "parent": null,
+   "surface": "popover",
+   "status": "ratified",
+   "board": "AiConfirm",
+   "summary": "Turn on…'s short confirm (N66): the popover morphs into a question that says what turning AI on does and what it costs, once, before it costs anything. Like every question in the popover it has no Return default: Turn on is a click. Back and Esc go back to config with the banner still there.",
+   "entry": "Turn on… in the AI banner.",
+   "said": [
+    {
+     "text": "Turn on AI for new videos?",
+     "role": "title",
+     "copy": "ratified",
+     "note": "N66. Bold. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later.",
+     "cites": [
+      "N66"
+     ],
+     "id": "ai-confirm.turn-on-ai-for"
+    },
+    {
+     "text": "Titles, chapters and captions from what’s said, and your “shroom cut” slips cut — on your own Cloudflare account. Free for about 2½ hours of new video a day; more is about 4¢ per video hour on Cloudflare’s $5 plan.",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N66. The one cost line, also under the switch in Settings · Space. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later.",
+     "cites": [
+      "N66"
+     ],
+     "id": "ai-confirm.titles-chapters-and-captions"
+    },
+    {
+     "text": "Back",
+     "role": "button",
+     "copy": "ratified",
+     "note": "N66. Leftmost. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later.",
+     "cites": [
+      "N66"
+     ],
+     "id": "ai-confirm.back"
+    },
+    {
+     "text": "Turn on",
+     "role": "button",
+     "copy": "ratified",
+     "note": "N66. Filled, rightmost; no Return default (a click, as every popover question). Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later.",
+     "cites": [
+      "N66"
+     ],
+     "id": "ai-confirm.turn-on"
+    }
+   ],
+   "actions": [
+    {
+     "label": "Back",
+     "kind": "secondary",
+     "return_default": false,
+     "goes_to": "config",
+     "note": "Esc too; the banner stays."
+    },
+    {
+     "label": "Turn on",
+     "kind": "filled-default",
+     "return_default": false,
+     "goes_to": "ai-turning-on",
+     "note": "Re-wires the space's page with Cloudflare's AI and its schedule, as the switch in Settings · Space does."
+    }
+   ],
+   "cites": [
+    "N66"
+   ]
+  },
+  "ai-turning-on": {
+   "region": 5,
+   "kind": "face",
+   "parent": "ai-offer",
+   "surface": "banner",
+   "status": "ratified",
+   "board": "AiBannerStates",
+   "summary": "While the space's page is put up again with Cloudflare's AI (a few seconds), the banner says so and holds no buttons.",
+   "entry": "Turn on in ai-confirm, until the page answers.",
+   "said": [
+    {
+     "text": "Turning on — a few seconds.",
+     "role": "banner",
+     "copy": "ratified",
+     "note": "N66. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later.",
+     "cites": [
+      "N66"
+     ],
+     "id": "ai-turning-on.turning-on-a-few"
+    }
+   ],
+   "actions": [],
+   "cites": [
+    "N66"
+   ]
+  },
+  "ai-offer-failed": {
+   "region": 5,
+   "kind": "face",
+   "parent": "ai-offer",
+   "surface": "banner",
+   "status": "ratified",
+   "board": "AiBannerStates",
+   "summary": "The re-wiring didn't go through (law 12): the banner says so in place of its line, for this visit to the popover, and Turn on… is live again.",
+   "entry": "ai-turning-on, and the space's page couldn't be put up again with the AI.",
+   "said": [
+    {
+     "text": "Couldn't change that just now — try again in a moment.",
+     "role": "banner",
+     "copy": "ratified",
+     "note": "N66. The words of the switch's own failure line. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later.",
+     "cites": [
+      "N66"
+     ],
+     "id": "ai-offer-failed.couldnt-change-that-just"
+    },
+    {
+     "text": "Turn on…",
+     "role": "button",
+     "copy": "ratified",
+     "note": "N66. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later.",
+     "cites": [
+      "N66"
+     ],
+     "id": "ai-offer-failed.turn-on"
+    },
+    {
+     "text": "Not now",
+     "role": "link",
+     "copy": "ratified",
+     "note": "N66. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later.",
+     "cites": [
+      "N66"
+     ],
+     "id": "ai-offer-failed.not-now"
+    }
+   ],
+   "actions": [
+    {
+     "label": "Turn on…",
+     "kind": "filled-default",
+     "return_default": false,
+     "goes_to": "ai-confirm"
+    },
+    {
+     "label": "Not now",
+     "kind": "text-link",
+     "return_default": false,
+     "goes_to": "config",
+     "note": "Hidden for good on this Mac, as ai-offer's."
+    }
+   ],
+   "cites": [
+    "N66",
+    "law 12"
+   ]
+  },
+  "ai-on": {
+   "region": 5,
+   "kind": "face",
+   "parent": "config",
+   "surface": "status-line",
+   "status": "ratified",
+   "board": "AiBannerStates",
+   "summary": "A one-shot status-line fact once the banner's Turn on has gone through, where the update's “Updated ✓” goes: said once, then the line is behind us.",
+   "entry": "The page answers that its AI is on after the banner's Turn on: in the popover then, or the next time it opens.",
+   "said": [
+    {
+     "text": "AI is on for new videos ✓",
+     "role": "status",
+     "copy": "ratified",
+     "note": "N66. Once only; it ranks after the upload truth (N38). Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later.",
+     "cites": [
+      "N66"
+     ],
+     "id": "ai-on.ai-is-on-for"
+    }
+   ],
+   "actions": [],
+   "cites": [
+    "N66",
+    "N38"
    ]
   }
  },
@@ -16738,6 +17088,124 @@
    ],
    "on": [
     "Act(OpenFeedback)"
+   ]
+  },
+  {
+   "from": "config",
+   "to": "ai-offer",
+   "kind": "auto",
+   "label": "",
+   "trigger": "config opens on the Mac that holds the setup key while the space's AI is off, no higher banner shows and the banner has never been answered on this Mac (N66)",
+   "status": "ratified",
+   "cites": [
+    "N66"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": []
+  },
+  {
+   "from": "ai-offer",
+   "to": "ai-confirm",
+   "kind": "flow",
+   "label": "Turn on…",
+   "trigger": "Turn on… (or the same on ai-offer-failed)",
+   "status": "ratified",
+   "cites": [
+    "N66"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Act(AiAsk)"
+   ]
+  },
+  {
+   "from": "ai-offer",
+   "to": "config",
+   "kind": "flow",
+   "label": "Not now",
+   "trigger": "Not now: hidden on this Mac for good; the switch in Settings · Space stays (N66)",
+   "status": "ratified",
+   "cites": [
+    "N66"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Act(AiNotNow)"
+   ]
+  },
+  {
+   "from": "ai-confirm",
+   "to": "ai-turning-on",
+   "kind": "flow",
+   "label": "Turn on",
+   "trigger": "Turn on: the space's page is put up again with the AI",
+   "status": "ratified",
+   "cites": [
+    "N66"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Act(AiOn)"
+   ]
+  },
+  {
+   "from": "ai-confirm",
+   "to": "config",
+   "kind": "flow",
+   "label": "Back",
+   "trigger": "Back or Esc: the banner stays",
+   "status": "ratified",
+   "cites": [
+    "N66"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Act(Back)",
+    "Key(Esc)"
+   ]
+  },
+  {
+   "from": "ai-turning-on",
+   "to": "ai-on",
+   "kind": "auto",
+   "label": "",
+   "trigger": "the page answers that its AI is on",
+   "status": "ratified",
+   "cites": [
+    "N66"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Cloud(AiSet)"
+   ]
+  },
+  {
+   "from": "ai-turning-on",
+   "to": "ai-offer-failed",
+   "kind": "fail",
+   "label": "",
+   "trigger": "the re-wiring didn't go through (law 12)",
+   "status": "ratified",
+   "cites": [
+    "N66"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Failed(Ai)"
    ]
   },
   {

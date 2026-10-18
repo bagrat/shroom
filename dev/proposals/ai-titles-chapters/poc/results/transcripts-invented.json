@@ -1,0 +1,182 @@
+{
+ "walkthrough": [
+  [
+   0,
+   "Hi team, quick walk for before Thursday's review, I want to show you 3 things today The new sign up screen, the bug we found on the invoices page, and the numbers from last week's trial It should take about 5 minutes"
+  ],
+  [
+   16.4,
+   "K, so first, the sign up screen This is what a new person sees when they open the app for the first time We cut it from 4 fields down to 2 Just the email and a password The company name moved to the second step, after they have already seen the dashboard."
+  ],
+  [
+   34.9,
+   "If you look at the button here, it now says create my workspace instead of submit, which tested a lot better with the five people we talked to."
+  ],
+  [
+   44.3,
+   "The other change is the error message."
+  ],
+  [
+   46.5,
+   "Before, if your password was too short, the whole form went red."
+  ],
+  [
+   51,
+   "Now only the password box shows a short hint under it, and the hint goes away as soon as you type enough characters."
+  ],
+  [
+   58.3,
+   "Maria, I would love your eyes on the spacing here, I think the hint pushes the button down a little too much on small screens."
+  ],
+  [
+   68.3,
+   "HT, moving on to the invoices page, this one is a real bug, and it hit two customers on Monday."
+  ],
+  [
+   75.9,
+   "When an invoice has more than 50 line items, the total at the bottom is calculated before the last page of items finishes loading, so the total you see is too low."
+  ],
+  [
+   86.6,
+   "You can see it here, this invoice should say $4 ,200, but it says $3 ,900, the fix is small, we wait for every page of items before we add them up, and while we wait, the total shows a little loading bar instead of number, I already have a patch for it, and Sam is reviewing it today, we also wrote a test with 60 line items so this does not come back."
+  ],
+  [
+   114.6,
+   "Third thing, the numbers from the trial We ran the new sign -up screen for one week With 10 % of new visitors Of the people who saw the old screen, about 31 % finished signing up, with the new screen, it was 44%, that is a big jump, and it held up every day of the week, not just on one good day, the time to finish also dropped, from about 2 minutes to under 1 minute, the one number that went the wrong way is support tickets about passwords, which went up a little, from 3 to 5, I think that is the new hint being too quiet, so that ties back to the spacing question from before."
+  ],
+  [
+   156.9,
+   "To wrap up, the sign up screen is ready to go to everyone next week, once Maria signs off on the spacing, the invoice fixed ships tomorrow after Sam's review, and for the password tickets, I will try a louder hint and we can look at the numbers again in two weeks, if you have questions, leave them as comments on this video or ping me in the channel, thanks everyone."
+  ]
+ ],
+ "onboarding": [
+  [
+   0,
+   "Hey Jordan, welcome to the team, I made this video so you have something to come back to during your first week, I will go through 4 things how the code is laid out, how to run the tests, how a change gets to production, and what being on call looks like here,"
+  ],
+  [
+   17.8,
+   "feel free to pause and try things as we go."
+  ],
+  [
+   21.9,
+   "Let's start with the layout."
+  ],
+  [
+   24.3,
+   "Everything lives in one repository."
+  ],
+  [
+   26.4,
+   "At the top you have three folders that matter."
+  ],
+  [
+   29.9,
+   "The web folder is the customer -facing app, written in TypeScript with React."
+  ],
+  [
+   35,
+   "In fact, the API folder is the backend service in Go, and the jobs folder holds the small programs that run on a schedule, like the nightly export and the reminder emails."
+  ],
+  [
+   46.9,
+   "There is also a docs folder, which is honestly a bit out of date, so trust the code over the docs when they disagree."
+  ],
+  [
+   54.4,
+   "One more thing in the layout."
+  ],
+  [
+   56.5,
+   "Shared types live in a package called common, and both the web app and the opie read from it."
+  ],
+  [
+   62.4,
+   "If you change a type there, both sides need to build before you open a pull request."
+  ],
+  [
+   69.2,
+   "A."
+  ],
+  [
+   70,
+   "Running the tests."
+  ],
+  [
+   71.3,
+   "From the top of the repository, you run make test, and it runs everything, which takes about 6 minutes on a laptop."
+  ],
+  [
+   80,
+   "Most of the time you do not want everything."
+  ],
+  [
+   82.7,
+   "If you are working in the opie, go into that folder and run go test with the package you touched, and that takes seconds."
+  ],
+  [
+   90.7,
+   "For the web app, the command is npm test, and it watches your files and reruns only what changed."
+  ],
+  [
+   98,
+   "There are also end -to -end tests that drive the real browser."
+  ],
+  [
+   102,
+   "Those are slow and a little flaky, so we only run them in the pipeline, not on your machine."
+  ],
+  [
+   108.6,
+   "If one of them fails on your pull request, look at the screenshot it saves before you assume your change broke it, about 1 in 20 failures is the test, not the code."
+  ],
+  [
+   121.7,
+   "How a change gets to production, open a pull request against the main branch the pipeline runs the full test suite and builds a preview copy of the web app with its own link so a reviewer can click around you need one approval from someone on the team once it is approved and green you merge it yourself merging to main deploys to staging right away production deploys happen twice a day,"
+  ],
+  [
+   149.7,
+   "at 11 in the morning and at 4 in the afternoon, and the deploy bot posts in the releases channel when it starts and when it finishes, if you need something out faster, for example a fix for a customer who is blocked, ask in the releases channel and whoever is on call can push a deploy by hand,"
+  ],
+  [
+   169.8,
+   "please do not merge big changes on a Friday afternoon, nobody will stop you, but you will be the one answering the pager on saturday ch brings me to uncall everyone on the team takes one week of uncall every six weeks and you will start after your first month paired with someone"
+  ],
+  [
+   190.8,
+   "your first round."
+  ],
+  [
+   192.3,
+   "When you are on call, the pager app will wake you up for two kinds of alerts."
+  ],
+  [
+   197.6,
+   "The site is down, or payments are failing."
+  ],
+  [
+   200.8,
+   "Everything else waits for working hours."
+  ],
+  [
+   203.4,
+   "The first thing to open is the runbook, which is linked from every alert."
+  ],
+  [
+   208,
+   "It tells you what to check first and who to call if you are stuck, do not try to be a hero at 3 in the morning, if you have been looking at something for 20 minutes and it is still on fire, call the backup, that is what the backup is for,"
+  ],
+  [
+   223.4,
+   "and nobody will think less of you."
+  ],
+  [
+   227.3,
+   "T is the tour, for this week, my suggestion is to get the tests running on your laptop, pick one of the small tickets marked good first issue, and take it all the way to production with a pull request, ask me anything, anytime,"
+  ],
+  [
+   243,
+   "there are no silly questions in your first month, or honestly ever, welcome aboard."
+  ]
+ ]
+}

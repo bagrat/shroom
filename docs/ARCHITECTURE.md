@@ -683,7 +683,8 @@ foreign `v`. `VERSION` 0.1.9, `IFACE` 2.
 | `POST /_shroom/title/<id>`, `/_shroom/mark` | cookie title edit (`etagMatches`); the mark switch (owner-class) |
 | `GET /favicon.{svg,png,ico}` | the icon carried in the module (D:B109) |
 | `GET /join/<code>` | the join page faces; opening never uses the invite |
-| `/_shroom/api/` | `POST peek, join, enroll, mint, key, library, invites, mark, health, gone`; `GET me, members`; `DELETE invites/<iid>, members/<mid>, devices/<did\|self>` — JSON with `"shroom":1` |
+| `/_shroom/api/` | `POST peek, join, enroll, mint, key, library, invites, mark, health, gone, ai`; `GET me, members`; `DELETE invites/<iid>, members/<mid>, devices/<did\|self>` — JSON with `"shroom":1` |
+| `GET /_shroom/cc/<id>`, `/_shroom/named/<id>` | with naming on (N66, N67, WI §4.21): the captions as WebVTT through the saved edit; the owner page's ask for a name on its way |
 
 Every response carries `X-Robots-Tag: noindex`; HEAD and Range never 500. API bodies
 ≤ 16 KiB (library 128 KiB); a browser Origin is refused on the API.
@@ -691,14 +692,18 @@ Every response carries `X-Robots-Tag: noindex`; HEAD and Range never 500. API bo
 ### 8.2 Bindings and secrets
 
 `BUCKET` (r2) is the only storage path; `R2_PARENT` (`secret_text`) mints and checks parent
-proofs. No HMAC id-key. The registry is R2 under `.shroom/registry/`, consistent by
+proofs. No HMAC id-key. With naming on (N66, D:B206), `AI` (Workers AI, on the owner's own
+account) and a Cron Trigger each minute (`scheduled()`, which takes the oldest due mark
+under `.shroom/ai/later/` one step); without them the naming routes answer `{"ai":false}`. The registry is R2 under `.shroom/registry/`, consistent by
 conditional writes (5 CAS tries); the store is Bagrat's call (§16 #3).
 
 ### 8.3 Deploy and versioning
 
 Deploy is the multipart `PUT …/workers/scripts/{label}`, verified by the ping. Only token
 Macs deploy — at wiring and once a launch (`wire::refresh_page`) — and only over an older
-`VERSION`, never down (D:B50, B53 a). Members compare `iface` with `member::IFACE_MIN` (2)
+`VERSION`, never down (D:B50, B53 a); naming's switch (`wire::set_ai`) puts the page up again
+with or without the AI binding and its schedule, and a refresh or a re-wiring keeps what the
+live page has (the ping says `"ai":true`). Members compare `iface` with `member::IFACE_MIN` (2)
 and show needs-update below it (DV #30). `VERSION` moves with every page change;
 `page-version.json` fingerprints each and a test enforces it (D:B61).
 
@@ -971,8 +976,12 @@ owner-class: [ Add a token here ]; member: the address); row six live everywhere
 
 ## 14. Captions, VTT, markers: exactly what v1 ships
 
-- No captions, transcription or transcript search; titles are manual (P10/N26).
-  `meta.captions` stays `null`; `rec/<id>/tx/*` is never written.
+- With naming off (the default), no captions or transcription; titles are manual (P10/N26)
+  and `meta.captions` stays `null`. With it on (N66, N67, D:B205–B209), the space hears each
+  minute as it uploads (the uploader's naming lane asks `POST /_shroom/api/ai` every ten
+  pieces and once the take is live), keeps the words at `rec/<id>/ai/transcript.json`, names
+  the take and places its chapters, and writes captions per view from the same words
+  (`GET /_shroom/cc/<id>`). No transcript search (absent from v1).
 - Markers: [ Drop a marker ] (paused popover) at the pause point, and ⌥⌘M while recording
   (N64, D:B196); `markers.json` written per drop as seconds in the joined timeline, sent as
   `meta.markers` at the claim (D:B49 e). The editor shows them as flags on its timeline, and

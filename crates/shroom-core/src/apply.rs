@@ -18,7 +18,7 @@ use crate::report::{Kind, Post};
 use crate::scene::{Action, Click};
 use crate::time::{Fact, Mono};
 use crate::world::{
-    Access, Arming, Blocked, Born, Cause, Confirm, CopyOwed, CopyTarget, Door, EditorFields, EditorMedia, EditorSave, FailClass, Failure, Fields, Fork, Invite,
+    Access, AiTurn, Arming, Blocked, Born, Cause, Confirm, CopyOwed, CopyTarget, Door, EditorFields, EditorMedia, EditorSave, FailClass, Failure, Fields, Fork, Invite,
     JoinRefusal, Landed, LaunchKind, Leaving, RecId,
     LibraryFields, LibraryOps, Members, OpenTake, Op, PageOpen, Paste, Phase, QuickProbe, Reach, RelaunchWhy, Removal, ReportFields, FeedbackFields, Restore, Role, SavedCause,
     SavedTake, SecretId, SettingsFields, SettingsTab, SourceId, Space, SpaceIdentity, StopOutcome, Strike, Sweep, TakeDir, TakeLost, TokenVerdict,
@@ -61,6 +61,7 @@ pub fn apply(w: &mut World, event: Event) -> Out {
                 fx.push(Effect::Persist(PersistOp::Once(w.once.clone())));
             }
             OneShot::Failed => w.update.failed = false,
+            OneShot::AiOn => w.space.ai_turn = None,
         }
     }
     (fx, arm)
@@ -612,9 +613,14 @@ fn act(w: &mut World, action: Action) -> Out {
             if matches!(w.session.confirm, Some(Confirm::Uninstall { going: true } | Confirm::Report { sending: true })) {
                 return (vec![], Arm::DROPPED);
             }
-            if w.session.confirm.take() == Some(Confirm::Report { sending: false }) {
+            let was = w.session.confirm.take();
+            if was == Some(Confirm::Report { sending: false }) {
                 w.session.fields.settings.report = ReportFields::default();
                 return (vec![], Arm { name: "report-cancelled", edge: Some(("report-problem", "settings-general")) });
+            }
+            // The AI banner's confirm: back to config, the banner still there (N66).
+            if was == Some(Confirm::Ai) {
+                return (vec![], Arm { name: "ai-back", edge: Some(("ai-confirm", "config")) });
             }
             (vec![], Arm::named("back"))
         }
@@ -1313,6 +1319,38 @@ fn act(w: &mut World, action: Action) -> Out {
             (fx, Arm { name: "add-token", edge: Some(("space-degraded-no-token-mac", "token")) })
         }
         Action::SetMark(on) => (vec![Effect::Member(MemberCmd::Mark(on))], Arm::named("set-mark")),
+        // Naming (N66): the setup Mac re-wires its page; the switch reads the page's answer.
+        // A new try starts clean: its own failure, if any, is the one said.
+        Action::SetAi(on) => {
+            w.inflight.failures.remove(&Op::Ai);
+            w.space.ai_turn = None;
+            (vec![Effect::Cloud(CloudCmd::SetAi(on))], Arm::named("set-ai"))
+        }
+        // The AI banner's Turn on… (N66): its confirm says what it costs, before anything does.
+        Action::AiAsk => {
+            if w.take_open() || w.space.ai_turn == Some(AiTurn::Turning) && w.inflight.ops.contains_key(&Op::Ai) {
+                return (vec![], Arm::DROPPED);
+            }
+            w.session.confirm = Some(Confirm::Ai);
+            (vec![], Arm { name: "ai-asked", edge: Some(("ai-offer", "ai-confirm")) })
+        }
+        // The confirm's Turn on is the switch's: the banner says it's turning on until the
+        // page answers.
+        Action::AiOn => {
+            let asked = w.session.confirm == Some(Confirm::Ai);
+            if asked {
+                w.session.confirm = None;
+            }
+            w.inflight.failures.remove(&Op::Ai);
+            w.space.ai_turn = Some(AiTurn::Turning);
+            (vec![Effect::Cloud(CloudCmd::SetAi(true))], Arm { name: "ai-on", edge: asked.then_some(("ai-confirm", "ai-turning-on")) })
+        }
+        // Not now: hidden for good on this Mac (Bagrat, 2026-10-18); the switch stays.
+        Action::AiNotNow => {
+            w.space.ai_turn = None;
+            w.once.ai_offer_answered = true;
+            (vec![Effect::Persist(PersistOp::Once(w.once.clone()))], Arm { name: "ai-not-now", edge: Some(("ai-offer", "config")) })
+        }
         Action::SetScope(scope) => {
             w.session.fields.library.scope = scope;
             (vec![], Arm::named("set-scope"))
@@ -1360,7 +1398,8 @@ fn forget_invite(w: &mut World, fx: &mut Vec<Effect>) {
 }
 
 /// The ops that speak for one space: a late answer after this Mac left it is stale.
-const SPACE_OPS: [Op; 15] = [
+const SPACE_OPS: [Op; 16] = [
+    Op::Ai,
     Op::Cleanup,
     Op::Validate,
     Op::SaveToken,
@@ -1424,7 +1463,7 @@ fn joined(w: &mut World, identity: SpaceIdentity) -> Out {
         // The editor is on a video of the space left behind (N63).
         gone.extend(leave_editor(w));
     }
-    w.space = Space { identity: Some(identity.clone()), token: false, device_key: true, broken: Fact::Unknown, page_checked: None };
+    w.space = Space { identity: Some(identity.clone()), token: false, device_key: true, broken: Fact::Unknown, page_checked: None, ai: None, ai_turn: None };
     w.sweep = Sweep::default();
     w.library = Fact::Unknown;
     w.library_ops = LibraryOps::default();
@@ -2891,11 +2930,34 @@ fn cloud(w: &mut World, news: CloudNews) -> Out {
             }
             (vec![], Arm::named("page-opened"))
         }
-        CloudNews::Refreshed { deployed } => {
+        CloudNews::Refreshed { deployed, ai } => {
             w.inflight.ops.remove(&Op::Refresh);
             w.inflight.failures.remove(&Op::Refresh);
             w.space.page_checked = Some(w.now);
+            if ai.is_some() {
+                w.space.ai = ai;
+            }
             (vec![], Arm::named(if deployed { "page-refreshed" } else { "page-current" }))
+        }
+        CloudNews::AiSet(on) => {
+            answered(w, Op::Ai);
+            w.space.ai = Some(on);
+            // On, by the banner or the switch: the banner is answered for good on this Mac,
+            // and the banner's own Turn on is said once, in config's status line.
+            let turning = w.space.ai_turn == Some(AiTurn::Turning);
+            if turning {
+                w.space.ai_turn = None;
+            }
+            let mut fx = Vec::new();
+            if on && !w.once.ai_offer_answered {
+                w.once.ai_offer_answered = true;
+                fx.push(Effect::Persist(PersistOp::Once(w.once.clone())));
+            }
+            if on && turning {
+                w.space.ai_turn = Some(AiTurn::On);
+                return (fx, Arm { name: "ai-set", edge: Some(("ai-turning-on", "ai-on")) });
+            }
+            (fx, Arm::named("ai-set"))
         }
         CloudNews::Validated { id, result } => {
             answered(w, Op::Validate);
@@ -3337,6 +3399,11 @@ fn failed(w: &mut World, op: Op, class: crate::world::FailClass) -> Out {
             w.inflight.failures.remove(&Op::Relaunch);
             fx.push(Effect::Persist(PersistOp::Restore(None)));
         }
+        // The banner's Turn on didn't go through: it says so, Turn on… live again (law 12),
+        // and it's tried again quietly until it goes through or the person says Not now.
+        Op::Ai if w.space.ai_turn == Some(AiTurn::Turning) => {
+            return (fx, Arm { name: "ai-failed", edge: Some(("ai-turning-on", "ai-offer-failed")) });
+        }
         // A rename or delete that didn't land: the row reads as the space has it again.
         Op::Rename => w.library_ops.renaming.clear(),
         Op::Delete => w.library_ops.deleting.clear(),
@@ -3431,6 +3498,10 @@ fn tick(w: &mut World) -> Out {
     // The offline stop's page lapses after an hour of wall time (N40).
     if w.session.page_open.as_ref().is_some_and(|p| w.wall.0 >= p.at.0 + 3_600_000) {
         w.session.page_open = None;
+    }
+    // The AI banner's Turn on that didn't go through, tried again at its backoff (N66).
+    if w.space.ai_turn == Some(AiTurn::Turning) && !w.inflight.ops.contains_key(&Op::Ai) && w.inflight.failures.get(&Op::Ai).is_some_and(|f| now >= f.ai_retry_at()) {
+        fx.push(Effect::Cloud(CloudCmd::SetAi(true)));
     }
     (fx, Arm::named("tick"))
 }

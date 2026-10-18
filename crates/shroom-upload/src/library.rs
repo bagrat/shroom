@@ -38,6 +38,9 @@ pub struct Row {
     /// `None` when the record names no poster, or one that isn't beside it.
     #[serde(default)]
     pub poster_file: Option<String>,
+    /// What the space's AI did with it, in one line for the Mac's log (`meta::ai_note`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ai: Option<String>,
 }
 
 impl Row {
@@ -54,6 +57,7 @@ impl Row {
             poster: m.media.as_ref().and_then(|x| x.poster.clone()),
             edited_sec: m.edited_sec(),
             poster_file: poster_file(m),
+            ai: crate::meta::ai_note(m),
         }
     }
 }
@@ -933,6 +937,17 @@ pub fn tombstoned(s3: &Client, id: &str) -> Result<bool, UploadError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A row carries its record's AI line (`meta::ai_note`), so a refresh can log a change in
+    /// what the space did; a cache written before it still reads.
+    #[test]
+    fn a_row_carries_its_records_ai_line() {
+        let m: Meta = serde_json::from_value(serde_json::json!({"schema":1,"id":"x","state":"live","createdAt":"2026-10-18T14:00:00Z","title":"T",
+            "naming":{"later":"daily","at":"2026-10-18T23:14:00Z","code":"4006"}})).unwrap();
+        assert_eq!(Row::of(&m).ai.as_deref(), Some("waiting for the free day since 2026-10-18T23:14:00Z (4006)"));
+        let old: Row = serde_json::from_str(r#"{"id":"x","title":"T","state":"live","created_at":"2026-10-18T14:00:00Z","duration_sec":null,"owner":null,"poster":null}"#).unwrap();
+        assert_eq!(old.ai, None);
+    }
 
     const NOW: i64 = 1_790_942_400_000; // 2026-10-02T12:00:00Z
     fn iso(ms: i64) -> String {

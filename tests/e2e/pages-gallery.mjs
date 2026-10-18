@@ -9,8 +9,10 @@
 //
 // Faces: owner-page (uploading, waiting-conn, waiting-space, fully-live), live, on-its-way,
 // on-its-way-untitled, on-its-way-stalled, unavailable, removed, embed-face (live and
-// removed). Prints one JSON summary; exits non-zero when a face is missing a line, shows
-// another face's, or throws.
+// removed); and a video the space has named (N66, N67): the owner's page named and waiting
+// for the free day, a viewer's with chapters in the seek bar on a laptop and a phone, and its
+// captions showing. Prints one JSON summary; exits non-zero when a face is missing a line,
+// shows another face's, or throws.
 
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
@@ -35,6 +37,70 @@ const TITLE = "Where the 502s come from";
 const media = (id, mp4 = true) => ({ hls: `rec/${id}/master.m3u8`, mp4: mp4 ? `rec/${id}/video.mp4` : null, poster: `rec/${id}/poster.jpg`, width: 640, height: 400 });
 const meta = (id, over = {}) => JSON.stringify({ schema: 1, id, state: "live", titled: true, createdAt: iso(Date.now() - 60_000), title: TITLE, durationSec: 8, media: media(id), owner: M1, ...over });
 const uploading = (id, done, total, ageMs = 1000, over = {}) => meta(id, { state: "uploading", media: null, progress: { done, total, updatedAt: iso(Date.now() - ageMs) }, ...over });
+/** A spec line by its id: the words a face must show. */
+const line = (state, id) => machine.states[state]?.said?.find((l) => l.id === id)?.text ?? `(no ${id} in the spec)`;
+
+// A video the space has named (N66, N67): three minutes, an invented script heard as the
+// Worker stores it ([word, start, end] on the recording's clock), the name and chapters the
+// naming step wrote, and captions on.
+const AI_SECS = 183;
+const AI_TITLE = "Sign up screen, invoice bug, trial numbers";
+const AI_SAID = [
+  [0, "Sign up screen changes", "Hi, this is a quick look at the sign up screen. We moved the email field to the top. The password rules now show while you type. And the button says create account instead of submit."],
+  [68, "Invoice page bug details", "Next, the invoice page bug. When a customer pays in two currencies, the total shows the wrong symbol. It only happens in the PDF, not on the page."],
+  [114, "Trial results and metrics", "Now the trial numbers. Four hundred people started a trial last week. About one in five turned on billing."],
+  [157, "Next steps and wrap up", "Next steps. I will fix the invoice bug tomorrow. Let me know what you think."],
+];
+/** Each chapter's sentences spread over its span, a word at a time. */
+function aiWords() {
+  const words = [];
+  AI_SAID.forEach(([from, , text], i) => {
+    const to = i + 1 < AI_SAID.length ? AI_SAID[i + 1][0] : AI_SECS;
+    const ws = text.split(" ");
+    const step = Math.min(0.9, (to - from - 2) / ws.length);
+    ws.forEach((w, j) => words.push([w, +(from + 0.5 + j * step).toFixed(2), +(from + 0.5 + j * step + step * 0.85).toFixed(2)]));
+  });
+  return words;
+}
+const AI_TRANSCRIPT = { v: 1, model: "@cf/openai/whisper-large-v3-turbo", language: "en", duration: AI_SECS, heard_through: AI_SECS, done: true, windows: 4, clock: null, words: aiWords(), tail: [] };
+const named = (id, over = {}) => meta(id, {
+  durationSec: AI_SECS, title: AI_TITLE, titled: false, media: { ...media(id), mp4: null },
+  named: { by: "ai", model: "@cf/openai/gpt-oss-120b", at: iso(Date.now()), rev: "0:0", clock: null, words: AI_TRANSCRIPT.words.length, title: AI_TITLE, chapters: AI_SAID.map(([s, t]) => [s, t]), language: "en" },
+  captions: { language: "en" }, ...over,
+});
+/** The seek bar's tip after the pointer rests over `at` seconds, or a finger drags the thumb there. */
+async function tipAt(page, at, finger) {
+  if (finger) {
+    await page.evaluate((at) => {
+      const sk = document.querySelector(".seek"), r = sk.getBoundingClientRect(), x = r.left + 7, y = r.top + r.height / 2;
+      sk.dispatchEvent(new PointerEvent("pointerdown", { pointerType: "touch", clientX: x, clientY: y, bubbles: true }));
+      sk.value = String(at);
+      sk.dispatchEvent(new Event("input", { bubbles: true }));
+    }, at);
+  } else {
+    const r = await page.$eval(".seek", (sk) => { const b = sk.getBoundingClientRect(); return { x: b.left, y: b.top + b.height / 2, w: b.width, max: +sk.max }; });
+    await page.mouse.move(r.x + (r.w * (at + 0.5)) / r.max, r.y);
+  }
+  await page.waitForTimeout(200);
+  return page.evaluate(() => {
+    const tip = document.querySelector(".chtip");
+    return tip && !tip.hidden ? { time: tip.querySelector(".cht")?.textContent, chapter: tip.lastChild?.textContent, grown: document.querySelectorAll(".chs i.on").length } : null;
+  });
+}
+/** What a named page must do beyond its words: the tip names the chapter under the pointer
+ * (or finger), the bar is cut one section a chapter, Captions is a button named by the spec. */
+const chaptered = (finger) => async (page) => {
+  const missing = [];
+  const sections = await page.$$eval(".chs i", (xs) => xs.length);
+  if (sections !== AI_SAID.length) missing.push(`${AI_SAID.length} sections in the seek bar (got ${sections})`);
+  const tip = await tipAt(page, 122, finger);
+  if (tip?.time !== "2:02" || tip?.chapter !== AI_SAID[2][1] || tip?.grown !== 1) missing.push(`the tip “2:02 ${AI_SAID[2][1]}” (got ${JSON.stringify(tip)})`);
+  const cc = await page.$eval(".cc", (b) => b.getAttribute("aria-label")).catch(() => null);
+  if (cc !== line("live", "live.captions")) missing.push(`the Captions button (got ${cc})`);
+  const spoken = await page.$eval(".seek", (sk) => sk.getAttribute("aria-valuetext"));
+  if (!spoken.endsWith(`, ${finger ? AI_SAID[2][1] : AI_SAID[0][1]}`)) missing.push(`the bar's spoken value naming the chapter (got “${spoken}”)`);
+  return missing;
+};
 
 // Each face: its id in spec/machine.json, the record behind it, how it's opened, and which of the
 // spec's lines it must show (the lines that vary are pinned by the record: 2 of 5 is 40 %).
@@ -79,6 +145,36 @@ const FACES = [
   { face: "removed", id: "GoneGoneGoneGone", record: (id) => JSON.stringify({ schema: 1, id, state: "deleted", title: TITLE }), lines: () => said("removed"), absent: [TITLE] },
   { face: "embed-face", id: "EmbdEmbdEmbdEmbd", embed: true, record: (id) => meta(id), lines: () => [], absent: [TITLE] },
   { face: "embed-face · removed", id: "EmbdGoneEmbdGone", embed: true, record: (id) => JSON.stringify({ schema: 1, id, state: "deleted", title: TITLE }), lines: () => said("removed").slice(0, 1) },
+  // Named by the space (N66, N67; DECISIONS B209): the owner's title field holds the name
+  // until it's typed over, and the line under it says where it came from…
+  { face: "owner-named", id: "OwnrNamdOwnrNamd", owner: true, ai: true, record: (id) => named(id), lines: () => [line("owner-page", "owner-page.named-from-what-you-said"), `· ${AI_SAID[0][1]}`],
+    act: async (page) => ((await page.$eval("#t", (t) => t.placeholder)) === AI_TITLE ? [] : ["the name in the title field"]) },
+  // …or, the account's free day used up, that the name comes later; never an error.
+  { face: "owner-naming-later", id: "OwnrDailyOwnrDly", owner: true, ai: true, record: (id) => meta(id, { durationSec: AI_SECS, title: "Untitled — Oct 18", titled: false, naming: { later: "daily" } }),
+    lines: () => [line("owner-page", "owner-page.its-name-and-chapters-come")], absent: [line("owner-page", "owner-page.named-from-what-you-said")] },
+  // A viewer's page: the chapters cut into the seek bar, the one under the pointer named in a
+  // tip; the one playing beside the time and in the bar's spoken value; Captions in the row.
+  { face: "live-chapters", id: "LiveChapLiveChap", ai: true, record: (id) => named(id, { titled: true }), lines: () => [AI_TITLE, `· ${AI_SAID[0][1]}`], absent: [line("owner-page", "owner-page.named-from-what-you-said")], act: chaptered(false) },
+  // A phone has no hover: a finger on the bar names the chapter above the thumb. The row has
+  // no room beside its five controls for the chapter's name.
+  { face: "live-chapters-phone", id: "LivePhonLivePhon", ai: true, phone: true, record: (id) => named(id, { titled: true }), lines: () => [AI_TITLE], act: async (page) => {
+    const missing = await chaptered(true)(page);
+    if (await page.$eval(".chn", (n) => getComputedStyle(n).display !== "none")) missing.push("no chapter name in a phone's row");
+    return missing;
+  } },
+  // Captions on: the button pressed, the track showing, a cue on screen where words are said.
+  { face: "live-captions", id: "LiveCapsLiveCaps", ai: true, engine: "chromium", record: (id) => named(id, { titled: true }), lines: () => [AI_TITLE], act: async (page) => {
+    await page.click(".cc");
+    const shown = await page.waitForFunction(() => {
+      const v = document.querySelector("video"), t = v.textTracks[0];
+      if (!t || t.mode !== "showing" || !t.cues || !t.cues.length) return false;
+      if (Math.abs(v.currentTime - 70) > 0.5) v.currentTime = 70;
+      return t.activeCues && t.activeCues.length ? t.activeCues[0].text : false;
+    }, null, { timeout: 15000, polling: 250 }).then((h) => h.jsonValue(), () => null);
+    await page.waitForTimeout(600);
+    const pressed = await page.$eval(".cc", (b) => b.getAttribute("aria-pressed"));
+    return [...(pressed === "true" ? [] : ["Captions pressed"]), ...(shown && shown.startsWith("Next, the invoice") ? [] : [`a caption at 1:10 (got ${JSON.stringify(shown)})`])];
+  } },
 ];
 
 /** A real 8 s fMP4 HLS stream and its poster, as the app uploads them. */
@@ -94,6 +190,20 @@ function encode() {
     "-movflags", "+faststart", "-an", path.join(work, "teaser.mp4")]);
   const files = { "video.mp4": new TextEncoder().encode("mp4"), "teaser.mp4": new Uint8Array(fs.readFileSync(path.join(work, "teaser.mp4"))) };
   for (const f of ["master.m3u8", "poster.jpg", ...fs.readdirSync(v0).map((n) => `v0/${n}`)]) files[f] = new Uint8Array(fs.readFileSync(path.join(work, f)));
+  return files;
+}
+
+/** The named video's stream: three minutes, few frames (its seek bar and captions are the point). */
+function encodeLong() {
+  const dir = path.join(work, "long"), v0 = path.join(dir, "v0");
+  fs.mkdirSync(v0, { recursive: true });
+  execFileSync("ffmpeg", ["-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc2=size=640x360:rate=5", "-f", "lavfi", "-i", "sine=frequency=330",
+    "-t", String(AI_SECS), "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p", "-g", "10", "-c:a", "aac", "-f", "hls", "-hls_time", "6", "-hls_playlist_type", "vod",
+    "-hls_segment_type", "fmp4", "-hls_fmp4_init_filename", "init.mp4", "-hls_segment_filename", "seg_%05d.m4s", "stream.m3u8"], { cwd: v0 });
+  execFileSync("ffmpeg", ["-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc2=size=640x360", "-frames:v", "1", path.join(dir, "poster.jpg")]);
+  fs.writeFileSync(path.join(dir, "master.m3u8"), "#EXTM3U\n#EXT-X-VERSION:7\n#EXT-X-STREAM-INF:BANDWIDTH=600000,RESOLUTION=640x360\nv0/stream.m3u8\n");
+  const files = {};
+  for (const f of ["master.m3u8", "poster.jpg", ...fs.readdirSync(v0).map((n) => `v0/${n}`)]) files[f] = new Uint8Array(fs.readFileSync(path.join(dir, f)));
   return files;
 }
 
@@ -117,11 +227,13 @@ async function chipIn(browser, bytes) {
 async function main() {
   fs.mkdirSync(out, { recursive: true });
   const files = encode();
+  const long = encodeLong();
   const env = space();
   await env.BUCKET.put(".shroom/player/hls.min.js", new Uint8Array(fs.readFileSync(path.join(repo, "worker/vendor/hls.min.js"))));
   for (const f of FACES) {
-    for (const [name, bytes] of Object.entries(files)) await env.BUCKET.put(`rec/${f.id}/${name}`, bytes);
+    for (const [name, bytes] of Object.entries(f.ai ? long : files)) await env.BUCKET.put(`rec/${f.id}/${name}`, bytes);
     if (f.record) await env.BUCKET.put(metaKey(f.id), f.record(f.id));
+    if (f.ai) await env.BUCKET.put(`rec/${f.id}/ai/transcript.json`, JSON.stringify(AI_TRANSCRIPT));
   }
   const server = createServer(async (req, res) => {
     const chunks = [];
@@ -148,7 +260,7 @@ async function main() {
           for (const k of [...env.BUCKET.store.keys()].filter((k) => k.startsWith(`rec/${f.id}/thumb-`))) env.BUCKET.store.delete(k);
         }
         const engine = f.engine === "chromium" ? (chrome ??= await chromium.launch()) : browser;
-        const context = await engine.newContext({ colorScheme: scheme, viewport: { width: 900, height: 640 } });
+        const context = await engine.newContext({ colorScheme: scheme, ...(f.phone ? { viewport: { width: 390, height: 844 }, hasTouch: true } : { viewport: { width: 900, height: 640 } }) });
         if (f.owner) await context.addCookies([{ name: cname, value: cvalue, url: origin }]);
         const page = await context.newPage();
         if (f.hold) await page.route(f.hold, () => {});
@@ -174,6 +286,7 @@ async function main() {
         const text = await page.evaluate(() => document.body.innerText);
         const missing = f.lines().filter((l) => !text.includes(l));
         if (!clicked) missing.push(f.after);
+        if (f.act) missing.push(...(await f.act(page)));
         if (f.hidden && !(await page.evaluate((q) => document.querySelector(q)?.hidden, f.hidden))) missing.push(`${f.hidden} hidden`);
         if (f.hover) {
           // The still is stored first; then the button is hovered and its tooltip read.

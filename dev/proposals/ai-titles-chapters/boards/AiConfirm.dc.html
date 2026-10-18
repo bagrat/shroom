@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>shroom popover, turn on AI</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#88c0d0}a:hover{color:#8fbcbb}
+</style>
+</helmet>
+<div style="width: 520px; height: 520px; box-sizing: border-box; background: #3b4252; display: flex; flex-direction: column; font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif; font-size: 13px; line-height: 1.45; color: #eceff4">
+<div style="height: 28px; background: #2e3440; display: flex; flex-direction: row; justify-content: flex-end; align-items: center; padding: 0 86px 0 0; box-sizing: border-box">
+<div style="width: 30px; height: 22px; border-radius: 5px; background: rgba(236, 239, 244, 0.14); display: flex; align-items: center; justify-content: center"><svg viewBox="18 20 84 90" aria-hidden="true" role="img" aria-label="shroom" style="width: 16px; height: 17px; display: block">
+<path d="M50,68 C49,82 46,92 46,96 C46,101 52,104 60,104 C68,104 74,101 74,96 C74,92 71,82 70,68 Z" fill="#E5E9F0"></path>
+<path d="M24,64 C24,42 40,26 60,26 C80,26 96,42 96,64 C86,75 34,75 24,64 Z" fill="#88C0D0"></path>
+<circle cx="50" cy="44" r="6" fill="#ECEFF4"></circle><circle cx="72" cy="48" r="3.6" fill="#ECEFF4"></circle><circle cx="33" cy="58" r="3.4" fill="#ECEFF4"></circle><circle cx="64" cy="58" r="2.6" fill="#ECEFF4"></circle><circle cx="88" cy="58" r="2.2" fill="#ECEFF4"></circle>
+</svg></div>
+</div>
+<div style="display: flex; flex-direction: row; justify-content: flex-end; padding: 8px 40px 0 0">
+<div style="width: 300px; box-sizing: border-box; background: #2b2f36; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; box-shadow: 0 8px 28px rgba(0, 0, 0, 0.3); padding: 12px 14px 14px 14px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<h1 style="margin: 0; font-size: 15px; font-weight: 600; line-height: 1.35" data-said="ai-confirm.turn-on-ai-for">Turn on AI for new videos?</h1>
+<div style="color: #c3cad6" data-said="ai-confirm.titles-chapters-and-captions">Titles, chapters and captions from what’s said, and your “shroom cut” slips cut — on your own Cloudflare account. Free for about 2½ hours of new video a day; more is about 4¢ per video hour on Cloudflare’s $5 plan.</div>
+</div>
+<div style="display: flex; flex-direction: row; justify-content: space-between; align-items: center; gap: 8px">
+<button style="font: inherit; height: 32px; padding: 0 14px; border: 1px solid #4c566a; border-radius: 8px; background: transparent; color: #eceff4" data-said="ai-confirm.back">Back</button>
+<button style="font: inherit; font-weight: 600; height: 32px; padding: 0 14px; border: 0; border-radius: 8px; background: #88c0d0; color: #2b2f36" data-said="ai-confirm.turn-on">Turn on</button>
+</div>
+</div>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":520,"height":520}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

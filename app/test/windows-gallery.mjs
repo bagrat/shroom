@@ -83,6 +83,8 @@ const TEXT = new Set([
   // Region 6: the member's label on a row, Settings · Space's beneath-the-rows lines, the
   // Members tab's You row, a row's fact, the composer's line, a born link's address.
   "member", "mark_line", "you", "fact", "invite_line", "prefix",
+  // Naming (N66): the setup Mac's switch line under it.
+  "ai_line",
   // A line in runs (Rich): who invites say they're from (B158).
   "text",
   // Report a problem (B180): General's help row and its sent line; the sheet's field label,
@@ -600,10 +602,13 @@ for (const entry of settings) {
         check(`${tag}: the token field ${p.nest.held ? "shows its dots" : "is empty"}`, p.nest.held ? DOTS.test(shown) : shown === "", JSON.stringify(shown));
       }
       check(`${tag}: paste fields — ${p.nest.kind === "token" ? "the token's" : "no token field"}, no invite door (B159)`, (await page.locator("input.paste").count()) === (p.nest.kind === "token" ? 1 : 0));
-      // Beneath the rows: the mark switch (owner-class), then the exits.
-      const sw = page.getByRole("switch");
-      check(`${tag}: mark switch ${b.pane.mark ? (b.pane.mark.on ? "on" : "off") : "absent"}`, b.pane.mark ? (await sw.count()) === 1 && (await sw.isChecked()) === b.pane.mark.on && (await sw.isEnabled()) === b.pane.mark.enabled : (await sw.count()) === 0);
-      if (b.pane.mark) check(`${tag}: the switch is labelled with the Scene's words`, (await page.getByRole("switch", { name: b.pane.mark.label, exact: true }).count()) === 1);
+      // Beneath the rows: the mark switch (owner-class) and naming's (the setup Mac, N66), then the exits.
+      const toggles = [b.pane.mark, b.pane.ai].filter(Boolean);
+      check(`${tag}: ${toggles.length} switch${toggles.length === 1 ? "" : "es"}, as the Scene has`, (await page.getByRole("switch").count()) === toggles.length);
+      for (const t of toggles) {
+        const sw = page.getByRole("switch", { name: t.label, exact: true });
+        check(`${tag}: “${t.label}” ${t.on ? "on" : "off"}, ${t.enabled ? "live" : "greyed"}, labelled with the Scene's words`, (await sw.count()) === 1 && (await sw.isChecked()) === t.on && (await sw.isEnabled()) === t.enabled);
+      }
       check(`${tag}: exits at the foot`, (await page.locator(".space > .exits button").count()) === b.pane.exits.length);
       // A denied microphone's door hangs right under its row (the last one), before the
       // plan's closing line.
@@ -848,6 +853,15 @@ for (const variant of ["remove-member", "remove-invite", "remove-mac"]) {
   await ctx.close();
 }
 {
+  // N66: naming's switch on the setup Mac sends its action and keeps the Scene's state.
+  const { ctx, page } = await open("settings", set("space-ai-off"));
+  const sw = page.getByRole("switch", { name: "AI for new videos", exact: true });
+  await sw.click();
+  check("space · naming: the switch sends set-ai", acted(await calls(page), "settings", { do: "set-ai", arg: true }));
+  check("space · naming: the switch keeps the Scene's state until the Scene changes", !(await sw.isChecked()));
+  await ctx.close();
+}
+{
   const { ctx, page } = await open("settings", set("space-member"));
   await page.locator(".plan h1").click();
   await pasteAt(page, null, "https://v.myshroom.workers.dev/join/abc");
@@ -1056,6 +1070,24 @@ for (const entry of countdowns) {
     await page.screenshot({ path: join(out, `countdown-${entry.variant}-${scheme}.png`), animations: "disabled" });
     await ctx.close();
   }
+}
+
+// N66: the AI banner and its confirm send the Scene's actions.
+{
+  const pop = (variant) => popovers.find((e) => e.variant === variant).scene;
+  const ban = await open("popover", pop("ai-offer"));
+  await clear(ban.page);
+  await ban.page.getByRole("button", { name: "Turn on…", exact: true }).click();
+  check("ai-offer: Turn on… sends ai-ask", acted(await calls(ban.page), "popover", { do: "ai-ask" }));
+  await clear(ban.page);
+  await ban.page.getByRole("button", { name: "Not now", exact: true }).click();
+  check("ai-offer: Not now sends ai-not-now", acted(await calls(ban.page), "popover", { do: "ai-not-now" }));
+  await ban.ctx.close();
+  const ask = await open("popover", pop("ai-confirm"));
+  await clear(ask.page);
+  await ask.page.getByRole("button", { name: "Turn on", exact: true }).click();
+  check("ai-confirm: Turn on sends ai-on", acted(await calls(ask.page), "popover", { do: "ai-on" }));
+  await ask.ctx.close();
 }
 
 // Region 3's controls send the Scene's actions.

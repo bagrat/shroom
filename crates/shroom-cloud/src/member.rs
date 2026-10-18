@@ -199,8 +199,9 @@ impl<T> Answer<T> {
 /// The ping (§4.2) — the one route that keeps `"shroom":true`.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Ping {
-    /// A shroom space, its page's interface and the version of the app that deployed it.
-    Shroom { iface: u32, version: String },
+    /// A shroom space, its page's interface and the version of the app that deployed it,
+    /// and whether it carries Cloudflare's AI (N66: naming on).
+    Shroom { iface: u32, version: String, ai: bool },
     /// Answered, but not as a shroom space: workers.dev's 404 (`error code: 1042`), another
     /// Worker, an error page.
     NotShroom { status: u16 },
@@ -584,6 +585,7 @@ impl Space {
                     (200, Some(true)) => Ping::Shroom {
                         iface: v.get("iface").and_then(Value::as_u64).unwrap_or(1) as u32,
                         version: v.get("version").and_then(Value::as_str).unwrap_or("0.0.0").to_string(),
+                        ai: v.get("ai").and_then(Value::as_bool).unwrap_or(false),
                     },
                     _ => Ping::NotShroom { status },
                 }
@@ -619,6 +621,23 @@ impl Space {
         }
         let body = json!({"device": device, "ownerName": owner_name}).to_string().into_bytes();
         let proof = parent_proof(parent_secret, "POST", &self.host, path, ts, &body);
+        Self::classify(self.send("POST", path, &body, Some(&proof)))
+    }
+
+    /// `POST ai` (N66, DECISIONS B206 b): one step of naming for a take — this Mac's word
+    /// that another minute of it is up, or that it's done.
+    pub fn ai(&self, auth: &AiAuth, rec: &str, signal: AiSignal, ts: u64) -> Answer<AiAnswer> {
+        let path = "/_shroom/api/ai";
+        let body = match signal {
+            AiSignal::Through(n) => json!({"rec": rec, "through": n}),
+            AiSignal::Done => json!({"rec": rec, "done": true}),
+        }
+        .to_string()
+        .into_bytes();
+        let proof = match auth {
+            AiAuth::Device(key) => key.bearer(),
+            AiAuth::Parent(secret) => parent_proof(secret, "POST", &self.host, path, ts, &body),
+        };
         Self::classify(self.send("POST", path, &body, Some(&proof)))
     }
 
@@ -876,6 +895,106 @@ impl MeNext {
 /// up again, two accounts on one Mac stay apart, and the hardware's own id never leaves.
 pub fn machine_stamp(hardware: &str, home: &str, host: &str) -> String {
     crate::device::hash(&format!("shroom-machine-v1\n{hardware}\n{home}\n{host}"))
+}
+
+
+/// Who asks for naming's steps (N66): a device key, or the setup Mac's parent proof — the
+/// token's derived S3 secret, as enroll signs with it (the setup Mac may hold no device key).
+pub enum AiAuth<'a> {
+    Device(&'a DeviceKey),
+    Parent(&'a str),
+}
+
+/// What a Mac tells its space about a take (N66, DECISIONS B206 b).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AiSignal {
+    /// This many of the take's pieces are up, unbroken from the first.
+    Through(u32),
+    /// The take is live: every piece is up.
+    Done,
+}
+
+/// The space's answer to one step.
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+pub struct AiAnswer {
+    /// The space names videos (its page carries Cloudflare's AI).
+    pub ai: bool,
+    /// Another step can be taken now.
+    #[serde(default)]
+    pub more: bool,
+    /// Why it waits, when it does (the free day, a busy model): the space's schedule finishes it.
+    #[serde(default)]
+    pub later: Option<String>,
+    /// The step's line for this Mac's log: counts, times, models and codes, never a word said
+    /// or a title (DECISIONS B206 f).
+    #[serde(default)]
+    pub note: Option<String>,
+}
+
+/// How a signal went.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AiSent {
+    /// The space names videos and took it: heard, named, or kept for its schedule.
+    On,
+    /// The space doesn't name videos: nothing more to say about this take.
+    Off,
+    /// The space won't take it (the take is gone, or this Mac can't ask): nothing more either.
+    Settled,
+    /// No answer, or the space's own trouble: owed, and said again later.
+    Owed,
+}
+
+/// Tells the space, a step at a time, asking again while it says there's more — a few times
+/// for a minute, more for a done take, then the space's own schedule finishes what's left.
+pub fn ai_signal(space: &Space, auth: &AiAuth, rec: &str, signal: AiSignal) -> AiSent {
+    ai_signal_noted(space, auth, rec, signal).0
+}
+
+/// [`ai_signal`], with each answer's note for this Mac's log, in order.
+pub fn ai_signal_noted(space: &Space, auth: &AiAuth, rec: &str, signal: AiSignal) -> (AiSent, Vec<String>) {
+    let most = match signal {
+        AiSignal::Through(_) => 3,
+        AiSignal::Done => 12,
+    };
+    let mut sent = AiSent::Owed;
+    let mut notes = Vec::new();
+    for _ in 0..most {
+        let ts = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs());
+        match space.ai(auth, rec, signal, ts) {
+            Answer::Ok(a) if !a.ai => return (AiSent::Off, notes),
+            Answer::Ok(a) => {
+                sent = AiSent::On;
+                notes.extend(a.note);
+                if !a.more {
+                    return (sent, notes);
+                }
+            }
+            Answer::Refused(r) if !(r.is_transient() || r.is_space() || r.status >= 500 || r.class == Class::StaleParent) => {
+                return (if sent == AiSent::On { sent } else { AiSent::Settled }, notes);
+            }
+            _ => return (sent, notes),
+        }
+    }
+    (sent, notes)
+}
+
+/// A signal's lines for this Mac's log: `naming <take>: <signal> → <how it went>`, then each
+/// answer's note, as many lines as keep each under the report's cut (B206 f).
+pub fn ai_log_lines(take: &str, signal: AiSignal, sent: AiSent, notes: &[String]) -> Vec<String> {
+    const MOST: usize = 380;
+    let head = format!("naming {take}: ");
+    let mut lines = vec![format!("{head}{signal:?} → {sent:?}")];
+    for n in notes {
+        let n: String = n.chars().filter(|c| !c.is_control()).take(200).collect();
+        let last = lines.last_mut().expect("a line");
+        if last.chars().count() + 3 + n.chars().count() <= MOST {
+            last.push_str(" · ");
+            last.push_str(&n);
+        } else {
+            lines.push(format!("{head}… {n}"));
+        }
+    }
+    lines
 }
 
 #[cfg(test)]

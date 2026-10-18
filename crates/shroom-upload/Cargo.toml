@@ -16,4 +16,5 @@ base64 = "0.22"
 
 [dev-dependencies]
 shroom-cloudfake = { path = "../shroom-cloudfake" }
+shroom-core = { path = "../shroom-core" }
 tempfile = "3"

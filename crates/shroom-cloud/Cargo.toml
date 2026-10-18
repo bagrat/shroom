@@ -15,4 +15,5 @@ ureq = { version = "3", default-features = false, features = ["rustls", "platfor
 
 [dev-dependencies]
 shroom-cloudfake = { path = "../shroom-cloudfake" }
+shroom-core = { path = "../shroom-core" }
 shroom-storage = { path = "../shroom-storage" }
