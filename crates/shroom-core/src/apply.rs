@@ -548,7 +548,13 @@ fn cli(w: &mut World, id: u64, op: crate::event::CliOp) -> Out {
         },
         CliOp::Stop => match phase {
             Some(Phase::Paused(_)) if w.session.confirm.is_some() => return refuse(w, "not_ready"),
-            Some(Phase::Recording | Phase::Paused(_)) => act(w, Action::Stop),
+            Some(Phase::Paused(_)) => act(w, Action::Stop),
+            // Recording, not paused: the take's own stop, the machine's recording → stopping.
+            Some(Phase::Recording) => {
+                let (fx, mut arm) = act(w, Action::Stop);
+                arm.edge = arm.edge.map(|_| ("recording", "stopping"));
+                (fx, arm)
+            }
             _ => return refuse(w, "no_take"),
         },
     };
