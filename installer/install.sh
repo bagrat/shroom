@@ -8,7 +8,7 @@
 #   2. Check it against its published fingerprint — if anything is off,
 #      nothing gets installed.
 #   3. Place it in ~/Applications — no admin password, nothing outside
-#      your home folder — with its `shroom` command in ~/.local/bin.
+#      your home folder.
 #   4. Open it.
 #
 # Run it again anytime — that's also the update: same four steps, newer
@@ -24,6 +24,7 @@
 # repository. Each one carries manifest.txt — the version, the oldest macOS it runs
 # on, and for each kind of Mac the file to download and its SHA-256 fingerprint.
 # Everything runs inside main(), so a half-downloaded copy of this script does nothing.
+# Placing shroom also links its `shroom` command into ~/.local/bin (see link_cli below).
 
 set -u
 
