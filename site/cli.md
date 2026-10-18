@@ -112,8 +112,9 @@ lists every item. Tell them which failed and why, and run it again for those onl
   countdown, and between two steps, a `pause`, `resume` or `stop` answers `refused`
   (shroom is between two steps): wait a moment and ask again. shroom lets you
   record only once they've turned on “Let it start and stop recordings” in its Settings,
-  under General — until then you get `recording_off`: tell them where the switch is,
-  and never look for another way to record.
+  under General — until then you get `recording_off`, with a `settings_link`: pass on
+  the message and give them the link, which opens shroom's Settings right at the switch.
+  They turn it on themselves; never look for another way to record.
 - **Links are theirs to share.** Show a link to them; don't post it anywhere or send it
   to anyone unless they ask.
 - **Invites.** `shroom invite` makes a link that lets one person join their space, for
@@ -137,7 +138,7 @@ lists every item. Tell them which failed and why, and run it again for those onl
 | `offline` | The space can't be reached. Say so; try again only if they ask. |
 | `refused` | Pass on `message` (e.g. the video is someone else's). Don't work around it. |
 | `take_open` | A recording is running. Wait until they stop it. |
-| `recording_off` | They haven't let you record: tell them about the switch (see *Rules*). |
+| `recording_off` | They haven't let you record: pass on `message` and give them `settings_link` (see *Rules*). |
 | `app_unreachable` | shroom isn't running or didn't answer. Ask them to open it. |
 | `usage` | Your command was wrong: `shroom --help` and fix it. |
 | `partial` | Some of a batch went through, some didn't: see each item's `status` and `error`. |
