@@ -259,6 +259,46 @@ fn a_bake_interrupted_after_its_write_finishes_when_repeated() {
     assert_eq!(files(&fake, A), ["edit-1-poster.jpg", "edit-1-teaser.mp4", "edit-1.mp4"]);
 }
 
+/// The same cut-off bake left to the token Mac's cleanup sweep (B197): the record holds no edit
+/// any more, so no plan bakes it again — the sweep finds it by the original's files still
+/// beside it and finishes the deletes. A video never edited, a bake that finished, and a baked
+/// video edited again since (it isn't baked now, whatever lies beside it) are left alone.
+#[test]
+fn the_cleanup_sweep_finishes_a_bake_cut_off_after_its_write() {
+    const B: &str = "BBBBBBBBBBBBBBBB";
+    const C: &str = "CCCCCCCCCCCCCCCC";
+    const D: &str = "DDDDDDDDDDDDDDDD";
+    let (fake, s3) = space();
+    record(&s3, B);
+    record(&s3, C);
+    save_and_copy(&s3, C, &edited(60.0), 38.0);
+    assert!(library::bake(&s3, C, DUE).unwrap().is_some());
+    for id in [A, D] {
+        record(&s3, id);
+        save_and_copy(&s3, id, &edited(60.0), 38.0);
+    }
+    fake.with(|s| s.control(&format!("fault 403 DELETE /s3/{BUCKET}/rec/ always")).unwrap());
+    for id in [A, D] {
+        assert!(library::bake(&s3, id, DUE).is_err());
+        assert!(read(&s3, id).get("edits").is_none() && ORIGINAL.iter().all(|f| files(&fake, id).contains(&f.to_string())));
+    }
+    fake.with(|s| s.control("faults-clear").unwrap());
+    // D is edited again on its baked clock: it holds an edit, its copy not made yet.
+    let mut again = History::new(EditList::new(38.0));
+    assert!(again.act(&Op::Trim { in_: 0.0, out: 30.0 }));
+    assert_eq!(library::save_edits(&s3, D, &again.now, 1).unwrap(), 2);
+    let (b, c, d) = (files(&fake, B), files(&fake, C), files(&fake, D));
+
+    let holds = |_: &str| false;
+    let here = library::Here { now_ms: library::iso_ms("2026-10-25T12:00:00Z").unwrap(), device: None, holds: &holds };
+    let cleaned = library::cleanup(&s3, &here).unwrap();
+    assert_eq!(cleaned.baked, vec![(A.to_string(), Baked { rev: 1, written: false, deleted: ORIGINAL.len() + 1 })]);
+    assert_eq!(files(&fake, A), ["edit-1-poster.jpg", "edit-1-teaser.mp4", "edit-1.mp4"]);
+    assert_eq!((files(&fake, B), files(&fake, C), files(&fake, D)), (b, c, d), "the others are as they were");
+    // The next pass finds nothing more to do.
+    assert_eq!(library::cleanup(&s3, &here).unwrap(), library::Cleaned::default());
+}
+
 /// A baked video is an ordinary one-file recording: edited again, its revisions carry on
 /// past the one it plays (so no copy is ever cut over the file it plays), a copy record
 /// naming the file it plays never gets that file deleted, the second bake moves it to the

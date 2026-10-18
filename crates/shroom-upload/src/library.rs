@@ -488,46 +488,68 @@ pub fn bake(s3: &Client, id: &str, now: &str) -> Result<Option<Baked>, UploadErr
     iso_ms(now).ok_or_else(|| UploadError::Incomplete(format!("not a time: {now:?}")))?;
     let prefix = keys::prefix(id);
     // A look first: a record with nothing to bake costs one read.
-    let bytes = with_retry(|| s3.get(&keys::meta(id)))?.ok_or(UploadError::Collision)?;
-    let raw: serde_json::Value = serde_json::from_slice(&bytes).map_err(|e| UploadError::Incomplete(format!("unreadable meta: {e}")))?;
-    if raw.get("state").and_then(|s| s.as_str()) == Some("deleted") {
-        return Err(UploadError::Tombstoned);
-    }
-    let seen: Meta = serde_json::from_value(raw).map_err(|e| UploadError::Incomplete(format!("unreadable meta: {e}")))?;
+    let seen = look(s3, id)?;
     let copy = match seen.edits.as_ref() {
         Some(saved) => match bakeable(saved) {
-            Some(c) => Some(c.clone()),
+            Some(c) => c.clone(),
             None => return Ok(None),
         },
-        None if baked(&seen, id) => None,
+        None if baked(&seen, id) => return finish(s3, id, &seen),
         None => return Ok(None),
     };
     // What's beside the record before the write: the deletes take only from this, so a
     // file sent after it (a later edit's copy) is never one of them.
     let listed = with_retry(|| s3.list(&prefix))?;
-    // `before`: the length the video had before the bake, on whose clock its list plays —
-    // not known once it's baked.
-    let (now_named, written, before) = match copy {
-        None => (seen, false, None),
-        Some(copy) => {
-            let file = format!("{prefix}{}", copy.file);
-            if !listed.iter().any(|o| o.key == file && o.size > 0) {
-                return Err(UploadError::Incomplete(format!("the copy {} isn't in the space", copy.file)));
-            }
-            let before = seen.duration_sec.filter(|d| d.is_finite() && *d > 0.0).or_else(|| seen.edits.as_ref().map(|s| s.list.source_duration));
-            let mut done = false;
-            let meta = update_edit(s3, id, |m| done = bake_record(m, id, &copy, now))?;
-            // Between the look and the write: another Mac's bake (finish it), or a newer
-            // save (nothing to do).
-            if !done && !baked(&meta, id) {
-                return Ok(None);
-            }
-            (meta, done, before)
-        }
-    };
-    let start_cut = !kept_the_start(&now_named, before);
-    let deleted = bake_deletes(s3, id, &listed, &now_named, start_cut)?;
-    Ok(Some(Baked { rev: baked_rev(&now_named), written, deleted }))
+    let file = format!("{prefix}{}", copy.file);
+    if !listed.iter().any(|o| o.key == file && o.size > 0) {
+        return Err(UploadError::Incomplete(format!("the copy {} isn't in the space", copy.file)));
+    }
+    // The length the video had before the bake, on whose clock its list plays.
+    let before = seen.duration_sec.filter(|d| d.is_finite() && *d > 0.0).or_else(|| seen.edits.as_ref().map(|s| s.list.source_duration));
+    let mut done = false;
+    let meta = update_edit(s3, id, |m| done = bake_record(m, id, &copy, now))?;
+    // Between the look and the write: another Mac's bake (finish it), or a newer save
+    // (nothing to do).
+    if !done && !baked(&meta, id) {
+        return Ok(None);
+    }
+    let deleted = bake_deletes(s3, id, &listed, &meta, !kept_the_start(&meta, before))?;
+    Ok(Some(Baked { rev: baked_rev(&meta), written: done, deleted }))
+}
+
+/// The record, read once before a write: a tombstone stops what was asked.
+fn look(s3: &Client, id: &str) -> Result<Meta, UploadError> {
+    let bytes = with_retry(|| s3.get(&keys::meta(id)))?.ok_or(UploadError::Collision)?;
+    let raw: serde_json::Value = serde_json::from_slice(&bytes).map_err(|e| UploadError::Incomplete(format!("unreadable meta: {e}")))?;
+    if raw.get("state").and_then(|s| s.as_str()) == Some("deleted") {
+        return Err(UploadError::Tombstoned);
+    }
+    serde_json::from_value(raw).map_err(|e| UploadError::Incomplete(format!("unreadable meta: {e}")))
+}
+
+/// The deletes of a video already baked, finished: what its bake deletes, from what's beside
+/// it now (the length it had before isn't known any more).
+fn finish(s3: &Client, id: &str, baked: &Meta) -> Result<Option<Baked>, UploadError> {
+    let listed = with_retry(|| s3.list(&keys::prefix(id)))?;
+    let deleted = bake_deletes(s3, id, &listed, baked, !kept_the_start(baked, None))?;
+    Ok(Some(Baked { rev: baked_rev(baked), written: false, deleted }))
+}
+
+/// A bake cut off after its write, finished by the cleanup sweep: the record read again, and
+/// only a video baked — no edit, a bake [`BAKED_FROM`] remembers, `media` its own copy's —
+/// has its deletes finished. Never a bake of its own: a record edited again since, or never
+/// baked, is left as it is (`None`).
+fn finish_bake(s3: &Client, id: &str) -> Result<Option<Baked>, UploadError> {
+    let seen = look(s3, id)?;
+    if !(remembers_a_bake(&seen) && baked(&seen, id)) {
+        return Ok(None);
+    }
+    finish(s3, id, &seen)
+}
+
+/// Whether the record remembers a bake ([`BAKED_FROM`] holds one).
+fn remembers_a_bake(m: &Meta) -> bool {
+    m.extra.get(BAKED_FROM).and_then(serde_json::Value::as_array).is_some_and(|from| !from.is_empty())
 }
 
 /// A bake's deletes, from `listed` (what was beside the record before its write): when the
@@ -657,20 +679,34 @@ pub struct Swept {
 /// any byte, so a record-less id is either mid-claim or abandoned; only the caller can tell).
 /// A live record's bytes are never touched here: its stream, its copies, its thumbnails.
 pub fn sweep(s3: &Client, orphans_ok: &dyn Fn(&str) -> bool) -> Result<Swept, UploadError> {
-    sweep_reading(s3, orphans_ok, &mut |_, _| {})
+    sweep_reading(s3, orphans_ok, &mut |_, _, _| {})
+}
+
+/// What the sweep's listing holds beside one recording that a bake deletes: any of the
+/// original's files, and its copies' files by name.
+#[derive(Debug, Default)]
+struct Beside {
+    original: bool,
+    copies: Vec<String>,
 }
 
 /// [`sweep`], handing every other record it reads (one with bytes, not a tombstone) to
-/// `live`, so a caller that needs them costs no second read.
-fn sweep_reading(s3: &Client, orphans_ok: &dyn Fn(&str) -> bool, live: &mut dyn FnMut(&str, &[u8])) -> Result<Swept, UploadError> {
-    let mut ids = std::collections::BTreeSet::new();
+/// `live` with what its listing holds beside it, so a caller that needs them costs no second
+/// read.
+fn sweep_reading(s3: &Client, orphans_ok: &dyn Fn(&str) -> bool, live: &mut dyn FnMut(&str, &[u8], &Beside)) -> Result<Swept, UploadError> {
+    let mut ids: BTreeMap<String, Beside> = BTreeMap::new();
     for o in with_retry(|| s3.list("rec/"))? {
-        if let Some(id) = o.key.strip_prefix("rec/").and_then(|k| k.split('/').next()) {
-            ids.insert(id.to_string());
+        let Some(rest) = o.key.strip_prefix("rec/") else { continue };
+        let (id, name) = rest.split_once('/').unwrap_or((rest, ""));
+        let beside = ids.entry(id.to_string()).or_default();
+        if is_original_file(name) {
+            beside.original = true;
+        } else if is_copy_file(name) {
+            beside.copies.push(name.to_string());
         }
     }
     let mut out = Swept::default();
-    for id in ids {
+    for (id, beside) in ids {
         match with_retry(|| s3.get(&keys::meta(&id)))? {
             Some(b) if serde_json::from_slice::<serde_json::Value>(&b).ok().is_some_and(|v| v["state"] == "deleted") => {
                 remove_bytes(s3, &id)?;
@@ -680,11 +716,22 @@ fn sweep_reading(s3: &Client, orphans_ok: &dyn Fn(&str) -> bool, live: &mut dyn 
                 remove_bytes(s3, &id)?;
                 out.orphans.push(id);
             }
-            Some(b) => live(&id, &b),
+            Some(b) => live(&id, &b, &beside),
             None => {}
         }
     }
     Ok(out)
+}
+
+/// Whether a record is a live video baked (B197) whose listing still holds a file its bake
+/// deletes — one of the original's, or a copy's its `media` doesn't name: a bake whose
+/// deletes were cut off after its write. A record that isn't baked never is.
+fn bake_unfinished(m: &Meta, id: &str, beside: &Beside) -> bool {
+    if m.state != State::Live || !remembers_a_bake(m) || !baked(m, id) {
+        return false;
+    }
+    let playing = media_keys(m);
+    beside.original || beside.copies.iter().any(|name| !playing.contains(&format!("{}{name}", keys::prefix(id))))
 }
 
 /// Where the space keeps its roster, its ownership ledger and the page's one-time keys
@@ -720,8 +767,9 @@ pub struct Cleaned {
     pub swept: Swept,
     /// Page keys (`.shroom/keys/<hash>`) spent or past their life.
     pub keys: usize,
-    /// Videos whose original's two days were up: their edit became the video (B197 (d)) —
-    /// each with what its bake did.
+    /// Videos whose original's two days were up: their edit became the video (B197 (d)); and
+    /// videos whose bake was cut off after its write, its deletes finished now (`written`
+    /// false) — each with what its bake did.
     pub baked: Vec<(String, Baked)>,
 }
 
@@ -730,21 +778,26 @@ pub struct Cleaned {
 /// bytes with no record go only once no Mac can still finish them (`reapable`); page keys
 /// go once spent or an hour past their life; and every video in the space whose original's
 /// two days are up is baked (B197 (d), [`upkeep_plan`] over every record the sweep reads,
-/// [`bake`]) — a bake that fails waits for the next pass, the rest of the pass stands. No
-/// other record is touched, and nothing a live record names: a link that was made keeps
-/// answering as it did.
+/// [`bake`]) — a bake that fails waits for the next pass, the rest of the pass stands. A
+/// video whose bake was cut off after its write (no edit left for the plan to read, the
+/// original's files still beside it) has its deletes finished. No other record is touched,
+/// and nothing a live record names: a link that was made keeps answering as it did.
 pub fn cleanup(s3: &Client, here: &Here) -> Result<Cleaned, UploadError> {
     // An unreadable roster reaps no orphan at all (fail closed): who can still finish one
     // is the roster's to say.
     let roster: Option<serde_json::Value> = with_retry(|| s3.get(ROSTER))?.and_then(|b| serde_json::from_slice(&b).ok());
     let mut edited: Vec<(String, Meta)> = Vec::new();
+    let mut unfinished: Vec<String> = Vec::new();
     let reapable_here = |id: &str| {
         let ledger = s3.get(&format!("{LEDGER}{id}")).ok().flatten().and_then(|b| serde_json::from_slice::<serde_json::Value>(&b).ok());
         reapable(id, ledger.as_ref(), roster.as_ref(), here)
     };
-    let swept = sweep_reading(s3, &reapable_here, &mut |id, bytes| {
-        if let Some(m) = serde_json::from_slice::<Meta>(bytes).ok().filter(|m| m.edits.is_some()) {
+    let swept = sweep_reading(s3, &reapable_here, &mut |id, bytes, beside| {
+        let Ok(m) = serde_json::from_slice::<Meta>(bytes) else { return };
+        if m.edits.is_some() {
             edited.push((id.to_string(), m));
+        } else if bake_unfinished(&m, id, beside) {
+            unfinished.push(id.to_string());
         }
     })?;
     let mut keys = 0;
@@ -760,6 +813,11 @@ pub fn cleanup(s3: &Client, here: &Here) -> Result<Cleaned, UploadError> {
     for id in upkeep_plan(&edited, &now, &|_| true, &|_| false).bake {
         // One that fails waits for the next pass; the rest of this one stands.
         if let Ok(Some(b)) = bake(s3, &id, &now) {
+            baked.push((id, b));
+        }
+    }
+    for id in unfinished {
+        if let Ok(Some(b)) = finish_bake(s3, &id) {
             baked.push((id, b));
         }
     }
