@@ -346,3 +346,28 @@ fn a_sheet_open_in_settings_stays_and_settings_comes_forward() {
         assert_eq!(r.scene.settings.as_ref().map(|s| &s.body), before.as_ref().map(|s| &s.body), "as it stands");
     }
 }
+
+/// The light is a pointer, not a state: the person flipping the switch, or going to another
+/// tab, puts it out at once — it never lights the row again when they come back.
+#[test]
+fn a_flip_or_another_tab_puts_the_light_out() {
+    let mut r = Run::new(ready());
+    link(&mut r);
+    assert!(general(&r).agent.lit);
+    r.send(Event::Act { surface: Surface::Settings, action: Action::SetAgentRecording(true), rev: 0 });
+    let g = general(&r);
+    assert!(g.agent.recording.on && !g.agent.lit, "flipped by the person, and the light out");
+    let mut r = Run::new(ready());
+    link(&mut r);
+    r.send(Event::Act { surface: Surface::Settings, action: Action::SettingsTab(SettingsTab::Space), rev: 0 });
+    r.send(Event::Act { surface: Surface::Settings, action: Action::SettingsTab(SettingsTab::General), rev: 0 });
+    assert!(!general(&r).agent.lit, "back on General, nothing lit");
+}
+
+/// Opened cold by the link, Settings takes a moment to draw: the core keeps the light long
+/// enough for that (the window shows it for its own first moments, then fades it).
+#[test]
+fn the_light_outlasts_a_window_opening_cold() {
+    assert!(LIT_MS >= 5_000, "LIT_MS {LIT_MS}: a window opened cold can take seconds to draw");
+}
+

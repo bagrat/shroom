@@ -938,7 +938,7 @@ fn agent_switch(d: &Drive, general: Option<&shroom_core::scene::GeneralBody>) ->
     let shown = d.wait("the settings link lights the switch's row", 5, lit);
     d.check("the settings link opens General with the switch's row lit", shown.is_ok(), shown.as_ref().err().cloned().unwrap_or_default());
     d.check("the link flips nothing", shown.as_ref().is_ok_and(|s| !on(s)), "the switch read on");
-    let out = d.wait("the light goes out", 5, |s| s.settings.is_some() && !lit(s));
+    let out = d.wait("the light goes out", 10, |s| s.settings.is_some() && !lit(s));
     d.check("the link's light goes out by itself, Settings stays", out.is_ok(), out.err().unwrap_or_default());
     let answer = ask_socket(d, "record.stop");
     d.check("after the link, still refused", answer.contains("\"recording_off\""), answer);

@@ -36,7 +36,9 @@ wait_socket() {
 quit
 rm -rf "$home" && mkdir -p "$home" && chmod 700 "$home"
 printf '%s\n' '{"account_id":"acc","label":"v","subdomain":"x","host":"settings-link.invalid","bucket":"shroom-space","role":"Member","member_id":"m_AbCdEfGhIjKlMnOp","owner_name":"Ann"}' >"$home/space.json"
-chmod 600 "$home/space.json"
+# A Mac whose permissions chapter is done (primed), as a set-up Mac is: no setup window.
+printf '{"v":1,"at":%s}\n' "$(($(date +%s) * 1000))" >"$home/primed.json"
+chmod 600 "$home/space.json" "$home/primed.json"
 
 echo "── the refusal carries the link"
 open -n "$MAC_APP" --args --home "$home"
@@ -55,8 +57,10 @@ for i in $(seq 1 30); do [ "$(taken)" -ge 1 ] && break; sleep 1; done
 [ "$(taken)" -ge 1 ] && echo "  the core took the link after ~${i}s" || no "the link never reached the core at a cold launch"
 for _ in $(seq 1 10); do [ "$(settings_shown)" = yes ] && break; sleep 0.5; done
 [ "$(settings_shown)" = yes ] && echo "  Settings is on screen" || no "no Settings window on screen after the link"
+# The window lights the row for its own first moments, however long it took to draw.
+sleep 1
 screencapture -x "$OUT/cold-lit.png"
-sleep 3
+sleep 4
 screencapture -x "$OUT/cold-after.png"
 [ "$(switch_state)" = off ] || no "the link turned the switch on"
 ps -axo args | grep "$MAC_APP/Contents/MacOS/" | grep -v grep | grep -q "settings/agent" && no "the link is on the app's command line"
@@ -73,6 +77,7 @@ for i in $(seq 1 15); do [ "$(taken)" -gt "$before" ] && break; sleep 1; done
 [ "$(taken)" -gt "$before" ] && echo "  the core took the link (warm)" || no "the link never reached the running app"
 for _ in $(seq 1 10); do [ "$(settings_shown)" = yes ] && break; sleep 0.5; done
 [ "$(settings_shown)" = yes ] && echo "  Settings is on screen" || no "no Settings window on screen after the link (warm)"
+sleep 0.5
 screencapture -x "$OUT/warm-lit.png"
 
 echo "── the link changed nothing: still off, still refused"
