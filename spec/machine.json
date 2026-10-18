@@ -1131,7 +1131,7 @@
   {
    "id": "N62",
    "title": "shroom on the command line, for a person or their coding agent",
-   "decision": "**Proposed 2026-10-18 (dev/proposals/cli-agent-skill.md); Bagrat's calls the same day, relayed by the orchestrator: an agent may start and stop recordings only once a Settings switch is on, off by default; the command may make invites; the command is always installed.** (1) **The `shroom` command** ships inside the app (`Contents/MacOS/shroom-cli`), linked into `~/.local/bin` by the install line (and its PATH put in the login profile when it isn't there) and into Homebrew's bin by the cask; `--uninstall` takes both back. (2) **It works whether the app runs or not:** list, info, link, open, rename, delete, cleanup candidates, members, invites — through the space's own page under this Mac's device key, never the Cloudflare token. A delete or a member's removal changes nothing without `--yes`; a rename, delete, invite or removal waits while a take is open (law 4). (3) **Recording goes through the running app** (its control socket in shroom's folder, this user only): start is the popover's Start, countdown and permission beat included; pause the tray's; Resume and Stop the paused popover's; a stop answers with its link (law 3: this stop made it; law 10: nothing is copied). The app answers with a code, the command says the words. (4) **Settings → General gains “Your coding agent”**: the prompt to paste, Copy (“Copied”, law 10), Read it first (shroom.am/cli), the line under them, and the switch “Let it start and stop recordings”, off by default; while it's off the app refuses every recording ask. (5) **shroom.am/cli** is the guide an agent reads (a skill's SKILL.md); /agent points there. Provisional: built as a POC, awaiting ratification.",
+   "decision": "**Proposed 2026-10-18 (dev/proposals/cli-agent-skill.md). Bagrat's calls the same day, relayed by the orchestrator:** an agent may start and stop recordings only once a Settings switch is on, off by default; the command may make invites; the command is always installed; it does things many at once, so an agent can invite a team or tidy many videos in one step; and it is built in full now, its release his to time. (1) **The `shroom` command** ships inside the app (`Contents/MacOS/shroom-cli`) and follows the app it ships in: that app's folder (a dev build's command reads `~/.shroom-dev`) and that app to open. The install line links it into `~/.local/bin` (and puts that folder on the login profile's PATH when it isn't there), the cask into Homebrew's bin; `--uninstall` takes both back. (2) **It works whether the app runs or not:** list, info, links, open, rename, delete, cleanup candidates, members, invites — through the space's own page under this Mac's device key, never the Cloudflare token. A delete, a member's removal or a batch invite changes nothing without `--yes`; a rename, delete, invite or removal waits while a take is open (law 4). (3) **Many at once:** a batch takes its items as arguments or from a file and answers each with its own status; it is safe to run again (nothing is done twice), and says so when only some went through. At most 20 invites or 100 items a call. Each person invited gets their own link: shroom sends nothing. (4) **Cleanup candidates** are the page's own suggestions where the page makes them, and otherwise the videos older than a number of days. (5) **Recording goes through the running app** (its control socket in shroom's folder, this user only): start is the popover's Start, countdown and permission beat included, the popover open or not; pause is the tray's; Resume and Stop are the paused popover's; a stop answers with its link (law 3: this stop made it; law 10: nothing is copied). The app answers with a code, and the command says the words. (6) **Settings → General gains “Your coding agent”**: the prompt to paste, Copy (“Copied”, law 10), Read it first (shroom.am/cli), the line under them, and the switch “Let it start and stop recordings”, off by default; while it's off the app refuses every recording ask. (7) **shroom.am/cli** is the guide an agent reads (a skill's SKILL.md), and `shroom guide` prints the same; /agent points there. Built: DECISIONS B215–B219. Provisional: awaiting ratification.",
    "status": "provisional",
    "date": "2026-10-18",
    "amends": [
@@ -1165,6 +1165,10 @@
   {
    "name": "The overlays",
    "may_do": "Lives: the chosen display | Opens: the countdown scrim; the bubble from `config` through the take | Rules: never windows, never the dock icon; the bubble never takes focus, while the countdown does — you just started it, and its Esc must work without any extra macOS permission; the bubble is the only thing of ours ever in a take  [UX-STATEMACHINE.md L1720]"
+  },
+  {
+   "name": "The command line",
+   "may_do": "Lives: the person's terminal, or their coding agent's | Opens: — (a link in the browser when asked) | Rules: the space's own page under this Mac's device key, never the token; nothing undoable without --yes; waits while a take is open (law 4); recording only through the running app, and only with General's switch on (N62)"
   }
  ],
  "absent_from_v1": [
@@ -13688,6 +13692,21 @@
    "on": [
     "Act(ConfirmRestart)"
    ]
+  },
+  {
+   "from": "idle-ready",
+   "to": "countdown",
+   "kind": "flow",
+   "label": "shroom record start",
+   "trigger": "the shroom command asks to start (N62), General's switch on: the popover's Start, the popover closed",
+   "status": "provisional",
+   "cites": [
+    "N62"
+   ],
+   "source": [
+    "core-arm"
+   ],
+   "on": []
   },
   {
    "from": "restart-confirm",
