@@ -64,6 +64,7 @@ safe — nothing is done twice. Run it with `--dry-run` first whenever it change
 | What did I record this week? | `shroom list --mine --since 7d --json` |
 | Who's in, who's still invited? | `shroom members --json` (compare it with their team list) |
 | Remove these people | `shroom members remove <id> <id> … --dry-run --json`, ask, then `--yes` |
+| Cancel the invites nobody used | `shroom invite cancel <invite id> <invite id> … --json` |
 
 **Inviting a team**, from start to end:
 

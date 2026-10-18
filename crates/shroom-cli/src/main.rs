@@ -34,7 +34,7 @@ shroom — your shroom videos from the command line.
   shroom cleanup-candidates           old videos worth a look before deleting
   shroom members                      who is in your space (the owner's Macs)
   shroom invite <name>                a link that lets one person join (7 days, once)
-  shroom invite cancel <invite-id>    that link stops working
+  shroom invite cancel <invite-id>... those links stop working
   shroom members remove <member-id>... --yes
                                       they leave the space; their videos stay
 
@@ -590,12 +590,42 @@ fn invite(a: &Args, rest: &[String]) -> Result<Done, Fail> {
     ))
 }
 
+/// Cancels invites, one or several (say, for people no longer on the team list): each
+/// link stops working. One already cancelled is `cancelled` again (the space says so); one
+/// the space doesn't know is `not_found`; one already used is `failed` — they're in, and
+/// `members remove` is the way out.
 fn cancel_invite(a: &Args, rest: &[String]) -> Result<Done, Fail> {
-    let [id] = rest else { return Err(Fail::Usage("shroom invite cancel <invite-id> (see shroom members)".into())) };
+    let ids: Vec<String> = match &a.from {
+        Some(_) => batch::items(rest, a.from.as_deref())?.iter().filter_map(|i| i.field("id")).collect(),
+        None => rest.to_vec(),
+    };
+    if ids.is_empty() {
+        return Err(Fail::Usage("shroom invite cancel <invite-id>... (see shroom members)".into()));
+    }
     let (h, d) = door(a)?;
     quiet(&h)?;
-    d.cancel_invite(id)?;
-    Ok(Done::new(json!({"cancelled": id}), "Cancelled: that invite link no longer works."))
+    let mut outcomes = Vec::new();
+    for id in &ids {
+        let item = json!({"id": id});
+        match d.cancel_invite(id) {
+            Ok(()) => {
+                let mut j = item;
+                j["status"] = "cancelled".into();
+                outcomes.push(batch::Outcome::ok(j, format!("  cancelled  {id}")));
+            }
+            Err(f) if f.code() == "not_found" => {
+                let mut j = item;
+                j["status"] = "not_found".into();
+                outcomes.push(batch::Outcome::ok(j, format!("  not found  {id}")));
+            }
+            Err(f) => outcomes.push(batch::Outcome::failed(item, &f, format!("  {id} — {}", f.message()))),
+        }
+    }
+    let mut done = batch::finish("results", outcomes, "Those invite links no longer work:".into(), "")?;
+    if let [one] = ids.as_slice() {
+        done.json["cancelled"] = one.clone().into();
+    }
+    Ok(done)
 }
 
 /// Removes members: like a delete, it asks first (`--yes`), and names them by id only. Each

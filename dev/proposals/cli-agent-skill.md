@@ -219,6 +219,7 @@ and shroom sends nothing. He asked for the other batch cases worth having too.
 | What did I record this week? (a digest) | `shroom list --mine --since 7d` | — |
 | Who's in, who's still invited? (reconcile against a team list) | `shroom members --json` | — |
 | Remove these people | `shroom members remove <id> <id> … [--dry-run] [--yes]` | `removed`, `not_found`, `failed` |
+| Cancel the invites nobody used (reconciling) | `shroom invite cancel <id> <id> …` | `cancelled`, `not_found`, `failed` (already used: they're in) |
 
 **Calls (decided X because Y):**
 

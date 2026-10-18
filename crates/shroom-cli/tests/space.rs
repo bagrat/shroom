@@ -169,6 +169,7 @@ fn a_team_lead_invites_a_list_in_one_call_and_a_rerun_is_safe() {
     assert_eq!(inv[1]["status"], "invited");
     assert_eq!(inv[2]["status"], "already_member");
     let (l0, l1) = (inv[0]["link"].as_str().unwrap().to_string(), inv[1]["link"].as_str().unwrap().to_string());
+    let ana = inv[1]["invite_id"].as_str().unwrap().to_string();
     assert!(l0.contains("/join/") && l0 != l1, "each person their own link");
     assert_eq!(v["counts"]["invited"], 2);
 
@@ -188,6 +189,15 @@ fn a_team_lead_invites_a_list_in_one_call_and_a_rerun_is_safe() {
     let new = fresh.rsplit('/').next().unwrap();
     let page = |code: &str| ureq::get(&format!("{base}/{}/join/{code}", demo::HOST)).call().unwrap().body_mut().read_to_string().unwrap();
     assert_ne!(page(old), page(new), "the old link no longer opens the invite");
+
+    // Several invites cancelled at once (a team list that changed); one the space doesn't
+    // know is reported, not fatal; a re-run is the same answer.
+    for _ in 0..2 {
+        let (code, v) = shroom(&home, &base, &["invite", "cancel", &ana, "i_NoSuchInvite0000"]);
+        assert_eq!(code, 0, "{v}");
+        let st: Vec<&str> = v["results"].as_array().unwrap().iter().map(|x| x["status"].as_str().unwrap()).collect();
+        assert_eq!(st, ["cancelled", "not_found"]);
+    }
 
     // Too many at once is refused before anything is made.
     let many: Vec<String> = (0..21).map(|i| format!("Person {i}")).collect();
