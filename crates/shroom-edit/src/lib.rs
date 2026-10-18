@@ -64,6 +64,11 @@ pub struct Cut {
     /// Why a planner suggested it, in a few words (debugging, not product copy).
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub why: String,
+    /// Its edges were moved by hand in the editor (B195 (g)): its words (`leads`, `removed`,
+    /// `resumes`) are the ones first transcribed for it and may no longer be exactly what it
+    /// cuts. Absent in lists that were never adjusted.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub adjusted: bool,
 }
 
 impl Cut {
@@ -80,6 +85,7 @@ impl Cut {
             removed: String::new(),
             resumes: None,
             why: String::new(),
+            adjusted: false,
         }
     }
 

@@ -2107,6 +2107,7 @@ fn edit_step(w: &mut World, step: EditStep) -> Out {
         EditStep::Op(shroom_edit::Op::Cut { .. }) => "edit-cut",
         EditStep::Op(shroom_edit::Op::PutBack { .. }) => "edit-put-back",
         EditStep::Op(shroom_edit::Op::Apply { .. }) => "edit-apply",
+        EditStep::Op(shroom_edit::Op::Resize { .. }) => "edit-resize",
         EditStep::Op(shroom_edit::Op::Revert) => "edit-revert",
         EditStep::Undo => "edit-undo",
         EditStep::Redo => "edit-redo",

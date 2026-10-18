@@ -26,6 +26,10 @@ pub enum Op {
     PutBack { index: usize },
     /// Apply the suggestion at `index` (the voice-cut layer's “Cut it too”).
     Apply { index: usize },
+    /// Move the edges of the cut at `index` (B195 (g): one of them dragged on the timeline):
+    /// it becomes `start`–`end`, held inside the ends. A hand cut or the voice layer's, taken
+    /// or offered: it keeps what it was, marked `adjusted`.
+    Resize { index: usize, start: f64, end: f64 },
     /// Every cut put back and both ends: the recording as it was. Suggestions stay offered.
     Revert,
 }
@@ -91,6 +95,20 @@ pub fn check(list: &EditList, op: &Op) -> Result<EditList, Refusal> {
             let c = next.cuts.get_mut(index).filter(|c| !c.applied).ok_or(Refusal::NoSuchCut)?;
             c.applied = true;
         }
+        Op::Resize { index, start, end } => {
+            if !start.is_finite() || !end.is_finite() || end < start {
+                return Err(Refusal::OutOfRange);
+            }
+            let (s, e) = (start.max(next.in_).max(0.0), end.min(next.out).min(d));
+            let c = next.cuts.get_mut(index).ok_or(Refusal::NoSuchCut)?;
+            if e - s < MIN_HAND_CUT {
+                return Err(Refusal::TooShort);
+            }
+            if (c.start, c.end) == (s, e) {
+                return Err(Refusal::NothingChanges);
+            }
+            (c.start, c.end, c.adjusted) = (s, e, true);
+        }
         Op::Revert => {
             next.in_ = 0.0;
             next.out = d;
@@ -100,7 +118,9 @@ pub fn check(list: &EditList, op: &Op) -> Result<EditList, Refusal> {
             }
         }
     }
-    if next == *list || next.keep() == list.keep() {
+    // A suggestion moved plays nothing new, and is still a change: what Cut it too would take.
+    let offered_moved = matches!(*op, Op::Resize { index, .. } if !list.cuts[index].applied);
+    if next == *list || (!offered_moved && next.keep() == list.keep()) {
         return Err(Refusal::NothingChanges);
     }
     if next.edited_duration() < MIN_KEEP.min(d) {
