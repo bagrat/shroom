@@ -16,14 +16,14 @@
 //! first click switched on: the page acts on a click that lands while its window hasn't
 //! the keyboard.
 //!
-//! Both overlays are made once, when shroom starts (`prepare`) — never when one is first
+//! The overlays are made once, when shroom starts (`prepare`) — never when one is first
 //! wanted. Making a web view asks macOS to bring its app forward (wry does, for every
 //! one). At start-up that is nothing new: a launch asks the same. Later it would be the
 //! very thing an overlay must never do — the person is in another app, perhaps full
 //! screen — and the one way to stop it, switching shroom off as an app for that moment,
 //! costs an app with a Dock icon every window it has on screen (`may_go_quiet`). So by the
-//! time anything of shroom's shows, both panels exist, their pages are loaded, and both
-//! are already left out of every capture.
+//! time anything of shroom's shows, every panel exists, its page is loaded, and each is
+//! already left out of every capture.
 //!
 //! An overlay follows the person, so losing the keyboard closes nothing (DEVIATIONS #39).
 //! What closes the popover from outside is a click somewhere else: while one is open, the
@@ -154,7 +154,7 @@ enum Born {
 /// screen), each left out of every screen capture from the moment it exists
 /// (ARCHITECTURE §4.4).
 pub fn prepare(app: &AppHandle, excluded: &Arc<Mutex<Vec<u32>>>) {
-    // The dev harness's `--late-panels` leaves both to be made late — the path a failed
+    // The dev harness's `--late-panels` leaves them all to be made late — the path a failed
     // start-up takes — so a drive can walk it (`take_drive/surfaces.rs`).
     #[cfg(feature = "dev-harness")]
     if late_panels() {

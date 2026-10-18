@@ -1,8 +1,9 @@
 //! The presenter: the only place the Scene becomes AppKit. The tray's face and menu, the
-//! popover's and the countdown's panels (`overlay.rs`; the popover key only when asked —
-//! law 5), the three windows (onboarding, Library, Settings — each excluded from capture at
-//! creation), the camera panels (`camera.rs`), and the Dock (law 6: the setup window's
-//! alone). Webviews get their slice as a `scene` event; they render, nothing more.
+//! popover's, the countdown's and the agent label's panels (`overlay.rs`; the popover key
+//! only when asked — law 5), the three windows (onboarding, Library, Settings — each
+//! excluded from capture at creation), the camera panels (`camera.rs`), and the Dock (law
+//! 6: the setup window's alone). Webviews get their slice as a `scene` event; they render,
+//! nothing more.
 
 use std::sync::{Arc, Mutex};
 
