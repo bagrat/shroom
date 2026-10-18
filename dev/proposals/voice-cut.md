@@ -3,6 +3,10 @@
 *Proposal and POC, 2026-10-18. Draft PR, not for merging: the feature, its words and its
 spec rows are Bagrat's call. The words on the boards are placeholders.*
 
+> **Working rule** (Bagrat, 2026-10-18, relayed by the orchestrator). These POCs run on
+> best judgment, without stopping to ask, and may use the Cloudflare token for POC work. The
+> calls below are written as “decided X because Y” for him to overturn.
+
 **Asked** (Bagrat, 2026-10-18, relayed by the orchestrator). Three things, in order:
 
 1. A plain timeline editor: drag to trim the ends, cut a part out. Probably nothing more.
@@ -15,11 +19,17 @@ spec rows are Bagrat's call. The words on the boards are placeholders.*
 **In short.** The cue works. A pure-Rust planner (`crates/shroom-edit`) takes a transcript
 with word times and returns an edit list. The cloud harness speaks seven invented takes with
 four stock voices, transcribes them with Whisper and plans them, then scores the cuts
-against the script. **With the code word in Whisper's prompt, 27 of 28 takes passed on
-large-v3-turbo, the model Cloudflare's Workers AI runs, and 27 of 28 on small.en. Neither
-miss cut a word that should stay.** Without the prompt, 19 of 28 passed: Whisper hears
-“shroom cut” as “Trume cut”, “Troom cut” or “drum cut”. Cuts are suggestions on an edit list: nothing is re-encoded, and any cut can
-be undone. A working editor prototype plays the takes with their cuts applied.
+against the script.
+
+- **On real Workers AI**, through a Worker deployed with a shroom-shaped token on the test
+  account, **27 of 28 takes passed**, both with and without the code word in Whisper's
+  prompt. **No run cut a word that should stay.**
+- **Ten minutes in 60 s chunks** (52 cues) got 49 of 52 cues cut, and again nothing that
+  should stay.
+- **The two blockers turned out not to be blockers.** The setup token's existing powers can
+  deploy a Worker that calls Workers AI, and one request took 10 minutes of audio.
+- **Cuts live on an edit list.** Nothing is re-encoded, and any cut can be undone.
+- **A working editor prototype** plays the takes with their cuts applied.
 
 ## Boards
 
@@ -76,20 +86,37 @@ The boards come from [`voice-cut/make-boards.py`](voice-cut/make-boards.py).
 
 | Transcriber | Prompt | Passed |
 |---|---|---|
-| Whisper large-v3-turbo (int8, CPU) | “Shroom cut.” plus a disfluent sample | **27/28** |
-| Whisper small.en | the same | **27/28** |
-| Whisper small.en | none | 19/28: the cue is heard as “Trume cut”, “Trumcut”, “Trung cut” or “drum cut” |
+| **Workers AI** `@cf/openai/whisper-large-v3-turbo` (real, the test account) | “Shroom cut.” plus a disfluent sample | **27/28** |
+| **Workers AI**, the same | none | **27/28** |
+| Whisper large-v3-turbo, local (int8, CPU) | the prompt | 27/28 |
+| Whisper small.en, local | the prompt | 27/28 |
+| Whisper small.en, local | none | 19/28: the cue is heard as “Trume cut”, “Trumcut”, “Trung cut” or “drum cut” |
 
-**The two misses.**
+**The misses.** None of them cut a kept word.
 
-- **Turbo left the first 8 s out of one transcript**: the slip, the first cue and the
-  retake. Nothing was heard there, so nothing was cut.
+- **Workers AI wrote one line the way it was meant.** It gave “Then you pick the window
+  you want to share.” and left out both the slip and the cue. Nothing was heard, so nothing
+  was cut. This is the tidying the research warned about. It hit 1 take in 28.
+- **Local turbo left the first 8 s out of one transcript**: the slip, the first cue and
+  the retake.
 - **On one small.en take, Whisper wrote “hmm” as “him.”** The offered line before a cue
   with no retake then started one clause late.
 
-Neither cut a kept word. Both stay in the fixtures as known misses, each with its reason
-(`crates/shroom-edit/tests/takes.rs`). The test holds the other 54 transcripts to the
-script.
+The fixtures keep each miss as a known one, with its reason
+(`crates/shroom-edit/tests/takes.rs`). The test holds the other 81 transcripts to their
+scripts.
+
+**Ten minutes at once.** All the takes were run together into a 10-minute take with 52
+cues, then transcribed by Workers AI:
+
+| How it was sent | Cues cut | Slips cut or offered | Kept lines cut |
+|---|---|---|---|
+| One request, 10 min (19 MB WAV, or 2.4 MB MP3; 16–23 s) | 45/52 | 46/52 | **0/98** |
+| 60 s chunks with 2 s overlap | **49/52** | **49/52** | **0/98** |
+
+- On long audio, Whisper's word times drift by a few tenths of a second. A silence near a
+  gap now counts even if the word times say it's slightly off.
+- The test `ten_minutes` holds both fixtures to a floor.
 
 **What the runs taught:**
 
@@ -99,17 +126,17 @@ script.
   - So a looser sound-alike (“troom”, “drum”, “trung”) also counts, but only when it stands
     as its own sentence: after a sentence end, and followed by a full stop or a pause.
     “The drum cut was loud” stays speech.
-- **The prompt has a cost**, and Whisper sometimes skips speech: across the runs, two takes (one on small.en in an earlier run,
-  one on turbo) lost their first 8–10 s.
+- **The prompt has a cost**, and Whisper sometimes skips speech. Across the runs, two takes
+  lost their first 8–10 s: one on small.en in an earlier run, one on local turbo.
   - The planner now refuses to treat a long gap with sound in it as silence, so that take
     lost only the cue, not the missed speech.
-  - The real fix is to transcribe in chunks of about 30 s with a little overlap, and VAD.
-    Workers AI needs chunks anyway.
+  - The real fix is to transcribe in chunks of about 60 s with a little overlap. On the
+    10-minute take, chunks beat one request: 49 cues cut against 45.
   - The app could also flag a take whose transcript has a long stretch of sound with no
     words in it.
-- **Whisper kept the repeated words and the fillers** (“the, the window”, “um”) on these
-  takes. Research says Whisper often tidies repetitions away. Here it didn't, but these are
-  clean synthetic voices; a real one is the next probe.
+- **Whisper mostly kept the repeated words and the fillers** (“the, the window”, “um”). It
+  tidied one take in 28 on Workers AI. These are clean synthetic voices; a real one is the
+  next probe.
 - Two bugs came out of the runs:
   - A sentence ending in “called.” made the cue look like a mention.
   - “uh” transcribed as “the”, as in “one more thing, the shroom cut.”, did the same.
@@ -226,7 +253,7 @@ thread):
 
 | Option | Word times | Repeats kept | Cost | macOS | New prompt | Effort |
 |---|---|---|---|---|---|---|
-| **Workers AI whisper-large-v3-turbo**, from the person's own Worker | yes (`segments[].words`) | mostly, here | ~$0.0005/min; ~214 free min/day | any | none | low: one Worker route plus chunking |
+| **Workers AI whisper-large-v3-turbo**, from the person's own Worker | yes (`segments[].words`): **probed** | 27 of 28 takes | ~$0.0005/min; ~214 free min/day | any | none | low: one Worker route plus chunking |
 | Workers AI Deepgram nova-3 | yes, with confidence | yes (`filler_words`), `keyterm` biasing | ~$0.005/min; ~21 free min/day | any | none | low |
 | Apple SpeechAnalyzer (on device) | yes (`audioTimeRange`) | unknown | free | **26+** (the floor is 14) | likely none; to probe | medium: a Swift shim |
 | whisper.cpp via `whisper-rs` (on device) | yes (DTW) | as Whisper | free; a 150 MB–1.6 GB model to download | 14 | none | medium: a C++ build and a model download |
@@ -236,18 +263,24 @@ thread):
 
 - It fits BYO: it runs in their account, under their free allowance, with no model download
   and no new macOS prompt. It is the model behind the 27/28 above.
-- **How it would work.** After Finish & Share, the app extracts the take's audio (16 kHz
-  mono, about 30 s chunks with 2 s of overlap). It posts each chunk to a new Worker route,
+- **How it would work.** After Finish & Share, the app extracts the take's audio (MP3 at
+  32 kb/s, 60 s chunks with 2 s of overlap). It posts each chunk to a new Worker route,
   `POST /_shroom/listen/<id>`, under the app's existing key. The Worker runs
   `env.AI.run('@cf/openai/whisper-large-v3-turbo', {audio, initial_prompt, vad_filter:
   true, condition_on_previous_text: false})` and returns the words.
-- A 5-minute take is ten chunks, a few seconds of work. The cuts are normally in place
-  before anyone opens the link.
-- **Probes before building:**
-  - Does deploying a Worker with an `ai` binding need more than the setup token's Workers
-    Scripts Edit + R2 Edit? If it does, that's a setup-wizard change.
-  - What is Workers AI's real request-size limit?
-  - Is `words` always filled?
+- A 5-minute take is five chunks, about 3 s each, and they can run at the same time. The
+  cuts are normally in place before anyone opens the link.
+- **Probed, 2026-10-18,** on the dedicated test account, with its token, which has a real
+  setup token's powers (Workers Scripts Edit + R2 Edit):
+  - **That token can't call Workers AI's REST API** (“Authentication error”).
+  - **But it can deploy a Worker with an `ai` binding**, and that Worker can call Whisper.
+    So the setup wizard and the token need no change: the app already deploys the Worker.
+  - **There is no size wall through the binding.** 1, 3, 5 and 10 minutes all came back,
+    as WAV (up to 19 MB) or MP3 (up to 2.4 MB). Time: 3–6 s for a minute, 16–23 s for ten.
+  - **`segments[].words` was filled every time**, with `start` and `end` in seconds.
+  - **Cost.** The whole probe used roughly 2,000 neurons, within the free 10,000 a day.
+  - **What was created:** one Worker, `poc-voice-cut-ai`, guarded by a throwaway key,
+    deleted after the probe (the API answers 404 for it now). Nothing else was touched.
 - SpeechAnalyzer stays the on-device option for macOS 26 and later.
 
 ## Spec sketch (provisional, not in `machine.json` yet)
@@ -285,7 +318,7 @@ with tests:
 
 | Piece | Days |
 |---|---|
-| Probes: AI binding vs the token, size limit, a real human take | 0.5 |
+| Probes: AI binding vs the token, size limit (**done**); a real human take | 0.25 |
 | Worker: `/_shroom/listen/<id>`, the `ai` binding at deploy, `edits.json` in meta, cloudfake twin | 1.5 |
 | App: extract and chunk audio after stop, call the route, merge the words, plan, upload `edits.json` | 1 |
 | `shroom-edit` hardening plus spec tests from real takes | 1 |
@@ -293,38 +326,48 @@ with tests:
 | Re-cut `video.mp4` and the teaser so download and preview match | 1 |
 | A review list: the stop popover's line, a cuts window with Undo and Play (no timeline) | 1.5 |
 | Spec rows, boards approved, hosted-Mac pass | 0.5 |
-| **Voice cuts at launch, playback-applied, with a review list** | **~8** |
+| **Voice cuts at launch, playback-applied, with a review list** | **~7.5** |
 | The full timeline editor (trim, drag-to-cut, preview) | +3–4 |
 | Publishing the edit (new HLS prefix, delete the cut parts) | +1.5–2 |
 
 **My read.**
-- **Voice cuts for launch is possible but tight.** It needs Bagrat's yes by about Tue 20 Oct,
-  two sessions working in parallel (Worker and page in one, app in the other), and the
-  probes coming back clean. Ship it as opt-in, labelled new, with the cuts list as the
-  review.
+- **Voice cuts for launch is possible but tight.**
+  - The probes are clean, so the platform risk is gone.
+  - It needs Bagrat's yes by about Tue 20 Oct and two sessions working in parallel: Worker
+    and page in one, the app in the other.
+  - Ship it opt-in, labelled new, with the cuts list as the review.
 - **The timeline editor and publishing the edit are realistic the week after launch.**
 - The prototype here is close to the editor's front end and would cut the UI time.
 - **The risk is a real human voice.** All 28 takes are clean synthetic speech. Before
   committing, one or two retake recordings from Bagrat (any mic, any length) would show
   whether Whisper keeps his repeats and hears his “shroom cut”.
 
-## Open questions for Bagrat
+## Calls made, for Bagrat to overturn
 
-1. **The code word.** “shroom cut” works with prompting. Keep it, or pick another?
-   Alternatives are two-word, distinct and rarely spoken: “shroom redo”, “cut cut”.
-   Product copy, so his call.
-2. **Applied or suggested?** Proposed: confident cuts are applied with Undo, unsure ones
-   are offered. The alternative is everything offered and nothing cut until he reviews,
-   which is safer but adds a step.
-3. **On by default?** It sends the voice to the person's own Cloudflare account, which
-   changes the privacy page's facts.
-4. **Launch scope.** Voice cuts plus a review list by the 27th, and the timeline editor
-   after? Or wait and ship them together?
-5. **Cut parts in R2.** Is playback-skip acceptable at launch, given the cut audio stays
-   reachable until the edit is published? Or must publishing (+1.5–2 days) be in?
-6. **A real take.** Would he record one or two retakes with “shroom cut” for the probe?
-7. **Markers while recording.** Only while paused, as before? Or a ⌥⌘M shortcut while
-   recording?
+Under the working rule above, each is decided, with why:
+
+1. **The code word: kept “shroom cut”,** because it worked on real Workers AI without a
+   prompt (27/28). It's two words and rarely said. Its loose sound-alikes (“Troom cut”) are
+   caught only when said alone. Alternatives, if he wants one: “shroom redo”, “cut cut”. The
+   word is product copy, so it's still his.
+2. **Confident cuts are applied with Undo; unsure ones are offered.** Across 140 transcripts
+   (28 takes × 5 runs) and both 10-minute takes, no applied cut touched a kept line.
+   Offering everything would add a review step to every take for little safety.
+3. **Off by default for launch, opt-in from Settings.** It sends the voice to the person's
+   own Cloudflare account, and the privacy page's facts must change first. Turn it on by
+   default once a real voice has been through it.
+4. **Launch scope: voice cuts with a review list by the 27th; the timeline editor the week
+   after.** This is the 7.5 days above. The editor adds 3–4 days and isn't needed for the
+   differentiator.
+5. **Playback-skip at launch, publishing the edit right after.** Cut parts stay in R2 until
+   published, and the review window says so. Publishing is 1.5–2 days and protects the
+   download and the teaser.
+6. **A real take is still needed.** One or two retakes from Bagrat with “shroom cut”, any
+   mic, would be the last probe: `run.py --wav take.m4a --model workers-ai` once a Worker
+   is up. It is the one thing that can't be decided on judgment.
+7. **Markers: back while paused, as before; no new shortcut yet.** A global ⌥⌘M while
+   recording would be a second always-on shortcut beside N54's ⌥⌘P. Since cues already
+   mark slips, it waits for demand.
 
 ## Running the POC
 
@@ -333,6 +376,8 @@ pip install piper-tts faster-whisper pillow
 python3 -m piper.download_voices en_US-ryan-medium   # into a voices dir; any stock voice
 cargo build -p shroom-edit --release
 python3 dev/proposals/voice-cut/poc/run.py --voices <dir> --out <dir> --render [--model large-v3-turbo]
+WAI_URL=… WAI_KEY=… python3 dev/proposals/voice-cut/poc/run.py --voices <dir> --out <dir> --model workers-ai
+#   (a Worker with an `ai` binding that runs Whisper on the posted body: see the doc's probe)
 python3 dev/proposals/voice-cut/poc/run.py --voices <dir> --out <dir> --wav my-take.m4a --render   # a real take
 python3 dev/proposals/voice-cut/prototype/build.py <out>/<voice> <site dir>   # then serve <site dir> with prototype/index.html
 ```

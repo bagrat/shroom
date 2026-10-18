@@ -16,6 +16,7 @@ A real recording instead of a script: --wav take.wav (no scoring, same outputs).
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -77,6 +78,23 @@ def transcribe(model, wav, prompt):
                                condition_on_previous_text=False, beam_size=5)
     return [{"text": w.word.strip(), "start": round(w.start, 3), "end": round(w.end, 3)}
             for s in segs for w in (s.words or [])]
+
+
+def transcribe_workers_ai(wav, prompt):
+    """Whisper large-v3-turbo on Workers AI, through a POC Worker with an `ai` binding
+    (WAI_URL, WAI_KEY in the environment). One request per take: the takes are short."""
+    import base64
+    import urllib.request
+    pcm16 = subprocess.run(["ffmpeg", "-loglevel", "error", "-i", str(wav), "-ac", "1", "-ar", "16000", "-f", "wav", "-"],
+                           capture_output=True, check=True).stdout
+    body = {"audio": base64.b64encode(pcm16).decode(), "language": "en", "condition_on_previous_text": False}
+    if prompt:
+        body["initial_prompt"] = prompt
+    req = urllib.request.Request(os.environ["WAI_URL"], data=json.dumps(body).encode(),
+                                 headers={"content-type": "application/json", "user-agent": "shroom-poc/0", "x-poc-key": os.environ["WAI_KEY"]})
+    out = json.loads(urllib.request.urlopen(req, timeout=120).read())["out"]
+    return [{"text": w["word"].strip(), "start": round(w["start"], 3), "end": round(w["end"], 3)}
+            for s in out.get("segments", []) for w in s.get("words", [])]
 
 
 def plan(transcript):
@@ -187,7 +205,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--voices", type=Path, required=True)
     ap.add_argument("--out", type=Path, required=True)
-    ap.add_argument("--model", default="small.en")
+    ap.add_argument("--model", default="small.en", help="a faster-whisper model, or workers-ai (WAI_URL, WAI_KEY)")
     ap.add_argument("--voice", action="append", help="voice names (default: every .onnx in --voices)")
     ap.add_argument("--only", help="scenario id prefix")
     ap.add_argument("--no-prompt", action="store_true")
@@ -195,9 +213,14 @@ def main():
     ap.add_argument("--wav", type=Path, help="a real recording instead of the scripts")
     a = ap.parse_args()
 
-    from faster_whisper import WhisperModel
-    model = WhisperModel(a.model, device="cpu", compute_type="int8")
     prompt = None if a.no_prompt else PROMPT
+    if a.model == "workers-ai":
+        global transcribe
+        transcribe = lambda _model, wav, p: transcribe_workers_ai(wav, p)  # noqa: E731
+        model = None
+    else:
+        from faster_whisper import WhisperModel
+        model = WhisperModel(a.model, device="cpu", compute_type="int8")
     a.out.mkdir(parents=True, exist_ok=True)
 
     if a.wav:
