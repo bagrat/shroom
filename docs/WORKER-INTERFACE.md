@@ -929,6 +929,10 @@ meta → 404 `absent`; a tombstone → 410 `deleted`; a bad body → 400. One st
   (until 00:00 UTC), a busy model (five minutes), another failure (a little longer each time;
   after five, the take is let go), or another step holds it.
 
+Every answer but idle also carries `note`: one short line for the Mac's log (the window heard,
+the early title, the name with its model, time, chapters and tokens, or the wait with Workers
+AI's code alone; never a word said or a title, B206 f).
+
 The app's caller is `shroom_cloud::member::ai_signal` (asked again while `more`).
 
 **The schedule** (`scheduled`): the marks under `.shroom/ai/later/<id>` whose `after` (custom
@@ -943,9 +947,11 @@ the words for voice cuts; captions leave lone hesitations out), and a word with 
 digit isn't kept (B205 a, e). The mark
 `.shroom/ai/later/<id>` = `{v:1, since, after, done, through, rename, reason, tries}`. The
 record: `title` (only while not `titled`), `named` = `{by:"ai", model, at, rev, clock,
-words, title, chapters:[[start, title],…], language}` (with `early: true` and no chapters while
-it's the early title, until the full name at done replaces it), `captions` = `{language}`, and
-`naming` = `{later:"daily", at}` while the free day is used up. The transcript's `early: true`
+words, title, chapters:[[start, title],…], language, ms, tokens?:[in, out], fallback?}`
+(`fallback`: the first model's code when the second answered; with `early: true` and no
+chapters while it's the early title, until the full name at done replaces it; `failed: true`
+and `code` for a take let go), `captions` = `{language}`, and `naming` = `{later:"daily", at,
+code}` while the free day is used up. The transcript's `early: true`
 says the early title was tried.
 
 **Bakes.** Whoever bakes an edit (N63: the editor's copy becomes the video, `meta.edits`
