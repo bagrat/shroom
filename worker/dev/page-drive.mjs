@@ -43,7 +43,8 @@
 //              voice cut between the words around it, an applied one struck through; Put back and Cut it too save at once,
 //              the row then saying what it is and what plays reaching the player; a press
 //              that doesn't save leaves its row and says so; a recipient's page carries none
-//              of it; a page open while the cues are coming takes the strip in when they land
+//              of it; a page open while the cues are coming takes the strip in when they land; the
+//              hint shows on a take with no voice cuts, and Got it (or a strip seen) puts it away
 //   bytes      a tombstoned recording's playlist answers 404
 //
 // Prints one JSON summary and exits 0 only when every required check passed.
@@ -459,8 +460,30 @@ async function main() {
         const coming = await page.evaluate(() => { const s = document.getElementById("cuts"); return !!s && s.hidden; });
         await put(metaKey(ids.cuts), meta(ids.cuts, { publishedAt: iso(Date.now() - 4000), edits: voiceEdits() }));
         const landed = await page.waitForFunction(() => { const s = document.getElementById("cuts"); return !!s && !s.hidden && s.querySelectorAll("li").length === 2; }, null, { timeout: 10_000 }).then(() => true, () => false);
-        delete env.AI;
         check("cuts: a page open while the cues are coming takes the strip in when they land", coming && landed, true, { coming, landed });
+        // The hint (owner-page-cue-hint): a take with no voice cuts, in a space that listens.
+        const hintShown = () => page.evaluate(() => { const h = document.querySelector(".cue-hint"); return !!h && !h.hidden && h.getClientRects().length > 0; });
+        const forget = () => page.evaluate(() => { try { localStorage.removeItem("shroom:cue-hint"); } catch { /* none kept */ } });
+        const noCues = () => ({ ...voiceEdits(), cuts: [] });
+        await forget();
+        await put(metaKey(ids.cuts), meta(ids.cuts, { edits: noCues() }));
+        await page.goto(`${origin}/${ids.cuts}`);
+        const shownFirst = await hintShown();
+        await shot("owner-cue-hint");
+        await page.click(".cue-hint button");
+        const goneOnPress = !(await hintShown());
+        await page.reload();
+        const goneForGood = !(await hintShown());
+        // A strip seen counts as a cue used: the hint doesn't come back.
+        await forget();
+        await put(metaKey(ids.cuts), meta(ids.cuts, { edits: voiceEdits() }));
+        await page.goto(`${origin}/${ids.cuts}`);
+        await put(metaKey(ids.cuts), meta(ids.cuts, { edits: noCues() }));
+        await page.goto(`${origin}/${ids.cuts}`);
+        const afterStrip = await hintShown();
+        delete env.AI;
+        check("cuts: the hint shows under the player on a take with no voice cuts; Got it puts it away for good, as a strip seen does",
+          shownFirst && goneOnPress && goneForGood && !afterStrip, true, { shownFirst, goneOnPress, goneForGood, afterStrip });
         await context.clearCookies();
       } finally {
         await browser.close();

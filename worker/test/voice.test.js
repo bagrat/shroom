@@ -19,6 +19,12 @@ const say = (id) => {
   if (!line) throw new Error(`no said-line owner-page-cuts.${id}`);
   return line.text;
 };
+/** The hint's words (owner-page-cue-hint). */
+const hint = (id) => {
+  const line = machine.states["owner-page-cue-hint"].said.find((l) => l.id === `owner-page-cue-hint.${id}`);
+  if (!line) throw new Error(`no said-line owner-page-cue-hint.${id}`);
+  return line.text;
+};
 const html = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 const ID = "AbCdEfGhIjKlMnOp";
@@ -135,6 +141,38 @@ describe("the owner page shows the voice cuts under the player (owner-page-cuts)
     env.BUCKET.touch(ledgerKey(ID), JSON.stringify({ v: 1, member: MHER, device: MHER_MAC.id, at: "2026-10-02T11:00:00Z" }), { m: MHER });
     const body = await page(env, await cookieFor(env, memberGrant()));
     expect(body).toContain(html(say("cut-where-you-said")));
+  });
+});
+
+describe("the voice-cut hint (owner-page-cue-hint)", () => {
+  // Planned, and no cue said: only the editor's hand cut.
+  const noCues = { ...EDITS, voice: { planned_at: NOW - 60_000, cues: 0 }, cuts: [EDITS.cuts[4]] };
+  const hintOf = (body) => body.match(/<div class="cue-hint"[\s\S]*?<\/div>/)?.[0] ?? "";
+
+  it("tells the owner how, under the player, in a space that listens, on a take with no voice cuts", async () => {
+    const env = space({ [`meta/${ID}.json`]: metaOf({ edits: noCues }) }, true);
+    const body = await page(env, await cookieFor(env));
+    const h = hintOf(body);
+    expect(h).toContain(html(hint("slipped")));
+    expect(h).toContain(`>${html(hint("got-it"))}</button>`);
+    // Hidden until the page's own check: this browser may have put it away already.
+    expect(h).toMatch(/^<div class="cue-hint"[^>]* hidden/);
+    expect(body.indexOf('class="cue-hint"')).toBeGreaterThan(body.indexOf('class="player"'));
+    // Nor without an edit list at all, once its cues can no longer be coming.
+    const bare = space({ [`meta/${ID}.json`]: metaOf({ edits: undefined }) }, true);
+    expect(hintOf(await page(bare, await cookieFor(bare)))).toContain(html(hint("slipped")));
+  });
+
+  it("never beside the strip, while cues are coming, in a space that doesn't listen, or for a viewer", async () => {
+    const strip = space({}, true);
+    expect(await page(strip, await cookieFor(strip))).not.toContain('class="cue-hint"');
+    const coming = space({ [`meta/${ID}.json`]: metaOf({ edits: undefined, publishedAt: new Date(NOW - 60_000).toISOString() }) }, true);
+    expect(await page(coming, await cookieFor(coming))).not.toContain('class="cue-hint"');
+    const deaf = space({ [`meta/${ID}.json`]: metaOf({ edits: noCues }) }, false);
+    expect(await page(deaf, await cookieFor(deaf))).not.toContain('class="cue-hint"');
+    const viewer = await page(space({ [`meta/${ID}.json`]: metaOf({ edits: noCues }) }, true), null);
+    expect(viewer).not.toContain('class="cue-hint"');
+    expect(viewer).not.toContain(html(hint("slipped")));
   });
 });
 
