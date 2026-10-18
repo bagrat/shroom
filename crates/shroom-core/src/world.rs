@@ -51,6 +51,9 @@ pub struct World {
     /// (N56). In memory only, like the session; kept beside it, since it outlives the
     /// popover and the session holds at most twelve intents.
     pub display_pick: DisplayPick,
+    /// The take the `shroom` command started with its label (N62, B216), by the instant it
+    /// opened: the label shows for that take only. In memory only, beside the session.
+    pub agent: Option<Mono>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -1061,6 +1064,11 @@ pub struct Prefs {
     /// The suggestions whose line ✕ put away, until they change (N68): their ids, sorted.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub cleanup_dismissed: Vec<String>,
+    /// General's “Let it start and stop recordings”: a coding agent may record through the
+    /// `shroom` command (dev/proposals/cli-agent-skill.md). Off by default (Bagrat,
+    /// 2026-10-18: a Settings switch, off).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub agent_recording: bool,
 }
 
 fn yes() -> bool {
@@ -1085,6 +1093,7 @@ impl Default for Prefs {
             settings_tab: None,
             suggest_cleanup: true,
             cleanup_dismissed: Vec::new(),
+            agent_recording: false,
         }
     }
 }
@@ -1207,6 +1216,8 @@ pub enum CopyTarget {
     Invite(SecretId),
     /// Settings · General's Copy diagnostics (B180).
     Diagnostics,
+    /// Settings · General's prompt for a coding agent.
+    AgentPrompt,
 }
 
 /// The account fork (N14's box 1, N19): the plan's one self-reported tick.
@@ -1371,6 +1382,9 @@ pub struct SettingsFields {
     pub report: ReportFields,
     /// A report went through: General says so until the window closes (B180).
     pub sent: bool,
+    /// The spot the settings link opened, lit for `LIT_MS` from then (N62, B216): cleared
+    /// by the Tick at its end.
+    pub lit: Option<(crate::event::SettingsSpot, Mono)>,
 }
 
 /// What the Report a problem sheet holds (B180): the words and the reply-to as typed, the
@@ -1559,6 +1573,7 @@ impl World {
             once: Once::default(),
             session: Session::default(),
             display_pick: DisplayPick::default(),
+            agent: None,
         }
     }
 }

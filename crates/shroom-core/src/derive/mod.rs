@@ -25,6 +25,10 @@ use crate::world::{Op, SourceId, UpdateOffer, World};
 pub const COPIED_MS: u64 = 1_500;
 /// How long a one-tap delete's Undo line stands before the delete is sent (N68).
 pub const UNDO_MS: u64 = 5_000;
+/// How long a spot the settings link opened stays lit (N62, B216): long enough for a window
+/// the link opened cold to draw itself. The window shows the light for its own first moments
+/// (about two seconds) and fades it, whenever it drew.
+pub const LIT_MS: u64 = 6_000;
 /// The countdown: 3 · 2 · 1 (N22).
 pub const COUNTDOWN_MS: u64 = 3_000;
 /// “Every few hours”: how often the background update check runs, and how long a failed
@@ -49,7 +53,18 @@ pub fn derive(w: &World) -> Scene {
     // onboarding, the Library, Settings, Send feedback or the editor (DEVIATIONS #38's
     // setup-only Dock was rejected).
     let dock = onboarding.is_some() || library.is_some() || settings.is_some() || feedback.is_some() || editor.is_some();
-    Scene { tray: tray::derive(w), popover, onboarding, library, settings, feedback, editor, countdown, bubble, preview, dock, next_wake: next_wake(w) }
+    let label = agent_label(w);
+    Scene { tray: tray::derive(w), popover, onboarding, library, settings, feedback, editor, countdown, bubble, preview, label, dock, next_wake: next_wake(w) }
+}
+
+/// The agent label (N62, B216): on the display a take the command started records, while
+/// it records. Never over a count, never paused (it would say recording when nothing is),
+/// never for the camera only (it records no screen).
+fn agent_label(w: &World) -> Option<crate::scene::AgentLabel> {
+    let t = w.take.as_ref().filter(|t| w.agent == Some(t.opened))?;
+    let SourceId::Display(display) = t.source else { return None };
+    let recording = matches!(t.phase, crate::world::Phase::Starting | crate::world::Phase::Recording | crate::world::Phase::Resuming);
+    recording.then(|| crate::scene::AgentLabel { display, line: copy::agent_label_line() })
 }
 
 /// The update to offer now: downloaded, verified, a space to carry it (never before
@@ -249,6 +264,9 @@ fn next_wake(w: &World) -> Option<Mono> {
     if let Some((_, at)) = &w.session.fields.library.undo {
         wakes.push(at.plus(UNDO_MS));
     }
+    if let Some((_, at)) = &w.session.fields.settings.lit {
+        wakes.push(at.plus(LIT_MS));
+    }
     wakes.extend(w.inflight.ops.values().copied());
     // The stop's probe asking again after a “not shroom” that hasn't held (B60).
     if w.session.page_open.is_some() {
@@ -280,4 +298,11 @@ fn next_wake(w: &World) -> Option<Mono> {
 pub fn ai_fell_through(w: &World, window: crate::world::WindowKind) -> bool {
     let entered = w.session.windows.get(&window).map(|d| d.entered);
     !w.inflight.ops.contains_key(&Op::Ai) && w.inflight.failures.get(&Op::Ai).is_some_and(|f| entered.is_some_and(|e| f.at >= e))
+}
+
+/// The open take's link, for the `shroom` command's stop (dev/proposals/cli-agent-skill.md):
+/// the page exists from the moment Stop is pressed (law 3: this stop made it).
+pub fn cli_link(w: &World) -> Option<String> {
+    let host = &w.space.identity.as_ref()?.host;
+    Some(format!("https://{host}/{}", w.take.as_ref()?.rec.0))
 }

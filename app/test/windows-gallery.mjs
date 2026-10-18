@@ -30,7 +30,7 @@ import { collect, dist, gallery, hex, isButton, norm, out, repo, serve, stub, te
 import { editorDrives, editorLooks, makeMedia, serveMedia } from "./editor-preview.mjs";
 import { editorScenes, REC } from "./editor-fixture.mjs";
 
-for (const f of ["library.html", "settings.html", "feedback.html", "popover.html", "countdown.html", "editor.html"]) {
+for (const f of ["library.html", "settings.html", "feedback.html", "popover.html", "countdown.html", "editor.html", "label.html"]) {
   if (!existsSync(join(dist, f))) {
     console.error(`app/dist/${f} is missing — run \`npm run build --workspace app\` first.`);
     process.exit(2);
@@ -59,6 +59,8 @@ export const SIZES = {
   popover: { width: 320, height: 720 },
   // The countdown covers its display; a laptop's is drawn here.
   countdown: { width: 1512, height: 982 },
+  // The agent label's panel (overlay.rs LABEL_SIZE): the pill at its right edge.
+  label: { width: 380, height: 30 },
 };
 
 // Region 6's entries ride along, each in its own window (`-- members`).
@@ -69,6 +71,7 @@ const settings = [...gallery("settings"), ...members.filter((e) => e.window === 
 const region3 = gallery("region3");
 const popovers = [...members, ...region3].filter((e) => e.window === "popover");
 const countdowns = region3.filter((e) => e.window === "countdown");
+const labels = region3.filter((e) => e.window === "label");
 // Send feedback (`-- feedback`): the form in each of its faces, and the sent face (N60).
 const feedbacks = gallery("feedback");
 // The editor (`-- editor`, N63): its faces over one recording.
@@ -96,6 +99,8 @@ const TEXT = new Set([
   // Suggested to clean up (N68): the view's line and foot; Your videos' heading, the
   // switches' lines, the space's size.
   "intro", "foot", "heading", "count_hint", "count_note", "suggest_hint", "used_label", "used",
+  // Your coding agent (spec N62, DECISIONS B219): the prompt in its well.
+  "prompt",
 ]);
 
 /** The sheets that ask no destructive question: law 9's colours aren't theirs (B180, as
@@ -116,7 +121,7 @@ async function open(surface, scene, { colorScheme = "light", size = SIZES[surfac
   page.on("pageerror", (e) => errors.push(String(e)));
   await page.addInitScript(stub, scene);
   await page.goto(`${server.origin}/${surface}.html`);
-  await page.waitForSelector({ library: ".lib", settings: ".set", feedback: "main.fb", popover: "main.pop", countdown: "#digit:not(:empty)" }[surface]);
+  await page.waitForSelector({ library: ".lib", settings: ".set", feedback: "main.fb", popover: "main.pop", countdown: "#digit:not(:empty)", label: "#pill:not([hidden])" }[surface]);
   await page.waitForTimeout(60);
   return { ctx, page, errors };
 }
@@ -729,6 +734,23 @@ const set = (variant) => settings.find((e) => e.variant === variant).scene;
   check("settings: the login box sends its action", acted(c, "settings", { do: "set-login-item", arg: true }));
   check("settings: the box keeps the Scene's state until the Scene changes", !(await login.isChecked()));
   await clear(page);
+  // Your coding agent (spec N62, DECISIONS B219): the switch, off by default; Copy
+  // and Read it first.
+  const agent = page.getByRole("checkbox", { name: "Let it start and stop recordings" });
+  check("settings: the agent's recording switch is off by default", !(await agent.isChecked()));
+  await agent.click();
+  c = await calls(page);
+  check("settings: the agent's switch sends its action", acted(c, "settings", { do: "set-agent-recording", arg: true }), JSON.stringify(c));
+  await clear(page);
+  await page.getByRole("button", { name: "Copy", exact: true }).click();
+  await page.getByRole("button", { name: "Read it first", exact: true }).click();
+  c = await calls(page);
+  check(
+    "settings: the agent card's Copy and Read it first send their actions",
+    acted(c, "settings", { do: "copy-agent-prompt" }) && acted(c, "settings", { do: "open-agent-guide" }),
+    JSON.stringify(c),
+  );
+  await clear(page);
   for (const name of ["Update", "What's new", "Copy diagnostics", "Report a problem…", "GitHub"]) await page.getByRole("button", { name, exact: true }).click();
   c = await calls(page);
   check(
@@ -741,6 +763,20 @@ const set = (variant) => settings.find((e) => e.variant === variant).scene;
   await page.keyboard.press("Enter");
   await page.keyboard.press("Escape");
   check("settings General: no Return or Esc default (the Scene names none)", (await calls(page)).length === 0);
+  await ctx.close();
+}
+{
+  // The shroom command's settings link (spec N62, DECISIONS B216): General opens with the
+  // switch's row lit and in view — and the switch as the Scene says, off.
+  const { ctx, page } = await open("settings", set("general-agent-lit"));
+  const lit = page.locator(".lit");
+  check("settings: the link lights one row, the switch's", (await lit.count()) === 1 && (await lit.innerText()).includes("Let it start and stop recordings"), JSON.stringify(await lit.allInnerTexts()));
+  const box = await lit.boundingBox();
+  check("settings: the lit row is in view", !!box && box.y >= 0 && box.y + box.height <= SIZES.settings.height, JSON.stringify(box));
+  check("settings: the switch stays off — the link flips nothing", !(await page.getByRole("checkbox", { name: "Let it start and stop recordings" }).isChecked()));
+  const plain = await open("settings", set("general-update-ready"));
+  check("settings: nothing is lit without the link", (await plain.page.locator(".lit").count()) === 0);
+  await plain.ctx.close();
   await ctx.close();
 }
 {
@@ -1164,6 +1200,24 @@ for (const entry of countdowns) {
   await ask.ctx.close();
 }
 
+// ── The agent label (N62, B216): the Scene's line in a pill at the panel's right edge, the
+// page clear around it (the panel passes every click through; macOS casts the shadow) ──
+for (const entry of labels) {
+  for (const scheme of ["light", "dark"]) {
+    const tag = `label/${entry.variant} [${scheme}]`;
+    const { ctx, page, errors } = await open("label", entry.scene, { colorScheme: scheme });
+    const pill = page.locator("#pill");
+    check(`${tag}: the line is the Scene's, and nothing else`, (await pill.innerText()).trim() === entry.scene.line, await pill.innerText());
+    const box = await pill.boundingBox();
+    check(`${tag}: the pill sits at the panel's right edge, inside it`, !!box && Math.abs(box.x + box.width - SIZES.label.width) <= 1 && box.x >= 0 && box.height <= SIZES.label.height, JSON.stringify(box));
+    check(`${tag}: the page is clear around the pill`, (await page.evaluate(() => getComputedStyle(document.body).backgroundColor)) === "rgba(0, 0, 0, 0)");
+    check(`${tag}: no page errors`, errors.length === 0, errors.join(" | "));
+    check(`${tag}: listens to its own slice`, (await page.evaluate(() => window.__listenTarget()))?.label === "label");
+    await page.screenshot({ path: join(out, `label-${entry.variant}-${scheme}.png`), animations: "disabled", omitBackground: true });
+    await ctx.close();
+  }
+}
+
 // Region 3's controls send the Scene's actions.
 {
   const pop = (variant) => popovers.find((e) => e.variant === variant).scene;
@@ -1401,5 +1455,5 @@ console.log(`windows: library ${SIZES.library.width}×${SIZES.library.height} (m
 
 const failed = results.filter((r) => !r.ok);
 for (const f of failed) console.log(`FAIL ${f.name}${f.detail ? ` — ${f.detail}` : ""}`);
-console.log(`\n${library.length} library + ${settings.length} settings + ${feedbacks.length} feedback + ${editors.length} editor + ${popovers.length} popover + ${countdowns.length} countdown scenes × 2 schemes · ${results.length - failed.length}/${results.length} checks passed · screenshots in ${out}`);
+console.log(`\n${library.length} library + ${settings.length} settings + ${feedbacks.length} feedback + ${editors.length} editor + ${popovers.length} popover + ${countdowns.length} countdown + ${labels.length} label scenes × 2 schemes · ${results.length - failed.length}/${results.length} checks passed · screenshots in ${out}`);
 process.exit(failed.length ? 1 : 0);

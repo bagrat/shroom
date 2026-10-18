@@ -79,6 +79,11 @@ KNOWN = {
     # cap-camera-avfoundation's device list asks for these only behind macos_available("14.0").
     'AVCaptureDeviceTypeExternal': 'cap-camera-avfoundation camera list, behind macos_available("14.0")',
     'AVCaptureDeviceTypeContinuityCamera': 'cap-camera-avfoundation camera list, behind macos_available("14.0")',
+    # `library`: shroom's own strings — the Library window's label (runtime/presenter.rs) and
+    # the page's `library` route (shroom-cloud's member client, in the app and the `shroom`
+    # command) — and cidre's binding of MTL4LibraryFunctionDescriptor's property (mtl4, built
+    # with the "mtl" feature), which nothing in shroom calls. Never sent to a Metal 4 class.
+    'library': "shroom's window label and route name; cidre's Metal 4 binding, never called",
     # wry 0.55 (wkwebview/mod.rs) uses a custom data store only when one is configured and
     # the OS says it can (its own operatingSystemVersion check); tauri configures none.
     'dataStoreForIdentifier:': 'wry, only with a data store id, behind its OS check',

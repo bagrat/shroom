@@ -29,7 +29,7 @@ pub fn gather(rt: &Runtime, role: &str) -> Diagnostics {
         memory: command("sysctl", &["-n", "hw.memsize"]).and_then(|b| b.parse::<u64>().ok()).map(|b| format!("{} GB", b / (1 << 30))).unwrap_or_default(),
         setup: setup(&rt.home.root),
         role: role.to_string(),
-        log: report::clean_log(&log_tail(&rt.home.root.join("logs"))),
+        log: report::clean_logs(&log_tail(&rt.home.root.join("logs")), &cli_tail(&rt.home.root.join("logs"))),
     }
 }
 
@@ -149,6 +149,17 @@ fn log_tail(logs: &Path) -> String {
     format!("{}\n{now}", read("run.log.1"))
 }
 
+/// The `shroom` command's own runs (`cli.log`, spec N62): its last lines, reaching into
+/// `cli.log.1` when the current one is short. Nothing on a Mac where it never ran.
+fn cli_tail(logs: &Path) -> String {
+    let read = |name: &str| std::fs::read(logs.join(name)).map(|b| String::from_utf8_lossy(&b).into_owned()).unwrap_or_default();
+    let now = read("cli.log");
+    if now.lines().filter(|l| !l.trim().is_empty()).count() >= report::CLI_LINES {
+        return now;
+    }
+    format!("{}\n{now}", read("cli.log.1"))
+}
+
 /// When each setup step landed on this Mac, from its files' times, oldest first:
 /// “2026-10-12 10:06 UTC key · 10:14 recording allowed · 10:15 wired”.
 fn setup(root: &Path) -> String {
@@ -264,5 +275,29 @@ mod tests {
     fn utc_reads_the_calendar() {
         assert_eq!(utc(1_792_150_000), ("2026-10-16".to_string(), "11:26".to_string()));
         assert_eq!(stamp(1_792_150_003), "2026-10-16T11:26:43Z");
+    }
+
+    /// The `shroom` command's runs (its `cli.log`, spec N62) sit among the app's lines by
+    /// their time, reaching into `cli.log.1` just after a roll; a Mac where it never ran
+    /// sends the app's.
+    #[test]
+    fn the_report_carries_the_commands_last_runs() {
+        let tmp = tempfile::tempdir().unwrap();
+        let logs = tmp.path();
+        std::fs::write(logs.join("run.log"), "2026-10-18T15:31:03Z      812 control: listening for the shroom command\n2026-10-18T15:31:05Z      2012 control: ask 1 record.start\n").unwrap();
+        assert_eq!(report::clean_logs(&log_tail(logs), &cli_tail(logs)).lines().count(), 2);
+        std::fs::write(logs.join("cli.log.1"), "2026-10-18T15:31:04Z cli: list: ok, videos 3 (90ms)\n").unwrap();
+        std::fs::write(logs.join("cli.log"), "2026-10-18T15:31:05Z cli: record start: ok, take countdown (40ms)\n").unwrap();
+        let log = report::clean_logs(&log_tail(logs), &cli_tail(logs));
+        let lines: Vec<&str> = log.lines().collect();
+        assert_eq!(
+            lines,
+            [
+                "2026-10-18T15:31:03Z      812 control: listening for the shroom command",
+                "2026-10-18T15:31:04Z cli: list: ok, videos 3 (90ms)",
+                "2026-10-18T15:31:05Z      2012 control: ask 1 record.start",
+                "2026-10-18T15:31:05Z cli: record start: ok, take countdown (40ms)",
+            ]
+        );
     }
 }

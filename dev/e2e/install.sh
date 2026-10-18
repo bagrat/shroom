@@ -4,8 +4,9 @@
 # zip of shroom.app and manifest.txt with its SHA-256), published to a folder, and put in
 # place by the real one-line installer through file:// (as tests/l5/installer-vm.sh does):
 # the fingerprint checked, the signature verified, ~/Applications/shroom.app placed and
-# opened as an install. Then it is seen running, and quit — the run's wizard drive opens
-# it again, as the installer would, with the drive's flags.
+# opened as an install, its `shroom` command linked into ~/.local/bin. Then it is seen
+# running, and quit — the run's wizard drive opens it again, as the installer would, with
+# the drive's flags.
 #
 #   dev/e2e/install.sh <bundle> <releases dir>
 #
@@ -37,6 +38,9 @@ SHROOM_RELEASES="file://$REL" sh "$ROOT/installer/install.sh" </dev/null 2>&1 | 
 codesign --verify --deep --strict "$APP" || { echo "the installed app doesn't verify"; exit 1; }
 [ -z "$(xattr -p com.apple.quarantine "$APP" 2>/dev/null)" ] || { echo "the installed app carries a quarantine flag"; exit 1; }
 cmp -s "$BUNDLE/Contents/MacOS/shroom" "$APP/Contents/MacOS/shroom" || { echo "the installed app isn't this build"; exit 1; }
+# The shroom command, linked onto PATH from inside the app (spec N62, DECISIONS B217).
+[ "$(readlink "$HOME/.local/bin/shroom")" = "$APP/Contents/MacOS/shroom-cli" ] || { echo "the install line didn't link the shroom command into ~/.local/bin"; exit 1; }
+"$HOME/.local/bin/shroom" --version | grep -q '^shroom ' || { echo "the linked shroom command doesn't answer"; exit 1; }
 for _ in $(seq 1 30); do
   pgrep -f "$APP/Contents/MacOS/" >/dev/null && break
   sleep 1

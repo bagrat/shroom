@@ -4,6 +4,7 @@
 pub mod camera;
 pub mod cloud;
 pub mod editor;
+pub mod control;
 pub mod home;
 pub mod hotkey;
 pub mod launch;
@@ -510,6 +511,8 @@ pub struct Runtime {
     pub excluded: Arc<Mutex<Vec<u32>>>,
     /// The status seam (`status.json`, ARCHITECTURE §11.2): what it knows and last wrote.
     pub seam: status::Shared,
+    /// The `shroom` command's asks waiting on the core's answer (`control.rs`).
+    pub cli: control::Pending,
 }
 
 /// A drive's last words, run as the process ends.
@@ -568,6 +571,7 @@ impl Runtime {
             space_base,
             excluded: Arc::default(),
             seam: Arc::new(Mutex::new(status::Seam::new(std::process::id(), String::from("0.0.0")))),
+            cli: control::Pending::default(),
         };
         (rt, rx)
     }
@@ -855,6 +859,20 @@ pub fn start_traced(app: &AppHandle, launch: LaunchKind, flags: &DevFlags, probe
     start_inner(app, launch, true, flags, Some(probe))
 }
 
+/// A link macOS handed shroom as it opened (`RunEvent::Opened`, held until the core is up):
+/// Settings' own — `shroom://settings/agent`, which the command's recording refusal carries
+/// (spec N62, DECISIONS B216) — goes to the core, which opens Settings there; anything else
+/// is the member lane's, an invite (N50).
+pub fn opened(rt: &Runtime, url: &str) {
+    match shroom_core::event::SettingsSpot::of_link(url) {
+        Some(spot) => {
+            rt.log(&format!("link: Settings at {spot:?}"));
+            rt.post(Event::SettingsLink(spot));
+        }
+        None => member::deep_link(rt, url),
+    }
+}
+
 /// The process is ending. An end shroom didn't ask for is macOS's (Dock quit, logout,
 /// System Settings' quit-and-reopen): the core hears `Terminating { ours: false }` and
 /// gets a moment to write what it must (restore.json at perm-screen). The status seam
@@ -972,6 +990,7 @@ fn start_inner(app: &AppHandle, launch: LaunchKind, quiet: bool, flags: &DevFlag
         space_base: if dev { flags.fake_space_base() } else { None },
         excluded: excluded.clone(),
         seam: Arc::new(Mutex::new(status::Seam::new(std::process::id(), version.clone()))),
+        cli: control::Pending::default(),
     };
 
     let quiet = shell_quiet(quiet, &rt);
@@ -1066,6 +1085,10 @@ fn run(rt: Runtime, rx: Receiver<Envelope>, lanes: Lanes, mut presenter: present
     // The screen before each batch, and when to write the trace ring down (B93).
     let mut last: Option<Scene> = None;
     let mut watch = ring::Watch::default();
+    // The `shroom` command's door (spec N62, DECISIONS B216) opens once the core has what's
+    // on disk: an ask before `Booted` would be answered from an empty World — "not set up",
+    // the switch off — and the command that just opened shroom asks the moment it can.
+    let mut door = false;
     loop {
         let timeout = wake.map(|t| Duration::from_millis(t.0.saturating_sub(rt.mono().0))).unwrap_or(Duration::from_secs(3600));
         let first = match rx.recv_timeout(timeout) {
@@ -1083,7 +1106,12 @@ fn run(rt: Runtime, rx: Receiver<Envelope>, lanes: Lanes, mut presenter: present
             let tick = matches!(env.event, Event::Tick);
             // Named before `update` takes it: the ring keeps kinds only (B93, law 13).
             let (mono, kind) = (env.mono.0, shroom_core::trace::event_kind(&env.event));
+            let booted = matches!(env.event, Event::Booted(_));
             let (fx, arm) = shroom_core::update(&mut w, env);
+            if booted && !door {
+                control::spawn(rt.clone(), rt.cli.clone());
+                door = true;
+            }
             if let Some(line) = core_line(tick, &arm, &fx) {
                 rt.log(&line);
             }
@@ -1142,6 +1170,7 @@ fn effect_kind(e: &Effect) -> &'static str {
         Effect::Updater(_) => "updater",
         Effect::Member(_) => "member",
         Effect::Editor(_) => "editor",
+        Effect::Cli(_) => "cli",
     }
 }
 
@@ -1197,6 +1226,7 @@ fn dispatch(rt: &Runtime, lanes: &Lanes, app: &AppHandle, e: Effect) {
         Effect::Editor(cmd) => {
             let _ = lanes.editor.send(cmd);
         }
+        Effect::Cli(a) => control::answer(rt, &rt.cli, a),
     }
 }
 
@@ -1266,6 +1296,10 @@ fn shell(rt: &Runtime, app: &AppHandle, cmd: ShellCmd) {
         ShellCmd::RequestPermission(perm) => os::request_permission(rt, perm),
         ShellCmd::Copy(rec) => os::copy_link(rt, &rec),
         ShellCmd::CopyThumb(rec, title) => os::copy_thumb(rt, &rec, &title),
+        ShellCmd::CopyAgentPrompt => {
+            rt.log("shell: copied the prompt for a coding agent");
+            os::put_on_pasteboard(rt, shroom_core::copy::agent_prompt());
+        }
         ShellCmd::Reveal(dir) => os::reveal(rt, &dir),
         ShellCmd::PowerAssertion(on) => os::power_assertion(rt, on),
         // The take is safe: macOS's waiting will-sleep goes ahead (B92).
@@ -1373,7 +1407,11 @@ mod tests {
         let conf: serde_json::Value = serde_json::from_str(include_str!("../../tauri.conf.json")).unwrap();
         let script = include_str!("../../../../tools/build-ffmpeg.sh");
         let notice = include_str!("../../../../tools/ffmpeg-NOTICE.txt");
-        assert_eq!(rel["bundle"]["externalBin"], serde_json::json!(["../../build/ffmpeg/sidecar/ffmpeg"]));
+        // Beside it, the `shroom` command (DECISIONS B217): Contents/MacOS/shroom-cli, built by
+        // tools/release-build.sh where the bundler reads it.
+        assert_eq!(rel["bundle"]["externalBin"], serde_json::json!(["../../build/ffmpeg/sidecar/ffmpeg", "../../build/cli/shroom-cli"]));
+        let build = include_str!("../../../../tools/release-build.sh");
+        assert!(build.contains("CLI=$ROOT/build/cli/shroom-cli-aarch64-apple-darwin") && build.contains("cargo build --release -p shroom-cli"), "release-build makes the command the bundle reads");
         assert!(script.contains("OUT=$ROOT/build/ffmpeg") && script.contains("\"$OUT/sidecar/ffmpeg-$TRIPLE\"") && script.contains("TRIPLE=aarch64-apple-darwin"), "the script writes what the bundle reads");
         assert_eq!(std::path::Path::new("../../build/ffmpeg/sidecar/ffmpeg").file_name().unwrap(), shroom_encode::locate::SIDECAR, "Tauri bundles it as Contents/MacOS/ffmpeg, where a release looks");
         let res = &rel["bundle"]["resources"];
@@ -1399,6 +1437,14 @@ mod tests {
         assert!(configure.contains("--disable-autodetect") && configure.contains("--disable-network"), "{configure}");
         assert!(!configure.contains("--enable-gpl") && !configure.contains("--enable-nonfree") && !configure.contains("--enable-version3"), "LGPL v2.1+ only");
         assert!(conf["bundle"].get("externalBin").is_none(), "a dev bundle carries no encoder (B12's road)");
+        // A dev build carries the command, and only it (DECISIONS B217): npm run build:dev
+        // builds it first (tools/dev-cli.sh) and bundles it through tauri.dev-cli.conf.json.
+        let dev_cli: serde_json::Value = serde_json::from_str(include_str!("../../tauri.dev-cli.conf.json")).unwrap();
+        assert_eq!(dev_cli["bundle"]["externalBin"], serde_json::json!(["../../build/cli/shroom-cli"]));
+        let scripts: serde_json::Value = serde_json::from_str(include_str!("../../../package.json")).unwrap();
+        let dev = scripts["scripts"]["build:dev"].as_str().unwrap();
+        assert!(dev.starts_with("bash ../tools/dev-cli.sh && ") && dev.contains("--config src-tauri/tauri.dev-cli.conf.json"), "{dev}");
+        assert!(include_str!("../../../../tools/dev-cli.sh").contains("\"$ROOT/build/cli/shroom-cli-$triple\""), "dev-cli.sh writes what the dev bundle reads");
         assert!(rel["bundle"]["macOS"].get("minimumSystemVersion").is_none(), "the release keeps the one floor");
     }
 

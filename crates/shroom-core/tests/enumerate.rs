@@ -33,7 +33,7 @@ mod support;
 use std::collections::{BTreeMap, BTreeSet};
 
 use shroom_core::derive::{onboarding, settings};
-use shroom_core::event::{ClaimFail, CloudNews, Event, Field, Key, OsNews, RecNews, SecretField, Shape, Surface, SweepAnswer, TokenFail};
+use shroom_core::event::{ClaimFail, CloudNews, Event, Field, Key, OsNews, RecNews, SecretField, SettingsSpot, Shape, Surface, SweepAnswer, TokenFail};
 use shroom_core::scene::{Action, Glyph, Nest, OnboardingBody, Scene, SettingsPane};
 use shroom_core::time::{Fact, Mono, Wall};
 use shroom_core::world::*;
@@ -95,6 +95,7 @@ fn projection_fields(w: &World) {
                            // (popover/tray) the popover's door, its questions, the last stop, the countdown;
                            // the editor's fields fixed at none (region5.rs's rows and editor.rs walk N63)
         display_pick: _,   // fixed: no click's display, no hand pick (region3.rs walks N56)
+        agent: _,          // fixed: no take the command started (cli.rs walks its label)
     } = w;
 }
 
@@ -490,6 +491,8 @@ fn alphabet(w: &World, kind: WindowKind) -> Vec<Event> {
         Event::SecretPasted { field: SecretField::Token, id: SecretId(8), shape: Shape::Garbled },
         Event::Field { field: Field::Name, value: "My Shroom".into() },
         Event::Field { field: Field::Name, value: "myshroomhq".into() },
+        // The shroom command's recording refusal carries it (N62): clicked at any moment.
+        Event::SettingsLink(SettingsSpot::AgentRecording),
     ]);
     let out = |op: Op| w.inflight.ops.contains_key(&op);
     let paste = match &w.sweep.paste {
@@ -972,6 +975,7 @@ fn pop_alphabet(w: &World) -> Vec<Event> {
         Event::Os(OsNews::Session(OsSession { awake: false, unlocked: true, on_console: true })),
         Event::Os(OsNews::Session(OsSession::default())),
         Event::Os(OsNews::Devices { displays: q.displays.clone(), mics: vec![], cameras: vec![] }),
+        Event::SettingsLink(SettingsSpot::AgentRecording),
     ]);
     let out = |op: Op| w.inflight.ops.contains_key(&op);
     if out(Op::RecStart) {

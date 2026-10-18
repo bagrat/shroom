@@ -4,7 +4,8 @@
   "identifier": "am.shroom",
   "bundle": {
     "externalBin": [
-      "../../build/ffmpeg/sidecar/ffmpeg"
+      "../../build/ffmpeg/sidecar/ffmpeg",
+      "../../build/cli/shroom-cli"
     ],
     "resources": {
       "../../tools/ffmpeg-NOTICE.txt": "licenses/ffmpeg/NOTICE.txt",

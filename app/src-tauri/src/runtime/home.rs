@@ -30,6 +30,8 @@ pub const FILES: &[&str] = &[
     "invite",
     // A join asked for, written before the call (§5): replayed identically at launch.
     "join.json",
+    // The `shroom` command's socket (`control.rs`): made at launch, this user's only.
+    "control.sock",
 ];
 
 #[derive(Debug, Clone)]

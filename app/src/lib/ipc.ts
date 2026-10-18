@@ -4,7 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 
 export type Action = { do: string; arg?: unknown };
-export type Surface = "popover" | "countdown" | "onboarding" | "library" | "settings" | "feedback" | "editor";
+export type Surface = "popover" | "countdown" | "label" | "onboarding" | "library" | "settings" | "feedback" | "editor";
 
 export const act = (surface: Surface, action: Action) => invoke("act", { surface, action });
 export const key = (surface: Surface, key: "return" | "esc") => invoke("key", { surface, key });

@@ -8,7 +8,7 @@
     "build": "vite build",
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "tauri": "tauri",
-    "build:dev": "tauri build --debug --bundles app --features dev-harness",
+    "build:dev": "bash ../tools/dev-cli.sh && tauri build --debug --bundles app --features dev-harness --config src-tauri/tauri.dev-cli.conf.json",
     "test": "vitest run",
     "test:gallery": "node test/onboarding-gallery.mjs && node test/windows-gallery.mjs && node test/typing-gallery.mjs",
     "gallery:editor": "node test/editor-preview.mjs",

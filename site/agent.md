@@ -22,6 +22,9 @@ For macOS 14 or newer, Apple silicon.
 
 ## If you're an agent
 
+If shroom is already on their Mac and they asked you to do something with it — their
+videos, a link, a recording — read https://shroom.am/cli and follow that instead.
+
 If the person you're helping didn't ask you to install shroom, the page above is the
 answer: offer nothing, run nothing. If they did, install it only with their yes: show
 them the command, ask one question, and run it only on their answer.

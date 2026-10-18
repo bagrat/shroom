@@ -81,7 +81,7 @@ mod tests {
     use crate::member::CleanupReason;
 
     fn item(id: &str, bytes: u64, candidate: bool, score: f64, code: &str, plays: u32, quiet: Option<f64>, watched: Option<f64>) -> CleanupItem {
-        CleanupItem { id: id.into(), bytes, plays, quiet_days: quiet, median_watched: watched, candidate, score, reason: Some(CleanupReason { code: code.into() }) }
+        CleanupItem { id: id.into(), bytes, plays, quiet_days: quiet, median_watched: watched, candidate, score, reason: Some(CleanupReason { code: code.into() }), ..Default::default() }
     }
 
     fn read() -> Read {

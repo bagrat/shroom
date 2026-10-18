@@ -1129,6 +1129,18 @@
    "amended_by": []
   },
   {
+   "id": "N62",
+   "title": "shroom on the command line, for a person or their coding agent",
+   "decision": "**Proposed 2026-10-18 (dev/proposals/cli-agent-skill.md). Bagrat's calls the same day, relayed by the orchestrator:** an agent may start and stop recordings only once a Settings switch is on, off by default; a refused recording says so, says that switch turns it on, and gives a link that opens Settings right at it; the command may make invites; the command is always installed; it does things many at once, so an agent can invite a team or tidy many videos in one step; and it is built in full now, its release his to time. (1) **The `shroom` command** ships inside the app (`Contents/MacOS/shroom-cli`) and follows the app it ships in: that app's folder (a dev build's command reads `~/.shroom-dev`) and that app to open. The install line links it into `~/.local/bin` (and puts that folder on the login profile's PATH when it isn't there), the cask into Homebrew's bin; `--uninstall` takes both back. (2) **It works whether the app runs or not:** list, info, links, open, rename, delete, cleanup candidates, members, invites — through the space's own page under this Mac's device key, never the Cloudflare token. A delete, a member's removal or a batch invite changes nothing without `--yes`; a rename, delete, invite or removal waits while a take is open (law 4). (3) **Many at once:** a batch takes its items as arguments or from a file and answers each with its own status; it is safe to run again (nothing is done twice), and says so when only some went through. At most 20 invites or 100 items a call. Each person invited gets their own link: shroom sends nothing. (4) **Cleanup candidates** are the page's own suggestions where the page makes them, and otherwise the videos older than a number of days. (5) **Recording goes through the running app** (its control socket in shroom's folder, this user only): start is the popover's Start, countdown and permission beat included, the popover open or not; pause is the tray's; Resume and Stop are the paused popover's; a stop answers with its link (law 3: this stop made it; law 10: nothing is copied). The app answers with a code, and the command says the words. (6) **Settings → General gains “Your coding agent”**: the prompt to paste, Copy (“Copied”, law 10), Read it first (shroom.am/cli), the line under them, and the switch “Let it start and stop recordings”, off by default; while it's off the app refuses every recording ask. **The refusal is three lines:** recording from a coding agent is off; the switch in Settings, under General, turns it on; and the link `shroom://settings/agent` (with `--json`, also its own field, `settings_link`; exit 10 as before). Bagrat approved its words and the switch's label as drawn, 2026-10-18. Clicked, the link opens shroom if it isn't running, and Settings on General with the switch's row in view and lit for a moment; the switch stays as it was — only the person flips it. Mid-take it opens nothing (law 4); a sheet open in Settings stays, and Settings comes forward as it stands. Settings needs a space (B160), so a Mac without one is told to set shroom up first, before the switch comes up. (7) **shroom.am/cli** is the guide an agent reads (a skill's SKILL.md), and `shroom guide` prints the same; /agent points there. (8) **Without the count, and the label** (Bagrat, 2026-10-18): `record start --no-countdown` starts the take at once, capture beginning as the count's end would; the app's own Start keeps its count. A take the command starts shows a small label at the top right of the display it records — “Your coding agent is recording your screen” — while it records (paused, it goes; a take of the camera only has none), left out of the video and taking no clicks; `--no-label` leaves it off. The tray shows every take, whatever the flags. Bagrat approved the label's board as drawn — its look, its words and the label on by default — 2026-10-18. Built: DECISIONS B215–B219. Ratified by Bagrat, 2026-10-18: the Settings card's words as built (he'll tweak them once he uses it), the command's words and the guide as built.",
+   "status": "ratified",
+   "date": "2026-10-18",
+   "amends": [
+    "N36 (General gains the coding agent's card)",
+    "N59 (shroom.am gains /cli beside /agent)"
+   ],
+   "amended_by": []
+  },
+  {
    "id": "N68",
    "title": "The page counts plays in the owner's own account, and the Library suggests videos to clean up",
    "decision": "**Bagrat asked for it, 2026-10-18**: shroom is pay-as-you-go, so it should say which videos are worth deleting, from how old they are, how often and how far they've been watched and when last. **The same day he chose**: plays counted **on by default**, with the switch in Settings; **plays and unique-ish viewers** both counted; the score is **fading and cost together**; deleting from the suggestions is **one tap with Undo**; and the rest to the build's judgment (B210–B214). (1) **The page counts plays.** A viewer's page and the embed send one beacon at the first play and one each time the tab hides, saying how much was watched; the Worker keeps per-video counts in the space's own bucket — plays, unique-ish viewers (a day-only hash under a salt replaced daily), how far each was watched in tenths, plays per day, last played. No cookie, nothing stored on the viewer's device, nothing kept that says who watched. The maker's own page never counts. A video that isn't live gets no record; a deleted one's record goes with its seal. (2) **Settings → General gains a group, Your videos**: **Count plays** (on; the space's switch, owner-class only, as the mark's is), **Suggest videos to clean up** (on; this Mac's), and **Space used** (the space's size, and what it costs past Cloudflare's free 10 GB). (3) **A video is suggested** when counting has watched it at least 30 days, it is at least 30 days old and nobody has played it in 30, its plays have faded (each counts half as much every 30 days, weighted by how far it was watched: 0.3 + 0.7 × its median share) below a quarter of one fresh full watch, and it takes at least a cent a month to keep at list price (about 0.67 GB). Never one marked Keep. The costliest per remaining play comes first. (4) **The Library says so in one line** above the rows, with Review… and ✕ (not now, until the list changes). (5) **Suggested to clean up** is the Library's own view: what deleting all of them frees and saves, then each video with when it was made, its size and why (\"Watched 4 times, the last 10 months ago\"), with Open page, Keep and Delete. **Delete is one tap**: the row goes and an Undo line stays a few seconds before the delete is sent; Delete all… asks once with the several-videos sheet. Keep takes a video off the list for good (the record's `keep`). (6) **The money line** gives sizes always, and cents only past the free 10 GB; inside it, the saving reads as nothing yet, and a clean-up that brings the space back inside it says so. (7) **shroom.am/privacy's line on viewers changes**; its new words, from the board \"shroom.am/privacy — the viewers' line once plays are counted\", Bagrat approved on 2026-10-18 with the sentence on the one-day viewer stand-in, and the page carries them (site/pages/privacy.html). (8) **Each suggested row says what it costs a month**, only when the space is past the free 10 GB and never on a member's Mac (Bagrat, 2026-10-18): its size at the list price (B212). Built: DECISIONS B210–B214. **Bagrat ratified it as built, 2026-10-18**: its words and rules, and B211's 1¢ size gate.",
@@ -1222,7 +1234,11 @@
   },
   {
    "name": "The overlays",
-   "may_do": "Lives: the chosen display | Opens: the countdown scrim; the bubble from `config` through the take | Rules: never windows, never the dock icon; the bubble never takes focus, while the countdown does — you just started it, and its Esc must work without any extra macOS permission; the bubble is the only thing of ours ever in a take  [UX-STATEMACHINE.md L1720]"
+   "may_do": "Lives: the chosen display | Opens: the countdown scrim; the bubble from `config` through the take; the agent label while a take the shroom command started records (N62) | Rules: never windows, never the dock icon; the bubble never takes focus, while the countdown does — you just started it, and its Esc must work without any extra macOS permission; the bubble is the only thing of ours ever in a take (the label, like the countdown, is left out of it)  [UX-STATEMACHINE.md L1720]"
+  },
+  {
+   "name": "The command line",
+   "may_do": "Lives: the person's terminal, or their coding agent's | Opens: — (a link in the browser when asked); its recording refusal carries a link that opens Settings at General's switch, for the person to click | Rules: the space's own page under this Mac's device key, never the token; nothing undoable without --yes; waits while a take is open (law 4); recording only through the running app, and only with General's switch on (N62)"
   }
  ],
  "absent_from_v1": [
@@ -5437,8 +5453,19 @@
    "status": "ratified",
    "board": "TrayFaces",
    "summary": "The tray is the whole surface and there is no popover. The icon wears the red dot. A click is an instant pause, and the popover opens only after the pause is confirmed (never catch a menu in the last frame, POC §8). No timer in the menu bar. Network is never the recording's problem: capture writes locally regardless, and upload is opportunistic in the background. A right-click mid-take is the same as a left click (N39). ⌘Q and the Dock's Quit are declined silently (law 4).",
-   "entry": "`countdown` elapsed and capture began, or Resume from `paused`.",
-   "said": [],
+   "entry": "`countdown` elapsed and capture began, or Resume from `paused`. Or capture began at once: the shroom command's start without the count (N62).",
+   "said": [
+    {
+     "text": "Your coding agent is recording your screen",
+     "role": "label",
+     "copy": "ratified",
+     "note": "The agent label: a small label at the top right of the display being recorded, while a take the shroom command started records (N62, B216). Left out of the video, as the countdown and the bubble's controls are; it takes no clicks. Not with --no-label; never on a take the person started, nor on one of the camera only; paused, it goes. Ratified by Bagrat, 2026-10-18, relayed by the orchestrator: the board as drawn.",
+     "cites": [
+      "N62"
+     ],
+     "id": "recording.your-coding-agent-is"
+    }
+   ],
    "actions": [
     {
      "label": "tray click",
@@ -5481,6 +5508,7 @@
     "N41",
     "N25",
     "N54",
+    "N62",
     "N64"
    ],
    "was": {
@@ -8594,7 +8622,7 @@
    "status": "provisional",
    "board": "SettingsGeneral",
    "summary": "The General tab: U4's login checkbox at home at last (it reads the system's truth: if the login item is removed in System Settings, the box shows unchecked), the update row mirroring config's banner, and the help row: Copy diagnostics and Report a problem… (B180), with GitHub's new-issue link under it as the public door (N8). Past this Mac's macOS, General carries the only update line: no banner, no dot.",
-   "entry": "Settings window on the General tab (the default on first open).",
+   "entry": "Settings window on the General tab (the default on first open). The shroom command's settings link (N62) opens it too, the switch's row lit for a moment.",
    "said": [
     {
      "text": "Start shroom when you log in",
@@ -8695,6 +8723,66 @@
      "copy": "ratified",
      "note": "Quiet text at the tab's foot. Greys mid-take (law 4).",
      "id": "settings-general.uninstall-shroom"
+    },
+    {
+     "text": "Your coding agent",
+     "role": "field-label",
+     "copy": "ratified",
+     "note": "The card's label, under the help row (N62). Ratified by Bagrat, 2026-10-18: as built; he'll tweak the card's words once he uses it.",
+     "cites": [
+      "N62"
+     ],
+     "id": "settings-general.your-coding-agent"
+    },
+    {
+     "text": "Use shroom on my Mac: read https://shroom.am/cli and follow it.",
+     "role": "line",
+     "copy": "ratified",
+     "note": "The prompt itself, in a code well; what Copy puts on the clipboard (N62). Ratified by Bagrat, 2026-10-18: as built; he'll tweak the card's words once he uses it.",
+     "cites": [
+      "N62"
+     ],
+     "id": "settings-general.use-shroom-on-my"
+    },
+    {
+     "text": "Copy",
+     "role": "button",
+     "copy": "ratified",
+     "note": "Copies the prompt; reads Copied for a moment after its click, as Copy diagnostics does (law 10). Ratified by Bagrat, 2026-10-18: as built; he'll tweak the card's words once he uses it.",
+     "cites": [
+      "N62"
+     ],
+     "id": "settings-general.copy"
+    },
+    {
+     "text": "Read it first",
+     "role": "link",
+     "copy": "ratified",
+     "note": "Opens shroom.am/cli in the browser: what the agent will read, word for word. Ratified by Bagrat, 2026-10-18: as built; he'll tweak the card's words once he uses it.",
+     "cites": [
+      "N62"
+     ],
+     "id": "settings-general.read-it-first"
+    },
+    {
+     "text": "Paste it into your coding agent. It can find, share and tidy your videos, and asks you before it deletes anything.",
+     "role": "line",
+     "copy": "ratified",
+     "note": "Under the prompt. Ratified by Bagrat, 2026-10-18: as built; he'll tweak the card's words once he uses it.",
+     "cites": [
+      "N62"
+     ],
+     "id": "settings-general.paste-it-into-your"
+    },
+    {
+     "text": "Let it start and stop recordings",
+     "role": "field-label",
+     "copy": "ratified",
+     "note": "A switch, off by default (Bagrat, 2026-10-18). While it's off, the app refuses the command's recording asks, and the refusal's link (`shroom://settings/agent`) opens General here with this row in view and lit for a moment, never flipped. Ratified by Bagrat, 2026-10-18, relayed by the orchestrator.",
+     "cites": [
+      "N62"
+     ],
+     "id": "settings-general.let-it-start-and"
     },
     {
      "text": "Your videos",
@@ -8813,6 +8901,7 @@
     "B135",
     "B180",
     "N53",
+    "N62",
     "N68"
    ],
    "was": {
@@ -14394,6 +14483,23 @@
    ]
   },
   {
+   "from": "idle-ready",
+   "to": "settings-general",
+   "kind": "flow",
+   "label": "shroom://settings/agent",
+   "trigger": "the link in the shroom command's recording refusal, clicked (N62): Settings opens on General, the switch's row lit for a moment and never flipped",
+   "status": "ratified",
+   "cites": [
+    "N62"
+   ],
+   "source": [
+    "core-arm"
+   ],
+   "on": [
+    "SettingsLink"
+   ]
+  },
+  {
    "from": "recording-off",
    "to": "perm-screen",
    "kind": "flow",
@@ -14821,6 +14927,21 @@
    "on": [
     "Act(ConfirmRestart)"
    ]
+  },
+  {
+   "from": "idle-ready",
+   "to": "countdown",
+   "kind": "flow",
+   "label": "shroom record start",
+   "trigger": "the shroom command asks to start (N62), General's switch on: the popover's Start, the popover closed",
+   "status": "ratified",
+   "cites": [
+    "N62"
+   ],
+   "source": [
+    "core-arm"
+   ],
+   "on": []
   },
   {
    "from": "restart-confirm",
@@ -18303,6 +18424,31 @@
     "N36",
     "law 1",
     "B134"
+   ],
+   "status": "ratified"
+  },
+  {
+   "id": "settings-link",
+   "label": "the settings link opens Settings at its spot",
+   "from": [
+    "@idle",
+    "@popovers",
+    "@settings-tabs",
+    "@space-tab"
+   ],
+   "to": [
+    "settings-general",
+    "@idle"
+   ],
+   "on": [
+    "SettingsLink"
+   ],
+   "kind": "flow",
+   "says": "The link the shroom command's recording refusal carries (`shroom://settings/agent`, N62) opens Settings on General with the switch “Let it start and stop recordings” in view and lit for a moment: from the tray at rest, over an idle popover (it closes, as a click away closes it), and from another tab. It flips nothing. A sheet open in Settings stays, and Settings comes forward as it stands. Mid-take it opens nothing (law 4), and a Mac with no space has no Settings (B160).",
+   "cites": [
+    "N62",
+    "law 4",
+    "B160"
    ],
    "status": "ratified"
   },

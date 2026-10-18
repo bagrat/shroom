@@ -1,0 +1,17 @@
+#!/bin/sh
+# Dev only: a stand-in for the person's own mail tool in the batch demo (dev/cli/demo-batch.sh)
+# — what an agent with a mail connector would use. It sends nothing: each message is one
+# JSON line in $OUTBOX, for the demo's screenshots.
+#   send-mail --to <address> --subject <subject> --body <text>
+to=""; subject=""; body=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --to) to=$2; shift 2 ;;
+    --subject) subject=$2; shift 2 ;;
+    --body) body=$2; shift 2 ;;
+    *) echo "send-mail --to <address> --subject <subject> --body <text>" >&2; exit 2 ;;
+  esac
+done
+[ -n "$to" ] && [ -n "$body" ] || { echo "send-mail needs --to and --body" >&2; exit 2; }
+node -e 'console.log(JSON.stringify({to: process.argv[1], subject: process.argv[2], body: process.argv[3]}))' "$to" "$subject" "$body" >>"${OUTBOX:?}"
+echo "sent to $to"

@@ -18,6 +18,6 @@ export default defineConfig({
     outDir: "dist",
     emptyOutDir: true,
     // pattern.html is the dev harness's test pattern (TESTING-PLAN §4).
-    rollupOptions: { input: { main: "index.html", pattern: "pattern.html", popover: "popover.html", countdown: "countdown.html", onboarding: "onboarding.html", library: "library.html", settings: "settings.html", feedback: "feedback.html", editor: "editor.html" } },
+    rollupOptions: { input: { main: "index.html", pattern: "pattern.html", popover: "popover.html", countdown: "countdown.html", label: "label.html", onboarding: "onboarding.html", library: "library.html", settings: "settings.html", feedback: "feedback.html", editor: "editor.html" } },
   },
 });

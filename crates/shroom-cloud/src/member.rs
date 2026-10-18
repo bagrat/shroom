@@ -499,6 +499,9 @@ pub struct CleanupPage {
     /// How counting fares over this page, for the run log.
     #[serde(default)]
     pub views: ViewsHealth,
+    /// Since when plays are counted (`None`: not yet), for the `shroom` command (N62, B215).
+    #[serde(default, rename = "countingSince")]
+    pub counting_since: Option<String>,
 }
 
 fn yes() -> bool {
@@ -529,7 +532,7 @@ impl ViewsHealth {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CleanupItem {
     pub id: String,
@@ -551,6 +554,19 @@ pub struct CleanupItem {
     /// Why, by code (`never-played`, `stopped-early`, `not-lately`, `kept`, …).
     #[serde(default)]
     pub reason: Option<CleanupReason>,
+    // What the `shroom` command shows of each, as the Worker sends it (N62, B215).
+    #[serde(default)]
+    pub title: String,
+    #[serde(default)]
+    pub created_at: Option<String>,
+    #[serde(default)]
+    pub owner: Option<String>,
+    #[serde(default)]
+    pub age_days: Option<f64>,
+    #[serde(default)]
+    pub duration_sec: Option<f64>,
+    #[serde(default)]
+    pub last_played_at: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
@@ -757,17 +773,27 @@ impl Space {
 
     /// `DELETE invites/<iid>` (§4.13).
     pub fn cancel_invite(&self, key: &DeviceKey, iid: &str) -> Answer<()> {
-        self.call::<Value>("DELETE", &format!("invites/{iid}"), None, Some(key)).map(|_| ())
+        self.delete_id('i', "invites", iid, key)
     }
 
     /// `DELETE members/<mid>` (§4.14).
     pub fn remove_member(&self, key: &DeviceKey, mid: &str) -> Answer<()> {
-        self.call::<Value>("DELETE", &format!("members/{mid}"), None, Some(key)).map(|_| ())
+        self.delete_id('m', "members", mid, key)
     }
 
     /// `DELETE devices/<did>` (§4.15): another owner Mac.
     pub fn remove_device(&self, key: &DeviceKey, did: &str) -> Answer<()> {
-        self.call::<Value>("DELETE", &format!("devices/{did}"), None, Some(key)).map(|_| ())
+        self.delete_id('d', "devices", did, key)
+    }
+
+    /// `DELETE <what>/<id>`, only for an id of the route's shape: anything else — a typed
+    /// `../members/…`, whose dot segments would name another route — is refused here, and
+    /// nothing is sent.
+    fn delete_id(&self, prefix: char, what: &str, id: &str, key: &DeviceKey) -> Answer<()> {
+        if !crate::device::is_registry_id(id, prefix) {
+            return Answer::Refused(Refusal { status: 400, class: Class::BadRequest, reason: None, why: None, member: None, retry_after: None, date: None });
+        }
+        self.call::<Value>("DELETE", &format!("{what}/{id}"), None, Some(key)).map(|_| ())
     }
 
     /// `DELETE devices/self` — Leave, Disconnect, the switch's deregistration (§16 #57).
@@ -1086,6 +1112,49 @@ pub fn ai_log_lines(take: &str, signal: AiSignal, sent: AiSent, notes: &[String]
 mod tests {
     use super::*;
 
+    /// An id that isn't one — `../members/m_…` from a typed list — never becomes a path: the
+    /// call is refused before anything is sent (WORKER-INTERFACE §4.13–§4.15; a URL's dot
+    /// segments would otherwise name another route).
+    /// `POST cleanup` as #57's worker.js writes it: the record's facts (days as fractions,
+    /// `quietDays` null where counting can't tell), the verdict, and the space's switch.
+    #[test]
+    fn a_cleanup_page_reads_every_fact_the_worker_sends() {
+        let body = br#"{"shroom":1,"countingSince":"2026-04-18T00:00:00.000Z","counting":false,"formula":"fading-cost","next":"AbCdEfGhIjKlMnOq","items":[
+            {"id":"AbCdEfGhIjKlMnOo","title":"Old demo","createdAt":"2026-01-10T09:00:00.000Z","owner":"m_AnnAnnAnnAnnAnnA","ageDays":281.6,"durationSec":1500.4,"bytes":3222000000,"usdPerMonth":0.048,"plays":4,"viewers":2,"medianWatched":0.45,"lastPlayedAt":"2025-12-20T09:00:00.000Z","plays90":0,"quietDays":300.4,"candidate":true,"score":0.96,"reason":{"code":"not-lately","heat":0.01,"plays":4,"quietDays":300,"ageDays":281}},
+            {"id":"AbCdEfGhIjKlMnOq","title":"","createdAt":null,"owner":"m_AnnAnnAnnAnnAnnA","ageDays":3.2,"durationSec":0,"bytes":0,"plays":0,"medianWatched":null,"lastPlayedAt":null,"quietDays":null,"candidate":false,"score":0,"reason":{"code":"counting-too-new"}}]}"#;
+        let page: CleanupPage = match Space::classify(Ok((200, body.to_vec(), None))) {
+            Answer::Ok(p) => p,
+            other => panic!("{other:?}"),
+        };
+        assert!(!page.counting);
+        assert_eq!(page.counting_since.as_deref(), Some("2026-04-18T00:00:00.000Z"));
+        assert_eq!(page.next.as_deref(), Some("AbCdEfGhIjKlMnOq"));
+        let a = &page.items[0];
+        assert_eq!((a.title.as_str(), a.created_at.as_deref(), a.owner.as_deref()), ("Old demo", Some("2026-01-10T09:00:00.000Z"), Some("m_AnnAnnAnnAnnAnnA")));
+        assert_eq!((a.age_days, a.quiet_days, a.duration_sec, a.plays), (Some(281.6), Some(300.4), Some(1500.4), 4));
+        assert_eq!((a.last_played_at.as_deref(), a.candidate, a.reason.as_ref().map(|r| r.code.as_str())), (Some("2025-12-20T09:00:00.000Z"), true, Some("not-lately")));
+        let b = &page.items[1];
+        assert_eq!((b.created_at.as_deref(), b.quiet_days, b.median_watched, b.candidate), (None, None, None, false));
+        assert_eq!(b.reason.as_ref().map(|r| r.code.as_str()), Some("counting-too-new"));
+    }
+
+    #[test]
+    fn an_id_that_isnt_one_never_reaches_a_path() {
+        // Nothing listens here: a request that went out would come back unanswered.
+        let page = Space::at("v.myshroom.workers.dev", "http://127.0.0.1:9");
+        let key = crate::device::DeviceKey::generate("v.myshroom.workers.dev");
+        let refused = |a: Answer<()>| matches!(a, Answer::Refused(r) if r.status == 400);
+        for bad in ["../members/m_MherMherMherMher", "i_short", "i_AbCdEfGhIjKlMn/x", "i_AbCdEfGh?jKlMnOp", "m_AbCdEfGhIjKlMnOp", ""] {
+            assert!(refused(page.cancel_invite(&key, bad)), "{bad}");
+        }
+        for bad in ["../invites/i_AbCdEfGhIjKlMnOp", "i_AbCdEfGhIjKlMnOp", "m_Mher/../x"] {
+            assert!(refused(page.remove_member(&key, bad)), "{bad}");
+            assert!(refused(page.remove_device(&key, bad)), "{bad}");
+        }
+        assert!(matches!(page.cancel_invite(&key, "i_AbCdEfGhIjKlMnOp"), Answer::Unanswered(_)), "an invite's id is sent");
+        assert!(matches!(page.remove_member(&key, "m_AbCdEfGhIjKlMnOp"), Answer::Unanswered(_)), "a member's id is sent");
+    }
+
     #[test]
     fn a_cleanup_page_reads_as_the_worker_writes_it() {
         // worker.js `cleanup`'s answer, as POST /_shroom/api/cleanup sends it (N68).
@@ -1100,7 +1169,7 @@ mod tests {
         };
         assert!(!page.counting);
         assert_eq!(page.next.as_deref(), Some("AbCdEfGhIjKlMnOp"));
-        assert_eq!(page.items[0], CleanupItem { id: "AbCdEfGhIjKlMnOo".into(), bytes: 3_222_000_000, plays: 4, quiet_days: Some(300.4), median_watched: Some(0.45), candidate: true, score: 0.96, reason: Some(CleanupReason { code: "not-lately".into() }) });
+        assert_eq!(page.items[0], CleanupItem { id: "AbCdEfGhIjKlMnOo".into(), bytes: 3_222_000_000, plays: 4, quiet_days: Some(300.4), median_watched: Some(0.45), candidate: true, score: 0.96, reason: Some(CleanupReason { code: "not-lately".into() }), ..page.items[0].clone() });
         assert_eq!((page.items[1].quiet_days, page.items[1].bytes, page.items[1].candidate), (None, 0, false));
     }
 

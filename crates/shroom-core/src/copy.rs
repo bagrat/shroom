@@ -487,6 +487,17 @@ pub fn github() -> String { "GitHub".into() }
 pub const REPORT_WORDS_MAX: usize = 8000;
 pub fn help_label() -> String { "Something off?".into() }
 pub fn copy_diagnostics() -> String { "Copy diagnostics".into() }
+// ── Your coding agent (dev/proposals/cli-agent-skill.md, provisional) ──
+pub fn agent_label() -> String { "Your coding agent".into() }
+/// What the card's Copy puts on the clipboard: the same door as the landing's Coding agent
+/// tab, pointed at the guide to the `shroom` command.
+pub fn agent_prompt() -> String { "Use shroom on my Mac: read https://shroom.am/cli and follow it.".into() }
+pub fn copy_word() -> String { "Copy".into() }
+pub fn read_it_first() -> String { "Read it first".into() }
+pub fn agent_line() -> String { "Paste it into your coding agent. It can find, share and tidy your videos, and asks you before it deletes anything.".into() }
+pub fn agent_recording() -> String { "Let it start and stop recordings".into() }
+/// The agent label (N62, B216): top right of the display a take the command started records.
+pub fn agent_label_line() -> String { "Your coding agent is recording your screen".into() }
 pub fn report_a_problem() -> String { "Report a problem…".into() }
 pub fn report_sent() -> String { "Sent — thank you. If you left your email, you’ll hear back.".into() }
 pub fn report_title() -> String { "Report a problem".into() }
@@ -1135,6 +1146,13 @@ pub fn registry() -> Vec<(&'static str, String)> {
         ("settings-general", copied()),
         ("settings-general", report_a_problem()),
         ("settings-general", report_sent()),
+        ("settings-general", agent_label()),
+        ("settings-general", agent_prompt()),
+        ("settings-general", copy_word()),
+        ("settings-general", read_it_first()),
+        ("settings-general", agent_line()),
+        ("settings-general", agent_recording()),
+        ("recording", agent_label_line()),
         ("report-problem", report_title()),
         ("report-problem", report_line()),
         ("report-problem", report_placeholder()),

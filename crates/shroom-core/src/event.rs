@@ -88,6 +88,8 @@ pub enum Surface {
     Editor,
     Countdown,
     Bubble,
+    /// The agent label (N62, B216): it takes no clicks and no keys; only its slice is read.
+    Label,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -140,6 +142,12 @@ pub enum Event {
     /// top-left of the display it's on (N22: you place yourself before Start).
     BubbleMoved((i32, i32)),
     QuitRequested(QuitVia),
+    /// The `shroom` command asked to start, pause, resume or stop a recording, through the
+    /// app's control socket: `id` is the runner's, for its answer (`Effect::Cli`).
+    Cli { id: u64, op: CliOp },
+    /// A `shroom://settings/…` link opened with shroom (N62): the command's recording refusal
+    /// carries one, for the person to click.
+    SettingsLink(SettingsSpot),
     // ── the OS ──
     Os(OsNews),
     // ── the mechanism ──
@@ -477,4 +485,67 @@ pub enum ReportNews {
     Sent(crate::report::Kind),
     /// It didn't go through: offline, refused, rate-limited or switched off.
     NotSent(crate::report::Kind),
+}
+
+/// A place in Settings a `shroom://settings/…` link opens (spec N62, DECISIONS B216): General's
+/// switch “Let it start and stop recordings”, the link the `shroom` command's recording
+/// refusal carries. The link only opens and lights it; the person flips it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SettingsSpot {
+    AgentRecording,
+}
+
+impl SettingsSpot {
+    const ALL: [SettingsSpot; 1] = [SettingsSpot::AgentRecording];
+
+    /// The link that opens it.
+    pub const fn link(self) -> &'static str {
+        match self {
+            SettingsSpot::AgentRecording => "shroom://settings/agent",
+        }
+    }
+
+    /// The tab it is on.
+    pub const fn tab(self) -> crate::world::SettingsTab {
+        match self {
+            SettingsSpot::AgentRecording => crate::world::SettingsTab::General,
+        }
+    }
+
+    /// The spot a link opens, read exactly (a trailing slash and the case aside): any other
+    /// link, a query or a fragment included, is not one.
+    pub fn of_link(url: &str) -> Option<SettingsSpot> {
+        let url = url.trim();
+        let url = url.strip_suffix('/').unwrap_or(url);
+        SettingsSpot::ALL.into_iter().find(|s| url.eq_ignore_ascii_case(s.link()))
+    }
+}
+
+/// What the `shroom` command may ask of the recording — each one exactly what its click does
+/// in the popover or the tray (dev/proposals/cli-agent-skill.md §3) — and how a start goes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CliOp {
+    Start(StartAsk),
+    Pause,
+    Resume,
+    Stop,
+}
+
+impl CliOp {
+    /// A start as the popover's: the count, and the label while it records.
+    pub const START: CliOp = CliOp::Start(StartAsk { countdown: true, label: true });
+}
+
+/// How the command's start goes (N62, B216; Bagrat, 2026-10-18): the count, unless
+/// `--no-countdown`; the agent label while the take records, unless `--no-label`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct StartAsk {
+    pub countdown: bool,
+    pub label: bool,
+}
+
+impl Default for StartAsk {
+    fn default() -> StartAsk {
+        StartAsk { countdown: true, label: true }
+    }
 }

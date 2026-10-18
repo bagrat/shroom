@@ -54,6 +54,12 @@
    places chapters in the seek bar and writes captions through the owner's own Cloudflare
    account; a switch in Settings · Space on the setup Mac and a one-time card in its
    Library turn it on. Checked live on the free-plan test account (B206).
+5. **The `shroom` command for coding agents is built and ratified** (N62, B215–B219;
+   [#58](https://github.com/bagrat/shroom/pull/58) *(the shroom command for coding agents)*):
+   the command inside the app and on PATH, many at once, the app's control socket behind
+   General's switch — its refusal carrying the link that opens Settings at the switch — the
+   start without the count and the agent label, and the guide at shroom.am/cli. When it
+   ships is his call (item 37).
 
 
 ## Waiting for Bagrat
@@ -326,3 +332,14 @@ and edits on the share page)*)**
     line (the page carries it in the same PR, so it ships with counting), each row's cost
     past the free 10 GB, and the 1¢ size gate (B211). Proved on the hosted Mac (the cleanup
     drive, 22 checks). Waits only on his timing of the release, with the other four builds.
+
+41. **The `shroom` command (N62, B215–B219), built in full on his ask and ratified
+    (2026-10-18): when it ships.** Merging deploys shroom.am/cli, and the cask links the
+    command from the first release that carries it. He ratified N62 and its decisions, the
+    Settings card's words as built (he'll tweak them once he uses it), and the command's
+    words and the guide as built; the refusal's three lines, the switch's label and the
+    agent label's board he had approved as drawn. The security review's one open point, the
+    switch being consent rather than a wall against code already running as the person, he
+    accepted as a risk (B216). Proven: CI, the hosted Mac's `cli-socket`, `settings-link`,
+    `settings`, `cli-label` and `take-left-out` drives, and the full e2e's command leg on
+    the test account.

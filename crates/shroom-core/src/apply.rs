@@ -8,7 +8,7 @@ use std::sync::Arc;
 use crate::copy;
 use crate::derive::onboarding::{self, At};
 use crate::derive::settings::{self as settings_view, SpaceAt};
-use crate::derive::{COPIED_MS, COUNTDOWN_MS, OneShot, UNDO_MS, derive, library as library_view};
+use crate::derive::{COPIED_MS, COUNTDOWN_MS, LIT_MS, OneShot, UNDO_MS, derive, library as library_view};
 use crate::effect::{CloudCmd, EditCmd, Effect, LibCmd, MemberCmd, MoviesCopy, Perm, PersistOp, PublicUrl, RecCmd, ShellCmd, TakeCmd, UpCmd, UpdCmd};
 use crate::event::{
     ClaimFail, CloudNews, EditStep, EditorNews, Event, Field, JoinAnswer, Key, LibraryNews, MemberNews, OsNews, PeekAnswer, QuitVia, RecNews, ReportNews,
@@ -221,6 +221,8 @@ fn apply_event(w: &mut World, event: Event) -> Out {
             }
         }
         Event::PopoverDismissed => dismiss(w),
+        Event::Cli { id, op } => cli(w, id, op),
+        Event::SettingsLink(spot) => settings_link(w, spot),
         Event::Field { field: Field::LibrarySearch, value } => {
             if derive(w).library.is_none() {
                 return (vec![], Arm::DROPPED);
@@ -496,6 +498,145 @@ fn pause(w: &mut World, cause: Cause) {
         t.phase = Phase::Pausing(cause);
         t.since = w.now;
     }
+}
+
+/// The `shroom` command's ask (spec N62, DECISIONS B216): each op is exactly what its click
+/// does — Start as the popover's (its countdown, its permission beat), pause as the tray's,
+/// Resume and Stop as the paused popover's — and only while the person has turned on
+/// General's “Let it start and stop recordings”. Answered once, always, with a code (the
+/// command says the words): the app holds the connection until it is.
+fn cli(w: &mut World, id: u64, op: crate::event::CliOp) -> Out {
+    use crate::event::CliOp;
+    let face = |w: &World| -> &'static str {
+        match (w.session.arming.as_ref(), w.take.as_ref().map(|t| t.phase)) {
+            (Some(a), _) if !a.fired => "countdown",
+            // The count's end fired (at once, without the count): capture is beginning.
+            (Some(_), _) => "recording",
+            (_, Some(Phase::Paused(_) | Phase::Pausing(_))) => "paused",
+            (_, Some(Phase::Finalizing(_))) => "stopping",
+            (_, Some(_)) => "recording",
+            _ => "none",
+        }
+    };
+    let answer = |w: &World, error: Option<&'static str>, link: Option<String>| {
+        Effect::Cli(crate::effect::CliAnswer { id, ok: error.is_none(), take: face(w), error, link })
+    };
+    let refuse = |w: &World, code: &'static str| (vec![answer(w, Some(code), None)], Arm::named("cli-refused"));
+    // Set up first: the switch lives in Settings, and Settings needs a space (B160) — so
+    // the refusal's link always has a Settings to open (B216).
+    if w.space.identity.is_none() {
+        return refuse(w, "not_set_up");
+    }
+    if !w.prefs.agent_recording {
+        return refuse(w, "recording_off");
+    }
+    let phase = w.take.as_ref().map(|t| t.phase);
+    // Between two steps (pausing, resuming, stopping): ask again in a moment.
+    if matches!(phase, Some(Phase::Pausing(_) | Phase::Resuming | Phase::Finalizing(_))) {
+        return refuse(w, "busy");
+    }
+    // The count, and the recorder starting after it: the take is on its way.
+    let coming = w.session.arming.is_some() || matches!(phase, Some(Phase::Starting));
+    let (mut fx, arm) = match op {
+        CliOp::Start(ask) => {
+            if w.take_open() {
+                return refuse(w, "take_open");
+            }
+            // Start only where the popover would offer it, as if it were open now. With it
+            // closed, the move is the machine's own edge idle-ready → countdown (N62).
+            let idle = w.session.popover.is_none() && derive(w).state_ids().contains(&"idle-ready");
+            let was = w.session.popover.take();
+            w.session.popover = Some(Door::asked(w.now));
+            let offered = derive(w).popover.as_ref().is_some_and(|p| p.offers(&Action::Start));
+            if !offered {
+                w.session.popover = was;
+                return refuse(w, "not_ready");
+            }
+            let (fx, mut arm) = act(w, Action::Start);
+            if w.session.arming.is_none() {
+                // Not started: a permission beat is asked first, or nothing at all.
+                w.session.popover = was;
+                let mut fx = fx;
+                fx.push(answer(w, Some("not_ready"), None));
+                return (fx, arm);
+            }
+            if was.is_none() {
+                arm.edge = idle.then_some(("idle-ready", "countdown"));
+            }
+            let mut fx = fx;
+            // The take this start makes wears the label while it records (N62, B216).
+            if ask.label {
+                w.agent = w.session.arming.as_ref().map(|a| a.started);
+            }
+            // `--no-countdown`: the count's end, now. The tray goes from idle-ready to
+            // recording when capture begins (the machine's own edge, on the recorder's word).
+            if !ask.countdown {
+                if let Some(a) = w.session.arming.as_mut() {
+                    a.deadline = w.now;
+                }
+                fx.extend(fire(w));
+                arm.edge = None;
+            }
+            (fx, arm)
+        }
+        _ if coming => return refuse(w, "busy"),
+        CliOp::Pause => match phase {
+            Some(Phase::Recording) => click(w, None),
+            _ => return refuse(w, "no_take"),
+        },
+        CliOp::Resume => match phase {
+            Some(Phase::Paused(cause)) if w.session.confirm.is_none() && crate::derive::resume_ok(w, cause) => act(w, Action::Resume),
+            // Paused, but its popover wouldn't offer Resume now: its source is gone, or it
+            // asks a question.
+            Some(Phase::Paused(_)) => return refuse(w, "not_ready"),
+            _ => return refuse(w, "no_take"),
+        },
+        CliOp::Stop => match phase {
+            Some(Phase::Paused(_)) if w.session.confirm.is_some() => return refuse(w, "not_ready"),
+            Some(Phase::Paused(_)) => act(w, Action::Stop),
+            // Recording, not paused: the take's own stop, the machine's recording → stopping.
+            Some(Phase::Recording) => {
+                let (fx, mut arm) = act(w, Action::Stop);
+                arm.edge = arm.edge.map(|_| ("recording", "stopping"));
+                (fx, arm)
+            }
+            _ => return refuse(w, "no_take"),
+        },
+    };
+    let link = (op == CliOp::Stop).then(|| crate::derive::cli_link(w)).flatten();
+    fx.push(answer(w, None, link));
+    (fx, arm)
+}
+
+/// A `shroom://settings/…` link (N62, B216): Settings on the spot's tab, the spot lit for a
+/// moment — General's switch, for the command's recording refusal. It changes nothing there:
+/// the person flips the switch. Mid-take it opens nothing (law 4); a Mac with no space has no
+/// Settings (B160). A sheet open in Settings is a question the person is in the middle of:
+/// it stays, and Settings comes forward as it stands. An idle popover closes, as a click
+/// away closes it.
+fn settings_link(w: &mut World, spot: crate::event::SettingsSpot) -> Out {
+    if w.take_open() || !w.provisioned() {
+        return (vec![], Arm::DROPPED);
+    }
+    let sheet = matches!(w.session.confirm, Some(Confirm::Exit | Confirm::Uninstall { .. } | Confirm::Remove(_) | Confirm::Report { .. }));
+    if sheet && w.window_visible(WindowKind::Settings) {
+        open_window(w, WindowKind::Settings);
+        return (vec![Effect::Shell(ShellCmd::OpenSettings)], Arm::named("settings-link-forward"));
+    }
+    let at_rest = w.session.popover.is_none() && !w.window_visible(WindowKind::Settings) && derive(w).state_ids().contains(&"idle-ready");
+    if w.session.popover.is_some() {
+        dismiss(w);
+    }
+    let mut fx = Vec::new();
+    if w.window_visible(WindowKind::Settings) && settings_view::tab(w) != spot.tab() {
+        // A tab change, as a click on the tab: a name being changed and left is put back (B158).
+        w.session.fields.settings.from = None;
+    }
+    open_settings(w, Some(spot.tab()), &mut fx);
+    fx.push(Effect::Shell(ShellCmd::OpenSettings));
+    w.session.fields.settings.lit = Some((spot, w.now));
+    let edge = (at_rest && spot.tab() == SettingsTab::General).then_some(("idle-ready", "settings-general"));
+    (fx, Arm { name: "settings-link", edge })
 }
 
 fn act(w: &mut World, action: Action) -> Out {
@@ -1021,6 +1162,8 @@ fn act(w: &mut World, action: Action) -> Out {
         // ── Settings ──
         Action::SettingsTab(tab) => {
             w.prefs.settings_tab = Some(tab);
+            // Another tab puts the link's light out: coming back never lights it again.
+            w.session.fields.settings.lit = None;
             // A name being changed and left is put back (B158).
             w.session.fields.settings.from = None;
             // Entering a tab is an entry: Space re-probes (law 1).
@@ -1034,6 +1177,21 @@ fn act(w: &mut World, action: Action) -> Out {
         Action::ReportIssue => {
             let version = w.launch.version.clone();
             (vec![Effect::Shell(ShellCmd::OpenUrl(PublicUrl::NewIssue { version }))], Arm::named("report-issue"))
+        }
+        // ── Your coding agent (dev/proposals/cli-agent-skill.md) ──
+        Action::CopyAgentPrompt => {
+            if !w.window_visible(WindowKind::Settings) {
+                return (vec![], Arm::DROPPED);
+            }
+            w.session.copied = Some((CopyTarget::AgentPrompt, w.now));
+            (vec![Effect::Shell(ShellCmd::CopyAgentPrompt)], Arm::named("copy-agent-prompt"))
+        }
+        Action::OpenAgentGuide => (vec![Effect::Shell(ShellCmd::OpenUrl(PublicUrl::AgentGuide))], Arm::named("agent-guide")),
+        Action::SetAgentRecording(on) => {
+            w.prefs.agent_recording = on;
+            // The link's light pointed here; the person's own flip puts it out.
+            w.session.fields.settings.lit = None;
+            (vec![persist_prefs(w)], Arm::named("agent-recording"))
         }
         // ── Report a problem (B180) ──
         Action::CopyDiagnostics => {
@@ -3530,22 +3688,22 @@ fn failed(w: &mut World, op: Op, class: crate::world::FailClass) -> Out {
     (fx, Arm::named("failed"))
 }
 
+/// The count's end: capture starts on the source the count was for — at its deadline, or at
+/// once for the command's start without it (N62).
+fn fire(w: &mut World) -> Option<Effect> {
+    let a = w.session.arming.as_mut().filter(|a| !a.fired)?;
+    a.fired = true;
+    let source = a.source;
+    let camera = (source == SourceId::Camera).then(|| crate::derive::selected_camera(w).map(|c| c.uid.clone())).flatten();
+    Some(Effect::Recorder(RecCmd::Start { source, quality: w.prefs.quality, mic: crate::derive::popover_selected_mic(w), camera }))
+}
+
 fn tick(w: &mut World) -> Out {
     let now = w.now;
     let mut fx = Vec::new();
     // The countdown fires at its deadline.
-    if let Some(a) = w.session.arming.as_mut() {
-        if !a.fired && now >= a.deadline {
-            a.fired = true;
-            let source = a.source;
-            let camera = (source == SourceId::Camera).then(|| crate::derive::selected_camera(w).map(|c| c.uid.clone())).flatten();
-            fx.push(Effect::Recorder(RecCmd::Start {
-                source,
-                quality: w.prefs.quality,
-                mic: crate::derive::popover_selected_mic(w),
-                camera,
-            }));
-        }
+    if w.session.arming.as_ref().is_some_and(|a| !a.fired && now >= a.deadline) {
+        fx.extend(fire(w));
     }
     // "Copied" reverts.
     if w.session.copied.as_ref().is_some_and(|(_, at)| now >= at.plus(COPIED_MS)) {
@@ -3554,6 +3712,10 @@ fn tick(w: &mut World) -> Out {
     // A one-tap delete's Undo line runs out: it's sent (N68).
     if w.session.fields.library.undo.as_ref().is_some_and(|(_, at)| now >= at.plus(UNDO_MS)) {
         fx.extend(send_undone(w));
+    }
+    // The settings link's light goes out.
+    if w.session.fields.settings.lit.as_ref().is_some_and(|(_, at)| now >= at.plus(LIT_MS)) {
+        w.session.fields.settings.lit = None;
     }
     // Deadlines: nothing waits forever.
     let overdue: Vec<Op> = w.inflight.ops.iter().filter(|(_, d)| **d <= now).map(|(op, _)| *op).collect();

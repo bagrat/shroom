@@ -1,4 +1,4 @@
-scenario=settings
+scenario=cli-socket cli-label
 hold=0
 ssh_key=
-asked=2026-10-18T16:56:44Z
+asked=2026-10-18T18:13:44Z

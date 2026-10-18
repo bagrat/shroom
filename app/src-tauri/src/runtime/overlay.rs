@@ -16,14 +16,14 @@
 //! first click switched on: the page acts on a click that lands while its window hasn't
 //! the keyboard.
 //!
-//! Both overlays are made once, when shroom starts (`prepare`) — never when one is first
+//! The overlays are made once, when shroom starts (`prepare`) — never when one is first
 //! wanted. Making a web view asks macOS to bring its app forward (wry does, for every
 //! one). At start-up that is nothing new: a launch asks the same. Later it would be the
 //! very thing an overlay must never do — the person is in another app, perhaps full
 //! screen — and the one way to stop it, switching shroom off as an app for that moment,
 //! costs an app with a Dock icon every window it has on screen (`may_go_quiet`). So by the
-//! time anything of shroom's shows, both panels exist, their pages are loaded, and both
-//! are already left out of every capture.
+//! time anything of shroom's shows, every panel exists, its page is loaded, and each is
+//! already left out of every capture.
 //!
 //! An overlay follows the person, so losing the keyboard closes nothing (DEVIATIONS #39).
 //! What closes the popover from outside is a click somewhere else: while one is open, the
@@ -56,6 +56,9 @@ use tauri::{AppHandle, WebviewUrl, WebviewWindowBuilder};
 pub enum Overlay {
     Popover,
     Countdown,
+    /// The agent label (N62, B216): top right of the display a take the command started
+    /// records. It takes no clicks: they go to whatever is under it.
+    Label,
 }
 
 impl Overlay {
@@ -63,29 +66,33 @@ impl Overlay {
         match self {
             Overlay::Popover => "popover",
             Overlay::Countdown => "countdown",
+            Overlay::Label => "label",
         }
     }
     fn url(self) -> &'static str {
         match self {
             Overlay::Popover => "popover.html",
             Overlay::Countdown => "countdown.html",
+            Overlay::Label => "label.html",
         }
     }
-    /// Above other apps' windows: the countdown at `NSFloatingWindowLevel`, with the
-    /// bubble; the popover one above them.
+    /// Above other apps' windows: the countdown and the label at `NSFloatingWindowLevel`,
+    /// with the bubble; the popover one above them.
     fn level(self) -> isize {
         match self {
             Overlay::Popover => 4,
-            Overlay::Countdown => 3,
+            Overlay::Countdown | Overlay::Label => 3,
         }
     }
+    /// macOS's shadow, cast by what the page draws: the popover's card, the label's pill.
     fn shadow(self) -> bool {
-        self == Overlay::Popover
+        matches!(self, Overlay::Popover | Overlay::Label)
     }
     fn size(self) -> NSSize {
         match self {
             Overlay::Popover => NSSize::new(320.0, 360.0),
             Overlay::Countdown => NSSize::new(640.0, 400.0),
+            Overlay::Label => NSSize::new(LABEL_SIZE.0, LABEL_SIZE.1),
         }
     }
 }
@@ -112,15 +119,20 @@ define_class!(
     }
 );
 
+/// The label's panel, in points: room for its line, the pill drawn at its right edge.
+pub const LABEL_SIZE: (f64, f64) = (380.0, 30.0);
+
 thread_local! {
     static POPOVER: RefCell<Option<Retained<NSPanel>>> = const { RefCell::new(None) };
     static COUNTDOWN: RefCell<Option<Retained<NSPanel>>> = const { RefCell::new(None) };
+    static LABEL: RefCell<Option<Retained<NSPanel>>> = const { RefCell::new(None) };
 }
 
 fn slot<T>(which: Overlay, f: impl FnOnce(&RefCell<Option<Retained<NSPanel>>>) -> T) -> T {
     match which {
         Overlay::Popover => POPOVER.with(f),
         Overlay::Countdown => COUNTDOWN.with(f),
+        Overlay::Label => LABEL.with(f),
     }
 }
 
@@ -138,17 +150,17 @@ enum Born {
     Late,
 }
 
-/// Makes both overlays (main thread, once, as shroom starts — before it has put anything
-/// on screen), each left out of every screen capture from the moment it exists
+/// Makes the overlays (main thread, once, as shroom starts — before it has put anything on
+/// screen), each left out of every screen capture from the moment it exists
 /// (ARCHITECTURE §4.4).
 pub fn prepare(app: &AppHandle, excluded: &Arc<Mutex<Vec<u32>>>) {
-    // The dev harness's `--late-panels` leaves both to be made late — the path a failed
+    // The dev harness's `--late-panels` leaves them all to be made late — the path a failed
     // start-up takes — so a drive can walk it (`take_drive/surfaces.rs`).
     #[cfg(feature = "dev-harness")]
     if late_panels() {
         return;
     }
-    for which in [Overlay::Popover, Overlay::Countdown] {
+    for which in [Overlay::Popover, Overlay::Countdown, Overlay::Label] {
         let _ = made(app, which, excluded, Born::AtStartUp);
     }
 }
@@ -247,6 +259,10 @@ fn build(app: &AppHandle, which: Overlay, mtm: MainThreadMarker, born: Born) -> 
     // as a grey square at each corner (0.1.15, CHECKPOINT §10). The count covers the
     // display and casts none.
     panel.setHasShadow(which.shadow());
+    // The label takes no clicks: they go to whatever is under it (N62, B216).
+    if which == Overlay::Label {
+        panel.setIgnoresMouseEvents(true);
+    }
     // It stays when another app comes forward, and takes the keyboard when it's given.
     panel.setHidesOnDeactivate(false);
     panel.setBecomesKeyOnlyIfNeeded(false);

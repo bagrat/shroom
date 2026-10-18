@@ -42,6 +42,9 @@ set -eu
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 ID=am.shroom
 SIDECAR=$ROOT/build/ffmpeg/sidecar/ffmpeg-aarch64-apple-darwin
+# The `shroom` command (crates/shroom-cli, dev/proposals/cli-agent-skill.md) rides beside
+# the encoder as a second external binary, signed with the bundle: Contents/MacOS/shroom-cli.
+CLI=$ROOT/build/cli/shroom-cli-aarch64-apple-darwin
 
 usage() { echo "usage: tools/release-build.sh <out-dir> (--identity <name> [--leaf <sha1>] | --adhoc)"; exit 64; }
 
@@ -91,6 +94,12 @@ out=$(cd "$out" && pwd)
 tgt=${CARGO_TARGET_DIR:-$ROOT/target}
 case "$tgt" in /*) ;; *) tgt=$(pwd)/$tgt ;; esac
 bundle=$tgt/release/bundle/macos/shroom.app
+
+# The command, built for the bundle's floor (every binary in Contents/MacOS is, below).
+floor=$(plutil -extract bundle.macOS.minimumSystemVersion raw -o - "$ROOT/app/src-tauri/tauri.conf.json")
+rm -f "$CLI"
+(cd "$ROOT" && MACOSX_DEPLOYMENT_TARGET="$floor" CARGO_TARGET_DIR="$tgt" cargo build --release -p shroom-cli >"$out/build-cli.log" 2>&1) || { tail -n 20 "$out/build-cli.log"; exit 1; }
+mkdir -p "$(dirname "$CLI")" && cp "$tgt/release/shroom-cli" "$CLI"
 
 # Never a bundle from an earlier build (a restored target dir may hold one).
 rm -rf "$bundle" "$out/shroom.app"
@@ -144,12 +153,18 @@ fi
   sig "$app" | grep -E '^(Identifier|Format|CodeDirectory|Signature|Authority|Timestamp|Signed Time|TeamIdentifier)[= ]'
 } >"$out/signature.txt"
 "$enc" -hide_banner -L 2>&1 | grep -q 'GNU Lesser General Public' || { echo "the bundled encoder isn't the LGPL build"; exit 1; }
+# The command: there, signed with the bundle, and a release build — its dev-only options
+# (another home, a local space) refused as unknown.
+cli=$app/Contents/MacOS/shroom-cli
+[ -x "$cli" ] || { echo "the release bundle carries no shroom command"; exit 1; }
+codesign --verify --strict "$cli" || { echo "the bundled shroom command's signature doesn't verify"; exit 1; }
+"$cli" --version | grep -q '^shroom ' || { echo "the bundled shroom command doesn't answer --version"; exit 1; }
+"$cli" --home /tmp status --json | grep -q '"error":"usage"' || { echo "the bundled shroom command takes the dev-only --home"; exit 1; }
 "$enc" -hide_banner -encoders 2>/dev/null | grep -q ' h264_videotoolbox ' || { echo "the bundled encoder has no VideoToolbox H.264"; exit 1; }
 for f in NOTICE.txt COPYING.LGPLv2.1; do
   [ -s "$app/Contents/Resources/licenses/ffmpeg/$f" ] || { echo "the release bundle lacks FFmpeg's $f"; exit 1; }
 done
 [ -s "$app/Contents/Resources/licenses/third-party/NOTICES.md" ] || { echo "the release bundle lacks the third-party notices"; exit 1; }
-floor=$(plutil -extract bundle.macOS.minimumSystemVersion raw -o - "$ROOT/app/src-tauri/tauri.conf.json")
 [ "$(plutil -extract LSMinimumSystemVersion raw -o - "$plist")" = "$floor" ] || { echo "the bundle's LSMinimumSystemVersion isn't $floor"; exit 1; }
 for bin in "$app/Contents/MacOS/"*; do
   [ "$(lipo -archs "$bin")" = arm64 ] || { echo "$(basename "$bin") isn't arm64"; exit 1; }

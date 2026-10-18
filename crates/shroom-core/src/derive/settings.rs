@@ -368,6 +368,24 @@ fn general(w: &World) -> GeneralBody {
         help: copy::help_line(),
         help_links: vec![Button::new(Action::ReportIssue, copy::github(), Style::Link)],
         uninstall: not_mid_take(w, Button::new(Action::Uninstall, copy::uninstall_ellipsis(), Style::Quiet)),
+        agent: crate::scene::AgentCard {
+            label: copy::agent_label(),
+            prompt: copy::agent_prompt(),
+            copy: Button::new(
+                Action::CopyAgentPrompt,
+                if matches!(w.session.copied, Some((CopyTarget::AgentPrompt, _))) { copy::copied() } else { copy::copy_word() },
+                Style::Plain,
+            ),
+            read_first: Button::new(Action::OpenAgentGuide, copy::read_it_first(), Style::Link),
+            line: copy::agent_line(),
+            recording: Toggle {
+                action: Action::SetAgentRecording(!w.prefs.agent_recording),
+                label: copy::agent_recording(),
+                on: w.prefs.agent_recording,
+                enabled: true,
+            },
+            lit: matches!(w.session.fields.settings.lit, Some((crate::event::SettingsSpot::AgentRecording, _))),
+        },
         videos: w.provisioned().then(|| videos(w)),
     }
 }

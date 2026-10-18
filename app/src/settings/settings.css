@@ -389,3 +389,84 @@
   color: var(--muted);
   text-align: right;
 }
+
+/* Your coding agent (dev/proposals/cli-agent-skill.md): the prompt in a well with its Copy,
+   as the landing's command blocks; the switch row under a hairline. */
+.agent-top {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+}
+
+.agent-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.agent-label {
+  flex: 1 1 auto;
+  font-weight: 600;
+}
+
+.prompt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 6px 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--field);
+}
+
+.prompt code {
+  flex: 1 1 auto;
+  min-width: 0;
+  font: 12px/1.5 var(--mono);
+  overflow-wrap: anywhere;
+}
+
+.prompt .b.plain {
+  min-height: 28px;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--fg);
+  box-shadow: none;
+  white-space: nowrap;
+}
+
+.agent-line {
+  color: var(--muted);
+}
+
+/* The command's settings link (spec N62, DECISIONS B216): the switch's row lit — an outline
+   inside the card's corner and a soft glow — for the window's own first moments with it,
+   then fading; the Scene holds `lit` longer, so a window the link opened cold still shows
+   the whole light once it has drawn. */
+.agent-switch {
+  border-radius: 0 0 9px 9px;
+  outline: 2px solid transparent;
+  outline-offset: -2px;
+}
+
+.agent-switch.lit {
+  animation: agent-lit 2.4s ease-out both;
+}
+
+@keyframes agent-lit {
+  0%,
+  70% {
+    outline-color: var(--accent);
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 22%, transparent);
+    background-color: color-mix(in srgb, var(--accent) 8%, transparent);
+  }
+  100% {
+    outline-color: transparent;
+    box-shadow: 0 0 0 5px transparent;
+    background-color: transparent;
+  }
+}

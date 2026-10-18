@@ -85,6 +85,15 @@ fn rows() -> Vec<(&'static str, World)> {
         w.take = Some(take(Phase::Recording, 0));
         w
     }));
+    // A take the shroom command started, its label on (N62, B216): the agent label's line
+    // shows only then.
+    rows.push(("recording", {
+        let mut w = ready();
+        let t = take(Phase::Recording, 0);
+        w.agent = Some(t.opened);
+        w.take = Some(t);
+        w
+    }));
     rows.push(("tray-red-dot", {
         let mut w = ready();
         w.take = Some(take(Phase::Recording, 0));

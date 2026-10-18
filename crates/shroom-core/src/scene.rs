@@ -136,6 +136,12 @@ pub enum Action {
     SetLoginItem(bool),
     /// The help line's GitHub door.
     ReportIssue,
+    /// General's “Your coding agent” card: its prompt onto the clipboard (law 10).
+    CopyAgentPrompt,
+    /// The card's “Read it first”: shroom.am/cli in the browser.
+    OpenAgentGuide,
+    /// The card's “Let it start and stop recordings”.
+    SetAgentRecording(bool),
     /// General's “Copy diagnostics”: the report onto the clipboard (B180, law 10).
     CopyDiagnostics,
     /// General's “Report a problem…” — opens its sheet (B180).
@@ -947,6 +953,8 @@ pub struct GeneralBody {
     pub help_links: Vec<Button>,
     /// “Uninstall shroom…”, quiet text at the tab's foot (B135).
     pub uninstall: Button,
+    /// “Your coding agent” (dev/proposals/cli-agent-skill.md, provisional).
+    pub agent: AgentCard,
     /// Your videos (N68): Count plays, Suggest videos to clean up, Space used.
     pub videos: Option<VideosGroup>,
 }
@@ -967,6 +975,21 @@ pub struct VideosGroup {
     pub used_label: Option<String>,
     /// The space's size and what it costs — owner-class Macs, once the space has said.
     pub used: Option<String>,
+}
+
+/// General's card for a coding agent: the prompt to paste, Copy, “Read it first”, the line
+/// under them, and whether the agent may start and stop recordings (off by default).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct AgentCard {
+    pub label: String,
+    pub prompt: String,
+    pub copy: Button,
+    pub read_first: Button,
+    pub line: String,
+    pub recording: Toggle,
+    /// The switch's row lit for a moment: the command's settings link opened Settings here
+    /// (N62, B216). The window brings it into view while it's lit.
+    pub lit: bool,
 }
 
 /// The Report a problem sheet's form, between its line and its buttons (B180).
@@ -1320,7 +1343,14 @@ impl Window<SettingsBody> {
         }
         match &self.body.pane {
             SettingsPane::General(g) => {
-                g.update.iter().chain(&g.whats_new).chain([&g.copy_diagnostics, &g.report]).chain(&g.help_links).chain(std::iter::once(&g.uninstall)).collect()
+                g.update
+                    .iter()
+                    .chain(&g.whats_new)
+                    .chain([&g.copy_diagnostics, &g.report])
+                    .chain(&g.help_links)
+                    .chain([&g.agent.copy, &g.agent.read_first])
+                    .chain(std::iter::once(&g.uninstall))
+                    .collect()
             }
             SettingsPane::Space(sp) => {
                 let mut out = nest_buttons(&sp.plan.nest);
@@ -1357,7 +1387,7 @@ impl Window<SettingsBody> {
         }
         match &self.body.pane {
             SettingsPane::General(g) => {
-                let toggles = std::iter::once(&g.login).chain(g.videos.iter().flat_map(|v| [&v.count, &v.suggest]));
+                let toggles = [&g.login, &g.agent.recording].into_iter().chain(g.videos.iter().flat_map(|v| [&v.count, &v.suggest]));
                 toggles.into_iter().any(|t| t.enabled && &t.action == action)
             }
             SettingsPane::Space(sp) => [&sp.mark, &sp.ai].into_iter().flatten().any(|t| t.enabled && &t.action == action),
@@ -1422,6 +1452,15 @@ pub struct Countdown {
     pub line: String,
 }
 
+/// The agent label (N62, B216; Bagrat, 2026-10-18): top right of the display a take the
+/// `shroom` command started records, while it records — left out of the take, as the count
+/// is, and passing every click through.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct AgentLabel {
+    pub display: u32,
+    pub line: String,
+}
+
 /// The camera bubble (N22): round, mirrored, on the display being recorded —
 /// recorded as-is (never excluded from capture), never key (law 5), draggable.
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -1461,6 +1500,8 @@ pub struct Scene {
     pub countdown: Option<Countdown>,
     pub bubble: Option<Bubble>,
     pub preview: Option<Preview>,
+    /// The agent label (N62, B216): while a take the `shroom` command started records.
+    pub label: Option<AgentLabel>,
     /// The Dock icon shows while a window of shroom's is open — the setup window, the
     /// Library, Settings, Send feedback or the editor — never for a popover alone (law 6,
     /// SM:133).

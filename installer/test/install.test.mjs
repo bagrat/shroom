@@ -3,7 +3,7 @@
 // Run: node --test installer/test/
 import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, lstatSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -82,8 +82,11 @@ stub("defaults", `echo "defaults $*" >> "$FAKE_LOG"`);
 // A release: shroom.app zipped the way releases are (ditto keeps signatures intact).
 function release(version) {
   const dir = mkdtempSync(join(scratch, "rel-"));
-  mkdirSync(join(dir, "shroom.app/Contents"), { recursive: true });
+  mkdirSync(join(dir, "shroom.app/Contents/MacOS"), { recursive: true });
   writeFileSync(join(dir, "shroom.app/Contents/version"), version);
+  // The `shroom` command the app carries (spec N62, DECISIONS B217).
+  writeFileSync(join(dir, "shroom.app/Contents/MacOS/shroom-cli"), "#!/bin/sh\necho shroom\n");
+  chmodSync(join(dir, "shroom.app/Contents/MacOS/shroom-cli"), 0o755);
   const zip = join(dir, `shroom-${version}-arm64.zip`);
   execFileSync("ditto", ["-c", "-k", "--keepParent", join(dir, "shroom.app"), zip]);
   return { file: `shroom-${version}-arm64.zip`, bytes: readFileSync(zip), version };
@@ -195,6 +198,28 @@ describe("installing", () => {
     assert.match(r.err, /#/, "curl's own bar shows");
     quiet(r);
     assert.deepEqual(r.leftovers, [], "the temporary folder goes away");
+  });
+
+  // Bagrat, 2026-10-18: the `shroom` command is always installed — in the home folder,
+  // as everything else is.
+  it("links the shroom command into ~/.local/bin and puts that folder on a new Terminal's PATH, once", async () => {
+    const MARK = "# shroom's command line (shroom.am) — run shroom --help";
+    const r = await run({ env: { SHELL: "/bin/zsh" }, setup: (home) => writeFileSync(join(home, ".zprofile"), "export FOO=1\n") });
+    assert.equal(r.code, 0);
+    assert.equal(readlinkSync(join(r.home, ".local/bin/shroom")), join(r.home, "Applications/shroom.app/Contents/MacOS/shroom-cli"));
+    const profile = readFileSync(join(r.home, ".zprofile"), "utf8");
+    assert.ok(profile.startsWith("export FOO=1\n"), "the profile keeps what was there");
+    assert.equal(profile.split(MARK).length, 2, "one marked line");
+    // After the system's folders, never before them: nothing already sitting in ~/.local/bin
+    // gets to stand in for a system command (the security review, 2026-10-18).
+    assert.match(profile, /\nexport PATH="\$PATH:\$HOME\/\.local\/bin"\n/);
+    assert.deepEqual(r.out, ["Getting shroom…", "verified ✓", "Installed — opening shroom now."], "said nothing more");
+  });
+
+  it("never replaces a file of someone else's named shroom", async () => {
+    const r = await run({ setup: (home) => { mkdirSync(join(home, ".local/bin"), { recursive: true }); writeFileSync(join(home, ".local/bin/shroom"), "mine"); } });
+    assert.equal(r.code, 0);
+    assert.equal(readFileSync(join(r.home, ".local/bin/shroom"), "utf8"), "mine");
   });
 
   it("tells the app it was just installed (its first launch)", async () => {
@@ -873,6 +898,37 @@ describe("uninstalling", () => {
       assert.ok(!existsSync(join(r.home, p)), `${p} is gone`);
     }
   };
+
+  it("takes back the shroom command: its link and its marked PATH line, nothing else", async () => {
+    const MARK = "# shroom's command line (shroom.am) — run shroom --help";
+    const r = await run({
+      args: UN,
+      setup: (home) => {
+        installed(home);
+        mkdirSync(join(home, ".local/bin"), { recursive: true });
+        symlinkSync(join(home, "Applications/shroom.app/Contents/MacOS/shroom-cli"), join(home, ".local/bin/shroom"));
+        writeFileSync(join(home, ".zprofile"), `export FOO=1\n\n${MARK}\nexport PATH="$PATH:$HOME/.local/bin"\nexport BAR=2\n`);
+      },
+    });
+    assert.equal(r.code, 0);
+    assert.throws(() => lstatSync(join(r.home, ".local/bin/shroom")), "the link itself is gone, not left dangling");
+    assert.equal(readFileSync(join(r.home, ".zprofile"), "utf8"), "export FOO=1\n\nexport BAR=2\n");
+  });
+
+  // The security review, 2026-10-18: the person moved or deleted shroom's PATH line and kept
+  // the mark — the line after the mark is theirs now, and stays.
+  it("takes back only shroom's own PATH line: a line of theirs after the mark stays", async () => {
+    const MARK = "# shroom's command line (shroom.am) — run shroom --help";
+    const r = await run({
+      args: UN,
+      setup: (home) => {
+        installed(home);
+        writeFileSync(join(home, ".zprofile"), `export FOO=1\n${MARK}\neval "$(/opt/homebrew/bin/brew shellenv)"\numask 077\n`);
+      },
+    });
+    assert.equal(r.code, 0);
+    assert.equal(readFileSync(join(r.home, ".zprofile"), "utf8"), `export FOO=1\neval "$(/opt/homebrew/bin/brew shellenv)"\numask 077\n`);
+  });
 
   it("removes the app, its folder and what the system keeps for it, and says so in the spec's words", async () => {
     const r = await run({ args: UN, setup: (home) => installed(home) });
