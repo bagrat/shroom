@@ -17,14 +17,14 @@ import { randomBytes } from 'node:crypto';
 
 const A = process.env.SHROOM_E2E_ACCOUNT_ID, T = process.env.SHROOM_E2E_TOKEN;
 if (!A || !T) throw new Error('needs SHROOM_E2E_ACCOUNT_ID and SHROOM_E2E_TOKEN');
-const [dir, outFile, ...llmArgs] = process.argv.slice(2);
+const [dir, outFile, ...llmArgs] = process.argv[2] === '--meter' ? ['.', null] : process.argv.slice(2);
 const llms = llmArgs.length ? llmArgs : ['@cf/openai/gpt-oss-120b'];
 const NAME = 'shroom-probe-ai', TAKE = dir.replace(/\/+$/, '').split('/').pop();
 const api = `https://api.cloudflare.com/client/v4/accounts/${A}`;
 const H = { Authorization: `Bearer ${T}` };
 const here = new URL('.', import.meta.url);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const files = readdirSync(dir).filter((f) => f === 'init.mp4' || /^seg_\d+\.m4s$/.test(f)).sort();
+const files = process.argv[2] === '--meter' ? [] : readdirSync(dir).filter((f) => f === 'init.mp4' || /^seg_\d+\.m4s$/.test(f)).sort();
 
 async function cf(method, path, body, headers = {}, tries = 6) {
   const r = await fetch(api + path, { method, headers: { ...H, ...headers }, body });
@@ -119,6 +119,12 @@ async function meter(from, to) {
   } finally {
     await fetch(`${api}/tokens/${m.result.id}`, { method: 'DELETE', headers: H });
   }
+}
+
+// `node measure.mjs --meter <from> <to>`: only read the meter for a past run's minutes.
+if (process.argv[2] === '--meter') {
+  console.log(JSON.stringify(await meter(process.argv[3], process.argv[4]), null, 1));
+  process.exit(0);
 }
 
 const gate = randomBytes(16).toString('hex');

@@ -140,7 +140,7 @@ export const transcriptLines = (sents) => sents.map((x) => `[${mmss(x.s)}] ${x.t
 
 const TITLE_RULES = `The title says what the video is about (its subject, or the two or three things it covers), not the occasion, the greeting or who it is for, the way its maker would name it for a teammate: 3 to 8 words, sentence case, plain words from the video, no quotes, no emoji, no full stop at the end, no "video", "recording" or "walkthrough of" filler. Written in the language spoken.`;
 
-const CHAPTER_RULES = `Chapters split the video where the speaker moves to a new topic. The first starts at 0:00. Each lasts at least 20 seconds. Use about one chapter per 1 to 3 minutes of talk, never more than 12. Each chapter title is 2 to 6 words, sentence case, no full stop, written in the language spoken. A greeting or wrap-up is its own chapter only when it lasts 20 seconds or more.`;
+const CHAPTER_RULES = `Chapters split the video where the speaker moves to a new topic. The first starts at 0:00. Each lasts at least 20 seconds. Use about one chapter per 1 to 3 minutes of talk in a short video and one per 3 to 5 minutes in a long one, never more than 12, spread over the whole video. Each chapter title is 2 to 6 words, sentence case, no full stop, written in the language spoken. A greeting or wrap-up is its own chapter only when it lasts 20 seconds or more.`;
 
 /** The LLM's JSON, whichever answer shape the model returns. */
 function llmText(out) {
@@ -206,6 +206,7 @@ export async function name(ai, sents, { model = MODELS.llm, chapters = true } = 
 
 export const MIN_CHAPTER = 20;
 export const MIN_VIDEO_FOR_CHAPTERS = 90;
+export const MAX_CHAPTERS = 12;
 
 const secsOf = (v) => {
   if (typeof v === 'number') return v;
@@ -225,7 +226,8 @@ export function cleanTitle(t) {
  * The model's chapters held to the rules: starts snapped to the nearest sentence start, the
  * first at 0:00, none shorter than MIN_CHAPTER (a short one gives its place to the one after
  * it: a 15 s greeting becomes the start of the first topic), the last one too short folds
- * into the one before, at most 12, and none at all for a video under MIN_VIDEO_FOR_CHAPTERS
+ * into the one before, at most MAX_CHAPTERS (the shortest fold away first, so the end of a
+ * long video keeps its chapters), and none at all for a video under MIN_VIDEO_FOR_CHAPTERS
  * or with fewer than 2.
  */
 export function cleanChapters(raw, sents, duration) {
@@ -246,7 +248,15 @@ export function cleanChapters(raw, sents, duration) {
     else kept.push({ ...c });
   }
   while (kept.length > 1 && duration - kept[kept.length - 1].start < MIN_CHAPTER) kept.pop();
-  const out = kept.slice(0, 12).map((c, i, a) => ({ start: Math.floor(c.start), end: Math.floor(i + 1 < a.length ? a[i + 1].start : duration), title: c.title }));
+  // Over 12: the shortest chapter folds into the one before it (the first into the second),
+  // until 12 are left, so a long video keeps chapters to its end.
+  while (kept.length > MAX_CHAPTERS) {
+    const len = (i) => (i + 1 < kept.length ? kept[i + 1].start : duration) - kept[i].start;
+    let i = 0;
+    for (let j = 1; j < kept.length; j++) if (len(j) < len(i)) i = j;
+    kept.splice(i === 0 ? 1 : i, 1);
+  }
+  const out = kept.map((c, i, a) => ({ start: Math.floor(c.start), end: Math.floor(i + 1 < a.length ? a[i + 1].start : duration), title: c.title }));
   return out.length >= 2 ? out : [];
 }
 

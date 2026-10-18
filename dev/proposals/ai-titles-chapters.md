@@ -13,9 +13,10 @@ product shape, the words and the spec rows are Bagrat's call. The POC is
    the owner's own account. It ran on the test account against three takes: two invented
    ones, and the public 4-minute setup video on shroom.am (real voice, with music under
    it). Examples are in §4.
-2. **Cost: about 4¢ per recorded hour on Cloudflare's paid plan.** The free plan covers
-   about **2¾ hours of video a day** per space, shared by everyone in it. Whisper is ~85%
-   of the cost; naming the video is the rest (§5).
+2. **Cost: about 4¢ per recorded hour on Cloudflare's paid plan**, measured on a real
+   36-minute recording and confirmed by Cloudflare's own meter. The free allowance covers
+   about **2.7 hours of video a day** per space, shared by everyone in it. The transcript
+   is ~85% of the cost, naming the rest; captions add nothing (§5).
 3. **Speed: the title and chapters land about 10–20 s after Stop**, if the take is
    transcribed while it records (each ~60 s window as its pieces upload). A first title
    can show before Stop.
@@ -267,35 +268,44 @@ as "GHT"). The real voice didn't. Not tried yet:
 
 ## 5. Cost per recorded hour, and speed
 
-Neurons are computed from the pricing page's rates. **Checked against Cloudflare's meter**
-(a one-hour Account Analytics Read token on the test account, deleted after use,
-2026-10-18). Clef-flash metered **49.5 neurons over 6 calls**,
-exactly the computed figure. gpt-oss-120b metered 581 over 5 calls: the 3 that answered
-match the computed ones, and the 2 that ran out of tokens while reasoning billed ~140
-each. Whisper's total couldn't be told apart from the sibling sessions' runs on the same
-account; it bills by the audio minute. The probe Worker's CPU time came back empty, so
-it's still unmeasured (§1.7).
+**Measured on a real 35:39 recording**, read back from Cloudflare's meter (2026-10-18). The
+recording is a human voice reading a book (LibriVox, public domain: four chapters of *The
+Art of War*). It was cut into 357 pieces in shroom's own encoding and run on the test
+account the way the product would: one ~60 s window per Worker invocation, then one naming
+call (`poc/measure.mjs`; `poc/results/measure-2026-10-18-36min.json`). The meter was read
+with a one-hour Account Analytics Read token, deleted after use. It showed exactly the
+computed figures: Whisper 1,825.80 neurons over 36 calls, gpt-oss-120b 351.96, gemma-4
+87.35. The earlier, shorter runs agreed too: Clef-flash billed 49.5 neurons over 6 calls
+as computed. Two gpt-oss-120b calls that ran out of tokens while reasoning still billed
+~140 each, so the build allows 4,000 output tokens.
 
 | Per recorded hour | Neurons | $ on the paid plan |
 |---|---|---|
-| Hearing (Whisper turbo, 60 s windows plus their 6 s leads ≈ 66 audio min) | ~3,070 | $0.034 |
-| Naming with gpt-oss-120b (~17K tokens in, ~1.5K out) | ~640 | $0.007 |
-| … or gemma-4 | ~160 | $0.002 |
-| … or the Clef way (clef-flash cuts + gpt-oss-20b names) | ~400 | $0.004 |
-| **Total, recommended** | **~3,700** | **~$0.04** |
+| Transcript (Whisper turbo; the 6 s overlap between windows adds ~10% of audio) | 3,072 | $0.034 |
+| Title and chapters with gpt-oss-120b (8,053 tokens in and 1,404 out for 35:39; scaled linearly, an upper bound) | ~590 | $0.0065 |
+| … or with gemma-4 (8,634 in, 325 out) | ~150 | $0.0016 |
+| Captions (written from the same words: no second hearing) | 0 | $0 |
+| **Total, recommended** | **~3,660** | **~$0.040** |
 | *For scale: Deepgram nova-3 instead of Whisper* | *~31,000* | *$0.34* |
 
-- **The free day (10,000 neurons) covers about 2¾ hours of video a day** for the whole
-  space. Past it, on the free plan, naming waits until 00:00 UTC and catches up. On the
-  paid plan it continues at ~4¢ an hour.
+- **The free day (10,000 neurons) covers about 2.7 hours of video a day** for the whole
+  space (3.1 hours with gemma-4). Past it, on the free plan, naming waits until 00:00
+  UTC and catches up. The paid plan gets the same 10,000 a day, then continues at
+  ~4¢ an hour.
 - **A provisional title before Stop** (from the first ~2 minutes heard) costs ~20
   neurons.
-- **Speed, measured on a 4-minute take:** reading the audio took 1.3–4.9 s (ranged, 8
-  pieces at a time). Hearing took 4–15 s (4 windows side by side; one window takes 4–15
-  s). Naming took 3–10 s with the recommended models. In the product the hearing runs
-  while recording, so **after Stop: the last window (~5–8 s) plus naming (~3–10 s)**.
+- **Speed, on the 35:39 take:** one window was heard in a median of 4.3 s (at most
+  11.9 s). Naming took 16 s with gpt-oss-120b and 7 s with gemma-4. In the product the
+  hearing runs while recording, so **after Stop: the last window (~5 s) plus naming
+  (~7–16 s)**. On a 4-minute take the naming took 3–10 s.
+- **Quality on the long take:** gpt-oss-120b put all 8 chapter starts within seconds of
+  where the book's chapters begin. gemma-4 split finer and hit the 12-chapter cap, which
+  in the POC then dropped the last 14 minutes. The rule now folds the shortest chapters
+  away instead, so a long video keeps chapters to its end (§3).
+- **Size:** 35:39 of talk made 5,371 words, a transcript of ~140 KB and 503 caption cues
+  (48 KB of WebVTT).
 - **Later saving:** transcribing on the Mac (macOS 26's SpeechAnalyzer) would remove the
-  Whisper line, ~85% of the cost (as noted under B171).
+  transcript line, ~85% of the cost (as noted under B171).
 
 ## 6. Recommendation
 

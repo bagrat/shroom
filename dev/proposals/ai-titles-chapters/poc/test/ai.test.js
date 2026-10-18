@@ -67,6 +67,16 @@ test('chapters are held to the rules whatever the model says', () => {
   assert.deepEqual(cleanChapters([{ start: 0, title: 'only' }], sents, 180), [], 'one chapter is none');
 });
 
+test('over 12 chapters, the shortest fold away and the end of the video keeps its chapters', () => {
+  const sents = Array.from({ length: 40 }, (_, i) => ({ s: i * 60, e: i * 60 + 5, text: 'x.' }));
+  const raw = Array.from({ length: 20 }, (_, i) => ({ start: i * 120 - (i % 2 ? 60 : 0), title: `C${i}` }));
+  const got = cleanChapters(raw, sents, 2400);
+  assert.equal(got.length, 12);
+  assert.equal(got[0].start, 0);
+  assert.ok(got[got.length - 1].start >= 2100, `the last chapter starts at ${got[got.length - 1].start}`);
+  for (let i = 1; i < got.length; i++) assert.equal(got[i - 1].end, got[i].start);
+});
+
 test('a title fit to show', () => {
   assert.equal(cleanTitle('  “Sign up screen,  invoice bug and trial numbers.” '), 'Sign up screen, invoice bug and trial numbers');
   assert.equal(cleanTitle('setting up and using Shroom'), 'Setting up and using Shroom');
