@@ -222,9 +222,10 @@ anything else it runs: Open, Save and Copy answer while a bake or an upkeep pass
   its `video.mp4`; else `edits/<rec>/source.mp4` when `source.key` names the record's file;
   else fetched) and its peaks, and posts `Opened` with `keep_until` (Wall ms) only while the
   edit's copy is current. Esc or ✕ mid-fetch stops it.
-- *Save* is one record write. It writes nothing and fails as `Refused` (logged) when the
-  video moved on since the open — `bakedFrom` grew or `media.mp4` changed: another Mac baked
-  it while the window was open.
+- *Save* is one record write (`save_edits_over`). It writes nothing and fails as `Refused`
+  (logged) when the video moved on since the open — `bakedFrom` grew or `media.mp4` changed:
+  it was baked while the window was open. That is judged inside the write, on the record it
+  would replace.
 - *Copy* (one at a time): `shroom_encode::cut::render_with` (VideoToolbox, then libx264 if that
   fails), the poster and teaser best-effort, three PUTs, then `set_edit_copy` writes `copy` and
   `keep_until` (now + 2 days). `EditorNews::Making { rec, pct }` goes at most every 250 ms and
@@ -245,7 +246,9 @@ anything else it runs: Open, Save and Copy answer while a bake or an upkeep pass
   on this Mac, through the same copy code with no `Making` news. Last, it prunes `edits/`
   (§3.4) and answers `UpkeepDone { baked, copies }` or `Failed { EditorUpkeep }`. Transport
   ends the pass; a bake or copy that fails is left for the next. The token Mac's cleanup
-  sweep also bakes every record in the space that's due (`shroom_upload::library::cleanup`).
+  sweep also bakes every record in the space that's due, and finishes a bake cut off after
+  its write (`shroom_upload::library::cleanup_sparing`). Neither bakes the video the editor
+  window is open on (the Scene's, asked before each bake); a later pass does.
 
 **Trace.** `logs/run.log` (600, rolled at 5 MB) logs each event, arm and effect kinds.
 `trace::Ring` keeps the last 512 steps (kinds, arm, edge, state ids on change), names read at
@@ -584,7 +587,8 @@ its own continues, `deleted` stops, else `Collision`. Writers of one record coex
   take. Reaps bytes under tombstones; record-less bytes no Mac can still finish (never a
   local take's id, never under a day old, never without a ledger entry; only this Mac's own
   or a removed Mac's after a credential's life plus a day); page keys spent or an hour past
-  `exp`. Never records, tombstones, the ledger or the roster.
+  `exp`. Bakes what's due and finishes a bake cut off after its write (§3.3, D:B197). Never
+  tombstones, the ledger or the roster, nor a record but by a bake.
 
 ### 5.6 Renditions
 
@@ -711,6 +715,10 @@ and show needs-update below it (DV #30). `VERSION` moves with every page change;
    (`publishedAt`, `durationSec`, `media`); mark `live`.
 6. Build the MP4 and teaser (§4.6); `finish`: teaser, then `video.mp4`, each with a record
    rewrite; then `done = total` (drained); mark `uploaded`.
+
+`go_live` and `finish` read the record before sending anything: over a video whose edit
+already became it (D:B197's bake, `media.hls` null) they send none of the original's files
+and only mark it live, then drained.
 
 Each S3 call retries in place (`with_retry`: 6 tries, 500 ms doubling to 15 s; 4xx but
 408/429 not retried). A failed pass reports `Blocked`/`Idle`; the core owns the pass retry
