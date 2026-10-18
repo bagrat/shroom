@@ -32,6 +32,10 @@
   /** An end being dragged, then sent: what plays until the core's slice says otherwise. */
   let trim = $state<Trim | null>(null);
   let trimSent: { list: string; at: number } | null = null;
+  /** Each time a video becomes ready in this window — every open, the same video's too (a
+   * baked one is another file under the same name) — its media are read afresh. */
+  let opened = $state(0);
+  let lastMedia = "";
 
   const send = (a: Action) => act("editor", a);
   const step = (s: EditStep) => void edit(s);
@@ -39,7 +43,20 @@
   const take = (s: unknown) => {
     if (!isEditor(s)) return;
     w = s;
-    if (!s) return;
+    if (!s) {
+      lastMedia = "";
+      return;
+    }
+    // A video that has just become ready: a new open, starting at the top.
+    if (s.body.media.state === "ready" && lastMedia !== "ready") {
+      opened += 1;
+      pos = 0;
+      ended = false;
+      selection = null;
+      trim = null;
+      trimSent = null;
+    }
+    lastMedia = s.body.media.state;
     // A trim sent is answered once the list changes (refused, nothing changes: a moment
     // later the ends go back to the slice's, `trimmed`).
     if (trimSent && JSON.stringify(s.body.list) !== trimSent.list) {
@@ -58,7 +75,7 @@
   let b = $derived(w?.body);
   let media = $derived(b?.media.state ?? "opening");
   let ready = $derived(media === "ready");
-  let src = $derived(b && ready ? `${base}/${encodeURIComponent(b.rec)}/video` : null);
+  let src = $derived(b && ready ? `${base}/${encodeURIComponent(b.rec)}/video?open=${opened}` : null);
   /** The timeline's scale: the recording's length. */
   let duration = $derived(b ? (b.source_duration > 0 ? b.source_duration : b.media.state === "ready" ? b.media.duration : 0) : 0);
   /** What plays: the slice's keep, or the ends being dragged over the slice's cuts. */
@@ -73,16 +90,17 @@
     if (w) document.title = w.body.title;
   });
 
-  // The peaks, once per video, as soon as it's here.
+  // The peaks, once per open, as soon as the video is here.
   $effect(() => {
     const rec = b?.rec;
-    if (!ready || !rec || peaksFor === rec) return;
-    peaksFor = rec;
+    const key = `${rec}#${opened}`;
+    if (!ready || !rec || peaksFor === key) return;
+    peaksFor = key;
     peaks = null;
-    fetch(`${base}/${encodeURIComponent(rec)}/peaks`)
+    fetch(`${base}/${encodeURIComponent(rec)}/peaks?open=${opened}`)
       .then((r) => (r.ok ? r.arrayBuffer() : null))
       .then((buf) => {
-        if (buf && peaksFor === rec) peaks = new Uint8Array(buf);
+        if (buf && peaksFor === key) peaks = new Uint8Array(buf);
       })
       .catch(() => {});
   });
