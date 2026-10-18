@@ -108,7 +108,8 @@ try {
 
   // 2–3. The live drive: the space turned to listen as a person turns it (the popover's AI
   // banner, Turn on…, its confirm's Turn on), then the take — the pattern on the screen, the
-  // speech in place of the microphone. It stops, waits for the upload, leaves the owner's key
+  // microphone on (the show pass before leaves it off) and the speech in its place. It stops,
+  // waits for the upload, leaves the owner's key
   // beside its report and holds there until this script asks for the delete, while this
   // Mac's voice lane runs. (A drive of the AI alone, `--drive ai`, is the fake's only.)
   spawnSync("pkill", ["-f", DRIVE_PROC]);
@@ -129,6 +130,17 @@ try {
   const origin = `https://${drive.host}`;
   const pageUrl = `${origin}/${drive.rec}`;
   check("the take went live", true, pageUrl.replace(drive.rec, "<id>"));
+
+  // The take's sound as published, and how loud it is: a take the speech never reached has
+  // nothing to cut, and says so at once (the voice lane would only find no cue).
+  const sound = path.join(work, "sound.wav");
+  run(tool("ffmpeg"), ["-hide_banner", "-loglevel", "error", "-y", "-i", `${origin}/m/${drive.rec}/master.m3u8`, "-vn", "-ac", "1", "-ar", "48000", sound]);
+  fs.copyFileSync(sound, path.join(out, "before.wav"));
+  const levels = spawnSync(tool("ffmpeg"), ["-hide_banner", "-i", sound, "-af", "volumedetect", "-f", "null", "-"], { encoding: "utf8" }).stderr ?? "";
+  const db = (what) => Number(new RegExp(`${what}: (-?[\\d.]+) dB`).exec(levels)?.[1] ?? -Infinity);
+  summary.sound = { meanDb: db("mean_volume"), maxDb: db("max_volume") };
+  check("the take carries the speech", summary.sound.maxDb > -30, `mean ${summary.sound.meanDb} dB, loudest ${summary.sound.maxDb} dB`);
+  if (!(summary.sound.maxDb > -30)) throw new Error("the take's sound is silent: the speech never reached it");
 
   // 4. The status says cuts are coming, then gives their tag (what the owner page polls).
   // Each change it shows is kept, by seconds since Stop. The lane looks for its words for up
@@ -174,9 +186,6 @@ try {
 
     // 6. What a person hears: the take's sound, cut where the strip says, each join faded
     // 30 ms out and 30 ms in as the editor's copy does; and the strip over it.
-    const sound = path.join(work, "sound.wav");
-    run(tool("ffmpeg"), ["-hide_banner", "-loglevel", "error", "-y", "-i", `${origin}/m/${drive.rec}/master.m3u8`, "-vn", "-ac", "1", "-ar", "48000", sound]);
-    fs.copyFileSync(sound, path.join(out, "before.wav"));
     const F = 0.03;
     const parts = keep.map(([a, b], i) => `[0:a]atrim=${a}:${b},asetpts=PTS-STARTPTS${i ? `,afade=t=in:d=${F}` : ""}${i < keep.length - 1 ? `,afade=t=out:st=${Math.max(0, b - a - F)}:d=${F}` : ""}[p${i}]`);
     const cutWav = path.join(out, "after.wav");

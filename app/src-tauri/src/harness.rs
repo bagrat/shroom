@@ -1119,6 +1119,17 @@ fn run_drive(app: &AppHandle, rt: &crate::runtime::Runtime, out: &Path, seconds:
             rt.post(Event::Act { surface: Surface::Popover, action: Action::SetCamera(None), rev: 0 });
             wait_for(rt, "the bubble off", 5, report, t0, |s| s.bubble.is_none())?;
         }
+        // The voice-cut drive's speech stands in for the microphone (N65): whoever says
+        // “shroom cut” records with it on, whatever a pass before left (the show pass turns it off).
+        if crate::runtime::recorder::DRIVE_VOICE.get().is_some() {
+            rt.post(Event::Act { surface: Surface::Popover, action: Action::SetMicDefault, rev: 0 });
+            wait_for(rt, "the microphone on", 5, report, t0, |s| {
+                s.popover.as_ref().filter(|p| p.id == "config").is_some_and(|p| match &p.body {
+                    shroom_core::scene::PopoverBody::Config(c) => c.mics.iter().any(|m| m.selected && !matches!(m.action, Action::SetMic(None))),
+                    _ => false,
+                })
+            })?;
+        }
         // What records is the display the pattern covers — whatever the prefs said (a
         // camera picked in the dev app, another display): chosen as a person would, then
         // checked on the Scene the Return will start from (b4 #16).
