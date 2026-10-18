@@ -1,5 +1,6 @@
 //! Bagrat's takes on the tester (2026-10-18), rebuilt from the words it showed
-//! (tests/takes/hand-bagrat-tester-1, -2 and -3): what the planner got wrong in them, held.
+//! (tests/takes/hand-bagrat-tester-1 to -4): what the planner got wrong in them, and the take
+//! he said came out right, held.
 //!
 //! - A cue that breaks off a sentence takes that sentence, never the finished one before it,
 //!   even when the speaker ran straight on from one into the other.
@@ -10,6 +11,8 @@
 //!   cue's own sentence, and never one that leaves a word or two of that sentence behind.
 //! - A cut after a cue runs through what still sounds after its last word (the word's
 //!   release, a breath) to the first pause, never ending in the short dip right after it.
+//! - Two restarts said again and a cue run straight on from “and”, each cut whole and each
+//!   ending in a pause (his fourth take, “The second take was better”).
 
 use std::fs;
 use std::path::Path;
@@ -360,4 +363,61 @@ fn a_cut_after_the_cue_runs_through_its_tail_and_the_breath_to_the_pause() {
     let t = with_his_loudness(rebuilt("hand-bagrat-tester-3"));
     let first = &plan_with(&t, Options::default(), &judged("hand-bagrat-tester-3")).cuts[0];
     assert!((9.95..10.05).contains(&first.end), "{first:?}");
+}
+
+#[test]
+fn his_fourth_take_cuts_two_restarts_and_a_run_on_cue_each_ending_in_a_pause() {
+    // “Hi, this is a quick test of Shroom. Today I'll show you how to, no, shroom cut. Hi, this
+    // is… how to share, no, shroom cut. Hi, this is… in one click. you press stop and the link
+    // is pasted and shroom cut you press stop and the link is copied and that's it” (Bagrat,
+    // 2026-10-18): each restart said again from its start, the “no,” before each cue going
+    // with it, and a cue run straight on from “and” with no sentence's end.
+    let t = rebuilt("hand-bagrat-tester-4");
+    let list = plan_with(&t, Options::default(), &judged("hand-bagrat-tester-4"));
+    assert_eq!(
+        list.cuts
+            .iter()
+            .map(|c| (c.applied, c.removed.as_str()))
+            .collect::<Vec<_>>(),
+        [
+            (
+                true,
+                "Hi, this is a quick test of Shroom. Today I'll show you how to, no, shroom cut."
+            ),
+            (
+                true,
+                "Hi, this is a quick test of shroom. Today I'll show you how to share, no, shroom cut."
+            ),
+            (true, "you press stop and the link is pasted and shroom cut"),
+        ]
+    );
+    for c in &list.cuts {
+        assert!(
+            t.silences
+                .iter()
+                .any(|s| s.start <= c.end && c.end <= s.end),
+            "it ends in a pause: {c:?}"
+        );
+    }
+    // A word plays when its sound does: Whisper starts “you” inside the pause before it, so
+    // its sound is counted from that pause's end.
+    let keep = list.keep();
+    let plays: Vec<&str> = t
+        .words
+        .iter()
+        .filter(|w| {
+            let from = t
+                .silences
+                .iter()
+                .find(|s| s.start <= w.start && w.start < s.end)
+                .map_or(w.start, |s| s.end.min(w.end));
+            let mid = (from + w.end) / 2.0;
+            keep.iter().any(|(s, e)| mid >= *s && mid < *e)
+        })
+        .map(|w| w.text.as_str())
+        .collect();
+    assert_eq!(
+        plays.join(" "),
+        "Hi, this is a quick test of shroom. Today I'll show you how to share a recording in one click. you press stop and the link is copied and that's it"
+    );
 }

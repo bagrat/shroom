@@ -1,0 +1,14 @@
+{
+ "model": "@cf/cloudflare/clef",
+ "on": "2026-10-18",
+ "meant": [
+  {
+   "word": 40,
+   "score": 0.773
+  },
+  {
+   "word": 54,
+   "score": 0.3143
+  }
+ ]
+}
