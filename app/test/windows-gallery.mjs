@@ -24,7 +24,7 @@ import { join } from "node:path";
 import { webkit } from "playwright";
 import { collect, dist, gallery, hex, isButton, norm, out, repo, serve, stub, texts, windowPage } from "./gallery-kit.mjs";
 
-for (const f of ["library.html", "settings.html", "feedback.html", "popover.html", "countdown.html"]) {
+for (const f of ["library.html", "settings.html", "feedback.html", "popover.html", "countdown.html", "label.html"]) {
   if (!existsSync(join(dist, f))) {
     console.error(`app/dist/${f} is missing — run \`npm run build --workspace app\` first.`);
     process.exit(2);
@@ -53,6 +53,8 @@ export const SIZES = {
   popover: { width: 320, height: 720 },
   // The countdown covers its display; a laptop's is drawn here.
   countdown: { width: 1512, height: 982 },
+  // The agent label's panel (overlay.rs LABEL_SIZE): the pill at its right edge.
+  label: { width: 380, height: 30 },
 };
 
 // Region 6's entries ride along, each in its own window (`-- members`).
@@ -63,6 +65,7 @@ const settings = [...gallery("settings"), ...members.filter((e) => e.window === 
 const region3 = gallery("region3");
 const popovers = [...members, ...region3].filter((e) => e.window === "popover");
 const countdowns = region3.filter((e) => e.window === "countdown");
+const labels = region3.filter((e) => e.window === "label");
 // Send feedback (`-- feedback`): the form in each of its faces, and the sent face (N60).
 const feedbacks = gallery("feedback");
 const server = await serve();
@@ -105,7 +108,7 @@ async function open(surface, scene, { colorScheme = "light", size = SIZES[surfac
   page.on("pageerror", (e) => errors.push(String(e)));
   await page.addInitScript(stub, scene);
   await page.goto(`${server.origin}/${surface}.html`);
-  await page.waitForSelector({ library: ".lib", settings: ".set", feedback: "main.fb", popover: "main.pop", countdown: "#digit:not(:empty)" }[surface]);
+  await page.waitForSelector({ library: ".lib", settings: ".set", feedback: "main.fb", popover: "main.pop", countdown: "#digit:not(:empty)", label: "#pill:not([hidden])" }[surface]);
   await page.waitForTimeout(60);
   return { ctx, page, errors };
 }
@@ -1071,6 +1074,24 @@ for (const entry of countdowns) {
   }
 }
 
+// ── The agent label (N62, B216): the Scene's line in a pill at the panel's right edge, the
+// page clear around it (the panel passes every click through; macOS casts the shadow) ──
+for (const entry of labels) {
+  for (const scheme of ["light", "dark"]) {
+    const tag = `label/${entry.variant} [${scheme}]`;
+    const { ctx, page, errors } = await open("label", entry.scene, { colorScheme: scheme });
+    const pill = page.locator("#pill");
+    check(`${tag}: the line is the Scene's, and nothing else`, (await pill.innerText()).trim() === entry.scene.line, await pill.innerText());
+    const box = await pill.boundingBox();
+    check(`${tag}: the pill sits at the panel's right edge, inside it`, !!box && Math.abs(box.x + box.width - SIZES.label.width) <= 1 && box.x >= 0 && box.height <= SIZES.label.height, JSON.stringify(box));
+    check(`${tag}: the page is clear around the pill`, (await page.evaluate(() => getComputedStyle(document.body).backgroundColor)) === "rgba(0, 0, 0, 0)");
+    check(`${tag}: no page errors`, errors.length === 0, errors.join(" | "));
+    check(`${tag}: listens to its own slice`, (await page.evaluate(() => window.__listenTarget()))?.label === "label");
+    await page.screenshot({ path: join(out, `label-${entry.variant}-${scheme}.png`), animations: "disabled", omitBackground: true });
+    await ctx.close();
+  }
+}
+
 // Region 3's controls send the Scene's actions.
 {
   const pop = (variant) => popovers.find((e) => e.variant === variant).scene;
@@ -1245,5 +1266,5 @@ console.log(`windows: library ${SIZES.library.width}×${SIZES.library.height} (m
 
 const failed = results.filter((r) => !r.ok);
 for (const f of failed) console.log(`FAIL ${f.name}${f.detail ? ` — ${f.detail}` : ""}`);
-console.log(`\n${library.length} library + ${settings.length} settings + ${feedbacks.length} feedback + ${popovers.length} popover + ${countdowns.length} countdown scenes × 2 schemes · ${results.length - failed.length}/${results.length} checks passed · screenshots in ${out}`);
+console.log(`\n${library.length} library + ${settings.length} settings + ${feedbacks.length} feedback + ${popovers.length} popover + ${countdowns.length} countdown + ${labels.length} label scenes × 2 schemes · ${results.length - failed.length}/${results.length} checks passed · screenshots in ${out}`);
 process.exit(failed.length ? 1 : 0);

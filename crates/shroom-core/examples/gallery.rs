@@ -1105,6 +1105,14 @@ fn region3_rows() -> Vec<(&'static str, &'static str, &'static str, World)> {
         }
         w
     }));
+    // The agent label (N62, B216): a take the shroom command started, recording.
+    rows.push(("label", "recording", "agent-label", {
+        let mut w = ready();
+        let t = recording();
+        w.agent = Some(t.opened);
+        w.take = Some(t);
+        w
+    }));
     for (variant, at) in [("countdown-3", 900), ("countdown-1", 2_950)] {
         rows.push(("countdown", "countdown", variant, {
             let mut w = ready();
@@ -1125,6 +1133,7 @@ fn region3_gallery() -> Vec<Value> {
             assert!(ids.contains(&state), "{variant}: {state} not derived (got {ids:?})");
             let (slice, faces) = match window {
                 "countdown" => (serde_json::to_value(&scene.countdown), vec![]),
+                "label" => (serde_json::to_value(&scene.label), vec![]),
                 _ => (serde_json::to_value(&scene.popover), scene.popover.as_ref().map(|x| x.faces.clone()).unwrap_or_default()),
             };
             let slice = slice.expect("the slice serializes");
