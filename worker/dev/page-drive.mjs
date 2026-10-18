@@ -187,6 +187,9 @@ async function main() {
         await page.keyboard.press("ArrowRight");
         const after = await page.evaluate(() => document.getElementById("v").currentTime);
         check("Tab to the scrubber, → seeks 5 s", onSeek && after - before >= 4 && after - before <= 6.5);
+        // K once the seek has landed: headless WebKit (MSE) plays on again from a pause made
+        // while a seek is still under way — 3 runs in 8 at 0.1.24's page.
+        await page.waitForFunction(() => !document.getElementById("v").seeking, null, { timeout: 5000 }).catch(() => {});
         await page.keyboard.press("k");
         // The label follows the pause event, a task after `paused` flips.
         const kPaused = await page.waitForFunction((w) => document.getElementById("v").paused && document.querySelector(".pp").getAttribute("aria-label") === w, COPY.play, { timeout: 3000 }).then(() => true, () => false);
