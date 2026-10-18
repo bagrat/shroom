@@ -99,7 +99,7 @@ script.
   - So a looser sound-alike (“troom”, “drum”, “trung”) also counts, but only when it stands
     as its own sentence: after a sentence end, and followed by a full stop or a pause.
     “The drum cut was loud” stays speech.
-- **The prompt has a cost**, and Whisper sometimes skips speech: two takes (one on small.en,
+- **The prompt has a cost**, and Whisper sometimes skips speech: across the runs, two takes (one on small.en in an earlier run,
   one on turbo) lost their first 8–10 s.
   - The planner now refuses to treat a long gap with sound in it as silence, so that take
     lost only the cue, not the missed speech.
