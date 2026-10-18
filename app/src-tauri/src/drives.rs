@@ -1820,7 +1820,8 @@ fn cleanup_drive(d: &Drive) -> Result<(), String> {
     d.check("Space used: inside the free 10 GB now", v.used.as_deref().is_some_and(|u| u.ends_with("inside Cloudflare's free 10 GB")), format!("{:?}", v.used));
     d.after(2500);
     d.act(Surface::Settings, v.count.action.clone());
-    d.wait("Count plays off", 20, |s| general_videos(s).is_some_and(|v| !v.count.on))?;
+    // The switch moves at once and stays greyed until the space has taken it.
+    d.wait("Count plays off, taken", 20, |s| general_videos(s).is_some_and(|v| !v.count.on && v.count.enabled))?;
     let sw = worker_object(&base, ".shroom/plays.json");
     d.check("the space's switch is off", sw.as_ref().is_some_and(|o| o["on"] == false), format!("{sw:?}"));
     play_today(&base, "Cdrive000billing")?;
@@ -1830,7 +1831,7 @@ fn cleanup_drive(d: &Drive) -> Result<(), String> {
     let s = snapshot(&d.rt).ok_or("no scene")?;
     let v = general_videos(&s).ok_or("no Your videos")?;
     d.act(Surface::Settings, v.count.action.clone());
-    d.wait("Count plays on again", 20, |s| general_videos(s).is_some_and(|v| v.count.on))?;
+    d.wait("Count plays on again, taken", 20, |s| general_videos(s).is_some_and(|v| v.count.on && v.count.enabled))?;
     let sw = worker_object(&base, ".shroom/plays.json");
     d.check("the space's switch is on again", sw.as_ref().is_some_and(|o| o["on"] == true), format!("{sw:?}"));
     d.after(2000);
