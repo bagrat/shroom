@@ -378,8 +378,8 @@ new column right of the editor's boards (x = 11600). PNGs are in
 - **Library — the one-time offer** (`AiOffer`)
 - **Settings — Space: Name videos and add chapters, off and on** (`AiSettings`)
 - **The page — the owner's, named for you** (`AiOwnerNamed`)
-- **The page — chapters in the seek bar, named on hover** (`AiPageMarks`), Bagrat's pick
-- **The page on a phone — chapters in the seek bar, named while a finger is on it** (`AiPageMarksPhone`)
+- **The page — chapters in the seek bar, named on hover** (`AiPageMarks`), Bagrat's pick, approved 2026-10-18
+- **The page on a phone — chapters in the seek bar, named while a finger is on it** (`AiPageMarksPhone`), approved 2026-10-18
 - **The page — chapters, A: listed under the player** (`AiPageChapters`), not chosen, kept for the record
 
 The titles and chapters on the boards are the POC's real output on the invented
@@ -397,7 +397,9 @@ alternative, as a recommendation. All of them are Bagrat's to ratify or overturn
    the thumb (while dragging, and briefly after a tap). The current chapter is always
    named after the time, so a phone viewer knows where they are without touching. No list
    anywhere. The alternative was a list on phones only; it was left out to keep one
-   design everywhere.
+   design everywhere. **Seen and approved:** Bagrat looked at both boards, the laptop
+   (`AiPageMarks`) and the phone (`AiPageMarksPhone`), and approved the chapter design
+   as drawn on them (Bagrat, 2026-10-18).
 2. **Name with gpt-oss-120b, falling back to gemma-4.** Decided because it gave the best
    titles in 3 of 3 takes, at ~$0.007 an hour, under a fifth of the total. gemma-4 is
    ~4× cheaper and faster, and nearly as good: it is the fallback, and the obvious
