@@ -40,6 +40,13 @@ pub fn ends_sentence(raw: &str) -> bool {
     raw.trim_end().ends_with(['.', '?', '!'])
 }
 
+/// The sentence ended as said, not trailing off: a full stop, a question or an exclamation,
+/// never an ellipsis ("you will..." is a sentence broken off).
+pub fn ends_cleanly(raw: &str) -> bool {
+    let t = raw.trim_end();
+    ends_sentence(t) && !t.ends_with("...") && !t.ends_with('…')
+}
+
 pub fn levenshtein(a: &str, b: &str) -> usize {
     let a: Vec<char> = a.chars().collect();
     let b: Vec<char> = b.chars().collect();

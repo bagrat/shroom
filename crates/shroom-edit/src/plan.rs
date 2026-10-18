@@ -2,8 +2,12 @@
 
 use crate::align::find_restart;
 use crate::cue::{Cue, find_cues};
-use crate::text::{ends_sentence, is_hesitation, norm};
+use crate::text::{ends_cleanly, ends_sentence, is_hesitation, norm};
 use crate::{Confidence, Cut, CutKind, EditList, Silence, Transcript, Word};
+
+/// A sentence the cue broke off goes with it only when it began at most this long before the
+/// cue (seconds): a run-on the transcriber never stopped is not one sentence.
+const SENTENCE_MAX: f64 = 20.0;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Options {
@@ -206,11 +210,35 @@ fn plan_one(cx: &Ctx, cue: &Cue, floor: usize, ceil: usize) -> Vec<Cut> {
         }
     }
 
-    // No retake. Said apart from the speech, it's still a cue: cut it (and any filler
-    // right after), and offer the line before it.
+    // No retake. Said apart from the speech, it's still a cue.
     if !apart {
         return Vec::new();
     }
+    // It broke off a sentence: whatever was said after it, in the same words or others,
+    // that sentence is the slip, and it goes with the cue.
+    if cue.first > floor && !ends_cleanly(&words[cue.first - 1].text) {
+        let from = cx.line_start(cue.first - 1, floor);
+        if cue.start - words[from].start <= SENTENCE_MAX {
+            let mut resume = cue.last + 1;
+            while resume < ceil && is_hesitation(&norm(&words[resume].text)) {
+                resume += 1;
+            }
+            let (start, end) = cx.span(from, resume - 1);
+            return vec![Cut {
+                id: String::new(),
+                start,
+                end,
+                kind: CutKind::Retake,
+                confidence: Confidence::High,
+                applied: true,
+                removed: cx.said(from, resume - 1),
+                resumes: cx.resumes(resume),
+                why: "the sentence the cue broke off".into(),
+            }];
+        }
+    }
+    // The sentence before it ended: cut the cue (and any filler right after), and offer the
+    // line before it.
     let mut last = cue.last;
     while last + 1 < ceil && is_hesitation(&norm(&words[last + 1].text)) {
         last += 1;
