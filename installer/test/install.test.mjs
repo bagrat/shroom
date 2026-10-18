@@ -111,9 +111,14 @@ const manifest = () => {
 const served = () => (mode.hollow ? v120hollow : v120);
 const server = createServer((req, res) => {
   hits++;
-  if (req.url === "/latest/download/manifest.txt") {
+  // The early channel's pointer (DECISIONS B220): served only when a test asks for it.
+  if (req.url === "/download/early/manifest.txt" && mode.early) {
+    res.end(manifest());
+  } else if (req.url === "/latest/download/manifest.txt") {
     if (mode.manifestStatus) { res.statusCode = mode.manifestStatus; return res.end(); }
     res.end(manifest());
+  } else if (req.url === `/download/v1.2.0-early.1/${v120.file}`) {
+    res.end(v120.bytes); // an early build's tag (DECISIONS B220), the same zip
   } else if (req.url === `/download/v${v120.version}/${v120.file}`) {
     if (mode.assetStatus) { res.statusCode = mode.assetStatus; return res.end(); }
     if (mode.drop) {
@@ -223,6 +228,33 @@ describe("installing", () => {
     const r = await run({ env: { FAKE_ARCH: "x86_64", FAKE_ARM64: "1" } });
     assert.equal(r.code, 0);
     assert.equal(r.installed, "1.2.0");
+  });
+});
+
+describe("--early (DECISIONS B220)", () => {
+  it("installs from the early channel's pointer and leaves the app on that channel", async () => {
+    // The latest release isn't asked: here it isn't even there.
+    const r = await run({ args: ["--early"], with: { early: true, manifestStatus: 404 } });
+    assert.equal(r.code, 0);
+    assert.deepEqual(r.out, ["Getting shroom…", "verified ✓", "Installed — opening shroom now."]);
+    assert.equal(r.installed, "1.2.0");
+    const file = join(r.home, ".shroom/channel");
+    assert.equal(readFileSync(file, "utf8"), "early\n");
+    assert.equal(statSync(file).mode & 0o777, 0o600);
+    quiet(r);
+  });
+
+  it("updates an installed shroom onto the early channel, and still carries a join link", async () => {
+    const r = await run({ args: ["--early", "--join", "https://v.myshroom.workers.dev/join/abc"], setup: runningOld, with: { early: true } });
+    assert.equal(r.code, 0);
+    assert.match(r.log, /open .*shroom\.app --args --relaunched=install-update --invite\n$/);
+    assert.equal(readFileSync(join(r.home, ".shroom/channel"), "utf8"), "early\n");
+  });
+
+  it("the plain install line reads the latest release and writes no channel", async () => {
+    const r = await run({ with: { early: true } });
+    assert.equal(r.code, 0);
+    assert.ok(!existsSync(join(r.home, ".shroom/channel")));
   });
 });
 
@@ -709,6 +741,16 @@ describe("a manifest the app's updater wouldn't accept", () => {
       assert.equal(r.hits, 1);
     });
   }
+  it("an early build's version (B220) installs; any other suffix is refused", async () => {
+    const early = (v) => `version=${v}\nmacos=14\narm64=${v120.file} ${sha(v120.bytes)}\n`;
+    const ok = await run({ args: ["--early"], with: { early: true, manifest: early("1.2.0-early.1") } });
+    assert.equal(ok.code, 0);
+    assert.equal(ok.installed, "1.2.0");
+    for (const bad of ["1.2.0-beta.1", "1.2.0-early.0", "1.2.0-early.x", "1.2.0-early."]) {
+      const r = await run({ args: ["--early"], with: { early: true, manifest: early(bad) } });
+      assert.deepEqual(r.out, [NOT_ALL_THERE], bad);
+    }
+  });
   it("a macOS floor that isn't a whole number", async () => {
     const r = await run({ with: { floor: "14.4" } });
     assert.deepEqual(r.out, [NOT_ALL_THERE]);

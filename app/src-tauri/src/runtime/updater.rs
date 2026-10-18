@@ -16,7 +16,7 @@ use std::sync::mpsc::{Sender, channel};
 use shroom_core::effect::UpdCmd;
 use shroom_core::event::{Event, UpdateNews};
 use shroom_core::world::{FailClass, Op, UpdateOffer};
-use shroom_update::{Offer, Release, UpdateError, Version};
+use shroom_update::{Channel, Offer, Release, UpdateError, Version};
 use tauri::AppHandle;
 
 use super::Runtime;
@@ -45,6 +45,13 @@ fn releases_base(dev: bool, stand_in: Option<&str>) -> Option<String> {
     } else {
         Some(shroom_update::RELEASES.to_string())
     }
+}
+
+/// This Mac's channel (DECISIONS B220): `early` in the folder's `channel` file (written by
+/// `install.sh --early`), else the official one. Read at every check, so changing the file
+/// needs no restart.
+pub fn mac_channel(rt: &Runtime) -> Channel {
+    Channel::from_file(std::fs::read_to_string(rt.home.path("channel")).ok().as_deref())
 }
 
 fn class(e: &UpdateError) -> FailClass {
@@ -103,7 +110,7 @@ fn check(rt: &Runtime, offered: &mut Option<Release>) -> Result<(), FailClass> {
         rt.log("updater: no releases to check (a dev build checks only a --releases stand-in)");
         return Err(FailClass::Refused);
     };
-    let manifest = shroom_update::check(&base).map_err(|e| {
+    let manifest = shroom_update::check_channel(&base, mac_channel(rt)).map_err(|e| {
         rt.log(&format!("updater check: {e}"));
         class(&e)
     })?;
@@ -116,7 +123,7 @@ fn check(rt: &Runtime, offered: &mut Option<Release>) -> Result<(), FailClass> {
         }
         Offer::NeedsMacos { version, macos } => Some(UpdateOffer::NeedsMacos { version: version.to_string(), macos }),
     };
-    rt.log(&format!("updater check: {} running, {:?}", rt.version, offer));
+    rt.log(&format!("updater check: {} running, {} channel, {:?}", rt.version, mac_channel(rt).word(), offer));
     rt.post(Event::Update(UpdateNews::Checked(offer)));
     Ok(())
 }
@@ -125,7 +132,7 @@ fn download(rt: &Runtime, offered: &mut Option<Release>, version: &str) -> Resul
     let base = base(rt).ok_or(FailClass::Refused)?;
     // The offer this lane read; else read the manifest again (a relaunch since the check).
     if offered.as_ref().is_none_or(|r| r.version.to_string() != version) {
-        let manifest = shroom_update::check(&base).map_err(|e| class(&e))?;
+        let manifest = shroom_update::check_channel(&base, mac_channel(rt)).map_err(|e| class(&e))?;
         *offered = match shroom_update::offer(&manifest, running(rt)?, arch(), super::os::macos_major()) {
             Offer::Ready(r) => Some(r),
             _ => None,
@@ -237,6 +244,18 @@ mod tests {
         assert_eq!(base(&rt), None);
         rt.dev = false;
         assert_eq!(base(&rt).as_deref(), Some(shroom_update::RELEASES));
+    }
+
+    /// The channel is the folder's `channel` file's (B220), read at each check.
+    #[test]
+    fn the_channel_is_the_folders_file() {
+        let tmp = tempfile::tempdir().unwrap();
+        let (rt, _rx) = Runtime::for_test(tmp.path().join("h"), None, None);
+        assert_eq!(mac_channel(&rt), Channel::Official);
+        std::fs::write(rt.home.path("channel"), "early\n").unwrap();
+        assert_eq!(mac_channel(&rt), Channel::Early);
+        std::fs::remove_file(rt.home.path("channel")).unwrap();
+        assert_eq!(mac_channel(&rt), Channel::Official);
     }
 
     /// A release build's Update swaps the app it runs from — the dev build's throwaway-only
