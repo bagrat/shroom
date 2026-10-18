@@ -2,7 +2,7 @@
 //! `paste_secret`, and goes straight into the runner's stash (law 13).
 
 use serde_json::Value;
-use shroom_core::event::{Event, Field, Key, SecretField, Surface};
+use shroom_core::event::{EditStep, Event, Field, Key, SecretField, Surface};
 use shroom_core::scene::Action;
 use tauri::State;
 
@@ -77,7 +77,39 @@ pub fn scene_get(rt: State<Runtime>, surface: Surface) -> Value {
         Surface::Library => serde_json::to_value(&s.library).unwrap_or(Value::Null),
         Surface::Settings => serde_json::to_value(&s.settings).unwrap_or(Value::Null),
         Surface::Feedback => serde_json::to_value(&s.feedback).unwrap_or(Value::Null),
+        Surface::Editor => serde_json::to_value(&s.editor).unwrap_or(Value::Null),
         _ => Value::Null,
+    }
+}
+
+/// A step in the editor (N63): `{"op": "undo"}`, `{"op": "redo"}`, or one of the edit
+/// list's operations (`trim`, `cut`, `put-back`, `apply`, `revert` — `shroom_edit::Op`),
+/// times in seconds on the recording. The core takes it or refuses it; a step that doesn't
+/// read is dropped here, and the next slice says what the edit is.
+#[tauri::command]
+pub fn edit(rt: State<Runtime>, step: Value) {
+    match edit_step(step) {
+        Some(step) => rt.post(Event::Edit(step)),
+        None => rt.log("editor: a step that doesn't read — dropped"),
+    }
+}
+
+pub fn edit_step(step: Value) -> Option<EditStep> {
+    match step.get("op").and_then(Value::as_str) {
+        Some("undo") => Some(EditStep::Undo),
+        Some("redo") => Some(EditStep::Redo),
+        _ => serde_json::from_value::<shroom_edit::Op>(step).ok().filter(finite).map(EditStep::Op),
+    }
+}
+
+/// Every time a step carries is a number the list can hold (JSON has no NaN, but a huge
+/// literal reads as infinity).
+fn finite(op: &shroom_edit::Op) -> bool {
+    use shroom_edit::Op;
+    match op {
+        Op::Trim { in_, out } => in_.is_finite() && out.is_finite(),
+        Op::Cut { start, end } => start.is_finite() && end.is_finite(),
+        Op::PutBack { .. } | Op::Apply { .. } | Op::Revert => true,
     }
 }
 
@@ -98,5 +130,22 @@ mod tests {
         assert!(!arms(Surface::Popover, Some(&Action::Stop), None));
         assert!(!arms(Surface::Popover, None, Some(Key::Esc)));
         assert!(!arms(Surface::Onboarding, None, Some(Key::Return)), "the chapter's own Return asks macOS itself");
+    }
+
+    /// The editor's steps as its webview sends them (app/src/lib/ipc.ts `EditStep`).
+    #[test]
+    fn the_editors_steps_read_as_the_core_takes_them() {
+        use serde_json::json;
+        use shroom_edit::Op;
+        assert_eq!(edit_step(json!({"op": "undo"})), Some(EditStep::Undo));
+        assert_eq!(edit_step(json!({"op": "redo"})), Some(EditStep::Redo));
+        assert_eq!(edit_step(json!({"op": "trim", "in": 8, "out": 241.5})), Some(EditStep::Op(Op::Trim { in_: 8.0, out: 241.5 })));
+        assert_eq!(edit_step(json!({"op": "cut", "start": 150, "end": 162})), Some(EditStep::Op(Op::Cut { start: 150.0, end: 162.0 })));
+        assert_eq!(edit_step(json!({"op": "put-back", "index": 0})), Some(EditStep::Op(Op::PutBack { index: 0 })));
+        assert_eq!(edit_step(json!({"op": "apply", "index": 1})), Some(EditStep::Op(Op::Apply { index: 1 })));
+        assert_eq!(edit_step(json!({"op": "revert"})), Some(EditStep::Op(Op::Revert)));
+        for bad in [json!({"op": "cut", "start": "x", "end": 2}), json!({"op": "cut", "start": f64::INFINITY, "end": 2}), json!({"op": "nope"}), json!({}), json!("undo"), json!({"op": "put-back", "index": -1})] {
+            assert_eq!(edit_step(bad.clone()), None, "{bad}");
+        }
     }
 }

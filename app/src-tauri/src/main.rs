@@ -97,7 +97,8 @@ fn main() {
             commands::popover_fit,
             commands::paste_secret,
             commands::field,
-            commands::webview_error
+            commands::webview_error,
+            commands::edit
         ])
         .setup(move |app| {
             use tauri::Manager;

@@ -221,7 +221,9 @@ pub fn parse_iso(s: &str) -> Option<i64> {
     Some(((days * 86_400 + h * 3_600 + mi * 60 + sec) * 1_000) + ms)
 }
 
-/// A record as the core knows a Library row (its poster as `rows_of` finds it).
+/// A record as the core knows a Library row (its poster as `rows_of` finds it). The edited
+/// length (N63) isn't in the cached row yet (`shroom_upload::library::Row` doesn't carry the
+/// record's `edits`): the core keeps the length a save of this Mac's gave it.
 pub fn row(r: &Row) -> LibraryRow {
     LibraryRow {
         rec: RecId(r.id.clone()),
@@ -231,6 +233,7 @@ pub fn row(r: &Row) -> LibraryRow {
         live: r.state == State::Live,
         owner: r.owner.clone(),
         poster: false,
+        edited_ms: None,
     }
 }
 
