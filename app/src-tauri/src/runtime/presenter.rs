@@ -1008,6 +1008,20 @@ mod tests {
 
     const SCREEN: Frame = Frame { x: 0.0, y: 0.0, w: 1512.0, h: 944.0 };
 
+    /// Every page shroom shows is in the capability its calls go through: a window left out
+    /// can't listen for its `scene` slice (the event plugin refuses it), and its page stays
+    /// blank — the agent label's did, until it was listed.
+    #[test]
+    fn every_page_may_hear_its_scene() {
+        let cap: serde_json::Value = serde_json::from_str(include_str!("../../capabilities/default.json")).unwrap();
+        let listed: Vec<&str> = cap["windows"].as_array().unwrap().iter().filter_map(|w| w.as_str()).collect();
+        let pages = [ONBOARDING_WINDOW.label, LIBRARY_WINDOW.label, SETTINGS_WINDOW.label, FEEDBACK_WINDOW.label, Overlay::Popover.label(), Overlay::Countdown.label(), Overlay::Label.label()];
+        for page in pages {
+            assert!(listed.contains(&page), "the {page} window is not in capabilities/default.json");
+        }
+        assert_eq!((POPOVER, COUNTDOWN, LABEL), (Overlay::Popover.label(), Overlay::Countdown.label(), Overlay::Label.label()));
+    }
+
     #[test]
     fn the_popover_hangs_under_the_mushroom_or_falls_back_to_the_top_right() {
         let item = Frame { x: 1200.0, y: 950.0, w: 24.0, h: 32.0 };
