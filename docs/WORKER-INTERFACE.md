@@ -418,6 +418,9 @@ A status alone never maps to a state. Within `IFACE = 2`, routes and fields only
 | 4.18 | POST | `/_shroom/api/health` | device key |
 | 4.19 | GET, HEAD | `/favicon.svg`, `.png`, `.ico` | none |
 | 4.20 | POST | `/_shroom/api/gone` | device key |
+| 4.21 | POST | `/_shroom/api/ai` | device key / parent proof |
+| 4.21 | GET, HEAD | `/_shroom/cc/<id>` | none |
+| 4.21 | GET | `/_shroom/named/<id>` | cookie |
 
 **The Worker writes only:**
 - the roster (CAS), the ledger (create-only) and `rate/<did>`;
@@ -425,13 +428,16 @@ A status alone never maps to a state. Within `IFACE = 2`, routes and fields only
 - `health.json`, `mark.json` and `gone/<id>` (plain puts);
 - `meta/<id>.json` via a title POST or a thumbnail POST (its `thumb` pointer);
 - `rec/<id>/thumb-<16 hex>.gif|jpg` via a thumbnail POST: created, named by its contents,
-  never anything else under `rec/` (D:B164).
+  never anything else under `rec/` but naming's transcript below (D:B164);
+- with naming on (§4.21): `rec/<id>/ai/transcript.json`, `.shroom/ai/later/<id>`, and the
+  record's `title` (while untitled), `named`, `captions` and `naming`, under `If-Match`.
 
 It never deletes bytes or claims a meta.
 
 ### 4.2 `GET /_shroom/ping`
 
-- **Response:** `200 {"shroom":true,"iface":2,"version":"0.1.9"}` (`no-store`). **No
+- **Response:** `200 {"shroom":true,"iface":2,"version":"0.1.9"}` (`no-store`), and
+  `"ai":true` after them when the page carries Cloudflare's AI (naming on, §4.21). **No
   storage read** (the stop probe's 600 ms, DV #8). It is the one route keeping
   `"shroom":true`.
 - **The app** (`Space::ping`):
@@ -900,6 +906,52 @@ there too, with no read.
 
 **Callers.** `runtime/library.rs:delete` seals after `library::delete` and a tombstone
 check; a seal that fails (an older page) is logged and the delete stands.
+
+### 4.21 Names, chapters and captions (N66, N67; D:B205–B209)
+
+**When.** Only on a page deployed with an `ai` binding (`AI`) and a Cron Trigger each minute
+— the setup Mac's switch (`shroom_cloud::wire::set_ai`). Without the binding the AI route
+answers `{"shroom":1,"ai":false}` before reading anything, the schedule does nothing, and
+no page carries any of it.
+
+**`POST /_shroom/api/ai`** — `{"rec":"<16>","through":<pieces>}` (another minute is up:
+`through` pieces of the take are up, unbroken from the first) or `{"rec":"<16>","done":true}`
+(the take is live). The device key, or the setup Mac's parent proof (§3.2, as `enroll`). Only
+the take's maker or an owner-class caller (§2.4): else 403 `not-yours`; no ledger and no
+meta → 404 `absent`; a tombstone → 410 `deleted`; a bad body → 400. One step a call:
+- `{"ai":true,"step":"heard","more":bool}` — a window of ten pieces heard (the last, partial,
+  once done); `more`: another step can be taken now;
+- `{"ai":true,"step":"named","more":false}` — the done take named;
+- `{"ai":true,"step":"idle","more":false}` — nothing to do yet;
+- `{"ai":true,"later":"daily"|"busy"|"error"|"running"}` — it waits: the free day used up
+  (until 00:00 UTC), a busy model (five minutes), another failure (a little longer each time;
+  after five, the take is let go), or another step holds it.
+
+The app's caller is `shroom_cloud::member::ai_signal` (asked again while `more`).
+
+**The schedule** (`scheduled`): the marks under `.shroom/ai/later/<id>` whose `after` (custom
+metadata, beside `since`) has come, oldest first; one step a tick.
+
+**Stored.** `rec/<id>/ai/transcript.json` = `{v:1, model, language, duration, heard_through,
+done, windows, clock, words:[[text, start, end],…], tail}`: seconds on the recording's clock
+(`clock`: the last bake it's on, null for the original), final up to `heard_through`, the
+window's last 1.5 s in `tail` until the next window hears it. The mark
+`.shroom/ai/later/<id>` = `{v:1, since, after, done, through, rename, reason, tries}`. The
+record: `title` (only while not `titled`), `named` = `{by:"ai", model, at, rev, clock,
+words, title, chapters:[[start, title],…], language}`, `captions` = `{language}`, and
+`naming` = `{later:"daily", at}` while the free day is used up.
+
+**After a view** (in `waitUntil`): an edit saved since the naming (`named.rev` ≠ the bakes
+and `meta.edits.rev`) that removes at least a fifth of the words it saw, or a whole
+chapter, marks the take to be named again; else the revision is stamped.
+
+**`GET|HEAD /_shroom/cc/<id>`** — the captions as WebVTT (`text/vtt`, `max-age=300`), written
+per view from the transcript through the saved edit: `e=1` on the edited clock (the editor's
+own copy plays), otherwise on the recording's. 404 without captions, for a deleted record.
+
+**`GET /_shroom/named/<id>`** — the owner page's ask while a name is on its way: the maker's
+or an owner-class browser (§3.5) only, else 403: `{"named":"<title or empty>","titled":bool,
+"later":bool}`.
 
 ---
 

@@ -1,6 +1,7 @@
 # AI titles and chapters, through the owner's own Cloudflare
 
-*Proposal and POC, 2026-10-18. Nothing here is decided. It follows B171 (AI titles and
+*Proposal and POC, 2026-10-18; **built the same day** (spec N66, N67, provisional;
+DECISIONS B205–B209; §10), off by default until Bagrat's release call. Nothing here is decided. It follows B171 (AI titles and
 chapters after v1, boards first, following B168) and B170 (the pasted key stays). The
 product shape, the words and the spec rows are Bagrat's call. The POC is
 [`ai-titles-chapters/poc/`](ai-titles-chapters/poc/); the boards are on the canvas
@@ -434,3 +435,35 @@ alternative, as a recommendation. All of them are Bagrat's to ratify or overturn
 7. **The metered check is done** (§5). Left open: CPU per invocation on a free-plan
    account. The next live run should read it from the Worker's own analytics, or
    `wrangler tail`, during the run rather than after.
+
+## 10. Built (2026-10-18)
+
+The POC became the product on this branch, at Bagrat's ask the same day (build now, decide
+the release later). What it is, in one place; the rows are DECISIONS B205–B209.
+
+- **The space's page** (`worker/src/worker.js`, its last section): `POST /_shroom/api/ai`
+  takes one step a call — hears the next minute or names the done take — and says when
+  there's more; the transcript grows at `rec/<id>/ai/transcript.json`; the record gets the
+  title (while untitled), `named` and `captions`. A schedule each minute takes the oldest
+  waiting take one step: a used-up free day (3036) waits for 00:00 UTC and the owner page
+  says so, a busy model five minutes. Captions are written per view through the saved edit
+  (`GET /_shroom/cc/<id>`); chapters show as sections of the seek bar with a tip, and the
+  embed has both. Without the binding nothing runs and every page is as it was.
+- **The setup Mac** turns it on: a switch in Settings · Space, and once a card in its
+  Library (Turn on · Not now); on re-wires the page with the AI and its schedule
+  (`shroom_cloud::wire::set_ai`), and a refresh after an update keeps it.
+- **Every Mac** tells its space, from the uploader, each ten pieces and once the take is
+  live, through a lane of its own (`shroom_cloud::member::ai_signal`); a done that went
+  unanswered is said again from launch.
+- **Checked live on the test account, which is on Cloudflare's free plan**
+  (`worker/dev/ai-live.mjs`): two takes heard while "recording", named and captioned, the
+  second finished by the schedule alone once its trigger reached the network (about five
+  minutes the first time) — *The Art of War Laying Plans*, three chapters, 43 caption
+  cues, the page with chapters, captions and its button. About 330 neurons, inside the
+  free day.
+- **CPU at the edge** (`worker/dev/ai-cpu.mjs`, one invocation a minute): hearing a minute
+  20–61 ms, naming 12 ms, a page with chapters 10 ms, captions 9.5 ms. The free plan's limit
+  is 10 ms with some give for overruns; every step ran on the free test account, as all 36
+  windows of the 36-minute take did (§5). Reading a window's sound is most of it (22
+  ranged reads, about 1 ms each); a Mac-side audio file per minute would make it one.
+

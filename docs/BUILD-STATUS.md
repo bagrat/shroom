@@ -39,6 +39,11 @@
    shipped signed.
 4. Send feedback from the popover is built (N60, B193), the waving hand his pick.
    Nothing else in-frame is queued: the build resumes on his answers.
+5. **Names, chapters and captions** (N66, N67, B205–B209) are built on their branch, off
+   by default, waiting for his review and the release call: the space names its videos,
+   places chapters in the seek bar and writes captions through the owner's own Cloudflare
+   account; a switch in Settings · Space on the setup Mac and a one-time card in its
+   Library turn it on. Checked live on the free-plan test account (B206).
 
 
 ## Waiting for Bagrat
