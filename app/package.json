@@ -11,6 +11,7 @@
     "build:dev": "tauri build --debug --bundles app --features dev-harness",
     "test": "vitest run",
     "test:gallery": "node test/onboarding-gallery.mjs && node test/windows-gallery.mjs && node test/typing-gallery.mjs",
+    "gallery:editor": "node test/editor-preview.mjs",
     "drive:onboarding": "node test/onboarding-drive.mjs",
     "drive:library": "node test/region5-drive.mjs library",
     "drive:settings": "node test/region5-drive.mjs settings",
