@@ -40,7 +40,7 @@ fn a_start_and_a_refusal_each_leave_their_line() {
     assert_eq!(run(home, &["record", "start", "--no-launch"], Some(r#"{"ok":false,"take":"none","error":"recording_off"}"#)), 10);
     let lines = log(home);
     assert_eq!(lines.len(), 2, "{lines:#?}");
-    assert!(lines[0].contains(" UTC cli: record start --json --no-launch --no-countdown: ok, take recording ("), "{}", lines[0]);
+    assert!(lines[0].contains("Z cli: record start --json --no-launch --no-countdown: ok, take recording ("), "{}", lines[0]);
     assert!(lines[1].contains(" cli: record start --no-launch: recording_off, exit 10, app recording_off ("), "{}", lines[1]);
     for l in &lines {
         assert!(l.ends_with("ms)"), "how long it took: {l}");

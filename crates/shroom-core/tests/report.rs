@@ -328,22 +328,32 @@ fn the_log_keeps_its_last_lines() {
     assert_eq!(lines.last().copied(), Some(format!("{} core step", report::LOG_LINES + 49).as_str()));
 }
 
-/// The `shroom` command's own runs (spec N62) ride after the app's lines, its last
-/// `CLI_LINES` at most, and the whole still within `LOG_LINES`; cleaned like the rest.
+/// The `shroom` command's own runs (spec N62) sit among the app's lines by their time (both
+/// logs stamp every line, UTC to the second), its last `CLI_LINES` at most, the whole still
+/// within `LOG_LINES`; cleaned like the rest.
 #[test]
-fn the_commands_runs_follow_the_apps_lines() {
-    let app: String = (0..report::LOG_LINES + 50).map(|i| format!("{i:>8} core step\n")).collect();
-    let cli: String = (0..report::CLI_LINES + 5).map(|i| format!("2026-10-18 15:31:{:02} UTC cli: list: ok, videos {i} (12ms)\n", i % 60)).collect();
+fn the_commands_runs_sit_among_the_apps_lines_by_their_time() {
+    let stamp = |i: usize| format!("2026-10-18T{:02}:{:02}:{:02}Z", 10 + i / 3600, i / 60 % 60, i % 60);
+    // The app logs every other second; the command ran on the odd seconds between.
+    let app: String = (0..report::LOG_LINES + 50).map(|i| format!("{} {:>8} core step {i}\n", stamp(2 * i), 2 * i)).collect();
+    let cli: String = (0..report::CLI_LINES + 5).map(|i| format!("{} cli: list: ok, videos {i} (12ms)\n", stamp(2 * (report::LOG_LINES + 50 - (report::CLI_LINES + 5) + i) + 1))).collect();
     let out = report::clean_logs(&app, &cli);
     let lines: Vec<_> = out.lines().collect();
     assert_eq!(lines.len(), report::LOG_LINES);
-    assert_eq!(lines.last().copied(), Some(format!("2026-10-18 15:31:{:02} UTC cli: list: ok, videos {} (12ms)", (report::CLI_LINES + 4) % 60, report::CLI_LINES + 4).as_str()));
-    assert_eq!(lines.iter().filter(|l| l.contains(" cli: ")).count(), report::CLI_LINES);
-    assert_eq!(lines[report::LOG_LINES - report::CLI_LINES - 1].trim(), format!("{} core step", report::LOG_LINES + 49), "the app's newest line just before the command's");
+    assert_eq!(lines.iter().filter(|l| l.contains(" cli: ")).count(), report::CLI_LINES, "the command's last runs only");
+    let stamps: Vec<&str> = lines.iter().map(|l| &l[..20]).collect();
+    assert!(stamps.windows(2).all(|w| w[0] <= w[1]), "in time order:\n{}", lines[lines.len() - 6..].join("\n"));
+    assert!(lines[lines.len() - 2].contains(&format!("core step {}", report::LOG_LINES + 49)), "{}", lines[lines.len() - 2]);
+    assert!(lines.last().unwrap().contains(&format!("videos {}", report::CLI_LINES + 4)));
     // No command here: the app's log, as before.
     assert_eq!(report::clean_logs(&app, ""), report::clean_log(&app));
+    // A line from before the stamps (or a stray one) keeps its place after the stamped line
+    // before it.
+    let mixed = "2026-10-18T10:00:00Z        0 boot\n     5 an old line\n2026-10-18T10:00:09Z       9 later";
+    let cli = "2026-10-18T10:00:05Z cli: status: ok (2ms)";
+    assert_eq!(report::clean_logs(mixed, cli).lines().collect::<Vec<_>>(), ["2026-10-18T10:00:00Z        0 boot", "     5 an old line", "2026-10-18T10:00:05Z cli: status: ok (2ms)", "2026-10-18T10:00:09Z       9 later"]);
     // A line of either is cleaned.
-    let out = report::clean_logs("  9 cloud: put https://v.secret-space.workers.dev/abc", "2026-10-18 15:31:05 UTC cli: list: failed (3ms) https://v.secret-space.workers.dev/x");
+    let out = report::clean_logs("  9 cloud: put https://v.secret-space.workers.dev/abc", "2026-10-18T15:31:05Z cli: list: failed (3ms) https://v.secret-space.workers.dev/x");
     assert!(!out.contains("secret-space"), "{out}");
 }
 
