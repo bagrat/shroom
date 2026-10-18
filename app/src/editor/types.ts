@@ -12,7 +12,8 @@ export type EditorMedia =
 export type EditorBody = {
   title: string; rec: string; media: EditorMedia; hint: string;
   footer: string; footer_tone: string;
-  labels: { play: string; pause: string; undo: string; redo: string; cut: string; put_back: string; was: string };
+  /** `time` is “{} / {}”: the edited position, then the edited length. */
+  labels: { play: string; pause: string; undo: string; redo: string; cut: string; put_back: string; was: string; time?: string };
   list: { in: number; out: number; cuts: { start: number; end: number; applied: boolean; kind: string }[] } | null;
   keep: [number, number][]; edited_duration: number; source_duration: number; markers: number[];
   editable: boolean; can_undo: boolean; can_redo: boolean; revert: Button; done: Button;

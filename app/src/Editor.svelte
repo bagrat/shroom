@@ -65,7 +65,8 @@
   let playKeep: Keep = $derived(b?.list && trim ? keepOf({ in: trim.in, out: trim.out, cuts: b.list.cuts }) : (b?.keep ?? []));
   let len = $derived(b ? (b.list && trim ? length(playKeep) : b.edited_duration > 0 || b.list ? b.edited_duration : b.source_duration) : 0);
   let now = $derived(ended ? len : ready ? editedAt(playKeep, pos) : 0);
-  let time = $derived(`${clock(now, ended)} / ${clock(len, true)}`);
+  // The Scene's “{} / {}”: the edited position, then the edited length.
+  let time = $derived(fill(fill(b?.labels.time ?? "{} / {}", clock(now, ended)), clock(len, true)));
   let was = $derived(b?.list && clock(len, true) !== clock(b.source_duration, true) ? fill(b.labels.was, clock(b.source_duration, true)) : null);
 
   $effect(() => {
