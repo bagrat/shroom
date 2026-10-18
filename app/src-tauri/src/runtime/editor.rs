@@ -677,6 +677,13 @@ pub fn mine(role: Role, member: &str, owner: Option<&str>) -> bool {
     role != Role::Member || owner == Some(member)
 }
 
+/// One upkeep pass, as the lane runs it, from the drive's own thread (the editor drive: the
+/// core asks for one at launch and every six hours, a drive can't wait for that).
+#[cfg(feature = "dev-harness")]
+pub fn upkeep_pass(rt: &Runtime) -> Result<(u32, u32), FailClass> {
+    upkeep(rt, &mut Doorway::default())
+}
+
 /// One upkeep pass (B197 (d)): `(baked, copies made)`.
 fn upkeep(rt: &Runtime, door: &mut Doorway) -> Result<(u32, u32), FailClass> {
     let t0 = Instant::now();

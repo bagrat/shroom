@@ -1460,6 +1460,32 @@ fn editor(d: &Drive) -> Result<(), String> {
     let (kept, until) = landed.as_ref().map(two_days).unwrap_or((false, serde_json::Value::Null));
     d.check("closed while it was made, the copy still lands, its two days set", kept, format!("{until}"));
 
+    // The upkeep (B197 (d)), as the lane runs it at launch and every six hours: the second
+    // video's two days are up (put back by hand), so it's baked; the third holds a newer
+    // revision with no copy (as a copy that failed leaves it), and its video is on this Mac
+    // (fetched when it opened), so the copy is made.
+    d.focus(WindowKind::Library);
+    let edited_rows = |c: &str| -> usize {
+        let Ok(v) = serde_json::from_str::<serde_json::Value>(c) else { return 0 };
+        [&away.0, &third.0].iter().filter(|id| v.pointer(&format!("/cache/rows/{id}/1/edited_sec")).is_some_and(|e| e.is_number())).count()
+    };
+    poll(15, || std::fs::read_to_string(d.rt.home.path("library.json")).ok().filter(|c| edited_rows(c) == 2)).ok_or("the Library's cache never held the two edits")?;
+    let rewrite = |id: &str, change: &dyn Fn(&mut serde_json::Value)| -> Result<(), String> {
+        let mut v = record_json(&s3, id).ok_or("no record")?;
+        change(&mut v);
+        s3.put(&shroom_upload::keys::meta(id), &serde_json::to_vec(&v).map_err(|e| e.to_string())?, "application/json").map_err(|e| e.to_string())
+    };
+    rewrite(&away.0, &|v| v["edits"]["keep_until"] = serde_json::json!("2026-01-01T00:00:00Z"))?;
+    rewrite(&third.0, &|v| v["edits"]["rev"] = serde_json::json!(2))?;
+    let pass = crate::runtime::editor::upkeep_pass(&d.rt);
+    d.check("the upkeep bakes one and makes one copy", pass == Ok((1, 1)), format!("{pass:?}"));
+    let away_rec = record_json(&s3, &away.0).unwrap_or_default();
+    d.check("… the second, past its two days, is the video now", away_rec["edits"].is_null() && away_rec["media"]["mp4"] == format!("{}edit-1.mp4", shroom_upload::keys::prefix(&away.0)), away_rec["media"].to_string());
+    let third_rec = record_json(&s3, &third.0).unwrap_or_default();
+    let (kept, until) = two_days(&third_rec);
+    d.check("… the third has the copy its revision lacked, its two days set", third_rec["edits"]["copy"]["rev"] == 2 && third_rec["edits"]["copy"]["file"] == "edit-2.mp4" && kept, format!("{} {until}", third_rec["edits"]["copy"]));
+    d.check("… and what this Mac kept of the baked one's original is gone", !d.rt.home.edits().join(&away.0).exists(), "");
+
     d.rt.post(Event::WindowClosed(WindowKind::Library));
     d.wait("the Library closed", 5, |s| s.library.is_none())?;
     Ok(())
