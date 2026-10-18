@@ -3,8 +3,8 @@
 // account. One dependency-free ES module (RESEARCH R7.1: provisioning has no bundler);
 // the app deploys this exact file. Recordings' bytes and records go straight from the
 // recording Mac to the bucket (N4); the Worker reads them, and writes only records of its
-// own: the space's roster and ownership ledger, one-time page keys, upload budgets and
-// one advisory health flag (WORKER-INTERFACE §4.1).
+// own: the space's roster and ownership ledger, one-time page keys, upload budgets, one
+// advisory health flag, and its videos' play counts (WORKER-INTERFACE §4.1, §4.21).
 //
 // Routes (ARCHITECTURE §8.1, WORKER-INTERFACE §4):
 //   GET /<id>                the page, its face chosen by meta/<id>.json
@@ -21,7 +21,7 @@
 //   GET /<id>?embed=1        the embed face: the player alone, the mark small (Notion, iframes)
 //   GET /oembed?url=…        oEmbed discovery's answer: an iframe of the embed face
 //   GET /join/<code>         the join page and its faces (Region 6, N29)
-//   POST /_shroom/view/<id>  a play's beacon: counted in .shroom/views/, nothing that names a viewer (POC)
+//   POST /_shroom/view/<id>  a play's beacon: counted in .shroom/views/, nothing that names a viewer (N68)
 //   /_shroom/api/…           the app's door for members and Macs without the token:
 //                            peek · join · enroll · me · mint · key · library · members ·
 //                            invites · invites/<iid> · members/<mid> · devices/<did|self> ·
@@ -2570,7 +2570,7 @@ const JOIN_STYLE = `body{padding:0 16px 24px;font-size:15px;line-height:1.55}
 @media (max-width:600px){.join{padding-top:24px;gap:24px}#get{gap:24px}#get>.line:first-child{margin-top:-12px}}`;
 
 // ════════════════════════════════════════════════════════════════════════════════════
-// Plays, and videos suggested to clean up (POC — dev/proposals/cleanup-suggestions.md)
+// Plays, and videos suggested to clean up (N68; WORKER-INTERFACE §4.21)
 // ════════════════════════════════════════════════════════════════════════════════════
 //
 // The page counts its own plays, in the owner's bucket, with nothing that names a viewer:

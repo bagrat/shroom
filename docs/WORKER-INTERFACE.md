@@ -418,11 +418,16 @@ A status alone never maps to a state. Within `IFACE = 2`, routes and fields only
 | 4.18 | POST | `/_shroom/api/health` | device key |
 | 4.19 | GET, HEAD | `/favicon.svg`, `.png`, `.ico` | none |
 | 4.20 | POST | `/_shroom/api/gone` | device key |
+| 4.21 | POST | `/_shroom/view/<id>` | none (same-site) |
+| 4.21 | POST | `/_shroom/api/cleanup` | device key (`everyone`: owner-class) |
+| 4.21 | GET, POST | `/_shroom/api/plays` | device key (POST: owner-class) |
 
 **The Worker writes only:**
 - the roster (CAS), the ledger (create-only) and `rate/<did>`;
 - `keys/<hash>` (create, CAS spend, delete);
-- `health.json`, `mark.json` and `gone/<id>` (plain puts);
+- `health.json`, `mark.json`, `plays.json` and `gone/<id>` (plain puts);
+- `views/<id>.json` (CAS), `views/salt.json` (create-only, then CAS) and `views/since.json`
+  (create-only), from play beacons (§4.21, N68); `views/<id>.json` is deleted with a seal;
 - `meta/<id>.json` via a title POST or a thumbnail POST (its `thumb` pointer);
 - `rec/<id>/thumb-<16 hex>.gif|jpg` via a thumbnail POST: created, named by its contents,
   never anything else under `rec/` (D:B164).
@@ -900,6 +905,67 @@ there too, with no read.
 
 **Callers.** `runtime/library.rs:delete` seals after `library::delete` and a tombstone
 check; a seal that fails (an older page) is logged and the delete stands.
+
+A seal also deletes the video's plays, `views/<id>.json` (§4.21).
+
+### 4.21 Plays, and the suggestions to clean up (N68, D:B210–B214)
+
+**Counting.** A viewer's page and the embed (never the owner page) run `VIEW_JS`: at the
+first play, `navigator.sendBeacon("/_shroom/view/<id>", {"e":"play","t"})`; each time the
+tab hides, `{"e":"end","t","f"}`, `f` the share watched (the union of `video.played` over
+the length, 0–1). `t` is a random token held only in that page's memory. No cookie, nothing
+stored on the viewer's device.
+
+`POST /_shroom/view/<id>` takes at most 512 bytes. It refuses with 403 an `Origin` that
+names another site, or `Sec-Fetch-Site: cross-site`. WebKit sends `Origin: null` from a
+page being left, so that is taken. A malformed body gets 400. Everything else gets 204, and
+the beacon learns nothing. It writes only when the space counts plays (`plays.json`'s `on`,
+true unless set false) and the video is live. A guessed id never makes a record.
+
+**Stored:** `.shroom/views/<id>.json`, by CAS (≤ 5 tries):
+
+```jsonc
+{ "v": 1, "plays", "viewers", "ends", "watch": [10 counts by tenths watched], "watchedSec",
+  "firstAt", "lastAt", "days": { "YYYY-MM-DD": plays },     // the last 400 days
+  "today": { "d": "YYYY-MM-DD", "h": [viewer hashes], "t": { "<token>": tenth } } }
+```
+
+- A token's play counts once. Its latest end replaces the one before.
+- A viewer is the first 8 hex of SHA-256(the day's salt, `cf-connecting-ip`, the
+  user-agent, the id). The hashes and tokens are kept for that day only, ≤ 1,000 a day.
+- `.shroom/views/salt.json` = `{d, salt}` is replaced when the day turns, so yesterday's
+  hashes can't be recomputed.
+- `.shroom/views/since.json` = `{since}` is written once, at the space's first record. A
+  video made before counting began is quiet only from then on.
+
+**`POST /_shroom/api/cleanup`** — device key, `{"scope":"mine"|"everyone","formula"?,"after"?}`
+(`everyone` is owner-class only, else 403; an unknown formula is 400). It pages as §4.10
+does: ≤ 40 records a call, `next` until null. The answer is
+`{countingSince, counting, formula, items, next}`. Each live item carries:
+
+- `id, title, createdAt, owner, ageDays, durationSec`;
+- `bytes`: the record's, which the Mac writes when the upload drains; else the length ×
+  10 GB / 3 h;
+- `usdPerMonth, plays, viewers, medianWatched, lastPlayedAt, plays90`;
+- `quietDays`: null while counting can't tell yet;
+- `keep`: the record's, which Keep sets under If-Match;
+- `candidate, score, reason: {code, …facts}`.
+
+The default formula is `fading-cost`. Its candidate is at least 14 days old (30 for the
+score), not played in 14 days, quiet 30 days, never kept, with heat < 0.25 and ≥ 1¢ a month
+at list price. Heat is plays halving every 30 days, × (0.3 + 0.7 × median watched). The
+score is cost ÷ (heat + 0.05). `idle`, `fading`, `cost` and `gravity` stay for comparison
+(`dev/proposals/cleanup-suggestions.md`). The reason codes are `never-played`,
+`stopped-early`, `not-lately` and `big-and-quiet` (cost only), or, when the video isn't a
+candidate, `kept`, `new`, `watched-lately` and `counting-too-new`.
+
+**`GET /_shroom/api/plays`** → `{on}`, for any device. **`POST {on}`**, owner-class only,
+writes `plays.json` = `{on, at}` → `{on}`. Turning counting off keeps what was counted.
+
+**Callers.** `runtime/library.rs`: `LibCmd::Suggest` pages `cleanup` to its end and keeps
+the candidates in score order, with the bytes of every item read: the space's size on an
+owner-class Mac. `LibCmd::Plays` posts the switch, and `LibCmd::Keep` sets the record's
+`keep`. All Macs, the token Mac too, use the device key.
 
 ---
 
