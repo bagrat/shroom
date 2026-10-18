@@ -20,11 +20,15 @@ pub enum Fail {
     /// The space said no (exit 6): not this person's video, not owner-class, removed.
     Refused(String),
     /// A delete without `--yes` (exit 7): nothing was changed.
-    NeedsConfirmation { message: String, would: Vec<Value> },
+    /// `what` names the list in the JSON: `would_delete` (videos), `would_remove` (members).
+    NeedsConfirmation { message: String, what: &'static str, would: Vec<Value> },
     /// The app is needed and isn't there, or didn't answer (exit 8).
     AppUnreachable(String),
     /// A recording is open: shroom stays quiet until it ends (law 4) (exit 9).
     TakeOpen(String),
+    /// The person hasn't let a coding agent record: Settings → General's switch is off,
+    /// as it is by default (exit 10).
+    RecordingOff(String),
     /// Anything else (exit 1).
     Other(String),
 }
@@ -41,6 +45,7 @@ impl Fail {
             Fail::NeedsConfirmation { .. } => "needs_confirmation",
             Fail::AppUnreachable(_) => "app_unreachable",
             Fail::TakeOpen(_) => "take_open",
+            Fail::RecordingOff(_) => "recording_off",
             Fail::Other(_) => "failed",
         }
     }
@@ -56,6 +61,7 @@ impl Fail {
             Fail::NeedsConfirmation { .. } => 7,
             Fail::AppUnreachable(_) => 8,
             Fail::TakeOpen(_) => 9,
+            Fail::RecordingOff(_) => 10,
         }
     }
 
@@ -68,6 +74,7 @@ impl Fail {
             | Fail::Refused(m)
             | Fail::AppUnreachable(m)
             | Fail::TakeOpen(m)
+            | Fail::RecordingOff(m)
             | Fail::Other(m) => m,
             Fail::Ambiguous { message, .. } | Fail::NeedsConfirmation { message, .. } => message,
         }
@@ -77,7 +84,7 @@ impl Fail {
         let mut v = json!({"ok": false, "error": self.code(), "message": self.message()});
         match self {
             Fail::Ambiguous { matches, .. } => v["matches"] = Value::Array(matches.clone()),
-            Fail::NeedsConfirmation { would, .. } => v["would_delete"] = Value::Array(would.clone()),
+            Fail::NeedsConfirmation { what, would, .. } => v[*what] = Value::Array(would.clone()),
             _ => {}
         }
         v
@@ -129,9 +136,10 @@ mod tests {
             Fail::NotFound(String::new()),
             Fail::Offline(String::new()),
             Fail::Refused(String::new()),
-            Fail::NeedsConfirmation { message: String::new(), would: vec![] },
+            Fail::NeedsConfirmation { message: String::new(), what: "would_delete", would: vec![] },
             Fail::AppUnreachable(String::new()),
             Fail::TakeOpen(String::new()),
+            Fail::RecordingOff(String::new()),
             Fail::Other(String::new()),
         ];
         let exits: std::collections::BTreeSet<i32> = all.iter().map(Fail::exit).collect();

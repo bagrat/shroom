@@ -150,6 +150,31 @@ impl Door {
         Ok(())
     }
 
+    /// A member invite for `name` (owner-class, §4.12): the code is made here and only
+    /// its hash is sent; the link is `https://<host>/join/<code>`, good for 7 days, once.
+    pub fn invite(&self, name: &str) -> Result<(shroom_cloud::member::InviteRow, String), Fail> {
+        let code = shroom_cloud::device::new_join_code();
+        let invite = shroom_cloud::member::NewInvite {
+            id: shroom_cloud::device::new_invite_id(),
+            code_hash: shroom_cloud::device::hash(&code),
+            kind: "member".into(),
+            label: Some(name.to_string()),
+            inviter: self.identity.owner_name.chars().take(40).collect(),
+        };
+        let row = answer(self.page.invite(&self.key, &invite))?;
+        Ok((row, format!("https://{}/join/{code}", self.identity.host)))
+    }
+
+    /// Cancels a pending invite (§4.13): its link stops working.
+    pub fn cancel_invite(&self, id: &str) -> Result<(), Fail> {
+        answer(self.page.cancel_invite(&self.key, id))
+    }
+
+    /// Removes a member and every Mac of theirs (§4.14). Videos they made stay.
+    pub fn remove_member(&self, id: &str) -> Result<(), Fail> {
+        answer(self.page.remove_member(&self.key, id))
+    }
+
     /// The space's people (owner-class only, §4.11).
     pub fn members(&self) -> Result<shroom_cloud::member::Members, Fail> {
         answer(self.page.members(&self.key))
@@ -164,6 +189,10 @@ fn answer<T>(a: Answer<T>) -> Result<T, Fail> {
         Answer::Refused(r) if r.status == 403 && r.is_revoked() => Err(Fail::Refused("This Mac is no longer in the space.".into())),
         Answer::Refused(r) if r.status == 401 => Err(Fail::NotSetUp("The space doesn't know this Mac yet. Open shroom once, then try again.".into())),
         Answer::Refused(r) if r.status == 403 => Err(Fail::Refused("Only the space's owner can do that.".into())),
+        Answer::Refused(r) if r.status == 404 => Err(Fail::NotFound("There's no such invite or member.".into())),
+        Answer::Refused(r) if r.class == shroom_cloud::member::Class::Full => Err(Fail::Refused("Too many invites are waiting. Cancel one first.".into())),
+        Answer::Refused(r) if r.status == 409 => Err(Fail::Refused("That can't change now: the invite was already used, or that's the owner.".into())),
+        Answer::Refused(r) if r.status == 400 => Err(Fail::Usage("The space didn't take that. A name is 1 to 64 characters.".into())),
         Answer::Refused(_) => Err(Fail::Other("The space said no.".into())),
         Answer::NotShroom { .. } => Err(Fail::Offline("The space's page isn't answering as shroom. Open shroom to check on it.".into())),
     }

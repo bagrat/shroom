@@ -94,6 +94,43 @@ fn an_agent_lists_finds_renames_and_deletes_through_the_space() {
 }
 
 #[test]
+fn an_agent_invites_cancels_and_removes_with_a_yes() {
+    let Some((_serve, base)) = serve() else {
+        eprintln!("skipped: node or worker/dev/serve.mjs isn't available");
+        return;
+    };
+    let dir = tempfile::tempdir().unwrap();
+    let home = dir.path().join("home");
+    demo::seed(&base, &home);
+
+    let (code, v) = shroom(&home, &base, &["invite", "Sam", "Lee"]);
+    assert_eq!(code, 0, "{v}");
+    let link = v["link"].as_str().unwrap();
+    assert!(link.starts_with("https://v.myshroom.workers.dev/join/") && link.len() == "https://v.myshroom.workers.dev/join/".len() + 16, "{link}");
+    let iid = v["id"].as_str().unwrap().to_string();
+    let m = shroom(&home, &base, &["members"]).1;
+    assert_eq!(m["invites"][0]["name"], "Sam Lee");
+    // The page knows the link by its code's hash: the join page answers it.
+    let code_part = link.rsplit('/').next().unwrap();
+    let peek = ureq::get(&format!("{base}/{}/join/{code_part}", demo::HOST)).call().unwrap().status();
+    assert_eq!(peek.as_u16(), 200);
+
+    let (code, v) = shroom(&home, &base, &["invite", "cancel", &iid]);
+    assert_eq!((code, v["cancelled"].as_str()), (0, Some(iid.as_str())), "{v}");
+
+    let (code, v) = shroom(&home, &base, &["members", "remove", "m_MherMherMherMher"]);
+    assert_eq!((code, v["error"].as_str()), (7, Some("needs_confirmation")));
+    assert_eq!(v["would_remove"][0]["name"], "Mher");
+    let (code, _) = shroom(&home, &base, &["members", "remove", "m_MherMherMherMher", "--yes"]);
+    assert_eq!(code, 0);
+    let roster: Value = serde_json::from_str(
+        &ureq::get(&format!("{base}/_dev/space/{}/roster", demo::HOST)).call().unwrap().body_mut().read_to_string().unwrap(),
+    )
+    .unwrap();
+    assert_eq!(roster["members"]["m_MherMherMherMher"]["state"], "removed");
+}
+
+#[test]
 fn a_mac_that_isnt_set_up_says_so() {
     let dir = tempfile::tempdir().unwrap();
     let (code, v) = shroom(dir.path(), "http://127.0.0.1:9", &["list"]);

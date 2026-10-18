@@ -48,8 +48,19 @@ describe("the CLI guide", () => {
     assert.match(flat, /Start a recording only when they asked you to, right now\./);
   });
 
+  // Bagrat, 2026-10-18: the CLI may make invites; the link goes to the person, once.
+  it("hands an invite link to the person, once, and never sends it on", () => {
+    assert.match(flat, /give it to the person you're helping once, say it's for them to send, and don't repeat it, post it or send it on yourself\./);
+  });
+
+  // Bagrat, 2026-10-18: an agent records only once Settings' switch is on (off by default).
+  it("records only where the person turned the switch on", () => {
+    assert.match(flat, /shroom lets you record only once they've turned on “Let it start and stop recordings” in its Settings, under General/);
+    assert.match(flat, /never look for another way to record\./);
+  });
+
   it("asks for no secret and reads nothing of shroom's own", () => {
-    assert.match(flat, /You never need a Cloudflare token, a key or an invite code\./);
+    assert.match(flat, /You never need a Cloudflare token or a key\./);
     assert.match(flat, /no reading anything in `~\/\.shroom`/);
     assert.doesNotMatch(md, /token\.json|device\.key|SHROOM_HOME|--space-base/);
   });

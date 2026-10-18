@@ -8,6 +8,10 @@
 //!   → {"v":1,"op":"record.start"}            ← {"ok":true,"take":"countdown"}
 //!   → {"v":1,"op":"record.stop"}             ← {"ok":false,"error":"no_take","message":"…"}
 //!
+//! Every op is refused with `recording_off` until the person turns on Settings → General's
+//! “Let it start and stop recordings” (off by default; Bagrat, 2026-10-18): an agent
+//! records only where the person said it may.
+//!
 //! The app side is proposed, not built (dev/proposals/cli-agent-skill.md §3).
 
 use std::io::{BufRead, BufReader, Write};
@@ -46,6 +50,7 @@ pub fn ask(socket: &Path, op: &str, launch: bool) -> Result<Value, Fail> {
     Err(match v["error"].as_str() {
         Some("take_open") => Fail::TakeOpen(message),
         Some("not_set_up") => Fail::NotSetUp(message),
+        Some("recording_off") => Fail::RecordingOff(message),
         _ => Fail::Refused(message),
     })
 }

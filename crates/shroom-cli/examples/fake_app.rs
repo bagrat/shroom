@@ -60,7 +60,14 @@ fn main() {
         }
         let op = serde_json::from_str::<Value>(&line).ok().and_then(|v| v["op"].as_str().map(String::from)).unwrap_or_default();
         let mut t = take.lock().unwrap();
+        // Settings → General's “Let it start and stop recordings”, off by default: the app
+        // keeps it in prefs.json (`agent_recording`).
+        let allowed = std::fs::read(home.join("prefs.json"))
+            .ok()
+            .and_then(|b| serde_json::from_slice::<Value>(&b).ok())
+            .is_some_and(|p| p["agent_recording"] == true);
         let answer = match (op.as_str(), t.as_ref().map(|x| x.state)) {
+            _ if !allowed => json!({"ok": false, "error": "recording_off", "message": "shroom isn't set to let your coding agent record. Turn on “Let it start and stop recordings” in shroom's Settings, under General."}),
             ("record.start", None) => {
                 *t = Some(Take { state: "countdown", since: Instant::now() });
                 let (take, home) = (take.clone(), home.clone());

@@ -32,6 +32,10 @@ shroom — your shroom videos from the command line.
   shroom delete <id-or-link>... --yes delete for good (try --dry-run first)
   shroom cleanup-candidates           old videos worth a look before deleting
   shroom members                      who is in your space (the owner's Macs)
+  shroom invite <name>                a link that lets one person join (7 days, once)
+  shroom invite cancel <invite-id>    that link stops working
+  shroom members remove <member-id> --yes
+                                      they leave the space; their videos stay
   shroom record start|pause|resume|stop
                                       asks the shroom app (opens it if needed)
   shroom status                       is shroom running, recording, set up?
@@ -51,6 +55,7 @@ Options
 Exit codes
   0 ok · 1 failed · 2 usage · 3 not set up · 4 not found or ambiguous · 5 offline
   6 refused · 7 needs --yes · 8 the app is needed and didn't answer · 9 recording now
+  10 recording from here is off (Settings → General)
 ";
 
 /// The command line, parsed: the verb, its words, and the options.
@@ -139,7 +144,15 @@ fn run(a: &Args) -> Result<Done, Fail> {
         "rename" => rename(a, rest),
         "delete" | "rm" => delete(a, rest),
         "cleanup-candidates" | "cleanup" => cleanup(a),
-        "members" => members(a),
+        "members" => match rest.first().map(String::as_str) {
+            Some("remove") => remove_member(a, &rest[1..]),
+            Some(other) => Err(Fail::Usage(format!("members {other} isn't a command. See shroom --help."))),
+            None => members(a),
+        },
+        "invite" => match rest.first().map(String::as_str) {
+            Some("cancel") => cancel_invite(a, &rest[1..]),
+            _ => invite(a, rest),
+        },
         "record" => record(a, rest),
         other => Err(Fail::Usage(format!("{other} isn't a shroom command. See shroom --help."))),
     }
@@ -319,6 +332,7 @@ fn delete(a: &Args, rest: &[String]) -> Result<Done, Fail> {
     if !a.yes {
         return Err(Fail::NeedsConfirmation {
             message: format!("This deletes for good — its link will say it was removed:\n{names}\nRun it again with --yes once that's what you want."),
+            what: "would_delete",
             would,
         });
     }
@@ -388,12 +402,62 @@ fn members(a: &Args) -> Result<Done, Fail> {
     let macs: Vec<Value> = m.owner.devices.iter().map(|x| json!({"id": x.id, "name": x.name, "this_mac": x.this_mac})).collect();
     let mut text = format!("{} (owner) · {} Mac{}\n", m.owner.name.clone().unwrap_or_else(|| "You".into()), macs.len(), if macs.len() == 1 { "" } else { "s" });
     for x in &m.members {
-        text.push_str(&format!("{}  joined {}\n", x.label, day(&x.joined_at)));
+        text.push_str(&format!("{}  {}  joined {}\n", x.id, x.label, day(&x.joined_at)));
     }
     for i in m.invites.iter().filter(|i| !i.expired) {
-        text.push_str(&format!("{}  invited, waiting\n", i.label.clone().unwrap_or_else(|| "Another Mac".into())));
+        text.push_str(&format!("{}  {}  invited, waiting\n", i.id, i.label.clone().unwrap_or_else(|| "Another Mac".into())));
     }
     Ok(Done::new(json!({"owner": {"id": m.owner.id, "name": m.owner.name, "macs": macs}, "members": people, "invites": invites}), text))
+}
+
+/// A member invite. The link is a key to the space until it's used, so it goes to the
+/// person who asked, once; the guide tells an agent to hand it over and not repeat it
+/// (Bagrat, 2026-10-18: the CLI may make invites).
+fn invite(a: &Args, rest: &[String]) -> Result<Done, Fail> {
+    let name = rest.join(" ");
+    let name = name.trim();
+    if name.is_empty() {
+        return Err(Fail::Usage("Who is it for? shroom invite <their name>".into()));
+    }
+    let (h, d) = door(a)?;
+    quiet(&h)?;
+    let (row, link) = d.invite(name)?;
+    Ok(Done::new(
+        json!({"id": row.id, "name": row.label, "link": link, "expires_at": row.expires_at}),
+        format!("An invite for {name}, good until {} and for one use:\n{link}\nSend it to them yourself.", day(&row.expires_at)),
+    ))
+}
+
+fn cancel_invite(a: &Args, rest: &[String]) -> Result<Done, Fail> {
+    let [id] = rest else { return Err(Fail::Usage("shroom invite cancel <invite-id> (see shroom members)".into())) };
+    let (h, d) = door(a)?;
+    quiet(&h)?;
+    d.cancel_invite(id)?;
+    Ok(Done::new(json!({"cancelled": id}), "Cancelled: that invite link no longer works."))
+}
+
+/// Removes a member: like a delete, it asks first (`--yes`), and names them by id only.
+fn remove_member(a: &Args, rest: &[String]) -> Result<Done, Fail> {
+    let [id] = rest else { return Err(Fail::Usage("shroom members remove <member-id> --yes (see shroom members)".into())) };
+    let (h, d) = door(a)?;
+    let m = d.members()?;
+    let Some(who) = m.members.iter().find(|x| &x.id == id) else {
+        return Err(Fail::NotFound(format!("No member {id} in your space (see shroom members).")));
+    };
+    let would = json!({"id": who.id, "name": who.label});
+    if a.dry_run {
+        return Ok(Done::new(json!({"dry_run": true, "would_remove": would}), format!("Would remove {} from the space.", who.label)));
+    }
+    if !a.yes {
+        return Err(Fail::NeedsConfirmation {
+            message: format!("This removes {} from the space: their Macs stop recording into it. Their videos stay.\nRun it again with --yes once that's what you want.", who.label),
+            what: "would_remove",
+            would: vec![would],
+        });
+    }
+    quiet(&h)?;
+    d.remove_member(id)?;
+    Ok(Done::new(json!({"removed": id}), format!("{} is no longer in the space.", who.label)))
 }
 
 fn record(a: &Args, rest: &[String]) -> Result<Done, Fail> {
