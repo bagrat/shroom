@@ -1597,6 +1597,26 @@ mod tests {
         assert!(lines[1].ends_with(" after the roll"));
     }
 
+    /// The harness's live drive reads the run log back: each line's monotonic ms and its
+    /// text, past the wall clock it opens with, as a line from before the stamps reads —
+    /// the drive waits on these to see the page opened after Stop.
+    #[test]
+    fn a_run_log_line_reads_back_its_ms_and_text_with_or_without_its_wall_clock() {
+        let tmp = tempfile::tempdir().unwrap();
+        let (rt, _rx) = Runtime::for_test(tmp.path().join("home"), None, None);
+        rt.log("cloud would open the owner page for AbCd…");
+        let log = std::fs::read_to_string(rt.home.root.join("logs/run.log")).unwrap();
+        let stamped = log.lines().last().unwrap();
+        assert!(matches!(read_log_line(stamped), Some((_, "cloud would open the owner page for AbCd…"))), "{stamped}");
+        assert_eq!(read_log_line("2026-10-18T18:40:03Z    19175 recorder: finalized in 412 ms"), Some((19175, "recorder: finalized in 412 ms")));
+        // A line from before the stamps reads the same.
+        assert_eq!(read_log_line("   19175 recorder: finalized in 412 ms"), Some((19175, "recorder: finalized in 412 ms")));
+        // A line with no ms (the trace ring's, a stamp alone) is none of the drive's.
+        for l in ["2026-10-18T18:40:03Z trace     1535 Booted.Disk → first-launch", "trace: end", "2026-10-18T18:40:03Z", ""] {
+            assert_eq!(read_log_line(l), None, "{l}");
+        }
+    }
+
     /// Law 13 at the door: of a pasted token the core is told its handle and its shape,
     /// nothing else — so nothing the Scene says of a held paste (the field's dots,
     /// DECISIONS B104) can carry the text or its length. Two tokens of different lengths
