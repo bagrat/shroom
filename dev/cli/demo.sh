@@ -15,7 +15,7 @@ OUT="$(mkdir -p "${1:?out dir}" && cd "$1" && pwd)"
 cargo build -q -p shroom-cli --bins --examples
 # A short folder: a Unix socket's path has to fit in 104 bytes.
 W="$(mktemp -d /tmp/shroom-demo.XXXX)"; mkdir -p "$W/bin" "$W/app" "$W/home" "$W/cwd"
-cp target/debug/shroom "$W/bin/shroom"
+cp target/debug/shroom-cli "$W/bin/shroom"
 cp target/debug/examples/fake_app "$W/app/shroom"   # the seam wants a process named shroom
 
 exec 3> >(sleep 3600 | node worker/dev/serve.mjs --port 8787 --space v.myshroom.workers.dev=Ann >"$W/serve.out" 2>&1)

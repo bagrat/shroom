@@ -5,7 +5,7 @@
 # and the core answered. Also: the socket is this user's only (600).
 set -u
 cargo build -q -p shroom-cli || { echo "FAIL the command didn't build"; exit 1; }
-cli=target/debug/shroom
+cli=target/debug/shroom-cli
 home="$(getconf DARWIN_USER_TEMP_DIR)cli-socket"
 failed=0
 check() { if [ "$2" = "$3" ]; then echo "ok   $1 ($2)"; else echo "FAIL $1: wanted $3, got ${2:-nothing}"; failed=1; fi; }

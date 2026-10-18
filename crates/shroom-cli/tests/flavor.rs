@@ -32,7 +32,7 @@ fn bundle(root: &Path, id: &str) -> PathBuf {
     )
     .unwrap();
     let cli = contents.join("MacOS/shroom-cli");
-    std::fs::copy(env!("CARGO_BIN_EXE_shroom"), &cli).unwrap();
+    std::fs::copy(env!("CARGO_BIN_EXE_shroom-cli"), &cli).unwrap();
     cli
 }
 
@@ -85,6 +85,6 @@ fn the_release_apps_command_reads_the_release_folder() {
 #[test]
 fn off_a_bundle_it_is_the_release_apps() {
     let (_tmp, home) = two_spaces();
-    let v = status(Path::new(env!("CARGO_BIN_EXE_shroom")), &home);
+    let v = status(Path::new(env!("CARGO_BIN_EXE_shroom-cli")), &home);
     assert_eq!((v["space"]["host"].as_str(), v["app"]["id"].as_str()), (Some("v.release.workers.dev"), Some("am.shroom")), "{v}");
 }

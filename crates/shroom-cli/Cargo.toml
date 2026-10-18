@@ -4,10 +4,12 @@ version = "0.1.0"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
-description = "shroom on the command line: what a person or their coding agent runs (dev/proposals/cli-agent-skill.md)"
+description = "shroom on the command line: what a person or their coding agent runs (spec N62, DECISIONS B215–B219)"
 
+# Its name in the bundle too (Contents/MacOS/shroom-cli, DECISIONS B217); the install line
+# links it as `shroom`. Never `shroom`: that is the app's binary, in the same target folder.
 [[bin]]
-name = "shroom"
+name = "shroom-cli"
 path = "src/main.rs"
 
 [dependencies]

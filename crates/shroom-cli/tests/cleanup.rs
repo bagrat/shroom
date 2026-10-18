@@ -71,7 +71,7 @@ fn mac(home: &Path, role: &str) {
 }
 
 fn shroom(home: &Path, base: &str, args: &[&str]) -> (i32, Value) {
-    let out = Command::new(env!("CARGO_BIN_EXE_shroom")).args(args).arg("--json").env("SHROOM_HOME", home).env("SHROOM_SPACE_BASE", base).output().unwrap();
+    let out = Command::new(env!("CARGO_BIN_EXE_shroom-cli")).args(args).arg("--json").env("SHROOM_HOME", home).env("SHROOM_SPACE_BASE", base).output().unwrap();
     (out.status.code().unwrap_or(-1), serde_json::from_slice(&out.stdout).unwrap_or(Value::Null))
 }
 

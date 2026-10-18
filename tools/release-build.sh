@@ -99,7 +99,7 @@ bundle=$tgt/release/bundle/macos/shroom.app
 floor=$(plutil -extract bundle.macOS.minimumSystemVersion raw -o - "$ROOT/app/src-tauri/tauri.conf.json")
 rm -f "$CLI"
 (cd "$ROOT" && MACOSX_DEPLOYMENT_TARGET="$floor" CARGO_TARGET_DIR="$tgt" cargo build --release -p shroom-cli >"$out/build-cli.log" 2>&1) || { tail -n 20 "$out/build-cli.log"; exit 1; }
-mkdir -p "$(dirname "$CLI")" && cp "$tgt/release/shroom" "$CLI"
+mkdir -p "$(dirname "$CLI")" && cp "$tgt/release/shroom-cli" "$CLI"
 
 # Never a bundle from an earlier build (a restored target dir may hold one).
 rm -rf "$bundle" "$out/shroom.app"
