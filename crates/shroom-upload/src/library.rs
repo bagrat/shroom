@@ -2,8 +2,9 @@
 //! `ListObjectsV2 prefix=meta/` and an ETag delta — only records that changed are read
 //! again — plus the three writes a token-holding Mac makes from a row: rename (a record
 //! rewrite), delete (a tombstone **first**, then the bytes — §5.5), and the clean delete
-//! of a take that was never shared (no tombstone). Every rewrite is read-modify-write
-//! under `If-Match` (B21).
+//! of a take that was never shared (no tombstone) — and the editor's two (N63): saving an
+//! edit and naming its permanent copy. Every rewrite is read-modify-write under `If-Match`
+//! (B21).
 
 use std::collections::BTreeMap;
 
@@ -124,6 +125,112 @@ pub fn rename(s3: &Client, id: &str, title: &str) -> Result<Meta, UploadError> {
         m.title = title.clone();
         m.extra.insert("titled".into(), serde_json::Value::Bool(true));
     })
+}
+
+/// Whether `name` is one of a permanent copy's files (`edit-<rev>.mp4`, `edit-<rev>-poster.jpg`,
+/// `edit-<rev>-teaser.mp4`) — the only names beside a recording an edit's write ever
+/// deletes, whatever a record says (the Worker serves only these, `^edit-\d{1,9}…$`).
+pub fn is_copy_file(name: &str) -> bool {
+    let Some(rest) = name.strip_prefix("edit-") else { return false };
+    let digits = rest.bytes().take_while(u8::is_ascii_digit).count();
+    (1..=9).contains(&digits) && matches!(&rest[digits..], ".mp4" | "-poster.jpg" | "-teaser.mp4")
+}
+
+/// Removes these files from beside the recording, skipping any name that isn't a copy's.
+/// Best effort: the record no longer names them, so one left behind is only bytes.
+fn delete_copy_files(s3: &Client, id: &str, names: &[String]) {
+    for name in names.iter().filter(|n| is_copy_file(n)) {
+        let _ = with_retry(|| s3.delete(&format!("{}{name}", keys::prefix(id))));
+    }
+}
+
+/// [`update_meta`] for an edit's write: a record that turned into a tombstone (which keeps no
+/// title, so it never reads as a whole record) answers `Tombstoned`, not “unreadable”.
+fn update_edit(s3: &Client, id: &str, change: impl FnMut(&mut Meta)) -> Result<Meta, UploadError> {
+    update_meta(s3, id, change).map_err(|e| match e {
+        UploadError::Incomplete(_) if tombstoned(s3, id).unwrap_or(false) => UploadError::Tombstoned,
+        e => e,
+    })
+}
+
+/// The revision an edit's record holds: its `edits.rev`, also when this version can't read
+/// the rest of that `edits` (kept as it was in `extra`).
+fn record_rev(m: &Meta) -> u64 {
+    m.edits.as_ref().map(|s| s.rev).or_else(|| m.extra.get("edits").and_then(|e| e.get("rev")).and_then(serde_json::Value::as_u64)).unwrap_or(0)
+}
+
+/// Saves an edit (N63's Done; DECISIONS B195): the record's `edits` becomes `list` as the
+/// next revision — `max(the record's, asked_rev - 1) + 1`, so a save from an editor that
+/// opened on an older revision still lands after whatever another Mac saved since (the
+/// last save wins). A copy cut from an earlier revision stays named, now stale: readers
+/// ignore it until [`set_edit_copy`] names the new one. When `list` is the identity (nothing
+/// cut, the whole recording) there's no copy to make: the old copy is dropped from the
+/// record and then its files go. Read-modify-write under `If-Match`; a tombstone stops it.
+/// Returns the revision saved.
+pub fn save_edits(s3: &Client, id: &str, list: &shroom_edit::EditList, asked_rev: u64) -> Result<u64, UploadError> {
+    let list = list.clone().checked();
+    let identity = list.is_identity();
+    let mut rev = 0;
+    let mut dropped: Vec<String> = Vec::new();
+    update_edit(s3, id, |m| {
+        rev = record_rev(m).max(asked_rev.saturating_sub(1)) + 1;
+        let old = m.edits.take().and_then(|s| s.copy);
+        dropped.clear();
+        let copy = if identity {
+            dropped.extend(old.iter().flat_map(|c| c.files().into_iter().map(str::to_string)));
+            None
+        } else {
+            old
+        };
+        m.extra.remove("edits");
+        m.edits = Some(shroom_edit::Saved { list: list.clone(), rev, copy });
+    })?;
+    delete_copy_files(s3, id, &dropped);
+    Ok(rev)
+}
+
+/// Names the permanent copy of a saved revision in the record (`edits.copy`), once its
+/// files are up — only while the record still holds that revision. Returns `true` when it
+/// did: the previous copy's files then go. `false` when the record moved on (a newer save,
+/// another Mac's edit, no edit at all): nothing is written, and the files of `copy` that
+/// were just sent are deleted here — never one the record still names. A tombstone stops it.
+pub fn set_edit_copy(s3: &Client, id: &str, copy: &shroom_edit::EditCopy) -> Result<bool, UploadError> {
+    let mine: Vec<String> = copy.files().into_iter().map(str::to_string).collect();
+    if !mine.iter().all(|f| is_copy_file(f)) {
+        return Err(UploadError::Incomplete(format!("not a copy's file names: {mine:?}")));
+    }
+    let holds = |m: &Meta| m.edits.as_ref().is_some_and(|s| s.rev == copy.rev);
+    // What the record names, so a stale copy's cleanup never takes a file it still names.
+    let named = |m: &Meta| -> Vec<String> { m.edits.as_ref().and_then(|s| s.copy.as_ref()).map(|c| c.files().into_iter().map(str::to_string).collect()).unwrap_or_default() };
+    // A look first: a copy of a revision the record no longer holds writes nothing.
+    let bytes = with_retry(|| s3.get(&keys::meta(id)))?.ok_or(UploadError::Collision)?;
+    let raw: serde_json::Value = serde_json::from_slice(&bytes).map_err(|e| UploadError::Incomplete(format!("unreadable meta: {e}")))?;
+    if raw.get("state").and_then(|s| s.as_str()) == Some("deleted") {
+        return Err(UploadError::Tombstoned);
+    }
+    let seen: Meta = serde_json::from_value(raw).map_err(|e| UploadError::Incomplete(format!("unreadable meta: {e}")))?;
+    if !holds(&seen) {
+        let keep = named(&seen);
+        delete_copy_files(s3, id, &mine.into_iter().filter(|f| !keep.contains(f)).collect::<Vec<_>>());
+        return Ok(false);
+    }
+    let mut current = false;
+    let mut doomed: Vec<String> = Vec::new();
+    let meta = update_edit(s3, id, |m| {
+        doomed.clear();
+        current = holds(m);
+        let Some(saved) = m.edits.as_mut().filter(|_| current) else { return };
+        if let Some(previous) = saved.copy.replace(copy.clone()) {
+            doomed.extend(previous.files().into_iter().map(str::to_string).filter(|f| !mine.contains(f)));
+        }
+    })?;
+    if !current {
+        // It moved on between the look and the write.
+        let keep = named(&meta);
+        doomed = mine.into_iter().filter(|f| !keep.contains(f)).collect();
+    }
+    delete_copy_files(s3, id, &doomed);
+    Ok(current)
 }
 
 /// Deletes a shared recording: the record becomes a tombstone first (the link answers
@@ -422,6 +529,17 @@ mod tests {
         assert!(key_done(&grant(NOW + 5 * 60_000, true), NOW), "spent");
         assert!(key_done(b"not json", NOW));
         assert!(key_done(br#"{"member":"m1"}"#, NOW));
+    }
+
+    /// An edit's writes delete only a copy's own files, whatever a record names.
+    #[test]
+    fn only_a_copys_files_are_ever_deleted_by_an_edit() {
+        for ok in ["edit-1.mp4", "edit-3-poster.jpg", "edit-123456789-teaser.mp4"] {
+            assert!(is_copy_file(ok), "{ok}");
+        }
+        for not in ["video.mp4", "poster.jpg", "master.m3u8", "edit-.mp4", "edit-1234567890.mp4", "edit-3.mp4.tmp", "v0/edit-3.mp4", "../meta/x.json", "edit-3-poster.png", "edit-x.mp4"] {
+            assert!(!is_copy_file(not), "{not}");
+        }
     }
 
     /// A member can rewrite `owner` on their own records: a Library row never takes it for

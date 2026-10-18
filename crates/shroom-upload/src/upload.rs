@@ -59,7 +59,8 @@ impl std::fmt::Display for UploadError {
 impl std::error::Error for UploadError {}
 
 /// Retries an idempotent call with exponential backoff (POC: 6 tries, 500 ms base,
-/// 15 s cap). Status errors that can't improve (4xx other than 408/429) aren't retried.
+/// 15 s cap). Status errors that can't improve (4xx other than 408/429) aren't retried, and
+/// neither is a transfer its caller stopped.
 pub fn with_retry<T>(mut f: impl FnMut() -> Result<T, S3Error>) -> Result<T, S3Error> {
     let mut delay = Duration::from_millis(500);
     let mut last = None;
@@ -69,6 +70,7 @@ pub fn with_retry<T>(mut f: impl FnMut() -> Result<T, S3Error>) -> Result<T, S3E
             Err(S3Error::Status { status, body }) if (400..500).contains(&status) && status != 408 && status != 429 => {
                 return Err(S3Error::Status { status, body });
             }
+            Err(S3Error::Cancelled) => return Err(S3Error::Cancelled),
             Err(e) => last = Some(e),
         }
         std::thread::sleep(delay);
