@@ -305,6 +305,7 @@ Then the parent. If it is missing, the Worker sets `health.json` to `blocked`/`n
 |---|---|---|
 | `n` | 20 first upload mints (`UPLOAD_BUDGET`, H4); re-mints don't count | 429 `too-many`, `retryAfter` = seconds to the hour's end (≥ 1) |
 | `k` | 60 `/key` calls (`KEY_BUDGET`, D:B125) | the same |
+| `c` | 120 voice-cue judgments (`CUE_BUDGET`, D:B202) | the same |
 
 Token Macs mint locally, with no budget.
 
@@ -418,6 +419,7 @@ A status alone never maps to a state. Within `IFACE = 2`, routes and fields only
 | 4.18 | POST | `/_shroom/api/health` | device key |
 | 4.19 | GET, HEAD | `/favicon.svg`, `.png`, `.ico` | none |
 | 4.20 | POST | `/_shroom/api/gone` | device key |
+| 4.22 | POST | `/_shroom/api/cue` | device key |
 
 **The Worker writes only:**
 - the roster (CAS), the ledger (create-only) and `rate/<did>`;
@@ -902,6 +904,35 @@ there too, with no read.
 
 **Callers.** `runtime/library.rs:delete` seals after `library::delete` and a tombstone
 check; a seal that fails (an older page) is logged and the delete stands.
+
+### 4.22 `POST /_shroom/api/cue` — the judgment above the voice-cue planner (D:B202)
+
+**Why.** A line said again in other words shares too few words with its slip for the
+planner to line them up (N65 (2)). The maker's Mac lists where the redone stretch might
+begin; the space's own Cloudflare AI (N66's binding) weighs each; the Mac picks.
+
+**Request:** device key, with `{"rec":"<16>","cue":<integer ≥ 0>,"after":"…","candidates":["…",…]}`:
+`after` is what was said after the cue, each candidate the words from one possible start up
+to the cue, nearest first; 1 to 6 candidates, each text at most 2,000 characters. Anything
+else → 400, before the ledger is read or the model called.
+
+**Steps:**
+1. Someone else's take (§2.4) and the caller isn't owner-class → 403 `not-yours`.
+2. No AI bound (a space that doesn't listen) → `{"later":true}`, spending nothing.
+3. Spend the device's `c` budget (§3.4): over it → 429 `too-many`.
+4. One Clef call (`@cf/cloudflare/clef`): the words as its state, never its questions; one
+   `noul` question per candidate (is everything from this start said again after the
+   command?).
+5. → `{"scores":[…]}`, one per candidate in its order, each held to 0–1, one Clef left out
+   0. A model error (the free day used up, `4006`; a busy model) → `{"later":true}`.
+
+It writes nothing but the budget: the words go to the model and back, never to the bucket
+or a log.
+
+**Callers.** `runtime/voice.rs`, through `shroom_upload::voice::after_go_live_judged` and
+`look_again_judged`, once per question of a take's plan. `Space::judge` takes only one score
+per candidate, each 0–1, and `shroom-edit` cuts from the farthest start scored 0.4 or more
+(`JUDGED`). `later`, a refusal or no answer: the cue keeps the code's own plan.
 
 ---
 

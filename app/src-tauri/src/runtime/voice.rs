@@ -3,14 +3,18 @@
 //! (`shroom_upload::voice`), on a thread of its own, so the upload never waits on it. It
 //! goes through the take's own credential (`cred.json`: its record and its files). A take
 //! whose words came late is looked at again by the sweep: two minutes after launch, then
-//! every six hours awake, for two days after its go-live. Nothing on screen answers it: the
-//! owner page shows the cuts (N65 (5)).
+//! every six hours awake, for two days after its go-live. Each cue's plan is weighed by the
+//! judgment above the planner, asked of the space with this Mac's key (DECISIONS B202); when
+//! it can't answer, the code's own plan stands. Nothing on screen answers it: the owner page
+//! shows the cuts (N65 (5)).
 
 use std::path::Path;
 use std::time::Duration;
 
-use shroom_cloud::device::CredFile;
+use shroom_cloud::device::{CredFile, DeviceKey};
+use shroom_cloud::member::Space;
 use shroom_core::world::SpaceIdentity;
+use shroom_edit::Question;
 use shroom_storage::s3::Client;
 use shroom_upload::voice::{self, Clock, Mark, Wait, Wall};
 
@@ -30,6 +34,38 @@ fn client(rt: &Runtime, dir: &Path) -> Option<Client> {
     Some(super::uploader::client(rt, &identity, &cred))
 }
 
+/// The space and this Mac's key for it: what the judgment is asked through.
+struct Door {
+    space: Option<Space>,
+    key: Option<DeviceKey>,
+}
+
+fn door(rt: &Runtime) -> Door {
+    let identity = rt.home.read_json::<SpaceIdentity>("space.json");
+    Door {
+        space: identity.as_ref().and_then(|id| rt.space(&id.host)),
+        key: identity.and_then(|id| super::member::device_key(rt).filter(|k| k.host == id.host)),
+    }
+}
+
+/// The judgment above the planner for `rec`'s cues (DECISIONS B202): a score per candidate
+/// start, or none — no space, no key for it, or the space can't answer now — and the cue
+/// keeps the code's own plan. The log holds the scores, never the words.
+fn judgment<'a>(rt: &'a Runtime, door: &'a Door, rec: &'a str) -> impl Fn(&Question) -> Option<Vec<f64>> + 'a {
+    move |q: &Question| {
+        let scores = door.space.as_ref().zip(door.key.as_ref()).and_then(|(s, k)| s.judge(k, rec, q.cue, &q.after, &q.candidates));
+        let short = super::short(rec);
+        match &scores {
+            Some(s) => {
+                let s: Vec<String> = s.iter().map(|x| format!("{x:.2}")).collect();
+                rt.log(&format!("voice: {short} cue {} weighed ({})", q.cue + 1, s.join(" ")));
+            }
+            None => rt.log(&format!("voice: {short} cue {} keeps the code's own plan", q.cue + 1)),
+        }
+        scores
+    }
+}
+
 /// Right after `rec`'s go-live, from the uploader (its single-file copy and teaser still to
 /// send): the take's lane, on its own thread. The space is asked once whether it hears the
 /// take.
@@ -44,9 +80,9 @@ pub(crate) fn after_go_live(rt: &Runtime, dir: &Path, rec: &str) {
             rt.log(&format!("voice: {} has no credential to read its words with", super::short(&rec)));
             return;
         };
-        let space = rt.home.read_json::<SpaceIdentity>("space.json").and_then(|id| rt.space(&id.host));
-        let coming = space.and_then(|s| s.cuts_coming(&rec));
-        let m = voice::after_go_live(&s3, &rec, &dir, coming, Wait::default(), &mut Wall);
+        let door = door(&rt);
+        let coming = door.space.as_ref().and_then(|s| s.cuts_coming(&rec));
+        let m = voice::after_go_live_judged(&s3, &rec, &dir, coming, Wait::default(), &mut Wall, &judgment(&rt, &door, &rec));
         say(&rt, &rec, &m);
     });
     if spawned.is_err() {
@@ -69,6 +105,7 @@ pub(crate) fn spawn_sweep(rt: Runtime) {
 /// `publish.json`; past two days it stops waiting.
 fn sweep(rt: &Runtime) {
     let now = Wall.now_ms();
+    let door = door(rt);
     for dir in dirs(&rt.home.takes()) {
         let Some(Mark::Waiting { since }) = voice::mark(&dir) else { continue };
         if classify(&dir) != Kind::Done {
@@ -78,7 +115,7 @@ fn sweep(rt: &Runtime) {
         let m = if now.saturating_sub(since) > LOOK_FOR_MS {
             voice::give_up(&dir, now)
         } else if let Some(s3) = client(rt, &dir) {
-            voice::look_again(&s3, &p.rec, &dir, now)
+            voice::look_again_judged(&s3, &p.rec, &dir, now, &judgment(rt, &door, &p.rec))
         } else {
             continue;
         };

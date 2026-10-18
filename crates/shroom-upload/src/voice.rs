@@ -11,7 +11,7 @@ use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
-use shroom_edit::{Saved, Silence, Transcript};
+use shroom_edit::{Answer, Options, Question, Saved, Silence, Transcript, questions};
 use shroom_storage::s3::{Client, S3Error};
 
 use crate::keys;
@@ -103,12 +103,28 @@ impl Clock for Wall {
     }
 }
 
+/// The judgment above the planner (DECISIONS B202): Clef's score per candidate start for one
+/// question, on the space's own account, or `None` when it can't answer now — then that cue
+/// keeps the code's own plan.
+pub type Judge<'a> = &'a dyn Fn(&Question) -> Option<Vec<f64>>;
+
+/// No judgment: the code's own plan.
+fn unjudged(_: &Question) -> Option<Vec<f64>> {
+    None
+}
+
 /// Right after a take's go-live, from the Mac that made it: waits for the space's words
 /// and lands the take's voice cuts. `coming`: the space's own word on whether it hears the
 /// take (its status, `cuts: "coming"`) — `Some(false)` ends it at once, unasked; `None`
 /// (not reachable) waits all the same. A take whose words don't come in time is left
-/// `Waiting`, for [`look_again`].
+/// `Waiting`, for [`look_again`]. The code's own plan: [`after_go_live_judged`] with no
+/// judgment.
 pub fn after_go_live(s3: &Client, id: &str, dir: &Path, coming: Option<bool>, wait: Wait, clock: &mut impl Clock) -> Mark {
+    after_go_live_judged(s3, id, dir, coming, wait, clock, &unjudged)
+}
+
+/// [`after_go_live`], each cue's plan weighed by `judge` (asked once per question).
+pub fn after_go_live_judged(s3: &Client, id: &str, dir: &Path, coming: Option<bool>, wait: Wait, clock: &mut impl Clock, judge: Judge) -> Mark {
     let since = match mark(dir) {
         Some(Mark::Waiting { since }) => since,
         Some(done) => return done,
@@ -119,10 +135,10 @@ pub fn after_go_live(s3: &Client, id: &str, dir: &Path, coming: Option<bool>, wa
     }
     set_mark(dir, Mark::Waiting { since });
     let deadline = clock.now_ms().saturating_add(wait.until.as_millis() as u64);
-    let mut quiet = None;
+    let mut memo = Memo::default();
     let mut pause = wait.first;
     loop {
-        if let Some(m) = look(s3, id, dir, clock.now_ms(), &mut quiet) {
+        if let Some(m) = look(s3, id, dir, clock.now_ms(), &mut memo, judge) {
             return set_mark(dir, m);
         }
         if clock.now_ms() >= deadline {
@@ -134,15 +150,29 @@ pub fn after_go_live(s3: &Client, id: &str, dir: &Path, coming: Option<bool>, wa
 }
 
 /// A later look at a take still waiting for its words (the sweep): one read of them, and
-/// the cuts landed if they're whole.
+/// the cuts landed if they're whole. The code's own plan: [`look_again_judged`] with no
+/// judgment.
 pub fn look_again(s3: &Client, id: &str, dir: &Path, now_ms: u64) -> Mark {
+    look_again_judged(s3, id, dir, now_ms, &unjudged)
+}
+
+/// [`look_again`], each cue's plan weighed by `judge`.
+pub fn look_again_judged(s3: &Client, id: &str, dir: &Path, now_ms: u64, judge: Judge) -> Mark {
     let since = match mark(dir) {
         Some(Mark::Waiting { since }) => since,
         Some(done) => return done,
         None => now_ms,
     };
-    let m = look(s3, id, dir, now_ms, &mut None).unwrap_or(Mark::Waiting { since });
+    let m = look(s3, id, dir, now_ms, &mut Memo::default(), judge).unwrap_or(Mark::Waiting { since });
     set_mark(dir, m)
+}
+
+/// What one lane has read and been told, so a retry neither reads the take's sound again nor
+/// asks the judgment twice.
+#[derive(Default)]
+struct Memo {
+    silences: Option<Vec<Silence>>,
+    answers: Option<Vec<Answer>>,
 }
 
 /// A take whose words never came in the time it was looked for: never looked for again.
@@ -166,8 +196,7 @@ fn whole_words(s3: &Client, id: &str) -> Result<Option<Heard>, &'static str> {
 }
 
 /// One look: `Some` when the take is planned or never will be, `None` to look again later.
-/// `quiet`: the take's silences once read, so a retry doesn't read its sound again.
-fn look(s3: &Client, id: &str, dir: &Path, now: u64, quiet: &mut Option<Vec<Silence>>) -> Option<Mark> {
+fn look(s3: &Client, id: &str, dir: &Path, now: u64, memo: &mut Memo, judge: Judge) -> Option<Mark> {
     let h = match whole_words(s3, id) {
         Ok(Some(h)) => h,
         Ok(None) => return None,
@@ -176,9 +205,12 @@ fn look(s3: &Client, id: &str, dir: &Path, now: u64, quiet: &mut Option<Vec<Sile
     if h.clock.is_some() {
         return Some(Mark::Skipped { at: now, why: "its words are on a clock a bake replaced".into() });
     }
-    let silences = quiet.get_or_insert_with(|| silences(dir)).clone();
+    let silences = memo.silences.get_or_insert_with(|| silences(dir)).clone();
     let t = Transcript::heard(h.duration, &h.words, silences);
-    match land(s3, id, &t, now) {
+    let answers = memo.answers.get_or_insert_with(|| {
+        questions(&t, Options::default()).iter().filter_map(|q| judge(q).map(|scores| Answer { cue: q.cue, scores })).collect()
+    });
+    match land(s3, id, &t, now, answers) {
         Ok(Landed::Planned { at, cues }) => Some(Mark::Planned { at, cues }),
         Ok(Landed::Refused(why)) => Some(Mark::Skipped { at: now, why: why.into() }),
         Ok(Landed::NotLive) | Err(_) => None,
@@ -204,9 +236,10 @@ pub enum Landed {
 }
 
 /// Lands the take's planned cues in its record: the editor's list read from `edits` (its
-/// fields this build doesn't know kept), [`shroom_edit::land`]'s result laid over it, and
-/// nothing else in the record touched. A record already planned is not rewritten.
-pub fn land(s3: &Client, id: &str, t: &Transcript, now_ms: u64) -> Result<Landed, UploadError> {
+/// fields this build doesn't know kept), [`shroom_edit::land_with`]'s result laid over it
+/// (the plan weighed by the judgment's `answers`), and nothing else in the record touched.
+/// A record already planned is not rewritten.
+pub fn land(s3: &Client, id: &str, t: &Transcript, now_ms: u64, answers: &[Answer]) -> Result<Landed, UploadError> {
     for _ in 0..8 {
         let Some((bytes, etag)) = with_retry(|| s3.get_with_etag(&keys::meta(id)))? else {
             return Ok(Landed::Refused("the take has no record"));
@@ -238,7 +271,7 @@ pub fn land(s3: &Client, id: &str, t: &Transcript, now_ms: u64) -> Result<Landed
             return Ok(Landed::Planned { at: v.planned_at, cues: v.cues });
         }
         let length = meta.get("durationSec").and_then(Value::as_f64).filter(|d| *d > 0.0).unwrap_or(t.duration);
-        let Some(next) = shroom_edit::land(saved, t, length, now_ms) else {
+        let Some(next) = shroom_edit::land_with(saved, t, length, now_ms, answers) else {
             return Ok(Landed::Planned { at: now_ms, cues: 0 });
         };
         let cues = next.list.voice.map_or(0, |v| v.cues);

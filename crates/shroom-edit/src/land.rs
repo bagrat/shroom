@@ -1,6 +1,6 @@
 //! A take's voice cues, landed in its saved edit (N65).
 
-use crate::{EditList, Options, Saved, Transcript, Voice, find_cues, plan};
+use crate::{Answer, EditList, Options, Saved, Transcript, Voice, find_cues, plan_with};
 
 /// The take's voice cues planned and landed in what the editor saved (N63's `meta.edits`),
 /// or in a list of its own when nothing was saved: the planner's cuts beside the editor's
@@ -14,6 +14,17 @@ pub fn land(
     t: &Transcript,
     source_duration: f64,
     now_ms: u64,
+) -> Option<Saved> {
+    land_with(saved, t, source_duration, now_ms, &[])
+}
+
+/// [`land`], the plan taking the judgment's answers ([`crate::plan_with`]).
+pub fn land_with(
+    saved: Option<Saved>,
+    t: &Transcript,
+    source_duration: f64,
+    now_ms: u64,
+    answers: &[Answer],
 ) -> Option<Saved> {
     if saved.as_ref().is_some_and(|s| s.list.voice.is_some()) {
         return None;
@@ -32,7 +43,7 @@ pub fn land(
         .filter_map(|c| c.id.strip_prefix('v')?.parse::<u32>().ok())
         .max()
         .unwrap_or(0);
-    for mut cut in plan(t, Options::default()).cuts {
+    for mut cut in plan_with(t, Options::default(), answers).cuts {
         n += 1;
         cut.id = format!("v{n}");
         s.list.cuts.push(cut);

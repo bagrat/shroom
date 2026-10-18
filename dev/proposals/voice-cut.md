@@ -18,8 +18,14 @@ spec rows are Bagrat's call. The words on the boards are placeholders.*
 >   `silencedetect`. It matches ffmpeg's on the same speech to a constant 21 ms.
 > - **The cuts land in the editor's list** (N63's `meta.edits`): ids `v1`…, the plan's mark
 >   set once, so a cut put back stays put back.
-> - **No Clef gate yet.** The rules alone made no wrong cut; full Clef stays the option
->   measured below.
+> - **No Clef gate on each cue.** The rules alone made no wrong cut, so no cue waits on it.
+> - **A cue that breaks off a sentence takes the sentence with it** (B201 (c)), back to its
+>   start; so does a sentence that ends on a word no sentence ends on, since Whisper puts a
+>   full stop wherever a speaker stops.
+> - **Clef weighs how far back a redo reaches** (B202). A line said again in other words
+>   shares too few words to line up (Bagrat's reworded redo on the tester), so the Mac lists
+>   where the redone stretch might begin and Clef, on the space's own account, scores each;
+>   the farthest scored 0.4 or more is cut from. Measured by `voice-cut/poc/judge.py`.
 > - The trim timeline and markers are the editor's build (N63, N64), not this PR's.
 
 > **Working rule** (Bagrat, 2026-10-18, relayed by the orchestrator). These POCs run on

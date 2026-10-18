@@ -501,6 +501,13 @@ impl std::fmt::Debug for Space {
 /// What a body-less call carries.
 const EMPTY: &[u8] = b"";
 
+/// A judgment's scores, one per start, each from 0 to 1 — or none: `later`, the wrong count,
+/// or anything else.
+fn scores_of(v: &Value, n: usize) -> Option<Vec<f64>> {
+    let scores: Vec<f64> = v.get("scores")?.as_array()?.iter().map(Value::as_f64).collect::<Option<_>>()?;
+    (scores.len() == n && scores.iter().all(|s| (0.0..=1.0).contains(s))).then_some(scores)
+}
+
 /// A take's status says its voice cuts are coming (`cuts: "coming"`); a status without the
 /// word, or one this build can't read, says they aren't.
 fn cuts_word(status: &[u8]) -> bool {
@@ -603,6 +610,17 @@ impl Space {
     pub fn cuts_coming(&self, rec: &str) -> Option<bool> {
         match self.send("GET", &format!("/_shroom/status/{rec}"), EMPTY, None) {
             Ok((200, bytes, _)) => Some(cuts_word(&bytes)),
+            _ => None,
+        }
+    }
+
+    /// `POST cue` (N65, DECISIONS B202): the judgment above the voice-cue planner, on the
+    /// space's own account — a score per candidate start, or `None` when it can't answer now
+    /// (the free day used up, a busy model, not reachable), and the Mac keeps its own plan.
+    pub fn judge(&self, key: &DeviceKey, rec: &str, cue: usize, after: &str, candidates: &[String]) -> Option<Vec<f64>> {
+        let body = json!({"rec": rec, "cue": cue, "after": after, "candidates": candidates});
+        match self.call::<Value>("POST", "cue", Some(body), Some(key)) {
+            Answer::Ok(v) => scores_of(&v, candidates.len()),
             _ => None,
         }
     }

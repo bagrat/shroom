@@ -27,7 +27,7 @@ mod text;
 pub use cue::{Cue, find_cues};
 pub use edit::{History, Op};
 pub use judge::{Answer, JUDGED, Question};
-pub use land::land;
+pub use land::{land, land_with};
 pub use plan::{Options, plan, plan_with, questions};
 
 use serde::{Deserialize, Serialize};

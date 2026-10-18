@@ -61,7 +61,7 @@ at `bf84b67079a8` (D:B2). Svelte 5, TypeScript 5.9.
 | `crates/shroom-capture` | SCK capture, device lists, Continuity classifier (D:B48), cpal mic (D:B17), `CameraSource` (D:B33, B120), `CameraPreview`, harness beep/loopback | `devices::tests` |
 | `crates/shroom-record` | `Recording`: frame hand-off (D:B16), takes, audio clock (D:B18), finalize, `repair` (D:B23, B70), `stall` | synthetic seam |
 | `crates/shroom-encode` | `args::ffmpeg_args` (pure), `clock`, `take`, `playlist::assemble_mapped`, `quality`, `locate` (D:B82), `sound` and `quiet` (a take's sound read in Rust; D:B201) | argv goldens |
-| `crates/shroom-edit` | the edit list (`EditList`, `Saved`, `keep()`; D:B195), its operations, the voice-cue planner (`plan`, `land`; N65, D:B201) | keep vectors, the POC's takes |
+| `crates/shroom-edit` | the edit list (`EditList`, `Saved`, `keep()`; D:B195), its operations, the voice-cue planner (`plan`, `land`, and `questions`/`plan_with` for the judgment above it; N65, D:B201, B202) | keep vectors, the POC's takes |
 | `crates/shroom-storage` | SigV4 (session tokens); S3 put/get/head/delete/list, `put_if_absent`, `get_with_etag`/`put_if_match` (D:B21), multipart `put_file` | botocore vectors |
 | `crates/shroom-upload` | `new_id`, `keys`, `meta`, `master`, `upload` (`claim → go_live → finish`, the beat), `live`, `library` (+ `cleanup`), `voice` (N65) | L1 bucket |
 | `crates/shroom-cloud` | REST client behind `Policy`; `sweep`, `wire`, `mint`, `owner`, `member` (client for `/_shroom/api/`), `registry`, `device` | L1 fake; `SHROOM_LIVE=1` |
@@ -596,7 +596,7 @@ foreign `v`. `VERSION` 0.1.9, `IFACE` 2.
 | `POST`, `GET /_shroom/edits/<id>` | a voice cut on or off (`etagMatches`, the maker or owner-class); the owner page's strip and what plays (N65, D:B200) |
 | `GET /favicon.{svg,png,ico}` | the icon carried in the module (D:B109) |
 | `GET /join/<code>` | the join page faces; opening never uses the invite |
-| `/_shroom/api/` | `POST peek, join, enroll, mint, key, library, invites, mark, health, gone`; `GET me, members`; `DELETE invites/<iid>, members/<mid>, devices/<did\|self>` — JSON with `"shroom":1` |
+| `/_shroom/api/` | `POST peek, join, enroll, mint, key, library, invites, mark, health, gone, cue`; `GET me, members`; `DELETE invites/<iid>, members/<mid>, devices/<did\|self>` — JSON with `"shroom":1` |
 
 Every response carries `X-Robots-Tag: noindex`; HEAD and Range never 500. API bodies
 ≤ 16 KiB (library 128 KiB); a browser Origin is refused on the API.
@@ -855,9 +855,11 @@ owner-class: [ Add a token here ]; member: the address); row six live everywhere
   drop as seconds in the joined timeline, sent as `meta.markers` at the claim (D:B49 e);
   nothing surfaces them.
 - v1 doesn't transcribe (D:B168; §16 #29).
-- Voice cuts (N65, provisional; D:B200, B201) read the space's own transcript (N66) to cut
+- Voice cuts (N65, provisional; D:B200–B202) read the space's own transcript (N66) to cut
   where the speaker said “shroom cut”: the maker's Mac plans them and lands them in
-  `meta.edits`; the words show only on the owner page.
+  `meta.edits`; the words show only on the owner page. How far back a line said again in
+  other words reaches is weighed by Clef on the space's own account (`POST
+  /_shroom/api/cue`, WI §4.22); without it, the code's own plan stands.
 
 ---
 

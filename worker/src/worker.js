@@ -722,6 +722,56 @@ async function editsGet(request, env, id, now) {
   return noStore(json({ strip: cutsStrip(meta.edits), keep: keepOf(meta.edits), cuts: cutsField(meta, now, listensOf(env)).cuts ?? null }));
 }
 
+/** The decision model that judges how far back a voice cue's redo reaches (DECISIONS B202). */
+export const CUE_JUDGE = "@cf/cloudflare/clef";
+/** A question's words at most, and its starts at most: the planner asks no more. */
+const CUE_TEXT_MAX = 2000;
+const CUE_STARTS_MAX = 6;
+
+/** What Clef judges for one cue: what was said after the command, and each stretch before it
+ * the redo might replace, starting further back each time. The words said are its state, never
+ * its questions. @param {{ after: string, candidates: string[] }} q */
+function cueState(q) {
+  return "A screen recording, transcribed. The speaker slipped, said the command \"shroom cut\", and said it again, " +
+    "perhaps in other words, perhaps leaving part of it out. The editor will cut the command and the slip. " +
+    "Each numbered stretch below is what was said just before the command, each starting further back.\n\n" +
+    `After the command: «${q.after}»\n\n` +
+    q.candidates.map((c, k) => `Stretch ${k + 1}: «${c}»`).join("\n");
+}
+/** @param {number} k */
+const cueAsk = (k) =>
+  `Is everything in stretch ${k + 1} said again after the command, in the same or other words, so that cutting all of stretch ${k + 1} would lose nothing the speaker meant to keep?`;
+
+/** POST /_shroom/api/cue {rec, cue, after, candidates} (N65, DECISIONS B202): the judgment
+ * above the Mac's voice-cue planner — one Clef call, a score from 0 to 1 per start; the Mac
+ * picks. The take's maker or an owner-class Mac may ask, within its hour's budget. Whatever
+ * Clef can't answer (the free day used up, a busy model, a space that doesn't listen) is
+ * `later`: the Mac keeps its own plan.
+ * @param {Request} request @param {Env} env @param {any} b @param {number} now */
+async function cue(request, env, b, now) {
+  const { who } = await authed(request, env);
+  const text = (/** @type {unknown} */ x) => typeof x === "string" && x.length <= CUE_TEXT_MAX;
+  const starts = Array.isArray(b.candidates) ? b.candidates : [];
+  if (typeof b.rec !== "string" || !ID.test(b.rec) || !Number.isInteger(b.cue) || b.cue < 0 || !text(b.after)
+    || !starts.length || starts.length > CUE_STARTS_MAX || !starts.every(text)) throw bad();
+  const ledger = await ledgerGet(env, b.rec);
+  if ((ledger ? ledger.member : M1) !== who.mid && !who.ownerClass) throw new Refusal(403, "not-yours");
+  const ai = /** @type {{ AI?: { run: (model: string, input: unknown) => Promise<any> } }} */ (env).AI;
+  if (!ai) return answer({ later: true });
+  await spendBudget(env, who.did, now, "c", CUE_BUDGET);
+  try {
+    const questions = Object.fromEntries(starts.map((/** @type {string} */ _, /** @type {number} */ k) => [`s${k + 1}`, { type: "noul", instructions: cueAsk(k) }]));
+    const out = await ai.run(CUE_JUDGE, { model: "clef", state: cueState({ after: b.after, candidates: starts }), questions });
+    const scores = starts.map((/** @type {string} */ _, /** @type {number} */ k) => {
+      const n = Number(out?.answers?.[`s${k + 1}`]?.noul);
+      return Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : 0;
+    });
+    return answer({ scores });
+  } catch {
+    return answer({ later: true });
+  }
+}
+
 /** The space hears its takes (N66): Cloudflare's AI is bound to its page.
  * @param {Env} env */
 function listensOf(env) {
@@ -1670,6 +1720,9 @@ const UPLOAD_BUDGET = 20;
  * click each, so this is room to spare — and a ceiling on what a member can make the
  * owner's bucket hold until the token Mac's sweep reaps the unspent ones. */
 const KEY_BUDGET = 60;
+/** Voice-cue judgments a device may ask for in an hour (B202): one per cue a take's plan
+ * weighs, so room to spare — and a ceiling on what a Mac can spend of the owner's AI. */
+const CUE_BUDGET = 120;
 /** The token-holder flag: a parent proof within this long (H1). */
 const TOKEN_FLAG_MS = 30 * DAY_MS;
 /** Enroll re-stamps proofAt at most this often (C5). */
@@ -1743,6 +1796,7 @@ async function route(request, env, url, now) {
     case "mark": only("POST"); return mark(request, env, await body(request), now);
     case "health": only("POST"); return health(request, env, await body(request), now);
     case "gone": only("POST"); return gone(request, env, await body(request), now);
+    case "cue": only("POST"); return cue(request, env, await body(request), now);
   }
   const target = path.match(/^(invites|members|devices)\/([^/]+)$/);
   if (target) {
@@ -2260,14 +2314,15 @@ async function spendBudget(env, did, now, field = "n", budget = UPLOAD_BUDGET) {
     /** @type {any} */
     let cur = null;
     if (object) { try { cur = JSON.parse(await object.text()); } catch { cur = null; } }
-    // One object per device and window: uploads count in `n`, page keys in `k` (B125).
+    // One object per device and window: uploads count in `n`, page keys in `k` (B125), voice-cue
+    // judgments in `c` (B202).
     const same = cur && cur.window === window;
     const count = (/** @type {string} */ f) => (same && Number.isInteger(cur[f]) ? cur[f] : 0);
     const n = count(field);
     if (n >= budget) throw new Refusal(429, "too-many", { retryAfter: Math.max(1, Math.ceil((Date.parse(window) + HOUR_MS - now) / 1000)) });
     /** @type {Record<string, any>} */
     const next = { window, n: count("n") };
-    if (field === "k" || count("k") > 0) next.k = count("k");
+    for (const f of ["k", "c"]) if (field === f || count(f) > 0) next[f] = count(f);
     next[field] = n + 1;
     if (await casPut(env, key, JSON.stringify(next), object ? { etagMatches: object.etag } : { etagDoesNotMatch: "*" })) return;
   }

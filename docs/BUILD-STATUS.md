@@ -40,7 +40,8 @@
 4. Send feedback from the popover is built (N60, B193), the waving hand his pick.
 5. Voice cuts (N65, provisional) are built: the owner page's strip, its press and the
    cuts' word in the status (B200), and the Mac's lane that plans a take once the space has
-   heard it and lands its cuts in the record (B201). They come alive with N66's transcript
+   heard it and lands its cuts in the record (B201), how far back a line said again in other
+   words reaches weighed by Clef on the space's own account (B202). They come alive with N66's transcript
    (the AI build) and N63's edit list (the editor's build, whose final copy lets Download
    follow them). Built ahead of the release call, which is Bagrat's.
 
