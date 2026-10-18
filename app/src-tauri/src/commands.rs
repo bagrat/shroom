@@ -73,6 +73,7 @@ pub fn scene_get(rt: State<Runtime>, surface: Surface) -> Value {
     match surface {
         Surface::Popover => serde_json::to_value(&s.popover).unwrap_or(Value::Null),
         Surface::Countdown => serde_json::to_value(&s.countdown).unwrap_or(Value::Null),
+        Surface::Label => serde_json::to_value(&s.label).unwrap_or(Value::Null),
         Surface::Onboarding => serde_json::to_value(&s.onboarding).unwrap_or(Value::Null),
         Surface::Library => serde_json::to_value(&s.library).unwrap_or(Value::Null),
         Surface::Settings => serde_json::to_value(&s.settings).unwrap_or(Value::Null),

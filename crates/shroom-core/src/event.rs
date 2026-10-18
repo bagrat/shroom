@@ -86,6 +86,8 @@ pub enum Surface {
     Feedback,
     Countdown,
     Bubble,
+    /// The agent label (N62, B216): it takes no clicks and no keys; only its slice is read.
+    Label,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

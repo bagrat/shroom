@@ -24,6 +24,8 @@ use super::{Runtime, overlay, probe};
 
 pub const POPOVER: &str = "popover";
 pub const COUNTDOWN: &str = "countdown";
+/// The agent label's page (N62, B216).
+pub const LABEL: &str = "label";
 pub const ONBOARDING: &str = "onboarding";
 pub const LIBRARY: &str = "library";
 pub const SETTINGS: &str = "settings";
@@ -748,6 +750,26 @@ fn apply(app: &AppHandle, rt: &Runtime, prev: Option<&Scene>, s: &Scene, exclude
         }
     }
 
+    // The agent label (N62, B216): top right of the display a take the command started
+    // records, while it records — over other apps' windows, taking no clicks, never the
+    // keyboard, and left out of every capture from the moment it's made.
+    match &s.label {
+        Some(l) => {
+            if let Some(panel) = overlay::ensure(app, Overlay::Label, excluded) {
+                place_label(&panel, l.display);
+                let _ = app.emit_to(LABEL, "scene", l);
+                if !panel.isVisible() {
+                    overlay::show(&panel, false);
+                }
+            }
+        }
+        None => {
+            if let Some(panel) = overlay::get(Overlay::Label) {
+                overlay::hide(&panel);
+            }
+        }
+    }
+
     // The bubble (born at config, through the count and the take — N22) and Camera's
     // preview: native panels on the exact camera the Scene names (camera.rs).
     super::camera::present(rt, s.bubble.as_ref(), s.preview.as_ref());
@@ -903,6 +925,28 @@ fn cover_display(panel: &objc2_app_kit::NSPanel, display: u32) {
     let b = probe::display_bounds(display);
     let f = display_frame((b.x, b.y, b.w, b.h), probe::display_bounds(shroom_capture::main_display_id()).h);
     panel.setFrame_display(NSRect::new(NSPoint::new(f.x, f.y), NSSize::new(f.w, f.h)), true);
+}
+
+/// Places the agent label at the top right of the display with CoreGraphics id `display`,
+/// under its menu bar: the top of that screen's visible frame, where AppKit has it.
+pub fn place_label(panel: &objc2_app_kit::NSWindow, display: u32) {
+    use objc2_foundation::{NSPoint, NSRect, NSSize};
+    let b = probe::display_bounds(display);
+    let screen = display_frame((b.x, b.y, b.w, b.h), probe::display_bounds(shroom_capture::main_display_id()).h);
+    let top = objc2_foundation::MainThreadMarker::new()
+        .and_then(|mtm| objc2_app_kit::NSScreen::screens(mtm).iter().find(|s| probe::screen_id(s) == Some(display)).map(|s| s.visibleFrame()))
+        .map_or(screen.y + screen.h, |v| v.origin.y + v.size.height);
+    let (w, h) = overlay::LABEL_SIZE;
+    let f = label_frame(screen, top, w, h);
+    panel.setFrame_display(NSRect::new(NSPoint::new(f.x, f.y), NSSize::new(f.w, f.h)), true);
+}
+
+/// Where the agent label goes (AppKit's coordinates, y up): its right edge 12 points in
+/// from the display's, its top 8 under `top` — the menu bar's foot.
+pub fn label_frame(screen: Frame, top: f64, w: f64, h: f64) -> Frame {
+    const MARGIN: f64 = 12.0;
+    const GAP: f64 = 8.0;
+    Frame { x: screen.x + screen.w - w - MARGIN, y: top - GAP - h, w, h }
 }
 
 /// Keeps shroom's own UI out of every frame (the countdown scrim, the popover, the
@@ -1196,6 +1240,17 @@ mod tests {
         assert_eq!(display_frame((1512.0, -200.0, 2560.0, 1440.0), 982.0), Frame { x: 1512.0, y: 982.0 - 1240.0, w: 2560.0, h: 1440.0 });
         // One below the main display.
         assert_eq!(display_frame((0.0, 982.0, 1920.0, 1080.0), 982.0), Frame { x: 0.0, y: -1080.0, w: 1920.0, h: 1080.0 });
+    }
+
+    #[test]
+    fn the_label_sits_top_right_under_the_menu_bar() {
+        // The main display, its menu bar 24 points tall: 12 in from its right, 8 under the bar.
+        let main = display_frame((0.0, 0.0, 1440.0, 900.0), 900.0);
+        assert_eq!(label_frame(main, 876.0, 380.0, 30.0), Frame { x: 1048.0, y: 838.0, w: 380.0, h: 30.0 });
+        // A display to the right of it: on that one, under its own menu bar.
+        let right = display_frame((1440.0, 0.0, 1920.0, 1080.0), 900.0);
+        let f = label_frame(right, right.y + right.h - 24.0, 380.0, 30.0);
+        assert_eq!((f.x + f.w, f.y + f.h), (1440.0 + 1920.0 - 12.0, right.y + right.h - 24.0 - 8.0));
     }
 
     #[test]
