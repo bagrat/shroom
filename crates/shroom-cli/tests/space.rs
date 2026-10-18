@@ -65,7 +65,10 @@ fn an_agent_lists_finds_renames_and_deletes_through_the_space() {
     assert_eq!(code, 0);
     let ids: Vec<&str> = v["candidates"].as_array().unwrap().iter().map(|c| c["id"].as_str().unwrap()).collect();
     assert!(ids.contains(&"Fr1st3v3rT3st000") && ids.contains(&"0ldD3m0F0rAcm3Co") && ids.len() == 2, "{ids:?}");
-    assert!(v["candidates"][0]["score"].is_null(), "no score until the space counts views");
+    assert_eq!(v["by"], "age", "a page without suggestions: age alone");
+    let c = &v["candidates"][0];
+    assert!(c["plays"].is_null() && c["last_played"].is_null() && c["score"].is_null(), "not known without the page's suggestions: {c}");
+    assert_eq!(c["reason"], "old");
 
     let (code, v) = shroom(&home, &base, &["rename", "St4ndupN0t3sJn05", "Standup", "—", "June", "5"]);
     assert_eq!((code, v["title"].as_str()), (0, Some("Standup — June 5")), "{v}");
