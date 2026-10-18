@@ -1283,8 +1283,8 @@ const ABOVE_THE_PATTERN: isize = 1001;
 const POPOVER_SEEN: f64 = 0.01;
 const COUNT_SEEN: f64 = 0.9;
 /// The least the agent label lights, at its own place top right under the menu bar: the top
-/// band of the dark field holds part of the pill (about 3 % of the field on the hosted Mac's
-/// 1024 × 768 display) — more than twice what a clean frame may have lit.
+/// band of the dark field holds part of the pill (1.6 % of the field on the hosted Mac's
+/// 1024 × 768 display, 2026-10-18) — more than twice what a clean frame may have lit.
 const LABEL_SEEN: f64 = 0.005;
 
 /// How much of the pattern's dark field is lit in one real captured frame of `display` that
