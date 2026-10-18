@@ -137,8 +137,13 @@ async function main() {
         check("poster loads before play", (await posterLoaded) && first.paused && first.poster?.endsWith("/poster.jpg"));
         check("no native controls", first.controls === false);
         check("time reads 0:00 / 0:20", first.time === "0:00 / 0:20");
-        await page.keyboard.press(tab);
-        check("Tab reaches Play", await page.evaluate((w) => document.activeElement?.classList.contains("pp") && document.activeElement.getAttribute("aria-label") === w, COPY.play));
+        // Copy link sits ahead of the player in the tab order (N46): Tab goes on to Play.
+        let onPlay = false;
+        for (let i = 0; i < 6 && !onPlay; i++) {
+          await page.keyboard.press(tab);
+          onPlay = await page.evaluate(() => !!document.activeElement?.classList.contains("pp"));
+        }
+        check("Tab reaches Play", onPlay && await page.evaluate((w) => document.activeElement.getAttribute("aria-label") === w, COPY.play));
         await page.keyboard.press("Space");
         const playing = await page.waitForFunction(() => { const v = document.getElementById("v"); return !v.paused && v.currentTime > 1.1; }, null, { timeout: 15_000 }).then(() => true, () => false);
         // The label and the time follow their media events, a task after the state moves.
@@ -153,13 +158,14 @@ async function main() {
         check("Tab to the scrubber, → seeks 5 s", onSeek && after - before >= 4 && after - before <= 6.5);
         await page.keyboard.press("k");
         // The label follows the pause event, a task after `paused` flips.
-        check("K pauses, the label says Play", await page.waitForFunction((w) => document.getElementById("v").paused && document.querySelector(".pp").getAttribute("aria-label") === w, COPY.play, { timeout: 3000 }).then(() => true, () => false));
+        const kPaused = await page.waitForFunction((w) => document.getElementById("v").paused && document.querySelector(".pp").getAttribute("aria-label") === w, COPY.play, { timeout: 3000 }).then(() => true, () => false);
+        check("K pauses, the label says Play", kPaused, true, await page.evaluate(() => ({ paused: document.getElementById("v").paused, label: document.querySelector(".pp").getAttribute("aria-label"), active: document.activeElement?.className })));
         await page.click(".fs");
         const full = await page.waitForFunction(() => document.fullscreenElement === document.querySelector(".player"), null, { timeout: 3000 }).then(() => true, () => false);
         const exitLabel = full ? await page.evaluate(() => document.querySelector(".fs").getAttribute("aria-label")) : null;
         if (full) await page.click(".fs");
         const back = full ? await page.waitForFunction(() => !document.fullscreenElement, null, { timeout: 3000 }).then(() => true, () => false) : false;
-        check("fullscreen is the player itself, and back", full && back && exitLabel === COPY.exitFullscreen, name === "chromium");
+        check("fullscreen is the player itself, and back", full && back && exitLabel === COPY.exitFullscreen, name === "chromium", { full, back, exitLabel });
 
         // ── the single-file copy (DECISIONS B177) ──
         await put(metaKey(ids.live), meta(ids.live, { media: { hls: `rec/${ids.live}/master.m3u8`, mp4: `rec/${ids.live}/video.mp4`, poster: `rec/${ids.live}/poster.jpg`, width: 640, height: 400 } }));
@@ -306,7 +312,9 @@ async function main() {
         check("a real copy says Copied", await page.waitForFunction((w) => document.getElementById("c").textContent === w, COPY.copied, { timeout: 2000 }).then(() => true, () => false));
         await put(metaKey(ids.own), meta(ids.own, {}));
         const swapped = await page.waitForFunction(() => { const v = document.querySelector(".player video"); return v && (v.getAttribute("poster") || "").endsWith("/poster.jpg"); }, null, { timeout: 10_000 }).then(() => true, () => false);
-        // Every file up (the record counts none), the upload line goes: no “Fully live ✓” on the page.
+        // Every file up (the record counts none), the upload line goes: no “Fully live ✓” on the
+        // page — “Ready ✓” for a few seconds first, then nothing (B142).
+        await page.waitForFunction(() => document.getElementById("u").getClientRects().length === 0 && !document.getElementById("b"), null, { timeout: 10_000 }).catch(() => {});
         const afterSwap = await page.evaluate((fully) => ({ up: document.getElementById("u").getClientRects().length > 0, said: document.body.innerText.includes(fully), bar: !!document.getElementById("b"), dl: document.getElementById("dl").textContent, controls: document.querySelector(".player video").controls }), COPY.fullyLive);
         check("the go-live swaps the player in with its poster, and the upload line goes", swapped && !afterSwap.up && !afterSwap.said && !afterSwap.bar && !afterSwap.controls && afterSwap.dl === "", true, afterSwap);
         await put(metaKey(ids.own), meta(ids.own, { media: { hls: `rec/${ids.own}/master.m3u8`, mp4: `rec/${ids.own}/video.mp4`, poster: `rec/${ids.own}/poster.jpg`, width: 640, height: 400 } }));
