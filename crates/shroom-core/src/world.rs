@@ -583,6 +583,9 @@ pub struct LibraryRow {
     pub owner: Option<String>,
     /// The record names a poster (`media.poster`): the row shows its thumbnail.
     pub poster: bool,
+    /// The edited length, when the record holds an edit that changes what plays (N63,
+    /// `meta.edits`): the row shows it in place of the recording's.
+    pub edited_ms: Option<u64>,
 }
 
 /// The Library's writes under way — facts about what was asked and not yet answered, so
@@ -599,6 +602,10 @@ pub struct LibraryOps {
     /// as it was, so the landed write still reads over it (a deleted row stays gone, a new
     /// title stays new) until a refresh that began after it answers.
     pub landed: BTreeMap<RecId, (Landed, Mono)>,
+    /// Edits this Mac saved, and when they landed (N63): the row reads the edited length at
+    /// once (`None`: back to the recording's own), and — as `landed` keeps a new title — a
+    /// refresh that began before the save landed doesn't bring the old length back.
+    pub edited: BTreeMap<RecId, (Option<u64>, Mono)>,
     /// When the token Mac's cleanup sweep last answered (DECISIONS B91): bytes under a
     /// tombstone, bytes no Mac can still finish, and spent or expired page keys reaped.
     pub cleaned: Option<Mono>,

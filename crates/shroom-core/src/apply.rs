@@ -2993,6 +2993,7 @@ fn library(w: &mut World, news: LibraryNews) -> Out {
                 // that landed before then are in its listing; later ones still read over it.
                 let began = w.inflight.ops.get(&Op::LibRefresh).map(|d| Mono(d.0.saturating_sub(Op::LibRefresh.deadline_ms()))).unwrap_or(Mono(0));
                 w.library_ops.landed.retain(|_, (_, at)| *at >= began);
+                w.library_ops.edited.retain(|_, (_, at)| *at >= began);
                 answered(w, Op::LibRefresh);
                 w.library_ops.refreshed = Some(now);
             } else if w.library_ops.refreshed.is_some() {

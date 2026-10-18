@@ -343,7 +343,7 @@ const AUG03: i64 = 1_785_758_400_000;
 const SEP30: i64 = 1_790_769_600_000;
 
 fn remote(id: &str, title: &str, at: i64, length_ms: u64) -> LibraryRow {
-    LibraryRow { rec: RecId(id.into()), title: title.into(), created: Wall(at), length_ms: Some(length_ms), live: true, owner: Some("m1".into()), poster: false }
+    LibraryRow { rec: RecId(id.into()), title: title.into(), created: Wall(at), length_ms: Some(length_ms), live: true, owner: Some("m1".into()), poster: false, edited_ms: None }
 }
 
 fn space_rows() -> Vec<LibraryRow> {
