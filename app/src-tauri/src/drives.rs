@@ -1097,7 +1097,7 @@ fn editor_layout(d: &Drive) -> Result<serde_json::Value, String> {
       }
       const r = (q) => { const e = document.querySelector(q); if (!e) return null; const b = e.getBoundingClientRect(); return [b.left, b.top, b.width, b.height]; };
       const v = document.querySelector("video");
-      return JSON.stringify({ track: r(".track"), chip: r(".chip button"), screen: r(".screen"), delete: r(".ask .b.filled"), video: v ? [v.duration, v.readyState] : null, pointer: window.__drive.at, presses: window.__drive.presses.slice(-12) });
+      return JSON.stringify({ track: r(".track"), chip: r(".chip button"), screen: r(".screen"), delete: r(".ask .b.filled"), play: r(".play"), video: v ? [v.duration, v.readyState] : null, paused: v ? v.paused : null, pointer: window.__drive.at, presses: window.__drive.presses.slice(-12) });
     })()"#;
     let w = d.app.get_webview_window(crate::runtime::presenter::EDITOR).ok_or("no editor window")?;
     let (tx, rx) = std::sync::mpsc::channel();
@@ -1138,6 +1138,12 @@ fn editor_origin(d: &Drive) -> Result<(f64, f64), String> {
 }
 
 /// A rectangle from the page, its centre on screen.
+/// Play, pressed with the pointer: a real click on the editor's play button.
+fn play_by_hand(d: &Drive, runner: &Runner, origin: (f64, f64)) -> Result<(), String> {
+    let at = editor_layout(d)?.get("play").and_then(|r| centre(origin, r)).ok_or("no play button on the page")?;
+    runner.ask(d, serde_json::json!({ "do": "click", "at": [at.0, at.1] }))
+}
+
 fn centre(origin: (f64, f64), r: &serde_json::Value) -> Option<(f64, f64)> {
     let n = |i: usize| r.get(i).and_then(serde_json::Value::as_f64);
     Some((origin.0 + n(0)? + n(2)? / 2.0, origin.1 + n(1)? + n(3)? / 2.0))
@@ -1316,10 +1322,18 @@ fn editor(d: &Drive) -> Result<(), String> {
         }
     }
 
+    // Playing when Done is pressed: the preview stops with it, and nothing plays on behind
+    // the faces that follow (the audio went on after Done, 2026-10-18).
+    play_by_hand(d, &runner, origin)?;
+    let playing = poll(3, || editor_layout(d).ok().filter(|l| l["paused"] == false));
+    d.check("Play plays the edit (a real click on it)", playing.is_some(), format!("{:?}", editor_layout(d).map(|l| l["paused"].clone())));
+
     // Done: the edit goes into the record, and the window makes the final video (B197 (a)).
     let want = snapshot(&d.rt).as_ref().and_then(|s| editor_body(s).map(|b| (cuts_of(s), b.edited_duration))).ok_or("no editor")?;
     d.act(Surface::Editor, Action::EditorDone);
     let s = d.wait("the final video, being made", 30, |s| s.editor.as_ref().is_some_and(|e| e.id == "editor-making" || e.id == "editor-keep-original"))?;
+    let stopped = poll(3, || editor_layout(d).ok().filter(|l| l["paused"] == true));
+    d.check("Done stops the preview: nothing plays on while the final video is made", stopped.is_some(), format!("{:?}", editor_layout(d).map(|l| l["paused"].clone())));
     let making = s.editor.as_ref().is_some_and(|e| e.id == "editor-making");
     runner.shot(d, crate::runtime::presenter::EDITOR, "editor-making")?;
     let shown = snapshot(&d.rt).and_then(|s| s.editor.map(|e| e.id));
@@ -1437,8 +1451,14 @@ fn editor(d: &Drive) -> Result<(), String> {
     d.check("… and the window plays that file, not the one it held before", played.is_some(), format!("{:?}", editor_layout(d).ok().and_then(|l| l.get("video").cloned())));
     std::thread::sleep(Duration::from_secs(3));
     runner.shot(d, crate::runtime::presenter::EDITOR, "editor-baked")?;
+    // Closed while playing: the window is only hidden, so its page lets go of the video, and
+    // nothing plays on behind it (the audio went on after the window closed, 2026-10-18).
+    play_by_hand(d, &runner, origin)?;
+    let playing = poll(3, || editor_layout(d).ok().filter(|l| l["paused"] == false));
     d.rt.post(Event::WindowClosed(WindowKind::Editor));
     d.wait("✕ closed it", 10, |s| s.editor.is_none())?;
+    let gone = poll(3, || editor_layout(d).ok().filter(|l| l["video"].is_null()));
+    d.check("closed while playing, the window lets go of its video: nothing plays behind it", playing.is_some() && gone.is_some(), format!("playing {}, then {:?}", playing.is_some(), editor_layout(d).map(|l| l["video"].clone())));
 
     // The second video isn't on this Mac: the editor fetches it; an edit, Done, and Esc at
     // the question is Keep for 2 days — the original kept, nothing baked.

@@ -454,6 +454,27 @@ export async function editorDrives({ browser, origin, mediaOrigin, entries, chec
   check("editor: Play at the end starts the edit over", again >= b.list.in && again < b.list.in + 1.5, String(again));
   await page.keyboard.press(" ");
 
+  // Done stops the preview: playing when the window moves on to saving (the same video, no
+  // longer editable), it pauses. And a window put away lets go of its video: it is only
+  // hidden, so nothing may play on behind it.
+  const isPlaying = () => page.evaluate(() => !!document.querySelector("video") && !document.querySelector("video").paused);
+  await page.keyboard.press(" ");
+  await page.waitForTimeout(400);
+  const playingAtDone = await isPlaying();
+  await page.evaluate((w) => window.__emit(w), { ...cutFace, id: "editor-saving", body: { ...cutFace.body, editable: false, can_undo: false, can_redo: false } });
+  await page.waitForTimeout(200);
+  check("editor: Done stops the preview (nothing plays on while it saves)", playingAtDone && !(await isPlaying()), String(playingAtDone));
+  await page.evaluate((w) => window.__emit(w), cutFace);
+  await page.keyboard.press(" ");
+  await page.waitForTimeout(400);
+  const playingAtClose = await isPlaying();
+  await page.evaluate(() => window.__emit(null));
+  await page.waitForTimeout(200);
+  const left = await page.evaluate(() => [...document.querySelectorAll("video")].map((v) => ({ paused: v.paused, src: v.currentSrc })));
+  check("editor: put away, the window lets go of its video, nothing playing behind it", playingAtClose && left.length === 0, `${playingAtClose} ${JSON.stringify(left)}`);
+  await page.evaluate((w) => window.__emit(w), cutFace);
+  await page.waitForTimeout(800);
+
   // A narrower window: the waveform redrawn to its new width, still crisp; nothing sideways.
   await page.setViewportSize(EDITOR_MIN);
   await page.waitForTimeout(150);
