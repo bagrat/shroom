@@ -33,7 +33,8 @@ async function aiSpace({ pieces = 25, words = SPOKEN, name = () => chat({ title:
   return env;
 }
 const ask = (env, body, { auth = OWNER_AIR.bearer, now = NOW, headers } = {}) => call(env, "POST", API, { body, auth, now, headers });
-const answerOf = async (env, body, opts) => { const res = await ask(env, body, opts); expect(res.status, JSON.stringify(await bodyOf(res))).toBe(200); return bodyOf(res); };
+/** The answer without its note for the Mac's log, which "what each step tells the Mac's log" holds. */
+const answerOf = async (env, body, opts) => { const res = await ask(env, body, opts); expect(res.status, JSON.stringify(await bodyOf(res))).toBe(200); const { note: _, ...rest } = await bodyOf(res); return rest; };
 const record = (env) => env.BUCKET.json(metaKey(REC));
 const whisperCalls = (env) => env.AI.calls.filter((c) => c.model === AI_MODELS.hear);
 const namingCalls = (env) => env.AI.calls.filter((c) => c.model !== AI_MODELS.hear);
@@ -505,7 +506,7 @@ describe("the free day (B207)", () => {
     const mark = env.BUCKET.json(LATER);
     expect(mark).toMatchObject({ after: MIDNIGHT, done: true, through: 10, reason: "daily" });
     expect(env.BUCKET.customMetadata(LATER)).toEqual({ since: String(NOW), after: String(MIDNIGHT) });
-    expect(record(env).naming).toEqual({ later: "daily", at: new Date(NOW).toISOString() });
+    expect(record(env).naming).toEqual({ later: "daily", at: new Date(NOW).toISOString(), code: "4006" });
     expect(record(env).title).toBe("Untitled — Oct 2");
     const page = await call(env, "GET", `/${REC}`, { headers: { cookie: cookieFor(M1, OWNER_MAC) } });
     expect(textOf(await page.text())).toContain(COPY.namingLater);
@@ -602,6 +603,64 @@ const vtt = async (env, query = "") => { const res = await call(env, "GET", `/_s
 /** WebVTT cues as [start, end, text]. */
 const cuesOf = (text) => [...text.matchAll(/(\d\d):(\d\d):(\d\d)\.(\d\d\d) --> (\d\d):(\d\d):(\d\d)\.(\d\d\d)\n([\s\S]*?)(?:\n\n|\n?$)/g)].map((m) => [
   Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3]) + Number(m[4]) / 1000, Number(m[5]) * 3600 + Number(m[6]) * 60 + Number(m[7]) + Number(m[8]) / 1000, m[9]]);
+
+describe("what each step tells the Mac's log (diagnostics)", () => {
+  // Bagrat, 2026-10-18 (relayed): a report from a Mac should show what happened in the space
+  // too. Each answer carries one short line for the Mac's log, and the record keeps how the
+  // naming went; neither ever holds a word said, a title, a key or a link.
+  const words = /\bs\d+[a-h]\b|spring|launch|budget|where we are|no such model|allocation/i;
+  async function steps(env, asks, opts) {
+    const notes = [];
+    for (const body of asks) {
+      for (let i = 0; i < 12; i++) {
+        const res = await ask(env, body, opts);
+        expect(res.status).toBe(200);
+        const b = await bodyOf(res);
+        if (b.note) notes.push(b.note);
+        if (!b.more) break;
+      }
+    }
+    for (const n of notes) expect(n).not.toMatch(words);
+    return notes;
+  }
+
+  it("a take's steps, one line each: the window heard, the early title, the name with its model, time, chapters and tokens", async () => {
+    const env = await aiSpace();
+    const notes = await steps(env, [{ rec: REC, through: 10 }, { rec: REC, through: 20 }, { rec: REC, done: true }]);
+    expect(notes[0]).toMatch(/^heard window 1 in \d+ ms, \d+ words so far$/);
+    expect(notes[1]).toMatch(/^early title by gpt-oss-120b in \d+ ms$/);
+    expect(notes[2]).toMatch(/^heard window 2 in \d+ ms, \d+ words so far$/);
+    expect(notes.at(-1)).toMatch(/^named by gpt-oss-120b in \d+ ms: \d+ chapters from \d+ words, 900\+80 tokens$/);
+    expect(record(env).named).toMatchObject({ ms: expect.any(Number), tokens: [900, 80] });
+    expect(record(env).named.fallback).toBeUndefined();
+  });
+
+  it("the second model says which one failed, and its code", async () => {
+    const env = await aiSpace({
+      fail: (model) => { if (model === AI_MODELS.name) throw new Error("5007: No such model"); },
+      name: () => responseOf({ title: "the spring launch, planned.", chapters: [] }),
+    });
+    const notes = await steps(env, [{ rec: REC, done: true }]);
+    expect(notes.at(-1)).toMatch(/^named by gemma-4-26b-a4b-it in \d+ ms: 0 chapters from \d+ words \(gpt-oss-120b failed: 5007\)$/);
+    expect(record(env).named).toMatchObject({ model: AI_MODELS.fallback, fallback: "5007" });
+  });
+
+  it("a wait says why, with Workers AI's code and nothing of its words: the free day, a busy model, a failure tried again, a take let go", async () => {
+    const usedUp = await aiSpace({ fail: (model) => { if (model === AI_MODELS.hear) throw new Error("AiError: 4006: you have used up your daily free allocation of 10,000 neurons."); } });
+    expect(await steps(usedUp, [{ rec: REC, through: 10 }])).toEqual(["waits for 00:00 UTC: the free day is used up (4006)"]);
+    expect(await steps(usedUp, [{ rec: REC, done: true }])).toEqual(["waiting (daily)"]);
+    expect(record(usedUp).naming).toMatchObject({ later: "daily", code: "4006" });
+
+    const busy = await aiSpace({ fail: (model) => { if (model === AI_MODELS.hear) throw new Error("3040: Capacity temporarily exceeded, please try again."); } });
+    expect(await steps(busy, [{ rec: REC, through: 10 }])).toEqual(["waits 5 min: busy (3040)"]);
+
+    const broken = await aiSpace({ fail: (model) => { if (model === AI_MODELS.hear) throw new Error("5007: No such model"); } });
+    const notes = [];
+    for (let i = 0; i < 5; i++) notes.push(...(await steps(broken, [{ rec: REC, done: true }], { now: NOW + i * 30 * MIN })));
+    expect(notes).toEqual(["waits 5 min: error 5007, try 1 of 5", "waits 10 min: error 5007, try 2 of 5", "waits 15 min: error 5007, try 3 of 5", "waits 20 min: error 5007, try 4 of 5", "let go after 5 tries: error 5007"]);
+    expect(record(broken).named).toMatchObject({ failed: true, code: "5007" });
+  });
+});
 
 describe("captions (B205 e, B208 b, B209 b)", () => {
   it("leaves lone hesitations out of the captions, which the words keep for voice cuts", () => {
