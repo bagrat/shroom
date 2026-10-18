@@ -21,7 +21,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use shroom_core::effect::CliAnswer;
-use shroom_core::event::{CliOp, Event};
+use shroom_core::event::{CliOp, Event, StartAsk};
 
 use super::Runtime;
 
@@ -41,7 +41,8 @@ pub fn op_of(line: &str) -> Option<CliOp> {
         return None;
     }
     match v["op"].as_str()? {
-        "record.start" => Some(CliOp::Start),
+        // How a start goes: the count and the label unless the command turned one off (N62).
+        "record.start" => Some(CliOp::Start(StartAsk { countdown: v["countdown"] != false, label: v["label"] != false })),
         "record.pause" => Some(CliOp::Pause),
         "record.resume" => Some(CliOp::Resume),
         "record.stop" => Some(CliOp::Stop),
@@ -100,7 +101,7 @@ pub fn spawn(rt: Runtime, pending: Pending) {
             };
             // Start is the popover's Start: the grants as macOS has them now go first, so
             // the core arms on the truth (commands::arms).
-            if op == CliOp::Start {
+            if matches!(op, CliOp::Start(_)) {
                 rt.post(Event::Os(super::os::grants()));
             }
             let id = pending.next.fetch_add(1, Ordering::SeqCst) + 1;
