@@ -476,7 +476,8 @@
    "date": "2026-07-25",
    "amends": [],
    "amended_by": [
-    "N58"
+    "N58",
+    "N61"
    ]
   },
   {
@@ -1122,7 +1123,8 @@
    "date": "2026-10-18",
    "amends": [
     "N58 (the video in the box, its still, its length and where it is served from)",
-    "N59 (the box holds the how-to video where it held the demo)"
+    "N59 (the box holds the how-to video where it held the demo)",
+    "N7 (the landing's video is no longer a self-recorded take)"
    ],
    "amended_by": []
   }
