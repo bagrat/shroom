@@ -9,10 +9,16 @@ import { fingerprint } from "../dev/page-fingerprint.mjs";
 
 const lock = JSON.parse(readFileSync(new URL("../page-version.json", import.meta.url), "utf8"));
 const versions = Object.keys(lock).filter((k) => k !== "_");
-const parts = (v) => v.split(".").map(Number);
+// The numbers, then the stage: an early build (`-early.<n>`, DECISIONS B220) sorts below its
+// release — the order the app's page compare keeps (shroom_cloud::wire::may_deploy_over).
+const parts = (v) => {
+  const [core, pre] = v.split("-");
+  const stage = pre === undefined ? Infinity : Number(pre.replace(/^early\./, ""));
+  return [...core.split(".").map(Number), stage];
+};
 const newer = (a, b) => {
   const [x, y] = [parts(a), parts(b)];
-  for (let i = 0; i < 3; i++) if ((x[i] ?? 0) !== (y[i] ?? 0)) return (x[i] ?? 0) > (y[i] ?? 0);
+  for (let i = 0; i < 4; i++) if ((x[i] ?? 0) !== (y[i] ?? 0)) return (x[i] ?? 0) > (y[i] ?? 0);
   return false;
 };
 
@@ -31,6 +37,14 @@ describe("the page's VERSION guard", () => {
 
   it("VERSION is the newest row", () => {
     for (const v of versions) expect(v === VERSION || newer(VERSION, v), `${v} is newer than VERSION ${VERSION}`).toBe(true);
+  });
+
+  it("early builds sort between the releases around them (B220)", () => {
+    const order = ["0.1.24", "0.1.25-early.1", "0.1.25-early.2", "0.1.25-early.10", "0.1.25", "0.1.26-early.1"];
+    for (let i = 1; i < order.length; i++) {
+      expect(newer(order[i], order[i - 1]), `${order[i]} > ${order[i - 1]}`).toBe(true);
+      expect(newer(order[i - 1], order[i]), `${order[i - 1]} < ${order[i]}`).toBe(false);
+    }
   });
 
   it("no two versions shipped the same page", () => {

@@ -909,6 +909,8 @@ fn log_boot(rt: &Runtime, home_override: bool, quiet: bool, launch: LaunchKind) 
     let _ = BUILD.set(build.clone());
     rt.log(&format!("boot: {build}"));
     rt.log(&format!("boot: launch {}", launch_word(launch)));
+    // Which releases this Mac takes (B220): a report's log says whether it ran a pre-release.
+    rt.log(&format!("boot: channel {}", updater::mac_channel(rt).word()));
     rt.log(&format!(
         "boot: home {} · shell {} · cloud {}",
         if home_override { "override" } else { "default" },
@@ -1932,7 +1934,7 @@ mod tests {
         // The update step names the version one patch above the tree's: the next release.
         let conf: serde_json::Value = serde_json::from_str(include_str!("../../tauri.conf.json")).unwrap();
         let cur = shroom_update::Version::parse(conf["version"].as_str().unwrap()).unwrap();
-        let next = shroom_update::Version(cur.0, cur.1, cur.2 + 1).to_string();
+        let next = shroom_update::Version::new(cur.0, cur.1, cur.2 + 1).to_string();
         // Not Camera: it's the camera row's accessible name, shown nowhere.
         for label in [
             copy::login_box(),
