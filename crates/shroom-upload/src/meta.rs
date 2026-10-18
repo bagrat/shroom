@@ -13,10 +13,14 @@ pub enum State {
     Deleted,
 }
 
+/// The recording's files, as keys in the bucket. Readers follow these keys, never the
+/// names they'd expect: once an edit becomes the video (B197's bake) `hls` is null and `mp4`,
+/// `poster` and `teaser` name the edit's own files (`rec/<id>/edit-<rev>…`).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Media {
-    pub hls: String,
+    /// The stream's master playlist; null once the video is one file (baked).
+    pub hls: Option<String>,
     pub mp4: Option<String>,
     pub poster: Option<String>,
     /// The unfurl teaser's key (additive, B27).
@@ -232,6 +236,25 @@ mod tests {
         s.list.cuts[0].applied = false;
         m.duration_sec = Some(272.4);
         assert_eq!(m.edited_sec(), None, "the identity is no edit");
+    }
+
+    /// A baked record (B197): no stream, the edit's own files. It reads, and writes back
+    /// with its stream still null, never dropped.
+    #[test]
+    fn a_record_whose_media_names_no_stream_reads() {
+        let json = r#"{"schema":1,"id":"x","state":"live","createdAt":"2026-10-02T00:00:00Z","publishedAt":null,
+            "deletedAt":null,"title":"T","durationSec":38.0,"captions":null,"owner":null,"progress":null,
+            "media":{"hls":null,"mp4":"rec/x/edit-3.mp4","poster":"rec/x/edit-3-poster.jpg","teaser":"rec/x/edit-3-teaser.mp4","width":1920,"height":1080},
+            "bakedFrom":[{"at":"2026-10-20T09:30:00Z","keep":[[2.0,10.0],[20.0,50.0]]}]}"#;
+        let m: Meta = serde_json::from_str(json).unwrap();
+        let media = m.media.as_ref().unwrap();
+        assert_eq!((media.hls.as_deref(), media.mp4.as_deref()), (None, Some("rec/x/edit-3.mp4")));
+        let back = serde_json::to_value(&m).unwrap();
+        assert_eq!(back["media"]["hls"], Value::Null);
+        assert_eq!(back["bakedFrom"][0]["keep"][1], serde_json::json!([20.0, 50.0]));
+        // An older record still reads its stream.
+        let old: Media = serde_json::from_str(r#"{"hls":"rec/x/master.m3u8","mp4":null,"poster":null,"width":1,"height":1}"#).unwrap();
+        assert_eq!(old.hls.as_deref(), Some("rec/x/master.m3u8"));
     }
 
     #[test]

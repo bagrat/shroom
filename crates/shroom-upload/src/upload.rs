@@ -384,7 +384,7 @@ pub fn go_live(
             m.state = State::Live;
             m.published_at.get_or_insert_with(now_iso);
             m.duration_sec = Some((duration * 1000.0).round() / 1000.0);
-            m.media = Some(Media { hls: keys::master(id), mp4: None, poster: poster.clone(), teaser: None, width, height });
+            m.media = Some(Media { hls: Some(keys::master(id)), mp4: None, poster: poster.clone(), teaser: None, width, height });
             m.progress = Some(Progress { done: stream, total, updated_at: now_iso() });
         })?;
         report.duration_sec = duration;
