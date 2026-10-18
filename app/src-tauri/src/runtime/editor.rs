@@ -731,7 +731,20 @@ fn upkeep(rt: &Runtime, door: &mut Doorway) -> Result<(u32, u32), FailClass> {
             }
         }
     }
-    let pruned = prune(rt, &rows.iter().map(|r| r.id.as_str()).collect::<Vec<_>>());
+    // A Library not read yet lists nothing: then only age and the record itself drop a folder.
+    let listed: Option<Vec<&str>> = (!rows.is_empty()).then(|| rows.iter().map(|r| r.id.as_str()).collect());
+    let pruned = prune(rt, listed.as_deref(), &mut |id| {
+        let dir = rt.home.edits().join(id);
+        if !dir.join(SOURCE_KEY).is_file() {
+            return false;
+        }
+        match read.iter().find(|(r, _)| r == id).map(|(_, m)| Ok(m.clone())).unwrap_or_else(|| record(rt, door, &space, id)) {
+            Ok(m) => outdated(&dir, &m),
+            // Deleted, or no record at all.
+            Err(FailClass::Refused) => true,
+            Err(_) => false,
+        }
+    });
     rt.log(&format!(
         "editor upkeep: {} edited record(s) read, {baked} baked, {copies} cop{} made, {pruned} folder(s) dropped, in {} ms",
         read.len(),
@@ -741,10 +754,11 @@ fn upkeep(rt: &Runtime, door: &mut Doorway) -> Result<(u32, u32), FailClass> {
     Ok((baked, copies))
 }
 
-/// The recordings' folders in `edits/` that nobody needs: a recording the space no longer
-/// lists (deleted, or another space's), or one unused a week — never the one the editor
-/// serves now. How many went.
-fn prune(rt: &Runtime, listed: &[&str]) -> usize {
+/// The recordings' folders in `edits/` that nobody needs: a recording the Library no longer
+/// lists (deleted, or another space's), one unused a week, or one whose fetched video its
+/// record no longer plays (`stale`: baked on another Mac, deleted) — never the one the
+/// editor serves now. How many went.
+fn prune(rt: &Runtime, listed: Option<&[&str]>, stale: &mut dyn FnMut(&str) -> bool) -> usize {
     let Ok(entries) = std::fs::read_dir(rt.home.edits()) else { return 0 };
     let now = SystemTime::now();
     let mut gone = 0;
@@ -754,12 +768,18 @@ fn prune(rt: &Runtime, listed: &[&str]) -> usize {
             continue;
         }
         let used = last_used(&e.path());
-        if !listed.contains(&name.as_str()) || unused(used, now) {
+        if listed.is_some_and(|l| !l.contains(&name.as_str())) || unused(used, now) || stale(&name) {
             let _ = std::fs::remove_dir_all(e.path());
             gone += 1;
         }
     }
     gone
+}
+
+/// Whether a folder's fetched video is one its record no longer plays (baked since): it would
+/// never be used again.
+pub fn outdated(dir: &Path, meta: &Meta) -> bool {
+    std::fs::read_to_string(dir.join(SOURCE_KEY)).is_ok_and(|k| k.trim() != video_key(meta))
 }
 
 /// When anything in a folder was last written (an open rewrites its peaks).
@@ -867,6 +887,19 @@ mod tests {
         again.extra.insert(records::BAKED_FROM.into(), serde_json::json!([{}, {}]));
         assert!(moved_on(Some(&Played::of(&baked)), &again), "a second bake, same file name or not");
         assert!(!moved_on(None, &baked), "nothing known of the open: the save goes ahead");
+    }
+
+    #[test]
+    fn a_fetched_video_its_record_no_longer_plays_is_outdated() {
+        let tmp = tempfile::tempdir().unwrap();
+        let original = meta("AbCd", Some("rec/AbCd/video.mp4"), Some(10.0));
+        let baked = meta("AbCd", Some("rec/AbCd/edit-1.mp4"), Some(6.0));
+        assert!(!outdated(tmp.path(), &original), "nothing fetched: a take's peaks only");
+        std::fs::write(tmp.path().join(SOURCE_KEY), b"rec/AbCd/video.mp4\n").unwrap();
+        assert!(!outdated(tmp.path(), &original));
+        assert!(outdated(tmp.path(), &baked), "baked on another Mac");
+        std::fs::write(tmp.path().join(SOURCE_KEY), b"rec/AbCd/edit-1.mp4").unwrap();
+        assert!(!outdated(tmp.path(), &baked), "the baked file, fetched since");
     }
 
     #[test]
