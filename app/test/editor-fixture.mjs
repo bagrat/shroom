@@ -106,6 +106,9 @@ export function editorScenes(
       variant: "editor-save-failed",
       scene: window("editor-save-failed", body({ footer: "Couldn't save your edit. Check your connection, then press Done again.", footer_tone: "amber" })),
     },
+    // The owner page's Edit in shroom asked for another video while this one is open (N69): its
+    // amber line in the footer line's place until the next change, everything else as it was.
+    { variant: "editor-editing-another", scene: window("editor", body({ footer: "You're editing another video — press Done, then Edit again.", footer_tone: "amber" })) },
     // The space turned the save down (B199): its amber line in the save-failed line's place,
     // no Revert to original, nothing steps, Close in Done's place; Return and Esc are Close.
     {
