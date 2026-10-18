@@ -25,7 +25,7 @@
 //   /_shroom/api/…           the app's door for members and Macs without the token:
 //                            peek · join · enroll · me · mint · key · library · members ·
 //                            invites · invites/<iid> · members/<mid> · devices/<did|self> ·
-//                            mark · health · cleanup — JSON carrying "shroom":1, success or error
+//                            mark · health · cleanup · plays — JSON carrying "shroom":1, success or error
 //
 // Who is who (WORKER-INTERFACE §2, §3): the roster (.shroom/registry/roster.json) holds
 // members, Macs and invites, and every change to it is one compare-and-swap. A Mac proves
@@ -1552,6 +1552,7 @@ async function route(request, env, url, now) {
     case "health": only("POST"); return health(request, env, await body(request), now);
     case "gone": only("POST"); return gone(request, env, await body(request), now);
     case "cleanup": only("POST"); return cleanup(request, env, await body(request), now);
+    case "plays": return plays(request, env, url, now);
   }
   const target = path.match(/^(invites|members|devices)\/([^/]+)$/);
   if (target) {
@@ -2433,6 +2434,8 @@ async function gone(request, env, b, now) {
   if (owner !== who.mid && !who.ownerClass) throw new Refusal(403, "not-yours");
   if (meta.exists && !meta.deleted) throw new Refusal(409, "not-deleted");
   await env.BUCKET.put(`${GONE}${b.rec}`, JSON.stringify({ v: 1, by: who.did, at: iso(now) }), { httpMetadata: JSON_TYPE });
+  // Its plays go with it (N68): a deleted video's counts are no one's to keep.
+  await env.BUCKET.delete(`${VIEWS}${b.rec}.json`).catch(() => {});
   return noContent();
 }
 
@@ -2583,12 +2586,12 @@ const JOIN_STYLE = `body{padding:0 16px 24px;font-size:15px;line-height:1.55}
 // `viewers` is unique-ish: a viewer is the first 8 hex of SHA-256(the day's salt, the
 // address, the browser's name, the id), kept for that day only; the salt
 // (`.shroom/views/salt.json`) is replaced each day, so yesterday's hashes can't be
-// recomputed. `.shroom/views/since.json` remembers when counting began; `.shroom/views.off`
-// turns counting off. Nothing under .shroom/ is ever served, and no recording credential
+// recomputed. `.shroom/views/since.json` remembers when counting began; `.shroom/plays.json`
+// (`{on, at}`, owner-class's switch, N68) turns counting off when `on` is false. Nothing under .shroom/ is ever served, and no recording credential
 // reaches it, so a Mac can't write plays either.
 
 const VIEWS = ".shroom/views/";
-const VIEWS_OFF = ".shroom/views.off";
+const PLAYS_KEY = ".shroom/plays.json";
 const VIEW_SALT = `${VIEWS}salt.json`;
 const VIEW_SINCE = `${VIEWS}since.json`;
 const VIEW_BODY_MAX = 512;
@@ -2626,11 +2629,36 @@ async function viewBeacon(request, env, url, id, now) {
   if (!b || (b.e !== "play" && b.e !== "end") || typeof b.t !== "string" || !VIEW_TOKEN.test(b.t)) return plain(400, "");
   const f = b.e === "end" ? Number(b.f) : 0;
   if (b.e === "end" && !(f >= 0 && f <= 1)) return plain(400, "");
-  const [meta, off] = await Promise.all([readMeta(env, id).catch(() => null), env.BUCKET.head(VIEWS_OFF).catch(() => null)]);
-  if (off || !meta || meta.state !== "live") return noContent();
+  const [meta, on] = await Promise.all([readMeta(env, id).catch(() => null), playsOn(env).catch(() => true)]);
+  if (!on || !meta || meta.state !== "live") return noContent();
   const viewer = b.e === "play" ? await viewerHash(env, request, id, now) : null;
   await countView(env, id, { e: b.e, t: b.t, f, viewer }, now, Number(meta.durationSec) > 0 ? Number(meta.durationSec) : 0).catch(() => {});
   return noContent();
+}
+
+/** Whether the space counts plays: on unless owner-class turned it off (N68). @param {Env} env */
+async function playsOn(env) {
+  const object = await env.BUCKET.get(PLAYS_KEY);
+  if (!object) return true;
+  try { return JSON.parse(await object.text()).on !== false; } catch { return true; }
+}
+
+/** `GET /_shroom/api/plays` → `{on}`, any device; `POST {on}` sets it, owner-class only —
+ * the space-global switch beside the mark's (§4.15). Turning it off stops counting; what
+ * was counted stays, so the suggestions keep their history if it's turned on again.
+ * @param {Request} request @param {Env} env @param {URL} url @param {number} now */
+async function plays(request, env, url, now) {
+  if (request.method === "GET") {
+    await authed(request, env);
+    return answer({ on: await playsOn(env) });
+  }
+  if (request.method !== "POST") throw new Refusal(405, "method");
+  const { who } = await authed(request, env);
+  ownerClassOnly(who);
+  const b = await body(request);
+  if (typeof b.on !== "boolean") throw bad();
+  await env.BUCKET.put(PLAYS_KEY, JSON.stringify({ on: b.on, at: iso(now) }), { httpMetadata: JSON_TYPE });
+  return answer({ on: b.on });
 }
 
 /** The day's salt, made when the day turns (create-only, then by CAS: two isolates racing
