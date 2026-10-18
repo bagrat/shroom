@@ -803,12 +803,12 @@ HTML answers are 200 `text/html`, `noindex`, `no-store`, `no-referrer`, CSP
 | Route | Behaviour |
 |---|---|
 | `/_shroom/hls.js` | `.shroom/player/hls.min.js`, immutable for a year |
-| `/_shroom/status/<id>` | Public JSON, not shroom-shaped. Absent → `waiting`. Deleted or sealed → `removed`. Live with HLS → `{live, poster, mp4, teaser, thumb, dur, drained}` (`thumb`: the newest Copy thumbnail picture for the title, or null; D:B164. `dur`: the length in seconds, 0 when unknown, which a page opened while the video uploaded draws on its picture; D:B165) (+ `pct`, `stalled` until drained). Uploading → `{uploading, pct, stalled}`. Else, or a throwing read → `unavailable` (D:B94). `pct` ≤ 99. `stalled` = `progress.updatedAt` (else `createdAt`) older than 120 s. |
-| `/m/<id>/<file>` | No empty/`.`/`..` segment; only `m3u8 m4s mp4 jpg gif vtt` (else 404, D:B125; `gif` for Copy thumbnail's loop, D:B164). Reads `rec/<id>/<file>` beside the record: deleted or sealed → 404, record throws → 503, absent → served. Range → 206. `public, max-age=3600`. Media answers are `nosniff` with `content-security-policy: sandbox; default-src 'none'`. |
-| `/d/<id>` | Needs a live record with `media.mp4` (else 404). Streams `rec/<id>/video.mp4` as an attachment named after the title. Storage failure → 503. |
-| `/oembed?url=` | This origin's `/<id>` → `{version, type:"video", width, height, html (iframe ?embed=1), title?, thumbnail_*?}`, else 404 |
+| `/_shroom/status/<id>` | Public JSON, not shroom-shaped. Absent → `waiting`. Deleted or sealed → `removed`. Live with HLS → `{live, poster, mp4, teaser, thumb, dur, drained}` (`thumb`: the newest Copy thumbnail picture for the title, or null; D:B164. `dur`: the length in seconds, 0 when unknown, which a page opened while the video uploaded draws on its picture; D:B165) (+ `pct`, `stalled` until drained). With an edit (N63, D:B195; §4.18): `dur` is the edited length, `keep` the ranges that play, `copy` `{src, dur, poster}` once its permanent copy is current; `mp4` says Download has something to hand over, `poster`/`teaser` are what plays. Uploading → `{uploading, pct, stalled}`. Else, or a throwing read → `unavailable` (D:B94). `pct` ≤ 99. `stalled` = `progress.updatedAt` (else `createdAt`) older than 120 s. |
+| `/m/<id>/<file>` | No empty/`.`/`..` segment; only `m3u8 m4s mp4 jpg gif vtt` (else 404, D:B125; `gif` for Copy thumbnail's loop, D:B164). Reads `rec/<id>/<file>` beside the record: deleted or sealed → 404, record throws → 503, absent → served. While the record's edit has a current permanent copy (N63 step 3, D:B195) only the copy's own files, `poster.jpg` and `thumb-<16 hex>.gif\|jpg` are served; the original's stream, `teaser.mp4`, `video.mp4` and anything else → 404, GET, HEAD and Range alike (a stale copy or no edit serves them again). Range → 206. `public, max-age=3600`. Media answers are `nosniff` with `content-security-policy: sandbox; default-src 'none'`. |
+| `/d/<id>` | The video as it plays, as an attachment named after the title: a live record with no edit and `media.mp4` → `rec/<id>/video.mp4`; with an edit, its current permanent copy → `rec/<id>/edit-<n>.mp4` (a name `editsOf` validated, never one taken as is); an edit whose copy isn't up, or anything else → 404 (N63). Storage failure → 503. |
+| `/oembed?url=` | This origin's `/<id>` → `{version, type:"video", width, height, html (iframe ?embed=1), title?, thumbnail_*?}` (the thumbnail an edit's copy's own first frame once it's up, N63), else 404 |
 | `/<seg>?k=<k>` | Redeem (below) |
-| `/<id>?embed=1` | The player or a line. The mark follows the switch; never owner mode. |
+| `/<id>?embed=1` | The player or a line, an edit applied as on the page (§4.18). The mark follows the switch; never owner mode. |
 | `/<id>` | The watch page (§4.18). Cookie checked live (§3.5). A storage failure → unavailable + `x-shroom-unavailable: storage[-<code>]` (D:B94). |
 | `POST /_shroom/title/<id>` | Same-origin and a live cookie, else 403. Title collapsed, trimmed, ≤ 200; empty → 400. Sealed (§4.20) → 409, whatever the meta says; no meta → 404; unparseable or deleted → 409; not `mayEdit` → 403. If-Match sets `title` and `titled:true` → `200 {"title"}`. 5 lost CAS → 503. |
 | `POST /_shroom/thumb/<id>` | Copy thumbnail's picture (N46, D:B164). Same-origin and a live cookie that may edit the video, else 403. The body is the picture: a GIF (`GIF87a`/`GIF89a`, ≤ 640 wide — the teaser's own width, D:B165 — ≤ 800 KiB) or a JPEG (`FF D8 FF`, its frame header ≤ 1200 wide, ≤ 300 KiB), its first bytes agreeing with `content-type` (else 415; too wide → 400; too big → 413). `x-shroom-title` (URI-encoded) is the title it was drawn for, empty for an untitled video; it must be the record's (`titled` and `title`) at the write, else 409. The video must be live and not sealed (else 409; no meta → 404). At most 40 `thumb-` files per video (else 429). Stored as `rec/<id>/thumb-<first 16 hex of SHA-256>.<gif\|jpg>` (`image/gif`/`image/jpeg`); the record's `thumb` becomes `{title, gif?, jpg?}` under If-Match, starting over when the title differs → `200 {"url"}`. Files of earlier titles stay, so a paste already sent keeps its picture. |
@@ -856,7 +856,7 @@ Only the Worker writes it. `setHealth` reads first and puts only on a change (ab
 | absent | anyone else | on its way: 5 s refresh, stall clock (`sessionStorage`; stalled line after 120 s, D:B94 a) |
 | uploading, or live with HLS | mine | the owner page: "Uploading — N%. Your link already works."; stalled and undrained, "Waiting for connection — …", or with health `blocked` "Waiting for your space — …" (owner-class) / `waitingFor(members[m].inviter)` (a member; no inviter → the connection line); drained, no line |
 | uploading | others | on its way, or the stalled line |
-| live with HLS | others | the player (+ Download if `media.mp4`). It plays `video.mp4` when `media.mp4` is set and `rec/<id>/v0/stream.m3u8` (read beside the record) names one `EXT-X-MAP`; else `master.m3u8` (D:B177). The owner page and the embed choose the same way |
+| live with HLS | others | the player (+ Download if `media.mp4`). It plays `video.mp4` when `media.mp4` is set and `rec/<id>/v0/stream.m3u8` (read beside the record) names one `EXT-X-MAP`; else `master.m3u8` (D:B177). The owner page and the embed choose the same way. **An edit** (`meta.edits`, N63, D:B195) rides the record already read: `editsOf` (a port of `shroom_edit::EditList::checked` + `keep`, clamped to `durationSec`, at most 500 applied cuts) hands the player only the ranges that play, never the list or its transcript text (`removed`, `resumes`, `why`). The player starts at the trim's in, skips each cut (every frame while playing, and on `timeupdate`/`seeking`), stops at the out, and counts its time, seek bar, ←/→ and Home/End in edited time; the edited length is the page's, the unfurl's `og:video:duration`, the status's and Copy thumbnail's. Download waits for the copy. Once the edit's permanent copy is current (`copy.rev == rev`) the player plays `/m/<id>/<copy.file>` as it is, with the copy's own poster and teaser (page, unfurl, Copy thumbnail); a player still on the original when the copy lands moves over to it when the original answers 404 (it asks the status) |
 | else | anyone | unavailable (30 s refresh) |
 
 The owner page polls `/_shroom/status/<id>`; its waiting words come from the render
@@ -1150,7 +1150,16 @@ short truncated pages (`pageSize`), `preconditionThrows`, `refuse(key, n)` (C5),
 - `owner.test.js` (the mark, D:B108/B110), `page.test.js` and `faces.test.js` (D:B49,
   B94), `icon.test.js`, `copy.test.js`, `unfurl.test.js`, `latency.test.js`,
   `vendor.test.js`, `page-version.test.js` (§6.10).
-- `workerd/contract.workerd.mjs`: the same file under workerd.
+- `edits.test.js` (N63, D:B195): `editsOf` and the player's own arithmetic held to
+  `crates/shroom-edit/tests/keep-vectors.json`; bad data (not numbers, not objects, a
+  100,000-cut list); the page, embed, owner page, unfurl, oEmbed, status, `/d/` and `/m/`
+  with no edit, an edit, a stale copy and a current one; step 3's 404s; no read of its own;
+  no transcript text in anything a viewer gets; the player's skip, time, seek bar and keys,
+  and its move to the copy, against a stand-in video.
+- `workerd/contract.workerd.mjs`: the same file under workerd (an edited record and its copy
+  among it).
+- `dev/page-drive.mjs` (`npm run drive:page`, not CI): the page in headless Chromium and
+  WebKit, an edited record among it, played at 2× and sampled so a cut moment never shows.
 
 Rust: `shroom-cloud` units (shape rule, `*Next` tables, `parse_link`, proof, redaction),
 `member_vector.rs` (golden vector), `registry_fake.rs`, `wizard_fake.rs`,

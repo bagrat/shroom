@@ -458,6 +458,7 @@ Macs write over S3 (SigV4, `https://<account>.r2.cloudflarestorage.com`, region 
 | `meta/<id>.json` | the record and tombstone; the recording Mac, Library, the Worker's title (D:B21) |
 | `rec/<id>/master.m3u8`, `rec/<id>/v0/{init.mp4, init_<k>.mp4, seg_NNNNN.m4s, stream.m3u8}` | the stream (local names kept) |
 | `rec/<id>/poster.jpg`, `teaser.mp4`, `video.mp4` | unfurl poster and teaser (D:B27); the single-file copy, title-independent |
+| `rec/<id>/edit-<rev>.mp4`, `edit-<rev>-poster.jpg`, `edit-<rev>-teaser.mp4` | an edit's permanent copy, its first frame and teaser, cut by the Mac after a save and named in `meta.edits.copy`; the previous revision's go once a newer copy lands or the edit is reverted (N63, D:B195) |
 | `rec/<id>/tx/*` | reserved, never written |
 | `.shroom/manifest.json` | `{schema:1, createdAt}`; a bucket is a shroom space iff it holds it; wiring, last, create-only |
 | `.shroom/player/hls.min.js`, `.shroom/cookie.key` | the pinned player (D:B30); the cookie's HMAC key (create-only) |
@@ -466,7 +467,8 @@ Macs write over S3 (SigV4, `https://<account>.r2.cloudflarestorage.com`, region 
 | `.shroom/keys/<sha256(k)>` | one-time page-key grants |
 | `.shroom/gone/<id>` | deletion seals no recording credential reaches (D:B125 M1) |
 
-No `.shroom/` key is ever served: `/m/` reads only `rec/<id>/…`, `/d/` only `video.mp4`.
+No `.shroom/` key is ever served: `/m/` reads only `rec/<id>/…`, `/d/` only `video.mp4` or
+an edit's current copy (`edit-<n>.mp4`).
 
 ### 5.2 Recording id
 
@@ -486,12 +488,22 @@ Registry ids are `d_`/`m_`/`i_` + 16 chars.
   "captions": null, "owner": null|"<member>",   // informational; ownership is the ledger (D:B54 f)
   "progress": null | { "done", "total", "updatedAt" }, "markers"?: [seconds],
   "titled"?: true,                                  // the Worker's title save (N26)
-  "thumb"?: { "title": null|"…", "gif"?: "thumb-<16 hex>.gif", "jpg"?: "thumb-<16 hex>.jpg" } }  // Copy thumbnail, the Worker's (D:B164)
+  "thumb"?: { "title": null|"…", "gif"?: "thumb-<16 hex>.gif", "jpg"?: "thumb-<16 hex>.jpg" },  // Copy thumbnail, the Worker's (D:B164)
+  "edits"?: { "version": 1, "source_duration", "in", "out",                    // the editor's (N63, D:B195)
+              "cuts": [{ "start", "end", "kind", "confidence", "applied", "removed", "resumes"?, "why"? }],
+              "rev", "copy"?: { "rev", "file": "edit-<rev>.mp4", "duration", "poster"?, "teaser"? } } }
 ```
 
 `media` holds keys. Additive only; unknown fields kept (`extra`). **Every rewrite is
 read-modify-write under `If-Match`** (`upload::update_meta`), retried on 412, stopping at
 `deleted` (D:B21).
+
+`edits` is `shroom_edit::Saved`: written only by a Mac, the editor lane's save (each bumps
+`rev`) and its permanent copy (`copy`, current only while `copy.rev == rev`), over the
+rename's door; the Worker's title and thumbnail rewrites keep it as written. The Worker
+reads from it only the ranges that play and the current copy's names (`worker.js`
+`editsOf`, §10): the cuts' transcript text (`removed`, `resumes`, `why`, a later voice
+cut's) never reaches a viewer. An edit that leaves everything in is no edit.
 
 ### 5.4 Index, list-on-read, multi-writer safety
 
@@ -598,10 +610,10 @@ foreign `v`. `VERSION` 0.1.9, `IFACE` 2.
 |---|---|
 | `GET /<id>` / `?embed=1` | the page by record face (§10) / the embed face, no `X-Frame-Options` |
 | `GET /<id>?k=<key>` | spend the grant by CAS → `shroom_owner` cookie → 302 to the clean URL |
-| `GET /m/<id>/<file>` | `rec/<id>/…` with Range/HEAD; only `.m3u8 .m4s .mp4 .jpg .vtt`; `nosniff`, `CSP: sandbox`; record read beside: deleted → 404, unreadable → 503 |
-| `GET /d/<id>` | `video.mp4` named from the live title, Range forwarded |
+| `GET /m/<id>/<file>` | `rec/<id>/…` with Range/HEAD; only `.m3u8 .m4s .mp4 .jpg .vtt`; `nosniff`, `CSP: sandbox`; record read beside: deleted → 404, unreadable → 503; an edit's copy current → only its files, `poster.jpg` and `thumb-*` (N63) |
+| `GET /d/<id>` | `video.mp4` — or an edit's current copy; nothing while an edit waits for one — named from the live title, Range forwarded |
 | `GET /oembed?url=` | iframe of the embed face |
-| `GET /_shroom/hls.js`, `/_shroom/ping`, `/_shroom/status/<id>` | the player (immutable); `{shroom, iface, version}` without storage; the page's poll (`drained`, `pct`, `stalled`) |
+| `GET /_shroom/hls.js`, `/_shroom/ping`, `/_shroom/status/<id>` | the player (immutable); `{shroom, iface, version}` without storage; the page's poll (`drained`, `pct`, `stalled`; an edit's `keep` and `copy`) |
 | `POST /_shroom/title/<id>`, `/_shroom/mark` | cookie title edit (`etagMatches`); the mark switch (owner-class) |
 | `GET /favicon.{svg,png,ico}` | the icon carried in the module (D:B109) |
 | `GET /join/<code>` | the join page faces; opening never uses the invite |
@@ -693,6 +705,20 @@ and ~47 in Safari (it reads ~3 MB at a time), against ~56–58 (`worker/dev/view
 | any read failure | *unavailable* (30 s refresh; status `{state:"unavailable"}`; `/d/` 503; code only in `x-shroom-unavailable`) |
 
 A Worker that is gone, deploying or over its cap shows Cloudflare's page.
+
+**Edits** (N63, D:B195): the record's `edits` (§5.3) rides the read the page makes anyway.
+`editsOf` ports `EditList::checked` + `keep` (clamped to `durationSec`, at most 500 applied
+cuts; held with the player's own arithmetic to `crates/shroom-edit/tests/keep-vectors.json`)
+and hands the player only the ranges that play. Over `video.mp4` and the stream alike the
+player starts at the trim's in, skips each cut — every frame while playing, and on
+`timeupdate` and `seeking` — and stops at the out, its time, seek bar and keys in edited
+time; the page, the unfurl's `og:video:duration`, the status and Copy thumbnail show the
+edited length; Download waits for the copy. Once the edit's permanent copy is current the
+page and the embed play it as it is, with its own poster and teaser, and `/d/` hands it
+over. Then (step 3) `/m/` serves only the copy's files, `poster.jpg` and `thumb-*`: the
+original's stream, teaser and `video.mp4` answer 404, and a player still on the original
+moves over to the copy at the same edited moment when they do. Until the copy lands the
+original stays reachable at its addresses, so the edit holds only for what the page plays.
 
 **Owner faces (cookie):** editable title (placeholder kept if untouched; Enter or click-away
 saves; emptied restores), player, Copy link and Download as icons, the upload line; members
