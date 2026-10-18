@@ -21,8 +21,8 @@
 
 use shroom_core::scene::{Face, Scene, SettingsPane};
 use shroom_core::world::{
-    Access, Cause, Confirm, Device, FailClass, Fork, LaunchKind, Op, Paste, Phase, Role, SavedCause, SettingsTab, SourceId, StopOutcome, TokenVerdict,
-    UpdateOffer, WindowKind, WorkerFact, World,
+    Access, Cause, Confirm, Device, EditorMedia, EditorSave, FailClass, Fork, LaunchKind, Op, Paste, Phase, Role, SavedCause, SettingsTab, SourceId,
+    StopOutcome, TokenVerdict, UpdateOffer, WindowKind, WorkerFact, World,
 };
 
 /// One reading: the state id, and the words of its fixture's `entry_conditions` it rests
@@ -123,6 +123,16 @@ pub const READS: &[Read] = &[
     r("settings-space-member", "This Mac is a member (not owner-class)."),
     // ── Send feedback (N60) ──
     r("send-feedback", "The ready popover's first header icon, Send feedback, clicked"),
+    // ── the editor (N63) ──
+    r("editor", "Edit… on a live row in the Library (N63), when the video is on this Mac"),
+    r("editor-getting", "Edit… on a live row whose video isn't on this Mac."),
+    r("editor-cant-get", "The fetch in editor-getting failed."),
+    r("editor-saving", "Done (or ✕) in editor with changes, or Done again in editor-save-failed."),
+    r("editor-save-failed", "A save from editor-saving failed."),
+    r("editor-save-refused", "A save from editor-saving the space turned down"),
+    r("editor-making", "The save landed in editor-saving with something left out."),
+    r("editor-making-failed", "Making the final video failed in editor-making."),
+    r("editor-keep-original", "The final video landed while the editor was open."),
 ];
 
 /// Where the fixtures don't say, and the oracle names nothing (each a reason, not a copy of
@@ -147,6 +157,8 @@ pub struct Named {
     pub settings: Option<Option<Win>>,
     /// The Send feedback window (N60).
     pub feedback: Option<Win>,
+    /// The editor (N63).
+    pub editor: Option<Win>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -647,6 +659,7 @@ pub fn name(w: &World) -> Named {
         onboarding: onboarding(w),
         settings: settings(w),
         feedback: feedback(w),
+        editor: editor(w),
     }
 }
 
@@ -654,6 +667,33 @@ pub fn name(w: &World) -> Named {
 /// header lives in `config` only (N60).
 fn feedback(w: &World) -> Option<Win> {
     (shows(w, WindowKind::Feedback) && has_space(w)).then(|| Win { id: "send-feedback", faces: vec![] })
+}
+
+/// The editor, open from a live row's Edit… once a space exists (N63), its state by the
+/// fixtures' entries: Done with changes is saving until the save answers, “a save from
+/// editor-saving failed” rests on its own face, and one “the space turned down” on its own
+/// (B199); “the save landed … with something left out” is the final video being made,
+/// “making the final video failed” its own face, and “the final video landed while the
+/// editor was open” the question (B197); before any save, the video “isn't on this Mac”
+/// while the space hands it over, “the fetch … failed” when it didn't, and otherwise the
+/// editor itself — the video here, or its record still being read.
+fn editor(w: &World) -> Option<Win> {
+    if !shows(w, WindowKind::Editor) || !has_space(w) {
+        return None;
+    }
+    let e = w.session.fields.editor.as_ref()?;
+    let id = match (e.save, e.media) {
+        (EditorSave::Saving, _) => "editor-saving",
+        (EditorSave::Failed, _) => "editor-save-failed",
+        (EditorSave::Refused, _) => "editor-save-refused",
+        (EditorSave::Making { .. }, _) => "editor-making",
+        (EditorSave::MakingFailed, _) => "editor-making-failed",
+        (EditorSave::Asking, _) => "editor-keep-original",
+        (_, EditorMedia::Getting { .. }) => "editor-getting",
+        (_, EditorMedia::Failed) => "editor-cant-get",
+        (EditorSave::Idle, EditorMedia::Opening | EditorMedia::Ready { .. }) => "editor",
+    };
+    Some(Win { id, faces: vec![] })
 }
 
 fn face_name(f: Face) -> &'static str {
@@ -717,6 +757,10 @@ pub fn disagreements(w: &World, s: &Scene) -> Vec<String> {
     let got = s.feedback.as_ref().map(|d| Win { id: d.id, faces: d.faces.clone() });
     if n.feedback != got {
         out.push(format!("send feedback: oracle {:?}, derive {got:?}", n.feedback));
+    }
+    let got = s.editor.as_ref().map(|d| Win { id: d.id, faces: d.faces.clone() });
+    if n.editor != got {
+        out.push(format!("editor: oracle {:?}, derive {got:?}", n.editor));
     }
     out
 }

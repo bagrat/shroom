@@ -127,8 +127,8 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
-    font-size: 13px;
-    line-height: 1.5;
+    font: 13px/1.5 var(--font);
+    -webkit-font-smoothing: antialiased;
     color: var(--fg);
     background: var(--bg);
   }

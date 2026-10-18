@@ -450,7 +450,10 @@ fn handle(rt: &Runtime, active: &mut Option<Active>, warm: &mut Option<Opened>, 
         }
         RecCmd::Marker => {
             let a = active.as_mut()?;
-            a.markers.push(a.length_ms);
+            // Where it was dropped, in the joined timeline: the pause point while paused
+            // (Drop a marker, N24), the moment pressed while recording (⌥⌘M, N64).
+            let at = marker_at(a.length_ms, a.running.then(|| a.since.elapsed()));
+            a.markers.push(at);
             // On disk at once, atomically: a take that dies, or comes back as a recovered
             // one, keeps every marker dropped so far (whole-spec audit #28).
             write_markers(&a.dir, &a.markers);
@@ -482,8 +485,15 @@ fn handle(rt: &Runtime, active: &mut Option<Active>, warm: &mut Option<Opened>, 
     }
 }
 
+/// A marker's place in the joined timeline (ms): the length of the pieces already ended,
+/// plus how far the open one has run (`None`: paused, at the pause point).
+pub fn marker_at(length_ms: u64, running_for: Option<Duration>) -> u64 {
+    length_ms + running_for.map_or(0, |d| d.as_millis() as u64)
+}
+
 /// `markers.json`: the take's markers as seconds in the joined timeline — the pause point
-/// each was dropped at (N24) — the record's `markers` at publish (DECISIONS B49).
+/// each was dropped at (N24), or the moment ⌥⌘M was pressed (N64) — the record's `markers`
+/// at publish (DECISIONS B49).
 fn write_markers(dir: &std::path::Path, markers: &[u64]) {
     if !markers.is_empty() {
         let seconds: Vec<f64> = markers.iter().map(|m| *m as f64 / 1000.0).collect();
@@ -493,6 +503,13 @@ fn write_markers(dir: &std::path::Path, markers: &[u64]) {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_marker_lands_at_the_pause_point_or_the_moment_pressed() {
+        assert_eq!(marker_at(272_000, None), 272_000, "paused: the pause point");
+        assert_eq!(marker_at(272_000, Some(Duration::from_millis(12_345))), 284_345, "recording: the pieces before, and this one so far");
+        assert_eq!(marker_at(0, Some(Duration::from_millis(900))), 900, "the first piece");
+    }
+
     #[test]
     fn markers_are_on_disk_from_their_drop_as_seconds_in_the_joined_timeline() {
         let tmp = tempfile::tempdir().unwrap();

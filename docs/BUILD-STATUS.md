@@ -38,12 +38,22 @@
    silicon only (7, B167). Identity and signing (8) are done: 0.1.5
    shipped signed.
 4. Send feedback from the popover is built (N60, B193), the waving hand his pick.
-5. Voice cuts (N65, provisional) are built: the owner page's strip, its press and the
+5. **The editor is built** ([#61](https://github.com/bagrat/shroom/pull/61) *(the editor:
+   trim, cut, undo, markers, and edits on the share page)*; N63 and N64, ratified 2026-10-18;
+   B195–B199). Edit… in a live Library row opens it in a window of its own: trim, cut,
+   a cut's edges dragged to adjust it (B195 (g), Bagrat's ask once he'd seen it), Undo and
+   Redo, Revert. Done saves the edit into the record, and the link, unchanged,
+   plays it at once. The Mac then makes the final video and asks “Delete the original?”:
+   Yes, delete makes the edit the video now; otherwise the original goes two days on, by
+   the first of the space's Macs to run then (B197). Markers dropped while paused, or with
+   ⌥⌘M while recording, show as flags on its timeline (N64). What waits on Bagrat: items
+   37–39.
+6. Voice cuts (N65, provisional) are built: the owner page's strip, its press and the
    cuts' word in the status (B200), and the Mac's lane that plans a take once the space has
    heard it and lands its cuts in the record (B201), how far back a line said again in other
-   words reaches weighed by Clef on the space's own account (B202); the cue is “shroom cut”, his pick (B203). They come alive with N66's transcript
-   (the AI build) and N63's edit list (the editor's build, whose final copy lets Download
-   follow them). Built ahead of the release call, which is Bagrat's.
+   words reaches weighed by Clef on the space's own account (B202); the cue is “shroom cut”, his pick (B203). They sit on the editor's edit list (N63) and come alive with N66's
+   transcript (the AI build); the editor's final copy lets Download follow them. Built ahead of the release call, which is Bagrat's.
+   Nothing else in-frame is queued: the build resumes on his answers.
 
 
 ## Waiting for Bagrat
@@ -289,3 +299,24 @@ retired, B148.)
     on it; **(b)** the four L5 lanes the branch touched, both images (“After the close”
     in [`history/build-log/2026-10-13.md`](../history/build-log/2026-10-13.md)). The full
     item: [`history/build-status/waiting-35-36.md`](../history/build-status/waiting-35-36.md).
+
+**The editor ([#61](https://github.com/bagrat/shroom/pull/61) *(trim, cut, undo, markers,
+and edits on the share page)*)**
+37. **Its words, from use.** N63's, N64's and B197's drafts, with the build's two new
+    lines (a save the space refused, and the time left by Revert counted by the hour; B199
+    (k), (n)), were **ratified by Bagrat as built** (2026-10-18), his feedback to come from
+    using them.
+38. **N63 and N64, and B195–B199, ratified by Bagrat as built** (2026-10-18), the cut-edge
+    drag (B195 (g)) built as the board he approved that day. DEVIATIONS #55 (Yes, delete
+    filled and leading, but never on Return) is ratified too.
+39. **Known gaps**, none blocking:
+    - The final video's bar counts the upload by file, not by byte: once the cut is done it
+      holds at 80% while the video goes up (minutes, for a long one), then 95, 97, 99, 100.
+    - After a bake, the Library row on the Mac that holds the take may show the take's own
+      poster until the Library's next refresh.
+    - After an edit, a new Copy thumbnail picture is made the next time the owner opens the
+      page; until then the Library's Copy thumbnail falls back to the page's poster, or to
+      the plain link.
+    - The upkeep on a Mac without the token (the space's records over the Library API, a
+      15-minute `manage` credential for each bake and copy) is untested on a real second
+      Mac: the hosted Mac's editor drive runs as a token Mac against the fake space.

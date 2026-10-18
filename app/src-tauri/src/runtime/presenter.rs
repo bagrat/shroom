@@ -28,10 +28,12 @@ pub const ONBOARDING: &str = "onboarding";
 pub const LIBRARY: &str = "library";
 pub const SETTINGS: &str = "settings";
 pub const FEEDBACK: &str = "feedback";
+pub const EDITOR: &str = "editor";
 const POPOVER_WIDTH: f64 = 320.0;
 
 /// One of shroom's ordinary windows: titled, the standard ✕ (which the core answers — the
-/// native close never runs), one instance each.
+/// native close never runs), one instance each. A resizable one has a smallest size, and
+/// opens no bigger than the screen it opens on.
 struct WindowSpec {
     label: &'static str,
     kind: WindowKind,
@@ -39,23 +41,29 @@ struct WindowSpec {
     width: f64,
     height: f64,
     resizable: bool,
+    min: Option<(f64, f64)>,
 }
 
 /// The setup window: one fixed size for every step, the canvas's frame — tall enough for the
 /// tallest step (the token step with its reminder or its error) under the title bar (B189).
 const ONBOARDING_WINDOW: WindowSpec =
-    WindowSpec { label: ONBOARDING, kind: WindowKind::Onboarding, url: "onboarding.html", width: 600.0, height: 680.0, resizable: false };
+    WindowSpec { label: ONBOARDING, kind: WindowKind::Onboarding, url: "onboarding.html", width: 600.0, height: 680.0, resizable: false, min: None };
 /// The Library: a list that grows — resizable.
 const LIBRARY_WINDOW: WindowSpec =
-    WindowSpec { label: LIBRARY, kind: WindowKind::Library, url: "library.html", width: 680.0, height: 560.0, resizable: true };
+    WindowSpec { label: LIBRARY, kind: WindowKind::Library, url: "library.html", width: 680.0, height: 560.0, resizable: true, min: None };
 /// A standard macOS settings window: fixed size, its toolbar tabs drawn by the webview.
 const SETTINGS_WINDOW: WindowSpec =
-    WindowSpec { label: SETTINGS, kind: WindowKind::Settings, url: "settings.html", width: 600.0, height: 620.0, resizable: false };
+    WindowSpec { label: SETTINGS, kind: WindowKind::Settings, url: "settings.html", width: 600.0, height: 620.0, resizable: false, min: None };
 
 /// Send feedback (N60): a small fixed window, the board's frame — room for the form with
 /// “See exactly what's sent” open under the title bar.
 const FEEDBACK_WINDOW: WindowSpec =
-    WindowSpec { label: FEEDBACK, kind: WindowKind::Feedback, url: "feedback.html", width: 520.0, height: 600.0, resizable: false };
+    WindowSpec { label: FEEDBACK, kind: WindowKind::Feedback, url: "feedback.html", width: 520.0, height: 600.0, resizable: false, min: None };
+
+/// The editor (N63): the board's 1100×720 frame — the video, the time, the timeline and the
+/// footer — resizable down to where the timeline still reads (900×640).
+const EDITOR_WINDOW: WindowSpec =
+    WindowSpec { label: EDITOR, kind: WindowKind::Editor, url: "editor.html", width: 1100.0, height: 720.0, resizable: true, min: Some((900.0, 640.0)) };
 
 fn spec(kind: WindowKind) -> &'static WindowSpec {
     match kind {
@@ -63,6 +71,7 @@ fn spec(kind: WindowKind) -> &'static WindowSpec {
         WindowKind::Library => &LIBRARY_WINDOW,
         WindowKind::Settings => &SETTINGS_WINDOW,
         WindowKind::Feedback => &FEEDBACK_WINDOW,
+        WindowKind::Editor => &EDITOR_WINDOW,
     }
 }
 
@@ -598,7 +607,7 @@ pub fn becomes_key(prev_activates: Option<bool>, activates: bool) -> bool {
 /// What a Scene puts on screen that the keyboard can be in.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Holds {
-    /// One of shroom's windows: setup, the Library, Settings, Send feedback.
+    /// One of shroom's windows: setup, the Library, Settings, Send feedback, the editor.
     pub window: bool,
     /// A popover the person asked for (an unasked one never takes the keyboard — law 5).
     pub asked_popover: bool,
@@ -608,7 +617,7 @@ pub struct Holds {
 impl Holds {
     pub fn of(s: &Scene) -> Holds {
         Holds {
-            window: s.onboarding.is_some() || s.library.is_some() || s.settings.is_some() || s.feedback.is_some(),
+            window: s.onboarding.is_some() || s.library.is_some() || s.settings.is_some() || s.feedback.is_some() || s.editor.is_some(),
             asked_popover: s.popover.as_ref().is_some_and(|p| p.activates),
             countdown: s.countdown.is_some(),
         }
@@ -721,6 +730,8 @@ fn apply(app: &AppHandle, rt: &Runtime, prev: Option<&Scene>, s: &Scene, exclude
         s.feedback.as_ref().map(|f| (json(f), f.activates, f.body.title.clone())),
         prev.and_then(|p| p.feedback.as_ref()).map(|f| f.activates),
     );
+    // The editor's title is its video's (“Edit — <title>”), changing with a rename.
+    window(&EDITOR_WINDOW, s.editor.as_ref().map(|e| (json(e), e.activates, e.body.title.clone())), prev.and_then(|p| p.editor.as_ref()).map(|e| e.activates));
     // The last of them closed: the keyboard goes back to the app the person was in.
     if gives_keyboard_back(prev.map(Holds::of), Holds::of(s)) {
         give_keyboard_back(rt);
@@ -813,6 +824,7 @@ pub fn bring_forward_kind(app: &AppHandle, kind: WindowKind) {
             WindowKind::Library => s.library.is_some(),
             WindowKind::Settings => s.settings.is_some(),
             WindowKind::Feedback => s.feedback.is_some(),
+            WindowKind::Editor => s.editor.is_some(),
         });
         if !open {
             return;
@@ -829,16 +841,19 @@ pub fn bring_forward_kind(app: &AppHandle, kind: WindowKind) {
 /// moment it exists (ARCHITECTURE §4.4: every shroom window but the bubble is excluded): a
 /// Settings window showing Members, or a link just born, never lands in a video.
 fn build_window(app: &AppHandle, rt: &Runtime, sp: &WindowSpec, excluded: &Arc<Mutex<Vec<u32>>>) -> Option<tauri::WebviewWindow> {
-    let w = WebviewWindowBuilder::new(app, sp.label, WebviewUrl::App(sp.url.into()))
+    let (width, height) = opening_size(sp, mushrooms_screen(app));
+    let mut b = WebviewWindowBuilder::new(app, sp.label, WebviewUrl::App(sp.url.into()))
         .title("shroom")
-        .inner_size(sp.width, sp.height)
+        .inner_size(width, height)
         .resizable(sp.resizable)
         .maximizable(sp.resizable)
         .center()
         .visible(false)
-        .focused(false)
-        .build()
-        .ok()?;
+        .focused(false);
+    if let Some((w, h)) = sp.min {
+        b = b.min_inner_size(w, h);
+    }
+    let w = b.build().ok()?;
     remember_excluded(&w, excluded, true);
     let rt = rt.clone();
     let kind = sp.kind;
@@ -858,6 +873,26 @@ fn build_window(app: &AppHandle, rt: &Runtime, sp: &WindowSpec, excluded: &Arc<M
         _ => {}
     });
     Some(w)
+}
+
+/// The visible frame of the mushroom's display (main thread), where a window opens (N57).
+fn mushrooms_screen(app: &AppHandle) -> Option<Frame> {
+    app.tray_by_id("shroom").and_then(|t| mushroom(&t)).map(|m| m.screen).filter(|f| f.w > 0.0 && f.h > 0.0)
+}
+
+/// The size a window opens at: its spec's, made to fit `screen` (the visible frame it opens
+/// on) when it's resizable and bigger than that — never below its smallest. A fixed window
+/// keeps its size.
+fn opening_size(sp: &WindowSpec, screen: Option<Frame>) -> (f64, f64) {
+    fit(sp.width, sp.height, sp.resizable.then_some(sp.min.unwrap_or((0.0, 0.0))), screen)
+}
+
+/// `(width, height)` within `screen`, no smaller than `min`; `min: None` never shrinks.
+pub fn fit(width: f64, height: f64, min: Option<(f64, f64)>, screen: Option<Frame>) -> (f64, f64) {
+    match (min, screen) {
+        (Some((mw, mh)), Some(s)) => (width.min(s.w).max(mw), height.min(s.h).max(mh)),
+        _ => (width, height),
+    }
 }
 
 /// Where a window opening now goes (its frame's origin): centred on `target`, the visible
@@ -1035,6 +1070,21 @@ mod tests {
         assert_eq!(window_origin(window, Frame { w: 0.0, ..macbook }), None, "no display to go to: left where it is");
         let bigger = Frame { w: 2000.0, h: 1200.0, ..window };
         assert_eq!(window_origin(bigger, macbook), Some((-1512.0, 98.0 + 944.0 - 1200.0)), "too big for it: its top-left on the display's");
+    }
+
+    /// The editor (N63) opens at the board's 1100×720 where that fits, and no bigger than
+    /// the screen it opens on — never below 900×640; a fixed window keeps its size.
+    #[test]
+    fn a_resizable_window_opens_within_its_screen() {
+        let roomy = Frame { x: 0.0, y: 0.0, w: 1512.0, h: 944.0 };
+        let small = Frame { x: 0.0, y: 0.0, w: 1024.0, h: 743.0 };
+        let tiny = Frame { x: 0.0, y: 0.0, w: 800.0, h: 600.0 };
+        assert_eq!(opening_size(&EDITOR_WINDOW, Some(roomy)), (1100.0, 720.0));
+        assert_eq!(opening_size(&EDITOR_WINDOW, Some(small)), (1024.0, 720.0), "the hosted Mac's screen");
+        assert_eq!(opening_size(&EDITOR_WINDOW, Some(tiny)), (900.0, 640.0), "never below its smallest");
+        assert_eq!(opening_size(&EDITOR_WINDOW, None), (1100.0, 720.0), "no screen read: the spec's");
+        assert_eq!(opening_size(&SETTINGS_WINDOW, Some(tiny)), (600.0, 620.0), "a fixed window keeps its size");
+        assert_eq!(opening_size(&LIBRARY_WINDOW, Some(Frame { w: 600.0, h: 500.0, ..tiny })), (600.0, 500.0));
     }
 
     /// A MacBook mirrored to an external display put the popover in the corner with the
@@ -1238,6 +1288,7 @@ mod tests {
             since: shroom_core::time::Mono(0),
             length_ms: 0,
             markers: 0,
+            marked_at_pause: false,
             mic: None,
             camera: None,
         });

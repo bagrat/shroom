@@ -16,7 +16,7 @@ use shroom_core::world::*;
 use support::*;
 
 fn row(id: &str, title: &str) -> LibraryRow {
-    LibraryRow { rec: RecId(id.into()), title: title.into(), created: Wall(1_787_313_600_000), length_ms: Some(272_000), live: true, owner: Some("m1".into()), poster: false }
+    LibraryRow { rec: RecId(id.into()), title: title.into(), created: Wall(1_787_313_600_000), length_ms: Some(272_000), live: true, owner: Some("m1".into()), poster: false, edited_ms: None }
 }
 
 /// Opens the Library the way a person does: the mushroom, then config's footer.

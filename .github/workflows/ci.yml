@@ -187,6 +187,9 @@ jobs:
           npm run build --workspace app
           npm run check --workspace app
 
+      - name: The app's unit suite (the editor's edit model and clock, held to shroom-edit's vectors and the page)
+        run: npm test --workspace app
+
       - name: The Worker — unit suite, typecheck, the contract under workerd
         run: |
           npm test --workspace worker

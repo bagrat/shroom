@@ -107,6 +107,9 @@ pub enum Action {
     CopyThumbRow(RecId),
     /// Open page (also a double-click): the owner-keyed URL (B25).
     OpenPage(RecId),
+    /// Edit…, in a live row's menu after Open page (N63): the editor opens on it — or, open
+    /// already, comes forward on the video it holds.
+    EditRow(RecId),
     /// A click on the title: rename in place.
     StartRename(RecId),
     /// Return in the title field, or a click away: save it.
@@ -150,6 +153,22 @@ pub enum Action {
     MailFeedback,
     /// Cancel, Esc, or the sent face's Done: the window closes.
     CloseFeedback,
+    // ── the editor (N63) ──
+    /// Done (Return; the window's ✕ is Done too): saves what changed, then closes.
+    EditorDone,
+    /// editor-cant-get's Try again: the video is asked for again.
+    EditorRetry,
+    /// Close (Return, Esc) in editor-cant-get, and after a save while the final video is
+    /// made or couldn't be: the window closes (the copy goes on behind it).
+    EditorClose,
+    /// Revert to original — the list's own Revert, as a click (undoable like any step).
+    EditorRevert,
+    /// editor-keep-original's Yes, delete — a click, never Return (law 9; DEVIATIONS #55):
+    /// the edit becomes the video, and the original's files go now (B197).
+    DeleteOriginal,
+    /// editor-keep-original's Keep for 2 days (Esc, ✕ too): the window closes; the original
+    /// goes two days on.
+    KeepOriginal,
     /// “Disconnect this Mac…” — opens its sheet.
     Disconnect,
     ConfirmDisconnect,
@@ -285,7 +304,8 @@ pub struct Tray {
     pub click: Click,
     /// The one-item right-click menu ("Quit shroom") — idle only.
     pub right_menu: Option<String>,
-    /// ⌥⌘P is held (N54): only while a take is open, so it's other apps' the rest of the time.
+    /// ⌥⌘P and ⌥⌘M are held (N54, N64): only while a take is open, so they're other apps'
+    /// the rest of the time.
     pub shortcut: bool,
 }
 
@@ -366,6 +386,9 @@ pub struct PausedBody {
     pub resume: Button,
     pub restart: Button,
     pub stop: Button,
+    /// Drop a marker, between Finish & Share and Restart — a pause you made only (N64); it
+    /// reads Marker dropped, greyed, once used at this pause.
+    pub marker: Option<Button>,
     pub discard: Button,
 }
 
@@ -430,7 +453,11 @@ impl Popover {
                 out.extend(c.camera_settings.iter());
                 out.extend(c.mic_hint.iter());
             }
-            PopoverBody::Paused(p) => out.extend([&p.resume, &p.stop, &p.restart, &p.discard]),
+            PopoverBody::Paused(p) => {
+                out.extend([&p.resume, &p.stop]);
+                out.extend(p.marker.iter());
+                out.extend([&p.restart, &p.discard]);
+            }
             PopoverBody::Question(q) => out.extend(&q.buttons),
             PopoverBody::Stopped(s) => out.extend(&s.buttons),
         }
@@ -896,6 +923,125 @@ pub struct FeedbackSent {
     pub done: Button,
 }
 
+/// A line's colour where a face can turn it (the editor's footer, N63): as written, or
+/// amber when it says something didn't go through.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum LineTone {
+    Plain,
+    Amber,
+}
+
+/// The editor window (N63, B195): the video playing the edit, the time, the hint and Undo ·
+/// Redo, the timeline (the list, its markers, what plays), then the footer's line, Revert to
+/// original and Done. Times are seconds on the recording's own timeline. The webview fills
+/// the templates' `{}` with its clock or a length as it plays or drags, and composes no
+/// words; it sends steps (`Event::Edit`) the core takes or refuses.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct EditorBody {
+    /// The window's title: “Edit — <title>”.
+    pub title: String,
+    /// The video, for the webview's media (`shroom-media://localhost/<rec>/…`).
+    pub rec: String,
+    pub media: EditorMediaView,
+    pub hint: String,
+    /// The footer's line — the link staying the same, “Saving your edit…”, or the failure.
+    pub footer: String,
+    pub footer_tone: LineTone,
+    pub labels: EditorLabels,
+    /// The list as it stands — `None` until the record is read (the ends wait).
+    pub list: Option<EditListView>,
+    /// What plays, in order: `[start, end)` source ranges.
+    pub keep: Vec<[f64; 2]>,
+    pub edited_duration: f64,
+    pub source_duration: f64,
+    /// The take's markers (N64), as flags on the timeline.
+    pub markers: Vec<f64>,
+    /// The video here, the record read, nothing saving: steps are taken.
+    pub editable: bool,
+    pub can_undo: bool,
+    pub can_redo: bool,
+    /// Revert to original: live when there's something to put back; `None` where the window
+    /// doesn't offer it — a save the space turned down, when nothing can be saved (B199).
+    pub revert: Option<Button>,
+    /// Done (Saving…, greyed, while it saves; Close in editor-cant-get, in
+    /// editor-save-refused, and while the final video is made or couldn't be); greyed until
+    /// the video is here.
+    pub done: Button,
+    /// By Revert, while an earlier edit's original is kept: the time it has left (B197 (e)).
+    pub original_kept: Option<String>,
+    /// After a save with something left out (B197): the final video being made, its
+    /// failure, then the question of the original — in the timeline's place. `None` until
+    /// then.
+    pub after: Option<EditorAfterView>,
+}
+
+/// What follows a save that leaves something out (B197).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case", tag = "state")]
+pub enum EditorAfterView {
+    /// The final video is being made: the bar's fill, and its line (the share filled in).
+    /// The footer says the window can be closed; Done is Close.
+    Making { pct: u8, line: String },
+    /// It couldn't be made or put up: the footer's amber line says so; Done is Close.
+    Failed,
+    /// It's up: “Delete the original?”, its line, then Keep for 2 days and Yes, delete
+    /// (filled and leading, but a click: Return never deletes — law 9; DEVIATIONS #55) —
+    /// in the footer's place.
+    Asking { title: String, line: String, keep: Button, delete: Button },
+}
+
+/// The video's state, for the preview and the timeline's place.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case", tag = "state")]
+pub enum EditorMediaView {
+    /// Asked for: the record and the video are on their way.
+    Opening,
+    /// Coming from the space: the bar's fill, and its line.
+    Getting { pct: u8, line: String },
+    /// It couldn't come: its line, and Try again.
+    Failed { line: String, retry: Button },
+    /// Here: it plays, and the waveform draws (seconds long).
+    Ready { duration: f64 },
+}
+
+/// The editor's names and templates: `{}` is a clock (`time`, `was`) or seconds with one
+/// decimal (`cut`, `put_back`), filled in by the webview.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct EditorLabels {
+    pub play: String,
+    pub pause: String,
+    pub undo: String,
+    pub redo: String,
+    pub cut: String,
+    pub put_back: String,
+    pub was: String,
+    /// The edited position / the edited length.
+    pub time: String,
+    /// Under a dashed suggestion that was clicked: it's cut (`Op::Apply`).
+    pub cut_it_too: String,
+}
+
+/// The list as the timeline draws it: the yellow ends, and every cut — applied ones red,
+/// suggestions waiting.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct EditListView {
+    #[serde(rename = "in")]
+    pub in_: f64,
+    pub out: f64,
+    pub cuts: Vec<CutView>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct CutView {
+    pub start: f64,
+    pub end: f64,
+    pub applied: bool,
+    /// Where it came from: `manual`, or the voice-cut layer's `retake`, `cue-only`,
+    /// `line-before-cue` — never what was said in it.
+    pub kind: String,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct SpaceBody {
     /// The re-probed plan (Region 2's own panel): every row ticked with its fact, or the
@@ -1040,6 +1186,24 @@ impl Window<FeedbackBody> {
     }
 }
 
+impl Window<EditorBody> {
+    pub fn buttons(&self) -> Vec<&Button> {
+        let mut out: Vec<&Button> = self.body.revert.iter().collect();
+        out.push(&self.body.done);
+        if let EditorMediaView::Failed { retry, .. } = &self.body.media {
+            out.push(retry);
+        }
+        if let Some(EditorAfterView::Asking { keep, delete, .. }) = &self.body.after {
+            out.extend([keep, delete]);
+        }
+        out
+    }
+
+    pub fn offers(&self, action: &Action) -> bool {
+        self.buttons().iter().any(|b| b.enabled && &b.action == action)
+    }
+}
+
 impl Window<SettingsBody> {
     pub fn buttons(&self) -> Vec<&Button> {
         if let Some(s) = &self.body.sheet {
@@ -1180,11 +1344,14 @@ pub struct Scene {
     pub settings: Option<Window<SettingsBody>>,
     /// The Send feedback window (N60).
     pub feedback: Option<Window<FeedbackBody>>,
+    /// The editor (N63).
+    pub editor: Option<Window<EditorBody>>,
     pub countdown: Option<Countdown>,
     pub bubble: Option<Bubble>,
     pub preview: Option<Preview>,
     /// The Dock icon shows while a window of shroom's is open — the setup window, the
-    /// Library or Settings — never for a popover alone (law 6, SM:133).
+    /// Library, Settings, Send feedback or the editor — never for a popover alone (law 6,
+    /// SM:133).
     pub dock: bool,
     /// The next instant `derive` would answer differently on its own (the countdown digit,
     /// "Copied" reverting, a deadline); the runner posts `Tick` then.
@@ -1233,6 +1400,10 @@ impl Scene {
             ids.push(f.id);
             ids.extend(&f.faces);
         }
+        if let Some(e) = &self.editor {
+            ids.push(e.id);
+            ids.extend(&e.faces);
+        }
         if self.countdown.is_some() {
             ids.push("countdown");
         }
@@ -1250,6 +1421,7 @@ impl Scene {
             Surface::Library => self.library.as_ref().is_some_and(|l| l.offers(action)),
             Surface::Settings => self.settings.as_ref().is_some_and(|s| s.offers(action)),
             Surface::Feedback => self.feedback.as_ref().is_some_and(|f| f.offers(action)),
+            Surface::Editor => self.editor.as_ref().is_some_and(|e| e.offers(action)),
             _ => false,
         }
     }
@@ -1261,6 +1433,7 @@ impl Scene {
             Surface::Library => self.library.as_ref().and_then(|o| o.ret.clone()),
             Surface::Settings => self.settings.as_ref().and_then(|o| o.ret.clone()),
             Surface::Feedback => self.feedback.as_ref().and_then(|o| o.ret.clone()),
+            Surface::Editor => self.editor.as_ref().and_then(|o| o.ret.clone()),
             _ => None,
         }
     }
@@ -1272,6 +1445,7 @@ impl Scene {
             Surface::Library => self.library.as_ref().and_then(|o| o.esc.clone()),
             Surface::Settings => self.settings.as_ref().and_then(|o| o.esc.clone()),
             Surface::Feedback => self.feedback.as_ref().and_then(|o| o.esc.clone()),
+            Surface::Editor => self.editor.as_ref().and_then(|o| o.esc.clone()),
             Surface::Countdown => self.countdown.as_ref().map(|_| Action::CancelCountdown),
             _ => None,
         }

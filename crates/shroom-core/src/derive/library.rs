@@ -31,6 +31,9 @@ pub struct Row {
     pub title: Option<String>,
     pub created: crate::time::Wall,
     pub length_ms: Option<u64>,
+    /// What plays once its saved edit is applied (N63), when that differs: shown in place
+    /// of `length_ms`.
+    pub edited_ms: Option<u64>,
     pub kind: Kind,
     /// Another member made it (owner-class Macs): their member id.
     pub other: Option<String>,
@@ -101,6 +104,11 @@ pub fn rows(w: &World) -> Vec<Row> {
             .or_else(|| find(rec).map(|r| r.title.clone()))
             .unwrap_or_else(|| fallback.to_string())
     };
+    // An edit saved from this Mac reads at once, over a refresh begun before it landed.
+    let edited = |rec: &RecId| match w.library_ops.edited.get(rec) {
+        Some((ms, _)) => *ms,
+        None => find(rec).and_then(|r| r.edited_ms),
+    };
 
     let pinned: Vec<Row> = w
         .saved
@@ -110,6 +118,7 @@ pub fn rows(w: &World) -> Vec<Row> {
             title: None,
             created: s.created,
             length_ms: Some(s.length_ms),
+            edited_ms: None,
             kind: Kind::Recovered(s.dir.clone()),
             other: None,
             poster: Some(local_poster(&s.rec, &s.dir)),
@@ -133,6 +142,7 @@ pub fn rows(w: &World) -> Vec<Row> {
             title: Some(title(&q.rec, &q.title)),
             created: r.map(|r| r.created).unwrap_or(q.stopped),
             length_ms: r.and_then(|r| r.length_ms).or(q.length_ms),
+            edited_ms: edited(&q.rec),
             kind,
             other: None,
             poster: Some(local_poster(&q.rec, &q.dir)),
@@ -144,6 +154,7 @@ pub fn rows(w: &World) -> Vec<Row> {
             title: Some(q.title.clone()),
             created: q.stopped,
             length_ms: q.length_ms,
+            edited_ms: None,
             kind: Kind::Removed(q.dir.clone()),
             other: None,
             poster: Some(local_poster(&q.rec, &q.dir)),
@@ -156,6 +167,7 @@ pub fn rows(w: &World) -> Vec<Row> {
             title: Some(title(&r.rec, &r.title)),
             created: r.created,
             length_ms: r.length_ms,
+            edited_ms: edited(&r.rec),
             kind: if r.live { Kind::Live } else { Kind::Elsewhere },
             other: r.owner.clone().filter(|_| others(w, r)),
             poster: r.poster.then(|| r.rec.0.clone()),
@@ -263,7 +275,8 @@ fn view(w: &World, r: &Row) -> LibraryRowView {
     let reachable = online && !(w.space.role() == Some(Role::Member) && super::members::stranded_by_space(w));
     let cut_off = !reachable && online;
     let mid_take = w.take_open();
-    let len = r.length_ms.map(copy::length);
+    // An edited video's length is what plays (N63).
+    let len = r.edited_ms.or(r.length_ms).map(copy::length);
     let meta = copy::row_meta(&copy::day(r.created, w.mac.utc_offset_min), len.as_deref());
     let rec = r.rec.clone();
     // What would put something new on screen waits for the take (law 4).
@@ -326,11 +339,13 @@ fn view(w: &World, r: &Row) -> LibraryRowView {
             if matches!(r.kind, Kind::Live) {
                 menu.push(Button::new(Action::CopyThumbRow(rec.clone()), copy::copy_thumbnail(), Style::Plain));
             }
-            menu.extend([
-                open_btn(),
-                Button::new(Action::StartRename(rec.clone()), copy::rename(), Style::Plain).enabled(reachable),
-                delete_btn(),
-            ]);
+            menu.push(open_btn());
+            // Edit… after Open page, on a live row (N63): greyed offline as Rename is, and
+            // mid-take with law 4's line.
+            if matches!(r.kind, Kind::Live) {
+                menu.push(after_take(Button::new(Action::EditRow(rec.clone()), copy::edit_ellipsis(), Style::Plain).enabled(reachable)));
+            }
+            menu.extend([Button::new(Action::StartRename(rec.clone()), copy::rename(), Style::Plain).enabled(reachable), delete_btn()]);
             let gestures = Gestures {
                 click: Some(Action::SelectRow(rec.clone())),
                 cmd_click: Some(Action::ToggleRow(rec.clone())),

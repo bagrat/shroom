@@ -70,7 +70,9 @@ at `bf84b67079a8` (D:B2). Svelte 5, TypeScript 5.9.
 | `crates/shroom-testpattern`, `shroom-spec`, `shroom-devtool` | media-truth strip (D:B59 d); spec fixtures as types; the heartbeat's test space up/down | dev only |
 | `tests/e2e-live` | L2 on the dedicated test account | live |
 | `app/src-tauri` | `main.rs`, `commands.rs` (IPC), `runtime/` (runner, lanes, presenter, overlays, observers, seam), `harness.rs`/`drives.rs` (only with `dev-harness` in a `.dev` build — D:B5, B55, B62) | drives, `tests/l5/` |
-| `app/src` | webviews (`Popover`, `Onboarding`, `Library`, `Settings`, `members/`, `join/`, countdown), `lib/ipc.ts`, `lib/typed.ts`, `lib/theme.css` (D:B122) | galleries |
+| `app/src-tauri/src/runtime/editor.rs` | the editor's lane (N63, D:B195, B197): the record read over a rename's door, the video found in a take or fetched to `edits/<rec>/`, its peaks, the save (`meta.edits`), the final video on a lane of its own with its progress, the bake, and the upkeep (§3.3) | `editor::tests`; `--drive editor` |
+| `app/src-tauri/src/runtime/media.rs` | `shroom-media:`: the one video the editor's lane registered, by byte ranges, and its peaks — to the editor's webview alone | `media::tests` |
+| `app/src` | webviews (`Popover`, `Onboarding`, `Library`, `Settings`, `Feedback`, `Editor` with `editor/`, `members/`, `join/`, countdown), `lib/ipc.ts`, `lib/typed.ts`, `lib/theme.css` (D:B122) | galleries; `editor/*.test.ts` (vitest) |
 | `worker/` | `src/worker.js` (one dependency-free module), `vendor/hls.min.js`, `page-version.json`, `dev/serve.mjs` | vitest + workerd contract (D:B63) |
 | `installer/`, `site/` | `install.sh` (D:B29, B44); the Homebrew cask and its renderer, `homebrew/` (D:B175); shroom.am Worker, with `/agent` for a coding agent (D:B132), and `/report` with its `/feedback` form (D:B180) | their `test/` |
 | `tools/`, `.github/workflows/` | release build, packaging, identity, ffmpeg, notices; `ci.yml`, `release.yml`, `site.yml`, `e2e.yml`, `e2e-full.yml`, `mac.yml` | CI |
@@ -211,8 +213,46 @@ new `Rec(Started)`.
 | `shroom-observe` | CGDisplayReconfiguration, AVCaptureDevice, NSWorkspace sleep/wake/session, screen lock, mic re-probe 2 s, disk + UTC offset 30 s, grants re-read 2 s mid-take (D:B47) |
 | `shroom-power` (+ `-cap`) | IOKit will-sleep → `Os(WillSleep)`; the core pauses a recording take and answers `AllowSleep` once paused or after 2 s; `HOLD_CAP` 2.5 s; idle sleep never vetoed (D:B92) |
 | `shroom-seam` | the seam's 2 s grants re-read |
+| `shroom-editor` (+ `-open`, `-copy`, `-bake`, `-upkeep`) | the editor's lane (below): Save inline; an open, a bake and an upkeep pass each on a thread of its own; the final videos one at a time on `-copy` |
 
 Keep-awake (`os.rs`) is held while `settle::can_drain` (D:B34).
+
+**The editor's lane** (`runtime/editor.rs`, N63, D:B195, B197). Nothing it runs waits on
+anything else it runs: Open, Save and Copy answer while a bake or an upkeep pass is out.
+- *Open* reads the record, finds the video (a take on this Mac when the record still plays
+  its `video.mp4`; else `edits/<rec>/source.mp4` when `source.key` names the record's file;
+  else fetched) and its peaks, and posts `Opened` with `keep_until` (Wall ms) only while the
+  edit's copy is current. Esc or ✕ mid-fetch stops it.
+- *Save* is one record write (`save_edits_over`). It writes nothing and fails as `Refused`
+  (logged) when the video moved on since the open — `bakedFrom` grew or `media.mp4` changed:
+  it was baked while the window was open. That is judged inside the write, on the record it
+  would replace. A `Refused` save (that, or a tombstone) is the core's `editor-save-refused`:
+  nothing can be saved, and the window only closes (B199).
+- *Copy* (one at a time): `shroom_encode::cut::render_with` (VideoToolbox, then libx264 if that
+  fails), the poster and teaser best-effort, three PUTs, then `set_edit_copy` writes `copy` and
+  `keep_until` (now + 2 days). `EditorNews::Making { rec, pct }` goes at most every 250 ms and
+  only forward: ffmpeg's `-progress` over the kept seconds is 0–80, each file's PUT 95, 97,
+  99, and the record 100. It answers `CopyDone { named }` — `named: false` when it dropped
+  the copy instead, the record having moved on (a newer save, the edit gone) or the revision
+  leaving nothing out, and the window then asks nothing about the original (B199) — or
+  `Failed { EditorCopy }`; a closed window doesn't stop it.
+- *Bake* (Yes, delete): `shroom_upload::library::bake` over the door, on its own thread. It
+  answers nothing (the window has closed), logs what happened, and on success drops
+  `edits/<rec>/`. A bake that didn't land is the upkeep's after the two days.
+- *Upkeep* (`settle::due_edit_upkeep`: at launch, then every 6 h awake, not over a take, not
+  offline, the editor closed and its lane idle). It reads the space's records now, never
+  only `library.json` (which hears of an edit only when the Library refreshes) and without
+  writing it (`library::Doorway::listed`). The token Mac lists `meta/` over its pair, reads
+  what changed since the cache, then each record that holds an edit. Any other Mac pages the
+  Library API (§13; `mine` for a member, `everyone` for the owner's Macs), sending the
+  cache's ETags only for rows without an edit, so each record holding one comes back whole.
+  Then `upkeep_plan`: it bakes the due ones and makes the missing copies when their video is
+  on this Mac, through the same copy code with no `Making` news. Last, it prunes `edits/`
+  (§3.4) and answers `UpkeepDone { baked, copies }` or `Failed { EditorUpkeep }`. Transport
+  ends the pass; a bake or copy that fails is left for the next. The token Mac's cleanup
+  sweep also bakes every record in the space that's due, and finishes a bake cut off after
+  its write (`shroom_upload::library::cleanup_sparing`). Neither bakes the video the editor
+  window is open on (the Scene's, asked before each bake); a later pass does.
 
 **Trace.** `logs/run.log` (600, rolled at 5 MB) logs each event, arm and effect kinds.
 `trace::Ring` keeps the last 512 steps (kinds, arm, edge, state ids on change), names read at
@@ -238,6 +278,7 @@ and `Scanned` and writes only via effects; `home::FILES` whitelists top-level na
 | `restore.json` | before update apply or permission relaunch; read once, ≤ 2 min |
 | `invite`, `join.json` | an invite held; a join asked for (replayed at launch) / removed when behind |
 | `library.json`, `posters/` | library lane / exit |
+| `edits/<rec>/` | the editor's lane (N63): `source.mp4` (fetched from the space, kept for the next edit) and `source.key` (the file it came from: a baked video is fetched again), `peaks.u8`, a final video while it's cut and sent / its bake; the upkeep's prune (the recording gone from the Library, a fetched video its record no longer plays, or nothing in it written for 7 days; never the open one); exit |
 | `status.json` | §11.2 |
 | `forget/<rec>` | owed remote discards (D:B52 e) |
 | `updates/<version>/shroom.app` | a verified staged update |
@@ -258,8 +299,8 @@ re-queued, DV #27). Unlocked without `finalized.json` → interrupted (repaired 
 **Exit** (Disconnect, Leave; `apply.rs:disconnect`): refused while uploads drain or a
 recovered take waits; Save to Movies offered first; stranded takes deleted; `Persist(Wipe)`
 (`runtime/mod.rs:wipe`) deregisters best-effort (3 s) and removes `space.json`, `token.json`,
-`device.key`, `library.json`, `invite`, `join.json`, `restore.json`, `posters/`, every
-`cred.json`, the stash. Prefs, `once.json`, `primed.json`, other takes and the login item
+`device.key`, `library.json`, `invite`, `join.json`, `restore.json`, `posters/`, `edits/`,
+every `cred.json`, the stash. Prefs, `once.json`, `primed.json`, other takes and the login item
 stay. A switch keeps the old space's files until the new join's 200 (D:B42, B54 c).
 
 ### 3.5 The IPC contract
@@ -274,7 +315,7 @@ stay. A switch keeps the old space's files until the new join's 200 (D:B42, B54 
   (DV #40); shown with `orderFrontRegardless`, key only when asked; shroom is never
   activated. Losing the keyboard closes nothing; a click elsewhere closes an asked popover
   (`overlay::click_away`) unless it is a switch (`overlay::switches`, DV #39).
-- Windows: onboarding 600×680 (B189), Library 680×560 (resizable), Settings 600×620 — each its frame, macOS's 32 pt title bar inside it.
+- Windows: onboarding 600×680 (B189), Library 680×560 (resizable), Settings 600×620, Send feedback 520×600, the editor 1100×720 (resizable down to 900×640; a resizable window opens no bigger than its screen) — each its frame, macOS's 32 pt title bar inside it. The editor's title is its slice's, “Edit — <title>”; its ✕ is posted like any window's, and the core may keep it open to save.
 - Camera panels (`runtime/camera.rs`): bubble and Camera-only preview (§4.4).
 - Every window and overlay joins `Runtime.excluded` when made and is left out of capture;
   the bubble never is. Overlays and camera panels don't hide on ⌘H (D:B112).
@@ -293,8 +334,14 @@ composes no sentences and decides nothing.
 | `field {field, value}` | `name`, `library-search`, `title`, `invite-name`; returns nothing; cut to 256 chars; the core guards (name charset/63, composer 80). Scene fields carry edit counts; `lib/typed.ts` takes the Scene's value only once its count catches up |
 | `paste_secret {field, text}` | the one path for secret text (`token`, `invite`): classified, stashed (`runtime/stash.rs`), `SecretPasted {id, shape}` posted; the field shows fixed dots while held (D:B104) |
 | `scene_get`, `dismiss`, `popover_keyed`, `popover_fit` | snapshot slice; `PopoverDismissed`; first key makes an unasked popover asked; panel height |
+| `edit {step}` | the editor (N63): `{"op": "undo" \| "redo"}`, or a `shroom_edit::Op` (`trim`, `cut`, `put-back`, `apply`, `revert`), seconds on the recording; posts `Edit(EditStep)`, which the core takes or refuses. A step that doesn't read is dropped |
 
 Window lifecycle comes from Rust window events.
+
+**Media.** The editor plays from `shroom-media://localhost/<rec>/video` and draws from
+`…/<rec>/peaks` (`runtime/media.rs`): only the recording its lane registered, only to the
+`editor` webview, the video by byte ranges a piece (2 MiB) at a time, anything else 404. The
+policy (`tauri.conf.json`) lets `media-src` and `connect-src` reach the scheme, nothing more.
 
 **Law 13 by type.** No Scene field can hold a secret; `Secret` is not `Serialize` and `Debug`
 redacts. The `?k=` URL exists only inside `OpenOwnerPage`, opened through NSWorkspace. A
@@ -384,9 +431,11 @@ The design record has them: history/design/ARCHITECTURE.md §3.9.
   it when byte-identical, else it becomes that take's map (D:B58 a).
 - `Recording::finalize` joins takes into `stream.m3u8` (`playlist::assemble_mapped`,
   `EXT-X-DISCONTINUITY` per later take). It does not build the MP4 (§4.6).
-- A click while recording pauses at once; the popover waits for the confirmation. Markers
-  land at the pause point. Restart asks first (DV #44); its countdown is its undo. Discard
-  deletes local and uploaded bytes, no tombstone.
+- A click while recording pauses at once; the popover waits for the confirmation. Drop a
+  marker lands at the pause point; ⌥⌘M while recording (N64; held beside ⌥⌘P, only while a
+  take is open) at the length so far plus the open take's run. Each is in `markers.json` at
+  once. Restart asks first (DV #44); its countdown is its undo. Discard deletes local and
+  uploaded bytes, no tombstone.
 
 ### 4.3 Mic
 
@@ -448,6 +497,7 @@ Macs write over S3 (SigV4, `https://<account>.r2.cloudflarestorage.com`, region 
 | `meta/<id>.json` | the record and tombstone; the recording Mac, Library, the Worker's title (D:B21) |
 | `rec/<id>/master.m3u8`, `rec/<id>/v0/{init.mp4, init_<k>.mp4, seg_NNNNN.m4s, stream.m3u8}` | the stream (local names kept) |
 | `rec/<id>/poster.jpg`, `teaser.mp4`, `video.mp4` | unfurl poster and teaser (D:B27); the single-file copy, title-independent |
+| `rec/<id>/edit-<rev>.mp4`, `edit-<rev>-poster.jpg`, `edit-<rev>-teaser.mp4` | an edit's permanent copy, its first frame and teaser, cut by the Mac after a save and named in `meta.edits.copy`; the previous revision's go once a newer copy lands or the edit is reverted (N63, D:B195). After the bake `media` names them and the original's files go (D:B197) |
 | `rec/<id>/tx/*` | reserved, never written |
 | `.shroom/manifest.json` | `{schema:1, createdAt}`; a bucket is a shroom space iff it holds it; wiring, last, create-only |
 | `.shroom/player/hls.min.js`, `.shroom/cookie.key` | the pinned player (D:B30); the cookie's HMAC key (create-only) |
@@ -456,7 +506,8 @@ Macs write over S3 (SigV4, `https://<account>.r2.cloudflarestorage.com`, region 
 | `.shroom/keys/<sha256(k)>` | one-time page-key grants |
 | `.shroom/gone/<id>` | deletion seals no recording credential reaches (D:B125 M1) |
 
-No `.shroom/` key is ever served: `/m/` reads only `rec/<id>/…`, `/d/` only `video.mp4`.
+No `.shroom/` key is ever served: `/m/` reads only `rec/<id>/…`, `/d/` only `video.mp4` or
+an edit's current copy (`edit-<n>.mp4`).
 
 ### 5.2 Recording id
 
@@ -472,16 +523,53 @@ Registry ids are `d_`/`m_`/`i_` + 16 chars.
 { "schema": 1, "id": "…", "state": "uploading" | "live" | "deleted",
   "createdAt": "iso", "publishedAt": null|"iso", "deletedAt": null|"iso", "title": "Untitled — Aug 21",
   "durationSec": null|0.0,
-  "media": null | { "hls": key, "mp4": key|null, "poster": key|null, "teaser"?: key, "width", "height" },
+  "media": null | { "hls": key|null, "mp4": key|null, "poster": key|null, "teaser"?: key, "width", "height" },
   "captions": null, "owner": null|"<member>",   // informational; ownership is the ledger (D:B54 f)
   "progress": null | { "done", "total", "updatedAt" }, "markers"?: [seconds],
   "titled"?: true,                                  // the Worker's title save (N26)
-  "thumb"?: { "title": null|"…", "gif"?: "thumb-<16 hex>.gif", "jpg"?: "thumb-<16 hex>.jpg" } }  // Copy thumbnail, the Worker's (D:B164)
+  "thumb"?: { "title": null|"…", "from"?: "poster.jpg"|"edit-<rev>-poster.jpg",    // Copy thumbnail, the Worker's (D:B164, B198):
+              "gif"?: "thumb-<16 hex>.gif", "jpg"?: "thumb-<16 hex>.jpg" },        // `from` the first frame drawn from (N63)
+  "edits"?: { "version": 1, "source_duration", "in", "out",                    // the editor's (N63, D:B195)
+              "cuts": [{ "id"?, "start", "end", "kind", "confidence", "applied", "leads"?, "removed", "resumes"?, "why"?, "adjusted"? }],
+              "voice"?: { "planned_at", "cues" },                              // the voice cues' plan (N65)
+              "rev", "copy"?: { "rev", "file": "edit-<rev>.mp4", "duration", "poster"?, "teaser"? },
+              "keep_until"?: "iso" },                                          // when the original goes (D:B197)
+  "bakedFrom"?: [{ "at": "iso", "rev", "keep": [[s, e]] }] }                       // each bake, oldest first (D:B197), never served
 ```
 
 `media` holds keys. Additive only; unknown fields kept (`extra`). **Every rewrite is
 read-modify-write under `If-Match`** (`upload::update_meta`), retried on 412, stopping at
 `deleted` (D:B21).
+
+`edits` is `shroom_edit::Saved`: written only by a Mac, the editor lane's save (each bumps
+`rev`) and its permanent copy (`copy`, current only while `copy.rev == rev`), over the
+rename's door; the Worker's title and thumbnail rewrites keep it as written. The Worker
+reads from it only the ranges that play and the current copy's names (`worker.js`
+`editsOf`, §10): the cuts' transcript text (`leads`, `removed`, `resumes`, `why`, a later
+voice cut's) never reaches a viewer. A cut whose edges were dragged in the editor is marked
+`adjusted` (B195 (g)): its words are the ones first transcribed for it, and may no longer
+be exactly what it cuts. An edit that leaves everything in is no edit.
+**`edits.keep_until`** (RFC 3339, UTC) is when the original goes: the copy's landing sets it
+two days on (`library::set_edit_copy`; naming the same copy again keeps the first time), a
+save back to the original drops it with the copy, and the editor says by Revert how long is
+left only while the copy is current (D:B197 (b), (e)).
+
+**The bake** (D:B197 (c)), on Yes, delete or once `keep_until` has passed, makes the edit
+the video: `media` names the copy's own files with `hls: null`, `durationSec` is the copy's
+length, `markers` move onto the edited clock (one inside a cut or outside the trim goes),
+`edits` goes, and `bakedFrom` gains `{at, rev, keep}`: when, the baked edit's revision, and
+the ranges that played on the clock before it. Oldest first, the last 20 kept, so data kept
+on an older clock (a transcript) maps through every later bake in order. A later edit
+counts on the new clock, and its revision starts past every baked one (`record_rev`: one
+past the highest of `edits.rev` and each `bakedFrom` `rev`), so its copy never takes a file
+name the video now plays from.
+
+**`thumb.from`** (D:B198) stamps what Copy thumbnail's pictures were drawn from: the
+video's first 3 seconds as they played then. After an edit `thumb` is no longer current, so
+the status and the page hand out no earlier picture and the owner's page draws a fresh one,
+with the edited length. The earlier `thumb-*` files stay served, so a paste already sent
+keeps its picture (D:B164), unless an edit removes something in those first 3 seconds: then
+only the current picture is served, and the bake deletes the others.
 
 ### 5.4 Index, list-on-read, multi-writer safety
 
@@ -506,7 +594,8 @@ its own continues, `deleted` stops, else `Collision`. Writers of one record coex
   take. Reaps bytes under tombstones; record-less bytes no Mac can still finish (never a
   local take's id, never under a day old, never without a ledger entry; only this Mac's own
   or a removed Mac's after a credential's life plus a day); page keys spent or an hour past
-  `exp`. Never records, tombstones, the ledger or the roster.
+  `exp`. Bakes what's due and finishes a bake cut off after its write (§3.3, D:B197). Never
+  tombstones, the ledger or the roster, nor a record but by a bake.
 
 ### 5.6 Renditions
 
@@ -588,10 +677,10 @@ foreign `v`. `VERSION` 0.1.9, `IFACE` 2.
 |---|---|
 | `GET /<id>` / `?embed=1` | the page by record face (§10) / the embed face, no `X-Frame-Options` |
 | `GET /<id>?k=<key>` | spend the grant by CAS → `shroom_owner` cookie → 302 to the clean URL |
-| `GET /m/<id>/<file>` | `rec/<id>/…` with Range/HEAD; only `.m3u8 .m4s .mp4 .jpg .vtt`; `nosniff`, `CSP: sandbox`; record read beside: deleted → 404, unreadable → 503 |
-| `GET /d/<id>` | `video.mp4` named from the live title, Range forwarded |
+| `GET /m/<id>/<file>` | `rec/<id>/…` with Range/HEAD; only `.m3u8 .m4s .mp4 .jpg .vtt`; `nosniff`, `CSP: sandbox`; record read beside: deleted → 404, unreadable → 503; an edit's copy current → only its files and the recording's own poster while the edit keeps its first frame (N63); baked → only what `media` names (D:B197); `thumb-*` whatever else is (D:B164), but only the record's current picture once an edit or a bake took something from the first 3 s |
+| `GET /d/<id>` | the recording's own file (`video.mp4`, or a baked `edit-<n>.mp4`) — or an edit's current copy; nothing while an edit waits for one — named from the live title, Range forwarded |
 | `GET /oembed?url=` | iframe of the embed face |
-| `GET /_shroom/hls.js`, `/_shroom/ping`, `/_shroom/status/<id>` | the player (immutable); `{shroom, iface, version}` without storage; the page's poll (`drained`, `pct`, `stalled`, `cuts`) |
+| `GET /_shroom/hls.js`, `/_shroom/ping`, `/_shroom/status/<id>` | the player (immutable); `{shroom, iface, version}` without storage; the page's poll (`drained`, `pct`, `stalled`, `cuts`; an edit's `keep` and `copy`) |
 | `POST /_shroom/title/<id>`, `/_shroom/mark` | cookie title edit (`etagMatches`); the mark switch (owner-class) |
 | `POST`, `GET /_shroom/edits/<id>` | a voice cut on or off (`etagMatches`, the maker or owner-class); the owner page's strip and what plays (N65, D:B200) |
 | `GET /favicon.{svg,png,ico}` | the icon carried in the module (D:B109) |
@@ -635,6 +724,10 @@ and show needs-update below it (DV #30). `VERSION` moves with every page change;
 6. Build the MP4 and teaser (§4.6); start the take's voice lane (`runtime/voice.rs`, N65,
    D:B201: its own thread, never waited on); `finish`: teaser, then `video.mp4`, each with a
    record rewrite; then `done = total` (drained); mark `uploaded`.
+
+`go_live` and `finish` read the record before sending anything: over a video whose edit
+already became it (D:B197's bake, `media.hls` null) they send none of the original's files
+and only mark it live, then drained.
 
 Each S3 call retries in place (`with_retry`: 6 tries, 500 ms doubling to 15 s; 4xx but
 408/429 not retried). A failed pass reports `Blocked`/`Idle`; the core owns the pass retry
@@ -685,6 +778,35 @@ and ~47 in Safari (it reads ~3 MB at a time), against ~56–58 (`worker/dev/view
 | any read failure | *unavailable* (30 s refresh; status `{state:"unavailable"}`; `/d/` 503; code only in `x-shroom-unavailable`) |
 
 A Worker that is gone, deploying or over its cap shows Cloudflare's page.
+
+**Edits** (N63, D:B195): the record's `edits` (§5.3) rides the read the page makes anyway.
+`editsOf` ports `EditList::checked` + `keep` (clamped to `durationSec`, every applied cut
+read; held with the player's own arithmetic to `crates/shroom-edit/tests/keep-vectors.json`)
+and hands the player only the ranges that play — at most the first 500, so past them
+playback ends rather than play a cut. Over `video.mp4` and the stream alike the
+player starts at the trim's in, skips each cut — every frame while playing, and on
+`timeupdate` and `seeking` — and stops at the out, its time, seek bar and keys in edited
+time; the page, the unfurl's `og:video:duration`, the status and Copy thumbnail show the
+edited length; Download waits for the copy. An edit that leaves nothing to play is still an
+edit: every face shows *unavailable*, never the recording as it was. No picture shows a cut
+part: until the copy is up the unfurl, oEmbed and the player's poster show the recording's
+first frame only while the edit keeps it, and no teaser, and a loaded player waits at its
+first kept moment. Once the edit's permanent copy is current the page and the embed play it
+as it is, with its own poster and teaser (none when it has none, never the original's), and
+`/d/` hands it over. Then (step 3) `/m/` serves only the copy's files and the recording's
+own first frame while the edit keeps it (a token-less Mac's Library shows it until the
+bake): the original's stream, teaser and `video.mp4` answer 404, and a player still on
+the original moves over to the copy at the same edited moment when they do. Until the copy lands the
+original stays reachable at its addresses, so the edit holds only for what the page plays.
+A baked recording (D:B197) is an ordinary live video of one file: the page, the unfurl,
+Download and `/m/` follow `media`'s keys, each only when it is the recording's own file of
+its slot's kind. Copy thumbnail's picture (`thumb`) carries the first frame it was drawn
+from (`from`); only one drawn from what the video shows now is handed out, so the owner's
+page draws a new one from the copy's own pictures, with the edited length. The earlier
+pictures stay served (D:B164) unless an edit or a bake took something from the first 3 s
+they show; then only the current one is. The voice-cut build's `shroom:keep` event (#59)
+hands the player new ranges on the recording's clock, made safe as `editsOf` makes an edit,
+in place of the edit.
 
 **Owner faces (cookie):** editable title (placeholder kept if untouched; Enter or click-away
 saves; emptied restores), player, Copy link and Download as icons, the upload line; members
@@ -833,8 +955,11 @@ Built provisionally (N29–N34; D:B37–B42; WI §4–§6) in `runtime/member.rs
   `everyone`) with cached ETags, owners from the ledger (D:B37, B42).
 - Rows merge local takes (recovered pinned; uploading · waiting · stranded · "Removed from
   the space") with remote records by id, local states first (D:B34, B54 f).
-- Posters `/m/<id>/poster.jpg` (or S3) into `posters/`, ≤ 40 a refresh, ≤ 4 MiB, served as
-  `shroom-poster:` (D:B54 g).
+- Posters `/m/<id>/<poster_file>` (or S3 `rec/<id>/<poster_file>`) into `posters/`, ≤ 40 a
+  refresh, ≤ 4 MiB, served as `shroom-poster:` (D:B54 g); `<id>.from` beside one names its
+  file, so a record that names another (an edit's copy, a bake) fetches it again (D:B197).
+- A row whose record holds an edit shows the edit's length (`edited_ms`, from
+  `Row.edited_sec`).
 - Rename under `If-Match`; Delete… = §5.5; on token-less Macs both under a 15-min `manage`
   credential.
 - Local search; offline, Copy link stays and rename/delete grey. Members see their own;
@@ -851,9 +976,10 @@ owner-class: [ Add a token here ]; member: the address); row six live everywhere
 
 - No captions, transcription or transcript search; titles are manual (P10/N26).
   `meta.captions` stays `null`; `rec/<id>/tx/*` is never written.
-- Markers: [ Drop a marker ] (paused popover) at the pause point; `markers.json` written per
-  drop as seconds in the joined timeline, sent as `meta.markers` at the claim (D:B49 e);
-  nothing surfaces them.
+- Markers: [ Drop a marker ] (paused popover) at the pause point, and ⌥⌘M while recording
+  (N64, D:B196); `markers.json` written per drop as seconds in the joined timeline, sent as
+  `meta.markers` at the claim (D:B49 e). The editor shows them as flags on its timeline, and
+  a bake moves them onto the edited clock (D:B197 (c)); they never reach viewers.
 - v1 doesn't transcribe (D:B168; §16 #29).
 - Voice cuts (N65, provisional; D:B200–B202) read the space's own transcript (N66) to cut
   where the speaker said “shroom cut”: the maker's Mac plans them and lands them in

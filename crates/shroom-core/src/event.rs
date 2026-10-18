@@ -84,6 +84,8 @@ pub enum Surface {
     Settings,
     /// The Send feedback window (N60).
     Feedback,
+    /// The editor window (N63).
+    Editor,
     Countdown,
     Bubble,
 }
@@ -113,12 +115,18 @@ pub enum Event {
     Reopened(QuickProbe),
     /// ⌥⌘P, held while a take is open (N54): the tray click's pause, or Resume.
     Shortcut(QuickProbe),
+    /// ⌥⌘M, held with ⌥⌘P (N64): a marker at this moment while recording; Drop a marker
+    /// while paused, where the paused popover offers it.
+    MarkerShortcut(QuickProbe),
     Act { surface: Surface, action: Action, rev: u64 },
     Key { surface: Surface, key: Key },
     PopoverDismissed,
     /// Non-secret field contents, as typed (the runner only caps the length). The core
     /// filters them — and shows the charset hint when it drops a character.
     Field { field: Field, value: String },
+    /// A change the editor's webview asks for (N63): a trim, a cut, Put back, Revert, Undo,
+    /// Redo. The core takes it or refuses it; the webview decides nothing.
+    Edit(EditStep),
     /// The one inbound path for secret text: the shell moved it into the stash and sends
     /// only the handle and its shape (law 13).
     SecretPasted { field: SecretField, id: SecretId, shape: Shape },
@@ -147,6 +155,9 @@ pub enum Event {
     Member(MemberNews),
     /// Report a problem's lane: the report gathered, or Send's answer (B180).
     Report(ReportNews),
+    /// The editor's lane (N63): the record read, the video coming and here, a save landed,
+    /// a copy up. Its failures are `Failed` with the editor's ops.
+    Editor(EditorNews),
     /// The runner's catch-all: an error, a caught panic, or a deadline passing.
     Failed { op: Op, class: FailClass },
     /// Posted at `Scene.next_wake`.
@@ -415,6 +426,38 @@ pub enum StandingAnswer {
     SpaceSide,
     /// The ping isn't shroom's (or NXDOMAIN while online). Debounced the same way.
     Gone,
+}
+
+/// One step asked for in the editor (N63): an operation on the list (seconds on the
+/// recording's own timeline), or a walk through the steps already taken.
+#[derive(Debug, Clone, PartialEq)]
+pub enum EditStep {
+    Op(shroom_edit::Op),
+    Undo,
+    Redo,
+}
+
+/// What the editor's lane reports (N63), each about the video it was asked for.
+#[derive(Debug, Clone, PartialEq)]
+pub enum EditorNews {
+    /// The record was read: what's saved (`meta.edits`), the markers, the length, and when
+    /// the original goes while it's kept beside the copy (`edits.keep_until`, B197).
+    Opened { rec: RecId, saved: Option<shroom_edit::Saved>, markers: Vec<f64>, duration_sec: Option<f64>, keep_until: Option<crate::time::Wall> },
+    /// The video isn't on this Mac: it's coming from the space, this far.
+    Getting { rec: RecId, pct: u8 },
+    /// The video is on this Mac and its sound is read: the editor can play and draw it.
+    Ready { rec: RecId, duration: f64 },
+    /// The save landed as this revision.
+    Saved { rec: RecId, rev: u64 },
+    /// The final video — the permanent copy being cut and put up — this far (B197).
+    Making { rec: RecId, pct: u8 },
+    /// The permanent copy of this revision is done with: `named` — up and named in the
+    /// record; else dropped, the record having moved on first (a newer save landed, from
+    /// this Mac or another, or the edit went) or the revision leaving nothing out, so there's
+    /// no final video to ask about (B199).
+    CopyDone { rec: RecId, rev: u64, named: bool },
+    /// The upkeep answered (B197 (d)): how many originals it baked, how many copies it made.
+    UpkeepDone { baked: u32, copies: u32 },
 }
 
 /// What the shell says about a report (B180).

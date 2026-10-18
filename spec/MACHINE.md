@@ -4,7 +4,7 @@
 
 The machine: every state, edge, rule, said-line and law of shroom v1 — the spec (DECISIONS B133). Sessions edit it; MACHINE.md and the canvas's machine boards are generated from it.
 
-146 states · 299 edges · 23 rules · 583 said-lines · 16 laws · 73 ledger rows.
+155 states · 318 edges · 25 rules · 620 said-lines · 16 laws · 75 ledger rows.
 
 Status: **ratified** is Bagrat's; **provisional** is designed or built and awaits him (each cites its row: `#n` is a DEVIATIONS row of docs/DECISIONS.md, `Bn` a decision, `Nn`/`Un`/`Pn` a ledger row below). `SM:n` in older citations is a line of the retired spec text, kept in history/spec/UX-STATEMACHINE.md.
 
@@ -1258,7 +1258,7 @@ A light scrim on the chosen display only, with a large 3 · 2 · 1 and one quiet
 
 ### `recording`
 
-state · tray · **ratified** · board: TrayFaces · cites N24, N39, N41, N25, N54
+state · tray · **ratified** · board: TrayFaces · cites N24, N39, N41, N25, N54, N64
 
 The tray is the whole surface and there is no popover. The icon wears the red dot. A click is an instant pause, and the popover opens only after the pause is confirmed (never catch a menu in the last frame, POC §8). No timer in the menu bar. Network is never the recording's problem: capture writes locally regardless, and upload is opportunistic in the background. A right-click mid-take is the same as a left click (N39). ⌘Q and the Dock's Quit are declined silently (law 4).
 
@@ -1269,6 +1269,7 @@ The tray is the whole surface and there is no popover. The icon wears the red do
 | tray click | other |  | `paused` | Instant pause. The popover opens after the pause is confirmed. |
 | right-click | other |  | `paused` | same as a left click mid-take (N39) |
 | ⌥⌘P | other |  | `paused` | the tray click's pause, from the keyboard; the popover opens after the pause is confirmed (N54) |
+| ⌥⌘M | other |  | `recording` | drops a marker at this moment of the take; nothing on screen answers, the take goes on (N64) |
 | ⌘Q / Dock Quit | other |  |  | declined silently while recording (law 4) |
 
 | → | Kind | Label | Status | Cites |
@@ -1287,9 +1288,9 @@ The tray is the whole surface and there is no popover. The icon wears the red do
 
 ### `paused`
 
-state · popover · **ratified** · board: Paused · cites N24, N38, N39, N41, B143, N54
+state · popover · **ratified** · board: Paused · cites N24, N38, N39, N41, B143, N54, N64, B199
 
-The same custom popover, with the icon wearing the pause bars. Top to bottom: the header with the length, Resume (the one filled action, Return default), Finish & Share and Restart as plain rows (Finish & Share was Stop, with a line beneath it; B143), and Discard… as red text at the bottom beside a grey no-Quit note. Quit is absent by law. Drop a marker is hidden until the editor ships (B143): the core still lands a marker at the pause point, metadata-only, but no surface offers it. Restart re-arms with the countdown already running. The count is Restart's undo (N39, provisional): the old take is discarded only the instant the new capture begins.
+The same custom popover, with the icon wearing the pause bars. Top to bottom: the header with the length, Resume (the one filled action, Return default), Finish & Share and Restart as plain rows (Finish & Share was Stop, with a line beneath it; B143), and Discard… as red text at the bottom beside a grey no-Quit note. Quit is absent by law. Drop a marker sits between Finish & Share and Restart (N64, reversing B143's hiding): it lands a marker at the pause point, and the row then reads Marker dropped, greyed until the take resumes. Markers show in the editor (N63). Restart re-arms with the countdown already running. The count is Restart's undo (N39, provisional): the old take is discarded only the instant the new capture begins.
 
 **Entry.** Tray click while recording, after the pause is confirmed (a right-click counts the same, N39). Also: Back (or click-away / Esc) from discard-confirm; a cancelled Restart count; a Quit request while paused, which opens this popover (law 4).
 
@@ -1299,6 +1300,8 @@ The same custom popover, with the icon wearing the pause bars. Top to bottom: th
 | “Resume” | button | ratified | filled |
 | “Restart” | button | ratified |  |
 | “Finish & Share” | button | ratified | was “Stop” (B143) |
+| “Drop a marker” | button | ratified | N64; between Finish & Share and Restart; greyed in these words while a window's question is open, a marker not dropped (B199) |
+| “Marker dropped” | button | ratified | N64; the same row, greyed, once a marker is dropped at this pause — only then (B199) |
 | “Discard…” | link | ratified | red text at the bottom, never a button |
 
 | Action | Kind | Return | Goes to | Note |
@@ -1307,7 +1310,7 @@ The same custom popover, with the icon wearing the pause bars. Top to bottom: th
 | ⌥⌘P | other |  | `recording` | Resume from the keyboard, wherever focus is; nothing while Resume is greyed (N54) |
 | Finish & Share | secondary |  | `stopping` | deliberate but visible; a plain row like Restart, with no line beneath (B143) |
 | Restart | secondary |  | `restart-confirm` | Restart asks first (DEVIATIONS #44, B134); its count is still Restart's undo (N39). The old take dies only when the new capture begins. |
-| Drop a marker | secondary |  |  | Hidden from the UI until the editor ships (B143). The core keeps it: it lands a marker at the pause point, metadata-only in v1. No state change. |
+| Drop a marker | secondary |  | `paused` | A plain row between Finish & Share and Restart (N64). Lands a marker at the pause point; the row then reads Marker dropped and greys until Resume. No state change. A question open in a window (the Library's delete sheet, a Settings sheet) greys it, its words unchanged (B199). |
 | Discard… | red-text |  | `discard-confirm` |  |
 | Esc | other |  |  | N38's keyboard bullet says Esc dismisses the popover. The spec says nothing more for paused. |
 
@@ -1853,51 +1856,6 @@ Owner-mode by role (N40): on a member's own pages, the member's owner-mode is th
 |---|---|---|---|---|
 | Untitled — Aug 21 | field | ↵ | `owner-page-member` | Saves the title in place. The title, the member's only owner-mode control. It behaves like the owner page's title field. |
 
-### `owner-page-cuts`
-
-face · web-page · **provisional** · a face of `owner-page` · board: OwnerPageCuts · cites N65, N63, N66, N40, B21
-
-Voice cuts (N65): when the speaker said “shroom cut” in a take, the owner page shows what was cut, under the player. A heading, a quiet note that only the owner sees it, then one row per cut: its time on the video, and what was said, struck through while it is cut, between a few words of what plays around it (up to six either side, never struck), with Put back (and, once put back, Cut again). A cue with nothing said again after it cut only its own words; the line before it comes as an offer, its words not struck, with Cut it too. Owner-mode as the title has it (N40): the video's maker and owner-class browsers. Viewers see only the cut video, never the strip or the words cut. A press saves at once and the player follows; a press that didn't save puts the row back as it was and says so on one line (OwnerPageCutRows).
-
-**Entry.** The record's edit list holds voice cuts (N63's list; kinds retake, cue-only and line-before-cue, landed by the Mac once the take is heard) and the browser is in owner-mode for this video. The strip shows on load, or, on a page already open, once the page's own poll sees the cuts land.
-
-| Said | Role | Copy | Note |
-|---|---|---|---|
-| “Cut where you said “shroom cut”” | heading | provisional | The strip's heading, with the scissors. Proposed 2026-10-18 (OwnerPageCuts); awaiting Bagrat. |
-| “Only you see this.” | note | provisional | Quiet, at the heading's right: viewers never see the strip. Proposed 2026-10-18; awaiting Bagrat. |
-| “Put back” | button | provisional | On a cut row: the slip plays again. Proposed 2026-10-18; awaiting Bagrat. |
-| “Cut again” | button | provisional | On a row that was put back. Proposed 2026-10-18; awaiting Bagrat. |
-| “Cut it too” | button | provisional | On the offered line before a cue with nothing said again after it. Proposed 2026-10-18; awaiting Bagrat. |
-| “Nothing was said again after it, so only “shroom cut” went. Cut the line before it too?” | note | provisional | Above the offered line, in amber. Proposed 2026-10-18; awaiting Bagrat. |
-| “Couldn't save that. Check your connection, then try again.” | status | provisional | Under the rows, in amber, after a press that didn't save; the row is back as it was. Proposed 2026-10-18; awaiting Bagrat. |
-
-| Action | Kind | Return | Goes to | Note |
-|---|---|---|---|---|
-| Put back | secondary |  | `owner-page-cuts` | Saves at once: the cut no longer applies (the record's edit list, under If-Match, B21), the row's words are no longer struck, the button becomes Cut again, and the player follows. |
-| Cut again | secondary |  | `owner-page-cuts` | The same save, the other way. |
-| Cut it too | secondary |  | `owner-page-cuts` | Cuts the offered line as well; the row then reads as a cut row, with Put back. |
-
-### `owner-page-cue-hint`
-
-face · web-page · **provisional** · a face of `owner-page` · board: OwnerPageCueHint · cites N65, N66, N40, B203
-
-The voice-cut hint (N65): in a space that listens, the owner page of a take with no voice cuts shows one quiet line under the player, where the strip would be, with the scissors: how to cut a slip by saying so. Got it puts it away for good in that browser, and so does a first take with voice cuts; never beside the strip, never while the cuts are on their way. Owner-mode as the title has it (N40); viewers never see it (OwnerPageCueHint).
-
-**Entry.** The browser is in owner-mode for this video, the space listens (N66), the record has no voice cuts and none are on their way, and this browser hasn't put the hint away or shown a strip of voice cuts.
-
-| Said | Role | Copy | Note |
-|---|---|---|---|
-| “Slipped? Say “shroom cut”, then say the line again.” | note | provisional | Under the player, where the strip would be, with the scissors. OK'd by Bagrat 2026-10-18 (relayed by the orchestrator), with whichever cue word wins: “shroom cut”, his pick the same day (B203). |
-| “Got it” | button | provisional | At the line's right: the hint goes, for good in this browser. Proposed 2026-10-18; awaiting Bagrat. |
-
-| Action | Kind | Return | Goes to | Note |
-|---|---|---|---|---|
-| Got it | secondary |  | `owner-page` | The hint goes and stays gone in this browser (its own storage; where that can't be kept, for this page view). |
-
-| → | Kind | Label | Status | Cites |
-|---|---|---|---|---|
-| `owner-page` | flow | Got it — the hint goes, for good in this browser | provisional | N65 |
-
 ### `stopped-offline`
 
 state · popover · **provisional** · board: StoppedOffline · cites N40, N1, N41
@@ -2080,6 +2038,51 @@ web-page · web-page · **provisional** · cites N40, §5.4, R4, R5
 |---|---|---|---|---|
 | the mark (small, in its corner) | other |  | `landing` | Small mark in the corner. The spec doesn't restate its hover label for the embed. |
 
+### `owner-page-cuts`
+
+face · web-page · **provisional** · a face of `owner-page` · board: OwnerPageCuts · cites N65, N63, N66, N40, B21
+
+Voice cuts (N65): when the speaker said “shroom cut” in a take, the owner page shows what was cut, under the player. A heading, a quiet note that only the owner sees it, then one row per cut: its time on the video, and what was said, struck through while it is cut, between a few words of what plays around it (up to six either side, never struck), with Put back (and, once put back, Cut again). A cue with nothing said again after it cut only its own words; the line before it comes as an offer, its words not struck, with Cut it too. Owner-mode as the title has it (N40): the video's maker and owner-class browsers. Viewers see only the cut video, never the strip or the words cut. A press saves at once and the player follows; a press that didn't save puts the row back as it was and says so on one line (OwnerPageCutRows).
+
+**Entry.** The record's edit list holds voice cuts (N63's list; kinds retake, cue-only and line-before-cue, landed by the Mac once the take is heard) and the browser is in owner-mode for this video. The strip shows on load, or, on a page already open, once the page's own poll sees the cuts land.
+
+| Said | Role | Copy | Note |
+|---|---|---|---|
+| “Cut where you said “shroom cut”” | heading | provisional | The strip's heading, with the scissors. Proposed 2026-10-18 (OwnerPageCuts); awaiting Bagrat. |
+| “Only you see this.” | note | provisional | Quiet, at the heading's right: viewers never see the strip. Proposed 2026-10-18; awaiting Bagrat. |
+| “Put back” | button | provisional | On a cut row: the slip plays again. Proposed 2026-10-18; awaiting Bagrat. |
+| “Cut again” | button | provisional | On a row that was put back. Proposed 2026-10-18; awaiting Bagrat. |
+| “Cut it too” | button | provisional | On the offered line before a cue with nothing said again after it. Proposed 2026-10-18; awaiting Bagrat. |
+| “Nothing was said again after it, so only “shroom cut” went. Cut the line before it too?” | note | provisional | Above the offered line, in amber. Proposed 2026-10-18; awaiting Bagrat. |
+| “Couldn't save that. Check your connection, then try again.” | status | provisional | Under the rows, in amber, after a press that didn't save; the row is back as it was. Proposed 2026-10-18; awaiting Bagrat. |
+
+| Action | Kind | Return | Goes to | Note |
+|---|---|---|---|---|
+| Put back | secondary |  | `owner-page-cuts` | Saves at once: the cut no longer applies (the record's edit list, under If-Match, B21), the row's words are no longer struck, the button becomes Cut again, and the player follows. |
+| Cut again | secondary |  | `owner-page-cuts` | The same save, the other way. |
+| Cut it too | secondary |  | `owner-page-cuts` | Cuts the offered line as well; the row then reads as a cut row, with Put back. |
+
+### `owner-page-cue-hint`
+
+face · web-page · **provisional** · a face of `owner-page` · board: OwnerPageCueHint · cites N65, N66, N40, B203
+
+The voice-cut hint (N65): in a space that listens, the owner page of a take with no voice cuts shows one quiet line under the player, where the strip would be, with the scissors: how to cut a slip by saying so. Got it puts it away for good in that browser, and so does a first take with voice cuts; never beside the strip, never while the cuts are on their way. Owner-mode as the title has it (N40); viewers never see it (OwnerPageCueHint).
+
+**Entry.** The browser is in owner-mode for this video, the space listens (N66), the record has no voice cuts and none are on their way, and this browser hasn't put the hint away or shown a strip of voice cuts.
+
+| Said | Role | Copy | Note |
+|---|---|---|---|
+| “Slipped? Say “shroom cut”, then say the line again.” | note | provisional | Under the player, where the strip would be, with the scissors. OK'd by Bagrat 2026-10-18 (relayed by the orchestrator), with whichever cue word wins: “shroom cut”, his pick the same day (B203). |
+| “Got it” | button | provisional | At the line's right: the hint goes, for good in this browser. Proposed 2026-10-18; awaiting Bagrat. |
+
+| Action | Kind | Return | Goes to | Note |
+|---|---|---|---|---|
+| Got it | secondary |  | `owner-page` | The hint goes and stays gone in this browser (its own storage; where that can't be kept, for this page view). |
+
+| → | Kind | Label | Status | Cites |
+|---|---|---|---|---|
+| `owner-page` | flow | Got it — the hint goes, for good in this browser | provisional | N65 |
+
 #### Region 4's amendments
 
 - **N40** (amends Region 4 beat 6 — the offline stop (ratified 2026-07-20; offline line kept by reference in N26)): An offline Mac can't load the page, so the paused popover becomes stopped-offline: the link, Copy link, and a page that opens by itself on reconnect, after any running take. The ratified offline line keeps its meaning in the popover's new wording. Recipients see on-its-way meanwhile. Awaiting ratification.
@@ -2136,9 +2139,9 @@ web-page · web-page · **provisional** · cites N40, §5.4, R4, R5
 
 ### `library`
 
-state · window · **provisional** · board: Library · cites N35, N5, N33, N25, N26, N28, N34, N41, U2, §5.6, R10, P13, N46
+state · window · **provisional** · board: Library · cites N35, N5, N33, N25, N26, N28, N34, N41, U2, §5.6, R10, P13, N46, N63
 
-The Library window, thin by design (§5.6), built for two jobs: re-share an old video and clean up. It is a list, newest first. Each row shows a small poster, the title, then date · length; in Everyone, other members' rows add their admin-private label (N28; removed members keep it). Copy link is always visible; Copy thumbnail sits under it in the row's menu (N46). Open page and Delete… show on hover or selection. State words appear only when a video isn't live (no word means live). A recovered take pins to the top under the amber dot, mirroring N25's banner. The full macOS idiom applies: click a title to rename it, double-click to open, ⌘C copies, the Delete key deletes, right-click opens a menu, ⌘/⇧-click multi-selects. Mine · Everyone shows only on owner-class Macs once someone else has a video here, and Mine is the default. Search is local and instant, over titles only. The window opens on the local cache, and the bucket refresh (R10 delta sync) runs behind it, sliding new rows in, including videos from your other Macs. Footer: the count only, with no sizes or prices (P13 parked). Scope: members see their own videos, owner-class Macs see the whole space. If another Mac deletes a video while this Mac is uploading it, the tombstone check at resume stops the upload and this row turns to 'Removed from the space' with Save to Movies · Discard…. Mocked row shape: '<title> — Aug 21 · 4:32' (+ ' · Mher' in Everyone).
+The Library window, thin by design (§5.6), built for two jobs: re-share an old video and clean up. It is a list, newest first. Each row shows a small poster, the title, then date · length; in Everyone, other members' rows add their admin-private label (N28; removed members keep it). Copy link is always visible; Copy thumbnail sits under it in the row's menu (N46), and Edit… after Open page (N63). Open page and Delete… show on hover or selection. State words appear only when a video isn't live (no word means live). A recovered take pins to the top under the amber dot, mirroring N25's banner. The full macOS idiom applies: click a title to rename it, double-click to open, ⌘C copies, the Delete key deletes, right-click opens a menu, ⌘/⇧-click multi-selects. Mine · Everyone shows only on owner-class Macs once someone else has a video here, and Mine is the default. Search is local and instant, over titles only. The window opens on the local cache, and the bucket refresh (R10 delta sync) runs behind it, sliding new rows in, including videos from your other Macs. Footer: the count only, with no sizes or prices (P13 parked). Scope: members see their own videos, owner-class Macs see the whole space. If another Mac deletes a video while this Mac is uploading it, the tombstone check at resume stops the upload and this row turns to 'Removed from the space' with Save to Movies · Discard…. Mocked row shape: '<title> — Aug 21 · 4:32' (+ ' · Mher' in Everyone).
 
 **Entry.** A space exists, so config is reachable: idle-ready, not mid-take. The user clicks the Library (folder) icon in config's footer. One instance: clicking the icon again brings the open window forward. A window opened before a take stays open through it (N41's quiet-take law covers only what shroom would newly show). It is also restored at its derived state after an update relaunch if it was open when Update ran. The dock icon shows while it is open (Region 1 dock rule).
 
@@ -2170,12 +2173,14 @@ The Library window, thin by design (§5.6), built for two jobs: re-share an old 
 | “1 video” | line | provisional | one case the spec didn't print, so it varies by case — the copy table: The Library footer, one video · copy table |
 | “Aug 21” | line | provisional | one case the spec didn't print, so it varies by case — the copy table: The Library's dates · copy table |
 | “Aug 21 · 4:32” | line | provisional | one case the spec didn't print, so it varies by case — the copy table: The Library's dates · copy table |
+| “Edit…” | menu-item | ratified | N63; a live row's menu, after Open page |
 
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
 | Copy link | secondary |  | `library` | Outline, always visible. Also ⌘C on a selected row and right-click → Copy link. Reads 'Copied' for a moment. Stays live offline and when the space can't be reached. |
 | Copy thumbnail | other |  | `library` | N46. Right-click → Copy thumbnail, under Copy link: the same clipboard as the page's (the picture wrapped in the link, and the plain link). Live rows only. |
 | Open page | text-link |  | `owner-page` | On hover or selection. Also double-click a row and right-click → Open page. Opens the owner-keyed URL (U2): the page arrives in owner-mode and the default browser gets the cookie, which is also the door for a new browser or a new Mac. |
+| Edit… | other |  | `editor` | N63. Right-click → Edit…, after Open page. Live rows only, in this Mac's scope. Greys out offline and while a take is open (law 4), as Rename does. One editor at a time: Edit… while it is open brings it forward. |
 | Delete… | red-text |  | `delete-confirm` | On hover or selection. Also the Delete key, right-click → Delete…, and ⌘/⇧-click several rows then Delete… once. Greys out offline. |
 | Rename (click a title) | field | ↵ | `library` | Renames in place. Enter or click-away saves (the field's own Return, Law 8). Esc cancels. An emptied title brings the previous one back, never blank. A metadata write, live on the next load (Region 4 Rename). Greys out offline. |
 | Search titles | field |  |  | Filters as you type, local and instant. Return behaviour not stated. |
@@ -2196,6 +2201,8 @@ The Library window, thin by design (§5.6), built for two jobs: re-share an old 
 | `library-offline` | flow | Mac goes offline | provisional |  |
 | `library-unreachable` | flow | member-revoked or space-gone (N34) | provisional |  |
 | `delete-confirm` | side | Delete… · Delete key | provisional |  |
+| `editor` | side | Edit… | ratified | N63 |
+| `editor-getting` | side | Edit… | ratified | N63 |
 
 ### `library-empty`
 
@@ -2271,6 +2278,227 @@ Member-revoked or space-gone: the list this Mac remembers, and only Copy link an
 | → | Kind | Label | Status | Cites |
 |---|---|---|---|---|
 | `library` | flow | the cause clears (derived — Law 1, N34) | provisional |  |
+
+### `editor`
+
+state · window · **ratified** · board: EditorCuts · cites N63, B195, B197, B199
+
+The editor (N63): a window of its own, titled “Edit — <the video's title>”, one at a time. Top to bottom: the video, playing the edit (cuts skipped, held to the trim); the play button and the time, edited position / edited length, with “was <the recording's length>” once the edit changes it; on the right the hint and Undo · Redo; then the timeline, the whole recording's sound as a waveform with the playhead: two yellow ends that drag to trim, a drag across the sound that selects a part with Cut <its length> under it, every cut red and hatched (clicking one offers Put back <its length>), every suggestion not yet taken dashed amber (clicking one offers Cut it too); either edge of a cut or a suggestion drags to move it, the pointer ↔ over it, its length shown live under it and the picture at the edge as it goes, stopping at the next cut or suggestion, the trim's end, a tenth of a second from its other edge, or where a second would be all that's left, one step for Undo (B195 (g)), and every marker (N64) a flag at its time. The footer: the line that the link stays the same, Revert to original and Done. The waveform fills in once the sound is read; until then the timeline is empty and the ends wait. Every change can be undone, Put back and Revert included; the changes stay in the window until Done saves them. While an earlier edit's original is still kept, the time it has left sits by Revert to original; once it is gone, Revert to original only undoes what changed since the window opened. While it is open, no edit becomes a video behind it on this Mac: the upkeep, and on the Mac holding the token the cleanup sweep, wait until the window closes (B199).
+
+**Entry.** Edit… on a live row in the Library (N63), when the video is on this Mac: its take was recorded here and is still here, or it came from the space before. One instance: Edit… again brings the open editor forward, on the video it holds. A take started while it is open leaves it open (law 4 covers only what shroom would newly show). The dock icon shows while it is open.
+
+| Said | Role | Copy | Note |
+|---|---|---|---|
+| “Edit — Setting up shroom in two minutes” | window-title | ratified | “Edit — ” and the video's title |
+| “1:16 / 3:39” | line | ratified | the edited position / the edited length; varies |
+| “was 4:32” | line | ratified | the recording's own length; only when the edit changes the length |
+| “Drag the yellow ends to trim. Drag across the sound to cut a part.” | line | ratified |  |
+| “Play” | label | ratified | the play button's name on hover and to VoiceOver; “Pause” while playing |
+| “Pause” | label | ratified |  |
+| “Undo” | label | ratified | the button's name on hover and to VoiceOver; also ⌘Z |
+| “Redo” | label | ratified | also ⇧⌘Z |
+| “Cut 12.0 s” | button | ratified | under a selected part; the length varies |
+| “Put back 12.0 s” | button | ratified | under a cut that was clicked; the length varies |
+| “Cut it too” | button | ratified | under a dashed suggestion that was clicked (a voice cue's offer, N65); the voice-cut proposal's words |
+| “Your link stays the same. Viewers see the edit once it's saved.” | line | ratified |  |
+| “The original is kept one more day” | line | ratified | by Revert, only while an earlier edit's original is kept (B197); never more than it has left (B199): “two more days” from 47 hours, “one more day” from a day, “<n> more hours” from 2 hours (whole hours, rounded down; two to nine in words, figures from 10, law 16), “one more hour” from an hour, and “less than an hour” under one |
+| “Revert to original” | button | ratified |  |
+| “Done” | button | ratified | filled; Return |
+
+| Action | Kind | Return | Goes to | Note |
+|---|---|---|---|---|
+| Play / Pause | other |  |  | Space too. Plays the edit: the cuts are skipped and it holds to the trim. |
+| drag a yellow end | other |  | `editor` | trims; a click on the timeline moves the playhead |
+| drag across the sound | other |  | `editor` | selects a part; Cut <length> cuts it (the Delete key too) |
+| Cut | secondary |  | `editor` | red, and skipped as it plays |
+| Put back | secondary |  | `editor` | after a click on a cut |
+| Cut it too | secondary |  | `editor` | after a click on a dashed suggestion: it's cut, red |
+| drag a cut's edge | other |  | `editor` | either edge of a red cut or a dashed suggestion (↔ under the pointer): it moves that edge, its length live; it stops at the next cut or suggestion, the trim's end, a tenth of a second from its other edge, or where a second is all that's left. A suggestion stays offered. One step for Undo (B195 (g)) |
+| Undo · Redo | other |  | `editor` | ⌘Z · ⇧⌘Z; every change made in the window |
+| Revert to original | secondary |  | `editor` | puts back every cut and both ends; undoable |
+| Done | filled-default | ↵ | `editor-saving` | Return. With nothing changed it closes the window at once. ✕ is Done. |
+
+| → | Kind | Label | Status | Cites |
+|---|---|---|---|---|
+| `editor-saving` | flow | Done | ratified | N63, B199 |
+| `library` | flow | Done | ratified | N63 |
+
+### `editor-getting`
+
+state · window · **ratified** · board: EditorStates · cites N63, B195
+
+The editor while the video comes from the space: it isn't on this Mac (another Mac recorded it, or its take is gone). The time reads 0:00 / the recording's length; where the timeline goes, “Getting the video from your space…” over a bar that fills; Done waits.
+
+**Entry.** Edit… on a live row whose video isn't on this Mac.
+
+| Said | Role | Copy | Note |
+|---|---|---|---|
+| “Getting the video from your space…” | line | ratified |  |
+| “Your link stays the same. Viewers see the edit once it's saved.” | line | ratified |  |
+
+| Action | Kind | Return | Goes to | Note |
+|---|---|---|---|---|
+| Done | filled-default |  |  | greyed until the video is here |
+
+| → | Kind | Label | Status | Cites |
+|---|---|---|---|---|
+| `editor` | flow | the video is here and its sound read | ratified | N63 |
+| `editor-cant-get` | flow | the space didn't hand the video over | ratified | N63 |
+
+### `editor-cant-get`
+
+state · window · **ratified** · board: EditorStates · cites N63, B195
+
+The editor when the video couldn't come from the space (offline, or the space didn't answer): one line and Try again where the timeline goes; Close closes the window.
+
+**Entry.** The fetch in editor-getting failed.
+
+| Said | Role | Copy | Note |
+|---|---|---|---|
+| “Couldn't get the video. Check your connection, then try again.” | line | ratified |  |
+| “Try again” | button | ratified |  |
+| “Close” | button | ratified | filled; Return |
+
+| Action | Kind | Return | Goes to | Note |
+|---|---|---|---|---|
+| Try again | secondary |  | `editor-getting` |  |
+| Close | filled-default | ↵ |  | closes the window; ✕ and Esc too |
+
+| → | Kind | Label | Status | Cites |
+|---|---|---|---|---|
+| `editor-getting` | flow | Try again | ratified | N63 |
+| `library` | flow | Close | ratified | N63 |
+
+### `editor-saving`
+
+state · window · **ratified** · board: EditorStates · cites N63, B195, B199
+
+Done pressed with changes: the footer says the edit is saving and Done reads Saving…, greyed. Saved, the share page plays the edit from its next load, and the window goes on to make the final video (or closes, when nothing is left out any more). A quit or an update asked meanwhile waits on it: it goes on once the edit is saved, not waiting for the final video, and is dropped if the save doesn't land (B199).
+
+**Entry.** Done (or ✕) in editor with changes, or Done again in editor-save-failed. Also: Quit or Update while the edit holds changes not saved yet (B199).
+
+| Said | Role | Copy | Note |
+|---|---|---|---|
+| “Saving your edit…” | line | ratified |  |
+| “Saving…” | button | ratified | Done, greyed while it saves |
+
+| → | Kind | Label | Status | Cites |
+|---|---|---|---|---|
+| `library` | flow | saved, and nothing is left out any more (the edit was reverted): the editor closes | ratified | N63 |
+| `editor-save-failed` | flow | the save didn't go through | ratified | N63 |
+| `editor-making` | flow | saved with something left out: the final video is made | ratified | N63, B197 |
+| `editor-save-refused` | flow | the space turned the save down: the video is gone, or another Mac made an edit the video meanwhile | ratified | N63, B199 |
+
+### `editor-save-failed`
+
+state · window · **ratified** · board: EditorStates · cites N63, B195, B199
+
+The save didn't go through (offline, or the space didn't answer): the window stays open with every change in it, the footer line says so in amber, and Done tries again. A save the space turns down is editor-save-refused's (B199).
+
+**Entry.** A save from editor-saving failed.
+
+| Said | Role | Copy | Note |
+|---|---|---|---|
+| “Couldn't save your edit. Check your connection, then press Done again.” | line | ratified | amber, in the footer's place |
+
+| Action | Kind | Return | Goes to | Note |
+|---|---|---|---|---|
+| Done | filled-default | ↵ | `editor-saving` | tries the save again |
+
+| → | Kind | Label | Status | Cites |
+|---|---|---|---|---|
+| `editor-saving` | flow | Done | ratified | N63, B199 |
+
+### `editor-save-refused`
+
+state · window · **ratified** · board: EditorStates · cites N63, B199
+
+The space turned the save down: the video is gone (deleted from another Mac), or another Mac made an edit the video while this window was open, so the edit was made on a video that no longer plays. Nothing can be saved over it: in the save-failed line's place, one amber line says so; Revert to original is gone, the changes can't be stepped, and Close stands in Done's place. Close, Return, Esc and ✕ close the window, and nothing is saved.
+
+**Entry.** A save from editor-saving the space turned down: the video is gone, or another Mac made an edit the video while the editor was open.
+
+| Said | Role | Copy | Note |
+|---|---|---|---|
+| “This video changed since you opened it, so this edit can't be saved.” | line | ratified | amber, in the save-failed line's place |
+| “Close” | button | ratified | filled, in Done's place; Return |
+
+| Action | Kind | Return | Goes to | Note |
+|---|---|---|---|---|
+| Close | filled-default | ↵ | `library` | closes the window, and nothing is saved; ✕ and Esc too |
+
+| → | Kind | Label | Status | Cites |
+|---|---|---|---|---|
+| `library` | flow | Close | ratified | N63, B199 |
+
+### `editor-making`
+
+state · window · **ratified** · board: EditorAfterSave · cites N63, B197
+
+Saved: the final video is being made on this Mac and put up beside the original. Where the timeline was, “Making the final video… 40%” over a bar that fills; the footer says the link already plays the edit and that the window can be closed. Close (or ✕) closes it and shroom finishes in the background; the question that would follow is then answered Keep for 2 days.
+
+**Entry.** The save landed in editor-saving with something left out.
+
+| Said | Role | Copy | Note |
+|---|---|---|---|
+| “Making the final video… 40%” | line | ratified | the share grows |
+| “The link already plays your edit. You can close this window: shroom finishes it.” | line | ratified |  |
+| “Close” | button | ratified | filled; Return |
+
+| Action | Kind | Return | Goes to | Note |
+|---|---|---|---|---|
+| Close | filled-default | ↵ | `library` | the final video is still made; the original is then kept for 2 days |
+
+| → | Kind | Label | Status | Cites |
+|---|---|---|---|---|
+| `editor-keep-original` | flow | the final video is up, named in the video's record | ratified | N63, B197, B199 |
+| `editor-making-failed` | flow | it couldn't be made or put up — or it was dropped, never named: the video's record moved on first, a newer save landing (B199) | ratified | N63, B197, B199 |
+| `library` | flow | Close | ratified | N63, B197 |
+
+### `editor-making-failed`
+
+state · window · **ratified** · board: EditorAfterSave · cites N63, B197, B199
+
+The final video couldn't be made or put up (offline, the space didn't answer, the encoder failed), or a newer save landed first and it was dropped (B199): one amber line and Close. The link keeps playing the edit over the original; shroom tries again later.
+
+**Entry.** Making the final video failed in editor-making. Also: it was made but dropped, never named — the video's record moved on first, a newer save landing from this Mac or another (B199).
+
+| Said | Role | Copy | Note |
+|---|---|---|---|
+| “Couldn't make the final video. The link plays your edit anyway, and shroom tries again later.” | line | ratified | amber |
+| “Close” | button | ratified | filled; Return |
+
+| Action | Kind | Return | Goes to | Note |
+|---|---|---|---|---|
+| Close | filled-default | ↵ | `library` |  |
+
+| → | Kind | Label | Status | Cites |
+|---|---|---|---|---|
+| `library` | flow | Close | ratified | N63, B197 |
+
+### `editor-keep-original`
+
+state · window · **ratified** · board: EditorAfterSave · cites N63, B197
+
+The final video is up: the window asks whether to delete the original. One card: “Delete the original?”, a line that the edit is the video now and the original is only kept for reverting, then Keep for 2 days and Yes, delete, which leads (filled, as Bagrat asked) but is never the Return default: Return does nothing here (law 9; DEVIATIONS #55). Yes, delete makes the edit the video for good and deletes the original now; Keep for 2 days keeps it, and shroom deletes it two days on. ✕ or Esc is Keep for 2 days.
+
+**Entry.** The final video landed while the editor was open.
+
+| Said | Role | Copy | Note |
+|---|---|---|---|
+| “Delete the original?” | title | ratified |  |
+| “Your edit is the video now. The original is only kept so you can revert to it.” | line | ratified |  |
+| “Keep for 2 days” | button | ratified |  |
+| “Yes, delete” | button | ratified | filled and leading; never the Return default (law 9; DEVIATIONS #55) |
+
+| Action | Kind | Return | Goes to | Note |
+|---|---|---|---|---|
+| Yes, delete | filled-default |  | `library` | the edit becomes the video; the original's files are deleted. Filled, as Bagrat asked, but a click only: Return does nothing (law 9; DEVIATIONS #55) |
+| Keep for 2 days | secondary |  | `library` | deleted two days on, by whichever of the space's Macs is open first (B197) |
+| Esc / ✕ | other |  | `library` | ≡ Keep for 2 days |
+
+| → | Kind | Label | Status | Cites |
+|---|---|---|---|---|
+| `library` | flow | Yes, delete · Keep for 2 days | ratified | N63, B197 |
 
 ### `delete-confirm`
 
@@ -3715,6 +3943,8 @@ A move that holds for a whole group of states, written once (B133). The tests ex
 - **an invite opens its window** (`invite-arrives`, flow, **ratified**, N30, N31, #2, #20, B134): @join-doors → @join-arrival, on Member, Failed(Peek), SecretPasted(Invite), click, Scanned. An invite that arrives — the deep link, a paste, the installer's file, or one remembered at the tray click — opens the invite window at the face peek's answer derives: the welcome, waiting, a dead link's line, already here, or the switch's question.
 - **a face comes and goes with its cause** (`faces`, auto, **ratified**, N18, law 1, N34): * → * (a state and its own faces), on any. Faces are render properties of their state: a state and its faces, and one state's faces, re-derive into one another as their causes come and go.
 - **one banner at a time, the highest** (`banners`, auto, **ratified**, N38, law 1): @banners, none → @banners, none, on any. config's banner shows while its cause stands and clears by itself when it goes; a higher banner hides a lower one (one at a time).
+- **its video deleted, the editor closes** (`editor-video-deleted`, side, **ratified**, N63, B199): @editor-faces → library, on Act(ConfirmDelete), Library(Deleted). Deleting the video the editor holds — Delete… confirmed in the Library, or this Mac's delete landing — closes the editor: what its open asked for stops, a save on its way answers no one, and nothing is saved (B199). Another Mac's delete reaches it as a save the space turns down (editor-save-refused).
+- **Quit or Update saves an unsaved edit first** (`quit-saves-the-edit`, side, **ratified**, N63, B199): editor, editor-save-failed → editor-saving, on QuitRequested, Act(Quit), Act(QuitAnyway), Act(Update). Quit — the Dock's, the popover's, the right-click menu's or macOS's, and Quit anyway once uploads are asked about — and Update, while the editor holds changes not saved yet, save them first, as ✕ and ⌘Q do, and bring the editor forward; a save already on its way is waited for. Once it lands the quit or the update goes on, without waiting for the final video (an upkeep makes it later). A save that doesn't land holds it: shroom stays, and the editor says why. A take begun meanwhile drops it (law 4) (B199).
 
 ## Groups
 
@@ -3734,6 +3964,7 @@ A move that holds for a whole group of states, written once (B133). The tests ex
 - **@join-doors** — where an invite can arrive (N30, N31): `idle-ready`, `idle-unprovisioned`, `config`, `welcome`, `first-launch`, `join-waiting`, `join-expired`, `join-used`, `join-space-missing`
 - **@join-arrival** — the invite window's faces on arrival (N30, N31, #20): `member-welcome`, `join-waiting`, `join-expired`, `join-used`, `join-space-missing`, `join-already-here`, `join-switch-confirm`, `join-switch-confirm-uploads`, `join-switch-confirm-saved-take`, `joining`
 - **@banners** — config's banners (one at a time, N38) (N38): `space-degraded`, `space-degraded-no-token-mac`, `recording-off`, `recovered-take`, `update-ready`, `updating-app`, `space-needs-update-member`, `space-needs-update-no-token`, `member-revoked`, `space-needs-owner`, `space-gone`, `owner-mac-removed`
+- **@editor-faces** — the editor's faces (N63, B199): `editor`, `editor-getting`, `editor-cant-get`, `editor-saving`, `editor-save-failed`, `editor-save-refused`, `editor-making`, `editor-making-failed`, `editor-keep-original`
 
 ## Laws
 
@@ -3895,12 +4126,14 @@ A move that holds for a whole group of states, written once (B133). The tests ex
 | N60 | Send feedback from the popover, in its own window, the log going along | **Bagrat asked for it, 2026-10-17**: feedback is worth most from people who have installed shroom, it is easier to send from inside the app than from the web form, and the log should go without anyone attaching it by hand (it makes N53's in-app door easier to reach). **The same day he chose design A** of three on the canvas (“Send feedback — A”) and **the log box ticked by default**. **The popover's header gains a fourth icon, first: Send feedback · Library · Settings · Quit**, named “Send feedback” on hover and to VoiceOver; its glyph a waving hand, his pick from 28 on the canvas (“Send feedback — A: the icon” boards, #23), 2026-10-17. It opens **its own small window, Send feedback**: one line on where it goes, the words, the optional email for an answer, **Include shroom’s recent log** (ticked) with a line on what goes and what never goes, and N53's “See exactly what’s sent”. Unticked, the report carries the words and the version only. **Send** posts to N53's `shroom.am/report` as kind feedback, from the app; Sending… and a send that didn't go through are N53's, word for word, mail link included. **Sent**, the window says so and offers Done. Settings · General's Report a problem… stays as it is (a problem, the log always). The icon sits in the ready popover only, so it never shows mid-take (law 4). Bagrat OK'd the window's words the same day (“its recent log” for “its last 200 lines” among them). Built: DECISIONS B193. Ratified by Bagrat, 2026-10-17. | ratified | 2026-10-17 |
 | N61 | The landing's video becomes “How to set up and use shroom”, served by shroom.am | **Bagrat approved the new video and asked for it to go up, 2026-10-18.** (1) **The video in the landing's box is now “How to set up and use shroom”** (four minutes): a walkthrough drawn from the design boards, with his own narration, replacing the 15-minute take N58 placed there. It is not a shroom recording, so nothing on the page or in the README says it was recorded with shroom. (2) **Its still** is a frame of the video itself: the setup window at “You're all set — ready to record.”, on the landing's dark ground, the same size as before. The play button reads “Play how to set up and use shroom, 4 minutes” to VoiceOver; the length shown is “4 mins”, in minutes rather than to the second (his note the same day). (3) **shroom.am serves it** as its own file (`/how-to.mp4`), no longer from the maker's shroom space; it still loads only as its block nears the screen, and plays in place on a click. (4) **The word “demo” leaves the page** where it meant this video. (5) **While it plays, its controls hide** when the pointer is idle for a few seconds or leaves the video, and come back on a move, a tap or the keyboard (his ask, the same day): the browser's own controls, which do this in Chromium and WebKit and keep keyboard and VoiceOver access. The layout of N59 is unchanged. Built: DECISIONS B194. Ratified by Bagrat, 2026-10-18. | ratified | 2026-10-18 |
 | N65 | Voice cuts: say “shroom cut”, say the line again, and the slip is cut | **Bagrat asked for it, 2026-10-18** (relayed by the orchestrator), and tried it with his own voice the same day: the cut worked. (1) **The cue.** A speaker who slips says “shroom cut” on its own and says the line again. When the space listens (N66: the space's own Cloudflare account hears each take as it uploads), the Mac that made the take reads the take's transcript once it is whole and finds each cue. “shroom” is matched by sound, so the way it was heard doesn't matter, and it must be followed by “cut”. A mention (“just say shroom cut”, “the shroom cut feature”) is left alone; a looser hearing (“Troom cut”) counts only when it stands as a sentence of its own. (2) **The cut.** The words after the cue are lined up against the words before it to find where the line was started again; the cut runs from that restart through the cue, its edges set in the quiet on either side, found in the take on the Mac. A retake that says enough of the slip again is cut at once. A cue that breaks off a sentence (it stops without a full stop, or on a word no sentence ends on: “the”, “and”, “to”, “will”, or “is” after a noun, as in “…and your link is”) takes the sentence with it, back to its start, when it began within 20 s; the finished sentence before it stays, even when the speaker ran straight on from it. A line said again in other words is weighed by meaning (Bagrat, 2026-10-18, relayed by the orchestrator: the mechanism deterministic, the judgment above it): the Mac lists the places the redone stretch might begin, within 20 s before the cue: the starts of up to three sentences, and the pauses of 0.4 s or more inside the cue's own sentence that leave at least three of its words before them (a finished sentence before it is redone whole or not at all); the space's own Cloudflare account (Clef) scores whether what was said after the cue says again everything from each; the cut runs from the farthest start scored 0.4 or more, and only ever reaches farther back than the words alone would. When it can't answer (the free day used up, a busy model), the words alone decide. When nothing was said again after a cue, only the cue goes, and the line before it is offered, not cut. (3) **Where it lands.** The cuts go into the record's edit list (N63) once per take, so the share page, the embed and the download follow them, as do the captions and chapters made from the same transcript (N66). The words cut stay out of what viewers get. Only a take stopped while the space listens is cut; nothing already shared changes. (4) **No switch of its own.** The space's listening (N66) is the one switch: the cue is a deliberate command, and a take without it is untouched. (5) **The owner page shows them** (`owner-page-cuts`), under the player, in owner-mode only: each cut's time and what was said, struck through, between a few words of what plays around it, with Put back; an offered line with Cut it too. A press saves at once; one that doesn't save puts the row back and says so. They are reviewed in both places (Bagrat, 2026-10-18, relayed by the orchestrator: “Both”): the strip on the owner page for a quick check, and the editor's timeline (N63) for fine-tuning, the cuts as red parts and the offered lines dashed with Cut it too; both read and write the one edit list, so a Put back in either shows in the other. Viewers see only the cut video. (6) **The hint** (`owner-page-cue-hint`; Bagrat OK'd its line 2026-10-18, relayed by the orchestrator): in a space that listens, the owner page of a take with no voice cuts says how, under the player, until Got it or a first take with voice cuts. The words are proposals until he OKs them. Built: DECISIONS B200, B201, B202, B203. | provisional | 2026-10-18 |
+| N63 | The editor: trim, cut, undo, and edits the link plays | **Bagrat asked for it, 2026-10-18** (relayed by the orchestrator): a real editor, apart from AI, that the spoken-cue layer can plug into later. **Edit… in a Library row's menu** opens the **editor**, a window of its own (one at a time), on a live video in this Mac's scope, renamable here: the video plays at the top; under it the play button and the time, edited position / edited length, with “was 4:32” once the edit changes the length; then the **timeline**: the whole recording's sound as a waveform with the playhead, **yellow ends that drag to trim**, and **a drag across the sound that selects a part**, with **Cut 12.0 s** under it. **A cut shows red** and the preview skips it as it plays; clicking a cut offers **Put back**. **Undo and Redo** (also ⌘Z and ⇧⌘Z) step through every change made in the window, Put back and Revert included. **Revert to original** puts back every cut and both ends. **Done** (Return) saves the edit and closes the window; ✕ is Done. The footer says the link stays the same. Saving is a small edit list kept in the video's record; **the share page and the embed apply it as they play** (they skip the cuts, hold to the trim, and show the edited length), so **the link never changes** and nothing is re-encoded first. Until then the original stays in the space, so Revert works from any Mac. Then the window stays to make **the final video**: the Mac cuts the edit with its own encoder and puts it up beside the original under the same link (“Making the final video… 40%”; the window can be closed and shroom finishes it); once it is up, Download and the page use it. **Then it asks “Delete the original?”** (Bagrat, 2026-10-18: encourage deleting it soon; no 30-day keep): **Yes, delete** leads, filled — a click, never Return (law 9; DEVIATIONS #55, ratified 2026-10-18) — and the edit becomes the video for good; **Keep for 2 days** keeps the original so the edit can still be reverted, and shroom deletes it after two days, whether or not this Mac is open then; closing the window there means Keep for 2 days. While the original is kept, the editor says by Revert how long it has left; once it is gone, the edit is final and Revert to original only undoes what changed since the window opened. A video that isn't on this Mac comes from the space first (“Getting the video from your space…”); if that fails the window says so and offers Try again. While it saves, Done reads Saving…; if the save doesn't go through, the window stays open and says so, and Done tries again. Edit… greys offline and while a take is open (law 4), as Rename does. Built: DECISIONS B195, B197. **Ratified by Bagrat as built, 2026-10-18**, with B195–B199 and the build’s words. | ratified | 2026-10-18 |
+| N64 | Markers: Drop a marker comes back while paused, and ⌥⌘M drops one while recording | **Bagrat asked for markers dropped while recording, 2026-10-18** (relayed by the orchestrator), as the POC once had. (1) **Drop a marker comes back to the paused popover**, between Finish & Share and Restart, reversing B143's hiding now that the editor (N63) shows markers. It lands a marker at the pause point; once dropped, the row reads **Marker dropped** and greys until the take resumes (a second marker at the same point says nothing). (2) **⌥⌘M drops a marker while recording**, at that moment of the take, held only while a take is open, exactly as N54's ⌥⌘P (no new permission, let go when the take closes, nothing on screen names it in v1, and nothing on screen answers it: the take goes on). (3) **Markers show as flags on the editor's timeline**, at their times on the recording. They never reach viewers in v1. Built: DECISIONS B196. **Ratified by Bagrat as built, 2026-10-18**, with B195–B199 and the build’s words. | ratified | 2026-10-18 |
 
 ## Surfaces
 
 - **The tray mushroom** — Lives: always | Opens: — | Rules: five faces (N38); the click is the door (N21); right-click → Quit shroom (idle only — mid-take it's a click, N39)  [UX-STATEMACHINE.md L1715]
 - **The popover** — Lives: under the mushroom, on its display, however it opened (N57) | Opens: on a click, a launch you did, all-set's Record now, or a pause or stop you didn't make (without the keyboard) | Rules: `config` · `paused` · the confirms that morph from them; one banner + one status line (N38); never brings the dock icon  [UX-STATEMACHINE.md L1716]
-- **The window** — Lives: centered on the mushroom's display (N57), one at a time per kind | Opens: onboarding, Library, Settings, Send feedback (N60) | Rules: the dock icon while open; ✕ ≡ the retreat (N12); survives a browser round-trip  [UX-STATEMACHINE.md L1717]
+- **The window** — Lives: centered on the mushroom's display (N57), one at a time per kind | Opens: the editor (Edit…, N63), onboarding, Library, Settings, Send feedback (N60) | Rules: the dock icon while open; ✕ ≡ the retreat (N12); survives a browser round-trip  [UX-STATEMACHINE.md L1717]
 - **The page** — Lives: the space's own address | Opens: Stop, Get link, Open page, a shared link, an invite | Rules: owner-mode by cookie, per member (N40); `noindex`; the mark bottom-right  [UX-STATEMACHINE.md L1718]
 - **Terminal** — Lives: the user's own | Opens: the install command | Rules: the readable script; refuses mid-take; the update path forever  [UX-STATEMACHINE.md L1719]
 - **The overlays** — Lives: the chosen display | Opens: the countdown scrim; the bubble from `config` through the take | Rules: never windows, never the dock icon; the bubble never takes focus, while the countdown does — you just started it, and its Esc must work without any extra macOS permission; the bubble is the only thing of ours ever in a take  [UX-STATEMACHINE.md L1720]
@@ -3910,9 +4143,9 @@ A move that holds for a whole group of states, written once (B133). The tests ex
 - Local recording before setup and any local library (U1)  [L1724]
 - the .dmg (P17; brew joined v1 by N49)  [L1724]
 - macOS notifications (U9)  [L1724-1725]
-- global hotkeys, save ⌥⌘P's pause and resume during a take (N54) (the reopen door covers a hidden mushroom, N41)  [L1725-1726]
+- global hotkeys, save ⌥⌘P's pause and resume and ⌥⌘M's marker during a take (N54, N64) (the reopen door covers a hidden mushroom, N41)  [L1725-1726]
 - the tray's Copy last link and any auto-copy (N21, N1)  [L1726]
-- trim, the editor, marker surfacing (P11)  [L1726-1727]
+- an editor beyond trim and cut: titles, overlays, transitions, a second track (P11; trim, cut and markers joined v1 with N63 and N64)  [L1726-1727]
 - captions and transcript search (P8)  [L1727]
 - a sender name or avatar (U3)  [L1727-1728]
 - passwords or expiry on links (P1)  [L1728]

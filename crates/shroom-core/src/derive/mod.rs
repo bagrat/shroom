@@ -1,5 +1,6 @@
 //! `derive(&World) -> Scene`: pure and total. Every surface comes from here.
 
+pub mod editor;
 pub mod feedback;
 pub mod library;
 pub mod members;
@@ -11,7 +12,8 @@ mod tray;
 
 pub(crate) use popover::{OneShot, one_shot_showing, selected_mic as popover_selected_mic, selected_source as popover_selected_source};
 pub use popover::{
-    DISK_MARGIN, ROOM_FLOOR_MINUTES, ROOM_LOW_MINUTES, bytes_per_minute, resume_mic, resume_ok, selected_camera, source_present, take_floor_bytes,
+    DISK_MARGIN, ROOM_FLOOR_MINUTES, ROOM_LOW_MINUTES, bytes_per_minute, marker_offered, resume_mic, resume_ok, selected_camera, source_present,
+    take_floor_bytes,
 };
 
 use crate::copy;
@@ -40,11 +42,12 @@ pub fn derive(w: &World) -> Scene {
     let library = library::derive(w);
     let settings = settings::derive(w);
     let feedback = feedback::derive(w);
+    let editor = editor::derive(w);
     // Law 6 (SM:133), as ratified: the Dock icon iff a window of shroom's is open —
-    // onboarding, the Library, Settings or Send feedback (DEVIATIONS #38's setup-only Dock
-    // was rejected).
-    let dock = onboarding.is_some() || library.is_some() || settings.is_some() || feedback.is_some();
-    Scene { tray: tray::derive(w), popover, onboarding, library, settings, feedback, countdown, bubble, preview, dock, next_wake: next_wake(w) }
+    // onboarding, the Library, Settings, Send feedback or the editor (DEVIATIONS #38's
+    // setup-only Dock was rejected).
+    let dock = onboarding.is_some() || library.is_some() || settings.is_some() || feedback.is_some() || editor.is_some();
+    Scene { tray: tray::derive(w), popover, onboarding, library, settings, feedback, editor, countdown, bubble, preview, dock, next_wake: next_wake(w) }
 }
 
 /// The update to offer now: downloaded, verified, a space to carry it (never before
@@ -128,6 +131,24 @@ pub fn next_cleanup(w: &World) -> Option<Mono> {
     Some(match w.library_ops.cleaned.max(failed) {
         Some(t) => t.plus(CLEANUP_MS),
         None => pass.plus(CLEANUP_FIRST_MS),
+    })
+}
+
+/// How often every Mac's editor upkeep runs (B197 (d)): with the cleanup sweep's cadence —
+/// six hours of awake time — after the last one that answered or couldn't run.
+pub const UPKEEP_MS: u64 = CLEANUP_MS;
+
+/// When the editor's upkeep is due (B197 (d)): once a launch — at once, booted on a Mac in a
+/// space — then `UPKEEP_MS` after the last one (fail-soft: one that couldn't run waits as
+/// long). Every Mac, token or not: each bakes and copies its own videos.
+pub fn next_upkeep(w: &World) -> Option<Mono> {
+    if !w.provisioned() || w.launch.version.is_empty() {
+        return None;
+    }
+    let failed = w.inflight.failures.get(&Op::EditorUpkeep).map(|f| f.at);
+    Some(match w.library_ops.upkept.max(failed) {
+        Some(t) => t.plus(UPKEEP_MS),
+        None => Mono(0),
     })
 }
 
@@ -236,6 +257,9 @@ fn next_wake(w: &World) -> Option<Mono> {
     wakes.extend(next_self_check(w));
     wakes.extend(next_refresh(w));
     wakes.extend(next_cleanup(w));
+    wakes.extend(next_upkeep(w));
+    // The editor's time-left line by Revert changes its words (B197 (e)).
+    editor::wakes(w, &mut wakes);
     // macOS waits on the will-sleep answer: it goes at the hold's end at the latest.
     wakes.extend(w.mac.sleep_hold.map(|t| t.plus(SLEEP_HOLD_MS)));
     wakes.extend(next_download(w).map(|(t, _)| t));

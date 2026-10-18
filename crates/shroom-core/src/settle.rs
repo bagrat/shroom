@@ -4,7 +4,7 @@
 
 use crate::derive::onboarding::{self, At, GATE_POLL_MS};
 use crate::derive::settings::{self as settings_view, SpaceAt};
-use crate::effect::{CloudCmd, Effect, LibCmd, MemberCmd, RecCmd, ShellCmd, SweepPart, UpCmd, UpdCmd};
+use crate::effect::{CloudCmd, EditCmd, Effect, LibCmd, MemberCmd, RecCmd, ShellCmd, SweepPart, UpCmd, UpdCmd};
 use crate::time::Mono;
 use crate::world::{Op, Paste, Reach, SettingsTab, WindowKind, World};
 
@@ -35,16 +35,49 @@ pub fn settle(w: &World) -> Vec<Effect> {
     due_keep_awake(w, &mut fx);
     due_cleanup(w, &mut fx);
     due_sleep_ack(w, &mut fx);
+    due_edit_copy(w, &mut fx);
+    due_edit_upkeep(w, &mut fx);
     fx
+}
+
+/// A saved edit's permanent copy (N63, B195 (f)): owed copies are cut one at a time, never
+/// over a take — the Mac's encoder and its bandwidth are the take's — never offline, never
+/// while the upkeep holds the editor's lane, and a copy that didn't come out holds the next
+/// back by its backoff.
+fn due_edit_copy(w: &World, fx: &mut Vec<Effect>) {
+    if w.take_open() || w.online() == Some(false) || !w.provisioned() || !idle(w, Op::EditorCopy) || w.inflight.ops.contains_key(&Op::EditorUpkeep) {
+        return;
+    }
+    if let Some((rec, c)) = w.library_ops.copies.iter().find(|(_, c)| !c.asked) {
+        fx.push(Effect::Editor(EditCmd::Copy { rec: rec.clone(), rev: c.rev }));
+    }
+}
+
+/// The editor's upkeep (B197 (d)): on every Mac, once a launch and then on the cleanup
+/// sweep's cadence, this Mac's originals past their two days are baked and the copies its
+/// edits are missing made — the lane decides which. Never over a take (the encoder and the
+/// bandwidth are the take's), never offline, never while the editor is open (it may be on
+/// one of them) or while the editor's lane runs anything else; one that couldn't run waits
+/// for the next turn.
+fn due_edit_upkeep(w: &World, fx: &mut Vec<Effect>) {
+    let Some(at) = crate::derive::next_upkeep(w) else { return };
+    let lane_busy = [Op::EditorOpen, Op::EditorSave, Op::EditorCopy, Op::EditorUpkeep].iter().any(|op| w.inflight.ops.contains_key(op));
+    let owed = w.library_ops.copies.values().any(|c| !c.asked);
+    if w.now >= at && !w.take_open() && w.online() != Some(false) && w.session.fields.editor.is_none() && !lane_busy && !owed {
+        fx.push(Effect::Editor(EditCmd::Upkeep));
+    }
 }
 
 /// The token Mac's cleanup sweep (DECISIONS B91; ARCHITECTURE §5.5's GC, §16 #49): on the
 /// self-check's slow cadence, over the token's own pair, fail-soft — never offline, never
-/// over a take (its bandwidth is the take's), never while a paste is being checked.
+/// over a take (its bandwidth is the take's), never while a paste is being checked, and
+/// never while the editor is open: the sweep makes every edit past its two days the video
+/// (B197), and the editor may be on one of them, its list on the old video's clock (B199).
 fn due_cleanup(w: &World, fx: &mut Vec<Effect>) {
     let Some(at) = crate::derive::next_cleanup(w) else { return };
     let pasting = matches!(w.sweep.paste, Some(Paste::Checking(_) | Paste::Saving { .. } | Paste::PickAccount { .. }));
-    if w.now >= at && !pasting && !w.take_open() && w.online() != Some(false) && !w.inflight.ops.contains_key(&Op::Cleanup) {
+    let editing = w.session.fields.editor.is_some();
+    if w.now >= at && !pasting && !editing && !w.take_open() && w.online() != Some(false) && !w.inflight.ops.contains_key(&Op::Cleanup) {
         fx.push(Effect::Library(LibCmd::Cleanup));
     }
 }

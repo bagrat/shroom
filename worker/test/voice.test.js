@@ -277,19 +277,19 @@ describe("a press saves at once (POST /_shroom/edits/<id>)", () => {
 describe("a page already open when the cuts land (the edge owner-page → owner-page-cuts)", () => {
   it("the status says cuts are coming while a space that listens hears a fresh take, and names the plan once it lands", () => {
     const fresh = (over = {}) => JSON.parse(metaOf({ publishedAt: new Date(NOW - 10_000).toISOString(), edits: undefined, ...over }));
-    expect(status(fresh(), NOW, true)).toMatchObject({ cuts: "coming" });
+    expect(status(fresh(), NOW, undefined, true)).toMatchObject({ cuts: "coming" });
     // An edit saved before the plan lands doesn't end the wait; the plan's mark does.
-    expect(status(fresh({ edits: { ...EDITS, voice: undefined, cuts: [EDITS.cuts[4]] } }), NOW, true)).toMatchObject({ cuts: "coming" });
+    expect(status(fresh({ edits: { ...EDITS, voice: undefined, cuts: [EDITS.cuts[4]] } }), NOW, undefined, true)).toMatchObject({ cuts: "coming" });
     // A space that doesn't listen never makes a page wait.
-    expect(status(fresh(), NOW, false).cuts).toBeUndefined();
+    expect(status(fresh(), NOW, undefined, false).cuts).toBeUndefined();
     expect(status(fresh(), NOW).cuts).toBeUndefined();
     // A Mac that went quiet stops the wait five minutes after the go-live.
-    expect(status(fresh({ publishedAt: new Date(NOW - 6 * 60_000).toISOString() }), NOW, true).cuts).toBeUndefined();
+    expect(status(fresh({ publishedAt: new Date(NOW - 6 * 60_000).toISOString() }), NOW, undefined, true).cuts).toBeUndefined();
     // Words left for tomorrow's free day (N66) don't keep a page polling.
-    expect(status(fresh({ naming: { later: "daily", at: new Date(NOW).toISOString() } }), NOW, true).cuts).toBeUndefined();
+    expect(status(fresh({ naming: { later: "daily", at: new Date(NOW).toISOString() } }), NOW, undefined, true).cuts).toBeUndefined();
     // A plan with no cues ends the wait and shows nothing.
-    expect(status(fresh({ edits: { ...EDITS, voice: { planned_at: NOW, cues: 0 }, cuts: [] } }), NOW, true).cuts).toBeUndefined();
-    const planned = status(JSON.parse(metaOf()), NOW, true);
+    expect(status(fresh({ edits: { ...EDITS, voice: { planned_at: NOW, cues: 0 }, cuts: [] } }), NOW, undefined, true).cuts).toBeUndefined();
+    const planned = status(JSON.parse(metaOf()), NOW, undefined, true);
     expect(status(JSON.parse(metaOf()), NOW).cuts).toBe(planned.cuts);
     expect(planned.cuts).toMatch(/^[0-9a-z]+$/);
     // Any press changes it, so the page knows to fetch the strip again.

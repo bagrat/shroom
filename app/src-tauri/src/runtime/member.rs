@@ -633,6 +633,8 @@ impl Lane {
                 rt.home.remove(name);
             }
             let _ = std::fs::remove_dir_all(rt.home.root.join("posters"));
+            super::media::MEDIA.forget_all();
+            let _ = std::fs::remove_dir_all(rt.home.edits());
         }
         drop(generation);
         if switch {

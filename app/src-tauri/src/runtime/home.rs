@@ -89,6 +89,13 @@ impl Home {
         self.root.join("forget")
     }
 
+    /// The editor's folder (N63): per recording, the video fetched from the space
+    /// (`source.mp4`), its sound read (`peaks.u8`), and a permanent copy while it's made.
+    /// Disconnect and Leave remove it with the space's other traces.
+    pub fn edits(&self) -> PathBuf {
+        self.root.join("edits")
+    }
+
     /// Where verified updates wait to be swapped in: `updates/<version>/shroom.app`.
     pub fn updates(&self) -> PathBuf {
         self.root.join("updates")

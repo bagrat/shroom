@@ -78,13 +78,15 @@
     {:else if name === "stop"}<rect x="3.5" y="3.5" width="9" height="9" rx="2" />
     {:else if name === "restart"}<path d="M3 8a5 5 0 1 0 1.6-3.7M3 2.5v2.5h2.5" />
     {:else if name === "discard"}<path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.6 8.5h5.8l.6-8.5" />
+    {:else if name === "drop-marker"}<path class="flag" d="M4.5 2v12M4.5 3h7.5l-2 3 2 3H4.5z" />
+    {:else if name === "marker-dropped"}<path d="M3.5 8.5l3 3 6-7" />
     {:else if name === "quality"}<path d="M2.5 6V3.5H5M11 3.5h2.5V6M13.5 10v2.5H11M5 12.5H2.5V10" />{/if}
   </svg>
 {/snippet}
 
-{#snippet rowbtn(b: Button)}
+{#snippet rowbtn(b: Button, icon = b.action.do)}
   <button class="rowbtn {b.style}" disabled={!b.enabled} onclick={() => send(b.action)}>
-    {@render glyph(b.action.do)}
+    {@render glyph(icon)}
     <span class="what"><span>{b.label}</span></span>
   </button>
 {/snippet}
@@ -147,6 +149,8 @@
       {@render btn(b.resume, "big")}
       <div class="card">
         {@render rowbtn(b.stop)}
+        <!-- Drop a marker (N64): the flag; once used at this pause, greyed with a tick. -->
+        {#if b.marker}{@render rowbtn(b.marker, b.marker.enabled ? "drop-marker" : "marker-dropped")}{/if}
         {@render rowbtn(b.restart)}
         {@render rowbtn(b.discard)}
       </div>
@@ -240,6 +244,7 @@
   .rowbtn { font: inherit; min-height: 36px; padding: 6px 10px; border: 0; background: transparent; color: var(--fg); display: flex; align-items: center; gap: 10px; text-align: left; cursor: default; width: 100%; }
   .rowbtn > :global(svg) { color: var(--muted); }
   .rowbtn.red-text, .rowbtn.red-text > :global(svg) { color: var(--red); }
+  .rowbtn :global(path.flag) { color: var(--accent); fill: currentColor; stroke-width: 1.2; }
   .rowbtn:hover:not(:disabled) { background: var(--hover); }
   .card > .rowbtn:first-child { border-radius: 9px 9px 0 0; }
   .card > .rowbtn:last-child { border-radius: 0 0 9px 9px; }

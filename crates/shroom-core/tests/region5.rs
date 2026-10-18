@@ -35,7 +35,7 @@ fn rec(id: &str) -> RecId {
 }
 
 fn remote(id: &str, title: &str, at: i64, length_ms: u64, live: bool) -> LibraryRow {
-    LibraryRow { rec: rec(id), title: title.into(), created: Wall(at), length_ms: Some(length_ms), live, owner: Some("m1".into()), poster: false }
+    LibraryRow { rec: rec(id), title: title.into(), created: Wall(at), length_ms: Some(length_ms), live, owner: Some("m1".into()), poster: false, edited_ms: None }
 }
 
 /// The space's records, as the mock draws them (and enough of them for six at once).
@@ -146,6 +146,39 @@ fn report_asked() -> World {
 fn feedback_open() -> World {
     let mut w = ready();
     w.session.windows.insert(WindowKind::Feedback, Door::asked(Mono(900)));
+    w
+}
+
+/// The editor (N63), open from the Library on the spec's example video: its record read
+/// (a trim and a cut saved as revision 3), its markers, and the video `media`; `changed`
+/// adds a cut since — Done has something to save.
+const EDITED: &str = "Setting up shroom in two minutes";
+fn editor_open(media: EditorMedia, save: EditorSave, changed: bool) -> World {
+    let mut rows = space_rows();
+    rows.insert(0, remote("set2", EDITED, SEP30, 272_000, true));
+    let mut w = library_with(ready(), rows);
+    w.session.windows.insert(WindowKind::Editor, Door::asked(Mono(960)));
+    let mut list = shroom_edit::EditList::new(272.0);
+    list.in_ = 8.0;
+    list.out = 241.0;
+    list.cuts = vec![shroom_edit::Cut::manual(150.0, 162.0)];
+    let mut history = shroom_edit::History::new(list);
+    if changed {
+        history.act(&shroom_edit::Op::Cut { start: 20.0, end: 30.0 });
+    }
+    w.session.fields.editor = Some(EditorFields {
+        rec: rec("set2"),
+        title: EDITED.into(),
+        length_ms: Some(272_000),
+        source_duration: 272.0,
+        markers: vec![61.5],
+        history: Some(history),
+        rev: 3,
+        kept_until: None,
+        media,
+        save,
+        leaving: None,
+    });
     w
 }
 
@@ -460,6 +493,47 @@ fn rows() -> Vec<(&'static str, World)> {
         w.session.fields.feedback.sent = true;
         w
     }));
+    // ── the editor (N63) ──
+    let live = || EditorMedia::Ready { duration: 272.0 };
+    rows.push(("editor", editor_open(live(), EditorSave::Idle, false)));
+    rows.push(("editor", editor_open(live(), EditorSave::Idle, true)));
+    rows.push(("editor", {
+        // Just opened: the record not read yet, the timeline empty, Done waiting.
+        let mut w = editor_open(EditorMedia::Opening, EditorSave::Idle, false);
+        w.session.fields.editor.as_mut().unwrap().history = None;
+        w.inflight.ops.insert(Op::EditorOpen, Mono(1_801_000));
+        w
+    }));
+    rows.push(("editor-getting", {
+        let mut w = editor_open(EditorMedia::Getting { pct: 40 }, EditorSave::Idle, false);
+        w.inflight.ops.insert(Op::EditorOpen, Mono(1_801_000));
+        w
+    }));
+    rows.push(("editor-cant-get", editor_open(EditorMedia::Failed, EditorSave::Idle, false)));
+    rows.push(("editor-saving", {
+        let mut w = editor_open(live(), EditorSave::Saving, true);
+        w.inflight.ops.insert(Op::EditorSave, Mono(61_000));
+        w
+    }));
+    rows.push(("editor-save-failed", editor_open(live(), EditorSave::Failed, true)));
+    // The space turned the save down (B199): nothing to save over, Close only.
+    rows.push(("editor-save-refused", editor_open(live(), EditorSave::Refused, true)));
+    rows.push(("editor", {
+        // Edited again while an earlier edit's original is kept (B197 (e)): 30 hours left,
+        // a day as the line says it (B199).
+        let mut w = editor_open(live(), EditorSave::Idle, false);
+        w.session.fields.editor.as_mut().unwrap().kept_until = Some(Wall(w.wall.0 + 30 * 3_600_000));
+        w
+    }));
+    // ── after the save (B197) ──
+    rows.push(("editor-making", {
+        let mut w = editor_open(live(), EditorSave::Making { pct: 40 }, false);
+        w.library_ops.copies.insert(rec("set2"), CopyOwed { rev: 3, asked: true });
+        w.inflight.ops.insert(Op::EditorCopy, Mono(3_601_000));
+        w
+    }));
+    rows.push(("editor-making-failed", editor_open(live(), EditorSave::MakingFailed, false)));
+    rows.push(("editor-keep-original", editor_open(live(), EditorSave::Asking, false)));
     rows.push(("uninstall-confirm", uninstall_asked()));
     rows.push(("uninstall-confirm", {
         let mut w = uninstall_asked();
@@ -532,6 +606,7 @@ const LINES_OUT_OF_SCOPE: &[(&str, &str, &str)] = &[
     ("settings-space", "The small mark on every video page. You can flip it right on a page, too.", "the mark switch — not in this slice"),
     ("settings-space", "Leave this space…", "members' exit — Region 6"),
     ("wiring", "Almost there — switching your name on takes a few minutes the first time, and only once.", "the setup's last step — the onboarding window's (N45, onboarding.rs)"),
+    ("editor", "was 4:32", "a template: the Scene hands the editor “was {}” and the webview puts the recording's length in it, as it does the time"),
 ];
 
 fn surface_of(id: &str) -> Surface {
@@ -539,6 +614,8 @@ fn surface_of(id: &str) -> Surface {
         Surface::Library
     } else if id == "send-feedback" {
         Surface::Feedback
+    } else if id.starts_with("editor") {
+        Surface::Editor
     } else if id.starts_with("settings") || ["disconnect-confirm", "disconnect-confirm-no-token", "leave-confirm", "uninstall-confirm", "report-problem", "repair-mood", "re-entry-as-settings", "token-repair-mood", "token-other-account", "gate-card", "wiring", "space-storage-gone", "name-changed"].contains(&id) {
         Surface::Settings
     } else {
@@ -581,7 +658,33 @@ fn every_region5_state_derives_with_its_return_default_and_its_lines() {
         let structural = ["settings-space-repair", "repair-mood", "tray-frost-dot"].contains(&id);
         // Send feedback (N60): Return types a new line in the words until the sent face,
         // whose Done it is; Esc is Cancel, but not while it goes.
-        if id == "send-feedback" {
+        // The editor (N63): Done is Return once the video is here and its record read (the
+        // button greys until then, and reads Saving… while it saves); Close in
+        // editor-cant-get, which Esc means too. Elsewhere Esc is the webview's (it drops a
+        // selection).
+        if id.starts_with("editor") {
+            let e = w.session.fields.editor.as_ref().expect("the editor's fields");
+            let live = matches!(e.media, EditorMedia::Ready { .. }) && e.history.is_some() && e.save != EditorSave::Saving;
+            // Never Yes, delete (law 9; DEVIATIONS #55): a fixture naming it has no mapping.
+            let want = fixture.return_default().and_then(|a| match a.label.as_str() {
+                "Done" => live.then_some(Action::EditorDone),
+                "Close" => Some(Action::EditorClose),
+                other => panic!("no mapping for the editor's Return default {other:?}"),
+            });
+            if scene.ret(surface) != want {
+                failures.push(format!("{id}: Return is {:?}, want {want:?}", scene.ret(surface)));
+            }
+            // After a save, Esc is Close — Keep for 2 days on the question (B197 (b)) — and on
+            // a save the space turned down, Close too (B199).
+            let want_esc = match id {
+                "editor-cant-get" | "editor-making" | "editor-making-failed" | "editor-save-refused" => Some(Action::EditorClose),
+                "editor-keep-original" => Some(Action::KeepOriginal),
+                _ => None,
+            };
+            if scene.esc(surface) != want_esc {
+                failures.push(format!("{id}: Esc is {:?}, want {want_esc:?}", scene.esc(surface)));
+            }
+        } else if id == "send-feedback" {
             let f = &w.session.fields.feedback;
             let want = f.sent.then(|| fixture.return_default().and_then(|a| action_for(&a.label, false))).flatten();
             if scene.ret(surface) != want {
@@ -871,7 +974,11 @@ fn library_rows_carry_their_state_words_and_their_doors() {
     assert_eq!(gone.buttons.iter().map(|b| b.label.as_str()).collect::<Vec<_>>(), ["Save to Movies", "Discard…"], "always visible, as the spec writes it");
     assert_eq!(gone.meta, "Aug 19 · 0:48", "date · length — the length known here since the stop");
     let live = row(&s, "Where the 502s come from");
-    assert_eq!(live.menu.iter().map(|b| b.label.as_str()).collect::<Vec<_>>(), ["Copied", "Copy thumbnail", "Open page", "Rename", "Delete…"], "N46: Copy thumbnail under Copy link");
+    assert_eq!(
+        live.menu.iter().map(|b| b.label.as_str()).collect::<Vec<_>>(),
+        ["Copied", "Copy thumbnail", "Open page", "Edit…", "Rename", "Delete…"],
+        "N46: Copy thumbnail under Copy link; N63: Edit… after Open page"
+    );
     assert_eq!(live.gestures.double_click, Some(Action::OpenPage(rec("r502"))));
     assert_eq!(s.library.as_ref().unwrap().body.footer.as_deref(), Some("12 videos"));
 

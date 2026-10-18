@@ -87,6 +87,9 @@ pub fn paused_title(len: &str) -> String { format!("Paused — {len}") }
 pub fn resume() -> String { "Resume".into() }
 pub fn restart() -> String { "Restart".into() }
 pub fn stop() -> String { "Finish & Share".into() }
+/// N64: the paused popover's marker row, and the same row once used at this pause.
+pub fn drop_marker() -> String { "Drop a marker".into() }
+pub fn marker_dropped() -> String { "Marker dropped".into() }
 /// Restart's question — the canvas's draft (DEVIATIONS #44), awaiting ratification.
 pub fn restart_title() -> String { "Start over?".into() }
 pub fn restart_line(len: &str) -> String { format!("This replaces the {len} you've recorded so far.") }
@@ -305,6 +308,8 @@ pub fn search_titles() -> String { "Search titles".into() }
 pub fn open_page() -> String { "Open page".into() }
 pub fn delete_ellipsis() -> String { "Delete…".into() }
 pub fn rename() -> String { "Rename".into() }
+/// A live row's menu, after Open page (N63): opens the editor.
+pub fn edit_ellipsis() -> String { "Edit…".into() }
 pub fn row_uploading(pct: u32) -> String { format!("Uploading — {pct}%") }
 /// Another Mac's upload: no percentage is known here (DECISIONS, copy awaiting ratification).
 pub fn row_uploading_elsewhere() -> String { "Uploading".into() }
@@ -400,6 +405,67 @@ pub fn include_log_note() -> String { "Its version, your Mac’s model and its r
 pub fn feedback_sent() -> String { "Sent — thank you.".into() }
 pub fn feedback_sent_line() -> String { "If you left your email, you’ll hear back.".into() }
 pub fn done() -> String { "Done".into() }
+// ── the editor (N63): proposals, awaiting Bagrat ──
+/// The window's title: “Edit — ” and the video's title.
+pub fn editor_title(title: &str) -> String { format!("Edit — {title}") }
+/// Where the video stands: the edited position / the edited length, in the page's clock.
+/// The Scene hands it as a template (`{}` for each clock) the webview fills as it plays.
+pub fn editor_time(pos: &str, len: &str) -> String { format!("{pos} / {len}") }
+/// The recording's own length, once the edit changes it: a template like the time.
+pub fn editor_was(len: &str) -> String { format!("was {len}") }
+pub fn editor_hint() -> String { "Drag the yellow ends to trim. Drag across the sound to cut a part.".into() }
+/// The play button's name, on hover and to VoiceOver; Pause while it plays.
+pub fn editor_play() -> String { "Play".into() }
+pub fn editor_pause() -> String { "Pause".into() }
+/// Undo · Redo's names (⌘Z · ⇧⌘Z).
+pub fn undo() -> String { "Undo".into() }
+pub fn redo() -> String { "Redo".into() }
+/// Under a selected part: its length in seconds, one decimal (a template while it's dragged).
+pub fn cut_part(secs: &str) -> String { format!("Cut {secs} s") }
+/// Under a cut that was clicked.
+pub fn put_back(secs: &str) -> String { format!("Put back {secs} s") }
+pub fn editor_footer() -> String { "Your link stays the same. Viewers see the edit once it's saved.".into() }
+pub fn revert_to_original() -> String { "Revert to original".into() }
+/// editor-getting: the video comes from the space.
+pub fn getting_video() -> String { "Getting the video from your space…".into() }
+/// editor-cant-get: it didn't.
+pub fn cant_get_video() -> String { "Couldn't get the video. Check your connection, then try again.".into() }
+/// editor-saving: the footer's line, and Done, greyed.
+pub fn saving_edit() -> String { "Saving your edit…".into() }
+pub fn saving_done() -> String { "Saving…".into() }
+/// editor-save-failed: amber, in the footer's place.
+pub fn save_failed() -> String { "Couldn't save your edit. Check your connection, then press Done again.".into() }
+/// editor-save-refused (B199): amber, in the save-failed line's place — the space turned the
+/// save down (the video is gone, or another Mac made an edit the video).
+pub fn save_refused() -> String { "This video changed since you opened it, so this edit can't be saved.".into() }
+/// Under a dashed suggestion that was clicked (a voice cue's offer, N65).
+pub fn cut_it_too() -> String { "Cut it too".into() }
+/// By Revert, while an earlier edit's original is kept beside its copy (B197 (e)): the time
+/// it has left, never more than that (B199) — two days from 47 hours, a day from 24, then
+/// whole hours rounded down (law 16's words to nine), one hour, and under an hour less than
+/// one.
+pub fn original_kept(left_ms: i64) -> String {
+    const HOUR: i64 = 3_600_000;
+    let left = match left_ms {
+        l if l >= 47 * HOUR => "two more days".to_string(),
+        l if l >= 24 * HOUR => "one more day".to_string(),
+        l if l >= 2 * HOUR => format!("{} more hours", count_word((l / HOUR) as u64)),
+        l if l >= HOUR => "one more hour".to_string(),
+        _ => "less than an hour".to_string(),
+    };
+    format!("The original is kept {left}")
+}
+/// editor-making (B197): the final video, this far — in the timeline's place.
+pub fn making_video(pct: u8) -> String { format!("Making the final video… {pct}%") }
+/// editor-making: the footer's line.
+pub fn making_line() -> String { "The link already plays your edit. You can close this window: shroom finishes it.".into() }
+/// editor-making-failed: amber, in the footer's place.
+pub fn making_failed() -> String { "Couldn't make the final video. The link plays your edit anyway, and shroom tries again later.".into() }
+/// editor-keep-original: the question once the final video is up.
+pub fn delete_original_title() -> String { "Delete the original?".into() }
+pub fn delete_original_line() -> String { "Your edit is the video now. The original is only kept so you can revert to it.".into() }
+pub fn keep_two_days() -> String { "Keep for 2 days".into() }
+pub fn yes_delete() -> String { "Yes, delete".into() }
 pub fn needs_macos(version: &str, macos: u32, running: &str) -> String {
     format!("shroom {version} needs macOS {macos} — this Mac stays on {running}.")
 }
@@ -1165,5 +1231,44 @@ pub fn registry() -> Vec<(&'static str, String)> {
         ("stopped-stranded", saving_to_movies()),
         ("stopped-stranded", save_to_movies_again()),
         ("leave-confirm", leave_uploading(2)),
+        // ── markers (N64) ──
+        ("paused", drop_marker()),
+        ("paused", marker_dropped()),
+        // ── the editor (N63) ──
+        ("library", edit_ellipsis()),
+        ("editor", editor_title("Setting up shroom in two minutes")),
+        ("editor", editor_time("1:16", "3:39")),
+        ("editor", editor_was("4:32")),
+        ("editor", editor_hint()),
+        ("editor", editor_play()),
+        ("editor", editor_pause()),
+        ("editor", undo()),
+        ("editor", redo()),
+        ("editor", cut_part("12.0")),
+        ("editor", put_back("12.0")),
+        ("editor", editor_footer()),
+        ("editor", revert_to_original()),
+        ("editor", done()),
+        ("editor-getting", getting_video()),
+        ("editor-getting", editor_footer()),
+        ("editor-cant-get", cant_get_video()),
+        ("editor-cant-get", try_again()),
+        ("editor-cant-get", close()),
+        ("editor-saving", saving_edit()),
+        ("editor-saving", saving_done()),
+        ("editor-save-failed", save_failed()),
+        ("editor-save-refused", save_refused()),
+        ("editor-save-refused", close()),
+        ("editor", cut_it_too()),
+        ("editor", original_kept(30 * 3_600_000)),
+        ("editor-making", making_video(40)),
+        ("editor-making", making_line()),
+        ("editor-making", close()),
+        ("editor-making-failed", making_failed()),
+        ("editor-making-failed", close()),
+        ("editor-keep-original", delete_original_title()),
+        ("editor-keep-original", delete_original_line()),
+        ("editor-keep-original", keep_two_days()),
+        ("editor-keep-original", yes_delete()),
     ]
 }

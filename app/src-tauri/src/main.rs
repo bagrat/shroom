@@ -88,6 +88,20 @@ fn main() {
             }
             .unwrap_or_else(|_| tauri::http::Response::new(Vec::new()))
         })
+        // The editor's video and waveform (N63): only what its lane registered, by checked
+        // names, to the editor's webview alone — a range read off the main thread.
+        .register_asynchronous_uri_scheme_protocol(runtime::media::SCHEME, |ctx, request, responder| {
+            let editor = ctx.webview_label() == runtime::presenter::EDITOR;
+            std::thread::spawn(move || {
+                let range = request.headers().get("range").and_then(|v| v.to_str().ok());
+                let a = if editor { runtime::media::answer(&runtime::media::MEDIA, request.method().as_str(), request.uri().path(), range) } else { runtime::media::Answer { status: 404, headers: Vec::new(), body: Vec::new() } };
+                let mut b = tauri::http::Response::builder().status(a.status);
+                for (k, v) in &a.headers {
+                    b = b.header(*k, v);
+                }
+                responder.respond(b.body(a.body).unwrap_or_else(|_| tauri::http::Response::new(Vec::new())));
+            });
+        })
         .invoke_handler(tauri::generate_handler![
             commands::act,
             commands::key,
@@ -97,7 +111,8 @@ fn main() {
             commands::popover_fit,
             commands::paste_secret,
             commands::field,
-            commands::webview_error
+            commands::webview_error,
+            commands::edit
         ])
         .setup(move |app| {
             use tauri::Manager;

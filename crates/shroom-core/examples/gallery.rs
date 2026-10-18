@@ -23,6 +23,15 @@
 //! recording machine (config and its variants, disk-low, recording-off, the paused faces,
 //! the questions, the stops) and the countdown, each with its `window` (`popover` or
 //! `countdown`). The bubble and Camera's preview are native panels (no webview to render).
+//! The paused face shows Drop a marker, and again once one is dropped (N64).
+//!
+//! `… --example gallery -- editor` prints the editor's faces (N63), from the worlds of
+//! `tests/region5.rs`'s editor rows: ready on a trimmed video with a cut applied, a
+//! suggestion waiting, markers and a step to undo; just opened; opened again while the
+//! earlier edit's original is kept, with each of the time-left lines by Revert; the video
+//! coming at 40%; couldn't come; saving; the save that didn't go through, and the one the
+//! space turned down (B199); and after a save (B197), the final video being made at 40%, the
+//! one that couldn't be made, and “Delete the original?”.
 //!
 //! Examples can't import tests, so the builders are copied from
 //! `tests/common/support.rs` and `tests/onboarding.rs`; keep them in step.
@@ -343,7 +352,7 @@ const AUG03: i64 = 1_785_758_400_000;
 const SEP30: i64 = 1_790_769_600_000;
 
 fn remote(id: &str, title: &str, at: i64, length_ms: u64) -> LibraryRow {
-    LibraryRow { rec: RecId(id.into()), title: title.into(), created: Wall(at), length_ms: Some(length_ms), live: true, owner: Some("m1".into()), poster: false }
+    LibraryRow { rec: RecId(id.into()), title: title.into(), created: Wall(at), length_ms: Some(length_ms), live: true, owner: Some("m1".into()), poster: false, edited_ms: None }
 }
 
 fn space_rows() -> Vec<LibraryRow> {
@@ -365,6 +374,7 @@ fn recording() -> OpenTake {
         since: Mono(500),
         length_ms: 30_000,
         markers: 0,
+        marked_at_pause: false,
         mic: None,
         camera: None,
     }
@@ -1038,6 +1048,15 @@ fn region3_rows() -> Vec<(&'static str, &'static str, &'static str, World)> {
         w
     }));
     rows.push(("popover", "paused", "paused", paused_take(Cause::User, 272_000)));
+    // N64: Drop a marker used at this pause — the row reads Marker dropped, greyed.
+    rows.push(("popover", "paused", "paused-marker-dropped", {
+        let mut w = paused_take(Cause::User, 272_000);
+        if let Some(t) = w.take.as_mut() {
+            t.markers = 1;
+            t.marked_at_pause = true;
+        }
+        w
+    }));
     rows.push(("popover", "display-lost", "display-lost", {
         let mut w = paused_take(Cause::DisplayLost, 61_000);
         w.mac.displays = Fact::known(vec![], Mono(0));
@@ -1147,6 +1166,77 @@ fn member_gallery() -> Vec<Value> {
         .collect()
 }
 
+/// The editor (N63), open from the Library on the spec's example video (4:32, saved as
+/// revision 3 with the ends at 0:08 and 4:01, 150–162 s cut, a spoken-cue suggestion at
+/// 200–204 s waiting) and its two markers.
+fn editor_rows() -> Vec<(&'static str, &'static str, World)> {
+    let saved = || {
+        let mut list = shroom_edit::EditList::new(272.4);
+        list.in_ = 8.0;
+        list.out = 241.0;
+        list.cuts = vec![
+            shroom_edit::Cut::manual(150.0, 162.0),
+            shroom_edit::Cut { kind: shroom_edit::CutKind::LineBeforeCue, applied: false, ..shroom_edit::Cut::manual(200.0, 204.0) },
+        ];
+        shroom_edit::History::new(list)
+    };
+    // The end pulled in to 3:55 since it opened: a step Undo can take back.
+    let stepped = || {
+        let mut h = saved();
+        h.act(&shroom_edit::Op::Trim { in_: 8.0, out: 235.0 });
+        h
+    };
+    let open = |media: EditorMedia, save: EditorSave, history: Option<shroom_edit::History>| {
+        let mut w = library(ready(), vec![remote("set2", "Setting up shroom in two minutes", SEP30, 272_400)]);
+        w.session.windows.insert(WindowKind::Editor, Door::asked(Mono(960)));
+        w.session.fields.editor = Some(EditorFields {
+            rec: RecId("set2".into()),
+            title: "Setting up shroom in two minutes".into(),
+            length_ms: Some(272_400),
+            source_duration: 272.4,
+            markers: vec![61.5, 130.0],
+            history,
+            rev: 3,
+            kept_until: None,
+            media,
+            save,
+            leaving: None,
+        });
+        w
+    };
+    let here = || EditorMedia::Ready { duration: 272.4 };
+    // Opened again while the earlier edit's original is kept, with `left` ms to go (B197 (e)).
+    let kept = |left: i64| {
+        let mut w = open(here(), EditorSave::Idle, Some(saved()));
+        w.session.fields.editor.as_mut().unwrap().kept_until = Some(Wall(w.wall.0 + left));
+        w
+    };
+    // The saved list, as the window holds it once the save landed.
+    let after = |save: EditorSave| {
+        let mut h = stepped();
+        h.saved_as_now();
+        open(here(), save, Some(h))
+    };
+    vec![
+        ("editor", "editor-ready", open(here(), EditorSave::Idle, Some(stepped()))),
+        ("editor", "editor-opening", open(EditorMedia::Opening, EditorSave::Idle, None)),
+        ("editor", "editor-original-kept-2-days", kept(47 * 3_600_000 + 30 * 60_000)),
+        ("editor", "editor-original-kept-1-day", kept(30 * 3_600_000)),
+        ("editor", "editor-original-kept-hours", kept(20 * 3_600_000)),
+        ("editor", "editor-original-kept-hours-in-words", kept(5 * 3_600_000 + 30 * 60_000)),
+        ("editor", "editor-original-kept-1-hour", kept(90 * 60_000)),
+        ("editor", "editor-original-kept-under-an-hour", kept(25 * 60_000)),
+        ("editor-getting", "editor-getting", open(EditorMedia::Getting { pct: 40 }, EditorSave::Idle, Some(saved()))),
+        ("editor-cant-get", "editor-cant-get", open(EditorMedia::Failed, EditorSave::Idle, Some(saved()))),
+        ("editor-saving", "editor-saving", open(here(), EditorSave::Saving, Some(stepped()))),
+        ("editor-save-failed", "editor-save-failed", open(here(), EditorSave::Failed, Some(stepped()))),
+        ("editor-save-refused", "editor-save-refused", open(here(), EditorSave::Refused, Some(stepped()))),
+        ("editor-making", "editor-making", after(EditorSave::Making { pct: 40 })),
+        ("editor-making-failed", "editor-making-failed", after(EditorSave::MakingFailed)),
+        ("editor-keep-original", "editor-keep-original", after(EditorSave::Asking)),
+    ]
+}
+
 /// The Send feedback window (N60): empty and gathering, filled with what goes shown, the
 /// log box unticked, sending, a send that didn't go through, and sent.
 fn feedback_rows() -> Vec<(&'static str, &'static str, World)> {
@@ -1211,6 +1301,13 @@ fn main() {
         }
         Some("region3") => {
             println!("{}", serde_json::to_string_pretty(&region3_gallery()).unwrap());
+            return;
+        }
+        Some("editor") => {
+            let out = window_gallery(editor_rows(), |s| {
+                (serde_json::to_value(&s.editor).expect("the slice serializes"), s.editor.as_ref().map(|e| e.faces.clone()).unwrap_or_default())
+            });
+            println!("{}", serde_json::to_string_pretty(&out).unwrap());
             return;
         }
         Some("feedback") => {

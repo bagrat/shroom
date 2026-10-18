@@ -832,9 +832,11 @@ fn windows_excluded(d: &D) -> Result<(), String> {
     d.act(Action::OpenSettings);
     d.wait("Settings", 10, |s| s.settings.is_some())?;
     std::thread::sleep(Duration::from_millis(300));
+    // Each window joins the list on the main thread as it's made: read after the windows
+    // themselves are (a loaded Mac can still be making one when the Scene shows it).
+    let numbers: Vec<_> = [("library", "the Library"), ("settings", "Settings")].into_iter().map(|(label, name)| (name, crate::drives::poll(5, || window_number(&d.app, label)))).collect();
     let excluded = d.rt.excluded.lock().unwrap().clone();
-    for (label, name) in [("library", "the Library"), ("settings", "Settings")] {
-        let n = window_number(&d.app, label);
+    for (name, n) in numbers {
         d.check(&format!("{name}'s window is excluded from capture"), n.is_some_and(|n| excluded.contains(&n)), format!("{n:?} in {excluded:?}"));
     }
     // The popover's own panel — the window that shows — not the hidden host of its page.
@@ -1197,6 +1199,21 @@ fn display_takes(d: &D, displays: &[shroom_core::world::Display], mics: &[shroom
     d.on_main(hotkey::press);
     d.wait("resumed by ⌥⌘P", 10, |s| s.tray.state == Some("recording") && s.popover.is_none())?;
     std::thread::sleep(Duration::from_secs(1));
+    // ⌥⌘M (N64): held beside ⌥⌘P; a press while recording drops a marker where it was
+    // pressed — on disk at once, the take recording on, nothing on screen.
+    d.check("⌥⌘M is held while recording (N64)", d.on_main(|| hotkey::held_key(hotkey::Hot::Marker)) == Some(true), "");
+    let take = d.newest_take().ok_or("no take")?;
+    let before = shroom_upload::upload::local_markers(&take);
+    d.check("the system hands ⌥⌘M to shroom", d.on_main(|| hotkey::press_key(hotkey::Hot::Marker)) == Some(true), "");
+    let landed = crate::drives::poll(5, || Some(shroom_upload::upload::local_markers(&take)).filter(|m| m.len() == before.len() + 1));
+    let s = snapshot(&d.rt);
+    let at = landed.as_ref().and_then(|m| m.last().copied());
+    d.check(
+        "⌥⌘M drops a marker where it was pressed, and the take records on (N64)",
+        at.is_some_and(|t| t > 2.0) && s.as_ref().is_some_and(|s| s.tray.state == Some("recording") && s.popover.is_none()),
+        format!("markers {before:?} → {landed:?}"),
+    );
+    std::thread::sleep(Duration::from_secs(1));
     if mic_granted && !mics.is_empty() {
         d.rt.post(Event::Os(OsNews::Devices { displays: displays.to_vec(), mics: vec![], cameras: cameras.to_vec() }));
         let s = d.wait("mic-lost", 10, |s| s.popover.as_ref().is_some_and(|p| p.faces.contains(&"mic-lost")))?;
@@ -1252,6 +1269,7 @@ fn display_takes(d: &D, displays: &[shroom_core::world::Display], mics: &[shroom
     d.wait("dismissed", 5, |s| s.popover.is_none())?;
     std::thread::sleep(Duration::from_millis(300));
     d.check("⌥⌘P is let go once the take has closed (N54)", d.on_main(hotkey::held) == Some(false), "");
+    d.check("⌥⌘M is let go with it (N64)", d.on_main(|| hotkey::held_key(hotkey::Hot::Marker)) == Some(false), "");
 
     // ── screen recording switched off ──
     d.config()?;
