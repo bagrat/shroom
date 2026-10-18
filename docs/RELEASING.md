@@ -295,7 +295,7 @@ curl -fsSL https://github.com/bagrat/shroom/releases/download/early/manifest.txt
 curl -fsSL https://shroom.am/install | sh -s -- --early
 ```
 
-It installs the newest build the pointer names — over the shroom that is there, the
+It installs the newest build the pointer names (or, with no early build out, the latest release, and says so) — over the shroom that is there, the
 way an update does — and leaves `~/.shroom/channel` holding `early`. From then on the app's
 own updater reads the pointer and the latest release and takes the newer, so an official
 release that is out is taken too. `run.log` says `boot: channel early`, and Copy
