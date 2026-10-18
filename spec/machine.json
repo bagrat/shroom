@@ -1127,6 +1127,17 @@
     "N7 (the landing's video is no longer a self-recorded take)"
    ],
    "amended_by": []
+  },
+  {
+   "id": "N65",
+   "title": "Voice cuts: say “shroom cut”, say the line again, and the slip is cut",
+   "decision": "**Bagrat asked for it, 2026-10-18** (relayed by the orchestrator), and tried it with his own voice the same day: the cut worked. (1) **The cue.** A speaker who slips says “shroom cut” on its own and says the line again. When the space listens (N66: the space's own Cloudflare account hears each take as it uploads), the Mac that made the take reads the take's transcript once it is whole and finds each cue. “shroom” is matched by sound, so the way it was heard doesn't matter, and it must be followed by “cut”. A mention (“just say shroom cut”, “the shroom cut feature”) is left alone; a looser hearing (“Troom cut”) counts only when it stands as a sentence of its own. (2) **The cut.** The words after the cue are lined up against the words before it to find where the line was started again; the cut runs from that restart through the cue, its edges set in the quiet on either side, found in the take on the Mac. A retake that says enough of the slip again is cut at once. When nothing was said again after a cue, only the cue goes, and the line before it is offered, not cut. (3) **Where it lands.** The cuts go into the record's edit list (N63) once per take, so the share page, the embed and the download follow them, as do the captions and chapters made from the same transcript (N66). The words cut stay out of what viewers get. Only a take stopped while the space listens is cut; nothing already shared changes. (4) **No switch of its own.** The space's listening (N66) is the one switch: the cue is a deliberate command, and a take without it is untouched. (5) **The owner page shows them** (`owner-page-cuts`), under the player, in owner-mode only: each cut's time and what was said, struck through, with Put back; an offered line with Cut it too. A press saves at once; one that doesn't save puts the row back and says so. Viewers see only the cut video. The words are proposals until he OKs them. Built: DECISIONS B200.",
+   "status": "provisional",
+   "date": "2026-10-18",
+   "amends": [
+    "owner-page (a face under the player in owner-mode: the voice cuts, owner-page-cuts)"
+   ],
+   "amended_by": []
   }
  ],
  "surfaces": [
@@ -6622,6 +6633,97 @@
     "id": "owner-page-member",
     "lines": "941-944, 948-949, 987-995; ledger U2 line 43, N40 line 88"
    }
+  },
+  "owner-page-cuts": {
+   "region": 4,
+   "kind": "face",
+   "parent": "owner-page",
+   "surface": "web-page",
+   "status": "provisional",
+   "board": "OwnerPageCuts",
+   "summary": "Voice cuts (N65): when the speaker said “shroom cut” in a take, the owner page shows what was cut, under the player. A heading, a quiet note that only the owner sees it, then one row per cut: its time on the video, and what was said, struck through while it is cut, with Put back (and, once put back, Cut again). A cue with nothing said again after it cut only its own words; the line before it comes as an offer, its words not struck, with Cut it too. Owner-mode as the title has it (N40): the video's maker and owner-class browsers. Viewers see only the cut video, never the strip or the words cut. A press saves at once and the player follows; a press that didn't save puts the row back as it was and says so on one line (OwnerPageCutRows).",
+   "entry": "The record's edit list holds voice cuts (N63's list; kinds retake, cue-only and line-before-cue, landed by the Mac once the take is heard) and the browser is in owner-mode for this video. The strip shows on load, or, on a page already open, once the page's own poll sees the cuts land.",
+   "said": [
+    {
+     "text": "Cut where you said “shroom cut”",
+     "role": "heading",
+     "copy": "provisional",
+     "note": "The strip's heading, with the scissors. Proposed 2026-10-18 (OwnerPageCuts); awaiting Bagrat.",
+     "id": "owner-page-cuts.cut-where-you-said"
+    },
+    {
+     "text": "Only you see this.",
+     "role": "note",
+     "copy": "provisional",
+     "note": "Quiet, at the heading's right: viewers never see the strip. Proposed 2026-10-18; awaiting Bagrat.",
+     "id": "owner-page-cuts.only-you-see-this"
+    },
+    {
+     "text": "Put back",
+     "role": "button",
+     "copy": "provisional",
+     "note": "On a cut row: the slip plays again. Proposed 2026-10-18; awaiting Bagrat.",
+     "id": "owner-page-cuts.put-back"
+    },
+    {
+     "text": "Cut again",
+     "role": "button",
+     "copy": "provisional",
+     "note": "On a row that was put back. Proposed 2026-10-18; awaiting Bagrat.",
+     "id": "owner-page-cuts.cut-again"
+    },
+    {
+     "text": "Cut it too",
+     "role": "button",
+     "copy": "provisional",
+     "note": "On the offered line before a cue with nothing said again after it. Proposed 2026-10-18; awaiting Bagrat.",
+     "id": "owner-page-cuts.cut-it-too"
+    },
+    {
+     "text": "Nothing was said again after it, so only “shroom cut” went. Cut the line before it too?",
+     "role": "note",
+     "copy": "provisional",
+     "note": "Above the offered line, in amber. Proposed 2026-10-18; awaiting Bagrat.",
+     "id": "owner-page-cuts.only-the-words-went"
+    },
+    {
+     "text": "Couldn't save that. Check your connection, then try again.",
+     "role": "status",
+     "copy": "provisional",
+     "note": "Under the rows, in amber, after a press that didn't save; the row is back as it was. Proposed 2026-10-18; awaiting Bagrat.",
+     "id": "owner-page-cuts.couldnt-save"
+    }
+   ],
+   "actions": [
+    {
+     "label": "Put back",
+     "kind": "secondary",
+     "return_default": false,
+     "goes_to": "owner-page-cuts",
+     "note": "Saves at once: the cut no longer applies (the record's edit list, under If-Match, B21), the row's words are no longer struck, the button becomes Cut again, and the player follows."
+    },
+    {
+     "label": "Cut again",
+     "kind": "secondary",
+     "return_default": false,
+     "goes_to": "owner-page-cuts",
+     "note": "The same save, the other way."
+    },
+    {
+     "label": "Cut it too",
+     "kind": "secondary",
+     "return_default": false,
+     "goes_to": "owner-page-cuts",
+     "note": "Cuts the offered line as well; the row then reads as a cut row, with Put back."
+    }
+   ],
+   "cites": [
+    "N65",
+    "N63",
+    "N66",
+    "N40",
+    "B21"
+   ]
   },
   "stopped-offline": {
    "region": 4,
@@ -14112,6 +14214,21 @@
    "cites": [],
    "source": [
     "map"
+   ],
+   "on": []
+  },
+  {
+   "from": "owner-page",
+   "to": "owner-page-cuts",
+   "kind": "auto",
+   "label": "the take's voice cuts land — the page shows them",
+   "trigger": "The record's edit list gains voice cuts (the Mac lands them once the take is heard); on load, or through the page's own poll",
+   "status": "provisional",
+   "cites": [
+    "N65"
+   ],
+   "source": [
+    "canvas"
    ],
    "on": []
   },
