@@ -624,6 +624,23 @@ impl Space {
         Self::classify(self.send("POST", path, &body, Some(&proof)))
     }
 
+    /// `POST ai` (N66, DECISIONS B206 b): one step of naming for a take — this Mac's word
+    /// that another minute of it is up, or that it's done.
+    pub fn ai(&self, auth: &AiAuth, rec: &str, signal: AiSignal, ts: u64) -> Answer<AiAnswer> {
+        let path = "/_shroom/api/ai";
+        let body = match signal {
+            AiSignal::Through(n) => json!({"rec": rec, "through": n}),
+            AiSignal::Done => json!({"rec": rec, "done": true}),
+        }
+        .to_string()
+        .into_bytes();
+        let proof = match auth {
+            AiAuth::Device(key) => key.bearer(),
+            AiAuth::Parent(secret) => parent_proof(secret, "POST", &self.host, path, ts, &body),
+        };
+        Self::classify(self.send("POST", path, &body, Some(&proof)))
+    }
+
     /// `GET me` (§4.7): law 1's re-probe.
     pub fn me(&self, key: &DeviceKey) -> Answer<Me> {
         self.call("GET", "me", None, Some(key))
@@ -878,6 +895,76 @@ impl MeNext {
 /// up again, two accounts on one Mac stay apart, and the hardware's own id never leaves.
 pub fn machine_stamp(hardware: &str, home: &str, host: &str) -> String {
     crate::device::hash(&format!("shroom-machine-v1\n{hardware}\n{home}\n{host}"))
+}
+
+
+/// Who asks for naming's steps (N66): a device key, or the setup Mac's parent proof — the
+/// token's derived S3 secret, as enroll signs with it (the setup Mac may hold no device key).
+pub enum AiAuth<'a> {
+    Device(&'a DeviceKey),
+    Parent(&'a str),
+}
+
+/// What a Mac tells its space about a take (N66, DECISIONS B206 b).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AiSignal {
+    /// This many of the take's pieces are up, unbroken from the first.
+    Through(u32),
+    /// The take is live: every piece is up.
+    Done,
+}
+
+/// The space's answer to one step.
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+pub struct AiAnswer {
+    /// The space names videos (its page carries Cloudflare's AI).
+    pub ai: bool,
+    /// Another step can be taken now.
+    #[serde(default)]
+    pub more: bool,
+    /// Why it waits, when it does (the free day, a busy model): the space's schedule finishes it.
+    #[serde(default)]
+    pub later: Option<String>,
+}
+
+/// How a signal went.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AiSent {
+    /// The space names videos and took it: heard, named, or kept for its schedule.
+    On,
+    /// The space doesn't name videos: nothing more to say about this take.
+    Off,
+    /// The space won't take it (the take is gone, or this Mac can't ask): nothing more either.
+    Settled,
+    /// No answer, or the space's own trouble: owed, and said again later.
+    Owed,
+}
+
+/// Tells the space, a step at a time, asking again while it says there's more — a few times
+/// for a minute, more for a done take, then the space's own schedule finishes what's left.
+pub fn ai_signal(space: &Space, auth: &AiAuth, rec: &str, signal: AiSignal) -> AiSent {
+    let most = match signal {
+        AiSignal::Through(_) => 3,
+        AiSignal::Done => 12,
+    };
+    let mut sent = AiSent::Owed;
+    for _ in 0..most {
+        let ts = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs());
+        match space.ai(auth, rec, signal, ts) {
+            Answer::Ok(a) if !a.ai => return AiSent::Off,
+            Answer::Ok(a) => {
+                sent = AiSent::On;
+                if !a.more {
+                    return sent;
+                }
+            }
+            Answer::Refused(r) if !(r.is_transient() || r.is_space() || r.status >= 500 || r.class == Class::StaleParent) => {
+                return if sent == AiSent::On { sent } else { AiSent::Settled };
+            }
+            _ => return sent,
+        }
+    }
+    sent
 }
 
 #[cfg(test)]
