@@ -196,7 +196,9 @@ async function main() {
         check("K pauses, the label says Play", kPaused, true, await page.evaluate(() => ({ paused: document.getElementById("v").paused, label: document.querySelector(".pp").getAttribute("aria-label"), active: document.activeElement?.className })));
         await page.click(".fs");
         const full = await page.waitForFunction(() => document.fullscreenElement === document.querySelector(".player"), null, { timeout: 3000 }).then(() => true, () => false);
-        const exitLabel = full ? await page.evaluate(() => document.querySelector(".fs").getAttribute("aria-label")) : null;
+        // The label follows `fullscreenchange`, a task after the element is full screen.
+        const exitLabel = full ? await page.waitForFunction((w) => document.querySelector(".fs").getAttribute("aria-label") === w, COPY.exitFullscreen, { timeout: 3000 })
+          .then(() => COPY.exitFullscreen, () => page.evaluate(() => document.querySelector(".fs").getAttribute("aria-label"))) : null;
         if (full) await page.click(".fs");
         const back = full ? await page.waitForFunction(() => !document.fullscreenElement, null, { timeout: 3000 }).then(() => true, () => false) : false;
         check("fullscreen is the player itself, and back", full && back && exitLabel === COPY.exitFullscreen, name === "chromium", { full, back, exitLabel });
