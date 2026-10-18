@@ -11766,7 +11766,7 @@
    "surface": "popover",
    "status": "provisional",
    "board": "AiConfirm",
-   "summary": "Turn on…'s short confirm (N66): the popover morphs into a question that says what turning AI on does and what it costs, once, before it costs anything. Turn on is the Return default; Back and Esc go back to config with the banner still there.",
+   "summary": "Turn on…'s short confirm (N66): the popover morphs into a question that says what turning AI on does and what it costs, once, before it costs anything. Like every question in the popover it has no Return default: Turn on is a click. Back and Esc go back to config with the banner still there.",
    "entry": "Turn on… in the AI banner.",
    "said": [
     {
@@ -11803,7 +11803,7 @@
      "text": "Turn on",
      "role": "button",
      "copy": "provisional",
-     "note": "N66. Filled, rightmost, the Return default. Proposed 2026-10-18; awaiting Bagrat.",
+     "note": "N66. Filled, rightmost; no Return default (a click, as every popover question). Proposed 2026-10-18; awaiting Bagrat.",
      "cites": [
       "N66"
      ],
@@ -11821,7 +11821,7 @@
     {
      "label": "Turn on",
      "kind": "filled-default",
-     "return_default": true,
+     "return_default": false,
      "goes_to": "ai-turning-on",
      "note": "Re-wires the space's page with Cloudflare's AI and its schedule, as the switch in Settings · Space does."
     }
@@ -16529,7 +16529,7 @@
    "to": "ai-turning-on",
    "kind": "flow",
    "label": "Turn on",
-   "trigger": "Turn on (Return): the space's page is put up again with the AI",
+   "trigger": "Turn on: the space's page is put up again with the AI",
    "status": "provisional",
    "cites": [
     "N66"
@@ -16538,8 +16538,7 @@
     "canvas"
    ],
    "on": [
-    "Act(AiOn)",
-    "Key(Return)"
+    "Act(AiOn)"
    ]
   },
   {

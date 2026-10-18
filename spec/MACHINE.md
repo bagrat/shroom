@@ -2828,7 +2828,7 @@ The AI offer (N66; Bagrat, 2026-10-18: off by default, but visible): a frost ban
 
 state · popover · **provisional** · board: AiConfirm · cites N66
 
-Turn on…'s short confirm (N66): the popover morphs into a question that says what turning AI on does and what it costs, once, before it costs anything. Turn on is the Return default; Back and Esc go back to config with the banner still there.
+Turn on…'s short confirm (N66): the popover morphs into a question that says what turning AI on does and what it costs, once, before it costs anything. Like every question in the popover it has no Return default: Turn on is a click. Back and Esc go back to config with the banner still there.
 
 **Entry.** Turn on… in the AI banner.
 
@@ -2837,12 +2837,12 @@ Turn on…'s short confirm (N66): the popover morphs into a question that says w
 | “Turn on AI for new videos?” | title | provisional | N66. Bold. Proposed 2026-10-18; awaiting Bagrat. · N66 |
 | “Titles, chapters and captions from what’s said, and your “shroom cut” slips cut — on your own Cloudflare account. Free for about 2½ hours of new video a day; more is about 4¢ an hour on Cloudflare’s $5 plan.” | line | provisional | N66. The one cost line, also under the switch in Settings · Space. Proposed 2026-10-18; awaiting Bagrat. · N66 |
 | “Back” | button | provisional | N66. Leftmost. Proposed 2026-10-18; awaiting Bagrat. · N66 |
-| “Turn on” | button | provisional | N66. Filled, rightmost, the Return default. Proposed 2026-10-18; awaiting Bagrat. · N66 |
+| “Turn on” | button | provisional | N66. Filled, rightmost; no Return default (a click, as every popover question). Proposed 2026-10-18; awaiting Bagrat. · N66 |
 
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
 | Back | secondary |  | `config` | Esc too; the banner stays. |
-| Turn on | filled-default | ↵ | `ai-turning-on` | Re-wires the space's page with Cloudflare's AI and its schedule, as the switch in Settings · Space does. |
+| Turn on | filled-default |  | `ai-turning-on` | Re-wires the space's page with Cloudflare's AI and its schedule, as the switch in Settings · Space does. |
 
 | → | Kind | Label | Status | Cites |
 |---|---|---|---|---|
