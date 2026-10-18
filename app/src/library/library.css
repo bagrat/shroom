@@ -178,6 +178,32 @@ body {
   color: var(--fg-2);
 }
 
+/* Turn on (filled) and Not now (quiet text): 28 tall, each on one line. */
+.offer .b {
+  flex: none;
+  min-height: 0;
+  font-size: 13px;
+  white-space: nowrap;
+  box-shadow: none;
+}
+
+.offer .b.filled {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 7px;
+}
+
+.offer .b.quiet {
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+}
+
+.offer .b.quiet:hover:not(:disabled) {
+  color: var(--fg);
+}
+
 /* ── the list ── */
 
 .list {
