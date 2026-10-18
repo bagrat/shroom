@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Writes the editing proposal's canvas boards (dev/proposals/voice-cut.md) into
-<root>/project/: EditorTrim, EditorVoiceCuts, EditorDoors. Words are placeholders for
-Bagrat; the look follows the canvas's dark Nord boards (app/src/lib/theme.css)."""
+<root>/project/: EditorTrim, EditorVoiceCuts, EditorDoors, and the voice-cut build's
+owner-page boards (spec N65): OwnerPageCuts and OwnerPageCutRows. Words are provisional;
+the look follows the canvas's dark Nord boards (app/src/lib/theme.css) and, for the owner
+page, its OwnerPageLive board."""
 
 import math
 import random
@@ -252,13 +254,151 @@ def board_doors():
 <div style="display: flex; flex-direction: row; align-items: center; gap: 10px"><span style="flex: 1 1 0; font-weight: 600">Cut slips when I say “shroom cut”</span>{toggle}</div>
 <span style="color: {MUTED}; font-size: 12px">Slip, say “shroom cut”, say it again. shroom cuts the slip and the words, and you can undo it. Your voice is listened to in your own Cloudflare account, after you stop.</span>
 </div></div>'''
+    owner_note = (f'<div style="width: 420px; box-sizing: border-box; background: {BG}; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 8px">'
+                  f'<div style="display: flex; flex-direction: row; align-items: center; gap: 10px">{scissors(RED, 16)}<span style="font-weight: 600">Cut where you said “shroom cut”</span></div>'
+                  f'<span style="color: {MUTED}; font-size: 12px">Under the player, for the owner and the video\'s maker only. Voice cuts run whenever the space listens (the space\'s own switch), so they add none.</span></div>')
     body = f'''<div style="flex: 1 1 0; padding: 28px; display: flex; flex-direction: row; gap: 36px; align-items: flex-start">
 {mini("The Library: Edit… in a row's menu", menu, 220)}
 {mini("While paused: Drop a marker comes back (hidden by B143 until the editor ships)", paused, 300)}
-{mini("Right after Finish &amp; Share, when cues were heard", after, 300)}
-{mini("Settings — General: the one switch", settings, 420)}
+{mini("After Finish &amp; Share the owner page opens: voice cuts are reviewed there (“The page — cut where you said shroom cut”), with no switch of their own", owner_note, 420)}
 </div>'''
-    return page("shroom Editor, the ways in", 1440, 400, body)
+    return page("shroom Editor, the ways in", 1180, 400, body)
+
+
+# ── The owner page's voice cuts (N65) ─────────────────────────────────────────────────
+# The page's markup is OwnerPageLive's (the canvas), with the strip under the player.
+
+PLAY_SVG = '<svg viewBox="0 0 16 16" aria-hidden="true" style="width: 18px; height: 18px; fill: #eceff4; display: block"><path d="M4.5 2.5v11l9-5.5z"></path></svg>'
+
+
+def icon_button(label, path, size=18):
+    return (f'<button aria-label="{label}" style="width: 44px; height: 44px; border: 0; border-radius: 9px; background: transparent; display: flex; align-items: center; justify-content: center; flex: none">'
+            f'<svg viewBox="0 0 16 16" aria-hidden="true" style="width: {size}px; height: {size}px; fill: none; stroke: #c3cad6; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; display: block"><path d="{path}"></path></svg></button>')
+
+
+def mark_footer():
+    return ('<div style="width: 100%; max-width: 960px; padding: 32px 0 0 0; display: flex; flex-direction: row; justify-content: flex-end; align-items: center; gap: 10px">'
+            '<button role="switch" aria-checked="true" aria-labelledby="mark-label" style="width: 36px; height: 20px; border: 0; border-radius: 10px; background: #88c0d0; padding: 2px; display: flex; flex-direction: row; justify-content: flex-end; align-items: center; flex: none">'
+            '<span style="width: 16px; height: 16px; border-radius: 8px; background: #2b2f36; display: block"></span></button>'
+            '<span id="mark-label" style="color: #aeb6c4; font-size: 13px" data-said="owner-page.made-with-shroom">made with shroom</span>'
+            '<svg viewBox="18 20 84 90" aria-hidden="true" style="width: 17px; height: 18px; display: block">'
+            '<path d="M50,68 C49,82 46,92 46,96 C46,101 52,104 60,104 C68,104 74,101 74,96 C74,92 71,82 70,68 Z" fill="#E5E9F0"></path>'
+            '<path d="M24,64 C24,42 40,26 60,26 C80,26 96,42 96,64 C86,75 34,75 24,64 Z" fill="#88C0D0"></path>'
+            '<circle cx="33" cy="58" r="3.4" fill="#ECEFF4"></circle><circle cx="88" cy="58" r="2.2" fill="#ECEFF4"></circle>'
+            '<circle cx="50" cy="44" r="6" fill="#ECEFF4"></circle><circle cx="72" cy="48" r="3.6" fill="#ECEFF4"></circle>'
+            '<circle cx="64" cy="58" r="2.6" fill="#ECEFF4"></circle></svg></div>')
+
+
+def player(now, total, played=0.3):
+    return f"""<div style="width: 100%; aspect-ratio: 16 / 9; border-radius: 12px; background: #1f2228; display: flex; flex-direction: column; overflow: hidden">
+<div style="flex: 1 1 0; display: flex; align-items: center; justify-content: center">
+<button aria-label="Play" style="width: 72px; height: 72px; border: 0; border-radius: 36px; background: rgba(236, 239, 244, 0.16); display: flex; align-items: center; justify-content: center">
+<svg viewBox="0 0 16 16" aria-hidden="true" style="width: 26px; height: 26px; fill: #eceff4; display: block"><path d="M5 3v10l8.5-5z"></path></svg>
+</button>
+</div>
+<div style="background: #262a31; display: flex; flex-direction: column; flex: none">
+<div role="slider" tabindex="0" aria-label="Seek" aria-valuetext="{now} of {total}" style="height: 16px; margin: -6px 0 -6px 0; display: flex; flex-direction: row; align-items: center; position: relative">
+<div style="width: {played * 100:.0f}%; height: 4px; background: #88c0d0"></div>
+<div style="width: 14px; height: 14px; border-radius: 7px; background: #eceff4; margin: 0 -7px; flex: none; position: relative"></div>
+<div style="flex: 1 1 0; height: 4px; background: #434a56"></div>
+</div>
+<div style="height: 52px; padding: 0 10px; display: flex; flex-direction: row; align-items: center; gap: 4px; color: #d8dee9; font-size: 13px">
+<button aria-label="Play" style="width: 44px; height: 44px; border: 0; border-radius: 8px; background: transparent; display: flex; align-items: center; justify-content: center; flex: none">{PLAY_SVG}</button>
+<span style="font-variant-numeric: tabular-nums; padding: 0 6px; white-space: nowrap"><span style="color: #eceff4">{now}</span> / {total}</span>
+<div style="flex: 1 1 0"></div>
+<button aria-label="Playback speed, 1×" style="font: inherit; height: 44px; min-width: 44px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: #d8dee9; font-weight: 600; flex: none">1×</button>
+</div>
+</div>
+</div>"""
+
+
+def cut_row(when, said, state, note=None):
+    """One cut in the strip. state: "cut" (struck, Put back), "back" (put back: plain, Cut
+    again), "offer" (the line before a cue with no retake: plain, Cut it too)."""
+    struck = state == "cut"
+    text_style = (f"color: {MUTED}; text-decoration: line-through; text-decoration-color: {RED}" if struck else f"color: {FG}")
+    label, said_id = {"cut": ("Put back", "owner-page-cuts.put-back"), "back": ("Cut again", "owner-page-cuts.cut-again"),
+                      "offer": ("Cut it too", "owner-page-cuts.cut-it-too")}[state]
+    note_html = f'<span style="color: {AMBER}; font-size: 13px" data-said="owner-page-cuts.only-the-words-went">{note}</span>' if note else ""
+    return (f'<div style="display: flex; flex-direction: row; align-items: center; gap: 14px; padding: 10px 0 0 0; border-top: 1px solid {LINE}">'
+            f'<span style="font-variant-numeric: tabular-nums; color: {FG3}; flex: none; width: 36px">{when}</span>'
+            f'<span style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 2px">{note_html}<span style="{text_style}">“{said}”</span></span>'
+            f'<button style="font: inherit; font-size: 13px; height: 32px; padding: 0 12px; border: 1px solid {BORDER}; border-radius: 8px; background: transparent; color: {FG}; flex: none" data-said="{said_id}">{label}</button></div>')
+
+
+OFFER_NOTE = "Nothing was said again after it, so only “shroom cut” went. Cut the line before it too?"
+
+
+def strip(rows, error=None):
+    err = (f'<span style="color: {AMBER}; font-size: 13px" role="status" data-said="owner-page-cuts.couldnt-save">{error}</span>' if error else "")
+    return (f'<section aria-label="Cuts where you said shroom cut" style="background: {CARD}; border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px">'
+            f'<div style="display: flex; flex-direction: row; align-items: center; gap: 10px">{scissors(RED, 16)}'
+            f'<span style="font-weight: 600; font-size: 15px" data-said="owner-page-cuts.cut-where-you-said">Cut where you said “shroom cut”</span>'
+            f'<span style="flex: 1 1 0"></span><span style="color: {MUTED}; font-size: 13px" data-said="owner-page-cuts.only-you-see-this">Only you see this.</span></div>'
+            f'{"".join(rows)}{err}</section>')
+
+
+def owner_page(board_title, title, now, total, body_after_player, w=1280, h=1100):
+    head = ('<div style="display: flex; flex-direction: row; align-items: center; gap: 4px">'
+            f'<input type="text" aria-label="Title" value="{title}" style="font: inherit; font-size: 1.75rem; font-weight: 600; flex: 1 1 0; min-width: 0; box-sizing: border-box; height: 52px; padding: 0; border: 1px solid transparent; border-radius: 9px; background: transparent; color: {FG}; text-overflow: ellipsis">'
+            + icon_button("Copy link", "M6.8 9.2a2.8 2.8 0 0 0 4 0l2.2-2.2a2.8 2.8 0 0 0-4-4l-.8.8M9.2 6.8a2.8 2.8 0 0 0-4 0L3 9a2.8 2.8 0 0 0 4 4l.8-.8")
+            + icon_button("Download", "M8 2.5v8M4.5 7.5L8 11l3.5-3.5M3 13.5h10") + '</div>')
+    body = (f'<div style="width: {w}px; min-height: {h}px; box-sizing: border-box; background: {BG}; padding: 40px 16px 24px 16px; display: flex; flex-direction: column; align-items: center; font-family: {FONT}; font-size: 14px; line-height: 1.5; color: {FG}">'
+            f'<div style="width: 100%; max-width: 960px; flex: 1 1 auto; display: flex; flex-direction: column; gap: 20px">{head}{player(now, total)}{body_after_player}</div>'
+            f'{mark_footer()}</div>')
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{board_title}</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{{margin:0}}
+a{{color:#88c0d0}}a:hover{{color:#8fbcbb}}
+</style>
+</helmet>
+{body}
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{{"$preview":{{"width":{w},"height":{h}}}}}'>
+class Component extends DCLogic {{
+renderVals() {{
+return {{}};
+}}
+}}
+</script>
+</body>
+</html>
+"""
+
+
+def board_owner_cuts():
+    rows = [
+        cut_row("0:04", "Hello, that is shroom. Shroom cut.", "cut"),
+        cut_row("1:12", "Then you pick the, the window you, um, shroom cut.", "cut"),
+        cut_row("2:47", "The second one is, um, I forget what it's called.", "offer", OFFER_NOTE),
+    ]
+    return owner_page("shroom video page, cut where you said shroom cut", "Setting up shroom in two minutes", "1:21", "3:58", strip(rows))
+
+
+def board_owner_cut_rows():
+    """The strip's rows after a press, and when a press didn't save (the row goes back)."""
+    def panel(caption, inner):
+        return (f'<div style="display: flex; flex-direction: column; gap: 10px; width: 600px">'
+                f'<span style="color: {MUTED}; font-size: 12px">{caption}</span>{inner}</div>')
+    a = panel("Put back: the slip plays again, and the row offers Cut again",
+              strip([cut_row("0:04", "Hello, that is shroom. Shroom cut.", "back")]))
+    b = panel("Cut it too: the line before the cue is cut as well, and can be put back",
+              strip([cut_row("2:47", "The second one is, um, I forget what it's called.", "cut")]))
+    c = panel("A press that didn't save: the row is as it was, and one line says so",
+              strip([cut_row("1:12", "Then you pick the, the window you, um, shroom cut.", "cut")],
+                    error="Couldn't save that. Check your connection, then try again."))
+    body = (f'<div style="width: 1320px; min-height: 560px; box-sizing: border-box; background: #1f2228; padding: 28px; display: grid; grid-template-columns: 600px 600px; gap: 36px 60px; font-family: {FONT}; font-size: 14px; line-height: 1.5; color: {FG}">'
+            f'{a}{b}{c}</div>')
+    return page("shroom video page, the cut rows after a press", 1320, 560, body)
 
 
 def main():
@@ -267,6 +407,8 @@ def main():
     (root / "EditorTrim.dc.html").write_text(board_trim())
     (root / "EditorVoiceCuts.dc.html").write_text(board_cues())
     (root / "EditorDoors.dc.html").write_text(board_doors())
+    (root / "OwnerPageCuts.dc.html").write_text(board_owner_cuts())
+    (root / "OwnerPageCutRows.dc.html").write_text(board_owner_cut_rows())
 
 
 if __name__ == "__main__":
