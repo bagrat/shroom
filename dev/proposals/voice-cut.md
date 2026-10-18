@@ -251,8 +251,8 @@ What's true today (ARCHITECTURE §4, §5, §14; WORKER-INTERFACE):
 **Recommended: two steps, the link untouched.**
 
 1. **Applied as it plays (the launch step).**
-   - The app writes `rec/<id>/edits.json` (the list above) and points `meta.edits` at it.
-     This is additive: an old page ignores it.
+   - The app saves the edit list (above) in the recording's record, as `meta.edits`
+     (below: the editor build's choice). This is additive: an old page ignores it.
    - The page's player skips cut ranges, holds to the trim, and shows the edited length and
      edited time. It works the same over HLS and over `video.mp4`.
    - Saving and undo are instant and cost nothing. The prototype is exactly this.
@@ -270,7 +270,18 @@ What's true today (ARCHITECTURE §4, §5, §14; WORKER-INTERFACE):
    - Undo after publishing re-renders from the local take, which shroom keeps (ARCHITECTURE
      §16 #37: local pruning is still open).
 
-The Worker gains only reading `edits.json` and the skip in its player. The app does the
+The Worker gains only reading the edits and the skip in its player.
+
+**As the editor build does it** (`claude/editor`, 2026-10-18): the edit list goes inline in
+the record, as `meta.edits`, not in a separate `edits.json`.
+
+- The Worker reads the record on every view anyway, so this saves a read and leaves no
+  second object to keep consistent.
+- The page gets only the computed keep ranges, so a voice cut's `removed` text (what was
+  said in the slip) never reaches a viewer.
+- Saving goes through the same read-modify-write under If-Match as every other write to
+  the record (ARCHITECTURE §5).
+- This proposal follows that. The app does the
 render; it already owns ffmpeg and the takes.
 
 **Markers** land in the same file (`"markers": [seconds]`) as flags on the timeline, and
@@ -350,16 +361,13 @@ out a mistake, rather than talking about the phrase, a feature, or cutting somet
 
 ## Spec sketch (provisional, not in `machine.json` yet)
 
-- **N62 The editor** (provisional).
-  - Edit… in a Library row's menu opens an `editor` window.
-  - It holds a preview, a timeline with trim ends, drag-to-cut, a list of cuts, Undo per cut,
-    Revert to original, and Done.
-  - Edits are an edit list beside the recording, applied as it plays. The link never
-    changes.
-  - Amends `absent_from_v1` (“trim, the editor, marker surfacing (P11)”) and `library`
-    (a fifth row action).
-- **N63 Voice cuts** (provisional).
-  - Settings › General gets a switch, on by default. Copy is for Bagrat.
+The editor and markers are now being built in their own session (branch `claude/editor`),
+which holds **N63 (the editor)** and **N64 (markers)** and takes this crate's edit list
+unchanged. What follows is this proposal's own row, and its sketch of those two as first
+written here, for the record.
+
+- **N65 Voice cuts** (provisional; this proposal).
+  - Settings › General gets a switch, off by default (call 3 below). Copy is for Bagrat.
   - After Finish & Share, the take is transcribed in the person's own Cloudflare account.
   - Each cue becomes a cut, applied or offered as above.
   - When cues were heard, the stop popover adds a line with Review, which opens the editor.
@@ -368,7 +376,15 @@ out a mistake, rather than talking about the phrase, a feature, or cutting somet
     (Done).
   - Amends `absent_from_v1` (“captions and transcript search (P8)”: the transcript is used,
     not shown) and BUILD-STATUS item 9 (B168: no transcription in v1).
-- **N64 Markers surface** (provisional).
+- **The editor** (now N63, `claude/editor`), as sketched here.
+  - Edit… in a Library row's menu opens an `editor` window.
+  - It holds a preview, a timeline with trim ends, drag-to-cut, a list of cuts, Undo per cut,
+    Revert to original, and Done.
+  - Edits are an edit list beside the recording, applied as it plays. The link never
+    changes.
+  - Amends `absent_from_v1` (“trim, the editor, marker surfacing (P11)”) and `library`
+    (a fifth row action).
+- **Markers surface** (now N64, `claude/editor`), as sketched here.
   - Drop a marker comes back in `paused`, reversing B143's hiding.
   - ⌥⌘M drops a marker in `recording`, held only while a take is open, like N54's ⌥⌘P.
     Amends `absent_from_v1`'s global hotkeys.
@@ -386,8 +402,8 @@ with tests:
 | Piece | Days |
 |---|---|
 | Probes: AI binding vs the token, size limit (**done**); a real human take | 0.25 |
-| Worker: `/_shroom/listen/<id>`, the `ai` binding at deploy, `edits.json` in meta, cloudfake twin | 1.5 |
-| App: extract and chunk audio after stop, call the route, merge the words, plan, upload `edits.json` | 1 |
+| Worker: `/_shroom/listen/<id>`, the `ai` binding at deploy, voice cuts into `meta.edits`, cloudfake twin | 1.5 |
+| App: ask the Worker to listen after stop, merge the words, plan, save into `meta.edits` | 1 |
 | `shroom-edit` hardening plus spec tests from real takes | 1 |
 | Page player: skip cuts, edited time and length, the trim | 1 |
 | Re-cut `video.mp4` and the teaser so download and preview match | 1 |
