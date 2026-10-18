@@ -14,7 +14,7 @@ import { COPY, EDIT_CUTS_MAX, PLAYER_JS, editsOf, forgetSecret, handle, status }
 import { M1, NOW, ORIGIN, OWNER_AIR, REC, cookieFor, metaKey, metaOf, space } from "./space-fixture.js";
 
 const VECTORS = JSON.parse(readFileSync(new URL("../../crates/shroom-edit/tests/keep-vectors.json", import.meta.url), "utf8"));
-const { shroomLength, shroomAt, shroomToSource } = new Function(`${PLAYER_JS};return { shroomLength, shroomAt, shroomToSource }`)();
+const { shroomLength, shroomAt, shroomToSource, shroomGain } = new Function(`${PLAYER_JS};return { shroomLength, shroomAt, shroomToSource, shroomGain }`)();
 /** The vectors' rounding (crates/shroom-edit/tests/vectors.rs). */
 const r6 = (x) => Math.round(x * 1e6) / 1e6;
 const ranges = (keep) => keep.map(([s, e]) => [r6(s), r6(e)]);
@@ -766,5 +766,32 @@ describe("a baked recording: the edit became the video (B197)", () => {
     expect(body).toContain(`<meta property="og:video" content="${ORIGIN}/m/${REC}/teaser.mp4">`);
     expect(await (await get(env, `/d/${REC}`)).text()).toBe("video.mp4");
     expect((await get(env, `/m/${REC}/v0/seg_00000.m4s`)).status).toBe(200);
+  });
+});
+
+describe("the sound dips at each skip instead of clicking (N63; the voice-cut build's joins, PR #59)", () => {
+  const K = [[1, 10], [20, 30], [40, 50]];
+  const F = 0.05;
+  it("plays at full level away from every join", () => {
+    for (const t of [1, 5, 9.8, 25, 45, 49.99]) expect(shroomGain(K, t, F), `${t}`).toBe(1);
+  });
+  it("eases out over the last 50 ms before a jump, and in over the first 50 ms after it", () => {
+    // The jump to 20 s comes at 10 − 0.03 s.
+    expect(shroomGain(K, 9.97 - 0.05, F)).toBeCloseTo(1, 6);
+    expect(shroomGain(K, 9.97 - 0.025, F)).toBeCloseTo(0.5, 6);
+    expect(shroomGain(K, 9.969, F)).toBeLessThan(0.05);
+    expect(shroomGain(K, 20, F)).toBe(0);
+    expect(shroomGain(K, 20.025, F)).toBeCloseTo(0.5, 6);
+    expect(shroomGain(K, 20.05, F)).toBeCloseTo(1, 6);
+  });
+  it("leaves the trim's own ends alone: playback starts and ends there, with nothing joined", () => {
+    expect(shroomGain(K, 1, F)).toBe(1);
+    expect(shroomGain(K, 49.99, F)).toBe(1);
+    expect(shroomGain(K, 60, F)).toBe(1);
+  });
+  it("takes the shorter ease on a range too short for both", () => {
+    const k = [[0, 5], [6, 6.06], [8, 9]];
+    for (let t = 6; t < 6.03; t += 0.005) expect(shroomGain(k, t, F)).toBeLessThanOrEqual(1);
+    expect(shroomGain(k, 6.015, F)).toBeCloseTo(0.3, 6);
   });
 });

@@ -1419,6 +1419,7 @@ function shroomClock(s,l){s=Math.max(0,+s||0);s=l?Math.round(s):Math.floor(s);va
 function shroomLength(K){for(var a=0,i=0;i<K.length;i++)a+=K[i][1]-K[i][0];return a}
 function shroomAt(K,t){for(var a=0,i=0;i<K.length;i++){if(t<K[i][1])return a+Math.max(0,t-K[i][0]);a+=K[i][1]-K[i][0]}return a}
 function shroomToSource(K,e){for(var a=0,i=0;i<K.length;i++){var n=K[i][1]-K[i][0];if(e<a+n)return K[i][0]+Math.max(0,e-a);a+=n}return K.length?K[K.length-1][1]:0}
+function shroomGain(K,t,F){var n=K.length,i=0,g=1;while(i<n&&t>=K[i][1]-.03)i++;if(i===n)return 1;if(i<n-1)g=Math.min(g,(K[i][1]-.03-t)/F);if(i>0)g=Math.min(g,(t-K[i][0])/F);return Math.max(0,Math.min(1,g))}
 function shroomKeep(R,D){var a=[],m=[],i,r,s,e;if(!Array.isArray(R))return m;D=D>0?D:Infinity;
 for(i=0;i<R.length&&a.length<500;i++){r=R[i];if(!Array.isArray(r)||typeof r[0]!=="number"||typeof r[1]!=="number"||!isFinite(r[0])||!isFinite(r[1]))continue;s=Math.min(D,Math.max(0,r[0]));e=Math.min(D,Math.max(0,r[1]));if(e>s)a.push([s,e])}
 a.sort(function(x,y){return x[0]-y[0]});for(i=0;i<a.length;i++){r=m[m.length-1];if(r&&a[i][0]<=r[1]){if(a[i][1]>r[1])r[1]=a[i][1]}else m.push(a[i])}return m}
@@ -1429,8 +1430,9 @@ function at(){var t=v.currentTime||0;return K?shroomAt(K,t):t}
 function ahead(t){var b=v.buffered,e=0;try{for(var i=0;i<b.length;i++)if(b.start(i)<=t+1&&b.end(i)>e)e=b.end(i)}catch(x){}return e}
 function paint(){var d=dur(),e=v.ended||fin,t=held?+sk.value:e&&d?d:at(),txt=shroomClock(t,e)+(d?" / "+shroomClock(d,true):"");tm.textContent=txt;sk.max=String(d||0);if(!held)sk.value=String(t);sk.setAttribute("aria-valuetext",txt);
 var b=K?shroomAt(K,ahead(v.currentTime||0)):ahead(t);sk.style.setProperty("--p",String(d?Math.min(1,t/d):0));sk.style.setProperty("--b",String(d?Math.min(1,b/d):0))}
-function skip(){if(!K)return;var t=v.currentTime||0,n=K.length,i=0;while(i<n&&t>=K[i][1]-.03)i++;
-if(i===n){fin=true;if(!v.paused)v.pause();paint();return}if(t<K[i][0]-.001&&Math.abs(t-aim)>.05){aim=K[i][0];v.currentTime=aim}}
+function level(g){g=Math.round(g*20)/20;if(v.volume!==g)try{v.volume=g}catch(x){}}
+function skip(){if(!K){if(v.volume!==1)level(1);return}var t=v.currentTime||0,n=K.length,i=0;while(i<n&&t>=K[i][1]-.03)i++;
+if(i===n){fin=true;if(!v.paused)v.pause();level(1);paint();return}if(t<K[i][0]-.001&&Math.abs(t-aim)>.05){level(0);aim=K[i][0];v.currentTime=aim;return}level(v.paused?1:shroomGain(K,t,.05))}
 function tick(){raf=0;if(!K||v.paused||v.ended)return;skip();if(!v.paused)raf=requestAnimationFrame(tick)}
 function fail(){if(busy||!E||!E.st)return;busy=true;fetch(E.st,{cache:"no-store"}).then(function(r){return r.json()}).then(function(x){var c=x&&x.copy;if(!c||!c.src||c.src===s)return;
 var t=v.currentTime||0,e=K?shroomAt(K,t):x.keep&&x.keep.length?shroomAt(x.keep,t):0,go=!v.paused&&!fin;K=null;cp=true;fin=false;s=c.src;known=+c.dur||known;if(c.poster)v.poster=c.poster;if(v.hls){v.hls.destroy();v.hls=null}
