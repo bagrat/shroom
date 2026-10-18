@@ -1,5 +1,6 @@
-//! What the command reads from shroom's folder (ARCHITECTURE §3.4). It only reads: the app
-//! is the one writer of every file there, so the command never races it.
+//! What the command reads from shroom's folder (ARCHITECTURE §3.4). It only reads the
+//! app's files: the app is the one writer of each, so the command never races it. The one
+//! file the command writes is its own log, `logs/cli.log` (`log.rs`).
 //!
 //! The folder is the one of the app the command ships in (spec N62, DECISIONS B215): from
 //! its own path, `…/X.app/Contents/MacOS/shroom-cli`, the bundle's identifier picks it by

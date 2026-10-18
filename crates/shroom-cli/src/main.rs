@@ -11,6 +11,7 @@
 mod app;
 mod batch;
 mod home;
+mod log;
 mod out;
 mod say;
 mod space;
@@ -51,6 +52,32 @@ struct Args {
     since: Option<String>,
 }
 
+impl Args {
+    /// The options given, by name only: the log's (`log.rs`). A value can be words (a
+    /// search, a file's path), so none is named.
+    fn options(&self) -> Vec<&'static str> {
+        [
+            (self.json, "json"),
+            (self.yes, "yes"),
+            (self.dry_run, "dry-run"),
+            (self.mine, "mine"),
+            (self.no_launch, "no-launch"),
+            (self.no_countdown, "no-countdown"),
+            (self.no_label, "no-label"),
+            (self.limit.is_some(), "limit"),
+            (self.search.is_some(), "search"),
+            (self.older_than.is_some(), "older-than"),
+            (self.batch, "batch"),
+            (self.from.is_some(), "from"),
+            (self.renew, "renew"),
+            (self.since.is_some(), "since"),
+        ]
+        .into_iter()
+        .filter_map(|(on, name)| on.then_some(name))
+        .collect()
+    }
+}
+
 fn parse(argv: Vec<String>) -> Result<Args, Fail> {
     let mut a = Args::default();
     let mut it = argv.into_iter();
@@ -87,9 +114,28 @@ fn parse(argv: Vec<String>) -> Result<Args, Fail> {
 }
 
 fn main() {
+    let started = std::time::Instant::now();
     let argv: Vec<String> = std::env::args().skip(1).collect();
     let json_wanted = argv.iter().any(|a| a == "--json");
-    let result = parse(argv).and_then(|a| run(&a).map(|d| (a.json, d)));
+    let words: Vec<String> = argv.iter().filter(|w| !w.starts_with('-')).cloned().collect();
+    let parsed = parse(argv);
+    let result = match &parsed {
+        Ok(a) => run(a).map(|d| (a.json, d)),
+        Err(f) => Err(f.clone()),
+    };
+    // One line in the command's own log: what was asked, how it ended, what it counted
+    // (log.rs) — never a word of what it was given or said.
+    let (command, options, home) = match &parsed {
+        Ok(a) => (log::command(&a.words), a.options(), Home::locate(a.home.as_deref())),
+        Err(_) => (log::command(&words), vec![], Home::locate(None)),
+    };
+    let (ended, counted) = match &result {
+        Ok((_, done)) => ("ok".to_string(), log::counted(&done.json)),
+        Err(f) => (format!("{}, exit {}", f.code(), f.exit()), log::counted(&f.json())),
+    };
+    if let Some(h) = home {
+        log::write(&h.dir, &command, &options, &ended, &counted, started.elapsed());
+    }
     match result {
         // Titles and names come from other people in the space: nothing a terminal would act
         // on gets through (out::clean, out::json_safe).

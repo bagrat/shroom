@@ -120,7 +120,11 @@ impl Door {
 
     /// A `manage` credential's bucket client for one video (§6.8).
     fn manage(&self, id: &str) -> Result<Client, Fail> {
-        let m = match MintNext::of(self.page.mint(&self.key, id, Purpose::Manage)) {
+        let next = MintNext::of(self.page.mint(&self.key, id, Purpose::Manage));
+        if !matches!(next, MintNext::Minted(_)) {
+            crate::log::note(format!("mint {}", mint_word(&next)));
+        }
+        let m = match next {
             MintNext::Minted(m) => m,
             MintNext::Revoked => return Err(Fail::Refused(say::not_in_the_space())),
             MintNext::NotYours => return Err(Fail::Refused(say::someone_elses())),
@@ -224,16 +228,57 @@ impl Door {
 /// The space's answer in the words of the one call that met it, where those differ from
 /// any call's (`answer`): a name too long for an invite, an invite or member not there.
 fn answer_as<T>(a: Answer<T>, special: impl Fn(&shroom_cloud::member::Refusal) -> Option<Fail>) -> Result<T, Fail> {
+    noted(&a);
     if let Answer::Refused(r) = &a
         && let Some(f) = special(r)
     {
         return Err(f);
     }
-    answer(a)
+    words(a)
 }
 
 /// The space's answer, in the command's words.
 fn answer<T>(a: Answer<T>) -> Result<T, Fail> {
+    noted(&a);
+    words(a)
+}
+
+/// What the space said where it didn't say yes, for the command's log (`log.rs`): its
+/// status and the kind of refusal, never its words.
+fn noted<T>(a: &Answer<T>) {
+    match a {
+        Answer::Ok(_) => {}
+        Answer::Refused(r) => {
+            let mut n = format!("space {} {:?}", r.status, r.class).to_lowercase();
+            for why in [&r.reason, &r.why].into_iter().flatten() {
+                if why.chars().all(|c| c.is_ascii_lowercase() || c == '-') {
+                    n.push(' ');
+                    n.push_str(why);
+                }
+            }
+            crate::log::note(n);
+        }
+        Answer::NotShroom { status } => crate::log::note(format!("space-not-shroom {status}")),
+        Answer::Unanswered(_) => crate::log::note("space unanswered"),
+    }
+}
+
+/// A mint's answer, other than a credential, as the log names it.
+fn mint_word(m: &MintNext) -> &'static str {
+    match m {
+        MintNext::Minted(_) => "minted",
+        MintNext::Revoked => "revoked",
+        MintNext::NotYours => "not-yours",
+        MintNext::Deleted => "deleted",
+        MintNext::Absent => "absent",
+        MintNext::SpaceSide(_) => "space-side",
+        MintNext::Backoff => "backoff",
+        MintNext::Reping => "not-shroom",
+        MintNext::Bug(_) => "bug",
+    }
+}
+
+fn words<T>(a: Answer<T>) -> Result<T, Fail> {
     match a {
         Answer::Ok(t) => Ok(t),
         Answer::Unanswered(_) => Err(Fail::Offline(say::unreachable())),
@@ -253,6 +298,12 @@ fn answer<T>(a: Answer<T>) -> Result<T, Fail> {
 fn upload_fail(e: shroom_upload::upload::UploadError) -> Fail {
     use shroom_storage::s3::S3Error;
     use shroom_upload::upload::UploadError as U;
+    crate::log::note(match &e {
+        U::S3(S3Error::Transport(_)) => "storage unreachable".to_string(),
+        U::S3(S3Error::Status { status, .. }) => format!("storage {status}"),
+        U::Tombstoned => "storage tombstoned".to_string(),
+        _ => "storage stopped".to_string(),
+    });
     match e {
         U::S3(S3Error::Transport(_)) => Fail::Offline(say::unreachable()),
         U::Tombstoned => Fail::NotFound(say::already_gone()),

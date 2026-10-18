@@ -35,10 +35,16 @@ pub fn ask(socket: &Path, op: &str, how: &serde_json::Map<String, Value>, launch
         Ok(s) => s,
         Err(_) => match launch {
             Some(app_id) => {
+                let opening = Instant::now();
                 open_app(app_id)?;
-                wait_for(socket, Duration::from_secs(15))?
+                let s = wait_for(socket, Duration::from_secs(15))?;
+                crate::log::note(format!("app-opened {}ms", opening.elapsed().as_millis()));
+                s
             }
-            None => return Err(Fail::AppUnreachable(say::app_not_running())),
+            None => {
+                crate::log::note("app-not-listening");
+                return Err(Fail::AppUnreachable(say::app_not_running()));
+            }
         },
     };
     stream.set_read_timeout(Some(Duration::from_secs(20))).ok();
@@ -47,14 +53,20 @@ pub fn ask(socket: &Path, op: &str, how: &serde_json::Map<String, Value>, launch
         o.extend(how.clone());
     }
     let line = format!("{ask}\n");
-    stream.write_all(line.as_bytes()).map_err(|_| Fail::AppUnreachable(say::app_didnt_take_it()))?;
+    let unreachable = |note: &str, words: String| {
+        crate::log::note(note);
+        Fail::AppUnreachable(words)
+    };
+    stream.write_all(line.as_bytes()).map_err(|_| unreachable("app-didnt-take-the-ask", say::app_didnt_take_it()))?;
     let mut answer = String::new();
-    BufReader::new(stream).read_line(&mut answer).map_err(|_| Fail::AppUnreachable(say::app_didnt_answer()))?;
-    let v: Value = serde_json::from_str(answer.trim()).map_err(|_| Fail::AppUnreachable(say::app_answer_unreadable()))?;
+    BufReader::new(stream).read_line(&mut answer).map_err(|_| unreachable("app-no-answer", say::app_didnt_answer()))?;
+    let v: Value = serde_json::from_str(answer.trim()).map_err(|_| unreachable("app-answer-unreadable", say::app_answer_unreadable()))?;
     if v["ok"] == true {
         return Ok(v);
     }
-    Err(refusal(v["error"].as_str().unwrap_or(""), op))
+    let code = v["error"].as_str().unwrap_or("");
+    crate::log::note(format!("app {}", if code.chars().all(|c| c.is_ascii_lowercase() || c == '_') { code } else { "?" }));
+    Err(refusal(code, op))
 }
 
 /// The app's code, in the command's words.
@@ -76,7 +88,11 @@ fn open_app(app_id: &str) -> Result<(), Fail> {
         return Err(Fail::AppUnreachable(say::app_only_on_a_mac()));
     }
     let ok = std::process::Command::new("open").args(["-g", "-b", app_id]).status().is_ok_and(|s| s.success());
-    if ok { Ok(()) } else { Err(Fail::AppUnreachable(say::app_wont_open())) }
+    if ok {
+        return Ok(());
+    }
+    crate::log::note("app-wont-open");
+    Err(Fail::AppUnreachable(say::app_wont_open()))
 }
 
 fn wait_for(socket: &Path, budget: Duration) -> Result<UnixStream, Fail> {
@@ -87,6 +103,7 @@ fn wait_for(socket: &Path, budget: Duration) -> Result<UnixStream, Fail> {
         }
         std::thread::sleep(Duration::from_millis(250));
     }
+    crate::log::note(format!("app-opened-not-listening {}s", budget.as_secs()));
     Err(Fail::AppUnreachable(say::app_slow_to_answer()))
 }
 
