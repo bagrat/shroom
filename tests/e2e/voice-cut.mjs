@@ -42,7 +42,8 @@ fs.mkdirSync(out, { recursive: true });
 const work = fs.mkdtempSync(path.join(os.tmpdir(), "shroom-voice-cut-"));
 const DRIVE_PROC = `${path.basename(installed)}/Contents/MacOS/shroom`;
 const SECONDS = 34;
-const SEEN = { width: 1024, height: 640 };
+// Tall enough for the player and the strip under it.
+const SEEN = { width: 1024, height: 860 };
 // What the take says (Bagrat's words on the tester, 2026-10-18): a broken-off restart, then a
 // line said again in other words. [[slnc ms]] is `say`'s own pause.
 const SPEECH = [
@@ -142,33 +143,46 @@ try {
   check("the take carries the speech", summary.sound.maxDb > -30, `mean ${summary.sound.meanDb} dB, loudest ${summary.sound.maxDb} dB`);
   if (!(summary.sound.maxDb > -30)) throw new Error("the take's sound is silent: the speech never reached it");
 
-  // 4. The status says cuts are coming, then gives their tag (what the owner page polls).
-  // Each change it shows is kept, by seconds since Stop. The lane looks for its words for up
-  // to 15 minutes; a short take's are there in seconds.
-  const status = async () => (await fetch(`${origin}/_shroom/status/${drive.rec}`, { cache: "no-store" }).then((r) => r.json()).catch(() => ({})));
-  let coming = false, tag = null;
-  summary.status = [];
-  for (const until = Date.now() + 540_000; Date.now() < until && !tag;) {
-    const s = await status();
-    const word = `${s.state ?? "no answer"}${s.cuts ? ` · cuts ${s.cuts === "coming" ? "coming" : "tagged"}` : ""}`;
-    if (summary.status.at(-1)?.[1] !== word) summary.status.push([Math.round((Date.now() - stopAt) / 1000), word]);
-    if (s.cuts === "coming") coming = true;
-    else if (s.cuts) tag = s.cuts;
-    if (!tag) await sleep(1000);
-  }
-  check("the status said cuts were coming", coming, coming ? "coming" : "never seen");
-  check("the cuts landed", !!tag, tag ? "a tag" : "no tag within 9 minutes of go-live");
-  if (tag) summary.ms.stopToLanded = Date.now() - stopAt;
-
-  // 5. The owner page, open as the owner (the app's one-time key): the strip under the player.
+  // 4. The owner page, open as the owner (the app's one-time key) from go-live, filmed as the
+  // cuts land: while they're coming it polls the status, and at their tag the strip comes
+  // under the player by itself. Meanwhile the status's own word is kept, each change by
+  // seconds since Stop. The lane looks for its words for up to 15 minutes; a short take's
+  // are there in seconds.
   const k = fs.readFileSync(path.join(path.dirname(report), "owner-key"), "utf8").trim();
   const browser = await chromium.launch({ headless: false });
   try {
     const context = await browser.newContext({ viewport: SEEN, recordVideo: { dir: work, size: SEEN } });
     const page = await context.newPage();
     await page.goto(`${pageUrl}?k=${encodeURIComponent(k)}`);
-    await page.waitForSelector("#cuts:not([hidden]) li", { timeout: 120_000 });
-    summary.ms.stopToStrip = Date.now() - stopAt;
+    const STRIP = "#cuts:not([hidden]) li";
+    const shown = page.waitForSelector(STRIP, { timeout: 660_000 }).then(() => Date.now() - stopAt, () => null);
+    const status = async () => (await fetch(`${origin}/_shroom/status/${drive.rec}`, { cache: "no-store" }).then((r) => r.json()).catch(() => ({})));
+    let coming = false, tag = null;
+    summary.status = [];
+    for (const until = Date.now() + 540_000; Date.now() < until && !tag;) {
+      const s = await status();
+      const word = `${s.state ?? "no answer"}${s.cuts ? ` · cuts ${s.cuts === "coming" ? "coming" : "tagged"}` : ""}`;
+      if (summary.status.at(-1)?.[1] !== word) summary.status.push([Math.round((Date.now() - stopAt) / 1000), word]);
+      if (s.cuts === "coming") coming = true;
+      else if (s.cuts) tag = s.cuts;
+      if (!tag) await sleep(1000);
+    }
+    check("the status said cuts were coming", coming, coming ? "coming" : "never seen");
+    check("the cuts landed", !!tag, tag ? "a tag" : "no tag within 9 minutes of go-live");
+    if (!tag) throw new Error("the cuts never landed");
+    summary.ms.stopToLanded = Date.now() - stopAt;
+
+    // 5. The strip, on the page that was open all along; a reload only if it didn't come.
+    let at = await Promise.race([shown, sleep(60_000).then(() => null)]);
+    check("the open page showed the strip by itself", at !== null, at !== null ? `${(at / 1000).toFixed(1)} s after Stop` : "not within a minute of the cuts' tag");
+    if (at === null) {
+      await page.reload();
+      await page.waitForSelector(STRIP, { timeout: 60_000 });
+      at = Date.now() - stopAt;
+    }
+    summary.ms.stopToStrip = at;
+    await page.locator("#cuts").scrollIntoViewIfNeeded();
+    await sleep(1500);
     const rows = await page.$$eval("#cuts li", (lis) => lis.map((li) => ({ cls: li.className, words: li.querySelector("q .w")?.textContent ?? "", at: li.querySelector(".at")?.textContent ?? "" })));
     summary.rows = rows;
     const on = rows.filter((r) => r.cls === "cut on");
