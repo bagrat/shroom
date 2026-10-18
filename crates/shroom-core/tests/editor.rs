@@ -392,6 +392,31 @@ fn steps_change_the_list_and_undo_and_redo_walk_them() {
     assert!(!list(&r).cuts[1].applied);
 }
 
+/// A cut's edge dragged (B195 (g)): one step that moves it, a hand cut or the voice layer's;
+/// Undo puts it back. A suggestion's edges move and it stays offered, so Cut it too takes it
+/// as it now is. The arm says what it was.
+#[test]
+fn a_cuts_edge_dragged_is_one_step_and_undo_puts_it_back() {
+    let mut r = ready_with(Some(saved_edit(3)));
+    r.op(EditOp::Resize { index: 0, start: 150.0, end: 165.5 });
+    assert_eq!(r.arm.name, "edit-resize");
+    assert!(r.effects.is_empty(), "nothing leaves the window");
+    assert_eq!(body(&r).keep, vec![[8.0, 150.0], [165.5, 241.0]]);
+    assert!(body(&r).can_undo && !body(&r).can_redo);
+    r.step(EditStep::Undo);
+    assert_eq!(body(&r).keep, vec![[8.0, 150.0], [162.0, 241.0]], "Undo puts the edge back");
+    r.step(EditStep::Redo);
+    assert_eq!((list(&r).cuts[0].start, list(&r).cuts[0].end), (150.0, 165.5));
+    r.op(EditOp::Resize { index: 1, start: 198.0, end: 204.0 });
+    assert_eq!(r.arm.name, "edit-resize", "a suggestion's edge");
+    assert!(!list(&r).cuts[1].applied, "still offered");
+    assert_eq!(body(&r).keep, vec![[8.0, 150.0], [165.5, 241.0]], "nothing plays differently yet");
+    r.op(EditOp::Apply { index: 1 });
+    assert_eq!(body(&r).keep, vec![[8.0, 150.0], [165.5, 198.0], [204.0, 241.0]], "Cut it too takes it as it now is");
+    r.op(EditOp::Resize { index: 0, start: 150.0, end: 150.05 });
+    assert_eq!(r.arm.name, "edit-refused", "shorter than a tenth of a second");
+}
+
 /// A step is refused — dropped, nothing changes — until the record is read and the video is
 /// here, while the edit saves, and when the edit model refuses it (the arm says so).
 #[test]

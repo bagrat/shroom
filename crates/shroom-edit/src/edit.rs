@@ -315,6 +315,29 @@ mod tests {
     }
 
     #[test]
+    fn a_cuts_edges_move_and_it_keeps_what_it_was() {
+        let mut l = list();
+        l.cuts.push(Cut { id: "m1".into(), ..Cut::manual(20.0, 28.0) });
+        l.cuts.push(Cut { kind: CutKind::Retake, applied: false, removed: "so um".into(), ..Cut::manual(40.0, 44.0) });
+        let resize = |index, start, end| Op::Resize { index, start, end };
+        let moved = check(&l, &resize(0, 20.0, 30.4)).unwrap();
+        assert_eq!(moved.keep(), vec![(0.0, 20.0), (30.4, 60.0)]);
+        assert_eq!((moved.cuts[0].id.as_str(), moved.cuts[0].kind, moved.cuts[0].applied, moved.cuts[0].adjusted), ("m1", CutKind::Manual, true, true));
+        let offered = check(&l, &resize(1, 42.5, 44.0)).unwrap();
+        assert_eq!(offered.keep(), l.keep(), "a suggestion moved plays nothing new");
+        assert_eq!((offered.cuts[1].start, offered.cuts[1].applied, offered.cuts[1].removed.as_str(), offered.cuts[1].adjusted), (42.5, false, "so um", true));
+        assert_eq!(check(&l, &resize(0, 20.0, 20.05)), Err(Refusal::TooShort));
+        assert_eq!(check(&l, &resize(0, 20.0, 28.0)), Err(Refusal::NothingChanges));
+        assert_eq!(check(&l, &resize(5, 1.0, 2.0)), Err(Refusal::NoSuchCut));
+        assert_eq!(check(&l, &resize(0, 30.0, 25.0)), Err(Refusal::OutOfRange), "backwards");
+        assert_eq!(check(&l, &resize(0, 0.5, 59.8)), Err(Refusal::LeavesTooLittle));
+        let trimmed = check(&l, &Op::Trim { in_: 10.0, out: 50.0 }).unwrap();
+        assert_eq!(check(&trimmed, &resize(0, 5.0, 28.0)).map(|l| l.cuts[0].start), Ok(10.0), "held to the trim");
+        let ops: Vec<Op> = serde_json::from_str(r#"[{"op":"resize","index":1,"start":2.5,"end":3}]"#).unwrap();
+        assert_eq!(ops[0], resize(1, 2.5, 3.0));
+    }
+
+    #[test]
     fn a_cut_is_held_inside_the_trim_and_the_recording() {
         let mut h = History::new(list());
         h.act(&Op::Trim {
