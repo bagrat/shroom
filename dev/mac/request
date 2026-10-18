@@ -1,4 +1,4 @@
-scenario=cli-label take-left-out cli-socket
+scenario=cli-label take-left-out
 hold=0
 ssh_key=
-asked=2026-10-18T15:06:45Z
+asked=2026-10-18T15:16:25Z
