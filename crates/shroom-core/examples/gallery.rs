@@ -23,6 +23,12 @@
 //! recording machine (config and its variants, disk-low, recording-off, the paused faces,
 //! the questions, the stops) and the countdown, each with its `window` (`popover` or
 //! `countdown`). The bubble and Camera's preview are native panels (no webview to render).
+//! The paused face shows Drop a marker, and again once one is dropped (N64).
+//!
+//! `… --example gallery -- editor` prints the editor's faces (N63), from the worlds of
+//! `tests/region5.rs`'s editor rows: ready on a trimmed video with a cut applied, a
+//! suggestion waiting, markers and a step to undo; just opened; the video coming at 40%;
+//! couldn't come; saving; and the save that didn't go through.
 //!
 //! Examples can't import tests, so the builders are copied from
 //! `tests/common/support.rs` and `tests/onboarding.rs`; keep them in step.
@@ -1157,6 +1163,53 @@ fn member_gallery() -> Vec<Value> {
         .collect()
 }
 
+/// The editor (N63), open from the Library on the spec's example video (4:32, saved as
+/// revision 3 with the ends at 0:08 and 4:01, 150–162 s cut, a spoken-cue suggestion at
+/// 200–204 s waiting) and its two markers.
+fn editor_rows() -> Vec<(&'static str, &'static str, World)> {
+    let saved = || {
+        let mut list = shroom_edit::EditList::new(272.4);
+        list.in_ = 8.0;
+        list.out = 241.0;
+        list.cuts = vec![
+            shroom_edit::Cut::manual(150.0, 162.0),
+            shroom_edit::Cut { kind: shroom_edit::CutKind::LineBeforeCue, applied: false, ..shroom_edit::Cut::manual(200.0, 204.0) },
+        ];
+        shroom_edit::History::new(list)
+    };
+    // The end pulled in to 3:55 since it opened: a step Undo can take back.
+    let stepped = || {
+        let mut h = saved();
+        h.act(&shroom_edit::Op::Trim { in_: 8.0, out: 235.0 });
+        h
+    };
+    let open = |media: EditorMedia, save: EditorSave, history: Option<shroom_edit::History>| {
+        let mut w = library(ready(), vec![remote("set2", "Setting up shroom in two minutes", SEP30, 272_400)]);
+        w.session.windows.insert(WindowKind::Editor, Door::asked(Mono(960)));
+        w.session.fields.editor = Some(EditorFields {
+            rec: RecId("set2".into()),
+            title: "Setting up shroom in two minutes".into(),
+            length_ms: Some(272_400),
+            source_duration: 272.4,
+            markers: vec![61.5, 130.0],
+            history,
+            rev: 3,
+            media,
+            save,
+        });
+        w
+    };
+    let here = || EditorMedia::Ready { duration: 272.4 };
+    vec![
+        ("editor", "editor-ready", open(here(), EditorSave::Idle, Some(stepped()))),
+        ("editor", "editor-opening", open(EditorMedia::Opening, EditorSave::Idle, None)),
+        ("editor-getting", "editor-getting", open(EditorMedia::Getting { pct: 40 }, EditorSave::Idle, Some(saved()))),
+        ("editor-cant-get", "editor-cant-get", open(EditorMedia::Failed, EditorSave::Idle, Some(saved()))),
+        ("editor-saving", "editor-saving", open(here(), EditorSave::Saving, Some(stepped()))),
+        ("editor-save-failed", "editor-save-failed", open(here(), EditorSave::Failed, Some(stepped()))),
+    ]
+}
+
 /// The Send feedback window (N60): empty and gathering, filled with what goes shown, the
 /// log box unticked, sending, a send that didn't go through, and sent.
 fn feedback_rows() -> Vec<(&'static str, &'static str, World)> {
@@ -1221,6 +1274,13 @@ fn main() {
         }
         Some("region3") => {
             println!("{}", serde_json::to_string_pretty(&region3_gallery()).unwrap());
+            return;
+        }
+        Some("editor") => {
+            let out = window_gallery(editor_rows(), |s| {
+                (serde_json::to_value(&s.editor).expect("the slice serializes"), s.editor.as_ref().map(|e| e.faces.clone()).unwrap_or_default())
+            });
+            println!("{}", serde_json::to_string_pretty(&out).unwrap());
             return;
         }
         Some("feedback") => {
