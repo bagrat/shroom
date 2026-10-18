@@ -29,7 +29,8 @@
 //!   own; its outcome is logged, and one that doesn't land is the upkeep's in two days.
 //! - `Upkeep` (B197 (d)): on a lane of its own, never in the window's way — of the records
 //!   the space lists for this Mac, read now (a member's own, every one on an owner-class
-//!   Mac: `Doorway::listed`), the ones past their two days are baked and the copies they
+//!   Mac: `Doorway::listed`), the ones past their two days are baked — never the one the
+//!   editor window is open on, asked before each (`open_in_editor`) — and the copies they
 //!   lack are made where the video is on this Mac (`library::upkeep_plan`); then `edits/`
 //!   drops what nobody needs — `UpkeepDone`.
 //!
@@ -128,6 +129,16 @@ static OPENED: Mutex<Option<HashMap<String, Plays>>> = Mutex::new(None);
 
 fn opened_as(rec: &str) -> Option<Plays> {
     OPENED.lock().unwrap().as_ref()?.get(rec).cloned()
+}
+
+/// The recording the editor window is open on now, as the Scene the app shows has it: from
+/// the moment its open is asked (the Scene is drawn before the lane hears of it) until the
+/// window closes, however it closes — a close after a save or with nothing changed tells the
+/// lane nothing, so `OPENED` and the media registry outlive it. Nothing is baked under it
+/// (B197): its list is on the clock it opened on.
+pub(super) fn open_in_editor(rt: &Runtime) -> Option<String> {
+    let scene = rt.snapshot.lock().unwrap();
+    scene.as_ref()?.editor.as_ref().map(|w| w.body.rec.clone())
 }
 
 pub fn spawn(rt: Runtime) -> Sender<EditCmd> {
@@ -673,6 +684,11 @@ fn upkeep(rt: &Runtime, door: &mut Doorway) -> Result<(u32, u32), FailClass> {
     let plan = records::upkeep_plan(&read, &now, &|_| true, &|id| local.get(id).copied().unwrap_or(false));
     let (mut baked, mut copies) = (0u32, 0u32);
     for id in &plan.bake {
+        // Asked before each: the editor may have opened on it since the pass began.
+        if open_in_editor(rt).as_deref() == Some(id.as_str()) {
+            rt.log(&format!("editor upkeep: {} is open in the editor — its bake waits for a later pass", short(id)));
+            continue;
+        }
         let done = door.client(rt, &space, id).and_then(|s3| records::bake(&s3, id, &now).map_err(|e| class(&e)));
         match done {
             Ok(Some(_)) => {
@@ -834,6 +850,51 @@ mod tests {
         saved.keep_until = Some("soon".into());
         m.edits = Some(saved);
         assert_eq!(kept_until(&m), None, "a time that doesn't read");
+    }
+
+    /// B197: nothing bakes under the editor. The recording it holds is the one its window is
+    /// open on in the Scene — from the moment the window opens, its video not here yet — and
+    /// none once the window has closed.
+    #[test]
+    fn the_recording_the_editor_holds_is_the_one_its_window_is_open_on() {
+        use shroom_core::world::{Door, EditorFields, EditorMedia, EditorSave, Role, WindowKind, World};
+        let tmp = tempfile::tempdir().unwrap();
+        let (rt, _rx) = Runtime::for_test(tmp.path().join("h"), None, None);
+        assert_eq!(open_in_editor(&rt), None, "no Scene yet");
+        let mut w = World::blank();
+        w.space.identity = Some(SpaceIdentity {
+            account_id: "acct".into(),
+            label: "v".into(),
+            subdomain: "myshroom".into(),
+            host: "v.myshroom.workers.dev".into(),
+            bucket: "shroom-test-x".into(),
+            role: Role::TokenHolder,
+            member_id: "m1".into(),
+            owner_name: "Bagrat".into(),
+            account_name: None,
+            foreign_v: false,
+        });
+        *rt.snapshot.lock().unwrap() = Some(shroom_core::derive(&w));
+        assert_eq!(open_in_editor(&rt), None, "no editor");
+        w.session.windows.insert(WindowKind::Editor, Door::asked(shroom_core::time::Mono(0)));
+        w.session.fields.editor = Some(EditorFields {
+            rec: RecId("AbCdEfGhIjKlMnOp".into()),
+            title: "Demo".into(),
+            length_ms: Some(10_000),
+            source_duration: 10.0,
+            markers: Vec::new(),
+            history: None,
+            rev: 0,
+            kept_until: None,
+            media: EditorMedia::Opening,
+            save: EditorSave::Idle,
+        });
+        *rt.snapshot.lock().unwrap() = Some(shroom_core::derive(&w));
+        assert_eq!(open_in_editor(&rt).as_deref(), Some("AbCdEfGhIjKlMnOp"));
+        w.session.windows.remove(&WindowKind::Editor);
+        w.session.fields.editor = None;
+        *rt.snapshot.lock().unwrap() = Some(shroom_core::derive(&w));
+        assert_eq!(open_in_editor(&rt), None, "closed");
     }
 
     #[test]

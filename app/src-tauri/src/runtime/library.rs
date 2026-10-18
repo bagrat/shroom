@@ -742,13 +742,15 @@ pub fn held_ids(takes: &std::path::Path) -> BTreeSet<String> {
 }
 
 /// The token Mac's cleanup sweep (DECISIONS B91): over the token's own pair, sparing every
-/// recording a take folder here names; counts only in the log.
+/// recording a take folder here names, and never baking the one the editor window is open on
+/// (asked before each bake, B197); counts only in the log.
 fn cleanup(rt: &Runtime, space: &SpaceIdentity, s3: &Client) -> Result<(), FailClass> {
     let held = held_ids(&rt.home.takes());
     let device = super::member::device_key(rt).filter(|k| k.host == space.host).map(|k| k.device);
     let now_ms = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as i64).unwrap_or(0);
     let here = library::Here { now_ms, device: device.as_deref(), holds: &|id: &str| held.contains(id) };
-    match library::cleanup(s3, &here) {
+    let editing = |id: &str| super::editor::open_in_editor(rt).as_deref() == Some(id);
+    match library::cleanup_sparing(s3, &here, &editing) {
         Ok(c) => {
             rt.log(&format!(
                 "library: cleanup reaped {} under tombstones, {} no Mac can finish, {} page keys ({} held here spared)",
