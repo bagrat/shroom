@@ -48,6 +48,8 @@ Options
   --dry-run       say what would change, change nothing
   --yes           confirm a delete, a removal or a batch invite
   --no-launch     don't open the app to record
+  --no-countdown  start at once (record start)
+  --no-label      no label on screen while it records
 
 Exit codes
   0 ok · 1 failed · 2 usage · 3 not set up · 4 not found or ambiguous · 5 offline
@@ -626,6 +628,11 @@ pub fn app_said_no() -> String {
 
 pub fn started() -> String {
     "Recording starts after the countdown.".into()
+}
+
+/// `record start --no-countdown` (N62, B216): the take is already recording.
+pub fn recording_now() -> String {
+    "Recording now.".into()
 }
 
 pub fn paused() -> String {

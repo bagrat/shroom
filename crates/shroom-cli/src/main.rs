@@ -33,6 +33,9 @@ struct Args {
     dry_run: bool,
     mine: bool,
     no_launch: bool,
+    /// `record start` without the count, and without the agent label (N62, B216).
+    no_countdown: bool,
+    no_label: bool,
     limit: Option<usize>,
     search: Option<String>,
     older_than: Option<u64>,
@@ -59,6 +62,8 @@ fn parse(argv: Vec<String>) -> Result<Args, Fail> {
             "--dry-run" => a.dry_run = true,
             "--mine" => a.mine = true,
             "--no-launch" => a.no_launch = true,
+            "--no-countdown" => a.no_countdown = true,
+            "--no-label" => a.no_label = true,
             "--limit" => a.limit = Some(value("--limit")?.parse().map_err(|_| Fail::Usage(say::limit_is_a_number()))?),
             "--search" => a.search = Some(value("--search")?),
             "--batch" => a.batch = true,
@@ -812,9 +817,21 @@ fn record(a: &Args, rest: &[String]) -> Result<Done, Fail> {
     }
     let h = home(a)?;
     let launch = (!a.no_launch && what == "start").then_some(h.app_id.as_str());
-    let v = app::ask(&h.control_socket(), &op, launch)?;
+    // How a start goes, said only when it isn't the app's default (the count, the label).
+    let mut how = serde_json::Map::new();
+    if what == "start" {
+        if a.no_countdown {
+            how.insert("countdown".into(), false.into());
+        }
+        if a.no_label {
+            how.insert("label".into(), false.into());
+        }
+    }
+    let v = app::ask(&h.control_socket(), &op, &how, launch)?;
     let take = v["take"].as_str().unwrap_or("").to_string();
     let text = match what {
+        // Without the count, the take is already recording.
+        "start" if take == "recording" => say::recording_now(),
         "start" => say::started(),
         "pause" => say::paused(),
         "resume" => say::resumed(),

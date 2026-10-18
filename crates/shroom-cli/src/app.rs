@@ -27,9 +27,10 @@ use crate::say;
 /// The ops the app takes. Each is what a click in the popover does, nothing more.
 pub const OPS: [&str; 4] = ["record.start", "record.pause", "record.resume", "record.stop"];
 
-/// Asks the app once. With `launch`, opens the app this command ships in (`app_id`) when it
-/// isn't running, and waits (≤ 15 s) for it to listen.
-pub fn ask(socket: &Path, op: &str, launch: Option<&str>) -> Result<Value, Fail> {
+/// Asks the app once, `how` beside the op (a start's `countdown` and `label`, N62). With
+/// `launch`, opens the app this command ships in (`app_id`) when it isn't running, and waits
+/// (≤ 15 s) for it to listen.
+pub fn ask(socket: &Path, op: &str, how: &serde_json::Map<String, Value>, launch: Option<&str>) -> Result<Value, Fail> {
     let mut stream = match UnixStream::connect(socket) {
         Ok(s) => s,
         Err(_) => match launch {
@@ -41,7 +42,11 @@ pub fn ask(socket: &Path, op: &str, launch: Option<&str>) -> Result<Value, Fail>
         },
     };
     stream.set_read_timeout(Some(Duration::from_secs(20))).ok();
-    let line = format!("{}\n", json!({"v": 1, "op": op}));
+    let mut ask = json!({"v": 1, "op": op});
+    if let Some(o) = ask.as_object_mut() {
+        o.extend(how.clone());
+    }
+    let line = format!("{ask}\n");
     stream.write_all(line.as_bytes()).map_err(|_| Fail::AppUnreachable(say::app_didnt_take_it()))?;
     let mut answer = String::new();
     BufReader::new(stream).read_line(&mut answer).map_err(|_| Fail::AppUnreachable(say::app_didnt_answer()))?;
@@ -103,7 +108,7 @@ mod tests {
     #[test]
     fn an_app_that_isnt_listening_is_unreachable_when_it_isnt_to_be_opened() {
         let dir = tempfile::tempdir().unwrap();
-        let f = ask(&dir.path().join("control.sock"), "record.stop", None).unwrap_err();
+        let f = ask(&dir.path().join("control.sock"), "record.stop", &serde_json::Map::new(), None).unwrap_err();
         assert_eq!((f.code(), f.exit()), ("app_unreachable", 8));
     }
 }
