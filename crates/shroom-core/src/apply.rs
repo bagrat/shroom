@@ -976,7 +976,11 @@ fn act(w: &mut World, action: Action) -> Out {
             let Some(Confirm::Delete(recs)) = w.session.confirm.take() else { return (vec![], Arm::DROPPED) };
             w.library_ops.deleting.extend(recs.iter().cloned());
             w.session.fields.library.selected.clear();
-            (vec![Effect::Library(LibCmd::Delete(recs))], Arm { name: "delete", edge: Some(("delete-confirm", "removed")) })
+            // The editor open on one of them closes, nothing saved (B199).
+            let gone = editor_video_gone(w, &recs);
+            let mut fx = vec![Effect::Library(LibCmd::Delete(recs))];
+            fx.extend(gone);
+            (fx, Arm { name: "delete", edge: Some(("delete-confirm", "removed")) })
         }
         Action::GetLinkRow(dir) => {
             if w.take_open() || w.update.applying {
@@ -2040,6 +2044,18 @@ fn leave_editor(w: &mut World) -> Vec<Effect> {
         w.inflight.failures.remove(&op);
     }
     fx
+}
+
+/// The video the editor holds is deleted — Delete… confirmed here, or this Mac's delete
+/// landing (B199): the editor closes, what its open asked for stops, and nothing is saved; a
+/// save on its way was for a video that's gone, and its answer is stale.
+fn editor_video_gone(w: &mut World, recs: &[RecId]) -> Vec<Effect> {
+    if !w.session.fields.editor.as_ref().is_some_and(|e| recs.contains(&e.rec)) {
+        return vec![];
+    }
+    w.inflight.ops.remove(&Op::EditorSave);
+    w.inflight.failures.remove(&Op::EditorSave);
+    close_editor(w, true)
 }
 
 /// Done — its button, Return, or the window's ✕: with no video to save over, the window
@@ -3400,6 +3416,8 @@ fn library(w: &mut World, news: LibraryNews) -> Out {
                 }
                 !gone
             });
+            // …and an editor still open on one of them (B199).
+            fx.extend(editor_video_gone(w, &recs));
             (fx, Arm { name: "deleted", edge: Some(("delete-confirm", "library")) })
         }
         // The cleanup sweep answered (B91): nothing on screen moves — the next one is due
