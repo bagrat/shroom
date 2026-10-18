@@ -12,6 +12,7 @@
 //   { "do": "shot", "window": <id>, "name": "editor-open" }   screencapture -l <id> <name>.png
 //   { "do": "drag", "focus": [x, y], "from": [x, y], "to": [x, y] }   cliclick: a click, a drag
 //   { "do": "click", "at": [x, y] }                                    cliclick: a click
+//   { "do": "move", "at": [x, y] }                                     cliclick: the pointer there
 //
 // Points are from the main display's top-left. The screenshots, the copy the drive read
 // back from the bucket and the report land in $MAC_OUT when the scenario sets it. A drive
@@ -89,6 +90,10 @@ async function answer(ask) {
   }
   if (ask.do === "click") {
     cliclick(`c:${at(ask.at)}`);
+    return;
+  }
+  if (ask.do === "move") {
+    cliclick(`m:${at([ask.at[0] - 3, ask.at[1]])}`, `m:${at(ask.at)}`);
     return;
   }
   throw new Error(`unknown ask ${JSON.stringify(ask)}`);

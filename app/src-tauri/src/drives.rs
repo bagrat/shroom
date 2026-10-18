@@ -1080,7 +1080,17 @@ impl Runner {
 /// page answers now: `.track`, the chip's button, the video.
 fn editor_layout(d: &Drive) -> Result<serde_json::Value, String> {
     use tauri::Manager;
-    const JS: &str = r#"(() => { const r = (q) => { const e = document.querySelector(q); if (!e) return null; const b = e.getBoundingClientRect(); return [b.left, b.top, b.width, b.height]; }; return JSON.stringify({ track: r(".track"), chip: r(".chip button"), screen: r(".screen") }); })()"#;
+    // Also, from the first look on: where the pointer last moved over the page, and the
+    // pointer's presses there (what a press landed on), for the drive's report.
+    const JS: &str = r#"(() => {
+      if (!window.__drive) {
+        window.__drive = { at: null, presses: [] };
+        addEventListener("pointermove", (e) => (window.__drive.at = [e.clientX, e.clientY]), true);
+        for (const t of ["pointerdown", "pointerup", "lostpointercapture", "click"]) addEventListener(t, (e) => window.__drive.presses.push(`${t} ${e.target.className?.baseVal ?? e.target.className} ${Math.round(e.clientX)},${Math.round(e.clientY)}`), true);
+      }
+      const r = (q) => { const e = document.querySelector(q); if (!e) return null; const b = e.getBoundingClientRect(); return [b.left, b.top, b.width, b.height]; };
+      return JSON.stringify({ track: r(".track"), chip: r(".chip button"), screen: r(".screen"), pointer: window.__drive.at, presses: window.__drive.presses.slice(-12) });
+    })()"#;
     let w = d.app.get_webview_window(crate::runtime::presenter::EDITOR).ok_or("no editor window")?;
     let (tx, rx) = std::sync::mpsc::channel();
     w.eval_with_callback(JS, move |out| {
@@ -1096,9 +1106,10 @@ fn editor_layout(d: &Drive) -> Result<serde_json::Value, String> {
     }
 }
 
-/// The editor's page's top-left on screen, in points from the top-left of the main display
-/// (what `cliclick` takes): the window's content, under its title bar, as AppKit has it.
-/// (Tauri's inner position read the title bar's top on the hosted Mac: 32 pt too high.)
+/// Where AppKit says the editor's content starts on screen, in points from the top-left of
+/// the main display (what `cliclick` takes). On the hosted Mac it reads the title bar's top,
+/// as Tauri's inner position does — the page sits 32 pt lower — so the drive takes it as a
+/// first guess and checks it against where the page sees the pointer land.
 fn editor_origin(d: &Drive) -> Result<(f64, f64), String> {
     use tauri::Manager;
     let app = d.app.clone();
@@ -1204,9 +1215,12 @@ fn editor(d: &Drive) -> Result<(), String> {
     let s = d.wait("the editor, ready", 30, editor_ready)?;
     let b = editor_body(&s).ok_or("no editor")?;
     d.check("the editor's title is its video's", b.title == format!("Edit — {}", HERE.1), b.title.clone());
-    let app = d.app.clone();
-    let native = d.on_main(move || app.get_webview_window(crate::runtime::presenter::EDITOR).and_then(|w| w.title().ok())).flatten();
-    d.check("… and so is its window's", native.as_deref() == Some(b.title.as_str()), format!("{native:?}"));
+    let native = || {
+        let app = d.app.clone();
+        d.on_main(move || app.get_webview_window(crate::runtime::presenter::EDITOR).and_then(|w| w.title().ok())).flatten()
+    };
+    let titled = poll(3, || native().filter(|t| *t == b.title));
+    d.check("… and so is its window's", titled.is_some(), format!("{:?}", native()));
     d.check("the record's markers are its flags (N64)", b.markers == MARKERS, format!("{:?}", b.markers));
     d.check("the recording's length is the record's", near(b.source_duration, length, 0.01), format!("{} vs {length}", b.source_duration));
     let l = b.list.as_ref().expect("a list");
@@ -1246,9 +1260,16 @@ fn editor(d: &Drive) -> Result<(), String> {
     runner.shot(d, crate::runtime::presenter::EDITOR, "editor-edited")?;
 
     // A drag across the sound with the pointer — the page's own selection, its Cut chip,
-    // and the chip's cut through the edit command into the core.
-    let origin = editor_origin(d)?;
+    // and the chip's cut through the edit command into the core. Where the page is on
+    // screen is AppKit's word, checked against where the page sees the pointer land.
+    let guess = editor_origin(d)?;
     let layout = editor_layout(d)?;
+    let probe = layout.get("screen").and_then(|r| centre(guess, r)).ok_or("no video on the page")?;
+    runner.ask(d, serde_json::json!({ "do": "move", "at": [probe.0, probe.1] }))?;
+    let seen = poll(3, || editor_layout(d).ok().and_then(|l| l.get("pointer").and_then(|p| Some((p.get(0)?.as_f64()?, p.get(1)?.as_f64()?)))));
+    let origin = seen.map_or(guess, |(cx, cy)| (probe.0 - cx, probe.1 - cy));
+    d.fact_like("origin", serde_json::json!({ "appkit": [guess.0, guess.1], "pointer": seen.map(|p| [p.0, p.1]), "taken": [origin.0, origin.1] }));
+    d.check("the page sees the pointer where it was put", seen.is_some(), format!("put at {probe:?}, the page saw {seen:?}"));
     let track = layout.get("track").cloned().unwrap_or_default();
     let (x0, y0, w0, h0) = (track[0].as_f64().unwrap_or(0.0), track[1].as_f64().unwrap_or(0.0), track[2].as_f64().unwrap_or(0.0), track[3].as_f64().unwrap_or(0.0));
     let x = |t: f64| origin.0 + x0 + t / length * w0;
@@ -1262,8 +1283,10 @@ fn editor(d: &Drive) -> Result<(), String> {
     if let Some(at) = chip.as_ref().and_then(|c| centre(origin, c)) {
         runner.ask(d, serde_json::json!({ "do": "click", "at": [at.0, at.1] }))?;
         let s = d.wait("the dragged part, cut", 5, |s| cuts_of(s).len() == 2);
-        let cuts = s.as_ref().map(cuts_of).unwrap_or_default();
-        d.check("the chip's Cut lands in the core, where it was dragged", cuts.len() == 2 && near(cuts[1].0, 14.0, 0.6) && near(cuts[1].1, 18.0, 0.6), format!("{cuts:?}"));
+        let cuts = snapshot(&d.rt).map(|s| cuts_of(&s)).unwrap_or_default();
+        let presses = editor_layout(d).ok().and_then(|l| l.get("presses").cloned()).unwrap_or_default();
+        d.fact_like("presses", &presses);
+        d.check("the chip's Cut lands in the core, where it was dragged", s.is_ok() && near(cuts[1].0, 14.0, 0.6) && near(cuts[1].1, 18.0, 0.6), format!("{cuts:?}; the page's presses: {presses}"));
         std::thread::sleep(Duration::from_millis(600));
         runner.shot(d, crate::runtime::presenter::EDITOR, "editor-dragged-cut")?;
     }
@@ -1290,6 +1313,11 @@ fn editor(d: &Drive) -> Result<(), String> {
     // The Library was behind the editor all along: macOS paints it again once it shows.
     std::thread::sleep(Duration::from_secs(4));
     runner.shot(d, LIBRARY, "library-edited")?;
+    // What the row reads once the Library's next refresh has answered (its focus re-reads
+    // the space): the cached rows don't carry the record's edit yet, so only this Mac's
+    // save says it — noted, not checked, until they do.
+    let later = snapshot(&d.rt).and_then(|s| s.library.as_ref().and_then(|l| l.body.rows.iter().find(|r| r.key == here.0)).map(|r| r.meta.clone()));
+    d.fact_like("row_after_refresh", later);
 
     // The permanent copy, cut on this Mac with the encoder and put beside the recording.
     let copy = poll(240, || record_json(&s3, &here.0).map(|r| r["edits"]["copy"].clone()).filter(|c| !c.is_null()));
