@@ -142,6 +142,7 @@ that ships under it.
 | json-patch | 3.0.1 | crate | MIT | https://github.com/idubrov/json-patch |
 | jsonptr | 0.6.3 | crate | MIT | https://github.com/chanced/jsonptr |
 | keyboard-types | 0.7.0 | crate | MIT | https://github.com/pyfisch/keyboard-types |
+| lazy_static | 1.5.1 | crate | MIT | https://github.com/rust-lang-nursery/lazy-static.rs |
 | libc | 0.2.189 | crate | MIT | https://github.com/rust-lang/libc |
 | litemap | 0.8.3 | crate | Unicode-3.0 | https://github.com/unicode-org/icu4x |
 | lock_api | 0.4.14 | crate | MIT | https://github.com/Amanieu/parking_lot |
@@ -156,6 +157,7 @@ that ships under it.
 | moxcms | 0.8.1 | crate | Apache-2.0 | https://github.com/awxkee/moxcms.git |
 | muda | 0.19.3 | crate | MIT | https://github.com/tauri-apps/muda |
 | new_debug_unreachable | 1.0.6 | crate | MIT | https://github.com/mbrubeck/rust-debug-unreachable |
+| num-complex | 0.4.6 | crate | MIT | https://github.com/rust-num/num-complex |
 | num-conv | 0.2.2 | crate | MIT | https://github.com/jhpratt/num-conv |
 | num-traits | 0.2.19 | crate | MIT | https://github.com/rust-num/num-traits |
 | objc2 | 0.6.4 | crate | MIT | https://github.com/madsmtm/objc2 |
@@ -202,6 +204,7 @@ that ships under it.
 | ref-cast-impl | 1.0.27 | crate | MIT | https://github.com/dtolnay/ref-cast |
 | regex | 1.13.1 | crate | MIT | https://github.com/rust-lang/regex |
 | regex-automata | 0.4.18 | crate | MIT | https://github.com/rust-lang/regex |
+| regex-lite | 0.1.9 | crate | MIT | https://github.com/rust-lang/regex |
 | regex-syntax | 0.8.11 | crate | MIT | https://github.com/rust-lang/regex |
 | ring | 0.17.14 | crate | Apache-2.0 AND ISC | https://github.com/briansmith/ring |
 | rustc-hash | 2.1.3 | crate | MIT | https://github.com/rust-lang/rustc-hash |
@@ -244,6 +247,12 @@ that ships under it.
 | strsim | 0.11.1 | crate | MIT | https://github.com/rapidfuzz/strsim-rs |
 | subtle | 2.6.1 | crate | BSD-3-Clause | https://github.com/dalek-cryptography/subtle |
 | swift-rs | 1.0.8 | crate | MIT | https://github.com/Brendonovich/swift-rs |
+| symphonia | 0.6.1 | crate | MPL-2.0 | https://github.com/pdeljanov/Symphonia |
+| symphonia-codec-aac | 0.6.1 | crate | MPL-2.0 | https://github.com/pdeljanov/Symphonia |
+| symphonia-common | 0.6.1 | crate | MPL-2.0 | https://github.com/pdeljanov/Symphonia |
+| symphonia-core | 0.6.1 | crate | MPL-2.0 | https://github.com/pdeljanov/Symphonia |
+| symphonia-format-isomp4 | 0.6.1 | crate | MPL-2.0 | https://github.com/pdeljanov/Symphonia |
+| symphonia-metadata | 0.6.1 | crate | MPL-2.0 | https://github.com/pdeljanov/Symphonia |
 | syn | 2.0.119 | crate | MIT | https://github.com/dtolnay/syn |
 | syn | 3.0.6 | crate | MIT | https://github.com/dtolnay/syn |
 | synstructure | 0.14.0 | crate | MIT | https://github.com/mystor/synstructure |
@@ -1395,6 +1404,7 @@ third-party/chromium/LICENSE.
 - **json-patch 3.0.1** — Copyright (c) 2017 Ivan Dubrov
 - **jsonptr 0.6.3** — Copyright (c) 2022 Chance Dinkins
 - **keyboard-types 0.7.0** — Copyright (c) 2017 Pyfisch
+- **lazy_static 1.5.1**
 - **libc 0.2.189** — Copyright (c) The Rust Project Developers
 - **lock_api 0.4.14** — Copyright (c) 2016 The Rust Project Developers
 - **log 0.4.34** — Copyright (c) 2014 The Rust Project Developers
@@ -1407,6 +1417,7 @@ third-party/chromium/LICENSE.
 - **mio 1.2.3** — Copyright (c) 2014 Carl Lerche and other MIO contributors
 - **muda 0.19.3** — Copyright (c) 2022-2022 Tauri Programme within The Commons Conservancy
 - **new_debug_unreachable 1.0.6** — Copyright (c) 2015 Jonathan Reem
+- **num-complex 0.4.6** — Copyright (c) 2014 The Rust Project Developers
 - **num-conv 0.2.2** — Copyright (c) Jacob Pratt
 - **num-traits 0.2.19** — Copyright (c) 2014 The Rust Project Developers
 - **objc2 0.6.4** — Copyright (c) Mads Marquart
@@ -1450,6 +1461,7 @@ third-party/chromium/LICENSE.
 - **ref-cast-impl 1.0.27**
 - **regex 1.13.1** — Copyright (c) 2014 The Rust Project Developers
 - **regex-automata 0.4.18** — Copyright (c) 2014 The Rust Project Developers
+- **regex-lite 0.1.9** — Copyright (c) 2014 The Rust Project Developers
 - **regex-syntax 0.8.11** — Copyright (c) 2014 The Rust Project Developers
 - **rustc-hash 2.1.3**
 - **rustls 0.23.46** — Copyright (c) 2016 Joseph Birr-Pixton <jpixton@gmail.com>
@@ -1695,6 +1707,12 @@ authorization of the copyright holder.
 - **cssparser-macros 0.6.1** — (c) under Patent Claims infringed by Covered Software in the absence of
 - **dtoa-short 0.3.5** — (c) under Patent Claims infringed by Covered Software in the absence of
 - **selectors 0.36.1** — (c) under Patent Claims infringed by Covered Software in the absence of
+- **symphonia 0.6.1** — (c) under Patent Claims infringed by Covered Software in the absence of
+- **symphonia-codec-aac 0.6.1** — (c) under Patent Claims infringed by Covered Software in the absence of
+- **symphonia-common 0.6.1** — (c) under Patent Claims infringed by Covered Software in the absence of
+- **symphonia-core 0.6.1** — (c) under Patent Claims infringed by Covered Software in the absence of
+- **symphonia-format-isomp4 0.6.1** — (c) under Patent Claims infringed by Covered Software in the absence of
+- **symphonia-metadata 0.6.1** — (c) under Patent Claims infringed by Covered Software in the absence of
 
 ```
 ==================================
