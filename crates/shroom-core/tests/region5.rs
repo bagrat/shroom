@@ -177,6 +177,7 @@ fn editor_open(media: EditorMedia, save: EditorSave, changed: bool) -> World {
         kept_until: None,
         media,
         save,
+        leaving: None,
     });
     w
 }

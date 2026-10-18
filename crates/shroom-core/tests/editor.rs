@@ -13,8 +13,8 @@ mod support;
 
 use std::sync::Arc;
 
-use shroom_core::effect::{EditCmd, Effect, LibCmd, RecCmd, ShellCmd};
-use shroom_core::event::{EditStep, EditorNews, Event, Key, LibraryNews, RecNews, Surface};
+use shroom_core::effect::{EditCmd, Effect, LibCmd, PersistOp, RecCmd, ShellCmd, UpdCmd};
+use shroom_core::event::{EditStep, EditorNews, Event, Key, LibraryNews, QuitVia, RecNews, Surface};
 use shroom_core::scene::{Action, Button, EditListView, EditorAfterView, EditorBody, EditorMediaView, LibraryRowView, LineTone, PausedBody, PopoverBody, Style};
 use shroom_core::time::{Fact, Mono, Wall};
 use shroom_core::world::*;
@@ -1368,6 +1368,183 @@ fn a_failed_upkeep_waits_for_the_next_turn() {
 fn the_upkeeps_deadline_is_an_hour() {
     assert_eq!(Op::EditorUpkeep.deadline_ms(), 3_600_000);
     assert_eq!(shroom_core::derive::UPKEEP_MS, 6 * HOUR as u64);
+}
+
+// ── quit and update with an edit not saved yet (B199) ──
+
+fn quits(r: &Run) -> bool {
+    r.has(|e| *e == Effect::Shell(ShellCmd::Quit))
+}
+
+fn saves(r: &Run) -> bool {
+    r.has(|e| matches!(e, Effect::Editor(EditCmd::Save { .. })))
+}
+
+fn applies(r: &Run) -> bool {
+    r.has(|e| matches!(e, Effect::Updater(UpdCmd::Apply(_))))
+}
+
+/// An update downloaded and verified (N37), and Settings open on General.
+fn with_update(mut w: World) -> Run {
+    w.update.offer = Fact::known(Some(UpdateOffer::Ready { version: "1.3.0".into() }), w.now);
+    w.update.staged = Some("1.3.0".into());
+    w.prefs.settings_tab = Some(SettingsTab::General);
+    w.session.windows.insert(WindowKind::Settings, Door::asked(w.now));
+    Run::new(w)
+}
+
+fn update_in_settings() -> Event {
+    Event::Act { surface: Surface::Settings, action: Action::Update, rev: 0 }
+}
+
+/// Quit from the Dock, the right-click menu or macOS with a change not saved yet: the edit is
+/// saved first, as ✕ and ⌘Q save it, and the editor comes forward to show it saving; shroom
+/// quits once the save lands — not waiting for the final video it goes on to make.
+#[test]
+fn quit_saves_an_unsaved_edit_first_then_quits() {
+    for via in [QuitVia::Dock, QuitVia::RightClick, QuitVia::System] {
+        let mut r = dirty();
+        r.send(Event::QuitRequested(via));
+        assert!(!quits(&r), "{via:?}: not before the edit is saved");
+        assert!(r.has(|e| *e == Effect::Editor(EditCmd::Save { rec: rec(), saved: Saved::new(edited().checked(), 4) })), "{via:?}: {:?}", r.effects);
+        assert!(r.has(|e| *e == Effect::Shell(ShellCmd::OpenEditor)), "{via:?}: the editor comes forward");
+        assert_eq!(r.arm.edge, Some(("editor", "editor-saving")), "{via:?}");
+        assert_eq!(face(&r), "editor-saving");
+        assert!(r.scene.editor.as_ref().unwrap().activates);
+        r.news(EditorNews::Saved { rec: rec(), rev: 4 });
+        assert!(quits(&r), "{via:?}: saved — shroom quits: {:?}", r.effects);
+        assert_eq!(face(&r), "editor-making", "{via:?}: the final video isn't waited for");
+    }
+}
+
+/// The popover's Quit the same: the popover makes way for the editor.
+#[test]
+fn the_popovers_quit_saves_first_too() {
+    let mut r = dirty();
+    r.click();
+    assert_eq!(r.scene.popover.as_ref().map(|p| p.id), Some("config"));
+    r.act(Action::Quit);
+    assert!(saves(&r) && !quits(&r), "{:?}", r.effects);
+    assert!(r.scene.popover.is_none(), "the popover makes way for the editor");
+    assert!(r.has(|e| *e == Effect::Shell(ShellCmd::OpenEditor)));
+    r.news(EditorNews::Saved { rec: rec(), rev: 4 });
+    assert!(quits(&r), "{:?}", r.effects);
+}
+
+/// Uploads still draining: their question comes first, as ever; Quit anyway then saves the
+/// edit, and shroom quits once it lands.
+#[test]
+fn quit_anyway_saves_the_edit_first() {
+    let mut w = dirty().w;
+    w.queue.push(Queued { dir: TakeDir("q41".into()), rec: RecId("UpFrOmThIsMaC001".into()), title: "Untitled — Sep 30".into(), stopped: Wall(AUG21), done: 2, total: 5, blocked: None, length_ms: Some(48_000) });
+    let mut r = Run::new(w);
+    r.send(Event::QuitRequested(QuitVia::Dock));
+    assert_eq!(r.scene.popover.as_ref().map(|p| p.id), Some("quit-confirm"));
+    assert!(!saves(&r) && !quits(&r), "the question first: {:?}", r.effects);
+    r.act(Action::QuitAnyway);
+    assert!(saves(&r) && !quits(&r), "{:?}", r.effects);
+    assert!(r.scene.popover.is_none() && r.w.session.confirm.is_none(), "answered: the popover makes way");
+    r.news(EditorNews::Saved { rec: rec(), rev: 4 });
+    assert!(quits(&r), "{:?}", r.effects);
+}
+
+/// Update in Settings the same way: the edit is saved first, then the update applies — and
+/// the window it brings back after the relaunch is never the editor (N63).
+#[test]
+fn update_saves_an_unsaved_edit_first_then_applies() {
+    let mut r = with_update(dirty().w);
+    r.send(update_in_settings());
+    assert!(!applies(&r) && !r.w.update.applying, "not before the edit is saved: {:?}", r.effects);
+    assert!(saves(&r) && r.has(|e| *e == Effect::Shell(ShellCmd::OpenEditor)), "{:?}", r.effects);
+    assert_eq!(r.arm.edge, Some(("editor", "editor-saving")));
+    r.news(EditorNews::Saved { rec: rec(), rev: 4 });
+    assert!(r.has(|e| *e == Effect::Updater(UpdCmd::Apply("1.3.0".into()))), "{:?}", r.effects);
+    assert!(r.w.update.applying);
+    assert!(r.has(|e| matches!(e, Effect::Persist(PersistOp::Restore(Some(Restore { window: WindowKind::Settings, .. }))))), "{:?}", r.effects);
+}
+
+/// A save already on its way is waited for; asking again changes nothing.
+#[test]
+fn a_quit_while_saving_waits_for_the_save() {
+    let mut r = dirty();
+    r.ed(Action::EditorDone);
+    r.send(Event::QuitRequested(QuitVia::Dock));
+    assert!(!saves(&r) && !quits(&r), "no second save, no quit yet: {:?}", r.effects);
+    assert_eq!(r.w.session.fields.editor.as_ref().unwrap().leaving, Some(Leaving::Quit));
+    r.send(Event::QuitRequested(QuitVia::RightClick));
+    assert!(!saves(&r) && !quits(&r));
+    r.news(EditorNews::Saved { rec: rec(), rev: 4 });
+    assert!(quits(&r), "{:?}", r.effects);
+}
+
+/// A save that doesn't land holds the quit and the update: shroom stays, and the editor says
+/// why; Done later saves, and nothing quits behind it.
+#[test]
+fn a_save_that_doesnt_land_holds_the_quit() {
+    let mut r = dirty();
+    r.send(Event::QuitRequested(QuitVia::Dock));
+    r.send(Event::Failed { op: Op::EditorSave, class: FailClass::Transport });
+    assert_eq!(face(&r), "editor-save-failed");
+    assert!(!quits(&r));
+    assert_eq!(r.w.session.fields.editor.as_ref().unwrap().leaving, None, "the quit is dropped");
+    r.ed(Action::EditorDone);
+    r.news(EditorNews::Saved { rec: rec(), rev: 4 });
+    assert!(!quits(&r), "it went with the failed save: {:?}", r.effects);
+
+    // Turned down: its own face says why, and nothing applies.
+    let mut r = with_update(dirty().w);
+    r.send(update_in_settings());
+    r.send(Event::Failed { op: Op::EditorSave, class: FailClass::Refused });
+    assert_eq!(face(&r), "editor-save-refused");
+    assert!(!applies(&r) && !r.w.update.applying);
+
+    // Never answering: the same, at its deadline.
+    let mut r = dirty();
+    r.send(Event::QuitRequested(QuitVia::RightClick));
+    let deadline = r.w.inflight.ops[&Op::EditorSave];
+    r.tick_to(deadline.0 + 10);
+    assert_eq!(face(&r), "editor-save-failed");
+    assert!(!quits(&r));
+}
+
+/// Nothing to save — the editor unchanged, its final video being made, a save the space
+/// turned down — and the quit or the update goes on at once.
+#[test]
+fn with_nothing_to_save_they_go_on_at_once() {
+    let mut r = ready_editor();
+    r.send(Event::QuitRequested(QuitVia::Dock));
+    assert_eq!(r.effects, vec![Effect::Shell(ShellCmd::Quit)]);
+    let mut r = dirty();
+    r.ed(Action::EditorDone);
+    r.news(EditorNews::Saved { rec: rec(), rev: 4 });
+    assert_eq!(face(&r), "editor-making");
+    r.send(Event::QuitRequested(QuitVia::Dock));
+    assert!(quits(&r), "the final video isn't waited for: {:?}", r.effects);
+    let mut r = dirty();
+    r.ed(Action::EditorDone);
+    r.send(Event::Failed { op: Op::EditorSave, class: FailClass::Refused });
+    r.send(Event::QuitRequested(QuitVia::Dock));
+    assert!(quits(&r) && !saves(&r), "{:?}", r.effects);
+    let mut r = with_update(ready_editor().w);
+    r.send(update_in_settings());
+    assert!(applies(&r) && !saves(&r), "{:?}", r.effects);
+}
+
+/// A take begun while the save is on its way holds everything that would end the app (law 4):
+/// the quit, or the update, is dropped.
+#[test]
+fn a_take_begun_meanwhile_drops_the_quit_and_the_update() {
+    for asked in [Event::QuitRequested(QuitVia::Dock), update_in_settings()] {
+        let mut r = with_update(dirty().w);
+        r.send(asked.clone());
+        assert!(saves(&r), "{asked:?}: {:?}", r.effects);
+        let mut w = r.w.clone();
+        w.take = Some(OpenTake { opened: w.now, since: w.now, ..take(Phase::Recording, 1_000) });
+        let mut r = Run::new(w);
+        r.news(EditorNews::Saved { rec: rec(), rev: 4 });
+        assert!(!quits(&r) && !applies(&r) && !r.w.update.applying, "{asked:?}: {:?}", r.effects);
+        assert!(r.w.take.is_some());
+    }
 }
 
 // ── leaving ──
