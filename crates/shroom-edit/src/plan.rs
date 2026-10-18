@@ -1,8 +1,8 @@
 //! From cues to suggested cuts.
 
 use crate::align::find_restart;
-use crate::cue::{Cue, find_cues};
-use crate::judge::{Answer, Question, pick};
+use crate::cue::{Cue, CueWords, Said, find_cues_in};
+use crate::judge::{Answer, Intent, MEANT, Meant, Question, pick};
 use crate::text::is_filler;
 use crate::text::{ends_cleanly, ends_sentence, ends_whole, is_hesitation, norm};
 use crate::{Confidence, Cut, CutKind, EditList, Silence, Transcript, Word};
@@ -41,6 +41,8 @@ pub struct Options {
     pub cue_pause: f64,
     /// A pause this long ends a line (for a cue with no retake).
     pub line_pause: f64,
+    /// Which spoken cues to listen for.
+    pub cues: CueWords,
 }
 
 impl Default for Options {
@@ -51,6 +53,7 @@ impl Default for Options {
             pad: 0.12,
             cue_pause: 0.25,
             line_pause: 0.6,
+            cues: CueWords::Shroom,
         }
     }
 }
@@ -345,11 +348,58 @@ fn bounds(cues: &[Cue], k: usize, len: usize) -> (usize, usize) {
     (floor, cues.get(k + 1).map_or(len, |c| c.first))
 }
 
+/// The cues heard: "shroom cut", and in a wider set (`o.cues`) any other phrase the judgment
+/// said was meant for the editor ([`MEANT`]); with no word on it, it isn't one.
+fn heard(t: &Transcript, o: Options, meant: &[Meant]) -> Vec<Cue> {
+    find_cues_in(&t.words, o.cues)
+        .into_iter()
+        .filter(|c| {
+            c.said == Said::ShroomCut
+                || meant.iter().any(|m| {
+                    m.word == c.first && (0.0..=1.0).contains(&m.score) && m.score >= MEANT
+                })
+        })
+        .collect()
+}
+
+/// The judgment's first question in a wider set of cues (`o.cues`): for each phrase said
+/// apart but "shroom cut", whether the speaker meant it for the editor, with what was said
+/// before and after it (two sentences or 30 words at most each way).
+pub fn intents(t: &Transcript, o: Options) -> Vec<Intent> {
+    let cx = Ctx { t, o };
+    let words = &t.words;
+    find_cues_in(words, o.cues)
+        .iter()
+        .filter(|c| c.said != Said::ShroomCut)
+        .map(|c| {
+            let before: Vec<&str> = words[c.first.saturating_sub(30)..c.first]
+                .iter()
+                .map(|w| w.text.trim())
+                .collect();
+            let after: Vec<&str> = words[c.last + 1..(c.last + 31).min(words.len())]
+                .iter()
+                .map(|w| w.text.trim())
+                .collect();
+            Intent {
+                word: c.first,
+                said: cx.said(c.first, c.last),
+                before: before.join(" "),
+                after: after.join(" "),
+            }
+        })
+        .collect()
+}
+
 /// The planner's questions for the judgment above it: one for each cue said apart from the
 /// speech that has somewhere to reach back to.
 pub fn questions(t: &Transcript, o: Options) -> Vec<Question> {
+    questions_meant(t, o, &[])
+}
+
+/// [`questions`], over the cues `meant` let in.
+pub fn questions_meant(t: &Transcript, o: Options, meant: &[Meant]) -> Vec<Question> {
     let cx = Ctx { t, o };
-    let cues = find_cues(&t.words);
+    let cues = heard(t, o, meant);
     let mut out = Vec::new();
     for (k, cue) in cues.iter().enumerate() {
         let (floor, ceil) = bounds(&cues, k, t.words.len());
@@ -375,8 +425,13 @@ pub fn questions(t: &Transcript, o: Options) -> Vec<Question> {
 /// or an answer that doesn't fit its question, keeps the code's own plan. A judgment only
 /// ever reaches further back: it never shortens a cut the words themselves set.
 pub fn plan_with(t: &Transcript, o: Options, answers: &[Answer]) -> EditList {
+    plan_meant(t, o, &[], answers)
+}
+
+/// [`plan_with`], over the cues `meant` let in (in a wider set of cues, `o.cues`).
+pub fn plan_meant(t: &Transcript, o: Options, meant: &[Meant], answers: &[Answer]) -> EditList {
     let cx = Ctx { t, o };
-    let cues = find_cues(&t.words);
+    let cues = heard(t, o, meant);
     let mut list = EditList::new(t.duration);
     for (k, cue) in cues.iter().enumerate() {
         let (floor, ceil) = bounds(&cues, k, t.words.len());

@@ -24,11 +24,11 @@ mod land;
 mod plan;
 mod text;
 
-pub use cue::{Cue, find_cues};
+pub use cue::{Cue, CueWords, Said, find_cues, find_cues_in};
 pub use edit::{History, Op};
-pub use judge::{Answer, JUDGED, Question};
+pub use judge::{Answer, Intent, JUDGED, MEANT, Meant, Question};
 pub use land::{land, land_with};
-pub use plan::{Options, plan, plan_with, questions};
+pub use plan::{Options, intents, plan, plan_meant, plan_with, questions, questions_meant};
 
 use serde::{Deserialize, Serialize};
 

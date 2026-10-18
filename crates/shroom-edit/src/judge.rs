@@ -29,6 +29,28 @@ pub struct Answer {
     pub scores: Vec<f64>,
 }
 
+/// A phrase said apart that may be a cue (any but "shroom cut", [`crate::CueWords`]): what
+/// was said, and around it, for the judge to say whether the speaker meant it for whoever
+/// edits the video. `word`: its first word's place in the transcript.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Intent {
+    pub word: usize,
+    pub said: String,
+    pub before: String,
+    pub after: String,
+}
+
+/// The judge's word on an [`Intent`]: how surely the speaker meant it for the editor, 0 to 1.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct Meant {
+    pub word: usize,
+    pub score: f64,
+}
+
+/// Meant at least this surely, a phrase said apart is a cue (measured by
+/// dev/proposals/voice-cut/poc/cues.py).
+pub const MEANT: f64 = 0.5;
+
 /// The farthest-back candidate scored past [`JUDGED`], when the answer fits a question of
 /// `n` candidates: one score each, every one a number from 0 to 1. Anything else is refused.
 pub(crate) fn pick(answer: &Answer, n: usize) -> Option<usize> {
