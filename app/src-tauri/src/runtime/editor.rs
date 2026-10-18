@@ -26,14 +26,15 @@
 //! - `Bake`: “Yes, delete” — the edit becomes the video (`library::bake`), on a thread of its
 //!   own; its outcome is logged, and one that doesn't land is the upkeep's in two days.
 //! - `Upkeep` (B197 (d)): on a lane of its own, never in the window's way — of the records
-//!   the Library knows that are this Mac's own and hold an edit, the ones past their two
-//!   days are baked and the copies they lack are made where the video is on this Mac
-//!   (`library::upkeep_plan`); then `edits/` drops what nobody needs — `UpkeepDone`.
+//!   the space lists for this Mac, read now (a member's own, every one on an owner-class
+//!   Mac: `Doorway::listed`), the ones past their two days are baked and the copies they
+//!   lack are made where the video is on this Mac (`library::upkeep_plan`); then `edits/`
+//!   drops what nobody needs — `UpkeepDone`.
 //!
 //! `edits/` (folder 700, files 600) holds what this Mac fetched and read, and a copy while
-//! it's made; a recording's folder goes once it's baked or gone from the space, or after a
-//! week unused, and the whole of it with the space (Disconnect, Leave). Nothing here logs
-//! more than a recording's short id.
+//! it's made; a recording's folder goes once it's baked (here or elsewhere) or gone from the
+//! space, or after a week unused, and the whole of it with the space (Disconnect, Leave).
+//! Nothing here logs more than a recording's short id.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -44,7 +45,7 @@ use std::time::{Duration, Instant, SystemTime};
 use shroom_core::effect::EditCmd;
 use shroom_core::event::{EditorNews, Event};
 use shroom_core::time::Wall;
-use shroom_core::world::{FailClass, Op, RecId, Role, SpaceIdentity};
+use shroom_core::world::{FailClass, Op, RecId, SpaceIdentity};
 use shroom_storage::s3::S3Error;
 use shroom_upload::meta::{Meta, State, now_iso};
 use shroom_upload::upload::{PART_SIZE, SINGLE_PUT_MAX, UploadError, with_retry};
@@ -671,12 +672,6 @@ fn forget_folder(rt: &Runtime, rec: &str) {
     let _ = std::fs::remove_dir_all(rt.home.edits().join(rec));
 }
 
-/// Whose videos this Mac keeps up (B197 (d)): a member's own, by the ledger's owner; every
-/// video on an owner-class Mac.
-pub fn mine(role: Role, member: &str, owner: Option<&str>) -> bool {
-    role != Role::Member || owner == Some(member)
-}
-
 /// One upkeep pass, as the lane runs it, from the drive's own thread (the editor drive: the
 /// core asks for one at launch and every six hours, a drive can't wait for that).
 #[cfg(feature = "dev-harness")]
@@ -688,21 +683,11 @@ pub fn upkeep_pass(rt: &Runtime) -> Result<(u32, u32), FailClass> {
 fn upkeep(rt: &Runtime, door: &mut Doorway) -> Result<(u32, u32), FailClass> {
     let t0 = Instant::now();
     let space = space(rt)?;
-    let rows = super::library::cached(rt, &space);
-    // Only a record whose row says it holds an edit is read: the rest have nothing to bake
-    // or copy.
-    let mut read: Vec<(String, Meta)> = Vec::new();
-    for r in rows.iter().filter(|r| r.edited_sec.is_some() && mine(space.role, &space.member_id, r.owner.as_deref())) {
-        match record(rt, door, &space, &r.id) {
-            Ok(m) => read.push((r.id.clone(), m)),
-            // Offline: the pass waits for the next.
-            Err(FailClass::Transport) => return Err(FailClass::Transport),
-            Err(c) => {
-                rt.log(&format!("editor upkeep: {} not read ({c:?})", short(&r.id)));
-                door.forget();
-            }
-        }
-    }
+    // The space's own list, read now (a member's videos; every one on an owner-class Mac):
+    // the Library's cache hears of an edit only when the Library refreshes. Offline, the
+    // pass waits for the next.
+    let listed = door.listed(rt, &space).inspect_err(|_| door.forget())?;
+    let read = listed.edited;
     let now = now_iso();
     let local: HashMap<String, bool> = read.iter().map(|(id, m)| (id.clone(), !on_this_mac(&rt.home.takes(), &rt.home.edits(), m).is_empty())).collect();
     let plan = records::upkeep_plan(&read, &now, &|_| true, &|id| local.get(id).copied().unwrap_or(false));
@@ -731,9 +716,8 @@ fn upkeep(rt: &Runtime, door: &mut Doorway) -> Result<(u32, u32), FailClass> {
             }
         }
     }
-    // A Library not read yet lists nothing: then only age and the record itself drop a folder.
-    let listed: Option<Vec<&str>> = (!rows.is_empty()).then(|| rows.iter().map(|r| r.id.as_str()).collect());
-    let pruned = prune(rt, listed.as_deref(), &mut |id| {
+    let ids: Vec<&str> = listed.ids.iter().map(String::as_str).collect();
+    let pruned = prune(rt, &ids, &mut |id| {
         let dir = rt.home.edits().join(id);
         if !dir.join(SOURCE_KEY).is_file() {
             return false;
@@ -754,11 +738,11 @@ fn upkeep(rt: &Runtime, door: &mut Doorway) -> Result<(u32, u32), FailClass> {
     Ok((baked, copies))
 }
 
-/// The recordings' folders in `edits/` that nobody needs: a recording the Library no longer
+/// The recordings' folders in `edits/` that nobody needs: a recording the space no longer
 /// lists (deleted, or another space's), one unused a week, or one whose fetched video its
 /// record no longer plays (`stale`: baked on another Mac, deleted) — never the one the
 /// editor serves now. How many went.
-fn prune(rt: &Runtime, listed: Option<&[&str]>, stale: &mut dyn FnMut(&str) -> bool) -> usize {
+fn prune(rt: &Runtime, listed: &[&str], stale: &mut dyn FnMut(&str) -> bool) -> usize {
     let Ok(entries) = std::fs::read_dir(rt.home.edits()) else { return 0 };
     let now = SystemTime::now();
     let mut gone = 0;
@@ -768,7 +752,7 @@ fn prune(rt: &Runtime, listed: Option<&[&str]>, stale: &mut dyn FnMut(&str) -> b
             continue;
         }
         let used = last_used(&e.path());
-        if listed.is_some_and(|l| !l.contains(&name.as_str())) || unused(used, now) || stale(&name) {
+        if !listed.contains(&name.as_str()) || unused(used, now) || stale(&name) {
             let _ = std::fs::remove_dir_all(e.path());
             gone += 1;
         }
@@ -900,14 +884,6 @@ mod tests {
         assert!(outdated(tmp.path(), &baked), "baked on another Mac");
         std::fs::write(tmp.path().join(SOURCE_KEY), b"rec/AbCd/edit-1.mp4").unwrap();
         assert!(!outdated(tmp.path(), &baked), "the baked file, fetched since");
-    }
-
-    #[test]
-    fn a_member_keeps_up_their_own_videos_an_owner_every_one() {
-        assert!(mine(Role::Member, "m2", Some("m2")));
-        assert!(!mine(Role::Member, "m2", Some("m1")));
-        assert!(!mine(Role::Member, "m2", None), "an owner not known yet: not theirs");
-        assert!(mine(Role::OwnerClass, "m1", Some("m2")) && mine(Role::TokenHolder, "m1", None));
     }
 
     #[test]

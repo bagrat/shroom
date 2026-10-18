@@ -27,15 +27,16 @@ use std::sync::mpsc::{Sender, channel};
 use std::collections::{BTreeMap, BTreeSet};
 
 use shroom_cloud::device::DeviceKey;
-use shroom_cloud::member::{Answer, LibraryRequest, MintNext, Purpose, Scope, Space};
+use shroom_cloud::member::{Answer, LibraryPage, LibraryRequest, MintNext, Purpose, Scope, Space};
 use shroom_core::effect::LibCmd;
 use shroom_core::event::{Event, LibraryNews};
 use shroom_core::time::Wall;
 use shroom_core::world::{FailClass, LibraryRow, Op, RecId, Role, SpaceIdentity};
 use shroom_storage::s3::{Client, S3Error};
 use shroom_upload::library::{self, Cache, Row};
-use shroom_upload::meta::State;
-use shroom_upload::upload::UploadError;
+use shroom_upload::keys;
+use shroom_upload::meta::{Meta, State};
+use shroom_upload::upload::{UploadError, with_retry};
 
 use super::Runtime;
 
@@ -171,6 +172,109 @@ impl Doorway {
     pub(super) fn forget(&mut self) {
         self.0 = None;
     }
+
+    /// The space's recordings as the editor's upkeep needs them ([`Listed`]), read fresh: the
+    /// token Mac lists `meta/` over its pair (reading what changed since the Library's cache),
+    /// then reads each record that holds an edit; any other Mac asks the space's Library
+    /// (§4.10: `mine` for a member, `everyone` for the owner's Macs) — see `listed_through`.
+    pub(super) fn listed(&mut self, rt: &Runtime, space: &SpaceIdentity) -> Result<Listed, FailClass> {
+        ctx(rt, space, &mut self.0)?;
+        let cache = load(rt, space);
+        match &self.0.as_ref().expect("a door").door {
+            Door::Token(s3) => listed_over(rt, s3, cache),
+            Door::Device { key, page } => {
+                let scope = if space.role == Role::Member { Scope::Mine } else { Scope::Everyone };
+                listed_through(&cache, scope, |req| match page.library(key, &req) {
+                    Answer::Ok(p) => Ok(p),
+                    other => Err(answer_class(rt, "upkeep", &other)),
+                })
+            }
+        }
+    }
+}
+
+/// What the editor's upkeep reads of the space (B197 (d)). `library.json` hears of an edit
+/// only when the Library refreshes, so it never decides alone; nor is it written here (it's
+/// the Library lane's).
+#[derive(Debug, Default, PartialEq)]
+pub(super) struct Listed {
+    /// Every recording the space lists for this Mac that isn't deleted.
+    pub ids: BTreeSet<String>,
+    /// The live records that hold an edit, as read now.
+    pub edited: Vec<(String, Meta)>,
+}
+
+/// The token Mac's half of [`Doorway::listed`]: the Library's refresh over a copy of the
+/// cache, then each record whose row holds an edit, read. A record that can't be read is
+/// left out; a dropped connection ends it.
+fn listed_over(rt: &Runtime, s3: &Client, mut cache: Cache) -> Result<Listed, FailClass> {
+    library::refresh(s3, &mut cache).map_err(|e| {
+        rt.log(&format!("editor upkeep: the space's list: {e}"));
+        class(&e)
+    })?;
+    let mut out = Listed::default();
+    for (id, (_, row)) in &cache.rows {
+        if row.state == State::Deleted {
+            continue;
+        }
+        out.ids.insert(id.clone());
+        if row.state != State::Live || row.edited_sec.is_none() {
+            continue;
+        }
+        match with_retry(|| s3.get(&keys::meta(id))) {
+            Ok(Some(bytes)) => out.edited.extend(serde_json::from_slice(&bytes).ok().and_then(shroom_upload::meta::listed).filter(|m| m.state == State::Live).map(|m| (id.clone(), m))),
+            Ok(None) => {}
+            Err(e) => {
+                let c = class(&UploadError::S3(e));
+                if c == FailClass::Transport {
+                    return Err(c);
+                }
+                rt.log(&format!("editor upkeep: {}'s record not read ({c:?})", super::short(id)));
+            }
+        }
+    }
+    Ok(out)
+}
+
+/// Every other Mac's half of [`Doorway::listed`], paged as the Library's refresh is
+/// (`refresh_device`), except that the cache's ETags go along only for its rows without an
+/// edit: a record holding one, or changed since, always comes back whole.
+fn listed_through(cache: &Cache, scope: Scope, mut ask: impl FnMut(LibraryRequest) -> Result<LibraryPage, FailClass>) -> Result<Listed, FailClass> {
+    const SLICE: usize = 1000;
+    let ids: Vec<String> = cache.rows.iter().filter(|(_, (_, r))| r.edited_sec.is_none()).map(|(id, _)| id.clone()).collect();
+    let mut out = Listed::default();
+    let mut after: Option<String> = None;
+    let mut calls = 0usize;
+    loop {
+        calls += 1;
+        let start = after.as_ref().map_or(0, |a| ids.partition_point(|x| x <= a));
+        let slice = &ids[start..(start + SLICE).min(ids.len())];
+        let known: BTreeMap<String, String> = slice.iter().map(|id| (id.clone(), cache.rows[id].0.clone())).collect();
+        let known_through = (start + slice.len() < ids.len()).then(|| slice.last().cloned()).flatten();
+        let page = ask(LibraryRequest { scope, known, known_through, after: after.clone() })?;
+        for item in page.items {
+            let state = match item.meta.and_then(shroom_upload::meta::listed) {
+                Some(m) => {
+                    let state = m.state;
+                    if state == State::Live && m.edits.is_some() {
+                        out.edited.push((item.id.clone(), m));
+                    }
+                    state
+                }
+                // No body: unchanged since the cache, which holds no edit for it.
+                None => cache.rows.get(&item.id).map_or(State::Live, |(_, r)| r.state),
+            };
+            if state != State::Deleted {
+                out.ids.insert(item.id);
+            }
+        }
+        match page.next {
+            // A page that doesn't move on would loop forever: treated as the end.
+            Some(n) if after.as_deref() != Some(n.as_str()) && calls < 10_000 => after = Some(n),
+            _ => break,
+        }
+    }
+    Ok(out)
 }
 
 /// A space's answer that isn't the one wanted, as a Library failure class.
@@ -256,24 +360,6 @@ pub fn row(r: &Row) -> LibraryRow {
         poster: false,
         edited_ms: r.edited_sec.filter(|s| s.is_finite() && *s >= 0.0).map(|s| (s * 1000.0).round() as u64),
     }
-}
-
-/// The records this Mac's Library shows, as cached, each with its owner as the rows read it
-/// (a token Mac's from the ledger it learned): what the editor's upkeep walks (B197 (d)).
-pub(super) fn cached(rt: &Runtime, space: &SpaceIdentity) -> Vec<Row> {
-    let file = load_file(rt, space);
-    let token = super::uploader::token_door(rt, space).is_some();
-    file.cache
-        .visible()
-        .into_iter()
-        .map(|r| {
-            let mut r = r.clone();
-            if token {
-                r.owner = file.owners.get(&r.id).cloned();
-            }
-            r
-        })
-        .collect()
 }
 
 /// What the core is told after a write or a refresh: the file as it now stands.
@@ -875,5 +961,46 @@ mod tests {
         assert_eq!(row(&Row { edited_sec: Some(221.04), ..r.clone() }).edited_ms, Some(221_040));
         assert_eq!(l.created, Wall(parse_iso("2026-08-21T12:00:00Z").unwrap()));
         assert!(!row(&Row { state: State::Uploading, duration_sec: Some(f64::NAN), ..r }).live);
+    }
+
+    #[test]
+    fn the_upkeep_reads_every_edited_record_whole_however_old_the_cache() {
+        use shroom_cloud::member::LibraryItem;
+        let body = |id: &str, edited: bool| {
+            let mut m = Meta::uploading(id, "t", "2026-10-02T00:00:00Z");
+            m.state = State::Live;
+            m.duration_sec = Some(10.0);
+            if edited {
+                let mut list = shroom_edit::EditList::new(10.0);
+                list.out = 6.0;
+                m.edits = Some(shroom_edit::Saved::new(list, 1));
+            }
+            serde_json::to_value(&m).unwrap()
+        };
+        let cached = |id: &str, edited: Option<f64>, state: State| Row { id: id.into(), title: "t".into(), state, created_at: "2026-10-02T00:00:00Z".into(), duration_sec: Some(10.0), owner: None, poster: None, edited_sec: edited, poster_file: None };
+        let mut cache = Cache::default();
+        cache.rows.insert("Aaaa".into(), ("e1".into(), cached("Aaaa", None, State::Live)));
+        cache.rows.insert("Bbbb".into(), ("e2".into(), cached("Bbbb", Some(6.0), State::Live)));
+        cache.rows.insert("Cccc".into(), ("e3".into(), cached("Cccc", None, State::Deleted)));
+        let item = |id: &str, etag: &str, meta: Option<serde_json::Value>| LibraryItem { id: id.into(), etag: etag.into(), owner: "m1".into(), meta };
+        let mut asked: Vec<LibraryRequest> = Vec::new();
+        let listed = listed_through(&cache, Scope::Everyone, |req| {
+            asked.push(req.clone());
+            Ok(match req.after.as_deref() {
+                // The edited row's ETag isn't sent: it comes back whole though unchanged.
+                None => LibraryPage { items: vec![item("Aaaa", "e1", None), item("Bbbb", "e2", Some(body("Bbbb", true)))], owners: BTreeMap::new(), next: Some("Bbbb".into()) },
+                // A tombstone known as such, an edit the cache never heard of, a change.
+                _ => LibraryPage { items: vec![item("Cccc", "e3", None), item("Dddd", "e4", Some(body("Dddd", true))), item("Eeee", "e5", Some(body("Eeee", false)))], owners: BTreeMap::new(), next: None },
+            })
+        })
+        .unwrap();
+        assert_eq!(asked.len(), 2, "paged until next is null");
+        assert_eq!(asked[0].known, BTreeMap::from([("Aaaa".to_string(), "e1".to_string()), ("Cccc".to_string(), "e3".to_string())]), "only the rows without an edit are known");
+        assert_eq!((asked[0].known_through.as_deref(), asked[1].after.as_deref()), (None, Some("Bbbb")));
+        assert_eq!(asked[1].known.keys().collect::<Vec<_>>(), vec!["Cccc"], "the slice after the page's end");
+        assert_eq!(listed.ids.iter().map(String::as_str).collect::<Vec<_>>(), vec!["Aaaa", "Bbbb", "Dddd", "Eeee"], "every one listed, the deleted one not");
+        assert_eq!(listed.edited.iter().map(|(id, _)| id.as_str()).collect::<Vec<_>>(), vec!["Bbbb", "Dddd"]);
+        assert!(listed.edited.iter().all(|(_, m)| m.edits.is_some()));
+        assert_eq!(listed_through(&cache, Scope::Mine, |_| Err(FailClass::Transport)), Err(FailClass::Transport), "offline: nothing read");
     }
 }

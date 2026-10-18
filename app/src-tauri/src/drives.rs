@@ -1464,12 +1464,7 @@ fn editor(d: &Drive) -> Result<(), String> {
     // video's two days are up (put back by hand), so it's baked; the third holds a newer
     // revision with no copy (as a copy that failed leaves it), and its video is on this Mac
     // (fetched when it opened), so the copy is made.
-    d.focus(WindowKind::Library);
-    let edited_rows = |c: &str| -> usize {
-        let Ok(v) = serde_json::from_str::<serde_json::Value>(c) else { return 0 };
-        [&away.0, &third.0].iter().filter(|id| v.pointer(&format!("/cache/rows/{id}/1/edited_sec")).is_some_and(|e| e.is_number())).count()
-    };
-    poll(15, || std::fs::read_to_string(d.rt.home.path("library.json")).ok().filter(|c| edited_rows(c) == 2)).ok_or("the Library's cache never held the two edits")?;
+    // The pass reads the space itself, whatever the Library's cache has heard.
     let rewrite = |id: &str, change: &dyn Fn(&mut serde_json::Value)| -> Result<(), String> {
         let mut v = record_json(&s3, id).ok_or("no record")?;
         change(&mut v);
