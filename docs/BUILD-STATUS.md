@@ -38,6 +38,15 @@
    silicon only (7, B167). Identity and signing (8) are done: 0.1.5
    shipped signed.
 4. Send feedback from the popover is built (N60, B193), the waving hand his pick.
+5. **The editor is built** ([#61](https://github.com/bagrat/shroom/pull/61) *(the editor:
+   trim, cut, undo, markers, and edits on the share page)*; N63 and N64, provisional;
+   B195–B199). Edit… in a live Library row opens it in a window of its own: trim, cut,
+   Undo and Redo, Revert. Done saves the edit into the record, and the link, unchanged,
+   plays it at once. The Mac then makes the final video and asks “Delete the original?”:
+   Yes, delete makes the edit the video now; otherwise the original goes two days on, by
+   the first of the space's Macs to run then (B197). Markers dropped while paused, or with
+   ⌥⌘M while recording, show as flags on its timeline (N64). What waits on Bagrat: items
+   37–39.
    Nothing else in-frame is queued: the build resumes on his answers.
 
 
@@ -284,3 +293,24 @@ retired, B148.)
     on it; **(b)** the four L5 lanes the branch touched, both images (“After the close”
     in [`history/build-log/2026-10-13.md`](../history/build-log/2026-10-13.md)). The full
     item: [`history/build-status/waiting-35-36.md`](../history/build-status/waiting-35-36.md).
+
+**The editor ([#61](https://github.com/bagrat/shroom/pull/61) *(trim, cut, undo, markers,
+and edits on the share page)*)**
+37. **Its words, from use.** N63's, N64's and B197's drafts are built as drafted, on his
+    approval (2026-10-18), his feedback to come from using them; with them, the build's two
+    new lines: a save the space refused, and the time left by Revert counted by the hour
+    (B199 (k), (n)). All provisional, in DECISIONS' copy table.
+38. **Ratify N63 and N64** (provisional in the spec), and **B195–B199** as built: each is
+    his to overturn. DEVIATIONS #55 (Yes, delete filled and leading, but never on Return)
+    is ratified (2026-10-18).
+39. **Known gaps**, none blocking:
+    - The final video's bar counts the upload by file, not by byte: once the cut is done it
+      holds at 80% while the video goes up (minutes, for a long one), then 95, 97, 99, 100.
+    - After a bake, the Library row on the Mac that holds the take may show the take's own
+      poster until the Library's next refresh.
+    - After an edit, a new Copy thumbnail picture is made the next time the owner opens the
+      page; until then the Library's Copy thumbnail falls back to the page's poster, or to
+      the plain link.
+    - The upkeep on a Mac without the token (the space's records over the Library API, a
+      15-minute `manage` credential for each bake and copy) is untested on a real second
+      Mac: the hosted Mac's editor drive runs as a token Mac against the fake space.
