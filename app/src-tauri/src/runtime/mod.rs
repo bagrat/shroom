@@ -1335,8 +1335,8 @@ mod tests {
         let conf: serde_json::Value = serde_json::from_str(include_str!("../../tauri.conf.json")).unwrap();
         let script = include_str!("../../../../tools/build-ffmpeg.sh");
         let notice = include_str!("../../../../tools/ffmpeg-NOTICE.txt");
-        // Beside it, the `shroom` command (dev/proposals/cli-agent-skill.md): Contents/MacOS/shroom-cli,
-        // built by tools/release-build.sh where the bundler reads it.
+        // Beside it, the `shroom` command (DECISIONS B217): Contents/MacOS/shroom-cli, built by
+        // tools/release-build.sh where the bundler reads it.
         assert_eq!(rel["bundle"]["externalBin"], serde_json::json!(["../../build/ffmpeg/sidecar/ffmpeg", "../../build/cli/shroom-cli"]));
         let build = include_str!("../../../../tools/release-build.sh");
         assert!(build.contains("CLI=$ROOT/build/cli/shroom-cli-aarch64-apple-darwin") && build.contains("cargo build --release -p shroom-cli"), "release-build makes the command the bundle reads");
@@ -1365,6 +1365,14 @@ mod tests {
         assert!(configure.contains("--disable-autodetect") && configure.contains("--disable-network"), "{configure}");
         assert!(!configure.contains("--enable-gpl") && !configure.contains("--enable-nonfree") && !configure.contains("--enable-version3"), "LGPL v2.1+ only");
         assert!(conf["bundle"].get("externalBin").is_none(), "a dev bundle carries no encoder (B12's road)");
+        // A dev build carries the command, and only it (DECISIONS B217): npm run build:dev
+        // builds it first (tools/dev-cli.sh) and bundles it through tauri.dev-cli.conf.json.
+        let dev_cli: serde_json::Value = serde_json::from_str(include_str!("../../tauri.dev-cli.conf.json")).unwrap();
+        assert_eq!(dev_cli["bundle"]["externalBin"], serde_json::json!(["../../build/cli/shroom-cli"]));
+        let scripts: serde_json::Value = serde_json::from_str(include_str!("../../../package.json")).unwrap();
+        let dev = scripts["scripts"]["build:dev"].as_str().unwrap();
+        assert!(dev.starts_with("bash ../tools/dev-cli.sh && ") && dev.contains("--config src-tauri/tauri.dev-cli.conf.json"), "{dev}");
+        assert!(include_str!("../../../../tools/dev-cli.sh").contains("\"$ROOT/build/cli/shroom-cli-$triple\""), "dev-cli.sh writes what the dev bundle reads");
         assert!(rel["bundle"]["macOS"].get("minimumSystemVersion").is_none(), "the release keeps the one floor");
     }
 
