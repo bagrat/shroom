@@ -4,7 +4,7 @@
 // the page POSTs' body cap, and a Copy that only says "Copied" when it copied (N1).
 // What a browser does with all this is driven for real by `npm run drive:page`.
 import { describe, expect, it } from "vitest";
-import { COPY, COPY_JS, PLAYER_JS, STALL_SECONDS, clock, forgetSecret, handle, uploadingLine } from "../src/worker.js";
+import { COPY, COPY_JS, PLAYER_JS, STALL_SECONDS, clock, forgetSecret, handle } from "../src/worker.js";
 import { fakeBucket } from "./fake-bucket.js";
 import { M1, MHER, MHER_MAC, NOW, ORIGIN, OWNER_AIR, REC, cookieFor, ledger, metaKey, metaOf, space, textOf } from "./space-fixture.js";
 
@@ -104,7 +104,9 @@ describe("the owner page before and after the go-live (N26, N40)", () => {
     const body = await html(space({ objects: { [metaKey(REC)]: uploading(1, 4) } }), `/${REC}`, { headers: { cookie: ownerCookie() } });
     expect(body).toContain(`<div class="wait" id="w"></div>`);
     expect(textOf(body)).not.toContain(COPY.onItsWay);
-    expect(textOf(body)).toContain(uploadingLine(25));
+    // One line from go-live (N65 (7)): the words keep no percent; the bar carries it.
+    expect(textOf(body)).toContain(COPY.finishing);
+    expect(textOf(body)).not.toContain("25%");
     expect(body).toContain(`<span class="bar go"><i id="b" style="width:25%"></i></span>`);
     const stalled = await html(space({ objects: { [metaKey(REC)]: uploading(1, 4, STALL_SECONDS + 1) } }), `/${REC}`, { headers: { cookie: ownerCookie() } });
     expect(stalled).toContain(`<span class="bar"><i id="b" style="width:25%"></i></span>`);
@@ -114,7 +116,7 @@ describe("the owner page before and after the go-live (N26, N40)", () => {
     const body = await html(space({ objects: { [metaKey(REC)]: uploading(1, 4) } }), `/${REC}`, { headers: { cookie: ownerCookie() } });
     const cfg = JSON.parse(body.match(/var c=(\{.*?\}),t=document/)?.[1].replace(/\\u003c/g, "<").replace(/\\u003e/g, ">").replace(/\\u0026/g, "&") ?? "null");
     expect(cfg).toMatchObject({ id: REC, live: false, mp4: false, notFound: COPY.notFound, unavailable: COPY.unavailable, dl: COPY.download });
-    expect(cfg.upA + 40 + "%" + cfg.upB).toBe(uploadingLine(40));
+    expect(cfg.finishing).toBe(COPY.finishing);
     expect(cfg.player).toContain(`<video id="v" playsinline preload="metadata"></video>`);
     // The poll's branches: Download once the MP4 lands, the tombstone, unavailable.
     expect(body).toContain(`if(s.mp4){if(!dl.firstChild)`);
@@ -122,13 +124,13 @@ describe("the owner page before and after the go-live (N26, N40)", () => {
     expect(body).toContain(`if(s.state==="unavailable")`);
   });
 
-  it("says “Ready ✓” for a few seconds when it sees the upload finish, then lets the line go (B142)", async () => {
+  it("fades its one line when it sees the upload finish, with no “Ready ✓” after it (N65 (7), B142 retired on the page)", async () => {
     const body = await html(space({ objects: { [metaKey(REC)]: uploading(1, 4) } }), `/${REC}`, { headers: { cookie: ownerCookie() } });
     const cfg = JSON.parse(body.match(/var c=(\{.*?\}),t=document/)?.[1].replace(/\\u003c/g, "<").replace(/\\u003e/g, ">").replace(/\\u0026/g, "&") ?? "null");
-    expect(cfg.ready).toBe(COPY.ready);
-    expect(COPY.ready).toBe("Ready ✓");
-    expect(body).toContain(`up.textContent=c.ready;ul.classList.add("done")`);
-    expect(body).toContain(`},3000)`);
+    expect(cfg.ready).toBeUndefined();
+    expect(COPY.ready).toBeUndefined();
+    expect(body).not.toContain("Ready ✓");
+    expect(body).toContain(`ul.classList.add("fade")`);
     // Opened after it drained: no line at all, as before.
     const done = await html(space({ objects: { [metaKey(REC)]: metaOf(REC) } }), `/${REC}`, { headers: { cookie: ownerCookie() } });
     expect(done).toContain(`<div class="upl" id="ul" hidden>`);
@@ -277,7 +279,7 @@ describe("upload truth (B49: progress, the drained gate, the claim first)", () =
     const env = space({ objects: { [metaKey(REC)]: draining(11, 13) } });
     const owner = await html(env, `/${REC}`, { headers: { cookie: ownerCookie() } });
     expect(owner).toContain(`<video id="v"`);
-    expect(owner).toContain(`<span class="up" id="u">${uploadingLine(84)}</span>`);
+    expect(owner).toContain(`<span class="up" id="u">${COPY.finishing}</span>`);
     expect(owner).not.toContain(`<span class="up" id="u">${COPY.fullyLive}</span>`);
     expect(owner).toContain(`"live":true,"drained":false`);
     const st = JSON.parse(await html(env, `/_shroom/status/${REC}`));
@@ -291,8 +293,8 @@ describe("upload truth (B49: progress, the drained gate, the claim first)", () =
     const owner = await html(env, `/${REC}`, { headers: { cookie: ownerCookie() } });
     expect(owner).toContain(`<div class="upl" id="ul" hidden><span class="up" id="u"></span></div>`);
     expect(owner).not.toContain(COPY.fullyLive);
-    // Under an open page the poll says “Ready ✓” for a few seconds first, then drops it (B142).
-    expect(owner).toContain(`if(s.drained){if(bar&&!c.done){c.done=true;up.textContent=c.ready;`);
+    // Under an open page the poll fades it, with no “Ready ✓” after it (N65 (7)).
+    expect(owner).not.toContain("c.ready");
     expect(JSON.parse(await html(env, `/_shroom/status/${REC}`))).toMatchObject({ state: "live", drained: true });
   });
 
@@ -316,7 +318,7 @@ describe("upload truth (B49: progress, the drained gate, the claim first)", () =
     expect(owner).toContain(`class="title"`);
     expect(owner).toContain(`placeholder="Untitled — `);
     expect(owner).toContain(`<button class="copy" id="c" data-tip="${COPY.copyLink}">${COPY.copyLink}</button>`);
-    expect(owner).toContain(`<span class="up" id="u">${uploadingLine(0)}</span>`);
+    expect(owner).toContain(`<span class="up" id="u">${COPY.finishing}</span>`);
     expect(owner).toContain(`"pending":true`);
     // A title typed before the record exists is sent again once it does.
     expect(owner).toContain(`if(r.status===404)c.pend=v`);

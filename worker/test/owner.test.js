@@ -6,7 +6,7 @@
 // ownership ledger, never from meta.owner (§2.4).
 import { createHash } from "node:crypto";
 import { beforeEach, describe, expect, it } from "vitest";
-import { COPY, forgetSecret, handle, status, untitled, uploadingLine } from "../src/worker.js";
+import { COPY, forgetSecret, handle, status, untitled } from "../src/worker.js";
 import { fakeBucket } from "./fake-bucket.js";
 import { MHER, MHER_MAC, OWNER_MAC, ROSTER, ledgerKey, roster } from "./space-fixture.js";
 
@@ -83,7 +83,7 @@ describe("the owner page", () => {
     const env = space({ [`meta/${ID}.json`]: metaOf({ state: "uploading", media: null, progress: { done: 2, total: 5, updatedAt: "2026-10-02T11:59:50Z" } }) });
     const cookie = await cookieFor(env);
     const body = await (await req(env, `/${ID}`, { headers: { cookie } })).text();
-    expect(body).toContain(uploadingLine(40));
+    expect(body).toContain(COPY.finishing);
     expect(body).not.toContain(`http-equiv="refresh"`); // never reloads under the owner's typing
     env.BUCKET.touch(`meta/${ID}.json`, metaOf({ state: "uploading", media: null, progress: { done: 2, total: 5, updatedAt: "2026-10-02T11:00:00Z" } }));
     expect(await (await req(env, `/${ID}`, { headers: { cookie } })).text()).toContain(COPY.waitingConnection);

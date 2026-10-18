@@ -6,7 +6,7 @@
 // mark, and without one a browser draws a blank.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { COPY, STALL_SECONDS, handle, uploadingLine } from "../src/worker.js";
+import { COPY, STALL_SECONDS, handle } from "../src/worker.js";
 import { CODE, M1, MHER, MHER_MAC, NOW, ORIGIN, OWNER_AIR, REC, UA, cookieFor, ledger, metaKey, metaOf, space, textOf } from "./space-fixture.js";
 
 const site = (name) => readFileSync(new URL(`../../site/${name}`, import.meta.url));
@@ -124,7 +124,7 @@ describe("the watch page names its icon, on every face", () => {
   const faces = [
     ["the recipient's live page", () => withRecord(metaOf(REC)), {}, [`class="player"`], [`class="title"`]],
     ["the owner's live page", () => withRecord(metaOf(REC)), { cookie: ownerCookie() }, [`class="title"`, `id="mk"`, `class="player"`], []],
-    ["the owner's page while it uploads", () => withRecord(uploading(10)), { cookie: ownerCookie() }, [`class="title"`, uploadingLine(25)], []],
+    ["the owner's page while it uploads", () => withRecord(uploading(10)), { cookie: ownerCookie() }, [`class="title"`, COPY.finishing], []],
     ["on its way", () => withRecord(uploading(10)), {}, [COPY.onItsWay], [`class="title"`]],
     ["stalled", () => withRecord(uploading(STALL_SECONDS + 1)), {}, [COPY.stalled], [COPY.onItsWay]],
     ["an id with no record", () => space(), {}, [COPY.onItsWay], [`<h1>`]],

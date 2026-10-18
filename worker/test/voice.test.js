@@ -7,7 +7,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it } from "vitest";
-import { forgetSecret, handle, status } from "../src/worker.js";
+import { VOICE_WAIT_MS, forgetSecret, handle, status } from "../src/worker.js";
 import { fakeBucket } from "./fake-bucket.js";
 import { MHER, MHER_MAC, OWNER_MAC, ROSTER, ledgerKey, roster } from "./space-fixture.js";
 
@@ -23,6 +23,13 @@ const say = (id) => {
 const hint = (id) => {
   const line = machine.states["owner-page-cue-hint"].said.find((l) => l.id === `owner-page-cue-hint.${id}`);
   if (!line) throw new Error(`no said-line owner-page-cue-hint.${id}`);
+  return line.text;
+};
+/** The page's one line while the take is heard (hearing), the upload's own (uploading). */
+const finishing = () => {
+  const line = machine.states.hearing.said.find((l) => l.id === "hearing.finishing-your-video");
+  if (!line) throw new Error("no said-line hearing.finishing-your-video");
+  expect(machine.states.uploading.said.find((l) => l.id === "uploading.finishing-your-video")?.text).toBe(line.text);
   return line.text;
 };
 const html = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -198,13 +205,66 @@ describe("the voice-cut hint (owner-page-cue-hint)", () => {
   it("never beside the strip, while cues are coming, in a space that doesn't listen, or for a viewer", async () => {
     const strip = space({}, true);
     expect(await page(strip, await cookieFor(strip))).not.toContain('class="cue-hint"');
+    // While the cues are coming it only waits, hidden, for the page's line to end with none
+    // (hearing → owner-page-cue-hint); the page never shows it on load then.
     const coming = space({ [`meta/${ID}.json`]: metaOf({ edits: undefined, publishedAt: new Date(NOW - 60_000).toISOString() }) }, true);
-    expect(await page(coming, await cookieFor(coming))).not.toContain('class="cue-hint"');
+    expect(hintOf(await page(coming, await cookieFor(coming)))).toMatch(/^<div class="cue-hint"[^>]* hidden/);
     const deaf = space({ [`meta/${ID}.json`]: metaOf({ edits: noCues }) }, false);
     expect(await page(deaf, await cookieFor(deaf))).not.toContain('class="cue-hint"');
     const viewer = await page(space({ [`meta/${ID}.json`]: metaOf({ edits: noCues }) }, true), null);
     expect(viewer).not.toContain('class="cue-hint"');
     expect(viewer).not.toContain(html(hint("slipped")));
+  });
+});
+
+describe("while the take is heard, the owner page keeps its one line (hearing)", () => {
+  const lineOf = (body) => body.match(/<div class="upl" id="ul"[^>]*>[\s\S]*?<\/div>/)?.[0] ?? "";
+  /** A take in a space that listens, fully up and live 5 s ago, whose words the Mac hasn't been through. */
+  const fresh = (over = {}) => metaOf({ publishedAt: new Date(NOW - 5_000).toISOString(), edits: undefined, ...over });
+  const ownerPage = async (meta, listens = true) => {
+    const env = space({ [`meta/${ID}.json`]: meta }, listens);
+    return page(env, await cookieFor(env));
+  };
+
+  it("the upload's line stays under the player: the same words, over a full bar that breathes", async () => {
+    const body = await ownerPage(fresh());
+    expect(lineOf(body)).toBe(`<div class="upl" id="ul"><span class="up" id="u">${html(finishing())}</span><span class="bar go"><i id="b" style="width:100%"></i></span></div>`);
+    expect(body.indexOf('id="ul"')).toBeGreaterThan(body.indexOf('class="player"'));
+    // It never speaks of cuts: the same listening names the video and makes its captions.
+    expect(finishing()).not.toMatch(/cut/i);
+    // The page's own count: what's left of the five minutes since the take went live.
+    expect(body).toContain(`"listenFor":${VOICE_WAIT_MS - 5_000}`);
+  });
+
+  it("is never there for a viewer, a member on someone else's video, or the embed", async () => {
+    const env = space({ [`meta/${ID}.json`]: fresh() }, true);
+    const viewer = await page(env, null);
+    const member = await page(env, await cookieFor(env, memberGrant()));
+    const embed = await (await req(env, `/${ID}?embed=1`)).text();
+    for (const body of [viewer, member, embed]) expect(body).not.toContain(html(finishing()));
+  });
+
+  it("goes with the upload in a space that doesn't listen, once the take is planned (cuts or none), five minutes after the go-live, or when its words wait for the next free day", async () => {
+    const noCues = { ...EDITS, voice: { planned_at: NOW - 1_000, cues: 0 }, cuts: [EDITS.cuts[4]] };
+    for (const [meta, listens] of [
+      [fresh(), false],
+      [fresh({ edits: EDITS }), true],
+      [fresh({ edits: noCues }), true],
+      [fresh({ publishedAt: new Date(NOW - VOICE_WAIT_MS - 1_000).toISOString() }), true],
+      [fresh({ naming: { later: "daily", at: new Date(NOW).toISOString() } }), true],
+    ]) {
+      const body = await ownerPage(meta, listens);
+      expect(lineOf(body)).toBe('<div class="upl" id="ul" hidden><span class="up" id="u"></span></div>');
+      expect(body).toContain('"listenFor":0');
+    }
+  });
+
+  it("hands over to the strip or the hint: the strip waits empty under the player, the hint hidden, both above the line", async () => {
+    const body = await ownerPage(fresh());
+    const at = (needle) => body.indexOf(needle);
+    expect(at('<section class="cuts" id="cuts" hidden')).toBeGreaterThan(at('class="player"'));
+    expect(at('<div class="cue-hint" role="note" hidden')).toBeGreaterThan(at('id="cuts"'));
+    expect(at('id="ul"')).toBeGreaterThan(at('class="cue-hint"'));
   });
 });
 
