@@ -14,7 +14,7 @@
   // the window sends to the core (Editor.svelte), and the core's next slice is the truth.
   import { onMount } from "svelte";
   import { clock, fill, seconds } from "./clock";
-  import { MIN_KEEP } from "./keep";
+  import { keep, MIN_HAND_CUT, MIN_KEEP, played } from "./keep";
   import { draw } from "./waveform";
   import type { EditorBody } from "./types";
 
@@ -86,11 +86,15 @@
     return out;
   });
 
-  // The chip under what's selected: Cut <length> under a part, Put back <length> under an
-  // applied cut, Cut it too under a suggestion (applying it).
+  // The chip under what's selected: Cut <length> under a part (what of it plays: none, no
+  // chip, since cutting it would change nothing), Put back <length> under an applied cut,
+  // Cut it too under a suggestion (applying it).
   let chip = $derived.by(() => {
     if (!selection || !editable || !list) return null;
-    if (selection.kind === "range") return { kind: "cut" as const, at: (selection.start + selection.end) / 2, label: fill(labels.cut, seconds(selection.end - selection.start)) };
+    if (selection.kind === "range") {
+      const plays = played(keep(list), selection.start, selection.end);
+      return plays < MIN_HAND_CUT ? null : { kind: "cut" as const, at: (selection.start + selection.end) / 2, label: fill(labels.cut, seconds(plays)) };
+    }
     const c = list.cuts[selection.index];
     if (!c) return null;
     if (c.applied) return { kind: "put-back" as const, at: (c.start + c.end) / 2, label: fill(labels.put_back, seconds(c.end - c.start)) };

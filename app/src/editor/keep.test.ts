@@ -4,7 +4,7 @@
 // the same list the same way. Then the playback helpers the preview's skip loop runs on.
 import { describe, expect, it } from "vitest";
 import text from "../../../crates/shroom-edit/tests/keep-vectors.json?raw";
-import { checked, editedAt, editedDuration, END_SLACK, gain, isIdentity, keep, keepToEdited, keepToSource, length, nextPlay, snap, toEdited, toSource, type List } from "./keep";
+import { checked, editedAt, editedDuration, END_SLACK, gain, isIdentity, keep, keepToEdited, keepToSource, length, nextPlay, played, snap, toEdited, toSource, type List } from "./keep";
 
 type Vector = {
   name: string;
@@ -63,6 +63,16 @@ describe("the edit model, as shroom-edit's own tests", () => {
   it("is the identity only when nothing is left out", () => {
     expect(isIdentity(list(10, { cuts: [cut(2, 3, false)] }))).toBe(true);
     expect(isIdentity(list(10, { out: 9.5 }))).toBe(false);
+  });
+});
+
+describe("what a selection would cut", () => {
+  it("is the part of it that plays", () => {
+    const k = keep({ in: 2, out: 50, cuts: [{ start: 10, end: 22, applied: true }] });
+    expect(played(k, 12, 15)).toBe(0);
+    expect(played(k, 9, 23)).toBe(2);
+    expect(played(k, 30, 34)).toBe(4);
+    expect(played(k, 0, 3)).toBe(1);
   });
 });
 

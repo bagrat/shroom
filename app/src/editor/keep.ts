@@ -56,6 +56,12 @@ export function keep(list: Omit<List, "source_duration">): Keep {
 /** How long a keep plays. */
 export const length = (k: Keep) => k.reduce((acc, [s, e]) => acc + (e - s), 0);
 
+/** No shorter part is cut by hand (seconds): `MIN_HAND_CUT` in shroom-edit. */
+export const MIN_HAND_CUT = 0.1;
+
+/** How much of the source part `start`–`end` plays: what cutting it would take out. */
+export const played = (k: Keep, start: number, end: number) => k.reduce((acc, [s, e]) => acc + Math.max(0, Math.min(e, end) - Math.max(s, start)), 0);
+
 export const editedDuration = (list: Omit<List, "source_duration">) => length(keep(list));
 
 /** A source time in edited time; null in a cut or outside the trim. */
