@@ -108,7 +108,12 @@ fn the_copy_holds_only_the_kept_frames_and_its_sound_keeps_to_them() {
     // Three kept ranges, two joins: 0.4 s, then 0.6 s holding the first beep, then 0.7 s
     // holding the second.
     let keep = [(0.2, 0.6), (0.9, 1.5), (3.3, 4.0)];
-    let secs = cut::render(&ffmpeg, &src, &keep, &out, &enc).expect("the copy is cut");
+    let mut told = Vec::new();
+    let secs = cut::render_with(&ffmpeg, &src, &keep, &out, &enc, &mut |f| told.push(f)).expect("the copy is cut");
+    // How far it came, as it went: forward only, a part at a time, whole at the end.
+    assert!(told.len() >= 3, "a step at least per part: {told:?}");
+    assert!(told.windows(2).all(|w| w[0] < w[1]) && told.iter().all(|f| (0.0..=1.0).contains(f)), "{told:?}");
+    assert_eq!(told.last(), Some(&1.0));
     assert!((secs - 1.7).abs() < 0.05, "the copy is {secs} s");
     assert!(faststart(&out), "faststart");
     let names: Vec<String> = std::fs::read_dir(dir.path()).unwrap().map(|e| e.unwrap().file_name().to_string_lossy().into_owned()).collect();

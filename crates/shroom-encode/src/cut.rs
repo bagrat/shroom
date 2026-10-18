@@ -163,11 +163,58 @@ fn work_dir(out: &Path) -> PathBuf {
     out.with_file_name(format!(".{name}.parts"))
 }
 
+/// How far a part's encode has come, from one line of ffmpeg's `-progress` report: its
+/// output's time (`out_time_us=`, or the older `out_time_ms=`, which counts microseconds
+/// too), in seconds. `None` for every other line, and for a time not yet known.
+pub fn progress_secs(line: &str) -> Option<f64> {
+    let (key, value) = line.trim().split_once('=')?;
+    if key != "out_time_us" && key != "out_time_ms" {
+        return None;
+    }
+    let us: i64 = value.trim().parse().ok()?;
+    (us >= 0).then(|| us as f64 / 1_000_000.0)
+}
+
+/// [`run`], telling `seconds` how much of the output is written as ffmpeg reports it.
+fn run_reporting(ffmpeg: &Path, args: &[OsString], what: &str, seconds: &mut dyn FnMut(f64)) -> io::Result<()> {
+    use std::io::{BufRead, BufReader, Read};
+    let mut all = os(&["-progress", "pipe:1", "-nostats"]);
+    all.extend(args.iter().cloned());
+    let mut child = Command::new(ffmpeg).args(&all).stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped()).spawn()?;
+    // The log is read beside the report, so neither pipe ever fills and stalls ffmpeg.
+    let mut err = child.stderr.take().expect("piped");
+    let log = std::thread::spawn(move || {
+        let mut s = String::new();
+        let _ = err.read_to_string(&mut s);
+        s
+    });
+    if let Some(out) = child.stdout.take() {
+        for line in BufReader::new(out).lines().map_while(Result::ok) {
+            if let Some(t) = progress_secs(&line) {
+                seconds(t);
+            }
+        }
+    }
+    let status = child.wait()?;
+    let log = log.join().unwrap_or_default();
+    if status.success() {
+        return Ok(());
+    }
+    let tail: String = log.lines().rev().take(4).collect::<Vec<_>>().into_iter().rev().collect::<Vec<_>>().join(" / ");
+    Err(io::Error::other(format!("{what} exited {status}: {tail}")))
+}
+
 /// Cuts the permanent copy: the `keep` ranges of `src` (seconds on its own clock), in order,
 /// into `out`, a faststart MP4. Returns the copy's length in seconds — its picture's, as the
 /// written file's header says, else the sum of the kept ranges. `out` appears whole or not
 /// at all; the parts are made beside it and removed.
 pub fn render(ffmpeg: &Path, src: &Path, keep: &[(f64, f64)], out: &Path, enc: &Encoder) -> io::Result<f64> {
+    render_with(ffmpeg, src, keep, out, enc, &mut |_| {})
+}
+
+/// [`render`], telling `progress` how far it has come (0–1: the kept seconds encoded, as
+/// ffmpeg reports each part, of all of them; 1 once the copy is whole), never going back.
+pub fn render_with(ffmpeg: &Path, src: &Path, keep: &[(f64, f64)], out: &Path, enc: &Encoder, progress: &mut dyn FnMut(f64)) -> io::Result<f64> {
     let keep = usable(keep);
     if keep.is_empty() {
         return Err(io::Error::new(io::ErrorKind::InvalidInput, "nothing is kept"));
@@ -179,11 +226,24 @@ pub fn render(ffmpeg: &Path, src: &Path, keep: &[(f64, f64)], out: &Path, enc: &
     let work = work_dir(out);
     let _ = std::fs::remove_dir_all(&work);
     std::fs::create_dir_all(&work)?;
+    let total: f64 = keep.iter().map(|(s, e)| e - s).sum();
+    let mut said = 0.0_f64;
+    let mut tell = |f: f64| {
+        let f = f.clamp(0.0, 1.0);
+        if f > said {
+            said = f;
+            progress(f);
+        }
+    };
     let result = (|| {
         let mut parts = Vec::with_capacity(keep.len());
+        let mut before = 0.0;
         for (k, (s, e)) in keep.iter().enumerate() {
             let part = work.join(format!("part-{k:03}.mp4"));
-            run(ffmpeg, &part_args(src, *s, e - s, kbps, *enc, &part), &format!("part {k}"))?;
+            let len = e - s;
+            run_reporting(ffmpeg, &part_args(src, *s, len, kbps, *enc, &part), &format!("part {k}"), &mut |t| tell((before + t.min(len)) / total))?;
+            before += len;
+            tell(before / total);
             parts.push(part);
         }
         let joined = if parts.len() == 1 {
@@ -199,6 +259,7 @@ pub fn render(ffmpeg: &Path, src: &Path, keep: &[(f64, f64)], out: &Path, enc: &
     })();
     let _ = std::fs::remove_dir_all(&work);
     result?;
+    tell(1.0);
     let kept: f64 = keep.iter().map(|(s, e)| e - s).sum();
     Ok(picture_length(out).unwrap_or(kept))
 }
@@ -217,6 +278,16 @@ pub fn has_encoder(ffmpeg: &Path, name: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_progress_line_reads_as_the_output_written_so_far() {
+        assert_eq!(progress_secs("out_time_us=1500000"), Some(1.5));
+        assert_eq!(progress_secs("out_time_ms=250000\n"), Some(0.25), "the older key counts microseconds too");
+        assert_eq!(progress_secs("out_time_us=N/A"), None);
+        assert_eq!(progress_secs("out_time_us=-9223372036854775807"), None, "not known yet");
+        assert_eq!(progress_secs("out_time=00:00:01.500000"), None);
+        assert_eq!(progress_secs("progress=continue"), None);
+    }
 
     fn line(a: &[OsString]) -> String {
         a.iter().map(|s| s.to_string_lossy().into_owned()).collect::<Vec<_>>().join(" ")
