@@ -302,7 +302,8 @@ composes no sentences and decides nothing.
 Window lifecycle comes from Rust window events.
 
 **The `shroom` command → core** (`runtime/control.rs`, spec N62, D:B216). `control.sock` in
-the flavor's home: the socket 600 in the 700 folder, each connection's peer uid checked
+the flavor's home, opened once the core has handled `Booted` (an earlier ask would meet an
+empty World): the socket 600 in the 700 folder, each connection's peer uid checked
 (`getpeereid`), one JSON line each way, at most 1 KB in: `{"v":1,"op":"record.start"}`
 (`.pause`, `.resume`, `.stop`) → `{"ok", "take", "error"?, "link"?}`. The runtime holds the
 connection and posts `Event::Cli {id, op}` (a start posts fresh `Os(Grants)` first, as the

@@ -986,8 +986,6 @@ fn start_inner(app: &AppHandle, launch: LaunchKind, quiet: bool, flags: &DevFlag
         updater: updater::spawn(rt.clone(), app.clone()),
         member: member::spawn(rt.clone()),
     };
-    // The `shroom` command's door (spec N62, DECISIONS B216).
-    control::spawn(rt.clone(), rt.cli.clone());
     // The core's trace ring, and the panic hook that writes it down (DECISIONS B93).
     ring::install(&rt);
     let presenter = presenter::Presenter::new(app.clone(), rt.clone(), excluded);
@@ -1061,6 +1059,10 @@ fn run(rt: Runtime, rx: Receiver<Envelope>, lanes: Lanes, mut presenter: present
     // The screen before each batch, and when to write the trace ring down (B93).
     let mut last: Option<Scene> = None;
     let mut watch = ring::Watch::default();
+    // The `shroom` command's door (spec N62, DECISIONS B216) opens once the core has what's
+    // on disk: an ask before `Booted` would be answered from an empty World — "not set up",
+    // the switch off — and the command that just opened shroom asks the moment it can.
+    let mut door = false;
     loop {
         let timeout = wake.map(|t| Duration::from_millis(t.0.saturating_sub(rt.mono().0))).unwrap_or(Duration::from_secs(3600));
         let first = match rx.recv_timeout(timeout) {
@@ -1078,7 +1080,12 @@ fn run(rt: Runtime, rx: Receiver<Envelope>, lanes: Lanes, mut presenter: present
             let tick = matches!(env.event, Event::Tick);
             // Named before `update` takes it: the ring keeps kinds only (B93, law 13).
             let (mono, kind) = (env.mono.0, shroom_core::trace::event_kind(&env.event));
+            let booted = matches!(env.event, Event::Booted(_));
             let (fx, arm) = shroom_core::update(&mut w, env);
+            if booted && !door {
+                control::spawn(rt.clone(), rt.cli.clone());
+                door = true;
+            }
             rt.log(&format!("core {} {:?}", arm.name, fx.iter().map(effect_kind).collect::<Vec<_>>()));
             ring::step(mono, kind, &arm, &fx);
             effects.extend(fx);
