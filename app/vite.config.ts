@@ -8,9 +8,11 @@ export default defineConfig({
   clearScreen: false,
   server: { port: 1420, strictPort: true, host: "127.0.0.1" },
   // The windows render the core's Scene and own no copy (the strings live in the core's
-  // copy.rs, linted and checked against the spec there): no unit tests here today. The
-  // galleries and drives (npm run test:gallery, drive:*) are the webviews' tests.
-  test: { passWithNoTests: true },
+  // copy.rs, linted and checked against the spec there). The unit tests here are the
+  // editor's own reckoning (src/editor/*.test.ts: its port of the edit model, held to
+  // shroom-edit's vectors, and its clock, held to the page's); the galleries and drives
+  // (npm run test:gallery, drive:*) are the webviews' tests.
+  test: { include: ["src/**/*.test.ts"] },
   build: {
     target: "safari16",
     outDir: "dist",
