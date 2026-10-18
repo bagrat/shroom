@@ -193,8 +193,9 @@ describe("hearing (B205 a, b)", () => {
     const x = await aiPiece(one(a), "k", a.length, tracks), y = await aiPiece(one(b), "k", b.length, tracks);
     expect(x.secs).toBeCloseTo(6, 9);
     expect(y.secs).toBeCloseTo(6, 9);
-    expect([...y.adts]).toEqual([...x.adts]);
-    const frames = adtsFrames(x.adts);
+    expect([...cat(y.parts)]).toEqual([...cat(x.parts)]);
+    expect(x.bytes).toBe(cat(x.parts).length);
+    const frames = adtsFrames(cat(x.parts));
     expect(frames).toHaveLength(288);
     expect(frames.map((f) => (f.payload[2] << 8) | f.payload[3])).toEqual([...Array(288).keys()]);
     // ADTS: AAC-LC, 48 kHz, mono, each frame's own length.
@@ -220,7 +221,7 @@ describe("hearing (B205 a, b)", () => {
       const env = { BUCKET: { get: async (_k, o) => { const m = o.range.get("range").match(/bytes=(\d+)-(\d+)/); const s = bytes.slice(Number(m[1]), Number(m[2]) + 1); read += s.length; return { body: new Blob([s]).stream() }; } } };
       const p = await aiPiece(env, f, bytes.length, tracks);
       secs += p.secs;
-      parts.push(p.adts);
+      parts.push(...p.parts);
     }
     expect(Math.abs(secs - 20)).toBeLessThan(0.1);
     expect(read / size).toBeLessThan(0.5);

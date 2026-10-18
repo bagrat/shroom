@@ -187,7 +187,7 @@ export default {
  *   delete(key: string): Promise<void>, list(options?: R2ListOptions): Promise<R2Objects> }} R2Bucket
  * @typedef {{ member: string, device: string, ownerClass: boolean, roster: any }} Owner
  * @typedef {{ key: string, size: number, etag: string, httpEtag?: string, customMetadata?: Record<string, string>, range?: { offset?: number, length?: number, suffix?: number } }} R2Object
- * @typedef {R2Object & { body: ReadableStream, text(): Promise<string> }} R2ObjectBody
+ * @typedef {R2Object & { body: ReadableStream, text(): Promise<string>, arrayBuffer?(): Promise<ArrayBuffer> }} R2ObjectBody
  */
 
 /** `ctx` is the runtime's (its `waitUntil` lets a reply leave before its housekeeping);
@@ -2959,18 +2959,13 @@ function mp4Adts(t, samples, data, from) {
   return out;
 }
 
-/** @param {Uint8Array[]} parts */
-function aiJoin(parts) {
-  const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
-  let o = 0;
-  for (const p of parts) { out.set(p, o); o += p.length; }
-  return out;
-}
+/** A body's bytes: R2's own read where it has one. @param {R2ObjectBody} object */
+const aiBytes = async (object) => new Uint8Array(typeof object.arrayBuffer === "function" ? await object.arrayBuffer() : await new Response(object.body).arrayBuffer());
 
-/** One piece's sound, as ADTS, and its length in seconds (its sound's, or its picture's when
- * the take has none). It reads the boxes' headers, each moof and one run of sound a fragment,
- * in ranged reads of at least 32 KiB: the picture is never read for itself.
- * @param {{ BUCKET: Pick<R2Bucket, "get"> }} env @param {string} key @param {number} size @param {Mp4Tracks} tracks */
+/** One piece's sound, as ADTS frames a fragment at a time, and its length in seconds (its
+ * sound's, or its picture's when the take has none). It reads the boxes' headers, each moof
+ * and one run of sound a fragment, in ranged reads of at least 32 KiB: the picture is never
+ * read for itself. @param {{ BUCKET: Pick<R2Bucket, "get"> }} env @param {string} key @param {number} size @param {Mp4Tracks} tracks */
 export async function aiPiece(env, key, size, tracks) {
   /** @type {{ at: number, bytes: Uint8Array }[]} */
   const held = [];
@@ -2979,7 +2974,7 @@ export async function aiPiece(env, key, size, tracks) {
     for (const h of held) if (at >= h.at && at + n <= h.at + h.bytes.length) return h.bytes.subarray(at - h.at, at - h.at + n);
     const length = Math.min(Math.max(n, AI_READ), size - at);
     const object = length > 0 ? await env.BUCKET.get(key, { range: new Headers({ range: `bytes=${at}-${at + length - 1}` }) }) : null;
-    const bytes = object ? new Uint8Array(await new Response(object.body).arrayBuffer()) : new Uint8Array(0);
+    const bytes = object ? await aiBytes(object) : new Uint8Array(0);
     if (bytes.length < n) throw new Error("piece");
     held.unshift({ at, bytes });
     held.length = Math.min(held.length, 3);
@@ -3008,7 +3003,7 @@ export async function aiPiece(env, key, size, tracks) {
     o += len;
   }
   const secs = tracks.sound ? sound / (tracks.sound.timescale || 1) : tracks.picture ? picture / (tracks.picture.timescale || 1) : 0;
-  return { adts: aiJoin(frames), secs };
+  return { parts: frames, bytes: frames.reduce((n, f) => n + f.length, 0), secs };
 }
 
 // ───────── words and sentences (B205) ─────────
@@ -3504,7 +3499,7 @@ async function aiHear(env, id, meta, pieces, w, t, etag, last) {
   const init = await env.BUCKET.get(`rec/${id}/v0/init.mp4`);
   if (!init) throw new Error("init");
   // Every take of a recording is encoded alike (its rate pinned to the first's), so the first take's init describes them all.
-  const tracks = mp4Tracks(new Uint8Array(await new Response(init.body).arrayBuffer()));
+  const tracks = mp4Tracks(await aiBytes(init));
   const read = (/** @type {R2Object} */ p) => aiPiece(env, p.key, p.size, tracks);
   const [own, lead] = await Promise.all([Promise.all(pieces.slice(w.from, w.to).map(read)), w.lead >= 0 ? read(pieces[w.lead]) : Promise.resolve(null)]);
   const start = t?.duration ?? 0;
@@ -3512,13 +3507,15 @@ async function aiHear(env, id, meta, pieces, w, t, etag, last) {
   const clip = start - (lead?.secs ?? 0);
   const from = t ? t.heard_through : -Infinity;
   const until = last ? Infinity : end - AI_RULES.edge;
-  const audio = aiJoin([...(lead ? [lead.adts] : []), ...own.map((p) => p.adts)]);
+  // The window's frames, handed over as they are: one stream, no copy of the whole.
+  const parts = [...(lead ? lead.parts : []), ...own.flatMap((p) => p.parts)];
   /** @type {Word[]} */
   const words = [];
   /** @type {string | null} */
   let language = null;
-  if (audio.length) {
-    const out = await ai.run(AI_MODELS.hear, { audio: { body: new Blob([audio]).stream(), contentType: "audio/aac" } });
+  if (parts.length) {
+    const body = new ReadableStream({ start(c) { for (const p of parts) c.enqueue(p); c.close(); } });
+    const out = await ai.run(AI_MODELS.hear, { audio: { body, contentType: "audio/aac" } });
     for (const seg of Array.isArray(out?.segments) ? out.segments : []) {
       for (const x of Array.isArray(seg?.words) ? seg.words : []) {
         const text = String(x?.word ?? "").trim(), s = Number(x?.start), e = Number(x?.end);

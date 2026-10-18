@@ -51,7 +51,12 @@ export type LibraryBody = {
   rows: Row[];
   footer: string | null;
   sheet: Sheet | null;
+  /** The card offering to name videos (N66): the setup Mac, until answered. */
+  offer: Offer | null;
 };
+
+/** A card's head, its line, and its two answers (N66's naming card). */
+export type Offer = { title: string; line: string; on: Button; not_now: Button };
 
 export type LibraryWindow = {
   id: string;

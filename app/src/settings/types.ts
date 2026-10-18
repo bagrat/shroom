@@ -31,6 +31,9 @@ export type SpacePane = {
   /** The “made with shroom” switch and its line — owner-class Macs (U3, DEVIATIONS #19). */
   mark: Toggle | null;
   mark_line: string | null;
+  /** Naming's switch and its line (N66) — the Mac that holds the setup key, once its page said. */
+  ai: Toggle | null;
+  ai_line: string | null;
   exits: Button[];
 };
 

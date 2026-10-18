@@ -75,6 +75,8 @@ const TEXT = new Set([
   // Region 6: the member's label on a row, Settings · Space's beneath-the-rows lines, the
   // Members tab's You row, a row's fact, the composer's line, a born link's address.
   "member", "mark_line", "you", "fact", "invite_line", "prefix",
+  // Naming (N66): the setup Mac's switch line under it.
+  "ai_line",
   // A line in runs (Rich): who invites say they're from (B158).
   "text",
   // Report a problem (B180): General's help row and its sent line; the sheet's field label,
@@ -287,6 +289,16 @@ for (const entry of library) {
       check(`${rt} hover buttons ${r.selected ? "shown (selected)" : "hidden until hover"}`, (await hov.count()) === r.hover.length && (r.hover.length === 0 || (await hov.first().isVisible()) === r.selected));
     }
     if (b.sheet) expected += b.rows.reduce((n, r) => n + r.buttons.length + (r.selected ? r.hover.length : 0), 0);
+    // The naming card (N66): its two answers, as the Scene has them.
+    if (b.offer) {
+      for (const x of [b.offer.on, b.offer.not_now]) {
+        const loc = page.locator(".offer").getByRole("button", { name: x.label, exact: true });
+        check(`${tag}: card button “${x.label}” ${x.enabled ? "enabled" : "disabled"}`, (await loc.count()) === 1 && (await loc.isEnabled()) === x.enabled);
+        const bad = await styled(loc, x.style, v);
+        check(`${tag}: card “${x.label}” styled ${x.style}`, !bad, bad ?? "");
+      }
+      expected += b.sheet ? 0 : 2;
+    }
     const shown = await page.locator("button:visible").count();
     check(`${tag}: ${expected} buttons showing, no others`, shown === expected, `shown ${shown}`);
 
@@ -592,10 +604,13 @@ for (const entry of settings) {
         check(`${tag}: the token field ${p.nest.held ? "shows its dots" : "is empty"}`, p.nest.held ? DOTS.test(shown) : shown === "", JSON.stringify(shown));
       }
       check(`${tag}: paste fields — ${p.nest.kind === "token" ? "the token's" : "no token field"}, no invite door (B159)`, (await page.locator("input.paste").count()) === (p.nest.kind === "token" ? 1 : 0));
-      // Beneath the rows: the mark switch (owner-class), then the exits.
-      const sw = page.getByRole("switch");
-      check(`${tag}: mark switch ${b.pane.mark ? (b.pane.mark.on ? "on" : "off") : "absent"}`, b.pane.mark ? (await sw.count()) === 1 && (await sw.isChecked()) === b.pane.mark.on && (await sw.isEnabled()) === b.pane.mark.enabled : (await sw.count()) === 0);
-      if (b.pane.mark) check(`${tag}: the switch is labelled with the Scene's words`, (await page.getByRole("switch", { name: b.pane.mark.label, exact: true }).count()) === 1);
+      // Beneath the rows: the mark switch (owner-class) and naming's (the setup Mac, N66), then the exits.
+      const toggles = [b.pane.mark, b.pane.ai].filter(Boolean);
+      check(`${tag}: ${toggles.length} switch${toggles.length === 1 ? "" : "es"}, as the Scene has`, (await page.getByRole("switch").count()) === toggles.length);
+      for (const t of toggles) {
+        const sw = page.getByRole("switch", { name: t.label, exact: true });
+        check(`${tag}: “${t.label}” ${t.on ? "on" : "off"}, ${t.enabled ? "live" : "greyed"}, labelled with the Scene's words`, (await sw.count()) === 1 && (await sw.isChecked()) === t.on && (await sw.isEnabled()) === t.enabled);
+      }
       check(`${tag}: exits at the foot`, (await page.locator(".space > .exits button").count()) === b.pane.exits.length);
       // A denied microphone's door hangs right under its row (the last one), before the
       // plan's closing line.
@@ -837,6 +852,25 @@ for (const variant of ["remove-member", "remove-invite", "remove-mac"]) {
   check("space · owner: a paste anywhere goes to paste_secret(invite) and nowhere else", c2.length === 1 && c2[0].cmd === "paste_secret" && c2[0].args.field === "invite" && c2[0].args.text === LINK, JSON.stringify(c2.map((x) => x.cmd)));
   check("space · owner: the paste is the window's, not the page's", r.prevented);
   check("space · owner: the pasted link is nowhere in the page", !(await page.content()).includes("SECRET"));
+  await ctx.close();
+}
+{
+  // N66: naming's switch on the setup Mac sends its action and keeps the Scene's state.
+  const { ctx, page } = await open("settings", set("space-ai-off"));
+  const sw = page.getByRole("switch", { name: "Name videos and add chapters", exact: true });
+  await sw.click();
+  check("space · naming: the switch sends set-ai", acted(await calls(page), "settings", { do: "set-ai", arg: true }));
+  check("space · naming: the switch keeps the Scene's state until the Scene changes", !(await sw.isChecked()));
+  await ctx.close();
+}
+{
+  // N66: the Library's card — Turn on and Not now send the Scene's actions.
+  const { ctx, page } = await open("library", lib("library-ai-offer"));
+  await page.getByRole("button", { name: "Turn on", exact: true }).click();
+  check("library · naming card: Turn on sends ai-on", acted(await calls(page), "library", { do: "ai-on" }));
+  await clear(page);
+  await page.getByRole("button", { name: "Not now", exact: true }).click();
+  check("library · naming card: Not now sends ai-not-now", acted(await calls(page), "library", { do: "ai-not-now" }));
   await ctx.close();
 }
 {

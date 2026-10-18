@@ -437,6 +437,18 @@ fn library_rows() -> Vec<(&'static str, &'static str, World)> {
         w.net.online = Fact::known(false, Mono(0));
         w
     }));
+    // N66: the setup Mac's Library offering to name videos, and a Turn on that didn't go through.
+    rows.push(("library-ai-offer", "library-ai-offer", {
+        let mut w = library(ready(), space_rows());
+        w.space.ai = Some(false);
+        w
+    }));
+    rows.push(("library-ai-offer", "library-ai-offer-failed", {
+        let mut w = library(ready(), space_rows());
+        w.space.ai = Some(false);
+        w.inflight.failures.insert(Op::Ai, Failure { at: Mono(990), class: FailClass::Transport, tries: 1 });
+        w
+    }));
     rows.push(("delete-confirm", "library-delete-sheet", {
         let mut w = library(ready(), space_rows());
         w.session.confirm = Some(Confirm::Delete(vec![RecId("r502".into())]));
@@ -493,6 +505,23 @@ fn settings_rows() -> Vec<(&'static str, &'static str, World)> {
         w
     }));
     rows.push(("settings-space-inspection", "space-inspection", space()));
+    // N66: naming's switch on the setup Mac, off and on, and a re-wiring that didn't go through.
+    rows.push(("settings-space", "space-ai-off", {
+        let mut w = space();
+        w.space.ai = Some(false);
+        w
+    }));
+    rows.push(("settings-space", "space-ai-on", {
+        let mut w = space();
+        w.space.ai = Some(true);
+        w
+    }));
+    rows.push(("settings-space", "space-ai-failed", {
+        let mut w = space();
+        w.space.ai = Some(true);
+        w.inflight.failures.insert(Op::Ai, Failure { at: Mono(990), class: FailClass::Transport, tries: 1 });
+        w
+    }));
     rows.push(("settings-space", "space-mic-off", {
         let mut w = space();
         w.mac.mic = Fact::known(Access::Denied, Mono(0));
