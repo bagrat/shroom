@@ -167,6 +167,48 @@ pub enum Event {
     Tick,
 }
 
+impl Event {
+    /// The owner page's Edit in shroom (N69): `shroom://edit/<host>/<id>` as the browser
+    /// hands it over, or `None` for any other link. The host is the page's own, in any case;
+    /// the id a video's (16 of `A-Za-z0-9_-`, as the space names them); a query, a fragment
+    /// or a trailing slash after them is dropped.
+    pub fn edit_link(url: &str) -> Option<Event> {
+        let rest = url.strip_prefix("shroom://edit/")?;
+        let rest = rest.split(['?', '#']).next()?.trim_end_matches('/');
+        let (host, id) = rest.split_once('/')?;
+        let host = host.trim_end_matches('.').to_ascii_lowercase();
+        let host_ok = !host.is_empty() && host.len() <= 253 && host.contains('.') && host.chars().all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-');
+        let id_ok = id.len() == 16 && id.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-');
+        (host_ok && id_ok).then(|| Event::EditLink { host, rec: RecId(id.into()) })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_pages_edit_link_reads_its_host_and_video_and_nothing_else() {
+        let link = |host: &str, id: &str| Some(Event::EditLink { host: host.into(), rec: RecId(id.into()) });
+        assert_eq!(Event::edit_link("shroom://edit/v.myshroom.workers.dev/Sx4kq9dLmNpQrStU"), link("v.myshroom.workers.dev", "Sx4kq9dLmNpQrStU"));
+        assert_eq!(Event::edit_link("shroom://edit/V.MyShroom.Workers.Dev/Sx4kq9dLmNpQrStU/?x=1#t"), link("v.myshroom.workers.dev", "Sx4kq9dLmNpQrStU"));
+        assert_eq!(Event::edit_link("shroom://edit/video.example.com/a_b-c_d-e_f-g_h1"), link("video.example.com", "a_b-c_d-e_f-g_h1"));
+        for not in [
+            "shroom://join/v.myshroom.workers.dev/AbCdEfGhIjKlMnOp",
+            "shroom://settings/general",
+            "https://v.myshroom.workers.dev/Sx4kq9dLmNpQrStU",
+            "shroom://edit/v.myshroom.workers.dev",
+            "shroom://edit/v.myshroom.workers.dev/short",
+            "shroom://edit/v.myshroom.workers.dev/Sx4kq9dLmNpQrStU/more",
+            "shroom://edit/localhost/Sx4kq9dLmNpQrStU",
+            "shroom://edit/v.my shroom.dev/Sx4kq9dLmNpQrStU",
+            "shroom://edit/v.myshroom.workers.dev/Sx4kq9dLmNpQr%2F",
+        ] {
+            assert_eq!(Event::edit_link(not), None, "{not}");
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum OsNews {
     Grants { screen: bool, mic: Access, camera: Access },

@@ -1501,6 +1501,33 @@ fn editor(d: &Drive) -> Result<(), String> {
     d.check("… the third has the copy its revision lacked, its two days set", third_rec["edits"]["copy"]["rev"] == 2 && third_rec["edits"]["copy"]["file"] == "edit-2.mp4" && kept, format!("{} {until}", third_rec["edits"]["copy"]));
     d.check("… and what this Mac kept of the baked one's original is gone", !d.rt.home.edits().join(&away.0).exists(), "");
 
+    // The owner page's Edit in shroom (N69, B221): the link a browser hands over when shroom
+    // opens it — handed in here as macOS would, since a dev build never claims the scheme.
+    let space = read_file(d, "space.json").ok_or("no space.json")?;
+    let host = space["host"].as_str().unwrap_or_default().to_string();
+    crate::runtime::opened(&d.rt, &format!("shroom://edit/{host}/{}", here.0));
+    let s = d.wait("the page's Edit in shroom opens the editor", 30, |s| editor_body(s).is_some_and(|b| b.rec == here.0))?;
+    d.check("Edit in shroom: the editor, on the page's video (N69)", editor_body(&s).is_some_and(|b| b.title == format!("Edit — {}", HERE.1)), editor_body(&s).map(|b| b.title.clone()).unwrap_or_default());
+    // Pressed again for another video while it holds this one: forward as it is, saying why.
+    crate::runtime::opened(&d.rt, &format!("shroom://edit/{host}/{}", away.0));
+    let s = d.wait("pressed for another video", 10, |s| editor_body(s).is_some_and(|b| b.footer == shroom_core::copy::editing_another()))?;
+    d.check("… pressed for another video: it stays on this one, its footer saying why", editor_body(&s).is_some_and(|b| b.rec == here.0), "");
+    std::thread::sleep(Duration::from_millis(600));
+    runner.shot(d, crate::runtime::presenter::EDITOR, "editor-editing-another")?;
+    d.rt.post(Event::WindowClosed(WindowKind::Editor));
+    d.wait("closed", 10, |s| s.editor.is_none())?;
+    // Another space's video: the popover opens by itself and says so, once.
+    crate::runtime::opened(&d.rt, &format!("shroom://edit/v.someoneelse.example.com/{}", here.0));
+    let s = d.wait("another space's video", 10, |s| s.popover.as_ref().is_some_and(|p| p.status_line.as_deref() == Some(shroom_core::copy::edit_other_space().as_str())))?;
+    d.check("… another space's video: the popover says why, without the keyboard (N69)", s.popover.as_ref().is_some_and(|p| !p.activates && p.away_closes), "");
+    std::thread::sleep(Duration::from_millis(600));
+    if let Err(e) = runner.shot(d, crate::runtime::presenter::POPOVER, "popover-edit-other-space") {
+        d.step(&format!("no picture of the popover: {e}"));
+    }
+    d.rt.post(Event::PopoverDismissed);
+    let s = d.wait("put away", 10, |s| s.popover.is_none())?;
+    d.check("… said once: put away, it's gone", s.popover.is_none(), "");
+
     // What a report would carry of all that (DECISIONS B199 (t)): a line a step, in numbers.
     let log = std::fs::read_to_string(d.rt.home.root.join("logs/run.log")).unwrap_or_default();
     let (h, a) = (crate::runtime::short(&here.0), crate::runtime::short(&away.0));
@@ -1510,6 +1537,10 @@ fn editor(d: &Drive) -> Result<(), String> {
         ("the final video's cut: encoder, parts, size, time", format!("editor: {h}'s final video of revision 1 cut with ")),
         ("… and its naming", format!("editor: {h}'s final video of revision 1 is up and named")),
         ("the edge dragged", "core edit-resize".to_string()),
+        ("the page's Edit in shroom, never its link", "link: the page's Edit in shroom".to_string()),
+        ("… the editor opened by it", "core edit-link-open".to_string()),
+        ("… brought forward, another video asked", "core edit-link-forward".to_string()),
+        ("… another space's, said", "core edit-link-no".to_string()),
         ("Yes, delete", "core original-deleted".to_string()),
         ("the bake, the files it deleted", format!("editor: {h}'s edit is the video now (revision 1): ")),
         ("the upkeep's bake", format!("editor upkeep: {a}'s edit is the video now")),
@@ -1518,6 +1549,7 @@ fn editor(d: &Drive) -> Result<(), String> {
         let line = log.lines().find(|l| l.contains(&needle));
         d.check(&format!("run.log: {what}"), line.is_some(), line.unwrap_or(&needle).to_string());
     }
+    d.check("run.log: never the page's link, its space or its video (B221 (e))", !log.contains("shroom://edit/") && !log.contains("someoneelse"), "");
 
     d.rt.post(Event::WindowClosed(WindowKind::Library));
     d.wait("the Library closed", 5, |s| s.library.is_none())?;
