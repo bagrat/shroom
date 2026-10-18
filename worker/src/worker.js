@@ -222,9 +222,10 @@ export async function handle(request, env, now, ctx) {
       readMeta(env, m[1]).then((v) => ({ v }), () => null),
       media(request, env, `rec/${m[1]}/${file}`, type, "public, max-age=3600"),
     ]);
-    // Once an edit's permanent copy is up, the original is out of reach (N63, step 3).
-    const copy = meta && meta.v?.state !== "deleted" ? editsOf(meta.v, m[1])?.copy : null;
-    if (!meta || meta.v?.state === "deleted" || (copy && !besideCopy(copy, file))) {
+    // Once an edit's permanent copy is up, the original is out of reach (N63, step 3); a
+    // baked recording is the files its record names (B197).
+    const only = meta && meta.v?.state !== "deleted" ? servedOnly(m[1], meta.v) : null;
+    if (!meta || meta.v?.state === "deleted" || (only && !only.has(file) && !THUMB_FILE.test(file))) {
       try { await res.body?.cancel(); } catch { /* nothing to release */ }
       // A record that can't be read can't vouch the video still exists: fail closed.
       return meta ? plain(404, "") : plain(503, "");
@@ -298,7 +299,7 @@ export function status(meta, now, id = meta?.id) {
   // Live plays at once; the upload line goes only once the upload drains — the
   // second-class files too, which the Mac counts in `progress.total` and sends after the
   // go-live (r4 `fully-live`: the queue drained; DECISIONS B49). A record without a count is drained.
-  if (meta.state === "live" && meta.media?.hls) {
+  if (playable(String(id), meta)) {
     // `thumb`: Copy thumbnail's newest picture for the title (N46) — what the Library copies.
     // `dur`: the length as it plays (N63: the edited one), which a page opened while the
     // video uploaded draws on its picture. With an edit (N63), `keep`: the ranges that
@@ -731,12 +732,78 @@ function onePicture(env, id) {
  * picture — a 5-minute view costs ~4–8 of the Worker's requests that way in Chromium, ~47
  * in Safari (it reads a file ~3 MB at a time), against ~56–58 through the stream's 6 s
  * pieces (worker/dev/view-cost.mjs) — and the stream otherwise. An edit's permanent copy,
- * once it matches the saved edit, before either (N63).
+ * once it matches the saved edit, before either (N63). A baked recording (B197) has no
+ * stream: its one file plays, and the stream's playlist, read beside the record before
+ * the record could say so, goes unasked.
  * All are served by /m/ under the same removal gate.
  * @param {string} id @param {any} meta @param {Promise<boolean>} oneP @param {View} [view] */
 async function sourceOf(id, meta, oneP, view = viewOf(id, meta)) {
   if (meta?.state === "live" && view.copy) return view.copy.src;
-  return meta?.state === "live" && meta.media?.mp4 && (await oneP) ? `/m/${id}/video.mp4` : `/m/${id}/master.m3u8`;
+  if (view.baked) return `/m/${id}/${view.file}`;
+  return meta?.state === "live" && view.file && (await oneP) ? `/m/${id}/${view.file}` : `/m/${id}/master.m3u8`;
+}
+
+// ───────── the recording's own files (B197) ─────────
+
+/** Copy thumbnail's pictures beside a recording (N46): served whatever else is. */
+const THUMB_FILE = /^thumb-[0-9a-f]{16}\.(gif|jpg)$/;
+/** Each `media` slot's fixed name in the original, and the name's end in a baked edit. */
+const SLOTS = { mp4: ["video.mp4", ".mp4"], poster: ["poster.jpg", "-poster.jpg"], teaser: ["teaser.mp4", "-teaser.mp4"] };
+
+/** The file a `media` slot names, as a name beside the recording, or null. After a bake
+ * (B197) the record names its own files: a key is taken only when it sits directly under
+ * `rec/<id>/` and is a name of its slot's kind — the original's (`video.mp4`, `poster.jpg`,
+ * `teaser.mp4`) or an edit's (`edit-<n>.mp4`, `edit-<n>-poster.jpg`, `edit-<n>-teaser.mp4`).
+ * A record that still has its stream (`hls`) reads as it always has: a slot that's set is
+ * the original's fixed name, whatever its key says — never a key taken at its word.
+ * @param {string} id @param {any} meta @param {"mp4" | "poster" | "teaser"} slot */
+function ownFile(id, meta, slot) {
+  const m = meta?.media;
+  const key = m?.[slot];
+  if (!key) return null;
+  const [fixed, kind] = SLOTS[slot];
+  if (typeof key === "string" && ID.test(id) && key.startsWith(`rec/${id}/`)) {
+    const name = key.slice(`rec/${id}/`.length);
+    if (name === fixed || EDIT_FILE.exec(name)?.[1] === kind) return name;
+  }
+  return m.hls ? fixed : null;
+}
+
+/** A baked recording (B197): live, no stream, its one file named in `media.mp4`.
+ * @param {string} id @param {any} meta */
+function baked(id, meta) {
+  return meta?.state === "live" && !!meta.media && !meta.media.hls && !!ownFile(id, meta, "mp4");
+}
+
+/** The live faces play: the stream, or a baked recording's one file. @param {string} id @param {any} meta */
+function playable(id, meta) {
+  return meta?.state === "live" && (!!meta.media?.hls || baked(id, meta));
+}
+
+/** What `/m/<id>/` serves when it isn't everything (Copy thumbnail's pictures besides, a
+ * paste already sent keeping its picture), or null. Once an edit's permanent copy is up
+ * (N63 step 3): the copy's own files and the recording's own first frame — `poster.jpg`,
+ * or a baked recording's own poster — which the Library and a copy with no poster of its
+ * own still show; never the stream, `video.mp4`, the teaser or an earlier bake's video, so
+ * a cut part is out of a viewer's reach. A baked recording (B197) otherwise: exactly the
+ * files its record names. The Macs read originals over S3, not here.
+ * @param {string} id @param {any} meta @returns {Set<string> | null} */
+function servedOnly(id, meta) {
+  const copy = editsOf(meta, id)?.copy;
+  const bakedNow = baked(id, meta);
+  if (!copy && !bakedNow) return null;
+  const names = new Set();
+  const own = (/** @type {"mp4" | "poster" | "teaser"} */ slot) => { const f = ownFile(id, meta, slot); if (f) names.add(f); };
+  if (copy) {
+    for (const s of [copy.src, copy.poster, copy.teaser]) if (s) names.add(s.slice(s.lastIndexOf("/") + 1));
+    if (bakedNow) own("poster");
+    else names.add("poster.jpg");
+  } else {
+    own("mp4");
+    own("poster");
+    own("teaser");
+  }
+  return names;
 }
 
 // ───────── edits (N63, DECISIONS B195) ─────────
@@ -811,38 +878,30 @@ export function editsOf(meta, id = meta?.id) {
   return { keep, dur, copy };
 }
 
-/** @typedef {{ edit: Edit | null, copy: EditCopy | null, keep: [number, number][] | null, dur: number, poster: string | null, teaser: string | null, download: boolean }} View */
+/** @typedef {{ edit: Edit | null, copy: EditCopy | null, keep: [number, number][] | null, dur: number, whole: number, poster: string | null, teaser: string | null, download: boolean, file: string | null, baked: boolean }} View */
 
 /** What a viewer of the recording gets, its edit applied (N63): the permanent copy as-is
  * once it matches the saved edit; else the original with the ranges that play (`keep`).
  * `dur` is the length the page shows, `poster` and `teaser` the pictures it and its unfurl
  * show (the copy's own when it has them), each an address on this origin. `download`: what
  * Download hands over is the video as it plays — the original with no edit, the copy once
- * it's up, and nothing in between, so a cut part never leaves as a file.
+ * it's up, and nothing in between, so a cut part never leaves as a file. `file` is the
+ * recording's own single file (`ownFile`), `whole` its own length — the clock its edit and
+ * the player's ranges count on — and `baked` says it has no stream beside it (B197).
  * @param {string} id @param {any} meta @returns {View} */
 function viewOf(id, meta) {
   const edit = editsOf(meta, id);
-  const m = meta?.media ?? {};
   const copy = edit?.copy ?? null;
   const whole = Number(meta?.durationSec) > 0 ? Number(meta.durationSec) : 0;
+  const [file, poster, teaser] = [ownFile(id, meta, "mp4"), ownFile(id, meta, "poster"), ownFile(id, meta, "teaser")];
   return {
     edit, copy, keep: edit && !copy ? edit.keep : null,
-    dur: copy ? copy.dur : edit ? edit.dur : whole,
-    poster: copy?.poster ?? (m.poster ? `/m/${id}/poster.jpg` : null),
-    teaser: copy ? copy.teaser ?? null : m.teaser ? `/m/${id}/teaser.mp4` : null,
-    download: copy ? true : !edit && !!m.mp4,
+    dur: copy ? copy.dur : edit ? edit.dur : whole, whole,
+    poster: copy?.poster ?? (poster ? `/m/${id}/${poster}` : null),
+    teaser: copy ? copy.teaser ?? null : teaser ? `/m/${id}/${teaser}` : null,
+    download: copy ? true : !edit && !!file,
+    file, baked: baked(id, meta),
   };
-}
-
-/** Step 3 of the edit (N63): once the permanent copy is up, the recording's address serves
- * only the copy's own files, the original's first frame (`poster.jpg`, which the Library
- * and a copy with no poster of its own still show) and Copy thumbnail's pictures (a paste
- * already sent keeps its picture) — never the original stream, its teaser or `video.mp4`,
- * so a cut part is out of a viewer's reach. The Macs read originals over S3, not here.
- * @param {EditCopy} copy @param {string} file */
-function besideCopy(copy, file) {
-  if (file === "poster.jpg" || /^thumb-[0-9a-f]{16}\.(gif|jpg)$/.test(file)) return true;
-  return [copy.src, copy.poster, copy.teaser].some((s) => s !== undefined && s.slice(s.lastIndexOf("/") + 1) === file);
 }
 
 /** @param {Env} env @param {string} id */
@@ -871,10 +930,11 @@ async function download(request, env, id) {
   if (!view?.download) return plain(404, "");
   const name = `${(meta.title || "shroom video").replace(/[\\/:*?"<>|\u0000-\u001f]/g, " ").trim()}.mp4`;
   const disposition = `attachment; filename="${name.replace(/[^\x20-\x7e]/g, "_")}"; filename*=UTF-8''${encodeURIComponent(name)}`;
-  // The key is fixed by the id — never taken from the record, which a recording Mac
-  // writes: a record naming another key must not turn /d/ into a reader of the bucket. The
-  // copy's name is one `editsOf` let through: `edit-<n>.mp4`, beside the recording.
-  const file = view.copy ? view.copy.src.slice(view.copy.src.lastIndexOf("/") + 1) : "video.mp4";
+  // The key sits directly under the id's own prefix — never a key taken as the record says
+  // it, which a recording Mac writes: a record naming another key must not turn /d/ into a
+  // reader of the bucket. The copy's name is one `editsOf` let through, the recording's own
+  // one `ownFile` did (`video.mp4`, or a baked `edit-<n>.mp4`, B197).
+  const file = view.copy ? view.copy.src.slice(view.copy.src.lastIndexOf("/") + 1) : view.file;
   return media(request, env, `rec/${id}/${file}`, "video/mp4", "private, max-age=0", { "content-disposition": disposition });
 }
 
@@ -912,7 +972,7 @@ async function page(env, id, now, ownerP, origin) {
     }
     return html(onItsWayPage(null, COPY.onItsWay, face, 0, false, true));
   }
-  if (owner && mine && (meta.state === "uploading" || (meta.state === "live" && meta.media?.hls))) {
+  if (owner && mine && (meta.state === "uploading" || playable(id, meta))) {
     const blocked = stalledAt(meta, now) && !drained(meta) && (await uploadsBlocked(env));
     return html(ownerPage(id, meta, now, face, blocked ? waitingWords(owner) : COPY.waitingConnection, false, false, await sourceOf(id, meta, oneP)));
   }
@@ -920,7 +980,7 @@ async function page(env, id, now, ownerP, origin) {
     const st = status(meta, now);
     return html(onItsWayPage(meta.title, st.stalled ? COPY.stalled : COPY.onItsWay, face, st.pct ?? 0, !!st.stalled));
   }
-  if (meta.state === "live" && meta.media?.hls) return html(livePage(id, meta, face, await sourceOf(id, meta, oneP)));
+  if (playable(id, meta)) return html(livePage(id, meta, face, await sourceOf(id, meta, oneP)));
   return html(unavailablePage(face));
 }
 
@@ -1035,7 +1095,7 @@ async function embed(env, id, now, origin) {
     const st = status(meta, now);
     return frame(line(st.stalled ? COPY.stalled : COPY.onItsWay, thinBar(st.pct ?? 0, !!st.stalled)), 5);
   }
-  if (meta.state !== "live" || !meta.media?.hls) return frame(line(COPY.unavailable), 30);
+  if (!playable(id, meta)) return frame(line(COPY.unavailable), 30);
   const view = viewOf(id, meta);
   const src = await sourceOf(id, meta, oneP, view);
   return frame(`${playerHtml(id, meta, origin)}
@@ -1343,7 +1403,7 @@ export function playerHtml(id, meta, base = "") {
  * next range's start. The time, the seek bar, ←/→ and Home/End all count edited time
  * (`shroomAt`/`shroomToSource`, held with `editsOf` to crates/shroom-edit's vectors). A
  * permanent copy plays as it is. And once the copy is up the original is out of reach
- * (`besideCopy`): a player that was playing the original asks `E.st`, the status, when its
+ * (`servedOnly`): a player that was playing the original asks `E.st`, the status, when its
  * media fails, and moves over to the copy at the same edited moment. */
 export const PLAYER_JS = `function shroomPlay(v,s,f){if(/\\.mp4$/.test(s)||v.canPlayType("application/vnd.apple.mpegurl")){v.src=s;return}
 var t=document.createElement("script");t.src="/_shroom/hls.js";t.onload=function(){var h=new Hls({backBufferLength:90,maxBufferLength:6,maxMaxBufferLength:6});v.hls=h;
@@ -1511,7 +1571,7 @@ function newestThumb(meta) {
   const title = meta.titled ? meta.title : null;
   const t = meta.thumb && typeof meta.thumb === "object" && meta.thumb.title === title ? meta.thumb : null;
   const file = t && (typeof t.gif === "string" ? t.gif : typeof t.jpg === "string" ? t.jpg : null);
-  return typeof file === "string" && ID.test(String(meta.id)) && /^thumb-[0-9a-f]{16}\.(gif|jpg)$/.test(file) ? `/m/${meta.id}/${file}` : null;
+  return typeof file === "string" && ID.test(String(meta.id)) && THUMB_FILE.test(file) ? `/m/${meta.id}/${file}` : null;
 }
 
 /** What a page's Copy thumbnail starts from (N46): the picture made for the title the video
@@ -1524,7 +1584,7 @@ function thumbsOf(id, meta, live, store = true) {
   const view = viewOf(id, meta);
   return { id, live, store, title: meta.titled ? meta.title : "", titled: !!meta.titled, thumb, gif: !!thumb?.endsWith(".gif"),
     teaser: !!view.teaser, len: view.dur > 0 ? clock(view.dur, true) : "",
-    psrc: view.poster ?? `/m/${id}/poster.jpg`, tsrc: view.teaser ?? (view.copy ? "" : `/m/${id}/teaser.mp4`),
+    psrc: view.poster ?? (view.baked ? "" : `/m/${id}/poster.jpg`), tsrc: view.teaser ?? (view.copy || view.baked ? "" : `/m/${id}/teaser.mp4`),
     rw: meta.media?.width || 16, rh: meta.media?.height || 9, caps: THUMB };
 }
 
