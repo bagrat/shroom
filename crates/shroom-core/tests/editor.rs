@@ -1285,6 +1285,34 @@ fn drop_a_marker_sits_between_finish_and_restart_and_says_once_its_dropped() {
     assert_eq!(button(&paused_body(&r).marker.unwrap()), ("Drop a marker", Style::Plain, true));
 }
 
+/// A question open in a window — the Library's delete sheet — greys Drop a marker in its own
+/// words: nothing was dropped, so the row never says Marker dropped (B199). ⌥⌘M drops
+/// nothing meanwhile; once the sheet goes the row is live again, and a marker dropped then
+/// reads Marker dropped whatever opens next.
+#[test]
+fn a_windows_question_greys_drop_a_marker_in_its_own_words() {
+    // The Library was open before the take; the take is paused, no marker dropped yet.
+    let mut w = library();
+    w.session.windows.insert(WindowKind::Library, Door::asked(Mono(100)));
+    w.take = Some(take(Phase::Paused(Cause::User), 272_000));
+    w.session.popover = Some(Door::asked(Mono(900)));
+    let mut r = Run::new(w);
+    r.lib(Action::DeleteRow(rec()));
+    assert!(matches!(r.w.session.confirm, Some(Confirm::Delete(_))), "the delete sheet is up");
+    assert_eq!(button(&paused_body(&r).marker.unwrap()), ("Drop a marker", Style::Plain, false));
+    r.send(Event::MarkerShortcut(quick()));
+    assert!(!r.has(|e| *e == Effect::Recorder(RecCmd::Marker)) && r.w.take.as_ref().unwrap().markers == 0, "nothing is dropped meanwhile");
+    // Back on the sheet: the row is live again.
+    r.key(Surface::Library, Key::Esc);
+    assert_eq!(r.w.session.confirm, None);
+    assert_eq!(button(&paused_body(&r).marker.unwrap()), ("Drop a marker", Style::Plain, true));
+    // Dropped, then the sheet again: Marker dropped, greyed, as it was.
+    r.act(Action::DropMarker);
+    r.lib(Action::DeleteRow(rec()));
+    assert!(matches!(r.w.session.confirm, Some(Confirm::Delete(_))));
+    assert_eq!(button(&paused_body(&r).marker.unwrap()), ("Marker dropped", Style::Plain, false));
+}
+
 /// The auto-pause faces stay as they are: no marker row.
 #[test]
 fn a_pause_you_didnt_make_offers_no_marker() {
