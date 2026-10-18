@@ -1,0 +1,240 @@
+#!/usr/bin/env python3
+"""Writes the editor's extra canvas boards into <root>/project/: EditorCuts and EditorStates.
+
+They draw what the "Editing (a proposal)" boards leave out (DECISIONS B195): Undo and
+Redo, a cut put back, the video fetched from the space, saving, and a save that did not
+go through. The helpers are the voice-cut proposal's (PR #59), so the column reads as one."""
+
+import math
+import random
+import sys
+from pathlib import Path
+
+BG, CARD, LINE, FIELD, BORDER = "#2b2f36", "#333944", "#434a56", "#262a31", "#4c566a"
+FG, FG3, MUTED, DIM = "#eceff4", "#c3cad6", "#aeb6c4", "#7b8494"
+ACCENT, RED, AMBER, MENU = "#88c0d0", "#e88790", "#ebcb8b", "#3b4252"
+FONT = "-apple-system, BlinkMacSystemFont, system-ui, sans-serif"
+
+
+def page(title, w, h, body):
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{title}</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{{margin:0}}
+a{{color:#88c0d0}}a:hover{{color:#8fbcbb}}
+</style>
+</helmet>
+<div style="width: {w}px; height: {h}px; box-sizing: border-box; background: #1f2228; display: flex; flex-direction: column; font-family: {FONT}; font-size: 13px; line-height: 1.45; color: {FG}">
+{body}
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{{"$preview":{{"width":{w},"height":{h}}}}}'>
+class Component extends DCLogic {{
+renderVals() {{
+return {{}};
+}}
+}}
+</script>
+</body>
+</html>
+"""
+
+
+def chrome(title):
+    dots = "".join(f'<span style="width: 12px; height: 12px; border-radius: 6px; background: {BORDER}; display: block"></span>' for _ in range(3))
+    return (f'<div style="height: 36px; padding: 0 14px; display: flex; flex-direction: row; align-items: center; gap: 8px; flex: none; position: relative">{dots}'
+            f'<span style="position: absolute; left: 0; right: 0; text-align: center; color: {MUTED}; font-size: 12px; pointer-events: none">{title}</span></div>')
+
+
+def bars(n, seed, quiet=()):
+    """Deterministic speech-like levels in 0..1; `quiet` = (from, to) fractions held low."""
+    rnd = random.Random(seed)
+    out, level = [], 0.5
+    for i in range(n):
+        f = i / n
+        if any(a <= f < b for a, b in quiet):
+            out.append(0.04 + rnd.random() * 0.03)
+            continue
+        level = min(1, max(0.12, level + rnd.uniform(-0.25, 0.25)))
+        syll = 0.55 + 0.45 * abs(math.sin(i * 0.9 + rnd.random()))
+        out.append(level * syll)
+    return out
+
+
+def waveform(w, h, levels, colour=MUTED):
+    step = w / len(levels)
+    rects = []
+    for i, v in enumerate(levels):
+        bh = max(2, v * (h - 6))
+        rects.append(f'<rect x="{i * step:.1f}" y="{(h - bh) / 2:.1f}" width="{max(1, step - 1.2):.1f}" height="{bh:.1f}" rx="0.8"></rect>')
+    return f'<svg viewBox="0 0 {w} {h}" aria-hidden="true" style="width: {w}px; height: {h}px; display: block; fill: {colour}">{"".join(rects)}</svg>'
+
+
+def scissors(colour, size=14):
+    return (f'<svg viewBox="0 0 16 16" aria-hidden="true" style="width: {size}px; height: {size}px; fill: none; stroke: {colour}; stroke-width: 1.4; stroke-linecap: round; display: block; flex: none">'
+            '<circle cx="4.5" cy="4.5" r="2"></circle><circle cx="4.5" cy="11.5" r="2"></circle><path d="M6.2 5.6L13 11.8M6.2 10.4L13 4.2"></path></svg>')
+
+
+def flag(colour):
+    return f'<svg viewBox="0 0 10 12" aria-hidden="true" style="width: 10px; height: 12px; display: block; fill: {colour}"><path d="M1 0v12M1 1h8l-2 3 2 3H1z" stroke="{colour}" stroke-width="1.2"></path></svg>'
+
+
+def button(label, primary=False, colour=None, said=None):
+    s = f' data-said="{said}"' if said else ""
+    if primary:
+        return f'<button style="font: inherit; font-weight: 600; height: 30px; padding: 0 16px; border: 0; border-radius: 7px; background: {ACCENT}; color: {BG}; flex: none"{s}>{label}</button>'
+    return f'<button style="font: inherit; height: 30px; padding: 0 14px; border: 1px solid {BORDER}; border-radius: 7px; background: transparent; color: {colour or FG}; flex: none"{s}>{label}</button>'
+
+
+def preview(w, h, caption):
+    """A recording's frame: a screen with a window on it and the camera bubble."""
+    return f'''<div style="width: {w}px; height: {h}px; border-radius: 8px; background: #3b4252; position: relative; overflow: hidden; flex: none">
+<div style="position: absolute; left: {w * 0.12:.0f}px; top: {h * 0.1:.0f}px; width: {w * 0.7:.0f}px; height: {h * 0.66:.0f}px; border-radius: 8px; background: #e5e9f0; display: flex; flex-direction: column">
+<div style="height: 22px; border-bottom: 1px solid #d8dee9; display: flex; flex-direction: row; align-items: center; gap: 6px; padding: 0 10px"><span style="width: 8px; height: 8px; border-radius: 4px; background: #bf616a; display: block"></span><span style="width: 8px; height: 8px; border-radius: 4px; background: #ebcb8b; display: block"></span><span style="width: 8px; height: 8px; border-radius: 4px; background: #a3be8c; display: block"></span></div>
+<div style="flex: 1 1 0; padding: 14px 18px; display: flex; flex-direction: column; gap: 8px">
+<span style="height: 12px; width: 46%; border-radius: 3px; background: #4c566a; display: block"></span>
+<span style="height: 8px; width: 80%; border-radius: 3px; background: #c3cad6; display: block"></span>
+<span style="height: 8px; width: 72%; border-radius: 3px; background: #c3cad6; display: block"></span>
+<span style="height: 8px; width: 64%; border-radius: 3px; background: #c3cad6; display: block"></span>
+<span style="height: 40px; width: 50%; border-radius: 5px; background: #88c0d0; display: block; margin-top: 8px"></span>
+</div>
+</div>
+<div style="position: absolute; left: 22px; bottom: 22px; width: {h * 0.26:.0f}px; height: {h * 0.26:.0f}px; border-radius: 50%; background: #5e81ac; border: 3px solid #eceff4"></div>
+<div style="position: absolute; left: 0; right: 0; bottom: 14px; text-align: center"><span style="background: rgba(46, 52, 64, 0.82); color: {FG}; padding: 4px 10px; border-radius: 5px; font-size: 14px">{caption}</span></div>
+</div>'''
+
+
+def transport(now, total, was=None):
+    play = f'<svg viewBox="0 0 16 16" aria-hidden="true" style="width: 14px; height: 14px; fill: {FG}; display: block"><path d="M5 3.5v9l7.5-4.5z"></path></svg>'
+    was_s = f'<span style="color: {DIM}">was {was}</span>' if was else ""
+    return (f'<div style="display: flex; flex-direction: row; align-items: center; gap: 12px">'
+            f'<button aria-label="Play" style="width: 34px; height: 34px; border-radius: 17px; border: 0; background: {CARD}; display: flex; align-items: center; justify-content: center">{play}</button>'
+            f'<span style="font-variant-numeric: tabular-nums">{now} / {total}</span>{was_s}</div>')
+
+
+def timeline(w, total_s, cuts=(), offered=(), trim=None, markers=(), playhead=None, select=None, seed=7):
+    """The timeline: ruler, waveform, cuts (red), offered cuts (amber), trim handles."""
+    x = lambda t: t / total_s * w
+    quiet = [(a / total_s, b / total_s) for a, b in []]
+    wav = waveform(w, 66, bars(int(w / 4), seed, quiet))
+    ticks = []
+    step = 30 if total_s > 120 else 10
+    for t in range(0, int(total_s) + 1, step):
+        ticks.append(f'<span style="position: absolute; left: {x(t):.0f}px; top: 0; height: 18px; border-left: 1px solid {LINE}; padding-left: 4px; color: {DIM}; font-size: 11px; font-variant-numeric: tabular-nums">{t // 60}:{t % 60:02d}</span>')
+    layers = []
+    if trim:
+        a, b = trim
+        layers.append(f'<div style="position: absolute; left: 0; width: {x(a):.0f}px; top: 0; bottom: 0; background: rgba(31, 34, 40, 0.72)"></div>')
+        layers.append(f'<div style="position: absolute; left: {x(b):.0f}px; right: 0; top: 0; bottom: 0; background: rgba(31, 34, 40, 0.72)"></div>')
+        for t, side in ((a, "left"), (b, "right")):
+            r = "6px 0 0 6px" if side == "left" else "0 6px 6px 0"
+            off = x(t) - (12 if side == "left" else 0)
+            layers.append(f'<div style="position: absolute; left: {off:.0f}px; top: -2px; bottom: -2px; width: 12px; border-radius: {r}; background: {AMBER}; display: flex; align-items: center; justify-content: center"><span style="width: 2px; height: 22px; border-radius: 1px; background: {BG}; display: block"></span></div>')
+        layers.append(f'<div style="position: absolute; left: {x(a):.0f}px; width: {x(b) - x(a):.0f}px; top: -2px; bottom: -2px; border-top: 2px solid {AMBER}; border-bottom: 2px solid {AMBER}; box-sizing: border-box"></div>')
+    for a, b in cuts:
+        layers.append(f'<div style="position: absolute; left: {x(a):.0f}px; width: {max(4, x(b) - x(a)):.0f}px; top: 0; bottom: 0; background: repeating-linear-gradient(135deg, rgba(232, 135, 144, 0.55) 0 4px, rgba(232, 135, 144, 0.22) 4px 8px); border-left: 2px solid {RED}; border-right: 2px solid {RED}; box-sizing: border-box"></div>')
+        layers.append(f'<div style="position: absolute; left: {(x(a) + x(b)) / 2 - 10:.0f}px; top: -26px; width: 20px; height: 20px; border-radius: 10px; background: {RED}; display: flex; align-items: center; justify-content: center">{scissors(BG, 12)}</div>')
+    for a, b in offered:
+        layers.append(f'<div style="position: absolute; left: {x(a):.0f}px; width: {max(4, x(b) - x(a)):.0f}px; top: 0; bottom: 0; border: 2px dashed {AMBER}; border-radius: 3px; box-sizing: border-box; background: rgba(235, 203, 139, 0.10)"></div>')
+    if select:
+        a, b = select
+        layers.append(f'<div style="position: absolute; left: {x(a):.0f}px; width: {x(b) - x(a):.0f}px; top: 0; bottom: 0; background: rgba(136, 192, 208, 0.28); border-left: 2px solid {ACCENT}; border-right: 2px solid {ACCENT}; box-sizing: border-box"></div>')
+        layers.append(f'<div style="position: absolute; left: {(x(a) + x(b)) / 2 - 56:.0f}px; top: 76px; display: flex; flex-direction: row; gap: 6px; padding: 4px; border-radius: 8px; background: {MENU}; border: 1px solid rgba(255, 255, 255, 0.12); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35)">'
+                      f'<button style="font: inherit; height: 26px; padding: 0 10px; border: 0; border-radius: 6px; background: {RED}; color: {BG}; font-weight: 600; display: flex; flex-direction: row; align-items: center; gap: 6px">{scissors(BG, 12)}Cut {b - a:.1f} s</button></div>')
+    for t in markers:
+        layers.append(f'<div style="position: absolute; left: {x(t) - 1:.0f}px; top: -16px; bottom: 0; border-left: 1px dashed {ACCENT}"><div style="position: absolute; left: 0; top: 0">{flag(ACCENT)}</div></div>')
+    if playhead is not None:
+        layers.append(f'<div style="position: absolute; left: {x(playhead):.0f}px; top: -8px; bottom: -8px; width: 2px; background: {FG}"><span style="position: absolute; left: -5px; top: -4px; width: 12px; height: 12px; border-radius: 6px; background: {FG}; display: block"></span></div>')
+    return (f'<div style="width: {w}px; display: flex; flex-direction: column; gap: 10px; flex: none">'
+            f'<div style="position: relative; height: 18px">{"".join(ticks)}</div>'
+            f'<div style="position: relative; height: 66px; border-radius: 6px; background: {FIELD}">{wav}{"".join(layers)}</div></div>')
+
+
+def icon_button(label, path, enabled=True):
+    colour = FG if enabled else DIM
+    return (f'<button aria-label="{label}" title="{label}" style="width: 30px; height: 30px; border-radius: 7px; border: 1px solid {BORDER}; background: transparent; display: flex; align-items: center; justify-content: center; flex: none; opacity: {1 if enabled else 0.5}">'
+            f'<svg viewBox="0 0 16 16" aria-hidden="true" style="width: 15px; height: 15px; fill: none; stroke: {colour}; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; display: block">{path}</svg></button>')
+
+
+UNDO = '<path d="M5.5 4L2.5 7l3 3"></path><path d="M2.5 7h7a4 4 0 0 1 0 8H7"></path>'
+REDO = '<path d="M10.5 4l3 3-3 3"></path><path d="M13.5 7h-7a4 4 0 0 0 0 8H9"></path>'
+
+
+def put_back_chip(left, length):
+    return (f'<div style="position: absolute; left: {left - 62:.0f}px; top: 76px; display: flex; flex-direction: row; gap: 6px; padding: 4px; border-radius: 8px; background: {MENU}; border: 1px solid rgba(255, 255, 255, 0.12); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35)">'
+            f'<button style="font: inherit; height: 26px; padding: 0 10px; border: 1px solid {BORDER}; border-radius: 6px; background: transparent; color: {FG}; display: flex; flex-direction: row; align-items: center; gap: 6px" data-said="editor.put-back">'
+            f'<svg viewBox="0 0 16 16" aria-hidden="true" style="width: 12px; height: 12px; fill: none; stroke: {FG}; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; display: block">{UNDO}</svg>Put back {length:.1f} s</button></div>')
+
+
+def footer(line, done="Done", done_enabled=True, line_colour=MUTED, revert=True):
+    done_b = button(done, primary=True) if done_enabled else (
+        f'<button disabled style="font: inherit; font-weight: 600; height: 30px; padding: 0 16px; border: 0; border-radius: 7px; background: {ACCENT}; color: {BG}; opacity: 0.5; flex: none">{done}</button>')
+    rev = button("Revert to original", colour=FG3) if revert else ""
+    return (f'<div style="display: flex; flex-direction: row; align-items: center; gap: 10px">'
+            f'<span style="color: {line_colour}; flex: 1 1 0">{line}</span>{rev}{done_b}</div>')
+
+
+def board_cuts():
+    w = 1100
+    tl_w = w - 48
+    x = lambda t: t / 272 * tl_w
+    tl = timeline(tl_w, 272, cuts=((150, 162),), trim=(8, 241), markers=(96, 205), playhead=84, seed=3)
+    tl = tl[: tl.rfind("</div></div>")] + put_back_chip((x(150) + x(162)) / 2, 12.0) + "</div></div>"
+    body = chrome("Edit — Setting up shroom in two minutes") + f'''
+<div style="flex: 1 1 0; background: {BG}; padding: 8px 24px 20px 24px; display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; flex-direction: row; justify-content: center">{preview(640, 360, "…and that's where the link lands.")}</div>
+<div style="display: flex; flex-direction: row; align-items: center; gap: 12px">{transport("1:16", "3:39", "4:32")}
+<span style="flex: 1 1 0"></span>
+<span style="color: {MUTED}">Drag the yellow ends to trim. Drag across the sound to cut a part.</span>
+{icon_button("Undo", UNDO)}{icon_button("Redo", REDO, enabled=False)}</div>
+<div style="padding-top: 26px">{tl}</div>
+<div style="flex: 1 1 0"></div>
+{footer("Your link stays the same. Viewers see the edit once it's saved.")}
+</div>'''
+    return page("shroom Editor, a cut and undo", w, 720, body)
+
+
+def strip(title, inner, w=1052):
+    return (f'<div style="display: flex; flex-direction: column; gap: 8px">'
+            f'<span style="color: {DIM}; font-size: 12px">{title}</span>'
+            f'<div style="width: {w}px; box-sizing: border-box; background: {BG}; border-radius: 10px; padding: 16px 24px; display: flex; flex-direction: column; gap: 14px">{inner}</div></div>')
+
+
+def board_states():
+    tl_w = 1004
+    getting = f'''<div style="display: flex; flex-direction: row; align-items: center; gap: 12px">{transport("0:00", "4:32")}</div>
+<div style="height: 66px; border-radius: 6px; background: {FIELD}; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px">
+<span style="color: {MUTED}" data-said="editor.getting">Getting the video from your space…</span>
+<div style="width: 240px; height: 4px; border-radius: 2px; background: {LINE}; overflow: hidden"><div style="width: 40%; height: 4px; background: {ACCENT}"></div></div></div>
+{footer("Your link stays the same. Viewers see the edit once it's saved.", done_enabled=False)}'''
+    no_video = f'''<div style="height: 66px; border-radius: 6px; background: {FIELD}; display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 12px">
+<span style="color: {MUTED}" data-said="editor.cant-get">Couldn't get the video. Check your connection, then try again.</span>{button("Try again")}</div>
+{footer("Your link stays the same. Viewers see the edit once it's saved.", done="Close", revert=False)}'''
+    saving = footer("Saving your edit…", done="Saving…", done_enabled=False)
+    failed = footer("Couldn't save your edit. Check your connection, then press Done again.", line_colour=AMBER)
+    body = f'''<div style="flex: 1 1 0; padding: 24px; display: flex; flex-direction: column; gap: 20px">
+{strip("When the video isn't on this Mac: it comes from your space first (the waveform waits for it; Done waits too)", getting)}
+{strip("When it can't be fetched", no_video)}
+{strip("Done, while the edit saves (the window closes when it's saved)", saving)}
+{strip("Done, when the save didn't go through (the window stays open, nothing is lost)", failed)}
+</div>'''
+    return page("shroom Editor, getting ready and saving", 1100, 700, body)
+
+
+def main():
+    root = Path(sys.argv[1]) / "project"
+    root.mkdir(parents=True, exist_ok=True)
+    (root / "EditorCuts.dc.html").write_text(board_cuts())
+    (root / "EditorStates.dc.html").write_text(board_states())
+
+
+if __name__ == "__main__":
+    main()
