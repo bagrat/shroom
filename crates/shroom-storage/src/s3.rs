@@ -1,6 +1,7 @@
 //! A minimal S3 client over the signer: PUT, HEAD, GET, DELETE and ListObjectsV2,
 //! path-style. Every call is idempotent by key, so a retry is always safe.
 
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use crate::sigv4::{Credentials, amz_date_now, sign_with};
@@ -20,6 +21,8 @@ pub enum S3Error {
     /// The store answered with a non-success status.
     Status { status: u16, body: String },
     Transport(String),
+    /// The caller stopped a transfer ([`Client::get_to_file`]'s `cancel`).
+    Cancelled,
 }
 
 impl std::fmt::Display for S3Error {
@@ -27,9 +30,18 @@ impl std::fmt::Display for S3Error {
         match self {
             S3Error::Status { status, body } => write!(f, "HTTP {status}: {}", body.chars().take(300).collect::<String>()),
             S3Error::Transport(e) => write!(f, "transport: {e}"),
+            S3Error::Cancelled => write!(f, "cancelled"),
         }
     }
 }
+
+/// How long one [`Client::get_to_file`] may take in all — a long recording over a slow
+/// line — bounded so a connection that stalls can't hold its caller for good.
+pub const GET_TO_FILE_BUDGET: Duration = Duration::from_secs(30 * 60);
+
+/// How much [`Client::get_to_file`] reads at a time: what it holds in memory, and how often
+/// it reports progress and asks whether to stop.
+pub const READ_CHUNK: usize = 256 * 1024;
 
 impl std::error::Error for S3Error {}
 
@@ -187,6 +199,72 @@ impl Client {
             (404, _) => Ok(None),
             (status, body) => Err(S3Error::Status { status, body: String::from_utf8_lossy(&body).into_owned() }),
         }
+    }
+
+    /// Streams the object into `path`, a [`READ_CHUNK`] at a time — never the whole body in
+    /// memory: written to `<path>.tmp`, then renamed into place, so `path` is the whole object
+    /// or untouched. `progress(done, total)` follows each chunk (`total` is 0 when the store
+    /// doesn't say); `cancel()` is asked before each one and stops the transfer with
+    /// [`S3Error::Cancelled`]. Whatever stops it, the partial file goes. `Ok(false)`: no such
+    /// object. Not retried here (a retry starts over, so it's the caller's to make).
+    pub fn get_to_file(&self, key: &str, path: &Path, progress: &mut dyn FnMut(u64, u64), cancel: &dyn Fn() -> bool) -> Result<bool, S3Error> {
+        use std::io::{Read, Write};
+        if cancel() {
+            return Err(S3Error::Cancelled);
+        }
+        let url = self.url(key);
+        let signature = sign_with("GET", &url, b"", &self.bucket.region, &self.bucket.credentials, &amz_date_now(), &[]);
+        let mut req = ureq::http::Request::builder().method("GET").uri(&url);
+        for (k, v) in signature.headers() {
+            req = req.header(k, v);
+        }
+        let req = req.body(Vec::<u8>::new()).map_err(|e| S3Error::Transport(e.to_string()))?;
+        // The agent's 120 s would cut a long recording off mid-body.
+        let req = self.agent.configure_request(req).timeout_global(Some(GET_TO_FILE_BUDGET)).build();
+        let mut res = self.agent.run(req).map_err(|e| S3Error::Transport(e.to_string()))?;
+        match res.status().as_u16() {
+            200 => {}
+            404 => return Ok(false),
+            status => {
+                let body = res.body_mut().with_config().limit(64 * 1024).read_to_vec().unwrap_or_default();
+                return Err(S3Error::Status { status, body: String::from_utf8_lossy(&body).into_owned() });
+            }
+        }
+        let total = res.body().content_length().unwrap_or(0);
+        let mut tmp = path.as_os_str().to_os_string();
+        tmp.push(".tmp");
+        let tmp = PathBuf::from(tmp);
+        let local = |e: std::io::Error| S3Error::Transport(format!("the local file: {e}"));
+        let result = (|| {
+            let mut file = std::fs::File::create(&tmp).map_err(local)?;
+            let mut reader = res.body_mut().as_reader();
+            let mut buf = vec![0u8; READ_CHUNK];
+            let mut done = 0u64;
+            loop {
+                if cancel() {
+                    return Err(S3Error::Cancelled);
+                }
+                let n = match reader.read(&mut buf) {
+                    Ok(0) => break,
+                    Ok(n) => n,
+                    Err(e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
+                    Err(e) => return Err(S3Error::Transport(e.to_string())),
+                };
+                file.write_all(&buf[..n]).map_err(local)?;
+                done += n as u64;
+                progress(done, total);
+            }
+            if total > 0 && done != total {
+                return Err(S3Error::Transport(format!("the body ended at {done} of {total} bytes")));
+            }
+            file.sync_all().map_err(local)?;
+            drop(file);
+            std::fs::rename(&tmp, path).map_err(local)
+        })();
+        if result.is_err() {
+            let _ = std::fs::remove_file(&tmp);
+        }
+        result.map(|()| true)
     }
 
     /// Deleting a missing object succeeds (idempotent).
@@ -422,6 +500,131 @@ mod tests {
         // Already there: 412 is “not made”, never an error (idempotent).
         let (addr, _) = capture(412);
         assert!(!client(&addr).put_if_absent_with_meta("k", b"{}", "application/json", &[("m", "m1")]).unwrap());
+    }
+
+    /// One GET, as a local server answers it: `status`, a `content-length` of `declared`, and
+    /// `body` (shorter than declared: the connection drops mid-body). Gives the request line.
+    fn answer(status: u16, declared: usize, body: Vec<u8>) -> (String, std::thread::JoinHandle<String>) {
+        use std::io::{BufRead, BufReader, Write};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = format!("http://{}", listener.local_addr().unwrap());
+        let handle = std::thread::spawn(move || {
+            let (stream, _) = listener.accept().unwrap();
+            let mut reader = BufReader::new(stream.try_clone().unwrap());
+            let mut first = String::new();
+            reader.read_line(&mut first).unwrap();
+            loop {
+                let mut line = String::new();
+                reader.read_line(&mut line).unwrap();
+                if line.trim_end().is_empty() {
+                    break;
+                }
+            }
+            let mut s = stream;
+            let _ = write!(s, "HTTP/1.1 {status} X\r\ncontent-length: {declared}\r\nconnection: close\r\n\r\n");
+            // A reader that stops early closes on us: that's its right.
+            let _ = s.write_all(&body);
+            first.trim_end().to_string()
+        });
+        (addr, handle)
+    }
+
+    fn pattern(len: usize) -> Vec<u8> {
+        (0..len).map(|i| (i * 7 % 251) as u8).collect()
+    }
+
+    /// A folder of the test's own under the system's temp dir, gone when the test ends.
+    struct Scratch(PathBuf);
+
+    impl Scratch {
+        fn new(name: &str) -> Scratch {
+            let p = std::env::temp_dir().join(format!("shroom-s3-{}-{name}", std::process::id()));
+            let _ = std::fs::remove_dir_all(&p);
+            std::fs::create_dir_all(&p).unwrap();
+            Scratch(p)
+        }
+
+        fn path(&self) -> &Path {
+            &self.0
+        }
+    }
+
+    impl Drop for Scratch {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+
+    fn tmp_of(path: &Path) -> PathBuf {
+        PathBuf::from(format!("{}.tmp", path.display()))
+    }
+
+    #[test]
+    fn a_body_larger_than_a_chunk_streams_into_its_file() {
+        let body = pattern(3 * READ_CHUNK + 12_345);
+        let (addr, seen) = answer(200, body.len(), body.clone());
+        let dir = Scratch::new("streams");
+        let path = dir.path().join("source.mp4");
+        let mut steps = Vec::new();
+        let found = client(&addr).get_to_file("rec/AbCdEfGhIjKlMnOp/video.mp4", &path, &mut |done, total| steps.push((done, total)), &|| false).unwrap();
+        assert!(found);
+        assert_eq!(seen.join().unwrap(), "GET /shroom-space/rec/AbCdEfGhIjKlMnOp/video.mp4 HTTP/1.1");
+        assert!(std::fs::read(&path).unwrap() == body, "the file is the object, byte for byte");
+        assert!(!tmp_of(&path).exists());
+        let n = body.len() as u64;
+        assert!(steps.len() >= 4, "a step per chunk at least: {steps:?}");
+        assert_eq!(steps.last(), Some(&(n, n)));
+        assert!(steps.iter().all(|s| s.1 == n), "the store's length: {steps:?}");
+        let mut at = 0;
+        for (done, _) in &steps {
+            assert!(*done > at && done - at <= READ_CHUNK as u64, "a chunk at a time at most: {steps:?}");
+            at = *done;
+        }
+    }
+
+    #[test]
+    fn a_missing_object_is_false_and_writes_nothing() {
+        let (addr, _) = answer(404, 0, Vec::new());
+        let dir = Scratch::new("missing");
+        let path = dir.path().join("source.mp4");
+        assert!(!client(&addr).get_to_file("rec/x/video.mp4", &path, &mut |_, _| {}, &|| false).unwrap());
+        assert!(!path.exists() && !tmp_of(&path).exists());
+        let xml = b"<Error><Code>AccessDenied</Code></Error>".to_vec();
+        let (addr, _) = answer(403, xml.len(), xml);
+        match client(&addr).get_to_file("rec/x/video.mp4", &path, &mut |_, _| {}, &|| false) {
+            Err(S3Error::Status { status: 403, body }) => assert!(body.contains("AccessDenied"), "{body}"),
+            other => panic!("{other:?}"),
+        }
+        assert!(!path.exists() && !tmp_of(&path).exists());
+    }
+
+    #[test]
+    fn a_cancel_stops_it_and_leaves_what_was_there() {
+        let body = pattern(16 * READ_CHUNK);
+        let (addr, _) = answer(200, body.len(), body);
+        let dir = Scratch::new("cancel");
+        let path = dir.path().join("source.mp4");
+        std::fs::write(&path, b"an earlier copy").unwrap();
+        let steps = std::cell::Cell::new(0);
+        let r = client(&addr).get_to_file("rec/x/video.mp4", &path, &mut |_, _| steps.set(steps.get() + 1), &|| steps.get() >= 1);
+        assert!(matches!(r, Err(S3Error::Cancelled)), "{r:?}");
+        assert_eq!(steps.get(), 1, "it stopped at the next chunk");
+        assert_eq!(std::fs::read(&path).unwrap(), b"an earlier copy", "untouched");
+        assert!(!tmp_of(&path).exists(), "the partial file goes");
+        // Cancelled before it starts: nothing is asked of the store at all.
+        let r = client("http://127.0.0.1:9").get_to_file("rec/x/video.mp4", &path, &mut |_, _| {}, &|| true);
+        assert!(matches!(r, Err(S3Error::Cancelled)), "{r:?}");
+    }
+
+    #[test]
+    fn a_body_cut_short_is_an_error_and_leaves_nothing() {
+        let body = pattern(2 * READ_CHUNK);
+        let (addr, _) = answer(200, body.len() * 2, body);
+        let dir = Scratch::new("short");
+        let path = dir.path().join("source.mp4");
+        let r = client(&addr).get_to_file("rec/x/video.mp4", &path, &mut |_, _| {}, &|| false);
+        assert!(matches!(r, Err(S3Error::Transport(_))), "{r:?}");
+        assert!(!path.exists() && !tmp_of(&path).exists());
     }
 
     #[test]
