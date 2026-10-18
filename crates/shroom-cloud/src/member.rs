@@ -495,10 +495,37 @@ pub struct CleanupPage {
     #[serde(default)]
     pub items: Vec<CleanupItem>,
     pub next: Option<String>,
+    /// How counting fares over this page, for the run log.
+    #[serde(default)]
+    pub views: ViewsHealth,
 }
 
 fn yes() -> bool {
     true
+}
+
+/// Counting's health over a page of `POST cleanup`: the plays records read, the ones that
+/// wouldn't read, and the newest play any of them saw.
+#[derive(Debug, Clone, Default, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ViewsHealth {
+    #[serde(default)]
+    pub records: u32,
+    #[serde(default)]
+    pub unreadable: u32,
+    #[serde(default)]
+    pub newest_play_at: Option<String>,
+}
+
+impl ViewsHealth {
+    /// Another page's, added in.
+    pub fn add(&mut self, other: &ViewsHealth) {
+        self.records += other.records;
+        self.unreadable += other.unreadable;
+        if other.newest_play_at > self.newest_play_at {
+            self.newest_play_at = other.newest_play_at.clone();
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]

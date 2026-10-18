@@ -14,5 +14,6 @@ base64 = "0.22"
 ureq = { version = "3", default-features = false, features = ["rustls", "platform-verifier"] }
 
 [dev-dependencies]
+shroom-core = { path = "../shroom-core" }
 shroom-cloudfake = { path = "../shroom-cloudfake" }
 shroom-storage = { path = "../shroom-storage" }

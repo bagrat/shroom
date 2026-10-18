@@ -6,6 +6,7 @@
 //! never write the account's workers.dev name. The fence lives here, in code, so no test
 //! can forget it.
 
+pub mod cleanup_log;
 pub mod device;
 pub mod member;
 pub mod mint;

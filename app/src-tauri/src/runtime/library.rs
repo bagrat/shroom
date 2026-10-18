@@ -30,6 +30,7 @@ use std::sync::mpsc::{Sender, channel};
 
 use std::collections::{BTreeMap, BTreeSet};
 
+use shroom_cloud::cleanup_log;
 use shroom_cloud::device::DeviceKey;
 use shroom_cloud::member::{Answer, CleanupPage, LibraryRequest, MintNext, Purpose, Scope, Space};
 use shroom_core::effect::LibCmd;
@@ -331,12 +332,14 @@ fn spawn_with(rt: Runtime, sweep: impl FnMut(&Runtime, &SpaceIdentity) -> Result
                 }
                 // The space's Worker under this Mac's device key, whatever its door (N68).
                 if matches!(cmd, LibCmd::Suggest { .. } | LibCmd::Plays(_)) {
+                    let started = std::time::Instant::now();
                     let asked = worker_door(&rt, &space).and_then(|(key, page)| match cmd {
                         LibCmd::Suggest { everyone } => suggest(&rt, &key, &page, everyone),
                         LibCmd::Plays(on) => plays(&rt, &key, &page, on),
                         _ => Ok(()),
                     });
                     if let Err(class) = asked {
+                        rt.log(&format!("library {op:?}: failed ({class:?}) after {} ms", started.elapsed().as_millis()));
                         rt.post(Event::Failed { op, class });
                     }
                     continue;
@@ -398,16 +401,22 @@ const SUGGEST_PAGES: usize = 500;
 /// candidates in the Worker's order (its score, highest first), and the bytes of every
 /// live video read — the space's size on an owner-class Mac.
 fn suggest(rt: &Runtime, key: &DeviceKey, page: &Space, everyone: bool) -> Result<(), FailClass> {
+    let started = std::time::Instant::now();
     let mut after: Option<String> = None;
     let mut counting = true;
     let mut space_bytes = 0u64;
     let mut found: Vec<(f64, Suggestion)> = Vec::new();
+    // What the run log says of the read (shroom_cloud::cleanup_log): every item, by short id.
+    let mut read = cleanup_log::Read::default();
     for _ in 0..SUGGEST_PAGES {
         let p: CleanupPage = match page.cleanup(key, everyone, after.as_deref()) {
             Answer::Ok(p) => p,
             other => return Err(answer_class(rt, "suggest", &other)),
         };
         counting = p.counting;
+        read.pages += 1;
+        read.views.add(&p.views);
+        read.items.extend(p.items.iter().cloned());
         for item in &p.items {
             space_bytes += item.bytes;
             if item.candidate {
@@ -420,14 +429,20 @@ fn suggest(rt: &Runtime, key: &DeviceKey, page: &Space, everyone: bool) -> Resul
             Some(next) if Some(&next) != after.as_ref() => after = Some(next),
             _ => {
                 found.sort_by(|a, b| b.0.total_cmp(&a.0));
-                rt.log(&format!("library suggestions: {} of the space's videos, counting {}", found.len(), if counting { "on" } else { "off" }));
+                read.counting = counting;
+                read.ms = started.elapsed().as_millis();
+                let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as i64).unwrap_or(0);
+                read.newest_play_hours = read.views.newest_play_at.as_deref().and_then(parse_iso).map(|t| (now.saturating_sub(t).max(0) / 3_600_000) as u64);
+                for line in cleanup_log::lines(&read) {
+                    rt.log(&line);
+                }
                 let rows = found.into_iter().map(|(_, s)| s).collect();
                 rt.post(Event::Library(LibraryNews::Suggested(Suggestions { counting, space_bytes, rows })));
                 return Ok(());
             }
         }
     }
-    rt.log("library suggestions: more pages than one read follows");
+    rt.log(&format!("library suggestions: more than {SUGGEST_PAGES} pages, {} videos read — stopped", read.items.len()));
     Err(FailClass::Unclassified)
 }
 

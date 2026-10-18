@@ -1064,6 +1064,14 @@ fn run(rt: Runtime, rx: Receiver<Envelope>, lanes: Lanes, mut presenter: present
             count += u64::from(!tick);
         }
         let scene = shroom_core::derive(&w);
+        // N68: the Library's cleanup line coming and going while it's open (the core's arm
+        // just before says why: suggested, put away, deleted…).
+        let cleanup_line = |s: &Scene| s.library.as_ref().map(|l| l.body.cleanup_line.is_some());
+        if let (Some(Some(was)), Some(now)) = (last.as_ref().map(cleanup_line), cleanup_line(&scene)) {
+            if was != now {
+                rt.log(if now { "library: the cleanup line shows" } else { "library: the cleanup line is gone" });
+            }
+        }
         watch.after(&rt, &w, take_was_open, last.as_ref(), &scene, &effects);
         last = Some(scene.clone());
         presenter.present(&scene);
