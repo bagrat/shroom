@@ -19,12 +19,12 @@
 
 import { cleanLog } from "./clean.js";
 
-export const MAX_BYTES = 64 * 1024;
+export const MAX_BYTES = 512 * 1024;
 export const FROM = "report-sender@shroom.am";
 const SITEVERIFY = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 
 /** The fields a report may carry, each with its bound in characters. */
-const TEXT_FIELDS = /** @type {const} */ ({ words: 8000, name: 80, reply_to: 254, setup: 300, log: 48000, turnstile: 4096 });
+const TEXT_FIELDS = /** @type {const} */ ({ words: 8000, name: 80, reply_to: 254, setup: 300, log: 120000, turnstile: 4096 });
 const VERSION_FIELDS = ["shroom", "macos", "chip", "memory"];
 /** The feedback page's questions, in Bagrat's words (approved 2026-10-16; the one on what
  * was recorded dropped the same day, as too hard to answer): the page shows

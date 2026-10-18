@@ -642,7 +642,8 @@ fn recording_intervals_ms(log: &str) -> u64 {
     let mut total = 0;
     let mut since: Option<u64> = None;
     for line in log.lines() {
-        let mut words = line.split_whitespace();
+        // Past the line's wall clock (`2026-10-18T17:52:03Z`) to its monotonic ms.
+        let mut words = line.split_whitespace().skip_while(|w| w.ends_with('Z'));
         let (Some(mono), Some("core"), Some(what)) = (words.next().and_then(|m| m.parse::<u64>().ok()), words.next(), words.next()) else { continue };
         match what {
             "started" | "resumed" => since = Some(mono),
@@ -1501,5 +1502,8 @@ mod tests {
         let log = "    4918 core started [\"uploader\"]\n   50168 core click-pause [\"recorder\"]\n   50227 core paused []\n   58241 core resume [\"recorder\"]\n   58321 core resumed []\n   59244 core upload-progress []\n  103458 core click-pause [\"recorder\"]\n  103535 core paused []\nnot a core line\n";
         assert_eq!(recording_intervals_ms(log), (50168 - 4918) + (103458 - 58321));
         assert_eq!(recording_intervals_ms(""), 0);
+        // The same lines, each opened by its wall clock as `log_line` writes them.
+        let stamped: String = log.lines().map(|l| format!("2026-10-18T17:52:03Z {l}\n")).collect();
+        assert_eq!(recording_intervals_ms(&stamped), (50168 - 4918) + (103458 - 58321));
     }
 }
