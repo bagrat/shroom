@@ -30,6 +30,9 @@ pub enum UploadError {
     Io(std::io::Error),
     /// The local recording isn't complete (no playlist, no init, a missing segment).
     Incomplete(String),
+    /// The record no longer plays what the editor opened on (an edit became the video since,
+    /// B197): a list made on the old clock is never saved over it — nothing was written.
+    MovedOn,
 }
 
 impl From<S3Error> for UploadError {
@@ -52,6 +55,7 @@ impl std::fmt::Display for UploadError {
             UploadError::S3(e) => write!(f, "{e}"),
             UploadError::Io(e) => write!(f, "io: {e}"),
             UploadError::Incomplete(why) => write!(f, "incomplete recording: {why}"),
+            UploadError::MovedOn => write!(f, "the record no longer plays what the editor opened on"),
         }
     }
 }
@@ -115,13 +119,23 @@ fn read_meta(s3: &Client, id: &str) -> Result<Option<Meta>, UploadError> {
 /// this Mac's writers, or the Worker renaming the video — wrote in between. R2 honors it
 /// (verified live 2026-10-02). Stops with `Tombstoned` the moment the record says deleted.
 pub fn update_meta(s3: &Client, id: &str, mut change: impl FnMut(&mut Meta)) -> Result<Meta, UploadError> {
+    try_update_meta(s3, id, |m| {
+        change(m);
+        Ok(())
+    })
+}
+
+/// [`update_meta`] whose change may refuse: an `Err` from `change`, judged on the very record
+/// the write would replace (each read, again after a lost race), ends it with that error and
+/// the record as it was.
+pub(crate) fn try_update_meta(s3: &Client, id: &str, mut change: impl FnMut(&mut Meta) -> Result<(), UploadError>) -> Result<Meta, UploadError> {
     for _ in 0..8 {
         let (bytes, etag) = with_retry(|| s3.get_with_etag(&keys::meta(id)))?.ok_or(UploadError::Collision)?;
         let mut meta: Meta = serde_json::from_slice(&bytes).map_err(|e| UploadError::Incomplete(format!("unreadable meta: {e}")))?;
         if meta.state == State::Deleted {
             return Err(UploadError::Tombstoned);
         }
-        change(&mut meta);
+        change(&mut meta)?;
         let body = serde_json::to_vec(&meta).expect("meta serializes");
         if with_retry(|| s3.put_if_match(&keys::meta(id), &body, "application/json", &etag))? {
             return Ok(meta);

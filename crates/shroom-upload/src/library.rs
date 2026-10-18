@@ -13,7 +13,7 @@ use shroom_storage::s3::Client;
 
 use crate::keys;
 use crate::meta::{Media, Meta, State, iso_at, now_iso};
-use crate::upload::{UploadError, update_meta, with_retry};
+use crate::upload::{UploadError, try_update_meta, update_meta, with_retry};
 
 /// What a Library row needs from a record.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -177,11 +177,38 @@ fn media_keys(m: &Meta) -> Vec<String> {
 
 /// [`update_meta`] for an edit's write: a record that turned into a tombstone (which keeps no
 /// title, so it never reads as a whole record) answers `Tombstoned`, not “unreadable”.
-fn update_edit(s3: &Client, id: &str, change: impl FnMut(&mut Meta)) -> Result<Meta, UploadError> {
-    update_meta(s3, id, change).map_err(|e| match e {
+fn update_edit(s3: &Client, id: &str, mut change: impl FnMut(&mut Meta)) -> Result<Meta, UploadError> {
+    try_update_edit(s3, id, |m| {
+        change(m);
+        Ok(())
+    })
+}
+
+/// [`update_edit`] whose change may refuse, as [`try_update_meta`]'s does.
+fn try_update_edit(s3: &Client, id: &str, change: impl FnMut(&mut Meta) -> Result<(), UploadError>) -> Result<Meta, UploadError> {
+    try_update_meta(s3, id, change).map_err(|e| match e {
         UploadError::Incomplete(_) if tombstoned(s3, id).unwrap_or(false) => UploadError::Tombstoned,
         e => e,
     })
+}
+
+/// What a record plays: which file, and how many bakes it has been through (B197). An editor
+/// remembers it as it opens; once the record plays something else — an edit became the video
+/// since, on this Mac or another — a list the editor made is on a clock the record no longer
+/// has. A rename, a voice plan or a copy landing moves nothing.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Plays {
+    /// `media.mp4`: the original's single-file copy, or a baked edit's own.
+    pub mp4: Option<String>,
+    /// How many bakes `bakedFrom` remembers.
+    pub bakes: usize,
+}
+
+impl Plays {
+    pub fn of(m: &Meta) -> Plays {
+        let bakes = m.extra.get(BAKED_FROM).and_then(serde_json::Value::as_array).map_or(0, Vec::len);
+        Plays { mp4: m.media.as_ref().and_then(|x| x.mp4.clone()), bakes }
+    }
 }
 
 /// The revision an edit's record holds: its `edits.rev`, also when this version can't read
@@ -204,10 +231,24 @@ fn record_rev(m: &Meta) -> u64 {
 /// is the identity (nothing cut, the whole recording) there's no copy to make: the old copy
 /// and `keep_until` are dropped from the record and then the copy's files go.
 /// Read-modify-write under `If-Match`; a tombstone stops it. Returns the revision saved.
+///
+/// Unguarded: whatever the record plays now, the list lands on it — for a writer that opened
+/// no editor on it. An editor's save is [`save_edits_over`].
 pub fn save_edits(s3: &Client, id: &str, list: &shroom_edit::EditList, asked_rev: u64) -> Result<u64, UploadError> {
+    save_edits_over(s3, id, list, asked_rev, None)
+}
+
+/// [`save_edits`] from an editor that opened on the record when it played `opened`: judged
+/// inside the read-modify-write, on the very record the save would replace, a record that
+/// plays anything else now ([`Plays`] — an edit became the video since) is never written:
+/// `MovedOn`, nothing changed, no file deleted. `None` saves unguarded.
+pub fn save_edits_over(s3: &Client, id: &str, list: &shroom_edit::EditList, asked_rev: u64, opened: Option<&Plays>) -> Result<u64, UploadError> {
     let mut rev = 0;
     let mut dropped: Vec<String> = Vec::new();
-    let meta = update_edit(s3, id, |m| {
+    let meta = try_update_edit(s3, id, |m| {
+        if opened.is_some_and(|o| *o != Plays::of(m)) {
+            return Err(UploadError::MovedOn);
+        }
         rev = record_rev(m).max(asked_rev.saturating_sub(1)) + 1;
         let before = m.edits.take();
         let list = with_voice_plan(list, before.as_ref().map(|s| &s.list)).checked();
@@ -225,6 +266,7 @@ pub fn save_edits(s3: &Client, id: &str, list: &shroom_edit::EditList, asked_rev
         };
         m.extra.remove("edits");
         m.edits = Some(shroom_edit::Saved { copy, keep_until, extra, ..shroom_edit::Saved::new(list, rev) });
+        Ok(())
     })?;
     delete_copy_files(s3, id, &dropped, &meta);
     Ok(rev)
@@ -854,6 +896,31 @@ mod tests {
         let plan = upkeep_plan(&records, "later", &mine, &local);
         assert!(plan.bake.is_empty());
         assert_eq!(plan.copy.len(), 2);
+    }
+
+    /// B197: what a record plays moves with a bake only — never with a rename, a save or a
+    /// copy's landing — and with every bake, its file named alike or not.
+    #[test]
+    fn what_a_record_plays_moves_only_with_a_bake() {
+        let id = "AbCdEfGhIjKlMnOp";
+        let mut m = Meta::uploading(id, "Demo", "2026-10-02T12:00:00Z");
+        m.media = Some(Media { hls: Some(format!("rec/{id}/master.m3u8")), mp4: Some(format!("rec/{id}/video.mp4")), poster: None, teaser: None, width: 1, height: 1 });
+        let opened = Plays::of(&m);
+        assert_eq!(opened, Plays { mp4: Some(format!("rec/{id}/video.mp4")), bakes: 0 });
+        let mut edited = m.clone();
+        edited.title = "Demo, edited".into();
+        let mut saved = shroom_edit::Saved::new(shroom_edit::EditList::new(60.0), 3);
+        saved.copy = Some(shroom_edit::EditCopy { rev: 3, file: "edit-3.mp4".into(), duration: 50.0, poster: None, teaser: None });
+        edited.edits = Some(saved);
+        assert_eq!(Plays::of(&edited), opened, "a rename, a save, a copy landing");
+        let mut baked = m.clone();
+        baked.media.as_mut().unwrap().hls = None;
+        baked.media.as_mut().unwrap().mp4 = Some(format!("rec/{id}/edit-3.mp4"));
+        baked.extra.insert(BAKED_FROM.into(), serde_json::json!([{ "at": "2026-10-18T00:00:00Z", "rev": 3, "keep": [[0, 50]] }]));
+        assert_ne!(Plays::of(&baked), opened, "a bake");
+        let mut again = baked.clone();
+        again.extra.insert(BAKED_FROM.into(), serde_json::json!([{}, {}]));
+        assert_ne!(Plays::of(&again), Plays::of(&baked), "a second bake, its file named alike or not");
     }
 
     /// N63, B197: a row carries the edited length (none for the identity) and its poster's

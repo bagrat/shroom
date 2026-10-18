@@ -268,6 +268,39 @@ fn a_late_copy_of_the_baked_revision_never_takes_its_files() {
     assert_eq!(files(&fake, A), ["edit-1-poster.jpg", "edit-1-teaser.mp4", "edit-1.mp4", "thumb-0123456789abcdef.jpg"]);
 }
 
+/// An editor that opened before the bake holds a list on the original's clock: its save writes
+/// nothing over the baked video, deletes nothing, and says why (B197) — the check made on the
+/// record the write would replace. An editor that opened on the baked video saves as any
+/// other, a rename meanwhile moving nothing; a writer with no editor saves unguarded.
+#[test]
+fn a_save_from_an_editor_opened_before_the_bake_never_lands_on_the_baked_video() {
+    let (fake, s3) = space();
+    record(&s3, A);
+    save_and_copy(&s3, A, &edited(60.0), 38.0);
+    let meta = |s3: &Client| serde_json::from_value::<Meta>(read(s3, A)).unwrap();
+    // The editor opens on revision 1, then a cut is added at 30–35 s of the original.
+    let opened = library::Plays::of(&meta(&s3));
+    let mut h = History::new(edited(60.0));
+    assert!(h.act(&Op::Cut { start: 30.0, end: 35.0 }));
+    // Meanwhile the sweep makes the edit the video.
+    assert!(library::bake(&s3, A, DUE).unwrap());
+    let (baked, left) = (etag(&s3, A), files(&fake, A));
+    assert!(matches!(library::save_edits_over(&s3, A, &h.now, 2, Some(&opened)), Err(UploadError::MovedOn)));
+    assert_eq!(etag(&s3, A), baked, "nothing written");
+    assert_eq!(files(&fake, A), left, "nothing deleted");
+    assert!(read(&s3, A).get("edits").is_none());
+
+    // Opened on the baked video, renamed meanwhile: it saves, past the revision baked.
+    let now = library::Plays::of(&meta(&s3));
+    library::rename(&s3, A, "Setting up shroom, short").unwrap();
+    let mut short = History::new(EditList::new(38.0));
+    assert!(short.act(&Op::Trim { in_: 0.0, out: 30.0 }));
+    assert_eq!(library::save_edits_over(&s3, A, &short.now, 1, Some(&now)).unwrap(), 2);
+    assert_eq!(read(&s3, A)["edits"]["out"], 30.0);
+    // A writer that opened no editor: unguarded, as before.
+    assert_eq!(library::save_edits(&s3, A, &short.now, 1).unwrap(), 3);
+}
+
 #[test]
 fn a_tombstone_stops_a_bake() {
     let (_fake, s3) = space();
