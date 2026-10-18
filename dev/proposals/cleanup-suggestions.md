@@ -11,8 +11,9 @@ the boards and in the reasons are drafts.*
 >    route's default; see §3.
 > 4. **Delete: one tap, with Undo.**
 >
-> Questions 5–7 (the money line, who sees whose, the Mac writing `bytes`) stand as drafted
-> below. The privacy wording waits on his words.
+> The same day he left the rest to the sessions' judgment for these POCs. §7 records each
+> remaining call as "decided X because Y". The privacy wording in §5 is this proposal's draft,
+> **for his review**.
 
 Bagrat asked (2026-10-18) for shroom to work out which videos are worth deleting. Storage is
 what costs money, so shroom should be able to say *these ones, and why*. He suggested
@@ -119,13 +120,23 @@ each, so even a thousand of them is far under a cent of storage.
 | 24 unit tests: counting, dedupe, the day's salt, CAS races, refusals, the owner page, the formulas, the route's scopes and paging | `worker/test/views.test.js` |
 | Real browsers: a bounce, a half watch, a full watch, the owner's own watch, in headless Chromium and WebKit | `worker/dev/views-drive.mjs` |
 | The four formulas over an invented Library | `worker/dev/cleanup-sample.mjs` |
+| **Live on Cloudflare**: this branch's `worker.js` deployed to the dedicated test account as its own Worker over its own bucket (`shroom-poc-views`), a recording played through in Chromium and WebKit over the real workers.dev link, then torn down | `worker/dev/views-live.mjs` |
 
 ```sh
 cd worker
 npx vitest run test/views.test.js        # 24/24
 node dev/views-drive.mjs                 # Chromium and WebKit: 12/12 checks
 node dev/cleanup-sample.mjs              # §3's tables
+SHROOM_E2E_TOKEN=… SHROOM_E2E_ACCOUNT_ID=… node dev/views-live.mjs   # live, test account only
 ```
+
+**The live run (2026-10-18, test account):** two viewers, one in each engine, played the
+video through. The real R2 record read back `plays: 2, viewers: 2, ends: 2`, with both ends
+in the last tenth. The owner's page carried no beacon. `POST /_shroom/api/cleanup` on the
+live Worker answered `plays 2, viewers 2, medianWatched 0.95, watched-lately`. One thing
+turned up: a bucket recreated straight after deleting one of the same name answers 10073
+for a few seconds; the script waits it out. Everything it made was deleted afterwards;
+nothing else on the account was touched.
 
 The whole Worker suite is green, apart from one test. The page-version guard fails on
 purpose: a changed `worker.js` needs a new VERSION, and VERSION is tied to the app's version
@@ -202,7 +213,7 @@ because only 2.4 GB sits past the free 10 GB. **That's the real finding**:
   and their plays haven't faded below the line yet. The draft and the design review are under
   a cent a month. With the gate at half a cent (≈ 0.33 GB, about 6 minutes) it would add the
   draft and the design review: 4 videos, 5.9 GB. The gate is one constant
-  (`FADING_COST.usdAtLeast`); open question 8.
+  (`FADING_COST.usdAtLeast`); §7, call 8.
 - **Inside the free 10 GB** (the same Library less the deploy and onboarding videos, 9.2 GB),
   `fading-cost` still suggests the same two. Its cost gate reads the *list price* (the room a
   video takes), not the bill. So inside the free tier it still names what takes the room,
@@ -240,7 +251,9 @@ left out.
 ## 5. Privacy: what changes
 
 Today `shroom.am/privacy` says: "People watching your videos get no cookies and aren't
-counted or logged." With this, that sentence is false. Draft (Bagrat's words to settle):
+counted or logged." With this, that sentence is false. **The proposed line, for Bagrat's
+review** (drawn on the board "shroom.am/privacy — the viewers' line once plays are
+counted"):
 
 > **People watching your videos** get no cookies and aren't logged. Your space counts plays
 > (how often each video is played and how far) in your own Cloudflare account, so it can
@@ -256,7 +269,7 @@ Points behind it:
   salt that could link them is replaced daily, and the hash is cut to 32 bits. The same
   guidelines note that collecting an IP and user agent to track someone can itself need
   consent. Here they're never stored and never linkable across days or videos, so the honest
-  claim is "nothing that says who watched". A stricter option (open question 2) drops
+  claim is "nothing that says who watched". A stricter option, plays only, drops
   unique-ish viewers and hashes nothing at all.
 - **The owner holds the data, not shroom.** It sits in their bucket; shroom (the project)
   never receives it. That's the line between this and every hosted video analytics product.
@@ -287,31 +300,39 @@ Points behind it:
   facts and `usdPerMonth`. The reason codes are stable; the words aren't, so an agent writes
   its own. Deleting stays the existing delete path (an agent proposes, the person confirms).
 
-## 7. Open questions for Bagrat
+## 7. The calls, decided
 
-*Answered 2026-10-18: 1 (on by default), 2 (plays and unique-ish viewers), 3 (fading and cost
-together), 4 (one tap with Undo). Still open: 5–8, and the privacy wording.*
+Bagrat answered 1–4 (2026-10-18), and the same day left the rest to judgment for these POCs.
+Each call below can be reversed in one place.
 
-1. *(Answered: on by default.)* **Count plays on by default, or ask?** The recommendation is on, with the privacy line
-   changed and the switch in Settings. It's the owner's data in the owner's account, and
-   cleanup is useless without it. The alternative is a one-time question when the
-   suggestions first have something to say.
-2. *(Answered: both.)* **Unique-ish viewers, or plays only?** Viewers is nice to show ("23 people") but needs the
-   daily hash. Plays only means nothing about the viewer is even read, and the privacy line
-   gets simpler. The formulas don't need viewers.
-3. *(Answered: fading and cost together, `fading-cost`.)* **Which formula?** The recommendation was **A, `idle`**, because its reason is a sentence a
-   person can check. B (`fading`) is the alternative if past hits should be protected
-   longer.
-4. *(Answered: one tap with Undo.)* **One-tap Delete with Undo, or the existing confirm sheet per video?** The brief said
-   one-tap; drawn as one tap with a few seconds' Undo before the delete is sent.
-5. **The money line.** Show cents ("about 4¢ a month"), only the GB, or the free-tier line
-   when it applies? The recommendation is GB always, cents only past the free tier, and the
-   free-tier line whenever deleting would get a space back inside it.
-6. **Who sees what.** Owner-class sees everyone's suggestions under Everyone. Members see
-   only their own. Should an owner be nudged about a member's old videos, or only their own?
-7. **Should old videos' size come from the bucket?** A Mac can sum `rec/<id>/` once and
-   write `bytes`; the estimate from duration is within about 20% at Normal quality.
-8. **fading-cost's size gate: 1¢ a month (≈ 0.67 GB, about 12 minutes), or half a cent
-   (≈ 0.33 GB, about 6)?** At 1¢ it suggests 2 of the sample's 12; at half a cent, 4. The
-   recommendation is to keep 1¢ for now (fewer, surer suggestions) and revisit with real
-   counts.
+1. **Count plays: on by default**, with **Count plays** in Settings → General (Bagrat). A
+   space with counting off writes `.shroom/views.off`; the beacon then writes nothing.
+2. **Plays and unique-ish viewers** (Bagrat). The viewer hash is the daily-salted one of §1.
+3. **The formula: `fading-cost`** (Bagrat: fading and cost together). *Decided how to
+   combine them:* both must hold, faded plays (heat < 0.25) **and** at least 1¢ a month at
+   list price, ranked by cost ÷ heat. *Because* "AND" is the only combination whose reason
+   reads as one checkable line ("Takes 3.2 GB; watched 4 times, the last 10 months ago").
+   A weighted sum would need its own explanation. The other formulas stay in the code for
+   comparison.
+4. **Delete: one tap, with Undo** (Bagrat). The delete is sent only after the Undo line
+   goes, because a sealed delete can't be undone (B125).
+5. **Decided: GB always, cents only past the free tier, and the free-tier line when it
+   applies.** *Because* cents inside the free tier would be a false "0¢" or a misleading list
+   price. "Back inside Cloudflare's free space" is the one line that saves a whole bill.
+6. **Decided: owner-class sees everyone's suggestions under Everyone; members see only their
+   own; no nudge about a member's videos.** *Because* it follows the Library's Mine ·
+   Everyone exactly, and deleting another person's video stays a deliberate act from
+   Everyone.
+7. **Decided: the Mac writes `bytes` into the record** when it publishes (and once for old
+   videos, summing `rec/<id>/`); until then, the duration estimate. *Because* the estimate is
+   off by up to about 20% at Normal, and more at other qualities, and the saving line should
+   be exact.
+8. **Decided: fading-cost's size gate is 1¢ a month (≈ 0.67 GB, about 12 minutes).**
+   *Because* fewer, surer suggestions build trust in a list that leads to deleting things;
+   half a cent doubles the list here but adds 6-minute drafts that cost almost nothing.
+   It's one constant (`FADING_COST.usdAtLeast`), to revisit with real counts.
+9. **Decided: suggestions show inside the free 10 GB too**, with the honest "saves nothing
+   yet" line. *Because* hiding them until the bill starts would make the first suggestion
+   arrive as a pile, and tidiness is worth having on its own.
+10. **For Bagrat's review: the privacy line** (§5). It's the one user-facing promise this
+    changes, and the page carries his approved copy word for word.
