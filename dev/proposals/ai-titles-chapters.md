@@ -32,8 +32,8 @@ product shape, the words and the spec rows are Bagrat's call. The POC is
    **`@cf/openai/gpt-oss-120b`** to name, with `@cf/google/gemma-4-26b-a4b-it` as the
    fallback. Hard rules sit on top in code: chapters snap to sentence starts, are ≥ 20 s
    long, start at 0:00, and appear only on videos of 90 s or more. A title someone types
-   always wins. Chapters show **under the player and cut into its bar** (option A on the
-   canvas).
+   always wins. Chapters live **in the seek bar**, split into one section per chapter
+   and named in a tip on hover, as Bagrat chose on 2026-10-18 (§9.1).
 6. **Nothing new on Cloudflare's side** (B171, live check 2). Turning it on redeploys the
    space's Worker with an `ai` binding. Members hold no AI key and never see a cost.
 
@@ -304,8 +304,9 @@ it's still unmeasured (§1.7).
    audio bytes.
 2. **Name with gpt-oss-120b**, with gemma-4 as the fallback on an error or an empty
    answer. Use one call: title plus chapters. Code holds the rules (§3).
-3. **Show chapters under the player and cut into its bar** (canvas option A), only when
-   there are 2 or more.
+3. **Show chapters in the seek bar** (Bagrat, 2026-10-18): one section per chapter, a
+   tip with the time and name on hover, and on a phone the same above the thumb while a
+   finger is on the bar. Only when there are 2 or more chapters.
 4. **Store everything beside the take** (`rec/<id>/ai/…`), deleted with it. The record
    keeps today's `titled` flag: an AI title fills the title only while `titled` is
    false, and typing one sets it as today.
@@ -343,8 +344,19 @@ Said-lines are drafts, copy for Bagrat.
   `page-owner.named-from-what-you-said` "Named from what you said. Click the title to
   change it."
 - **N-ai-4 — Chapters.** After Stop, on a take of 90 s or more with 2 or more chapters,
-  the Worker writes `rec/<id>/ai/chapters.vtt`. The page shows them as option A or B.
-  Viewers need no account, as today. *Said:* `page.chapters` "Chapters". The same step
+  the Worker writes `rec/<id>/ai/chapters.vtt`. The page splits its seek bar into one
+  section per chapter, 2 px apart.
+  - **Hover** (laptop): a tip at the pointer gives the time and the chapter's name, and
+    the section under the pointer grows a little.
+  - **Touch** (phone): while a finger drags the thumb, and for ~1.5 s after a tap, the
+    same tip sits above the thumb, and the thumb grows. Lifting seeks. The bar's touch
+    area is 44 px tall.
+  - **Always:** the chapter now playing is named after the time (`1:20 / 3:03 · Invoice
+    page bug details`, cut short with … when long).
+  - **Keyboard and VoiceOver:** the bar's spoken value names the chapter.
+
+  There is no chapter list. Viewers need no account, as today. A take with fewer than 2
+  chapters keeps today's whole bar. The same step
   writes `rec/<id>/ai/captions.vtt`, a captions track the player offers (off until a
   viewer turns it on).
 - **N-ai-5 — The free day runs out.** A Workers AI refusal for the daily allocation marks
@@ -366,8 +378,9 @@ new column right of the editor's boards (x = 11600). PNGs are in
 - **Library — the one-time offer** (`AiOffer`)
 - **Settings — Space: Name videos and add chapters, off and on** (`AiSettings`)
 - **The page — the owner's, named for you** (`AiOwnerNamed`)
-- **The page — chapters, A: listed under the player and cut into its bar** (`AiPageChapters`)
-- **The page — chapters, B: only in the bar, named on hover** (`AiPageMarks`)
+- **The page — chapters in the seek bar, named on hover** (`AiPageMarks`), Bagrat's pick
+- **The page on a phone — chapters in the seek bar, named while a finger is on it** (`AiPageMarksPhone`)
+- **The page — chapters, A: listed under the player** (`AiPageChapters`), not chosen, kept for the record
 
 The titles and chapters on the boards are the POC's real output on the invented
 walkthrough.
@@ -377,10 +390,14 @@ walkthrough.
 The POC needed an answer to each question below, so each one is decided here, with its
 alternative, as a recommendation. All of them are Bagrat's to ratify or overturn.
 
-1. **Chapters show as option A**, a list under the player plus the seek bar cut into
-   chapters. Decided because a list is readable at a glance and reachable on a phone.
-   B (the bar only, named on hover) hides the names behind hover. B stays on the canvas
-   for comparison.
+1. **Chapters live in the seek bar: ruled by Bagrat on 2026-10-18.** He chose the bar
+   split into chapter sections, with a tip naming the chapter on hover while the video
+   plays. That is option B; option A (a list under the player) is dropped. For phones,
+   which have no hover, the call made here: a finger on the bar shows the same tip above
+   the thumb (while dragging, and briefly after a tap). The current chapter is always
+   named after the time, so a phone viewer knows where they are without touching. No list
+   anywhere. The alternative was a list on phones only; it was left out to keep one
+   design everywhere.
 2. **Name with gpt-oss-120b, falling back to gemma-4.** Decided because it gave the best
    titles in 3 of 3 takes, at ~$0.007 an hour, under a fifth of the total. gemma-4 is
    ~4× cheaper and faster, and nearly as good: it is the fallback, and the obvious

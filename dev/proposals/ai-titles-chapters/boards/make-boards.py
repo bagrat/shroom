@@ -54,8 +54,10 @@ DUR = 183
 CHAPTERS = [(0, "Sign up screen changes"), (68, "Invoice page bug details"), (114, "Trial results and metrics"), (157, "Next steps and wrap up")]
 mmss = lambda t: f"{t // 60}:{t % 60:02d}"
 
-def seekbar(now, marks, hover=None):
-    """The seek bar, cut into one segment per chapter (2 px gaps), played part lit."""
+def seekbar(now, marks, hover=None, scrub=False):
+    """The seek bar, cut into one segment per chapter (2 px gaps), played part lit. `hover`:
+    the chapter under the pointer, named in a tip; `scrub`: a finger dragging the thumb, the
+    time and chapter named above it."""
     segs = []
     for i, (s, t) in enumerate(CHAPTERS):
         e = CHAPTERS[i + 1][0] if i + 1 < len(CHAPTERS) else DUR
@@ -64,13 +66,17 @@ def seekbar(now, marks, hover=None):
         segs.append(f'<div title="{t}" style="width: calc({frac:.2f}% - 2px); height: {6 if hover == i else 4}px; border-radius: 2px; background: linear-gradient(to right, #88c0d0 {played:.1f}%, #434a56 {played:.1f}%); flex: none"></div>')
     knob = now / DUR * 100
     tip = ""
+    if scrub:
+        cur = [t for st, t in CHAPTERS if st <= now][-1]
+        tip = f'<div style="position: absolute; left: {knob:.1f}%; bottom: 22px; transform: translateX(-50%); background: #1f2228; border: 1px solid #434a56; border-radius: 8px; padding: 6px 10px; white-space: nowrap; font-size: 13px; color: #eceff4"><span style="color: #aeb6c4; font-variant-numeric: tabular-nums">{mmss(now)}</span>  {cur}</div>'
+
     if hover is not None:
         s, t = CHAPTERS[hover]
         left = (s + 8) / DUR * 100
         tip = f'<div style="position: absolute; left: {left:.1f}%; bottom: 18px; transform: translateX(-50%); background: #1f2228; border: 1px solid #434a56; border-radius: 7px; padding: 4px 9px; white-space: nowrap; font-size: 12px; color: #eceff4"><span style="color: #aeb6c4; font-variant-numeric: tabular-nums">{mmss(s + 8)}</span>  {t}</div>'
     return f'''<div role="slider" tabindex="0" aria-label="Seek" aria-valuemin="0" aria-valuemax="{DUR}" aria-valuenow="{now}" aria-valuetext="{mmss(now)} of {mmss(DUR)}, {CHAPTERS[[i for i,(s,_) in enumerate(CHAPTERS) if s <= now][-1]][1]}" style="height: 16px; margin: -6px 0 -6px 0; display: flex; flex-direction: row; align-items: center; gap: 2px; position: relative">
 {''.join(segs)}
-<div style="position: absolute; left: calc({knob:.2f}% - 7px); width: 14px; height: 14px; border-radius: 7px; background: #eceff4"></div>
+<div style="position: absolute; left: calc({knob:.2f}% - {10 if scrub else 7}px); width: {20 if scrub else 14}px; height: {20 if scrub else 14}px; border-radius: 10px; background: #eceff4{'; box-shadow: 0 0 0 6px rgba(236, 239, 244, 0.18)' if scrub else ''}"></div>
 {tip}
 </div>'''
 
@@ -133,23 +139,42 @@ def video_page(h1, inner_after, now, hover=None, owner_title=None, chapter_label
 
 boards = {}
 
-# 1. The page, chapters listed under the player and cut into its bar (option A).
+# 1. The page, chapters listed under the player and cut into its bar (option A, not chosen).
 boards["AiPageChapters.dc.html"] = (
-    "The page — chapters, A: listed under the player and cut into its bar (a proposal, for Bagrat; words are drafts)", 1280, 1160,
+    "The page — chapters, A: listed under the player and cut into its bar (not chosen: Bagrat picked B, 2026-10-18)", 1280, 1160,
     page("shroom video page, chapters under the player", 1280, 1160, video_page(TITLE, chapter_list(80), 80,
-        extra_note=note("<b>Option A.</b> The seek bar is cut into one piece per chapter; the chapter you're in is lit in the list and named beside the time. A click on a row jumps there. Shown only when the video has 2 or more chapters (90 s or longer). The title and chapters here are the POC's real output on an invented 3-minute take."))))
+        extra_note=note("<b>Option A, not chosen</b> (Bagrat picked B, 2026-10-18). Kept for the record: the seek bar cut into chapters plus a list under the player."))))
 
-# 2. The page, chapters only in the bar, named on hover (option B).
+# 2. The page, chapters in the bar, named on hover (option B, chosen).
 boards["AiPageMarks.dc.html"] = (
-    "The page — chapters, B: only in the bar, named on hover (a proposal, for Bagrat)", 1280, 900,
-    page("shroom video page, chapters in the bar only", 1280, 900, video_page(TITLE, "", 80, hover=2,
-        extra_note=note("<b>Option B.</b> Nothing under the player: the bar's pieces are the chapters, and hovering one names it (a tap on a phone). Quieter, but a viewer can't see the list at a glance, and on a phone the names are hard to reach. The chapter you're in is named beside the time, as in A."))))
+    "The page — chapters in the seek bar, named on hover (B, Bagrat's pick, 2026-10-18; words are drafts)", 1280, 900,
+    page("shroom video page, chapters in the seek bar", 1280, 900, video_page(TITLE, "", 80, hover=2,
+        extra_note=note("<b>Chapters live in the seek bar</b> (Bagrat's pick, 2026-10-18). The bar is cut into one piece per chapter, 2 px apart. Hovering the bar, playing or paused, shows a tip with the time and the chapter's name at that point; the piece under the pointer grows a little. The chapter now playing is named beside the time. No list under the player. The keyboard: the bar's spoken value names the chapter (\u201c1:20 of 3:03, Invoice page bug details\u201d). Shown only when the video has 2 or more chapters (90 s or longer); otherwise the bar is whole, as today. Phones: the next board."))))
+
+# 2b. The same on a phone: no hover, so a finger on the bar names the chapter.
+def phone_body(now):
+    cur = [t for st, t in CHAPTERS if st <= now][-1]
+    return f'''<div style="width: 390px; height: 844px; box-sizing: border-box; background: #2b2f36; padding: 28px 16px 24px 16px; display: flex; flex-direction: column; gap: 16px; font-family: {FONT}; font-size: 14px; line-height: 1.5; color: #eceff4">
+<h1 style="margin: 0; font-size: 1.35rem; font-weight: 600; line-height: 1.25">{TITLE}</h1>
+<div style="width: 100%; aspect-ratio: 16 / 9; border-radius: 10px; background: #1f2228; display: flex; flex-direction: column; overflow: visible; position: relative">
+<div style="flex: 1 1 0"></div>
+<div style="background: #262a31; border-radius: 0 0 10px 10px; display: flex; flex-direction: column; flex: none">
+{seekbar(now, True, scrub=True)}
+<div style="height: 48px; padding: 0 6px; display: flex; flex-direction: row; align-items: center; gap: 2px; color: #d8dee9; font-size: 13px">
+<button aria-label="Pause" style="width: 44px; height: 44px; border: 0; background: transparent; display: flex; align-items: center; justify-content: center; flex: none"><svg viewBox="0 0 16 16" aria-hidden="true" style="width: 18px; height: 18px; fill: #eceff4; display: block"><path d="M4 3h3v10H4zM9 3h3v10H9z"></path></svg></button>
+<span style="font-variant-numeric: tabular-nums; white-space: nowrap"><span style="color: #eceff4">{mmss(now)}</span> / {mmss(DUR)}</span>
+<span style="color: #aeb6c4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1 1 0; padding: 0 0 0 6px">· {cur}</span>
+<button aria-label="Full screen" style="width: 44px; height: 44px; border: 0; background: transparent; display: flex; align-items: center; justify-content: center; flex: none"><svg viewBox="0 0 16 16" aria-hidden="true" style="width: 18px; height: 18px; fill: none; stroke: #d8dee9; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; display: block"><path d="M2.5 6V3.5H5M11 3.5h2.5V6M13.5 10v2.5H11M5 12.5H2.5V10"></path></svg></button>
+</div></div></div>
+{note("<b>On a phone there's no hover.</b> A finger on the bar shows the time and chapter above the thumb, and the thumb grows while it's held. That happens while dragging, and for about 1.5 s after a tap. Lifting the finger seeks there. The bar's touch area is 44 px tall, though it looks 4 px. The chapter now playing is always named beside the time (cut short with … when long), so a phone viewer sees where they are without touching. No list anywhere, as on a laptop.")}
+</div>'''
+boards["AiPageMarksPhone.dc.html"] = ("The page on a phone — chapters in the seek bar, named while a finger is on it (a proposal; words are drafts)", 390, 844, page("shroom video page on a phone, chapters", 390, 844, phone_body(122)))
 
 # 3. The owner's page once the title has come in.
 boards["AiOwnerNamed.dc.html"] = (
-    "The page — the owner's, named for you (a proposal, for Bagrat; words are drafts)", 1280, 1160,
-    page("shroom video page, owner, named", 1280, 1160, video_page(TITLE, chapter_list(0), 0, owner_title=TITLE,
-        extra_note=note("About 10–15 s after Stop, the title and chapters arrive (the take is heard while it records). Until then the title is today's (the date). A title the owner or member types always wins and is never written over; the line goes once the title is edited. Chapters can't be edited in v-next (an open question)."))))
+    "The page — the owner's, named for you (a proposal, for Bagrat; words are drafts)", 1280, 900,
+    page("shroom video page, owner, named", 1280, 900, video_page(TITLE, "", 0, owner_title=TITLE,
+        extra_note=note("About 10–15 s after Stop, the title and chapters arrive (the take is heard while it records), and the seek bar splits into chapters. Until then the title is today's (the date). A title the owner or member types always wins and is never written over; the line goes once the title is edited. Chapters can't be edited in the first cut."))))
 
 # 4. Settings · Space: the switch and its one cost line.
 def settings_body():
@@ -204,14 +229,16 @@ def offer_body():
 boards["AiOffer.dc.html"] = ("Library — the one-time offer: name your videos and add chapters (a proposal, for Bagrat; words are drafts)", 760, 560, page("shroom Library, AI offer", 760, 560, offer_body()))
 
 X = 11600
-place = [("AiOffer.dc.html", 0), ("AiSettings.dc.html", 700), ("AiOwnerNamed.dc.html", 1540), ("AiPageChapters.dc.html", 2840), ("AiPageMarks.dc.html", 4140)]
+place = [("AiOffer.dc.html", 0), ("AiSettings.dc.html", 700), ("AiOwnerNamed.dc.html", 1540), ("AiPageMarks.dc.html", 2560), ("AiPageMarksPhone.dc.html", 3580), ("AiPageChapters.dc.html", 4540)]
 canvas_path = os.path.join(out, "canvas.json")
-canvas = json.load(open(canvas_path))
+raw = open(canvas_path).read()
+indent = len(raw.split("\n")[1]) - len(raw.split("\n")[1].lstrip()) or 1  # keep the file's own indent
+canvas = json.loads(raw)
 for name, y in place:
     title, w, h, html = boards[name]
     open(os.path.join(out, name), "w").write(html)
     canvas["boards"][name] = {"h": h, "radius": 12, "title": title, "w": w, "x": X, "y": y}
     if name not in canvas["order"]:
         canvas["order"].append(name)
-json.dump(canvas, open(canvas_path, "w"), ensure_ascii=False, indent=1)
+json.dump(canvas, open(canvas_path, "w"), ensure_ascii=False, indent=indent)
 print("wrote", ", ".join(n for n, _ in place))
