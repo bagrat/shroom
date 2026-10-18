@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use shroom_storage::s3::Client;
 
 use crate::keys;
-use crate::meta::{Meta, State, now_iso};
+use crate::meta::{Meta, State, iso_at, now_iso};
 use crate::upload::{UploadError, update_meta, with_retry};
 
 /// What a Library row needs from a record.
@@ -193,16 +193,25 @@ pub fn save_edits(s3: &Client, id: &str, list: &shroom_edit::EditList, asked_rev
     Ok(rev)
 }
 
+/// How long the original stays beside a landed copy before a bake deletes it (B197 (b)):
+/// two days from the copy's landing, `edits.keep_until`.
+pub const KEEP_ORIGINAL_MS: i64 = 2 * DAY_MS;
+
 /// Names the permanent copy of a saved revision in the record (`edits.copy`), once its
-/// files are up — only while the record still holds that revision. Returns `true` when it
-/// did: the previous copy's files then go. `false` when the record moved on (a newer save,
-/// another Mac's edit, no edit at all): nothing is written, and the files of `copy` that
-/// were just sent are deleted here — never one the record still names. A tombstone stops it.
-pub fn set_edit_copy(s3: &Client, id: &str, copy: &shroom_edit::EditCopy) -> Result<bool, UploadError> {
+/// files are up — only while the record still holds that revision — and sets when the
+/// original goes, `edits.keep_until`: `now` (ISO 8601, UTC) plus [`KEEP_ORIGINAL_MS`]
+/// (B197). Naming the same copy again (a retry) keeps the time it first set. Returns `true`
+/// when it named it: the previous copy's files then go. `false` when the record moved on (a
+/// newer save, another Mac's edit, no edit at all): nothing is written, and the files of
+/// `copy` that were just sent are deleted here — never one the record still names. A
+/// tombstone stops it.
+pub fn set_edit_copy(s3: &Client, id: &str, copy: &shroom_edit::EditCopy, now: &str) -> Result<bool, UploadError> {
     let mine: Vec<String> = copy.files().into_iter().map(str::to_string).collect();
     if !mine.iter().all(|f| is_copy_file(f)) {
         return Err(UploadError::Incomplete(format!("not a copy's file names: {mine:?}")));
     }
+    let at = iso_ms(now).ok_or_else(|| UploadError::Incomplete(format!("not a time: {now:?}")))?;
+    let keep_until = iso_at(u64::try_from((at + KEEP_ORIGINAL_MS).div_euclid(1000)).unwrap_or(0));
     let holds = |m: &Meta| m.edits.as_ref().is_some_and(|s| s.rev == copy.rev);
     // What the record names, so a stale copy's cleanup never takes a file it still names.
     let named = |m: &Meta| -> Vec<String> { m.edits.as_ref().and_then(|s| s.copy.as_ref()).map(|c| c.files().into_iter().map(str::to_string).collect()).unwrap_or_default() };
@@ -224,8 +233,12 @@ pub fn set_edit_copy(s3: &Client, id: &str, copy: &shroom_edit::EditCopy) -> Res
         doomed.clear();
         current = holds(m);
         let Some(saved) = m.edits.as_mut().filter(|_| current) else { return };
+        let again = saved.copy.as_ref() == Some(copy) && saved.keep_until.is_some();
         if let Some(previous) = saved.copy.replace(copy.clone()) {
             doomed.extend(previous.files().into_iter().map(str::to_string).filter(|f| !mine.contains(f)));
+        }
+        if !again {
+            saved.keep_until = Some(keep_until.clone());
         }
     })?;
     if !current {

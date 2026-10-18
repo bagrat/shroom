@@ -1,7 +1,8 @@
 //! The editor's writes against the L1 fake's S3 (N63, DECISIONS B195): a save is the next
 //! revision of the record's `edits`, read-modify-write, the rest of the record kept; a
-//! permanent copy is named only while its revision is the saved one, and the files of a copy
-//! the record no longer names go; the identity drops the copy; a tombstone stops both. And
+//! permanent copy is named only while its revision is the saved one, its landing keeps the
+//! original two more days (B197), and the files of a copy the record no longer names go; the
+//! identity drops the copy; a tombstone stops both. And
 //! the editor's fetch of a recording streams its single-file copy out of the bucket.
 
 use shroom_cloudfake::{Fake, State};
@@ -13,6 +14,8 @@ use shroom_upload::meta::{Meta, State as MetaState};
 use shroom_upload::upload::UploadError;
 
 const A: &str = "AAAAAAAAAAAAAAAA";
+/// When the copies below land.
+const NOW: &str = "2026-10-18T09:30:00Z";
 
 fn space() -> (Fake, Client) {
     let mut st = State::fresh();
@@ -97,12 +100,12 @@ fn a_copy_is_named_only_while_its_revision_is_the_saved_one() {
     record(&s3, A);
     library::save_edits(&s3, A, &edited(), 1).unwrap();
     send(&s3, A, &copy(1));
-    assert!(library::set_edit_copy(&s3, A, &copy(1)).unwrap());
+    assert!(library::set_edit_copy(&s3, A, &copy(1), NOW).unwrap());
     let v = read(&s3, A);
     assert_eq!((v["edits"]["copy"]["rev"].as_u64(), v["edits"]["copy"]["file"].as_str()), (Some(1), Some("edit-1.mp4")));
     assert_eq!(v["edits"]["copy"]["teaser"], "edit-1-teaser.mp4");
     // Naming it again changes nothing and deletes nothing.
-    assert!(library::set_edit_copy(&s3, A, &copy(1)).unwrap());
+    assert!(library::set_edit_copy(&s3, A, &copy(1), NOW).unwrap());
     assert!(files(&fake, A).contains(&"edit-1.mp4".to_string()));
 
     // A newer save leaves the old copy named, now stale; its files stay until the next lands.
@@ -110,7 +113,7 @@ fn a_copy_is_named_only_while_its_revision_is_the_saved_one() {
     assert_eq!(read(&s3, A)["edits"]["copy"]["rev"], 1);
     assert!(files(&fake, A).contains(&"edit-1-poster.jpg".to_string()));
     send(&s3, A, &copy(2));
-    assert!(library::set_edit_copy(&s3, A, &copy(2)).unwrap());
+    assert!(library::set_edit_copy(&s3, A, &copy(2), NOW).unwrap());
     let mut left = files(&fake, A);
     left.sort();
     assert_eq!(left, ["edit-2-poster.jpg", "edit-2-teaser.mp4", "edit-2.mp4", "poster.jpg", "video.mp4"], "the previous copy went, the original stays");
@@ -119,7 +122,7 @@ fn a_copy_is_named_only_while_its_revision_is_the_saved_one() {
     // and the copy the record names stays.
     let before = s3.get_with_etag(&format!("meta/{A}.json")).unwrap().unwrap().1;
     send(&s3, A, &copy(1));
-    assert!(!library::set_edit_copy(&s3, A, &copy(1)).unwrap());
+    assert!(!library::set_edit_copy(&s3, A, &copy(1), NOW).unwrap());
     assert_eq!(s3.get_with_etag(&format!("meta/{A}.json")).unwrap().unwrap().1, before, "the record wasn't rewritten");
     assert_eq!(read(&s3, A)["edits"]["copy"]["rev"], 2);
     let mut left = files(&fake, A);
@@ -128,15 +131,52 @@ fn a_copy_is_named_only_while_its_revision_is_the_saved_one() {
 
     // A copy is only ever named by a copy's own file names.
     let forged = EditCopy { file: "video.mp4".into(), ..copy(2) };
-    assert!(library::set_edit_copy(&s3, A, &forged).is_err());
+    assert!(library::set_edit_copy(&s3, A, &forged, NOW).is_err());
     assert_eq!(read(&s3, A)["edits"]["copy"]["file"], "edit-2.mp4");
     assert!(files(&fake, A).contains(&"video.mp4".to_string()));
 
     // A copy for a record with no edit at all is stale too.
     record(&s3, "BBBBBBBBBBBBBBBB");
     send(&s3, "BBBBBBBBBBBBBBBB", &copy(1));
-    assert!(!library::set_edit_copy(&s3, "BBBBBBBBBBBBBBBB", &copy(1)).unwrap());
+    assert!(!library::set_edit_copy(&s3, "BBBBBBBBBBBBBBBB", &copy(1), NOW).unwrap());
     assert!(files(&fake, "BBBBBBBBBBBBBBBB").iter().all(|f| !f.starts_with("edit-")));
+}
+
+/// B197 (b): a copy's landing sets when the original goes, two days on; a retry keeps that
+/// time, the next revision's copy sets its own, a late copy of an old revision sets none.
+#[test]
+fn a_copys_landing_keeps_the_original_two_more_days() {
+    let (_fake, s3) = space();
+    record(&s3, A);
+    library::save_edits(&s3, A, &edited(), 1).unwrap();
+    send(&s3, A, &copy(1));
+    assert!(library::set_edit_copy(&s3, A, &copy(1), "2026-10-18T09:30:00Z").unwrap());
+    assert_eq!(read(&s3, A)["edits"]["keep_until"], "2026-10-20T09:30:00Z");
+    // The same copy named again later (a lost reply, retried) doesn't move it.
+    assert!(library::set_edit_copy(&s3, A, &copy(1), "2026-10-18T11:00:00.250Z").unwrap());
+    assert_eq!(read(&s3, A)["edits"]["keep_until"], "2026-10-20T09:30:00Z");
+
+    // A newer save keeps it as it is, while that revision's copy is made…
+    library::save_edits(&s3, A, &edited(), 2).unwrap();
+    assert_eq!(read(&s3, A)["edits"]["keep_until"], "2026-10-20T09:30:00Z");
+    // …a late copy of the old revision writes nothing…
+    send(&s3, A, &copy(1));
+    assert!(!library::set_edit_copy(&s3, A, &copy(1), "2026-10-19T08:00:00Z").unwrap());
+    assert_eq!(read(&s3, A)["edits"]["keep_until"], "2026-10-20T09:30:00Z");
+    // …and the new copy's landing starts its own two days.
+    send(&s3, A, &copy(2));
+    assert!(library::set_edit_copy(&s3, A, &copy(2), "2026-10-19T08:00:00Z").unwrap());
+    let v = read(&s3, A);
+    assert_eq!((v["edits"]["keep_until"].as_str(), v["edits"]["copy"]["rev"].as_u64()), (Some("2026-10-21T08:00:00Z"), Some(2)));
+    let m: Meta = serde_json::from_value(v).unwrap();
+    assert_eq!(m.edits.unwrap().keep_until.as_deref(), Some("2026-10-21T08:00:00Z"));
+
+    // A time that isn't one names nothing.
+    library::save_edits(&s3, A, &edited(), 3).unwrap();
+    send(&s3, A, &copy(3));
+    let before = s3.get_with_etag(&format!("meta/{A}.json")).unwrap().unwrap().1;
+    assert!(library::set_edit_copy(&s3, A, &copy(3), "yesterday").is_err());
+    assert_eq!(s3.get_with_etag(&format!("meta/{A}.json")).unwrap().unwrap().1, before);
 }
 
 #[test]
@@ -145,12 +185,14 @@ fn the_identity_drops_the_copy_and_its_files() {
     record(&s3, A);
     library::save_edits(&s3, A, &edited(), 1).unwrap();
     send(&s3, A, &copy(1));
-    assert!(library::set_edit_copy(&s3, A, &copy(1)).unwrap());
+    assert!(library::set_edit_copy(&s3, A, &copy(1), NOW).unwrap());
+    assert!(read(&s3, A)["edits"]["keep_until"].is_string());
     // Revert to original, saved.
     assert_eq!(library::save_edits(&s3, A, &EditList::new(60.0), 2).unwrap(), 2);
     let v = read(&s3, A);
     assert_eq!(v["edits"]["rev"], 2);
     assert!(v["edits"].get("copy").is_none(), "{v}");
+    assert!(v["edits"].get("keep_until").is_none(), "nothing kept for: {v}");
     let m: Meta = serde_json::from_value(v).unwrap();
     assert_eq!(m.edited_sec(), None, "no edit");
     let mut left = files(&fake, A);
@@ -180,7 +222,7 @@ fn a_tombstone_stops_a_save_and_a_copy() {
     record(&s3, A);
     library::delete(&s3, A).unwrap();
     assert!(matches!(library::save_edits(&s3, A, &edited(), 1), Err(UploadError::Tombstoned)));
-    assert!(matches!(library::set_edit_copy(&s3, A, &copy(1)), Err(UploadError::Tombstoned)));
+    assert!(matches!(library::set_edit_copy(&s3, A, &copy(1), NOW), Err(UploadError::Tombstoned)));
     assert_eq!(read(&s3, A)["state"], "deleted");
 }
 

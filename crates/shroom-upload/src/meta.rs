@@ -151,8 +151,12 @@ pub fn listed(v: Value) -> Option<Meta> {
 
 /// ISO-8601 UTC, seconds precision.
 pub fn now_iso() -> String {
-    let secs = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
-    let d = shroom_storage::sigv4::amz_date(secs); // YYYYMMDDTHHMMSSZ
+    iso_at(std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0))
+}
+
+/// Seconds since the Unix epoch as [`now_iso`] writes a time: `2026-10-02T12:00:00Z`.
+pub fn iso_at(unix_seconds: u64) -> String {
+    let d = shroom_storage::sigv4::amz_date(unix_seconds); // YYYYMMDDTHHMMSSZ
     format!("{}-{}-{}T{}:{}:{}Z", &d[0..4], &d[4..6], &d[6..8], &d[9..11], &d[11..13], &d[13..15])
 }
 
@@ -255,5 +259,7 @@ mod tests {
         let n = now_iso();
         assert_eq!(n.len(), 20);
         assert!(n.ends_with('Z') && &n[10..11] == "T");
+        assert_eq!(iso_at(1_790_942_400), "2026-10-02T12:00:00Z");
+        assert_eq!(crate::library::iso_ms(&iso_at(1_791_115_199)), Some(1_791_115_199_000));
     }
 }
