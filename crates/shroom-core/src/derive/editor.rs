@@ -142,17 +142,20 @@ fn kept_left(w: &World, e: &EditorFields) -> Option<i64> {
     (left > 0).then_some(left)
 }
 
-/// When the time-left line by Revert next changes its words — a day left, an hour left,
-/// gone — as wakes on the monotonic clock.
+/// When the time-left line by Revert next changes its words — under 47 hours, under a day,
+/// each hour after, under an hour, gone — as a wake on the monotonic clock.
 pub fn wakes(w: &World, out: &mut Vec<Mono>) {
     const HOUR: i64 = 3_600_000;
     let Some(left) = w.session.fields.editor.as_ref().and_then(|e| kept_left(w, e)) else { return };
-    // A day left reads “1 more day”; under an hour, “a few more hours”; at none, nothing.
-    for at in [left - 24 * HOUR, left - HOUR + 1, left] {
-        if at > 0 {
-            out.push(w.now.plus(at as u64));
-        }
-    }
+    // The words hold down to their band's floor (`copy::original_kept`) and change a
+    // millisecond under it; under an hour, they hold until the time is up.
+    let floor = match left {
+        l if l >= 47 * HOUR => 47 * HOUR,
+        l if l >= 24 * HOUR => 24 * HOUR,
+        l => l / HOUR * HOUR,
+    };
+    let at = if floor > 0 { left - floor + 1 } else { left };
+    out.push(w.now.plus(at as u64));
 }
 
 /// A cut's kind, as the record spells it (`shroom_edit::CutKind`'s serde names).

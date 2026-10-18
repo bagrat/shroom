@@ -438,15 +438,17 @@ pub fn save_failed() -> String { "Couldn't save your edit. Check your connection
 /// Under a dashed suggestion that was clicked (a voice cue's offer, N65).
 pub fn cut_it_too() -> String { "Cut it too".into() }
 /// By Revert, while an earlier edit's original is kept beside its copy (B197 (e)): the time
-/// it has left — more than a day, a day at most, under an hour.
+/// it has left, never more than that (B199) — two days from 47 hours, a day from 24, then
+/// whole hours rounded down (law 16's words to nine), one hour, and under an hour less than
+/// one.
 pub fn original_kept(left_ms: i64) -> String {
     const HOUR: i64 = 3_600_000;
-    let left = if left_ms > 24 * HOUR {
-        "2 more days"
-    } else if left_ms >= HOUR {
-        "1 more day"
-    } else {
-        "a few more hours"
+    let left = match left_ms {
+        l if l >= 47 * HOUR => "two more days".to_string(),
+        l if l >= 24 * HOUR => "one more day".to_string(),
+        l if l >= 2 * HOUR => format!("{} more hours", count_word((l / HOUR) as u64)),
+        l if l >= HOUR => "one more hour".to_string(),
+        _ => "less than an hour".to_string(),
     };
     format!("The original is kept {left}")
 }
@@ -1253,7 +1255,7 @@ pub fn registry() -> Vec<(&'static str, String)> {
         ("editor-saving", saving_done()),
         ("editor-save-failed", save_failed()),
         ("editor", cut_it_too()),
-        ("editor", original_kept(12 * 3_600_000)),
+        ("editor", original_kept(30 * 3_600_000)),
         ("editor-making", making_video(40)),
         ("editor-making", making_line()),
         ("editor-making", close()),
