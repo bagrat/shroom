@@ -1167,6 +1167,10 @@ for (const entry of feedbacks) {
     const { ctx, page, errors } = await open("feedback", w, { colorScheme: scheme });
     const v = await vars(page);
     await common(tag, page, errors, "feedback", sceneForText, { allow: ["field"] });
+    // The system font, as every window has it: a browser's default would be a serif in a
+    // Mac's webview (Linux's WebKit falls back to a sans, which hid it).
+    const fonts = await page.evaluate(() => ["main.fb", "main.fb button", "main.fb p"].map((q) => document.querySelector(q)).filter(Boolean).map((e) => getComputedStyle(e).fontFamily));
+    check(`${tag}: its words in the system font`, fonts.length >= 2 && fonts.every((f) => f.includes("-apple-system")), fonts.join(" | "));
     const want = b.sent ? [b.sent.done] : [...b.buttons, ...(b.mail ? [b.mail] : [])];
     const shown = await page.locator("button:visible").allInnerTexts();
     check(`${tag}: the Scene's buttons, no others`, shown.map(norm).sort().join("|") === want.map((x) => norm(x.label)).sort().join("|"), shown.join("|"));
