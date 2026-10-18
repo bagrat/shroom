@@ -42,6 +42,11 @@ pub enum Confidence {
 /// One cut: `[start, end)` on the source timeline is left out when applied.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Cut {
+    /// Short and unique within the list: `m1`, `m2`… by hand, `v1`… from the voice cues. A
+    /// writer that flips one cut, or merges a list another writer changed, names it by this,
+    /// never by its place. Empty in lists written before ids.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub id: String,
     pub start: f64,
     pub end: f64,
     pub kind: CutKind,
@@ -62,6 +67,7 @@ impl Cut {
     /// A cut drawn by hand: applied at once.
     pub fn manual(start: f64, end: f64) -> Cut {
         Cut {
+            id: String::new(),
             start,
             end,
             kind: CutKind::Manual,
@@ -88,6 +94,17 @@ pub struct EditList {
     pub in_: f64,
     pub out: f64,
     pub cuts: Vec<Cut>,
+    /// The voice cues were planned once (spec N65): a later plan never brings back a cut
+    /// someone took out. The editor carries it through untouched.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub voice: Option<Voice>,
+}
+
+/// When the take's spoken cues were planned, and how many there were.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Voice {
+    pub planned_at: u64,
+    pub cues: u32,
 }
 
 /// Nothing shorter plays: a trim or a cut that would leave less is refused (seconds).
@@ -98,8 +115,30 @@ pub const MIN_HAND_CUT: f64 = 0.1;
 
 impl EditList {
     pub fn new(source_duration: f64) -> Self {
-        let d = if source_duration.is_finite() && source_duration > 0.0 { source_duration } else { 0.0 };
-        Self { version: 1, source_duration: d, in_: 0.0, out: d, cuts: Vec::new() }
+        let d = if source_duration.is_finite() && source_duration > 0.0 {
+            source_duration
+        } else {
+            0.0
+        };
+        Self {
+            version: 1,
+            source_duration: d,
+            in_: 0.0,
+            out: d,
+            cuts: Vec::new(),
+            voice: None,
+        }
+    }
+
+    /// The next free hand-cut id: `m1`, `m2`…
+    pub fn next_manual_id(&self) -> String {
+        let n = self
+            .cuts
+            .iter()
+            .filter_map(|c| c.id.strip_prefix('m')?.parse::<u32>().ok())
+            .max()
+            .unwrap_or(0);
+        format!("m{}", n + 1)
     }
 
     /// The list made safe to play and to edit, whatever it was read from: times clamped to
@@ -107,10 +146,20 @@ impl EditList {
     /// no length dropped, the trim kept in order and at least [`MIN_KEEP`] long where the
     /// recording allows. Overlapping cuts are kept: [`EditList::keep`] merges them.
     pub fn checked(mut self) -> Self {
-        let d = if self.source_duration.is_finite() && self.source_duration > 0.0 { self.source_duration } else { 0.0 };
+        let d = if self.source_duration.is_finite() && self.source_duration > 0.0 {
+            self.source_duration
+        } else {
+            0.0
+        };
         self.source_duration = d;
         self.version = 1;
-        let clamp = |t: f64| if t.is_finite() { t.clamp(0.0, d) } else { f64::NAN };
+        let clamp = |t: f64| {
+            if t.is_finite() {
+                t.clamp(0.0, d)
+            } else {
+                f64::NAN
+            }
+        };
         let (mut a, mut b) = (clamp(self.in_), clamp(self.out));
         if a.is_nan() {
             a = 0.0;
@@ -238,7 +287,10 @@ impl EditCopy {
 
     /// The copy's files, each a name beside the recording (`rec/<id>/<name>`).
     pub fn files(&self) -> Vec<&str> {
-        std::iter::once(self.file.as_str()).chain(self.poster.as_deref()).chain(self.teaser.as_deref()).collect()
+        std::iter::once(self.file.as_str())
+            .chain(self.poster.as_deref())
+            .chain(self.teaser.as_deref())
+            .collect()
     }
 }
 
@@ -266,7 +318,11 @@ mod tests {
     use super::*;
 
     fn cut(start: f64, end: f64, applied: bool) -> Cut {
-        Cut { applied, kind: CutKind::Retake, ..Cut::manual(start, end) }
+        Cut {
+            applied,
+            kind: CutKind::Retake,
+            ..Cut::manual(start, end)
+        }
     }
 
     #[test]
@@ -274,7 +330,12 @@ mod tests {
         let mut l = EditList::new(10.0);
         l.in_ = 1.0;
         l.out = 9.0;
-        l.cuts = vec![cut(2.0, 3.0, true), cut(2.5, 4.0, true), cut(5.0, 6.0, false), cut(8.5, 12.0, true)];
+        l.cuts = vec![
+            cut(2.0, 3.0, true),
+            cut(2.5, 4.0, true),
+            cut(5.0, 6.0, false),
+            cut(8.5, 12.0, true),
+        ];
         assert_eq!(l.keep(), vec![(1.0, 2.0), (4.0, 8.5)]);
         assert_eq!(l.edited_duration(), 5.5);
         assert_eq!(l.to_edited(4.5), Some(1.5));
@@ -302,7 +363,10 @@ mod tests {
         assert_eq!(l.to_source(99.0), 10.0);
         assert_eq!(l.to_source(-1.0), 1.0);
         for e in [0.0, 0.5, 1.99, 2.0, 4.5, 6.9] {
-            assert!((l.to_edited(l.to_source(e)).unwrap() - e).abs() < 1e-9, "{e}");
+            assert!(
+                (l.to_edited(l.to_source(e)).unwrap() - e).abs() < 1e-9,
+                "{e}"
+            );
         }
     }
 
@@ -311,10 +375,20 @@ mod tests {
         let mut l = EditList::new(10.0);
         l.in_ = -3.0;
         l.out = 42.0;
-        l.cuts = vec![cut(-1.0, 0.8, true), cut(9.5, 11.0, true), cut(4.0, 5.0, true), cut(4.6, 5.4, true), cut(f64::NAN, 2.0, true), cut(6.0, 6.0, true)];
+        l.cuts = vec![
+            cut(-1.0, 0.8, true),
+            cut(9.5, 11.0, true),
+            cut(4.0, 5.0, true),
+            cut(4.6, 5.4, true),
+            cut(f64::NAN, 2.0, true),
+            cut(6.0, 6.0, true),
+        ];
         let l = l.checked();
         assert_eq!((l.in_, l.out), (0.0, 10.0));
-        assert_eq!(l.cuts.iter().map(|c| (c.start, c.end)).collect::<Vec<_>>(), vec![(0.0, 0.8), (9.5, 10.0), (4.0, 5.0), (4.6, 5.4)]);
+        assert_eq!(
+            l.cuts.iter().map(|c| (c.start, c.end)).collect::<Vec<_>>(),
+            vec![(0.0, 0.8), (9.5, 10.0), (4.0, 5.0), (4.6, 5.4)]
+        );
         assert_eq!(l.keep(), vec![(0.8, 4.0), (5.4, 9.5)]);
     }
 
@@ -332,11 +406,40 @@ mod tests {
     }
 
     #[test]
+    fn ids_and_the_voice_plan_round_trip_and_old_lists_still_load() {
+        let json = r#"{"version":1,"source_duration":10.0,"in":0.0,"out":10.0,"cuts":[{"id":"v1","start":2.0,"end":3.0,"kind":"retake","confidence":"high","applied":true,"removed":"a slip"}],"voice":{"planned_at":1792329066000,"cues":1}}"#;
+        let l: EditList = serde_json::from_str(json).unwrap();
+        assert_eq!(l.cuts[0].id, "v1");
+        assert_eq!(
+            l.voice,
+            Some(Voice {
+                planned_at: 1792329066000,
+                cues: 1
+            })
+        );
+        assert_eq!(l.clone().checked().voice, l.voice);
+        let back = serde_json::to_value(&l).unwrap();
+        assert_eq!(back["cuts"][0]["id"], "v1");
+        assert_eq!(back["voice"]["cues"], 1);
+        let old: EditList = serde_json::from_str(r#"{"version":1,"source_duration":5.0,"in":0.0,"out":5.0,"cuts":[{"start":1.0,"end":2.0,"kind":"manual","confidence":"high","applied":true}]}"#).unwrap();
+        assert_eq!((old.cuts[0].id.as_str(), old.voice), ("", None));
+        assert!(
+            serde_json::to_value(&old).unwrap()["cuts"][0]
+                .get("id")
+                .is_none()
+        );
+        assert_eq!(old.next_manual_id(), "m1");
+    }
+
+    #[test]
     fn saved_round_trips_flat_and_keeps_its_copy_only_while_current() {
         let json = r#"{"version":1,"source_duration":10.0,"in":1.0,"out":9.0,"cuts":[{"start":2.0,"end":3.0,"kind":"manual","confidence":"high","applied":true}],"rev":3,"copy":{"rev":3,"file":"edit-3.mp4","duration":7.0}}"#;
         let s: Saved = serde_json::from_str(json).unwrap();
         assert_eq!(s.list.in_, 1.0);
-        assert_eq!(s.current_copy().map(|c| c.file.as_str()), Some("edit-3.mp4"));
+        assert_eq!(
+            s.current_copy().map(|c| c.file.as_str()),
+            Some("edit-3.mp4")
+        );
         let back = serde_json::to_value(&s).unwrap();
         assert_eq!(back["in"], 1.0);
         assert_eq!(back["rev"], 3);
@@ -344,7 +447,13 @@ mod tests {
         assert!(stale.current_copy().is_none());
         assert_eq!(EditCopy::file_for(4), "edit-4.mp4");
         assert_eq!(EditCopy::poster_for(4), "edit-4-poster.jpg");
-        let c = EditCopy { rev: 4, file: EditCopy::file_for(4), duration: 1.0, poster: Some(EditCopy::poster_for(4)), teaser: None };
+        let c = EditCopy {
+            rev: 4,
+            file: EditCopy::file_for(4),
+            duration: 1.0,
+            poster: Some(EditCopy::poster_for(4)),
+            teaser: None,
+        };
         assert_eq!(c.files(), vec!["edit-4.mp4", "edit-4-poster.jpg"]);
     }
 }
