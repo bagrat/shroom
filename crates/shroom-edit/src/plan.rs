@@ -186,6 +186,7 @@ fn plan_one(cx: &Ctx, cue: &Cue, floor: usize, ceil: usize) -> Vec<Cut> {
             }
             let (start, end) = cx.span(from, resume - 1);
             return vec![Cut {
+                id: String::new(),
                 start,
                 end,
                 kind: CutKind::Retake,
@@ -213,6 +214,7 @@ fn plan_one(cx: &Ctx, cue: &Cue, floor: usize, ceil: usize) -> Vec<Cut> {
     }
     let (start, end) = cx.span(cue.first, last);
     let mut cuts = vec![Cut {
+        id: String::new(),
         start,
         end,
         kind: CutKind::CueOnly,
@@ -226,6 +228,7 @@ fn plan_one(cx: &Ctx, cue: &Cue, floor: usize, ceil: usize) -> Vec<Cut> {
         let line = cx.line_start(cue.first - 1, floor);
         let (start, _) = cx.span(line, cue.first - 1);
         cuts.push(Cut {
+            id: String::new(),
             start,
             end,
             kind: CutKind::LineBeforeCue,
