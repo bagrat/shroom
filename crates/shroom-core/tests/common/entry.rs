@@ -325,8 +325,8 @@ fn banner(w: &World) -> Option<&'static str> {
 }
 
 /// N66: the AI banner — the setup Mac, the space's AI known off; while its Turn on re-wires
-/// the page, or after a try of it failed until the next, else while it's unanswered (or back
-/// once, five recordings after a Not now).
+/// the page, or after a try of it failed until the next, else while it's never been answered
+/// on this Mac (a Not now is for good).
 fn ai_banner(w: &World) -> Option<&'static str> {
     if !config_exists(w) || role(w) != Some(Role::TokenHolder) || !w.space.token || w.space.ai != Some(false) {
         return None;
@@ -339,8 +339,7 @@ fn ai_banner(w: &World) -> Option<&'static str> {
             return Some("ai-offer-failed");
         }
     }
-    let b = &w.once.ai_banner;
-    (!b.done && (b.not_now == 0 || (b.not_now == 1 && b.takes >= 5))).then_some("ai-offer")
+    (!w.once.ai_offer_answered).then_some("ai-offer")
 }
 
 /// The status line's upload truth (N38) speaks — so a one-shot line waits.

@@ -2154,56 +2154,44 @@ fn the_popover_offers_ai_on_the_setup_mac() {
     assert!(banner(&r).is_none());
     assert_eq!(status(&r.scene), Some(shroom_core::copy::ai_on_said()));
     assert!(r.scene.state_ids().contains(&"ai-on"));
-    assert!(r.has(|e| matches!(e, Effect::Persist(PersistOp::Once(o)) if o.ai_banner.done)), "answered for good on this Mac");
+    assert!(r.has(|e| matches!(e, Effect::Persist(PersistOp::Once(o)) if o.ai_offer_answered)), "answered for good on this Mac");
     r.act(Action::Dismiss);
     r.click();
     assert_ne!(status(&r.scene), Some(shroom_core::copy::ai_on_said()), "said once");
 }
 
-/// N66: Not now hides the banner; after five more recordings on this Mac it's back once, and
-/// a second Not now is for good. AI turned on anywhere answers it too.
+/// N66 (Bagrat, 2026-10-18: never again): Not now hides the banner for good on this Mac, however
+/// many recordings follow; from then on only the switch in Settings · Space turns AI on. AI
+/// turned on anywhere answers it too.
 #[test]
-fn not_now_hides_the_ai_banner_until_five_more_recordings_then_for_good() {
+fn not_now_hides_the_ai_banner_for_good() {
     let due = |w: &World| derive(w).popover.and_then(|p| p.banner).is_some_and(|b| b.id == "ai-offer");
     let mut r = Run::new(ai_offered());
     r.act(Action::AiNotNow);
     assert!(r.scene.popover.as_ref().unwrap().banner.is_none());
-    assert!(r.has(|e| matches!(e, Effect::Persist(PersistOp::Once(o)) if o.ai_banner.not_now == 1 && o.ai_banner.takes == 0)));
+    assert!(r.has(|e| matches!(e, Effect::Persist(PersistOp::Once(o)) if o.ai_offer_answered)), "kept across launches");
     assert!(!r.has(|e| matches!(e, Effect::Cloud(CloudCmd::SetAi(_)))));
+    let mut w = space_tab();
+    w.space.ai = Some(false);
+    w.once.ai_offer_answered = true;
+    assert!(space_pane(&derive(&w)).ai.is_some(), "the switch stays");
 
-    // A recording that makes a link counts.
+    // Recordings never bring it back.
     let mut w = ai_offered();
-    w.once.ai_banner.not_now = 1;
+    w.once.ai_offer_answered = true;
     w.session.popover = None;
     w.take = Some(OpenTake { phase: Phase::Finalizing(Why::Stop), ..take(Phase::Recording, 61_000) });
     let mut r = Run::new(w);
     r.send(Event::Rec(RecNews::Finalized(Ok(61_000))));
-    assert!(r.has(|e| matches!(e, Effect::Persist(PersistOp::Once(o)) if o.ai_banner.takes == 1)));
-
-    for (takes, back) in [(4, false), (5, true), (40, true)] {
-        let mut w = ai_offered();
-        w.once.ai_banner.not_now = 1;
-        w.once.ai_banner.takes = takes;
-        assert_eq!(due(&w), back, "{takes} recordings after Not now");
-    }
+    assert!(!due(&r.w), "not after a recording");
     let mut w = ai_offered();
-    w.once.ai_banner.not_now = 1;
-    w.once.ai_banner.takes = 5;
-    let mut r = Run::new(w);
-    r.act(Action::AiNotNow);
-    assert!(r.has(|e| matches!(e, Effect::Persist(PersistOp::Once(o)) if o.ai_banner.not_now == 2)));
-    let mut w = ai_offered();
-    w.once.ai_banner.not_now = 2;
-    w.once.ai_banner.takes = 500;
-    assert!(!due(&w), "twice is for good");
+    w.once.ai_offer_answered = true;
+    assert!(!due(&w), "not ever");
 
     // On from Settings answers it too, even if it's turned off again later.
     let mut r = Run::new(ai_offered());
     r.send(Event::Cloud(CloudNews::AiSet(true)));
-    assert!(r.has(|e| matches!(e, Effect::Persist(PersistOp::Once(o)) if o.ai_banner.done)));
-    let mut w = ai_offered();
-    w.once.ai_banner.done = true;
-    assert!(!due(&w));
+    assert!(r.has(|e| matches!(e, Effect::Persist(PersistOp::Once(o)) if o.ai_offer_answered)));
 }
 
 /// N66, law 12: a Turn on that didn't go through is tried again quietly — ten minutes, then
