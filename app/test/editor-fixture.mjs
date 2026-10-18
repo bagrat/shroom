@@ -6,7 +6,7 @@
 
 export const REC = "k3v9q2mz7x";
 
-const labels = { play: "Play", pause: "Pause", undo: "Undo", redo: "Redo", cut: "Cut {} s", put_back: "Put back {} s", was: "was {}" };
+const labels = { play: "Play", pause: "Pause", undo: "Undo", redo: "Redo", cut: "Cut {} s", put_back: "Put back {} s", was: "was {}", time: "{} / {}" };
 const button = (label, action, style, enabled = true) => ({ action, label, style, enabled, note: null });
 const FOOTER = "Your link stays the same. Viewers see the edit once it's saved.";
 const DONE = { do: "editor-done" };
@@ -39,7 +39,7 @@ export function editorScenes(
 ) {
   const edited = { in: edit.in, out: edit.out, cuts: edit.cuts.map((c) => ({ applied: true, kind: "manual", ...c })) };
   const untouched = { in: 0, out: duration, cuts: [] };
-  const window = (id, body, { ret = DONE, esc = null } = {}) => ({ id, faces: [id], body, ret, esc, activates: true });
+  const window = (id, body, { ret = DONE, esc = null } = {}) => ({ id, faces: [], body, ret, esc, activates: true });
   const body = ({ list = edited, media = { state: "ready", duration }, editable = true, can_undo = list === edited, can_redo = false, footer = FOOTER, footer_tone = "plain", done = button("Done", DONE, "filled") } = {}) => {
     const keep = list ? keepOf(list) : [];
     return {

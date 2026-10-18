@@ -3,7 +3,10 @@
 // Mac, Mine · Everyone) — rendered by the built windows in WebKit against a stubbed Tauri
 // bridge, at the windows' sizes, light and dark; then the popover's faces — Region 6's
 // banners and Region 3's whole recording machine (config and its variants, disk-low,
-// recording-off, the paused faces, the questions, the stops) — and the countdown.
+// recording-off, the paused faces, the questions, the stops) — and the countdown. Then the
+// editor (N63): every face the core prints (`-- editor`) over a test video as long as its
+// recording, then driven over editor-fixture.mjs's faces and their own video (the gestures
+// are placed on that edit), the fixture held to the core's shape and words.
 //
 //   cargo run -q -p shroom-core --example gallery -- library | settings | members   (run for you)
 //   npm run build --workspace app                   (run it first: this serves app/dist)
@@ -19,12 +22,15 @@
 // action, and Copy link reads the Scene's “Copied”. Screenshots land in
 // app/test/gallery-out/ (gitignored).
 
-import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { webkit } from "playwright";
 import { collect, dist, gallery, hex, isButton, norm, out, repo, serve, stub, texts, windowPage } from "./gallery-kit.mjs";
+import { editorDrives, editorLooks, makeMedia, serveMedia } from "./editor-preview.mjs";
+import { editorScenes, REC } from "./editor-fixture.mjs";
 
-for (const f of ["library.html", "settings.html", "feedback.html", "popover.html", "countdown.html"]) {
+for (const f of ["library.html", "settings.html", "feedback.html", "popover.html", "countdown.html", "editor.html"]) {
   if (!existsSync(join(dist, f))) {
     console.error(`app/dist/${f} is missing — run \`npm run build --workspace app\` first.`);
     process.exit(2);
@@ -65,6 +71,8 @@ const popovers = [...members, ...region3].filter((e) => e.window === "popover");
 const countdowns = region3.filter((e) => e.window === "countdown");
 // Send feedback (`-- feedback`): the form in each of its faces, and the sent face (N60).
 const feedbacks = gallery("feedback");
+// The editor (`-- editor`, N63): its faces over one recording.
+const editors = gallery("editor");
 const server = await serve();
 
 const TEXT = new Set([
@@ -1229,11 +1237,59 @@ for (const entry of feedbacks) {
   await m.ctx.close();
 }
 
+// ── the editor (N63): the core's faces, light and dark; then driven ──
+{
+  const media = mkdtempSync(join(tmpdir(), "shroom-editor-"));
+  try {
+    // The core's faces, over a test video as long as their recording (and its peaks).
+    const length = Math.ceil(Math.max(...editors.map((e) => e.scene.body.source_duration)));
+    for (const d of ["core", "drive"]) mkdirSync(join(media, d));
+    const core = makeMedia(join(media, "core"), length);
+    const coreServer = await serveMedia(core, editors[0].scene.body.rec);
+    await editorLooks({ browser, origin: server.origin, mediaOrigin: coreServer.origin, entries: editors, check });
+    coreServer.close();
+    // The drive's faces (editor-fixture.mjs), held to the core's: the same shape, the same
+    // words, face for face — so what the drive proves of them holds of the core's.
+    const fixture = editorScenes(75);
+    // Where two slices first differ in shape — keys, and each value's kind (an empty list
+    // matches any) — or null.
+    const unlike = (a, b, at = "") => {
+      if (Array.isArray(a) && Array.isArray(b)) return a.length && b.length ? unlike(a[0], b[0], `${at}[0]`) : null;
+      if (a && b && typeof a === "object" && typeof b === "object") {
+        const [ka, kb] = [Object.keys(a).sort().join(), Object.keys(b).sort().join()];
+        if (ka !== kb) return `${at || "."}: ${ka} vs ${kb}`;
+        for (const k of Object.keys(a)) {
+          const d = unlike(a[k], b[k], `${at}.${k}`);
+          if (d) return d;
+        }
+        return null;
+      }
+      return (a === null) === (b === null) && typeof a === typeof b ? null : `${at}: ${JSON.stringify(a)} vs ${JSON.stringify(b)}`;
+    };
+    const canonical = (v) => JSON.stringify(v, (_, x) => (x && typeof x === "object" && !Array.isArray(x) ? Object.fromEntries(Object.entries(x).sort(([a], [b]) => a.localeCompare(b))) : x));
+    const words = (w) => canonical([w.id, w.ret, w.esc, w.body.title, w.body.hint, w.body.footer, w.body.footer_tone, w.body.media.line, w.body.media.retry, w.body.revert.label, w.body.revert.action, w.body.done, w.body.labels]);
+    for (const f of fixture) {
+      const c = editors.find((e) => e.variant === f.variant);
+      if (!c) continue;
+      const d = unlike(f.scene, c.scene);
+      check(`editor fixture/${f.variant}: the core's shape`, d === null, d ?? "");
+      check(`editor fixture/${f.variant}: the core's words, buttons and keys`, words(f.scene) === words(c.scene), `${words(f.scene)} vs ${words(c.scene)}`);
+    }
+    check("editor fixture: it covers the core's faces", editors.every((c) => c.variant === "editor-ready" || fixture.some((f) => f.variant === c.variant)), editors.map((e) => e.variant).join(" "));
+    const drive = makeMedia(join(media, "drive"), 75);
+    const driveServer = await serveMedia(drive, REC);
+    await editorDrives({ browser, origin: server.origin, mediaOrigin: driveServer.origin, entries: fixture, check });
+    driveServer.close();
+  } finally {
+    rmSync(media, { recursive: true, force: true });
+  }
+}
+
 await browser.close();
 server.close();
 console.log(`windows: library ${SIZES.library.width}×${SIZES.library.height} (min ${SIZES.library.min.width}×${SIZES.library.min.height}) · settings ${SIZES.settings.width}×${SIZES.settings.height}, tallest pane ${Math.max(...heights)}px`);
 
 const failed = results.filter((r) => !r.ok);
 for (const f of failed) console.log(`FAIL ${f.name}${f.detail ? ` — ${f.detail}` : ""}`);
-console.log(`\n${library.length} library + ${settings.length} settings + ${feedbacks.length} feedback + ${popovers.length} popover + ${countdowns.length} countdown scenes × 2 schemes · ${results.length - failed.length}/${results.length} checks passed · screenshots in ${out}`);
+console.log(`\n${library.length} library + ${settings.length} settings + ${feedbacks.length} feedback + ${editors.length} editor + ${popovers.length} popover + ${countdowns.length} countdown scenes × 2 schemes · ${results.length - failed.length}/${results.length} checks passed · screenshots in ${out}`);
 process.exit(failed.length ? 1 : 0);

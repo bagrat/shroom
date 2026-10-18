@@ -12,9 +12,10 @@
 //   npm run build --workspace app       (run it first: this serves app/dist)
 //   node app/test/editor-preview.mjs
 //
-// Exits non-zero on a failed check. The pieces are exported (makeMedia, serveMedia,
-// openEditor, editorLooks, editorDrives) for windows-gallery.mjs to fold in once the core's
-// gallery prints its `editor` rows.
+// Exits non-zero on a failed check. windows-gallery.mjs (npm run test:gallery) runs the
+// pieces exported here — editorLooks over the core's own faces (`-- editor`), editorDrives
+// over these — and holds the fixture to the core's shape and words; this file alone is the
+// quicker look.
 
 import { execFileSync } from "node:child_process";
 import { createServer } from "node:http";
@@ -196,7 +197,8 @@ export async function editorLooks({ browser, origin, mediaOrigin, entries, check
         check(`${tag}: no video until it's here`, (await page.locator("video").count()) === 0);
       }
       await page.screenshot({ path: join(shots, `${entry.variant}-${scheme}.png`), animations: "disabled" });
-      if (entry.variant === "editor-cut") {
+      // The chips, on the edited face (the fixture's, or the core's own).
+      if (entry.variant === "editor-cut" || entry.variant === "editor-ready") {
         const d = b.source_duration;
         const cut = b.list.cuts[0];
         await click(page, (cut.start + cut.end) / 2, d);
