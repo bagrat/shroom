@@ -11,7 +11,8 @@ import page from './page.html';
 import planner from './planner.wasm';
 
 const MODEL = '@cf/openai/whisper-large-v3-turbo';
-// Whisper's prime, by the cues listened for (?cues=); ?prompt=none hears with none.
+// Whisper's prime, by the cues listened for (?cues=); ?prompt=none hears with none, and
+// ?prompt=cue with the cue alone. ?vad=1 asks Whisper to leave out what isn't speech.
 const PROMPTS = {
   shroom: 'Shroom cut. Um, uh, so, so I, I mean, shroom cut.',
   plain: 'Cut. Um, uh, so, so I, I mean, cut.',
@@ -68,8 +69,10 @@ export default {
       if (wav.length > MOST_BYTES) return new Response('Five minutes at most, please.', { status: 413 });
       const t0 = Date.now();
       try {
-        const prompt = url.searchParams.get('prompt') === 'none' ? null : PROMPTS[url.searchParams.get('cues')] || PROMPTS.shroom;
-        const out = await env.AI.run(MODEL, { audio: b64(wav), language: 'en', ...(prompt ? { initial_prompt: prompt } : {}), condition_on_previous_text: false });
+        const asked = url.searchParams.get('prompt');
+        const prompt = asked === 'none' ? null : asked === 'cue' ? 'Shroom cut.' : PROMPTS[url.searchParams.get('cues')] || PROMPTS.shroom;
+        const vad = url.searchParams.get('vad') === '1' ? { vad_filter: true } : {};
+        const out = await env.AI.run(MODEL, { audio: b64(wav), language: 'en', ...(prompt ? { initial_prompt: prompt } : {}), ...vad, condition_on_previous_text: false });
         const words = (out.segments || []).flatMap((s) => (s.words || []).map((w) => ({ text: w.word.trim(), start: w.start, end: w.end })));
         return Response.json({ ms: Date.now() - t0, text: out.text, words });
       } catch (e) {

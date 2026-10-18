@@ -32,6 +32,10 @@ spec rows are Bagrat's call. The words on the boards are placeholders.*
 >   (“cut here”, “scratch that”, “let me redo that”…) were built behind a choice, each heard
 >   only said apart and only when Clef says it was meant for the editor, and measured by
 >   `voice-cut/poc/cues.py`; set aside for now, they stay on the tester as “Listen for”.
+> - **Whisper's prime** (asked by the AI build, which hears the take; `voice-cut/poc/priming.py`):
+>   with Whisper's own filter for what isn't speech (`vad_filter`), no prime wrote a word into
+>   a silent or music-only minute, and the full prime heard 34 of 34 cues; without it, every
+>   prime wrote something there, and the cue alone came back as “Shroom cut.” in three of six.
 > - **Clef weighs how far back a redo reaches** (B202). A line said again in other words
 >   shares too few words to line up (Bagrat's reworded redo on the tester), so the Mac lists
 >   where the redone stretch might begin and Clef, on the space's own account, scores each;
