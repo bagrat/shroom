@@ -159,10 +159,15 @@ an account with a third party.
 | **Captions for viewers** | Whisper's VTT | cheap add-on | the same transcript; a player track; translate-to-English is a flag |
 | **Summary** (a few lines under the video) | LLM | cheap add-on | same input as naming, ~+20% of naming's cost |
 | **Search** (Library, by what was said) | the transcript + text search | later | plain text search over transcripts is enough; embeddings (`bge-m3`, $0.012/M) only if needed |
-| **Cleanup suggestions** (sibling: `claude/cleanup-suggestions`) | **Clef-flash** per sentence (`choice`: filler / false start / off-topic / keep) | **strong for System 1** | 64 sentences a call, ~1 s, ~10 neurons; thresholds on probabilities |
-| **Voice-cue editing** (sibling: `claude/voice-cut-editor`) | Whisper turbo's **word times** + **Clef-flash** (`noul`: "is this an instruction to cut?") | **strong** | word starts/ends are confirmed live; Clef gives a tunable confidence, not a regex |
+| **Cleanup suggestions** (sibling: `claude/cleanup-suggestions`) | **Clef** (27B) per sentence (`choice`: filler / false start / off-topic / keep) | **strong for System 1** | 64 sentences a call; thresholds on probabilities. Validate Clef-flash on real speech before using the cheaper model (see the note under this table) |
+| **Voice-cue editing** (sibling: `claude/voice-cut-editor`) | Whisper turbo's **word times** + **Clef** (27B) (`noul`: "is this an instruction to cut?") | **strong** | word starts/ends confirmed live; tested live by the editor's POC: full Clef at a 0.3 threshold kept 98 of 99 cues and let through 0 of 34 non-cues (148 sentences in 2.5 s); Clef-flash was weak (median 0.15 on real cues) |
 | **"Is anyone talking?"** | Whisper's `word_count`, or Clef-omni on audio | gate | skip naming silent or music-only takes, and keep the date |
 | **Title check** | Clef `score` | optional | e.g. pick the best of 3 LLM titles, or flag a title that leaks a password |
+
+**Which Clef.** Two live tests now point the same way: Clef-flash missed topic changes on
+real speech here (§4.3), and missed spoken cut cues in the editor's POC. Full Clef (27B,
+$0.24/M input, ~6× Clef-flash) separated the cues cleanly. So for judgments on real
+speech, **use full Clef**. It is still a few neurons per minute of talk.
 
 ## 3. The POC
 
@@ -306,7 +311,7 @@ it's still unmeasured (§1.7).
    false, and typing one sets it as today.
 5. **Off by default; the owner turns it on once.** One card in the Library and a switch in
    Settings · Space, each with one plain cost line. Members never see a cost.
-6. **Hand the sibling features Clef-flash** for per-sentence judgments, and Whisper
+6. **Hand the sibling features full Clef** (not Clef-flash) for per-sentence judgments, and Whisper
    turbo's word times to the voice-cue editor.
 7. **Captions ship with it:** `rec/<id>/ai/captions.vtt`, from the same transcript, as a
    track viewers can turn on in the player (§9.6).
