@@ -1,0 +1,30 @@
+[
+ {
+  "say": "Your video uploads while you talk, so the link is ready the moment you stop.",
+  "role": "keep",
+  "pause": 0.4,
+  "start": 0.6,
+  "end": 4.211
+ },
+ {
+  "say": "It goes straight to your own bucket, on your own account, which is, hmm, wait.",
+  "role": "flub",
+  "pause": 0.6,
+  "start": 4.611,
+  "end": 8.407
+ },
+ {
+  "say": "Shroom cut.",
+  "role": "cue",
+  "pause": 0.6,
+  "start": 9.007,
+  "end": 9.669
+ },
+ {
+  "say": "It goes straight to your own bucket, in your own cloud account, and nowhere else.",
+  "role": "keep",
+  "pause": 0.8,
+  "start": 10.269,
+  "end": 14.019
+ }
+]

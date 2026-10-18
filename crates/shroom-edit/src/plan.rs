@@ -114,12 +114,17 @@ impl Ctx<'_> {
         }
     }
 
-    /// Where the line before word `i` began: back to a sentence end or a long pause.
+    /// Where the line before word `i` began: back to a sentence end with a pause after it,
+    /// or a long pause. The pause matters: a transcriber punctuates a hesitation too
+    /// ("The second one is him. I forget…" for "is, hmm, I forget…").
     fn line_start(&self, i: usize, floor: usize) -> usize {
         let mut k = i;
         while k > floor {
             let prev: &Word = &self.t.words[k - 1];
-            if ends_sentence(&prev.text) || self.t.words[k].start - prev.end >= self.o.line_pause {
+            let pause = self.pause_before(k);
+            if (ends_sentence(&prev.text) && pause >= self.o.cue_pause)
+                || pause >= self.o.line_pause
+            {
                 break;
             }
             k -= 1;

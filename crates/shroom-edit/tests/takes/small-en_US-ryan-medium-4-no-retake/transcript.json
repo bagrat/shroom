@@ -1,0 +1,156 @@
+{
+ "duration": 10.522267573696146,
+ "words": [
+  {
+   "text": "The",
+   "start": 0.0,
+   "end": 0.72
+  },
+  {
+   "text": "settings",
+   "start": 0.72,
+   "end": 1.02
+  },
+  {
+   "text": "window",
+   "start": 1.02,
+   "end": 1.42
+  },
+  {
+   "text": "has",
+   "start": 1.42,
+   "end": 1.76
+  },
+  {
+   "text": "three",
+   "start": 1.76,
+   "end": 2.04
+  },
+  {
+   "text": "tabs.",
+   "start": 2.04,
+   "end": 2.42
+  },
+  {
+   "text": "The",
+   "start": 3.08,
+   "end": 3.16
+  },
+  {
+   "text": "second",
+   "start": 3.16,
+   "end": 3.38
+  },
+  {
+   "text": "one",
+   "start": 3.38,
+   "end": 3.68
+  },
+  {
+   "text": "is,",
+   "start": 3.68,
+   "end": 4.0
+  },
+  {
+   "text": "um,",
+   "start": 4.2,
+   "end": 4.28
+  },
+  {
+   "text": "I",
+   "start": 4.52,
+   "end": 4.64
+  },
+  {
+   "text": "forget",
+   "start": 4.64,
+   "end": 4.88
+  },
+  {
+   "text": "what",
+   "start": 4.88,
+   "end": 5.06
+  },
+  {
+   "text": "it's",
+   "start": 5.06,
+   "end": 5.26
+  },
+  {
+   "text": "called.",
+   "start": 5.26,
+   "end": 5.54
+  },
+  {
+   "text": "Shroom",
+   "start": 6.32,
+   "end": 6.46
+  },
+  {
+   "text": "cut.",
+   "start": 6.46,
+   "end": 6.78
+  },
+  {
+   "text": "Let's",
+   "start": 7.64,
+   "end": 7.96
+  },
+  {
+   "text": "move",
+   "start": 7.96,
+   "end": 8.16
+  },
+  {
+   "text": "on",
+   "start": 8.16,
+   "end": 8.4
+  },
+  {
+   "text": "to",
+   "start": 8.4,
+   "end": 8.52
+  },
+  {
+   "text": "the",
+   "start": 8.52,
+   "end": 8.64
+  },
+  {
+   "text": "library",
+   "start": 8.64,
+   "end": 9.02
+  },
+  {
+   "text": "instead.",
+   "start": 9.02,
+   "end": 9.6
+  }
+ ],
+ "silences": [
+  {
+   "start": 0.0,
+   "end": 0.600272
+  },
+  {
+   "start": 2.60757,
+   "end": 3.05959
+  },
+  {
+   "start": 4.38617,
+   "end": 4.52612
+  },
+  {
+   "start": 5.60073,
+   "end": 6.20109
+  },
+  {
+   "start": 6.92526,
+   "end": 7.63973
+  },
+  {
+   "start": 9.72059,
+   "end": 10.5223
+  }
+ ]
+}
