@@ -1143,7 +1143,7 @@ mod tests {
             }
             serde_json::to_value(&m).unwrap()
         };
-        let cached = |id: &str, edited: Option<f64>, state: State| Row { id: id.into(), title: "t".into(), state, created_at: "2026-10-02T00:00:00Z".into(), duration_sec: Some(10.0), owner: None, poster: None, edited_sec: edited, poster_file: None };
+        let cached = |id: &str, edited: Option<f64>, state: State| Row { id: id.into(), title: "t".into(), state, created_at: "2026-10-02T00:00:00Z".into(), duration_sec: Some(10.0), owner: None, poster: None, edited_sec: edited, poster_file: None, ai: None };
         let mut cache = Cache::default();
         cache.rows.insert("Aaaa".into(), ("e1".into(), cached("Aaaa", None, State::Live)));
         cache.rows.insert("Bbbb".into(), ("e2".into(), cached("Bbbb", Some(6.0), State::Live)));
