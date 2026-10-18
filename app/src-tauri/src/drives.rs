@@ -2293,7 +2293,7 @@ fn cleanup_meta(id: &str, title: &str, days: i64, bytes: u64, now: i64) -> shroo
     m.published_at = Some(at);
     m.duration_sec = Some(600.0);
     m.owner = Some("m1".into());
-    m.media = Some(meta::Media { hls: keys::master(id), mp4: None, poster: None, teaser: None, width: 1920, height: 1080 });
+    m.media = Some(meta::Media { hls: Some(keys::master(id)), mp4: None, poster: None, teaser: None, width: 1920, height: 1080 });
     m.extra.insert("bytes".into(), serde_json::json!(bytes));
     m
 }
