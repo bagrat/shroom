@@ -102,6 +102,7 @@ export const COPY = {
   cutAgain: "Cut again",
   cutItToo: "Cut it too",
   cutsOffer: "Nothing was said again after it, so only “shroom cut” went. Cut the line before it too?",
+  cutsChanged: "changed in the editor",
   cutsCouldntSave: "Couldn't save that. Check your connection, then try again.",
   // The hint, on a take with no voice cuts in a space that listens (owner-page-cue-hint).
   cueHint: "Slipped? Say “shroom cut”, then say the line again.",
@@ -644,8 +645,9 @@ export function keepOf(edits) {
 /** The strip's rows: voice cuts in time order. A cue with nothing said again after it
  * comes as two cuts, its own words (cut) and the line before it (offered); the row is the
  * offer, showing the line without the cue's words, which are gone either way. Each row has
- * the planner's words around its cut (`leads`, `resumes`), for where it joins.
- * @param {any} edits @returns {{ id: string, at: number, words: string, leads: string, resumes: string, kind: string, on: boolean, offer: boolean }[]} */
+ * the planner's words around its cut (`leads`, `resumes`), for where it joins, and whether the
+ * editor moved its edges since (`adjusted`, N63).
+ * @param {any} edits @returns {{ id: string, at: number, end: number, words: string, leads: string, resumes: string, kind: string, on: boolean, offer: boolean, adjusted: boolean }[]} */
 function voiceRows(edits) {
   const cuts = (Array.isArray(edits?.cuts) ? edits.cuts : []).filter((/** @type {any} */ c) => c && VOICE_KINDS.has(c.kind) && typeof c.id === "string");
   const offers = cuts.filter((/** @type {any} */ c) => c.kind === "line-before-cue");
@@ -659,7 +661,7 @@ function voiceRows(edits) {
       if (own && words.endsWith(own)) words = words.slice(0, -own.length).trim();
     }
     const text = (/** @type {unknown} */ x) => (typeof x === "string" ? x.trim() : "");
-    rows.push({ id: c.id, at: Number(c.start) || 0, words, leads: text(c.leads), resumes: text(c.resumes), kind: c.kind, on: c.applied === true, offer: c.kind === "line-before-cue" && c.applied !== true });
+    rows.push({ id: c.id, at: Number(c.start) || 0, end: Number(c.end) || 0, words, leads: text(c.leads), resumes: text(c.resumes), kind: c.kind, on: c.applied === true, offer: c.kind === "line-before-cue" && c.applied !== true, adjusted: c.adjusted === true });
   }
   return rows.sort((a, b) => a.at - b.at);
 }
@@ -678,6 +680,13 @@ function aroundCut(r) {
   return `<q>“${lead}<span class="w">${escapeText(r.words)}</span>${then}”</q>`;
 }
 
+/** A cut whose edges the editor moved (B200 (g)): how long it is and where it now ends,
+ * “4.6 s, to 0:09 — changed in the editor”, in place of words that may no longer be what it cuts.
+ * @param {{ at: number, end: number }} r */
+function changedCut(r) {
+  return `<span class="changed">${escapeText(`${Math.max(0, r.end - r.at).toFixed(1)} s, to ${shroomClockText(r.end)}`)} — <span class="ed">${escapeText(COPY.cutsChanged)}</span></span>`;
+}
+
 /** The owner page's voice cuts under the player (owner-page-cuts): "" when the take has
  * none. Its rows carry their state in their class — `cut on` struck with Put back, `cut`
  * put back with Cut again, `cut offer` the offered line with Cut it too.
@@ -689,7 +698,7 @@ export function cutsStrip(edits) {
     const cls = r.offer ? "cut offer" : r.on ? "cut on" : "cut";
     const label = r.offer ? COPY.cutItToo : r.on ? COPY.putBack : COPY.cutAgain;
     const note = r.kind === "line-before-cue" ? `<span class="why">${escapeText(COPY.cutsOffer)}</span>` : "";
-    return `<li class="${cls}" data-cut="${escapeHtml(r.id)}"><span class="at">${escapeText(shroomClockText(r.at))}</span><span class="said">${note}${aroundCut(r)}</span><button type="button" data-press="${r.on ? "0" : "1"}">${escapeText(label)}</button></li>`;
+    return `<li class="${cls}" data-cut="${escapeHtml(r.id)}"><span class="at">${escapeText(shroomClockText(r.at))}</span><span class="said">${note}${r.adjusted ? changedCut(r) : aroundCut(r)}</span><button type="button" data-press="${r.on ? "0" : "1"}">${escapeText(label)}</button></li>`;
   }).join("");
   return `<section class="cuts" id="cuts" aria-label="${escapeHtml(COPY.cutsHeading)}"><div class="cuts-head"><h2>${escapeText(COPY.cutsHeading)}</h2><span class="only">${escapeText(COPY.cutsOnlyYou)}</span></div><ol>${li}</ol><p class="unsaved" role="status" hidden>${escapeText(COPY.cutsCouldntSave)}</p></section>`;
 }
@@ -1488,7 +1497,7 @@ h1{flex:1 1 0;min-width:0;margin:0;font-size:1.75rem;font-weight:600;line-height
 .cuts h2::before{content:"";width:16px;height:16px;flex:none;background:var(--cut);-webkit-mask:${I_CUT} center/contain no-repeat;mask:${I_CUT} center/contain no-repeat}
 .cuts .only{color:var(--quiet);font-size:13px}.cuts ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
 .cut{display:flex;align-items:center;gap:14px;padding-top:10px;border-top:1px solid var(--hair)}.cut .at{flex:none;width:40px;color:var(--soft);font-variant-numeric:tabular-nums}
-.cut .said{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:2px}.cut q{quotes:none;overflow-wrap:anywhere;color:var(--quiet)}.cut q .w{color:var(--text)}.cut.on q .w{color:var(--quiet);text-decoration:line-through;text-decoration-color:var(--cut)}
+.cut .said{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:2px}.cut q{quotes:none;overflow-wrap:anywhere;color:var(--quiet)}.cut q .w{color:var(--text)}.cut .changed{color:var(--soft)}.cut .changed .ed{color:var(--quiet)}.cut.on q .w{color:var(--quiet);text-decoration:line-through;text-decoration-color:var(--cut)}
 .cut .why,.cuts .unsaved{color:var(--warn);font-size:13px}.cut.on .why{display:none}.cuts .unsaved{margin:0}.cuts .unsaved[hidden]{display:none}
 .cut button{flex:none;font:inherit;font-size:13px;min-height:32px;padding:0 12px;border:1px solid var(--edge);border-radius:8px;background:transparent;color:var(--text);cursor:pointer}.cut button:hover{background:var(--hover)}.cut button[aria-busy]{opacity:.6}
 .cue-hint{background:var(--card);border:1px solid var(--card-edge);border-radius:12px;padding:10px 12px 10px 16px;display:flex;align-items:center;gap:10px;color:var(--muted)}.cue-hint[hidden]{display:none}
