@@ -64,6 +64,24 @@ const run = (cmd, args) => {
   return r.stdout;
 };
 const readJson = (f) => { try { return JSON.parse(fs.readFileSync(f, "utf8")); } catch { return null; } };
+// A system alert an earlier step left up (the Local Network prompt a visible browser raises)
+// sits over the drive's pattern, and the drive then refuses to record. Each is answered with
+// its button that isn't Allow: nothing here needs the local network. How many were up.
+const alerts = () => spawnSync("/usr/bin/osascript", [
+  "-e", 'tell application "System Events"',
+  "-e", 'if exists process "UserNotificationCenter" then return count windows of process "UserNotificationCenter"',
+  "-e", "return 0",
+  "-e", "end tell",
+], { encoding: "utf8" }).stdout.trim();
+async function answerAlerts() {
+  let answered = 0;
+  for (let i = 0; i < 5 && Number(alerts()) > 0; i++) {
+    spawnSync("/usr/bin/osascript", ["-e", 'tell application "System Events" to tell process "UserNotificationCenter" to click (first button of window 1 whose name is not "Allow")']);
+    answered += 1;
+    await sleep(1000);
+  }
+  return answered;
+}
 
 let driving = null;
 try {
@@ -82,6 +100,7 @@ try {
   // beside its report and holds there until this script asks for the delete, while this
   // Mac's voice lane runs. (A drive of the AI alone, `--drive ai`, is the fake's only.)
   spawnSync("pkill", ["-f", DRIVE_PROC]);
+  summary.alertsAnswered = await answerAlerts();
   const report = path.join(work, "drive.json");
   driving = spawn("open", ["-W", "-n", installed, "--args", "--e2e", "--drive", report, String(SECONDS), "--voice", wav, "--ai"], { stdio: "ignore" });
   let drive = null;
