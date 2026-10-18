@@ -9,6 +9,9 @@ use serde::Serialize;
 
 /// The lines a report keeps: the last ones, the newest last.
 pub const LOG_LINES: usize = 200;
+/// Of those, at most this many are the `shroom` command's own (its `cli.log`, spec N62):
+/// its last runs, after the app's lines.
+pub const CLI_LINES: usize = 30;
 /// One line, at most, once cleaned (in characters).
 pub const LINE_CHARS: usize = 400;
 /// A window's own error (`webview <surface>: <message>`): its message is cut to this.
@@ -136,6 +139,18 @@ pub fn clean_log(text: &str) -> String {
     let lines: Vec<&str> = text.lines().filter(|l| !l.trim().is_empty()).collect();
     let from = lines.len().saturating_sub(LOG_LINES);
     lines[from..].iter().map(|l| clean_line(l)).collect::<Vec<_>>().join("\n")
+}
+
+/// The app's log and the `shroom` command's, cleaned: the command's last `CLI_LINES` runs
+/// (each line carries its own time) after as many of the app's last lines as leave the
+/// whole within `LOG_LINES`. The app's log is the one that was kept before the command had
+/// one, and a Mac where the command never ran sends just it.
+pub fn clean_logs(app: &str, cli: &str) -> String {
+    let cli: Vec<&str> = cli.lines().filter(|l| !l.trim().is_empty()).collect();
+    let cli = &cli[cli.len().saturating_sub(CLI_LINES)..];
+    let app: Vec<&str> = app.lines().filter(|l| !l.trim().is_empty()).collect();
+    let app = &app[app.len().saturating_sub(LOG_LINES - cli.len())..];
+    app.iter().chain(cli).map(|l| clean_line(l)).collect::<Vec<_>>().join("\n")
 }
 
 /// One log line, cleaned — `site/clean.js`'s `cleanLine`, rule for rule.
