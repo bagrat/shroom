@@ -1,0 +1,582 @@
+[
+  {
+    "at_edited": [
+      0,
+      100,
+      272.4,
+      300
+    ],
+    "at_source": [
+      0,
+      10,
+      272.39,
+      272.4
+    ],
+    "expect": {
+      "edited_duration": 272.4,
+      "identity": true,
+      "keep": [
+        [
+          0.0,
+          272.4
+        ]
+      ],
+      "to_edited": [
+        0.0,
+        10.0,
+        272.39,
+        null
+      ],
+      "to_source": [
+        0.0,
+        100.0,
+        272.4,
+        272.4
+      ]
+    },
+    "list": {
+      "cuts": [],
+      "in": 0.0,
+      "out": 272.4,
+      "source_duration": 272.4,
+      "version": 1
+    },
+    "name": "untouched"
+  },
+  {
+    "at_edited": [
+      0,
+      1,
+      232.9,
+      233,
+      500
+    ],
+    "at_source": [
+      0,
+      7.99,
+      8,
+      100,
+      240.99,
+      241
+    ],
+    "expect": {
+      "edited_duration": 233.0,
+      "identity": false,
+      "keep": [
+        [
+          8.0,
+          241.0
+        ]
+      ],
+      "to_edited": [
+        null,
+        null,
+        0.0,
+        92.0,
+        232.99,
+        null
+      ],
+      "to_source": [
+        8.0,
+        9.0,
+        240.9,
+        241.0,
+        241.0
+      ]
+    },
+    "list": {
+      "cuts": [],
+      "in": 8,
+      "out": 241,
+      "source_duration": 272.4,
+      "version": 1
+    },
+    "name": "trimmed both ends"
+  },
+  {
+    "at_edited": [
+      0,
+      9.99,
+      10,
+      47.9,
+      48,
+      60
+    ],
+    "at_source": [
+      9.99,
+      10,
+      15,
+      21.99,
+      22,
+      59.9
+    ],
+    "expect": {
+      "edited_duration": 48.0,
+      "identity": false,
+      "keep": [
+        [
+          0.0,
+          10.0
+        ],
+        [
+          22.0,
+          60.0
+        ]
+      ],
+      "to_edited": [
+        9.99,
+        null,
+        null,
+        null,
+        10.0,
+        47.9
+      ],
+      "to_source": [
+        0.0,
+        9.99,
+        22.0,
+        59.9,
+        60.0,
+        60.0
+      ]
+    },
+    "list": {
+      "cuts": [
+        {
+          "applied": true,
+          "confidence": "high",
+          "end": 22,
+          "kind": "manual",
+          "start": 10
+        }
+      ],
+      "in": 0.0,
+      "out": 60,
+      "source_duration": 60,
+      "version": 1
+    },
+    "name": "one hand cut"
+  },
+  {
+    "at_edited": [
+      9.99,
+      10,
+      30
+    ],
+    "at_source": [
+      19.7,
+      24.99,
+      25
+    ],
+    "expect": {
+      "edited_duration": 45.0,
+      "identity": false,
+      "keep": [
+        [
+          0.0,
+          10.0
+        ],
+        [
+          25.0,
+          60.0
+        ]
+      ],
+      "to_edited": [
+        null,
+        null,
+        10.0
+      ],
+      "to_source": [
+        9.99,
+        25.0,
+        45.0
+      ]
+    },
+    "list": {
+      "cuts": [
+        {
+          "applied": true,
+          "confidence": "high",
+          "end": 20,
+          "kind": "retake",
+          "start": 10
+        },
+        {
+          "applied": true,
+          "confidence": "high",
+          "end": 25,
+          "kind": "retake",
+          "start": 19.6
+        }
+      ],
+      "in": 0.0,
+      "out": 60,
+      "source_duration": 60,
+      "version": 1
+    },
+    "name": "overlapping cuts merge"
+  },
+  {
+    "at_edited": [
+      15
+    ],
+    "at_source": [
+      15
+    ],
+    "expect": {
+      "edited_duration": 60.0,
+      "identity": true,
+      "keep": [
+        [
+          0.0,
+          60.0
+        ]
+      ],
+      "to_edited": [
+        15.0
+      ],
+      "to_source": [
+        15.0
+      ]
+    },
+    "list": {
+      "cuts": [
+        {
+          "applied": false,
+          "confidence": "high",
+          "end": 20,
+          "kind": "line-before-cue",
+          "start": 10
+        }
+      ],
+      "in": 0.0,
+      "out": 60,
+      "source_duration": 60,
+      "version": 1
+    },
+    "name": "an unapplied suggestion plays"
+  },
+  {
+    "at_edited": [
+      0,
+      26.7,
+      26.8
+    ],
+    "at_source": [
+      0,
+      1.5,
+      28.19,
+      28.2
+    ],
+    "expect": {
+      "edited_duration": 26.7,
+      "identity": false,
+      "keep": [
+        [
+          1.5,
+          28.2
+        ]
+      ],
+      "to_edited": [
+        null,
+        0.0,
+        26.69,
+        null
+      ],
+      "to_source": [
+        1.5,
+        28.2,
+        28.2
+      ]
+    },
+    "list": {
+      "cuts": [
+        {
+          "applied": true,
+          "confidence": "high",
+          "end": 1.5,
+          "kind": "retake",
+          "start": 0
+        },
+        {
+          "applied": true,
+          "confidence": "high",
+          "end": 30,
+          "kind": "cue-only",
+          "start": 28.2
+        }
+      ],
+      "in": 0.0,
+      "out": 30,
+      "source_duration": 30,
+      "version": 1
+    },
+    "name": "a cut at each end"
+  },
+  {
+    "at_edited": [
+      0,
+      11.99,
+      12,
+      35,
+      36
+    ],
+    "at_source": [
+      5,
+      8,
+      20.5,
+      44.99,
+      45
+    ],
+    "expect": {
+      "edited_duration": 36.0,
+      "identity": false,
+      "keep": [
+        [
+          8.0,
+          20.0
+        ],
+        [
+          21.0,
+          45.0
+        ]
+      ],
+      "to_edited": [
+        null,
+        0.0,
+        null,
+        35.99,
+        null
+      ],
+      "to_source": [
+        8.0,
+        19.99,
+        21.0,
+        44.0,
+        45.0
+      ]
+    },
+    "list": {
+      "cuts": [
+        {
+          "applied": true,
+          "confidence": "high",
+          "end": 8,
+          "kind": "manual",
+          "start": 0
+        },
+        {
+          "applied": true,
+          "confidence": "high",
+          "end": 58,
+          "kind": "manual",
+          "start": 45
+        },
+        {
+          "applied": true,
+          "confidence": "high",
+          "end": 21,
+          "kind": "manual",
+          "start": 20
+        }
+      ],
+      "in": 5,
+      "out": 50,
+      "source_duration": 60,
+      "version": 1
+    },
+    "name": "cuts outside the trim are clamped"
+  },
+  {
+    "at_edited": [
+      0,
+      10,
+      30,
+      35,
+      55,
+      75
+    ],
+    "at_source": [
+      5,
+      15,
+      30,
+      42,
+      75,
+      90
+    ],
+    "expect": {
+      "edited_duration": 75.0,
+      "identity": false,
+      "keep": [
+        [
+          0.0,
+          10.0
+        ],
+        [
+          20.0,
+          40.0
+        ],
+        [
+          45.0,
+          70.0
+        ],
+        [
+          80.0,
+          100.0
+        ]
+      ],
+      "to_edited": [
+        5.0,
+        null,
+        20.0,
+        null,
+        null,
+        65.0
+      ],
+      "to_source": [
+        0.0,
+        20.0,
+        45.0,
+        50.0,
+        80.0,
+        100.0
+      ]
+    },
+    "list": {
+      "cuts": [
+        {
+          "applied": true,
+          "confidence": "high",
+          "end": 80,
+          "kind": "manual",
+          "start": 70
+        },
+        {
+          "applied": true,
+          "confidence": "high",
+          "end": 20,
+          "kind": "manual",
+          "start": 10
+        },
+        {
+          "applied": true,
+          "confidence": "high",
+          "end": 45,
+          "kind": "manual",
+          "start": 40
+        }
+      ],
+      "in": 0.0,
+      "out": 100,
+      "source_duration": 100,
+      "version": 1
+    },
+    "name": "cuts out of order"
+  },
+  {
+    "at_edited": [
+      0,
+      9.9,
+      10
+    ],
+    "at_source": [
+      0,
+      6.1,
+      9.99
+    ],
+    "expect": {
+      "edited_duration": 10.0,
+      "identity": true,
+      "keep": [
+        [
+          0.0,
+          10.0
+        ]
+      ],
+      "to_edited": [
+        0.0,
+        6.1,
+        9.99
+      ],
+      "to_source": [
+        0.0,
+        9.9,
+        10.0
+      ]
+    },
+    "list": {
+      "cuts": [],
+      "in": 6,
+      "out": 6.2,
+      "source_duration": 10,
+      "version": 1
+    },
+    "name": "a trim that leaves nothing is put back"
+  },
+  {
+    "at_edited": [
+      0,
+      6.99,
+      7
+    ],
+    "at_source": [
+      0,
+      1.99,
+      2,
+      8.99,
+      9
+    ],
+    "expect": {
+      "edited_duration": 7.0,
+      "identity": false,
+      "keep": [
+        [
+          2.0,
+          9.0
+        ]
+      ],
+      "to_edited": [
+        null,
+        null,
+        0.0,
+        6.99,
+        null
+      ],
+      "to_source": [
+        2.0,
+        8.99,
+        9.0
+      ]
+    },
+    "list": {
+      "cuts": [
+        {
+          "applied": true,
+          "confidence": "high",
+          "end": 2,
+          "kind": "manual",
+          "start": -5
+        },
+        {
+          "applied": true,
+          "confidence": "high",
+          "end": 99,
+          "kind": "manual",
+          "start": 9
+        },
+        {
+          "applied": true,
+          "confidence": "high",
+          "end": 4,
+          "kind": "manual",
+          "start": 4
+        }
+      ],
+      "in": 0.0,
+      "out": 10,
+      "source_duration": 10,
+      "version": 1
+    },
+    "name": "bad numbers are dropped"
+  }
+]

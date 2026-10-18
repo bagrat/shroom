@@ -1,0 +1,328 @@
+//! Editing (N63, DECISIONS B195).
+//!
+//! - **The edit list** ([`EditList`]): a trim and cuts over a recording's own timeline
+//!   (seconds on the joined takes, the clock `markers.json` and `meta.markers` use). It
+//!   never touches the media: the editor's preview, the share page and the embed apply it as
+//!   they play, and the Mac's permanent copy is cut from it. Every cut is a suggestion until
+//!   it's `applied`. The shape is the voice-cut proposal's (dev/proposals/voice-cut.md), so
+//!   its planner adds suggestions to the same list.
+//! - **What's saved** ([`Saved`]): the list as it sits in the record (`meta.edits`), with
+//!   the revision a save bumps and the permanent copy cut from it, once there is one.
+//! - **Editing** ([`edit`]): the editor's operations and their undo history.
+//!
+//! Deterministic and pure: no media, no clock, no I/O.
+
+pub mod edit;
+
+pub use edit::{History, Op};
+
+use serde::{Deserialize, Serialize};
+
+/// Where a cut came from.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum CutKind {
+    /// The spoken cue and the take it retakes.
+    Retake,
+    /// The cue alone: no retake was found after it.
+    CueOnly,
+    /// The line before a cue that has no retake: the likely flub, offered unapplied.
+    LineBeforeCue,
+    /// Drawn by hand on the timeline.
+    Manual,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum Confidence {
+    Low,
+    High,
+}
+
+/// One cut: `[start, end)` on the source timeline is left out when applied.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Cut {
+    pub start: f64,
+    pub end: f64,
+    pub kind: CutKind,
+    pub confidence: Confidence,
+    pub applied: bool,
+    /// What the cut removes, as transcribed (for a review list). Never sent to viewers.
+    #[serde(default)]
+    pub removed: String,
+    /// What plays right after the cut (for a review list). Never sent to viewers.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resumes: Option<String>,
+    /// Why a planner suggested it, in a few words (debugging, not product copy).
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub why: String,
+}
+
+impl Cut {
+    /// A cut drawn by hand: applied at once.
+    pub fn manual(start: f64, end: f64) -> Cut {
+        Cut {
+            start,
+            end,
+            kind: CutKind::Manual,
+            confidence: Confidence::High,
+            applied: true,
+            removed: String::new(),
+            resumes: None,
+            why: String::new(),
+        }
+    }
+
+    pub fn length(&self) -> f64 {
+        self.end - self.start
+    }
+}
+
+/// The edit list for one recording.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct EditList {
+    pub version: u32,
+    pub source_duration: f64,
+    /// Trim: what plays is `[in, out)` of the source, minus applied cuts.
+    #[serde(rename = "in")]
+    pub in_: f64,
+    pub out: f64,
+    pub cuts: Vec<Cut>,
+}
+
+/// Nothing shorter plays: a trim or a cut that would leave less is refused (seconds).
+pub const MIN_KEEP: f64 = 1.0;
+/// A cut drawn by hand is at least this long (seconds); a planner's cuts are never held
+/// to it, since a lone spoken cue can be shorter than a hand can draw.
+pub const MIN_HAND_CUT: f64 = 0.1;
+
+impl EditList {
+    pub fn new(source_duration: f64) -> Self {
+        let d = if source_duration.is_finite() && source_duration > 0.0 { source_duration } else { 0.0 };
+        Self { version: 1, source_duration: d, in_: 0.0, out: d, cuts: Vec::new() }
+    }
+
+    /// The list made safe to play and to edit, whatever it was read from: times clamped to
+    /// the recording (a cut touching either end is normal), a cut that isn't finite or has
+    /// no length dropped, the trim kept in order and at least [`MIN_KEEP`] long where the
+    /// recording allows. Overlapping cuts are kept: [`EditList::keep`] merges them.
+    pub fn checked(mut self) -> Self {
+        let d = if self.source_duration.is_finite() && self.source_duration > 0.0 { self.source_duration } else { 0.0 };
+        self.source_duration = d;
+        self.version = 1;
+        let clamp = |t: f64| if t.is_finite() { t.clamp(0.0, d) } else { f64::NAN };
+        let (mut a, mut b) = (clamp(self.in_), clamp(self.out));
+        if a.is_nan() {
+            a = 0.0;
+        }
+        if b.is_nan() {
+            b = d;
+        }
+        if b - a < MIN_KEEP.min(d) {
+            (a, b) = (0.0, d);
+        }
+        self.in_ = a;
+        self.out = b;
+        self.cuts.retain_mut(|c| {
+            let (s, e) = (clamp(c.start), clamp(c.end));
+            if s.is_nan() || e.is_nan() || e <= s {
+                return false;
+            }
+            c.start = s;
+            c.end = e;
+            true
+        });
+        self
+    }
+
+    /// The applied cuts, inside the trim, sorted and merged.
+    fn applied(&self) -> Vec<(f64, f64)> {
+        let mut cuts: Vec<(f64, f64)> = self
+            .cuts
+            .iter()
+            .filter(|c| c.applied)
+            .map(|c| (c.start.max(self.in_), c.end.min(self.out)))
+            .filter(|(s, e)| e > s)
+            .collect();
+        cuts.sort_by(|a, b| a.0.total_cmp(&b.0));
+        cuts
+    }
+
+    /// The source ranges that play, in order: trim minus applied cuts, overlaps merged.
+    pub fn keep(&self) -> Vec<(f64, f64)> {
+        let mut keep = Vec::new();
+        let mut at = self.in_;
+        for (s, e) in self.applied() {
+            if e <= at {
+                continue;
+            }
+            if s > at {
+                keep.push((at, s));
+            }
+            at = at.max(e);
+        }
+        if at < self.out {
+            keep.push((at, self.out));
+        }
+        keep
+    }
+
+    /// How long the edited video plays.
+    pub fn edited_duration(&self) -> f64 {
+        self.keep().iter().map(|(s, e)| e - s).sum()
+    }
+
+    /// Maps a source time to edited time; `None` when it falls in a cut or outside the trim.
+    pub fn to_edited(&self, t: f64) -> Option<f64> {
+        let mut acc = 0.0;
+        for (s, e) in self.keep() {
+            if t >= s && t < e {
+                return Some(acc + (t - s));
+            }
+            acc += e - s;
+        }
+        None
+    }
+
+    /// Maps an edited time to the source: the edited timeline's `e` seconds in. Past the
+    /// end it is the trim's out; before the start, the trim's in.
+    pub fn to_source(&self, e: f64) -> f64 {
+        let mut acc = 0.0;
+        let keep = self.keep();
+        for (s, end) in &keep {
+            let len = end - s;
+            if e < acc + len {
+                return s + (e - acc).max(0.0);
+            }
+            acc += len;
+        }
+        keep.last().map_or(self.out, |k| k.1)
+    }
+
+    /// Nothing is left out: the whole recording plays, as recorded.
+    pub fn is_identity(&self) -> bool {
+        let keep = self.keep();
+        keep.len() == 1 && keep[0].0 <= 0.0 && keep[0].1 >= self.source_duration
+    }
+}
+
+/// The permanent copy of a saved edit (B195 (f)): `rec/<id>/<file>`, cut by the Mac from
+/// the original. Current only while its `rev` is the saved list's.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct EditCopy {
+    pub rev: u64,
+    /// The file's name beside the recording, `edit-<rev>.mp4`.
+    pub file: String,
+    /// Its length in seconds.
+    pub duration: f64,
+}
+
+impl EditCopy {
+    pub fn file_for(rev: u64) -> String {
+        format!("edit-{rev}.mp4")
+    }
+}
+
+/// The edit as the record keeps it (`meta.edits`): the list, the revision each save bumps,
+/// and the permanent copy once one is up. Fields a reader doesn't know are kept.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Saved {
+    #[serde(flatten)]
+    pub list: EditList,
+    #[serde(default)]
+    pub rev: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub copy: Option<EditCopy>,
+}
+
+impl Saved {
+    /// The copy, when it was cut from this very revision.
+    pub fn current_copy(&self) -> Option<&EditCopy> {
+        self.copy.as_ref().filter(|c| c.rev == self.rev)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn cut(start: f64, end: f64, applied: bool) -> Cut {
+        Cut { applied, kind: CutKind::Retake, ..Cut::manual(start, end) }
+    }
+
+    #[test]
+    fn keep_is_the_trim_minus_applied_cuts() {
+        let mut l = EditList::new(10.0);
+        l.in_ = 1.0;
+        l.out = 9.0;
+        l.cuts = vec![cut(2.0, 3.0, true), cut(2.5, 4.0, true), cut(5.0, 6.0, false), cut(8.5, 12.0, true)];
+        assert_eq!(l.keep(), vec![(1.0, 2.0), (4.0, 8.5)]);
+        assert_eq!(l.edited_duration(), 5.5);
+        assert_eq!(l.to_edited(4.5), Some(1.5));
+        assert_eq!(l.to_edited(2.7), None);
+    }
+
+    #[test]
+    fn undo_is_unapplying() {
+        let mut l = EditList::new(10.0);
+        l.cuts = vec![cut(2.0, 3.0, true)];
+        l.cuts[0].applied = false;
+        assert_eq!(l.keep(), vec![(0.0, 10.0)]);
+        assert!(l.is_identity());
+    }
+
+    #[test]
+    fn to_source_walks_the_kept_ranges() {
+        let mut l = EditList::new(10.0);
+        l.in_ = 1.0;
+        l.cuts = vec![cut(3.0, 5.0, true)];
+        assert_eq!(l.to_source(0.0), 1.0);
+        assert_eq!(l.to_source(1.5), 2.5);
+        assert_eq!(l.to_source(2.0), 5.0);
+        assert_eq!(l.to_source(3.0), 6.0);
+        assert_eq!(l.to_source(99.0), 10.0);
+        assert_eq!(l.to_source(-1.0), 1.0);
+        for e in [0.0, 0.5, 1.99, 2.0, 4.5, 6.9] {
+            assert!((l.to_edited(l.to_source(e)).unwrap() - e).abs() < 1e-9, "{e}");
+        }
+    }
+
+    #[test]
+    fn checked_clamps_and_never_rejects_an_end_or_an_overlap() {
+        let mut l = EditList::new(10.0);
+        l.in_ = -3.0;
+        l.out = 42.0;
+        l.cuts = vec![cut(-1.0, 0.8, true), cut(9.5, 11.0, true), cut(4.0, 5.0, true), cut(4.6, 5.4, true), cut(f64::NAN, 2.0, true), cut(6.0, 6.0, true)];
+        let l = l.checked();
+        assert_eq!((l.in_, l.out), (0.0, 10.0));
+        assert_eq!(l.cuts.iter().map(|c| (c.start, c.end)).collect::<Vec<_>>(), vec![(0.0, 0.8), (9.5, 10.0), (4.0, 5.0), (4.6, 5.4)]);
+        assert_eq!(l.keep(), vec![(0.8, 4.0), (5.4, 9.5)]);
+    }
+
+    #[test]
+    fn checked_puts_a_trim_back_that_leaves_nothing() {
+        let mut l = EditList::new(10.0);
+        l.in_ = 6.0;
+        l.out = 6.2;
+        assert_eq!(l.checked().keep(), vec![(0.0, 10.0)]);
+        let mut l = EditList::new(f64::NAN);
+        l.out = 3.0;
+        let l = l.checked();
+        assert_eq!((l.source_duration, l.in_, l.out), (0.0, 0.0, 0.0));
+        assert!(l.keep().is_empty());
+    }
+
+    #[test]
+    fn saved_round_trips_flat_and_keeps_its_copy_only_while_current() {
+        let json = r#"{"version":1,"source_duration":10.0,"in":1.0,"out":9.0,"cuts":[{"start":2.0,"end":3.0,"kind":"manual","confidence":"high","applied":true}],"rev":3,"copy":{"rev":3,"file":"edit-3.mp4","duration":7.0}}"#;
+        let s: Saved = serde_json::from_str(json).unwrap();
+        assert_eq!(s.list.in_, 1.0);
+        assert_eq!(s.current_copy().map(|c| c.file.as_str()), Some("edit-3.mp4"));
+        let back = serde_json::to_value(&s).unwrap();
+        assert_eq!(back["in"], 1.0);
+        assert_eq!(back["rev"], 3);
+        let stale = Saved { rev: 4, ..s };
+        assert!(stale.current_copy().is_none());
+        assert_eq!(EditCopy::file_for(4), "edit-4.mp4");
+    }
+}

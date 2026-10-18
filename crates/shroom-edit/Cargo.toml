@@ -1,0 +1,14 @@
+[package]
+name = "shroom-edit"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+description = "The edit list (a trim and cuts over a recording's own timeline, kept in its record and applied as it plays), its editing operations and their undo history (DECISIONS B195)."
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+serde_json = "1"
