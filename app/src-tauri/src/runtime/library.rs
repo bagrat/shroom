@@ -151,6 +151,28 @@ fn ctx(rt: &Runtime, space: &SpaceIdentity, cached: &mut Option<Ctx>) -> Result<
     Ok(())
 }
 
+/// The door to one recording's record and files, as a rename reaches them — the editor's
+/// lane's (N63): the token Mac's own pair, verified once and kept; any other Mac a `manage`
+/// credential minted for that one recording (15 minutes, in memory only).
+#[derive(Default)]
+pub(super) struct Doorway(Option<Ctx>);
+
+impl Doorway {
+    /// A client for `rec`'s record and files.
+    pub(super) fn client(&mut self, rt: &Runtime, space: &SpaceIdentity, rec: &str) -> Result<Held<'_>, FailClass> {
+        ctx(rt, space, &mut self.0)?;
+        match &self.0.as_ref().expect("a door").door {
+            Door::Token(s3) => Ok(Held::Shared(s3)),
+            Door::Device { key, page } => manage(rt, space, key, page, rec).map(Held::Own),
+        }
+    }
+
+    /// After a failure: the next call re-verifies (a revoked token, a new one).
+    pub(super) fn forget(&mut self) {
+        self.0 = None;
+    }
+}
+
 /// A space's answer that isn't the one wanted, as a Library failure class.
 fn answer_class<T>(rt: &Runtime, what: &str, a: &Answer<T>) -> FailClass {
     match a {
@@ -188,8 +210,8 @@ fn manage(rt: &Runtime, space: &SpaceIdentity, key: &DeviceKey, page: &Space, re
 }
 
 /// The Library's failure classes: a dropped connection is `Transport` (the offline face),
-/// the store saying no is `Refused`, anything else unclassified.
-fn class(e: &UploadError) -> FailClass {
+/// the store saying no is `Refused`, anything else unclassified. The editor's lane's too.
+pub(super) fn class(e: &UploadError) -> FailClass {
     match e {
         UploadError::S3(S3Error::Transport(_)) => FailClass::Transport,
         UploadError::S3(S3Error::Status { status: 401 | 403 | 404, .. }) | UploadError::Tombstoned => FailClass::Refused,
@@ -532,7 +554,7 @@ fn tombstoned(s3: &Client, id: &str) -> Result<(), UploadError> {
 /// Each video in turn: its tombstone, then its bytes. The ones that landed are answered
 /// even when a later one fails (they're gone everywhere), then the failure ends the op.
 /// The client a delete runs under: the token Mac's one, or a video's own `manage` mint.
-enum Held<'a> {
+pub(super) enum Held<'a> {
     Shared(&'a Client),
     Own(Client),
 }

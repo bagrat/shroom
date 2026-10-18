@@ -3,10 +3,12 @@
 
 pub mod camera;
 pub mod cloud;
+pub mod editor;
 pub mod home;
 pub mod hotkey;
 pub mod launch;
 pub mod library;
+pub mod media;
 pub mod member;
 pub mod net;
 pub mod observe;
@@ -815,6 +817,7 @@ struct Lanes {
     library: Sender<shroom_core::effect::LibCmd>,
     updater: Sender<shroom_core::effect::UpdCmd>,
     member: Sender<(Instant, shroom_core::effect::MemberCmd)>,
+    editor: Sender<shroom_core::effect::EditCmd>,
 }
 
 /// Starts the core and its lanes; the first event is `Booted` with what's on disk.
@@ -966,6 +969,7 @@ fn start_inner(app: &AppHandle, launch: LaunchKind, quiet: bool, flags: &DevFlag
         library: library::spawn(rt.clone()),
         updater: updater::spawn(rt.clone(), app.clone()),
         member: member::spawn(rt.clone()),
+        editor: editor::spawn(rt.clone()),
     };
     // The core's trace ring, and the panic hook that writes it down (DECISIONS B93).
     ring::install(&rt);
@@ -1098,6 +1102,7 @@ fn effect_kind(e: &Effect) -> &'static str {
         Effect::Library(_) => "library",
         Effect::Updater(_) => "updater",
         Effect::Member(_) => "member",
+        Effect::Editor(_) => "editor",
     }
 }
 
@@ -1150,14 +1155,17 @@ fn dispatch(rt: &Runtime, lanes: &Lanes, app: &AppHandle, e: Effect) {
         Effect::Member(cmd) => {
             let _ = lanes.member.send((Instant::now(), cmd));
         }
+        Effect::Editor(cmd) => {
+            let _ = lanes.editor.send(cmd);
+        }
     }
 }
 
 /// Disconnect and Leave (N36, WORKER-INTERFACE §5's recipe): this Mac deregisters from
 /// its space (`DELETE devices/self`, best-effort — the wipe never waits on it) and forgets
-/// it — `space.json`, the token, the device key, the Library's cache, an invite waiting, a
-/// join asked for, `restore.json`, the stash, and each remaining take's per-recording
-/// credential go. The prefs, `once.json`, `primed.json` (this Mac's permissions chapter),
+/// it — `space.json`, the token, the device key, the Library's cache and posters, the
+/// editor's folder, an invite waiting, a join asked for, `restore.json`, the stash, and each
+/// remaining take's per-recording credential go. The prefs, `once.json`, `primed.json` (this Mac's permissions chapter),
 /// the takes themselves and the login item stay. The core is already at
 /// `idle-unprovisioned`. A dev build wipes only a throwaway home (`--home`).
 fn wipe(rt: &Runtime) {
@@ -1176,8 +1184,11 @@ fn wipe(rt: &Runtime) {
     for name in ["space.json", "token.json", "device.key", "library.json", "invite", "join.json", "restore.json"] {
         rt.home.remove(name);
     }
-    // The space's posters go with its list.
+    // The space's posters go with its list, and what the editor fetched and read of its
+    // videos with them (N63).
     let _ = std::fs::remove_dir_all(rt.home.root.join("posters"));
+    media::MEDIA.forget_all();
+    let _ = std::fs::remove_dir_all(rt.home.edits());
     drop(generation);
     for dir in takes::dirs(&rt.home.takes()) {
         let _ = std::fs::remove_file(dir.join("cred.json"));
