@@ -4,7 +4,7 @@
 
 The machine: every state, edge, rule, said-line and law of shroom v1 — the spec (DECISIONS B133). Sessions edit it; MACHINE.md and the canvas's machine boards are generated from it.
 
-144 states · 296 edges · 23 rules · 574 said-lines · 16 laws · 72 ledger rows.
+145 states · 299 edges · 23 rules · 583 said-lines · 16 laws · 74 ledger rows.
 
 Status: **ratified** is Bagrat's; **provisional** is designed or built and awaits him (each cites its row: `#n` is a DEVIATIONS row of docs/DECISIONS.md, `Bn` a decision, `Nn`/`Un`/`Pn` a ledger row below). `SM:n` in older citations is a line of the retired spec text, kept in history/spec/UX-STATEMACHINE.md.
 
@@ -1738,9 +1738,9 @@ The stop beat: the take is finalized (measured 102 ms) and the video's id exists
 
 ### `owner-page`
 
-state · web-page · **ratified** · board: OwnerPage · cites U2, N26, N1, U9, U3, N35, N40, R11, N46
+state · web-page · **ratified** · board: OwnerPage · cites U2, N26, N1, U9, U3, N35, N40, R11, N46, N66, N67
 
-The real shareable page, opened in the browser at stop. It is never a preview or a processing screen. From top to bottom: the editable title field, which is the only chrome (no header, no wordmark, no name, per U3); the player (first frame, play, scrub bar, `0:00 / 4:32`, fullscreen); [ Copy link ] and, once the video plays, [ Copy thumbnail ] beside it (N46), the page's copy doors, with the upload line and a thin bar beside it; then, bottom-right, the owner switch, “made with shroom”, and the mark. Download appears only once the single-file MP4 exists, and it is second-class (R11). Only the editable title and the switch are owner-only. The address bar shows the clean link because the key died at the 302. The clipboard is never touched (N1). Rename at any time later is a metadata write, live worldwide on the next load (R4). It works from this page in owner-mode or from the Library. Owner-mode by role is N40 and still provisional: the cookie names a member, a member's own pages give them the title only, and owner-class browsers get full owner-mode on every page of the space.
+The real shareable page, opened in the browser at stop. It is never a preview or a processing screen. From top to bottom: the editable title field, which is the only chrome (no header, no wordmark, no name, per U3); the player (first frame, play, scrub bar, `0:00 / 4:32`, fullscreen); [ Copy link ] and, once the video plays, [ Copy thumbnail ] beside it (N46), the page's copy doors, with the upload line and a thin bar beside it; then, bottom-right, the owner switch, “made with shroom”, and the mark. Download appears only once the single-file MP4 exists, and it is second-class (R11). Only the editable title and the switch are owner-only. The address bar shows the clean link because the key died at the 302. The clipboard is never touched (N1). Rename at any time later is a metadata write, live worldwide on the next load (R4). It works from this page in owner-mode or from the Library. Owner-mode by role is N40 and still provisional: the cookie names a member, a member's own pages give them the title only, and owner-class browsers get full owner-mode on every page of the space. When the space names its videos (N66), an untitled video takes the name made from what was said; a line under the title says so until the title is edited, or that the name comes a little later while the free day is used up; and the player gains the chapters and the Captions button the recipient sees (N67).
 
 **Entry.** Stop finalized and the space's page is reachable and can fill. The app opens `v.<name>.workers.dev/<id>?k=<one-time-key>`. The Worker validates k, sets a long-lived owner cookie that names the member, and 302-redirects to the clean URL. The page also opens later on any visit from a browser carrying a qualifying cookie (owner-mode persists per-browser, rendered server-side), when stopped-offline reconnects, and through the Library's Open page (the owner-keyed door, N35).
 
@@ -1754,6 +1754,8 @@ The real shareable page, opened in the browser at stop. It is never a preview or
 | “Preparing the thumbnail…” | tooltip | ratified | N46: Copy thumbnail's tooltip while it waits for its picture (wording approved by Bagrat, 2026-10-15). |
 | “Download” | button | ratified | Present only once the single-file MP4 exists; second-class (R11). The spec gives no button styling beyond “second-class”; the action is recorded as secondary on that basis. |
 | “made with shroom” | field-label | ratified | The owner switch's label, beside the mark. The same three words are the hover tooltip recipients get. |
+| “Named from what you said. Click the title to change it.” | line | provisional | N67. Under the title while the space's name stands and nobody has typed one; gone once the title is edited. Proposed 2026-10-18 (AiOwnerNamed); awaiting Bagrat. · N67 |
+| “Its name and chapters come a little later, once your free hours are back.” | line | provisional | N66 (4), N67. Under the title while the take waits for the next free day (after 00:00 UTC); nothing reads as an error. Proposed 2026-10-18 (AiNamingLater); awaiting Bagrat. · N66, N67 |
 
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
@@ -1901,9 +1903,9 @@ The space can't take this video. The popover says the recording is safe, gives t
 
 ### `live`
 
-web-page · web-page · **ratified** · board: RecipientLive · cites N27, U3, P1, R11, R5, N46
+web-page · web-page · **ratified** · board: RecipientLive · cites N27, U3, P1, R11, R5, N46, N67
 
-The recipient's normal page: the owner page minus the owner's two controls. It shows the title as plain text, the minimal player (first frame well under 1 s per R6.2, custom controls), Copy link and Copy thumbnail (N46), Download (quiet and second-class, once the single-file MP4 exists), and the mark with its hover label. Nothing else: no comments, no sign-in, no name, no shroom account anywhere. Every page is `noindex`, with no passwords, no expiry and no captions in v1. Unfurls follow R5 honesty.
+The recipient's normal page: the owner page minus the owner's two controls. It shows the title as plain text, the minimal player (first frame well under 1 s per R6.2, custom controls), Copy link and Copy thumbnail (N46), Download (quiet and second-class, once the single-file MP4 exists), and the mark with its hover label. Nothing else: no comments, no sign-in, no name, no shroom account anywhere. Every page is `noindex`, with no passwords and no expiry; captions only where the owner turned naming on (N67). Unfurls follow R5 honesty. When the space names its videos (N66), the seek bar splits into the video’s chapters, named on hover and above the thumb on a touch, and a Captions button joins the player’s row (N67).
 
 **Entry.** Someone opens the clean shared link without a qualifying owner cookie, and the video's content is ready and served (the normal case).
 
@@ -1923,6 +1925,7 @@ The recipient's normal page: the owner page minus the owner's two controls. It s
 | “Playback speed” | line | provisional | one case the spec didn't print, so it varies by case — the copy table: The restyled player's speed and sound controls, named the same way (the speed button shows its rate, and its name reads “Playback speed, 1.5×”) · copy table |
 | “Mute” | line | provisional | one case the spec didn't print, so it varies by case — the copy table: The restyled player's speed and sound controls, named the same way (the speed button shows its rate, and its name reads “Playback speed, 1.5×”) · copy table |
 | “Unmute” | line | provisional | one case the spec didn't print, so it varies by case — the copy table: The restyled player's speed and sound controls, named the same way (the speed button shows its rate, and its name reads “Playback speed, 1.5×”) · copy table |
+| “Captions” | line | provisional | one case the spec didn't print, so it varies by case — the copy table: The player's captions button, named for screen readers and keyboards (an icon on screen, never text); only where the video has captions (N67) · copy table, N67 |
 
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
@@ -1933,6 +1936,7 @@ The recipient's normal page: the owner page minus the owner's two controls. It s
 | fullscreen | other |  |  |  |
 | Download | secondary |  |  | Quiet and second-class; only once the single-file MP4 exists (R11). |
 | the mark (small shroom icon) | other |  | `landing` | Bottom-right; hover “made with shroom”; links home. |
+| Captions | other |  |  | N67. Only where the video has captions: turns them on and off, off by default and remembered on that browser. |
 
 | → | Kind | Label | Status | Cites |
 |---|---|---|---|---|
@@ -2149,6 +2153,7 @@ The Library window, thin by design (§5.6), built for two jobs: re-share an old 
 | `library-offline` | flow | Mac goes offline | provisional |  |
 | `library-unreachable` | flow | member-revoked or space-gone (N34) | provisional |  |
 | `delete-confirm` | side | Delete… · Delete key | provisional |  |
+| `library-ai-offer` | auto | the Library opens on the Mac that holds the setup key, naming is off and the card is unanswered (N66) | provisional | N66 |
 
 ### `library-empty`
 
@@ -2366,9 +2371,9 @@ The General tab: U4's login checkbox at home at last (it reads the system's trut
 
 ### `settings-space`
 
-face · window · **provisional** · a face of `settings` · board: SettingsSpace · cites N36, N42, U3, N29, N31, law 4, B159
+face · window · **provisional** · a face of `settings` · board: SettingsSpace · cites N36, N42, U3, N29, N31, law 4, B159, N66
 
-The Space tab: one tab with a mood per kind of Mac (inspection · repair · owner-class-without-token · member). Beneath the rows, by role: the mark switch (owner-class only — a space setting, U3) and the exits as quiet text (Disconnect this Mac… for owners, Leave this space… for members). Row six is live on every Mac. A revoked grant un-ticks it (“screen recording is off”), with Turn it back on → the permissions chapter at exactly the missing beat, in this window. A denied microphone ticks the row with the fact, plus a quiet Turn on the microphone that opens System Settings' Microphone pane (a denied mic never blocks). Mid-take both exits grey (law 4). After Disconnect or Leave, the ~/.shroom secrets are wiped and the app returns to idle-unprovisioned; the login item stays as it was. No invite door shows (B159): an invite link pasted anywhere in the tab (⌘V) opens its invite, as the page's Open shroom does.
+The Space tab: one tab with a mood per kind of Mac (inspection · repair · owner-class-without-token · member). Beneath the rows, by role: the mark switch (owner-class only — a space setting, U3) and the exits as quiet text (Disconnect this Mac… for owners, Leave this space… for members). Row six is live on every Mac. A revoked grant un-ticks it (“screen recording is off”), with Turn it back on → the permissions chapter at exactly the missing beat, in this window. A denied microphone ticks the row with the fact, plus a quiet Turn on the microphone that opens System Settings' Microphone pane (a denied mic never blocks). Mid-take both exits grey (law 4). After Disconnect or Leave, the ~/.shroom secrets are wiped and the app returns to idle-unprovisioned; the login item stays as it was. No invite door shows (B159): an invite link pasted anywhere in the tab (⌘V) opens its invite, as the page's Open shroom does. On the Mac that holds the setup key, a second switch names the space’s videos and adds chapters and captions (N66), with one line on what it does and costs; turning it on or off re-wires the page.
 
 **Entry.** Settings window on the Space tab. Which mood shows is derived from the kind of Mac and the probe results.
 
@@ -2383,10 +2388,13 @@ The Space tab: one tab with a mood per kind of Mac (inspection · repair · owne
 | “— microphone off for now” | status | provisional | Row-six fact when the mic is denied (the row stays ticked). The full row reads “✓ Letting macOS allow recording — microphone off for now” (Region 3, line 730). |
 | “Turn on the microphone” | button | provisional | Quiet. |
 | “You can do this once your recording is finished.” | line | provisional | Mid-take, both exits grey with this line (law 4). |
+| “Name videos and add chapters” | field-label | provisional | N66. Label of the naming switch, on the Mac that holds the setup key only (it re-wires the page). Proposed 2026-10-18 (AiSettings); awaiting Bagrat. · N66 |
+| “From what’s said in each video, by your own Cloudflare account. Free for about three hours of video a day; past that, about 4¢ an hour.” | line | provisional | N66. Description beside the naming switch. Proposed 2026-10-18 (AiSettings); awaiting Bagrat. · N66 |
 
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
 | made with shroom switch | switch |  |  | Owner-class only. A space-global setting (U3), also flippable on a page. |
+| Name videos and add chapters switch | switch |  |  | N66. Only on the Mac that holds the setup key. On re-wires the page with Cloudflare's AI and its schedule; off takes them away. Greys while the re-wire runs and mid-take (law 4). |
 | ⌘V (an invite link, pasted anywhere in the tab) | other |  | `join-switch-confirm` | No door shows (B159). A link to this Mac's own space goes to join-already-here instead. Into the join machine (Region 6). Return behaviour not stated. |
 | Turn it back on | filled-default |  | `perm-screen` | The permissions chapter at exactly the missing beat, in this window. Only shown when the screen grant is revoked. Return behaviour in Settings is not stated. |
 | Turn on the microphone | secondary |  |  | Quiet. Opens System Settings' Microphone pane. |
@@ -2790,6 +2798,31 @@ Send feedback (N60): a small window of its own, opened from the popover's first 
 | Send | filled-default |  |  | ⌘Return; plain Return types a new line. Grey until something is typed and, with the box ticked, the report is gathered. |
 | email it to hi@shroom.am | text-link |  |  | Only once a send failed: a mail draft to hi@shroom.am with the words and the version (N48). |
 | Done | filled-default | ↵ |  | The sent face only: closes the window. Esc and ✕ too. |
+
+### `library-ai-offer`
+
+banner · window · **provisional** · a face of `library` · board: AiOffer · cites N66, B171
+
+A card at the top of the Library on the Mac that holds the setup key, shown until it is answered: it says the space can name its videos and add chapters from what is said, by the owner's own Cloudflare account, with one line on what it costs, and offers Turn on and Not now (N66). Members' Macs and other Macs never show it.
+
+**Entry.** The Library opens on the Mac that holds the setup key while naming is off and the card hasn't been answered.
+
+| Said | Role | Copy | Note |
+|---|---|---|---|
+| “shroom can name your videos and add chapters” | title | provisional | N66. The card's head. Proposed 2026-10-18 (AiOffer); awaiting Bagrat. · N66 |
+| “From what’s said in them, by your own Cloudflare account. Free for about three hours of video a day; past that, about 4¢ an hour.” | line | provisional | N66. The card's line. Proposed 2026-10-18 (AiOffer); awaiting Bagrat. · N66 |
+| “Turn on” | button | provisional | N66. Filled. Re-wires the page, as the switch in Settings · Space does. · N66 |
+| “Not now” | button | provisional | N66. Quiet. The card goes for good; the switch stays in Settings · Space. · N66 |
+
+| Action | Kind | Return | Goes to | Note |
+|---|---|---|---|---|
+| Turn on | filled-default |  | `library` | N66. Turns naming on (the same as the switch in Settings · Space); the card goes. |
+| Not now | secondary |  | `library` | N66. The card goes for good on this Mac; nothing else changes. |
+
+| → | Kind | Label | Status | Cites |
+|---|---|---|---|---|
+| `library` | flow | Turn on | provisional | N66 |
+| `library` | flow | Not now | provisional | N66 |
 
 #### Region 5's amendments
 
@@ -3847,6 +3880,8 @@ A move that holds for a whole group of states, written once (B133). The tests ex
 | N59 | shroom.am, redesigned: two columns, the price as one bar, install in tabs | **Bagrat approved the canvas board “shroom.am redesign — B8-box”, 2026-10-17**, after eight rounds from his ask for a page with less text that shows the demo and install without scrolling. (1) **Two columns on a laptop.** Left: the shroom mark and wordmark, large, at the top; then the headline “Record. Share. Pay-as-you-go.” on one line with its line under it; then one thin price bar, 0 to 30 hours to scale, as wide as the headline, its first tenth lit, labelled “$0 · about three hours of video” and “$1.50 /month · about thirty hours” (it replaces the two price tiles, which read as two plans); then seven terms with green ticks, in his order: “Your videos live in your own Cloudflare account”, “You pay only Cloudflare, for the storage”, “Invite your team with a link”, “No price per person — the bill counts video, not people”, “Delete old videos and pay less”, “About ten minutes of guided setup, once”, “Open source — every line on GitHub”. Spacing: brand to headline 70 px, headline's line to the bar 48, bar to terms 48. Right: one box, corners 10 px, its top level with the wordmark's baseline and its bottom with the last term's: the demo (N58), then Install. (2) **Install is one command at a time, in tabs: Terminal (chosen), Homebrew, Coding agent**, amending N52's Homebrew-first stack; under each, “Read it first” alone, and in the agent's tab “Your agent asks you before it runs anything.”; the system-requirements line under all three. (3) **No header and no trust strip.** The page's foot, under the left column at the bottom of the first screen (after the content when it runs longer), holds Send feedback · GitHub · Questions and limits · Privacy · Terms, then the visits line; “Trouble, questions” goes (it opened /feedback, as Send feedback does), and so do “Your storage, your bill” (term 2 says it) and “Built to outlive us”. The other shroom.am pages keep their header and footer. **The demo's caption, “Recorded with shroom.”, goes** (his later note, the same day), with no link to the take in its place: the video is to be replaced by a generated one; the still and play-in-place stay. (4) **On a phone** it stacks, and by his phone notes the same day the terms come before the demo and install goes last: the brand, the headline, the bar, the terms, the box (the demo, then install), the foot, its links wrapping to fit. The bar's labels are short there, “$0 / 3h video” and “$1.50 / 30h”, because the long ones wrapped; the laptop keeps the long ones. Built: DECISIONS B191. | ratified | 2026-10-17 |
 | N60 | Send feedback from the popover, in its own window, the log going along | **Bagrat asked for it, 2026-10-17**: feedback is worth most from people who have installed shroom, it is easier to send from inside the app than from the web form, and the log should go without anyone attaching it by hand (it makes N53's in-app door easier to reach). **The same day he chose design A** of three on the canvas (“Send feedback — A”) and **the log box ticked by default**. **The popover's header gains a fourth icon, first: Send feedback · Library · Settings · Quit**, named “Send feedback” on hover and to VoiceOver; its glyph a waving hand, his pick from 28 on the canvas (“Send feedback — A: the icon” boards, #23), 2026-10-17. It opens **its own small window, Send feedback**: one line on where it goes, the words, the optional email for an answer, **Include shroom’s recent log** (ticked) with a line on what goes and what never goes, and N53's “See exactly what’s sent”. Unticked, the report carries the words and the version only. **Send** posts to N53's `shroom.am/report` as kind feedback, from the app; Sending… and a send that didn't go through are N53's, word for word, mail link included. **Sent**, the window says so and offers Done. Settings · General's Report a problem… stays as it is (a problem, the log always). The icon sits in the ready popover only, so it never shows mid-take (law 4). Bagrat OK'd the window's words the same day (“its recent log” for “its last 200 lines” among them). Built: DECISIONS B193. Ratified by Bagrat, 2026-10-17. | ratified | 2026-10-17 |
 | N61 | The landing's video becomes “How to set up and use shroom”, served by shroom.am | **Bagrat approved the new video and asked for it to go up, 2026-10-18.** (1) **The video in the landing's box is now “How to set up and use shroom”** (four minutes): a walkthrough drawn from the design boards, with his own narration, replacing the 15-minute take N58 placed there. It is not a shroom recording, so nothing on the page or in the README says it was recorded with shroom. (2) **Its still** is a frame of the video itself: the setup window at “You're all set — ready to record.”, on the landing's dark ground, the same size as before. The play button reads “Play how to set up and use shroom, 4 minutes” to VoiceOver; the length shown is “4 mins”, in minutes rather than to the second (his note the same day). (3) **shroom.am serves it** as its own file (`/how-to.mp4`), no longer from the maker's shroom space; it still loads only as its block nears the screen, and plays in place on a click. (4) **The word “demo” leaves the page** where it meant this video. (5) **While it plays, its controls hide** when the pointer is idle for a few seconds or leaves the video, and come back on a move, a tap or the keyboard (his ask, the same day): the browser's own controls, which do this in Chromium and WebKit and keep keyboard and VoiceOver access. The layout of N59 is unchanged. Built: DECISIONS B194. Ratified by Bagrat, 2026-10-18. | ratified | 2026-10-18 |
+| N66 | The space names its videos, adds chapters and writes captions, through the owner's own Cloudflare | **B171's plan, built** (Bagrat, 2026-10-18, relayed by the orchestrator: build it now, decide the release later; the build's calls are made on judgment and listed in DECISIONS B205–B208 for him to overturn). (1) **Off until the owner turns it on, on the Mac that holds the setup key**: a switch in Settings · Space, “Name videos and add chapters”, with one line on what it does and what it costs; and once, in that Mac's Library, a card with Turn on · Not now. Turning it on re-wires the space's page with Cloudflare's AI and a schedule that runs each minute; the owner's key needs no new power (B171's live check 2). Turning it off takes them away; names, chapters and captions already made stay. Members' Macs never show it and never see a cost. (2) **Each take is heard as it uploads**: every Mac tells the space when another minute of a take is up and once more after Stop, and the space hears that minute and keeps its words beside the take, on the recording's own clock. (3) **After Stop the space names the take and places its chapters**, from the words that play: the title while nobody has typed one (a typed title always wins and is never written over), chapters only on a video of 90 s or more with two or more, and captions from the same words, never a second hearing. (4) **The free day**: every Cloudflare account gets 10,000 neurons a day (about three hours of video); when they run out, the rest waits and is finished after 00:00 UTC by the space's schedule, with no error anywhere; on a paid account it simply runs (about 4¢ an hour). (5) **Edits never re-hear** (the editor, N63, when it lands): chapters and captions follow the saved edit on every view; the name and chapters are made again only when an edit removes at least a fifth of what was said or a whole chapter. Provisional: the words are drafts until he OKs them. | provisional | 2026-10-18 |
+| N67 | Chapters in the seek bar, captions, and the named title on the page | **Chapters live in the page's seek bar** (Bagrat's ruling, 2026-10-18, relayed by the orchestrator; he approved the canvas boards “The page — chapters in the seek bar, named on hover” and “The page on a phone — chapters in the seek bar, named while a finger is on it” the same day). The bar splits into one section per chapter, 2 px apart. Hovering it, playing or paused, shows the time and the chapter's name at that point, and the section under the pointer grows a little. On a phone a finger on the bar shows the same above the thumb, while it drags and for a moment after a tap. The chapter now playing is named after the time, cut short when long, and the bar's spoken value names it too. There is no chapter list. A video with fewer than two chapters keeps today's whole bar. **Captions**, when the space has them: a Captions button in the player's row turns them on; off by default, and remembered on that browser. **The named title** is the page's title, everywhere a title shows (the page, its tab, unfurls, the download's name, the Library). On the owner's page a line under the title says it was named from what was said, until the title is edited; while the free day is used up, it says the name comes a little later instead. Built: DECISIONS B209. Provisional: the words are drafts until he OKs them. | provisional | 2026-10-18 |
 
 ## Surfaces
 
@@ -3865,7 +3900,7 @@ A move that holds for a whole group of states, written once (B133). The tests ex
 - global hotkeys, save ⌥⌘P's pause and resume during a take (N54) (the reopen door covers a hidden mushroom, N41)  [L1725-1726]
 - the tray's Copy last link and any auto-copy (N21, N1)  [L1726]
 - trim, the editor, marker surfacing (P11)  [L1726-1727]
-- captions and transcript search (P8)  [L1727]
+- transcript search (P8; captions left this list with N67)  [L1727]
 - a sender name or avatar (U3)  [L1727-1728]
 - passwords or expiry on links (P1)  [L1728]
 - storage sizes and cost figures (P13)  [L1728]

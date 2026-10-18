@@ -1127,6 +1127,32 @@
     "N7 (the landing's video is no longer a self-recorded take)"
    ],
    "amended_by": []
+  },
+  {
+   "id": "N66",
+   "title": "The space names its videos, adds chapters and writes captions, through the owner's own Cloudflare",
+   "decision": "**B171's plan, built** (Bagrat, 2026-10-18, relayed by the orchestrator: build it now, decide the release later; the build's calls are made on judgment and listed in DECISIONS B205–B208 for him to overturn). (1) **Off until the owner turns it on, on the Mac that holds the setup key**: a switch in Settings · Space, “Name videos and add chapters”, with one line on what it does and what it costs; and once, in that Mac's Library, a card with Turn on · Not now. Turning it on re-wires the space's page with Cloudflare's AI and a schedule that runs each minute; the owner's key needs no new power (B171's live check 2). Turning it off takes them away; names, chapters and captions already made stay. Members' Macs never show it and never see a cost. (2) **Each take is heard as it uploads**: every Mac tells the space when another minute of a take is up and once more after Stop, and the space hears that minute and keeps its words beside the take, on the recording's own clock. (3) **After Stop the space names the take and places its chapters**, from the words that play: the title while nobody has typed one (a typed title always wins and is never written over), chapters only on a video of 90 s or more with two or more, and captions from the same words, never a second hearing. (4) **The free day**: every Cloudflare account gets 10,000 neurons a day (about three hours of video); when they run out, the rest waits and is finished after 00:00 UTC by the space's schedule, with no error anywhere; on a paid account it simply runs (about 4¢ an hour). (5) **Edits never re-hear** (the editor, N63, when it lands): chapters and captions follow the saved edit on every view; the name and chapters are made again only when an edit removes at least a fifth of what was said or a whole chapter. Provisional: the words are drafts until he OKs them.",
+   "status": "provisional",
+   "date": "2026-10-18",
+   "amends": [
+    "B171 (built: names, chapters and captions after v1, on the owner's own Cloudflare)",
+    "settings-space (the naming switch, on the Mac that holds the setup key)",
+    "library (a one-time card on that Mac's Library)"
+   ],
+   "amended_by": []
+  },
+  {
+   "id": "N67",
+   "title": "Chapters in the seek bar, captions, and the named title on the page",
+   "decision": "**Chapters live in the page's seek bar** (Bagrat's ruling, 2026-10-18, relayed by the orchestrator; he approved the canvas boards “The page — chapters in the seek bar, named on hover” and “The page on a phone — chapters in the seek bar, named while a finger is on it” the same day). The bar splits into one section per chapter, 2 px apart. Hovering it, playing or paused, shows the time and the chapter's name at that point, and the section under the pointer grows a little. On a phone a finger on the bar shows the same above the thumb, while it drags and for a moment after a tap. The chapter now playing is named after the time, cut short when long, and the bar's spoken value names it too. There is no chapter list. A video with fewer than two chapters keeps today's whole bar. **Captions**, when the space has them: a Captions button in the player's row turns them on; off by default, and remembered on that browser. **The named title** is the page's title, everywhere a title shows (the page, its tab, unfurls, the download's name, the Library). On the owner's page a line under the title says it was named from what was said, until the title is edited; while the free day is used up, it says the name comes a little later instead. Built: DECISIONS B209. Provisional: the words are drafts until he OKs them.",
+   "status": "provisional",
+   "date": "2026-10-18",
+   "amends": [
+    "owner-page (the named title's line; chapters in the bar; captions)",
+    "live (chapters in the bar; captions, where the summary said no captions in v1)",
+    "absent_from_v1 (captions join v1 with N67; transcript search stays out)"
+   ],
+   "amended_by": []
   }
  ],
  "surfaces": [
@@ -1162,7 +1188,7 @@
   "global hotkeys, save ⌥⌘P's pause and resume during a take (N54) (the reopen door covers a hidden mushroom, N41)  [L1725-1726]",
   "the tray's Copy last link and any auto-copy (N21, N1)  [L1726]",
   "trim, the editor, marker surfacing (P11)  [L1726-1727]",
-  "captions and transcript search (P8)  [L1727]",
+  "transcript search (P8; captions left this list with N67)  [L1727]",
   "a sender name or avatar (U3)  [L1727-1728]",
   "passwords or expiry on links (P1)  [L1728]",
   "storage sizes and cost figures (P13)  [L1728]",
@@ -6324,7 +6350,7 @@
    "surface": "web-page",
    "status": "ratified",
    "board": "OwnerPage",
-   "summary": "The real shareable page, opened in the browser at stop. It is never a preview or a processing screen. From top to bottom: the editable title field, which is the only chrome (no header, no wordmark, no name, per U3); the player (first frame, play, scrub bar, `0:00 / 4:32`, fullscreen); [ Copy link ] and, once the video plays, [ Copy thumbnail ] beside it (N46), the page's copy doors, with the upload line and a thin bar beside it; then, bottom-right, the owner switch, “made with shroom”, and the mark. Download appears only once the single-file MP4 exists, and it is second-class (R11). Only the editable title and the switch are owner-only. The address bar shows the clean link because the key died at the 302. The clipboard is never touched (N1). Rename at any time later is a metadata write, live worldwide on the next load (R4). It works from this page in owner-mode or from the Library. Owner-mode by role is N40 and still provisional: the cookie names a member, a member's own pages give them the title only, and owner-class browsers get full owner-mode on every page of the space.",
+   "summary": "The real shareable page, opened in the browser at stop. It is never a preview or a processing screen. From top to bottom: the editable title field, which is the only chrome (no header, no wordmark, no name, per U3); the player (first frame, play, scrub bar, `0:00 / 4:32`, fullscreen); [ Copy link ] and, once the video plays, [ Copy thumbnail ] beside it (N46), the page's copy doors, with the upload line and a thin bar beside it; then, bottom-right, the owner switch, “made with shroom”, and the mark. Download appears only once the single-file MP4 exists, and it is second-class (R11). Only the editable title and the switch are owner-only. The address bar shows the clean link because the key died at the 302. The clipboard is never touched (N1). Rename at any time later is a metadata write, live worldwide on the next load (R4). It works from this page in owner-mode or from the Library. Owner-mode by role is N40 and still provisional: the cookie names a member, a member's own pages give them the title only, and owner-class browsers get full owner-mode on every page of the space. When the space names its videos (N66), an untitled video takes the name made from what was said; a line under the title says so until the title is edited, or that the name comes a little later while the free day is used up; and the player gains the chapters and the Captions button the recipient sees (N67).",
    "entry": "Stop finalized and the space's page is reachable and can fill. The app opens `v.<name>.workers.dev/<id>?k=<one-time-key>`. The Worker validates k, sets a long-lived owner cookie that names the member, and 302-redirects to the clean URL. The page also opens later on any visit from a browser carrying a qualifying cookie (owner-mode persists per-browser, rendered server-side), when stopped-offline reconnects, and through the Library's Open page (the owner-keyed door, N35).",
    "said": [
     {
@@ -6381,6 +6407,27 @@
      "copy": "ratified",
      "note": "The owner switch's label, beside the mark. The same three words are the hover tooltip recipients get.",
      "id": "owner-page.made-with-shroom"
+    },
+    {
+     "text": "Named from what you said. Click the title to change it.",
+     "role": "line",
+     "copy": "provisional",
+     "note": "N67. Under the title while the space's name stands and nobody has typed one; gone once the title is edited. Proposed 2026-10-18 (AiOwnerNamed); awaiting Bagrat.",
+     "cites": [
+      "N67"
+     ],
+     "id": "owner-page.named-from-what-you-said"
+    },
+    {
+     "text": "Its name and chapters come a little later, once your free hours are back.",
+     "role": "line",
+     "copy": "provisional",
+     "note": "N66 (4), N67. Under the title while the take waits for the next free day (after 00:00 UTC); nothing reads as an error. Proposed 2026-10-18 (AiNamingLater); awaiting Bagrat.",
+     "cites": [
+      "N66",
+      "N67"
+     ],
+     "id": "owner-page.its-name-and-chapters-come"
     }
    ],
    "actions": [
@@ -6452,7 +6499,9 @@
     "N35",
     "N40",
     "R11",
-    "N46"
+    "N46",
+    "N66",
+    "N67"
    ],
    "was": {
     "fixture": "r4.json",
@@ -6793,7 +6842,7 @@
    "surface": "web-page",
    "status": "ratified",
    "board": "RecipientLive",
-   "summary": "The recipient's normal page: the owner page minus the owner's two controls. It shows the title as plain text, the minimal player (first frame well under 1 s per R6.2, custom controls), Copy link and Copy thumbnail (N46), Download (quiet and second-class, once the single-file MP4 exists), and the mark with its hover label. Nothing else: no comments, no sign-in, no name, no shroom account anywhere. Every page is `noindex`, with no passwords, no expiry and no captions in v1. Unfurls follow R5 honesty.",
+   "summary": "The recipient's normal page: the owner page minus the owner's two controls. It shows the title as plain text, the minimal player (first frame well under 1 s per R6.2, custom controls), Copy link and Copy thumbnail (N46), Download (quiet and second-class, once the single-file MP4 exists), and the mark with its hover label. Nothing else: no comments, no sign-in, no name, no shroom account anywhere. Every page is `noindex`, with no passwords and no expiry; captions only where the owner turned naming on (N67). Unfurls follow R5 honesty. When the space names its videos (N66), the seek bar splits into the video’s chapters, named on hover and above the thumb on a touch, and a Captions button joins the player’s row (N67).",
    "entry": "Someone opens the clean shared link without a qualifying owner cookie, and the video's content is ready and served (the normal case).",
    "said": [
     {
@@ -6917,6 +6966,17 @@
       "copy table"
      ],
      "id": "live.unmute"
+    },
+    {
+     "text": "Captions",
+     "role": "line",
+     "copy": "provisional",
+     "note": "one case the spec didn't print, so it varies by case — the copy table: The player's captions button, named for screen readers and keyboards (an icon on screen, never text); only where the video has captions (N67)",
+     "cites": [
+      "copy table",
+      "N67"
+     ],
+     "id": "live.captions"
     }
    ],
    "actions": [
@@ -6962,6 +7022,12 @@
      "return_default": false,
      "goes_to": "landing",
      "note": "Bottom-right; hover “made with shroom”; links home."
+    },
+    {
+     "label": "Captions",
+     "kind": "other",
+     "return_default": false,
+     "note": "N67. Only where the video has captions: turns them on and off, off by default and remembered on that browser."
     }
    ],
    "cites": [
@@ -6970,7 +7036,8 @@
     "P1",
     "R11",
     "R5",
-    "N46"
+    "N46",
+    "N67"
    ],
    "was": {
     "fixture": "r4.json",
@@ -8050,7 +8117,7 @@
    "surface": "window",
    "status": "provisional",
    "board": "SettingsSpace",
-   "summary": "The Space tab: one tab with a mood per kind of Mac (inspection · repair · owner-class-without-token · member). Beneath the rows, by role: the mark switch (owner-class only — a space setting, U3) and the exits as quiet text (Disconnect this Mac… for owners, Leave this space… for members). Row six is live on every Mac. A revoked grant un-ticks it (“screen recording is off”), with Turn it back on → the permissions chapter at exactly the missing beat, in this window. A denied microphone ticks the row with the fact, plus a quiet Turn on the microphone that opens System Settings' Microphone pane (a denied mic never blocks). Mid-take both exits grey (law 4). After Disconnect or Leave, the ~/.shroom secrets are wiped and the app returns to idle-unprovisioned; the login item stays as it was. No invite door shows (B159): an invite link pasted anywhere in the tab (⌘V) opens its invite, as the page's Open shroom does.",
+   "summary": "The Space tab: one tab with a mood per kind of Mac (inspection · repair · owner-class-without-token · member). Beneath the rows, by role: the mark switch (owner-class only — a space setting, U3) and the exits as quiet text (Disconnect this Mac… for owners, Leave this space… for members). Row six is live on every Mac. A revoked grant un-ticks it (“screen recording is off”), with Turn it back on → the permissions chapter at exactly the missing beat, in this window. A denied microphone ticks the row with the fact, plus a quiet Turn on the microphone that opens System Settings' Microphone pane (a denied mic never blocks). Mid-take both exits grey (law 4). After Disconnect or Leave, the ~/.shroom secrets are wiped and the app returns to idle-unprovisioned; the login item stays as it was. No invite door shows (B159): an invite link pasted anywhere in the tab (⌘V) opens its invite, as the page's Open shroom does. On the Mac that holds the setup key, a second switch names the space’s videos and adds chapters and captions (N66), with one line on what it does and costs; turning it on or off re-wires the page.",
    "entry": "Settings window on the Space tab. Which mood shows is derived from the kind of Mac and the probe results.",
    "said": [
     {
@@ -8115,6 +8182,26 @@
      "copy": "provisional",
      "note": "Mid-take, both exits grey with this line (law 4).",
      "id": "settings-space.you-can-do-this"
+    },
+    {
+     "text": "Name videos and add chapters",
+     "role": "field-label",
+     "copy": "provisional",
+     "note": "N66. Label of the naming switch, on the Mac that holds the setup key only (it re-wires the page). Proposed 2026-10-18 (AiSettings); awaiting Bagrat.",
+     "cites": [
+      "N66"
+     ],
+     "id": "settings-space.name-videos-and-add"
+    },
+    {
+     "text": "From what’s said in each video, by your own Cloudflare account. Free for about three hours of video a day; past that, about 4¢ an hour.",
+     "role": "line",
+     "copy": "provisional",
+     "note": "N66. Description beside the naming switch. Proposed 2026-10-18 (AiSettings); awaiting Bagrat.",
+     "cites": [
+      "N66"
+     ],
+     "id": "settings-space.from-whats-said-in"
     }
    ],
    "actions": [
@@ -8123,6 +8210,12 @@
      "kind": "switch",
      "return_default": false,
      "note": "Owner-class only. A space-global setting (U3), also flippable on a page."
+    },
+    {
+     "label": "Name videos and add chapters switch",
+     "kind": "switch",
+     "return_default": false,
+     "note": "N66. Only on the Mac that holds the setup key. On re-wires the page with Cloudflare's AI and its schedule; off takes them away. Greys while the re-wire runs and mid-take (law 4)."
     },
     {
      "label": "⌘V (an invite link, pasted anywhere in the tab)",
@@ -8166,7 +8259,8 @@
     "N29",
     "N31",
     "law 4",
-    "B159"
+    "B159",
+    "N66"
    ],
    "was": {
     "fixture": "r5.json",
@@ -11592,6 +11686,78 @@
     "N48",
     "N12",
     "N41"
+   ]
+  },
+  "library-ai-offer": {
+   "region": 5,
+   "kind": "banner",
+   "parent": "library",
+   "surface": "window",
+   "status": "provisional",
+   "board": "AiOffer",
+   "summary": "A card at the top of the Library on the Mac that holds the setup key, shown until it is answered: it says the space can name its videos and add chapters from what is said, by the owner's own Cloudflare account, with one line on what it costs, and offers Turn on and Not now (N66). Members' Macs and other Macs never show it.",
+   "entry": "The Library opens on the Mac that holds the setup key while naming is off and the card hasn't been answered.",
+   "said": [
+    {
+     "text": "shroom can name your videos and add chapters",
+     "role": "title",
+     "copy": "provisional",
+     "note": "N66. The card's head. Proposed 2026-10-18 (AiOffer); awaiting Bagrat.",
+     "cites": [
+      "N66"
+     ],
+     "id": "library-ai-offer.shroom-can-name-your"
+    },
+    {
+     "text": "From what’s said in them, by your own Cloudflare account. Free for about three hours of video a day; past that, about 4¢ an hour.",
+     "role": "line",
+     "copy": "provisional",
+     "note": "N66. The card's line. Proposed 2026-10-18 (AiOffer); awaiting Bagrat.",
+     "cites": [
+      "N66"
+     ],
+     "id": "library-ai-offer.from-whats-said-in"
+    },
+    {
+     "text": "Turn on",
+     "role": "button",
+     "copy": "provisional",
+     "note": "N66. Filled. Re-wires the page, as the switch in Settings · Space does.",
+     "cites": [
+      "N66"
+     ],
+     "id": "library-ai-offer.turn-on"
+    },
+    {
+     "text": "Not now",
+     "role": "button",
+     "copy": "provisional",
+     "note": "N66. Quiet. The card goes for good; the switch stays in Settings · Space.",
+     "cites": [
+      "N66"
+     ],
+     "id": "library-ai-offer.not-now"
+    }
+   ],
+   "actions": [
+    {
+     "label": "Turn on",
+     "kind": "filled-default",
+     "return_default": false,
+     "goes_to": "library",
+     "note": "N66. Turns naming on (the same as the switch in Settings · Space); the card goes."
+    },
+    {
+     "label": "Not now",
+     "kind": "secondary",
+     "return_default": false,
+     "goes_to": "library",
+     "note": "N66. The card goes for good on this Mac; nothing else changes."
+    }
+   ],
+   "cites": [
+    "N66",
+    "B171"
    ]
   }
  },
@@ -16124,6 +16290,55 @@
    ],
    "on": [
     "Act(OpenFeedback)"
+   ]
+  },
+  {
+   "from": "library",
+   "to": "library-ai-offer",
+   "kind": "auto",
+   "label": "",
+   "trigger": "the Library opens on the Mac that holds the setup key, naming is off and the card is unanswered (N66)",
+   "status": "provisional",
+   "cites": [
+    "N66"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": []
+  },
+  {
+   "from": "library-ai-offer",
+   "to": "library",
+   "kind": "flow",
+   "label": "Turn on",
+   "trigger": "Turn on: naming goes on, as from Settings · Space (N66)",
+   "status": "provisional",
+   "cites": [
+    "N66"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Act(AiOn)"
+   ]
+  },
+  {
+   "from": "library-ai-offer",
+   "to": "library",
+   "kind": "flow",
+   "label": "Not now",
+   "trigger": "Not now: the card goes for good on this Mac (N66)",
+   "status": "provisional",
+   "cites": [
+    "N66"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Act(AiNotNow)"
    ]
   }
  ],
