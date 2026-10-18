@@ -61,6 +61,16 @@ fn saved_edit(rev: u64) -> Saved {
     Saved::new(list, rev)
 }
 
+/// The saved edit with its final video up (B197): the copy of this very revision.
+fn with_copy(rev: u64) -> Saved {
+    let mut s = saved_edit(rev);
+    s.copy = Some(shroom_edit::EditCopy { rev, file: shroom_edit::EditCopy::file_for(rev), duration: 221.0, poster: None, teaser: None });
+    s.keep_until = Some("2026-09-23T10:00:00Z".into());
+    s
+}
+
+const HOUR: i64 = 3_600_000;
+
 /// The saved edit with one more part cut by hand, 20–30 s: the list's first hand-cut id.
 fn edited() -> EditList {
     let mut l = saved_edit(3).list;
@@ -104,7 +114,7 @@ fn opened() -> Run {
 /// …its record read (`saved`), its markers, and the video here with its sound read.
 fn ready_with(saved: Option<Saved>) -> Run {
     let mut r = opened();
-    r.news(EditorNews::Opened { rec: rec(), saved, markers: vec![61.5, 130.0], duration_sec: Some(272.4) });
+    r.news(EditorNews::Opened { rec: rec(), saved, markers: vec![61.5, 130.0], duration_sec: Some(272.4), keep_until: None });
     r.news(EditorNews::Ready { rec: rec(), duration: 272.4 });
     r
 }
@@ -269,7 +279,7 @@ fn edit_opens_the_editor_on_the_row_and_asks_for_its_record() {
 #[test]
 fn the_record_then_the_video_make_the_editor_live() {
     let mut r = opened();
-    r.news(EditorNews::Opened { rec: rec(), saved: Some(saved_edit(3)), markers: vec![61.5, 130.0], duration_sec: Some(272.4) });
+    r.news(EditorNews::Opened { rec: rec(), saved: Some(saved_edit(3)), markers: vec![61.5, 130.0], duration_sec: Some(272.4), keep_until: None });
     assert_eq!(face(&r), "editor");
     let l = list(&r);
     assert_eq!((l.in_, l.out), (8.0, 241.0));
@@ -377,7 +387,7 @@ fn steps_are_refused_until_ready_while_saving_and_when_the_model_refuses_them() 
     let mut r = opened();
     r.op(EditOp::Trim { in_: 8.0, out: 241.0 });
     assert_eq!(r.arm.name, "dropped", "the record isn't read");
-    r.news(EditorNews::Opened { rec: rec(), saved: None, markers: vec![], duration_sec: Some(272.4) });
+    r.news(EditorNews::Opened { rec: rec(), saved: None, markers: vec![], duration_sec: Some(272.4), keep_until: None });
     r.op(EditOp::Trim { in_: 8.0, out: 241.0 });
     assert_eq!(r.arm.name, "dropped", "the video isn't here");
     assert_eq!(body(&r).keep, vec![[0.0, 272.4]]);
@@ -541,7 +551,7 @@ fn a_failed_save_says_so_and_done_tries_again() {
 #[test]
 fn a_video_that_cant_come_says_so_and_offers_try_again() {
     let mut r = opened();
-    r.news(EditorNews::Opened { rec: rec(), saved: None, markers: vec![], duration_sec: Some(272.4) });
+    r.news(EditorNews::Opened { rec: rec(), saved: None, markers: vec![], duration_sec: Some(272.4), keep_until: None });
     r.news(EditorNews::Getting { rec: rec(), pct: 10 });
     r.send(Event::Failed { op: Op::EditorOpen, class: FailClass::Transport });
     assert_eq!(r.arm.edge, Some(("editor-getting", "editor-cant-get")));
@@ -621,7 +631,7 @@ fn edit_while_open_brings_the_editor_forward_on_its_video() {
 fn news_for_another_video_is_stale() {
     let mut r = opened();
     let other = RecId(OTHER.into());
-    r.news(EditorNews::Opened { rec: other.clone(), saved: Some(saved_edit(9)), markers: vec![], duration_sec: Some(10.0) });
+    r.news(EditorNews::Opened { rec: other.clone(), saved: Some(saved_edit(9)), markers: vec![], duration_sec: Some(10.0), keep_until: None });
     r.news(EditorNews::Ready { rec: other.clone(), duration: 10.0 });
     r.news(EditorNews::Getting { rec: other.clone(), pct: 50 });
     assert_eq!((face(&r), body(&r).media.clone(), body(&r).list.clone()), ("editor", EditorMediaView::Opening, None));
@@ -644,7 +654,7 @@ fn the_library_row_reads_the_edited_length() {
     r.send(Event::WindowFocused(WindowKind::Library, quick()));
     assert!(r.w.inflight.ops.contains_key(&Op::LibRefresh), "a refresh begins");
     r.lib(Action::EditRow(rec()));
-    r.news(EditorNews::Opened { rec: rec(), saved: None, markers: vec![], duration_sec: Some(272.4) });
+    r.news(EditorNews::Opened { rec: rec(), saved: None, markers: vec![], duration_sec: Some(272.4), keep_until: None });
     r.news(EditorNews::Ready { rec: rec(), duration: 272.4 });
     r.op(EditOp::Trim { in_: 8.0, out: 241.0 });
     r.op(EditOp::Cut { start: 150.0, end: 162.0 });
@@ -689,7 +699,7 @@ fn copies_wait_for_the_take_and_go_one_at_a_time() {
     r.ed(Action::EditorDone);
     r.news(EditorNews::Saved { rec: rec(), rev: 4 });
     r.lib(Action::EditRow(RecId(OTHER.into())));
-    r.news(EditorNews::Opened { rec: RecId(OTHER.into()), saved: None, markers: vec![], duration_sec: Some(95.0) });
+    r.news(EditorNews::Opened { rec: RecId(OTHER.into()), saved: None, markers: vec![], duration_sec: Some(95.0), keep_until: None });
     r.news(EditorNews::Ready { rec: RecId(OTHER.into()), duration: 95.0 });
     r.op(EditOp::Cut { start: 10.0, end: 20.0 });
     r.ed(Action::EditorDone);
@@ -702,6 +712,71 @@ fn copies_wait_for_the_take_and_go_one_at_a_time() {
     assert!(r.has(|e| *e == Effect::Editor(EditCmd::Copy { rec: RecId(OTHER.into()), rev: 1 })), "the next copy: {:?}", r.effects);
     r.news(EditorNews::CopyDone { rec: RecId(OTHER.into()), rev: 1 });
     assert!(r.w.library_ops.copies.is_empty() && !r.w.inflight.failures.contains_key(&Op::EditorCopy));
+}
+
+// ── the time the original has left (B197 (e)) ──
+
+/// The editor opened on a record whose original is kept `left` ms more beside its copy.
+fn kept_for(saved: Saved, left: i64) -> Run {
+    let mut r = opened();
+    // Two steps on (each step is 10 ms): `left` is what's left once the video is here.
+    let until = Wall(r.w.wall.0 + 20 + left);
+    r.news(EditorNews::Opened { rec: rec(), saved: Some(saved), markers: vec![], duration_sec: Some(272.4), keep_until: Some(until) });
+    r.news(EditorNews::Ready { rec: rec(), duration: 272.4 });
+    r
+}
+
+/// By Revert, while an earlier edit's original is kept: “2 more days” with more than a day
+/// left, “1 more day” with a day or less, “a few more hours” under an hour — and its words
+/// change as the time goes, by themselves.
+#[test]
+fn the_time_the_original_has_left_sits_by_revert() {
+    for (left, words) in [
+        (47 * HOUR, "The original is kept 2 more days"),
+        (24 * HOUR + 1, "The original is kept 2 more days"),
+        (24 * HOUR, "The original is kept 1 more day"),
+        (5 * HOUR, "The original is kept 1 more day"),
+        (HOUR, "The original is kept 1 more day"),
+        (HOUR - 1, "The original is kept a few more hours"),
+        (60_000, "The original is kept a few more hours"),
+    ] {
+        let r = kept_for(with_copy(3), left);
+        assert_eq!(body(&r).original_kept.as_deref(), Some(words), "{left} ms left");
+        assert_eq!(face(&r), "editor");
+        assert!(body(&r).revert.enabled, "Revert works while it's kept");
+    }
+    // Its words follow the clock: a wake when a day is left, when an hour is, and at the end.
+    let mut r = kept_for(with_copy(3), 30 * HOUR);
+    assert_eq!(body(&r).original_kept.as_deref(), Some("The original is kept 2 more days"));
+    let wake = r.scene.next_wake.expect("a wake for the words");
+    assert_eq!(wake, Mono(r.t + 6 * HOUR as u64));
+    r.tick_to(wake.0);
+    assert_eq!(body(&r).original_kept.as_deref(), Some("The original is kept 1 more day"));
+    let wake = r.scene.next_wake.expect("the next");
+    r.tick_to(wake.0);
+    assert_eq!(body(&r).original_kept.as_deref(), Some("The original is kept a few more hours"));
+    let wake = r.scene.next_wake.expect("the last");
+    r.tick_to(wake.0);
+    assert_eq!(body(&r).original_kept, None, "its time is up");
+}
+
+/// No line at all: nothing kept, its time already up, or a copy that isn't the saved edit's
+/// (a newer save's copy not made yet).
+#[test]
+fn the_time_left_shows_only_while_the_original_is_kept() {
+    let r = ready_with(Some(saved_edit(3)));
+    assert_eq!(body(&r).original_kept, None, "never kept");
+    let r = kept_for(with_copy(3), -HOUR);
+    assert_eq!(body(&r).original_kept, None, "its time is up");
+    let mut stale = with_copy(3);
+    stale.rev = 4;
+    let r = kept_for(stale, 20 * HOUR);
+    assert_eq!(body(&r).original_kept, None, "the copy is an older revision's");
+    assert_eq!(r.w.session.fields.editor.as_ref().unwrap().kept_until, None);
+    let r = ready_with(Some(saved_edit(3)));
+    let mut r = Run::new(r.w);
+    r.news(EditorNews::Opened { rec: rec(), saved: None, markers: vec![], duration_sec: Some(272.4), keep_until: Some(Wall(r.w.wall.0 + HOUR)) });
+    assert_eq!(body(&r).original_kept, None, "a read over a read changes nothing");
 }
 
 // ── Cut it too ──
@@ -901,11 +976,12 @@ fn the_slice_is_the_webviews_json() {
     assert_eq!(
         keys(b),
         [
-            "can_redo", "can_undo", "done", "editable", "edited_duration", "footer", "footer_tone", "hint", "keep", "labels", "list", "markers", "media", "rec", "revert",
-            "source_duration", "title"
+            "can_redo", "can_undo", "done", "editable", "edited_duration", "footer", "footer_tone", "hint", "keep", "labels", "list", "markers", "media", "original_kept",
+            "rec", "revert", "source_duration", "title"
         ]
     );
     assert_eq!(keys(&b["labels"]), ["cut", "cut_it_too", "pause", "play", "put_back", "redo", "time", "undo", "was"]);
+    assert_eq!(b["original_kept"], serde_json::Value::Null);
     assert_eq!(b["media"], json!({ "state": "ready", "duration": 272.4 }));
     assert_eq!(b["footer_tone"], "plain");
     assert_eq!((b["list"]["in"].clone(), b["list"]["out"].clone()), (json!(8.0), json!(235.0)));
@@ -932,6 +1008,13 @@ fn the_slice_is_the_webviews_json() {
     r.ed(Action::EditorDone);
     r.send(Event::Failed { op: Op::EditorSave, class: FailClass::Transport });
     assert_eq!(serde_json::to_value(&r.scene.editor.as_ref().unwrap().body).unwrap()["footer_tone"], "amber");
+
+    // The time the original has left, by Revert.
+    let mut r = opened();
+    let until = Wall(r.w.wall.0 + 20 * HOUR);
+    r.news(EditorNews::Opened { rec: rec(), saved: Some(with_copy(3)), markers: vec![], duration_sec: Some(272.4), keep_until: Some(until) });
+    let b = serde_json::to_value(&r.scene.editor.as_ref().unwrap().body).unwrap();
+    assert_eq!(b["original_kept"], json!("The original is kept 1 more day"));
 
     assert_eq!(serde_json::to_value(Action::EditRow(rec())).unwrap(), json!({ "do": "edit-row", "arg": REC }));
     assert_eq!(serde_json::to_value(Surface::Editor).unwrap(), json!("editor"));

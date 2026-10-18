@@ -5,6 +5,7 @@
 
 use crate::copy;
 use crate::scene::{Action, Button, CutView, EditListView, EditorBody, EditorLabels, EditorMediaView, LineTone, Style, Window};
+use crate::time::Mono;
 use crate::world::{EditorFields, EditorMedia, EditorSave, WindowKind, World};
 
 pub fn derive(w: &World) -> Option<Window<EditorBody>> {
@@ -67,6 +68,7 @@ pub fn derive(w: &World) -> Option<Window<EditorBody>> {
         can_redo: editable && history.is_some_and(|h| h.can_redo()),
         revert: Button::new(Action::EditorRevert, copy::revert_to_original(), Style::Plain).enabled(editable && history.is_some_and(|h| h.can_revert())),
         done,
+        original_kept: kept_left(w, e).map(copy::original_kept),
     };
     // Return is Done once there's a video to save over (cant-get's Close); Esc is the
     // webview's own — it drops a selection — except where Close is the one way on.
@@ -97,6 +99,25 @@ pub fn ready(e: &EditorFields) -> bool {
 /// Steps are taken: ready, and nothing saving.
 pub fn editable(e: &EditorFields) -> bool {
     ready(e) && e.save != EditorSave::Saving
+}
+
+/// How long the original has left beside its copy (ms), while it's kept (B197 (e)).
+fn kept_left(w: &World, e: &EditorFields) -> Option<i64> {
+    let left = e.kept_until?.0 - w.wall.0;
+    (left > 0).then_some(left)
+}
+
+/// When the time-left line by Revert next changes its words — a day left, an hour left,
+/// gone — as wakes on the monotonic clock.
+pub fn wakes(w: &World, out: &mut Vec<Mono>) {
+    const HOUR: i64 = 3_600_000;
+    let Some(left) = w.session.fields.editor.as_ref().and_then(|e| kept_left(w, e)) else { return };
+    // A day left reads “1 more day”; under an hour, “a few more hours”; at none, nothing.
+    for at in [left - 24 * HOUR, left - HOUR + 1, left] {
+        if at > 0 {
+            out.push(w.now.plus(at as u64));
+        }
+    }
 }
 
 /// A cut's kind, as the record spells it (`shroom_edit::CutKind`'s serde names).

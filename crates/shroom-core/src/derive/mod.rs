@@ -239,6 +239,8 @@ fn next_wake(w: &World) -> Option<Mono> {
     wakes.extend(next_self_check(w));
     wakes.extend(next_refresh(w));
     wakes.extend(next_cleanup(w));
+    // The editor's time-left line by Revert changes its words (B197 (e)).
+    editor::wakes(w, &mut wakes);
     // macOS waits on the will-sleep answer: it goes at the hold's end at the latest.
     wakes.extend(w.mac.sleep_hold.map(|t| t.plus(SLEEP_HOLD_MS)));
     wakes.extend(next_download(w).map(|(t, _)| t));

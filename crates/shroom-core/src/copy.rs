@@ -437,6 +437,19 @@ pub fn saving_done() -> String { "Saving…".into() }
 pub fn save_failed() -> String { "Couldn't save your edit. Check your connection, then press Done again.".into() }
 /// Under a dashed suggestion that was clicked (a voice cue's offer, N65).
 pub fn cut_it_too() -> String { "Cut it too".into() }
+/// By Revert, while an earlier edit's original is kept beside its copy (B197 (e)): the time
+/// it has left — more than a day, a day at most, under an hour.
+pub fn original_kept(left_ms: i64) -> String {
+    const HOUR: i64 = 3_600_000;
+    let left = if left_ms > 24 * HOUR {
+        "2 more days"
+    } else if left_ms >= HOUR {
+        "1 more day"
+    } else {
+        "a few more hours"
+    };
+    format!("The original is kept {left}")
+}
 pub fn needs_macos(version: &str, macos: u32, running: &str) -> String {
     format!("shroom {version} needs macOS {macos} — this Mac stays on {running}.")
 }
@@ -1229,5 +1242,6 @@ pub fn registry() -> Vec<(&'static str, String)> {
         ("editor-saving", saving_done()),
         ("editor-save-failed", save_failed()),
         ("editor", cut_it_too()),
+        ("editor", original_kept(12 * 3_600_000)),
     ]
 }

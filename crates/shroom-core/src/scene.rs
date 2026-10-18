@@ -959,6 +959,8 @@ pub struct EditorBody {
     /// Done (Saving…, greyed, while it saves; Close in editor-cant-get); greyed until the
     /// video is here.
     pub done: Button,
+    /// By Revert, while an earlier edit's original is kept: the time it has left (B197 (e)).
+    pub original_kept: Option<String>,
 }
 
 /// The video's state, for the preview and the timeline's place.

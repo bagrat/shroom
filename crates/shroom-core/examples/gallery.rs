@@ -1194,6 +1194,7 @@ fn editor_rows() -> Vec<(&'static str, &'static str, World)> {
             markers: vec![61.5, 130.0],
             history,
             rev: 3,
+            kept_until: None,
             media,
             save,
         });

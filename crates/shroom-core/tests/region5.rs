@@ -174,6 +174,7 @@ fn editor_open(media: EditorMedia, save: EditorSave, changed: bool) -> World {
         markers: vec![61.5],
         history: Some(history),
         rev: 3,
+        kept_until: None,
         media,
         save,
     });
@@ -514,6 +515,12 @@ fn rows() -> Vec<(&'static str, World)> {
         w
     }));
     rows.push(("editor-save-failed", editor_open(live(), EditorSave::Failed, true)));
+    rows.push(("editor", {
+        // Edited again while an earlier edit's original is kept (B197 (e)): 20 hours left.
+        let mut w = editor_open(live(), EditorSave::Idle, false);
+        w.session.fields.editor.as_mut().unwrap().kept_until = Some(Wall(w.wall.0 + 20 * 3_600_000));
+        w
+    }));
     rows.push(("uninstall-confirm", uninstall_asked()));
     rows.push(("uninstall-confirm", {
         let mut w = uninstall_asked();

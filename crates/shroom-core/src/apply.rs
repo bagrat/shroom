@@ -1967,6 +1967,7 @@ fn open_editor(w: &mut World, rec: RecId) -> Out {
         markers: Vec::new(),
         history: None,
         rev: 0,
+        kept_until: None,
         media: EditorMedia::Opening,
         save: EditorSave::Idle,
     });
@@ -2060,7 +2061,7 @@ fn editor_news(w: &mut World, news: EditorNews) -> Out {
     let stale = || (vec![], Arm::named("editor-stale"));
     let seconds = |d: f64| (d.is_finite() && d > 0.0).then_some(d);
     match news {
-        EditorNews::Opened { rec, saved, markers, duration_sec } => {
+        EditorNews::Opened { rec, saved, markers, duration_sec, keep_until } => {
             // Read once per open: a second reading over steps already taken changes nothing.
             let Some(e) = editor_on(w, &rec).filter(|e| e.history.is_none() || matches!(e.media, EditorMedia::Opening | EditorMedia::Getting { .. })) else {
                 return stale();
@@ -2072,6 +2073,9 @@ fn editor_news(w: &mut World, news: EditorNews) -> Out {
                 .or_else(|| if let EditorMedia::Ready { duration } = e.media { seconds(duration) } else { None })
                 .unwrap_or(0.0);
             e.rev = saved.as_ref().map_or(0, |s| s.rev);
+            // The original is kept beside a copy only while that copy is the saved edit's
+            // (B197): a stale one is no one's to count down.
+            e.kept_until = keep_until.filter(|_| saved.as_ref().is_some_and(|s| s.current_copy().is_some()));
             let mut list = saved.map_or_else(|| shroom_edit::EditList::new(duration), |s| s.list);
             if seconds(list.source_duration).is_none() {
                 list.source_duration = duration;

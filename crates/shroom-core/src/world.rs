@@ -1193,6 +1193,9 @@ pub struct EditorFields {
     pub history: Option<shroom_edit::History>,
     /// The saved revision the editor opened on (0: never saved) — a save asks for the next.
     pub rev: u64,
+    /// While an earlier edit's original is kept beside its copy, when it goes (B197 (e)):
+    /// the record's `keep_until`, only while its copy is current.
+    pub kept_until: Option<Wall>,
     pub media: EditorMedia,
     pub save: EditorSave,
 }

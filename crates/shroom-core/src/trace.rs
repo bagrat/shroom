@@ -293,7 +293,7 @@ mod tests {
         let saved = shroom_edit::Saved::new(list, 3);
         let mut r = Ring::default();
         let events = [
-            Event::Editor(EditorNews::Opened { rec: rec.clone(), saved: Some(saved.clone()), markers: vec![12.5], duration_sec: Some(60.0) }),
+            Event::Editor(EditorNews::Opened { rec: rec.clone(), saved: Some(saved.clone()), markers: vec![12.5], duration_sec: Some(60.0), keep_until: None }),
             Event::Edit(EditStep::Op(shroom_edit::Op::Cut { start: 1.0, end: 2.0 })),
             Event::Edit(EditStep::Undo),
             Event::Act { surface: Surface::Library, action: Action::EditRow(rec.clone()), rev: 1 },

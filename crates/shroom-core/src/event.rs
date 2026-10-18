@@ -440,8 +440,9 @@ pub enum EditStep {
 /// What the editor's lane reports (N63), each about the video it was asked for.
 #[derive(Debug, Clone, PartialEq)]
 pub enum EditorNews {
-    /// The record was read: what's saved (`meta.edits`), the markers, the length.
-    Opened { rec: RecId, saved: Option<shroom_edit::Saved>, markers: Vec<f64>, duration_sec: Option<f64> },
+    /// The record was read: what's saved (`meta.edits`), the markers, the length, and when
+    /// the original goes while it's kept beside the copy (`edits.keep_until`, B197).
+    Opened { rec: RecId, saved: Option<shroom_edit::Saved>, markers: Vec<f64>, duration_sec: Option<f64>, keep_until: Option<crate::time::Wall> },
     /// The video isn't on this Mac: it's coming from the space, this far.
     Getting { rec: RecId, pct: u8 },
     /// The video is on this Mac and its sound is read: the editor can play and draw it.
