@@ -118,7 +118,7 @@ fn a_token_mac_refreshes_its_page_once_a_launch_and_a_failed_refresh_waits_an_ho
     let mut r = Run::new(booted(ready()));
     r.send(Event::Tick);
     assert!(r.has(|e| *e == Effect::Cloud(CloudCmd::Refresh)), "at launch — so after every update");
-    r.send(Event::Cloud(CloudNews::Refreshed { deployed: true }));
+    r.send(Event::Cloud(CloudNews::Refreshed { deployed: true, ai: None }));
     r.tick_to(r.t + 10 * HOUR);
     assert!(!r.has(|e| *e == Effect::Cloud(CloudCmd::Refresh)), "once a launch");
 
@@ -152,7 +152,7 @@ fn stopping() -> Run {
     w.take = Some(take(Phase::Paused(Cause::User), 272_000));
     w.session.popover = Some(Door::asked(Mono(900)));
     let mut r = Run::new(w);
-    r.send(Event::Cloud(CloudNews::Refreshed { deployed: false }));
+    r.send(Event::Cloud(CloudNews::Refreshed { deployed: false, ai: None }));
     r.send(swept(sound_pass()));
     r.act(Action::Stop);
     assert!(r.has(|e| *e == Effect::Cloud(CloudCmd::Reach)));
@@ -331,7 +331,7 @@ fn a_space_class_publish_failure_raises_degraded_reports_blocked_and_never_loops
     let mut w = booted(ready());
     w.queue = vec![queued("q1")];
     let mut r = Run::new(w);
-    r.send(Event::Cloud(CloudNews::Refreshed { deployed: false }));
+    r.send(Event::Cloud(CloudNews::Refreshed { deployed: false, ai: None }));
     r.send(swept(sound_pass()));
     assert!(r.w.inflight.ops.contains_key(&Op::Upload), "the take is being sent");
     // The token Cloudflare no longer accepts: the uploader says so about the waiting take.
@@ -484,7 +484,7 @@ fn set_it_up_fresh_shows_the_wiring_and_a_second_click_adds_nothing() {
     w.prefs.settings_tab = Some(SettingsTab::Space);
     w.session.windows.insert(WindowKind::Settings, Door::asked(Mono(900)));
     let mut r = Run::new(w);
-    r.send(Event::Cloud(CloudNews::Refreshed { deployed: false }));
+    r.send(Event::Cloud(CloudNews::Refreshed { deployed: false, ai: None }));
     r.send(swept(SweepAnswer { bucket: Some(false), found: Some(None), ..sound_pass() }));
     assert!(matches!(settings_space(&r).plan.nest, Nest::StorageGone { .. }));
     r.send(Event::Act { surface: Surface::Settings, action: Action::SetUpFresh, rev: 0 });
@@ -573,7 +573,7 @@ fn a_space_whose_own_label_reads_foreign_rests_and_is_never_rewired() {
     w.prefs.settings_tab = Some(SettingsTab::Space);
     w.session.windows.insert(WindowKind::Settings, Door::asked(Mono(900)));
     let mut r = Run::new(w);
-    r.send(Event::Cloud(CloudNews::Refreshed { deployed: false }));
+    r.send(Event::Cloud(CloudNews::Refreshed { deployed: false, ai: None }));
     // The runner probes the space's own label (`v`): someone else's `v` is there now.
     r.send(swept(SweepAnswer { worker: Some(WorkerFact::Foreign), ..sound_pass() }));
     assert!(r.w.space.broken.is(&true), "the space can't take videos");

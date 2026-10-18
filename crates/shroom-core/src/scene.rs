@@ -188,6 +188,13 @@ pub enum Action {
     AddToken,
     /// Settings · Space's “made with shroom” switch (owner-class, U3).
     SetMark(bool),
+    /// Settings · Space's naming switch (N66): the setup Mac re-wires the page with the AI
+    /// and its schedule, or without them.
+    SetAi(bool),
+    /// The Library's naming card (N66): Turn on — as the switch — and the card is answered.
+    AiOn,
+    /// The Library's naming card: Not now — answered for good on this Mac.
+    AiNotNow,
     /// The Library's *Mine · Everyone*.
     SetScope(LibraryScope),
 }
@@ -824,6 +831,17 @@ pub struct LibraryBody {
     /// The count only.
     pub footer: Option<String>,
     pub sheet: Option<Sheet>,
+    /// The card at the top offering to name videos (N66): the setup Mac, until answered.
+    pub offer: Option<Offer>,
+}
+
+/// A card's head, its line, and its two answers (N66's naming card).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct Offer {
+    pub title: String,
+    pub line: String,
+    pub on: Button,
+    pub not_now: Button,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -907,6 +925,10 @@ pub struct SpaceBody {
     /// where it stands (U3, DEVIATIONS #19).
     pub mark: Option<Toggle>,
     pub mark_line: Option<String>,
+    /// Naming's switch and its line (N66) — the Mac that holds the setup key, once its page
+    /// said whether it names videos.
+    pub ai: Option<Toggle>,
+    pub ai_line: Option<String>,
     /// Quiet text at the foot.
     pub exits: Vec<Button>,
 }
@@ -994,7 +1016,8 @@ impl Window<LibraryBody> {
         if let Some(s) = &self.body.sheet {
             return s.buttons().collect();
         }
-        self.body.rows.iter().flat_map(|r| r.buttons.iter().chain(&r.hover).chain(&r.menu)).collect()
+        let offer = self.body.offer.iter().flat_map(|o| [&o.on, &o.not_now]);
+        offer.chain(self.body.rows.iter().flat_map(|r| r.buttons.iter().chain(&r.hover).chain(&r.menu))).collect()
     }
 
     pub fn offers(&self, action: &Action) -> bool {
@@ -1084,7 +1107,7 @@ impl Window<SettingsBody> {
         }
         match &self.body.pane {
             SettingsPane::General(g) => g.login.enabled && &g.login.action == action,
-            SettingsPane::Space(sp) => sp.mark.as_ref().is_some_and(|t| t.enabled && &t.action == action),
+            SettingsPane::Space(sp) => [&sp.mark, &sp.ai].into_iter().flatten().any(|t| t.enabled && &t.action == action),
             // Esc in the name being changed puts it back (B158).
             SettingsPane::Members(m) => *action == Action::KeepFrom && matches!(m.from, FromName::Changing { .. }),
         }

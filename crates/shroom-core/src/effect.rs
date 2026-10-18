@@ -39,6 +39,7 @@ impl Effect {
             Effect::Cloud(CloudCmd::Claim(_)) => Some(Op::Claim),
             Effect::Cloud(CloudCmd::Wire { .. }) => Some(Op::Wire),
             Effect::Cloud(CloudCmd::Refresh) => Some(Op::Refresh),
+            Effect::Cloud(CloudCmd::SetAi(_)) => Some(Op::Ai),
             Effect::Shell(ShellCmd::Relaunch(_)) => Some(Op::Relaunch),
             Effect::Library(LibCmd::Refresh) => Some(Op::LibRefresh),
             Effect::Library(LibCmd::Cleanup) => Some(Op::Cleanup),
@@ -117,6 +118,9 @@ pub enum CloudCmd {
     /// answers older than this app's, put this app's page up (the roster seeded first);
     /// never over a newer one, never any storage. Answers `Refreshed`.
     Refresh,
+    /// Naming on or off (N66): this app's page put up again with Cloudflare's AI and its
+    /// schedule, or without them — on the token Mac only. Answers `AiSet`.
+    SetAi(bool),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

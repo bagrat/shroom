@@ -1249,6 +1249,21 @@ fn act(w: &mut World, action: Action) -> Out {
             (fx, Arm { name: "add-token", edge: Some(("space-degraded-no-token-mac", "token")) })
         }
         Action::SetMark(on) => (vec![Effect::Member(MemberCmd::Mark(on))], Arm::named("set-mark")),
+        // Naming (N66): the setup Mac re-wires its page; the switch reads the page's answer.
+        // A new try starts clean: its own failure, if any, is the one said.
+        Action::SetAi(on) => {
+            w.inflight.failures.remove(&Op::Ai);
+            (vec![Effect::Cloud(CloudCmd::SetAi(on))], Arm::named("set-ai"))
+        }
+        // The card's Turn on is the switch's; the card stays until the page answers.
+        Action::AiOn => {
+            w.inflight.failures.remove(&Op::Ai);
+            (vec![Effect::Cloud(CloudCmd::SetAi(true))], Arm::named("ai-on"))
+        }
+        Action::AiNotNow => {
+            w.once.ai_offer = true;
+            (vec![Effect::Persist(PersistOp::Once(w.once.clone()))], Arm::named("ai-not-now"))
+        }
         Action::SetScope(scope) => {
             w.session.fields.library.scope = scope;
             (vec![], Arm::named("set-scope"))
@@ -1296,7 +1311,8 @@ fn forget_invite(w: &mut World, fx: &mut Vec<Effect>) {
 }
 
 /// The ops that speak for one space: a late answer after this Mac left it is stale.
-const SPACE_OPS: [Op; 15] = [
+const SPACE_OPS: [Op; 16] = [
+    Op::Ai,
     Op::Cleanup,
     Op::Validate,
     Op::SaveToken,
@@ -1358,7 +1374,7 @@ fn joined(w: &mut World, identity: SpaceIdentity) -> Out {
         w.inflight.ops.remove(&Op::Upload);
         w.inflight.failures.remove(&Op::Upload);
     }
-    w.space = Space { identity: Some(identity.clone()), token: false, device_key: true, broken: Fact::Unknown, page_checked: None };
+    w.space = Space { identity: Some(identity.clone()), token: false, device_key: true, broken: Fact::Unknown, page_checked: None, ai: None };
     w.sweep = Sweep::default();
     w.library = Fact::Unknown;
     w.library_ops = LibraryOps::default();
@@ -2436,11 +2452,25 @@ fn cloud(w: &mut World, news: CloudNews) -> Out {
             }
             (vec![], Arm::named("page-opened"))
         }
-        CloudNews::Refreshed { deployed } => {
+        CloudNews::Refreshed { deployed, ai } => {
             w.inflight.ops.remove(&Op::Refresh);
             w.inflight.failures.remove(&Op::Refresh);
             w.space.page_checked = Some(w.now);
+            if ai.is_some() {
+                w.space.ai = ai;
+            }
             (vec![], Arm::named(if deployed { "page-refreshed" } else { "page-current" }))
+        }
+        CloudNews::AiSet(on) => {
+            answered(w, Op::Ai);
+            w.space.ai = Some(on);
+            // On, by the card or the switch: the card is answered for good on this Mac.
+            let mut fx = Vec::new();
+            if on && !w.once.ai_offer {
+                w.once.ai_offer = true;
+                fx.push(Effect::Persist(PersistOp::Once(w.once.clone())));
+            }
+            (fx, Arm::named("ai-set"))
         }
         CloudNews::Validated { id, result } => {
             answered(w, Op::Validate);

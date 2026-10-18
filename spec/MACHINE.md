@@ -4,7 +4,7 @@
 
 The machine: every state, edge, rule, said-line and law of shroom v1 — the spec (DECISIONS B133). Sessions edit it; MACHINE.md and the canvas's machine boards are generated from it.
 
-145 states · 299 edges · 23 rules · 583 said-lines · 16 laws · 74 ledger rows.
+145 states · 299 edges · 23 rules · 585 said-lines · 16 laws · 74 ledger rows.
 
 Status: **ratified** is Bagrat's; **provisional** is designed or built and awaits him (each cites its row: `#n` is a DEVIATIONS row of docs/DECISIONS.md, `Bn` a decision, `Nn`/`Un`/`Pn` a ledger row below). `SM:n` in older citations is a line of the retired spec text, kept in history/spec/UX-STATEMACHINE.md.
 
@@ -2390,6 +2390,7 @@ The Space tab: one tab with a mood per kind of Mac (inspection · repair · owne
 | “You can do this once your recording is finished.” | line | provisional | Mid-take, both exits grey with this line (law 4). |
 | “Name videos and add chapters” | field-label | provisional | N66. Label of the naming switch, on the Mac that holds the setup key only (it re-wires the page). Proposed 2026-10-18 (AiSettings); awaiting Bagrat. · N66 |
 | “From what’s said in each video, by your own Cloudflare account. Free for about three hours of video a day; past that, about 4¢ an hour.” | line | provisional | N66. Description beside the naming switch. Proposed 2026-10-18 (AiSettings); awaiting Bagrat. · N66 |
+| “Couldn't change that just now — try again in a moment.” | line | provisional | N66. In place of the naming switch's line when a re-wiring didn't go through, until the next try or the next visit (law 12); the switch is as the page has it. · N66 |
 
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
@@ -2811,12 +2812,13 @@ A card at the top of the Library on the Mac that holds the setup key, shown unti
 |---|---|---|---|
 | “shroom can name your videos and add chapters” | title | provisional | N66. The card's head. Proposed 2026-10-18 (AiOffer); awaiting Bagrat. · N66 |
 | “From what’s said in them, by your own Cloudflare account. Free for about three hours of video a day; past that, about 4¢ an hour.” | line | provisional | N66. The card's line. Proposed 2026-10-18 (AiOffer); awaiting Bagrat. · N66 |
+| “Couldn't change that just now — try again in a moment.” | line | provisional | N66. In place of the card's line when Turn on didn't go through (law 12); Turn on is live again. · N66 |
 | “Turn on” | button | provisional | N66. Filled. Re-wires the page, as the switch in Settings · Space does. · N66 |
 | “Not now” | button | provisional | N66. Quiet. The card goes for good; the switch stays in Settings · Space. · N66 |
 
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
-| Turn on | filled-default |  | `library` | N66. Turns naming on (the same as the switch in Settings · Space); the card goes. |
+| Turn on | filled-default |  | `library` | N66. Turns naming on (the same as the switch in Settings · Space); greys while the page is re-wired, and the card goes once it answers. |
 | Not now | secondary |  | `library` | N66. The card goes for good on this Mac; nothing else changes. |
 
 | → | Kind | Label | Status | Cites |

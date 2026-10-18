@@ -299,6 +299,12 @@ fn rows() -> Vec<(&'static str, World)> {
         w.space.ai = Some(false);
         w
     }));
+    rows.push(("library-ai-offer", {
+        let mut w = library(ready());
+        w.space.ai = Some(false);
+        w.inflight.failures.insert(Op::Ai, Failure { at: Mono(990), class: FailClass::Transport, tries: 1 });
+        w
+    }));
     rows.push(("library-no-match", {
         let mut w = library_with(ready(), space_rows().into_iter().filter(|r| !r.title.contains("502")).collect());
         w.session.fields.library.search = "502".into();
@@ -345,6 +351,13 @@ fn rows() -> Vec<(&'static str, World)> {
     rows.push(("settings-space", {
         let mut w = space_tab();
         w.space.ai = Some(true);
+        w
+    }));
+    // …and a re-wiring that didn't go through (law 12).
+    rows.push(("settings-space", {
+        let mut w = space_tab();
+        w.space.ai = Some(true);
+        w.inflight.failures.insert(Op::Ai, Failure { at: Mono(990), class: FailClass::Transport, tries: 1 });
         w
     }));
     rows.push(("settings-space", {
@@ -2047,9 +2060,13 @@ fn naming_is_a_switch_on_the_setup_mac_that_re_wires_the_page() {
     r.set(Action::SetAi(false));
     r.send(Event::Failed { op: Op::Ai, class: FailClass::Transport });
     assert!(space_pane(&r.scene).ai.as_ref().is_some_and(|t| t.on && t.enabled), "as the page has it");
+    assert_eq!(space_pane(&r.scene).ai_line, Some(shroom_core::copy::ai_failed()), "and it says so (law 12)");
+    r.set(Action::SetAi(false));
+    r.send(Event::Cloud(CloudNews::AiSet(false)));
+    assert_eq!(space_pane(&r.scene).ai_line, Some(shroom_core::copy::ai_line()), "until it goes through");
     let mut w = space_tab();
     w.space.ai = Some(true);
-    w.take = Some(take(Phase::Recording, 61_000));
+    w.take = Some(OpenTake { opened: Mono(950), since: Mono(950), ..take(Phase::Recording, 61_000) });
     assert!(!space_pane(&derive(&w)).ai.as_ref().unwrap().enabled, "never mid-take");
 }
 
@@ -2087,11 +2104,18 @@ fn the_library_offers_naming_once_on_the_setup_mac() {
     assert!(r.has(|e| matches!(e, Effect::Persist(PersistOp::Once(o)) if o.ai_offer)), "remembered on this Mac");
     assert!(!r.has(|e| matches!(e, Effect::Cloud(CloudCmd::SetAi(_)))));
 
+    // Turn on: what the switch does; the card stays, Turn on greyed, until the page answers.
     let mut r = Run::new(offered());
     r.lib(Action::AiOn);
     assert!(r.has(|e| *e == Effect::Cloud(CloudCmd::SetAi(true))));
-    assert!(r.has(|e| matches!(e, Effect::Persist(PersistOp::Once(o)) if o.ai_offer)));
-    assert!(r.scene.library.as_ref().unwrap().body.offer.is_none());
+    assert!(r.scene.library.as_ref().unwrap().body.offer.as_ref().is_some_and(|o| !o.on.enabled));
+    r.send(Event::Failed { op: Op::Ai, class: FailClass::Transport });
+    let o = r.scene.library.as_ref().unwrap().body.offer.clone().expect("still offered");
+    assert_eq!((o.line, o.on.enabled), (shroom_core::copy::ai_failed(), true), "a Turn on that didn't go through says so (law 12)");
+    r.lib(Action::AiOn);
+    r.send(Event::Cloud(CloudNews::AiSet(true)));
+    assert!(r.scene.library.as_ref().unwrap().body.offer.is_none(), "on: the card goes");
+    assert!(r.has(|e| matches!(e, Effect::Persist(PersistOp::Once(o)) if o.ai_offer)), "and for good, even if it's turned off later");
 
     let not: [fn(&mut World); 3] = [|w| w.space.ai = Some(true), |w| w.space.ai = None, |w| w.once.ai_offer = true];
     for f in not {
@@ -2105,7 +2129,7 @@ fn the_library_offers_naming_once_on_the_setup_mac() {
     let o = derive(&w).library.unwrap().body.offer.unwrap();
     assert!(!o.on.enabled && o.not_now.enabled);
     let mut w = offered();
-    w.take = Some(take(Phase::Recording, 61_000));
+    w.take = Some(OpenTake { opened: Mono(950), since: Mono(950), ..take(Phase::Recording, 61_000) });
     assert!(!derive(&w).library.unwrap().body.offer.unwrap().on.enabled);
 }
 

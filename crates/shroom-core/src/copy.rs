@@ -702,6 +702,19 @@ pub fn reconnect_here() -> String { "Reconnect here".into() }
 // Settings · Space on every kind of Mac, and the Library across members.
 pub fn mark_label() -> String { "“made with shroom” on your pages".into() }
 pub fn mark_line() -> String { "The small mark on every video page. You can flip it right on a page, too.".into() }
+// Names, chapters and captions (N66): the setup Mac's switch, and the Library's card.
+pub fn ai_label() -> String { "Name videos and add chapters".into() }
+pub fn ai_line() -> String {
+    "From what’s said in each video, by your own Cloudflare account. Free for about three hours of video a day; past that, about 4¢ an hour.".into()
+}
+pub fn ai_offer_title() -> String { "shroom can name your videos and add chapters".into() }
+pub fn ai_offer_line() -> String {
+    "From what’s said in them, by your own Cloudflare account. Free for about three hours of video a day; past that, about 4¢ an hour.".into()
+}
+pub fn turn_on() -> String { "Turn on".into() }
+/// A re-wiring that didn't go through: in place of the switch's or the card's line (law 12).
+pub fn ai_failed() -> String { "Couldn't change that just now — try again in a moment.".into() }
+pub fn not_now() -> String { "Not now".into() }
 pub fn repairs_elsewhere() -> String {
     "Repairs happen where your Cloudflare token lives — on the Mac you set your space up on, or here if you add a fresh one.".into()
 }
@@ -1113,6 +1126,14 @@ pub fn registry() -> Vec<(&'static str, String)> {
         // ── Region 5's member parts ──
         ("settings-space", mark_label()),
         ("settings-space", mark_line()),
+        ("settings-space", ai_label()),
+        ("settings-space", ai_line()),
+        ("library-ai-offer", ai_offer_title()),
+        ("library-ai-offer", ai_offer_line()),
+        ("library-ai-offer", turn_on()),
+        ("library-ai-offer", not_now()),
+        ("settings-space", ai_failed()),
+        ("library-ai-offer", ai_failed()),
         ("settings-space", leave_space_ellipsis()),
         ("settings-space-no-token", space_row_done(None, "v.myshroom.workers.dev")),
         ("settings-space-no-token", space_done(6, Some(&on_this_mac()))),

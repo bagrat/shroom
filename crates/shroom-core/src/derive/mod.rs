@@ -241,3 +241,10 @@ fn next_wake(w: &World) -> Option<Mono> {
     wakes.extend(next_download(w).map(|(t, _)| t));
     wakes.into_iter().filter(|t| *t > w.now).min()
 }
+
+/// Naming's last re-wiring didn't go through (N66, law 12) and nothing runs since: said in the
+/// window it was asked from, for this visit to it.
+pub fn ai_fell_through(w: &World, window: crate::world::WindowKind) -> bool {
+    let entered = w.session.windows.get(&window).map(|d| d.entered);
+    !w.inflight.ops.contains_key(&Op::Ai) && w.inflight.failures.get(&Op::Ai).is_some_and(|f| entered.is_some_and(|e| f.at >= e))
+}

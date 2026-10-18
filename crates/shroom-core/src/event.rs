@@ -230,8 +230,10 @@ pub enum CloudNews {
     /// Wiring ran to its silent self-check.
     Wired(Result<SpaceIdentity, WireFail>),
     /// The page refresh answered (§6.10): `deployed` — this app's page went up over an
-    /// older one.
-    Refreshed { deployed: bool },
+    /// older one; `ai` — whether the page names its videos (N66), when its ping said.
+    Refreshed { deployed: bool, ai: Option<bool> },
+    /// Naming went on or off (N66): the page answers with the AI, or without it.
+    AiSet(bool),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

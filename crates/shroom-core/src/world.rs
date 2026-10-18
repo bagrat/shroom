@@ -424,6 +424,9 @@ pub struct Space {
     /// When this process last heard the token Mac's page refresh answer (§6.10: the page
     /// follows the app — at launch, so after every update). `None`: not yet this process.
     pub page_checked: Option<Mono>,
+    /// Whether the space's page names its videos (N66: it carries Cloudflare's AI), as the
+    /// token Mac's page check or its own switch last left it. `None`: not known yet.
+    pub ai: Option<bool>,
 }
 
 impl Space {
@@ -882,6 +885,8 @@ pub enum Op {
     Refresh,
     /// The token Mac's cleanup sweep over its own S3 pair (DECISIONS B91).
     Cleanup,
+    /// Naming on or off (N66): the space's page put up again with or without the AI.
+    Ai,
 }
 
 impl Op {
@@ -893,7 +898,7 @@ impl Op {
             Op::RecStart | Op::RecPause | Op::RecResume | Op::RecFinalize | Op::Prime => 5_000,
             Op::Reach => 600,
             Op::OpenPage | Op::Upload | Op::Validate | Op::SaveToken | Op::Sweep | Op::Claim => 60_000,
-            Op::Wire | Op::Refresh => 180_000,
+            Op::Wire | Op::Refresh | Op::Ai => 180_000,
             Op::Relaunch => 10_000,
             Op::LibRefresh | Op::Rename | Op::Delete => 60_000,
             Op::LibCache => 5_000,
@@ -1000,6 +1005,10 @@ pub struct Once {
     /// launch other than an update relaunch found running): only an `--updated` relaunch
     /// leaves a newer running version unacknowledged, and that says once that it landed.
     pub seen_version: Option<String>,
+    /// The Library's card offering to name videos was answered on this Mac (N66): Turn on or
+    /// Not now. It never shows again here.
+    #[serde(default)]
+    pub ai_offer: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]

@@ -8202,6 +8202,16 @@
       "N66"
      ],
      "id": "settings-space.from-whats-said-in"
+    },
+    {
+     "text": "Couldn't change that just now — try again in a moment.",
+     "role": "line",
+     "copy": "provisional",
+     "note": "N66. In place of the naming switch's line when a re-wiring didn't go through, until the next try or the next visit (law 12); the switch is as the page has it.",
+     "cites": [
+      "N66"
+     ],
+     "id": "settings-space.couldnt-change-that-just"
     }
    ],
    "actions": [
@@ -11719,6 +11729,16 @@
      "id": "library-ai-offer.from-whats-said-in"
     },
     {
+     "text": "Couldn't change that just now — try again in a moment.",
+     "role": "line",
+     "copy": "provisional",
+     "note": "N66. In place of the card's line when Turn on didn't go through (law 12); Turn on is live again.",
+     "cites": [
+      "N66"
+     ],
+     "id": "library-ai-offer.couldnt-change-that-just"
+    },
+    {
      "text": "Turn on",
      "role": "button",
      "copy": "provisional",
@@ -11745,7 +11765,7 @@
      "kind": "filled-default",
      "return_default": false,
      "goes_to": "library",
-     "note": "N66. Turns naming on (the same as the switch in Settings · Space); the card goes."
+     "note": "N66. Turns naming on (the same as the switch in Settings · Space); greys while the page is re-wired, and the card goes once it answers."
     },
     {
      "label": "Not now",
