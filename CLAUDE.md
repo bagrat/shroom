@@ -92,7 +92,9 @@ lives in `spec/`; the working docs live in `docs/`.
   Nothing is pushed to `main` directly. A PR merged under *Merge when sure* counts as his
   standing go.
 - **Test in the cloud first; never on Bagrat's Mac.** It carries only the official
-  release. A change is tested in a cloud session and CI. Only Mac-only code (capture,
+  release, or a signed pre-release from the early channel (Bagrat, 2026-10-18: he takes
+  the early channel to try what's coming; still never a dev build — DECISIONS B220,
+  [`docs/RELEASING.md`](docs/RELEASING.md#pre-releases)). A change is tested in a cloud session and CI. Only Mac-only code (capture,
   record/encode, the app shell, updater/installer, signing) goes to the hosted Mac, and a
   Tart clone on his Mac is the last resort (TESTING-PLAN §5,
   `dev/proposals/heartbeat-in-vm.md` §3). Every dev-build launcher refuses on his Mac.
