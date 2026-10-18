@@ -733,9 +733,15 @@ impl Runtime {
 /// How big `run.log` grows before it rolls to `run.log.1` (one old log kept).
 pub const LOG_ROLL_BYTES: u64 = 5 * 1024 * 1024;
 
+/// Which build wrote the log (`shroom <version> · macOS <version> · <chip>`), set at boot:
+/// the first line of every fresh `run.log`, so any tail of it names its build.
+static BUILD: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+
 /// Appends one line to `<logs>/run.log`: the folder 700, the file 600 (home.rs's rule —
 /// every file 600), rolled to `run.log.1` past `LOG_ROLL_BYTES` so it never grows without
-/// bound. One write per line, so lines from several threads never interleave.
+/// bound. Each line opens with the UTC wall clock (`report::stamp`); a fresh log after a
+/// roll opens with the build. One write per call, so lines from several threads never
+/// interleave.
 pub fn log_line(dir: &Path, line: &str) {
     use std::io::Write;
     use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt, PermissionsExt};
@@ -750,17 +756,21 @@ pub fn log_line(dir: &Path, line: &str) {
             let _ = std::fs::DirBuilder::new().recursive(true).mode(0o700).create(dir);
         }
     }
+    let stamp = report::stamp(SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs() as i64).unwrap_or(0));
+    let mut out: String = line.split_inclusive('\n').map(|l| format!("{stamp} {l}")).collect();
     let log = dir.join("run.log");
     if let Ok(m) = std::fs::metadata(&log) {
-        if m.len() >= LOG_ROLL_BYTES {
-            let _ = std::fs::rename(&log, dir.join("run.log.1"));
+        if m.len() >= LOG_ROLL_BYTES && std::fs::rename(&log, dir.join("run.log.1")).is_ok() {
+            if let Some(build) = BUILD.get() {
+                out = format!("{stamp} rolled: {build}\n{out}");
+            }
         } else if m.permissions().mode() & 0o077 != 0 {
             // A log written before this rule: closed to everyone else.
             let _ = std::fs::set_permissions(&log, std::fs::Permissions::from_mode(0o600));
         }
     }
     if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).mode(0o600).open(&log) {
-        let _ = f.write_all(line.as_bytes());
+        let _ = f.write_all(out.as_bytes());
     }
 }
 
@@ -884,8 +894,11 @@ fn launch_word(launch: LaunchKind) -> &'static str {
 
 /// The boot lines: kinds only — no path, no name, no secret.
 fn log_boot(rt: &Runtime, home_override: bool, quiet: bool, launch: LaunchKind) {
-    // Which shroom wrote the lines that follow, and when: a report's log reads by it (B180).
-    rt.log(&format!("boot: shroom {} · {}", rt.version, report::utc_now()));
+    // Which shroom wrote the lines that follow, on which Mac: a report's log reads by it
+    // (B180), and a roll writes it again at the top of the fresh log.
+    let build = report::build(&rt.version);
+    let _ = BUILD.set(build.clone());
+    rt.log(&format!("boot: {build}"));
     rt.log(&format!("boot: launch {}", launch_word(launch)));
     rt.log(&format!(
         "boot: home {} · shell {} · cloud {}",
@@ -1058,7 +1071,9 @@ fn run(rt: Runtime, rx: Receiver<Envelope>, lanes: Lanes, mut presenter: present
             // Named before `update` takes it: the ring keeps kinds only (B93, law 13).
             let (mono, kind) = (env.mono.0, shroom_core::trace::event_kind(&env.event));
             let (fx, arm) = shroom_core::update(&mut w, env);
-            rt.log(&format!("core {} {:?}", arm.name, fx.iter().map(effect_kind).collect::<Vec<_>>()));
+            if let Some(line) = core_line(tick, &arm, &fx) {
+                rt.log(&line);
+            }
             ring::step(mono, kind, &arm, &fx);
             effects.extend(fx);
             count += u64::from(!tick);
@@ -1084,6 +1099,13 @@ fn run(rt: Runtime, rx: Receiver<Envelope>, lanes: Lanes, mut presenter: present
         *lock.lock().unwrap() += count;
         cv.notify_all();
     }
+}
+
+/// A core step's run-log line: its arm and its effects' kinds. A tick that asked for
+/// nothing is left out, so a day of waiting doesn't push the day's events out of a
+/// report's tail (the trace ring still keeps it).
+fn core_line(tick: bool, arm: &shroom_core::Arm, fx: &[Effect]) -> Option<String> {
+    (!tick || !fx.is_empty()).then(|| format!("core {} {:?}", arm.name, fx.iter().map(effect_kind).collect::<Vec<_>>()))
 }
 
 fn effect_kind(e: &Effect) -> &'static str {
@@ -1527,12 +1549,52 @@ mod tests {
         // Past the roll size: one old log kept, a fresh one begun.
         std::fs::write(logs.join("run.log"), vec![b'x'; LOG_ROLL_BYTES as usize]).unwrap();
         log_line(&logs, "three\n");
-        assert_eq!(std::fs::read_to_string(logs.join("run.log")).unwrap(), "three\n");
+        assert!(std::fs::read_to_string(logs.join("run.log")).unwrap().ends_with("Z three\n"));
         assert_eq!(std::fs::metadata(logs.join("run.log.1")).unwrap().len(), LOG_ROLL_BYTES);
         log_line(&logs, "four\n");
         assert!(!logs.join("run.log.2").exists());
         assert_eq!(short("AbCdEfGhIjKlMnOp"), "AbCd…");
         assert_eq!(short("ab"), "ab");
+    }
+
+    /// A tick that changed nothing outward isn't logged; every other step is.
+    #[test]
+    fn a_tick_that_asks_for_nothing_stays_out_of_the_run_log() {
+        let arm = shroom_core::Arm::named("tick");
+        assert_eq!(core_line(true, &arm, &[]), None);
+        assert_eq!(core_line(false, &shroom_core::Arm::named("click-start"), &[]).as_deref(), Some("core click-start []"));
+        let fx = [Effect::Persist(PersistOp::Wipe)];
+        assert!(core_line(true, &arm, &fx).is_some_and(|l| l.starts_with("core tick [")));
+    }
+
+    /// Every line carries the UTC wall clock; the boot's first line names the build, and so
+    /// does the first line of a fresh log after a roll — any tail of it says who wrote it.
+    #[test]
+    fn the_run_log_stamps_each_line_and_names_its_build_at_boot_and_after_a_roll() {
+        let tmp = tempfile::tempdir().unwrap();
+        let (rt, _rx) = Runtime::for_test(tmp.path().join("home"), None, None);
+        log_boot(&rt, false, true, LaunchKind::User);
+        rt.log("a line");
+        let logs = rt.home.root.join("logs");
+        let log = std::fs::read_to_string(logs.join("run.log")).unwrap();
+        let stamped = |l: &str| {
+            let (stamp, _) = l.split_at(20);
+            let b = stamp.as_bytes();
+            stamp.ends_with('Z') && b[4] == b'-' && b[10] == b'T' && b[13] == b':' && b[16] == b':' && l.as_bytes()[20] == b' '
+        };
+        assert!(log.lines().all(stamped), "{log}");
+        let first = log.lines().next().unwrap();
+        assert!(first.contains(&format!(" boot: shroom {}", rt.version)), "{first}");
+        assert!(log.lines().last().unwrap().ends_with(" a line"));
+        // Past the roll size, the fresh log opens with the build.
+        std::fs::write(logs.join("run.log"), vec![b'x'; LOG_ROLL_BYTES as usize]).unwrap();
+        rt.log("after the roll");
+        let fresh = std::fs::read_to_string(logs.join("run.log")).unwrap();
+        let lines: Vec<&str> = fresh.lines().collect();
+        assert_eq!(lines.len(), 2, "{fresh}");
+        assert!(lines.iter().all(|l| stamped(l)), "{fresh}");
+        assert!(lines[0].ends_with(&format!(" rolled: {}", BUILD.get().unwrap())) && lines[0].contains(" rolled: shroom "), "{fresh}");
+        assert!(lines[1].ends_with(" after the roll"));
     }
 
     /// Law 13 at the door: of a pasted token the core is told its handle and its shape,
@@ -1547,9 +1609,9 @@ mod tests {
             rt.paste_secret(SecretField::Token, token.to_string());
             let event = format!("{:?}", rx.try_recv().expect("the paste was posted").event);
             assert!(rx.try_recv().is_err(), "one event a paste");
-            // Each line after its clock stamp.
+            // Each line after its wall clock and its monotonic stamp.
             let log = std::fs::read_to_string(rt.home.root.join("logs").join("run.log")).expect("the paste was logged");
-            let log: Vec<String> = log.lines().filter_map(|l| l.trim_start().split_once(' ').map(|(_, said)| said.to_string())).collect();
+            let log: Vec<String> = log.lines().map(|l| l.split_whitespace().skip(2).collect::<Vec<_>>().join(" ")).collect();
             (event, log)
         };
         let (short, long) = (format!("cfut_{}", "a".repeat(35)), format!("cfat_{}", "Zx".repeat(48)));

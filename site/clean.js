@@ -7,7 +7,7 @@
 // site/test/clean-cases.json).
 
 /** The lines a report keeps: the last ones, the newest last. */
-export const LOG_LINES = 200;
+export const LOG_LINES = 1000;
 /** One line, at most, once cleaned. */
 export const LINE_CHARS = 400;
 /** A window's own error (`webview <surface>: <message>`): its message is cut to this. */
@@ -39,7 +39,7 @@ function hostOf(url) {
 export function cleanLine(line) {
   let s = String(line).replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, "");
   // A window's error is whatever its script said: cut it short first.
-  const webview = s.match(/^(\s*\d*\s*webview [a-z-]+: )(.*)$/i);
+  const webview = s.match(/^((?:\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ )?\s*\d*\s*webview [a-z-]+: )(.*)$/i);
   if (webview && webview[2].length > WEBVIEW_CHARS) s = webview[1] + webview[2].slice(0, WEBVIEW_CHARS) + "…";
   s = s.replace(URL_RE, (u) => {
     const host = hostOf(u);

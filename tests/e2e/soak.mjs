@@ -44,7 +44,7 @@ const r = existsSync(out) ? JSON.parse(readFileSync(out, "utf8")) : { ok: false,
 // The core's trace ring (DECISIONS B93): a harness run's log ends on it, and the dev build's
 // own law check never wrote it down for a broken law over the whole soak.
 const log = (() => { try { return readFileSync(join(home, "logs/run.log"), "utf8"); } catch { return ""; } })();
-const ring = { written: log.includes("trace: a harness run ends"), law_breaks: (log.match(/^trace: law /gm) ?? []).length };
+const ring = { written: log.includes("trace: a harness run ends"), law_breaks: (log.match(/^(?:\S+Z )?trace: law /gm) ?? []).length };
 if (r.ok && (!ring.written || ring.law_breaks > 0)) Object.assign(r, { ok: false, error: `the trace ring: ${JSON.stringify(ring)}` });
 const summary = {
   work,
