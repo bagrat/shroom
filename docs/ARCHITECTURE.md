@@ -69,7 +69,9 @@ at `bf84b67079a8` (D:B2). Svelte 5, TypeScript 5.9.
 | `crates/shroom-testpattern`, `shroom-spec`, `shroom-devtool` | media-truth strip (D:B59 d); spec fixtures as types; the heartbeat's test space up/down | dev only |
 | `tests/e2e-live` | L2 on the dedicated test account | live |
 | `app/src-tauri` | `main.rs`, `commands.rs` (IPC), `runtime/` (runner, lanes, presenter, overlays, observers, seam), `harness.rs`/`drives.rs` (only with `dev-harness` in a `.dev` build — D:B5, B55, B62) | drives, `tests/l5/` |
-| `app/src` | webviews (`Popover`, `Onboarding`, `Library`, `Settings`, `members/`, `join/`, countdown), `lib/ipc.ts`, `lib/typed.ts`, `lib/theme.css` (D:B122) | galleries |
+| `app/src-tauri/src/runtime/editor.rs` | the editor's lane (N63, D:B195): the record read over a rename's door, the video found in a take or fetched to `edits/<rec>/`, its peaks, the save (`meta.edits`), and the permanent copy on a lane of its own | `editor::tests`; `--drive editor` |
+| `app/src-tauri/src/runtime/media.rs` | `shroom-media:`: the one video the editor's lane registered, by byte ranges, and its peaks — to the editor's webview alone | `media::tests` |
+| `app/src` | webviews (`Popover`, `Onboarding`, `Library`, `Settings`, `Feedback`, `Editor` with `editor/`, `members/`, `join/`, countdown), `lib/ipc.ts`, `lib/typed.ts`, `lib/theme.css` (D:B122) | galleries; `editor/*.test.ts` (vitest) |
 | `worker/` | `src/worker.js` (one dependency-free module), `vendor/hls.min.js`, `page-version.json`, `dev/serve.mjs` | vitest + workerd contract (D:B63) |
 | `installer/`, `site/` | `install.sh` (D:B29, B44); the Homebrew cask and its renderer, `homebrew/` (D:B175); shroom.am Worker, with `/agent` for a coding agent (D:B132), and `/report` with its `/feedback` form (D:B180) | their `test/` |
 | `tools/`, `.github/workflows/` | release build, packaging, identity, ffmpeg, notices; `ci.yml`, `release.yml`, `site.yml`, `e2e.yml`, `e2e-full.yml`, `mac.yml` | CI |
@@ -237,6 +239,7 @@ and `Scanned` and writes only via effects; `home::FILES` whitelists top-level na
 | `restore.json` | before update apply or permission relaunch; read once, ≤ 2 min |
 | `invite`, `join.json` | an invite held; a join asked for (replayed at launch) / removed when behind |
 | `library.json`, `posters/` | library lane / exit |
+| `edits/<rec>/` | the editor's lane (N63): `source.mp4` (fetched from the space, kept for the next edit), `peaks.u8`, a permanent copy while it's cut and sent / exit |
 | `status.json` | §11.2 |
 | `forget/<rec>` | owed remote discards (D:B52 e) |
 | `updates/<version>/shroom.app` | a verified staged update |
@@ -257,8 +260,8 @@ re-queued, DV #27). Unlocked without `finalized.json` → interrupted (repaired 
 **Exit** (Disconnect, Leave; `apply.rs:disconnect`): refused while uploads drain or a
 recovered take waits; Save to Movies offered first; stranded takes deleted; `Persist(Wipe)`
 (`runtime/mod.rs:wipe`) deregisters best-effort (3 s) and removes `space.json`, `token.json`,
-`device.key`, `library.json`, `invite`, `join.json`, `restore.json`, `posters/`, every
-`cred.json`, the stash. Prefs, `once.json`, `primed.json`, other takes and the login item
+`device.key`, `library.json`, `invite`, `join.json`, `restore.json`, `posters/`, `edits/`,
+every `cred.json`, the stash. Prefs, `once.json`, `primed.json`, other takes and the login item
 stay. A switch keeps the old space's files until the new join's 200 (D:B42, B54 c).
 
 ### 3.5 The IPC contract
@@ -273,7 +276,7 @@ stay. A switch keeps the old space's files until the new join's 200 (D:B42, B54 
   (DV #40); shown with `orderFrontRegardless`, key only when asked; shroom is never
   activated. Losing the keyboard closes nothing; a click elsewhere closes an asked popover
   (`overlay::click_away`) unless it is a switch (`overlay::switches`, DV #39).
-- Windows: onboarding 600×680 (B189), Library 680×560 (resizable), Settings 600×620 — each its frame, macOS's 32 pt title bar inside it.
+- Windows: onboarding 600×680 (B189), Library 680×560 (resizable), Settings 600×620, Send feedback 520×600, the editor 1100×720 (resizable down to 900×640; a resizable window opens no bigger than its screen) — each its frame, macOS's 32 pt title bar inside it. The editor's title is its slice's, “Edit — <title>”; its ✕ is posted like any window's, and the core may keep it open to save.
 - Camera panels (`runtime/camera.rs`): bubble and Camera-only preview (§4.4).
 - Every window and overlay joins `Runtime.excluded` when made and is left out of capture;
   the bubble never is. Overlays and camera panels don't hide on ⌘H (D:B112).
@@ -292,8 +295,14 @@ composes no sentences and decides nothing.
 | `field {field, value}` | `name`, `library-search`, `title`, `invite-name`; returns nothing; cut to 256 chars; the core guards (name charset/63, composer 80). Scene fields carry edit counts; `lib/typed.ts` takes the Scene's value only once its count catches up |
 | `paste_secret {field, text}` | the one path for secret text (`token`, `invite`): classified, stashed (`runtime/stash.rs`), `SecretPasted {id, shape}` posted; the field shows fixed dots while held (D:B104) |
 | `scene_get`, `dismiss`, `popover_keyed`, `popover_fit` | snapshot slice; `PopoverDismissed`; first key makes an unasked popover asked; panel height |
+| `edit {step}` | the editor (N63): `{"op": "undo" \| "redo"}`, or a `shroom_edit::Op` (`trim`, `cut`, `put-back`, `apply`, `revert`), seconds on the recording; posts `Edit(EditStep)`, which the core takes or refuses. A step that doesn't read is dropped |
 
 Window lifecycle comes from Rust window events.
+
+**Media.** The editor plays from `shroom-media://localhost/<rec>/video` and draws from
+`…/<rec>/peaks` (`runtime/media.rs`): only the recording its lane registered, only to the
+`editor` webview, the video by byte ranges a piece (2 MiB) at a time, anything else 404. The
+policy (`tauri.conf.json`) lets `media-src` and `connect-src` reach the scheme, nothing more.
 
 **Law 13 by type.** No Scene field can hold a secret; `Secret` is not `Serialize` and `Debug`
 redacts. The `?k=` URL exists only inside `OpenOwnerPage`, opened through NSWorkspace. A
@@ -383,9 +392,11 @@ The design record has them: history/design/ARCHITECTURE.md §3.9.
   it when byte-identical, else it becomes that take's map (D:B58 a).
 - `Recording::finalize` joins takes into `stream.m3u8` (`playlist::assemble_mapped`,
   `EXT-X-DISCONTINUITY` per later take). It does not build the MP4 (§4.6).
-- A click while recording pauses at once; the popover waits for the confirmation. Markers
-  land at the pause point. Restart asks first (DV #44); its countdown is its undo. Discard
-  deletes local and uploaded bytes, no tombstone.
+- A click while recording pauses at once; the popover waits for the confirmation. Drop a
+  marker lands at the pause point; ⌥⌘M while recording (N64; held beside ⌥⌘P, only while a
+  take is open) at the length so far plus the open take's run. Each is in `markers.json` at
+  once. Restart asks first (DV #44); its countdown is its undo. Discard deletes local and
+  uploaded bytes, no tombstone.
 
 ### 4.3 Mic
 
