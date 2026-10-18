@@ -948,9 +948,10 @@ owner-class: [ Add a token here ]; member: the address); row six live everywhere
 
 - No captions, transcription or transcript search; titles are manual (P10/N26).
   `meta.captions` stays `null`; `rec/<id>/tx/*` is never written.
-- Markers: [ Drop a marker ] (paused popover) at the pause point; `markers.json` written per
-  drop as seconds in the joined timeline, sent as `meta.markers` at the claim (D:B49 e);
-  nothing surfaces them.
+- Markers: [ Drop a marker ] (paused popover) at the pause point, and ⌥⌘M while recording
+  (N64, D:B196); `markers.json` written per drop as seconds in the joined timeline, sent as
+  `meta.markers` at the claim (D:B49 e). The editor shows them as flags on its timeline, and
+  a bake moves them onto the edited clock (D:B197 (c)); they never reach viewers.
 - v1 doesn't transcribe (D:B168; §16 #29).
 
 ---
