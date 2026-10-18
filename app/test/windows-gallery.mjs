@@ -964,9 +964,22 @@ for (const entry of popovers) {
       const b = p.body;
       check(`${tag}: Resume ${b.resume.enabled ? "live" : "greyed"}`, (await page.getByRole("button", { name: b.resume.label, exact: true }).isEnabled()) === b.resume.enabled);
       const rows = await page.locator(".card .rowbtn").evaluateAll((bs) => bs.map((x) => x.querySelector(".what > span").textContent));
-      check(`${tag}: the rows are Finish & Share, Restart, Discard… (the canvas's order)`, rows.join("|") === [b.stop, b.restart, b.discard].map((x) => x.label).join("|"), rows.join("|"));
-      const discard = await page.locator(".card .rowbtn").nth(2).getAttribute("class");
+      const order = [b.stop, ...(b.marker ? [b.marker] : []), b.restart, b.discard];
+      check(`${tag}: the rows are Finish & Share, ${b.marker ? "Drop a marker, " : ""}Restart, Discard… (the canvas's order)`, rows.join("|") === order.map((x) => x.label).join("|"), rows.join("|"));
+      const discard = await page.locator(".card .rowbtn").last().getAttribute("class");
       check(`${tag}: Discard… is red text (law 9)`, discard.split(/\s+/).includes("red-text"), discard);
+      if (b.marker) {
+        // N64: the board's flag in the accent while it can be dropped; once dropped at this
+        // pause, greyed with a tick.
+        const row = page.locator(".card .rowbtn").nth(1);
+        check(`${tag}: “${b.marker.label}” ${b.marker.enabled ? "live" : "greyed"}`, (await row.isEnabled()) === b.marker.enabled);
+        const flag = await row.locator("path.flag").count();
+        check(`${tag}: ${b.marker.enabled ? "the flag" : "a tick, no flag"} beside it`, (flag === 1) === b.marker.enabled);
+        if (b.marker.enabled) {
+          const fill = await row.locator("path.flag").evaluate((e) => getComputedStyle(e).fill);
+          check(`${tag}: the flag is filled in the accent`, fill === hex((await vars(page)).accent), fill);
+        }
+      }
     }
     if (p.body.kind === "question") {
       const labels = await page.locator(".answers button").allInnerTexts();
@@ -989,7 +1002,7 @@ for (const entry of popovers) {
       b.kind === "config"
         ? [b.quality_label, b.room_line, b.mic_line, b.camera_line, b.hint, b.start.label, b.start.note, b.mic_hint?.label, b.camera_settings?.label, ...b.qualities.map((q) => q.label), ...pickers(b).map(([, , cs]) => shownOf(cs))]
         : b.kind === "paused"
-          ? [b.title, b.context, b.sub, ...[b.resume, b.stop, b.restart, b.discard].map((x) => x.label)]
+          ? [b.title, b.context, b.sub, ...[b.resume, b.stop, b.marker, b.restart, b.discard].filter(Boolean).map((x) => x.label)]
           : b.kind === "question"
             ? [b.title, b.line, ...b.buttons.map((x) => x.label)]
             : [b.title, b.line, b.link, ...b.buttons.map((x) => x.label)];
@@ -1040,6 +1053,17 @@ for (const entry of countdowns) {
 // Region 3's controls send the Scene's actions.
 {
   const pop = (variant) => popovers.find((e) => e.variant === variant).scene;
+  // Drop a marker (N64) sends its action; dropped, the greyed row sends nothing.
+  const mk = await open("popover", pop("paused"));
+  await clear(mk.page);
+  await mk.page.getByRole("button", { name: pop("paused").body.marker.label, exact: true }).click();
+  check("paused: Drop a marker sends its action", acted(await calls(mk.page), "popover", pop("paused").body.marker.action), JSON.stringify(await calls(mk.page)));
+  await mk.ctx.close();
+  const md = await open("popover", pop("paused-marker-dropped"));
+  await clear(md.page);
+  await md.page.getByRole("button", { name: pop("paused-marker-dropped").body.marker.label, exact: true }).click({ force: true });
+  check("paused-marker-dropped: Marker dropped sends nothing", !(await calls(md.page)).some((x) => x.cmd === "act"), JSON.stringify(await calls(md.page)));
+  await md.ctx.close();
   const cfg = await open("popover", pop("recording-off"));
   await clear(cfg.page);
   await cfg.page.getByRole("button", { name: "Turn it back on", exact: true }).click();
