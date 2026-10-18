@@ -41,10 +41,46 @@ pub fn ends_sentence(raw: &str) -> bool {
 }
 
 /// The sentence ended as said, not trailing off: a full stop, a question or an exclamation,
-/// never an ellipsis ("you will..." is a sentence broken off).
+/// never an ellipsis ("you will..." is a sentence broken off), and on a word a sentence can
+/// end on. Whisper puts a full stop wherever a speaker stops ("and you will."), so the word
+/// counts as much as the mark.
 pub fn ends_cleanly(raw: &str) -> bool {
     let t = raw.trim_end();
-    ends_sentence(t) && !t.ends_with("...") && !t.ends_with('…')
+    ends_sentence(t) && !t.ends_with("...") && !t.ends_with('…') && !dangles(&norm(t))
+}
+
+/// A word an English sentence doesn't end on: an article, a joining word, "to" or "of", a
+/// modal ("you will"), a possessive ("your"). Words that often do end one ("it", "that",
+/// "on", "in", "is") aren't here: a sentence wrongly read as broken off loses words it
+/// kept.
+pub fn dangles(w: &str) -> bool {
+    matches!(
+        w,
+        "a" | "an"
+            | "the"
+            | "and"
+            | "or"
+            | "but"
+            | "because"
+            | "than"
+            | "to"
+            | "of"
+            | "from"
+            | "into"
+            | "with"
+            | "will"
+            | "would"
+            | "could"
+            | "should"
+            | "shall"
+            | "must"
+            | "might"
+            | "can"
+            | "my"
+            | "your"
+            | "our"
+            | "their"
+    )
 }
 
 pub fn levenshtein(a: &str, b: &str) -> usize {
