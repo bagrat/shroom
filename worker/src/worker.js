@@ -812,10 +812,11 @@ function servedOnly(id, meta) {
 
 // ───────── edits (N63, DECISIONS B195) ─────────
 
-/** The most applied cuts a record's edit is read with: far past what a hand draws, and a
- * bound on what one record can cost a view (the sort, the ranges the page carries). Past
- * it, the rest are left out. */
-export const EDIT_CUTS_MAX = 500;
+/** The most ranges an edit hands a player: far past what a hand draws, and a bound on what
+ * one record can cost a view (the ranges the page carries, the player's walk over them on
+ * every frame). Every applied cut is read, as `EditList::keep` reads them; past the bound
+ * the ranges stop, so playback ends early — never a cut part played. */
+export const EDIT_KEEP_MAX = 500;
 /** The permanent copy's files beside the recording (`shroom_edit::EditCopy`): the video,
  * its first frame and its teaser. */
 const EDIT_FILE = /^edit-\d{1,9}(\.mp4|-poster\.jpg|-teaser\.mp4)$/;
@@ -829,14 +830,32 @@ const EDIT_FILE = /^edit-\d{1,9}(\.mp4|-poster\.jpg|-teaser\.mp4)$/;
  * of its own kind. A port of `shroom_edit::EditList::checked()` and `keep()` (both held to
  * crates/shroom-edit/tests/keep-vectors.json by test/edits.test.js), clamped to the
  * record's own `durationSec` — the list's `source_duration` only when the record has none.
- * A value that isn't a number reads as one that isn't finite does there. Null when there's
+ * A value that isn't a number reads as one that isn't finite does there. Every applied cut
+ * counts, wherever it sits in the list; at most `EDIT_KEEP_MAX` ranges are handed out, the
+ * first ones, so the page never plays a moment the copy leaves out. Null when there's
  * no edit, it leaves everything in, or nothing would play. Nothing else in `edits` leaves
  * the Worker: never the transcript text a voice cut carries (`removed`, `resumes`, `why`).
+ * Read once per record read (a page asks for it a dozen times): the answer is shared, and
+ * never changed by its readers.
  * @param {any} meta @param {string} [id] the recording's id, for the copy's address
  * @returns {Edit | null} */
 export function editsOf(meta, id = meta?.id) {
   const e = meta?.edits;
   if (!e || typeof e !== "object") return null;
+  const key = `${typeof meta.durationSec === "number" ? meta.durationSec : NaN}\u0000${id}`;
+  const seen = EDITS_READ.get(e);
+  if (seen?.key === key) return seen.edit;
+  const edit = readEdit(meta, e, id);
+  EDITS_READ.set(e, { key, edit });
+  return edit;
+}
+
+/** `editsOf`'s answers, by the `edits` object they were read from (a record parsed for one
+ * request), with what else they were read with. @type {WeakMap<object, { key: string, edit: Edit | null }>} */
+const EDITS_READ = new WeakMap();
+
+/** @param {any} meta @param {any} e its `edits` @param {string} [id] @returns {Edit | null} */
+function readEdit(meta, e, id) {
   const num = (/** @type {unknown} */ v) => (typeof v === "number" && Number.isFinite(v) ? v : NaN);
   const whole = num(meta.durationSec), listed = num(e.source_duration);
   const d = whole > 0 ? whole : listed > 0 ? listed : 0;
@@ -849,7 +868,6 @@ export function editsOf(meta, id = meta?.id) {
   /** @type {[number, number][]} */
   const cuts = [];
   for (const c of Array.isArray(e.cuts) ? e.cuts : []) {
-    if (cuts.length >= EDIT_CUTS_MAX) break;
     if (!c || typeof c !== "object" || c.applied !== true) continue;
     const s = clamp(c.start), t = clamp(c.end);
     if (Number.isNaN(s) || Number.isNaN(t) || t <= s) continue;
@@ -857,16 +875,18 @@ export function editsOf(meta, id = meta?.id) {
     if (to > from) cuts.push([from, to]);
   }
   cuts.sort((x, y) => x[0] - y[0]);
-  // The trim minus those, overlaps merged (`EditList::keep`).
+  // The trim minus those, overlaps merged (`EditList::keep`) — its first ranges, up to the
+  // bound: each ends where a cut starts, so stopping there never runs on into one.
   /** @type {[number, number][]} */
   const keep = [];
   let at = a;
   for (const [s, t] of cuts) {
+    if (keep.length >= EDIT_KEEP_MAX) break;
     if (t <= at) continue;
     if (s > at) keep.push([at, s]);
     at = Math.max(at, t);
   }
-  if (at < b) keep.push([at, b]);
+  if (at < b && keep.length < EDIT_KEEP_MAX) keep.push([at, b]);
   if (!keep.length || (keep.length === 1 && keep[0][0] <= 0 && keep[0][1] >= d)) return null;
   const dur = keep.reduce((n, [s, t]) => n + (t - s), 0);
   const rev = Number.isInteger(e.rev) ? e.rev : 0;

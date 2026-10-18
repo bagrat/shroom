@@ -771,9 +771,10 @@ and ~47 in Safari (it reads ~3 MB at a time), against ~56–58 (`worker/dev/view
 A Worker that is gone, deploying or over its cap shows Cloudflare's page.
 
 **Edits** (N63, D:B195): the record's `edits` (§5.3) rides the read the page makes anyway.
-`editsOf` ports `EditList::checked` + `keep` (clamped to `durationSec`, at most 500 applied
-cuts; held with the player's own arithmetic to `crates/shroom-edit/tests/keep-vectors.json`)
-and hands the player only the ranges that play. Over `video.mp4` and the stream alike the
+`editsOf` ports `EditList::checked` + `keep` (clamped to `durationSec`, every applied cut
+read; held with the player's own arithmetic to `crates/shroom-edit/tests/keep-vectors.json`)
+and hands the player only the ranges that play — at most the first 500, so past them
+playback ends rather than play a cut. Over `video.mp4` and the stream alike the
 player starts at the trim's in, skips each cut — every frame while playing, and on
 `timeupdate` and `seeking` — and stops at the out, its time, seek bar and keys in edited
 time; the page, the unfurl's `og:video:duration`, the status and Copy thumbnail show the

@@ -10,7 +10,7 @@
 // driven for real by `npm run drive:page` (an edited record in Chromium and WebKit).
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { COPY, EDIT_CUTS_MAX, PLAYER_JS, editsOf, forgetSecret, handle, status } from "../src/worker.js";
+import { COPY, EDIT_KEEP_MAX, PLAYER_JS, editsOf, forgetSecret, handle, status } from "../src/worker.js";
 import { M1, NOW, ORIGIN, OWNER_AIR, REC, cookieFor, metaKey, metaOf, space } from "./space-fixture.js";
 
 const VECTORS = JSON.parse(readFileSync(new URL("../../crates/shroom-edit/tests/keep-vectors.json", import.meta.url), "utf8"));
@@ -114,16 +114,32 @@ describe("editsOf takes nothing on trust", () => {
     expect(of({ in: 0, out: 60, cuts }).keep).toEqual([[0, 20], [25, 60]]);
   });
 
-  it(`reads at most ${EDIT_CUTS_MAX} applied cuts, whatever the record holds — suggestions never count`, () => {
+  it(`reads every applied cut, however many, quickly, and hands out at most ${EDIT_KEEP_MAX} ranges — suggestions never count`, () => {
     const many = Array.from({ length: 100_000 }, (_, i) => ({ start: i * 0.0005, end: i * 0.0005 + 0.0001, applied: true }));
     const t0 = performance.now();
     const got = of({ in: 0, out: 60, cuts: many });
     expect(performance.now() - t0).toBeLessThan(200);
-    expect(got.keep.length).toBeLessThanOrEqual(EDIT_CUTS_MAX + 1);
+    expect(got.keep.length).toBeLessThanOrEqual(EDIT_KEEP_MAX);
     // Ten thousand suggestions ahead of the three applied cuts don't push them out.
     const offered = Array.from({ length: 10_000 }, (_, i) => ({ start: i * 0.005, end: i * 0.005 + 0.004, applied: false }));
     expect(of({ in: 0, out: 60, cuts: [...offered, { start: 10, end: 20, applied: true }, { start: 30, end: 31, applied: true }, { start: 50, end: 55, applied: true }] }).keep)
       .toEqual([[0, 10], [20, 30], [31, 50], [55, 60]]);
+  });
+
+  it("never plays a cut for where it sits in the list or how many there are: past the cap, playback ends", () => {
+    // 501 applied cuts, 0.2 s every 0.5 s of a 600 s recording: 501 ranges play in the copy
+    // (EditList::keep applies every cut).
+    const cuts = Array.from({ length: 501 }, (_, i) => ({ start: i * 0.5, end: i * 0.5 + 0.2, applied: true }));
+    const full = [...Array.from({ length: 500 }, (_, i) => [i * 0.5 + 0.2, (i + 1) * 0.5]), [500 * 0.5 + 0.2, 600]];
+    for (const order of [cuts, [...cuts].reverse()]) {
+      const got = editsOf({ durationSec: 600, edits: { in: 0, out: 600, cuts: order } }, REC);
+      expect(got.keep.length).toBe(500);
+      // What the page plays is where the copy starts, and ends early: never a moment more.
+      expect(got.keep).toEqual(full.slice(0, got.keep.length));
+      const plays = (t) => got.keep.some(([s, e]) => s <= t && t < e);
+      for (const t of [0.1, 250.1, 300]) expect(plays(t), `${t}`).toBe(false);
+      expect(got.dur).toBeCloseTo(got.keep.reduce((n, [s, e]) => n + e - s, 0), 9);
+    }
   });
 
   it("names the permanent copy only once it's this revision's, under names of its own kind", () => {
@@ -223,7 +239,7 @@ describe("the page applies the edit until the copy is up (N63)", () => {
     const cuts = Array.from({ length: 20_000 }, (_, i) => ({ start: 1 + i * 0.01, end: 1 + i * 0.01 + 0.005, kind: "manual", confidence: "high", applied: true }));
     const res = await get(withEdit({ ...LIST, in: 0, out: 272.4, cuts, rev: 1 }), `/${REC}`);
     expect(res.status).toBe(200);
-    expect(playerArg(await res.text()).keep.length).toBeLessThanOrEqual(EDIT_CUTS_MAX + 1);
+    expect(playerArg(await res.text()).keep.length).toBeLessThanOrEqual(EDIT_KEEP_MAX);
   });
 
   it("costs no read of its own: the edit rides the record the page already read", async () => {
