@@ -203,3 +203,19 @@ fn turned_off_again_every_ask_is_refused_again() {
     assert!(r.effects.iter().any(|e| matches!(e, Effect::Persist(PersistOp::Prefs(p)) if !p.agent_recording)), "kept for the next launch");
     assert_eq!(ask(&mut r, 1, CliOp::Start).error, Some("recording_off"));
 }
+
+/// A stop while recording, not paused, is the take's own stop: the machine's edge
+/// recording → stopping is the one the core names, never the paused popover's.
+#[test]
+fn a_stop_while_recording_names_its_own_edge() {
+    let mut w = allowed();
+    w.take = Some(take(Phase::Recording, 61_000));
+    let mut r = Run::new(w);
+    assert!(ask(&mut r, 1, CliOp::Stop).ok);
+    assert_eq!(r.arm.edge, Some(("recording", "stopping")));
+    let mut w = allowed();
+    w.take = Some(take(Phase::Paused(Cause::User), 61_000));
+    let mut r = Run::new(w);
+    assert!(ask(&mut r, 2, CliOp::Stop).ok);
+    assert_eq!(r.arm.edge, Some(("paused", "stopping")));
+}

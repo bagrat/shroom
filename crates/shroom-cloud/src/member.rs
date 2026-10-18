@@ -938,6 +938,26 @@ pub fn machine_stamp(hardware: &str, home: &str, host: &str) -> String {
 mod tests {
     use super::*;
 
+    /// An id that isn't one — `../members/m_…` from a typed list — never becomes a path: the
+    /// call is refused before anything is sent (WORKER-INTERFACE §4.13–§4.15; a URL's dot
+    /// segments would otherwise name another route).
+    #[test]
+    fn an_id_that_isnt_one_never_reaches_a_path() {
+        // Nothing listens here: a request that went out would come back unanswered.
+        let page = Space::at("v.myshroom.workers.dev", "http://127.0.0.1:9");
+        let key = crate::device::DeviceKey::generate("v.myshroom.workers.dev");
+        let refused = |a: Answer<()>| matches!(a, Answer::Refused(r) if r.status == 400);
+        for bad in ["../members/m_MherMherMherMher", "i_short", "i_AbCdEfGhIjKlMn/x", "i_AbCdEfGh?jKlMnOp", "m_AbCdEfGhIjKlMnOp", ""] {
+            assert!(refused(page.cancel_invite(&key, bad)), "{bad}");
+        }
+        for bad in ["../invites/i_AbCdEfGhIjKlMnOp", "i_AbCdEfGhIjKlMnOp", "m_Mher/../x"] {
+            assert!(refused(page.remove_member(&key, bad)), "{bad}");
+            assert!(refused(page.remove_device(&key, bad)), "{bad}");
+        }
+        assert!(matches!(page.cancel_invite(&key, "i_AbCdEfGhIjKlMnOp"), Answer::Unanswered(_)), "an invite's id is sent");
+        assert!(matches!(page.remove_member(&key, "m_AbCdEfGhIjKlMnOp"), Answer::Unanswered(_)), "a member's id is sent");
+    }
+
     #[test]
     fn a_join_link_parses_in_all_three_forms() {
         let want = Some(("v.myshroom.workers.dev".to_string(), "AbCdEfGhIjKlMnOp".to_string()));

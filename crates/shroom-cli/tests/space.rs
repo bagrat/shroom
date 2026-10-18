@@ -209,6 +209,70 @@ fn a_team_lead_invites_a_list_in_one_call_and_a_rerun_is_safe() {
     assert_eq!(shroom(&home, &base, &args).1["error"], "usage");
 }
 
+/// The review's asks (2026-10-18): every change dry-runs; an id is only ever an id; only new
+/// invites count against the space's room for waiting ones; a removal run again is safe; and
+/// an item of the wrong shape is refused before anything is done.
+#[test]
+fn dry_runs_change_nothing_ids_stay_ids_and_re_runs_are_safe() {
+    let Some((_serve, base)) = serve() else {
+        eprintln!("skipped: node or worker/dev/serve.mjs isn't available");
+        return;
+    };
+    let dir = tempfile::tempdir().unwrap();
+    let home = dir.path().join("home");
+    demo::seed(&base, &home);
+    let invites = |h: &std::path::Path| shroom(h, &base, &["members"]).1["invites"].as_array().unwrap().len();
+
+    // A single invite, dry: nothing made.
+    let (code, v) = shroom(&home, &base, &["invite", "Sam", "Lee", "--dry-run"]);
+    assert_eq!((code, v["dry_run"].as_bool(), v["would_invite"].as_str()), (0, Some(true), Some("Sam Lee")), "{v}");
+    assert_eq!(invites(&home), 0);
+    // A rename, dry: the title stays.
+    let (code, v) = shroom(&home, &base, &["rename", "St4ndupN0t3sJn05", "New", "title", "--dry-run"]);
+    assert_eq!((code, v["dry_run"].as_bool(), v["title"].as_str(), v["was"].as_str()), (0, Some(true), Some("New title"), Some("Standup notes")), "{v}");
+    assert_eq!(shroom(&home, &base, &["info", "St4ndupN0t3sJn05"]).1["video"]["title"], "Standup notes");
+    // An invite cancelled, dry: still waiting.
+    let (_, v) = shroom(&home, &base, &["invite", "Pat"]);
+    let pat = v["id"].as_str().unwrap().to_string();
+    let (code, v) = shroom(&home, &base, &["invite", "cancel", &pat, "--dry-run"]);
+    assert_eq!((code, v["results"][0]["status"].as_str(), v["dry_run"].as_bool()), (0, Some("would_cancel"), Some(true)), "{v}");
+    assert_eq!(invites(&home), 1);
+
+    // An id is only an id: a path in its place is refused before anything is sent.
+    let (code, v) = shroom(&home, &base, &["invite", "cancel", "../members/m_MherMherMherMher"]);
+    assert_eq!((code, v["error"].as_str()), (2, Some("usage")), "{v}");
+    assert!(shroom(&home, &base, &["members"]).1["members"].as_array().unwrap().iter().any(|m| m["id"] == "m_MherMherMherMher"), "Mher is still in");
+
+    // Only new invites count against the room: Pat's takes one of the 20, so 19 new people
+    // and one already in fit (asked first, as ever); 20 new don't, and nothing is made.
+    let names: Vec<String> = (0..20).map(|i| format!("Person {i}")).collect();
+    let mut args: Vec<&str> = vec!["invite", "--batch"];
+    args.extend(names[..19].iter().map(String::as_str));
+    args.push("Mher");
+    let (code, v) = shroom(&home, &base, &args);
+    assert_eq!((code, v["error"].as_str()), (7, Some("needs_confirmation")), "{v}");
+    let mut args: Vec<&str> = vec!["invite", "--batch", "--yes"];
+    args.extend(names.iter().map(String::as_str));
+    let (code, v) = shroom(&home, &base, &args);
+    assert_eq!((code, v["error"].as_str()), (2, Some("usage")), "{v}");
+    assert_eq!(invites(&home), 1, "nothing made");
+
+    // A removal run again (a lost answer): already gone, and fine.
+    let (code, v) = shroom(&home, &base, &["members", "remove", "m_MherMherMherMher", "--yes"]);
+    assert_eq!((code, v["results"][0]["status"].as_str()), (0, Some("removed")), "{v}");
+    let (code, v) = shroom(&home, &base, &["members", "remove", "m_MherMherMherMher", "--yes"]);
+    assert_eq!((code, v["results"][0]["status"].as_str()), (0, Some("not_found")), "{v}");
+
+    // An item of the wrong shape is refused before anything is done.
+    let list = dir.path().join("list.json");
+    std::fs::write(&list, r#"[{"id": "Fr1st3v3rT3st000"}, {"ID": "0ldD3m0F0rAcm3Co"}]"#).unwrap();
+    let (code, v) = shroom(&home, &base, &["delete", "--from", list.to_str().unwrap(), "--yes"]);
+    assert_eq!((code, v["error"].as_str()), (2, Some("usage")), "{v}");
+    assert_eq!(shroom(&home, &base, &["list"]).1["total"], 7, "nothing deleted");
+    let (code, v) = shroom(&home, &base, &["invite", "cancel", "--from", list.to_str().unwrap()]);
+    assert_eq!((code, v["error"].as_str()), (2, Some("usage")), "{v}");
+}
+
 #[test]
 fn many_videos_at_once_each_with_its_own_result() {
     let Some((_serve, base)) = serve() else {
