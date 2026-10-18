@@ -8,7 +8,7 @@
 #   2. Check it against its published fingerprint — if anything is off,
 #      nothing gets installed.
 #   3. Place it in ~/Applications — no admin password, nothing outside
-#      your home folder.
+#      your home folder — with its `shroom` command in ~/.local/bin.
 #   4. Open it.
 #
 # Run it again anytime — that's also the update: same four steps, newer
@@ -34,6 +34,11 @@ MIN_MACOS=14
 # The release certificate's SHA-1 (tools/release-identity.sha1; its test holds them equal):
 # a public release's shroom.app must be signed by it, as am.shroom (DECISIONS B125).
 RELEASE_LEAF=8344cbe040722ea0a5632320c1d0d4348eaa3af3
+# The `shroom` command (dev/proposals/cli-agent-skill.md; Bagrat, 2026-10-18: always
+# installed): a link in your home folder to the one inside the app, so it updates with it.
+CLI_DIR="$HOME/.local/bin"
+CLI_LINK="$CLI_DIR/shroom"
+CLI_MARK="# shroom's command line (shroom.am) — run shroom --help"
 
 NET_DROP="Couldn't finish the download — check your connection and run the same command again."
 CHECKSUM="The download didn't check out, so nothing was installed. Run it once more — if it repeats, tell us: https://github.com/bagrat/shroom/issues/new — no GitHub? hi@shroom.am works too."
@@ -145,6 +150,39 @@ unverified() {
   fail "$SIGNATURE"
 }
 
+# The command, linked into ~/.local/bin — and, when that folder isn't on your PATH yet,
+# one marked line in your shell's login profile that puts it there, for new Terminal
+# windows. Never over a file of yours named shroom, and never a reason for the install
+# to fail: an app without the command (an older release) links nothing.
+link_cli() {
+  target="$APP/Contents/MacOS/shroom-cli"
+  [ -x "$target" ] || return 0
+  if [ -e "$CLI_LINK" ] || [ -L "$CLI_LINK" ]; then
+    [ "$(readlink "$CLI_LINK" 2>/dev/null)" = "$target" ] || return 0
+  fi
+  mkdir -p "$CLI_DIR" 2>/dev/null && ln -sfn "$target" "$CLI_LINK" 2>/dev/null || return 0
+  case ":${PATH:-}:" in *":$CLI_DIR:"*) return 0 ;; esac
+  case "${SHELL:-}" in
+    */zsh) profile="$HOME/.zprofile" ;;
+    */bash) profile="$HOME/.bash_profile" ;;
+    *) return 0 ;;
+  esac
+  grep -qF "$CLI_MARK" "$profile" 2>/dev/null && return 0
+  printf '\n%s\nexport PATH="$HOME/.local/bin:$PATH"\n' "$CLI_MARK" >>"$profile" 2>/dev/null || true
+}
+
+# Takes back exactly what link_cli made: the link (only if it's ours) and the marked line
+# with the one after it; the rest of the profile is left as it was.
+unlink_cli() {
+  [ "$(readlink "$CLI_LINK" 2>/dev/null)" = "$APP/Contents/MacOS/shroom-cli" ] && rm -f "$CLI_LINK"
+  for profile in "$HOME/.zprofile" "$HOME/.bash_profile"; do
+    grep -qF "$CLI_MARK" "$profile" 2>/dev/null || continue
+    awk -v m="$CLI_MARK" '$0 == m { skip = 1; next } skip { skip = 0; next } { print }' "$profile" >"$profile.shroom-tmp" &&
+      cat "$profile.shroom-tmp" >"$profile"
+    rm -f "$profile.shroom-tmp"
+  done
+}
+
 # ── --uninstall (DECISIONS B135) ──────────────────────────────────────────────────────
 # For a Mac whose shroom won't open. Only this Mac: the space, its videos and its links are
 # never asked, and copies saved to Movies stay.
@@ -185,6 +223,7 @@ uninstall() {
   tccutil reset All "$id" </dev/null >/dev/null 2>&1
   [ -d "$APP" ] && PATH="$ls_path" lsregister -u "$APP" </dev/null >/dev/null 2>&1
   defaults delete "$id" </dev/null >/dev/null 2>&1
+  unlink_cli
   lib="$HOME/Library"
   rm -rf "$APP" "$dir" "$lib/WebKit/$id" "$lib/Caches/$id" "$lib/HTTPStorages/$id" \
     "$lib/Saved Application State/$id.savedState" "$lib/Preferences/$id.plist"
@@ -310,6 +349,7 @@ launch() {
       printf '{"v":1,"link":"%s","arrived":"%s"}\n' "$join" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$dir/invite.tmp" &&
       mv -f "$dir/invite.tmp" "$dir/invite" ) 2>/dev/null && invite=--invite
   fi
+  link_cli
   # If macOS won't open it, the copy stays placed and the line says where it is — never
   # the system's own error text.
   open "$APP" --args "--relaunched=$how" $invite </dev/null >/dev/null 2>&1 || fail "$DIDNT_OPEN"

@@ -12,9 +12,10 @@ not. You act for the person: they decide, you run the command and pass on what i
 ## Find the command
 
 1. Run `shroom --version`.
-2. If that isn't found, try
-   `~/Applications/shroom.app/Contents/Resources/bin/shroom --version` and use that
-   full path from then on. Don't add it to their PATH or make links unless they ask.
+2. If that isn't found (a Terminal opened before shroom was installed doesn't see it
+   yet), try `~/.local/bin/shroom --version`, then
+   `~/Applications/shroom.app/Contents/MacOS/shroom-cli --version`, and use the one that
+   answers, by its full path, from then on. Don't change their PATH or make links.
 3. If neither is there, shroom isn't installed. If they want it, read
    https://shroom.am/agent and follow that. Otherwise stop here.
 

@@ -62,6 +62,15 @@ describe("the cask", () => {
     assert.match(cask, /^  app "shroom\.app", target: "~\/Applications\/shroom\.app"$/m);
   });
 
+  // Bagrat, 2026-10-18: the `shroom` command is always installed — Homebrew links the one
+  // inside the app, the same file the install line links into ~/.local/bin.
+  it("links the app's shroom command into Homebrew's bin, the same file the install line links", () => {
+    assert.match(cask, /^  binary "#\{Dir\.home\}\/Applications\/shroom\.app\/Contents\/MacOS\/shroom-cli", target: "shroom"$/m);
+    const installer = readFileSync(join(ROOT, "installer/install.sh"), "utf8");
+    assert.ok(installer.includes('target="$APP/Contents/MacOS/shroom-cli"'));
+    assert.ok(installer.includes('APP="$HOME/Applications/shroom.app"'));
+  });
+
   it("downloads the release's own zip, the name manifest.txt gives it", () => {
     assert.ok(cask.includes('url "https://github.com/bagrat/shroom/releases/download/v#{version}/shroom-#{version}-arm64.zip"'));
   });
