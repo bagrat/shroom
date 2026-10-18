@@ -1,0 +1,207 @@
+{
+ "duration": 15.450113378684808,
+ "words": [
+  {
+   "text": "Welcome",
+   "start": 0.0,
+   "end": 0.88
+  },
+  {
+   "text": "to",
+   "start": 0.88,
+   "end": 1.16
+  },
+  {
+   "text": "the",
+   "start": 1.16,
+   "end": 1.28
+  },
+  {
+   "text": "tour.",
+   "start": 1.28,
+   "end": 1.6
+  },
+  {
+   "text": "Press",
+   "start": 1.98,
+   "end": 2.54
+  },
+  {
+   "text": "stop",
+   "start": 2.54,
+   "end": 2.94
+  },
+  {
+   "text": "and",
+   "start": 2.94,
+   "end": 3.38
+  },
+  {
+   "text": "your",
+   "start": 3.38,
+   "end": 3.56
+  },
+  {
+   "text": "link",
+   "start": 3.56,
+   "end": 3.86
+  },
+  {
+   "text": "is",
+   "start": 3.86,
+   "end": 4.12
+  },
+  {
+   "text": "pasted.",
+   "start": 4.12,
+   "end": 4.72
+  },
+  {
+   "text": "Shroom",
+   "start": 5.02,
+   "end": 5.68
+  },
+  {
+   "text": "cut.",
+   "start": 5.68,
+   "end": 6.1
+  },
+  {
+   "text": "Press",
+   "start": 6.5,
+   "end": 7.1
+  },
+  {
+   "text": "stop",
+   "start": 7.1,
+   "end": 7.64
+  },
+  {
+   "text": "and",
+   "start": 7.64,
+   "end": 8.0
+  },
+  {
+   "text": "your",
+   "start": 8.0,
+   "end": 8.18
+  },
+  {
+   "text": "link",
+   "start": 8.18,
+   "end": 8.48
+  },
+  {
+   "text": "is,",
+   "start": 8.48,
+   "end": 8.78
+  },
+  {
+   "text": "uh,",
+   "start": 9.0,
+   "end": 9.12
+  },
+  {
+   "text": "shroom",
+   "start": 9.62,
+   "end": 10.08
+  },
+  {
+   "text": "cut.",
+   "start": 10.08,
+   "end": 10.44
+  },
+  {
+   "text": "Press",
+   "start": 10.98,
+   "end": 11.5
+  },
+  {
+   "text": "stop",
+   "start": 11.5,
+   "end": 12.06
+  },
+  {
+   "text": "and",
+   "start": 12.06,
+   "end": 12.46
+  },
+  {
+   "text": "your",
+   "start": 12.46,
+   "end": 12.64
+  },
+  {
+   "text": "link",
+   "start": 12.64,
+   "end": 12.94
+  },
+  {
+   "text": "is",
+   "start": 12.94,
+   "end": 13.22
+  },
+  {
+   "text": "copied",
+   "start": 13.22,
+   "end": 13.64
+  },
+  {
+   "text": "to",
+   "start": 13.64,
+   "end": 13.88
+  },
+  {
+   "text": "the",
+   "start": 13.88,
+   "end": 14.0
+  },
+  {
+   "text": "clipboard.",
+   "start": 14.0,
+   "end": 14.5
+  }
+ ],
+ "silences": [
+  {
+   "start": 0.0,
+   "end": 0.61034
+  },
+  {
+   "start": 1.7507,
+   "end": 2.27311
+  },
+  {
+   "start": 3.16812,
+   "end": 3.28839
+  },
+  {
+   "start": 4.76934,
+   "end": 5.3083
+  },
+  {
+   "start": 6.25088,
+   "end": 6.87719
+  },
+  {
+   "start": 7.76662,
+   "end": 7.89751
+  },
+  {
+   "start": 9.20399,
+   "end": 9.72136
+  },
+  {
+   "start": 10.6521,
+   "end": 11.2762
+  },
+  {
+   "start": 12.1915,
+   "end": 12.3761
+  },
+  {
+   "start": 14.6323,
+   "end": 15.4501
+  }
+ ]
+}

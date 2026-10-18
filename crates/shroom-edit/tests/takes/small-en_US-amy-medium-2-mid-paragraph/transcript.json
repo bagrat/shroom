@@ -1,0 +1,239 @@
+{
+ "duration": 15.937278911564626,
+ "words": [
+  {
+   "text": "To",
+   "start": 0.0,
+   "end": 0.74
+  },
+  {
+   "text": "share",
+   "start": 0.74,
+   "end": 1.06
+  },
+  {
+   "text": "a",
+   "start": 1.06,
+   "end": 1.32
+  },
+  {
+   "text": "recording,",
+   "start": 1.32,
+   "end": 1.82
+  },
+  {
+   "text": "you",
+   "start": 2.26,
+   "end": 2.32
+  },
+  {
+   "text": "click",
+   "start": 2.32,
+   "end": 2.54
+  },
+  {
+   "text": "the",
+   "start": 2.54,
+   "end": 2.78
+  },
+  {
+   "text": "mushroom",
+   "start": 2.78,
+   "end": 3.16
+  },
+  {
+   "text": "in",
+   "start": 3.16,
+   "end": 3.44
+  },
+  {
+   "text": "the",
+   "start": 3.44,
+   "end": 3.58
+  },
+  {
+   "text": "menu",
+   "start": 3.58,
+   "end": 3.88
+  },
+  {
+   "text": "bar,",
+   "start": 3.88,
+   "end": 4.3
+  },
+  {
+   "text": "then",
+   "start": 4.88,
+   "end": 5.12
+  },
+  {
+   "text": "you",
+   "start": 5.12,
+   "end": 5.34
+  },
+  {
+   "text": "pick",
+   "start": 5.34,
+   "end": 5.52
+  },
+  {
+   "text": "the,",
+   "start": 5.52,
+   "end": 5.78
+  },
+  {
+   "text": "the",
+   "start": 5.78,
+   "end": 5.98
+  },
+  {
+   "text": "window",
+   "start": 5.98,
+   "end": 6.28
+  },
+  {
+   "text": "you",
+   "start": 6.28,
+   "end": 6.6
+  },
+  {
+   "text": "thumb.",
+   "start": 6.6,
+   "end": 7.0
+  },
+  {
+   "text": "Shroom",
+   "start": 7.98,
+   "end": 8.16
+  },
+  {
+   "text": "cut.",
+   "start": 8.16,
+   "end": 8.58
+  },
+  {
+   "text": "So,",
+   "start": 9.46,
+   "end": 9.78
+  },
+  {
+   "text": "then",
+   "start": 10.08,
+   "end": 10.26
+  },
+  {
+   "text": "you",
+   "start": 10.26,
+   "end": 10.5
+  },
+  {
+   "text": "pick",
+   "start": 10.5,
+   "end": 10.66
+  },
+  {
+   "text": "the",
+   "start": 10.66,
+   "end": 10.86
+  },
+  {
+   "text": "window",
+   "start": 10.86,
+   "end": 11.18
+  },
+  {
+   "text": "you",
+   "start": 11.18,
+   "end": 11.46
+  },
+  {
+   "text": "want",
+   "start": 11.46,
+   "end": 11.68
+  },
+  {
+   "text": "to",
+   "start": 11.68,
+   "end": 11.98
+  },
+  {
+   "text": "share.",
+   "start": 11.98,
+   "end": 12.34
+  },
+  {
+   "text": "And",
+   "start": 12.92,
+   "end": 13.08
+  },
+  {
+   "text": "that's",
+   "start": 13.08,
+   "end": 13.46
+  },
+  {
+   "text": "really",
+   "start": 13.46,
+   "end": 13.68
+  },
+  {
+   "text": "all",
+   "start": 13.68,
+   "end": 14.12
+  },
+  {
+   "text": "there",
+   "start": 14.12,
+   "end": 14.4
+  },
+  {
+   "text": "is",
+   "start": 14.4,
+   "end": 14.68
+  },
+  {
+   "text": "to",
+   "start": 14.68,
+   "end": 14.86
+  },
+  {
+   "text": "it.",
+   "start": 14.86,
+   "end": 15.14
+  }
+ ],
+ "silences": [
+  {
+   "start": 0.0,
+   "end": 0.60059
+  },
+  {
+   "start": 2.01002,
+   "end": 2.16005
+  },
+  {
+   "start": 4.43193,
+   "end": 4.90717
+  },
+  {
+   "start": 7.14753,
+   "end": 7.77424
+  },
+  {
+   "start": 8.73406,
+   "end": 9.4732
+  },
+  {
+   "start": 9.95964,
+   "end": 10.1264
+  },
+  {
+   "start": 12.4856,
+   "end": 12.9131
+  },
+  {
+   "start": 15.1174,
+   "end": 15.9373
+  }
+ ]
+}

@@ -228,14 +228,20 @@ fn describe(e: &Event) -> String {
 type Sources = (Box<dyn FrameSource>, Option<Box<dyn AudioSource>>, Option<Arc<AtomicBool>>, Option<Opened>);
 
 /// Where a take's sound comes from: the microphone the core named — or, in an unattended
-/// harness run, the test pattern's beep in its place (never the room: what a drive records
-/// may be published, TESTING-PLAN §4, b4 #17). No microphone named: silence. A display's take
+/// harness run, the test pattern's beep in its place, or the voice-cut drive's speech
+/// (`--voice`, N65), never the room: what a drive records may be published (TESTING-PLAN §4,
+/// b4 #17). No microphone named: silence. A display's take
 /// mixes the Mac's own sound in (spec N47, DECISIONS B172) — with no microphone, it alone.
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum Ears {
     Device,
     DriveBeep,
 }
+
+/// The voice-cut drive's speech (`--voice <wav>`, spec N65): what a drive's take plays in
+/// place of the beep. Set by the harness's arguments only, so never outside a quiet harness
+/// run.
+pub static DRIVE_VOICE: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
 
 fn ears(rt: &Runtime) -> Ears {
     // `harness` is a quiet dev run only (never a release build, never a person's dev app).
@@ -262,7 +268,12 @@ fn sources(ears: Ears, a_source: SourceId, quality: Quality, mic_uid: &Option<St
         }
     };
     let (voice, lost, opened) = if ears == Ears::DriveBeep {
-        (mic_uid.as_ref().map(|_| Box::new(shroom_capture::beep::BeepSource::new(48_000)) as Box<dyn AudioSource>), None, None)
+        let drive: Option<Box<dyn AudioSource>> = match (mic_uid, DRIVE_VOICE.get()) {
+            (None, _) => None,
+            (Some(_), Some(wav)) => Some(Box::new(shroom_capture::speech::SpeechSource::open(wav, 48_000)?)),
+            (Some(_), None) => Some(Box::new(shroom_capture::beep::BeepSource::new(48_000))),
+        };
+        (drive, None, None)
     } else {
         let opened = mic_uid.as_deref().and_then(|uid| ready.filter(|o| o.serves(uid)).or_else(|| Opened::open(uid)));
         let voice = opened.as_ref().map(|o| Box::new(o.mic.clone()) as Box<dyn AudioSource>);

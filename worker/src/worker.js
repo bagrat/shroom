@@ -101,6 +101,18 @@ export const COPY = {
   named: "Named from what you said. Click the title to change it.",
   namingLater: "Its name and chapters come a little later, once your free hours are back.",
   captions: "Captions",
+  // Voice cuts on the owner page (N65, owner-page-cuts; provisional words).
+  cutsHeading: "Cut where you said “shroom cut”",
+  cutsOnlyYou: "Only you see this.",
+  putBack: "Put back",
+  cutAgain: "Cut again",
+  cutItToo: "Cut it too",
+  cutsOffer: "Nothing was said again after it, so only “shroom cut” went. Cut the line before it too?",
+  cutsChanged: "changed in the editor",
+  cutsCouldntSave: "Couldn't save that. Check your connection, then try again.",
+  // The hint, on a take with no voice cuts in a space that listens (owner-page-cue-hint).
+  cueHint: "Slipped? Say “shroom cut”, then say the line again.",
+  cueHintGotIt: "Got it",
 };
 
 /** The upload line while bytes arrive: "Uploading — 40%. Your link already works." */
@@ -199,7 +211,7 @@ export async function handle(request, env, now, ctx) {
   const url = new URL(request.url);
   const path = url.pathname;
   if (path.startsWith(API)) return api(request, env, url, now);
-  if (request.method === "POST" && (path === "/_shroom/mark" || path.startsWith("/_shroom/title/"))) return post(request, env, url, now);
+  if (request.method === "POST" && (path === "/_shroom/mark" || path.startsWith("/_shroom/title/") || path.startsWith("/_shroom/edits/"))) return post(request, env, url, now);
   if (request.method === "POST" && path.startsWith("/_shroom/thumb/")) return thumbPost(request, env, url);
   const vb = request.method === "POST" && path.match(/^\/_shroom\/view\/([A-Za-z0-9_-]{16})$/);
   if (vb) return viewBeacon(request, env, url, vb[1], now);
@@ -225,7 +237,11 @@ export async function handle(request, env, now, ctx) {
   const st = path.match(/^\/_shroom\/status\/([A-Za-z0-9_-]{16})$/);
   // A record that can't be read right now is the unavailable face, never Cloudflare's own
   // error page (DECISIONS B94).
-  if (st) return json(await readMeta(env, st[1]).then((meta) => status(meta, now, st[1]), () => ({ state: "unavailable" })));
+  if (st) return json(await readMeta(env, st[1]).then((meta) => status(meta, now, st[1], listensOf(env)), () => ({ state: "unavailable" })));
+
+  // A voice cut's strip and what plays, for the owner page that sees them land (N65).
+  const ed = path.match(/^\/_shroom\/edits\/([A-Za-z0-9_-]{16})$/);
+  if (ed) return editsGet(request, env, ed[1], now);
 
   const m = path.match(/^\/m\/([A-Za-z0-9_-]{16})\/([A-Za-z0-9_./-]+)$/);
   if (m) {
@@ -319,8 +335,10 @@ function json(body, status = 200) {
 
 /** The upload line's truth — no title, so a guessed id learns nothing. */
 /** @typedef {{ state: string, pct?: number, stalled?: boolean, poster?: boolean, mp4?: boolean, drained?: boolean }} Status */
-/** @param {any} meta @param {number} now @param {string} [id] the recording's, for the edit's copy @returns {Status} */
-export function status(meta, now, id = meta?.id) {
+/** `id`: the recording's, for the edit's copy. `listens`: the space hears its takes (N66:
+ * Cloudflare's AI is bound to its page).
+ * @param {any} meta @param {number} now @param {string} [id] @param {boolean} [listens] @returns {Status} */
+export function status(meta, now, id = meta?.id, listens = false) {
   if (!meta) return { state: "waiting" };
   if (meta.state === "deleted") return { state: "removed" };
   // The owner page swaps the player in with its first frame, and adds Download when the
@@ -336,12 +354,13 @@ export function status(meta, now, id = meta?.id) {
     // play; and once its permanent copy is up, `copy`: where it is — a player that was
     // playing the original when the copy took its place moves over to it. A baked
     // recording with no edit (B197) names its own file there the same way: the bake took
-    // the original away from a player still on it.
+    // the original away from a player still on it. `cuts`: the voice cuts' word for a page
+    // already open (N65): coming, or their tag.
     const view = viewOf(String(id), meta);
     const moved = view.copy ?? (view.baked && !view.edit && Array.isArray(meta.bakedFrom) && meta.bakedFrom.length > 0
       ? { src: `/m/${id}/${view.file}`, dur: view.dur, poster: view.poster ?? undefined } : null);
     const live = { state: "live", poster: !!view.poster, mp4: view.download, teaser: !!view.teaser, thumb: newestThumb(String(id), meta), dur: view.dur, drained: drained(meta),
-      ...(view.edit ? { keep: view.edit.keep } : {}), ...(moved ? { copy: { src: moved.src, dur: moved.dur, poster: moved.poster ?? null } } : {}) };
+      ...(view.edit ? { keep: view.edit.keep } : {}), ...(moved ? { copy: { src: moved.src, dur: moved.dur, poster: moved.poster ?? null } } : {}), ...cutsField(meta, now, listens) };
     return live.drained ? live : { ...live, pct: pct(meta), stalled: stalledAt(meta, now) };
   }
   if (meta.state !== "uploading") return { state: "unavailable" };
@@ -570,6 +589,11 @@ async function post(request, env, url, now) {
     if (!title) return plain(400, "");
     return writeTitle(env, t[1], title, owner);
   }
+  const e = url.pathname.match(/^\/_shroom\/edits\/([A-Za-z0-9_-]{16})$/);
+  if (e) {
+    if (typeof body?.cut !== "string" || !CUT_ID.test(body.cut) || typeof body?.applied !== "boolean") return plain(400, "");
+    return writeCut(env, e[1], body.cut, body.applied, owner, now);
+  }
   if (url.pathname === "/_shroom/mark") {
     if (!owner.ownerClass || typeof body?.on !== "boolean") return plain(403, "");
     await writeMark(env, body.on, now);
@@ -605,6 +629,234 @@ async function writeTitle(env, id, title, owner) {
     if (written) return json({ title });
   }
   return plain(503, "");
+}
+
+// ───────── voice cuts (N65; DECISIONS B200, B201) ─────────
+
+/** The cuts the Mac lands where the speaker said “shroom cut” (crates/shroom-edit). */
+const VOICE_KINDS = new Set(["retake", "cue-only", "line-before-cue"]);
+const CUT_ID = /^[A-Za-z0-9_-]{1,32}$/;
+/** How long a page waits on a Mac that said it's listening before it stops polling for
+ * the cuts. */
+export const VOICE_WAIT_MS = 5 * 60 * 1000;
+
+/** What plays: the trim minus the applied cuts, overlaps merged — the edit list's own
+ * `keep()` (crates/shroom-edit), for the player. @param {any} edits @returns {number[][]} */
+export function keepOf(edits) {
+  const dur = Number(edits?.source_duration) || 0;
+  const lo = Number.isFinite(Number(edits?.in)) ? Number(edits.in) : 0;
+  const hi = Number.isFinite(Number(edits?.out)) ? Number(edits.out) : dur;
+  /** @type {number[][]} */
+  const cuts = (Array.isArray(edits?.cuts) ? edits.cuts : [])
+    .filter((/** @type {any} */ c) => c && c.applied === true && Number(c.end) > Number(c.start))
+    .map((/** @type {any} */ c) => [Number(c.start), Number(c.end)])
+    .sort((/** @type {number[]} */ a, /** @type {number[]} */ b) => a[0] - b[0]);
+  const keep = [];
+  let at = lo;
+  for (const [a, b] of cuts) {
+    const s = Math.max(a, lo), e = Math.min(b, hi);
+    if (e <= at) continue;
+    if (s > at) keep.push([at, s]);
+    at = Math.max(at, e);
+  }
+  if (at < hi) keep.push([at, hi]);
+  return keep;
+}
+
+/** The strip's rows: voice cuts in time order. A cue with nothing said again after it
+ * comes as two cuts, its own words (cut) and the line before it (offered); the row is the
+ * offer, showing the line without the cue's words, which are gone either way. Each row has
+ * the planner's words around its cut (`leads`, `resumes`), for where it joins, and whether the
+ * editor moved its edges since (`adjusted`, N63).
+ * @param {any} edits @returns {{ id: string, at: number, end: number, words: string, leads: string, resumes: string, kind: string, on: boolean, offer: boolean, adjusted: boolean }[]} */
+function voiceRows(edits) {
+  const cuts = (Array.isArray(edits?.cuts) ? edits.cuts : []).filter((/** @type {any} */ c) => c && VOICE_KINDS.has(c.kind) && typeof c.id === "string");
+  const offers = cuts.filter((/** @type {any} */ c) => c.kind === "line-before-cue");
+  const rows = [];
+  for (const c of cuts) {
+    if (c.kind === "cue-only" && offers.some((/** @type {any} */ o) => Number(o.start) <= Number(c.start) && Number(o.end) >= Number(c.end))) continue;
+    let words = typeof c.removed === "string" ? c.removed.trim() : "";
+    if (c.kind === "line-before-cue") {
+      const cue = cuts.find((/** @type {any} */ q) => q.kind === "cue-only" && Number(c.start) <= Number(q.start) && Number(c.end) >= Number(q.end));
+      const own = typeof cue?.removed === "string" ? cue.removed.trim() : "";
+      if (own && words.endsWith(own)) words = words.slice(0, -own.length).trim();
+    }
+    const text = (/** @type {unknown} */ x) => (typeof x === "string" ? x.trim() : "");
+    rows.push({ id: c.id, at: Number(c.start) || 0, end: Number(c.end) || 0, words, leads: text(c.leads), resumes: text(c.resumes), kind: c.kind, on: c.applied === true, offer: c.kind === "line-before-cue" && c.applied !== true, adjusted: c.adjusted === true });
+  }
+  return rows.sort((a, b) => a.at - b.at);
+}
+
+/** The planner's words either side of a cut at most (shroom-edit's `AROUND`): a full six
+ * were cut short, and more was said. */
+const AROUND = 6;
+
+/** A row's quoted words: the cut's own (`.w`, struck while it is cut) between a few of what
+ * plays around it (`.by`, never struck), `…` where more was said, none after a sentence's end.
+ * @param {{ words: string, leads: string, resumes: string }} r */
+function aroundCut(r) {
+  const full = (/** @type {string} */ s) => s.split(/\s+/).length >= AROUND;
+  const lead = r.leads ? `<span class="by">${escapeText(`${full(r.leads) ? "…" : ""}${r.leads}`)}</span> ` : "";
+  const then = r.resumes ? ` <span class="by">${escapeText(`${r.resumes}${full(r.resumes) && !/[.?!…]$/.test(r.resumes) ? "…" : ""}`)}</span>` : "";
+  return `<q>“${lead}<span class="w">${escapeText(r.words)}</span>${then}”</q>`;
+}
+
+/** A cut whose edges the editor moved (B200 (g)): how long it is and where it now ends,
+ * “4.6 s, to 0:09 — changed in the editor”, in place of words that may no longer be what it cuts.
+ * @param {{ at: number, end: number }} r */
+function changedCut(r) {
+  return `<span class="changed">${escapeText(`${Math.max(0, r.end - r.at).toFixed(1)} s, to ${shroomClockText(r.end)}`)} — <span class="ed">${escapeText(COPY.cutsChanged)}</span></span>`;
+}
+
+/** The owner page's voice cuts under the player (owner-page-cuts): "" when the take has
+ * none. Its rows carry their state in their class — `cut on` struck with Put back, `cut`
+ * put back with Cut again, `cut offer` the offered line with Cut it too.
+ * @param {any} edits */
+export function cutsStrip(edits) {
+  const rows = voiceRows(edits);
+  if (!rows.length) return "";
+  const li = rows.map((r) => {
+    const cls = r.offer ? "cut offer" : r.on ? "cut on" : "cut";
+    const label = r.offer ? COPY.cutItToo : r.on ? COPY.putBack : COPY.cutAgain;
+    const note = r.kind === "line-before-cue" ? `<span class="why">${escapeText(COPY.cutsOffer)}</span>` : "";
+    return `<li class="${cls}" data-cut="${escapeHtml(r.id)}"><span class="at">${escapeText(shroomClockText(r.at))}</span><span class="said">${note}${r.adjusted ? changedCut(r) : aroundCut(r)}</span><button type="button" data-press="${r.on ? "0" : "1"}">${escapeText(label)}</button></li>`;
+  }).join("");
+  return `<section class="cuts" id="cuts" aria-label="${escapeHtml(COPY.cutsHeading)}"><div class="cuts-head"><h2>${escapeText(COPY.cutsHeading)}</h2><span class="only">${escapeText(COPY.cutsOnlyYou)}</span></div><ol>${li}</ol><p class="unsaved" role="status" hidden>${escapeText(COPY.cutsCouldntSave)}</p></section>`;
+}
+
+/** m:ss of a time on the video, as the player writes it. @param {number} t */
+function shroomClockText(t) {
+  const s = Math.max(0, Math.floor(t));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+
+/** The status's word on the voice cuts: "coming" while a space that listens hears a take
+ * that went live less than VOICE_WAIT_MS ago and the Mac hasn't planned its cues yet (the
+ * edit list's `voice` mark, N63) — unless its words wait for tomorrow's free day (N66);
+ * then a short tag of the cuts as they stand, which any press changes — so a page already
+ * open knows when to fetch the strip. Never a word that was cut.
+ * @param {any} meta @param {number} now @param {boolean} [listens] @returns {{ cuts?: string }} */
+function cutsField(meta, now, listens = false) {
+  if (typeof meta?.edits?.voice?.planned_at !== "number") {
+    const live = Date.parse(meta?.publishedAt ?? "");
+    return listens && !meta?.naming?.later && Number.isFinite(live) && now - live < VOICE_WAIT_MS ? { cuts: "coming" } : {};
+  }
+  const rows = voiceRows(meta.edits);
+  if (!rows.length) return {};
+  let h = 0x811c9dc5;
+  for (const ch of rows.map((r) => `${r.id}:${r.on ? 1 : 0}`).join(",")) h = Math.imul(h ^ ch.charCodeAt(0), 0x01000193) >>> 0;
+  return { cuts: h.toString(36) };
+}
+
+/** A press on the strip: one voice cut on or off, read-modify-write under If-Match like
+ * the title (B21). Answers the cut, what now plays, and the cuts' new tag.
+ * @param {Env} env @param {string} id @param {string} cut @param {boolean} applied @param {Owner} owner @param {number} now */
+async function writeCut(env, id, cut, applied, owner, now) {
+  const key = `meta/${id}.json`;
+  /** @type {boolean | null} */
+  let allowed = null;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const [object, gone] = await Promise.all([env.BUCKET.get(key), env.BUCKET.head(`${GONE}${id}`)]);
+    if (gone) {
+      try { await object?.body?.cancel(); } catch { /* nothing to release */ }
+      return plain(409, "");
+    }
+    if (!object) return plain(404, "");
+    /** @type {any} */
+    let meta;
+    try { meta = JSON.parse(await object.text()); } catch { return plain(409, ""); }
+    if (meta.state === "deleted") return plain(409, "");
+    if (allowed === null) allowed = await mayEdit(env, owner, id, true);
+    if (!allowed) return plain(403, "");
+    const target = Array.isArray(meta.edits?.cuts) ? meta.edits.cuts.find((/** @type {any} */ c) => c && c.id === cut) : null;
+    if (!target) return plain(404, "");
+    // The strip only ever presses voice cuts; hand cuts are the editor's (N63).
+    if (!VOICE_KINDS.has(target.kind)) return plain(403, "");
+    target.applied = applied;
+    // A press is a save (N63): the revision moves on, so a copy cut from the list before
+    // reads as stale and the page plays the original with the cuts skipped.
+    meta.edits.rev = (Number(meta.edits.rev) || 0) + 1;
+    const written = await env.BUCKET.put(key, JSON.stringify(meta), { onlyIf: { etagMatches: object.etag }, httpMetadata: { contentType: "application/json" } });
+    if (written) return noStore(json({ cut, applied, keep: keepOf(meta.edits), cuts: cutsField(meta, now, listensOf(env)).cuts ?? null }));
+  }
+  return plain(503, "");
+}
+
+/** GET /_shroom/edits/<id>: the strip and what plays, for the maker's or an owner-class
+ * browser — the owner page that sees the cuts land fetches them here.
+ * @param {Request} request @param {Env} env @param {string} id @param {number} now */
+async function editsGet(request, env, id, now) {
+  const owner = await ownerOf(request, env);
+  if (!owner) return plain(403, "");
+  const meta = await readMeta(env, id).catch(() => null);
+  if (!meta || meta.state === "deleted") return plain(404, "");
+  if (!(await mayEdit(env, owner, id, true))) return plain(403, "");
+  return noStore(json({ strip: cutsStrip(meta.edits), keep: keepOf(meta.edits), cuts: cutsField(meta, now, listensOf(env)).cuts ?? null }));
+}
+
+/** The decision model that judges how far back a voice cue's redo reaches (DECISIONS B202). */
+export const CUE_JUDGE = "@cf/cloudflare/clef";
+/** A question's words at most, and its starts at most: the planner asks no more. */
+const CUE_TEXT_MAX = 2000;
+const CUE_STARTS_MAX = 6;
+
+/** What Clef judges for one cue: what was said after the command, and each stretch before it
+ * the redo might replace, starting further back each time. The words said are its state, never
+ * its questions. @param {{ after: string, candidates: string[] }} q */
+function cueState(q) {
+  return "A screen recording, transcribed. The speaker slipped, said the command \"shroom cut\", and said it again, " +
+    "perhaps in other words, perhaps leaving part of it out. The editor will cut the command and the slip. " +
+    "Each numbered stretch below is what was said just before the command, each starting further back.\n\n" +
+    `After the command: «${q.after}»\n\n` +
+    q.candidates.map((c, k) => `Stretch ${k + 1}: «${c}»`).join("\n");
+}
+/** @param {number} k */
+const cueAsk = (k) =>
+  `Is everything in stretch ${k + 1} said again after the command, in the same or other words, so that cutting all of stretch ${k + 1} would lose nothing the speaker meant to keep?`;
+
+/** POST /_shroom/api/cue {rec, cue, after, candidates} (N65, DECISIONS B202): the judgment
+ * above the Mac's voice-cue planner — one Clef call, a score from 0 to 1 per start and how
+ * long Clef took (`ms`, for the Mac's log); the Mac picks. The take's maker or an owner-class
+ * Mac may ask, within its hour's budget. Whatever Clef can't answer is `later`, with why in a
+ * word (`no-ai`, `daily`: the free day used up, `busy`): the Mac keeps its own plan.
+ * @param {Request} request @param {Env} env @param {any} b @param {number} now */
+async function cue(request, env, b, now) {
+  const { who } = await authed(request, env);
+  const text = (/** @type {unknown} */ x) => typeof x === "string" && x.length <= CUE_TEXT_MAX;
+  const starts = Array.isArray(b.candidates) ? b.candidates : [];
+  if (typeof b.rec !== "string" || !ID.test(b.rec) || !Number.isInteger(b.cue) || b.cue < 0 || !text(b.after)
+    || !starts.length || starts.length > CUE_STARTS_MAX || !starts.every(text)) throw bad();
+  const ledger = await ledgerGet(env, b.rec);
+  if ((ledger ? ledger.member : M1) !== who.mid && !who.ownerClass) throw new Refusal(403, "not-yours");
+  const ai = /** @type {{ AI?: { run: (model: string, input: unknown) => Promise<any> } }} */ (env).AI;
+  if (!ai) return answer({ later: true, why: "no-ai" });
+  await spendBudget(env, who.did, now, "c", CUE_BUDGET);
+  const asked = Date.now();
+  try {
+    const questions = Object.fromEntries(starts.map((/** @type {string} */ _, /** @type {number} */ k) => [`s${k + 1}`, { type: "noul", instructions: cueAsk(k) }]));
+    const out = await ai.run(CUE_JUDGE, { model: "clef", state: cueState({ after: b.after, candidates: starts }), questions });
+    const scores = starts.map((/** @type {string} */ _, /** @type {number} */ k) => {
+      const n = Number(out?.answers?.[`s${k + 1}`]?.noul);
+      return Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : 0;
+    });
+    return answer({ scores, ms: Date.now() - asked });
+  } catch (e) {
+    // The free day used up reads as the AI build's does (its `aiRefusal`); anything else is busy.
+    const daily = /\b(3036|4006)\b|daily free allocation/i.test(String(/** @type {any} */ (e)?.message ?? e));
+    return answer({ later: true, why: daily ? "daily" : "busy" });
+  }
+}
+
+/** The space hears its takes (N66): Cloudflare's AI is bound to its page.
+ * @param {Env} env */
+function listensOf(env) {
+  return !!(/** @type {{ AI?: unknown }} */ (env).AI);
+}
+
+/** @param {Response} res */
+function noStore(res) {
+  res.headers.set("cache-control", "no-store");
+  return res;
 }
 
 /** Copy thumbnail's caps (N46, B164, B165): a loop 640 wide (the teaser's own width), a still 1200 wide; a title's two
@@ -1061,7 +1313,7 @@ async function page(env, id, now, ownerP, origin, ctx) {
   if (owner && mine && (meta.state === "uploading" || playable(id, meta))) {
     const blocked = stalledAt(meta, now) && !drained(meta) && (await uploadsBlocked(env));
     const src = await sourceOf(id, meta, oneP);
-    return html(ownerPage(id, meta, now, face, blocked ? waitingWords(owner) : COPY.waitingConnection, false, false, src, aiFace(id, meta, src, !!env.AI, now)));
+    return html(ownerPage(id, meta, now, face, blocked ? waitingWords(owner) : COPY.waitingConnection, false, false, src, aiFace(id, meta, src, !!env.AI, now), listensOf(env)));
   }
   if (meta.state === "uploading") {
     const st = status(meta, now);
@@ -1223,9 +1475,9 @@ const PLAYER_TOKENS = `--player:#1f2228;--player-bar:#262a31;--player-text:#d8de
 /** The pages' palette, every colour on them: dark Nord, and its light variant for a browser
  * set to light. The embed is the player alone, so it takes the player's colours only. */
 const TOKENS = `:root{color-scheme:dark;--bg:#2b2f36;--card:#333944;--card-edge:#333944;--hair:#434a56;--field:#262a31;--well:#262a31;--edge:#4c566a;
---text:#eceff4;--muted:#d8dee9;--soft:#c3cad6;--quiet:#aeb6c4;--accent:#88c0d0;--accent-hi:#8fbcbb;--on-accent:#2b2f36;--hover:rgba(236,239,244,.08);--knob:#eceff4;--stem:#e5e9f0;--green:#a3be8c;--tip:#3b4252;--tip-edge:rgba(236,239,244,.12);${PLAYER_TOKENS}}
+--text:#eceff4;--muted:#d8dee9;--soft:#c3cad6;--quiet:#aeb6c4;--accent:#88c0d0;--accent-hi:#8fbcbb;--on-accent:#2b2f36;--hover:rgba(236,239,244,.08);--knob:#eceff4;--stem:#e5e9f0;--green:#a3be8c;--cut:#e88790;--warn:#ebcb8b;--tip:#3b4252;--tip-edge:rgba(236,239,244,.12);${PLAYER_TOKENS}}
 @media (prefers-color-scheme:light){:root{color-scheme:light;--bg:#f6f7f9;--card:#fff;--card-edge:#dfe3ea;--hair:#dfe3ea;--field:#fff;--well:#eef1f5;--edge:#c5ccd8;
---text:#2e3440;--muted:#3b4252;--soft:#4c566a;--quiet:#5c6779;--accent:#4c6f9a;--accent-hi:#3f5f86;--on-accent:#fff;--hover:rgba(46,52,64,.06);--knob:#fff;--stem:#b8c0cc;--green:#5d8a45;--tip:#fff;--tip-edge:#dfe3ea}}`;
+--text:#2e3440;--muted:#3b4252;--soft:#4c566a;--quiet:#5c6779;--accent:#4c6f9a;--accent-hi:#3f5f86;--on-accent:#fff;--hover:rgba(46,52,64,.06);--knob:#fff;--stem:#b8c0cc;--green:#5d8a45;--cut:#a3474f;--warn:#8a6417;--tip:#fff;--tip-edge:#dfe3ea}}`;
 const EMBED_TOKENS = `:root{color-scheme:dark;${PLAYER_TOKENS}}`;
 
 /** What every page shares: the reset, the type, links, focus, the logo's stem (it would
@@ -1241,6 +1493,8 @@ const maskIcon = (d, w = 1.4) => `url("data:image/svg+xml,${encodeURIComponent(`
 const I_LINK = maskIcon("M6.8 9.2a2.8 2.8 0 0 0 4 0l2.2-2.2a2.8 2.8 0 0 0-4-4l-.8.8M9.2 6.8a2.8 2.8 0 0 0-4 0L3 9a2.8 2.8 0 0 0 4 4l.8-.8");
 const I_CHECK = maskIcon("M3 8.6l3.2 3.1L13 4.6", 1.6);
 const I_SAVE = maskIcon("M8 2.5v8M4.5 7.5L8 11l3.5-3.5M3 13.5h10");
+// The voice cuts' scissors (N65, OwnerPageCuts).
+const I_CUT = maskIcon("M6.5 4.5a2 2 0 1 1-4 0a2 2 0 1 1 4 0M6.5 11.5a2 2 0 1 1-4 0a2 2 0 1 1 4 0M6.2 5.6L13 11.8M6.2 10.4L13 4.2");
 // Copy thumbnail's icon (Bagrat's pick, “7a”): a frame with the play mark, Copy link's chain at its corner.
 const I_THUMB = maskIcon("M8.2 12.8H3.3a1.5 1.5 0 0 1-1.5-1.5V4.7a1.5 1.5 0 0 1 1.5-1.5h9.4a1.5 1.5 0 0 1 1.5 1.5v3.5M7 6.2v3.6l3-1.8zM11.89 12.95a1.232 1.232 0 0 0 1.76 0l.968-.968a1.232 1.232 0 0 0-1.76-1.76l-.352.352M12.95 11.89a1.232 1.232 0 0 0-1.76 0L10.22 12.86a1.232 1.232 0 0 0 1.76 1.76l.352-.352");
 
@@ -1270,6 +1524,17 @@ h1{flex:1 1 0;min-width:0;margin:0;font-size:1.75rem;font-weight:600;line-height
 .copy.done{width:auto;padding:0 12px 0 8px;flex-direction:row-reverse;font-size:13px;color:var(--accent);--i:${I_CHECK}}
 #dl{display:flex}#dl:empty{display:none}
 .upl{display:flex;flex-direction:column;gap:6px;color:var(--soft);transition:opacity .4s}.upl[hidden]{display:none}.upl.done{color:var(--green);--fill:var(--green)}.upl.fade{opacity:0}
+.cuts{background:var(--card);border:1px solid var(--card-edge);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:10px}.cuts[hidden]{display:none}
+.cuts-head{display:flex;align-items:center;gap:10px}.cuts h2{flex:1 1 auto;margin:0;font-size:15px;font-weight:600;display:flex;align-items:center;gap:10px}
+.cuts h2::before{content:"";width:16px;height:16px;flex:none;background:var(--cut);-webkit-mask:${I_CUT} center/contain no-repeat;mask:${I_CUT} center/contain no-repeat}
+.cuts .only{color:var(--quiet);font-size:13px}.cuts ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.cut{display:flex;align-items:center;gap:14px;padding-top:10px;border-top:1px solid var(--hair)}.cut .at{flex:none;width:40px;color:var(--soft);font-variant-numeric:tabular-nums}
+.cut .said{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:2px}.cut q{quotes:none;overflow-wrap:anywhere;color:var(--quiet)}.cut q .w{color:var(--text)}.cut .changed{color:var(--soft)}.cut .changed .ed{color:var(--quiet)}.cut.on q .w{color:var(--quiet);text-decoration:line-through;text-decoration-color:var(--cut)}
+.cut .why,.cuts .unsaved{color:var(--warn);font-size:13px}.cut.on .why{display:none}.cuts .unsaved{margin:0}.cuts .unsaved[hidden]{display:none}
+.cut button{flex:none;font:inherit;font-size:13px;min-height:32px;padding:0 12px;border:1px solid var(--edge);border-radius:8px;background:transparent;color:var(--text);cursor:pointer}.cut button:hover{background:var(--hover)}.cut button[aria-busy]{opacity:.6}
+.cue-hint{background:var(--card);border:1px solid var(--card-edge);border-radius:12px;padding:10px 12px 10px 16px;display:flex;align-items:center;gap:10px;color:var(--muted)}.cue-hint[hidden]{display:none}
+.cue-hint::before{content:"";width:16px;height:16px;flex:none;background:var(--cut);-webkit-mask:${I_CUT} center/contain no-repeat;mask:${I_CUT} center/contain no-repeat}.cue-hint span{flex:1 1 auto;min-width:0}
+.cue-hint button{flex:none;font:inherit;font-size:13px;min-height:32px;padding:0 12px;border:1px solid var(--edge);border-radius:8px;background:transparent;color:var(--text);cursor:pointer}.cue-hint button:hover{background:var(--hover)}
 .wait{position:relative;aspect-ratio:var(--ar);border-radius:12px;background:var(--player);color:var(--player-text);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px;text-align:center;overflow:hidden;--track:var(--player-track);--fill:var(--player-fill)}
 .wait .line{margin:0;max-width:420px;font-size:1.0625rem}.wait .bar{max-width:320px}
 .wait img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
@@ -1768,8 +2033,9 @@ function thumbsOf(id, meta, live, store = true) {
  * speaks; the recipient's "refreshes itself" line is theirs (B43). */
 /** @param {string} id @param {any} meta @param {number} now @param {Face} face @param {string} waiting the stalled line
  * @param {boolean} [blocked] the space can't take uploads: the waiting line from the start
- * @param {boolean} [pending] no record yet (its claim is still on its way) */
-function ownerPage(id, meta, now, face, waiting, blocked = false, pending = false, src = `/m/${id}/master.m3u8`, ai = AI_NONE) {
+ * @param {boolean} [pending] no record yet (its claim is still on its way)
+ * @param {string} [src] @param {boolean} [listens] the space hears its takes (N66) */
+function ownerPage(id, meta, now, face, waiting, blocked = false, pending = false, src = `/m/${id}/master.m3u8`, ai = AI_NONE, listens = false) {
   const live = meta.state === "live";
   const placeholder = meta.titled ? untitled(meta.createdAt ?? new Date(now).toISOString()) : meta.title || untitled(meta.createdAt);
   const value = meta.titled ? meta.title : "";
@@ -1792,10 +2058,19 @@ function ownerPage(id, meta, now, face, waiting, blocked = false, pending = fals
   // Copy link and Download are quiet icons beside the title; their words name them.
   const head = `<div class="head">${field}${copyButtons(live, !ready)}<span id="dl" data-tip="${COPY.download}">${download}</span></div>`;
   const upload = `<div class="upl" id="ul"${drainedNow ? " hidden" : ""}><span class="up" id="u">${escapeText(line)}</span>${drainedNow ? "" : thinBar(st.pct ?? 0, stalled, "b")}</div>`;
+  // Voice cuts (N65): what was cut where the speaker said “shroom cut”, under the player —
+  // this page is the maker's or an owner-class browser's. While the cues are still coming,
+  // an empty strip waits for the page's poll to fill it.
+  const cutsTag = cutsField(meta, now, listens).cuts ?? null;
+  const cuts = cutsStrip(meta.edits) || (cutsTag === "coming" ? `<section class="cuts" id="cuts" hidden></section>` : "");
+  // The hint (owner-page-cue-hint): no voice cuts and none coming, in a space that listens.
+  // Hidden until the page's own check: this browser may have put it away, or seen a strip.
+  const hint = listens && !cuts ? `<div class="cue-hint" role="note" hidden><span>${escapeText(COPY.cueHint)}</span><button type="button">${escapeText(COPY.cueHintGotIt)}</button></div>` : "";
   const [upA, upB] = uploadingLine(0).split("0%");
   const cfg = JSON.stringify({
     id, live, drained: drainedNow, pending, mp4: view.download, saved: meta.titled ? meta.title : "", copied: COPY.copied, copy: COPY.copyLink, waiting,
     copyThumb: COPY.copyThumbnail, preparing: COPY.preparingThumbnail, thumbs, dl: COPY.download, ready: COPY.ready, notFound: COPY.notFound, unavailable: COPY.unavailable, upA, upB, labels: LABELS, player: live ? "" : playerHtml(id, { ...meta, media: { ...meta.media, poster: null } }),
+    cutsTag, cutLabels: { back: COPY.putBack, again: COPY.cutAgain, too: COPY.cutItToo },
   });
   const script = `<script>${PLAYER_JS}
 ${COPY_JS}
@@ -1811,6 +2086,18 @@ function copied(el,label){return function(ok){if(!ok)return;el.textContent=c.cop
 var b=document.getElementById("c");b.onclick=function(){shroomCopy(location.origin+"/"+c.id,null).then(copied(b,c.copy))};
 tb.onclick=function(){if(tb.getAttribute("aria-disabled"))return;th.copy().then(copied(tb,c.copyThumb))};
 var ul=document.getElementById("ul"),up=document.getElementById("u"),bar=document.getElementById("b"),dl=document.getElementById("dl"),gap=2000;
+function keepTo(k){document.dispatchEvent(new CustomEvent("shroom:keep",{detail:k}))}
+function row(li,on){var b=li.querySelector("button"),offer=!!li.querySelector(".why");li.className=on?"cut on":offer?"cut offer":"cut";b.textContent=on?c.cutLabels.back:offer?c.cutLabels.too:c.cutLabels.again;b.setAttribute("data-press",on?"0":"1")}
+function wire(){var cu=document.getElementById("cuts");if(!cu)return;cu.onclick=function(e){var b=e.target.closest&&e.target.closest("button[data-press]");if(!b||b.getAttribute("aria-busy"))return;
+var li=b.closest("li"),on=b.getAttribute("data-press")==="1",un=cu.querySelector(".unsaved");b.setAttribute("aria-busy","true");if(un)un.hidden=true;
+fetch("/_shroom/edits/"+c.id,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({cut:li.getAttribute("data-cut"),applied:on})})
+.then(function(r){return r.ok?r.json():null},function(){return null}).then(function(j){b.removeAttribute("aria-busy");if(!j){if(un)un.hidden=false;return}row(li,j.applied);if(j.cuts)c.cutsTag=j.cuts;keepTo(j.keep)})}}
+function pull(tag){fetch("/_shroom/edits/"+c.id,{cache:"no-store"}).then(function(r){return r.ok?r.json():null}).then(function(j){if(!j)return;c.cutsTag=j.cuts||tag;var cu=document.getElementById("cuts");
+if(j.strip){var h=document.createElement("div");h.innerHTML=j.strip;var n=h.firstChild;if(cu)cu.replaceWith(n);else{var at=document.querySelector(".player")||document.getElementById("w");if(at)at.after(n)}wire();stripSeen()}else if(cu&&c.cutsTag!=="coming")cu.remove();keepTo(j.keep)})}
+wire();
+var HK="shroom:cue-hint";function hintAway(){try{return localStorage.getItem(HK)==="1"}catch(e){return false}}function putHintAway(){try{localStorage.setItem(HK,"1")}catch(e){}}
+function stripSeen(){var cu=document.getElementById("cuts");if(cu&&!cu.hidden){putHintAway();var h=document.querySelector(".cue-hint");if(h)h.remove()}}
+var hn=document.querySelector(".cue-hint");if(hn){if(!hintAway())hn.hidden=false;hn.querySelector("button").onclick=function(){hn.remove();putHintAway()}}stripSeen();
 function next(ms){setTimeout(poll,ms)}
 function showBar(on,moving){if(bar){bar.parentNode.style.display=on?"":"none";bar.parentNode.className="bar"+(moving?" go":"")}}
 function say(x){var w=document.getElementById("w");if(!w||(!x&&!c.said))return;c.said=!!x;w.textContent="";if(x){var p=document.createElement("p");p.className="line";p.textContent=x;w.appendChild(p)}}
@@ -1821,15 +2108,16 @@ if(s.state==="live"){if(s.dur)th.length(shroomClock(s.dur,true));if(s.teaser)th.
 var cp=s.copy,ps=cp&&cp.poster||(s.poster?"/m/"+c.id+"/poster.jpg":"");if(s.dur)pl.setAttribute("data-dur",s.dur);if(ps)pl.querySelector("video").poster=ps;w.replaceWith(pl);
 shroomPlayer(pl,cp?cp.src:src,c.labels,{keep:cp?null:s.keep||null,st:"/_shroom/status/"+c.id,copy:!!cp})}
 if(s.drained)th.drained();
+if(s.cuts&&s.cuts!=="coming"&&s.cuts!==c.cutsTag)pull(s.cuts);if(!s.cuts&&c.cutsTag==="coming"){c.cutsTag=null;var cw=document.getElementById("cuts");if(cw&&cw.hidden)cw.remove()}
 if(s.drained){if(bar&&!c.done){c.done=true;up.textContent=c.ready;ul.classList.add("done");showBar(true,false);bar.style.width="100%";setTimeout(function(){ul.classList.add("fade");setTimeout(function(){ul.hidden=true;up.textContent="";if(bar){bar.parentNode.remove();bar=null}},400)},3000)}else if(!c.done){ul.hidden=true;up.textContent="";if(bar){bar.parentNode.remove();bar=null}}}else{ul.hidden=false;up.textContent=s.stalled?c.waiting:c.upA+s.pct+"%"+c.upB;showBar(true,!s.stalled);if(bar)bar.style.width=s.pct+"%"}
-if(s.mp4){if(!dl.firstChild){var a=document.createElement("a");a.href="/d/"+c.id;a.textContent=c.dl;dl.appendChild(a)}if(s.drained)return}
-if(!s.drained)return next(2000);gap=Math.min(gap*2,30000);return next(gap)}
+if(s.mp4){if(!dl.firstChild){var a=document.createElement("a");a.href="/d/"+c.id;a.textContent=c.dl;dl.appendChild(a)}if(s.drained&&s.cuts!=="coming")return}
+if(!s.drained||s.cuts==="coming")return next(2000);gap=Math.min(gap*2,30000);return next(gap)}
 if(s.state==="unavailable"){if(!c.live){say(c.unavailable);up.textContent="";showBar(false,false)}return next(30000)}
 if(s.state==="uploading"){say("");ul.hidden=false;up.textContent=s.stalled?c.waiting:c.upA+s.pct+"%"+c.upB;showBar(true,!s.stalled);if(bar)bar.style.width=s.pct+"%"}
 next(2000)}).catch(function(){next(5000)})}
-if(!c.live||!c.mp4||!c.drained)next(2000)})();</script>`;
+if(!c.live||!c.mp4||!c.drained)next(2000);else if(c.cutsTag==="coming")next(2000)})();</script>`;
   const wire = aiWire(".player", ai);
-  return shell(meta.title || "shroom", `${head}${aiNote(ai)}${stage}${upload}`, face, aiHead(ai), `${script}${wire ? `<script>${wire}</script>` : ""}${aiOwnerScript(id, ai)}`);
+  return shell(meta.title || "shroom", `${head}${aiNote(ai)}${stage}${cuts}${hint}${upload}`, face, aiHead(ai), `${script}${wire ? `<script>${wire}</script>` : ""}${aiOwnerScript(id, ai)}`);
 }
 
 /** A JSON island safe inside <script>: <, >, & and the two line separators escaped. */
@@ -1871,6 +2159,9 @@ const UPLOAD_BUDGET = 20;
  * click each, so this is room to spare — and a ceiling on what a member can make the
  * owner's bucket hold until the token Mac's sweep reaps the unspent ones. */
 const KEY_BUDGET = 60;
+/** Voice-cue judgments a device may ask for in an hour (B202): one per cue a take's plan
+ * weighs, so room to spare — and a ceiling on what a Mac can spend of the owner's AI. */
+const CUE_BUDGET = 120;
 /** The token-holder flag: a parent proof within this long (H1). */
 const TOKEN_FLAG_MS = 30 * DAY_MS;
 /** Enroll re-stamps proofAt at most this often (C5). */
@@ -1947,6 +2238,7 @@ async function route(request, env, url, now) {
     case "ai": only("POST"); return aiAskRoute(request, env, url, now);
     case "cleanup": only("POST"); return cleanup(request, env, await body(request), now);
     case "plays": return plays(request, env, url, now);
+    case "cue": only("POST"); return cue(request, env, await body(request), now);
   }
   const target = path.match(/^(invites|members|devices)\/([^/]+)$/);
   if (target) {
@@ -2471,14 +2763,15 @@ async function spendBudget(env, did, now, field = "n", budget = UPLOAD_BUDGET) {
     /** @type {any} */
     let cur = null;
     if (object) { try { cur = JSON.parse(await object.text()); } catch { cur = null; } }
-    // One object per device and window: uploads count in `n`, page keys in `k` (B125).
+    // One object per device and window: uploads count in `n`, page keys in `k` (B125), voice-cue
+    // judgments in `c` (B202).
     const same = cur && cur.window === window;
     const count = (/** @type {string} */ f) => (same && Number.isInteger(cur[f]) ? cur[f] : 0);
     const n = count(field);
     if (n >= budget) throw new Refusal(429, "too-many", { retryAfter: Math.max(1, Math.ceil((Date.parse(window) + HOUR_MS - now) / 1000)) });
     /** @type {Record<string, any>} */
     const next = { window, n: count("n") };
-    if (field === "k" || count("k") > 0) next.k = count("k");
+    for (const f of ["k", "c"]) if (field === f || count(f) > 0) next[f] = count(f);
     next[field] = n + 1;
     if (await casPut(env, key, JSON.stringify(next), object ? { etagMatches: object.etag } : { etagDoesNotMatch: "*" })) return;
   }

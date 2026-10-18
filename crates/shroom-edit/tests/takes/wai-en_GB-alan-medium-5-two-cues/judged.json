@@ -1,0 +1,19 @@
+{
+ "model": "@cf/cloudflare/clef",
+ "on": "2026-10-18",
+ "answers": [
+  {
+   "cue": 0,
+   "scores": [
+    0.319,
+    0.0367
+   ]
+  },
+  {
+   "cue": 1,
+   "scores": [
+    0.9091
+   ]
+  }
+ ]
+}

@@ -13,6 +13,8 @@ pub mod locate;
 pub mod peaks;
 pub mod playlist;
 pub mod quality;
+pub mod quiet;
+pub mod sound;
 pub mod take;
 
 /// File names inside a recording's directory — shared by every take.

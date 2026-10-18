@@ -1,0 +1,2265 @@
+{
+ "model": "@cf/openai/whisper-large-v3-turbo",
+ "ways": {
+  "none": "prompt=none",
+  "none+vad": "prompt=none&vad=1",
+  "full": "cues=shroom",
+  "full+vad": "cues=shroom&vad=1",
+  "cue": "prompt=cue",
+  "cue+vad": "prompt=cue&vad=1"
+ },
+ "rows": [
+  {
+   "kind": "silence",
+   "take": "true",
+   "way": "none",
+   "text": "Thank you. Thank you.",
+   "cues": 0,
+   "said": 0,
+   "hits": 0,
+   "false": 0,
+   "echo": []
+  },
+  {
+   "kind": "silence",
+   "take": "true",
+   "way": "none+vad",
+   "text": "",
+   "cues": 0,
+   "said": 0,
+   "hits": 0,
+   "false": 0,
+   "echo": []
+  },
+  {
+   "kind": "silence",
+   "take": "true",
+   "way": "full",
+   "text": "Um, uh, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so, so Thank you. Thank you.",
+   "cues": 0,
+   "said": 0,
+   "hits": 0,
+   "false": 0,
+   "echo": [
+    "um, uh"
+   ]
+  },
+  {
+   "kind": "silence",
+   "take": "true",
+   "way": "full+vad",
+   "text": "",
+   "cues": 0,
+   "said": 0,
+   "hits": 0,
+   "false": 0,
+   "echo": []
+  },
+  {
+   "kind": "silence",
+   "take": "true",
+   "way": "cue",
+   "text": "Shroom cut. Thank you.",
+   "cues": 1,
+   "said": 0,
+   "hits": 0,
+   "false": 1,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "silence",
+   "take": "true",
+   "way": "cue+vad",
+   "text": "",
+   "cues": 0,
+   "said": 0,
+   "hits": 0,
+   "false": 0,
+   "echo": []
+  },
+  {
+   "kind": "silence",
+   "take": "room",
+   "way": "none",
+   "text": "Thank you. Thank you.",
+   "cues": 0,
+   "said": 0,
+   "hits": 0,
+   "false": 0,
+   "echo": []
+  },
+  {
+   "kind": "silence",
+   "take": "room",
+   "way": "none+vad",
+   "text": "",
+   "cues": 0,
+   "said": 0,
+   "hits": 0,
+   "false": 0,
+   "echo": []
+  },
+  {
+   "kind": "silence",
+   "take": "room",
+   "way": "full",
+   "text": "Um, uh, so, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I Thank you.",
+   "cues": 0,
+   "said": 0,
+   "hits": 0,
+   "false": 0,
+   "echo": [
+    "um, uh"
+   ]
+  },
+  {
+   "kind": "silence",
+   "take": "room",
+   "way": "full+vad",
+   "text": "",
+   "cues": 0,
+   "said": 0,
+   "hits": 0,
+   "false": 0,
+   "echo": []
+  },
+  {
+   "kind": "silence",
+   "take": "room",
+   "way": "cue",
+   "text": ". . . Thank you.",
+   "cues": 0,
+   "said": 0,
+   "hits": 0,
+   "false": 0,
+   "echo": []
+  },
+  {
+   "kind": "silence",
+   "take": "room",
+   "way": "cue+vad",
+   "text": "",
+   "cues": 0,
+   "said": 0,
+   "hits": 0,
+   "false": 0,
+   "echo": []
+  },
+  {
+   "kind": "music",
+   "take": "band",
+   "way": "none",
+   "text": "Thank you. Thank you.",
+   "cues": 0,
+   "said": 0,
+   "hits": 0,
+   "false": 0,
+   "echo": []
+  },
+  {
+   "kind": "music",
+   "take": "band",
+   "way": "none+vad",
+   "text": "",
+   "cues": 0,
+   "said": 0,
+   "hits": 0,
+   "false": 0,
+   "echo": []
+  },
+  {
+   "kind": "music",
+   "take": "band",
+   "way": "full",
+   "text": "Let's go. Thank you.",
+   "cues": 0,
+   "said": 0,
+   "hits": 0,
+   "false": 0,
+   "echo": []
+  },
+  {
+   "kind": "music",
+   "take": "band",
+   "way": "full+vad",
+   "text": "",
+   "cues": 0,
+   "said": 0,
+   "hits": 0,
+   "false": 0,
+   "echo": []
+  },
+  {
+   "kind": "music",
+   "take": "band",
+   "way": "cue",
+   "text": "Shroom cut. Thank you.",
+   "cues": 1,
+   "said": 0,
+   "hits": 0,
+   "false": 1,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "music",
+   "take": "band",
+   "way": "cue+vad",
+   "text": "",
+   "cues": 0,
+   "said": 0,
+   "hits": 0,
+   "false": 0,
+   "echo": []
+  },
+  {
+   "kind": "music",
+   "take": "ambient",
+   "way": "none",
+   "text": "Thank you. Thank you.",
+   "cues": 0,
+   "said": 0,
+   "hits": 0,
+   "false": 0,
+   "echo": []
+  },
+  {
+   "kind": "music",
+   "take": "ambient",
+   "way": "none+vad",
+   "text": "",
+   "cues": 0,
+   "said": 0,
+   "hits": 0,
+   "false": 0,
+   "echo": []
+  },
+  {
+   "kind": "music",
+   "take": "ambient",
+   "way": "full",
+   "text": "Thank you. 1. 2. 5. 6. 6. 7. 8. Thank you.",
+   "cues": 0,
+   "said": 0,
+   "hits": 0,
+   "false": 0,
+   "echo": []
+  },
+  {
+   "kind": "music",
+   "take": "ambient",
+   "way": "full+vad",
+   "text": "",
+   "cues": 0,
+   "said": 0,
+   "hits": 0,
+   "false": 0,
+   "echo": []
+  },
+  {
+   "kind": "music",
+   "take": "ambient",
+   "way": "cue",
+   "text": "Shroom cut. Thank you.",
+   "cues": 1,
+   "said": 0,
+   "hits": 0,
+   "false": 1,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "music",
+   "take": "ambient",
+   "way": "cue+vad",
+   "text": "",
+   "cues": 0,
+   "said": 0,
+   "hits": 0,
+   "false": 0,
+   "echo": []
+  },
+  {
+   "kind": "talk",
+   "take": "en_US-ryan-medium",
+   "way": "none",
+   "text": "Welcome back! Today we'll look at how to share a screen recording with your team. First, open the app from the menu bar. You'll see the record button and a few settings. Pick the window you want to share or the whole screen. When you're ready, press record and talk through what you're doing the way you'd explain it to a colleague sitting next to you. Take your time. Pauses are fine. When you're done, press stop. The link is copied for you so you can paste it into a message right away anyone with the link can watch it in their browser with no account and nothing to install you can rename the video add a title or delete it later from the library that's really all there is to it",
+   "cues": 0,
+   "said": 0,
+   "hits": 0,
+   "false": 0,
+   "echo": []
+  },
+  {
+   "kind": "talk",
+   "take": "en_US-ryan-medium",
+   "way": "none+vad",
+   "text": "Welcome back. Today we'll look at how to share a screen recording with your team. First, open the app from the menu bar. You'll see the record button and a few settings. Pick the window you want to share or the whole screen. When you're ready, press record and talk through what you're doing the way you'd explain it to a colleague sitting next to you. Take your time. Pauses are fine. When you're done, press stop. The link is copied for you so you can paste it into a message right away anyone with the link can watch it in their browser with no account and nothing to install you can rename the video add a title or delete it later from the library that's really all there is to it",
+   "cues": 0,
+   "said": 0,
+   "hits": 0,
+   "false": 0,
+   "echo": []
+  },
+  {
+   "kind": "talk",
+   "take": "en_US-ryan-medium",
+   "way": "full",
+   "text": "Welcome back. Today, we'll look at how to share a screen recording with your team. First, open the app from the menu bar. You'll see the record button and a few settings. Pick the window you want to share or the whole screen. When you're ready, press record and talk through what you're doing the way you'd explain it to a colleague sitting next to you. Take your time. Pauses are fine. When you're done, press stop. The link is copied for you so you can paste it into a message right away anyone with the link can watch it in their browser with no account and nothing to install you can rename the video add a title or delete it later from the library That's really all there is to it.",
+   "cues": 0,
+   "said": 0,
+   "hits": 0,
+   "false": 0,
+   "echo": []
+  },
+  {
+   "kind": "talk",
+   "take": "en_US-ryan-medium",
+   "way": "full+vad",
+   "text": "Welcome back. Today, we'll look at how to share a screen recording with your team. First, open the app from the menu bar. You'll see the record button and a few settings. Pick the window you want to share or the whole screen. When you're ready, press record and talk through what you're doing the way you'd explain it to a colleague sitting next to you. Take your time. Pauses are fine. When you're done, press stop. The link is copied for you so you can paste it into a message right away. Anyone with the link can watch it in their browser with no account and nothing to install. You can rename the video, add a title or delete it later from the library. That's really all there is to it.",
+   "cues": 0,
+   "said": 0,
+   "hits": 0,
+   "false": 0,
+   "echo": []
+  },
+  {
+   "kind": "talk",
+   "take": "en_US-ryan-medium",
+   "way": "cue",
+   "text": "Welcome back. Today we'll look at how to share a screen recording with your team. First, open the app from the menu bar. You'll see the record button and a few settings. Pick the window you want to share or the whole screen. When you're ready, press record and talk through what you're doing the way you'd explain it to a colleague sitting next to you. Take your time. Pauses are fine. When you're done, press stop. The link is copied for you so you can paste it into a message right away anyone with the link can watch it in their browser with no account and nothing to install you can rename the video add a title or delete it later from the library That's really all there is to it.",
+   "cues": 0,
+   "said": 0,
+   "hits": 0,
+   "false": 0,
+   "echo": []
+  },
+  {
+   "kind": "talk",
+   "take": "en_US-ryan-medium",
+   "way": "cue+vad",
+   "text": "Welcome back. Today we'll look at how to share a screen recording with your team. First, open the app from the menu bar. You'll see the record button and a few settings. Pick the window you want to share or the whole screen. When you're ready, press record and talk through what you're doing the way you'd explain it to a colleague sitting next to you. Take your time. Pauses are fine. When you're done, press stop. The link is copied for you so you can paste it into a message right away. Anyone with the link can watch it in their browser with no account and nothing to install. You can rename the video, add a title or delete it later from the library. That's really all there is to it.",
+   "cues": 0,
+   "said": 0,
+   "hits": 0,
+   "false": 0,
+   "echo": []
+  },
+  {
+   "kind": "talk",
+   "take": "en_US-amy-medium",
+   "way": "none",
+   "text": "Welcome back. Today we'll look at how to share a screen recording with your team. First, open the app from the menu bar. You'll see the record button and a few settings. Pick the window you want to share or the whole screen. When you're ready, press record and talk through what you're doing the way you'd explain it to a colleague sitting next to you. Take your time. Pauses are fine. When you're done, press stop. The link is copied for you, so you can paste it into a message right away. Anyone with the link can watch it in their browser with no account and nothing to install. You can rename the video, add a title, or delete it later from the library. That's really all there is to it.",
+   "cues": 0,
+   "said": 0,
+   "hits": 0,
+   "false": 0,
+   "echo": []
+  },
+  {
+   "kind": "talk",
+   "take": "en_US-amy-medium",
+   "way": "none+vad",
+   "text": "Welcome back. Today we'll look at how to share a screen recording with your team. First, open the app from the menu bar. You'll see the record button and a few settings. Pick the window you want to share or the whole screen. When you're ready, press record and talk through what you're doing the way you'd explain it to a colleague sitting next to you. Take your time. Pauses are fine. When you're done, press stop. The link is copied for you, so you can paste it into a message right away. Anyone with the link can watch it in their browser with no account and nothing to install. You can rename the video, add a title, or delete it later from the library. That's really all there is to it.",
+   "cues": 0,
+   "said": 0,
+   "hits": 0,
+   "false": 0,
+   "echo": []
+  },
+  {
+   "kind": "talk",
+   "take": "en_US-amy-medium",
+   "way": "full",
+   "text": "Welcome back. Today we'll look at how to share a screen recording with your team. First, open the app from the menu bar. You'll see the record button and a few settings. Pick the window you want to share or the whole screen. When you're ready, press record and talk through what you're doing the way you'd explain it to a colleague sitting next to you. Take your time. pauses are fine when you're done press stop the link is copied for you so you can paste it into a message right away anyone with the link can watch it in their browser with no account and nothing to install you can rename the video add a title or delete it later from the library that's really all there is to it",
+   "cues": 0,
+   "said": 0,
+   "hits": 0,
+   "false": 0,
+   "echo": []
+  },
+  {
+   "kind": "talk",
+   "take": "en_US-amy-medium",
+   "way": "full+vad",
+   "text": "Welcome back. Today we'll look at how to share a screen recording with your team. First, open the app from the menu bar. You'll see the record button and a few settings. Pick the window you want to share or the whole screen. When you're ready, press record and talk through what you're doing the way you'd explain it to a colleague sitting next to you. Take your time. Pauses are fine. When you're done, press stop. The link is copied for you, so you can paste it into a message right away. Anyone with the link can watch it in their browser with no account and nothing to install. all. You can rename the video, add a title, or delete it later from the library. That's really all there is to it.",
+   "cues": 0,
+   "said": 0,
+   "hits": 0,
+   "false": 0,
+   "echo": []
+  },
+  {
+   "kind": "talk",
+   "take": "en_US-amy-medium",
+   "way": "cue",
+   "text": "Welcome back. Today we'll look at how to share a screen recording with your team. First, open the app from the menu bar. You'll see the record button and a few settings. Pick the window you want to share or the whole screen. When you're ready, press record and talk through what you're doing the way you'd explain it to a colleague sitting next to you. Take your time. Pauses are fine. When you're done, press stop. The link is copied for you, so you can paste it into a message right away. Anyone with the link can watch it in their browser, with no account and nothing to install. You can rename the video, add a title, or delete it later from the library. That's really all there is to it.",
+   "cues": 0,
+   "said": 0,
+   "hits": 0,
+   "false": 0,
+   "echo": []
+  },
+  {
+   "kind": "talk",
+   "take": "en_US-amy-medium",
+   "way": "cue+vad",
+   "text": "Welcome back. Today we'll look at how to share a screen recording with your team. First, open the app from the menu bar. You'll see the record button and a few settings. Pick the window you want to share or the whole screen. When you're ready, press record and talk through what you're doing the way you'd explain it to a colleague sitting next to you. Take your time. Pauses are fine. When you're done, press stop. The link is copied for you, so you can paste it into a message right away. Anyone with the link can watch it in their browser with no account and nothing to install. You can rename the video, add a title, or delete it later from the library. That's really all there is to it.",
+   "cues": 0,
+   "said": 0,
+   "hits": 0,
+   "false": 0,
+   "echo": []
+  },
+  {
+   "kind": "cue",
+   "take": "bagrat-1/en_US-ryan-medium",
+   "way": "none",
+   "text": "Hi, this is a quick test of shroom today. I'll show you how to share a how-to drum cut Today I'll show you how to share a recording in one click you press stop and the link is pasted drum cut When you want to get your link just press stop and your link is drum cut Okay, that's it",
+   "cues": 0,
+   "said": 3,
+   "hits": 0,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "bagrat-1/en_US-ryan-medium",
+   "way": "none+vad",
+   "text": "Hi, this is a quick test of shroom today. I'll show you how to share a how-to drum cut Today I'll show you how to share a recording in one click you press stop and the link is pasted drum cut When you want to get your link just press stop and your link is drum cut Okay, that's it",
+   "cues": 0,
+   "said": 3,
+   "hits": 0,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "bagrat-1/en_US-ryan-medium",
+   "way": "full",
+   "text": "Hi, this is a quick test of shroom. Today, I'll show you how to share, uh, how to, shroom cut. Today, I'll show you how to share a recording in one click. You press stop and the link is pasted, shroom cut. When you want to get your link, just press stop and your link is, shroom cut. Okay, that's it.",
+   "cues": 3,
+   "said": 3,
+   "hits": 3,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "bagrat-1/en_US-ryan-medium",
+   "way": "full+vad",
+   "text": "Hi, this is a quick test of shroom. Today, I'll show you how to share, uh, how to, drum cut. Today, I'll show you how to share a recording in one click. You press stop and the link is pasted, drum cut. When you want to get your link, just press stop and your link is, drum cut. Okay, that's it.",
+   "cues": 3,
+   "said": 3,
+   "hits": 3,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "bagrat-1/en_US-ryan-medium",
+   "way": "cue",
+   "text": "Hi, this is a quick test of Shroom. Today, I'll show you how to share a how-to, Shroom cut. Today, I'll show you how to share a recording in one click. You press stop and the link is pasted, Shroom cut. When you want to get your link, just press stop and your link is, Shroom cut. Okay, that's it.",
+   "cues": 3,
+   "said": 3,
+   "hits": 3,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "bagrat-1/en_US-ryan-medium",
+   "way": "cue+vad",
+   "text": "Hi, this is a quick test of Shroom. Today, I'll show you how to share a how-to, drum cut. Today, I'll show you how to share a recording in one click. You press stop and the link is pasted, drum cut. When you want to get your link, just press stop and your link is, drum cut. Okay, that's it.",
+   "cues": 3,
+   "said": 3,
+   "hits": 3,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "bagrat-1/en_US-amy-medium",
+   "way": "none",
+   "text": "Hi, this is a quick test of Shroom. Today, I'll show you how to share a how-to. Shroom cut. Today, I'll show you how to share a recording in one click. You press stop and the link is pasted. Shroom cut. When you want to get your link, just press stop and your link is. Shroom cut. Okay, that's it.",
+   "cues": 3,
+   "said": 3,
+   "hits": 3,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "bagrat-1/en_US-amy-medium",
+   "way": "none+vad",
+   "text": "Hi, this is a quick test of shroom. Today, I'll show you how to share a how-to. Shroom cut. Today, I'll show you how to share a recording in one click. You press stop and the link is pasted. Shroom cut. When you want to get your link, just press stop and your link is. Shroom cut. Okay, that's it.",
+   "cues": 3,
+   "said": 3,
+   "hits": 3,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "bagrat-1/en_US-amy-medium",
+   "way": "full",
+   "text": "Hi, this is a quick test of shroom. Today, I'll show you how to share a how-to. Shroom cut. Today, I'll show you how to share a recording in one click. You press stop and the link is pasted. Shroom cut. When you want to get your link, just press stop and your link is. Shroom cut. Okay, that's it.",
+   "cues": 3,
+   "said": 3,
+   "hits": 3,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "bagrat-1/en_US-amy-medium",
+   "way": "full+vad",
+   "text": "Hi, this is a quick test of shroom. Today, I'll show you how to share a how-to. Shroom cut. Today, I'll show you how to share a recording in one click. You press stop and the link is pasted. Shroom cut. When you want to get your link, just press stop and your link is. Shroom cut. Okay, that's it.",
+   "cues": 3,
+   "said": 3,
+   "hits": 3,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "bagrat-1/en_US-amy-medium",
+   "way": "cue",
+   "text": "Hi, this is a quick test of Shroom. Today, I'll show you how to share a how-to. Shroom cut. Today, I'll show you how to share a recording in one click. You press stop and the link is pasted. Shroom cut. When you want to get your link, just press stop and your link is. Shroom cut. Okay, that's it.",
+   "cues": 3,
+   "said": 3,
+   "hits": 3,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "bagrat-1/en_US-amy-medium",
+   "way": "cue+vad",
+   "text": "Hi, this is a quick test of Shroom. Today, I'll show you how to share a how-to. Shroom cut. Today, I'll show you how to share a recording in one click. You press stop and the link is pasted. Shroom cut. When you want to get your link, just press stop and your link is. Shroom cut. Okay, that's it.",
+   "cues": 3,
+   "said": 3,
+   "hits": 3,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "bagrat-2/en_US-ryan-medium",
+   "way": "none",
+   "text": "Hi, this is a quick test of shroom today. I will show you how to share a recording in one link. No shroom cut Today, I'll show you how to share a recording in one click you press stop and the link is pasted shroom cut When you want to get your link just press stop and the link will be copied to your clipboard and that's it",
+   "cues": 2,
+   "said": 2,
+   "hits": 2,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "bagrat-2/en_US-ryan-medium",
+   "way": "none+vad",
+   "text": "Hi, this is a quick test of shroom today. I will show you how to share a recording in one link. No shroom cut Today, I'll show you how to share a recording in one click you press stop and the link is pasted shroom cut When you want to get your link just press stop and the link will be copied to your clipboard and that's it",
+   "cues": 2,
+   "said": 2,
+   "hits": 2,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "bagrat-2/en_US-ryan-medium",
+   "way": "full",
+   "text": "Hi, this is a quick test of shroom. Today, I will show you how to share a recording in one link. No, shroom cut. Today, I'll show you how to share a recording in one click. You press stop and the link is pasted. Shroom cut. When you want to get your link, just press stop and the link will be copied to your clipboard and that's it.",
+   "cues": 2,
+   "said": 2,
+   "hits": 2,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "bagrat-2/en_US-ryan-medium",
+   "way": "full+vad",
+   "text": "Hi, this is a quick test of shroom. Today, I will show you how to share a recording in one link. No, shroom cut. Today, I'll show you how to share a recording in one click. You press stop and the link is pasted. Shroom cut. When you want to get your link, just press stop and the link will be copied to your clipboard and that's it.",
+   "cues": 2,
+   "said": 2,
+   "hits": 2,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "bagrat-2/en_US-ryan-medium",
+   "way": "cue",
+   "text": "Hi, this is a quick test of Shroom. Today, I will show you how to share a recording in one link. No, Shroom cut. Today, I'll show you how to share a recording in one click. You press stop and the link is pasted. Shroom cut. When you want to get your link, just press stop and the link will be copied to your clipboard and that's it.",
+   "cues": 2,
+   "said": 2,
+   "hits": 2,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "bagrat-2/en_US-ryan-medium",
+   "way": "cue+vad",
+   "text": "Hi this is a quick test of Shroom. Today I will show you how to share a recording in one link. No Shroom cut. Today I'll show you how to share a recording in one click. You press stop and the link is pasted. Shroom cut. When you want to get your link just press stop and the link will be copied to your clipboard and that's it.",
+   "cues": 2,
+   "said": 2,
+   "hits": 2,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "bagrat-2/en_US-amy-medium",
+   "way": "none",
+   "text": "Hi, this is a quick test of shroom. Today I will show you how to share a recording in one link. No, shroom cut. Today I'll show you how to share a recording in one click. You press stop and the link is pasted. Shroom cut. When you want to get your link just press stop and the link will be copied to your clipboard and that's it.",
+   "cues": 2,
+   "said": 2,
+   "hits": 2,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "bagrat-2/en_US-amy-medium",
+   "way": "none+vad",
+   "text": "Hi, this is a quick test of shroom. Today I will show you how to share a recording in one link. No, shroom cut. Today I'll show you how to share a recording in one click. You press stop and the link is pasted. Shroom cut. When you want to get your link just press stop and the link will be copied to your clipboard and that's it.",
+   "cues": 2,
+   "said": 2,
+   "hits": 2,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "bagrat-2/en_US-amy-medium",
+   "way": "full",
+   "text": "Hi, this is a quick test of shroom. Today I will show you how to share a recording in one link. No, shroom cut. Today I'll show you how to share a recording in one click. You press stop and the link is pasted. Shroom cut. When you want to get your link just press stop and the link will be copied to your clipboard and that's it.",
+   "cues": 2,
+   "said": 2,
+   "hits": 2,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "bagrat-2/en_US-amy-medium",
+   "way": "full+vad",
+   "text": "Hi, this is a quick test of shroom. Today I will show you how to share a recording in one link. No, shroom cut. Today I'll show you how to share a recording in one click. You press stop and the link is pasted. Shroom cut. When you want to get your link just press stop and the link will be copied to your clipboard and that's it.",
+   "cues": 2,
+   "said": 2,
+   "hits": 2,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "bagrat-2/en_US-amy-medium",
+   "way": "cue",
+   "text": "Hi, this is a quick test of shroom. Today I will show you how to share a recording in one link. No, shroom cut. Today I'll show you how to share a recording in one click. You press stop and the link is pasted. Shroom cut. When you want to get your link just press stop and the link will be copied to your clipboard and that's it.",
+   "cues": 2,
+   "said": 2,
+   "hits": 2,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "bagrat-2/en_US-amy-medium",
+   "way": "cue+vad",
+   "text": "Hi, this is a quick test of shroom. Today I will show you how to share a recording in one link. No, shroom cut. Today I'll show you how to share a recording in one click. You press stop and the link is pasted. Shroom cut. When you want to get your link just press stop and the link will be copied to your clipboard and that's it.",
+   "cues": 2,
+   "said": 2,
+   "hits": 2,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "1-the-example/en_US-ryan-medium",
+   "way": "none",
+   "text": "Hello, that is Shroom. Shroom cut. Hello, this is Shroom. Today I'll show you how to share a recording in one click.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "1-the-example/en_US-ryan-medium",
+   "way": "none+vad",
+   "text": "Hello, that is Shroom. Shroom cut. Hello, this is Shroom. Today I'll show you how to share a recording in one click.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "1-the-example/en_US-ryan-medium",
+   "way": "full",
+   "text": "Hello, that is Shroom. Shroom cut. Hello, this is Shroom. Today, I'll show you how to share a recording in one click.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "1-the-example/en_US-ryan-medium",
+   "way": "full+vad",
+   "text": "Hello, that is Shroom. Shroom cut. Hello, this is Shroom. Today, I'll show you how to share a recording in one click.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "1-the-example/en_US-ryan-medium",
+   "way": "cue",
+   "text": "Hello, that is Shroom. Shroom cut. Hello, this is Shroom. Today I'll show you how to share a recording in one click.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "1-the-example/en_US-ryan-medium",
+   "way": "cue+vad",
+   "text": "Hello, that is Shroom. Shroom cut. Hello, this is Shroom. Today I'll show you how to share a recording in one click.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "1-the-example/en_US-amy-medium",
+   "way": "none",
+   "text": "Hello, that is Shroom. Shroom cut. Hello, this is Shroom. Today I'll show you how to share a recording in one click.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "1-the-example/en_US-amy-medium",
+   "way": "none+vad",
+   "text": "Hello, that is Shroom. Shroom cut. Hello, this is Shroom. Today I'll show you how to share a recording in one click.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "1-the-example/en_US-amy-medium",
+   "way": "full",
+   "text": "Hello, that is shroom. Shroom cut. Hello, this is shroom. Today I'll show you how to share a recording in one click.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "1-the-example/en_US-amy-medium",
+   "way": "full+vad",
+   "text": "Hello, that is shroom. Shroom cut. Hello, this is shroom. Today I'll show you how to share a recording in one click.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "1-the-example/en_US-amy-medium",
+   "way": "cue",
+   "text": "Hello, that is Shroom. Shroom cut. Hello, this is Shroom. Today I'll show you how to share a recording in one click.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "1-the-example/en_US-amy-medium",
+   "way": "cue+vad",
+   "text": "Hello, that is Shroom. Shroom cut. Hello, this is Shroom. Today I'll show you how to share a recording in one click.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "10-long-stretch/en_US-ryan-medium",
+   "way": "none",
+   "text": "Okay, let's set up sharing, you open the menu and choose the share thing, then you type a name and hit the button, drum cut, to share, open the menu and pick share, type a name and press enter.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": []
+  },
+  {
+   "kind": "cue",
+   "take": "10-long-stretch/en_US-ryan-medium",
+   "way": "none+vad",
+   "text": "Okay, let's set up sharing, you open the menu and choose the share thing, then you type a name and hit the button, drum cut. To share, open the menu and pick share, type a name and press enter.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": []
+  },
+  {
+   "kind": "cue",
+   "take": "10-long-stretch/en_US-ryan-medium",
+   "way": "full",
+   "text": "Okay, let's set up sharing. You open the menu and choose the, the share thing. Then you type a name and hit the, uh, the button. Shroom cut. To share, open the menu and pick share. Type a name and press enter.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "10-long-stretch/en_US-ryan-medium",
+   "way": "full+vad",
+   "text": "Okay, let's set up sharing. You open the menu and choose the, the share thing. Then you type a name and hit the, uh, the button. Shroom cut. To share, open the menu and pick share. Type a name and press enter.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "10-long-stretch/en_US-ryan-medium",
+   "way": "cue",
+   "text": "Okay, let's set up sharing, you open the menu and choose the share thing, then you type a name and hit the button, drum cut, to share, open the menu and pick share, type a name and press enter.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": []
+  },
+  {
+   "kind": "cue",
+   "take": "10-long-stretch/en_US-ryan-medium",
+   "way": "cue+vad",
+   "text": "Okay, let's set up sharing, you open the menu and choose the share thing, then you type a name and hit the button, drum cut. To share, open the menu and pick share, type a name and press enter.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": []
+  },
+  {
+   "kind": "cue",
+   "take": "10-long-stretch/en_US-amy-medium",
+   "way": "none",
+   "text": "okay let's set up sharing you open the menu and choose that the share thing then you type a name and hit the button shroom cut to share open the menu and pick share type a name and press enter",
+   "cues": 1,
+   "said": 1,
+   "hits": 0,
+   "false": 1,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "10-long-stretch/en_US-amy-medium",
+   "way": "none+vad",
+   "text": "Okay, let's set up sharing. You open the menu and choose the share thing. Then you type a name and hit the button. Shroom cut. To share, open the menu and pick share. Type a name and press enter.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "10-long-stretch/en_US-amy-medium",
+   "way": "full",
+   "text": "Okay, let's set up sharing. You open the menu and choose the, the share thing. Then you type a name and hit the, uh, the button. Shroom cut. To share, open the menu and pick share. Type a name and press enter.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "10-long-stretch/en_US-amy-medium",
+   "way": "full+vad",
+   "text": "Okay, let's set up sharing. You open the menu and choose the, the share thing. Then you type a name and hit the, uh, the button. Shroom cut. To share, open the menu and pick share. Type a name and press enter.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "10-long-stretch/en_US-amy-medium",
+   "way": "cue",
+   "text": "Okay let's set up sharing. You open the menu and choose the the share thing. Then you type a name and hit the button. Shroom cut. To share open the menu and pick share. Type a name and press enter.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "10-long-stretch/en_US-amy-medium",
+   "way": "cue+vad",
+   "text": "Okay, let's set up sharing. You open the menu and choose the share thing. Then you type a name and hit the button. Shroom cut. To share, open the menu and pick share. Type a name and press enter.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "11-good-then-broken/en_US-ryan-medium",
+   "way": "none",
+   "text": "Open the settings window, then click the, the blue, drum cut, then click the green button.",
+   "cues": 0,
+   "said": 1,
+   "hits": 0,
+   "false": 0,
+   "echo": []
+  },
+  {
+   "kind": "cue",
+   "take": "11-good-then-broken/en_US-ryan-medium",
+   "way": "none+vad",
+   "text": "Open the settings window, then click the, the blue, drum cut, then click the green button.",
+   "cues": 0,
+   "said": 1,
+   "hits": 0,
+   "false": 0,
+   "echo": []
+  },
+  {
+   "kind": "cue",
+   "take": "11-good-then-broken/en_US-ryan-medium",
+   "way": "full",
+   "text": "Open the settings window. Then click the, the blue, drum cut. Then click the green button.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": []
+  },
+  {
+   "kind": "cue",
+   "take": "11-good-then-broken/en_US-ryan-medium",
+   "way": "full+vad",
+   "text": "Open the settings window. Then click the, the blue, drum cut. Then click the green button.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": []
+  },
+  {
+   "kind": "cue",
+   "take": "11-good-then-broken/en_US-ryan-medium",
+   "way": "cue",
+   "text": "Open the settings window, then click the, the blue, drum cut, then click the green button.",
+   "cues": 0,
+   "said": 1,
+   "hits": 0,
+   "false": 0,
+   "echo": []
+  },
+  {
+   "kind": "cue",
+   "take": "11-good-then-broken/en_US-ryan-medium",
+   "way": "cue+vad",
+   "text": "Open the settings window, then click the, the blue, drum cut, then click the green button.",
+   "cues": 0,
+   "said": 1,
+   "hits": 0,
+   "false": 0,
+   "echo": []
+  },
+  {
+   "kind": "cue",
+   "take": "11-good-then-broken/en_US-amy-medium",
+   "way": "none",
+   "text": "Open the settings window, then click the blue, shroom cut, then click the green button.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "11-good-then-broken/en_US-amy-medium",
+   "way": "none+vad",
+   "text": "Open the settings window, then click the blue, shroom cut, then click the green button.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "11-good-then-broken/en_US-amy-medium",
+   "way": "full",
+   "text": "Open the settings window. Then click the, the blue. Shroom cut. Then click the green button.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "11-good-then-broken/en_US-amy-medium",
+   "way": "full+vad",
+   "text": "Open the settings window. Then click the blue. Shroom cut. Then click the green button.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "11-good-then-broken/en_US-amy-medium",
+   "way": "cue",
+   "text": "Open the settings window. Then click the blue. Shroom cut. Then click the green button.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "11-good-then-broken/en_US-amy-medium",
+   "way": "cue+vad",
+   "text": "Open the settings window, then click the blue, Shroom cut, then click the green button.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "2-mid-paragraph/en_US-ryan-medium",
+   "way": "none",
+   "text": "To share a recording, you click the mushroom in the menu bar, then you pick the window you want to share, and that's really all there is to it.",
+   "cues": 0,
+   "said": 1,
+   "hits": 0,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "2-mid-paragraph/en_US-ryan-medium",
+   "way": "none+vad",
+   "text": "To share a recording, you click the mushroom in the menu bar, then you pick the window you want to share, and that's really all there is to it.",
+   "cues": 0,
+   "said": 1,
+   "hits": 0,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "2-mid-paragraph/en_US-ryan-medium",
+   "way": "full",
+   "text": "To share a recording, you click the mushroom in the menu bar, then you pick the, the window you, um, drum cut. So, then you pick the window you want to share, and that's really all there is to it.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "2-mid-paragraph/en_US-ryan-medium",
+   "way": "full+vad",
+   "text": "To share a recording, you click the mushroom in the menu bar, then you pick the, the window you, um, drum cut. So, then you pick the window you want to share, and that's really all there is to it.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "2-mid-paragraph/en_US-ryan-medium",
+   "way": "cue",
+   "text": "To share a recording, you click the mushroom in the menu bar, then you pick the window you want to share, and that's really all there is to it.",
+   "cues": 0,
+   "said": 1,
+   "hits": 0,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "2-mid-paragraph/en_US-ryan-medium",
+   "way": "cue+vad",
+   "text": "To share a recording, you click the mushroom in the menu bar, then you pick the window you want to share, and that's really all there is to it.",
+   "cues": 0,
+   "said": 1,
+   "hits": 0,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "2-mid-paragraph/en_US-amy-medium",
+   "way": "none",
+   "text": "To share a recording you click the mushroom in the menu bar. Then you pick the window you thumb. Shroom cut. So then you pick the window you want to share. And that's really all there is to it.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "2-mid-paragraph/en_US-amy-medium",
+   "way": "none+vad",
+   "text": "To share a recording, you click the mushroom in the menu bar, then you pick the window you thumb, shroom cut, so then you pick the window you want to share, and that's really all there is to it.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "2-mid-paragraph/en_US-amy-medium",
+   "way": "full",
+   "text": "To share a recording, you click the mushroom in the menu bar. Then you pick the window you thumb. Shroom cut. So, then you pick the window you want to share. And that's really all there is to it.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "2-mid-paragraph/en_US-amy-medium",
+   "way": "full+vad",
+   "text": "To share a recording, you click the mushroom in the menu bar. Then you pick the window you thumb. Shroom cut. So, then you pick the window you want to share. And that's really all there is to it.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "2-mid-paragraph/en_US-amy-medium",
+   "way": "cue",
+   "text": "To share a recording, you click the mushroom in the menu bar, then you pick the window you thumb. Shroom cut. So, then you pick the window you want to share, and that's really all there is to it.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "2-mid-paragraph/en_US-amy-medium",
+   "way": "cue+vad",
+   "text": "To share a recording, you click the mushroom in the menu bar, then you pick the window you thumb. Shroom cut. So, then you pick the window you want to share, and that's really all there is to it.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "3-mid-sentence/en_US-ryan-medium",
+   "way": "none",
+   "text": "Your video uploads while you talk, so the link is ready the moment you stop. It goes straight to your own bucket, on your own account, which is, um, wait. Drum cut. It goes straight to your own bucket, in your own cloud account, and nowhere else.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": []
+  },
+  {
+   "kind": "cue",
+   "take": "3-mid-sentence/en_US-ryan-medium",
+   "way": "none+vad",
+   "text": "Your video uploads while you talk, so the link is ready the moment you stop. It goes straight to your own bucket, on your own account, which is, um, wait. Drum cut. It goes straight to your own bucket, in your own cloud account, and nowhere else.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": []
+  },
+  {
+   "kind": "cue",
+   "take": "3-mid-sentence/en_US-ryan-medium",
+   "way": "full",
+   "text": "Your video uploads while you talk, so the link is ready the moment you stop. It goes straight to your own bucket, on your own account, which is, um, wait. Shroom cut. It goes straight to your own bucket, in your own cloud account, and nowhere else.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "3-mid-sentence/en_US-ryan-medium",
+   "way": "full+vad",
+   "text": "Your video uploads while you talk, so the link is ready the moment you stop. It goes straight to your own bucket, on your own account, which is, um, wait. Shroom cut. It goes straight to your own bucket, in your own cloud account, and nowhere else.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "3-mid-sentence/en_US-ryan-medium",
+   "way": "cue",
+   "text": "Your video uploads while you talk, so the link is ready the moment you stop. It goes straight to your own bucket, on your own account, which is, um, wait. Shroom cut. It goes straight to your own bucket, in your own cloud account, and nowhere else.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "3-mid-sentence/en_US-ryan-medium",
+   "way": "cue+vad",
+   "text": "Your video uploads while you talk, so the link is ready the moment you stop. It goes straight to your own bucket, on your own account, which is, um, wait. Shroom cut. It goes straight to your own bucket, in your own cloud account, and nowhere else.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "3-mid-sentence/en_US-amy-medium",
+   "way": "none",
+   "text": "Your video uploads while you talk, so the link is ready the moment you stop. It goes straight to your own bucket, on your own account, which is hum, wait. Shroom cut. It goes straight to your own bucket, in your own cloud account, and nowhere else.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "3-mid-sentence/en_US-amy-medium",
+   "way": "none+vad",
+   "text": "Your video uploads while you talk, so the link is ready the moment you stop. It goes straight to your own bucket, on your own account, which is, hum, wait. Shroom cut. It goes straight to your own bucket, in your own cloud account, and nowhere else.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "3-mid-sentence/en_US-amy-medium",
+   "way": "full",
+   "text": "Your video uploads while you talk, so the link is ready the moment you stop. It goes straight to your own bucket, on your own account, which is, hum, wait. Shroom cut. It goes straight to your own bucket, in your own cloud account, and nowhere else.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "3-mid-sentence/en_US-amy-medium",
+   "way": "full+vad",
+   "text": "Your video uploads while you talk, so the link is ready the moment you stop. It goes straight to your own bucket, on your own account, which is, hum, wait. Shroom cut. It goes straight to your own bucket, in your own cloud account, and nowhere else.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "3-mid-sentence/en_US-amy-medium",
+   "way": "cue",
+   "text": "Your video uploads while you talk, so the link is ready the moment you stop. It goes straight to your own bucket, on your own account, which is, hum, wait. Shroom cut. It goes straight to your own bucket, in your own cloud account, and nowhere else.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "3-mid-sentence/en_US-amy-medium",
+   "way": "cue+vad",
+   "text": "Your video uploads while you talk, so the link is ready the moment you stop. It goes straight to your own bucket, on your own account, which is, hum, wait. Shroom cut. It goes straight to your own bucket, in your own cloud account, and nowhere else.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "4-no-retake/en_US-ryan-medium",
+   "way": "none",
+   "text": "The settings window has three tabs the second one is him. I forget what it's called drum cut Let's move on to the library instead",
+   "cues": 0,
+   "said": 1,
+   "hits": 0,
+   "false": 0,
+   "echo": []
+  },
+  {
+   "kind": "cue",
+   "take": "4-no-retake/en_US-ryan-medium",
+   "way": "none+vad",
+   "text": "The settings window has three tabs. The second one is, um, I forget what it's called. Shroom cut. Let's move on to the library instead.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "4-no-retake/en_US-ryan-medium",
+   "way": "full",
+   "text": "The settings window has three tabs. The second one is, um, I forget what it's called. Shroom cut. Let's move on to the library instead.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "4-no-retake/en_US-ryan-medium",
+   "way": "full+vad",
+   "text": "The settings window has three tabs. The second one is, um, I forget what it's called. Shroom cut. Let's move on to the library instead.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "4-no-retake/en_US-ryan-medium",
+   "way": "cue",
+   "text": "The settings window has three tabs. The second one is hum, I forget what it's called. Shroom cut. Let's move on to the library instead.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "4-no-retake/en_US-ryan-medium",
+   "way": "cue+vad",
+   "text": "The settings window has three tabs. The second one is, um, I forget what it's called. Shroom cut. Let's move on to the library instead.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "4-no-retake/en_US-amy-medium",
+   "way": "none",
+   "text": "The settings window has three tabs. The second one is him, I forget what it's called. Shroom Cut. Let's move on to the library instead.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "4-no-retake/en_US-amy-medium",
+   "way": "none+vad",
+   "text": "The settings window has three tabs. The second one is him. I forget what it's called. Shroom Cut. Let's move on to the library instead.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "4-no-retake/en_US-amy-medium",
+   "way": "full",
+   "text": "The settings window has three tabs. The second one is him. I forget what it's called. Shroom cut. Let's move on to the library instead.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "4-no-retake/en_US-amy-medium",
+   "way": "full+vad",
+   "text": "The settings window has three tabs. The second one is him. I forget what it's called. Shroom cut. Let's move on to the library instead.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "4-no-retake/en_US-amy-medium",
+   "way": "cue",
+   "text": "The Settings window has three tabs. The second one is him, I forget what it's called. Shroom cut. Let's move on to the library instead.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "4-no-retake/en_US-amy-medium",
+   "way": "cue+vad",
+   "text": "The settings window has three tabs. The second one is him. I forget what it's called. Shroom cut. Let's move on to the library instead.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "5-two-cues/en_US-ryan-medium",
+   "way": "none",
+   "text": "Welcome to the tour. Press stop and your link is pasted. Shroom cut. Press stop and your link is uh. Shroom cut. Press stop and your link is copied to the clipboard.",
+   "cues": 2,
+   "said": 2,
+   "hits": 2,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "5-two-cues/en_US-ryan-medium",
+   "way": "none+vad",
+   "text": "Welcome to the tour. Press stop and your link is pasted. Shroom cut. Press stop and your link is uh. Shroom cut. Press stop and your link is copied to the clipboard.",
+   "cues": 2,
+   "said": 2,
+   "hits": 2,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "5-two-cues/en_US-ryan-medium",
+   "way": "full",
+   "text": "Welcome to the tour. Press stop and your link is pasted. Shroom cut. Press stop and your link is, uh, shroom cut. Press stop and your link is copied to the clipboard.",
+   "cues": 2,
+   "said": 2,
+   "hits": 2,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "5-two-cues/en_US-ryan-medium",
+   "way": "full+vad",
+   "text": "Welcome to the tour. Press stop and your link is pasted. Shroom cut. Press stop and your link is, uh, shroom cut. Press stop and your link is copied to the clipboard.",
+   "cues": 2,
+   "said": 2,
+   "hits": 2,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "5-two-cues/en_US-ryan-medium",
+   "way": "cue",
+   "text": "Welcome to the tour. Press stop and your link is pasted. Shroom cut. Press stop and your link is uh. Shroom cut. Press stop and your link is copied to the clipboard.",
+   "cues": 2,
+   "said": 2,
+   "hits": 2,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "5-two-cues/en_US-ryan-medium",
+   "way": "cue+vad",
+   "text": "Welcome to the tour. Press stop and your link is pasted. Shroom cut. Press stop and your link is uh. Shroom cut. Press stop and your link is copied to the clipboard.",
+   "cues": 2,
+   "said": 2,
+   "hits": 2,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "5-two-cues/en_US-amy-medium",
+   "way": "none",
+   "text": "Welcome to the tour. Press stop and your link is pasted. Shroom cut. Press stop and your link is a. Shroom cut. Press stop and your link is copied to the clipboard.",
+   "cues": 2,
+   "said": 2,
+   "hits": 2,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "5-two-cues/en_US-amy-medium",
+   "way": "none+vad",
+   "text": "Welcome to the tour. Press stop and your link is pasted. Shroom cut. Press stop and your link is a. Shroom cut. Press stop and your link is copied to the clipboard.",
+   "cues": 2,
+   "said": 2,
+   "hits": 2,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "5-two-cues/en_US-amy-medium",
+   "way": "full",
+   "text": "Welcome to the tour. Press stop and your link is pasted. Shroom cut. Press stop and your link is copied to the clipboard.",
+   "cues": 1,
+   "said": 2,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "5-two-cues/en_US-amy-medium",
+   "way": "full+vad",
+   "text": "Welcome to the tour. Press stop and your link is pasted. Shroom cut. Press stop and your link is a. Shroom cut. Press stop and your link is copied to the clipboard.",
+   "cues": 2,
+   "said": 2,
+   "hits": 2,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "5-two-cues/en_US-amy-medium",
+   "way": "cue",
+   "text": "Welcome to the tour. Press stop and your link is pasted. Shroom cut. Press stop and your link is copied to the clipboard.",
+   "cues": 1,
+   "said": 2,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "5-two-cues/en_US-amy-medium",
+   "way": "cue+vad",
+   "text": "Welcome to the tour. Press stop and your link is pasted. Shroom cut. Press stop and your link is copied to the clipboard.",
+   "cues": 1,
+   "said": 2,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "7-cue-at-the-end/en_US-ryan-medium",
+   "way": "none",
+   "text": "Thanks for watching, and see you in the next shroom cut. Thanks for watching, see you next time. Oh, and one more thing, uh, shroom cut.",
+   "cues": 2,
+   "said": 2,
+   "hits": 2,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "7-cue-at-the-end/en_US-ryan-medium",
+   "way": "none+vad",
+   "text": "thanks for watching and see you in the next shroom cut thanks for watching see you next time oh and one more thing uh shroom cut",
+   "cues": 2,
+   "said": 2,
+   "hits": 2,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "7-cue-at-the-end/en_US-ryan-medium",
+   "way": "full",
+   "text": "Thanks for watching, and see you in the next. Shroom cut. Thanks for watching, see you next time. Oh, and one more thing, uh, shroom cut.",
+   "cues": 2,
+   "said": 2,
+   "hits": 2,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "7-cue-at-the-end/en_US-ryan-medium",
+   "way": "full+vad",
+   "text": "Thanks for watching, and see you in the next, shroom cut. Thanks for watching, see you next time. Oh, and one more thing, uh, shroom cut.",
+   "cues": 2,
+   "said": 2,
+   "hits": 2,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "7-cue-at-the-end/en_US-ryan-medium",
+   "way": "cue",
+   "text": "Thanks for watching, and see you in the next Shroom cut. Thanks for watching, see you next time. Oh, and one more thing, uh, Shroom cut.",
+   "cues": 2,
+   "said": 2,
+   "hits": 2,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "7-cue-at-the-end/en_US-ryan-medium",
+   "way": "cue+vad",
+   "text": "Thanks for watching, and see you in the next Shroom cut. Thanks for watching, see you next time. Oh, and one more thing, uh, Shroom cut.",
+   "cues": 2,
+   "said": 2,
+   "hits": 2,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "7-cue-at-the-end/en_US-amy-medium",
+   "way": "none",
+   "text": "Thanks for watching, and see you in the next shroom cut. Thanks for watching, see you next time. Oh, and one more thing, uh, shroom cut.",
+   "cues": 2,
+   "said": 2,
+   "hits": 1,
+   "false": 1,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "7-cue-at-the-end/en_US-amy-medium",
+   "way": "none+vad",
+   "text": "Thanks for watching, and see you in the next shroom cut. Thanks for watching, see you next time. Oh, and one more thing, uh, shroom cut.",
+   "cues": 2,
+   "said": 2,
+   "hits": 1,
+   "false": 1,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "7-cue-at-the-end/en_US-amy-medium",
+   "way": "full",
+   "text": "Thanks for watching, and see you in the next. Shroom cut. Thanks for watching, see you next time. Oh, and one more thing, uh, shroom cut.",
+   "cues": 2,
+   "said": 2,
+   "hits": 2,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "7-cue-at-the-end/en_US-amy-medium",
+   "way": "full+vad",
+   "text": "Thanks for watching, and see you in the next. Shroom cut. Thanks for watching, see you next time. Oh, and one more thing, uh, shroom cut.",
+   "cues": 2,
+   "said": 2,
+   "hits": 2,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "7-cue-at-the-end/en_US-amy-medium",
+   "way": "cue",
+   "text": "Thanks for watching, and see you in the next. Shroom cut. Thanks for watching, see you next time. Oh, and one more thing, uh. Shroom cut.",
+   "cues": 2,
+   "said": 2,
+   "hits": 2,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "7-cue-at-the-end/en_US-amy-medium",
+   "way": "cue+vad",
+   "text": "Thanks for watching, and see you in the next. Shroom cut. Thanks for watching, see you next time. Oh, and one more thing, uh. Shroom cut.",
+   "cues": 2,
+   "said": 2,
+   "hits": 2,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "8-reworded-redo/en_US-ryan-medium",
+   "way": "none",
+   "text": "Hi, this is a quick test of the voice cut, click on this link and you will, shroom cut. To get your video, use this link and you'll see it right away.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "8-reworded-redo/en_US-ryan-medium",
+   "way": "none+vad",
+   "text": "Hi, this is a quick test of the voice cut. Click on this link and you will. Shroom cut. To get your video, use this link and you'll see it right away.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "8-reworded-redo/en_US-ryan-medium",
+   "way": "full",
+   "text": "Hi, this is a quick test of the voice cut. Click on this link and you will. Shroom cut. To get your video, use this link and you'll see it right away.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "8-reworded-redo/en_US-ryan-medium",
+   "way": "full+vad",
+   "text": "Hi, this is a quick test of the voice cut. Click on this link and you will. Shroom cut. To get your video, use this link and you'll see it right away.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "8-reworded-redo/en_US-ryan-medium",
+   "way": "cue",
+   "text": "Hi, this is a quick test of the voice cut. Click on this link and you will. Shroom cut. To get your video, use this link and you'll see it right away.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "8-reworded-redo/en_US-ryan-medium",
+   "way": "cue+vad",
+   "text": "Hi, this is a quick test of the voice cut. Click on this link and you will. Shroom cut. To get your video, use this link and you'll see it right away.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "8-reworded-redo/en_US-amy-medium",
+   "way": "none",
+   "text": "Hi, this is a quick test of the voice cut, click on this link and you will, shroom cut. To get your video, use this link and you'll see it right away.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "8-reworded-redo/en_US-amy-medium",
+   "way": "none+vad",
+   "text": "Hi, this is a quick test of the voice cut. Click on this link and you will Shroom cut To get your video, use this link and you'll see it right away.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "8-reworded-redo/en_US-amy-medium",
+   "way": "full",
+   "text": "Hi, this is a quick test of the voice cut. Click on this link and you will. Shroom cut. To get your video, use this link and you'll see it right away.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "8-reworded-redo/en_US-amy-medium",
+   "way": "full+vad",
+   "text": "Hi, this is a quick test of the voice cut. Click on this link and you will. Shroom cut. To get your video, use this link and you'll see it right away.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "8-reworded-redo/en_US-amy-medium",
+   "way": "cue",
+   "text": "Hi, this is a quick test of the voice cut. Click on this link and you will. Shroom cut. To get your video, use this link and you'll see it right away.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "8-reworded-redo/en_US-amy-medium",
+   "way": "cue+vad",
+   "text": "Hi, this is a quick test of the voice cut. Click on this link and you will. Shroom cut. To get your video, use this link and you'll see it right away.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "9-clean-reworded/en_US-ryan-medium",
+   "way": "none",
+   "text": "Hi, this is a quick test of the voice cut, click on this link to see it, shroom cut. To get your video, use this link and you'll see it right away.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "9-clean-reworded/en_US-ryan-medium",
+   "way": "none+vad",
+   "text": "Hi, this is a quick test of the voice cut, click on this link to see it, shroom cut. To get your video, use this link and you'll see it right away.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "9-clean-reworded/en_US-ryan-medium",
+   "way": "full",
+   "text": "Hi, this is a quick test of the voice cut. Click on this link to see it. Shroom cut. To get your video, use this link and you'll see it right away.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "9-clean-reworded/en_US-ryan-medium",
+   "way": "full+vad",
+   "text": "Hi, this is a quick test of the voice cut. Click on this link to see it. Shroom cut. To get your video, use this link and you'll see it right away.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "9-clean-reworded/en_US-ryan-medium",
+   "way": "cue",
+   "text": "Hi, this is a quick test of the voice cut. Click on this link to see it. Shroom cut. To get your video, use this link and you'll see it right away.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "9-clean-reworded/en_US-ryan-medium",
+   "way": "cue+vad",
+   "text": "Hi, this is a quick test of the voice cut, click on this link to see it, shroom cut. To get your video, use this link and you'll see it right away.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "9-clean-reworded/en_US-amy-medium",
+   "way": "none",
+   "text": "Hi, this is a quick test of the voice cut. Click on this link to see it. Shroom cut. To get your video, use this link and you'll see it right away.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "9-clean-reworded/en_US-amy-medium",
+   "way": "none+vad",
+   "text": "Hi, this is a quick test of the voice cut. Click on this link to see it. Shroom cut. To get your video, use this link and you'll see it right away.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "9-clean-reworded/en_US-amy-medium",
+   "way": "full",
+   "text": "Hi, this is a quick test of the voice cut. Click on this link to see it. Shroom cut. To get your video, use this link and you'll see it right away.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "9-clean-reworded/en_US-amy-medium",
+   "way": "full+vad",
+   "text": "Hi, this is a quick test of the voice cut. Click on this link to see it. Shroom cut. To get your video, use this link and you'll see it right away.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "9-clean-reworded/en_US-amy-medium",
+   "way": "cue",
+   "text": "Hi, this is a quick test of the voice cut. Click on this link to see it. Shroom cut. To get your video, use this link and you'll see it right away.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  },
+  {
+   "kind": "cue",
+   "take": "9-clean-reworded/en_US-amy-medium",
+   "way": "cue+vad",
+   "text": "Hi, this is a quick test of the voice cut. Click on this link to see it. Shroom cut. To get your video, use this link and you'll see it right away.",
+   "cues": 1,
+   "said": 1,
+   "hits": 1,
+   "false": 0,
+   "echo": [
+    "shroom"
+   ]
+  }
+ ]
+}

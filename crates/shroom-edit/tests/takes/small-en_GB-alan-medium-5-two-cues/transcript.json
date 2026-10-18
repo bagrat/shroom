@@ -1,0 +1,211 @@
+{
+ "duration": 14.820090702947846,
+ "words": [
+  {
+   "text": "Welcome",
+   "start": 0.0,
+   "end": 0.94
+  },
+  {
+   "text": "to",
+   "start": 0.94,
+   "end": 1.2
+  },
+  {
+   "text": "the",
+   "start": 1.2,
+   "end": 1.36
+  },
+  {
+   "text": "tour.",
+   "start": 1.36,
+   "end": 1.64
+  },
+  {
+   "text": "Press",
+   "start": 2.44,
+   "end": 2.5
+  },
+  {
+   "text": "stop",
+   "start": 2.5,
+   "end": 2.86
+  },
+  {
+   "text": "and",
+   "start": 2.86,
+   "end": 3.34
+  },
+  {
+   "text": "your",
+   "start": 3.34,
+   "end": 3.5
+  },
+  {
+   "text": "link",
+   "start": 3.5,
+   "end": 3.7
+  },
+  {
+   "text": "is",
+   "start": 3.7,
+   "end": 3.96
+  },
+  {
+   "text": "pasted.",
+   "start": 3.96,
+   "end": 5.04
+  },
+  {
+   "text": "Shroom",
+   "start": 5.32,
+   "end": 5.46
+  },
+  {
+   "text": "cut.",
+   "start": 5.46,
+   "end": 5.78
+  },
+  {
+   "text": "Press",
+   "start": 6.64,
+   "end": 6.84
+  },
+  {
+   "text": "stop",
+   "start": 6.84,
+   "end": 7.18
+  },
+  {
+   "text": "and",
+   "start": 7.18,
+   "end": 7.62
+  },
+  {
+   "text": "your",
+   "start": 7.62,
+   "end": 7.82
+  },
+  {
+   "text": "link",
+   "start": 7.82,
+   "end": 8.08
+  },
+  {
+   "text": "is,",
+   "start": 8.08,
+   "end": 8.36
+  },
+  {
+   "text": "uh,",
+   "start": 8.52,
+   "end": 8.84
+  },
+  {
+   "text": "shroom",
+   "start": 9.44,
+   "end": 9.74
+  },
+  {
+   "text": "cut.",
+   "start": 9.74,
+   "end": 10.08
+  },
+  {
+   "text": "Press",
+   "start": 10.96,
+   "end": 11.12
+  },
+  {
+   "text": "stop",
+   "start": 11.12,
+   "end": 11.52
+  },
+  {
+   "text": "and",
+   "start": 11.52,
+   "end": 12.0
+  },
+  {
+   "text": "your",
+   "start": 12.0,
+   "end": 12.18
+  },
+  {
+   "text": "link",
+   "start": 12.18,
+   "end": 12.42
+  },
+  {
+   "text": "is",
+   "start": 12.42,
+   "end": 12.68
+  },
+  {
+   "text": "copied",
+   "start": 12.68,
+   "end": 12.94
+  },
+  {
+   "text": "to",
+   "start": 12.94,
+   "end": 13.2
+  },
+  {
+   "text": "the",
+   "start": 13.2,
+   "end": 13.32
+  },
+  {
+   "text": "clipboard.",
+   "start": 13.32,
+   "end": 13.7
+  }
+ ],
+ "silences": [
+  {
+   "start": 0.0,
+   "end": 0.610204
+  },
+  {
+   "start": 1.77814,
+   "end": 2.32177
+  },
+  {
+   "start": 3.00177,
+   "end": 3.17306
+  },
+  {
+   "start": 4.65333,
+   "end": 5.17791
+  },
+  {
+   "start": 6.00966,
+   "end": 6.64109
+  },
+  {
+   "start": 7.29823,
+   "end": 7.44345
+  },
+  {
+   "start": 8.47397,
+   "end": 8.7015
+  },
+  {
+   "start": 8.90862,
+   "end": 9.42993
+  },
+  {
+   "start": 10.2779,
+   "end": 10.9129
+  },
+  {
+   "start": 11.7057,
+   "end": 11.8315
+  },
+  {
+   "start": 13.9977,
+   "end": 14.8201
+  }
+ ]
+}

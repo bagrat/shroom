@@ -1,0 +1,1224 @@
+{
+ "breath": {
+  "out": "0.55 s, -30 dBFS peak",
+  "in": "0.35 s, -70 dBFS peak"
+ },
+ "rows": [
+  {
+   "heard_as": "browser",
+   "take": "bagrat-1/en_US-ryan-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.55,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "bagrat-1/en_US-ryan-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.55,
+   "in_cut": 0.35
+  },
+  {
+   "heard_as": "browser",
+   "take": "bagrat-1/en_US-ryan-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.55,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "bagrat-1/en_US-ryan-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "bagrat-1/en_US-ryan-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.35
+  },
+  {
+   "heard_as": "browser",
+   "take": "bagrat-1/en_US-ryan-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "bagrat-1/en_US-amy-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.55,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "bagrat-1/en_US-amy-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.55,
+   "in_cut": 0.35
+  },
+  {
+   "heard_as": "browser",
+   "take": "bagrat-1/en_US-amy-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": false,
+   "out_played": 0.55,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "bagrat-1/en_US-amy-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "bagrat-1/en_US-amy-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.35
+  },
+  {
+   "heard_as": "browser",
+   "take": "bagrat-1/en_US-amy-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "bagrat-2/en_US-ryan-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.55,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "bagrat-2/en_US-ryan-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.55,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "bagrat-2/en_US-ryan-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "bagrat-2/en_US-ryan-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "bagrat-2/en_US-amy-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": false,
+   "out_played": 0.55,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "bagrat-2/en_US-amy-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": false,
+   "out_played": 0.55,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "bagrat-2/en_US-amy-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "bagrat-2/en_US-amy-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "1-the-example/en_US-ryan-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.55,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "1-the-example/en_US-ryan-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "1-the-example/en_US-amy-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.55,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "1-the-example/en_US-amy-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "10-long-stretch/en_US-ryan-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.55,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "10-long-stretch/en_US-ryan-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "10-long-stretch/en_US-amy-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.55,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "10-long-stretch/en_US-amy-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "11-good-then-broken/en_US-ryan-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.55,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "11-good-then-broken/en_US-ryan-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "11-good-then-broken/en_US-amy-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.55,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "11-good-then-broken/en_US-amy-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "2-mid-paragraph/en_US-ryan-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.55,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "2-mid-paragraph/en_US-ryan-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "2-mid-paragraph/en_US-amy-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": false,
+   "out_played": 0.55,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "2-mid-paragraph/en_US-amy-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": false,
+   "out_played": 0.55,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "3-mid-sentence/en_US-ryan-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.55,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "3-mid-sentence/en_US-ryan-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "3-mid-sentence/en_US-amy-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": false,
+   "out_played": 0.55,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "3-mid-sentence/en_US-amy-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "4-no-retake/en_US-ryan-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.55,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "4-no-retake/en_US-ryan-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "4-no-retake/en_US-amy-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.55,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "4-no-retake/en_US-amy-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "5-two-cues/en_US-ryan-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.55,
+   "in_cut": 0.35
+  },
+  {
+   "heard_as": "browser",
+   "take": "5-two-cues/en_US-ryan-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.55,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "5-two-cues/en_US-ryan-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.35
+  },
+  {
+   "heard_as": "browser",
+   "take": "5-two-cues/en_US-ryan-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "5-two-cues/en_US-amy-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": false,
+   "out_played": 0.55,
+   "in_cut": 0.35
+  },
+  {
+   "heard_as": "browser",
+   "take": "5-two-cues/en_US-amy-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": false,
+   "out_played": 0.55,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "5-two-cues/en_US-amy-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.35
+  },
+  {
+   "heard_as": "browser",
+   "take": "5-two-cues/en_US-amy-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "6-said-not-meant/en_US-ryan-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": false,
+   "out_played": 0.55,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "6-said-not-meant/en_US-ryan-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": false,
+   "out_played": 0.55,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "6-said-not-meant/en_US-ryan-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": false,
+   "out_played": 0.55,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "6-said-not-meant/en_US-ryan-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": false,
+   "out_played": 0.55,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "6-said-not-meant/en_US-amy-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": false,
+   "out_played": 0.55,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "6-said-not-meant/en_US-amy-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": false,
+   "out_played": 0.55,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "6-said-not-meant/en_US-amy-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": false,
+   "out_played": 0.55,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "6-said-not-meant/en_US-amy-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": false,
+   "out_played": 0.55,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "7-cue-at-the-end/en_US-ryan-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.55,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "7-cue-at-the-end/en_US-ryan-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.55,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "7-cue-at-the-end/en_US-ryan-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "7-cue-at-the-end/en_US-ryan-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "7-cue-at-the-end/en_US-amy-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.55,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "7-cue-at-the-end/en_US-amy-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.55,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "7-cue-at-the-end/en_US-amy-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "7-cue-at-the-end/en_US-amy-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "8-reworded-redo/en_US-ryan-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.55,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "8-reworded-redo/en_US-ryan-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "8-reworded-redo/en_US-amy-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.55,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "8-reworded-redo/en_US-amy-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "9-clean-reworded/en_US-ryan-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.55,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "9-clean-reworded/en_US-ryan-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "9-clean-reworded/en_US-amy-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.55,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "browser",
+   "take": "9-clean-reworded/en_US-amy-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "room",
+   "take": "bagrat-1/en_US-ryan-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.235
+  },
+  {
+   "heard_as": "room",
+   "take": "bagrat-1/en_US-ryan-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.35
+  },
+  {
+   "heard_as": "room",
+   "take": "bagrat-1/en_US-ryan-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.224
+  },
+  {
+   "heard_as": "room",
+   "take": "bagrat-1/en_US-ryan-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.235
+  },
+  {
+   "heard_as": "room",
+   "take": "bagrat-1/en_US-ryan-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.35
+  },
+  {
+   "heard_as": "room",
+   "take": "bagrat-1/en_US-ryan-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.224
+  },
+  {
+   "heard_as": "room",
+   "take": "bagrat-1/en_US-amy-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.258
+  },
+  {
+   "heard_as": "room",
+   "take": "bagrat-1/en_US-amy-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.35
+  },
+  {
+   "heard_as": "room",
+   "take": "bagrat-1/en_US-amy-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.55,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "room",
+   "take": "bagrat-1/en_US-amy-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.258
+  },
+  {
+   "heard_as": "room",
+   "take": "bagrat-1/en_US-amy-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.35
+  },
+  {
+   "heard_as": "room",
+   "take": "bagrat-1/en_US-amy-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.55,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "room",
+   "take": "bagrat-2/en_US-ryan-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.226
+  },
+  {
+   "heard_as": "room",
+   "take": "bagrat-2/en_US-ryan-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.228
+  },
+  {
+   "heard_as": "room",
+   "take": "bagrat-2/en_US-ryan-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.226
+  },
+  {
+   "heard_as": "room",
+   "take": "bagrat-2/en_US-ryan-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.228
+  },
+  {
+   "heard_as": "room",
+   "take": "bagrat-2/en_US-amy-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.226
+  },
+  {
+   "heard_as": "room",
+   "take": "bagrat-2/en_US-amy-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.309
+  },
+  {
+   "heard_as": "room",
+   "take": "bagrat-2/en_US-amy-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.226
+  },
+  {
+   "heard_as": "room",
+   "take": "bagrat-2/en_US-amy-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.309
+  },
+  {
+   "heard_as": "room",
+   "take": "1-the-example/en_US-ryan-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.249
+  },
+  {
+   "heard_as": "room",
+   "take": "1-the-example/en_US-ryan-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.249
+  },
+  {
+   "heard_as": "room",
+   "take": "1-the-example/en_US-amy-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.319
+  },
+  {
+   "heard_as": "room",
+   "take": "1-the-example/en_US-amy-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.319
+  },
+  {
+   "heard_as": "room",
+   "take": "10-long-stretch/en_US-ryan-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.233
+  },
+  {
+   "heard_as": "room",
+   "take": "10-long-stretch/en_US-ryan-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.233
+  },
+  {
+   "heard_as": "room",
+   "take": "10-long-stretch/en_US-amy-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.254
+  },
+  {
+   "heard_as": "room",
+   "take": "10-long-stretch/en_US-amy-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.254
+  },
+  {
+   "heard_as": "room",
+   "take": "11-good-then-broken/en_US-ryan-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.23
+  },
+  {
+   "heard_as": "room",
+   "take": "11-good-then-broken/en_US-ryan-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.23
+  },
+  {
+   "heard_as": "room",
+   "take": "11-good-then-broken/en_US-amy-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.284
+  },
+  {
+   "heard_as": "room",
+   "take": "11-good-then-broken/en_US-amy-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.284
+  },
+  {
+   "heard_as": "room",
+   "take": "2-mid-paragraph/en_US-ryan-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.247
+  },
+  {
+   "heard_as": "room",
+   "take": "2-mid-paragraph/en_US-ryan-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.247
+  },
+  {
+   "heard_as": "room",
+   "take": "2-mid-paragraph/en_US-amy-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.254
+  },
+  {
+   "heard_as": "room",
+   "take": "2-mid-paragraph/en_US-amy-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.254
+  },
+  {
+   "heard_as": "room",
+   "take": "3-mid-sentence/en_US-ryan-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.235
+  },
+  {
+   "heard_as": "room",
+   "take": "3-mid-sentence/en_US-ryan-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.235
+  },
+  {
+   "heard_as": "room",
+   "take": "3-mid-sentence/en_US-amy-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.279
+  },
+  {
+   "heard_as": "room",
+   "take": "3-mid-sentence/en_US-amy-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.279
+  },
+  {
+   "heard_as": "room",
+   "take": "4-no-retake/en_US-ryan-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.234
+  },
+  {
+   "heard_as": "room",
+   "take": "4-no-retake/en_US-ryan-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.234
+  },
+  {
+   "heard_as": "room",
+   "take": "4-no-retake/en_US-amy-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.292
+  },
+  {
+   "heard_as": "room",
+   "take": "4-no-retake/en_US-amy-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.292
+  },
+  {
+   "heard_as": "room",
+   "take": "5-two-cues/en_US-ryan-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.35
+  },
+  {
+   "heard_as": "room",
+   "take": "5-two-cues/en_US-ryan-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.24
+  },
+  {
+   "heard_as": "room",
+   "take": "5-two-cues/en_US-ryan-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.35
+  },
+  {
+   "heard_as": "room",
+   "take": "5-two-cues/en_US-ryan-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.24
+  },
+  {
+   "heard_as": "room",
+   "take": "5-two-cues/en_US-amy-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.35
+  },
+  {
+   "heard_as": "room",
+   "take": "5-two-cues/en_US-amy-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.257
+  },
+  {
+   "heard_as": "room",
+   "take": "5-two-cues/en_US-amy-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.35
+  },
+  {
+   "heard_as": "room",
+   "take": "5-two-cues/en_US-amy-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.257
+  },
+  {
+   "heard_as": "room",
+   "take": "6-said-not-meant/en_US-ryan-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": false,
+   "out_played": 0.55,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "room",
+   "take": "6-said-not-meant/en_US-ryan-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": false,
+   "out_played": 0.55,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "room",
+   "take": "6-said-not-meant/en_US-ryan-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": false,
+   "out_played": 0.55,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "room",
+   "take": "6-said-not-meant/en_US-ryan-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": false,
+   "out_played": 0.55,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "room",
+   "take": "6-said-not-meant/en_US-amy-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": false,
+   "out_played": 0.55,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "room",
+   "take": "6-said-not-meant/en_US-amy-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": false,
+   "out_played": 0.55,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "room",
+   "take": "6-said-not-meant/en_US-amy-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": false,
+   "out_played": 0.55,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "room",
+   "take": "6-said-not-meant/en_US-amy-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": false,
+   "out_played": 0.55,
+   "in_cut": 0.0
+  },
+  {
+   "heard_as": "room",
+   "take": "7-cue-at-the-end/en_US-ryan-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.275
+  },
+  {
+   "heard_as": "room",
+   "take": "7-cue-at-the-end/en_US-ryan-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.35
+  },
+  {
+   "heard_as": "room",
+   "take": "7-cue-at-the-end/en_US-ryan-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.275
+  },
+  {
+   "heard_as": "room",
+   "take": "7-cue-at-the-end/en_US-ryan-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.35
+  },
+  {
+   "heard_as": "room",
+   "take": "7-cue-at-the-end/en_US-amy-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.242
+  },
+  {
+   "heard_as": "room",
+   "take": "7-cue-at-the-end/en_US-amy-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.35
+  },
+  {
+   "heard_as": "room",
+   "take": "7-cue-at-the-end/en_US-amy-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.242
+  },
+  {
+   "heard_as": "room",
+   "take": "7-cue-at-the-end/en_US-amy-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.35
+  },
+  {
+   "heard_as": "room",
+   "take": "8-reworded-redo/en_US-ryan-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.236
+  },
+  {
+   "heard_as": "room",
+   "take": "8-reworded-redo/en_US-ryan-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.236
+  },
+  {
+   "heard_as": "room",
+   "take": "8-reworded-redo/en_US-amy-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.26
+  },
+  {
+   "heard_as": "room",
+   "take": "8-reworded-redo/en_US-amy-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.26
+  },
+  {
+   "heard_as": "room",
+   "take": "9-clean-reworded/en_US-ryan-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.24
+  },
+  {
+   "heard_as": "room",
+   "take": "9-clean-reworded/en_US-ryan-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.24
+  },
+  {
+   "heard_as": "room",
+   "take": "9-clean-reworded/en_US-amy-medium",
+   "cut": "shroom-cut-old",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.254
+  },
+  {
+   "heard_as": "room",
+   "take": "9-clean-reworded/en_US-amy-medium",
+   "cut": "shroom-cut-new",
+   "cue_cut": true,
+   "out_played": 0.0,
+   "in_cut": 0.254
+  }
+ ]
+}

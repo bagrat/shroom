@@ -590,6 +590,19 @@ impl std::fmt::Debug for Space {
 /// What a body-less call carries.
 const EMPTY: &[u8] = b"";
 
+/// A judgment's scores, one per start, each from 0 to 1 — or none: `later`, the wrong count,
+/// or anything else.
+fn scores_of(v: &Value, n: usize) -> Option<Vec<f64>> {
+    let scores: Vec<f64> = v.get("scores")?.as_array()?.iter().map(Value::as_f64).collect::<Option<_>>()?;
+    (scores.len() == n && scores.iter().all(|s| (0.0..=1.0).contains(s))).then_some(scores)
+}
+
+/// A take's status says its voice cuts are coming (`cuts: "coming"`); a status without the
+/// word, or one this build can't read, says they aren't.
+fn cuts_word(status: &[u8]) -> bool {
+    serde_json::from_slice::<Value>(status).ok().and_then(|v| v.get("cuts")?.as_str().map(|w| w == "coming")).unwrap_or(false)
+}
+
 impl Space {
     /// `https://<host>`.
     pub fn new(host: &str) -> Space {
@@ -678,6 +691,31 @@ impl Space {
                     _ => Ping::NotShroom { status },
                 }
             }
+        }
+    }
+
+    /// `GET /_shroom/status/<rec>`: whether the space says the take's voice cuts are coming
+    /// (spec N65: it hears its takes, and this one went live just now and isn't planned yet).
+    /// `None` when it can't be asked now.
+    pub fn cuts_coming(&self, rec: &str) -> Option<bool> {
+        match self.send("GET", &format!("/_shroom/status/{rec}"), EMPTY, None) {
+            Ok((200, bytes, _)) => Some(cuts_word(&bytes)),
+            _ => None,
+        }
+    }
+
+    /// `POST cue` (N65, DECISIONS B202): the judgment above the voice-cue planner, on the
+    /// space's own account — a score per candidate start and how long the space took (ms), or,
+    /// when it can't answer now, why in a word or two (`later: daily`, `refused 429`, `no
+    /// answer`…, never an address), and the Mac keeps its own plan.
+    pub fn judge(&self, key: &DeviceKey, rec: &str, cue: usize, after: &str, candidates: &[String]) -> Result<(Vec<f64>, Option<u64>), String> {
+        let body = json!({"rec": rec, "cue": cue, "after": after, "candidates": candidates});
+        match self.call::<Value>("POST", "cue", Some(body), Some(key)) {
+            Answer::Ok(v) if v.get("later").and_then(Value::as_bool) == Some(true) => Err(format!("later: {}", v.get("why").and_then(Value::as_str).unwrap_or("no reason"))),
+            Answer::Ok(v) => scores_of(&v, candidates.len()).map(|s| (s, v.get("ms").and_then(Value::as_u64))).ok_or_else(|| "an answer that doesn't fit".into()),
+            Answer::Refused(r) => Err(format!("refused {}", r.status)),
+            Answer::NotShroom { status } => Err(format!("not the space's answer ({status})")),
+            Answer::Unanswered(_) => Err("no answer".into()),
         }
     }
 
@@ -1171,6 +1209,26 @@ mod tests {
         assert_eq!(page.next.as_deref(), Some("AbCdEfGhIjKlMnOp"));
         assert_eq!(page.items[0], CleanupItem { id: "AbCdEfGhIjKlMnOo".into(), bytes: 3_222_000_000, plays: 4, quiet_days: Some(300.4), median_watched: Some(0.45), candidate: true, score: 0.96, reason: Some(CleanupReason { code: "not-lately".into() }), ..page.items[0].clone() });
         assert_eq!((page.items[1].quiet_days, page.items[1].bytes, page.items[1].candidate), (None, 0, false));
+    }
+
+    #[test]
+    fn a_judgment_answers_a_score_per_start_or_nothing() {
+        let n = 2;
+        assert_eq!(scores_of(&json!({"shroom": 1, "scores": [0.75, 0.03]}), n), Some(vec![0.75, 0.03]));
+        // Later (the free day used up, a busy model), the wrong count, a score out of range,
+        // not a number: no judgment, and the Mac keeps its own plan.
+        for v in [json!({"shroom": 1, "later": true}), json!({"shroom": 1, "scores": [0.75]}), json!({"shroom": 1, "scores": [0.75, 1.5]}), json!({"shroom": 1, "scores": [0.75, "x"]}), json!({"shroom": 1})] {
+            assert_eq!(scores_of(&v, n), None, "{v}");
+        }
+    }
+
+    #[test]
+    fn a_status_says_cuts_are_coming_only_in_so_many_words() {
+        assert!(cuts_word(br#"{"state":"live","drained":true,"cuts":"coming"}"#));
+        // Planned (a tag), a space that doesn't listen (no word), a Worker before N65, not JSON.
+        for status in [&br#"{"state":"live","cuts":"1x9k2"}"#[..], br#"{"state":"live","drained":true}"#, br#"{"state":"uploading","pct":40}"#, b"<html>", b""] {
+            assert!(!cuts_word(status), "{}", String::from_utf8_lossy(status));
+        }
     }
 
     #[test]

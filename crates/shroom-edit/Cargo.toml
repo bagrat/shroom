@@ -5,9 +5,9 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 publish = false
-description = "The edit list (a trim and cuts over a recording's own timeline, kept in its record and applied as it plays), its editing operations and their undo history (DECISIONS B195)."
+description = "The edit list (a trim and cuts over a recording's own timeline, kept in its record and applied as it plays), its editing operations and their undo history (DECISIONS B195), and the voice-cue planner that turns a take's words into its voice cuts (spec N65)."
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
+# The planner's command (src/bin/shroom-cut.rs) reads and writes JSON.
 serde_json = "1"
-

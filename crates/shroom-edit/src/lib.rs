@@ -9,14 +9,107 @@
 //! - **What's saved** ([`Saved`]): the list as it sits in the record (`meta.edits`), with
 //!   the revision a save bumps and the permanent copy cut from it, once there is one.
 //! - **Editing** ([`edit`]): the editor's operations and their undo history.
+//! - **The voice-cue planner** ([`plan`], N65): given a take's words with their times, find
+//!   the spoken cue ("shroom cut"), find where the speaker started again the line it retakes,
+//!   and cut from that restart through the end of the cue, the edges set in the quiet on
+//!   either side.
 //!
 //! Deterministic and pure: no media, no clock, no I/O.
 
+mod align;
+mod cue;
 pub mod edit;
+mod judge;
+mod land;
+mod plan;
+mod text;
 
+pub use cue::{Cue, CueWords, Said, find_cues, find_cues_in};
 pub use edit::{History, Op, Refusal};
+pub use judge::{Answer, Intent, JUDGED, MEANT, Meant, Question};
+pub use land::{land, land_with};
+pub use plan::{Options, intents, plan, plan_meant, plan_with, questions, questions_meant};
 
 use serde::{Deserialize, Serialize};
+
+/// One transcribed word, in seconds on the source timeline.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Word {
+    pub text: String,
+    pub start: f64,
+    pub end: f64,
+}
+
+/// A stretch of silence found in the audio (seconds), used to snap cut edges.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct Silence {
+    pub start: f64,
+    pub end: f64,
+}
+
+/// How loud a take is, step by step: where no silence was found between two words, a cut's
+/// edge goes to the quietest point between them.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct Levels {
+    /// Seconds per step.
+    pub step: f64,
+    /// Each step's loudness, dBFS.
+    pub db: Vec<f32>,
+}
+
+/// The planner's input: a transcript and, when known, the silences and the loudness.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct Transcript {
+    pub duration: f64,
+    pub words: Vec<Word>,
+    #[serde(default)]
+    pub silences: Vec<Silence>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub levels: Option<Levels>,
+}
+
+impl Transcript {
+    /// A take's words as the space keeps what it heard (N66: `[text, start, end]` in seconds
+    /// on the recording's clock), with the quiet found in the take's own sound. Blank or
+    /// timeless words go; the rest in time order, none ending before it starts. A length
+    /// short of the last word is the last word's end.
+    pub fn heard(
+        duration: f64,
+        words: &[(String, f64, f64)],
+        silences: Vec<Silence>,
+    ) -> Transcript {
+        let mut words: Vec<Word> = words
+            .iter()
+            .filter(|(text, start, end)| {
+                !text.trim().is_empty() && start.is_finite() && end.is_finite()
+            })
+            .map(|(text, start, end)| Word {
+                text: text.trim().to_string(),
+                start: *start,
+                end: end.max(*start),
+            })
+            .collect();
+        words.sort_by(|a, b| a.start.total_cmp(&b.start));
+        let last = words.iter().map(|w| w.end).fold(0.0, f64::max);
+        let duration = if duration.is_finite() && duration >= last {
+            duration
+        } else {
+            last
+        };
+        Transcript {
+            duration,
+            words,
+            silences,
+            levels: None,
+        }
+    }
+
+    /// With the take's loudness beside its words.
+    pub fn with_levels(mut self, levels: Levels) -> Transcript {
+        self.levels = Some(levels);
+        self
+    }
+}
 
 /// Where a cut came from.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

@@ -1,0 +1,30 @@
+[
+ {
+  "say": "Open the settings window.",
+  "role": "keep",
+  "pause": 0.8,
+  "start": 0.0,
+  "end": 1.707
+ },
+ {
+  "say": "Then click the, the blue",
+  "role": "flub",
+  "pause": 0.7,
+  "start": 2.507,
+  "end": 4.19
+ },
+ {
+  "say": "Shroom cut.",
+  "role": "cue",
+  "pause": 1.0,
+  "start": 4.89,
+  "end": 5.981
+ },
+ {
+  "say": "Then click the green button.",
+  "role": "keep",
+  "pause": 0,
+  "start": 6.981,
+  "end": 8.793
+ }
+]

@@ -1,0 +1,30 @@
+[
+ {
+  "say": "Hello, that is shroom.",
+  "role": "flub",
+  "pause": 0.5,
+  "start": 0.6,
+  "end": 1.912
+ },
+ {
+  "say": "Shroom cut.",
+  "role": "cue",
+  "pause": 0.6,
+  "start": 2.412,
+  "end": 2.992
+ },
+ {
+  "say": "Hello, this is shroom.",
+  "role": "keep",
+  "pause": 0.4,
+  "start": 3.592,
+  "end": 4.846
+ },
+ {
+  "say": "Today I'll show you how to share a recording in one click.",
+  "role": "keep",
+  "pause": 0.8,
+  "start": 5.246,
+  "end": 7.754
+ }
+]

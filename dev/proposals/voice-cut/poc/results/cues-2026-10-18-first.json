@@ -1,0 +1,374 @@
+{
+ "model": "@cf/cloudflare/clef",
+ "rows": [
+  {
+   "kind": "cue",
+   "take": "cut/en_US-ryan-medium",
+   "prime": true,
+   "phrase": "cut",
+   "heard": "Okay, let's look at the settings. Open the menu and choose the share. Open the menu and choose share. That's all there is to it.",
+   "proposed": false,
+   "said": null,
+   "score": null
+  },
+  {
+   "kind": "cue",
+   "take": "cut/en_US-ryan-medium",
+   "prime": false,
+   "phrase": "cut",
+   "heard": "Ok, let's look at the settings. Open the menu and choose the share. Open the menu and choose share. That's all there is to it.",
+   "proposed": false,
+   "said": null,
+   "score": null
+  },
+  {
+   "kind": "cue",
+   "take": "cut/en_US-amy-medium",
+   "prime": true,
+   "phrase": "cut",
+   "heard": "Okay, let's look at the settings. Open the menu and choose the, the share. Cut. Open the menu and choose share. That's all there is to it.",
+   "proposed": true,
+   "said": "Cut.",
+   "score": 0.9869
+  },
+  {
+   "kind": "cue",
+   "take": "cut/en_US-amy-medium",
+   "prime": false,
+   "phrase": "cut",
+   "heard": "Okay, let's look at the settings. Open the menu and choose the, the share. Cut. Open the menu and choose share. That's all there is to it.",
+   "proposed": true,
+   "said": "Cut.",
+   "score": 0.9869
+  },
+  {
+   "kind": "cue",
+   "take": "cut-here/en_US-ryan-medium",
+   "prime": true,
+   "phrase": "cut-here",
+   "heard": "Okay, let's look at the settings. Open the menu and choose the, the share. Cut here. Open the menu and choose share. That's all there is to it.",
+   "proposed": true,
+   "said": "Cut here.",
+   "score": 0.9875
+  },
+  {
+   "kind": "cue",
+   "take": "cut-here/en_US-ryan-medium",
+   "prime": false,
+   "phrase": "cut-here",
+   "heard": "Ok, let's look at the settings. Open the menu and choose the share. Cut here. Open the menu and choose share. That's all there is to it.",
+   "proposed": true,
+   "said": "Cut here.",
+   "score": 0.9852
+  },
+  {
+   "kind": "cue",
+   "take": "cut-here/en_US-amy-medium",
+   "prime": true,
+   "phrase": "cut-here",
+   "heard": "Okay, let's look at the settings. Open the menu and choose the, the share. Cut here. Open the menu and choose share. That's all there is to it.",
+   "proposed": true,
+   "said": "Cut here.",
+   "score": 0.9875
+  },
+  {
+   "kind": "cue",
+   "take": "cut-here/en_US-amy-medium",
+   "prime": false,
+   "phrase": "cut-here",
+   "heard": "Okay, let's look at the settings. Open the menu and choose the, the share. Cut here. Open the menu and choose share. That's all there is to it.",
+   "proposed": true,
+   "said": "Cut here.",
+   "score": 0.9875
+  },
+  {
+   "kind": "cue",
+   "take": "cut-that/en_US-ryan-medium",
+   "prime": true,
+   "phrase": "cut-that",
+   "heard": "Okay, let's look at the settings. Open the menu and choose the, the share. Cut that. Open the menu and choose share. That's all there is to it.",
+   "proposed": true,
+   "said": "Cut that.",
+   "score": 0.9882
+  },
+  {
+   "kind": "cue",
+   "take": "cut-that/en_US-ryan-medium",
+   "prime": false,
+   "phrase": "cut-that",
+   "heard": "Okay, let's look at the settings, open the menu and choose the share, cut that, open the menu and choose share, that's all there is to it.",
+   "proposed": true,
+   "said": "cut that,",
+   "score": 0.986
+  },
+  {
+   "kind": "cue",
+   "take": "cut-that/en_US-amy-medium",
+   "prime": true,
+   "phrase": "cut-that",
+   "heard": "Okay, let's look at the settings. Open the menu and choose the, the share. Cut that. Open the menu and choose share. That's all there is to it.",
+   "proposed": true,
+   "said": "Cut that.",
+   "score": 0.9882
+  },
+  {
+   "kind": "cue",
+   "take": "cut-that/en_US-amy-medium",
+   "prime": false,
+   "phrase": "cut-that",
+   "heard": "Okay, let's look at the settings. Open the menu and choose the, the share. Cut that. Open the menu and choose share. That's all there is to it.",
+   "proposed": true,
+   "said": "Cut that.",
+   "score": 0.9882
+  },
+  {
+   "kind": "cue",
+   "take": "cut-cut/en_US-ryan-medium",
+   "prime": true,
+   "phrase": "cut-cut",
+   "heard": "Okay, let's look at the settings. Open the menu and choose the share. Open the menu and choose share. That's all there is to it.",
+   "proposed": false,
+   "said": null,
+   "score": null
+  },
+  {
+   "kind": "cue",
+   "take": "cut-cut/en_US-ryan-medium",
+   "prime": false,
+   "phrase": "cut-cut",
+   "heard": "Okay, let's look at the settings. Open the menu and choose the share. Open the menu and choose share. That's all there is to it.",
+   "proposed": false,
+   "said": null,
+   "score": null
+  },
+  {
+   "kind": "cue",
+   "take": "cut-cut/en_US-amy-medium",
+   "prime": true,
+   "phrase": "cut-cut",
+   "heard": "Okay, let's look at the settings. Open the menu and choose the, the share. Cut, cut. Open the menu and choose share. That's all there is to it.",
+   "proposed": true,
+   "said": "Cut, cut.",
+   "score": 0.987
+  },
+  {
+   "kind": "cue",
+   "take": "cut-cut/en_US-amy-medium",
+   "prime": false,
+   "phrase": "cut-cut",
+   "heard": "Okay, let's look at the settings. Open the menu and choose the, the share. Cut, cut. Open the menu and choose share. That's all there is to it.",
+   "proposed": true,
+   "said": "Cut, cut.",
+   "score": 0.987
+  },
+  {
+   "kind": "cue",
+   "take": "scratch-that/en_US-ryan-medium",
+   "prime": true,
+   "phrase": "scratch-that",
+   "heard": "Okay, let's look at the settings. Open the menu and choose the, the share. Scratch that. Open the menu and choose share. That's all there is to it.",
+   "proposed": true,
+   "said": "Scratch that.",
+   "score": 0.9698
+  },
+  {
+   "kind": "cue",
+   "take": "scratch-that/en_US-ryan-medium",
+   "prime": false,
+   "phrase": "scratch-that",
+   "heard": "Okay, let's look at the settings. Open the menu and choose the share. Scratch that. Open the menu and choose share. That's all there is to it.",
+   "proposed": true,
+   "said": "Scratch that.",
+   "score": 0.9512
+  },
+  {
+   "kind": "cue",
+   "take": "scratch-that/en_US-amy-medium",
+   "prime": true,
+   "phrase": "scratch-that",
+   "heard": "Okay, let's look at the settings. Open the menu and choose the, the share. Scratch that. Open the menu and choose share. That's all there is to it.",
+   "proposed": true,
+   "said": "Scratch that.",
+   "score": 0.9698
+  },
+  {
+   "kind": "cue",
+   "take": "scratch-that/en_US-amy-medium",
+   "prime": false,
+   "phrase": "scratch-that",
+   "heard": "Okay, let's look at the settings. Open the menu and choose the, the share. Scratch that. Open the menu and choose share. That's all there is to it.",
+   "proposed": true,
+   "said": "Scratch that.",
+   "score": 0.9698
+  },
+  {
+   "kind": "cue",
+   "take": "redo/en_US-ryan-medium",
+   "prime": true,
+   "phrase": "redo",
+   "heard": "Okay, let's look at the settings. Open the menu and choose the, the share. We do. Open the menu and choose share. That's all there is to it.",
+   "proposed": false,
+   "said": null,
+   "score": null
+  },
+  {
+   "kind": "cue",
+   "take": "redo/en_US-ryan-medium",
+   "prime": false,
+   "phrase": "redo",
+   "heard": "Ok, let's look at the settings. Open the menu and choose the share. Open the menu and choose share. That's all there is to it.",
+   "proposed": false,
+   "said": null,
+   "score": null
+  },
+  {
+   "kind": "cue",
+   "take": "redo/en_US-amy-medium",
+   "prime": true,
+   "phrase": "redo",
+   "heard": "Okay, let's look at the settings. Open the menu and choose the, the share. Redo. Open the menu and choose share. That's all there is to it.",
+   "proposed": true,
+   "said": "Redo.",
+   "score": 0.8777
+  },
+  {
+   "kind": "cue",
+   "take": "redo/en_US-amy-medium",
+   "prime": false,
+   "phrase": "redo",
+   "heard": "Okay, let's look at the settings. Open the menu and choose the, the share. Redo. Open the menu and choose share. That's all there is to it.",
+   "proposed": true,
+   "said": "Redo.",
+   "score": 0.8777
+  },
+  {
+   "kind": "cue",
+   "take": "let-me-redo-that/en_US-ryan-medium",
+   "prime": true,
+   "phrase": "let-me-redo-that",
+   "heard": "Okay, let's look at the settings. Open the menu and choose the, the share. Let me redo that. Open the menu and choose share. That's all there is to it.",
+   "proposed": true,
+   "said": "Let me redo that.",
+   "score": 0.8654
+  },
+  {
+   "kind": "cue",
+   "take": "let-me-redo-that/en_US-ryan-medium",
+   "prime": false,
+   "phrase": "let-me-redo-that",
+   "heard": "Ok, let's look at the settings. Open the menu and choose the share. Let me redo that. Open the menu and choose share. That's all there is to it.",
+   "proposed": true,
+   "said": "Let me redo that.",
+   "score": 0.9472
+  },
+  {
+   "kind": "cue",
+   "take": "let-me-redo-that/en_US-amy-medium",
+   "prime": true,
+   "phrase": "let-me-redo-that",
+   "heard": "Okay, let's look at the settings. Open the menu and choose the, the share. Let me redo that. Open the menu and choose share. That's all there is to it.",
+   "proposed": true,
+   "said": "Let me redo that.",
+   "score": 0.8654
+  },
+  {
+   "kind": "cue",
+   "take": "let-me-redo-that/en_US-amy-medium",
+   "prime": false,
+   "phrase": "let-me-redo-that",
+   "heard": "Okay, let's look at the settings. Open the menu and choose the, the share. Let me redo that. Open the menu and choose share. That's all there is to it.",
+   "proposed": true,
+   "said": "Let me redo that.",
+   "score": 0.8654
+  },
+  {
+   "kind": "cue",
+   "take": "say-that-again/en_US-ryan-medium",
+   "prime": true,
+   "phrase": "say-that-again",
+   "heard": "Okay, let's look at the settings. Open the menu and choose the, the share. Let me say that again. Open the menu and choose share. That's all there is to it.",
+   "proposed": true,
+   "said": "Let me say that again.",
+   "score": 0.9122
+  },
+  {
+   "kind": "cue",
+   "take": "say-that-again/en_US-ryan-medium",
+   "prime": false,
+   "phrase": "say-that-again",
+   "heard": "Ok, let's look at the settings. Open the menu and choose the share. Let me say that again. Open the menu and choose share. That's all there is to it.",
+   "proposed": true,
+   "said": "Let me say that again.",
+   "score": 0.9229
+  },
+  {
+   "kind": "cue",
+   "take": "say-that-again/en_US-amy-medium",
+   "prime": true,
+   "phrase": "say-that-again",
+   "heard": "Okay, let's look at the settings. Open the menu and choose the, the share. Let me say that again. Open the menu and choose share. That's all there is to it.",
+   "proposed": true,
+   "said": "Let me say that again.",
+   "score": 0.9122
+  },
+  {
+   "kind": "cue",
+   "take": "say-that-again/en_US-amy-medium",
+   "prime": false,
+   "phrase": "say-that-again",
+   "heard": "Okay, let's look at the settings. Open the menu and choose the, the share. Let me say that again. Open the menu and choose share. That's all there is to it.",
+   "proposed": true,
+   "said": "Let me say that again.",
+   "score": 0.9122
+  },
+  {
+   "kind": "viewer",
+   "take": "tutorial-cut/en_US-amy-medium",
+   "phrase": "Cut.",
+   "heard": "Select the text you want to move. Cut. Then paste it where you want it.",
+   "score": 0.131
+  },
+  {
+   "kind": "viewer",
+   "take": "film-set/en_US-amy-medium",
+   "phrase": "Cut.",
+   "heard": "On a film set, when the scene is over, the director shouts. Cut. And everyone relaxes.",
+   "score": 0.0465
+  },
+  {
+   "kind": "viewer",
+   "take": "undo-redo/en_US-amy-medium",
+   "phrase": "Redo.",
+   "heard": "Made a mistake. Click undo. Changed your mind? Redo. It comes right back.",
+   "score": 0.0464
+  },
+  {
+   "kind": "viewer",
+   "take": "what-it-does/en_US-amy-medium",
+   "phrase": "Cut.",
+   "heard": "What does this button do? Cut. It takes the clip out and keeps it for later.",
+   "score": 0.8838
+  },
+  {
+   "kind": "viewer",
+   "take": "shortcut/en_US-amy-medium",
+   "phrase": "Cut,",
+   "heard": "The shortcut is Command X, Cut, and Command V to paste.",
+   "score": 0.7887
+  },
+  {
+   "kind": "viewer",
+   "take": "two-choices/en_US-ryan-medium",
+   "phrase": "Cut that.",
+   "heard": "You can keep the part or you can cut it. Cut that. It's the second choice in the menu.",
+   "score": 0.9606
+  },
+  {
+   "kind": "viewer",
+   "take": "two-choices/en_US-amy-medium",
+   "phrase": "Cut that.",
+   "heard": "You can keep the part, or you can cut it. Cut that. It's the second choice in the menu.",
+   "score": 0.9594
+  }
+ ]
+}

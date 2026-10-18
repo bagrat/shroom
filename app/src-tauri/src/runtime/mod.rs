@@ -28,6 +28,7 @@ pub mod takes;
 pub mod uninstall;
 pub mod updater;
 pub mod uploader;
+pub mod voice;
 
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -1014,6 +1015,8 @@ fn start_inner(app: &AppHandle, launch: LaunchKind, quiet: bool, flags: &DevFlag
         member: member::spawn(rt.clone()),
         editor: editor::spawn(rt.clone()),
     };
+    // The voice cuts' sweep (N65): takes whose words came late.
+    voice::spawn_sweep(rt.clone());
     // The core's trace ring, and the panic hook that writes it down (DECISIONS B93).
     ring::install(&rt);
     let presenter = presenter::Presenter::new(app.clone(), rt.clone(), excluded);

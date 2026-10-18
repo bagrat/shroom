@@ -1,0 +1,37 @@
+[
+ {
+  "say": "Thanks for watching, and see you in the next.",
+  "role": "flub",
+  "pause": 0.5,
+  "start": 0.6,
+  "end": 2.902
+ },
+ {
+  "say": "Shroom cut.",
+  "role": "cue",
+  "pause": 0.6,
+  "start": 3.402,
+  "end": 3.997
+ },
+ {
+  "say": "Thanks for watching, see you next time!",
+  "role": "keep",
+  "pause": 0.6,
+  "start": 4.597,
+  "end": 6.624
+ },
+ {
+  "say": "Oh, and one more thing, uh,",
+  "role": "flub",
+  "pause": 0.5,
+  "start": 7.224,
+  "end": 8.79
+ },
+ {
+  "say": "shroom cut.",
+  "role": "cue",
+  "pause": 1.0,
+  "start": 9.29,
+  "end": 9.935
+ }
+]

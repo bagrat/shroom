@@ -585,6 +585,9 @@ fn publish(rt: &Runtime, s3: &Client, dir: &Path, q: &shroom_core::world::Queued
             let _ = take::teaser(ff, dir);
         }
     }
+    // Live, its sound on this Mac: the take's voice cuts are looked for now (N65), beside
+    // the second-class files, which never wait on them.
+    super::voice::after_go_live(rt, dir, &q.rec.0);
     let mp4 = upload::finish(s3, &q.rec.0, dir, stream, total, &beat, progress)?;
     rt.log(&format!("uploader drained in {} ms (single-file copy: {mp4})", started.elapsed().as_millis()));
     Ok(())
