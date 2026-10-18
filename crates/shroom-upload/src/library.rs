@@ -27,11 +27,22 @@ pub struct Row {
     /// ownership ledger only, filled by the caller; never the record's own `owner`, which a
     /// member can rewrite on their records (WORKER-INTERFACE §4.10, H3).
     pub owner: Option<String>,
+    /// The poster's key (`media.poster`).
     pub poster: Option<String>,
+    /// How long it plays edited, when the record holds an edit that leaves something out
+    /// ([`Meta::edited_sec`]): the row shows it in place of the length (N63).
+    #[serde(default)]
+    pub edited_sec: Option<f64>,
+    /// The poster's file name beside the recording (`poster.jpg`, or a baked edit's
+    /// `edit-3-poster.jpg`): what a Mac without the token fetches as `/m/<id>/<name>`.
+    /// `None` when the record names no poster, or one that isn't beside it.
+    #[serde(default)]
+    pub poster_file: Option<String>,
 }
 
 impl Row {
-    fn of(m: &Meta) -> Row {
+    /// A record's row (the ledger's owner is the caller's to fill).
+    pub fn of(m: &Meta) -> Row {
         Row {
             id: m.id.clone(),
             title: m.title.clone(),
@@ -41,8 +52,17 @@ impl Row {
             // Member-writable: never trusted for ownership (§4.10).
             owner: None,
             poster: m.media.as_ref().and_then(|x| x.poster.clone()),
+            edited_sec: m.edited_sec(),
+            poster_file: poster_file(m),
         }
     }
+}
+
+/// The name under `rec/<id>/` of the record's poster: one plain file name, never a path.
+pub fn poster_file(m: &Meta) -> Option<String> {
+    let key = m.media.as_ref()?.poster.as_deref()?;
+    let name = key.strip_prefix(&keys::prefix(&m.id))?;
+    (!name.is_empty() && !name.starts_with('.') && !name.contains('/')).then(|| name.to_string())
 }
 
 /// The local cache the Library opens on at once (kept by the caller, e.g. a file).
@@ -724,5 +744,34 @@ mod tests {
         let mut m = Meta::uploading("AbCdEfGhIjKlMnOp", "Mher's notes", "2026-10-02T12:00:00Z");
         m.owner = Some("m1".into());
         assert_eq!(Row::of(&m).owner, None);
+    }
+
+    /// N63, B197: a row carries the edited length (none for the identity) and its poster's
+    /// file name beside the recording, the original's or a baked edit's — never a path out.
+    #[test]
+    fn a_row_carries_its_edited_length_and_its_posters_file_name() {
+        let id = "AbCdEfGhIjKlMnOp";
+        let mut m = Meta::uploading(id, "Demo", "2026-10-02T12:00:00Z");
+        m.duration_sec = Some(60.0);
+        let media = |poster: Option<String>| crate::meta::Media { hls: None, mp4: None, poster, teaser: None, width: 1, height: 1 };
+        assert_eq!((Row::of(&m).edited_sec, Row::of(&m).poster_file), (None, None));
+        m.media = Some(media(Some(format!("rec/{id}/poster.jpg"))));
+        assert_eq!(Row::of(&m).poster_file.as_deref(), Some("poster.jpg"));
+        m.media = Some(media(Some(format!("rec/{id}/edit-3-poster.jpg"))));
+        assert_eq!(Row::of(&m).poster_file.as_deref(), Some("edit-3-poster.jpg"));
+        for elsewhere in ["rec/ZZZZZZZZZZZZZZZZ/poster.jpg".to_string(), format!("rec/{id}/v0/poster.jpg"), format!("rec/{id}/"), format!("rec/{id}/..")] {
+            m.media = Some(media(Some(elsewhere.clone())));
+            assert_eq!(Row::of(&m).poster_file, None, "{elsewhere}");
+        }
+        let mut list = shroom_edit::EditList::new(60.0);
+        list.in_ = 8.0;
+        m.edits = Some(shroom_edit::Saved::new(list.clone(), 1));
+        assert_eq!(Row::of(&m).edited_sec, Some(52.0));
+        list.in_ = 0.0;
+        m.edits = Some(shroom_edit::Saved::new(list, 2));
+        assert_eq!(Row::of(&m).edited_sec, None, "the identity is no edit");
+        // A cache written before these fields still reads.
+        let old: Row = serde_json::from_str(r#"{"id":"x","title":"T","state":"live","created_at":"2026-10-02T12:00:00Z","duration_sec":6.0,"owner":null,"poster":null}"#).unwrap();
+        assert_eq!((old.edited_sec, old.poster_file), (None, None));
     }
 }

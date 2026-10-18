@@ -277,3 +277,23 @@ fn a_tombstone_stops_a_bake() {
     assert!(matches!(library::bake(&s3, A, DUE), Err(UploadError::Tombstoned)));
     assert_eq!(read(&s3, A)["state"], "deleted");
 }
+
+/// The Library's rows follow the record: the edited length once an edit is saved, the
+/// copy's poster once baked (and then the length is the video's own).
+#[test]
+fn a_librarys_row_follows_the_edit_and_the_bake() {
+    let (_fake, s3) = space();
+    record(&s3, A);
+    let mut cache = library::Cache::default();
+    library::refresh(&s3, &mut cache).unwrap();
+    let row = |c: &library::Cache| c.rows[A].1.clone();
+    assert_eq!((row(&cache).edited_sec, row(&cache).poster_file.as_deref()), (None, Some("poster.jpg")));
+    save_and_copy(&s3, A, &edited(60.0), 38.0);
+    library::refresh(&s3, &mut cache).unwrap();
+    assert_eq!((row(&cache).duration_sec, row(&cache).edited_sec), (Some(60.0), Some(38.0)));
+    assert!(library::bake(&s3, A, DUE).unwrap());
+    library::refresh(&s3, &mut cache).unwrap();
+    let r = row(&cache);
+    assert_eq!((r.duration_sec, r.edited_sec, r.poster_file.as_deref()), (Some(38.0), None, Some("edit-1-poster.jpg")));
+    assert_eq!(r.poster, Some(format!("rec/{A}/edit-1-poster.jpg")));
+}
