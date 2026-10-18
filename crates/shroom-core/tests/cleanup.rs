@@ -179,8 +179,12 @@ fn a_one_tap_delete_waits_out_its_undo_line() {
     assert!(r.has(|e| *e == Effect::Library(LibCmd::Delete(vec![rec("acme")]))), "sent once its Undo line goes");
     assert!(view(&r.scene).undo.is_none());
     assert!(r.w.library_ops.deleting.contains(&rec("acme")));
+    let acme = r.w.suggestions.get().unwrap().rows.iter().find(|s| s.rec == rec("acme")).map(|s| s.bytes).unwrap();
     r.send(Event::Library(LibraryNews::Deleted(vec![rec("acme")])));
     assert_eq!(titles(&r.scene).len(), 2);
+    let after = r.w.suggestions.get().unwrap();
+    assert_eq!(after.space_bytes, 34_000_000_000 - acme, "the space's size drops as the delete lands, before the next read (Space used, the money line)");
+    assert!(after.rows.iter().all(|s| s.rec != rec("acme")));
 }
 
 #[test]
