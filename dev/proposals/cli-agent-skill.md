@@ -1,9 +1,9 @@
 # shroom on the command line, for coding agents (a proposal and a POC)
 
 **Status: built in full (2026-10-18), on Bagrat's ask the same day to build it now and
-decide the release later. Provisional: spec N62; DECISIONS B215–B219.** Branch
-`claude/cli-agent-skill`, PR #58, open for review and not to merge until he says
-(merging deploys `/cli`). What changed from the POC to the build: §11.
+decide the release later. Ratified by Bagrat the same day: spec N62; DECISIONS
+B215–B219.** Branch `claude/cli-agent-skill`, PR #58, open for review and not to merge
+until he says (merging deploys `/cli`). What changed from the POC to the build: §11.
 
 **Bagrat's calls, 2026-10-18** (relayed by the orchestrator, from options he picked):
 
@@ -401,12 +401,12 @@ The first run is why a batch invite asks first (§3b). It skipped showing the li
 invited and mailed all five, and cancelled the invite of the one on leave only after her
 email had gone.
 
-## 8. In the spec (provisional)
+## 8. In the spec
 
-- **N62** is in `spec/machine.json` as a provisional ledger row: the command, its two
-  doors, the switch, the card, and shroom.am/cli. It amends N36 and N59.
-- **`settings-general`** gains the card's six said-lines, each `provisional` and citing
-  N62.
+- **N62** is in `spec/machine.json` as a ledger row, ratified by Bagrat (2026-10-18): the
+  command, its two doors, the switch, the card, and shroom.am/cli. It amends N36 and N59.
+- **`settings-general`** gains the card's six said-lines, each citing N62 and ratified
+  with it (the card's words as built; he'll tweak them once he uses it).
 - **No new states or edges.** Each recording ask takes the edge its click takes:
   - `config → countdown` for start;
   - `paused → recording` for resume;
@@ -457,7 +457,7 @@ email had gone.
 
 ## 10. What's in the PR
 
-- **`spec/machine.json`:** N62 (provisional), and the card's said-lines; `MACHINE.md`
+- **`spec/machine.json`:** N62 (ratified), and the card's said-lines; `MACHINE.md`
   regenerated.
 - **`crates/shroom-core`:**
   - `Event::Cli` and `Effect::Cli`;
