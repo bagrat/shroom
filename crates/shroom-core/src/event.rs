@@ -469,11 +469,30 @@ impl SettingsSpot {
 }
 
 /// What the `shroom` command may ask of the recording — each one exactly what its click does
-/// in the popover or the tray (dev/proposals/cli-agent-skill.md §3).
+/// in the popover or the tray (dev/proposals/cli-agent-skill.md §3) — and how a start goes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CliOp {
-    Start,
+    Start(StartAsk),
     Pause,
     Resume,
     Stop,
+}
+
+impl CliOp {
+    /// A start as the popover's: the count, and the label while it records.
+    pub const START: CliOp = CliOp::Start(StartAsk { countdown: true, label: true });
+}
+
+/// How the command's start goes (N62, B216; Bagrat, 2026-10-18): the count, unless
+/// `--no-countdown`; the agent label while the take records, unless `--no-label`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct StartAsk {
+    pub countdown: bool,
+    pub label: bool,
+}
+
+impl Default for StartAsk {
+    fn default() -> StartAsk {
+        StartAsk { countdown: true, label: true }
+    }
 }

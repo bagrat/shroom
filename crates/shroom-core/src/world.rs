@@ -49,6 +49,9 @@ pub struct World {
     /// (N56). In memory only, like the session; kept beside it, since it outlives the
     /// popover and the session holds at most twelve intents.
     pub display_pick: DisplayPick,
+    /// The take the `shroom` command started with its label (N62, B216), by the instant it
+    /// opened: the label shows for that take only. In memory only, beside the session.
+    pub agent: Option<Mono>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -1355,6 +1358,7 @@ impl World {
             once: Once::default(),
             session: Session::default(),
             display_pick: DisplayPick::default(),
+            agent: None,
         }
     }
 }

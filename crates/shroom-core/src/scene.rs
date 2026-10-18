@@ -1176,6 +1176,15 @@ pub struct Countdown {
     pub line: String,
 }
 
+/// The agent label (N62, B216; Bagrat, 2026-10-18): top right of the display a take the
+/// `shroom` command started records, while it records — left out of the take, as the count
+/// is, and passing every click through.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct AgentLabel {
+    pub display: u32,
+    pub line: String,
+}
+
 /// The camera bubble (N22): round, mirrored, on the display being recorded —
 /// recorded as-is (never excluded from capture), never key (law 5), draggable.
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -1213,6 +1222,8 @@ pub struct Scene {
     pub countdown: Option<Countdown>,
     pub bubble: Option<Bubble>,
     pub preview: Option<Preview>,
+    /// The agent label (N62, B216): while a take the `shroom` command started records.
+    pub label: Option<AgentLabel>,
     /// The Dock icon shows while a window of shroom's is open — the setup window, the
     /// Library or Settings — never for a popover alone (law 6, SM:133).
     pub dock: bool,

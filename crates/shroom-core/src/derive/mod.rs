@@ -48,7 +48,18 @@ pub fn derive(w: &World) -> Scene {
     // onboarding, the Library, Settings or Send feedback (DEVIATIONS #38's setup-only Dock
     // was rejected).
     let dock = onboarding.is_some() || library.is_some() || settings.is_some() || feedback.is_some();
-    Scene { tray: tray::derive(w), popover, onboarding, library, settings, feedback, countdown, bubble, preview, dock, next_wake: next_wake(w) }
+    let label = agent_label(w);
+    Scene { tray: tray::derive(w), popover, onboarding, library, settings, feedback, countdown, bubble, preview, label, dock, next_wake: next_wake(w) }
+}
+
+/// The agent label (N62, B216): on the display a take the command started records, while
+/// it records. Never over a count, never paused (it would say recording when nothing is),
+/// never for the camera only (it records no screen).
+fn agent_label(w: &World) -> Option<crate::scene::AgentLabel> {
+    let t = w.take.as_ref().filter(|t| w.agent == Some(t.opened))?;
+    let SourceId::Display(display) = t.source else { return None };
+    let recording = matches!(t.phase, crate::world::Phase::Starting | crate::world::Phase::Recording | crate::world::Phase::Resuming);
+    recording.then(|| crate::scene::AgentLabel { display, line: copy::agent_label_line() })
 }
 
 /// The update to offer now: downloaded, verified, a space to carry it (never before

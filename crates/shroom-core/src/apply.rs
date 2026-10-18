@@ -483,7 +483,9 @@ fn cli(w: &mut World, id: u64, op: crate::event::CliOp) -> Out {
     use crate::event::CliOp;
     let face = |w: &World| -> &'static str {
         match (w.session.arming.as_ref(), w.take.as_ref().map(|t| t.phase)) {
-            (Some(_), _) => "countdown",
+            (Some(a), _) if !a.fired => "countdown",
+            // The count's end fired (at once, without the count): capture is beginning.
+            (Some(_), _) => "recording",
             (_, Some(Phase::Paused(_) | Phase::Pausing(_))) => "paused",
             (_, Some(Phase::Finalizing(_))) => "stopping",
             (_, Some(_)) => "recording",
@@ -510,7 +512,7 @@ fn cli(w: &mut World, id: u64, op: crate::event::CliOp) -> Out {
     // The count, and the recorder starting after it: the take is on its way.
     let coming = w.session.arming.is_some() || matches!(phase, Some(Phase::Starting));
     let (mut fx, arm) = match op {
-        CliOp::Start => {
+        CliOp::Start(ask) => {
             if w.take_open() {
                 return refuse(w, "take_open");
             }
@@ -534,6 +536,20 @@ fn cli(w: &mut World, id: u64, op: crate::event::CliOp) -> Out {
             }
             if was.is_none() {
                 arm.edge = idle.then_some(("idle-ready", "countdown"));
+            }
+            let mut fx = fx;
+            // The take this start makes wears the label while it records (N62, B216).
+            if ask.label {
+                w.agent = w.session.arming.as_ref().map(|a| a.started);
+            }
+            // `--no-countdown`: the count's end, now. The tray goes from idle-ready to
+            // recording when capture begins (the machine's own edge, on the recorder's word).
+            if !ask.countdown {
+                if let Some(a) = w.session.arming.as_mut() {
+                    a.deadline = w.now;
+                }
+                fx.extend(fire(w));
+                arm.edge = None;
             }
             (fx, arm)
         }
@@ -3051,22 +3067,22 @@ fn failed(w: &mut World, op: Op, class: crate::world::FailClass) -> Out {
     (fx, Arm::named("failed"))
 }
 
+/// The count's end: capture starts on the source the count was for — at its deadline, or at
+/// once for the command's start without it (N62).
+fn fire(w: &mut World) -> Option<Effect> {
+    let a = w.session.arming.as_mut().filter(|a| !a.fired)?;
+    a.fired = true;
+    let source = a.source;
+    let camera = (source == SourceId::Camera).then(|| crate::derive::selected_camera(w).map(|c| c.uid.clone())).flatten();
+    Some(Effect::Recorder(RecCmd::Start { source, quality: w.prefs.quality, mic: crate::derive::popover_selected_mic(w), camera }))
+}
+
 fn tick(w: &mut World) -> Out {
     let now = w.now;
     let mut fx = Vec::new();
     // The countdown fires at its deadline.
-    if let Some(a) = w.session.arming.as_mut() {
-        if !a.fired && now >= a.deadline {
-            a.fired = true;
-            let source = a.source;
-            let camera = (source == SourceId::Camera).then(|| crate::derive::selected_camera(w).map(|c| c.uid.clone())).flatten();
-            fx.push(Effect::Recorder(RecCmd::Start {
-                source,
-                quality: w.prefs.quality,
-                mic: crate::derive::popover_selected_mic(w),
-                camera,
-            }));
-        }
+    if w.session.arming.as_ref().is_some_and(|a| !a.fired && now >= a.deadline) {
+        fx.extend(fire(w));
     }
     // "Copied" reverts.
     if w.session.copied.as_ref().is_some_and(|(_, at)| now >= at.plus(COPIED_MS)) {
