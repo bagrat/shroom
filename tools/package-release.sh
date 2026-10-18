@@ -29,10 +29,17 @@ out=${3:-dist/release/v$version}
 floor_arg=${4-}
 
 # The shapes the installer and the updater both accept (B29, B31): a version of one to
-# three whole numbers, and a whole-number macOS floor (the updater reads it as one).
-case "$version" in
-  ""|.*|*.|*..*|*.*.*.*|*[!0-9.]*) echo "version must look like 1.2.3"; exit 1 ;;
+# three whole numbers (an early build's with `-early.<n>`, B220), and a whole-number macOS
+# floor (the updater reads it as one).
+core=${version%-early.*}
+case "$core" in
+  ""|.*|*.|*..*|*.*.*.*|*[!0-9.]*) echo "version must look like 1.2.3 or 1.2.3-early.1"; exit 1 ;;
 esac
+case "${version#"$core"}" in
+  ""|-early.[1-9]|-early.[1-9]*[0-9]) ;;
+  *) echo "version must look like 1.2.3 or 1.2.3-early.1"; exit 1 ;;
+esac
+case "${version#"$core"-early.}" in *[!0-9]*) [ "$core" = "$version" ] || { echo "version must look like 1.2.3 or 1.2.3-early.1"; exit 1; } ;; esac
 [ -d "$app" ] || { echo "no app at $app"; exit 1; }
 # The bundle's own floor (LSMinimumSystemVersion), as the whole number the updater reads.
 bundle_floor=$(plutil -extract LSMinimumSystemVersion raw -o - "$app/Contents/Info.plist" 2>/dev/null || true)

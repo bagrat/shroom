@@ -196,6 +196,13 @@ fn an_older_page_is_refreshed_the_same_untouched_a_newer_never_lowered() {
         assert!(deployed || fake.with(|s| s.secrets.get("v").is_some_and(|n| n.contains(wire::PARENT_BINDING))), "live {live}");
     }
     assert!(wire::may_deploy_over("0.9.9", "0.10.0") && !wire::may_deploy_over("0.10.0", "0.9.9") && !wire::may_deploy_over("garbage", "0.1.0"));
+    // Early builds (B220): above the release before, below their own, each above the last.
+    let up = [("0.1.24", "0.1.25-early.1"), ("0.1.25-early.1", "0.1.25-early.2"), ("0.1.25-early.2", "0.1.25-early.10"), ("0.1.25-early.10", "0.1.25"), ("0.1.25", "0.1.26-early.1")];
+    for (older, newer) in up {
+        assert!(wire::may_deploy_over(older, newer), "{newer} goes over {older}");
+        assert!(!wire::may_deploy_over(newer, older), "{older} never goes over {newer}");
+    }
+    assert!(!wire::may_deploy_over("0.1.25-early.1", "0.1.25-early.1"), "the same page stays");
 }
 
 #[test]
