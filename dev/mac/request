@@ -1,4 +1,4 @@
-scenario=settings-link cli-socket settings
+scenario=cli-label take-left-out cli-socket
 hold=0
 ssh_key=
-asked=2026-10-18T14:39:05Z
+asked=2026-10-18T15:06:45Z
