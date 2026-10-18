@@ -1520,10 +1520,15 @@ fn editor(d: &Drive) -> Result<(), String> {
     crate::runtime::opened(&d.rt, &format!("shroom://edit/v.someoneelse.example.com/{}", here.0));
     let s = d.wait("another space's video", 10, |s| s.popover.as_ref().is_some_and(|p| p.status_line.as_deref() == Some(shroom_core::copy::edit_other_space().as_str())))?;
     d.check("… another space's video: the popover says why, without the keyboard (N69)", s.popover.as_ref().is_some_and(|p| !p.activates && p.away_closes), "");
-    std::thread::sleep(Duration::from_millis(600));
-    if let Err(e) = runner.shot(d, crate::runtime::presenter::POPOVER, "popover-edit-other-space") {
-        d.step(&format!("no picture of the popover: {e}"));
-    }
+    // Its panel is left out of every capture, so no picture of it can be taken: it's read as
+    // macOS has it instead — on screen, and not holding the keyboard (law 5).
+    let panel = || {
+        use crate::runtime::presenter::{Overlay, overlay_window};
+        let app = d.app.clone();
+        d.on_main(move || overlay_window(&app, Overlay::Popover).map(|w| (w.isVisible(), w.isKeyWindow()))).flatten()
+    };
+    let shown = poll(5, || panel().filter(|(visible, _)| *visible));
+    d.check("… on screen, the keyboard left where it was", shown == Some((true, false)), format!("{:?}", panel()));
     d.rt.post(Event::PopoverDismissed);
     let s = d.wait("put away", 10, |s| s.popover.is_none())?;
     d.check("… said once: put away, it's gone", s.popover.is_none(), "");
