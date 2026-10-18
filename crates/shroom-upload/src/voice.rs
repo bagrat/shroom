@@ -11,7 +11,7 @@ use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
-use shroom_edit::{Answer, Options, Question, Saved, Silence, Transcript, questions};
+use shroom_edit::{Answer, Levels, Options, Question, Saved, Silence, Transcript, questions};
 use shroom_storage::s3::{Client, S3Error};
 
 use crate::keys;
@@ -171,8 +171,15 @@ pub fn look_again_judged(s3: &Client, id: &str, dir: &Path, now_ms: u64, judge: 
 /// asks the judgment twice.
 #[derive(Default)]
 struct Memo {
-    silences: Option<Vec<Silence>>,
+    sound: Option<Sound>,
     answers: Option<Vec<Answer>>,
+}
+
+/// The take's quiet and its loudness, as the planner reads them.
+#[derive(Clone)]
+struct Sound {
+    silences: Vec<Silence>,
+    levels: Option<Levels>,
 }
 
 /// A take whose words never came in the time it was looked for: never looked for again.
@@ -205,8 +212,11 @@ fn look(s3: &Client, id: &str, dir: &Path, now: u64, memo: &mut Memo, judge: Jud
     if h.clock.is_some() {
         return Some(Mark::Skipped { at: now, why: "its words are on a clock a bake replaced".into() });
     }
-    let silences = memo.silences.get_or_insert_with(|| silences(dir)).clone();
-    let t = Transcript::heard(h.duration, &h.words, silences);
+    let sound = memo.sound.get_or_insert_with(|| sound(dir)).clone();
+    let mut t = Transcript::heard(h.duration, &h.words, sound.silences);
+    if let Some(levels) = sound.levels {
+        t = t.with_levels(levels);
+    }
     let answers = memo.answers.get_or_insert_with(|| {
         questions(&t, Options::default()).iter().filter_map(|q| judge(q).map(|scores| Answer { cue: q.cue, scores })).collect()
     });
@@ -217,11 +227,15 @@ fn look(s3: &Client, id: &str, dir: &Path, now: u64, memo: &mut Memo, judge: Jud
     }
 }
 
-/// The quiet in the take's own sound (its single-file copy), or none known.
-fn silences(dir: &Path) -> Vec<Silence> {
-    shroom_encode::quiet::silences(&dir.join(shroom_encode::files::PREVIEW))
-        .map(|q| q.into_iter().map(|(start, end)| Silence { start, end }).collect())
-        .unwrap_or_default()
+/// The quiet and the loudness of the take's own sound (its single-file copy), or none known.
+fn sound(dir: &Path) -> Sound {
+    match shroom_encode::quiet::read(&dir.join(shroom_encode::files::PREVIEW)) {
+        Ok(q) => Sound {
+            silences: q.silences.into_iter().map(|(start, end)| Silence { start, end }).collect(),
+            levels: (!q.db.is_empty()).then(|| Levels { step: shroom_encode::quiet::STEP, db: q.db }),
+        },
+        Err(_) => Sound { silences: Vec::new(), levels: None },
+    }
 }
 
 /// What landing a take's cues came to.
