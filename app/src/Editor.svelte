@@ -42,11 +42,15 @@
 
   const take = (s: unknown) => {
     if (!isEditor(s)) return;
-    w = s;
     if (!s) {
+      // Put away: the window is only hidden, so the video stops and is let go of here, or
+      // it would go on playing behind it.
+      unload();
+      w = null;
       lastMedia = "";
       return;
     }
+    w = s;
     // A video that has just become ready: a new open, starting at the top.
     if (s.body.media.state === "ready" && lastMedia !== "ready") {
       opened += 1;
@@ -115,7 +119,29 @@
     });
   });
 
+  // Done stops the preview: once the edit can't be changed (saving, the final video being
+  // made, the question of the original, a save the space turned down), what was playing
+  // pauses. Play pressed after that is the person's own.
+  let wasEditable = false;
+  $effect(() => {
+    const editable = !!b?.editable;
+    untrack(() => {
+      if (wasEditable && !editable) video?.pause();
+      wasEditable = editable;
+    });
+  });
+
   // ── playing ──
+
+  /** The window is put away: the preview stops and lets go of its file. */
+  function unload() {
+    cancelAnimationFrame(raf);
+    raf = 0;
+    if (!video) return;
+    video.pause();
+    video.removeAttribute("src");
+    video.load();
+  }
 
   function put(t: number) {
     if (video) video.currentTime = t;
