@@ -921,6 +921,8 @@ the take's maker or an owner-class caller (§2.4): else 403 `not-yours`; no ledg
 meta → 404 `absent`; a tombstone → 410 `deleted`; a bad body → 400. One step a call:
 - `{"ai":true,"step":"heard","more":bool}` — a window of ten pieces heard (the last, partial,
   once done); `more`: another step can be taken now;
+- `{"ai":true,"step":"titled","more":bool}` — the early title (D:B205 f): once the first minute
+  is heard while the take records, a title from it alone (tried once a take);
 - `{"ai":true,"step":"named","more":false}` — the done take named;
 - `{"ai":true,"step":"idle","more":false}` — nothing to do yet;
 - `{"ai":true,"later":"daily"|"busy"|"error"|"running"}` — it waits: the free day used up
@@ -938,16 +940,19 @@ done, windows, clock, words:[[text, start, end],…], tail}`: seconds on the rec
 window's last 1.5 s in `tail` until the next window hears it. The mark
 `.shroom/ai/later/<id>` = `{v:1, since, after, done, through, rename, reason, tries}`. The
 record: `title` (only while not `titled`), `named` = `{by:"ai", model, at, rev, clock,
-words, title, chapters:[[start, title],…], language}`, `captions` = `{language}`, and
-`naming` = `{later:"daily", at}` while the free day is used up.
+words, title, chapters:[[start, title],…], language}` (with `early: true` and no chapters while
+it's the early title, until the full name at done replaces it), `captions` = `{language}`, and
+`naming` = `{later:"daily", at}` while the free day is used up. The transcript's `early: true`
+says the early title was tried.
 
 **Bakes.** Whoever bakes an edit (N63: the editor's copy becomes the video, `meta.edits`
 dropped) appends to the record's `bakedFrom` in the same write: `[{at, keep:[[start, end],…]},
 …]`, one entry per bake in order, `at` a string naming the bake and `keep` the ranges kept, in
-seconds on the clock before it (a lone `{at, keep}` reads as a list of one). It's the only way
-the words, chapters and captions cross a bake: each is carried through the bakes made since
-its own `clock` (a word goes when most of it went), and the transcript is rewritten on the
-new clock once, after a view. A baked record without it keeps its words on the old clock.
+seconds on the clock before it (a lone `{at, keep}` reads as a list of one; the editor keeps
+the last 20). It's the only way the words, chapters and captions cross a bake: each is carried
+through the bakes made since its own `clock` (a word goes when most of it went), and the
+transcript is rewritten on the new clock once, after a view. A baked record without it keeps
+its words on the old clock; words or chapters on a clock the list no longer holds aren't shown.
 
 **After a view** (in `waitUntil`): an edit saved since the naming (`named.rev` ≠ the bakes
 and `meta.edits.rev`) that removes at least a fifth of the words it saw, or a whole
@@ -959,7 +964,7 @@ own copy plays), otherwise on the recording's. 404 without captions, for a delet
 
 **`GET /_shroom/named/<id>`** — the owner page's ask while a name is on its way: the maker's
 or an owner-class browser (§3.5) only, else 403: `{"named":"<title or empty>","titled":bool,
-"later":bool}`.
+"later":bool,"early":bool}`; the page asks on while `early`, until the full name replaces it.
 
 ---
 
