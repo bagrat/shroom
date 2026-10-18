@@ -4,7 +4,7 @@
 
 The machine: every state, edge, rule, said-line and law of shroom v1 — the spec (DECISIONS B133). Sessions edit it; MACHINE.md and the canvas's machine boards are generated from it.
 
-145 states · 299 edges · 23 rules · 600 said-lines · 16 laws · 73 ledger rows.
+145 states · 299 edges · 23 rules · 601 said-lines · 16 laws · 73 ledger rows.
 
 Status: **ratified** is Bagrat's; **provisional** is designed or built and awaits him (each cites its row: `#n` is a DEVIATIONS row of docs/DECISIONS.md, `Bn` a decision, `Nn`/`Un`/`Pn` a ledger row below). `SM:n` in older citations is a line of the retired spec text, kept in history/spec/UX-STATEMACHINE.md.
 
@@ -2123,7 +2123,7 @@ The Library window, thin by design (§5.6), built for two jobs: re-share an old 
 | “1 video” | line | provisional | one case the spec didn't print, so it varies by case — the copy table: The Library footer, one video · copy table |
 | “Aug 21” | line | provisional | one case the spec didn't print, so it varies by case — the copy table: The Library's dates · copy table |
 | “Aug 21 · 4:32” | line | provisional | one case the spec didn't print, so it varies by case — the copy table: The Library's dates · copy table |
-| “Six videos you've stopped watching take 11 GB.” | line | provisional | N68's line above the rows, when the suggestions hold at least one video and Suggest videos to clean up is on. The count and the size vary: the count is a word up to nine (Law 16), the size the suggestions' total. |
+| “Six videos you've stopped watching take 11 GB.” | line | provisional | N68's line above the rows, when the suggestions hold at least one video and Suggest videos to clean up is on. The count and the size vary: the count is a word up to nine (Law 16), the size the suggestions' total. One suggestion reads 'One video you've stopped watching takes 3.2 GB.' |
 | “Review…” | button | provisional | Opens Suggested to clean up (N68). |
 | “Not now” | tooltip | provisional | The ✕ at the line's end, named for VoiceOver. Hides the line until the suggestions change (N68). |
 
@@ -2818,7 +2818,8 @@ Suggested to clean up (N68): the Library's own view of the videos worth deleting
 | “Videos you've stopped watching that take real room. Deleting all six frees 11 GB — about 17¢ a month off your Cloudflare bill.” | line | provisional | Past the free 10 GB. The count, sizes and cents vary: the count is a word up to nine (Law 16). |
 | “Videos you've stopped watching that take real room. Deleting all six frees 5 GB. Your space is inside Cloudflare's free 10 GB, so this saves nothing yet.” | line | provisional | Inside the free 10 GB (B212). The count and size vary. |
 | “Videos you've stopped watching that take real room. Deleting all six frees 3 GB and brings your space back inside Cloudflare's free 10 GB.” | line | provisional | When deleting them all would take the space back under 10 GB (B212). The count and size vary. |
-| “Watched 4 times, the last 10 months ago” | line | provisional | A row's reason (B211); the counts and times vary. Counts are figures here: a row fact (Law 16). Shapes: 'Watched once, 5 months ago' · 'Watched twice, stopped early, 4 months ago' (most stopped in the first quarter) · 'Nobody has watched it'. |
+| “Videos you've stopped watching that take real room. Deleting all six frees 11 GB.” | line | provisional | On a member's Mac: the bill is the space owner's, so no money is said. The count and size vary. |
+| “Watched 4 times, the last 10 months ago” | line | provisional | A row's reason (B211); the counts and times vary. Counts are figures here: a row fact (Law 16). Shapes: 'Watched once, 5 months ago' · 'Watched twice, the last 2 months ago' · 'Watched twice, stopped early, the last 4 months ago' (most stopped in the first quarter) · 'Nobody has watched it'. Times: days under 60, months under 24, then years. |
 | “Nobody has watched it” | line | provisional | The reason when counting never saw a play. |
 | “Open page” | button | provisional |  |
 | “Keep” | button | provisional | Takes the video off the list for good. |

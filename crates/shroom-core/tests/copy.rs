@@ -42,6 +42,8 @@ const NOT_SAID: &[(&str, &str)] = &[
     ("row_meta", "a Library row's date · length, both parts"),
     ("filter_name", "the link-name guard: it returns the name typed, not a line"),
     ("invited_row", "composed: the row's label, a dash, and invited_fact's said-line"),
+    ("size", "a size inside a line (N68): “11 GB”, “780 MB”"),
+    ("money", "money inside a line (N68): “17¢”"),
 ];
 
 /// Every line copy.rs ships is a said-line of spec/machine.json (through the registry,
