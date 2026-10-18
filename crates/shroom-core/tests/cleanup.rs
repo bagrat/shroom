@@ -139,9 +139,9 @@ fn the_library_says_so_in_one_line_and_review_opens_the_view() {
     assert_eq!(v.title, "Suggested to clean up");
     assert_eq!(v.back.label, "‹ Library");
     assert_eq!(titles(&r.scene), ["Code walkthrough: billing service", "Customer call recap (Acme)", "Q3 roadmap walkthrough"], "the space's order: costliest per remaining play first");
-    assert_eq!(v.rows[0].meta, format!("{} · 3.2 GB · Watched 4 times, the last 10 months ago", shroom_core::copy::day(Wall(NOW - 380 * DAY), 0)));
-    assert!(v.rows[1].meta.ends_with("1.8 GB · Nobody has watched it"));
-    assert!(v.rows[2].meta.ends_with("1.3 GB · Watched 41 times, the last 4 months ago"));
+    assert_eq!(v.rows[0].meta, format!("{} · 3.2 GB · 5¢ a month · Watched 4 times, the last 10 months ago", shroom_core::copy::day(Wall(NOW - 380 * DAY), 0)));
+    assert!(v.rows[1].meta.ends_with("1.8 GB · 3¢ a month · Nobody has watched it"));
+    assert!(v.rows[2].meta.ends_with("1.3 GB · 2¢ a month · Watched 41 times, the last 4 months ago"));
     assert_eq!(v.intro.as_deref(), Some("These might be worth deleting: rarely watched lately, and taking real room. Deleting all three frees 6.3 GB — about 9¢ a month off your Cloudflare bill."));
     assert_eq!(v.foot.as_deref(), Some("Keep takes a video off this list for good. Plays are counted in your own Cloudflare account."));
     let all = v.delete_all.clone().unwrap();
@@ -253,10 +253,14 @@ fn the_money_line_is_honest_about_the_free_ten_gigabytes() {
     };
     let r = open(three(), 34_000_000_000);
     assert!(view(&r.scene).intro.as_deref().unwrap().ends_with("frees 6.3 GB — about 9¢ a month off your Cloudflare bill."));
+    let costs = |r: &Run| view(&r.scene).rows.iter().map(|row| row.meta.split(" · ").nth(2).unwrap_or_default().to_string()).collect::<Vec<_>>();
+    assert_eq!(costs(&r), ["5¢ a month", "3¢ a month", "2¢ a month"], "past the free 10 GB, each row its own cost: its size at the list price");
     let r = open(three(), 9_000_000_000);
     assert!(view(&r.scene).intro.as_deref().unwrap().ends_with("frees 6.3 GB. Your space is inside Cloudflare's free 10 GB, so this saves nothing yet."));
+    assert!(view(&r.scene).rows.iter().all(|row| !row.meta.contains("a month")), "inside the free 10 GB, no row has a cost");
     let r = open(three(), 12_000_000_000);
     assert!(view(&r.scene).intro.as_deref().unwrap().ends_with("frees 6.3 GB and brings your space back inside Cloudflare's free 10 GB."));
+    assert_eq!(costs(&r), ["5¢ a month", "3¢ a month", "2¢ a month"], "partly past: still the size at the list price");
     let r = open(vec![suggestion("billing", 3_200_000_000, 4, 300)], 34_000_000_000);
     assert_eq!(view(&r.scene).intro.as_deref(), Some("These might be worth deleting: rarely watched lately, and taking real room. Deleting it frees 3.2 GB — about 5¢ a month off your Cloudflare bill."));
     assert!(view(&r.scene).delete_all.is_none(), "one suggestion: its own Delete is enough");
@@ -266,6 +270,12 @@ fn the_money_line_is_honest_about_the_free_ten_gigabytes() {
         w
     });
     assert_eq!(view(&r.scene).intro.as_deref(), Some("These might be worth deleting: rarely watched lately, and taking real room. Deleting all three frees 6.3 GB."), "the bill is the owner's");
+    let r = Run::new({
+        let mut w = member(library(three(), 34_000_000_000));
+        w.session.fields.library.cleanup = true;
+        w
+    });
+    assert!(view(&r.scene).rows.iter().all(|row| !row.meta.contains("a month")), "a member's rows say no money either");
 }
 
 #[test]
