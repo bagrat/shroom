@@ -205,13 +205,16 @@ describe("hearing (B205 a, b)", () => {
     expect([...frames[0].header.slice(0, 4)]).toEqual([0xff, 0xf1, 0x4c, 0x40]);
   });
 
-  let ffmpeg = true;
-  try { execFileSync("ffmpeg", ["-version"], { stdio: "ignore" }); } catch { ffmpeg = false; }
+  let ffmpeg = true, x264 = false;
+  try { x264 = /\blibx264\b/.test(execFileSync("ffmpeg", ["-hide_banner", "-encoders"], { encoding: "utf8" })); } catch { ffmpeg = false; }
   it.skipIf(!ffmpeg)("reads a take the way shroom's encoder writes it (ffmpeg, HLS fMP4, AAC mono)", async () => {
     const dir = mkdtempSync(join(tmpdir(), "shroom-ai-"));
-    // crates/shroom-encode/src/args.rs's arguments, a test picture and a tone in place of the screen and the microphone.
+    // crates/shroom-encode/src/args.rs's arguments, a test picture and a tone in place of the screen and the microphone. The
+    // picture's codec is beside the point (only its track is): H.264 where this ffmpeg has x264, else ffmpeg's own MPEG-4, as
+    // the LGPL build CI tests with has no x264 and a hosted Mac's VideoToolbox may not encode.
+    const picture = x264 ? ["-c:v", "libx264", "-preset", "ultrafast"] : ["-c:v", "mpeg4", "-q:v", "5"];
     execFileSync("ffmpeg", ["-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc2=size=640x360:rate=30", "-f", "lavfi", "-i", "sine=frequency=330:sample_rate=48000", "-t", "20",
-      "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p", "-g", "60", "-c:a", "aac", "-b:a", "128k", "-ac", "1",
+      ...picture, "-pix_fmt", "yuv420p", "-g", "60", "-c:a", "aac", "-b:a", "128k", "-ac", "1",
       "-f", "hls", "-hls_segment_type", "fmp4", "-hls_time", "6", "-hls_playlist_type", "vod", "-hls_fmp4_init_filename", "init.mp4",
       "-hls_segment_filename", join(dir, "seg_%05d.m4s"), join(dir, "stream.m3u8")]);
     const tracks = mp4Tracks(new Uint8Array(readFileSync(join(dir, "init.mp4"))));
@@ -467,12 +470,15 @@ describe("the early title (B205 f)", () => {
 });
 
 describe("the free day (B207)", () => {
-  const usedUp = () => { throw new Error("3036: You have used up your daily free allocation of 10,000 neurons. Please upgrade to Cloudflare's Workers Paid plan if you would like to continue usage."); };
+  // What Workers AI throws on an account at its free day's cap (2026-10-18, word for word).
+  const usedUp = () => { throw new Error("AiError: 4006: you have used up your daily free allocation of 10,000 neurons, please upgrade to Cloudflare's Workers Paid plan if you would like to continue usage."); };
 
   it("knows a used-up day from a busy model and from anything else", () => {
     expect(aiRefusal(new Error("AiError: 3036: You have used up your daily free allocation of 10,000 neurons."))).toBe("daily");
     // The code an account at its cap answered with on 2026-10-18 (the voice-cut tester's), however it's worded.
     expect(aiRefusal(new Error("AiError: 4006: Account limited"))).toBe("daily");
+    // As a capped account answered on 2026-10-18 (the test account, on the free plan then), word for word.
+    expect(aiRefusal(new Error("AiError: 4006: you have used up your daily free allocation of 10,000 neurons, please upgrade to Cloudflare's Workers Paid plan if you would like to continue usage."))).toBe("daily");
     expect(aiRefusal(new Error("3040: Capacity temporarily exceeded, please try again."))).toBe("busy");
     expect(aiRefusal(new Error("3007: Request timeout"))).toBe("busy");
     expect(aiRefusal(new Error("5007: No such model"))).toBe("error");
