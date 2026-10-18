@@ -311,19 +311,20 @@ fn rows() -> Vec<(&'static str, World)> {
     }));
     rows.push(("ai-turning-on", {
         let mut w = ai_offered();
-        w.session.ai_turning_on = true;
+        w.space.ai_turn = Some(AiTurn::Turning);
         w.inflight.ops.insert(Op::Ai, Mono(990).plus(Op::Ai.deadline_ms()));
         w
     }));
     rows.push(("ai-offer-failed", {
         let mut w = ai_offered();
+        w.space.ai_turn = Some(AiTurn::Turning);
         w.inflight.failures.insert(Op::Ai, Failure { at: Mono(990), class: FailClass::Transport, tries: 1 });
         w
     }));
     rows.push(("ai-on", {
         let mut w = with_popover(ready());
         w.space.ai = Some(true);
-        w.session.ai_on_news = true;
+        w.space.ai_turn = Some(AiTurn::On);
         w
     }));
     rows.push(("library-no-match", {
@@ -638,8 +639,8 @@ fn every_region5_state_derives_with_its_return_default_and_its_lines() {
                 failures.push(format!("{id}: Esc is {:?}, want {want_esc:?}", scene.esc(surface)));
             }
         } else if id == "ai-confirm" {
-            // The popover's question (N66): Turn on is Return, Back is Esc.
-            if scene.ret(surface) != Some(Action::AiOn) || scene.esc(surface) != Some(Action::Back) {
+            // The popover's question (N66): a click, not Return (as every question there); Esc is Back.
+            if scene.ret(surface).is_some() || scene.esc(surface) != Some(Action::Back) {
                 failures.push(format!("{id}: Return {:?}, Esc {:?}", scene.ret(surface), scene.esc(surface)));
             }
         } else if !structural {
@@ -2122,14 +2123,14 @@ fn the_popover_offers_ai_on_the_setup_mac() {
     assert_eq!(labels(&b), [(shroom_core::copy::turn_on_ask(), Style::Filled), (shroom_core::copy::not_now(), Style::Link)]);
     assert_eq!(r.scene.popover.as_ref().unwrap().ret, Some(Action::Start), "a banner's own button is never Return (law 8)");
 
-    // Turn on… asks first: what it does and costs, Turn on the default, Back and Esc out.
+    // Turn on… asks first: what it does and costs; Turn on is a click, Back and Esc go out.
     r.act(Action::AiAsk);
     let p = r.scene.popover.clone().unwrap();
     assert_eq!(p.id, "ai-confirm");
     let shroom_core::scene::PopoverBody::Question(q) = &p.body else { panic!("a question") };
     assert_eq!((q.title.as_str(), q.line.as_str()), (shroom_core::copy::ai_confirm_title().as_str(), shroom_core::copy::ai_cost().as_str()));
     assert_eq!(q.buttons.iter().map(|b| b.label.clone()).collect::<Vec<_>>(), [shroom_core::copy::back(), shroom_core::copy::turn_on()]);
-    assert_eq!((p.ret, p.esc), (Some(Action::AiOn), Some(Action::Back)));
+    assert_eq!((p.ret, p.esc), (None, Some(Action::Back)));
     assert!(!r.has(|e| matches!(e, Effect::Cloud(CloudCmd::SetAi(_)))), "asking costs nothing");
     r.act(Action::Back);
     assert_eq!(banner(&r).map(|b| b.id), Some("ai-offer"), "back: the banner stays");
@@ -2203,6 +2204,30 @@ fn not_now_hides_the_ai_banner_until_five_more_recordings_then_for_good() {
     let mut w = ai_offered();
     w.once.ai_banner.done = true;
     assert!(!due(&w));
+}
+
+/// N66, law 12: a Turn on that didn't go through is tried again quietly — ten minutes, then
+/// longer — even with a take running meanwhile, until it goes through; Not now ends it.
+#[test]
+fn a_turn_on_that_didnt_go_through_is_tried_again_until_not_now() {
+    let mut r = Run::new(ai_offered());
+    r.act(Action::AiAsk).act(Action::AiOn);
+    r.send(Event::Failed { op: Op::Ai, class: FailClass::Transport });
+    let at = r.w.inflight.failures[&Op::Ai].ai_retry_at();
+    r.tick_to(at.0 - 1);
+    assert!(!r.has(|e| matches!(e, Effect::Cloud(CloudCmd::SetAi(_)))), "not before its time");
+    r.tick_to(at.0);
+    assert!(r.has(|e| *e == Effect::Cloud(CloudCmd::SetAi(true))), "tried again");
+    assert_eq!(r.scene.popover.as_ref().and_then(|p| p.banner.as_ref()).map(|b| b.id), Some("ai-turning-on"));
+    r.send(Event::Cloud(CloudNews::AiSet(true)));
+    assert_eq!(status(&r.scene), Some(shroom_core::copy::ai_on_said()), "and when it goes through, it's said");
+
+    let mut r = Run::new(ai_offered());
+    r.act(Action::AiAsk).act(Action::AiOn);
+    r.send(Event::Failed { op: Op::Ai, class: FailClass::Refused });
+    r.act(Action::AiNotNow);
+    r.tick_to(10 * 3_600_000);
+    assert!(!r.has(|e| matches!(e, Effect::Cloud(CloudCmd::SetAi(_)))), "Not now: no more tries");
 }
 
 /// N66: the banner sits under every other banner, and never mid-take or while the space's
