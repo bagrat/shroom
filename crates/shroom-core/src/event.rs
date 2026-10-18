@@ -302,6 +302,12 @@ pub enum LibraryNews {
     Deleted(Vec<RecId>),
     /// The token Mac's cleanup sweep answered (DECISIONS B91) — counts only, for the log.
     Cleaned { under_tombstones: u32, orphans: u32, keys: u32 },
+    /// What the space says is worth deleting, and whether it counts plays (N68).
+    Suggested(crate::world::Suggestions),
+    /// A record's `keep` landed (N68).
+    Kept(RecId),
+    /// The space's play-count switch answered: where it stands now (N68).
+    Plays(bool),
 }
 
 #[derive(Debug, Clone, PartialEq)]

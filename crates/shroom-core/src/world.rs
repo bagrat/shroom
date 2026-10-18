@@ -34,6 +34,8 @@ pub struct World {
     pub library: Fact<Arc<Vec<LibraryRow>>>,
     /// The Library's writes under way, and when its last refresh answered.
     pub library_ops: LibraryOps,
+    /// What the space says is worth deleting, and whether it counts plays (N68).
+    pub suggestions: Fact<Suggestions>,
     /// What the background update check found, and how applying it went (N37).
     pub update: Updates,
     /// Region 6: the invite, this Mac's standing in its space, the roster.
@@ -599,6 +601,34 @@ pub struct LibraryOps {
     /// When the token Mac's cleanup sweep last answered (DECISIONS B91): bytes under a
     /// tombstone, bytes no Mac can still finish, and spent or expired page keys reaped.
     pub cleaned: Option<Mono>,
+    /// Keeps under way (N68): the record's `keep`, so the suggestion leaves at once.
+    pub keeping: BTreeSet<RecId>,
+    /// The space's play-count switch, asked and not yet answered: what was asked (N68).
+    pub plays: Option<bool>,
+}
+
+/// What the space's Worker says about its videos' plays (N68, `POST /cleanup` paged to its
+/// end, scope by role) — facts only; the score is the Worker's.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct Suggestions {
+    /// Whether the space counts plays (its switch, owner-class's).
+    pub counting: bool,
+    /// The bytes of every live video in this Mac's scope: the whole space on owner-class Macs.
+    pub space_bytes: u64,
+    /// The videos worth deleting, costliest per remaining play first.
+    pub rows: Vec<Suggestion>,
+}
+
+/// One video worth deleting, and the facts its reason reads.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Suggestion {
+    pub rec: RecId,
+    pub bytes: u64,
+    pub plays: u32,
+    /// Days nobody has played it (since its making, or since counting began, if never).
+    pub quiet_days: u32,
+    /// Most of its plays stopped in the first quarter.
+    pub stopped_early: bool,
 }
 
 /// A Library write the space confirmed.
@@ -606,6 +636,8 @@ pub struct LibraryOps {
 pub enum Landed {
     Deleted,
     Renamed(String),
+    /// Kept (N68): off the suggestions for good.
+    Kept,
 }
 
 // ── Region 6: members (N28–N34) ──
@@ -882,6 +914,12 @@ pub enum Op {
     Refresh,
     /// The token Mac's cleanup sweep over its own S3 pair (DECISIONS B91).
     Cleanup,
+    /// What the space says is worth deleting, read to its end (N68, `POST /cleanup`).
+    Suggest,
+    /// A record's `keep` written (N68).
+    Keep,
+    /// The space's play-count switch (N68, `POST /plays`).
+    Plays,
 }
 
 impl Op {
@@ -895,7 +933,7 @@ impl Op {
             Op::OpenPage | Op::Upload | Op::Validate | Op::SaveToken | Op::Sweep | Op::Claim => 60_000,
             Op::Wire | Op::Refresh => 180_000,
             Op::Relaunch => 10_000,
-            Op::LibRefresh | Op::Rename | Op::Delete => 60_000,
+            Op::LibRefresh | Op::Rename | Op::Delete | Op::Suggest | Op::Keep | Op::Plays => 60_000,
             Op::LibCache => 5_000,
             Op::UpdateCheck => 10_000,
             Op::UpdateDownload => 1_800_000,
@@ -966,6 +1004,20 @@ pub struct Prefs {
     /// The Settings tab last used; `None` = never opened → General (N36).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub settings_tab: Option<SettingsTab>,
+    /// Suggest videos to clean up (N68): on unless turned off here.
+    #[serde(default = "yes", skip_serializing_if = "is_true")]
+    pub suggest_cleanup: bool,
+    /// The suggestions whose line ✕ put away, until they change (N68): their ids, sorted.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub cleanup_dismissed: Vec<String>,
+}
+
+fn yes() -> bool {
+    true
+}
+
+fn is_true(b: &bool) -> bool {
+    *b
 }
 
 impl Default for Prefs {
@@ -980,6 +1032,8 @@ impl Default for Prefs {
             bubble_at: None,
             setup_chosen: false,
             settings_tab: None,
+            suggest_cleanup: true,
+            cleanup_dismissed: Vec::new(),
         }
     }
 }
@@ -1218,6 +1272,11 @@ pub struct LibraryFields {
     pub title_edits: u32,
     /// *Mine · Everyone* (owner-class Macs, once someone else records here). Mine first.
     pub scope: LibraryScope,
+    /// Suggested to clean up is open in place of the list (N68).
+    pub cleanup: bool,
+    /// A suggestion deleted with one tap, and when: its Undo line shows until the delete
+    /// is sent (N68, `UNDO_MS`).
+    pub undo: Option<(RecId, Mono)>,
 }
 
 /// In memory only, never persisted (law 1). At most 12 fields (a fitness test counts).
@@ -1336,6 +1395,7 @@ impl World {
             removed: Vec::new(),
             library: Fact::Unknown,
             library_ops: LibraryOps::default(),
+            suggestions: Fact::Unknown,
             update: Updates::default(),
             members: Members::default(),
             inflight: Inflight::default(),

@@ -190,6 +190,23 @@ pub enum Action {
     SetMark(bool),
     /// The Library's *Mine · Everyone*.
     SetScope(LibraryScope),
+    // ── Suggested to clean up (N68) ──
+    /// The suggestion line's Review…: the view opens in place of the list.
+    ReviewCleanup,
+    /// The suggestion line's ✕: put away until the suggestions change.
+    DismissCleanup,
+    /// Keep on a suggestion: off the list for good (the record's `keep`).
+    KeepRow(RecId),
+    /// Delete on a suggestion: one tap, its Undo line first.
+    DeleteSuggested(RecId),
+    /// The Undo line's Undo.
+    UndoDelete,
+    /// Delete all…: the several-videos sheet, over every suggestion shown.
+    DeleteAllSuggested,
+    /// Settings · General's Count plays (the space's switch, owner-class).
+    SetPlays(bool),
+    /// Settings · General's Suggest videos to clean up (this Mac's).
+    SetSuggestCleanup(bool),
 }
 
 /// A Members row a Remove… is on.
@@ -824,6 +841,56 @@ pub struct LibraryBody {
     /// The count only.
     pub footer: Option<String>,
     pub sheet: Option<Sheet>,
+    /// N68's line above the rows: the videos worth deleting, Review… and ✕.
+    pub cleanup_line: Option<CleanupLine>,
+    /// Suggested to clean up, in place of the list (N68).
+    pub cleanup: Option<CleanupBody>,
+}
+
+/// The Library's line about the videos worth deleting (N68).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct CleanupLine {
+    pub line: String,
+    pub review: Button,
+    /// The ✕ (“Not now”, its name for VoiceOver).
+    pub dismiss: Button,
+}
+
+/// Suggested to clean up (N68): the line on what deleting them all frees and saves, the
+/// rows, and the doors under them.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct CleanupBody {
+    pub title: String,
+    /// “‹ Library”.
+    pub back: Button,
+    pub intro: Option<String>,
+    pub rows: Vec<CleanupRowView>,
+    /// Once the last suggestion is kept or deleted.
+    pub empty: Option<String>,
+    pub foot: Option<String>,
+    /// “Delete all six…”, red text.
+    pub delete_all: Option<Button>,
+    /// A one-tap delete waiting to be sent: its line and Undo.
+    pub undo: Option<UndoLine>,
+}
+
+/// One suggestion: the poster, the title, then when it was made · its size · why.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct CleanupRowView {
+    pub key: String,
+    pub title: Option<String>,
+    pub meta: String,
+    /// Where its poster is, as `LibraryRowView::poster`.
+    pub poster: Option<String>,
+    /// Open page, Keep, Delete (red text).
+    pub buttons: Vec<Button>,
+}
+
+/// The Undo line after a one-tap delete.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct UndoLine {
+    pub line: String,
+    pub undo: Button,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -844,6 +911,25 @@ pub struct GeneralBody {
     pub help_links: Vec<Button>,
     /// “Uninstall shroom…”, quiet text at the tab's foot (B135).
     pub uninstall: Button,
+    /// Your videos (N68): Count plays, Suggest videos to clean up, Space used.
+    pub videos: Option<VideosGroup>,
+}
+
+/// Settings · General's group Your videos (N68).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct VideosGroup {
+    pub heading: String,
+    /// The space's switch: owner-class Macs change it; elsewhere it shows greyed.
+    pub count: Toggle,
+    pub count_hint: String,
+    /// The switch didn't go through: it says so until it does (law 12).
+    pub count_note: Option<String>,
+    /// This Mac's.
+    pub suggest: Toggle,
+    pub suggest_hint: String,
+    pub used_label: String,
+    /// The space's size and what it costs — owner-class Macs, once the space has said.
+    pub used: Option<String>,
 }
 
 /// The Report a problem sheet's form, between its line and its buttons (B180).
@@ -994,7 +1080,16 @@ impl Window<LibraryBody> {
         if let Some(s) = &self.body.sheet {
             return s.buttons().collect();
         }
-        self.body.rows.iter().flat_map(|r| r.buttons.iter().chain(&r.hover).chain(&r.menu)).collect()
+        // Suggested to clean up stands in place of the list (N68).
+        if let Some(c) = &self.body.cleanup {
+            return std::iter::once(&c.back)
+                .chain(c.rows.iter().flat_map(|r| &r.buttons))
+                .chain(&c.delete_all)
+                .chain(c.undo.as_ref().map(|u| &u.undo))
+                .collect();
+        }
+        let line = self.body.cleanup_line.iter().flat_map(|l| [&l.review, &l.dismiss]);
+        self.body.rows.iter().flat_map(|r| r.buttons.iter().chain(&r.hover).chain(&r.menu)).chain(line).collect()
     }
 
     pub fn offers(&self, action: &Action) -> bool {
@@ -1083,7 +1178,10 @@ impl Window<SettingsBody> {
             return true;
         }
         match &self.body.pane {
-            SettingsPane::General(g) => g.login.enabled && &g.login.action == action,
+            SettingsPane::General(g) => {
+                let toggles = std::iter::once(&g.login).chain(g.videos.iter().flat_map(|v| [&v.count, &v.suggest]));
+                toggles.into_iter().any(|t| t.enabled && &t.action == action)
+            }
             SettingsPane::Space(sp) => sp.mark.as_ref().is_some_and(|t| t.enabled && &t.action == action),
             // Esc in the name being changed puts it back (B158).
             SettingsPane::Members(m) => *action == Action::KeepFrom && matches!(m.from, FromName::Changing { .. }),

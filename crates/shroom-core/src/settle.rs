@@ -26,6 +26,7 @@ pub fn settle(w: &World) -> Vec<Effect> {
     due_space_wire(w, &mut fx);
     due_page_refresh(w, &mut fx);
     due_library(w, &mut fx);
+    due_suggestions(w, &mut fx);
     due_update_check(w, &mut fx);
     due_update_download(w, &mut fx);
     due_peek(w, &mut fx);
@@ -245,6 +246,25 @@ fn due_library(w: &World, fx: &mut Vec<Effect>) {
     }
     if w.library_ops.refreshed.is_none_or(|t| t < door.entered) {
         fx.push(Effect::Library(LibCmd::Refresh));
+    }
+}
+
+/// What the space says is worth deleting (N68), read on every entry of the Library (with
+/// Suggest videos to clean up on) and of Settings · General (Your videos reads the space's
+/// switch and its size from it) — when nothing has answered since the window was entered.
+/// Owner-class Macs read the whole space's; a member's Mac its own.
+fn due_suggestions(w: &World, fx: &mut Vec<Effect>) {
+    // An uninstall or a disconnect being asked asks nothing more of the space.
+    let leaving = matches!(w.session.confirm, Some(crate::world::Confirm::Uninstall { .. } | crate::world::Confirm::Exit));
+    if !w.provisioned() || w.online() == Some(false) || leaving || !idle(w, Op::Suggest) {
+        return;
+    }
+    let entered = |kind: WindowKind| w.session.windows.get(&kind).filter(|_| w.window_visible(kind)).map(|d| d.entered);
+    let library = entered(WindowKind::Library).filter(|_| w.prefs.suggest_cleanup);
+    let general = entered(WindowKind::Settings).filter(|_| settings_view::tab(w) == SettingsTab::General);
+    let Some(since) = library.into_iter().chain(general).max() else { return };
+    if w.suggestions.at().is_none_or(|t| t < since) {
+        fx.push(Effect::Library(LibCmd::Suggest { everyone: w.space.owner_class() }));
     }
 }
 

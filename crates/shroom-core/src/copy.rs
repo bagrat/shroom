@@ -357,6 +357,104 @@ pub fn row_meta(day: &str, length: Option<&str>) -> String {
     }
 }
 
+// ── Suggested to clean up (N68) ──
+
+/// A size as the suggestions say it: “11 GB”, “3.2 GB”, “780 MB” (compact facts, law 16).
+pub fn size(bytes: u64) -> String {
+    let mb = (bytes as f64 / 1e6).round() as u64;
+    if mb < 1000 {
+        return format!("{mb} MB");
+    }
+    let gb = bytes as f64 / 1e9;
+    if gb >= 9.95 {
+        return format!("{} GB", gb.round() as u64);
+    }
+    let tenths = (gb * 10.0).round() as u64;
+    if tenths % 10 == 0 { format!("{} GB", tenths / 10) } else { format!("{}.{} GB", tenths / 10, tenths % 10) }
+}
+
+/// Money a month, as the suggestions say it: “17¢”, “$1.35”.
+pub fn money(cents: u64) -> String {
+    if cents < 100 { format!("{cents}¢") } else { format!("${}.{:02}", cents / 100, cents % 100) }
+}
+
+/// The Library's line above the rows.
+pub fn cleanup_line(n: u64, bytes: u64) -> String {
+    if n == 1 {
+        format!("One video you've stopped watching takes {}.", size(bytes))
+    } else {
+        format!("{} videos you've stopped watching take {}.", count_word_cap(n), size(bytes))
+    }
+}
+pub fn review() -> String { "Review…".into() }
+pub fn not_now() -> String { "Not now".into() }
+pub fn cleanup_title() -> String { "Suggested to clean up".into() }
+pub fn cleanup_back() -> String { "‹ Library".into() }
+
+const CLEANUP_WHY: &str = "Videos you've stopped watching that take real room.";
+
+/// “Deleting all six” — or “Deleting it”, for one.
+fn deleting_all(n: u64) -> String {
+    if n == 1 { "Deleting it".into() } else { format!("Deleting all {}", count_word(n)) }
+}
+
+/// The suggestions' line, past the free 10 GB: what deleting them saves.
+pub fn cleanup_saves(n: u64, freed: u64, cents: u64) -> String {
+    format!("{CLEANUP_WHY} {} frees {} — about {} a month off your Cloudflare bill.", deleting_all(n), size(freed), money(cents))
+}
+/// Inside the free 10 GB: deleting saves nothing yet.
+pub fn cleanup_inside_free(n: u64, freed: u64) -> String {
+    format!("{CLEANUP_WHY} {} frees {}. Your space is inside Cloudflare's free 10 GB, so this saves nothing yet.", deleting_all(n), size(freed))
+}
+/// Deleting them all would bring the space back under the free 10 GB.
+pub fn cleanup_back_inside(n: u64, freed: u64) -> String {
+    format!("{CLEANUP_WHY} {} frees {} and brings your space back inside Cloudflare's free 10 GB.", deleting_all(n), size(freed))
+}
+/// On a member's Mac: the bill is the owner's.
+pub fn cleanup_frees(n: u64, freed: u64) -> String {
+    format!("{CLEANUP_WHY} {} frees {}.", deleting_all(n), size(freed))
+}
+
+/// How long ago, as a row fact: days under 60, months under 24, then years.
+fn ago(days: u32) -> String {
+    if days < 60 {
+        format!("{days} days")
+    } else if days < 730 {
+        format!("{} months", ((days as f64) / 30.0).round() as u32)
+    } else {
+        format!("{} years", days / 365)
+    }
+}
+
+/// Why a video is suggested (B211): its plays, and when the last was.
+pub fn cleanup_reason(plays: u32, quiet_days: u32, stopped_early: bool) -> String {
+    let early = if stopped_early { "stopped early, " } else { "" };
+    match plays {
+        0 => "Nobody has watched it".into(),
+        1 => format!("Watched once, {early}{} ago", ago(quiet_days)),
+        2 => format!("Watched twice, {early}the last {} ago", ago(quiet_days)),
+        n => format!("Watched {n} times, {early}the last {} ago", ago(quiet_days)),
+    }
+}
+pub fn keep() -> String { "Keep".into() }
+pub fn deleted_title(title: &str) -> String { format!("Deleted “{title}”.") }
+pub fn undo() -> String { "Undo".into() }
+pub fn delete_all(n: u64) -> String { format!("Delete all {}…", count_word(n)) }
+pub fn cleanup_foot() -> String { "Keep takes a video off this list for good. Plays are counted in your own Cloudflare account.".into() }
+pub fn cleanup_empty() -> String { "Nothing to clean up right now.".into() }
+
+pub fn your_videos() -> String { "Your videos".into() }
+pub fn count_plays() -> String { "Count plays".into() }
+pub fn count_plays_hint() -> String { "How often each video is played and how far, kept in your Cloudflare account. No cookies, nothing about who watched.".into() }
+/// The play-count switch didn't go through (law 12).
+pub fn plays_failed() -> String { "Couldn't change that just now — try again in a moment.".into() }
+pub fn suggest_cleanup() -> String { "Suggest videos to clean up".into() }
+pub fn suggest_cleanup_hint() -> String { "Videos you've stopped watching that take real room, in the Library.".into() }
+pub fn space_used() -> String { "Space used".into() }
+/// The space past the free 10 GB, and what it costs a month.
+pub fn space_used_past(bytes: u64, cents: u64) -> String { format!("{} — about {} a month past Cloudflare's free 10 GB", size(bytes), money(cents)) }
+pub fn space_used_free(bytes: u64) -> String { format!("{} — inside Cloudflare's free 10 GB", size(bytes)) }
+
 // ── Settings (N36) ──
 pub fn tab_general() -> String { "General".into() }
 pub fn tab_space() -> String { "Space".into() }
@@ -896,6 +994,25 @@ pub fn registry() -> Vec<(&'static str, String)> {
         ("library", discard_ellipsis()),
         ("library", row_removed()),
         ("library", video_count(14)),
+        ("library", cleanup_line(6, 11_000_000_000)),
+        ("library", review()),
+        ("library", not_now()),
+        ("library-cleanup", cleanup_title()),
+        ("library-cleanup", cleanup_back()),
+        ("library-cleanup", cleanup_saves(6, 11_000_000_000, 17)),
+        ("library-cleanup", cleanup_inside_free(6, 5_000_000_000)),
+        ("library-cleanup", cleanup_back_inside(6, 3_000_000_000)),
+        ("library-cleanup", cleanup_frees(6, 11_000_000_000)),
+        ("library-cleanup", cleanup_reason(4, 300, false)),
+        ("library-cleanup", cleanup_reason(0, 45, false)),
+        ("library-cleanup", open_page()),
+        ("library-cleanup", keep()),
+        ("library-cleanup", delete()),
+        ("library-cleanup", deleted_title("Old onboarding take")),
+        ("library-cleanup", undo()),
+        ("library-cleanup", delete_all(6)),
+        ("library-cleanup", cleanup_foot()),
+        ("library-cleanup", cleanup_empty()),
         ("library-empty", library_empty()),
         ("library-no-match", no_match("502")),
         ("library-offline", library_offline()),
@@ -909,6 +1026,15 @@ pub fn registry() -> Vec<(&'static str, String)> {
         ("settings", tab_general()),
         ("settings", tab_space()),
         ("settings-general", login_box()),
+        ("settings-general", your_videos()),
+        ("settings-general", count_plays()),
+        ("settings-general", count_plays_hint()),
+        ("settings-general", plays_failed()),
+        ("settings-general", suggest_cleanup()),
+        ("settings-general", suggest_cleanup_hint()),
+        ("settings-general", space_used()),
+        ("settings-general", space_used_past(34_000_000_000, 36)),
+        ("settings-general", space_used_free(8_200_000_000)),
         ("settings-general", updates()),
         ("settings-general", up_to_date("1.2.0")),
         ("settings-general", update_ready("1.3.0")),

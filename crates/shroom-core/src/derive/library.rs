@@ -4,8 +4,8 @@
 //! over titles. Offline, Copy link stays live; renaming and deleting grey out.
 
 use crate::copy;
-use crate::scene::{Action, Button, Choice, Gestures, LibraryBody, LibraryRowView, Sheet, Style, TextField, Tone, Window};
-use crate::world::{Blocked, Confirm, CopyTarget, Landed, LibraryRow, LibraryScope, RecId, Role, TakeDir, WindowKind, World};
+use crate::scene::{Action, Button, Choice, CleanupBody, CleanupLine, CleanupRowView, Gestures, LibraryBody, LibraryRowView, Sheet, Style, TextField, Tone, UndoLine, Window};
+use crate::world::{Blocked, Confirm, CopyTarget, Landed, LibraryRow, LibraryScope, RecId, Role, Suggestion, TakeDir, WindowKind, World};
 
 /// What a row is, by where it stands.
 #[derive(Debug, Clone, PartialEq)]
@@ -88,7 +88,9 @@ pub fn rows(w: &World) -> Vec<Row> {
     // Gone while its delete runs, and after it landed (a refresh begun before it doesn't
     // bring it back).
     let landed = &w.library_ops.landed;
-    let gone = |rec: &RecId| w.library_ops.deleting.contains(rec) || matches!(landed.get(rec), Some((Landed::Deleted, _)));
+    // A one-tap delete on its Undo line is gone from the list behind it too (N68).
+    let undoing = w.session.fields.library.undo.as_ref().map(|(r, _)| r);
+    let gone = |rec: &RecId| w.library_ops.deleting.contains(rec) || matches!(landed.get(rec), Some((Landed::Deleted, _))) || undoing == Some(rec);
     let title = |rec: &RecId, fallback: &str| {
         w.library_ops
             .renaming
@@ -186,6 +188,123 @@ pub fn deletable(w: &World, recs: &[RecId]) -> Vec<RecId> {
     rows(w).into_iter().filter(|r| r.published() && recs.contains(&r.rec)).map(|r| r.rec).collect()
 }
 
+// ── Suggested to clean up (N68) ──
+
+/// Cloudflare's free storage: past it, a GB-month costs `CENTS_PER_GB_MONTH`.
+const FREE_BYTES: u64 = 10_000_000_000;
+const CENTS_PER_GB_MONTH: f64 = 1.5;
+
+/// The suggestions this Mac shows, in the space's order: live videos in its scope, less
+/// those kept or deleted (under way or landed) and the one on its Undo line.
+pub fn suggested(w: &World) -> Vec<(Suggestion, Row)> {
+    let Some(s) = w.suggestions.get() else { return vec![] };
+    let landed = &w.library_ops.landed;
+    let shown = rows(w);
+    s.rows
+        .iter()
+        .filter(|x| !w.library_ops.keeping.contains(&x.rec) && !matches!(landed.get(&x.rec), Some((Landed::Kept, _))))
+        .filter_map(|x| shown.iter().find(|r| r.rec == x.rec && r.kind == Kind::Live).map(|r| (x.clone(), r.clone())))
+        .collect()
+}
+
+/// What deleting `freed` bytes saves a month, in cents, of a space of `total`: nothing
+/// inside the free 10 GB, and never under a cent once it's something.
+fn saving_cents(total: u64, freed: u64) -> u64 {
+    let billed = |b: u64| b.saturating_sub(FREE_BYTES);
+    let saved = billed(total) - billed(total.saturating_sub(freed));
+    if saved == 0 { 0 } else { ((saved as f64 / 1e9 * CENTS_PER_GB_MONTH).round() as u64).max(1) }
+}
+
+/// What the space costs a month past the free 10 GB, in cents (0 inside it).
+pub fn space_cents(total: u64) -> u64 {
+    saving_cents(total, total)
+}
+
+/// The line on what deleting them all frees, and what it saves (B212).
+fn intro(w: &World, list: &[(Suggestion, Row)]) -> Option<String> {
+    let n = list.len() as u64;
+    if n == 0 {
+        return None;
+    }
+    let freed: u64 = list.iter().map(|(s, _)| s.bytes).sum();
+    let total = w.suggestions.get().map_or(0, |s| s.space_bytes).max(freed);
+    Some(if w.space.role() == Some(Role::Member) {
+        copy::cleanup_frees(n, freed)
+    } else if total <= FREE_BYTES {
+        copy::cleanup_inside_free(n, freed)
+    } else if total - freed <= FREE_BYTES {
+        copy::cleanup_back_inside(n, freed)
+    } else {
+        copy::cleanup_saves(n, freed, saving_cents(total, freed))
+    })
+}
+
+/// The line above the rows: on with Suggest videos to clean up, while there's something to
+/// suggest that ✕ hasn't put away.
+fn cleanup_line(w: &World, list: &[(Suggestion, Row)]) -> Option<CleanupLine> {
+    if !w.prefs.suggest_cleanup || w.session.fields.library.cleanup || list.is_empty() {
+        return None;
+    }
+    let mut ids: Vec<String> = list.iter().map(|(s, _)| s.rec.0.clone()).collect();
+    ids.sort();
+    if ids == w.prefs.cleanup_dismissed {
+        return None;
+    }
+    let bytes = list.iter().map(|(s, _)| s.bytes).sum();
+    Some(CleanupLine {
+        line: copy::cleanup_line(list.len() as u64, bytes),
+        review: Button::new(Action::ReviewCleanup, copy::review(), Style::Plain),
+        dismiss: Button::new(Action::DismissCleanup, copy::not_now(), Style::Quiet),
+    })
+}
+
+fn cleanup_body(w: &World, list: &[(Suggestion, Row)]) -> CleanupBody {
+    let online = w.online() != Some(false);
+    let reachable = online && !(w.space.role() == Some(Role::Member) && super::members::stranded_by_space(w));
+    let mid_take = w.take_open();
+    let rows: Vec<CleanupRowView> = list
+        .iter()
+        .map(|(s, r)| {
+            let rec = r.rec.clone();
+            let why = copy::cleanup_reason(s.plays, s.quiet_days, s.stopped_early);
+            let open = Button::new(Action::OpenPage(rec.clone()), copy::open_page(), Style::Link).enabled(reachable);
+            // What would put something new on screen waits for the take (law 4).
+            let open = if mid_take { Button { enabled: false, note: Some(copy::after_take()), ..open } } else { open };
+            CleanupRowView {
+                key: rec.0.clone(),
+                title: r.title.clone(),
+                meta: format!("{} · {} · {why}", copy::day(r.created, w.mac.utc_offset_min), copy::size(s.bytes)),
+                poster: r.poster.clone(),
+                buttons: vec![
+                    open,
+                    Button::new(Action::KeepRow(rec.clone()), copy::keep(), Style::Plain).enabled(reachable),
+                    Button::new(Action::DeleteSuggested(rec), copy::delete(), Style::RedText).enabled(reachable),
+                ],
+            }
+        })
+        .collect();
+    let undo = w.session.fields.library.undo.as_ref().map(|(rec, _)| {
+        let title = rows_title(w, rec);
+        UndoLine { line: copy::deleted_title(&title), undo: Button::new(Action::UndoDelete, copy::undo(), Style::Link) }
+    });
+    let some = !rows.is_empty();
+    CleanupBody {
+        title: copy::cleanup_title(),
+        back: Button::new(Action::Back, copy::cleanup_back(), Style::Link),
+        intro: intro(w, list),
+        empty: (!some).then(copy::cleanup_empty),
+        foot: some.then(copy::cleanup_foot),
+        delete_all: (list.len() > 1).then(|| Button::new(Action::DeleteAllSuggested, copy::delete_all(list.len() as u64), Style::RedText).enabled(reachable)),
+        rows,
+        undo,
+    }
+}
+
+/// A title the list no longer shows (a row on its Undo line): the space's, as last read.
+fn rows_title(w: &World, rec: &RecId) -> String {
+    w.library.get().and_then(|v| v.iter().find(|r| &r.rec == rec).map(|r| r.title.clone())).unwrap_or_default()
+}
+
 pub fn derive(w: &World) -> Option<Window<LibraryBody>> {
     let door = w.session.windows.get(&WindowKind::Library)?;
     if !w.window_visible(WindowKind::Library) {
@@ -228,6 +347,10 @@ pub fn derive(w: &World) -> Option<Window<LibraryBody>> {
         None
     };
     let sheet = sheet(w, &all);
+    let suggested = suggested(w);
+    if f.cleanup {
+        faces.push("library-cleanup");
+    }
     let renaming = f.renaming.is_some();
     let (ret, esc) = match (&sheet, renaming) {
         (Some(_), _) => (None, Some(Action::Back)),
@@ -248,6 +371,8 @@ pub fn derive(w: &World) -> Option<Window<LibraryBody>> {
             rows: shown.iter().map(|r| view(w, r)).collect(),
             footer: (!all.is_empty()).then(|| copy::video_count(all.len() as u64)),
             sheet,
+            cleanup_line: cleanup_line(w, &suggested),
+            cleanup: f.cleanup.then(|| cleanup_body(w, &suggested)),
         },
         ret,
         esc,
