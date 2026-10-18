@@ -13,23 +13,41 @@ body{margin:0}
 a{color:#88c0d0}a:hover{color:#8fbcbb}
 </style>
 </helmet>
-<div style="width: 390px; height: 844px; box-sizing: border-box; background: #2b2f36; padding: 28px 16px 24px 16px; display: flex; flex-direction: column; gap: 16px; font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif; font-size: 14px; line-height: 1.5; color: #eceff4">
-<h1 style="margin: 0; font-size: 1.35rem; font-weight: 600; line-height: 1.25">Sign up screen, invoice bug, trial numbers</h1>
-<div style="width: 100%; aspect-ratio: 16 / 9; border-radius: 10px; background: #1f2228; display: flex; flex-direction: column; overflow: visible; position: relative">
-<div style="flex: 1 1 0"></div>
-<div style="background: #262a31; border-radius: 0 0 10px 10px; display: flex; flex-direction: column; flex: none">
-<div role="slider" tabindex="0" aria-label="Seek" aria-valuemin="0" aria-valuemax="183" aria-valuenow="122" aria-valuetext="2:02 of 3:03, Trial results and metrics" style="height: 16px; margin: -6px 0 -6px 0; display: flex; flex-direction: row; align-items: center; gap: 2px; position: relative">
-<div title="Sign up screen changes" style="width: calc(37.16% - 2px); height: 4px; border-radius: 2px; background: linear-gradient(to right, #88c0d0 100.0%, #434a56 100.0%); flex: none"></div><div title="Invoice page bug details" style="width: calc(25.14% - 2px); height: 4px; border-radius: 2px; background: linear-gradient(to right, #88c0d0 100.0%, #434a56 100.0%); flex: none"></div><div title="Trial results and metrics" style="width: calc(23.50% - 2px); height: 4px; border-radius: 2px; background: linear-gradient(to right, #88c0d0 18.6%, #434a56 18.6%); flex: none"></div><div title="Next steps and wrap up" style="width: calc(14.21% - 2px); height: 4px; border-radius: 2px; background: linear-gradient(to right, #88c0d0 0.0%, #434a56 0.0%); flex: none"></div>
-<div style="position: absolute; left: calc(66.67% - 10px); width: 20px; height: 20px; border-radius: 10px; background: #eceff4; box-shadow: 0 0 0 6px rgba(236, 239, 244, 0.18)"></div>
-<div style="position: absolute; left: 66.7%; bottom: 22px; transform: translateX(-50%); background: #1f2228; border: 1px solid #434a56; border-radius: 8px; padding: 6px 10px; white-space: nowrap; font-size: 13px; color: #eceff4"><span style="color: #aeb6c4; font-variant-numeric: tabular-nums">2:02</span>  Trial results and metrics</div>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #2b2f36; padding: 40px 16px 24px 16px; display: flex; flex-direction: column; font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif; font-size: 14px; line-height: 1.5; color: #eceff4">
+<div style="flex: 1 1 auto; display: flex; flex-direction: column; gap: 20px">
+<div style="display: flex; flex-direction: row; align-items: center; gap: 4px; min-height: 52px">
+<h1 style="margin: 0; font-size: 1.75rem; font-weight: 600; line-height: 1.25; flex: 1 1 0; min-width: 0">Sign up screen, invoice bug, trial numbers</h1>
+<button aria-label="Copy link" style="width: 44px; height: 44px; border: 0; border-radius: 9px; background: transparent; display: flex; align-items: center; justify-content: center; flex: none"><svg viewBox="0 0 16 16" aria-hidden="true" style="width: 18px; height: 18px; fill: none; stroke: #c3cad6; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; display: block"><path d="M6.8 9.2a2.8 2.8 0 0 0 4 0l2.2-2.2a2.8 2.8 0 0 0-4-4l-.8.8M9.2 6.8a2.8 2.8 0 0 0-4 0L3 9a2.8 2.8 0 0 0 4 4l.8-.8"></path></svg></button>
 </div>
-<div style="height: 48px; padding: 0 6px; display: flex; flex-direction: row; align-items: center; gap: 2px; color: #d8dee9; font-size: 13px">
-<button aria-label="Pause" style="width: 44px; height: 44px; border: 0; background: transparent; display: flex; align-items: center; justify-content: center; flex: none"><svg viewBox="0 0 16 16" aria-hidden="true" style="width: 18px; height: 18px; fill: #eceff4; display: block"><path d="M4 3h3v10H4zM9 3h3v10H9z"></path></svg></button>
-<span style="font-variant-numeric: tabular-nums; white-space: nowrap"><span style="color: #eceff4">2:02</span> / 3:03</span>
-<span style="color: #aeb6c4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1 1 0; padding: 0 0 0 6px">· Trial results and metrics</span>
-<button aria-label="Full screen" style="width: 44px; height: 44px; border: 0; background: transparent; display: flex; align-items: center; justify-content: center; flex: none"><svg viewBox="0 0 16 16" aria-hidden="true" style="width: 18px; height: 18px; fill: none; stroke: #d8dee9; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; display: block"><path d="M2.5 6V3.5H5M11 3.5h2.5V6M13.5 10v2.5H11M5 12.5H2.5V10"></path></svg></button>
-</div></div></div>
-<div style="margin-top: 14px; padding: 10px 12px; border: 1px dashed #4c566a; border-radius: 9px; color: #aeb6c4; font-size: 12px; line-height: 1.5"><b>On a phone there's no hover.</b> A finger on the bar shows the time and chapter above the thumb, and the thumb grows while it's held. That happens while dragging, and for about 1.5 s after a tap. Lifting the finger seeks there. The bar's touch area is 44 px tall, though it looks 4 px. The chapter now playing is always named beside the time (cut short with … when long), so a phone viewer sees where they are without touching. No list anywhere, as on a laptop.</div>
+<div style="width: 100%; aspect-ratio: 16 / 9; border-radius: 10px; background: #1f2228; display: flex; flex-direction: column; overflow: hidden">
+<div style="flex: 1 1 0; display: flex; align-items: center; justify-content: center; position: relative"></div>
+<div style="background: #262a31; display: flex; flex-direction: column; flex: none; position: relative">
+<div role="slider" tabindex="0" aria-label="Seek" aria-valuemin="0" aria-valuemax="183" aria-valuenow="122" aria-valuetext="2:02 / 3:03, Trial results and metrics" style="height: 16px; margin: -6px 0 -6px 0; position: relative">
+<div style="position: absolute; left: 0; right: 0; top: 6px; height: 4px; display: flex; flex-direction: row; align-items: center; gap: 2px"><div style="flex: 68 1 0; height: 4px; border-radius: 2px; background: linear-gradient(to right, #88c0d0 100.0%, #434a56 100.0%)"></div><div style="flex: 46 1 0; height: 4px; border-radius: 2px; background: linear-gradient(to right, #88c0d0 100.0%, #434a56 100.0%)"></div><div style="flex: 43 1 0; height: 7px; border-radius: 2px; background: linear-gradient(to right, #88c0d0 18.6%, #434a56 18.6%)"></div><div style="flex: 26 1 0; height: 4px; border-radius: 2px; background: linear-gradient(to right, #88c0d0 0.0%, #434a56 0.0%)"></div></div>
+<div style="position: absolute; left: calc(66.67% - 10px); top: -2px; width: 20px; height: 20px; border-radius: 10px; background: #eceff4; box-shadow: 0 0 0 6px rgba(236, 239, 244, 0.18)"></div>
+<div style="position: absolute; left: 66.7%; bottom: 24px; transform: translateX(-50%); background: #1f2228; border: 1px solid #434a56; border-radius: 7px; padding: 4px 9px; white-space: nowrap; font-size: 12px; line-height: 1.35; color: #eceff4"><span style="color: #d8dee9; font-variant-numeric: tabular-nums; margin-right: 6px">2:02</span>Trial results and metrics</div>
+</div>
+<div style="height: 52px; padding: 0 10px; display: flex; flex-direction: row; align-items: center; gap: 4px; color: #d8dee9; font-size: 13px">
+<button aria-label="Play" style="width: 44px; height: 44px; border: 0; border-radius: 8px; background: transparent; display: flex; align-items: center; justify-content: center; flex: none"><svg viewBox="0 0 16 16" aria-hidden="true" style="width: 18px; height: 18px; fill: #eceff4; display: block"><path d="M4.5 2.5v11l9-5.5z"></path></svg></button>
+<span style="font-variant-numeric: tabular-nums; padding: 0 6px; white-space: nowrap; flex: none"><span style="color: #eceff4">2:02</span> / 3:03</span>
+
+<div style="flex: 1 1 0"></div>
+<button aria-label="Captions" style="width: 44px; height: 44px; border: 0; border-radius: 8px; background: transparent; display: flex; align-items: center; justify-content: center; flex: none"><svg viewBox="0 0 16 16" aria-hidden="true" style="width: 18px; height: 18px; fill: none; stroke: #d8dee9; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; display: block"><rect x="1.5" y="3" width="13" height="10" rx="2"></rect><path d="M7.2 6.6a1.8 1.8 0 1 0 0 2.8M11.7 6.6a1.8 1.8 0 1 0 0 2.8"></path></svg></button>
+<button aria-label="Playback speed, 1×" style="font: inherit; height: 44px; min-width: 44px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: #d8dee9; font-weight: 600; flex: none">1×</button>
+<button aria-label="Mute" style="width: 44px; height: 44px; border: 0; border-radius: 8px; background: transparent; display: flex; align-items: center; justify-content: center; flex: none"><svg viewBox="0 0 16 16" aria-hidden="true" style="width: 18px; height: 18px; fill: none; stroke: #d8dee9; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; display: block"><path d="M2 6.2h2.3L7.5 3.5v9L4.3 9.8H2z"></path><path d="M10 6a3 3 0 0 1 0 4M11.8 4a5.6 5.6 0 0 1 0 8"></path></svg></button>
+<button aria-label="Full screen" style="width: 44px; height: 44px; border: 0; border-radius: 8px; background: transparent; display: flex; align-items: center; justify-content: center; flex: none"><svg viewBox="0 0 16 16" aria-hidden="true" style="width: 18px; height: 18px; fill: none; stroke: #d8dee9; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; display: block"><path d="M2.5 6V3.5H5M11 3.5h2.5V6M13.5 10v2.5H11M5 12.5H2.5V10"></path></svg></button>
+</div>
+</div>
+</div>
+<div style="padding: 10px 12px; border: 1px dashed #4c566a; border-radius: 9px; color: #aeb6c4; font-size: 12px; line-height: 1.5">No hover on a phone: a finger on the bar shows the time and chapter above the thumb, and the thumb grows while the finger is on it; the tip stays about 1.5 s after a tap. The bar's touch area is 44 px tall. The row has no room for the chapter's name beside its five controls, so the tip and the bar's spoken value name it. (Changed from the board as approved, where the name sat after the time: found while building.)</div>
+</div>
+<div style="display: flex; flex-direction: row; justify-content: flex-end; padding: 24px 0 0 0">
+<a href="https://shroom.am" style="display: flex; flex-direction: row; align-items: center; gap: 8px; font-size: 13px; text-decoration: none; min-height: 44px"><svg viewBox="18 20 84 90" aria-hidden="true" style="width: 17px; height: 18px; display: block">
+<path d="M50,68 C49,82 46,92 46,96 C46,101 52,104 60,104 C68,104 74,101 74,96 C74,92 71,82 70,68 Z" fill="#E5E9F0"></path>
+<path d="M24,64 C24,42 40,26 60,26 C80,26 96,42 96,64 C86,75 34,75 24,64 Z" fill="#88C0D0"></path>
+<circle cx="50" cy="44" r="6" fill="#ECEFF4"></circle><circle cx="72" cy="48" r="3.6" fill="#ECEFF4"></circle><circle cx="33" cy="58" r="3.4" fill="#ECEFF4"></circle><circle cx="64" cy="58" r="2.6" fill="#ECEFF4"></circle><circle cx="88" cy="58" r="2.2" fill="#ECEFF4"></circle>
+</svg><span data-said="live.made-with-shroom">made with shroom</span></a>
+</div>
 </div>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>

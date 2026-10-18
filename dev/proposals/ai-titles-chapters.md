@@ -382,19 +382,35 @@ Said-lines are drafts, copy for Bagrat.
 
 ## 8. Boards
 
-Added to the [shroom UI canvas](https://claude.ai/artifact/FQRbQUHrumYGXtvTm6UQsg), in a
-new column right of the editor's boards (x = 11600). PNGs are in
-`ai-titles-chapters/boards/`, beside the generator (`make-boards.py`):
+On the [shroom UI canvas](https://claude.ai/artifact/FQRbQUHrumYGXtvTm6UQsg), in their own
+column right of the editor's boards (x = 11600), redrawn as built on 2026-10-18. PNGs are
+in `ai-titles-chapters/boards/`, beside the generator (`make-boards.py`); the pages
+gallery (`tests/e2e/pages-gallery.mjs`) shoots the page's faces from the code itself:
 
-- **Library — the one-time offer** (`AiOffer`)
-- **Settings — Space: Name videos and add chapters, off and on** (`AiSettings`)
-- **The page — the owner's, named for you** (`AiOwnerNamed`)
+- **Library — the naming card, once** (`AiOffer`), and **when Turn on didn't go through** (`AiOfferFailed`)
+- **Settings — Space: Name videos and add chapters, off as it ships** (`AiSettings`), and **naming couldn't change** (`AiSettingsFailed`)
+- **The page — the owner's, named from what was said** (`AiOwnerNamed`)
+- **The page — the owner's, its name waiting for the free hours** (`AiNamingLater`)
 - **The page — chapters in the seek bar, named on hover** (`AiPageMarks`), Bagrat's pick, approved 2026-10-18
-- **The page on a phone — chapters in the seek bar, named while a finger is on it** (`AiPageMarksPhone`), approved 2026-10-18
+- **The page on a phone — chapters in the seek bar, named while a finger is on it** (`AiPageMarksPhone`), approved 2026-10-18; redrawn as built (below)
+- **The page — captions on** (`AiCaptions`)
 - **The page — chapters, A: listed under the player** (`AiPageChapters`), not chosen, kept for the record
 
-The titles and chapters on the boards are the POC's real output on the invented
-walkthrough.
+The titles and chapters on the boards are the pages gallery's invented take.
+
+**Changed from the boards as first drawn, found while building:**
+
+- **A phone's row names no chapter.** The approved phone board named the chapter playing
+  after the time; beside the row's five controls (play, Captions, speed, sound, full
+  screen) a phone has no room for it, so there the finger's tip and the bar's spoken
+  value name it, and the thumb grows while the finger is on it, as drawn. The name after
+  the time stays from 480 px up. If Bagrat wants it on phones too, the room would come from
+  a second line under the controls, or from dropping the sound button there.
+- **The owner's title field holds the name as its placeholder**, as it holds the date
+  today, so it reads quieter than a typed title; the line under it has no icon, like the
+  page's other lines.
+- **Settings · Space** has no "This month" or monthly-limit rows: the switch's line says
+  the cost, and on the free plan the daily allowance is the cap (§9, 3).
 
 ## 9. Calls made, and what's left for Bagrat
 
@@ -466,4 +482,6 @@ the release later). What it is, in one place; the rows are DECISIONS B205–B209
   is 10 ms with some give for overruns; every step ran on the free test account, as all 36
   windows of the 36-minute take did (§5). Reading a window's sound is most of it (22
   ranged reads, about 1 ms each); a Mac-side audio file per minute would make it one.
+- **Left for later, from §9:** the monthly limit (3) and naming past videos (4) aren't
+  built; chapters are read-only (5); there is no summary (6).
 

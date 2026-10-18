@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>shroom Settings, Space, naming couldn't change</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#88c0d0}a:hover{color:#8fbcbb}
+</style>
+</helmet>
+<div style="width: 600px; height: 760px; box-sizing: border-box; background: #2b2f36; display: flex; flex-direction: column; font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif; font-size: 13px; line-height: 1.5; color: #eceff4">
+<div style="height: 44px; padding: 0 14px; display: flex; flex-direction: row; align-items: center; gap: 8px; flex: none">
+<span style="width: 12px; height: 12px; border-radius: 6px; background: #4c566a; display: block"></span><span style="width: 12px; height: 12px; border-radius: 6px; background: #4c566a; display: block"></span><span style="width: 12px; height: 12px; border-radius: 6px; background: #4c566a; display: block"></span>
+<div style="flex: 1 1 0; display: flex; flex-direction: row; justify-content: center; padding: 0 52px 0 0"><div style="display: flex; flex-direction: row; background: #262a31; border-radius: 7px; padding: 2px; gap: 2px">
+<button aria-pressed="false" style="font: inherit; border: 0; border-radius: 5px; background: transparent; color: #c3cad6; padding: 3px 16px" data-said="settings.general">General</button>
+<button aria-pressed="true" style="font: inherit; border: 0; border-radius: 5px; background: #4c566a; color: #eceff4; padding: 3px 16px; font-weight: 600" data-said="settings.space">Space</button>
+<button aria-pressed="false" style="font: inherit; border: 0; border-radius: 5px; background: transparent; color: #c3cad6; padding: 3px 16px" data-said="settings.members">Members</button>
+</div></div></div>
+<div style="flex: 1 1 0; padding: 16px 32px 28px 32px; display: flex; flex-direction: column; gap: 16px">
+<div style="font-size: 14px; color: #c3cad6" data-said="account.your-space-set-up">Your space — set up once, yours forever:</div>
+<div style="background: #333944; border-radius: 9px; display: flex; flex-direction: column"><div style="height: 40px; padding: 0 12px; display: flex; flex-direction: row; align-items: center; gap: 10px">
+<svg viewBox="0 0 16 16" role="img" aria-label="Done" style="width: 16px; height: 16px; fill: none; stroke: #a3be8c; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; display: block; flex: none"><path d="M3 8.5l3.2 3.2L13 4.8"></path></svg>
+<span style="flex: 1 1 0">Cloudflare account</span><span style="color: #aeb6c4">Your Account</span>
+</div><div style="height: 40px; padding: 0 12px; border-top: 1px solid #434a56; display: flex; flex-direction: row; align-items: center; gap: 10px">
+<svg viewBox="0 0 16 16" role="img" aria-label="Done" style="width: 16px; height: 16px; fill: none; stroke: #a3be8c; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; display: block; flex: none"><path d="M3 8.5l3.2 3.2L13 4.8"></path></svg>
+<span style="flex: 1 1 0">Access token valid</span><span style="color: #aeb6c4">on this Mac</span>
+</div><div style="height: 40px; padding: 0 12px; border-top: 1px solid #434a56; display: flex; flex-direction: row; align-items: center; gap: 10px">
+<svg viewBox="0 0 16 16" role="img" aria-label="Done" style="width: 16px; height: 16px; fill: none; stroke: #a3be8c; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; display: block; flex: none"><path d="M3 8.5l3.2 3.2L13 4.8"></path></svg>
+<span style="flex: 1 1 0">Cloudflare billing set up</span>
+</div><div style="height: 40px; padding: 0 12px; border-top: 1px solid #434a56; display: flex; flex-direction: row; align-items: center; gap: 10px">
+<svg viewBox="0 0 16 16" role="img" aria-label="Done" style="width: 16px; height: 16px; fill: none; stroke: #a3be8c; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; display: block; flex: none"><path d="M3 8.5l3.2 3.2L13 4.8"></path></svg>
+<span style="flex: 1 1 0">Your link name</span><span style="color: #aeb6c4">v.myshroom.workers.dev</span>
+</div><div style="height: 40px; padding: 0 12px; border-top: 1px solid #434a56; display: flex; flex-direction: row; align-items: center; gap: 10px">
+<svg viewBox="0 0 16 16" role="img" aria-label="Done" style="width: 16px; height: 16px; fill: none; stroke: #a3be8c; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; display: block; flex: none"><path d="M3 8.5l3.2 3.2L13 4.8"></path></svg>
+<span style="flex: 1 1 0">Wired up</span>
+</div><div style="height: 40px; padding: 0 12px; border-top: 1px solid #434a56; display: flex; flex-direction: row; align-items: center; gap: 10px">
+<svg viewBox="0 0 16 16" role="img" aria-label="Done" style="width: 16px; height: 16px; fill: none; stroke: #a3be8c; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; display: block; flex: none"><path d="M3 8.5l3.2 3.2L13 4.8"></path></svg>
+<span style="flex: 1 1 0">macOS permissions granted</span><span style="color: #aeb6c4">on this Mac</span>
+</div></div>
+<div style="color: #aeb6c4; padding: 0 2px" data-said="settings-space-inspection.your-space-is-ready">Your space is ready — nothing to redo.</div>
+<div style="background: #333944; border-radius: 9px; display: flex; flex-direction: column">
+<div style="padding: 10px 12px; display: flex; flex-direction: row; align-items: center; gap: 10px">
+<span style="flex: 1 1 0; display: flex; flex-direction: column">
+<span id="mark-label" data-said="settings-space.made-with-shroom-on">“made with shroom” on your pages</span>
+<span style="color: #aeb6c4; font-size: 12px" data-said="settings-space.the-small-mark-on">The small mark on every video page. You can flip it right on a page, too.</span>
+</span>
+<button role="switch" aria-checked="true" aria-labelledby="mark-label" style="width: 36px; height: 20px; border: 0; border-radius: 10px; background: #88c0d0; padding: 2px; display: flex; flex-direction: row; justify-content: flex-end; align-items: center; flex: none"><span style="width: 16px; height: 16px; border-radius: 8px; background: #2b2f36; display: block"></span></button>
+</div>
+<div style="border-top: 1px solid #434a56"><div style="padding: 10px 12px; display: flex; flex-direction: row; align-items: center; gap: 10px">
+<span style="flex: 1 1 0; display: flex; flex-direction: column">
+<span id="ai-label" data-said="settings-space.name-videos-and-add">Name videos and add chapters</span>
+<span style="color: #aeb6c4; font-size: 12px" data-said="settings-space.couldnt-change-that-just">Couldn't change that just now — try again in a moment.</span>
+</span>
+<button role="switch" aria-checked="false" aria-labelledby="ai-label" style="width: 36px; height: 20px; border: 0; border-radius: 10px; background: #4c566a; padding: 2px; display: flex; flex-direction: row; justify-content: flex-start; align-items: center; flex: none"><span style="width: 16px; height: 16px; border-radius: 8px; background: #d8dee9; display: block"></span></button>
+</div></div>
+<button style="font: inherit; height: 40px; padding: 0 12px; border: 0; border-top: 1px solid #434a56; background: transparent; color: #e88790; text-align: left" data-said="settings-space.disconnect-this-mac">Disconnect this Mac…</button>
+</div>
+</div></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":600,"height":760}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>
