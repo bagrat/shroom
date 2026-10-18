@@ -5,7 +5,7 @@
 // answer (the free day used up, a busy model, a space that doesn't listen) is `later`, and the
 // Mac keeps its own plan.
 import { describe, expect, it } from "vitest";
-import { M1, MHER, MHER_MAC, OWNER_AIR, OWNER_MAC, REC, call, ledger, space } from "./space-fixture.js";
+import { M1, MHER, MHER_MAC, OWNER_AIR, OWNER_MAC, REC, call, ledger, rateKey, sha, space } from "./space-fixture.js";
 
 const ASK = {
   rec: REC,
@@ -82,6 +82,30 @@ describe("the judgment above the voice-cue planner (POST /_shroom/api/cue)", () 
       expect(r.status).toBe(200);
       expect(await r.json()).toEqual({ shroom: 1, later: true });
     }
+  });
+
+  it("spends a budget of its own: 120 judgments a Mac an hour, apart from its page keys and uploads", async () => {
+    const calls = [];
+    const env = listening(clef(scored(0.9, 0.1), calls));
+    await ledger(env, REC, M1, OWNER_MAC.id);
+    for (let i = 0; i < 120; i++) expect((await ask(env, ASK, OWNER_MAC.bearer)).status).toBe(200);
+    const over = await ask(env, ASK, OWNER_MAC.bearer);
+    expect(over.status).toBe(429);
+    expect(await over.json()).toMatchObject({ error: "too-many" });
+    expect(calls).toHaveLength(120);
+    expect(env.BUCKET.json(rateKey(OWNER_MAC.id))).toMatchObject({ c: 120, n: 0 });
+    // A page key spent after them leaves their count as it was; another Mac still asks.
+    expect((await call(env, "POST", "/_shroom/api/key", { body: { kHash: sha("cue-key") }, auth: OWNER_MAC.bearer })).status).toBe(200);
+    expect(env.BUCKET.json(rateKey(OWNER_MAC.id))).toMatchObject({ c: 120, k: 1, n: 0 });
+    expect((await ask(env, ASK, OWNER_AIR.bearer)).status).toBe(200);
+  });
+
+  it("spends nothing it doesn't ask: a space that doesn't listen, a question refused", async () => {
+    const env = space();
+    await ledger(env, REC, M1, OWNER_MAC.id);
+    expect(await (await ask(env, ASK, OWNER_MAC.bearer)).json()).toEqual({ shroom: 1, later: true });
+    expect((await ask(env, { ...ASK, cue: -1 }, OWNER_MAC.bearer)).status).toBe(400);
+    expect(env.BUCKET.store.has(rateKey(OWNER_MAC.id))).toBe(false);
   });
 
   it("refuses what isn't a question the planner asks", async () => {
