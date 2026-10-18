@@ -69,7 +69,7 @@ at `bf84b67079a8` (D:B2). Svelte 5, TypeScript 5.9.
 | `crates/shroom-testpattern`, `shroom-spec`, `shroom-devtool` | media-truth strip (D:B59 d); spec fixtures as types; the heartbeat's test space up/down | dev only |
 | `tests/e2e-live` | L2 on the dedicated test account | live |
 | `app/src-tauri` | `main.rs`, `commands.rs` (IPC), `runtime/` (runner, lanes, presenter, overlays, observers, seam), `harness.rs`/`drives.rs` (only with `dev-harness` in a `.dev` build — D:B5, B55, B62) | drives, `tests/l5/` |
-| `app/src-tauri/src/runtime/editor.rs` | the editor's lane (N63, D:B195): the record read over a rename's door, the video found in a take or fetched to `edits/<rec>/`, its peaks, the save (`meta.edits`), and the permanent copy on a lane of its own | `editor::tests`; `--drive editor` |
+| `app/src-tauri/src/runtime/editor.rs` | the editor's lane (N63, D:B195, B197): the record read over a rename's door, the video found in a take or fetched to `edits/<rec>/`, its peaks, the save (`meta.edits`), the final video on a lane of its own with its progress, the bake, and the upkeep (§3.3) | `editor::tests`; `--drive editor` |
 | `app/src-tauri/src/runtime/media.rs` | `shroom-media:`: the one video the editor's lane registered, by byte ranges, and its peaks — to the editor's webview alone | `media::tests` |
 | `app/src` | webviews (`Popover`, `Onboarding`, `Library`, `Settings`, `Feedback`, `Editor` with `editor/`, `members/`, `join/`, countdown), `lib/ipc.ts`, `lib/typed.ts`, `lib/theme.css` (D:B122) | galleries; `editor/*.test.ts` (vitest) |
 | `worker/` | `src/worker.js` (one dependency-free module), `vendor/hls.min.js`, `page-version.json`, `dev/serve.mjs` | vitest + workerd contract (D:B63) |
@@ -212,8 +212,37 @@ new `Rec(Started)`.
 | `shroom-observe` | CGDisplayReconfiguration, AVCaptureDevice, NSWorkspace sleep/wake/session, screen lock, mic re-probe 2 s, disk + UTC offset 30 s, grants re-read 2 s mid-take (D:B47) |
 | `shroom-power` (+ `-cap`) | IOKit will-sleep → `Os(WillSleep)`; the core pauses a recording take and answers `AllowSleep` once paused or after 2 s; `HOLD_CAP` 2.5 s; idle sleep never vetoed (D:B92) |
 | `shroom-seam` | the seam's 2 s grants re-read |
+| `shroom-editor` (+ `-open`, `-copy`, `-bake`, `-upkeep`) | the editor's lane (below): Save inline; an open, a bake and an upkeep pass each on a thread of its own; the final videos one at a time on `-copy` |
 
 Keep-awake (`os.rs`) is held while `settle::can_drain` (D:B34).
+
+**The editor's lane** (`runtime/editor.rs`, N63, D:B195, B197). Nothing it runs waits on
+anything else it runs: Open, Save and Copy answer while a bake or an upkeep pass is out.
+- *Open* reads the record, finds the video (a take on this Mac when the record still plays
+  its `video.mp4`; else `edits/<rec>/source.mp4` when `source.key` names the record's file;
+  else fetched) and its peaks, and posts `Opened` with `keep_until` (Wall ms) only while the
+  edit's copy is current. Esc or ✕ mid-fetch stops it.
+- *Save* is one record write. It writes nothing and fails as `Refused` (logged) when the
+  video moved on since the open — `bakedFrom` grew or `media.mp4` changed: another Mac baked
+  it while the window was open.
+- *Copy* (one at a time): `shroom_encode::cut::render_with` (VideoToolbox, then libx264 if that
+  fails), the poster and teaser best-effort, three PUTs, then `set_edit_copy` writes `copy` and
+  `keep_until` (now + 2 days). `EditorNews::Making { rec, pct }` goes at most every 250 ms and
+  only forward: ffmpeg's `-progress` over the kept seconds is 0–80, each file's PUT 95, 97,
+  99, and the record 100. It answers `CopyDone` or `Failed { EditorCopy }`; a closed window
+  doesn't stop it.
+- *Bake* (Yes, delete): `shroom_upload::library::bake` over the door, on its own thread. It
+  answers nothing (the window has closed), logs what happened, and on success drops
+  `edits/<rec>/`. A bake that didn't land is the upkeep's after the two days.
+- *Upkeep* (`settle::due_edit_upkeep`: at launch, then every 6 h awake, not over a take, not
+  offline, the editor closed and its lane idle). It reads the records of this Mac's edited
+  rows in the Library cache (a member's own, every row on an owner-class Mac) over the
+  token's pair or a `manage` mint per record, then runs `upkeep_plan`. It bakes the due ones
+  and makes the missing copies when their video is on this Mac, through the same copy code
+  with no `Making` news. Then it prunes `edits/` (§3.4) and answers
+  `UpkeepDone { baked, copies }` or `Failed { EditorUpkeep }`: Transport ends the pass, and a
+  record that can't be read is skipped. The token Mac's cleanup sweep bakes every record in
+  the space that's due (`shroom_upload::library::cleanup`).
 
 **Trace.** `logs/run.log` (600, rolled at 5 MB) logs each event, arm and effect kinds.
 `trace::Ring` keeps the last 512 steps (kinds, arm, edge, state ids on change), names read at
@@ -239,7 +268,7 @@ and `Scanned` and writes only via effects; `home::FILES` whitelists top-level na
 | `restore.json` | before update apply or permission relaunch; read once, ≤ 2 min |
 | `invite`, `join.json` | an invite held; a join asked for (replayed at launch) / removed when behind |
 | `library.json`, `posters/` | library lane / exit |
-| `edits/<rec>/` | the editor's lane (N63): `source.mp4` (fetched from the space, kept for the next edit), `peaks.u8`, a permanent copy while it's cut and sent / exit |
+| `edits/<rec>/` | the editor's lane (N63): `source.mp4` (fetched from the space, kept for the next edit) and `source.key` (the file it came from: a baked video is fetched again), `peaks.u8`, a final video while it's cut and sent / its bake; the upkeep's prune (the recording gone from the Library, a fetched video its record no longer plays, or nothing in it written for 7 days; never the open one); exit |
 | `status.json` | §11.2 |
 | `forget/<rec>` | owed remote discards (D:B52 e) |
 | `updates/<version>/shroom.app` | a verified staged update |
@@ -491,7 +520,8 @@ Registry ids are `d_`/`m_`/`i_` + 16 chars.
   "thumb"?: { "title": null|"…", "gif"?: "thumb-<16 hex>.gif", "jpg"?: "thumb-<16 hex>.jpg" },  // Copy thumbnail, the Worker's (D:B164)
   "edits"?: { "version": 1, "source_duration", "in", "out",                    // the editor's (N63, D:B195)
               "cuts": [{ "start", "end", "kind", "confidence", "applied", "removed", "resumes"?, "why"? }],
-              "rev", "copy"?: { "rev", "file": "edit-<rev>.mp4", "duration", "poster"?, "teaser"? } },
+              "rev", "copy"?: { "rev", "file": "edit-<rev>.mp4", "duration", "poster"?, "teaser"? },
+              "keep_until"?: "iso" },                                          // when the original goes (D:B197)
   "bakedFrom"?: [{ "at": "iso", "keep": [[s, e]] }] }                              // the bake's (D:B197), never served
 ```
 
@@ -875,8 +905,11 @@ Built provisionally (N29–N34; D:B37–B42; WI §4–§6) in `runtime/member.rs
   `everyone`) with cached ETags, owners from the ledger (D:B37, B42).
 - Rows merge local takes (recovered pinned; uploading · waiting · stranded · "Removed from
   the space") with remote records by id, local states first (D:B34, B54 f).
-- Posters `/m/<id>/poster.jpg` (or S3) into `posters/`, ≤ 40 a refresh, ≤ 4 MiB, served as
-  `shroom-poster:` (D:B54 g).
+- Posters `/m/<id>/<poster_file>` (or S3 `rec/<id>/<poster_file>`) into `posters/`, ≤ 40 a
+  refresh, ≤ 4 MiB, served as `shroom-poster:` (D:B54 g); `<id>.from` beside one names its
+  file, so a record that names another (an edit's copy, a bake) fetches it again (D:B197).
+- A row whose record holds an edit shows the edit's length (`edited_ms`, from
+  `Row.edited_sec`).
 - Rename under `If-Match`; Delete… = §5.5; on token-less Macs both under a 15-min `manage`
   credential.
 - Local search; offline, Copy link stays and rename/delete grey. Members see their own;
