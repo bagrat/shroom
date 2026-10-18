@@ -65,7 +65,7 @@ describe("the landing", () => {
     assert.equal(words, "", "no caption (Bagrat, 2026-10-17): the still and its play button speak for it; the length is decoration");
     assert.ok(!landing.said.some((l) => l.id === "landing.recorded-with-shroom-itself"), "the caption's said-line is gone from the spec");
     assert.match(video, /<button type="button" class="still" aria-label="Play how to set up and use shroom, 4 minutes">/, "its name to VoiceOver (N61)");
-    assert.match(video, /<span class="len" aria-hidden="true">4:09<\/span>/, "its length (N61)");
+    assert.match(video, /<span class="len" aria-hidden="true">4 mins<\/span>/, "its length, in minutes (N61; Bagrat, 2026-10-18)");
     assert.doesNotMatch(html, /\bdemo\b|recorded with shroom/i, "it isn't a shroom recording, and the page doesn't call it a demo (N61)");
     assert.match(video, /<video\b[^>]*\bpreload="none"/, "nothing loads before the script asks");
     assert.doesNotMatch(video, /<video\b[^>]*\bsrc=/, "the video's address is set by script, as the block nears the screen");
