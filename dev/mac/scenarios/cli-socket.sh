@@ -51,6 +51,15 @@ check "record pause, the switch on, nothing recording: the core answered" "$said
 stop_app
 grep -E "control:" "$home/logs/run.log" | tail -n 12
 
+# What a report would carry (Bagrat, 2026-10-18: enough on this Mac to report a problem):
+# the app's run log has each ask and its answer by number, a refusal by its code; the
+# command's own log has one line a run, the app's code in it.
+check "the run log has each refusal by its code" "$(grep -cE 'control: answer [0-9]+ no recording_off \([0-9]+ ms\)' "$home/logs/run.log")" 4
+check "…and the core's own no" "$(grep -cE 'control: answer [0-9]+ no no_take \([0-9]+ ms\)' "$home/logs/run.log")" 1
+check "the command's own log has a line for each of its 9 runs" "$(grep -c ' UTC cli: record ' "$home/logs/cli.log")" 9
+check "…each refusal with the app's code" "$(grep -cE 'cli: record (start|pause|resume|stop) --json --no-launch: recording_off, exit 10, app recording_off \([0-9]+ms\)' "$home/logs/cli.log")" 4
+tail -n 9 "$home/logs/cli.log" | sed 's/^/  cli.log: /'
+
 # Not running: the command opens the app it ships in (whichever copy LaunchServices keeps
 # for am.shroom.dev) and waits for it to listen.
 any_app='\.app/Contents/MacOS/shroom( |$)'

@@ -104,7 +104,16 @@ screencapture -x "$OUT/label-off.png"
 sleep 2
 ask stop >/dev/null
 sleep 3
-grep -E "control:|core cli" "$home/logs/run.log" | tail -n 8 | sed 's/^/  log: /'
+grep -E "control:|label:" "$home/logs/run.log" | tail -n 12 | sed 's/^/  log: /'
+tail -n 4 "$home/logs/cli.log" | sed 's/^/  cli.log: /'
 quit
+# What a report would carry (Bagrat, 2026-10-18: enough on this Mac to report a problem).
+grep -qE 'control: ask [0-9]+ record\.start no-count$' "$home/logs/run.log" || no "the run log has no start without the count"
+grep -qE 'control: ask [0-9]+ record\.start no-count no-label$' "$home/logs/run.log" || no "the run log has no start without the label"
+[ "$(grep -cE 'control: answer [0-9]+ ok recording \([0-9]+ ms\)' "$home/logs/run.log")" -ge 2 ] || no "the run log doesn't have both starts answered"
+[ "$(grep -c 'label: shown on display' "$home/logs/run.log")" = 1 ] || no "the run log doesn't have the label shown, once"
+grep -q 'label: gone' "$home/logs/run.log" || no "the run log doesn't have the label gone"
+grep -qE 'cli: record start --json --no-launch --no-countdown: ok, take recording \([0-9]+ms\)' "$home/logs/cli.log" || no "the command's log has no start"
+grep -qE 'cli: record start --json --no-launch --no-countdown --no-label: ok, take recording' "$home/logs/cli.log" || no "the command's log has no start without the label"
 [ "$bad" = 0 ] && echo "verdict: --no-countdown records at once; the label shows on screen and not in the take; --no-label shows none"
 exit "$bad"
