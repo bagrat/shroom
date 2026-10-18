@@ -1,39 +1,52 @@
-//! The editor's lane (N63, DECISIONS B195): the record, the video and its sound for the
-//! editor window, the save, and the permanent copy. Each `EditCmd` is answered once — its
-//! news, or `Failed` with the editor's op, classified as the Library's lane classifies; a
-//! Cancel answers nothing:
+//! The editor's lane (N63, DECISIONS B195, B197): the record, the video and its sound for the
+//! editor window, the save, the permanent copy, the bake and the upkeep. Each `EditCmd` is
+//! answered once — its news, or `Failed` with the editor's op, classified as the Library's
+//! lane classifies; a Cancel and a Bake answer nothing:
 //!
 //! - `Open`: the record read over the door a rename uses (`Opened`); the video found on this
 //!   Mac — a take folder whose `take.json` or `publish.json` names the recording, with its
-//!   `preview.mp4`; else one fetched before, `edits/<rec>/source.mp4` — or fetched now from
-//!   the space into that file (`Getting`, at most every 250 ms); its sound read into
-//!   `edits/<rec>/peaks.u8` (`shroom_encode::peaks`); both registered for `shroom-media:`
-//!   (`media.rs`); `Ready`. Each open runs on a thread of its own, so a Cancel lands mid-fetch.
+//!   `preview.mp4`, while the record still plays the original; else the file fetched before
+//!   (`edits/<rec>/source.mp4`, kept with the key it came from, `source.key`) when it is the
+//!   one the record plays — or fetched now from the space into that file (`Getting`, at most
+//!   every 250 ms); its sound read into `edits/<rec>/peaks.u8` (`shroom_encode::peaks`);
+//!   both registered for `shroom-media:` (`media.rs`); `Ready`. Each open runs on a thread of
+//!   its own, so a Cancel lands mid-fetch. A baked record never opens on its original.
 //! - `Cancel`: the open in flight stops — a cancelled open says nothing more, a failure
 //!   included — and its video is no longer served.
 //! - `Save`: `meta.edits` rewritten as the next revision (`shroom_upload::library::save_edits`,
-//!   read-modify-write as a rename) — `Saved`.
+//!   read-modify-write as a rename) — `Saved`. Refused when another Mac baked the video
+//!   while the editor was open: the list was made on a clock the record no longer plays.
 //! - `Copy`: on a lane of its own, one at a time, never holding the window's commands up:
 //!   the saved list's kept ranges cut from the video (the registered one, else found or
 //!   fetched again — an app that restarted has none registered) by the encoder
 //!   `find_encoder` finds, with the copy's own poster and teaser; all three put beside the
-//!   recording, then named in the record (`set_edit_copy`) — `CopyDone`. A copy of a revision
-//!   the record no longer holds is dropped, and answered `CopyDone` too.
+//!   recording, then named in the record with when the original goes (`set_edit_copy`,
+//!   two days on) — `Making` as it goes (the cut to 80%, the files sent to 100%), then
+//!   `CopyDone`. A copy of a revision the record no longer holds is dropped: `CopyDone` too.
+//! - `Bake`: “Yes, delete” — the edit becomes the video (`library::bake`), on a thread of its
+//!   own; its outcome is logged, and one that doesn't land is the upkeep's in two days.
+//! - `Upkeep` (B197 (d)): on a lane of its own, never in the window's way — of the records
+//!   the Library knows that are this Mac's own and hold an edit, the ones past their two
+//!   days are baked and the copies they lack are made where the video is on this Mac
+//!   (`library::upkeep_plan`); then `edits/` drops what nobody needs — `UpkeepDone`.
 //!
 //! `edits/` (folder 700, files 600) holds what this Mac fetched and read, and a copy while
-//! it's made; Disconnect and Leave's wipe removes it. Nothing here logs more than a
-//! recording's short id.
+//! it's made; a recording's folder goes once it's baked or gone from the space, or after a
+//! week unused, and the whole of it with the space (Disconnect, Leave). Nothing here logs
+//! more than a recording's short id.
 
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{Sender, channel};
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime};
 
 use shroom_core::effect::EditCmd;
 use shroom_core::event::{EditorNews, Event};
-use shroom_core::world::{FailClass, Op, RecId, SpaceIdentity};
+use shroom_core::time::Wall;
+use shroom_core::world::{FailClass, Op, RecId, Role, SpaceIdentity};
 use shroom_storage::s3::S3Error;
-use shroom_upload::meta::{Meta, State};
+use shroom_upload::meta::{Meta, State, now_iso};
 use shroom_upload::upload::{PART_SIZE, SINGLE_PUT_MAX, UploadError, with_retry};
 use shroom_upload::{keys, library as records};
 
@@ -43,10 +56,17 @@ use super::{Runtime, short};
 
 /// The video fetched from the space, kept for the next edit of it.
 pub const SOURCE: &str = "source.mp4";
+/// Which of the record's files `source.mp4` is (`rec/<id>/video.mp4`, or a baked edit's).
+pub const SOURCE_KEY: &str = "source.key";
 /// Its sound, one byte per 20 ms (`shroom_encode::peaks`).
 pub const PEAKS: &str = "peaks.u8";
-/// The fetch's progress, at most this often.
-const GETTING_EVERY: Duration = Duration::from_millis(250);
+/// Progress, at most this often.
+const EVERY: Duration = Duration::from_millis(250);
+/// A recording's folder in `edits/` unused this long goes.
+const UNUSED: Duration = Duration::from_secs(7 * 24 * 3600);
+/// A copy on this Mac whose picture is this far from the record's length isn't the video
+/// the record plays.
+const LENGTH_SLACK: f64 = 1.0;
 
 /// An open's stop: set by a Cancel (or the next Open), read between its steps and while it
 /// fetches — and held while the open registers its video or says how it ended, so nothing
@@ -89,8 +109,41 @@ impl From<FailClass> for Ended {
     }
 }
 
+impl Ended {
+    fn class(self) -> FailClass {
+        match self {
+            Ended::Failed(c) => c,
+            Ended::Stopped => FailClass::Unclassified,
+        }
+    }
+}
+
+/// What the record played when the editor opened on it: which file, and how many bakes it
+/// had been through. A save over a record that moved on from this — another Mac's bake —
+/// would put a list made on the old clock over the new one.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Played {
+    pub mp4: Option<String>,
+    pub bakes: usize,
+}
+
+impl Played {
+    pub fn of(m: &Meta) -> Played {
+        let bakes = m.extra.get(records::BAKED_FROM).and_then(serde_json::Value::as_array).map_or(0, Vec::len);
+        Played { mp4: m.media.as_ref().and_then(|x| x.mp4.clone()), bakes }
+    }
+}
+
+/// The records the editor opened on, by id, as they were then.
+static OPENED: Mutex<Option<HashMap<String, Played>>> = Mutex::new(None);
+
+fn opened_as(rec: &str) -> Option<Played> {
+    OPENED.lock().unwrap().as_ref()?.get(rec).cloned()
+}
+
 pub fn spawn(rt: Runtime) -> Sender<EditCmd> {
     let copies = spawn_copier(rt.clone());
+    let upkeeps = spawn_upkeeper(rt.clone());
     let (tx, rx) = channel::<EditCmd>();
     std::thread::Builder::new()
         .name("shroom-editor".into())
@@ -127,6 +180,17 @@ pub fn spawn(rt: Runtime) -> Sender<EditCmd> {
                             rt.post(Event::Failed { op: Op::EditorCopy, class: FailClass::Unclassified });
                         }
                     }
+                    EditCmd::Bake { rec } => {
+                        let rt2 = rt.clone();
+                        if std::thread::Builder::new().name("shroom-editor-bake".into()).spawn(move || bake(&rt2, &rec)).is_err() {
+                            rt.log("editor: the bake's thread didn't start — the upkeep bakes it in two days");
+                        }
+                    }
+                    EditCmd::Upkeep => {
+                        if upkeeps.send(()).is_err() {
+                            rt.post(Event::Failed { op: Op::EditorUpkeep, class: FailClass::Unclassified });
+                        }
+                    }
                 }
             }
         })
@@ -142,20 +206,38 @@ fn spawn_copier(rt: Runtime) -> Sender<(RecId, u64)> {
         .spawn(move || {
             let mut door = Doorway::default();
             for (rec, rev) in rx {
-                match copy(&rt, &mut door, &rec, rev) {
-                    Ok(()) => rt.post(Event::Editor(EditorNews::CopyDone { rec, rev })),
+                let mut making = Making::window(&rt, &rec);
+                match copy(&rt, &mut door, &rec, rev, &mut making) {
+                    Ok(_) => rt.post(Event::Editor(EditorNews::CopyDone { rec, rev })),
                     Err(e) => {
                         door.forget();
-                        let class = match e {
-                            Ended::Failed(c) => c,
-                            Ended::Stopped => FailClass::Unclassified,
-                        };
-                        rt.post(Event::Failed { op: Op::EditorCopy, class });
+                        rt.post(Event::Failed { op: Op::EditorCopy, class: e.class() });
                     }
                 }
             }
         })
         .expect("the editor's copy lane starts");
+    tx
+}
+
+/// The upkeep's own lane: one pass at a time, never in the window's way.
+fn spawn_upkeeper(rt: Runtime) -> Sender<()> {
+    let (tx, rx) = channel::<()>();
+    std::thread::Builder::new()
+        .name("shroom-editor-upkeep".into())
+        .spawn(move || {
+            let mut door = Doorway::default();
+            for () in rx {
+                match upkeep(&rt, &mut door) {
+                    Ok((baked, copies)) => rt.post(Event::Editor(EditorNews::UpkeepDone { baked, copies })),
+                    Err(class) => {
+                        door.forget();
+                        rt.post(Event::Failed { op: Op::EditorUpkeep, class });
+                    }
+                }
+            }
+        })
+        .expect("the editor's upkeep lane starts");
     tx
 }
 
@@ -218,16 +300,18 @@ fn names(dir: &Path, rec: &str) -> bool {
     })
 }
 
-/// The video on this Mac, best first: a take's single-file copy, then one fetched before.
-pub fn on_this_mac(takes: &Path, edits: &Path, rec: &str) -> Vec<PathBuf> {
-    let mut found: Vec<PathBuf> = super::takes::dirs(takes)
-        .into_iter()
-        .filter(|d| names(d, rec))
-        .map(|d| d.join(shroom_encode::files::PREVIEW))
-        .filter(|p| p.is_file())
-        .collect();
+/// The video on this Mac that the record plays, best first: a take's single-file copy while
+/// the record plays the original (a baked record plays its edit's copy, which no take
+/// holds), then the file fetched before, when it's the one the record plays now.
+pub fn on_this_mac(takes: &Path, edits: &Path, meta: &Meta) -> Vec<PathBuf> {
+    let rec = meta.id.as_str();
+    let key = video_key(meta);
+    let mut found: Vec<PathBuf> = Vec::new();
+    if key == keys::mp4(rec) {
+        found.extend(super::takes::dirs(takes).into_iter().filter(|d| names(d, rec)).map(|d| d.join(shroom_encode::files::PREVIEW)).filter(|p| p.is_file()));
+    }
     let fetched = edits.join(rec).join(SOURCE);
-    if fetched.is_file() {
+    if fetched.is_file() && std::fs::read_to_string(edits.join(rec).join(SOURCE_KEY)).is_ok_and(|k| k.trim() == key) {
         found.push(fetched);
     }
     found
@@ -244,13 +328,19 @@ pub fn video_key(meta: &Meta) -> String {
         .unwrap_or_else(|| keys::mp4(&meta.id))
 }
 
+/// When the original goes, while the record keeps it beside a current copy (B197 (e)).
+pub fn kept_until(meta: &Meta) -> Option<Wall> {
+    let saved = meta.edits.as_ref().filter(|s| s.current_copy().is_some())?;
+    records::iso_ms(saved.keep_until.as_deref()?).map(Wall)
+}
+
 /// How far a fetch has come, in whole percent.
 pub fn percent(done: u64, total: u64) -> u8 {
     if total == 0 { 0 } else { (done.min(total) as u128 * 100 / total as u128) as u8 }
 }
 
-/// Fetches the video into `edits/<rec>/source.mp4` (whole or not at all). With `getting`,
-/// the editor hears how far it has come.
+/// Fetches the video into `edits/<rec>/source.mp4` (whole or not at all), and remembers which
+/// of the record's files it is. With `getting`, the editor hears how far it has come.
 fn fetch(rt: &Runtime, door: &mut Doorway, space: &SpaceIdentity, meta: &Meta, dir: &Path, stop: Option<&Stop>, getting: bool) -> Result<PathBuf, Ended> {
     use std::os::unix::fs::PermissionsExt;
     let rec = RecId(meta.id.clone());
@@ -264,15 +354,17 @@ fn fetch(rt: &Runtime, door: &mut Doorway, space: &SpaceIdentity, meta: &Meta, d
     let (mut said, mut at) = (0u8, Instant::now());
     let mut progress = |done: u64, total: u64| {
         let pct = percent(done, total);
-        if getting && pct != said && at.elapsed() >= GETTING_EVERY {
+        if getting && pct != said && at.elapsed() >= EVERY {
             rt.post(Event::Editor(EditorNews::Getting { rec: rec.clone(), pct }));
             (said, at) = (pct, Instant::now());
         }
     };
     let cancel = || stop.is_some_and(Stop::stopped);
+    let _ = std::fs::remove_file(dir.join(SOURCE_KEY));
     match s3.get_to_file(&key, &path, &mut progress, &cancel) {
         Ok(true) => {
             let _ = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600));
+            let _ = write_private(&dir.join(SOURCE_KEY), key.as_bytes());
             let mb = std::fs::metadata(&path).map(|m| m.len() / 1_000_000).unwrap_or(0);
             rt.log(&format!("editor: {} fetched from the space ({mb} MB in {} ms)", short(&meta.id), t0.elapsed().as_millis()));
             Ok(path)
@@ -311,6 +403,11 @@ fn open(rt: &Runtime, rec: &RecId, stop: &Stop) {
     }
 }
 
+/// Whether a copy's picture is as long as the record says the video is (when it says).
+fn as_long(meta: &Meta, seconds: f64) -> bool {
+    meta.duration_sec.filter(|d| d.is_finite() && *d > 0.0).is_none_or(|d| (d - seconds).abs() <= LENGTH_SLACK)
+}
+
 fn opened(rt: &Runtime, rec: &RecId, stop: &Stop) -> Result<(), Ended> {
     let t0 = Instant::now();
     let space = space(rt)?;
@@ -318,27 +415,31 @@ fn opened(rt: &Runtime, rec: &RecId, stop: &Stop) -> Result<(), Ended> {
     let mut door = Doorway::default();
     let meta = record(rt, &mut door, &space, &rec.0)?;
     let said = stop.unless_stopped(|| {
+        OPENED.lock().unwrap().get_or_insert_with(HashMap::new).insert(rec.0.clone(), Played::of(&meta));
         rt.post(Event::Editor(EditorNews::Opened {
             rec: rec.clone(),
             saved: meta.edits.clone(),
             markers: meta.markers.clone().unwrap_or_default(),
             duration_sec: meta.duration_sec,
+            keep_until: kept_until(&meta),
         }))
     });
     if !said {
         return Err(Ended::Stopped);
     }
-    // The first copy on this Mac whose sound reads; else the space's.
+    // The first copy on this Mac of what the record plays whose sound reads; else the
+    // space's.
     let mut read = None;
-    for candidate in on_this_mac(&rt.home.takes(), &rt.home.edits(), &rec.0) {
+    for candidate in on_this_mac(&rt.home.takes(), &rt.home.edits(), &meta) {
         if stop.stopped() {
             return Err(Ended::Stopped);
         }
         match shroom_encode::peaks::read(&candidate) {
-            Ok(p) => {
+            Ok(p) if as_long(&meta, p.duration) => {
                 read = Some((candidate, p));
                 break;
             }
+            Ok(p) => rt.log(&format!("editor: a copy of {} here is {:.1} s, not the record's {:?} s", short(&rec.0), p.duration, meta.duration_sec)),
             Err(e) => rt.log(&format!("editor: a copy of {} here doesn't read ({e})", short(&rec.0))),
         }
     }
@@ -371,8 +472,21 @@ fn opened(rt: &Runtime, rec: &RecId, stop: &Stop) -> Result<(), Ended> {
     Ok(())
 }
 
+/// Why a save is refused before anything is written: the record moved on to another file
+/// since the editor opened on it (another Mac's bake) — the list was made on the old clock.
+pub fn moved_on(opened: Option<&Played>, now: &Meta) -> bool {
+    opened.is_some_and(|o| *o != Played::of(now))
+}
+
 fn save(rt: &Runtime, door: &mut Doorway, rec: &RecId, saved: &shroom_edit::Saved) {
     let result = space(rt).and_then(|space| {
+        // The guard against a bake under the editor: rare (another Mac's, mid-edit), and
+        // between this look and the write it can still slip in — the next open shows it.
+        let now = record(rt, door, &space, &rec.0)?;
+        if moved_on(opened_as(&rec.0).as_ref(), &now) {
+            rt.log(&format!("editor: {} was made the video on another Mac while the editor was open — this edit wasn't saved over it", short(&rec.0)));
+            return Err(FailClass::Refused);
+        }
         let s3 = door.client(rt, &space, &rec.0)?;
         records::save_edits(&s3, &rec.0, &saved.list, saved.rev).map_err(|e| {
             rt.log(&format!("editor: {}'s save: {e}", short(&rec.0)));
@@ -391,6 +505,41 @@ fn save(rt: &Runtime, door: &mut Doorway, rec: &RecId, saved: &shroom_edit::Save
     }
 }
 
+/// The final video's progress, for the window making it (B197 (a)): the cut to 80%, the
+/// files sent to 100% — at most every 250 ms. The upkeep's copies say nothing.
+struct Making<'a> {
+    to: Option<(&'a Runtime, &'a RecId)>,
+    said: u8,
+    at: Option<Instant>,
+}
+
+impl<'a> Making<'a> {
+    fn window(rt: &'a Runtime, rec: &'a RecId) -> Making<'a> {
+        Making { to: Some((rt, rec)), said: 0, at: None }
+    }
+
+    fn quiet() -> Making<'a> {
+        Making { to: None, said: 0, at: None }
+    }
+
+    fn tell(&mut self, pct: u8) {
+        let Some((rt, rec)) = self.to else { return };
+        let pct = pct.min(100);
+        if pct <= self.said || self.at.is_some_and(|t| t.elapsed() < EVERY) {
+            return;
+        }
+        rt.post(Event::Editor(EditorNews::Making { rec: rec.clone(), pct }));
+        (self.said, self.at) = (pct, Some(Instant::now()));
+    }
+}
+
+/// The share of the final video's progress the cut is; the files sent are the rest.
+const CUT_SHARE: f64 = 80.0;
+
+/// What a copy's sent files count for, once the cut is done: the copy, its poster, its
+/// teaser, then naming them.
+const SENT: [u8; 3] = [95, 97, 99];
+
 /// The picture encoders the copy may take, best first: VideoToolbox (the release's encoder
 /// has only it), then x264 where a dev build's encoder has it — a virtual Mac's VideoToolbox
 /// can refuse to encode.
@@ -399,7 +548,10 @@ fn encoders(ffmpeg: &Path) -> Vec<shroom_encode::cut::Encoder> {
     std::iter::once(Encoder::VideoToolbox).chain(has_encoder(ffmpeg, Encoder::Libx264.codec()).then_some(Encoder::Libx264)).collect()
 }
 
-fn copy(rt: &Runtime, door: &mut Doorway, rec: &RecId, rev: u64) -> Result<(), Ended> {
+/// Cuts the permanent copy of `rev` and puts it up. `Ok(true)`: named in the record (with
+/// when the original goes); `Ok(false)`: dropped — the record moved on, or there's nothing
+/// to cut.
+fn copy(rt: &Runtime, door: &mut Doorway, rec: &RecId, rev: u64, making: &mut Making) -> Result<bool, Ended> {
     let t0 = Instant::now();
     let space = space(rt)?;
     let dir = folder(rt, &rec.0)?;
@@ -407,7 +559,7 @@ fn copy(rt: &Runtime, door: &mut Doorway, rec: &RecId, rev: u64) -> Result<(), E
     // Only the revision asked for: a newer save came first, or the edit went.
     let Some(saved) = meta.edits.as_ref().filter(|s| s.rev == rev) else {
         rt.log(&format!("editor: {}'s copy of revision {rev} dropped — the record moved on", short(&rec.0)));
-        return Ok(());
+        return Ok(false);
     };
     let mut list = saved.list.clone();
     if let Some(d) = meta.duration_sec.filter(|d| d.is_finite() && *d > 0.0) {
@@ -416,10 +568,13 @@ fn copy(rt: &Runtime, door: &mut Doorway, rec: &RecId, rev: u64) -> Result<(), E
     let list = list.checked();
     if list.is_identity() {
         rt.log(&format!("editor: {}'s revision {rev} is the original — no copy", short(&rec.0)));
-        return Ok(());
+        return Ok(false);
     }
     let keep = list.keep();
-    let source = match MEDIA.video(&rec.0).filter(|p| p.is_file()).or_else(|| on_this_mac(&rt.home.takes(), &rt.home.edits(), &rec.0).into_iter().next()) {
+    // The registered video (the window's, found or fetched as the record plays now), else
+    // the same search an open makes, else the space's.
+    let here = MEDIA.video(&rec.0).filter(|p| p.is_file()).into_iter().chain(on_this_mac(&rt.home.takes(), &rt.home.edits(), &meta)).next();
+    let source = match here {
         Some(p) => p,
         None => fetch(rt, door, &space, &meta, &dir, None, false)?,
     };
@@ -428,11 +583,12 @@ fn copy(rt: &Runtime, door: &mut Doorway, rec: &RecId, rev: u64) -> Result<(), E
         Ended::Failed(FailClass::Unclassified)
     })?;
     let names = [shroom_edit::EditCopy::file_for(rev), shroom_edit::EditCopy::poster_for(rev), shroom_edit::EditCopy::teaser_for(rev)];
-    let made = (|| -> Result<(), Ended> {
+    let made = (|| -> Result<bool, Ended> {
         let out = dir.join(&names[0]);
         let mut cut = None;
+        making.tell(0);
         for enc in encoders(&ffmpeg) {
-            match shroom_encode::cut::render(&ffmpeg, &source, &keep, &out, &enc) {
+            match shroom_encode::cut::render_with(&ffmpeg, &source, &keep, &out, &enc, &mut |f| making.tell((f * CUT_SHARE) as u8)) {
                 Ok(duration) => {
                     cut = Some((duration, enc));
                     break;
@@ -444,6 +600,7 @@ fn copy(rt: &Runtime, door: &mut Doorway, rec: &RecId, rev: u64) -> Result<(), E
         // Its own first frame and teaser: a trimmed-off start never shows in an unfurl.
         let poster = shroom_encode::take::poster_of(&ffmpeg, &out, &dir.join(&names[1])).map_err(|e| rt.log(&format!("editor: the copy's poster: {e}"))).ok().map(|()| names[1].clone());
         let teaser = shroom_encode::take::teaser_of(&ffmpeg, &out, &dir.join(&names[2]), &enc).map_err(|e| rt.log(&format!("editor: the copy's teaser: {e}"))).ok().map(|()| names[2].clone());
+        making.tell(CUT_SHARE as u8);
         rt.log(&format!("editor: {}'s copy of revision {rev} cut — {duration:.1} s, in {} ms", short(&rec.0), t0.elapsed().as_millis()));
         // The bytes go up under a door opened now: a `manage` credential lives 15 minutes,
         // and a long recording's cut can take longer.
@@ -455,24 +612,28 @@ fn copy(rt: &Runtime, door: &mut Doorway, rec: &RecId, rev: u64) -> Result<(), E
             })
         };
         up(&names[0], "video/mp4")?;
+        making.tell(SENT[0]);
         if let Some(p) = &poster {
             up(p, "image/jpeg")?;
         }
+        making.tell(SENT[1]);
         if let Some(t) = &teaser {
             up(t, "video/mp4")?;
         }
+        making.tell(SENT[2]);
         let copy = shroom_edit::EditCopy { rev, file: names[0].clone(), duration, poster, teaser };
-        let current = records::set_edit_copy(&s3, &rec.0, &copy).map_err(|e| {
+        let current = records::set_edit_copy(&s3, &rec.0, &copy, &now_iso()).map_err(|e| {
             rt.log(&format!("editor: {}'s copy wasn't named ({e})", short(&rec.0)));
             Ended::Failed(class(&e))
         })?;
+        making.tell(100);
         rt.log(&format!(
             "editor: {}'s copy of revision {rev} {} in {} ms",
             short(&rec.0),
-            if current { "is up and named" } else { "was dropped — a newer save came first" },
+            if current { "is up and named, its original kept two days" } else { "was dropped — a newer save came first" },
             t0.elapsed().as_millis()
         ));
-        Ok(())
+        Ok(current)
     })();
     for name in &names {
         let _ = std::fs::remove_file(dir.join(name));
@@ -480,9 +641,140 @@ fn copy(rt: &Runtime, door: &mut Doorway, rec: &RecId, rev: u64) -> Result<(), E
     made
 }
 
+/// “Yes, delete” (B197 (c)): the edit becomes the video, now. What this Mac kept of the
+/// original goes with it.
+fn bake(rt: &Runtime, rec: &RecId) {
+    let mut door = Doorway::default();
+    let baked = space(rt).and_then(|space| {
+        let s3 = door.client(rt, &space, &rec.0)?;
+        records::bake(&s3, &rec.0, &now_iso()).map_err(|e| {
+            rt.log(&format!("editor: {}'s bake: {e}", short(&rec.0)));
+            class(&e)
+        })
+    });
+    match baked {
+        Ok(true) => {
+            rt.log(&format!("editor: {}'s edit is the video now — its original deleted", short(&rec.0)));
+            forget_folder(rt, &rec.0);
+        }
+        Ok(false) => rt.log(&format!("editor: {} had nothing to bake (no current copy)", short(&rec.0))),
+        Err(class) => rt.log(&format!("editor: {}'s bake didn't land ({class:?}) — the upkeep bakes it once its two days are up", short(&rec.0))),
+    }
+}
+
+/// A recording's folder in `edits/` goes (its video isn't served any more either).
+fn forget_folder(rt: &Runtime, rec: &str) {
+    if !super::posters::valid_id(rec) {
+        return;
+    }
+    MEDIA.forget(rec);
+    let _ = std::fs::remove_dir_all(rt.home.edits().join(rec));
+}
+
+/// Whose videos this Mac keeps up (B197 (d)): a member's own, by the ledger's owner; every
+/// video on an owner-class Mac.
+pub fn mine(role: Role, member: &str, owner: Option<&str>) -> bool {
+    role != Role::Member || owner == Some(member)
+}
+
+/// One upkeep pass (B197 (d)): `(baked, copies made)`.
+fn upkeep(rt: &Runtime, door: &mut Doorway) -> Result<(u32, u32), FailClass> {
+    let t0 = Instant::now();
+    let space = space(rt)?;
+    let rows = super::library::cached(rt, &space);
+    // Only a record whose row says it holds an edit is read: the rest have nothing to bake
+    // or copy.
+    let mut read: Vec<(String, Meta)> = Vec::new();
+    for r in rows.iter().filter(|r| r.edited_sec.is_some() && mine(space.role, &space.member_id, r.owner.as_deref())) {
+        match record(rt, door, &space, &r.id) {
+            Ok(m) => read.push((r.id.clone(), m)),
+            // Offline: the pass waits for the next.
+            Err(FailClass::Transport) => return Err(FailClass::Transport),
+            Err(c) => {
+                rt.log(&format!("editor upkeep: {} not read ({c:?})", short(&r.id)));
+                door.forget();
+            }
+        }
+    }
+    let now = now_iso();
+    let local: HashMap<String, bool> = read.iter().map(|(id, m)| (id.clone(), !on_this_mac(&rt.home.takes(), &rt.home.edits(), m).is_empty())).collect();
+    let plan = records::upkeep_plan(&read, &now, &|_| true, &|id| local.get(id).copied().unwrap_or(false));
+    let (mut baked, mut copies) = (0u32, 0u32);
+    for id in &plan.bake {
+        let done = door.client(rt, &space, id).and_then(|s3| records::bake(&s3, id, &now).map_err(|e| class(&e)));
+        match done {
+            Ok(true) => {
+                baked += 1;
+                forget_folder(rt, id);
+            }
+            Ok(false) => {}
+            Err(c) => {
+                rt.log(&format!("editor upkeep: {}'s bake didn't land ({c:?})", short(id)));
+                door.forget();
+            }
+        }
+    }
+    for (id, rev) in &plan.copy {
+        match copy(rt, door, &RecId(id.clone()), *rev, &mut Making::quiet()) {
+            Ok(true) => copies += 1,
+            Ok(false) => {}
+            Err(e) => {
+                rt.log(&format!("editor upkeep: {}'s copy of revision {rev} didn't land ({:?})", short(id), e.class()));
+                door.forget();
+            }
+        }
+    }
+    let pruned = prune(rt, &rows.iter().map(|r| r.id.as_str()).collect::<Vec<_>>());
+    rt.log(&format!(
+        "editor upkeep: {} edited record(s) read, {baked} baked, {copies} cop{} made, {pruned} folder(s) dropped, in {} ms",
+        read.len(),
+        if copies == 1 { "y" } else { "ies" },
+        t0.elapsed().as_millis()
+    ));
+    Ok((baked, copies))
+}
+
+/// The recordings' folders in `edits/` that nobody needs: a recording the space no longer
+/// lists (deleted, or another space's), or one unused a week — never the one the editor
+/// serves now. How many went.
+fn prune(rt: &Runtime, listed: &[&str]) -> usize {
+    let Ok(entries) = std::fs::read_dir(rt.home.edits()) else { return 0 };
+    let now = SystemTime::now();
+    let mut gone = 0;
+    for e in entries.filter_map(Result::ok) {
+        let name = e.file_name().to_string_lossy().into_owned();
+        if !super::posters::valid_id(&name) || MEDIA.video(&name).is_some() {
+            continue;
+        }
+        let used = last_used(&e.path());
+        if !listed.contains(&name.as_str()) || unused(used, now) {
+            let _ = std::fs::remove_dir_all(e.path());
+            gone += 1;
+        }
+    }
+    gone
+}
+
+/// When anything in a folder was last written (an open rewrites its peaks).
+fn last_used(dir: &Path) -> Option<SystemTime> {
+    std::fs::read_dir(dir).ok()?.filter_map(Result::ok).filter_map(|e| e.metadata().ok()?.modified().ok()).max()
+}
+
+/// Unused for a week (a folder holding nothing at all counts as unused).
+pub fn unused(last: Option<SystemTime>, now: SystemTime) -> bool {
+    last.is_none_or(|t| now.duration_since(t).is_ok_and(|d| d >= UNUSED))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn meta(id: &str, mp4: Option<&str>, duration: Option<f64>) -> Meta {
+        let mut m = Meta::uploading(id, "t", "2026-10-02T00:00:00Z");
+        m.duration_sec = duration;
+        m.media = Some(shroom_upload::meta::Media { hls: Some(format!("rec/{id}/master.m3u8")), mp4: mp4.map(String::from), poster: None, teaser: None, width: 1, height: 1 });
+        m
+    }
 
     #[test]
     fn the_video_is_found_on_this_mac_by_its_takes_then_a_fetch_kept() {
@@ -497,23 +789,33 @@ mod tests {
             }
             d
         };
+        let original = meta("AbCd", Some("rec/AbCd/video.mp4"), Some(10.0));
         let none: Vec<PathBuf> = vec![];
-        assert_eq!(on_this_mac(&takes, &edits, "AbCd"), none, "nothing here");
+        assert_eq!(on_this_mac(&takes, &edits, &original), none, "nothing here");
         take("20261002-120000-0001", "take.json", "Other", true);
         take("20261002-120000-0002", "take.json", "AbCd", false);
-        assert_eq!(on_this_mac(&takes, &edits, "AbCd"), none, "a take without its single-file copy");
+        assert_eq!(on_this_mac(&takes, &edits, &original), none, "a take without its single-file copy");
         let pub3 = take("20261002-120000-0003", "publish.json", "AbCd", true);
         std::fs::create_dir_all(edits.join("AbCd")).unwrap();
         std::fs::write(edits.join("AbCd").join(SOURCE), b"mp4").unwrap();
-        assert_eq!(on_this_mac(&takes, &edits, "AbCd"), vec![pub3.join("preview.mp4"), edits.join("AbCd").join(SOURCE)], "the take's first, then the fetched one");
-        assert_eq!(on_this_mac(&takes, &edits, "Other").len(), 1);
+        assert_eq!(on_this_mac(&takes, &edits, &original), vec![pub3.join("preview.mp4")], "a fetched file of no known key is never taken");
+        std::fs::write(edits.join("AbCd").join(SOURCE_KEY), b"rec/AbCd/video.mp4").unwrap();
+        assert_eq!(on_this_mac(&takes, &edits, &original), vec![pub3.join("preview.mp4"), edits.join("AbCd").join(SOURCE)], "the take's first, then the fetched one");
+        assert_eq!(on_this_mac(&takes, &edits, &meta("AbCd", None, None)).len(), 2, "no single file named: the uploader's");
+
+        // Baked: the record plays its edit's copy, which no take holds, and the original
+        // fetched before isn't it.
+        let baked = meta("AbCd", Some("rec/AbCd/edit-1.mp4"), Some(6.0));
+        assert_eq!(on_this_mac(&takes, &edits, &baked), none);
+        std::fs::write(edits.join("AbCd").join(SOURCE_KEY), b"rec/AbCd/edit-1.mp4").unwrap();
+        assert_eq!(on_this_mac(&takes, &edits, &baked), vec![edits.join("AbCd").join(SOURCE)], "the baked file, once fetched");
     }
 
     #[test]
     fn the_space_keeps_the_video_beside_the_recording() {
         let mut m = Meta::uploading("AbCd", "t", "2026-10-02T00:00:00Z");
         assert_eq!(video_key(&m), "rec/AbCd/video.mp4", "no media: the uploader's name");
-        let media = |mp4: Option<&str>| shroom_upload::meta::Media { hls: "rec/AbCd/master.m3u8".into(), mp4: mp4.map(String::from), poster: None, teaser: None, width: 1, height: 1 };
+        let media = |mp4: Option<&str>| shroom_upload::meta::Media { hls: Some("rec/AbCd/master.m3u8".into()), mp4: mp4.map(String::from), poster: None, teaser: None, width: 1, height: 1 };
         m.media = Some(media(Some("rec/AbCd/edit-3.mp4")));
         assert_eq!(video_key(&m), "rec/AbCd/edit-3.mp4", "the record's own");
         for elsewhere in ["rec/Other/video.mp4", "rec/AbCd/../Other/video.mp4", "meta/AbCd.json", "rec/AbCd/"] {
@@ -522,6 +824,77 @@ mod tests {
         }
         m.media = Some(media(None));
         assert_eq!(video_key(&m), "rec/AbCd/video.mp4");
+    }
+
+    #[test]
+    fn the_original_is_kept_until_the_current_copys_time() {
+        let mut m = meta("AbCd", Some("rec/AbCd/video.mp4"), Some(10.0));
+        assert_eq!(kept_until(&m), None, "no edit");
+        let mut saved = shroom_edit::Saved::new(shroom_edit::EditList::new(10.0), 2);
+        saved.keep_until = Some("2026-10-20T12:00:00Z".into());
+        m.edits = Some(saved.clone());
+        assert_eq!(kept_until(&m), None, "no copy yet: nothing is kept for it");
+        saved.copy = Some(shroom_edit::EditCopy { rev: 1, file: "edit-1.mp4".into(), duration: 5.0, poster: None, teaser: None });
+        m.edits = Some(saved.clone());
+        assert_eq!(kept_until(&m), None, "an older revision's copy");
+        saved.copy.as_mut().unwrap().rev = 2;
+        m.edits = Some(saved.clone());
+        assert_eq!(kept_until(&m), Some(Wall(1_792_497_600_000)));
+        saved.keep_until = Some("soon".into());
+        m.edits = Some(saved);
+        assert_eq!(kept_until(&m), None, "a time that doesn't read");
+    }
+
+    #[test]
+    fn a_save_over_a_video_baked_since_the_editor_opened_is_refused() {
+        let opened = meta("AbCd", Some("rec/AbCd/video.mp4"), Some(10.0));
+        let at = Played::of(&opened);
+        assert!(!moved_on(Some(&at), &opened), "as it was");
+        let mut renamed = opened.clone();
+        renamed.title = "New".into();
+        assert!(!moved_on(Some(&at), &renamed), "a rename moves nothing");
+        let mut baked = meta("AbCd", Some("rec/AbCd/edit-1.mp4"), Some(6.0));
+        baked.extra.insert(records::BAKED_FROM.into(), serde_json::json!([{ "at": "2026-10-18T00:00:00Z", "rev": 1, "keep": [[0, 6]] }]));
+        assert!(moved_on(Some(&at), &baked), "another Mac's bake");
+        let mut again = baked.clone();
+        again.extra.insert(records::BAKED_FROM.into(), serde_json::json!([{}, {}]));
+        assert!(moved_on(Some(&Played::of(&baked)), &again), "a second bake, same file name or not");
+        assert!(!moved_on(None, &baked), "nothing known of the open: the save goes ahead");
+    }
+
+    #[test]
+    fn a_member_keeps_up_their_own_videos_an_owner_every_one() {
+        assert!(mine(Role::Member, "m2", Some("m2")));
+        assert!(!mine(Role::Member, "m2", Some("m1")));
+        assert!(!mine(Role::Member, "m2", None), "an owner not known yet: not theirs");
+        assert!(mine(Role::OwnerClass, "m1", Some("m2")) && mine(Role::TokenHolder, "m1", None));
+    }
+
+    #[test]
+    fn a_folder_unused_a_week_goes() {
+        let now = SystemTime::now();
+        assert!(!unused(Some(now - Duration::from_secs(6 * 24 * 3600)), now));
+        assert!(unused(Some(now - Duration::from_secs(7 * 24 * 3600)), now));
+        assert!(unused(None, now), "nothing in it");
+        assert!(!unused(Some(now + Duration::from_secs(60)), now), "a clock that went back");
+    }
+
+    #[test]
+    fn progress_is_told_forward_only_and_never_more_than_every_250_ms() {
+        let tmp = tempfile::tempdir().unwrap();
+        let (rt, rx) = Runtime::for_test(tmp.path().join("h"), None, None);
+        let rec = RecId("AbCd".into());
+        let mut m = Making::window(&rt, &rec);
+        m.tell(0);
+        m.tell(10);
+        m.tell(5);
+        std::thread::sleep(EVERY);
+        m.tell(4);
+        m.tell(40);
+        let mut q = Making::quiet();
+        q.tell(50);
+        let told: Vec<u8> = rx.try_iter().filter_map(|e| if let Event::Editor(EditorNews::Making { pct, .. }) = e.event { Some(pct) } else { None }).collect();
+        assert_eq!(told, vec![10, 40], "0 is where it starts; 5 and 4 go back; 40 after the wait; the upkeep's never");
     }
 
     #[test]
@@ -545,11 +918,11 @@ mod tests {
         assert!(stop.stopped());
     }
 
-    /// The lane against no space: an open fails as the core waits to hear, a save too; a
-    /// Cancel answers nothing, and a cancelled open's failure never lands.
+    /// The lane against no space: an open fails as the core waits to hear, a save, a copy
+    /// and an upkeep too; a Cancel and a Bake answer nothing, and a cancelled open's failure
+    /// never lands.
     #[test]
-    fn every_command_is_answered_once_and_a_cancel_never() {
-        use std::time::Duration;
+    fn every_command_is_answered_once_and_a_cancel_or_a_bake_never() {
         let tmp = tempfile::tempdir().unwrap();
         let (rt, rx) = Runtime::for_test(tmp.path().join("h"), None, None);
         let lane = spawn(rt.clone());
@@ -561,7 +934,10 @@ mod tests {
         assert!(matches!(next(), Ok(Event::Failed { op: Op::EditorSave, class: FailClass::Refused })));
         lane.send(EditCmd::Copy { rec: rec.clone(), rev: 1 }).unwrap();
         assert!(matches!(next(), Ok(Event::Failed { op: Op::EditorCopy, class: FailClass::Refused })));
+        lane.send(EditCmd::Upkeep).unwrap();
+        assert!(matches!(next(), Ok(Event::Failed { op: Op::EditorUpkeep, class: FailClass::Refused })));
         lane.send(EditCmd::Cancel { rec: rec.clone() }).unwrap();
-        assert!(rx.recv_timeout(Duration::from_millis(300)).is_err(), "a Cancel answers nothing");
+        lane.send(EditCmd::Bake { rec: rec.clone() }).unwrap();
+        assert!(rx.recv_timeout(Duration::from_millis(300)).is_err(), "a Cancel and a Bake answer nothing");
     }
 }
