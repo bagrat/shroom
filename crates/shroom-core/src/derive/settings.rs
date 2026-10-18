@@ -450,7 +450,7 @@ fn space(w: &World, at: SpaceAt, offline: bool) -> SpaceBody {
     // page said where it stands; greyed while a re-wiring runs and mid-take (law 4).
     let ai_known = w.space.ai.filter(|_| w.space.token_holder());
     let ai = ai_known.map(|on| Toggle { action: Action::SetAi(!on), label: copy::ai_label(), on, enabled: !w.inflight.ops.contains_key(&Op::Ai) && !w.take_open() });
-    let ai_line = ai_known.map(|_| if super::ai_fell_through(w, crate::world::WindowKind::Settings) { copy::ai_failed() } else { copy::ai_line() });
+    let ai_line = ai_known.map(|_| if super::ai_fell_through(w, crate::world::WindowKind::Settings) { copy::ai_failed() } else { copy::ai_cost() });
     let exit = if id.role == Role::Member { copy::leave_space_ellipsis() } else { copy::disconnect_ellipsis() };
     let exits = vec![not_mid_take(w, Button::new(Action::Disconnect, exit, Style::Quiet))];
     let mic = mic_denied(w).then(|| Button::new(Action::OpenMicSettings, copy::turn_on_mic(), Style::Quiet));

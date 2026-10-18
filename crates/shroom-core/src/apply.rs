@@ -18,7 +18,7 @@ use crate::report::{Kind, Post};
 use crate::scene::{Action, Click};
 use crate::time::{Fact, Mono};
 use crate::world::{
-    Access, Arming, Blocked, Born, Cause, Confirm, CopyTarget, Door, FailClass, Failure, Fields, Fork, Invite, JoinRefusal, Landed, LaunchKind,
+    Access, AiTurn, Arming, Blocked, Born, Cause, Confirm, CopyTarget, Door, FailClass, Failure, Fields, Fork, Invite, JoinRefusal, Landed, LaunchKind,
     LibraryFields, LibraryOps, Members, OpenTake, Op, PageOpen, Paste, Phase, QuickProbe, Reach, RelaunchWhy, Removal, ReportFields, FeedbackFields, Restore, Role, SavedCause,
     SavedTake, SecretId, SettingsFields, SettingsTab, SourceId, Space, SpaceIdentity, StopOutcome, Strike, Sweep, TakeDir, TakeLost, TokenVerdict,
     UpdateOffer, Why, WindowKind, WorkerFact, World,
@@ -60,6 +60,7 @@ pub fn apply(w: &mut World, event: Event) -> Out {
                 fx.push(Effect::Persist(PersistOp::Once(w.once.clone())));
             }
             OneShot::Failed => w.update.failed = false,
+            OneShot::AiOn => w.space.ai_turn = None,
         }
     }
     (fx, arm)
@@ -579,9 +580,14 @@ fn act(w: &mut World, action: Action) -> Out {
             if matches!(w.session.confirm, Some(Confirm::Uninstall { going: true } | Confirm::Report { sending: true })) {
                 return (vec![], Arm::DROPPED);
             }
-            if w.session.confirm.take() == Some(Confirm::Report { sending: false }) {
+            let was = w.session.confirm.take();
+            if was == Some(Confirm::Report { sending: false }) {
                 w.session.fields.settings.report = ReportFields::default();
                 return (vec![], Arm { name: "report-cancelled", edge: Some(("report-problem", "settings-general")) });
+            }
+            // The AI banner's confirm: back to config, the banner still there (N66).
+            if was == Some(Confirm::Ai) {
+                return (vec![], Arm { name: "ai-back", edge: Some(("ai-confirm", "config")) });
             }
             (vec![], Arm::named("back"))
         }
@@ -1253,21 +1259,50 @@ fn act(w: &mut World, action: Action) -> Out {
         // A new try starts clean: its own failure, if any, is the one said.
         Action::SetAi(on) => {
             w.inflight.failures.remove(&Op::Ai);
+            w.space.ai_turn = None;
             (vec![Effect::Cloud(CloudCmd::SetAi(on))], Arm::named("set-ai"))
         }
-        // The card's Turn on is the switch's; the card stays until the page answers.
-        Action::AiOn => {
-            w.inflight.failures.remove(&Op::Ai);
-            (vec![Effect::Cloud(CloudCmd::SetAi(true))], Arm::named("ai-on"))
+        // The AI banner's Turn on… (N66): its confirm says what it costs, before anything does.
+        Action::AiAsk => {
+            if w.take_open() || w.space.ai_turn == Some(AiTurn::Turning) && w.inflight.ops.contains_key(&Op::Ai) {
+                return (vec![], Arm::DROPPED);
+            }
+            w.session.confirm = Some(Confirm::Ai);
+            (vec![], Arm { name: "ai-asked", edge: Some(("ai-offer", "ai-confirm")) })
         }
+        // The confirm's Turn on is the switch's: the banner says it's turning on until the
+        // page answers.
+        Action::AiOn => {
+            let asked = w.session.confirm == Some(Confirm::Ai);
+            if asked {
+                w.session.confirm = None;
+            }
+            w.inflight.failures.remove(&Op::Ai);
+            w.space.ai_turn = Some(AiTurn::Turning);
+            (vec![Effect::Cloud(CloudCmd::SetAi(true))], Arm { name: "ai-on", edge: asked.then_some(("ai-confirm", "ai-turning-on")) })
+        }
+        // Not now: hidden until five more recordings; the second time, for good.
         Action::AiNotNow => {
-            w.once.ai_offer = true;
-            (vec![Effect::Persist(PersistOp::Once(w.once.clone()))], Arm::named("ai-not-now"))
+            w.space.ai_turn = None;
+            let b = &mut w.once.ai_banner;
+            b.not_now = b.not_now.saturating_add(1);
+            b.takes = 0;
+            (vec![Effect::Persist(PersistOp::Once(w.once.clone()))], Arm { name: "ai-not-now", edge: Some(("ai-offer", "config")) })
         }
         Action::SetScope(scope) => {
             w.session.fields.library.scope = scope;
             (vec![], Arm::named("set-scope"))
         }
+    }
+}
+
+/// A recording that made a link, after the AI banner's first Not now: five of them bring it
+/// back, once (N66).
+fn count_for_ai_banner(w: &mut World, fx: &mut Vec<Effect>) {
+    let b = &mut w.once.ai_banner;
+    if b.not_now == 1 && !b.done && b.takes < crate::world::AI_BANNER_AGAIN {
+        b.takes += 1;
+        fx.push(Effect::Persist(PersistOp::Once(w.once.clone())));
     }
 }
 
@@ -1374,7 +1409,7 @@ fn joined(w: &mut World, identity: SpaceIdentity) -> Out {
         w.inflight.ops.remove(&Op::Upload);
         w.inflight.failures.remove(&Op::Upload);
     }
-    w.space = Space { identity: Some(identity.clone()), token: false, device_key: true, broken: Fact::Unknown, page_checked: None, ai: None };
+    w.space = Space { identity: Some(identity.clone()), token: false, device_key: true, broken: Fact::Unknown, page_checked: None, ai: None, ai_turn: None };
     w.sweep = Sweep::default();
     w.library = Fact::Unknown;
     w.library_ops = LibraryOps::default();
@@ -2241,6 +2276,7 @@ fn rec(w: &mut World, news: RecNews) -> Out {
                 }
                 (Ok(length_ms), Phase::Finalizing(Why::Stop | Why::GetLink)) => {
                     fx.push(Effect::Publish { dir: t.dir.clone(), rec: t.rec.clone() });
+                    count_for_ai_banner(w, &mut fx);
                     // Wake the uploader now: the link exists, its bytes should follow at once.
                     fx.push(Effect::Uploader(UpCmd::Kick));
                     fx.push(Effect::Takes(TakeCmd::Rescan));
@@ -2464,11 +2500,20 @@ fn cloud(w: &mut World, news: CloudNews) -> Out {
         CloudNews::AiSet(on) => {
             answered(w, Op::Ai);
             w.space.ai = Some(on);
-            // On, by the card or the switch: the card is answered for good on this Mac.
+            // On, by the banner or the switch: the banner is answered for good on this Mac,
+            // and the banner's own Turn on is said once, in config's status line.
+            let turning = w.space.ai_turn == Some(AiTurn::Turning);
+            if turning {
+                w.space.ai_turn = None;
+            }
             let mut fx = Vec::new();
-            if on && !w.once.ai_offer {
-                w.once.ai_offer = true;
+            if on && !w.once.ai_banner.done {
+                w.once.ai_banner.done = true;
                 fx.push(Effect::Persist(PersistOp::Once(w.once.clone())));
+            }
+            if on && turning {
+                w.space.ai_turn = Some(AiTurn::On);
+                return (fx, Arm { name: "ai-set", edge: Some(("ai-turning-on", "ai-on")) });
             }
             (fx, Arm::named("ai-set"))
         }
@@ -2912,6 +2957,11 @@ fn failed(w: &mut World, op: Op, class: crate::world::FailClass) -> Out {
             w.inflight.failures.remove(&Op::Relaunch);
             fx.push(Effect::Persist(PersistOp::Restore(None)));
         }
+        // The banner's Turn on didn't go through: it says so, Turn on… live again (law 12),
+        // and it's tried again quietly until it goes through or the person says Not now.
+        Op::Ai if w.space.ai_turn == Some(AiTurn::Turning) => {
+            return (fx, Arm { name: "ai-failed", edge: Some(("ai-turning-on", "ai-offer-failed")) });
+        }
         // A rename or delete that didn't land: the row reads as the space has it again.
         Op::Rename => w.library_ops.renaming.clear(),
         Op::Delete => w.library_ops.deleting.clear(),
@@ -2969,6 +3019,10 @@ fn tick(w: &mut World) -> Out {
     // The offline stop's page lapses after an hour of wall time (N40).
     if w.session.page_open.as_ref().is_some_and(|p| w.wall.0 >= p.at.0 + 3_600_000) {
         w.session.page_open = None;
+    }
+    // The AI banner's Turn on that didn't go through, tried again at its backoff (N66).
+    if w.space.ai_turn == Some(AiTurn::Turning) && !w.inflight.ops.contains_key(&Op::Ai) && w.inflight.failures.get(&Op::Ai).is_some_and(|f| now >= f.ai_retry_at()) {
+        fx.push(Effect::Cloud(CloudCmd::SetAi(true)));
     }
     (fx, Arm::named("tick"))
 }

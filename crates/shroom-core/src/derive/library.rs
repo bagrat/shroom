@@ -4,7 +4,7 @@
 //! over titles. Offline, Copy link stays live; renaming and deleting grey out.
 
 use crate::copy;
-use crate::scene::{Action, Button, Choice, Gestures, LibraryBody, LibraryRowView, Offer, Sheet, Style, TextField, Tone, Window};
+use crate::scene::{Action, Button, Choice, Gestures, LibraryBody, LibraryRowView, Sheet, Style, TextField, Tone, Window};
 use crate::world::{Blocked, Confirm, CopyTarget, Landed, LibraryRow, LibraryScope, RecId, Role, TakeDir, WindowKind, World};
 
 /// What a row is, by where it stands.
@@ -228,18 +228,6 @@ pub fn derive(w: &World) -> Option<Window<LibraryBody>> {
         None
     };
     let sheet = sheet(w, &all);
-    // N66: on the setup Mac, naming off and the card not yet answered. Turning on re-wires
-    // the page, so it waits offline and mid-take (law 4); Not now always answers it.
-    let offer = (w.space.token_holder() && w.space.ai == Some(false) && !w.once.ai_offer).then(|| {
-        faces.push("library-ai-offer");
-        let ready = !offline && !w.take_open() && !w.inflight.ops.contains_key(&crate::world::Op::Ai);
-        Offer {
-            title: copy::ai_offer_title(),
-            line: if super::ai_fell_through(w, WindowKind::Library) { copy::ai_failed() } else { copy::ai_offer_line() },
-            on: Button { enabled: ready, ..Button::new(Action::AiOn, copy::turn_on(), Style::Filled) },
-            not_now: Button::new(Action::AiNotNow, copy::not_now(), Style::Quiet),
-        }
-    });
     let renaming = f.renaming.is_some();
     let (ret, esc) = match (&sheet, renaming) {
         (Some(_), _) => (None, Some(Action::Back)),
@@ -260,7 +248,6 @@ pub fn derive(w: &World) -> Option<Window<LibraryBody>> {
             rows: shown.iter().map(|r| view(w, r)).collect(),
             footer: (!all.is_empty()).then(|| copy::video_count(all.len() as u64)),
             sheet,
-            offer,
         },
         ret,
         esc,

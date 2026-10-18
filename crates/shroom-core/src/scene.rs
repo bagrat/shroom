@@ -188,12 +188,14 @@ pub enum Action {
     AddToken,
     /// Settings · Space's “made with shroom” switch (owner-class, U3).
     SetMark(bool),
-    /// Settings · Space's naming switch (N66): the setup Mac re-wires the page with the AI
-    /// and its schedule, or without them.
+    /// Settings · Space's AI switch (N66): the setup Mac re-wires the page with the AI and
+    /// its schedule, or without them.
     SetAi(bool),
-    /// The Library's naming card (N66): Turn on — as the switch — and the card is answered.
+    /// The popover's AI banner (N66): Turn on… — its confirm, which says the cost.
+    AiAsk,
+    /// The confirm's Turn on — as the switch.
     AiOn,
-    /// The Library's naming card: Not now — answered for good on this Mac.
+    /// The banner's Not now: hidden until five more recordings, the second time for good.
     AiNotNow,
     /// The Library's *Mine · Everyone*.
     SetScope(LibraryScope),
@@ -831,17 +833,6 @@ pub struct LibraryBody {
     /// The count only.
     pub footer: Option<String>,
     pub sheet: Option<Sheet>,
-    /// The card at the top offering to name videos (N66): the setup Mac, until answered.
-    pub offer: Option<Offer>,
-}
-
-/// A card's head, its line, and its two answers (N66's naming card).
-#[derive(Debug, Clone, PartialEq, Serialize)]
-pub struct Offer {
-    pub title: String,
-    pub line: String,
-    pub on: Button,
-    pub not_now: Button,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -1016,8 +1007,7 @@ impl Window<LibraryBody> {
         if let Some(s) = &self.body.sheet {
             return s.buttons().collect();
         }
-        let offer = self.body.offer.iter().flat_map(|o| [&o.on, &o.not_now]);
-        offer.chain(self.body.rows.iter().flat_map(|r| r.buttons.iter().chain(&r.hover).chain(&r.menu))).collect()
+        self.body.rows.iter().flat_map(|r| r.buttons.iter().chain(&r.hover).chain(&r.menu)).collect()
     }
 
     pub fn offers(&self, action: &Action) -> bool {
