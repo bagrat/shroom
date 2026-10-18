@@ -4,7 +4,7 @@
 
 The machine: every state, edge, rule, said-line and law of shroom v1 — the spec (DECISIONS B133). Sessions edit it; MACHINE.md and the canvas's machine boards are generated from it.
 
-153 states · 315 edges · 24 rules · 611 said-lines · 16 laws · 74 ledger rows.
+153 states · 315 edges · 25 rules · 611 said-lines · 16 laws · 74 ledger rows.
 
 Status: **ratified** is Bagrat's; **provisional** is designed or built and awaits him (each cites its row: `#n` is a DEVIATIONS row of docs/DECISIONS.md, `Bn` a decision, `Nn`/`Un`/`Pn` a ledger row below). `SM:n` in older citations is a line of the retired spec text, kept in history/spec/UX-STATEMACHINE.md.
 
@@ -2272,7 +2272,7 @@ The editor (N63): a window of its own, titled “Edit — <the video's title>”
 
 | → | Kind | Label | Status | Cites |
 |---|---|---|---|---|
-| `editor-saving` | flow | Done | provisional | N63 |
+| `editor-saving` | flow | Done | provisional | N63, B199 |
 | `library` | flow | Done | provisional | N63 |
 
 ### `editor-getting`
@@ -2323,11 +2323,11 @@ The editor when the video couldn't come from the space (offline, or the space di
 
 ### `editor-saving`
 
-state · window · **provisional** · board: EditorStates · cites N63, B195
+state · window · **provisional** · board: EditorStates · cites N63, B195, B199
 
-Done pressed with changes: the footer says the edit is saving and Done reads Saving…, greyed. Saved, the share page plays the edit from its next load, and the window goes on to make the final video (or closes, when nothing is left out any more).
+Done pressed with changes: the footer says the edit is saving and Done reads Saving…, greyed. Saved, the share page plays the edit from its next load, and the window goes on to make the final video (or closes, when nothing is left out any more). A quit or an update asked meanwhile waits on it: it goes on once the edit is saved, not waiting for the final video, and is dropped if the save doesn't land (B199).
 
-**Entry.** Done (or ✕) in editor with changes, or Done again in editor-save-failed.
+**Entry.** Done (or ✕) in editor with changes, or Done again in editor-save-failed. Also: Quit or Update while the edit holds changes not saved yet (B199).
 
 | Said | Role | Copy | Note |
 |---|---|---|---|
@@ -2359,7 +2359,7 @@ The save didn't go through (offline, or the space didn't answer): the window sta
 
 | → | Kind | Label | Status | Cites |
 |---|---|---|---|---|
-| `editor-saving` | flow | Done | provisional | N63 |
+| `editor-saving` | flow | Done | provisional | N63, B199 |
 
 ### `editor-save-refused`
 
@@ -3896,6 +3896,7 @@ A move that holds for a whole group of states, written once (B133). The tests ex
 - **a face comes and goes with its cause** (`faces`, auto, **ratified**, N18, law 1, N34): * → * (a state and its own faces), on any. Faces are render properties of their state: a state and its faces, and one state's faces, re-derive into one another as their causes come and go.
 - **one banner at a time, the highest** (`banners`, auto, **ratified**, N38, law 1): @banners, none → @banners, none, on any. config's banner shows while its cause stands and clears by itself when it goes; a higher banner hides a lower one (one at a time).
 - **its video deleted, the editor closes** (`editor-video-deleted`, side, **provisional**, N63, B199): @editor-faces → library, on Act(ConfirmDelete), Library(Deleted). Deleting the video the editor holds — Delete… confirmed in the Library, or this Mac's delete landing — closes the editor: what its open asked for stops, a save on its way answers no one, and nothing is saved (B199). Another Mac's delete reaches it as a save the space turns down (editor-save-refused).
+- **Quit or Update saves an unsaved edit first** (`quit-saves-the-edit`, side, **provisional**, N63, B199): editor, editor-save-failed → editor-saving, on QuitRequested, Act(Quit), Act(QuitAnyway), Act(Update). Quit — the Dock's, the popover's, the right-click menu's or macOS's, and Quit anyway once uploads are asked about — and Update, while the editor holds changes not saved yet, save them first, as ✕ and ⌘Q do, and bring the editor forward; a save already on its way is waited for. Once it lands the quit or the update goes on, without waiting for the final video (an upkeep makes it later). A save that doesn't land holds it: shroom stays, and the editor says why. A take begun meanwhile drops it (law 4) (B199).
 
 ## Groups
 
