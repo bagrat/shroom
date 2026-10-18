@@ -147,10 +147,15 @@ try {
   }
   check("its page went live", live);
 
-  // 5. Through the page: read, rename, delete — asked first.
+  // 5. Through the page: read, rename, delete — asked first. The playlist answers before the
+  // record says the video is done (live, with its length): asked again until it does.
   step("rename");
-  const info = shroom("info", take ?? "-");
-  check("info finds it, with a length", info.code === 0 && info.json.video?.duration_sec > 0, info);
+  let info = shroom("info", take ?? "-");
+  for (const until = Date.now() + 60_000; take && !(info.json.video?.state === "live" && info.json.video?.duration_sec > 0) && Date.now() < until;) {
+    await sleep(2000);
+    info = shroom("info", take);
+  }
+  check("info finds it, with a length", info.code === 0 && info.json.video?.state === "live" && info.json.video?.duration_sec > 0, info);
   const renamed = shroom("rename", take ?? "-", "Recorded by the shroom command");
   check("rename saves the title", renamed.code === 0 && renamed.json.title === "Recorded by the shroom command", renamed);
   step("delete");
