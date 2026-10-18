@@ -22,6 +22,8 @@ describe("cleaning a log line", () => {
     const out = cleanLine(`  10 webview popover: ${"x".repeat(600)}`);
     assert.ok(out.length < 200, out);
     assert.ok(out.endsWith("…"));
+    const stamped = cleanLine(`2026-10-18T17:52:03Z       10 webview popover: ${"x".repeat(600)}`);
+    assert.ok(stamped.length < 220 && stamped.endsWith("…"), stamped);
   });
 
   it("keeps no line longer than its bound", () => {

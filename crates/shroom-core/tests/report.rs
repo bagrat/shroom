@@ -311,7 +311,14 @@ fn the_cleaning_is_the_pages() {
 fn a_windows_error_is_cut_short_and_lines_are_bounded() {
     let out = report::clean_line(&format!("  10 webview popover: {}", "x".repeat(600)));
     assert!(out.chars().count() < 200 && out.ends_with('…'), "{out}");
+    let stamped = report::clean_line(&format!("2026-10-18T17:52:03Z       10 webview popover: {}", "x".repeat(600)));
+    assert!(stamped.chars().count() < 220 && stamped.ends_with('…'), "{stamped}");
     assert!(report::clean_line(&"y ".repeat(1000)).chars().count() <= report::LINE_CHARS + 1);
+}
+
+#[test]
+fn the_page_keeps_as_many_lines_as_the_app() {
+    assert!(include_str!("../../../site/clean.js").contains(&format!("export const LOG_LINES = {};", report::LOG_LINES)));
 }
 
 #[test]
