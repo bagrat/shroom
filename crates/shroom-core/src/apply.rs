@@ -1137,7 +1137,8 @@ fn act(w: &mut World, action: Action) -> Out {
             if !w.session.fields.editor.as_ref().is_some_and(|e| e.save == EditorSave::Asking) {
                 return (vec![], Arm::DROPPED);
             }
-            close_after_save(w)
+            let (fx, arm) = close_after_save(w);
+            (fx, Arm { name: "original-kept", ..arm })
         }
         Action::Disconnect => {
             if w.take_open() {
@@ -2099,7 +2100,18 @@ fn edit_step(w: &mut World, step: EditStep) -> Out {
         EditStep::Undo => h.undo(),
         EditStep::Redo => h.redo(),
     };
-    (vec![], Arm::named(if taken { "edit" } else { "edit-refused" }))
+    // Named by the step, so the run log says what was done (DECISIONS B199 (t)).
+    let name = match &step {
+        _ if !taken => "edit-refused",
+        EditStep::Op(shroom_edit::Op::Trim { .. }) => "edit-trim",
+        EditStep::Op(shroom_edit::Op::Cut { .. }) => "edit-cut",
+        EditStep::Op(shroom_edit::Op::PutBack { .. }) => "edit-put-back",
+        EditStep::Op(shroom_edit::Op::Apply { .. }) => "edit-apply",
+        EditStep::Op(shroom_edit::Op::Revert) => "edit-revert",
+        EditStep::Undo => "edit-undo",
+        EditStep::Redo => "edit-redo",
+    };
+    (vec![], Arm::named(name))
 }
 
 /// The editor's lane (N63): each answer lands on the editor open on its video, else it's stale.
