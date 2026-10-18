@@ -1,4 +1,4 @@
-scenario=settings cli-socket settings-link
+scenario=settings-link cli-socket settings
 hold=0
 ssh_key=
-asked=2026-10-18T14:19:44Z
+asked=2026-10-18T14:39:05Z
