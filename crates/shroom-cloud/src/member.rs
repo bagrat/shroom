@@ -485,6 +485,51 @@ struct MarkAnswer {
     on: bool,
 }
 
+/// One page of `POST cleanup` (N68): the live videos in scope, their plays, and the
+/// Worker's verdict on each. Fields this build doesn't read are left as they come.
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+pub struct CleanupPage {
+    /// The space's play-count switch.
+    #[serde(default = "yes")]
+    pub counting: bool,
+    #[serde(default)]
+    pub items: Vec<CleanupItem>,
+    pub next: Option<String>,
+}
+
+fn yes() -> bool {
+    true
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CleanupItem {
+    pub id: String,
+    /// The record's size, or the Worker's estimate from its length.
+    #[serde(default)]
+    pub bytes: u64,
+    #[serde(default)]
+    pub plays: u32,
+    /// Days nobody has played it, as far as counting can tell (`None`: it can't yet).
+    #[serde(default)]
+    pub quiet_days: Option<f64>,
+    /// The share most plays reached, 0–1 (`None`: no play ended yet).
+    #[serde(default)]
+    pub median_watched: Option<f64>,
+    #[serde(default)]
+    pub candidate: bool,
+    #[serde(default)]
+    pub score: f64,
+    /// Why, by code (`never-played`, `stopped-early`, `not-lately`, `kept`, …).
+    #[serde(default)]
+    pub reason: Option<CleanupReason>,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+pub struct CleanupReason {
+    pub code: String,
+}
+
 /// One space's Worker, by host.
 pub struct Space {
     agent: ureq::Agent,
@@ -698,6 +743,19 @@ impl Space {
         self.call::<MarkAnswer>("POST", "mark", Some(json!({"on": on})), Some(key)).map(|a| a.on)
     }
 
+    /// `POST cleanup` (N68): one page of the live videos in scope (`everyone`: owner-class
+    /// only), their plays and the Worker's verdict; page with `after` until `next` is null.
+    pub fn cleanup(&self, key: &DeviceKey, everyone: bool, after: Option<&str>) -> Answer<CleanupPage> {
+        let scope = if everyone { "everyone" } else { "mine" };
+        self.call("POST", "cleanup", Some(json!({"scope": scope, "after": after})), Some(key))
+    }
+
+    /// `POST plays` (N68), owner-class: the space's play-count switch. Answers where it
+    /// stands now.
+    pub fn plays(&self, key: &DeviceKey, on: bool) -> Answer<bool> {
+        self.call::<MarkAnswer>("POST", "plays", Some(json!({"on": on})), Some(key)).map(|a| a.on)
+    }
+
     /// `POST health` (§4.18): `refused` after the debounce's second answer, `ok` once the
     /// next PUT lands.
     pub fn health(&self, key: &DeviceKey, rec: &str, refused: bool) -> Answer<()> {
@@ -881,6 +939,24 @@ pub fn machine_stamp(hardware: &str, home: &str, host: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_cleanup_page_reads_as_the_worker_writes_it() {
+        // worker.js `cleanup`'s answer, as POST /_shroom/api/cleanup sends it (N68).
+        let body = br#"{"shroom":1,"countingSince":"2026-04-18T00:00:00.000Z","counting":false,"formula":"fading-cost","next":"AbCdEfGhIjKlMnOp","items":[
+            {"id":"AbCdEfGhIjKlMnOo","title":"Billing","createdAt":"2025-10-03T00:00:00Z","owner":"m1","ageDays":380.2,"durationSec":3480,"bytes":3222000000,"usdPerMonth":0.048,
+             "plays":4,"viewers":3,"medianWatched":0.45,"lastPlayedAt":"2025-12-22T00:00:00.000Z","plays90":0,"quietDays":300.4,"keep":false,"candidate":true,"score":0.96,
+             "reason":{"code":"not-lately","plays":4}},
+            {"id":"AbCdEfGhIjKlMnOq","plays":0,"quietDays":null,"medianWatched":null,"candidate":false,"score":0,"reason":{"code":"counting-too-new"}}]}"#;
+        let page: CleanupPage = match Space::classify(Ok((200, body.to_vec(), None))) {
+            Answer::Ok(p) => p,
+            other => panic!("{other:?}"),
+        };
+        assert!(!page.counting);
+        assert_eq!(page.next.as_deref(), Some("AbCdEfGhIjKlMnOp"));
+        assert_eq!(page.items[0], CleanupItem { id: "AbCdEfGhIjKlMnOo".into(), bytes: 3_222_000_000, plays: 4, quiet_days: Some(300.4), median_watched: Some(0.45), candidate: true, score: 0.96, reason: Some(CleanupReason { code: "not-lately".into() }) });
+        assert_eq!((page.items[1].quiet_days, page.items[1].bytes, page.items[1].candidate), (None, 0, false));
+    }
 
     #[test]
     fn a_join_link_parses_in_all_three_forms() {
