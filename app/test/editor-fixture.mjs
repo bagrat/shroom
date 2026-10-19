@@ -6,7 +6,7 @@
 
 export const REC = "k3v9q2mz7x";
 
-const labels = { play: "Play", pause: "Pause", undo: "Undo", redo: "Redo", cut: "Cut {} s", put_back: "Put back {} s", was: "was {}", time: "{} / {}", cut_it_too: "Cut it too" };
+const labels = { play: "Play", pause: "Pause", undo: "Undo", redo: "Redo", cut: "Cut {} s", put_back: "Put back {} s", was: "was {}", time: "{} / {}", cut_it_too: "Cut again" };
 const button = (label, action, style, enabled = true) => ({ action, label, style, enabled, note: null });
 const FOOTER = "Your link stays the same. Viewers see the edit once it's saved.";
 const DONE = { do: "editor-done" };

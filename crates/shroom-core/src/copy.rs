@@ -564,7 +564,7 @@ pub fn edit_other_space() -> String { "This Mac isn't set up for that video's sp
 pub fn edit_not_yours() -> String { "Only whoever recorded this video, or the space's owner, can edit it.".into() }
 pub fn edit_gone() -> String { "That video isn't in your space anymore.".into() }
 /// Under a dashed suggestion that was clicked (a voice cue's offer, N65).
-pub fn cut_it_too() -> String { "Cut it too".into() }
+pub fn cut_it_too() -> String { "Cut again".into() }
 /// By Revert, while an earlier edit's original is kept beside its copy (B197 (e)): the time
 /// it has left, never more than that (B199) — two days from 47 hours, a day from 24, then
 /// whole hours rounded down (law 16's words to nine), one hour, and under an hour less than
