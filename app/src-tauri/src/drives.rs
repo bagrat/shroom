@@ -1715,15 +1715,20 @@ fn editor(d: &Drive) -> Result<(), String> {
     starts_paused(d, "reopened after playing through Done, it starts paused, reading Play")?;
     std::thread::sleep(Duration::from_secs(3));
     runner.shot(d, &d.editor_label(), "editor-baked")?;
-    // Closed while playing: the window is only hidden, so its page lets go of the video, and
-    // nothing plays on behind it (the audio went on after the window closed, 2026-10-18).
+    // Closed while playing: the window goes for good (N73), its page with it, so nothing plays
+    // on behind it (the audio went on after the window closed, 2026-10-18).
     play_by_hand(d, &runner, origin)?;
     let playing = poll(3, || editor_layout(d).ok().filter(|l| l["paused"] == false));
     d.check("… and Play plays it", playing.is_some(), format!("{:?}", editor_layout(d).map(|l| l["paused"].clone())));
+    let closing = d.editor_label();
     d.ed_close();
     d.wait("✕ closed it", 10, |s| s.editors.is_empty())?;
-    let gone = poll(3, || editor_layout(d).ok().filter(|l| l["video"].is_null()));
-    d.check("closed while playing, the window lets go of its video: nothing plays behind it", playing.is_some() && gone.is_some(), format!("playing {}, then {:?}", playing.is_some(), editor_layout(d).map(|l| l["video"].clone())));
+    let gone = poll(3, || match editor_layout_in(d, &closing) {
+        Err(_) => Some("its window is gone".to_string()),
+        Ok(l) if l["video"].is_null() => Some("its page let go of the video".to_string()),
+        Ok(_) => None,
+    });
+    d.check("closed while playing, the window goes with its video: nothing plays behind it", playing.is_some() && gone.is_some(), format!("playing {}, then {gone:?}", playing.is_some()));
 
     // The second video isn't on this Mac: the editor fetches it; an edit, Done, and Esc at
     // the question is Keep for 2 days — the original kept, nothing baked.
@@ -1851,6 +1856,11 @@ fn editor(d: &Drive) -> Result<(), String> {
     let forward = poll(5, || Some(editor_order(d)).filter(|o| *o == [first, second]));
     let s = d.after(300);
     d.check("Edit… on a video whose window is open: that window comes forward, no third (N73)", forward.is_some() && s.editors.len() == 2, format!("order {:?}, {} windows", editor_order(d), s.editors.len()));
+    // The page's press for the second video, its window open: that one comes forward.
+    crate::runtime::opened(&d.rt, &format!("shroom://edit/{host}/{}", away.0));
+    let back = poll(5, || Some(editor_order(d)).filter(|o| *o == [second, first]));
+    let s = d.after(300);
+    d.check("… and the page's press for a video whose window is open: that window comes forward, no third", back.is_some() && s.editors.len() == 2, format!("order {:?}, {} windows", editor_order(d), s.editors.len()));
     // ✕ on the first: it closes alone, for good; the second stays.
     d.rt.post(Event::WindowClosed(WindowKind::Editor(first)));
     let s = d.wait("the first closed, the second open", 10, |s| s.editors.len() == 1 && s.editors.contains_key(&second))?;
@@ -1889,7 +1899,7 @@ fn editor(d: &Drive) -> Result<(), String> {
         ("the edge dragged", "core edit-resize".to_string()),
         ("the page's Edit in shroom, never its link", "link: the page's Edit in shroom".to_string()),
         ("… the editor opened by it", "core edit-link-open".to_string()),
-        ("… brought forward, another video asked", "core edit-link-forward".to_string()),
+        ("… its video's window brought forward by it (N73)", "core edit-link-forward".to_string()),
         ("… another space's, said", "core edit-link-no".to_string()),
         ("Yes, delete", "core original-deleted".to_string()),
         ("the bake, the files it deleted", format!("editor: {h}'s edit is the video now (revision 1): ")),
