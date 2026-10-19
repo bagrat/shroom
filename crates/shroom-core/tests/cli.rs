@@ -518,6 +518,7 @@ fn editor_on(w: &mut World, rec: &str) {
         save: EditorSave::Idle,
         leaving: None,
         elsewhere: false,
+        closing: false,
     });
 }
 

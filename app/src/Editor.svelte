@@ -256,13 +256,15 @@
       }
       if (e.key === "Escape") {
         e.preventDefault();
-        if (selection) selection = null;
+        // While ✕ asks, Esc is Keep editing whatever is selected behind the question (N71).
+        if (selection && !body.closing) selection = null;
         else if (w.esc) key("editor", "esc");
         return;
       }
       if (e.key === " ") {
         e.preventDefault();
-        toggle();
+        // The edit is held while ✕ asks: the preview stays paused (N71).
+        if (!body.closing) toggle();
         return;
       }
       if (e.key === "Backspace" || e.key === "Delete") {
@@ -417,6 +419,18 @@
         </div>
         <Btn b={b.after.keep} {send} inlineNote={false} />
         <Btn b={b.after.delete} {send} inlineNote={false} />
+      </section>
+    {:else if b.closing}
+      <!-- ✕ with changes not saved (N71): the question in the footer's place, the edit held
+           behind it. Discard is a click only; Return is Save and Esc Keep editing. -->
+      <section class="ask" role="group" aria-label={b.closing.title}>
+        <div class="words">
+          <h2>{b.closing.title}</h2>
+          <p>{b.closing.line}</p>
+        </div>
+        <Btn b={b.closing.discard} {send} inlineNote={false} />
+        <Btn b={b.closing.keep} {send} inlineNote={false} />
+        <Btn b={b.closing.save} {send} inlineNote={false} />
       </section>
     {:else}
       <footer class="foot">
@@ -618,7 +632,8 @@
   .note.making span {
     color: var(--fg);
   }
-  /* “Delete the original?”, in the footer's place: one card, its words, then its answers. */
+  /* “Delete the original?”, and ✕'s “Save your edit?” (N71), in the footer's place: one
+     card, its words, then its answers. */
   .ask {
     flex: none;
     display: flex;

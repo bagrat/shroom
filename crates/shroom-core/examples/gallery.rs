@@ -1319,6 +1319,7 @@ fn editor_rows() -> Vec<(&'static str, &'static str, World)> {
             save,
             leaving: None,
             elsewhere: false,
+            closing: false,
         });
         w
     };
