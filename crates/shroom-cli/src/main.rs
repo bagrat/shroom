@@ -162,7 +162,7 @@ fn run(a: &Args) -> Result<Done, Fail> {
     let rest = &a.words[a.words.len().min(1)..];
     match verb {
         "help" => Ok(Done::new(json!({"help": say::HELP}), say::HELP)),
-        "version" => Ok(Done::new(json!({"version": env!("CARGO_PKG_VERSION")}), say::version(env!("CARGO_PKG_VERSION")))),
+        "version" => Ok(Done::new(json!({"version": env!("SHROOM_VERSION")}), say::version(env!("SHROOM_VERSION")))),
         "guide" | "skill" => Ok(Done::new(json!({"guide": GUIDE}), GUIDE)),
         "status" => status(a),
         "list" | "ls" => list(a),
@@ -245,7 +245,7 @@ fn status(a: &Args) -> Result<Done, Fail> {
             "setup": app.as_ref().and_then(|s| s["setup"].as_str()),
         },
         "space": space.as_ref().map(|s| json!({"host": s.host, "role": if owner == Some(true) { "owner" } else { "member" }, "ready": key.is_some()})),
-        "cli": env!("CARGO_PKG_VERSION"),
+        "cli": env!("SHROOM_VERSION"),
     });
     let text = [say::status_app(app.is_some(), &take), say::status_space(space.as_ref().map(|s| s.host.as_str()), key.is_some(), owner == Some(true))];
     Ok(Done::new(json, text.join("\n")))
