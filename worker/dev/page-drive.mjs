@@ -40,8 +40,10 @@
 //   copy       with the single-file copy up, the page plays it and asks for no piece of the
 //              stream (DECISIONS B177); every check above plays the stream, as before it's up
 //   cuts       the owner page's voice cuts (N65, DECISIONS B200): under the player, a row per
-//              voice cut between the words around it, an applied one struck through; Put back and Cut it too save at once,
-//              the row then saying what it is and what plays reaching the player; a press
+//              voice cut between the words around it, an applied one struck through, the unsure one with
+//              “shroom cut” struck too under its note; Put back saves at once (on the unsure one the
+//              line comes back, “shroom cut” stays out), the row then saying what it is and what
+//              plays reaching the player; a press
 //              that doesn't save leaves its row and says so; a recipient's page carries none
 //              of it; a page open while the cues are coming keeps its one line (hearing), its spinner
 //              turning, then takes the strip in when they land; the hint shows on a take with no
@@ -556,7 +558,7 @@ async function main() {
           cuts: [
             { id: "v1", start: 1.2, end: 3.4, kind: "retake", confidence: "high", applied: true, removed: WORDS.v1, resumes: "Hello, this is shroom." },
             { id: "v2", start: 12, end: 13.1, kind: "cue-only", confidence: "high", applied: true, removed: "Shroom cut.", resumes: "Let's move on to the Library." },
-            { id: "v3", start: 9.6, end: 13.1, kind: "line-before-cue", confidence: "low", applied: false, leads: "The settings window has three tabs.", removed: `${WORDS.v3} Shroom cut.`, resumes: "Let's move on to the Library." },
+            { id: "v3", start: 9.6, end: 13.1, kind: "line-before-cue", confidence: "low", applied: true, leads: "The settings window has three tabs.", removed: `${WORDS.v3} Shroom cut.`, resumes: "Let's move on to the Library." },
           ] });
         const strip = () => page.evaluate(() => {
           const s = document.getElementById("cuts"), p = document.querySelector(".player");
@@ -564,7 +566,8 @@ async function main() {
           return {
             below: !!p && s.getBoundingClientRect().top >= p.getBoundingClientRect().bottom - 1,
             rows: [...s.querySelectorAll("li")].map((li) => ({ id: li.dataset.cut, cls: li.className, button: li.querySelector("button").textContent, said: li.querySelector("q").textContent, struck: getComputedStyle(li.querySelector("q .w")).textDecorationLine.includes("line-through"),
-              around: [...li.querySelectorAll("q .by")].some((e) => getComputedStyle(e).textDecorationLine.includes("line-through")) ? "struck" : "plain", asks: li.querySelector(".why")?.getClientRects().length > 0 })),
+              around: [...li.querySelectorAll("q .by")].some((e) => getComputedStyle(e).textDecorationLine.includes("line-through")) ? "struck" : "plain", asks: li.querySelector(".why")?.getClientRects().length > 0,
+              cue: li.querySelector("q .cue") ? getComputedStyle(li.querySelector("q .cue")).textDecorationLine.includes("line-through") : null })),
             unsaved: !s.querySelector(".unsaved").hidden,
           };
         });
@@ -576,10 +579,10 @@ async function main() {
         await page.goto(`${origin}/${ids.cuts}`);
         await page.evaluate(() => { window.__keeps = []; document.addEventListener("shroom:keep", (e) => window.__keeps.push(e.detail)); });
         const shown = await strip();
-        check("cuts: under the player, a row per voice cut — an applied one struck through with Put back, the offered line with Cut it too, each between the words around it, unstruck",
-          !!shown?.below && same(shown.rows.map((r) => [r.id, r.cls, r.button, r.struck, r.around, r.said, r.asks]), [
-            ["v1", "cut on", COPY.putBack, true, "plain", `“${WORDS.v1} Hello, this is shroom.”`, false],
-            ["v3", "cut offer", COPY.cutItToo, false, "plain", `“…The settings window has three tabs. ${WORDS.v3} Let's move on to the Library.”`, true],
+        check("cuts: under the player, a row per voice cut — an applied one struck through with Put back, the unsure one with “shroom cut” struck too under its note, each between the words around it, unstruck",
+          !!shown?.below && same(shown.rows.map((r) => [r.id, r.cls, r.button, r.struck, r.around, r.said, r.asks, r.cue]), [
+            ["v1", "cut on", COPY.putBack, true, "plain", `“${WORDS.v1} Hello, this is shroom.”`, false, null],
+            ["v3", "cut on", COPY.putBack, true, "plain", `“…The settings window has three tabs. ${WORDS.v3} Shroom cut. Let's move on to the Library.”`, true, true],
           ]), true, shown);
         await shot("owner-cuts");
         await page.emulateMedia({ colorScheme: "dark" });
@@ -591,12 +594,16 @@ async function main() {
         const afterBack = await strip();
         check("cuts: Put back saves at once — the row reads Cut again, its words no longer struck; the record and the player follow",
           putBack.status === 200 && putBack.row && afterBack?.rows[0].cls === "cut" && !afterBack.rows[0].struck && (await kept()).cuts.find((c) => c.id === "v1").applied === false
-            && same(await page.evaluate(() => window.__keeps.at(-1)), [[0, 12], [13.1, DURATION]]), true, { putBack, afterBack });
+            && same(await page.evaluate(() => window.__keeps.at(-1)), [[0, 9.6], [13.1, DURATION]]), true, { putBack, afterBack });
         answer = pressed();
         await page.click('li[data-cut="v3"] button');
-        const too = { status: await answer, row: await row("v3", COPY.putBack) };
-        const afterToo = await strip();
-        check("cuts: Cut it too cuts the offered line — its row reads Put back, struck through, its question gone", too.status === 200 && too.row && afterToo?.rows[1].cls === "cut on" && afterToo.rows[1].struck && !afterToo.rows[1].asks, true, { too, afterToo });
+        const lineBack = { status: await answer, row: await row("v3", COPY.cutAgain) };
+        const afterLine = await strip();
+        const cuts3 = (await kept()).cuts;
+        check("cuts: Put back on the unsure cut brings the line back — the row reads Cut again, the line no longer struck, “shroom cut” still struck and still cut, the note kept",
+          lineBack.status === 200 && lineBack.row && afterLine?.rows[1].cls === "cut" && !afterLine.rows[1].struck && afterLine.rows[1].cue === true && afterLine.rows[1].asks
+            && cuts3.find((c) => c.id === "v3").applied === false && cuts3.find((c) => c.id === "v2").applied === true
+            && same(await page.evaluate(() => window.__keeps.at(-1)), [[0, 12], [13.1, DURATION]]), true, { lineBack, afterLine });
         await page.route(`**/_shroom/edits/${ids.cuts}`, (route) => (route.request().method() === "POST" ? route.abort() : route.continue()));
         await page.click('li[data-cut="v1"] button');
         const failed = await page.waitForFunction(() => !document.querySelector("#cuts .unsaved").hidden, null, { timeout: 3000 }).then(() => strip(), () => null);

@@ -200,7 +200,7 @@ fn words_not_there_yet_are_waited_for_then_left_for_a_later_look() {
     // The words come later (a long take, or a free day used up): the sweep's look lands them.
     put(&fake, &transcript_key(), &heard("wai-en_US-lessac-medium-4-no-retake", true, None));
     let later = NOW + 6 * 3_600_000;
-    assert_eq!(voice::look_again(&s3, ID, dir.path(), later), Mark::Planned { at: later, cues: 1, cuts: "v1+ v2-".into() });
+    assert_eq!(voice::look_again(&s3, ID, dir.path(), later), Mark::Planned { at: later, cues: 1, cuts: "v1+ v2+".into() });
     let kinds: Vec<String> = stored(&fake)["edits"]["cuts"].as_array().unwrap().iter().map(|c| c["kind"].as_str().unwrap().to_string()).collect();
     assert_eq!(kinds, ["cue-only", "line-before-cue"]);
 }
@@ -286,11 +286,12 @@ fn a_judgment_that_doesnt_come_leaves_the_codes_own_plan() {
     record(&fake, json!({ "durationSec": 13.0 }));
     reworded(&fake);
     let dir = take();
-    // The free day used up, a busy model, no answer: the cue goes and the line is offered.
+    // The free day used up, a busy model, no answer: the cue goes, and the line before it with
+    // it, unsure (the owner page asks to check it).
     let mark = voice::after_go_live_judged(&s3, ID, dir.path(), Some(true), Wait::default(), &mut Turned::at(NOW), &|_: &Question| voice::Weighed::unanswered("busy"), &|_: &str| {});
-    assert_eq!(mark, Mark::Planned { at: NOW, cues: 1, cuts: "v1+ v2-".into() });
+    assert_eq!(mark, Mark::Planned { at: NOW, cues: 1, cuts: "v1+ v2+".into() });
     let kinds: Vec<(String, bool)> = stored(&fake)["edits"]["cuts"].as_array().unwrap().iter().map(|c| (c["kind"].as_str().unwrap().to_string(), c["applied"].as_bool().unwrap())).collect();
-    assert_eq!(kinds, [("cue-only".to_string(), true), ("line-before-cue".to_string(), false)]);
+    assert_eq!(kinds, [("cue-only".to_string(), true), ("line-before-cue".to_string(), true)]);
 }
 
 /// What the lane noted, line by line.
@@ -345,7 +346,7 @@ fn a_judgment_that_doesnt_come_and_a_landing_that_fails_each_leave_their_line() 
     let said = said.into_inner();
     assert_eq!(said[0], "landing failed (status 403); looks again");
     assert!(said[1].contains(" after 2 looks; "), "{}", said[1]);
-    assert!(said[2].starts_with("cue 1 at ") && said[2].contains("starts, the code's own plan (busy) → v1 cue-only ") && said[2].contains(", v2 line-before-cue ") && said[2].ends_with(" s offered"), "{said:?}");
+    assert!(said[2].starts_with("cue 1 at ") && said[2].contains("starts, the code's own plan (busy) → v1 cue-only ") && said[2].contains(", v2 line-before-cue ") && said[2].ends_with(" s cut"), "{said:?}");
 }
 
 #[test]
@@ -355,8 +356,8 @@ fn a_press_on_the_owner_page_shows_in_the_log_once() {
     reworded(&fake);
     let dir = take();
     let mark = voice::after_go_live_judged(&s3, ID, dir.path(), Some(true), Wait::default(), &mut Turned::at(NOW), &|_: &Question| voice::Weighed::unanswered("busy"), &|_: &str| {});
-    assert_eq!(mark, Mark::Planned { at: NOW, cues: 1, cuts: "v1+ v2-".into() });
-    // Cut it too on the offered line, as the Worker's press writes it.
+    assert_eq!(mark, Mark::Planned { at: NOW, cues: 1, cuts: "v1+ v2+".into() });
+    // Put back on the unsure line, as the Worker's press writes it, then Cut again.
     let press = |id: &str, on: bool| {
         let mut m = stored(&fake);
         for c in m["edits"]["cuts"].as_array_mut().unwrap() {
@@ -366,12 +367,12 @@ fn a_press_on_the_owner_page_shows_in_the_log_once() {
         }
         put(&fake, &format!("meta/{ID}.json"), &serde_json::to_vec(&m).unwrap());
     };
-    press("v2", true);
+    press("v2", false);
     let (said, push) = notes();
     let note = |l: &str| push(&said, l);
-    assert_eq!(voice::pressed(&s3, ID, dir.path(), &note), Some(Mark::Planned { at: NOW, cues: 1, cuts: "v1+ v2+".into() }));
+    assert_eq!(voice::pressed(&s3, ID, dir.path(), &note), Some(Mark::Planned { at: NOW, cues: 1, cuts: "v1+ v2-".into() }));
     assert_eq!(voice::pressed(&s3, ID, dir.path(), &note), None, "nothing new");
-    press("v1", false);
+    press("v2", true);
     assert!(voice::pressed(&s3, ID, dir.path(), &note).is_some());
-    assert_eq!(said.into_inner(), ["on the page since: v2 cut", "on the page since: v1 put back"]);
+    assert_eq!(said.into_inner(), ["on the page since: v2 put back", "on the page since: v2 cut"]);
 }

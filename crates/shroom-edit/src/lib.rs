@@ -119,7 +119,8 @@ pub enum CutKind {
     Retake,
     /// The cue alone: no retake was found after it.
     CueOnly,
-    /// The line before a cue that has no retake: the likely flub, offered unapplied.
+    /// The line before a cue that has no retake: the likely flub, cut with the cue, though how
+    /// far back the slip went isn't clear (low confidence; the owner page asks to check it).
     LineBeforeCue,
     /// Drawn by hand on the timeline.
     Manual,

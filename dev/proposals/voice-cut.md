@@ -9,8 +9,9 @@ spec rows are Bagrat's call. The words on the boards are placeholders.*
 > parts from what follows:
 >
 > - **Reviewed on the owner page, not in a window after Stop.** An owner-only strip under
->   the player lists each cut with Put back, and an offered line with Cut it too
->   (`OwnerPageCuts`, `OwnerPageCutRows` on the canvas).
+>   the player lists each cut with Put back; the line before a cue with nothing said again
+>   after it is cut with the cue, under a note to check it (`OwnerPageCuts`,
+>   `OwnerPageCutRows`, `OwnerPageCutUnsure` on the canvas).
 > - **No switch of its own.** The space's listening (N66, the AI build) is the one switch.
 > - **The words are the space's**, heard as the take uploads (N66's transcript). The Mac
 >   that made the take plans the cues; nothing new goes up.

@@ -88,14 +88,14 @@ fn the_editors_cuts_trim_and_copy_are_kept_and_the_copy_goes_stale() {
     .unwrap();
     assert_eq!((s.list.in_, s.list.out), (0.0, 10.0));
     assert_eq!(ids(&s), ["m1", "v1", "v2"]);
-    // A cue with nothing said again: its own words cut, the line before it offered.
+    // A cue with nothing said again: its own words cut, and the line before it with them, unsure.
     assert_eq!(
         (s.list.cuts[1].kind, s.list.cuts[1].applied),
         (CutKind::CueOnly, true)
     );
     assert_eq!(
         (s.list.cuts[2].kind, s.list.cuts[2].applied),
-        (CutKind::LineBeforeCue, false)
+        (CutKind::LineBeforeCue, true)
     );
     assert_eq!(
         s.list.voice,
@@ -271,7 +271,7 @@ fn the_judgment_the_take_got_lands_with_its_cues() {
             .iter()
             .map(|c| (c.kind, c.applied))
             .collect::<Vec<_>>(),
-        [(CutKind::CueOnly, true), (CutKind::LineBeforeCue, false)]
+        [(CutKind::CueOnly, true), (CutKind::LineBeforeCue, true)]
     );
     let s = shroom_edit::land_with(None, &t, t.duration, NOW, &answers).unwrap();
     assert_eq!(s.list.cuts.len(), 1);

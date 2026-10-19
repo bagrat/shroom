@@ -110,8 +110,7 @@ export const COPY = {
   cutsOnlyYou: "Only you see this.",
   putBack: "Put back",
   cutAgain: "Cut again",
-  cutItToo: "Cut it too",
-  cutsOffer: "Nothing was said again after it, so only “shroom cut” went. Cut the line before it too?",
+  cutsUnsure: "Not sure how far back the slip went — check this one.",
   cutsChanged: "changed in the editor",
   cutsCouldntSave: "Couldn't save that. Check your connection, then try again.",
   // The hint, on a take with no voice cuts in a space that listens (owner-page-cue-hint).
@@ -665,25 +664,27 @@ export function keepOf(edits) {
 }
 
 /** The strip's rows: voice cuts in time order. A cue with nothing said again after it
- * comes as two cuts, its own words (cut) and the line before it (offered); the row is the
- * offer, showing the line without the cue's words, which are gone either way. Each row has
- * the planner's words around its cut (`leads`, `resumes`), for where it joins, and whether the
- * editor moved its edges since (`adjusted`, N63).
- * @param {any} edits @returns {{ id: string, at: number, end: number, words: string, leads: string, resumes: string, kind: string, on: boolean, offer: boolean, adjusted: boolean }[]} */
+ * comes as two cuts, its own words and the line before it through them, both cut though how
+ * far back the slip went isn't clear (Bagrat, 2026-10-18): the row is the line's, its words and
+ * then the cue's (`cue`), each struck while its own cut holds, so Put back brings the line back
+ * and leaves “shroom cut” out. Each row has the planner's words around its cut (`leads`,
+ * `resumes`), for where it joins, and whether the editor moved its edges since (`adjusted`, N63).
+ * @param {any} edits @returns {{ id: string, at: number, end: number, words: string, cue: string, cueOn: boolean, leads: string, resumes: string, on: boolean, unsure: boolean, adjusted: boolean }[]} */
 function voiceRows(edits) {
   const cuts = (Array.isArray(edits?.cuts) ? edits.cuts : []).filter((/** @type {any} */ c) => c && VOICE_KINDS.has(c.kind) && typeof c.id === "string");
-  const offers = cuts.filter((/** @type {any} */ c) => c.kind === "line-before-cue");
+  const lines = cuts.filter((/** @type {any} */ c) => c.kind === "line-before-cue");
   const rows = [];
   for (const c of cuts) {
-    if (c.kind === "cue-only" && offers.some((/** @type {any} */ o) => Number(o.start) <= Number(c.start) && Number(o.end) >= Number(c.end))) continue;
+    if (c.kind === "cue-only" && lines.some((/** @type {any} */ o) => Number(o.start) <= Number(c.start) && Number(o.end) >= Number(c.end))) continue;
     let words = typeof c.removed === "string" ? c.removed.trim() : "";
+    let cue = "", cueOn = false;
     if (c.kind === "line-before-cue") {
-      const cue = cuts.find((/** @type {any} */ q) => q.kind === "cue-only" && Number(c.start) <= Number(q.start) && Number(c.end) >= Number(q.end));
-      const own = typeof cue?.removed === "string" ? cue.removed.trim() : "";
-      if (own && words.endsWith(own)) words = words.slice(0, -own.length).trim();
+      const q = cuts.find((/** @type {any} */ q) => q.kind === "cue-only" && Number(c.start) <= Number(q.start) && Number(c.end) >= Number(q.end));
+      const own = typeof q?.removed === "string" ? q.removed.trim() : "";
+      if (own && words.endsWith(own)) [words, cue, cueOn] = [words.slice(0, -own.length).trim(), own, q?.applied === true];
     }
     const text = (/** @type {unknown} */ x) => (typeof x === "string" ? x.trim() : "");
-    rows.push({ id: c.id, at: Number(c.start) || 0, end: Number(c.end) || 0, words, leads: text(c.leads), resumes: text(c.resumes), kind: c.kind, on: c.applied === true, offer: c.kind === "line-before-cue" && c.applied !== true, adjusted: c.adjusted === true });
+    rows.push({ id: c.id, at: Number(c.start) || 0, end: Number(c.end) || 0, words, cue, cueOn, leads: text(c.leads), resumes: text(c.resumes), on: c.applied === true, unsure: c.kind === "line-before-cue", adjusted: c.adjusted === true });
   }
   return rows.sort((a, b) => a.at - b.at);
 }
@@ -692,14 +693,16 @@ function voiceRows(edits) {
  * were cut short, and more was said. */
 const AROUND = 6;
 
-/** A row's quoted words: the cut's own (`.w`, struck while it is cut) between a few of what
- * plays around it (`.by`, never struck), `…` where more was said, none after a sentence's end.
- * @param {{ words: string, leads: string, resumes: string }} r */
+/** A row's quoted words: the cut's own (`.w`, struck while it is cut), then on the unsure cut
+ * the cue's (`.cue`, struck while its own cut holds), between a few of what plays around them
+ * (`.by`, never struck), `…` where more was said, none after a sentence's end.
+ * @param {{ words: string, cue: string, cueOn: boolean, leads: string, resumes: string }} r */
 function aroundCut(r) {
   const full = (/** @type {string} */ s) => s.split(/\s+/).length >= AROUND;
   const lead = r.leads ? `<span class="by">${escapeText(`${full(r.leads) ? "…" : ""}${r.leads}`)}</span> ` : "";
   const then = r.resumes ? ` <span class="by">${escapeText(`${r.resumes}${full(r.resumes) && !/[.?!…]$/.test(r.resumes) ? "…" : ""}`)}</span>` : "";
-  return `<q>“${lead}<span class="w">${escapeText(r.words)}</span>${then}”</q>`;
+  const cue = r.cue ? `<span class="cue${r.cueOn ? " on" : ""}">${escapeText(r.cue)}</span>` : "";
+  return `<q>“${lead}<span class="w">${escapeText(r.words)}${cue ? " " : ""}</span>${cue}${then}”</q>`;
 }
 
 /** A cut whose edges the editor moved (B200 (g)): how long it is and where it now ends,
@@ -711,15 +714,15 @@ function changedCut(r) {
 
 /** The owner page's voice cuts under the player (owner-page-cuts): "" when the take has
  * none. Its rows carry their state in their class — `cut on` struck with Put back, `cut`
- * put back with Cut again, `cut offer` the offered line with Cut it too.
+ * put back with Cut again — and the unsure cut its note above its words, either way.
  * @param {any} edits */
 export function cutsStrip(edits) {
   const rows = voiceRows(edits);
   if (!rows.length) return "";
   const li = rows.map((r) => {
-    const cls = r.offer ? "cut offer" : r.on ? "cut on" : "cut";
-    const label = r.offer ? COPY.cutItToo : r.on ? COPY.putBack : COPY.cutAgain;
-    const note = r.kind === "line-before-cue" ? `<span class="why">${escapeText(COPY.cutsOffer)}</span>` : "";
+    const cls = r.on ? "cut on" : "cut";
+    const label = r.on ? COPY.putBack : COPY.cutAgain;
+    const note = r.unsure ? `<span class="why">${escapeText(COPY.cutsUnsure)}</span>` : "";
     return `<li class="${cls}" data-cut="${escapeHtml(r.id)}"><span class="at">${escapeText(shroomClockText(r.at))}</span><span class="said">${note}${r.adjusted ? changedCut(r) : aroundCut(r)}</span><button type="button" data-press="${r.on ? "0" : "1"}">${escapeText(label)}</button></li>`;
   }).join("");
   return `<section class="cuts" id="cuts" aria-label="${escapeHtml(COPY.cutsHeading)}"><div class="cuts-head"><h2>${escapeText(COPY.cutsHeading)}</h2><span class="only">${escapeText(COPY.cutsOnlyYou)}</span></div><ol>${li}</ol><p class="unsaved" role="status" hidden>${escapeText(COPY.cutsCouldntSave)}</p></section>`;
@@ -745,7 +748,7 @@ function cutsField(meta, now, listens = false) {
   const rows = voiceRows(meta.edits);
   if (!rows.length) return {};
   let h = 0x811c9dc5;
-  for (const ch of rows.map((r) => `${r.id}:${r.on ? 1 : 0}`).join(",")) h = Math.imul(h ^ ch.charCodeAt(0), 0x01000193) >>> 0;
+  for (const ch of rows.map((r) => `${r.id}:${r.on ? 1 : 0}${r.cue ? (r.cueOn ? 1 : 0) : ""}`).join(",")) h = Math.imul(h ^ ch.charCodeAt(0), 0x01000193) >>> 0;
   return { cuts: h.toString(36) };
 }
 
@@ -1534,8 +1537,8 @@ h1{flex:1 1 0;min-width:0;margin:0;font-size:1.75rem;font-weight:600;line-height
 .cuts h2::before{content:"";width:16px;height:16px;flex:none;background:var(--cut);-webkit-mask:${I_CUT} center/contain no-repeat;mask:${I_CUT} center/contain no-repeat}
 .cuts .only{color:var(--quiet);font-size:13px}.cuts ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
 .cut{display:flex;align-items:center;gap:14px;padding-top:10px;border-top:1px solid var(--hair)}.cut .at{flex:none;width:40px;color:var(--soft);font-variant-numeric:tabular-nums}
-.cut .said{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:2px}.cut q{quotes:none;overflow-wrap:anywhere;color:var(--quiet)}.cut q .w{color:var(--text)}.cut .changed{color:var(--soft)}.cut .changed .ed{color:var(--quiet)}.cut.on q .w{color:var(--quiet);text-decoration:line-through;text-decoration-color:var(--cut)}
-.cut .why,.cuts .unsaved{color:var(--warn);font-size:13px}.cut.on .why{display:none}.cuts .unsaved{margin:0}.cuts .unsaved[hidden]{display:none}
+.cut .said{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:2px}.cut q{quotes:none;overflow-wrap:anywhere;color:var(--quiet)}.cut q .w{color:var(--text)}.cut .changed{color:var(--soft)}.cut .changed .ed{color:var(--quiet)}.cut.on q .w,.cut q .cue.on{color:var(--quiet);text-decoration:line-through;text-decoration-color:var(--cut)}.cut q .cue{color:var(--text)}
+.cut .why,.cuts .unsaved{color:var(--warn);font-size:13px}.cuts .unsaved{margin:0}.cuts .unsaved[hidden]{display:none}
 .cut button{flex:none;font:inherit;font-size:13px;min-height:32px;padding:0 12px;border:1px solid var(--edge);border-radius:8px;background:transparent;color:var(--text);cursor:pointer}.cut button:hover{background:var(--hover)}.cut button[aria-busy]{opacity:.6}
 .cue-hint{background:var(--card);border:1px solid var(--card-edge);border-radius:12px;padding:10px 12px 10px 16px;display:flex;align-items:center;gap:10px;color:var(--muted)}.cue-hint[hidden]{display:none}
 .cue-hint::before{content:"";width:16px;height:16px;flex:none;background:var(--cut);-webkit-mask:${I_CUT} center/contain no-repeat;mask:${I_CUT} center/contain no-repeat}.cue-hint span{flex:1 1 auto;min-width:0}
@@ -2088,7 +2091,7 @@ function ownerPage(id, meta, now, face, waiting, blocked = false, pending = fals
   const cfg = JSON.stringify({
     id, live, drained: drainedNow, pending, mp4: view.download, saved: meta.titled ? meta.title : "", copied: COPY.copied, copy: COPY.copyLink, waiting,
     copyThumb: COPY.copyThumbnail, preparing: COPY.preparingThumbnail, thumbs, dl: COPY.download, finishing: COPY.finishing, notFound: COPY.notFound, unavailable: COPY.unavailable, labels: LABELS, player: live ? "" : playerHtml(id, { ...meta, media: { ...meta.media, poster: null } }),
-    cutsTag, listenFor, cutLabels: { back: COPY.putBack, again: COPY.cutAgain, too: COPY.cutItToo },
+    cutsTag, listenFor, cutLabels: { back: COPY.putBack, again: COPY.cutAgain },
   });
   const script = `<script>${PLAYER_JS}
 ${COPY_JS}
@@ -2105,7 +2108,7 @@ var b=document.getElementById("c");b.onclick=function(){shroomCopy(location.orig
 tb.onclick=function(){if(tb.getAttribute("aria-disabled"))return;th.copy().then(copied(tb,c.copyThumb))};
 var ul=document.getElementById("ul"),up=document.getElementById("u"),sp=document.getElementById("b"),dl=document.getElementById("dl"),gap=2000;
 function keepTo(k){document.dispatchEvent(new CustomEvent("shroom:keep",{detail:k}))}
-function row(li,on){var b=li.querySelector("button"),offer=!!li.querySelector(".why");li.className=on?"cut on":offer?"cut offer":"cut";b.textContent=on?c.cutLabels.back:offer?c.cutLabels.too:c.cutLabels.again;b.setAttribute("data-press",on?"0":"1")}
+function row(li,on){var b=li.querySelector("button");li.className=on?"cut on":"cut";b.textContent=on?c.cutLabels.back:c.cutLabels.again;b.setAttribute("data-press",on?"0":"1")}
 function wire(){var cu=document.getElementById("cuts");if(!cu)return;cu.onclick=function(e){var b=e.target.closest&&e.target.closest("button[data-press]");if(!b||b.getAttribute("aria-busy"))return;
 var li=b.closest("li"),on=b.getAttribute("data-press")==="1",un=cu.querySelector(".unsaved");b.setAttribute("aria-busy","true");if(un)un.hidden=true;
 fetch("/_shroom/edits/"+c.id,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({cut:li.getAttribute("data-cut"),applied:on})})

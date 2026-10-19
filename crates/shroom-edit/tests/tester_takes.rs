@@ -101,16 +101,16 @@ fn a_sentence_ending_on_is_after_a_noun_was_broken_off() {
             "When you want to get your link, just press stop and your link is. Shroom cut."
         )
     );
-    // The line before his second cue, said again in other words after it, is only offered
-    // by the words alone: cutting it is the judgment's to say (he cut it by hand).
+    // The line before his second cue, said again in other words after it, goes with the cue
+    // by the words alone, unsure (Bagrat, 2026-10-18), as he cut it by hand on the tester.
     assert!(
-        kept(&t).ends_with("in one click. You press stop and the link is pasted. Okay. That's it."),
+        kept(&t).ends_with("in one click. Okay. That's it."),
         "{}",
         kept(&t)
     );
     assert!(
         list.cuts.iter().any(|c| c.kind == CutKind::LineBeforeCue
-            && !c.applied
+            && c.applied
             && c.removed == "You press stop and the link is pasted. Shroom cut."),
         "{:?}",
         list.cuts
@@ -156,7 +156,7 @@ fn a_sentence_ending_on_is_after_a_pronoun_or_under_a_question_word_is_whole() {
             .collect();
         assert_eq!(
             kinds,
-            [(CutKind::CueOnly, true), (CutKind::LineBeforeCue, false)],
+            [(CutKind::CueOnly, true), (CutKind::LineBeforeCue, true)],
             "{sentence:?}"
         );
     }
