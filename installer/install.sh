@@ -62,6 +62,7 @@ REMOVED="Removed shroom from this Mac — the app, its settings and its permissi
 SPACE_STAYS="Every video and link is just as it was — only this Mac changed."
 NOTHING_HERE="shroom isn't on this Mac — nothing to remove."
 RESTRICTED="This looks like it's running somewhere restricted, so nothing was installed — run the same command in Terminal."
+NO_EARLY="No early build right now, so you're on the latest release — early builds will come as updates."
 
 say() { printf '%s\n' "$*"; }
 fail() { for line in "$@"; do say "$line"; done; exit 1; }
@@ -115,6 +116,13 @@ mac_kind() {
 
 # One value from the release's manifest.txt (lines of key=value).
 field() { sed -n "s/^$1=//p" "$work/manifest.txt" | head -n 1; }
+
+# Whether version $1 is newer than $2, in the updater's order (B220): the numbers, then an
+# early build's n below its release's — 0.1.25-early.1 < 0.1.25-early.2 < 0.1.25.
+newer() {
+  printf '%s\n%s\n' "$1" "$2" | awk -F'[.-]' '{ k[NR] = sprintf("%09d %09d %09d %09d", $1, $2, $3, (NF > 3 ? $5 : 999999999)) }
+    END { exit !(k[1] > k[2]) }'
+}
 
 # A download that failed: the release says something isn't there (ours to fix — tell
 # us), or the connection didn't hold (run it again).
@@ -261,12 +269,21 @@ main() {
   # folder and goes away when the script ends.
   work=$(mktemp -d "$HOME/.shroom-install.XXXXXX" 2>&1) || cant_place "$work"
   trap 'rm -rf "$work"' EXIT
-  # --early (DECISIONS B220): the early channel's pointer, which names the newest build —
-  # an early one, or the official release once it's newer.
-  from="$RELEASES/latest/download/manifest.txt"
-  [ -z "$early" ] || from="$RELEASES/download/early/manifest.txt"
   code=$(curl -fsL -w '%{http_code}' --retry 2 --connect-timeout 15 --max-time 60 \
-    -o "$work/manifest.txt" "$from" </dev/null 2>/dev/null) || fetch_failed "$code"
+    -o "$work/manifest.txt" "$RELEASES/latest/download/manifest.txt" </dev/null 2>/dev/null) || fetch_failed "$code"
+  # --early (DECISIONS B220): the early channel's pointer, when it names a build newer than
+  # the latest release. With none (or one the latest release has caught up with), this Mac
+  # gets the latest release, still on the early channel: the next early build comes as an
+  # update, and the line says so.
+  if [ -n "$early" ]; then
+    if curl -fsL --retry 2 --connect-timeout 15 --max-time 60 -o "$work/early.txt" \
+        "$RELEASES/download/early/manifest.txt" </dev/null 2>/dev/null &&
+        newer "$(sed -n 's/^version=//p' "$work/early.txt" | head -n 1)" "$(field version)"; then
+      mv "$work/early.txt" "$work/manifest.txt"
+    else
+      say "$NO_EARLY"
+    fi
+  fi
   version=$(field version)
   floor=$(field macos)
   [ -n "$version" ] || fail "$NET_DROP"

@@ -21,6 +21,9 @@
 //   /faq, /privacy, /terms, /feedback
 //                questions and known limits, privacy, terms, and the feedback form:
 //                site/pages, as pages
+//   /next        the landing as it will be with the voice-cut hero (site/next.html): hidden
+//                until it becomes /, so not linked, not indexed (X-Robots-Tag) and not
+//                counted, which keeps the rows for / as they are
 //   /how-to.mp4  the landing's how-to video, whole or in the pieces a player asks for
 //                (Range): Safari plays a video only from an address that answers 206,
 //                and the assets binding answers a Range with the whole file (B194).
@@ -31,7 +34,7 @@
 //
 // Nothing else exists: the files behind these answers (/_/…) aren't addresses.
 //
-// Each answer to a GET of one of these addresses is counted: one row in the account's
+// Each answer to a GET of one of these addresses (all but /next) is counted: one row in the account's
 // Analytics Engine (`STATS`), holding which address, which answer, a coarse kind of client,
 // the host of the page that linked here, the country, and the link's own `?ref=` tag (or
 // `utm_source`) — never an IP, a User-Agent, a full referring address, a cookie or anything
@@ -134,7 +137,7 @@ function plain(status, extra = {}) {
  * (`Vary: Accept`), so no cache hands the markdown to a browser.
  * @param {{ ASSETS: { fetch(r: Request): Promise<Response> }, STATS?: { writeDataPoint(p: { indexes: string[], blobs: string[] }): void } }} env
  * @param {Request} request @param {URL} url @param {string} file @param {string} type */
-async function serve(env, request, url, file, type, negotiated = false) {
+async function serve(env, request, url, file, type, negotiated = false, counted = true) {
   const res = await env.ASSETS.fetch(new Request(new URL(file, url), { method: request.method }));
   if (!res.ok) return plain(503);
   const headers = new Headers({
@@ -143,7 +146,8 @@ async function serve(env, request, url, file, type, negotiated = false) {
     "x-content-type-options": "nosniff",
   });
   if (negotiated) headers.set("vary", "Accept");
-  if (request.method === "GET") {
+  if (!counted) headers.set("x-robots-tag", "noindex, nofollow");
+  if (request.method === "GET" && counted) {
     try {
       const blobs = row(request, url.pathname, type, url);
       env.STATS?.writeDataPoint({ indexes: [url.pathname], blobs });
@@ -253,6 +257,8 @@ export default {
         return wantsMarkdown(request, url)
           ? serve(env, request, url, "/_/agent.md", MARKDOWN, true)
           : serve(env, request, url, "/index.html", HTML, true);
+      case "/next":
+        return serve(env, request, url, "/_/next.html", HTML, false, false);
       case "/install":
         return serve(env, request, url, "/_/install.sh", TEXT);
       case "/agent":
