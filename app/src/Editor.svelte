@@ -42,15 +42,20 @@
 
   const take = (s: unknown) => {
     if (!isEditor(s)) return;
-    w = s;
     if (!s) {
+      // Put away: the window is only hidden, so the video stops and is let go of here, or
+      // it would go on playing behind it.
+      unload();
+      w = null;
       lastMedia = "";
       return;
     }
-    // A video that has just become ready: a new open, starting at the top.
+    w = s;
+    // A video that has just become ready: a new open, starting at the top, paused.
     if (s.body.media.state === "ready" && lastMedia !== "ready") {
       opened += 1;
       pos = 0;
+      playing = false;
       ended = false;
       selection = null;
       trim = null;
@@ -115,7 +120,32 @@
     });
   });
 
+  // Done stops the preview: once the edit can't be changed (saving, the final video being
+  // made, the question of the original, a save the space turned down), what was playing
+  // pauses. Play pressed after that is the person's own.
+  let wasEditable = false;
+  $effect(() => {
+    const editable = !!b?.editable;
+    untrack(() => {
+      if (wasEditable && !editable) video?.pause();
+      wasEditable = editable;
+    });
+  });
+
   // ── playing ──
+
+  /** The window is put away: the preview stops and lets go of its file. Its pause event
+   * lands after the video is gone, so what the button shows is set here. */
+  function unload() {
+    cancelAnimationFrame(raf);
+    raf = 0;
+    playing = false;
+    ended = false;
+    if (!video) return;
+    video.pause();
+    video.removeAttribute("src");
+    video.load();
+  }
 
   function put(t: number) {
     if (video) video.currentTime = t;
@@ -175,7 +205,8 @@
     video.play().catch(() => {});
   }
 
-  const toggle = () => (playing ? video?.pause() : play());
+  // By what the video is doing, not by what the button last showed.
+  const toggle = () => (video && !video.paused ? video.pause() : play());
 
   function seek(t: number) {
     const k = playKeep;
@@ -285,6 +316,11 @@
               if (!raf) raf = requestAnimationFrame(frame);
             }}
             onpause={() => (playing = false)}
+            onemptied={() => {
+              // A new file in its place (every open loads it afresh) stops it without a
+              // pause event.
+              playing = false;
+            }}
             onended={() => {
               playing = false;
               ended = true;

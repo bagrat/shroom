@@ -831,6 +831,11 @@ fn present_window(app: &AppHandle, rt: &Runtime, sp: &WindowSpec, now: Option<(s
         }
         None => {
             if let Some(w) = app.get_webview_window(sp.label) {
+                // The editor's page is told it's put away before the window hides: a hidden
+                // window's page goes on running, and the video it held went on playing.
+                if before.is_some() && matches!(sp.kind, WindowKind::Editor) {
+                    let _ = app.emit_to(sp.label, "scene", serde_json::Value::Null);
+                }
                 let _ = w.hide();
             }
         }
