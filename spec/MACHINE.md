@@ -2320,9 +2320,9 @@ Member-revoked or space-gone: the list this Mac remembers, and only Copy link an
 
 ### `editor`
 
-state · window · **ratified** · board: EditorCuts · cites N63, B195, B197, B199, N69, N70
+state · window · **ratified** · board: EditorCuts · cites N63, B195, B197, B199, N69, N71
 
-The editor (N63): a window of its own, titled “Edit — <the video's title>”, one at a time. Top to bottom: the video, playing the edit (cuts skipped, held to the trim); the play button and the time, edited position / edited length, with “was <the recording's length>” once the edit changes it; on the right the hint and Undo · Redo; then the timeline, the whole recording's sound as a waveform with the playhead: two yellow ends that drag to trim, a drag across the sound that selects a part with Cut <its length> under it, every cut red and hatched (clicking one offers Put back <its length>), every suggestion not yet taken dashed amber (clicking one offers Cut <its length>, as a selection does); either edge of a cut or a suggestion drags to move it, the pointer ↔ over it, its length shown live under it and the picture at the edge as it goes, stopping at the next cut or suggestion, the trim's end, a tenth of a second from its other edge, or where a second would be all that's left, one step for Undo (B195 (g)), and every marker (N64) a flag at its time. The footer: the line that the link stays the same, Revert to original and Done. The waveform fills in once the sound is read; until then the timeline is empty and the ends wait. Every change can be undone, Put back and Revert included; the changes stay in the window until Done saves them. While an earlier edit's original is still kept, the time it has left sits by Revert to original; once it is gone, Revert to original only undoes what changed since the window opened. While it is open, no edit becomes a video behind it on this Mac: the upkeep, and on the Mac holding the token the cleanup sweep, wait until the window closes (B199). The owner page's Edit in shroom (N69) opens this same window; while it holds another video, that press, or Edit… in the Library, brings it forward as it is, one at a time, the footer line saying why until the next change. ✕ with changes not saved asks before the window closes (N70).
+The editor (N63): a window of its own, titled “Edit — <the video's title>”, one at a time. Top to bottom: the video, playing the edit (cuts skipped, held to the trim); the play button and the time, edited position / edited length, with “was <the recording's length>” once the edit changes it; on the right the hint and Undo · Redo; then the timeline, the whole recording's sound as a waveform with the playhead: two yellow ends that drag to trim, a drag across the sound that selects a part with Cut <its length> under it, every cut red and hatched (clicking one offers Put back <its length>), every suggestion not yet taken dashed amber (clicking one offers Cut <its length>, as a selection does); either edge of a cut or a suggestion drags to move it, the pointer ↔ over it, its length shown live under it and the picture at the edge as it goes, stopping at the next cut or suggestion, the trim's end, a tenth of a second from its other edge, or where a second would be all that's left, one step for Undo (B195 (g)), and every marker (N64) a flag at its time. The footer: the line that the link stays the same, Revert to original and Done. The waveform fills in once the sound is read; until then the timeline is empty and the ends wait. Every change can be undone, Put back and Revert included; the changes stay in the window until Done saves them. While an earlier edit's original is still kept, the time it has left sits by Revert to original; once it is gone, Revert to original only undoes what changed since the window opened. While it is open, no edit becomes a video behind it on this Mac: the upkeep, and on the Mac holding the token the cleanup sweep, wait until the window closes (B199). The owner page's Edit in shroom (N69) opens this same window; while it holds another video, that press, or Edit… in the Library, brings it forward as it is, one at a time, the footer line saying why until the next change. ✕ with changes not saved asks before the window closes (N71).
 
 **Entry.** Edit… on a live row in the Library (N63), when the video is on this Mac: its take was recorded here and is still here, or it came from the space before. One instance: Edit… again brings the open editor forward, on the video it holds. A take started while it is open leaves it open (law 4 covers only what shroom would newly show). The dock icon shows while it is open.
 
@@ -2356,13 +2356,13 @@ The editor (N63): a window of its own, titled “Edit — <the video's title>”
 | Undo · Redo | other |  | `editor` | ⌘Z · ⇧⌘Z; every change made in the window |
 | Revert to original | secondary |  | `editor` | puts back every cut and both ends; undoable |
 | Done | filled-default | ↵ | `editor-saving` | Return. With nothing changed it closes the window at once. |
-| ✕ | close |  | `editor-closing` | with changes not saved it asks first: Save, Keep editing or Discard (N70); with nothing changed it closes the window at once |
+| ✕ | close |  | `editor-closing` | with changes not saved it asks first: Save, Keep editing or Discard (N71); with nothing changed it closes the window at once |
 
 | → | Kind | Label | Status | Cites |
 |---|---|---|---|---|
-| `editor-saving` | flow | Done | ratified | N63, B199, N70 |
+| `editor-saving` | flow | Done | ratified | N63, B199, N71 |
 | `library` | flow | Done | ratified | N63 |
-| `editor-closing` | flow | ✕ | ratified | N70, B222 |
+| `editor-closing` | flow | ✕ | ratified | N71, B223 |
 
 ### `editor-getting`
 
@@ -2412,11 +2412,11 @@ The editor when the video couldn't come from the space (offline, or the space di
 
 ### `editor-saving`
 
-state · window · **ratified** · board: EditorStates · cites N63, B195, B199, N70
+state · window · **ratified** · board: EditorStates · cites N63, B195, B199, N71
 
 Done pressed with changes: the footer says the edit is saving and Done reads Saving…, greyed. Saved, the share page plays the edit from its next load, and the window goes on to make the final video (or closes, when nothing is left out any more). A quit or an update asked meanwhile waits on it: it goes on once the edit is saved, not waiting for the final video, and is dropped if the save doesn't land (B199).
 
-**Entry.** Done in editor with changes, or Done again in editor-save-failed, or Save when ✕ asked (editor-closing, N70). Also: Quit or Update while the edit holds changes not saved yet (B199).
+**Entry.** Done in editor with changes, or Done again in editor-save-failed, or Save when ✕ asked (editor-closing, N71). Also: Quit or Update while the edit holds changes not saved yet (B199).
 
 | Said | Role | Copy | Note |
 |---|---|---|---|
@@ -2432,7 +2432,7 @@ Done pressed with changes: the footer says the edit is saving and Done reads Sav
 
 ### `editor-save-failed`
 
-state · window · **ratified** · board: EditorStates · cites N63, B195, B199, N70
+state · window · **ratified** · board: EditorStates · cites N63, B195, B199, N71
 
 The save didn't go through (offline, or the space didn't answer): the window stays open with every change in it, the footer line says so in amber, and Done tries again. A save the space turns down is editor-save-refused's (B199).
 
@@ -2445,18 +2445,18 @@ The save didn't go through (offline, or the space didn't answer): the window sta
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
 | Done | filled-default | ↵ | `editor-saving` | tries the save again |
-| ✕ | close |  | `editor-closing` | it asks first, the changes still not saved (N70) |
+| ✕ | close |  | `editor-closing` | it asks first, the changes still not saved (N71) |
 
 | → | Kind | Label | Status | Cites |
 |---|---|---|---|---|
-| `editor-saving` | flow | Done | ratified | N63, B199, N70 |
-| `editor-closing` | flow | ✕ | ratified | N70, B222 |
+| `editor-saving` | flow | Done | ratified | N63, B199, N71 |
+| `editor-closing` | flow | ✕ | ratified | N71, B223 |
 
 ### `editor-closing`
 
-state · window · **ratified** · board: EditorClosing · cites N70, B222
+state · window · **ratified** · board: EditorClosing · cites N71, B223
 
-✕ with changes not saved (N70): the window asks before it closes, in its footer's place, the edit held behind it — no step is taken and the preview pauses. One card: “Save your edit?”, a line that what changed isn't saved yet, then Discard, Keep editing and Save. Save is Done and the Return default: the edit is saved, then the final video is made. Keep editing (Esc) puts the question away, every change still there. Discard closes the window and drops what wasn't saved, the video staying as it was last saved; it is never on Return. ✕ again leaves the question as it is. Quit and Update save first, without asking (B199; Bagrat, 2026-10-19).
+✕ with changes not saved (N71): the window asks before it closes, in its footer's place, the edit held behind it — no step is taken and the preview pauses. One card: “Save your edit?”, a line that what changed isn't saved yet, then Discard, Keep editing and Save. Save is Done and the Return default: the edit is saved, then the final video is made. Keep editing (Esc) puts the question away, every change still there. Discard closes the window and drops what wasn't saved, the video staying as it was last saved; it is never on Return. ✕ again leaves the question as it is. Quit and Update save first, without asking (B199; Bagrat, 2026-10-19).
 
 **Entry.** ✕ while the editor holds changes not saved: in editor, or in editor-save-failed.
 
@@ -2476,10 +2476,10 @@ state · window · **ratified** · board: EditorClosing · cites N70, B222
 
 | → | Kind | Label | Status | Cites |
 |---|---|---|---|---|
-| `editor-saving` | flow | Save | ratified | N70, B222 |
-| `editor` | flow | Keep editing | ratified | N70, B222 |
-| `editor-save-failed` | flow | Keep editing | ratified | N70, B222 |
-| `library` | flow | Discard | ratified | N70, B222 |
+| `editor-saving` | flow | Save | ratified | N71, B223 |
+| `editor` | flow | Keep editing | ratified | N71, B223 |
+| `editor-save-failed` | flow | Keep editing | ratified | N71, B223 |
+| `library` | flow | Discard | ratified | N71, B223 |
 
 ### `editor-save-refused`
 
@@ -4171,7 +4171,7 @@ A move that holds for a whole group of states, written once (B133). The tests ex
 - **a face comes and goes with its cause** (`faces`, auto, **ratified**, N18, law 1, N34): * → * (a state and its own faces), on any. Faces are render properties of their state: a state and its faces, and one state's faces, re-derive into one another as their causes come and go.
 - **one banner at a time, the highest** (`banners`, auto, **ratified**, N38, law 1): @banners, none → @banners, none, on any. config's banner shows while its cause stands and clears by itself when it goes; a higher banner hides a lower one (one at a time).
 - **its video deleted, the editor closes** (`editor-video-deleted`, side, **ratified**, N63, B199): @editor-faces → library, on Act(ConfirmDelete), Library(Deleted). Deleting the video the editor holds — Delete… confirmed in the Library, or this Mac's delete landing — closes the editor: what its open asked for stops, a save on its way answers no one, and nothing is saved (B199). Another Mac's delete reaches it as a save the space turns down (editor-save-refused).
-- **Quit or Update saves an unsaved edit first** (`quit-saves-the-edit`, side, **ratified**, N63, B199, N70): editor, editor-save-failed, editor-closing → editor-saving, on QuitRequested, Act(Quit), Act(QuitAnyway), Act(Update). Quit — the Dock's, the popover's, the right-click menu's or macOS's, and Quit anyway once uploads are asked about — and Update, while the editor holds changes not saved yet, save them first, without asking (Bagrat, 2026-10-19; only ✕ asks, N70), and bring the editor forward; a save already on its way is waited for. Once it lands the quit or the update goes on, without waiting for the final video (an upkeep makes it later). A save that doesn't land holds it: shroom stays, and the editor says why. A take begun meanwhile drops it (law 4) (B199).
+- **Quit or Update saves an unsaved edit first** (`quit-saves-the-edit`, side, **ratified**, N63, B199, N71): editor, editor-save-failed, editor-closing → editor-saving, on QuitRequested, Act(Quit), Act(QuitAnyway), Act(Update). Quit — the Dock's, the popover's, the right-click menu's or macOS's, and Quit anyway once uploads are asked about — and Update, while the editor holds changes not saved yet, save them first, without asking (Bagrat, 2026-10-19; only ✕ asks, N71), and bring the editor forward; a save already on its way is waited for. Once it lands the quit or the update goes on, without waiting for the final video (an upkeep makes it later). A save that doesn't land holds it: shroom stays, and the editor says why. A take begun meanwhile drops it (law 4) (B199).
 
 ## Groups
 
@@ -4191,7 +4191,7 @@ A move that holds for a whole group of states, written once (B133). The tests ex
 - **@join-doors** — where an invite can arrive (N30, N31): `idle-ready`, `idle-unprovisioned`, `config`, `welcome`, `first-launch`, `join-waiting`, `join-expired`, `join-used`, `join-space-missing`
 - **@join-arrival** — the invite window's faces on arrival (N30, N31, #20): `member-welcome`, `join-waiting`, `join-expired`, `join-used`, `join-space-missing`, `join-already-here`, `join-switch-confirm`, `join-switch-confirm-uploads`, `join-switch-confirm-saved-take`, `joining`
 - **@banners** — config's banners (one at a time, N38) (N38): `space-degraded`, `space-degraded-no-token-mac`, `recording-off`, `recovered-take`, `update-ready`, `updating-app`, `space-needs-update-member`, `space-needs-update-no-token`, `member-revoked`, `space-needs-owner`, `space-gone`, `owner-mac-removed`
-- **@editor-faces** — the editor's faces (N63, B199, N70): `editor`, `editor-getting`, `editor-cant-get`, `editor-saving`, `editor-save-failed`, `editor-closing`, `editor-save-refused`, `editor-making`, `editor-making-failed`, `editor-keep-original`
+- **@editor-faces** — the editor's faces (N63, B199, N71): `editor`, `editor-getting`, `editor-cant-get`, `editor-saving`, `editor-save-failed`, `editor-closing`, `editor-save-refused`, `editor-making`, `editor-making-failed`, `editor-keep-original`
 
 ## Laws
 
@@ -4360,7 +4360,7 @@ A move that holds for a whole group of states, written once (B133). The tests ex
 | N63 | The editor: trim, cut, undo, and edits the link plays | **Bagrat asked for it, 2026-10-18** (relayed by the orchestrator): a real editor, apart from AI, that the spoken-cue layer can plug into later. **Edit… in a Library row's menu** opens the **editor**, a window of its own (one at a time), on a live video in this Mac's scope, renamable here: the video plays at the top; under it the play button and the time, edited position / edited length, with “was 4:32” once the edit changes the length; then the **timeline**: the whole recording's sound as a waveform with the playhead, **yellow ends that drag to trim**, and **a drag across the sound that selects a part**, with **Cut 12.0 s** under it. **A cut shows red** and the preview skips it as it plays; clicking a cut offers **Put back**. **Undo and Redo** (also ⌘Z and ⇧⌘Z) step through every change made in the window, Put back and Revert included. **Revert to original** puts back every cut and both ends. **Done** (Return) saves the edit and closes the window; ✕ is Done. The footer says the link stays the same. Saving is a small edit list kept in the video's record; **the share page and the embed apply it as they play** (they skip the cuts, hold to the trim, and show the edited length), so **the link never changes** and nothing is re-encoded first. Until then the original stays in the space, so Revert works from any Mac. Then the window stays to make **the final video**: the Mac cuts the edit with its own encoder and puts it up beside the original under the same link (“Making the final video… 40%”; the window can be closed and shroom finishes it); once it is up, Download and the page use it. **Then it asks “Delete the original?”** (Bagrat, 2026-10-18: encourage deleting it soon; no 30-day keep): **Yes, delete** leads, filled — a click, never Return (law 9; DEVIATIONS #55, ratified 2026-10-18) — and the edit becomes the video for good; **Keep for 2 days** keeps the original so the edit can still be reverted, and shroom deletes it after two days, whether or not this Mac is open then; closing the window there means Keep for 2 days. While the original is kept, the editor says by Revert how long it has left; once it is gone, the edit is final and Revert to original only undoes what changed since the window opened. A video that isn't on this Mac comes from the space first (“Getting the video from your space…”); if that fails the window says so and offers Try again. While it saves, Done reads Saving…; if the save doesn't go through, the window stays open and says so, and Done tries again. Edit… greys offline and while a take is open (law 4), as Rename does. Built: DECISIONS B195, B197. **Ratified by Bagrat as built, 2026-10-18**, with B195–B199 and the build’s words. | ratified | 2026-10-18 |
 | N64 | Markers: Drop a marker comes back while paused, and ⌥⌘M drops one while recording | **Bagrat asked for markers dropped while recording, 2026-10-18** (relayed by the orchestrator), as the POC once had. (1) **Drop a marker comes back to the paused popover**, between Finish & Share and Restart, reversing B143's hiding now that the editor (N63) shows markers. It lands a marker at the pause point; once dropped, the row reads **Marker dropped** and greys until the take resumes (a second marker at the same point says nothing). (2) **⌥⌘M drops a marker while recording**, at that moment of the take, held only while a take is open, exactly as N54's ⌥⌘P (no new permission, let go when the take closes, nothing on screen names it in v1, and nothing on screen answers it: the take goes on). (3) **Markers show as flags on the editor's timeline**, at their times on the recording. They never reach viewers in v1. Built: DECISIONS B196. **Ratified by Bagrat as built, 2026-10-18**, with B195–B199 and the build’s words. | ratified | 2026-10-18 |
 | N69 | Edit in shroom: the owner's page opens the video in shroom's editor | **Bagrat asked for an Edit button on the video's page that opens it in the editor, 2026-10-18** (relayed by the orchestrator), and approved the boards “The page — Edit in shroom” and “Editor — opened from the page's Edit” as drawn, with their lines, option A and the tooltip “Edit in shroom” (2026-10-18). (1) **The owner page gains Edit in shroom**: the scissors, the last of the quiet icons beside the title, after Download, its tooltip “Edit in shroom”. It shows only on the owner page (the space's owners on every video, a member on their own) and only once the video is fully up, as Edit… in the Library; a recipient's page and the embed never have it. (2) **It opens `shroom://edit/<the space's address>/<the video>`**, with nothing secret in it: the browser asks first (its own “Open shroom?”), and the Mac decides by its own state. (3) **The Mac's answers.** A video this Mac can edit (the owner's Macs: every video in the space; a member's Mac: their own) opens in the editor as Edit… opens it. The editor already open comes forward as it is, one at a time; holding another video, its footer says “You're editing another video — press Done, then Edit again.” While a take is open the press waits (law 4), and the editor opens once the take ends. Otherwise the popover opens by itself under the mushroom with one line, said once: “This Mac isn't set up for that video's space.”, “Only whoever recorded this video, or the space's owner, can edit it.” or “That video isn't in your space anymore.” A Mac not set up at all opens its welcome window, as a click on the mushroom does. (4) **Where shroom isn't on the Mac, the page says nothing** (option A): only a Mac running shroom makes a browser the owner's, so the button shows only where it can work. Built: DECISIONS B221. | provisional | 2026-10-18 |
-| N70 | The editor's ✕ with changes not saved asks: Save, Keep editing or Discard | **Bagrat asked, 2026-10-18** (relayed by the orchestrator), that the editor's ✕ stop saving without a word, as Done does, and ask instead: discard, keep editing, or save. **On 2026-10-19 he approved the board “Editor — closing with changes not saved” as drawn** (relayed by the orchestrator). (1) **✕ with changes not saved asks**, in the footer's place, the edit held behind it: “Save your edit?”, “What you've changed isn't saved yet.”, then Discard, Keep editing and Save. While it asks no step is taken and the preview pauses. (2) **Save is Done**: the edit is saved, then the final video is made, as after Done. Return presses it. (3) **Keep editing** puts the question away, every change still there; Esc does the same. (4) **Discard** closes the window and drops what wasn't saved: the video stays as it was last saved. It is never on Return. (5) **What doesn't change**: with nothing to save, ✕ closes the window at once; while the edit saves, ✕ waits for it; after Done (the final video being made, the original asked about) ✕ is Close; a save the space turned down closes; Done saves as before. (6) **Quit and Update save first, as now, without asking** (Bagrat, 2026-10-19). Built: DECISIONS B222. **Ratified by Bagrat as drawn, 2026-10-19.** | ratified | 2026-10-19 |
+| N71 | The editor's ✕ with changes not saved asks: Save, Keep editing or Discard | **Bagrat asked, 2026-10-18** (relayed by the orchestrator), that the editor's ✕ stop saving without a word, as Done does, and ask instead: discard, keep editing, or save. **On 2026-10-19 he approved the board “Editor — closing with changes not saved” as drawn** (relayed by the orchestrator). (1) **✕ with changes not saved asks**, in the footer's place, the edit held behind it: “Save your edit?”, “What you've changed isn't saved yet.”, then Discard, Keep editing and Save. While it asks no step is taken and the preview pauses. (2) **Save is Done**: the edit is saved, then the final video is made, as after Done. Return presses it. (3) **Keep editing** puts the question away, every change still there; Esc does the same. (4) **Discard** closes the window and drops what wasn't saved: the video stays as it was last saved. It is never on Return. (5) **What doesn't change**: with nothing to save, ✕ closes the window at once; while the edit saves, ✕ waits for it; after Done (the final video being made, the original asked about) ✕ is Close; a save the space turned down closes; Done saves as before. (6) **Quit and Update save first, as now, without asking** (Bagrat, 2026-10-19). Built: DECISIONS B223. **Ratified by Bagrat as drawn, 2026-10-19.** | ratified | 2026-10-19 |
 
 ## Surfaces
 

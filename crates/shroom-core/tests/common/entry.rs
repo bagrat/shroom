@@ -132,7 +132,7 @@ pub const READS: &[Read] = &[
     r("editor", "Edit… on a live row in the Library (N63), when the video is on this Mac"),
     r("editor-getting", "Edit… on a live row whose video isn't on this Mac."),
     r("editor-cant-get", "The fetch in editor-getting failed."),
-    r("editor-saving", "Done in editor with changes, or Done again in editor-save-failed, or Save when ✕ asked (editor-closing, N70)."),
+    r("editor-saving", "Done in editor with changes, or Done again in editor-save-failed, or Save when ✕ asked (editor-closing, N71)."),
     r("editor-save-failed", "A save from editor-saving failed."),
     r("editor-closing", "✕ while the editor holds changes not saved"),
     r("editor-save-refused", "A save from editor-saving the space turned down"),
@@ -705,7 +705,7 @@ fn feedback(w: &World) -> Option<Win> {
 /// (B199); “the save landed … with something left out” is the final video being made,
 /// “making the final video failed” its own face, and “the final video landed while the
 /// editor was open” the question (B197); “✕ while the editor holds changes not saved”
-/// the close prompt, in editor or editor-save-failed (N70); before any save, the video “isn't on this Mac”
+/// the close prompt, in editor or editor-save-failed (N71); before any save, the video “isn't on this Mac”
 /// while the space hands it over, “the fetch … failed” when it didn't, and otherwise the
 /// editor itself — the video here, or its record still being read.
 fn editor(w: &World) -> Option<Win> {

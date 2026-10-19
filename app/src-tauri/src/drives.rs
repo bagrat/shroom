@@ -1255,7 +1255,7 @@ fn starts_paused(d: &Drive, what: &str) -> Result<(), String> {
 
 /// Play, pressed with the pointer: a real click on the editor's play button.
 /// The editor window's own close, on the main thread, as a click on its ✕ makes it: the shell
-/// hears CloseRequested, keeps the window, and the core decides (N70).
+/// hears CloseRequested, keeps the window, and the core decides (N71).
 fn close_by_hand(d: &Drive) {
     use tauri::Manager;
     let app = d.app.clone();
@@ -1445,7 +1445,7 @@ fn editor(d: &Drive) -> Result<(), String> {
         }
     }
 
-    // ✕ with changes not saved asks first (N70): the card in the footer's place, the preview
+    // ✕ with changes not saved asks first (N71): the card in the footer's place, the preview
     // stopped and nothing saved. Esc is Keep editing: back to the edit, every change there.
     play_by_hand(d, &runner, origin)?;
     let held = snapshot(&d.rt).map(|s| cuts_of(&s)).unwrap_or_default();
@@ -1454,7 +1454,7 @@ fn editor(d: &Drive) -> Result<(), String> {
     let card = poll(5, || editor_layout(d).ok().filter(|l| l["ask_title"].is_string()));
     let words = serde_json::json!([shroom_core::copy::discard(), shroom_core::copy::keep_editing(), shroom_core::copy::save()]);
     d.check(
-        "✕ with changes not saved asks: “Save your edit?” in the footer's place, then Discard, Keep editing and Save (N70)",
+        "✕ with changes not saved asks: “Save your edit?” in the footer's place, then Discard, Keep editing and Save (N71)",
         asked.is_ok() && card.as_ref().is_some_and(|l| l["ask_title"] == shroom_core::copy::close_unsaved_title().as_str() && l["ask"] == words),
         format!("{:?}", card.map(|l| (l["ask_title"].clone(), l["ask"].clone()))),
     );
@@ -1629,7 +1629,7 @@ fn editor(d: &Drive) -> Result<(), String> {
     play_by_hand(d, &runner, origin)?;
     std::thread::sleep(Duration::from_secs(3));
     runner.shot(d, crate::runtime::presenter::EDITOR, "editor-fetched")?;
-    // Discard (N70): a cut, ✕, and Discard — a real click — closes the window and writes
+    // Discard (N71): a cut, ✕, and Discard — a real click — closes the window and writes
     // nothing; opened again, the video is as it was.
     d.rt.post(Event::Edit(EditStep::Op(Op::Cut { start: 3.0, end: 6.0 })));
     d.wait("a cut to discard", 5, |s| cuts_of(s).len() == 1)?;
@@ -1639,7 +1639,7 @@ fn editor(d: &Drive) -> Result<(), String> {
     runner.ask(d, serde_json::json!({ "do": "click", "at": [at.0, at.1] }))?;
     let gone = d.wait("Discard closed it", 10, |s| s.editor.is_none());
     let untouched = record_json(&s3, &away.0).is_some_and(|r| r["edits"].is_null());
-    d.check("Discard, a real click, closes the window and saves nothing (N70)", gone.is_ok() && untouched, format!("closed {}, the record untouched {untouched}", gone.is_ok()));
+    d.check("Discard, a real click, closes the window and saves nothing (N71)", gone.is_ok() && untouched, format!("closed {}, the record untouched {untouched}", gone.is_ok()));
     d.act(Surface::Library, Action::EditRow(away.clone()));
     let s = d.wait("the fetched video, opened again", 60, editor_ready)?;
     d.check("… opened again, it's as it was: no cut", cuts_of(&s).is_empty(), format!("{:?}", cuts_of(&s)));

@@ -181,7 +181,7 @@ export function editorScenes(
         { ret: null, esc: KEEP },
       ),
     },
-    // ✕ with changes not saved (N70): “Save your edit?” in the footer's place, the edit held
+    // ✕ with changes not saved (N71): “Save your edit?” in the footer's place, the edit held
     // behind it — Discard (red, a click only), Keep editing (Esc), Save (Return) — from the
     // editor, and after a save that didn't go through.
     ...[

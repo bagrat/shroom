@@ -168,7 +168,7 @@ export async function editorLooks({ browser, origin, mediaOrigin, entries, check
       // the footer, then the question in the footer's place; Revert is gone.
       const after = b.after ?? null;
       const asking = after?.state === "asking";
-      // ✕ with changes not saved asks in the same place (N70).
+      // ✕ with changes not saved asks in the same place (N71).
       const closing = b.closing ?? null;
       const question = asking ? after : closing;
       const lines = question
@@ -472,7 +472,7 @@ export async function editorDrives({ browser, origin, mediaOrigin, entries, chec
   await page.evaluate((w) => window.__emit(w), { ...cutFace, id: "editor-saving", body: { ...cutFace.body, editable: false, can_undo: false, can_redo: false } });
   await page.waitForTimeout(200);
   check("editor: Done stops the preview (nothing plays on while it saves)", playingAtDone && !(await isPlaying()), String(playingAtDone));
-  // ✕'s question the same (N70): playing when it comes, the preview pauses — the edit is
+  // ✕'s question the same (N71): playing when it comes, the preview pauses — the edit is
   // held behind it — and Space plays nothing until it's answered.
   await page.evaluate((w) => window.__emit(w), cutFace);
   await page.keyboard.press(" ");
@@ -607,7 +607,7 @@ export async function editorDrives({ browser, origin, mediaOrigin, entries, chec
     check("editor-keep-original: Esc, Yes, delete and Keep for 2 days send the Scene's", keyed(c, "esc") && acted(c, w.body.after.delete.action) && acted(c, w.body.after.keep.action), JSON.stringify(c));
     await ctx.close();
   }
-  // ✕'s question (N70): Return and Esc go to the Scene, and each button sends its own.
+  // ✕'s question (N71): Return and Esc go to the Scene, and each button sends its own.
   {
     const w = face("editor-closing");
     const { ctx, page } = await openEditor(browser, origin, mediaOrigin, w);

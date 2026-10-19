@@ -507,7 +507,7 @@ fn done_with_changes_saves_the_checked_list_as_the_next_revision() {
     assert_eq!(face(&r), "editor-saving", "the window stays until the save lands");
 }
 
-/// The window's ✕ with nothing to save closes at once, and stops nothing (N63, N70).
+/// The window's ✕ with nothing to save closes at once, and stops nothing (N63, N71).
 #[test]
 fn the_windows_close_with_nothing_to_save_closes_at_once() {
     let mut r = ready_editor();
@@ -522,7 +522,7 @@ fn the_windows_close_with_nothing_to_save_closes_at_once() {
     assert!(r.scene.editor.is_none() && r.effects.is_empty());
 }
 
-// ── ✕ with changes not saved asks first (N70) ──
+// ── ✕ with changes not saved asks first (N71) ──
 
 fn closing(r: &Run) -> EditorClosingView {
     body(r).closing.expect("the close prompt")
@@ -532,7 +532,7 @@ fn close(r: &mut Run) {
     r.send(Event::WindowClosed(WindowKind::Editor));
 }
 
-/// ✕ with changes not saved asks before the window closes (N70): in the footer's place,
+/// ✕ with changes not saved asks before the window closes (N71): in the footer's place,
 /// “Save your edit?” and its line, then Discard (red, a click only), Keep editing and Save
 /// (filled). Nothing is saved yet, and the edit is held behind the question: no step is
 /// taken and the preview stops (the webview pauses what isn't editable). Return is Save, Esc
@@ -1585,7 +1585,7 @@ fn update_in_settings() -> Event {
 }
 
 /// Quit from the Dock, the right-click menu or macOS with a change not saved yet: the edit is
-/// saved first, without asking (only ✕ asks, N70), and the editor comes forward to show it saving; shroom
+/// saved first, without asking (only ✕ asks, N71), and the editor comes forward to show it saving; shroom
 /// quits once the save lands — not waiting for the final video it goes on to make.
 #[test]
 fn quit_saves_an_unsaved_edit_first_then_quits() {
@@ -2002,7 +2002,7 @@ fn the_slice_is_the_webviews_json() {
     r.send(Event::Failed { op: Op::EditorSave, class: FailClass::Transport });
     assert_eq!(serde_json::to_value(&r.scene.editor.as_ref().unwrap().body).unwrap()["footer_tone"], "amber");
 
-    // ✕ with changes not saved (N70): the question, its three buttons, Return Save and Esc
+    // ✕ with changes not saved (N71): the question, its three buttons, Return Save and Esc
     // Keep editing.
     let mut r = dirty();
     r.send(Event::WindowClosed(WindowKind::Editor));

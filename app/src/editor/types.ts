@@ -15,7 +15,7 @@ export type EditorAfter =
   | { state: "making"; pct: number; line: string }
   | { state: "failed" }
   | { state: "asking"; title: string; line: string; keep: Button; delete: Button };
-/** ✕ with changes not saved (N70): Discard (a click only), Keep editing (Esc), Save (Return). */
+/** ✕ with changes not saved (N71): Discard (a click only), Keep editing (Esc), Save (Return). */
 export type EditorClosing = { title: string; line: string; discard: Button; keep: Button; save: Button };
 export type EditorBody = {
   title: string; rec: string; media: EditorMedia; hint: string;

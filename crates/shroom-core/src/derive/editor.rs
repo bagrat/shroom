@@ -97,7 +97,7 @@ pub fn derive(w: &World) -> Option<Window<EditorBody>> {
         done,
         original_kept: kept_left(w, e).map(copy::original_kept),
         after,
-        // ✕ with changes not saved (N70): Save is Done, Keep editing goes back, and Discard
+        // ✕ with changes not saved (N71): Save is Done, Keep editing goes back, and Discard
         // — red, a click only — closes without saving.
         closing: e.closing.then(|| EditorClosingView {
             title: copy::close_unsaved_title(),
@@ -115,7 +115,7 @@ pub fn derive(w: &World) -> Option<Window<EditorBody>> {
         "editor-cant-get" | "editor-save-refused" | "editor-making" | "editor-making-failed" => (Some(Action::EditorClose), Some(Action::EditorClose)),
         // Yes, delete leads but is never one keystroke away (law 9; DEVIATIONS #55).
         "editor-keep-original" => (None, Some(Action::KeepOriginal)),
-        // The close prompt: Return saves, Esc keeps editing, and Discard is a click (N70).
+        // The close prompt: Return saves, Esc keeps editing, and Discard is a click (N71).
         "editor-closing" => (Some(Action::EditorDone), Some(Action::EditorKeepEditing)),
         "editor" | "editor-save-failed" if live => (Some(Action::EditorDone), None),
         _ => (None, None),
@@ -149,7 +149,7 @@ pub fn editable(e: &EditorFields) -> bool {
     ready(e) && matches!(e.save, EditorSave::Idle | EditorSave::Failed)
 }
 
-/// …and not while ✕ asks, the edit held behind the question (N70). What it holds is still
+/// …and not while ✕ asks, the edit held behind the question (N71). What it holds is still
 /// the edit's: Quit and Update save it first.
 pub fn takes_steps(e: &EditorFields) -> bool {
     editable(e) && !e.closing

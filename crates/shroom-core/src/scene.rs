@@ -160,13 +160,13 @@ pub enum Action {
     /// Cancel, Esc, or the sent face's Done: the window closes.
     CloseFeedback,
     // ── the editor (N63) ──
-    /// Done (Return): saves what changed, then closes — and the close prompt's Save (N70).
+    /// Done (Return): saves what changed, then closes — and the close prompt's Save (N71).
     /// The window's ✕ is Done with nothing to save; with changes not saved it asks first.
     EditorDone,
-    /// The close prompt's Keep editing (Esc; N70): the question goes, every change still
+    /// The close prompt's Keep editing (Esc; N71): the question goes, every change still
     /// there.
     EditorKeepEditing,
-    /// The close prompt's Discard, a click only (N70): the window closes, and what wasn't
+    /// The close prompt's Discard, a click only (N71): the window closes, and what wasn't
     /// saved is dropped.
     EditorDiscard,
     /// editor-cant-get's Try again: the video is asked for again.
@@ -1100,12 +1100,12 @@ pub struct EditorBody {
     /// failure, then the question of the original — in the timeline's place. `None` until
     /// then.
     pub after: Option<EditorAfterView>,
-    /// ✕ with changes not saved (N70): the question, in the footer's place. `None`
+    /// ✕ with changes not saved (N71): the question, in the footer's place. `None`
     /// otherwise.
     pub closing: Option<EditorClosingView>,
 }
 
-/// The close prompt (N70): its title and line, then Discard, Keep editing and Save.
+/// The close prompt (N71): its title and line, then Discard, Keep editing and Save.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct EditorClosingView {
     pub title: String,
