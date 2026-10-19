@@ -15,7 +15,7 @@ use std::sync::Arc;
 
 use shroom_core::effect::{EditCmd, Effect, LibCmd, PersistOp, RecCmd, ShellCmd, UpdCmd};
 use shroom_core::event::{EditStep, EditorNews, Event, Key, LibraryNews, QuitVia, RecNews, Surface};
-use shroom_core::scene::{Action, Button, EditListView, EditorAfterView, EditorBody, EditorMediaView, LibraryRowView, LineTone, PausedBody, PopoverBody, Style};
+use shroom_core::scene::{Action, Button, EditListView, EditorAfterView, EditorBody, EditorClosingView, EditorMediaView, LibraryRowView, LineTone, PausedBody, PopoverBody, Style};
 use shroom_core::time::{Fact, Mono, Wall};
 use shroom_core::world::*;
 use shroom_edit::{Cut, CutKind, EditList, Op as EditOp, Saved};
@@ -39,6 +39,8 @@ const MAKING_LINE: &str = "The link already plays your edit. You can close this 
 const MAKING_FAILED: &str = "Couldn't make the final video. The link plays your edit anyway, and shroom tries again later.";
 const ASK_TITLE: &str = "Delete the original?";
 const ASK_LINE: &str = "Your edit is the video now. The original is only kept so you can revert to it.";
+const CLOSE_TITLE: &str = "Save your edit?";
+const CLOSE_LINE: &str = "What you've changed isn't saved yet.";
 
 fn rec() -> RecId {
     RecId(REC.into())
@@ -505,21 +507,177 @@ fn done_with_changes_saves_the_checked_list_as_the_next_revision() {
     assert_eq!(face(&r), "editor-saving", "the window stays until the save lands");
 }
 
-/// The window's ✕ is Done (N63): with changes it saves, and the window stays until saved.
+/// The window's ✕ with nothing to save closes at once, and stops nothing (N63, N70).
 #[test]
-fn the_windows_close_is_done() {
-    let mut r = dirty();
-    r.send(Event::WindowClosed(WindowKind::Editor));
-    assert!(r.has(|e| matches!(e, Effect::Editor(EditCmd::Save { saved: Saved { rev: 4, .. }, .. }))), "{:?}", r.effects);
-    assert_eq!(r.arm.edge, Some(("editor", "editor-saving")));
-    assert_eq!(face(&r), "editor-saving");
-    r.news(EditorNews::Saved { rec: rec(), rev: 4 });
-    assert_eq!(face(&r), "editor-making", "saved with something left out: the final video is made (B197)");
-    // Nothing changed: ✕ just closes, and stops nothing.
+fn the_windows_close_with_nothing_to_save_closes_at_once() {
     let mut r = ready_editor();
     r.send(Event::WindowClosed(WindowKind::Editor));
     assert!(r.scene.editor.is_none() && r.effects.is_empty());
     assert_eq!(r.arm.edge, Some(("editor", "library")));
+    // Changes undone back to what's saved: nothing to save either.
+    let mut r = ready_with(Some(saved_edit(3)));
+    r.op(EditOp::Cut { start: 20.0, end: 30.0 });
+    r.step(EditStep::Undo);
+    r.send(Event::WindowClosed(WindowKind::Editor));
+    assert!(r.scene.editor.is_none() && r.effects.is_empty());
+}
+
+// ── ✕ with changes not saved asks first (N70) ──
+
+fn closing(r: &Run) -> EditorClosingView {
+    body(r).closing.expect("the close prompt")
+}
+
+fn close(r: &mut Run) {
+    r.send(Event::WindowClosed(WindowKind::Editor));
+}
+
+/// ✕ with changes not saved asks before the window closes (N70): in the footer's place,
+/// “Save your edit?” and its line, then Discard (red, a click only), Keep editing and Save
+/// (filled). Nothing is saved yet, and the edit is held behind the question: no step is
+/// taken and the preview stops (the webview pauses what isn't editable). Return is Save, Esc
+/// is Keep editing, and ✕ again leaves the question as it is.
+#[test]
+fn the_windows_close_with_changes_asks_first() {
+    let mut r = dirty();
+    close(&mut r);
+    assert!(r.effects.is_empty(), "nothing saved yet: {:?}", r.effects);
+    assert_eq!(r.arm.edge, Some(("editor", "editor-closing")));
+    assert_eq!(face(&r), "editor-closing");
+    assert!(r.w.session.windows.contains_key(&WindowKind::Editor), "the window stays while it asks");
+    let c = closing(&r);
+    assert_eq!((c.title.as_str(), c.line.as_str()), (CLOSE_TITLE, CLOSE_LINE));
+    assert_eq!(button(&c.discard), ("Discard", Style::RedOutline, true));
+    assert_eq!(button(&c.keep), ("Keep editing", Style::Plain, true));
+    assert_eq!(button(&c.save), ("Save", Style::Filled, true));
+    assert_eq!((&c.discard.action, &c.keep.action, &c.save.action), (&Action::EditorDiscard, &Action::EditorKeepEditing, &Action::EditorDone));
+    assert_eq!((r.scene.ret(Surface::Editor), r.scene.esc(Surface::Editor)), (Some(Action::EditorDone), Some(Action::EditorKeepEditing)));
+    let b = body(&r);
+    assert!(!b.editable && !b.can_undo && !b.can_redo, "the edit is held while it asks");
+    assert!(!revert(&b).enabled);
+    assert_eq!(b.footer, FOOTER, "the footer's own line stays beneath the card");
+
+    // A step meanwhile — a cut, Undo, Revert — is dropped.
+    let held = list(&r);
+    r.op(EditOp::Cut { start: 40.0, end: 50.0 });
+    r.step(EditStep::Undo);
+    r.ed(Action::EditorRevert);
+    assert_eq!(list(&r), held);
+    assert_eq!(face(&r), "editor-closing");
+
+    // ✕ again: the question stays, nothing saved.
+    close(&mut r);
+    assert!(r.effects.is_empty());
+    assert_eq!(face(&r), "editor-closing");
+}
+
+/// Keep editing — Esc too — puts the question away: every change still there, steps taken
+/// again, and ✕ asks again next time.
+#[test]
+fn keep_editing_puts_the_question_away() {
+    for keep in [Event::Act { surface: Surface::Editor, action: Action::EditorKeepEditing, rev: 0 }, Event::Key { surface: Surface::Editor, key: Key::Esc }] {
+        let mut r = dirty();
+        let before = list(&r);
+        close(&mut r);
+        r.send(keep.clone());
+        assert!(r.effects.is_empty(), "{keep:?}: {:?}", r.effects);
+        assert_eq!(r.arm.edge, Some(("editor-closing", "editor")), "{keep:?}");
+        assert_eq!(face(&r), "editor");
+        let b = body(&r);
+        assert!(b.closing.is_none() && b.editable && b.can_undo);
+        assert_eq!(list(&r), before, "{keep:?}: every change still there");
+        r.op(EditOp::Cut { start: 40.0, end: 50.0 });
+        assert_eq!(list(&r).cuts.len(), before.cuts.len() + 1, "steps are taken again");
+        close(&mut r);
+        assert_eq!(face(&r), "editor-closing", "✕ asks again");
+    }
+}
+
+/// Save is Done — Return too: the checked list saved as the next revision, then the final
+/// video, as after Done.
+#[test]
+fn save_on_the_question_is_done() {
+    for save in [Event::Act { surface: Surface::Editor, action: Action::EditorDone, rev: 0 }, Event::Key { surface: Surface::Editor, key: Key::Return }] {
+        let mut r = dirty();
+        close(&mut r);
+        r.send(save.clone());
+        assert_eq!(r.effects, vec![Effect::Editor(EditCmd::Save { rec: rec(), saved: Saved::new(edited().checked(), 4) })], "{save:?}");
+        assert_eq!(r.arm.edge, Some(("editor-closing", "editor-saving")), "{save:?}");
+        assert_eq!(face(&r), "editor-saving");
+        assert!(body(&r).closing.is_none());
+        r.news(EditorNews::Saved { rec: rec(), rev: 4 });
+        assert_eq!(face(&r), "editor-making", "{save:?}: the final video, as after Done (B197)");
+    }
+}
+
+/// Discard closes the window and drops what wasn't saved: nothing written and nothing to
+/// stop (the video is here), the video as it was last saved. It is the question's alone,
+/// and a click: Return never discards.
+#[test]
+fn discard_closes_and_drops_what_wasnt_saved() {
+    let mut r = dirty();
+    close(&mut r);
+    r.ed(Action::EditorDiscard);
+    assert!(r.effects.is_empty(), "nothing saved: {:?}", r.effects);
+    assert_eq!(r.arm.edge, Some(("editor-closing", "library")));
+    assert!(r.scene.editor.is_none() && r.w.session.fields.editor.is_none());
+    assert!(!r.w.session.windows.contains_key(&WindowKind::Editor));
+    assert!(r.scene.library.is_some(), "the Library stays");
+
+    // Not asked: Discard does nothing, and the change stays.
+    let mut r = dirty();
+    r.ed(Action::EditorDiscard);
+    assert!(r.effects.is_empty());
+    assert_eq!(face(&r), "editor");
+    assert_eq!(list(&r).cuts.len(), 3);
+}
+
+/// A save that didn't go through still holds changes not saved: ✕ asks there too, Keep
+/// editing goes back to that face and its line, and Save tries the save again.
+#[test]
+fn the_windows_close_after_a_failed_save_asks_too() {
+    let mut r = dirty();
+    r.ed(Action::EditorDone);
+    r.send(Event::Failed { op: Op::EditorSave, class: FailClass::Transport });
+    assert_eq!(face(&r), "editor-save-failed");
+    close(&mut r);
+    assert!(r.effects.is_empty(), "{:?}", r.effects);
+    assert_eq!(r.arm.edge, Some(("editor-save-failed", "editor-closing")));
+    assert_eq!(face(&r), "editor-closing");
+    r.key(Surface::Editor, Key::Esc);
+    assert_eq!(r.arm.edge, Some(("editor-closing", "editor-save-failed")));
+    assert_eq!(face(&r), "editor-save-failed");
+    assert_eq!((body(&r).footer.as_str(), body(&r).footer_tone), (SAVE_FAILED, LineTone::Amber));
+    close(&mut r);
+    r.key(Surface::Editor, Key::Return);
+    assert!(r.has(|e| matches!(e, Effect::Editor(EditCmd::Save { saved: Saved { rev: 4, .. }, .. }))), "{:?}", r.effects);
+    assert_eq!(r.arm.edge, Some(("editor-closing", "editor-saving")));
+}
+
+/// Quit while it asks saves first, without asking (Bagrat, 2026-10-19; B199): the question
+/// goes, the edit saves, and shroom quits once it's saved.
+#[test]
+fn quit_while_it_asks_saves_first() {
+    let mut r = dirty();
+    close(&mut r);
+    r.send(Event::QuitRequested(QuitVia::Dock));
+    assert!(saves(&r) && !quits(&r), "{:?}", r.effects);
+    assert_eq!(r.arm.edge, Some(("editor-closing", "editor-saving")));
+    assert_eq!(face(&r), "editor-saving");
+    assert!(body(&r).closing.is_none());
+    assert_eq!(r.w.session.fields.editor.as_ref().unwrap().leaving, Some(Leaving::Quit));
+    r.news(EditorNews::Saved { rec: rec(), rev: 4 });
+    assert!(quits(&r), "{:?}", r.effects);
+}
+
+/// Deleting the video while it asks closes the window, as from any face: nothing saved.
+#[test]
+fn deleting_its_video_while_it_asks_closes_the_editor() {
+    let mut r = dirty();
+    close(&mut r);
+    r.send(Event::Library(LibraryNews::Deleted(vec![rec()])));
+    assert!(!saves(&r), "nothing is saved: {:?}", r.effects);
+    assert!(r.scene.editor.is_none() && r.w.session.fields.editor.is_none());
 }
 
 /// Saved with something left out (B197 (a)): the window stays and makes the final video —
@@ -1427,7 +1585,7 @@ fn update_in_settings() -> Event {
 }
 
 /// Quit from the Dock, the right-click menu or macOS with a change not saved yet: the edit is
-/// saved first, as ✕ and ⌘Q save it, and the editor comes forward to show it saving; shroom
+/// saved first, without asking (only ✕ asks, N70), and the editor comes forward to show it saving; shroom
 /// quits once the save lands — not waiting for the final video it goes on to make.
 #[test]
 fn quit_saves_an_unsaved_edit_first_then_quits() {
@@ -1811,12 +1969,12 @@ fn the_slice_is_the_webviews_json() {
     assert_eq!(
         keys(b),
         [
-            "after", "can_redo", "can_undo", "done", "editable", "edited_duration", "footer", "footer_tone", "hint", "keep", "labels", "list", "markers", "media",
-            "original_kept", "rec", "revert", "source_duration", "title"
+            "after", "can_redo", "can_undo", "closing", "done", "editable", "edited_duration", "footer", "footer_tone", "hint", "keep", "labels", "list", "markers",
+            "media", "original_kept", "rec", "revert", "source_duration", "title"
         ]
     );
     assert_eq!(keys(&b["labels"]), ["cut", "pause", "play", "put_back", "redo", "time", "undo", "was"]);
-    assert_eq!((b["after"].clone(), b["original_kept"].clone()), (serde_json::Value::Null, serde_json::Value::Null));
+    assert_eq!((b["after"].clone(), b["original_kept"].clone(), b["closing"].clone()), (serde_json::Value::Null, serde_json::Value::Null, serde_json::Value::Null));
     assert_eq!(b["media"], json!({ "state": "ready", "duration": 272.4 }));
     assert_eq!(b["footer_tone"], "plain");
     assert_eq!((b["list"]["in"].clone(), b["list"]["out"].clone()), (json!(8.0), json!(235.0)));
@@ -1843,6 +2001,21 @@ fn the_slice_is_the_webviews_json() {
     r.ed(Action::EditorDone);
     r.send(Event::Failed { op: Op::EditorSave, class: FailClass::Transport });
     assert_eq!(serde_json::to_value(&r.scene.editor.as_ref().unwrap().body).unwrap()["footer_tone"], "amber");
+
+    // ✕ with changes not saved (N70): the question, its three buttons, Return Save and Esc
+    // Keep editing.
+    let mut r = dirty();
+    r.send(Event::WindowClosed(WindowKind::Editor));
+    let v = serde_json::to_value(r.scene.editor.as_ref().unwrap()).unwrap();
+    let c = &v["body"]["closing"];
+    assert_eq!(keys(c), ["discard", "keep", "line", "save", "title"]);
+    assert_eq!((c["title"].clone(), c["line"].clone()), (json!(CLOSE_TITLE), json!(CLOSE_LINE)));
+    assert_eq!(
+        (c["discard"]["action"].clone(), c["keep"]["action"].clone(), c["save"]["action"].clone()),
+        (json!({ "do": "editor-discard" }), json!({ "do": "editor-keep-editing" }), json!({ "do": "editor-done" }))
+    );
+    assert_eq!((v["ret"].clone(), v["esc"].clone()), (json!({ "do": "editor-done" }), json!({ "do": "editor-keep-editing" })));
+    assert_eq!(v["body"]["editable"], json!(false));
 
     // A save the space turned down (B199): no Revert, Close in Done's place, Return and Esc
     // Close.
