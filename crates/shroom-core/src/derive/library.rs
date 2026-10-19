@@ -86,7 +86,20 @@ fn in_scope(w: &World, row: &LibraryRow) -> bool {
 /// Every row in this Mac's scope: recovered takes pinned on top (oldest first, as the
 /// banner shows them), then everything else newest first.
 pub fn rows(w: &World) -> Vec<Row> {
-    let remote: Vec<&LibraryRow> = w.library.get().map(|v| v.iter().filter(|r| in_scope(w, r)).collect()).unwrap_or_default();
+    rows_in(w, false)
+}
+
+/// A live video this Mac may edit, by the owner page's Edit in shroom (N69): the owner's
+/// Macs any in the space, a member's Mac its own — whichever view the Library was left on.
+pub fn editable(w: &World, rec: &RecId) -> Option<Row> {
+    rows_in(w, true).into_iter().find(|r| &r.rec == rec && r.kind == Kind::Live)
+}
+
+/// The rows of the Library's view — or, `whole`, of everything this Mac may see (Mine and
+/// Everyone alike on an owner's Mac).
+fn rows_in(w: &World, whole: bool) -> Vec<Row> {
+    let seen = |r: &LibraryRow| if whole { w.space.role() != Some(Role::Member) || r.owner.as_deref() == me(w) } else { in_scope(w, r) };
+    let remote: Vec<&LibraryRow> = w.library.get().map(|v| v.iter().filter(|r| seen(r)).collect()).unwrap_or_default();
     let find = |rec: &RecId| remote.iter().find(|r| &r.rec == rec).copied();
     // Gone while its delete runs, and after it landed (a refresh begun before it doesn't
     // bring it back).

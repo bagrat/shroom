@@ -309,7 +309,11 @@ and edits on the share page)*)**
 38. **N63 and N64, and B195–B199, ratified by Bagrat as built** (2026-10-18), the cut-edge
     drag (B195 (g)) built as the board he approved that day. DEVIATIONS #55 (Yes, delete
     filled and leading, but never on Return) is ratified too.
-39. **Known gaps**, none blocking:
+39. **Edit in shroom on the owner page** (N69, B221; Bagrat's ask and his approval of the
+    boards as drawn, option A and the tooltip, 2026-10-18): the scissors open the video in
+    the editor through `shroom://edit/…`, or the popover says, once, why this Mac can't.
+    Its spec row and words are provisional, for him to ratify.
+40. **Known gaps**, none blocking:
     - The final video's bar counts the upload by file, not by byte: once the cut is done it
       holds at 80% while the video goes up (minutes, for a long one), then 95, 97, 99, 100.
     - After a bake, the Library row on the Mac that holds the take may show the take's own

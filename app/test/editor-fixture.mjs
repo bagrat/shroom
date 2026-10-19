@@ -6,7 +6,7 @@
 
 export const REC = "k3v9q2mz7x";
 
-const labels = { play: "Play", pause: "Pause", undo: "Undo", redo: "Redo", cut: "Cut {} s", put_back: "Put back {} s", was: "was {}", time: "{} / {}", cut_it_too: "Cut it too" };
+const labels = { play: "Play", pause: "Pause", undo: "Undo", redo: "Redo", cut: "Cut {} s", put_back: "Put back {} s", was: "was {}", time: "{} / {}" };
 const button = (label, action, style, enabled = true) => ({ action, label, style, enabled, note: null });
 const FOOTER = "Your link stays the same. Viewers see the edit once it's saved.";
 const DONE = { do: "editor-done" };
@@ -106,6 +106,9 @@ export function editorScenes(
       variant: "editor-save-failed",
       scene: window("editor-save-failed", body({ footer: "Couldn't save your edit. Check your connection, then press Done again.", footer_tone: "amber" })),
     },
+    // The owner page's Edit in shroom asked for another video while this one is open (N69): its
+    // amber line in the footer line's place until the next change, everything else as it was.
+    { variant: "editor-editing-another", scene: window("editor", body({ footer: "You're editing another video — press Done, then Edit again.", footer_tone: "amber" })) },
     // The space turned the save down (B199): its amber line in the save-failed line's place,
     // no Revert to original, nothing steps, Close in Done's place; Return and Esc are Close.
     {

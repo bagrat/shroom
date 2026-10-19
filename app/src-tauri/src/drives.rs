@@ -1063,7 +1063,8 @@ impl Runner {
         let (tmp, ask) = (self.dir.join(format!("ask-{n}.tmp")), self.dir.join(format!("ask-{n}.json")));
         std::fs::write(&tmp, what.to_string()).and_then(|()| std::fs::rename(&tmp, &ask)).map_err(|e| format!("ask {n}: {e}"))?;
         let done = self.dir.join(format!("done-{n}"));
-        let said = poll(60, || std::fs::read_to_string(&done).ok()).ok_or(format!("the runner never answered {what}"))?;
+        // An empty answer is one still being written: it's read again.
+        let said = poll(60, || std::fs::read_to_string(&done).ok().filter(|s| !s.trim().is_empty())).ok_or(format!("the runner never answered {what}"))?;
         d.step(&format!("the runner: {what} — {}", said.trim()));
         if said.trim() == "ok" { Ok(()) } else { Err(format!("the runner couldn't {what}: {said}")) }
     }
@@ -1097,7 +1098,7 @@ fn editor_layout(d: &Drive) -> Result<serde_json::Value, String> {
       }
       const r = (q) => { const e = document.querySelector(q); if (!e) return null; const b = e.getBoundingClientRect(); return [b.left, b.top, b.width, b.height]; };
       const v = document.querySelector("video");
-      return JSON.stringify({ track: r(".track"), chip: r(".chip button"), screen: r(".screen"), delete: r(".ask .b.filled"), video: v ? [v.duration, v.readyState] : null, pointer: window.__drive.at, presses: window.__drive.presses.slice(-12) });
+      return JSON.stringify({ track: r(".track"), chip: r(".chip button"), screen: r(".screen"), delete: r(".ask .b.filled"), play: r(".play"), label: document.querySelector(".play")?.getAttribute("aria-label") ?? null, video: v ? [v.duration, v.readyState] : null, paused: v ? v.paused : null, pointer: window.__drive.at, presses: window.__drive.presses.slice(-12) });
     })()"#;
     let w = d.app.get_webview_window(crate::runtime::presenter::EDITOR).ok_or("no editor window")?;
     let (tx, rx) = std::sync::mpsc::channel();
@@ -1138,6 +1139,20 @@ fn editor_origin(d: &Drive) -> Result<(f64, f64), String> {
 }
 
 /// A rectangle from the page, its centre on screen.
+/// The editor just opened: its video paused, and its button reading Play.
+fn starts_paused(d: &Drive, what: &str) -> Result<(), String> {
+    let fresh = poll(5, || editor_layout(d).ok().filter(|l| l["video"].get(1).and_then(serde_json::Value::as_u64).is_some_and(|ready| ready >= 1)));
+    let l = fresh.ok_or("the editor's video never loaded")?;
+    d.check(what, l["paused"] == true && l["label"] == shroom_core::copy::editor_play().as_str(), format!("paused {}, the button reads {}", l["paused"], l["label"]));
+    Ok(())
+}
+
+/// Play, pressed with the pointer: a real click on the editor's play button.
+fn play_by_hand(d: &Drive, runner: &Runner, origin: (f64, f64)) -> Result<(), String> {
+    let at = editor_layout(d)?.get("play").and_then(|r| centre(origin, r)).ok_or("no play button on the page")?;
+    runner.ask(d, serde_json::json!({ "do": "click", "at": [at.0, at.1] }))
+}
+
 fn centre(origin: (f64, f64), r: &serde_json::Value) -> Option<(f64, f64)> {
     let n = |i: usize| r.get(i).and_then(serde_json::Value::as_f64);
     Some((origin.0 + n(0)? + n(2)? / 2.0, origin.1 + n(1)? + n(3)? / 2.0))
@@ -1316,10 +1331,18 @@ fn editor(d: &Drive) -> Result<(), String> {
         }
     }
 
+    // Playing when Done is pressed: the preview stops with it, and nothing plays on behind
+    // the faces that follow (the audio went on after Done, 2026-10-18).
+    play_by_hand(d, &runner, origin)?;
+    let playing = poll(3, || editor_layout(d).ok().filter(|l| l["paused"] == false));
+    d.check("Play plays the edit (a real click on it)", playing.is_some(), format!("{:?}", editor_layout(d).map(|l| l["paused"].clone())));
+
     // Done: the edit goes into the record, and the window makes the final video (B197 (a)).
     let want = snapshot(&d.rt).as_ref().and_then(|s| editor_body(s).map(|b| (cuts_of(s), b.edited_duration))).ok_or("no editor")?;
     d.act(Surface::Editor, Action::EditorDone);
     let s = d.wait("the final video, being made", 30, |s| s.editor.as_ref().is_some_and(|e| e.id == "editor-making" || e.id == "editor-keep-original"))?;
+    let stopped = poll(3, || editor_layout(d).ok().filter(|l| l["paused"] == true));
+    d.check("Done stops the preview: nothing plays on while the final video is made", stopped.is_some(), format!("{:?}", editor_layout(d).map(|l| l["paused"].clone())));
     let making = s.editor.as_ref().is_some_and(|e| e.id == "editor-making");
     runner.shot(d, crate::runtime::presenter::EDITOR, "editor-making")?;
     let shown = snapshot(&d.rt).and_then(|s| s.editor.map(|e| e.id));
@@ -1435,10 +1458,20 @@ fn editor(d: &Drive) -> Result<(), String> {
     // The window held the original under the same name: its page reads the new file.
     let played = poll(10, || editor_layout(d).ok().and_then(|l| l.get("video")?.get(0)?.as_f64()).filter(|t| near(*t, want.1, 0.6)));
     d.check("… and the window plays that file, not the one it held before", played.is_some(), format!("{:?}", editor_layout(d).ok().and_then(|l| l.get("video").cloned())));
+    // Opened again after playing through Done: it starts paused, reading Play (early.1 opened
+    // every editor stuck on Pause, the button and Space doing nothing, 2026-10-18).
+    starts_paused(d, "reopened after playing through Done, it starts paused, reading Play")?;
     std::thread::sleep(Duration::from_secs(3));
     runner.shot(d, crate::runtime::presenter::EDITOR, "editor-baked")?;
+    // Closed while playing: the window is only hidden, so its page lets go of the video, and
+    // nothing plays on behind it (the audio went on after the window closed, 2026-10-18).
+    play_by_hand(d, &runner, origin)?;
+    let playing = poll(3, || editor_layout(d).ok().filter(|l| l["paused"] == false));
+    d.check("… and Play plays it", playing.is_some(), format!("{:?}", editor_layout(d).map(|l| l["paused"].clone())));
     d.rt.post(Event::WindowClosed(WindowKind::Editor));
     d.wait("✕ closed it", 10, |s| s.editor.is_none())?;
+    let gone = poll(3, || editor_layout(d).ok().filter(|l| l["video"].is_null()));
+    d.check("closed while playing, the window lets go of its video: nothing plays behind it", playing.is_some() && gone.is_some(), format!("playing {}, then {:?}", playing.is_some(), editor_layout(d).map(|l| l["video"].clone())));
 
     // The second video isn't on this Mac: the editor fetches it; an edit, Done, and Esc at
     // the question is Keep for 2 days — the original kept, nothing baked.
@@ -1451,6 +1484,12 @@ fn editor(d: &Drive) -> Result<(), String> {
     let bytes = std::fs::metadata(&video).map(|m| m.len()).unwrap_or(1);
     d.check("not on this Mac: fetched from the space, whole", size == bytes && mode(&fetched) == "600", format!("{size} of {bytes} bytes, mode {}", mode(&fetched)));
     d.check("… its flags none, its length the record's", editor_body(&s).is_some_and(|b| b.markers.is_empty() && near(b.source_duration, length, 0.01)), "");
+    // The window was closed while playing just before: this one starts paused, and Play plays.
+    starts_paused(d, "opened after one closed while playing, it starts paused, reading Play")?;
+    play_by_hand(d, &runner, origin)?;
+    let playing = poll(3, || editor_layout(d).ok().filter(|l| l["paused"] == false && l["label"] == shroom_core::copy::editor_pause().as_str()));
+    d.check("… and Play plays it, reading Pause", playing.is_some(), format!("{:?}", editor_layout(d).map(|l| (l["paused"].clone(), l["label"].clone()))));
+    play_by_hand(d, &runner, origin)?;
     std::thread::sleep(Duration::from_secs(3));
     runner.shot(d, crate::runtime::presenter::EDITOR, "editor-fetched")?;
     d.rt.post(Event::Edit(EditStep::Op(Op::Trim { in_: 1.0, out: 30.0 })));
@@ -1501,6 +1540,38 @@ fn editor(d: &Drive) -> Result<(), String> {
     d.check("… the third has the copy its revision lacked, its two days set", third_rec["edits"]["copy"]["rev"] == 2 && third_rec["edits"]["copy"]["file"] == "edit-2.mp4" && kept, format!("{} {until}", third_rec["edits"]["copy"]));
     d.check("… and what this Mac kept of the baked one's original is gone", !d.rt.home.edits().join(&away.0).exists(), "");
 
+    // The owner page's Edit in shroom (N69, B221): the link a browser hands over when shroom
+    // opens it — handed in here as macOS would, since a dev build never claims the scheme.
+    let space = read_file(d, "space.json").ok_or("no space.json")?;
+    let host = space["host"].as_str().unwrap_or_default().to_string();
+    crate::runtime::opened(&d.rt, &format!("shroom://edit/{host}/{}", here.0));
+    let s = d.wait("the page's Edit in shroom opens the editor", 30, |s| editor_body(s).is_some_and(|b| b.rec == here.0))?;
+    d.check("Edit in shroom: the editor, on the page's video (N69)", editor_body(&s).is_some_and(|b| b.title == format!("Edit — {}", HERE.1)), editor_body(&s).map(|b| b.title.clone()).unwrap_or_default());
+    // Pressed again for another video while it holds this one: forward as it is, saying why.
+    crate::runtime::opened(&d.rt, &format!("shroom://edit/{host}/{}", away.0));
+    let s = d.wait("pressed for another video", 10, |s| editor_body(s).is_some_and(|b| b.footer == shroom_core::copy::editing_another()))?;
+    d.check("… pressed for another video: it stays on this one, its footer saying why", editor_body(&s).is_some_and(|b| b.rec == here.0), "");
+    std::thread::sleep(Duration::from_millis(600));
+    runner.shot(d, crate::runtime::presenter::EDITOR, "editor-editing-another")?;
+    d.rt.post(Event::WindowClosed(WindowKind::Editor));
+    d.wait("closed", 10, |s| s.editor.is_none())?;
+    // Another space's video: the popover opens by itself and says so, once.
+    crate::runtime::opened(&d.rt, &format!("shroom://edit/v.someoneelse.example.com/{}", here.0));
+    let s = d.wait("another space's video", 10, |s| s.popover.as_ref().is_some_and(|p| p.status_line.as_deref() == Some(shroom_core::copy::edit_other_space().as_str())))?;
+    d.check("… another space's video: the popover says why, without the keyboard (N69)", s.popover.as_ref().is_some_and(|p| !p.activates && p.away_closes), "");
+    // Its panel is left out of every capture, so no picture of it can be taken: it's read as
+    // macOS has it instead — on screen, and not holding the keyboard (law 5).
+    let panel = || {
+        use crate::runtime::presenter::{Overlay, overlay_window};
+        let app = d.app.clone();
+        d.on_main(move || overlay_window(&app, Overlay::Popover).map(|w| (w.isVisible(), w.isKeyWindow()))).flatten()
+    };
+    let shown = poll(5, || panel().filter(|(visible, _)| *visible));
+    d.check("… on screen, the keyboard left where it was", shown == Some((true, false)), format!("{:?}", panel()));
+    d.rt.post(Event::PopoverDismissed);
+    let s = d.wait("put away", 10, |s| s.popover.is_none())?;
+    d.check("… said once: put away, it's gone", s.popover.is_none(), "");
+
     // What a report would carry of all that (DECISIONS B199 (t)): a line a step, in numbers.
     let log = std::fs::read_to_string(d.rt.home.root.join("logs/run.log")).unwrap_or_default();
     let (h, a) = (crate::runtime::short(&here.0), crate::runtime::short(&away.0));
@@ -1510,6 +1581,10 @@ fn editor(d: &Drive) -> Result<(), String> {
         ("the final video's cut: encoder, parts, size, time", format!("editor: {h}'s final video of revision 1 cut with ")),
         ("… and its naming", format!("editor: {h}'s final video of revision 1 is up and named")),
         ("the edge dragged", "core edit-resize".to_string()),
+        ("the page's Edit in shroom, never its link", "link: the page's Edit in shroom".to_string()),
+        ("… the editor opened by it", "core edit-link-open".to_string()),
+        ("… brought forward, another video asked", "core edit-link-forward".to_string()),
+        ("… another space's, said", "core edit-link-no".to_string()),
         ("Yes, delete", "core original-deleted".to_string()),
         ("the bake, the files it deleted", format!("editor: {h}'s edit is the video now (revision 1): ")),
         ("the upkeep's bake", format!("editor upkeep: {a}'s edit is the video now")),
@@ -1518,6 +1593,7 @@ fn editor(d: &Drive) -> Result<(), String> {
         let line = log.lines().find(|l| l.contains(&needle));
         d.check(&format!("run.log: {what}"), line.is_some(), line.unwrap_or(&needle).to_string());
     }
+    d.check("run.log: never the page's link, its space or its video (B221 (e))", !log.contains("shroom://edit/") && !log.contains("someoneelse"), "");
 
     d.rt.post(Event::WindowClosed(WindowKind::Library));
     d.wait("the Library closed", 5, |s| s.library.is_none())?;

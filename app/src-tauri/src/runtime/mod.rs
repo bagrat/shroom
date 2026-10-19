@@ -856,6 +856,20 @@ pub fn start_traced(app: &AppHandle, launch: LaunchKind, flags: &DevFlags, probe
     start_inner(app, launch, true, flags, Some(probe))
 }
 
+/// A link opened with shroom (RunEvent::Opened, or one held from a cold launch): the owner
+/// page's Edit in shroom (`shroom://edit/<host>/<id>`, N69) goes to the core, which decides
+/// what it opens; anything else is the member lane's, an invite (N50). The log never names
+/// the link, its space or its video (B221 (e)).
+pub fn opened(rt: &Runtime, url: &str) {
+    match Event::edit_link(url) {
+        Some(event) => {
+            rt.log("link: the page's Edit in shroom");
+            rt.post(event);
+        }
+        None => member::deep_link(rt, url),
+    }
+}
+
 /// The process is ending. An end shroom didn't ask for is macOS's (Dock quit, logout,
 /// System Settings' quit-and-reopen): the core hears `Terminating { ours: false }` and
 /// gets a moment to write what it must (restore.json at perm-screen). The status seam

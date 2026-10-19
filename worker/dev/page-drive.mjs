@@ -454,6 +454,7 @@ async function main() {
         await page.goto(`${origin}/${ids.own}`);
         const stage = await page.evaluate(() => ({ w: document.getElementById("w")?.textContent, spin: document.getElementById("b")?.className ?? null, turning: getComputedStyle(document.getElementById("b")).animationName, up: document.getElementById("u").textContent, body: document.body.innerText }));
         check("owner, uploading: the stage is empty, the one line speaks, a spinner turning in front of it", stage.w === "" && stage.spin === "spin" && stage.turning === "shroom-spin" && stage.up === COPY.finishing && !stage.body.includes(COPY.onItsWay), true, stage);
+        check("owner, uploading: Edit in shroom waits for the drain (N69)", await page.evaluate(() => { const e = document.getElementById("ed"); return !!e && e.getClientRects().length === 0; }));
         await page.evaluate(() => { navigator.clipboard.writeText = () => Promise.reject(new Error("denied")); document.execCommand = () => false; });
         await page.click("#c");
         await page.waitForTimeout(300);
@@ -468,6 +469,9 @@ async function main() {
         await page.waitForFunction(() => document.getElementById("u").getClientRects().length === 0 && !document.getElementById("b"), null, { timeout: 10_000 }).catch(() => {});
         const afterSwap = await page.evaluate((fully) => ({ up: document.getElementById("u").getClientRects().length > 0, said: document.body.innerText.includes(fully), bar: !!document.getElementById("b"), dl: document.getElementById("dl").textContent, controls: document.querySelector(".player video").controls }), COPY.fullyLive);
         check("the go-live swaps the player in with its poster, and the upload line goes", swapped && !afterSwap.up && !afterSwap.said && !afterSwap.bar && !afterSwap.controls && afterSwap.dl === "", true, afterSwap);
+        // Edit in shroom (N69): in at the drain, the last quiet icon, a plain link to shroom's editor.
+        const ed = await page.evaluate(() => { const e = document.getElementById("ed"); return e && { shown: e.getClientRects().length > 0, href: e.getAttribute("href"), tip: e.getAttribute("data-tip"), last: e === e.parentElement.lastElementChild }; });
+        check("Edit in shroom comes in at the drain, a link to shroom's editor (N69)", !!ed && ed.shown && ed.last && ed.href === `shroom://edit/${new URL(origin).host}/${ids.own}` && ed.tip === COPY.editInShroom, true, ed);
         await put(metaKey(ids.own), meta(ids.own, { media: { hls: `rec/${ids.own}/master.m3u8`, mp4: `rec/${ids.own}/video.mp4`, poster: `rec/${ids.own}/poster.jpg`, width: 640, height: 400 } }));
         check("Download appears when the MP4 lands", await page.waitForFunction((w) => document.querySelector("#dl a")?.textContent === w, COPY.download, { timeout: 20_000 }).then(() => true, () => false));
 
@@ -504,6 +508,7 @@ async function main() {
         const guest = await elsewhere.newPage();
         await guest.goto(`${origin}/${ids.live}`);
         check("mark: off, a recipient's page carries none", same(await foot(guest), NONE), true, await foot(guest));
+        check("a recipient's page has no Edit in shroom (N69)", !(await guest.$("#ed")));
         await guest.goto(`${origin}/${ids.live}?embed=1`);
         check("mark: off, the embed carries none", same(await foot(guest), NONE), true, await foot(guest));
         // Switched back on from elsewhere (Settings); this tab goes away and comes Back.

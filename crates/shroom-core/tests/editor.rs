@@ -393,8 +393,8 @@ fn steps_change_the_list_and_undo_and_redo_walk_them() {
 }
 
 /// A cut's edge dragged (B195 (g)): one step that moves it, a hand cut or the voice layer's;
-/// Undo puts it back. A suggestion's edges move and it stays offered, so Cut it too takes it
-/// as it now is. The arm says what it was.
+/// Undo puts it back. A suggestion's edges move and it stays offered, so its Cut chip takes
+/// it as it now is. The arm says what it was.
 #[test]
 fn a_cuts_edge_dragged_is_one_step_and_undo_puts_it_back() {
     let mut r = ready_with(Some(saved_edit(3)));
@@ -412,7 +412,7 @@ fn a_cuts_edge_dragged_is_one_step_and_undo_puts_it_back() {
     assert!(!list(&r).cuts[1].applied, "still offered");
     assert_eq!(body(&r).keep, vec![[8.0, 150.0], [165.5, 241.0]], "nothing plays differently yet");
     r.op(EditOp::Apply { index: 1 });
-    assert_eq!(body(&r).keep, vec![[8.0, 150.0], [165.5, 198.0], [204.0, 241.0]], "Cut it too takes it as it now is");
+    assert_eq!(body(&r).keep, vec![[8.0, 150.0], [165.5, 198.0], [204.0, 241.0]], "its Cut chip takes it as it now is");
     r.op(EditOp::Resize { index: 0, start: 150.0, end: 150.05 });
     assert_eq!(r.arm.name, "edit-refused", "shorter than a tenth of a second");
 }
@@ -1243,13 +1243,14 @@ fn the_time_left_shows_only_while_the_original_is_kept() {
     assert_eq!(body(&r).original_kept, None);
 }
 
-// ── Cut it too ──
+// ── a suggestion's chip ──
 
-/// A dashed suggestion's chip says Cut it too (N65's offer); it sends `apply`, which cuts it.
+/// A dashed suggestion's chip says what a selection's does, Cut <its length> (Bagrat,
+/// 2026-10-19), from the one template; it sends `apply`, which cuts it.
 #[test]
-fn a_suggestion_offers_cut_it_too() {
+fn a_suggestion_is_cut_by_a_chip_like_a_selections() {
     let mut r = ready_with(Some(saved_edit(3)));
-    assert_eq!(body(&r).labels.cut_it_too, "Cut it too");
+    assert_eq!(body(&r).labels.cut, "Cut {} s");
     assert!(!list(&r).cuts[1].applied);
     r.op(EditOp::Apply { index: 1 });
     assert!(list(&r).cuts[1].applied, "it's cut, red");
@@ -1770,7 +1771,10 @@ fn markers_show_as_flags_in_the_editor() {
 /// walked above, where `Run::send` holds it to the machine) — but the one the facts derive.
 #[test]
 fn every_editor_edge_is_named_by_an_arm() {
-    const DERIVED: &[(&str, &str, &str)] = &[("library", "editor-getting", "Edit… names library → editor; the lane's Getting news turns the face")];
+    const DERIVED: &[(&str, &str, &str)] = &[
+        ("library", "editor-getting", "Edit… names library → editor; the lane's Getting news turns the face"),
+        ("owner-page", "editor-getting", "the page's Edit in shroom names owner-page → editor; the lane's Getting news turns the face (N69)"),
+    ];
     let src = include_str!("../src/apply.rs");
     let mut missing = Vec::new();
     for e in spec().edges.iter().filter(|e| e.from.starts_with("editor") || e.to.starts_with("editor")) {
@@ -1808,7 +1812,7 @@ fn the_slice_is_the_webviews_json() {
             "original_kept", "rec", "revert", "source_duration", "title"
         ]
     );
-    assert_eq!(keys(&b["labels"]), ["cut", "cut_it_too", "pause", "play", "put_back", "redo", "time", "undo", "was"]);
+    assert_eq!(keys(&b["labels"]), ["cut", "pause", "play", "put_back", "redo", "time", "undo", "was"]);
     assert_eq!((b["after"].clone(), b["original_kept"].clone()), (serde_json::Value::Null, serde_json::Value::Null));
     assert_eq!(b["media"], json!({ "state": "ready", "duration": 272.4 }));
     assert_eq!(b["footer_tone"], "plain");
@@ -1880,4 +1884,199 @@ fn the_slice_is_the_webviews_json() {
     assert_eq!(serde_json::to_value(WindowKind::Editor).unwrap(), json!("editor"));
     let paused = serde_json::to_value(Run::new(paused_popover(Cause::User)).scene.popover.unwrap().body).unwrap();
     assert_eq!(paused["marker"]["action"], json!({ "do": "drop-marker" }));
+}
+
+// ── Edit in shroom: the owner page's scissors (N69, B221) ──
+
+const HOST: &str = "v.myshroom.workers.dev";
+const ELSEWHERE: &str = "You're editing another video — press Done, then Edit again.";
+const OTHER_SPACE: &str = "This Mac isn't set up for that video's space.";
+const NOT_YOURS: &str = "Only whoever recorded this video, or the space's owner, can edit it.";
+const GONE: &str = "That video isn't in your space anymore.";
+
+/// The page's press reaching this Mac: `shroom://edit/<host>/<id>`, read by the app.
+fn pressed(r: &mut Run, host: &str, id: &str) {
+    r.send(Event::EditLink { host: host.into(), rec: RecId(id.into()) });
+}
+
+/// A ready Mac at rest, its Library known from an earlier look, no window open.
+fn at_rest() -> World {
+    let mut w = library();
+    w.session.windows.clear();
+    w
+}
+
+fn status(r: &Run) -> Option<String> {
+    r.scene.popover.as_ref().and_then(|p| p.status_line.clone())
+}
+
+/// The popover the Mac's answer opens: by itself, under the mushroom, without the
+/// keyboard (law 5), put away by a click elsewhere (as an update's news is).
+fn says_once(r: &Run, line: &str) {
+    let p = r.scene.popover.as_ref().expect("the popover opens by itself");
+    assert_eq!(p.id, "config");
+    assert_eq!(p.status_line.as_deref(), Some(line));
+    assert_eq!(p.status_tone, Some(shroom_core::scene::StatusTone::Waiting), "the grey dot, as a take that kept nothing");
+    assert!(!p.activates && p.away_closes, "the app the person was in keeps the keyboard; a click away puts it away");
+    assert!(r.scene.editor.is_none() && !opens(r), "no editor");
+}
+
+/// N69: a video this Mac can edit opens in the editor exactly as Edit… opens it.
+#[test]
+fn the_pages_edit_opens_the_editor_as_edit_does() {
+    let mut r = Run::new(at_rest());
+    pressed(&mut r, HOST, REC);
+    assert_eq!(r.effects, vec![Effect::Editor(EditCmd::Open { rec: rec() }), Effect::Shell(ShellCmd::OpenEditor)]);
+    assert_eq!(r.arm.edge, Some(("owner-page", "editor")));
+    let win = r.scene.editor.as_ref().expect("the editor");
+    assert!(win.activates, "the person asked for it, on the page");
+    assert_eq!((body(&r).title.as_str(), body(&r).rec.as_str()), ("Edit — Setting up shroom in two minutes", REC));
+    assert!(r.scene.library.is_none(), "the editor alone: the Library wasn't asked for");
+    assert_eq!(status(&r), None);
+
+    // The host as a browser may write it, any case: the same space.
+    let mut r = Run::new(at_rest());
+    pressed(&mut r, "V.MyShroom.Workers.Dev", REC);
+    assert!(opens(&r));
+
+    // The editor goes on as Edit…'s does: the video fetched from the space when it isn't here.
+    r.news(EditorNews::Getting { rec: rec(), pct: 0 });
+    assert_eq!(face(&r), "editor-getting");
+}
+
+/// The owner's Macs edit every video in the space, whichever view the Library was left on;
+/// a member's Mac edits its own.
+#[test]
+fn the_page_reaches_every_video_an_owners_mac_may_edit() {
+    let mut w = at_rest();
+    w.library = Fact::known(Arc::new(vec![row(REC, TITLE, true, "m1"), row(OTHER, "Mher's onboarding notes", true, "m_mher")]), Mono(950));
+    w.session.fields.library.scope = LibraryScope::Mine;
+    let mut r = Run::new(w);
+    pressed(&mut r, HOST, OTHER);
+    assert!(opens(&r), "a member's video, from an owner's Mac left on Mine");
+    assert_eq!(body(&r).title, "Edit — Mher's onboarding notes");
+
+    let mut w = at_rest();
+    w.space.identity.as_mut().unwrap().role = Role::Member;
+    w.space.identity.as_mut().unwrap().member_id = "m2".into();
+    w.space.token = false;
+    w.library = Fact::known(Arc::new(vec![row(REC, TITLE, true, "m2")]), Mono(950));
+    let mut r = Run::new(w);
+    pressed(&mut r, HOST, REC);
+    assert!(opens(&r), "a member's own");
+}
+
+/// The editor already open: it comes forward as it is, one at a time — on the same video
+/// with nothing to say, on another with the footer saying why, until the next change.
+#[test]
+fn the_page_brings_the_open_editor_forward_and_says_when_its_on_another_video() {
+    let mut r = ready_editor();
+    pressed(&mut r, HOST, REC);
+    assert_eq!(r.effects, vec![Effect::Shell(ShellCmd::OpenEditor)], "forward, nothing asked again");
+    assert_eq!(r.arm.edge, Some(("owner-page", "editor")));
+    assert_eq!((body(&r).footer.as_str(), body(&r).footer_tone), (FOOTER, LineTone::Plain));
+
+    pressed(&mut r, HOST, OTHER);
+    assert_eq!(r.effects, vec![Effect::Shell(ShellCmd::OpenEditor)]);
+    assert_eq!(body(&r).rec, REC, "it doesn't swap videos");
+    assert_eq!((body(&r).footer.as_str(), body(&r).footer_tone), (ELSEWHERE, LineTone::Amber));
+    assert!(body(&r).editable, "its changes are as they were, still to step");
+
+    // The next change, and the line goes.
+    r.op(EditOp::Cut { start: 20.0, end: 30.0 });
+    assert_eq!(body(&r).footer, FOOTER);
+
+    // Mid-save, or once it's making the final video, it only comes forward: those faces say
+    // what to press.
+    let mut r = dirty();
+    r.ed(Action::EditorDone);
+    pressed(&mut r, HOST, OTHER);
+    assert_eq!(r.effects, vec![Effect::Shell(ShellCmd::OpenEditor)]);
+    assert_eq!(body(&r).footer, SAVING);
+}
+
+/// Law 4: while a take is open nothing new shows. The press waits, and once the take is
+/// over the editor opens on the video it asked for; a later press takes its place.
+#[test]
+fn a_press_during_a_take_waits_for_it_to_end() {
+    let mut w = at_rest();
+    w.take = Some(take(Phase::Paused(Cause::User), 272_000));
+    let mut r = Run::new(w);
+    pressed(&mut r, HOST, OTHER);
+    pressed(&mut r, HOST, REC);
+    assert!(r.effects.is_empty() && r.scene.editor.is_none() && r.w.session.fields.editor.is_none(), "law 4");
+    assert_eq!(status(&r), None);
+    r.click();
+    r.act(Action::Discard).act(Action::ConfirmDiscard);
+    assert!(r.w.take.is_none());
+    assert!(opens(&r), "the take is over: the editor opens");
+    assert_eq!(body(&r).rec, REC, "the later press");
+    let mut again = Run::new(r.w.clone());
+    again.send(Event::Tick);
+    assert!(!opens(&again), "once");
+}
+
+/// A Mac set up for another space says so, once: the popover opens by itself with the line,
+/// and it's gone when the popover closes.
+#[test]
+fn another_spaces_video_is_said_once_in_the_popover() {
+    let mut r = Run::new(at_rest());
+    pressed(&mut r, "v.someoneelse.workers.dev", REC);
+    says_once(&r, OTHER_SPACE);
+    assert_eq!(r.arm.edge, Some(("owner-page", "config")));
+    r.send(Event::PopoverDismissed);
+    r.click();
+    assert_eq!(status(&r), None, "said once");
+}
+
+/// A video not in this Mac's Library yet: one refresh, then it opens — or, still not there,
+/// the owner's Mac (which lists every video) says it's gone, a member's (which lists its
+/// own) that it's someone else's.
+#[test]
+fn a_video_the_library_doesnt_know_is_asked_for_once() {
+    let fresh = "FrEsHfRoMmHeR001";
+    let mut r = Run::new(at_rest());
+    pressed(&mut r, HOST, fresh);
+    assert_eq!(r.effects, vec![Effect::Library(LibCmd::Refresh)]);
+    assert!(r.scene.editor.is_none() && status(&r).is_none());
+    let mut rows = vec![row(REC, TITLE, true, "m1")];
+    rows.push(row(fresh, "Mher's walkthrough", true, "m_mher"));
+    r.send(Event::Library(LibraryNews::Rows { rows: rows.clone(), fresh: true }));
+    assert!(opens(&r), "there now: it opens");
+    assert_eq!(body(&r).title, "Edit — Mher's walkthrough");
+
+    // Gone from the space: an owner's Mac says so.
+    let mut r = Run::new(at_rest());
+    pressed(&mut r, HOST, fresh);
+    r.send(Event::Library(LibraryNews::Rows { rows: vec![row(REC, TITLE, true, "m1")], fresh: true }));
+    says_once(&r, GONE);
+
+    // A member's Mac: not among its own.
+    let mut w = at_rest();
+    w.space.identity.as_mut().unwrap().role = Role::Member;
+    w.space.identity.as_mut().unwrap().member_id = "m2".into();
+    w.space.token = false;
+    w.library = Fact::known(Arc::new(vec![row(REC, TITLE, true, "m2")]), Mono(950));
+    let mut r = Run::new(w);
+    pressed(&mut r, HOST, OTHER);
+    assert_eq!(r.effects, vec![Effect::Library(LibCmd::Refresh)]);
+    r.send(Event::Library(LibraryNews::Rows { rows: vec![row(REC, TITLE, true, "m2")], fresh: true }));
+    says_once(&r, NOT_YOURS);
+
+    // A refresh that can't get through opens nothing and says nothing.
+    let mut r = Run::new(at_rest());
+    pressed(&mut r, HOST, fresh);
+    r.send(Event::Failed { op: Op::LibRefresh, class: FailClass::Transport });
+    assert!(r.scene.editor.is_none() && status(&r).is_none());
+    r.send(Event::Library(LibraryNews::Rows { rows, fresh: true }));
+    assert!(!opens(&r), "dropped: a later answer opens nothing");
+}
+
+/// A Mac not set up at all: its welcome window, as a click on the mushroom opens it.
+#[test]
+fn a_mac_not_set_up_opens_its_welcome_window() {
+    let mut r = Run::new(World::blank());
+    pressed(&mut r, HOST, REC);
+    assert!(r.scene.onboarding.is_some(), "the welcome window");
+    assert!(r.scene.editor.is_none() && !opens(&r));
 }
