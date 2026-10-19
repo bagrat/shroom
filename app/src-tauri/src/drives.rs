@@ -1204,7 +1204,7 @@ fn editor_layout(d: &Drive) -> Result<serde_json::Value, String> {
       }
       const r = (q) => { const e = document.querySelector(q); if (!e) return null; const b = e.getBoundingClientRect(); return [b.left, b.top, b.width, b.height]; };
       const v = document.querySelector("video");
-      return JSON.stringify({ track: r(".track"), chip: r(".chip button"), screen: r(".screen"), delete: r(".ask .b.filled"), play: r(".play"), label: document.querySelector(".play")?.getAttribute("aria-label") ?? null, video: v ? [v.duration, v.readyState] : null, paused: v ? v.paused : null, pointer: window.__drive.at, presses: window.__drive.presses.slice(-12) });
+      return JSON.stringify({ track: r(".track"), chip: r(".chip button"), screen: r(".screen"), delete: r(".ask .b.filled"), discard: r(".ask .b.red-outline"), ask_title: document.querySelector(".ask h2")?.textContent ?? null, ask: [...document.querySelectorAll(".ask button")].map((b) => b.textContent.trim()), play: r(".play"), label: document.querySelector(".play")?.getAttribute("aria-label") ?? null, video: v ? [v.duration, v.readyState] : null, paused: v ? v.paused : null, pointer: window.__drive.at, presses: window.__drive.presses.slice(-12) });
     })()"#;
     let w = d.app.get_webview_window(crate::runtime::presenter::EDITOR).ok_or("no editor window")?;
     let (tx, rx) = std::sync::mpsc::channel();
@@ -1254,6 +1254,14 @@ fn starts_paused(d: &Drive, what: &str) -> Result<(), String> {
 }
 
 /// Play, pressed with the pointer: a real click on the editor's play button.
+/// The editor window's own close, on the main thread, as a click on its ✕ makes it: the shell
+/// hears CloseRequested, keeps the window, and the core decides (N71).
+fn close_by_hand(d: &Drive) {
+    use tauri::Manager;
+    let app = d.app.clone();
+    d.on_main(move || app.get_webview_window(crate::runtime::presenter::EDITOR).map(|w| w.close()));
+}
+
 fn play_by_hand(d: &Drive, runner: &Runner, origin: (f64, f64)) -> Result<(), String> {
     let at = editor_layout(d)?.get("play").and_then(|r| centre(origin, r)).ok_or("no play button on the page")?;
     runner.ask(d, serde_json::json!({ "do": "click", "at": [at.0, at.1] }))
@@ -1437,6 +1445,29 @@ fn editor(d: &Drive) -> Result<(), String> {
         }
     }
 
+    // ✕ with changes not saved asks first (N71): the card in the footer's place, the preview
+    // stopped and nothing saved. Esc is Keep editing: back to the edit, every change there.
+    play_by_hand(d, &runner, origin)?;
+    let held = snapshot(&d.rt).map(|s| cuts_of(&s)).unwrap_or_default();
+    close_by_hand(d);
+    let asked = d.wait("✕ asks first", 10, |s| s.editor.as_ref().is_some_and(|e| e.id == "editor-closing"));
+    let card = poll(5, || editor_layout(d).ok().filter(|l| l["ask_title"].is_string()));
+    let words = serde_json::json!([shroom_core::copy::discard(), shroom_core::copy::keep_editing(), shroom_core::copy::save()]);
+    d.check(
+        "✕ with changes not saved asks: “Save your edit?” in the footer's place, then Discard, Keep editing and Save (N71)",
+        asked.is_ok() && card.as_ref().is_some_and(|l| l["ask_title"] == shroom_core::copy::close_unsaved_title().as_str() && l["ask"] == words),
+        format!("{:?}", card.map(|l| (l["ask_title"].clone(), l["ask"].clone()))),
+    );
+    let stopped = poll(3, || editor_layout(d).ok().filter(|l| l["paused"] == true));
+    let unsaved = record_json(&s3, &here.0).is_some_and(|r| r["edits"].is_null());
+    d.check("… the preview stops while it asks, and nothing is saved yet", stopped.is_some() && unsaved, format!("paused {}, saved nothing {unsaved}", stopped.is_some()));
+    std::thread::sleep(Duration::from_millis(500));
+    runner.shot(d, crate::runtime::presenter::EDITOR, "editor-closing")?;
+    d.key(Surface::Editor, Key::Esc);
+    let back = d.wait("Keep editing", 5, |s| s.editor.as_ref().is_some_and(|e| e.id == "editor"));
+    let kept = snapshot(&d.rt).map(|s| cuts_of(&s)).unwrap_or_default();
+    d.check("Esc is Keep editing: back to the edit, every change still there", back.is_ok() && kept == held, format!("{held:?} → {kept:?}"));
+
     // Playing when Done is pressed: the preview stops with it, and nothing plays on behind
     // the faces that follow (the audio went on after Done, 2026-10-18).
     play_by_hand(d, &runner, origin)?;
@@ -1598,6 +1629,20 @@ fn editor(d: &Drive) -> Result<(), String> {
     play_by_hand(d, &runner, origin)?;
     std::thread::sleep(Duration::from_secs(3));
     runner.shot(d, crate::runtime::presenter::EDITOR, "editor-fetched")?;
+    // Discard (N71): a cut, ✕, and Discard — a real click — closes the window and writes
+    // nothing; opened again, the video is as it was.
+    d.rt.post(Event::Edit(EditStep::Op(Op::Cut { start: 3.0, end: 6.0 })));
+    d.wait("a cut to discard", 5, |s| cuts_of(s).len() == 1)?;
+    close_by_hand(d);
+    d.wait("✕ asks", 10, |s| s.editor.as_ref().is_some_and(|e| e.id == "editor-closing"))?;
+    let at = poll(5, || editor_layout(d).ok().and_then(|l| centre(origin, l.get("discard")?))).ok_or("no Discard on the page")?;
+    runner.ask(d, serde_json::json!({ "do": "click", "at": [at.0, at.1] }))?;
+    let gone = d.wait("Discard closed it", 10, |s| s.editor.is_none());
+    let untouched = record_json(&s3, &away.0).is_some_and(|r| r["edits"].is_null());
+    d.check("Discard, a real click, closes the window and saves nothing (N71)", gone.is_ok() && untouched, format!("closed {}, the record untouched {untouched}", gone.is_ok()));
+    d.act(Surface::Library, Action::EditRow(away.clone()));
+    let s = d.wait("the fetched video, opened again", 60, editor_ready)?;
+    d.check("… opened again, it's as it was: no cut", cuts_of(&s).is_empty(), format!("{:?}", cuts_of(&s)));
     d.rt.post(Event::Edit(EditStep::Op(Op::Trim { in_: 1.0, out: 30.0 })));
     d.wait("trimmed", 5, |s| editor_body(s).and_then(|b| b.list.as_ref()).is_some_and(|l| l.in_ == 1.0))?;
     d.act(Surface::Editor, Action::EditorDone);
