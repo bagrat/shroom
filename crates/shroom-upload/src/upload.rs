@@ -107,7 +107,7 @@ fn content_type(file: &str) -> &'static str {
     }
 }
 
-fn read_meta(s3: &Client, id: &str) -> Result<Option<Meta>, UploadError> {
+pub(crate) fn read_meta(s3: &Client, id: &str) -> Result<Option<Meta>, UploadError> {
     match with_retry(|| s3.get(&keys::meta(id)))? {
         None => Ok(None),
         Some(bytes) => serde_json::from_slice(&bytes).map(Some).map_err(|e| UploadError::Incomplete(format!("unreadable meta: {e}"))),

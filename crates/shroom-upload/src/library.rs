@@ -142,6 +142,12 @@ pub fn refresh(s3: &Client, cache: &mut Cache) -> Result<Delta, UploadError> {
     Ok(delta)
 }
 
+/// A recording's record as it is now (`meta/<id>.json`), `None` when there is none: what
+/// `shroom edit` reads before it changes an edit (N70).
+pub fn record(s3: &Client, id: &str) -> Result<Option<Meta>, UploadError> {
+    crate::upload::read_meta(s3, id)
+}
+
 /// Renames a recording — live worldwide on the next page load. An emptied title is
 /// refused (the row restores the previous one, N35); a tombstone stops it.
 pub fn rename(s3: &Client, id: &str, title: &str) -> Result<Meta, UploadError> {
