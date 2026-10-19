@@ -393,7 +393,7 @@ fn steps_change_the_list_and_undo_and_redo_walk_them() {
 }
 
 /// A cut's edge dragged (B195 (g)): one step that moves it, a hand cut or the voice layer's;
-/// Undo puts it back. A suggestion's edges move and it stays offered, so Cut it too takes it
+/// Undo puts it back. A suggestion's edges move and it stays offered, so Cut again takes it
 /// as it now is. The arm says what it was.
 #[test]
 fn a_cuts_edge_dragged_is_one_step_and_undo_puts_it_back() {
@@ -412,7 +412,7 @@ fn a_cuts_edge_dragged_is_one_step_and_undo_puts_it_back() {
     assert!(!list(&r).cuts[1].applied, "still offered");
     assert_eq!(body(&r).keep, vec![[8.0, 150.0], [165.5, 241.0]], "nothing plays differently yet");
     r.op(EditOp::Apply { index: 1 });
-    assert_eq!(body(&r).keep, vec![[8.0, 150.0], [165.5, 198.0], [204.0, 241.0]], "Cut it too takes it as it now is");
+    assert_eq!(body(&r).keep, vec![[8.0, 150.0], [165.5, 198.0], [204.0, 241.0]], "Cut again takes it as it now is");
     r.op(EditOp::Resize { index: 0, start: 150.0, end: 150.05 });
     assert_eq!(r.arm.name, "edit-refused", "shorter than a tenth of a second");
 }
@@ -1243,13 +1243,14 @@ fn the_time_left_shows_only_while_the_original_is_kept() {
     assert_eq!(body(&r).original_kept, None);
 }
 
-// ── Cut it too ──
+// ── Cut again ──
 
-/// A dashed suggestion's chip says Cut it too (N65's offer); it sends `apply`, which cuts it.
+/// A dashed suggestion's chip says Cut again (a voice cut put back by hand, N65); it sends
+/// `apply`, which cuts it.
 #[test]
-fn a_suggestion_offers_cut_it_too() {
+fn a_suggestion_offers_cut_again() {
     let mut r = ready_with(Some(saved_edit(3)));
-    assert_eq!(body(&r).labels.cut_it_too, "Cut it too");
+    assert_eq!(body(&r).labels.cut_it_too, "Cut again");
     assert!(!list(&r).cuts[1].applied);
     r.op(EditOp::Apply { index: 1 });
     assert!(list(&r).cuts[1].applied, "it's cut, red");
