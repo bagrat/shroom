@@ -100,10 +100,12 @@ function beepOnsets(url) {
 // master playlist and the first variant it names. A miss with every fetch 200 is ffprobe's;
 // a non-200 is the stream's (the run of 2026-10-19 on 1d0f347 left only "no size").
 async function whyNoSize(url, probe, ms) {
-  const status = async (u) => { try { return (await fetch(u)).status; } catch (e) { return `unreachable (${e.cause?.code ?? e.message})`; } };
+  // Each fetch has 10 s: a diagnosis must never hang the run it explains.
+  const get = (u) => fetch(u, { signal: AbortSignal.timeout(10_000) });
+  const status = async (u) => { try { return (await get(u)).status; } catch (e) { return `unreachable (${e.cause?.code ?? e.name ?? e.message})`; } };
   let variant = null, variantStatus = null;
   try {
-    const r = await fetch(url);
+    const r = await get(url);
     const name = r.ok ? (await r.text()).split("\n").find((l) => l && !l.startsWith("#")) : null;
     if (name) { variant = new URL(name.trim(), url).href; variantStatus = await status(variant); }
   } catch { /* said below as the master's own status */ }
