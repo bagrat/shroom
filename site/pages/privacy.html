@@ -5,16 +5,18 @@
      site/index.html's how-to script and site/worker.js's /how-to.mp4 (DECISIONS B194, 2026-10-18). The
      AI's point (Bagrat, 2026-10-18; N66, the canvas board "AiPrivacy") is the Worker's hearing
      (worker/src/worker.js: only while the space's AI is on, the words kept at rec/<id>/ai/) and
-     a video's delete clearing everything under rec/<id>/ (crates/shroom-upload/src/library.rs). -->
+     a video's delete clearing everything under rec/<id>/ (crates/shroom-upload/src/library.rs). Its
+     last sentence (Bagrat, 2026-10-18; N65, the same board) is voice cuts: the cut kept out of what
+     plays (worker/src/worker.js keepOf), its words only on the owner's strip (cutsStrip). -->
 <title>shroom — privacy</title>
 <meta name="description" content="What shroom keeps, and where: your videos stay in your own Cloudflare account.">
 <h1>Privacy</h1>
 <p class="punch">shroom is built so that we hold nothing of yours.</p>
-<p class="fine">Updated 18 October 2026.</p>
+<p class="fine">Updated 19 October 2026.</p>
 
 <ul class="points prose">
   <li><b>Your videos</b> live in your own Cloudflare account. We never receive them, store them or see them. Who can watch a video is up to you: anyone with its link can.</li>
-  <li><b>AI, if you turn it on,</b> runs in your own Cloudflare account: it hears what’s said in your new videos to name them and add chapters and captions. What it hears stays in your space and goes when you delete the video; it never reaches us.</li>
+  <li><b>AI, if you turn it on,</b> runs in your own Cloudflare account: it hears what’s said in your new videos to name them and add chapters and captions. What it hears stays in your space and goes when you delete the video; it never reaches us. When you say “shroom cut”, the slip is cut from what viewers get; the words cut stay in your space, and only you see them.</li>
   <li><b>The app</b> talks to your Cloudflare account (to set it up, upload your videos and manage your space) and to GitHub (to check for updates, sending no ID or version; like any website, GitHub sees your IP address). It sends us nothing on its own: no telemetry, no analytics, no crash reports. Its logs stay on your Mac unless you send us a report.</li>
   <li><b>Reports you send.</b> When you press Send on Report a problem or on shroom.am/feedback, what you wrote, your shroom and macOS versions, your Mac's model and the cleaned log you were shown go by email to the person who makes shroom, and nowhere else. shroom.am keeps none of it. Nothing goes unless you press Send.</li>
   <li><b>Your Cloudflare token and card.</b> The token you create during setup stays on your Mac, and a key made from it stays in your own Cloudflare account; neither ever reaches us. Your card goes to Cloudflare, on Cloudflare's own page, and shroom never sees it.</li>
