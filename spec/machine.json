@@ -7781,7 +7781,7 @@
    "surface": "window",
    "status": "ratified",
    "board": "EditorCuts",
-   "summary": "The editor (N63): a window of its own, titled “Edit — <the video's title>”, one at a time. Top to bottom: the video, playing the edit (cuts skipped, held to the trim); the play button and the time, edited position / edited length, with “was <the recording's length>” once the edit changes it; on the right the hint and Undo · Redo; then the timeline, the whole recording's sound as a waveform with the playhead: two yellow ends that drag to trim, a drag across the sound that selects a part with Cut <its length> under it, every cut red and hatched (clicking one offers Put back <its length>), every suggestion not yet taken dashed amber (clicking one offers Cut again); either edge of a cut or a suggestion drags to move it, the pointer ↔ over it, its length shown live under it and the picture at the edge as it goes, stopping at the next cut or suggestion, the trim's end, a tenth of a second from its other edge, or where a second would be all that's left, one step for Undo (B195 (g)), and every marker (N64) a flag at its time. The footer: the line that the link stays the same, Revert to original and Done. The waveform fills in once the sound is read; until then the timeline is empty and the ends wait. Every change can be undone, Put back and Revert included; the changes stay in the window until Done saves them. While an earlier edit's original is still kept, the time it has left sits by Revert to original; once it is gone, Revert to original only undoes what changed since the window opened. While it is open, no edit becomes a video behind it on this Mac: the upkeep, and on the Mac holding the token the cleanup sweep, wait until the window closes (B199). The owner page's Edit in shroom (N69) opens this same window; while it holds another video, that press brings it forward as it is, one at a time, the footer line saying why until the next change.",
+   "summary": "The editor (N63): a window of its own, titled “Edit — <the video's title>”, one at a time. Top to bottom: the video, playing the edit (cuts skipped, held to the trim); the play button and the time, edited position / edited length, with “was <the recording's length>” once the edit changes it; on the right the hint and Undo · Redo; then the timeline, the whole recording's sound as a waveform with the playhead: two yellow ends that drag to trim, a drag across the sound that selects a part with Cut <its length> under it, every cut red and hatched (clicking one offers Put back <its length>), every suggestion not yet taken dashed amber (clicking one offers Cut <its length>, as a selection does); either edge of a cut or a suggestion drags to move it, the pointer ↔ over it, its length shown live under it and the picture at the edge as it goes, stopping at the next cut or suggestion, the trim's end, a tenth of a second from its other edge, or where a second would be all that's left, one step for Undo (B195 (g)), and every marker (N64) a flag at its time. The footer: the line that the link stays the same, Revert to original and Done. The waveform fills in once the sound is read; until then the timeline is empty and the ends wait. Every change can be undone, Put back and Revert included; the changes stay in the window until Done saves them. While an earlier edit's original is still kept, the time it has left sits by Revert to original; once it is gone, Revert to original only undoes what changed since the window opened. While it is open, no edit becomes a video behind it on this Mac: the upkeep, and on the Mac holding the token the cleanup sweep, wait until the window closes (B199). The owner page's Edit in shroom (N69) opens this same window; while it holds another video, that press brings it forward as it is, one at a time, the footer line saying why until the next change.",
    "entry": "Edit… on a live row in the Library (N63), when the video is on this Mac: its take was recorded here and is still here, or it came from the space before. One instance: Edit… again brings the open editor forward, on the video it holds. A take started while it is open leaves it open (law 4 covers only what shroom would newly show). The dock icon shows while it is open.",
    "said": [
     {
@@ -7842,7 +7842,7 @@
      "text": "Cut 12.0 s",
      "role": "button",
      "copy": "ratified",
-     "note": "under a selected part; the length varies",
+     "note": "under a selected part, and under a dashed suggestion that was clicked, its length then (Bagrat, 2026-10-19: a suggestion's chip says what a selection's does); the length varies",
      "id": "editor.cut"
     },
     {
@@ -7851,17 +7851,6 @@
      "copy": "ratified",
      "note": "under a cut that was clicked; the length varies",
      "id": "editor.put-back"
-    },
-    {
-     "text": "Cut again",
-     "role": "button",
-     "copy": "provisional",
-     "note": "under a suggestion (dashed: a voice cut put back by hand) that was clicked, as the owner page's row reads after Put back (N65). Was “Cut it too”, while a cue's cut was only offered. Proposed 2026-10-19; awaiting Bagrat.",
-     "cites": [
-      "N63",
-      "N65"
-     ],
-     "id": "editor.cut-again"
     },
     {
      "text": "Your link stays the same. Viewers see the edit once it's saved.",
@@ -7936,11 +7925,11 @@
      "note": "after a click on a cut"
     },
     {
-     "label": "Cut again",
+     "label": "Cut",
      "kind": "secondary",
      "return_default": false,
      "goes_to": "editor",
-     "note": "after a click on a dashed suggestion: it's cut, red"
+     "note": "after a click on a dashed suggestion, its chip reading as a selection's (Bagrat, 2026-10-19): it's cut, red"
     },
     {
      "label": "drag a cut's edge",
