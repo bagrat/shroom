@@ -1672,3 +1672,59 @@ fn the_pause_shortcut_never_answers_a_question_or_a_greyed_resume() {
     r.send(Event::Shortcut(QuickProbe { displays: vec![], ..quick() }));
     assert!(!r.has(|e| matches!(e, Effect::Recorder(RecCmd::Resume { .. }))), "no Resume while the display is gone");
 }
+
+/// A recording the person pauses with a click, its pause asked of the recorder at `t`.
+fn pause_asked() -> Run {
+    let mut w = ready();
+    w.take = Some(take(Phase::Recording, 0));
+    let mut r = Run::new(w);
+    r.click();
+    assert!(r.has(|e| matches!(e, Effect::Recorder(RecCmd::Pause))));
+    r
+}
+
+/// Ticks once a second for `secs` seconds from now, as the app's loop does mid-take.
+fn tick_for(r: &mut Run, secs: u64) {
+    let from = r.t;
+    for s in 1..=secs {
+        r.tick_to(from + s * 1_000);
+        assert!(!r.has(|e| matches!(e, Effect::Recorder(RecCmd::Abandon))), "abandoned {s} s after asking");
+    }
+}
+
+#[test]
+fn a_pause_the_recorder_confirms_fifteen_seconds_late_still_lands() {
+    // A hosted Mac under load (load 27, its encoder starved) took 15.3 s to end the take
+    // for a pause; a recorder step's 5 s deadline called the capture dead and the take was
+    // kept as an interrupted one (DECISIONS B224).
+    let mut r = pause_asked();
+    tick_for(&mut r, 15);
+    assert!(r.w.take.is_some(), "the take is still open while its pause is under way");
+    assert!(r.w.session.take_lost.is_none(), "nothing reads as lost");
+    r.send(Event::Rec(RecNews::Paused { length_ms: 5_000 }));
+    assert_eq!(r.scene.popover.as_ref().map(|p| p.id), Some("paused"), "the pause lands as one");
+}
+
+#[test]
+fn a_stop_the_recorder_finalizes_fifteen_seconds_late_still_makes_the_link() {
+    let mut w = ready();
+    w.take = Some(take(Phase::Recording, 0));
+    let mut r = Run::new(w);
+    r.click();
+    r.send(Event::Rec(RecNews::Paused { length_ms: 61_000 }));
+    r.act(Action::Stop);
+    assert!(r.has(|e| matches!(e, Effect::Recorder(RecCmd::Finalize { .. }))));
+    tick_for(&mut r, 15);
+    r.send(Event::Rec(RecNews::Finalized(Ok(61_000))));
+    assert!(r.has(|e| matches!(e, Effect::Publish { .. })), "Stop makes the link (law 3)");
+}
+
+#[test]
+fn a_recorder_that_never_answers_a_pause_still_ends_as_an_interrupted_take() {
+    // The deadline is still there for a recorder that's gone: a minute without an answer.
+    let mut r = pause_asked();
+    tick_for(&mut r, 59);
+    r.tick_to(r.t + 1_000);
+    assert!(r.has(|e| matches!(e, Effect::Recorder(RecCmd::Abandon))), "a minute with no answer is a capture that died");
+    assert!(r.w.take.is_none());
+}
