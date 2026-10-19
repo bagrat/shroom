@@ -3,6 +3,7 @@
 //
 //   index.html, favicon.svg, favicon.png   the landing, as it is
 //   how-to-poster.webp                     the how-to video's still (DECISIONS B194)
+//   hero-poster.webp                       the voice-cut hero's still, on /next
 //   _/next.html                            site/next.html, as it is: the landing with the
 //                                          voice-cut hero, at the hidden /next
 //   _/how-to.mp4                           the how-to video, served at /how-to.mp4 by
@@ -263,7 +264,7 @@ ${footer}
 export function build(out) {
   rmSync(out, { recursive: true, force: true });
   mkdirSync(join(out, "_"), { recursive: true });
-  for (const f of ["index.html", "favicon.svg", "favicon.png", "og.png", "how-to-poster.webp"]) copyFileSync(join(SITE, f), join(out, f));
+  for (const f of ["index.html", "favicon.svg", "favicon.png", "og.png", "how-to-poster.webp", "hero-poster.webp"]) copyFileSync(join(SITE, f), join(out, f));
   copyFileSync(join(ROOT, "installer/install.sh"), join(out, "_/install.sh"));
   copyFileSync(join(SITE, "how-to.mp4"), join(out, "_/how-to.mp4"));
   copyFileSync(join(SITE, "next.html"), join(out, "_/next.html"));
