@@ -69,7 +69,7 @@ at `bf84b67079a8` (D:B2). Svelte 5, TypeScript 5.9.
 | `crates/shroom-cloud` | REST client behind `Policy`; `sweep`, `wire`, `mint`, `owner`, `member` (client for `/_shroom/api/`), `registry`, `device` | L1 fake; `SHROOM_LIVE=1` |
 | `crates/shroom-cloudfake` | L1 Cloudflare + R2 stand-in, fault seam (D:B64) | tests |
 | `crates/shroom-update` | manifest, `offer`, verified download, `same_signer`, `SWAP_SH` (D:B31, B125) | `tests/release.rs` |
-| `crates/shroom-cli` | the `shroom` command (spec N62; D:B215–B219): `home` (its app's folder, from the bundle it ships in), `space` (the page under the device key: list, rename, delete, an edit's record, members, invites, cleanup suggestions), `app` (asks the running app over `control.sock`), `edit` (`shroom edit`, N72, D:B224), `batch` (many at once), `say` (every line it says), `out` (codes and exit statuses), `log` (its own `logs/cli.log`) | unit; `tests/space.rs` on the real `worker.js` (`worker/dev/serve.mjs`); `tests/edit.rs` on it too; `tests/flavor.rs`, `cleanup.rs`, `voice.rs`, `log.rs`, `version.rs` |
+| `crates/shroom-cli` | the `shroom` command (spec N62; D:B215–B219): `home` (its app's folder, from the bundle it ships in), `space` (the page under the device key: list, rename, delete, an edit's record, members, invites, cleanup suggestions), `app` (asks the running app over `control.sock`), `edit` (`shroom edit`, N72, D:B225), `batch` (many at once), `say` (every line it says), `out` (codes and exit statuses), `log` (its own `logs/cli.log`) | unit; `tests/space.rs` on the real `worker.js` (`worker/dev/serve.mjs`); `tests/edit.rs` on it too; `tests/flavor.rs`, `cleanup.rs`, `voice.rs`, `log.rs`, `version.rs` |
 | `crates/shroom-testpattern`, `shroom-spec`, `shroom-devtool` | media-truth strip (D:B59 d); spec fixtures as types; the heartbeat's test space up/down | dev only |
 | `tests/e2e-live` | L2 on the dedicated test account | live |
 | `app/src-tauri` | `main.rs`, `commands.rs` (IPC), `runtime/` (runner, lanes, presenter, overlays, observers, seam), `harness.rs`/`drives.rs` (only with `dev-harness` in a `.dev` build — D:B5, B55, B62) | drives, `tests/l5/` |
@@ -378,7 +378,7 @@ with its link and copies nothing. The command words `recording_off` with the set
 (`SettingsFields.lit`); it never flips the switch, and mid-take it opens nothing. The run
 log has each ask and its answer by number (`control: ask 4 record.start no-count`,
 `control: answer 4 no recording_off (3 ms)`), any connection dropped or ask not read, and
-the agent label shown and gone. `shroom edit` (spec N72, D:B224) saves an edit itself,
+the agent label shown and gone. `shroom edit` (spec N72, D:B225) saves an edit itself,
 through the space's page, and adds two asks, answered whatever the switch says:
 `{"v":1,"op":"edit.check","id"}` before a change (`editor_open` while that video is open in an
 editor window on this Mac) and `{"v":1,"op":"edit.copy","id","rev"}` after one, which owes that revision's

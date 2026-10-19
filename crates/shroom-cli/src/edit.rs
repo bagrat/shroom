@@ -1,4 +1,4 @@
-//! `shroom edit` (spec N72, DECISIONS B224): what a video's edit is, and one change a call —
+//! `shroom edit` (spec N72, DECISIONS B225): what a video's edit is, and one change a call —
 //! the editor's own steps (`shroom_edit::edit::check`), refused for the editor's own reasons, and
 //! saved as the editor's Done saves (B195), through the space's page under this Mac's device
 //! key, as a rename is (B215). The link plays the change from its next load; nothing is
