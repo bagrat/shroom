@@ -403,3 +403,31 @@ describe("the questions, privacy and terms pages", () => {
     assert.ok(lists.slice(1).every((l) => !l.includes('class="soon"')), "the rest, under Also not yet, carry no pill");
   });
 });
+
+describe("the landing with the hero, at /next", () => {
+  it("is site/next.html, as a page, whatever the client asks for", async () => {
+    for (const accept of [BROWSERS.chrome, "*/*", "text/markdown"]) {
+      const res = await get("/next", { accept });
+      assert.equal(res.status, 200);
+      assert.equal(res.headers.get("content-type"), "text/html; charset=utf-8");
+      assert.equal(await res.text(), file("site/next.html"));
+    }
+  });
+
+  it("asks not to be indexed, and isn't counted, so the rows for / stay as they are", async () => {
+    counted = [];
+    const res = await get("/next", { accept: BROWSERS.safari });
+    assert.equal(res.headers.get("x-robots-tag"), "noindex, nofollow");
+    assert.deepEqual(counted, []);
+  });
+
+  it("leaves / as it is", async () => {
+    const res = await get("/", { accept: BROWSERS.chrome });
+    assert.equal(await res.text(), file("site/index.html"));
+    assert.equal(res.headers.get("x-robots-tag"), null);
+  });
+
+  it("is one address the Worker answers first", () => {
+    assert.match(file("site/wrangler.jsonc"), /"run_worker_first": \[[^\]]*"\/next"/);
+  });
+});
