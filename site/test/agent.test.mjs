@@ -14,9 +14,9 @@ const landing = JSON.parse(readFileSync(`${ROOT}spec/machine.json`, "utf8")).sta
 
 // The landing's ratified lines that belong to the page itself, not to a browser: no Copy
 // button, no install tabs or "Read it first" link, no video, no links at its foot (N55, N59), none
-// of its words to the person about their agent, and not the price bar's short labels for a phone.
+// of its words to the person about their agent, and not the price box's controls (N74).
 // The system-requirements sentence is checked against the landing's own (filled-in) sentence instead.
-const PAGE_ONLY = /^(Copy|Send feedback|Send feedback · .*|Install in one line|Terminal|Homebrew|Coding agent|Read it first|Your agent asks you .*|\$0 \/ 3h video|\$1\.50 \/ 30h)$/;
+const PAGE_ONLY = /^(Copy|Send feedback|Send feedback · .*|Install in one line|Terminal|Homebrew|Coding agent|Read it first|Your agent asks you .*|What would it cost\?|Videos a week|About five minutes each, kept six months|AI names, chapters and captions|a month)$/;
 
 /** Every “…” on the page: a line the agent says to the person, or a word it quotes. */
 const said = [...flat.matchAll(/“([^”]+)”/g)].map((m) => m[1]);

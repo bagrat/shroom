@@ -145,17 +145,38 @@ describe("the landing", () => {
     assert.deepEqual(terms, ids.map((id) => landing.said.find((l) => l.id === id).text));
   });
 
-  it("draws the price as one bar, its two ends labelled, inside the headline's own width (N59)", () => {
+  it("puts the price in its own box, as wide as the headline: one slider, the AI switch, the month's figure (N74)", () => {
     const pitch = html.match(/<div class="pitch">([\s\S]*?)\n  <\/div>/)?.[1] ?? "";
     assert.match(pitch, /<h1>Record\. Share\. Pay-as-you-go\.<\/h1>/);
-    const ends = [...pitch.matchAll(/<span class="(long|short)">(.*?)<\/span>/g)].map((m) => [m[1], visible(m[2])]);
-    const text = (id) => landing.said.find((l) => l.id === id).text;
-    assert.deepEqual(ends, [["long", text("landing.0-month-about-six")], ["long", text("landing.1-50-month-about")],
-      ["short", text("landing.0-3h-video")], ["short", text("landing.1-50-30h")]], "the long labels on a laptop, the short on a phone");
-    assert.match(html, /\.gauge \.ends \.short \{ display: none; \}/);
-    assert.match(html, /@media \(max-width: 900px\) \{[\s\S]*?\.gauge \.ends \.long \{ display: none; \}/);
-    assert.match(pitch, /<div class="gauge" role="img" aria-label="[^"]+">/, "the bar has a name a screen reader says");
-    assert.match(html, /\.pitch \{[^}]*width: max-content;/, "the headline, its line and the bar share the headline's width");
+    assert.doesNotMatch(html, /class="gauge"/, "the bar is gone (a tester read it as loading)");
+    const box = pitch.match(/<section class="price"[\s\S]*?<\/section>/)?.[0] ?? "";
+    assert.ok(box, "the price box sits in the pitch, under the headline's line");
+    assert.equal([...box.matchAll(/type="range"/g)].length, 1, "one slider");
+    assert.match(box, /<input class="live" type="range" id="amount" min="1" max="50" step="1" value="5"/);
+    assert.match(box, /<button type="button" role="switch" id="ai" aria-checked="false" aria-labelledby="ai-l"><\/button>/, "the AI switch, off when the page opens");
+    assert.match(box, /<output id="amount-v" for="amount">5<\/output>/);
+    assert.match(html, /\.pitch \{[^}]*width: max-content;/, "the headline, its line and the box share the headline's width");
+    const after = pitch.slice(pitch.indexOf("</section>"));
+    assert.ok(after.includes(landing.said.find((l) => l.id === "landing.even-a-busy-team").text), "the busy team's month is a line of its own, under the box");
+  });
+
+  it("works the price out the page's way, and says the opening reading without script (N74)", () => {
+    // The model, as the page's script states it: about 10 GB per three hours at Normal (the
+    // FAQ), $0.015 a GB-month past Cloudflare's free 10 GB (B212), videos kept six months.
+    const script = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]).join("\n");
+    assert.match(script, /var KEPT_MONTHS = 6, GB_PER_HOUR = 10 \/ 3, FREE_GB = 10, USD_PER_GB = 0\.015, AI_FREE_HOURS_A_DAY = 2\.5;/);
+    const month = (videosAWeek) => {
+      const gb = videosAWeek * 5 / 60 * 52 / 12 * 6 * 10 / 3;
+      return Math.max(0, gb - 10) * 0.015;
+    };
+    assert.match(html, /<b id="cost">about 39¢<\/b>/, "five a week, opening: about 39¢");
+    assert.equal(Math.round(month(5) * 100), 39);
+    assert.equal(month(0), 0, "nothing kept, nothing to pay");
+    // The busy team's line: 200 five-minute videos a month, kept six months.
+    const busy = Math.max(0, 200 * 5 / 60 * 6 * 10 / 3 - 10) * 0.015;
+    assert.equal(busy.toFixed(2), "4.85");
+    assert.match(html, /<p class="why" id="why">About 11 hours kept, 36 GB\. Cloudflare keeps the first 10 GB free\.<\/p>/);
+    assert.match(html, /\.price \.live \{ display: none; \}/, "without script, the slider and the switch stay hidden and the opening reading shows");
   });
 
   it("points Read it first at the installer's own address", () => {
