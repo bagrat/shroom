@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::{Arc, Mutex};
 
-use shroom_update::{Channel, Offer, Release, SWAP_SH, UpdateError, Version, check, check_channel, download, offer};
+use shroom_update::{Channel, Offer, Release, SWAP_SH, UpdateError, Version, check, check_channel, download, download_from, offer};
 
 /// A test's own folder, removed when the test ends (pass or fail).
 struct Scratch(PathBuf);
@@ -91,6 +91,27 @@ fn checks_downloads_and_verifies_like_the_installer() {
     let tampered = Release { sha256: "0".repeat(64), ..release };
     assert!(matches!(download(&base, &tampered, &staging), Err(UpdateError::Mismatch)));
     assert!(!staging.join("1.3.0").exists(), "a mismatch leaves nothing behind");
+}
+
+/// shroom.am's counter not answering, or answering with something else, never stands in
+/// the way of an update: the next source (GitHub) gives it (DECISIONS B228).
+#[test]
+fn an_update_goes_on_when_the_counter_is_down_or_wrong() {
+    let dir = scratch("fallback");
+    let (file, bytes) = release_zip(&dir, "1.3.0");
+    let release = Release { version: Version::new(1, 3, 0), file: file.clone(), sha256: sha(&bytes) };
+    let github = serve(vec![(format!("/download/v1.3.0/{file}"), bytes.clone())]);
+    let wrong = serve(vec![(format!("/download/v1.3.0/{file}"), b"<html>not the zip</html>".to_vec())]);
+    let direct = format!("{github}/download/v1.3.0/{file}");
+    for counter in ["http://127.0.0.1:9/download/v1.3.0/x.zip?via=update".to_string(), format!("{wrong}/download/v1.3.0/{file}")] {
+        let staging = dir.join("updates");
+        let app = download_from(&[counter.clone(), direct.clone()], &release, &staging).unwrap_or_else(|e| panic!("{counter}: {e}"));
+        assert_eq!(std::fs::read_to_string(app.join("Contents/version")).unwrap(), "1.3.0");
+    }
+    // Neither: the last source's answer, and nothing left behind.
+    let staging = dir.join("none");
+    assert!(matches!(download_from(&[direct.clone(), "http://127.0.0.1:9/x".into()], &Release { sha256: "0".repeat(64), ..release }, &staging), Err(UpdateError::Transport(_))));
+    assert!(!staging.join("1.3.0").exists());
 }
 
 #[test]
