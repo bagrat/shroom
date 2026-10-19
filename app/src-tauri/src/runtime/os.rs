@@ -43,6 +43,7 @@ pub fn url(page: &PublicUrl) -> String {
             let words: String = words.chars().take(1_500).collect();
             format!("mailto:hi@shroom.am?subject={}&body={}", percent(&format!("shroom {version} — a problem")), percent(&format!("{words}\n\nshroom {version}")))
         }
+        PublicUrl::AgentGuide => "https://shroom.am/cli".to_string(),
     }
 }
 
@@ -70,6 +71,7 @@ pub fn open_url(rt: &Runtime, page: &PublicUrl) {
         PublicUrl::ReleaseNotes { .. } => "release-notes",
         PublicUrl::NewIssue { .. } => "new-issue",
         PublicUrl::MailReport { .. } => "mail-report",
+        PublicUrl::AgentGuide => "agent-guide",
     }));
     open_detached(u);
 }
@@ -393,6 +395,19 @@ mod tests {
     }
 
     #[test]
+    fn copy_thumbnail_wraps_the_picture_the_page_shows() {
+        let s = |v: serde_json::Value| picture(&v, "AbCdEfGhJk");
+        assert_eq!(s(serde_json::json!({"poster": true, "thumb": "/m/AbCdEfGhJk/thumb-0a.gif"})).as_deref(), Some("/m/AbCdEfGhJk/thumb-0a.gif"), "the newest for the title");
+        assert_eq!(s(serde_json::json!({"poster": true, "thumb": null})).as_deref(), Some("/m/AbCdEfGhJk/poster.jpg"), "no edit: the first frame");
+        let copied = serde_json::json!({"poster": true, "thumb": null, "copy": {"src": "/m/AbCdEfGhJk/edit-3.mp4", "poster": "/m/AbCdEfGhJk/edit-3-poster.jpg"}});
+        assert_eq!(s(copied).as_deref(), Some("/m/AbCdEfGhJk/edit-3-poster.jpg"), "an edit's final video: its own first frame, never the original's");
+        assert_eq!(s(serde_json::json!({"poster": false, "thumb": null, "keep": [[8.0, 60.0]]})), None, "its start cut and no final video yet: no picture");
+        assert_eq!(s(serde_json::json!({"poster": true, "thumb": null, "copy": {"poster": null}})), None, "a final video without its own picture: never the original's");
+        assert_eq!(s(serde_json::json!({"thumb": "/m/Other00000/thumb-0a.gif", "poster": false})), None, "another video's picture is never taken");
+        assert_eq!(s(serde_json::json!({"thumb": "/m/AbCdEfGhJk/thumb-\"x.gif"})), None);
+    }
+
+    #[test]
     fn pages() {
         assert_eq!(url(&PublicUrl::Signup), "https://dash.cloudflare.com/sign-up");
         assert_eq!(url(&PublicUrl::Billing { account_id: "abc123".into() }), "https://dash.cloudflare.com/abc123/r2/overview");
@@ -420,8 +435,10 @@ pub fn copy_link(rt: &Runtime, rec: &shroom_core::world::RecId) {
 /// Copy thumbnail (N46; law 10: only ever from the click): the video's picture wrapped in its
 /// clean link as HTML, and the link as text, so a paste where pictures go shows the picture
 /// and anywhere else gets the link. The picture is the newest the page made for the title
-/// (the page's status names it), else the video's first frame; never an image file on the
-/// pasteboard (an editor would take the file and drop the link). Asked off the main thread.
+/// (the page's status names it), else the first frame of what the page plays — an edit's
+/// final video has its own; while an edit waits for it and its start is cut, there is no
+/// picture yet and only the link goes. Never an image file on the pasteboard (an editor
+/// would take the file and drop the link). Asked off the main thread.
 pub fn copy_thumb(rt: &Runtime, rec: &shroom_core::world::RecId, title: &str) {
     let Some(space) = rt.home.read_json::<shroom_core::world::SpaceIdentity>("space.json") else {
         rt.log("shell: copy with no space");
@@ -432,15 +449,24 @@ pub fn copy_thumb(rt: &Runtime, rec: &shroom_core::world::RecId, title: &str) {
     let harness = rt.harness;
     rt.log(&format!("shell: copied the thumbnail of {}{}", super::short(&id), if harness { " (the harness's pasteboard)" } else { "" }));
     std::thread::spawn(move || {
-        let newest = status
-            .and_then(|url| super::posters::get(&url))
-            .and_then(|body| serde_json::from_slice::<serde_json::Value>(&body).ok())
-            .and_then(|v| v.get("thumb").and_then(|t| t.as_str()).map(String::from))
-            .filter(|p| p.starts_with(&format!("/m/{id}/thumb-")) && !p.contains(['"', '<', '>', '&']));
+        let said = status.and_then(|url| super::posters::get(&url)).and_then(|body| serde_json::from_slice::<serde_json::Value>(&body).ok());
         let link = format!("https://{host}/{id}");
-        let html = thumb_html(&link, &format!("https://{host}{}", newest.unwrap_or_else(|| format!("/m/{id}/poster.jpg"))), &title);
-        put_html_on_pasteboard(harness, html, link);
+        match said.as_ref().and_then(|v| picture(v, &id)) {
+            Some(src) => put_html_on_pasteboard(harness, thumb_html(&link, &format!("https://{host}{src}"), &title), link),
+            None => put_html_on_pasteboard(harness, format!(r#"<a href="{0}">{0}</a>"#, link.replace('&', "&amp;").replace('"', "&quot;")), link),
+        }
     });
+}
+
+/// The picture Copy thumbnail wraps, from the page's status: its newest for the title, else
+/// the first frame of what it plays (the final video's own, once an edit has one); `None`
+/// when the page has none it would show (an edit whose start is cut, before its final video).
+fn picture(status: &serde_json::Value, id: &str) -> Option<String> {
+    let ours = |p: &str| p.starts_with(&format!("/m/{id}/")) && !p.contains(['"', '<', '>', '&', '?', '#']) && !p.contains("..");
+    let thumb = status.get("thumb").and_then(|t| t.as_str()).filter(|p| ours(p) && p.starts_with(&format!("/m/{id}/thumb-")));
+    let copy = status.get("copy").and_then(|c| c.get("poster")).and_then(|p| p.as_str()).filter(|p| ours(p));
+    let first = (status.get("poster").and_then(serde_json::Value::as_bool) == Some(true) && status.get("copy").is_none()).then(|| format!("/m/{id}/poster.jpg"));
+    thumb.or(copy).map(String::from).or(first)
 }
 
 /// The pasted picture: a link around one image, 600 wide, named by the title.

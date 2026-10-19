@@ -9,3 +9,12 @@ license = "MIT"
 
 [patch."https://github.com/CapSoftware/Cap"]
 workspace-hack = { path = "vendor/workspace-hack" }
+
+# The editor's waveform decodes a whole take's sound (DECISIONS B195 (e)): unoptimized, a
+# 30-minute take takes ~28 s in a dev build against ~1.4 s optimized.
+[profile.dev.package.symphonia-core]
+opt-level = 3
+[profile.dev.package.symphonia-codec-aac]
+opt-level = 3
+[profile.dev.package.symphonia-format-isomp4]
+opt-level = 3

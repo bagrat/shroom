@@ -65,6 +65,20 @@ fn rename_marks_a_chosen_title_and_never_saves_an_empty_one() {
 }
 
 #[test]
+fn keep_marks_the_record_and_leaves_everything_else_as_it_was() {
+    // N68: Keep takes a video off the suggestions for good — `keep: true` on its record,
+    // the title and every other field untouched; a tombstone stops it.
+    let (_fake, s3) = space();
+    record(&s3, A, "Q3 roadmap", "2026-10-02T10:00:00Z");
+    library::keep(&s3, A).unwrap();
+    let v: serde_json::Value = serde_json::from_slice(&s3.get(&format!("meta/{A}.json")).unwrap().unwrap()).unwrap();
+    assert_eq!((v["keep"].as_bool(), v["title"].as_str(), v["state"].as_str()), (Some(true), Some("Q3 roadmap"), Some("live")));
+    library::keep(&s3, A).unwrap();
+    library::delete(&s3, A).unwrap();
+    assert!(library::keep(&s3, A).is_err());
+}
+
+#[test]
 fn delete_leaves_a_tombstone_first_and_then_no_bytes() {
     let (fake, s3) = space();
     record(&s3, A, "Secret plans", "2026-10-02T10:00:00Z");
@@ -251,4 +265,69 @@ fn a_delete_that_cant_write_its_tombstone_removes_nothing() {
     } else {
         assert!(library::tombstoned(&s3, A).unwrap(), "a successful delete always leaves the tombstone");
     }
+}
+
+/// B197 (d): the token Mac's sweep bakes every video in the space whose original's two days
+/// are up — whoever's it is — and nothing else: a video still in its two days keeps its
+/// original, a baked one keeps the copy it plays, a copy that isn't there is never baked
+/// (and doesn't stop the pass), and no live record's file is reaped.
+#[test]
+fn the_cleanup_sweep_bakes_every_video_past_its_two_days() {
+    const NOW: i64 = 1_790_942_400_000; // 2026-10-02T12:00:00Z
+    let (fake, s3) = space();
+    let put = |k: &str, v: serde_json::Value| s3.put(k, v.to_string().as_bytes(), "application/json").unwrap();
+    let original = ["master.m3u8", "v0/init.mp4", "v0/seg_00000.m4s", "v0/stream.m3u8", "video.mp4", "poster.jpg", "teaser.mp4"];
+    let copy = ["edit-1.mp4", "edit-1-poster.jpg", "edit-1-teaser.mp4"];
+    let edited = |id: &str, keep_until: &str, sent: &[&str]| {
+        put(&format!("meta/{id}.json"), serde_json::json!({
+            "schema": 1, "id": id, "state": "live", "createdAt": "2026-09-28T10:00:00Z", "publishedAt": "2026-09-28T10:01:00Z",
+            "deletedAt": null, "title": id, "durationSec": 60.0, "captions": null, "owner": null, "progress": null,
+            "media": { "hls": format!("rec/{id}/master.m3u8"), "mp4": format!("rec/{id}/video.mp4"), "poster": format!("rec/{id}/poster.jpg"),
+                "teaser": format!("rec/{id}/teaser.mp4"), "width": 1280, "height": 720 },
+            "edits": { "version": 1, "source_duration": 60.0, "in": 8.0, "out": 60.0, "cuts": [], "rev": 1, "keep_until": keep_until,
+                "copy": { "rev": 1, "file": "edit-1.mp4", "duration": 52.0, "poster": "edit-1-poster.jpg", "teaser": "edit-1-teaser.mp4" } },
+        }));
+        for f in original.iter().chain(sent) {
+            s3.put(&format!("rec/{id}/{f}"), f.as_bytes(), "application/octet-stream").unwrap();
+        }
+    };
+    let files = |id: &str| -> Vec<String> {
+        let prefix = format!("rec/{id}/");
+        let mut v: Vec<String> = fake.with(|s| s.buckets["shroom-space"].keys().filter_map(|k| k.strip_prefix(&prefix).map(str::to_string)).collect());
+        v.sort();
+        v
+    };
+    edited("DueToBakeVideo00", "2026-10-02T12:00:00Z", &copy);
+    edited("KeptTwoMoreDays0", "2026-10-04T08:00:00Z", &copy);
+    edited("CopyGoneMissing0", "2026-10-01T00:00:00Z", &copy[1..]);
+    put("meta/BakedAlready0000.json", serde_json::json!({
+        "schema": 1, "id": "BakedAlready0000", "state": "live", "createdAt": "2026-09-20T10:00:00Z", "publishedAt": null, "deletedAt": null,
+        "title": "Baked", "durationSec": 40.0, "captions": null, "owner": null, "progress": null,
+        "media": { "hls": null, "mp4": "rec/BakedAlready0000/edit-2.mp4", "poster": "rec/BakedAlready0000/edit-2-poster.jpg", "width": 1280, "height": 720 },
+        "bakedFrom": [{ "at": "2026-09-25T00:00:00Z", "rev": 2, "keep": [[0.0, 40.0]] }],
+    }));
+    for f in ["edit-2.mp4", "edit-2-poster.jpg", "thumb-00112233aabbccdd.jpg"] {
+        s3.put(&format!("rec/BakedAlready0000/{f}"), b"x", "application/octet-stream").unwrap();
+    }
+
+    let holds = |_: &str| false;
+    let here = library::Here { now_ms: NOW, device: Some("d_this"), holds: &holds };
+    let cleaned = library::cleanup(&s3, &here).unwrap();
+    assert_eq!(cleaned.baked, vec![("DueToBakeVideo00".to_string(), library::Baked { rev: 1, written: true, deleted: original.len() })]);
+    assert_eq!((cleaned.swept.under_tombstones.len(), cleaned.swept.orphans.len()), (0, 0));
+
+    let v: serde_json::Value = serde_json::from_slice(&s3.get("meta/DueToBakeVideo00.json").unwrap().unwrap()).unwrap();
+    assert_eq!((v["media"]["mp4"].as_str(), v["durationSec"].as_f64()), (Some("rec/DueToBakeVideo00/edit-1.mp4"), Some(52.0)));
+    assert_eq!(v["bakedFrom"][0]["at"], "2026-10-02T12:00:00Z");
+    assert_eq!(files("DueToBakeVideo00"), ["edit-1-poster.jpg", "edit-1-teaser.mp4", "edit-1.mp4"]);
+    for id in ["KeptTwoMoreDays0", "CopyGoneMissing0"] {
+        let v: serde_json::Value = serde_json::from_slice(&s3.get(&format!("meta/{id}.json")).unwrap().unwrap()).unwrap();
+        assert!(v["edits"].is_object() && v["media"]["hls"].is_string(), "{id} was baked");
+        assert!(original.iter().all(|f| files(id).contains(&f.to_string())), "{id} lost its original");
+    }
+    assert!(copy.iter().all(|f| files("KeptTwoMoreDays0").contains(&f.to_string())), "a live record's copy is never reaped");
+    assert_eq!(files("BakedAlready0000"), ["edit-2-poster.jpg", "edit-2.mp4", "thumb-00112233aabbccdd.jpg"], "a baked video's files are never reaped");
+
+    // The next pass: nothing more is due.
+    assert_eq!(library::cleanup(&s3, &here).unwrap(), library::Cleaned::default());
 }

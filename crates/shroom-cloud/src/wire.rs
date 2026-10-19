@@ -242,7 +242,7 @@ fn await_page(page: &PageCheck, host: &str) -> Result<(), WireError> {
 pub fn wire_with(cloud: &Cloud, spec: &WireSpec, page: Option<&PageCheck>) -> Result<Wired, WireError> {
     let subdomain = cloud.subdomain(spec.account_id)?.ok_or(WireError::NoName)?;
     let host = format!("{}.{subdomain}.workers.dev", spec.label);
-    let fact = crate::sweep::worker_fact(cloud, spec.account_id, spec.label, spec.bucket)?;
+    let (fact, ai) = crate::sweep::worker_fact_ai(cloud, spec.account_id, spec.label, spec.bucket)?;
     if !matches!(fact, crate::sweep::WorkerFact::Absent | crate::sweep::WorkerFact::Ours) {
         return Err(WireError::Foreign);
     }
@@ -268,8 +268,9 @@ pub fn wire_with(cloud: &Cloud, spec: &WireSpec, page: Option<&PageCheck>) -> Re
         // placement, §3.4) — a fresh paste's pair, never the previous token's.
         place_parent(cloud, spec.account_id, spec.label, spec.bucket, spec.token_id)?;
     } else {
-        // Every script PUT carries the parent (§3.4's first placement).
-        put_page(cloud, spec)?;
+        // Every script PUT carries the parent (§3.4's first placement), and the AI when the
+        // page had it (N66: a re-wiring never turns naming off).
+        put_page(cloud, spec, ai)?;
     }
     cloud.enable_workers_dev(spec.account_id, spec.label)?;
     if let Some(p) = page {
@@ -291,19 +292,38 @@ pub fn wire_with(cloud: &Cloud, spec: &WireSpec, page: Option<&PageCheck>) -> Re
     Ok(Wired { host, subdomain, deployed: !current })
 }
 
-/// The script PUT with its two bindings: the bucket, and the parent.
-fn put_page(cloud: &Cloud, spec: &WireSpec) -> Result<(), CloudError> {
-    cloud.put_worker(
-        spec.account_id,
-        spec.label,
-        "worker.js",
-        spec.worker_module,
-        &[
-            Binding::R2Bucket { name: "BUCKET".into(), bucket: spec.bucket.into() },
-            Binding::SecretText { name: PARENT_BINDING.into(), text: parent_text(cloud, spec.account_id, spec.bucket, spec.token_id) },
-        ],
-        spec.compatibility_date,
-    )
+/// The schedule a space with naming on runs: each minute (N66, DECISIONS B206 c).
+pub const AI_SCHEDULE: &str = "* * * * *";
+
+/// The script PUT with its bindings: the bucket and the parent, and with naming on (N66)
+/// Cloudflare's AI, whose schedule is put beside it.
+fn put_page(cloud: &Cloud, spec: &WireSpec, ai: bool) -> Result<(), CloudError> {
+    let mut bindings = vec![
+        Binding::R2Bucket { name: "BUCKET".into(), bucket: spec.bucket.into() },
+        Binding::SecretText { name: PARENT_BINDING.into(), text: parent_text(cloud, spec.account_id, spec.bucket, spec.token_id) },
+    ];
+    if ai {
+        bindings.push(Binding::Ai { name: "AI".into() });
+    }
+    cloud.put_worker(spec.account_id, spec.label, "worker.js", spec.worker_module, &bindings, spec.compatibility_date)?;
+    if ai {
+        cloud.put_schedules(spec.account_id, spec.label, &[AI_SCHEDULE])?;
+    }
+    Ok(())
+}
+
+/// Naming on or off (N66, DECISIONS B206 a): the space's own page put up again with
+/// Cloudflare's AI and its schedule, or without them. Only ever over shroom's own page; the
+/// names, chapters and captions already made stay where they are.
+pub fn set_ai(cloud: &Cloud, spec: &WireSpec, on: bool) -> Result<(), WireError> {
+    if crate::sweep::worker_fact(cloud, spec.account_id, spec.label, spec.bucket)? != crate::sweep::WorkerFact::Ours {
+        return Err(WireError::Foreign);
+    }
+    put_page(cloud, spec, on)?;
+    if !on {
+        cloud.put_schedules(spec.account_id, spec.label, &[])?;
+    }
+    Ok(())
 }
 
 /// What a page refresh found (§6.10's update apply, B50).
@@ -332,12 +352,14 @@ pub fn refresh_page(cloud: &Cloud, spec: &WireSpec, page: &PageCheck, host: &str
     if !may_deploy_over(&version, page.version) {
         return Ok(Refresh::Current { version });
     }
-    if crate::sweep::worker_fact(cloud, spec.account_id, spec.label, spec.bucket)? != crate::sweep::WorkerFact::Ours {
+    let (fact, ai) = crate::sweep::worker_fact_ai(cloud, spec.account_id, spec.label, spec.bucket)?;
+    if fact != crate::sweep::WorkerFact::Ours {
         return Err(WireError::Foreign);
     }
     let s3 = bucket_client(cloud, spec.account_id, spec.bucket, spec.token_id);
     let _ = registry::seed(&s3, None, unix_now())?;
-    put_page(cloud, spec)?;
+    // The page follows the app with naming as it was (N66).
+    put_page(cloud, spec, ai)?;
     Ok(Refresh::Deployed { was: version })
 }
 

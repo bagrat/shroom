@@ -22,7 +22,26 @@ export type GeneralPane = {
   help_links: Button[];
   /** “Uninstall shroom…”, quiet text at the tab's foot (B135). */
   uninstall: Button;
+  /** Your videos (N68): the space's play-count switch, this Mac's suggestions switch, the space's size. */
+  videos: {
+    heading: string;
+    count: Toggle;
+    count_hint: string;
+    /** The switch didn't go through (law 12). */
+    count_note: string | null;
+    suggest: Toggle;
+    suggest_hint: string;
+    used_label: string | null;
+    used: string | null;
+  } | null;
+  /** “Your coding agent” (spec N62; DECISIONS B219). */
+  agent: AgentCard;
 };
+
+/** General's card for a coding agent: the prompt, Copy, Read it first, the line, and
+ * whether the agent may start and stop recordings (off by default). `lit`: the command's
+ * settings link opened Settings here, so the switch's row is lit for a moment (B216). */
+export type AgentCard = { label: string; prompt: string; copy: Button; read_first: Button; line: string; recording: Toggle; lit: boolean };
 
 export type SpacePane = {
   kind: "space";
@@ -31,6 +50,9 @@ export type SpacePane = {
   /** The “made with shroom” switch and its line — owner-class Macs (U3, DEVIATIONS #19). */
   mark: Toggle | null;
   mark_line: string | null;
+  /** Naming's switch and its line (N66) — the Mac that holds the setup key, once its page said. */
+  ai: Toggle | null;
+  ai_line: string | null;
   exits: Button[];
 };
 

@@ -30,6 +30,8 @@ pub const FILES: &[&str] = &[
     "invite",
     // A join asked for, written before the call (§5): replayed identically at launch.
     "join.json",
+    // The `shroom` command's socket (`control.rs`): made at launch, this user's only.
+    "control.sock",
 ];
 
 #[derive(Debug, Clone)]
@@ -87,6 +89,13 @@ impl Home {
     /// retries until the delete lands (N23).
     pub fn forgets(&self) -> PathBuf {
         self.root.join("forget")
+    }
+
+    /// The editor's folder (N63): per recording, the video fetched from the space
+    /// (`source.mp4`), its sound read (`peaks.u8`), and a permanent copy while it's made.
+    /// Disconnect and Leave remove it with the space's other traces.
+    pub fn edits(&self) -> PathBuf {
+        self.root.join("edits")
     }
 
     /// Where verified updates wait to be swapped in: `updates/<version>/shroom.app`.

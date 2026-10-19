@@ -1,5 +1,6 @@
 //! `derive(&World) -> Scene`: pure and total. Every surface comes from here.
 
+pub mod editor;
 pub mod feedback;
 pub mod library;
 pub mod members;
@@ -11,7 +12,8 @@ mod tray;
 
 pub(crate) use popover::{OneShot, one_shot_showing, selected_mic as popover_selected_mic, selected_source as popover_selected_source};
 pub use popover::{
-    DISK_MARGIN, ROOM_FLOOR_MINUTES, ROOM_LOW_MINUTES, bytes_per_minute, resume_mic, resume_ok, selected_camera, source_present, take_floor_bytes,
+    DISK_MARGIN, ROOM_FLOOR_MINUTES, ROOM_LOW_MINUTES, bytes_per_minute, marker_offered, resume_mic, resume_ok, selected_camera, source_present,
+    take_floor_bytes,
 };
 
 use crate::copy;
@@ -21,6 +23,12 @@ use crate::world::{Op, SourceId, UpdateOffer, World};
 
 /// How long "Copied" shows (DEVIATIONS #8).
 pub const COPIED_MS: u64 = 1_500;
+/// How long a one-tap delete's Undo line stands before the delete is sent (N68).
+pub const UNDO_MS: u64 = 5_000;
+/// How long a spot the settings link opened stays lit (N62, B216): long enough for a window
+/// the link opened cold to draw itself. The window shows the light for its own first moments
+/// (about two seconds) and fades it, whenever it drew.
+pub const LIT_MS: u64 = 6_000;
 /// The countdown: 3 · 2 · 1 (N22).
 pub const COUNTDOWN_MS: u64 = 3_000;
 /// “Every few hours”: how often the background update check runs, and how long a failed
@@ -40,11 +48,23 @@ pub fn derive(w: &World) -> Scene {
     let library = library::derive(w);
     let settings = settings::derive(w);
     let feedback = feedback::derive(w);
+    let editor = editor::derive(w);
     // Law 6 (SM:133), as ratified: the Dock icon iff a window of shroom's is open —
-    // onboarding, the Library, Settings or Send feedback (DEVIATIONS #38's setup-only Dock
-    // was rejected).
-    let dock = onboarding.is_some() || library.is_some() || settings.is_some() || feedback.is_some();
-    Scene { tray: tray::derive(w), popover, onboarding, library, settings, feedback, countdown, bubble, preview, dock, next_wake: next_wake(w) }
+    // onboarding, the Library, Settings, Send feedback or the editor (DEVIATIONS #38's
+    // setup-only Dock was rejected).
+    let dock = onboarding.is_some() || library.is_some() || settings.is_some() || feedback.is_some() || editor.is_some();
+    let label = agent_label(w);
+    Scene { tray: tray::derive(w), popover, onboarding, library, settings, feedback, editor, countdown, bubble, preview, label, dock, next_wake: next_wake(w) }
+}
+
+/// The agent label (N62, B216): on the display a take the command started records, while
+/// it records. Never over a count, never paused (it would say recording when nothing is),
+/// never for the camera only (it records no screen).
+fn agent_label(w: &World) -> Option<crate::scene::AgentLabel> {
+    let t = w.take.as_ref().filter(|t| w.agent == Some(t.opened))?;
+    let SourceId::Display(display) = t.source else { return None };
+    let recording = matches!(t.phase, crate::world::Phase::Starting | crate::world::Phase::Recording | crate::world::Phase::Resuming);
+    recording.then(|| crate::scene::AgentLabel { display, line: copy::agent_label_line() })
 }
 
 /// The update to offer now: downloaded, verified, a space to carry it (never before
@@ -128,6 +148,24 @@ pub fn next_cleanup(w: &World) -> Option<Mono> {
     Some(match w.library_ops.cleaned.max(failed) {
         Some(t) => t.plus(CLEANUP_MS),
         None => pass.plus(CLEANUP_FIRST_MS),
+    })
+}
+
+/// How often every Mac's editor upkeep runs (B197 (d)): with the cleanup sweep's cadence —
+/// six hours of awake time — after the last one that answered or couldn't run.
+pub const UPKEEP_MS: u64 = CLEANUP_MS;
+
+/// When the editor's upkeep is due (B197 (d)): once a launch — at once, booted on a Mac in a
+/// space — then `UPKEEP_MS` after the last one (fail-soft: one that couldn't run waits as
+/// long). Every Mac, token or not: each bakes and copies its own videos.
+pub fn next_upkeep(w: &World) -> Option<Mono> {
+    if !w.provisioned() || w.launch.version.is_empty() {
+        return None;
+    }
+    let failed = w.inflight.failures.get(&Op::EditorUpkeep).map(|f| f.at);
+    Some(match w.library_ops.upkept.max(failed) {
+        Some(t) => t.plus(UPKEEP_MS),
+        None => Mono(0),
     })
 }
 
@@ -223,12 +261,22 @@ fn next_wake(w: &World) -> Option<Mono> {
     if let Some((_, at)) = &w.session.copied {
         wakes.push(at.plus(COPIED_MS));
     }
+    if let Some((_, at)) = &w.session.fields.library.undo {
+        wakes.push(at.plus(UNDO_MS));
+    }
+    if let Some((_, at)) = &w.session.fields.settings.lit {
+        wakes.push(at.plus(LIT_MS));
+    }
     wakes.extend(w.inflight.ops.values().copied());
     // The stop's probe asking again after a “not shroom” that hasn't held (B60).
     if w.session.page_open.is_some() {
         wakes.extend(w.net.not_shroom_reprobe());
     }
     wakes.extend(w.inflight.failures.values().map(|f| f.retry_at()));
+    // The AI banner's Turn on, tried again quietly (N66).
+    if w.space.ai_turn == Some(crate::world::AiTurn::Turning) {
+        wakes.extend(w.inflight.failures.get(&Op::Ai).map(|f| f.ai_retry_at()));
+    }
     onboarding::wakes(w, &mut wakes);
     settings::wakes(w, &mut wakes);
     members::wakes(w, &mut wakes);
@@ -236,8 +284,25 @@ fn next_wake(w: &World) -> Option<Mono> {
     wakes.extend(next_self_check(w));
     wakes.extend(next_refresh(w));
     wakes.extend(next_cleanup(w));
+    wakes.extend(next_upkeep(w));
+    // The editor's time-left line by Revert changes its words (B197 (e)).
+    editor::wakes(w, &mut wakes);
     // macOS waits on the will-sleep answer: it goes at the hold's end at the latest.
     wakes.extend(w.mac.sleep_hold.map(|t| t.plus(SLEEP_HOLD_MS)));
     wakes.extend(next_download(w).map(|(t, _)| t));
     wakes.into_iter().filter(|t| *t > w.now).min()
+}
+
+/// Naming's last re-wiring didn't go through (N66, law 12) and nothing runs since: said in the
+/// window it was asked from, for this visit to it.
+pub fn ai_fell_through(w: &World, window: crate::world::WindowKind) -> bool {
+    let entered = w.session.windows.get(&window).map(|d| d.entered);
+    !w.inflight.ops.contains_key(&Op::Ai) && w.inflight.failures.get(&Op::Ai).is_some_and(|f| entered.is_some_and(|e| f.at >= e))
+}
+
+/// The open take's link, for the `shroom` command's stop (dev/proposals/cli-agent-skill.md):
+/// the page exists from the moment Stop is pressed (law 3: this stop made it).
+pub fn cli_link(w: &World) -> Option<String> {
+    let host = &w.space.identity.as_ref()?.host;
+    Some(format!("https://{host}/{}", w.take.as_ref()?.rec.0))
 }

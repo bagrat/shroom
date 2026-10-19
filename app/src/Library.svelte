@@ -5,6 +5,8 @@
   import { onMount } from "svelte";
   import { act, key, onScene, sceneGet, type Action } from "./lib/ipc";
   import { typed } from "./lib/typed";
+  import Btn from "./onboarding/Btn.svelte";
+  import Cleanup from "./library/Cleanup.svelte";
   import Menu from "./library/Menu.svelte";
   import Row from "./library/Row.svelte";
   import Sheet from "./library/Sheet.svelte";
@@ -107,6 +109,9 @@
   {@const b = w.body}
   <div class="lib" data-state={w.id} data-faces={w.faces.join("|")}>
     <div class="behind" inert={!!b.sheet}>
+      {#if b.cleanup}
+        <Cleanup c={b.cleanup} {send} />
+      {:else}
       <header class="toolbar">
         <h1>{b.title}</h1>
         {#if b.scope.length}
@@ -143,6 +148,15 @@
         </label>
       </header>
       {#if b.notice}<p class="notice">{b.notice}</p>{/if}
+      {#if b.cleanup_line}
+        <!-- N68: the videos worth deleting, in one quiet line; Review… opens them, Not now puts it away. -->
+        <div class="cline" data-line="cleanup">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.6 8.5h5.8l.6-8.5" /></svg>
+          <span class="text">{b.cleanup_line.line}</span>
+          <Btn b={b.cleanup_line.review} {send} />
+          <Btn b={b.cleanup_line.dismiss} {send} />
+        </div>
+      {/if}
       {#each notes as n}<p class="notes">{n}</p>{/each}
       <div class="list">
         {#if b.empty}
@@ -165,6 +179,7 @@
         {/if}
       </div>
       {#if b.footer}<footer class="foot">{b.footer}</footer>{/if}
+      {/if}
     </div>
     {#if b.sheet}<Sheet sheet={b.sheet} {send} />{/if}
     {#if menu}<Menu items={menu.items} x={menu.x} y={menu.y} {send} close={() => (menu = null)} />{/if}

@@ -53,5 +53,9 @@ fn mark(w: &mut World, fx: &[Effect]) {
         if let Effect::Shell(effect::ShellCmd::AllowSleep) = e {
             w.mac.sleep_hold = None;
         }
+        // A permanent copy is asked once (N63): its answer, or its failure, settles it.
+        if let Effect::Editor(effect::EditCmd::Copy { rec, rev }) = e {
+            w.library_ops.copies.insert(rec.clone(), world::CopyOwed { rev: *rev, asked: true });
+        }
     }
 }

@@ -1,0 +1,290 @@
+{
+ "duration": 18.54027210884354,
+ "words": [
+  {
+   "text": "Your",
+   "start": 0.0,
+   "end": 0.74
+  },
+  {
+   "text": "video",
+   "start": 0.74,
+   "end": 1.12
+  },
+  {
+   "text": "uploads",
+   "start": 1.12,
+   "end": 1.84
+  },
+  {
+   "text": "while",
+   "start": 1.84,
+   "end": 2.02
+  },
+  {
+   "text": "you",
+   "start": 2.02,
+   "end": 2.26
+  },
+  {
+   "text": "talk,",
+   "start": 2.26,
+   "end": 2.6
+  },
+  {
+   "text": "so",
+   "start": 2.98,
+   "end": 3.28
+  },
+  {
+   "text": "the",
+   "start": 3.28,
+   "end": 3.48
+  },
+  {
+   "text": "link",
+   "start": 3.48,
+   "end": 3.7
+  },
+  {
+   "text": "is",
+   "start": 3.7,
+   "end": 4.04
+  },
+  {
+   "text": "ready",
+   "start": 4.04,
+   "end": 4.3
+  },
+  {
+   "text": "the",
+   "start": 4.3,
+   "end": 4.54
+  },
+  {
+   "text": "moment",
+   "start": 4.54,
+   "end": 4.78
+  },
+  {
+   "text": "you",
+   "start": 4.78,
+   "end": 5.12
+  },
+  {
+   "text": "stop.",
+   "start": 5.12,
+   "end": 5.5
+  },
+  {
+   "text": "It",
+   "start": 6.1,
+   "end": 6.22
+  },
+  {
+   "text": "goes",
+   "start": 6.22,
+   "end": 6.48
+  },
+  {
+   "text": "straight",
+   "start": 6.48,
+   "end": 6.84
+  },
+  {
+   "text": "to",
+   "start": 6.84,
+   "end": 7.18
+  },
+  {
+   "text": "your",
+   "start": 7.18,
+   "end": 7.32
+  },
+  {
+   "text": "own",
+   "start": 7.32,
+   "end": 7.56
+  },
+  {
+   "text": "bucket",
+   "start": 7.56,
+   "end": 7.92
+  },
+  {
+   "text": "on",
+   "start": 7.92,
+   "end": 8.36
+  },
+  {
+   "text": "your",
+   "start": 8.36,
+   "end": 8.52
+  },
+  {
+   "text": "own",
+   "start": 8.52,
+   "end": 8.74
+  },
+  {
+   "text": "account,",
+   "start": 8.74,
+   "end": 9.18
+  },
+  {
+   "text": "which",
+   "start": 9.44,
+   "end": 9.54
+  },
+  {
+   "text": "is",
+   "start": 9.54,
+   "end": 9.82
+  },
+  {
+   "text": "hum",
+   "start": 9.82,
+   "end": 10.06
+  },
+  {
+   "text": "wait.",
+   "start": 10.06,
+   "end": 10.56
+  },
+  {
+   "text": "Shroom",
+   "start": 11.5,
+   "end": 11.7
+  },
+  {
+   "text": "cut.",
+   "start": 11.7,
+   "end": 12.08
+  },
+  {
+   "text": "It",
+   "start": 12.88,
+   "end": 13.02
+  },
+  {
+   "text": "goes",
+   "start": 13.02,
+   "end": 13.26
+  },
+  {
+   "text": "straight",
+   "start": 13.26,
+   "end": 13.66
+  },
+  {
+   "text": "to",
+   "start": 13.66,
+   "end": 13.98
+  },
+  {
+   "text": "your",
+   "start": 13.98,
+   "end": 14.08
+  },
+  {
+   "text": "own",
+   "start": 14.08,
+   "end": 14.32
+  },
+  {
+   "text": "bucket",
+   "start": 14.32,
+   "end": 14.7
+  },
+  {
+   "text": "in",
+   "start": 14.7,
+   "end": 15.16
+  },
+  {
+   "text": "your",
+   "start": 15.16,
+   "end": 15.32
+  },
+  {
+   "text": "own",
+   "start": 15.32,
+   "end": 15.62
+  },
+  {
+   "text": "cloud",
+   "start": 15.62,
+   "end": 15.86
+  },
+  {
+   "text": "account",
+   "start": 15.86,
+   "end": 16.4
+  },
+  {
+   "text": "and",
+   "start": 16.4,
+   "end": 16.8
+  },
+  {
+   "text": "nowhere",
+   "start": 16.8,
+   "end": 17.14
+  },
+  {
+   "text": "else.",
+   "start": 17.14,
+   "end": 17.58
+  }
+ ],
+ "silences": [
+  {
+   "start": 0.0,
+   "end": 0.615193
+  },
+  {
+   "start": 2.65846,
+   "end": 2.84254
+  },
+  {
+   "start": 2.84277,
+   "end": 3.05388
+  },
+  {
+   "start": 5.67048,
+   "end": 6.09039
+  },
+  {
+   "start": 8.12807,
+   "end": 8.26336
+  },
+  {
+   "start": 9.22608,
+   "end": 9.39329
+  },
+  {
+   "start": 10.1735,
+   "end": 10.2959
+  },
+  {
+   "start": 10.7171,
+   "end": 11.331
+  },
+  {
+   "start": 12.2617,
+   "end": 12.9011
+  },
+  {
+   "start": 14.8666,
+   "end": 15.0532
+  },
+  {
+   "start": 16.4979,
+   "end": 16.6816
+  },
+  {
+   "start": 17.7303,
+   "end": 18.5403
+  }
+ ]
+}

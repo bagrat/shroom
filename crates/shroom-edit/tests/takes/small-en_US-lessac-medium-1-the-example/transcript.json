@@ -1,0 +1,137 @@
+{
+ "duration": 8.725804988662132,
+ "words": [
+  {
+   "text": "Hello,",
+   "start": 0.44,
+   "end": 0.86
+  },
+  {
+   "text": "that",
+   "start": 1.06,
+   "end": 1.14
+  },
+  {
+   "text": "is",
+   "start": 1.14,
+   "end": 1.3
+  },
+  {
+   "text": "Shroom.",
+   "start": 1.3,
+   "end": 1.74
+  },
+  {
+   "text": "Shroom",
+   "start": 2.4,
+   "end": 2.58
+  },
+  {
+   "text": "cut.",
+   "start": 2.58,
+   "end": 2.8
+  },
+  {
+   "text": "Hello,",
+   "start": 3.62,
+   "end": 3.8
+  },
+  {
+   "text": "this",
+   "start": 4.06,
+   "end": 4.16
+  },
+  {
+   "text": "is",
+   "start": 4.16,
+   "end": 4.34
+  },
+  {
+   "text": "Shroom.",
+   "start": 4.34,
+   "end": 4.74
+  },
+  {
+   "text": "Today",
+   "start": 5.24,
+   "end": 5.46
+  },
+  {
+   "text": "I'll",
+   "start": 5.46,
+   "end": 5.78
+  },
+  {
+   "text": "show",
+   "start": 5.78,
+   "end": 5.96
+  },
+  {
+   "text": "you",
+   "start": 5.96,
+   "end": 6.12
+  },
+  {
+   "text": "how",
+   "start": 6.12,
+   "end": 6.28
+  },
+  {
+   "text": "to",
+   "start": 6.28,
+   "end": 6.46
+  },
+  {
+   "text": "share",
+   "start": 6.46,
+   "end": 6.66
+  },
+  {
+   "text": "a",
+   "start": 6.66,
+   "end": 6.82
+  },
+  {
+   "text": "recording",
+   "start": 6.82,
+   "end": 7.16
+  },
+  {
+   "text": "in",
+   "start": 7.16,
+   "end": 7.34
+  },
+  {
+   "text": "one",
+   "start": 7.34,
+   "end": 7.56
+  },
+  {
+   "text": "click.",
+   "start": 7.56,
+   "end": 7.82
+  }
+ ],
+ "silences": [
+  {
+   "start": 0.0,
+   "end": 0.61737
+  },
+  {
+   "start": 1.82322,
+   "end": 2.33905
+  },
+  {
+   "start": 2.94104,
+   "end": 3.56694
+  },
+  {
+   "start": 4.82812,
+   "end": 5.24186
+  },
+  {
+   "start": 7.91351,
+   "end": 8.7258
+  }
+ ]
+}

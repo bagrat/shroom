@@ -55,7 +55,7 @@ environment settings to add a tool, whatever generic setup-script advice says.
 
 ```bash
 # The crates — everything but the app shell and the tests that record
-cargo test -p shroom-core -p shroom-spec -p shroom-testpattern -p shroom-cloudfake -p shroom-storage -p shroom-cloud
+cargo test -p shroom-core -p shroom-spec -p shroom-testpattern -p shroom-cloudfake -p shroom-storage -p shroom-cloud -p shroom-cli
 cargo test --lib -p shroom-encode -p shroom-record -p shroom-update -p shroom-capture
 cargo test -p shroom-upload --lib --test faults --test inits --test library --test progress
 cargo check --workspace --exclude shroom-app --all-targets   # the Mac-only tests still compile
@@ -70,7 +70,7 @@ npm run -s check --workspace app
 npm run -s build --workspace app
 
 # The landing page, the agent page, the media readers, the spec's readable form
-node --test site/test/landing.test.mjs site/test/agent.test.mjs tests/e2e/av.test.mjs tests/e2e/tone.test.mjs
+node --test site/test/landing.test.mjs site/test/agent.test.mjs site/test/cli.test.mjs tests/e2e/av.test.mjs tests/e2e/tone.test.mjs
 python3 tools/render-machine-md.py --check
 ```
 

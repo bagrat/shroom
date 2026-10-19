@@ -3,13 +3,13 @@
 // account. One dependency-free ES module (RESEARCH R7.1: provisioning has no bundler);
 // the app deploys this exact file. Recordings' bytes and records go straight from the
 // recording Mac to the bucket (N4); the Worker reads them, and writes only records of its
-// own: the space's roster and ownership ledger, one-time page keys, upload budgets and
-// one advisory health flag (WORKER-INTERFACE §4.1).
+// own: the space's roster and ownership ledger, one-time page keys, upload budgets, one
+// advisory health flag, and its videos' play counts (WORKER-INTERFACE §4.1, §4.22).
 //
 // Routes (ARCHITECTURE §8.1, WORKER-INTERFACE §4):
 //   GET /<id>                the page, its face chosen by meta/<id>.json
 //   GET /m/<id>/<file>       media from rec/<id>/…, with Range (206) and HEAD
-//   GET /d/<id>              the single-file copy, named after the live title
+//   GET /d/<id>              the single-file copy (an edit's, once it's up), named after the live title
 //   GET /_shroom/hls.js      the pinned hls.js, kept in the bucket (no third-party CDN)
 //   GET /_shroom/ping        "this answers as a shroom space", with the page's iface and version
 //   GET /favicon.svg, /favicon.png, /favicon.ico
@@ -21,10 +21,11 @@
 //   GET /<id>?embed=1        the embed face: the player alone, the mark small (Notion, iframes)
 //   GET /oembed?url=…        oEmbed discovery's answer: an iframe of the embed face
 //   GET /join/<code>         the join page and its faces (Region 6, N29)
+//   POST /_shroom/view/<id>  a play's beacon: counted in .shroom/views/, nothing that names a viewer (N68)
 //   /_shroom/api/…           the app's door for members and Macs without the token:
 //                            peek · join · enroll · me · mint · key · library · members ·
 //                            invites · invites/<iid> · members/<mid> · devices/<did|self> ·
-//                            mark · health — JSON carrying "shroom":1, success or error
+//                            mark · health · cleanup · plays — JSON carrying "shroom":1, success or error
 //
 // Who is who (WORKER-INTERFACE §2, §3): the roster (.shroom/registry/roster.json) holds
 // members, Macs and invites, and every change to it is one compare-and-swap. A Mac proves
@@ -34,7 +35,8 @@
 // amended): POST /_shroom/api/key writes .shroom/keys/<sha256(k)> = {member, device, exp};
 // redeeming spends it by CAS and sets a cookie {m, d, t} HMAC-signed with
 // .shroom/cookie.key, re-checked against the roster on every use. None of .shroom/ is
-// ever served: /m/ reads only rec/<id>/…, /d/ only rec/<id>/video.mp4.
+// ever served: /m/ reads only rec/<id>/…, /d/ only rec/<id>/video.mp4 or an edit's copy
+// beside it.
 
 /** Said-lines, verbatim from the spec (checked by test/copy.test.js) — or, where the spec
  * prints none, logged in DECISIONS.md's copy table for Bagrat to ratify. */
@@ -50,14 +52,18 @@ export const COPY = {
   copied: "Copied",
   // Copy thumbnail (N46): the video's picture, wrapped in the link.
   copyThumbnail: "Copy thumbnail",
+  // Edit in shroom (N69): the owner page's scissors, opening the video in shroom's editor.
+  editInShroom: "Edit in shroom",
   preparingThumbnail: "Preparing the thumbnail…",
   waitingConnection: "Waiting for connection — your link already works.",
   waitingSpace: "Waiting for your space — your link already works.",
   // The spec's upload truth ends here, but the page no longer says it: once every file is
   // up, the upload line simply goes (the restyle — Bagrat's call). The popover still does.
   fullyLive: "Fully live ✓",
-  // The owner page's upload line, for a few seconds once the last file is up (B142).
-  ready: "Ready ✓",
+  // The owner page's one line from go-live, through the upload and, in a space that listens,
+  // while the take is heard (N65 (7); Bagrat, 2026-10-18). It took the place of “Uploading —
+  // 40%. Your link already works.” and of B142's “Ready ✓”.
+  finishing: "Finishing your video — the link already works, share it anytime.",
   // The join page (r6: join-landing and its faces).
   getShroom: "Get shroom",
   pasteThis: "Paste this into Terminal (⌘ space, type “Terminal”) and press Return — it installs shroom and opens it, already knowing it's you.",
@@ -94,11 +100,24 @@ export const COPY = {
   speed: "Playback speed",
   mute: "Mute",
   unmute: "Unmute",
+  // Names, chapters and captions (N66, N67): the owner page's two lines, and the player's
+  // Captions button, in DECISIONS' copy table too.
+  named: "Named from what you said. Click the title to change it.",
+  namingLater: "Its name and chapters come a little later, once your free hours are back.",
+  captions: "Captions",
+  // Voice cuts on the owner page (N65, owner-page-cuts; provisional words).
+  cutsHeading: "Cut where you said “shroom cut”",
+  cutsOnlyYou: "Only you see this.",
+  putBack: "Put back",
+  cutAgain: "Cut again",
+  cutsUnsure: "Not sure how far back the slip went — check this one.",
+  cutsChanged: "changed in the editor",
+  cutsCouldntSave: "Couldn't save that. Check your connection, then try again.",
+  // The hint, on a take with no voice cuts in a space that listens (owner-page-cue-hint).
+  cueHint: "Slipped? Say “shroom cut”, then say the line again.",
+  cueHintGotIt: "Got it",
 };
 
-/** The upload line while bytes arrive: "Uploading — 40%. Your link already works." */
-/** @param {number} pct */
-export const uploadingLine = (pct) => `Uploading — ${pct}%. Your link already works.`;
 /** A member's own stalled video while the space can't take uploads (N40, r4). */
 /** @param {string} name */
 export const waitingFor = (name) => `Waiting for ${name}'s space — your link already works.`;
@@ -136,7 +155,7 @@ export const STALL_SECONDS = 120;
 export const IFACE = 2;
 /** The version of the app that deploys this file — the same as the app's own
  * (`app/src-tauri/tauri.conf.json`, held equal by a shroom-cloud test). */
-export const VERSION = "0.1.24";
+export const VERSION = "0.1.25";
 
 const ID = /^[A-Za-z0-9_-]{16}$/;
 const HLS_JS_KEY = ".shroom/player/hls.min.js";
@@ -163,10 +182,16 @@ export default {
   async fetch(request, env, ctx) {
     return handle(request, env, Date.now(), ctx);
   },
+  /** The schedule each minute, on a space with naming on (B206 c).
+   * @param {{ scheduledTime: number }} controller @param {Env} env @param {Ctx} ctx */
+  async scheduled(controller, env, ctx) {
+    if (env.AI) ctx.waitUntil(aiTick(env, controller.scheduledTime || Date.now()));
+  },
 };
 
 /**
- * @typedef {{ BUCKET: R2Bucket, R2_PARENT?: string }} Env
+ * @typedef {{ BUCKET: R2Bucket, R2_PARENT?: string, AI?: Ai }} Env
+ * @typedef {{ run(model: string, input: Record<string, unknown>): Promise<any> }} Ai
  * @typedef {{ waitUntil(p: Promise<unknown>): void }} Ctx
  * @typedef {{ etagMatches?: string, etagDoesNotMatch?: string }} R2Conditional
  * @typedef {{ prefix?: string, startAfter?: string, cursor?: string, limit?: number, include?: string[] }} R2ListOptions
@@ -176,7 +201,7 @@ export default {
  *   delete(key: string): Promise<void>, list(options?: R2ListOptions): Promise<R2Objects> }} R2Bucket
  * @typedef {{ member: string, device: string, ownerClass: boolean, roster: any }} Owner
  * @typedef {{ key: string, size: number, etag: string, httpEtag?: string, customMetadata?: Record<string, string>, range?: { offset?: number, length?: number, suffix?: number } }} R2Object
- * @typedef {R2Object & { body: ReadableStream, text(): Promise<string> }} R2ObjectBody
+ * @typedef {R2Object & { body: ReadableStream, text(): Promise<string>, arrayBuffer?(): Promise<ArrayBuffer> }} R2ObjectBody
  */
 
 /** `ctx` is the runtime's (its `waitUntil` lets a reply leave before its housekeeping);
@@ -186,24 +211,37 @@ export async function handle(request, env, now, ctx) {
   const url = new URL(request.url);
   const path = url.pathname;
   if (path.startsWith(API)) return api(request, env, url, now);
-  if (request.method === "POST" && (path === "/_shroom/mark" || path.startsWith("/_shroom/title/"))) return post(request, env, url, now);
+  if (request.method === "POST" && (path === "/_shroom/mark" || path.startsWith("/_shroom/title/") || path.startsWith("/_shroom/edits/"))) return post(request, env, url, now);
   if (request.method === "POST" && path.startsWith("/_shroom/thumb/")) return thumbPost(request, env, url);
+  const vb = request.method === "POST" && path.match(/^\/_shroom\/view\/([A-Za-z0-9_-]{16})$/);
+  if (vb) return viewBeacon(request, env, url, vb[1], now);
   const join = path.match(/^\/join\/(.*)$/);
   if (join) return request.method === "GET" || request.method === "HEAD" ? joinPage(request, env, url, join[1], now) : plain(405, "");
   if (request.method !== "GET" && request.method !== "HEAD") return plain(405, "");
 
   // The stop's reachability probe: "this address answers as a shroom space" — no storage
   // read, so it stays inside the probe's budget (DV #8).
-  if (path === "/_shroom/ping") return json({ shroom: true, iface: IFACE, version: VERSION });
+  // A page carrying Cloudflare's AI says so (N66): the setup Mac reads naming's switch here.
+  if (path === "/_shroom/ping") return json({ shroom: true, iface: IFACE, version: VERSION, ...(env.AI ? { ai: true } : {}) });
   if (path === "/_shroom/hls.js") return media(request, env, HLS_JS_KEY, "text/javascript", "public, max-age=31536000, immutable");
   // The tab icon, answered here so the page below never takes "favicon.ico" for a video's
   // id (a browser asks for that one unprompted) — whatever rides the address.
   if (path === "/favicon.svg" || path === "/favicon.png" || path === "/favicon.ico") return tabIcon(request, path);
 
+  // Names, chapters and captions (N66, N67): the captions file, and the owner page's ask for a name on its way.
+  const cc = path.match(/^\/_shroom\/cc\/([A-Za-z0-9_-]{16})$/);
+  if (cc) return aiCaptionsRoute(request, env, cc[1], url).catch(() => plain(503, ""));
+  const named = path.match(/^\/_shroom\/named\/([A-Za-z0-9_-]{16})$/);
+  if (named) return aiNamedRoute(request, env, named[1]).catch(() => plain(503, ""));
+
   const st = path.match(/^\/_shroom\/status\/([A-Za-z0-9_-]{16})$/);
   // A record that can't be read right now is the unavailable face, never Cloudflare's own
   // error page (DECISIONS B94).
-  if (st) return json(await readMeta(env, st[1]).then((meta) => status(meta, now), () => ({ state: "unavailable" })));
+  if (st) return json(await readMeta(env, st[1]).then((meta) => status(meta, now, st[1], listensOf(env)), () => ({ state: "unavailable" })));
+
+  // A voice cut's strip and what plays, for the owner page that sees them land (N65).
+  const ed = path.match(/^\/_shroom\/edits\/([A-Za-z0-9_-]{16})$/);
+  if (ed) return editsGet(request, env, ed[1], now);
 
   const m = path.match(/^\/m\/([A-Za-z0-9_-]{16})\/([A-Za-z0-9_./-]+)$/);
   if (m) {
@@ -221,7 +259,18 @@ export async function handle(request, env, now, ctx) {
       readMeta(env, m[1]).then((v) => ({ v }), () => null),
       media(request, env, `rec/${m[1]}/${file}`, type, "public, max-age=3600"),
     ]);
-    if (!meta || meta.v?.state === "deleted") {
+    // Once an edit's permanent copy is up, the original is out of reach (N63, step 3); a
+    // baked recording is the files its record names (B197). Copy thumbnail's pictures stay,
+    // so a paste already sent keeps its picture (B164) — unless an edit took something from
+    // the start they show: then only the video's own picture.
+    const v = meta?.v;
+    const allowed = () => {
+      if (!v) return true;
+      if (THUMB_FILE.test(file)) return startKept(m[1], v) || currentThumbFiles(m[1], v).includes(file);
+      const only = servedOnly(m[1], v);
+      return !only || only.has(file);
+    };
+    if (!meta || v?.state === "deleted" || !allowed()) {
       try { await res.body?.cancel(); } catch { /* nothing to release */ }
       // A record that can't be read can't vouch the video still exists: fail closed.
       return meta ? plain(404, "") : plain(503, "");
@@ -241,7 +290,7 @@ export async function handle(request, env, now, ctx) {
     // The space's storage failing under the read is the spec's unavailable face (B94).
     if (url.searchParams.get("embed") === "1") return embed(env, p[1], now, url.origin).catch((e) => unavailableEmbed(e));
     // Who this browser is, read beside the record rather than before it (DECISIONS B59 g).
-    return page(env, p[1], now, ownerOf(request, env), url.origin).catch((e) => unavailableFace(e));
+    return page(env, p[1], now, ownerOf(request, env), url.origin, ctx).catch((e) => unavailableFace(e));
   }
 
   return plain(404, "");
@@ -286,8 +335,10 @@ function json(body, status = 200) {
 
 /** The upload line's truth — no title, so a guessed id learns nothing. */
 /** @typedef {{ state: string, pct?: number, stalled?: boolean, poster?: boolean, mp4?: boolean, drained?: boolean }} Status */
-/** @param {any} meta @param {number} now @returns {Status} */
-export function status(meta, now) {
+/** `id`: the recording's, for the edit's copy. `listens`: the space hears its takes (N66:
+ * Cloudflare's AI is bound to its page).
+ * @param {any} meta @param {number} now @param {string} [id] @param {boolean} [listens] @returns {Status} */
+export function status(meta, now, id = meta?.id, listens = false) {
   if (!meta) return { state: "waiting" };
   if (meta.state === "deleted") return { state: "removed" };
   // The owner page swaps the player in with its first frame, and adds Download when the
@@ -295,10 +346,21 @@ export function status(meta, now) {
   // Live plays at once; the upload line goes only once the upload drains — the
   // second-class files too, which the Mac counts in `progress.total` and sends after the
   // go-live (r4 `fully-live`: the queue drained; DECISIONS B49). A record without a count is drained.
-  if (meta.state === "live" && meta.media?.hls) {
-    // `thumb`: Copy thumbnail's newest picture for the title (N46) — what the Library copies.
-    // `dur`: the length, which a page opened while the video uploaded draws on its picture.
-    const live = { state: "live", poster: !!meta.media.poster, mp4: !!meta.media.mp4, teaser: !!meta.media.teaser, thumb: newestThumb(meta), dur: Number(meta.durationSec) > 0 ? Number(meta.durationSec) : 0, drained: drained(meta) };
+  if (playable(String(id), meta)) {
+    // `thumb`: Copy thumbnail's newest picture for the title (N46) — what the Library copies
+    // — only one drawn from what the video shows now (`currentThumb`).
+    // `dur`: the length as it plays (N63: the edited one), which a page opened while the
+    // video uploaded draws on its picture. With an edit (N63), `keep`: the ranges that
+    // play; and once its permanent copy is up, `copy`: where it is — a player that was
+    // playing the original when the copy took its place moves over to it. A baked
+    // recording with no edit (B197) names its own file there the same way: the bake took
+    // the original away from a player still on it. `cuts`: the voice cuts' word for a page
+    // already open (N65): coming, or their tag.
+    const view = viewOf(String(id), meta);
+    const moved = view.copy ?? (view.baked && !view.edit && Array.isArray(meta.bakedFrom) && meta.bakedFrom.length > 0
+      ? { src: `/m/${id}/${view.file}`, dur: view.dur, poster: view.poster ?? undefined } : null);
+    const live = { state: "live", poster: !!view.poster, mp4: view.download, teaser: !!view.teaser, thumb: newestThumb(String(id), meta), dur: view.dur, drained: drained(meta),
+      ...(view.edit ? { keep: view.edit.keep } : {}), ...(moved ? { copy: { src: moved.src, dur: moved.dur, poster: moved.poster ?? null } } : {}), ...cutsField(meta, now, listens) };
     return live.drained ? live : { ...live, pct: pct(meta), stalled: stalledAt(meta, now) };
   }
   if (meta.state !== "uploading") return { state: "unavailable" };
@@ -527,6 +589,11 @@ async function post(request, env, url, now) {
     if (!title) return plain(400, "");
     return writeTitle(env, t[1], title, owner);
   }
+  const e = url.pathname.match(/^\/_shroom\/edits\/([A-Za-z0-9_-]{16})$/);
+  if (e) {
+    if (typeof body?.cut !== "string" || !CUT_ID.test(body.cut) || typeof body?.applied !== "boolean") return plain(400, "");
+    return writeCut(env, e[1], body.cut, body.applied, owner, now);
+  }
   if (url.pathname === "/_shroom/mark") {
     if (!owner.ownerClass || typeof body?.on !== "boolean") return plain(403, "");
     await writeMark(env, body.on, now);
@@ -564,14 +631,252 @@ async function writeTitle(env, id, title, owner) {
   return plain(503, "");
 }
 
+// ───────── voice cuts (N65; DECISIONS B200, B201) ─────────
+
+/** The cuts the Mac lands where the speaker said “shroom cut” (crates/shroom-edit). */
+const VOICE_KINDS = new Set(["retake", "cue-only", "line-before-cue"]);
+const CUT_ID = /^[A-Za-z0-9_-]{1,32}$/;
+/** How long a page waits on a Mac that said it's listening before it stops polling for
+ * the cuts. */
+export const VOICE_WAIT_MS = 5 * 60 * 1000;
+
+/** What plays: the trim minus the applied cuts, overlaps merged — the edit list's own
+ * `keep()` (crates/shroom-edit), for the player. @param {any} edits @returns {number[][]} */
+export function keepOf(edits) {
+  const dur = Number(edits?.source_duration) || 0;
+  const lo = Number.isFinite(Number(edits?.in)) ? Number(edits.in) : 0;
+  const hi = Number.isFinite(Number(edits?.out)) ? Number(edits.out) : dur;
+  /** @type {number[][]} */
+  const cuts = (Array.isArray(edits?.cuts) ? edits.cuts : [])
+    .filter((/** @type {any} */ c) => c && c.applied === true && Number(c.end) > Number(c.start))
+    .map((/** @type {any} */ c) => [Number(c.start), Number(c.end)])
+    .sort((/** @type {number[]} */ a, /** @type {number[]} */ b) => a[0] - b[0]);
+  const keep = [];
+  let at = lo;
+  for (const [a, b] of cuts) {
+    const s = Math.max(a, lo), e = Math.min(b, hi);
+    if (e <= at) continue;
+    if (s > at) keep.push([at, s]);
+    at = Math.max(at, e);
+  }
+  if (at < hi) keep.push([at, hi]);
+  return keep;
+}
+
+/** The strip's rows: voice cuts in time order. A cue with nothing said again after it
+ * comes as two cuts, its own words and the line before it through them, both cut though how
+ * far back the slip went isn't clear (Bagrat, 2026-10-18): the row is the line's, its words and
+ * then the cue's (`cue`), each struck while its own cut holds, so Put back brings the line back
+ * and leaves “shroom cut” out. Each row has the planner's words around its cut (`leads`,
+ * `resumes`), for where it joins, and whether the editor moved its edges since (`adjusted`, N63).
+ * @param {any} edits @returns {{ id: string, at: number, end: number, words: string, cue: string, cueOn: boolean, leads: string, resumes: string, on: boolean, unsure: boolean, adjusted: boolean }[]} */
+function voiceRows(edits) {
+  const cuts = (Array.isArray(edits?.cuts) ? edits.cuts : []).filter((/** @type {any} */ c) => c && VOICE_KINDS.has(c.kind) && typeof c.id === "string");
+  const lines = cuts.filter((/** @type {any} */ c) => c.kind === "line-before-cue");
+  const rows = [];
+  for (const c of cuts) {
+    if (c.kind === "cue-only" && lines.some((/** @type {any} */ o) => Number(o.start) <= Number(c.start) && Number(o.end) >= Number(c.end))) continue;
+    let words = typeof c.removed === "string" ? c.removed.trim() : "";
+    let cue = "", cueOn = false;
+    if (c.kind === "line-before-cue") {
+      const q = cuts.find((/** @type {any} */ q) => q.kind === "cue-only" && Number(c.start) <= Number(q.start) && Number(c.end) >= Number(q.end));
+      const own = typeof q?.removed === "string" ? q.removed.trim() : "";
+      if (own && words.endsWith(own)) [words, cue, cueOn] = [words.slice(0, -own.length).trim(), own, q?.applied === true];
+    }
+    const text = (/** @type {unknown} */ x) => (typeof x === "string" ? x.trim() : "");
+    rows.push({ id: c.id, at: Number(c.start) || 0, end: Number(c.end) || 0, words, cue, cueOn, leads: text(c.leads), resumes: text(c.resumes), on: c.applied === true, unsure: c.kind === "line-before-cue", adjusted: c.adjusted === true });
+  }
+  return rows.sort((a, b) => a.at - b.at);
+}
+
+/** The planner's words either side of a cut at most (shroom-edit's `AROUND`): a full six
+ * were cut short, and more was said. */
+const AROUND = 6;
+
+/** A row's quoted words: the cut's own (`.w`, struck while it is cut), then on the unsure cut
+ * the cue's (`.cue`, struck while its own cut holds), between a few of what plays around them
+ * (`.by`, never struck), `…` where more was said, none after a sentence's end.
+ * @param {{ words: string, cue: string, cueOn: boolean, leads: string, resumes: string }} r */
+function aroundCut(r) {
+  const full = (/** @type {string} */ s) => s.split(/\s+/).length >= AROUND;
+  const lead = r.leads ? `<span class="by">${escapeText(`${full(r.leads) ? "…" : ""}${r.leads}`)}</span> ` : "";
+  const then = r.resumes ? ` <span class="by">${escapeText(`${r.resumes}${full(r.resumes) && !/[.?!…]$/.test(r.resumes) ? "…" : ""}`)}</span>` : "";
+  const cue = r.cue ? `<span class="cue${r.cueOn ? " on" : ""}">${escapeText(r.cue)}</span>` : "";
+  return `<q>“${lead}<span class="w">${escapeText(r.words)}${cue ? " " : ""}</span>${cue}${then}”</q>`;
+}
+
+/** A cut whose edges the editor moved (B200 (g)): how long it is and where it now ends,
+ * “4.6 s, to 0:09 — changed in the editor”, in place of words that may no longer be what it cuts.
+ * @param {{ at: number, end: number }} r */
+function changedCut(r) {
+  return `<span class="changed">${escapeText(`${Math.max(0, r.end - r.at).toFixed(1)} s, to ${shroomClockText(r.end)}`)} — <span class="ed">${escapeText(COPY.cutsChanged)}</span></span>`;
+}
+
+/** The owner page's voice cuts under the player (owner-page-cuts): "" when the take has
+ * none. Its rows carry their state in their class — `cut on` struck with Put back, `cut`
+ * put back with Cut again — and the unsure cut its note above its words, either way.
+ * @param {any} edits */
+export function cutsStrip(edits) {
+  const rows = voiceRows(edits);
+  if (!rows.length) return "";
+  const li = rows.map((r) => {
+    const cls = r.on ? "cut on" : "cut";
+    const label = r.on ? COPY.putBack : COPY.cutAgain;
+    const note = r.unsure ? `<span class="why">${escapeText(COPY.cutsUnsure)}</span>` : "";
+    return `<li class="${cls}" data-cut="${escapeHtml(r.id)}"><span class="at">${escapeText(shroomClockText(r.at))}</span><span class="said">${note}${r.adjusted ? changedCut(r) : aroundCut(r)}</span><button type="button" data-press="${r.on ? "0" : "1"}">${escapeText(label)}</button></li>`;
+  }).join("");
+  return `<section class="cuts" id="cuts" aria-label="${escapeHtml(COPY.cutsHeading)}"><div class="cuts-head"><h2>${escapeText(COPY.cutsHeading)}</h2><span class="only">${escapeText(COPY.cutsOnlyYou)}</span></div><ol>${li}</ol><p class="unsaved" role="status" hidden>${escapeText(COPY.cutsCouldntSave)}</p></section>`;
+}
+
+/** m:ss of a time on the video, as the player writes it. @param {number} t */
+function shroomClockText(t) {
+  const s = Math.max(0, Math.floor(t));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+
+/** The status's word on the voice cuts: "coming" while a space that listens hears a take
+ * that went live less than VOICE_WAIT_MS ago and the Mac hasn't planned its cues yet (the
+ * edit list's `voice` mark, N63) — unless its words wait for tomorrow's free day (N66);
+ * then a short tag of the cuts as they stand, which any press changes — so a page already
+ * open knows when to fetch the strip. Never a word that was cut.
+ * @param {any} meta @param {number} now @param {boolean} [listens] @returns {{ cuts?: string }} */
+function cutsField(meta, now, listens = false) {
+  if (typeof meta?.edits?.voice?.planned_at !== "number") {
+    const live = Date.parse(meta?.publishedAt ?? "");
+    return listens && !meta?.naming?.later && Number.isFinite(live) && now - live < VOICE_WAIT_MS ? { cuts: "coming" } : {};
+  }
+  const rows = voiceRows(meta.edits);
+  if (!rows.length) return {};
+  let h = 0x811c9dc5;
+  for (const ch of rows.map((r) => `${r.id}:${r.on ? 1 : 0}${r.cue ? (r.cueOn ? 1 : 0) : ""}`).join(",")) h = Math.imul(h ^ ch.charCodeAt(0), 0x01000193) >>> 0;
+  return { cuts: h.toString(36) };
+}
+
+/** A press on the strip: one voice cut on or off, read-modify-write under If-Match like
+ * the title (B21). Answers the cut, what now plays, and the cuts' new tag.
+ * @param {Env} env @param {string} id @param {string} cut @param {boolean} applied @param {Owner} owner @param {number} now */
+async function writeCut(env, id, cut, applied, owner, now) {
+  const key = `meta/${id}.json`;
+  /** @type {boolean | null} */
+  let allowed = null;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const [object, gone] = await Promise.all([env.BUCKET.get(key), env.BUCKET.head(`${GONE}${id}`)]);
+    if (gone) {
+      try { await object?.body?.cancel(); } catch { /* nothing to release */ }
+      return plain(409, "");
+    }
+    if (!object) return plain(404, "");
+    /** @type {any} */
+    let meta;
+    try { meta = JSON.parse(await object.text()); } catch { return plain(409, ""); }
+    if (meta.state === "deleted") return plain(409, "");
+    if (allowed === null) allowed = await mayEdit(env, owner, id, true);
+    if (!allowed) return plain(403, "");
+    const target = Array.isArray(meta.edits?.cuts) ? meta.edits.cuts.find((/** @type {any} */ c) => c && c.id === cut) : null;
+    if (!target) return plain(404, "");
+    // The strip only ever presses voice cuts; hand cuts are the editor's (N63).
+    if (!VOICE_KINDS.has(target.kind)) return plain(403, "");
+    target.applied = applied;
+    // A press is a save (N63): the revision moves on, so a copy cut from the list before
+    // reads as stale and the page plays the original with the cuts skipped.
+    meta.edits.rev = (Number(meta.edits.rev) || 0) + 1;
+    const written = await env.BUCKET.put(key, JSON.stringify(meta), { onlyIf: { etagMatches: object.etag }, httpMetadata: { contentType: "application/json" } });
+    if (written) return noStore(json({ cut, applied, keep: keepOf(meta.edits), cuts: cutsField(meta, now, listensOf(env)).cuts ?? null }));
+  }
+  return plain(503, "");
+}
+
+/** GET /_shroom/edits/<id>: the strip and what plays, for the maker's or an owner-class
+ * browser — the owner page that sees the cuts land fetches them here.
+ * @param {Request} request @param {Env} env @param {string} id @param {number} now */
+async function editsGet(request, env, id, now) {
+  const owner = await ownerOf(request, env);
+  if (!owner) return plain(403, "");
+  const meta = await readMeta(env, id).catch(() => null);
+  if (!meta || meta.state === "deleted") return plain(404, "");
+  if (!(await mayEdit(env, owner, id, true))) return plain(403, "");
+  return noStore(json({ strip: cutsStrip(meta.edits), keep: keepOf(meta.edits), cuts: cutsField(meta, now, listensOf(env)).cuts ?? null }));
+}
+
+/** The decision model that judges how far back a voice cue's redo reaches (DECISIONS B202). */
+export const CUE_JUDGE = "@cf/cloudflare/clef";
+/** A question's words at most, and its starts at most: the planner asks no more. */
+const CUE_TEXT_MAX = 2000;
+const CUE_STARTS_MAX = 6;
+
+/** What Clef judges for one cue: what was said after the command, and each stretch before it
+ * the redo might replace, starting further back each time. The words said are its state, never
+ * its questions. @param {{ after: string, candidates: string[] }} q */
+function cueState(q) {
+  return "A screen recording, transcribed. The speaker slipped, said the command \"shroom cut\", and said it again, " +
+    "perhaps in other words, perhaps leaving part of it out. The editor will cut the command and the slip. " +
+    "Each numbered stretch below is what was said just before the command, each starting further back.\n\n" +
+    `After the command: «${q.after}»\n\n` +
+    q.candidates.map((c, k) => `Stretch ${k + 1}: «${c}»`).join("\n");
+}
+/** @param {number} k */
+const cueAsk = (k) =>
+  `Is everything in stretch ${k + 1} said again after the command, in the same or other words, so that cutting all of stretch ${k + 1} would lose nothing the speaker meant to keep?`;
+
+/** POST /_shroom/api/cue {rec, cue, after, candidates} (N65, DECISIONS B202): the judgment
+ * above the Mac's voice-cue planner — one Clef call, a score from 0 to 1 per start and how
+ * long Clef took (`ms`, for the Mac's log); the Mac picks. The take's maker or an owner-class
+ * Mac may ask, within its hour's budget. Whatever Clef can't answer is `later`, with why in a
+ * word (`no-ai`, `daily`: the free day used up, `busy`): the Mac keeps its own plan.
+ * @param {Request} request @param {Env} env @param {any} b @param {number} now */
+async function cue(request, env, b, now) {
+  const { who } = await authed(request, env);
+  const text = (/** @type {unknown} */ x) => typeof x === "string" && x.length <= CUE_TEXT_MAX;
+  const starts = Array.isArray(b.candidates) ? b.candidates : [];
+  if (typeof b.rec !== "string" || !ID.test(b.rec) || !Number.isInteger(b.cue) || b.cue < 0 || !text(b.after)
+    || !starts.length || starts.length > CUE_STARTS_MAX || !starts.every(text)) throw bad();
+  const ledger = await ledgerGet(env, b.rec);
+  if ((ledger ? ledger.member : M1) !== who.mid && !who.ownerClass) throw new Refusal(403, "not-yours");
+  const ai = /** @type {{ AI?: { run: (model: string, input: unknown) => Promise<any> } }} */ (env).AI;
+  if (!ai) return answer({ later: true, why: "no-ai" });
+  await spendBudget(env, who.did, now, "c", CUE_BUDGET);
+  const asked = Date.now();
+  try {
+    const questions = Object.fromEntries(starts.map((/** @type {string} */ _, /** @type {number} */ k) => [`s${k + 1}`, { type: "noul", instructions: cueAsk(k) }]));
+    const out = await ai.run(CUE_JUDGE, { model: "clef", state: cueState({ after: b.after, candidates: starts }), questions });
+    const scores = starts.map((/** @type {string} */ _, /** @type {number} */ k) => {
+      const n = Number(out?.answers?.[`s${k + 1}`]?.noul);
+      return Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : 0;
+    });
+    return answer({ scores, ms: Date.now() - asked });
+  } catch (e) {
+    // The free day used up reads as the AI build's does (its `aiRefusal`); anything else is busy.
+    const daily = /\b(3036|4006)\b|daily free allocation/i.test(String(/** @type {any} */ (e)?.message ?? e));
+    return answer({ later: true, why: daily ? "daily" : "busy" });
+  }
+}
+
+/** The space hears its takes (N66): Cloudflare's AI is bound to its page.
+ * @param {Env} env */
+function listensOf(env) {
+  return !!(/** @type {{ AI?: unknown }} */ (env).AI);
+}
+
+/** @param {Response} res */
+function noStore(res) {
+  res.headers.set("cache-control", "no-store");
+  return res;
+}
+
 /** Copy thumbnail's caps (N46, B164, B165): a loop 640 wide (the teaser's own width), a still 1200 wide; a title's two
  * pictures, twenty titles' worth. */
 export const THUMB = { gifMax: 800 * 1024, jpgMax: 300 * 1024, gifWidth: 640, jpgWidth: 1200, perVideo: 40 };
+/** How much of the video's start Copy thumbnail's pictures show: the still is its first
+ * frame, the loop its teaser's first 3 s (30 frames at 10 fps, `THUMB_JS`'s `loop`). */
+const THUMB_SECONDS = 3;
 
 /** The owner page stores the picture it drew for a title (N46, B164): a title save's
  * checks, then a GIF or a JPEG by its first bytes, under its caps, named by its contents,
- * and pointed at by the record only while the video still has that title. The one byte
- * write a cookie has — never over anything else, never a delete. */
+ * and pointed at by the record only while the video still has that title and shows the
+ * first frame it was drawn from: `x-shroom-from` names it (a page from before the header
+ * drew from `poster.jpg`), and it must be the one Copy thumbnail draws from now
+ * (`thumbSource`), else nothing is stored. The record's `thumb` carries it as `from`. The
+ * one byte write a cookie has — never over anything else, never a delete. */
 /** @param {Request} request @param {Env} env @param {URL} url */
 async function thumbPost(request, env, url) {
   if (request.headers.get("origin") !== url.origin) return plain(403, "");
@@ -592,6 +897,7 @@ async function thumbPost(request, env, url) {
   let drawnFor;
   try { drawnFor = decodeURIComponent(request.headers.get("x-shroom-title") ?? ""); } catch { return plain(400, ""); }
   drawnFor = drawnFor || null;
+  const drawnFrom = request.headers.get("x-shroom-from") ?? "poster.jpg";
 
   const key = `meta/${id}.json`;
   /** @type {boolean | null} */
@@ -614,6 +920,9 @@ async function thumbPost(request, env, url) {
     // Drawn for the title the video has now — an untitled video's picture has no band.
     const current = meta.titled ? meta.title : null;
     if (drawnFor !== current) return plain(409, "");
+    // Drawn from the first frame the video shows now (N63): never one an edit, its copy or
+    // its bake has left behind.
+    if (drawnFrom !== thumbSource(id, meta)) return plain(409, "");
     if (!stored) {
       const listed = await env.BUCKET.list({ prefix: `rec/${id}/thumb-` });
       const have = listed.objects.map((/** @type {{ key: string }} */ o) => o.key);
@@ -623,8 +932,7 @@ async function thumbPost(request, env, url) {
       }
       stored = true;
     }
-    const prev = meta.thumb && typeof meta.thumb === "object" && meta.thumb.title === current ? meta.thumb : {};
-    meta.thumb = { ...prev, title: current, [kind]: name };
+    meta.thumb = { ...(currentThumb(id, meta) ?? {}), title: current, from: drawnFrom, [kind]: name };
     const written = await env.BUCKET.put(key, JSON.stringify(meta), { onlyIf: { etagMatches: object.etag }, httpMetadata: { contentType: "application/json" } });
     if (written) return json({ url: `/m/${id}/${name}` });
   }
@@ -722,11 +1030,215 @@ function onePicture(env, id) {
 /** What the player plays (B177): the single-file copy once it's up and the stream is one
  * picture — a 5-minute view costs ~4–8 of the Worker's requests that way in Chromium, ~47
  * in Safari (it reads a file ~3 MB at a time), against ~56–58 through the stream's 6 s
- * pieces (worker/dev/view-cost.mjs) — and the stream otherwise.
- * Both are served by /m/ under the same removal gate.
- * @param {string} id @param {any} meta @param {Promise<boolean>} oneP */
-async function sourceOf(id, meta, oneP) {
-  return meta?.state === "live" && meta.media?.mp4 && (await oneP) ? `/m/${id}/video.mp4` : `/m/${id}/master.m3u8`;
+ * pieces (worker/dev/view-cost.mjs) — and the stream otherwise. An edit's permanent copy,
+ * once it matches the saved edit, before either (N63). A baked recording (B197) has no
+ * stream: its one file plays, and the stream's playlist, read beside the record before
+ * the record could say so, goes unasked.
+ * All are served by /m/ under the same removal gate.
+ * @param {string} id @param {any} meta @param {Promise<boolean>} oneP @param {View} [view] */
+async function sourceOf(id, meta, oneP, view = viewOf(id, meta)) {
+  if (meta?.state === "live" && view.copy) return view.copy.src;
+  if (view.baked) return `/m/${id}/${view.file}`;
+  return meta?.state === "live" && view.file && (await oneP) ? `/m/${id}/${view.file}` : `/m/${id}/master.m3u8`;
+}
+
+// ───────── the recording's own files (B197) ─────────
+
+/** Copy thumbnail's pictures beside a recording (N46): served by their own rule (`startKept`). */
+const THUMB_FILE = /^thumb-[0-9a-f]{16}\.(gif|jpg)$/;
+/** Each `media` slot's fixed name in the original, and the name's end in a baked edit. */
+const SLOTS = { mp4: ["video.mp4", ".mp4"], poster: ["poster.jpg", "-poster.jpg"], teaser: ["teaser.mp4", "-teaser.mp4"] };
+
+/** The file a `media` slot names, as a name beside the recording, or null. After a bake
+ * (B197) the record names its own files: a key is taken only when it sits directly under
+ * `rec/<id>/` and is a name of its slot's kind — the original's (`video.mp4`, `poster.jpg`,
+ * `teaser.mp4`) or an edit's (`edit-<n>.mp4`, `edit-<n>-poster.jpg`, `edit-<n>-teaser.mp4`).
+ * A record that still has its stream (`hls`) reads as it always has: a slot that's set is
+ * the original's fixed name, whatever its key says — never a key taken at its word.
+ * @param {string} id @param {any} meta @param {"mp4" | "poster" | "teaser"} slot */
+function ownFile(id, meta, slot) {
+  const m = meta?.media;
+  const key = m?.[slot];
+  if (!key) return null;
+  const [fixed, kind] = SLOTS[slot];
+  if (typeof key === "string" && ID.test(id) && key.startsWith(`rec/${id}/`)) {
+    const name = key.slice(`rec/${id}/`.length);
+    if (name === fixed || EDIT_FILE.exec(name)?.[1] === kind) return name;
+  }
+  return m.hls ? fixed : null;
+}
+
+/** A baked recording (B197): live, no stream, its one file named in `media.mp4`.
+ * @param {string} id @param {any} meta */
+function baked(id, meta) {
+  return meta?.state === "live" && !!meta.media && !meta.media.hls && !!ownFile(id, meta, "mp4");
+}
+
+/** The live faces play: the stream, or a baked recording's one file — unless its edit
+ * leaves nothing to play (N63), which no face plays as recorded: it reads as a video that
+ * can't play right now. @param {string} id @param {any} meta */
+function playable(id, meta) {
+  return meta?.state === "live" && (!!meta.media?.hls || baked(id, meta)) && editsOf(meta, id)?.keep.length !== 0;
+}
+
+/** What `/m/<id>/` serves when it isn't everything (Copy thumbnail's pictures aside: they
+ * follow `startKept`), or null. Once an edit's permanent copy is up (N63 step 3): the
+ * copy's own files, and the recording's own first frame — `poster.jpg`, or a baked
+ * recording's own poster, which a token-less Mac's Library fetches here until the bake
+ * names the copy's — only while the edit keeps that frame; never the stream, `video.mp4`,
+ * the teaser or an earlier bake's video, so a cut part is out of a viewer's reach. A baked
+ * recording (B197) otherwise: exactly the files its record names. The Macs read originals
+ * over S3, not here.
+ * @param {string} id @param {any} meta @returns {Set<string> | null} */
+function servedOnly(id, meta) {
+  const edit = editsOf(meta, id);
+  const copy = edit?.copy;
+  const bakedNow = baked(id, meta);
+  if (!copy && !bakedNow) return null;
+  const names = new Set();
+  const own = (/** @type {"mp4" | "poster" | "teaser"} */ slot) => { const f = ownFile(id, meta, slot); if (f) names.add(f); };
+  if (copy) {
+    for (const s of [copy.src, copy.poster, copy.teaser]) if (s) names.add(s.slice(s.lastIndexOf("/") + 1));
+    if (keepsFirstFrame(edit)) own("poster");
+  } else {
+    own("mp4");
+    own("poster");
+    own("teaser");
+  }
+  return names;
+}
+
+// ───────── edits (N63, DECISIONS B195) ─────────
+
+/** The most ranges an edit hands a player: far past what a hand draws, and a bound on what
+ * one record can cost a view (the ranges the page carries, the player's walk over them on
+ * every frame). Every applied cut is read, as `EditList::keep` reads them; past the bound
+ * the ranges stop, so playback ends early — never a cut part played. */
+export const EDIT_KEEP_MAX = 500;
+/** The permanent copy's files beside the recording (`shroom_edit::EditCopy`): the video,
+ * its first frame and its teaser. */
+const EDIT_FILE = /^edit-\d{1,9}(\.mp4|-poster\.jpg|-teaser\.mp4)$/;
+
+/** @typedef {{ src: string, dur: number, poster?: string, teaser?: string }} EditCopy
+ * @typedef {{ keep: [number, number][], dur: number, copy: EditCopy | null }} Edit */
+
+/** The record's edit (`meta.edits`, the Mac's editor writes it), made safe and cut down to
+ * what plays: the ranges of the recording that play, in order; the edited length; and the
+ * permanent copy once it was cut from this very revision (`copy.rev === rev`) under names
+ * of its own kind. A port of `shroom_edit::EditList::checked()` and `keep()` (both held to
+ * crates/shroom-edit/tests/keep-vectors.json by test/edits.test.js), clamped to the
+ * record's own `durationSec` — the list's `source_duration` only when the record has none.
+ * A value that isn't a number reads as one that isn't finite does there. Every applied cut
+ * counts, wherever it sits in the list; at most `EDIT_KEEP_MAX` ranges are handed out, the
+ * first ones, so the page never plays a moment the copy leaves out. Null when there's no
+ * edit or it leaves everything in; an edit that leaves nothing to play is still one, with
+ * no ranges (`keep` empty, no copy), and the video doesn't play (`playable`). Nothing else
+ * in `edits` leaves the Worker: never the transcript text a voice cut carries (`removed`,
+ * `resumes`, `why`).
+ * Read once per record read (a page asks for it a dozen times): the answer is shared, and
+ * never changed by its readers.
+ * @param {any} meta @param {string} [id] the recording's id, for the copy's address
+ * @returns {Edit | null} */
+export function editsOf(meta, id = meta?.id) {
+  const e = meta?.edits;
+  if (!e || typeof e !== "object") return null;
+  const key = `${typeof meta.durationSec === "number" ? meta.durationSec : NaN}\u0000${id}`;
+  const seen = EDITS_READ.get(e);
+  if (seen?.key === key) return seen.edit;
+  const edit = readEdit(meta, e, id);
+  EDITS_READ.set(e, { key, edit });
+  return edit;
+}
+
+/** `editsOf`'s answers, by the `edits` object they were read from (a record parsed for one
+ * request), with what else they were read with. @type {WeakMap<object, { key: string, edit: Edit | null }>} */
+const EDITS_READ = new WeakMap();
+
+/** @param {any} meta @param {any} e its `edits` @param {string} [id] @returns {Edit | null} */
+function readEdit(meta, e, id) {
+  const num = (/** @type {unknown} */ v) => (typeof v === "number" && Number.isFinite(v) ? v : NaN);
+  const whole = num(meta.durationSec), listed = num(e.source_duration);
+  const d = whole > 0 ? whole : listed > 0 ? listed : 0;
+  const clamp = (/** @type {unknown} */ v) => { const t = num(v); return Number.isNaN(t) ? t : Math.min(d, Math.max(0, t)); };
+  let a = clamp(e.in), b = clamp(e.out);
+  if (Number.isNaN(a)) a = 0;
+  if (Number.isNaN(b)) b = d;
+  if (b - a < Math.min(1, d)) { a = 0; b = d; }
+  // The applied cuts inside the trim, sorted by where they start (`EditList::applied`).
+  /** @type {[number, number][]} */
+  const cuts = [];
+  for (const c of Array.isArray(e.cuts) ? e.cuts : []) {
+    if (!c || typeof c !== "object" || c.applied !== true) continue;
+    const s = clamp(c.start), t = clamp(c.end);
+    if (Number.isNaN(s) || Number.isNaN(t) || t <= s) continue;
+    const from = Math.max(s, a), to = Math.min(t, b);
+    if (to > from) cuts.push([from, to]);
+  }
+  cuts.sort((x, y) => x[0] - y[0]);
+  // The trim minus those, overlaps merged (`EditList::keep`) — its first ranges, up to the
+  // bound: each ends where a cut starts, so stopping there never runs on into one.
+  /** @type {[number, number][]} */
+  const keep = [];
+  let at = a;
+  for (const [s, t] of cuts) {
+    if (keep.length >= EDIT_KEEP_MAX) break;
+    if (t <= at) continue;
+    if (s > at) keep.push([at, s]);
+    at = Math.max(at, t);
+  }
+  if (at < b && keep.length < EDIT_KEEP_MAX) keep.push([at, b]);
+  // Nothing plays — the cuts cover the trim, or there's no length to place it on — is an
+  // edit, never the recording as it was: as for `EditList::is_identity`, which it isn't.
+  if (!keep.length) return { keep, dur: 0, copy: null };
+  if (keep.length === 1 && keep[0][0] <= 0 && keep[0][1] >= d) return null;
+  const dur = keep.reduce((n, [s, t]) => n + (t - s), 0);
+  const rev = Number.isInteger(e.rev) ? e.rev : 0;
+  const c = e.copy;
+  /** @type {EditCopy | null} */
+  let copy = null;
+  const named = (/** @type {unknown} */ v, /** @type {string} */ kind) => typeof v === "string" && EDIT_FILE.exec(v)?.[1] === kind;
+  if (c && typeof c === "object" && Number.isInteger(c.rev) && c.rev === rev && named(c.file, ".mp4") && ID.test(String(id))) {
+    copy = { src: `/m/${id}/${c.file}`, dur: num(c.duration) > 0 ? c.duration : dur };
+    if (named(c.poster, "-poster.jpg")) copy.poster = `/m/${id}/${c.poster}`;
+    if (named(c.teaser, "-teaser.mp4")) copy.teaser = `/m/${id}/${c.teaser}`;
+  }
+  return { keep, dur, copy };
+}
+
+/** @typedef {{ edit: Edit | null, copy: EditCopy | null, keep: [number, number][] | null, dur: number, whole: number, poster: string | null, teaser: string | null, download: boolean, file: string | null, baked: boolean }} View */
+
+/** What a viewer of the recording gets, its edit applied (N63): the permanent copy as-is
+ * once it matches the saved edit; else the original with the ranges that play (`keep`).
+ * `dur` is the length the page shows, `poster` and `teaser` the pictures it, its unfurl and
+ * oEmbed show, each an address on this origin, and never one of a part that's cut: with no
+ * edit, the recording's own; once the copy is up, the copy's own or none — never the
+ * original's in their place; while the edit waits for its copy, the recording's first
+ * frame only while the edit keeps it, and no teaser (the recording's first 15 s can hold a
+ * cut part). `download`: what Download hands over is the video as it plays — the original
+ * with no edit, the copy once it's up, and nothing in between, so a cut part never leaves
+ * as a file. `file` is the recording's own single file (`ownFile`), `whole` its own length
+ * — the clock its edit and the player's ranges count on — and `baked` says it has no
+ * stream beside it (B197).
+ * @param {string} id @param {any} meta @returns {View} */
+function viewOf(id, meta) {
+  const edit = editsOf(meta, id);
+  const copy = edit?.copy ?? null;
+  const whole = Number(meta?.durationSec) > 0 ? Number(meta.durationSec) : 0;
+  const [file, poster, teaser] = [ownFile(id, meta, "mp4"), ownFile(id, meta, "poster"), ownFile(id, meta, "teaser")];
+  return {
+    edit, copy, keep: edit && !copy ? edit.keep : null,
+    dur: copy ? copy.dur : edit ? edit.dur : whole, whole,
+    poster: copy ? copy.poster ?? null : poster && (!edit || keepsFirstFrame(edit)) ? `/m/${id}/${poster}` : null,
+    teaser: copy ? copy.teaser ?? null : teaser && !edit ? `/m/${id}/${teaser}` : null,
+    download: copy ? true : !edit && !!file,
+    file, baked: baked(id, meta),
+  };
+}
+
+/** Whether the edit plays the recording's first frame — what its poster is (`poster.jpg`:
+ * frame 0) — so the poster shows nothing that's cut. @param {Edit} edit */
+function keepsFirstFrame(edit) {
+  return edit.keep.length > 0 && edit.keep[0][0] <= 0;
 }
 
 /** @param {Env} env @param {string} id */
@@ -749,22 +1261,33 @@ async function readMeta(env, id) {
 /** @param {Request} request @param {Env} env @param {string} id */
 async function download(request, env, id) {
   const meta = await readMeta(env, id);
-  if (!meta || meta.state !== "live" || !meta.media?.mp4) return plain(404, "");
+  // The video as it plays (N63): an edit's permanent copy once it's up; nothing while an
+  // edit waits for it, so a cut part never leaves as a file.
+  const view = meta?.state === "live" ? viewOf(id, meta) : null;
+  if (!view?.download) return plain(404, "");
   const name = `${(meta.title || "shroom video").replace(/[\\/:*?"<>|\u0000-\u001f]/g, " ").trim()}.mp4`;
   const disposition = `attachment; filename="${name.replace(/[^\x20-\x7e]/g, "_")}"; filename*=UTF-8''${encodeURIComponent(name)}`;
-  // The key is fixed by the id — never taken from the record, which a recording Mac
-  // writes: a record naming another key must not turn /d/ into a reader of the bucket.
-  return media(request, env, `rec/${id}/video.mp4`, "video/mp4", "private, max-age=0", { "content-disposition": disposition });
+  // The key sits directly under the id's own prefix — never a key taken as the record says
+  // it, which a recording Mac writes: a record naming another key must not turn /d/ into a
+  // reader of the bucket. The copy's name is one `editsOf` let through, the recording's own
+  // one `ownFile` did (`video.mp4`, or a baked `edit-<n>.mp4`, B197).
+  const file = view.copy ? view.copy.src.slice(view.copy.src.lastIndexOf("/") + 1) : view.file;
+  return media(request, env, `rec/${id}/${file}`, "video/mp4", "private, max-age=0", { "content-disposition": disposition });
 }
 
-/** @param {Env} env @param {string} id @param {number} now @param {Promise<Owner | null>} ownerP @param {string} origin */
-async function page(env, id, now, ownerP, origin) {
+/** @param {Env} env @param {string} id @param {number} now @param {Promise<Owner | null>} ownerP @param {string} origin @param {Ctx} [ctx] */
+async function page(env, id, now, ownerP, origin, ctx) {
   // Only the record's own read decides the face: a mark that can't be read is the default.
   // The stream's playlist is read beside the record, never after it: whether the copy may
   // play costs no round of its own (B177).
   const oneP = onePicture(env, id);
   const [meta, mark, owner] = await Promise.all([readMeta(env, id), markOn(env).catch(() => true), ownerP]);
-  const face = { mark, owner: owner?.ownerClass ? { switchOn: mark } : null, head: meta && meta.state !== "deleted" ? unfurl(id, meta, origin) : "", ratio: ratioOf(meta) };
+  // An edit saved since the space named the video is weighed after the view (B208 c).
+  if (env.AI && meta?.named && meta.state === "live") {
+    const weighed = aiAfterView(env, id, meta, now).catch(() => {});
+    if (ctx) ctx.waitUntil(weighed); else await weighed;
+  }
+  const face = { mark, owner: owner?.ownerClass ? { switchOn: mark } : null, head: meta && meta.state !== "deleted" ? unfurl(id, meta, origin) : "", ratio: ratioOf(meta), host: new URL(origin).host };
   if (meta && meta.state === "deleted") return html(notFoundPage(face), false, 404);
   const mine = owner !== null && (await mayEdit(env, owner, id, !!meta));
   // Unknown or malformed ids look exactly like a video still uploading: a guessed link
@@ -791,15 +1314,19 @@ async function page(env, id, now, ownerP, origin) {
     }
     return html(onItsWayPage(null, COPY.onItsWay, face, 0, false, true));
   }
-  if (owner && mine && (meta.state === "uploading" || (meta.state === "live" && meta.media?.hls))) {
+  if (owner && mine && (meta.state === "uploading" || playable(id, meta))) {
     const blocked = stalledAt(meta, now) && !drained(meta) && (await uploadsBlocked(env));
-    return html(ownerPage(id, meta, now, face, blocked ? waitingWords(owner) : COPY.waitingConnection, false, false, await sourceOf(id, meta, oneP)));
+    const src = await sourceOf(id, meta, oneP);
+    return html(ownerPage(id, meta, now, face, blocked ? waitingWords(owner) : COPY.waitingConnection, false, false, src, aiFace(id, meta, src, !!env.AI, now), listensOf(env)));
   }
   if (meta.state === "uploading") {
     const st = status(meta, now);
     return html(onItsWayPage(meta.title, st.stalled ? COPY.stalled : COPY.onItsWay, face, st.pct ?? 0, !!st.stalled));
   }
-  if (meta.state === "live" && meta.media?.hls) return html(livePage(id, meta, face, await sourceOf(id, meta, oneP)));
+  if (playable(id, meta)) {
+    const src = await sourceOf(id, meta, oneP);
+    return html(livePage(id, meta, face, src, aiFace(id, meta, src, !!env.AI, now)));
+  }
   return html(unavailablePage(face));
 }
 
@@ -838,12 +1365,15 @@ function html(body, frameable = false, status = 200) {
 
 /** The tags every platform reads, server-rendered (crawlers run no script), og first.
  * og:video is the small teaser, never HLS. No description or site name: nothing the
- * spec has said, and the sender stays anonymous (U3). */
+ * spec has said, and the sender stays anonymous (U3). With an edit (N63) the length is the
+ * edited one, and the pictures never show a part that's cut (`viewOf`): the copy's own
+ * once it's up, none of the original's teaser before. */
 /** @param {string} id @param {any} meta @param {string} origin */
 export function unfurl(id, meta, origin) {
   const title = meta.title || "";
   const url = `${origin}/${id}`;
   const m = meta.media ?? {};
+  const view = viewOf(id, meta);
   const w = m.width || 0, h = m.height || 0;
   const scaled = (/** @type {number} */ width, even = false) => {
     const v = w && h ? Math.round((width * h) / w) : 0;
@@ -854,16 +1384,16 @@ export function unfurl(id, meta, origin) {
     ["og:title", title],
     ["og:url", url],
   ];
-  if (m.poster) tags.push(["og:image", `${origin}/m/${id}/poster.jpg`], ["og:image:width", "1200"], ["og:image:height", String(scaled(1200))]);
-  if (m.teaser) {
-    const teaser = `${origin}/m/${id}/teaser.mp4`;
+  if (view.poster) tags.push(["og:image", `${origin}${view.poster}`], ["og:image:width", "1200"], ["og:image:height", String(scaled(1200))]);
+  if (view.teaser) {
+    const teaser = `${origin}${view.teaser}`;
     tags.push(["og:video", teaser], ["og:video:secure_url", teaser], ["og:video:type", "video/mp4"],
       ["og:video:width", "640"], ["og:video:height", String(scaled(640, true))]);
-    if (meta.durationSec) tags.push(["og:video:duration", String(Math.round(meta.durationSec))]);
+    if (view.dur) tags.push(["og:video:duration", String(Math.round(view.dur))]);
   }
   const named = [["twitter:card", "summary_large_image"], ["twitter:title", title]];
-  if (m.poster) named.push(["twitter:image", `${origin}/m/${id}/poster.jpg`]);
-  if (m.teaser) named.push(["twitter:player:stream", `${origin}/m/${id}/teaser.mp4`]);
+  if (view.poster) named.push(["twitter:image", `${origin}${view.poster}`]);
+  if (view.teaser) named.push(["twitter:player:stream", `${origin}${view.teaser}`]);
   return tags.map(([k, v]) => `<meta property="${k}" content="${escapeHtml(v)}">`).join("")
     + named.map(([k, v]) => `<meta name="${k}" content="${escapeHtml(v)}">`).join("")
     + `<link rel="alternate" type="application/json+oembed" href="${escapeHtml(`${origin}/oembed?url=${encodeURIComponent(url)}`)}">`;
@@ -887,7 +1417,8 @@ async function oembed(env, url) {
     html: `<iframe src="${escapeHtml(`${url.origin}/${id}?embed=1`)}" width="${width}" height="${height}" frameborder="0" allow="fullscreen; picture-in-picture" allowfullscreen></iframe>`,
   };
   if (live?.title) body.title = live.title;
-  if (live?.media?.poster) Object.assign(body, { thumbnail_url: `${url.origin}/m/${id}/poster.jpg`, thumbnail_width: 1200, thumbnail_height: Math.round((1200 * h) / w) });
+  const poster = live ? viewOf(id, live).poster : null;
+  if (poster) Object.assign(body, { thumbnail_url: `${url.origin}${poster}`, thumbnail_width: 1200, thumbnail_height: Math.round((1200 * h) / w) });
   return json(body);
 }
 
@@ -900,8 +1431,8 @@ async function embed(env, id, now, origin) {
   // The mark sits at the end of the player's control row (it hides with the controls), or
   // in the corner of a line.
   const corner = mark ? `<a class="mark" href="https://shroom.am" target="_blank" rel="noopener" title="${COPY.mark}" aria-label="${COPY.mark}">${LOGO}</a>` : "";
-  const frame = (/** @type {string} */ inner, refresh = 0, code = 200) => html(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="robots" content="noindex"><title>${escapeText((meta?.state !== "deleted" && meta?.title) || "shroom")}</title>${refresh ? `<meta http-equiv="refresh" content="${refresh}">` : ""}<style>${EMBED_TOKENS}${PLAYER_STYLE}${EMBED_STYLE}</style></head>
+  const frame = (/** @type {string} */ inner, refresh = 0, code = 200, css = "") => html(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex"><title>${escapeText((meta?.state !== "deleted" && meta?.title) || "shroom")}</title>${refresh ? `<meta http-equiv="refresh" content="${refresh}">` : ""}<style>${EMBED_TOKENS}${PLAYER_STYLE}${EMBED_STYLE}${css}</style></head>
 <body${mark ? ` class="marked"` : ""}>${inner}${corner}</body></html>`, true, code);
   /** The line where the player will be; on its way, over the thin bar (N27). */
   const line = (/** @type {string} */ text, /** @type {string} */ bar = "") => `<div class="line"><p>${escapeText(text)}</p>${bar}</div>`;
@@ -911,10 +1442,13 @@ async function embed(env, id, now, origin) {
     const st = status(meta, now);
     return frame(line(st.stalled ? COPY.stalled : COPY.onItsWay, thinBar(st.pct ?? 0, !!st.stalled)), 5);
   }
-  if (meta.state !== "live" || !meta.media?.hls) return frame(line(COPY.unavailable), 30);
-  const src = await sourceOf(id, meta, oneP);
-  return frame(`${playerHtml(id, meta, origin)}
-<script>${PLAYER_JS};shroomPlayer(document.querySelector(".player"),${JSON.stringify(src)},${jsonForScript(JSON.stringify(LABELS))})</script>`);
+  if (!playable(id, meta)) return frame(line(COPY.unavailable), 30);
+  const view = viewOf(id, meta);
+  const src = await sourceOf(id, meta, oneP, view);
+  const ai = aiFace(id, meta, src, !!env.AI, now);
+  return frame(`${aiPlayer(playerHtml(id, meta, origin), ai)}
+<script>${PLAYER_JS};shroomPlayer(document.querySelector(".player"),${JSON.stringify(src)},${jsonForScript(JSON.stringify(LABELS))},${playing(id, view)})${aiWire(".player", ai)}
+${VIEW_JS};shroomCount(document.getElementById("v"),${JSON.stringify(id)})</script>`, 0, 200, aiCss(ai));
 }
 
 /** The embed is the player alone, and the player stays dark whatever the viewer's scheme. */
@@ -945,9 +1479,9 @@ const PLAYER_TOKENS = `--player:#1f2228;--player-bar:#262a31;--player-text:#d8de
 /** The pages' palette, every colour on them: dark Nord, and its light variant for a browser
  * set to light. The embed is the player alone, so it takes the player's colours only. */
 const TOKENS = `:root{color-scheme:dark;--bg:#2b2f36;--card:#333944;--card-edge:#333944;--hair:#434a56;--field:#262a31;--well:#262a31;--edge:#4c566a;
---text:#eceff4;--muted:#d8dee9;--soft:#c3cad6;--quiet:#aeb6c4;--accent:#88c0d0;--accent-hi:#8fbcbb;--on-accent:#2b2f36;--hover:rgba(236,239,244,.08);--knob:#eceff4;--stem:#e5e9f0;--green:#a3be8c;--tip:#3b4252;--tip-edge:rgba(236,239,244,.12);${PLAYER_TOKENS}}
+--text:#eceff4;--muted:#d8dee9;--soft:#c3cad6;--quiet:#aeb6c4;--accent:#88c0d0;--accent-hi:#8fbcbb;--on-accent:#2b2f36;--hover:rgba(236,239,244,.08);--knob:#eceff4;--stem:#e5e9f0;--green:#a3be8c;--cut:#e88790;--warn:#ebcb8b;--tip:#3b4252;--tip-edge:rgba(236,239,244,.12);${PLAYER_TOKENS}}
 @media (prefers-color-scheme:light){:root{color-scheme:light;--bg:#f6f7f9;--card:#fff;--card-edge:#dfe3ea;--hair:#dfe3ea;--field:#fff;--well:#eef1f5;--edge:#c5ccd8;
---text:#2e3440;--muted:#3b4252;--soft:#4c566a;--quiet:#5c6779;--accent:#4c6f9a;--accent-hi:#3f5f86;--on-accent:#fff;--hover:rgba(46,52,64,.06);--knob:#fff;--stem:#b8c0cc;--green:#5d8a45;--tip:#fff;--tip-edge:#dfe3ea}}`;
+--text:#2e3440;--muted:#3b4252;--soft:#4c566a;--quiet:#5c6779;--accent:#4c6f9a;--accent-hi:#3f5f86;--on-accent:#fff;--hover:rgba(46,52,64,.06);--knob:#fff;--stem:#b8c0cc;--green:#5d8a45;--cut:#a3474f;--warn:#8a6417;--tip:#fff;--tip-edge:#dfe3ea}}`;
 const EMBED_TOKENS = `:root{color-scheme:dark;${PLAYER_TOKENS}}`;
 
 /** What every page shares: the reset, the type, links, focus, the logo's stem (it would
@@ -963,6 +1497,10 @@ const maskIcon = (d, w = 1.4) => `url("data:image/svg+xml,${encodeURIComponent(`
 const I_LINK = maskIcon("M6.8 9.2a2.8 2.8 0 0 0 4 0l2.2-2.2a2.8 2.8 0 0 0-4-4l-.8.8M9.2 6.8a2.8 2.8 0 0 0-4 0L3 9a2.8 2.8 0 0 0 4 4l.8-.8");
 const I_CHECK = maskIcon("M3 8.6l3.2 3.1L13 4.6", 1.6);
 const I_SAVE = maskIcon("M8 2.5v8M4.5 7.5L8 11l3.5-3.5M3 13.5h10");
+// The voice cuts' scissors (N65, OwnerPageCuts).
+const I_CUT = maskIcon("M6.5 4.5a2 2 0 1 1-4 0a2 2 0 1 1 4 0M6.5 11.5a2 2 0 1 1-4 0a2 2 0 1 1 4 0M6.2 5.6L13 11.8M6.2 10.4L13 4.2");
+// Edit in shroom's scissors (N69): the editor's own mark, the one its cuts carry.
+const I_EDIT = maskIcon("M2.5 4.5a2 2 0 1 0 4 0a2 2 0 1 0-4 0M2.5 11.5a2 2 0 1 0 4 0a2 2 0 1 0-4 0M6.2 5.6L13 11.8M6.2 10.4L13 4.2");
 // Copy thumbnail's icon (Bagrat's pick, “7a”): a frame with the play mark, Copy link's chain at its corner.
 const I_THUMB = maskIcon("M8.2 12.8H3.3a1.5 1.5 0 0 1-1.5-1.5V4.7a1.5 1.5 0 0 1 1.5-1.5h9.4a1.5 1.5 0 0 1 1.5 1.5v3.5M7 6.2v3.6l3-1.8zM11.89 12.95a1.232 1.232 0 0 0 1.76 0l.968-.968a1.232 1.232 0 0 0-1.76-1.76l-.352.352M12.95 11.89a1.232 1.232 0 0 0-1.76 0L10.22 12.86a1.232 1.232 0 0 0 1.76 1.76l.352-.352");
 
@@ -976,9 +1514,9 @@ h1{flex:1 1 0;min-width:0;margin:0;font-size:1.75rem;font-weight:600;line-height
 .title{flex:1 1 0;min-width:0;height:52px;margin:0;padding:0 12px;font-family:inherit;font-size:1.75rem;font-weight:600;color:var(--text);background:var(--field);border:1px solid var(--edge);border-radius:9px;outline:none;text-overflow:ellipsis}
 .title::placeholder{color:var(--quiet);opacity:1}.title:hover{border-color:var(--quiet)}
 .title:not(:focus):not(:placeholder-shown){padding:0;background:transparent;border-color:transparent}
-.copy,#dl a,.dl a{flex:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;width:44px;height:44px;padding:0;border:0;border-radius:9px;background:transparent;color:var(--soft);font-family:inherit;font-size:0;text-decoration:none;cursor:pointer;--i:${I_LINK}}
+.copy,#dl a,.dl a{flex:none;display:inline-flex;align-items:center;justify-content:center;gap:0;width:44px;height:44px;padding:0;border:0;border-radius:9px;background:transparent;color:var(--soft);font-family:inherit;font-size:0;text-decoration:none;cursor:pointer;--i:${I_LINK}}
 #dl a,.dl a{--i:${I_SAVE}}
-.copy.thumb{--i:${I_THUMB}}.copy[hidden]{display:none}
+.copy.thumb{--i:${I_THUMB}}.copy.edit{--i:${I_EDIT}}.copy[hidden]{display:none}
 .copy::before,#dl a::before,.dl a::before{content:"";flex:none;width:18px;height:18px;background:currentColor;-webkit-mask:var(--i) center/18px 18px no-repeat;mask:var(--i) center/18px 18px no-repeat}
 .copy:hover,#dl a:hover,.dl a:hover{background:var(--hover);color:var(--text)}
 .copy[aria-disabled=true]{cursor:default}.copy[aria-disabled=true]::before{opacity:.4}.copy[aria-disabled=true]:hover{background:transparent;color:var(--soft)}
@@ -989,9 +1527,22 @@ h1{flex:1 1 0;min-width:0;margin:0;font-size:1.75rem;font-weight:600;line-height
 @media (hover:hover){[data-tip]:hover::after{opacity:1;visibility:visible;transition-delay:.3s}}
 [data-tip]:focus-visible::after,[data-tip]:has(:focus-visible)::after{opacity:1;visibility:visible}
 .copy.done::after{display:none}
-.copy.done{width:auto;padding:0 12px 0 8px;flex-direction:row-reverse;font-size:13px;color:var(--accent);--i:${I_CHECK}}
+.copy.done{width:auto;padding:0 12px 0 8px;gap:6px;flex-direction:row-reverse;font-size:13px;color:var(--accent);--i:${I_CHECK}}
 #dl{display:flex}#dl:empty{display:none}
-.upl{display:flex;flex-direction:column;gap:6px;color:var(--soft);transition:opacity .4s}.upl[hidden]{display:none}.upl.done{color:var(--green);--fill:var(--green)}.upl.fade{opacity:0}
+.upl{display:flex;flex-direction:row;align-items:center;gap:10px;color:var(--soft);transition:opacity .4s}.upl[hidden]{display:none}.upl.fade{opacity:0}
+.spin{flex:none;box-sizing:border-box;width:14px;height:14px;border-radius:50%;border:2px solid var(--hair);border-top-color:var(--accent);animation:shroom-spin 1s linear infinite}
+.spin.rest{animation:none;opacity:.45;border-top-color:var(--quiet)}@keyframes shroom-spin{to{transform:rotate(360deg)}}@media (prefers-reduced-motion:reduce){.spin{animation:none}}
+.cuts{background:var(--card);border:1px solid var(--card-edge);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:10px}.cuts[hidden]{display:none}
+.cuts-head{display:flex;align-items:center;gap:10px}.cuts h2{flex:1 1 auto;margin:0;font-size:15px;font-weight:600;display:flex;align-items:center;gap:10px}
+.cuts h2::before{content:"";width:16px;height:16px;flex:none;background:var(--cut);-webkit-mask:${I_CUT} center/contain no-repeat;mask:${I_CUT} center/contain no-repeat}
+.cuts .only{color:var(--quiet);font-size:13px}.cuts ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.cut{display:flex;align-items:center;gap:14px;padding-top:10px;border-top:1px solid var(--hair)}.cut .at{flex:none;width:40px;color:var(--soft);font-variant-numeric:tabular-nums}
+.cut .said{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:2px}.cut q{quotes:none;overflow-wrap:anywhere;color:var(--quiet)}.cut q .w{color:var(--text)}.cut .changed{color:var(--soft)}.cut .changed .ed{color:var(--quiet)}.cut.on q .w,.cut q .cue.on{color:var(--quiet);text-decoration:line-through;text-decoration-color:var(--cut)}.cut q .cue{color:var(--text)}
+.cut .why,.cuts .unsaved{color:var(--warn);font-size:13px}.cuts .unsaved{margin:0}.cuts .unsaved[hidden]{display:none}
+.cut button{flex:none;font:inherit;font-size:13px;min-height:32px;padding:0 12px;border:1px solid var(--edge);border-radius:8px;background:transparent;color:var(--text);cursor:pointer}.cut button:hover{background:var(--hover)}.cut button[aria-busy]{opacity:.6}
+.cue-hint{background:var(--card);border:1px solid var(--card-edge);border-radius:12px;padding:10px 12px 10px 16px;display:flex;align-items:center;gap:10px;color:var(--muted)}.cue-hint[hidden]{display:none}
+.cue-hint::before{content:"";width:16px;height:16px;flex:none;background:var(--cut);-webkit-mask:${I_CUT} center/contain no-repeat;mask:${I_CUT} center/contain no-repeat}.cue-hint span{flex:1 1 auto;min-width:0}
+.cue-hint button{flex:none;font:inherit;font-size:13px;min-height:32px;padding:0 12px;border:1px solid var(--edge);border-radius:8px;background:transparent;color:var(--text);cursor:pointer}.cue-hint button:hover{background:var(--hover)}
 .wait{position:relative;aspect-ratio:var(--ar);border-radius:12px;background:var(--player);color:var(--player-text);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px;text-align:center;overflow:hidden;--track:var(--player-track);--fill:var(--player-fill)}
 .wait .line{margin:0;max-width:420px;font-size:1.0625rem}.wait .bar{max-width:320px}
 .wait img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
@@ -1049,7 +1600,7 @@ const PLAYER_STYLE = `.bar{display:block;width:100%;height:3px;border-radius:2px
 @media (max-width:359px){.row .sp{display:none}}
 @media (prefers-reduced-motion:reduce){.bar.go i{animation:none}.bar i,.ctl,.big,.upl{transition:none}}`;
 
-/** @typedef {{ mark: boolean, owner: { switchOn: boolean } | null, head: string, ratio?: string }} Face */
+/** @typedef {{ mark: boolean, owner: { switchOn: boolean } | null, head: string, ratio?: string, host?: string }} Face */
 
 /** The recording's shape as CSS reads it (`1024/768`), when its record says. @param {any} meta */
 function ratioOf(meta) {
@@ -1180,11 +1731,14 @@ const speedLabel = (rate) => `${COPY.speed}, ${rate}×`;
  * range (a slider to assistive tech, its value read as the time), every one reachable by
  * keyboard: play first, then the seek bar drawn along the bar's top edge. `id="v"` stays
  * the video's (the heartbeat drives it). */
+/** With an edit (N63) its length and seek bar are the edited ones, and once the edit's
+ * permanent copy is up its first frame is the copy's own. */
 /** @param {string} id @param {any} meta @param {string} [base] the poster's origin, for the framable embed */
 export function playerHtml(id, meta, base = "") {
   const m = meta?.media ?? {};
-  const dur = Number(meta?.durationSec) > 0 ? Number(meta.durationSec) : 0;
-  const poster = m.poster ? ` poster="${escapeHtml(`${base}/m/${id}/poster.jpg`)}"` : "";
+  const view = viewOf(id, meta);
+  const dur = view.dur;
+  const poster = view.poster ? ` poster="${escapeHtml(`${base}${view.poster}`)}"` : "";
   const ratio = m.width > 0 && m.height > 0 ? ` style="--ar:${Math.round(m.width)}/${Math.round(m.height)}"` : "";
   const time = `0:00${dur ? ` / ${clock(dur, true)}` : ""}`;
   return `<div class="player" data-dur="${dur}"${ratio}><video id="v" playsinline preload="metadata"${poster}></video>`
@@ -1205,20 +1759,60 @@ export function playerHtml(id, meta, base = "") {
  * double-click is fullscreen (the player itself, so its controls stay; a phone's own
  * fullscreen where elements can't go fullscreen). The seek bar shows what has played and
  * what is buffered ahead. The controls fade while playing and the pointer rests, never
- * while a control holds focus. */
-export const PLAYER_JS = `function shroomPlay(v,s){if(/\\.mp4$/.test(s)||v.canPlayType("application/vnd.apple.mpegurl")){v.src=s;return}
-var t=document.createElement("script");t.src="/_shroom/hls.js";t.onload=function(){var h=new Hls({backBufferLength:90,maxBufferLength:6,maxMaxBufferLength:6});
-v.addEventListener("play",function(){h.config.maxBufferLength=30;h.config.maxMaxBufferLength=600},{once:true});h.loadSource(s);h.attachMedia(v)};document.head.appendChild(t)}
+ * while a control holds focus.
+ *
+ * An edit (N63, DECISIONS B195) plays as the editor plays it: `E.keep` holds the ranges of
+ * the recording that play, and the player starts at the first, skips every gap between
+ * them and stops at the last one's end, showing it ended. Loaded, it waits at the first
+ * range's start, so a video with no poster (a trimmed-off first frame has none) shows its
+ * first kept frame, never the recording's own first one. The skip runs on every frame
+ * while it plays, and on `timeupdate` and `seeking` besides (a background tab gets no
+ * frames): outside every range — a range's last 30 ms counting as past it — it seeks to the
+ * next range's start. A playhead within 50 ms of the start it was last sent to is left to
+ * land there, but a new start is sought at once, even right after a range shorter than
+ * those 30 ms. The time, the seek bar, ←/→ and Home/End all count edited time
+ * (`shroomAt`/`shroomToSource`, held with `editsOf` to crates/shroom-edit's vectors). A
+ * permanent copy plays as it is. And once the copy is up the original is out of reach
+ * (`servedOnly`): a player that was playing the original asks `E.st`, the status, when its
+ * media fails, and moves over to the copy at the same edited moment. A player already on a
+ * copy that a newer one replaced keeps its moment as it is: its time is edited time, and
+ * the status's ranges count on the recording's own clock.
+ *
+ * A `shroom:keep` event on the document (agreed with the voice-cut build, #59) hands the
+ * player new ranges to play, `detail: [[s, e], …]` on the recording's own clock: made safe
+ * as `editsOf` makes an edit (`shroomKeep`: numbers only, clamped to the recording's length
+ * `E.len`, merged, at most 500), they take the edit's place — the length, the seek bar and
+ * the playhead follow, a playhead in a cut moving on to the next range — unless the player
+ * plays a permanent copy (`E.copy`), which is the edit already. */
+export const PLAYER_JS = `function shroomPlay(v,s,f){if(/\\.mp4$/.test(s)||v.canPlayType("application/vnd.apple.mpegurl")){v.src=s;return}
+var t=document.createElement("script");t.src="/_shroom/hls.js";t.onload=function(){var h=new Hls({backBufferLength:90,maxBufferLength:6,maxMaxBufferLength:6});v.hls=h;
+v.addEventListener("play",function(){h.config.maxBufferLength=30;h.config.maxMaxBufferLength=600},{once:true});if(f)h.on(Hls.Events.ERROR,function(e,d){if(d&&(d.fatal||d.response&&d.response.code===404))f()});h.loadSource(s);h.attachMedia(v)};document.head.appendChild(t)}
 function shroomClock(s,l){s=Math.max(0,+s||0);s=l?Math.round(s):Math.floor(s);var h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60,two=function(n){return(n<10?"0":"")+n};return h?h+":"+two(m)+":"+two(x):m+":"+two(x)}
-function shroomPlayer(p,s,L){var v=p.querySelector("video"),pp=p.querySelector(".pp"),sk=p.querySelector(".seek"),tm=p.querySelector(".time"),fs=p.querySelector(".fs"),sp=p.querySelector(".sp"),mu=p.querySelector(".mu"),known=+p.getAttribute("data-dur")||0,held=false,idle=0,R=[1,1.25,1.5,2];
-function dur(){return isFinite(v.duration)&&v.duration>0?v.duration:known}
+function shroomLength(K){for(var a=0,i=0;i<K.length;i++)a+=K[i][1]-K[i][0];return a}
+function shroomAt(K,t){for(var a=0,i=0;i<K.length;i++){if(t<K[i][1])return a+Math.max(0,t-K[i][0]);a+=K[i][1]-K[i][0]}return a}
+function shroomToSource(K,e){for(var a=0,i=0;i<K.length;i++){var n=K[i][1]-K[i][0];if(e<a+n)return K[i][0]+Math.max(0,e-a);a+=n}return K.length?K[K.length-1][1]:0}
+function shroomGain(K,t,F){var n=K.length,i=0,g=1;while(i<n&&t>=K[i][1]-.03)i++;if(i===n)return 1;if(i<n-1)g=Math.min(g,(K[i][1]-.03-t)/F);if(i>0)g=Math.min(g,(t-K[i][0])/F);return Math.max(0,Math.min(1,g))}
+function shroomKeep(R,D){var a=[],m=[],i,r,s,e;if(!Array.isArray(R))return m;D=D>0?D:Infinity;
+for(i=0;i<R.length&&a.length<500;i++){r=R[i];if(!Array.isArray(r)||typeof r[0]!=="number"||typeof r[1]!=="number"||!isFinite(r[0])||!isFinite(r[1]))continue;s=Math.min(D,Math.max(0,r[0]));e=Math.min(D,Math.max(0,r[1]));if(e>s)a.push([s,e])}
+a.sort(function(x,y){return x[0]-y[0]});for(i=0;i<a.length;i++){r=m[m.length-1];if(r&&a[i][0]<=r[1]){if(a[i][1]>r[1])r[1]=a[i][1]}else m.push(a[i])}return m}
+function shroomPlayer(p,s,L,E){var v=p.querySelector("video"),pp=p.querySelector(".pp"),sk=p.querySelector(".seek"),tm=p.querySelector(".time"),fs=p.querySelector(".fs"),sp=p.querySelector(".sp"),mu=p.querySelector(".mu"),known=+p.getAttribute("data-dur")||0,held=false,idle=0,R=[1,1.25,1.5,2],
+K=E&&E.keep&&E.keep.length?E.keep:null,len=E&&+E.len||0,cp=!!(E&&E.copy),fin=false,aim=-1,raf=0,busy=false;
+function dur(){return K?shroomLength(K):isFinite(v.duration)&&v.duration>0?v.duration:known}
+function at(){var t=v.currentTime||0;return K?shroomAt(K,t):t}
 function ahead(t){var b=v.buffered,e=0;try{for(var i=0;i<b.length;i++)if(b.start(i)<=t+1&&b.end(i)>e)e=b.end(i)}catch(x){}return e}
-function paint(){var d=dur(),t=held?+sk.value:v.ended&&d?d:v.currentTime||0,txt=shroomClock(t,v.ended)+(d?" / "+shroomClock(d,true):"");tm.textContent=txt;sk.max=String(d||0);if(!held)sk.value=String(t);sk.setAttribute("aria-valuetext",txt);
-sk.style.setProperty("--p",String(d?Math.min(1,t/d):0));sk.style.setProperty("--b",String(d?Math.min(1,ahead(t)/d):0))}
+function paint(){var d=dur(),e=v.ended||fin,t=held?+sk.value:e&&d?d:at(),txt=shroomClock(t,e)+(d?" / "+shroomClock(d,true):"");tm.textContent=txt;sk.max=String(d||0);if(!held)sk.value=String(t);sk.setAttribute("aria-valuetext",txt);
+var b=K?shroomAt(K,ahead(v.currentTime||0)):ahead(t);sk.style.setProperty("--p",String(d?Math.min(1,t/d):0));sk.style.setProperty("--b",String(d?Math.min(1,b/d):0))}
+function level(g){g=Math.round(g*20)/20;if(v.volume!==g)try{v.volume=g}catch(x){}}
+function skip(){if(!K){if(v.volume!==1)level(1);return}var t=v.currentTime||0,n=K.length,i=0;while(i<n&&t>=K[i][1]-.03)i++;
+if(i===n){fin=true;if(!v.paused)v.pause();level(1);paint();return}if(t<K[i][0]-.001&&(aim!==K[i][0]||Math.abs(t-aim)>.05)){level(0);aim=K[i][0];v.currentTime=aim;return}level(v.paused?1:shroomGain(K,t,.05))}
+function tick(){raf=0;if(!K||v.paused||v.ended)return;skip();if(!v.paused)raf=requestAnimationFrame(tick)}
+function fail(){if(busy||!E||!E.st)return;busy=true;fetch(E.st,{cache:"no-store"}).then(function(r){return r.json()}).then(function(x){var c=x&&x.copy;if(!c||!c.src||c.src===s)return;
+var t=v.currentTime||0,e=K?shroomAt(K,t):cp?t:x.keep&&x.keep.length?shroomAt(x.keep,t):0,go=!v.paused&&!fin;K=null;cp=true;fin=false;s=c.src;known=+c.dur||known;if(c.poster)v.poster=c.poster;if(v.hls){v.hls.destroy();v.hls=null}
+v.addEventListener("loadedmetadata",function(){v.currentTime=e;if(go){var r=v.play();if(r&&r.catch)r.catch(function(){})}},{once:true});shroomPlay(v,s,fail);paint()}).catch(function(){}).then(function(){busy=false})}
 function wake(){p.classList.remove("idle");clearTimeout(idle);if(!v.paused&&!v.ended)idle=setTimeout(function(){var a=document.activeElement;if(!(a&&a!==v&&p.contains(a)))p.classList.add("idle")},2500)}
 function mode(){var on=!v.paused&&!v.ended;p.classList.toggle("playing",on);if(on)p.classList.add("started");pp.setAttribute("aria-label",on?L.pause:L.play);wake()}
-function toggle(){if(v.paused||v.ended){var r=v.play();if(r&&r.catch)r.catch(function(){})}else v.pause()}
-function to(t){var d=dur();if(!d)return;v.currentTime=Math.max(0,Math.min(d,t));paint()}
+function toggle(){if(v.paused||v.ended){if(K){if(fin||v.ended)v.currentTime=K[0][0];fin=false;skip()}var r=v.play();if(r&&r.catch)r.catch(function(){})}else v.pause()}
+function to(t){var d=dur();if(!d)return;t=Math.max(0,Math.min(d,t));fin=false;v.currentTime=K?shroomToSource(K,t):t;skip();paint()}
 function rate(){var x=Math.round((v.playbackRate||1)*100)/100+"\\u00d7";sp.textContent=x;sp.setAttribute("aria-label",L.speed+", "+x)}
 function faster(){var n=R[(R.indexOf(v.playbackRate)+1)%R.length];v.defaultPlaybackRate=n;v.playbackRate=n}
 function sound(){p.classList.toggle("muted",v.muted);mu.setAttribute("aria-label",v.muted?L.unmute:L.mute)}
@@ -1228,9 +1822,14 @@ function fsToggle(){if(full()){var x=document.exitFullscreen||document.webkitExi
 else if(p.requestFullscreen){p.requestFullscreen().catch(function(){})}else if(p.webkitRequestFullscreen){p.webkitRequestFullscreen()}else if(v.webkitEnterFullscreen){v.webkitEnterFullscreen()}}
 function fsMode(){var on=full()===p;p.classList.toggle("full",on);fs.setAttribute("aria-label",on?L.exit:L.full)}
 function key(e){if(e.metaKey||e.ctrlKey||e.altKey)return;var k=e.key,b=e.target&&e.target.tagName==="BUTTON";if((k===" "||k==="Enter")&&b)return;
-if(k===" "||k==="k"||k==="K")toggle();else if(k==="ArrowLeft"||k==="ArrowRight")to((v.currentTime||0)+(k==="ArrowLeft"?-5:5));
+if(k===" "||k==="k"||k==="K")toggle();else if(k==="ArrowLeft"||k==="ArrowRight")to(at()+(k==="ArrowLeft"?-5:5));
 else if(k==="Home")to(0);else if(k==="End")to(dur());else if(k==="f"||k==="F")fsToggle();else if(k==="m"||k==="M")hush();else return;e.preventDefault();wake()}
 pp.addEventListener("click",toggle);v.addEventListener("click",toggle);v.addEventListener("dblclick",fsToggle);fs.addEventListener("click",fsToggle);sp.addEventListener("click",faster);mu.addEventListener("click",hush);
+v.addEventListener("play",function(){if(!K)return;if(fin){fin=false;v.currentTime=K[0][0]}skip();if(!raf)raf=requestAnimationFrame(tick)});
+v.addEventListener("seeking",function(){if(!K)return;fin=false;skip()});v.addEventListener("timeupdate",skip);v.addEventListener("error",fail);
+v.addEventListener("loadedmetadata",function(){if(K&&!v.currentTime)skip()});
+document.addEventListener("shroom:keep",function(ev){if(cp)return;var D=len>0?len:isFinite(v.duration)&&v.duration>0?v.duration:0,k=shroomKeep(ev&&ev.detail,D);if(!k.length)return;
+K=D&&k.length===1&&k[0][0]<=0&&k[0][1]>=D?null:k;if(!K)known=D||known;aim=-1;fin=false;skip();if(K&&!v.paused&&!raf)raf=requestAnimationFrame(tick);paint()});
 ["play","pause","ended"].forEach(function(e){v.addEventListener(e,mode)});
 ["timeupdate","durationchange","loadedmetadata","seeked","emptied","progress"].forEach(function(e){v.addEventListener(e,paint)});
 v.addEventListener("ratechange",rate);v.addEventListener("volumechange",sound);
@@ -1238,7 +1837,13 @@ sk.addEventListener("input",function(){held=true;to(+sk.value)});sk.addEventList
 document.addEventListener("fullscreenchange",fsMode);document.addEventListener("webkitfullscreenchange",fsMode);
 p.addEventListener("mousemove",wake);p.addEventListener("touchstart",wake,{passive:true});p.addEventListener("focusin",wake);p.addEventListener("keydown",key);
 document.addEventListener("keydown",function(e){if(e.target===document.body)key(e)});
-shroomPlay(v,s);paint();rate();sound()}`;
+shroomPlay(v,s,fail);paint();rate();sound()}`;
+
+/** The player's last argument (N63): the ranges that play, when an edit plays over the
+ * original — numbers only; the recording's own length, which `shroom:keep`'s ranges are
+ * held to; the status it asks when its media fails; and whether it plays the permanent copy.
+ * @param {string} id @param {View} view */
+const playing = (id, view) => jsonForScript(JSON.stringify({ keep: view.keep, len: view.whole, st: `/_shroom/status/${id}`, copy: !!view.copy }));
 
 /** Copy to the clipboard, saying whether it happened: the Clipboard API, else the older
  * copy command; when neither works, the visible text (if any) is selected so ⌘C does
@@ -1254,7 +1859,10 @@ return navigator.clipboard&&navigator.clipboard.writeText?navigator.clipboard.wr
  * the frames' colours (median cut on 5 bits a channel, weighted so a small coloured text
  * keeps its colour), an ordered dither so the band's shade doesn't step, unchanged pixels
  * left out of each frame, LZW (Bagrat on 0.1.15: "gif quality is pretty low"). Each picture is stored for the title it was drawn for; the
- * copy wraps the newest in the link. */
+ * copy wraps the newest in the link. Each is drawn from the first frame and teaser `thumbsOf`
+ * names, and says which first frame (`x-shroom-from`), so the Worker keeps only one of what
+ * the video shows now (N63); with none to draw from, nothing is drawn, and a copy with no
+ * picture is the link alone. */
 export const THUMB_JS = `function shroomGif(frames,w,h,delay){var n=w*h,hist=new Uint32Array(32768),i,f,k,d;
 for(f=0;f<frames.length;f+=Math.max(1,Math.floor(frames.length/6))){d=frames[f];for(k=0;k<n*4;k+=4)hist[((d[k]>>3)<<10)|((d[k+1]>>3)<<5)|(d[k+2]>>3)]++}
 var cols=[];for(i=0;i<32768;i++)if(hist[i])cols.push(i);
@@ -1288,19 +1896,19 @@ var f=Math.round(W*.026),pad=W*.012,bx=W,bh=f*1.6;x.font="500 "+f+"px "+F;x.text
 if(c.len){var bw=x.measureText(c.len).width+pad*2,by=H-W*.02-bh;bx=W-W*.02-bw;x.fillStyle="rgba(46,52,64,.85)";x.beginPath();if(x.roundRect)x.roundRect(bx,by,bw,bh,f*.3);else x.rect(bx,by,bw,bh);x.fill();x.fillStyle="#eceff4";x.fillText(c.len,bx+pad,by+bh/2)}
 if(title){var tf=Math.round(W*.04),max=bx-W*.06,t=title;x.font="600 "+tf+"px "+F;x.textBaseline="alphabetic";if(x.measureText(t).width>max){while(t&&x.measureText(t+"…").width>max)t=t.slice(0,-1);t+="…"}x.fillStyle="#eceff4";x.fillText(t,W*.03,H-W*.035)}}
 function canvas(W,H){var k=document.createElement("canvas");k.width=W;k.height=H;return k}
-function still(title){var img=new Image();img.src="/m/"+c.id+"/poster.jpg";return img.decode().then(function(){var s=size(1200),k=canvas(s[0],s[1]);draw(k.getContext("2d"),s[0],s[1],img,title);
+function still(title){var img=new Image();img.src=c.psrc;return img.decode().then(function(){var s=size(1200),k=canvas(s[0],s[1]);draw(k.getContext("2d"),s[0],s[1],img,title);
 return jpeg(k,.85).then(function(b){return b&&b.size>c.caps.jpgMax?jpeg(k,.7):b})})}
 function jpeg(k,q){return new Promise(function(ok){k.toBlob(ok,"image/jpeg",q)})}
-function loop(title){var v=document.createElement("video");v.muted=true;v.playsInline=true;v.preload="auto";v.src="/m/"+c.id+"/teaser.mp4";
+function loop(title){var v=document.createElement("video");v.muted=true;v.playsInline=true;v.preload="auto";v.src=c.tsrc;
 return new Promise(function(ok,no){v.addEventListener("loadeddata",ok,{once:true});v.addEventListener("error",no,{once:true})}).then(function(){
 var s=size(c.caps.gifWidth),k=canvas(s[0],s[1]),x=k.getContext("2d",{willReadFrequently:true}),n=Math.min(30,Math.floor((v.duration||3)*10)),frames=[],i=0;
 function step(){if(i>=n)return Promise.resolve();return new Promise(function(ok){v.addEventListener("seeked",ok,{once:true});v.currentTime=i/10}).then(function(){x.clearRect(0,0,s[0],s[1]);draw(x,s[0],s[1],v,title);
 if(!i&&!x.getImageData(Math.round(s[0]*.05),Math.round(s[1]*.05),1,1).data[3])throw new Error("no frames");frames.push(x.getImageData(0,0,s[0],s[1]).data);i++;return step()})}
 return step().then(function(){var g=shroomGif(frames,s[0],s[1],10);if(g.length>c.caps.gifMax){g=shroomGif(frames.filter(function(_,j){return j%2===0}),s[0],s[1],20)}v.removeAttribute("src");return g.length>c.caps.gifMax?null:new Blob([g],{type:"image/gif"})})})}
-function store(b,title){if(!b)return null;return fetch("/_shroom/thumb/"+c.id,{method:"POST",headers:{"content-type":b.type,"x-shroom-title":encodeURIComponent(title)},body:b})
+function store(b,title){if(!b)return null;return fetch("/_shroom/thumb/"+c.id,{method:"POST",headers:{"content-type":b.type,"x-shroom-title":encodeURIComponent(title),"x-shroom-from":c.from},body:b})
 .then(function(r){return r.ok?r.json():null}).then(function(j){return j&&j.url},function(){return null})}
 function wake(my){if(my===gen){clearTimeout(guard);cb(true)}}
-function make(){var my=++gen,title=c.titled?c.title:"";
+function make(){if(!c.from)return Promise.resolve(null);var my=++gen,title=c.titled?c.title:"";
 var first=c.thumb?Promise.resolve(c.thumb):still(title).then(function(b){return store(b,title)}).then(function(u){if(my===gen&&u&&!c.thumb)c.thumb=u;return u},function(){return null});
 making=first;first.then(function(){if(my!==gen)return;if(c.gif)return wake(my);if(!c.teaser){if(c.drained)wake(my);return}
 clearTimeout(guard);guard=setTimeout(function(){wake(my)},20000);
@@ -1313,30 +1921,33 @@ return{length:function(l){if(l)c.len=l},retitle:function(t){c.title=t;c.titled=t
 drained:function(){if(c.drained)return;c.drained=true;var my=gen;if(!c.teaser&&making)making.then(function(){if(!c.teaser)wake(my)})},
 live:function(){c.live=true;if(!c.thumb||!c.gif)make()},
 teaser:function(){if(c.teaser)return;c.teaser=true;if(c.live&&!c.gif)make()},
-copy:function(){var link=location.origin+"/"+c.id;return shroomCopyRich(c.thumb?html(c.thumb):(making||make()).then(function(u){return html(u||"/m/"+c.id+"/poster.jpg")}),link)}}}
+copy:function(){var link=location.origin+"/"+c.id;if(!c.thumb&&!c.psrc)return shroomCopy(link,null);return shroomCopyRich(c.thumb?html(c.thumb):(making||make()).then(function(u){return html(u||c.psrc)}),link)}}}
 function shroomCopyRich(h,t){var hp=Promise.resolve(h);
 function old(x){var ok=false;function on(e){e.preventDefault();e.clipboardData.setData("text/html",x);e.clipboardData.setData("text/plain",t);ok=true}document.addEventListener("copy",on);try{document.execCommand("copy")}catch(e){}document.removeEventListener("copy",on);return ok}
 if(navigator.clipboard&&navigator.clipboard.write&&window.ClipboardItem){try{return navigator.clipboard.write([new ClipboardItem({"text/html":hp.then(function(x){return new Blob([x],{type:"text/html"})}),"text/plain":new Blob([t],{type:"text/plain"})})]).then(function(){return true},function(){return hp.then(old)})}catch(e){}}
 return hp.then(old)}`;
 
 /** @param {string} id @param {any} meta @param {Face} face @param {string} src what the player plays (B177) */
-function livePage(id, meta, face, src) {
+function livePage(id, meta, face, src, ai = AI_NONE) {
   const title = meta.title || "";
-  // Download is a quiet icon beside the title: its word names it.
-  const download = meta.media.mp4 ? `<span class="dl" data-tip="${COPY.download}"><a href="/d/${id}">${COPY.download}</a></span>` : "";
+  const view = viewOf(id, meta);
+  // Download is a quiet icon beside the title: its word names it. It hands over the video
+  // as it plays (N63), so it waits while an edit's permanent copy is on its way.
+  const download = view.download ? `<span class="dl" data-tip="${COPY.download}"><a href="/d/${id}">${COPY.download}</a></span>` : "";
   // Copy link and Copy thumbnail for viewers too (N46): a viewer stores nothing, so Copy
   // thumbnail shows only once the owner's page has made a picture for the title.
   const thumbs = thumbsOf(id, meta, true, false);
   const cfg = JSON.stringify({ copied: COPY.copied, copy: COPY.copyLink, copyThumb: COPY.copyThumbnail, thumbs });
-  const player = `${playerHtml(id, meta)}
-<script>${PLAYER_JS};shroomPlayer(document.querySelector(".player"),${JSON.stringify(src)},${jsonForScript(JSON.stringify(LABELS))})
+  const player = `${aiPlayer(playerHtml(id, meta), ai)}
+<script>${PLAYER_JS};shroomPlayer(document.querySelector(".player"),${JSON.stringify(src)},${jsonForScript(JSON.stringify(LABELS))},${playing(id, view)})${aiWire(".player", ai)}
+${VIEW_JS};shroomCount(document.getElementById("v"),${JSON.stringify(id)})
 ${COPY_JS}
 ${THUMB_JS}
 (function(){var c=${jsonForScript(cfg)},th=shroomThumbs(c.thumbs);
 function copied(el,label){return function(ok){if(!ok)return;el.textContent=c.copied;el.classList.add("done");setTimeout(function(){el.textContent=label;el.classList.remove("done")},1500)}}
 var b=document.getElementById("c");b.onclick=function(){shroomCopy(location.origin+"/"+c.thumbs.id,null).then(copied(b,c.copy))};
 var tb=document.getElementById("th");tb.onclick=function(){th.copy().then(copied(tb,c.copyThumb))}})()</script>`;
-  return shell(title || "shroom", `<div class="head"><h1>${escapeText(title)}</h1>${copyButtons(!!thumbs.thumb)}${download}</div>${player}`, face);
+  return shell(title || "shroom", `<div class="head"><h1>${escapeText(title)}</h1>${copyButtons(!!thumbs.thumb)}${download}</div>${player}`, face, aiHead(ai));
 }
 
 /** Copy link and Copy thumbnail, each named by its words and with them as its tooltip (the
@@ -1346,22 +1957,78 @@ var tb=document.getElementById("th");tb.onclick=function(){th.copy().then(copied
 const copyButtons = (shown, waiting = false) => `<button class="copy" id="c" data-tip="${COPY.copyLink}">${COPY.copyLink}</button>`
   + `<button class="copy thumb" id="th" data-tip="${waiting ? COPY.preparingThumbnail : COPY.copyThumbnail}"${waiting ? ' aria-disabled="true"' : ""}${shown ? "" : " hidden"}>${COPY.copyThumbnail}</button>`;
 
-/** The newest picture made for the title a video has now (N46), as its address, or null. */
-/** @param {any} meta @returns {string | null} */
-function newestThumb(meta) {
-  const title = meta.titled ? meta.title : null;
-  const t = meta.thumb && typeof meta.thumb === "object" && meta.thumb.title === title ? meta.thumb : null;
-  const file = t && (typeof t.gif === "string" ? t.gif : typeof t.jpg === "string" ? t.jpg : null);
-  return typeof file === "string" && ID.test(String(meta.id)) && /^thumb-[0-9a-f]{16}\.(gif|jpg)$/.test(file) ? `/m/${meta.id}/${file}` : null;
+/** The first frame Copy thumbnail draws from now (N46) — its still is that frame, its loop
+ * the start of the teaser beside it — as its name under `rec/<id>/`, or null when there's
+ * none to draw from (N63): with no edit, the recording's own poster (`media.poster`'s file,
+ * `poster.jpg` when the record names none; a baked recording only its own); once an edit's
+ * copy is up, the copy's own first frame (`edit-<rev>-poster.jpg`), none when it has none;
+ * while an edit waits for its copy, none. The stamp a picture carries (`meta.thumb.from`)
+ * is held to it. @param {string} id @param {any} meta @returns {string | null} */
+function thumbSource(id, meta) {
+  const edit = editsOf(meta, id);
+  if (edit) {
+    const p = edit.copy?.poster;
+    return p ? p.slice(p.lastIndexOf("/") + 1) : null;
+  }
+  return ownFile(id, meta, "poster") ?? (baked(id, meta) ? null : "poster.jpg");
 }
 
-/** What a page's Copy thumbnail starts from (N46): the picture made for the title the video
- * has now — the loop over the still — and what drawing the next one needs. */
+/** The video's picture (N46): `meta.thumb` while it was made for the title the video has
+ * now and drawn from the first frame Copy thumbnail draws from now (`from`, which a picture
+ * made before the stamp lacks: it was drawn from `poster.jpg`), else null — so a picture of
+ * the original never outlives an edit, its copy or its bake (N63, B197).
+ * @param {string} id @param {any} meta */
+function currentThumb(id, meta) {
+  const t = meta?.thumb;
+  if (!t || typeof t !== "object" || t.title !== (meta.titled ? meta.title : null)) return null;
+  const source = thumbSource(id, meta);
+  return source !== null && (t.from === undefined ? "poster.jpg" : t.from) === source ? t : null;
+}
+
+/** The video's pictures' own names, the loop first. @param {string} id @param {any} meta @returns {string[]} */
+function currentThumbFiles(id, meta) {
+  const t = currentThumb(id, meta);
+  return t ? [t.gif, t.jpg].filter((f) => typeof f === "string" && THUMB_FILE.test(f)) : [];
+}
+
+/** The newest picture for the video as it is now (N46), as its address, or null.
+ * @param {string} id @param {any} meta @returns {string | null} */
+function newestThumb(id, meta) {
+  const file = currentThumbFiles(id, meta)[0];
+  return file && ID.test(id) ? `/m/${id}/${file}` : null;
+}
+
+/** Whether every edit the recording has been through kept its first `THUMB_SECONDS` whole —
+ * all a picture Copy thumbnail ever drew can show (the first frame, and the teaser's first
+ * 3 s), whatever it was drawn from: the edit it has now (on its own clock) and each bake's
+ * (`bakedFrom[].keep`, on the clock it was cut from), each starting with a range from 0 to
+ * at least 3 s. A video shorter than that keeps it only with no edit at all. While they all
+ * do, every picture stays served (a paste already sent keeps it, B164); once one doesn't,
+ * only the video's own picture is (`currentThumb`). @param {string} id @param {any} meta */
+function startKept(id, meta) {
+  const whole = (/** @type {unknown} */ keep) => Array.isArray(keep) && Array.isArray(keep[0])
+    && typeof keep[0][0] === "number" && typeof keep[0][1] === "number" && keep[0][0] <= 0 && keep[0][1] >= THUMB_SECONDS;
+  const edit = editsOf(meta, id);
+  if (edit && !whole(edit.keep)) return false;
+  const bakes = meta?.bakedFrom;
+  return bakes === undefined || bakes === null || (Array.isArray(bakes) && bakes.every((b) => whole(b?.keep)));
+}
+
+/** What a page's Copy thumbnail starts from (N46): the video's picture — the loop over the
+ * still — and what drawing the next one needs: the length as it plays (N63: the edited
+ * one) and the first frame and teaser it draws from (`from`, `psrc`, `tsrc`: an edit's
+ * permanent copy's own once it's up; nothing while an edit waits for it, so nothing is
+ * drawn). `psrc` is also what a copy pastes when no picture could be stored: never a frame
+ * that's cut or out of reach. */
 /** @param {string} id @param {any} meta @param {boolean} live */
 function thumbsOf(id, meta, live, store = true) {
-  const thumb = newestThumb({ ...meta, id });
+  const thumb = newestThumb(id, meta);
+  const view = viewOf(id, meta);
+  const from = thumbSource(id, meta);
+  const tsrc = !from ? "" : view.teaser ?? (view.copy || view.baked ? "" : `/m/${id}/teaser.mp4`);
   return { id, live, store, title: meta.titled ? meta.title : "", titled: !!meta.titled, thumb, gif: !!thumb?.endsWith(".gif"),
-    teaser: !!meta.media?.teaser, len: Number(meta.durationSec) > 0 ? clock(meta.durationSec, true) : "",
+    teaser: !!from && !!view.teaser, len: view.dur > 0 ? clock(view.dur, true) : "",
+    from: from ?? "", psrc: from ? `/m/${id}/${from}` : "", tsrc,
     rw: meta.media?.width || 16, rh: meta.media?.height || 9, caps: THUMB };
 }
 
@@ -1374,39 +2041,64 @@ function thumbsOf(id, meta, live, store = true) {
  * speaks; the recipient's "refreshes itself" line is theirs (B43). */
 /** @param {string} id @param {any} meta @param {number} now @param {Face} face @param {string} waiting the stalled line
  * @param {boolean} [blocked] the space can't take uploads: the waiting line from the start
- * @param {boolean} [pending] no record yet (its claim is still on its way) */
-function ownerPage(id, meta, now, face, waiting, blocked = false, pending = false, src = `/m/${id}/master.m3u8`) {
+ * @param {boolean} [pending] no record yet (its claim is still on its way)
+ * @param {string} [src] @param {boolean} [listens] the space hears its takes (N66) */
+function ownerPage(id, meta, now, face, waiting, blocked = false, pending = false, src = `/m/${id}/master.m3u8`, ai = AI_NONE, listens = false) {
   const live = meta.state === "live";
   const placeholder = meta.titled ? untitled(meta.createdAt ?? new Date(now).toISOString()) : meta.title || untitled(meta.createdAt);
   const value = meta.titled ? meta.title : "";
   const st = status(meta, now);
   const stalled = blocked || !!st.stalled;
   const drainedNow = live && st.drained;
-  // Drained, the upload line has nothing left to say and goes (no “Fully live ✓” on the page);
-  // an open page that saw it drain says “Ready ✓” for a few seconds first (B142).
-  const line = drainedNow ? "" : stalled ? waiting : uploadingLine(st.pct ?? 0);
+  // The page's one line (N65 (7)): “Finishing your video …” from go-live, a small spinner in
+  // front of it and no bar (Bagrat, 2026-10-18). While a space that listens hears the take (the
+  // cuts are coming) it stays after the upload, its spinner turning; otherwise, drained, it has
+  // nothing left to say and goes — no “Fully live ✓”, no “Ready ✓”. Stalled, the spinner rests.
+  const cutsTag = cutsField(meta, now, listens).cuts ?? null;
+  const hearing = drainedNow && cutsTag === "coming";
+  const line = drainedNow ? (hearing ? COPY.finishing : "") : stalled ? waiting : COPY.finishing;
   const field = `<input class="title" id="t" maxlength="${TITLE_MAX}" aria-label="Title" value="${escapeHtml(value)}" placeholder="${escapeHtml(placeholder)}"${meta.titled ? "" : " autofocus"}>`;
   const frame = meta.media?.poster ? `<img src="/m/${id}/poster.jpg" alt="">` : "";
-  const stage = live ? playerHtml(id, meta) : `<div class="wait" id="w">${frame}</div>`;
-  const download = meta.media?.mp4 ? `<a href="/d/${id}">${COPY.download}</a>` : "";
+  const stage = live ? aiPlayer(playerHtml(id, meta), ai) : `<div class="wait" id="w">${frame}</div>`;
+  // Download hands over the video as it plays (N63): it waits for an edit's permanent copy.
+  const view = viewOf(id, meta);
+  const download = view.download ? `<a href="/d/${id}">${COPY.download}</a>` : "";
   // Copy thumbnail waits for the loop made for this title — or, when none can be made (the
   // upload finished with no teaser), for the still (N46).
   const thumbs = { ...thumbsOf(id, meta, live), drained: drainedNow };
-  const ready = thumbs.gif || (drainedNow && !meta.media?.teaser && !!thumbs.thumb);
+  const ready = thumbs.gif || (drainedNow && !thumbs.teaser && !!thumbs.thumb);
+  // Edit in shroom (N69): the last quiet icon, a plain link that opens the video in shroom's
+  // editor — once the video is fully up, as Edit… in the Library (the poll brings it in at
+  // the drain). The browser asks before shroom opens; nothing on the page tests for it.
+  const edit = face.host ? `<a class="copy edit" id="ed" href="${escapeHtml(`shroom://edit/${face.host}/${id}`)}" data-tip="${COPY.editInShroom}" aria-label="${COPY.editInShroom}"${drainedNow ? "" : " hidden"}>${COPY.editInShroom}</a>` : "";
   // Copy link and Download are quiet icons beside the title; their words name them.
-  const head = `<div class="head">${field}${copyButtons(live, !ready)}<span id="dl" data-tip="${COPY.download}">${download}</span></div>`;
-  const upload = `<div class="upl" id="ul"${drainedNow ? " hidden" : ""}><span class="up" id="u">${escapeText(line)}</span>${drainedNow ? "" : thinBar(st.pct ?? 0, stalled, "b")}</div>`;
-  const [upA, upB] = uploadingLine(0).split("0%");
+  const head = `<div class="head">${field}${copyButtons(live, !ready)}<span id="dl" data-tip="${COPY.download}">${download}</span>${edit}</div>`;
+  const gone = drainedNow && !hearing;
+  const spin = gone ? "" : `<span class="spin${stalled && !drainedNow ? " rest" : ""}" id="b" aria-hidden="true"></span>`;
+  const upload = `<div class="upl" id="ul"${gone ? " hidden" : ""}>${spin}<span class="up" id="u">${escapeText(line)}</span></div>`;
+  // The wait's five minutes, counted down by the page itself from the take's go-live, so the
+  // line never hangs on a status it can no longer reach.
+  const listenFor = cutsTag === "coming" ? Math.max(0, VOICE_WAIT_MS - (now - Date.parse(meta.publishedAt))) : 0;
+  // Voice cuts (N65): what was cut where the speaker said “shroom cut”, under the player —
+  // this page is the maker's or an owner-class browser's. While the cues are still coming,
+  // an empty strip waits for the page's poll to fill it.
+  const rows = cutsStrip(meta.edits);
+  const cuts = rows || (cutsTag === "coming" ? `<section class="cuts" id="cuts" hidden></section>` : "");
+  // The hint (owner-page-cue-hint): no voice cuts, in a space that listens. Hidden until the
+  // page's own check: this browser may have put it away, or seen a strip; while the cues are
+  // coming, it waits for the line to end with none.
+  const hint = listens && !rows ? `<div class="cue-hint" role="note" hidden><span>${escapeText(COPY.cueHint)}</span><button type="button">${escapeText(COPY.cueHintGotIt)}</button></div>` : "";
   const cfg = JSON.stringify({
-    id, live, drained: drainedNow, pending, mp4: !!meta.media?.mp4, saved: meta.titled ? meta.title : "", copied: COPY.copied, copy: COPY.copyLink, waiting,
-    copyThumb: COPY.copyThumbnail, preparing: COPY.preparingThumbnail, thumbs, dl: COPY.download, ready: COPY.ready, notFound: COPY.notFound, unavailable: COPY.unavailable, upA, upB, labels: LABELS, player: live ? "" : playerHtml(id, { ...meta, media: { ...meta.media, poster: null } }),
+    id, live, drained: drainedNow, pending, mp4: view.download, saved: meta.titled ? meta.title : "", copied: COPY.copied, copy: COPY.copyLink, waiting,
+    copyThumb: COPY.copyThumbnail, preparing: COPY.preparingThumbnail, thumbs, dl: COPY.download, finishing: COPY.finishing, notFound: COPY.notFound, unavailable: COPY.unavailable, labels: LABELS, player: live ? "" : playerHtml(id, { ...meta, media: { ...meta.media, poster: null } }),
+    cutsTag, listenFor, cutLabels: { back: COPY.putBack, again: COPY.cutAgain },
   });
   const script = `<script>${PLAYER_JS}
 ${COPY_JS}
 ${THUMB_JS}
 (function(){var c=${jsonForScript(cfg)},t=document.getElementById("t"),saved=c.saved,src=${jsonForScript(JSON.stringify(src))},tb=document.getElementById("th");
 var th=shroomThumbs(c.thumbs,function(ok){if(ok)tb.removeAttribute("aria-disabled");else tb.setAttribute("aria-disabled","true");tb.setAttribute("data-tip",ok?c.copyThumb:c.preparing)});
-if(c.live){shroomPlayer(document.querySelector(".player"),src,c.labels);th.live()}
+if(c.live){shroomPlayer(document.querySelector(".player"),src,c.labels,${playing(id, view)});th.live()}
 function send(v){c.pend=null;fetch("/_shroom/title/"+c.id,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({title:v})})
 .then(function(r){if(r.status===404)c.pend=v;return r.ok?r.json():null}).then(function(j){if(j){saved=j.title;if(document.activeElement!==t)t.value=saved;document.title=saved;th.retitle(saved)}})}
 function save(){var v=t.value.replace(/\\s+/g," ").trim();if(!v){t.value=saved;return}if(v===saved)return;send(v)}
@@ -1414,24 +2106,43 @@ t.addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();
 function copied(el,label){return function(ok){if(!ok)return;el.textContent=c.copied;el.classList.add("done");setTimeout(function(){el.textContent=label;el.classList.remove("done")},1500)}}
 var b=document.getElementById("c");b.onclick=function(){shroomCopy(location.origin+"/"+c.id,null).then(copied(b,c.copy))};
 tb.onclick=function(){if(tb.getAttribute("aria-disabled"))return;th.copy().then(copied(tb,c.copyThumb))};
-var ul=document.getElementById("ul"),up=document.getElementById("u"),bar=document.getElementById("b"),dl=document.getElementById("dl"),gap=2000;
+var ul=document.getElementById("ul"),up=document.getElementById("u"),sp=document.getElementById("b"),dl=document.getElementById("dl"),gap=2000;
+function keepTo(k){document.dispatchEvent(new CustomEvent("shroom:keep",{detail:k}))}
+function row(li,on){var b=li.querySelector("button");li.className=on?"cut on":"cut";b.textContent=on?c.cutLabels.back:c.cutLabels.again;b.setAttribute("data-press",on?"0":"1")}
+function wire(){var cu=document.getElementById("cuts");if(!cu)return;cu.onclick=function(e){var b=e.target.closest&&e.target.closest("button[data-press]");if(!b||b.getAttribute("aria-busy"))return;
+var li=b.closest("li"),on=b.getAttribute("data-press")==="1",un=cu.querySelector(".unsaved");b.setAttribute("aria-busy","true");if(un)un.hidden=true;
+fetch("/_shroom/edits/"+c.id,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({cut:li.getAttribute("data-cut"),applied:on})})
+.then(function(r){return r.ok?r.json():null},function(){return null}).then(function(j){b.removeAttribute("aria-busy");if(!j){if(un)un.hidden=false;return}row(li,j.applied);if(j.cuts)c.cutsTag=j.cuts;keepTo(j.keep)})}}
+function pull(tag){fetch("/_shroom/edits/"+c.id,{cache:"no-store"}).then(function(r){return r.ok?r.json():null}).then(function(j){if(!j)return;c.cutsTag=j.cuts||tag;var cu=document.getElementById("cuts");
+if(j.strip){var h=document.createElement("div");h.innerHTML=j.strip;var n=h.firstChild;if(cu)cu.replaceWith(n);else{var at=document.querySelector(".player")||document.getElementById("w");if(at)at.after(n)}wire();stripSeen()}else if(cu&&c.cutsTag!=="coming")cu.remove();keepTo(j.keep)})}
+wire();
+var HK="shroom:cue-hint";function hintAway(){try{return localStorage.getItem(HK)==="1"}catch(e){return false}}function putHintAway(){try{localStorage.setItem(HK,"1")}catch(e){}}
+function stripSeen(){var cu=document.getElementById("cuts");if(cu&&!cu.hidden){putHintAway();var h=document.querySelector(".cue-hint");if(h)h.remove()}}
+var hn=document.querySelector(".cue-hint");function hintDue(){if(hn&&hn.isConnected&&!hintAway())hn.hidden=false}
+if(hn){hn.querySelector("button").onclick=function(){hn.remove();putHintAway()};if(c.cutsTag!=="coming")hintDue()}stripSeen();
+function done(then){if(c.done)return;c.done=true;if(ul.hidden){if(then)then();return}ul.classList.add("fade");setTimeout(function(){ul.hidden=true;up.textContent="";if(sp){sp.remove();sp=null}if(then)then()},400)}
+if(c.listenFor)setTimeout(function(){c.waitOver=true;if(c.drained)done(hintDue)},c.listenFor);
 function next(ms){setTimeout(poll,ms)}
-function showBar(on,moving){if(bar){bar.parentNode.style.display=on?"":"none";bar.parentNode.className="bar"+(moving?" go":"")}}
+function spin(on,turning){if(sp){sp.style.display=on?"":"none";sp.className="spin"+(turning?"":" rest")}}
 function say(x){var w=document.getElementById("w");if(!w||(!x&&!c.said))return;c.said=!!x;w.textContent="";if(x){var p=document.createElement("p");p.className="line";p.textContent=x;w.appendChild(p)}}
 function poll(){fetch("/_shroom/status/"+c.id,{cache:"no-store"}).then(function(r){return r.json()}).then(function(s){
 if(s.state==="removed"){var m=document.querySelector("main"),p=document.createElement("p");m.textContent="";p.className="line";p.textContent=c.notFound;m.appendChild(p);document.title="shroom";return}
 if(c.pend&&s.state!=="waiting")send(c.pend);
 if(s.state==="live"){if(s.dur)th.length(shroomClock(s.dur,true));if(s.teaser)th.teaser();if(!c.live){c.live=true;tb.hidden=false;th.live();var w=document.getElementById("w"),h=document.createElement("div");h.innerHTML=c.player;var pl=h.firstChild;
-if(s.poster)pl.querySelector("video").poster="/m/"+c.id+"/poster.jpg";w.replaceWith(pl);shroomPlayer(pl,src,c.labels)}
-if(s.drained)th.drained();
-if(s.drained){if(bar&&!c.done){c.done=true;up.textContent=c.ready;ul.classList.add("done");showBar(true,false);bar.style.width="100%";setTimeout(function(){ul.classList.add("fade");setTimeout(function(){ul.hidden=true;up.textContent="";if(bar){bar.parentNode.remove();bar=null}},400)},3000)}else if(!c.done){ul.hidden=true;up.textContent="";if(bar){bar.parentNode.remove();bar=null}}}else{ul.hidden=false;up.textContent=s.stalled?c.waiting:c.upA+s.pct+"%"+c.upB;showBar(true,!s.stalled);if(bar)bar.style.width=s.pct+"%"}
-if(s.mp4){if(!dl.firstChild){var a=document.createElement("a");a.href="/d/"+c.id;a.textContent=c.dl;dl.appendChild(a)}if(s.drained)return}
-if(!s.drained)return next(2000);gap=Math.min(gap*2,30000);return next(gap)}
-if(s.state==="unavailable"){if(!c.live){say(c.unavailable);up.textContent="";showBar(false,false)}return next(30000)}
-if(s.state==="uploading"){say("");ul.hidden=false;up.textContent=s.stalled?c.waiting:c.upA+s.pct+"%"+c.upB;showBar(true,!s.stalled);if(bar)bar.style.width=s.pct+"%"}
+var cp=s.copy,ps=cp&&cp.poster||(s.poster?"/m/"+c.id+"/poster.jpg":"");if(s.dur)pl.setAttribute("data-dur",s.dur);if(ps)pl.querySelector("video").poster=ps;w.replaceWith(pl);
+shroomPlayer(pl,cp?cp.src:src,c.labels,{keep:cp?null:s.keep||null,st:"/_shroom/status/"+c.id,copy:!!cp})}
+if(s.drained)th.drained();var ed=document.getElementById("ed");if(ed&&s.drained)ed.hidden=false;
+if(s.cuts&&s.cuts!=="coming"&&s.cuts!==c.cutsTag)pull(s.cuts);if(!s.cuts&&c.cutsTag==="coming"){c.cutsTag=null;var cw=document.getElementById("cuts");if(cw&&cw.hidden)cw.remove()}
+if(s.drained){c.drained=true;if(s.cuts==="coming"&&!c.waitOver){if(!c.done){ul.hidden=false;up.textContent=c.finishing;spin(true,true)}}else done(s.cuts?null:hintDue)}
+else{ul.hidden=false;up.textContent=s.stalled?c.waiting:c.finishing;spin(true,!s.stalled)}
+if(s.mp4){if(!dl.firstChild){var a=document.createElement("a");a.href="/d/"+c.id;a.textContent=c.dl;dl.appendChild(a)}if(s.drained&&s.cuts!=="coming")return}
+if(!s.drained||s.cuts==="coming")return next(2000);gap=Math.min(gap*2,30000);return next(gap)}
+if(s.state==="unavailable"){if(!c.live){say(c.unavailable);up.textContent="";spin(false,false)}return next(30000)}
+if(s.state==="uploading"){say("");ul.hidden=false;up.textContent=s.stalled?c.waiting:c.finishing;spin(true,!s.stalled)}
 next(2000)}).catch(function(){next(5000)})}
-if(!c.live||!c.mp4||!c.drained)next(2000)})();</script>`;
-  return shell(meta.title || "shroom", `${head}${stage}${upload}`, face, "", script);
+if(!c.live||!c.mp4||!c.drained)next(2000);else if(c.cutsTag==="coming")next(2000)})();</script>`;
+  const wire = aiWire(".player", ai);
+  return shell(meta.title || "shroom", `${head}${aiNote(ai)}${stage}${cuts}${hint}${upload}`, face, aiHead(ai), `${script}${wire ? `<script>${wire}</script>` : ""}${aiOwnerScript(id, ai)}`);
 }
 
 /** A JSON island safe inside <script>: <, >, & and the two line separators escaped. */
@@ -1473,6 +2184,9 @@ const UPLOAD_BUDGET = 20;
  * click each, so this is room to spare — and a ceiling on what a member can make the
  * owner's bucket hold until the token Mac's sweep reaps the unspent ones. */
 const KEY_BUDGET = 60;
+/** Voice-cue judgments a device may ask for in an hour (B202): one per cue a take's plan
+ * weighs, so room to spare — and a ceiling on what a Mac can spend of the owner's AI. */
+const CUE_BUDGET = 120;
 /** The token-holder flag: a parent proof within this long (H1). */
 const TOKEN_FLAG_MS = 30 * DAY_MS;
 /** Enroll re-stamps proofAt at most this often (C5). */
@@ -1546,6 +2260,10 @@ async function route(request, env, url, now) {
     case "mark": only("POST"); return mark(request, env, await body(request), now);
     case "health": only("POST"); return health(request, env, await body(request), now);
     case "gone": only("POST"); return gone(request, env, await body(request), now);
+    case "ai": only("POST"); return aiAskRoute(request, env, url, now);
+    case "cleanup": only("POST"); return cleanup(request, env, await body(request), now);
+    case "plays": return plays(request, env, url, now);
+    case "cue": only("POST"); return cue(request, env, await body(request), now);
   }
   const target = path.match(/^(invites|members|devices)\/([^/]+)$/);
   if (target) {
@@ -1870,9 +2588,9 @@ async function join(env, url, b, now) {
 
 // ───────── enroll: a Mac holding the token (§3.2, §4.6) ─────────
 
-/** @param {Request} request @param {Env} env @param {URL} url @param {number} now */
-async function enroll(request, env, url, now) {
-  const { value: b, bytes } = await rawBody(request);
+/** The parent proof (§3.2): the Mac holding the token signs the request with its derived
+ * S3 secret. The parent, once it's proven. @param {Request} request @param {Env} env @param {URL} url @param {number} now @param {Uint8Array<ArrayBuffer>} bytes */
+async function parentProven(request, env, url, now, bytes) {
   const proof = (request.headers.get("authorization") ?? "").match(/^ShroomParent (\d{1,12})\.([A-Za-z0-9_-]{16,128})$/);
   if (!proof) throw new Refusal(401, "unauthorized");
   const parent = parentOf(env);
@@ -1885,6 +2603,13 @@ async function enroll(request, env, url, now) {
   let ok = false;
   try { ok = await crypto.subtle.verify("HMAC", key, fromB64url(proof[2]), new TextEncoder().encode(msg)); } catch { ok = false; }
   if (!ok) throw new Refusal(401, "stale-parent");
+  return parent;
+}
+
+/** @param {Request} request @param {Env} env @param {URL} url @param {number} now */
+async function enroll(request, env, url, now) {
+  const { value: b, bytes } = await rawBody(request);
+  const parent = await parentProven(request, env, url, now, bytes);
 
   const d = b.device;
   if (!d || typeof d !== "object" || typeof d.id !== "string" || !DEVICE_ID.test(d.id) || typeof d.verifier !== "string" || !HEX64.test(d.verifier)) throw bad();
@@ -2063,14 +2788,15 @@ async function spendBudget(env, did, now, field = "n", budget = UPLOAD_BUDGET) {
     /** @type {any} */
     let cur = null;
     if (object) { try { cur = JSON.parse(await object.text()); } catch { cur = null; } }
-    // One object per device and window: uploads count in `n`, page keys in `k` (B125).
+    // One object per device and window: uploads count in `n`, page keys in `k` (B125), voice-cue
+    // judgments in `c` (B202).
     const same = cur && cur.window === window;
     const count = (/** @type {string} */ f) => (same && Number.isInteger(cur[f]) ? cur[f] : 0);
     const n = count(field);
     if (n >= budget) throw new Refusal(429, "too-many", { retryAfter: Math.max(1, Math.ceil((Date.parse(window) + HOUR_MS - now) / 1000)) });
     /** @type {Record<string, any>} */
     const next = { window, n: count("n") };
-    if (field === "k" || count("k") > 0) next.k = count("k");
+    for (const f of ["k", "c"]) if (field === f || count(f) > 0) next[f] = count(f);
     next[field] = n + 1;
     if (await casPut(env, key, JSON.stringify(next), object ? { etagMatches: object.etag } : { etagDoesNotMatch: "*" })) return;
   }
@@ -2427,6 +3153,8 @@ async function gone(request, env, b, now) {
   if (owner !== who.mid && !who.ownerClass) throw new Refusal(403, "not-yours");
   if (meta.exists && !meta.deleted) throw new Refusal(409, "not-deleted");
   await env.BUCKET.put(`${GONE}${b.rec}`, JSON.stringify({ v: 1, by: who.did, at: iso(now) }), { httpMetadata: JSON_TYPE });
+  // Its plays go with it (N68): a deleted video's counts are no one's to keep.
+  await env.BUCKET.delete(`${VIEWS}${b.rec}.json`).catch(() => {});
   return noContent();
 }
 
@@ -2559,6 +3287,365 @@ const JOIN_STYLE = `body{padding:0 16px 24px;font-size:15px;line-height:1.55}
 .end{padding-top:32px;display:flex;justify-content:flex-end}
 .made{display:flex;align-items:center;gap:8px;min-height:44px;color:var(--quiet);font-size:13px;text-decoration:none}.made:hover{color:var(--text)}.made svg{display:block;width:17px;height:18px}
 @media (max-width:600px){.join{padding-top:24px;gap:24px}#get{gap:24px}#get>.line:first-child{margin-top:-12px}}`;
+
+// ════════════════════════════════════════════════════════════════════════════════════
+// Plays, and videos suggested to clean up (N68; WORKER-INTERFACE §4.22)
+// ════════════════════════════════════════════════════════════════════════════════════
+//
+// The page counts its own plays, in the owner's bucket, with nothing that names a viewer:
+// no cookie, no stored address. The player sends two beacons a page load — `play` at its
+// first play, `end` whenever the tab hides (the last one wins) — each carrying a random
+// token that lives only in that page's memory. The Worker keeps one record per video,
+// `.shroom/views/<id>.json`, written by compare-and-swap:
+//
+//   { "v": 1, "plays", "viewers", "ends", "watch": [10 counts by tenths watched],
+//     "watchedSec", "firstAt", "lastAt", "days": { "YYYY-MM-DD": plays },
+//     "today": { "d": "YYYY-MM-DD", "h": [viewer hashes], "t": { token: tenth } } }
+//
+// `viewers` is unique-ish: a viewer is the first 8 hex of SHA-256(the day's salt, the
+// address, the browser's name, the id), kept for that day only; the salt
+// (`.shroom/views/salt.json`) is replaced each day, so yesterday's hashes can't be
+// recomputed. `.shroom/views/since.json` remembers when counting began; `.shroom/plays.json`
+// (`{on, at}`, owner-class's switch, N68) turns counting off when `on` is false. Nothing under .shroom/ is ever served, and no recording credential
+// reaches it, so a Mac can't write plays either.
+
+const VIEWS = ".shroom/views/";
+const PLAYS_KEY = ".shroom/plays.json";
+const VIEW_SALT = `${VIEWS}salt.json`;
+const VIEW_SINCE = `${VIEWS}since.json`;
+const VIEW_BODY_MAX = 512;
+/** Hashes and tokens held for a day, per video: past these a play still counts, undeduped. */
+const VIEW_DAY_CAP = 1000;
+/** Days of per-day plays kept (the fading score reads them; older ones fold into `plays`). */
+const VIEW_DAYS_KEPT = 400;
+const VIEW_TOKEN = /^[A-Za-z0-9_-]{8,32}$/;
+
+/** The page's two beacons. Owner pages never carry it: a maker watching their own video
+ * isn't a play. `navigator.sendBeacon` with a text body is a simple request; the Worker
+ * checks the Origin beside it. */
+export const VIEW_JS = `function shroomCount(v,id){if(!navigator.sendBeacon)return;var t=Math.random().toString(36).slice(2,14)+Math.random().toString(36).slice(2,8),played=false;
+function send(e,f){try{navigator.sendBeacon("/_shroom/view/"+id,JSON.stringify(f==null?{e:e,t:t}:{e:e,t:t,f:f}))}catch(x){}}
+function seen(){var d=isFinite(v.duration)&&v.duration>0?v.duration:0,r=v.played,s=0;if(!d||!r)return 0;for(var i=0;i<r.length;i++)s+=r.end(i)-r.start(i);return Math.max(0,Math.min(1,s/d))}
+v.addEventListener("play",function(){if(!played){played=true;send("play")}});
+function hide(){if(played)send("end",Math.round(seen()*1000)/1000)}
+document.addEventListener("visibilitychange",function(){if(document.visibilityState==="hidden")hide()});window.addEventListener("pagehide",hide)}`;
+
+/** @param {number} ms */
+const dayOf = (ms) => iso(ms).slice(0, 10);
+
+/** `POST /_shroom/view/<id>`: one beacon. Always 204 unless the request is malformed or
+ * cross-site — a beacon learns nothing, and nobody waits on it. A video that isn't live
+ * gets no record (so a guessed id can't fill the bucket). */
+/** @param {Request} request @param {Env} env @param {URL} url @param {string} id @param {number} now */
+async function viewBeacon(request, env, url, id, now) {
+  // WebKit sends a beacon from a page being left as `Origin: null`; a named other origin,
+  // or the browser's own word that it's cross-site, is refused.
+  const origin = request.headers.get("origin");
+  if ((origin !== null && origin !== "null" && origin !== url.origin) || request.headers.get("sec-fetch-site") === "cross-site") return plain(403, "");
+  /** @type {any} */
+  let b;
+  try { b = JSON.parse(new TextDecoder().decode(await readCapped(request, VIEW_BODY_MAX))); } catch { return plain(400, ""); }
+  if (!b || (b.e !== "play" && b.e !== "end") || typeof b.t !== "string" || !VIEW_TOKEN.test(b.t)) return plain(400, "");
+  const f = b.e === "end" ? Number(b.f) : 0;
+  if (b.e === "end" && !(f >= 0 && f <= 1)) return plain(400, "");
+  const [meta, on] = await Promise.all([readMeta(env, id).catch(() => null), playsOn(env).catch(() => true)]);
+  if (!on || !meta || meta.state !== "live") return noContent();
+  const viewer = b.e === "play" ? await viewerHash(env, request, id, now) : null;
+  await countView(env, id, { e: b.e, t: b.t, f, viewer }, now, Number(meta.durationSec) > 0 ? Number(meta.durationSec) : 0).catch(() => {});
+  return noContent();
+}
+
+/** Whether the space counts plays: on unless owner-class turned it off (N68). @param {Env} env */
+async function playsOn(env) {
+  const object = await env.BUCKET.get(PLAYS_KEY);
+  if (!object) return true;
+  try { return JSON.parse(await object.text()).on !== false; } catch { return true; }
+}
+
+/** `GET /_shroom/api/plays` → `{on}`, any device; `POST {on}` sets it, owner-class only —
+ * the space-global switch beside the mark's (§4.15). Turning it off stops counting; what
+ * was counted stays, so the suggestions keep their history if it's turned on again.
+ * @param {Request} request @param {Env} env @param {URL} url @param {number} now */
+async function plays(request, env, url, now) {
+  if (request.method === "GET") {
+    await authed(request, env);
+    return answer({ on: await playsOn(env) });
+  }
+  if (request.method !== "POST") throw new Refusal(405, "method");
+  const { who } = await authed(request, env);
+  ownerClassOnly(who);
+  const b = await body(request);
+  if (typeof b.on !== "boolean") throw bad();
+  await env.BUCKET.put(PLAYS_KEY, JSON.stringify({ on: b.on, at: iso(now) }), { httpMetadata: JSON_TYPE });
+  return answer({ on: b.on });
+}
+
+/** The day's salt, made when the day turns (create-only, then by CAS: two isolates racing
+ * at midnight agree on one). @param {Env} env @param {number} now */
+async function daySalt(env, now) {
+  const day = dayOf(now);
+  for (let i = 0; i < CAS_TRIES; i++) {
+    const o = await env.BUCKET.get(VIEW_SALT);
+    /** @type {any} */
+    let cur = null;
+    if (o) { try { cur = JSON.parse(await o.text()); } catch { cur = null; } }
+    if (cur?.d === day && typeof cur.salt === "string") return cur.salt;
+    const salt = toB64url(crypto.getRandomValues(new Uint8Array(16)));
+    const put = await env.BUCKET.put(VIEW_SALT, JSON.stringify({ d: day, salt }), { onlyIf: o ? { etagMatches: o.etag } : { etagDoesNotMatch: "*" }, httpMetadata: JSON_TYPE }).catch(() => null);
+    if (put) return salt;
+  }
+  throw new Refusal(503, "busy");
+}
+
+/** @param {Env} env @param {Request} request @param {string} id @param {number} now */
+async function viewerHash(env, request, id, now) {
+  const salt = await daySalt(env, now);
+  const ip = request.headers.get("cf-connecting-ip") ?? "";
+  const ua = request.headers.get("user-agent") ?? "";
+  return (await sha256Hex(`${salt}\n${ip}\n${ua}\n${id}`)).slice(0, 8);
+}
+
+/** A fresh record. @param {number} now */
+const emptyViews = (now) => ({ v: 1, plays: 0, viewers: 0, ends: 0, watch: Array(10).fill(0), watchedSec: 0, firstAt: null, lastAt: null, days: {}, today: { d: dayOf(now), h: [], t: {} } });
+
+/** Applies one beacon to a record (pure; exported for the tests).
+ * @param {any} rec @param {{ e: string, t: string, f: number, viewer: string | null }} beacon @param {number} now @param {number} durationSec */
+export function applyView(rec, beacon, now, durationSec) {
+  const r = rec && rec.v === 1 ? structuredClone(rec) : emptyViews(now);
+  const day = dayOf(now);
+  if (r.today?.d !== day) r.today = { d: day, h: [], t: {} };
+  const tenth = (/** @type {number} */ f) => Math.min(9, Math.floor(f * 10));
+  const known = Object.prototype.hasOwnProperty.call(r.today.t, beacon.t);
+  if (beacon.e === "play") {
+    if (known) return null; // this page load's play already counted
+    r.plays += 1;
+    r.days[day] = (r.days[day] ?? 0) + 1;
+    r.firstAt ??= iso(now);
+    r.lastAt = iso(now);
+    if (beacon.viewer && !r.today.h.includes(beacon.viewer)) {
+      r.viewers += 1;
+      if (r.today.h.length < VIEW_DAY_CAP) r.today.h.push(beacon.viewer);
+    }
+    if (Object.keys(r.today.t).length < VIEW_DAY_CAP) r.today.t[beacon.t] = -1; // played, not yet ended
+  } else {
+    // An end counts once per page load, its latest value replacing the one before; an end
+    // whose play was another day (or past the cap) still lands, as a new one.
+    const before = known ? r.today.t[beacon.t] : -1;
+    const now10 = tenth(beacon.f);
+    if (before >= 0) {
+      r.watch[before] -= 1;
+      r.watchedSec -= (before + 0.5) / 10 * durationSec;
+    } else r.ends += 1;
+    r.watch[now10] += 1;
+    r.watchedSec = Math.max(0, r.watchedSec + (now10 + 0.5) / 10 * durationSec);
+    if (known || Object.keys(r.today.t).length < VIEW_DAY_CAP) r.today.t[beacon.t] = now10;
+  }
+  const days = Object.keys(r.days).sort();
+  for (const d of days.slice(0, Math.max(0, days.length - VIEW_DAYS_KEPT))) delete r.days[d];
+  return r;
+}
+
+/** @param {Env} env @param {string} id @param {{ e: string, t: string, f: number, viewer: string | null }} beacon @param {number} now @param {number} dur */
+async function countView(env, id, beacon, now, dur) {
+  const key = `${VIEWS}${id}.json`;
+  for (let i = 0; i < CAS_TRIES; i++) {
+    const o = await env.BUCKET.get(key);
+    // A video's first record: the day counting began is set too, once (create-only; a lost
+    // race means it's already there).
+    if (!o && i === 0) await env.BUCKET.put(VIEW_SINCE, JSON.stringify({ since: iso(now) }), { onlyIf: { etagDoesNotMatch: "*" }, httpMetadata: JSON_TYPE }).catch(() => null);
+    /** @type {any} */
+    let cur = null;
+    if (o) { try { cur = JSON.parse(await o.text()); } catch { cur = null; } }
+    const next = applyView(cur, beacon, now, dur);
+    if (!next) return;
+    if (await casPut(env, key, JSON.stringify(next), o ? { etagMatches: o.etag } : { etagDoesNotMatch: "*" })) return;
+    await new Promise((ok) => setTimeout(ok, 20 + Math.random() * 80));
+  }
+}
+
+/** The median share watched, from the tenths histogram (each tenth read at its middle),
+ * or null with no ends. @param {any} rec */
+export function medianWatched(rec) {
+  const w = Array.isArray(rec?.watch) ? rec.watch : [];
+  const n = w.reduce((/** @type {number} */ a, /** @type {number} */ b) => a + Math.max(0, b), 0);
+  if (!n) return null;
+  let seen = 0;
+  for (let i = 0; i < 10; i++) { seen += Math.max(0, w[i]); if (seen >= n / 2) return (i + 0.5) / 10; }
+  return 0.95;
+}
+
+/** Plays since `fromMs`, from the per-day counts. @param {any} rec @param {number} fromMs */
+const playsSince = (rec, fromMs) => Object.entries(rec?.days ?? {}).reduce((a, [d, n]) => (Date.parse(`${d}T00:00:00Z`) >= fromMs - DAY_MS ? a + Number(n) : a), 0);
+
+// ───────── the scores ─────────
+
+/** What a GB-month of R2 costs, and the free space, as Cloudflare lists them (Standard
+ * storage, 2026-10). The landing's “about 5 cents per hour of video” is this price at the
+ * byte rate below. */
+export const R2_PRICE = { usdPerGbMonth: 0.015, freeGb: 10 };
+/** Bytes a second of video takes in the bucket — the stream and its single-file copy at
+ * Normal — when the record doesn't say: the FAQ's “about three hours … in the free tier”. */
+export const BYTES_PER_SEC = Math.round(10e9 / (3 * 3600));
+/** No video is suggested younger than this, or played more recently. */
+export const CLEANUP_GRACE_DAYS = 14;
+
+/** The scores, each a rule that says why. `fading-cost` is Bagrat's pick (2026-10-18: fading
+ * and cost together); the other four are kept for comparison. */
+export const FORMULAS = ["fading-cost", "idle", "fading", "cost", "gravity"];
+/** fading-cost's two gates: what's left of its plays (a 30-day half-life, each weighted by
+ * how far it was watched) is under a quarter of one fresh full watch, and it takes at least
+ * a cent a month at list price (≈ 0.67 GB, about 12 minutes at Normal). */
+export const FADING_COST = { halfLifeDays: 30, heatBelow: 0.25, usdAtLeast: 0.01 };
+
+/** A video's facts, as the scores read them.
+ * @param {any} meta @param {any} rec the video's plays record, or null @param {number} now @param {number | null} sinceMs when counting began */
+export function cleanupFacts(meta, rec, now, sinceMs) {
+  const created = Date.parse(meta?.createdAt) || now;
+  const dur = Number(meta?.durationSec) > 0 ? Number(meta.durationSec) : 0;
+  const bytes = Number(meta?.bytes) > 0 ? Number(meta.bytes) : Math.round(dur * BYTES_PER_SEC);
+  const last = rec?.lastAt ? Date.parse(rec.lastAt) : null;
+  // What counting has seen of the video: from its making, or from when counting began.
+  const watchedFrom = sinceMs === null ? null : Math.max(created, sinceMs);
+  return {
+    ageDays: (now - created) / DAY_MS,
+    durationSec: dur,
+    bytes,
+    usdPerMonth: (bytes / 1e9) * R2_PRICE.usdPerGbMonth,
+    plays: Number(rec?.plays) || 0,
+    viewers: Number(rec?.viewers) || 0,
+    medianWatched: medianWatched(rec),
+    lastPlayedAt: last === null ? null : iso(last),
+    plays90: rec ? playsSince(rec, now - 90 * DAY_MS) : 0,
+    // Days nobody has played it, as far as counting can tell (null: it can't tell yet).
+    quietDays: last !== null ? (now - last) / DAY_MS : watchedFrom === null ? null : (now - watchedFrom) / DAY_MS,
+    keep: meta?.keep === true,
+    /** @type {Record<string, number>} */
+    days: rec?.days ?? {},
+  };
+}
+
+/** One video's verdict under a formula: `{ candidate, score, reason }`, where `reason` is a
+ * code and the facts its line needs — the words are the surface's. The higher the score,
+ * the sooner it's suggested.
+ * @param {ReturnType<typeof cleanupFacts>} x @param {string} formula @param {number} now */
+export function cleanupScore(x, formula, now) {
+  const no = (/** @type {string} */ why) => ({ candidate: false, score: 0, reason: { code: why } });
+  if (x.keep) return no("kept");
+  if (x.ageDays < CLEANUP_GRACE_DAYS) return no("new");
+  if (x.quietDays !== null && x.quietDays < CLEANUP_GRACE_DAYS) return no("watched-lately");
+  if (x.quietDays === null) return no("counting-too-new");
+  const facts = { plays: x.plays, lastPlayedAt: x.lastPlayedAt, quietDays: Math.floor(x.quietDays), ageDays: Math.floor(x.ageDays), bytes: x.bytes, medianWatched: x.medianWatched };
+  const code = x.plays === 0 ? "never-played" : x.medianWatched !== null && x.medianWatched < 0.25 ? "stopped-early" : "not-lately";
+  const gb = x.bytes / 1e9;
+  let heat = 0;
+  for (const [d, n] of Object.entries(x.days)) heat += Number(n) * 0.5 ** ((now - Date.parse(`${d}T12:00:00Z`)) / DAY_MS / FADING_COST.halfLifeDays);
+  heat *= 0.3 + 0.7 * (x.medianWatched ?? 0.5);
+  switch (formula) {
+    case "fading-cost": {
+      // B + C: its plays have faded and it takes room worth paying for. The dearest per unit
+      // of what's left of its plays goes first (cost ÷ heat, GreedyDual-Size's shape). The
+      // gate is the list price, not the bill: inside the free 10 GB it still names what
+      // takes the room, and the saving line says it saves nothing yet.
+      const yes = heat < FADING_COST.heatBelow && x.usdPerMonth >= FADING_COST.usdAtLeast && x.ageDays >= 30 && x.quietDays >= 30;
+      return { candidate: yes, score: yes ? x.usdPerMonth / (heat + 0.05) : 0, reason: { code, heat: Math.round(heat * 1000) / 1000, usdPerMonth: x.usdPerMonth, ...facts } };
+    }
+    case "idle": {
+      // A: nobody has played it in 60 days (30 if nobody ever has). Biggest and quietest first.
+      const due = x.plays === 0 ? 30 : 60;
+      const yes = x.quietDays >= due;
+      return { candidate: yes, score: yes ? x.quietDays * Math.max(gb, 0.01) : 0, reason: { code, ...facts } };
+    }
+    case "fading": {
+      // B: plays fade with a 30-day half-life, each worth more the further it's watched.
+      // Below a quarter of a fresh full watch, and at least 30 days old, it's suggested.
+      const yes = heat < 0.25 && x.ageDays >= 30;
+      return { candidate: yes, score: yes ? Math.max(gb, 0.01) / (heat + 0.05) : 0, reason: { code, heat: Math.round(heat * 1000) / 1000, ...facts } };
+    }
+    case "cost": {
+      // C: money first. It's suggested when it costs at least a cent a month and drew less
+      // than one play a month over the last 90 days; the dearest per play goes first.
+      const perMonth = x.plays90 / 3;
+      const yes = x.usdPerMonth >= 0.01 && perMonth < 1 && x.quietDays >= 30;
+      return { candidate: yes, score: yes ? x.usdPerMonth / Math.max(perMonth, 0.1) : 0, reason: { code: yes ? "big-and-quiet" : code, plays90: x.plays90, usdPerMonth: x.usdPerMonth, ...facts } };
+    }
+    case "gravity": {
+      // D: Hacker News's gravity turned round — watched plays over age^1.5. A video whose
+      // pull has sunk below a small floor is suggested.
+      const pull = (x.plays * (0.5 + (x.medianWatched ?? 0.5)) + 1) / (x.ageDays + 2) ** 1.5;
+      const yes = pull < 0.004 && x.quietDays >= 30;
+      return { candidate: yes, score: yes ? Math.max(gb, 0.01) / pull : 0, reason: { code, pull: Math.round(pull * 1e5) / 1e5, ...facts } };
+    }
+  }
+  throw bad();
+}
+
+/** What deleting `freed` bytes saves a month, given the space holds `total`: nothing while
+ * the space stays inside the free 10 GB. @param {number} total @param {number} freed */
+export function monthlySaving(total, freed) {
+  const free = R2_PRICE.freeGb * 1e9;
+  const billed = (/** @type {number} */ b) => Math.max(0, b - free);
+  return ((billed(total) - billed(Math.max(0, total - freed))) / 1e9) * R2_PRICE.usdPerGbMonth;
+}
+
+/** `POST /_shroom/api/cleanup` `{scope, formula?, after?}` → one page of the space's
+ * videos with their plays and verdicts: `{countingSince, counting, formula, items, next}`
+ * (`counting`: the space's switch, N68). Paged as
+ * the Library is (§4.10): at most 40 records a call; `next` is where the next call starts,
+ * null at the end. A member sees their own; owner-class may ask for everyone's.
+ * @param {Request} request @param {Env} env @param {any} b @param {number} now */
+async function cleanup(request, env, b, now) {
+  const { who } = await authed(request, env);
+  const scope = b.scope ?? "mine";
+  if (scope !== "mine" && scope !== "everyone") throw bad();
+  if (!who.ownerClass && scope !== "mine") throw new Refusal(403, "forbidden");
+  const formula = b.formula ?? "fading-cost";
+  if (!FORMULAS.includes(formula)) throw bad();
+  const after = b.after === undefined || b.after === null ? null : typeof b.after === "string" && ID.test(b.after) ? b.after : (() => { throw bad(); })();
+
+  const [ledgers, metas, sinceO, counting] = await Promise.all([
+    listPage(env, LEDGER, after ? `${LEDGER}${after}` : undefined, true),
+    listPage(env, "meta/", after ? `meta/${after}.json` : undefined, false),
+    env.BUCKET.get(VIEW_SINCE),
+    playsOn(env).catch(() => true),
+  ]);
+  /** @type {any} */
+  let since = null;
+  if (sinceO) { try { since = JSON.parse(await sinceO.text()); } catch { since = null; } }
+  const sinceMs = Date.parse(since?.since) || null;
+  /** @type {string | null} */
+  let end = null;
+  const bound = (/** @type {string | null} */ id) => { if (id !== null && (end === null || id < end)) end = id; };
+  if (ledgers.truncated) bound(lastId(ledgers, ledgerIdOf));
+  if (metas.truncated) bound(lastId(metas, metaIdOf));
+  const inPage = (/** @type {string} */ id) => (!after || id > after) && (end === null || id <= end);
+  const { owners, cut } = await ledgerOwners(env, ledgers, inPage);
+  bound(cut);
+  let ids = metas.objects.map((o) => metaIdOf(o.key)).filter((id) => id !== null && inPage(id)).map((id) => /** @type {string} */ (id))
+    .filter((id) => scope === "everyone" || (owners.get(id) ?? M1) === who.mid);
+  if (ids.length > LIBRARY_BODIES) { end = ids[LIBRARY_BODIES - 1]; ids = ids.slice(0, LIBRARY_BODIES); }
+  // Counting's health over this page, for the Mac's log: records read, ones that wouldn't
+  // read, and the newest play any of them saw (a stale one says counting stopped).
+  const views = { records: 0, unreadable: 0, newestPlayAt: /** @type {string | null} */ (null) };
+  const readViews = async (/** @type {string} */ id) => {
+    try {
+      const o = await env.BUCKET.get(`${VIEWS}${id}.json`);
+      if (!o) return null;
+      const r = JSON.parse(await o.text());
+      views.records += 1;
+      if (typeof r?.lastAt === "string" && (views.newestPlayAt === null || r.lastAt > views.newestPlayAt)) views.newestPlayAt = r.lastAt;
+      return r;
+    } catch { views.unreadable += 1; return null; }
+  };
+  const items = (await Promise.all(ids.map(async (id) => {
+    const [meta, rec] = await Promise.all([readMeta(env, id), readViews(id)]);
+    if (!meta || meta.state !== "live") return null;
+    const x = cleanupFacts(meta, rec, now, sinceMs);
+    const verdict = cleanupScore(x, formula, now);
+    const { days: _days, ...facts } = x;
+    return { id, title: typeof meta.title === "string" ? meta.title : "", createdAt: meta.createdAt ?? null, owner: owners.get(id) ?? M1, ...facts, ...verdict };
+  }))).filter((i) => i !== null);
+  return answer({ countingSince: sinceMs === null ? null : iso(sinceMs), counting, formula, views, items, next: end });
+}
 
 // ───────── the tab icon (DECISIONS B109) ─────────
 
@@ -2751,3 +3838,1174 @@ sfBf8gQhdc6ujGuH90cIZ5+w9jP/D0QV/Jt/7q19zj7En1whM85/9QP4BTmb/gL4S+A7dnnUO7w/5qyD
 /ul3/3Dp8W0QbIEkh1Ssy2GeAo8Rov8KIfvTW/q+He42VohM/QHRxb8g/HmGSNcXyKRw+SEffhsEa5AzKRTa/sC60PYvEe2zh+RV77BDhfDke2Qe9ntEXgQP
 RslHrCbxRkJfNecBV6RIWHCo9gM6R87CBKkcv0DIvmsxtgOIAVwhvDhCtPMz//hG3MTFq/jf1U9bMGJHcE0AAAAASUVORK5CYII=
 `;
+
+// ════════════════════════════════════════════════════════════════════════════════════
+// Names, chapters and captions (spec N66, N67; DECISIONS B205–B209)
+// ════════════════════════════════════════════════════════════════════════════════════
+//
+// With naming on, the space's page carries Cloudflare's AI (the `AI` binding) and a
+// schedule each minute. A Mac says when another minute of a take is up (POST
+// /_shroom/api/ai {rec, through}) and when the take is done ({rec, done}); each call takes
+// one step: hear the next minute (Whisper), or name the done take and place its chapters
+// (one model call). Captions come from the same words. A step the account can't take now —
+// its free day used up, a model busy — leaves a mark under .shroom/ai/later/, and the
+// schedule gives the oldest mark that's due one step a minute. Without the binding nothing
+// here runs, and every page looks as it did.
+
+const AI_LATER = ".shroom/ai/later/";
+/** The models (B205): hearing, naming, and naming's fallback. */
+export const AI_MODELS = { hear: "@cf/openai/whisper-large-v3-turbo", name: "@cf/openai/gpt-oss-120b", fallback: "@cf/google/gemma-4-26b-a4b-it" };
+/** What Whisper is told to expect before each window (B205 a): the voice cuts' cue, and the
+ * hesitations their planner reads, so it writes them down rather than tidying them away. Heard
+ * only with the voice-activity filter: without it a prime is echoed into minutes nobody speaks in. */
+export const AI_HEAR_PRIME = "Shroom cut. Um, uh, so, so I, I mean, shroom cut.";
+/** The rules held in code (B205 a, d; B208 c): ten pieces a window, 1.5 s at its edges. */
+const AI_RULES = { window: 10, edge: 1.5, minChapter: 20, minVideo: 90, maxChapters: 12, minWords: 12, earlyWords: 20, renameShare: 0.2, titleMax: 60 };
+/** How long a step holds its take, so the schedule and a Mac never take the same one. */
+const AI_LEASE_MS = 2 * 60 * 1000;
+/** Tries of one step that keeps failing (not a free day, not a busy model) before the take is let go. */
+const AI_TRIES = 5;
+/** The smallest ranged read of a piece: a box's header, and the moof after a run of sound, ride along. */
+const AI_READ = 32 * 1024;
+const AI_MIN = 60 * 1000;
+
+// ───────── the take's sound, read out of its pieces (B205 a) ─────────
+
+/** @param {Uint8Array} b @param {number} o */
+const mp4U32 = (b, o) => ((b[o] << 24) | (b[o + 1] << 16) | (b[o + 2] << 8) | b[o + 3]) >>> 0;
+/** @param {Uint8Array} b @param {number} o */
+const mp4U64 = (b, o) => mp4U32(b, o) * 2 ** 32 + mp4U32(b, o + 4);
+/** @param {Uint8Array} b @param {number} o */
+const mp4Type = (b, o) => String.fromCharCode(b[o], b[o + 1], b[o + 2], b[o + 3]);
+
+/** @typedef {{ type: string, start: number, body: number, end: number }} Mp4Box */
+/** The boxes in b[from, to). @param {Uint8Array} b @returns {Mp4Box[]} */
+function mp4Boxes(b, from = 0, to = b.length) {
+  /** @type {Mp4Box[]} */
+  const out = [];
+  for (let o = from; o + 8 <= to;) {
+    let size = mp4U32(b, o), head = 8;
+    if (size === 1) { size = mp4U64(b, o + 8); head = 16; } else if (size === 0) size = to - o;
+    if (size < head || o + size > to) throw new Error("box");
+    out.push({ type: mp4Type(b, o + 4), start: o, body: o + head, end: o + size });
+    o += size;
+  }
+  return out;
+}
+/** @param {Uint8Array} b @param {Mp4Box} box @param {string} type */
+const mp4Child = (b, box, type) => mp4Boxes(b, box.body, box.end).find((x) => x.type === type);
+
+/** An MPEG-4 descriptor at `o`: its tag, and where its body starts and ends. @param {Uint8Array} b @param {number} o */
+function mp4Descriptor(b, o) {
+  const tag = b[o++];
+  let len = 0;
+  for (let i = 0; i < 4; i++) {
+    const c = b[o++];
+    len = (len << 7) | (c & 0x7f);
+    if (!(c & 0x80)) break;
+  }
+  return { tag, body: o, end: o + len };
+}
+
+/** @typedef {{ id: number, timescale: number }} Mp4Track */
+/** @typedef {Mp4Track & { objectType: number, freqIndex: number, channels: number }} SoundTrack */
+/** @typedef {{ sound: SoundTrack | null, picture: Mp4Track | null, defaults: Record<number, { dur: number, size: number }> }} Mp4Tracks */
+
+/** The init segment's sound track (AAC, as its esds describes it), its picture track (whose
+ * clock times a piece with no sound) and every track's sample defaults. @param {Uint8Array} init @returns {Mp4Tracks} */
+export function mp4Tracks(init) {
+  const moov = mp4Boxes(init).find((x) => x.type === "moov");
+  if (!moov) throw new Error("moov");
+  /** @type {Mp4Tracks} */
+  const out = { sound: null, picture: null, defaults: {} };
+  const mvex = mp4Child(init, moov, "mvex");
+  for (const trex of mvex ? mp4Boxes(init, mvex.body, mvex.end).filter((x) => x.type === "trex") : []) {
+    out.defaults[mp4U32(init, trex.body + 4)] = { dur: mp4U32(init, trex.body + 12), size: mp4U32(init, trex.body + 16) };
+  }
+  for (const trak of mp4Boxes(init, moov.body, moov.end).filter((x) => x.type === "trak")) {
+    const tkhd = mp4Child(init, trak, "tkhd"), mdia = mp4Child(init, trak, "mdia");
+    const hdlr = mdia && mp4Child(init, mdia, "hdlr"), mdhd = mdia && mp4Child(init, mdia, "mdhd");
+    if (!tkhd || !mdia || !hdlr || !mdhd) continue;
+    /** @type {Mp4Track} */
+    const track = { id: mp4U32(init, tkhd.body + (init[tkhd.body] === 1 ? 20 : 12)), timescale: mp4U32(init, mdhd.body + (init[mdhd.body] === 1 ? 20 : 12)) };
+    const kind = mp4Type(init, hdlr.body + 8);
+    if (kind === "vide" && !out.picture) out.picture = track;
+    if (kind !== "soun" || out.sound) continue;
+    const minf = mp4Child(init, mdia, "minf");
+    const stbl = minf && mp4Child(init, minf, "stbl");
+    const stsd = stbl && mp4Child(init, stbl, "stsd");
+    const entry = stsd ? mp4Boxes(init, stsd.body + 8, stsd.end)[0] : undefined;
+    // An AudioSampleEntry's own fields take 28 bytes; its esds follows them.
+    const esds = entry?.type === "mp4a" ? mp4Boxes(init, entry.body + 28, entry.end).find((x) => x.type === "esds") : undefined;
+    if (!esds) continue;
+    const es = mp4Descriptor(init, esds.body + 4);
+    if (es.tag !== 3) continue;
+    let o = es.body + 2;
+    const flags = init[o++];
+    if (flags & 0x80) o += 2;
+    if (flags & 0x40) o += 1 + init[o];
+    if (flags & 0x20) o += 2;
+    const dc = mp4Descriptor(init, o);
+    const dsi = dc.tag === 4 ? mp4Descriptor(init, dc.body + 13) : null;
+    if (!dsi || dsi.tag !== 5) continue;
+    const asc = [init[dsi.body], init[dsi.body + 1]];
+    out.sound = { ...track, objectType: asc[0] >> 3, freqIndex: ((asc[0] & 7) << 1) | (asc[1] >> 7), channels: (asc[1] >> 3) & 15 };
+  }
+  return out;
+}
+
+/** One track's samples in the moof boxes of `b` (which starts at byte `at` of its piece):
+ * where each sits in the piece, its size, and their length in the track's ticks. A run says
+ * where it starts or follows the run before; a fragment's first track starts at its moof
+ * (or where its header says), the next one where the data before it ended (ISO/IEC
+ * 14496-12, 8.8.7). @param {Uint8Array} b @param {Mp4Track} track @param {Mp4Tracks} tracks @param {number} at */
+export function mp4Samples(b, track, tracks, at = 0) {
+  /** @type {{ at: number, size: number }[]} */
+  const samples = [];
+  let ticks = 0;
+  for (const moof of mp4Boxes(b).filter((x) => x.type === "moof")) {
+    let end = at + moof.start;
+    for (const [i, traf] of mp4Boxes(b, moof.body, moof.end).filter((x) => x.type === "traf").entries()) {
+      const tfhd = mp4Child(b, traf, "tfhd");
+      if (!tfhd) continue;
+      const tf = mp4U32(b, tfhd.body) & 0xffffff, id = mp4U32(b, tfhd.body + 4), mine = id === track.id;
+      let o = tfhd.body + 8;
+      let base = i === 0 || tf & 0x20000 ? at + moof.start : end;
+      if (tf & 0x1) { base = mp4U64(b, o); o += 8; }
+      if (tf & 0x2) o += 4;
+      let dur = tracks.defaults[id]?.dur ?? 0, size = tracks.defaults[id]?.size ?? 0;
+      if (tf & 0x8) { dur = mp4U32(b, o); o += 4; }
+      if (tf & 0x10) size = mp4U32(b, o);
+      let next = base;
+      for (const trun of mp4Boxes(b, traf.body, traf.end).filter((x) => x.type === "trun")) {
+        const rf = mp4U32(b, trun.body) & 0xffffff, count = mp4U32(b, trun.body + 4);
+        let p = trun.body + 8, data = next;
+        if (rf & 0x1) { data = base + (mp4U32(b, p) | 0); p += 4; }
+        if (rf & 0x4) p += 4;
+        for (let k = 0; k < count; k++) {
+          let d = dur, s = size;
+          if (rf & 0x100) { d = mp4U32(b, p); p += 4; }
+          if (rf & 0x200) { s = mp4U32(b, p); p += 4; }
+          if (rf & 0x400) p += 4;
+          if (rf & 0x800) p += 4;
+          if (mine) { samples.push({ at: data, size: s }); ticks += d; }
+          data += s;
+        }
+        next = data;
+      }
+      end = next;
+    }
+  }
+  return { samples, ticks };
+}
+
+/** Samples as ADTS frames, a stream Whisper hears as it is. `data` holds the piece from byte
+ * `from`. @param {SoundTrack} t @param {{ at: number, size: number }[]} samples @param {Uint8Array} data @param {number} from */
+function mp4Adts(t, samples, data, from) {
+  const out = new Uint8Array(samples.reduce((n, x) => n + x.size + 7, 0));
+  let o = 0;
+  for (const x of samples) {
+    const len = x.size + 7;
+    out.set([0xff, 0xf1, ((t.objectType - 1) << 6) | (t.freqIndex << 2) | (t.channels >> 2), ((t.channels & 3) << 6) | (len >> 11), (len >> 3) & 0xff, ((len & 7) << 5) | 0x1f, 0xfc], o);
+    out.set(data.subarray(x.at - from, x.at - from + x.size), o + 7);
+    o += len;
+  }
+  return out;
+}
+
+/** A body's bytes: R2's own read where it has one. @param {R2ObjectBody} object */
+const aiBytes = async (object) => new Uint8Array(typeof object.arrayBuffer === "function" ? await object.arrayBuffer() : await new Response(object.body).arrayBuffer());
+
+/** One piece's sound, as ADTS frames a fragment at a time, and its length in seconds (its
+ * sound's, or its picture's when the take has none). It reads the boxes' headers, each moof
+ * and one run of sound a fragment, in ranged reads of at least 32 KiB: the picture is never
+ * read for itself. @param {{ BUCKET: Pick<R2Bucket, "get"> }} env @param {string} key @param {number} size @param {Mp4Tracks} tracks */
+export async function aiPiece(env, key, size, tracks) {
+  /** @type {{ at: number, bytes: Uint8Array }[]} */
+  const held = [];
+  /** @param {number} at @param {number} n */
+  const read = async (at, n) => {
+    for (const h of held) if (at >= h.at && at + n <= h.at + h.bytes.length) return h.bytes.subarray(at - h.at, at - h.at + n);
+    const length = Math.min(Math.max(n, AI_READ), size - at);
+    const object = length > 0 ? await env.BUCKET.get(key, { range: new Headers({ range: `bytes=${at}-${at + length - 1}` }) }) : null;
+    const bytes = object ? await aiBytes(object) : new Uint8Array(0);
+    if (bytes.length < n) throw new Error("piece");
+    held.unshift({ at, bytes });
+    held.length = Math.min(held.length, 3);
+    return bytes.subarray(0, n);
+  };
+  /** @type {Uint8Array[]} */
+  const frames = [];
+  let sound = 0, picture = 0;
+  for (let o = 0; o + 8 <= size;) {
+    const h = await read(o, Math.min(16, size - o));
+    let len = mp4U32(h, 0);
+    if (len === 1) len = mp4U64(h, 8);
+    else if (len === 0) len = size - o;
+    if (len < 8 || o + len > size) throw new Error("box");
+    if (mp4Type(h, 4) === "moof") {
+      const moof = await read(o, len);
+      if (tracks.sound) {
+        const s = mp4Samples(moof, tracks.sound, tracks, o);
+        sound += s.ticks;
+        if (s.samples.length) {
+          const first = Math.min(...s.samples.map((x) => x.at)), last = Math.max(...s.samples.map((x) => x.at + x.size));
+          frames.push(mp4Adts(tracks.sound, s.samples, await read(first, last - first), first));
+        }
+      } else if (tracks.picture) picture += mp4Samples(moof, tracks.picture, tracks, o).ticks;
+    }
+    o += len;
+  }
+  const secs = tracks.sound ? sound / (tracks.sound.timescale || 1) : tracks.picture ? picture / (tracks.picture.timescale || 1) : 0;
+  return { parts: frames, bytes: frames.reduce((n, f) => n + f.length, 0), secs };
+}
+
+// ───────── words and sentences (B205) ─────────
+
+/** @typedef {[string, number, number]} Word [text, start, end]: seconds on the recording's clock */
+/** The take's words, grown a window at a time (B206 d): final up to `heard_through`, the
+ * window's last 1.5 s held in `tail` until the next window hears them whole; `early`, the
+ * early title was tried (B205 f).
+ * @typedef {{ v: 1, model: string, language: string | null, duration: number, heard_through: number, done: boolean, windows: number, clock: string | null, words: Word[], tail?: Word[], early?: boolean }} Transcript */
+
+/** Window k of a take `n` pieces long: its own pieces [from, to), and the piece that leads
+ * it (the last of the window before). @param {number} k @param {number} n */
+function aiWindow(k, n) {
+  const from = k * AI_RULES.window;
+  return { from, to: Math.min(n, from + AI_RULES.window), lead: k > 0 ? from - 1 : -1 };
+}
+
+/** Words into sentences: a full stop or a question, a pause over 1.2 s; a run-on (Whisper
+ * sometimes runs a minute together with commas) ends at its next comma or breath after 15 s,
+ * and at the next word after 25 s. @param {Word[]} words */
+export function aiSentences(words) {
+  /** @type {{ s: number, e: number, text: string }[]} */
+  const out = [];
+  /** @type {{ s: number, e: number, text: string } | null} */
+  let cur = null;
+  for (let i = 0; i < words.length; i++) {
+    const [w, s, e] = words[i];
+    if (cur && s - cur.e > 1.2) { out.push(cur); cur = null; }
+    if (!cur) cur = { s, e, text: w };
+    else { cur.e = e; cur.text += ` ${w}`; }
+    const len = cur.e - cur.s, next = words[i + 1];
+    const runOn = (len >= 15 && (/,$/.test(w) || (next !== undefined && next[1] - e >= 0.25))) || len >= 25;
+    if (/[.?!…]["')\]”’]?$/.test(w) || runOn) { out.push(cur); cur = null; }
+  }
+  if (cur) out.push(cur);
+  return out;
+}
+
+// ───────── edits (B208): one clock, mapped on every view ─────────
+
+/** The ranges of the recording that play under its saved edit (the editor's `meta.edits`,
+ * N63), as shroom-edit's `EditList::checked().keep()` gives them: the trim minus the applied
+ * cuts, merged. null when it all plays, as recorded. @param {any} meta @returns {[number, number][] | null} */
+export function aiKeep(meta) {
+  const e = meta?.edits;
+  if (!e || typeof e !== "object") return null;
+  const d = Number(e.source_duration) > 0 ? Number(e.source_duration) : 0;
+  if (!d) return null;
+  const clamp = (/** @type {unknown} */ t) => (t !== null && t !== "" && Number.isFinite(Number(t)) ? Math.min(d, Math.max(0, Number(t))) : NaN);
+  let a = clamp(e.in), b = clamp(e.out);
+  if (Number.isNaN(a)) a = 0;
+  if (Number.isNaN(b)) b = d;
+  if (b - a < Math.min(1, d)) { a = 0; b = d; }
+  /** @type {[number, number][]} */
+  const applied = (Array.isArray(e.cuts) ? e.cuts : [])
+    .filter((/** @type {any} */ c) => c && c.applied === true)
+    .map((/** @type {any} */ c) => [clamp(c.start), clamp(c.end)]);
+  const cuts = applied
+    .filter(([s, t]) => !Number.isNaN(s) && !Number.isNaN(t) && t > s)
+    .map(([s, t]) => /** @type {[number, number]} */ ([Math.max(s, a), Math.min(t, b)]))
+    .filter(([s, t]) => t > s)
+    .sort((x, y) => x[0] - y[0]);
+  /** @type {[number, number][]} */
+  const keep = [];
+  let at = a;
+  for (const [s, t] of cuts) {
+    if (t <= at) continue;
+    if (s > at) keep.push([at, s]);
+    at = Math.max(at, t);
+  }
+  if (at < b) keep.push([at, b]);
+  return keep.length === 1 && keep[0][0] <= 0 && keep[0][1] >= d ? null : keep;
+}
+
+/** A recording time on the edited clock; null in a cut or outside the trim.
+ * @param {[number, number][] | null} keep @param {number} t */
+export function aiToEdited(keep, t) {
+  if (!keep) return t;
+  let acc = 0;
+  for (const [s, e] of keep) {
+    if (t >= s && t < e) return acc + (t - s);
+    acc += e - s;
+  }
+  return null;
+}
+
+/** An edited time on the recording's clock (past the end, the trim's out).
+ * @param {[number, number][] | null} keep @param {number} e */
+export function aiToSource(keep, e) {
+  if (!keep) return e;
+  let acc = 0;
+  for (const [s, t] of keep) {
+    if (e < acc + (t - s)) return s + Math.max(0, e - acc);
+    acc += t - s;
+  }
+  return keep.length ? keep[keep.length - 1][1] : e;
+}
+
+/** How long it plays. @param {[number, number][] | null} keep @param {any} meta @param {number} [fallback] */
+const aiLength = (keep, meta, fallback = 0) => (keep ? keep.reduce((n, [s, e]) => n + (e - s), 0) : Number(meta?.durationSec) > 0 ? Number(meta.durationSec) : fallback);
+
+/** The record's bakes (the editor's permanent copy made the video, B197), oldest first: each
+ * the ranges it kept, on the clock before it. Those after the one `since` names.
+ * @param {any} meta @param {string | null | undefined} since @returns {{ at: string, keep: [number, number][] }[]} */
+function aiBakes(meta, since) {
+  const raw = meta?.bakedFrom;
+  const list = (Array.isArray(raw) ? raw : raw && typeof raw === "object" ? [raw] : [])
+    .filter((/** @type {any} */ b) => b && typeof b.at === "string" && Array.isArray(b.keep))
+    .map((/** @type {any} */ b) => ({ at: String(b.at), keep: b.keep.filter((/** @type {any} */ r) => Array.isArray(r) && Number.isFinite(Number(r[0])) && Number.isFinite(Number(r[1]))).map((/** @type {any} */ r) => /** @type {[number, number]} */ ([Number(r[0]), Number(r[1])])) }));
+  const i = since ? list.findIndex((b) => b.at === since) : -1;
+  return list.slice(i + 1);
+}
+/** Whether times stamped with clock `since` can be carried onto the record's: the original's
+ * (null), or a bake the record's list still holds. The editor keeps its last 20 bakes; past
+ * that, words and chapters on an older clock aren't shown rather than shown wrong.
+ * @param {any} meta @param {string | null | undefined} since */
+const aiPlaced = (meta, since) => !since || aiBakes(meta, null).some((b) => b.at === since);
+/** What stamps the clock the record's times are on: its last bake, or null for the original's. @param {any} meta */
+function aiClock(meta) {
+  const all = aiBakes(meta, null);
+  return all.length ? all[all.length - 1].at : null;
+}
+/** Which edit a naming or a view saw: the bakes, and the saved edit's revision. @param {any} meta */
+function aiRev(meta) {
+  return `${aiBakes(meta, null).length}:${Number(meta?.edits?.rev) || 0}`;
+}
+
+/** Words carried over the bakes made since `since`: a word goes when most of it went.
+ * @param {Word[]} words @param {any} meta @param {string | null | undefined} since */
+function aiOverBakes(words, meta, since) {
+  let out = words;
+  for (const b of aiBakes(meta, since)) out = aiPlaying(out, b.keep).map((p) => /** @type {Word} */ ([p.w, p.s, p.e]));
+  return out;
+}
+
+/** The words that play under an edit, timed on the edited clock: a word goes when most of it
+ * is cut, and one across a cut's edge keeps its kept part. `src` is where it starts on the
+ * recording; `range`, which kept range it plays in (a cue never runs across a cut).
+ * @param {Word[]} words @param {[number, number][] | null} keep */
+function aiPlaying(words, keep) {
+  /** @type {{ w: string, s: number, e: number, src: number, range: number }[]} */
+  const out = [];
+  for (const [w, s, e] of words) {
+    if (!keep) { out.push({ w, s, e, src: s, range: 0 }); continue; }
+    const mid = (s + e) / 2;
+    const r = keep.findIndex(([a, b]) => mid >= a && mid < b);
+    if (r < 0) continue;
+    const [a, b] = keep[r];
+    const from = Math.max(a, s), es = /** @type {number} */ (aiToEdited(keep, from));
+    out.push({ w, s: es, e: es + Math.max(0, Math.min(b, e) - from), src: from, range: r });
+  }
+  return out;
+}
+
+// ───────── chapters and captions, per view (B208 b, B209) ─────────
+
+/** The record's chapters on its clock now, carried over any bake since they were placed.
+ * @param {any} meta @returns {[number, string][]} */
+function aiChaptersNow(meta) {
+  const named = meta?.named;
+  /** @type {[number, string][]} */
+  let out = (Array.isArray(named?.chapters) ? named.chapters : [])
+    .filter((/** @type {any} */ c) => Array.isArray(c) && Number.isFinite(Number(c[0])) && typeof c[1] === "string")
+    .map((/** @type {any} */ c) => /** @type {[number, string]} */ ([Number(c[0]), String(c[1])]));
+  if (!aiPlaced(meta, named?.clock)) return [];
+  for (const b of aiBakes(meta, named?.clock)) out = aiChaptersThrough(out, b.keep, Infinity).map(([s, t]) => [s, t]);
+  return out;
+}
+
+/** Chapters through a keep: each starts where its own span first plays (a start inside a
+ * cut moves to where the cut ends); one that doesn't play at all goes.
+ * @param {[number, string][]} chapters @param {[number, number][] | null} keep @param {number} total @returns {[number, string][]} */
+function aiChaptersThrough(chapters, keep, total) {
+  /** @type {[number, string][]} */
+  const out = [];
+  for (let i = 0; i < chapters.length; i++) {
+    const [s, t] = chapters[i];
+    const end = i + 1 < chapters.length ? chapters[i + 1][0] : Infinity;
+    let at = null;
+    if (!keep) at = s < total ? s : null;
+    else for (const [a, b] of keep) { const from = Math.max(a, s); if (from < Math.min(b, end)) { at = aiToEdited(keep, from); break; } }
+    if (at !== null && (!out.length || at > out[out.length - 1][0])) out.push([at, t]);
+  }
+  return out;
+}
+
+/** The chapters as the page's bar shows them (B208 b, B209 a): on the edited clock, the
+ * first at 0, one left under 20 s folding into the one before (the first into the second),
+ * none on a video under 90 s or with fewer than two. @param {any} meta @returns {[number, string][]} */
+export function aiChapters(meta) {
+  const keep = aiKeep(meta);
+  const total = aiLength(keep, meta);
+  if (total < AI_RULES.minVideo) return [];
+  const shown = aiChaptersThrough(aiChaptersNow(meta), keep, total);
+  if (shown.length < 2) return [];
+  shown[0][0] = 0;
+  for (let i = 0; i < shown.length && shown.length > 1;) {
+    const len = (i + 1 < shown.length ? shown[i + 1][0] : total) - shown[i][0];
+    if (len >= AI_RULES.minChapter) { i++; continue; }
+    // The short one's span goes to its neighbour: the one before it, or for the first, the one after.
+    shown.splice(i, 1);
+    shown[0][0] = 0;
+    i = 0;
+  }
+  return shown.length >= 2 ? shown.map(([s, t]) => /** @type {[number, string]} */ ([Math.round(s * 10) / 10, t])) : [];
+}
+
+/** @param {number} t */
+function vttTime(t) {
+  const ms = Math.max(0, Math.round(t * 1000));
+  const two = (/** @type {number} */ n, w = 2) => String(n).padStart(w, "0");
+  return `${two(Math.floor(ms / 3600000))}:${two(Math.floor((ms % 3600000) / 60000))}:${two(Math.floor((ms % 60000) / 1000))}.${two(ms % 1000, 3)}`;
+}
+
+/** A word that's only a hesitation, which captions leave out (B205 e). */
+const AI_FILLER = /^(?:u+m+|u+h+m*|e+r+m*|h+m+|m{2,})[.,?!…]*$/i;
+
+/** Captions as WebVTT from the words that play (B205 e, B208 b): a cue ends at a sentence's
+ * end, a pause over 1 s, a cut, 6 s, or two lines of 42 characters, and breaks its line at
+ * the space nearest its middle. `edited`: timed on the edited clock (the editor's copy plays);
+ * otherwise on the recording's, which the page plays with the cuts skipped.
+ * @param {Word[]} words @param {[number, number][] | null} keep @param {boolean} edited */
+export function aiCaptions(words, keep, edited) {
+  /** @type {{ s: number, e: number, text: string, range: number }[]} */
+  const cues = [];
+  /** @type {{ s: number, e: number, text: string, range: number } | null} */
+  let cur = null;
+  for (const p of aiPlaying(words, keep)) {
+    // A lone hesitation is left out (the words keep it, for voice cuts); a sentence it ended still ends.
+    if (AI_FILLER.test(p.w)) {
+      if (cur && /[.?!…]$/.test(p.w)) { if (!/[.?!…]$/.test(cur.text)) cur.text = cur.text.replace(/[,;:]$/, "") + p.w.slice(-1); cues.push(cur); cur = null; }
+      continue;
+    }
+    const s = edited ? p.s : p.src, e = s + (p.e - p.s);
+    if (cur && (p.range !== cur.range || s - cur.e > 1 || e - cur.s > 6 || cur.text.length + 1 + p.w.length > 84)) { cues.push(cur); cur = null; }
+    if (!cur) cur = { s, e, text: p.w, range: p.range };
+    else { cur.e = e; cur.text += ` ${p.w}`; }
+    if (/[.?!…]["')\]”’]?$/.test(p.w)) { cues.push(cur); cur = null; }
+  }
+  if (cur) cues.push(cur);
+  /** @param {string} t */
+  const lines = (t) => {
+    if (t.length <= 42) return t;
+    let at = -1;
+    for (let i = 0; i < t.length; i++) if (t[i] === " " && (at < 0 || Math.abs(i - t.length / 2) < Math.abs(at - t.length / 2))) at = i;
+    return at < 0 ? t : `${t.slice(0, at)}\n${t.slice(at + 1)}`;
+  };
+  // A cue's words are text, never markup: WebVTT reads <, > and & as tags and entities.
+  /** @param {string} t */
+  const text = (t) => t.replace(/-->/g, "→").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return `WEBVTT\n\n${cues.map((c, i) => `${i + 1}\n${vttTime(c.s)} --> ${vttTime(Math.max(c.e, c.s + 0.5))}\n${text(lines(c.text))}\n`).join("\n")}`;
+}
+
+/** @typedef {{ chapters: [number, string][], captions: { src: string, lang: string } | null, line: string, waiting: boolean }} AiFace */
+/** @type {AiFace} */
+const AI_NONE = { chapters: [], captions: null, line: "", waiting: false };
+
+/** What a page shows of the AI's work (B209), from the record alone: the chapters, the
+ * captions' address (on the clock of what `src` plays), and the owner's line. `waiting`: the
+ * owner's page asks for a name on its way (naming on, a recent take, not yet named or titled).
+ * @param {string} id @param {any} meta @param {string} src @param {boolean} on @param {number} now @returns {AiFace} */
+function aiFace(id, meta, src, on, now) {
+  if (!meta || meta.state === "deleted") return AI_NONE;
+  const live = meta.state === "live";
+  const lang = typeof meta.captions?.language === "string" && /^[a-z]{2,3}$/.test(meta.captions.language) ? meta.captions.language : "";
+  // The editor's own copy plays the edited clock; the original plays with its cuts skipped.
+  const edited = /\/edit-\d+\.mp4$/.test(src);
+  const captions = live && meta.captions && typeof meta.captions === "object" ? { src: `/_shroom/cc/${id}?r=${encodeURIComponent(aiRev(meta))}${edited ? "&e=1" : ""}`, lang } : null;
+  const named = meta.named?.by === "ai" && typeof meta.named.title === "string";
+  const line = meta.titled ? "" : named ? COPY.named : meta.naming?.later === "daily" ? COPY.namingLater : "";
+  const created = Date.parse(String(meta.createdAt ?? ""));
+  const waiting = on && !meta.titled && (!meta.named || !!meta.named.early) && Number.isFinite(created) && now - created < 2 * HOUR_MS;
+  return { chapters: live ? aiChapters(meta) : [], captions, line, waiting };
+}
+
+// ───────── naming (B205 c, d) ─────────
+
+const AI_TITLE = `The title says what the video is about (its subject, or the two or three things it covers), not the occasion, the greeting or who it is for, the way its maker would name it for a teammate: 3 to 8 words, sentence case, plain words from the video, no quotes, no emoji, no full stop at the end, no "video", "recording" or "walkthrough of" filler. Written in the language spoken.`;
+const AI_CHAPTERS = `Chapters split the video where the speaker moves to a new topic. The first starts at 0:00. Each lasts at least 20 seconds. Use about one chapter per 1 to 3 minutes of talk in a short video and one per 3 to 5 minutes in a long one, never more than 12, spread over the whole video. Each chapter title is 2 to 6 words, sentence case, no full stop, written in the language spoken. A greeting or wrap-up is its own chapter only when it lasts 20 seconds or more.`;
+const AI_SCHEMA = {
+  type: "object",
+  properties: { title: { type: "string" }, chapters: { type: "array", items: { type: "object", properties: { start: { type: "string" }, title: { type: "string" } }, required: ["start", "title"] } } },
+  required: ["title", "chapters"],
+};
+
+/** A title fit to show (B205 d): one line, no wrapping quotes or full stop, at most 60
+ * characters, its first letter a capital. @param {unknown} t */
+export function aiTitle(t) {
+  let s = String(t ?? "").replace(/\s+/g, " ").trim().replace(/^["'“‘«]+|["'”’»]+$/g, "").replace(/[.。]+$/, "").trim();
+  if (s.length > AI_RULES.titleMax) s = `${s.slice(0, AI_RULES.titleMax - 1).replace(/\s+\S*$/, "")}…`;
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+/** "1:02", "62" or 62 as seconds; NaN for anything else. @param {unknown} v */
+function aiSecs(v) {
+  if (typeof v === "number") return v;
+  const s = String(v ?? "").trim();
+  return /^\d+(:\d{1,2}){0,2}(\.\d+)?$/.test(s) ? s.split(":").reduce((n, p) => n * 60 + Number(p), 0) : NaN;
+}
+
+/** The model's chapters held to the rules (B205 d), on the clock its lines were given on:
+ * snapped to the nearest sentence start, the first at 0:00, none under 20 s (a short one
+ * gives its place to the one after it, and a last one too short folds into the one before),
+ * at most 12 (the shortest fold into the one before), none on a video under 90 s or with
+ * fewer than two. @param {unknown} raw @param {{ s: number }[]} sents @param {number} duration @returns {[number, string][]} */
+export function aiCleanChapters(raw, sents, duration) {
+  if (duration < AI_RULES.minVideo || !Array.isArray(raw)) return [];
+  const snap = (/** @type {number} */ t) => sents.reduce((best, x) => (Math.abs(x.s - t) < Math.abs(best - t) ? x.s : best), 0);
+  const ch = raw
+    .map((/** @type {any} */ c) => ({ start: aiSecs(c?.start), title: aiTitle(c?.title) }))
+    .filter((c) => Number.isFinite(c.start) && c.start >= 0 && c.start < duration && c.title)
+    .map((c) => ({ ...c, start: snap(c.start) }))
+    .sort((a, b) => a.start - b.start);
+  if (!ch.length) return [];
+  ch[0].start = 0;
+  /** @type {{ start: number, title: string }[]} */
+  const kept = [];
+  for (const c of ch) {
+    const prev = kept[kept.length - 1];
+    if (prev && c.start - prev.start < AI_RULES.minChapter) prev.title = c.title;
+    else kept.push({ ...c });
+  }
+  while (kept.length > 1 && duration - kept[kept.length - 1].start < AI_RULES.minChapter) kept.pop();
+  while (kept.length > AI_RULES.maxChapters) {
+    const len = (/** @type {number} */ i) => (i + 1 < kept.length ? kept[i + 1].start : duration) - kept[i].start;
+    let i = 0;
+    for (let j = 1; j < kept.length; j++) if (len(j) < len(i)) i = j;
+    kept.splice(i === 0 ? 1 : i, 1);
+  }
+  return kept.length >= 2 ? kept.map((c) => /** @type {[number, string]} */ ([c.start, c.title])) : [];
+}
+
+/** The model's answer text, whichever shape it comes in. @param {any} out */
+export function aiText(out) {
+  if (typeof out === "string") return out;
+  if (out?.response !== undefined && out.response !== null) return typeof out.response === "string" ? out.response : JSON.stringify(out.response);
+  const msg = out?.choices?.[0]?.message;
+  if (typeof msg?.content === "string" && msg.content) return msg.content;
+  const item = Array.isArray(out?.output) ? out.output.find((/** @type {any} */ o) => o?.type === "message") : null;
+  const part = Array.isArray(item?.content) ? item.content.find((/** @type {any} */ c) => c?.type === "output_text") : null;
+  if (typeof part?.text === "string") return part.text;
+  throw new Error("no answer");
+}
+
+/** What one naming call sends: the title and, on a video long enough, the chapters, as JSON
+ * (the measuring tools in worker/dev send the same). @param {string} model
+ * @param {{ s: number, text: string }[]} sents @param {boolean} chapters */
+export function aiAskInput(model, sents, chapters) {
+  const system = `You name screen recordings from their transcript. ${AI_TITLE}${chapters ? ` ${AI_CHAPTERS}` : " Return no chapters."} Answer with JSON only: {"title": "...", "chapters": [{"start": "m:ss", "title": "..."}]}.`;
+  const user = `Transcript, each line with its start time:\n\n${sents.map((x) => `[${clock(x.s)}] ${x.text}`).join("\n")}`;
+  return {
+    messages: [{ role: "system", content: system }, { role: "user", content: user }],
+    response_format: { type: "json_schema", json_schema: AI_SCHEMA },
+    // Room for a thinking model's reasoning before its answer; thinking kept short or off.
+    max_tokens: 4000, temperature: 0.2,
+    ...(model.includes("gpt-oss") ? { reasoning: { effort: "low" } } : { chat_template_kwargs: { enable_thinking: false } }),
+  };
+}
+
+/** One naming call: the answer, and the tokens it took when the model says (for the log).
+ * @param {Ai} ai @param {string} model @param {{ s: number, text: string }[]} sents @param {boolean} chapters
+ * @returns {Promise<{ answer: any, tokens: [number, number] | null }>} */
+async function aiAsk(ai, model, sents, chapters) {
+  const out = await ai.run(model, aiAskInput(model, sents, chapters));
+  const text = aiText(out);
+  const json = JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1));
+  if (!json || typeof json !== "object" || typeof json.title !== "string") throw new Error("no answer");
+  const u = /** @type {any} */ (out)?.usage;
+  return { answer: json, tokens: Number.isInteger(u?.prompt_tokens) && Number.isInteger(u?.completion_tokens) ? [u.prompt_tokens, u.completion_tokens] : null };
+}
+
+/** Names the take (B205 c, d; B206 d): one model call on the words that play under the edit
+ * standing now, the second model if the first fails, then the record — a typed title is
+ * never touched. Under twelve words, nothing is asked and the take stays as it is titled.
+ * @param {Env} env @param {string} id @param {Transcript} t @param {any} meta @param {number} now */
+async function aiName(env, id, t, meta, now) {
+  const ai = /** @type {Ai} */ (env.AI);
+  const keep = aiKeep(meta);
+  const playing = aiPlaying(aiOverBakes(t.words, meta, t.clock), keep);
+  const total = aiLength(keep, meta, t.duration);
+  const base = { by: "ai", at: iso(now), rev: aiRev(meta), clock: aiClock(meta), words: playing.length, language: t.language };
+  /** @type {Record<string, unknown>} */
+  let named = { ...base, model: null, title: null, chapters: [] };
+  let note = `not named: ${playing.length} words, under ${AI_RULES.minWords}`;
+  if (playing.length >= AI_RULES.minWords) {
+    const sents = aiSentences(playing.map((p) => /** @type {Word} */ ([p.w, p.s, p.e])));
+    const want = total >= AI_RULES.minVideo;
+    const t0 = Date.now();
+    let model = AI_MODELS.name;
+    /** @type {string | null} */
+    let fallback = null;
+    /** @type {{ answer: any, tokens: [number, number] | null }} */
+    let asked;
+    try {
+      asked = await aiAsk(ai, model, sents, want);
+    } catch (e) {
+      if (aiRefusal(e) !== "error") throw e;
+      fallback = aiCode(e);
+      model = AI_MODELS.fallback;
+      asked = await aiAsk(ai, model, sents, want);
+    }
+    const ms = Date.now() - t0;
+    const { answer, tokens } = asked;
+    const chapters = want ? aiCleanChapters(answer.chapters, sents, total).map(([s, title]) => [Math.round(aiToSource(keep, s) * 10) / 10, title]) : [];
+    named = { ...base, model, title: aiTitle(answer.title) || null, chapters, ms, ...(tokens ? { tokens } : {}), ...(fallback ? { fallback } : {}) };
+    note = `named by ${aiModelName(model)} in ${ms} ms: ${chapters.length} chapters from ${playing.length} words${tokens ? `, ${tokens[0]}+${tokens[1]} tokens` : ""}${fallback ? ` (${aiModelName(AI_MODELS.name)} failed: ${fallback})` : ""}`;
+  }
+  await aiWriteMeta(env, id, (m) => {
+    if (typeof named.title === "string" && !m.titled) m.title = named.title;
+    m.named = named;
+    if (t.words.length) m.captions = { language: t.language ?? "" };
+    delete m.naming;
+    return true;
+  });
+  return note;
+}
+
+/** Whether the early title is due (B205 f): the take still recording (no rename, not done),
+ * a minute of it heard, untitled and unnamed, with enough words for a title, not tried yet.
+ * @param {any} meta @param {Transcript} t @param {Later} want */
+const aiEarlyDue = (meta, t, want) => !want.done && !want.rename && !t.done && !t.early && !meta.titled && !meta.named && t.windows >= 1 && t.words.length + (t.tail?.length ?? 0) >= AI_RULES.earlyWords;
+
+/** The words with the slips cut by voice taken out (N65), roughly, for the early title: each
+ * “shroom cut” and the sentence it breaks off, back to the sentence before it (at most 20 s).
+ * The take's own cuts come later, from its Mac; this only keeps a slip out of the first name.
+ * @param {Word[]} words */
+export function aiWithoutSlips(words) {
+  const bare = (/** @type {unknown} */ w) => String(w).toLowerCase().replace(/[^a-z]/g, "");
+  /** @type {Word[]} */
+  const out = [];
+  for (let i = 0; i < words.length; i++) {
+    const one = bare(words[i][0]) === "shroomcut";
+    if (one || (bare(words[i][0]) === "shroom" && /^cut/.test(bare(words[i + 1]?.[0] ?? "")))) {
+      const at = words[i][1];
+      // The sentence broken off: back past its own end, if the speaker stopped on one, to the end before it.
+      if (out.length && /[.!?…]$/.test(out[out.length - 1][0])) out.pop();
+      while (out.length && !/[.!?…]$/.test(out[out.length - 1][0]) && at - out[out.length - 1][1] <= 20) out.pop();
+      if (!one) i++;
+      continue;
+    }
+    out.push(words[i]);
+  }
+  return out;
+}
+
+/** The early title (B205 f; Bagrat, 2026-10-18: the page opens named): once the first minute
+ * is heard while the take records, one title-only call on the words so far, a slip cut by
+ * voice left out. It's the record's title until the full name at done replaces it, never over
+ * one typed meanwhile (`named.early` says which it is). Tried once a take: a model that fails
+ * it is let go, holding nothing up; a used-up free day or a busy model waits like any step.
+ * @param {Env} env @param {string} id @param {Transcript} t @param {string | null} etag @param {number} now */
+async function aiNameEarly(env, id, t, etag, now) {
+  const ai = /** @type {Ai} */ (env.AI);
+  const words = aiWithoutSlips([...t.words, ...(t.tail ?? [])]);
+  const sents = aiSentences(words);
+  const t0 = Date.now();
+  let model = AI_MODELS.name;
+  /** @type {string | null} */
+  let title = null;
+  let note;
+  try {
+    /** @type {any} */
+    let asked;
+    try {
+      asked = await aiAsk(ai, model, sents, false);
+    } catch (e) {
+      if (aiRefusal(e) !== "error") throw e;
+      model = AI_MODELS.fallback;
+      asked = await aiAsk(ai, model, sents, false);
+    }
+    title = aiTitle(asked.answer?.title) || null;
+    note = title ? `early title by ${aiModelName(model)} in ${Date.now() - t0} ms` : `no early title: ${aiModelName(model)} gave none`;
+  } catch (e) {
+    if (aiRefusal(e) !== "error") throw e;
+    note = `no early title: error ${aiCode(e)}`;
+  }
+  const ms = Date.now() - t0;
+  await casPut(env, aiTranscriptKey(id), JSON.stringify({ ...t, early: true }), etag ? { etagMatches: etag } : { etagDoesNotMatch: "*" });
+  if (!title) return note;
+  await aiWriteMeta(env, id, (m) => {
+    if (m.titled || m.named) return false;
+    m.title = title;
+    m.named = { by: "ai", early: true, model, at: iso(now), rev: aiRev(m), clock: aiClock(m), words: words.length, title, chapters: [], language: t.language, ms };
+    return true;
+  });
+  return note;
+}
+
+// ───────── a used-up free day, a busy model (B207) ─────────
+
+/** What a refused call means (Workers AI's errors): `daily`, the account's free daily neurons
+ * are spent (3036) — wait for 00:00 UTC; `busy`, out of capacity, a rate limit or a timeout
+ * (3040, 3007, 3008, 429) — try again in a few minutes; `error`, anything else.
+ * @param {unknown} e */
+export function aiRefusal(e) {
+  const m = String(/** @type {any} */ (e)?.message ?? e ?? "");
+  if (/\b(3036|4006)\b|daily free allocation/i.test(m)) return "daily";
+  if (/\b(3040|3007|3008|429)\b|capacity|rate.?limit|too many requests|timed? ?out|overloaded/i.test(m)) return "busy";
+  return "error";
+}
+
+/** A refused call's code for the log: Workers AI's number, never its words. @param {unknown} e */
+export const aiCode = (e) => String(/** @type {any} */ (e)?.message ?? e ?? "").match(/\b(\d{4}|429)\b/)?.[1] ?? "no code";
+
+/** A model's name without its catalogue prefix, for the log. @param {string} model */
+const aiModelName = (model) => model.replace(/^@cf\/[^/]+\//, "");
+
+/** The first 00:00 UTC after `now`. @param {number} now */
+const nextMidnight = (now) => Math.floor(now / DAY_MS) * DAY_MS + DAY_MS;
+
+/** A take's mark: what's left to do for it, and when it may next be tried.
+ * @typedef {{ v: 1, since: number, after: number, done: boolean, through: number, rename: boolean, reason: string, tries: number }} Later */
+/** @param {number} now @returns {Later} */
+const aiFresh = (now) => ({ v: 1, since: now, after: 0, done: false, through: 0, rename: false, reason: "more", tries: 0 });
+
+/** Changes the take's mark under If-Match: `fn` gets what's there (null for none) and returns
+ * the new mark, null to remove it, or undefined to leave it. False when it couldn't.
+ * @param {Env} env @param {string} id @param {(l: Later | null) => Later | null | undefined} fn */
+async function aiMark(env, id, fn) {
+  const key = `${AI_LATER}${id}`;
+  for (let attempt = 0; attempt < CAS_TRIES; attempt++) {
+    const object = await env.BUCKET.get(key);
+    /** @type {Later | null} */
+    let l = null;
+    if (object) { try { const v = JSON.parse(await object.text()); l = v && typeof v === "object" ? v : null; } catch { l = null; } }
+    const next = fn(l);
+    if (next === undefined) return true;
+    if (next === null) { if (object) await env.BUCKET.delete(key); return true; }
+    if (await casPut(env, key, JSON.stringify(next), object ? { etagMatches: object.etag } : { etagDoesNotMatch: "*" }, { since: String(next.since), after: String(next.after) })) return true;
+  }
+  return false;
+}
+
+/** Writes the record under If-Match (the same read-modify-write as a rename, B21): `fn`
+ * changes it, or returns false to leave it; a tombstone or a deletion record stops it.
+ * @param {Env} env @param {string} id @param {(meta: any) => boolean} fn */
+async function aiWriteMeta(env, id, fn) {
+  const key = `meta/${id}.json`;
+  for (let attempt = 0; attempt < CAS_TRIES; attempt++) {
+    const [object, gone] = await Promise.all([env.BUCKET.get(key), env.BUCKET.head(`${GONE}${id}`)]);
+    if (gone || !object) { try { await object?.body?.cancel(); } catch { /* nothing to release */ } return false; }
+    /** @type {any} */
+    let meta;
+    try { meta = JSON.parse(await object.text()); } catch { return false; }
+    if (!meta || meta.state === "deleted" || !fn(meta)) return false;
+    if (await casPut(env, key, JSON.stringify(meta), { etagMatches: object.etag })) return true;
+  }
+  return false;
+}
+
+// ───────── the steps (B206) ─────────
+
+/** @param {string} id */
+const aiTranscriptKey = (id) => `rec/${id}/ai/transcript.json`;
+
+/** The take's transcript and its etag, or null. @param {Env} env @param {string} id */
+async function aiTranscriptOf(env, id) {
+  const object = await env.BUCKET.get(aiTranscriptKey(id));
+  if (!object) return null;
+  try {
+    const t = JSON.parse(await object.text());
+    return t && typeof t === "object" && Array.isArray(t.words) ? { t: /** @type {Transcript} */ (t), etag: object.etag } : null;
+  } catch {
+    return null;
+  }
+}
+
+/** @param {any} meta @returns {Transcript} */
+const aiEmpty = (meta) => ({ v: 1, model: AI_MODELS.hear, language: null, duration: 0, heard_through: 0, done: false, windows: 0, clock: aiClock(meta), words: [] });
+
+/** The take's pieces in order, as far as they run unbroken from the first.
+ * @param {Env} env @param {string} id @returns {Promise<R2Object[]>} */
+async function aiPieces(env, id) {
+  const prefix = `rec/${id}/v0/seg_`;
+  /** @type {R2Object[]} */
+  const all = [];
+  /** @type {string | undefined} */
+  let cursor;
+  do {
+    const page = await env.BUCKET.list({ prefix, cursor });
+    all.push(...page.objects);
+    cursor = page.truncated ? page.cursor : undefined;
+  } while (cursor);
+  all.sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
+  /** @type {R2Object[]} */
+  const out = [];
+  for (const o of all) {
+    if (o.key !== `${prefix}${String(out.length).padStart(5, "0")}.m4s`) break;
+    out.push(o);
+  }
+  return out;
+}
+
+/** Hears window `w` (B205 a, b): its pieces' sound, led by the window before's last piece,
+ * sent to Whisper as a stream (raw bytes are refused; a stream needs no base64). A word is
+ * this window's from where the window before stopped (1.5 s before this one's own first
+ * piece) to 1.5 s before its end, and is kept on the recording's clock; the rest of its last
+ * 1.5 s is held for the next window, which hears it whole. All of it, for the last window.
+ * @param {Env} env @param {string} id @param {any} meta @param {R2Object[]} pieces @param {{ from: number, to: number, lead: number }} w
+ * @param {Transcript | null} t @param {string | null} etag @param {boolean} last */
+async function aiHear(env, id, meta, pieces, w, t, etag, last) {
+  const ai = /** @type {Ai} */ (env.AI);
+  const init = await env.BUCKET.get(`rec/${id}/v0/init.mp4`);
+  if (!init) throw new Error("init");
+  // Every take of a recording is encoded alike (its rate pinned to the first's), so the first take's init describes them all.
+  const tracks = mp4Tracks(await aiBytes(init));
+  const read = (/** @type {R2Object} */ p) => aiPiece(env, p.key, p.size, tracks);
+  const [own, lead] = await Promise.all([Promise.all(pieces.slice(w.from, w.to).map(read)), w.lead >= 0 ? read(pieces[w.lead]) : Promise.resolve(null)]);
+  const start = t?.duration ?? 0;
+  const end = start + own.reduce((n, p) => n + p.secs, 0);
+  const clip = start - (lead?.secs ?? 0);
+  const from = t ? t.heard_through : -Infinity;
+  const until = last ? Infinity : end - AI_RULES.edge;
+  // The window's frames, handed over as they are: one stream, no copy of the whole.
+  const parts = [...(lead ? lead.parts : []), ...own.flatMap((p) => p.parts)];
+  /** @type {Word[]} */
+  const words = [];
+  /** @type {string | null} */
+  let language = null;
+  if (parts.length) {
+    const body = new ReadableStream({ start(c) { for (const p of parts) c.enqueue(p); c.close(); } });
+    // The filter keeps Whisper from writing into silence and music ("Thank you."), which a
+    // prime would otherwise be echoed into (measured 2026-10-18, B205 a).
+    const out = await ai.run(AI_MODELS.hear, { audio: { body, contentType: "audio/aac" }, vad_filter: true, initial_prompt: AI_HEAR_PRIME });
+    for (const seg of Array.isArray(out?.segments) ? out.segments : []) {
+      for (const x of Array.isArray(seg?.words) ? seg.words : []) {
+        const text = String(x?.word ?? "").trim(), s = Number(x?.start), e = Number(x?.end);
+        if (/[\p{L}\p{N}]/u.test(text) && Number.isFinite(s) && Number.isFinite(e)) words.push([text, Math.round((clip + s) * 100) / 100, Math.round((clip + Math.max(s, e)) * 100) / 100]);
+      }
+    }
+    const lang = out?.transcription_info?.language;
+    if (words.length && typeof lang === "string" && /^[a-z]{2,3}$/.test(lang)) language = lang;
+  }
+  /** @type {Transcript} */
+  const next = {
+    ...(t ?? aiEmpty(meta)), language: t?.language ?? language, duration: end, heard_through: last ? end : until, done: last, windows: w.from / AI_RULES.window + 1,
+    words: [...(t?.words ?? []), ...words.filter(([, s]) => s >= from && s < until)],
+  };
+  if (last) delete next.tail;
+  else next.tail = words.filter(([, s]) => s >= until);
+  return (await casPut(env, aiTranscriptKey(id), JSON.stringify(next), etag ? { etagMatches: etag } : { etagDoesNotMatch: "*" })) ? next : null;
+}
+
+/** One step for a take, the next thing it needs: while it records, the early title once its
+ * first minute is heard (B205 f), else the next window that's up; once the take is done and
+ * all of it heard, its name (or the name again after an edit, B208 c). `more`: another step
+ * can be taken now. @param {Env} env @param {string} id @param {Later} want @param {number} now
+ * @returns {Promise<{ step: "heard" | "titled" | "named" | "idle", more: boolean, note?: string }>} */
+async function aiStep(env, id, want, now) {
+  const [meta, read] = await Promise.all([readMeta(env, id), aiTranscriptOf(env, id)]);
+  if (!meta || meta.state === "deleted") return { step: "idle", more: false };
+  let t = read?.t ?? null;
+  if (!t?.done) {
+    const pieces = await aiPieces(env, id);
+    const n = want.done ? pieces.length : Math.min(want.through, pieces.length);
+    const k = t?.windows ?? 0;
+    const w = aiWindow(k, n);
+    // The title the page opens with comes before more hearing (it's the one the free day favours).
+    if (t && aiEarlyDue(meta, t, want)) {
+      const note = await aiNameEarly(env, id, t, read?.etag ?? null, now);
+      return { step: "titled", more: w.from < n && w.to - w.from === AI_RULES.window, note };
+    }
+    if (w.from < n && (w.to - w.from === AI_RULES.window || want.done)) {
+      const t0 = Date.now();
+      const heard = await aiHear(env, id, meta, pieces, w, t, read?.etag ?? null, want.done && w.to >= pieces.length);
+      const next = aiWindow(k + 1, n);
+      const note = heard ? `heard window ${heard.windows} in ${Date.now() - t0} ms, ${heard.words.length + (heard.tail?.length ?? 0)} words so far` : `window ${k + 1}: another step wrote it first`;
+      return { step: "heard", more: want.done || next.to - next.from === AI_RULES.window || (!!heard && aiEarlyDue(meta, heard, want)), note };
+    }
+    if (!want.done) return { step: "idle", more: false };
+    // Nothing left to hear: what the last window held back is final now.
+    const base = t ?? aiEmpty(meta);
+    /** @type {Transcript} */
+    const done = { ...base, done: true, heard_through: base.duration, words: [...base.words, ...(base.tail ?? [])] };
+    delete done.tail;
+    if (!(await casPut(env, aiTranscriptKey(id), JSON.stringify(done), read ? { etagMatches: read.etag } : { etagDoesNotMatch: "*" }))) return { step: "heard", more: true };
+    t = done;
+  }
+  if ((meta.named && !meta.named.early && !want.rename) || !aiPlaced(meta, t.clock)) return { step: "idle", more: false };
+  const note = await aiName(env, id, t, meta, now);
+  return { step: "named", more: false, note };
+}
+
+/** @typedef {{ through: number | null, done: boolean, rename?: boolean }} AiAsk */
+/** What a run did, and its line for the Mac's log (`note`: counts, times, models and codes; never a word said or a title).
+ * @typedef {{ step: "heard" | "titled" | "named" | "idle", more: boolean, note?: string } | { later: string, note: string }} AiRun */
+
+/** Runs one step for a take, if it may take one now. A take waiting for the next free day
+ * or a busy model only notes what was asked. A done take, a rename, or a take already
+ * marked is held (its mark leased) while its step runs, so the schedule and a Mac never take
+ * the same step; a minute while recording needs no mark. A step refused leaves the mark for
+ * later (B207). @param {Env} env @param {string} id @param {AiAsk} ask @param {number} now @returns {Promise<AiRun>} */
+async function aiRun(env, id, ask, now) {
+  /** What this run will do, read with the mark: `held`, it leased the mark; `waiting`, why it may not run now. */
+  const run = { want: aiFresh(now), held: false, waiting: /** @type {string | null} */ (null) };
+  const ok = await aiMark(env, id, (l) => {
+    const want = { ...aiFresh(now), ...(l ?? {}), done: !!(l?.done || ask.done), through: Math.max(l?.through ?? 0, ask.through ?? 0), rename: !!(l?.rename || ask.rename) };
+    Object.assign(run, { want, held: false, waiting: null });
+    if (l && l.after > now) {
+      run.waiting = l.reason;
+      return want.done === l.done && want.through === l.through && want.rename === l.rename ? undefined : { ...l, done: want.done, through: want.through, rename: want.rename };
+    }
+    if (!l && !want.done && !want.rename) return undefined;
+    run.held = true;
+    return { ...want, after: now + AI_LEASE_MS, reason: "running" };
+  });
+  if (!ok) return { later: "running", note: "another step holds it" };
+  if (run.waiting) return { later: run.waiting, note: `waiting (${run.waiting})` };
+  const { want } = run;
+  /** @type {{ step: "heard" | "titled" | "named" | "idle", more: boolean, note?: string }} */
+  let out;
+  try {
+    out = await aiStep(env, id, want, now);
+  } catch (e) {
+    return aiRefused(env, id, want, now, e);
+  }
+  // Heard: the mark goes back to waiting its turn, with whatever was asked meanwhile. Named, or nothing to do: it goes.
+  const step = out.step;
+  if (run.held) await aiMark(env, id, (l) => (step === "heard" || step === "titled" ? { ...want, ...(l ?? {}), after: 0, reason: "more", tries: 0 } : null));
+  return out;
+}
+
+/** A step refused (B207): a used-up free day waits for 00:00 UTC, and the owner's page says
+ * so; a busy model, five minutes; anything else, a little longer each try, and after five
+ * the take is let go (no name, no captions). Nothing is ever said as an error.
+ * @param {Env} env @param {string} id @param {Later} want @param {number} now @param {unknown} e @returns {Promise<AiRun>} */
+async function aiRefused(env, id, want, now, e) {
+  const reason = aiRefusal(e);
+  const code = aiCode(e);
+  const tries = reason === "error" ? want.tries + 1 : want.tries;
+  if (reason === "error" && tries >= AI_TRIES) {
+    await aiMark(env, id, () => null);
+    await aiWriteMeta(env, id, (m) => {
+      if (m.named && !want.rename) return false;
+      m.named = { ...(m.named ?? { by: "ai", model: null, words: 0, title: null, chapters: [] }), at: iso(now), rev: aiRev(m), clock: aiClock(m), failed: true, code };
+      delete m.naming;
+      return true;
+    }).catch(() => false);
+    return { later: "error", note: `let go after ${AI_TRIES} tries: error ${code}` };
+  }
+  const wait = reason === "busy" ? 5 : 5 * tries;
+  const after = reason === "daily" ? nextMidnight(now) : now + wait * AI_MIN;
+  await aiMark(env, id, (l) => ({ ...want, ...(l ?? {}), done: !!(want.done || l?.done), through: Math.max(want.through, l?.through ?? 0), after, reason, tries }));
+  if (reason === "daily") {
+    await aiWriteMeta(env, id, (m) => {
+      if (m.titled || m.named || m.naming?.later === "daily") return false;
+      m.naming = { later: "daily", at: iso(now), code };
+      return true;
+    }).catch(() => false);
+  }
+  const note = reason === "daily" ? `waits for 00:00 UTC: the free day is used up (${code})` : reason === "busy" ? `waits ${wait} min: busy (${code})` : `waits ${wait} min: error ${code}, try ${tries} of ${AI_TRIES}`;
+  return { later: reason, note };
+}
+
+/** POST /_shroom/api/ai {rec, through} | {rec, done: true} (B206 b): a Mac saying another
+ * minute of a take is up, or that the take is done. The device key is the door; the setup
+ * Mac, which may hold none, signs with the parent proof enroll takes. Only the take's maker
+ * or the owner may ask. Without the AI binding it answers `{"ai": false}` and reads nothing.
+ * @param {Request} request @param {Env} env @param {URL} url @param {number} now */
+async function aiAskRoute(request, env, url, now) {
+  const { value: b, bytes } = await rawBody(request);
+  if (!env.AI) return answer({ ai: false });
+  const rec = b.rec, through = b.through ?? null, done = b.done ?? false;
+  if (typeof rec !== "string" || !ID.test(rec) || typeof done !== "boolean" || (through !== null && !(Number.isInteger(through) && through >= 0 && through <= 100000)) || (through === null && !done)) throw bad();
+  /** @type {{ mid: string, ownerClass: boolean }} */
+  let who;
+  if (/^ShroomParent /.test(request.headers.get("authorization") ?? "")) {
+    await parentProven(request, env, url, now, bytes);
+    who = { mid: M1, ownerClass: true };
+  } else {
+    who = (await authed(request, env)).who;
+  }
+  const [ledger, meta] = await Promise.all([ledgerGet(env, rec), metaFact(env, rec)]);
+  const owner = ledger ? ledger.member : meta.exists ? M1 : null;
+  if (owner === null) throw new Refusal(404, "absent");
+  if (owner !== who.mid && !who.ownerClass) throw new Refusal(403, "not-yours");
+  if (meta.deleted) throw new Refusal(410, "deleted");
+  return answer({ ai: true, ...(await aiRun(env, rec, { through, done }, now)) });
+}
+
+/** The schedule each minute (B206 c, B207): the oldest take whose mark is due gets one step.
+ * A take held by another step, or left with nothing to do, passes to the next; a step taken
+ * or refused ends the tick. @param {Env} env @param {number} now */
+export async function aiTick(env, now) {
+  if (!env.AI) return;
+  /** @type {{ id: string, since: number }[]} */
+  const due = [];
+  /** @type {string | undefined} */
+  let cursor;
+  do {
+    const page = await env.BUCKET.list({ prefix: AI_LATER, cursor, include: ["customMetadata"] });
+    for (const o of page.objects) {
+      const id = o.key.slice(AI_LATER.length);
+      if (ID.test(id) && (Number(o.customMetadata?.after) || 0) <= now) due.push({ id, since: Number(o.customMetadata?.since) || 0 });
+    }
+    cursor = page.truncated ? page.cursor : undefined;
+  } while (cursor);
+  due.sort((a, b) => a.since - b.since);
+  for (const x of due.slice(0, 10)) {
+    const r = await aiRun(env, x.id, { through: null, done: false }, now);
+    if ("later" in r ? r.later !== "running" : r.step !== "idle") return;
+  }
+}
+
+/** After a view (B208 c, e), in the background: a bake since the words were heard is applied
+ * to them once and stamped; an edit saved since the naming that removes at least a fifth of
+ * the words it saw, or a whole chapter, queues the naming again; one that doesn't is stamped
+ * as weighed, so it isn't weighed again. @param {Env} env @param {string} id @param {any} meta @param {number} now */
+async function aiAfterView(env, id, meta, now) {
+  const rev = aiRev(meta);
+  if (!meta?.named || meta.named.early || meta.named.rev === rev) return;
+  const read = await aiTranscriptOf(env, id);
+  if (!read?.t.done || !aiPlaced(meta, read.t.clock)) return;
+  const { t } = read;
+  const clockNow = aiClock(meta);
+  const words = aiOverBakes(t.words, meta, t.clock);
+  if ((t.clock ?? null) !== clockNow) await casPut(env, aiTranscriptKey(id), JSON.stringify({ ...t, words, clock: clockNow }), { etagMatches: read.etag });
+  const playing = aiPlaying(words, aiKeep(meta)).length;
+  const saw = Number(meta.named.words) || 0;
+  const had = Array.isArray(meta.named.chapters) ? meta.named.chapters.length : 0;
+  if ((saw > 0 && playing <= saw * (1 - AI_RULES.renameShare)) || (had >= 2 && aiChapters(meta).length < had)) {
+    await aiMark(env, id, (l) => (l?.rename ? undefined : { ...aiFresh(now), ...(l ?? {}), done: true, rename: true }));
+    return;
+  }
+  await aiWriteMeta(env, id, (m) => {
+    if (!m.named || m.named.rev === rev) return false;
+    m.named.rev = rev;
+    if ((m.named.clock ?? null) !== clockNow) { m.named.chapters = aiChaptersNow(m).map(([s, title]) => [Math.round(s * 10) / 10, title]); m.named.clock = clockNow; }
+    return true;
+  });
+}
+
+/** GET /_shroom/cc/<id> (B209 b): the video's captions as WebVTT, written per view from its
+ * words and its saved edit: `e=1` on the edited clock (the editor's copy plays), otherwise
+ * on the recording's. Removed with the video. @param {Request} request @param {Env} env @param {string} id @param {URL} url */
+async function aiCaptionsRoute(request, env, id, url) {
+  const [meta, read] = await Promise.all([readMeta(env, id), aiTranscriptOf(env, id)]);
+  if (!meta || meta.state !== "live" || !meta.captions || !read?.t.done || !aiPlaced(meta, read.t.clock)) return plain(404, "");
+  const body = aiCaptions(aiOverBakes(read.t.words, meta, read.t.clock), aiKeep(meta), url.searchParams.get("e") === "1");
+  return new Response(request.method === "HEAD" ? null : body, {
+    headers: { "content-type": "text/vtt; charset=utf-8", "cache-control": "public, max-age=300", "x-robots-tag": "noindex", "x-content-type-options": "nosniff" },
+  });
+}
+
+/** GET /_shroom/named/<id> (B209 c): the name the space gave the video, for its own owner's
+ * page left open while it was on its way — the maker's or an owner's browser only.
+ * @param {Request} request @param {Env} env @param {string} id */
+async function aiNamedRoute(request, env, id) {
+  const owner = await ownerOf(request, env);
+  if (!owner) return plain(403, "");
+  const meta = await readMeta(env, id);
+  if (!meta || meta.state === "deleted") return plain(404, "");
+  if (!(await mayEdit(env, owner, id, true))) return plain(403, "");
+  const named = !meta.titled && meta.named?.by === "ai" && typeof meta.named.title === "string" ? String(meta.title || "") : "";
+  return json({ named, titled: !!meta.titled, later: !named && !meta.titled && meta.naming?.later === "daily", early: !!named && !!meta.named.early });
+}
+
+// ───────── the page's player: chapters in the seek bar, captions (B209) ─────────
+
+/** The bar drawn as one section a chapter (a layer behind the native slider, which keeps its
+ * keyboard and screen-reader ways), its tip, the chapter after the time; the Captions button;
+ * the owner's line under the title. */
+const AI_STYLE = `.player.ch .seek::-webkit-slider-runnable-track{background:transparent}.player.ch .seek::-moz-range-track{background:transparent}
+.chs{position:absolute;left:0;right:0;top:0;height:4px;display:flex;gap:2px;pointer-events:none}
+.chs i{display:block;height:4px;min-width:1px;border-radius:2px;transition:transform .12s;background:linear-gradient(to right,var(--player-fill) calc(var(--f,0)*100%),var(--player-buf) 0 calc(var(--g,0)*100%),var(--player-track) 0)}
+.chs i.on{transform:scaleY(1.75)}
+.chtip{position:absolute;bottom:calc(100% + 10px);left:0;transform:translateX(-50%);z-index:3;max-width:min(360px,80%);padding:4px 9px;border-radius:7px;background:var(--player);border:1px solid var(--player-track);color:var(--player-hi);font-size:12px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
+.chtip[hidden]{display:none}.chtip .cht{color:var(--player-text);font-variant-numeric:tabular-nums;margin-right:6px}
+.chn{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:.8}
+.row .cc[aria-pressed=true]{color:var(--player-fill)}
+.ainote{margin:-12px 0 0;color:var(--soft);font-size:.9375rem}.ainote[hidden]{display:none}
+@media (pointer:coarse){.player.ch .seek{top:-20px;height:44px}}
+.player.ch .seek.held::-webkit-slider-thumb{width:20px;height:20px;margin-top:-8px;box-shadow:0 0 0 6px rgba(236,239,244,.18)}.player.ch .seek.held::-moz-range-thumb{width:20px;height:20px;box-shadow:0 0 0 6px rgba(236,239,244,.18)}
+@media (max-width:479px){.chn{display:none}}
+@media (prefers-reduced-motion:reduce){.chs i{transition:none}}`;
+
+const ICON_CC = `<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="3" width="13" height="10" rx="2"/><path d="M7.2 6.6a1.8 1.8 0 1 0 0 2.8M11.7 6.6a1.8 1.8 0 1 0 0 2.8"/></svg>`;
+
+/** The player's markup with what the record names (B209 b): its captions track, and the
+ * Captions button before the speed. @param {string} html playerHtml's @param {AiFace} ai */
+function aiPlayer(html, ai) {
+  if (!ai.captions) return html;
+  const track = `<track kind="captions" src="${escapeHtml(ai.captions.src)}"${ai.captions.lang ? ` srclang="${ai.captions.lang}"` : ""} label="${escapeHtml(COPY.captions)}">`;
+  const button = `<button type="button" class="cc" aria-label="${escapeHtml(COPY.captions)}" aria-pressed="false">${ICON_CC}</button>`;
+  return html.replace("></video>", `>${track}</video>`).replace(`<button type="button" class="sp"`, `${button}<button type="button" class="sp"`);
+}
+
+/** The bar's chapters and the Captions button, wired after `shroomPlayer` (B209 a, b). `ch`:
+ * [[start on the bar's clock, title], …]. A tip shows the time and chapter under the
+ * pointer, or above the thumb while a finger drags it and for 1.5 s after, the thumb grown
+ * while the finger is on it; the chapter playing follows the time and joins the bar's
+ * spoken value. Captions are off until pressed, and the browser remembers. */
+const AI_PLAYER_JS = `function shroomChapters(p,ch){var sk=p.querySelector(".seek"),v=p.querySelector("video"),ctl=p.querySelector(".ctl"),tm=p.querySelector(".time");if(!sk||!ch||ch.length<2)return;
+var bar=document.createElement("div"),tip=document.createElement("div"),n=document.createElement("span"),secs=[],hide=0,touch=false,built=-1;
+bar.className="chs";bar.setAttribute("aria-hidden","true");tip.className="chtip";tip.hidden=true;tip.setAttribute("aria-hidden","true");n.className="chn";
+sk.parentNode.insertBefore(bar,sk);ctl.appendChild(tip);tm.parentNode.insertBefore(n,tm.nextSibling);p.classList.add("ch");
+function len(){return +sk.max||0}
+function at(t){var i=0;for(var j=0;j<ch.length;j++)if(ch[j][0]<=t+.05)i=j;return i}
+function build(){var d=len();built=d;bar.textContent="";secs=[];if(!d)return;for(var i=0;i<ch.length;i++){var s=Math.min(ch[i][0],d),e=i+1<ch.length?Math.min(ch[i+1][0],d):d,x=document.createElement("i");x.style.flex=Math.max(.001,e-s)+" 1 0";bar.appendChild(x);secs.push([s,e,x])}}
+function paint(){var d=len();if(d!==built)build();var t=+sk.value||0,pt=(parseFloat(sk.style.getPropertyValue("--p"))||0)*d,bt=(parseFloat(sk.style.getPropertyValue("--b"))||0)*d;
+for(var i=0;i<secs.length;i++){var s=secs[i],w=(s[1]-s[0])||1;s[2].style.setProperty("--f",String(Math.max(0,Math.min(1,(pt-s[0])/w))));s[2].style.setProperty("--g",String(Math.max(0,Math.min(1,(bt-s[0])/w))))}
+var c=ch[at(t)][1];n.textContent="\\u00b7 "+c;n.title=c;sk.setAttribute("aria-valuetext",tm.textContent+", "+c)}
+function show(t,x){var i=at(t),r=sk.getBoundingClientRect(),a=document.createElement("span");tip.textContent="";a.className="cht";a.textContent=shroomClock(t,false);tip.appendChild(a);tip.appendChild(document.createTextNode(ch[i][1]));tip.hidden=false;
+var w=tip.offsetWidth;tip.style.left=Math.max(w/2,Math.min(r.width-w/2,x))+"px";for(var j=0;j<secs.length;j++)secs[j][2].classList.toggle("on",j===i)}
+function off(){tip.hidden=true;for(var j=0;j<secs.length;j++)secs[j][2].classList.remove("on")}
+function thumb(){var d=len(),r=sk.getBoundingClientRect();return d?(+sk.value/d)*r.width:0}
+sk.addEventListener("pointermove",function(e){if(e.pointerType==="touch"||touch)return;var r=sk.getBoundingClientRect(),x=Math.max(0,Math.min(r.width,e.clientX-r.left));show(len()*x/(r.width||1),x)});
+sk.addEventListener("pointerleave",function(e){if(e.pointerType!=="touch"&&!touch)off()});
+sk.addEventListener("pointerdown",function(e){if(e.pointerType!=="touch")return;touch=true;clearTimeout(hide);sk.classList.add("held");show(+sk.value||0,thumb())});
+function lift(e){if(e.pointerType!=="touch"||!touch)return;touch=false;sk.classList.remove("held");clearTimeout(hide);hide=setTimeout(off,1500)}
+sk.addEventListener("pointerup",lift);sk.addEventListener("pointercancel",lift);
+sk.addEventListener("input",function(){if(touch)show(+sk.value||0,thumb());paint()});
+["timeupdate","durationchange","loadedmetadata","seeked","emptied","progress"].forEach(function(e){v.addEventListener(e,paint)});
+window.addEventListener("resize",function(){built=-1;paint()});paint()}
+function shroomCaptions(p){var v=p.querySelector("video"),b=p.querySelector(".cc"),k="shroom-captions",on=false;if(!b||!v.textTracks)return;
+function set(x){on=x;for(var i=0;i<v.textTracks.length;i++)v.textTracks[i].mode=x?"showing":"hidden";b.setAttribute("aria-pressed",x?"true":"false")}
+try{on=localStorage.getItem(k)==="1"}catch(e){}
+b.addEventListener("click",function(){set(!on);try{localStorage.setItem(k,on?"1":"0")}catch(e){}});
+if(v.textTracks.addEventListener)v.textTracks.addEventListener("addtrack",function(){set(on)});set(on)}`;
+
+/** The page's call for a player's chapters and captions, when it has either.
+ * @param {string} sel the player's selector @param {AiFace} ai */
+function aiWire(sel, ai) {
+  if (!ai.chapters.length && !ai.captions) return "";
+  return `
+${AI_PLAYER_JS}
+(function(){var p=document.querySelector(${jsonForScript(JSON.stringify(sel))});if(!p)return;${ai.chapters.length ? `shroomChapters(p,${jsonForScript(JSON.stringify(ai.chapters))});` : ""}${ai.captions ? "shroomCaptions(p)" : ""}})()`;
+}
+
+/** The AI's style, on a page that shows any of it. @param {AiFace} ai */
+const aiCss = (ai) => (ai.chapters.length || ai.captions || ai.line || ai.waiting ? AI_STYLE : "");
+/** @param {AiFace} ai */
+const aiHead = (ai) => (aiCss(ai) ? `<style>${AI_STYLE}</style>` : "");
+
+/** The owner's line under the title (B209 c): where the name came from, or that it comes
+ * later; a slot for it while a name is on its way. @param {AiFace} ai */
+const aiNote = (ai) => (ai.line || ai.waiting ? `<p class="ainote" id="ainote"${ai.line ? "" : " hidden"}>${escapeText(ai.line)}</p>` : "");
+
+/** The owner's page while a name is on its way (B209 c): it asks now and then, and shows
+ * the name in the title field (as its placeholder, so it stays the space's until it's typed
+ * over) unless a title was typed meanwhile; an early title (B205 f) is shown and asked past,
+ * till the full name takes its place. @param {string} id @param {AiFace} ai */
+function aiOwnerScript(id, ai) {
+  if (!ai.waiting) return "";
+  return `<script>(function(){var t=document.getElementById("t"),l=document.getElementById("ainote"),n=0,c=${jsonForScript(JSON.stringify({ id, named: COPY.named, later: COPY.namingLater }))};
+function say(x){if(l){l.textContent=x;l.hidden=!x}}
+function poll(){if(++n>60)return;fetch("/_shroom/named/"+c.id,{cache:"no-store"}).then(function(r){return r.ok?r.json():null}).then(function(j){if(!j||j.titled){say("");return}
+if(j.named){t.placeholder=j.named;if(!t.value)document.title=j.named;say(c.named);if(!j.early)return}
+if(j.later)say(c.later);setTimeout(poll,n<12?5000:30000)}).catch(function(){setTimeout(poll,30000)})}
+t.addEventListener("change",function(){say("")});setTimeout(poll,5000)})()</script>`;
+}

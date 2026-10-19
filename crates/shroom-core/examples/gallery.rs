@@ -23,6 +23,17 @@
 //! recording machine (config and its variants, disk-low, recording-off, the paused faces,
 //! the questions, the stops) and the countdown, each with its `window` (`popover` or
 //! `countdown`). The bubble and Camera's preview are native panels (no webview to render).
+//! The paused face shows Drop a marker, and again once one is dropped (N64). `config` says,
+//! once, why the owner page's Edit in shroom opened nothing (N69).
+//!
+//! `… --example gallery -- editor` prints the editor's faces (N63), from the worlds of
+//! `tests/region5.rs`'s editor rows: ready on a trimmed video with a cut applied, a
+//! suggestion waiting, markers and a step to undo; just opened; opened again while the
+//! earlier edit's original is kept, with each of the time-left lines by Revert; the video
+//! coming at 40%; couldn't come; saving; the save that didn't go through, and the one the
+//! space turned down (B199); and after a save (B197), the final video being made at 40%, the
+//! one that couldn't be made, and “Delete the original?”; and the window brought forward by the
+//! owner page's Edit in shroom for another video (N69).
 //!
 //! Examples can't import tests, so the builders are copied from
 //! `tests/common/support.rs` and `tests/onboarding.rs`; keep them in step.
@@ -32,7 +43,7 @@ use std::sync::Arc;
 use std::collections::BTreeMap;
 
 use serde_json::{Value, json};
-use shroom_core::event::{Event, JoinAnswer, MemberNews, PeekAnswer, StandingAnswer, Surface};
+use shroom_core::event::{Event, JoinAnswer, MemberNews, PeekAnswer, SettingsSpot, StandingAnswer, Surface};
 use shroom_core::scene::{Action, RowRef};
 use shroom_core::time::{Envelope, Fact, Mono, Wall};
 use shroom_core::world::*;
@@ -343,7 +354,7 @@ const AUG03: i64 = 1_785_758_400_000;
 const SEP30: i64 = 1_790_769_600_000;
 
 fn remote(id: &str, title: &str, at: i64, length_ms: u64) -> LibraryRow {
-    LibraryRow { rec: RecId(id.into()), title: title.into(), created: Wall(at), length_ms: Some(length_ms), live: true, owner: Some("m1".into()), poster: false }
+    LibraryRow { rec: RecId(id.into()), title: title.into(), created: Wall(at), length_ms: Some(length_ms), live: true, owner: Some("m1".into()), poster: false, edited_ms: None }
 }
 
 fn space_rows() -> Vec<LibraryRow> {
@@ -365,6 +376,7 @@ fn recording() -> OpenTake {
         since: Mono(500),
         length_ms: 30_000,
         markers: 0,
+        marked_at_pause: false,
         mic: None,
         camera: None,
     }
@@ -437,6 +449,26 @@ fn library_rows() -> Vec<(&'static str, &'static str, World)> {
         w.net.online = Fact::known(false, Mono(0));
         w
     }));
+    // Suggested to clean up (N68): the line above the rows, the view, its Undo line, and
+    // the view once nothing is left.
+    rows.push(("library", "library-cleanup-line", suggesting(library(ready(), space_rows()))));
+    rows.push(("library-cleanup", "library-cleanup", {
+        let mut w = suggesting(library(ready(), space_rows()));
+        w.session.fields.library.cleanup = true;
+        w
+    }));
+    rows.push(("library-cleanup", "library-cleanup-undo", {
+        let mut w = suggesting(library(ready(), space_rows()));
+        w.session.fields.library.cleanup = true;
+        w.session.fields.library.undo = Some((RecId("r19".into()), Mono(990)));
+        w
+    }));
+    rows.push(("library-cleanup", "library-cleanup-empty", {
+        let mut w = library(ready(), space_rows());
+        w.suggestions = Fact::known(Suggestions { counting: true, space_bytes: 34_000_000_000, rows: vec![] }, Mono(960));
+        w.session.fields.library.cleanup = true;
+        w
+    }));
     rows.push(("delete-confirm", "library-delete-sheet", {
         let mut w = library(ready(), space_rows());
         w.session.confirm = Some(Confirm::Delete(vec![RecId("r502".into())]));
@@ -448,6 +480,16 @@ fn library_rows() -> Vec<(&'static str, &'static str, World)> {
         w
     }));
     rows
+}
+
+/// What the space said is worth deleting (N68): three of the space's videos, of 34 GB.
+fn suggesting(mut w: World) -> World {
+    let s = |id: &str, bytes: u64, plays: u32, quiet_days: u32| Suggestion { rec: RecId(id.into()), bytes, plays, quiet_days, stopped_early: false };
+    w.suggestions = Fact::known(
+        Suggestions { counting: true, space_bytes: 34_000_000_000, rows: vec![s("onb", 3_200_000_000, 4, 300), s("r19", 1_800_000_000, 0, 45), s("r502", 1_300_000_000, 2, 120)] },
+        Mono(960),
+    );
+    w
 }
 
 fn settings(mut w: World, tab: SettingsTab) -> World {
@@ -479,6 +521,15 @@ fn settings_rows() -> Vec<(&'static str, &'static str, World)> {
         w.launch.version = "1.2.0".into();
         w
     }));
+    // Your videos (N68): the space past the free 10 GB; and inside it, counting off, the
+    // switch's failed line.
+    rows.push(("settings-general", "general-your-videos", suggesting(settings(ready(), SettingsTab::General))));
+    rows.push(("settings-general", "general-your-videos-free", {
+        let mut w = settings(ready(), SettingsTab::General);
+        w.suggestions = Fact::known(Suggestions { counting: false, space_bytes: 8_200_000_000, rows: vec![] }, Mono(960));
+        w.inflight.failures.insert(Op::Plays, Failure { at: Mono(970), class: FailClass::Transport, tries: 1 });
+        w
+    }));
     rows.push(("settings-general", "general-update-ready", {
         let mut w = settings(ready(), SettingsTab::General);
         w.launch.version = "1.2.0".into();
@@ -492,7 +543,31 @@ fn settings_rows() -> Vec<(&'static str, &'static str, World)> {
         w.update.offer = Fact::known(Some(UpdateOffer::NeedsMacos { version: "1.4.0".into(), macos: 15 }), Mono(950));
         w
     }));
+    // The shroom command's settings link (N62, DECISIONS B216): General, the switch's row lit.
+    rows.push(("settings-general", "general-agent-lit", {
+        let mut w = settings(ready(), SettingsTab::General);
+        w.launch.version = "1.2.0".into();
+        w.session.fields.settings.lit = Some((SettingsSpot::AgentRecording, w.now));
+        w
+    }));
     rows.push(("settings-space-inspection", "space-inspection", space()));
+    // N66: naming's switch on the setup Mac, off and on, and a re-wiring that didn't go through.
+    rows.push(("settings-space", "space-ai-off", {
+        let mut w = space();
+        w.space.ai = Some(false);
+        w
+    }));
+    rows.push(("settings-space", "space-ai-on", {
+        let mut w = space();
+        w.space.ai = Some(true);
+        w
+    }));
+    rows.push(("settings-space", "space-ai-failed", {
+        let mut w = space();
+        w.space.ai = Some(true);
+        w.inflight.failures.insert(Op::Ai, Failure { at: Mono(990), class: FailClass::Transport, tries: 1 });
+        w
+    }));
     rows.push(("settings-space", "space-mic-off", {
         let mut w = space();
         w.mac.mic = Fact::known(Access::Denied, Mono(0));
@@ -1012,6 +1087,18 @@ fn region3_rows() -> Vec<(&'static str, &'static str, &'static str, World)> {
         w.session.take_lost = Some(shroom_core::world::TakeLost::Said { camera: false });
         w
     }));
+    // The owner page's Edit in shroom, for a video this Mac can't edit (N69): the popover
+    // opens by itself, without the keyboard, the line said once.
+    for (variant, no) in [("edit-link-other-space", EditLinkNo::OtherSpace), ("edit-link-not-yours", EditLinkNo::NotYours), ("edit-link-gone", EditLinkNo::Gone)] {
+        rows.push(("popover", "config", variant, {
+            let mut w = ready();
+            let door = Door::unasked(Mono(900));
+            w.session.popover = Some(door);
+            w.session.news = Some(door.opened);
+            w.session.fields.edit_link = Some(EditLink::Said(no));
+            w
+        }));
+    }
     rows.push(("popover", "disk-low", "disk-low", {
         let mut w = popover(ready());
         w.mac.disk_free = Fact::known(1_000_000_000 + 20 * 54_960_000, Mono(0));
@@ -1037,7 +1124,47 @@ fn region3_rows() -> Vec<(&'static str, &'static str, &'static str, World)> {
         w.saved.push(saved_take(SavedCause::Interrupted, 272_000));
         w
     }));
+    // N66: the setup Mac's popover while the space's AI is off — the banner, its confirm,
+    // turning on, a Turn on that didn't go through, and on.
+    let ai_off = || {
+        let mut w = popover(ready());
+        w.space.ai = Some(false);
+        w
+    };
+    rows.push(("popover", "ai-offer", "ai-offer", ai_off()));
+    rows.push(("popover", "ai-confirm", "ai-confirm", {
+        let mut w = ai_off();
+        w.session.confirm = Some(Confirm::Ai);
+        w
+    }));
+    rows.push(("popover", "ai-turning-on", "ai-turning-on", {
+        let mut w = ai_off();
+        w.space.ai_turn = Some(AiTurn::Turning);
+        w.inflight.ops.insert(Op::Ai, Mono(990).plus(Op::Ai.deadline_ms()));
+        w
+    }));
+    rows.push(("popover", "ai-offer-failed", "ai-offer-failed", {
+        let mut w = ai_off();
+        w.space.ai_turn = Some(AiTurn::Turning);
+        w.inflight.failures.insert(Op::Ai, Failure { at: Mono(990), class: FailClass::Transport, tries: 1 });
+        w
+    }));
+    rows.push(("popover", "ai-on", "ai-on", {
+        let mut w = popover(ready());
+        w.space.ai = Some(true);
+        w.space.ai_turn = Some(AiTurn::On);
+        w
+    }));
     rows.push(("popover", "paused", "paused", paused_take(Cause::User, 272_000)));
+    // N64: Drop a marker used at this pause — the row reads Marker dropped, greyed.
+    rows.push(("popover", "paused", "paused-marker-dropped", {
+        let mut w = paused_take(Cause::User, 272_000);
+        if let Some(t) = w.take.as_mut() {
+            t.markers = 1;
+            t.marked_at_pause = true;
+        }
+        w
+    }));
     rows.push(("popover", "display-lost", "display-lost", {
         let mut w = paused_take(Cause::DisplayLost, 61_000);
         w.mac.displays = Fact::known(vec![], Mono(0));
@@ -1098,6 +1225,14 @@ fn region3_rows() -> Vec<(&'static str, &'static str, &'static str, World)> {
         }
         w
     }));
+    // The agent label (N62, B216): a take the shroom command started, recording.
+    rows.push(("label", "recording", "agent-label", {
+        let mut w = ready();
+        let t = recording();
+        w.agent = Some(t.opened);
+        w.take = Some(t);
+        w
+    }));
     for (variant, at) in [("countdown-3", 900), ("countdown-1", 2_950)] {
         rows.push(("countdown", "countdown", variant, {
             let mut w = ready();
@@ -1118,6 +1253,7 @@ fn region3_gallery() -> Vec<Value> {
             assert!(ids.contains(&state), "{variant}: {state} not derived (got {ids:?})");
             let (slice, faces) = match window {
                 "countdown" => (serde_json::to_value(&scene.countdown), vec![]),
+                "label" => (serde_json::to_value(&scene.label), vec![]),
                 _ => (serde_json::to_value(&scene.popover), scene.popover.as_ref().map(|x| x.faces.clone()).unwrap_or_default()),
             };
             let slice = slice.expect("the slice serializes");
@@ -1145,6 +1281,84 @@ fn member_gallery() -> Vec<Value> {
             json!({ "window": window, "state": state, "variant": variant, "faces": faces.unwrap_or_default(), "scene": slice })
         })
         .collect()
+}
+
+/// The editor (N63), open from the Library on the spec's example video (4:32, saved as
+/// revision 3 with the ends at 0:08 and 4:01, 150–162 s cut, a spoken-cue suggestion at
+/// 200–204 s waiting) and its two markers.
+fn editor_rows() -> Vec<(&'static str, &'static str, World)> {
+    let saved = || {
+        let mut list = shroom_edit::EditList::new(272.4);
+        list.in_ = 8.0;
+        list.out = 241.0;
+        list.cuts = vec![
+            shroom_edit::Cut::manual(150.0, 162.0),
+            shroom_edit::Cut { kind: shroom_edit::CutKind::LineBeforeCue, applied: false, ..shroom_edit::Cut::manual(200.0, 204.0) },
+        ];
+        shroom_edit::History::new(list)
+    };
+    // The end pulled in to 3:55 since it opened: a step Undo can take back.
+    let stepped = || {
+        let mut h = saved();
+        h.act(&shroom_edit::Op::Trim { in_: 8.0, out: 235.0 });
+        h
+    };
+    let open = |media: EditorMedia, save: EditorSave, history: Option<shroom_edit::History>| {
+        let mut w = library(ready(), vec![remote("set2", "Setting up shroom in two minutes", SEP30, 272_400)]);
+        w.session.windows.insert(WindowKind::Editor, Door::asked(Mono(960)));
+        w.session.fields.editor = Some(EditorFields {
+            rec: RecId("set2".into()),
+            title: "Setting up shroom in two minutes".into(),
+            length_ms: Some(272_400),
+            source_duration: 272.4,
+            markers: vec![61.5, 130.0],
+            history,
+            rev: 3,
+            kept_until: None,
+            media,
+            save,
+            leaving: None,
+            elsewhere: false,
+        });
+        w
+    };
+    let here = || EditorMedia::Ready { duration: 272.4 };
+    // Opened again while the earlier edit's original is kept, with `left` ms to go (B197 (e)).
+    let kept = |left: i64| {
+        let mut w = open(here(), EditorSave::Idle, Some(saved()));
+        w.session.fields.editor.as_mut().unwrap().kept_until = Some(Wall(w.wall.0 + left));
+        w
+    };
+    // The saved list, as the window holds it once the save landed.
+    let after = |save: EditorSave| {
+        let mut h = stepped();
+        h.saved_as_now();
+        open(here(), save, Some(h))
+    };
+    vec![
+        ("editor", "editor-ready", open(here(), EditorSave::Idle, Some(stepped()))),
+        ("editor", "editor-opening", open(EditorMedia::Opening, EditorSave::Idle, None)),
+        // The owner page's Edit in shroom asked for another video while this one is open (N69).
+        ("editor", "editor-editing-another", {
+            let mut w = open(here(), EditorSave::Idle, Some(stepped()));
+            w.session.fields.editor.as_mut().unwrap().elsewhere = true;
+            w
+        }),
+        ("editor", "editor-original-kept-2-days", kept(47 * 3_600_000 + 30 * 60_000)),
+        ("editor", "editor-original-kept-1-day", kept(30 * 3_600_000)),
+        ("editor", "editor-original-kept-hours", kept(20 * 3_600_000)),
+        ("editor", "editor-original-kept-hours-in-words", kept(5 * 3_600_000 + 30 * 60_000)),
+        ("editor", "editor-original-kept-1-hour", kept(90 * 60_000)),
+        ("editor", "editor-original-kept-under-an-hour", kept(25 * 60_000)),
+        ("editor-getting", "editor-getting", open(EditorMedia::Getting { pct: 40 }, EditorSave::Idle, Some(saved()))),
+        ("editor-cant-get", "editor-cant-get", open(EditorMedia::Failed, EditorSave::Idle, Some(saved()))),
+        ("editor-saving", "editor-saving", open(here(), EditorSave::Saving, Some(stepped()))),
+        ("editor-save-failed", "editor-save-failed", open(here(), EditorSave::Failed, Some(stepped()))),
+        ("editor-save-refused", "editor-save-refused", open(here(), EditorSave::Refused, Some(stepped()))),
+        ("editor-making", "editor-making", after(EditorSave::Making { pct: 40 })),
+        ("editor-making-failed", "editor-making-failed", after(EditorSave::MakingFailed)),
+        ("editor-keep-original", "editor-keep-original", after(EditorSave::Asking)),
+    ]
 }
 
 /// The Send feedback window (N60): empty and gathering, filled with what goes shown, the
@@ -1211,6 +1425,13 @@ fn main() {
         }
         Some("region3") => {
             println!("{}", serde_json::to_string_pretty(&region3_gallery()).unwrap());
+            return;
+        }
+        Some("editor") => {
+            let out = window_gallery(editor_rows(), |s| {
+                (serde_json::to_value(&s.editor).expect("the slice serializes"), s.editor.as_ref().map(|e| e.faces.clone()).unwrap_or_default())
+            });
+            println!("{}", serde_json::to_string_pretty(&out).unwrap());
             return;
         }
         Some("feedback") => {

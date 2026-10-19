@@ -8,6 +8,7 @@ description = "shroom's state: one World of facts, update as its only writer, a 
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
+shroom-edit = { path = "../shroom-edit" }
 
 [dev-dependencies]
 serde_json = "1"

@@ -18,11 +18,12 @@ mod tray_probe;
 #[cfg(feature = "dev-harness")]
 static SHROOM_HARNESS_BUILD: [u8; 40] = *b"shroom:dev-harness-build:never-a-release";
 
-/// Join links opened before the runtime exists (a cold launch by the page's Open shroom):
-/// held in memory, handed to the member lane once it's up.
+/// Links opened before the runtime exists (a cold launch by the page's Open shroom or Edit
+/// in shroom, or by the command's settings link): held in memory, handed on once it's up.
 static EARLY_LINKS: std::sync::Mutex<Vec<String>> = std::sync::Mutex::new(Vec::new());
 
-/// Hands every early link to the member lane, behind `Booted` on the main thread.
+/// Hands every early link on (`runtime::opened`: Settings' own and Edit in shroom to the
+/// core, an invite to the member lane), behind `Booted` on the main thread.
 fn drain_early_links(app: &tauri::AppHandle, rt: &runtime::Runtime) {
     let links = std::mem::take(&mut *EARLY_LINKS.lock().unwrap());
     if links.is_empty() {
@@ -31,7 +32,7 @@ fn drain_early_links(app: &tauri::AppHandle, rt: &runtime::Runtime) {
     let rt = rt.clone();
     let _ = app.run_on_main_thread(move || {
         for link in links {
-            runtime::member::deep_link(&rt, &link);
+            runtime::opened(&rt, &link);
         }
     });
 }
@@ -88,6 +89,20 @@ fn main() {
             }
             .unwrap_or_else(|_| tauri::http::Response::new(Vec::new()))
         })
+        // The editor's video and waveform (N63): only what its lane registered, by checked
+        // names, to the editor's webview alone — a range read off the main thread.
+        .register_asynchronous_uri_scheme_protocol(runtime::media::SCHEME, |ctx, request, responder| {
+            let editor = ctx.webview_label() == runtime::presenter::EDITOR;
+            std::thread::spawn(move || {
+                let range = request.headers().get("range").and_then(|v| v.to_str().ok());
+                let a = if editor { runtime::media::answer(&runtime::media::MEDIA, request.method().as_str(), request.uri().path(), range) } else { runtime::media::Answer { status: 404, headers: Vec::new(), body: Vec::new() } };
+                let mut b = tauri::http::Response::builder().status(a.status);
+                for (k, v) in &a.headers {
+                    b = b.header(*k, v);
+                }
+                responder.respond(b.body(a.body).unwrap_or_else(|_| tauri::http::Response::new(Vec::new())));
+            });
+        })
         .invoke_handler(tauri::generate_handler![
             commands::act,
             commands::key,
@@ -97,7 +112,8 @@ fn main() {
             commands::popover_fit,
             commands::paste_secret,
             commands::field,
-            commands::webview_error
+            commands::webview_error,
+            commands::edit
         ])
         .setup(move |app| {
             use tauri::Manager;
@@ -336,10 +352,13 @@ fn main() {
             }
             // The page's Open shroom (`shroom://join/<host>/<code>`), or a join link handed
             // over by `open -a shroom <link>` (N50): an arrival, queued behind `Booted` on
-            // the main thread. Any other web address is ignored. The link's text goes to
-            // the stash and `~/.shroom/invite` only — never a log. The `shroom` URL type
-            // belongs in the release bundle's Info.plist only: a dev bundle never claims
-            // the scheme, so a real invite opened on this Mac can't launch a dev build.
+            // the main thread; the owner page's Edit in shroom (`shroom://edit/…`, N69) goes
+            // to the core the same way. Any other web address is ignored. The link's text goes
+            // to the stash and `~/.shroom/invite` only — never a log. The command's settings
+            // link (`shroom://settings/agent`, N62) opens Settings at General's switch. The
+            // `shroom` URL type belongs in the release bundle's Info.plist only: a dev bundle
+            // never claims the scheme, so a real invite opened on this Mac can't launch a
+            // dev build.
             tauri::RunEvent::Opened { urls } => {
                 EARLY_LINKS.lock().unwrap().extend(urls.iter().map(|u| u.to_string()).filter(|u| shroom_cloud::member::takes_opened(u)));
                 if let Some(rt) = app.try_state::<runtime::Runtime>() {

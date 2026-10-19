@@ -1,5 +1,5 @@
-// Region 5's drives (library, settings, update) through the real app against the L1 fake,
-// under a throwaway home. Run from app/: node test/region5-drive.mjs <library|settings>
+// Region 5's drives (library, settings, update, ai) through the real app against the L1 fake,
+// under a throwaway home. Run from app/: node test/region5-drive.mjs <library|settings|ai>
 // (the update drive goes through test/update-drive.sh, the uninstall drive through
 // test/uninstall-drive.sh). Needs the debug bundle:
 // npm run build:dev (in app/: the harness is built in only on purpose). Never touches the installed app.

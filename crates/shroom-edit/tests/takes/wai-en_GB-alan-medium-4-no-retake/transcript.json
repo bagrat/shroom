@@ -1,0 +1,160 @@
+{
+ "duration": 12.202721088435375,
+ "words": [
+  {
+   "text": "The",
+   "start": 0,
+   "end": 0.72
+  },
+  {
+   "text": "settings",
+   "start": 0.72,
+   "end": 1.14
+  },
+  {
+   "text": "window",
+   "start": 1.14,
+   "end": 1.54
+  },
+  {
+   "text": "has",
+   "start": 1.54,
+   "end": 1.84
+  },
+  {
+   "text": "three",
+   "start": 1.84,
+   "end": 2.12
+  },
+  {
+   "text": "tabs.",
+   "start": 2.12,
+   "end": 2.58
+  },
+  {
+   "text": "The",
+   "start": 3,
+   "end": 3.52
+  },
+  {
+   "text": "second",
+   "start": 3.52,
+   "end": 3.86
+  },
+  {
+   "text": "one",
+   "start": 3.86,
+   "end": 4.16
+  },
+  {
+   "text": "is,",
+   "start": 4.16,
+   "end": 4.4
+  },
+  {
+   "text": "um,",
+   "start": 4.6,
+   "end": 4.7
+  },
+  {
+   "text": "I",
+   "start": 4.92,
+   "end": 5.08
+  },
+  {
+   "text": "forget",
+   "start": 5.08,
+   "end": 5.48
+  },
+  {
+   "text": "what",
+   "start": 5.48,
+   "end": 5.74
+  },
+  {
+   "text": "it's",
+   "start": 5.74,
+   "end": 6.04
+  },
+  {
+   "text": "called.",
+   "start": 6.04,
+   "end": 6.48
+  },
+  {
+   "text": "Shroom",
+   "start": 6.94,
+   "end": 7.64
+  },
+  {
+   "text": "cut.",
+   "start": 7.64,
+   "end": 8
+  },
+  {
+   "text": "Let's",
+   "start": 8.5,
+   "end": 9.22
+  },
+  {
+   "text": "move",
+   "start": 9.22,
+   "end": 9.54
+  },
+  {
+   "text": "on",
+   "start": 9.54,
+   "end": 9.78
+  },
+  {
+   "text": "to",
+   "start": 9.78,
+   "end": 9.96
+  },
+  {
+   "text": "the",
+   "start": 9.96,
+   "end": 10.08
+  },
+  {
+   "text": "library",
+   "start": 10.08,
+   "end": 10.58
+  },
+  {
+   "text": "instead.",
+   "start": 10.58,
+   "end": 11.14
+  }
+ ],
+ "silences": [
+  {
+   "start": 0.0,
+   "end": 0.610159
+  },
+  {
+   "start": 2.75619,
+   "end": 2.92027
+  },
+  {
+   "start": 2.94254,
+   "end": 3.41397
+  },
+  {
+   "start": 4.79456,
+   "end": 4.96662
+  },
+  {
+   "start": 6.64971,
+   "end": 7.27556
+  },
+  {
+   "start": 8.18372,
+   "end": 8.90766
+  },
+  {
+   "start": 11.386,
+   "end": 12.2027
+  }
+ ]
+}

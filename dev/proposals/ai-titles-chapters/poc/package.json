@@ -1,0 +1,9 @@
+{
+  "name": "shroom-ai-poc",
+  "private": true,
+  "type": "module",
+  "description": "POC: a take's pieces to a transcript, a title and chapters, through the owner's Workers AI. Not shipped.",
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  }
+}

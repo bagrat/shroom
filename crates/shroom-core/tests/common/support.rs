@@ -74,6 +74,7 @@ pub fn take(phase: Phase, length_ms: u64) -> OpenTake {
         since: Mono(500),
         length_ms,
         markers: 0,
+        marked_at_pause: false,
         mic: None,
         camera: None,
     }
@@ -232,11 +233,15 @@ pub fn event_kind(ev: &Event) -> String {
 const FAIL_CLASSES: &[FailClass] = &[FailClass::Transport, FailClass::Refused, FailClass::Timeout, FailClass::Panicked, FailClass::Unclassified];
 fn lane_fails(op: Op) -> &'static [FailClass] {
     match op {
-        Op::Validate | Op::SaveToken | Op::Sweep | Op::Claim | Op::Wire | Op::Refresh => FAIL_CLASSES,
+        Op::Validate | Op::SaveToken | Op::Sweep | Op::Claim | Op::Wire | Op::Refresh | Op::Ai => FAIL_CLASSES,
         Op::Peek | Op::Join | Op::Standing | Op::Roster | Op::Invite | Op::Remove | Op::Mark => FAIL_CLASSES,
         Op::LibRefresh | Op::Rename | Op::Delete | Op::UpdateCheck | Op::UpdateDownload | Op::UpdateApply => FAIL_CLASSES,
+        // N68: the suggestions, a keep and the play-count switch — the Library lane's classes.
+        Op::Suggest | Op::Keep | Op::Plays => FAIL_CLASSES,
         // The token Mac's cleanup sweep (B91): the Library lane's classes.
         Op::Cleanup => FAIL_CLASSES,
+        // The editor lane (N63, B197): the record, the video, the save, the copy, the upkeep.
+        Op::EditorOpen | Op::EditorSave | Op::EditorCopy | Op::EditorUpkeep => FAIL_CLASSES,
         // No space on this Mac is the cache read's one failure.
         Op::LibCache => &[FailClass::Refused],
         Op::Upload => &[FailClass::Transport, FailClass::Refused],
@@ -318,6 +323,9 @@ pub fn offered(scene: &Scene) -> Vec<(Surface, Action)> {
     }
     if let Some(s) = &scene.settings {
         add(Surface::Settings, s.buttons());
+    }
+    if let Some(e) = &scene.editor {
+        add(Surface::Editor, e.buttons());
     }
     out
 }

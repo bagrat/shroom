@@ -38,7 +38,33 @@
    silicon only (7, B167). Identity and signing (8) are done: 0.1.5
    shipped signed.
 4. Send feedback from the popover is built (N60, B193), the waving hand his pick.
+5. **The editor is built** ([#61](https://github.com/bagrat/shroom/pull/61) *(the editor:
+   trim, cut, undo, markers, and edits on the share page)*; N63 and N64, ratified 2026-10-18;
+   B195–B199). Edit… in a live Library row opens it in a window of its own: trim, cut,
+   a cut's edges dragged to adjust it (B195 (g), Bagrat's ask once he'd seen it), Undo and
+   Redo, Revert. Done saves the edit into the record, and the link, unchanged,
+   plays it at once. The Mac then makes the final video and asks “Delete the original?”:
+   Yes, delete makes the edit the video now; otherwise the original goes two days on, by
+   the first of the space's Macs to run then (B197). Markers dropped while paused, or with
+   ⌥⌘M while recording, show as flags on its timeline (N64). What waits on Bagrat: items
+   37–39.
+6. Voice cuts (N65, provisional) are built: the owner page's strip, its press, the
+   cuts' word in the status and the page's one finishing line, which stays while a take is heard (B200), and the Mac's lane that plans a take once the space has
+   heard it and lands its cuts in the record (B201), how far back a line said again in other
+   words reaches weighed by Clef on the space's own account (B202); the cue is “shroom cut”, his pick (B203). They sit on the editor's edit list (N63) and come alive with N66's
+   transcript (the AI build); the editor's final copy lets Download follow them. Built ahead of the release call, which is Bagrat's.
    Nothing else in-frame is queued: the build resumes on his answers.
+5. **Names, chapters and captions** (N66, N67, B205–B209) are built on their branch, off
+   by default, waiting for his review and the release call: the space names its videos,
+   places chapters in the seek bar and writes captions through the owner's own Cloudflare
+   account; a switch in Settings · Space on the setup Mac and a one-time card in its
+   Library turn it on. Checked live on the free-plan test account (B206).
+5. **The `shroom` command for coding agents is built and ratified** (N62, B215–B219;
+   [#58](https://github.com/bagrat/shroom/pull/58) *(the shroom command for coding agents)*):
+   the command inside the app and on PATH, many at once, the app's control socket behind
+   General's switch — its refusal carrying the link that opens Settings at the switch — the
+   start without the count and the agent label, and the guide at shroom.am/cli. When it
+   ships is his call (item 37).
 
 
 ## Waiting for Bagrat
@@ -284,3 +310,45 @@ retired, B148.)
     on it; **(b)** the four L5 lanes the branch touched, both images (“After the close”
     in [`history/build-log/2026-10-13.md`](../history/build-log/2026-10-13.md)). The full
     item: [`history/build-status/waiting-35-36.md`](../history/build-status/waiting-35-36.md).
+
+**The editor ([#61](https://github.com/bagrat/shroom/pull/61) *(trim, cut, undo, markers,
+and edits on the share page)*)**
+37. **Its words, from use.** N63's, N64's and B197's drafts, with the build's two new
+    lines (a save the space refused, and the time left by Revert counted by the hour; B199
+    (k), (n)), were **ratified by Bagrat as built** (2026-10-18), his feedback to come from
+    using them.
+38. **N63 and N64, and B195–B199, ratified by Bagrat as built** (2026-10-18), the cut-edge
+    drag (B195 (g)) built as the board he approved that day. DEVIATIONS #55 (Yes, delete
+    filled and leading, but never on Return) is ratified too.
+39. **Edit in shroom on the owner page** (N69, B221; Bagrat's ask and his approval of the
+    boards as drawn, option A and the tooltip, 2026-10-18): the scissors open the video in
+    the editor through `shroom://edit/…`, or the popover says, once, why this Mac can't.
+    Its spec row and words are provisional, for him to ratify.
+40. **Known gaps**, none blocking:
+    - The final video's bar counts the upload by file, not by byte: once the cut is done it
+      holds at 80% while the video goes up (minutes, for a long one), then 95, 97, 99, 100.
+    - After a bake, the Library row on the Mac that holds the take may show the take's own
+      poster until the Library's next refresh.
+    - After an edit, a new Copy thumbnail picture is made the next time the owner opens the
+      page; until then the Library's Copy thumbnail falls back to the page's poster, or to
+      the plain link.
+    - The upkeep on a Mac without the token (the space's records over the Library API, a
+      15-minute `manage` credential for each bake and copy) is untested on a real second
+      Mac: the hosted Mac's editor drive runs as a token Mac against the fake space.
+
+40. **N68 — the page counts plays, and the Library suggests videos to clean up** (built;
+    B210–B214). He ratified it as built on 2026-10-18: its words and rules, the privacy
+    line (the page carries it in the same PR, so it ships with counting), each row's cost
+    past the free 10 GB, and the 1¢ size gate (B211). Proved on the hosted Mac (the cleanup
+    drive, 22 checks). Waits only on his timing of the release, with the other four builds.
+
+41. **The `shroom` command (N62, B215–B219), built in full on his ask and ratified
+    (2026-10-18): when it ships.** Merging deploys shroom.am/cli, and the cask links the
+    command from the first release that carries it. He ratified N62 and its decisions, the
+    Settings card's words as built (he'll tweak them once he uses it), and the command's
+    words and the guide as built; the refusal's three lines, the switch's label and the
+    agent label's board he had approved as drawn. The security review's one open point, the
+    switch being consent rather than a wall against code already running as the person, he
+    accepted as a risk (B216). Proven: CI, the hosted Mac's `cli-socket`, `settings-link`,
+    `settings`, `cli-label` and `take-left-out` drives, and the full e2e's command leg on
+    the test account.

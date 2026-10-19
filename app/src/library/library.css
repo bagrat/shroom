@@ -567,3 +567,143 @@ body {
 .menu .mi:disabled {
   opacity: 0.4;
 }
+
+/* ── Suggested to clean up (N68): its line above the rows, and its view ── */
+
+.cline {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 0 8px 0 12px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--frost) 10%, transparent);
+}
+
+.cline svg {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: var(--frost);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.cline .text {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--fg-2);
+}
+
+.cline .b.plain {
+  min-height: 0;
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--fg);
+  box-shadow: none;
+}
+
+.cline .b.quiet {
+  min-height: 0;
+  padding: 0 6px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  box-shadow: none;
+}
+
+.cline .b.quiet:hover {
+  color: var(--fg);
+}
+
+.cview {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chead {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.chead > .b.link {
+  min-height: 0;
+  padding: 0 2px;
+  border: 0;
+  background: transparent;
+  color: var(--frost);
+  margin-bottom: 8px;
+}
+
+.chead h1 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.chead .intro {
+  margin: 0;
+  color: var(--fg-2);
+}
+
+.cfoot {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cfoot p {
+  flex: 1 1 auto;
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.undo {
+  position: absolute;
+  left: 50%;
+  bottom: 44px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 36px;
+  padding: 0 8px 0 12px;
+  border-radius: 8px;
+  background: var(--card-raised, var(--card));
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+  white-space: nowrap;
+}
+
+.undo .b.link {
+  min-height: 0;
+  padding: 0 8px;
+  border: 0;
+  background: transparent;
+  color: var(--frost);
+  font-weight: 600;
+}
+
+/* A suggestion's facts carry its reason: they wrap rather than cut it short. */
+.cview .line2 {
+  white-space: normal;
+}
+
+.cview .line2 .meta {
+  overflow: visible;
+}

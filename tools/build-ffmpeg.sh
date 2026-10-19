@@ -83,7 +83,7 @@ set -- \
   --enable-protocol=file,pipe \
   --enable-parser=h264,aac \
   --enable-bsf=aac_adtstoasc,h264_mp4toannexb \
-  --enable-filter=scale,aresample,format,aformat,null,anull,trim,atrim,setpts,asetpts \
+  --enable-filter=scale,aresample,format,aformat,null,anull,trim,atrim,setpts,asetpts,afade \
   --arch=aarch64 --cc=clang \
   --extra-cflags="-mmacosx-version-min=$FLOOR" \
   --extra-ldflags="-mmacosx-version-min=$FLOOR"

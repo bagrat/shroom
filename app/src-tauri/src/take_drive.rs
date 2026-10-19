@@ -170,13 +170,14 @@ impl TakeDrive {
     /// whether the Scene has the popover or the count up.
     pub fn probe(self) -> fn(&Scene) -> String {
         match self {
-            TakeDrive::LeftOut | TakeDrive::NotLeftOut => |s| format!("{}{}", s.state_ids().join(" | "), if s.popover.is_some() || s.countdown.is_some() { OVERLAY_UP } else { "" }),
+            TakeDrive::LeftOut | TakeDrive::NotLeftOut => |s| format!("{}{}", s.state_ids().join(" | "), if s.popover.is_some() || s.countdown.is_some() || s.label.is_some() { OVERLAY_UP } else { "" }),
             _ => |s| s.state_ids().join(" | "),
         }
     }
 }
 
-/// How the left-out drive's trace marks a Scene that has the popover or the count up.
+/// How the left-out drive's trace marks a Scene that has the popover, the count or the agent
+/// label up.
 const OVERLAY_UP: &str = " (an overlay up)";
 
 #[derive(Serialize, Default)]
@@ -832,9 +833,11 @@ fn windows_excluded(d: &D) -> Result<(), String> {
     d.act(Action::OpenSettings);
     d.wait("Settings", 10, |s| s.settings.is_some())?;
     std::thread::sleep(Duration::from_millis(300));
+    // Each window joins the list on the main thread as it's made: read after the windows
+    // themselves are (a loaded Mac can still be making one when the Scene shows it).
+    let numbers: Vec<_> = [("library", "the Library"), ("settings", "Settings")].into_iter().map(|(label, name)| (name, crate::drives::poll(5, || window_number(&d.app, label)))).collect();
     let excluded = d.rt.excluded.lock().unwrap().clone();
-    for (label, name) in [("library", "the Library"), ("settings", "Settings")] {
-        let n = window_number(&d.app, label);
+    for (name, n) in numbers {
         d.check(&format!("{name}'s window is excluded from capture"), n.is_some_and(|n| excluded.contains(&n)), format!("{n:?} in {excluded:?}"));
     }
     // The popover's own panel — the window that shows — not the hidden host of its page.
@@ -1197,6 +1200,21 @@ fn display_takes(d: &D, displays: &[shroom_core::world::Display], mics: &[shroom
     d.on_main(hotkey::press);
     d.wait("resumed by ⌥⌘P", 10, |s| s.tray.state == Some("recording") && s.popover.is_none())?;
     std::thread::sleep(Duration::from_secs(1));
+    // ⌥⌘M (N64): held beside ⌥⌘P; a press while recording drops a marker where it was
+    // pressed — on disk at once, the take recording on, nothing on screen.
+    d.check("⌥⌘M is held while recording (N64)", d.on_main(|| hotkey::held_key(hotkey::Hot::Marker)) == Some(true), "");
+    let take = d.newest_take().ok_or("no take")?;
+    let before = shroom_upload::upload::local_markers(&take);
+    d.check("the system hands ⌥⌘M to shroom", d.on_main(|| hotkey::press_key(hotkey::Hot::Marker)) == Some(true), "");
+    let landed = crate::drives::poll(5, || Some(shroom_upload::upload::local_markers(&take)).filter(|m| m.len() == before.len() + 1));
+    let s = snapshot(&d.rt);
+    let at = landed.as_ref().and_then(|m| m.last().copied());
+    d.check(
+        "⌥⌘M drops a marker where it was pressed, and the take records on (N64)",
+        at.is_some_and(|t| t > 2.0) && s.as_ref().is_some_and(|s| s.tray.state == Some("recording") && s.popover.is_none()),
+        format!("markers {before:?} → {landed:?}"),
+    );
+    std::thread::sleep(Duration::from_secs(1));
     if mic_granted && !mics.is_empty() {
         d.rt.post(Event::Os(OsNews::Devices { displays: displays.to_vec(), mics: vec![], cameras: cameras.to_vec() }));
         let s = d.wait("mic-lost", 10, |s| s.popover.as_ref().is_some_and(|p| p.faces.contains(&"mic-lost")))?;
@@ -1252,6 +1270,7 @@ fn display_takes(d: &D, displays: &[shroom_core::world::Display], mics: &[shroom
     d.wait("dismissed", 5, |s| s.popover.is_none())?;
     std::thread::sleep(Duration::from_millis(300));
     d.check("⌥⌘P is let go once the take has closed (N54)", d.on_main(hotkey::held) == Some(false), "");
+    d.check("⌥⌘M is let go with it (N64)", d.on_main(|| hotkey::held_key(hotkey::Hot::Marker)) == Some(false), "");
 
     // ── screen recording switched off ──
     d.config()?;
@@ -1274,7 +1293,7 @@ fn display_takes(d: &D, displays: &[shroom_core::world::Display], mics: &[shroom
 // ── a take from a cold start, and what it leaves out of its picture ──
 
 /// The pattern window sits at the screen saver's level (`harness::cover_with_pattern`); for
-/// this drive the popover's and the count's panels sit just above it.
+/// this drive the popover's, the count's and the agent label's panels sit just above it.
 const ABOVE_THE_PATTERN: isize = 1001;
 /// The least of the pattern's dark field the popover lights when it is in a picture — five
 /// times what a clean frame may have lit (`tests/e2e/left-out.mjs`); on the clean VM's 4:3
@@ -1282,6 +1301,10 @@ const ABOVE_THE_PATTERN: isize = 1001;
 /// — and the least the count's scrim does, which covers the display (its digit is dark).
 const POPOVER_SEEN: f64 = 0.01;
 const COUNT_SEEN: f64 = 0.9;
+/// The least the agent label lights, at its own place top right under the menu bar: the top
+/// band of the dark field holds part of the pill (1.6 % of the field on the hosted Mac's
+/// 1024 × 768 display, 2026-10-18) — more than twice what a clean frame may have lit.
+const LABEL_SEEN: f64 = 0.005;
 
 /// How much of the pattern's dark field is lit in one real captured frame of `display` that
 /// leaves nothing out (`shroom_testpattern::field_lit`).
@@ -1323,7 +1346,7 @@ fn with_panel<T: Send + 'static>(d: &D, which: presenter::Overlay, f: impl FnOnc
 /// `count_stays_in`: the reader's own proof — the count is taken off the list first.
 fn left_out(d: &D, count_stays_in: bool) -> Result<(), String> {
     use presenter::Overlay;
-    const PANELS: [(Overlay, &str); 2] = [(Overlay::Popover, "the popover"), (Overlay::Countdown, "the count")];
+    const PANELS: [(Overlay, &str); 3] = [(Overlay::Popover, "the popover"), (Overlay::Countdown, "the count"), (Overlay::Label, "the agent label")];
     d.wait("ready", 20, |s| s.tray.click == Click::OpenPopover)?;
     if !shroom_capture::has_permission() {
         return Err("recording isn't allowed for shroom on this Mac".into());
@@ -1339,8 +1362,8 @@ fn left_out(d: &D, count_stays_in: bool) -> Result<(), String> {
     let listed = panels.iter().all(|p| p.is_some_and(|(n, _)| excluded.contains(&n)));
     let missing = shroom_capture::not_shareable(&excluded);
     d.fact("as_shroom_starts", serde_json::json!({ "left_out_of_a_take": excluded, "the_panels": panels, "scenes_so_far": scenes, "not_found": missing }));
-    d.check("as shroom starts both panels exist, on the list of what a take leaves out", listed, format!("the panels {panels:?} in {excluded:?}"));
-    d.check("…and neither has shown yet", never_shown, format!("{scenes:?}, {panels:?}"));
+    d.check("as shroom starts every panel exists, on the list of what a take leaves out", listed, format!("the panels {panels:?} in {excluded:?}"));
+    d.check("…and none has shown yet", never_shown, format!("{scenes:?}, {panels:?}"));
     d.check(
         "…and ScreenCaptureKit already finds every window on that list: a take would start",
         missing.as_ref().is_ok_and(|m| m.is_empty()),
@@ -1361,15 +1384,23 @@ fn left_out(d: &D, count_stays_in: bool) -> Result<(), String> {
     warp_pointer_away();
     let display = shroom_capture::main_display_id();
     let pattern = cover_with_pattern(&d.app)?;
-    // Both panels just above the pattern for the run (the popover above the count, as they
-    // are): whatever a take doesn't leave out is now in its picture.
+    // Every panel just above the pattern for the run (the popover above the count above the
+    // label, as they are): whatever a take doesn't leave out is now in its picture. The label
+    // sits at its own place, top right of the display under the menu bar.
+    with_panel(d, Overlay::Label, move |w| presenter::place_label(w, display));
+    // Its page draws the pill from a Scene's slice: it gets the one a take of the command's
+    // would give it.
+    {
+        use tauri::Emitter;
+        let _ = d.app.emit_to(presenter::LABEL, "scene", shroom_core::scene::AgentLabel { display, line: shroom_core::copy::agent_label_line() });
+    }
     let levels: Vec<Option<isize>> = PANELS
         .iter()
         .enumerate()
         .map(|(i, (which, _))| {
             with_panel(d, *which, move |w| {
                 let was = w.level();
-                w.setLevel(ABOVE_THE_PATTERN + 1 - i as isize);
+                w.setLevel(ABOVE_THE_PATTERN + (PANELS.len() - 1 - i) as isize);
                 was
             })
         })
@@ -1415,7 +1446,7 @@ fn left_out_take(d: &D, display: u32) -> Result<(), String> {
     // 4. In the middle of the take each panel is put up again, by hand. The Scene has
     // neither now, and its next turn would put one away — so each is held up until a
     // capture that leaves nothing out has seen it there, and a moment more.
-    for (which, name, bar) in [(Overlay::Popover, "the popover", POPOVER_SEEN), (Overlay::Countdown, "the count", COUNT_SEEN)] {
+    for (which, name, bar) in [(Overlay::Popover, "the popover", POPOVER_SEEN), (Overlay::Countdown, "the count", COUNT_SEEN), (Overlay::Label, "the agent label", LABEL_SEEN)] {
         let mut seen = 0.0;
         for _ in 0..6 {
             with_panel(d, which, |w| w.orderFrontRegardless());

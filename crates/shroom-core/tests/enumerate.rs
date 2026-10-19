@@ -33,7 +33,7 @@ mod support;
 use std::collections::{BTreeMap, BTreeSet};
 
 use shroom_core::derive::{onboarding, settings};
-use shroom_core::event::{ClaimFail, CloudNews, Event, Field, Key, OsNews, RecNews, SecretField, Shape, Surface, SweepAnswer, TokenFail};
+use shroom_core::event::{ClaimFail, CloudNews, Event, Field, Key, OsNews, RecNews, SecretField, SettingsSpot, Shape, Surface, SweepAnswer, TokenFail};
 use shroom_core::scene::{Action, Glyph, Nest, OnboardingBody, Scene, SettingsPane};
 use shroom_core::time::{Fact, Mono, Wall};
 use shroom_core::world::*;
@@ -77,12 +77,14 @@ fn projection_fields(w: &World) {
         net: _,            // walked: online
         space: _,          // walked: identity (role), token, broken
         sweep: _,          // walked: paste, token, gates, subdomain/label, found, taken, bucket, worker, pass
-        take: _,           // walked (popover/tray): every phase and pause cause; else none
+        take: _,           // walked (popover/tray): every phase and pause cause; else none; markers
+                           // and marked_at_pause fixed at none (editor.rs walks N64's)
         saved: _,          // walked (popover/tray): none, or one saved take of each cause
         queue: _,          // walked (popover/tray): none, uploading, stranded
         removed: _,        // fixed: none
-        library: _,        // fixed: unknown
-        library_ops: _,    // fixed: idle
+        library: _,        // fixed: unknown (so no row's edited_ms)
+        library_ops: _,    // fixed: idle — no write landed, no edited length, no copy owed, no upkeep answered
+        suggestions: _,    // fixed: unknown (region5.rs walks N68)
         update: _,         // walked (popover/tray): ready, applying, failed, an update landed
         members: _,        // walked (popover/tray): standing — fine, revoked, a confirmed strike, behind; no invite (region6.rs's)
         inflight: _,       // walked: one failure class on the wizard's calls
@@ -90,8 +92,10 @@ fn projection_fields(w: &World) {
         prefs: _,          // walked: setup_chosen; settings_tab fixed at Space for Settings
         once: _,           // fixed
         session: _,        // walked: fork, chapter, the name field, settings.add_token/fresh, door asked;
-                           // (popover/tray) the popover's door, its questions, the last stop, the countdown
+                           // (popover/tray) the popover's door, its questions, the last stop, the countdown;
+                           // the editor's fields fixed at none (region5.rs's rows and editor.rs walk N63)
         display_pick: _,   // fixed: no click's display, no hand pick (region3.rs walks N56)
+        agent: _,          // fixed: no take the command started (cli.rs walks its label)
     } = w;
 }
 
@@ -487,6 +491,8 @@ fn alphabet(w: &World, kind: WindowKind) -> Vec<Event> {
         Event::SecretPasted { field: SecretField::Token, id: SecretId(8), shape: Shape::Garbled },
         Event::Field { field: Field::Name, value: "My Shroom".into() },
         Event::Field { field: Field::Name, value: "myshroomhq".into() },
+        // The shroom command's recording refusal carries it (N62): clicked at any moment.
+        Event::SettingsLink(SettingsSpot::AgentRecording),
     ]);
     let out = |op: Op| w.inflight.ops.contains_key(&op);
     let paste = match &w.sweep.paste {
@@ -969,6 +975,7 @@ fn pop_alphabet(w: &World) -> Vec<Event> {
         Event::Os(OsNews::Session(OsSession { awake: false, unlocked: true, on_console: true })),
         Event::Os(OsNews::Session(OsSession::default())),
         Event::Os(OsNews::Devices { displays: q.displays.clone(), mics: vec![], cameras: vec![] }),
+        Event::SettingsLink(SettingsSpot::AgentRecording),
     ]);
     let out = |op: Op| w.inflight.ops.contains_key(&op);
     if out(Op::RecStart) {

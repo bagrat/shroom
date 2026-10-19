@@ -8,6 +8,8 @@ license.workspace = true
 [dependencies]
 libc = "0.2"
 serde = { version = "1", features = ["derive"] }
+# The editor's waveform: the sound of a take's MP4, read in Rust (DECISIONS B195 (e)).
+symphonia = { version = "0.6", default-features = false, features = ["isomp4", "aac"] }
 
 [dev-dependencies]
 tempfile = "3"

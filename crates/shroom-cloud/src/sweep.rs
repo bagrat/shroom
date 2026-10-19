@@ -207,15 +207,21 @@ pub fn pick_label<'a>(facts: &[(&'a str, WorkerFact)]) -> Option<&'a str> {
 }
 
 pub fn worker_fact(cloud: &Cloud, account_id: &str, name: &str, bucket: &str) -> Result<WorkerFact, CloudError> {
+    worker_fact_ai(cloud, account_id, name, bucket).map(|(fact, _)| fact)
+}
+
+/// [`worker_fact`], and whether the Worker carries Cloudflare's AI (N66) — from the same
+/// read of its settings.
+pub fn worker_fact_ai(cloud: &Cloud, account_id: &str, name: &str, bucket: &str) -> Result<(WorkerFact, bool), CloudError> {
     cloud.fence("worker", name)?;
     match cloud.call("GET", &format!("/accounts/{account_id}/workers/scripts/{name}/settings"), None) {
         Ok(v) => {
-            let ours = v.pointer("/result/bindings").and_then(Value::as_array).is_some_and(|bs| {
-                bs.iter().any(|b| b.get("type").and_then(Value::as_str) == Some("r2_bucket") && b.get("bucket_name").and_then(Value::as_str) == Some(bucket))
-            });
-            Ok(if ours { WorkerFact::Ours } else { WorkerFact::Foreign })
+            let bs = v.pointer("/result/bindings").and_then(Value::as_array).cloned().unwrap_or_default();
+            let ours = bs.iter().any(|b| b.get("type").and_then(Value::as_str) == Some("r2_bucket") && b.get("bucket_name").and_then(Value::as_str) == Some(bucket));
+            let ai = bs.iter().any(|b| b.get("type").and_then(Value::as_str) == Some("ai"));
+            Ok((if ours { WorkerFact::Ours } else { WorkerFact::Foreign }, ai))
         }
-        Err(e) if e.has_code(SCRIPT_NOT_FOUND) || matches!(e, CloudError::Api { status: 404, .. }) => Ok(WorkerFact::Absent),
+        Err(e) if e.has_code(SCRIPT_NOT_FOUND) || matches!(e, CloudError::Api { status: 404, .. }) => Ok((WorkerFact::Absent, false)),
         Err(e) => Err(e),
     }
 }

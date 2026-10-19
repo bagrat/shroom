@@ -87,6 +87,9 @@ pub fn paused_title(len: &str) -> String { format!("Paused — {len}") }
 pub fn resume() -> String { "Resume".into() }
 pub fn restart() -> String { "Restart".into() }
 pub fn stop() -> String { "Finish & Share".into() }
+/// N64: the paused popover's marker row, and the same row once used at this pause.
+pub fn drop_marker() -> String { "Drop a marker".into() }
+pub fn marker_dropped() -> String { "Marker dropped".into() }
 /// Restart's question — the canvas's draft (DEVIATIONS #44), awaiting ratification.
 pub fn restart_title() -> String { "Start over?".into() }
 pub fn restart_line(len: &str) -> String { format!("This replaces the {len} you've recorded so far.") }
@@ -305,6 +308,8 @@ pub fn search_titles() -> String { "Search titles".into() }
 pub fn open_page() -> String { "Open page".into() }
 pub fn delete_ellipsis() -> String { "Delete…".into() }
 pub fn rename() -> String { "Rename".into() }
+/// A live row's menu, after Open page (N63): opens the editor.
+pub fn edit_ellipsis() -> String { "Edit…".into() }
 pub fn row_uploading(pct: u32) -> String { format!("Uploading — {pct}%") }
 /// Another Mac's upload: no percentage is known here (DECISIONS, copy awaiting ratification).
 pub fn row_uploading_elsewhere() -> String { "Uploading".into() }
@@ -357,6 +362,112 @@ pub fn row_meta(day: &str, length: Option<&str>) -> String {
     }
 }
 
+// ── Suggested to clean up (N68) ──
+
+/// A size as the suggestions say it: “11 GB”, “3.2 GB”, “780 MB” (compact facts, law 16).
+pub fn size(bytes: u64) -> String {
+    let mb = (bytes as f64 / 1e6).round() as u64;
+    if mb < 1000 {
+        return format!("{mb} MB");
+    }
+    let gb = bytes as f64 / 1e9;
+    if gb >= 9.95 {
+        return format!("{} GB", gb.round() as u64);
+    }
+    let tenths = (gb * 10.0).round() as u64;
+    if tenths % 10 == 0 { format!("{} GB", tenths / 10) } else { format!("{}.{} GB", tenths / 10, tenths % 10) }
+}
+
+/// Money a month, as the suggestions say it: “17¢”, “$1.35”.
+pub fn money(cents: u64) -> String {
+    if cents < 100 { format!("{cents}¢") } else { format!("${}.{:02}", cents / 100, cents % 100) }
+}
+
+/// The Library's line above the rows.
+pub fn cleanup_line(n: u64, bytes: u64) -> String {
+    if n == 1 {
+        format!("One video might be worth deleting — it takes {}.", size(bytes))
+    } else {
+        format!("{} videos might be worth deleting — they take {}.", count_word_cap(n), size(bytes))
+    }
+}
+pub fn review() -> String { "Review…".into() }
+pub fn not_now() -> String { "Not now".into() }
+pub fn cleanup_title() -> String { "Suggested to clean up".into() }
+pub fn cleanup_back() -> String { "‹ Library".into() }
+
+const CLEANUP_WHY: &str = "These might be worth deleting: rarely watched lately, and taking real room.";
+
+/// “Deleting all six” — “Deleting both” for two, “Deleting it” for one.
+fn deleting_all(n: u64) -> String {
+    match n {
+        1 => "Deleting it".into(),
+        2 => "Deleting both".into(),
+        n => format!("Deleting all {}", count_word(n)),
+    }
+}
+
+/// The suggestions' line, past the free 10 GB: what deleting them saves.
+pub fn cleanup_saves(n: u64, freed: u64, cents: u64) -> String {
+    format!("{CLEANUP_WHY} {} frees {} — about {} a month off your Cloudflare bill.", deleting_all(n), size(freed), money(cents))
+}
+/// Inside the free 10 GB: deleting saves nothing yet.
+pub fn cleanup_inside_free(n: u64, freed: u64) -> String {
+    format!("{CLEANUP_WHY} {} frees {}. Your space is inside Cloudflare's free 10 GB, so this saves nothing yet.", deleting_all(n), size(freed))
+}
+/// Deleting them all would bring the space back under the free 10 GB.
+pub fn cleanup_back_inside(n: u64, freed: u64) -> String {
+    format!("{CLEANUP_WHY} {} frees {} and brings your space back inside Cloudflare's free 10 GB.", deleting_all(n), size(freed))
+}
+/// On a member's Mac: the bill is the owner's.
+pub fn cleanup_frees(n: u64, freed: u64) -> String {
+    format!("{CLEANUP_WHY} {} frees {}.", deleting_all(n), size(freed))
+}
+
+/// How long ago, as a row fact: days under 60, months under 24, then years.
+fn ago(days: u32) -> String {
+    if days < 60 {
+        format!("{days} days")
+    } else if days < 730 {
+        format!("{} months", ((days as f64) / 30.0).round() as u32)
+    } else {
+        format!("{} years", days / 365)
+    }
+}
+
+/// Why a video is suggested (B211): its plays, and when the last was.
+/// A suggested row's cost, past the free 10 GB.
+pub fn row_cost(cents: u64) -> String { format!("{} a month", money(cents)) }
+pub fn cleanup_reason(plays: u32, quiet_days: u32, stopped_early: bool) -> String {
+    let early = if stopped_early { "stopped early, " } else { "" };
+    match plays {
+        0 => "Nobody has watched it".into(),
+        1 => format!("Watched once, {early}{} ago", ago(quiet_days)),
+        2 => format!("Watched twice, {early}the last {} ago", ago(quiet_days)),
+        n => format!("Watched {n} times, {early}the last {} ago", ago(quiet_days)),
+    }
+}
+pub fn keep() -> String { "Keep".into() }
+pub fn deleted_title(title: &str) -> String { format!("Deleted “{title}”.") }
+pub fn undo() -> String { "Undo".into() }
+pub fn delete_all(n: u64) -> String {
+    if n == 2 { "Delete both…".into() } else { format!("Delete all {}…", count_word(n)) }
+}
+pub fn cleanup_foot() -> String { "Keep takes a video off this list for good. Plays are counted in your own Cloudflare account.".into() }
+pub fn cleanup_empty() -> String { "Nothing to clean up right now.".into() }
+
+pub fn your_videos() -> String { "Your videos".into() }
+pub fn count_plays() -> String { "Count plays".into() }
+pub fn count_plays_hint() -> String { "How often each video is played and how far, kept in your Cloudflare account. No cookies, nothing about who watched.".into() }
+/// The play-count switch didn't go through (law 12).
+pub fn plays_failed() -> String { "Couldn't change that just now — try again in a moment.".into() }
+pub fn suggest_cleanup() -> String { "Suggest videos to clean up".into() }
+pub fn suggest_cleanup_hint() -> String { "In the Library, videos that might be worth deleting: rarely watched lately, and taking real room.".into() }
+pub fn space_used() -> String { "Space used".into() }
+/// The space past the free 10 GB, and what it costs a month.
+pub fn space_used_past(bytes: u64, cents: u64) -> String { format!("{} — about {} a month past Cloudflare's free 10 GB", size(bytes), money(cents)) }
+pub fn space_used_free(bytes: u64) -> String { format!("{} — inside Cloudflare's free 10 GB", size(bytes)) }
+
 // ── Settings (N36) ──
 pub fn tab_general() -> String { "General".into() }
 pub fn tab_space() -> String { "Space".into() }
@@ -376,6 +487,17 @@ pub fn github() -> String { "GitHub".into() }
 pub const REPORT_WORDS_MAX: usize = 8000;
 pub fn help_label() -> String { "Something off?".into() }
 pub fn copy_diagnostics() -> String { "Copy diagnostics".into() }
+// ── Your coding agent (dev/proposals/cli-agent-skill.md, provisional) ──
+pub fn agent_label() -> String { "Your coding agent".into() }
+/// What the card's Copy puts on the clipboard: the same door as the landing's Coding agent
+/// tab, pointed at the guide to the `shroom` command.
+pub fn agent_prompt() -> String { "Use shroom on my Mac: read https://shroom.am/cli and follow it.".into() }
+pub fn copy_word() -> String { "Copy".into() }
+pub fn read_it_first() -> String { "Read it first".into() }
+pub fn agent_line() -> String { "Paste it into your coding agent. It can find, share and tidy your videos, and asks you before it deletes anything.".into() }
+pub fn agent_recording() -> String { "Let it start and stop recordings".into() }
+/// The agent label (N62, B216): top right of the display a take the command started records.
+pub fn agent_label_line() -> String { "Your coding agent is recording your screen".into() }
 pub fn report_a_problem() -> String { "Report a problem…".into() }
 pub fn report_sent() -> String { "Sent — thank you. If you left your email, you’ll hear back.".into() }
 pub fn report_title() -> String { "Report a problem".into() }
@@ -400,6 +522,74 @@ pub fn include_log_note() -> String { "Its version, your Mac’s model and its r
 pub fn feedback_sent() -> String { "Sent — thank you.".into() }
 pub fn feedback_sent_line() -> String { "If you left your email, you’ll hear back.".into() }
 pub fn done() -> String { "Done".into() }
+// ── the editor (N63): proposals, awaiting Bagrat ──
+/// The window's title: “Edit — ” and the video's title.
+pub fn editor_title(title: &str) -> String { format!("Edit — {title}") }
+/// Where the video stands: the edited position / the edited length, in the page's clock.
+/// The Scene hands it as a template (`{}` for each clock) the webview fills as it plays.
+pub fn editor_time(pos: &str, len: &str) -> String { format!("{pos} / {len}") }
+/// The recording's own length, once the edit changes it: a template like the time.
+pub fn editor_was(len: &str) -> String { format!("was {len}") }
+pub fn editor_hint() -> String { "Drag the yellow ends to trim. Drag across the sound to cut a part.".into() }
+/// The play button's name, on hover and to VoiceOver; Pause while it plays.
+pub fn editor_play() -> String { "Play".into() }
+pub fn editor_pause() -> String { "Pause".into() }
+/// Redo (⌘Z · ⇧⌘Z: undo() above is the same word).
+pub fn redo() -> String { "Redo".into() }
+/// Under a selected part: its length in seconds, one decimal (a template while it's dragged).
+pub fn cut_part(secs: &str) -> String { format!("Cut {secs} s") }
+/// Under a cut that was clicked.
+pub fn put_back(secs: &str) -> String { format!("Put back {secs} s") }
+pub fn editor_footer() -> String { "Your link stays the same. Viewers see the edit once it's saved.".into() }
+pub fn revert_to_original() -> String { "Revert to original".into() }
+/// editor-getting: the video comes from the space.
+pub fn getting_video() -> String { "Getting the video from your space…".into() }
+/// editor-cant-get: it didn't.
+pub fn cant_get_video() -> String { "Couldn't get the video. Check your connection, then try again.".into() }
+/// editor-saving: the footer's line, and Done, greyed.
+pub fn saving_edit() -> String { "Saving your edit…".into() }
+pub fn saving_done() -> String { "Saving…".into() }
+/// editor-save-failed: amber, in the footer's place.
+pub fn save_failed() -> String { "Couldn't save your edit. Check your connection, then press Done again.".into() }
+/// editor-save-refused (B199): amber, in the save-failed line's place — the space turned the
+/// save down (the video is gone, or another Mac made an edit the video).
+pub fn save_refused() -> String { "This video changed since you opened it, so this edit can't be saved.".into() }
+/// The owner page's Edit in shroom asked for another video while the editor holds this one
+/// (N69): in the footer line's place, until the next change.
+pub fn editing_another() -> String { "You're editing another video — press Done, then Edit again.".into() }
+/// The owner page's Edit in shroom when this Mac can't edit that video (N69): `config`'s
+/// status line, said once — set up for another space, someone else's on a member's Mac, or
+/// gone from the space.
+pub fn edit_other_space() -> String { "This Mac isn't set up for that video's space.".into() }
+pub fn edit_not_yours() -> String { "Only whoever recorded this video, or the space's owner, can edit it.".into() }
+pub fn edit_gone() -> String { "That video isn't in your space anymore.".into() }
+/// Under a dashed suggestion that was clicked (a voice cue's offer, N65).
+/// By Revert, while an earlier edit's original is kept beside its copy (B197 (e)): the time
+/// it has left, never more than that (B199) — two days from 47 hours, a day from 24, then
+/// whole hours rounded down (law 16's words to nine), one hour, and under an hour less than
+/// one.
+pub fn original_kept(left_ms: i64) -> String {
+    const HOUR: i64 = 3_600_000;
+    let left = match left_ms {
+        l if l >= 47 * HOUR => "two more days".to_string(),
+        l if l >= 24 * HOUR => "one more day".to_string(),
+        l if l >= 2 * HOUR => format!("{} more hours", count_word((l / HOUR) as u64)),
+        l if l >= HOUR => "one more hour".to_string(),
+        _ => "less than an hour".to_string(),
+    };
+    format!("The original is kept {left}")
+}
+/// editor-making (B197): the final video, this far — in the timeline's place.
+pub fn making_video(pct: u8) -> String { format!("Making the final video… {pct}%") }
+/// editor-making: the footer's line.
+pub fn making_line() -> String { "The link already plays your edit. You can close this window: shroom finishes it.".into() }
+/// editor-making-failed: amber, in the footer's place.
+pub fn making_failed() -> String { "Couldn't make the final video. The link plays your edit anyway, and shroom tries again later.".into() }
+/// editor-keep-original: the question once the final video is up.
+pub fn delete_original_title() -> String { "Delete the original?".into() }
+pub fn delete_original_line() -> String { "Your edit is the video now. The original is only kept so you can revert to it.".into() }
+pub fn keep_two_days() -> String { "Keep for 2 days".into() }
+pub fn yes_delete() -> String { "Yes, delete".into() }
 pub fn needs_macos(version: &str, macos: u32, running: &str) -> String {
     format!("shroom {version} needs macOS {macos} — this Mac stays on {running}.")
 }
@@ -702,6 +892,20 @@ pub fn reconnect_here() -> String { "Reconnect here".into() }
 // Settings · Space on every kind of Mac, and the Library across members.
 pub fn mark_label() -> String { "“made with shroom” on your pages".into() }
 pub fn mark_line() -> String { "The small mark on every video page. You can flip it right on a page, too.".into() }
+// AI for new videos (N66; Bagrat, 2026-10-18): the setup Mac's one switch, and the popover's
+// banner and its confirm. The cost line is said in the confirm and under the switch.
+pub fn ai_label() -> String { "AI for new videos".into() }
+pub fn ai_cost() -> String {
+    "Titles, chapters and captions from what’s said, and your “shroom cut” slips cut — on your own Cloudflare account. Free for about 2½ hours of new video a day; more is about 4¢ per video hour on Cloudflare’s $5 plan.".into()
+}
+pub fn ai_banner() -> String { "shroom can name your videos, add chapters and cut your slips for you.".into() }
+pub fn turn_on_ask() -> String { "Turn on…".into() }
+pub fn ai_confirm_title() -> String { "Turn on AI for new videos?".into() }
+pub fn ai_turning_on() -> String { "Turning on — a few seconds.".into() }
+pub fn ai_on_said() -> String { "AI is on for new videos ✓".into() }
+pub fn turn_on() -> String { "Turn on".into() }
+/// A re-wiring that didn't go through: in place of the switch's or the banner's line (law 12).
+pub fn ai_failed() -> String { "Couldn't change that just now — try again in a moment.".into() }
 pub fn repairs_elsewhere() -> String {
     "Repairs happen where your Cloudflare token lives — on the Mac you set your space up on, or here if you add a fresh one.".into()
 }
@@ -896,6 +1100,26 @@ pub fn registry() -> Vec<(&'static str, String)> {
         ("library", discard_ellipsis()),
         ("library", row_removed()),
         ("library", video_count(14)),
+        ("library", cleanup_line(6, 11_000_000_000)),
+        ("library", review()),
+        ("library", not_now()),
+        ("library-cleanup", cleanup_title()),
+        ("library-cleanup", cleanup_back()),
+        ("library-cleanup", cleanup_saves(6, 11_000_000_000, 17)),
+        ("library-cleanup", cleanup_inside_free(6, 5_000_000_000)),
+        ("library-cleanup", cleanup_back_inside(6, 3_000_000_000)),
+        ("library-cleanup", cleanup_frees(6, 11_000_000_000)),
+        ("library-cleanup", row_cost(5)),
+        ("library-cleanup", cleanup_reason(4, 300, false)),
+        ("library-cleanup", cleanup_reason(0, 45, false)),
+        ("library-cleanup", open_page()),
+        ("library-cleanup", keep()),
+        ("library-cleanup", delete()),
+        ("library-cleanup", deleted_title("Old onboarding take")),
+        ("library-cleanup", undo()),
+        ("library-cleanup", delete_all(6)),
+        ("library-cleanup", cleanup_foot()),
+        ("library-cleanup", cleanup_empty()),
         ("library-empty", library_empty()),
         ("library-no-match", no_match("502")),
         ("library-offline", library_offline()),
@@ -909,6 +1133,15 @@ pub fn registry() -> Vec<(&'static str, String)> {
         ("settings", tab_general()),
         ("settings", tab_space()),
         ("settings-general", login_box()),
+        ("settings-general", your_videos()),
+        ("settings-general", count_plays()),
+        ("settings-general", count_plays_hint()),
+        ("settings-general", plays_failed()),
+        ("settings-general", suggest_cleanup()),
+        ("settings-general", suggest_cleanup_hint()),
+        ("settings-general", space_used()),
+        ("settings-general", space_used_past(34_000_000_000, 36)),
+        ("settings-general", space_used_free(8_200_000_000)),
         ("settings-general", updates()),
         ("settings-general", up_to_date("1.2.0")),
         ("settings-general", update_ready("1.3.0")),
@@ -921,6 +1154,13 @@ pub fn registry() -> Vec<(&'static str, String)> {
         ("settings-general", copied()),
         ("settings-general", report_a_problem()),
         ("settings-general", report_sent()),
+        ("settings-general", agent_label()),
+        ("settings-general", agent_prompt()),
+        ("settings-general", copy_word()),
+        ("settings-general", read_it_first()),
+        ("settings-general", agent_line()),
+        ("settings-general", agent_recording()),
+        ("recording", agent_label_line()),
         ("report-problem", report_title()),
         ("report-problem", report_line()),
         ("report-problem", report_placeholder()),
@@ -1113,6 +1353,21 @@ pub fn registry() -> Vec<(&'static str, String)> {
         // ── Region 5's member parts ──
         ("settings-space", mark_label()),
         ("settings-space", mark_line()),
+        ("settings-space", ai_label()),
+        ("settings-space", ai_cost()),
+        ("settings-space", ai_failed()),
+        ("ai-offer", ai_banner()),
+        ("ai-offer", turn_on_ask()),
+        ("ai-offer", not_now()),
+        ("ai-confirm", ai_confirm_title()),
+        ("ai-confirm", ai_cost()),
+        ("ai-confirm", back()),
+        ("ai-confirm", turn_on()),
+        ("ai-turning-on", ai_turning_on()),
+        ("ai-offer-failed", ai_failed()),
+        ("ai-offer-failed", turn_on_ask()),
+        ("ai-offer-failed", not_now()),
+        ("ai-on", ai_on_said()),
         ("settings-space", leave_space_ellipsis()),
         ("settings-space-no-token", space_row_done(None, "v.myshroom.workers.dev")),
         ("settings-space-no-token", space_done(6, Some(&on_this_mac()))),
@@ -1165,5 +1420,47 @@ pub fn registry() -> Vec<(&'static str, String)> {
         ("stopped-stranded", saving_to_movies()),
         ("stopped-stranded", save_to_movies_again()),
         ("leave-confirm", leave_uploading(2)),
+        // ── markers (N64) ──
+        ("paused", drop_marker()),
+        ("paused", marker_dropped()),
+        // ── the editor (N63) ──
+        ("library", edit_ellipsis()),
+        ("editor", editor_title("Setting up shroom in two minutes")),
+        ("editor", editor_time("1:16", "3:39")),
+        ("editor", editor_was("4:32")),
+        ("editor", editor_hint()),
+        ("editor", editor_play()),
+        ("editor", editor_pause()),
+        ("editor", undo()),
+        ("editor", redo()),
+        ("editor", cut_part("12.0")),
+        ("editor", put_back("12.0")),
+        ("editor", editor_footer()),
+        ("editor", editing_another()),
+        ("config", edit_other_space()),
+        ("config", edit_not_yours()),
+        ("config", edit_gone()),
+        ("editor", revert_to_original()),
+        ("editor", done()),
+        ("editor-getting", getting_video()),
+        ("editor-getting", editor_footer()),
+        ("editor-cant-get", cant_get_video()),
+        ("editor-cant-get", try_again()),
+        ("editor-cant-get", close()),
+        ("editor-saving", saving_edit()),
+        ("editor-saving", saving_done()),
+        ("editor-save-failed", save_failed()),
+        ("editor-save-refused", save_refused()),
+        ("editor-save-refused", close()),
+        ("editor", original_kept(30 * 3_600_000)),
+        ("editor-making", making_video(40)),
+        ("editor-making", making_line()),
+        ("editor-making", close()),
+        ("editor-making-failed", making_failed()),
+        ("editor-making-failed", close()),
+        ("editor-keep-original", delete_original_title()),
+        ("editor-keep-original", delete_original_line()),
+        ("editor-keep-original", keep_two_days()),
+        ("editor-keep-original", yes_delete()),
     ]
 }

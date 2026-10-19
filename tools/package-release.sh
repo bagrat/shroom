@@ -95,6 +95,8 @@ file="shroom-$version-arm64.zip"
 ditto -c -k --keepParent "$stage/shroom.app" "$out/$file"
 sum=$(shasum -a 256 "$out/$file" | cut -d ' ' -f 1)
 printf 'version=%s\nmacos=%s\narm64=%s %s\n' "$version" "$floor" "$file" "$sum" > "$out/manifest.txt"
+# It carries the `shroom` command (DECISIONS B217): the cask links it only then.
+if [ -x "$app/Contents/MacOS/shroom-cli" ]; then echo "cli=shroom-cli" >> "$out/manifest.txt"; fi
 # The same file under the name the app's updater asks for, so the release's download
 # counts tell its checks from the install line's runs (DECISIONS B136).
 cp "$out/manifest.txt" "$out/update.txt"

@@ -1,0 +1,183 @@
+{
+ "duration": 9.682125,
+ "words": [
+  {
+   "text": "Hi,",
+   "start": 0,
+   "end": 0.24
+  },
+  {
+   "text": "this",
+   "start": 0.44,
+   "end": 0.68
+  },
+  {
+   "text": "is",
+   "start": 0.68,
+   "end": 0.78
+  },
+  {
+   "text": "a",
+   "start": 0.78,
+   "end": 0.88
+  },
+  {
+   "text": "quick",
+   "start": 0.88,
+   "end": 1.08
+  },
+  {
+   "text": "test",
+   "start": 1.08,
+   "end": 1.34
+  },
+  {
+   "text": "of",
+   "start": 1.34,
+   "end": 1.48
+  },
+  {
+   "text": "the",
+   "start": 1.48,
+   "end": 1.56
+  },
+  {
+   "text": "voice",
+   "start": 1.56,
+   "end": 1.8
+  },
+  {
+   "text": "cut.",
+   "start": 1.8,
+   "end": 2.16
+  },
+  {
+   "text": "Click",
+   "start": 2.94,
+   "end": 3.34
+  },
+  {
+   "text": "on",
+   "start": 3.34,
+   "end": 3.52
+  },
+  {
+   "text": "this",
+   "start": 3.52,
+   "end": 3.72
+  },
+  {
+   "text": "link",
+   "start": 3.72,
+   "end": 3.92
+  },
+  {
+   "text": "and",
+   "start": 3.92,
+   "end": 4.04
+  },
+  {
+   "text": "you",
+   "start": 4.04,
+   "end": 4.16
+  },
+  {
+   "text": "will.",
+   "start": 4.16,
+   "end": 4.44
+  },
+  {
+   "text": "Shroom",
+   "start": 5.08,
+   "end": 5.48
+  },
+  {
+   "text": "cut.",
+   "start": 5.48,
+   "end": 5.78
+  },
+  {
+   "text": "To",
+   "start": 6.52,
+   "end": 6.92
+  },
+  {
+   "text": "get",
+   "start": 6.92,
+   "end": 7.1
+  },
+  {
+   "text": "your",
+   "start": 7.1,
+   "end": 7.24
+  },
+  {
+   "text": "video,",
+   "start": 7.24,
+   "end": 7.6
+  },
+  {
+   "text": "use",
+   "start": 7.86,
+   "end": 8.1
+  },
+  {
+   "text": "this",
+   "start": 8.1,
+   "end": 8.28
+  },
+  {
+   "text": "link",
+   "start": 8.28,
+   "end": 8.52
+  },
+  {
+   "text": "and",
+   "start": 8.52,
+   "end": 8.64
+  },
+  {
+   "text": "you'll",
+   "start": 8.64,
+   "end": 8.8
+  },
+  {
+   "text": "see",
+   "start": 8.8,
+   "end": 8.92
+  },
+  {
+   "text": "it",
+   "start": 8.92,
+   "end": 9.08
+  },
+  {
+   "text": "right",
+   "start": 9.08,
+   "end": 9.24
+  },
+  {
+   "text": "away.",
+   "start": 9.24,
+   "end": 9.52
+  }
+ ],
+ "silences": [
+  {
+   "start": 0.335813,
+   "end": 0.526188
+  },
+  {
+   "start": 2.22844,
+   "end": 3.13806
+  },
+  {
+   "start": 4.49031,
+   "end": 5.20575
+  },
+  {
+   "start": 5.81963,
+   "end": 6.83775
+  }
+ ]
+}

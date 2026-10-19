@@ -1,0 +1,37 @@
+[
+ {
+  "say": "To share a recording, you click the mushroom in the menu bar.",
+  "role": "keep",
+  "pause": 0.45,
+  "start": 0.6,
+  "end": 4.273
+ },
+ {
+  "say": "Then you pick the, the window you, um,",
+  "role": "flub",
+  "pause": 0.6,
+  "start": 4.723,
+  "end": 7.098
+ },
+ {
+  "say": "shroom cut.",
+  "role": "cue",
+  "pause": 0.7,
+  "start": 7.698,
+  "end": 8.671
+ },
+ {
+  "say": "So, then you pick the window you want to share.",
+  "role": "keep",
+  "pause": 0.4,
+  "start": 9.371,
+  "end": 12.379
+ },
+ {
+  "say": "And that's really all there is to it.",
+  "role": "keep",
+  "pause": 0.8,
+  "start": 12.779,
+  "end": 15.036
+ }
+]

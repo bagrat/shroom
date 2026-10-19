@@ -30,6 +30,9 @@ pub enum UploadError {
     Io(std::io::Error),
     /// The local recording isn't complete (no playlist, no init, a missing segment).
     Incomplete(String),
+    /// The record no longer plays what the editor opened on (an edit became the video since,
+    /// B197): a list made on the old clock is never saved over it — nothing was written.
+    MovedOn,
 }
 
 impl From<S3Error> for UploadError {
@@ -52,6 +55,7 @@ impl std::fmt::Display for UploadError {
             UploadError::S3(e) => write!(f, "{e}"),
             UploadError::Io(e) => write!(f, "io: {e}"),
             UploadError::Incomplete(why) => write!(f, "incomplete recording: {why}"),
+            UploadError::MovedOn => write!(f, "the record no longer plays what the editor opened on"),
         }
     }
 }
@@ -59,7 +63,8 @@ impl std::fmt::Display for UploadError {
 impl std::error::Error for UploadError {}
 
 /// Retries an idempotent call with exponential backoff (POC: 6 tries, 500 ms base,
-/// 15 s cap). Status errors that can't improve (4xx other than 408/429) aren't retried.
+/// 15 s cap). Status errors that can't improve (4xx other than 408/429) aren't retried, and
+/// neither is a transfer its caller stopped.
 pub fn with_retry<T>(mut f: impl FnMut() -> Result<T, S3Error>) -> Result<T, S3Error> {
     let mut delay = Duration::from_millis(500);
     let mut last = None;
@@ -69,6 +74,7 @@ pub fn with_retry<T>(mut f: impl FnMut() -> Result<T, S3Error>) -> Result<T, S3E
             Err(S3Error::Status { status, body }) if (400..500).contains(&status) && status != 408 && status != 429 => {
                 return Err(S3Error::Status { status, body });
             }
+            Err(S3Error::Cancelled) => return Err(S3Error::Cancelled),
             Err(e) => last = Some(e),
         }
         std::thread::sleep(delay);
@@ -113,13 +119,23 @@ fn read_meta(s3: &Client, id: &str) -> Result<Option<Meta>, UploadError> {
 /// this Mac's writers, or the Worker renaming the video — wrote in between. R2 honors it
 /// (verified live 2026-10-02). Stops with `Tombstoned` the moment the record says deleted.
 pub fn update_meta(s3: &Client, id: &str, mut change: impl FnMut(&mut Meta)) -> Result<Meta, UploadError> {
+    try_update_meta(s3, id, |m| {
+        change(m);
+        Ok(())
+    })
+}
+
+/// [`update_meta`] whose change may refuse: an `Err` from `change`, judged on the very record
+/// the write would replace (each read, again after a lost race), ends it with that error and
+/// the record as it was.
+pub(crate) fn try_update_meta(s3: &Client, id: &str, mut change: impl FnMut(&mut Meta) -> Result<(), UploadError>) -> Result<Meta, UploadError> {
     for _ in 0..8 {
         let (bytes, etag) = with_retry(|| s3.get_with_etag(&keys::meta(id)))?.ok_or(UploadError::Collision)?;
         let mut meta: Meta = serde_json::from_slice(&bytes).map_err(|e| UploadError::Incomplete(format!("unreadable meta: {e}")))?;
         if meta.state == State::Deleted {
             return Err(UploadError::Tombstoned);
         }
-        change(&mut meta);
+        change(&mut meta)?;
         let body = serde_json::to_vec(&meta).expect("meta serializes");
         if with_retry(|| s3.put_if_match(&keys::meta(id), &body, "application/json", &etag))? {
             return Ok(meta);
@@ -293,7 +309,9 @@ fn with_beat<T>(s3: &Client, id: &str, beat: &Beat, counter: &Counter, work: imp
 /// flips to live. `extras` is how many second-class files (the teaser, the single-file
 /// copy) [`finish`] will still send: they count in `progress.total`, so the record reads
 /// drained — the page's “Fully live ✓” — only once they're up too (r4 `fully-live`: the
-/// queue drained). `progress(done, total)` is called after each file.
+/// queue drained). `progress(done, total)` is called after each file. Over a video whose edit
+/// already became it (B197's bake) it sends nothing ([`baked_now`]): the record says live
+/// and the count moves on.
 #[allow(clippy::too_many_arguments)]
 pub fn go_live(
     s3: &Client,
@@ -308,6 +326,17 @@ pub fn go_live(
     let called = Instant::now();
     let stream = local.stream_files();
     let total = stream + extras;
+    let duration: f64 = local.segments.iter().map(|s| s.seconds).sum();
+    if baked_now(s3, id)? {
+        progress(stream, total);
+        update_meta(s3, id, |m| {
+            m.state = State::Live;
+            m.published_at.get_or_insert_with(now_iso);
+            m.progress = Some(Progress { done: stream, total, updated_at: now_iso() });
+        })?;
+        let ms = called.elapsed().as_millis() as u64;
+        return Ok(Report { id: id.to_string(), live_ms: ms, done_ms: ms, uploaded: 0, already_there: 0, bytes: 0, duration_sec: duration, mp4: false });
+    }
     // What's already up (a resume uploads only the gap). Prefix-scoped credentials may
     // not list; then every file is simply PUT again (idempotent). A take rebuilt after a
     // crash ([`REBUILT_FILE`]) trusts nothing that went up before: its segments were
@@ -377,12 +406,15 @@ pub fn go_live(
         };
 
         // 5. The record flips to live (read-modify-write; stops if it was deleted meanwhile).
-        let duration: f64 = local.segments.iter().map(|s| s.seconds).sum();
+        // A video whose edit became it while this pass ran (B197) is never pointed back at
+        // the stream, nor its length at the recording's.
         update_meta(s3, id, |m| {
             m.state = State::Live;
             m.published_at.get_or_insert_with(now_iso);
-            m.duration_sec = Some((duration * 1000.0).round() / 1000.0);
-            m.media = Some(Media { hls: keys::master(id), mp4: None, poster: poster.clone(), teaser: None, width, height });
+            if !baked(m) {
+                m.duration_sec = Some((duration * 1000.0).round() / 1000.0);
+                m.media = Some(Media { hls: Some(keys::master(id)), mp4: None, poster: poster.clone(), teaser: None, width, height });
+            }
             m.progress = Some(Progress { done: stream, total, updated_at: now_iso() });
         })?;
         report.duration_sec = duration;
@@ -393,42 +425,82 @@ pub fn go_live(
     Ok(report)
 }
 
+/// Whether the record's video is one file and no stream any more: an edit became it (B197's
+/// bake, `media.hls` null). The uploader never moves such a record's `media`.
+fn baked(m: &Meta) -> bool {
+    m.media.as_ref().is_some_and(|x| x.hls.is_none())
+}
+
+/// Whether the record is [`baked`], read before a pass sends anything: run again over such a
+/// video, the pass sends none of the original's files — the bake deleted them, and nothing
+/// would ever delete them again. A tombstone stops the pass here.
+fn baked_now(s3: &Client, id: &str) -> Result<bool, UploadError> {
+    match read_meta(s3, id)? {
+        Some(m) if m.state == State::Deleted => Err(UploadError::Tombstoned),
+        Some(m) => Ok(baked(&m)),
+        None => Ok(false),
+    }
+}
+
+/// Names `key` in the record's `media` (as `set` does) unless the video is baked; then the
+/// file just sent is the original's, which the bake deletes, and it goes here too (never a
+/// file `media` names).
+fn name_extra(s3: &Client, id: &str, key: &str, set: impl Fn(&mut Media)) -> Result<(), UploadError> {
+    let m = update_meta(s3, id, |m| {
+        if let Some(media) = m.media.as_mut().filter(|x| x.hls.is_some()) {
+            set(media);
+        }
+    })?;
+    let named = m.media.as_ref().is_some_and(|x| [&x.mp4, &x.poster, &x.teaser].iter().any(|k| k.as_deref() == Some(key)));
+    if baked(&m) && !named {
+        with_retry(|| s3.delete(key))?;
+    }
+    Ok(())
+}
+
 /// Step 6, the second-class files, after the stream is live and never gating it: the unfurl
 /// teaser (small), then the single-file copy — each only if it's on this Mac. Then the
 /// record says the upload drained (`progress.done = total`), the page's “Fully live ✓”,
 /// whether or not every extra could be made. `done`/`total` continue [`go_live`]'s count.
-/// Returns whether the single-file copy went up.
+/// Over a video whose edit already became it (B197's bake, [`baked_now`]) it sends nothing
+/// and says drained; one whose edit becomes it while this runs keeps its `media`, and what
+/// this sent is removed again. Returns whether the single-file copy went up.
 pub fn finish(s3: &Client, id: &str, dir: &Path, done: u32, total: u32, beat: &Beat, mut progress: impl FnMut(u32, u32)) -> Result<bool, UploadError> {
+    if baked_now(s3, id)? {
+        update_meta(s3, id, |m| m.progress = Some(Progress { done: total, total, updated_at: now_iso() }))?;
+        progress(total, total);
+        return Ok(false);
+    }
     let counter = Counter { done: AtomicU32::new(done), total };
     let mp4 = with_beat(s3, id, beat, &counter, || {
         let teaser = dir.join(files::TEASER);
         if teaser.is_file() {
             let bytes = std::fs::read(&teaser)?;
             with_retry(|| s3.put(&keys::teaser(id), &bytes, "video/mp4"))?;
-            update_meta(s3, id, |m| {
-                if let Some(media) = m.media.as_mut() {
-                    media.teaser = Some(keys::teaser(id));
-                }
-            })?;
+            name_extra(s3, id, &keys::teaser(id), |media| media.teaser = Some(keys::teaser(id)))?;
             let d = counter.done.fetch_add(1, Ordering::SeqCst) + 1;
             progress(d.min(total), total);
         }
         let mp4 = dir.join(files::PREVIEW);
         if mp4.is_file() {
             with_retry(|| s3.put_file(&keys::mp4(id), &mp4, "video/mp4", SINGLE_PUT_MAX, PART_SIZE))?;
-            update_meta(s3, id, |m| {
-                if let Some(media) = m.media.as_mut() {
-                    media.mp4 = Some(keys::mp4(id));
-                }
-            })?;
+            name_extra(s3, id, &keys::mp4(id), |media| media.mp4 = Some(keys::mp4(id)))?;
             let d = counter.done.fetch_add(1, Ordering::SeqCst) + 1;
             progress(d.min(total), total);
             return Ok(true);
         }
         Ok(false)
     })?;
-    // The last word, after the beat stopped: drained.
-    update_meta(s3, id, |m| m.progress = Some(Progress { done: total, total, updated_at: now_iso() }))?;
+    // The last word, after the beat stopped: drained — and what the video holds in the
+    // bucket, read once, for the suggestions to clean up (N68). A listing that fails leaves
+    // the size out: the Worker estimates it from the length.
+    let stored: Option<u64> = s3.list(&keys::prefix(id)).ok().map(|objs| objs.iter().map(|o| o.size).sum());
+    update_meta(s3, id, |m| {
+        m.progress = Some(Progress { done: total, total, updated_at: now_iso() });
+        if let Some(b) = stored {
+            m.extra.insert("bytes".into(), serde_json::Value::from(b));
+        }
+    })?;
     progress(total, total);
     Ok(mp4)
 }

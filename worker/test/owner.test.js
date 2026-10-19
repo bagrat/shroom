@@ -6,7 +6,7 @@
 // ownership ledger, never from meta.owner (§2.4).
 import { createHash } from "node:crypto";
 import { beforeEach, describe, expect, it } from "vitest";
-import { COPY, forgetSecret, handle, status, untitled, uploadingLine } from "../src/worker.js";
+import { COPY, forgetSecret, handle, status, untitled } from "../src/worker.js";
 import { fakeBucket } from "./fake-bucket.js";
 import { MHER, MHER_MAC, OWNER_MAC, ROSTER, ledgerKey, roster } from "./space-fixture.js";
 
@@ -83,7 +83,7 @@ describe("the owner page", () => {
     const env = space({ [`meta/${ID}.json`]: metaOf({ state: "uploading", media: null, progress: { done: 2, total: 5, updatedAt: "2026-10-02T11:59:50Z" } }) });
     const cookie = await cookieFor(env);
     const body = await (await req(env, `/${ID}`, { headers: { cookie } })).text();
-    expect(body).toContain(uploadingLine(40));
+    expect(body).toContain(COPY.finishing);
     expect(body).not.toContain(`http-equiv="refresh"`); // never reloads under the owner's typing
     env.BUCKET.touch(`meta/${ID}.json`, metaOf({ state: "uploading", media: null, progress: { done: 2, total: 5, updatedAt: "2026-10-02T11:00:00Z" } }));
     expect(await (await req(env, `/${ID}`, { headers: { cookie } })).text()).toContain(COPY.waitingConnection);
@@ -98,6 +98,29 @@ describe("the owner page", () => {
     const own = await (await req(env, `/${ID}`, { headers: { cookie } })).text();
     expect(own).toContain(`class="title"`);
     expect(own).not.toContain(`id="mk"`);
+  });
+
+  // N69: Edit in shroom, the owner page's last quiet icon — a plain link to shroom's editor.
+  it("gives the owner page Edit in shroom once every file is up, and no one else (N69)", async () => {
+    const env = space();
+    const cookie = await cookieFor(env);
+    const body = await (await req(env, `/${ID}`, { headers: { cookie } })).text();
+    const link = `<a class="copy edit" id="ed" href="shroom://edit/v.example.workers.dev/${ID}" data-tip="${COPY.editInShroom}" aria-label="${COPY.editInShroom}">${COPY.editInShroom}</a>`;
+    expect(body).toContain(link);
+    expect(body.indexOf(link)).toBeGreaterThan(body.indexOf(`id="dl"`)); // after Download, the last
+    // Bytes still arriving: drawn hidden, and the poll brings it in at the drain.
+    env.BUCKET.touch(`meta/${ID}.json`, metaOf({ progress: { done: 2, total: 5, updatedAt: "2026-10-02T11:59:50Z" } }));
+    const up = await (await req(env, `/${ID}`, { headers: { cookie } })).text();
+    expect(up).toMatch(new RegExp(`id="ed" href="shroom://edit/v\\.example\\.workers\\.dev/${ID}"[^>]* hidden>`));
+    expect(up).toContain(`var ed=document.getElementById("ed");if(ed&&s.drained)ed.hidden=false;`);
+    // A recipient's page and the embed never have it.
+    expect(await (await req(env, `/${ID}`)).text()).not.toContain("shroom://edit/");
+    expect(await (await req(env, `/${ID}?embed=1`)).text()).not.toContain("shroom://edit/");
+    // A member: on their own video's page, not on someone else's.
+    const m = await cookieFor(env, memberGrant());
+    expect(await (await req(env, `/${ID}`, { headers: { cookie: m } })).text()).not.toContain("shroom://edit/");
+    env.BUCKET.touch(ledgerKey(ID), JSON.stringify({ v: 1, member: MHER, device: MHER_MAC.id, at: "2026-10-02T11:00:00Z" }), { m: MHER });
+    expect(await (await req(env, `/${ID}`, { headers: { cookie: m } })).text()).toContain("shroom://edit/");
   });
 
   it("is the recipient page for a forged or absent cookie", async () => {

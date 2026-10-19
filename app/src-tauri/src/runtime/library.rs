@@ -8,7 +8,11 @@
 //! - `Rename`: the record rewritten under `If-Match` — `Renamed`;
 //! - `Delete`: per video, the tombstone first, then the bytes — `Deleted`;
 //! - `Cleanup`: the token Mac's sweep (B91), handed at once to a lane of its own — a sweep
-//!   reads the whole space and never holds the commands above up — `Cleaned`.
+//!   reads the whole space and never holds the commands above up — `Cleaned`;
+//! - `Suggest`: what the space says is worth deleting (N68), `POST /cleanup` paged to its
+//!   end under this Mac's device key, every Mac alike — `Suggested`;
+//! - `Keep`: the record's `keep` rewritten under `If-Match`, as a rename is — `Kept`;
+//! - `Plays`: the space's play-count switch, `POST /plays` (owner-class) — `Plays`.
 //!
 //! A token Mac reaches the bucket the way it does everywhere else: the token's own derived
 //! S3 credentials over the space's bucket (as the owner page's grant does). Those keys go
@@ -26,16 +30,18 @@ use std::sync::mpsc::{Sender, channel};
 
 use std::collections::{BTreeMap, BTreeSet};
 
+use shroom_cloud::cleanup_log;
 use shroom_cloud::device::DeviceKey;
-use shroom_cloud::member::{Answer, LibraryRequest, MintNext, Purpose, Scope, Space};
+use shroom_cloud::member::{Answer, CleanupPage, LibraryPage, LibraryRequest, MintNext, Purpose, Scope, Space};
 use shroom_core::effect::LibCmd;
 use shroom_core::event::{Event, LibraryNews};
 use shroom_core::time::Wall;
-use shroom_core::world::{FailClass, LibraryRow, Op, RecId, Role, SpaceIdentity};
+use shroom_core::world::{FailClass, LibraryRow, Op, RecId, Role, SpaceIdentity, Suggestion, Suggestions};
 use shroom_storage::s3::{Client, S3Error};
 use shroom_upload::library::{self, Cache, Row};
-use shroom_upload::meta::State;
-use shroom_upload::upload::UploadError;
+use shroom_upload::keys;
+use shroom_upload::meta::{Meta, State};
+use shroom_upload::upload::{UploadError, with_retry};
 
 use super::Runtime;
 
@@ -151,6 +157,131 @@ fn ctx(rt: &Runtime, space: &SpaceIdentity, cached: &mut Option<Ctx>) -> Result<
     Ok(())
 }
 
+/// The door to one recording's record and files, as a rename reaches them — the editor's
+/// lane's (N63): the token Mac's own pair, verified once and kept; any other Mac a `manage`
+/// credential minted for that one recording (15 minutes, in memory only).
+#[derive(Default)]
+pub(super) struct Doorway(Option<Ctx>);
+
+impl Doorway {
+    /// A client for `rec`'s record and files.
+    pub(super) fn client(&mut self, rt: &Runtime, space: &SpaceIdentity, rec: &str) -> Result<Held<'_>, FailClass> {
+        ctx(rt, space, &mut self.0)?;
+        match &self.0.as_ref().expect("a door").door {
+            Door::Token(s3) => Ok(Held::Shared(s3)),
+            Door::Device { key, page } => manage(rt, space, key, page, rec).map(Held::Own),
+        }
+    }
+
+    /// After a failure: the next call re-verifies (a revoked token, a new one).
+    pub(super) fn forget(&mut self) {
+        self.0 = None;
+    }
+
+    /// The space's recordings as the editor's upkeep needs them ([`Listed`]), read fresh: the
+    /// token Mac lists `meta/` over its pair (reading what changed since the Library's cache),
+    /// then reads each record that holds an edit; any other Mac asks the space's Library
+    /// (§4.10: `mine` for a member, `everyone` for the owner's Macs) — see `listed_through`.
+    pub(super) fn listed(&mut self, rt: &Runtime, space: &SpaceIdentity) -> Result<Listed, FailClass> {
+        ctx(rt, space, &mut self.0)?;
+        let cache = load(rt, space);
+        match &self.0.as_ref().expect("a door").door {
+            Door::Token(s3) => listed_over(rt, s3, cache),
+            Door::Device { key, page } => {
+                let scope = if space.role == Role::Member { Scope::Mine } else { Scope::Everyone };
+                listed_through(&cache, scope, |req| match page.library(key, &req) {
+                    Answer::Ok(p) => Ok(p),
+                    other => Err(answer_class(rt, "upkeep", &other)),
+                })
+            }
+        }
+    }
+}
+
+/// What the editor's upkeep reads of the space (B197 (d)). `library.json` hears of an edit
+/// only when the Library refreshes, so it never decides alone; nor is it written here (it's
+/// the Library lane's).
+#[derive(Debug, Default, PartialEq)]
+pub(super) struct Listed {
+    /// Every recording the space lists for this Mac that isn't deleted.
+    pub ids: BTreeSet<String>,
+    /// The live records that hold an edit, as read now.
+    pub edited: Vec<(String, Meta)>,
+}
+
+/// The token Mac's half of [`Doorway::listed`]: the Library's refresh over a copy of the
+/// cache, then each record whose row holds an edit, read. A record that can't be read is
+/// left out; a dropped connection ends it.
+fn listed_over(rt: &Runtime, s3: &Client, mut cache: Cache) -> Result<Listed, FailClass> {
+    library::refresh(s3, &mut cache).map_err(|e| {
+        rt.log(&format!("editor upkeep: the space's list: {e}"));
+        class(&e)
+    })?;
+    let mut out = Listed::default();
+    for (id, (_, row)) in &cache.rows {
+        if row.state == State::Deleted {
+            continue;
+        }
+        out.ids.insert(id.clone());
+        if row.state != State::Live || row.edited_sec.is_none() {
+            continue;
+        }
+        match with_retry(|| s3.get(&keys::meta(id))) {
+            Ok(Some(bytes)) => out.edited.extend(serde_json::from_slice(&bytes).ok().and_then(shroom_upload::meta::listed).filter(|m| m.state == State::Live).map(|m| (id.clone(), m))),
+            Ok(None) => {}
+            Err(e) => {
+                let c = class(&UploadError::S3(e));
+                if c == FailClass::Transport {
+                    return Err(c);
+                }
+                rt.log(&format!("editor upkeep: {}'s record not read ({c:?})", super::short(id)));
+            }
+        }
+    }
+    Ok(out)
+}
+
+/// Every other Mac's half of [`Doorway::listed`], paged as the Library's refresh is
+/// (`refresh_device`), except that the cache's ETags go along only for its rows without an
+/// edit: a record holding one, or changed since, always comes back whole.
+fn listed_through(cache: &Cache, scope: Scope, mut ask: impl FnMut(LibraryRequest) -> Result<LibraryPage, FailClass>) -> Result<Listed, FailClass> {
+    const SLICE: usize = 1000;
+    let ids: Vec<String> = cache.rows.iter().filter(|(_, (_, r))| r.edited_sec.is_none()).map(|(id, _)| id.clone()).collect();
+    let mut out = Listed::default();
+    let mut after: Option<String> = None;
+    let mut calls = 0usize;
+    loop {
+        calls += 1;
+        let start = after.as_ref().map_or(0, |a| ids.partition_point(|x| x <= a));
+        let slice = &ids[start..(start + SLICE).min(ids.len())];
+        let known: BTreeMap<String, String> = slice.iter().map(|id| (id.clone(), cache.rows[id].0.clone())).collect();
+        let known_through = (start + slice.len() < ids.len()).then(|| slice.last().cloned()).flatten();
+        let page = ask(LibraryRequest { scope, known, known_through, after: after.clone() })?;
+        for item in page.items {
+            let state = match item.meta.and_then(shroom_upload::meta::listed) {
+                Some(m) => {
+                    let state = m.state;
+                    if state == State::Live && m.edits.is_some() {
+                        out.edited.push((item.id.clone(), m));
+                    }
+                    state
+                }
+                // No body: unchanged since the cache, which holds no edit for it.
+                None => cache.rows.get(&item.id).map_or(State::Live, |(_, r)| r.state),
+            };
+            if state != State::Deleted {
+                out.ids.insert(item.id);
+            }
+        }
+        match page.next {
+            // A page that doesn't move on would loop forever: treated as the end.
+            Some(n) if after.as_deref() != Some(n.as_str()) && calls < 10_000 => after = Some(n),
+            _ => break,
+        }
+    }
+    Ok(out)
+}
+
 /// A space's answer that isn't the one wanted, as a Library failure class.
 fn answer_class<T>(rt: &Runtime, what: &str, a: &Answer<T>) -> FailClass {
     match a {
@@ -188,11 +319,12 @@ fn manage(rt: &Runtime, space: &SpaceIdentity, key: &DeviceKey, page: &Space, re
 }
 
 /// The Library's failure classes: a dropped connection is `Transport` (the offline face),
-/// the store saying no is `Refused`, anything else unclassified.
-fn class(e: &UploadError) -> FailClass {
+/// the store saying no is `Refused`, anything else unclassified. The editor's lane's too: an
+/// editor's save over a video that moved on under it is `Refused`.
+pub(super) fn class(e: &UploadError) -> FailClass {
     match e {
         UploadError::S3(S3Error::Transport(_)) => FailClass::Transport,
-        UploadError::S3(S3Error::Status { status: 401 | 403 | 404, .. }) | UploadError::Tombstoned => FailClass::Refused,
+        UploadError::S3(S3Error::Status { status: 401 | 403 | 404, .. }) | UploadError::Tombstoned | UploadError::MovedOn => FailClass::Refused,
         _ => FailClass::Unclassified,
     }
 }
@@ -221,7 +353,8 @@ pub fn parse_iso(s: &str) -> Option<i64> {
     Some(((days * 86_400 + h * 3_600 + mi * 60 + sec) * 1_000) + ms)
 }
 
-/// A record as the core knows a Library row (its poster as `rows_of` finds it).
+/// A record as the core knows a Library row (its poster as `rows_of` finds it), its edited
+/// length when the record holds an edit that leaves something out (N63).
 pub fn row(r: &Row) -> LibraryRow {
     LibraryRow {
         rec: RecId(r.id.clone()),
@@ -231,6 +364,7 @@ pub fn row(r: &Row) -> LibraryRow {
         live: r.state == State::Live,
         owner: r.owner.clone(),
         poster: false,
+        edited_ms: r.edited_sec.filter(|s| s.is_finite() && *s >= 0.0).map(|s| (s * 1000.0).round() as u64),
     }
 }
 
@@ -308,6 +442,9 @@ fn spawn_with(rt: Runtime, sweep: impl FnMut(&Runtime, &SpaceIdentity) -> Result
                     LibCmd::Rename(..) => Op::Rename,
                     LibCmd::Delete(_) => Op::Delete,
                     LibCmd::Cleanup => Op::Cleanup,
+                    LibCmd::Suggest { .. } => Op::Suggest,
+                    LibCmd::Keep(_) => Op::Keep,
+                    LibCmd::Plays(_) => Op::Plays,
                 };
                 // Read before the space: a wipe between the two shows as a newer generation.
                 let generation = *rt.space_gen.lock().unwrap();
@@ -322,14 +459,31 @@ fn spawn_with(rt: Runtime, sweep: impl FnMut(&Runtime, &SpaceIdentity) -> Result
                     post_rows(&rt, &space, false);
                     continue;
                 }
+                // The space's Worker under this Mac's device key, whatever its door (N68).
+                if matches!(cmd, LibCmd::Suggest { .. } | LibCmd::Plays(_)) {
+                    let started = std::time::Instant::now();
+                    let asked = worker_door(&rt, &space).and_then(|(key, page)| match cmd {
+                        LibCmd::Suggest { everyone } => suggest(&rt, &key, &page, everyone),
+                        LibCmd::Plays(on) => plays(&rt, &key, &page, on),
+                        _ => Ok(()),
+                    });
+                    if let Err(class) = asked {
+                        rt.log(&format!("library {op:?}: failed ({class:?}) after {} ms", started.elapsed().as_millis()));
+                        rt.post(Event::Failed { op, class });
+                    }
+                    continue;
+                }
                 if let Err(class) = ctx(&rt, &space, &mut cached) {
                     rt.log(&format!("library {op:?}: no client ({class:?})"));
                     rt.post(Event::Failed { op, class });
                     continue;
                 }
                 let ok = match (&cached.as_ref().expect("a door").door, cmd) {
-                    // Both answered above: a cache load at once, a sweep on its own lane.
-                    (_, LibCmd::LoadCache | LibCmd::Cleanup) => Ok(()),
+                    // Answered above: a cache load at once, a sweep on its own lane, and
+                    // what goes to the space's Worker whatever the door.
+                    (_, LibCmd::LoadCache | LibCmd::Cleanup | LibCmd::Suggest { .. } | LibCmd::Plays(_)) => Ok(()),
+                    (Door::Token(s3), LibCmd::Keep(rec)) => keep(&rt, s3, rec),
+                    (Door::Device { key, page }, LibCmd::Keep(rec)) => manage(&rt, &space, key, page, &rec.0).and_then(|s3| keep(&rt, &s3, rec)),
                     (Door::Token(s3), LibCmd::Refresh) => refresh(&rt, &space, s3, generation),
                     (Door::Token(s3), LibCmd::Rename(rec, title)) => rename(&rt, &space, s3, rec, &title, generation),
                     (Door::Token(s3), LibCmd::Delete(recs)) => delete(&rt, &space, |_| Ok(Held::Shared(s3)), |id| seal_here(s3, id), recs, generation),
@@ -355,11 +509,124 @@ fn spawn_with(rt: Runtime, sweep: impl FnMut(&Runtime, &SpaceIdentity) -> Result
     tx
 }
 
+/// Each take's AI line as the cache holds it, to tell what a refresh changed.
+fn ai_lines(rows: &BTreeMap<String, (String, Row)>) -> BTreeMap<String, Option<String>> {
+    rows.iter().map(|(id, (_, r))| (id.clone(), r.ai.clone())).collect()
+}
+
+/// What the space's AI did with each take, as its record now says (DECISIONS B206 f): one line
+/// for each that changed since `before`, so a report shows the steps the space's schedule took
+/// on its own too.
+fn log_ai(rt: &Runtime, before: &BTreeMap<String, Option<String>>, rows: &BTreeMap<String, (String, Row)>) {
+    for (id, (_, r)) in rows {
+        if let Some(note) = &r.ai {
+            if before.get(id).and_then(Option::as_ref) != Some(note) {
+                rt.log(&format!("naming {}: {note}", super::short(id)));
+            }
+        }
+    }
+}
+
+/// This Mac's device key and its space's Worker (N68): every Mac has both once enrolled,
+/// the token Mac too.
+fn worker_door(rt: &Runtime, space: &SpaceIdentity) -> Result<(DeviceKey, Space), FailClass> {
+    let key = super::member::device_key(rt).filter(|k| k.host == space.host).ok_or_else(|| {
+        rt.log("library: no device key for this Mac's space");
+        FailClass::Refused
+    })?;
+    let page = rt.space(&space.host).ok_or_else(|| {
+        rt.log("library: a dev build reaches a space's page only through --space-base — refused");
+        FailClass::Refused
+    })?;
+    Ok((key, page))
+}
+
+/// The most pages one read of the suggestions follows (40 records each: 20,000 videos).
+const SUGGEST_PAGES: usize = 500;
+
+/// What the space says is worth deleting (N68): every page of `POST /cleanup`, the
+/// candidates in the Worker's order (its score, highest first), and the bytes of every
+/// live video read — the space's size on an owner-class Mac.
+fn suggest(rt: &Runtime, key: &DeviceKey, page: &Space, everyone: bool) -> Result<(), FailClass> {
+    let started = std::time::Instant::now();
+    let mut after: Option<String> = None;
+    let mut counting = true;
+    let mut space_bytes = 0u64;
+    let mut found: Vec<(f64, Suggestion)> = Vec::new();
+    // What the run log says of the read (shroom_cloud::cleanup_log): every item, by short id.
+    let mut read = cleanup_log::Read::default();
+    for _ in 0..SUGGEST_PAGES {
+        let p: CleanupPage = match page.cleanup(key, everyone, after.as_deref()) {
+            Answer::Ok(p) => p,
+            other => return Err(answer_class(rt, "suggest", &other)),
+        };
+        counting = p.counting;
+        read.pages += 1;
+        read.views.add(&p.views);
+        read.items.extend(p.items.iter().cloned());
+        for item in &p.items {
+            space_bytes += item.bytes;
+            if item.candidate {
+                let stopped_early = item.reason.as_ref().is_some_and(|r| r.code == "stopped-early");
+                let quiet_days = item.quiet_days.unwrap_or(0.0).max(0.0) as u32;
+                found.push((item.score, Suggestion { rec: RecId(item.id.clone()), bytes: item.bytes, plays: item.plays, quiet_days, stopped_early }));
+            }
+        }
+        match p.next {
+            Some(next) if Some(&next) != after.as_ref() => after = Some(next),
+            _ => {
+                found.sort_by(|a, b| b.0.total_cmp(&a.0));
+                read.counting = counting;
+                read.ms = started.elapsed().as_millis();
+                let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as i64).unwrap_or(0);
+                read.newest_play_hours = read.views.newest_play_at.as_deref().and_then(parse_iso).map(|t| (now.saturating_sub(t).max(0) / 3_600_000) as u64);
+                for line in cleanup_log::lines(&read) {
+                    rt.log(&line);
+                }
+                let rows = found.into_iter().map(|(_, s)| s).collect();
+                rt.post(Event::Library(LibraryNews::Suggested(Suggestions { counting, space_bytes, rows })));
+                return Ok(());
+            }
+        }
+    }
+    rt.log(&format!("library suggestions: more than {SUGGEST_PAGES} pages, {} videos read — stopped", read.items.len()));
+    Err(FailClass::Unclassified)
+}
+
+/// The space's play-count switch (N68): answers where it stands now.
+fn plays(rt: &Runtime, key: &DeviceKey, page: &Space, on: bool) -> Result<(), FailClass> {
+    match page.plays(key, on) {
+        Answer::Ok(now) => {
+            rt.log(&format!("library: the space counts plays {}", if now { "on" } else { "off" }));
+            rt.post(Event::Library(LibraryNews::Plays(now)));
+            Ok(())
+        }
+        other => Err(answer_class(rt, "plays", &other)),
+    }
+}
+
+/// Keep (N68): `keep: true` on the record, under `If-Match`.
+fn keep(rt: &Runtime, s3: &Client, rec: RecId) -> Result<(), FailClass> {
+    match library::keep(s3, &rec.0) {
+        Ok(_) => {
+            rt.log(&format!("library kept {}", super::short(&rec.0)));
+            rt.post(Event::Library(LibraryNews::Kept(rec)));
+            Ok(())
+        }
+        Err(e) => {
+            rt.log(&format!("library keep {}: {e}", super::short(&rec.0)));
+            Err(class(&e))
+        }
+    }
+}
+
 fn refresh(rt: &Runtime, space: &SpaceIdentity, s3: &Client, generation: u64) -> Result<(), FailClass> {
     let mut file = load_file(rt, space);
+    let before = ai_lines(&file.cache.rows);
     match library::refresh(s3, &mut file.cache) {
         Ok(d) => {
             rt.log(&format!("library refreshed: {} new, {} changed, {} gone, {} read", d.added.len(), d.changed.len(), d.gone.len(), d.reads));
+            log_ai(rt, &before, &file.cache.rows);
             // Who made each video: the ledger, never the record (§4.10, b4 #5).
             learn_owners(rt, space, s3, &mut file);
             save_with(rt, space, &file.cache, file.owners.clone(), generation);
@@ -383,6 +650,7 @@ fn refresh(rt: &Runtime, space: &SpaceIdentity, s3: &Client, generation: u64) ->
 fn refresh_device(rt: &Runtime, space: &SpaceIdentity, key: &DeviceKey, page: &Space, generation: u64) -> Result<(), FailClass> {
     const SLICE: usize = 1000;
     let mut cache = load(rt, space);
+    let before = ai_lines(&cache.rows);
     let scope = if space.role == Role::Member { Scope::Mine } else { Scope::Everyone };
     let ids: Vec<String> = cache.rows.keys().cloned().collect();
     let mut seen = BTreeSet::new();
@@ -404,16 +672,8 @@ fn refresh_device(rt: &Runtime, space: &SpaceIdentity, key: &DeviceKey, page: &S
             let meta = item.meta.and_then(shroom_upload::meta::listed);
             match meta {
                 Some(m) => {
-                    let row = Row {
-                        id: item.id.clone(),
-                        title: m.title,
-                        state: m.state,
-                        created_at: m.created_at,
-                        duration_sec: m.duration_sec,
-                        // The ledger's owner, never the record's (member-writable, H3).
-                        owner: Some(item.owner),
-                        poster: m.media.and_then(|x| x.poster),
-                    };
+                    // The ledger's owner, never the record's (member-writable, H3).
+                    let row = Row { id: item.id.clone(), owner: Some(item.owner), ..Row::of(&m) };
                     if cache.rows.insert(item.id, (item.etag, row)).is_some() {
                         changed += 1;
                     } else {
@@ -438,6 +698,7 @@ fn refresh_device(rt: &Runtime, space: &SpaceIdentity, key: &DeviceKey, page: &S
         cache.rows.remove(g);
     }
     rt.log(&format!("library refreshed through the space ({scope:?}): {added} new, {changed} changed, {} gone, {calls} call(s)", gone.len()));
+    log_ai(rt, &before, &cache.rows);
     save(rt, space, &cache, generation);
     post_rows(rt, space, true);
     if super::posters::fetch_missing(rt, space, None, &cache) {
@@ -529,7 +790,7 @@ fn tombstoned(s3: &Client, id: &str) -> Result<(), UploadError> {
 /// Each video in turn: its tombstone, then its bytes. The ones that landed are answered
 /// even when a later one fails (they're gone everywhere), then the failure ends the op.
 /// The client a delete runs under: the token Mac's one, or a video's own `manage` mint.
-enum Held<'a> {
+pub(super) enum Held<'a> {
     Shared(&'a Client),
     Own(Client),
 }
@@ -621,20 +882,31 @@ pub fn held_ids(takes: &std::path::Path) -> BTreeSet<String> {
 }
 
 /// The token Mac's cleanup sweep (DECISIONS B91): over the token's own pair, sparing every
-/// recording a take folder here names; counts only in the log.
+/// recording a take folder here names, and never baking the one the editor window is open on
+/// (asked before each bake, B197); counts only in the log.
 fn cleanup(rt: &Runtime, space: &SpaceIdentity, s3: &Client) -> Result<(), FailClass> {
     let held = held_ids(&rt.home.takes());
     let device = super::member::device_key(rt).filter(|k| k.host == space.host).map(|k| k.device);
     let now_ms = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as i64).unwrap_or(0);
     let here = library::Here { now_ms, device: device.as_deref(), holds: &|id: &str| held.contains(id) };
-    match library::cleanup(s3, &here) {
+    // A page older than this app's plays only the stream a bake deletes: every bake waits
+    // for its refresh (the editor's, DECISIONS B199 (s)).
+    let page = super::editor::page_takes_bakes(rt, &space.host);
+    if let Err(why) = &page {
+        rt.log(&format!("library: the sweep's bakes wait — {why}"));
+    }
+    let editing = |id: &str| page.is_err() || super::editor::open_in_editor(rt).as_deref() == Some(id);
+    match library::cleanup_sparing(s3, &here, &editing) {
         Ok(c) => {
+            let made = c.baked.iter().filter(|(_, b)| b.written).count();
             rt.log(&format!(
-                "library: cleanup reaped {} under tombstones, {} no Mac can finish, {} page keys ({} held here spared)",
+                "library: cleanup reaped {} under tombstones, {} no Mac can finish, {} page keys ({} held here spared); {made} baked, {} bake(s) finished, {} file(s) of originals deleted",
                 c.swept.under_tombstones.len(),
                 c.swept.orphans.len(),
                 c.keys,
-                held.len()
+                held.len(),
+                c.baked.len() - made,
+                c.baked.iter().map(|(_, b)| b.deleted).sum::<usize>()
             ));
             let n = |v: usize| u32::try_from(v).unwrap_or(u32::MAX);
             rt.post(Event::Library(LibraryNews::Cleaned { under_tombstones: n(c.swept.under_tombstones.len()), orphans: n(c.swept.orphans.len()), keys: n(c.keys) }));
@@ -718,6 +990,9 @@ mod tests {
             (LibCmd::Refresh, Op::LibRefresh),
             (LibCmd::Rename(RecId("r1".into()), "t".into()), Op::Rename),
             (LibCmd::Delete(vec![RecId("r1".into())]), Op::Delete),
+            (LibCmd::Suggest { everyone: true }, Op::Suggest),
+            (LibCmd::Keep(RecId("r1".into())), Op::Keep),
+            (LibCmd::Plays(false), Op::Plays),
         ] {
             lane.send(cmd).unwrap();
             // No door on this Mac (no token, no device key): refused — but answered now.
@@ -770,6 +1045,16 @@ mod tests {
         refused();
     }
 
+    /// The store saying no reads as refused — a tombstone, and an editor's save over a video
+    /// that moved on under it (B197) — a dropped connection as offline, the rest unclassified.
+    #[test]
+    fn a_save_over_a_video_that_moved_on_reads_as_refused() {
+        assert_eq!(class(&UploadError::MovedOn), FailClass::Refused);
+        assert_eq!(class(&UploadError::Tombstoned), FailClass::Refused);
+        assert_eq!(class(&UploadError::S3(S3Error::Status { status: 404, body: String::new() })), FailClass::Refused);
+        assert_eq!(class(&UploadError::Incomplete("the record kept changing under us".into())), FailClass::Unclassified);
+    }
+
     #[test]
     fn iso_dates_read_as_unix_milliseconds() {
         assert_eq!(parse_iso("1970-01-01T00:00:00Z"), Some(0));
@@ -808,7 +1093,7 @@ mod tests {
             foreign_v: false,
         };
         rt.home.write_json("token.json", &serde_json::json!({ "v": 1, "token": "t", "account_id": "acct" })).unwrap();
-        let rec = |id: &str, forged: Option<&str>| Row { id: id.into(), title: id.into(), state: State::Live, created_at: "2026-10-02T12:00:00Z".into(), duration_sec: None, owner: forged.map(Into::into), poster: None };
+        let rec = |id: &str, forged: Option<&str>| Row { id: id.into(), title: id.into(), state: State::Live, created_at: "2026-10-02T12:00:00Z".into(), duration_sec: None, owner: forged.map(Into::into), poster: None, edited_sec: None, poster_file: None, ai: None };
         let mut file = CacheFile { v: 1, space: space_key(&space), ..CacheFile::default() };
         file.cache.rows.insert("mine".into(), ("e".into(), rec("mine", None)));
         file.cache.rows.insert("forged".into(), ("e".into(), rec("forged", Some("m1"))));
@@ -829,12 +1114,59 @@ mod tests {
             duration_sec: Some(272.4),
             owner: Some("m1".into()),
             poster: None,
+            edited_sec: None,
+            poster_file: None,
+            ai: None,
         };
         let l = row(&r);
         assert_eq!(l.rec, RecId("AbCd".into()));
         assert_eq!(l.length_ms, Some(272_400));
+        assert_eq!(l.edited_ms, None);
         assert!(l.live);
+        // An edit that leaves something out: the row reads its length after every refresh.
+        assert_eq!(row(&Row { edited_sec: Some(221.04), ..r.clone() }).edited_ms, Some(221_040));
         assert_eq!(l.created, Wall(parse_iso("2026-08-21T12:00:00Z").unwrap()));
         assert!(!row(&Row { state: State::Uploading, duration_sec: Some(f64::NAN), ..r }).live);
+    }
+
+    #[test]
+    fn the_upkeep_reads_every_edited_record_whole_however_old_the_cache() {
+        use shroom_cloud::member::LibraryItem;
+        let body = |id: &str, edited: bool| {
+            let mut m = Meta::uploading(id, "t", "2026-10-02T00:00:00Z");
+            m.state = State::Live;
+            m.duration_sec = Some(10.0);
+            if edited {
+                let mut list = shroom_edit::EditList::new(10.0);
+                list.out = 6.0;
+                m.edits = Some(shroom_edit::Saved::new(list, 1));
+            }
+            serde_json::to_value(&m).unwrap()
+        };
+        let cached = |id: &str, edited: Option<f64>, state: State| Row { id: id.into(), title: "t".into(), state, created_at: "2026-10-02T00:00:00Z".into(), duration_sec: Some(10.0), owner: None, poster: None, edited_sec: edited, poster_file: None, ai: None };
+        let mut cache = Cache::default();
+        cache.rows.insert("Aaaa".into(), ("e1".into(), cached("Aaaa", None, State::Live)));
+        cache.rows.insert("Bbbb".into(), ("e2".into(), cached("Bbbb", Some(6.0), State::Live)));
+        cache.rows.insert("Cccc".into(), ("e3".into(), cached("Cccc", None, State::Deleted)));
+        let item = |id: &str, etag: &str, meta: Option<serde_json::Value>| LibraryItem { id: id.into(), etag: etag.into(), owner: "m1".into(), meta };
+        let mut asked: Vec<LibraryRequest> = Vec::new();
+        let listed = listed_through(&cache, Scope::Everyone, |req| {
+            asked.push(req.clone());
+            Ok(match req.after.as_deref() {
+                // The edited row's ETag isn't sent: it comes back whole though unchanged.
+                None => LibraryPage { items: vec![item("Aaaa", "e1", None), item("Bbbb", "e2", Some(body("Bbbb", true)))], owners: BTreeMap::new(), next: Some("Bbbb".into()) },
+                // A tombstone known as such, an edit the cache never heard of, a change.
+                _ => LibraryPage { items: vec![item("Cccc", "e3", None), item("Dddd", "e4", Some(body("Dddd", true))), item("Eeee", "e5", Some(body("Eeee", false)))], owners: BTreeMap::new(), next: None },
+            })
+        })
+        .unwrap();
+        assert_eq!(asked.len(), 2, "paged until next is null");
+        assert_eq!(asked[0].known, BTreeMap::from([("Aaaa".to_string(), "e1".to_string()), ("Cccc".to_string(), "e3".to_string())]), "only the rows without an edit are known");
+        assert_eq!((asked[0].known_through.as_deref(), asked[1].after.as_deref()), (None, Some("Bbbb")));
+        assert_eq!(asked[1].known.keys().collect::<Vec<_>>(), vec!["Cccc"], "the slice after the page's end");
+        assert_eq!(listed.ids.iter().map(String::as_str).collect::<Vec<_>>(), vec!["Aaaa", "Bbbb", "Dddd", "Eeee"], "every one listed, the deleted one not");
+        assert_eq!(listed.edited.iter().map(|(id, _)| id.as_str()).collect::<Vec<_>>(), vec!["Bbbb", "Dddd"]);
+        assert!(listed.edited.iter().all(|(_, m)| m.edits.is_some()));
+        assert_eq!(listed_through(&cache, Scope::Mine, |_| Err(FailClass::Transport)), Err(FailClass::Transport), "offline: nothing read");
     }
 }

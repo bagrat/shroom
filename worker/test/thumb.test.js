@@ -5,7 +5,7 @@
 // its contents, recorded only for the title it was drawn for.
 import { createHash } from "node:crypto";
 import { beforeEach, describe, expect, it } from "vitest";
-import { COPY, THUMB, forgetSecret, handle } from "../src/worker.js";
+import { COPY, COPY_JS, THUMB, THUMB_JS, forgetSecret, handle } from "../src/worker.js";
 import { fakeBucket } from "./fake-bucket.js";
 import { MHER, MHER_MAC, OWNER_MAC, ROSTER, roster } from "./space-fixture.js";
 
@@ -43,9 +43,9 @@ function jpeg(w = 1200, h = 675, size = 2000) {
   b.set([0xff, 0xd9], size - 2);
   return b;
 }
-const put = (env, bytes, { cookie, type = "image/gif", title = "Where the 502s come from", origin = HOST, id = ID } = {}) =>
+const put = (env, bytes, { cookie, type = "image/gif", title = "Where the 502s come from", origin = HOST, id = ID, from } = {}) =>
   req(env, `/_shroom/thumb/${id}`, { method: "POST", body: bytes,
-    headers: { "content-type": type, origin, "x-shroom-title": encodeURIComponent(title ?? ""), ...(cookie ? { cookie } : {}) } });
+    headers: { "content-type": type, origin, "x-shroom-title": encodeURIComponent(title ?? ""), ...(from === undefined ? {} : { "x-shroom-from": from }), ...(cookie ? { cookie } : {}) } });
 
 beforeEach(() => forgetSecret());
 
@@ -59,7 +59,7 @@ describe("storing a thumbnail", () => {
     const name = `thumb-${createHash("sha256").update(bytes).digest("hex").slice(0, 16)}.gif`;
     expect(await res.json()).toEqual({ url: `/m/${ID}/${name}` });
     expect(env.BUCKET.store.has(`rec/${ID}/${name}`)).toBe(true);
-    expect(metaNow(env).thumb).toEqual({ title: "Where the 502s come from", gif: name });
+    expect(metaNow(env).thumb).toEqual({ title: "Where the 502s come from", from: "poster.jpg", gif: name });
     // The same picture again is the same file.
     expect((await put(env, bytes, { cookie })).status).toBe(200);
     expect([...env.BUCKET.store.keys()].filter((k) => k.startsWith(`rec/${ID}/thumb-`))).toHaveLength(1);
@@ -70,7 +70,7 @@ describe("storing a thumbnail", () => {
     const cookie = await cookieFor(env);
     expect((await put(env, jpeg(), { cookie, type: "image/jpeg" })).status).toBe(200);
     expect((await put(env, gif(), { cookie })).status).toBe(200);
-    expect(Object.keys(metaNow(env).thumb).sort()).toEqual(["gif", "jpg", "title"]);
+    expect(Object.keys(metaNow(env).thumb).sort()).toEqual(["from", "gif", "jpg", "title"]);
     env.BUCKET.touch(`meta/${ID}.json`, JSON.stringify({ ...metaNow(env), title: "Why the 502s were the cache" }));
     expect((await put(env, jpeg(1200, 675, 2100), { cookie, type: "image/jpeg", title: "Why the 502s were the cache" })).status).toBe(200);
     const thumb = metaNow(env).thumb;
@@ -137,6 +137,110 @@ describe("storing a thumbnail", () => {
     const env = space();
     const cookie = await cookieFor(env);
     expect((await put(env, gif(), { cookie, id: "ZzZzZzZzZzZzZzZz" })).status).toBe(404);
+  });
+});
+
+// N63: an edit, its copy and its bake change the first frame Copy thumbnail draws from. A
+// picture says which it was drawn from (`x-shroom-from`; a page from before the header drew
+// from `poster.jpg`), and the Worker stores only one drawn from what the video shows now.
+describe("the first frame a picture was drawn from", () => {
+  const EDIT = { version: 1, source_duration: 272, in: 8, out: 241, cuts: [{ start: 150, end: 162, kind: "retake", confidence: "high", applied: true }], rev: 3 };
+  const COPY3 = { rev: 3, file: "edit-3.mp4", duration: 221, poster: "edit-3-poster.jpg", teaser: "edit-3-teaser.mp4" };
+  const thumbs = (env) => [...env.BUCKET.store.keys()].filter((k) => k.startsWith(`rec/${ID}/thumb-`));
+
+  it("is stamped on the record: the recording's own poster with no edit, said or not", async () => {
+    for (const from of [undefined, "poster.jpg"]) {
+      const env = space();
+      expect((await put(env, gif(), { cookie: await cookieFor(env), from })).status).toBe(200);
+      expect(metaNow(env).thumb.from).toBe("poster.jpg");
+    }
+  });
+
+  it("is refused, and nothing stored, while an edit waits for its copy: there is nothing of the video to draw from", async () => {
+    const env = space({ [`meta/${ID}.json`]: metaOf({ edits: EDIT }) });
+    const cookie = await cookieFor(env);
+    for (const from of [undefined, "poster.jpg", "edit-3-poster.jpg", ""]) expect((await put(env, gif(), { cookie, from })).status).toBe(409);
+    expect(thumbs(env)).toEqual([]);
+    expect(metaNow(env).thumb).toBeUndefined();
+  });
+
+  it("once the copy is up, is the copy's own first frame — a picture of the original is refused", async () => {
+    const env = space({ [`meta/${ID}.json`]: metaOf({ edits: { ...EDIT, copy: COPY3 }, thumb: { title: "Where the 502s come from", gif: "thumb-0123456789abcdef.gif", jpg: "thumb-fedcba9876543210.jpg" } }) });
+    const cookie = await cookieFor(env);
+    for (const from of [undefined, "poster.jpg", "edit-2-poster.jpg"]) expect((await put(env, jpeg(), { cookie, type: "image/jpeg", from })).status).toBe(409);
+    expect(thumbs(env)).toEqual([]);
+    // Drawn from the copy's: stored, and it starts over — the original's loop isn't kept beside it.
+    const res = await put(env, jpeg(), { cookie, type: "image/jpeg", from: "edit-3-poster.jpg" });
+    expect(res.status).toBe(200);
+    const { url } = await res.json();
+    expect(metaNow(env).thumb).toEqual({ title: "Where the 502s come from", from: "edit-3-poster.jpg", jpg: url.split("/").pop() });
+    expect((await req(env, `/_shroom/status/${ID}`)).status).toBe(200);
+    expect((await (await req(env, `/_shroom/status/${ID}`)).json()).thumb).toBe(url);
+    // The loop drawn next from the same joins it.
+    expect((await put(env, gif(), { cookie, from: "edit-3-poster.jpg" })).status).toBe(200);
+    expect(Object.keys(metaNow(env).thumb).sort()).toEqual(["from", "gif", "jpg", "title"]);
+  });
+
+  it("after the bake, is the first frame the record names", async () => {
+    const env = space({ [`meta/${ID}.json`]: metaOf({ durationSec: 221, bakedFrom: [{ at: "2026-10-15T11:30:00Z", rev: 3, keep: [[8, 150], [162, 241]] }],
+      media: { hls: null, mp4: `rec/${ID}/edit-3.mp4`, poster: `rec/${ID}/edit-3-poster.jpg`, teaser: `rec/${ID}/edit-3-teaser.mp4`, width: 1920, height: 1080 } }) });
+    const cookie = await cookieFor(env);
+    expect((await put(env, gif(), { cookie })).status).toBe(409);
+    expect((await put(env, gif(), { cookie, from: "edit-3-poster.jpg" })).status).toBe(200);
+    expect(metaNow(env).thumb.from).toBe("edit-3-poster.jpg");
+  });
+});
+
+/** The page's Copy thumbnail script in a stand-in browser: every picture loads, the canvas
+ * draws nothing, and what it asks of the network and the clipboard is kept. */
+function thumbPage(c) {
+  const fetched = [], copied = [], images = [];
+  const ctx = new Proxy({}, { get: (_, k) => (k === "measureText" ? () => ({ width: 10 }) : k === "createLinearGradient" ? () => ({ addColorStop() {} })
+    : k === "getImageData" ? () => ({ data: new Uint8ClampedArray(64).fill(255) }) : () => {}), set: () => true });
+  const element = (tag) => ({ tag, style: {}, kids: [], appendChild(x) { this.kids.push(x); }, setAttribute() {}, getContext: () => ctx,
+    toBlob(done, type) { done(new Blob(["x"], { type })); }, get outerHTML() { return `<${tag} ${this.href ?? this.src ?? ""}>${this.kids.map((k) => k.outerHTML).join("")}`; } });
+  function Image() { images.push(this); this.decode = () => Promise.resolve(); }
+  function ClipboardItem(parts) { this.parts = parts; }
+  const document = { createElement: element, addEventListener() {}, removeEventListener() {}, execCommand: () => false, body: { appendChild() {} } };
+  const navigator = { clipboard: { writeText: (text) => { copied.push({ text }); return Promise.resolve(); }, write: (items) => { copied.push({ html: items[0].parts["text/html"] }); return Promise.resolve(); } } };
+  const fetch = (url, init) => { fetched.push({ url, init }); return Promise.resolve({ ok: true, json: () => Promise.resolve({ url: `/m/${ID}/thumb-1111111111111111.jpg` }) }); };
+  const shroomThumbs = new Function("document", "navigator", "location", "window", "ClipboardItem", "Image", "fetch", "setTimeout", "clearTimeout",
+    `${COPY_JS};${THUMB_JS};return shroomThumbs`)(document, navigator, { origin: HOST }, { ClipboardItem }, ClipboardItem, Image, fetch, () => 0, () => {});
+  const th = shroomThumbs({ id: ID, live: true, store: true, title: "Where the 502s come from", titled: true, thumb: null, gif: false, teaser: false, len: "3:41",
+    from: "poster.jpg", psrc: `/m/${ID}/poster.jpg`, tsrc: `/m/${ID}/teaser.mp4`, rw: 16, rh: 9, caps: THUMB, ...c });
+  return { th, fetched, copied, images };
+}
+const settle = async () => { for (let i = 0; i < 20; i++) await new Promise((ok) => setImmediate(ok)); };
+
+describe("the page's own drawing (N46, N63)", () => {
+  it("tells the Worker which first frame it drew from", async () => {
+    const p = thumbPage({ from: "edit-3-poster.jpg", psrc: `/m/${ID}/edit-3-poster.jpg`, tsrc: `/m/${ID}/edit-3-teaser.mp4` });
+    p.th.live();
+    await settle();
+    expect(p.images.map((i) => i.src)).toEqual([`/m/${ID}/edit-3-poster.jpg`]);
+    expect(p.fetched).toHaveLength(1);
+    expect(p.fetched[0].url).toBe(`/_shroom/thumb/${ID}`);
+    expect(p.fetched[0].init.headers).toMatchObject({ "content-type": "image/jpeg", "x-shroom-from": "edit-3-poster.jpg" });
+  });
+
+  it("draws nothing with nothing to draw from, and copies the link alone — never a first frame that's cut", async () => {
+    for (const store of [true, false]) {
+      const p = thumbPage({ store, from: "", psrc: "", tsrc: "" });
+      p.th.live();
+      p.th.teaser();
+      p.th.retitle("A new title");
+      await settle();
+      expect(p.images).toEqual([]);
+      expect(p.fetched).toEqual([]);
+      expect(await p.th.copy()).toBe(true);
+      expect(p.copied).toEqual([{ text: `${HOST}/${ID}` }]);
+    }
+  });
+
+  it("copies the video's picture wrapped in its link", async () => {
+    const p = thumbPage({ store: false, thumb: `/m/${ID}/thumb-0123456789abcdef.gif`, gif: true });
+    expect(await p.th.copy()).toBe(true);
+    expect(await (await p.copied[0].html).text()).toContain(`${HOST}/m/${ID}/thumb-0123456789abcdef.gif`);
   });
 });
 

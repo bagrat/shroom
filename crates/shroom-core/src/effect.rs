@@ -19,6 +19,22 @@ pub enum Effect {
     Updater(UpdCmd),
     /// The space's Worker, Region 6 (WORKER-INTERFACE §4).
     Member(MemberCmd),
+    /// The editor's lane (N63): the record and the video, the save, the permanent copy.
+    Editor(EditCmd),
+    /// The answer to one `shroom` command's ask (`Event::Cli`), for the control socket.
+    Cli(CliAnswer),
+}
+
+/// What the app says back to the `shroom` command: a code, never words — the command says
+/// them (dev/proposals/cli-agent-skill.md §3). `take` is the take's face after the ask;
+/// `link` is a stopped take's link.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CliAnswer {
+    pub id: u64,
+    pub ok: bool,
+    pub take: &'static str,
+    pub error: Option<&'static str>,
+    pub link: Option<String>,
 }
 
 impl Effect {
@@ -39,12 +55,16 @@ impl Effect {
             Effect::Cloud(CloudCmd::Claim(_)) => Some(Op::Claim),
             Effect::Cloud(CloudCmd::Wire { .. }) => Some(Op::Wire),
             Effect::Cloud(CloudCmd::Refresh) => Some(Op::Refresh),
+            Effect::Cloud(CloudCmd::SetAi(_)) => Some(Op::Ai),
             Effect::Shell(ShellCmd::Relaunch(_)) => Some(Op::Relaunch),
             Effect::Library(LibCmd::Refresh) => Some(Op::LibRefresh),
             Effect::Library(LibCmd::Cleanup) => Some(Op::Cleanup),
             Effect::Library(LibCmd::LoadCache) => Some(Op::LibCache),
             Effect::Library(LibCmd::Rename(..)) => Some(Op::Rename),
             Effect::Library(LibCmd::Delete(_)) => Some(Op::Delete),
+            Effect::Library(LibCmd::Suggest { .. }) => Some(Op::Suggest),
+            Effect::Library(LibCmd::Keep(_)) => Some(Op::Keep),
+            Effect::Library(LibCmd::Plays(_)) => Some(Op::Plays),
             Effect::Updater(UpdCmd::Check) => Some(Op::UpdateCheck),
             Effect::Updater(UpdCmd::Download(_)) => Some(Op::UpdateDownload),
             Effect::Updater(UpdCmd::Apply(_)) => Some(Op::UpdateApply),
@@ -55,6 +75,10 @@ impl Effect {
             Effect::Member(MemberCmd::Invite { .. } | MemberCmd::AddMac | MemberCmd::Renew(_)) => Some(Op::Invite),
             Effect::Member(MemberCmd::CancelInvite(_) | MemberCmd::RemoveMember(_) | MemberCmd::RemoveMac(_)) => Some(Op::Remove),
             Effect::Member(MemberCmd::Mark(_)) => Some(Op::Mark),
+            Effect::Editor(EditCmd::Open { .. }) => Some(Op::EditorOpen),
+            Effect::Editor(EditCmd::Save { .. }) => Some(Op::EditorSave),
+            Effect::Editor(EditCmd::Copy { .. }) => Some(Op::EditorCopy),
+            Effect::Editor(EditCmd::Upkeep) => Some(Op::EditorUpkeep),
             _ => None,
         }
     }
@@ -117,6 +141,9 @@ pub enum CloudCmd {
     /// answers older than this app's, put this app's page up (the roster seeded first);
     /// never over a newer one, never any storage. Answers `Refreshed`.
     Refresh,
+    /// Naming on or off (N66): this app's page put up again with Cloudflare's AI and its
+    /// schedule, or without them — on the token Mac only. Answers `AiSet`.
+    SetAi(bool),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -143,6 +170,8 @@ pub enum PublicUrl {
     /// A send that didn't go through, by mail instead: a draft to hi@shroom.am (N48) with the
     /// words and the version (B180).
     MailReport { version: String, words: String },
+    /// shroom.am/cli: what a coding agent reads to use the `shroom` command.
+    AgentGuide,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -157,6 +186,9 @@ pub enum ShellCmd {
     SendReport(crate::report::Post),
     /// A public link onto the clipboard — only ever from a Copy click (law 10).
     Copy(RecId),
+    /// General's prompt for a coding agent onto the clipboard — only ever from its Copy
+    /// click (law 10).
+    CopyAgentPrompt,
     /// The video's picture wrapped in its link, and the link as text — only ever from a
     /// Copy thumbnail click (law 10, N46). The title names the picture for screen readers.
     CopyThumb(RecId, String),
@@ -172,6 +204,8 @@ pub enum ShellCmd {
     OpenSettings,
     /// The Send feedback window, brought forward when it's already open (N60).
     OpenFeedback,
+    /// The editor, brought forward — Edit… while it's open, or as it opens (N63).
+    OpenEditor,
     /// Open a public page in the browser — only ever right after the click that asked.
     OpenUrl(PublicUrl),
     /// Register (or not) shroom to start at login.
@@ -232,6 +266,40 @@ pub enum LibCmd {
     /// can still finish (never one this Mac holds), spent or expired page keys. Answers
     /// `Cleaned`.
     Cleanup,
+    /// What the space says is worth deleting (N68): `POST /cleanup` paged to its end, the
+    /// whole space's (`everyone`) on owner-class Macs. Answers `Suggested`.
+    Suggest { everyone: bool },
+    /// Set the record's `keep` (read-modify-write under `If-Match`). Answers `Kept`.
+    Keep(RecId),
+    /// The space's play-count switch (owner-class). Answers `Plays`.
+    Plays(bool),
+}
+
+/// The editor's lane (`runtime/editor.rs`, N63, B195, B197): each answered once, by its news
+/// or `Failed` with its op (a Cancel and a Bake answer nothing).
+#[derive(Debug, Clone, PartialEq)]
+pub enum EditCmd {
+    /// Read the record; find the video on this Mac or fetch it from the space; read its
+    /// sound. Answers `Opened`, `Getting`…, then `Ready` — or `Failed { op: EditorOpen }`.
+    Open { rec: RecId },
+    /// The window closed before the video was ready: stop a fetch in flight, forget the
+    /// video's registration.
+    Cancel { rec: RecId },
+    /// Write `meta.edits` (read-modify-write, as a rename): `saved.rev` is the revision the
+    /// editor opened on, plus one. Answers `Saved` — or `Failed { op: EditorSave }`.
+    Save { rec: RecId, saved: shroom_edit::Saved },
+    /// Cut this revision's permanent copy, put it up and name it in the record (with
+    /// `keep_until`, two days on), in the background. Answers `Making`…, then `CopyDone` —
+    /// or `Failed { op: EditorCopy }`.
+    Copy { rec: RecId, rev: u64 },
+    /// “Yes, delete” (B197 (c)): the edit becomes the video — the record points at the
+    /// copy's files, then the original's go. Answers nothing: one that doesn't land is baked
+    /// by an upkeep once its two days are up.
+    Bake { rec: RecId },
+    /// The upkeep (B197 (d)): bake this Mac's videos whose original is past `keep_until`,
+    /// make the copies its edits are missing — the lane decides which. Answers
+    /// `UpkeepDone` — or `Failed { op: EditorUpkeep }`.
+    Upkeep,
 }
 
 /// The updater (`shroom-update`, B31).

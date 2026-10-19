@@ -85,6 +85,15 @@ fn rows() -> Vec<(&'static str, World)> {
         w.take = Some(take(Phase::Recording, 0));
         w
     }));
+    // A take the shroom command started, its label on (N62, B216): the agent label's line
+    // shows only then.
+    rows.push(("recording", {
+        let mut w = ready();
+        let t = take(Phase::Recording, 0);
+        w.agent = Some(t.opened);
+        w.take = Some(t);
+        w
+    }));
     rows.push(("tray-red-dot", {
         let mut w = ready();
         w.take = Some(take(Phase::Recording, 0));
@@ -107,6 +116,12 @@ fn rows() -> Vec<(&'static str, World)> {
             w
         }));
     }
+    // A marker dropped at this pause (N64): its row reads Marker dropped, greyed.
+    rows.push(("paused", {
+        let mut w = with_popover(ready());
+        w.take = Some(OpenTake { markers: 1, marked_at_pause: true, ..take(Phase::Paused(Cause::User), 272_000) });
+        w
+    }));
     rows.push(("tray-pause-bars", {
         let mut w = ready();
         w.take = Some(take(Phase::Paused(Cause::User), 272_000));
@@ -202,6 +217,44 @@ fn every_region3_state_derives_with_its_return_default_and_ratified_lines() {
         }
     }
     assert!(failures.is_empty(), "\n{}", failures.join("\n"));
+}
+
+/// N64's two lines on the paused popover, ratified with N64 (2026-10-18): Drop a marker,
+/// then Marker dropped once one is dropped at this pause.
+#[test]
+fn the_paused_popover_says_drop_a_marker_then_marker_dropped() {
+    let spec = Spec::load();
+    let by_id = spec.by_id();
+    let paused = by_id["paused"].iter().find(|s| !s.said_lines.is_empty()).expect("the paused fixture");
+    let json: String = rows().into_iter().filter(|(id, _)| *id == "paused").map(|(_, w)| serde_json::to_string(&derive(&w)).unwrap()).collect();
+    for text in ["Drop a marker", "Marker dropped"] {
+        let line = paused.said_lines.iter().find(|l| l.text == text).unwrap_or_else(|| panic!("the spec's paused doesn't say {text:?}"));
+        assert_eq!(line.copy_status, "ratified", "{text:?}");
+        assert!(json.contains(&format!("\"{text}\"")), "{text:?} missing from the paused popover");
+    }
+    // The pause you didn't make keeps its face as it was: no marker row there.
+    for (id, w) in rows().into_iter().filter(|(id, _)| ["display-lost", "mic-lost", "camera-lost", "mac-away", "mic-permission-lost"].contains(id)) {
+        let s = serde_json::to_string(&derive(&w)).unwrap();
+        assert!(!s.contains("Drop a marker") && !s.contains("Marker dropped"), "{id}");
+    }
+}
+
+/// N64: ⌥⌘M is held under ⌥⌘P's rule — the tray's one `shortcut` flag holds both, only
+/// while a take is open; a press when it isn't held is nobody's.
+#[test]
+fn the_marker_shortcut_is_held_with_the_pause_shortcut() {
+    let mut r = Run::new(ready());
+    assert!(!r.scene.tray.shortcut);
+    r.send(Event::MarkerShortcut(quick()));
+    assert!(r.effects.is_empty() && r.scene.popover.is_none());
+    let mut w = ready();
+    w.take = Some(take(Phase::Recording, 0));
+    let mut r = Run::new(w);
+    r.send(Event::Tick);
+    assert!(r.scene.tray.shortcut);
+    r.send(Event::MarkerShortcut(quick()));
+    assert!(r.has(|e| *e == Effect::Recorder(RecCmd::Marker)), "{:?}", r.effects);
+    assert_eq!(r.w.take.as_ref().map(|t| (t.phase, t.markers)), Some((Phase::Recording, 1)), "the take goes on");
 }
 
 // ── walkthroughs (ARCHITECTURE §3.6) ──

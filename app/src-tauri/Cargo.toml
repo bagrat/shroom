@@ -1,6 +1,6 @@
 [package]
 name = "shroom-app"
-version = "0.1.24"
+version = "0.1.25"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
@@ -26,6 +26,7 @@ shroom-capture = { path = "../../crates/shroom-capture" }
 shroom-record = { path = "../../crates/shroom-record" }
 shroom-encode = { path = "../../crates/shroom-encode" }
 shroom-core = { path = "../../crates/shroom-core" }
+shroom-edit = { path = "../../crates/shroom-edit" }
 shroom-storage = { path = "../../crates/shroom-storage" }
 shroom-upload = { path = "../../crates/shroom-upload" }
 shroom-cloud = { path = "../../crates/shroom-cloud" }

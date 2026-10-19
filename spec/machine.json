@@ -1127,6 +1127,114 @@
     "N7 (the landing's video is no longer a self-recorded take)"
    ],
    "amended_by": []
+  },
+  {
+   "id": "N65",
+   "title": "Voice cuts: say “shroom cut”, say the line again, and the slip is cut",
+   "decision": "**Bagrat asked for it, 2026-10-18** (relayed by the orchestrator), and tried it with his own voice the same day: the cut worked. (1) **The cue.** A speaker who slips says “shroom cut” on its own and says the line again. When the space listens (N66: the space's own Cloudflare account hears each take as it uploads), the Mac that made the take reads the take's transcript once it is whole and finds each cue. “shroom” is matched by sound, so the way it was heard doesn't matter, and it must be followed by “cut”. A mention (“just say shroom cut”, “the shroom cut feature”) is left alone; a looser hearing (“Troom cut”) counts only when it stands as a sentence of its own. (2) **The cut.** The words after the cue are lined up against the words before it to find where the line was started again; the cut runs from that restart through the cue, its edges set in the quiet on either side, found in the take on the Mac. A retake that says enough of the slip again is cut at once. A cue that breaks off a sentence (it stops without a full stop, or on a word no sentence ends on: “the”, “and”, “to”, “will”, or “is” after a noun, as in “…and your link is”) takes the sentence with it, back to its start, when it began within 20 s; the finished sentence before it stays, even when the speaker ran straight on from it. A line said again in other words is weighed by meaning (Bagrat, 2026-10-18, relayed by the orchestrator: the mechanism deterministic, the judgment above it): the Mac lists the places the redone stretch might begin, within 20 s before the cue: the starts of up to three sentences, and the pauses of 0.4 s or more inside the cue's own sentence that leave at least three of its words before them (a finished sentence before it is redone whole or not at all); the space's own Cloudflare account (Clef) scores whether what was said after the cue says again everything from each; the cut runs from the farthest start scored 0.4 or more, and only ever reaches farther back than the words alone would. When it can't answer (the free day used up, a busy model), the words alone decide. When nothing was said again after a cue, how far back the slip went isn't clear: the line before the cue is cut with it, and the strip asks the owner to check (Bagrat, 2026-10-18, after a take of his own on the early build: cut the likely slip at once instead of offering it). (3) **Where it lands.** The cuts go into the record's edit list (N63) once per take, so the share page, the embed and the download follow them, as do the captions and chapters made from the same transcript (N66). The words cut stay out of what viewers get. Only a take stopped while the space listens is cut; nothing already shared changes. (4) **No switch of its own.** The space's listening (N66) is the one switch: the cue is a deliberate command, and a take without it is untouched. (5) **The owner page shows them** (`owner-page-cuts`), under the player, in owner-mode only: each cut's time and what was said, struck through, between a few words of what plays around it, with Put back; the line cut before a cue with nothing said again after it shows “shroom cut” struck as well, under a note asking the owner to check it, and its Put back brings the line back while “shroom cut” stays out (both his picks on the board, 2026-10-18). A press saves at once; one that doesn't save puts the row back and says so. They are reviewed in both places (Bagrat, 2026-10-18, relayed by the orchestrator: “Both”): the strip on the owner page for a quick check, and the editor's timeline (N63) for fine-tuning, the cuts as red parts, a cut put back dashed, to be cut again; both read and write the one edit list, so a Put back in either shows in the other. Viewers see only the cut video. (6) **The hint** (`owner-page-cue-hint`; Bagrat OK'd its line 2026-10-18, relayed by the orchestrator): in a space that listens, the owner page of a take with no voice cuts says how, under the player, until Got it or a first take with voice cuts. (7) **Finishing** (`uploading`, `hearing`; Bagrat, 2026-10-18 (relayed by the orchestrator): one indicator on the owner page, from the upload until the voice cuts land, “Finishing” his pick of its first word): the owner page's upload line becomes one line from go-live, “Finishing your video — the link already works, share it anytime.”, a small spinner turning in front of it and no bar (Bagrat, 2026-10-18 (relayed by the orchestrator): a small spinner in front of the words, no bar), resting beside a stalled upload's line; in a space that listens it stays after the upload, its spinner turning, while the take is heard, five minutes at most, and it fades when the cuts land (the strip takes its place), when there are none (the hint, while it's due), or when the five minutes pass. It never speaks of cuts. No “Ready ✓” after it (B142's, retired on the page) and no second line. The words are proposals until he OKs them. Built: DECISIONS B200, B201, B202, B203.",
+   "status": "provisional",
+   "date": "2026-10-18",
+   "amends": [
+    "owner-page (faces under the player in owner-mode: the voice cuts, owner-page-cuts; the hint, owner-page-cue-hint; while the take is heard, hearing)",
+    "uploading (the page's one line: “Finishing your video — the link already works, share it anytime.”, after a spinner, no bar, in place of “Uploading — 40%. Your link already works.”)",
+    "fully-live (no “Ready ✓”: the line fades)"
+   ],
+   "amended_by": []
+  },
+  {
+   "id": "N62",
+   "title": "shroom on the command line, for a person or their coding agent",
+   "decision": "**Proposed 2026-10-18 (dev/proposals/cli-agent-skill.md). Bagrat's calls the same day, relayed by the orchestrator:** an agent may start and stop recordings only once a Settings switch is on, off by default; a refused recording says so, says that switch turns it on, and gives a link that opens Settings right at it; the command may make invites; the command is always installed; it does things many at once, so an agent can invite a team or tidy many videos in one step; and it is built in full now, its release his to time. (1) **The `shroom` command** ships inside the app (`Contents/MacOS/shroom-cli`) and follows the app it ships in: that app's folder (a dev build's command reads `~/.shroom-dev`) and that app to open. The install line links it into `~/.local/bin` (and puts that folder on the login profile's PATH when it isn't there), the cask into Homebrew's bin; `--uninstall` takes both back. (2) **It works whether the app runs or not:** list, info, links, open, rename, delete, cleanup candidates, members, invites — through the space's own page under this Mac's device key, never the Cloudflare token. A delete, a member's removal or a batch invite changes nothing without `--yes`; a rename, delete, invite or removal waits while a take is open (law 4). (3) **Many at once:** a batch takes its items as arguments or from a file and answers each with its own status; it is safe to run again (nothing is done twice), and says so when only some went through. At most 20 invites or 100 items a call. Each person invited gets their own link: shroom sends nothing. (4) **Cleanup candidates** are the page's own suggestions where the page makes them, and otherwise the videos older than a number of days. (5) **Recording goes through the running app** (its control socket in shroom's folder, this user only): start is the popover's Start, countdown and permission beat included, the popover open or not; pause is the tray's; Resume and Stop are the paused popover's; a stop answers with its link (law 3: this stop made it; law 10: nothing is copied). The app answers with a code, and the command says the words. (6) **Settings → General gains “Your coding agent”**: the prompt to paste, Copy (“Copied”, law 10), Read it first (shroom.am/cli), the line under them, and the switch “Let it start and stop recordings”, off by default; while it's off the app refuses every recording ask. **The refusal is three lines:** recording from a coding agent is off; the switch in Settings, under General, turns it on; and the link `shroom://settings/agent` (with `--json`, also its own field, `settings_link`; exit 10 as before). Bagrat approved its words and the switch's label as drawn, 2026-10-18. Clicked, the link opens shroom if it isn't running, and Settings on General with the switch's row in view and lit for a moment; the switch stays as it was — only the person flips it. Mid-take it opens nothing (law 4); a sheet open in Settings stays, and Settings comes forward as it stands. Settings needs a space (B160), so a Mac without one is told to set shroom up first, before the switch comes up. (7) **shroom.am/cli** is the guide an agent reads (a skill's SKILL.md), and `shroom guide` prints the same; /agent points there. (8) **Without the count, and the label** (Bagrat, 2026-10-18): `record start --no-countdown` starts the take at once, capture beginning as the count's end would; the app's own Start keeps its count. A take the command starts shows a small label at the top right of the display it records — “Your coding agent is recording your screen” — while it records (paused, it goes; a take of the camera only has none), left out of the video and taking no clicks; `--no-label` leaves it off. The tray shows every take, whatever the flags. Bagrat approved the label's board as drawn — its look, its words and the label on by default — 2026-10-18. Built: DECISIONS B215–B219. Ratified by Bagrat, 2026-10-18: the Settings card's words as built (he'll tweak them once he uses it), the command's words and the guide as built.",
+   "status": "ratified",
+   "date": "2026-10-18",
+   "amends": [
+    "N36 (General gains the coding agent's card)",
+    "N59 (shroom.am gains /cli beside /agent)"
+   ],
+   "amended_by": []
+  },
+  {
+   "id": "N68",
+   "title": "The page counts plays in the owner's own account, and the Library suggests videos to clean up",
+   "decision": "**Bagrat asked for it, 2026-10-18**: shroom is pay-as-you-go, so it should say which videos are worth deleting, from how old they are, how often and how far they've been watched and when last. **The same day he chose**: plays counted **on by default**, with the switch in Settings; **plays and unique-ish viewers** both counted; the score is **fading and cost together**; deleting from the suggestions is **one tap with Undo**; and the rest to the build's judgment (B210–B214). (1) **The page counts plays.** A viewer's page and the embed send one beacon at the first play and one each time the tab hides, saying how much was watched; the Worker keeps per-video counts in the space's own bucket — plays, unique-ish viewers (a day-only hash under a salt replaced daily), how far each was watched in tenths, plays per day, last played. No cookie, nothing stored on the viewer's device, nothing kept that says who watched. The maker's own page never counts. A video that isn't live gets no record; a deleted one's record goes with its seal. (2) **Settings → General gains a group, Your videos**: **Count plays** (on; the space's switch, owner-class only, as the mark's is), **Suggest videos to clean up** (on; this Mac's), and **Space used** (the space's size, and what it costs past Cloudflare's free 10 GB). (3) **A video is suggested** when counting has watched it at least 30 days, it is at least 30 days old and nobody has played it in 30, its plays have faded (each counts half as much every 30 days, weighted by how far it was watched: 0.3 + 0.7 × its median share) below a quarter of one fresh full watch, and it takes at least a cent a month to keep at list price (about 0.67 GB). Never one marked Keep. The costliest per remaining play comes first. (4) **The Library says so in one line** above the rows, with Review… and ✕ (not now, until the list changes). (5) **Suggested to clean up** is the Library's own view: what deleting all of them frees and saves, then each video with when it was made, its size and why (\"Watched 4 times, the last 10 months ago\"), with Open page, Keep and Delete. **Delete is one tap**: the row goes and an Undo line stays a few seconds before the delete is sent; Delete all… asks once with the several-videos sheet. Keep takes a video off the list for good (the record's `keep`). (6) **The money line** gives sizes always, and cents only past the free 10 GB; inside it, the saving reads as nothing yet, and a clean-up that brings the space back inside it says so. (7) **shroom.am/privacy's line on viewers changes**; its new words, from the board \"shroom.am/privacy — the viewers' line once plays are counted\", Bagrat approved on 2026-10-18 with the sentence on the one-day viewer stand-in, and the page carries them (site/pages/privacy.html). (8) **Each suggested row says what it costs a month**, only when the space is past the free 10 GB and never on a member's Mac (Bagrat, 2026-10-18): its size at the list price (B212). Built: DECISIONS B210–B214. **Bagrat ratified it as built, 2026-10-18**: its words and rules, and B211's 1¢ size gate.",
+   "status": "ratified",
+   "date": "2026-10-18",
+   "amends": [
+    "The Library (a line above the rows, and a view of its own; the footer's 'no sizes or prices', P13 parked, gives way to sizes in the suggestions)",
+    "Settings · General (the group Your videos)",
+    "The page and the embed (they count plays)",
+    "shroom.am/privacy (the viewers' line, ruled 2026-10-18)"
+   ],
+   "amended_by": []
+  },
+  {
+   "id": "N66",
+   "title": "The space names its videos, adds chapters and writes captions, through the owner's own Cloudflare",
+   "decision": "**B171's plan, built** (Bagrat, 2026-10-18, relayed by the orchestrator: build it now, decide the release later; the build's calls are made on judgment and listed in DECISIONS B205–B208 for him to overturn). (1) **Off until the owner turns it on, on the Mac that holds the setup key, and visible** (Bagrat, 2026-10-18: off by default, not to spend the AI allowance, but very visible; one switch for every AI feature): a banner in the popover, like the update's, says what shroom can do — name videos, add chapters, cut slips — and Turn on… opens a short confirm that says what it costs, once; the switch in Settings · Space, “AI for new videos”, is its home, and covers voice cuts (N65) too. Not now hides the banner for good on that Mac (Bagrat, 2026-10-18: from then on only the switch turns AI on). Turning it on re-wires the space's page with Cloudflare's AI and a schedule that runs each minute; the owner's key needs no new power (B171's live check 2). Turning it off takes them away; names, chapters and captions already made stay. Only new videos (Bagrat, 2026-10-18: no offer to name earlier ones). Members' Macs never show it and never see a cost. (2) **Each take is heard as it uploads**: every Mac tells the space when another minute of a take is up and once more after Stop, and the space hears that minute and keeps its words beside the take, on the recording's own clock. (3) **The title comes early, the rest after Stop** (Bagrat, 2026-10-18: the title must be there when the page opens): once the first minute is heard while the take records, a title from it alone, so the page opens named; after Stop the space names the take again from all of it and places its chapters, from the words that play: the title while nobody has typed one (a typed title always wins and is never written over), chapters only on a video of 90 s or more with two or more, and captions from the same words, never a second hearing. (4) **The free day**: every Cloudflare account gets 10,000 neurons a day (about 2½ hours of new video; Bagrat, 2026-10-18); when they run out, the rest waits and is finished after 00:00 UTC by the space's schedule, with no error anywhere; on a paid account it simply runs (about 4¢ per video hour). (5) **Edits never re-hear** (the editor, N63, when it lands): chapters and captions follow the saved edit on every view; the name and chapters are made again only when an edit removes at least a fifth of what was said or a whole chapter. **The turn-on, ratified** (Bagrat, 2026-10-18): he approved the banner, its confirm, its turning-on, failed and on faces and the switch in Settings · Space as drawn (AiBanner, AiConfirm, AiBannerStates, AiSettings), with the price said “per video hour” so it reads as hours of video, not of the day; he may tweak the words later. **The landing's line, agreed** (Bagrat, 2026-10-18), goes on shroom.am with the homepage's redesign, not before: “AI titles, chapters and captions are free for about 2½ hours of new video a day. Recording more? About 4¢ per video hour on Cloudflare’s $5 plan.” **The privacy page's AI point, approved** (Bagrat, 2026-10-18), as drafted on the board AiPrivacy. The rest is provisional: its words are drafts until he OKs them.",
+   "status": "provisional",
+   "date": "2026-10-18",
+   "amends": [
+    "B171 (built: names, chapters and captions after v1, on the owner's own Cloudflare)",
+    "settings-space (the naming switch, on the Mac that holds the setup key)",
+    "config (the AI banner and its confirm, on the Mac that holds the setup key)"
+   ],
+   "amended_by": []
+  },
+  {
+   "id": "N67",
+   "title": "Chapters in the seek bar, captions, and the named title on the page",
+   "decision": "**Chapters live in the page's seek bar** (Bagrat's ruling, 2026-10-18, relayed by the orchestrator; he approved the canvas boards “The page — chapters in the seek bar, named on hover” and “The page on a phone — chapters in the seek bar, named while a finger is on it” the same day). The bar splits into one section per chapter, 2 px apart. Hovering it, playing or paused, shows the time and the chapter's name at that point, and the section under the pointer grows a little. On a phone a finger on the bar shows the same above the thumb, while it drags and for a moment after a tap, and the thumb grows while the finger is on it. The chapter now playing is named after the time, cut short when long, where the player's row has room for it; a phone's row has none beside its five controls, so there the finger's tip names it (a change from the phone board as approved, found while building and put back on the canvas; Bagrat kept it so, 2026-10-18, over a line under the controls or no sound button on phones). The bar's spoken value names it everywhere. There is no chapter list. A video with fewer than two chapters keeps today's whole bar. **Captions**, when the space has them: a Captions button in the player's row turns them on; off by default, and remembered on that browser. **The named title** is the page's title, everywhere a title shows (the page, its tab, unfurls, the download's name, the Library). On the owner's page a line under the title says it was named from what was said, until the title is edited; while the free day is used up, it says the name comes a little later instead. Built: DECISIONS B209. Provisional: the words are drafts until he OKs them.",
+   "status": "provisional",
+   "date": "2026-10-18",
+   "amends": [
+    "owner-page (the named title's line; chapters in the bar; captions)",
+    "live (chapters in the bar; captions, where the summary said no captions in v1)",
+    "absent_from_v1 (captions join v1 with N67; transcript search stays out)"
+   ],
+   "amended_by": []
+  },
+  {
+   "id": "N63",
+   "title": "The editor: trim, cut, undo, and edits the link plays",
+   "decision": "**Bagrat asked for it, 2026-10-18** (relayed by the orchestrator): a real editor, apart from AI, that the spoken-cue layer can plug into later. **Edit… in a Library row's menu** opens the **editor**, a window of its own (one at a time), on a live video in this Mac's scope, renamable here: the video plays at the top; under it the play button and the time, edited position / edited length, with “was 4:32” once the edit changes the length; then the **timeline**: the whole recording's sound as a waveform with the playhead, **yellow ends that drag to trim**, and **a drag across the sound that selects a part**, with **Cut 12.0 s** under it. **A cut shows red** and the preview skips it as it plays; clicking a cut offers **Put back**. **Undo and Redo** (also ⌘Z and ⇧⌘Z) step through every change made in the window, Put back and Revert included. **Revert to original** puts back every cut and both ends. **Done** (Return) saves the edit and closes the window; ✕ is Done. The footer says the link stays the same. Saving is a small edit list kept in the video's record; **the share page and the embed apply it as they play** (they skip the cuts, hold to the trim, and show the edited length), so **the link never changes** and nothing is re-encoded first. Until then the original stays in the space, so Revert works from any Mac. Then the window stays to make **the final video**: the Mac cuts the edit with its own encoder and puts it up beside the original under the same link (“Making the final video… 40%”; the window can be closed and shroom finishes it); once it is up, Download and the page use it. **Then it asks “Delete the original?”** (Bagrat, 2026-10-18: encourage deleting it soon; no 30-day keep): **Yes, delete** leads, filled — a click, never Return (law 9; DEVIATIONS #55, ratified 2026-10-18) — and the edit becomes the video for good; **Keep for 2 days** keeps the original so the edit can still be reverted, and shroom deletes it after two days, whether or not this Mac is open then; closing the window there means Keep for 2 days. While the original is kept, the editor says by Revert how long it has left; once it is gone, the edit is final and Revert to original only undoes what changed since the window opened. A video that isn't on this Mac comes from the space first (“Getting the video from your space…”); if that fails the window says so and offers Try again. While it saves, Done reads Saving…; if the save doesn't go through, the window stays open and says so, and Done tries again. Edit… greys offline and while a take is open (law 4), as Rename does. Built: DECISIONS B195, B197. **Ratified by Bagrat as built, 2026-10-18**, with B195–B199 and the build’s words.",
+   "status": "ratified",
+   "date": "2026-10-18",
+   "amends": [
+    "absent_from_v1 (trim, the editor and marker surfacing join v1; anything beyond trim and cut stays out)",
+    "library (a row's menu gains Edit…)",
+    "The window (Opens: also the editor)",
+    "B195 (the original is no longer kept indefinitely: B197)"
+   ],
+   "amended_by": []
+  },
+  {
+   "id": "N64",
+   "title": "Markers: Drop a marker comes back while paused, and ⌥⌘M drops one while recording",
+   "decision": "**Bagrat asked for markers dropped while recording, 2026-10-18** (relayed by the orchestrator), as the POC once had. (1) **Drop a marker comes back to the paused popover**, between Finish & Share and Restart, reversing B143's hiding now that the editor (N63) shows markers. It lands a marker at the pause point; once dropped, the row reads **Marker dropped** and greys until the take resumes (a second marker at the same point says nothing). (2) **⌥⌘M drops a marker while recording**, at that moment of the take, held only while a take is open, exactly as N54's ⌥⌘P (no new permission, let go when the take closes, nothing on screen names it in v1, and nothing on screen answers it: the take goes on). (3) **Markers show as flags on the editor's timeline**, at their times on the recording. They never reach viewers in v1. Built: DECISIONS B196. **Ratified by Bagrat as built, 2026-10-18**, with B195–B199 and the build’s words.",
+   "status": "ratified",
+   "date": "2026-10-18",
+   "amends": [
+    "B143 (Drop a marker comes back to the paused popover)",
+    "N24 (Drop a marker, metadata-only in v1, now shows in the editor)",
+    "N54 (a second shortcut held while a take is open)",
+    "absent_from_v1 (global hotkeys: ⌥⌘M joins ⌥⌘P)",
+    "paused (Drop a marker shows)",
+    "recording (⌥⌘M)"
+   ],
+   "amended_by": []
+  },
+  {
+   "id": "N69",
+   "title": "Edit in shroom: the owner's page opens the video in shroom's editor",
+   "decision": "**Bagrat asked for an Edit button on the video's page that opens it in the editor, 2026-10-18** (relayed by the orchestrator), and approved the boards “The page — Edit in shroom” and “Editor — opened from the page's Edit” as drawn, with their lines, option A and the tooltip “Edit in shroom” (2026-10-18). (1) **The owner page gains Edit in shroom**: the scissors, the last of the quiet icons beside the title, after Download, its tooltip “Edit in shroom”. It shows only on the owner page (the space's owners on every video, a member on their own) and only once the video is fully up, as Edit… in the Library; a recipient's page and the embed never have it. (2) **It opens `shroom://edit/<the space's address>/<the video>`**, with nothing secret in it: the browser asks first (its own “Open shroom?”), and the Mac decides by its own state. (3) **The Mac's answers.** A video this Mac can edit (the owner's Macs: every video in the space; a member's Mac: their own) opens in the editor as Edit… opens it. The editor already open comes forward as it is, one at a time; holding another video, its footer says “You're editing another video — press Done, then Edit again.” While a take is open the press waits (law 4), and the editor opens once the take ends. Otherwise the popover opens by itself under the mushroom with one line, said once: “This Mac isn't set up for that video's space.”, “Only whoever recorded this video, or the space's owner, can edit it.” or “That video isn't in your space anymore.” A Mac not set up at all opens its welcome window, as a click on the mushroom does. (4) **Where shroom isn't on the Mac, the page says nothing** (option A): only a Mac running shroom makes a browser the owner's, so the button shows only where it can work. Built: DECISIONS B221.",
+   "status": "provisional",
+   "date": "2026-10-18",
+   "amends": [
+    "owner-page (Edit in shroom)",
+    "editor (the line when the page asks for another video)",
+    "config (three one-shot status lines)"
+   ],
+   "amended_by": []
   }
  ],
  "surfaces": [
@@ -1140,7 +1248,7 @@
   },
   {
    "name": "The window",
-   "may_do": "Lives: centered on the mushroom's display (N57), one at a time per kind | Opens: onboarding, Library, Settings, Send feedback (N60) | Rules: the dock icon while open; ✕ ≡ the retreat (N12); survives a browser round-trip  [UX-STATEMACHINE.md L1717]"
+   "may_do": "Lives: centered on the mushroom's display (N57), one at a time per kind | Opens: the editor (Edit…, N63), onboarding, Library, Settings, Send feedback (N60) | Rules: the dock icon while open; ✕ ≡ the retreat (N12); survives a browser round-trip  [UX-STATEMACHINE.md L1717]"
   },
   {
    "name": "The page",
@@ -1152,17 +1260,21 @@
   },
   {
    "name": "The overlays",
-   "may_do": "Lives: the chosen display | Opens: the countdown scrim; the bubble from `config` through the take | Rules: never windows, never the dock icon; the bubble never takes focus, while the countdown does — you just started it, and its Esc must work without any extra macOS permission; the bubble is the only thing of ours ever in a take  [UX-STATEMACHINE.md L1720]"
+   "may_do": "Lives: the chosen display | Opens: the countdown scrim; the bubble from `config` through the take; the agent label while a take the shroom command started records (N62) | Rules: never windows, never the dock icon; the bubble never takes focus, while the countdown does — you just started it, and its Esc must work without any extra macOS permission; the bubble is the only thing of ours ever in a take (the label, like the countdown, is left out of it)  [UX-STATEMACHINE.md L1720]"
+  },
+  {
+   "name": "The command line",
+   "may_do": "Lives: the person's terminal, or their coding agent's | Opens: — (a link in the browser when asked); its recording refusal carries a link that opens Settings at General's switch, for the person to click | Rules: the space's own page under this Mac's device key, never the token; nothing undoable without --yes; waits while a take is open (law 4); recording only through the running app, and only with General's switch on (N62)"
   }
  ],
  "absent_from_v1": [
   "Local recording before setup and any local library (U1)  [L1724]",
   "the .dmg (P17; brew joined v1 by N49)  [L1724]",
   "macOS notifications (U9)  [L1724-1725]",
-  "global hotkeys, save ⌥⌘P's pause and resume during a take (N54) (the reopen door covers a hidden mushroom, N41)  [L1725-1726]",
+  "global hotkeys, save ⌥⌘P's pause and resume and ⌥⌘M's marker during a take (N54, N64) (the reopen door covers a hidden mushroom, N41)  [L1725-1726]",
   "the tray's Copy last link and any auto-copy (N21, N1)  [L1726]",
-  "trim, the editor, marker surfacing (P11)  [L1726-1727]",
-  "captions and transcript search (P8)  [L1727]",
+  "transcript search (P8; captions left this list with N67)  [L1727]",
+  "an editor beyond trim and cut: titles, overlays, transitions, a second track (P11; trim, cut and markers joined v1 with N63 and N64)  [L1726-1727]",
   "a sender name or avatar (U3)  [L1727-1728]",
   "passwords or expiry on links (P1)  [L1728]",
   "storage sizes and cost figures (P13)  [L1728]",
@@ -1576,7 +1688,7 @@
     "display-lost: N24 says 'the same popover with the context line', but the edge row lists only Resume (greyed) · Stop · Discard…. Whether Drop a marker and Restart remain is unstated.",
     "quit-confirm reached by right-click Quit from idle-ready: the Back destination is unstated (the diagram draws config → quit_confirm → config). Esc / click-away on quit-confirm is also unstated beyond Law 9's 'Esc always means back'.",
     "recovered-take says 'next launch is silent', but N41 / law 5 make a user-made launch a tray click. Presumably such a launch opens config with the banner. Check against N41's amendment of Region 1.",
-    "The config heading is copy ratified (N21), but the popover grammar (banner slot, status line, disk-low under Start, Return = Start) is N38/N39 and provisional. The status-line string 'Uploading — 40%. Your link already works.' matches ratified owner-page copy (N26), but is provisional in this placement. 'Fully live ✓' is gone from the popover as from the page (DEVIATIONS #46, #52): the upload line just goes when the last upload finishes.",
+    "The config heading is copy ratified (N21), but the popover grammar (banner slot, status line, disk-low under Start, Return = Start) is N38/N39 and provisional. The status-line string 'Uploading — 40%. Your link already works.' matches ratified owner-page copy (N26), but is provisional in this placement. 'Fully live ✓' is gone from the popover as from the page (DEVIATIONS #46, #52): the upload line just goes when the last upload finishes. Since 2026-10-18 the owner page says “Finishing your video — the link already works, share it anytime.” instead (N65 (7)); the popover keeps its own line.",
     "all-set says 'all six rows green', while N42 lets row six tick with 'microphone off for now'.",
     "The member all-set variant (two doors, Close · Record now) lives in Region 6 (N30), not here.",
     "The bubble is not a state in the inventory. It is included as the overlay the region defines (N22; the surfaces table, line 1720). 'discard-confirm (saved take)' and 'permission-lost (microphone)' are fixture ids for variants that the spec doesn't name separately.",
@@ -2294,6 +2406,25 @@
    ],
    "cites": [
     "N38"
+   ]
+  },
+  {
+   "id": "editor-faces",
+   "title": "the editor's faces",
+   "states": [
+    "editor",
+    "editor-getting",
+    "editor-cant-get",
+    "editor-saving",
+    "editor-save-failed",
+    "editor-save-refused",
+    "editor-making",
+    "editor-making-failed",
+    "editor-keep-original"
+   ],
+   "cites": [
+    "N63",
+    "B199"
    ]
   }
  ],
@@ -4776,7 +4907,7 @@
    "surface": "popover",
    "status": "ratified",
    "board": "Main",
-   "summary": "A same-themed custom popover under the tray (Loom-style). It is never a native menu and never a window, so the dock stays clear. Click-away or Esc dismisses it with nothing lost. It is pre-filled with last-used values and never skipped: a confirm, not a form. Rows run top to bottom, each a picker (an icon, the pick's name, a chevron; its label is the row's accessible name, DEVIATIONS #45): Record (one source picker: displays by human name first, then Camera only), the camera (every camera here, then Camera off — a camera turns the bubble on with it, Camera off turns it off; DEVIATIONS #43), Microphone (every microphone, then No mic), Quality, then Start recording (filled, full width) with a quiet line beneath. The footer holds four icons with tooltips: Send feedback, Library, Settings, Quit (N60). The grammar is N38's (provisional): a banner slot at the top for asks, a status line above the footer for facts, and disk-low under Start. When it opens, the grant probe runs (`recording-off`), and a due monthly re-confirm runs perm-priming's warm-up. The device rules are N39's (provisional): never auto-pick an iPhone (mic or camera); a click picks the display it came from as the source, over a remembered display but never over a hand pick in this take's Record picker or Camera only (N56); a gone last-used display falls back silently to the menu-bar display; same-named displays are labeled by position; Camera as the source previews here; with a camera picked for the bubble, picking another display moves the bubble there. If the camera is denied, the camera picker shows Camera off and Camera as the source greys Start. Since N44 both pickers start with System default: it follows macOS's default input and its preferred camera (never an iPhone by itself), and a take keeps the device it started with.",
+   "summary": "A same-themed custom popover under the tray (Loom-style). It is never a native menu and never a window, so the dock stays clear. Click-away or Esc dismisses it with nothing lost. It is pre-filled with last-used values and never skipped: a confirm, not a form. Rows run top to bottom, each a picker (an icon, the pick's name, a chevron; its label is the row's accessible name, DEVIATIONS #45): Record (one source picker: displays by human name first, then Camera only), the camera (every camera here, then Camera off — a camera turns the bubble on with it, Camera off turns it off; DEVIATIONS #43), Microphone (every microphone, then No mic), Quality, then Start recording (filled, full width) with a quiet line beneath. The footer holds four icons with tooltips: Send feedback, Library, Settings, Quit (N60). The grammar is N38's (provisional): a banner slot at the top for asks, a status line above the footer for facts, and disk-low under Start. When it opens, the grant probe runs (`recording-off`), and a due monthly re-confirm runs perm-priming's warm-up. The device rules are N39's (provisional): never auto-pick an iPhone (mic or camera); a click picks the display it came from as the source, over a remembered display but never over a hand pick in this take's Record picker or Camera only (N56); a gone last-used display falls back silently to the menu-bar display; same-named displays are labeled by position; Camera as the source previews here; with a camera picked for the bubble, picking another display moves the bubble there. If the camera is denied, the camera picker shows Camera off and Camera as the source greys Start. Since N44 both pickers start with System default: it follows macOS's default input and its preferred camera (never an iPhone by itself), and a take keeps the device it started with. The owner page's Edit in shroom, for a video this Mac can't edit (N69), opens it by itself under the mushroom — the app you were in keeps the keyboard — with one line in the status line's place, said once until the popover closes.",
    "entry": "Not mid-take, and the tray clicked in idle-ready (or a launch you did, or all-set's Record now, or a cancelled countdown, which returns here still armed). Popover banners stack one at a time, highest first: saved take (recovered-take / disk-full-stop), the space can't take videos (other regions), recording-off, update-ready (Region 5).",
    "said": [
     {
@@ -5057,6 +5188,36 @@
       "#53"
      ],
      "id": "config.your-screen-didnt-send-a"
+    },
+    {
+     "text": "This Mac isn't set up for that video's space.",
+     "role": "status",
+     "copy": "provisional",
+     "note": "The owner page's Edit in shroom (N69), on a Mac set up for another space: the popover opens by itself under the mushroom, the app you were in keeping the keyboard; said once in the status line, first in its order, until the popover closes. Approved as drawn (Bagrat, 2026-10-18).",
+     "cites": [
+      "N69"
+     ],
+     "id": "config.this-mac-isnt-set-up"
+    },
+    {
+     "text": "Only whoever recorded this video, or the space's owner, can edit it.",
+     "role": "status",
+     "copy": "provisional",
+     "note": "The owner page's Edit in shroom (N69), on a member's Mac, for someone else's video: the popover opens by itself under the mushroom, the app you were in keeping the keyboard; said once in the status line, first in its order, until the popover closes. Approved as drawn (Bagrat, 2026-10-18).",
+     "cites": [
+      "N69"
+     ],
+     "id": "config.only-whoever-recorded-this-video"
+    },
+    {
+     "text": "That video isn't in your space anymore.",
+     "role": "status",
+     "copy": "provisional",
+     "note": "The owner page's Edit in shroom (N69), for a video deleted since its page opened: the popover opens by itself under the mushroom, the app you were in keeping the keyboard; said once in the status line, first in its order, until the popover closes. Approved as drawn (Bagrat, 2026-10-18).",
+     "cites": [
+      "N69"
+     ],
+     "id": "config.that-video-isnt-in-your"
     }
    ],
    "actions": [
@@ -5144,7 +5305,8 @@
     "N44",
     "#43",
     "N56",
-    "N60"
+    "N60",
+    "N69"
    ],
    "was": {
     "fixture": "r3.json",
@@ -5348,8 +5510,19 @@
    "status": "ratified",
    "board": "TrayFaces",
    "summary": "The tray is the whole surface and there is no popover. The icon wears the red dot. A click is an instant pause, and the popover opens only after the pause is confirmed (never catch a menu in the last frame, POC §8). No timer in the menu bar. Network is never the recording's problem: capture writes locally regardless, and upload is opportunistic in the background. A right-click mid-take is the same as a left click (N39). ⌘Q and the Dock's Quit are declined silently (law 4).",
-   "entry": "`countdown` elapsed and capture began, or Resume from `paused`.",
-   "said": [],
+   "entry": "`countdown` elapsed and capture began, or Resume from `paused`. Or capture began at once: the shroom command's start without the count (N62).",
+   "said": [
+    {
+     "text": "Your coding agent is recording your screen",
+     "role": "label",
+     "copy": "ratified",
+     "note": "The agent label: a small label at the top right of the display being recorded, while a take the shroom command started records (N62, B216). Left out of the video, as the countdown and the bubble's controls are; it takes no clicks. Not with --no-label; never on a take the person started, nor on one of the camera only; paused, it goes. Ratified by Bagrat, 2026-10-18, relayed by the orchestrator: the board as drawn.",
+     "cites": [
+      "N62"
+     ],
+     "id": "recording.your-coding-agent-is"
+    }
+   ],
    "actions": [
     {
      "label": "tray click",
@@ -5373,6 +5546,13 @@
      "note": "the tray click's pause, from the keyboard; the popover opens after the pause is confirmed (N54)"
     },
     {
+     "label": "⌥⌘M",
+     "kind": "other",
+     "return_default": false,
+     "goes_to": "recording",
+     "note": "drops a marker at this moment of the take; nothing on screen answers, the take goes on (N64)"
+    },
+    {
      "label": "⌘Q / Dock Quit",
      "kind": "other",
      "return_default": false,
@@ -5384,7 +5564,9 @@
     "N39",
     "N41",
     "N25",
-    "N54"
+    "N54",
+    "N62",
+    "N64"
    ],
    "was": {
     "fixture": "r3.json",
@@ -5399,7 +5581,7 @@
    "surface": "popover",
    "status": "ratified",
    "board": "Paused",
-   "summary": "The same custom popover, with the icon wearing the pause bars. Top to bottom: the header with the length, Resume (the one filled action, Return default), Finish & Share and Restart as plain rows (Finish & Share was Stop, with a line beneath it; B143), and Discard… as red text at the bottom beside a grey no-Quit note. Quit is absent by law. Drop a marker is hidden until the editor ships (B143): the core still lands a marker at the pause point, metadata-only, but no surface offers it. Restart re-arms with the countdown already running. The count is Restart's undo (N39, provisional): the old take is discarded only the instant the new capture begins.",
+   "summary": "The same custom popover, with the icon wearing the pause bars. Top to bottom: the header with the length, Resume (the one filled action, Return default), Finish & Share and Restart as plain rows (Finish & Share was Stop, with a line beneath it; B143), and Discard… as red text at the bottom beside a grey no-Quit note. Quit is absent by law. Drop a marker sits between Finish & Share and Restart (N64, reversing B143's hiding): it lands a marker at the pause point, and the row then reads Marker dropped, greyed until the take resumes. Markers show in the editor (N63). Restart re-arms with the countdown already running. The count is Restart's undo (N39, provisional): the old take is discarded only the instant the new capture begins.",
    "entry": "Tray click while recording, after the pause is confirmed (a right-click counts the same, N39). Also: Back (or click-away / Esc) from discard-confirm; a cancelled Restart count; a Quit request while paused, which opens this popover (law 4).",
    "said": [
     {
@@ -5428,6 +5610,20 @@
      "copy": "ratified",
      "id": "paused.stop",
      "note": "was “Stop” (B143)"
+    },
+    {
+     "text": "Drop a marker",
+     "role": "button",
+     "copy": "ratified",
+     "note": "N64; between Finish & Share and Restart; greyed in these words while a window's question is open, a marker not dropped (B199)",
+     "id": "paused.drop-marker"
+    },
+    {
+     "text": "Marker dropped",
+     "role": "button",
+     "copy": "ratified",
+     "note": "N64; the same row, greyed, once a marker is dropped at this pause — only then (B199)",
+     "id": "paused.marker-dropped"
     },
     {
      "text": "Discard…",
@@ -5470,8 +5666,8 @@
      "label": "Drop a marker",
      "kind": "secondary",
      "return_default": false,
-     "note": "Hidden from the UI until the editor ships (B143). The core keeps it: it lands a marker at the pause point, metadata-only in v1. No state change.",
-     "hidden": "until the editor ships (B143)"
+     "note": "A plain row between Finish & Share and Restart (N64). Lands a marker at the pause point; the row then reads Marker dropped and greys until Resume. No state change. A question open in a window (the Library's delete sheet, a Settings sheet) greys it, its words unchanged (B199).",
+     "goes_to": "paused"
     },
     {
      "label": "Discard…",
@@ -5492,7 +5688,9 @@
     "N39",
     "N41",
     "B143",
-    "N54"
+    "N54",
+    "N64",
+    "B199"
    ],
    "was": {
     "fixture": "r3.json",
@@ -6324,7 +6522,7 @@
    "surface": "web-page",
    "status": "ratified",
    "board": "OwnerPage",
-   "summary": "The real shareable page, opened in the browser at stop. It is never a preview or a processing screen. From top to bottom: the editable title field, which is the only chrome (no header, no wordmark, no name, per U3); the player (first frame, play, scrub bar, `0:00 / 4:32`, fullscreen); [ Copy link ] and, once the video plays, [ Copy thumbnail ] beside it (N46), the page's copy doors, with the upload line and a thin bar beside it; then, bottom-right, the owner switch, “made with shroom”, and the mark. Download appears only once the single-file MP4 exists, and it is second-class (R11). Only the editable title and the switch are owner-only. The address bar shows the clean link because the key died at the 302. The clipboard is never touched (N1). Rename at any time later is a metadata write, live worldwide on the next load (R4). It works from this page in owner-mode or from the Library. Owner-mode by role is N40 and still provisional: the cookie names a member, a member's own pages give them the title only, and owner-class browsers get full owner-mode on every page of the space.",
+   "summary": "The real shareable page, opened in the browser at stop. It is never a preview or a processing screen. From top to bottom: the editable title field, which is the only chrome (no header, no wordmark, no name, per U3); the player (first frame, play, scrub bar, `0:00 / 4:32`, fullscreen); [ Copy link ] and, once the video plays, [ Copy thumbnail ] beside it (N46), the page's copy doors, with the upload line and a thin bar beside it; then, bottom-right, the owner switch, “made with shroom”, and the mark. Download appears only once the single-file MP4 exists, and it is second-class (R11). Only the editable title and the switch are owner-only. The address bar shows the clean link because the key died at the 302. The clipboard is never touched (N1). Rename at any time later is a metadata write, live worldwide on the next load (R4). It works from this page in owner-mode or from the Library. Owner-mode by role is N40 and still provisional: the cookie names a member, a member's own pages give them the title only, and owner-class browsers get full owner-mode on every page of the space. When the space names its videos (N66), an untitled video takes the name made from what was said; a line under the title says so until the title is edited, or that the name comes a little later while the free day is used up; and the player gains the chapters and the Captions button the recipient sees (N67). Edit in shroom (N69): the scissors, the last of the quiet icons beside the title, after Download, only on the owner page and only once the video is fully up (as Edit… in the Library); it opens the video in shroom's editor on this Mac.",
    "entry": "Stop finalized and the space's page is reachable and can fill. The app opens `v.<name>.workers.dev/<id>?k=<one-time-key>`. The Worker validates k, sets a long-lived owner cookie that names the member, and 302-redirects to the clean URL. The page also opens later on any visit from a browser carrying a qualifying cookie (owner-mode persists per-browser, rendered server-side), when stopped-offline reconnects, and through the Library's Open page (the owner-keyed door, N35).",
    "said": [
     {
@@ -6381,6 +6579,37 @@
      "copy": "ratified",
      "note": "The owner switch's label, beside the mark. The same three words are the hover tooltip recipients get.",
      "id": "owner-page.made-with-shroom"
+    },
+    {
+     "text": "Edit in shroom",
+     "role": "tooltip",
+     "copy": "provisional",
+     "note": "The scissors' tooltip, and its name for screen readers (N69). Approved as drawn (Bagrat, 2026-10-18).",
+     "cites": [
+      "N69"
+     ],
+     "id": "owner-page.edit-in-shroom"
+    },
+    {
+     "text": "Named from what you said. Click the title to change it.",
+     "role": "line",
+     "copy": "provisional",
+     "note": "N67. Under the title while the space's name stands and nobody has typed one; gone once the title is edited. Proposed 2026-10-18 (AiOwnerNamed); awaiting Bagrat.",
+     "cites": [
+      "N67"
+     ],
+     "id": "owner-page.named-from-what-you-said"
+    },
+    {
+     "text": "Its name and chapters come a little later, once your free hours are back.",
+     "role": "line",
+     "copy": "provisional",
+     "note": "N66 (4), N67. Under the title while the take waits for the next free day (after 00:00 UTC); nothing reads as an error. Proposed 2026-10-18 (AiNamingLater); awaiting Bagrat.",
+     "cites": [
+      "N66",
+      "N67"
+     ],
+     "id": "owner-page.its-name-and-chapters-come"
     }
    ],
    "actions": [
@@ -6410,6 +6639,13 @@
      "kind": "secondary",
      "return_default": false,
      "note": "Appears only when the single-file MP4 exists; second-class (R11)."
+    },
+    {
+     "label": "Edit in shroom",
+     "kind": "secondary",
+     "return_default": false,
+     "goes_to": "editor",
+     "note": "N69. The scissors, the last of the quiet icons beside the title: the shroom://edit/<host>/<id> link, with nothing secret in it. Shown only on the owner page (the space's owners on every video, a member on their own), once the video is fully up, as Edit… in the Library. The browser's own “Open shroom?” is the only step it adds; the Mac decides by its own state: the editor, or the popover's one line. Where shroom isn't on the Mac, the page says nothing (only a Mac running shroom makes a browser the owner's)."
     },
     {
      "label": "made with shroom",
@@ -6452,7 +6688,10 @@
     "N35",
     "N40",
     "R11",
-    "N46"
+    "N46",
+    "N69",
+    "N66",
+    "N67"
    ],
    "was": {
     "fixture": "r4.json",
@@ -6466,23 +6705,24 @@
    "parent": "owner-page",
    "surface": "web-page",
    "status": "ratified",
-   "board": null,
-   "summary": "The owner page's upload line while the queue drains, with a thin bar. The config popover's status line mirrors it (U9 / N21).",
+   "board": "OwnerPageFinishing",
+   "summary": "The owner page's one line while the take is finishing (N65 (7)): from go-live, under the player, after a small spinner that turns while the take is finishing (Bagrat, 2026-10-18 (relayed by the orchestrator): a small spinner in front of the words, no bar); no percent. In a space that listens it stays after the upload while the take is heard (`hearing`); elsewhere it goes when the upload drains (`fully-live`). It replaced “Uploading — 40%. Your link already works.” on the page (Bagrat, 2026-10-18 (relayed by the orchestrator): one indicator on the owner page, from the upload until the voice cuts land, “Finishing” his pick of its first word). The config popover's status line keeps its own words (U9 / N21).",
    "entry": "The owner page is open and this video's upload is in progress.",
    "said": [
     {
-     "text": "Uploading — 40%. Your link already works.",
+     "text": "Finishing your video — the link already works, share it anytime.",
      "role": "status",
      "copy": "ratified",
-     "note": "The percentage varies. A thin bar sits under or beside it.",
-     "id": "uploading.uploading-40-your-link"
+     "note": "Under the player, after a small spinner that turns while the take is finishing (Bagrat, 2026-10-18 (relayed by the orchestrator): a small spinner in front of the words, no bar); no percent. Bagrat, 2026-10-18 (relayed by the orchestrator): one indicator on the owner page, from the upload until the voice cuts land, “Finishing” his pick of its first word. The same line stays while the take is heard (hearing); a stalled upload's line (waiting-conn) keeps its spinner resting.",
+     "id": "uploading.finishing-your-video"
     }
    ],
    "actions": [],
    "cites": [
-    "U9",
+    "N21",
     "N26",
-    "N21"
+    "N65",
+    "U9"
    ],
    "was": {
     "fixture": "r4.json",
@@ -6497,7 +6737,7 @@
    "surface": "web-page",
    "status": "ratified",
    "board": "OwnerPagePending",
-   "summary": "The owner page's upload line when the Mac dropped offline after the page opened. The face is in the ratified diagram (inventory: “waiting”, R — N26). Its wording is an N40 line variant, so the copy is provisional.",
+   "summary": "The owner page's upload line when the Mac dropped offline after the page opened. The face is in the ratified diagram (inventory: “waiting”, R — N26). Its wording is an N40 line variant, so the copy is provisional. Its spinner rests, dimmed, until the bytes move again (N65 (7), 2026-10-18).",
    "entry": "The Mac went offline after the owner page opened, while the upload was still draining.",
    "said": [
     {
@@ -6560,24 +6800,17 @@
    "surface": "web-page",
    "status": "ratified",
    "board": "OwnerPageLive",
-   "summary": "The owner page's upload line once the queue has drained. On a page that was open while it drained, the line reads “Ready ✓” in the done green over a full bar for about 3 s, then both fade and go (B142, Bagrat, 2026-10-14). A page opened after it drained shows no line. The config popover's status line just goes (DEVIATIONS #46, #52).",
+   "summary": "The owner page once the queue has drained and nothing more is being finished: the line goes. On a page that was open, it fades, spinner and all; in a space that listens it first stays while the take is heard (`hearing`). A page opened after shows no line. No “Ready ✓” since 2026-10-18 (Bagrat, 2026-10-18 (relayed by the orchestrator): one indicator on the owner page, from the upload until the voice cuts land, “Finishing” his pick of its first word: one line, nothing after it; B142's “Ready ✓” retired on the page). The config popover's status line just goes (DEVIATIONS #46, #52).",
    "entry": "This video's upload queue has drained.",
-   "said": [
-    {
-     "text": "Ready ✓",
-     "role": "status",
-     "copy": "ratified",
-     "note": "The owner page's upload line for about 3 s once the last file is up, then it fades (B142). Not a permanent line: “Fully live ✓” stays gone (#46). Wording ratified by Bagrat, 2026-10-14.",
-     "id": "fully-live.ready"
-    }
-   ],
+   "said": [],
    "actions": [],
    "cites": [
-    "U9",
-    "N26",
     "#46",
     "#52",
-    "B142"
+    "B142",
+    "N26",
+    "N65",
+    "U9"
    ],
    "was": {
     "fixture": "r4.json",
@@ -6793,7 +7026,7 @@
    "surface": "web-page",
    "status": "ratified",
    "board": "RecipientLive",
-   "summary": "The recipient's normal page: the owner page minus the owner's two controls. It shows the title as plain text, the minimal player (first frame well under 1 s per R6.2, custom controls), Copy link and Copy thumbnail (N46), Download (quiet and second-class, once the single-file MP4 exists), and the mark with its hover label. Nothing else: no comments, no sign-in, no name, no shroom account anywhere. Every page is `noindex`, with no passwords, no expiry and no captions in v1. Unfurls follow R5 honesty.",
+   "summary": "The recipient's normal page: the owner page minus the owner's two controls. It shows the title as plain text, the minimal player (first frame well under 1 s per R6.2, custom controls), Copy link and Copy thumbnail (N46), Download (quiet and second-class, once the single-file MP4 exists), and the mark with its hover label. Nothing else: no comments, no sign-in, no name, no shroom account anywhere. Every page is `noindex`, with no passwords and no expiry; captions only where the owner turned naming on (N67). Unfurls follow R5 honesty. When the space names its videos (N66), the seek bar splits into the video’s chapters, named on hover and above the thumb on a touch, and a Captions button joins the player’s row (N67).",
    "entry": "Someone opens the clean shared link without a qualifying owner cookie, and the video's content is ready and served (the normal case).",
    "said": [
     {
@@ -6917,6 +7150,17 @@
       "copy table"
      ],
      "id": "live.unmute"
+    },
+    {
+     "text": "Captions",
+     "role": "line",
+     "copy": "provisional",
+     "note": "one case the spec didn't print, so it varies by case — the copy table: The player's captions button, named for screen readers and keyboards (an icon on screen, never text); only where the video has captions (N67)",
+     "cites": [
+      "copy table",
+      "N67"
+     ],
+     "id": "live.captions"
     }
    ],
    "actions": [
@@ -6962,6 +7206,12 @@
      "return_default": false,
      "goes_to": "landing",
      "note": "Bottom-right; hover “made with shroom”; links home."
+    },
+    {
+     "label": "Captions",
+     "kind": "other",
+     "return_default": false,
+     "note": "N67. Only where the video has captions: turns them on and off, off by default and remembered on that browser."
     }
    ],
    "cites": [
@@ -6970,7 +7220,8 @@
     "P1",
     "R11",
     "R5",
-    "N46"
+    "N46",
+    "N67"
    ],
    "was": {
     "fixture": "r4.json",
@@ -7181,7 +7432,7 @@
    "surface": "window",
    "status": "provisional",
    "board": "Library",
-   "summary": "The Library window, thin by design (§5.6), built for two jobs: re-share an old video and clean up. It is a list, newest first. Each row shows a small poster, the title, then date · length; in Everyone, other members' rows add their admin-private label (N28; removed members keep it). Copy link is always visible; Copy thumbnail sits under it in the row's menu (N46). Open page and Delete… show on hover or selection. State words appear only when a video isn't live (no word means live). A recovered take pins to the top under the amber dot, mirroring N25's banner. The full macOS idiom applies: click a title to rename it, double-click to open, ⌘C copies, the Delete key deletes, right-click opens a menu, ⌘/⇧-click multi-selects. Mine · Everyone shows only on owner-class Macs once someone else has a video here, and Mine is the default. Search is local and instant, over titles only. The window opens on the local cache, and the bucket refresh (R10 delta sync) runs behind it, sliding new rows in, including videos from your other Macs. Footer: the count only, with no sizes or prices (P13 parked). Scope: members see their own videos, owner-class Macs see the whole space. If another Mac deletes a video while this Mac is uploading it, the tombstone check at resume stops the upload and this row turns to 'Removed from the space' with Save to Movies · Discard…. Mocked row shape: '<title> — Aug 21 · 4:32' (+ ' · Mher' in Everyone).",
+   "summary": "The Library window, thin by design (§5.6), built for two jobs: re-share an old video and clean up. It is a list, newest first. Each row shows a small poster, the title, then date · length; in Everyone, other members' rows add their admin-private label (N28; removed members keep it). Copy link is always visible; Copy thumbnail sits under it in the row's menu (N46), and Edit… after Open page (N63). Open page and Delete… show on hover or selection. State words appear only when a video isn't live (no word means live). A recovered take pins to the top under the amber dot, mirroring N25's banner. The full macOS idiom applies: click a title to rename it, double-click to open, ⌘C copies, the Delete key deletes, right-click opens a menu, ⌘/⇧-click multi-selects. Mine · Everyone shows only on owner-class Macs once someone else has a video here, and Mine is the default. Search is local and instant, over titles only. The window opens on the local cache, and the bucket refresh (R10 delta sync) runs behind it, sliding new rows in, including videos from your other Macs. Footer: the count only, with no sizes or prices (P13 parked). Scope: members see their own videos, owner-class Macs see the whole space. If another Mac deletes a video while this Mac is uploading it, the tombstone check at resume stops the upload and this row turns to 'Removed from the space' with Save to Movies · Discard…. Mocked row shape: '<title> — Aug 21 · 4:32' (+ ' · Mher' in Everyone).",
    "entry": "A space exists, so config is reachable: idle-ready, not mid-take. The user clicks the Library (folder) icon in config's footer. One instance: clicking the icon again brings the open window forward. A window opened before a take stays open through it (N41's quiet-take law covers only what shroom would newly show). It is also restored at its derived state after an update relaunch if it was open when Update ran. The dock icon shows while it is open (Region 1 dock rule).",
    "said": [
     {
@@ -7377,6 +7628,34 @@
       "copy table"
      ],
      "id": "library.aug-21-4-32"
+    },
+    {
+     "text": "Six videos might be worth deleting — they take 11 GB.",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N68's line above the rows, when the suggestions hold at least one video and Suggest videos to clean up is on. The count varies (a word up to nine, Law 16), and so does the size, the suggestions' total. One suggestion reads 'One video might be worth deleting — it takes 3.2 GB.'",
+     "id": "library.cleanup-line"
+    },
+    {
+     "text": "Review…",
+     "role": "button",
+     "copy": "ratified",
+     "note": "Opens Suggested to clean up (N68).",
+     "id": "library.review"
+    },
+    {
+     "text": "Not now",
+     "role": "tooltip",
+     "copy": "ratified",
+     "note": "The ✕ at the line's end, named for VoiceOver. Hides the line until the suggestions change (N68).",
+     "id": "library.not-now"
+    },
+    {
+     "text": "Edit…",
+     "role": "menu-item",
+     "copy": "ratified",
+     "note": "N63; a live row's menu, after Open page",
+     "id": "library.edit"
     }
    ],
    "actions": [
@@ -7400,6 +7679,13 @@
      "return_default": false,
      "note": "On hover or selection. Also double-click a row and right-click → Open page. Opens the owner-keyed URL (U2): the page arrives in owner-mode and the default browser gets the cookie, which is also the door for a new browser or a new Mac.",
      "goes_to": "owner-page"
+    },
+    {
+     "label": "Edit…",
+     "kind": "other",
+     "return_default": false,
+     "goes_to": "editor",
+     "note": "N63. Right-click → Edit…, after Open page. Live rows only, in this Mac's scope. Greys out offline and while a take is open (law 4), as Rename does. One editor at a time: Edit… while it is open brings it forward, saying why when it holds another video (N69's line)."
     },
     {
      "label": "Delete…",
@@ -7473,7 +7759,9 @@
     "§5.6",
     "R10",
     "P13",
-    "N46"
+    "N46",
+    "N68",
+    "N63"
    ],
    "was": {
     "fixture": "r5.json",
@@ -7623,6 +7911,536 @@
     "id": "library · the space can't be reached",
     "lines": "1142-1149"
    }
+  },
+  "editor": {
+   "region": 5,
+   "kind": "state",
+   "parent": null,
+   "surface": "window",
+   "status": "ratified",
+   "board": "EditorCuts",
+   "summary": "The editor (N63): a window of its own, titled “Edit — <the video's title>”, one at a time. Top to bottom: the video, playing the edit (cuts skipped, held to the trim); the play button and the time, edited position / edited length, with “was <the recording's length>” once the edit changes it; on the right the hint and Undo · Redo; then the timeline, the whole recording's sound as a waveform with the playhead: two yellow ends that drag to trim, a drag across the sound that selects a part with Cut <its length> under it, every cut red and hatched (clicking one offers Put back <its length>), every suggestion not yet taken dashed amber (clicking one offers Cut <its length>, as a selection does); either edge of a cut or a suggestion drags to move it, the pointer ↔ over it, its length shown live under it and the picture at the edge as it goes, stopping at the next cut or suggestion, the trim's end, a tenth of a second from its other edge, or where a second would be all that's left, one step for Undo (B195 (g)), and every marker (N64) a flag at its time. The footer: the line that the link stays the same, Revert to original and Done. The waveform fills in once the sound is read; until then the timeline is empty and the ends wait. Every change can be undone, Put back and Revert included; the changes stay in the window until Done saves them. While an earlier edit's original is still kept, the time it has left sits by Revert to original; once it is gone, Revert to original only undoes what changed since the window opened. While it is open, no edit becomes a video behind it on this Mac: the upkeep, and on the Mac holding the token the cleanup sweep, wait until the window closes (B199). The owner page's Edit in shroom (N69) opens this same window; while it holds another video, that press, or Edit… in the Library, brings it forward as it is, one at a time, the footer line saying why until the next change.",
+   "entry": "Edit… on a live row in the Library (N63), when the video is on this Mac: its take was recorded here and is still here, or it came from the space before. One instance: Edit… again brings the open editor forward, on the video it holds. A take started while it is open leaves it open (law 4 covers only what shroom would newly show). The dock icon shows while it is open.",
+   "said": [
+    {
+     "text": "Edit — Setting up shroom in two minutes",
+     "role": "window-title",
+     "copy": "ratified",
+     "note": "“Edit — ” and the video's title",
+     "id": "editor.title"
+    },
+    {
+     "text": "1:16 / 3:39",
+     "role": "line",
+     "copy": "ratified",
+     "note": "the edited position / the edited length; varies",
+     "id": "editor.time"
+    },
+    {
+     "text": "was 4:32",
+     "role": "line",
+     "copy": "ratified",
+     "note": "the recording's own length; only when the edit changes the length",
+     "id": "editor.was"
+    },
+    {
+     "text": "Drag the yellow ends to trim. Drag across the sound to cut a part.",
+     "role": "line",
+     "copy": "ratified",
+     "id": "editor.hint"
+    },
+    {
+     "text": "Play",
+     "role": "label",
+     "copy": "ratified",
+     "note": "the play button's name on hover and to VoiceOver; “Pause” while playing",
+     "id": "editor.play"
+    },
+    {
+     "text": "Pause",
+     "role": "label",
+     "copy": "ratified",
+     "id": "editor.pause"
+    },
+    {
+     "text": "Undo",
+     "role": "label",
+     "copy": "ratified",
+     "note": "the button's name on hover and to VoiceOver; also ⌘Z",
+     "id": "editor.undo"
+    },
+    {
+     "text": "Redo",
+     "role": "label",
+     "copy": "ratified",
+     "note": "also ⇧⌘Z",
+     "id": "editor.redo"
+    },
+    {
+     "text": "Cut 12.0 s",
+     "role": "button",
+     "copy": "ratified",
+     "note": "under a selected part, and under a dashed suggestion that was clicked, its length then (Bagrat, 2026-10-19: a suggestion's chip says what a selection's does); the length varies",
+     "id": "editor.cut"
+    },
+    {
+     "text": "Put back 12.0 s",
+     "role": "button",
+     "copy": "ratified",
+     "note": "under a cut that was clicked; the length varies",
+     "id": "editor.put-back"
+    },
+    {
+     "text": "Your link stays the same. Viewers see the edit once it's saved.",
+     "role": "line",
+     "copy": "ratified",
+     "id": "editor.footer"
+    },
+    {
+     "text": "You're editing another video — press Done, then Edit again.",
+     "role": "line",
+     "copy": "provisional",
+     "note": "In the footer line's place when the owner page's Edit in shroom (N69), or Edit… in the Library, asks for another video while the editor holds this one: the window comes forward as it is, and the line goes with the next change. Approved as drawn (Bagrat, 2026-10-18); Edit… says it too since 2026-10-19, when it was found saying nothing.",
+     "cites": [
+      "N69"
+     ],
+     "id": "editor.editing-another"
+    },
+    {
+     "text": "The original is kept one more day",
+     "role": "line",
+     "copy": "ratified",
+     "note": "by Revert, only while an earlier edit's original is kept (B197); never more than it has left (B199): “two more days” from 47 hours, “one more day” from a day, “<n> more hours” from 2 hours (whole hours, rounded down; two to nine in words, figures from 10, law 16), “one more hour” from an hour, and “less than an hour” under one",
+     "id": "editor.original-kept"
+    },
+    {
+     "text": "Revert to original",
+     "role": "button",
+     "copy": "ratified",
+     "id": "editor.revert"
+    },
+    {
+     "text": "Done",
+     "role": "button",
+     "copy": "ratified",
+     "note": "filled; Return",
+     "id": "editor.done"
+    }
+   ],
+   "actions": [
+    {
+     "label": "Play / Pause",
+     "kind": "other",
+     "return_default": false,
+     "note": "Space too. Plays the edit: the cuts are skipped and it holds to the trim."
+    },
+    {
+     "label": "drag a yellow end",
+     "kind": "other",
+     "return_default": false,
+     "goes_to": "editor",
+     "note": "trims; a click on the timeline moves the playhead"
+    },
+    {
+     "label": "drag across the sound",
+     "kind": "other",
+     "return_default": false,
+     "goes_to": "editor",
+     "note": "selects a part; Cut <length> cuts it (the Delete key too)"
+    },
+    {
+     "label": "Cut",
+     "kind": "secondary",
+     "return_default": false,
+     "goes_to": "editor",
+     "note": "red, and skipped as it plays"
+    },
+    {
+     "label": "Put back",
+     "kind": "secondary",
+     "return_default": false,
+     "goes_to": "editor",
+     "note": "after a click on a cut"
+    },
+    {
+     "label": "Cut",
+     "kind": "secondary",
+     "return_default": false,
+     "goes_to": "editor",
+     "note": "after a click on a dashed suggestion, its chip reading as a selection's (Bagrat, 2026-10-19): it's cut, red"
+    },
+    {
+     "label": "drag a cut's edge",
+     "kind": "other",
+     "return_default": false,
+     "goes_to": "editor",
+     "note": "either edge of a red cut or a dashed suggestion (↔ under the pointer): it moves that edge, its length live; it stops at the next cut or suggestion, the trim's end, a tenth of a second from its other edge, or where a second is all that's left. A suggestion stays offered. One step for Undo (B195 (g))"
+    },
+    {
+     "label": "Undo · Redo",
+     "kind": "other",
+     "return_default": false,
+     "goes_to": "editor",
+     "note": "⌘Z · ⇧⌘Z; every change made in the window"
+    },
+    {
+     "label": "Revert to original",
+     "kind": "secondary",
+     "return_default": false,
+     "goes_to": "editor",
+     "note": "puts back every cut and both ends; undoable"
+    },
+    {
+     "label": "Done",
+     "kind": "filled-default",
+     "return_default": true,
+     "goes_to": "editor-saving",
+     "note": "Return. With nothing changed it closes the window at once. ✕ is Done."
+    }
+   ],
+   "cites": [
+    "N63",
+    "B195",
+    "B197",
+    "B199",
+    "N69"
+   ]
+  },
+  "editor-getting": {
+   "region": 5,
+   "kind": "state",
+   "parent": null,
+   "surface": "window",
+   "status": "ratified",
+   "board": "EditorStates",
+   "summary": "The editor while the video comes from the space: it isn't on this Mac (another Mac recorded it, or its take is gone). The time reads 0:00 / the recording's length; where the timeline goes, “Getting the video from your space…” over a bar that fills; Done waits.",
+   "entry": "Edit… on a live row whose video isn't on this Mac.",
+   "said": [
+    {
+     "text": "Getting the video from your space…",
+     "role": "line",
+     "copy": "ratified",
+     "id": "editor-getting.getting"
+    },
+    {
+     "text": "Your link stays the same. Viewers see the edit once it's saved.",
+     "role": "line",
+     "copy": "ratified",
+     "id": "editor-getting.footer"
+    }
+   ],
+   "actions": [
+    {
+     "label": "Done",
+     "kind": "filled-default",
+     "return_default": false,
+     "note": "greyed until the video is here"
+    }
+   ],
+   "cites": [
+    "N63",
+    "B195"
+   ]
+  },
+  "editor-cant-get": {
+   "region": 5,
+   "kind": "state",
+   "parent": null,
+   "surface": "window",
+   "status": "ratified",
+   "board": "EditorStates",
+   "summary": "The editor when the video couldn't come from the space (offline, or the space didn't answer): one line and Try again where the timeline goes; Close closes the window.",
+   "entry": "The fetch in editor-getting failed.",
+   "said": [
+    {
+     "text": "Couldn't get the video. Check your connection, then try again.",
+     "role": "line",
+     "copy": "ratified",
+     "id": "editor-cant-get.cant-get"
+    },
+    {
+     "text": "Try again",
+     "role": "button",
+     "copy": "ratified",
+     "id": "editor-cant-get.try-again"
+    },
+    {
+     "text": "Close",
+     "role": "button",
+     "copy": "ratified",
+     "note": "filled; Return",
+     "id": "editor-cant-get.close"
+    }
+   ],
+   "actions": [
+    {
+     "label": "Try again",
+     "kind": "secondary",
+     "return_default": false,
+     "goes_to": "editor-getting"
+    },
+    {
+     "label": "Close",
+     "kind": "filled-default",
+     "return_default": true,
+     "note": "closes the window; ✕ and Esc too"
+    }
+   ],
+   "cites": [
+    "N63",
+    "B195"
+   ]
+  },
+  "editor-saving": {
+   "region": 5,
+   "kind": "state",
+   "parent": null,
+   "surface": "window",
+   "status": "ratified",
+   "board": "EditorStates",
+   "summary": "Done pressed with changes: the footer says the edit is saving and Done reads Saving…, greyed. Saved, the share page plays the edit from its next load, and the window goes on to make the final video (or closes, when nothing is left out any more). A quit or an update asked meanwhile waits on it: it goes on once the edit is saved, not waiting for the final video, and is dropped if the save doesn't land (B199).",
+   "entry": "Done (or ✕) in editor with changes, or Done again in editor-save-failed. Also: Quit or Update while the edit holds changes not saved yet (B199).",
+   "said": [
+    {
+     "text": "Saving your edit…",
+     "role": "line",
+     "copy": "ratified",
+     "id": "editor-saving.saving"
+    },
+    {
+     "text": "Saving…",
+     "role": "button",
+     "copy": "ratified",
+     "note": "Done, greyed while it saves",
+     "id": "editor-saving.saving-button"
+    }
+   ],
+   "actions": [],
+   "cites": [
+    "N63",
+    "B195",
+    "B199"
+   ]
+  },
+  "editor-save-failed": {
+   "region": 5,
+   "kind": "state",
+   "parent": null,
+   "surface": "window",
+   "status": "ratified",
+   "board": "EditorStates",
+   "summary": "The save didn't go through (offline, or the space didn't answer): the window stays open with every change in it, the footer line says so in amber, and Done tries again. A save the space turns down is editor-save-refused's (B199).",
+   "entry": "A save from editor-saving failed.",
+   "said": [
+    {
+     "text": "Couldn't save your edit. Check your connection, then press Done again.",
+     "role": "line",
+     "copy": "ratified",
+     "note": "amber, in the footer's place",
+     "id": "editor-save-failed.failed"
+    }
+   ],
+   "actions": [
+    {
+     "label": "Done",
+     "kind": "filled-default",
+     "return_default": true,
+     "goes_to": "editor-saving",
+     "note": "tries the save again"
+    }
+   ],
+   "cites": [
+    "N63",
+    "B195",
+    "B199"
+   ]
+  },
+  "editor-save-refused": {
+   "region": 5,
+   "kind": "state",
+   "parent": null,
+   "surface": "window",
+   "status": "ratified",
+   "board": "EditorStates",
+   "summary": "The space turned the save down: the video is gone (deleted from another Mac), or another Mac made an edit the video while this window was open, so the edit was made on a video that no longer plays. Nothing can be saved over it: in the save-failed line's place, one amber line says so; Revert to original is gone, the changes can't be stepped, and Close stands in Done's place. Close, Return, Esc and ✕ close the window, and nothing is saved.",
+   "entry": "A save from editor-saving the space turned down: the video is gone, or another Mac made an edit the video while the editor was open.",
+   "said": [
+    {
+     "text": "This video changed since you opened it, so this edit can't be saved.",
+     "role": "line",
+     "copy": "ratified",
+     "note": "amber, in the save-failed line's place",
+     "id": "editor-save-refused.refused"
+    },
+    {
+     "text": "Close",
+     "role": "button",
+     "copy": "ratified",
+     "note": "filled, in Done's place; Return",
+     "id": "editor-save-refused.close"
+    }
+   ],
+   "actions": [
+    {
+     "label": "Close",
+     "kind": "filled-default",
+     "return_default": true,
+     "goes_to": "library",
+     "note": "closes the window, and nothing is saved; ✕ and Esc too"
+    }
+   ],
+   "cites": [
+    "N63",
+    "B199"
+   ]
+  },
+  "editor-making": {
+   "region": 5,
+   "kind": "state",
+   "parent": null,
+   "surface": "window",
+   "status": "ratified",
+   "board": "EditorAfterSave",
+   "summary": "Saved: the final video is being made on this Mac and put up beside the original. Where the timeline was, “Making the final video… 40%” over a bar that fills; the footer says the link already plays the edit and that the window can be closed. Close (or ✕) closes it and shroom finishes in the background; the question that would follow is then answered Keep for 2 days.",
+   "entry": "The save landed in editor-saving with something left out.",
+   "said": [
+    {
+     "text": "Making the final video… 40%",
+     "role": "line",
+     "copy": "ratified",
+     "note": "the share grows",
+     "id": "editor-making.making"
+    },
+    {
+     "text": "The link already plays your edit. You can close this window: shroom finishes it.",
+     "role": "line",
+     "copy": "ratified",
+     "id": "editor-making.line"
+    },
+    {
+     "text": "Close",
+     "role": "button",
+     "copy": "ratified",
+     "note": "filled; Return",
+     "id": "editor-making.close"
+    }
+   ],
+   "actions": [
+    {
+     "label": "Close",
+     "kind": "filled-default",
+     "return_default": true,
+     "goes_to": "library",
+     "note": "the final video is still made; the original is then kept for 2 days"
+    }
+   ],
+   "cites": [
+    "N63",
+    "B197"
+   ]
+  },
+  "editor-making-failed": {
+   "region": 5,
+   "kind": "state",
+   "parent": null,
+   "surface": "window",
+   "status": "ratified",
+   "board": "EditorAfterSave",
+   "summary": "The final video couldn't be made or put up (offline, the space didn't answer, the encoder failed), or a newer save landed first and it was dropped (B199): one amber line and Close. The link keeps playing the edit over the original; shroom tries again later.",
+   "entry": "Making the final video failed in editor-making. Also: it was made but dropped, never named — the video's record moved on first, a newer save landing from this Mac or another (B199).",
+   "said": [
+    {
+     "text": "Couldn't make the final video. The link plays your edit anyway, and shroom tries again later.",
+     "role": "line",
+     "copy": "ratified",
+     "note": "amber",
+     "id": "editor-making-failed.failed"
+    },
+    {
+     "text": "Close",
+     "role": "button",
+     "copy": "ratified",
+     "note": "filled; Return",
+     "id": "editor-making-failed.close"
+    }
+   ],
+   "actions": [
+    {
+     "label": "Close",
+     "kind": "filled-default",
+     "return_default": true,
+     "goes_to": "library"
+    }
+   ],
+   "cites": [
+    "N63",
+    "B197",
+    "B199"
+   ]
+  },
+  "editor-keep-original": {
+   "region": 5,
+   "kind": "state",
+   "parent": null,
+   "surface": "window",
+   "status": "ratified",
+   "board": "EditorAfterSave",
+   "summary": "The final video is up: the window asks whether to delete the original. One card: “Delete the original?”, a line that the edit is the video now and the original is only kept for reverting, then Keep for 2 days and Yes, delete, which leads (filled, as Bagrat asked) but is never the Return default: Return does nothing here (law 9; DEVIATIONS #55). Yes, delete makes the edit the video for good and deletes the original now; Keep for 2 days keeps it, and shroom deletes it two days on. ✕ or Esc is Keep for 2 days.",
+   "entry": "The final video landed while the editor was open.",
+   "said": [
+    {
+     "text": "Delete the original?",
+     "role": "title",
+     "copy": "ratified",
+     "id": "editor-keep-original.title"
+    },
+    {
+     "text": "Your edit is the video now. The original is only kept so you can revert to it.",
+     "role": "line",
+     "copy": "ratified",
+     "id": "editor-keep-original.line"
+    },
+    {
+     "text": "Keep for 2 days",
+     "role": "button",
+     "copy": "ratified",
+     "id": "editor-keep-original.keep"
+    },
+    {
+     "text": "Yes, delete",
+     "role": "button",
+     "copy": "ratified",
+     "note": "filled and leading; never the Return default (law 9; DEVIATIONS #55)",
+     "id": "editor-keep-original.delete"
+    }
+   ],
+   "actions": [
+    {
+     "label": "Yes, delete",
+     "kind": "filled-default",
+     "return_default": false,
+     "goes_to": "library",
+     "note": "the edit becomes the video; the original's files are deleted. Filled, as Bagrat asked, but a click only: Return does nothing (law 9; DEVIATIONS #55)"
+    },
+    {
+     "label": "Keep for 2 days",
+     "kind": "secondary",
+     "return_default": false,
+     "goes_to": "library",
+     "note": "deleted two days on, by whichever of the space's Macs is open first (B197)"
+    },
+    {
+     "label": "Esc / ✕",
+     "kind": "other",
+     "return_default": false,
+     "goes_to": "library",
+     "note": "≡ Keep for 2 days"
+    }
+   ],
+   "cites": [
+    "N63",
+    "B197"
+   ]
   },
   "delete-confirm": {
    "region": 5,
@@ -7877,7 +8695,7 @@
    "status": "provisional",
    "board": "SettingsGeneral",
    "summary": "The General tab: U4's login checkbox at home at last (it reads the system's truth: if the login item is removed in System Settings, the box shows unchecked), the update row mirroring config's banner, and the help row: Copy diagnostics and Report a problem… (B180), with GitHub's new-issue link under it as the public door (N8). Past this Mac's macOS, General carries the only update line: no banner, no dot.",
-   "entry": "Settings window on the General tab (the default on first open).",
+   "entry": "Settings window on the General tab (the default on first open). The shroom command's settings link (N62) opens it too, the switch's row lit for a moment.",
    "said": [
     {
      "text": "Start shroom when you log in",
@@ -7978,6 +8796,126 @@
      "copy": "ratified",
      "note": "Quiet text at the tab's foot. Greys mid-take (law 4).",
      "id": "settings-general.uninstall-shroom"
+    },
+    {
+     "text": "Your coding agent",
+     "role": "field-label",
+     "copy": "ratified",
+     "note": "The card's label, under the help row (N62). Ratified by Bagrat, 2026-10-18: as built; he'll tweak the card's words once he uses it.",
+     "cites": [
+      "N62"
+     ],
+     "id": "settings-general.your-coding-agent"
+    },
+    {
+     "text": "Use shroom on my Mac: read https://shroom.am/cli and follow it.",
+     "role": "line",
+     "copy": "ratified",
+     "note": "The prompt itself, in a code well; what Copy puts on the clipboard (N62). Ratified by Bagrat, 2026-10-18: as built; he'll tweak the card's words once he uses it.",
+     "cites": [
+      "N62"
+     ],
+     "id": "settings-general.use-shroom-on-my"
+    },
+    {
+     "text": "Copy",
+     "role": "button",
+     "copy": "ratified",
+     "note": "Copies the prompt; reads Copied for a moment after its click, as Copy diagnostics does (law 10). Ratified by Bagrat, 2026-10-18: as built; he'll tweak the card's words once he uses it.",
+     "cites": [
+      "N62"
+     ],
+     "id": "settings-general.copy"
+    },
+    {
+     "text": "Read it first",
+     "role": "link",
+     "copy": "ratified",
+     "note": "Opens shroom.am/cli in the browser: what the agent will read, word for word. Ratified by Bagrat, 2026-10-18: as built; he'll tweak the card's words once he uses it.",
+     "cites": [
+      "N62"
+     ],
+     "id": "settings-general.read-it-first"
+    },
+    {
+     "text": "Paste it into your coding agent. It can find, share and tidy your videos, and asks you before it deletes anything.",
+     "role": "line",
+     "copy": "ratified",
+     "note": "Under the prompt. Ratified by Bagrat, 2026-10-18: as built; he'll tweak the card's words once he uses it.",
+     "cites": [
+      "N62"
+     ],
+     "id": "settings-general.paste-it-into-your"
+    },
+    {
+     "text": "Let it start and stop recordings",
+     "role": "field-label",
+     "copy": "ratified",
+     "note": "A switch, off by default (Bagrat, 2026-10-18). While it's off, the app refuses the command's recording asks, and the refusal's link (`shroom://settings/agent`) opens General here with this row in view and lit for a moment, never flipped. Ratified by Bagrat, 2026-10-18, relayed by the orchestrator.",
+     "cites": [
+      "N62"
+     ],
+     "id": "settings-general.let-it-start-and"
+    },
+    {
+     "text": "Your videos",
+     "role": "field-label",
+     "copy": "ratified",
+     "note": "The group's heading (N68).",
+     "id": "settings-general.your-videos"
+    },
+    {
+     "text": "Count plays",
+     "role": "field-label",
+     "copy": "ratified",
+     "note": "Switch, on by default. The space's: owner-class Macs change it; elsewhere it shows greyed (N68).",
+     "id": "settings-general.count-plays"
+    },
+    {
+     "text": "How often each video is played and how far, kept in your Cloudflare account. No cookies, nothing about who watched.",
+     "role": "line",
+     "copy": "ratified",
+     "id": "settings-general.how-often-each-video"
+    },
+    {
+     "text": "Couldn't change that just now — try again in a moment.",
+     "role": "line",
+     "copy": "ratified",
+     "note": "Under Count plays, when the space didn't take the switch (law 12); the switch reads as the space has it.",
+     "id": "settings-general.couldnt-change-that"
+    },
+    {
+     "text": "Suggest videos to clean up",
+     "role": "field-label",
+     "copy": "ratified",
+     "note": "Switch, on by default; this Mac's (N68).",
+     "id": "settings-general.suggest-videos-to-clean-up"
+    },
+    {
+     "text": "In the Library, videos that might be worth deleting: rarely watched lately, and taking real room.",
+     "role": "line",
+     "copy": "ratified",
+     "id": "settings-general.videos-youve-stopped-watching"
+    },
+    {
+     "text": "Space used",
+     "role": "field-label",
+     "copy": "ratified",
+     "id": "settings-general.space-used"
+    },
+    {
+     "text": "34 GB — about 36¢ a month past Cloudflare's free 10 GB",
+     "role": "status",
+     "copy": "ratified",
+     "note": "Past the free 10 GB; the size and the cents vary (B212).",
+     "id": "settings-general.34-gb"
+    },
+    {
+     "text": "8.2 GB — inside Cloudflare's free 10 GB",
+     "role": "status",
+     "copy": "ratified",
+     "note": "Inside the free 10 GB; the size varies (B212).",
+     "id": "settings-general.8-2-gb"
     }
    ],
    "actions": [
@@ -8035,7 +8973,9 @@
     "U7",
     "B135",
     "B180",
-    "N53"
+    "N53",
+    "N62",
+    "N68"
    ],
    "was": {
     "fixture": "r5.json",
@@ -8050,7 +8990,7 @@
    "surface": "window",
    "status": "provisional",
    "board": "SettingsSpace",
-   "summary": "The Space tab: one tab with a mood per kind of Mac (inspection · repair · owner-class-without-token · member). Beneath the rows, by role: the mark switch (owner-class only — a space setting, U3) and the exits as quiet text (Disconnect this Mac… for owners, Leave this space… for members). Row six is live on every Mac. A revoked grant un-ticks it (“screen recording is off”), with Turn it back on → the permissions chapter at exactly the missing beat, in this window. A denied microphone ticks the row with the fact, plus a quiet Turn on the microphone that opens System Settings' Microphone pane (a denied mic never blocks). Mid-take both exits grey (law 4). After Disconnect or Leave, the ~/.shroom secrets are wiped and the app returns to idle-unprovisioned; the login item stays as it was. No invite door shows (B159): an invite link pasted anywhere in the tab (⌘V) opens its invite, as the page's Open shroom does.",
+   "summary": "The Space tab: one tab with a mood per kind of Mac (inspection · repair · owner-class-without-token · member). Beneath the rows, by role: the mark switch (owner-class only — a space setting, U3) and the exits as quiet text (Disconnect this Mac… for owners, Leave this space… for members). Row six is live on every Mac. A revoked grant un-ticks it (“screen recording is off”), with Turn it back on → the permissions chapter at exactly the missing beat, in this window. A denied microphone ticks the row with the fact, plus a quiet Turn on the microphone that opens System Settings' Microphone pane (a denied mic never blocks). Mid-take both exits grey (law 4). After Disconnect or Leave, the ~/.shroom secrets are wiped and the app returns to idle-unprovisioned; the login item stays as it was. No invite door shows (B159): an invite link pasted anywhere in the tab (⌘V) opens its invite, as the page's Open shroom does. On the Mac that holds the setup key, a second switch turns the space's AI on for new videos — titles, chapters, captions and voice cuts (N66) — with one line on what it does and costs; turning it on or off re-wires the page.",
    "entry": "Settings window on the Space tab. Which mood shows is derived from the kind of Mac and the probe results.",
    "said": [
     {
@@ -8115,6 +9055,36 @@
      "copy": "provisional",
      "note": "Mid-take, both exits grey with this line (law 4).",
      "id": "settings-space.you-can-do-this"
+    },
+    {
+     "text": "AI for new videos",
+     "role": "field-label",
+     "copy": "ratified",
+     "note": "N66. Label of the AI switch, one switch for every AI feature (voice cuts, N65, included), on the Mac that holds the setup key only (it re-wires the page). Bagrat approved the board AiSettings as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later.",
+     "cites": [
+      "N66"
+     ],
+     "id": "settings-space.ai-for-new-videos"
+    },
+    {
+     "text": "Titles, chapters and captions from what’s said, and your “shroom cut” slips cut — on your own Cloudflare account. Free for about 2½ hours of new video a day; more is about 4¢ per video hour on Cloudflare’s $5 plan.",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N66. Description beside the AI switch: the one cost line, also in ai-confirm. Bagrat approved the board AiSettings as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later.",
+     "cites": [
+      "N66"
+     ],
+     "id": "settings-space.titles-chapters-and-captions"
+    },
+    {
+     "text": "Couldn't change that just now — try again in a moment.",
+     "role": "line",
+     "copy": "provisional",
+     "note": "N66. In place of the AI switch's line when a re-wiring didn't go through, until the next try or the next visit (law 12); the switch is as the page has it.",
+     "cites": [
+      "N66"
+     ],
+     "id": "settings-space.couldnt-change-that-just"
     }
    ],
    "actions": [
@@ -8123,6 +9093,12 @@
      "kind": "switch",
      "return_default": false,
      "note": "Owner-class only. A space-global setting (U3), also flippable on a page."
+    },
+    {
+     "label": "AI for new videos switch",
+     "kind": "switch",
+     "return_default": false,
+     "note": "N66. Only on the Mac that holds the setup key; one switch for every AI feature, voice cuts included. On re-wires the page with Cloudflare's AI and its schedule; off takes them away. Greys while the re-wire runs and mid-take (law 4)."
     },
     {
      "label": "⌘V (an invite link, pasted anywhere in the tab)",
@@ -8166,7 +9142,8 @@
     "N29",
     "N31",
     "law 4",
-    "B159"
+    "B159",
+    "N66"
    ],
    "was": {
     "fixture": "r5.json",
@@ -11593,6 +12570,554 @@
     "N12",
     "N41"
    ]
+  },
+  "ai-offer": {
+   "region": 5,
+   "kind": "banner",
+   "parent": "config",
+   "surface": "banner",
+   "status": "ratified",
+   "board": "AiBanner",
+   "summary": "The AI offer (N66; Bagrat, 2026-10-18: off by default, but visible): a frost banner in the popover, like the update's, on the Mac that holds the setup key while the space's AI is off. It says what shroom can do — name videos, add chapters, cut slips — never what it costs: Turn on… opens the short confirm that says so. The lowest banner: a saved take, the space, recording off and an update come first. Not now hides it for good on this Mac (Bagrat, 2026-10-18): from then on only the switch in Settings · Space turns AI on. Members' Macs and the space's other Macs never show it, nor does a Mac once AI has been on there.",
+   "entry": "`config` opens on the Mac that holds the setup key while the space's AI is off and no higher banner shows, and the banner has never been answered on this Mac.",
+   "said": [
+    {
+     "text": "shroom can name your videos, add chapters and cut your slips for you.",
+     "role": "banner",
+     "copy": "ratified",
+     "note": "N66. The banner's line (AiBanner). Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later.",
+     "cites": [
+      "N66"
+     ],
+     "id": "ai-offer.shroom-can-name-your"
+    },
+    {
+     "text": "Turn on…",
+     "role": "button",
+     "copy": "ratified",
+     "note": "N66. Filled; a banner's own filled button is never the Return default (law 8). Opens ai-confirm. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later.",
+     "cites": [
+      "N66"
+     ],
+     "id": "ai-offer.turn-on"
+    },
+    {
+     "text": "Not now",
+     "role": "link",
+     "copy": "ratified",
+     "note": "N66. Quiet, left of Turn on…. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later.",
+     "cites": [
+      "N66"
+     ],
+     "id": "ai-offer.not-now"
+    }
+   ],
+   "actions": [
+    {
+     "label": "Turn on…",
+     "kind": "filled-default",
+     "return_default": false,
+     "goes_to": "ai-confirm",
+     "note": "The confirm says what it costs."
+    },
+    {
+     "label": "Not now",
+     "kind": "text-link",
+     "return_default": false,
+     "goes_to": "config",
+     "note": "Hidden for good on this Mac; the switch in Settings · Space stays."
+    }
+   ],
+   "cites": [
+    "N66"
+   ]
+  },
+  "ai-confirm": {
+   "region": 5,
+   "kind": "state",
+   "parent": null,
+   "surface": "popover",
+   "status": "ratified",
+   "board": "AiConfirm",
+   "summary": "Turn on…'s short confirm (N66): the popover morphs into a question that says what turning AI on does and what it costs, once, before it costs anything. Like every question in the popover it has no Return default: Turn on is a click. Back and Esc go back to config with the banner still there.",
+   "entry": "Turn on… in the AI banner.",
+   "said": [
+    {
+     "text": "Turn on AI for new videos?",
+     "role": "title",
+     "copy": "ratified",
+     "note": "N66. Bold. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later.",
+     "cites": [
+      "N66"
+     ],
+     "id": "ai-confirm.turn-on-ai-for"
+    },
+    {
+     "text": "Titles, chapters and captions from what’s said, and your “shroom cut” slips cut — on your own Cloudflare account. Free for about 2½ hours of new video a day; more is about 4¢ per video hour on Cloudflare’s $5 plan.",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N66. The one cost line, also under the switch in Settings · Space. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later.",
+     "cites": [
+      "N66"
+     ],
+     "id": "ai-confirm.titles-chapters-and-captions"
+    },
+    {
+     "text": "Back",
+     "role": "button",
+     "copy": "ratified",
+     "note": "N66. Leftmost. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later.",
+     "cites": [
+      "N66"
+     ],
+     "id": "ai-confirm.back"
+    },
+    {
+     "text": "Turn on",
+     "role": "button",
+     "copy": "ratified",
+     "note": "N66. Filled, rightmost; no Return default (a click, as every popover question). Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later.",
+     "cites": [
+      "N66"
+     ],
+     "id": "ai-confirm.turn-on"
+    }
+   ],
+   "actions": [
+    {
+     "label": "Back",
+     "kind": "secondary",
+     "return_default": false,
+     "goes_to": "config",
+     "note": "Esc too; the banner stays."
+    },
+    {
+     "label": "Turn on",
+     "kind": "filled-default",
+     "return_default": false,
+     "goes_to": "ai-turning-on",
+     "note": "Re-wires the space's page with Cloudflare's AI and its schedule, as the switch in Settings · Space does."
+    }
+   ],
+   "cites": [
+    "N66"
+   ]
+  },
+  "ai-turning-on": {
+   "region": 5,
+   "kind": "face",
+   "parent": "ai-offer",
+   "surface": "banner",
+   "status": "ratified",
+   "board": "AiBannerStates",
+   "summary": "While the space's page is put up again with Cloudflare's AI (a few seconds), the banner says so and holds no buttons.",
+   "entry": "Turn on in ai-confirm, until the page answers.",
+   "said": [
+    {
+     "text": "Turning on — a few seconds.",
+     "role": "banner",
+     "copy": "ratified",
+     "note": "N66. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later.",
+     "cites": [
+      "N66"
+     ],
+     "id": "ai-turning-on.turning-on-a-few"
+    }
+   ],
+   "actions": [],
+   "cites": [
+    "N66"
+   ]
+  },
+  "ai-offer-failed": {
+   "region": 5,
+   "kind": "face",
+   "parent": "ai-offer",
+   "surface": "banner",
+   "status": "ratified",
+   "board": "AiBannerStates",
+   "summary": "The re-wiring didn't go through (law 12): the banner says so in place of its line, for this visit to the popover, and Turn on… is live again.",
+   "entry": "ai-turning-on, and the space's page couldn't be put up again with the AI.",
+   "said": [
+    {
+     "text": "Couldn't change that just now — try again in a moment.",
+     "role": "banner",
+     "copy": "ratified",
+     "note": "N66. The words of the switch's own failure line. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later.",
+     "cites": [
+      "N66"
+     ],
+     "id": "ai-offer-failed.couldnt-change-that-just"
+    },
+    {
+     "text": "Turn on…",
+     "role": "button",
+     "copy": "ratified",
+     "note": "N66. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later.",
+     "cites": [
+      "N66"
+     ],
+     "id": "ai-offer-failed.turn-on"
+    },
+    {
+     "text": "Not now",
+     "role": "link",
+     "copy": "ratified",
+     "note": "N66. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later.",
+     "cites": [
+      "N66"
+     ],
+     "id": "ai-offer-failed.not-now"
+    }
+   ],
+   "actions": [
+    {
+     "label": "Turn on…",
+     "kind": "filled-default",
+     "return_default": false,
+     "goes_to": "ai-confirm"
+    },
+    {
+     "label": "Not now",
+     "kind": "text-link",
+     "return_default": false,
+     "goes_to": "config",
+     "note": "Hidden for good on this Mac, as ai-offer's."
+    }
+   ],
+   "cites": [
+    "N66",
+    "law 12"
+   ]
+  },
+  "ai-on": {
+   "region": 5,
+   "kind": "face",
+   "parent": "config",
+   "surface": "status-line",
+   "status": "ratified",
+   "board": "AiBannerStates",
+   "summary": "A one-shot status-line fact once the banner's Turn on has gone through, where the update's “Updated ✓” goes: said once, then the line is behind us.",
+   "entry": "The page answers that its AI is on after the banner's Turn on: in the popover then, or the next time it opens.",
+   "said": [
+    {
+     "text": "AI is on for new videos ✓",
+     "role": "status",
+     "copy": "ratified",
+     "note": "N66. Once only; it ranks after the upload truth (N38). Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later.",
+     "cites": [
+      "N66"
+     ],
+     "id": "ai-on.ai-is-on-for"
+    }
+   ],
+   "actions": [],
+   "cites": [
+    "N66",
+    "N38"
+   ]
+  },
+  "library-cleanup": {
+   "region": 5,
+   "kind": "face",
+   "parent": "library",
+   "surface": "window",
+   "status": "ratified",
+   "board": "CleanupView",
+   "summary": "Suggested to clean up (N68): the Library's own view of the videos worth deleting, costliest per remaining play first. A line says what deleting all of them frees and saves; each row shows the poster, the title, then when it was made · its size · why it's suggested, with Open page, Keep and Delete (red text). Delete is one tap: the row leaves and an Undo line stays a few seconds before the delete is sent (a sealed delete can't be taken back, B125). Delete all… opens the several-videos sheet. Keep sets the record's keep and the row leaves for good. Members see their own; owner-class Macs follow Mine · Everyone.",
+   "entry": "Review… on the Library's suggestion line.",
+   "said": [
+    {
+     "text": "Suggested to clean up",
+     "role": "title",
+     "copy": "ratified",
+     "id": "library-cleanup.suggested-to-clean-up"
+    },
+    {
+     "text": "‹ Library",
+     "role": "button",
+     "copy": "ratified",
+     "note": "Back to the Library.",
+     "id": "library-cleanup.library"
+    },
+    {
+     "text": "These might be worth deleting: rarely watched lately, and taking real room. Deleting all six frees 11 GB — about 17¢ a month off your Cloudflare bill.",
+     "role": "line",
+     "copy": "ratified",
+     "note": "Past the free 10 GB. The count varies (a word up to nine, Law 16), and so do the size and the cents. Two read 'Deleting both', one 'Deleting it'.",
+     "id": "library-cleanup.videos-youve-stopped-watching"
+    },
+    {
+     "text": "These might be worth deleting: rarely watched lately, and taking real room. Deleting all six frees 5 GB. Your space is inside Cloudflare's free 10 GB, so this saves nothing yet.",
+     "role": "line",
+     "copy": "ratified",
+     "note": "Inside the free 10 GB (B212). The count and the size: each varies.",
+     "id": "library-cleanup.inside-free"
+    },
+    {
+     "text": "These might be worth deleting: rarely watched lately, and taking real room. Deleting all six frees 3 GB and brings your space back inside Cloudflare's free 10 GB.",
+     "role": "line",
+     "copy": "ratified",
+     "note": "When deleting them all would take the space back under 10 GB (B212). The count and the size: each varies.",
+     "id": "library-cleanup.back-inside-free"
+    },
+    {
+     "text": "These might be worth deleting: rarely watched lately, and taking real room. Deleting all six frees 11 GB.",
+     "role": "line",
+     "copy": "ratified",
+     "note": "On a member's Mac: the bill is the space owner's, so no money is said. The count and the size: each varies.",
+     "id": "library-cleanup.member-frees"
+    },
+    {
+     "text": "5¢ a month",
+     "role": "line",
+     "copy": "ratified",
+     "note": "A row's cost, after its size, only when the space is past Cloudflare's free 10 GB and never on a member's Mac (N68 (8)). The cents vary: the row's size at the list price, $0.015 a GB-month, rounded, at least 1¢ (B212).",
+     "id": "library-cleanup.cost-a-month"
+    },
+    {
+     "text": "Watched 4 times, the last 10 months ago",
+     "role": "line",
+     "copy": "ratified",
+     "note": "A row's reason (B211); the counts and times vary. Counts are figures here: a row fact (Law 16). Shapes: 'Watched once, 5 months ago' · 'Watched twice, the last 2 months ago' · 'Watched twice, stopped early, the last 4 months ago' (most stopped in the first quarter) · 'Nobody has watched it'. Times: days under 60, months under 24, then years.",
+     "id": "library-cleanup.watched-4-times"
+    },
+    {
+     "text": "Nobody has watched it",
+     "role": "line",
+     "copy": "ratified",
+     "note": "The reason when counting never saw a play.",
+     "id": "library-cleanup.nobody-has-watched-it"
+    },
+    {
+     "text": "Open page",
+     "role": "button",
+     "copy": "ratified",
+     "id": "library-cleanup.open-page"
+    },
+    {
+     "text": "Keep",
+     "role": "button",
+     "copy": "ratified",
+     "note": "Takes the video off the list for good.",
+     "id": "library-cleanup.keep"
+    },
+    {
+     "text": "Delete",
+     "role": "button",
+     "copy": "ratified",
+     "note": "Red text, never a button (Law 9); one tap, then Undo.",
+     "id": "library-cleanup.delete"
+    },
+    {
+     "text": "Deleted “Old onboarding take”.",
+     "role": "line",
+     "copy": "ratified",
+     "note": "The Undo line, a few seconds; the delete is sent when it goes. The title varies.",
+     "id": "library-cleanup.deleted"
+    },
+    {
+     "text": "Undo",
+     "role": "button",
+     "copy": "ratified",
+     "id": "library-cleanup.undo"
+    },
+    {
+     "text": "Delete all six…",
+     "role": "button",
+     "copy": "ratified",
+     "note": "Red text; opens delete-confirm-several. The count varies, a word up to nine; two reads 'Delete both…'.",
+     "id": "library-cleanup.delete-all-six"
+    },
+    {
+     "text": "Keep takes a video off this list for good. Plays are counted in your own Cloudflare account.",
+     "role": "line",
+     "copy": "ratified",
+     "id": "library-cleanup.keep-takes-a-video"
+    },
+    {
+     "text": "Nothing to clean up right now.",
+     "role": "line",
+     "copy": "ratified",
+     "note": "Once the last suggestion is kept or deleted.",
+     "id": "library-cleanup.nothing-to-clean-up"
+    }
+   ],
+   "actions": [
+    {
+     "label": "‹ Library",
+     "kind": "secondary",
+     "return_default": false,
+     "goes_to": "library"
+    },
+    {
+     "label": "Delete all six…",
+     "kind": "destructive",
+     "return_default": false,
+     "goes_to": "delete-confirm-several"
+    }
+   ],
+   "cites": [
+    "N68"
+   ],
+   "was": null
+  },
+  "owner-page-cuts": {
+   "region": 4,
+   "kind": "face",
+   "parent": "owner-page",
+   "surface": "web-page",
+   "status": "provisional",
+   "board": "OwnerPageCuts",
+   "summary": "Voice cuts (N65): when the speaker said “shroom cut” in a take, the owner page shows what was cut, under the player. A heading, a quiet note that only the owner sees it, then one row per cut: its time on the video, and what was said, struck through while it is cut, between a few words of what plays around it (up to six either side, never struck), with Put back (and, once put back, Cut again). A cue with nothing said again after it cuts the line before it too (OwnerPageCutUnsure): the row strikes both, the line and “shroom cut”, under an amber note that it isn't sure how far back the slip went, so check; its Put back brings the line back and keeps “shroom cut” out, and Cut again cuts the line again. Owner-mode as the title has it (N40): the video's maker and owner-class browsers. Viewers see only the cut video, never the strip or the words cut. A press saves at once and the player follows; a press that didn't save puts the row back as it was and says so on one line (OwnerPageCutRows). A cut whose edges were moved in the editor (N63) shows how long it is and where it now ends in place of its words, which would no longer be what's cut; Put back and Cut again work on it as before.",
+   "entry": "The record's edit list holds voice cuts (N63's list; kinds retake, cue-only and line-before-cue, landed by the Mac once the take is heard) and the browser is in owner-mode for this video. The strip shows on load, or, on a page already open, once the page's own poll sees the cuts land.",
+   "said": [
+    {
+     "text": "Cut where you said “shroom cut”",
+     "role": "heading",
+     "copy": "provisional",
+     "note": "The strip's heading, with the scissors. Proposed 2026-10-18 (OwnerPageCuts); awaiting Bagrat.",
+     "id": "owner-page-cuts.cut-where-you-said"
+    },
+    {
+     "text": "Only you see this.",
+     "role": "note",
+     "copy": "provisional",
+     "note": "Quiet, at the heading's right: viewers never see the strip. Proposed 2026-10-18; awaiting Bagrat.",
+     "id": "owner-page-cuts.only-you-see-this"
+    },
+    {
+     "text": "Put back",
+     "role": "button",
+     "copy": "provisional",
+     "note": "On a cut row: the slip plays again; on the unsure cut, the line before the cue plays again and “shroom cut” stays out (OwnerPageCutUnsure; Bagrat's pick, 2026-10-18). Proposed 2026-10-18; awaiting Bagrat.",
+     "id": "owner-page-cuts.put-back"
+    },
+    {
+     "text": "Cut again",
+     "role": "button",
+     "copy": "provisional",
+     "note": "On a row that was put back. Proposed 2026-10-18; awaiting Bagrat.",
+     "id": "owner-page-cuts.cut-again"
+    },
+    {
+     "text": "Not sure how far back the slip went — check this one.",
+     "role": "note",
+     "copy": "ratified",
+     "note": "Above the unsure cut's row, in amber: the line before a cue with nothing said again after it, cut with the cue. Bagrat, 2026-10-18 (relayed by the orchestrator), after a take of his own on the early build: it should say it wasn't clear how far back the slip went, and ask to check. His pick of three ways on OwnerPageCutUnsure, 2026-10-18 (relayed by the orchestrator).",
+     "id": "owner-page-cuts.not-sure-how-far-back"
+    },
+    {
+     "text": "Couldn't save that. Check your connection, then try again.",
+     "role": "status",
+     "copy": "provisional",
+     "note": "Under the rows, in amber, after a press that didn't save; the row is back as it was. Proposed 2026-10-18; awaiting Bagrat.",
+     "id": "owner-page-cuts.couldnt-save"
+    },
+    {
+     "text": "4.6 s, to 0:09",
+     "role": "line",
+     "copy": "ratified",
+     "note": "In place of a cut's words once its edges were moved in the editor (N63: a cut's edges dragged, its `adjusted`): how long it is now and where it ends; the numbers vary. The words would no longer be what's cut. Approved as drawn, Bagrat 2026-10-18 (OwnerPageCutAdjusted).",
+     "id": "owner-page-cuts.changed-length"
+    },
+    {
+     "text": "changed in the editor",
+     "role": "note",
+     "copy": "ratified",
+     "note": "After the length, quieter: why the row shows no words. Approved as drawn, Bagrat 2026-10-18 (OwnerPageCutAdjusted).",
+     "id": "owner-page-cuts.changed-in-the-editor"
+    }
+   ],
+   "actions": [
+    {
+     "label": "Put back",
+     "kind": "secondary",
+     "return_default": false,
+     "goes_to": "owner-page-cuts",
+     "note": "Saves at once: the cut no longer applies (the record's edit list, under If-Match, B21), the row's words are no longer struck, the button becomes Cut again, and the player follows. On the unsure cut it's the line's cut that no longer applies: “shroom cut” has a cut of its own, which stays, struck."
+    },
+    {
+     "label": "Cut again",
+     "kind": "secondary",
+     "return_default": false,
+     "goes_to": "owner-page-cuts",
+     "note": "The same save, the other way."
+    }
+   ],
+   "cites": [
+    "N65",
+    "N63",
+    "N66",
+    "N40",
+    "B21"
+   ]
+  },
+  "owner-page-cue-hint": {
+   "region": 4,
+   "kind": "face",
+   "parent": "owner-page",
+   "surface": "web-page",
+   "status": "provisional",
+   "board": "OwnerPageCueHint",
+   "summary": "The voice-cut hint (N65): in a space that listens, the owner page of a take with no voice cuts shows one quiet line under the player, where the strip would be, with the scissors: how to cut a slip by saying so. Got it puts it away for good in that browser, and so does a first take with voice cuts; never beside the strip, never while the cuts are on their way. Owner-mode as the title has it (N40); viewers never see it (OwnerPageCueHint).",
+   "entry": "The browser is in owner-mode for this video, the space listens (N66), the record has no voice cuts and none are on their way, and this browser hasn't put the hint away or shown a strip of voice cuts.",
+   "said": [
+    {
+     "text": "Slipped? Say “shroom cut”, then say the line again.",
+     "role": "note",
+     "copy": "provisional",
+     "note": "Under the player, where the strip would be, with the scissors. OK'd by Bagrat 2026-10-18 (relayed by the orchestrator), with whichever cue word wins: “shroom cut”, his pick the same day (B203).",
+     "id": "owner-page-cue-hint.slipped"
+    },
+    {
+     "text": "Got it",
+     "role": "button",
+     "copy": "provisional",
+     "note": "At the line's right: the hint goes, for good in this browser. Proposed 2026-10-18; awaiting Bagrat.",
+     "id": "owner-page-cue-hint.got-it"
+    }
+   ],
+   "actions": [
+    {
+     "label": "Got it",
+     "kind": "secondary",
+     "return_default": false,
+     "goes_to": "owner-page",
+     "note": "The hint goes and stays gone in this browser (its own storage; where that can't be kept, for this page view)."
+    }
+   ],
+   "cites": [
+    "N65",
+    "N66",
+    "N40",
+    "B203"
+   ]
+  },
+  "hearing": {
+   "region": 4,
+   "kind": "face",
+   "parent": "owner-page",
+   "surface": "web-page",
+   "status": "provisional",
+   "board": "OwnerPageFinishing",
+   "summary": "While the take is heard (N65 (7), N66): in a space that listens, once the upload has drained, the owner page's one line stays: the same words, its spinner turning, until the take's voice cuts land (the strip takes its place), the Mac finds none (it fades, and the hint shows in its place while that is due), or five minutes have passed since the take went live, by the page's own count. It never speaks of cuts: the same listening names the video and makes its captions and chapters. Edit comes in on the title row as the upload drains, beside it (OwnerPageFinishing, OwnerPageFinishingEnds). Owner-mode as the title has it (N40); viewers never see it.",
+   "entry": "The browser is in owner-mode for this video, the space listens (N66), the upload has drained, the take went live less than five minutes ago, its words don't wait for the next free day, and the Mac hasn't been through them yet: the status says the voice cuts are coming.",
+   "said": [
+    {
+     "text": "Finishing your video — the link already works, share it anytime.",
+     "role": "status",
+     "copy": "ratified",
+     "note": "The upload's line (uploading), kept after the upload while the take is heard, its spinner turning. Bagrat, 2026-10-18 (relayed by the orchestrator): one indicator on the owner page, from the upload until the voice cuts land, “Finishing” his pick of its first word.",
+     "id": "hearing.finishing-your-video"
+    }
+   ],
+   "actions": [],
+   "cites": [
+    "N65",
+    "N66",
+    "N40"
+   ]
   }
  },
  "edges": [
@@ -13188,6 +14713,23 @@
    ]
   },
   {
+   "from": "idle-ready",
+   "to": "settings-general",
+   "kind": "flow",
+   "label": "shroom://settings/agent",
+   "trigger": "the link in the shroom command's recording refusal, clicked (N62): Settings opens on General, the switch's row lit for a moment and never flipped",
+   "status": "ratified",
+   "cites": [
+    "N62"
+   ],
+   "source": [
+    "core-arm"
+   ],
+   "on": [
+    "SettingsLink"
+   ]
+  },
+  {
    "from": "recording-off",
    "to": "perm-screen",
    "kind": "flow",
@@ -13615,6 +15157,21 @@
    "on": [
     "Act(ConfirmRestart)"
    ]
+  },
+  {
+   "from": "idle-ready",
+   "to": "countdown",
+   "kind": "flow",
+   "label": "shroom record start",
+   "trigger": "the shroom command asks to start (N62), General's switch on: the popover's Start, the popover closed",
+   "status": "ratified",
+   "cites": [
+    "N62"
+   ],
+   "source": [
+    "core-arm"
+   ],
+   "on": []
   },
   {
    "from": "restart-confirm",
@@ -14112,6 +15669,126 @@
    "cites": [],
    "source": [
     "map"
+   ],
+   "on": []
+  },
+  {
+   "from": "owner-page",
+   "to": "owner-page-cuts",
+   "kind": "auto",
+   "label": "the take's voice cuts land — the page shows them",
+   "trigger": "The record's edit list gains voice cuts (the Mac lands them once the take is heard); on load, or through the page's own poll",
+   "status": "provisional",
+   "cites": [
+    "N65"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": []
+  },
+  {
+   "from": "owner-page",
+   "to": "owner-page-cue-hint",
+   "kind": "auto",
+   "label": "a take with no voice cuts, in a space that listens — the page shows how to cut a slip",
+   "trigger": "On load, in owner-mode, when the record has no voice cuts and none are coming, and this browser hasn't put the hint away",
+   "status": "provisional",
+   "cites": [
+    "N65"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": []
+  },
+  {
+   "from": "owner-page-cue-hint",
+   "to": "owner-page",
+   "kind": "flow",
+   "label": "Got it — the hint goes, for good in this browser",
+   "trigger": "Got it, or a take with voice cuts shown in this browser",
+   "status": "provisional",
+   "cites": [
+    "N65"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": []
+  },
+  {
+   "from": "uploading",
+   "to": "hearing",
+   "kind": "auto",
+   "label": "the upload drains in a space that listens while the take is heard — the line stays, its spinner turning",
+   "trigger": "The page's own poll sees the upload drain while the status says the voice cuts are coming",
+   "status": "provisional",
+   "cites": [
+    "N65"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": []
+  },
+  {
+   "from": "owner-page",
+   "to": "hearing",
+   "kind": "auto",
+   "label": "opened while the take is heard — the line, its spinner turning",
+   "trigger": "On load, in owner-mode, with the upload drained and the status saying the voice cuts are coming",
+   "status": "provisional",
+   "cites": [
+    "N65"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": []
+  },
+  {
+   "from": "hearing",
+   "to": "owner-page-cuts",
+   "kind": "auto",
+   "label": "the take's voice cuts land — the strip takes the line's place",
+   "trigger": "The page's own poll sees the cuts land; the line fades and the strip shows",
+   "status": "provisional",
+   "cites": [
+    "N65"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": []
+  },
+  {
+   "from": "hearing",
+   "to": "owner-page-cue-hint",
+   "kind": "auto",
+   "label": "nothing to cut, or five minutes pass, and the hint is due — the hint takes the line's place",
+   "trigger": "The status stops saying the voice cuts are coming and the record has none (the Mac found nothing to cut, or five minutes passed since the take went live, by the page's own count), and this browser hasn't put the hint away",
+   "status": "provisional",
+   "cites": [
+    "N65"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": []
+  },
+  {
+   "from": "hearing",
+   "to": "fully-live",
+   "kind": "auto",
+   "label": "nothing to cut, or five minutes pass — the line fades",
+   "trigger": "As above, with the hint put away",
+   "status": "provisional",
+   "cites": [
+    "N65"
+   ],
+   "source": [
+    "canvas"
    ],
    "on": []
   },
@@ -16125,6 +17802,579 @@
    "on": [
     "Act(OpenFeedback)"
    ]
+  },
+  {
+   "from": "library",
+   "to": "library-cleanup",
+   "kind": "flow",
+   "label": "Review…",
+   "trigger": "Review… on the suggestion line",
+   "status": "ratified",
+   "cites": [
+    "N68"
+   ],
+   "source": [
+    "core-arm"
+   ],
+   "on": [
+    "Act(ReviewCleanup)"
+   ]
+  },
+  {
+   "from": "library-cleanup",
+   "to": "library",
+   "kind": "flow",
+   "label": "‹ Library",
+   "trigger": "‹ Library",
+   "status": "ratified",
+   "cites": [
+    "N68"
+   ],
+   "source": [
+    "core-arm"
+   ],
+   "on": [
+    "Act(Back)"
+   ]
+  },
+  {
+   "from": "library-cleanup",
+   "to": "delete-confirm-several",
+   "kind": "flow",
+   "label": "Delete all…",
+   "trigger": "Delete all… under the suggestions",
+   "status": "ratified",
+   "cites": [
+    "N68"
+   ],
+   "source": [
+    "core-arm"
+   ],
+   "on": [
+    "Act(DeleteAllSuggested)"
+   ]
+  },
+  {
+   "from": "config",
+   "to": "ai-offer",
+   "kind": "auto",
+   "label": "",
+   "trigger": "config opens on the Mac that holds the setup key while the space's AI is off, no higher banner shows and the banner has never been answered on this Mac (N66)",
+   "status": "ratified",
+   "cites": [
+    "N66"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": []
+  },
+  {
+   "from": "ai-offer",
+   "to": "ai-confirm",
+   "kind": "flow",
+   "label": "Turn on…",
+   "trigger": "Turn on… (or the same on ai-offer-failed)",
+   "status": "ratified",
+   "cites": [
+    "N66"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Act(AiAsk)"
+   ]
+  },
+  {
+   "from": "ai-offer",
+   "to": "config",
+   "kind": "flow",
+   "label": "Not now",
+   "trigger": "Not now: hidden on this Mac for good; the switch in Settings · Space stays (N66)",
+   "status": "ratified",
+   "cites": [
+    "N66"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Act(AiNotNow)"
+   ]
+  },
+  {
+   "from": "ai-confirm",
+   "to": "ai-turning-on",
+   "kind": "flow",
+   "label": "Turn on",
+   "trigger": "Turn on: the space's page is put up again with the AI",
+   "status": "ratified",
+   "cites": [
+    "N66"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Act(AiOn)"
+   ]
+  },
+  {
+   "from": "ai-confirm",
+   "to": "config",
+   "kind": "flow",
+   "label": "Back",
+   "trigger": "Back or Esc: the banner stays",
+   "status": "ratified",
+   "cites": [
+    "N66"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Act(Back)",
+    "Key(Esc)"
+   ]
+  },
+  {
+   "from": "ai-turning-on",
+   "to": "ai-on",
+   "kind": "auto",
+   "label": "",
+   "trigger": "the page answers that its AI is on",
+   "status": "ratified",
+   "cites": [
+    "N66"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Cloud(AiSet)"
+   ]
+  },
+  {
+   "from": "ai-turning-on",
+   "to": "ai-offer-failed",
+   "kind": "fail",
+   "label": "",
+   "trigger": "the re-wiring didn't go through (law 12)",
+   "status": "ratified",
+   "cites": [
+    "N66"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Failed(Ai)"
+   ]
+  },
+  {
+   "from": "library",
+   "to": "editor",
+   "kind": "side",
+   "label": "Edit…",
+   "trigger": "Edit… on a live row whose video is on this Mac",
+   "status": "ratified",
+   "cites": [
+    "N63"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Act(EditRow)"
+   ]
+  },
+  {
+   "from": "library",
+   "to": "editor-getting",
+   "kind": "side",
+   "label": "Edit…",
+   "trigger": "Edit… on a live row whose video isn't on this Mac",
+   "status": "ratified",
+   "cites": [
+    "N63"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Act(EditRow)"
+   ]
+  },
+  {
+   "from": "owner-page",
+   "to": "editor",
+   "kind": "side",
+   "label": "Edit in shroom",
+   "trigger": "Edit in shroom, for a video this Mac can edit whose video is on this Mac; the editor already open comes forward as it is (one at a time), saying so when it holds another video",
+   "status": "provisional",
+   "cites": [
+    "N69"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "EditLink"
+   ]
+  },
+  {
+   "from": "owner-page",
+   "to": "editor-getting",
+   "kind": "side",
+   "label": "Edit in shroom",
+   "trigger": "Edit in shroom, for a video this Mac can edit whose video isn't on this Mac",
+   "status": "provisional",
+   "cites": [
+    "N69"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "EditLink"
+   ]
+  },
+  {
+   "from": "owner-page",
+   "to": "config",
+   "kind": "side",
+   "label": "Edit in shroom",
+   "trigger": "Edit in shroom, for a video this Mac can't edit: the popover opens by itself with one line, said once",
+   "status": "provisional",
+   "cites": [
+    "N69"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "EditLink"
+   ]
+  },
+  {
+   "from": "editor-getting",
+   "to": "editor",
+   "kind": "flow",
+   "label": "",
+   "trigger": "the video is here and its sound read",
+   "status": "ratified",
+   "cites": [
+    "N63"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Editor"
+   ]
+  },
+  {
+   "from": "editor-getting",
+   "to": "editor-cant-get",
+   "kind": "flow",
+   "label": "",
+   "trigger": "the space didn't hand the video over",
+   "status": "ratified",
+   "cites": [
+    "N63"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Failed"
+   ]
+  },
+  {
+   "from": "editor-cant-get",
+   "to": "editor-getting",
+   "kind": "flow",
+   "label": "Try again",
+   "trigger": "Try again",
+   "status": "ratified",
+   "cites": [
+    "N63"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Act(EditorRetry)"
+   ]
+  },
+  {
+   "from": "editor",
+   "to": "editor-saving",
+   "kind": "flow",
+   "label": "Done",
+   "trigger": "Done, Return or ✕ with changes — or Quit or Update meanwhile, which then wait on the save (B199)",
+   "status": "ratified",
+   "cites": [
+    "N63",
+    "B199"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Act(EditorDone)",
+    "WindowClosed",
+    "QuitRequested",
+    "Act(Quit)",
+    "Act(QuitAnyway)",
+    "Act(Update)"
+   ]
+  },
+  {
+   "from": "editor-saving",
+   "to": "library",
+   "kind": "flow",
+   "label": "",
+   "trigger": "saved, and nothing is left out any more (the edit was reverted): the editor closes",
+   "status": "ratified",
+   "cites": [
+    "N63"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Editor"
+   ]
+  },
+  {
+   "from": "editor-saving",
+   "to": "editor-save-failed",
+   "kind": "flow",
+   "label": "",
+   "trigger": "the save didn't go through",
+   "status": "ratified",
+   "cites": [
+    "N63"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Failed"
+   ]
+  },
+  {
+   "from": "editor-save-failed",
+   "to": "editor-saving",
+   "kind": "flow",
+   "label": "Done",
+   "trigger": "Done again — or Quit or Update, which then wait on the save (B199)",
+   "status": "ratified",
+   "cites": [
+    "N63",
+    "B199"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Act(EditorDone)",
+    "WindowClosed",
+    "QuitRequested",
+    "Act(Quit)",
+    "Act(QuitAnyway)",
+    "Act(Update)"
+   ]
+  },
+  {
+   "from": "editor",
+   "to": "library",
+   "kind": "flow",
+   "label": "Done",
+   "trigger": "Done, Return or ✕ with nothing changed: the editor closes",
+   "status": "ratified",
+   "cites": [
+    "N63"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Act(EditorDone)",
+    "WindowClosed"
+   ]
+  },
+  {
+   "from": "editor-cant-get",
+   "to": "library",
+   "kind": "flow",
+   "label": "Close",
+   "trigger": "Close, Return, Esc or ✕",
+   "status": "ratified",
+   "cites": [
+    "N63"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Act(EditorClose)",
+    "WindowClosed"
+   ]
+  },
+  {
+   "from": "editor-saving",
+   "to": "editor-making",
+   "kind": "flow",
+   "label": "",
+   "trigger": "saved with something left out: the final video is made",
+   "status": "ratified",
+   "cites": [
+    "N63",
+    "B197"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Editor"
+   ]
+  },
+  {
+   "from": "editor-making",
+   "to": "editor-keep-original",
+   "kind": "flow",
+   "label": "",
+   "trigger": "the final video is up, named in the video's record",
+   "status": "ratified",
+   "cites": [
+    "N63",
+    "B197",
+    "B199"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Editor"
+   ]
+  },
+  {
+   "from": "editor-making",
+   "to": "editor-making-failed",
+   "kind": "flow",
+   "label": "",
+   "trigger": "it couldn't be made or put up — or it was dropped, never named: the video's record moved on first, a newer save landing (B199)",
+   "status": "ratified",
+   "cites": [
+    "N63",
+    "B197",
+    "B199"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Failed",
+    "Editor"
+   ]
+  },
+  {
+   "from": "editor-making",
+   "to": "library",
+   "kind": "flow",
+   "label": "Close",
+   "trigger": "Close, Return or ✕: shroom finishes in the background",
+   "status": "ratified",
+   "cites": [
+    "N63",
+    "B197"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Act(EditorClose)",
+    "WindowClosed"
+   ]
+  },
+  {
+   "from": "editor-making-failed",
+   "to": "library",
+   "kind": "flow",
+   "label": "Close",
+   "trigger": "Close, Return, Esc or ✕",
+   "status": "ratified",
+   "cites": [
+    "N63",
+    "B197"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Act(EditorClose)",
+    "WindowClosed"
+   ]
+  },
+  {
+   "from": "editor-keep-original",
+   "to": "library",
+   "kind": "flow",
+   "label": "Yes, delete · Keep for 2 days",
+   "trigger": "Yes, delete (a click): the edit becomes the video and the original is deleted; Keep for 2 days, Esc or ✕: the original is deleted two days on",
+   "status": "ratified",
+   "cites": [
+    "N63",
+    "B197"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Act(DeleteOriginal)",
+    "Act(KeepOriginal)",
+    "WindowClosed"
+   ]
+  },
+  {
+   "from": "editor-saving",
+   "to": "editor-save-refused",
+   "kind": "flow",
+   "label": "",
+   "trigger": "the space turned the save down: the video is gone, or another Mac made an edit the video meanwhile",
+   "status": "ratified",
+   "cites": [
+    "N63",
+    "B199"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Failed"
+   ]
+  },
+  {
+   "from": "editor-save-refused",
+   "to": "library",
+   "kind": "flow",
+   "label": "Close",
+   "trigger": "Close, Return, Esc or ✕: nothing is saved",
+   "status": "ratified",
+   "cites": [
+    "N63",
+    "B199"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Act(EditorClose)",
+    "WindowClosed"
+   ]
   }
  ],
  "rules": [
@@ -16579,6 +18829,31 @@
    "status": "ratified"
   },
   {
+   "id": "settings-link",
+   "label": "the settings link opens Settings at its spot",
+   "from": [
+    "@idle",
+    "@popovers",
+    "@settings-tabs",
+    "@space-tab"
+   ],
+   "to": [
+    "settings-general",
+    "@idle"
+   ],
+   "on": [
+    "SettingsLink"
+   ],
+   "kind": "flow",
+   "says": "The link the shroom command's recording refusal carries (`shroom://settings/agent`, N62) opens Settings on General with the switch “Let it start and stop recordings” in view and lit for a moment: from the tray at rest, over an idle popover (it closes, as a click away closes it), and from another tab. It flips nothing. A sheet open in Settings stays, and Settings comes forward as it stands. Mid-take it opens nothing (law 4), and a Mac with no space has no Settings (B160).",
+   "cites": [
+    "N62",
+    "law 4",
+    "B160"
+   ],
+   "status": "ratified"
+  },
+  {
    "id": "invite-arrives",
    "label": "an invite opens its window",
    "from": [
@@ -16646,6 +18921,51 @@
    "cites": [
     "N38",
     "law 1"
+   ],
+   "status": "ratified"
+  },
+  {
+   "id": "editor-video-deleted",
+   "label": "its video deleted, the editor closes",
+   "from": [
+    "@editor-faces"
+   ],
+   "to": [
+    "library"
+   ],
+   "on": [
+    "Act(ConfirmDelete)",
+    "Library(Deleted)"
+   ],
+   "kind": "side",
+   "says": "Deleting the video the editor holds — Delete… confirmed in the Library, or this Mac's delete landing — closes the editor: what its open asked for stops, a save on its way answers no one, and nothing is saved (B199). Another Mac's delete reaches it as a save the space turns down (editor-save-refused).",
+   "cites": [
+    "N63",
+    "B199"
+   ],
+   "status": "ratified"
+  },
+  {
+   "id": "quit-saves-the-edit",
+   "label": "Quit or Update saves an unsaved edit first",
+   "from": [
+    "editor",
+    "editor-save-failed"
+   ],
+   "to": [
+    "editor-saving"
+   ],
+   "on": [
+    "QuitRequested",
+    "Act(Quit)",
+    "Act(QuitAnyway)",
+    "Act(Update)"
+   ],
+   "kind": "side",
+   "says": "Quit — the Dock's, the popover's, the right-click menu's or macOS's, and Quit anyway once uploads are asked about — and Update, while the editor holds changes not saved yet, save them first, as ✕ and ⌘Q do, and bring the editor forward; a save already on its way is waited for. Once it lands the quit or the update goes on, without waiting for the final video (an upkeep makes it later). A save that doesn't land holds it: shroom stays, and the editor says why. A take begun meanwhile drops it (law 4) (B199).",
+   "cites": [
+    "N63",
+    "B199"
    ],
    "status": "ratified"
   }

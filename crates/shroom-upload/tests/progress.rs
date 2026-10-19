@@ -140,6 +140,10 @@ fn the_page_reads_the_upload_as_the_mac_writes_it() {
     let dp = done.progress.clone().unwrap();
     assert_eq!((dp.done, dp.total), (total, total));
     assert!(done.media.as_ref().is_some_and(|m| m.mp4.is_some()));
+    // Drained, the record says what the video holds in the bucket (N68's suggestions read it).
+    let stored: u64 = s3.list(&format!("rec/{ID}/")).unwrap().iter().map(|o| o.size).sum();
+    assert!(stored > 0);
+    assert_eq!(done.extra.get("bytes").and_then(|b| b.as_u64()), Some(stored));
 
     // The Worker reads the same three records: uploading and moving → live, still
     // draining → drained (“Fully live ✓”).

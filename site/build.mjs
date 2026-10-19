@@ -12,6 +12,7 @@
 //   _/install.sh                           installer/install.sh, as it is
 //   _/agent.md                             site/agent.md, as it is
 //   _/agent.html                           the same markdown, as a page for a browser
+//   _/cli.md, _/cli.html                   site/cli.md — the guide to the command line — the same two ways
 //   _/whats-new/<version>.html             each release's "What's new", from
 //                                          docs/release-notes/<version>.md (DECISIONS B152)
 //   _/whats-new/latest.html                the newest of them
@@ -62,9 +63,24 @@ export const FOOTER = `<footer><div class="wrap links">
 const escapeHtml = (/** @type {string} */ s) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
+/** What frames the two pages for coding agents: the install page (/agent) and the guide to
+ * the command line (/cli, dev/proposals/cli-agent-skill.md). */
+const AGENT_PAGE = {
+  path: "/agent",
+  title: "shroom — for your coding agent",
+  description: "What your coding agent reads when you ask it to install shroom.",
+  intro: "This is what your coding agent reads when you ask it to install shroom — word for word.",
+};
+export const CLI_PAGE = {
+  path: "/cli",
+  title: "shroom — your coding agent and your videos",
+  description: "What your coding agent reads when you ask it to use shroom for you.",
+  intro: "This is what your coding agent reads when you ask it to do something with your shroom videos — word for word.",
+};
+
 /** The agent page for a browser: the landing's look, and the markdown exactly as an agent
  * reads it — "Read it first" shows the words themselves, not a retelling of them. */
-export function agentPage(/** @type {string} */ landing, /** @type {string} */ markdown) {
+export function agentPage(/** @type {string} */ landing, /** @type {string} */ markdown, page = AGENT_PAGE) {
   const style = landing.match(/<style>[\s\S]*?<\/style>/)?.[0];
   const header = HEADER;
   if (!style) throw new Error("site/index.html should carry one <style>");
@@ -73,12 +89,12 @@ export function agentPage(/** @type {string} */ landing, /** @type {string} */ m
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>shroom — for your coding agent</title>
-<meta name="description" content="What your coding agent reads when you ask it to install shroom.">
+<title>${page.title}</title>
+<meta name="description" content="${page.description}">
 <meta property="og:type" content="website">
-<meta property="og:title" content="shroom — for your coding agent">
-<meta property="og:url" content="https://shroom.am/agent">
-<meta property="og:description" content="What your coding agent reads when you ask it to install shroom.">
+<meta property="og:title" content="${page.title}">
+<meta property="og:url" content="https://shroom.am${page.path}">
+<meta property="og:description" content="${page.description}">
 ${OG_IMAGE}
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="icon" type="image/png" sizes="180x180" href="favicon.png">
@@ -94,7 +110,7 @@ ${style.replace("</style>", `  main.agent { gap: 16px; padding-block: 24px 48px;
 ${header}
 
 <main class="wrap agent">
-  <p>This is what your coding agent reads when you ask it to install shroom — word for word.</p>
+  <p>${page.intro}</p>
   <pre>${escapeHtml(markdown)}</pre>
 </main>
 </body>
@@ -272,6 +288,9 @@ export function build(out) {
   writeFileSync(join(out, "_/agent.md"), markdown);
   const landing = readFileSync(join(SITE, "index.html"), "utf8");
   writeFileSync(join(out, "_/agent.html"), agentPage(landing, markdown));
+  const cli = readFileSync(join(SITE, "cli.md"), "utf8");
+  writeFileSync(join(out, "_/cli.md"), cli);
+  writeFileSync(join(out, "_/cli.html"), agentPage(landing, cli, CLI_PAGE));
   for (const name of PAGES) {
     const fragment = readFileSync(join(SITE, "pages", `${name}.html`), "utf8");
     writeFileSync(join(out, `_/${name}.html`), docPage(landing, name, name === "feedback" ? feedbackFragment(fragment) : fragment));

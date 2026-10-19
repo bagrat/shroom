@@ -8,6 +8,7 @@ license.workspace = true
 [dependencies]
 shroom-storage = { path = "../shroom-storage" }
 shroom-encode = { path = "../shroom-encode" }
+shroom-edit = { path = "../shroom-edit" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 getrandom = "0.3"
@@ -15,4 +16,5 @@ base64 = "0.22"
 
 [dev-dependencies]
 shroom-cloudfake = { path = "../shroom-cloudfake" }
+shroom-core = { path = "../shroom-core" }
 tempfile = "3"

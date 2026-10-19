@@ -1,0 +1,151 @@
+{
+ "duration": 12.374648526077097,
+ "words": [
+  {
+   "text": "The",
+   "start": 0.0,
+   "end": 0.76
+  },
+  {
+   "text": "settings",
+   "start": 0.76,
+   "end": 1.1
+  },
+  {
+   "text": "window",
+   "start": 1.1,
+   "end": 1.6
+  },
+  {
+   "text": "has",
+   "start": 1.6,
+   "end": 2.0
+  },
+  {
+   "text": "three",
+   "start": 2.0,
+   "end": 2.34
+  },
+  {
+   "text": "tabs.",
+   "start": 2.34,
+   "end": 2.8
+  },
+  {
+   "text": "The",
+   "start": 3.5,
+   "end": 3.6
+  },
+  {
+   "text": "second",
+   "start": 3.6,
+   "end": 3.9
+  },
+  {
+   "text": "one",
+   "start": 3.9,
+   "end": 4.28
+  },
+  {
+   "text": "is",
+   "start": 4.28,
+   "end": 4.6
+  },
+  {
+   "text": "him.",
+   "start": 4.6,
+   "end": 4.88
+  },
+  {
+   "text": "I",
+   "start": 5.28,
+   "end": 5.3
+  },
+  {
+   "text": "forget",
+   "start": 5.3,
+   "end": 5.66
+  },
+  {
+   "text": "what",
+   "start": 5.66,
+   "end": 5.94
+  },
+  {
+   "text": "it's",
+   "start": 5.94,
+   "end": 6.22
+  },
+  {
+   "text": "called.",
+   "start": 6.22,
+   "end": 6.56
+  },
+  {
+   "text": "Shroom",
+   "start": 7.46,
+   "end": 7.64
+  },
+  {
+   "text": "cut.",
+   "start": 7.64,
+   "end": 8.04
+  },
+  {
+   "text": "Let's",
+   "start": 8.96,
+   "end": 9.34
+  },
+  {
+   "text": "move",
+   "start": 9.34,
+   "end": 9.56
+  },
+  {
+   "text": "onto",
+   "start": 9.56,
+   "end": 9.94
+  },
+  {
+   "text": "the",
+   "start": 9.94,
+   "end": 10.2
+  },
+  {
+   "text": "library",
+   "start": 10.2,
+   "end": 10.66
+  },
+  {
+   "text": "instead.",
+   "start": 10.66,
+   "end": 11.38
+  }
+ ],
+ "silences": [
+  {
+   "start": 0.0,
+   "end": 0.611202
+  },
+  {
+   "start": 2.98703,
+   "end": 3.49324
+  },
+  {
+   "start": 5.00517,
+   "end": 5.16744
+  },
+  {
+   "start": 6.69646,
+   "end": 7.31465
+  },
+  {
+   "start": 8.21651,
+   "end": 8.94372
+  },
+  {
+   "start": 11.5626,
+   "end": 12.3746
+  }
+ ]
+}

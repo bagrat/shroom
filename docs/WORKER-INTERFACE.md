@@ -183,6 +183,13 @@ Not built; P1 passed (D:B35). See history/design/WORKER-INTERFACE.md §2.5.
 No credential is needed for the public pages, `/m/`, `/d/`, status, `/oembed`, ping, the
 icon, or `/join/<code>` (which reads a cookie only to pick a face).
 
+**The `shroom` command** (spec N62, D:B215) calls these routes under its Mac's device key,
+exactly as that Mac's app does — `library`, `mint` (a `manage` credential for a rename or a
+delete), `gone`, `members`, `invites` and their deletes — so the page holds it to the same
+role. It never holds the parent proof or the token. Where a page makes cleanup suggestions
+(`POST /_shroom/api/cleanup`, the cleanup proposal's route) it reads them; a page that answers
+404 there gets age alone.
+
 ### 3.2 Device key and parent proof
 
 **Device key.** The Mac makes `did` (`d_` + 12 bytes) and `secret` (32 bytes, 43 characters)
@@ -305,6 +312,7 @@ Then the parent. If it is missing, the Worker sets `health.json` to `blocked`/`n
 |---|---|---|
 | `n` | 20 first upload mints (`UPLOAD_BUDGET`, H4); re-mints don't count | 429 `too-many`, `retryAfter` = seconds to the hour's end (≥ 1) |
 | `k` | 60 `/key` calls (`KEY_BUDGET`, D:B125) | the same |
+| `c` | 120 voice-cue judgments (`CUE_BUDGET`, D:B202) | the same |
 
 Token Macs mint locally, with no budget.
 
@@ -325,9 +333,10 @@ the HMAC verifies): `m` and `d` are strings; `devices[d]` is active and belongs 
 
 **Powers.** Edit (`mayEdit`) = owner-class, or the ledger names `m`. Whoever may edit a
 video may also store its Copy thumbnail picture (N46, D:B164): one GIF or JPEG per title and
-kind, beside the video, under the caps in §4.17. It is the cookie's only byte write. The mark
-is owner-class only. A redeem never swaps a live owner-class cookie for a member's; the grant
-is still spent (login CSRF, D:B38).
+kind, beside the video, under the caps in §4.17, drawn from the first frame the video shows
+now (`from`, §4.17). It is the cookie's only byte write. The mark is owner-class only. A
+redeem never swaps a live owner-class cookie for a member's; the grant is still spent (login
+CSRF, D:B38).
 
 ### 3.6 Key confinement
 
@@ -414,24 +423,36 @@ A status alone never maps to a state. Within `IFACE = 2`, routes and fields only
 | 4.14 | DELETE | `/_shroom/api/members/<mid>` | owner-class |
 | 4.15 | DELETE | `/_shroom/api/devices/<did \| self>` | owner-class / any device |
 | 4.16 | POST | `/_shroom/api/mark` | owner-class |
-| 4.17 | GET, HEAD, POST | `/<id>` (`?k=`, `?embed=1`), `/m/`, `/d/`, `/_shroom/status/`, `/_shroom/hls.js`, `/oembed`, `/_shroom/title/<id>`, `/_shroom/mark` | none / `k` / cookie |
+| 4.17 | GET, HEAD, POST | `/<id>` (`?k=`, `?embed=1`), `/m/`, `/d/`, `/_shroom/status/`, `/_shroom/hls.js`, `/oembed`, `/_shroom/title/<id>`, `/_shroom/edits/<id>`, `/_shroom/mark` | none / `k` / cookie |
 | 4.18 | POST | `/_shroom/api/health` | device key |
 | 4.19 | GET, HEAD | `/favicon.svg`, `.png`, `.ico` | none |
 | 4.20 | POST | `/_shroom/api/gone` | device key |
+| 4.21 | POST | `/_shroom/api/ai` | device key / parent proof |
+| 4.21 | GET, HEAD | `/_shroom/cc/<id>` | none |
+| 4.21 | GET | `/_shroom/named/<id>` | cookie |
+| 4.22 | POST | `/_shroom/view/<id>` | none (same-site) |
+| 4.22 | POST | `/_shroom/api/cleanup` | device key (`everyone`: owner-class) |
+| 4.22 | GET, POST | `/_shroom/api/plays` | device key (POST: owner-class) |
+| 4.23 | POST | `/_shroom/api/cue` | device key |
 
 **The Worker writes only:**
 - the roster (CAS), the ledger (create-only) and `rate/<did>`;
 - `keys/<hash>` (create, CAS spend, delete);
-- `health.json`, `mark.json` and `gone/<id>` (plain puts);
+- `health.json`, `mark.json`, `plays.json` and `gone/<id>` (plain puts);
+- `views/<id>.json` (CAS), `views/salt.json` (create-only, then CAS) and `views/since.json`
+  (create-only), from play beacons (§4.22, N68); `views/<id>.json` is deleted with a seal;
 - `meta/<id>.json` via a title POST or a thumbnail POST (its `thumb` pointer);
 - `rec/<id>/thumb-<16 hex>.gif|jpg` via a thumbnail POST: created, named by its contents,
-  never anything else under `rec/` (D:B164).
+  never anything else under `rec/` but naming's transcript below (D:B164);
+- with naming on (§4.21): `rec/<id>/ai/transcript.json`, `.shroom/ai/later/<id>`, and the
+  record's `title` (while untitled), `named`, `captions` and `naming`, under `If-Match`.
 
 It never deletes bytes or claims a meta.
 
 ### 4.2 `GET /_shroom/ping`
 
-- **Response:** `200 {"shroom":true,"iface":2,"version":"0.1.9"}` (`no-store`). **No
+- **Response:** `200 {"shroom":true,"iface":2,"version":"0.1.9"}` (`no-store`), and
+  `"ai":true` after them when the page carries Cloudflare's AI (naming on, §4.21). **No
   storage read** (the stop probe's 600 ms, DV #8). It is the one route keeping
   `"shroom":true`.
 - **The app** (`Space::ping`):
@@ -803,15 +824,17 @@ HTML answers are 200 `text/html`, `noindex`, `no-store`, `no-referrer`, CSP
 | Route | Behaviour |
 |---|---|
 | `/_shroom/hls.js` | `.shroom/player/hls.min.js`, immutable for a year |
-| `/_shroom/status/<id>` | Public JSON, not shroom-shaped. Absent → `waiting`. Deleted or sealed → `removed`. Live with HLS → `{live, poster, mp4, teaser, thumb, dur, drained}` (`thumb`: the newest Copy thumbnail picture for the title, or null; D:B164. `dur`: the length in seconds, 0 when unknown, which a page opened while the video uploaded draws on its picture; D:B165) (+ `pct`, `stalled` until drained). Uploading → `{uploading, pct, stalled}`. Else, or a throwing read → `unavailable` (D:B94). `pct` ≤ 99. `stalled` = `progress.updatedAt` (else `createdAt`) older than 120 s. |
-| `/m/<id>/<file>` | No empty/`.`/`..` segment; only `m3u8 m4s mp4 jpg gif vtt` (else 404, D:B125; `gif` for Copy thumbnail's loop, D:B164). Reads `rec/<id>/<file>` beside the record: deleted or sealed → 404, record throws → 503, absent → served. Range → 206. `public, max-age=3600`. Media answers are `nosniff` with `content-security-policy: sandbox; default-src 'none'`. |
-| `/d/<id>` | Needs a live record with `media.mp4` (else 404). Streams `rec/<id>/video.mp4` as an attachment named after the title. Storage failure → 503. |
-| `/oembed?url=` | This origin's `/<id>` → `{version, type:"video", width, height, html (iframe ?embed=1), title?, thumbnail_*?}`, else 404 |
+| `/_shroom/status/<id>` | Public JSON, not shroom-shaped. Absent → `waiting`. Deleted or sealed → `removed`. Live with HLS, or baked (D:B197, §4.18) → `{live, poster, mp4, teaser, thumb, dur, drained}` (`thumb`: the newest Copy thumbnail picture for the title and drawn from the first frame the video shows now — the record's `thumb` with its `from` current, see the thumbnail POST — or null; D:B164. `dur`: the length in seconds, 0 when unknown, which a page opened while the video uploaded draws on its picture; D:B165) (+ `pct`, `stalled` until drained). With an edit (N63, D:B195; §4.18): `dur` is the edited length, `keep` the ranges that play, `copy` `{src, dur, poster}` once its permanent copy is current; `mp4` says Download has something to hand over, `poster`/`teaser` whether the page shows a first frame and a teaser — never one of a part that's cut (§4.18). A baked recording with no edit (D:B197: `bakedFrom` non-empty) names its own file as `copy` the same way, so a player the bake left on the original (its files 404) moves to it; a player already on that file stays. An edit that leaves nothing to play (its applied cuts cover the whole trim, or neither the record nor the list has a length) → `unavailable`, never the recording as it was. Uploading → `{uploading, pct, stalled}`. Else, or a throwing read → `unavailable` (D:B94). `pct` ≤ 99. `stalled` = `progress.updatedAt` (else `createdAt`) older than 120 s. Live, it may add `cuts` (N65, D:B200 c): `"coming"` while the space hears its takes (an `AI` binding, N66), the take went live under 5 min ago (`publishedAt`) and its edit list carries no plan mark (`edits.voice`), unless `naming.later` is set; once planned with voice cuts, a short base-36 tag of their rows, which any press changes. Never a word that was cut. |
+| `/m/<id>/<file>` | No empty/`.`/`..` segment; only `m3u8 m4s mp4 jpg gif vtt` (else 404, D:B125; `gif` for Copy thumbnail's loop, D:B164). Reads `rec/<id>/<file>` beside the record: deleted or sealed → 404, record throws → 503, absent → served. While the record's edit has a current permanent copy (N63 step 3, D:B195) only the copy's own files and the recording's own first frame (`poster.jpg`, which a token-less Mac's Library fetches until the bake), while the edit keeps that frame, are served; the original's stream, `teaser.mp4`, `video.mp4` and anything else → 404, GET, HEAD and Range alike (a stale copy or no edit serves them again). A baked recording (D:B197) serves exactly the files its `media` names; with a newer copy current over it, that copy's files and its own poster while the new edit keeps its first frame. Copy thumbnail's `thumb-<16 hex>.gif\|jpg` (D:B164) are served whatever else is, so a paste already sent keeps its picture — unless an edit took something from the first 3 s the pictures show (the first frame, the teaser's first 3 s): when the record's edit or any bake (`bakedFrom[].keep`) doesn't start with a range from 0 to at least 3 s, only the record's current picture (`thumb`, its title and `from` current) is. Range → 206. `public, max-age=3600`. Media answers are `nosniff` with `content-security-policy: sandbox; default-src 'none'`. |
+| `/d/<id>` | The video as it plays, as an attachment named after the title: a live record with no edit and `media.mp4` → its own file, `rec/<id>/video.mp4` (or, baked, the `edit-<n>.mp4` its key names, §4.18); with an edit, its current permanent copy → `rec/<id>/edit-<n>.mp4` (a name `editsOf` validated, never one taken as is); an edit whose copy isn't up or that leaves nothing to play, or anything else → 404 (N63). Storage failure → 503. |
+| `/oembed?url=` | This origin's `/<id>` → `{version, type:"video", width, height, html (iframe ?embed=1), title?, thumbnail_*?}` (with an edit, N63: the thumbnail is its copy's own first frame once it's up, none when the copy has none; before, the recording's first frame only while the edit keeps it), else 404 |
 | `/<seg>?k=<k>` | Redeem (below) |
-| `/<id>?embed=1` | The player or a line. The mark follows the switch; never owner mode. |
+| `/<id>?embed=1` | The player or a line, an edit applied as on the page (§4.18). The mark follows the switch; never owner mode. |
 | `/<id>` | The watch page (§4.18). Cookie checked live (§3.5). A storage failure → unavailable + `x-shroom-unavailable: storage[-<code>]` (D:B94). |
 | `POST /_shroom/title/<id>` | Same-origin and a live cookie, else 403. Title collapsed, trimmed, ≤ 200; empty → 400. Sealed (§4.20) → 409, whatever the meta says; no meta → 404; unparseable or deleted → 409; not `mayEdit` → 403. If-Match sets `title` and `titled:true` → `200 {"title"}`. 5 lost CAS → 503. |
-| `POST /_shroom/thumb/<id>` | Copy thumbnail's picture (N46, D:B164). Same-origin and a live cookie that may edit the video, else 403. The body is the picture: a GIF (`GIF87a`/`GIF89a`, ≤ 640 wide — the teaser's own width, D:B165 — ≤ 800 KiB) or a JPEG (`FF D8 FF`, its frame header ≤ 1200 wide, ≤ 300 KiB), its first bytes agreeing with `content-type` (else 415; too wide → 400; too big → 413). `x-shroom-title` (URI-encoded) is the title it was drawn for, empty for an untitled video; it must be the record's (`titled` and `title`) at the write, else 409. The video must be live and not sealed (else 409; no meta → 404). At most 40 `thumb-` files per video (else 429). Stored as `rec/<id>/thumb-<first 16 hex of SHA-256>.<gif\|jpg>` (`image/gif`/`image/jpeg`); the record's `thumb` becomes `{title, gif?, jpg?}` under If-Match, starting over when the title differs → `200 {"url"}`. Files of earlier titles stay, so a paste already sent keeps its picture. |
+| `POST /_shroom/thumb/<id>` | Copy thumbnail's picture (N46, D:B164). Same-origin and a live cookie that may edit the video, else 403. The body is the picture: a GIF (`GIF87a`/`GIF89a`, ≤ 640 wide — the teaser's own width, D:B165 — ≤ 800 KiB) or a JPEG (`FF D8 FF`, its frame header ≤ 1200 wide, ≤ 300 KiB), its first bytes agreeing with `content-type` (else 415; too wide → 400; too big → 413). `x-shroom-title` (URI-encoded) is the title it was drawn for, empty for an untitled video; it must be the record's (`titled` and `title`) at the write, else 409. `x-shroom-from` names the first frame it was drawn from, as a name under `rec/<id>/` (absent: `poster.jpg`, which a page from before the header drew from); it must be the one Copy thumbnail draws from at the write (N63) — with no edit the record's poster (`media.poster`'s file, `poster.jpg` when it names none; a baked record only its own), with an edit's copy current the copy's own (`edit-<rev>-poster.jpg`; a copy without one, none), while an edit waits for its copy none — else 409 and nothing is stored. The video must be live and not sealed (else 409; no meta → 404). At most 40 `thumb-` files per video (else 429). Stored as `rec/<id>/thumb-<first 16 hex of SHA-256>.<gif\|jpg>` (`image/gif`/`image/jpeg`); the record's `thumb` becomes `{title, from, gif?, jpg?}` under If-Match, starting over when the title or `from` differs → `200 {"url"}`. A `thumb` without `from` was stored before it and reads as drawn from `poster.jpg`; only a `thumb` whose title and `from` are current is the video's picture (the status's, the pages'). Earlier files stay, served as `/m/` says, so a paste already sent keeps its picture. |
+| `POST /_shroom/edits/<id>` | A press on the owner page's voice cuts (N65, D:B200). Same-origin and a live cookie that may edit the video, else 403. Body `{cut, applied}` (`cut` `[A-Za-z0-9_-]{1,32}`, `applied` a boolean; else 400). Under If-Match: sealed or deleted → 409; no record → 404; no such cut in `edits.cuts` → 404; a hand cut (`kind: "manual"`, the editor's) → 403. Sets that cut's `applied`, moves `edits.rev` on, keeps the rest → `200 {cut, applied, keep, cuts}` (`keep`: what plays, `[[start, end]…]`; `cuts`: the status's tag), `no-store`. 5 lost CAS → 503. |
+| `GET /_shroom/edits/<id>` | The owner page's strip and what plays, for the page that sees the cuts land: an owner-class cookie, or the maker's (`mayEdit`), else 403; no record or deleted → 404 → `200 {strip, keep, cuts}` (`strip`: the section's HTML, empty with no voice cuts), `no-store`. |
 | `POST /_shroom/mark` | Same-origin, an owner-class cookie, `{on:bool}` (else 403) → `200 {"on"}` |
 
 **Redeem** (`worker.js:redeem`):
@@ -854,9 +877,9 @@ Only the Worker writes it. `setHealth` reads first and puts only on a change (ab
 | deleted or sealed | anyone | "There's no video at this link." — a plain not found, 404 (B141) |
 | absent (B14 id) | mine, with a ledger entry or health `blocked` | the owner page's pending chrome (title field from the placeholder, sent once the record exists; Copy link; empty stage). Its line is the blocked words, else "Waiting for connection — your link already works." (D:B49 b, B53 c) |
 | absent | anyone else | on its way: 5 s refresh, stall clock (`sessionStorage`; stalled line after 120 s, D:B94 a) |
-| uploading, or live with HLS | mine | the owner page: "Uploading — N%. Your link already works."; stalled and undrained, "Waiting for connection — …", or with health `blocked` "Waiting for your space — …" (owner-class) / `waitingFor(members[m].inviter)` (a member; no inviter → the connection line); drained, no line |
+| uploading, or live with HLS or baked | mine | the owner page: "Uploading — N%. Your link already works."; stalled and undrained, "Waiting for connection — …", or with health `blocked` "Waiting for your space — …" (owner-class) / `waitingFor(members[m].inviter)` (a member; no inviter → the connection line); drained, no line. Its title row ends with **Edit in shroom** (N69, D:B221): a plain link to `shroom://edit/<the page's host>/<id>`, drawn hidden until the upload drains (the poll brings it in), never on another's page or the embed |
 | uploading | others | on its way, or the stalled line |
-| live with HLS | others | the player (+ Download if `media.mp4`). It plays `video.mp4` when `media.mp4` is set and `rec/<id>/v0/stream.m3u8` (read beside the record) names one `EXT-X-MAP`; else `master.m3u8` (D:B177). The owner page and the embed choose the same way |
+| live with HLS, or baked | others | the player (+ Download if `media.mp4`). It plays `video.mp4` when `media.mp4` is set and `rec/<id>/v0/stream.m3u8` (read beside the record) names one `EXT-X-MAP`; else `master.m3u8` (D:B177). The owner page and the embed choose the same way. **An edit** (`meta.edits`, N63, D:B195) rides the record already read: `editsOf` (a port of `shroom_edit::EditList::checked` + `keep`, clamped to `durationSec`, every applied cut read wherever it sits in the list) hands the player only the ranges that play (at most the first 500, `EDIT_KEEP_MAX`: past them playback ends rather than play a cut), never the list or its transcript text (`removed`, `resumes`, `why`). The player starts at the trim's in, skips each cut (every frame while playing, and on `timeupdate`/`seeking`), stops at the out, and counts its time, seek bar, ←/→ and Home/End in edited time; the edited length is the page's, the unfurl's `og:video:duration`, the status's and Copy thumbnail's. Download waits for the copy. An edit that leaves nothing to play is never read as no edit: the page, the owner page and the embed show the unavailable face, with no Download. No picture shows a part that's cut: until the copy is up the unfurl, oEmbed and the player's `poster` show the recording's first frame only while the edit keeps it (`poster.jpg` is frame 0), and no teaser (its 15 s can hold a cut), and a loaded player waits at the first range's start, so a trimmed-off first frame never shows. Once the edit's permanent copy is current (`copy.rev == rev`) the player plays `/m/<id>/<copy.file>` as it is, with the copy's own poster and teaser (page, unfurl, Copy thumbnail) — none when it has none, never the original's in their place; a player still on the original when the copy lands moves over to it when the original answers 404 (it asks the status). **Baked** (D:B197: the edit became the video — `hls: null`, `media` naming the copy's own files, `durationSec` its length, `edits` gone): the player plays `media.mp4`'s file and the page, unfurl and Download use `media`'s keys, each taken only when it sits directly under `rec/<id>/` and is a name of its slot's kind (`video.mp4` / `poster.jpg` / `teaser.mp4` or `edit-<n>.mp4` / `-poster.jpg` / `-teaser.mp4`); a record that still has its stream reads as before (a set slot is the fixed name). The stream's playlist is still read beside the record (B177: no round of its own) but a baked record's player never waits on it. `bakedFrom` never leaves the Worker. Edited again, its `edits` count on its own clock and everything above applies. **`shroom:keep`** (agreed with the voice-cut build, #59): a CustomEvent on the page's document, `detail` the ranges to play on the recording's clock, made safe as `editsOf` makes an edit (numbers only, clamped to `durationSec`, merged, at most 500) — the player takes them in place of the edit and moves a playhead in a cut on; it does nothing while the copy plays |
 | else | anyone | unavailable (30 s refresh) |
 
 The owner page polls `/_shroom/status/<id>`; its waiting words come from the render
@@ -901,6 +924,173 @@ there too, with no read.
 **Callers.** `runtime/library.rs:delete` seals after `library::delete` and a tombstone
 check; a seal that fails (an older page) is logged and the delete stands.
 
+### 4.21 Names, chapters and captions (N66, N67; D:B205–B209)
+
+**When.** Only on a page deployed with an `ai` binding (`AI`) and a Cron Trigger each minute
+— the setup Mac's switch (`shroom_cloud::wire::set_ai`). Without the binding the AI route
+answers `{"shroom":1,"ai":false}` before reading anything, the schedule does nothing, and
+no page carries any of it.
+
+**`POST /_shroom/api/ai`** — `{"rec":"<16>","through":<pieces>}` (another minute is up:
+`through` pieces of the take are up, unbroken from the first) or `{"rec":"<16>","done":true}`
+(the take is live). The device key, or the setup Mac's parent proof (§3.2, as `enroll`). Only
+the take's maker or an owner-class caller (§2.4): else 403 `not-yours`; no ledger and no
+meta → 404 `absent`; a tombstone → 410 `deleted`; a bad body → 400. One step a call:
+- `{"ai":true,"step":"heard","more":bool}` — a window of ten pieces heard (the last, partial,
+  once done); `more`: another step can be taken now;
+- `{"ai":true,"step":"titled","more":bool}` — the early title (D:B205 f): once the first minute
+  is heard while the take records, a title from it alone (tried once a take);
+- `{"ai":true,"step":"named","more":false}` — the done take named;
+- `{"ai":true,"step":"idle","more":false}` — nothing to do yet;
+- `{"ai":true,"later":"daily"|"busy"|"error"|"running"}` — it waits: the free day used up
+  (until 00:00 UTC), a busy model (five minutes), another failure (a little longer each time;
+  after five, the take is let go), or another step holds it.
+
+Every answer but idle also carries `note`: one short line for the Mac's log (the window heard,
+the early title, the name with its model, time, chapters and tokens, or the wait with Workers
+AI's code alone; never a word said or a title, B206 f).
+
+The app's caller is `shroom_cloud::member::ai_signal` (asked again while `more`).
+
+**The schedule** (`scheduled`): the marks under `.shroom/ai/later/<id>` whose `after` (custom
+metadata, beside `since`) has come, oldest first; one step a tick.
+
+**Stored.** `rec/<id>/ai/transcript.json` = `{v:1, model, language, duration, heard_through,
+done, windows, clock, words:[[text, start, end],…], tail}`: seconds on the recording's clock
+(`clock`: the last bake it's on, null for the original), final up to `heard_through`, the
+window's last 1.5 s in `tail` until the next window hears it. Whisper is asked with
+`vad_filter: true` and `initial_prompt: AI_HEAR_PRIME` (the cue and the hesitations, kept in
+the words for voice cuts; captions leave lone hesitations out), and a word with no letter or
+digit isn't kept (B205 a, e). The mark
+`.shroom/ai/later/<id>` = `{v:1, since, after, done, through, rename, reason, tries}`. The
+record: `title` (only while not `titled`), `named` = `{by:"ai", model, at, rev, clock,
+words, title, chapters:[[start, title],…], language, ms, tokens?:[in, out], fallback?}`
+(`fallback`: the first model's code when the second answered; with `early: true` and no
+chapters while it's the early title, until the full name at done replaces it; `failed: true`
+and `code` for a take let go), `captions` = `{language}`, and `naming` = `{later:"daily", at,
+code}` while the free day is used up. The transcript's `early: true`
+says the early title was tried.
+
+**Bakes.** Whoever bakes an edit (N63: the editor's copy becomes the video, `meta.edits`
+dropped) appends to the record's `bakedFrom` in the same write: `[{at, keep:[[start, end],…]},
+…]`, one entry per bake in order, `at` a string naming the bake and `keep` the ranges kept, in
+seconds on the clock before it (a lone `{at, keep}` reads as a list of one; the editor keeps
+the last 20). It's the only way the words, chapters and captions cross a bake: each is carried
+through the bakes made since its own `clock` (a word goes when most of it went), and the
+transcript is rewritten on the new clock once, after a view. A baked record without it keeps
+its words on the old clock; words or chapters on a clock the list no longer holds aren't shown.
+
+**After a view** (in `waitUntil`): an edit saved since the naming (`named.rev` ≠ the bakes
+and `meta.edits.rev`) that removes at least a fifth of the words it saw, or a whole
+chapter, marks the take to be named again; else the revision is stamped.
+
+**`GET|HEAD /_shroom/cc/<id>`** — the captions as WebVTT (`text/vtt`, `max-age=300`), written
+per view from the transcript through the saved edit: `e=1` on the edited clock (the editor's
+own copy plays), otherwise on the recording's. 404 without captions, for a deleted record.
+
+**`GET /_shroom/named/<id>`** — the owner page's ask while a name is on its way: the maker's
+or an owner-class browser (§3.5) only, else 403: `{"named":"<title or empty>","titled":bool,
+"later":bool,"early":bool}`; the page asks on while `early`, until the full name replaces it.
+
+A seal also deletes the video's plays, `views/<id>.json` (§4.22).
+
+### 4.22 Plays, and the suggestions to clean up (N68, D:B210–B214)
+
+**Counting.** A viewer's page and the embed (never the owner page) run `VIEW_JS`: at the
+first play, `navigator.sendBeacon("/_shroom/view/<id>", {"e":"play","t"})`; each time the
+tab hides, `{"e":"end","t","f"}`, `f` the share watched (the union of `video.played` over
+the length, 0–1). `t` is a random token held only in that page's memory. No cookie, nothing
+stored on the viewer's device.
+
+`POST /_shroom/view/<id>` takes at most 512 bytes. It refuses with 403 an `Origin` that
+names another site, or `Sec-Fetch-Site: cross-site`. WebKit sends `Origin: null` from a
+page being left, so that is taken. A malformed body gets 400. Everything else gets 204, and
+the beacon learns nothing. It writes only when the space counts plays (`plays.json`'s `on`,
+true unless set false) and the video is live. A guessed id never makes a record.
+
+**Stored:** `.shroom/views/<id>.json`, by CAS (≤ 5 tries):
+
+```jsonc
+{ "v": 1, "plays", "viewers", "ends", "watch": [10 counts by tenths watched], "watchedSec",
+  "firstAt", "lastAt", "days": { "YYYY-MM-DD": plays },     // the last 400 days
+  "today": { "d": "YYYY-MM-DD", "h": [viewer hashes], "t": { "<token>": tenth } } }
+```
+
+- A token's play counts once. Its latest end replaces the one before.
+- A viewer is the first 8 hex of SHA-256(the day's salt, `cf-connecting-ip`, the
+  user-agent, the id). The hashes and tokens are kept for that day only, ≤ 1,000 a day.
+- `.shroom/views/salt.json` = `{d, salt}` is replaced when the day turns, so yesterday's
+  hashes can't be recomputed.
+- `.shroom/views/since.json` = `{since}` is written once, at the space's first record. A
+  video made before counting began is quiet only from then on.
+
+**`POST /_shroom/api/cleanup`** — device key, `{"scope":"mine"|"everyone","formula"?,"after"?}`
+(`everyone` is owner-class only, else 403; an unknown formula is 400). It pages as §4.10
+does: ≤ 40 records a call, `next` until null. The answer is
+`{countingSince, counting, formula, views, items, next}`. `views` is counting's health over
+the page, for the Mac's run log: `{records, unreadable, newestPlayAt}`, the plays records
+read, the ones that wouldn't read (that video then reads as unplayed), and the newest play
+any of them saw. The Mac logs each read in two lines (`shroom_cloud::cleanup_log`): the
+counts, sizes and that health, then each candidate by a short id, its reason, score and
+facts. Each live item carries:
+
+- `id, title, createdAt, owner, ageDays, durationSec`;
+- `bytes`: the record's, which the Mac writes when the upload drains; else the length ×
+  10 GB / 3 h;
+- `usdPerMonth, plays, viewers, medianWatched, lastPlayedAt, plays90`;
+- `quietDays`: null while counting can't tell yet;
+- `keep`: the record's, which Keep sets under If-Match;
+- `candidate, score, reason: {code, …facts}`.
+
+The default formula is `fading-cost`. Its candidate is at least 14 days old (30 for the
+score), not played in 14 days, quiet 30 days, never kept, with heat < 0.25 and ≥ 1¢ a month
+at list price. Heat is plays halving every 30 days, × (0.3 + 0.7 × median watched). The
+score is cost ÷ (heat + 0.05). `idle`, `fading`, `cost` and `gravity` stay for comparison
+(`history/proposals/cleanup-suggestions.md`). The reason codes are `never-played`,
+`stopped-early`, `not-lately` and `big-and-quiet` (cost only), or, when the video isn't a
+candidate, `kept`, `new`, `watched-lately` and `counting-too-new`.
+
+**`GET /_shroom/api/plays`** → `{on}`, for any device. **`POST {on}`**, owner-class only,
+writes `plays.json` = `{on, at}` → `{on}`. Turning counting off keeps what was counted.
+
+**Callers.** `runtime/library.rs`: `LibCmd::Suggest` pages `cleanup` to its end and keeps
+the candidates in score order, with the bytes of every item read: the space's size on an
+owner-class Mac. `LibCmd::Plays` posts the switch, and `LibCmd::Keep` sets the record's
+`keep`. All Macs, the token Mac too, use the device key.
+
+### 4.23 `POST /_shroom/api/cue` — the judgment above the voice-cue planner (D:B202)
+
+**Why.** A line said again in other words shares too few words with its slip for the
+planner to line them up (N65 (2)). The maker's Mac lists where the redone stretch might
+begin; the space's own Cloudflare AI (N66's binding) weighs each; the Mac picks.
+
+**Request:** device key, with `{"rec":"<16>","cue":<integer ≥ 0>,"after":"…","candidates":["…",…]}`:
+`after` is what was said after the cue, each candidate the words from one possible start up
+to the cue, nearest first; 1 to 6 candidates, each text at most 2,000 characters. Anything
+else → 400, before the ledger is read or the model called.
+
+**Steps:**
+1. Someone else's take (§2.4) and the caller isn't owner-class → 403 `not-yours`.
+2. No AI bound (a space that doesn't listen) → `{"later":true,"why":"no-ai"}`, spending nothing.
+3. Spend the device's `c` budget (§3.4): over it → 429 `too-many`.
+4. One Clef call (`@cf/cloudflare/clef`): the words as its state, never its questions; one
+   `noul` question per candidate (is everything from this start said again after the
+   command?).
+5. → `{"scores":[…],"ms":<n>}`, one score per candidate in its order, each held to 0–1, one
+   Clef left out 0; `ms`, how long Clef took, for the Mac's log. A model error →
+   `{"later":true,"why":"daily"}` (the free day used up: `3036`, `4006` or its words, as the
+   AI build reads them) or `{"later":true,"why":"busy"}` (anything else).
+
+It writes nothing but the budget: the words go to the model and back, never to the bucket
+or a log.
+
+**Callers.** `runtime/voice.rs`, through `shroom_upload::voice::after_go_live_judged` and
+`look_again_judged`, once per question of a take's plan. `Space::judge` takes only one score
+per candidate, each 0–1, and `shroom-edit` cuts from the farthest start scored 0.4 or more
+(`JUDGED`). `later`, a refusal or no answer: the cue keeps the code's own plan. The Mac's run
+log keeps, per cue, the scores and `ms`, or the `why` (`later: busy`, `refused 429`, `no
+answer`), never the words.
+
 ---
 
 ## 5. The Mac's disk
@@ -919,6 +1109,7 @@ whitelist is `runtime/home.rs:FILES`: `prefs.json`, `once.json`, `space.json`,
 | `token.json` | `{v, token, account_id, several}` | token Macs; the parent pair is derived, never stored |
 | `library.json` | the cache + `owners` (id → member) | the Library lane |
 | `takes/<dir>/cred.json` | `{v, purpose:"upload", accessKeyId, secretAccessKey, sessionToken, expiresAt, bucket, endpoint}` | upload start, re-mint; removed by the wipe and a switch |
+| `takes/<dir>/voice.json` | the voice lane's mark (N65, D:B201): `{state:"planned", at, cues}`, `{state:"skipped", at, why}` or `{state:"waiting", since}` | written after the go-live and by the sweep; goes with the take |
 | `posters/<id>.jpg` | thumbnails (D:B54 g) | the Library lane |
 
 `manage` credentials and `k` are memory-only. Owner names = `os::short_user_name()`.
@@ -941,6 +1132,7 @@ whitelist is `runtime/home.rs:FILES`: `prefs.json`, `once.json`, `space.json`,
 
 **Bucket writes by Macs:**
 - wiring: `cookie.key` and the roster (create-only), the manifest last;
+- the maker's Mac: a take's voice cuts into its record's `edits`, under If-Match, once (N65, D:B201);
 - token Macs: ledger entries, `gone/<id>`, fallback grants;
 - the sweep: deletions (§6.8).
 
@@ -1150,7 +1342,21 @@ short truncated pages (`pageSize`), `preconditionThrows`, `refuse(key, n)` (C5),
 - `owner.test.js` (the mark, D:B108/B110), `page.test.js` and `faces.test.js` (D:B49,
   B94), `icon.test.js`, `copy.test.js`, `unfurl.test.js`, `latency.test.js`,
   `vendor.test.js`, `page-version.test.js` (§6.10).
-- `workerd/contract.workerd.mjs`: the same file under workerd.
+- `edits.test.js` (N63, D:B195): `editsOf` and the player's own arithmetic held to
+  `crates/shroom-edit/tests/keep-vectors.json`; bad data (not numbers, not objects, a
+  100,000-cut list); the page, embed, owner page, unfurl, oEmbed, status, `/d/` and `/m/`
+  with no edit, an edit, a stale copy and a current one; step 3's 404s; no read of its own;
+  no transcript text in anything a viewer gets; the player's skip, time, seek bar and keys,
+  and its move to the copy, against a stand-in video; a baked recording (D:B197) and its keys,
+  edited again; `shroom:keep` and its sanitizing; Copy thumbnail's picture following the edit
+  (`from`, what `/m/` serves).
+- `thumb.test.js` (N46, D:B164): the thumbnail POST and its checks, `from` among them, and
+  the page's own drawing against a stand-in browser.
+- `workerd/contract.workerd.mjs`: the same file under workerd (an edited record and its copy
+  among it).
+- `dev/page-drive.mjs` (`npm run drive:page`, not CI): the page in headless Chromium and
+  WebKit, an edited record among it, played at 2× and sampled so a cut moment never shows;
+  a baked recording; ranges handed over by `shroom:keep`.
 
 Rust: `shroom-cloud` units (shape rule, `*Next` tables, `parse_link`, proof, redaction),
 `member_vector.rs` (golden vector), `registry_fake.rs`, `wizard_fake.rs`,

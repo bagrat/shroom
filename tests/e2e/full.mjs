@@ -17,6 +17,10 @@
 //      pattern camera), Start, the count, a few seconds, Stop — then its link playing in a
 //      visible browser. For a person to watch; it fails the run only if it can't publish.
 //
+//   4. the command leg (`tests/e2e/cli-leg.mjs`, spec N62): the `shroom` command an agent
+//      runs — found on PATH where the install line linked it, refused until General's switch
+//      is on, then a take it starts, pauses, resumes and stops, renamed and deleted.
+//
 // Every step's start and end (wall clock) go to <MAC_OUT>/chapters.json, which
 // dev/e2e/captions.mjs burns into the screen's recording as captions.
 //
@@ -175,8 +179,44 @@ if (summary.wizard.ok && process.env.E2E_SHOW !== "0") {
     if (code === 0 || code === 2) code = 1;
   }
 }
+// 4. The command an agent runs (tests/e2e/cli-leg.mjs, spec N62), in the same space: on
+// PATH from the install line, refused until General's switch is on, then a take it starts,
+// pauses, resumes and stops, renamed and deleted through the page. E2E_CLI=0 leaves it out.
+if (summary.wizard.ok && process.env.E2E_CLI !== "0") {
+  const cliFrom = Date.now();
+  const leg = spawn("node", [path.join(repo, "tests/e2e/cli-leg.mjs")], { stdio: ["ignore", "pipe", "inherit"], env: { ...process.env, SHROOM_INSTALLED: app } });
+  let text = "";
+  leg.stdout.on("data", (d) => { text += d; });
+  const legCode = await exited(leg);
+  fs.writeFileSync(path.join(out, "cli.json"), text);
+  // The leg's own logs, for the evidence: the app's run log from the leg's start (every
+  // line stamped UTC, the account's id scrubbed out as the wizard's is) and the command's own
+  // log (DECISIONS B215), so a failed take shows what the app and the command did.
+  try {
+    const id = fs.readFileSync(path.join(home, "e2e-account-id"), "utf8").trim();
+    const since = new Date(cliFrom).toISOString().slice(0, 19) + "Z";
+    const lines = fs.readFileSync(path.join(home, "logs/run.log"), "utf8").split("\n");
+    const first = lines.findIndex((l) => /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ/.test(l) && l.slice(0, 20) >= since);
+    fs.writeFileSync(path.join(out, "cli-run.log"), lines.slice(first < 0 ? Math.max(0, lines.length - 600) : first).join("\n").split(id).join("<ACCOUNT_ID>"));
+  } catch { /* no log */ }
+  try { fs.copyFileSync(path.join(home, "logs/cli.log"), path.join(out, "cli.log")); } catch { /* no log */ }
+  // An app that died during the leg (the command opens it again on its next ask): macOS's
+  // own report of the crash, the stack the run log can't hold.
+  try {
+    const reports = path.join(os.homedir(), "Library/Logs/DiagnosticReports");
+    for (const f of fs.readdirSync(reports).filter((f) => f.startsWith("shroom") && f.endsWith(".ips"))) {
+      if (fs.statSync(path.join(reports, f)).mtimeMs >= cliFrom) fs.copyFileSync(path.join(reports, f), path.join(out, `cli-crash-${f}`));
+    }
+  } catch { /* no reports */ }
+  try { summary.cli = JSON.parse(text); } catch { summary.cli = { ok: false, problems: ["no summary"], tail: text.slice(-800) }; }
+  chapter(cliFrom, Date.now(), "The shroom command, as an agent runs it: on PATH, refused until the switch is on, then a take started, paused, resumed and stopped, renamed and deleted");
+  if (legCode !== 0) {
+    console.error(`the command leg: ${(summary.cli.problems ?? []).join("; ") || "not ok"}`);
+    if (code === 0 || code === 2) code = 1;
+  }
+}
 writeChapters();
 summary.ok = summary.wizard.ok && code === 0;
 writeChapters();
-console.log(JSON.stringify({ ok: summary.ok, heartbeat: summary.heartbeat, show: summary.show }, null, 2));
+console.log(JSON.stringify({ ok: summary.ok, heartbeat: summary.heartbeat, show: summary.show, cli: summary.cli }, null, 2));
 process.exit(summary.wizard.ok ? code : 1);

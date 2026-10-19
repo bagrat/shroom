@@ -107,6 +107,9 @@ pub enum Action {
     CopyThumbRow(RecId),
     /// Open page (also a double-click): the owner-keyed URL (B25).
     OpenPage(RecId),
+    /// Edit…, in a live row's menu after Open page (N63): the editor opens on it — or, open
+    /// already, comes forward on the video it holds.
+    EditRow(RecId),
     /// A click on the title: rename in place.
     StartRename(RecId),
     /// Return in the title field, or a click away: save it.
@@ -133,6 +136,12 @@ pub enum Action {
     SetLoginItem(bool),
     /// The help line's GitHub door.
     ReportIssue,
+    /// General's “Your coding agent” card: its prompt onto the clipboard (law 10).
+    CopyAgentPrompt,
+    /// The card's “Read it first”: shroom.am/cli in the browser.
+    OpenAgentGuide,
+    /// The card's “Let it start and stop recordings”.
+    SetAgentRecording(bool),
     /// General's “Copy diagnostics”: the report onto the clipboard (B180, law 10).
     CopyDiagnostics,
     /// General's “Report a problem…” — opens its sheet (B180).
@@ -150,6 +159,22 @@ pub enum Action {
     MailFeedback,
     /// Cancel, Esc, or the sent face's Done: the window closes.
     CloseFeedback,
+    // ── the editor (N63) ──
+    /// Done (Return; the window's ✕ is Done too): saves what changed, then closes.
+    EditorDone,
+    /// editor-cant-get's Try again: the video is asked for again.
+    EditorRetry,
+    /// Close (Return, Esc) in editor-cant-get, and after a save while the final video is
+    /// made or couldn't be: the window closes (the copy goes on behind it).
+    EditorClose,
+    /// Revert to original — the list's own Revert, as a click (undoable like any step).
+    EditorRevert,
+    /// editor-keep-original's Yes, delete — a click, never Return (law 9; DEVIATIONS #55):
+    /// the edit becomes the video, and the original's files go now (B197).
+    DeleteOriginal,
+    /// editor-keep-original's Keep for 2 days (Esc, ✕ too): the window closes; the original
+    /// goes two days on.
+    KeepOriginal,
     /// “Disconnect this Mac…” — opens its sheet.
     Disconnect,
     ConfirmDisconnect,
@@ -188,8 +213,34 @@ pub enum Action {
     AddToken,
     /// Settings · Space's “made with shroom” switch (owner-class, U3).
     SetMark(bool),
+    /// Settings · Space's AI switch (N66): the setup Mac re-wires the page with the AI and
+    /// its schedule, or without them.
+    SetAi(bool),
+    /// The popover's AI banner (N66): Turn on… — its confirm, which says the cost.
+    AiAsk,
+    /// The confirm's Turn on — as the switch.
+    AiOn,
+    /// The banner's Not now: hidden for good on this Mac; the switch in Settings · Space stays.
+    AiNotNow,
     /// The Library's *Mine · Everyone*.
     SetScope(LibraryScope),
+    // ── Suggested to clean up (N68) ──
+    /// The suggestion line's Review…: the view opens in place of the list.
+    ReviewCleanup,
+    /// The suggestion line's ✕: put away until the suggestions change.
+    DismissCleanup,
+    /// Keep on a suggestion: off the list for good (the record's `keep`).
+    KeepRow(RecId),
+    /// Delete on a suggestion: one tap, its Undo line first.
+    DeleteSuggested(RecId),
+    /// The Undo line's Undo.
+    UndoDelete,
+    /// Delete all…: the several-videos sheet, over every suggestion shown.
+    DeleteAllSuggested,
+    /// Settings · General's Count plays (the space's switch, owner-class).
+    SetPlays(bool),
+    /// Settings · General's Suggest videos to clean up (this Mac's).
+    SetSuggestCleanup(bool),
 }
 
 /// A Members row a Remove… is on.
@@ -285,7 +336,8 @@ pub struct Tray {
     pub click: Click,
     /// The one-item right-click menu ("Quit shroom") — idle only.
     pub right_menu: Option<String>,
-    /// ⌥⌘P is held (N54): only while a take is open, so it's other apps' the rest of the time.
+    /// ⌥⌘P and ⌥⌘M are held (N54, N64): only while a take is open, so they're other apps'
+    /// the rest of the time.
     pub shortcut: bool,
 }
 
@@ -366,6 +418,9 @@ pub struct PausedBody {
     pub resume: Button,
     pub restart: Button,
     pub stop: Button,
+    /// Drop a marker, between Finish & Share and Restart — a pause you made only (N64); it
+    /// reads Marker dropped, greyed, once used at this pause.
+    pub marker: Option<Button>,
     pub discard: Button,
 }
 
@@ -430,7 +485,11 @@ impl Popover {
                 out.extend(c.camera_settings.iter());
                 out.extend(c.mic_hint.iter());
             }
-            PopoverBody::Paused(p) => out.extend([&p.resume, &p.stop, &p.restart, &p.discard]),
+            PopoverBody::Paused(p) => {
+                out.extend([&p.resume, &p.stop]);
+                out.extend(p.marker.iter());
+                out.extend([&p.restart, &p.discard]);
+            }
             PopoverBody::Question(q) => out.extend(&q.buttons),
             PopoverBody::Stopped(s) => out.extend(&s.buttons),
         }
@@ -824,6 +883,56 @@ pub struct LibraryBody {
     /// The count only.
     pub footer: Option<String>,
     pub sheet: Option<Sheet>,
+    /// N68's line above the rows: the videos worth deleting, Review… and ✕.
+    pub cleanup_line: Option<CleanupLine>,
+    /// Suggested to clean up, in place of the list (N68).
+    pub cleanup: Option<CleanupBody>,
+}
+
+/// The Library's line about the videos worth deleting (N68).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct CleanupLine {
+    pub line: String,
+    pub review: Button,
+    /// The ✕ (“Not now”, its name for VoiceOver).
+    pub dismiss: Button,
+}
+
+/// Suggested to clean up (N68): the line on what deleting them all frees and saves, the
+/// rows, and the doors under them.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct CleanupBody {
+    pub title: String,
+    /// “‹ Library”.
+    pub back: Button,
+    pub intro: Option<String>,
+    pub rows: Vec<CleanupRowView>,
+    /// Once the last suggestion is kept or deleted.
+    pub empty: Option<String>,
+    pub foot: Option<String>,
+    /// “Delete all six…”, red text.
+    pub delete_all: Option<Button>,
+    /// A one-tap delete waiting to be sent: its line and Undo.
+    pub undo: Option<UndoLine>,
+}
+
+/// One suggestion: the poster, the title, then when it was made · its size · why.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct CleanupRowView {
+    pub key: String,
+    pub title: Option<String>,
+    pub meta: String,
+    /// Where its poster is, as `LibraryRowView::poster`.
+    pub poster: Option<String>,
+    /// Open page, Keep, Delete (red text).
+    pub buttons: Vec<Button>,
+}
+
+/// The Undo line after a one-tap delete.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct UndoLine {
+    pub line: String,
+    pub undo: Button,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -844,6 +953,43 @@ pub struct GeneralBody {
     pub help_links: Vec<Button>,
     /// “Uninstall shroom…”, quiet text at the tab's foot (B135).
     pub uninstall: Button,
+    /// “Your coding agent” (dev/proposals/cli-agent-skill.md, provisional).
+    pub agent: AgentCard,
+    /// Your videos (N68): Count plays, Suggest videos to clean up, Space used.
+    pub videos: Option<VideosGroup>,
+}
+
+/// Settings · General's group Your videos (N68).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct VideosGroup {
+    pub heading: String,
+    /// The space's switch: owner-class Macs change it; elsewhere it shows greyed.
+    pub count: Toggle,
+    pub count_hint: String,
+    /// The switch didn't go through: it says so until it does (law 12).
+    pub count_note: Option<String>,
+    /// This Mac's.
+    pub suggest: Toggle,
+    pub suggest_hint: String,
+    /// “Space used”, with `used`.
+    pub used_label: Option<String>,
+    /// The space's size and what it costs — owner-class Macs, once the space has said.
+    pub used: Option<String>,
+}
+
+/// General's card for a coding agent: the prompt to paste, Copy, “Read it first”, the line
+/// under them, and whether the agent may start and stop recordings (off by default).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct AgentCard {
+    pub label: String,
+    pub prompt: String,
+    pub copy: Button,
+    pub read_first: Button,
+    pub line: String,
+    pub recording: Toggle,
+    /// The switch's row lit for a moment: the command's settings link opened Settings here
+    /// (N62, B216). The window brings it into view while it's lit.
+    pub lit: bool,
 }
 
 /// The Report a problem sheet's form, between its line and its buttons (B180).
@@ -896,6 +1042,123 @@ pub struct FeedbackSent {
     pub done: Button,
 }
 
+/// A line's colour where a face can turn it (the editor's footer, N63): as written, or
+/// amber when it says something didn't go through.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum LineTone {
+    Plain,
+    Amber,
+}
+
+/// The editor window (N63, B195): the video playing the edit, the time, the hint and Undo ·
+/// Redo, the timeline (the list, its markers, what plays), then the footer's line, Revert to
+/// original and Done. Times are seconds on the recording's own timeline. The webview fills
+/// the templates' `{}` with its clock or a length as it plays or drags, and composes no
+/// words; it sends steps (`Event::Edit`) the core takes or refuses.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct EditorBody {
+    /// The window's title: “Edit — <title>”.
+    pub title: String,
+    /// The video, for the webview's media (`shroom-media://localhost/<rec>/…`).
+    pub rec: String,
+    pub media: EditorMediaView,
+    pub hint: String,
+    /// The footer's line — the link staying the same, “Saving your edit…”, or the failure.
+    pub footer: String,
+    pub footer_tone: LineTone,
+    pub labels: EditorLabels,
+    /// The list as it stands — `None` until the record is read (the ends wait).
+    pub list: Option<EditListView>,
+    /// What plays, in order: `[start, end)` source ranges.
+    pub keep: Vec<[f64; 2]>,
+    pub edited_duration: f64,
+    pub source_duration: f64,
+    /// The take's markers (N64), as flags on the timeline.
+    pub markers: Vec<f64>,
+    /// The video here, the record read, nothing saving: steps are taken.
+    pub editable: bool,
+    pub can_undo: bool,
+    pub can_redo: bool,
+    /// Revert to original: live when there's something to put back; `None` where the window
+    /// doesn't offer it — a save the space turned down, when nothing can be saved (B199).
+    pub revert: Option<Button>,
+    /// Done (Saving…, greyed, while it saves; Close in editor-cant-get, in
+    /// editor-save-refused, and while the final video is made or couldn't be); greyed until
+    /// the video is here.
+    pub done: Button,
+    /// By Revert, while an earlier edit's original is kept: the time it has left (B197 (e)).
+    pub original_kept: Option<String>,
+    /// After a save with something left out (B197): the final video being made, its
+    /// failure, then the question of the original — in the timeline's place. `None` until
+    /// then.
+    pub after: Option<EditorAfterView>,
+}
+
+/// What follows a save that leaves something out (B197).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case", tag = "state")]
+pub enum EditorAfterView {
+    /// The final video is being made: the bar's fill, and its line (the share filled in).
+    /// The footer says the window can be closed; Done is Close.
+    Making { pct: u8, line: String },
+    /// It couldn't be made or put up: the footer's amber line says so; Done is Close.
+    Failed,
+    /// It's up: “Delete the original?”, its line, then Keep for 2 days and Yes, delete
+    /// (filled and leading, but a click: Return never deletes — law 9; DEVIATIONS #55) —
+    /// in the footer's place.
+    Asking { title: String, line: String, keep: Button, delete: Button },
+}
+
+/// The video's state, for the preview and the timeline's place.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case", tag = "state")]
+pub enum EditorMediaView {
+    /// Asked for: the record and the video are on their way.
+    Opening,
+    /// Coming from the space: the bar's fill, and its line.
+    Getting { pct: u8, line: String },
+    /// It couldn't come: its line, and Try again.
+    Failed { line: String, retry: Button },
+    /// Here: it plays, and the waveform draws (seconds long).
+    Ready { duration: f64 },
+}
+
+/// The editor's names and templates: `{}` is a clock (`time`, `was`) or seconds with one
+/// decimal (`cut`, `put_back`), filled in by the webview.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct EditorLabels {
+    pub play: String,
+    pub pause: String,
+    pub undo: String,
+    pub redo: String,
+    pub cut: String,
+    pub put_back: String,
+    pub was: String,
+    /// The edited position / the edited length.
+    pub time: String,
+}
+
+/// The list as the timeline draws it: the yellow ends, and every cut — applied ones red,
+/// suggestions waiting.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct EditListView {
+    #[serde(rename = "in")]
+    pub in_: f64,
+    pub out: f64,
+    pub cuts: Vec<CutView>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct CutView {
+    pub start: f64,
+    pub end: f64,
+    pub applied: bool,
+    /// Where it came from: `manual`, or the voice-cut layer's `retake`, `cue-only`,
+    /// `line-before-cue` — never what was said in it.
+    pub kind: String,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct SpaceBody {
     /// The re-probed plan (Region 2's own panel): every row ticked with its fact, or the
@@ -907,6 +1170,10 @@ pub struct SpaceBody {
     /// where it stands (U3, DEVIATIONS #19).
     pub mark: Option<Toggle>,
     pub mark_line: Option<String>,
+    /// Naming's switch and its line (N66) — the Mac that holds the setup key, once its page
+    /// said whether it names videos.
+    pub ai: Option<Toggle>,
+    pub ai_line: Option<String>,
     /// Quiet text at the foot.
     pub exits: Vec<Button>,
 }
@@ -994,7 +1261,16 @@ impl Window<LibraryBody> {
         if let Some(s) = &self.body.sheet {
             return s.buttons().collect();
         }
-        self.body.rows.iter().flat_map(|r| r.buttons.iter().chain(&r.hover).chain(&r.menu)).collect()
+        // Suggested to clean up stands in place of the list (N68).
+        if let Some(c) = &self.body.cleanup {
+            return std::iter::once(&c.back)
+                .chain(c.rows.iter().flat_map(|r| &r.buttons))
+                .chain(&c.delete_all)
+                .chain(c.undo.as_ref().map(|u| &u.undo))
+                .collect();
+        }
+        let line = self.body.cleanup_line.iter().flat_map(|l| [&l.review, &l.dismiss]);
+        self.body.rows.iter().flat_map(|r| r.buttons.iter().chain(&r.hover).chain(&r.menu)).chain(line).collect()
     }
 
     pub fn offers(&self, action: &Action) -> bool {
@@ -1040,6 +1316,24 @@ impl Window<FeedbackBody> {
     }
 }
 
+impl Window<EditorBody> {
+    pub fn buttons(&self) -> Vec<&Button> {
+        let mut out: Vec<&Button> = self.body.revert.iter().collect();
+        out.push(&self.body.done);
+        if let EditorMediaView::Failed { retry, .. } = &self.body.media {
+            out.push(retry);
+        }
+        if let Some(EditorAfterView::Asking { keep, delete, .. }) = &self.body.after {
+            out.extend([keep, delete]);
+        }
+        out
+    }
+
+    pub fn offers(&self, action: &Action) -> bool {
+        self.buttons().iter().any(|b| b.enabled && &b.action == action)
+    }
+}
+
 impl Window<SettingsBody> {
     pub fn buttons(&self) -> Vec<&Button> {
         if let Some(s) = &self.body.sheet {
@@ -1047,7 +1341,14 @@ impl Window<SettingsBody> {
         }
         match &self.body.pane {
             SettingsPane::General(g) => {
-                g.update.iter().chain(&g.whats_new).chain([&g.copy_diagnostics, &g.report]).chain(&g.help_links).chain(std::iter::once(&g.uninstall)).collect()
+                g.update
+                    .iter()
+                    .chain(&g.whats_new)
+                    .chain([&g.copy_diagnostics, &g.report])
+                    .chain(&g.help_links)
+                    .chain([&g.agent.copy, &g.agent.read_first])
+                    .chain(std::iter::once(&g.uninstall))
+                    .collect()
             }
             SettingsPane::Space(sp) => {
                 let mut out = nest_buttons(&sp.plan.nest);
@@ -1083,8 +1384,11 @@ impl Window<SettingsBody> {
             return true;
         }
         match &self.body.pane {
-            SettingsPane::General(g) => g.login.enabled && &g.login.action == action,
-            SettingsPane::Space(sp) => sp.mark.as_ref().is_some_and(|t| t.enabled && &t.action == action),
+            SettingsPane::General(g) => {
+                let toggles = [&g.login, &g.agent.recording].into_iter().chain(g.videos.iter().flat_map(|v| [&v.count, &v.suggest]));
+                toggles.into_iter().any(|t| t.enabled && &t.action == action)
+            }
+            SettingsPane::Space(sp) => [&sp.mark, &sp.ai].into_iter().flatten().any(|t| t.enabled && &t.action == action),
             // Esc in the name being changed puts it back (B158).
             SettingsPane::Members(m) => *action == Action::KeepFrom && matches!(m.from, FromName::Changing { .. }),
         }
@@ -1146,6 +1450,15 @@ pub struct Countdown {
     pub line: String,
 }
 
+/// The agent label (N62, B216; Bagrat, 2026-10-18): top right of the display a take the
+/// `shroom` command started records, while it records — left out of the take, as the count
+/// is, and passing every click through.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct AgentLabel {
+    pub display: u32,
+    pub line: String,
+}
+
 /// The camera bubble (N22): round, mirrored, on the display being recorded —
 /// recorded as-is (never excluded from capture), never key (law 5), draggable.
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -1180,11 +1493,16 @@ pub struct Scene {
     pub settings: Option<Window<SettingsBody>>,
     /// The Send feedback window (N60).
     pub feedback: Option<Window<FeedbackBody>>,
+    /// The editor (N63).
+    pub editor: Option<Window<EditorBody>>,
     pub countdown: Option<Countdown>,
     pub bubble: Option<Bubble>,
     pub preview: Option<Preview>,
+    /// The agent label (N62, B216): while a take the `shroom` command started records.
+    pub label: Option<AgentLabel>,
     /// The Dock icon shows while a window of shroom's is open — the setup window, the
-    /// Library or Settings — never for a popover alone (law 6, SM:133).
+    /// Library, Settings, Send feedback or the editor — never for a popover alone (law 6,
+    /// SM:133).
     pub dock: bool,
     /// The next instant `derive` would answer differently on its own (the countdown digit,
     /// "Copied" reverting, a deadline); the runner posts `Tick` then.
@@ -1233,6 +1551,10 @@ impl Scene {
             ids.push(f.id);
             ids.extend(&f.faces);
         }
+        if let Some(e) = &self.editor {
+            ids.push(e.id);
+            ids.extend(&e.faces);
+        }
         if self.countdown.is_some() {
             ids.push("countdown");
         }
@@ -1250,6 +1572,7 @@ impl Scene {
             Surface::Library => self.library.as_ref().is_some_and(|l| l.offers(action)),
             Surface::Settings => self.settings.as_ref().is_some_and(|s| s.offers(action)),
             Surface::Feedback => self.feedback.as_ref().is_some_and(|f| f.offers(action)),
+            Surface::Editor => self.editor.as_ref().is_some_and(|e| e.offers(action)),
             _ => false,
         }
     }
@@ -1261,6 +1584,7 @@ impl Scene {
             Surface::Library => self.library.as_ref().and_then(|o| o.ret.clone()),
             Surface::Settings => self.settings.as_ref().and_then(|o| o.ret.clone()),
             Surface::Feedback => self.feedback.as_ref().and_then(|o| o.ret.clone()),
+            Surface::Editor => self.editor.as_ref().and_then(|o| o.ret.clone()),
             _ => None,
         }
     }
@@ -1272,6 +1596,7 @@ impl Scene {
             Surface::Library => self.library.as_ref().and_then(|o| o.esc.clone()),
             Surface::Settings => self.settings.as_ref().and_then(|o| o.esc.clone()),
             Surface::Feedback => self.feedback.as_ref().and_then(|o| o.esc.clone()),
+            Surface::Editor => self.editor.as_ref().and_then(|o| o.esc.clone()),
             Surface::Countdown => self.countdown.as_ref().map(|_| Action::CancelCountdown),
             _ => None,
         }

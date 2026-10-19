@@ -1,8 +1,9 @@
 //! The presenter: the only place the Scene becomes AppKit. The tray's face and menu, the
-//! popover's and the countdown's panels (`overlay.rs`; the popover key only when asked —
-//! law 5), the three windows (onboarding, Library, Settings — each excluded from capture at
-//! creation), the camera panels (`camera.rs`), and the Dock (law 6: the setup window's
-//! alone). Webviews get their slice as a `scene` event; they render, nothing more.
+//! popover's, the countdown's and the agent label's panels (`overlay.rs`; the popover key
+//! only when asked — law 5), the three windows (onboarding, Library, Settings — each
+//! excluded from capture at creation), the camera panels (`camera.rs`), and the Dock (law
+//! 6: the setup window's alone). Webviews get their slice as a `scene` event; they render,
+//! nothing more.
 
 use std::sync::{Arc, Mutex};
 
@@ -24,14 +25,18 @@ use super::{Runtime, overlay, probe};
 
 pub const POPOVER: &str = "popover";
 pub const COUNTDOWN: &str = "countdown";
+/// The agent label's page (N62, B216).
+pub const LABEL: &str = "label";
 pub const ONBOARDING: &str = "onboarding";
 pub const LIBRARY: &str = "library";
 pub const SETTINGS: &str = "settings";
 pub const FEEDBACK: &str = "feedback";
+pub const EDITOR: &str = "editor";
 const POPOVER_WIDTH: f64 = 320.0;
 
 /// One of shroom's ordinary windows: titled, the standard ✕ (which the core answers — the
-/// native close never runs), one instance each.
+/// native close never runs), one instance each. A resizable one has a smallest size, and
+/// opens no bigger than the screen it opens on.
 struct WindowSpec {
     label: &'static str,
     kind: WindowKind,
@@ -39,23 +44,29 @@ struct WindowSpec {
     width: f64,
     height: f64,
     resizable: bool,
+    min: Option<(f64, f64)>,
 }
 
 /// The setup window: one fixed size for every step, the canvas's frame — tall enough for the
 /// tallest step (the token step with its reminder or its error) under the title bar (B189).
 const ONBOARDING_WINDOW: WindowSpec =
-    WindowSpec { label: ONBOARDING, kind: WindowKind::Onboarding, url: "onboarding.html", width: 600.0, height: 680.0, resizable: false };
+    WindowSpec { label: ONBOARDING, kind: WindowKind::Onboarding, url: "onboarding.html", width: 600.0, height: 680.0, resizable: false, min: None };
 /// The Library: a list that grows — resizable.
 const LIBRARY_WINDOW: WindowSpec =
-    WindowSpec { label: LIBRARY, kind: WindowKind::Library, url: "library.html", width: 680.0, height: 560.0, resizable: true };
+    WindowSpec { label: LIBRARY, kind: WindowKind::Library, url: "library.html", width: 680.0, height: 560.0, resizable: true, min: None };
 /// A standard macOS settings window: fixed size, its toolbar tabs drawn by the webview.
 const SETTINGS_WINDOW: WindowSpec =
-    WindowSpec { label: SETTINGS, kind: WindowKind::Settings, url: "settings.html", width: 600.0, height: 620.0, resizable: false };
+    WindowSpec { label: SETTINGS, kind: WindowKind::Settings, url: "settings.html", width: 600.0, height: 620.0, resizable: false, min: None };
 
 /// Send feedback (N60): a small fixed window, the board's frame — room for the form with
 /// “See exactly what's sent” open under the title bar.
 const FEEDBACK_WINDOW: WindowSpec =
-    WindowSpec { label: FEEDBACK, kind: WindowKind::Feedback, url: "feedback.html", width: 520.0, height: 600.0, resizable: false };
+    WindowSpec { label: FEEDBACK, kind: WindowKind::Feedback, url: "feedback.html", width: 520.0, height: 600.0, resizable: false, min: None };
+
+/// The editor (N63): the board's 1100×720 frame — the video, the time, the timeline and the
+/// footer — resizable down to where the timeline still reads (900×640).
+const EDITOR_WINDOW: WindowSpec =
+    WindowSpec { label: EDITOR, kind: WindowKind::Editor, url: "editor.html", width: 1100.0, height: 720.0, resizable: true, min: Some((900.0, 640.0)) };
 
 fn spec(kind: WindowKind) -> &'static WindowSpec {
     match kind {
@@ -63,6 +74,7 @@ fn spec(kind: WindowKind) -> &'static WindowSpec {
         WindowKind::Library => &LIBRARY_WINDOW,
         WindowKind::Settings => &SETTINGS_WINDOW,
         WindowKind::Feedback => &FEEDBACK_WINDOW,
+        WindowKind::Editor => &EDITOR_WINDOW,
     }
 }
 
@@ -598,7 +610,7 @@ pub fn becomes_key(prev_activates: Option<bool>, activates: bool) -> bool {
 /// What a Scene puts on screen that the keyboard can be in.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Holds {
-    /// One of shroom's windows: setup, the Library, Settings, Send feedback.
+    /// One of shroom's windows: setup, the Library, Settings, Send feedback, the editor.
     pub window: bool,
     /// A popover the person asked for (an unasked one never takes the keyboard — law 5).
     pub asked_popover: bool,
@@ -608,7 +620,7 @@ pub struct Holds {
 impl Holds {
     pub fn of(s: &Scene) -> Holds {
         Holds {
-            window: s.onboarding.is_some() || s.library.is_some() || s.settings.is_some() || s.feedback.is_some(),
+            window: s.onboarding.is_some() || s.library.is_some() || s.settings.is_some() || s.feedback.is_some() || s.editor.is_some(),
             asked_popover: s.popover.as_ref().is_some_and(|p| p.activates),
             countdown: s.countdown.is_some(),
         }
@@ -721,6 +733,8 @@ fn apply(app: &AppHandle, rt: &Runtime, prev: Option<&Scene>, s: &Scene, exclude
         s.feedback.as_ref().map(|f| (json(f), f.activates, f.body.title.clone())),
         prev.and_then(|p| p.feedback.as_ref()).map(|f| f.activates),
     );
+    // The editor's title is its video's (“Edit — <title>”), changing with a rename.
+    window(&EDITOR_WINDOW, s.editor.as_ref().map(|e| (json(e), e.activates, e.body.title.clone())), prev.and_then(|p| p.editor.as_ref()).map(|e| e.activates));
     // The last of them closed: the keyboard goes back to the app the person was in.
     if gives_keyboard_back(prev.map(Holds::of), Holds::of(s)) {
         give_keyboard_back(rt);
@@ -743,6 +757,35 @@ fn apply(app: &AppHandle, rt: &Runtime, prev: Option<&Scene>, s: &Scene, exclude
         }
         None => {
             if let Some(panel) = overlay::get(Overlay::Countdown) {
+                overlay::hide(&panel);
+            }
+        }
+    }
+
+    // The agent label (N62, B216): top right of the display a take the command started
+    // records, while it records — over other apps' windows, taking no clicks, never the
+    // keyboard, and left out of every capture. Only the panel made as shroom started, never
+    // one made late: the label is wanted only once a take records, and a panel made then
+    // could miss the list of what that take leaves out. Without it, the tray still shows
+    // the take.
+    match &s.label {
+        Some(l) => {
+            if let Some(panel) = overlay::get(Overlay::Label) {
+                place_label(&panel, l.display);
+                let _ = app.emit_to(LABEL, "scene", l);
+                if !panel.isVisible() {
+                    overlay::show(&panel, false);
+                    rt.log(&format!("label: shown on display {}", l.display));
+                }
+            } else if prev.is_none_or(|p| p.label.is_none()) {
+                rt.log("label: no panel made at start, none shown (the tray shows the take)");
+            }
+        }
+        None => {
+            if let Some(panel) = overlay::get(Overlay::Label) {
+                if panel.isVisible() {
+                    rt.log("label: gone");
+                }
                 overlay::hide(&panel);
             }
         }
@@ -788,6 +831,11 @@ fn present_window(app: &AppHandle, rt: &Runtime, sp: &WindowSpec, now: Option<(s
         }
         None => {
             if let Some(w) = app.get_webview_window(sp.label) {
+                // The editor's page is told it's put away before the window hides: a hidden
+                // window's page goes on running, and the video it held went on playing.
+                if before.is_some() && matches!(sp.kind, WindowKind::Editor) {
+                    let _ = app.emit_to(sp.label, "scene", serde_json::Value::Null);
+                }
                 let _ = w.hide();
             }
         }
@@ -813,6 +861,7 @@ pub fn bring_forward_kind(app: &AppHandle, kind: WindowKind) {
             WindowKind::Library => s.library.is_some(),
             WindowKind::Settings => s.settings.is_some(),
             WindowKind::Feedback => s.feedback.is_some(),
+            WindowKind::Editor => s.editor.is_some(),
         });
         if !open {
             return;
@@ -829,16 +878,19 @@ pub fn bring_forward_kind(app: &AppHandle, kind: WindowKind) {
 /// moment it exists (ARCHITECTURE §4.4: every shroom window but the bubble is excluded): a
 /// Settings window showing Members, or a link just born, never lands in a video.
 fn build_window(app: &AppHandle, rt: &Runtime, sp: &WindowSpec, excluded: &Arc<Mutex<Vec<u32>>>) -> Option<tauri::WebviewWindow> {
-    let w = WebviewWindowBuilder::new(app, sp.label, WebviewUrl::App(sp.url.into()))
+    let (width, height) = opening_size(sp, mushrooms_screen(app));
+    let mut b = WebviewWindowBuilder::new(app, sp.label, WebviewUrl::App(sp.url.into()))
         .title("shroom")
-        .inner_size(sp.width, sp.height)
+        .inner_size(width, height)
         .resizable(sp.resizable)
         .maximizable(sp.resizable)
         .center()
         .visible(false)
-        .focused(false)
-        .build()
-        .ok()?;
+        .focused(false);
+    if let Some((w, h)) = sp.min {
+        b = b.min_inner_size(w, h);
+    }
+    let w = b.build().ok()?;
     remember_excluded(&w, excluded, true);
     let rt = rt.clone();
     let kind = sp.kind;
@@ -858,6 +910,26 @@ fn build_window(app: &AppHandle, rt: &Runtime, sp: &WindowSpec, excluded: &Arc<M
         _ => {}
     });
     Some(w)
+}
+
+/// The visible frame of the mushroom's display (main thread), where a window opens (N57).
+fn mushrooms_screen(app: &AppHandle) -> Option<Frame> {
+    app.tray_by_id("shroom").and_then(|t| mushroom(&t)).map(|m| m.screen).filter(|f| f.w > 0.0 && f.h > 0.0)
+}
+
+/// The size a window opens at: its spec's, made to fit `screen` (the visible frame it opens
+/// on) when it's resizable and bigger than that — never below its smallest. A fixed window
+/// keeps its size.
+fn opening_size(sp: &WindowSpec, screen: Option<Frame>) -> (f64, f64) {
+    fit(sp.width, sp.height, sp.resizable.then_some(sp.min.unwrap_or((0.0, 0.0))), screen)
+}
+
+/// `(width, height)` within `screen`, no smaller than `min`; `min: None` never shrinks.
+pub fn fit(width: f64, height: f64, min: Option<(f64, f64)>, screen: Option<Frame>) -> (f64, f64) {
+    match (min, screen) {
+        (Some((mw, mh)), Some(s)) => (width.min(s.w).max(mw), height.min(s.h).max(mh)),
+        _ => (width, height),
+    }
 }
 
 /// Where a window opening now goes (its frame's origin): centred on `target`, the visible
@@ -903,6 +975,28 @@ fn cover_display(panel: &objc2_app_kit::NSPanel, display: u32) {
     let b = probe::display_bounds(display);
     let f = display_frame((b.x, b.y, b.w, b.h), probe::display_bounds(shroom_capture::main_display_id()).h);
     panel.setFrame_display(NSRect::new(NSPoint::new(f.x, f.y), NSSize::new(f.w, f.h)), true);
+}
+
+/// Places the agent label at the top right of the display with CoreGraphics id `display`,
+/// under its menu bar: the top of that screen's visible frame, where AppKit has it.
+pub fn place_label(panel: &objc2_app_kit::NSWindow, display: u32) {
+    use objc2_foundation::{NSPoint, NSRect, NSSize};
+    let b = probe::display_bounds(display);
+    let screen = display_frame((b.x, b.y, b.w, b.h), probe::display_bounds(shroom_capture::main_display_id()).h);
+    let top = objc2_foundation::MainThreadMarker::new()
+        .and_then(|mtm| objc2_app_kit::NSScreen::screens(mtm).iter().find(|s| probe::screen_id(s) == Some(display)).map(|s| s.visibleFrame()))
+        .map_or(screen.y + screen.h, |v| v.origin.y + v.size.height);
+    let (w, h) = overlay::LABEL_SIZE;
+    let f = label_frame(screen, top, w, h);
+    panel.setFrame_display(NSRect::new(NSPoint::new(f.x, f.y), NSSize::new(f.w, f.h)), true);
+}
+
+/// Where the agent label goes (AppKit's coordinates, y up): its right edge 12 points in
+/// from the display's, its top 8 under `top` — the menu bar's foot.
+pub fn label_frame(screen: Frame, top: f64, w: f64, h: f64) -> Frame {
+    const MARGIN: f64 = 12.0;
+    const GAP: f64 = 8.0;
+    Frame { x: screen.x + screen.w - w - MARGIN, y: top - GAP - h, w, h }
 }
 
 /// Keeps shroom's own UI out of every frame (the countdown scrim, the popover, the
@@ -963,6 +1057,20 @@ mod tests {
     use shroom_core::world::{OpenTake, Phase, RecId, SourceId, TakeDir, World};
 
     const SCREEN: Frame = Frame { x: 0.0, y: 0.0, w: 1512.0, h: 944.0 };
+
+    /// Every page shroom shows is in the capability its calls go through: a window left out
+    /// can't listen for its `scene` slice (the event plugin refuses it), and its page stays
+    /// blank — the agent label's did, until it was listed.
+    #[test]
+    fn every_page_may_hear_its_scene() {
+        let cap: serde_json::Value = serde_json::from_str(include_str!("../../capabilities/default.json")).unwrap();
+        let listed: Vec<&str> = cap["windows"].as_array().unwrap().iter().filter_map(|w| w.as_str()).collect();
+        let pages = [ONBOARDING_WINDOW.label, LIBRARY_WINDOW.label, SETTINGS_WINDOW.label, FEEDBACK_WINDOW.label, Overlay::Popover.label(), Overlay::Countdown.label(), Overlay::Label.label()];
+        for page in pages {
+            assert!(listed.contains(&page), "the {page} window is not in capabilities/default.json");
+        }
+        assert_eq!((POPOVER, COUNTDOWN, LABEL), (Overlay::Popover.label(), Overlay::Countdown.label(), Overlay::Label.label()));
+    }
 
     #[test]
     fn the_popover_hangs_under_the_mushroom_or_falls_back_to_the_top_right() {
@@ -1035,6 +1143,21 @@ mod tests {
         assert_eq!(window_origin(window, Frame { w: 0.0, ..macbook }), None, "no display to go to: left where it is");
         let bigger = Frame { w: 2000.0, h: 1200.0, ..window };
         assert_eq!(window_origin(bigger, macbook), Some((-1512.0, 98.0 + 944.0 - 1200.0)), "too big for it: its top-left on the display's");
+    }
+
+    /// The editor (N63) opens at the board's 1100×720 where that fits, and no bigger than
+    /// the screen it opens on — never below 900×640; a fixed window keeps its size.
+    #[test]
+    fn a_resizable_window_opens_within_its_screen() {
+        let roomy = Frame { x: 0.0, y: 0.0, w: 1512.0, h: 944.0 };
+        let small = Frame { x: 0.0, y: 0.0, w: 1024.0, h: 743.0 };
+        let tiny = Frame { x: 0.0, y: 0.0, w: 800.0, h: 600.0 };
+        assert_eq!(opening_size(&EDITOR_WINDOW, Some(roomy)), (1100.0, 720.0));
+        assert_eq!(opening_size(&EDITOR_WINDOW, Some(small)), (1024.0, 720.0), "the hosted Mac's screen");
+        assert_eq!(opening_size(&EDITOR_WINDOW, Some(tiny)), (900.0, 640.0), "never below its smallest");
+        assert_eq!(opening_size(&EDITOR_WINDOW, None), (1100.0, 720.0), "no screen read: the spec's");
+        assert_eq!(opening_size(&SETTINGS_WINDOW, Some(tiny)), (600.0, 620.0), "a fixed window keeps its size");
+        assert_eq!(opening_size(&LIBRARY_WINDOW, Some(Frame { w: 600.0, h: 500.0, ..tiny })), (600.0, 500.0));
     }
 
     /// A MacBook mirrored to an external display put the popover in the corner with the
@@ -1199,6 +1322,17 @@ mod tests {
     }
 
     #[test]
+    fn the_label_sits_top_right_under_the_menu_bar() {
+        // The main display, its menu bar 24 points tall: 12 in from its right, 8 under the bar.
+        let main = display_frame((0.0, 0.0, 1440.0, 900.0), 900.0);
+        assert_eq!(label_frame(main, 876.0, 380.0, 30.0), Frame { x: 1048.0, y: 838.0, w: 380.0, h: 30.0 });
+        // A display to the right of it: on that one, under its own menu bar.
+        let right = display_frame((1440.0, 0.0, 1920.0, 1080.0), 900.0);
+        let f = label_frame(right, right.y + right.h - 24.0, 380.0, 30.0);
+        assert_eq!((f.x + f.w, f.y + f.h), (1440.0 + 1920.0 - 12.0, right.y + right.h - 24.0 - 8.0));
+    }
+
+    #[test]
     fn an_unasked_popover_takes_the_keyboard_only_once_asked() {
         assert!(becomes_key(Some(false), true), "the click that asked for it");
         assert!(!becomes_key(Some(false), false), "still unasked (law 5)");
@@ -1238,6 +1372,7 @@ mod tests {
             since: shroom_core::time::Mono(0),
             length_ms: 0,
             markers: 0,
+            marked_at_pause: false,
             mic: None,
             camera: None,
         });

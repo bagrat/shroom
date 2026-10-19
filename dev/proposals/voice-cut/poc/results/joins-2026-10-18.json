@@ -1,0 +1,2573 @@
+{
+ "fades": [
+  0.0,
+  0.01,
+  0.02,
+  0.04,
+  0.06,
+  0.08,
+  0.12
+ ],
+ "rows": [
+  {
+   "take": "bagrat-1/en_US-ryan-medium",
+   "levels": false,
+   "heard": "Hi, this is a quick test of shroom. Today, I'll show you how to share, uh, how to. Shroom cut. Today, I'll show you how to share a recording in one click. You press stop and the link is pasted. Shroom cut. When you want to get your link, just press stop and your link is. Shroom cut. Okay, that's it.",
+   "cuts": [
+    "Today, I'll show you how to share, uh, how to. Shroom cut.",
+    "Shroom cut.",
+    "When you want to get your link, just press stop and your link is. Shroom cut."
+   ],
+   "edges": 6,
+   "edges_in_speech": 0,
+   "clicks": {
+    "0.0": {
+     "median": 0.9806680843235791,
+     "max": 1.0835192084570713
+    },
+    "0.01": {
+     "median": 0.8103972524844836,
+     "max": 1.1324649056118008
+    },
+    "0.02": {
+     "median": 0.5433456064455393,
+     "max": 0.6572695953828007
+    },
+    "0.04": {
+     "median": 0.3238201916651432,
+     "max": 0.4379343524908602
+    },
+    "0.06": {
+     "median": 0.19817292384216056,
+     "max": 0.271895917431241
+    },
+    "0.08": {
+     "median": 0.14446766141231393,
+     "max": 0.18385609011314383
+    },
+    "0.12": {
+     "median": 0.14654980175759774,
+     "max": 0.17987262768233334
+    }
+   },
+   "speech_dimmed": {
+    "0.0": 0.0,
+    "0.01": 0.0,
+    "0.02": 0.0,
+    "0.04": 0.0,
+    "0.06": 0.0,
+    "0.08": 0.0,
+    "0.12": 0.0
+   }
+  },
+  {
+   "take": "bagrat-1/en_US-ryan-medium",
+   "levels": true,
+   "heard": "Hi, this is a quick test of shroom. Today, I'll show you how to share, uh, how to. Shroom cut. Today, I'll show you how to share a recording in one click. You press stop and the link is pasted. Shroom cut. When you want to get your link, just press stop and your link is. Shroom cut. Okay, that's it.",
+   "cuts": [
+    "Today, I'll show you how to share, uh, how to. Shroom cut.",
+    "Shroom cut.",
+    "When you want to get your link, just press stop and your link is. Shroom cut."
+   ],
+   "edges": 6,
+   "edges_in_speech": 0,
+   "clicks": {
+    "0.0": {
+     "median": 0.9806680843235791,
+     "max": 1.0835192084570713
+    },
+    "0.01": {
+     "median": 0.8103972524844836,
+     "max": 1.1324649056118008
+    },
+    "0.02": {
+     "median": 0.5433456064455393,
+     "max": 0.6572695953828007
+    },
+    "0.04": {
+     "median": 0.3238201916651432,
+     "max": 0.4379343524908602
+    },
+    "0.06": {
+     "median": 0.19817292384216056,
+     "max": 0.271895917431241
+    },
+    "0.08": {
+     "median": 0.14446766141231393,
+     "max": 0.18385609011314383
+    },
+    "0.12": {
+     "median": 0.14654980175759774,
+     "max": 0.17987262768233334
+    }
+   },
+   "speech_dimmed": {
+    "0.0": 0.0,
+    "0.01": 0.0,
+    "0.02": 0.0,
+    "0.04": 0.0,
+    "0.06": 0.0,
+    "0.08": 0.0,
+    "0.12": 0.0
+   }
+  },
+  {
+   "take": "bagrat-1/en_US-amy-medium",
+   "levels": false,
+   "heard": "Hi, this is a quick test of shroom. Today, I'll show you how to share a how to. Shroom cut. Today, I'll show you how to share a recording in one click. You press stop and the link is pasted. Shroom cut. When you want to get your link, just press stop and your link is. Shroom cut. Okay, that's it.",
+   "cuts": [
+    "Today, I'll show you how to share a how to. Shroom cut.",
+    "Shroom cut.",
+    "When you want to get your link, just press stop and your link is. Shroom cut."
+   ],
+   "edges": 6,
+   "edges_in_speech": 0,
+   "clicks": {
+    "0.0": {
+     "median": 0.6469600271928693,
+     "max": 0.6758455035736054
+    },
+    "0.01": {
+     "median": 0.42582887230553834,
+     "max": 0.46740493449500764
+    },
+    "0.02": {
+     "median": 0.30990780854035904,
+     "max": 0.42832770486608013
+    },
+    "0.04": {
+     "median": 0.18307784750759842,
+     "max": 0.2952613189714681
+    },
+    "0.06": {
+     "median": 0.1361961164618639,
+     "max": 0.21605741489670682
+    },
+    "0.08": {
+     "median": 0.14046982610691072,
+     "max": 0.20453398073156318
+    },
+    "0.12": {
+     "median": 0.10376902981643323,
+     "max": 0.1253668881388329
+    }
+   },
+   "speech_dimmed": {
+    "0.0": 0.0,
+    "0.01": 0.0,
+    "0.02": 0.0,
+    "0.04": 0.0,
+    "0.06": 0.0,
+    "0.08": 0.0,
+    "0.12": 0.5
+   }
+  },
+  {
+   "take": "bagrat-1/en_US-amy-medium",
+   "levels": true,
+   "heard": "Hi, this is a quick test of shroom. Today, I'll show you how to share a how to. Shroom cut. Today, I'll show you how to share a recording in one click. You press stop and the link is pasted. Shroom cut. When you want to get your link, just press stop and your link is. Shroom cut. Okay, that's it.",
+   "cuts": [
+    "Today, I'll show you how to share a how to. Shroom cut.",
+    "Shroom cut.",
+    "When you want to get your link, just press stop and your link is. Shroom cut."
+   ],
+   "edges": 6,
+   "edges_in_speech": 0,
+   "clicks": {
+    "0.0": {
+     "median": 0.6469600271928693,
+     "max": 0.6758455035736054
+    },
+    "0.01": {
+     "median": 0.42582887230553834,
+     "max": 0.46740493449500764
+    },
+    "0.02": {
+     "median": 0.30990780854035904,
+     "max": 0.42832770486608013
+    },
+    "0.04": {
+     "median": 0.18307784750759842,
+     "max": 0.2952613189714681
+    },
+    "0.06": {
+     "median": 0.1361961164618639,
+     "max": 0.21605741489670682
+    },
+    "0.08": {
+     "median": 0.14046982610691072,
+     "max": 0.20453398073156318
+    },
+    "0.12": {
+     "median": 0.10376902981643323,
+     "max": 0.1253668881388329
+    }
+   },
+   "speech_dimmed": {
+    "0.0": 0.0,
+    "0.01": 0.0,
+    "0.02": 0.0,
+    "0.04": 0.0,
+    "0.06": 0.0,
+    "0.08": 0.0,
+    "0.12": 0.5
+   }
+  },
+  {
+   "take": "bagrat-2/en_US-ryan-medium",
+   "levels": false,
+   "heard": "Hi, this is a quick test of shroom. Today, I will show you how to share a recording in one link. No, shroom cut. Today, I'll show you how to share a recording in one click. You press stop and the link is pasted. Shroom cut. When you want to get your link, just press stop and the link will be copied to your clipboard and that's it.",
+   "cuts": [
+    "Today, I will show you how to share a recording in one link. No, shroom cut.",
+    "Shroom cut."
+   ],
+   "edges": 4,
+   "edges_in_speech": 0,
+   "clicks": {
+    "0.0": {
+     "median": 0.9145068835603342,
+     "max": 1.4826680751082357
+    },
+    "0.01": {
+     "median": 0.8651761130957051,
+     "max": 1.5139688063666512
+    },
+    "0.02": {
+     "median": 0.557076629835699,
+     "max": 0.8994640558419574
+    },
+    "0.04": {
+     "median": 0.2520201472768895,
+     "max": 0.3001569943931368
+    },
+    "0.06": {
+     "median": 0.2067815143606522,
+     "max": 0.28798883426603294
+    },
+    "0.08": {
+     "median": 0.16986062075155323,
+     "max": 0.22430317798395694
+    },
+    "0.12": {
+     "median": 0.16216622090761512,
+     "max": 0.21451603170096362
+    }
+   },
+   "speech_dimmed": {
+    "0.0": 0.0,
+    "0.01": 0.0,
+    "0.02": 0.0,
+    "0.04": 0.0,
+    "0.06": 0.0,
+    "0.08": 0.5,
+    "0.12": 0.5
+   }
+  },
+  {
+   "take": "bagrat-2/en_US-ryan-medium",
+   "levels": true,
+   "heard": "Hi, this is a quick test of shroom. Today, I will show you how to share a recording in one link. No, shroom cut. Today, I'll show you how to share a recording in one click. You press stop and the link is pasted. Shroom cut. When you want to get your link, just press stop and the link will be copied to your clipboard and that's it.",
+   "cuts": [
+    "Today, I will show you how to share a recording in one link. No, shroom cut.",
+    "Shroom cut."
+   ],
+   "edges": 4,
+   "edges_in_speech": 0,
+   "clicks": {
+    "0.0": {
+     "median": 0.9145068835603342,
+     "max": 1.4826680751082357
+    },
+    "0.01": {
+     "median": 0.8651761130957051,
+     "max": 1.5139688063666512
+    },
+    "0.02": {
+     "median": 0.557076629835699,
+     "max": 0.8994640558419574
+    },
+    "0.04": {
+     "median": 0.2520201472768895,
+     "max": 0.3001569943931368
+    },
+    "0.06": {
+     "median": 0.2067815143606522,
+     "max": 0.28798883426603294
+    },
+    "0.08": {
+     "median": 0.16986062075155323,
+     "max": 0.22430317798395694
+    },
+    "0.12": {
+     "median": 0.16216622090761512,
+     "max": 0.21451603170096362
+    }
+   },
+   "speech_dimmed": {
+    "0.0": 0.0,
+    "0.01": 0.0,
+    "0.02": 0.0,
+    "0.04": 0.0,
+    "0.06": 0.0,
+    "0.08": 0.5,
+    "0.12": 0.5
+   }
+  },
+  {
+   "take": "bagrat-2/en_US-amy-medium",
+   "levels": false,
+   "heard": "Hi, this is a quick test of shroom. Today I will show you how to share a recording in one link. No, shroom cut. Today I'll show you how to share a recording in one click. You press stop and the link is pasted. Shroom cut. When you want to get your link just press stop and the link will be copied to your clipboard and that's it.",
+   "cuts": [
+    "Today I will show you how to share a recording in one link. No, shroom cut.",
+    "Shroom cut."
+   ],
+   "edges": 4,
+   "edges_in_speech": 0,
+   "clicks": {
+    "0.0": {
+     "median": 0.5798592425957445,
+     "max": 0.7421812283320535
+    },
+    "0.01": {
+     "median": 0.4678763953680248,
+     "max": 0.5779504874391522
+    },
+    "0.02": {
+     "median": 0.40814429671061925,
+     "max": 0.6164671337314989
+    },
+    "0.04": {
+     "median": 0.3241438952861155,
+     "max": 0.58272504412334
+    },
+    "0.06": {
+     "median": 0.2645923627479901,
+     "max": 0.4763376690077173
+    },
+    "0.08": {
+     "median": 0.24440668345427746,
+     "max": 0.4424963679214147
+    },
+    "0.12": {
+     "median": 0.17356163959943807,
+     "max": 0.2964453328291114
+    }
+   },
+   "speech_dimmed": {
+    "0.0": 0.0,
+    "0.01": 0.0,
+    "0.02": 0.5,
+    "0.04": 0.0,
+    "0.06": 0.0,
+    "0.08": 0.0,
+    "0.12": 0.5
+   }
+  },
+  {
+   "take": "bagrat-2/en_US-amy-medium",
+   "levels": true,
+   "heard": "Hi, this is a quick test of shroom. Today I will show you how to share a recording in one link. No, shroom cut. Today I'll show you how to share a recording in one click. You press stop and the link is pasted. Shroom cut. When you want to get your link just press stop and the link will be copied to your clipboard and that's it.",
+   "cuts": [
+    "Today I will show you how to share a recording in one link. No, shroom cut.",
+    "Shroom cut."
+   ],
+   "edges": 4,
+   "edges_in_speech": 0,
+   "clicks": {
+    "0.0": {
+     "median": 0.5798592425957445,
+     "max": 0.7421812283320535
+    },
+    "0.01": {
+     "median": 0.4678763953680248,
+     "max": 0.5779504874391522
+    },
+    "0.02": {
+     "median": 0.40814429671061925,
+     "max": 0.6164671337314989
+    },
+    "0.04": {
+     "median": 0.3241438952861155,
+     "max": 0.58272504412334
+    },
+    "0.06": {
+     "median": 0.2645923627479901,
+     "max": 0.4763376690077173
+    },
+    "0.08": {
+     "median": 0.24440668345427746,
+     "max": 0.4424963679214147
+    },
+    "0.12": {
+     "median": 0.17356163959943807,
+     "max": 0.2964453328291114
+    }
+   },
+   "speech_dimmed": {
+    "0.0": 0.0,
+    "0.01": 0.0,
+    "0.02": 0.5,
+    "0.04": 0.0,
+    "0.06": 0.0,
+    "0.08": 0.0,
+    "0.12": 0.5
+   }
+  },
+  {
+   "take": "1-the-example/en_US-ryan-medium",
+   "levels": false,
+   "heard": "Hello, that is Shroom. Shroom cut. Hello, this is Shroom. Today, I'll show you how to share a recording in one click.",
+   "cuts": [
+    "Hello, that is Shroom. Shroom cut."
+   ],
+   "edges": 2,
+   "edges_in_speech": 0,
+   "clicks": {
+    "0.0": {
+     "median": 0.9631601774757578,
+     "max": 0.9631601774757578
+    },
+    "0.01": {
+     "median": 1.1131434833337521,
+     "max": 1.1131434833337521
+    },
+    "0.02": {
+     "median": 0.7701645351436041,
+     "max": 0.7701645351436041
+    },
+    "0.04": {
+     "median": 0.47756037483936253,
+     "max": 0.47756037483936253
+    },
+    "0.06": {
+     "median": 0.16977303119633042,
+     "max": 0.16977303119633042
+    },
+    "0.08": {
+     "median": 0.16977303119633042,
+     "max": 0.16977303119633042
+    },
+    "0.12": {
+     "median": 0.16977303119633042,
+     "max": 0.16977303119633042
+    }
+   },
+   "speech_dimmed": {
+    "0.0": 0.0,
+    "0.01": 0.0,
+    "0.02": 0.0,
+    "0.04": 0.0,
+    "0.06": 0.0,
+    "0.08": 0.0,
+    "0.12": 0.0
+   }
+  },
+  {
+   "take": "1-the-example/en_US-ryan-medium",
+   "levels": true,
+   "heard": "Hello, that is Shroom. Shroom cut. Hello, this is Shroom. Today, I'll show you how to share a recording in one click.",
+   "cuts": [
+    "Hello, that is Shroom. Shroom cut."
+   ],
+   "edges": 2,
+   "edges_in_speech": 0,
+   "clicks": {
+    "0.0": {
+     "median": 0.9631601774757578,
+     "max": 0.9631601774757578
+    },
+    "0.01": {
+     "median": 1.1131434833337521,
+     "max": 1.1131434833337521
+    },
+    "0.02": {
+     "median": 0.7701645351436041,
+     "max": 0.7701645351436041
+    },
+    "0.04": {
+     "median": 0.47756037483936253,
+     "max": 0.47756037483936253
+    },
+    "0.06": {
+     "median": 0.16977303119633042,
+     "max": 0.16977303119633042
+    },
+    "0.08": {
+     "median": 0.16977303119633042,
+     "max": 0.16977303119633042
+    },
+    "0.12": {
+     "median": 0.16977303119633042,
+     "max": 0.16977303119633042
+    }
+   },
+   "speech_dimmed": {
+    "0.0": 0.0,
+    "0.01": 0.0,
+    "0.02": 0.0,
+    "0.04": 0.0,
+    "0.06": 0.0,
+    "0.08": 0.0,
+    "0.12": 0.0
+   }
+  },
+  {
+   "take": "1-the-example/en_US-amy-medium",
+   "levels": false,
+   "heard": "Hello, that is shroom. Shroom cut. Hello, this is shroom. Today I'll show you how to share a recording in one click.",
+   "cuts": [
+    "Hello, that is shroom. Shroom cut."
+   ],
+   "edges": 2,
+   "edges_in_speech": 0,
+   "clicks": {
+    "0.0": {
+     "median": 1.8199378078981723,
+     "max": 1.8199378078981723
+    },
+    "0.01": {
+     "median": 0.7432970670417736,
+     "max": 0.7432970670417736
+    },
+    "0.02": {
+     "median": 0.8519327140583921,
+     "max": 0.8519327140583921
+    },
+    "0.04": {
+     "median": 0.7753530740149758,
+     "max": 0.7753530740149758
+    },
+    "0.06": {
+     "median": 0.29542417467088866,
+     "max": 0.29542417467088866
+    },
+    "0.08": {
+     "median": 0.29542417467088866,
+     "max": 0.29542417467088866
+    },
+    "0.12": {
+     "median": 0.29542417467088866,
+     "max": 0.29542417467088866
+    }
+   },
+   "speech_dimmed": {
+    "0.0": 0.0,
+    "0.01": 0.0,
+    "0.02": 0.0,
+    "0.04": 0.0,
+    "0.06": 0.0,
+    "0.08": 0.0,
+    "0.12": 0.0
+   }
+  },
+  {
+   "take": "1-the-example/en_US-amy-medium",
+   "levels": true,
+   "heard": "Hello, that is shroom. Shroom cut. Hello, this is shroom. Today I'll show you how to share a recording in one click.",
+   "cuts": [
+    "Hello, that is shroom. Shroom cut."
+   ],
+   "edges": 2,
+   "edges_in_speech": 0,
+   "clicks": {
+    "0.0": {
+     "median": 1.8199378078981723,
+     "max": 1.8199378078981723
+    },
+    "0.01": {
+     "median": 0.7432970670417736,
+     "max": 0.7432970670417736
+    },
+    "0.02": {
+     "median": 0.8519327140583921,
+     "max": 0.8519327140583921
+    },
+    "0.04": {
+     "median": 0.7753530740149758,
+     "max": 0.7753530740149758
+    },
+    "0.06": {
+     "median": 0.29542417467088866,
+     "max": 0.29542417467088866
+    },
+    "0.08": {
+     "median": 0.29542417467088866,
+     "max": 0.29542417467088866
+    },
+    "0.12": {
+     "median": 0.29542417467088866,
+     "max": 0.29542417467088866
+    }
+   },
+   "speech_dimmed": {
+    "0.0": 0.0,
+    "0.01": 0.0,
+    "0.02": 0.0,
+    "0.04": 0.0,
+    "0.06": 0.0,
+    "0.08": 0.0,
+    "0.12": 0.0
+   }
+  },
+  {
+   "take": "10-long-stretch/en_US-ryan-medium",
+   "levels": false,
+   "heard": "Okay, let's set up sharing. You open the menu and choose the, the share thing. Then you type a name and hit the, uh, the button. Shroom cut. To share, open the menu and pick share. Type a name and press enter.",
+   "cuts": [
+    "Shroom cut."
+   ],
+   "edges": 2,
+   "edges_in_speech": 0,
+   "clicks": {
+    "0.0": {
+     "median": 0.7345677072278596,
+     "max": 0.7345677072278596
+    },
+    "0.01": {
+     "median": 0.57052908565616,
+     "max": 0.57052908565616
+    },
+    "0.02": {
+     "median": 0.4308573843135288,
+     "max": 0.4308573843135288
+    },
+    "0.04": {
+     "median": 0.25692090828217,
+     "max": 0.25692090828217
+    },
+    "0.06": {
+     "median": 0.24644484574855363,
+     "max": 0.24644484574855363
+    },
+    "0.08": {
+     "median": 0.2699091684051919,
+     "max": 0.2699091684051919
+    },
+    "0.12": {
+     "median": 0.31724675888722537,
+     "max": 0.31724675888722537
+    }
+   },
+   "speech_dimmed": {
+    "0.0": 0.0,
+    "0.01": 0.0,
+    "0.02": 0.0,
+    "0.04": 0.0,
+    "0.06": 0.0,
+    "0.08": 0.0,
+    "0.12": 0.0
+   }
+  },
+  {
+   "take": "10-long-stretch/en_US-ryan-medium",
+   "levels": true,
+   "heard": "Okay, let's set up sharing. You open the menu and choose the, the share thing. Then you type a name and hit the, uh, the button. Shroom cut. To share, open the menu and pick share. Type a name and press enter.",
+   "cuts": [
+    "Shroom cut."
+   ],
+   "edges": 2,
+   "edges_in_speech": 0,
+   "clicks": {
+    "0.0": {
+     "median": 0.7345677072278596,
+     "max": 0.7345677072278596
+    },
+    "0.01": {
+     "median": 0.57052908565616,
+     "max": 0.57052908565616
+    },
+    "0.02": {
+     "median": 0.4308573843135288,
+     "max": 0.4308573843135288
+    },
+    "0.04": {
+     "median": 0.25692090828217,
+     "max": 0.25692090828217
+    },
+    "0.06": {
+     "median": 0.24644484574855363,
+     "max": 0.24644484574855363
+    },
+    "0.08": {
+     "median": 0.2699091684051919,
+     "max": 0.2699091684051919
+    },
+    "0.12": {
+     "median": 0.31724675888722537,
+     "max": 0.31724675888722537
+    }
+   },
+   "speech_dimmed": {
+    "0.0": 0.0,
+    "0.01": 0.0,
+    "0.02": 0.0,
+    "0.04": 0.0,
+    "0.06": 0.0,
+    "0.08": 0.0,
+    "0.12": 0.0
+   }
+  },
+  {
+   "take": "10-long-stretch/en_US-amy-medium",
+   "levels": false,
+   "heard": "Okay, let's set up sharing. You open the menu and choose the, the share thing. Then you type a name and hit the, uh, the button. Shroom cut. To share, open the menu and pick share. Type a name and press enter.",
+   "cuts": [
+    "Shroom cut."
+   ],
+   "edges": 2,
+   "edges_in_speech": 0,
+   "clicks": {
+    "0.0": {
+     "median": 0.6045097585563958,
+     "max": 0.6045097585563958
+    },
+    "0.01": {
+     "median": 0.25191480002964795,
+     "max": 0.25191480002964795
+    },
+    "0.02": {
+     "median": 0.14708819723153907,
+     "max": 0.14708819723153907
+    },
+    "0.04": {
+     "median": 0.07543059831222726,
+     "max": 0.07543059831222726
+    },
+    "0.06": {
+     "median": 0.07595036616239674,
+     "max": 0.07595036616239674
+    },
+    "0.08": {
+     "median": 0.053376373947863515,
+     "max": 0.053376373947863515
+    },
+    "0.12": {
+     "median": 0.05505612501469852,
+     "max": 0.05505612501469852
+    }
+   },
+   "speech_dimmed": {
+    "0.0": 0.0,
+    "0.01": 0.0,
+    "0.02": 0.0,
+    "0.04": 0.0,
+    "0.06": 0.0,
+    "0.08": 0.0,
+    "0.12": 0.0
+   }
+  },
+  {
+   "take": "10-long-stretch/en_US-amy-medium",
+   "levels": true,
+   "heard": "Okay, let's set up sharing. You open the menu and choose the, the share thing. Then you type a name and hit the, uh, the button. Shroom cut. To share, open the menu and pick share. Type a name and press enter.",
+   "cuts": [
+    "Shroom cut."
+   ],
+   "edges": 2,
+   "edges_in_speech": 0,
+   "clicks": {
+    "0.0": {
+     "median": 0.6045097585563958,
+     "max": 0.6045097585563958
+    },
+    "0.01": {
+     "median": 0.25191480002964795,
+     "max": 0.25191480002964795
+    },
+    "0.02": {
+     "median": 0.14708819723153907,
+     "max": 0.14708819723153907
+    },
+    "0.04": {
+     "median": 0.07543059831222726,
+     "max": 0.07543059831222726
+    },
+    "0.06": {
+     "median": 0.07595036616239674,
+     "max": 0.07595036616239674
+    },
+    "0.08": {
+     "median": 0.053376373947863515,
+     "max": 0.053376373947863515
+    },
+    "0.12": {
+     "median": 0.05505612501469852,
+     "max": 0.05505612501469852
+    }
+   },
+   "speech_dimmed": {
+    "0.0": 0.0,
+    "0.01": 0.0,
+    "0.02": 0.0,
+    "0.04": 0.0,
+    "0.06": 0.0,
+    "0.08": 0.0,
+    "0.12": 0.0
+   }
+  },
+  {
+   "take": "11-good-then-broken/en_US-ryan-medium",
+   "levels": false,
+   "heard": "Open the settings window. Then click the, the blue. Shroom cut. Then click the green button.",
+   "cuts": [
+    "Then click the, the blue. Shroom cut."
+   ],
+   "edges": 2,
+   "edges_in_speech": 0,
+   "clicks": {
+    "0.0": {
+     "median": 1.8607278616437475,
+     "max": 1.8607278616437475
+    },
+    "0.01": {
+     "median": 1.3154959845274241,
+     "max": 1.3154959845274241
+    },
+    "0.02": {
+     "median": 1.1607809670109914,
+     "max": 1.1607809670109914
+    },
+    "0.04": {
+     "median": 0.806705384203391,
+     "max": 0.806705384203391
+    },
+    "0.06": {
+     "median": 0.46271781854410293,
+     "max": 0.46271781854410293
+    },
+    "0.08": {
+     "median": 0.273548123345795,
+     "max": 0.273548123345795
+    },
+    "0.12": {
+     "median": 0.12434356846391528,
+     "max": 0.12434356846391528
+    }
+   },
+   "speech_dimmed": {
+    "0.0": 0.0,
+    "0.01": 0.0,
+    "0.02": 0.0,
+    "0.04": 0.0,
+    "0.06": 0.0,
+    "0.08": 0.0,
+    "0.12": 0.0
+   }
+  },
+  {
+   "take": "11-good-then-broken/en_US-ryan-medium",
+   "levels": true,
+   "heard": "Open the settings window. Then click the, the blue. Shroom cut. Then click the green button.",
+   "cuts": [
+    "Then click the, the blue. Shroom cut."
+   ],
+   "edges": 2,
+   "edges_in_speech": 0,
+   "clicks": {
+    "0.0": {
+     "median": 1.8607278616437475,
+     "max": 1.8607278616437475
+    },
+    "0.01": {
+     "median": 1.3154959845274241,
+     "max": 1.3154959845274241
+    },
+    "0.02": {
+     "median": 1.1607809670109914,
+     "max": 1.1607809670109914
+    },
+    "0.04": {
+     "median": 0.806705384203391,
+     "max": 0.806705384203391
+    },
+    "0.06": {
+     "median": 0.46271781854410293,
+     "max": 0.46271781854410293
+    },
+    "0.08": {
+     "median": 0.273548123345795,
+     "max": 0.273548123345795
+    },
+    "0.12": {
+     "median": 0.12434356846391528,
+     "max": 0.12434356846391528
+    }
+   },
+   "speech_dimmed": {
+    "0.0": 0.0,
+    "0.01": 0.0,
+    "0.02": 0.0,
+    "0.04": 0.0,
+    "0.06": 0.0,
+    "0.08": 0.0,
+    "0.12": 0.0
+   }
+  },
+  {
+   "take": "11-good-then-broken/en_US-amy-medium",
+   "levels": false,
+   "heard": "Open the settings window. Then click the, the blue. Shroom cut. Then click the green button.",
+   "cuts": [
+    "Then click the, the blue. Shroom cut."
+   ],
+   "edges": 2,
+   "edges_in_speech": 0,
+   "clicks": {
+    "0.0": {
+     "median": 1.2945160036473957,
+     "max": 1.2945160036473957
+    },
+    "0.01": {
+     "median": 0.7676157572486465,
+     "max": 0.7676157572486465
+    },
+    "0.02": {
+     "median": 0.6389970695565378,
+     "max": 0.6389970695565378
+    },
+    "0.04": {
+     "median": 0.27176702014808446,
+     "max": 0.27176702014808446
+    },
+    "0.06": {
+     "median": 0.16724878350506744,
+     "max": 0.16724878350506744
+    },
+    "0.08": {
+     "median": 0.1237761647338338,
+     "max": 0.1237761647338338
+    },
+    "0.12": {
+     "median": 0.07437365089947827,
+     "max": 0.07437365089947827
+    }
+   },
+   "speech_dimmed": {
+    "0.0": 0.0,
+    "0.01": 0.0,
+    "0.02": 0.0,
+    "0.04": 0.0,
+    "0.06": 0.0,
+    "0.08": 0.0,
+    "0.12": 0.0
+   }
+  },
+  {
+   "take": "11-good-then-broken/en_US-amy-medium",
+   "levels": true,
+   "heard": "Open the settings window. Then click the, the blue. Shroom cut. Then click the green button.",
+   "cuts": [
+    "Then click the, the blue. Shroom cut."
+   ],
+   "edges": 2,
+   "edges_in_speech": 0,
+   "clicks": {
+    "0.0": {
+     "median": 1.2945160036473957,
+     "max": 1.2945160036473957
+    },
+    "0.01": {
+     "median": 0.7676157572486465,
+     "max": 0.7676157572486465
+    },
+    "0.02": {
+     "median": 0.6389970695565378,
+     "max": 0.6389970695565378
+    },
+    "0.04": {
+     "median": 0.27176702014808446,
+     "max": 0.27176702014808446
+    },
+    "0.06": {
+     "median": 0.16724878350506744,
+     "max": 0.16724878350506744
+    },
+    "0.08": {
+     "median": 0.1237761647338338,
+     "max": 0.1237761647338338
+    },
+    "0.12": {
+     "median": 0.07437365089947827,
+     "max": 0.07437365089947827
+    }
+   },
+   "speech_dimmed": {
+    "0.0": 0.0,
+    "0.01": 0.0,
+    "0.02": 0.0,
+    "0.04": 0.0,
+    "0.06": 0.0,
+    "0.08": 0.0,
+    "0.12": 0.0
+   }
+  },
+  {
+   "take": "2-mid-paragraph/en_US-ryan-medium",
+   "levels": false,
+   "heard": "To share a recording, you click the mushroom in the menu bar, then you pick the, the window you, um, shroom cut. So, then you pick the window you want to share, and that's really all there is to it.",
+   "cuts": [
+    "then you pick the, the window you, um, shroom cut."
+   ],
+   "edges": 2,
+   "edges_in_speech": 0,
+   "clicks": {
+    "0.0": {
+     "median": 0.4281559292185926,
+     "max": 0.4281559292185926
+    },
+    "0.01": {
+     "median": 0.3203909721930331,
+     "max": 0.3203909721930331
+    },
+    "0.02": {
+     "median": 0.1803380259267976,
+     "max": 0.1803380259267976
+    },
+    "0.04": {
+     "median": 0.11414457295730919,
+     "max": 0.11414457295730919
+    },
+    "0.06": {
+     "median": 0.09459089624543685,
+     "max": 0.09459089624543685
+    },
+    "0.08": {
+     "median": 0.0740796172636718,
+     "max": 0.0740796172636718
+    },
+    "0.12": {
+     "median": 0.0626150849866557,
+     "max": 0.0626150849866557
+    }
+   },
+   "speech_dimmed": {
+    "0.0": 0.0,
+    "0.01": 0.0,
+    "0.02": 0.0,
+    "0.04": 0.0,
+    "0.06": 0.0,
+    "0.08": 0.0,
+    "0.12": 0.0
+   }
+  },
+  {
+   "take": "2-mid-paragraph/en_US-ryan-medium",
+   "levels": true,
+   "heard": "To share a recording, you click the mushroom in the menu bar, then you pick the, the window you, um, shroom cut. So, then you pick the window you want to share, and that's really all there is to it.",
+   "cuts": [
+    "then you pick the, the window you, um, shroom cut."
+   ],
+   "edges": 2,
+   "edges_in_speech": 0,
+   "clicks": {
+    "0.0": {
+     "median": 0.4281559292185926,
+     "max": 0.4281559292185926
+    },
+    "0.01": {
+     "median": 0.3203909721930331,
+     "max": 0.3203909721930331
+    },
+    "0.02": {
+     "median": 0.1803380259267976,
+     "max": 0.1803380259267976
+    },
+    "0.04": {
+     "median": 0.11414457295730919,
+     "max": 0.11414457295730919
+    },
+    "0.06": {
+     "median": 0.09459089624543685,
+     "max": 0.09459089624543685
+    },
+    "0.08": {
+     "median": 0.0740796172636718,
+     "max": 0.0740796172636718
+    },
+    "0.12": {
+     "median": 0.0626150849866557,
+     "max": 0.0626150849866557
+    }
+   },
+   "speech_dimmed": {
+    "0.0": 0.0,
+    "0.01": 0.0,
+    "0.02": 0.0,
+    "0.04": 0.0,
+    "0.06": 0.0,
+    "0.08": 0.0,
+    "0.12": 0.0
+   }
+  },
+  {
+   "take": "2-mid-paragraph/en_US-amy-medium",
+   "levels": false,
+   "heard": "To share a recording, you click the mushroom in the menu bar. Then you pick the, the window you, um, shroom cut. So, then you pick the window you want to share. And that's really all there is to it.",
+   "cuts": [
+    "Then you pick the, the window you, um, shroom cut."
+   ],
+   "edges": 2,
+   "edges_in_speech": 0,
+   "clicks": {
+    "0.0": {
+     "median": 0.4252866095236283,
+     "max": 0.4252866095236283
+    },
+    "0.01": {
+     "median": 0.374672872332161,
+     "max": 0.374672872332161
+    },
+    "0.02": {
+     "median": 0.19722994151170295,
+     "max": 0.19722994151170295
+    },
+    "0.04": {
+     "median": 0.11448871130426128,
+     "max": 0.11448871130426128
+    },
+    "0.06": {
+     "median": 0.10996510335434626,
+     "max": 0.10996510335434626
+    },
+    "0.08": {
+     "median": 0.0624370010040271,
+     "max": 0.0624370010040271
+    },
+    "0.12": {
+     "median": 0.051771650804354,
+     "max": 0.051771650804354
+    }
+   },
+   "speech_dimmed": {
+    "0.0": 0.0,
+    "0.01": 0.0,
+    "0.02": 0.0,
+    "0.04": 0.0,
+    "0.06": 0.0,
+    "0.08": 0.0,
+    "0.12": 0.0
+   }
+  },
+  {
+   "take": "2-mid-paragraph/en_US-amy-medium",
+   "levels": true,
+   "heard": "To share a recording, you click the mushroom in the menu bar. Then you pick the, the window you, um, shroom cut. So, then you pick the window you want to share. And that's really all there is to it.",
+   "cuts": [
+    "Then you pick the, the window you, um, shroom cut."
+   ],
+   "edges": 2,
+   "edges_in_speech": 0,
+   "clicks": {
+    "0.0": {
+     "median": 0.4252866095236283,
+     "max": 0.4252866095236283
+    },
+    "0.01": {
+     "median": 0.374672872332161,
+     "max": 0.374672872332161
+    },
+    "0.02": {
+     "median": 0.19722994151170295,
+     "max": 0.19722994151170295
+    },
+    "0.04": {
+     "median": 0.11448871130426128,
+     "max": 0.11448871130426128
+    },
+    "0.06": {
+     "median": 0.10996510335434626,
+     "max": 0.10996510335434626
+    },
+    "0.08": {
+     "median": 0.0624370010040271,
+     "max": 0.0624370010040271
+    },
+    "0.12": {
+     "median": 0.051771650804354,
+     "max": 0.051771650804354
+    }
+   },
+   "speech_dimmed": {
+    "0.0": 0.0,
+    "0.01": 0.0,
+    "0.02": 0.0,
+    "0.04": 0.0,
+    "0.06": 0.0,
+    "0.08": 0.0,
+    "0.12": 0.0
+   }
+  },
+  {
+   "take": "3-mid-sentence/en_US-ryan-medium",
+   "levels": false,
+   "heard": "Your video uploads while you talk, so the link is ready the moment you stop. It goes straight to your own bucket, on your own account, which is, um, wait. Shroom cut. It goes straight to your own bucket, in your own cloud account, and nowhere else.",
+   "cuts": [
+    "It goes straight to your own bucket, on your own account, which is, um, wait. Shroom cut."
+   ],
+   "edges": 2,
+   "edges_in_speech": 0,
+   "clicks": {
+    "0.0": {
+     "median": 0.6935723237465342,
+     "max": 0.6935723237465342
+    },
+    "0.01": {
+     "median": 0.4334418996990558,
+     "max": 0.4334418996990558
+    },
+    "0.02": {
+     "median": 0.3986165786579682,
+     "max": 0.3986165786579682
+    },
+    "0.04": {
+     "median": 0.22918151379605098,
+     "max": 0.22918151379605098
+    },
+    "0.06": {
+     "median": 0.2734245371703432,
+     "max": 0.2734245371703432
+    },
+    "0.08": {
+     "median": 0.24095152109260518,
+     "max": 0.24095152109260518
+    },
+    "0.12": {
+     "median": 0.18073940551680368,
+     "max": 0.18073940551680368
+    }
+   },
+   "speech_dimmed": {
+    "0.0": 0.0,
+    "0.01": 0.0,
+    "0.02": 0.0,
+    "0.04": 0.0,
+    "0.06": 0.0,
+    "0.08": 0.0,
+    "0.12": 0.0
+   }
+  },
+  {
+   "take": "3-mid-sentence/en_US-ryan-medium",
+   "levels": true,
+   "heard": "Your video uploads while you talk, so the link is ready the moment you stop. It goes straight to your own bucket, on your own account, which is, um, wait. Shroom cut. It goes straight to your own bucket, in your own cloud account, and nowhere else.",
+   "cuts": [
+    "It goes straight to your own bucket, on your own account, which is, um, wait. Shroom cut."
+   ],
+   "edges": 2,
+   "edges_in_speech": 0,
+   "clicks": {
+    "0.0": {
+     "median": 0.6935723237465342,
+     "max": 0.6935723237465342
+    },
+    "0.01": {
+     "median": 0.4334418996990558,
+     "max": 0.4334418996990558
+    },
+    "0.02": {
+     "median": 0.3986165786579682,
+     "max": 0.3986165786579682
+    },
+    "0.04": {
+     "median": 0.22918151379605098,
+     "max": 0.22918151379605098
+    },
+    "0.06": {
+     "median": 0.2734245371703432,
+     "max": 0.2734245371703432
+    },
+    "0.08": {
+     "median": 0.24095152109260518,
+     "max": 0.24095152109260518
+    },
+    "0.12": {
+     "median": 0.18073940551680368,
+     "max": 0.18073940551680368
+    }
+   },
+   "speech_dimmed": {
+    "0.0": 0.0,
+    "0.01": 0.0,
+    "0.02": 0.0,
+    "0.04": 0.0,
+    "0.06": 0.0,
+    "0.08": 0.0,
+    "0.12": 0.0
+   }
+  },
+  {
+   "take": "3-mid-sentence/en_US-amy-medium",
+   "levels": false,
+   "heard": "Your video uploads while you talk, so the link is ready the moment you stop. It goes straight to your own bucket, on your own account, which is, hum, wait. Shroom cut. It goes straight to your own bucket, in your own cloud account, and nowhere else.",
+   "cuts": [
+    "It goes straight to your own bucket, on your own account, which is, hum, wait. Shroom cut."
+   ],
+   "edges": 2,
+   "edges_in_speech": 0,
+   "clicks": {
+    "0.0": {
+     "median": 0.6153239310553678,
+     "max": 0.6153239310553678
+    },
+    "0.01": {
+     "median": 0.5509826688484585,
+     "max": 0.5509826688484585
+    },
+    "0.02": {
+     "median": 0.5748151749934075,
+     "max": 0.5748151749934075
+    },
+    "0.04": {
+     "median": 0.30164516180449114,
+     "max": 0.30164516180449114
+    },
+    "0.06": {
+     "median": 0.23973901435493952,
+     "max": 0.23973901435493952
+    },
+    "0.08": {
+     "median": 0.2842540896890739,
+     "max": 0.2842540896890739
+    },
+    "0.12": {
+     "median": 0.14620432903935182,
+     "max": 0.14620432903935182
+    }
+   },
+   "speech_dimmed": {
+    "0.0": 0.0,
+    "0.01": 0.0,
+    "0.02": 0.0,
+    "0.04": 0.0,
+    "0.06": 0.0,
+    "0.08": 0.0,
+    "0.12": 0.0
+   }
+  },
+  {
+   "take": "3-mid-sentence/en_US-amy-medium",
+   "levels": true,
+   "heard": "Your video uploads while you talk, so the link is ready the moment you stop. It goes straight to your own bucket, on your own account, which is, hum, wait. Shroom cut. It goes straight to your own bucket, in your own cloud account, and nowhere else.",
+   "cuts": [
+    "It goes straight to your own bucket, on your own account, which is, hum, wait. Shroom cut."
+   ],
+   "edges": 2,
+   "edges_in_speech": 0,
+   "clicks": {
+    "0.0": {
+     "median": 0.6153239310553678,
+     "max": 0.6153239310553678
+    },
+    "0.01": {
+     "median": 0.5509826688484585,
+     "max": 0.5509826688484585
+    },
+    "0.02": {
+     "median": 0.5748151749934075,
+     "max": 0.5748151749934075
+    },
+    "0.04": {
+     "median": 0.30164516180449114,
+     "max": 0.30164516180449114
+    },
+    "0.06": {
+     "median": 0.23973901435493952,
+     "max": 0.23973901435493952
+    },
+    "0.08": {
+     "median": 0.2842540896890739,
+     "max": 0.2842540896890739
+    },
+    "0.12": {
+     "median": 0.14620432903935182,
+     "max": 0.14620432903935182
+    }
+   },
+   "speech_dimmed": {
+    "0.0": 0.0,
+    "0.01": 0.0,
+    "0.02": 0.0,
+    "0.04": 0.0,
+    "0.06": 0.0,
+    "0.08": 0.0,
+    "0.12": 0.0
+   }
+  },
+  {
+   "take": "4-no-retake/en_US-ryan-medium",
+   "levels": false,
+   "heard": "The settings window has three tabs. The second one is, um, I forget what it's called. Shroom cut. Let's move on to the library instead.",
+   "cuts": [
+    "Shroom cut."
+   ],
+   "edges": 2,
+   "edges_in_speech": 0,
+   "clicks": {
+    "0.0": {
+     "median": 2.6019893728569388,
+     "max": 2.6019893728569388
+    },
+    "0.01": {
+     "median": 0.8660054421516835,
+     "max": 0.8660054421516835
+    },
+    "0.02": {
+     "median": 1.1038598061144191,
+     "max": 1.1038598061144191
+    },
+    "0.04": {
+     "median": 0.7474274946300885,
+     "max": 0.7474274946300885
+    },
+    "0.06": {
+     "median": 0.4347497362114627,
+     "max": 0.4347497362114627
+    },
+    "0.08": {
+     "median": 0.3193310009078509,
+     "max": 0.3193310009078509
+    },
+    "0.12": {
+     "median": 0.1546186642205477,
+     "max": 0.1546186642205477
+    }
+   },
+   "speech_dimmed": {
+    "0.0": 0.0,
+    "0.01": 0.0,
+    "0.02": 0.0,
+    "0.04": 0.0,
+    "0.06": 0.0,
+    "0.08": 0.0,
+    "0.12": 0.0
+   }
+  },
+  {
+   "take": "4-no-retake/en_US-ryan-medium",
+   "levels": true,
+   "heard": "The settings window has three tabs. The second one is, um, I forget what it's called. Shroom cut. Let's move on to the library instead.",
+   "cuts": [
+    "Shroom cut."
+   ],
+   "edges": 2,
+   "edges_in_speech": 0,
+   "clicks": {
+    "0.0": {
+     "median": 2.6019893728569388,
+     "max": 2.6019893728569388
+    },
+    "0.01": {
+     "median": 0.8660054421516835,
+     "max": 0.8660054421516835
+    },
+    "0.02": {
+     "median": 1.1038598061144191,
+     "max": 1.1038598061144191
+    },
+    "0.04": {
+     "median": 0.7474274946300885,
+     "max": 0.7474274946300885
+    },
+    "0.06": {
+     "median": 0.4347497362114627,
+     "max": 0.4347497362114627
+    },
+    "0.08": {
+     "median": 0.3193310009078509,
+     "max": 0.3193310009078509
+    },
+    "0.12": {
+     "median": 0.1546186642205477,
+     "max": 0.1546186642205477
+    }
+   },
+   "speech_dimmed": {
+    "0.0": 0.0,
+    "0.01": 0.0,
+    "0.02": 0.0,
+    "0.04": 0.0,
+    "0.06": 0.0,
+    "0.08": 0.0,
+    "0.12": 0.0
+   }
+  },
+  {
+   "take": "4-no-retake/en_US-amy-medium",
+   "levels": false,
+   "heard": "The settings window has three tabs. The second one is, um, I forget what it's called. Shroom cut. Let's move on to the library instead.",
+   "cuts": [
+    "Shroom cut."
+   ],
+   "edges": 2,
+   "edges_in_speech": 0,
+   "clicks": {
+    "0.0": {
+     "median": 0.8289940382272457,
+     "max": 0.8289940382272457
+    },
+    "0.01": {
+     "median": 0.6983514509656538,
+     "max": 0.6983514509656538
+    },
+    "0.02": {
+     "median": 0.7871364589239207,
+     "max": 0.7871364589239207
+    },
+    "0.04": {
+     "median": 0.47593674787269863,
+     "max": 0.47593674787269863
+    },
+    "0.06": {
+     "median": 0.5131650133010008,
+     "max": 0.5131650133010008
+    },
+    "0.08": {
+     "median": 0.41900484030075275,
+     "max": 0.41900484030075275
+    },
+    "0.12": {
+     "median": 0.3067300265735683,
+     "max": 0.3067300265735683
+    }
+   },
+   "speech_dimmed": {
+    "0.0": 0.0,
+    "0.01": 0.0,
+    "0.02": 0.0,
+    "0.04": 0.0,
+    "0.06": 0.0,
+    "0.08": 0.0,
+    "0.12": 0.0
+   }
+  },
+  {
+   "take": "4-no-retake/en_US-amy-medium",
+   "levels": true,
+   "heard": "The settings window has three tabs. The second one is, um, I forget what it's called. Shroom cut. Let's move on to the library instead.",
+   "cuts": [
+    "Shroom cut."
+   ],
+   "edges": 2,
+   "edges_in_speech": 0,
+   "clicks": {
+    "0.0": {
+     "median": 0.8289940382272457,
+     "max": 0.8289940382272457
+    },
+    "0.01": {
+     "median": 0.6983514509656538,
+     "max": 0.6983514509656538
+    },
+    "0.02": {
+     "median": 0.7871364589239207,
+     "max": 0.7871364589239207
+    },
+    "0.04": {
+     "median": 0.47593674787269863,
+     "max": 0.47593674787269863
+    },
+    "0.06": {
+     "median": 0.5131650133010008,
+     "max": 0.5131650133010008
+    },
+    "0.08": {
+     "median": 0.41900484030075275,
+     "max": 0.41900484030075275
+    },
+    "0.12": {
+     "median": 0.3067300265735683,
+     "max": 0.3067300265735683
+    }
+   },
+   "speech_dimmed": {
+    "0.0": 0.0,
+    "0.01": 0.0,
+    "0.02": 0.0,
+    "0.04": 0.0,
+    "0.06": 0.0,
+    "0.08": 0.0,
+    "0.12": 0.0
+   }
+  },
+  {
+   "take": "5-two-cues/en_US-ryan-medium",
+   "levels": false,
+   "heard": "Welcome to the tour. Press stop and your link is pasted. Shroom cut. Press stop and your link is, uh, shroom cut. Press stop and your link is copied to the clipboard.",
+   "cuts": [
+    "Press stop and your link is pasted. Shroom cut.",
+    "Press stop and your link is, uh, shroom cut."
+   ],
+   "edges": 4,
+   "edges_in_speech": 0,
+   "clicks": {
+    "0.0": {
+     "median": 1.7684172229748278,
+     "max": 1.7684172229748278
+    },
+    "0.01": {
+     "median": 0.5857477504835993,
+     "max": 0.5857477504835993
+    },
+    "0.02": {
+     "median": 0.6111457823139296,
+     "max": 0.6111457823139296
+    },
+    "0.04": {
+     "median": 0.45777215066686333,
+     "max": 0.45777215066686333
+    },
+    "0.06": {
+     "median": 0.27887405222304223,
+     "max": 0.27887405222304223
+    },
+    "0.08": {
+     "median": 0.1740397426594028,
+     "max": 0.1740397426594028
+    },
+    "0.12": {
+     "median": 0.09291960308470527,
+     "max": 0.09291960308470527
+    }
+   },
+   "speech_dimmed": {
+    "0.0": 0.0,
+    "0.01": 0.0,
+    "0.02": 0.0,
+    "0.04": 0.0,
+    "0.06": 0.0,
+    "0.08": 0.0,
+    "0.12": 0.0
+   }
+  },
+  {
+   "take": "5-two-cues/en_US-ryan-medium",
+   "levels": true,
+   "heard": "Welcome to the tour. Press stop and your link is pasted. Shroom cut. Press stop and your link is, uh, shroom cut. Press stop and your link is copied to the clipboard.",
+   "cuts": [
+    "Press stop and your link is pasted. Shroom cut.",
+    "Press stop and your link is, uh, shroom cut."
+   ],
+   "edges": 4,
+   "edges_in_speech": 0,
+   "clicks": {
+    "0.0": {
+     "median": 1.7684172229748278,
+     "max": 1.7684172229748278
+    },
+    "0.01": {
+     "median": 0.5857477504835993,
+     "max": 0.5857477504835993
+    },
+    "0.02": {
+     "median": 0.6111457823139296,
+     "max": 0.6111457823139296
+    },
+    "0.04": {
+     "median": 0.45777215066686333,
+     "max": 0.45777215066686333
+    },
+    "0.06": {
+     "median": 0.27887405222304223,
+     "max": 0.27887405222304223
+    },
+    "0.08": {
+     "median": 0.1740397426594028,
+     "max": 0.1740397426594028
+    },
+    "0.12": {
+     "median": 0.09291960308470527,
+     "max": 0.09291960308470527
+    }
+   },
+   "speech_dimmed": {
+    "0.0": 0.0,
+    "0.01": 0.0,
+    "0.02": 0.0,
+    "0.04": 0.0,
+    "0.06": 0.0,
+    "0.08": 0.0,
+    "0.12": 0.0
+   }
+  },
+  {
+   "take": "5-two-cues/en_US-amy-medium",
+   "levels": false,
+   "heard": "Welcome to the tour. Press stop and your link is pasted. Shroom cut. Press stop and your link is, uh, shroom cut. Press stop and your link is copied to the clipboard.",
+   "cuts": [
+    "Press stop and your link is pasted. Shroom cut.",
+    "Press stop and your link is, uh, shroom cut."
+   ],
+   "edges": 4,
+   "edges_in_speech": 0,
+   "clicks": {
+    "0.0": {
+     "median": 1.037726243059375,
+     "max": 1.037726243059375
+    },
+    "0.01": {
+     "median": 0.6318647934490583,
+     "max": 0.6318647934490583
+    },
+    "0.02": {
+     "median": 0.6395284829820634,
+     "max": 0.6395284829820634
+    },
+    "0.04": {
+     "median": 0.38923921971593667,
+     "max": 0.38923921971593667
+    },
+    "0.06": {
+     "median": 0.27018903204879285,
+     "max": 0.27018903204879285
+    },
+    "0.08": {
+     "median": 0.28991788013974684,
+     "max": 0.28991788013974684
+    },
+    "0.12": {
+     "median": 0.24788946399338038,
+     "max": 0.24788946399338038
+    }
+   },
+   "speech_dimmed": {
+    "0.0": 0.0,
+    "0.01": 0.0,
+    "0.02": 0.0,
+    "0.04": 0.0,
+    "0.06": 0.0,
+    "0.08": 0.0,
+    "0.12": 0.0
+   }
+  },
+  {
+   "take": "5-two-cues/en_US-amy-medium",
+   "levels": true,
+   "heard": "Welcome to the tour. Press stop and your link is pasted. Shroom cut. Press stop and your link is, uh, shroom cut. Press stop and your link is copied to the clipboard.",
+   "cuts": [
+    "Press stop and your link is pasted. Shroom cut.",
+    "Press stop and your link is, uh, shroom cut."
+   ],
+   "edges": 4,
+   "edges_in_speech": 0,
+   "clicks": {
+    "0.0": {
+     "median": 1.037726243059375,
+     "max": 1.037726243059375
+    },
+    "0.01": {
+     "median": 0.6318647934490583,
+     "max": 0.6318647934490583
+    },
+    "0.02": {
+     "median": 0.6395284829820634,
+     "max": 0.6395284829820634
+    },
+    "0.04": {
+     "median": 0.38923921971593667,
+     "max": 0.38923921971593667
+    },
+    "0.06": {
+     "median": 0.27018903204879285,
+     "max": 0.27018903204879285
+    },
+    "0.08": {
+     "median": 0.28991788013974684,
+     "max": 0.28991788013974684
+    },
+    "0.12": {
+     "median": 0.24788946399338038,
+     "max": 0.24788946399338038
+    }
+   },
+   "speech_dimmed": {
+    "0.0": 0.0,
+    "0.01": 0.0,
+    "0.02": 0.0,
+    "0.04": 0.0,
+    "0.06": 0.0,
+    "0.08": 0.0,
+    "0.12": 0.0
+   }
+  },
+  {
+   "take": "6-said-not-meant/en_US-ryan-medium",
+   "levels": false,
+   "heard": "You can cut the start of a video in the editor or just say shroom cut and shroom trims the mistake for you. The shroom cut feature works on every recording.",
+   "cuts": [],
+   "edges": 0,
+   "edges_in_speech": 0,
+   "clicks": {
+    "0.0": {
+     "median": null,
+     "max": null
+    },
+    "0.01": {
+     "median": null,
+     "max": null
+    },
+    "0.02": {
+     "median": null,
+     "max": null
+    },
+    "0.04": {
+     "median": null,
+     "max": null
+    },
+    "0.06": {
+     "median": null,
+     "max": null
+    },
+    "0.08": {
+     "median": null,
+     "max": null
+    },
+    "0.12": {
+     "median": null,
+     "max": null
+    }
+   },
+   "speech_dimmed": {
+    "0.0": 0.0,
+    "0.01": 0.0,
+    "0.02": 0.0,
+    "0.04": 0.0,
+    "0.06": 0.0,
+    "0.08": 0.0,
+    "0.12": 0.0
+   }
+  },
+  {
+   "take": "6-said-not-meant/en_US-ryan-medium",
+   "levels": true,
+   "heard": "You can cut the start of a video in the editor or just say shroom cut and shroom trims the mistake for you. The shroom cut feature works on every recording.",
+   "cuts": [],
+   "edges": 0,
+   "edges_in_speech": 0,
+   "clicks": {
+    "0.0": {
+     "median": null,
+     "max": null
+    },
+    "0.01": {
+     "median": null,
+     "max": null
+    },
+    "0.02": {
+     "median": null,
+     "max": null
+    },
+    "0.04": {
+     "median": null,
+     "max": null
+    },
+    "0.06": {
+     "median": null,
+     "max": null
+    },
+    "0.08": {
+     "median": null,
+     "max": null
+    },
+    "0.12": {
+     "median": null,
+     "max": null
+    }
+   },
+   "speech_dimmed": {
+    "0.0": 0.0,
+    "0.01": 0.0,
+    "0.02": 0.0,
+    "0.04": 0.0,
+    "0.06": 0.0,
+    "0.08": 0.0,
+    "0.12": 0.0
+   }
+  },
+  {
+   "take": "6-said-not-meant/en_US-amy-medium",
+   "levels": false,
+   "heard": "You can cut the start of a video in the editor. Or just say shroom cut and shroom trims the mistake for you. The shroom cut feature works on every recording.",
+   "cuts": [],
+   "edges": 0,
+   "edges_in_speech": 0,
+   "clicks": {
+    "0.0": {
+     "median": null,
+     "max": null
+    },
+    "0.01": {
+     "median": null,
+     "max": null
+    },
+    "0.02": {
+     "median": null,
+     "max": null
+    },
+    "0.04": {
+     "median": null,
+     "max": null
+    },
+    "0.06": {
+     "median": null,
+     "max": null
+    },
+    "0.08": {
+     "median": null,
+     "max": null
+    },
+    "0.12": {
+     "median": null,
+     "max": null
+    }
+   },
+   "speech_dimmed": {
+    "0.0": 0.0,
+    "0.01": 0.0,
+    "0.02": 0.0,
+    "0.04": 0.0,
+    "0.06": 0.0,
+    "0.08": 0.0,
+    "0.12": 0.0
+   }
+  },
+  {
+   "take": "6-said-not-meant/en_US-amy-medium",
+   "levels": true,
+   "heard": "You can cut the start of a video in the editor. Or just say shroom cut and shroom trims the mistake for you. The shroom cut feature works on every recording.",
+   "cuts": [],
+   "edges": 0,
+   "edges_in_speech": 0,
+   "clicks": {
+    "0.0": {
+     "median": null,
+     "max": null
+    },
+    "0.01": {
+     "median": null,
+     "max": null
+    },
+    "0.02": {
+     "median": null,
+     "max": null
+    },
+    "0.04": {
+     "median": null,
+     "max": null
+    },
+    "0.06": {
+     "median": null,
+     "max": null
+    },
+    "0.08": {
+     "median": null,
+     "max": null
+    },
+    "0.12": {
+     "median": null,
+     "max": null
+    }
+   },
+   "speech_dimmed": {
+    "0.0": 0.0,
+    "0.01": 0.0,
+    "0.02": 0.0,
+    "0.04": 0.0,
+    "0.06": 0.0,
+    "0.08": 0.0,
+    "0.12": 0.0
+   }
+  },
+  {
+   "take": "7-cue-at-the-end/en_US-ryan-medium",
+   "levels": false,
+   "heard": "Thanks for watching, and see you in the next. Shroom cut. Thanks for watching, see you next time. Oh, and one more thing, uh, shroom cut.",
+   "cuts": [
+    "Thanks for watching, and see you in the next. Shroom cut.",
+    "Oh, and one more thing, uh, shroom cut."
+   ],
+   "edges": 4,
+   "edges_in_speech": 0,
+   "clicks": {
+    "0.0": {
+     "median": 2.512692554610154,
+     "max": 4.2740173151132055
+    },
+    "0.01": {
+     "median": 1.0750589325388973,
+     "max": 1.5377022866250953
+    },
+    "0.02": {
+     "median": 0.947421549014382,
+     "max": 1.5233173949764436
+    },
+    "0.04": {
+     "median": 0.7401334892064978,
+     "max": 1.226295664640515
+    },
+    "0.06": {
+     "median": 0.5527821101464361,
+     "max": 1.0078659877764184
+    },
+    "0.08": {
+     "median": 0.6327999839180913,
+     "max": 1.167901735319729
+    },
+    "0.12": {
+     "median": 0.6327999839180913,
+     "max": 1.167901735319729
+    }
+   },
+   "speech_dimmed": {
+    "0.0": 0.0,
+    "0.01": 0.5,
+    "0.02": 0.5,
+    "0.04": 0.5,
+    "0.06": 0.5,
+    "0.08": 0.5,
+    "0.12": 0.5
+   }
+  },
+  {
+   "take": "7-cue-at-the-end/en_US-ryan-medium",
+   "levels": true,
+   "heard": "Thanks for watching, and see you in the next. Shroom cut. Thanks for watching, see you next time. Oh, and one more thing, uh, shroom cut.",
+   "cuts": [
+    "Thanks for watching, and see you in the next. Shroom cut.",
+    "Oh, and one more thing, uh, shroom cut."
+   ],
+   "edges": 4,
+   "edges_in_speech": 0,
+   "clicks": {
+    "0.0": {
+     "median": 2.512692554610154,
+     "max": 4.2740173151132055
+    },
+    "0.01": {
+     "median": 1.0750589325388973,
+     "max": 1.5377022866250953
+    },
+    "0.02": {
+     "median": 0.947421549014382,
+     "max": 1.5233173949764436
+    },
+    "0.04": {
+     "median": 0.7401334892064978,
+     "max": 1.226295664640515
+    },
+    "0.06": {
+     "median": 0.5527821101464361,
+     "max": 1.0078659877764184
+    },
+    "0.08": {
+     "median": 0.6327999839180913,
+     "max": 1.167901735319729
+    },
+    "0.12": {
+     "median": 0.6327999839180913,
+     "max": 1.167901735319729
+    }
+   },
+   "speech_dimmed": {
+    "0.0": 0.0,
+    "0.01": 0.5,
+    "0.02": 0.5,
+    "0.04": 0.5,
+    "0.06": 0.5,
+    "0.08": 0.5,
+    "0.12": 0.5
+   }
+  },
+  {
+   "take": "7-cue-at-the-end/en_US-amy-medium",
+   "levels": false,
+   "heard": "Thanks for watching, and see you in the next, shroom cut. Thanks for watching, see you next time. Oh, and one more thing, the, shroom cut.",
+   "cuts": [
+    "Thanks for watching, and see you in the next, shroom cut.",
+    "Oh, and one more thing, the, shroom cut."
+   ],
+   "edges": 4,
+   "edges_in_speech": 0,
+   "clicks": {
+    "0.0": {
+     "median": 1.0417300609327182,
+     "max": 1.2908415731789202
+    },
+    "0.01": {
+     "median": 0.8509003539516196,
+     "max": 1.0440957412852456
+    },
+    "0.02": {
+     "median": 1.0617723343932344,
+     "max": 1.618953376795938
+    },
+    "0.04": {
+     "median": 0.7786984991037663,
+     "max": 1.1722828535429184
+    },
+    "0.06": {
+     "median": 0.8136144750570631,
+     "max": 1.3124678972112076
+    },
+    "0.08": {
+     "median": 0.7428622622407457,
+     "max": 1.1709634715785726
+    },
+    "0.12": {
+     "median": 0.7428622622407457,
+     "max": 1.1709634715785726
+    }
+   },
+   "speech_dimmed": {
+    "0.0": 0.0,
+    "0.01": 0.5,
+    "0.02": 0.5,
+    "0.04": 0.0,
+    "0.06": 0.0,
+    "0.08": 0.0,
+    "0.12": 0.0
+   }
+  },
+  {
+   "take": "7-cue-at-the-end/en_US-amy-medium",
+   "levels": true,
+   "heard": "Thanks for watching, and see you in the next, shroom cut. Thanks for watching, see you next time. Oh, and one more thing, the, shroom cut.",
+   "cuts": [
+    "Thanks for watching, and see you in the next, shroom cut.",
+    "Oh, and one more thing, the, shroom cut."
+   ],
+   "edges": 4,
+   "edges_in_speech": 0,
+   "clicks": {
+    "0.0": {
+     "median": 1.0417300609327182,
+     "max": 1.2908415731789202
+    },
+    "0.01": {
+     "median": 0.8509003539516196,
+     "max": 1.0440957412852456
+    },
+    "0.02": {
+     "median": 1.0617723343932344,
+     "max": 1.618953376795938
+    },
+    "0.04": {
+     "median": 0.7786984991037663,
+     "max": 1.1722828535429184
+    },
+    "0.06": {
+     "median": 0.8136144750570631,
+     "max": 1.3124678972112076
+    },
+    "0.08": {
+     "median": 0.7428622622407457,
+     "max": 1.1709634715785726
+    },
+    "0.12": {
+     "median": 0.7428622622407457,
+     "max": 1.1709634715785726
+    }
+   },
+   "speech_dimmed": {
+    "0.0": 0.0,
+    "0.01": 0.5,
+    "0.02": 0.5,
+    "0.04": 0.0,
+    "0.06": 0.0,
+    "0.08": 0.0,
+    "0.12": 0.0
+   }
+  },
+  {
+   "take": "8-reworded-redo/en_US-ryan-medium",
+   "levels": false,
+   "heard": "Hi, this is a quick test of the voice cut. Click on this link and you will. Shroom cut. To get your video, use this link and you'll see it right away.",
+   "cuts": [
+    "Click on this link and you will. Shroom cut."
+   ],
+   "edges": 2,
+   "edges_in_speech": 0,
+   "clicks": {
+    "0.0": {
+     "median": 0.2061960863624188,
+     "max": 0.2061960863624188
+    },
+    "0.01": {
+     "median": 0.15956412080222981,
+     "max": 0.15956412080222981
+    },
+    "0.02": {
+     "median": 0.20676546791589095,
+     "max": 0.20676546791589095
+    },
+    "0.04": {
+     "median": 0.16870386727652173,
+     "max": 0.16870386727652173
+    },
+    "0.06": {
+     "median": 0.12379658682349058,
+     "max": 0.12379658682349058
+    },
+    "0.08": {
+     "median": 0.11959348152672908,
+     "max": 0.11959348152672908
+    },
+    "0.12": {
+     "median": 0.14806788600604254,
+     "max": 0.14806788600604254
+    }
+   },
+   "speech_dimmed": {
+    "0.0": 0.0,
+    "0.01": 0.0,
+    "0.02": 0.0,
+    "0.04": 0.0,
+    "0.06": 0.0,
+    "0.08": 0.0,
+    "0.12": 0.0
+   }
+  },
+  {
+   "take": "8-reworded-redo/en_US-ryan-medium",
+   "levels": true,
+   "heard": "Hi, this is a quick test of the voice cut. Click on this link and you will. Shroom cut. To get your video, use this link and you'll see it right away.",
+   "cuts": [
+    "Click on this link and you will. Shroom cut."
+   ],
+   "edges": 2,
+   "edges_in_speech": 0,
+   "clicks": {
+    "0.0": {
+     "median": 0.2061960863624188,
+     "max": 0.2061960863624188
+    },
+    "0.01": {
+     "median": 0.15956412080222981,
+     "max": 0.15956412080222981
+    },
+    "0.02": {
+     "median": 0.20676546791589095,
+     "max": 0.20676546791589095
+    },
+    "0.04": {
+     "median": 0.16870386727652173,
+     "max": 0.16870386727652173
+    },
+    "0.06": {
+     "median": 0.12379658682349058,
+     "max": 0.12379658682349058
+    },
+    "0.08": {
+     "median": 0.11959348152672908,
+     "max": 0.11959348152672908
+    },
+    "0.12": {
+     "median": 0.14806788600604254,
+     "max": 0.14806788600604254
+    }
+   },
+   "speech_dimmed": {
+    "0.0": 0.0,
+    "0.01": 0.0,
+    "0.02": 0.0,
+    "0.04": 0.0,
+    "0.06": 0.0,
+    "0.08": 0.0,
+    "0.12": 0.0
+   }
+  },
+  {
+   "take": "8-reworded-redo/en_US-amy-medium",
+   "levels": false,
+   "heard": "Hi, this is a quick test of the voice cut. Click on this link and you will. Shroom cut. To get your video, use this link and you'll see it right away.",
+   "cuts": [
+    "Click on this link and you will. Shroom cut."
+   ],
+   "edges": 2,
+   "edges_in_speech": 0,
+   "clicks": {
+    "0.0": {
+     "median": 0.11797855300995445,
+     "max": 0.11797855300995445
+    },
+    "0.01": {
+     "median": 0.07298188421517679,
+     "max": 0.07298188421517679
+    },
+    "0.02": {
+     "median": 0.07817874988514291,
+     "max": 0.07817874988514291
+    },
+    "0.04": {
+     "median": 0.06696506563320706,
+     "max": 0.06696506563320706
+    },
+    "0.06": {
+     "median": 0.0691034033670802,
+     "max": 0.0691034033670802
+    },
+    "0.08": {
+     "median": 0.05426592102685211,
+     "max": 0.05426592102685211
+    },
+    "0.12": {
+     "median": 0.07636879880012166,
+     "max": 0.07636879880012166
+    }
+   },
+   "speech_dimmed": {
+    "0.0": 0.0,
+    "0.01": 0.0,
+    "0.02": 0.0,
+    "0.04": 0.0,
+    "0.06": 0.0,
+    "0.08": 0.0,
+    "0.12": 0.0
+   }
+  },
+  {
+   "take": "8-reworded-redo/en_US-amy-medium",
+   "levels": true,
+   "heard": "Hi, this is a quick test of the voice cut. Click on this link and you will. Shroom cut. To get your video, use this link and you'll see it right away.",
+   "cuts": [
+    "Click on this link and you will. Shroom cut."
+   ],
+   "edges": 2,
+   "edges_in_speech": 0,
+   "clicks": {
+    "0.0": {
+     "median": 0.11797855300995445,
+     "max": 0.11797855300995445
+    },
+    "0.01": {
+     "median": 0.07298188421517679,
+     "max": 0.07298188421517679
+    },
+    "0.02": {
+     "median": 0.07817874988514291,
+     "max": 0.07817874988514291
+    },
+    "0.04": {
+     "median": 0.06696506563320706,
+     "max": 0.06696506563320706
+    },
+    "0.06": {
+     "median": 0.0691034033670802,
+     "max": 0.0691034033670802
+    },
+    "0.08": {
+     "median": 0.05426592102685211,
+     "max": 0.05426592102685211
+    },
+    "0.12": {
+     "median": 0.07636879880012166,
+     "max": 0.07636879880012166
+    }
+   },
+   "speech_dimmed": {
+    "0.0": 0.0,
+    "0.01": 0.0,
+    "0.02": 0.0,
+    "0.04": 0.0,
+    "0.06": 0.0,
+    "0.08": 0.0,
+    "0.12": 0.0
+   }
+  },
+  {
+   "take": "9-clean-reworded/en_US-ryan-medium",
+   "levels": false,
+   "heard": "Hi, this is a quick test of the voice cut. Click on this link to see it. Shroom cut. To get your video, use this link and you'll see it right away.",
+   "cuts": [
+    "Shroom cut."
+   ],
+   "edges": 2,
+   "edges_in_speech": 0,
+   "clicks": {
+    "0.0": {
+     "median": 1.3457671068340622,
+     "max": 1.3457671068340622
+    },
+    "0.01": {
+     "median": 0.8449959598720436,
+     "max": 0.8449959598720436
+    },
+    "0.02": {
+     "median": 1.6449184248629543,
+     "max": 1.6449184248629543
+    },
+    "0.04": {
+     "median": 0.7574696196767331,
+     "max": 0.7574696196767331
+    },
+    "0.06": {
+     "median": 0.15235005493413092,
+     "max": 0.15235005493413092
+    },
+    "0.08": {
+     "median": 0.1524259660450395,
+     "max": 0.1524259660450395
+    },
+    "0.12": {
+     "median": 0.14719567279266474,
+     "max": 0.14719567279266474
+    }
+   },
+   "speech_dimmed": {
+    "0.0": 0.0,
+    "0.01": 0.0,
+    "0.02": 0.0,
+    "0.04": 0.0,
+    "0.06": 0.0,
+    "0.08": 0.0,
+    "0.12": 0.0
+   }
+  },
+  {
+   "take": "9-clean-reworded/en_US-ryan-medium",
+   "levels": true,
+   "heard": "Hi, this is a quick test of the voice cut. Click on this link to see it. Shroom cut. To get your video, use this link and you'll see it right away.",
+   "cuts": [
+    "Shroom cut."
+   ],
+   "edges": 2,
+   "edges_in_speech": 0,
+   "clicks": {
+    "0.0": {
+     "median": 1.3457671068340622,
+     "max": 1.3457671068340622
+    },
+    "0.01": {
+     "median": 0.8449959598720436,
+     "max": 0.8449959598720436
+    },
+    "0.02": {
+     "median": 1.6449184248629543,
+     "max": 1.6449184248629543
+    },
+    "0.04": {
+     "median": 0.7574696196767331,
+     "max": 0.7574696196767331
+    },
+    "0.06": {
+     "median": 0.15235005493413092,
+     "max": 0.15235005493413092
+    },
+    "0.08": {
+     "median": 0.1524259660450395,
+     "max": 0.1524259660450395
+    },
+    "0.12": {
+     "median": 0.14719567279266474,
+     "max": 0.14719567279266474
+    }
+   },
+   "speech_dimmed": {
+    "0.0": 0.0,
+    "0.01": 0.0,
+    "0.02": 0.0,
+    "0.04": 0.0,
+    "0.06": 0.0,
+    "0.08": 0.0,
+    "0.12": 0.0
+   }
+  },
+  {
+   "take": "9-clean-reworded/en_US-amy-medium",
+   "levels": false,
+   "heard": "Hi, this is a quick test of the voice cut. Click on this link to see it. Shroom cut. To get your video, use this link and you'll see it right away.",
+   "cuts": [
+    "Shroom cut."
+   ],
+   "edges": 2,
+   "edges_in_speech": 0,
+   "clicks": {
+    "0.0": {
+     "median": 0.1403700666627437,
+     "max": 0.1403700666627437
+    },
+    "0.01": {
+     "median": 0.08645202716271816,
+     "max": 0.08645202716271816
+    },
+    "0.02": {
+     "median": 0.08323822663239787,
+     "max": 0.08323822663239787
+    },
+    "0.04": {
+     "median": 0.05802132076170586,
+     "max": 0.05802132076170586
+    },
+    "0.06": {
+     "median": 0.06868790428797995,
+     "max": 0.06868790428797995
+    },
+    "0.08": {
+     "median": 0.08948575406791857,
+     "max": 0.08948575406791857
+    },
+    "0.12": {
+     "median": 0.10589118547025728,
+     "max": 0.10589118547025728
+    }
+   },
+   "speech_dimmed": {
+    "0.0": 0.0,
+    "0.01": 0.0,
+    "0.02": 0.0,
+    "0.04": 0.0,
+    "0.06": 0.0,
+    "0.08": 0.0,
+    "0.12": 0.0
+   }
+  },
+  {
+   "take": "9-clean-reworded/en_US-amy-medium",
+   "levels": true,
+   "heard": "Hi, this is a quick test of the voice cut. Click on this link to see it. Shroom cut. To get your video, use this link and you'll see it right away.",
+   "cuts": [
+    "Shroom cut."
+   ],
+   "edges": 2,
+   "edges_in_speech": 0,
+   "clicks": {
+    "0.0": {
+     "median": 0.1403700666627437,
+     "max": 0.1403700666627437
+    },
+    "0.01": {
+     "median": 0.08645202716271816,
+     "max": 0.08645202716271816
+    },
+    "0.02": {
+     "median": 0.08323822663239787,
+     "max": 0.08323822663239787
+    },
+    "0.04": {
+     "median": 0.05802132076170586,
+     "max": 0.05802132076170586
+    },
+    "0.06": {
+     "median": 0.06868790428797995,
+     "max": 0.06868790428797995
+    },
+    "0.08": {
+     "median": 0.08948575406791857,
+     "max": 0.08948575406791857
+    },
+    "0.12": {
+     "median": 0.10589118547025728,
+     "max": 0.10589118547025728
+    }
+   },
+   "speech_dimmed": {
+    "0.0": 0.0,
+    "0.01": 0.0,
+    "0.02": 0.0,
+    "0.04": 0.0,
+    "0.06": 0.0,
+    "0.08": 0.0,
+    "0.12": 0.0
+   }
+  }
+ ]
+}

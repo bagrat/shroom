@@ -56,6 +56,12 @@ impl LiveUpload {
         &self.sent
     }
 
+    /// How many of the recording's pieces are confirmed up, unbroken from the first — what
+    /// this Mac tells its space for naming (N66: another minute is up every ten).
+    pub fn pieces_up(&self) -> u32 {
+        (0..).take_while(|n| self.sent.contains_key(&keys::variant_file(&self.id, &files::segment(*n)))).count() as u32
+    }
+
     /// Claims the id (create-only) with the record in `uploading` state — so the link
     /// shows the title and "on its way" from the first second.
     pub fn claim(&mut self, title: &str) -> Result<(), UploadError> {
@@ -111,6 +117,19 @@ mod tests {
         v.iter().map(|(n, ms)| (n.to_string(), Duration::from_millis(*ms))).collect()
     }
     const SETTLE: Duration = Duration::from_secs(1);
+
+    #[test]
+    fn the_pieces_up_are_counted_unbroken_from_the_first() {
+        let credentials = shroom_storage::sigv4::Credentials { access_key_id: "k".into(), secret_access_key: "s".into(), session_token: None };
+        let s3 = Client::new(shroom_storage::s3::Bucket { endpoint: "http://127.0.0.1:9".into(), region: "auto".into(), name: "b".into(), credentials });
+        let mut up = LiveUpload::new(s3, "AbCdEfGhIjKlMnOp", Path::new("/nowhere"));
+        assert_eq!(up.pieces_up(), 0);
+        for n in [0, 1, 2, 4] {
+            up.sent.insert(keys::variant_file("AbCdEfGhIjKlMnOp", &files::segment(n)), 10);
+        }
+        up.sent.insert(keys::variant_file("AbCdEfGhIjKlMnOp", files::INIT_SEGMENT), 10);
+        assert_eq!(up.pieces_up(), 3, "piece 3 isn't up yet: only 0–2 count");
+    }
 
     #[test]
     fn a_settled_segment_is_ready_while_recording() {

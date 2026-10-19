@@ -1,0 +1,19 @@
+#!/bin/sh
+# Dev only: a stand-in for the person's own team directory in the batch demo
+# (dev/cli/demo-batch.sh) — what an agent might look a group up in (a workspace directory,
+# an HR tool, a contacts connector). Every name and address here is invented.
+#   directory <team>     prints the team as JSON: [{"name", "email", "role"}]
+case "${1:-}" in
+  engineering)
+    cat <<'JSON'
+[
+  {"name": "Priya Shah", "email": "priya@example.com", "role": "Backend"},
+  {"name": "Tom Becker", "email": "tom@example.com", "role": "Frontend"},
+  {"name": "Lena Ortiz", "email": "lena@example.com", "role": "Mobile"},
+  {"name": "Mher", "email": "mher@example.com", "role": "Engineering manager"},
+  {"name": "Dana Kim", "email": "dana@example.com", "role": "QA"}
+]
+JSON
+    ;;
+  *) echo "directory: no team called “${1:-}”; teams: engineering" >&2; exit 1 ;;
+esac

@@ -228,14 +228,20 @@ fn describe(e: &Event) -> String {
 type Sources = (Box<dyn FrameSource>, Option<Box<dyn AudioSource>>, Option<Arc<AtomicBool>>, Option<Opened>);
 
 /// Where a take's sound comes from: the microphone the core named — or, in an unattended
-/// harness run, the test pattern's beep in its place (never the room: what a drive records
-/// may be published, TESTING-PLAN §4, b4 #17). No microphone named: silence. A display's take
+/// harness run, the test pattern's beep in its place, or the voice-cut drive's speech
+/// (`--voice`, N65), never the room: what a drive records may be published (TESTING-PLAN §4,
+/// b4 #17). No microphone named: silence. A display's take
 /// mixes the Mac's own sound in (spec N47, DECISIONS B172) — with no microphone, it alone.
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum Ears {
     Device,
     DriveBeep,
 }
+
+/// The voice-cut drive's speech (`--voice <wav>`, spec N65): what a drive's take plays in
+/// place of the beep. Set by the harness's arguments only, so never outside a quiet harness
+/// run.
+pub static DRIVE_VOICE: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
 
 fn ears(rt: &Runtime) -> Ears {
     // `harness` is a quiet dev run only (never a release build, never a person's dev app).
@@ -262,7 +268,12 @@ fn sources(ears: Ears, a_source: SourceId, quality: Quality, mic_uid: &Option<St
         }
     };
     let (voice, lost, opened) = if ears == Ears::DriveBeep {
-        (mic_uid.as_ref().map(|_| Box::new(shroom_capture::beep::BeepSource::new(48_000)) as Box<dyn AudioSource>), None, None)
+        let drive: Option<Box<dyn AudioSource>> = match (mic_uid, DRIVE_VOICE.get()) {
+            (None, _) => None,
+            (Some(_), Some(wav)) => Some(Box::new(shroom_capture::speech::SpeechSource::open(wav, 48_000)?)),
+            (Some(_), None) => Some(Box::new(shroom_capture::beep::BeepSource::new(48_000))),
+        };
+        (drive, None, None)
     } else {
         let opened = mic_uid.as_deref().and_then(|uid| ready.filter(|o| o.serves(uid)).or_else(|| Opened::open(uid)));
         let voice = opened.as_ref().map(|o| Box::new(o.mic.clone()) as Box<dyn AudioSource>);
@@ -439,7 +450,10 @@ fn handle(rt: &Runtime, active: &mut Option<Active>, warm: &mut Option<Opened>, 
         }
         RecCmd::Marker => {
             let a = active.as_mut()?;
-            a.markers.push(a.length_ms);
+            // Where it was dropped, in the joined timeline: the pause point while paused
+            // (Drop a marker, N24), the moment pressed while recording (⌥⌘M, N64).
+            let at = marker_at(a.length_ms, a.running.then(|| a.since.elapsed()));
+            a.markers.push(at);
             // On disk at once, atomically: a take that dies, or comes back as a recovered
             // one, keeps every marker dropped so far (whole-spec audit #28).
             write_markers(&a.dir, &a.markers);
@@ -471,8 +485,15 @@ fn handle(rt: &Runtime, active: &mut Option<Active>, warm: &mut Option<Opened>, 
     }
 }
 
+/// A marker's place in the joined timeline (ms): the length of the pieces already ended,
+/// plus how far the open one has run (`None`: paused, at the pause point).
+pub fn marker_at(length_ms: u64, running_for: Option<Duration>) -> u64 {
+    length_ms + running_for.map_or(0, |d| d.as_millis() as u64)
+}
+
 /// `markers.json`: the take's markers as seconds in the joined timeline — the pause point
-/// each was dropped at (N24) — the record's `markers` at publish (DECISIONS B49).
+/// each was dropped at (N24), or the moment ⌥⌘M was pressed (N64) — the record's `markers`
+/// at publish (DECISIONS B49).
 fn write_markers(dir: &std::path::Path, markers: &[u64]) {
     if !markers.is_empty() {
         let seconds: Vec<f64> = markers.iter().map(|m| *m as f64 / 1000.0).collect();
@@ -482,6 +503,13 @@ fn write_markers(dir: &std::path::Path, markers: &[u64]) {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_marker_lands_at_the_pause_point_or_the_moment_pressed() {
+        assert_eq!(marker_at(272_000, None), 272_000, "paused: the pause point");
+        assert_eq!(marker_at(272_000, Some(Duration::from_millis(12_345))), 284_345, "recording: the pieces before, and this one so far");
+        assert_eq!(marker_at(0, Some(Duration::from_millis(900))), 900, "the first piece");
+    }
+
     #[test]
     fn markers_are_on_disk_from_their_drop_as_seconds_in_the_joined_timeline() {
         let tmp = tempfile::tempdir().unwrap();

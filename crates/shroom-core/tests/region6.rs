@@ -173,7 +173,7 @@ fn stranded(n: usize) -> Vec<Queued> {
 }
 
 fn lib_row(id: &str, title: &str, at: i64, owner: &str) -> LibraryRow {
-    LibraryRow { rec: RecId(id.into()), title: title.into(), created: Wall(at), length_ms: Some(95_000), live: true, owner: Some(owner.into()), poster: false }
+    LibraryRow { rec: RecId(id.into()), title: title.into(), created: Wall(at), length_ms: Some(95_000), live: true, owner: Some(owner.into()), poster: false, edited_ms: None }
 }
 
 /// Bagrat's video and Mher's, as the space lists them.

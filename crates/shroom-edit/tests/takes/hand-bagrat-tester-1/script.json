@@ -1,0 +1,56 @@
+[
+ {
+  "say": "Hi, this is a quick test of shroom.",
+  "role": "keep",
+  "start": 0.4,
+  "end": 2.9
+ },
+ {
+  "say": "Today, I'll show you how to share, uh, how to",
+  "role": "flub",
+  "start": 3.6,
+  "end": 6.85
+ },
+ {
+  "say": "shroom cut.",
+  "role": "cue",
+  "start": 7.6,
+  "end": 8.5
+ },
+ {
+  "say": "Today, I'll show you how to share a recording in one click.",
+  "role": "keep",
+  "start": 9.9,
+  "end": 13.4
+ },
+ {
+  "say": "You press stop and the link is pasted.",
+  "role": "flub",
+  "start": 14.4,
+  "end": 16.6
+ },
+ {
+  "say": "Shroom cut.",
+  "role": "cue",
+  "start": 17.2,
+  "end": 18.1
+ },
+ {
+  "say": "When you want to get your link, just press stop and your link is.",
+  "role": "flub",
+  "start": 19.4,
+  "end": 23.0
+ },
+ {
+  "say": "Shroom cut.",
+  "role": "cue",
+  "start": 23.9,
+  "end": 24.8
+ },
+ {
+  "say": "Okay. That's it.",
+  "role": "keep",
+  "start": 25.9,
+  "end": 27.5
+ }
+]

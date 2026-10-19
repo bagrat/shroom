@@ -1,0 +1,23 @@
+[
+ {
+  "say": "You can cut the start of a video in the editor.",
+  "role": "keep",
+  "pause": 0.4,
+  "start": 0.6,
+  "end": 2.609
+ },
+ {
+  "say": "Or just say shroom cut, and shroom trims the mistake for you.",
+  "role": "mention",
+  "pause": 0.4,
+  "start": 3.009,
+  "end": 6.259
+ },
+ {
+  "say": "The shroom cut feature works on every recording.",
+  "role": "mention",
+  "pause": 0.8,
+  "start": 6.659,
+  "end": 9.19
+ }
+]

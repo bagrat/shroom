@@ -187,6 +187,9 @@ jobs:
           npm run build --workspace app
           npm run check --workspace app
 
+      - name: The app's unit suite (the editor's edit model and clock, held to shroom-edit's vectors and the page)
+        run: npm test --workspace app
+
       - name: The Worker — unit suite, typecheck, the contract under workerd
         run: |
           npm test --workspace worker
@@ -204,7 +207,7 @@ jobs:
 
       - name: The landing page, the media readers
         run: |
-          node --test site/test/landing.test.mjs site/test/agent.test.mjs site/test/worker.test.mjs site/test/og.test.mjs site/test/report.test.mjs site/test/next.test.mjs
+          node --test site/test/landing.test.mjs site/test/agent.test.mjs site/test/cli.test.mjs site/test/worker.test.mjs site/test/og.test.mjs site/test/report.test.mjs site/test/next.test.mjs
           node --test tests/e2e/av.test.mjs tests/e2e/tone.test.mjs tests/e2e/field.test.mjs
 
       # The media tests make real recordings: H.264 through VideoToolbox. A hosted runner

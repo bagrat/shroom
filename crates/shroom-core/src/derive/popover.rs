@@ -5,7 +5,7 @@ use crate::copy;
 use crate::scene::{
     Action, Banner, Button, Choice, ConfigBody, PausedBody, Popover, PopoverBody, QuestionBody, StoppedBody, Style, Tone,
 };
-use crate::world::{Access, Cause, Confirm, Device, Phase, Quality, SavedCause, SourceId, StopOutcome, TakeLost, World};
+use crate::world::{Access, AiTurn, Cause, Confirm, Device, EditLink, EditLinkNo, Op, Phase, Quality, SavedCause, SourceId, StopOutcome, TakeLost, World};
 
 pub fn derive(w: &World) -> Option<Popover> {
     let door = w.session.popover?;
@@ -40,6 +40,8 @@ pub fn derive(w: &World) -> Option<Popover> {
         stranded_discard_question(take.length_ms)
     } else if w.session.confirm == Some(Confirm::Quit) {
         quit_question(w)
+    } else if w.session.confirm == Some(Confirm::Ai) {
+        ai_question()
     } else if let Some(stop) = &w.session.last_stop {
         stopped(w, stop)?
     } else {
@@ -271,6 +273,7 @@ fn config(w: &World) -> Popover {
         faces.push(match shot {
             OneShot::Updated => "updated",
             OneShot::Failed => "update-failed",
+            OneShot::AiOn => "ai-on",
         });
     }
     if lost_line(w).is_some() {
@@ -279,6 +282,9 @@ fn config(w: &World) -> Popover {
     let banner = banner(w);
     if banner.as_ref().is_some_and(|b| b.id == "updating-app") {
         faces.push("update-ready");
+    }
+    if banner.as_ref().is_some_and(|b| matches!(b.id, "ai-turning-on" | "ai-offer-failed")) {
+        faces.push("ai-offer");
     }
 
     Popover {
@@ -330,6 +336,29 @@ fn banner(w: &World) -> Option<Banner> {
         .or_else(|| super::members::banner(w))
         .or_else(|| banner_recording_off(w))
         .or_else(|| banner_update(w))
+        .or_else(|| banner_ai(w))
+}
+
+/// The AI offer (N66; Bagrat, 2026-10-18: off by default, but visible), the slimmest and the
+/// lowest: on the Mac that holds the setup key while the space's AI is off. It says what
+/// shroom can do, never the cost (Turn on…'s confirm says that); it says it's turning on
+/// while the page is re-wired, and that it didn't go through when it didn't (law 12).
+fn banner_ai(w: &World) -> Option<Banner> {
+    if !w.space.token_holder() || w.space.ai != Some(false) {
+        return None;
+    }
+    let ask = || vec![Button::new(Action::AiAsk, copy::turn_on_ask(), Style::Filled), Button::new(Action::AiNotNow, copy::not_now(), Style::Link)];
+    if w.space.ai_turn == Some(AiTurn::Turning) {
+        // Re-wiring now; or a try that didn't go through, said in place of the line until
+        // the next (quiet, or the person's own Turn on…).
+        if w.inflight.ops.contains_key(&Op::Ai) {
+            return Some(Banner { id: "ai-turning-on", tone: Tone::Frost, line: copy::ai_turning_on(), buttons: vec![] });
+        }
+        if w.inflight.failures.contains_key(&Op::Ai) {
+            return Some(Banner { id: "ai-offer-failed", tone: Tone::Frost, line: copy::ai_failed(), buttons: ask() });
+        }
+    }
+    (!w.once.ai_offer_answered).then(|| Banner { id: "ai-offer", tone: Tone::Frost, line: copy::ai_banner(), buttons: ask() })
 }
 
 /// Kind 2: the space can't take videos — on the token-holding Mac, `space-degraded` (N42).
@@ -394,6 +423,8 @@ fn banner_recording_off(w: &World) -> Option<Banner> {
 pub enum OneShot {
     Updated,
     Failed,
+    /// The AI banner's Turn on went through (N66).
+    AiOn,
 }
 
 fn one_shot(w: &World) -> Option<OneShot> {
@@ -401,6 +432,8 @@ fn one_shot(w: &World) -> Option<OneShot> {
         Some(OneShot::Updated)
     } else if w.update.failed {
         Some(OneShot::Failed)
+    } else if w.space.ai_turn == Some(AiTurn::On) {
+        Some(OneShot::AiOn)
     } else {
         None
     }
@@ -418,13 +451,14 @@ fn one_shot_line(w: &World, shot: OneShot) -> String {
     match shot {
         OneShot::Updated => copy::updated(super::updated_pending(w).unwrap_or_default()),
         OneShot::Failed => copy::update_failed(),
+        OneShot::AiOn => copy::ai_on_said(),
     }
 }
 
 /// The status line's dot (DEVIATIONS #45): uploads moving, waiting on something, or done.
 fn status_tone(w: &World) -> crate::scene::StatusTone {
     use crate::scene::StatusTone;
-    if lost_line(w).is_some() {
+    if edit_line(w).is_some() || lost_line(w).is_some() {
         return StatusTone::Waiting;
     }
     if !w.queue.is_empty() && !super::members::stranded_by_space(w) {
@@ -437,7 +471,12 @@ fn status_tone(w: &World) -> crate::scene::StatusTone {
 /// One status line — a fact: uploads in flight, waiting, or an update just done. A drained
 /// queue says nothing: the line just goes (DEVIATIONS #52).
 fn status_line(w: &World) -> Option<String> {
-    // A take that died with nothing to keep comes first: it's what just happened (#53).
+    // Why the page's Edit in shroom opened nothing comes first: it answers the press just
+    // made (N69).
+    if let Some(line) = edit_line(w) {
+        return Some(line);
+    }
+    // A take that died with nothing to keep: it's what just happened (#53).
     if let Some(line) = lost_line(w) {
         return Some(line);
     }
@@ -451,6 +490,16 @@ fn status_line(w: &World) -> Option<String> {
         return Some(if w.queue.len() == 1 { copy::uploading_one(pct) } else { copy::uploading_many(w.queue.len() as u64, pct) });
     }
     one_shot(w).map(|s| one_shot_line(w, s))
+}
+
+/// Why the owner page's Edit in shroom opened nothing (N69), said once.
+fn edit_line(w: &World) -> Option<String> {
+    match w.session.fields.edit_link {
+        Some(EditLink::Said(EditLinkNo::OtherSpace)) => Some(copy::edit_other_space()),
+        Some(EditLink::Said(EditLinkNo::NotYours)) => Some(copy::edit_not_yours()),
+        Some(EditLink::Said(EditLinkNo::Gone)) => Some(copy::edit_gone()),
+        _ => None,
+    }
 }
 
 /// The line about a take capture let go of with nothing to keep (DEVIATIONS #53).
@@ -489,6 +538,14 @@ fn paused(w: &World, cause: Cause, length_ms: u64) -> Popover {
             resume: Button::new(Action::Resume, copy::resume(), Style::Filled).enabled(resume_ok),
             restart: Button::new(Action::Restart, copy::restart(), Style::Plain),
             stop: Button::new(Action::Stop, copy::stop(), Style::Plain),
+            // N64: at a pause you made; the auto-pause faces stay as they were. It says Marker
+            // dropped once one is dropped at this pause, and only then; a question open in a
+            // window greys it in its own words (B199).
+            marker: (cause == Cause::User).then(|| {
+                let dropped = w.take.as_ref().is_some_and(|t| t.marked_at_pause);
+                let label = if dropped { copy::marker_dropped() } else { copy::drop_marker() };
+                Button::new(Action::DropMarker, label, Style::Plain).enabled(marker_offered(w))
+            }),
             discard: Button::new(Action::Discard, copy::discard_ellipsis(), Style::RedText),
         }),
         banner: None,
@@ -499,6 +556,12 @@ fn paused(w: &World, cause: Cause, length_ms: u64) -> Popover {
         activates: true,
         away_closes: false,
     }
+}
+
+/// Drop a marker is live (N64): a pause you made, no marker dropped at it yet, and no
+/// question open over it — the paused popover's row, and what ⌥⌘M does while paused.
+pub fn marker_offered(w: &World) -> bool {
+    w.session.confirm.is_none() && w.take.as_ref().is_some_and(|t| t.phase == Phase::Paused(Cause::User) && !t.marked_at_pause)
 }
 
 /// Whether the paused popover's Resume is live: the display, camera or Mac it waits for is
@@ -622,6 +685,28 @@ fn stranded_discard_question(length_ms: Option<u64>) -> Popover {
                 Button::new(Action::Back, copy::back(), Style::Plain),
                 Button::new(Action::ConfirmDiscardRow, copy::discard(), Style::RedOutline),
             ],
+        }),
+        banner: None,
+        status_line: None,
+        status_tone: None,
+        ret: None,
+        esc: Some(Action::Back),
+        activates: true,
+        away_closes: false,
+    }
+}
+
+/// The AI banner's Turn on… (N66): what turning it on does and costs, said once before it
+/// costs anything. Like every question here, it takes a click, not Return; Back and Esc go
+/// back to the banner.
+fn ai_question() -> Popover {
+    Popover {
+        id: "ai-confirm",
+        faces: vec![],
+        body: PopoverBody::Question(QuestionBody {
+            title: copy::ai_confirm_title(),
+            line: copy::ai_cost(),
+            buttons: vec![Button::new(Action::Back, copy::back(), Style::Plain), Button::new(Action::AiOn, copy::turn_on(), Style::Filled)],
         }),
         banner: None,
         status_line: None,

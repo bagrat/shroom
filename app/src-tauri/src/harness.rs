@@ -100,6 +100,11 @@ pub enum Mode {
 
 pub fn from_args(args: Vec<String>) -> Mode {
     let after = |flag: &str| args.iter().position(|a| a == flag).map(|i| args[i + 1..].to_vec());
+    // The voice-cut drive's speech (`--voice <wav>`, spec N65), in place of the beep: the
+    // space's hearing and the voice lane have a cue to find.
+    if let Some(wav) = after("--voice").and_then(|rest| rest.first().cloned()) {
+        let _ = crate::runtime::recorder::DRIVE_VOICE.set(PathBuf::from(wav));
+    }
     if let Some(rest) = after("--selftest") {
         return Mode::Selftest(PathBuf::from(rest.first().expect("--selftest needs an output path")));
     }
@@ -808,6 +813,9 @@ struct DriveReport {
     take: Option<String>,
     rec: Option<String>,
     host: Option<String>,
+    /// Stop, on the wall clock (ms since the epoch): what a page's later changes are timed
+    /// from (the voice-cut drive's strip, N65).
+    stop_at_ms: Option<u128>,
     stop_to_published_ms: Option<u128>,
     stop_to_uploaded_ms: Option<u128>,
     /// Stop → the app opens the owner's page (a quiet run logs the open instead of doing
@@ -1088,6 +1096,17 @@ fn run_drive(app: &AppHandle, rt: &crate::runtime::Runtime, out: &Path, seconds:
             rt.post(Event::Act { surface: Surface::Popover, action: Action::SetCamera(None), rev: 0 });
             wait_for(rt, "the bubble off", 5, report, t0, |s| s.bubble.is_none())?;
         }
+        // The voice-cut drive's speech stands in for the microphone (N65): whoever says
+        // “shroom cut” records with it on, whatever a pass before left (the show pass turns it off).
+        if crate::runtime::recorder::DRIVE_VOICE.get().is_some() {
+            rt.post(Event::Act { surface: Surface::Popover, action: Action::SetMicDefault, rev: 0 });
+            wait_for(rt, "the microphone on", 5, report, t0, |s| {
+                s.popover.as_ref().filter(|p| p.id == "config").is_some_and(|p| match &p.body {
+                    shroom_core::scene::PopoverBody::Config(c) => c.mics.iter().any(|m| m.selected && !matches!(m.action, Action::SetMic(None))),
+                    _ => false,
+                })
+            })?;
+        }
         // What records is the display the pattern covers — whatever the prefs said (a
         // camera picked in the dev app, another display): chosen as a person would, then
         // checked on the Scene the Return will start from (b4 #16).
@@ -1129,6 +1148,7 @@ fn run_drive(app: &AppHandle, rt: &crate::runtime::Runtime, out: &Path, seconds:
         let log_from = log_len(rt);
         let stop = std::time::Instant::now();
         let stop_mono = rt.mono().0;
+        report.stop_at_ms = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).ok().map(|d| d.as_millis());
         let page_200 = first_200(format!("https://{}/{rec_id}", identity.host), stop);
         rt.post(Event::Act { surface: Surface::Popover, action: Action::Stop, rev: 0 });
         // The app opens the owner's page: when it would, the drive does what the browser does.

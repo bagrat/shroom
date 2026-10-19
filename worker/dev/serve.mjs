@@ -39,9 +39,13 @@
 //                                 `status` (no body work) to the next `count` requests whose
 //                                 path starts with `prefix` (no count: until cleared) — the
 //                                 L6 drive's busy space; POST {clear: true} clears them
+//   /_dev/space/<host>/put        POST {key, json}: a JSON object under meta/, rec/ or
+//                                 .shroom/views/ — a video and its counts as Macs and
+//                                 viewers left them (the cleanup drive, N68)
 //   /_dev/space/<host>/roster     GET: the roster as the Worker keeps it
 //   /_dev/space/<host>/objects    GET: every key in the bucket, with its size and metadata
-//                                 (and the text of the small JSON ones: records, ledger)
+//                                 (and the text of the small JSON ones: records, ledger,
+//                                 plays and the plays switch)
 //
 // Choice (documented for the drives): uploads go to this server's own bucket, not the L1
 // Cloudflare fake's — the ledger the Worker writes at `/mint`, the record and the bytes all
@@ -249,7 +253,7 @@ async function dev(req, res, host, what) {
     const page = await B.list({ include: ["customMetadata"] });
     const out = [];
     for (const o of page.objects) {
-      const small = o.key.startsWith("meta/") || o.key.startsWith(".shroom/registry/recs/");
+      const small = o.key.startsWith("meta/") || o.key.startsWith(".shroom/registry/recs/") || o.key.startsWith(".shroom/views/") || o.key === ".shroom/plays.json";
       const text = small ? await (await B.get(o.key)).text() : undefined;
       out.push({ key: o.key, size: o.size, customMetadata: o.customMetadata ?? {}, ...(text === undefined ? {} : { text }) });
     }
@@ -261,6 +265,12 @@ async function dev(req, res, host, what) {
     if (b.clear) { s.faults = []; return json(res, 200, { ok: true }); }
     if (typeof b.prefix !== "string" || !Number.isInteger(b.status)) return json(res, 400, { error: "a fault has a prefix and a status" });
     (s.faults ??= []).push({ prefix: b.prefix, status: b.status, left: Number.isInteger(b.count) ? b.count : null });
+    return json(res, 200, { ok: true });
+  }
+  if (what === "put") {
+    // A JSON object as a Mac or a viewer's plays left it (the cleanup drive's videos and counts).
+    if (typeof b.key !== "string" || !/^(meta\/|rec\/|\.shroom\/views\/)/.test(b.key) || b.json === undefined) return json(res, 400, { error: "put takes a meta/, rec/ or .shroom/views/ key and json" });
+    await B.put(b.key, JSON.stringify(b.json), { httpMetadata: { contentType: "application/json" } });
     return json(res, 200, { ok: true });
   }
   if (what === "parent") {

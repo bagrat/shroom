@@ -199,8 +199,9 @@ impl<T> Answer<T> {
 /// The ping (§4.2) — the one route that keeps `"shroom":true`.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Ping {
-    /// A shroom space, its page's interface and the version of the app that deployed it.
-    Shroom { iface: u32, version: String },
+    /// A shroom space, its page's interface and the version of the app that deployed it,
+    /// and whether it carries Cloudflare's AI (N66: naming on).
+    Shroom { iface: u32, version: String, ai: bool },
     /// Answered, but not as a shroom space: workers.dev's 404 (`error code: 1042`), another
     /// Worker, an error page.
     NotShroom { status: u16 },
@@ -485,6 +486,94 @@ struct MarkAnswer {
     on: bool,
 }
 
+/// One page of `POST cleanup` (N68): the live videos in scope, their plays, and the
+/// Worker's verdict on each. Fields this build doesn't read are left as they come.
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+pub struct CleanupPage {
+    /// The space's play-count switch.
+    #[serde(default = "yes")]
+    pub counting: bool,
+    #[serde(default)]
+    pub items: Vec<CleanupItem>,
+    pub next: Option<String>,
+    /// How counting fares over this page, for the run log.
+    #[serde(default)]
+    pub views: ViewsHealth,
+    /// Since when plays are counted (`None`: not yet), for the `shroom` command (N62, B215).
+    #[serde(default, rename = "countingSince")]
+    pub counting_since: Option<String>,
+}
+
+fn yes() -> bool {
+    true
+}
+
+/// Counting's health over a page of `POST cleanup`: the plays records read, the ones that
+/// wouldn't read, and the newest play any of them saw.
+#[derive(Debug, Clone, Default, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ViewsHealth {
+    #[serde(default)]
+    pub records: u32,
+    #[serde(default)]
+    pub unreadable: u32,
+    #[serde(default)]
+    pub newest_play_at: Option<String>,
+}
+
+impl ViewsHealth {
+    /// Another page's, added in.
+    pub fn add(&mut self, other: &ViewsHealth) {
+        self.records += other.records;
+        self.unreadable += other.unreadable;
+        if other.newest_play_at > self.newest_play_at {
+            self.newest_play_at = other.newest_play_at.clone();
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CleanupItem {
+    pub id: String,
+    /// The record's size, or the Worker's estimate from its length.
+    #[serde(default)]
+    pub bytes: u64,
+    #[serde(default)]
+    pub plays: u32,
+    /// Days nobody has played it, as far as counting can tell (`None`: it can't yet).
+    #[serde(default)]
+    pub quiet_days: Option<f64>,
+    /// The share most plays reached, 0–1 (`None`: no play ended yet).
+    #[serde(default)]
+    pub median_watched: Option<f64>,
+    #[serde(default)]
+    pub candidate: bool,
+    #[serde(default)]
+    pub score: f64,
+    /// Why, by code (`never-played`, `stopped-early`, `not-lately`, `kept`, …).
+    #[serde(default)]
+    pub reason: Option<CleanupReason>,
+    // What the `shroom` command shows of each, as the Worker sends it (N62, B215).
+    #[serde(default)]
+    pub title: String,
+    #[serde(default)]
+    pub created_at: Option<String>,
+    #[serde(default)]
+    pub owner: Option<String>,
+    #[serde(default)]
+    pub age_days: Option<f64>,
+    #[serde(default)]
+    pub duration_sec: Option<f64>,
+    #[serde(default)]
+    pub last_played_at: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+pub struct CleanupReason {
+    pub code: String,
+}
+
 /// One space's Worker, by host.
 pub struct Space {
     agent: ureq::Agent,
@@ -500,6 +589,19 @@ impl std::fmt::Debug for Space {
 
 /// What a body-less call carries.
 const EMPTY: &[u8] = b"";
+
+/// A judgment's scores, one per start, each from 0 to 1 — or none: `later`, the wrong count,
+/// or anything else.
+fn scores_of(v: &Value, n: usize) -> Option<Vec<f64>> {
+    let scores: Vec<f64> = v.get("scores")?.as_array()?.iter().map(Value::as_f64).collect::<Option<_>>()?;
+    (scores.len() == n && scores.iter().all(|s| (0.0..=1.0).contains(s))).then_some(scores)
+}
+
+/// A take's status says its voice cuts are coming (`cuts: "coming"`); a status without the
+/// word, or one this build can't read, says they aren't.
+fn cuts_word(status: &[u8]) -> bool {
+    serde_json::from_slice::<Value>(status).ok().and_then(|v| v.get("cuts")?.as_str().map(|w| w == "coming")).unwrap_or(false)
+}
 
 impl Space {
     /// `https://<host>`.
@@ -584,10 +686,36 @@ impl Space {
                     (200, Some(true)) => Ping::Shroom {
                         iface: v.get("iface").and_then(Value::as_u64).unwrap_or(1) as u32,
                         version: v.get("version").and_then(Value::as_str).unwrap_or("0.0.0").to_string(),
+                        ai: v.get("ai").and_then(Value::as_bool).unwrap_or(false),
                     },
                     _ => Ping::NotShroom { status },
                 }
             }
+        }
+    }
+
+    /// `GET /_shroom/status/<rec>`: whether the space says the take's voice cuts are coming
+    /// (spec N65: it hears its takes, and this one went live just now and isn't planned yet).
+    /// `None` when it can't be asked now.
+    pub fn cuts_coming(&self, rec: &str) -> Option<bool> {
+        match self.send("GET", &format!("/_shroom/status/{rec}"), EMPTY, None) {
+            Ok((200, bytes, _)) => Some(cuts_word(&bytes)),
+            _ => None,
+        }
+    }
+
+    /// `POST cue` (N65, DECISIONS B202): the judgment above the voice-cue planner, on the
+    /// space's own account — a score per candidate start and how long the space took (ms), or,
+    /// when it can't answer now, why in a word or two (`later: daily`, `refused 429`, `no
+    /// answer`…, never an address), and the Mac keeps its own plan.
+    pub fn judge(&self, key: &DeviceKey, rec: &str, cue: usize, after: &str, candidates: &[String]) -> Result<(Vec<f64>, Option<u64>), String> {
+        let body = json!({"rec": rec, "cue": cue, "after": after, "candidates": candidates});
+        match self.call::<Value>("POST", "cue", Some(body), Some(key)) {
+            Answer::Ok(v) if v.get("later").and_then(Value::as_bool) == Some(true) => Err(format!("later: {}", v.get("why").and_then(Value::as_str).unwrap_or("no reason"))),
+            Answer::Ok(v) => scores_of(&v, candidates.len()).map(|s| (s, v.get("ms").and_then(Value::as_u64))).ok_or_else(|| "an answer that doesn't fit".into()),
+            Answer::Refused(r) => Err(format!("refused {}", r.status)),
+            Answer::NotShroom { status } => Err(format!("not the space's answer ({status})")),
+            Answer::Unanswered(_) => Err("no answer".into()),
         }
     }
 
@@ -619,6 +747,23 @@ impl Space {
         }
         let body = json!({"device": device, "ownerName": owner_name}).to_string().into_bytes();
         let proof = parent_proof(parent_secret, "POST", &self.host, path, ts, &body);
+        Self::classify(self.send("POST", path, &body, Some(&proof)))
+    }
+
+    /// `POST ai` (N66, DECISIONS B206 b): one step of naming for a take — this Mac's word
+    /// that another minute of it is up, or that it's done.
+    pub fn ai(&self, auth: &AiAuth, rec: &str, signal: AiSignal, ts: u64) -> Answer<AiAnswer> {
+        let path = "/_shroom/api/ai";
+        let body = match signal {
+            AiSignal::Through(n) => json!({"rec": rec, "through": n}),
+            AiSignal::Done => json!({"rec": rec, "done": true}),
+        }
+        .to_string()
+        .into_bytes();
+        let proof = match auth {
+            AiAuth::Device(key) => key.bearer(),
+            AiAuth::Parent(secret) => parent_proof(secret, "POST", &self.host, path, ts, &body),
+        };
         Self::classify(self.send("POST", path, &body, Some(&proof)))
     }
 
@@ -666,17 +811,27 @@ impl Space {
 
     /// `DELETE invites/<iid>` (§4.13).
     pub fn cancel_invite(&self, key: &DeviceKey, iid: &str) -> Answer<()> {
-        self.call::<Value>("DELETE", &format!("invites/{iid}"), None, Some(key)).map(|_| ())
+        self.delete_id('i', "invites", iid, key)
     }
 
     /// `DELETE members/<mid>` (§4.14).
     pub fn remove_member(&self, key: &DeviceKey, mid: &str) -> Answer<()> {
-        self.call::<Value>("DELETE", &format!("members/{mid}"), None, Some(key)).map(|_| ())
+        self.delete_id('m', "members", mid, key)
     }
 
     /// `DELETE devices/<did>` (§4.15): another owner Mac.
     pub fn remove_device(&self, key: &DeviceKey, did: &str) -> Answer<()> {
-        self.call::<Value>("DELETE", &format!("devices/{did}"), None, Some(key)).map(|_| ())
+        self.delete_id('d', "devices", did, key)
+    }
+
+    /// `DELETE <what>/<id>`, only for an id of the route's shape: anything else — a typed
+    /// `../members/…`, whose dot segments would name another route — is refused here, and
+    /// nothing is sent.
+    fn delete_id(&self, prefix: char, what: &str, id: &str, key: &DeviceKey) -> Answer<()> {
+        if !crate::device::is_registry_id(id, prefix) {
+            return Answer::Refused(Refusal { status: 400, class: Class::BadRequest, reason: None, why: None, member: None, retry_after: None, date: None });
+        }
+        self.call::<Value>("DELETE", &format!("{what}/{id}"), None, Some(key)).map(|_| ())
     }
 
     /// `DELETE devices/self` — Leave, Disconnect, the switch's deregistration (§16 #57).
@@ -696,6 +851,19 @@ impl Space {
     /// `POST mark` (§4.16), owner-class.
     pub fn mark(&self, key: &DeviceKey, on: bool) -> Answer<bool> {
         self.call::<MarkAnswer>("POST", "mark", Some(json!({"on": on})), Some(key)).map(|a| a.on)
+    }
+
+    /// `POST cleanup` (N68): one page of the live videos in scope (`everyone`: owner-class
+    /// only), their plays and the Worker's verdict; page with `after` until `next` is null.
+    pub fn cleanup(&self, key: &DeviceKey, everyone: bool, after: Option<&str>) -> Answer<CleanupPage> {
+        let scope = if everyone { "everyone" } else { "mine" };
+        self.call("POST", "cleanup", Some(json!({"scope": scope, "after": after})), Some(key))
+    }
+
+    /// `POST plays` (N68), owner-class: the space's play-count switch. Answers where it
+    /// stands now.
+    pub fn plays(&self, key: &DeviceKey, on: bool) -> Answer<bool> {
+        self.call::<MarkAnswer>("POST", "plays", Some(json!({"on": on})), Some(key)).map(|a| a.on)
     }
 
     /// `POST health` (§4.18): `refused` after the debounce's second answer, `ok` once the
@@ -878,9 +1046,190 @@ pub fn machine_stamp(hardware: &str, home: &str, host: &str) -> String {
     crate::device::hash(&format!("shroom-machine-v1\n{hardware}\n{home}\n{host}"))
 }
 
+
+/// Who asks for naming's steps (N66): a device key, or the setup Mac's parent proof — the
+/// token's derived S3 secret, as enroll signs with it (the setup Mac may hold no device key).
+pub enum AiAuth<'a> {
+    Device(&'a DeviceKey),
+    Parent(&'a str),
+}
+
+/// What a Mac tells its space about a take (N66, DECISIONS B206 b).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AiSignal {
+    /// This many of the take's pieces are up, unbroken from the first.
+    Through(u32),
+    /// The take is live: every piece is up.
+    Done,
+}
+
+/// The space's answer to one step.
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+pub struct AiAnswer {
+    /// The space names videos (its page carries Cloudflare's AI).
+    pub ai: bool,
+    /// Another step can be taken now.
+    #[serde(default)]
+    pub more: bool,
+    /// Why it waits, when it does (the free day, a busy model): the space's schedule finishes it.
+    #[serde(default)]
+    pub later: Option<String>,
+    /// The step's line for this Mac's log: counts, times, models and codes, never a word said
+    /// or a title (DECISIONS B206 f).
+    #[serde(default)]
+    pub note: Option<String>,
+}
+
+/// How a signal went.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AiSent {
+    /// The space names videos and took it: heard, named, or kept for its schedule.
+    On,
+    /// The space doesn't name videos: nothing more to say about this take.
+    Off,
+    /// The space won't take it (the take is gone, or this Mac can't ask): nothing more either.
+    Settled,
+    /// No answer, or the space's own trouble: owed, and said again later.
+    Owed,
+}
+
+/// Tells the space, a step at a time, asking again while it says there's more — a few times
+/// for a minute, more for a done take, then the space's own schedule finishes what's left.
+pub fn ai_signal(space: &Space, auth: &AiAuth, rec: &str, signal: AiSignal) -> AiSent {
+    ai_signal_noted(space, auth, rec, signal).0
+}
+
+/// [`ai_signal`], with each answer's note for this Mac's log, in order.
+pub fn ai_signal_noted(space: &Space, auth: &AiAuth, rec: &str, signal: AiSignal) -> (AiSent, Vec<String>) {
+    let most = match signal {
+        AiSignal::Through(_) => 3,
+        AiSignal::Done => 12,
+    };
+    let mut sent = AiSent::Owed;
+    let mut notes = Vec::new();
+    for _ in 0..most {
+        let ts = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs());
+        match space.ai(auth, rec, signal, ts) {
+            Answer::Ok(a) if !a.ai => return (AiSent::Off, notes),
+            Answer::Ok(a) => {
+                sent = AiSent::On;
+                notes.extend(a.note);
+                if !a.more {
+                    return (sent, notes);
+                }
+            }
+            Answer::Refused(r) if !(r.is_transient() || r.is_space() || r.status >= 500 || r.class == Class::StaleParent) => {
+                return (if sent == AiSent::On { sent } else { AiSent::Settled }, notes);
+            }
+            _ => return (sent, notes),
+        }
+    }
+    (sent, notes)
+}
+
+/// A signal's lines for this Mac's log: `naming <take>: <signal> → <how it went>`, then each
+/// answer's note, as many lines as keep each under the report's cut (B206 f).
+pub fn ai_log_lines(take: &str, signal: AiSignal, sent: AiSent, notes: &[String]) -> Vec<String> {
+    const MOST: usize = 380;
+    let head = format!("naming {take}: ");
+    let mut lines = vec![format!("{head}{signal:?} → {sent:?}")];
+    for n in notes {
+        let n: String = n.chars().filter(|c| !c.is_control()).take(200).collect();
+        let last = lines.last_mut().expect("a line");
+        if last.chars().count() + 3 + n.chars().count() <= MOST {
+            last.push_str(" · ");
+            last.push_str(&n);
+        } else {
+            lines.push(format!("{head}… {n}"));
+        }
+    }
+    lines
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// An id that isn't one — `../members/m_…` from a typed list — never becomes a path: the
+    /// call is refused before anything is sent (WORKER-INTERFACE §4.13–§4.15; a URL's dot
+    /// segments would otherwise name another route).
+    /// `POST cleanup` as #57's worker.js writes it: the record's facts (days as fractions,
+    /// `quietDays` null where counting can't tell), the verdict, and the space's switch.
+    #[test]
+    fn a_cleanup_page_reads_every_fact_the_worker_sends() {
+        let body = br#"{"shroom":1,"countingSince":"2026-04-18T00:00:00.000Z","counting":false,"formula":"fading-cost","next":"AbCdEfGhIjKlMnOq","items":[
+            {"id":"AbCdEfGhIjKlMnOo","title":"Old demo","createdAt":"2026-01-10T09:00:00.000Z","owner":"m_AnnAnnAnnAnnAnnA","ageDays":281.6,"durationSec":1500.4,"bytes":3222000000,"usdPerMonth":0.048,"plays":4,"viewers":2,"medianWatched":0.45,"lastPlayedAt":"2025-12-20T09:00:00.000Z","plays90":0,"quietDays":300.4,"candidate":true,"score":0.96,"reason":{"code":"not-lately","heat":0.01,"plays":4,"quietDays":300,"ageDays":281}},
+            {"id":"AbCdEfGhIjKlMnOq","title":"","createdAt":null,"owner":"m_AnnAnnAnnAnnAnnA","ageDays":3.2,"durationSec":0,"bytes":0,"plays":0,"medianWatched":null,"lastPlayedAt":null,"quietDays":null,"candidate":false,"score":0,"reason":{"code":"counting-too-new"}}]}"#;
+        let page: CleanupPage = match Space::classify(Ok((200, body.to_vec(), None))) {
+            Answer::Ok(p) => p,
+            other => panic!("{other:?}"),
+        };
+        assert!(!page.counting);
+        assert_eq!(page.counting_since.as_deref(), Some("2026-04-18T00:00:00.000Z"));
+        assert_eq!(page.next.as_deref(), Some("AbCdEfGhIjKlMnOq"));
+        let a = &page.items[0];
+        assert_eq!((a.title.as_str(), a.created_at.as_deref(), a.owner.as_deref()), ("Old demo", Some("2026-01-10T09:00:00.000Z"), Some("m_AnnAnnAnnAnnAnnA")));
+        assert_eq!((a.age_days, a.quiet_days, a.duration_sec, a.plays), (Some(281.6), Some(300.4), Some(1500.4), 4));
+        assert_eq!((a.last_played_at.as_deref(), a.candidate, a.reason.as_ref().map(|r| r.code.as_str())), (Some("2025-12-20T09:00:00.000Z"), true, Some("not-lately")));
+        let b = &page.items[1];
+        assert_eq!((b.created_at.as_deref(), b.quiet_days, b.median_watched, b.candidate), (None, None, None, false));
+        assert_eq!(b.reason.as_ref().map(|r| r.code.as_str()), Some("counting-too-new"));
+    }
+
+    #[test]
+    fn an_id_that_isnt_one_never_reaches_a_path() {
+        // Nothing listens here: a request that went out would come back unanswered.
+        let page = Space::at("v.myshroom.workers.dev", "http://127.0.0.1:9");
+        let key = crate::device::DeviceKey::generate("v.myshroom.workers.dev");
+        let refused = |a: Answer<()>| matches!(a, Answer::Refused(r) if r.status == 400);
+        for bad in ["../members/m_MherMherMherMher", "i_short", "i_AbCdEfGhIjKlMn/x", "i_AbCdEfGh?jKlMnOp", "m_AbCdEfGhIjKlMnOp", ""] {
+            assert!(refused(page.cancel_invite(&key, bad)), "{bad}");
+        }
+        for bad in ["../invites/i_AbCdEfGhIjKlMnOp", "i_AbCdEfGhIjKlMnOp", "m_Mher/../x"] {
+            assert!(refused(page.remove_member(&key, bad)), "{bad}");
+            assert!(refused(page.remove_device(&key, bad)), "{bad}");
+        }
+        assert!(matches!(page.cancel_invite(&key, "i_AbCdEfGhIjKlMnOp"), Answer::Unanswered(_)), "an invite's id is sent");
+        assert!(matches!(page.remove_member(&key, "m_AbCdEfGhIjKlMnOp"), Answer::Unanswered(_)), "a member's id is sent");
+    }
+
+    #[test]
+    fn a_cleanup_page_reads_as_the_worker_writes_it() {
+        // worker.js `cleanup`'s answer, as POST /_shroom/api/cleanup sends it (N68).
+        let body = br#"{"shroom":1,"countingSince":"2026-04-18T00:00:00.000Z","counting":false,"formula":"fading-cost","next":"AbCdEfGhIjKlMnOp","items":[
+            {"id":"AbCdEfGhIjKlMnOo","title":"Billing","createdAt":"2025-10-03T00:00:00Z","owner":"m1","ageDays":380.2,"durationSec":3480,"bytes":3222000000,"usdPerMonth":0.048,
+             "plays":4,"viewers":3,"medianWatched":0.45,"lastPlayedAt":"2025-12-22T00:00:00.000Z","plays90":0,"quietDays":300.4,"keep":false,"candidate":true,"score":0.96,
+             "reason":{"code":"not-lately","plays":4}},
+            {"id":"AbCdEfGhIjKlMnOq","plays":0,"quietDays":null,"medianWatched":null,"candidate":false,"score":0,"reason":{"code":"counting-too-new"}}]}"#;
+        let page: CleanupPage = match Space::classify(Ok((200, body.to_vec(), None))) {
+            Answer::Ok(p) => p,
+            other => panic!("{other:?}"),
+        };
+        assert!(!page.counting);
+        assert_eq!(page.next.as_deref(), Some("AbCdEfGhIjKlMnOp"));
+        assert_eq!(page.items[0], CleanupItem { id: "AbCdEfGhIjKlMnOo".into(), bytes: 3_222_000_000, plays: 4, quiet_days: Some(300.4), median_watched: Some(0.45), candidate: true, score: 0.96, reason: Some(CleanupReason { code: "not-lately".into() }), ..page.items[0].clone() });
+        assert_eq!((page.items[1].quiet_days, page.items[1].bytes, page.items[1].candidate), (None, 0, false));
+    }
+
+    #[test]
+    fn a_judgment_answers_a_score_per_start_or_nothing() {
+        let n = 2;
+        assert_eq!(scores_of(&json!({"shroom": 1, "scores": [0.75, 0.03]}), n), Some(vec![0.75, 0.03]));
+        // Later (the free day used up, a busy model), the wrong count, a score out of range,
+        // not a number: no judgment, and the Mac keeps its own plan.
+        for v in [json!({"shroom": 1, "later": true}), json!({"shroom": 1, "scores": [0.75]}), json!({"shroom": 1, "scores": [0.75, 1.5]}), json!({"shroom": 1, "scores": [0.75, "x"]}), json!({"shroom": 1})] {
+            assert_eq!(scores_of(&v, n), None, "{v}");
+        }
+    }
+
+    #[test]
+    fn a_status_says_cuts_are_coming_only_in_so_many_words() {
+        assert!(cuts_word(br#"{"state":"live","drained":true,"cuts":"coming"}"#));
+        // Planned (a tag), a space that doesn't listen (no word), a Worker before N65, not JSON.
+        for status in [&br#"{"state":"live","cuts":"1x9k2"}"#[..], br#"{"state":"live","drained":true}"#, br#"{"state":"uploading","pct":40}"#, b"<html>", b""] {
+            assert!(!cuts_word(status), "{}", String::from_utf8_lossy(status));
+        }
+    }
 
     #[test]
     fn a_join_link_parses_in_all_three_forms() {

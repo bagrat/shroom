@@ -1,0 +1,44 @@
+[
+ {
+  "say": "Okay, let's set up sharing.",
+  "role": "keep",
+  "pause": 0.8,
+  "start": 0.0,
+  "end": 2.264
+ },
+ {
+  "say": "You open the menu and choose the, the share thing.",
+  "role": "flub",
+  "pause": 0.5,
+  "start": 3.064,
+  "end": 5.966
+ },
+ {
+  "say": "Then you type a name and hit the, uh, the button.",
+  "role": "flub",
+  "pause": 0.7,
+  "start": 6.466,
+  "end": 9.531
+ },
+ {
+  "say": "Shroom cut.",
+  "role": "cue",
+  "pause": 1.0,
+  "start": 10.231,
+  "end": 11.323
+ },
+ {
+  "say": "To share, open the menu and pick Share.",
+  "role": "keep",
+  "pause": 0.5,
+  "start": 12.323,
+  "end": 15.167
+ },
+ {
+  "say": "Type a name and press Enter.",
+  "role": "keep",
+  "pause": 0,
+  "start": 15.667,
+  "end": 17.769
+ }
+]

@@ -4,6 +4,7 @@
 //! (POC §9: kill trees, not processes). Stopping is EOF on stdin — ffmpeg then
 //! finalizes both tee outputs (probe: finalize ~100 ms).
 
+use std::ffi::OsString;
 use std::fs::File;
 use std::io::{self, Write};
 use std::os::unix::process::CommandExt;
@@ -12,6 +13,7 @@ use std::process::{Child, ChildStdin, Command, ExitStatus, Stdio};
 use std::time::{Duration, Instant};
 
 use crate::args::{TakeSpec, ffmpeg_args};
+use crate::cut::{Encoder, path_arg};
 use crate::files;
 
 #[derive(Debug)]
@@ -251,31 +253,58 @@ pub fn assemble_preview(ffmpeg: &Path, dir: &Path, takes: &[u32]) -> io::Result<
 /// How long the unfurl teaser runs.
 pub const TEASER_SECS: u32 = 15;
 
+/// The poster's arguments: the first frame of `src`, 1200 wide, a JPEG at `out` (a `.jpg`).
+pub fn poster_args(src: &Path, out: &Path) -> Vec<OsString> {
+    let mut a: Vec<OsString> = ["-hide_banner", "-loglevel", "error", "-y", "-i"].iter().map(OsString::from).collect();
+    a.push(path_arg(src));
+    a.extend(["-frames:v", "1", "-vf", "scale=1200:-1", "-q:v", "3"].iter().map(OsString::from));
+    a.push(path_arg(out));
+    a
+}
+
+/// The teaser's arguments: the first [`TEASER_SECS`] of `src` at 640 wide, small and
+/// faststart, an MP4 at `out` (a `.mp4`).
+pub fn teaser_args(src: &Path, out: &Path, enc: Encoder) -> Vec<OsString> {
+    let mut a: Vec<OsString> = ["-hide_banner", "-loglevel", "error", "-y", "-i"].iter().map(OsString::from).collect();
+    a.push(path_arg(src));
+    a.extend(["-t", &TEASER_SECS.to_string(), "-vf", "scale=640:-2"].iter().map(OsString::from));
+    a.extend(enc.video_args(700));
+    a.extend(["-c:a", "aac", "-b:a", "64k", "-ac", "1", "-movflags", "+faststart"].iter().map(OsString::from));
+    a.push(path_arg(out));
+    a
+}
+
 /// The unfurl poster from the recording's first frame (og:image, R5.3), from the
 /// single-file copy or, before it exists, the first take's preview.
 pub fn poster(ffmpeg: &Path, dir: &Path) -> io::Result<PathBuf> {
     let source = if dir.join(files::PREVIEW).is_file() { files::PREVIEW.to_string() } else { files::take_preview(0) };
-    let status = Command::new(ffmpeg)
-        .args(["-hide_banner", "-loglevel", "error", "-y", "-i", &source])
-        .args(["-frames:v", "1", "-vf", "scale=1200:-1", "-q:v", "3", files::POSTER])
-        .current_dir(dir)
-        .stdin(Stdio::null())
-        .status()?;
+    let status = Command::new(ffmpeg).args(poster_args(Path::new(&source), Path::new(files::POSTER))).current_dir(dir).stdin(Stdio::null()).status()?;
     if status.success() { Ok(dir.join(files::POSTER)) } else { Err(io::Error::other(format!("poster exited {status}"))) }
 }
 
 /// The unfurl teaser (og:video): the first [`TEASER_SECS`] at 640 wide, small and
 /// faststart, from the single-file copy (R5.3's option 2).
 pub fn teaser(ffmpeg: &Path, dir: &Path) -> io::Result<PathBuf> {
-    let secs = TEASER_SECS.to_string();
     let status = Command::new(ffmpeg)
-        .args(["-hide_banner", "-loglevel", "error", "-y", "-i", files::PREVIEW, "-t", &secs])
-        .args(["-vf", "scale=640:-2", "-c:v", "h264_videotoolbox", "-b:v", "700k", "-pix_fmt", "yuv420p"])
-        .args(["-c:a", "aac", "-b:a", "64k", "-ac", "1", "-movflags", "+faststart", files::TEASER])
+        .args(teaser_args(Path::new(files::PREVIEW), Path::new(files::TEASER), Encoder::VideoToolbox))
         .current_dir(dir)
         .stdin(Stdio::null())
         .status()?;
     if status.success() { Ok(dir.join(files::TEASER)) } else { Err(io::Error::other(format!("teaser exited {status}"))) }
+}
+
+/// [`poster`] of any MP4: the permanent copy's own (`edit-<rev>-poster.jpg`, B195 (f)), so
+/// a trimmed-off start never shows in an unfurl.
+pub fn poster_of(ffmpeg: &Path, src: &Path, out: &Path) -> io::Result<()> {
+    let status = Command::new(ffmpeg).args(poster_args(src, out)).stdin(Stdio::null()).status()?;
+    if status.success() { Ok(()) } else { Err(io::Error::other(format!("poster exited {status}"))) }
+}
+
+/// [`teaser`] of any MP4: the permanent copy's own (`edit-<rev>-teaser.mp4`), with the
+/// given picture encoder (VideoToolbox on a Mac).
+pub fn teaser_of(ffmpeg: &Path, src: &Path, out: &Path, enc: &Encoder) -> io::Result<()> {
+    let status = Command::new(ffmpeg).args(teaser_args(src, out, *enc)).stdin(Stdio::null()).status()?;
+    if status.success() { Ok(()) } else { Err(io::Error::other(format!("teaser exited {status}"))) }
 }
 
 /// The takes whose previews are on disk, in order.
@@ -335,4 +364,32 @@ pub fn ensure_preview(ffmpeg: &Path, dir: &Path) -> io::Result<PathBuf> {
     }
     let _ = std::fs::remove_file(&preview);
     Err(io::Error::other("no single-file copy could be made from this take"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn line(a: &[OsString]) -> String {
+        a.iter().map(|s| s.to_string_lossy().into_owned()).collect::<Vec<_>>().join(" ")
+    }
+
+    /// A take's poster and teaser run exactly the argv they ran before the copy's own came.
+    #[test]
+    fn a_takes_poster_and_teaser_keep_their_recipe() {
+        assert_eq!(line(&poster_args(Path::new("preview_0.mp4"), Path::new(files::POSTER))), "-hide_banner -loglevel error -y -i preview_0.mp4 -frames:v 1 -vf scale=1200:-1 -q:v 3 poster.jpg");
+        assert_eq!(
+            line(&teaser_args(Path::new(files::PREVIEW), Path::new(files::TEASER), Encoder::VideoToolbox)),
+            "-hide_banner -loglevel error -y -i preview.mp4 -t 15 -vf scale=640:-2 -c:v h264_videotoolbox -b:v 700k -pix_fmt yuv420p \
+             -c:a aac -b:a 64k -ac 1 -movflags +faststart teaser.mp4"
+        );
+    }
+
+    #[test]
+    fn the_copys_poster_and_teaser_name_their_own_files() {
+        let p = line(&poster_args(Path::new("/e/A/edit-3.mp4"), Path::new("/e/A/edit-3-poster.jpg")));
+        assert!(p.contains("-i /e/A/edit-3.mp4 ") && p.ends_with(" /e/A/edit-3-poster.jpg"), "{p}");
+        let t = line(&teaser_args(Path::new("/e/A/edit-3.mp4"), Path::new("/e/A/edit-3-teaser.mp4"), Encoder::Libx264));
+        assert!(t.contains("-c:v libx264 -b:v 700k -pix_fmt yuv420p") && t.ends_with(" /e/A/edit-3-teaser.mp4"), "{t}");
+    }
 }

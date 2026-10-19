@@ -3,7 +3,10 @@
 // Mac, Mine · Everyone) — rendered by the built windows in WebKit against a stubbed Tauri
 // bridge, at the windows' sizes, light and dark; then the popover's faces — Region 6's
 // banners and Region 3's whole recording machine (config and its variants, disk-low,
-// recording-off, the paused faces, the questions, the stops) — and the countdown.
+// recording-off, the paused faces, the questions, the stops) — and the countdown. Then the
+// editor (N63): every face the core prints (`-- editor`) over a test video as long as its
+// recording, then driven over editor-fixture.mjs's faces and their own video (the gestures
+// are placed on that edit), the fixture held to the core's shape and words.
 //
 //   cargo run -q -p shroom-core --example gallery -- library | settings | members   (run for you)
 //   npm run build --workspace app                   (run it first: this serves app/dist)
@@ -19,12 +22,15 @@
 // action, and Copy link reads the Scene's “Copied”. Screenshots land in
 // app/test/gallery-out/ (gitignored).
 
-import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { webkit } from "playwright";
 import { collect, dist, gallery, hex, isButton, norm, out, repo, serve, stub, texts, windowPage } from "./gallery-kit.mjs";
+import { editorDrives, editorLooks, makeMedia, serveMedia } from "./editor-preview.mjs";
+import { editorScenes, REC } from "./editor-fixture.mjs";
 
-for (const f of ["library.html", "settings.html", "feedback.html", "popover.html", "countdown.html"]) {
+for (const f of ["library.html", "settings.html", "feedback.html", "popover.html", "countdown.html", "editor.html", "label.html"]) {
   if (!existsSync(join(dist, f))) {
     console.error(`app/dist/${f} is missing — run \`npm run build --workspace app\` first.`);
     process.exit(2);
@@ -53,6 +59,8 @@ export const SIZES = {
   popover: { width: 320, height: 720 },
   // The countdown covers its display; a laptop's is drawn here.
   countdown: { width: 1512, height: 982 },
+  // The agent label's panel (overlay.rs LABEL_SIZE): the pill at its right edge.
+  label: { width: 380, height: 30 },
 };
 
 // Region 6's entries ride along, each in its own window (`-- members`).
@@ -63,8 +71,11 @@ const settings = [...gallery("settings"), ...members.filter((e) => e.window === 
 const region3 = gallery("region3");
 const popovers = [...members, ...region3].filter((e) => e.window === "popover");
 const countdowns = region3.filter((e) => e.window === "countdown");
+const labels = region3.filter((e) => e.window === "label");
 // Send feedback (`-- feedback`): the form in each of its faces, and the sent face (N60).
 const feedbacks = gallery("feedback");
+// The editor (`-- editor`, N63): its faces over one recording.
+const editors = gallery("editor");
 const server = await serve();
 
 const TEXT = new Set([
@@ -75,6 +86,8 @@ const TEXT = new Set([
   // Region 6: the member's label on a row, Settings · Space's beneath-the-rows lines, the
   // Members tab's You row, a row's fact, the composer's line, a born link's address.
   "member", "mark_line", "you", "fact", "invite_line", "prefix",
+  // Naming (N66): the setup Mac's switch line under it.
+  "ai_line",
   // A line in runs (Rich): who invites say they're from (B158).
   "text",
   // Report a problem (B180): General's help row and its sent line; the sheet's field label,
@@ -83,6 +96,11 @@ const TEXT = new Set([
   "help_label", "sent", "reply_label", "disclosure", "preparing", "failed",
   // Send feedback (N60): the line under the log box.
   "log_note",
+  // Suggested to clean up (N68): the view's line and foot; Your videos' heading, the
+  // switches' lines, the space's size.
+  "intro", "foot", "heading", "count_hint", "count_note", "suggest_hint", "used_label", "used",
+  // Your coding agent (spec N62, DECISIONS B219): the prompt in its well.
+  "prompt",
 ]);
 
 /** The sheets that ask no destructive question: law 9's colours aren't theirs (B180, as
@@ -103,7 +121,7 @@ async function open(surface, scene, { colorScheme = "light", size = SIZES[surfac
   page.on("pageerror", (e) => errors.push(String(e)));
   await page.addInitScript(stub, scene);
   await page.goto(`${server.origin}/${surface}.html`);
-  await page.waitForSelector({ library: ".lib", settings: ".set", feedback: "main.fb", popover: "main.pop", countdown: "#digit:not(:empty)" }[surface]);
+  await page.waitForSelector({ library: ".lib", settings: ".set", feedback: "main.fb", popover: "main.pop", countdown: "#digit:not(:empty)", label: "#pill:not([hidden])" }[surface]);
   await page.waitForTimeout(60);
   return { ctx, page, errors };
 }
@@ -210,11 +228,19 @@ for (const entry of library) {
   const rowNotes = [...new Set(b.rows.flatMap((r) => [...r.buttons, ...r.hover]).map((x) => x.note).filter(Boolean))];
   const sceneForText = { ...w, body: { ...b, window_notes: rowNotes, rows: b.rows.map((r) => ({ ...r, title: r.rename ? null : r.title, hover: r.selected ? r.hover : [], menu: [] })) } };
 
+  // Suggested to clean up (N68) stands in place of the list: its own checks, then on.
+  if (b.cleanup) {
+    await cleanupChecks(entry, w);
+    continue;
+  }
+
   for (const scheme of ["light", "dark"]) {
     const tag = `library/${entry.variant} [${scheme}]`;
     const { ctx, page, errors } = await open("library", w, { colorScheme: scheme });
     const v = await vars(page);
     await common(tag, page, errors, "library", sceneForText, { hidden: [...hidden, ...renamed.filter((t) => !shownElsewhere.has(t))] });
+    // N68's line above the rows: its words, Review… and Not now.
+    check(`${tag}: the cleanup line ${b.cleanup_line ? "shows" : "absent"}`, (await page.locator(".cline").count()) === (b.cleanup_line ? 1 : 0));
 
     // The search field reads the Scene.
     const s = page.locator('input[data-field="library-search"]');
@@ -240,7 +266,7 @@ for (const entry of library) {
       const tagged = await page.locator(`li.lrow[data-key="${r.key}"] .line2 .member`).allInnerTexts();
       check(`${tag}: row ${r.key} ${r.member ? `carries “${r.member}”` : "carries no member's label"}`, JSON.stringify(tagged) === JSON.stringify(r.member ? [r.member] : []), JSON.stringify(tagged));
     }
-    let expected = (b.sheet ? b.sheet.buttons.length : 0) + b.scope.length;
+    let expected = (b.sheet ? b.sheet.buttons.length : 0) + b.scope.length + (b.cleanup_line && !b.sheet ? 2 : 0);
     for (const r of b.rows) {
       const row = page.locator(`li.lrow[data-key="${r.key}"]`);
       const rt = `${tag}: row ${r.key}`;
@@ -496,6 +522,54 @@ for (const variant of ["library-delete-sheet", "library-delete-sheet-several"]) 
   await ctx.close();
 }
 
+/** Suggested to clean up (N68): every line, the rows in the Scene's order with their
+ * buttons enabled and styled as said (Delete red text, law 9), Delete all… and the Undo
+ * line as the Scene gives them, nothing else, nothing sideways — at the window's size and
+ * its minimum; then each button sends the Scene's action. */
+async function cleanupChecks(entry, w) {
+  const c = w.body.cleanup;
+  for (const [scheme, size] of [["light", SIZES.library], ["dark", SIZES.library], ["light", SIZES.library.min]]) {
+    const tag = `library/${entry.variant} [${scheme}${size === SIZES.library.min ? ", min width" : ""}]`;
+    const { ctx, page, errors } = await open("library", w, { colorScheme: scheme, size });
+    const v = await vars(page);
+    await common(tag, page, errors, "library", { ...w, body: { cleanup: c } });
+    check(`${tag}: the list gives way to the view`, (await page.locator(".toolbar").count()) === 0 && (await page.locator(".cview").count()) === 1);
+    const keys = await page.locator(".cview li.lrow").evaluateAll((els) => els.map((e) => e.dataset.key));
+    check(`${tag}: rows in the Scene's order`, keys.join("|") === c.rows.map((r) => r.key).join("|"), keys.join("|"));
+    check(`${tag}: ${c.empty ? "the empty line" : "no empty line"}`, (await page.locator(".cview .empty").count()) === (c.empty ? 1 : 0));
+    for (const r of c.rows) {
+      const row = page.locator(`.cview li.lrow[data-key="${r.key}"]`);
+      const cut = await unclipped(row);
+      check(`${tag}: row ${r.key} title and meta unclipped`, cut.length === 0, cut.join(" "));
+      for (const x of r.buttons) {
+        const loc = row.locator("button", { hasText: x.label });
+        const bad = (await loc.count()) === 1 ? await styled(loc, x.style, v) : "missing";
+        check(`${tag}: row ${r.key} “${x.label}” ${x.enabled ? "enabled" : "disabled"}, ${x.style}`, (await loc.isVisible()) && (await loc.isEnabled()) === x.enabled && !bad, bad ?? "");
+      }
+    }
+    if (c.delete_all) {
+      const loc = page.locator(".cfoot button");
+      const bad = await styled(loc, c.delete_all.style, v);
+      check(`${tag}: “${c.delete_all.label}” red text (law 9)`, c.delete_all.style === "red-text" && !bad, bad ?? "");
+    }
+    check(`${tag}: the Undo line ${c.undo ? "shows" : "absent"}`, (await page.locator(".cview .undo").count()) === (c.undo ? 1 : 0));
+    const expected = 1 + c.rows.reduce((n, r) => n + r.buttons.length, 0) + (c.delete_all ? 1 : 0) + (c.undo ? 1 : 0);
+    const shown = await page.locator("button:visible").count();
+    check(`${tag}: ${expected} buttons showing, no others`, shown === expected, `shown ${shown}`);
+    if (size !== SIZES.library.min) await page.screenshot({ path: join(out, `library-${entry.variant}-${scheme}.png`), animations: "disabled" });
+    // Every button sends the Scene's action.
+    if (scheme === "light" && size !== SIZES.library.min) {
+      const where = [[".chead", c.back], ...c.rows.flatMap((r) => r.buttons.map((x) => [`li.lrow[data-key="${r.key}"]`, x])), ...(c.delete_all ? [[".cfoot", c.delete_all]] : []), ...(c.undo ? [[".undo", c.undo.undo]] : [])];
+      for (const [scope, x] of where.filter(([, x]) => x.enabled)) {
+        await clear(page);
+        await page.locator(`.cview ${scope} button`, { hasText: x.label }).first().click();
+        check(`${tag}: “${x.label}” sends the Scene's action`, acted(await calls(page), "library", x.action), JSON.stringify(await calls(page)));
+      }
+    }
+    await ctx.close();
+  }
+}
+
 // ── Settings ──
 
 for (const entry of settings) {
@@ -592,10 +666,13 @@ for (const entry of settings) {
         check(`${tag}: the token field ${p.nest.held ? "shows its dots" : "is empty"}`, p.nest.held ? DOTS.test(shown) : shown === "", JSON.stringify(shown));
       }
       check(`${tag}: paste fields — ${p.nest.kind === "token" ? "the token's" : "no token field"}, no invite door (B159)`, (await page.locator("input.paste").count()) === (p.nest.kind === "token" ? 1 : 0));
-      // Beneath the rows: the mark switch (owner-class), then the exits.
-      const sw = page.getByRole("switch");
-      check(`${tag}: mark switch ${b.pane.mark ? (b.pane.mark.on ? "on" : "off") : "absent"}`, b.pane.mark ? (await sw.count()) === 1 && (await sw.isChecked()) === b.pane.mark.on && (await sw.isEnabled()) === b.pane.mark.enabled : (await sw.count()) === 0);
-      if (b.pane.mark) check(`${tag}: the switch is labelled with the Scene's words`, (await page.getByRole("switch", { name: b.pane.mark.label, exact: true }).count()) === 1);
+      // Beneath the rows: the mark switch (owner-class) and naming's (the setup Mac, N66), then the exits.
+      const toggles = [b.pane.mark, b.pane.ai].filter(Boolean);
+      check(`${tag}: ${toggles.length} switch${toggles.length === 1 ? "" : "es"}, as the Scene has`, (await page.getByRole("switch").count()) === toggles.length);
+      for (const t of toggles) {
+        const sw = page.getByRole("switch", { name: t.label, exact: true });
+        check(`${tag}: “${t.label}” ${t.on ? "on" : "off"}, ${t.enabled ? "live" : "greyed"}, labelled with the Scene's words`, (await sw.count()) === 1 && (await sw.isChecked()) === t.on && (await sw.isEnabled()) === t.enabled);
+      }
       check(`${tag}: exits at the foot`, (await page.locator(".space > .exits button").count()) === b.pane.exits.length);
       // A denied microphone's door hangs right under its row (the last one), before the
       // plan's closing line.
@@ -631,16 +708,48 @@ for (const entry of settings) {
 
 const set = (variant) => settings.find((e) => e.variant === variant).scene;
 {
+  // Your videos (N68): each switch sends the Scene's action and keeps the Scene's state.
+  const w = set("general-your-videos");
+  const v = w.body.pane.videos;
+  const { ctx, page } = await open("settings", w);
+  for (const t of [v.count, v.suggest]) {
+    await clear(page);
+    const box = page.getByRole("checkbox", { name: t.label });
+    await box.click();
+    check(`settings: “${t.label}” sends its action`, acted(await calls(page), "settings", t.action), JSON.stringify(await calls(page)));
+    check(`settings: “${t.label}” keeps the Scene's state`, (await box.isChecked()) === t.on);
+  }
+  await ctx.close();
+}
+{
   const { ctx, page } = await open("settings", set("general-update-ready"));
   await page.getByRole("tab", { name: "Space" }).click();
   await page.getByRole("tab", { name: "General" }).click();
   let c = await calls(page);
   check("settings: a tab sends its action; the selected one nothing", acted(c, "settings", { do: "settings-tab", arg: "space" }) && c.length === 1, JSON.stringify(c));
   await clear(page);
-  await page.getByRole("checkbox").click();
+  const login = page.getByRole("checkbox", { name: "Start shroom when you log in" });
+  await login.click();
   c = await calls(page);
   check("settings: the login box sends its action", acted(c, "settings", { do: "set-login-item", arg: true }));
-  check("settings: the box keeps the Scene's state until the Scene changes", !(await page.getByRole("checkbox").isChecked()));
+  check("settings: the box keeps the Scene's state until the Scene changes", !(await login.isChecked()));
+  await clear(page);
+  // Your coding agent (spec N62, DECISIONS B219): the switch, off by default; Copy
+  // and Read it first.
+  const agent = page.getByRole("checkbox", { name: "Let it start and stop recordings" });
+  check("settings: the agent's recording switch is off by default", !(await agent.isChecked()));
+  await agent.click();
+  c = await calls(page);
+  check("settings: the agent's switch sends its action", acted(c, "settings", { do: "set-agent-recording", arg: true }), JSON.stringify(c));
+  await clear(page);
+  await page.getByRole("button", { name: "Copy", exact: true }).click();
+  await page.getByRole("button", { name: "Read it first", exact: true }).click();
+  c = await calls(page);
+  check(
+    "settings: the agent card's Copy and Read it first send their actions",
+    acted(c, "settings", { do: "copy-agent-prompt" }) && acted(c, "settings", { do: "open-agent-guide" }),
+    JSON.stringify(c),
+  );
   await clear(page);
   for (const name of ["Update", "What's new", "Copy diagnostics", "Report a problem…", "GitHub"]) await page.getByRole("button", { name, exact: true }).click();
   c = await calls(page);
@@ -654,6 +763,20 @@ const set = (variant) => settings.find((e) => e.variant === variant).scene;
   await page.keyboard.press("Enter");
   await page.keyboard.press("Escape");
   check("settings General: no Return or Esc default (the Scene names none)", (await calls(page)).length === 0);
+  await ctx.close();
+}
+{
+  // The shroom command's settings link (spec N62, DECISIONS B216): General opens with the
+  // switch's row lit and in view — and the switch as the Scene says, off.
+  const { ctx, page } = await open("settings", set("general-agent-lit"));
+  const lit = page.locator(".lit");
+  check("settings: the link lights one row, the switch's", (await lit.count()) === 1 && (await lit.innerText()).includes("Let it start and stop recordings"), JSON.stringify(await lit.allInnerTexts()));
+  const box = await lit.boundingBox();
+  check("settings: the lit row is in view", !!box && box.y >= 0 && box.y + box.height <= SIZES.settings.height, JSON.stringify(box));
+  check("settings: the switch stays off — the link flips nothing", !(await page.getByRole("checkbox", { name: "Let it start and stop recordings" }).isChecked()));
+  const plain = await open("settings", set("general-update-ready"));
+  check("settings: nothing is lit without the link", (await plain.page.locator(".lit").count()) === 0);
+  await plain.ctx.close();
   await ctx.close();
 }
 {
@@ -840,6 +963,15 @@ for (const variant of ["remove-member", "remove-invite", "remove-mac"]) {
   await ctx.close();
 }
 {
+  // N66: naming's switch on the setup Mac sends its action and keeps the Scene's state.
+  const { ctx, page } = await open("settings", set("space-ai-off"));
+  const sw = page.getByRole("switch", { name: "AI for new videos", exact: true });
+  await sw.click();
+  check("space · naming: the switch sends set-ai", acted(await calls(page), "settings", { do: "set-ai", arg: true }));
+  check("space · naming: the switch keeps the Scene's state until the Scene changes", !(await sw.isChecked()));
+  await ctx.close();
+}
+{
   const { ctx, page } = await open("settings", set("space-member"));
   await page.locator(".plan h1").click();
   await pasteAt(page, null, "https://v.myshroom.workers.dev/join/abc");
@@ -964,9 +1096,22 @@ for (const entry of popovers) {
       const b = p.body;
       check(`${tag}: Resume ${b.resume.enabled ? "live" : "greyed"}`, (await page.getByRole("button", { name: b.resume.label, exact: true }).isEnabled()) === b.resume.enabled);
       const rows = await page.locator(".card .rowbtn").evaluateAll((bs) => bs.map((x) => x.querySelector(".what > span").textContent));
-      check(`${tag}: the rows are Finish & Share, Restart, Discard… (the canvas's order)`, rows.join("|") === [b.stop, b.restart, b.discard].map((x) => x.label).join("|"), rows.join("|"));
-      const discard = await page.locator(".card .rowbtn").nth(2).getAttribute("class");
+      const order = [b.stop, ...(b.marker ? [b.marker] : []), b.restart, b.discard];
+      check(`${tag}: the rows are Finish & Share, ${b.marker ? "Drop a marker, " : ""}Restart, Discard… (the canvas's order)`, rows.join("|") === order.map((x) => x.label).join("|"), rows.join("|"));
+      const discard = await page.locator(".card .rowbtn").last().getAttribute("class");
       check(`${tag}: Discard… is red text (law 9)`, discard.split(/\s+/).includes("red-text"), discard);
+      if (b.marker) {
+        // N64: the board's flag in the accent while it can be dropped; once dropped at this
+        // pause, greyed with a tick.
+        const row = page.locator(".card .rowbtn").nth(1);
+        check(`${tag}: “${b.marker.label}” ${b.marker.enabled ? "live" : "greyed"}`, (await row.isEnabled()) === b.marker.enabled);
+        const flag = await row.locator("path.flag").count();
+        check(`${tag}: ${b.marker.enabled ? "the flag" : "a tick, no flag"} beside it`, (flag === 1) === b.marker.enabled);
+        if (b.marker.enabled) {
+          const fill = await row.locator("path.flag").evaluate((e) => getComputedStyle(e).fill);
+          check(`${tag}: the flag is filled in the accent`, fill === hex((await vars(page)).accent), fill);
+        }
+      }
     }
     if (p.body.kind === "question") {
       const labels = await page.locator(".answers button").allInnerTexts();
@@ -989,7 +1134,7 @@ for (const entry of popovers) {
       b.kind === "config"
         ? [b.quality_label, b.room_line, b.mic_line, b.camera_line, b.hint, b.start.label, b.start.note, b.mic_hint?.label, b.camera_settings?.label, ...b.qualities.map((q) => q.label), ...pickers(b).map(([, , cs]) => shownOf(cs))]
         : b.kind === "paused"
-          ? [b.title, b.context, b.sub, ...[b.resume, b.stop, b.restart, b.discard].map((x) => x.label)]
+          ? [b.title, b.context, b.sub, ...[b.resume, b.stop, b.marker, b.restart, b.discard].filter(Boolean).map((x) => x.label)]
           : b.kind === "question"
             ? [b.title, b.line, ...b.buttons.map((x) => x.label)]
             : [b.title, b.line, b.link, ...b.buttons.map((x) => x.label)];
@@ -1037,9 +1182,56 @@ for (const entry of countdowns) {
   }
 }
 
+// N66: the AI banner and its confirm send the Scene's actions.
+{
+  const pop = (variant) => popovers.find((e) => e.variant === variant).scene;
+  const ban = await open("popover", pop("ai-offer"));
+  await clear(ban.page);
+  await ban.page.getByRole("button", { name: "Turn on…", exact: true }).click();
+  check("ai-offer: Turn on… sends ai-ask", acted(await calls(ban.page), "popover", { do: "ai-ask" }));
+  await clear(ban.page);
+  await ban.page.getByRole("button", { name: "Not now", exact: true }).click();
+  check("ai-offer: Not now sends ai-not-now", acted(await calls(ban.page), "popover", { do: "ai-not-now" }));
+  await ban.ctx.close();
+  const ask = await open("popover", pop("ai-confirm"));
+  await clear(ask.page);
+  await ask.page.getByRole("button", { name: "Turn on", exact: true }).click();
+  check("ai-confirm: Turn on sends ai-on", acted(await calls(ask.page), "popover", { do: "ai-on" }));
+  await ask.ctx.close();
+}
+
+// ── The agent label (N62, B216): the Scene's line in a pill at the panel's right edge, the
+// page clear around it (the panel passes every click through; macOS casts the shadow) ──
+for (const entry of labels) {
+  for (const scheme of ["light", "dark"]) {
+    const tag = `label/${entry.variant} [${scheme}]`;
+    const { ctx, page, errors } = await open("label", entry.scene, { colorScheme: scheme });
+    const pill = page.locator("#pill");
+    check(`${tag}: the line is the Scene's, and nothing else`, (await pill.innerText()).trim() === entry.scene.line, await pill.innerText());
+    const box = await pill.boundingBox();
+    check(`${tag}: the pill sits at the panel's right edge, inside it`, !!box && Math.abs(box.x + box.width - SIZES.label.width) <= 1 && box.x >= 0 && box.height <= SIZES.label.height, JSON.stringify(box));
+    check(`${tag}: the page is clear around the pill`, (await page.evaluate(() => getComputedStyle(document.body).backgroundColor)) === "rgba(0, 0, 0, 0)");
+    check(`${tag}: no page errors`, errors.length === 0, errors.join(" | "));
+    check(`${tag}: listens to its own slice`, (await page.evaluate(() => window.__listenTarget()))?.label === "label");
+    await page.screenshot({ path: join(out, `label-${entry.variant}-${scheme}.png`), animations: "disabled", omitBackground: true });
+    await ctx.close();
+  }
+}
+
 // Region 3's controls send the Scene's actions.
 {
   const pop = (variant) => popovers.find((e) => e.variant === variant).scene;
+  // Drop a marker (N64) sends its action; dropped, the greyed row sends nothing.
+  const mk = await open("popover", pop("paused"));
+  await clear(mk.page);
+  await mk.page.getByRole("button", { name: pop("paused").body.marker.label, exact: true }).click();
+  check("paused: Drop a marker sends its action", acted(await calls(mk.page), "popover", pop("paused").body.marker.action), JSON.stringify(await calls(mk.page)));
+  await mk.ctx.close();
+  const md = await open("popover", pop("paused-marker-dropped"));
+  await clear(md.page);
+  await md.page.getByRole("button", { name: pop("paused-marker-dropped").body.marker.label, exact: true }).click({ force: true });
+  check("paused-marker-dropped: Marker dropped sends nothing", !(await calls(md.page)).some((x) => x.cmd === "act"), JSON.stringify(await calls(md.page)));
+  await md.ctx.close();
   const cfg = await open("popover", pop("recording-off"));
   await clear(cfg.page);
   await cfg.page.getByRole("button", { name: "Turn it back on", exact: true }).click();
@@ -1135,6 +1327,10 @@ for (const entry of feedbacks) {
     const { ctx, page, errors } = await open("feedback", w, { colorScheme: scheme });
     const v = await vars(page);
     await common(tag, page, errors, "feedback", sceneForText, { allow: ["field"] });
+    // The system font, as every window has it: a browser's default would be a serif in a
+    // Mac's webview (Linux's WebKit falls back to a sans, which hid it).
+    const fonts = await page.evaluate(() => ["main.fb", "main.fb button", "main.fb p"].map((q) => document.querySelector(q)).filter(Boolean).map((e) => getComputedStyle(e).fontFamily));
+    check(`${tag}: its words in the system font`, fonts.length >= 2 && fonts.every((f) => f.includes("-apple-system")), fonts.join(" | "));
     const want = b.sent ? [b.sent.done] : [...b.buttons, ...(b.mail ? [b.mail] : [])];
     const shown = await page.locator("button:visible").allInnerTexts();
     check(`${tag}: the Scene's buttons, no others`, shown.map(norm).sort().join("|") === want.map((x) => norm(x.label)).sort().join("|"), shown.join("|"));
@@ -1205,11 +1401,59 @@ for (const entry of feedbacks) {
   await m.ctx.close();
 }
 
+// ── the editor (N63): the core's faces, light and dark; then driven ──
+{
+  const media = mkdtempSync(join(tmpdir(), "shroom-editor-"));
+  try {
+    // The core's faces, over a test video as long as their recording (and its peaks).
+    const length = Math.ceil(Math.max(...editors.map((e) => e.scene.body.source_duration)));
+    for (const d of ["core", "drive"]) mkdirSync(join(media, d));
+    const core = makeMedia(join(media, "core"), length);
+    const coreServer = await serveMedia(core, editors[0].scene.body.rec);
+    await editorLooks({ browser, origin: server.origin, mediaOrigin: coreServer.origin, entries: editors, check });
+    coreServer.close();
+    // The drive's faces (editor-fixture.mjs), held to the core's: the same shape, the same
+    // words, face for face — so what the drive proves of them holds of the core's.
+    const fixture = editorScenes(75);
+    // Where two slices first differ in shape — keys, and each value's kind (an empty list
+    // matches any) — or null.
+    const unlike = (a, b, at = "") => {
+      if (Array.isArray(a) && Array.isArray(b)) return a.length && b.length ? unlike(a[0], b[0], `${at}[0]`) : null;
+      if (a && b && typeof a === "object" && typeof b === "object") {
+        const [ka, kb] = [Object.keys(a).sort().join(), Object.keys(b).sort().join()];
+        if (ka !== kb) return `${at || "."}: ${ka} vs ${kb}`;
+        for (const k of Object.keys(a)) {
+          const d = unlike(a[k], b[k], `${at}.${k}`);
+          if (d) return d;
+        }
+        return null;
+      }
+      return (a === null) === (b === null) && typeof a === typeof b ? null : `${at}: ${JSON.stringify(a)} vs ${JSON.stringify(b)}`;
+    };
+    const canonical = (v) => JSON.stringify(v, (_, x) => (x && typeof x === "object" && !Array.isArray(x) ? Object.fromEntries(Object.entries(x).sort(([a], [b]) => a.localeCompare(b))) : x));
+    const words = (w) => canonical([w.id, w.ret, w.esc, w.body.title, w.body.hint, w.body.footer, w.body.footer_tone, w.body.media.line, w.body.media.retry, w.body.revert?.label, w.body.revert?.action, w.body.done, w.body.labels, w.body.original_kept, w.body.after]);
+    for (const f of fixture) {
+      const c = editors.find((e) => e.variant === f.variant);
+      if (!c) continue;
+      const d = unlike(f.scene, c.scene);
+      check(`editor fixture/${f.variant}: the core's shape`, d === null, d ?? "");
+      check(`editor fixture/${f.variant}: the core's words, buttons and keys`, words(f.scene) === words(c.scene), `${words(f.scene)} vs ${words(c.scene)}`);
+    }
+    check("editor fixture: it covers the core's faces", editors.every((c) => c.variant === "editor-ready" || fixture.some((f) => f.variant === c.variant)), editors.map((e) => e.variant).join(" "));
+    const drive = makeMedia(join(media, "drive"), 75);
+    const driveServer = await serveMedia(drive, REC);
+    await editorDrives({ browser, origin: server.origin, mediaOrigin: driveServer.origin, entries: fixture, check });
+    driveServer.close();
+  } finally {
+    rmSync(media, { recursive: true, force: true });
+  }
+}
+
 await browser.close();
 server.close();
 console.log(`windows: library ${SIZES.library.width}×${SIZES.library.height} (min ${SIZES.library.min.width}×${SIZES.library.min.height}) · settings ${SIZES.settings.width}×${SIZES.settings.height}, tallest pane ${Math.max(...heights)}px`);
 
 const failed = results.filter((r) => !r.ok);
 for (const f of failed) console.log(`FAIL ${f.name}${f.detail ? ` — ${f.detail}` : ""}`);
-console.log(`\n${library.length} library + ${settings.length} settings + ${feedbacks.length} feedback + ${popovers.length} popover + ${countdowns.length} countdown scenes × 2 schemes · ${results.length - failed.length}/${results.length} checks passed · screenshots in ${out}`);
+console.log(`\n${library.length} library + ${settings.length} settings + ${feedbacks.length} feedback + ${editors.length} editor + ${popovers.length} popover + ${countdowns.length} countdown + ${labels.length} label scenes × 2 schemes · ${results.length - failed.length}/${results.length} checks passed · screenshots in ${out}`);
 process.exit(failed.length ? 1 : 0);

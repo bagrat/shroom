@@ -39,6 +39,32 @@
 //              control bar is below it, never over it
 //   copy       with the single-file copy up, the page plays it and asks for no piece of the
 //              stream (DECISIONS B177); every check above plays the stream, as before it's up
+//   cuts       the owner page's voice cuts (N65, DECISIONS B200): under the player, a row per
+//              voice cut between the words around it, an applied one struck through, the unsure one with
+//              “shroom cut” struck too under its note; Put back saves at once (on the unsure one the
+//              line comes back, “shroom cut” stays out), the row then saying what it is and what
+//              plays reaching the player; a press
+//              that doesn't save leaves its row and says so; a recipient's page carries none
+//              of it; a page open while the cues are coming keeps its one line (hearing), its spinner
+//              turning, then takes the strip in when they land; the hint shows on a take with no
+//              voice cuts, and Got it (or a strip seen) puts it away; the line fades when the Mac finds
+//              nothing to cut (the hint in its place), and by its own count after five minutes
+//   edit       a saved edit (N63, DECISIONS B195: 2–6, 9–12 and 13.5–18 of the 20 s) played
+//              at 2× over the stream and over the single-file copy: the position, sampled
+//              every frame and every 4 ms, never falls inside a cut (0.05 s past a cut's start
+//              allowed), every kept range plays, it stops at the out, and the time reads the
+//              edited length, 0:00 / 0:12 then 0:12 / 0:12. With the edit's permanent copy up:
+//              the page plays the copy to its end with nothing skipped, its own first frame,
+//              asks for nothing of the original, and the original's stream, file and
+//              trimmed-off first frame answer 404 (step 3). The copy landing under an open page: its next piece of the
+//              original answers 404 and the player moves over to the copy (hls.js; native
+//              engines that fetched the whole file have nothing to miss — reported only)
+//   baked      a baked recording (B197: media names the edit's own files, no stream) plays its
+//              one file to its end, its own first frame and length, asks for nothing of the
+//              stream, and what the bake left behind answers 404 while its own files are served
+//   keep       shroom:keep (the voice-cut build's event, #59) hands an unedited page the
+//              edit's ranges: it then plays them at 2× as a saved edit plays, never a cut
+//              moment, the time reading 0:12
 //   bytes      a tombstoned recording's playlist answers 404
 //
 // Prints one JSON summary and exits 0 only when every required check passed.
@@ -48,14 +74,24 @@ import { createServer } from "node:http";
 import os from "node:os";
 import path from "node:path";
 import { chromium, webkit } from "playwright";
-import { COPY, handle } from "../src/worker.js";
+import { COPY, VOICE_WAIT_MS, handle } from "../src/worker.js";
 import { CODE, INV, M1, OWNER_AIR, OWNER_MAC, cookieFor, metaKey, roster, sha, space } from "../test/space-fixture.js";
 
 const here = path.dirname(new URL(import.meta.url).pathname);
 const work = fs.mkdtempSync(path.join(os.tmpdir(), "shroom-page-drive-"));
 const summary = { ok: false, engines: {} };
-const ids = { live: "LiveLiveLiveLive", wait: "WaitWaitWaitWait", stall: "StalStalStalStal", own: "OwnrOwnrOwnrOwnr", gone: "GoneGoneGoneGone", off: "OffxOffxOffxOffx" };
+const ids = { live: "LiveLiveLiveLive", wait: "WaitWaitWaitWait", stall: "StalStalStalStal", own: "OwnrOwnrOwnrOwnr", gone: "GoneGoneGoneGone", off: "OffxOffxOffxOffx",
+  edit: "EditEditEditEdit", cut: "CutsCutsCutsCuts", land: "LandLandLandLand", bake: "BakeBakeBakeBake", cuts: "VoicVoicVoicVoic" };
 const DURATION = 20;
+/** The edit the drive plays (N63), as the Mac's editor saves it: 2–6, 9–12 and 13.5–18 of
+ * the 20 s recording play — 11.5 s, which reads 0:12. */
+const cut = (start, end) => ({ start, end, kind: "manual", confidence: "high", applied: true, removed: "" });
+const EDIT = { version: 1, source_duration: DURATION, in: 2, out: 18, cuts: [cut(6, 9), cut(12, 13.5)], rev: 1 };
+const KEEP = [[2, 6], [9, 12], [13.5, 18]];
+/** What a viewer must never see: the trimmed ends and the cuts. */
+const CUT_OUT = [[0, 2], [6, 9], [12, 13.5], [18, DURATION]];
+/** The edit's permanent copy, as the Mac puts it up beside the original. */
+const EDIT_COPY = { rev: 1, file: "edit-1.mp4", duration: 11.5, poster: "edit-1-poster.jpg" };
 /** The shapes the whole-frame check plays (a recording of each, a few seconds long): a
  * MacBook's 16:10 screen, a 16:9 display, a tall portrait window. */
 const SHAPES = { "16:10": ["Sh1610Sh1610Sh16", "640x400"], "16:9": ["Sh169xSh169xSh16", "640x360"], portrait: ["ShTallShTallShTa", "360x640"] };
@@ -82,6 +118,16 @@ function encode(size = "640x400", seconds = DURATION) {
   return files;
 }
 
+/** An edit's permanent copy and its first frame (N63): its own picture, the edit's length. */
+function encodeCopy() {
+  const dir = path.join(work, "copy");
+  fs.mkdirSync(dir, { recursive: true });
+  execFileSync("ffmpeg", ["-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc=size=640x400:rate=30", "-an", "-t", String(EDIT_COPY.duration),
+    "-c:v", "libx264", "-pix_fmt", "yuv420p", "-g", "30", "-movflags", "+faststart", path.join(dir, EDIT_COPY.file)]);
+  execFileSync("ffmpeg", ["-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc=size=640x400", "-frames:v", "1", path.join(dir, EDIT_COPY.poster)]);
+  return Object.fromEntries([EDIT_COPY.file, EDIT_COPY.poster].map((f) => [f, new Uint8Array(fs.readFileSync(path.join(dir, f)))]));
+}
+
 const iso = (ms) => new Date(ms).toISOString();
 const meta = (id, over) => JSON.stringify({ schema: 1, id, state: "live", createdAt: iso(Date.now() - 60_000), title: "Where the 502s come from", durationSec: DURATION,
   media: { hls: `rec/${id}/master.m3u8`, mp4: null, poster: `rec/${id}/poster.jpg`, width: 640, height: 400 }, owner: M1, ...over });
@@ -96,6 +142,7 @@ async function main() {
   const put = (k, v) => env.BUCKET.put(k, v);
   await put(".shroom/player/hls.min.js", new Uint8Array(fs.readFileSync(path.join(here, "../vendor/hls.min.js"))));
   for (const id of Object.values(ids)) for (const [f, bytes] of Object.entries(files)) await put(`rec/${id}/${f}`, bytes);
+  for (const [f, bytes] of Object.entries(encodeCopy())) for (const id of [ids.edit, ids.cut, ids.land, ids.bake]) await put(`rec/${id}/${f}`, bytes);
   for (const [id, size] of Object.values(SHAPES)) {
     const [width, height] = size.split("x").map(Number);
     for (const [f, bytes] of Object.entries(encode(size, 4))) await put(`rec/${id}/${f}`, bytes);
@@ -137,8 +184,13 @@ async function main() {
         check("poster loads before play", (await posterLoaded) && first.paused && first.poster?.endsWith("/poster.jpg"));
         check("no native controls", first.controls === false);
         check("time reads 0:00 / 0:20", first.time === "0:00 / 0:20");
-        await page.keyboard.press(tab);
-        check("Tab reaches Play", await page.evaluate((w) => document.activeElement?.classList.contains("pp") && document.activeElement.getAttribute("aria-label") === w, COPY.play));
+        // Copy link sits ahead of the player in the tab order (N46): Tab goes on to Play.
+        let onPlay = false;
+        for (let i = 0; i < 6 && !onPlay; i++) {
+          await page.keyboard.press(tab);
+          onPlay = await page.evaluate(() => !!document.activeElement?.classList.contains("pp"));
+        }
+        check("Tab reaches Play", onPlay && await page.evaluate((w) => document.activeElement.getAttribute("aria-label") === w, COPY.play));
         await page.keyboard.press("Space");
         const playing = await page.waitForFunction(() => { const v = document.getElementById("v"); return !v.paused && v.currentTime > 1.1; }, null, { timeout: 15_000 }).then(() => true, () => false);
         // The label and the time follow their media events, a task after the state moves.
@@ -151,15 +203,21 @@ async function main() {
         await page.keyboard.press("ArrowRight");
         const after = await page.evaluate(() => document.getElementById("v").currentTime);
         check("Tab to the scrubber, → seeks 5 s", onSeek && after - before >= 4 && after - before <= 6.5);
+        // K once the seek has landed: headless WebKit (MSE) plays on again from a pause made
+        // while a seek is still under way — 3 runs in 8 at 0.1.24's page.
+        await page.waitForFunction(() => !document.getElementById("v").seeking, null, { timeout: 5000 }).catch(() => {});
         await page.keyboard.press("k");
         // The label follows the pause event, a task after `paused` flips.
-        check("K pauses, the label says Play", await page.waitForFunction((w) => document.getElementById("v").paused && document.querySelector(".pp").getAttribute("aria-label") === w, COPY.play, { timeout: 3000 }).then(() => true, () => false));
+        const kPaused = await page.waitForFunction((w) => document.getElementById("v").paused && document.querySelector(".pp").getAttribute("aria-label") === w, COPY.play, { timeout: 3000 }).then(() => true, () => false);
+        check("K pauses, the label says Play", kPaused, true, await page.evaluate(() => ({ paused: document.getElementById("v").paused, label: document.querySelector(".pp").getAttribute("aria-label"), active: document.activeElement?.className })));
         await page.click(".fs");
         const full = await page.waitForFunction(() => document.fullscreenElement === document.querySelector(".player"), null, { timeout: 3000 }).then(() => true, () => false);
-        const exitLabel = full ? await page.evaluate(() => document.querySelector(".fs").getAttribute("aria-label")) : null;
+        // The label follows `fullscreenchange`, a task after the element is full screen.
+        const exitLabel = full ? await page.waitForFunction((w) => document.querySelector(".fs").getAttribute("aria-label") === w, COPY.exitFullscreen, { timeout: 3000 })
+          .then(() => COPY.exitFullscreen, () => page.evaluate(() => document.querySelector(".fs").getAttribute("aria-label"))) : null;
         if (full) await page.click(".fs");
         const back = full ? await page.waitForFunction(() => !document.fullscreenElement, null, { timeout: 3000 }).then(() => true, () => false) : false;
-        check("fullscreen is the player itself, and back", full && back && exitLabel === COPY.exitFullscreen, name === "chromium");
+        check("fullscreen is the player itself, and back", full && back && exitLabel === COPY.exitFullscreen, name === "chromium", { full, back, exitLabel });
 
         // ── the single-file copy (DECISIONS B177) ──
         await put(metaKey(ids.live), meta(ids.live, { media: { hls: `rec/${ids.live}/master.m3u8`, mp4: `rec/${ids.live}/video.mp4`, poster: `rec/${ids.live}/poster.jpg`, width: 640, height: 400 } }));
@@ -172,6 +230,105 @@ async function main() {
         page.off("request", onRequest);
         check("with the copy up, the page plays it and asks for no piece of the stream", copyPlays && asked.some((p) => p.endsWith("/video.mp4")) && !asked.some((p) => /\.(m3u8|m4s)$/.test(p)), true, { copyPlays, asked });
         await put(metaKey(ids.live), meta(ids.live, {}));
+
+        // ── a saved edit (N63, DECISIONS B195) ──
+        const stream = (id) => ({ hls: `rec/${id}/master.m3u8`, mp4: null, poster: `rec/${id}/poster.jpg`, width: 640, height: 400 });
+        const single = (id) => ({ ...stream(id), mp4: `rec/${id}/video.mp4` });
+        /** Opens the page, plays it at 2× from Play, and samples where the video is — every
+         * frame, every 4 ms and on every timeupdate — until it stops by itself. `keep`: ranges
+         * handed to the page first, as the voice-cut build's `shroom:keep` event does (#59). */
+        const playThrough = async (id, ended, keep = null) => {
+          const asked = [];
+          const onRequest = (/** @type {any} */ r) => asked.push(new URL(r.url()).pathname);
+          page.on("request", onRequest);
+          await page.goto(`${origin}/${id}`);
+          if (keep) await page.evaluate((detail) => document.dispatchEvent(new CustomEvent("shroom:keep", { detail })), keep);
+          const before = await page.evaluate(() => ({ time: document.querySelector(".time").textContent, poster: document.getElementById("v").getAttribute("poster") }));
+          await page.evaluate(() => {
+            const v = document.getElementById("v");
+            const w = /** @type {any} */ (window);
+            w.seen = [];
+            const take = () => { if (!v.paused) w.seen.push(v.currentTime); };
+            (function frame() { take(); requestAnimationFrame(frame); })();
+            setInterval(take, 4);
+            v.addEventListener("timeupdate", take);
+          });
+          for (let i = 0; i < 3; i++) await page.click(".sp");
+          await page.click(".pp");
+          const done = await page.waitForFunction((end) => { const v = document.getElementById("v"); return /** @type {any} */ (window).seen.length > 20 && v.paused && (!end || v.ended); }, ended, { timeout: 40_000 }).then(() => true, () => false);
+          const seen = /** @type {number[]} */ (await page.evaluate(() => /** @type {any} */ (window).seen));
+          const after = await page.evaluate(() => ({ time: document.querySelector(".time").textContent, rate: document.getElementById("v").playbackRate, src: document.getElementById("v").currentSrc }));
+          page.off("request", onRequest);
+          return { before, done, after, seen, asked, max: seen.length ? Math.max(...seen) : 0, min: seen.length ? Math.min(...seen) : 0 };
+        };
+        const inCut = (seen) => seen.filter((t) => CUT_OUT.some(([s, e]) => t > s + 0.05 && t < e - 0.001));
+        for (const [over, media] of [["the stream", stream], ["the single-file copy", single]]) {
+          await put(metaKey(ids.edit), meta(ids.edit, { media: media(ids.edit), edits: EDIT }));
+          const run = await playThrough(ids.edit, false);
+          const wrong = inCut(run.seen);
+          const detail = { n: run.seen.length, min: run.min, max: run.max, wrong: wrong.slice(0, 8), before: run.before, after: run.after };
+          check(`an edit over ${over}, at 2×: never a moment of a cut, every kept range plays, it stops at the out`,
+            run.done && run.after.rate === 2 && wrong.length === 0 && KEEP.every(([s, e]) => run.seen.some((t) => t >= s && t < e)) && run.max >= 17.8 && run.max <= 18.05, true, detail);
+          check(`an edit over ${over}: the time reads the edited length, 0:00 / 0:12, then 0:12 / 0:12`, run.before.time === "0:00 / 0:12" && run.after.time === "0:12 / 0:12", true, detail);
+        }
+
+        // ── the edit's permanent copy, up (N63) ──
+        await put(metaKey(ids.cut), meta(ids.cut, { media: single(ids.cut), edits: { ...EDIT, copy: EDIT_COPY } }));
+        const copyRun = await playThrough(ids.cut, true);
+        const jumps = copyRun.seen.filter((t, i) => i > 0 && t - copyRun.seen[i - 1] > 0.5);
+        const original = copyRun.asked.filter((p) => /\/(master\.m3u8|stream\.m3u8|[^/]+\.m4s|video\.mp4)$/.test(p));
+        check("the edit's copy up: the page plays it to its end with nothing skipped, its own first frame and length, and asks for nothing of the original",
+          copyRun.done && jumps.length === 0 && copyRun.max >= 11.3 && copyRun.after.src.endsWith(`/${EDIT_COPY.file}`) && copyRun.before.poster?.endsWith(`/${EDIT_COPY.poster}`)
+            && copyRun.before.time === "0:00 / 0:12" && original.length === 0, true, { done: copyRun.done, jumps, max: copyRun.max, before: copyRun.before, after: copyRun.after, original });
+        const reach = await page.evaluate(async (id) => {
+          const out = {};
+          for (const f of ["master.m3u8", "v0/stream.m3u8", "v0/init.mp4", "v0/seg_00000.m4s", "video.mp4", "poster.jpg", "edit-1.mp4", "edit-1-poster.jpg"]) out[f] = (await fetch(`/m/${id}/${f}`, { method: "HEAD" })).status;
+          return out;
+        }, ids.cut);
+        check("the edit's copy up: the original's stream, file and trimmed-off first frame answer 404, the copy and its first frame are served (step 3)",
+          same(reach, { "master.m3u8": 404, "v0/stream.m3u8": 404, "v0/init.mp4": 404, "v0/seg_00000.m4s": 404, "video.mp4": 404, "poster.jpg": 404, "edit-1.mp4": 200, "edit-1-poster.jpg": 200 }), true, reach);
+
+        // ── shroom:keep: the page handed new ranges (#59) ──
+        await put(metaKey(ids.edit), meta(ids.edit, { media: stream(ids.edit) }));
+        const handed = await playThrough(ids.edit, false, KEEP);
+        const handedWrong = inCut(handed.seen);
+        check("shroom:keep hands an unedited page the ranges: at 2×, never a moment of a cut, every range plays, it stops at the last one's end, the time reads 0:12",
+          handed.done && handedWrong.length === 0 && KEEP.every(([s, e]) => handed.seen.some((t) => t >= s && t < e)) && handed.max >= 17.8 && handed.max <= 18.05
+            && handed.before.time === "0:00 / 0:12" && handed.after.time === "0:12 / 0:12", true,
+          { n: handed.seen.length, min: handed.min, max: handed.max, wrong: handedWrong.slice(0, 8), before: handed.before, after: handed.after });
+
+        // ── a baked recording (B197): the edit became the video ──
+        await put(metaKey(ids.bake), meta(ids.bake, { durationSec: EDIT_COPY.duration,
+          media: { hls: null, mp4: `rec/${ids.bake}/${EDIT_COPY.file}`, poster: `rec/${ids.bake}/${EDIT_COPY.poster}`, width: 640, height: 400 } }));
+        const bakeRun = await playThrough(ids.bake, true);
+        const bakeJumps = bakeRun.seen.filter((t, i) => i > 0 && t - bakeRun.seen[i - 1] > 0.5);
+        const bakeAsked = bakeRun.asked.filter((p) => /\/(master\.m3u8|stream\.m3u8|[^/]+\.m4s|video\.mp4)$/.test(p));
+        check("a baked recording plays its one file to its end, its own first frame and length, and asks for nothing of a stream",
+          bakeRun.done && bakeJumps.length === 0 && bakeRun.max >= 11.3 && bakeRun.after.src.endsWith(`/${EDIT_COPY.file}`) && bakeRun.before.poster?.endsWith(`/${EDIT_COPY.poster}`)
+            && bakeRun.before.time === "0:00 / 0:12" && bakeAsked.length === 0, true, { done: bakeRun.done, jumps: bakeJumps, max: bakeRun.max, before: bakeRun.before, after: bakeRun.after, asked: bakeAsked });
+        const bakeReach = await page.evaluate(async (id) => {
+          const out = {};
+          for (const f of ["master.m3u8", "v0/stream.m3u8", "v0/seg_00000.m4s", "video.mp4", "poster.jpg", "edit-1.mp4", "edit-1-poster.jpg"]) out[f] = (await fetch(`/m/${id}/${f}`, { method: "HEAD" })).status;
+          return out;
+        }, ids.bake);
+        check("a baked recording: its own files are served, what the bake left behind answers 404",
+          same(bakeReach, { "master.m3u8": 404, "v0/stream.m3u8": 404, "v0/seg_00000.m4s": 404, "video.mp4": 404, "poster.jpg": 404, "edit-1.mp4": 200, "edit-1-poster.jpg": 200 }), true, bakeReach);
+
+        // ── the copy lands under an open page (N63, step 3) ──
+        // Opened on the original, the edit applied — a recording this browser hasn't played,
+        // so nothing of it is in its cache; the copy lands before the first play, so the
+        // original's next piece answers 404 and the player moves over to the copy. Required
+        // where hls.js plays the stream (it asks piece by piece); a native player may hold it all.
+        await put(metaKey(ids.land), meta(ids.land, { media: stream(ids.land), edits: EDIT }));
+        await page.goto(`${origin}/${ids.land}`);
+        await page.waitForFunction(() => document.getElementById("v").readyState >= 1, null, { timeout: 15_000 }).catch(() => {});
+        const byHlsJs = await page.evaluate(() => document.getElementById("v").currentSrc.startsWith("blob:"));
+        await put(metaKey(ids.land), meta(ids.land, { media: stream(ids.land), edits: { ...EDIT, copy: EDIT_COPY } }));
+        await page.click(".pp");
+        const movedOver = await page.waitForFunction((file) => { const v = document.getElementById("v"); return v.currentSrc.endsWith(`/${file}`) && !v.paused && v.currentTime > 0.5; }, EDIT_COPY.file, { timeout: 30_000 }).then(() => true, () => false);
+        const landed = await page.evaluate(() => ({ src: document.getElementById("v").currentSrc, t: document.getElementById("v").currentTime, paused: document.getElementById("v").paused, time: document.querySelector(".time").textContent }));
+        check("the copy lands under an open page: the player moves over to it and plays on", movedOver, byHlsJs, { byHlsJs, ...landed });
+        await page.evaluate(() => document.getElementById("v").pause());
 
         // ── a short window (the canvas's "The page — a short window") ──
         // A 4:3 recording in a 1280×640 window: the player, its controls and the mark's foot
@@ -295,8 +452,9 @@ async function main() {
         await context.addCookies([{ name: cname, value: cvalue, url: origin }]);
         await put(metaKey(ids.own), uploading(ids.own, 1, 4));
         await page.goto(`${origin}/${ids.own}`);
-        const stage = await page.evaluate(() => ({ w: document.getElementById("w")?.textContent, bar: !!document.getElementById("b"), up: document.getElementById("u").textContent, body: document.body.innerText }));
-        check("owner, uploading: the stage is empty, the upload line speaks", stage.w === "" && stage.bar && stage.up.startsWith("Uploading — 25%") && !stage.body.includes(COPY.onItsWay));
+        const stage = await page.evaluate(() => ({ w: document.getElementById("w")?.textContent, spin: document.getElementById("b")?.className ?? null, turning: getComputedStyle(document.getElementById("b")).animationName, up: document.getElementById("u").textContent, body: document.body.innerText }));
+        check("owner, uploading: the stage is empty, the one line speaks, a spinner turning in front of it", stage.w === "" && stage.spin === "spin" && stage.turning === "shroom-spin" && stage.up === COPY.finishing && !stage.body.includes(COPY.onItsWay), true, stage);
+        check("owner, uploading: Edit in shroom waits for the drain (N69)", await page.evaluate(() => { const e = document.getElementById("ed"); return !!e && e.getClientRects().length === 0; }));
         await page.evaluate(() => { navigator.clipboard.writeText = () => Promise.reject(new Error("denied")); document.execCommand = () => false; });
         await page.click("#c");
         await page.waitForTimeout(300);
@@ -306,11 +464,22 @@ async function main() {
         check("a real copy says Copied", await page.waitForFunction((w) => document.getElementById("c").textContent === w, COPY.copied, { timeout: 2000 }).then(() => true, () => false));
         await put(metaKey(ids.own), meta(ids.own, {}));
         const swapped = await page.waitForFunction(() => { const v = document.querySelector(".player video"); return v && (v.getAttribute("poster") || "").endsWith("/poster.jpg"); }, null, { timeout: 10_000 }).then(() => true, () => false);
-        // Every file up (the record counts none), the upload line goes: no “Fully live ✓” on the page.
+        // Every file up (the record counts none), the line goes: no “Fully live ✓” on the page,
+        // and no “Ready ✓” either; in a space that doesn't listen it simply fades (N65 (7)).
+        await page.waitForFunction(() => document.getElementById("u").getClientRects().length === 0 && !document.getElementById("b"), null, { timeout: 10_000 }).catch(() => {});
         const afterSwap = await page.evaluate((fully) => ({ up: document.getElementById("u").getClientRects().length > 0, said: document.body.innerText.includes(fully), bar: !!document.getElementById("b"), dl: document.getElementById("dl").textContent, controls: document.querySelector(".player video").controls }), COPY.fullyLive);
         check("the go-live swaps the player in with its poster, and the upload line goes", swapped && !afterSwap.up && !afterSwap.said && !afterSwap.bar && !afterSwap.controls && afterSwap.dl === "", true, afterSwap);
+        // Edit in shroom (N69): in at the drain, the last quiet icon, a plain link to shroom's editor.
+        const ed = await page.evaluate(() => { const e = document.getElementById("ed"); return e && { shown: e.getClientRects().length > 0, href: e.getAttribute("href"), tip: e.getAttribute("data-tip"), last: e === e.parentElement.lastElementChild }; });
+        check("Edit in shroom comes in at the drain, a link to shroom's editor (N69)", !!ed && ed.shown && ed.last && ed.href === `shroom://edit/${new URL(origin).host}/${ids.own}` && ed.tip === COPY.editInShroom, true, ed);
         await put(metaKey(ids.own), meta(ids.own, { media: { hls: `rec/${ids.own}/master.m3u8`, mp4: `rec/${ids.own}/video.mp4`, poster: `rec/${ids.own}/poster.jpg`, width: 640, height: 400 } }));
         check("Download appears when the MP4 lands", await page.waitForFunction((w) => document.querySelector("#dl a")?.textContent === w, COPY.download, { timeout: 20_000 }).then(() => true, () => false));
+        // The top icons sit in the middle of their hover (2026-10-19: 3 px left, the hidden
+        // label still taking the gap beside the icon): an icon-only button has no gap.
+        const offCentre = await page.evaluate(() => [...document.querySelectorAll(".head .copy:not([hidden]):not(.done), .head #dl a")]
+          .map((b) => ({ label: b.getAttribute("aria-label") ?? b.textContent, gap: getComputedStyle(b).columnGap, font: getComputedStyle(b).fontSize }))
+          .filter((b) => b.gap !== "0px" || b.font !== "0px"));
+        check("the top icons sit in the middle of their hover: no gap beside a hidden label", offCentre.length === 0, true, offCentre);
 
         // ── the mark (U3, N26; DEVIATIONS #41) ──
         // Switched off, nothing shows in the owner's corner either — the switch, its words
@@ -345,6 +514,7 @@ async function main() {
         const guest = await elsewhere.newPage();
         await guest.goto(`${origin}/${ids.live}`);
         check("mark: off, a recipient's page carries none", same(await foot(guest), NONE), true, await foot(guest));
+        check("a recipient's page has no Edit in shroom (N69)", !(await guest.$("#ed")));
         await guest.goto(`${origin}/${ids.live}?embed=1`);
         check("mark: off, the embed carries none", same(await foot(guest), NONE), true, await foot(guest));
         // Switched back on from elsewhere (Settings); this tab goes away and comes Back.
@@ -386,7 +556,131 @@ async function main() {
         await put(metaKey(ids.off), uploading(ids.off, 1, 4));
         await page.goto(`${origin}/${ids.off}`);
         await put(metaKey(ids.off), meta(ids.off, { media: null }));
-        check("unavailable: its line in the frame, the bar gone", await page.waitForFunction((w) => document.getElementById("w")?.textContent === w && getComputedStyle(document.getElementById("b").parentNode).display === "none", COPY.unavailable, { timeout: 6000 }).then(() => true, () => false));
+        check("unavailable: its line in the frame, the spinner gone", await page.waitForFunction((w) => document.getElementById("w")?.textContent === w && getComputedStyle(document.getElementById("b")).display === "none", COPY.unavailable, { timeout: 6000 }).then(() => true, () => false));
+
+        // ── the voice cuts (N65, DECISIONS B200) ──
+        const WORDS = { v1: "Hello, that is shroom. Shroom cut.", v3: "The second one is, um, I forget what it's called." };
+        const voiceEdits = () => ({ version: 1, source_duration: DURATION, in: 0, out: DURATION, rev: 1, voice: { planned_at: Date.now() - 5000, cues: 2 },
+          cuts: [
+            { id: "v1", start: 1.2, end: 3.4, kind: "retake", confidence: "high", applied: true, removed: WORDS.v1, resumes: "Hello, this is shroom." },
+            { id: "v2", start: 12, end: 13.1, kind: "cue-only", confidence: "high", applied: true, removed: "Shroom cut.", resumes: "Let's move on to the Library." },
+            { id: "v3", start: 9.6, end: 13.1, kind: "line-before-cue", confidence: "low", applied: true, leads: "The settings window has three tabs.", removed: `${WORDS.v3} Shroom cut.`, resumes: "Let's move on to the Library." },
+          ] });
+        const strip = () => page.evaluate(() => {
+          const s = document.getElementById("cuts"), p = document.querySelector(".player");
+          if (!s || s.hidden) return null;
+          return {
+            below: !!p && s.getBoundingClientRect().top >= p.getBoundingClientRect().bottom - 1,
+            rows: [...s.querySelectorAll("li")].map((li) => ({ id: li.dataset.cut, cls: li.className, button: li.querySelector("button").textContent, said: li.querySelector("q").textContent, struck: getComputedStyle(li.querySelector("q .w")).textDecorationLine.includes("line-through"),
+              around: [...li.querySelectorAll("q .by")].some((e) => getComputedStyle(e).textDecorationLine.includes("line-through")) ? "struck" : "plain", asks: li.querySelector(".why")?.getClientRects().length > 0,
+              cue: li.querySelector("q .cue") ? getComputedStyle(li.querySelector("q .cue")).textDecorationLine.includes("line-through") : null })),
+            unsaved: !s.querySelector(".unsaved").hidden,
+          };
+        });
+        const row = (id, button) => page.waitForFunction(([i, w]) => document.querySelector(`li[data-cut="${i}"] button`)?.textContent === w, [id, button], { timeout: 3000 }).then(() => true, () => false);
+        const pressed = () => page.waitForResponse((r) => r.url().endsWith(`/_shroom/edits/${ids.cuts}`) && r.request().method() === "POST", { timeout: 5000 }).then((r) => r.status(), () => 0);
+        const kept = async () => JSON.parse(await (await env.BUCKET.get(metaKey(ids.cuts))).text()).edits;
+        await page.setViewportSize({ width: 1280, height: 1000 });
+        await put(metaKey(ids.cuts), meta(ids.cuts, { edits: voiceEdits() }));
+        await page.goto(`${origin}/${ids.cuts}`);
+        await page.evaluate(() => { window.__keeps = []; document.addEventListener("shroom:keep", (e) => window.__keeps.push(e.detail)); });
+        const shown = await strip();
+        check("cuts: under the player, a row per voice cut — an applied one struck through with Put back, the unsure one with “shroom cut” struck too under its note, each between the words around it, unstruck",
+          !!shown?.below && same(shown.rows.map((r) => [r.id, r.cls, r.button, r.struck, r.around, r.said, r.asks, r.cue]), [
+            ["v1", "cut on", COPY.putBack, true, "plain", `“${WORDS.v1} Hello, this is shroom.”`, false, null],
+            ["v3", "cut on", COPY.putBack, true, "plain", `“…The settings window has three tabs. ${WORDS.v3} Shroom cut. Let's move on to the Library.”`, true, true],
+          ]), true, shown);
+        await shot("owner-cuts");
+        await page.emulateMedia({ colorScheme: "dark" });
+        await shot("owner-cuts-dark");
+        await page.emulateMedia({ colorScheme: "light" });
+        let answer = pressed();
+        await page.click('li[data-cut="v1"] button');
+        const putBack = { status: await answer, row: await row("v1", COPY.cutAgain) };
+        const afterBack = await strip();
+        check("cuts: Put back saves at once — the row reads Cut again, its words no longer struck; the record and the player follow",
+          putBack.status === 200 && putBack.row && afterBack?.rows[0].cls === "cut" && !afterBack.rows[0].struck && (await kept()).cuts.find((c) => c.id === "v1").applied === false
+            && same(await page.evaluate(() => window.__keeps.at(-1)), [[0, 9.6], [13.1, DURATION]]), true, { putBack, afterBack });
+        answer = pressed();
+        await page.click('li[data-cut="v3"] button');
+        const lineBack = { status: await answer, row: await row("v3", COPY.cutAgain) };
+        const afterLine = await strip();
+        const cuts3 = (await kept()).cuts;
+        check("cuts: Put back on the unsure cut brings the line back — the row reads Cut again, the line no longer struck, “shroom cut” still struck and still cut, the note kept",
+          lineBack.status === 200 && lineBack.row && afterLine?.rows[1].cls === "cut" && !afterLine.rows[1].struck && afterLine.rows[1].cue === true && afterLine.rows[1].asks
+            && cuts3.find((c) => c.id === "v3").applied === false && cuts3.find((c) => c.id === "v2").applied === true
+            && same(await page.evaluate(() => window.__keeps.at(-1)), [[0, 12], [13.1, DURATION]]), true, { lineBack, afterLine });
+        await page.route(`**/_shroom/edits/${ids.cuts}`, (route) => (route.request().method() === "POST" ? route.abort() : route.continue()));
+        await page.click('li[data-cut="v1"] button');
+        const failed = await page.waitForFunction(() => !document.querySelector("#cuts .unsaved").hidden, null, { timeout: 3000 }).then(() => strip(), () => null);
+        await page.unroute(`**/_shroom/edits/${ids.cuts}`);
+        await shot("owner-cuts-unsaved");
+        check("cuts: a press that doesn't save leaves its row as it was and says so", !!failed?.unsaved && failed.rows[0].cls === "cut" && failed.rows[0].button === COPY.cutAgain && (await kept()).cuts.find((c) => c.id === "v1").applied === false, true, failed);
+        const outsider = await browser.newContext();
+        const stranger = await outsider.newPage();
+        await stranger.goto(`${origin}/${ids.cuts}`);
+        const theirs = await stranger.evaluate((w) => ({ strip: !!document.getElementById("cuts"), words: document.documentElement.outerHTML.includes(w) }), WORDS.v1);
+        await outsider.close();
+        check("cuts: a recipient's page carries no strip and no word that was cut", !theirs.strip && !theirs.words, true, theirs);
+        // A space that listens has Cloudflare's AI bound to its page (N66).
+        env.AI = {};
+        await put(metaKey(ids.cuts), meta(ids.cuts, { publishedAt: iso(Date.now() - 2000) }));
+        await page.goto(`${origin}/${ids.cuts}`);
+        const coming = await page.evaluate(() => { const s = document.getElementById("cuts"); return !!s && s.hidden; });
+        // While the take is heard (hearing): the page's one line stays under the player, its
+        // spinner turning, until the cuts land.
+        const finishing = () => page.evaluate(() => { const u = document.getElementById("ul"), b = document.getElementById("b"), p = document.querySelector(".player");
+          return !!u && !u.hidden && u.getClientRects().length > 0 ? { words: document.getElementById("u").textContent, turning: !!b && b.className === "spin" && getComputedStyle(b).animationName === "shroom-spin",
+            below: !!p && u.getBoundingClientRect().top >= p.getBoundingClientRect().bottom - 1 } : null; });
+        const lineGone = () => page.waitForFunction(() => { const u = document.getElementById("ul"); return !u || u.hidden; }, null, { timeout: 4000 }).then(() => true, () => false);
+        const heard = await finishing();
+        await shot("owner-finishing");
+        await put(metaKey(ids.cuts), meta(ids.cuts, { publishedAt: iso(Date.now() - 4000), edits: voiceEdits() }));
+        const stripLanded = await page.waitForFunction(() => { const s = document.getElementById("cuts"); return !!s && !s.hidden && s.querySelectorAll("li").length === 2; }, null, { timeout: 10_000 }).then(() => true, () => false);
+        const goneWithStrip = await lineGone();
+        check("cuts: a page open while the cues are coming keeps its one line, its spinner turning, then takes the strip in when they land, the line gone",
+          coming && heard?.words === COPY.finishing && heard.turning && heard.below && stripLanded && goneWithStrip, true, { coming, heard, landed: stripLanded, goneWithStrip });
+        // The hint (owner-page-cue-hint): a take with no voice cuts, in a space that listens.
+        const hintShown = () => page.evaluate(() => { const h = document.querySelector(".cue-hint"); return !!h && !h.hidden && h.getClientRects().length > 0; });
+        const forget = () => page.evaluate(() => { try { localStorage.removeItem("shroom:cue-hint"); } catch { /* none kept */ } });
+        const noCues = () => ({ ...voiceEdits(), cuts: [] });
+        await forget();
+        await put(metaKey(ids.cuts), meta(ids.cuts, { edits: noCues() }));
+        await page.goto(`${origin}/${ids.cuts}`);
+        const shownFirst = await hintShown();
+        await shot("owner-cue-hint");
+        await page.click(".cue-hint button");
+        const goneOnPress = !(await hintShown());
+        await page.reload();
+        const goneForGood = !(await hintShown());
+        // A strip seen counts as a cue used: the hint doesn't come back.
+        await forget();
+        await put(metaKey(ids.cuts), meta(ids.cuts, { edits: voiceEdits() }));
+        await page.goto(`${origin}/${ids.cuts}`);
+        await put(metaKey(ids.cuts), meta(ids.cuts, { edits: noCues() }));
+        await page.goto(`${origin}/${ids.cuts}`);
+        const afterStrip = await hintShown();
+        check("cuts: the hint shows under the player on a take with no voice cuts; Got it puts it away for good, as a strip seen does",
+          shownFirst && goneOnPress && goneForGood && !afterStrip, true, { shownFirst, goneOnPress, goneForGood, afterStrip });
+        // The line ends without cuts: the Mac found none (the hint, while it's due, takes its
+        // place), or five minutes passed by the page's own count, whatever the status says.
+        await forget();
+        await put(metaKey(ids.cuts), meta(ids.cuts, { publishedAt: iso(Date.now() - 2000) }));
+        await page.goto(`${origin}/${ids.cuts}`);
+        const firstLine = await finishing();
+        const hintHeld = !(await hintShown());
+        await put(metaKey(ids.cuts), meta(ids.cuts, { publishedAt: iso(Date.now() - 4000), edits: noCues() }));
+        const noneGone = await lineGone();
+        const hintAfter = await page.waitForFunction(() => { const h = document.querySelector(".cue-hint"); return !!h && !h.hidden; }, null, { timeout: 3000 }).then(() => true, () => false);
+        await page.route(`**/_shroom/status/${ids.cuts}`, async (route) => { const res = await route.fetch(); route.fulfill({ response: res, json: { ...(await res.json()), cuts: "coming" } }); });
+        await put(metaKey(ids.cuts), meta(ids.cuts, { publishedAt: iso(Date.now() - VOICE_WAIT_MS + 2500) }));
+        await page.goto(`${origin}/${ids.cuts}`);
+        const late = await finishing();
+        const ownCount = await lineGone();
+        await page.unroute(`**/_shroom/status/${ids.cuts}`);
+        delete env.AI;
+        check("cuts: the one line fades when the Mac finds nothing to cut, the hint in its place, and by its own count when its five minutes are up",
+          firstLine?.words === COPY.finishing && hintHeld && noneGone && hintAfter && !!late && ownCount, true, { firstLine, hintHeld, noneGone, hintAfter, late, ownCount });
         await context.clearCookies();
       } finally {
         await browser.close();

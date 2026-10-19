@@ -1,0 +1,276 @@
+<meta charset="utf-8">
+<title>shroom Editor Prototype</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: one column of the editor (preview, transport, timeline, words) beside the cut list; the list drops under it on a phone. Tokens: shroom's Nord set (app/src/lib/theme.css), dark first. */
+:root {
+  --bg: #2b2f36; --well: #1f2228; --card: #333944; --line: #434a56; --field: #262a31; --border: #4c566a;
+  --fg: #eceff4; --fg-3: #c3cad6; --muted: #aeb6c4; --dim: #7b8494;
+  --accent: #88c0d0; --on-accent: #2b2f36; --red: #e88790; --red-fill: rgba(232,135,144,.42); --red-fill-2: rgba(232,135,144,.16);
+  --amber: #ebcb8b; --amber-fill: rgba(235,203,139,.12); --shade: rgba(31,34,40,.72); --wave: #aeb6c4;
+  --font: -apple-system, BlinkMacSystemFont, system-ui, sans-serif; --mono: ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) {
+  --bg: #f6f7f9; --well: #e9ecf1; --card: #ffffff; --line: #dfe3ea; --field: #ffffff; --border: #c9d1dd;
+  --fg: #2e3440; --fg-3: #3b4252; --muted: #4c566a; --dim: #6b7484;
+  --accent: #4c6f9a; --on-accent: #ffffff; --red: #a3474f; --red-fill: rgba(163,71,79,.34); --red-fill-2: rgba(163,71,79,.12);
+  --amber: #b4821f; --amber-fill: rgba(180,130,31,.12); --shade: rgba(233,236,241,.78); --wave: #7b8494; color-scheme: light; } }
+:root[data-theme="light"] {
+  --bg: #f6f7f9; --well: #e9ecf1; --card: #ffffff; --line: #dfe3ea; --field: #ffffff; --border: #c9d1dd;
+  --fg: #2e3440; --fg-3: #3b4252; --muted: #4c566a; --dim: #6b7484;
+  --accent: #4c6f9a; --on-accent: #ffffff; --red: #a3474f; --red-fill: rgba(163,71,79,.34); --red-fill-2: rgba(163,71,79,.12);
+  --amber: #b4821f; --amber-fill: rgba(180,130,31,.12); --shade: rgba(233,236,241,.78); --wave: #7b8494; color-scheme: light; }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: var(--well); color: var(--fg); font: 14px/1.5 var(--font); }
+main { max-width: 1240px; margin: 0 auto; padding-block: 20px 40px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 16px; }
+header { display: flex; flex-direction: column; gap: 4px; }
+h1 { margin: 0; font-size: 20px; font-weight: 650; text-wrap: balance; }
+.lede { margin: 0; color: var(--muted); max-width: 70ch; }
+.takes { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font: inherit; font-size: 13px; border: 1px solid var(--border); background: transparent; color: var(--fg-3); padding: 4px 11px; border-radius: 999px; cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
+.window { background: var(--bg); border-radius: 12px; padding: 16px; display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 18px; }
+@media (max-width: 860px) { .window { grid-template-columns: minmax(0, 1fr); padding: 12px; } }
+.stage { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+video { width: 100%; max-width: 100%; aspect-ratio: 16 / 9; border-radius: 8px; background: #000; display: block; }
+.about { margin: 0; color: var(--muted); font-size: 13px; }
+.transport { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.play { width: 38px; height: 38px; border-radius: 19px; border: 0; background: var(--card); color: var(--fg); display: grid; place-items: center; cursor: pointer; }
+.play svg { width: 15px; height: 15px; fill: currentColor; }
+.time { font-variant-numeric: tabular-nums; }
+.was { color: var(--dim); font-variant-numeric: tabular-nums; }
+.seg { margin-left: auto; display: flex; background: var(--field); border-radius: 8px; padding: 2px; gap: 2px; }
+.seg button { font: inherit; font-size: 13px; border: 0; border-radius: 6px; background: transparent; color: var(--fg-3); padding: 3px 12px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--border); color: var(--fg); font-weight: 600; }
+.tl { position: relative; touch-action: none; user-select: none; -webkit-user-select: none; }
+.tl canvas { width: 100%; height: 104px; display: block; border-radius: 6px; cursor: crosshair; }
+.hint { margin: 0; color: var(--dim); font-size: 12px; }
+.selbar { position: absolute; top: 108px; display: flex; gap: 6px; padding: 4px; border-radius: 8px; background: var(--card); border: 1px solid var(--line); box-shadow: 0 8px 24px rgba(0,0,0,.3); transform: translateX(-50%); z-index: 2; }
+.btn { font: inherit; font-size: 13px; height: 28px; padding: 0 11px; border-radius: 7px; border: 1px solid var(--border); background: transparent; color: var(--fg); cursor: pointer; white-space: nowrap; }
+.btn.red { background: var(--red); border-color: var(--red); color: var(--on-accent); font-weight: 600; }
+.btn.quiet { border-color: transparent; color: var(--fg-3); padding: 0 6px; }
+.words { margin: 4px 0 0; padding: 12px 14px; background: var(--field); border-radius: 8px; line-height: 1.9; font-size: 15px; }
+.words span { cursor: pointer; border-radius: 3px; padding: 1px 1px; }
+.words .cut { text-decoration: line-through; text-decoration-color: var(--red); color: var(--dim); background: var(--red-fill-2); }
+.words .offer { text-decoration: underline dashed var(--amber); text-underline-offset: 4px; }
+.words .now { background: var(--accent); color: var(--on-accent); text-decoration: none; }
+aside { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+aside h2 { margin: 0; font-size: 15px; font-weight: 650; }
+aside .sum { margin: 0; color: var(--muted); font-size: 13px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px; display: flex; flex-direction: column; gap: 5px; }
+.card.offered { border: 1px dashed var(--amber); }
+.card.off { opacity: .72; }
+.card .row { display: flex; align-items: center; gap: 8px; }
+.card .when { font-weight: 650; font-variant-numeric: tabular-nums; }
+.card .len { color: var(--dim); font-variant-numeric: tabular-nums; }
+.card .gap { flex: 1; }
+.card .gone { color: var(--fg-3); }
+.card .gone.struck { text-decoration: line-through; text-decoration-color: var(--red); }
+.card .then { color: var(--muted); font-size: 12px; }
+.card .note { color: var(--amber); font-size: 12px; }
+.scis { width: 15px; height: 15px; fill: none; stroke: var(--red); stroke-width: 1.5; stroke-linecap: round; flex: none; }
+.offered .scis { stroke: var(--amber); }
+.empty { color: var(--muted); font-size: 13px; background: var(--card); border-radius: 9px; padding: 12px; }
+details { background: var(--bg); border-radius: 10px; padding: 10px 14px; }
+summary { cursor: pointer; color: var(--fg-3); }
+pre { margin: 10px 0 0; overflow-x: auto; font: 12px/1.5 var(--mono); color: var(--fg-3); }
+.foot { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.foot p { margin: 0; flex: 1 1 260px; color: var(--muted); font-size: 13px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+
+<main>
+  <header>
+    <h1>shroom editor — a working prototype</h1>
+    <p class="lede">Seven invented takes, spoken by a stock voice, each with a slip and “shroom cut”. The planner read the transcript and cut the slips. Play a take: it skips what's cut. Undo a cut, accept a suggestion, drag the yellow ends to trim, or drag across the sound to cut a part by hand.</p>
+  </header>
+  <div class="takes" id="takes" role="group" aria-label="Takes"></div>
+  <section class="window">
+    <div class="stage">
+      <video id="v" playsinline preload="auto"></video>
+      <p class="about" id="about"></p>
+      <div class="transport">
+        <button class="play" id="play" aria-label="Play"><svg viewBox="0 0 16 16" id="playIcon"><path d="M5 3.5v9l7.5-4.5z"/></svg></button>
+        <span class="time" id="time">0:00.0 / 0:00.0</span><span class="was" id="was"></span>
+        <div class="seg" role="group" aria-label="What plays">
+          <button id="mEdited" aria-pressed="true">Edited</button><button id="mOriginal" aria-pressed="false">Original</button>
+        </div>
+      </div>
+      <div class="tl" id="tl">
+        <canvas id="cv" aria-label="Timeline: the take's sound, its cuts and its trim"></canvas>
+        <div class="selbar" id="selbar" hidden><button class="btn red" id="doCut">Cut</button><button class="btn" id="noCut">Cancel</button></div>
+      </div>
+      <p class="hint">Red is cut, and playback skips it. Dashed amber is a suggestion. Tap a word to jump there.</p>
+      <div class="words" id="words"></div>
+    </div>
+    <aside>
+      <h2>Cuts</h2>
+      <p class="sum" id="sum"></p>
+      <div id="cards" style="display:flex;flex-direction:column;gap:10px"></div>
+    </aside>
+  </section>
+  <div class="foot">
+    <p>Nothing is re-encoded here: the take is untouched and the edit list below is applied as it plays. That's how undo stays free and the share link stays the same.</p>
+    <button class="btn" id="reset">Put back the planner's cuts</button>
+  </div>
+  <details><summary>The edit list (what would be saved beside the recording)</summary><pre id="json"></pre></details>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const v = $("v"), cv = $("cv"), ctx = cv.getContext("2d");
+let data, take, list, mode = "edited", drag = null, sel = null, raf = 0;
+const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const fmt = (t) => { t = Math.max(0, t); const m = Math.floor(t / 60); const s = t - m * 60; return `${m}:${s.toFixed(1).padStart(4, "0")}`; };
+const scissors = '<svg class="scis" viewBox="0 0 16 16" aria-hidden="true"><circle cx="4.5" cy="4.5" r="2"/><circle cx="4.5" cy="11.5" r="2"/><path d="M6.2 5.6L13 11.8M6.2 10.4L13 4.2"/></svg>';
+
+function keep() {
+  const cuts = list.cuts.filter((c) => c.applied).map((c) => [c.start, c.end]).sort((a, b) => a[0] - b[0]);
+  const out = []; let at = list.in;
+  for (let [s, e] of cuts) { s = Math.max(s, list.in); e = Math.min(e, list.out); if (e <= at) continue; if (s > at) out.push([at, s]); at = Math.max(at, e); }
+  if (at < list.out) out.push([at, list.out]);
+  return out;
+}
+const editedLen = () => keep().reduce((a, [s, e]) => a + e - s, 0);
+function toEdited(t) { let acc = 0; for (const [s, e] of keep()) { if (t < s) return acc; if (t < e) return acc + t - s; acc += e - s; } return acc; }
+function inCut(t) { return list.cuts.find((c) => c.applied && t >= c.start && t < c.end); }
+
+function load(id) {
+  take = data.takes.find((t) => t.id === id);
+  list = { version: 1, source_duration: take.duration, in: 0, out: take.duration, cuts: take.cuts.map((c) => ({ ...c })) };
+  v.src = take.video; v.currentTime = 0;
+  $("about").textContent = take.about;
+  document.querySelectorAll(".chip").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.id === id)));
+  sel = null; $("selbar").hidden = true; render();
+}
+
+function render() { draw(); cards(); words(); clock(); $("json").textContent = JSON.stringify(list, (k, x) => typeof x === "number" ? Math.round(x * 1000) / 1000 : x, 2); }
+
+function draw() {
+  const dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = 104;
+  cv.width = w * dpr; cv.height = h * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const x = (t) => (t / take.duration) * w, top = 20, wh = h - top;
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = css("--field"); ctx.fillRect(0, top, w, wh);
+  ctx.fillStyle = css("--dim"); ctx.font = "11px " + css("--font");
+  const step = take.duration > 30 ? 5 : 1;
+  for (let t = 0; t <= take.duration; t += step) { ctx.fillRect(x(t), 4, 1, 12); if (t % (step * 2) === 0 || step > 1) ctx.fillText(`0:${String(t).padStart(2, "0")}`, x(t) + 3, 13); }
+  const n = take.peaks.length, bw = w / n;
+  ctx.fillStyle = css("--wave");
+  take.peaks.forEach((p, i) => { const bh = Math.max(1.5, p * (wh - 10)); ctx.fillRect(i * bw, top + (wh - bh) / 2, Math.max(1, bw - 0.6), bh); });
+  for (const c of list.cuts) {
+    const a = x(c.start), b = x(c.end);
+    if (c.applied) {
+      ctx.save(); ctx.beginPath(); ctx.rect(a, top, b - a, wh); ctx.clip();
+      ctx.fillStyle = css("--red-fill-2"); ctx.fillRect(a, top, b - a, wh);
+      ctx.strokeStyle = css("--red-fill"); ctx.lineWidth = 3;
+      for (let k = a - wh; k < b; k += 8) { ctx.beginPath(); ctx.moveTo(k, top + wh); ctx.lineTo(k + wh, top); ctx.stroke(); }
+      ctx.restore(); ctx.fillStyle = css("--red"); ctx.fillRect(a, top, 2, wh); ctx.fillRect(b - 2, top, 2, wh);
+    } else {
+      ctx.setLineDash([5, 4]); ctx.strokeStyle = css("--amber"); ctx.lineWidth = 2; ctx.strokeRect(a + 1, top + 1, b - a - 2, wh - 2); ctx.setLineDash([]);
+      ctx.fillStyle = css("--amber-fill"); ctx.fillRect(a, top, b - a, wh);
+    }
+  }
+  ctx.fillStyle = css("--shade"); ctx.fillRect(0, top, x(list.in), wh); ctx.fillRect(x(list.out), top, w - x(list.out), wh);
+  ctx.fillStyle = css("--amber");
+  ctx.fillRect(x(list.in), top, 7, wh); ctx.fillRect(x(list.out) - 7, top, 7, wh);
+  ctx.fillRect(x(list.in), top, x(list.out) - x(list.in), 2); ctx.fillRect(x(list.in), top + wh - 2, x(list.out) - x(list.in), 2);
+  if (sel) { const [a, b] = [x(Math.min(sel[0], sel[1])), x(Math.max(sel[0], sel[1]))]; ctx.fillStyle = "rgba(136,192,208,.3)"; ctx.fillRect(a, top, b - a, wh); ctx.fillStyle = css("--accent"); ctx.fillRect(a, top, 2, wh); ctx.fillRect(b - 2, top, 2, wh); }
+  ctx.fillStyle = css("--fg"); ctx.fillRect(x(v.currentTime) - 1, top - 6, 2, wh + 6);
+}
+
+function cards() {
+  const el = $("cards"); el.textContent = "";
+  const cues = list.cuts.filter((c) => c.kind !== "manual");
+  const made = list.cuts.filter((c) => c.applied).length, offered = list.cuts.filter((c) => !c.applied).length;
+  $("sum").textContent = cues.length ? `${made} cut${made === 1 ? "" : "s"} in place${offered ? `, ${offered} to look at` : ""}. ${fmt(take.duration)} becomes ${fmt(editedLen())}.` : "No “shroom cut” heard in this take, so nothing was cut.";
+  if (!list.cuts.length) { const e = document.createElement("div"); e.className = "empty"; e.textContent = "Every “cut” and “shroom” here was part of a sentence, so the planner left them alone."; el.append(e); }
+  list.cuts.slice().sort((a, b) => a.start - b.start).forEach((c) => {
+    const d = document.createElement("div");
+    d.className = "card" + (c.kind === "line-before-cue" ? " offered" : "") + (!c.applied && c.kind !== "line-before-cue" ? " off" : "");
+    const note = c.kind === "line-before-cue" ? "Nothing was said again after this cue, so only “shroom cut” went. The line before it too?" : c.kind === "cue-only" ? "Only the words “shroom cut”: nothing was said again after them." : c.kind === "manual" ? "Cut by you." : "";
+    d.innerHTML = `<div class="row">${scissors}<span class="when">${fmt(c.start)}</span><span class="len">· ${(c.end - c.start).toFixed(1)} s</span><span class="gap"></span><button class="btn quiet" data-a="hear">Play</button><button class="btn" data-a="toggle"></button></div>${note ? `<span class="note"></span>` : ""}<span class="gone"></span>${c.resumes ? `<span class="then"></span>` : ""}`;
+    d.querySelector('[data-a="toggle"]').textContent = c.applied ? "Undo" : c.kind === "line-before-cue" ? "Cut it too" : "Cut";
+    if (note) d.querySelector(".note").textContent = note;
+    const g = d.querySelector(".gone"); g.textContent = c.removed ? `“${c.removed}”` : `${fmt(c.start)} to ${fmt(c.end)}`; g.classList.toggle("struck", c.applied);
+    if (c.resumes) d.querySelector(".then").textContent = `then: “${c.resumes}…”`;
+    d.querySelector('[data-a="toggle"]').onclick = () => { c.applied = !c.applied; render(); };
+    d.querySelector('[data-a="hear"]').onclick = () => { setMode("edited"); v.currentTime = Math.max(list.in, c.start - 2); v.play(); };
+    el.append(d);
+  });
+}
+
+function words() {
+  const el = $("words"); el.textContent = "";
+  take.words.forEach((w) => {
+    const s = document.createElement("span"), mid = (w.start + w.end) / 2;
+    s.textContent = w.text + " ";
+    if (list.cuts.some((c) => c.applied && mid >= c.start && mid < c.end) || mid < list.in || mid >= list.out) s.className = "cut";
+    else if (list.cuts.some((c) => !c.applied && mid >= c.start && mid < c.end)) s.className = "offer";
+    s.dataset.t = w.start; s.dataset.e = w.end;
+    s.onclick = () => { v.currentTime = w.start; draw(); };
+    el.append(s);
+  });
+}
+
+function clock() {
+  const t = v.currentTime;
+  if (mode === "edited") { $("time").textContent = `${fmt(toEdited(t))} / ${fmt(editedLen())}`; $("was").textContent = `was ${fmt(take.duration)}`; }
+  else { $("time").textContent = `${fmt(t)} / ${fmt(take.duration)}`; $("was").textContent = "the take as recorded"; }
+  document.querySelectorAll("#words span").forEach((s) => s.classList.toggle("now", t >= +s.dataset.t && t < +s.dataset.e));
+}
+
+function tick() {
+  if (mode === "edited" && !v.paused) {
+    const t = v.currentTime, c = inCut(t);
+    if (t < list.in) v.currentTime = list.in;
+    else if (t >= list.out) { v.pause(); v.currentTime = list.out; }
+    else if (c) v.currentTime = Math.min(c.end, list.out);
+  }
+  draw(); clock(); raf = requestAnimationFrame(tick);
+}
+
+function setMode(m) { mode = m; $("mEdited").setAttribute("aria-pressed", String(m === "edited")); $("mOriginal").setAttribute("aria-pressed", String(m !== "edited")); clock(); }
+
+function timeAt(ev) { const r = cv.getBoundingClientRect(); return Math.min(take.duration, Math.max(0, ((ev.clientX - r.left) / r.width) * take.duration)); }
+cv.addEventListener("pointerdown", (ev) => {
+  const t = timeAt(ev), px = take.duration / cv.clientWidth * 12;
+  cv.setPointerCapture(ev.pointerId);
+  if (Math.abs(t - list.in) < px) drag = { kind: "in" };
+  else if (Math.abs(t - list.out) < px) drag = { kind: "out" };
+  else { drag = { kind: "sel", from: t, moved: false }; sel = null; $("selbar").hidden = true; }
+});
+cv.addEventListener("pointermove", (ev) => {
+  if (!drag) return; const t = timeAt(ev);
+  if (drag.kind === "in") list.in = Math.min(t, list.out - 0.5);
+  else if (drag.kind === "out") list.out = Math.max(t, list.in + 0.5);
+  else if (Math.abs(t - drag.from) > take.duration / 200) { drag.moved = true; sel = [drag.from, t]; }
+  render();
+});
+cv.addEventListener("pointerup", (ev) => {
+  if (drag && drag.kind === "sel") {
+    if (!drag.moved) { v.currentTime = timeAt(ev); sel = null; }
+    else { const [a, b] = [Math.min(...sel), Math.max(...sel)]; const bar = $("selbar"); bar.hidden = false; bar.style.left = `${Math.min(Math.max(((a + b) / 2 / take.duration) * 100, 12), 88)}%`; $("doCut").textContent = `Cut ${(b - a).toFixed(1)} s`; }
+  }
+  drag = null; render();
+});
+$("doCut").onclick = () => { const [a, b] = [Math.min(...sel), Math.max(...sel)]; list.cuts.push({ start: a, end: b, kind: "manual", confidence: "high", applied: true, removed: "", why: "cut by hand" }); sel = null; $("selbar").hidden = true; render(); };
+$("noCut").onclick = () => { sel = null; $("selbar").hidden = true; render(); };
+$("play").onclick = () => { if (v.paused) { if (mode === "edited" && v.currentTime >= list.out - 0.05) v.currentTime = list.in; v.play(); } else v.pause(); };
+v.onplay = () => { $("playIcon").innerHTML = '<path d="M4.5 3.5h2.5v9H4.5zM9 3.5h2.5v9H9z"/>'; $("play").setAttribute("aria-label", "Pause"); };
+v.onpause = () => { $("playIcon").innerHTML = '<path d="M5 3.5v9l7.5-4.5z"/>'; $("play").setAttribute("aria-label", "Play"); };
+$("mEdited").onclick = () => setMode("edited");
+$("mOriginal").onclick = () => setMode("original");
+$("reset").onclick = () => load(take.id);
+window.addEventListener("resize", draw);
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", render);
+
+fetch("data.json").then((r) => r.json()).then((d) => {
+  data = d;
+  const bar = $("takes");
+  d.takes.forEach((t) => { const b = document.createElement("button"); b.className = "chip"; b.dataset.id = t.id; b.textContent = t.id.replace(/^\d-/, "").replace(/-/g, " "); b.onclick = () => load(t.id); bar.append(b); });
+  load(d.takes[0].id); raf = requestAnimationFrame(tick);
+});
+</script>

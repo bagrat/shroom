@@ -109,6 +109,20 @@ describe("the agent page", () => {
   });
 });
 
+describe("the guide to the command line", () => {
+  it("is the markdown to an agent, the page to a browser, the markdown at /cli.md", async () => {
+    const md = await get("/cli", { accept: CLAUDE_CODE });
+    assert.equal(md.headers.get("content-type"), "text/markdown; charset=utf-8");
+    assert.equal(await md.text(), file("site/cli.md"));
+    const page = await get("/cli", { accept: BROWSERS.safari });
+    assert.equal(page.headers.get("content-type"), "text/html; charset=utf-8");
+    const html = await page.text();
+    assert.match(html, /<meta property="og:url" content="https:\/\/shroom.am\/cli">/);
+    assert.match(html, /when you ask it to do something with your shroom videos/);
+    assert.equal(await (await get("/cli.md", { accept: BROWSERS.chrome })).text(), file("site/cli.md"));
+  });
+});
+
 describe("what's new", () => {
   const notes = (/** @type {string} */ v) => file(`docs/release-notes/${v}.md`).split("\n").filter((l) => l.startsWith("- ")).map((l) => l.slice(2));
   const newest = noteVersions(join(ROOT, "docs/release-notes"))[0];
@@ -170,7 +184,7 @@ describe("the rules for markdown", () => {
 
 describe("nothing else", () => {
   it("has no other address", async () => {
-    for (const path of ["/_/install.sh", "/_/agent.md", "/_/agent.html", "/index.html.bak", "/install.sh", "/v/x/y"]) {
+    for (const path of ["/_/install.sh", "/_/agent.md", "/_/agent.html", "/_/cli.md", "/index.html.bak", "/install.sh", "/v/x/y"]) {
       assert.equal((await get(path)).status, 404, path);
     }
   });

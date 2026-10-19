@@ -5,7 +5,7 @@
 //! nests are the wizard's.
 
 use crate::copy;
-use crate::scene::{
+use crate::scene::{VideosGroup, 
     Action, Button, Choice, GeneralBody, Glyph, Nest, PlanRow, PlanView, ReportForm, SettingsBody, SettingsPane, Sheet, SpaceBody, Style,
     TextField, Toggle, Window,
 };
@@ -368,6 +368,54 @@ fn general(w: &World) -> GeneralBody {
         help: copy::help_line(),
         help_links: vec![Button::new(Action::ReportIssue, copy::github(), Style::Link)],
         uninstall: not_mid_take(w, Button::new(Action::Uninstall, copy::uninstall_ellipsis(), Style::Quiet)),
+        agent: crate::scene::AgentCard {
+            label: copy::agent_label(),
+            prompt: copy::agent_prompt(),
+            copy: Button::new(
+                Action::CopyAgentPrompt,
+                if matches!(w.session.copied, Some((CopyTarget::AgentPrompt, _))) { copy::copied() } else { copy::copy_word() },
+                Style::Plain,
+            ),
+            read_first: Button::new(Action::OpenAgentGuide, copy::read_it_first(), Style::Link),
+            line: copy::agent_line(),
+            recording: Toggle {
+                action: Action::SetAgentRecording(!w.prefs.agent_recording),
+                label: copy::agent_recording(),
+                on: w.prefs.agent_recording,
+                enabled: true,
+            },
+            lit: matches!(w.session.fields.settings.lit, Some((crate::event::SettingsSpot::AgentRecording, _))),
+        },
+        videos: w.provisioned().then(|| videos(w)),
+    }
+}
+
+/// Your videos (N68): the space's play-count switch (owner-class, once the space has said;
+/// a switch asked reads as asked, greyed until it answers), this Mac's suggestions switch,
+/// and what the space costs (owner-class: the bill is theirs).
+fn videos(w: &World) -> VideosGroup {
+    let known = w.suggestions.get();
+    let counting = w.library_ops.plays.or(known.map(|s| s.counting)).unwrap_or(true);
+    let online = w.online() != Some(false);
+    let owner = w.space.owner_class();
+    let used = known.filter(|_| owner).map(|s| match super::library::space_cents(s.space_bytes) {
+        0 => copy::space_used_free(s.space_bytes),
+        cents => copy::space_used_past(s.space_bytes, cents),
+    });
+    VideosGroup {
+        heading: copy::your_videos(),
+        count: Toggle {
+            action: Action::SetPlays(!counting),
+            label: copy::count_plays(),
+            on: counting,
+            enabled: owner && online && known.is_some() && w.library_ops.plays.is_none(),
+        },
+        count_hint: copy::count_plays_hint(),
+        count_note: (w.inflight.failures.contains_key(&Op::Plays) && w.library_ops.plays.is_none()).then(copy::plays_failed),
+        suggest: Toggle { action: Action::SetSuggestCleanup(!w.prefs.suggest_cleanup), label: copy::suggest_cleanup(), on: w.prefs.suggest_cleanup, enabled: true },
+        suggest_hint: copy::suggest_cleanup_hint(),
+        used_label: used.as_ref().map(|_| copy::space_used()),
+        used,
     }
 }
 
@@ -446,11 +494,16 @@ fn space(w: &World, at: SpaceAt, offline: bool) -> SpaceBody {
     let mark_known = w.members.standing.mark.filter(|_| w.space.owner_class());
     let mark = mark_known.map(|on| Toggle { action: Action::SetMark(!on), label: copy::mark_label(), on, enabled: !w.inflight.ops.contains_key(&Op::Mark) });
     let mark_line = mark_known.map(|_| copy::mark_line());
+    // Naming (N66): only the Mac that holds the setup key can re-wire the page, once its
+    // page said where it stands; greyed while a re-wiring runs and mid-take (law 4).
+    let ai_known = w.space.ai.filter(|_| w.space.token_holder());
+    let ai = ai_known.map(|on| Toggle { action: Action::SetAi(!on), label: copy::ai_label(), on, enabled: !w.inflight.ops.contains_key(&Op::Ai) && !w.take_open() });
+    let ai_line = ai_known.map(|_| if super::ai_fell_through(w, crate::world::WindowKind::Settings) { copy::ai_failed() } else { copy::ai_cost() });
     let exit = if id.role == Role::Member { copy::leave_space_ellipsis() } else { copy::disconnect_ellipsis() };
     let exits = vec![not_mid_take(w, Button::new(Action::Disconnect, exit, Style::Quiet))];
     let mic = mic_denied(w).then(|| Button::new(Action::OpenMicSettings, copy::turn_on_mic(), Style::Quiet));
     if role_face(w).is_some() {
-        return SpaceBody { plan: space_elsewhere(w, at, offline), mic, mark, mark_line, exits };
+        return SpaceBody { plan: space_elsewhere(w, at, offline), mic, mark, mark_line, ai, ai_line, exits };
     }
     let current = at.row();
     let rows = (1..=6u8)
@@ -485,7 +538,7 @@ fn space(w: &World, at: SpaceAt, offline: bool) -> SpaceBody {
     } else {
         nest(w, at)
     };
-    SpaceBody { plan: PlanView { header: copy::plan_header(), rows, current, nest }, mic, mark, mark_line, exits }
+    SpaceBody { plan: PlanView { header: copy::plan_header(), rows, current, nest }, mic, mark, mark_line, ai, ai_line, exits }
 }
 
 fn token_nest(w: &World, line: String, checking: bool, error: Option<String>) -> Nest {

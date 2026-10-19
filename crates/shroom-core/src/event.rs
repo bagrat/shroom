@@ -84,8 +84,12 @@ pub enum Surface {
     Settings,
     /// The Send feedback window (N60).
     Feedback,
+    /// The editor window (N63).
+    Editor,
     Countdown,
     Bubble,
+    /// The agent label (N62, B216): it takes no clicks and no keys; only its slice is read.
+    Label,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -113,12 +117,21 @@ pub enum Event {
     Reopened(QuickProbe),
     /// ⌥⌘P, held while a take is open (N54): the tray click's pause, or Resume.
     Shortcut(QuickProbe),
+    /// ⌥⌘M, held with ⌥⌘P (N64): a marker at this moment while recording; Drop a marker
+    /// while paused, where the paused popover offers it.
+    MarkerShortcut(QuickProbe),
     Act { surface: Surface, action: Action, rev: u64 },
     Key { surface: Surface, key: Key },
     PopoverDismissed,
     /// Non-secret field contents, as typed (the runner only caps the length). The core
     /// filters them — and shows the charset hint when it drops a character.
     Field { field: Field, value: String },
+    /// A change the editor's webview asks for (N63): a trim, a cut, Put back, Revert, Undo,
+    /// Redo. The core takes it or refuses it; the webview decides nothing.
+    Edit(EditStep),
+    /// The owner page's Edit in shroom (N69): `shroom://edit/<host>/<id>`, read by the app.
+    /// It only asks: the core decides by this Mac's own state (B221).
+    EditLink { host: String, rec: RecId },
     /// The one inbound path for secret text: the shell moved it into the stash and sends
     /// only the handle and its shape (law 13).
     SecretPasted { field: SecretField, id: SecretId, shape: Shape },
@@ -132,6 +145,12 @@ pub enum Event {
     /// top-left of the display it's on (N22: you place yourself before Start).
     BubbleMoved((i32, i32)),
     QuitRequested(QuitVia),
+    /// The `shroom` command asked to start, pause, resume or stop a recording, through the
+    /// app's control socket: `id` is the runner's, for its answer (`Effect::Cli`).
+    Cli { id: u64, op: CliOp },
+    /// A `shroom://settings/…` link opened with shroom (N62): the command's recording refusal
+    /// carries one, for the person to click.
+    SettingsLink(SettingsSpot),
     // ── the OS ──
     Os(OsNews),
     // ── the mechanism ──
@@ -147,10 +166,55 @@ pub enum Event {
     Member(MemberNews),
     /// Report a problem's lane: the report gathered, or Send's answer (B180).
     Report(ReportNews),
+    /// The editor's lane (N63): the record read, the video coming and here, a save landed,
+    /// a copy up. Its failures are `Failed` with the editor's ops.
+    Editor(EditorNews),
     /// The runner's catch-all: an error, a caught panic, or a deadline passing.
     Failed { op: Op, class: FailClass },
     /// Posted at `Scene.next_wake`.
     Tick,
+}
+
+impl Event {
+    /// The owner page's Edit in shroom (N69): `shroom://edit/<host>/<id>` as the browser
+    /// hands it over, or `None` for any other link. The host is the page's own, in any case;
+    /// the id a video's (16 of `A-Za-z0-9_-`, as the space names them); a query, a fragment
+    /// or a trailing slash after them is dropped.
+    pub fn edit_link(url: &str) -> Option<Event> {
+        let rest = url.strip_prefix("shroom://edit/")?;
+        let rest = rest.split(['?', '#']).next()?.trim_end_matches('/');
+        let (host, id) = rest.split_once('/')?;
+        let host = host.trim_end_matches('.').to_ascii_lowercase();
+        let host_ok = !host.is_empty() && host.len() <= 253 && host.contains('.') && host.chars().all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-');
+        let id_ok = id.len() == 16 && id.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-');
+        (host_ok && id_ok).then(|| Event::EditLink { host, rec: RecId(id.into()) })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_pages_edit_link_reads_its_host_and_video_and_nothing_else() {
+        let link = |host: &str, id: &str| Some(Event::EditLink { host: host.into(), rec: RecId(id.into()) });
+        assert_eq!(Event::edit_link("shroom://edit/v.myshroom.workers.dev/Sx4kq9dLmNpQrStU"), link("v.myshroom.workers.dev", "Sx4kq9dLmNpQrStU"));
+        assert_eq!(Event::edit_link("shroom://edit/V.MyShroom.Workers.Dev/Sx4kq9dLmNpQrStU/?x=1#t"), link("v.myshroom.workers.dev", "Sx4kq9dLmNpQrStU"));
+        assert_eq!(Event::edit_link("shroom://edit/video.example.com/a_b-c_d-e_f-g_h1"), link("video.example.com", "a_b-c_d-e_f-g_h1"));
+        for not in [
+            "shroom://join/v.myshroom.workers.dev/AbCdEfGhIjKlMnOp",
+            "shroom://settings/general",
+            "https://v.myshroom.workers.dev/Sx4kq9dLmNpQrStU",
+            "shroom://edit/v.myshroom.workers.dev",
+            "shroom://edit/v.myshroom.workers.dev/short",
+            "shroom://edit/v.myshroom.workers.dev/Sx4kq9dLmNpQrStU/more",
+            "shroom://edit/localhost/Sx4kq9dLmNpQrStU",
+            "shroom://edit/v.my shroom.dev/Sx4kq9dLmNpQrStU",
+            "shroom://edit/v.myshroom.workers.dev/Sx4kq9dLmNpQr%2F",
+        ] {
+            assert_eq!(Event::edit_link(not), None, "{not}");
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -230,8 +294,10 @@ pub enum CloudNews {
     /// Wiring ran to its silent self-check.
     Wired(Result<SpaceIdentity, WireFail>),
     /// The page refresh answered (§6.10): `deployed` — this app's page went up over an
-    /// older one.
-    Refreshed { deployed: bool },
+    /// older one; `ai` — whether the page names its videos (N66), when its ping said.
+    Refreshed { deployed: bool, ai: Option<bool> },
+    /// Naming went on or off (N66): the page answers with the AI, or without it.
+    AiSet(bool),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -302,6 +368,12 @@ pub enum LibraryNews {
     Deleted(Vec<RecId>),
     /// The token Mac's cleanup sweep answered (DECISIONS B91) — counts only, for the log.
     Cleaned { under_tombstones: u32, orphans: u32, keys: u32 },
+    /// What the space says is worth deleting, and whether it counts plays (N68).
+    Suggested(crate::world::Suggestions),
+    /// A record's `keep` landed (N68).
+    Kept(RecId),
+    /// The space's play-count switch answered: where it stands now (N68).
+    Plays(bool),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -417,6 +489,38 @@ pub enum StandingAnswer {
     Gone,
 }
 
+/// One step asked for in the editor (N63): an operation on the list (seconds on the
+/// recording's own timeline), or a walk through the steps already taken.
+#[derive(Debug, Clone, PartialEq)]
+pub enum EditStep {
+    Op(shroom_edit::Op),
+    Undo,
+    Redo,
+}
+
+/// What the editor's lane reports (N63), each about the video it was asked for.
+#[derive(Debug, Clone, PartialEq)]
+pub enum EditorNews {
+    /// The record was read: what's saved (`meta.edits`), the markers, the length, and when
+    /// the original goes while it's kept beside the copy (`edits.keep_until`, B197).
+    Opened { rec: RecId, saved: Option<shroom_edit::Saved>, markers: Vec<f64>, duration_sec: Option<f64>, keep_until: Option<crate::time::Wall> },
+    /// The video isn't on this Mac: it's coming from the space, this far.
+    Getting { rec: RecId, pct: u8 },
+    /// The video is on this Mac and its sound is read: the editor can play and draw it.
+    Ready { rec: RecId, duration: f64 },
+    /// The save landed as this revision.
+    Saved { rec: RecId, rev: u64 },
+    /// The final video — the permanent copy being cut and put up — this far (B197).
+    Making { rec: RecId, pct: u8 },
+    /// The permanent copy of this revision is done with: `named` — up and named in the
+    /// record; else dropped, the record having moved on first (a newer save landed, from
+    /// this Mac or another, or the edit went) or the revision leaving nothing out, so there's
+    /// no final video to ask about (B199).
+    CopyDone { rec: RecId, rev: u64, named: bool },
+    /// The upkeep answered (B197 (d)): how many originals it baked, how many copies it made.
+    UpkeepDone { baked: u32, copies: u32 },
+}
+
 /// What the shell says about a report (B180).
 #[derive(Debug, Clone, PartialEq)]
 pub enum ReportNews {
@@ -426,4 +530,67 @@ pub enum ReportNews {
     Sent(crate::report::Kind),
     /// It didn't go through: offline, refused, rate-limited or switched off.
     NotSent(crate::report::Kind),
+}
+
+/// A place in Settings a `shroom://settings/…` link opens (spec N62, DECISIONS B216): General's
+/// switch “Let it start and stop recordings”, the link the `shroom` command's recording
+/// refusal carries. The link only opens and lights it; the person flips it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SettingsSpot {
+    AgentRecording,
+}
+
+impl SettingsSpot {
+    const ALL: [SettingsSpot; 1] = [SettingsSpot::AgentRecording];
+
+    /// The link that opens it.
+    pub const fn link(self) -> &'static str {
+        match self {
+            SettingsSpot::AgentRecording => "shroom://settings/agent",
+        }
+    }
+
+    /// The tab it is on.
+    pub const fn tab(self) -> crate::world::SettingsTab {
+        match self {
+            SettingsSpot::AgentRecording => crate::world::SettingsTab::General,
+        }
+    }
+
+    /// The spot a link opens, read exactly (a trailing slash and the case aside): any other
+    /// link, a query or a fragment included, is not one.
+    pub fn of_link(url: &str) -> Option<SettingsSpot> {
+        let url = url.trim();
+        let url = url.strip_suffix('/').unwrap_or(url);
+        SettingsSpot::ALL.into_iter().find(|s| url.eq_ignore_ascii_case(s.link()))
+    }
+}
+
+/// What the `shroom` command may ask of the recording — each one exactly what its click does
+/// in the popover or the tray (dev/proposals/cli-agent-skill.md §3) — and how a start goes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CliOp {
+    Start(StartAsk),
+    Pause,
+    Resume,
+    Stop,
+}
+
+impl CliOp {
+    /// A start as the popover's: the count, and the label while it records.
+    pub const START: CliOp = CliOp::Start(StartAsk { countdown: true, label: true });
+}
+
+/// How the command's start goes (N62, B216; Bagrat, 2026-10-18): the count, unless
+/// `--no-countdown`; the agent label while the take records, unless `--no-label`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct StartAsk {
+    pub countdown: bool,
+    pub label: bool,
+}
+
+impl Default for StartAsk {
+    fn default() -> StartAsk {
+        StartAsk { countdown: true, label: true }
+    }
 }
