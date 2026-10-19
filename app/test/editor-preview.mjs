@@ -168,12 +168,15 @@ export async function editorLooks({ browser, origin, mediaOrigin, entries, check
       // the footer, then the question in the footer's place; Revert is gone.
       const after = b.after ?? null;
       const asking = after?.state === "asking";
-      const lines = asking
-        ? [after.title, after.line]
+      // ✕ with changes not saved asks in the same place (N70).
+      const closing = b.closing ?? null;
+      const question = asking ? after : closing;
+      const lines = question
+        ? [question.title, question.line]
         : [b.footer, ...(["ready", "opening"].includes(b.media.state) && !after ? [b.hint] : []), ...(b.media.line ? [b.media.line] : []), ...(after?.state === "making" ? [after.line] : []), ...(b.original_kept && !after ? [b.original_kept] : [])];
       const missing = lines.filter((l) => !body.includes(norm(l)));
       check(`${tag}: every line is visible`, missing.length === 0, missing.join(" | "));
-      const want = asking ? [after.keep, after.delete] : [...(b.media.state === "failed" ? [b.media.retry] : []), ...(b.media.state === "failed" || after || !b.revert ? [] : [b.revert]), b.done];
+      const want = asking ? [after.keep, after.delete] : closing ? [closing.discard, closing.keep, closing.save] : [...(b.media.state === "failed" ? [b.media.retry] : []), ...(b.media.state === "failed" || after || !b.revert ? [] : [b.revert]), b.done];
       const shown = (await page.locator("button:visible").evaluateAll((els) => els.map((e) => e.innerText.trim()).filter(Boolean))).map(norm);
       check(`${tag}: the Scene's buttons, no others with words`, shown.sort().join("|") === want.map((x) => x.label).sort().join("|"), shown.join("|"));
       for (const x of want) {
@@ -181,11 +184,16 @@ export async function editorLooks({ browser, origin, mediaOrigin, entries, check
         const ok = (await loc.count()) === 1 && (await loc.isEnabled()) === x.enabled && (await loc.getAttribute("class")).split(/\s+/).includes(x.style);
         check(`${tag}: “${x.label}” ${x.enabled ? "enabled" : "greyed"}, ${x.style}`, ok);
       }
-      if (asking) {
+      if (question) {
         check(`${tag}: the question takes the footer's place`, (await page.locator(".foot").count()) === 0 && (await page.locator(".ask").count()) === 1);
-        const order = await page.locator(".ask button").allInnerTexts();
-        check(`${tag}: Keep for 2 days, then Yes, delete — filled, leading`, order.map(norm).join("|") === [after.keep.label, after.delete.label].join("|") && after.delete.style === "filled", order.join("|"));
-        check(`${tag}: Return isn't Yes, delete (law 9)`, w.ret === null);
+        const order = (await page.locator(".ask button").allInnerTexts()).map(norm);
+        if (asking) {
+          check(`${tag}: Keep for 2 days, then Yes, delete — filled, leading`, order.join("|") === [after.keep.label, after.delete.label].join("|") && after.delete.style === "filled", order.join("|"));
+          check(`${tag}: Return isn't Yes, delete (law 9)`, w.ret === null);
+        } else {
+          check(`${tag}: Discard, Keep editing, then Save — filled, leading`, order.join("|") === [closing.discard.label, closing.keep.label, closing.save.label].join("|") && closing.save.style === "filled" && closing.discard.style === "red-outline", order.join("|"));
+          check(`${tag}: Return is Save, never Discard (law 9); Esc is Keep editing`, canon(w.ret) === canon(closing.save.action) && canon(w.esc) === canon(closing.keep.action));
+        }
       } else {
         const amber = await page.locator(".foot .line").evaluate((e) => getComputedStyle(e).color === getComputedStyle(document.documentElement).getPropertyValue("--amber").trim() || e.classList.contains("amber"));
         check(`${tag}: the footer line's tone`, amber === (b.footer_tone === "amber"));
@@ -464,6 +472,19 @@ export async function editorDrives({ browser, origin, mediaOrigin, entries, chec
   await page.evaluate((w) => window.__emit(w), { ...cutFace, id: "editor-saving", body: { ...cutFace.body, editable: false, can_undo: false, can_redo: false } });
   await page.waitForTimeout(200);
   check("editor: Done stops the preview (nothing plays on while it saves)", playingAtDone && !(await isPlaying()), String(playingAtDone));
+  // ✕'s question the same (N70): playing when it comes, the preview pauses — the edit is
+  // held behind it — and Space plays nothing until it's answered.
+  await page.evaluate((w) => window.__emit(w), cutFace);
+  await page.keyboard.press(" ");
+  await page.waitForTimeout(400);
+  const playingAtAsk = await isPlaying();
+  const asked = face("editor-closing");
+  await page.evaluate((w) => window.__emit(w), { ...cutFace, id: asked.id, ret: asked.ret, esc: asked.esc, body: { ...cutFace.body, editable: false, can_undo: false, can_redo: false, closing: asked.body.closing } });
+  await page.waitForTimeout(200);
+  const pausedAtAsk = !(await isPlaying());
+  await page.keyboard.press(" ");
+  await page.waitForTimeout(300);
+  check("editor: ✕'s question stops the preview, and Space plays nothing while it asks", playingAtAsk && pausedAtAsk && !(await isPlaying()), `${playingAtAsk} ${pausedAtAsk}`);
   await page.evaluate((w) => window.__emit(w), cutFace);
   await page.keyboard.press(" ");
   await page.waitForTimeout(400);
@@ -584,6 +605,22 @@ export async function editorDrives({ browser, origin, mediaOrigin, entries, chec
     await page.getByRole("button", { name: w.body.after.keep.label, exact: true }).click();
     c = await calls(page);
     check("editor-keep-original: Esc, Yes, delete and Keep for 2 days send the Scene's", keyed(c, "esc") && acted(c, w.body.after.delete.action) && acted(c, w.body.after.keep.action), JSON.stringify(c));
+    await ctx.close();
+  }
+  // ✕'s question (N70): Return and Esc go to the Scene, and each button sends its own.
+  {
+    const w = face("editor-closing");
+    const { ctx, page } = await openEditor(browser, origin, mediaOrigin, w);
+    await clear(page);
+    await page.keyboard.press("Enter");
+    await page.keyboard.press("Escape");
+    for (const x of [w.body.closing.discard, w.body.closing.keep, w.body.closing.save]) await page.getByRole("button", { name: x.label, exact: true }).click();
+    const c = await calls(page);
+    check(
+      "editor-closing: Return, Esc, Discard, Keep editing and Save send the Scene's",
+      keyed(c, "return") && keyed(c, "esc") && acted(c, w.body.closing.discard.action) && acted(c, w.body.closing.keep.action) && acted(c, w.body.closing.save.action),
+      JSON.stringify(c),
+    );
     await ctx.close();
   }
   // Getting: Space does nothing, the play button waits.

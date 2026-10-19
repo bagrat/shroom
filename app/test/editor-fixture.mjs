@@ -12,6 +12,8 @@ const FOOTER = "Your link stays the same. Viewers see the edit once it's saved."
 const DONE = { do: "editor-done" };
 const CLOSE = { do: "editor-close" };
 const KEEP = { do: "keep-original" };
+const KEEP_EDITING = { do: "editor-keep-editing" };
+const DISCARD = { do: "editor-discard" };
 
 /** What a list plays (the core's `keep`): the trim minus the applied cuts. */
 function keepOf(list) {
@@ -52,6 +54,7 @@ export function editorScenes(
     done = button("Done", DONE, "filled"),
     original_kept = null,
     after = null,
+    closing = null,
     revert = button("Revert to original", { do: "editor-revert" }, "plain", editable && list !== untouched && !!list),
   } = {}) => {
     const keep = list ? keepOf(list) : [];
@@ -75,6 +78,7 @@ export function editorScenes(
       done,
       original_kept,
       after,
+      closing,
     };
   };
   const greyed = (label) => button(label, DONE, "filled", false);
@@ -177,5 +181,30 @@ export function editorScenes(
         { ret: null, esc: KEEP },
       ),
     },
+    // ✕ with changes not saved (N70): “Save your edit?” in the footer's place, the edit held
+    // behind it — Discard (red, a click only), Keep editing (Esc), Save (Return) — from the
+    // editor, and after a save that didn't go through.
+    ...[
+      ["editor-closing", {}],
+      ["editor-closing-after-a-failed-save", { footer: "Couldn't save your edit. Check your connection, then press Done again.", footer_tone: "amber" }],
+    ].map(([variant, more]) => ({
+      variant,
+      scene: window(
+        "editor-closing",
+        body({
+          editable: false,
+          can_undo: false,
+          ...more,
+          closing: {
+            title: "Save your edit?",
+            line: "What you've changed isn't saved yet.",
+            discard: button("Discard", DISCARD, "red-outline"),
+            keep: button("Keep editing", KEEP_EDITING, "plain"),
+            save: button("Save", DONE, "filled"),
+          },
+        }),
+        { ret: DONE, esc: KEEP_EDITING },
+      ),
+    })),
   ].map((e) => ({ window: "editor", ...e }));
 }
