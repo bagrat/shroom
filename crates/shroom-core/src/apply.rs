@@ -1976,9 +1976,13 @@ fn window_closed(w: &mut World, kind: WindowKind) -> Out {
 // ── the editor (N63, B195) ──
 
 /// Edit… on a live row: the editor opens on it and asks for its record and its video — or,
-/// open already, comes forward on the video it holds (one at a time).
+/// open already, comes forward on the video it holds (one at a time), saying why when that's
+/// another video and its changes are still to save, as the page's Edit does (N69).
 fn open_editor(w: &mut World, rec: RecId) -> Out {
-    if w.session.fields.editor.is_some() {
+    if let Some(e) = w.session.fields.editor.as_mut() {
+        if e.rec != rec && e.save == EditorSave::Idle {
+            e.elsewhere = true;
+        }
         open_window(w, WindowKind::Editor);
         return (vec![Effect::Shell(ShellCmd::OpenEditor)], Arm::named("editor-forward"));
     }
