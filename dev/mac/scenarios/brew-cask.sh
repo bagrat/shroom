@@ -1,8 +1,9 @@
 # Install via Homebrew, for real: the cask (installer/homebrew/shroom.rb) rendered for the
 # latest public release, in a local tap, then `brew install --cask` as a person would run
 # it. Passes when it lands in ~/Applications, carries no quarantine mark, is the release's
-# signer, and opens; when a cask whose pin doesn't match installs nothing; when a copy the
-# install line placed is adopted; and when `brew uninstall --zap` leaves nothing behind.
+# signer, opens and, when the release carries it, has its shroom command linked; when a
+# cask whose pin doesn't match installs nothing; when a copy the install line placed is
+# adopted; and when `brew uninstall --zap` leaves nothing behind.
 set -u
 export HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 HOMEBREW_NO_ENV_HINTS=1 HOMEBREW_NO_ANALYTICS=1
 TAP=shroom-check/local
@@ -40,6 +41,28 @@ open "$APP"; sleep 8
 running "$APP" && echo "opened: it runs" || no "it didn't open"
 quit
 
+echo "── the shroom command (spec N62, DECISIONS B217)"
+# A release whose manifest says it carries the command gets the cask's `binary`: Homebrew
+# links `shroom` to the app's own, and it answers with the release's version.
+CMD="$(brew --prefix)/bin/shroom"
+carries=$(curl -fsSL https://github.com/bagrat/shroom/releases/latest/download/manifest.txt | sed -n 's/^cli=//p')
+version=$(sed -n 's/^  version "\(.*\)"$/\1/p' "$casks/shroom.rb")
+if [ "$carries" = shroom-cli ]; then
+  grep -E '^  binary ' "$casks/shroom.rb" || no "the cask has no binary for a release that carries the command"
+  to=$(readlink "$CMD" 2>/dev/null)
+  [ "$to" = "$APP/Contents/MacOS/shroom-cli" ] && echo "command: $CMD → $to" || no "Homebrew linked no command to the app's own (${to:-nothing at $CMD})"
+  said=$("$CMD" --version 2>&1)
+  echo "command: $said"
+  case $said in
+    "shroom $version") ;;
+    # 0.1.25's command named its crate's version; #73 fixed it from 0.1.26.
+    "shroom 0.1.0") [ "$version" = 0.1.25 ] && echo "  (0.1.25's known slip: fixed from 0.1.26)" || no "the command says $said, not shroom $version" ;;
+    *) no "the command says ${said:-nothing}, not shroom $version" ;;
+  esac
+else
+  echo "the release doesn't carry the command: no binary (cask: $(grep -cE '^  binary ' "$casks/shroom.rb"))"
+fi
+
 echo "── control (for the record): the same app with the mark Homebrew adds, opened"
 ctl=$(mktemp -d)/shroom.app
 ditto "$APP" "$ctl"
@@ -58,6 +81,7 @@ mkdir -p "$HOME/.shroom" "$HOME/Library/Caches/am.shroom"; : >"$HOME/.shroom/mar
 brew uninstall --zap --cask "$TAP/shroom"; rc=$?
 [ "$rc" = 0 ] || no "brew uninstall exited $rc"
 for p in "$APP" "$HOME/.shroom" "$HOME/Library/Caches/am.shroom"; do [ -e "$p" ] && no "left: $p"; done
+{ [ -e "$CMD" ] || [ -L "$CMD" ]; } && no "left: $CMD"
 [ "$bad" = 0 ] && echo "zap: nothing left"
 
 echo "── a cask whose pin isn't the signer's installs nothing"
