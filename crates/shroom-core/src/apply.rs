@@ -1284,8 +1284,22 @@ fn act(w: &mut World, action: Action) -> Out {
         // ── the editor (N63) ──
         Action::EditorDone => editor_done(w),
         Action::EditorRevert => edit_step(w, EditStep::Op(shroom_edit::Op::Revert)),
-        // The close prompt (N70): not asked yet.
-        Action::EditorKeepEditing | Action::EditorDiscard => (vec![], Arm::DROPPED),
+        Action::EditorKeepEditing => {
+            // Keep editing (Esc; N70): the question goes, every change still there, back to
+            // the face it asked from.
+            let Some(e) = w.session.fields.editor.as_mut().filter(|e| e.closing) else { return (vec![], Arm::DROPPED) };
+            e.closing = false;
+            let edge = if e.save == EditorSave::Failed { ("editor-closing", "editor-save-failed") } else { ("editor-closing", "editor") };
+            (vec![], Arm { name: "editor-close-kept", edge: Some(edge) })
+        }
+        Action::EditorDiscard => {
+            // Discard (a click only; N70): the window closes, and what wasn't saved is
+            // dropped — the video stays as it was last saved. Nothing is coming to stop.
+            if !w.session.fields.editor.as_ref().is_some_and(|e| e.closing) {
+                return (vec![], Arm::DROPPED);
+            }
+            (close_editor(w, false), Arm { name: "editor-discarded", edge: Some(("editor-closing", "library")) })
+        }
         Action::EditorRetry => {
             // Try again: the video is asked for again — the person's retry, never one behind it.
             let Some(e) = w.session.fields.editor.as_mut().filter(|e| e.media == EditorMedia::Failed) else { return (vec![], Arm::DROPPED) };
@@ -2226,8 +2240,8 @@ fn window_closed(w: &mut World, kind: WindowKind) -> Out {
             w.session.fields.feedback = FeedbackFields::default();
             (vec![], Arm::named("feedback-closed"))
         }
-        // The editor's ✕ is Done (N63): it may stay open to save.
-        WindowKind::Editor => editor_done(w),
+        // The editor's ✕ asks first with changes not saved (N70); otherwise it's Done.
+        WindowKind::Editor => editor_close(w),
     }
 }
 
@@ -2409,7 +2423,26 @@ fn editor_video_gone(w: &mut World, recs: &[RecId]) -> Vec<Effect> {
     close_editor(w, true)
 }
 
-/// Done — its button, Return, or the window's ✕: with no video to save over, the window
+/// The window's ✕ (N70): with changes not saved it asks first — Save, Keep editing or
+/// Discard — the edit held behind the question, and ✕ again leaves the question as it is.
+/// Otherwise it is Done: with nothing to save the window closes, while the edit saves it
+/// waits, and after a save it is Close.
+fn editor_close(w: &mut World) -> Out {
+    if let Some(e) = w.session.fields.editor.as_mut() {
+        if e.closing {
+            return (vec![], Arm::DROPPED);
+        }
+        if crate::derive::editor::editable(e) && e.history.as_ref().is_some_and(|h| h.dirty()) {
+            let edge = if e.save == EditorSave::Failed { ("editor-save-failed", "editor-closing") } else { ("editor", "editor-closing") };
+            e.closing = true;
+            return (vec![], Arm { name: "editor-close-asked", edge: Some(edge) });
+        }
+    }
+    editor_done(w)
+}
+
+/// Done — its button, Return, the close prompt's Save (N70), or the window's ✕ when there's
+/// nothing to ask about: with no video to save over, the window
 /// closes at once and what's coming stops; with nothing changed it closes; with changes, the
 /// checked list is saved as the next revision, and the window stays until the save answers.
 /// While it saves, nothing. After the save (the window's ✕ only: Done is gone by then), it
@@ -2446,9 +2479,15 @@ fn editor_done(w: &mut World) -> Out {
     let rec = e.rec.clone();
     if let Some(e) = w.session.fields.editor.as_mut() {
         e.save = EditorSave::Saving;
+        e.closing = false;
     }
     w.inflight.failures.remove(&Op::EditorSave);
-    let edge = if face == "editor-save-failed" { ("editor-save-failed", "editor-saving") } else { ("editor", "editor-saving") };
+    let edge = match face {
+        // The close prompt's Save (N70).
+        "editor-closing" => ("editor-closing", "editor-saving"),
+        "editor-save-failed" => ("editor-save-failed", "editor-saving"),
+        _ => ("editor", "editor-saving"),
+    };
     (vec![Effect::Editor(EditCmd::Save { rec, saved })], Arm { name: "editor-saving", edge: Some(edge) })
 }
 
@@ -2457,6 +2496,10 @@ fn editor_done(w: &mut World) -> Out {
 /// refuses what changes nothing or leaves too little (`edit-refused`).
 fn edit_step(w: &mut World, step: EditStep) -> Out {
     let open = w.window_visible(WindowKind::Editor);
+    // While ✕ asks, the edit is held (N70).
+    if w.session.fields.editor.as_ref().is_some_and(|e| e.closing) {
+        return (vec![], Arm::DROPPED);
+    }
     // The next change puts the page's line away (N69).
     if let Some(e) = w.session.fields.editor.as_mut() {
         e.elsewhere = false;
