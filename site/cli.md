@@ -1,6 +1,6 @@
 ---
 name: shroom
-description: Use shroom, the Mac screen recorder, from the command line — list the person's videos, get or open links, rename, delete, find old videos worth cleaning up, see who is in their space, invite one person or a whole team at once, and start or stop a recording. Use when the person asks you to do something with their shroom videos or recordings.
+description: Use shroom, the Mac screen recorder, from the command line — list the person's videos, get or open links, rename, delete, find old videos worth cleaning up, see who is in their space, invite one person or a whole team at once, trim or cut a video, and start or stop a recording. Use when the person asks you to do something with their shroom videos or recordings.
 ---
 
 # Using shroom for the person you're helping
@@ -41,6 +41,7 @@ wording of `message`; pass `message` on to the person when it helps.
 | Cancel that invite | `shroom invite cancel <invite id> --json` |
 | Remove Sam from the space | `shroom members remove <member id> --dry-run --json`, then ask, as for a delete |
 | Start / pause / resume / stop recording | `shroom record start --json` (and so on) |
+| Cut that part out, trim the start | see *Editing* below |
 
 A video is named by its id, its link, or words from its title (in any order). When words match more
 than one, you get `ambiguous` with the matches: show them, ask which, then use the id.
@@ -92,6 +93,25 @@ safe — nothing is done twice. Run it with `--dry-run` first whenever it change
 
 A batch answers `partial` (exit 11) when some items didn't go through: the answer still
 lists every item. Tell them which failed and why, and run it again for those only.
+
+## Editing
+
+An edit changes what the video's link plays, for everyone who has it, from its next load.
+The link stays the same, and the recording itself is kept for a while, so it can go back.
+
+1. `shroom edit <id> --json` says what plays now: `plays_sec` of `recording_sec`, where it
+   starts and ends (`trim`), and each cut by its `id` (`m1`… made by hand, `v1`… shroom
+   suggested from their voice; a suggestion has `"applied": false`).
+2. Times are on the recording itself: seconds (`72.5`) or minutes:seconds (`1:12.5`).
+   `shroom edit <id> cut <start> <end> --dry-run --json` (or `trim <in> <out>`) says what it
+   would play. Tell them, and run it without `--dry-run` when they agree.
+3. One change a call: `cut`, `trim`, `put-back <cut>` (that cut plays again), `apply <cut>`
+   (take a suggested cut), `resize <cut> <start> <end>`, `revert` (the whole recording
+   again). There's no undo: `put-back` or `revert` is how back.
+4. shroom then makes the final video in the background, opening the app if needed
+   (`--no-launch` leaves it closed): `"final": "asked"`. With `"final": "later"`, run
+   `shroom edit <id> finish --json` once shroom is open. Until it's made, the link plays the
+   edit all the same.
 
 ## Rules
 
@@ -147,6 +167,7 @@ lists every item. Tell them which failed and why, and run it again for those onl
 | `app_unreachable` | shroom isn't running or didn't answer. Ask them to open it. |
 | `usage` | Your command was wrong: `shroom --help` and fix it. |
 | `partial` | Some of a batch went through, some didn't: see each item's `status` and `error`. |
+| `cant_edit` | That edit can't be made, and nothing changed: `reason` says why (`leaves_too_little`, `too_short`, `nothing_changes`, `out_of_range`, `no_such_cut`). With `editor_open` it's open in shroom's editor on their Mac: they finish there. |
 | `failed` | Something else went wrong. Pass on `message`; don't keep retrying. |
 
 Don't fix or work around shroom: no editing its files, no calling its space directly,

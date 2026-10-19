@@ -872,7 +872,7 @@ fn present_window(app: &AppHandle, rt: &Runtime, kind: WindowKind, now: Option<(
 }
 
 /// A new editor window goes down and to the right of the newest other editor window open,
-/// as the Mac stacks documents (N73, B225 (c)), kept on that screen; with none open it
+/// as the Mac stacks documents (N73, B227 (c)), kept on that screen; with none open it
 /// stays where it opened.
 fn cascade(app: &AppHandle, w: &tauri::WebviewWindow, id: EditorId) {
     let windows = app.webview_windows();

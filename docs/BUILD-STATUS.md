@@ -63,8 +63,10 @@
    [#58](https://github.com/bagrat/shroom/pull/58) *(the shroom command for coding agents)*):
    the command inside the app and on PATH, many at once, the app's control socket behind
    General's switch — its refusal carrying the link that opens Settings at the switch — the
-   start without the count and the agent label, and the guide at shroom.am/cli. When it
-   ships is his call (item 37).
+   start without the count and the agent label, and the guide at shroom.am/cli. Shipped in
+   0.1.25 (2026-10-19). Then `shroom edit` (N72, B225, item 42), ratified 2026-10-19: what a video's edit
+   is, one change a call saved as the editor's Done saves, and the app making its final
+   video.
 
 
 ## Waiting for Bagrat
@@ -324,7 +326,7 @@ and edits on the share page)*)**
     boards as drawn, option A and the tooltip, 2026-10-18): the scissors open the video in
     the editor through `shroom://edit/…`, or the popover says, once, why this Mac can't.
     Its spec row and words are provisional, for him to ratify. Since 2026-10-19 each video
-    opens in an editor window of its own (N73, B225, ratified by Bagrat as drawn), so its
+    opens in an editor window of its own (N73, B227, ratified by Bagrat as drawn), so its
     line for another video is gone; and ✕ with changes not saved asks first (N71, B223).
 40. **Known gaps**, none blocking:
     - The final video's bar counts the upload by file, not by byte: once the cut is done it
@@ -345,8 +347,8 @@ and edits on the share page)*)**
     drive, 22 checks). Waits only on his timing of the release, with the other four builds.
 
 41. **The `shroom` command (N62, B215–B219), built in full on his ask and ratified
-    (2026-10-18): when it ships.** Merging deploys shroom.am/cli, and the cask links the
-    command from the first release that carries it. He ratified N62 and its decisions, the
+    (2026-10-18) — shipped in 0.1.25 (2026-10-19).** shroom.am/cli is live, and the install
+    line and the cask link the command (the hosted Mac's install scenarios on v0.1.25). He ratified N62 and its decisions, the
     Settings card's words as built (he'll tweak them once he uses it), and the command's
     words and the guide as built; the refusal's three lines, the switch's label and the
     agent label's board he had approved as drawn. The security review's one open point, the
@@ -354,3 +356,12 @@ and edits on the share page)*)**
     accepted as a risk (B216). Proven: CI, the hosted Mac's `cli-socket`, `settings-link`,
     `settings`, `cli-label` and `take-left-out` drives, and the full e2e's command leg on
     the test account.
+
+42. **`shroom edit` (N72, B225), ratified by Bagrat as built** (2026-10-19; the
+    orchestrator, 2026-10-19: build it now the editor has shipped). The command says what a video's edit
+    is and makes one change a call — trim, cut, put-back, apply, resize, revert — the
+    editor's own steps, saved as its Done saves, through the space's page; the running app
+    is asked whether the video is open in an editor window, and to make the final video. Ratified with it: its
+    words (`crates/shroom-cli/src/say.rs`, the edit section), the guide's *Editing* section,
+    and B225's calls — the command saves itself rather than through the app, refuses while
+    the video is open in an editor window, and never asks “Delete the original?” (Keep for 2 days).

@@ -14,6 +14,8 @@
 //      for — and the stop answers with its link, which goes live.
 //   5. The video through the page: `info`, `rename`, then `delete`, which asks first
 //      (needs_confirmation), dry-runs, and deletes on --yes; the link then says it's gone.
+//   6. Before the delete, an edit (spec N72): `edit` reads it, `edit cut 1 2` saves a cut
+//      through the page and asks the app for the final video, and the app makes it.
 //
 //   node tests/e2e/cli-leg.mjs
 //
@@ -158,6 +160,20 @@ try {
   check("info finds it, with a length", info.code === 0 && info.json.video?.state === "live" && info.json.video?.duration_sec > 0, info);
   const renamed = shroom("rename", take ?? "-", "Recorded by the shroom command");
   check("rename saves the title", renamed.code === 0 && renamed.json.title === "Recorded by the shroom command", renamed);
+
+  // 6. An edit (spec N72): read, a second cut out — saved through the page, the app asked
+  // whether the video is open in its editor, then for the final video — and the app making it.
+  step("edit");
+  const unedited = shroom("edit", take ?? "-");
+  check("edit says what plays, not edited yet", unedited.code === 0 && unedited.json.edit?.edited === false && unedited.json.edit?.plays_sec > 2, unedited);
+  const cut = shroom("edit", take ?? "-", "cut", "1", "2");
+  check("edit cut saves it and asks the app for the final video", cut.code === 0 && cut.json.saved === true && cut.json.final === "asked" && Math.abs(cut.json.edit?.plays_sec - (unedited.json.edit?.plays_sec - 1)) < 0.01, cut);
+  let made = null;
+  for (const until = Date.now() + 240_000; take && Date.now() < until; await sleep(3000)) {
+    const r = shroom("edit", take);
+    if (r.json.edit?.final_video === "made") { made = r; break; }
+  }
+  check("the app made the final video", made?.json.edit?.cuts?.[0]?.id === "m1", made ?? "not made in 4 min");
   step("delete");
   const asked = shroom("delete", take ?? "-");
   check("delete without --yes asks first (needs_confirmation, exit 7)", asked.code === 7 && asked.json.error === "needs_confirmation", asked);

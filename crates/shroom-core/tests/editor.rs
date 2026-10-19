@@ -1214,7 +1214,7 @@ fn closing_while_the_video_comes_stops_it() {
     assert_eq!(r.arm.edge, Some(("editor", "library")));
 }
 
-// ── one window per video (N73, B225) ──
+// ── one window per video (N73, B227) ──
 
 /// The second window a run opens.
 const WIN2: EditorId = EditorId(2);

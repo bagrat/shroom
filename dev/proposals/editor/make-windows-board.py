@@ -3,7 +3,7 @@
 Bagrat asked, 2026-10-19, whether each video could have its own editor window, the Mac's
 document way, instead of one window that switches or says it's busy: Edit on a video not
 open opens a window of its own; on one already open, its window comes forward. He chose it
-as drawn the same day, and it was built so (N73, B225); it adds no words.
+as drawn the same day, and it was built so (N73, B227); it adds no words.
 The helpers are the editor column's (make-boards.py, make-edit-boards.py,
 make-close-board.py and make-switch-board.py beside this file)."""
 
@@ -88,7 +88,7 @@ def board():
 {mb.strip("Edit on a video that's open: its window comes forward", forward, w=STRIP_W)}
 {mb.strip("Each window on its own: one making its final video, another asking before it closes", own, w=STRIP_W)}
 {eb.note("Quit and Update: every window's changes are saved first, as now (Bagrat, 2026-10-19). Deleting a video closes its window, and no other. With a take open, nothing new opens until it ends (law 4): an Edit pressed meanwhile waits, as now.", 12)}
-{eb.note("Built as drawn (N73, B225; Bagrat chose it, 2026-10-19): one window per video, the Mac's document way, where the editor was one window, one video at a time (B195 (a)). No new words: one line went.", 12)}
+{eb.note("Built as drawn (N73, B227; Bagrat chose it, 2026-10-19): one window per video, the Mac's document way, where the editor was one window, one video at a time (B195 (a)). No new words: one line went.", 12)}
 </div>'''
     return mb.page("shroom Editor, one window per video", w, h, body)
 

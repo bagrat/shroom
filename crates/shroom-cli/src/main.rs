@@ -10,6 +10,7 @@
 
 mod app;
 mod batch;
+mod edit;
 mod home;
 mod log;
 mod out;
@@ -188,6 +189,7 @@ fn run(a: &Args) -> Result<Done, Fail> {
             _ => invite(a, rest),
         },
         "record" => record(a, rest),
+        "edit" => edit::edit(a, rest),
         other => Err(Fail::Usage(say::not_a_command(other))),
     }
 }

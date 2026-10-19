@@ -978,12 +978,15 @@ pub enum Op {
 }
 
 impl Op {
-    /// Deadlines (DEVIATIONS #8): recorder steps 5 s; the stop's reach probe 600 ms;
+    /// Deadlines (DEVIATIONS #8): a recorder's start 5 s, and a pause, resume or stop under
+    /// way 60 s — a starved encoder can take seconds to end a take, and the take is lost
+    /// if that reads as a dead capture (DECISIONS B226); the stop's reach probe 600 ms;
     /// cloud calls 60 s; wiring 3 min. Updates (DECISIONS B34): the check 10 s, the
     /// download 30 min, the quit before the swap 30 s.
     pub fn deadline_ms(self) -> u64 {
         match self {
-            Op::RecStart | Op::RecPause | Op::RecResume | Op::RecFinalize | Op::Prime => 5_000,
+            Op::RecStart | Op::Prime => 5_000,
+            Op::RecPause | Op::RecResume | Op::RecFinalize => 60_000,
             Op::Reach => 600,
             Op::OpenPage | Op::Upload | Op::Validate | Op::SaveToken | Op::Sweep | Op::Claim => 60_000,
             Op::Wire | Op::Refresh | Op::Ai => 180_000,

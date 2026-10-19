@@ -539,6 +539,26 @@ fn cli(w: &mut World, id: u64, op: crate::event::CliOp) -> Out {
     if w.space.identity.is_none() {
         return refuse(w, "not_set_up");
     }
+    // `shroom edit` (N72) changes a video's edit itself, through the space's page; it asks
+    // here first, and after it saved. No recording, so no switch to ask. While that video is
+    // open in an editor window, that window's Done is the edit: the command changes nothing,
+    // and nothing is owed.
+    let editing = |w: &World, rec: &RecId| editor_of(w, rec).is_some();
+    match op {
+        CliOp::Editing { rec } if editing(w, &rec) => return refuse(w, "editor_open"),
+        CliOp::Editing { .. } => return (vec![answer(w, None, None)], Arm::named("cli-editing")),
+        CliOp::Copy { rec, .. } if editing(w, &rec) => return refuse(w, "editor_open"),
+        // Its final video is owed, as after the editor's Done: cut when the lane is free, one
+        // at a time and never over a take (`settle::due_edit_copy`), the video coming from
+        // the space first when this Mac hasn't got it. A newer revision already owed stays.
+        CliOp::Copy { rec, rev } => {
+            if !w.library_ops.copies.get(&rec).is_some_and(|c| c.rev >= rev) {
+                w.library_ops.copies.insert(rec, CopyOwed { rev, asked: false });
+            }
+            return (vec![answer(w, None, None)], Arm::named("cli-copy-owed"));
+        }
+        _ => {}
+    }
     if !w.prefs.agent_recording {
         return refuse(w, "recording_off");
     }
@@ -549,6 +569,7 @@ fn cli(w: &mut World, id: u64, op: crate::event::CliOp) -> Out {
     }
     // The count, and the recorder starting after it: the take is on its way.
     let coming = w.session.arming.is_some() || matches!(phase, Some(Phase::Starting));
+    let stop = op == CliOp::Stop;
     let (mut fx, arm) = match op {
         CliOp::Start(ask) => {
             if w.take_open() {
@@ -603,6 +624,7 @@ fn cli(w: &mut World, id: u64, op: crate::event::CliOp) -> Out {
             Some(Phase::Paused(_)) => return refuse(w, "not_ready"),
             _ => return refuse(w, "no_take"),
         },
+        CliOp::Editing { .. } | CliOp::Copy { .. } => unreachable!("an edit's asks are answered above"),
         CliOp::Stop => match phase {
             Some(Phase::Paused(_)) if w.session.confirm.is_some() => return refuse(w, "not_ready"),
             Some(Phase::Paused(_)) => act(w, Action::Stop),
@@ -615,7 +637,7 @@ fn cli(w: &mut World, id: u64, op: crate::event::CliOp) -> Out {
             _ => return refuse(w, "no_take"),
         },
     };
-    let link = (op == CliOp::Stop).then(|| crate::derive::cli_link(w)).flatten();
+    let link = stop.then(|| crate::derive::cli_link(w)).flatten();
     fx.push(answer(w, None, link));
     (fx, arm)
 }

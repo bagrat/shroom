@@ -156,6 +156,30 @@ impl Door {
         Ok(())
     }
 
+    /// A video's record as it is now, and the `manage` client it was read with — for an edit
+    /// (spec N72), saved through the same door a rename goes (B215).
+    pub fn record(&self, id: &str) -> Result<(Client, shroom_upload::meta::Meta), Fail> {
+        let s3 = self.manage(id)?;
+        match library::record(&s3, id).map_err(upload_fail)? {
+            Some(m) if m.state != State::Deleted => Ok((s3, m)),
+            _ => Err(Fail::NotFound(say::already_gone())),
+        }
+    }
+
+    /// Saves an edit as the editor's Done saves it (B195): the next revision, the last save
+    /// winning — refused, unchanged, once the video plays something other than what `read`
+    /// said (an edit became the video since, B197). Returns the revision saved.
+    pub fn save_edit(&self, s3: &Client, id: &str, list: &shroom_edit::EditList, read: &shroom_upload::meta::Meta) -> Result<u64, Fail> {
+        match library::save_edits_over(s3, id, list, 0, Some(&library::Plays::of(read))) {
+            Ok(rev) => Ok(rev),
+            Err(shroom_upload::upload::UploadError::MovedOn) => {
+                crate::log::note("storage moved-on");
+                Err(Fail::Refused(say::edit_moved_on()))
+            }
+            Err(e) => Err(upload_fail(e)),
+        }
+    }
+
     /// A member invite for `name` (owner-class, §4.12): the code is made here and only
     /// its hash is sent; the link is `https://<host>/join/<code>`, good for 7 days, once.
     pub fn invite(&self, name: &str) -> Result<(shroom_cloud::member::InviteRow, String), Fail> {

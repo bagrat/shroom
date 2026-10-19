@@ -1828,7 +1828,7 @@ fn editor(d: &Drive) -> Result<(), String> {
     let (one, two) = (editor_window(d, first), editor_window(d, second));
     d.fact_like("two_windows", serde_json::json!({ "order": editor_order(d).iter().map(|id| id.0).collect::<Vec<_>>(), "first": one.map(|f| f.0), "second": two.map(|f| f.0), "screen": two.map(|f| f.1) }));
     d.check(
-        "… two windows on screen, the newer in front, down and to the right of the first where the screen has room (B225 (c))",
+        "… two windows on screen, the newer in front, down and to the right of the first where the screen has room (B227 (c))",
         order.is_some() && matches!((one, two), (Some(a), Some(b)) if cascaded(a.0, b.0, b.1)),
         format!("order {:?}, {one:?} then {two:?}", editor_order(d)),
     );
@@ -1838,7 +1838,7 @@ fn editor(d: &Drive) -> Result<(), String> {
     };
     let titles = [title(first), title(second)];
     d.check("… each titled by its video", titles == [Some(format!("Edit — {}", HERE.1)), Some(format!("Edit — {}", AWAY.1))], format!("{titles:?}"));
-    // Each window plays its own video, and only its own (B225 (c)).
+    // Each window plays its own video, and only its own (B227 (c)).
     let label = |id: EditorId| crate::runtime::presenter::label(WindowKind::Editor(id)).into_owned();
     let plays = |id: EditorId, rec: &RecId| poll(10, || editor_layout_in(d, &label(id)).ok().filter(|l| l["src"].as_str().is_some_and(|s| s.contains(&rec.0)) && l["video"].get(1).and_then(serde_json::Value::as_u64).is_some_and(|r| r >= 1)));
     d.check("… each plays its own video", plays(first, &here).is_some() && plays(second, &away).is_some(), "");
