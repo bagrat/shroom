@@ -1,7 +1,7 @@
 {
   "name": "shroom-app",
   "private": true,
-  "version": "0.1.25-early.2",
+  "version": "0.1.25-early.3",
   "type": "module",
   "scripts": {
     "dev": "vite",
