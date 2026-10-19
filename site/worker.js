@@ -28,6 +28,10 @@
 //                Not counted: the landing's own visit is
 //   /next        where the landing with the hero waited, hidden, until it became /: a
 //                permanent redirect to /, not counted (B222)
+//   /download/v<version>/<file>
+//                a release's file, by a redirect to the same file on GitHub: what the installer
+//                and the app's updater download through, so each install and update is counted
+//                (DECISIONS B228). `?via=install|update` says which; it may carry `?ref=` too
 //   POST /report a report or feedback, emailed to the one inbox that reads them and kept
 //                nowhere (site/report.js); the only address that takes anything in
 //   www.…        a permanent redirect to shroom.am
@@ -38,7 +42,8 @@
 // Analytics Engine (`STATS`), holding which address, which answer, a coarse kind of client,
 // the host of the page that linked here, the country, and the link's own `?ref=` tag (or
 // `utm_source`) — never an IP, a User-Agent, a full referring address, a cookie or anything
-// that ties two requests together.
+// that ties two requests together. A download's row adds what it was for (`via`), the
+// version and the file — the same for everyone who gets that release.
 
 import { handleReport } from "./report.js";
 
@@ -119,13 +124,42 @@ export function refTag(url) {
   return /^[a-z0-9-]+$/.test(tag) ? tag : "";
 }
 
-/** The one row counted for an answer: [route, answer, client, referrer host, country, ref tag].
+/** The one row counted for an answer: [route, answer, client, referrer host, country, ref tag]
+ * (a download adds three, `download` below).
  * @param {Request} request @param {string} route @param {string} type */
 export function row(request, route, type, url = new URL(request.url)) {
-  const answer = type === HTML ? "html" : type === MARKDOWN ? "markdown" : "text";
+  const answer = type === HTML ? "html" : type === MARKDOWN ? "markdown" : type === "redirect" ? "redirect" : "text";
   // @ts-ignore — `cf` is Cloudflare's addition to Request.
   const country = String(request.cf?.country ?? "");
   return [route, answer, clientKind(request), referrerHost(request), country, refTag(url)];
+}
+
+/** Where releases live: a download's redirect goes only here.
+ * (`shroom_update::RELEASES` and the installer's default.) */
+const RELEASES = "https://github.com/bagrat/shroom/releases";
+
+/** `/download/v<version>/<file>`: a 302 to that file on GitHub, counted. A version and a
+ * file name in the release's own shapes only (`1.2.3` or `1.2.3-early.4`; letters, digits,
+ * dots, dashes and underscores), so the redirect can only ever name one of our releases'
+ * files; anything else is a 404. Never cached, so each download is counted once.
+ * @param {any} env @param {Request} request @param {URL} url */
+function download(env, request, url) {
+  const m = url.pathname.match(/^\/download\/v(\d+\.\d+\.\d+(?:-early\.[1-9]\d*)?)\/([A-Za-z0-9_-][A-Za-z0-9._-]*)$/);
+  if (!m) return null;
+  const [, version, file] = m;
+  if (request.method === "GET") {
+    try {
+      const via = url.searchParams.get("via") ?? "";
+      const blobs = [...row(request, "/download", "redirect", url), /^(install|update)$/.test(via) ? via : "", version, file];
+      env.STATS?.writeDataPoint({ indexes: ["/download"], blobs });
+    } catch {
+      // Counting never stands in the way of a download.
+    }
+  }
+  return new Response(null, {
+    status: 302,
+    headers: { location: `${RELEASES}/download/v${version}/${file}`, "cache-control": "no-store", "x-robots-tag": "noindex, nofollow" },
+  });
 }
 
 /** @param {number} status @param {Record<string, string>} [extra] */
@@ -285,7 +319,7 @@ export default {
       case "/how-to.mp4":
         return video(env, request, url, `/_${url.pathname}`);
       default:
-        return whatsNew(env, request, url) ?? plain(404);
+        return whatsNew(env, request, url) ?? download(env, request, url) ?? plain(404);
     }
   },
 };

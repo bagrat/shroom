@@ -880,7 +880,9 @@ text, never a redirect; `/agent` is the coding agents' page. `POST /report`
 (`site/report.js`, D:B180) is the one address that takes anything in: a report or feedback,
 checked (size, shape, rate, Turnstile from `/feedback`), its log cleaned (`site/clean.js`),
 emailed through the `send_email` binding to the inbox in the secret `REPORT_TO`, and kept
-nowhere. `/feedback` is its form.
+nowhere. `/feedback` is its form. `/download/v<version>/<file>` (D:B228) is a counted `302`
+to that release file on GitHub, `?via=install|update` saying what it was for; the site's
+counts leave out what our own runs tag `?ref=ci` or `?ref=test` (`dev/stats/collect.mjs`).
 
 `installer/install.sh` (D:B29, B44, B125), all inside `main()`:
 1. Refuse a non-Mac, macOS below `MIN_MACOS` (14) before any fetch, and Intel ("no build").

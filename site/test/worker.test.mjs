@@ -357,6 +357,66 @@ describe("what's counted", () => {
   });
 });
 
+describe("a release's download (DECISIONS B228)", () => {
+  const GH = "https://github.com/bagrat/shroom/releases/download";
+  const down = async (/** @type {string} */ path, method = "GET", headers = { "user-agent": "curl/8.7.1" }) => {
+    counted = [];
+    const res = await get(path, headers, method);
+    return { res, rows: counted };
+  };
+
+  it("sends curl and the updater on to the same file on GitHub, and counts it with what it was for", async () => {
+    const { res, rows } = await down("/download/v0.1.26/shroom-0.1.26-arm64.zip?via=install");
+    assert.equal(res.status, 302);
+    assert.equal(res.headers.get("location"), `${GH}/v0.1.26/shroom-0.1.26-arm64.zip`);
+    assert.equal(res.headers.get("cache-control"), "no-store", "every download reaches the counter");
+    assert.deepEqual(rows, [{ indexes: ["/download"], blobs: ["/download", "redirect", "curl", "", "", "", "install", "0.1.26", "shroom-0.1.26-arm64.zip"] }]);
+    const update = await down("/download/v0.1.26-early.2/shroom-0.1.26-early.2-arm64.zip?via=update", "GET", { "user-agent": "ureq/3.1.2" });
+    assert.equal(update.res.headers.get("location"), `${GH}/v0.1.26-early.2/shroom-0.1.26-early.2-arm64.zip`);
+    assert.deepEqual(update.rows[0].blobs.slice(6), ["update", "0.1.26-early.2", "shroom-0.1.26-early.2-arm64.zip"]);
+  });
+
+  it("keeps our own runs' tag, and nothing for a via it doesn't know", async () => {
+    const { rows } = await down("/download/v0.1.26/shroom-0.1.26-arm64.zip?via=install&ref=ci");
+    assert.equal(rows[0].blobs[5], "ci");
+    assert.equal((await down("/download/v0.1.26/shroom-0.1.26-arm64.zip?via=someone@example.com")).rows[0].blobs[6], "");
+    assert.equal((await down("/download/v0.1.26/shroom-0.1.26-arm64.zip")).rows[0].blobs[6], "");
+  });
+
+  it("names only one of our releases' files: anything else is a 404, uncounted", async () => {
+    for (const path of [
+      "/download/v0.1.26/../../evil.zip", "/download/v0.1.26/a/b.zip", "/download/v0.1.26/.hidden", "/download/latest/shroom.zip",
+      "/download/v0.1/shroom.zip", "/download/v0.1.26-beta.1/shroom.zip", "/download/v0.1.26-early.0/shroom.zip", "/download/v0.1.26/",
+      "/download/v0.1.26/x%2F..%2Fy", "/download",
+    ]) {
+      const { res, rows } = await down(path);
+      assert.equal(res.status, 404, path);
+      assert.deepEqual(rows, [], path);
+    }
+  });
+
+  it("answers HEAD without counting it, and with no counter or a broken one", async () => {
+    const head = await down("/download/v0.1.26/shroom-0.1.26-arm64.zip", "HEAD");
+    assert.equal(head.res.status, 302);
+    assert.deepEqual(head.rows, []);
+    const broken = { writeDataPoint() { throw new Error("down"); } };
+    for (const env of [{ ASSETS }, { ASSETS, STATS: broken }]) {
+      const res = await worker.fetch(new Request("https://shroom.am/download/v0.1.26/shroom-0.1.26-arm64.zip?via=update"), env);
+      assert.equal(res.headers.get("location"), `${GH}/v0.1.26/shroom-0.1.26-arm64.zip`);
+    }
+  });
+
+  it("keeps nothing that names a person", async () => {
+    const { rows } = await down("/download/v0.1.26/shroom-0.1.26-arm64.zip?via=update", "GET", { "user-agent": "ureq/3.1.2", "cf-connecting-ip": "203.0.113.7", cookie: "id=abc" });
+    const kept = JSON.stringify(rows);
+    for (const secret of ["203.0.113.7", "ureq", "id=abc"]) assert.ok(!kept.includes(secret), secret);
+  });
+
+  it("is an address the Worker answers first", () => {
+    assert.match(file("site/wrangler.jsonc"), /"run_worker_first": \[[^\]]*"\/download\/\*"/);
+  });
+});
+
 describe("the questions, privacy and terms pages", () => {
   const landing = file("site/index.html");
   for (const name of ["faq", "privacy", "terms"]) {
