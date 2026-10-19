@@ -345,15 +345,15 @@ def board_cut_edges():
     done = done[: done.rfind("</div></div>")] + put_back_chip((x(20) + x(30.4)) / 2, 10.4) + "</div></div>"
     undo_row = (f'<div style="display: flex; flex-direction: row; align-items: center; gap: 10px; justify-content: flex-end">'
                 f'<span style="color: {DIM}; font-size: 12px">Undo (⌘Z) puts the edge back where it was; Redo moves it again</span>{icon_button("Undo", UNDO)}{icon_button("Redo", REDO, enabled=False)}</div>')
-    # A suggestion (dashed amber) the same way: its edges move, it stays offered, Cut again takes it as it now is.
+    # A suggestion (dashed amber) the same way: its edges move, it stays offered, its Cut chip takes it as it now is.
     offered = timeline(w, total, cuts=cuts, offered=[(42.5, 49)], trim=trim, seed=11,
-                       extra=[ghost(x(44)), edge_handle(x(42.5), AMBER), resize_cursor(x(42.5) - 18), chip_at((x(42.5) + x(49)) / 2, "Cut again")])
+                       extra=[ghost(x(44)), edge_handle(x(42.5), AMBER), resize_cursor(x(42.5) - 18), chip_at((x(42.5) + x(49)) / 2, "Cut 6.5 s")])
     body = f'''<div style="flex: 1 1 0; padding: 24px; display: flex; flex-direction: column; gap: 22px">
 {strip("A cut's edge under the pointer: the pointer becomes ↔ and the edge stands out (either edge of any red cut)", f'<div style="padding-top: 26px">{hover}</div><div style="height: 18px"></div>')}
 {strip("Dragging it: the cut grows or shrinks as it goes, its chip says the length it has now, and the picture shows the frame at the edge", f'<div style="display: flex; flex-direction: row; gap: 30px; align-items: flex-start">{frame}<div style="padding-top: 26px">{drag}</div></div><div style="height: 22px"></div>')}
 {strip("It stops where a part already goes: at the next cut, the end of the trim, a tenth of a second from its other edge, or where a second would be all that's left", f'<div style="padding-top: 26px">{stops}</div>')}
 {strip("Let go: one step, like any other. The cut stays picked, and Put back says its new length", f'<div style="padding-top: 26px">{done}</div><div style="height: 30px"></div>{undo_row}')}
-{strip("A suggestion (dashed) moves the same way: it stays a suggestion, and Cut again takes it as it now is", f'<div style="padding-top: 26px">{offered}</div><div style="height: 30px"></div>')}
+{strip("A suggestion (dashed) moves the same way: it stays a suggestion, and its chip (Cut and its length, as under a selection) takes it as it now is", f'<div style="padding-top: 26px">{offered}</div><div style="height: 30px"></div>')}
 </div>'''
     return page("shroom Editor, adjusting a cut", 1100, 1290, body)
 
