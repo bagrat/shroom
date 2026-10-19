@@ -140,8 +140,10 @@ fn a_full_stop_on_a_word_no_sentence_ends_on_is_broken_off_too() {
 }
 
 #[test]
-fn a_sentence_that_ended_cleanly_keeps_to_the_cue_and_offers_the_line() {
-    // “Click on this link to see it.” is whole; nothing like it follows the cue.
+fn a_sentence_that_ended_cleanly_is_cut_with_the_cue_unsure() {
+    // “Click on this link to see it.” is whole; nothing like it follows the cue. How far back
+    // the slip went isn't clear, so the line goes with the cue for the owner to check
+    // (Bagrat, 2026-10-18): the cue's own cut, and the line's.
     let finished = [
         ("Click", 6.5, 6.8),
         ("on", 6.85, 6.95),
@@ -163,7 +165,7 @@ fn a_sentence_that_ended_cleanly_keeps_to_the_cue_and_offers_the_line() {
     let kinds: Vec<(CutKind, bool)> = list.cuts.iter().map(|c| (c.kind, c.applied)).collect();
     assert_eq!(
         kinds,
-        [(CutKind::CueOnly, true), (CutKind::LineBeforeCue, false)]
+        [(CutKind::CueOnly, true), (CutKind::LineBeforeCue, true)]
     );
 }
 

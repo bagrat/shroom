@@ -95,7 +95,7 @@ fn a_cut_carries_six_words_either_side() {
 }
 
 #[test]
-fn a_cue_with_its_line_offered_gives_both_the_words_around_them() {
+fn a_cue_with_the_line_before_it_cut_gives_both_the_words_around_them() {
     let t = between(&[
         ("Click", 6.5, 6.8),
         ("on", 6.85, 6.95),
@@ -153,7 +153,7 @@ fn nothing_leads_into_a_cut_at_the_start_and_nothing_resumes_after_one_at_the_en
     assert_eq!(cuts.len(), 1, "{cuts:?}");
     assert_eq!(cuts[0].leads, None);
     assert_eq!(cuts[0].resumes.as_deref(), Some("Hello, this is shroom."));
-    // A cue that ends the take: its line offered, nothing after either.
+    // A cue that ends the take: the line before it cut with it, nothing after either.
     let t = take(
         &[
             ("Thanks", 0.5, 0.9),

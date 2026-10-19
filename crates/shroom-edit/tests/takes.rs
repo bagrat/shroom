@@ -2,8 +2,9 @@
 //! stock voices (dev/proposals/voice-cut/poc), each beside its script with every line's
 //! time, and, for the Workers AI ones, what the judgment above the planner answered
 //! (`judged.json`, Clef). The plan with that judgment must cut every cue, never cut a kept or
-//! merely mentioned line, and cut every slip (or, after a cue with no retake, offer it); the
-//! code alone, as when no judgment comes, must never cut a kept or mentioned line either.
+//! merely mentioned line, and cut every slip (after a cue with no retake, the line before it
+//! goes with the cue); the code alone, as when no judgment comes, must never cut a kept or
+//! mentioned line either.
 
 use std::fs;
 use std::path::Path;
@@ -34,7 +35,7 @@ const KNOWN: &[(&str, &str)] = &[
     (
         "small-en_US-amy-medium-4-no-retake",
         "Whisper wrote the hesitation \"hmm\" as \"him.\", with a real pause after it, so the \
-     offered line before the cue starts after it and leaves \"The second one is\"",
+     line cut before the cue starts after it and leaves \"The second one is\"",
     ),
     (
         "turbo-en_US-ryan-medium-7-cue-at-the-end",
@@ -77,12 +78,6 @@ fn every_take() {
             .filter(|c| c.applied)
             .map(|c| (c.start, c.end))
             .collect();
-        let offered: Vec<(f64, f64)> = list
-            .cuts
-            .iter()
-            .filter(|c| !c.applied)
-            .map(|c| (c.start, c.end))
-            .collect();
         let cut = |l: &Line, of: &[(f64, f64)]| {
             of.iter()
                 .map(|&c| overlap((l.start, l.end), c))
@@ -99,9 +94,7 @@ fn every_take() {
                     why.push(format!("cut into a {} line", l.role))
                 }
                 "cue" if cut(l, &applied) < 0.9 * len => why.push("left a cue".into()),
-                "flub" if cut(l, &applied) + cut(l, &offered) < 0.9 * len => {
-                    why.push("left a slip".into())
-                }
+                "flub" if cut(l, &applied) < 0.9 * len => why.push("left a slip".into()),
                 _ => {}
             }
         }

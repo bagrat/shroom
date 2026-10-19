@@ -109,7 +109,6 @@ fn kept(t: &Transcript, answers: &[Answer]) -> String {
         .join(" ")
 }
 
-const WHOLE: &str = "Hi, this is a quick test of the voice cut. Click on this link to see it. To get your video, use this link and you'll see it right away.";
 const REDONE: &str = "Hi, this is a quick test of the voice cut. To get your video, use this link and you'll see it right away.";
 
 #[test]
@@ -135,7 +134,8 @@ fn a_question_holds_what_was_said_after_the_cue_and_where_the_redo_might_begin_n
 #[test]
 fn the_farthest_start_scored_past_the_bar_is_cut_with_the_cue() {
     let t = bagrats(FINISHED);
-    // No judge: the sentence before ended cleanly, so only the cue goes and the line is offered.
+    // No judge: the sentence before ended cleanly and nothing was said again word for word, so
+    // the line before goes with the cue, unsure how far back the slip went (Bagrat, 2026-10-18).
     let alone = plan(&t, Options::default());
     assert_eq!(
         alone
@@ -143,9 +143,9 @@ fn the_farthest_start_scored_past_the_bar_is_cut_with_the_cue() {
             .iter()
             .map(|c| (c.kind, c.applied))
             .collect::<Vec<_>>(),
-        [(CutKind::CueOnly, true), (CutKind::LineBeforeCue, false)]
+        [(CutKind::CueOnly, true), (CutKind::LineBeforeCue, true)]
     );
-    assert_eq!(kept(&t, &[]), WHOLE);
+    assert_eq!(kept(&t, &[]), REDONE);
     // The judge hears the line said again in other words; the take's opening, not.
     let list = plan_with(
         &t,
