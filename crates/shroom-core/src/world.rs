@@ -1297,6 +1297,9 @@ pub struct EditorFields {
     /// shroom or the Library's Edit… (N69): the footer says why it came forward as it is,
     /// until the next change.
     pub elsewhere: bool,
+    /// ✕ with changes not saved asked first (N70): the question takes the footer's place,
+    /// the edit held behind it, until Save, Keep editing or Discard.
+    pub closing: bool,
 }
 
 /// What waits on the editor's save (B199).

@@ -1284,6 +1284,8 @@ fn act(w: &mut World, action: Action) -> Out {
         // ── the editor (N63) ──
         Action::EditorDone => editor_done(w),
         Action::EditorRevert => edit_step(w, EditStep::Op(shroom_edit::Op::Revert)),
+        // The close prompt (N70): not asked yet.
+        Action::EditorKeepEditing | Action::EditorDiscard => (vec![], Arm::DROPPED),
         Action::EditorRetry => {
             // Try again: the video is asked for again — the person's retry, never one behind it.
             let Some(e) = w.session.fields.editor.as_mut().filter(|e| e.media == EditorMedia::Failed) else { return (vec![], Arm::DROPPED) };
@@ -2263,6 +2265,7 @@ fn open_editor_on(w: &mut World, row: library_view::Row) -> Out {
         save: EditorSave::Idle,
         leaving: None,
         elsewhere: false,
+        closing: false,
     });
     w.inflight.failures.remove(&Op::EditorOpen);
     (vec![Effect::Editor(EditCmd::Open { rec }), Effect::Shell(ShellCmd::OpenEditor)], Arm { name: "open-editor", edge: Some(("library", "editor")) })

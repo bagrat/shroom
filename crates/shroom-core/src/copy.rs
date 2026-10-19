@@ -590,6 +590,11 @@ pub fn delete_original_title() -> String { "Delete the original?".into() }
 pub fn delete_original_line() -> String { "Your edit is the video now. The original is only kept so you can revert to it.".into() }
 pub fn keep_two_days() -> String { "Keep for 2 days".into() }
 pub fn yes_delete() -> String { "Yes, delete".into() }
+/// editor-closing (N70): ✕ with changes not saved asks first; its buttons are `discard()`,
+/// `keep_editing()` and `save()`.
+pub fn close_unsaved_title() -> String { "Save your edit?".into() }
+pub fn close_unsaved_line() -> String { "What you've changed isn't saved yet.".into() }
+pub fn keep_editing() -> String { "Keep editing".into() }
 pub fn needs_macos(version: &str, macos: u32, running: &str) -> String {
     format!("shroom {version} needs macOS {macos} — this Mac stays on {running}.")
 }
@@ -1462,5 +1467,10 @@ pub fn registry() -> Vec<(&'static str, String)> {
         ("editor-keep-original", delete_original_line()),
         ("editor-keep-original", keep_two_days()),
         ("editor-keep-original", yes_delete()),
+        ("editor-closing", close_unsaved_title()),
+        ("editor-closing", close_unsaved_line()),
+        ("editor-closing", discard()),
+        ("editor-closing", keep_editing()),
+        ("editor-closing", save()),
     ]
 }

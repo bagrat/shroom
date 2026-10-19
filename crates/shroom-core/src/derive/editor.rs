@@ -97,6 +97,7 @@ pub fn derive(w: &World) -> Option<Window<EditorBody>> {
         done,
         original_kept: kept_left(w, e).map(copy::original_kept),
         after,
+        closing: None,
     };
     // Return is Done once there's a video to save over (cant-get's Close); Esc is the
     // webview's own — it drops a selection — except where Close is the one way on. After a

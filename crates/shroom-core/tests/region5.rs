@@ -202,6 +202,7 @@ fn editor_open(media: EditorMedia, save: EditorSave, changed: bool) -> World {
         save,
         leaving: None,
         elsewhere: false,
+        closing: false,
     });
     w
 }
