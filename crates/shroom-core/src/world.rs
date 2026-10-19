@@ -1212,8 +1212,9 @@ pub struct EditorFields {
     /// on the save, goes on once the save lands, and is dropped if it doesn't — the window
     /// says why.
     pub leaving: Option<Leaving>,
-    /// The owner page's Edit in shroom asked for another video while this one is open
-    /// (N69): the footer says why it came forward as it is, until the next change.
+    /// Edit asked for another video while this one is open — the owner page's Edit in
+    /// shroom or the Library's Edit… (N69): the footer says why it came forward as it is,
+    /// until the next change.
     pub elsewhere: bool,
 }
 
