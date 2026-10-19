@@ -212,7 +212,7 @@ fn states(cuts: &[Cut]) -> String {
 }
 
 /// A planned take's cuts as the owner page left them (the sweep's look, while it looks for
-/// words): a press there since the last look — Put back, Cut again, Cut it too — is noted
+/// words): a press there since the last look — Put back, Cut again — is noted
 /// (`v2 put back`) and kept in the mark. `None`: nothing new, or the record unreachable now.
 pub fn pressed(s3: &Client, id: &str, dir: &Path, note: Note) -> Option<Mark> {
     let Some(Mark::Planned { at, cues, cuts }) = mark(dir) else { return None };

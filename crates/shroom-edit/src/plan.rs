@@ -588,8 +588,9 @@ fn plan_one(cx: &Ctx, cue: &Cue, floor: usize, ceil: usize, judged: Option<usize
             }];
         }
     }
-    // The sentence before it ended: cut the cue (and any filler right after), and offer the
-    // line before it.
+    // The sentence before it ended and nothing was said again: cut the cue (and any filler
+    // right after), and the line before it with it, though how far back the slip went isn't
+    // clear (Bagrat, 2026-10-18): the owner page asks to check it.
     let mut last = cue.last;
     while last + 1 < ceil && is_hesitation(&norm(&words[last + 1].text)) {
         last += 1;
@@ -617,7 +618,7 @@ fn plan_one(cx: &Ctx, cue: &Cue, floor: usize, ceil: usize, judged: Option<usize
             end,
             kind: CutKind::LineBeforeCue,
             confidence: Confidence::Low,
-            applied: false,
+            applied: true,
             adjusted: false,
             leads: cx.leads(line),
             removed: cx.said(line, last),
