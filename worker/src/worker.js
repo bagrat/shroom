@@ -1226,7 +1226,7 @@ h1{flex:1 1 0;min-width:0;margin:0;font-size:1.75rem;font-weight:600;line-height
 .title{flex:1 1 0;min-width:0;height:52px;margin:0;padding:0 12px;font-family:inherit;font-size:1.75rem;font-weight:600;color:var(--text);background:var(--field);border:1px solid var(--edge);border-radius:9px;outline:none;text-overflow:ellipsis}
 .title::placeholder{color:var(--quiet);opacity:1}.title:hover{border-color:var(--quiet)}
 .title:not(:focus):not(:placeholder-shown){padding:0;background:transparent;border-color:transparent}
-.copy,#dl a,.dl a{flex:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;width:44px;height:44px;padding:0;border:0;border-radius:9px;background:transparent;color:var(--soft);font-family:inherit;font-size:0;text-decoration:none;cursor:pointer;--i:${I_LINK}}
+.copy,#dl a,.dl a{flex:none;display:inline-flex;align-items:center;justify-content:center;gap:0;width:44px;height:44px;padding:0;border:0;border-radius:9px;background:transparent;color:var(--soft);font-family:inherit;font-size:0;text-decoration:none;cursor:pointer;--i:${I_LINK}}
 #dl a,.dl a{--i:${I_SAVE}}
 .copy.thumb{--i:${I_THUMB}}.copy.edit{--i:${I_EDIT}}.copy[hidden]{display:none}
 .copy::before,#dl a::before,.dl a::before{content:"";flex:none;width:18px;height:18px;background:currentColor;-webkit-mask:var(--i) center/18px 18px no-repeat;mask:var(--i) center/18px 18px no-repeat}
@@ -1239,7 +1239,7 @@ h1{flex:1 1 0;min-width:0;margin:0;font-size:1.75rem;font-weight:600;line-height
 @media (hover:hover){[data-tip]:hover::after{opacity:1;visibility:visible;transition-delay:.3s}}
 [data-tip]:focus-visible::after,[data-tip]:has(:focus-visible)::after{opacity:1;visibility:visible}
 .copy.done::after{display:none}
-.copy.done{width:auto;padding:0 12px 0 8px;flex-direction:row-reverse;font-size:13px;color:var(--accent);--i:${I_CHECK}}
+.copy.done{width:auto;padding:0 12px 0 8px;gap:6px;flex-direction:row-reverse;font-size:13px;color:var(--accent);--i:${I_CHECK}}
 #dl{display:flex}#dl:empty{display:none}
 .upl{display:flex;flex-direction:column;gap:6px;color:var(--soft);transition:opacity .4s}.upl[hidden]{display:none}.upl.done{color:var(--green);--fill:var(--green)}.upl.fade{opacity:0}
 .wait{position:relative;aspect-ratio:var(--ar);border-radius:12px;background:var(--player);color:var(--player-text);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px;text-align:center;overflow:hidden;--track:var(--player-track);--fill:var(--player-fill)}
