@@ -1294,9 +1294,9 @@ fn editor_origin(d: &Drive) -> Result<(f64, f64), String> {
     .ok_or_else(|| "the editor's window isn't on screen".into())
 }
 
-/// An editor window on screen, as AppKit has it (main thread): its frame — x, y (its bottom:
-/// AppKit's y runs up), width, height — while it's visible.
-fn editor_window(d: &Drive, id: EditorId) -> Option<(f64, f64, f64, f64)> {
+/// An editor window on screen, as AppKit has it (main thread), while it's visible: its frame
+/// and its screen's visible frame, each x, y (its bottom: AppKit's y runs up), width, height.
+fn editor_window(d: &Drive, id: EditorId) -> Option<([f64; 4], [f64; 4])> {
     use tauri::Manager;
     let (app, label) = (d.app.clone(), crate::runtime::presenter::label(WindowKind::Editor(id)).into_owned());
     d.on_main(move || {
@@ -1304,10 +1304,22 @@ fn editor_window(d: &Drive, id: EditorId) -> Option<(f64, f64, f64, f64)> {
         let ns = w.ns_window().ok()?;
         // SAFETY: Tauri's own NSWindow for this webview window, read on the main thread.
         let ns: &objc2_app_kit::NSWindow = unsafe { &*(ns as *const objc2_app_kit::NSWindow) };
-        let f = ns.frame();
-        ns.isVisible().then_some((f.origin.x, f.origin.y, f.size.width, f.size.height))
+        let (f, v) = (ns.frame(), ns.screen()?.visibleFrame());
+        let rect = |r: objc2_foundation::NSRect| [r.origin.x, r.origin.y, r.size.width, r.size.height];
+        ns.isVisible().then_some((rect(f), rect(v)))
     })
     .flatten()
+}
+
+/// Whether `b`, opened after `a`, sits down and to the right of it — as far as `screen` has
+/// room for `b` there (the hosted Mac's is the editor's own width: no room to the right).
+fn cascaded(a: [f64; 4], b: [f64; 4], screen: [f64; 4]) -> bool {
+    let room_right = a[0] + 1.0 + b[2] <= screen[0] + screen[2];
+    let room_down = a[1] + a[3] - 1.0 - b[3] >= screen[1];
+    let right = !room_right || b[0] > a[0];
+    let down = !room_down || b[1] + b[3] < a[1] + a[3];
+    // No room either way: AppKit keeps it on the screen, where it may sit over the first.
+    right && down && (b != a || !(room_right || room_down))
 }
 
 /// The editor windows on screen, front to back, by number: AppKit's own order (main thread).
@@ -1814,10 +1826,10 @@ fn editor(d: &Drive) -> Result<(), String> {
     );
     let order = poll(5, || Some(editor_order(d)).filter(|o| *o == [second, first]));
     let (one, two) = (editor_window(d, first), editor_window(d, second));
-    d.fact_like("two_windows", serde_json::json!({ "order": editor_order(d).iter().map(|id| id.0).collect::<Vec<_>>(), "first": one.map(|f| [f.0, f.1, f.2, f.3]), "second": two.map(|f| [f.0, f.1, f.2, f.3]) }));
+    d.fact_like("two_windows", serde_json::json!({ "order": editor_order(d).iter().map(|id| id.0).collect::<Vec<_>>(), "first": one.map(|f| f.0), "second": two.map(|f| f.0), "screen": two.map(|f| f.1) }));
     d.check(
-        "… two windows on screen, the newer in front, down and to the right of the first (B225 (c))",
-        order.is_some() && matches!((one, two), (Some(a), Some(b)) if b.0 > a.0 && b.1 + b.3 < a.1 + a.3),
+        "… two windows on screen, the newer in front, down and to the right of the first where the screen has room (B225 (c))",
+        order.is_some() && matches!((one, two), (Some(a), Some(b)) if cascaded(a.0, b.0, b.1)),
         format!("order {:?}, {one:?} then {two:?}", editor_order(d)),
     );
     let title = |id: EditorId| {
