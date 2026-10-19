@@ -18,9 +18,9 @@ export type EditorAfter =
 export type EditorBody = {
   title: string; rec: string; media: EditorMedia; hint: string;
   footer: string; footer_tone: string;
-  /** `time` is “{} / {}”: the edited position, then the edited length; `cut_it_too` the
-   * chip under a dashed suggestion. */
-  labels: { play: string; pause: string; undo: string; redo: string; cut: string; put_back: string; was: string; time?: string; cut_it_too?: string };
+  /** `time` is “{} / {}”: the edited position, then the edited length; `cut` the chip under
+   * a selected part, and under a dashed suggestion (Bagrat, 2026-10-19). */
+  labels: { play: string; pause: string; undo: string; redo: string; cut: string; put_back: string; was: string; time?: string };
   list: { in: number; out: number; cuts: { start: number; end: number; applied: boolean; kind: string }[] } | null;
   keep: [number, number][]; edited_duration: number; source_duration: number; markers: number[];
   editable: boolean; can_undo: boolean; can_redo: boolean;

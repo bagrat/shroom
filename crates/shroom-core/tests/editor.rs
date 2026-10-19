@@ -396,8 +396,8 @@ fn steps_change_the_list_and_undo_and_redo_walk_them() {
 }
 
 /// A cut's edge dragged (B195 (g)): one step that moves it, a hand cut or the voice layer's;
-/// Undo puts it back. A suggestion's edges move and it stays offered, so Cut again takes it
-/// as it now is. The arm says what it was.
+/// Undo puts it back. A suggestion's edges move and it stays offered, so its Cut chip takes
+/// it as it now is. The arm says what it was.
 #[test]
 fn a_cuts_edge_dragged_is_one_step_and_undo_puts_it_back() {
     let mut r = ready_with(Some(saved_edit(3)));
@@ -415,7 +415,7 @@ fn a_cuts_edge_dragged_is_one_step_and_undo_puts_it_back() {
     assert!(!list(&r).cuts[1].applied, "still offered");
     assert_eq!(body(&r).keep, vec![[8.0, 150.0], [165.5, 241.0]], "nothing plays differently yet");
     r.op(EditOp::Apply { index: 1 });
-    assert_eq!(body(&r).keep, vec![[8.0, 150.0], [165.5, 198.0], [204.0, 241.0]], "Cut again takes it as it now is");
+    assert_eq!(body(&r).keep, vec![[8.0, 150.0], [165.5, 198.0], [204.0, 241.0]], "its Cut chip takes it as it now is");
     r.op(EditOp::Resize { index: 0, start: 150.0, end: 150.05 });
     assert_eq!(r.arm.name, "edit-refused", "shorter than a tenth of a second");
 }
@@ -1246,14 +1246,14 @@ fn the_time_left_shows_only_while_the_original_is_kept() {
     assert_eq!(body(&r).original_kept, None);
 }
 
-// ── Cut again ──
+// ── a suggestion's chip ──
 
-/// A dashed suggestion's chip says Cut again (a voice cut put back by hand, N65); it sends
-/// `apply`, which cuts it.
+/// A dashed suggestion's chip says what a selection's does, Cut <its length> (Bagrat,
+/// 2026-10-19), from the one template; it sends `apply`, which cuts it.
 #[test]
-fn a_suggestion_offers_cut_again() {
+fn a_suggestion_is_cut_by_a_chip_like_a_selections() {
     let mut r = ready_with(Some(saved_edit(3)));
-    assert_eq!(body(&r).labels.cut_it_too, "Cut again");
+    assert_eq!(body(&r).labels.cut, "Cut {} s");
     assert!(!list(&r).cuts[1].applied);
     r.op(EditOp::Apply { index: 1 });
     assert!(list(&r).cuts[1].applied, "it's cut, red");
@@ -1815,7 +1815,7 @@ fn the_slice_is_the_webviews_json() {
             "original_kept", "rec", "revert", "source_duration", "title"
         ]
     );
-    assert_eq!(keys(&b["labels"]), ["cut", "cut_it_too", "pause", "play", "put_back", "redo", "time", "undo", "was"]);
+    assert_eq!(keys(&b["labels"]), ["cut", "pause", "play", "put_back", "redo", "time", "undo", "was"]);
     assert_eq!((b["after"].clone(), b["original_kept"].clone()), (serde_json::Value::Null, serde_json::Value::Null));
     assert_eq!(b["media"], json!({ "state": "ready", "duration": 272.4 }));
     assert_eq!(b["footer_tone"], "plain");

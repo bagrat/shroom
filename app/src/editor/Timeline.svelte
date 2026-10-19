@@ -48,7 +48,7 @@
     editable: boolean;
     /** A click moves the playhead (the video is here). */
     seekable: boolean;
-    labels: { cut: string; put_back: string; cut_it_too?: string };
+    labels: { cut: string; put_back: string };
     selection?: Selection | null;
     /** The ends while one is dragged (and until the core answers): what plays meanwhile. */
     trim?: Trim | null;
@@ -90,12 +90,12 @@
 
   // The chip under what's selected: Cut <length> under a part (what of it plays: none, no
   // chip, since cutting it would change nothing), Put back <length> under an applied cut,
-  // Cut again under a suggestion (applying it). While a cut's edge is dragged: its length as
-  // it goes, or Cut again under a suggestion.
+  // Cut <its length> under a suggestion (applying it), as under a selection. While a cut's edge
+  // is dragged: its length as it goes, or Cut <its length> under a suggestion.
   let chip = $derived.by(() => {
     if (edge && moved && list?.cuts[moved.index]) {
       const at = (moved.start + moved.end) / 2;
-      if (!list.cuts[moved.index].applied) return { kind: "apply" as const, at, label: labels.cut_it_too ?? fill(labels.cut, seconds(moved.end - moved.start)) };
+      if (!list.cuts[moved.index].applied) return { kind: "apply" as const, at, label: fill(labels.cut, seconds(moved.end - moved.start)) };
       return { kind: "cut" as const, at, label: fill(labels.cut, seconds(moved.end - moved.start)) };
     }
     if (!selection || !editable || !list) return null;
@@ -106,7 +106,7 @@
     const c = list.cuts[selection.index];
     if (!c) return null;
     if (c.applied) return { kind: "put-back" as const, at: (c.start + c.end) / 2, label: fill(labels.put_back, seconds(c.end - c.start)) };
-    return { kind: "apply" as const, at: (c.start + c.end) / 2, label: labels.cut_it_too ?? fill(labels.cut, seconds(c.end - c.start)) };
+    return { kind: "apply" as const, at: (c.start + c.end) / 2, label: fill(labels.cut, seconds(c.end - c.start)) };
   });
   let chipLeft = $derived(chip ? Math.min(Math.max(x(chip.at) - chipWidth / 2, 0), Math.max(0, width - chipWidth)) : 0);
 
