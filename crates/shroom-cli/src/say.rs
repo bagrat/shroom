@@ -654,7 +654,7 @@ pub fn stopped(link: Option<&str>) -> String {
     }
 }
 
-// ── edit (spec N72; its words provisional) ──
+// ── edit (spec N72) ──
 
 pub fn edit_usage() -> String {
     "Say a video, then what to change: trim <in> <out>, cut <start> <end>, put-back <cut>, apply <cut>, \

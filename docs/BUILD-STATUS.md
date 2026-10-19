@@ -64,7 +64,7 @@
    the command inside the app and on PATH, many at once, the app's control socket behind
    General's switch — its refusal carrying the link that opens Settings at the switch — the
    start without the count and the agent label, and the guide at shroom.am/cli. Shipped in
-   0.1.25 (2026-10-19). Next on it, `shroom edit` (N72, B225, item 42): what a video's edit
+   0.1.25 (2026-10-19). Then `shroom edit` (N72, B225, item 42), ratified 2026-10-19: what a video's edit
    is, one change a call saved as the editor's Done saves, and the app making its final
    video.
 
@@ -355,11 +355,11 @@ and edits on the share page)*)**
     `settings`, `cli-label` and `take-left-out` drives, and the full e2e's command leg on
     the test account.
 
-42. **`shroom edit` (N72, B225), built with its words provisional** (the orchestrator,
-    2026-10-19: build it now the editor has shipped). The command says what a video's edit
+42. **`shroom edit` (N72, B225), ratified by Bagrat as built** (2026-10-19; the
+    orchestrator, 2026-10-19: build it now the editor has shipped). The command says what a video's edit
     is and makes one change a call — trim, cut, put-back, apply, resize, revert — the
     editor's own steps, saved as its Done saves, through the space's page; the running app
-    is asked whether the video is open in an editor window, and to make the final video. For him: its
+    is asked whether the video is open in an editor window, and to make the final video. Ratified with it: its
     words (`crates/shroom-cli/src/say.rs`, the edit section), the guide's *Editing* section,
     and B225's calls — the command saves itself rather than through the app, refuses while
     the video is open in an editor window, and never asks “Delete the original?” (Keep for 2 days).
