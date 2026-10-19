@@ -21,20 +21,20 @@
 //   /faq, /privacy, /terms, /feedback
 //                questions and known limits, privacy, terms, and the feedback form:
 //                site/pages, as pages
-//   /next        the landing as it will be with the voice-cut hero (site/next.html): hidden
-//                until it becomes /, so not linked, not indexed (X-Robots-Tag) and not
-//                counted, which keeps the rows for / as they are
-//   /how-to.mp4  the landing's how-to video, whole or in the pieces a player asks for
-//                (Range): Safari plays a video only from an address that answers 206,
+//   /hero.mp4    the landing's hero, shroom recorded with shroom (B222), and
+//   /how-to.mp4  the setup walkthrough it opens: each whole or in the pieces a player asks
+//                for (Range): Safari plays a video only from an address that answers 206,
 //                and the assets binding answers a Range with the whole file (B194).
 //                Not counted: the landing's own visit is
+//   /next        where the landing with the hero waited, hidden, until it became /: a
+//                permanent redirect to /, not counted (B222)
 //   POST /report a report or feedback, emailed to the one inbox that reads them and kept
 //                nowhere (site/report.js); the only address that takes anything in
 //   www.…        a permanent redirect to shroom.am
 //
 // Nothing else exists: the files behind these answers (/_/…) aren't addresses.
 //
-// Each answer to a GET of one of these addresses (all but /next) is counted: one row in the account's
+// Each answer to a GET of one of these addresses (all but the videos and /next) is counted: one row in the account's
 // Analytics Engine (`STATS`), holding which address, which answer, a coarse kind of client,
 // the host of the page that linked here, the country, and the link's own `?ref=` tag (or
 // `utm_source`) — never an IP, a User-Agent, a full referring address, a cookie or anything
@@ -188,10 +188,11 @@ function slice(body, first, last) {
   }));
 }
 
-/** The how-to video: the whole file, or the bytes a Range asks for (206).
- * @param {any} env @param {Request} request @param {URL} url */
-async function video(env, request, url) {
-  let res = await env.ASSETS.fetch(new Request(new URL("/_/how-to.mp4", url)));
+/** One of the landing's videos (`/_/<name>.mp4`): the whole file, or the bytes a Range asks
+ * for (206).
+ * @param {any} env @param {Request} request @param {URL} url @param {string} file */
+async function video(env, request, url, file) {
+  let res = await env.ASSETS.fetch(new Request(new URL(file, url)));
   if (!res.ok || !res.body) return plain(503);
   let size = Number(res.headers.get("content-length") ?? NaN);
   if (!Number.isFinite(size)) {
@@ -258,7 +259,7 @@ export default {
           ? serve(env, request, url, "/_/agent.md", MARKDOWN, true)
           : serve(env, request, url, "/index.html", HTML, true);
       case "/next":
-        return serve(env, request, url, "/_/next.html", HTML, false, false);
+        return new Response(null, { status: 301, headers: { location: "/", "cache-control": "public, max-age=300" } });
       case "/install":
         return serve(env, request, url, "/_/install.sh", TEXT);
       case "/agent":
@@ -280,8 +281,9 @@ export default {
       case "/terms":
       case "/feedback":
         return serve(env, request, url, `/_${url.pathname}.html`, HTML);
+      case "/hero.mp4":
       case "/how-to.mp4":
-        return video(env, request, url);
+        return video(env, request, url, `/_${url.pathname}`);
       default:
         return whatsNew(env, request, url) ?? plain(404);
     }

@@ -98,12 +98,23 @@ pub enum Mode {
     DriveTake { which: crate::take_drive::TakeDrive, out: PathBuf },
 }
 
+/// The live drive turns its space to listen before it records (`--ai`, N66), as a person
+/// does: the voice-cut drive's take must be heard.
+static DRIVE_AI: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+pub fn drive_ai() -> bool {
+    DRIVE_AI.load(std::sync::atomic::Ordering::SeqCst)
+}
+
 pub fn from_args(args: Vec<String>) -> Mode {
     let after = |flag: &str| args.iter().position(|a| a == flag).map(|i| args[i + 1..].to_vec());
     // The voice-cut drive's speech (`--voice <wav>`, spec N65), in place of the beep: the
     // space's hearing and the voice lane have a cue to find.
     if let Some(wav) = after("--voice").and_then(|rest| rest.first().cloned()) {
         let _ = crate::runtime::recorder::DRIVE_VOICE.set(PathBuf::from(wav));
+    }
+    if args.iter().any(|a| a == "--ai") {
+        DRIVE_AI.store(true, std::sync::atomic::Ordering::SeqCst);
     }
     if let Some(rest) = after("--selftest") {
         return Mode::Selftest(PathBuf::from(rest.first().expect("--selftest needs an output path")));
@@ -1091,6 +1102,18 @@ fn run_drive(app: &AppHandle, rt: &crate::runtime::Runtime, out: &Path, seconds:
         wait_for(rt, "ready", 20, report, t0, |s| s.tray.click == Click::OpenPopover)?;
         click(app, rt);
         wait_for(rt, "config", 5, report, t0, |s| s.popover.as_ref().is_some_and(|p| p.id == "config"))?;
+        // The space turned to listen first (`--ai`, N66), as a person turns it: the popover's
+        // banner, Turn on…, its confirm's Turn on.
+        if drive_ai() {
+            let banner = |s: &shroom_core::Scene| s.popover.as_ref().and_then(|p| p.banner.as_ref()).map(|b| b.id);
+            wait_for(rt, "the AI banner", 60, report, t0, |s| banner(s) == Some("ai-offer"))?;
+            rt.post(Event::Act { surface: Surface::Popover, action: Action::AiAsk, rev: 0 });
+            wait_for(rt, "ai-confirm", 10, report, t0, |s| s.popover.as_ref().is_some_and(|p| p.id == "ai-confirm"))?;
+            rt.post(Event::Act { surface: Surface::Popover, action: Action::AiOn, rev: 0 });
+            let on = shroom_core::copy::ai_on_said();
+            wait_for(rt, "AI is on", 120, report, t0, |s| s.popover.as_ref().and_then(|p| p.status_line.as_deref()) == Some(on.as_str()))?;
+            wait_for(rt, "config again, listening", 10, report, t0, |s| s.popover.as_ref().is_some_and(|p| p.id == "config"))?;
+        }
         // Only the pattern is measured: the camera picker starts on a camera (N43), so its bubble goes.
         if snapshot(rt).is_some_and(|s| s.bubble.is_some()) {
             rt.post(Event::Act { surface: Surface::Popover, action: Action::SetCamera(None), rev: 0 });
