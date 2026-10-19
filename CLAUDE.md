@@ -91,6 +91,14 @@ lives in `spec/`; the working docs live in `docs/`.
   used to ride on `main` are decommissioned (see `history/proposals/shroom-am-worker.md`).
   Nothing is pushed to `main` directly. A PR merged under *Merge when sure* counts as his
   standing go.
+- **Releases go the way they always have**
+  ([`docs/RELEASING.md`](docs/RELEASING.md)): Release → Run workflow on `main` with
+  Publish (with Early too for a pre-release, from the early branch). It builds the branch's
+  head. A cloud session can't push tags (HTTP 403), so a session never plans on the tag
+  road: that one is Bagrat's by hand. To keep a change out of a release, hold its merge
+  until the release is out; never merge it and then try to pin an older commit. When the
+  usual way looks blocked, stop and say so; don't hand Bagrat a workaround to run
+  (Bagrat, 2026-10-19).
 - **Test in the cloud first; never on Bagrat's Mac.** It carries only the official
   release, or a signed pre-release from the early channel (Bagrat, 2026-10-18: he takes
   the early channel to try what's coming; still never a dev build — DECISIONS B220,
