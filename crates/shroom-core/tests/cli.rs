@@ -176,7 +176,7 @@ fn every_ask_in_every_moment_is_answered_once_as_its_click() {
     for (moment, base, want) in table {
         for (i, op) in [CliOp::START, CliOp::Pause, CliOp::Resume, CliOp::Stop].into_iter().enumerate() {
             let mut r = base.clone_run();
-            let a = ask(&mut r, 10 + i as u64, op);
+            let a = ask(&mut r, 10 + i as u64, op.clone());
             assert_eq!(heard(&a), want[i], "{moment}, {op:?}");
         }
     }
@@ -556,24 +556,29 @@ fn over_a_take_it_is_owed_and_waits_for_the_take_to_end() {
 }
 
 #[test]
-fn this_macs_editor_on_that_video_refuses_and_the_seam_says_which_video_it_holds() {
+fn while_this_macs_editor_holds_the_video_the_command_hears_editor_open() {
     let mut w = ready();
     editor_on(&mut w, "St4ndupN0t3sJn05");
-    assert_eq!(shroom_core::derive::status::posture(&w).editing.as_deref(), Some("St4ndupN0t3sJn05"), "status.json names it");
     let mut r = Run::new(w);
-    let a = ask(&mut r, 1, copy("St4ndupN0t3sJn05", 2));
-    assert_eq!((a.ok, a.error), (false, Some("editor_open")));
+    let a = ask(&mut r, 1, CliOp::Editing { rec: RecId("St4ndupN0t3sJn05".into()) });
+    assert_eq!((a.ok, a.error), (false, Some("editor_open")), "asked before the command saves");
+    let b = ask(&mut r, 2, copy("St4ndupN0t3sJn05", 2));
+    assert_eq!((b.ok, b.error), (false, Some("editor_open")), "and after, should it have raced the window");
     assert!(r.w.library_ops.copies.is_empty(), "nothing owed: the window's Done is the edit");
-    // Another video's final video is fine.
-    let b = ask(&mut r, 2, copy("Q3rNdPl4nW1kThr0", 1));
-    assert!(b.ok);
-    assert_eq!(shroom_core::derive::status::posture(&ready()).editing, None);
+    // Another video is free to edit, its final video owed.
+    let c = ask(&mut r, 3, CliOp::Editing { rec: RecId("Q3rNdPl4nW1kThr0".into()) });
+    assert_eq!((c.ok, c.error), (true, None));
+    assert!(ask(&mut r, 4, copy("Q3rNdPl4nW1kThr0", 1)).ok);
+    assert!(r.w.session.fields.editor.is_some(), "the window stays as it was");
 }
 
 #[test]
 fn a_mac_with_no_space_owes_nothing() {
-    let mut r = Run::new(World::default());
+    let mut w = ready();
+    w.space.identity = None;
+    let mut r = Run::new(w);
     let a = ask(&mut r, 1, copy("St4ndupN0t3sJn05", 1));
     assert_eq!((a.ok, a.error), (false, Some("not_set_up")));
+    assert_eq!(ask(&mut r, 2, CliOp::Editing { rec: RecId("St4ndupN0t3sJn05".into()) }).error, Some("not_set_up"));
     assert!(r.w.library_ops.copies.is_empty());
 }

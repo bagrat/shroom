@@ -26,6 +26,7 @@ use std::time::{Duration, Instant};
 
 use shroom_core::effect::CliAnswer;
 use shroom_core::event::{CliOp, Event, StartAsk};
+use shroom_core::world::RecId;
 
 use super::Runtime;
 
@@ -50,8 +51,18 @@ pub fn op_of(line: &str) -> Option<CliOp> {
         "record.pause" => Some(CliOp::Pause),
         "record.resume" => Some(CliOp::Resume),
         "record.stop" => Some(CliOp::Stop),
+        // `shroom edit` (N70): before it changes a video's edit, and once it saved one.
+        "edit.check" => Some(CliOp::Editing { rec: rec_of(&v)? }),
+        "edit.copy" => Some(CliOp::Copy { rec: rec_of(&v)?, rev: v["rev"].as_u64()? }),
         _ => None,
     }
+}
+
+/// A video's id as an ask names it: a recording id's shape, never anything else.
+fn rec_of(v: &serde_json::Value) -> Option<RecId> {
+    let id = v["id"].as_str()?;
+    let shaped = (1..=64).contains(&id.len()) && id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_');
+    shaped.then(|| RecId(id.to_string()))
 }
 
 /// An ask, as the run log has it: its number, the op, and how a start goes when it isn't
@@ -62,6 +73,8 @@ pub fn asked(id: u64, op: &CliOp) -> String {
         CliOp::Pause => ("record.pause", String::new()),
         CliOp::Resume => ("record.resume", String::new()),
         CliOp::Stop => ("record.stop", String::new()),
+        CliOp::Editing { rec } => ("edit.check", format!(" {}", super::short(&rec.0))),
+        CliOp::Copy { rec, rev } => ("edit.copy", format!(" {} rev {rev}", super::short(&rec.0))),
     };
     format!("control: ask {id} {name}{how}")
 }
@@ -149,7 +162,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn only_the_four_ops_of_this_version_are_read() {
+    fn only_the_ops_of_this_version_are_read() {
         assert_eq!(op_of(r#"{"v":1,"op":"record.start"}"#), Some(CliOp::START));
         // The command's flags (N62, B216): each only when the person or agent turned it off.
         assert_eq!(op_of(r#"{"v":1,"op":"record.start","countdown":false,"label":false}"#), Some(CliOp::Start(StartAsk { countdown: false, label: false })));
@@ -157,6 +170,13 @@ mod tests {
         assert_eq!(op_of(r#"{"v":1,"op":"record.stop"}"#), Some(CliOp::Stop));
         assert_eq!(op_of(r#"{"v":2,"op":"record.start"}"#), None);
         assert_eq!(op_of(r#"{"v":1,"op":"delete"}"#), None);
+        // `shroom edit`'s (N70): a recording id's shape, and a revision.
+        let rec = || RecId("AbCdEfGhIjKlMnOp".into());
+        assert_eq!(op_of(r#"{"v":1,"op":"edit.check","id":"AbCdEfGhIjKlMnOp"}"#), Some(CliOp::Editing { rec: rec() }));
+        assert_eq!(op_of(r#"{"v":1,"op":"edit.copy","id":"AbCdEfGhIjKlMnOp","rev":3}"#), Some(CliOp::Copy { rec: rec(), rev: 3 }));
+        assert_eq!(op_of(r#"{"v":1,"op":"edit.copy","id":"AbCdEfGhIjKlMnOp"}"#), None, "no revision");
+        assert_eq!(op_of(r#"{"v":1,"op":"edit.check","id":"../space.json"}"#), None, "not an id");
+        assert_eq!(op_of(r#"{"v":1,"op":"edit.check","id":""}"#), None);
         assert_eq!(op_of("not json"), None);
     }
 
@@ -167,6 +187,7 @@ mod tests {
         assert_eq!(asked(3, &CliOp::START), "control: ask 3 record.start");
         assert_eq!(asked(4, &CliOp::Start(StartAsk { countdown: false, label: false })), "control: ask 4 record.start no-count no-label");
         assert_eq!(asked(5, &CliOp::Stop), "control: ask 5 record.stop");
+        assert_eq!(asked(7, &CliOp::Copy { rec: RecId("AbCdEfGhIjKlMnOp".into()), rev: 2 }), "control: ask 7 edit.copy AbCd… rev 2", "the id short");
         let ok = CliAnswer { id: 5, ok: true, take: "stopping", error: None, link: Some("https://v.x.workers.dev/AbCdEfGhIjKlMnOp".into()) };
         assert_eq!(answered(&ok, Duration::from_millis(41)), "control: answer 5 ok stopping (41 ms)");
         let no = CliAnswer { id: 6, ok: false, take: "none", error: Some("recording_off"), link: None };
