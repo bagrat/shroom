@@ -1,5 +1,6 @@
 // The landing (Region 1, `landing`): every ratified line is on the page, verbatim, and
-// the page asks nothing of anyone else's servers. Run: node --test site/test/landing.test.mjs
+// the page asks nothing of anyone else's servers (Cloudflare's own Web Analytics beacon, added
+// at its edge as it serves the page, is the one exception: B224). Run: node --test site/test/landing.test.mjs
 //
 // One of the fixture's lines is ratified as a shape, not as words: the system-requirements
 // sentence (“fill the facts in, don't reword”). It is checked against its facts instead —
@@ -106,6 +107,7 @@ describe("the landing", () => {
 
   it("loads nothing from anyone else", () => {
     // Links people follow are fine; nothing the page fetches may be remote, the video included.
+    // (This reads the file in the repo; Cloudflare's edge adds its Web Analytics beacon: B224.)
     assert.doesNotMatch(html, /<(?:script|link|img|video|source|iframe)[^>]*\b(?:src|href)="https?:/, "a remote fetch in the markup");
     const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]).join("\n");
     assert.deepEqual([...scripts.matchAll(/https?:\/\/[^"'\s]*/g)].map((m) => m[0]), [], "no remote address is built in script");
