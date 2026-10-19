@@ -96,13 +96,30 @@ function beepOnsets(url) {
   return [...(r.stderr ?? "").matchAll(/silence_end: ([\d.]+)/g)].map((m) => Number(m[1]));
 }
 
+// Why ffprobe read no size: its own answer, and what the page serves right then — the
+// master playlist and the first variant it names. A miss with every fetch 200 is ffprobe's;
+// a non-200 is the stream's (the run of 2026-10-19 on 1d0f347 left only "no size").
+async function whyNoSize(url, probe, ms) {
+  const status = async (u) => { try { return (await fetch(u)).status; } catch (e) { return `unreachable (${e.cause?.code ?? e.message})`; } };
+  let variant = null, variantStatus = null;
+  try {
+    const r = await fetch(url);
+    const name = r.ok ? (await r.text()).split("\n").find((l) => l && !l.startsWith("#")) : null;
+    if (name) { variant = new URL(name.trim(), url).href; variantStatus = await status(variant); }
+  } catch { /* said below as the master's own status */ }
+  const said = (probe.stderr ?? "").trim().replace(/\s+/g, " ").slice(0, 300);
+  return [`ffprobe exit ${probe.status ?? "none"}${probe.signal ? `, ${probe.signal}` : ""}${probe.error ? `, ${probe.error.code ?? probe.error.message}` : ""} after ${ms} ms`,
+    `said ${said ? JSON.stringify(said) : "nothing"}`, `master ${await status(url)}`, variant ? `variant ${variantStatus}` : "no variant named"].join("; ");
+}
+
 // Every frame's counter, decoded back from the page's own stream (TESTING-PLAN §4) at a
 // height the strip reads well at, keeping the picture's shape — frame by frame as ffmpeg
 // decodes them (a 10-minute take's frames are never held whole).
-function publishedCounters(url) {
+async function publishedCounters(url) {
+  const asked = Date.now();
   const size = spawnSync(tool("ffprobe"), ["-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height", "-of", "csv=p=0:s=x", url], { encoding: "utf8", timeout: 60_000 });
   const [w0, h0] = (size.stdout ?? "").trim().split("\n")[0].split("x").map(Number);
-  if (!w0 || !h0) throw new Error("the published stream has no size");
+  if (!w0 || !h0) throw new Error(`the published stream has no size — ${await whyNoSize(url, size, Date.now() - asked)}`);
   const h = 270, w = 2 * Math.round((h * w0) / h0 / 2);
   return new Promise((resolve, reject) => {
     const ff = spawn(tool("ffmpeg"), ["-hide_banner", "-loglevel", "error", "-i", url, "-map", "0:v:0", "-fps_mode", "passthrough", "-vf", `scale=${w}:${h}:flags=area,format=gray`, "-f", "rawvideo", "-"]);
