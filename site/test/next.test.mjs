@@ -2,7 +2,7 @@
 // canvas board approved 2026-10-18. Hidden until it becomes /; the same words, terms and
 // install as the landing; the setup walkthrough behind a button, in a lightbox.
 // Run: node --test site/test/next.test.mjs
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
@@ -38,6 +38,14 @@ describe("the landing with the hero (/next)", () => {
     assert.match(next, /<dialog class="lightbox" id="walk"/);
     assert.match(next, /<video controls playsinline preload="none"[^>]*data-src="\/how-to\.mp4"><\/video>/);
     assert.doesNotMatch(next, /<video[^>]* src=/);
+  });
+
+  it("shows the hero's own still, the site's file, under the play button and the length", () => {
+    const still = next.slice(next.indexOf('<button type="button" class="still"'), next.indexOf("</button>", next.indexOf('class="still"')));
+    assert.match(still, /^[^]*<img src="hero-poster\.webp" alt="" width="1280" height="832" decoding="async"><span class="play"[^]*<span class="len"/);
+    assert.ok(existsSync(`${ROOT}site/hero-poster.webp`), "site/hero-poster.webp is there");
+    assert.ok(statSync(`${ROOT}site/hero-poster.webp`).size < 100_000, "it stays light");
+    assert.match(readFileSync(`${ROOT}site/build.mjs`, "utf8"), /"hero-poster\.webp"/, "build.mjs copies it into what the site serves");
   });
 
   it("centres the play triangles: no push to the right", () => {

@@ -145,7 +145,6 @@
   .still.gone { opacity: 0; pointer-events: none; }
   @media (prefers-reduced-motion: reduce) { .still { transition: none; } }
   .still[aria-disabled="true"] { cursor: default; }
-  .still .poster { position: absolute; inset: 0; background: var(--well); }
 
   /* The setup walkthrough: a small button under the hero, the same space above and below it,
      then a cut through the box in the page's colour (Bagrat, 2026-10-18). */
@@ -257,11 +256,11 @@
 
   <div class="side">
     <div class="box">
-      <!-- The voice-cut hero: shroom, recorded with shroom. Its poster and video come once the
-           take exists; until then the box shows where they go. -->
+      <!-- The voice-cut hero: shroom, recorded with shroom. Its poster is the editor after the
+           take's two cuts; the video comes once the take is cut. -->
       <section class="how-to" id="hero">
         <div class="stage">
-          <button type="button" class="still" aria-disabled="true" aria-label="shroom, recorded with shroom, 2 minutes"><span class="poster"></span><span class="play" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M5 3v10l8.5-5z"/></svg></span><span class="len" aria-hidden="true">2 min</span></button>
+          <button type="button" class="still" aria-disabled="true" aria-label="shroom, recorded with shroom, 2 minutes"><img src="hero-poster.webp" alt="" width="1280" height="832" decoding="async"><span class="play" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M5 3v10l8.5-5z"/></svg></span><span class="len" aria-hidden="true">2 min</span></button>
         </div>
       </section>
       <!-- The setup walkthrough (the how-to that was in this box, N58, N61): /how-to.mp4 in a
