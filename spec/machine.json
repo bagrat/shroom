@@ -1207,7 +1207,9 @@
     "The window (Opens: also the editor)",
     "B195 (the original is no longer kept indefinitely: B197)"
    ],
-   "amended_by": []
+   "amended_by": [
+    "N71"
+   ]
   },
   {
    "id": "N64",
@@ -1247,6 +1249,21 @@
    "amends": [
     "N61 (the box's video: the hero in place, the how-to behind a button)",
     "N7 (the landing's video is again a self-recorded take)"
+   ],
+   "amended_by": []
+  },
+  {
+   "id": "N71",
+   "title": "The editor's ✕ with changes not saved asks: Save, Keep editing or Discard",
+   "decision": "**Bagrat asked, 2026-10-18** (relayed by the orchestrator), that the editor's ✕ stop saving without a word, as Done does, and ask instead: discard, keep editing, or save. **On 2026-10-19 he approved the board “Editor — closing with changes not saved” as drawn** (relayed by the orchestrator). (1) **✕ with changes not saved asks**, in the footer's place, the edit held behind it: “Save your edit?”, “What you've changed isn't saved yet.”, then Discard, Keep editing and Save. While it asks no step is taken and the preview pauses. (2) **Save is Done**: the edit is saved, then the final video is made, as after Done. Return presses it. (3) **Keep editing** puts the question away, every change still there; Esc does the same. (4) **Discard** closes the window and drops what wasn't saved: the video stays as it was last saved. It is never on Return. (5) **What doesn't change**: with nothing to save, ✕ closes the window at once; while the edit saves, ✕ waits for it; after Done (the final video being made, the original asked about) ✕ is Close; a save the space turned down closes; Done saves as before. (6) **Quit and Update save first, as now, without asking** (Bagrat, 2026-10-19). Built: DECISIONS B223. **Ratified by Bagrat as drawn, 2026-10-19.**",
+   "status": "ratified",
+   "date": "2026-10-19",
+   "amends": [
+    "N63 (✕ was Done: with changes not saved it now asks first)",
+    "B195 (✕ is Done)",
+    "editor (✕ with changes not saved asks)",
+    "editor-save-failed (✕ asks, the changes still not saved)",
+    "quit-saves-the-edit (from the question too, without asking)"
    ],
    "amended_by": []
   }
@@ -2431,6 +2448,7 @@
     "editor-cant-get",
     "editor-saving",
     "editor-save-failed",
+    "editor-closing",
     "editor-save-refused",
     "editor-making",
     "editor-making-failed",
@@ -2438,7 +2456,8 @@
    ],
    "cites": [
     "N63",
-    "B199"
+    "B199",
+    "N71"
    ]
   }
  ],
@@ -7941,7 +7960,7 @@
    "surface": "window",
    "status": "ratified",
    "board": "EditorCuts",
-   "summary": "The editor (N63): a window of its own, titled “Edit — <the video's title>”, one at a time. Top to bottom: the video, playing the edit (cuts skipped, held to the trim); the play button and the time, edited position / edited length, with “was <the recording's length>” once the edit changes it; on the right the hint and Undo · Redo; then the timeline, the whole recording's sound as a waveform with the playhead: two yellow ends that drag to trim, a drag across the sound that selects a part with Cut <its length> under it, every cut red and hatched (clicking one offers Put back <its length>), every suggestion not yet taken dashed amber (clicking one offers Cut <its length>, as a selection does); either edge of a cut or a suggestion drags to move it, the pointer ↔ over it, its length shown live under it and the picture at the edge as it goes, stopping at the next cut or suggestion, the trim's end, a tenth of a second from its other edge, or where a second would be all that's left, one step for Undo (B195 (g)), and every marker (N64) a flag at its time. The footer: the line that the link stays the same, Revert to original and Done. The waveform fills in once the sound is read; until then the timeline is empty and the ends wait. Every change can be undone, Put back and Revert included; the changes stay in the window until Done saves them. While an earlier edit's original is still kept, the time it has left sits by Revert to original; once it is gone, Revert to original only undoes what changed since the window opened. While it is open, no edit becomes a video behind it on this Mac: the upkeep, and on the Mac holding the token the cleanup sweep, wait until the window closes (B199). The owner page's Edit in shroom (N69) opens this same window; while it holds another video, that press, or Edit… in the Library, brings it forward as it is, one at a time, the footer line saying why until the next change.",
+   "summary": "The editor (N63): a window of its own, titled “Edit — <the video's title>”, one at a time. Top to bottom: the video, playing the edit (cuts skipped, held to the trim); the play button and the time, edited position / edited length, with “was <the recording's length>” once the edit changes it; on the right the hint and Undo · Redo; then the timeline, the whole recording's sound as a waveform with the playhead: two yellow ends that drag to trim, a drag across the sound that selects a part with Cut <its length> under it, every cut red and hatched (clicking one offers Put back <its length>), every suggestion not yet taken dashed amber (clicking one offers Cut <its length>, as a selection does); either edge of a cut or a suggestion drags to move it, the pointer ↔ over it, its length shown live under it and the picture at the edge as it goes, stopping at the next cut or suggestion, the trim's end, a tenth of a second from its other edge, or where a second would be all that's left, one step for Undo (B195 (g)), and every marker (N64) a flag at its time. The footer: the line that the link stays the same, Revert to original and Done. The waveform fills in once the sound is read; until then the timeline is empty and the ends wait. Every change can be undone, Put back and Revert included; the changes stay in the window until Done saves them. While an earlier edit's original is still kept, the time it has left sits by Revert to original; once it is gone, Revert to original only undoes what changed since the window opened. While it is open, no edit becomes a video behind it on this Mac: the upkeep, and on the Mac holding the token the cleanup sweep, wait until the window closes (B199). The owner page's Edit in shroom (N69) opens this same window; while it holds another video, that press, or Edit… in the Library, brings it forward as it is, one at a time, the footer line saying why until the next change. ✕ with changes not saved asks before the window closes (N71).",
    "entry": "Edit… on a live row in the Library (N63), when the video is on this Mac: its take was recorded here and is still here, or it came from the space before. One instance: Edit… again brings the open editor forward, on the video it holds. A take started while it is open leaves it open (law 4 covers only what shroom would newly show). The dock icon shows while it is open.",
    "said": [
     {
@@ -8117,7 +8136,14 @@
      "kind": "filled-default",
      "return_default": true,
      "goes_to": "editor-saving",
-     "note": "Return. With nothing changed it closes the window at once. ✕ is Done."
+     "note": "Return. With nothing changed it closes the window at once."
+    },
+    {
+     "label": "✕",
+     "kind": "close",
+     "return_default": false,
+     "goes_to": "editor-closing",
+     "note": "with changes not saved it asks first: Save, Keep editing or Discard (N71); with nothing changed it closes the window at once"
     }
    ],
    "cites": [
@@ -8125,7 +8151,8 @@
     "B195",
     "B197",
     "B199",
-    "N69"
+    "N69",
+    "N71"
    ]
   },
   "editor-getting": {
@@ -8221,7 +8248,7 @@
    "status": "ratified",
    "board": "EditorStates",
    "summary": "Done pressed with changes: the footer says the edit is saving and Done reads Saving…, greyed. Saved, the share page plays the edit from its next load, and the window goes on to make the final video (or closes, when nothing is left out any more). A quit or an update asked meanwhile waits on it: it goes on once the edit is saved, not waiting for the final video, and is dropped if the save doesn't land (B199).",
-   "entry": "Done (or ✕) in editor with changes, or Done again in editor-save-failed. Also: Quit or Update while the edit holds changes not saved yet (B199).",
+   "entry": "Done in editor with changes, or Done again in editor-save-failed, or Save when ✕ asked (editor-closing, N71). Also: Quit or Update while the edit holds changes not saved yet (B199).",
    "said": [
     {
      "text": "Saving your edit…",
@@ -8241,7 +8268,8 @@
    "cites": [
     "N63",
     "B195",
-    "B199"
+    "B199",
+    "N71"
    ]
   },
   "editor-save-failed": {
@@ -8269,12 +8297,92 @@
      "return_default": true,
      "goes_to": "editor-saving",
      "note": "tries the save again"
+    },
+    {
+     "label": "✕",
+     "kind": "close",
+     "return_default": false,
+     "goes_to": "editor-closing",
+     "note": "it asks first, the changes still not saved (N71)"
     }
    ],
    "cites": [
     "N63",
     "B195",
-    "B199"
+    "B199",
+    "N71"
+   ]
+  },
+  "editor-closing": {
+   "region": 5,
+   "kind": "state",
+   "parent": null,
+   "surface": "window",
+   "status": "ratified",
+   "board": "EditorClosing",
+   "summary": "✕ with changes not saved (N71): the window asks before it closes, in its footer's place, the edit held behind it — no step is taken and the preview pauses. One card: “Save your edit?”, a line that what changed isn't saved yet, then Discard, Keep editing and Save. Save is Done and the Return default: the edit is saved, then the final video is made. Keep editing (Esc) puts the question away, every change still there. Discard closes the window and drops what wasn't saved, the video staying as it was last saved; it is never on Return. ✕ again leaves the question as it is. Quit and Update save first, without asking (B199; Bagrat, 2026-10-19).",
+   "entry": "✕ while the editor holds changes not saved: in editor, or in editor-save-failed.",
+   "said": [
+    {
+     "text": "Save your edit?",
+     "role": "title",
+     "copy": "ratified",
+     "id": "editor-closing.title"
+    },
+    {
+     "text": "What you've changed isn't saved yet.",
+     "role": "line",
+     "copy": "ratified",
+     "id": "editor-closing.line"
+    },
+    {
+     "text": "Discard",
+     "role": "button",
+     "copy": "ratified",
+     "note": "red outline; never the Return default",
+     "id": "editor-closing.discard"
+    },
+    {
+     "text": "Keep editing",
+     "role": "button",
+     "copy": "ratified",
+     "note": "Esc too",
+     "id": "editor-closing.keep"
+    },
+    {
+     "text": "Save",
+     "role": "button",
+     "copy": "ratified",
+     "note": "filled; the Return default",
+     "id": "editor-closing.save"
+    }
+   ],
+   "actions": [
+    {
+     "label": "Save",
+     "kind": "filled-default",
+     "return_default": true,
+     "goes_to": "editor-saving",
+     "note": "≡ Done: the edit is saved, then the final video is made"
+    },
+    {
+     "label": "Keep editing",
+     "kind": "secondary",
+     "return_default": false,
+     "goes_to": "editor",
+     "note": "Esc too: the question goes, every change still there (back to editor-save-failed when it asked after a save that didn't go through)"
+    },
+    {
+     "label": "Discard",
+     "kind": "destructive",
+     "return_default": false,
+     "goes_to": "library",
+     "note": "the window closes; what wasn't saved is dropped, and the video stays as it was last saved"
+    }
+   ],
+   "cites": [
+    "N71",
+    "B223"
    ]
   },
   "editor-save-refused": {
@@ -18135,18 +18243,18 @@
    "to": "editor-saving",
    "kind": "flow",
    "label": "Done",
-   "trigger": "Done, Return or ✕ with changes — or Quit or Update meanwhile, which then wait on the save (B199)",
+   "trigger": "Done or Return with changes — or Quit or Update meanwhile, which then wait on the save (B199)",
    "status": "ratified",
    "cites": [
     "N63",
-    "B199"
+    "B199",
+    "N71"
    ],
    "source": [
     "canvas"
    ],
    "on": [
     "Act(EditorDone)",
-    "WindowClosed",
     "QuitRequested",
     "Act(Quit)",
     "Act(QuitAnyway)",
@@ -18196,14 +18304,14 @@
    "status": "ratified",
    "cites": [
     "N63",
-    "B199"
+    "B199",
+    "N71"
    ],
    "source": [
     "canvas"
    ],
    "on": [
     "Act(EditorDone)",
-    "WindowClosed",
     "QuitRequested",
     "Act(Quit)",
     "Act(QuitAnyway)",
@@ -18396,6 +18504,118 @@
    "on": [
     "Act(EditorClose)",
     "WindowClosed"
+   ]
+  },
+  {
+   "from": "editor",
+   "to": "editor-closing",
+   "kind": "flow",
+   "label": "✕",
+   "trigger": "✕ with changes not saved: the window asks before it closes",
+   "status": "ratified",
+   "cites": [
+    "N71",
+    "B223"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "WindowClosed"
+   ]
+  },
+  {
+   "from": "editor-save-failed",
+   "to": "editor-closing",
+   "kind": "flow",
+   "label": "✕",
+   "trigger": "✕ with the changes the save didn't take: the window asks before it closes",
+   "status": "ratified",
+   "cites": [
+    "N71",
+    "B223"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "WindowClosed"
+   ]
+  },
+  {
+   "from": "editor-closing",
+   "to": "editor-saving",
+   "kind": "flow",
+   "label": "Save",
+   "trigger": "Save or Return: Done — or Quit or Update meanwhile, which then wait on the save (B199)",
+   "status": "ratified",
+   "cites": [
+    "N71",
+    "B223"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Act(EditorDone)",
+    "QuitRequested",
+    "Act(Quit)",
+    "Act(QuitAnyway)",
+    "Act(Update)"
+   ]
+  },
+  {
+   "from": "editor-closing",
+   "to": "editor",
+   "kind": "flow",
+   "label": "Keep editing",
+   "trigger": "Keep editing or Esc: the question goes, every change still there",
+   "status": "ratified",
+   "cites": [
+    "N71",
+    "B223"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Act(EditorKeepEditing)"
+   ]
+  },
+  {
+   "from": "editor-closing",
+   "to": "editor-save-failed",
+   "kind": "flow",
+   "label": "Keep editing",
+   "trigger": "Keep editing or Esc, when it asked after a save that didn't go through: back to that face, every change still there",
+   "status": "ratified",
+   "cites": [
+    "N71",
+    "B223"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Act(EditorKeepEditing)"
+   ]
+  },
+  {
+   "from": "editor-closing",
+   "to": "library",
+   "kind": "flow",
+   "label": "Discard",
+   "trigger": "Discard: the window closes; what wasn't saved is dropped, and the video stays as it was last saved",
+   "status": "ratified",
+   "cites": [
+    "N71",
+    "B223"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Act(EditorDiscard)"
    ]
   }
  ],
@@ -18972,7 +19192,8 @@
    "label": "Quit or Update saves an unsaved edit first",
    "from": [
     "editor",
-    "editor-save-failed"
+    "editor-save-failed",
+    "editor-closing"
    ],
    "to": [
     "editor-saving"
@@ -18984,10 +19205,11 @@
     "Act(Update)"
    ],
    "kind": "side",
-   "says": "Quit — the Dock's, the popover's, the right-click menu's or macOS's, and Quit anyway once uploads are asked about — and Update, while the editor holds changes not saved yet, save them first, as ✕ and ⌘Q do, and bring the editor forward; a save already on its way is waited for. Once it lands the quit or the update goes on, without waiting for the final video (an upkeep makes it later). A save that doesn't land holds it: shroom stays, and the editor says why. A take begun meanwhile drops it (law 4) (B199).",
+   "says": "Quit — the Dock's, the popover's, the right-click menu's or macOS's, and Quit anyway once uploads are asked about — and Update, while the editor holds changes not saved yet, save them first, without asking (Bagrat, 2026-10-19; only ✕ asks, N71), and bring the editor forward; a save already on its way is waited for. Once it lands the quit or the update goes on, without waiting for the final video (an upkeep makes it later). A save that doesn't land holds it: shroom stays, and the editor says why. A take begun meanwhile drops it (law 4) (B199).",
    "cites": [
     "N63",
-    "B199"
+    "B199",
+    "N71"
    ],
    "status": "ratified"
   }

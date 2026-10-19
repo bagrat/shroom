@@ -202,6 +202,7 @@ fn editor_open(media: EditorMedia, save: EditorSave, changed: bool) -> World {
         save,
         leaving: None,
         elsewhere: false,
+        closing: false,
     });
     w
 }
@@ -602,6 +603,15 @@ fn rows() -> Vec<(&'static str, World)> {
         w
     }));
     rows.push(("editor-save-failed", editor_open(live(), EditorSave::Failed, true)));
+    // ✕ with changes not saved asks first (N71): the question, in the footer's place — from
+    // the editor, and after a save that didn't go through.
+    for save in [EditorSave::Idle, EditorSave::Failed] {
+        rows.push(("editor-closing", {
+            let mut w = editor_open(live(), save, true);
+            w.session.fields.editor.as_mut().unwrap().closing = true;
+            w
+        }));
+    }
     // The space turned the save down (B199): nothing to save over, Close only.
     rows.push(("editor-save-refused", editor_open(live(), EditorSave::Refused, true)));
     rows.push(("editor", {
@@ -762,6 +772,8 @@ fn every_region5_state_derives_with_its_return_default_and_its_lines() {
             let want = fixture.return_default().and_then(|a| match a.label.as_str() {
                 "Done" => live.then_some(Action::EditorDone),
                 "Close" => Some(Action::EditorClose),
+                // The close prompt's Save is Done (N71).
+                "Save" => Some(Action::EditorDone),
                 other => panic!("no mapping for the editor's Return default {other:?}"),
             });
             if scene.ret(surface) != want {
@@ -772,6 +784,8 @@ fn every_region5_state_derives_with_its_return_default_and_its_lines() {
             let want_esc = match id {
                 "editor-cant-get" | "editor-making" | "editor-making-failed" | "editor-save-refused" => Some(Action::EditorClose),
                 "editor-keep-original" => Some(Action::KeepOriginal),
+                // The close prompt's Keep editing (N71).
+                "editor-closing" => Some(Action::EditorKeepEditing),
                 _ => None,
             };
             if scene.esc(surface) != want_esc {
