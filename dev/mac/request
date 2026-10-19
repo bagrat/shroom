@@ -1,4 +1,4 @@
-scenario=cli-bubble-loop
+scenario=install-verify brew-cask brew-tap
 hold=0
 ssh_key=
-asked=2026-10-18T21:55:09Z
+asked=2026-10-19T02:34:14Z
