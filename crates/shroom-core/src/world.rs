@@ -1308,10 +1308,6 @@ pub struct EditorFields {
     pub kept_until: Option<Wall>,
     pub media: EditorMedia,
     pub save: EditorSave,
-    /// Edit asked for another video while this one is open — the owner page's Edit in
-    /// shroom or the Library's Edit… (N69): the footer says why it came forward as it is,
-    /// until the next change.
-    pub elsewhere: bool,
     /// ✕ with changes not saved asked first (N71): the question takes the footer's place,
     /// the edit held behind it, until Save, Keep editing or Discard.
     pub closing: bool,

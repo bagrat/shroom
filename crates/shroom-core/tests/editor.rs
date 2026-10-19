@@ -1461,6 +1461,19 @@ fn deleting_a_video_closes_its_window_and_no_other() {
     assert!(!r.w.session.windows.keys().any(|k| matches!(k, WindowKind::Editor(_))));
 }
 
+/// A press that waited on the Library's answer finds its video's window open since: that
+/// window comes forward — never a second window on one video.
+#[test]
+fn a_press_waiting_on_the_library_never_opens_a_second_window_on_its_video() {
+    let mut w = ready_editor().w;
+    w.session.fields.edit_link = Some(EditLink::Waiting { host: HOST.into(), rec: rec(), asked: true });
+    let mut r = Run::new(w);
+    r.send(Event::Library(LibraryNews::Rows { rows: vec![row(REC, TITLE, true, "m1"), row(OTHER, OTHER_TITLE, true, "m1")], fresh: true }));
+    assert_eq!(windows(&r), vec![WIN], "no second window");
+    assert_eq!(r.effects, vec![Effect::Shell(ShellCmd::OpenEditor(WIN))], "its window, forward");
+    assert!(r.w.session.fields.edit_link.is_none(), "the press is answered");
+}
+
 /// No edit becomes a video behind a window: the upkeep waits until every editor window has
 /// closed, not only the first.
 #[test]

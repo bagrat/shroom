@@ -1318,7 +1318,6 @@ fn editor_rows() -> Vec<(&'static str, &'static str, World)> {
             kept_until: None,
             media,
             save,
-            elsewhere: false,
             closing: false,
         });
         w
@@ -1339,12 +1338,6 @@ fn editor_rows() -> Vec<(&'static str, &'static str, World)> {
     vec![
         ("editor", "editor-ready", open(here(), EditorSave::Idle, Some(stepped()))),
         ("editor", "editor-opening", open(EditorMedia::Opening, EditorSave::Idle, None)),
-        // The owner page's Edit in shroom asked for another video while this one is open (N69).
-        ("editor", "editor-editing-another", {
-            let mut w = open(here(), EditorSave::Idle, Some(stepped()));
-            w.session.fields.editors.get_mut(&EditorId(1)).unwrap().elsewhere = true;
-            w
-        }),
         ("editor", "editor-original-kept-2-days", kept(47 * 3_600_000 + 30 * 60_000)),
         ("editor", "editor-original-kept-1-day", kept(30 * 3_600_000)),
         ("editor", "editor-original-kept-hours", kept(20 * 3_600_000)),

@@ -1072,7 +1072,6 @@ mod tests {
             kept_until: None,
             media: EditorMedia::Opening,
             save: EditorSave::Idle,
-            elsewhere: false,
             closing: false,
         };
         for (n, rec) in [(1, "AbCdEfGhIjKlMnOp"), (2, "QrStUvWxYz012345")] {

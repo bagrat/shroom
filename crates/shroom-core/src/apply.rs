@@ -2274,19 +2274,26 @@ fn window_closed(w: &mut World, kind: WindowKind) -> Out {
 
 // ── the editor (N63, B195) ──
 
-/// Edit… on a live row: the editor opens on it and asks for its record and its video — or,
-/// open already, comes forward on the video it holds (one at a time), saying why when that's
-/// another video and its changes are still to save, as the page's Edit does (N69).
+/// Edit… on a live row: a window of its own opens on it, in front, and asks for its record
+/// and its video — or, its window open already, that window comes forward as it is (N73).
+/// Every other window stays as it is.
 fn open_editor(w: &mut World, rec: RecId) -> Out {
-    if let Some((&id, e)) = w.session.fields.editors.iter_mut().next() {
-        if e.rec != rec && e.save == EditorSave::Idle {
-            e.elsewhere = true;
-        }
-        open_window(w, WindowKind::Editor(id));
-        return (vec![Effect::Shell(ShellCmd::OpenEditor(id))], Arm::named("editor-forward"));
+    if let Some(id) = editor_of(w, &rec) {
+        return (forward_editor(w, id), Arm::named("editor-forward"));
     }
     let Some(row) = library_view::rows(w).into_iter().find(|r| r.rec == rec && r.kind == library_view::Kind::Live) else { return (vec![], Arm::DROPPED) };
     open_editor_on(w, row)
+}
+
+/// The editor window open on `rec`, if one is: one window per video (N73).
+fn editor_of(w: &World, rec: &RecId) -> Option<EditorId> {
+    w.session.fields.editors.iter().find(|(_, e)| &e.rec == rec).map(|(id, _)| *id)
+}
+
+/// An editor window comes forward as it is, with the keyboard.
+fn forward_editor(w: &mut World, id: EditorId) -> Vec<Effect> {
+    open_window(w, WindowKind::Editor(id));
+    vec![Effect::Shell(ShellCmd::OpenEditor(id))]
 }
 
 /// An editor window opening on a live row, under the next number (N73): Edit…'s, and the
@@ -2309,7 +2316,6 @@ fn open_editor_on(w: &mut World, row: library_view::Row) -> Out {
             kept_until: None,
             media: EditorMedia::Opening,
             save: EditorSave::Idle,
-            elsewhere: false,
             closing: false,
         },
     );
@@ -2334,14 +2340,9 @@ fn edit_link(w: &mut World, host: String, rec: RecId) -> Out {
     if !ours {
         return edit_link_no(w, EditLinkNo::OtherSpace);
     }
-    // The editor open: it comes forward as it is, one at a time (B195 (a)) — saying why when
-    // it holds another video and its changes are still to save.
-    if let Some((&id, e)) = w.session.fields.editors.iter_mut().next() {
-        if e.rec != rec && e.save == EditorSave::Idle {
-            e.elsewhere = true;
-        }
-        open_window(w, WindowKind::Editor(id));
-        return (vec![Effect::Shell(ShellCmd::OpenEditor(id))], Arm { name: "edit-link-forward", edge: Some(("owner-page", "editor")) });
+    // The video's window open: it comes forward as it is (N73).
+    if let Some(id) = editor_of(w, &rec) {
+        return (forward_editor(w, id), Arm { name: "edit-link-forward", edge: Some(("owner-page", "editor")) });
     }
     if let Some(row) = library_view::editable(w, &rec) {
         let (fx, _) = open_editor_on(w, row);
@@ -2367,6 +2368,11 @@ fn edit_link_answered(w: &mut World, fresh: bool) -> Vec<Effect> {
     if w.take_open() {
         w.session.fields.edit_link = Some(EditLink::Waiting { host, rec, asked: false });
         return vec![];
+    }
+    // Its window open since (one window per video, N73): forward, as it is.
+    if let Some(id) = editor_of(w, &rec) {
+        w.session.fields.edit_link = None;
+        return forward_editor(w, id);
     }
     if let Some(row) = library_view::editable(w, &rec) {
         w.session.fields.edit_link = None;
@@ -2547,8 +2553,6 @@ fn edit_step(w: &mut World, id: EditorId, step: EditStep) -> Out {
     if e.closing {
         return (vec![], Arm::DROPPED);
     }
-    // The next change puts the page's line away (N69).
-    e.elsewhere = false;
     let Some(h) = Some(e).filter(|e| open && crate::derive::editor::editable(e)).and_then(|e| e.history.as_mut()) else {
         return (vec![], Arm::DROPPED);
     };

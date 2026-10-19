@@ -1233,7 +1233,11 @@ impl Runner {
 /// Where the editor's parts are in its page (CSS pixels from the page's top-left), as its
 /// page answers now: `.track`, the chip's button, the video.
 fn editor_layout(d: &Drive) -> Result<serde_json::Value, String> {
-    use tauri::Manager;
+    editor_layout_in(d, &d.editor_label())
+}
+
+/// …in the editor window labelled `label` (N73).
+fn editor_layout_in(d: &Drive, label: &str) -> Result<serde_json::Value, String> {
     // Also, from the first look on: where the pointer last moved over the page, and the
     // pointer's presses there (what a press landed on), for the drive's report.
     const JS: &str = r#"(() => {
@@ -1244,11 +1248,17 @@ fn editor_layout(d: &Drive) -> Result<serde_json::Value, String> {
       }
       const r = (q) => { const e = document.querySelector(q); if (!e) return null; const b = e.getBoundingClientRect(); return [b.left, b.top, b.width, b.height]; };
       const v = document.querySelector("video");
-      return JSON.stringify({ track: r(".track"), chip: r(".chip button"), screen: r(".screen"), delete: r(".ask .b.filled"), discard: r(".ask .b.red-outline"), ask_title: document.querySelector(".ask h2")?.textContent ?? null, ask: [...document.querySelectorAll(".ask button")].map((b) => b.textContent.trim()), play: r(".play"), label: document.querySelector(".play")?.getAttribute("aria-label") ?? null, video: v ? [v.duration, v.readyState] : null, paused: v ? v.paused : null, pointer: window.__drive.at, presses: window.__drive.presses.slice(-12) });
+      return JSON.stringify({ track: r(".track"), chip: r(".chip button"), screen: r(".screen"), delete: r(".ask .b.filled"), discard: r(".ask .b.red-outline"), ask_title: document.querySelector(".ask h2")?.textContent ?? null, ask: [...document.querySelectorAll(".ask button")].map((b) => b.textContent.trim()), play: r(".play"), label: document.querySelector(".play")?.getAttribute("aria-label") ?? null, video: v ? [v.duration, v.readyState] : null, src: v ? v.currentSrc : null, paused: v ? v.paused : null, pointer: window.__drive.at, presses: window.__drive.presses.slice(-12) });
     })()"#;
-    let w = d.app.get_webview_window(&d.editor_label()).ok_or("no editor window")?;
+    page_eval(d, label, JS)
+}
+
+/// What `js` comes to in the page of the window labelled `label`, read back as JSON.
+fn page_eval(d: &Drive, label: &str, js: &str) -> Result<serde_json::Value, String> {
+    use tauri::Manager;
+    let w = d.app.get_webview_window(label).ok_or("no editor window")?;
     let (tx, rx) = std::sync::mpsc::channel();
-    w.eval_with_callback(JS, move |out| {
+    w.eval_with_callback(js, move |out| {
         let _ = tx.send(out);
     })
     .map_err(|e| e.to_string())?;
@@ -1282,6 +1292,54 @@ fn editor_origin(d: &Drive) -> Result<(f64, f64), String> {
     })
     .flatten()
     .ok_or_else(|| "the editor's window isn't on screen".into())
+}
+
+/// An editor window on screen, as AppKit has it (main thread): its frame — x, y (its bottom:
+/// AppKit's y runs up), width, height — while it's visible.
+fn editor_window(d: &Drive, id: EditorId) -> Option<(f64, f64, f64, f64)> {
+    use tauri::Manager;
+    let (app, label) = (d.app.clone(), crate::runtime::presenter::label(WindowKind::Editor(id)).into_owned());
+    d.on_main(move || {
+        let w = app.get_webview_window(&label)?;
+        let ns = w.ns_window().ok()?;
+        // SAFETY: Tauri's own NSWindow for this webview window, read on the main thread.
+        let ns: &objc2_app_kit::NSWindow = unsafe { &*(ns as *const objc2_app_kit::NSWindow) };
+        let f = ns.frame();
+        ns.isVisible().then_some((f.origin.x, f.origin.y, f.size.width, f.size.height))
+    })
+    .flatten()
+}
+
+/// The editor windows on screen, front to back, by number: AppKit's own order (main thread).
+fn editor_order(d: &Drive) -> Vec<EditorId> {
+    use tauri::Manager;
+    let app = d.app.clone();
+    d.on_main(move || {
+        let mtm = objc2_foundation::MainThreadMarker::new()?;
+        let order: Vec<isize> = objc2_app_kit::NSApplication::sharedApplication(mtm).orderedWindows().iter().filter(|w| w.isVisible()).map(|w| w.windowNumber()).collect();
+        let mut at: Vec<(usize, EditorId)> = app
+            .webview_windows()
+            .into_iter()
+            .filter_map(|(label, w)| {
+                let id = crate::runtime::presenter::editor_of(&label)?;
+                let ns = w.ns_window().ok()?;
+                // SAFETY: as above.
+                let n = unsafe { &*(ns as *const objc2_app_kit::NSWindow) }.windowNumber();
+                Some((order.iter().position(|x| *x == n)?, id))
+            })
+            .collect();
+        at.sort();
+        Some(at.into_iter().map(|(_, id)| id).collect())
+    })
+    .flatten()
+    .unwrap_or_default()
+}
+
+/// What `url` answers when the page of the window labelled `label` fetches it: its status.
+fn fetched_in(d: &Drive, label: &str, url: &str) -> Option<u64> {
+    let start = format!("(() => {{ window.__fetched = null; fetch({url:?}).then((r) => (window.__fetched = r.status), () => (window.__fetched = 0)); return 0; }})()");
+    page_eval(d, label, &start).ok()?;
+    poll(5, || page_eval(d, label, "window.__fetched").ok().and_then(|v| v.as_u64()))
 }
 
 /// A rectangle from the page, its centre on screen.
@@ -1743,23 +1801,52 @@ fn editor(d: &Drive) -> Result<(), String> {
     crate::runtime::opened(&d.rt, &format!("shroom://edit/{host}/{}", here.0));
     let s = d.wait("the page's Edit in shroom opens the editor", 30, |s| editor_body(s).is_some_and(|b| b.rec == here.0))?;
     d.check("Edit in shroom: the editor, on the page's video (N69)", editor_body(&s).is_some_and(|b| b.title == format!("Edit — {}", HERE.1)), editor_body(&s).map(|b| b.title.clone()).unwrap_or_default());
-    // Pressed again for another video while it holds this one: forward as it is, saying why.
+    let first = d.editor_id().ok_or("no editor window")?;
+    // Pressed for another video while that one is open: a window of its own opens for it, in
+    // front, and the first stays as it was (N73).
     crate::runtime::opened(&d.rt, &format!("shroom://edit/{host}/{}", away.0));
-    let s = d.wait("pressed for another video", 10, |s| editor_body(s).is_some_and(|b| b.footer == shroom_core::copy::editing_another()))?;
-    d.check("… pressed for another video: it stays on this one, its footer saying why", editor_body(&s).is_some_and(|b| b.rec == here.0), "");
-    std::thread::sleep(Duration::from_millis(600));
-    runner.shot(d, &d.editor_label(), "editor-editing-another")?;
-    // Edit… in the Library for that video says the same (it said nothing there, 2026-10-19):
-    // the next step puts the page's line away, then Edit… brings it back.
-    d.ed_step(EditStep::Undo);
-    d.wait("the line, put away by the next step", 5, |s| editor_body(s).is_some_and(|b| b.footer != shroom_core::copy::editing_another()))?;
-    d.act(Surface::Library, Action::EditRow(away.clone()));
-    let said = d.wait("Edit… in the Library for another video", 10, |s| editor_body(s).is_some_and(|b| b.footer == shroom_core::copy::editing_another()));
+    let s = d.wait("pressed for another video: a window of its own", 60, |s| s.editors.len() == 2 && editor_ready(s) && editor_body(s).is_some_and(|b| b.rec == away.0))?;
+    let second = *s.editors.keys().next_back().ok_or("no second window")?;
     d.check(
-        "… Edit… in the Library for another video: the same, it stays on this one and says why",
-        said.as_ref().is_ok_and(|s| editor_body(s).is_some_and(|b| b.rec == here.0)),
-        format!("{:?}", snapshot(&d.rt).and_then(|s| editor_body(&s).map(|b| (b.rec.clone(), b.footer.clone())))),
+        "… pressed for another video: a window of its own, the first still on its own and saying nothing of it (N73)",
+        second != first && s.editors.get(&first).is_some_and(|w| w.body.rec == here.0 && w.body.footer == shroom_core::copy::editor_footer()),
+        format!("{:?}", s.editors.iter().map(|(id, w)| (id.0, w.body.rec.clone(), w.body.footer.clone())).collect::<Vec<_>>()),
     );
+    let order = poll(5, || Some(editor_order(d)).filter(|o| *o == [second, first]));
+    let (one, two) = (editor_window(d, first), editor_window(d, second));
+    d.fact_like("two_windows", serde_json::json!({ "order": editor_order(d).iter().map(|id| id.0).collect::<Vec<_>>(), "first": one.map(|f| [f.0, f.1, f.2, f.3]), "second": two.map(|f| [f.0, f.1, f.2, f.3]) }));
+    d.check(
+        "… two windows on screen, the newer in front, down and to the right of the first (B225 (c))",
+        order.is_some() && matches!((one, two), (Some(a), Some(b)) if b.0 > a.0 && b.1 + b.3 < a.1 + a.3),
+        format!("order {:?}, {one:?} then {two:?}", editor_order(d)),
+    );
+    let title = |id: EditorId| {
+        let (app, label) = (d.app.clone(), crate::runtime::presenter::label(WindowKind::Editor(id)).into_owned());
+        d.on_main(move || app.get_webview_window(&label).and_then(|w| w.title().ok())).flatten()
+    };
+    let titles = [title(first), title(second)];
+    d.check("… each titled by its video", titles == [Some(format!("Edit — {}", HERE.1)), Some(format!("Edit — {}", AWAY.1))], format!("{titles:?}"));
+    // Each window plays its own video, and only its own (B225 (c)).
+    let label = |id: EditorId| crate::runtime::presenter::label(WindowKind::Editor(id)).into_owned();
+    let plays = |id: EditorId, rec: &RecId| poll(10, || editor_layout_in(d, &label(id)).ok().filter(|l| l["src"].as_str().is_some_and(|s| s.contains(&rec.0)) && l["video"].get(1).and_then(serde_json::Value::as_u64).is_some_and(|r| r >= 1)));
+    d.check("… each plays its own video", plays(first, &here).is_some() && plays(second, &away).is_some(), "");
+    let (own, other) = (fetched_in(d, &label(second), &format!("shroom-media://localhost/{}/peaks", away.0)), fetched_in(d, &label(second), &format!("shroom-media://localhost/{}/peaks", here.0)));
+    d.check("… and the other window's video is none of its own: its page gets a 404 for it", own == Some(200) && other == Some(404), format!("its own {own:?}, the other's {other:?}"));
+    std::thread::sleep(Duration::from_millis(600));
+    runner.shot(d, &label(second), "editor-two-windows")?;
+    // Edit… in the Library on the first video: its window comes forward as it is, no third.
+    d.act(Surface::Library, Action::EditRow(here.clone()));
+    let forward = poll(5, || Some(editor_order(d)).filter(|o| *o == [first, second]));
+    let s = d.after(300);
+    d.check("Edit… on a video whose window is open: that window comes forward, no third (N73)", forward.is_some() && s.editors.len() == 2, format!("order {:?}, {} windows", editor_order(d), s.editors.len()));
+    // ✕ on the first: it closes alone, for good; the second stays.
+    d.rt.post(Event::WindowClosed(WindowKind::Editor(first)));
+    let s = d.wait("the first closed, the second open", 10, |s| s.editors.len() == 1 && s.editors.contains_key(&second))?;
+    let gone = poll(3, || {
+        let (app, at) = (d.app.clone(), label(first));
+        d.on_main(move || app.get_webview_window(&at).is_none()).filter(|g| *g)
+    });
+    d.check("… ✕ closes that window alone, for good: its webview is gone", gone.is_some() && s.editors.contains_key(&second), "");
     d.ed_close();
     d.wait("closed", 10, |s| s.editors.is_empty())?;
     // Another space's video: the popover opens by itself and says so, once.
