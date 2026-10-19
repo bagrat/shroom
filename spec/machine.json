@@ -1211,7 +1211,8 @@
    ],
    "amended_by": [
     "N71",
-    "N72"
+    "N72",
+    "N73"
    ]
   },
   {
@@ -1241,7 +1242,9 @@
     "editor (the line when the page asks for another video)",
     "config (three one-shot status lines)"
    ],
-   "amended_by": []
+   "amended_by": [
+    "N73"
+   ]
   },
   {
    "id": "N70",
@@ -1281,6 +1284,24 @@
     "N63 (an edit the command saved: the app makes its final video)"
    ],
    "amended_by": []
+  },
+  {
+   "id": "N73",
+   "title": "One editor window per video",
+   "decision": "**Bagrat asked, 2026-10-19** (relayed by the orchestrator), whether each video could get an editor window of its own, the Mac's document way, instead of the one window that comes forward on the video it holds; the same day he chose it, as the board “Editor — one window per video” draws it, built after the close prompt (N71) as its own change (relayed by the orchestrator). (1) **Edit on a video that isn't open** — Edit in shroom on its page, or Edit… in the Library — opens a window of its own for it, in front, as a first window opens: from the take when this Mac recorded the video, else after “Getting the video from your space…”. Every other window stays as it was, its changes still there, not saved and not lost. (2) **Edit on a video whose window is open**, from either, brings that window forward as it is. Nothing else moves. (3) **Each window is its own**: its steps and Undo, its Done, its final video, its “Delete the original?” and ✕'s question (N71). Done in one never touches another. The final videos are still made one at a time: a second waits its turn, its window reading “Making the final video… 0%” until then. (4) **Quit and Update** save every window's changes first, as now, without asking (Bagrat, 2026-10-19). Deleting a video closes its window and no other; leaving the space closes them all. While a take is open, nothing new opens (law 4): Edit in shroom pressed meanwhile waits, as now. (5) **The line “You're editing another video — press Done, then Edit again.” goes** (N69's), and with it the board “Editor — Edit on another video”, which drew a switch. No new words. Built: DECISIONS B227. **Ratified by Bagrat as drawn, 2026-10-19**; the build's calls are B227's, for him to overturn.",
+   "status": "ratified",
+   "date": "2026-10-19",
+   "amends": [
+    "N63 (a window per video, not one at a time)",
+    "B195 (a) (a window of its own, one per video)",
+    "N69 (the line when the page asks for another video goes: that video's own window opens)",
+    "editor (one window per video)",
+    "library (Edit…'s note)",
+    "The window (the editor's, one per video)",
+    "editor-video-deleted (its window only)",
+    "quit-saves-the-edit (every window's changes)"
+   ],
+   "amended_by": []
   }
  ],
  "surfaces": [
@@ -1294,7 +1315,7 @@
   },
   {
    "name": "The window",
-   "may_do": "Lives: centered on the mushroom's display (N57), one at a time per kind | Opens: the editor (Edit…, N63), onboarding, Library, Settings, Send feedback (N60) | Rules: the dock icon while open; ✕ ≡ the retreat (N12); survives a browser round-trip  [UX-STATEMACHINE.md L1717]"
+   "may_do": "Lives: centered on the mushroom's display (N57), one at a time per kind, the editor's one per video (N73) | Opens: the editor (Edit…, N63), onboarding, Library, Settings, Send feedback (N60) | Rules: the dock icon while open; ✕ ≡ the retreat (N12); survives a browser round-trip  [UX-STATEMACHINE.md L1717]"
   },
   {
    "name": "The page",
@@ -7741,7 +7762,7 @@
      "kind": "other",
      "return_default": false,
      "goes_to": "editor",
-     "note": "N63. Right-click → Edit…, after Open page. Live rows only, in this Mac's scope. Greys out offline and while a take is open (law 4), as Rename does. One editor at a time: Edit… while it is open brings it forward, saying why when it holds another video (N69's line)."
+     "note": "N63. Right-click → Edit…, after Open page. Live rows only, in this Mac's scope. Greys out offline and while a take is open (law 4), as Rename does. One window per video (N73): Edit… on a video whose window is open brings that window forward; on another, a window of its own opens for it."
     },
     {
      "label": "Delete…",
@@ -7817,7 +7838,8 @@
     "P13",
     "N46",
     "N68",
-    "N63"
+    "N63",
+    "N73"
    ],
    "was": {
     "fixture": "r5.json",
@@ -7975,8 +7997,8 @@
    "surface": "window",
    "status": "ratified",
    "board": "EditorCuts",
-   "summary": "The editor (N63): a window of its own, titled “Edit — <the video's title>”, one at a time. Top to bottom: the video, playing the edit (cuts skipped, held to the trim); the play button and the time, edited position / edited length, with “was <the recording's length>” once the edit changes it; on the right the hint and Undo · Redo; then the timeline, the whole recording's sound as a waveform with the playhead: two yellow ends that drag to trim, a drag across the sound that selects a part with Cut <its length> under it, every cut red and hatched (clicking one offers Put back <its length>), every suggestion not yet taken dashed amber (clicking one offers Cut <its length>, as a selection does); either edge of a cut or a suggestion drags to move it, the pointer ↔ over it, its length shown live under it and the picture at the edge as it goes, stopping at the next cut or suggestion, the trim's end, a tenth of a second from its other edge, or where a second would be all that's left, one step for Undo (B195 (g)), and every marker (N64) a flag at its time. The footer: the line that the link stays the same, Revert to original and Done. The waveform fills in once the sound is read; until then the timeline is empty and the ends wait. Every change can be undone, Put back and Revert included; the changes stay in the window until Done saves them. While an earlier edit's original is still kept, the time it has left sits by Revert to original; once it is gone, Revert to original only undoes what changed since the window opened. While it is open, no edit becomes a video behind it on this Mac: the upkeep, and on the Mac holding the token the cleanup sweep, wait until the window closes (B199). The owner page's Edit in shroom (N69) opens this same window; while it holds another video, that press, or Edit… in the Library, brings it forward as it is, one at a time, the footer line saying why until the next change. ✕ with changes not saved asks before the window closes (N71).",
-   "entry": "Edit… on a live row in the Library (N63), when the video is on this Mac: its take was recorded here and is still here, or it came from the space before. One instance: Edit… again brings the open editor forward, on the video it holds. A take started while it is open leaves it open (law 4 covers only what shroom would newly show). The dock icon shows while it is open.",
+   "summary": "The editor (N63): a window of its own for each video (N73), titled “Edit — <the video's title>”. Top to bottom: the video, playing the edit (cuts skipped, held to the trim); the play button and the time, edited position / edited length, with “was <the recording's length>” once the edit changes it; on the right the hint and Undo · Redo; then the timeline, the whole recording's sound as a waveform with the playhead: two yellow ends that drag to trim, a drag across the sound that selects a part with Cut <its length> under it, every cut red and hatched (clicking one offers Put back <its length>), every suggestion not yet taken dashed amber (clicking one offers Cut <its length>, as a selection does); either edge of a cut or a suggestion drags to move it, the pointer ↔ over it, its length shown live under it and the picture at the edge as it goes, stopping at the next cut or suggestion, the trim's end, a tenth of a second from its other edge, or where a second would be all that's left, one step for Undo (B195 (g)), and every marker (N64) a flag at its time. The footer: the line that the link stays the same, Revert to original and Done. The waveform fills in once the sound is read; until then the timeline is empty and the ends wait. Every change can be undone, Put back and Revert included; the changes stay in the window until Done saves them. While an earlier edit's original is still kept, the time it has left sits by Revert to original; once it is gone, Revert to original only undoes what changed since the window opened. While one is open, no edit becomes a video behind it on this Mac: the upkeep, and on the Mac holding the token the cleanup sweep, wait until every editor window has closed (B199). The owner page's Edit in shroom (N69) opens it as Edit… does. Either, on a video whose window is open, brings that window forward as it is; on another video, a window of its own opens for it, in front, and every other window stays as it is (N73). Each window is its own: its steps, its Done, its final video and its questions never touch another's. ✕ with changes not saved asks before the window closes (N71).",
+   "entry": "Edit… on a live row in the Library (N63), when the video is on this Mac: its take was recorded here and is still here, or it came from the space before. One window per video (N73): Edit… on a video whose window is open brings that window forward, as it is; on another video, a window of its own opens for it. A take started while editor windows are open leaves them open (law 4 covers only what shroom would newly show). The dock icon shows while one is open.",
    "said": [
     {
      "text": "Edit — Setting up shroom in two minutes",
@@ -8051,16 +8073,6 @@
      "role": "line",
      "copy": "ratified",
      "id": "editor.footer"
-    },
-    {
-     "text": "You're editing another video — press Done, then Edit again.",
-     "role": "line",
-     "copy": "provisional",
-     "note": "In the footer line's place when the owner page's Edit in shroom (N69), or Edit… in the Library, asks for another video while the editor holds this one: the window comes forward as it is, and the line goes with the next change. Approved as drawn (Bagrat, 2026-10-18); Edit… says it too since 2026-10-19, when it was found saying nothing.",
-     "cites": [
-      "N69"
-     ],
-     "id": "editor.editing-another"
     },
     {
      "text": "The original is kept one more day",
@@ -8167,7 +8179,8 @@
     "B197",
     "B199",
     "N69",
-    "N71"
+    "N71",
+    "N73"
    ]
   },
   "editor-getting": {
@@ -18122,10 +18135,11 @@
    "to": "editor",
    "kind": "side",
    "label": "Edit…",
-   "trigger": "Edit… on a live row whose video is on this Mac",
+   "trigger": "Edit… on a live row whose video is on this Mac: its own window, in front — or, its window open already, that window, as it is (N73)",
    "status": "ratified",
    "cites": [
-    "N63"
+    "N63",
+    "N73"
    ],
    "source": [
     "canvas"
@@ -18139,10 +18153,11 @@
    "to": "editor-getting",
    "kind": "side",
    "label": "Edit…",
-   "trigger": "Edit… on a live row whose video isn't on this Mac",
+   "trigger": "Edit… on a live row whose video isn't on this Mac: its own window, in front (N73)",
    "status": "ratified",
    "cites": [
-    "N63"
+    "N63",
+    "N73"
    ],
    "source": [
     "canvas"
@@ -18156,10 +18171,11 @@
    "to": "editor",
    "kind": "side",
    "label": "Edit in shroom",
-   "trigger": "Edit in shroom, for a video this Mac can edit whose video is on this Mac; the editor already open comes forward as it is (one at a time), saying so when it holds another video",
+   "trigger": "Edit in shroom, for a video this Mac can edit whose video is on this Mac: its own window, in front — or, its window open already, that window, as it is (N73)",
    "status": "provisional",
    "cites": [
-    "N69"
+    "N69",
+    "N73"
    ],
    "source": [
     "canvas"
@@ -18173,10 +18189,11 @@
    "to": "editor-getting",
    "kind": "side",
    "label": "Edit in shroom",
-   "trigger": "Edit in shroom, for a video this Mac can edit whose video isn't on this Mac",
+   "trigger": "Edit in shroom, for a video this Mac can edit whose video isn't on this Mac: its own window, in front (N73)",
    "status": "provisional",
    "cites": [
-    "N69"
+    "N69",
+    "N73"
    ],
    "source": [
     "canvas"
@@ -19195,10 +19212,11 @@
     "Library(Deleted)"
    ],
    "kind": "side",
-   "says": "Deleting the video the editor holds — Delete… confirmed in the Library, or this Mac's delete landing — closes the editor: what its open asked for stops, a save on its way answers no one, and nothing is saved (B199). Another Mac's delete reaches it as a save the space turns down (editor-save-refused).",
+   "says": "Deleting a video an editor window holds — Delete… confirmed in the Library, or this Mac's delete landing — closes that window, and no other (N73): what its open asked for stops, a save on its way answers no one, and nothing is saved (B199). Another Mac's delete reaches it as a save the space turns down (editor-save-refused).",
    "cites": [
     "N63",
-    "B199"
+    "B199",
+    "N73"
    ],
    "status": "ratified"
   },
@@ -19220,11 +19238,12 @@
     "Act(Update)"
    ],
    "kind": "side",
-   "says": "Quit — the Dock's, the popover's, the right-click menu's or macOS's, and Quit anyway once uploads are asked about — and Update, while the editor holds changes not saved yet, save them first, without asking (Bagrat, 2026-10-19; only ✕ asks, N71), and bring the editor forward; a save already on its way is waited for. Once it lands the quit or the update goes on, without waiting for the final video (an upkeep makes it later). A save that doesn't land holds it: shroom stays, and the editor says why. A take begun meanwhile drops it (law 4) (B199).",
+   "says": "Quit — the Dock's, the popover's, the right-click menu's or macOS's, and Quit anyway once uploads are asked about — and Update, while editor windows hold changes not saved yet, save them first, every window's (N73), without asking (Bagrat, 2026-10-19; only ✕ asks, N71), and bring those windows forward; a save already on its way is waited for. Once every one has landed the quit or the update goes on, without waiting for the final videos (an upkeep makes them later). A save that doesn't land holds it: shroom stays, and that window says why. A take begun meanwhile drops it (law 4) (B199).",
    "cites": [
     "N63",
     "B199",
-    "N71"
+    "N71",
+    "N73"
    ],
    "status": "ratified"
   }

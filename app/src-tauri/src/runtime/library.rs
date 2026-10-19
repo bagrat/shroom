@@ -895,7 +895,7 @@ fn cleanup(rt: &Runtime, space: &SpaceIdentity, s3: &Client) -> Result<(), FailC
     if let Err(why) = &page {
         rt.log(&format!("library: the sweep's bakes wait — {why}"));
     }
-    let editing = |id: &str| page.is_err() || super::editor::open_in_editor(rt).as_deref() == Some(id);
+    let editing = |id: &str| page.is_err() || super::editor::open_in_editors(rt).iter().any(|open| open == id);
     match library::cleanup_sparing(s3, &here, &editing) {
         Ok(c) => {
             let made = c.baked.iter().filter(|(_, b)| b.written).count();

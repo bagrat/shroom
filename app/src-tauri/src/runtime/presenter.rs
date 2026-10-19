@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex};
 
 use shroom_core::event::{Event, QuitVia};
 use shroom_core::scene::{Click, Face, Scene};
-use shroom_core::world::WindowKind;
+use shroom_core::world::{EditorId, WindowKind};
 use objc2::rc::Retained;
 use objc2::runtime::Bool;
 use objc2::AllocAnyThread;
@@ -31,15 +31,33 @@ pub const ONBOARDING: &str = "onboarding";
 pub const LIBRARY: &str = "library";
 pub const SETTINGS: &str = "settings";
 pub const FEEDBACK: &str = "feedback";
+/// The editor windows' labels begin so: `editor-<its number>`, one window per video (N73).
 pub const EDITOR: &str = "editor";
 const POPOVER_WIDTH: f64 = 320.0;
 
+/// A window's label: its kind's — an editor window's with its number (N73).
+pub fn label(kind: WindowKind) -> std::borrow::Cow<'static, str> {
+    match kind {
+        WindowKind::Onboarding => ONBOARDING.into(),
+        WindowKind::Library => LIBRARY.into(),
+        WindowKind::Settings => SETTINGS.into(),
+        WindowKind::Feedback => FEEDBACK.into(),
+        WindowKind::Editor(id) => format!("{EDITOR}-{}", id.0).into(),
+    }
+}
+
+/// The editor window a label names (`editor-<its number>`, as `label` makes it), if it
+/// names one.
+pub fn editor_of(label: &str) -> Option<EditorId> {
+    let n = label.strip_prefix(EDITOR)?.strip_prefix('-')?;
+    let digits = !n.is_empty() && !n.starts_with('0') && n.bytes().all(|b| b.is_ascii_digit());
+    digits.then(|| n.parse().ok().map(EditorId)).flatten()
+}
+
 /// One of shroom's ordinary windows: titled, the standard ✕ (which the core answers — the
-/// native close never runs), one instance each. A resizable one has a smallest size, and
-/// opens no bigger than the screen it opens on.
+/// native close never runs), one instance each — an editor's one per video (N73). A
+/// resizable one has a smallest size, and opens no bigger than the screen it opens on.
 struct WindowSpec {
-    label: &'static str,
-    kind: WindowKind,
     url: &'static str,
     width: f64,
     height: f64,
@@ -49,24 +67,19 @@ struct WindowSpec {
 
 /// The setup window: one fixed size for every step, the canvas's frame — tall enough for the
 /// tallest step (the token step with its reminder or its error) under the title bar (B189).
-const ONBOARDING_WINDOW: WindowSpec =
-    WindowSpec { label: ONBOARDING, kind: WindowKind::Onboarding, url: "onboarding.html", width: 600.0, height: 680.0, resizable: false, min: None };
+const ONBOARDING_WINDOW: WindowSpec = WindowSpec { url: "onboarding.html", width: 600.0, height: 680.0, resizable: false, min: None };
 /// The Library: a list that grows — resizable.
-const LIBRARY_WINDOW: WindowSpec =
-    WindowSpec { label: LIBRARY, kind: WindowKind::Library, url: "library.html", width: 680.0, height: 560.0, resizable: true, min: None };
+const LIBRARY_WINDOW: WindowSpec = WindowSpec { url: "library.html", width: 680.0, height: 560.0, resizable: true, min: None };
 /// A standard macOS settings window: fixed size, its toolbar tabs drawn by the webview.
-const SETTINGS_WINDOW: WindowSpec =
-    WindowSpec { label: SETTINGS, kind: WindowKind::Settings, url: "settings.html", width: 600.0, height: 620.0, resizable: false, min: None };
+const SETTINGS_WINDOW: WindowSpec = WindowSpec { url: "settings.html", width: 600.0, height: 620.0, resizable: false, min: None };
 
 /// Send feedback (N60): a small fixed window, the board's frame — room for the form with
 /// “See exactly what's sent” open under the title bar.
-const FEEDBACK_WINDOW: WindowSpec =
-    WindowSpec { label: FEEDBACK, kind: WindowKind::Feedback, url: "feedback.html", width: 520.0, height: 600.0, resizable: false, min: None };
+const FEEDBACK_WINDOW: WindowSpec = WindowSpec { url: "feedback.html", width: 520.0, height: 600.0, resizable: false, min: None };
 
 /// The editor (N63): the board's 1100×720 frame — the video, the time, the timeline and the
 /// footer — resizable down to where the timeline still reads (900×640).
-const EDITOR_WINDOW: WindowSpec =
-    WindowSpec { label: EDITOR, kind: WindowKind::Editor, url: "editor.html", width: 1100.0, height: 720.0, resizable: true, min: Some((900.0, 640.0)) };
+const EDITOR_WINDOW: WindowSpec = WindowSpec { url: "editor.html", width: 1100.0, height: 720.0, resizable: true, min: Some((900.0, 640.0)) };
 
 fn spec(kind: WindowKind) -> &'static WindowSpec {
     match kind {
@@ -74,7 +87,7 @@ fn spec(kind: WindowKind) -> &'static WindowSpec {
         WindowKind::Library => &LIBRARY_WINDOW,
         WindowKind::Settings => &SETTINGS_WINDOW,
         WindowKind::Feedback => &FEEDBACK_WINDOW,
-        WindowKind::Editor => &EDITOR_WINDOW,
+        WindowKind::Editor(_) => &EDITOR_WINDOW,
     }
 }
 
@@ -620,7 +633,7 @@ pub struct Holds {
 impl Holds {
     pub fn of(s: &Scene) -> Holds {
         Holds {
-            window: s.onboarding.is_some() || s.library.is_some() || s.settings.is_some() || s.feedback.is_some() || s.editor.is_some(),
+            window: s.onboarding.is_some() || s.library.is_some() || s.settings.is_some() || s.feedback.is_some() || !s.editors.is_empty(),
             asked_popover: s.popover.as_ref().is_some_and(|p| p.activates),
             countdown: s.countdown.is_some(),
         }
@@ -720,21 +733,27 @@ fn apply(app: &AppHandle, rt: &Runtime, prev: Option<&Scene>, s: &Scene, exclude
     }
 
     // The windows: shown when they open; unasked, in front without the keyboard (law 5).
-    let window = |sp: &WindowSpec, now: Option<(serde_json::Value, bool, String)>, before: Option<bool>| present_window(app, rt, sp, now, before, excluded);
-    window(&ONBOARDING_WINDOW, s.onboarding.as_ref().map(|o| (json(o), o.activates, "shroom".to_string())), prev.and_then(|p| p.onboarding.as_ref()).map(|o| o.activates));
+    let window = |kind: WindowKind, now: Option<(serde_json::Value, bool, String)>, before: Option<bool>| present_window(app, rt, kind, now, before, excluded);
+    window(WindowKind::Onboarding, s.onboarding.as_ref().map(|o| (json(o), o.activates, "shroom".to_string())), prev.and_then(|p| p.onboarding.as_ref()).map(|o| o.activates));
     window(
-        &LIBRARY_WINDOW,
+        WindowKind::Library,
         s.library.as_ref().map(|l| (json(l), l.activates, l.body.title.clone())),
         prev.and_then(|p| p.library.as_ref()).map(|l| l.activates),
     );
-    window(&SETTINGS_WINDOW, s.settings.as_ref().map(|w| (json(w), w.activates, "shroom".to_string())), prev.and_then(|p| p.settings.as_ref()).map(|w| w.activates));
+    window(WindowKind::Settings, s.settings.as_ref().map(|w| (json(w), w.activates, "shroom".to_string())), prev.and_then(|p| p.settings.as_ref()).map(|w| w.activates));
     window(
-        &FEEDBACK_WINDOW,
+        WindowKind::Feedback,
         s.feedback.as_ref().map(|f| (json(f), f.activates, f.body.title.clone())),
         prev.and_then(|p| p.feedback.as_ref()).map(|f| f.activates),
     );
-    // The editor's title is its video's (“Edit — <title>”), changing with a rename.
-    window(&EDITOR_WINDOW, s.editor.as_ref().map(|e| (json(e), e.activates, e.body.title.clone())), prev.and_then(|p| p.editor.as_ref()).map(|e| e.activates));
+    // Each editor window (N73): its title is its video's (“Edit — <title>”), changing with a
+    // rename. One gone from the Scene goes for good.
+    for (id, e) in &s.editors {
+        window(WindowKind::Editor(*id), Some((json(e), e.activates, e.body.title.clone())), prev.and_then(|p| p.editors.get(id)).map(|e| e.activates));
+    }
+    for (id, e) in prev.map(|p| &p.editors).into_iter().flatten().filter(|(id, _)| !s.editors.contains_key(id)) {
+        window(WindowKind::Editor(*id), None, Some(e.activates));
+    }
     // The last of them closed: the keyboard goes back to the app the person was in.
     if gives_keyboard_back(prev.map(Holds::of), Holds::of(s)) {
         give_keyboard_back(rt);
@@ -802,19 +821,24 @@ fn json<T: serde::Serialize>(v: &T) -> serde_json::Value {
 
 /// One window from its slice: `now` is (the slice, whether it was asked for, its title);
 /// `before` is whether it showed in the previous Scene, and was asked for then.
-fn present_window(app: &AppHandle, rt: &Runtime, sp: &WindowSpec, now: Option<(serde_json::Value, bool, String)>, before: Option<bool>, excluded: &Arc<Mutex<Vec<u32>>>) {
+fn present_window(app: &AppHandle, rt: &Runtime, kind: WindowKind, now: Option<(serde_json::Value, bool, String)>, before: Option<bool>, excluded: &Arc<Mutex<Vec<u32>>>) {
+    let label = label(kind);
     match now {
         Some((slice, activates, title)) => {
-            let Some(w) = app.get_webview_window(sp.label).or_else(|| build_window(app, rt, sp, excluded)) else { return };
-            let _ = app.emit_to(sp.label, "scene", &slice);
+            let Some(w) = app.get_webview_window(&label).or_else(|| build_window(app, rt, kind, excluded)) else { return };
+            let _ = app.emit_to(label.as_ref(), "scene", &slice);
             if w.title().ok().as_deref() != Some(title.as_str()) {
                 let _ = w.set_title(&title);
             }
             // Shown when it opens — not on every Scene: a window the person minimized (or
             // hid with shroom) stays where they put it until they reach for it.
-            // It opens on the mushroom's display, the popover's (N57).
+            // It opens on the mushroom's display, the popover's (N57) — an editor window
+            // down and to the right of the one opened before it (N73).
             if before.is_none() {
                 to_mushrooms_display(app, &w);
+                if let WindowKind::Editor(id) = kind {
+                    cascade(app, &w, id);
+                }
             }
             match before {
                 None if activates => {
@@ -830,16 +854,37 @@ fn present_window(app: &AppHandle, rt: &Runtime, sp: &WindowSpec, now: Option<(s
             }
         }
         None => {
-            if let Some(w) = app.get_webview_window(sp.label) {
-                // The editor's page is told it's put away before the window hides: a hidden
-                // window's page goes on running, and the video it held went on playing.
-                if before.is_some() && matches!(sp.kind, WindowKind::Editor) {
-                    let _ = app.emit_to(sp.label, "scene", serde_json::Value::Null);
+            let Some(w) = app.get_webview_window(&label) else { return };
+            match kind {
+                // An editor window closed goes for good (N73): its page is told first, so the
+                // video it held stops, and its window leaves the list kept out of captures.
+                WindowKind::Editor(_) => {
+                    let _ = app.emit_to(label.as_ref(), "scene", serde_json::Value::Null);
+                    remember_excluded(&w, excluded, false);
+                    let _ = w.destroy();
                 }
-                let _ = w.hide();
+                _ => {
+                    let _ = w.hide();
+                }
             }
         }
     }
+}
+
+/// A new editor window goes down and to the right of the newest other editor window open,
+/// as the Mac stacks documents (N73, B227 (c)), kept on that screen; with none open it
+/// stays where it opened.
+fn cascade(app: &AppHandle, w: &tauri::WebviewWindow, id: EditorId) {
+    let windows = app.webview_windows();
+    let newest = windows.iter().filter_map(|(l, w)| Some((editor_of(l)?, w))).filter(|(other, w)| *other != id && w.is_visible().unwrap_or(false)).max_by_key(|(other, _)| *other);
+    let Some((_, before)) = newest else { return };
+    let (Ok(b), Ok(n)) = (before.ns_window(), w.ns_window()) else { return };
+    let before: &objc2_app_kit::NSWindow = unsafe { &*(b as *const objc2_app_kit::NSWindow) };
+    let ns: &objc2_app_kit::NSWindow = unsafe { &*(n as *const objc2_app_kit::NSWindow) };
+    // AppKit's own cascade: the point down and to the right of the window before's top
+    // left, then this window's top left put there, kept on the screen.
+    let next = before.cascadeTopLeftFromPoint(objc2_foundation::NSPoint::new(0.0, 0.0));
+    ns.cascadeTopLeftFromPoint(next);
 }
 
 /// The person reached for shroom (a tray click, a launch): an onboarding window already
@@ -854,14 +899,14 @@ pub fn bring_forward(app: &AppHandle) {
 pub fn bring_forward_kind(app: &AppHandle, kind: WindowKind) {
     let app2 = app.clone();
     let _ = app.run_on_main_thread(move || {
-        let Some(w) = app2.get_webview_window(spec(kind).label) else { return };
+        let Some(w) = app2.get_webview_window(&label(kind)) else { return };
         let Some(rt) = app2.try_state::<Runtime>() else { return };
         let open = rt.snapshot.lock().unwrap().as_ref().is_some_and(|s| match kind {
             WindowKind::Onboarding => s.onboarding.is_some(),
             WindowKind::Library => s.library.is_some(),
             WindowKind::Settings => s.settings.is_some(),
             WindowKind::Feedback => s.feedback.is_some(),
-            WindowKind::Editor => s.editor.is_some(),
+            WindowKind::Editor(id) => s.editors.contains_key(&id),
         });
         if !open {
             return;
@@ -877,9 +922,10 @@ pub fn bring_forward_kind(app: &AppHandle, kind: WindowKind) {
 /// One of shroom's windows, built hidden — and left out of every screen capture from the
 /// moment it exists (ARCHITECTURE §4.4: every shroom window but the bubble is excluded): a
 /// Settings window showing Members, or a link just born, never lands in a video.
-fn build_window(app: &AppHandle, rt: &Runtime, sp: &WindowSpec, excluded: &Arc<Mutex<Vec<u32>>>) -> Option<tauri::WebviewWindow> {
+fn build_window(app: &AppHandle, rt: &Runtime, kind: WindowKind, excluded: &Arc<Mutex<Vec<u32>>>) -> Option<tauri::WebviewWindow> {
+    let sp = spec(kind);
     let (width, height) = opening_size(sp, mushrooms_screen(app));
-    let mut b = WebviewWindowBuilder::new(app, sp.label, WebviewUrl::App(sp.url.into()))
+    let mut b = WebviewWindowBuilder::new(app, label(kind), WebviewUrl::App(sp.url.into()))
         .title("shroom")
         .inner_size(width, height)
         .resizable(sp.resizable)
@@ -893,7 +939,6 @@ fn build_window(app: &AppHandle, rt: &Runtime, sp: &WindowSpec, excluded: &Arc<M
     let w = b.build().ok()?;
     remember_excluded(&w, excluded, true);
     let rt = rt.clone();
-    let kind = sp.kind;
     w.on_window_event(move |event| match event {
         WindowEvent::CloseRequested { api, .. } => {
             // The ✕ is an event like any click; the Scene hides the window.
@@ -1000,12 +1045,16 @@ pub fn label_frame(screen: Frame, top: f64, w: f64, h: f64) -> Frame {
 }
 
 /// Keeps shroom's own UI out of every frame (the countdown scrim, the popover, the
-/// windows).
+/// windows); `on: false` as a window goes for good (an editor's, N73), so its number,
+/// should macOS give it again, keeps nothing else out.
 fn remember_excluded(w: &tauri::WebviewWindow, excluded: &Arc<Mutex<Vec<u32>>>, on: bool) {
     let Ok(ptr) = w.ns_window() else { return };
     let ns: &objc2_app_kit::NSWindow = unsafe { &*(ptr as *const objc2_app_kit::NSWindow) };
     if on {
         exclude(ns, excluded);
+    } else {
+        let n = ns.windowNumber() as u32;
+        excluded.lock().unwrap().retain(|x| *x != n);
     }
 }
 
@@ -1060,16 +1109,31 @@ mod tests {
 
     /// Every page shroom shows is in the capability its calls go through: a window left out
     /// can't listen for its `scene` slice (the event plugin refuses it), and its page stays
-    /// blank — the agent label's did, until it was listed.
+    /// blank — the agent label's did, until it was listed. The editor windows, one per video
+    /// (N73), are listed by their labels' pattern, `editor-*`.
     #[test]
     fn every_page_may_hear_its_scene() {
         let cap: serde_json::Value = serde_json::from_str(include_str!("../../capabilities/default.json")).unwrap();
         let listed: Vec<&str> = cap["windows"].as_array().unwrap().iter().filter_map(|w| w.as_str()).collect();
-        let pages = [ONBOARDING_WINDOW.label, LIBRARY_WINDOW.label, SETTINGS_WINDOW.label, FEEDBACK_WINDOW.label, Overlay::Popover.label(), Overlay::Countdown.label(), Overlay::Label.label()];
+        let covers = |page: &str| listed.iter().any(|l| *l == page || l.strip_suffix('*').is_some_and(|stem| page.starts_with(stem)));
+        let kinds = [WindowKind::Onboarding, WindowKind::Library, WindowKind::Settings, WindowKind::Feedback, WindowKind::Editor(EditorId(1)), WindowKind::Editor(EditorId(27))];
+        let pages = kinds.map(label).into_iter().chain([Overlay::Popover.label(), Overlay::Countdown.label(), Overlay::Label.label()].map(Into::into));
         for page in pages {
-            assert!(listed.contains(&page), "the {page} window is not in capabilities/default.json");
+            assert!(covers(&page), "the {page} window is not in capabilities/default.json");
         }
+        assert!(listed.contains(&"editor-*") && !listed.contains(&"editor"), "the editor windows, by their labels' pattern");
         assert_eq!((POPOVER, COUNTDOWN, LABEL), (Overlay::Popover.label(), Overlay::Countdown.label(), Overlay::Label.label()));
+    }
+
+    /// An editor window's label carries its number (N73): one made, one read back, and no
+    /// other label reads as an editor window's.
+    #[test]
+    fn an_editor_windows_label_carries_its_number() {
+        assert_eq!(label(WindowKind::Editor(EditorId(1))), "editor-1");
+        assert_eq!(editor_of(&label(WindowKind::Editor(EditorId(4_000_000)))), Some(EditorId(4_000_000)));
+        for not_one in [EDITOR, "editor-", "editor-0", "editor-01", "editor-1a", "editor--1", "library", "feedback"] {
+            assert_eq!(editor_of(not_one), None, "{not_one}");
+        }
     }
 
     #[test]

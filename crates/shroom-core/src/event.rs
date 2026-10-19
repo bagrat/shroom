@@ -74,8 +74,10 @@ pub enum Field {
     FeedbackReplyTo,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
+/// Where a click or a key came from. A webview names its own (the shell reads the name,
+/// `commands.rs`); an editor window is told apart by its window's label, never by what its
+/// webview says.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Surface {
     Tray,
     Popover,
@@ -84,8 +86,8 @@ pub enum Surface {
     Settings,
     /// The Send feedback window (N60).
     Feedback,
-    /// The editor window (N63).
-    Editor,
+    /// An editor window (N63): one per video, by its number (N73).
+    Editor(crate::world::EditorId),
     Countdown,
     Bubble,
     /// The agent label (N62, B216): it takes no clicks and no keys; only its slice is read.
@@ -126,9 +128,10 @@ pub enum Event {
     /// Non-secret field contents, as typed (the runner only caps the length). The core
     /// filters them — and shows the charset hint when it drops a character.
     Field { field: Field, value: String },
-    /// A change the editor's webview asks for (N63): a trim, a cut, Put back, Revert, Undo,
-    /// Redo. The core takes it or refuses it; the webview decides nothing.
-    Edit(EditStep),
+    /// A change an editor window's webview asks for (N63): a trim, a cut, Put back, Revert,
+    /// Undo, Redo — for that window's editor (N73). The core takes it or refuses it; the
+    /// webview decides nothing.
+    Edit(crate::world::EditorId, EditStep),
     /// The owner page's Edit in shroom (N69): `shroom://edit/<host>/<id>`, read by the app.
     /// It only asks: the core decides by this Mac's own state (B221).
     EditLink { host: String, rec: RecId },

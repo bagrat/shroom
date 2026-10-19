@@ -9,7 +9,7 @@
     "library",
     "settings",
     "feedback",
-    "editor",
+    "editor-*",
     "countdown",
     "label",
     "bubble",

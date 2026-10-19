@@ -29,6 +29,8 @@ import { editorScenes, REC } from "./editor-fixture.mjs";
 
 /** The editor's page: its WindowSpec in runtime/presenter.rs, less the title bar. */
 export const EDITOR_SIZE = windowPage("EDITOR", { width: 1100, height: 720 });
+/** The editor window the gallery is: the first opened, `editor-1` (N73). */
+export const EDITOR_LABEL = "editor-1";
 /** The window's minimum (the presenter's min size, less the title bar). */
 export const EDITOR_MIN = { width: 900, height: 640 - 32 };
 const PER_SECOND = 50;
@@ -101,6 +103,8 @@ export async function openEditor(browser, origin, mediaOrigin, scene, { colorSch
   const errors = [];
   page.on("pageerror", (e) => errors.push(String(e)));
   await page.addInitScript(stub, scene);
+  // The window it is: an editor window's label carries its number (N73).
+  await page.addInitScript((label) => (window.__TAURI_INTERNALS__.metadata = { currentWindow: { label }, currentWebview: { label, windowLabel: label } }), EDITOR_LABEL);
   await page.addInitScript((m) => (window.__shroomMediaBase = m), mediaOrigin);
   await page.goto(`${origin}/editor.html`);
   await page.waitForSelector("main.ed");
@@ -214,7 +218,7 @@ export async function editorLooks({ browser, origin, mediaOrigin, entries, check
       const fonts = await page.evaluate(() => [".ed", ".time", ".hint", ".foot .line", ".foot button", ".ask h2", ".ask button"].map((q) => document.querySelector(q)).filter(Boolean).map((e) => getComputedStyle(e).fontFamily));
       check(`${tag}: its words in the system font`, fonts.length >= 3 && fonts.every((f) => f.includes("-apple-system")), fonts.join(" | "));
       check(`${tag}: no page errors`, errors.length === 0, errors.join(" | "));
-      check(`${tag}: listens to its own slice`, (await page.evaluate(() => window.__listenTarget()))?.label === "editor");
+      check(`${tag}: listens to its own window's slice, by its label`, (await page.evaluate(() => window.__listenTarget()))?.label === EDITOR_LABEL);
       const c = await calls(page);
       check(`${tag}: rendering calls nothing`, c.length === 0, JSON.stringify(c));
       if (b.media.state === "ready" && after?.state !== "making") {

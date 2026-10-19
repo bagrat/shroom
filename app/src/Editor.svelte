@@ -8,7 +8,7 @@
   // held to the trim — as the share page does. The numbers it fills into the Scene's
   // templates are the clock's and a selection's length.
   import { onMount, untrack } from "svelte";
-  import { act, edit, key, onScene, sceneGet, type Action, type EditStep } from "./lib/ipc";
+  import { act, edit, key, onScene, ownLabel, sceneGet, type Action, type EditStep } from "./lib/ipc";
   import Btn from "./onboarding/Btn.svelte";
   import Timeline, { type Selection, type Trim } from "./editor/Timeline.svelte";
   import { clock, fill } from "./editor/clock";
@@ -242,8 +242,9 @@
   }
 
   onMount(() => {
+    // Its own window's slice: one window per video, each labelled by its number (N73).
     sceneGet<EditorWindow>("editor").then(take);
-    const un = onScene<EditorWindow>(take, "editor");
+    const un = onScene<EditorWindow>(take, ownLabel());
     const onKey = (e: KeyboardEvent) => {
       if (e.isComposing || !w) return;
       const body = w.body;

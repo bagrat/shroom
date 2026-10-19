@@ -1,7 +1,7 @@
 //! Everything the core can ask for — data, executed by the runner's lanes, whose results
 //! come back as events. Effects never cross to a webview.
 
-use crate::world::{Op, Prefs, Quality, RecId, RelaunchWhy, Restore, SecretId, SourceId, SpaceIdentity, TakeDir, Why};
+use crate::world::{EditorId, Op, Prefs, Quality, RecId, RelaunchWhy, Restore, SecretId, SourceId, SpaceIdentity, TakeDir, Why};
 use crate::time::Wall;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -75,8 +75,8 @@ impl Effect {
             Effect::Member(MemberCmd::Invite { .. } | MemberCmd::AddMac | MemberCmd::Renew(_)) => Some(Op::Invite),
             Effect::Member(MemberCmd::CancelInvite(_) | MemberCmd::RemoveMember(_) | MemberCmd::RemoveMac(_)) => Some(Op::Remove),
             Effect::Member(MemberCmd::Mark(_)) => Some(Op::Mark),
-            Effect::Editor(EditCmd::Open { .. }) => Some(Op::EditorOpen),
-            Effect::Editor(EditCmd::Save { .. }) => Some(Op::EditorSave),
+            Effect::Editor(EditCmd::Open { id, .. }) => Some(Op::EditorOpen(*id)),
+            Effect::Editor(EditCmd::Save { id, .. }) => Some(Op::EditorSave(*id)),
             Effect::Editor(EditCmd::Copy { .. }) => Some(Op::EditorCopy),
             Effect::Editor(EditCmd::Upkeep) => Some(Op::EditorUpkeep),
             _ => None,
@@ -204,8 +204,9 @@ pub enum ShellCmd {
     OpenSettings,
     /// The Send feedback window, brought forward when it's already open (N60).
     OpenFeedback,
-    /// The editor, brought forward — Edit… while it's open, or as it opens (N63).
-    OpenEditor,
+    /// An editor window, brought forward — Edit… on its video while it's open, or as it opens
+    /// (N63, N73).
+    OpenEditor(EditorId),
     /// Open a public page in the browser — only ever right after the click that asked.
     OpenUrl(PublicUrl),
     /// Register (or not) shroom to start at login.
@@ -276,18 +277,20 @@ pub enum LibCmd {
 }
 
 /// The editor's lane (`runtime/editor.rs`, N63, B195, B197): each answered once, by its news
-/// or `Failed` with its op (a Cancel and a Bake answer nothing).
+/// or `Failed` with its op (a Cancel and a Bake answer nothing). An open, a cancel and a save
+/// are for one editor window, `id` (N73); its news names the video.
 #[derive(Debug, Clone, PartialEq)]
 pub enum EditCmd {
     /// Read the record; find the video on this Mac or fetch it from the space; read its
-    /// sound. Answers `Opened`, `Getting`…, then `Ready` — or `Failed { op: EditorOpen }`.
-    Open { rec: RecId },
+    /// sound; serve it to window `id`. Answers `Opened`, `Getting`…, then `Ready` — or
+    /// `Failed { op: EditorOpen(id) }`.
+    Open { id: EditorId, rec: RecId },
     /// The window closed before the video was ready: stop a fetch in flight, forget the
     /// video's registration.
-    Cancel { rec: RecId },
+    Cancel { id: EditorId, rec: RecId },
     /// Write `meta.edits` (read-modify-write, as a rename): `saved.rev` is the revision the
-    /// editor opened on, plus one. Answers `Saved` — or `Failed { op: EditorSave }`.
-    Save { rec: RecId, saved: shroom_edit::Saved },
+    /// editor opened on, plus one. Answers `Saved` — or `Failed { op: EditorSave(id) }`.
+    Save { id: EditorId, rec: RecId, saved: shroom_edit::Saved },
     /// Cut this revision's permanent copy, put it up and name it in the record (with
     /// `keep_until`, two days on), in the background. Answers `Making`…, then `CopyDone` —
     /// or `Failed { op: EditorCopy }`.

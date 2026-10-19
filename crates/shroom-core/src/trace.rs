@@ -171,9 +171,11 @@ pub fn names(debug: &str, levels: usize) -> String {
 /// key, a failure its op and class — all enum names.
 pub fn event_kind(e: &Event) -> String {
     match e {
-        Event::Act { surface, action, .. } => format!("Act.{surface:?}.{}", names(&debug_head(action), 1)),
-        Event::Key { surface, key } => format!("Key.{surface:?}.{key:?}"),
-        Event::Failed { op, class } => format!("Failed.{op:?}.{class:?}"),
+        // An editor window's number, or an editor op's, is a value: the names alone.
+        Event::Act { surface, action, .. } => format!("Act.{}.{}", names(&format!("{surface:?}"), 1), names(&debug_head(action), 1)),
+        Event::Key { surface, key } => format!("Key.{}.{key:?}", names(&format!("{surface:?}"), 1)),
+        Event::Failed { op, class } => format!("Failed.{}.{class:?}", names(&format!("{op:?}"), 1)),
+        Event::Edit(_, step) => format!("Edit.{}", names(&debug_head(step), 1)),
         Event::Field { field, .. } => format!("Field.{field:?}"),
         Event::SecretPasted { field, shape, .. } => format!("SecretPasted.{field:?}.{shape:?}"),
         other => names(&debug_head(other), 2),
@@ -195,7 +197,7 @@ pub fn breach(take_was_open: bool, prev: &Scene, w: &World, next: &Scene, effect
     if !crate::settle::settle(w).is_empty() {
         return Some("law 1: settle isn't idempotent");
     }
-    if next.dock != (next.onboarding.is_some() || next.library.is_some() || next.settings.is_some() || next.feedback.is_some() || next.editor.is_some()) {
+    if next.dock != (next.onboarding.is_some() || next.library.is_some() || next.settings.is_some() || next.feedback.is_some() || !next.editors.is_empty()) {
         return Some("law 6: the dock and the windows disagree");
     }
     if take_was_open && w.take_open() {
@@ -204,7 +206,7 @@ pub fn breach(take_was_open: bool, prev: &Scene, w: &World, next: &Scene, effect
             || appeared(next.library.is_some(), prev.library.is_some())
             || appeared(next.settings.is_some(), prev.settings.is_some())
             || appeared(next.feedback.is_some(), prev.feedback.is_some())
-            || appeared(next.editor.is_some(), prev.editor.is_some())
+            || next.editors.keys().any(|id| !prev.editors.contains_key(id))
         {
             return Some("law 4: a window appeared mid-take");
         }
@@ -229,7 +231,7 @@ mod tests {
     use super::*;
     use crate::event::{CloudNews, Field, OsNews, SecretField, Shape, Surface};
     use crate::scene::Action;
-    use crate::world::{RecId, SecretId};
+    use crate::world::{EditorId, RecId, SecretId};
 
     #[test]
     fn names_read_only_the_shape() {
@@ -294,11 +296,11 @@ mod tests {
         let mut r = Ring::default();
         let events = [
             Event::Editor(EditorNews::Opened { rec: rec.clone(), saved: Some(saved.clone()), markers: vec![12.5], duration_sec: Some(60.0), keep_until: None }),
-            Event::Edit(EditStep::Op(shroom_edit::Op::Cut { start: 1.0, end: 2.0 })),
-            Event::Edit(EditStep::Undo),
+            Event::Edit(EditorId(1), EditStep::Op(shroom_edit::Op::Cut { start: 1.0, end: 2.0 })),
+            Event::Edit(EditorId(1), EditStep::Undo),
             Event::Act { surface: Surface::Library, action: Action::EditRow(rec.clone()), rev: 1 },
         ];
-        let effects = [Effect::Editor(EditCmd::Save { rec: rec.clone(), saved }), Effect::Editor(EditCmd::Copy { rec: rec.clone(), rev: 3 })];
+        let effects = [Effect::Editor(EditCmd::Save { id: EditorId(1), rec: rec.clone(), saved }), Effect::Editor(EditCmd::Copy { rec: rec.clone(), rev: 3 })];
         for e in &events {
             r.step(1, e, &Arm { name: "an-arm", edge: Some(("editor", "editor-saving")) }, &effects);
         }

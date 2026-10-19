@@ -504,8 +504,10 @@ fn copy(rec: &str, rev: u64) -> CliOp {
     CliOp::Copy { rec: RecId(rec.into()), rev }
 }
 
+/// An editor window open on `rec` (N73: one per video), the first this run opened.
 fn editor_on(w: &mut World, rec: &str) {
-    w.session.fields.editor = Some(EditorFields {
+    w.session.fields.editors_opened = 1;
+    w.session.fields.editors.insert(EditorId(1), EditorFields {
         rec: RecId(rec.into()),
         title: "Standup notes".into(),
         length_ms: Some(133_000),
@@ -516,8 +518,6 @@ fn editor_on(w: &mut World, rec: &str) {
         kept_until: None,
         media: EditorMedia::Ready { duration: 133.0 },
         save: EditorSave::Idle,
-        leaving: None,
-        elsewhere: false,
         closing: false,
     });
 }
@@ -570,7 +570,7 @@ fn while_this_macs_editor_holds_the_video_the_command_hears_editor_open() {
     let c = ask(&mut r, 3, CliOp::Editing { rec: RecId("Q3rNdPl4nW1kThr0".into()) });
     assert_eq!((c.ok, c.error), (true, None));
     assert!(ask(&mut r, 4, copy("Q3rNdPl4nW1kThr0", 1)).ok);
-    assert!(r.w.session.fields.editor.is_some(), "the window stays as it was");
+    assert!(!r.w.session.fields.editors.is_empty(), "the window stays as it was");
 }
 
 #[test]

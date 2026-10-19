@@ -241,7 +241,7 @@ fn lane_fails(op: Op) -> &'static [FailClass] {
         // The token Mac's cleanup sweep (B91): the Library lane's classes.
         Op::Cleanup => FAIL_CLASSES,
         // The editor lane (N63, B197): the record, the video, the save, the copy, the upkeep.
-        Op::EditorOpen | Op::EditorSave | Op::EditorCopy | Op::EditorUpkeep => FAIL_CLASSES,
+        Op::EditorOpen(_) | Op::EditorSave(_) | Op::EditorCopy | Op::EditorUpkeep => FAIL_CLASSES,
         // No space on this Mac is the cache read's one failure.
         Op::LibCache => &[FailClass::Refused],
         Op::Upload => &[FailClass::Transport, FailClass::Refused],
@@ -324,8 +324,8 @@ pub fn offered(scene: &Scene) -> Vec<(Surface, Action)> {
     if let Some(s) = &scene.settings {
         add(Surface::Settings, s.buttons());
     }
-    if let Some(e) = &scene.editor {
-        add(Surface::Editor, e.buttons());
+    for (at, e) in &scene.editors {
+        add(Surface::Editor(*at), e.buttons());
     }
     out
 }

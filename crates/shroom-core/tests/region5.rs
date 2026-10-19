@@ -176,11 +176,13 @@ fn feedback_open() -> World {
 /// (a trim and a cut saved as revision 3), its markers, and the video `media`; `changed`
 /// adds a cut since — Done has something to save.
 const EDITED: &str = "Setting up shroom in two minutes";
+/// Its window's number: the first window this run opened.
+const EDITOR: EditorId = EditorId(1);
 fn editor_open(media: EditorMedia, save: EditorSave, changed: bool) -> World {
     let mut rows = space_rows();
     rows.insert(0, remote("set2", EDITED, SEP30, 272_000, true));
     let mut w = library_with(ready(), rows);
-    w.session.windows.insert(WindowKind::Editor, Door::asked(Mono(960)));
+    w.session.windows.insert(WindowKind::Editor(EDITOR), Door::asked(Mono(960)));
     let mut list = shroom_edit::EditList::new(272.0);
     list.in_ = 8.0;
     list.out = 241.0;
@@ -189,7 +191,8 @@ fn editor_open(media: EditorMedia, save: EditorSave, changed: bool) -> World {
     if changed {
         history.act(&shroom_edit::Op::Cut { start: 20.0, end: 30.0 });
     }
-    w.session.fields.editor = Some(EditorFields {
+    w.session.fields.editors_opened = 1;
+    w.session.fields.editors.insert(EDITOR, EditorFields {
         rec: rec("set2"),
         title: EDITED.into(),
         length_ms: Some(272_000),
@@ -200,8 +203,6 @@ fn editor_open(media: EditorMedia, save: EditorSave, changed: bool) -> World {
         kept_until: None,
         media,
         save,
-        leaving: None,
-        elsewhere: false,
         closing: false,
     });
     w
@@ -587,19 +588,19 @@ fn rows() -> Vec<(&'static str, World)> {
     rows.push(("editor", {
         // Just opened: the record not read yet, the timeline empty, Done waiting.
         let mut w = editor_open(EditorMedia::Opening, EditorSave::Idle, false);
-        w.session.fields.editor.as_mut().unwrap().history = None;
-        w.inflight.ops.insert(Op::EditorOpen, Mono(1_801_000));
+        w.session.fields.editors.get_mut(&EDITOR).unwrap().history = None;
+        w.inflight.ops.insert(Op::EditorOpen(EDITOR), Mono(1_801_000));
         w
     }));
     rows.push(("editor-getting", {
         let mut w = editor_open(EditorMedia::Getting { pct: 40 }, EditorSave::Idle, false);
-        w.inflight.ops.insert(Op::EditorOpen, Mono(1_801_000));
+        w.inflight.ops.insert(Op::EditorOpen(EDITOR), Mono(1_801_000));
         w
     }));
     rows.push(("editor-cant-get", editor_open(EditorMedia::Failed, EditorSave::Idle, false)));
     rows.push(("editor-saving", {
         let mut w = editor_open(live(), EditorSave::Saving, true);
-        w.inflight.ops.insert(Op::EditorSave, Mono(61_000));
+        w.inflight.ops.insert(Op::EditorSave(EDITOR), Mono(61_000));
         w
     }));
     rows.push(("editor-save-failed", editor_open(live(), EditorSave::Failed, true)));
@@ -608,7 +609,7 @@ fn rows() -> Vec<(&'static str, World)> {
     for save in [EditorSave::Idle, EditorSave::Failed] {
         rows.push(("editor-closing", {
             let mut w = editor_open(live(), save, true);
-            w.session.fields.editor.as_mut().unwrap().closing = true;
+            w.session.fields.editors.get_mut(&EDITOR).unwrap().closing = true;
             w
         }));
     }
@@ -618,14 +619,7 @@ fn rows() -> Vec<(&'static str, World)> {
         // Edited again while an earlier edit's original is kept (B197 (e)): 30 hours left,
         // a day as the line says it (B199).
         let mut w = editor_open(live(), EditorSave::Idle, false);
-        w.session.fields.editor.as_mut().unwrap().kept_until = Some(Wall(w.wall.0 + 30 * 3_600_000));
-        w
-    }));
-    rows.push(("editor", {
-        // The owner page's Edit in shroom asked for another video while this one is open
-        // (N69): it came forward as it is, its footer saying why.
-        let mut w = editor_open(live(), EditorSave::Idle, true);
-        w.session.fields.editor.as_mut().unwrap().elsewhere = true;
+        w.session.fields.editors.get_mut(&EDITOR).unwrap().kept_until = Some(Wall(w.wall.0 + 30 * 3_600_000));
         w
     }));
     // ── after the save (B197) ──
@@ -718,7 +712,7 @@ fn surface_of(id: &str) -> Surface {
     } else if id == "send-feedback" {
         Surface::Feedback
     } else if id.starts_with("editor") {
-        Surface::Editor
+        Surface::Editor(EDITOR)
     } else if id.starts_with("settings") || ["disconnect-confirm", "disconnect-confirm-no-token", "leave-confirm", "uninstall-confirm", "report-problem", "repair-mood", "re-entry-as-settings", "token-repair-mood", "token-other-account", "gate-card", "wiring", "space-storage-gone", "name-changed"].contains(&id) {
         Surface::Settings
     } else {
@@ -766,7 +760,7 @@ fn every_region5_state_derives_with_its_return_default_and_its_lines() {
         // editor-cant-get, which Esc means too. Elsewhere Esc is the webview's (it drops a
         // selection).
         if id.starts_with("editor") {
-            let e = w.session.fields.editor.as_ref().expect("the editor's fields");
+            let e = w.session.fields.editors.get(&EDITOR).expect("the editor's fields");
             let live = matches!(e.media, EditorMedia::Ready { .. }) && e.history.is_some() && e.save != EditorSave::Saving;
             // Never Yes, delete (law 9; DEVIATIONS #55): a fixture naming it has no mapping.
             let want = fixture.return_default().and_then(|a| match a.label.as_str() {
