@@ -140,6 +140,15 @@ below are written for **0.1.4**: where the tree stands as this is written (2026-
 and not out when it was written. (The first release was **0.1.5**, 2026-10-13 — "What has
 not been proven". 0.1.4 was never released.) Read your version for it.
 
+**From a cloud session** (Bagrat, 2026-10-19, after 0.1.26):
+
+- A session can't push tags: its push is refused with HTTP 403. So a release from a session
+  is always **Actions → Release → Run workflow** on `main` with **Publish**, which builds
+  `main`'s head.
+- To keep a change out of a release, hold its merge until the release is out. Don't pin an
+  older commit.
+- The tag road (step 6's note) is Bagrat's, by hand.
+
 1. See which version the tree is at. This prints it, and stops if the seven files that
    hold it disagree:
 
