@@ -1696,7 +1696,7 @@ fn tick_for(r: &mut Run, secs: u64) {
 fn a_pause_the_recorder_confirms_fifteen_seconds_late_still_lands() {
     // A hosted Mac under load (load 27, its encoder starved) took 15.3 s to end the take
     // for a pause; a recorder step's 5 s deadline called the capture dead and the take was
-    // kept as an interrupted one (DECISIONS B224).
+    // kept as an interrupted one (DECISIONS B226).
     let mut r = pause_asked();
     tick_for(&mut r, 15);
     assert!(r.w.take.is_some(), "the take is still open while its pause is under way");

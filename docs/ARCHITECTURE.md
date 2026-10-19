@@ -192,7 +192,7 @@ launch, 1 h retry (D:B50 c, B53 a); update check at launch and every 4 h; cleanu
 after the first sound pass, then 6 h (D:B91). `RequestPermission` comes only from an Act or
 the chapter's chained screen step, never with a take or countdown open.
 
-**Liveness.** `Op::deadline_ms`: a recorder's start 5 s, a pause, resume or stop under way 60 s (D:B224); Reach 600 ms; cloud/member/library 60 s;
+**Liveness.** `Op::deadline_ms`: a recorder's start 5 s, a pause, resume or stop under way 60 s (D:B226); Reach 600 ms; cloud/member/library 60 s;
 Wire and Refresh 3 min; Relaunch 10 s; update check 10 s, download 30 min, apply 30 s;
 Cleanup 10 min. Every lane job answers once (news or `Failed{op, class}`); a passed deadline
 becomes `Timeout` at its Tick. Failures back off 5 s doubling to 2 min
