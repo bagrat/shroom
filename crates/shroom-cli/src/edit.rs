@@ -1,10 +1,10 @@
-//! `shroom edit` (spec N70, DECISIONS B222): what a video's edit is, and one change a call —
+//! `shroom edit` (spec N72, DECISIONS B224): what a video's edit is, and one change a call —
 //! the editor's own steps (`shroom_edit::edit::check`), refused for the editor's own reasons, and
 //! saved as the editor's Done saves (B195), through the space's page under this Mac's device
 //! key, as a rename is (B215). The link plays the change from its next load; nothing is
 //! re-encoded first. The final video is the app's to make: after a change that leaves
 //! something out, the running app is asked (`edit.copy`), and before any change it's asked
-//! whether its editor holds the video (`edit.check`), so a window's Done never silently undoes
+//! whether the video is open in one of its editor windows (`edit.check`), so that window's Done never silently undoes
 //! the command's change. Undo and Redo stay the editor's: a window's history, never a record's.
 //!
 //!   shroom edit <video>                      what it is
@@ -75,7 +75,7 @@ pub fn edit(a: &Args, rest: &[String]) -> Result<Done, Fail> {
                 return Ok(Done::new(j, say::edit_would(&plays, &now)));
             }
             crate::quiet(&h)?;
-            // This Mac's editor holds the video: its Done is the edit (N70). A Mac whose app
+            // The video is open in an editor window here: its Done is the edit (N72). A Mac whose app
             // isn't running has no editor open.
             if let Err(f @ Fail::CantEdit { .. }) = app::ask(&h.control_socket(), "edit.check", &by_id(&id, None), None) {
                 return Err(f);

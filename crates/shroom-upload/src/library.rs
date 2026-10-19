@@ -143,7 +143,7 @@ pub fn refresh(s3: &Client, cache: &mut Cache) -> Result<Delta, UploadError> {
 }
 
 /// A recording's record as it is now (`meta/<id>.json`), `None` when there is none: what
-/// `shroom edit` reads before it changes an edit (N70).
+/// `shroom edit` reads before it changes an edit (N72).
 pub fn record(s3: &Client, id: &str) -> Result<Option<Meta>, UploadError> {
     crate::upload::read_meta(s3, id)
 }

@@ -157,7 +157,7 @@ impl Door {
     }
 
     /// A video's record as it is now, and the `manage` client it was read with — for an edit
-    /// (spec N70), saved through the same door a rename goes (B215).
+    /// (spec N72), saved through the same door a rename goes (B215).
     pub fn record(&self, id: &str) -> Result<(Client, shroom_upload::meta::Meta), Fail> {
         let s3 = self.manage(id)?;
         match library::record(&s3, id).map_err(upload_fail)? {

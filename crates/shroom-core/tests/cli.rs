@@ -497,7 +497,7 @@ fn a_take_of_the_camera_only_wears_no_label() {
 }
 
 
-// ── `shroom edit` (spec N70): the command saves an edit itself, through the space's page;
+// ── `shroom edit` (spec N72): the command saves an edit itself, through the space's page;
 // the running app makes its final video when the command asks, as after the editor's Done.
 
 fn copy(rec: &str, rev: u64) -> CliOp {

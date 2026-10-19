@@ -14,7 +14,7 @@
 //      for — and the stop answers with its link, which goes live.
 //   5. The video through the page: `info`, `rename`, then `delete`, which asks first
 //      (needs_confirmation), dry-runs, and deletes on --yes; the link then says it's gone.
-//   6. Before the delete, an edit (spec N70): `edit` reads it, `edit cut 1 2` saves a cut
+//   6. Before the delete, an edit (spec N72): `edit` reads it, `edit cut 1 2` saves a cut
 //      through the page and asks the app for the final video, and the app makes it.
 //
 //   node tests/e2e/cli-leg.mjs
@@ -161,8 +161,8 @@ try {
   const renamed = shroom("rename", take ?? "-", "Recorded by the shroom command");
   check("rename saves the title", renamed.code === 0 && renamed.json.title === "Recorded by the shroom command", renamed);
 
-  // 6. An edit (spec N70): read, a second cut out — saved through the page, the app asked
-  // whether its editor holds the video, then for the final video — and the app making it.
+  // 6. An edit (spec N72): read, a second cut out — saved through the page, the app asked
+  // whether the video is open in its editor, then for the final video — and the app making it.
   step("edit");
   const unedited = shroom("edit", take ?? "-");
   check("edit says what plays, not edited yet", unedited.code === 0 && unedited.json.edit?.edited === false && unedited.json.edit?.plays_sec > 2, unedited);

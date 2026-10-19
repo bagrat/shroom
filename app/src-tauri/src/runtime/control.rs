@@ -51,7 +51,7 @@ pub fn op_of(line: &str) -> Option<CliOp> {
         "record.pause" => Some(CliOp::Pause),
         "record.resume" => Some(CliOp::Resume),
         "record.stop" => Some(CliOp::Stop),
-        // `shroom edit` (N70): before it changes a video's edit, and once it saved one.
+        // `shroom edit` (N72): before it changes a video's edit, and once it saved one.
         "edit.check" => Some(CliOp::Editing { rec: rec_of(&v)? }),
         "edit.copy" => Some(CliOp::Copy { rec: rec_of(&v)?, rev: v["rev"].as_u64()? }),
         _ => None,
@@ -170,7 +170,7 @@ mod tests {
         assert_eq!(op_of(r#"{"v":1,"op":"record.stop"}"#), Some(CliOp::Stop));
         assert_eq!(op_of(r#"{"v":2,"op":"record.start"}"#), None);
         assert_eq!(op_of(r#"{"v":1,"op":"delete"}"#), None);
-        // `shroom edit`'s (N70): a recording id's shape, and a revision.
+        // `shroom edit`'s (N72): a recording id's shape, and a revision.
         let rec = || RecId("AbCdEfGhIjKlMnOp".into());
         assert_eq!(op_of(r#"{"v":1,"op":"edit.check","id":"AbCdEfGhIjKlMnOp"}"#), Some(CliOp::Editing { rec: rec() }));
         assert_eq!(op_of(r#"{"v":1,"op":"edit.copy","id":"AbCdEfGhIjKlMnOp","rev":3}"#), Some(CliOp::Copy { rec: rec(), rev: 3 }));

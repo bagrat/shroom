@@ -1,4 +1,4 @@
-//! `shroom edit` (spec N70) against the real Worker (`worker/dev/serve.mjs`: worker.js over
+//! `shroom edit` (spec N72) against the real Worker (`worker/dev/serve.mjs`: worker.js over
 //! an in-memory space, its S3 surface checking every credential): what a video's edit is,
 //! one change a call saved as the editor's Done saves, refused for the editor's own reasons,
 //! a dry run that saves nothing, and back to the whole recording. Needs node; without it the
@@ -189,7 +189,7 @@ fn it_changes_nothing_while_this_macs_editor_holds_the_video_or_a_take_is_open()
     let dir = tempfile::tempdir().unwrap();
     let home = dir.path().join("home");
     demo::seed(&base, &home);
-    // The app's editor holds the video: asked first, it says so, and nothing is saved.
+    // The video is open in the app's editor: asked first, it says so, and nothing is saved.
     let heard = app(&home, r#"{"ok":false,"take":"none","error":"editor_open"}"#);
     let (code, v) = shroom(&home, &base, &["edit", ID, "cut", "30", "40", "--no-launch"]);
     assert_eq!((code, v["error"].as_str(), v["reason"].as_str()), (12, Some("cant_edit"), Some("editor_open")), "{v}");

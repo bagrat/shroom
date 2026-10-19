@@ -539,9 +539,9 @@ fn cli(w: &mut World, id: u64, op: crate::event::CliOp) -> Out {
     if w.space.identity.is_none() {
         return refuse(w, "not_set_up");
     }
-    // `shroom edit` (N70) changes a video's edit itself, through the space's page; it asks
-    // here first, and after it saved. No recording, so no switch to ask. While this Mac's
-    // editor holds that video, the window's Done is the edit: the command changes nothing,
+    // `shroom edit` (N72) changes a video's edit itself, through the space's page; it asks
+    // here first, and after it saved. No recording, so no switch to ask. While that video is
+    // open in an editor window, that window's Done is the edit: the command changes nothing,
     // and nothing is owed.
     let editing = |w: &World, rec: &RecId| w.session.fields.editor.as_ref().is_some_and(|e| &e.rec == rec);
     match op {

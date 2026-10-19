@@ -20,8 +20,9 @@
 <meta name="theme-color" content="#2b2f36" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#f6f7f9" media="(prefers-color-scheme: light)">
 <!-- No fonts, scripts, images or video from anyone else: the page you read is all there is. The
-     how-to video is this site's own file too, and loads only once its block nears the screen
-     (N58, N61). -->
+     hero (shroom, recorded with shroom) is this site's own file, and loads only once its block
+     nears the screen; the setup walkthrough is this site's own /how-to.mp4, fetched only when
+     it's opened (N58, N61, N70). -->
 <script>document.documentElement.className = "js";</script>
 <style>
   /* Dark Nord, and its light variant for a browser set to light: every colour is one of these. */
@@ -129,7 +130,7 @@
   .side { grid-area: box; display: flex; flex-direction: column; padding-top: calc(var(--mark) * 45 / 84 + var(--word) * 0.355); }
   .box { flex: 1 1 auto; display: flex; flex-direction: column; gap: 24px; padding: 20px; border-radius: 10px; background: var(--card); border: 1px solid var(--card-edge); }
 
-  /* The how-to video: the still sits over the video, and fades once the video is playing. */
+  /* The hero: the still sits over the video, and fades once the video is playing. */
   .how-to { position: relative; }
   .stage { position: relative; aspect-ratio: 1280 / 832; border-radius: 10px; overflow: hidden; background: var(--well); border: 1px solid var(--line); }
   .stage video { position: absolute; inset: 0; width: 100%; height: 100%; background: #1f2228; }
@@ -137,10 +138,29 @@
   .still img { display: block; width: 100%; height: 100%; object-fit: cover; }
   .still .play { position: absolute; left: 50%; top: 50%; width: 72px; height: 72px; margin: -36px 0 0 -36px; border-radius: 50%; background: #88c0d0; display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 24px rgba(0,0,0,.35); transition: transform .15s ease; }
   .still:hover .play { transform: scale(1.06); }
-  .still .play svg { width: 27px; height: 27px; fill: #2b2f36; margin-left: 3px; }
+  .still .play svg { width: 27px; height: 27px; fill: #2b2f36; }
   .still .len { position: absolute; right: 12px; bottom: 12px; padding: 3px 9px; border-radius: 6px; background: rgba(31,34,40,.85); color: #eceff4; font: 600 13px var(--sans); font-variant-numeric: tabular-nums; }
   .still.gone { opacity: 0; pointer-events: none; }
   @media (prefers-reduced-motion: reduce) { .still { transition: none; } }
+
+  /* The setup walkthrough: a small button under the hero, the same space above and below it,
+     then a cut through the box in the page's colour (Bagrat, 2026-10-18). */
+  .walk { align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; min-height: 36px; margin-top: -10px; padding: 0 14px 0 7px;
+    border: 1px solid var(--line-strong); border-radius: 10px; background: var(--line); color: var(--text); font: 600 15px var(--sans); cursor: pointer; }
+  .walk:hover { background: var(--line-strong); }
+  .walk .disc { width: 22px; height: 22px; border-radius: 50%; background: #88c0d0; display: flex; align-items: center; justify-content: center; flex: none; }
+  .walk .disc svg { width: 10px; height: 10px; fill: #2b2f36; display: block; }
+  .cut { height: 3px; margin: -10px -20px 0; background: var(--bg); flex: none; }
+
+  /* The walkthrough plays over the page; Esc, the close button or a click outside it closes it. */
+  .lightbox { width: min(1120px, calc(100vw - 64px)); max-width: none; max-height: none; padding: 0; border: 0; background: transparent; color: var(--text); overflow: visible; }
+  .lightbox::backdrop { background: rgba(15, 17, 21, .78); }
+  .lightbox .bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+  .lightbox .title { font-size: 18px; font-weight: 600; }
+  .lightbox .title span { color: var(--quiet); font-weight: 400; }
+  .lightbox .close { width: 44px; height: 44px; border: 0; border-radius: 50%; background: var(--card); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  .lightbox .close svg { width: 16px; height: 16px; fill: none; stroke: var(--text); stroke-width: 1.8; stroke-linecap: round; display: block; }
+  .lightbox video { display: block; width: 100%; height: auto; max-height: calc(100vh - 140px); aspect-ratio: 16 / 9; border-radius: 12px; background: #1f2228; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
 
   /* Install: one command at a time, in tabs; Terminal first. Without script every panel shows. */
   .install { display: flex; flex-direction: column; gap: 12px; }
@@ -190,6 +210,12 @@
     .foot p, .links p { font-size: 13px; line-height: 1.5; }
     .still .play { width: 56px; height: 56px; margin: -28px 0 0 -28px; }
     .still .play svg { width: 22px; height: 22px; }
+    .walk { font-size: 14px; }
+    .cut { margin: -10px -16px 0; }
+    /* On a phone the walkthrough takes the whole screen. */
+    .lightbox { width: 100vw; height: 100vh; height: 100dvh; margin: 0; padding: 12px; background: #000; display: none; flex-direction: column; justify-content: center; }
+    .lightbox[open] { display: flex; }
+    .lightbox video { border-radius: 0; box-shadow: none; }
   }
 </style>
 </head>
@@ -227,17 +253,20 @@
 
   <div class="side">
     <div class="box">
-      <!-- How to set up and use shroom (N58, N61; DECISIONS B190, B194): a walkthrough that plays
-           here. The still and the video are both shroom.am's own files (/how-to.mp4, served in
-           pieces by site/worker.js); the video's address is set only once the block is within
-           200 px of the screen (the script below), so a visitor who never scrolls this far
-           fetches none of it. -->
-      <section class="how-to" id="how-to" data-src="/how-to.mp4">
+      <!-- The hero (N70): shroom, recorded with shroom, its voice cut included. The still and the
+           video are both shroom.am's own files (/hero.mp4, served in pieces by site/worker.js);
+           the video's address is set only once the block is within 200 px of the screen (the
+           script below), so a visitor who never scrolls this far fetches none of it. -->
+      <section class="how-to" id="hero" data-src="/hero.mp4">
         <div class="stage">
           <video playsinline preload="none" width="1920" height="1080"></video>
-          <button type="button" class="still" aria-label="Play how to set up and use shroom, 4 minutes"><img src="how-to-poster.webp" alt="" width="1440" height="936" decoding="async"><span class="play" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M5 3v10l8.5-5z"/></svg></span><span class="len" aria-hidden="true">4 mins</span></button>
+          <button type="button" class="still" aria-label="Play shroom, recorded with shroom, 2 minutes"><img src="hero-poster.webp" alt="" width="1280" height="832" decoding="async"><span class="play" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M5 3v10l8.5-5z"/></svg></span><span class="len" aria-hidden="true">2 min</span></button>
         </div>
       </section>
+      <!-- The setup walkthrough (the how-to that was in this box, N58, N61): /how-to.mp4 in a
+           lightbox, its address set only when it's opened. -->
+      <button type="button" class="walk" id="walk-open" aria-haspopup="dialog"><span class="disc" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M5 3v10l8.5-5z"/></svg></span><span>Setup walkthrough</span></button>
+      <div class="cut" aria-hidden="true"></div>
 
       <section class="install" id="install">
         <div class="head">
@@ -273,9 +302,14 @@
 </footer>
 </div>
 
+<dialog class="lightbox" id="walk" aria-label="How to set up and use shroom, 4 minutes">
+  <div class="bar"><span class="title">How to set up and use shroom <span>· 4 min</span></span><button type="button" class="close" aria-label="Close"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg></button></div>
+  <video controls playsinline preload="none" width="1920" height="1080" data-src="/how-to.mp4"></video>
+</dialog>
+
 <script>
   // What runs on this page: a link's ?ref= tag (or utm_*) leaves the address bar once counted,
-  // so it isn't shared onward; the how-to video; the install tabs; and Copy, which reads "Copied" for a
+  // so it isn't shared onward; the hero; the setup walkthrough; the install tabs; and Copy, which reads "Copied" for a
   // moment (law 10).
   (function () {
     var u = new URL(location.href), tagged = false;
@@ -284,11 +318,11 @@
     });
     if (tagged && history.replaceState) history.replaceState(null, "", u.pathname + u.search + u.hash);
   })();
-  // The how-to video (N58, N61): its address is set only as its block nears the screen, and only its
+  // The hero (N58, N61, N70): its address is set only as its block nears the screen, and only its
   // index is read then (preload "metadata"); a click plays it and fades the still away. Without
   // IntersectionObserver the click itself sets it.
   (function () {
-    var box = document.getElementById("how-to");
+    var box = document.getElementById("hero");
     if (!box) return;
     var v = box.querySelector("video"), still = box.querySelector(".still");
     var src = box.getAttribute("data-src");
@@ -309,6 +343,25 @@
       if (r && r.catch) r.catch(function () { if (!v.error) still.classList.add("gone"); });
       v.focus();
     });
+  })();
+  // The setup walkthrough: the button opens it over the page and plays it (the hero pauses);
+  // Esc, Close or a click outside the video closes it and stops it. The video's address is set
+  // on first open.
+  (function () {
+    var d = document.getElementById("walk"), open = document.getElementById("walk-open");
+    if (!d || !open) return;
+    var v = d.querySelector("video"), hero = document.querySelector("#hero video");
+    if (typeof d.showModal !== "function") { open.addEventListener("click", function () { location.href = "/how-to.mp4"; }); return; }
+    open.addEventListener("click", function () {
+      if (!v.getAttribute("src")) v.src = v.getAttribute("data-src");
+      if (hero) hero.pause();
+      d.showModal();
+      var r = v.play();
+      if (r && r.catch) r.catch(function () {});
+    });
+    d.querySelector(".close").addEventListener("click", function () { d.close(); });
+    d.addEventListener("click", function (e) { if (e.target === d) d.close(); });
+    d.addEventListener("close", function () { v.pause(); open.focus(); });
   })();
   // The install tabs (N59): one command shows; ←/→ move between the tabs.
   (function () {

@@ -33,9 +33,9 @@ pub enum Fail {
     /// as it is by default (exit 10). Its JSON carries `settings_link`, the link that opens
     /// Settings at the switch, for the agent to hand over (DECISIONS B216).
     RecordingOff(String),
-    /// `shroom edit` can't make that change (exit 12, spec N70): `reason` is the editor's own
+    /// `shroom edit` can't make that change (exit 12, spec N72): `reason` is the editor's own
     /// (`out_of_range`, `leaves_too_little`, `too_short`, `nothing_changes`, `no_such_cut`), or
-    /// `editor_open` while this Mac's editor holds the video. Nothing was saved.
+    /// `editor_open` while the video is open in an editor window on this Mac. Nothing was saved.
     CantEdit { reason: &'static str, message: String },
     /// Anything else (exit 1).
     Other(String),
