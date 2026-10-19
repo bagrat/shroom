@@ -1998,6 +1998,31 @@ fn the_page_brings_the_open_editor_forward_and_says_when_its_on_another_video() 
     assert_eq!(body(&r).footer, SAVING);
 }
 
+/// Edit… in the Library for another video, the editor open: the same as the page's Edit. It
+/// comes forward as it is and says why, until the next change (2026-10-19: this route said
+/// nothing, and the editor looked stuck on the video it held).
+#[test]
+fn edit_in_the_library_for_another_video_says_why_too() {
+    let mut r = ready_editor();
+    r.lib(Action::EditRow(RecId(REC.into())));
+    assert_eq!(r.effects, vec![Effect::Shell(ShellCmd::OpenEditor)], "its own video: forward, nothing asked again");
+    assert_eq!((body(&r).footer.as_str(), body(&r).footer_tone), (FOOTER, LineTone::Plain));
+
+    r.lib(Action::EditRow(RecId(OTHER.into())));
+    assert_eq!(r.effects, vec![Effect::Shell(ShellCmd::OpenEditor)]);
+    assert_eq!(body(&r).rec, REC, "it doesn't swap videos");
+    assert_eq!((body(&r).footer.as_str(), body(&r).footer_tone), (ELSEWHERE, LineTone::Amber));
+
+    r.op(EditOp::Cut { start: 20.0, end: 30.0 });
+    assert_eq!(body(&r).footer, FOOTER, "the next change puts it away");
+
+    // Mid-save it only comes forward: that face says what's happening.
+    let mut r = dirty();
+    r.ed(Action::EditorDone);
+    r.lib(Action::EditRow(RecId(OTHER.into())));
+    assert_eq!(body(&r).footer, SAVING);
+}
+
 /// Law 4: while a take is open nothing new shows. The press waits, and once the take is
 /// over the editor opens on the video it asked for; a later press takes its place.
 #[test]

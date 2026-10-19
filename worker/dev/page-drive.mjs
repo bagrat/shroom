@@ -474,6 +474,12 @@ async function main() {
         check("Edit in shroom comes in at the drain, a link to shroom's editor (N69)", !!ed && ed.shown && ed.last && ed.href === `shroom://edit/${new URL(origin).host}/${ids.own}` && ed.tip === COPY.editInShroom, true, ed);
         await put(metaKey(ids.own), meta(ids.own, { media: { hls: `rec/${ids.own}/master.m3u8`, mp4: `rec/${ids.own}/video.mp4`, poster: `rec/${ids.own}/poster.jpg`, width: 640, height: 400 } }));
         check("Download appears when the MP4 lands", await page.waitForFunction((w) => document.querySelector("#dl a")?.textContent === w, COPY.download, { timeout: 20_000 }).then(() => true, () => false));
+        // The top icons sit in the middle of their hover (2026-10-19: 3 px left, the hidden
+        // label still taking the gap beside the icon): an icon-only button has no gap.
+        const offCentre = await page.evaluate(() => [...document.querySelectorAll(".head .copy:not([hidden]):not(.done), .head #dl a")]
+          .map((b) => ({ label: b.getAttribute("aria-label") ?? b.textContent, gap: getComputedStyle(b).columnGap, font: getComputedStyle(b).fontSize }))
+          .filter((b) => b.gap !== "0px" || b.font !== "0px"));
+        check("the top icons sit in the middle of their hover: no gap beside a hidden label", offCentre.length === 0, true, offCentre);
 
         // ── the mark (U3, N26; DEVIATIONS #41) ──
         // Switched off, nothing shows in the owner's corner either — the switch, its words

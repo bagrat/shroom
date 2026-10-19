@@ -1659,6 +1659,17 @@ fn editor(d: &Drive) -> Result<(), String> {
     d.check("… pressed for another video: it stays on this one, its footer saying why", editor_body(&s).is_some_and(|b| b.rec == here.0), "");
     std::thread::sleep(Duration::from_millis(600));
     runner.shot(d, crate::runtime::presenter::EDITOR, "editor-editing-another")?;
+    // Edit… in the Library for that video says the same (it said nothing there, 2026-10-19):
+    // the next step puts the page's line away, then Edit… brings it back.
+    d.rt.post(Event::Edit(EditStep::Undo));
+    d.wait("the line, put away by the next step", 5, |s| editor_body(s).is_some_and(|b| b.footer != shroom_core::copy::editing_another()))?;
+    d.act(Surface::Library, Action::EditRow(away.clone()));
+    let said = d.wait("Edit… in the Library for another video", 10, |s| editor_body(s).is_some_and(|b| b.footer == shroom_core::copy::editing_another()));
+    d.check(
+        "… Edit… in the Library for another video: the same, it stays on this one and says why",
+        said.as_ref().is_ok_and(|s| editor_body(s).is_some_and(|b| b.rec == here.0)),
+        format!("{:?}", snapshot(&d.rt).and_then(|s| editor_body(&s).map(|b| (b.rec.clone(), b.footer.clone())))),
+    );
     d.rt.post(Event::WindowClosed(WindowKind::Editor));
     d.wait("closed", 10, |s| s.editor.is_none())?;
     // Another space's video: the popover opens by itself and says so, once.
