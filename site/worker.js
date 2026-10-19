@@ -21,7 +21,7 @@
 //   /faq, /privacy, /terms, /feedback
 //                questions and known limits, privacy, terms, and the feedback form:
 //                site/pages, as pages
-//   /hero.mp4    the landing's hero, shroom recorded with shroom (B222), and
+//   /hero-2.mp4  the landing's hero, shroom recorded with shroom (B222), and
 //   /how-to.mp4  the setup walkthrough it opens: each whole or in the pieces a player asks
 //                for (Range): Safari plays a video only from an address that answers 206,
 //                and the assets binding answers a Range with the whole file (B194).
@@ -281,7 +281,7 @@ export default {
       case "/terms":
       case "/feedback":
         return serve(env, request, url, `/_${url.pathname}.html`, HTML);
-      case "/hero.mp4":
+      case "/hero-2.mp4":
       case "/how-to.mp4":
         return video(env, request, url, `/_${url.pathname}`);
       default:

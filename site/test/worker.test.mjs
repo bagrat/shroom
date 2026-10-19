@@ -200,7 +200,7 @@ describe("nothing else", () => {
   });
 });
 
-for (const [title, stem] of /** @type {const} */ ([["the hero", "hero"], ["the how-to video", "how-to"]])) describe(title, () => {
+for (const [title, stem] of /** @type {const} */ ([["the hero", "hero-2"], ["the how-to video", "how-to"]])) describe(title, () => {
   const mp4 = readFileSync(join(ROOT, `site/${stem}.mp4`));
   const size = mp4.byteLength;
   // The assets binding as Cloudflare's answers a file: with its length, in pieces, and the
