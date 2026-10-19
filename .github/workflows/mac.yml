@@ -58,6 +58,9 @@ env:
   HOMEBREW_NO_AUTO_UPDATE: 1
   HOMEBREW_NO_INSTALL_CLEANUP: 1
   HOMEBREW_NO_ENV_HINTS: 1
+  # The installer runs here (install-verify, brew-cask) download through shroom.am's
+  # counter: tagged as our own, so the stats leave them out (DECISIONS B228).
+  SHROOM_REF: ci
 
 jobs:
   mac:

@@ -1,5 +1,6 @@
 <!-- shroom.am/faq — the canvas board "shroom.am/faq". The questions, the limits and the
-     closing line are the approved copy, word for word (Bagrat, 2026-10-16). -->
+     closing line are the approved copy, word for word (Bagrat, 2026-10-16; the counted update in “What does shroom
+     know about me?”, 2026-10-19 — B228). -->
 <title>shroom — questions and known limits</title>
 <meta name="description" content="What shroom needs, and what it doesn't do yet.">
 <h1>Questions and known limits</h1>
@@ -13,7 +14,7 @@
   <li><b>How long does setup take?</b><span>About ten minutes, once.</span></li>
   <li><b>Is the install line safe?</b><span>You can read it first: <a href="/install">shroom.am/install</a> opens as readable source. It downloads shroom from its GitHub releases and checks the file's fingerprint. It then checks the app is signed by shroom's own release certificate, and if anything doesn't match, nothing is installed. It puts the app in your home folder's Applications, with no admin password. shroom isn't notarized by Apple: the signature check above is what proves it's ours. Prefer Homebrew? <code>brew install --cask bagrat/shroom/shroom</code></span></li>
   <li><b>Who can see my videos?</b><span>Anyone you send the link to. Links are unlisted, not secret: the address is long and random, and search engines are told not to index it. There are no passwords or expiry dates yet.</span></li>
-  <li><b>What does shroom know about me?</b><span>Nothing. The app talks only to your Cloudflare account, plus GitHub to check for updates. There's no telemetry and no account with us. The website counts visits without cookies and without anything that identifies you.</span></li>
+  <li><b>What does shroom know about me?</b><span>Nothing. The app talks only to your Cloudflare account, plus GitHub to check for updates; an update downloads by way of this website, which counts it. There's no telemetry and no account with us. The website counts visits without cookies and without anything that identifies you.</span></li>
   <li><b>What happens to my videos if shroom disappears?</b><span>They keep playing. The pages and the player run in your own Cloudflare account, not ours.</span></li>
   <li><b>How do I remove someone from my team?</b><span>Settings → Members → Remove. They can't record to your space anymore, though a video already on its way may still finish. Their videos stay in your space.</span></li>
   <li><b>Can viewers download a video?</b><span>Yes, as a single MP4 file, from the player page.</span></li>

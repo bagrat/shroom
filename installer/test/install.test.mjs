@@ -107,6 +107,8 @@ const sha = (b) => createHash("sha256").update(b).digest("hex");
 // `mode` bends the stand-in: a manifest's lines, an asset's answer, a dropped transfer.
 let mode = {};
 let hits = 0;
+/** @type {string[]} */
+let counted = []; // what the stand-in for shroom.am/download was asked
 const manifest = () => {
   if (mode.manifest) return mode.manifest;
   const lines = [`version=${v120.version}`, `macos=${mode.floor ?? 14}`];
@@ -116,6 +118,12 @@ const manifest = () => {
 const served = () => (mode.hollow ? v120hollow : v120);
 const server = createServer((req, res) => {
   hits++;
+  // shroom.am/download's stand-in (DECISIONS B228): counts the ask, then sends curl on.
+  if (req.url.startsWith("/counted/")) {
+    counted.push(req.url);
+    res.writeHead(302, { location: `/download/${req.url.slice("/counted/".length).split("?")[0]}` });
+    return res.end();
+  }
   // The early channel's pointer (DECISIONS B220): served only when a test asks for it.
   if (req.url === "/download/early/manifest.txt" && mode.early) {
     res.end(mode.earlyManifest ?? manifest());
@@ -145,6 +153,7 @@ async function run({ args = [], env = {}, setup, with: m = {} } = {}) {
   const running = join(home, "running");
   if (setup) setup(home, running);
   hits = 0;
+  counted = [];
   // Asynchronous: the stand-in release server answers from this same process.
   const child = spawn("sh", [SCRIPT, ...args], {
     env: { PATH: `${stubs}:/usr/bin:/bin:/usr/sbin:/sbin`, HOME: home, SHROOM_RELEASES: base, FAKE_LOG: log, FAKE_RUNNING: running, ...env },
@@ -255,6 +264,36 @@ describe("installing", () => {
     const r = await run({ env: { FAKE_ARCH: "x86_64", FAKE_ARM64: "1" } });
     assert.equal(r.code, 0);
     assert.equal(r.installed, "1.2.0");
+  });
+});
+
+describe("the download, counted (DECISIONS B228)", () => {
+  const ZIP = `v${v120.version}/${v120.file}`;
+
+  it("goes by shroom.am's counter, saying it's an install, and lands the same file", async () => {
+    const r = await run({ env: { SHROOM_DOWNLOADS: `${base}/counted` } });
+    assert.equal(r.code, 0, r.err);
+    assert.equal(r.installed, "1.2.0");
+    assert.deepEqual(counted, [`/counted/${ZIP}?via=install`], "once, and only the download");
+  });
+
+  it("carries our own runs' tag, and drops one that isn't a tag's shape", async () => {
+    await run({ env: { SHROOM_DOWNLOADS: `${base}/counted`, SHROOM_REF: "ci" } });
+    assert.deepEqual(counted, [`/counted/${ZIP}?via=install&ref=ci`]);
+    const r = await run({ env: { SHROOM_DOWNLOADS: `${base}/counted`, SHROOM_REF: "a&via=update" } });
+    assert.equal(r.installed, "1.2.0");
+    assert.deepEqual(counted, [`/counted/${ZIP}?via=install`]);
+  });
+
+  it("a test's own releases are fetched where they are, uncounted", async () => {
+    const r = await run({ env: { SHROOM_REF: "ci" } });
+    assert.equal(r.installed, "1.2.0");
+    assert.deepEqual(counted, []);
+  });
+
+  it("from the public releases, the counter is shroom.am's", () => {
+    const script = readFileSync(SCRIPT, "utf8");
+    assert.ok(script.includes('DOWNLOADS="${SHROOM_DOWNLOADS:-https://shroom.am/download}"'));
   });
 });
 

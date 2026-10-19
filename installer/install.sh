@@ -23,6 +23,8 @@
 # How it works, for the curious: releases are GitHub releases of the open-source
 # repository. Each one carries manifest.txt — the version, the oldest macOS it runs
 # on, and for each kind of Mac the file to download and its SHA-256 fingerprint.
+# The download itself goes by shroom.am/download, which counts it (an install, of that
+# version, from that country; nothing about who) and sends curl on to the same file.
 # Everything runs inside main(), so a half-downloaded copy of this script does nothing.
 # Placing shroom also links its `shroom` command into ~/.local/bin (see link_cli below).
 #
@@ -34,6 +36,9 @@ set -u
 
 # SHROOM_RELEASES exists for the installer's own tests; nobody else needs it.
 RELEASES="${SHROOM_RELEASES:-https://github.com/bagrat/shroom/releases}"
+# Where the public releases' downloads are counted (DECISIONS B228). SHROOM_DOWNLOADS stands
+# in for it in the installer's own tests; SHROOM_REF tags the count as our own test run's.
+DOWNLOADS="${SHROOM_DOWNLOADS:-https://shroom.am/download}"
 APP="$HOME/Applications/shroom.app"
 MIN_MACOS=14
 # The release certificate's SHA-1 (tools/release-identity.sha1; its test holds them equal):
@@ -323,9 +328,16 @@ main() {
   # 1. Download, under curl's own progress bar. curl's own error lines are left out —
   #    the line after the bar says what happened. A connection that stalls (under
   #    1 KB/s for half a minute) counts as dropped.
+  #    From the public releases the download goes by shroom.am, counted; a test's own
+  #    releases are fetched where they are.
+  url="$RELEASES/download/v$version/$file"
+  case "${SHROOM_REF:-}" in *[!a-z0-9-]*) SHROOM_REF="" ;; esac
+  if [ -z "${SHROOM_RELEASES:-}" ] || [ -n "${SHROOM_DOWNLOADS:-}" ]; then
+    url="$DOWNLOADS/v$version/$file?via=install${SHROOM_REF:+&ref=$SHROOM_REF}"
+  fi
   say "Getting shroom…"
   { curl -fL --progress-bar --retry 2 --connect-timeout 15 --speed-limit 1024 --speed-time 30 \
-      -w '%{http_code}' -o "$work/$file" "$RELEASES/download/v$version/$file" </dev/null 2>&1 >"$work/code"
+      -w '%{http_code}' -o "$work/$file" "$url" </dev/null 2>&1 >"$work/code"
     echo $? >"$work/fetched"
   } | awk 'BEGIN { RS = "\r" } {
       gsub(/(curl: \(|Warning: )[^\n]*\n?/, ""); if (NR == 1) sub(/^\n+/, "")

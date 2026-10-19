@@ -3,7 +3,9 @@
 //! **exactly as the installer does** (`installer/install.sh`, B29 — the same
 //! `manifest.txt`, the same SHA-256, the same `ditto` extract), and applied by a small
 //! detached helper that waits for the app to quit, swaps, and reopens — putting the old
-//! copy back if the swap fails. No shroom server; a failure never breaks anything.
+//! copy back if the swap fails. No shroom server to depend on: the download goes by
+//! shroom.am, which counts it, and straight to GitHub when shroom.am doesn't answer
+//! (DECISIONS B228); a failure never breaks anything.
 
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -12,6 +14,10 @@ use std::time::Duration;
 
 /// Where releases live — the installer's default too.
 pub const RELEASES: &str = "https://github.com/bagrat/shroom/releases";
+/// Where a public release's file is downloaded through, counted (DECISIONS B228): shroom.am
+/// counts the download — an update, of that version — and redirects to the same file in
+/// [`RELEASES`]. Nothing else is sent: no ID, and not the version running.
+pub const DOWNLOADS: &str = "https://shroom.am/download";
 /// A quiet check gives up fast (the POC's fail-soft budget).
 pub const CHECK_TIMEOUT: Duration = Duration::from_millis(2500);
 
@@ -170,6 +176,8 @@ impl From<std::io::Error> for UpdateError {
 fn agent(timeout: Duration) -> ureq::Agent {
     ureq::Agent::config_builder()
         .timeout_global(Some(timeout))
+        // A host that doesn't answer is given up on soon, so the next source gets its turn.
+        .timeout_connect(Some(Duration::from_secs(15)))
         .tls_config(ureq::tls::TlsConfig::builder().root_certs(ureq::tls::RootCerts::PlatformVerifier).build())
         .build()
         .into()
@@ -272,21 +280,56 @@ fn manifest_in(agent: &ureq::Agent, dir: &str) -> Result<Manifest, UpdateError> 
     Manifest::parse(&text).ok_or(UpdateError::Unreadable)
 }
 
+/// Where `release`'s file is fetched from, in order. From the public releases: through
+/// shroom.am's counter (DECISIONS B228), then GitHub itself, so an update never waits on
+/// shroom.am. A stand-in's releases (a dev build's, a test's): only where they are.
+pub fn sources(base: &str, release: &Release) -> Vec<String> {
+    let base = base.trim_end_matches('/');
+    let direct = format!("{base}/download/v{}/{}", release.version, release.file);
+    if base == RELEASES {
+        vec![format!("{DOWNLOADS}/v{}/{}?via=update", release.version, release.file), direct]
+    } else {
+        vec![direct]
+    }
+}
+
 /// Downloads the release into `staging/<version>/`, checks its fingerprint, and opens it
 /// with `ditto` (signatures intact). Returns the staged `shroom.app`. A mismatch leaves
 /// nothing behind.
 pub fn download(base: &str, release: &Release, staging: &Path) -> Result<PathBuf, UpdateError> {
+    download_from(&sources(base, release), release, staging)
+}
+
+/// The file's bytes from the first source that gives ones matching its fingerprint; else
+/// the last source's error.
+fn fetch(sources: &[String], release: &Release) -> Result<Vec<u8>, UpdateError> {
+    let agent = agent(Duration::from_secs(30 * 60));
+    let mut last = UpdateError::Transport("no source".into());
+    for url in sources {
+        let got = (|| {
+            let res = agent.get(url).call().map_err(|e| UpdateError::Transport(e.to_string()))?;
+            let mut bytes = Vec::new();
+            res.into_body().into_reader().take(1 << 30).read_to_end(&mut bytes).map_err(|e| UpdateError::Transport(e.to_string()))?;
+            if shroom_storage::sigv4::sha256_hex(&bytes) != release.sha256 {
+                return Err(UpdateError::Mismatch);
+            }
+            Ok(bytes)
+        })();
+        match got {
+            Ok(bytes) => return Ok(bytes),
+            Err(e) => last = e,
+        }
+    }
+    Err(last)
+}
+
+/// [`download`], from these sources in order ([`sources`]).
+pub fn download_from(sources: &[String], release: &Release, staging: &Path) -> Result<PathBuf, UpdateError> {
     let dir = staging.join(release.version.to_string());
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir)?;
     let result = (|| {
-        let url = format!("{}/download/v{}/{}", base.trim_end_matches('/'), release.version, release.file);
-        let res = agent(Duration::from_secs(30 * 60)).get(&url).call().map_err(|e| UpdateError::Transport(e.to_string()))?;
-        let mut bytes = Vec::new();
-        res.into_body().into_reader().take(1 << 30).read_to_end(&mut bytes).map_err(|e| UpdateError::Transport(e.to_string()))?;
-        if shroom_storage::sigv4::sha256_hex(&bytes) != release.sha256 {
-            return Err(UpdateError::Mismatch);
-        }
+        let bytes = fetch(sources, release)?;
         let zip = dir.join(&release.file);
         std::fs::write(&zip, &bytes)?;
         let status = Command::new("ditto").arg("-x").arg("-k").arg(&zip).arg(&dir).stdin(Stdio::null()).status()?;
@@ -347,6 +390,22 @@ mod tests {
     use super::*;
 
     const SUM: &str = "a12e7ee1cd64a69dcdb314157e45dafcba705bfb0b1440b7935cb265d374423e";
+
+    /// The public releases' download goes by shroom.am's counter first, saying it's an
+    /// update and nothing else, then GitHub; a stand-in's never leaves it (DECISIONS B228).
+    #[test]
+    fn a_public_update_is_counted_on_its_way_and_a_stand_ins_never() {
+        let r = Release { version: Version::parse("0.1.26-early.2").unwrap(), file: "shroom-0.1.26-early.2-arm64.zip".into(), sha256: SUM.into() };
+        assert_eq!(
+            sources(RELEASES, &r),
+            [
+                "https://shroom.am/download/v0.1.26-early.2/shroom-0.1.26-early.2-arm64.zip?via=update",
+                "https://github.com/bagrat/shroom/releases/download/v0.1.26-early.2/shroom-0.1.26-early.2-arm64.zip",
+            ]
+        );
+        assert_eq!(sources(&format!("{RELEASES}/"), &r).len(), 2);
+        assert_eq!(sources("http://127.0.0.1:4321", &r), ["http://127.0.0.1:4321/download/v0.1.26-early.2/shroom-0.1.26-early.2-arm64.zip"]);
+    }
 
     #[test]
     fn reads_the_designated_requirement() {

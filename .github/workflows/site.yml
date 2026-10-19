@@ -92,15 +92,16 @@ jobs:
         if: steps.secrets.outputs.ready == 'yes'
         # A new version takes a few seconds to reach every edge: asked again for a minute.
         # The zone's Web Analytics adds its one beacon <script> line to HTML at the edge
-        # (kept on purpose), so the landing is compared with that line taken out.
+        # (kept on purpose), so the landing is compared with that line taken out. Each ask
+        # carries ?ref=ci, so the counts tell it from a person's (DECISIONS B228).
         run: |
           landing() {
-            curl -fsS -H 'accept: text/html' https://shroom.am/ |
+            curl -fsS -H 'accept: text/html' 'https://shroom.am/?ref=ci' |
               grep -v '^<script [^>]*src="https://static\.cloudflareinsights\.com/beacon\.min\.js/[^"]*"[^>]*></script>$'
           }
           serves() {
-            curl -fsS https://shroom.am/install | cmp -s - installer/install.sh &&
-            curl -fsS -H 'accept: text/markdown' https://shroom.am/agent | cmp -s - site/agent.md &&
+            curl -fsS 'https://shroom.am/install?ref=ci' | cmp -s - installer/install.sh &&
+            curl -fsS -H 'accept: text/markdown' 'https://shroom.am/agent?ref=ci' | cmp -s - site/agent.md &&
             landing | cmp -s - site/index.html
           }
           for try in 1 2 3 4 5 6; do
