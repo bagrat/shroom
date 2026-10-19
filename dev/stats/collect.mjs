@@ -4,7 +4,10 @@
 //
 //   site       shroom.am's own counts, from Analytics Engine (`shroom_site`, written by
 //              site/worker.js): per address, answer, kind of client and link tag (`?ref=`);
-//              what came via each tag; the linking hosts; the countries
+//              what came via each tag; the linking hosts; the countries; and the installs
+//              and updates downloaded through it (/download), by day, country and version.
+//              Our own runs tag what they fetch (`ref=ci` or `ref=test`, DECISIONS B228):
+//              they're left out of every count but `ours`, which is theirs alone
 //   releases   each release's download counts on GitHub (running totals, so a week is the
 //              difference from the span before)
 //   traffic    the repository's views, clones, referrers and paths, which GitHub keeps for
@@ -25,6 +28,10 @@
 const REPO = "bagrat/shroom";
 const DATASET = "shroom_site";
 const DAY = 86_400_000;
+/** The tags our own runs put on what they fetch (DECISIONS B228): CI and release jobs `ci`,
+ * anything else of ours (the hosted Mac by hand, VMs, cloud sessions, live drives) `test`. */
+export const OURS = ["ci", "test"];
+const ours = (/** @type {string | undefined} */ ref) => OURS.includes(ref ?? "");
 
 /** The `days` whole UTC days that end at the start of `end`, as SQL-ready bounds and a name.
  * @param {Date} end */
@@ -36,13 +43,13 @@ export function week(end, days = 7) {
 }
 
 /** Each link tag (`?ref=`) and what came through it: landing visits, agents reading /agent,
- * installer runs, and every request. Untagged traffic isn't listed.
+ * installer runs, and every request. Untagged traffic, and our own tags, aren't listed.
  * @param {{ route: string, answer: string, client: string, ref?: string, n: number }[]} rows */
 export function cameVia(rows) {
   /** @type {Map<string, { k: string, visits: number, agents: number, installRuns: number, all: number }>} */
   const by = new Map();
   for (const r of rows) {
-    if (!r.ref) continue;
+    if (!r.ref || ours(r.ref)) continue;
     const t = by.get(r.ref) ?? { k: r.ref, visits: 0, agents: 0, installRuns: 0, all: 0 };
     const f = funnel([r]);
     t.visits += f.landingVisits; t.agents += f.agentPageAgents + f.landingAgents; t.installRuns += f.installRuns; t.all += r.n;
@@ -69,6 +76,45 @@ export function funnel(rows) {
   };
 }
 
+/** The installs and updates downloaded through shroom.am (`/download`, DECISIONS B228):
+ * people's by day, country and version, and ours as a line of its own. `other` is a
+ * download that didn't say what it was for.
+ * @param {{ day: string, via: string, version: string, country: string, ref: string, n: number }[]} rows */
+export function downloads(rows) {
+  const kind = (/** @type {string} */ via) => (via === "install" ? "installs" : via === "update" ? "updates" : "other");
+  const blank = () => ({ installs: 0, updates: 0, other: 0 });
+  const people = blank(), mine = blank();
+  /** @type {Map<string, { k: string, installs: number, updates: number, other: number, ours: number }>} */
+  const days = new Map();
+  /** @type {Record<string, Map<string, { k: string, installs: number, updates: number, other: number }>>} */
+  const by = { country: new Map(), version: new Map() };
+  for (const r of rows) {
+    const day = days.get(r.day) ?? { k: r.day, ...blank(), ours: 0 };
+    days.set(r.day, day);
+    if (ours(r.ref)) {
+      mine[kind(r.via)] += r.n;
+      day.ours += r.n;
+      continue;
+    }
+    people[kind(r.via)] += r.n;
+    day[kind(r.via)] += r.n;
+    for (const [dim, key] of /** @type {const} */ ([["country", r.country || "unknown"], ["version", r.version]])) {
+      const t = by[dim].get(key) ?? { k: key, ...blank() };
+      t[kind(r.via)] += r.n;
+      by[dim].set(key, t);
+    }
+  }
+  const busiest = (/** @type {Map<string, { k: string, installs: number, updates: number, other: number }>} */ m) =>
+    [...m.values()].sort((a, b) => b.installs + b.updates + b.other - (a.installs + a.updates + a.other) || a.k.localeCompare(b.k));
+  return {
+    ...people,
+    ours: mine,
+    byDay: [...days.values()].sort((a, b) => a.k.localeCompare(b.k)),
+    byCountry: busiest(by.country),
+    byVersion: busiest(by.version),
+  };
+}
+
 /** @param {string} sql @param {string} account @param {string} token */
 async function ae(sql, account, token) {
   const res = await fetch(`https://api.cloudflare.com/client/v4/accounts/${account}/analytics_engine/sql`, {
@@ -88,10 +134,21 @@ async function site(w) {
   const where = `timestamp >= toDateTime('${w.from} 00:00:00') AND timestamp < toDateTime('${w.to} 00:00:00')`;
   const rows = (await ae(`SELECT blob1 AS route, blob2 AS answer, blob3 AS client, blob6 AS ref, SUM(_sample_interval) AS n FROM ${DATASET} WHERE ${where} GROUP BY route, answer, client, ref`, account, token))
     .map((r) => ({ route: String(r.route), answer: String(r.answer), client: String(r.client), ref: String(r.ref ?? ""), n: Number(r.n) }));
+  const people = `${where} AND blob6 NOT IN (${OURS.map((t) => `'${t}'`).join(", ")})`;
   const top = async (/** @type {string} */ blob) =>
-    (await ae(`SELECT ${blob} AS k, SUM(_sample_interval) AS n FROM ${DATASET} WHERE ${where} AND ${blob} != '' GROUP BY k ORDER BY n DESC LIMIT 15`, account, token))
+    (await ae(`SELECT ${blob} AS k, SUM(_sample_interval) AS n FROM ${DATASET} WHERE ${people} AND ${blob} != '' GROUP BY k ORDER BY n DESC LIMIT 15`, account, token))
       .map((r) => ({ k: String(r.k), n: Number(r.n) }));
-  return { funnel: funnel(rows), cameVia: cameVia(rows), rows, referrers: await top("blob4"), countries: await top("blob5") };
+  const fetched = (await ae(`SELECT toStartOfInterval(timestamp, INTERVAL '1' DAY) AS day, blob7 AS via, blob8 AS version, blob5 AS country, blob6 AS ref, SUM(_sample_interval) AS n FROM ${DATASET} WHERE ${where} AND blob1 = '/download' GROUP BY day, via, version, country, ref`, account, token))
+    .map((r) => ({ day: String(r.day).slice(0, 10), via: String(r.via), version: String(r.version), country: String(r.country), ref: String(r.ref ?? ""), n: Number(r.n) }));
+  return {
+    funnel: funnel(rows.filter((r) => !ours(r.ref))),
+    ours: funnel(rows.filter((r) => ours(r.ref))),
+    cameVia: cameVia(rows),
+    downloads: downloads(fetched),
+    rows,
+    referrers: await top("blob4"),
+    countries: await top("blob5"),
+  };
 }
 
 /** Cloudflare Web Analytics' answer, shaped like the site's part.

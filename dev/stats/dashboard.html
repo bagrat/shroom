@@ -85,8 +85,8 @@
   <div id="empty" class="empty">
     <strong>Nothing here yet.</strong> Each morning a scheduled task collects the day before,
     and on Mondays the week before, and adds them here with a short reading of the numbers:
-    landing visits, agents reading /agent, installer runs, release downloads, and where
-    visitors came from.
+    landing visits, agents reading /agent, installer runs, installs and updates, release
+    downloads, and where visitors came from — our own test runs left out.
   </div>
 
   <div id="report" hidden>
@@ -94,6 +94,22 @@
       <h2>The funnel</h2>
       <p class="note" id="siteMissing" hidden></p>
       <div class="funnel" id="funnel"></div>
+      <p class="sub" id="oursLine" hidden></p>
+    </section>
+
+    <section>
+      <h2>Installs and updates</h2>
+      <p class="sub">Downloads through shroom.am, by what they were for: the installer's, and the app's own updates. Counted from the releases that download this way; before that, only GitHub's totals below. Our own runs are their own line.</p>
+      <div class="pair">
+        <div class="step"><span class="label">Installs</span><span class="num" id="dlInstalls">–</span></div>
+        <div class="step"><span class="label">Updates</span><span class="num" id="dlUpdates">–</span></div>
+      </div>
+      <p class="sub" id="dlOurs"></p>
+      <div class="scroll"><table id="dlDays"></table></div>
+      <div class="pair">
+        <div class="scroll"><table id="dlCountries"></table></div>
+        <div class="scroll"><table id="dlVersions"></table></div>
+      </div>
     </section>
 
     <section>
@@ -125,7 +141,7 @@
 
     <section>
       <h2>Release downloads</h2>
-      <p class="sub">manifest.txt: installer runs (and apps older than 0.1.11). update.txt: the app's own checks, a few a day per running copy. The zip: installs plus updates.</p>
+      <p class="sub">GitHub's own running totals, our own runs included. manifest.txt: installer runs (and apps older than 0.1.11). update.txt: the app's own checks, a few a day per running copy. The zip: installs plus updates, however they came.</p>
       <div class="scroll"><table id="releases"></table></div>
     </section>
 
@@ -203,6 +219,21 @@ function render(i) {
     return el;
   }));
 
+  // Our own runs (ref=ci or ref=test, DECISIONS B228) are out of the funnel above.
+  const o = w.site?.ours, oursAll = o ? Object.values(o).reduce((a, b) => a + b, 0) : 0;
+  $("oursLine").hidden = !o;
+  $("oursLine").textContent = o ? `Our own runs, left out above: ${fmt(oursAll)} requests, ${fmt(o.installRuns)} of them installer fetches.` : "";
+
+  const d = w.site?.downloads;
+  $("dlInstalls").textContent = d ? fmt(d.installs) : "–";
+  $("dlUpdates").textContent = d ? fmt(d.updates) : "–";
+  $("dlOurs").textContent = d
+    ? `Our own runs: ${fmt(d.ours.installs)} installs, ${fmt(d.ours.updates)} updates.${d.other ? ` Not saying which: ${fmt(d.other)}.` : ""}`
+    : "Not collected in this span.";
+  rows($("dlDays"), [["Day"], ["Installs", 1], ["Updates", 1], ["Ours", 1]], (d?.byDay ?? []).map((r) => [r.k, r.installs, r.updates, r.ours]));
+  rows($("dlCountries"), [["Country"], ["Installs", 1], ["Updates", 1]], (d?.byCountry ?? []).map((r) => [r.k, r.installs, r.updates]));
+  rows($("dlVersions"), [["Version"], ["Installs", 1], ["Updates", 1]], (d?.byVersion ?? []).map((r) => [r.k, r.installs, r.updates]));
+
   const cf = w.cloudflare ?? { missing: "Not collected this week." };
   $("cfMissing").hidden = !cf.missing;
   $("cfMissing").textContent = cf.missing ?? "";
@@ -231,8 +262,9 @@ function render(i) {
   ]);
 
   $("historyTitle").textContent = mode === "days" ? "Day by day" : "Week by week";
-  rows($("history"), [[mode === "days" ? "Day" : "Week"], ["Visits", 1], ["Cloudflare visits", 1], ["Agents", 1], ["curl", 1], ["Zip downloads", 1]],
+  rows($("history"), [[mode === "days" ? "Day" : "Week"], ["Visits", 1], ["Cloudflare visits", 1], ["Agents", 1], ["curl", 1], ["Installs", 1], ["Updates", 1], ["Zip downloads", 1]],
     weeks.map((x, j) => [x.from, x.site?.funnel?.landingVisits ?? 0, x.cloudflare?.visits ?? 0, x.site?.funnel?.agentPageAgents ?? 0, x.site?.funnel?.installRuns ?? 0,
+      x.site?.downloads?.installs ?? 0, x.site?.downloads?.updates ?? 0,
       releaseDeltas(j).filter((r) => r[1].endsWith(".zip")).reduce((s, r) => s + r[2], 0)]));
 }
 
