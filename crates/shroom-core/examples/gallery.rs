@@ -1305,8 +1305,9 @@ fn editor_rows() -> Vec<(&'static str, &'static str, World)> {
     };
     let open = |media: EditorMedia, save: EditorSave, history: Option<shroom_edit::History>| {
         let mut w = library(ready(), vec![remote("set2", "Setting up shroom in two minutes", SEP30, 272_400)]);
-        w.session.windows.insert(WindowKind::Editor, Door::asked(Mono(960)));
-        w.session.fields.editor = Some(EditorFields {
+        w.session.windows.insert(WindowKind::Editor(EditorId(1)), Door::asked(Mono(960)));
+        w.session.fields.editors_opened = 1;
+        w.session.fields.editors.insert(EditorId(1), EditorFields {
             rec: RecId("set2".into()),
             title: "Setting up shroom in two minutes".into(),
             length_ms: Some(272_400),
@@ -1317,7 +1318,6 @@ fn editor_rows() -> Vec<(&'static str, &'static str, World)> {
             kept_until: None,
             media,
             save,
-            leaving: None,
             elsewhere: false,
             closing: false,
         });
@@ -1327,7 +1327,7 @@ fn editor_rows() -> Vec<(&'static str, &'static str, World)> {
     // Opened again while the earlier edit's original is kept, with `left` ms to go (B197 (e)).
     let kept = |left: i64| {
         let mut w = open(here(), EditorSave::Idle, Some(saved()));
-        w.session.fields.editor.as_mut().unwrap().kept_until = Some(Wall(w.wall.0 + left));
+        w.session.fields.editors.get_mut(&EditorId(1)).unwrap().kept_until = Some(Wall(w.wall.0 + left));
         w
     };
     // The saved list, as the window holds it once the save landed.
@@ -1342,7 +1342,7 @@ fn editor_rows() -> Vec<(&'static str, &'static str, World)> {
         // The owner page's Edit in shroom asked for another video while this one is open (N69).
         ("editor", "editor-editing-another", {
             let mut w = open(here(), EditorSave::Idle, Some(stepped()));
-            w.session.fields.editor.as_mut().unwrap().elsewhere = true;
+            w.session.fields.editors.get_mut(&EditorId(1)).unwrap().elsewhere = true;
             w
         }),
         ("editor", "editor-original-kept-2-days", kept(47 * 3_600_000 + 30 * 60_000)),
@@ -1430,7 +1430,9 @@ fn main() {
         }
         Some("editor") => {
             let out = window_gallery(editor_rows(), |s| {
-                (serde_json::to_value(&s.editor).expect("the slice serializes"), s.editor.as_ref().map(|e| e.faces.clone()).unwrap_or_default())
+                // One window, the gallery's: its slice is what its webview gets.
+                let e = s.editors.values().next();
+                (serde_json::to_value(e).expect("the slice serializes"), e.map(|e| e.faces.clone()).unwrap_or_default())
             });
             println!("{}", serde_json::to_string_pretty(&out).unwrap());
             return;

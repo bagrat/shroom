@@ -1,8 +1,9 @@
-//! The editor's media (N63): shroom's own `shroom-media:` scheme, through which the editor's
-//! webview plays the video it is on and reads its waveform. The editor's lane registers the
-//! one video it has found or fetched (a take's `preview.mp4`, or `edits/<rec>/source.mp4`)
-//! and the peaks it read from it (`edits/<rec>/peaks.u8`); the scheme serves those two files
-//! and nothing else, for that recording only, to the editor's webview only (`main.rs`):
+//! The editor's media (N63): shroom's own `shroom-media:` scheme, through which an editor
+//! window's webview plays the video it is on and reads its waveform. The editor's lane
+//! registers, for each window (N73), the video it has found or fetched (a take's
+//! `preview.mp4`, or `edits/<rec>/source.mp4`) and the peaks it read from it
+//! (`edits/<rec>/peaks.u8`); the scheme serves those two files and nothing else, for that
+//! recording only, to that window's webview only (`main.rs`):
 //!
 //!   shroom-media://localhost/<rec>/video   the video, by byte ranges (WebKit's player asks
 //!                                          for them): 206 with `Content-Range`, `video/mp4`
@@ -18,51 +19,63 @@ use std::io::{Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
+use shroom_core::world::EditorId;
+
 /// The scheme the editor's webview reads its media from (`shroom-media://localhost/…`).
 pub const SCHEME: &str = "shroom-media";
 
 /// The most one range answer carries: WebKit asks again for the rest.
 pub const PIECE: u64 = 2 * 1024 * 1024;
 
-/// The video the editor is on, and its waveform.
+/// The video an editor window is on, and its waveform: served to that window (N73).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Registered {
+    pub window: EditorId,
     pub rec: String,
     pub video: PathBuf,
     pub peaks: PathBuf,
 }
 
-/// What the scheme serves: one recording's video and peaks at a time (one editor).
+/// What the scheme serves: each editor window's video and peaks — one window per video (N73).
 #[derive(Default)]
-pub struct Registry(Mutex<Option<Registered>>);
+pub struct Registry(Mutex<Vec<Registered>>);
 
 impl Registry {
     pub const fn new() -> Registry {
-        Registry(Mutex::new(None))
+        Registry(Mutex::new(Vec::new()))
     }
 
-    /// Serves `rec`'s video and peaks from now on — in place of whatever was registered.
+    /// Serves `r.rec`'s video and peaks to its window from now on — in place of whatever
+    /// was registered for that video.
     pub fn register(&self, r: Registered) {
-        *self.0.lock().unwrap() = Some(r);
+        let mut g = self.0.lock().unwrap();
+        g.retain(|x| x.rec != r.rec);
+        g.push(r);
     }
 
-    /// Stops serving `rec` (the window closed while it opened; another video opened).
+    /// Stops serving `rec` (its window closed while it opened, or closed since).
     pub fn forget(&self, rec: &str) {
-        let mut g = self.0.lock().unwrap();
-        if g.as_ref().is_some_and(|r| r.rec == rec) {
-            *g = None;
-        }
+        self.0.lock().unwrap().retain(|r| r.rec != rec);
     }
 
     /// Stops serving anything (Disconnect, Leave).
     pub fn forget_all(&self) {
-        *self.0.lock().unwrap() = None;
+        self.0.lock().unwrap().clear();
     }
 
     /// The file for `rec`'s `kind`, while it's registered.
     pub fn file(&self, rec: &str, kind: Kind) -> Option<PathBuf> {
+        self.served(rec, kind, |_| true)
+    }
+
+    /// …served to editor window `window` only: another window's video is none of its own.
+    pub fn file_for(&self, window: EditorId, rec: &str, kind: Kind) -> Option<PathBuf> {
+        self.served(rec, kind, |r| r.window == window)
+    }
+
+    fn served(&self, rec: &str, kind: Kind, to: impl Fn(&Registered) -> bool) -> Option<PathBuf> {
         let g = self.0.lock().unwrap();
-        let r = g.as_ref().filter(|r| r.rec == rec)?;
+        let r = g.iter().find(|r| r.rec == rec && to(r))?;
         Some(match kind {
             Kind::Video => r.video.clone(),
             Kind::Peaks => r.peaks.clone(),
@@ -164,14 +177,15 @@ fn base_headers() -> Vec<(&'static str, String)> {
     vec![("Cache-Control", "no-store".into()), ("Access-Control-Allow-Origin", "*".into())]
 }
 
-/// The answer to `method path` (with its `Range` header) from what `registry` holds.
-pub fn answer(registry: &Registry, method: &str, path: &str, range_header: Option<&str>) -> Answer {
+/// The answer to `method path` (with its `Range` header), asked by editor window `window`,
+/// from what `registry` serves it.
+pub fn answer(registry: &Registry, window: EditorId, method: &str, path: &str, range_header: Option<&str>) -> Answer {
     let head = method.eq_ignore_ascii_case("HEAD");
     if !head && !method.eq_ignore_ascii_case("GET") {
         return Answer::bare(405);
     }
     let Some((rec, kind)) = route(path) else { return Answer::bare(404) };
-    let Some(file) = registry.file(rec, kind) else { return Answer::bare(404) };
+    let Some(file) = registry.file_for(window, rec, kind) else { return Answer::bare(404) };
     let served = match kind {
         Kind::Video => video(&file, head, range_header),
         Kind::Peaks => peaks(&file, head),
@@ -254,20 +268,27 @@ mod tests {
         }
     }
 
+    /// Each editor window's video, served to it (N73): registering one keeps the others, and
+    /// a window reads only its own.
     #[test]
-    fn the_registry_holds_one_video_and_forgets_it() {
+    fn the_registry_holds_each_windows_video_and_forgets_them() {
         let r = Registry::new();
+        let (one, two) = (EditorId(1), EditorId(2));
         assert_eq!(r.video("A"), None);
-        r.register(Registered { rec: "A".into(), video: "/a.mp4".into(), peaks: "/a.u8".into() });
+        r.register(Registered { window: one, rec: "A".into(), video: "/a.mp4".into(), peaks: "/a.u8".into() });
         assert_eq!(r.file("A", Kind::Peaks), Some(PathBuf::from("/a.u8")));
-        assert_eq!(r.file("B", Kind::Video), None, "only the one registered");
-        r.register(Registered { rec: "B".into(), video: "/b.mp4".into(), peaks: "/b.u8".into() });
-        assert_eq!(r.video("A"), None, "the next video takes its place");
+        assert_eq!(r.file("B", Kind::Video), None, "only what's registered");
+        r.register(Registered { window: two, rec: "B".into(), video: "/b.mp4".into(), peaks: "/b.u8".into() });
+        assert_eq!(r.video("A"), Some(PathBuf::from("/a.mp4")), "another window's video keeps the first");
+        assert_eq!((r.file_for(one, "A", Kind::Video), r.file_for(one, "B", Kind::Video)), (Some(PathBuf::from("/a.mp4")), None), "window 1 reads its own only");
+        assert_eq!(r.file_for(two, "B", Kind::Peaks), Some(PathBuf::from("/b.u8")));
+        r.register(Registered { window: EditorId(3), rec: "A".into(), video: "/a2.mp4".into(), peaks: "/a2.u8".into() });
+        assert_eq!((r.file_for(one, "A", Kind::Video), r.file_for(EditorId(3), "A", Kind::Video)), (None, Some(PathBuf::from("/a2.mp4"))), "the video's next window takes its place");
         r.forget("A");
         assert_eq!(r.video("B"), Some(PathBuf::from("/b.mp4")), "forgetting another changes nothing");
         r.forget("B");
         assert_eq!(r.video("B"), None);
-        r.register(Registered { rec: "C".into(), video: "/c.mp4".into(), peaks: "/c.u8".into() });
+        r.register(Registered { window: one, rec: "C".into(), video: "/c.mp4".into(), peaks: "/c.u8".into() });
         r.forget_all();
         assert_eq!(r.video("C"), None);
     }
@@ -286,50 +307,51 @@ mod tests {
         std::fs::write(&peaks, [0u8, 9, 255]).unwrap();
         std::fs::write(tmp.path().join("token.json"), b"secret").unwrap();
         let r = Registry::new();
-        r.register(Registered { rec: "AbCdEfGhIjKlMnOp".into(), video: video.clone(), peaks });
+        r.register(Registered { window: EditorId(1), rec: "AbCdEfGhIjKlMnOp".into(), video: video.clone(), peaks });
         let len = bytes.len() as u64;
 
-        let a = answer(&r, "GET", "/AbCdEfGhIjKlMnOp/video", Some("bytes=0-1"));
+        let a = answer(&r, EditorId(1), "GET", "/AbCdEfGhIjKlMnOp/video", Some("bytes=0-1"));
         assert_eq!((a.status, a.body.as_slice()), (206, &bytes[0..2]));
         assert_eq!(header(&a, "Content-Range"), Some(format!("bytes 0-1/{len}").as_str()));
         assert_eq!((header(&a, "Content-Length"), header(&a, "Accept-Ranges"), header(&a, "Content-Type")), (Some("2"), Some("bytes"), Some("video/mp4")));
         assert_eq!(header(&a, "Access-Control-Allow-Origin"), Some("*"));
 
         // A long ask is answered a piece at a time.
-        let a = answer(&r, "GET", "/AbCdEfGhIjKlMnOp/video", Some("bytes=100-"));
+        let a = answer(&r, EditorId(1), "GET", "/AbCdEfGhIjKlMnOp/video", Some("bytes=100-"));
         assert_eq!((a.status, a.body.len() as u64), (206, PIECE));
         assert_eq!(a.body.as_slice(), &bytes[100..(100 + PIECE as usize)]);
         assert_eq!(header(&a, "Content-Range"), Some(format!("bytes 100-{}/{len}", 100 + PIECE - 1).as_str()));
-        let a = answer(&r, "GET", "/AbCdEfGhIjKlMnOp/video", Some("bytes=-10"));
+        let a = answer(&r, EditorId(1), "GET", "/AbCdEfGhIjKlMnOp/video", Some("bytes=-10"));
         assert_eq!((a.status, a.body.as_slice()), (206, &bytes[bytes.len() - 10..]));
-        let a = answer(&r, "GET", "/AbCdEfGhIjKlMnOp/video", Some(&format!("bytes={len}-")));
+        let a = answer(&r, EditorId(1), "GET", "/AbCdEfGhIjKlMnOp/video", Some(&format!("bytes={len}-")));
         assert_eq!((a.status, header(&a, "Content-Range")), (416, Some(format!("bytes */{len}").as_str())));
 
         // HEAD: the length, no body.
-        let a = answer(&r, "HEAD", "/AbCdEfGhIjKlMnOp/video", None);
+        let a = answer(&r, EditorId(1), "HEAD", "/AbCdEfGhIjKlMnOp/video", None);
         assert_eq!((a.status, header(&a, "Content-Length"), a.body.len()), (200, Some(len.to_string().as_str()), 0));
-        let a = answer(&r, "HEAD", "/AbCdEfGhIjKlMnOp/video", Some("bytes=0-1"));
+        let a = answer(&r, EditorId(1), "HEAD", "/AbCdEfGhIjKlMnOp/video", Some("bytes=0-1"));
         assert_eq!((a.status, header(&a, "Content-Length"), a.body.len()), (206, Some("2"), 0));
         // A GET with no range on a long file: its first piece, as a range.
-        let a = answer(&r, "GET", "/AbCdEfGhIjKlMnOp/video", None);
+        let a = answer(&r, EditorId(1), "GET", "/AbCdEfGhIjKlMnOp/video", None);
         assert_eq!((a.status, a.body.len() as u64), (206, PIECE));
 
-        let a = answer(&r, "GET", "/AbCdEfGhIjKlMnOp/peaks", None);
+        let a = answer(&r, EditorId(1), "GET", "/AbCdEfGhIjKlMnOp/peaks", None);
         assert_eq!((a.status, a.body.as_slice(), header(&a, "Content-Type")), (200, &[0u8, 9, 255][..], Some("application/octet-stream")));
 
         for (method, path) in [("GET", "/OtherRecording00/video"), ("GET", "/AbCdEfGhIjKlMnOp/poster"), ("GET", "/../token.json"), ("GET", "/AbCdEfGhIjKlMnOp/../../token.json")] {
-            assert_eq!(answer(&r, method, path, None).status, 404, "{path}");
+            assert_eq!(answer(&r, EditorId(1), method, path, None).status, 404, "{path}");
         }
-        assert_eq!(answer(&r, "POST", "/AbCdEfGhIjKlMnOp/video", None).status, 405);
+        assert_eq!(answer(&r, EditorId(2), "GET", "/AbCdEfGhIjKlMnOp/video", Some("bytes=0-1")).status, 404, "another editor window's video (N73)");
+        assert_eq!(answer(&r, EditorId(1), "POST", "/AbCdEfGhIjKlMnOp/video", None).status, 405);
         r.forget("AbCdEfGhIjKlMnOp");
-        assert_eq!(answer(&r, "GET", "/AbCdEfGhIjKlMnOp/video", Some("bytes=0-1")).status, 404, "forgotten: gone");
+        assert_eq!(answer(&r, EditorId(1), "GET", "/AbCdEfGhIjKlMnOp/video", Some("bytes=0-1")).status, 404, "forgotten: gone");
 
         // A small file with no range comes whole.
         let small = tmp.path().join("small.mp4");
         std::fs::write(&small, b"0123456789").unwrap();
-        r.register(Registered { rec: "S".into(), video: small, peaks: tmp.path().join("none.u8") });
-        let a = answer(&r, "GET", "/S/video", None);
+        r.register(Registered { window: EditorId(1), rec: "S".into(), video: small, peaks: tmp.path().join("none.u8") });
+        let a = answer(&r, EditorId(1), "GET", "/S/video", None);
         assert_eq!((a.status, a.body.as_slice(), header(&a, "Content-Range")), (200, &b"0123456789"[..], None));
-        assert_eq!(answer(&r, "GET", "/S/peaks", None).status, 404, "a file that isn't there");
+        assert_eq!(answer(&r, EditorId(1), "GET", "/S/peaks", None).status, 404, "a file that isn't there");
     }
 }

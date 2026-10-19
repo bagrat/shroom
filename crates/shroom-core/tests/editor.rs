@@ -42,6 +42,9 @@ const ASK_LINE: &str = "Your edit is the video now. The original is only kept so
 const CLOSE_TITLE: &str = "Save your edit?";
 const CLOSE_LINE: &str = "What you've changed isn't saved yet.";
 
+/// The editor's window, in a run that opened one: the first window's number (N73).
+const WIN: EditorId = EditorId(1);
+
 fn rec() -> RecId {
     RecId(REC.into())
 }
@@ -103,16 +106,19 @@ impl Drive for Run {
         self.send(Event::Act { surface: Surface::Library, action, rev: 0 })
     }
     fn ed(&mut self, action: Action) -> &mut Self {
-        self.send(Event::Act { surface: Surface::Editor, action, rev: 0 })
+        let id = newest(&self.w).unwrap_or(WIN);
+        self.send(Event::Act { surface: Surface::Editor(id), action, rev: 0 })
     }
     fn news(&mut self, news: EditorNews) -> &mut Self {
         self.send(Event::Editor(news))
     }
     fn step(&mut self, step: EditStep) -> &mut Self {
-        self.send(Event::Edit(step))
+        let id = newest(&self.w).unwrap_or(WIN);
+        self.send(Event::Edit(id, step))
     }
     fn op(&mut self, op: EditOp) -> &mut Self {
-        self.send(Event::Edit(EditStep::Op(op)))
+        let id = newest(&self.w).unwrap_or(WIN);
+        self.send(Event::Edit(id, EditStep::Op(op)))
     }
 }
 
@@ -142,12 +148,17 @@ fn dirty() -> Run {
     r
 }
 
+/// The newest editor window open: in a run with one open, that one (N73).
+fn newest(w: &World) -> Option<EditorId> {
+    w.session.fields.editors.keys().next_back().copied()
+}
+
 fn body(r: &Run) -> EditorBody {
-    r.scene.editor.as_ref().expect("the editor window").body.clone()
+    r.scene.editors.get(&newest(&r.w).unwrap_or(WIN)).expect("the editor window").body.clone()
 }
 
 fn face(r: &Run) -> &'static str {
-    r.scene.editor.as_ref().map_or("closed", |e| e.id)
+    newest(&r.w).and_then(|id| r.scene.editors.get(&id)).map_or("closed", |e| e.id)
 }
 
 fn list(r: &Run) -> EditListView {
@@ -218,7 +229,7 @@ fn edit_greys_offline_and_mid_take() {
     let edit = edit_button(lib_row(&r, TITLE)).unwrap().clone();
     assert_eq!((edit.enabled, edit.note), (false, None), "offline: greyed, as Rename");
     r.lib(Action::EditRow(rec()));
-    assert!(r.scene.editor.is_none() && r.effects.is_empty(), "nothing opens offline");
+    assert!(r.scene.editors.is_empty() && r.effects.is_empty(), "nothing opens offline");
 
     // The Library was open before the take: it stays, and Edit… waits for the take.
     let mut w = library();
@@ -229,7 +240,7 @@ fn edit_greys_offline_and_mid_take() {
     assert!(!edit.enabled);
     assert_eq!(edit.note.as_deref(), Some("You can do this once your recording is finished."));
     r.lib(Action::EditRow(rec()));
-    assert!(r.scene.editor.is_none() && !opens(&r) && r.w.session.fields.editor.is_none(), "law 4: nothing new shows mid-take");
+    assert!(r.scene.editors.is_empty() && !opens(&r) && r.w.session.fields.editors.is_empty(), "law 4: nothing new shows mid-take");
 }
 
 /// In this Mac's scope (N5, N33): a member edits its own videos — it sees no one else's —
@@ -261,9 +272,9 @@ fn a_member_sees_edit_only_on_their_own_rows() {
 #[test]
 fn edit_opens_the_editor_on_the_row_and_asks_for_its_record() {
     let r = opened();
-    assert_eq!(r.effects, vec![Effect::Editor(EditCmd::Open { rec: rec() }), Effect::Shell(ShellCmd::OpenEditor)]);
+    assert_eq!(r.effects, vec![Effect::Editor(EditCmd::Open { id: WIN, rec: rec() }), Effect::Shell(ShellCmd::OpenEditor(WIN))]);
     assert_eq!(r.arm.edge, Some(("library", "editor")));
-    let win = r.scene.editor.as_ref().expect("the editor");
+    let win = r.scene.editors.get(&WIN).expect("the editor");
     assert_eq!(win.id, "editor");
     assert!(win.faces.is_empty());
     assert!(win.activates, "the person asked for it");
@@ -287,8 +298,8 @@ fn edit_opens_the_editor_on_the_row_and_asks_for_its_record() {
     assert_eq!(button(revert(&b)), ("Revert to original", Style::Plain, false));
     assert_eq!(button(&b.done), ("Done", Style::Filled, false));
     assert_eq!(b.done.action, Action::EditorDone);
-    assert_eq!((r.scene.ret(Surface::Editor), r.scene.esc(Surface::Editor)), (None, None), "Done waits; Esc is the webview's");
-    assert_eq!(r.w.inflight.ops.get(&Op::EditorOpen), Some(&Mono(r.t + 1_800_000)), "a download can be long: half an hour");
+    assert_eq!((r.scene.ret(Surface::Editor(WIN)), r.scene.esc(Surface::Editor(WIN))), (None, None), "Done waits; Esc is the webview's");
+    assert_eq!(r.w.inflight.ops.get(&Op::EditorOpen(WIN)), Some(&Mono(r.t + 1_800_000)), "a download can be long: half an hour");
 }
 
 /// The record answers: the saved list (its revision), the markers, the length — then the
@@ -309,7 +320,7 @@ fn the_record_then_the_video_make_the_editor_live() {
     assert_eq!((b.edited_duration, b.source_duration), (221.0, 272.4));
     assert_eq!(b.markers, vec![61.5, 130.0]);
     assert!(!b.editable && !b.done.enabled, "the video isn't here yet");
-    assert_eq!(r.w.session.fields.editor.as_ref().unwrap().rev, 3);
+    assert_eq!(r.w.session.fields.editors[&WIN].rev, 3);
 
     r.news(EditorNews::Getting { rec: rec(), pct: 40 });
     assert_eq!(face(&r), "editor-getting");
@@ -317,7 +328,7 @@ fn the_record_then_the_video_make_the_editor_live() {
     assert_eq!(b.media, EditorMediaView::Getting { pct: 40, line: GETTING.into() });
     assert_eq!(b.footer, FOOTER);
     assert!(!b.done.enabled && !b.editable);
-    assert_eq!(r.scene.ret(Surface::Editor), None, "Done waits for the video");
+    assert_eq!(r.scene.ret(Surface::Editor(WIN)), None, "Done waits for the video");
 
     r.news(EditorNews::Ready { rec: rec(), duration: 272.4 });
     assert_eq!(r.arm.edge, Some(("editor-getting", "editor")));
@@ -327,8 +338,8 @@ fn the_record_then_the_video_make_the_editor_live() {
     assert!(b.editable && !b.can_undo && !b.can_redo);
     assert_eq!(button(&b.done), ("Done", Style::Filled, true));
     assert_eq!(button(revert(&b)), ("Revert to original", Style::Plain, true), "the saved trim and cut can be put back");
-    assert_eq!(r.scene.ret(Surface::Editor), Some(Action::EditorDone));
-    assert!(!r.w.inflight.ops.contains_key(&Op::EditorOpen), "the open answered");
+    assert_eq!(r.scene.ret(Surface::Editor(WIN)), Some(Action::EditorDone));
+    assert!(!r.w.inflight.ops.contains_key(&Op::EditorOpen(WIN)), "the open answered");
 }
 
 /// Nothing saved yet: the whole recording, as recorded — nothing to put back.
@@ -341,7 +352,7 @@ fn a_video_never_edited_opens_whole() {
     assert_eq!(b.keep, vec![[0.0, 272.4]]);
     assert_eq!(b.edited_duration, 272.4);
     assert!(!revert(&b).enabled, "nothing to put back");
-    assert_eq!(r.w.session.fields.editor.as_ref().unwrap().rev, 0);
+    assert_eq!(r.w.session.fields.editors[&WIN].rev, 0);
 }
 
 /// Bytes moving keep the open alive: a long download isn't cut off at the deadline of the
@@ -350,10 +361,10 @@ fn a_video_never_edited_opens_whole() {
 fn the_videos_progress_keeps_its_fetch_alive() {
     let mut r = opened();
     r.news(EditorNews::Getting { rec: rec(), pct: 1 });
-    let first = r.w.inflight.ops[&Op::EditorOpen];
+    let first = r.w.inflight.ops[&Op::EditorOpen(WIN)];
     r.at(first.0 - 60_000);
     r.news(EditorNews::Getting { rec: rec(), pct: 90 });
-    assert!(r.w.inflight.ops[&Op::EditorOpen] > first);
+    assert!(r.w.inflight.ops[&Op::EditorOpen(WIN)] > first);
     assert_eq!(face(&r), "editor-getting");
 }
 
@@ -471,8 +482,8 @@ fn steps_are_refused_until_ready_while_saving_and_when_the_model_refuses_them() 
 fn done_with_nothing_changed_closes_at_once() {
     let mut r = ready_with(Some(saved_edit(3)));
     r.ed(Action::EditorDone);
-    assert!(r.scene.editor.is_none() && r.w.session.fields.editor.is_none());
-    assert!(!r.w.session.windows.contains_key(&WindowKind::Editor));
+    assert!(r.scene.editors.is_empty() && r.w.session.fields.editors.is_empty());
+    assert!(!r.w.session.windows.contains_key(&WindowKind::Editor(WIN)));
     assert!(r.effects.is_empty(), "no save, no copy: {:?}", r.effects);
     assert_eq!(r.arm.edge, Some(("editor", "library")));
     assert!(r.scene.library.is_some() && r.scene.dock, "the Library stays, and its Dock icon");
@@ -481,8 +492,8 @@ fn done_with_nothing_changed_closes_at_once() {
     let mut r = ready_editor();
     r.op(EditOp::Cut { start: 10.0, end: 20.0 });
     r.step(EditStep::Undo);
-    r.key(Surface::Editor, Key::Return);
-    assert!(r.scene.editor.is_none() && r.effects.is_empty());
+    r.key(Surface::Editor(WIN), Key::Return);
+    assert!(r.scene.editors.is_empty() && r.effects.is_empty());
 }
 
 /// Done with changes saves: the checked list as the next revision, no copy yet. The window
@@ -491,18 +502,18 @@ fn done_with_nothing_changed_closes_at_once() {
 fn done_with_changes_saves_the_checked_list_as_the_next_revision() {
     let mut r = dirty();
     r.ed(Action::EditorDone);
-    assert_eq!(r.effects, vec![Effect::Editor(EditCmd::Save { rec: rec(), saved: Saved::new(edited().checked(), 4) })]);
+    assert_eq!(r.effects, vec![Effect::Editor(EditCmd::Save { id: WIN, rec: rec(), saved: Saved::new(edited().checked(), 4) })]);
     assert_eq!(r.arm.edge, Some(("editor", "editor-saving")));
     assert_eq!(face(&r), "editor-saving");
     let b = body(&r);
     assert_eq!((b.footer.as_str(), b.footer_tone), (SAVING, LineTone::Plain));
     assert_eq!(button(&b.done), ("Saving…", Style::Filled, false));
-    assert_eq!((r.scene.ret(Surface::Editor), r.scene.esc(Surface::Editor)), (None, None));
-    assert_eq!(r.w.inflight.ops.get(&Op::EditorSave), Some(&Mono(r.t + 60_000)));
+    assert_eq!((r.scene.ret(Surface::Editor(WIN)), r.scene.esc(Surface::Editor(WIN))), (None, None));
+    assert_eq!(r.w.inflight.ops.get(&Op::EditorSave(WIN)), Some(&Mono(r.t + 60_000)));
     // Done, Return and ✕ while it saves: nothing.
-    r.key(Surface::Editor, Key::Return);
+    r.key(Surface::Editor(WIN), Key::Return);
     assert!(r.effects.is_empty());
-    r.send(Event::WindowClosed(WindowKind::Editor));
+    r.send(Event::WindowClosed(WindowKind::Editor(WIN)));
     assert!(r.effects.is_empty());
     assert_eq!(face(&r), "editor-saving", "the window stays until the save lands");
 }
@@ -511,15 +522,15 @@ fn done_with_changes_saves_the_checked_list_as_the_next_revision() {
 #[test]
 fn the_windows_close_with_nothing_to_save_closes_at_once() {
     let mut r = ready_editor();
-    r.send(Event::WindowClosed(WindowKind::Editor));
-    assert!(r.scene.editor.is_none() && r.effects.is_empty());
+    r.send(Event::WindowClosed(WindowKind::Editor(WIN)));
+    assert!(r.scene.editors.is_empty() && r.effects.is_empty());
     assert_eq!(r.arm.edge, Some(("editor", "library")));
     // Changes undone back to what's saved: nothing to save either.
     let mut r = ready_with(Some(saved_edit(3)));
     r.op(EditOp::Cut { start: 20.0, end: 30.0 });
     r.step(EditStep::Undo);
-    r.send(Event::WindowClosed(WindowKind::Editor));
-    assert!(r.scene.editor.is_none() && r.effects.is_empty());
+    r.send(Event::WindowClosed(WindowKind::Editor(WIN)));
+    assert!(r.scene.editors.is_empty() && r.effects.is_empty());
 }
 
 // ── ✕ with changes not saved asks first (N71) ──
@@ -529,7 +540,7 @@ fn closing(r: &Run) -> EditorClosingView {
 }
 
 fn close(r: &mut Run) {
-    r.send(Event::WindowClosed(WindowKind::Editor));
+    r.send(Event::WindowClosed(WindowKind::Editor(WIN)));
 }
 
 /// ✕ with changes not saved asks before the window closes (N71): in the footer's place,
@@ -544,14 +555,14 @@ fn the_windows_close_with_changes_asks_first() {
     assert!(r.effects.is_empty(), "nothing saved yet: {:?}", r.effects);
     assert_eq!(r.arm.edge, Some(("editor", "editor-closing")));
     assert_eq!(face(&r), "editor-closing");
-    assert!(r.w.session.windows.contains_key(&WindowKind::Editor), "the window stays while it asks");
+    assert!(r.w.session.windows.contains_key(&WindowKind::Editor(WIN)), "the window stays while it asks");
     let c = closing(&r);
     assert_eq!((c.title.as_str(), c.line.as_str()), (CLOSE_TITLE, CLOSE_LINE));
     assert_eq!(button(&c.discard), ("Discard", Style::RedOutline, true));
     assert_eq!(button(&c.keep), ("Keep editing", Style::Plain, true));
     assert_eq!(button(&c.save), ("Save", Style::Filled, true));
     assert_eq!((&c.discard.action, &c.keep.action, &c.save.action), (&Action::EditorDiscard, &Action::EditorKeepEditing, &Action::EditorDone));
-    assert_eq!((r.scene.ret(Surface::Editor), r.scene.esc(Surface::Editor)), (Some(Action::EditorDone), Some(Action::EditorKeepEditing)));
+    assert_eq!((r.scene.ret(Surface::Editor(WIN)), r.scene.esc(Surface::Editor(WIN))), (Some(Action::EditorDone), Some(Action::EditorKeepEditing)));
     let b = body(&r);
     assert!(!b.editable && !b.can_undo && !b.can_redo, "the edit is held while it asks");
     assert!(!revert(&b).enabled);
@@ -575,7 +586,7 @@ fn the_windows_close_with_changes_asks_first() {
 /// again, and ✕ asks again next time.
 #[test]
 fn keep_editing_puts_the_question_away() {
-    for keep in [Event::Act { surface: Surface::Editor, action: Action::EditorKeepEditing, rev: 0 }, Event::Key { surface: Surface::Editor, key: Key::Esc }] {
+    for keep in [Event::Act { surface: Surface::Editor(WIN), action: Action::EditorKeepEditing, rev: 0 }, Event::Key { surface: Surface::Editor(WIN), key: Key::Esc }] {
         let mut r = dirty();
         let before = list(&r);
         close(&mut r);
@@ -597,11 +608,11 @@ fn keep_editing_puts_the_question_away() {
 /// video, as after Done.
 #[test]
 fn save_on_the_question_is_done() {
-    for save in [Event::Act { surface: Surface::Editor, action: Action::EditorDone, rev: 0 }, Event::Key { surface: Surface::Editor, key: Key::Return }] {
+    for save in [Event::Act { surface: Surface::Editor(WIN), action: Action::EditorDone, rev: 0 }, Event::Key { surface: Surface::Editor(WIN), key: Key::Return }] {
         let mut r = dirty();
         close(&mut r);
         r.send(save.clone());
-        assert_eq!(r.effects, vec![Effect::Editor(EditCmd::Save { rec: rec(), saved: Saved::new(edited().checked(), 4) })], "{save:?}");
+        assert_eq!(r.effects, vec![Effect::Editor(EditCmd::Save { id: WIN, rec: rec(), saved: Saved::new(edited().checked(), 4) })], "{save:?}");
         assert_eq!(r.arm.edge, Some(("editor-closing", "editor-saving")), "{save:?}");
         assert_eq!(face(&r), "editor-saving");
         assert!(body(&r).closing.is_none());
@@ -620,8 +631,8 @@ fn discard_closes_and_drops_what_wasnt_saved() {
     r.ed(Action::EditorDiscard);
     assert!(r.effects.is_empty(), "nothing saved: {:?}", r.effects);
     assert_eq!(r.arm.edge, Some(("editor-closing", "library")));
-    assert!(r.scene.editor.is_none() && r.w.session.fields.editor.is_none());
-    assert!(!r.w.session.windows.contains_key(&WindowKind::Editor));
+    assert!(r.scene.editors.is_empty() && r.w.session.fields.editors.is_empty());
+    assert!(!r.w.session.windows.contains_key(&WindowKind::Editor(WIN)));
     assert!(r.scene.library.is_some(), "the Library stays");
 
     // Not asked: Discard does nothing, and the change stays.
@@ -638,18 +649,18 @@ fn discard_closes_and_drops_what_wasnt_saved() {
 fn the_windows_close_after_a_failed_save_asks_too() {
     let mut r = dirty();
     r.ed(Action::EditorDone);
-    r.send(Event::Failed { op: Op::EditorSave, class: FailClass::Transport });
+    r.send(Event::Failed { op: Op::EditorSave(WIN), class: FailClass::Transport });
     assert_eq!(face(&r), "editor-save-failed");
     close(&mut r);
     assert!(r.effects.is_empty(), "{:?}", r.effects);
     assert_eq!(r.arm.edge, Some(("editor-save-failed", "editor-closing")));
     assert_eq!(face(&r), "editor-closing");
-    r.key(Surface::Editor, Key::Esc);
+    r.key(Surface::Editor(WIN), Key::Esc);
     assert_eq!(r.arm.edge, Some(("editor-closing", "editor-save-failed")));
     assert_eq!(face(&r), "editor-save-failed");
     assert_eq!((body(&r).footer.as_str(), body(&r).footer_tone), (SAVE_FAILED, LineTone::Amber));
     close(&mut r);
-    r.key(Surface::Editor, Key::Return);
+    r.key(Surface::Editor(WIN), Key::Return);
     assert!(r.has(|e| matches!(e, Effect::Editor(EditCmd::Save { saved: Saved { rev: 4, .. }, .. }))), "{:?}", r.effects);
     assert_eq!(r.arm.edge, Some(("editor-closing", "editor-saving")));
 }
@@ -665,7 +676,7 @@ fn quit_while_it_asks_saves_first() {
     assert_eq!(r.arm.edge, Some(("editor-closing", "editor-saving")));
     assert_eq!(face(&r), "editor-saving");
     assert!(body(&r).closing.is_none());
-    assert_eq!(r.w.session.fields.editor.as_ref().unwrap().leaving, Some(Leaving::Quit));
+    assert_eq!(r.w.session.fields.leaving, Some(Leaving::Quit));
     r.news(EditorNews::Saved { rec: rec(), rev: 4 });
     assert!(quits(&r), "{:?}", r.effects);
 }
@@ -677,7 +688,7 @@ fn deleting_its_video_while_it_asks_closes_the_editor() {
     close(&mut r);
     r.send(Event::Library(LibraryNews::Deleted(vec![rec()])));
     assert!(!saves(&r), "nothing is saved: {:?}", r.effects);
-    assert!(r.scene.editor.is_none() && r.w.session.fields.editor.is_none());
+    assert!(r.scene.editors.is_empty() && r.w.session.fields.editors.is_empty());
 }
 
 /// Saved with something left out (B197 (a)): the window stays and makes the final video —
@@ -692,7 +703,7 @@ fn saved_with_something_left_out_makes_the_final_video() {
     r.news(EditorNews::Saved { rec: rec(), rev: 4 });
     assert_eq!(r.arm.edge, Some(("editor-saving", "editor-making")));
     assert_eq!(face(&r), "editor-making");
-    assert!(!r.w.inflight.ops.contains_key(&Op::EditorSave));
+    assert!(!r.w.inflight.ops.contains_key(&Op::EditorSave(WIN)));
     assert_eq!(r.effects, vec![Effect::Editor(EditCmd::Copy { rec: rec(), rev: 4 })]);
     assert_eq!(lib_row(&r, TITLE).meta, "Aug 21 · 3:31", "the edited length, at once");
     assert_eq!(r.w.inflight.ops.get(&Op::EditorCopy), Some(&Mono(r.t + 3_600_000)));
@@ -702,7 +713,7 @@ fn saved_with_something_left_out_makes_the_final_video() {
     assert_eq!((button(&b.done), &b.done.action), (("Close", Style::Filled, true), &Action::EditorClose));
     assert!(!b.editable && !b.can_undo && !revert(&b).enabled, "the edit is saved: nothing more to step");
     assert_eq!(b.original_kept, None);
-    assert_eq!((r.scene.ret(Surface::Editor), r.scene.esc(Surface::Editor)), (Some(Action::EditorClose), Some(Action::EditorClose)));
+    assert_eq!((r.scene.ret(Surface::Editor(WIN)), r.scene.esc(Surface::Editor(WIN))), (Some(Action::EditorClose), Some(Action::EditorClose)));
     assert_eq!(b.keep, vec![[8.0, 20.0], [30.0, 150.0], [162.0, 241.0]], "what plays is what was saved");
     // Steps are refused now.
     r.op(EditOp::Cut { start: 40.0, end: 50.0 });
@@ -721,7 +732,7 @@ fn the_final_video_lands_and_yes_delete_bakes_it() {
     assert_eq!(face(&r), "editor-making");
     assert_eq!(body(&r).after, Some(EditorAfterView::Making { pct: 40, line: "Making the final video… 40%".into() }));
     r.news(EditorNews::Making { rec: rec(), pct: 250 });
-    assert_eq!(r.w.session.fields.editor.as_ref().unwrap().save, EditorSave::Making { pct: 100 }, "a share is at most all of it");
+    assert_eq!(r.w.session.fields.editors[&WIN].save, EditorSave::Making { pct: 100 }, "a share is at most all of it");
     assert!(r.effects.is_empty());
 
     r.news(EditorNews::CopyDone { rec: rec(), rev: 4, named: true });
@@ -734,14 +745,14 @@ fn the_final_video_lands_and_yes_delete_bakes_it() {
     assert_eq!((button(keep), &keep.action), (("Keep for 2 days", Style::Plain, true), &Action::KeepOriginal));
     assert_eq!((button(delete), &delete.action), (("Yes, delete", Style::Filled, true), &Action::DeleteOriginal));
     assert!(!b.done.enabled && !b.editable, "the question's own buttons answer it");
-    assert_eq!((r.scene.ret(Surface::Editor), r.scene.esc(Surface::Editor)), (None, Some(Action::KeepOriginal)), "deleting is a click, never Return (law 9)");
-    r.key(Surface::Editor, Key::Return);
+    assert_eq!((r.scene.ret(Surface::Editor(WIN)), r.scene.esc(Surface::Editor(WIN))), (None, Some(Action::KeepOriginal)), "deleting is a click, never Return (law 9)");
+    r.key(Surface::Editor(WIN), Key::Return);
     assert!(r.effects.is_empty() && face(&r) == "editor-keep-original", "Return asks nothing");
 
     r.ed(Action::DeleteOriginal);
     assert_eq!(r.effects, vec![Effect::Editor(EditCmd::Bake { rec: rec() })]);
     assert_eq!(r.arm.edge, Some(("editor-keep-original", "library")));
-    assert!(r.scene.editor.is_none() && r.w.session.fields.editor.is_none());
+    assert!(r.scene.editors.is_empty() && r.w.session.fields.editors.is_empty());
     assert_eq!(lib_row(&r, TITLE).meta, "Aug 21 · 3:31");
     // Edit… again reads the record afresh.
     r.lib(Action::EditRow(rec()));
@@ -762,15 +773,15 @@ fn keep_esc_and_close_on_the_question_keep_the_original() {
         r
     };
     for answer in [
-        Event::Act { surface: Surface::Editor, action: Action::KeepOriginal, rev: 0 },
-        Event::Key { surface: Surface::Editor, key: Key::Esc },
-        Event::WindowClosed(WindowKind::Editor),
+        Event::Act { surface: Surface::Editor(WIN), action: Action::KeepOriginal, rev: 0 },
+        Event::Key { surface: Surface::Editor(WIN), key: Key::Esc },
+        Event::WindowClosed(WindowKind::Editor(WIN)),
     ] {
         let mut r = asking();
         r.send(answer.clone());
         assert!(r.effects.is_empty(), "{answer:?}: {:?}", r.effects);
         assert_eq!(r.arm.edge, Some(("editor-keep-original", "library")), "{answer:?}");
-        assert!(r.scene.editor.is_none() && r.w.session.fields.editor.is_none(), "{answer:?}");
+        assert!(r.scene.editors.is_empty() && r.w.session.fields.editors.is_empty(), "{answer:?}");
     }
     // Neither answer is offered anywhere else.
     let mut r = dirty();
@@ -786,10 +797,10 @@ fn keep_esc_and_close_on_the_question_keep_the_original() {
 #[test]
 fn closing_while_the_final_video_is_made_leaves_it_to_finish() {
     for close in [
-        Event::Act { surface: Surface::Editor, action: Action::EditorClose, rev: 0 },
-        Event::Key { surface: Surface::Editor, key: Key::Return },
-        Event::Key { surface: Surface::Editor, key: Key::Esc },
-        Event::WindowClosed(WindowKind::Editor),
+        Event::Act { surface: Surface::Editor(WIN), action: Action::EditorClose, rev: 0 },
+        Event::Key { surface: Surface::Editor(WIN), key: Key::Return },
+        Event::Key { surface: Surface::Editor(WIN), key: Key::Esc },
+        Event::WindowClosed(WindowKind::Editor(WIN)),
     ] {
         let mut r = dirty();
         r.ed(Action::EditorDone);
@@ -798,14 +809,14 @@ fn closing_while_the_final_video_is_made_leaves_it_to_finish() {
         r.send(close.clone());
         assert!(r.effects.is_empty(), "{close:?}: nothing stops — {:?}", r.effects);
         assert_eq!(r.arm.edge, Some(("editor-making", "library")), "{close:?}");
-        assert!(r.scene.editor.is_none(), "{close:?}");
+        assert!(r.scene.editors.is_empty(), "{close:?}");
         assert!(r.w.inflight.ops.contains_key(&Op::EditorCopy), "{close:?}: the copy goes on");
         assert_eq!(r.w.library_ops.copies.get(&rec()), Some(&CopyOwed { rev: 4, asked: true }));
         // Its progress, and its landing, find no window: nothing is asked.
         r.news(EditorNews::Making { rec: rec(), pct: 80 });
-        assert!(r.scene.editor.is_none() && r.effects.is_empty());
+        assert!(r.scene.editors.is_empty() && r.effects.is_empty());
         r.news(EditorNews::CopyDone { rec: rec(), rev: 4, named: true });
-        assert!(r.scene.editor.is_none() && r.effects.is_empty());
+        assert!(r.scene.editors.is_empty() && r.effects.is_empty());
         assert!(r.w.library_ops.copies.is_empty() && !r.w.inflight.ops.contains_key(&Op::EditorCopy));
     }
 
@@ -819,7 +830,7 @@ fn closing_while_the_final_video_is_made_leaves_it_to_finish() {
     r.news(EditorNews::Saved { rec: rec(), rev: 4 });
     assert_eq!(body(&r).after, Some(EditorAfterView::Making { pct: 0, line: "Making the final video… 0%".into() }), "it waits for the take");
     r.ed(Action::EditorClose);
-    assert!(r.scene.editor.is_none());
+    assert!(r.scene.editors.is_empty());
     assert_eq!(r.w.library_ops.copies.get(&rec()), Some(&CopyOwed { rev: 4, asked: false }), "still owed");
     r.click();
     r.send(Event::Rec(RecNews::Paused { length_ms: 10_000 }));
@@ -844,16 +855,16 @@ fn a_final_video_that_cant_be_made_says_so() {
     assert_eq!(b.after, Some(EditorAfterView::Failed));
     assert_eq!((b.footer.as_str(), b.footer_tone), (MAKING_FAILED, LineTone::Amber));
     assert_eq!((button(&b.done), &b.done.action), (("Close", Style::Filled, true), &Action::EditorClose));
-    assert_eq!((r.scene.ret(Surface::Editor), r.scene.esc(Surface::Editor)), (Some(Action::EditorClose), Some(Action::EditorClose)));
+    assert_eq!((r.scene.ret(Surface::Editor(WIN)), r.scene.esc(Surface::Editor(WIN))), (Some(Action::EditorClose), Some(Action::EditorClose)));
     assert!(r.w.library_ops.copies.is_empty(), "no longer owed: the upkeep makes it");
-    for close in [Event::Act { surface: Surface::Editor, action: Action::EditorClose, rev: 0 }, Event::Key { surface: Surface::Editor, key: Key::Esc }, Event::WindowClosed(WindowKind::Editor)] {
+    for close in [Event::Act { surface: Surface::Editor(WIN), action: Action::EditorClose, rev: 0 }, Event::Key { surface: Surface::Editor(WIN), key: Key::Esc }, Event::WindowClosed(WindowKind::Editor(WIN))] {
         let mut r2 = Run::new(r.w.clone());
         r2.send(close.clone());
-        assert!(r2.effects.is_empty() && r2.scene.editor.is_none(), "{close:?}");
+        assert!(r2.effects.is_empty() && r2.scene.editors.is_empty(), "{close:?}");
         assert_eq!(r2.arm.edge, Some(("editor-making-failed", "library")), "{close:?}");
     }
-    r.key(Surface::Editor, Key::Return);
-    assert!(r.scene.editor.is_none());
+    r.key(Surface::Editor(WIN), Key::Return);
+    assert!(r.scene.editors.is_empty());
 
     // A copy that never answers fails at its deadline the same way.
     let mut r = dirty();
@@ -884,7 +895,7 @@ fn a_dropped_copy_asks_nothing_about_the_original() {
     // and the lane drops 4's copy unnamed.
     let mut r = dirty();
     r.ed(Action::EditorDone);
-    let deadline = r.w.inflight.ops[&Op::EditorSave];
+    let deadline = r.w.inflight.ops[&Op::EditorSave(WIN)];
     r.tick_to(deadline.0 + 10);
     assert_eq!(face(&r), "editor-save-failed");
     r.ed(Action::EditorDone);
@@ -902,9 +913,9 @@ fn a_dropped_copy_asks_nothing_about_the_original() {
     assert_eq!((b.footer.as_str(), b.footer_tone), (MAKING_FAILED, LineTone::Amber));
     assert!(r.effects.is_empty(), "nothing is made the video: {:?}", r.effects);
     assert!(!r.w.inflight.ops.contains_key(&Op::EditorCopy) && r.w.library_ops.copies.is_empty(), "the copy answered");
-    assert!(!r.scene.offers(Surface::Editor, &Action::DeleteOriginal) && !r.scene.offers(Surface::Editor, &Action::KeepOriginal));
+    assert!(!r.scene.offers(Surface::Editor(WIN), &Action::DeleteOriginal) && !r.scene.offers(Surface::Editor(WIN), &Action::KeepOriginal));
     r.ed(Action::EditorClose);
-    assert!(r.scene.editor.is_none() && r.effects.is_empty());
+    assert!(r.scene.editors.is_empty() && r.effects.is_empty());
     assert_eq!(r.arm.edge, Some(("editor-making-failed", "library")));
 
     // With the window gone, a dropped copy answers and moves nothing.
@@ -913,7 +924,7 @@ fn a_dropped_copy_asks_nothing_about_the_original() {
     r.news(EditorNews::Saved { rec: rec(), rev: 4 });
     r.ed(Action::EditorClose);
     r.news(EditorNews::CopyDone { rec: rec(), rev: 4, named: false });
-    assert!(r.scene.editor.is_none() && r.effects.is_empty());
+    assert!(r.scene.editors.is_empty() && r.effects.is_empty());
     assert!(!r.w.inflight.ops.contains_key(&Op::EditorCopy) && r.w.library_ops.copies.is_empty());
 }
 
@@ -969,7 +980,7 @@ fn a_copy_for_another_video_or_revision_moves_nothing() {
     r.news(EditorNews::Saved { rec: rec(), rev: 4 });
     r.ed(Action::EditorClose);
     r.news(EditorNews::CopyDone { rec: rec(), rev: 4, named: true });
-    assert!(r.scene.editor.is_none() && r.effects.is_empty());
+    assert!(r.scene.editors.is_empty() && r.effects.is_empty());
     // …nor once another video's editor is open.
     r.lib(Action::EditRow(RecId(OTHER.into())));
     r.news(EditorNews::CopyDone { rec: rec(), rev: 4, named: true });
@@ -988,7 +999,7 @@ fn a_save_back_to_the_original_asks_for_no_copy() {
     assert!(s.list.is_identity() && s.rev == 3);
     r.news(EditorNews::Saved { rec: rec(), rev: 3 });
     assert_eq!(r.arm.edge, Some(("editor-saving", "library")));
-    assert!(r.scene.editor.is_none() && r.w.session.fields.editor.is_none());
+    assert!(r.scene.editors.is_empty() && r.w.session.fields.editors.is_empty());
     assert!(r.effects.is_empty(), "no copy of the original: {:?}", r.effects);
     assert_eq!(lib_row(&r, TITLE).meta, "Aug 21 · 4:32");
 }
@@ -999,7 +1010,7 @@ fn a_save_back_to_the_original_asks_for_no_copy() {
 fn a_failed_save_says_so_and_done_tries_again() {
     let mut r = dirty();
     r.ed(Action::EditorDone);
-    r.send(Event::Failed { op: Op::EditorSave, class: FailClass::Transport });
+    r.send(Event::Failed { op: Op::EditorSave(WIN), class: FailClass::Transport });
     assert_eq!(r.arm.edge, Some(("editor-saving", "editor-save-failed")));
     assert_eq!(face(&r), "editor-save-failed");
     let b = body(&r);
@@ -1007,12 +1018,12 @@ fn a_failed_save_says_so_and_done_tries_again() {
     assert_eq!(button(&b.done), ("Done", Style::Filled, true));
     assert!(b.editable, "every change is still here");
     assert_eq!(b.keep, vec![[8.0, 20.0], [30.0, 150.0], [162.0, 241.0]]);
-    assert_eq!(r.scene.ret(Surface::Editor), Some(Action::EditorDone));
-    r.key(Surface::Editor, Key::Return);
-    assert_eq!(r.effects, vec![Effect::Editor(EditCmd::Save { rec: rec(), saved: Saved::new(edited().checked(), 4) })]);
+    assert_eq!(r.scene.ret(Surface::Editor(WIN)), Some(Action::EditorDone));
+    r.key(Surface::Editor(WIN), Key::Return);
+    assert_eq!(r.effects, vec![Effect::Editor(EditCmd::Save { id: WIN, rec: rec(), saved: Saved::new(edited().checked(), 4) })]);
     assert_eq!(r.arm.edge, Some(("editor-save-failed", "editor-saving")));
     // A save that never answers fails at its deadline the same way.
-    let deadline = r.w.inflight.ops[&Op::EditorSave];
+    let deadline = r.w.inflight.ops[&Op::EditorSave(WIN)];
     r.tick_to(deadline.0 + 10);
     assert_eq!(face(&r), "editor-save-failed");
 }
@@ -1027,7 +1038,7 @@ fn a_failed_save_says_so_and_done_tries_again() {
 fn a_save_the_space_turns_down_says_so_and_only_closes() {
     let mut r = dirty();
     r.ed(Action::EditorDone);
-    r.send(Event::Failed { op: Op::EditorSave, class: FailClass::Refused });
+    r.send(Event::Failed { op: Op::EditorSave(WIN), class: FailClass::Refused });
     assert_eq!(r.arm.edge, Some(("editor-saving", "editor-save-refused")));
     assert_eq!(face(&r), "editor-save-refused");
     let b = body(&r);
@@ -1037,8 +1048,8 @@ fn a_save_the_space_turns_down_says_so_and_only_closes() {
     assert!(!b.editable && !b.can_undo && !b.can_redo, "nothing steps");
     assert_eq!((b.after.clone(), b.original_kept.clone()), (None, None));
     assert_eq!(b.keep, vec![[8.0, 20.0], [30.0, 150.0], [162.0, 241.0]], "the edit still plays as it stood");
-    assert_eq!((r.scene.ret(Surface::Editor), r.scene.esc(Surface::Editor)), (Some(Action::EditorClose), Some(Action::EditorClose)));
-    assert!(!r.w.inflight.failures.contains_key(&Op::EditorSave), "nothing tries again behind it");
+    assert_eq!((r.scene.ret(Surface::Editor(WIN)), r.scene.esc(Surface::Editor(WIN))), (Some(Action::EditorClose), Some(Action::EditorClose)));
+    assert!(!r.w.inflight.failures.contains_key(&Op::EditorSave(WIN)), "nothing tries again behind it");
     r.op(EditOp::Cut { start: 40.0, end: 50.0 });
     assert_eq!(r.arm.name, "dropped");
     r.ed(Action::EditorDone);
@@ -1049,7 +1060,7 @@ fn a_save_the_space_turns_down_says_so_and_only_closes() {
     let mut r = kept_for(with_copy(3), 20 * HOUR);
     r.op(EditOp::Cut { start: 20.0, end: 30.0 });
     r.ed(Action::EditorDone);
-    r.send(Event::Failed { op: Op::EditorSave, class: FailClass::Refused });
+    r.send(Event::Failed { op: Op::EditorSave(WIN), class: FailClass::Refused });
     assert_eq!((face(&r), body(&r).original_kept), ("editor-save-refused", None));
 }
 
@@ -1057,18 +1068,18 @@ fn a_save_the_space_turns_down_says_so_and_only_closes() {
 #[test]
 fn a_refused_save_closes_without_saving() {
     for close in [
-        Event::Act { surface: Surface::Editor, action: Action::EditorClose, rev: 0 },
-        Event::Key { surface: Surface::Editor, key: Key::Return },
-        Event::Key { surface: Surface::Editor, key: Key::Esc },
-        Event::WindowClosed(WindowKind::Editor),
+        Event::Act { surface: Surface::Editor(WIN), action: Action::EditorClose, rev: 0 },
+        Event::Key { surface: Surface::Editor(WIN), key: Key::Return },
+        Event::Key { surface: Surface::Editor(WIN), key: Key::Esc },
+        Event::WindowClosed(WindowKind::Editor(WIN)),
     ] {
         let mut r = dirty();
         r.ed(Action::EditorDone);
-        r.send(Event::Failed { op: Op::EditorSave, class: FailClass::Refused });
+        r.send(Event::Failed { op: Op::EditorSave(WIN), class: FailClass::Refused });
         r.send(close.clone());
         assert!(r.effects.is_empty(), "{close:?}: nothing is saved — {:?}", r.effects);
         assert_eq!(r.arm.edge, Some(("editor-save-refused", "library")), "{close:?}");
-        assert!(r.scene.editor.is_none() && r.w.session.fields.editor.is_none(), "{close:?}");
+        assert!(r.scene.editors.is_empty() && r.w.session.fields.editors.is_empty(), "{close:?}");
         assert!(r.scene.library.is_some(), "{close:?}: the Library stays");
     }
 }
@@ -1079,16 +1090,16 @@ fn a_refused_save_closes_without_saving() {
 fn only_a_refusal_is_final() {
     let mut r = dirty();
     r.ed(Action::EditorDone);
-    r.send(Event::Failed { op: Op::EditorSave, class: FailClass::Transport });
+    r.send(Event::Failed { op: Op::EditorSave(WIN), class: FailClass::Transport });
     assert_eq!(face(&r), "editor-save-failed");
     r.ed(Action::EditorDone);
     assert_eq!(face(&r), "editor-saving");
-    r.send(Event::Failed { op: Op::EditorSave, class: FailClass::Refused });
+    r.send(Event::Failed { op: Op::EditorSave(WIN), class: FailClass::Refused });
     assert_eq!(r.arm.edge, Some(("editor-saving", "editor-save-refused")));
     for class in [FailClass::Transport, FailClass::Timeout, FailClass::Panicked, FailClass::Unclassified] {
         let mut r = dirty();
         r.ed(Action::EditorDone);
-        r.send(Event::Failed { op: Op::EditorSave, class });
+        r.send(Event::Failed { op: Op::EditorSave(WIN), class });
         assert_eq!(face(&r), "editor-save-failed", "{class:?}");
     }
 }
@@ -1105,12 +1116,12 @@ fn deleting_its_video_closes_the_editor() {
     assert_eq!(face(&r), "editor", "asking changes nothing");
     r.lib(Action::ConfirmDelete);
     assert!(r.has(|e| *e == Effect::Library(LibCmd::Delete(vec![rec()]))), "{:?}", r.effects);
-    assert!(r.has(|e| *e == Effect::Editor(EditCmd::Cancel { rec: rec() })), "its open stops: {:?}", r.effects);
+    assert!(r.has(|e| *e == Effect::Editor(EditCmd::Cancel { id: WIN, rec: rec() })), "its open stops: {:?}", r.effects);
     assert!(!r.has(|e| matches!(e, Effect::Editor(EditCmd::Save { .. }))), "nothing is saved");
-    assert!(r.scene.editor.is_none() && r.w.session.fields.editor.is_none());
-    assert!(!r.w.session.windows.contains_key(&WindowKind::Editor));
+    assert!(r.scene.editors.is_empty() && r.w.session.fields.editors.is_empty());
+    assert!(!r.w.session.windows.contains_key(&WindowKind::Editor(WIN)));
     r.send(Event::Library(LibraryNews::Deleted(vec![rec()])));
-    assert!(r.scene.editor.is_none() && r.effects.is_empty(), "{:?}", r.effects);
+    assert!(r.scene.editors.is_empty() && r.effects.is_empty(), "{:?}", r.effects);
 
     let mut r = dirty();
     r.lib(Action::DeleteRow(RecId(OTHER.into())));
@@ -1127,11 +1138,11 @@ fn its_delete_landing_closes_the_editor_and_a_save_on_its_way_answers_no_one() {
     r.ed(Action::EditorDone);
     assert_eq!(face(&r), "editor-saving");
     r.send(Event::Library(LibraryNews::Deleted(vec![rec()])));
-    assert!(r.has(|e| *e == Effect::Editor(EditCmd::Cancel { rec: rec() })), "{:?}", r.effects);
-    assert!(r.scene.editor.is_none() && r.w.session.fields.editor.is_none());
-    assert!(!r.w.inflight.ops.contains_key(&Op::EditorSave), "the save on its way answers no one");
-    r.send(Event::Failed { op: Op::EditorSave, class: FailClass::Refused });
-    assert!(r.scene.editor.is_none() && r.effects.is_empty());
+    assert!(r.has(|e| *e == Effect::Editor(EditCmd::Cancel { id: WIN, rec: rec() })), "{:?}", r.effects);
+    assert!(r.scene.editors.is_empty() && r.w.session.fields.editors.is_empty());
+    assert!(!r.w.inflight.ops.contains_key(&Op::EditorSave(WIN)), "the save on its way answers no one");
+    r.send(Event::Failed { op: Op::EditorSave(WIN), class: FailClass::Refused });
+    assert!(r.scene.editors.is_empty() && r.effects.is_empty());
     r.news(EditorNews::Saved { rec: rec(), rev: 4 });
     assert_eq!(r.arm.name, "editor-stale");
 }
@@ -1145,7 +1156,7 @@ fn a_video_that_cant_come_says_so_and_offers_try_again() {
     let mut r = opened();
     r.news(EditorNews::Opened { rec: rec(), saved: None, markers: vec![], duration_sec: Some(272.4), keep_until: None });
     r.news(EditorNews::Getting { rec: rec(), pct: 10 });
-    r.send(Event::Failed { op: Op::EditorOpen, class: FailClass::Transport });
+    r.send(Event::Failed { op: Op::EditorOpen(WIN), class: FailClass::Transport });
     assert_eq!(r.arm.edge, Some(("editor-getting", "editor-cant-get")));
     assert_eq!(face(&r), "editor-cant-get");
     let b = body(&r);
@@ -1154,32 +1165,32 @@ fn a_video_that_cant_come_says_so_and_offers_try_again() {
     assert_eq!((button(retry), &retry.action), (("Try again", Style::Plain, true), &Action::EditorRetry));
     assert_eq!((button(&b.done), &b.done.action), (("Close", Style::Filled, true), &Action::EditorClose));
     assert!(!b.editable);
-    assert_eq!((r.scene.ret(Surface::Editor), r.scene.esc(Surface::Editor)), (Some(Action::EditorClose), Some(Action::EditorClose)));
-    assert!(!r.w.inflight.failures.contains_key(&Op::EditorOpen), "Try again is the person's: no retry runs behind it");
+    assert_eq!((r.scene.ret(Surface::Editor(WIN)), r.scene.esc(Surface::Editor(WIN))), (Some(Action::EditorClose), Some(Action::EditorClose)));
+    assert!(!r.w.inflight.failures.contains_key(&Op::EditorOpen(WIN)), "Try again is the person's: no retry runs behind it");
 
     r.ed(Action::EditorRetry);
-    assert_eq!(r.effects, vec![Effect::Editor(EditCmd::Open { rec: rec() })]);
+    assert_eq!(r.effects, vec![Effect::Editor(EditCmd::Open { id: WIN, rec: rec() })]);
     assert_eq!(r.arm.edge, Some(("editor-cant-get", "editor-getting")));
     assert_eq!(body(&r).media, EditorMediaView::Opening);
-    assert!(r.w.inflight.ops.contains_key(&Op::EditorOpen));
+    assert!(r.w.inflight.ops.contains_key(&Op::EditorOpen(WIN)));
 
     // It times out this time: the same face.
-    let deadline = r.w.inflight.ops[&Op::EditorOpen];
+    let deadline = r.w.inflight.ops[&Op::EditorOpen(WIN)];
     r.tick_to(deadline.0 + 10);
     assert_eq!(face(&r), "editor-cant-get");
-    r.key(Surface::Editor, Key::Esc);
-    assert_eq!(r.effects, vec![Effect::Editor(EditCmd::Cancel { rec: rec() })]);
+    r.key(Surface::Editor(WIN), Key::Esc);
+    assert_eq!(r.effects, vec![Effect::Editor(EditCmd::Cancel { id: WIN, rec: rec() })]);
     assert_eq!(r.arm.edge, Some(("editor-cant-get", "library")));
-    assert!(r.scene.editor.is_none());
+    assert!(r.scene.editors.is_empty());
 
     // Close, and the window's ✕, the same.
-    for close in [Event::Act { surface: Surface::Editor, action: Action::EditorClose, rev: 0 }, Event::WindowClosed(WindowKind::Editor)] {
+    for close in [Event::Act { surface: Surface::Editor(WIN), action: Action::EditorClose, rev: 0 }, Event::WindowClosed(WindowKind::Editor(WIN))] {
         let mut r = opened();
-        r.send(Event::Failed { op: Op::EditorOpen, class: FailClass::Refused });
+        r.send(Event::Failed { op: Op::EditorOpen(WIN), class: FailClass::Refused });
         assert_eq!(face(&r), "editor-cant-get", "a record that can't be read says the same");
         r.send(close);
-        assert_eq!(r.effects, vec![Effect::Editor(EditCmd::Cancel { rec: rec() })]);
-        assert!(r.scene.editor.is_none());
+        assert_eq!(r.effects, vec![Effect::Editor(EditCmd::Cancel { id: WIN, rec: rec() })]);
+        assert!(r.scene.editors.is_empty());
     }
 }
 
@@ -1188,18 +1199,18 @@ fn a_video_that_cant_come_says_so_and_offers_try_again() {
 fn closing_while_the_video_comes_stops_it() {
     let mut r = opened();
     r.news(EditorNews::Getting { rec: rec(), pct: 30 });
-    r.send(Event::WindowClosed(WindowKind::Editor));
-    assert_eq!(r.effects, vec![Effect::Editor(EditCmd::Cancel { rec: rec() })]);
-    assert!(r.scene.editor.is_none() && !r.w.inflight.ops.contains_key(&Op::EditorOpen));
+    r.send(Event::WindowClosed(WindowKind::Editor(WIN)));
+    assert_eq!(r.effects, vec![Effect::Editor(EditCmd::Cancel { id: WIN, rec: rec() })]);
+    assert!(r.scene.editors.is_empty() && !r.w.inflight.ops.contains_key(&Op::EditorOpen(WIN)));
     // A late answer for it finds no one waiting.
     r.news(EditorNews::Ready { rec: rec(), duration: 272.4 });
-    assert!(r.scene.editor.is_none() && r.effects.is_empty());
-    r.send(Event::Failed { op: Op::EditorOpen, class: FailClass::Transport });
-    assert!(r.scene.editor.is_none() && r.effects.is_empty());
+    assert!(r.scene.editors.is_empty() && r.effects.is_empty());
+    r.send(Event::Failed { op: Op::EditorOpen(WIN), class: FailClass::Transport });
+    assert!(r.scene.editors.is_empty() && r.effects.is_empty());
 
     let mut r = opened();
-    r.send(Event::WindowClosed(WindowKind::Editor));
-    assert_eq!(r.effects, vec![Effect::Editor(EditCmd::Cancel { rec: rec() })]);
+    r.send(Event::WindowClosed(WindowKind::Editor(WIN)));
+    assert_eq!(r.effects, vec![Effect::Editor(EditCmd::Cancel { id: WIN, rec: rec() })]);
     assert_eq!(r.arm.edge, Some(("editor", "library")));
 }
 
@@ -1211,11 +1222,11 @@ fn edit_while_open_brings_the_editor_forward_on_its_video() {
     let mut r = ready_editor();
     r.op(EditOp::Cut { start: 10.0, end: 20.0 });
     r.lib(Action::EditRow(RecId(OTHER.into())));
-    assert_eq!(r.effects, vec![Effect::Shell(ShellCmd::OpenEditor)]);
-    let e = r.w.session.fields.editor.as_ref().unwrap();
+    assert_eq!(r.effects, vec![Effect::Shell(ShellCmd::OpenEditor(WIN))]);
+    let e = &r.w.session.fields.editors[&WIN];
     assert_eq!(e.rec, rec());
     assert_eq!(list(&r).cuts.len(), 1, "the change is still there");
-    assert!(r.scene.editor.as_ref().unwrap().activates);
+    assert!(r.scene.editors[&WIN].activates);
 }
 
 /// News about another video, or for an editor that's gone, is stale.
@@ -1228,7 +1239,7 @@ fn news_for_another_video_is_stale() {
     r.news(EditorNews::Getting { rec: other.clone(), pct: 50 });
     assert_eq!((face(&r), body(&r).media.clone(), body(&r).list.clone()), ("editor", EditorMediaView::Opening, None));
     r.news(EditorNews::Saved { rec: other, rev: 10 });
-    assert!(r.scene.editor.is_some() && r.effects.is_empty());
+    assert!(!r.scene.editors.is_empty() && r.effects.is_empty());
 }
 
 // ── the Library's length ──
@@ -1388,7 +1399,7 @@ fn the_time_left_shows_only_while_the_original_is_kept() {
     stale.rev = 4;
     let r = kept_for(stale, 20 * HOUR);
     assert_eq!(body(&r).original_kept, None, "the copy is an older revision's");
-    assert_eq!(r.w.session.fields.editor.as_ref().unwrap().kept_until, None);
+    assert_eq!(r.w.session.fields.editors[&WIN].kept_until, None);
     let r = ready_with(Some(saved_edit(3)));
     let mut r = Run::new(r.w);
     r.news(EditorNews::Opened { rec: rec(), saved: None, markers: vec![], duration_sec: Some(272.4), keep_until: Some(Wall(r.w.wall.0 + HOUR)) });
@@ -1400,7 +1411,7 @@ fn the_time_left_shows_only_while_the_original_is_kept() {
     r.ed(Action::EditorDone);
     assert!(body(&r).original_kept.is_some(), "while it saves, still kept");
     r.news(EditorNews::Saved { rec: rec(), rev: 4 });
-    assert_eq!(r.w.session.fields.editor.as_ref().unwrap().kept_until, None);
+    assert_eq!(r.w.session.fields.editors[&WIN].kept_until, None);
     assert_eq!(body(&r).original_kept, None);
 }
 
@@ -1500,7 +1511,7 @@ fn the_upkeep_waits_for_the_take_the_network_and_the_editor() {
     r.tick_to(6 * HOUR as u64 + 1_000);
     assert!(!upkeeps(&r), "never while the editor is open");
     r.ed(Action::EditorDone);
-    assert!(r.scene.editor.is_none());
+    assert!(r.scene.editors.is_empty());
     assert!(upkeeps(&r), "the editor closed: {:?}", r.effects);
 
     // The lane busy with a copy: after it — and a copy owed goes first.
@@ -1531,7 +1542,7 @@ fn a_failed_upkeep_waits_for_the_next_turn() {
     r.send(Event::Failed { op: Op::EditorUpkeep, class: FailClass::Transport });
     let failed = r.t;
     assert!(r.w.inflight.failures.contains_key(&Op::EditorUpkeep), "noted");
-    assert!(r.scene.editor.is_none() && r.scene.popover.is_none(), "nothing on screen");
+    assert!(r.scene.editors.is_empty() && r.scene.popover.is_none(), "nothing on screen");
     let backoff = r.w.inflight.failures[&Op::EditorUpkeep].retry_at();
     r.tick_to(backoff.0 + 1_000);
     assert!(!upkeeps(&r), "not at a backoff");
@@ -1593,11 +1604,11 @@ fn quit_saves_an_unsaved_edit_first_then_quits() {
         let mut r = dirty();
         r.send(Event::QuitRequested(via));
         assert!(!quits(&r), "{via:?}: not before the edit is saved");
-        assert!(r.has(|e| *e == Effect::Editor(EditCmd::Save { rec: rec(), saved: Saved::new(edited().checked(), 4) })), "{via:?}: {:?}", r.effects);
-        assert!(r.has(|e| *e == Effect::Shell(ShellCmd::OpenEditor)), "{via:?}: the editor comes forward");
+        assert!(r.has(|e| *e == Effect::Editor(EditCmd::Save { id: WIN, rec: rec(), saved: Saved::new(edited().checked(), 4) })), "{via:?}: {:?}", r.effects);
+        assert!(r.has(|e| *e == Effect::Shell(ShellCmd::OpenEditor(WIN))), "{via:?}: the editor comes forward");
         assert_eq!(r.arm.edge, Some(("editor", "editor-saving")), "{via:?}");
         assert_eq!(face(&r), "editor-saving");
-        assert!(r.scene.editor.as_ref().unwrap().activates);
+        assert!(r.scene.editors[&WIN].activates);
         r.news(EditorNews::Saved { rec: rec(), rev: 4 });
         assert!(quits(&r), "{via:?}: saved — shroom quits: {:?}", r.effects);
         assert_eq!(face(&r), "editor-making", "{via:?}: the final video isn't waited for");
@@ -1613,7 +1624,7 @@ fn the_popovers_quit_saves_first_too() {
     r.act(Action::Quit);
     assert!(saves(&r) && !quits(&r), "{:?}", r.effects);
     assert!(r.scene.popover.is_none(), "the popover makes way for the editor");
-    assert!(r.has(|e| *e == Effect::Shell(ShellCmd::OpenEditor)));
+    assert!(r.has(|e| *e == Effect::Shell(ShellCmd::OpenEditor(WIN))));
     r.news(EditorNews::Saved { rec: rec(), rev: 4 });
     assert!(quits(&r), "{:?}", r.effects);
 }
@@ -1642,7 +1653,7 @@ fn update_saves_an_unsaved_edit_first_then_applies() {
     let mut r = with_update(dirty().w);
     r.send(update_in_settings());
     assert!(!applies(&r) && !r.w.update.applying, "not before the edit is saved: {:?}", r.effects);
-    assert!(saves(&r) && r.has(|e| *e == Effect::Shell(ShellCmd::OpenEditor)), "{:?}", r.effects);
+    assert!(saves(&r) && r.has(|e| *e == Effect::Shell(ShellCmd::OpenEditor(WIN))), "{:?}", r.effects);
     assert_eq!(r.arm.edge, Some(("editor", "editor-saving")));
     r.news(EditorNews::Saved { rec: rec(), rev: 4 });
     assert!(r.has(|e| *e == Effect::Updater(UpdCmd::Apply("1.3.0".into()))), "{:?}", r.effects);
@@ -1657,7 +1668,7 @@ fn a_quit_while_saving_waits_for_the_save() {
     r.ed(Action::EditorDone);
     r.send(Event::QuitRequested(QuitVia::Dock));
     assert!(!saves(&r) && !quits(&r), "no second save, no quit yet: {:?}", r.effects);
-    assert_eq!(r.w.session.fields.editor.as_ref().unwrap().leaving, Some(Leaving::Quit));
+    assert_eq!(r.w.session.fields.leaving, Some(Leaving::Quit));
     r.send(Event::QuitRequested(QuitVia::RightClick));
     assert!(!saves(&r) && !quits(&r));
     r.news(EditorNews::Saved { rec: rec(), rev: 4 });
@@ -1670,10 +1681,10 @@ fn a_quit_while_saving_waits_for_the_save() {
 fn a_save_that_doesnt_land_holds_the_quit() {
     let mut r = dirty();
     r.send(Event::QuitRequested(QuitVia::Dock));
-    r.send(Event::Failed { op: Op::EditorSave, class: FailClass::Transport });
+    r.send(Event::Failed { op: Op::EditorSave(WIN), class: FailClass::Transport });
     assert_eq!(face(&r), "editor-save-failed");
     assert!(!quits(&r));
-    assert_eq!(r.w.session.fields.editor.as_ref().unwrap().leaving, None, "the quit is dropped");
+    assert_eq!(r.w.session.fields.leaving, None, "the quit is dropped");
     r.ed(Action::EditorDone);
     r.news(EditorNews::Saved { rec: rec(), rev: 4 });
     assert!(!quits(&r), "it went with the failed save: {:?}", r.effects);
@@ -1681,14 +1692,14 @@ fn a_save_that_doesnt_land_holds_the_quit() {
     // Turned down: its own face says why, and nothing applies.
     let mut r = with_update(dirty().w);
     r.send(update_in_settings());
-    r.send(Event::Failed { op: Op::EditorSave, class: FailClass::Refused });
+    r.send(Event::Failed { op: Op::EditorSave(WIN), class: FailClass::Refused });
     assert_eq!(face(&r), "editor-save-refused");
     assert!(!applies(&r) && !r.w.update.applying);
 
     // Never answering: the same, at its deadline.
     let mut r = dirty();
     r.send(Event::QuitRequested(QuitVia::RightClick));
-    let deadline = r.w.inflight.ops[&Op::EditorSave];
+    let deadline = r.w.inflight.ops[&Op::EditorSave(WIN)];
     r.tick_to(deadline.0 + 10);
     assert_eq!(face(&r), "editor-save-failed");
     assert!(!quits(&r));
@@ -1709,7 +1720,7 @@ fn with_nothing_to_save_they_go_on_at_once() {
     assert!(quits(&r), "the final video isn't waited for: {:?}", r.effects);
     let mut r = dirty();
     r.ed(Action::EditorDone);
-    r.send(Event::Failed { op: Op::EditorSave, class: FailClass::Refused });
+    r.send(Event::Failed { op: Op::EditorSave(WIN), class: FailClass::Refused });
     r.send(Event::QuitRequested(QuitVia::Dock));
     assert!(quits(&r) && !saves(&r), "{:?}", r.effects);
     let mut r = with_update(ready_editor().w);
@@ -1747,9 +1758,9 @@ fn disconnect_closes_the_editor() {
     let mut r = Run::new(w);
     r.send(Event::Act { surface: Surface::Settings, action: Action::Disconnect, rev: 0 });
     r.send(Event::Act { surface: Surface::Settings, action: Action::ConfirmDisconnect, rev: 0 });
-    assert!(r.has(|e| *e == Effect::Editor(EditCmd::Cancel { rec: rec() })), "{:?}", r.effects);
-    assert!(r.scene.editor.is_none() && r.w.session.fields.editor.is_none());
-    assert!(!r.w.inflight.ops.contains_key(&Op::EditorOpen));
+    assert!(r.has(|e| *e == Effect::Editor(EditCmd::Cancel { id: WIN, rec: rec() })), "{:?}", r.effects);
+    assert!(r.scene.editors.is_empty() && r.w.session.fields.editors.is_empty());
+    assert!(!r.w.inflight.ops.contains_key(&Op::EditorOpen(WIN)));
 }
 
 /// The editor keeps its window and its changes when the setup window closes beside it.
@@ -1766,7 +1777,7 @@ fn the_setup_window_closing_leaves_the_editor_alone() {
 
 #[test]
 fn every_editor_op_has_a_deadline() {
-    for (op, ms) in [(Op::EditorOpen, 1_800_000), (Op::EditorSave, 60_000), (Op::EditorCopy, 3_600_000)] {
+    for (op, ms) in [(Op::EditorOpen(WIN), 1_800_000), (Op::EditorSave(WIN), 60_000), (Op::EditorCopy, 3_600_000)] {
         assert_eq!(op.deadline_ms(), ms, "{op:?}");
     }
 }
@@ -1963,7 +1974,7 @@ fn the_slice_is_the_webviews_json() {
     use serde_json::json;
     let mut r = ready_with(Some(saved_edit(3)));
     r.op(EditOp::Trim { in_: 8.0, out: 235.0 });
-    let v = serde_json::to_value(r.scene.editor.as_ref().unwrap()).unwrap();
+    let v = serde_json::to_value(&r.scene.editors[&WIN]).unwrap();
     assert_eq!(keys(&v), ["activates", "body", "esc", "faces", "id", "ret"]);
     let b = &v["body"];
     assert_eq!(
@@ -1988,25 +1999,25 @@ fn the_slice_is_the_webviews_json() {
 
     let mut r = opened();
     r.news(EditorNews::Getting { rec: rec(), pct: 40 });
-    let b = serde_json::to_value(&r.scene.editor.as_ref().unwrap().body).unwrap();
+    let b = serde_json::to_value(&r.scene.editors[&WIN].body).unwrap();
     assert_eq!(b["media"], json!({ "state": "getting", "pct": 40, "line": GETTING }));
     assert_eq!(b["list"], serde_json::Value::Null);
     assert_eq!(b["keep"], json!([]));
-    r.send(Event::Failed { op: Op::EditorOpen, class: FailClass::Transport });
-    let b = serde_json::to_value(&r.scene.editor.as_ref().unwrap().body).unwrap();
+    r.send(Event::Failed { op: Op::EditorOpen(WIN), class: FailClass::Transport });
+    let b = serde_json::to_value(&r.scene.editors[&WIN].body).unwrap();
     assert_eq!((b["media"]["state"].clone(), b["media"]["retry"]["action"].clone()), (json!("failed"), json!({ "do": "editor-retry" })));
     assert_eq!(b["done"]["action"], json!({ "do": "editor-close" }));
 
     let mut r = dirty();
     r.ed(Action::EditorDone);
-    r.send(Event::Failed { op: Op::EditorSave, class: FailClass::Transport });
-    assert_eq!(serde_json::to_value(&r.scene.editor.as_ref().unwrap().body).unwrap()["footer_tone"], "amber");
+    r.send(Event::Failed { op: Op::EditorSave(WIN), class: FailClass::Transport });
+    assert_eq!(serde_json::to_value(&r.scene.editors[&WIN].body).unwrap()["footer_tone"], "amber");
 
     // ✕ with changes not saved (N71): the question, its three buttons, Return Save and Esc
     // Keep editing.
     let mut r = dirty();
-    r.send(Event::WindowClosed(WindowKind::Editor));
-    let v = serde_json::to_value(r.scene.editor.as_ref().unwrap()).unwrap();
+    r.send(Event::WindowClosed(WindowKind::Editor(WIN)));
+    let v = serde_json::to_value(&r.scene.editors[&WIN]).unwrap();
     let c = &v["body"]["closing"];
     assert_eq!(keys(c), ["discard", "keep", "line", "save", "title"]);
     assert_eq!((c["title"].clone(), c["line"].clone()), (json!(CLOSE_TITLE), json!(CLOSE_LINE)));
@@ -2021,8 +2032,8 @@ fn the_slice_is_the_webviews_json() {
     // Close.
     let mut r = dirty();
     r.ed(Action::EditorDone);
-    r.send(Event::Failed { op: Op::EditorSave, class: FailClass::Refused });
-    let v = serde_json::to_value(r.scene.editor.as_ref().unwrap()).unwrap();
+    r.send(Event::Failed { op: Op::EditorSave(WIN), class: FailClass::Refused });
+    let v = serde_json::to_value(&r.scene.editors[&WIN]).unwrap();
     assert_eq!((v["body"]["revert"].clone(), v["body"]["footer_tone"].clone()), (serde_json::Value::Null, json!("amber")));
     assert_eq!(v["body"]["done"]["action"], json!({ "do": "editor-close" }));
     assert_eq!((v["ret"].clone(), v["esc"].clone()), (json!({ "do": "editor-close" }), json!({ "do": "editor-close" })));
@@ -2032,16 +2043,16 @@ fn the_slice_is_the_webviews_json() {
     r.ed(Action::EditorDone);
     r.news(EditorNews::Saved { rec: rec(), rev: 4 });
     r.news(EditorNews::Making { rec: rec(), pct: 40 });
-    let v = serde_json::to_value(r.scene.editor.as_ref().unwrap()).unwrap();
+    let v = serde_json::to_value(&r.scene.editors[&WIN]).unwrap();
     assert_eq!(v["body"]["after"], json!({ "state": "making", "pct": 40, "line": "Making the final video… 40%" }));
     assert_eq!(v["body"]["done"]["action"], json!({ "do": "editor-close" }));
     assert_eq!((v["ret"].clone(), v["esc"].clone()), (json!({ "do": "editor-close" }), json!({ "do": "editor-close" })));
     let mut failed = Run::new(r.w.clone());
     failed.send(Event::Failed { op: Op::EditorCopy, class: FailClass::Transport });
-    let b = serde_json::to_value(&failed.scene.editor.as_ref().unwrap().body).unwrap();
+    let b = serde_json::to_value(&failed.scene.editors[&WIN].body).unwrap();
     assert_eq!((b["after"].clone(), b["footer_tone"].clone()), (json!({ "state": "failed" }), json!("amber")));
     r.news(EditorNews::CopyDone { rec: rec(), rev: 4, named: true });
-    let v = serde_json::to_value(r.scene.editor.as_ref().unwrap()).unwrap();
+    let v = serde_json::to_value(&r.scene.editors[&WIN]).unwrap();
     let a = &v["body"]["after"];
     assert_eq!(keys(a), ["delete", "keep", "line", "state", "title"]);
     assert_eq!((a["state"].clone(), a["title"].clone(), a["line"].clone()), (json!("asking"), json!(ASK_TITLE), json!(ASK_LINE)));
@@ -2052,12 +2063,13 @@ fn the_slice_is_the_webviews_json() {
     let mut r = opened();
     let until = Wall(r.w.wall.0 + 20 * HOUR);
     r.news(EditorNews::Opened { rec: rec(), saved: Some(with_copy(3)), markers: vec![], duration_sec: Some(272.4), keep_until: Some(until) });
-    let b = serde_json::to_value(&r.scene.editor.as_ref().unwrap().body).unwrap();
+    let b = serde_json::to_value(&r.scene.editors[&WIN].body).unwrap();
     assert_eq!(b["original_kept"], json!("The original is kept 19 more hours"));
 
     assert_eq!(serde_json::to_value(Action::EditRow(rec())).unwrap(), json!({ "do": "edit-row", "arg": REC }));
-    assert_eq!(serde_json::to_value(Surface::Editor).unwrap(), json!("editor"));
-    assert_eq!(serde_json::to_value(WindowKind::Editor).unwrap(), json!("editor"));
+    // The webview names its surface “editor”, and its window's label says which (the shell's
+    // `commands.rs`); an editor window is never written to restore.json.
+    assert!(serde_json::to_value(WindowKind::Editor(WIN)).is_err());
     let paused = serde_json::to_value(Run::new(paused_popover(Cause::User)).scene.popover.unwrap().body).unwrap();
     assert_eq!(paused["marker"]["action"], json!({ "do": "drop-marker" }));
 }
@@ -2094,7 +2106,7 @@ fn says_once(r: &Run, line: &str) {
     assert_eq!(p.status_line.as_deref(), Some(line));
     assert_eq!(p.status_tone, Some(shroom_core::scene::StatusTone::Waiting), "the grey dot, as a take that kept nothing");
     assert!(!p.activates && p.away_closes, "the app the person was in keeps the keyboard; a click away puts it away");
-    assert!(r.scene.editor.is_none() && !opens(r), "no editor");
+    assert!(r.scene.editors.is_empty() && !opens(r), "no editor");
 }
 
 /// N69: a video this Mac can edit opens in the editor exactly as Edit… opens it.
@@ -2102,9 +2114,9 @@ fn says_once(r: &Run, line: &str) {
 fn the_pages_edit_opens_the_editor_as_edit_does() {
     let mut r = Run::new(at_rest());
     pressed(&mut r, HOST, REC);
-    assert_eq!(r.effects, vec![Effect::Editor(EditCmd::Open { rec: rec() }), Effect::Shell(ShellCmd::OpenEditor)]);
+    assert_eq!(r.effects, vec![Effect::Editor(EditCmd::Open { id: WIN, rec: rec() }), Effect::Shell(ShellCmd::OpenEditor(WIN))]);
     assert_eq!(r.arm.edge, Some(("owner-page", "editor")));
-    let win = r.scene.editor.as_ref().expect("the editor");
+    let win = r.scene.editors.get(&WIN).expect("the editor");
     assert!(win.activates, "the person asked for it, on the page");
     assert_eq!((body(&r).title.as_str(), body(&r).rec.as_str()), ("Edit — Setting up shroom in two minutes", REC));
     assert!(r.scene.library.is_none(), "the editor alone: the Library wasn't asked for");
@@ -2148,12 +2160,12 @@ fn the_page_reaches_every_video_an_owners_mac_may_edit() {
 fn the_page_brings_the_open_editor_forward_and_says_when_its_on_another_video() {
     let mut r = ready_editor();
     pressed(&mut r, HOST, REC);
-    assert_eq!(r.effects, vec![Effect::Shell(ShellCmd::OpenEditor)], "forward, nothing asked again");
+    assert_eq!(r.effects, vec![Effect::Shell(ShellCmd::OpenEditor(WIN))], "forward, nothing asked again");
     assert_eq!(r.arm.edge, Some(("owner-page", "editor")));
     assert_eq!((body(&r).footer.as_str(), body(&r).footer_tone), (FOOTER, LineTone::Plain));
 
     pressed(&mut r, HOST, OTHER);
-    assert_eq!(r.effects, vec![Effect::Shell(ShellCmd::OpenEditor)]);
+    assert_eq!(r.effects, vec![Effect::Shell(ShellCmd::OpenEditor(WIN))]);
     assert_eq!(body(&r).rec, REC, "it doesn't swap videos");
     assert_eq!((body(&r).footer.as_str(), body(&r).footer_tone), (ELSEWHERE, LineTone::Amber));
     assert!(body(&r).editable, "its changes are as they were, still to step");
@@ -2167,7 +2179,7 @@ fn the_page_brings_the_open_editor_forward_and_says_when_its_on_another_video() 
     let mut r = dirty();
     r.ed(Action::EditorDone);
     pressed(&mut r, HOST, OTHER);
-    assert_eq!(r.effects, vec![Effect::Shell(ShellCmd::OpenEditor)]);
+    assert_eq!(r.effects, vec![Effect::Shell(ShellCmd::OpenEditor(WIN))]);
     assert_eq!(body(&r).footer, SAVING);
 }
 
@@ -2178,11 +2190,11 @@ fn the_page_brings_the_open_editor_forward_and_says_when_its_on_another_video() 
 fn edit_in_the_library_for_another_video_says_why_too() {
     let mut r = ready_editor();
     r.lib(Action::EditRow(RecId(REC.into())));
-    assert_eq!(r.effects, vec![Effect::Shell(ShellCmd::OpenEditor)], "its own video: forward, nothing asked again");
+    assert_eq!(r.effects, vec![Effect::Shell(ShellCmd::OpenEditor(WIN))], "its own video: forward, nothing asked again");
     assert_eq!((body(&r).footer.as_str(), body(&r).footer_tone), (FOOTER, LineTone::Plain));
 
     r.lib(Action::EditRow(RecId(OTHER.into())));
-    assert_eq!(r.effects, vec![Effect::Shell(ShellCmd::OpenEditor)]);
+    assert_eq!(r.effects, vec![Effect::Shell(ShellCmd::OpenEditor(WIN))]);
     assert_eq!(body(&r).rec, REC, "it doesn't swap videos");
     assert_eq!((body(&r).footer.as_str(), body(&r).footer_tone), (ELSEWHERE, LineTone::Amber));
 
@@ -2205,7 +2217,7 @@ fn a_press_during_a_take_waits_for_it_to_end() {
     let mut r = Run::new(w);
     pressed(&mut r, HOST, OTHER);
     pressed(&mut r, HOST, REC);
-    assert!(r.effects.is_empty() && r.scene.editor.is_none() && r.w.session.fields.editor.is_none(), "law 4");
+    assert!(r.effects.is_empty() && r.scene.editors.is_empty() && r.w.session.fields.editors.is_empty(), "law 4");
     assert_eq!(status(&r), None);
     r.click();
     r.act(Action::Discard).act(Action::ConfirmDiscard);
@@ -2239,7 +2251,7 @@ fn a_video_the_library_doesnt_know_is_asked_for_once() {
     let mut r = Run::new(at_rest());
     pressed(&mut r, HOST, fresh);
     assert_eq!(r.effects, vec![Effect::Library(LibCmd::Refresh)]);
-    assert!(r.scene.editor.is_none() && status(&r).is_none());
+    assert!(r.scene.editors.is_empty() && status(&r).is_none());
     let mut rows = vec![row(REC, TITLE, true, "m1")];
     rows.push(row(fresh, "Mher's walkthrough", true, "m_mher"));
     r.send(Event::Library(LibraryNews::Rows { rows: rows.clone(), fresh: true }));
@@ -2268,7 +2280,7 @@ fn a_video_the_library_doesnt_know_is_asked_for_once() {
     let mut r = Run::new(at_rest());
     pressed(&mut r, HOST, fresh);
     r.send(Event::Failed { op: Op::LibRefresh, class: FailClass::Transport });
-    assert!(r.scene.editor.is_none() && status(&r).is_none());
+    assert!(r.scene.editors.is_empty() && status(&r).is_none());
     r.send(Event::Library(LibraryNews::Rows { rows, fresh: true }));
     assert!(!opens(&r), "dropped: a later answer opens nothing");
 }
@@ -2279,5 +2291,5 @@ fn a_mac_not_set_up_opens_its_welcome_window() {
     let mut r = Run::new(World::blank());
     pressed(&mut r, HOST, REC);
     assert!(r.scene.onboarding.is_some(), "the welcome window");
-    assert!(r.scene.editor.is_none() && !opens(&r));
+    assert!(r.scene.editors.is_empty() && !opens(&r));
 }

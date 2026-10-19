@@ -24,13 +24,13 @@ pub const SECRET_CANARY: &str = "cfat_";
 /// only the World can say it is wrong. On its own so that a test can hand it a Scene
 /// `derive` never made — `check` turns every such Scene away at law 1.
 pub fn law_6(nw: &World, ns: &Scene) -> Option<String> {
-    let open = [WindowKind::Onboarding, WindowKind::Library, WindowKind::Settings, WindowKind::Feedback, WindowKind::Editor].into_iter().any(|k| entry::shows(nw, k));
+    let open = nw.session.windows.keys().any(|k| entry::shows(nw, *k));
     if ns.dock != open {
         let dock = if ns.dock { "a Dock icon" } else { "no Dock icon" };
         let window = if open { "a window of shroom's is open" } else { "no window of shroom's is open" };
         return Some(format!("law 6: {dock}, and in the World {window}"));
     }
-    if ns.dock != (ns.onboarding.is_some() || ns.library.is_some() || ns.settings.is_some() || ns.feedback.is_some() || ns.editor.is_some()) {
+    if ns.dock != (ns.onboarding.is_some() || ns.library.is_some() || ns.settings.is_some() || ns.feedback.is_some() || !ns.editors.is_empty()) {
         return Some("law 6: the Dock and the windows disagree".into());
     }
     for (shown, kind) in [
@@ -38,8 +38,10 @@ pub fn law_6(nw: &World, ns: &Scene) -> Option<String> {
         (ns.library.is_some(), WindowKind::Library),
         (ns.settings.is_some(), WindowKind::Settings),
         (ns.feedback.is_some(), WindowKind::Feedback),
-        (ns.editor.is_some(), WindowKind::Editor),
-    ] {
+    ]
+    .into_iter()
+    .chain(ns.editors.keys().map(|at| (true, WindowKind::Editor(*at))))
+    {
         if shown && !nw.session.windows.contains_key(&kind) {
             return Some("law 6: a window without a door".into());
         }
@@ -141,7 +143,7 @@ pub fn check(pw: &World, ps: &Scene, ev: &Event, nw: &World, ns: &Scene, fx: &[E
         assert!(ns.library.is_none() || ps.library.is_some(), "law 4: the Library appeared mid-take — {}", ctx());
         assert!(ns.settings.is_none() || ps.settings.is_some(), "law 4: Settings appeared mid-take — {}", ctx());
         assert!(ns.feedback.is_none() || ps.feedback.is_some(), "law 4: Send feedback appeared mid-take — {}", ctx());
-        assert!(ns.editor.is_none() || ps.editor.is_some(), "law 4: the editor appeared mid-take — {}", ctx());
+        assert!(ns.editors.keys().all(|at| ps.editors.contains_key(at)), "law 4: an editor window appeared mid-take — {}", ctx());
         for e in fx {
             // Nothing that would end, move or replace the app runs mid-take.
             assert!(!matches!(e, Effect::Updater(UpdCmd::Apply(_))), "law 4: an update applied mid-take — {}", ctx());
@@ -191,8 +193,10 @@ pub fn check(pw: &World, ps: &Scene, ev: &Event, nw: &World, ns: &Scene, fx: &[E
         (ns.library.as_ref().map(|l| l.activates), WindowKind::Library),
         (ns.settings.as_ref().map(|s| s.activates), WindowKind::Settings),
         (ns.feedback.as_ref().map(|f| f.activates), WindowKind::Feedback),
-        (ns.editor.as_ref().map(|e| e.activates), WindowKind::Editor),
-    ] {
+    ]
+    .into_iter()
+    .chain(ns.editors.iter().map(|(at, e)| (Some(e.activates), WindowKind::Editor(*at))))
+    {
         if let (Some(a), Some(d)) = (activates, nw.session.windows.get(&kind)) {
             assert!(d.asked || !a, "law 5: an unasked {kind:?} window activates — {}", ctx());
         }
@@ -277,8 +281,8 @@ pub fn check(pw: &World, ps: &Scene, ev: &Event, nw: &World, ns: &Scene, fx: &[E
             assert!(st.buttons().iter().any(|b| &b.action == r), "law 8: Settings' Return {r:?} isn't on the window — {}", ctx());
         }
     }
-    // The editor's Return is its Done (or cant-get's Close), live, on the window (N63).
-    if let Some(e) = &ns.editor {
+    // An editor's Return is its Done (or cant-get's Close), live, on its window (N63).
+    for e in ns.editors.values() {
         if let Some(r) = &e.ret {
             assert!(e.buttons().iter().any(|b| b.enabled && &b.action == r), "law 8: the editor's Return {r:?} isn't a live button of its own — {}", ctx());
         }

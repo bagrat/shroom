@@ -1,7 +1,7 @@
-//! The editor's lane (N63, DECISIONS B195, B197): the record, the video and its sound for the
-//! editor window, the save, the permanent copy, the bake and the upkeep. Each `EditCmd` is
-//! answered once — its news, or `Failed` with the editor's op, classified as the Library's
-//! lane classifies; a Cancel and a Bake answer nothing:
+//! The editor's lane (N63, DECISIONS B195, B197): the record, the video and its sound for
+//! each editor window (one per video, N73), the save, the permanent copy, the bake and the
+//! upkeep. Each `EditCmd` is answered once — its news, or `Failed` with the editor's op,
+//! classified as the Library's lane classifies; a Cancel and a Bake answer nothing:
 //!
 //! - `Open`: the record read over the door a rename uses (`Opened`); the video found on this
 //!   Mac — a take folder whose `take.json` or `publish.json` names the recording, with its
@@ -9,8 +9,9 @@
 //!   (`edits/<rec>/source.mp4`, kept with the key it came from, `source.key`) when it is the
 //!   one the record plays — or fetched now from the space into that file (`Getting`, at most
 //!   every 250 ms); its sound read into `edits/<rec>/peaks.u8` (`shroom_encode::peaks`);
-//!   both registered for `shroom-media:` (`media.rs`); `Ready`. Each open runs on a thread of
-//!   its own, so a Cancel lands mid-fetch. A baked record never opens on its original.
+//!   both registered for `shroom-media:` (`media.rs`), to the window that asked; `Ready`.
+//!   Each open runs on a thread of its own, so a Cancel lands mid-fetch and one window's
+//!   fetch never holds another's open. A baked record never opens on its original.
 //! - `Cancel`: the open in flight stops — a cancelled open says nothing more, a failure
 //!   included — and its video is no longer served.
 //! - `Save`: `meta.edits` rewritten as the next revision
@@ -30,8 +31,8 @@
 //!   own; its outcome is logged, and one that doesn't land is the upkeep's in two days.
 //! - `Upkeep` (B197 (d)): on a lane of its own, never in the window's way — of the records
 //!   the space lists for this Mac, read now (a member's own, every one on an owner-class
-//!   Mac: `Doorway::listed`), the ones past their two days are baked — never the one the
-//!   editor window is open on, asked before each (`open_in_editor`) — and the copies they
+//!   Mac: `Doorway::listed`), the ones past their two days are baked — never one an editor
+//!   window is open on, asked before each (`open_in_editors`) — and the copies they
 //!   lack are made where the video is on this Mac (`library::upkeep_plan`); then `edits/`
 //!   drops what nobody needs — `UpkeepDone`.
 //!
@@ -49,7 +50,7 @@ use std::time::{Duration, Instant, SystemTime};
 use shroom_core::effect::EditCmd;
 use shroom_core::event::{EditorNews, Event};
 use shroom_core::time::Wall;
-use shroom_core::world::{FailClass, Op, RecId, SpaceIdentity};
+use shroom_core::world::{EditorId, FailClass, Op, RecId, SpaceIdentity};
 use shroom_storage::s3::S3Error;
 use shroom_upload::library::Plays;
 use shroom_upload::meta::{Meta, State, now_iso};
@@ -74,9 +75,9 @@ const UNUSED: Duration = Duration::from_secs(7 * 24 * 3600);
 /// the record plays.
 const LENGTH_SLACK: f64 = 1.0;
 
-/// An open's stop: set by a Cancel (or the next Open), read between its steps and while it
-/// fetches — and held while the open registers its video or says how it ended, so nothing
-/// lands after a Cancel.
+/// An open's stop: set by a Cancel (or the video's next Open), read between its steps and
+/// while it fetches — and held while the open registers its video or says how it ended, so
+/// nothing lands after a Cancel.
 #[derive(Clone, Default)]
 struct Stop(Arc<Mutex<bool>>);
 
@@ -132,14 +133,14 @@ fn opened_as(rec: &str) -> Option<Plays> {
     OPENED.lock().unwrap().as_ref()?.get(rec).cloned()
 }
 
-/// The recording the editor window is open on now, as the Scene the app shows has it: from
-/// the moment its open is asked (the Scene is drawn before the lane hears of it) until the
-/// window closes, however it closes — a close after a save or with nothing changed tells the
-/// lane nothing, so `OPENED` and the media registry outlive it. Nothing is baked under it
-/// (B197): its list is on the clock it opened on.
-pub(super) fn open_in_editor(rt: &Runtime) -> Option<String> {
+/// The recordings the editor windows are open on now (N73), as the Scene the app shows has
+/// them: each from the moment its open is asked (the Scene is drawn before the lane hears of
+/// it) until its window closes, however it closes — a close after a save or with nothing
+/// changed tells the lane nothing, so `OPENED` and the media registry outlive it. Nothing is
+/// baked under them (B197): each list is on the clock it opened on.
+pub(super) fn open_in_editors(rt: &Runtime) -> Vec<String> {
     let scene = rt.snapshot.lock().unwrap();
-    scene.as_ref()?.editor.as_ref().map(|w| w.body.rec.clone())
+    scene.as_ref().map(|s| s.editors.values().map(|w| w.body.rec.clone()).collect()).unwrap_or_default()
 }
 
 pub fn spawn(rt: Runtime) -> Sender<EditCmd> {
@@ -150,32 +151,33 @@ pub fn spawn(rt: Runtime) -> Sender<EditCmd> {
         .name("shroom-editor".into())
         .spawn(move || {
             let mut door = Doorway::default();
-            // The open in flight: its recording, and its stop.
-            let mut opening: Option<(RecId, Stop)> = None;
+            // Each video's latest open, by recording: its stop (one window per video, N73).
+            let mut opening: HashMap<RecId, Stop> = HashMap::new();
             for cmd in rx {
                 match cmd {
-                    EditCmd::Open { rec } => {
-                        if let Some((_, stop)) = opening.take() {
+                    EditCmd::Open { id, rec } => {
+                        if let Some(stop) = opening.remove(&rec) {
                             stop.stop();
                         }
-                        // One video at a time: the one before isn't served any more.
-                        MEDIA.forget_all();
+                        // The video's own window before this one isn't served any more; every
+                        // other window's video still is.
+                        MEDIA.forget(&rec.0);
                         let stop = Stop::default();
-                        opening = Some((rec.clone(), stop.clone()));
+                        opening.insert(rec.clone(), stop.clone());
                         let rt2 = rt.clone();
                         let (rec2, stop2) = (rec.clone(), stop.clone());
-                        if std::thread::Builder::new().name("shroom-editor-open".into()).spawn(move || open(&rt2, &rec2, &stop2)).is_err() {
-                            stop.unless_stopped(|| rt.post(Event::Failed { op: Op::EditorOpen, class: FailClass::Unclassified }));
+                        if std::thread::Builder::new().name("shroom-editor-open".into()).spawn(move || open(&rt2, id, &rec2, &stop2)).is_err() {
+                            stop.unless_stopped(|| rt.post(Event::Failed { op: Op::EditorOpen(id), class: FailClass::Unclassified }));
                         }
                     }
-                    EditCmd::Cancel { rec } => {
-                        if let Some((_, stop)) = opening.take_if(|(r, _)| *r == rec) {
+                    EditCmd::Cancel { id, rec } => {
+                        if let Some(stop) = opening.remove(&rec) {
                             stop.stop();
                         }
                         MEDIA.forget(&rec.0);
-                        rt.log(&format!("editor: {} closed — its open stopped, its video no longer served", short(&rec.0)));
+                        rt.log(&format!("editor: window {} on {} closed — its open stopped, its video no longer served", id.0, short(&rec.0)));
                     }
-                    EditCmd::Save { rec, saved } => save(&rt, &mut door, &rec, &saved),
+                    EditCmd::Save { id, rec, saved } => save(&rt, &mut door, id, &rec, &saved),
                     EditCmd::Copy { rec, rev } => {
                         if copies.send((rec, rev)).is_err() {
                             rt.post(Event::Failed { op: Op::EditorCopy, class: FailClass::Unclassified });
@@ -394,12 +396,12 @@ fn write_private(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
     std::fs::rename(&tmp, path)
 }
 
-fn open(rt: &Runtime, rec: &RecId, stop: &Stop) {
-    match opened(rt, rec, stop) {
+fn open(rt: &Runtime, id: EditorId, rec: &RecId, stop: &Stop) {
+    match opened(rt, id, rec, stop) {
         Ok(()) => {}
         Err(Ended::Stopped) => rt.log(&format!("editor: {}'s open stopped", short(&rec.0))),
         Err(Ended::Failed(class)) => {
-            stop.unless_stopped(|| rt.post(Event::Failed { op: Op::EditorOpen, class }));
+            stop.unless_stopped(|| rt.post(Event::Failed { op: Op::EditorOpen(id), class }));
         }
     }
 }
@@ -409,7 +411,7 @@ fn as_long(meta: &Meta, seconds: f64) -> bool {
     meta.duration_sec.filter(|d| d.is_finite() && *d > 0.0).is_none_or(|d| (d - seconds).abs() <= LENGTH_SLACK)
 }
 
-fn opened(rt: &Runtime, rec: &RecId, stop: &Stop) -> Result<(), Ended> {
+fn opened(rt: &Runtime, id: EditorId, rec: &RecId, stop: &Stop) -> Result<(), Ended> {
     let t0 = Instant::now();
     let space = space(rt)?;
     let dir = folder(rt, &rec.0)?;
@@ -463,7 +465,7 @@ fn opened(rt: &Runtime, rec: &RecId, stop: &Stop) -> Result<(), Ended> {
         Ended::Failed(FailClass::Unclassified)
     })?;
     let ready = stop.unless_stopped(|| {
-        MEDIA.register(Registered { rec: rec.0.clone(), video: video.clone(), peaks: peaks_file });
+        MEDIA.register(Registered { window: id, rec: rec.0.clone(), video: video.clone(), peaks: peaks_file });
         rt.post(Event::Editor(EditorNews::Ready { rec: rec.clone(), duration: peaks.duration }));
     });
     if !ready {
@@ -474,7 +476,7 @@ fn opened(rt: &Runtime, rec: &RecId, stop: &Stop) -> Result<(), Ended> {
     Ok(())
 }
 
-fn save(rt: &Runtime, door: &mut Doorway, rec: &RecId, saved: &shroom_edit::Saved) {
+fn save(rt: &Runtime, door: &mut Doorway, id: EditorId, rec: &RecId, saved: &shroom_edit::Saved) {
     let t0 = Instant::now();
     let result = space(rt).and_then(|space| {
         let s3 = door.client(rt, &space, &rec.0)?;
@@ -495,7 +497,7 @@ fn save(rt: &Runtime, door: &mut Doorway, rec: &RecId, saved: &shroom_edit::Save
         }
         Err(class) => {
             door.forget();
-            rt.post(Event::Failed { op: Op::EditorSave, class });
+            rt.post(Event::Failed { op: Op::EditorSave(id), class });
         }
     }
 }
@@ -706,8 +708,8 @@ fn upkeep(rt: &Runtime, door: &mut Doorway) -> Result<(u32, u32), FailClass> {
         rt.log(&format!("editor upkeep: {} bake(s) wait — {why}", plan.bake.len()));
     }
     for id in plan.bake.iter().filter(|_| page.is_ok()) {
-        // Asked before each: the editor may have opened on it since the pass began.
-        if open_in_editor(rt).as_deref() == Some(id.as_str()) {
+        // Asked before each: an editor window may have opened on it since the pass began.
+        if open_in_editors(rt).contains(id) {
             rt.log(&format!("editor upkeep: {} is open in the editor — its bake waits for a later pass", short(id)));
             continue;
         }
@@ -1035,15 +1037,15 @@ mod tests {
         assert_eq!(registered_source(None, Some(&opened), &original), None, "nothing registered");
     }
 
-    /// B197: nothing bakes under the editor. The recording it holds is the one its window is
-    /// open on in the Scene — from the moment the window opens, its video not here yet — and
-    /// none once the window has closed.
+    /// B197: nothing bakes under an editor. The recordings they hold are the ones their
+    /// windows are open on in the Scene (N73) — each from the moment its window opens, its
+    /// video not here yet — and none once its window has closed.
     #[test]
-    fn the_recording_the_editor_holds_is_the_one_its_window_is_open_on() {
+    fn the_recordings_the_editors_hold_are_the_ones_their_windows_are_open_on() {
         use shroom_core::world::{Door, EditorFields, EditorMedia, EditorSave, Role, WindowKind, World};
         let tmp = tempfile::tempdir().unwrap();
         let (rt, _rx) = Runtime::for_test(tmp.path().join("h"), None, None);
-        assert_eq!(open_in_editor(&rt), None, "no Scene yet");
+        assert!(open_in_editors(&rt).is_empty(), "no Scene yet");
         let mut w = World::blank();
         w.space.identity = Some(SpaceIdentity {
             account_id: "acct".into(),
@@ -1058,10 +1060,9 @@ mod tests {
             foreign_v: false,
         });
         *rt.snapshot.lock().unwrap() = Some(shroom_core::derive(&w));
-        assert_eq!(open_in_editor(&rt), None, "no editor");
-        w.session.windows.insert(WindowKind::Editor, Door::asked(shroom_core::time::Mono(0)));
-        w.session.fields.editor = Some(EditorFields {
-            rec: RecId("AbCdEfGhIjKlMnOp".into()),
+        assert!(open_in_editors(&rt).is_empty(), "no editor");
+        let fields = |rec: &str| EditorFields {
+            rec: RecId(rec.into()),
             title: "Demo".into(),
             length_ms: Some(10_000),
             source_duration: 10.0,
@@ -1071,16 +1072,19 @@ mod tests {
             kept_until: None,
             media: EditorMedia::Opening,
             save: EditorSave::Idle,
-            leaving: None,
             elsewhere: false,
             closing: false,
-        });
+        };
+        for (n, rec) in [(1, "AbCdEfGhIjKlMnOp"), (2, "QrStUvWxYz012345")] {
+            w.session.windows.insert(WindowKind::Editor(EditorId(n)), Door::asked(shroom_core::time::Mono(0)));
+            w.session.fields.editors.insert(EditorId(n), fields(rec));
+        }
         *rt.snapshot.lock().unwrap() = Some(shroom_core::derive(&w));
-        assert_eq!(open_in_editor(&rt).as_deref(), Some("AbCdEfGhIjKlMnOp"));
-        w.session.windows.remove(&WindowKind::Editor);
-        w.session.fields.editor = None;
+        assert_eq!(open_in_editors(&rt), vec!["AbCdEfGhIjKlMnOp".to_string(), "QrStUvWxYz012345".to_string()]);
+        w.session.windows.remove(&WindowKind::Editor(EditorId(1)));
+        w.session.fields.editors.remove(&EditorId(1));
         *rt.snapshot.lock().unwrap() = Some(shroom_core::derive(&w));
-        assert_eq!(open_in_editor(&rt), None, "closed");
+        assert_eq!(open_in_editors(&rt), vec!["QrStUvWxYz012345".to_string()], "the first closed: the other still holds its own");
     }
 
     #[test]
@@ -1154,15 +1158,16 @@ mod tests {
         let lane = spawn(rt.clone());
         let next = || rx.recv_timeout(Duration::from_secs(5)).map(|e| e.event);
         let rec = RecId("AbCdEfGhIjKlMnOp".into());
-        lane.send(EditCmd::Open { rec: rec.clone() }).unwrap();
-        assert!(matches!(next(), Ok(Event::Failed { op: Op::EditorOpen, class: FailClass::Refused })));
-        lane.send(EditCmd::Save { rec: rec.clone(), saved: shroom_edit::Saved::new(shroom_edit::EditList::new(10.0), 1) }).unwrap();
-        assert!(matches!(next(), Ok(Event::Failed { op: Op::EditorSave, class: FailClass::Refused })));
+        let id = EditorId(1);
+        lane.send(EditCmd::Open { id, rec: rec.clone() }).unwrap();
+        assert!(matches!(next(), Ok(Event::Failed { op: Op::EditorOpen(EditorId(1)), class: FailClass::Refused })), "its window's open, by its number");
+        lane.send(EditCmd::Save { id, rec: rec.clone(), saved: shroom_edit::Saved::new(shroom_edit::EditList::new(10.0), 1) }).unwrap();
+        assert!(matches!(next(), Ok(Event::Failed { op: Op::EditorSave(EditorId(1)), class: FailClass::Refused })));
         lane.send(EditCmd::Copy { rec: rec.clone(), rev: 1 }).unwrap();
         assert!(matches!(next(), Ok(Event::Failed { op: Op::EditorCopy, class: FailClass::Refused })));
         lane.send(EditCmd::Upkeep).unwrap();
         assert!(matches!(next(), Ok(Event::Failed { op: Op::EditorUpkeep, class: FailClass::Refused })));
-        lane.send(EditCmd::Cancel { rec: rec.clone() }).unwrap();
+        lane.send(EditCmd::Cancel { id, rec: rec.clone() }).unwrap();
         lane.send(EditCmd::Bake { rec: rec.clone() }).unwrap();
         assert!(rx.recv_timeout(Duration::from_millis(300)).is_err(), "a Cancel and a Bake answer nothing");
     }

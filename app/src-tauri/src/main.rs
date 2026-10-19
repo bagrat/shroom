@@ -89,13 +89,17 @@ fn main() {
             }
             .unwrap_or_else(|_| tauri::http::Response::new(Vec::new()))
         })
-        // The editor's video and waveform (N63): only what its lane registered, by checked
-        // names, to the editor's webview alone — a range read off the main thread.
+        // An editor window's video and waveform (N63): only what its lane registered, by
+        // checked names, to that window's webview alone (N73) — a range read off the main
+        // thread.
         .register_asynchronous_uri_scheme_protocol(runtime::media::SCHEME, |ctx, request, responder| {
-            let editor = ctx.webview_label() == runtime::presenter::EDITOR;
+            let window = runtime::presenter::editor_of(ctx.webview_label());
             std::thread::spawn(move || {
                 let range = request.headers().get("range").and_then(|v| v.to_str().ok());
-                let a = if editor { runtime::media::answer(&runtime::media::MEDIA, request.method().as_str(), request.uri().path(), range) } else { runtime::media::Answer { status: 404, headers: Vec::new(), body: Vec::new() } };
+                let a = match window {
+                    Some(window) => runtime::media::answer(&runtime::media::MEDIA, window, request.method().as_str(), request.uri().path(), range),
+                    None => runtime::media::Answer { status: 404, headers: Vec::new(), body: Vec::new() },
+                };
                 let mut b = tauri::http::Response::builder().status(a.status);
                 for (k, v) in &a.headers {
                     b = b.header(*k, v);

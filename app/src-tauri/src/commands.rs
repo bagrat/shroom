@@ -4,12 +4,49 @@
 use serde_json::Value;
 use shroom_core::event::{EditStep, Event, Field, Key, SecretField, Surface};
 use shroom_core::scene::Action;
-use tauri::State;
+use tauri::{State, Webview};
 
 use crate::runtime::Runtime;
+use crate::runtime::presenter::editor_of;
+
+/// A surface as its webview names it (`app/src/lib/ipc.ts`'s `Surface`). An editor window
+/// names itself “editor”: which one it is, is its window's label's (`editor-<its number>`,
+/// N73), never what its webview says — and a webview that isn't an editor window's acts on
+/// no editor.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum Named {
+    Tray,
+    Popover,
+    Onboarding,
+    Library,
+    Settings,
+    Feedback,
+    Editor,
+    Countdown,
+    Bubble,
+    Label,
+}
+
+/// The surface `named`, said by the webview labelled `label`.
+pub fn surface(named: Named, label: &str) -> Option<Surface> {
+    Some(match named {
+        Named::Tray => Surface::Tray,
+        Named::Popover => Surface::Popover,
+        Named::Onboarding => Surface::Onboarding,
+        Named::Library => Surface::Library,
+        Named::Settings => Surface::Settings,
+        Named::Feedback => Surface::Feedback,
+        Named::Editor => Surface::Editor(editor_of(label)?),
+        Named::Countdown => Surface::Countdown,
+        Named::Bubble => Surface::Bubble,
+        Named::Label => Surface::Label,
+    })
+}
 
 #[tauri::command]
-pub fn act(rt: State<Runtime>, surface: Surface, action: Action, rev: Option<u64>) {
+pub fn act(rt: State<Runtime>, webview: Webview, surface: Named, action: Action, rev: Option<u64>) {
+    let Some(surface) = self::surface(surface, webview.label()) else { return };
     if arms(surface, Some(&action), None) {
         rt.post(Event::Os(crate::runtime::os::grants()));
     }
@@ -17,7 +54,8 @@ pub fn act(rt: State<Runtime>, surface: Surface, action: Action, rev: Option<u64
 }
 
 #[tauri::command]
-pub fn key(rt: State<Runtime>, surface: Surface, key: Key) {
+pub fn key(rt: State<Runtime>, webview: Webview, surface: Named, key: Key) {
+    let Some(surface) = self::surface(surface, webview.label()) else { return };
     if arms(surface, None, Some(key)) {
         rt.post(Event::Os(crate::runtime::os::grants()));
     }
@@ -65,9 +103,11 @@ pub fn dismiss(rt: State<Runtime>) {
     rt.post(Event::PopoverDismissed);
 }
 
-/// The current slice for a surface, from the snapshot (no round-trip to the core).
+/// The current slice for a surface, from the snapshot (no round-trip to the core) — an
+/// editor window's, its own (N73).
 #[tauri::command]
-pub fn scene_get(rt: State<Runtime>, surface: Surface) -> Value {
+pub fn scene_get(rt: State<Runtime>, webview: Webview, surface: Named) -> Value {
+    let Some(surface) = self::surface(surface, webview.label()) else { return Value::Null };
     let snap = rt.snapshot.lock().unwrap();
     let Some(s) = snap.as_ref() else { return Value::Null };
     match surface {
@@ -78,19 +118,21 @@ pub fn scene_get(rt: State<Runtime>, surface: Surface) -> Value {
         Surface::Library => serde_json::to_value(&s.library).unwrap_or(Value::Null),
         Surface::Settings => serde_json::to_value(&s.settings).unwrap_or(Value::Null),
         Surface::Feedback => serde_json::to_value(&s.feedback).unwrap_or(Value::Null),
-        Surface::Editor => serde_json::to_value(&s.editor).unwrap_or(Value::Null),
+        Surface::Editor(id) => serde_json::to_value(s.editors.get(&id)).unwrap_or(Value::Null),
         _ => Value::Null,
     }
 }
 
-/// A step in the editor (N63): `{"op": "undo"}`, `{"op": "redo"}`, or one of the edit
-/// list's operations (`trim`, `cut`, `put-back`, `apply`, `revert` — `shroom_edit::Op`),
-/// times in seconds on the recording. The core takes it or refuses it; a step that doesn't
-/// read is dropped here, and the next slice says what the edit is.
+/// A step in an editor window (N63) — its own editor's, by its label (N73): `{"op":
+/// "undo"}`, `{"op": "redo"}`, or one of the edit list's operations (`trim`, `cut`,
+/// `put-back`, `apply`, `revert` — `shroom_edit::Op`), times in seconds on the recording.
+/// The core takes it or refuses it; a step that doesn't read, or from a webview that isn't
+/// an editor window's, is dropped here, and the next slice says what the edit is.
 #[tauri::command]
-pub fn edit(rt: State<Runtime>, step: Value) {
+pub fn edit(rt: State<Runtime>, webview: Webview, step: Value) {
+    let Some(id) = editor_of(webview.label()) else { return rt.log("editor: a step from a window that isn't an editor's — dropped") };
     match edit_step(step) {
-        Some(step) => rt.post(Event::Edit(step)),
+        Some(step) => rt.post(Event::Edit(id, step)),
         None => rt.log("editor: a step that doesn't read — dropped"),
     }
 }
@@ -123,6 +165,22 @@ pub fn popover_fit(app: tauri::AppHandle, height: f64) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The names the webviews use (`app/src/lib/ipc.ts`), and the editor windows told apart
+    /// by their labels, never by what they say (N73).
+    #[test]
+    fn a_surface_is_its_webviews_name_and_an_editors_its_labels() {
+        use shroom_core::world::EditorId;
+        let named = |s: &str| serde_json::from_value::<Named>(serde_json::json!(s)).unwrap();
+        assert_eq!(surface(named("popover"), "popover"), Some(Surface::Popover));
+        assert_eq!(surface(named("library"), "library"), Some(Surface::Library));
+        assert_eq!(surface(named("editor"), "editor-3"), Some(Surface::Editor(EditorId(3))));
+        assert_eq!(surface(named("editor"), "editor-12"), Some(Surface::Editor(EditorId(12))));
+        for not_one in ["library", "editor", "editor-", "editor-03", "editor-x", "editor-1-2", "editors-1"] {
+            assert_eq!(surface(named("editor"), not_one), None, "{not_one}");
+        }
+        assert!(serde_json::from_value::<Named>(serde_json::json!({ "editor": 1 })).is_err(), "a webview never names an editor window");
+    }
 
     #[test]
     fn start_and_the_popovers_return_carry_fresh_grants() {

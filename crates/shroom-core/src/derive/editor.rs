@@ -1,4 +1,4 @@
-//! The editor (N63, B195, B197): one window, on one video — `editor` (the video here, or its
+//! The editor (N63, B195, B197): a window per video (N73) — `editor` (the video here, or its
 //! record still being read), `editor-getting` (it comes from the space), `editor-cant-get`,
 //! `editor-saving`, `editor-save-failed` and `editor-save-refused` (the space turned the save
 //! down, B199); then, once a save leaves something out, `editor-making` (the final video
@@ -6,15 +6,21 @@
 //! It shows the list as it stands, what plays, and what can be done; the webview plays,
 //! draws and sends steps, and decides nothing.
 
+use std::collections::BTreeMap;
+
 use crate::copy;
 use crate::scene::{Action, Button, CutView, EditListView, EditorAfterView, EditorBody, EditorClosingView, EditorLabels, EditorMediaView, LineTone, Style, Window};
 use crate::time::Mono;
-use crate::world::{EditorFields, EditorMedia, EditorSave, WindowKind, World};
+use crate::world::{EditorFields, EditorId, EditorMedia, EditorSave, WindowKind, World};
 
-pub fn derive(w: &World) -> Option<Window<EditorBody>> {
-    let door = w.session.windows.get(&WindowKind::Editor)?;
-    let e = w.session.fields.editor.as_ref()?;
-    if !w.window_visible(WindowKind::Editor) || !w.provisioned() {
+/// Every editor window that shows, under its number (N73).
+pub fn derive(w: &World) -> BTreeMap<EditorId, Window<EditorBody>> {
+    w.session.fields.editors.iter().filter_map(|(id, e)| Some((*id, window(w, *id, e)?))).collect()
+}
+
+fn window(w: &World, at: EditorId, e: &EditorFields) -> Option<Window<EditorBody>> {
+    let door = w.session.windows.get(&WindowKind::Editor(at))?;
+    if !w.window_visible(WindowKind::Editor(at)) || !w.provisioned() {
         return None;
     }
     let id = state(e);
@@ -172,16 +178,17 @@ fn kept_left(w: &World, e: &EditorFields) -> Option<i64> {
 /// each hour after, under an hour, gone — as a wake on the monotonic clock.
 pub fn wakes(w: &World, out: &mut Vec<Mono>) {
     const HOUR: i64 = 3_600_000;
-    let Some(left) = w.session.fields.editor.as_ref().and_then(|e| kept_left(w, e)) else { return };
-    // The words hold down to their band's floor (`copy::original_kept`) and change a
-    // millisecond under it; under an hour, they hold until the time is up.
-    let floor = match left {
-        l if l >= 47 * HOUR => 47 * HOUR,
-        l if l >= 24 * HOUR => 24 * HOUR,
-        l => l / HOUR * HOUR,
-    };
-    let at = if floor > 0 { left - floor + 1 } else { left };
-    out.push(w.now.plus(at as u64));
+    for left in w.session.fields.editors.values().filter_map(|e| kept_left(w, e)) {
+        // The words hold down to their band's floor (`copy::original_kept`) and change a
+        // millisecond under it; under an hour, they hold until the time is up.
+        let floor = match left {
+            l if l >= 47 * HOUR => 47 * HOUR,
+            l if l >= 24 * HOUR => 24 * HOUR,
+            l => l / HOUR * HOUR,
+        };
+        let at = if floor > 0 { left - floor + 1 } else { left };
+        out.push(w.now.plus(at as u64));
+    }
 }
 
 /// A cut's kind, as the record spells it (`shroom_edit::CutKind`'s serde names).

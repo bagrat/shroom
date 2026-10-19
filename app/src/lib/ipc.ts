@@ -2,6 +2,7 @@
 // exactly as the Scene handed them over.
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 
 export type Action = { do: string; arg?: unknown };
 export type Surface = "popover" | "countdown" | "label" | "onboarding" | "library" | "settings" | "feedback" | "editor";
@@ -14,7 +15,10 @@ export const keyed = () => invoke("popover_keyed");
 export const sceneGet = <T>(surface: Surface) => invoke<T | null>("scene_get", { surface });
 // The runner emits each surface's slice to its own label; a listener names its label so it
 // hears only that slice (an untargeted listener would hear every surface's).
-export const onScene = <T>(f: (slice: T) => void, label: Surface) => listen<T>("scene", (e) => f(e.payload), { target: label });
+export const onScene = <T>(f: (slice: T) => void, label: Surface | string) => listen<T>("scene", (e) => f(e.payload), { target: label });
+/** This window's own label: an editor window's is `editor-<its number>`, one per video (N73).
+ * The shell tells the editor windows apart by it; the webview only listens on it. */
+export const ownLabel = () => getCurrentWebviewWindow().label;
 export const fit = (height: number) => invoke("popover_fit", { height });
 
 /** One step in the editor (N63), times in seconds on the recording's own timeline. The core

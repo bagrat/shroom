@@ -59,12 +59,12 @@ fn due_edit_copy(w: &World, fx: &mut Vec<Effect>) {
 /// edits are missing made — the lane decides which. Never over a take (the encoder and the
 /// bandwidth are the take's), never offline, never while the editor is open (it may be on
 /// one of them) or while the editor's lane runs anything else; one that couldn't run waits
-/// for the next turn.
+/// for the next turn. Every editor window counts (N73).
 fn due_edit_upkeep(w: &World, fx: &mut Vec<Effect>) {
     let Some(at) = crate::derive::next_upkeep(w) else { return };
-    let lane_busy = [Op::EditorOpen, Op::EditorSave, Op::EditorCopy, Op::EditorUpkeep].iter().any(|op| w.inflight.ops.contains_key(op));
+    let lane_busy = w.inflight.ops.keys().any(|op| matches!(op, Op::EditorOpen(_) | Op::EditorSave(_) | Op::EditorCopy | Op::EditorUpkeep));
     let owed = w.library_ops.copies.values().any(|c| !c.asked);
-    if w.now >= at && !w.take_open() && w.online() != Some(false) && w.session.fields.editor.is_none() && !lane_busy && !owed {
+    if w.now >= at && !w.take_open() && w.online() != Some(false) && w.session.fields.editors.is_empty() && !lane_busy && !owed {
         fx.push(Effect::Editor(EditCmd::Upkeep));
     }
 }
@@ -72,12 +72,12 @@ fn due_edit_upkeep(w: &World, fx: &mut Vec<Effect>) {
 /// The token Mac's cleanup sweep (DECISIONS B91; ARCHITECTURE §5.5's GC, §16 #49): on the
 /// self-check's slow cadence, over the token's own pair, fail-soft — never offline, never
 /// over a take (its bandwidth is the take's), never while a paste is being checked, and
-/// never while the editor is open: the sweep makes every edit past its two days the video
-/// (B197), and the editor may be on one of them, its list on the old video's clock (B199).
+/// never while an editor window is open: the sweep makes every edit past its two days the
+/// video (B197), and an editor may be on one of them, its list on the old video's clock (B199).
 fn due_cleanup(w: &World, fx: &mut Vec<Effect>) {
     let Some(at) = crate::derive::next_cleanup(w) else { return };
     let pasting = matches!(w.sweep.paste, Some(Paste::Checking(_) | Paste::Saving { .. } | Paste::PickAccount { .. }));
-    let editing = w.session.fields.editor.is_some();
+    let editing = !w.session.fields.editors.is_empty();
     if w.now >= at && !pasting && !editing && !w.take_open() && w.online() != Some(false) && !w.inflight.ops.contains_key(&Op::Cleanup) {
         fx.push(Effect::Library(LibCmd::Cleanup));
     }

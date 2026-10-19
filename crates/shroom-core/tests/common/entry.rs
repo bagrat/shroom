@@ -21,7 +21,7 @@
 
 use shroom_core::scene::{Face, Scene, SettingsPane};
 use shroom_core::world::{
-    Access, Cause, Confirm, Device, EditorMedia, EditorSave, FailClass, Fork, LaunchKind, Op, Paste, Phase, Role, SavedCause, SettingsTab, SourceId,
+    Access, Cause, Confirm, Device, EditorId, EditorMedia, EditorSave, FailClass, Fork, LaunchKind, Op, Paste, Phase, Role, SavedCause, SettingsTab, SourceId,
     StopOutcome, TokenVerdict, UpdateOffer, WindowKind, WorkerFact, World,
 };
 
@@ -163,8 +163,8 @@ pub struct Named {
     pub settings: Option<Option<Win>>,
     /// The Send feedback window (N60).
     pub feedback: Option<Win>,
-    /// The editor (N63).
-    pub editor: Option<Win>,
+    /// The editor windows (N63), each under its number: one per video (N73).
+    pub editors: std::collections::BTreeMap<EditorId, Win>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -689,7 +689,7 @@ pub fn name(w: &World) -> Named {
         onboarding: onboarding(w),
         settings: settings(w),
         feedback: feedback(w),
-        editor: editor(w),
+        editors: editors(w),
     }
 }
 
@@ -707,12 +707,16 @@ fn feedback(w: &World) -> Option<Win> {
 /// editor was open” the question (B197); “✕ while the editor holds changes not saved”
 /// the close prompt, in editor or editor-save-failed (N71); before any save, the video “isn't on this Mac”
 /// while the space hands it over, “the fetch … failed” when it didn't, and otherwise the
-/// editor itself — the video here, or its record still being read.
-fn editor(w: &World) -> Option<Win> {
-    if !shows(w, WindowKind::Editor) || !has_space(w) {
-        return None;
+/// editor itself — the video here, or its record still being read. Each window is read on
+/// its own, by its door and its fields (N73).
+fn editors(w: &World) -> std::collections::BTreeMap<EditorId, Win> {
+    if !has_space(w) {
+        return Default::default();
     }
-    let e = w.session.fields.editor.as_ref()?;
+    w.session.fields.editors.iter().filter(|(at, _)| shows(w, WindowKind::Editor(**at))).map(|(at, e)| (*at, editor(e))).collect()
+}
+
+fn editor(e: &shroom_core::world::EditorFields) -> Win {
     let id = match (e.save, e.media) {
         (EditorSave::Idle | EditorSave::Failed, _) if e.closing => "editor-closing",
         (EditorSave::Saving, _) => "editor-saving",
@@ -725,7 +729,7 @@ fn editor(w: &World) -> Option<Win> {
         (_, EditorMedia::Failed) => "editor-cant-get",
         (EditorSave::Idle, EditorMedia::Opening | EditorMedia::Ready { .. }) => "editor",
     };
-    Some(Win { id, faces: vec![] })
+    Win { id, faces: vec![] }
 }
 
 fn face_name(f: Face) -> &'static str {
@@ -790,9 +794,9 @@ pub fn disagreements(w: &World, s: &Scene) -> Vec<String> {
     if n.feedback != got {
         out.push(format!("send feedback: oracle {:?}, derive {got:?}", n.feedback));
     }
-    let got = s.editor.as_ref().map(|d| Win { id: d.id, faces: d.faces.clone() });
-    if n.editor != got {
-        out.push(format!("editor: oracle {:?}, derive {got:?}", n.editor));
+    let got: std::collections::BTreeMap<EditorId, Win> = s.editors.iter().map(|(at, d)| (*at, Win { id: d.id, faces: d.faces.clone() })).collect();
+    if n.editors != got {
+        out.push(format!("editors: oracle {:?}, derive {got:?}", n.editors));
     }
     out
 }
