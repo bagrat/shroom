@@ -567,13 +567,20 @@ impl SettingsSpot {
 }
 
 /// What the `shroom` command may ask of the recording — each one exactly what its click does
-/// in the popover or the tray (dev/proposals/cli-agent-skill.md §3) — and how a start goes.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// in the popover or the tray (dev/proposals/cli-agent-skill.md §3) — and how a start goes;
+/// and, for an edit it saved itself, the final video (N72).
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CliOp {
     Start(StartAsk),
     Pause,
     Resume,
     Stop,
+    /// `shroom edit` is about to change the video's edit (N72): answered `editor_open` while
+    /// it is open in an editor window on this Mac, so that window's Done never silently undoes it.
+    Editing { rec: crate::world::RecId },
+    /// `shroom edit` saved revision `rev` of the video's edit: its final video is owed, as
+    /// after the editor's Done (N63, B197).
+    Copy { rec: crate::world::RecId, rev: u64 },
 }
 
 impl CliOp {
