@@ -90,8 +90,8 @@
 
   // The chip under what's selected: Cut <length> under a part (what of it plays: none, no
   // chip, since cutting it would change nothing), Put back <length> under an applied cut,
-  // Cut it too under a suggestion (applying it). While a cut's edge is dragged: its length as
-  // it goes, or Cut it too under a suggestion.
+  // Cut again under a suggestion (applying it). While a cut's edge is dragged: its length as
+  // it goes, or Cut again under a suggestion.
   let chip = $derived.by(() => {
     if (edge && moved && list?.cuts[moved.index]) {
       const at = (moved.start + moved.end) / 2;

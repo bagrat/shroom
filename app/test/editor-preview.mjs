@@ -315,7 +315,7 @@ export async function editorDrives({ browser, origin, mediaOrigin, entries, chec
     await clear(page);
     await page.locator(".chip button").click();
     s = steps(await calls(page));
-    check("editor: a suggestion clicked offers Cut it too, which applies it", apply === (b.labels.cut_it_too ?? `Cut ${(o.end - o.start).toFixed(1)} s`) && s.length === 1 && s[0].op === "apply" && s[0].index === offer, `${apply} ${JSON.stringify(s)}`);
+    check("editor: a suggestion clicked offers Cut again, which applies it", apply === (b.labels.cut_it_too ?? `Cut ${(o.end - o.start).toFixed(1)} s`) && s.length === 1 && s[0].op === "apply" && s[0].index === offer, `${apply} ${JSON.stringify(s)}`);
   }
 
   // A cut's edge dragged (B195 (g)): ↔ over it, the chip says the cut's length as it goes,

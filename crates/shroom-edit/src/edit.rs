@@ -24,7 +24,7 @@ pub enum Op {
     /// editor changes while it's open): a hand cut goes; a suggested one is unapplied, so it
     /// can be applied again.
     PutBack { index: usize },
-    /// Apply the suggestion at `index` (the voice-cut layer's “Cut it too”).
+    /// Apply the suggestion at `index` (the voice-cut layer's “Cut again”).
     Apply { index: usize },
     /// Move the edges of the cut at `index` (B195 (g): one of them dragged on the timeline):
     /// it becomes `start`–`end`, held inside the ends. A hand cut or the voice layer's, taken
@@ -118,7 +118,7 @@ pub fn check(list: &EditList, op: &Op) -> Result<EditList, Refusal> {
             }
         }
     }
-    // A suggestion moved plays nothing new, and is still a change: what Cut it too would take.
+    // A suggestion moved plays nothing new, and is still a change: what Cut again would take.
     let offered_moved = matches!(*op, Op::Resize { index, .. } if !list.cuts[index].applied);
     if next == *list || (!offered_moved && next.keep() == list.keep()) {
         return Err(Refusal::NothingChanges);
