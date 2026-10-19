@@ -33,6 +33,10 @@ pub enum Fail {
     /// as it is by default (exit 10). Its JSON carries `settings_link`, the link that opens
     /// Settings at the switch, for the agent to hand over (DECISIONS B216).
     RecordingOff(String),
+    /// `shroom edit` can't make that change (exit 12, spec N70): `reason` is the editor's own
+    /// (`out_of_range`, `leaves_too_little`, `too_short`, `nothing_changes`, `no_such_cut`), or
+    /// `editor_open` while this Mac's editor holds the video. Nothing was saved.
+    CantEdit { reason: &'static str, message: String },
     /// Anything else (exit 1).
     Other(String),
 }
@@ -51,6 +55,7 @@ impl Fail {
             Fail::TakeOpen(_) => "take_open",
             Fail::RecordingOff(_) => "recording_off",
             Fail::Partial { .. } => "partial",
+            Fail::CantEdit { .. } => "cant_edit",
             Fail::Other(_) => "failed",
         }
     }
@@ -68,6 +73,7 @@ impl Fail {
             Fail::TakeOpen(_) => 9,
             Fail::RecordingOff(_) => 10,
             Fail::Partial { .. } => 11,
+            Fail::CantEdit { .. } => 12,
         }
     }
 
@@ -82,7 +88,7 @@ impl Fail {
             | Fail::TakeOpen(m)
             | Fail::RecordingOff(m)
             | Fail::Other(m) => m,
-            Fail::Ambiguous { message, .. } | Fail::NeedsConfirmation { message, .. } | Fail::Partial { message, .. } => message,
+            Fail::Ambiguous { message, .. } | Fail::NeedsConfirmation { message, .. } | Fail::Partial { message, .. } | Fail::CantEdit { message, .. } => message,
         }
     }
 
@@ -92,6 +98,7 @@ impl Fail {
             Fail::Ambiguous { matches, .. } => v["matches"] = Value::Array(matches.clone()),
             Fail::NeedsConfirmation { what, would, .. } => v[*what] = Value::Array(would.clone()),
             Fail::RecordingOff(_) => v["settings_link"] = json!(shroom_core::event::SettingsSpot::AgentRecording.link()),
+            Fail::CantEdit { reason, .. } => v["reason"] = json!(reason),
             Fail::Partial { results, .. } => {
                 if let (Some(o), Some(r)) = (v.as_object_mut(), results.as_object()) {
                     for (k, x) in r {
@@ -154,6 +161,14 @@ pub fn length(sec: Option<f64>) -> String {
     let Some(s) = sec else { return "–".into() };
     let s = s.round() as u64;
     if s >= 3600 { format!("{}:{:02}:{:02}", s / 3600, s / 60 % 60, s % 60) } else { format!("{}:{:02}", s / 60, s % 60) }
+}
+
+/// A time on a recording, for a person, to the tenth: `62.5` → `1:02.5`; `62` → `1:02`.
+pub fn at(sec: f64) -> String {
+    let tenths = (sec.max(0.0) * 10.0).round() as u64;
+    let (s, t) = (tenths / 10, tenths % 10);
+    let whole = if s >= 3600 { format!("{}:{:02}:{:02}", s / 3600, s / 60 % 60, s % 60) } else { format!("{}:{:02}", s / 60, s % 60) };
+    if t == 0 { whole } else { format!("{whole}.{t}") }
 }
 
 /// The date part of an ISO time, for a person (`2026-10-02`).

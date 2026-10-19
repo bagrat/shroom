@@ -43,6 +43,22 @@ fn shroom(home: &Path, base: &str, args: &[&str]) -> (i32, Value) {
     (out.status.code().unwrap_or(-1), serde_json::from_slice(&out.stdout).unwrap_or(Value::Null))
 }
 
+/// A stand-in app on the control socket that answers `n` asks, each ok; the asks it heard.
+fn app_asks(home: &Path, n: usize) -> std::thread::JoinHandle<Vec<Value>> {
+    let listener = UnixListener::bind(home.join("control.sock")).unwrap();
+    std::thread::spawn(move || {
+        (0..n)
+            .map(|_| {
+                let (mut s, _) = listener.accept().unwrap();
+                let mut ask = String::new();
+                BufReader::new(s.try_clone().unwrap()).read_line(&mut ask).unwrap();
+                s.write_all(b"{\"ok\":true,\"take\":\"none\"}\n").unwrap();
+                serde_json::from_str(&ask).unwrap()
+            })
+            .collect()
+    })
+}
+
 /// A stand-in app on the control socket that answers one ask with `answer`; the ask it heard.
 fn app(home: &Path, answer: &'static str) -> std::thread::JoinHandle<Value> {
     let listener = UnixListener::bind(home.join("control.sock")).unwrap();
@@ -144,18 +160,24 @@ fn a_saved_edit_asks_the_app_for_its_final_video() {
     let dir = tempfile::tempdir().unwrap();
     let home = dir.path().join("home");
     demo::seed(&base, &home);
-    let heard = app(&home, r#"{"ok":true,"take":"none"}"#);
+    let heard = app_asks(&home, 2);
     let (code, v) = shroom(&home, &base, &["edit", ID, "cut", "30", "40", "--no-launch"]);
     assert_eq!((code, v["final"].as_str()), (0, Some("asked")), "the app took the ask: {v}");
-    let ask = heard.join().unwrap();
-    assert_eq!((ask["op"].as_str(), ask["id"].as_str(), ask["rev"].as_u64()), (Some("edit.copy"), Some(ID), Some(1)), "{ask}");
+    let asks = heard.join().unwrap();
+    assert_eq!((asks[0]["op"].as_str(), asks[0]["id"].as_str()), (Some("edit.check"), Some(ID)), "asked before saving: {asks:?}");
+    assert_eq!((asks[1]["op"].as_str(), asks[1]["id"].as_str(), asks[1]["rev"].as_u64()), (Some("edit.copy"), Some(ID), Some(1)), "{asks:?}");
     let _ = std::fs::remove_file(home.join("control.sock"));
 
     // `finish` asks again for the edit as saved.
-    let heard = app(&home, r#"{"ok":true,"take":"none"}"#);
+    let heard = app_asks(&home, 1);
     let (code, v) = shroom(&home, &base, &["edit", ID, "finish", "--no-launch"]);
     assert_eq!((code, v["final"].as_str()), (0, Some("asked")), "{v}");
-    assert_eq!(heard.join().unwrap()["rev"], 1);
+    assert_eq!(heard.join().unwrap()[0]["rev"], 1);
+    let _ = std::fs::remove_file(home.join("control.sock"));
+
+    // The app not there: the edit is saved all the same, and `finish` is how to ask later.
+    let (code, v) = shroom(&home, &base, &["edit", ID, "cut", "50", "60", "--no-launch"]);
+    assert_eq!((code, v["saved"].as_bool(), v["final"].as_str()), (0, Some(true), Some("later")), "{v}");
 }
 
 #[test]
@@ -167,14 +189,23 @@ fn it_changes_nothing_while_this_macs_editor_holds_the_video_or_a_take_is_open()
     let dir = tempfile::tempdir().unwrap();
     let home = dir.path().join("home");
     demo::seed(&base, &home);
-    let me = std::process::id();
-    std::fs::write(home.join("status.json"), format!(r#"{{"v":2,"pid":{me},"take_open":false,"editing":"{ID}"}}"#)).unwrap();
+    // The app's editor holds the video: asked first, it says so, and nothing is saved.
+    let heard = app(&home, r#"{"ok":false,"take":"none","error":"editor_open"}"#);
     let (code, v) = shroom(&home, &base, &["edit", ID, "cut", "30", "40", "--no-launch"]);
     assert_eq!((code, v["error"].as_str(), v["reason"].as_str()), (12, Some("cant_edit"), Some("editor_open")), "{v}");
+    let ask = heard.join().unwrap();
+    assert_eq!((ask["op"].as_str(), ask["id"].as_str()), (Some("edit.check"), Some(ID)), "{ask}");
+    let _ = std::fs::remove_file(home.join("control.sock"));
     let (code, v) = shroom(&home, &base, &["edit", ID]);
     assert_eq!((code, v["edit"]["edited"].as_bool()), (0, Some(false)), "reading it is fine; nothing was saved: {v}");
 
-    std::fs::write(home.join("status.json"), format!(r#"{{"v":2,"pid":{me},"take_open":true}}"#)).unwrap();
+    // A take open in the running app (a process named shroom, as the command checks): law 4.
+    let app = dir.path().join("shroom");
+    std::fs::copy("/bin/sleep", &app).unwrap();
+    let mut running = Command::new(&app).arg("30").spawn().unwrap();
+    std::fs::write(home.join("status.json"), format!(r#"{{"v":2,"pid":{},"take_open":true}}"#, running.id())).unwrap();
     let (code, v) = shroom(&home, &base, &["edit", ID, "cut", "30", "40", "--no-launch"]);
+    let _ = running.kill();
+    let _ = running.wait();
     assert_eq!((code, v["error"].as_str()), (9, Some("take_open")), "law 4: {v}");
 }

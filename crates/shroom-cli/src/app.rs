@@ -79,6 +79,8 @@ fn refusal(code: &str, op: &str) -> Fail {
         "no_take" if op == "record.resume" => Fail::Refused(say::nothing_paused()),
         "no_take" => Fail::Refused(say::nothing_recording()),
         "not_ready" => Fail::Refused(say::not_now(op)),
+        // `shroom edit` (N70): this Mac's editor holds the video.
+        "editor_open" => Fail::CantEdit { reason: "editor_open", message: say::cant_edit("editor_open") },
         _ => Fail::Refused(say::app_said_no()),
     }
 }

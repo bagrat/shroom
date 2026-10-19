@@ -24,6 +24,9 @@ shroom — your shroom videos from the command line.
                                       they leave the space; their videos stay
   shroom record start|pause|resume|stop
                                       asks the shroom app (opens it if needed)
+  shroom edit <video>                 its edit: where it starts and ends, each cut
+  shroom edit <video> cut 1:02 1:10   leave a part out; also trim <in> <out>,
+                                      put-back <cut>, apply <cut>, revert, finish
   shroom status                       is shroom running, recording, set up?
   shroom guide                        how a coding agent should use this tool
 
@@ -55,6 +58,7 @@ Exit codes
   0 ok · 1 failed · 2 usage · 3 not set up · 4 not found or ambiguous · 5 offline
   6 refused · 7 needs --yes · 8 the app is needed and didn't answer · 9 recording now
   10 recording from here is off (Settings → General) · 11 a batch partly went through
+  12 that edit can't be made
 ";
 
 pub fn version(v: &str) -> String {
@@ -648,4 +652,84 @@ pub fn stopped(link: Option<&str>) -> String {
         Some(l) => format!("Stopped. Its link: {l}"),
         None => "Stopped.".into(),
     }
+}
+
+// ── edit (spec N70; its words provisional) ──
+
+pub fn edit_usage() -> String {
+    "Say a video, then what to change: trim <in> <out>, cut <start> <end>, put-back <cut>, apply <cut>, \
+     resize <cut> <start> <end>, revert or finish. Times are seconds (12.5) or minutes:seconds (1:02)."
+        .into()
+}
+
+pub fn not_a_time(s: &str) -> String {
+    format!("“{s}” isn't a time: say seconds (12.5) or minutes:seconds (1:02).")
+}
+
+/// Why an edit can't be made, by the editor's own reason (`out.rs` has the codes).
+pub fn cant_edit(reason: &str) -> String {
+    match reason {
+        "out_of_range" => "That's outside what plays: pick times between where it starts and ends.",
+        "leaves_too_little" => "That would leave less than a second playing.",
+        "too_short" => "A cut needs to be at least a tenth of a second.",
+        "nothing_changes" => "That wouldn't change what plays.",
+        "no_such_cut" => "There's no such cut for that. Run shroom edit with just the video to see its cuts.",
+        "editor_open" => "It's open in shroom's editor on this Mac. Finish there, or close it, then try again.",
+        _ => "That edit can't be made.",
+    }
+    .into()
+}
+
+pub fn edit_moved_on() -> String {
+    "The video changed while this ran. Run it again.".into()
+}
+
+/// The edit, for a person: what plays, the ends, each cut, and the final video.
+pub fn edit_is(title: &str, plays: &str, whole: &str, ends: Option<(String, String)>, cuts: &[(String, String, String, bool)], final_video: &str) -> String {
+    let mut lines = Vec::new();
+    if ends.is_none() && cuts.is_empty() {
+        lines.push(format!("“{title}” isn't edited: it plays all {whole}."));
+    } else {
+        lines.push(format!("“{title}” plays {plays} of {whole}."));
+    }
+    if let Some((from, to)) = ends {
+        lines.push(format!("It starts at {from} and ends at {to}."));
+    }
+    for (id, start, end, applied) in cuts {
+        lines.push(if *applied { format!("Cut {id}: {start}–{end}.") } else { format!("Cut {id}: {start}–{end}, suggested, not applied.") });
+    }
+    match final_video {
+        "made" => lines.push("Its final video is ready.".into()),
+        "not_yet" => lines.push("Its final video isn't made yet.".into()),
+        _ => {}
+    }
+    lines.join("\n")
+}
+
+pub fn edit_saved(plays: &str, whole: &str) -> String {
+    format!("Saved. It plays {plays} now, of {whole}. The link stays the same.")
+}
+
+pub fn edit_whole_again() -> String {
+    "Saved. It plays the whole recording again.".into()
+}
+
+pub fn edit_would(plays: &str, now: &str) -> String {
+    format!("It would play {plays} (it plays {now} now). Nothing was saved.")
+}
+
+pub fn final_asked() -> String {
+    "shroom is making the final video.".into()
+}
+
+pub fn final_later(id: &str) -> String {
+    format!("shroom wasn't there to make the final video: once it's open, run “shroom edit {id} finish”.")
+}
+
+pub fn final_ready() -> String {
+    "Its final video is already made.".into()
+}
+
+pub fn final_not_needed() -> String {
+    "There's no final video to make: it plays the whole recording.".into()
 }

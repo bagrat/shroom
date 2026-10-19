@@ -54,6 +54,18 @@ pub fn command(words: &[String]) -> String {
         "members" => "members",
         "invite" if w(1) == "cancel" => "invite cancel",
         "invite" => "invite",
+        // `edit <video> <change>`: the change by its name, never the video or the times.
+        "edit" => match w(2) {
+            "" => "edit",
+            "trim" => "edit trim",
+            "cut" => "edit cut",
+            "put-back" => "edit put-back",
+            "apply" => "edit apply",
+            "resize" => "edit resize",
+            "revert" => "edit revert",
+            "finish" => "edit finish",
+            _ => "edit ?",
+        },
         "record" => match w(1) {
             "start" => "record start",
             "pause" => "record pause",
@@ -75,9 +87,11 @@ pub fn counted(answer: &Value) -> Vec<String> {
         match (k.as_str(), v) {
             (_, Value::Array(a)) => out.push(format!("{k} {}", a.len())),
             ("counts", Value::Object(c)) => out.extend(c.iter().filter(|(_, n)| n.is_number()).map(|(name, n)| format!("{name} {n}"))),
-            ("take", Value::String(t)) if t.chars().all(|c| c.is_ascii_lowercase()) => out.push(format!("take {t}")),
+            ("take" | "final", Value::String(t)) if t.chars().all(|c| c.is_ascii_lowercase() || c == '_') => out.push(format!("{k} {t}")),
             ("id", Value::String(id)) => out.push(format!("id {}", short(id))),
-            ("counting" | "dry_run" | "running", Value::Bool(b)) => out.push(format!("{k} {b}")),
+            ("counting" | "dry_run" | "running" | "saved", Value::Bool(b)) => out.push(format!("{k} {b}")),
+            ("rev", Value::Number(n)) => out.push(format!("rev {n}")),
+            ("reason", Value::String(r)) if r.chars().all(|c| c.is_ascii_lowercase() || c == '_') => out.push(format!("reason {r}")),
             _ => {}
         }
     }
@@ -169,6 +183,8 @@ mod tests {
         assert_eq!(command(&w("members remove m_AbCdEfGhIjKlMnOp")), "members remove");
         assert_eq!(command(&w("invite Ann Lee")), "invite");
         assert_eq!(command(&w("record start")), "record start");
+        assert_eq!(command(&w("edit AbCdEfGhIjKlMnOp cut 1:02 1:10")), "edit cut");
+        assert_eq!(command(&w("edit AbCdEfGhIjKlMnOp")), "edit");
         assert_eq!(command(&w("Quarterly numbers")), "?");
         assert_eq!(command(&[]), "help");
     }
