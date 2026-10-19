@@ -3,8 +3,9 @@
 //
 // One of the fixture's lines is ratified as a shape, not as words: the system-requirements
 // sentence (“fill the facts in, don't reword”). It is checked against its facts instead —
-// the floor and the kinds of Mac from what actually ships. The how-to video plays in place
-// (N58, N61): it is the site's own file, and the page fetches it only from script.
+// the floor and the kinds of Mac from what actually ships. The hero plays in place and the
+// setup walkthrough in a lightbox (N58, N61, N70): both are the site's own files, and the page
+// fetches them only from script.
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
@@ -57,30 +58,45 @@ describe("the landing", () => {
     assert.deepEqual(said, [line], "no other version of the sentence is on the page");
   });
 
-  it("plays the how-to video in place, right above Install (N58, N59, N61)", () => {
+  it("plays the hero in place, right above Install (N58, N59, N61, N70)", () => {
     assert.doesNotMatch(video, /<section class="how-to"[^>]*\bhidden\b/, "the video's block shows");
-    assert.equal(video.match(/data-src="([^"]*)"/)?.[1], "/how-to.mp4", "the video is shroom.am's own file");
+    assert.equal(video.match(/data-src="([^"]*)"/)?.[1], "/hero.mp4", "the video is shroom.am's own file");
     assert.doesNotMatch(video, /href=/, "the video links nowhere: it plays on the landing");
     const words = visible(video.replace(/<span[^>]*aria-hidden="true"[^>]*>[\s\S]*?<\/span>/g, "")).trim();
     assert.equal(words, "", "no caption (Bagrat, 2026-10-17): the still and its play button speak for it; the length is decoration");
     assert.ok(!landing.said.some((l) => l.id === "landing.recorded-with-shroom-itself"), "the caption's said-line is gone from the spec");
-    assert.match(video, /<button type="button" class="still" aria-label="Play how to set up and use shroom, 4 minutes">/, "its name to VoiceOver (N61)");
-    assert.match(video, /<span class="len" aria-hidden="true">4 mins<\/span>/, "its length, in minutes (N61; Bagrat, 2026-10-18)");
-    assert.doesNotMatch(html, /\bdemo\b|recorded with shroom/i, "it isn't a shroom recording, and the page doesn't call it a demo (N61)");
+    assert.match(video, /<button type="button" class="still" aria-label="Play shroom, recorded with shroom, 2 minutes">/, "its name to VoiceOver (N70)");
+    assert.match(video, /<span class="len" aria-hidden="true">2 min<\/span>/, "its length (N70; Bagrat, 2026-10-18)");
+    assert.doesNotMatch(html, /\bdemo\b/i, "the page doesn't call it a demo (N61)");
     assert.match(video, /<video\b[^>]*\bpreload="none"/, "nothing loads before the script asks");
     assert.doesNotMatch(video, /<video\b[^>]*\bsrc=/, "the video's address is set by script, as the block nears the screen");
-    assert.match(video, /<img src="how-to-poster\.webp" alt="" width="1440" height="936"/, "the still is the site's own file");
+    assert.match(video, /<img src="hero-poster\.webp" alt="" width="1280" height="832"/, "the still is the site's own file");
+    assert.doesNotMatch(html, /\.play svg \{[^}]*margin-left/, "the play triangles sit at their optical centre");
     const order = ['class="terms"', 'class="how-to"', 'id="install"'].map((k) => html.indexOf(k));
     assert.ok(order[0] < order[1] && order[1] < order[2], "the video's box comes after the terms (beside them on a laptop), and Install under the video (N59)");
   });
 
-  it("ships the video and its still with the page", () => {
+  it("opens the setup walkthrough from a button under the hero, in a lightbox, only when asked (N70)", () => {
+    const box = html.slice(html.indexOf('<div class="box">'), html.indexOf('<section class="install"'));
+    const at = (/** @type {string} */ k) => box.indexOf(k);
+    assert.ok(at('id="hero"') > 0 && at('class="walk"') > at('id="hero"') && at('class="cut"') > at('class="walk"'), "the hero, then Setup walkthrough, then a cut, then Install");
+    assert.match(box, /<span>Setup walkthrough<\/span>/);
+    assert.match(html, /<dialog class="lightbox" id="walk" aria-label="How to set up and use shroom, 4 minutes">/);
+    assert.match(html, /<video controls playsinline preload="none"[^>]*data-src="\/how-to\.mp4"><\/video>/);
+  });
+
+  it("ships the videos and their stills with the page", () => {
     const build = readFileSync(`${ROOT}site/build.mjs`, "utf8");
-    assert.ok(existsSync(`${ROOT}site/how-to-poster.webp`), "site/how-to-poster.webp is there");
-    assert.match(build, /"how-to-poster\.webp"/, "build.mjs copies it into what the site serves");
-    // Cloudflare serves no single file over 25 MiB.
-    assert.ok(statSync(`${ROOT}site/how-to.mp4`).size < 25 * 1024 * 1024, "site/how-to.mp4 is under the asset limit");
-    assert.match(build, /"how-to\.mp4"/, "build.mjs copies the video into what the site serves");
+    for (const f of ["hero-poster.webp", "how-to-poster.webp"]) {
+      assert.ok(existsSync(`${ROOT}site/${f}`), `site/${f} is there`);
+      assert.match(build, new RegExp(`"${f.replace(".", "\\.")}"`), `build.mjs copies ${f} into what the site serves`);
+    }
+    assert.ok(statSync(`${ROOT}site/hero-poster.webp`).size < 100_000, "the hero's still stays light");
+    for (const f of ["hero.mp4", "how-to.mp4"]) {
+      // Cloudflare serves no single file over 25 MiB.
+      assert.ok(statSync(`${ROOT}site/${f}`).size < 25 * 1024 * 1024, `site/${f} is under the asset limit`);
+      assert.match(build, new RegExp(`"${f.replace(".", "\\.")}"`), `build.mjs copies ${f} into what the site serves`);
+    }
   });
 
   it("loads nothing from anyone else", () => {

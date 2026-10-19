@@ -2,7 +2,7 @@
 // the install line, the page for coding agents, What's new, the questions, privacy and terms
 // pages, and nothing else.
 // Run: node --test site/test/worker.test.mjs
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "node:test";
@@ -200,15 +200,15 @@ describe("nothing else", () => {
   });
 });
 
-describe("the how-to video", () => {
-  const mp4 = readFileSync(join(ROOT, "site/how-to.mp4"));
+for (const [title, stem] of /** @type {const} */ ([["the hero", "hero"], ["the how-to video", "how-to"]])) describe(title, () => {
+  const mp4 = readFileSync(join(ROOT, `site/${stem}.mp4`));
   const size = mp4.byteLength;
   // The assets binding as Cloudflare's answers a file: with its length, in pieces, and the
   // whole file whatever Range it's asked for.
   const STREAMED = {
     /** @param {Request} r */
     async fetch(r) {
-      if (new URL(r.url).pathname !== "/_/how-to.mp4") return ASSETS.fetch(r);
+      if (new URL(r.url).pathname !== `/_/${stem}.mp4`) return ASSETS.fetch(r);
       let at = 0;
       const body = new ReadableStream({
         pull(c) {
@@ -222,7 +222,7 @@ describe("the how-to video", () => {
   };
   for (const [name, assets] of /** @type {const} */ ([["a file sent with its length", STREAMED], ["a file sent without one", ASSETS]])) {
     const ask = (/** @type {Record<string, string>} */ headers = {}, method = "GET") =>
-      worker.fetch(new Request("https://shroom.am/how-to.mp4", { method, headers }), { ASSETS: assets, STATS });
+      worker.fetch(new Request(`https://shroom.am/${stem}.mp4`, { method, headers }), { ASSETS: assets, STATS });
 
     it(`answers the whole file, and says it takes ranges (${name})`, async () => {
       const res = await ask();
@@ -268,8 +268,12 @@ describe("the how-to video", () => {
 
   it("isn't counted: the landing's visit is", async () => {
     counted = [];
-    await (await get("/how-to.mp4", { range: "bytes=0-1" })).arrayBuffer();
+    await (await get(`/${stem}.mp4`, { range: "bytes=0-1" })).arrayBuffer();
     assert.deepEqual(counted, []);
+  });
+
+  it("is an address the Worker answers first", () => {
+    assert.match(file("site/wrangler.jsonc"), new RegExp(`"run_worker_first": \\[[^\\]]*"/${stem}\\.mp4"`));
   });
 });
 
@@ -404,30 +408,19 @@ describe("the questions, privacy and terms pages", () => {
   });
 });
 
-describe("the landing with the hero, at /next", () => {
-  it("is site/next.html, as a page, whatever the client asks for", async () => {
+describe("/next, where the hero waited until it became /", () => {
+  it("sends anyone who kept the link to /, for good, uncounted", async () => {
+    counted = [];
     for (const accept of [BROWSERS.chrome, "*/*", "text/markdown"]) {
       const res = await get("/next", { accept });
-      assert.equal(res.status, 200);
-      assert.equal(res.headers.get("content-type"), "text/html; charset=utf-8");
-      assert.equal(await res.text(), file("site/next.html"));
+      assert.equal(res.status, 301);
+      assert.equal(res.headers.get("location"), "/");
     }
-  });
-
-  it("asks not to be indexed, and isn't counted, so the rows for / stay as they are", async () => {
-    counted = [];
-    const res = await get("/next", { accept: BROWSERS.safari });
-    assert.equal(res.headers.get("x-robots-tag"), "noindex, nofollow");
     assert.deepEqual(counted, []);
   });
 
-  it("leaves / as it is", async () => {
-    const res = await get("/", { accept: BROWSERS.chrome });
-    assert.equal(await res.text(), file("site/index.html"));
-    assert.equal(res.headers.get("x-robots-tag"), null);
-  });
-
-  it("is one address the Worker answers first", () => {
-    assert.match(file("site/wrangler.jsonc"), /"run_worker_first": \[[^\]]*"\/next"/);
+  it("leaves nothing of the page behind", () => {
+    assert.ok(!existsSync(join(out, "_/next.html")), "the build has no next.html");
+    assert.ok(!existsSync(join(ROOT, "site/next.html")));
   });
 });

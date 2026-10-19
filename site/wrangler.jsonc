@@ -8,7 +8,7 @@
     "directory": "public",
     "binding": "ASSETS",
     // Only these reach worker.js; the favicons and og.png are served as they are, and free.
-    "run_worker_first": ["/", "/next", "/install", "/agent", "/agent.md", "/cli", "/cli.md", "/whats-new", "/whats-new/*", "/faq", "/privacy", "/terms", "/feedback", "/report", "/how-to.mp4", "/_/*"],
+    "run_worker_first": ["/", "/next", "/install", "/agent", "/agent.md", "/cli", "/cli.md", "/whats-new", "/whats-new/*", "/faq", "/privacy", "/terms", "/feedback", "/report", "/how-to.mp4", "/hero.mp4", "/_/*"],
     "html_handling": "none",
     "not_found_handling": "none"
   },
