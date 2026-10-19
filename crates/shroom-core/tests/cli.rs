@@ -176,7 +176,7 @@ fn every_ask_in_every_moment_is_answered_once_as_its_click() {
     for (moment, base, want) in table {
         for (i, op) in [CliOp::START, CliOp::Pause, CliOp::Resume, CliOp::Stop].into_iter().enumerate() {
             let mut r = base.clone_run();
-            let a = ask(&mut r, 10 + i as u64, op);
+            let a = ask(&mut r, 10 + i as u64, op.clone());
             assert_eq!(heard(&a), want[i], "{moment}, {op:?}");
         }
     }
@@ -496,3 +496,90 @@ fn a_take_of_the_camera_only_wears_no_label() {
     assert_eq!(label(&Run::new(w)).as_deref(), Some(LABEL), "a display's take does");
 }
 
+
+// ── `shroom edit` (spec N72): the command saves an edit itself, through the space's page;
+// the running app makes its final video when the command asks, as after the editor's Done.
+
+fn copy(rec: &str, rev: u64) -> CliOp {
+    CliOp::Copy { rec: RecId(rec.into()), rev }
+}
+
+fn editor_on(w: &mut World, rec: &str) {
+    w.session.fields.editor = Some(EditorFields {
+        rec: RecId(rec.into()),
+        title: "Standup notes".into(),
+        length_ms: Some(133_000),
+        source_duration: 133.0,
+        markers: vec![],
+        history: Some(shroom_edit::History::new(shroom_edit::EditList::new(133.0))),
+        rev: 1,
+        kept_until: None,
+        media: EditorMedia::Ready { duration: 133.0 },
+        save: EditorSave::Idle,
+        leaving: None,
+        elsewhere: false,
+        closing: false,
+    });
+}
+
+#[test]
+fn an_edits_final_video_is_owed_when_the_command_asks_whatever_the_recording_switch_says() {
+    // The switch lets an agent record; an edit is no recording.
+    let mut r = Run::new(ready());
+    assert!(!r.w.prefs.agent_recording);
+    let a = ask(&mut r, 1, copy("St4ndupN0t3sJn05", 2));
+    assert_eq!((a.ok, a.error, a.take), (true, None, "none"));
+    assert_eq!(r.w.library_ops.copies.get(&RecId("St4ndupN0t3sJn05".into())).map(|c| c.rev), Some(2), "owed: revision 2");
+    assert!(
+        r.effects.iter().any(|e| matches!(e, Effect::Editor(shroom_core::effect::EditCmd::Copy { rec, rev: 2 }) if rec.0 == "St4ndupN0t3sJn05")),
+        "nothing else in the way: the lane is asked at once, as after Done"
+    );
+}
+
+#[test]
+fn an_older_revision_never_replaces_a_newer_one_owed() {
+    let mut r = Run::new(ready());
+    r.w.library_ops.copies.insert(RecId("St4ndupN0t3sJn05".into()), CopyOwed { rev: 5, asked: true });
+    let a = ask(&mut r, 1, copy("St4ndupN0t3sJn05", 4));
+    assert!(a.ok);
+    assert_eq!(r.w.library_ops.copies.get(&RecId("St4ndupN0t3sJn05".into())), Some(&CopyOwed { rev: 5, asked: true }));
+}
+
+#[test]
+fn over_a_take_it_is_owed_and_waits_for_the_take_to_end() {
+    let mut w = ready();
+    w.take = Some(take(Phase::Recording, 61_000));
+    let mut r = Run::new(w);
+    let a = ask(&mut r, 1, copy("St4ndupN0t3sJn05", 1));
+    assert_eq!((a.ok, a.take), (true, "recording"));
+    assert_eq!(r.w.library_ops.copies.get(&RecId("St4ndupN0t3sJn05".into())), Some(&CopyOwed { rev: 1, asked: false }), "owed, not cut over the take");
+    assert!(!r.effects.iter().any(|e| matches!(e, Effect::Editor(shroom_core::effect::EditCmd::Copy { .. }))));
+}
+
+#[test]
+fn while_this_macs_editor_holds_the_video_the_command_hears_editor_open() {
+    let mut w = ready();
+    editor_on(&mut w, "St4ndupN0t3sJn05");
+    let mut r = Run::new(w);
+    let a = ask(&mut r, 1, CliOp::Editing { rec: RecId("St4ndupN0t3sJn05".into()) });
+    assert_eq!((a.ok, a.error), (false, Some("editor_open")), "asked before the command saves");
+    let b = ask(&mut r, 2, copy("St4ndupN0t3sJn05", 2));
+    assert_eq!((b.ok, b.error), (false, Some("editor_open")), "and after, should it have raced the window");
+    assert!(r.w.library_ops.copies.is_empty(), "nothing owed: the window's Done is the edit");
+    // Another video is free to edit, its final video owed.
+    let c = ask(&mut r, 3, CliOp::Editing { rec: RecId("Q3rNdPl4nW1kThr0".into()) });
+    assert_eq!((c.ok, c.error), (true, None));
+    assert!(ask(&mut r, 4, copy("Q3rNdPl4nW1kThr0", 1)).ok);
+    assert!(r.w.session.fields.editor.is_some(), "the window stays as it was");
+}
+
+#[test]
+fn a_mac_with_no_space_owes_nothing() {
+    let mut w = ready();
+    w.space.identity = None;
+    let mut r = Run::new(w);
+    let a = ask(&mut r, 1, copy("St4ndupN0t3sJn05", 1));
+    assert_eq!((a.ok, a.error), (false, Some("not_set_up")));
+    assert_eq!(ask(&mut r, 2, CliOp::Editing { rec: RecId("St4ndupN0t3sJn05".into()) }).error, Some("not_set_up"));
+    assert!(r.w.library_ops.copies.is_empty());
+}

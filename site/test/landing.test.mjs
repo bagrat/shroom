@@ -1,5 +1,6 @@
 // The landing (Region 1, `landing`): every ratified line is on the page, verbatim, and
-// the page asks nothing of anyone else's servers. Run: node --test site/test/landing.test.mjs
+// the page asks nothing of anyone else's servers (Cloudflare's own Web Analytics beacon, added
+// at its edge as it serves the page, is the one exception: B224). Run: node --test site/test/landing.test.mjs
 //
 // One of the fixture's lines is ratified as a shape, not as words: the system-requirements
 // sentence (“fill the facts in, don't reword”). It is checked against its facts instead —
@@ -60,7 +61,7 @@ describe("the landing", () => {
 
   it("plays the hero in place, right above Install (N58, N59, N61, N70)", () => {
     assert.doesNotMatch(video, /<section class="how-to"[^>]*\bhidden\b/, "the video's block shows");
-    assert.equal(video.match(/data-src="([^"]*)"/)?.[1], "/hero.mp4", "the video is shroom.am's own file");
+    assert.equal(video.match(/data-src="([^"]*)"/)?.[1], "/hero-2.mp4", "the video is shroom.am's own file");
     assert.doesNotMatch(video, /href=/, "the video links nowhere: it plays on the landing");
     const words = visible(video.replace(/<span[^>]*aria-hidden="true"[^>]*>[\s\S]*?<\/span>/g, "")).trim();
     assert.equal(words, "", "no caption (Bagrat, 2026-10-17): the still and its play button speak for it; the length is decoration");
@@ -92,7 +93,12 @@ describe("the landing", () => {
       assert.match(build, new RegExp(`"${f.replace(".", "\\.")}"`), `build.mjs copies ${f} into what the site serves`);
     }
     assert.ok(statSync(`${ROOT}site/hero-poster.webp`).size < 100_000, "the hero's still stays light");
-    for (const f of ["hero.mp4", "how-to.mp4"]) {
+    for (const f of ["hero-2.mp4", "how-to.mp4"]) {
+      // Every browser plays H.264 only at Baseline, Main or High (4:2:0); High 4:4:4 shows the
+      // still and nothing more (B222). The profile is the byte after avcC's version.
+      const mp4 = readFileSync(`${ROOT}site/${f}`), at = mp4.indexOf("avcC");
+      assert.ok(at > 0, `${f} is H.264`);
+      assert.ok([66, 77, 100].includes(mp4[at + 5]), `${f} is Baseline, Main or High (4:2:0), not profile ${mp4[at + 5]}`);
       // Cloudflare serves no single file over 25 MiB.
       assert.ok(statSync(`${ROOT}site/${f}`).size < 25 * 1024 * 1024, `site/${f} is under the asset limit`);
       assert.match(build, new RegExp(`"${f.replace(".", "\\.")}"`), `build.mjs copies ${f} into what the site serves`);
@@ -101,6 +107,7 @@ describe("the landing", () => {
 
   it("loads nothing from anyone else", () => {
     // Links people follow are fine; nothing the page fetches may be remote, the video included.
+    // (This reads the file in the repo; Cloudflare's edge adds its Web Analytics beacon: B224.)
     assert.doesNotMatch(html, /<(?:script|link|img|video|source|iframe)[^>]*\b(?:src|href)="https?:/, "a remote fetch in the markup");
     const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]).join("\n");
     assert.deepEqual([...scripts.matchAll(/https?:\/\/[^"'\s]*/g)].map((m) => m[0]), [], "no remote address is built in script");

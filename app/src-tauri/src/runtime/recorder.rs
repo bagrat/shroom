@@ -101,7 +101,7 @@ struct Said {
 
 /// How often the watchdog looks while a take runs.
 pub const WATCH_EVERY: Duration = Duration::from_secs(1);
-/// No progress for this long is capture dying (DEVIATIONS #6, #8: the recorder steps' 5 s).
+/// No progress for this long is capture dying (DEVIATIONS #6, #8: a stall after 5 s, B47 b).
 pub const STALL_AFTER: Duration = Duration::from_secs(5);
 /// The free space is re-posted mid-take when it moved this much (the core's `disk_free`).
 const DISK_STEP: u64 = 32 * 1024 * 1024;

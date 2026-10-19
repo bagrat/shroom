@@ -3547,6 +3547,7 @@ dependencies = [
  "serde_json",
  "shroom-cloud",
  "shroom-core",
+ "shroom-edit",
  "shroom-storage",
  "shroom-upload",
  "tempfile",
