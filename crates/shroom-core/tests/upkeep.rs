@@ -158,11 +158,11 @@ fn the_sweep_waits_while_the_editor_is_open() {
     r.send(Event::Act { surface: Surface::Library, action: Action::EditRow(rec.clone()), rev: 0 });
     r.send(Event::Editor(EditorNews::Opened { rec: rec.clone(), saved: None, markers: vec![], duration_sec: Some(272.4), keep_until: None }));
     r.send(Event::Editor(EditorNews::Ready { rec, duration: 272.4 }));
-    assert_eq!(r.scene.editor.as_ref().map(|e| e.id), Some("editor"));
+    assert_eq!(r.scene.editors.get(&EditorId(1)).map(|e| e.id), Some("editor"));
     r.tick_to(pass + CLEANUP_FIRST_MS + 1_000);
     assert_eq!(cleanups(&r), 0, "never while the editor is open");
-    r.send(Event::Act { surface: Surface::Editor, action: Action::EditorDone, rev: 0 });
-    assert!(r.scene.editor.is_none());
+    r.send(Event::Act { surface: Surface::Editor(EditorId(1)), action: Action::EditorDone, rev: 0 });
+    assert!(r.scene.editors.is_empty());
     assert_eq!(cleanups(&r), 1, "the window closed: the sweep runs");
 }
 

@@ -48,13 +48,13 @@ pub fn derive(w: &World) -> Scene {
     let library = library::derive(w);
     let settings = settings::derive(w);
     let feedback = feedback::derive(w);
-    let editor = editor::derive(w);
+    let editors = editor::derive(w);
     // Law 6 (SM:133), as ratified: the Dock icon iff a window of shroom's is open —
     // onboarding, the Library, Settings, Send feedback or the editor (DEVIATIONS #38's
     // setup-only Dock was rejected).
-    let dock = onboarding.is_some() || library.is_some() || settings.is_some() || feedback.is_some() || editor.is_some();
+    let dock = onboarding.is_some() || library.is_some() || settings.is_some() || feedback.is_some() || !editors.is_empty();
     let label = agent_label(w);
-    Scene { tray: tray::derive(w), popover, onboarding, library, settings, feedback, editor, countdown, bubble, preview, label, dock, next_wake: next_wake(w) }
+    Scene { tray: tray::derive(w), popover, onboarding, library, settings, feedback, editors, countdown, bubble, preview, label, dock, next_wake: next_wake(w) }
 }
 
 /// The agent label (N62, B216): on the display a take the command started records, while

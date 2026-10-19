@@ -24,13 +24,13 @@ pub const SECRET_CANARY: &str = "cfat_";
 /// only the World can say it is wrong. On its own so that a test can hand it a Scene
 /// `derive` never made — `check` turns every such Scene away at law 1.
 pub fn law_6(nw: &World, ns: &Scene) -> Option<String> {
-    let open = [WindowKind::Onboarding, WindowKind::Library, WindowKind::Settings, WindowKind::Feedback, WindowKind::Editor].into_iter().any(|k| entry::shows(nw, k));
+    let open = nw.session.windows.keys().any(|k| entry::shows(nw, *k));
     if ns.dock != open {
         let dock = if ns.dock { "a Dock icon" } else { "no Dock icon" };
         let window = if open { "a window of shroom's is open" } else { "no window of shroom's is open" };
         return Some(format!("law 6: {dock}, and in the World {window}"));
     }
-    if ns.dock != (ns.onboarding.is_some() || ns.library.is_some() || ns.settings.is_some() || ns.feedback.is_some() || ns.editor.is_some()) {
+    if ns.dock != (ns.onboarding.is_some() || ns.library.is_some() || ns.settings.is_some() || ns.feedback.is_some() || !ns.editors.is_empty()) {
         return Some("law 6: the Dock and the windows disagree".into());
     }
     for (shown, kind) in [
@@ -38,8 +38,10 @@ pub fn law_6(nw: &World, ns: &Scene) -> Option<String> {
         (ns.library.is_some(), WindowKind::Library),
         (ns.settings.is_some(), WindowKind::Settings),
         (ns.feedback.is_some(), WindowKind::Feedback),
-        (ns.editor.is_some(), WindowKind::Editor),
-    ] {
+    ]
+    .into_iter()
+    .chain(ns.editors.keys().map(|at| (true, WindowKind::Editor(*at))))
+    {
         if shown && !nw.session.windows.contains_key(&kind) {
             return Some("law 6: a window without a door".into());
         }
@@ -141,7 +143,7 @@ pub fn check(pw: &World, ps: &Scene, ev: &Event, nw: &World, ns: &Scene, fx: &[E
         assert!(ns.library.is_none() || ps.library.is_some(), "law 4: the Library appeared mid-take — {}", ctx());
         assert!(ns.settings.is_none() || ps.settings.is_some(), "law 4: Settings appeared mid-take — {}", ctx());
         assert!(ns.feedback.is_none() || ps.feedback.is_some(), "law 4: Send feedback appeared mid-take — {}", ctx());
-        assert!(ns.editor.is_none() || ps.editor.is_some(), "law 4: the editor appeared mid-take — {}", ctx());
+        assert!(ns.editors.keys().all(|at| ps.editors.contains_key(at)), "law 4: an editor window appeared mid-take — {}", ctx());
         for e in fx {
             // Nothing that would end, move or replace the app runs mid-take.
             assert!(!matches!(e, Effect::Updater(UpdCmd::Apply(_))), "law 4: an update applied mid-take — {}", ctx());
@@ -191,8 +193,10 @@ pub fn check(pw: &World, ps: &Scene, ev: &Event, nw: &World, ns: &Scene, fx: &[E
         (ns.library.as_ref().map(|l| l.activates), WindowKind::Library),
         (ns.settings.as_ref().map(|s| s.activates), WindowKind::Settings),
         (ns.feedback.as_ref().map(|f| f.activates), WindowKind::Feedback),
-        (ns.editor.as_ref().map(|e| e.activates), WindowKind::Editor),
-    ] {
+    ]
+    .into_iter()
+    .chain(ns.editors.iter().map(|(at, e)| (Some(e.activates), WindowKind::Editor(*at))))
+    {
         if let (Some(a), Some(d)) = (activates, nw.session.windows.get(&kind)) {
             assert!(d.asked || !a, "law 5: an unasked {kind:?} window activates — {}", ctx());
         }
@@ -277,8 +281,8 @@ pub fn check(pw: &World, ps: &Scene, ev: &Event, nw: &World, ns: &Scene, fx: &[E
             assert!(st.buttons().iter().any(|b| &b.action == r), "law 8: Settings' Return {r:?} isn't on the window — {}", ctx());
         }
     }
-    // The editor's Return is its Done (or cant-get's Close), live, on the window (N63).
-    if let Some(e) = &ns.editor {
+    // An editor's Return is its Done (or cant-get's Close), live, on its window (N63).
+    for e in ns.editors.values() {
         if let Some(r) = &e.ret {
             assert!(e.buttons().iter().any(|b| b.enabled && &b.action == r), "law 8: the editor's Return {r:?} isn't a live button of its own — {}", ctx());
         }
@@ -467,10 +471,10 @@ fn law12(pw: &World, ps: &Scene, ev: &Event, nw: &World, ns: &Scene, fx: &[Effec
         s.next_wake = None;
         s
     };
-    let ids_before = ps.state_ids();
-    let new_face = ns.state_ids().into_iter().find(|i| !ids_before.contains(i));
-    let lines_before = user_strings(ps);
-    let new_line = user_strings(ns).into_iter().find(|l| !lines_before.contains(l));
+    let ids_before = faces(ps);
+    let new_face = faces(ns).into_iter().find(|i| !ids_before.contains(i));
+    let lines_before = lines(ps);
+    let new_line = lines(ns).into_iter().find(|l| !lines_before.contains(l));
     let landed = new_face.is_some() || new_line.is_some();
     let working = nw.inflight.ops.values().any(|d| *d > nw.now) && nw.inflight.ops.len() >= pw.inflight.ops.len();
     let failure = match ev {
@@ -517,7 +521,7 @@ fn law12(pw: &World, ps: &Scene, ev: &Event, nw: &World, ns: &Scene, fx: &[Effec
             assert_eq!(name, &kept, "law 12: the name guard kept “{name}” of “{value}” — {}", ctx());
             let rejected = lowered.chars().any(|c| !allowed(&c));
             if ns.onboarding.as_ref().is_some_and(|b| b.id == a.id) {
-                for line in user_strings(ns).into_iter().filter(|l| !lines_before.contains(l)) {
+                for line in lines(ns).into_iter().filter(|l| !lines_before.contains(l)) {
                     let echo = !name.is_empty() && line.contains(name.as_str());
                     let explained = rejected && line == shroom_core::copy::charset();
                     assert!(echo || explained, "law 12: typing “{value}” said “{line}” — {}", ctx());
@@ -543,7 +547,7 @@ fn lands(pw: &World, ps: &Scene, nw: &World, ns: &Scene, fx: &[Effect], op: Op) 
     s.next_wake = None;
     s
     };
-    let (ids_before, lines_before) = (ps.state_ids(), user_strings(ps));
+    let (ids_before, lines_before) = (faces(ps), lines(ps));
     // What the op merely going away would show (its spinner gone, its button
     // back): not a face. The failure lands only past that.
     let mut dropped = pw.clone();
@@ -551,11 +555,11 @@ fn lands(pw: &World, ps: &Scene, nw: &World, ns: &Scene, fx: &[Effect], op: Op) 
     dropped.now = nw.now;
     dropped.wall = nw.wall;
     let gone = shroom_core::derive(&dropped);
-    let (gone_ids, gone_lines) = (gone.state_ids(), user_strings(&gone));
+    let (gone_ids, gone_lines) = (faces(&gone), lines(&gone));
     // A failure-state of the fixtures is the failure's own face even when the op
     // going away would derive it too (join-waiting: asked, unanswered, not running).
-    let face = ns.state_ids().into_iter().find(|i| !ids_before.contains(i) && (!gone_ids.contains(i) || failure_state(i)));
-    let line = user_strings(ns).into_iter().find(|l| !lines_before.contains(l) && !gone_lines.contains(l));
+    let face = faces(ns).into_iter().find(|i| !ids_before.contains(i) && (!gone_ids.contains(i) || failure_state(i.split(" #").next().unwrap_or(i))));
+    let line = lines(ns).into_iter().find(|l| !lines_before.contains(l) && !gone_lines.contains(l));
     let landed = face.is_some() || line.is_some();
     let noted = nw.inflight.failures.get(&op).filter(|f| pw.inflight.failures.get(&op) != Some(*f));
     // The note itself is read: the Scene with this failure un-noted reads differently.
@@ -616,6 +620,29 @@ fn lands(pw: &World, ps: &Scene, nw: &World, ns: &Scene, fx: &[Effect], op: Op) 
     landed || note_shows || retry || reissued || answered || moot || covered || link
 }
 
+/// A Scene's faces as law 12 reads them: its state ids, each editor window's under its
+/// number (N73) — a window landing on a face another window already shows is a new face.
+fn faces(s: &Scene) -> Vec<String> {
+    let mut rest = s.clone();
+    let editors = std::mem::take(&mut rest.editors);
+    let mut out: Vec<String> = rest.state_ids().into_iter().map(String::from).collect();
+    for (at, e) in &editors {
+        out.extend(std::iter::once(e.id).chain(e.faces.iter().copied()).map(|f| format!("{f} #{}", at.0)));
+    }
+    out
+}
+
+/// …and its lines: every string it shows a person, each editor window's under its number.
+fn lines(s: &Scene) -> Vec<String> {
+    let mut rest = s.clone();
+    let editors = std::mem::take(&mut rest.editors);
+    let mut out = user_strings(&rest);
+    for (at, e) in &editors {
+        out.extend(copy_in(&serde_json::to_value(e).expect("the window serializes")).into_iter().map(|l| format!("{l} #{}", at.0)));
+    }
+    out
+}
+
 /// Law 15 over one Scene: each string that breaks it, named for the row it came from.
 pub fn voice_failures(scene: &Scene, row: &str) -> Vec<String> {
     user_strings(scene).into_iter().filter_map(|t| voice(&t).map(|why| format!("{row}: law 15: “{t}” {why}"))).collect()
@@ -624,6 +651,16 @@ pub fn voice_failures(scene: &Scene, row: &str) -> Vec<String> {
 /// Every string the Scene shows a person: labels, lines, notes, titles, placeholders —
 /// not ids, actions, kinds, device ids or what the person typed.
 pub fn user_strings(scene: &Scene) -> Vec<String> {
+    let mut out = copy_in(&serde_json::to_value(scene).expect("the Scene serializes"));
+    // A Library row's state is copy (“Uploading — 40%”); the tray's is a state id.
+    if let Some(l) = &scene.library {
+        out.extend(l.body.rows.iter().filter_map(|r| r.state.clone()));
+    }
+    out
+}
+
+/// The strings in a slice a person reads, what isn't copy left out.
+fn copy_in(v: &serde_json::Value) -> Vec<String> {
     // `preview` is Report a problem's disclosure: the person's words and their log, quoted
     // as they go — data, as a field's `value` is (B180). The editor's `rec` is the video's
     // id, for its media; `footer_tone` the line's colour (N63).
@@ -646,11 +683,7 @@ pub fn user_strings(scene: &Scene) -> Vec<String> {
         }
     }
     let mut out = Vec::new();
-    walk(&serde_json::to_value(scene).expect("the Scene serializes"), &mut out);
-    // A Library row's state is copy (“Uploading — 40%”); the tray's is a state id.
-    if let Some(l) = &scene.library {
-        out.extend(l.body.rows.iter().filter_map(|r| r.state.clone()));
-    }
+    walk(v, &mut out);
     out
 }
 

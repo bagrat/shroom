@@ -462,6 +462,12 @@ pub struct TakeDir(pub String);
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct RecId(pub String);
 
+/// An editor window's number (N73): given as the window opens, counted from 1 and never
+/// given twice while shroom runs. There is one window per video; its window, its surface and
+/// the lane's work for it are known by this.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub struct EditorId(pub u32);
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", tag = "kind", content = "id")]
 pub enum SourceId {
@@ -950,10 +956,12 @@ pub enum Op {
     /// The token Mac's cleanup sweep over its own S3 pair (DECISIONS B91).
     Cleanup,
     // ── the editor (N63) ──
-    /// The record read, the video found or fetched from the space, its sound read.
-    EditorOpen,
-    /// The edit list written into the record (read-modify-write, as a rename).
-    EditorSave,
+    /// The record read, the video found or fetched from the space, its sound read — for
+    /// that editor window (N73).
+    EditorOpen(EditorId),
+    /// The edit list written into the record (read-modify-write, as a rename), from that
+    /// editor window.
+    EditorSave(EditorId),
     /// A saved revision's permanent copy cut, put up and named in the record.
     EditorCopy,
     /// The upkeep (B197 (d)): this Mac's videos past their two days baked, their missing
@@ -993,8 +1001,8 @@ impl Op {
             Op::Cleanup => 600_000,
             // The editor (N63): a video can be long to come from the space (its progress
             // keeps it alive); a save is a rename's write; a copy is a re-encode and its upload.
-            Op::EditorOpen => 1_800_000,
-            Op::EditorSave => 60_000,
+            Op::EditorOpen(_) => 1_800_000,
+            Op::EditorSave(_) => 60_000,
             Op::EditorCopy => 3_600_000,
             // Bakes are record writes and deletes; a missing copy is a copy's re-encode.
             Op::EditorUpkeep => 3_600_000,
@@ -1132,8 +1140,11 @@ pub enum WindowKind {
     Settings,
     /// Send feedback, from the popover's header (N60).
     Feedback,
-    /// The editor, from a live Library row's Edit… (N63) — one at a time.
-    Editor,
+    /// An editor, from a live Library row's Edit… (N63) or the page's Edit in shroom (N69):
+    /// one window per video, each under its number (N73). Never in `restore.json`: its
+    /// steps live in the process that quit.
+    #[serde(skip)]
+    Editor(EditorId),
 }
 
 /// An open surface: when it opened (law 4 visibility), when it was last entered (probe
@@ -1262,9 +1273,17 @@ pub struct Fields {
     pub settings: SettingsFields,
     /// The Send feedback window's own fields (N60) — they clear when it closes.
     pub feedback: FeedbackFields,
-    /// The editor's own fields (N63): `Some` exactly while its window is open — they clear
-    /// when it closes.
-    pub editor: Option<EditorFields>,
+    /// Each editor's own fields (N63), under its window's number (N73): there exactly while
+    /// its window is open — they clear when it closes.
+    pub editors: BTreeMap<EditorId, EditorFields>,
+    /// How many editor windows have opened while shroom runs: the next one's number is one
+    /// more (N73), so no window is ever given another's. It outlives the windows, the setup
+    /// window's fields and the space.
+    pub editors_opened: u32,
+    /// A quit or an update asked while editor windows held changes not saved yet (B199): it
+    /// waits while any of them saves, goes on once none does, and is dropped if a save
+    /// doesn't land — that window says why.
+    pub leaving: Option<Leaving>,
     /// The owner page's Edit in shroom (N69): a press waiting, or why it opened nothing.
     pub edit_link: Option<EditLink>,
 }
@@ -1292,20 +1311,12 @@ pub struct EditorFields {
     pub kept_until: Option<Wall>,
     pub media: EditorMedia,
     pub save: EditorSave,
-    /// A quit or an update asked while the edit held changes not saved yet (B199): it waits
-    /// on the save, goes on once the save lands, and is dropped if it doesn't — the window
-    /// says why.
-    pub leaving: Option<Leaving>,
-    /// Edit asked for another video while this one is open — the owner page's Edit in
-    /// shroom or the Library's Edit… (N69): the footer says why it came forward as it is,
-    /// until the next change.
-    pub elsewhere: bool,
     /// ✕ with changes not saved asked first (N71): the question takes the footer's place,
     /// the edit held behind it, until Save, Keep editing or Discard.
     pub closing: bool,
 }
 
-/// What waits on the editor's save (B199).
+/// What waits on the editors' saves (B199).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Leaving {
     /// Quit — the Dock's, the popover's, the right-click menu's, macOS's: once saved, the

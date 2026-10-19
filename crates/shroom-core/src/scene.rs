@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::event::Surface;
 use crate::time::Mono;
-use crate::world::{LibraryScope, Quality, RecId, SecretId, SettingsTab, SourceId, TakeDir};
+use crate::world::{EditorId, LibraryScope, Quality, RecId, SecretId, SettingsTab, SourceId, TakeDir};
 
 /// Every clickable thing. No secrets, no free text.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1519,8 +1519,8 @@ pub struct Scene {
     pub settings: Option<Window<SettingsBody>>,
     /// The Send feedback window (N60).
     pub feedback: Option<Window<FeedbackBody>>,
-    /// The editor (N63).
-    pub editor: Option<Window<EditorBody>>,
+    /// The editor windows (N63), each under its number: one per video (N73).
+    pub editors: std::collections::BTreeMap<EditorId, Window<EditorBody>>,
     pub countdown: Option<Countdown>,
     pub bubble: Option<Bubble>,
     pub preview: Option<Preview>,
@@ -1577,7 +1577,7 @@ impl Scene {
             ids.push(f.id);
             ids.extend(&f.faces);
         }
-        if let Some(e) = &self.editor {
+        for e in self.editors.values() {
             ids.push(e.id);
             ids.extend(&e.faces);
         }
@@ -1598,7 +1598,7 @@ impl Scene {
             Surface::Library => self.library.as_ref().is_some_and(|l| l.offers(action)),
             Surface::Settings => self.settings.as_ref().is_some_and(|s| s.offers(action)),
             Surface::Feedback => self.feedback.as_ref().is_some_and(|f| f.offers(action)),
-            Surface::Editor => self.editor.as_ref().is_some_and(|e| e.offers(action)),
+            Surface::Editor(id) => self.editors.get(&id).is_some_and(|e| e.offers(action)),
             _ => false,
         }
     }
@@ -1610,7 +1610,7 @@ impl Scene {
             Surface::Library => self.library.as_ref().and_then(|o| o.ret.clone()),
             Surface::Settings => self.settings.as_ref().and_then(|o| o.ret.clone()),
             Surface::Feedback => self.feedback.as_ref().and_then(|o| o.ret.clone()),
-            Surface::Editor => self.editor.as_ref().and_then(|o| o.ret.clone()),
+            Surface::Editor(id) => self.editors.get(&id).and_then(|o| o.ret.clone()),
             _ => None,
         }
     }
@@ -1622,7 +1622,7 @@ impl Scene {
             Surface::Library => self.library.as_ref().and_then(|o| o.esc.clone()),
             Surface::Settings => self.settings.as_ref().and_then(|o| o.esc.clone()),
             Surface::Feedback => self.feedback.as_ref().and_then(|o| o.esc.clone()),
-            Surface::Editor => self.editor.as_ref().and_then(|o| o.esc.clone()),
+            Surface::Editor(id) => self.editors.get(&id).and_then(|o| o.esc.clone()),
             Surface::Countdown => self.countdown.as_ref().map(|_| Action::CancelCountdown),
             _ => None,
         }

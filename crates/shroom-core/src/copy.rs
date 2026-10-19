@@ -554,9 +554,6 @@ pub fn save_failed() -> String { "Couldn't save your edit. Check your connection
 /// editor-save-refused (B199): amber, in the save-failed line's place — the space turned the
 /// save down (the video is gone, or another Mac made an edit the video).
 pub fn save_refused() -> String { "This video changed since you opened it, so this edit can't be saved.".into() }
-/// The owner page's Edit in shroom asked for another video while the editor holds this one
-/// (N69): in the footer line's place, until the next change.
-pub fn editing_another() -> String { "You're editing another video — press Done, then Edit again.".into() }
 /// The owner page's Edit in shroom when this Mac can't edit that video (N69): `config`'s
 /// status line, said once — set up for another space, someone else's on a member's Mac, or
 /// gone from the space.
@@ -1441,7 +1438,6 @@ pub fn registry() -> Vec<(&'static str, String)> {
         ("editor", cut_part("12.0")),
         ("editor", put_back("12.0")),
         ("editor", editor_footer()),
-        ("editor", editing_another()),
         ("config", edit_other_space()),
         ("config", edit_not_yours()),
         ("config", edit_gone()),

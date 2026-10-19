@@ -4,7 +4,8 @@
 video it holds when Edit is pressed for another one, and that the line saying so isn't
 enough: with nothing to save it should switch straight to the other video; with changes
 not saved, the line stays (N69) until the close prompt (EditorClosing) is built. A
-proposal, for him to see before anything is built.
+proposal, for him to see before anything is built — superseded the same day by one
+window per video (EditorWindows, make-windows-board.py; N73), which he chose instead.
 The helpers are the editor column's (make-boards.py, make-edit-boards.py and
 make-close-board.py beside this file), so the board reads as the column does."""
 
