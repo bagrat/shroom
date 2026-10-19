@@ -1126,7 +1126,9 @@
     "N59 (the box holds the how-to video where it held the demo)",
     "N7 (the landing's video is no longer a self-recorded take)"
    ],
-   "amended_by": []
+   "amended_by": [
+    "N70"
+   ]
   },
   {
    "id": "N65",
@@ -1233,6 +1235,18 @@
     "owner-page (Edit in shroom)",
     "editor (the line when the page asks for another video)",
     "config (three one-shot status lines)"
+   ],
+   "amended_by": []
+  },
+  {
+   "id": "N70",
+   "title": "The landing's hero: shroom, recorded with shroom, with the walkthrough behind a button",
+   "decision": "**Bagrat approved the board “shroom.am — the voice-cut hero takes the box”, 2026-10-18, and asked for it to go live, 2026-10-19.** (1) **The landing's box holds the hero**: a two-minute take of shroom recorded with shroom itself, his voice cut included (“shroom cut”, cut and put back on screen), music under it and the how-to's end card. It is shroom.am's own file (`/hero.mp4`), loads only as its block nears the screen and plays in place on a click, as N61's video did. Its still is the editor after the take's cuts with his camera bubble and the cut row; the play button reads “Play shroom, recorded with shroom, 2 minutes” to VoiceOver and the length shown is “2 min”. No caption. (2) **“How to set up and use shroom” moves behind a small Setup walkthrough button** under the hero, then a 3 px cut through the box, then Install. The button opens it in a lightbox over the page (the whole screen on a phone); Esc, Close or a click outside closes and stops it, and the hero pauses while it plays. (3) **The hidden /next**, where the page waited, sends anyone who kept the link to `/`. The layout of N59 is otherwise unchanged. Built: DECISIONS B222. Ratified by Bagrat, 2026-10-19.",
+   "status": "ratified",
+   "date": "2026-10-19",
+   "amends": [
+    "N61 (the box's video: the hero in place, the how-to behind a button)",
+    "N7 (the landing's video is again a self-recorded take)"
    ],
    "amended_by": []
   }
@@ -2436,7 +2450,7 @@
    "surface": "web-page",
    "status": "ratified",
    "board": "Landing",
-   "summary": "shroom.am, a static page with one job: take a curious visitor to a pasted command, with no false notes. Two columns on a laptop (N59). Left: the shroom mark and wordmark, large; the headline on one line and its line under it; one thin price bar, 0 to 30 hours to scale, as wide as the headline, $0 for the first tenth and $1.50 a month at its end; then seven terms with green ticks. Right: one box, its top level with the wordmark's baseline and its bottom with the last term's: the how-to video (“How to set up and use shroom”, “4 mins”, shroom.am's own file, playing in place: a still with a play button and the length, the video under it, no caption; N58, N61), and Install under it (Terminal, Homebrew and Coding agent tabs, Terminal first; each command with [ Copy ]; Read it first; the system-requirements line). No header: the page's foot, at the bottom of the first screen under the left column, holds Send feedback, GitHub, Questions and limits, Privacy and Terms, then the visits line. On a phone it stacks, terms before the video and install last: the brand, the headline and its line, the bar (its labels short: “$0 / 3h video”, “$1.50 / 30h”), the terms, the box (the video, then install), the foot, its links wrapping.",
+   "summary": "shroom.am, a static page with one job: take a curious visitor to a pasted command, with no false notes. Two columns on a laptop (N59). Left: the shroom mark and wordmark, large; the headline on one line and its line under it; one thin price bar, 0 to 30 hours to scale, as wide as the headline, $0 for the first tenth and $1.50 a month at its end; then seven terms with green ticks. Right: one box, its top level with the wordmark's baseline and its bottom with the last term's: the hero, shroom recorded with shroom (“2 min”, shroom.am's own file, playing in place: a still of the editor after the take's cuts with a play button and the length, the video under it, no caption; N58, N61, N70), a small Setup walkthrough button under it that opens “How to set up and use shroom” over the page (N70), a cut, and Install under that (Terminal, Homebrew and Coding agent tabs, Terminal first; each command with [ Copy ]; Read it first; the system-requirements line). No header: the page's foot, at the bottom of the first screen under the left column, holds Send feedback, GitHub, Questions and limits, Privacy and Terms, then the visits line. On a phone it stacks, terms before the video and install last: the brand, the headline and its line, the bar (its labels short: “$0 / 3h video”, “$1.50 / 30h”), the terms, the box (the hero, Setup walkthrough, then install), the foot, its links wrapping.",
    "entry": "A visitor arrives at shroom.am through one of three entry arrows. (1) Direct: HN, README or word of mouth; a cold visitor who needs the pitch. (2) The recipient loop: they watched a shroom video and clicked the player page's mark (Region 4; whether the mark exists = U3); a warm visitor who already saw the product work. (3) An agent fetching the BYO-agent skill (Region 6's overlay). Also reached by going back from the source view.",
    "said": [
     {
@@ -2772,11 +2786,18 @@
      "note": "Opens shroom.am/feedback, the feedback page (N53), which the spec draws no state for. The page's foot, first (N55, moved by N59)."
     },
     {
-     "label": "watch the how-to video",
+     "label": "watch the hero",
      "kind": "other",
      "return_default": false,
      "goes_to": "landing",
-     "note": "The how-to video plays in place on the landing: the still fades and the video plays under it; the page never navigates away (N58, N61)."
+     "note": "The hero plays in place on the landing: the still fades and the video plays under it; the page never navigates away (N58, N61, N70)."
+    },
+    {
+     "label": "Setup walkthrough",
+     "kind": "secondary",
+     "return_default": false,
+     "goes_to": "landing",
+     "note": "Opens “How to set up and use shroom” over the page and plays it (the hero pauses); Esc, Close or a click outside it closes it. The page never navigates away (N70)."
     }
    ],
    "cites": [
@@ -2790,7 +2811,8 @@
     "N55",
     "N58",
     "N59",
-    "N61"
+    "N61",
+    "N70"
    ],
    "was": {
     "fixture": "r1.json",
