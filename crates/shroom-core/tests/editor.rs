@@ -1214,19 +1214,275 @@ fn closing_while_the_video_comes_stops_it() {
     assert_eq!(r.arm.edge, Some(("editor", "library")));
 }
 
-// ── one at a time ──
+// ── one window per video (N73, B225) ──
 
-/// Edit… while the editor is open brings it forward, on the video it holds, every change in it.
+/// The second window a run opens.
+const WIN2: EditorId = EditorId(2);
+const OTHER_TITLE: &str = "Release notes walkthrough";
+
+fn other() -> RecId {
+    RecId(OTHER.into())
+}
+
+/// An editor window's own button, key or step, by its number.
+trait Windows {
+    fn ed_in(&mut self, id: EditorId, action: Action) -> &mut Self;
+    fn key_in(&mut self, id: EditorId, key: Key) -> &mut Self;
+    fn op_in(&mut self, id: EditorId, op: EditOp) -> &mut Self;
+}
+
+impl Windows for Run {
+    fn ed_in(&mut self, id: EditorId, action: Action) -> &mut Self {
+        self.send(Event::Act { surface: Surface::Editor(id), action, rev: 0 })
+    }
+    fn key_in(&mut self, id: EditorId, key: Key) -> &mut Self {
+        self.send(Event::Key { surface: Surface::Editor(id), key })
+    }
+    fn op_in(&mut self, id: EditorId, op: EditOp) -> &mut Self {
+        self.send(Event::Edit(id, EditStep::Op(op)))
+    }
+}
+
+fn body_of(r: &Run, id: EditorId) -> EditorBody {
+    r.scene.editors.get(&id).expect("that editor window").body.clone()
+}
+
+fn face_of(r: &Run, id: EditorId) -> &'static str {
+    r.scene.editors.get(&id).map_or("closed", |e| e.id)
+}
+
+fn windows(r: &Run) -> Vec<EditorId> {
+    r.scene.editors.keys().copied().collect()
+}
+
+fn saved_by(r: &Run) -> Vec<EditorId> {
+    r.effects.iter().filter_map(|e| if let Effect::Editor(EditCmd::Save { id, .. }) = e { Some(*id) } else { None }).collect()
+}
+
+/// The first video's window, a cut in it not saved yet (window 1); then Edit… on the second
+/// video: its own window, its record read and its video here (window 2), in front.
+fn two_windows() -> Run {
+    let mut r = dirty();
+    r.lib(Action::EditRow(other()));
+    r.news(EditorNews::Opened { rec: other(), saved: None, markers: vec![], duration_sec: Some(95.0), keep_until: None });
+    r.news(EditorNews::Ready { rec: other(), duration: 95.0 });
+    r
+}
+
+/// Edit… on a video that isn't open, while another's window is: a window of its own opens
+/// for it, in front, as a first window opens. The first stays as it was, its changes still
+/// there, not saved and not lost — and nothing says the other is open.
 #[test]
-fn edit_while_open_brings_the_editor_forward_on_its_video() {
-    let mut r = ready_editor();
-    r.op(EditOp::Cut { start: 10.0, end: 20.0 });
-    r.lib(Action::EditRow(RecId(OTHER.into())));
+fn edit_on_another_video_opens_a_window_of_its_own() {
+    let mut r = dirty();
+    let held = list(&r);
+    r.lib(Action::EditRow(other()));
+    assert_eq!(r.effects, vec![Effect::Editor(EditCmd::Open { id: WIN2, rec: other() }), Effect::Shell(ShellCmd::OpenEditor(WIN2))], "its own window, its video asked for");
+    assert_eq!((r.arm.name, r.arm.edge), ("open-editor", Some(("library", "editor"))));
+    assert_eq!(windows(&r), vec![WIN, WIN2]);
+    assert_eq!((body_of(&r, WIN2).title, body_of(&r, WIN2).rec), (format!("Edit — {OTHER_TITLE}"), OTHER.to_string()));
+    assert!(r.scene.editors[&WIN2].activates, "asked for: it takes the keyboard");
+    assert_eq!(r.w.front_window(), Some(WindowKind::Editor(WIN2)), "in front");
+    assert_eq!((face_of(&r, WIN), body_of(&r, WIN).list), ("editor", Some(held)), "the first as it was, its changes there");
+    assert_eq!((body_of(&r, WIN).footer.as_str(), body_of(&r, WIN).footer_tone), (FOOTER, LineTone::Plain), "no line about the other");
+    assert!(!r.has(|e| matches!(e, Effect::Editor(EditCmd::Save { .. }))), "nothing saved");
+
+    // The second goes on as a first does: from the space when this Mac hasn't got it.
+    r.news(EditorNews::Getting { rec: other(), pct: 30 });
+    assert_eq!((face_of(&r, WIN), face_of(&r, WIN2)), ("editor", "editor-getting"));
+    r.news(EditorNews::Opened { rec: other(), saved: None, markers: vec![], duration_sec: Some(95.0), keep_until: None });
+    r.news(EditorNews::Ready { rec: other(), duration: 95.0 });
+    assert_eq!((face_of(&r, WIN2), body_of(&r, WIN2).source_duration), ("editor", 95.0));
+    assert_eq!(body_of(&r, WIN).source_duration, 272.4, "the other video's news is its window's alone");
+
+    // From the page too: a third video's own window, and no window's number is another's.
+    let mut w = r.w.clone();
+    let mut rows = w.library.get().map(|l| l.as_ref().clone()).unwrap_or_default();
+    rows.push(row("ThIrDvIdEoXyZ123", "Quarterly numbers", true, "m1"));
+    w.library = Fact::known(Arc::new(rows), w.now);
+    let mut r = Run::new(w);
+    pressed(&mut r, HOST, "ThIrDvIdEoXyZ123");
+    assert_eq!((r.arm.name, r.arm.edge), ("edit-link-open", Some(("owner-page", "editor"))));
+    assert_eq!(windows(&r), vec![WIN, WIN2, EditorId(3)]);
+    r.send(Event::WindowClosed(WindowKind::Editor(EditorId(3))));
+    r.lib(Action::EditRow(RecId("ThIrDvIdEoXyZ123".into())));
+    assert_eq!(windows(&r), vec![WIN, WIN2, EditorId(4)], "opened again: a new number");
+}
+
+/// Edit on a video whose window is open, from the Library or the page: that window comes
+/// forward as it is — mid-save too — and nothing else moves.
+#[test]
+fn edit_on_a_video_whose_window_is_open_brings_that_window_forward() {
+    let mut r = two_windows();
+    let (one, two) = (body_of(&r, WIN), body_of(&r, WIN2));
+    r.lib(Action::EditRow(rec()));
+    assert_eq!(r.effects, vec![Effect::Shell(ShellCmd::OpenEditor(WIN))], "forward, nothing asked again");
+    assert_eq!(r.arm.name, "editor-forward");
+    assert_eq!(r.w.front_window(), Some(WindowKind::Editor(WIN)));
+    assert_eq!((body_of(&r, WIN), body_of(&r, WIN2)), (one, two), "nothing else moves");
+
+    pressed(&mut r, HOST, OTHER);
+    assert_eq!(r.effects, vec![Effect::Shell(ShellCmd::OpenEditor(WIN2))]);
+    assert_eq!((r.arm.name, r.arm.edge), ("edit-link-forward", Some(("owner-page", "editor"))));
+    assert_eq!(r.w.front_window(), Some(WindowKind::Editor(WIN2)));
+    assert_eq!(windows(&r), vec![WIN, WIN2], "no third");
+
+    r.ed_in(WIN, Action::EditorDone);
+    r.lib(Action::EditRow(rec()));
     assert_eq!(r.effects, vec![Effect::Shell(ShellCmd::OpenEditor(WIN))]);
-    let e = &r.w.session.fields.editors[&WIN];
-    assert_eq!(e.rec, rec());
-    assert_eq!(list(&r).cuts.len(), 1, "the change is still there");
-    assert!(r.scene.editors[&WIN].activates);
+    assert_eq!((face_of(&r, WIN), body_of(&r, WIN).footer.as_str()), ("editor-saving", SAVING), "mid-save, as it is");
+}
+
+/// Each window is its own: its steps, its Done, its ✕'s question and its keys. Done in one
+/// never touches another.
+#[test]
+fn each_window_is_its_own() {
+    let mut r = two_windows();
+    r.op_in(WIN2, EditOp::Cut { start: 10.0, end: 20.0 });
+    assert_eq!(body_of(&r, WIN2).list.map(|l| l.cuts.len()), Some(1));
+    assert_eq!(body_of(&r, WIN).list.map(|l| l.cuts.len()), Some(3), "the first as it was");
+
+    r.ed_in(WIN, Action::EditorDone);
+    assert_eq!(r.effects, vec![Effect::Editor(EditCmd::Save { id: WIN, rec: rec(), saved: Saved::new(edited().checked(), 4) })], "the first saves alone");
+    assert_eq!((face_of(&r, WIN), face_of(&r, WIN2)), ("editor-saving", "editor"));
+    assert!(body_of(&r, WIN2).editable, "the other still takes steps");
+
+    // ✕ on the second asks there, about its own changes; the first saves on.
+    r.send(Event::WindowClosed(WindowKind::Editor(WIN2)));
+    assert_eq!((face_of(&r, WIN), face_of(&r, WIN2)), ("editor-saving", "editor-closing"));
+    r.key_in(WIN2, Key::Esc);
+    assert_eq!(face_of(&r, WIN2), "editor", "its Esc is its own Keep editing");
+    r.send(Event::WindowClosed(WindowKind::Editor(WIN2)));
+    r.key_in(WIN2, Key::Return);
+    assert_eq!(saved_by(&r), vec![WIN2], "its Return is its own Save");
+
+    // Each save lands in its own window.
+    r.news(EditorNews::Saved { rec: other(), rev: 1 });
+    assert_eq!((face_of(&r, WIN), face_of(&r, WIN2)), ("editor-saving", "editor-making"));
+    r.news(EditorNews::Saved { rec: rec(), rev: 4 });
+    assert_eq!((face_of(&r, WIN), face_of(&r, WIN2)), ("editor-making", "editor-making"));
+
+    // A failed open is its window's alone.
+    let mut r = dirty();
+    r.lib(Action::EditRow(other()));
+    r.send(Event::Failed { op: Op::EditorOpen(WIN2), class: FailClass::Transport });
+    assert_eq!((face_of(&r, WIN), face_of(&r, WIN2)), ("editor", "editor-cant-get"));
+    r.ed_in(WIN2, Action::EditorClose);
+    assert_eq!(windows(&r), vec![WIN]);
+    assert!(r.has(|e| *e == Effect::Editor(EditCmd::Cancel { id: WIN2, rec: other() })));
+}
+
+/// The final videos are still made one at a time: a second Done waits its turn, its window
+/// reading “Making the final video… 0%” until then; then each asks its own question.
+#[test]
+fn the_final_videos_are_made_one_at_a_time_across_windows() {
+    let mut r = two_windows();
+    r.op_in(WIN2, EditOp::Cut { start: 10.0, end: 20.0 });
+    r.ed_in(WIN, Action::EditorDone);
+    r.news(EditorNews::Saved { rec: rec(), rev: 4 });
+    assert!(r.has(|e| *e == Effect::Editor(EditCmd::Copy { rec: rec(), rev: 4 })), "the first's, at once: {:?}", r.effects);
+    r.ed_in(WIN2, Action::EditorDone);
+    r.news(EditorNews::Saved { rec: other(), rev: 1 });
+    assert_eq!(face_of(&r, WIN2), "editor-making");
+    assert!(!r.has(|e| matches!(e, Effect::Editor(EditCmd::Copy { .. }))), "one at a time: the second waits its turn");
+    r.news(EditorNews::Making { rec: rec(), pct: 50 });
+    assert_eq!(body_of(&r, WIN).after, Some(EditorAfterView::Making { pct: 50, line: "Making the final video… 50%".into() }));
+    assert_eq!(body_of(&r, WIN2).after, Some(EditorAfterView::Making { pct: 0, line: "Making the final video… 0%".into() }), "the first's share isn't the second's");
+    r.news(EditorNews::CopyDone { rec: rec(), rev: 4, named: true });
+    assert_eq!(face_of(&r, WIN), "editor-keep-original");
+    assert_eq!(r.effects, vec![Effect::Editor(EditCmd::Copy { rec: other(), rev: 1 })], "then the second's");
+    r.news(EditorNews::Making { rec: other(), pct: 30 });
+    assert_eq!(body_of(&r, WIN2).after, Some(EditorAfterView::Making { pct: 30, line: "Making the final video… 30%".into() }));
+    r.news(EditorNews::CopyDone { rec: other(), rev: 1, named: true });
+    assert_eq!((face_of(&r, WIN), face_of(&r, WIN2)), ("editor-keep-original", "editor-keep-original"));
+    // Each question is its own window's.
+    r.ed_in(WIN2, Action::DeleteOriginal);
+    assert_eq!(r.effects, vec![Effect::Editor(EditCmd::Bake { rec: other() })]);
+    assert_eq!((face_of(&r, WIN), face_of(&r, WIN2)), ("editor-keep-original", "closed"));
+    r.key_in(WIN, Key::Esc);
+    assert!(r.scene.editors.is_empty() && r.effects.is_empty(), "Esc is Keep for 2 days, there: {:?}", r.effects);
+}
+
+/// Quit and Update save every window's changes first, without asking, and bring those
+/// windows forward; shroom quits once every save has landed. One that doesn't land holds
+/// it, its window saying why; a window with nothing to save holds nothing.
+#[test]
+fn quit_saves_every_window_first_and_goes_on_once_all_have_landed() {
+    let mut r = two_windows();
+    r.op_in(WIN2, EditOp::Cut { start: 10.0, end: 20.0 });
+    r.send(Event::QuitRequested(QuitVia::Dock));
+    assert_eq!(r.arm.name, "quit-waits-on-save");
+    assert_eq!(saved_by(&r), vec![WIN, WIN2], "every window's: {:?}", r.effects);
+    assert!(r.has(|e| *e == Effect::Shell(ShellCmd::OpenEditor(WIN))) && r.has(|e| *e == Effect::Shell(ShellCmd::OpenEditor(WIN2))), "both forward");
+    assert!(!quits(&r));
+    assert_eq!(r.w.session.fields.leaving, Some(Leaving::Quit));
+    r.news(EditorNews::Saved { rec: rec(), rev: 4 });
+    assert!(!quits(&r), "the other's save is still on its way");
+    r.news(EditorNews::Saved { rec: other(), rev: 1 });
+    assert!(quits(&r), "every save landed: shroom quits: {:?}", r.effects);
+
+    let mut r = with_update(two_windows().w);
+    r.op_in(WIN2, EditOp::Cut { start: 10.0, end: 20.0 });
+    r.send(update_in_settings());
+    assert_eq!(r.arm.name, "update-waits-on-save");
+    assert_eq!(saved_by(&r), vec![WIN, WIN2]);
+    r.send(Event::Failed { op: Op::EditorSave(WIN2), class: FailClass::Transport });
+    assert_eq!((face_of(&r, WIN2), body_of(&r, WIN2).footer.as_str()), ("editor-save-failed", SAVE_FAILED), "that window says why");
+    assert_eq!(r.w.session.fields.leaving, None);
+    r.news(EditorNews::Saved { rec: rec(), rev: 4 });
+    assert!(!applies(&r) && !quits(&r), "the update was dropped: {:?}", r.effects);
+
+    let mut r = two_windows();
+    r.send(Event::QuitRequested(QuitVia::Dock));
+    assert_eq!(saved_by(&r), vec![WIN], "only the window with changes saves");
+    assert!(!r.has(|e| *e == Effect::Shell(ShellCmd::OpenEditor(WIN2))), "the other stays where it is");
+    r.news(EditorNews::Saved { rec: rec(), rev: 4 });
+    assert!(quits(&r), "{:?}", r.effects);
+}
+
+/// Deleting a video closes its window, and no other; leaving the space closes them all.
+#[test]
+fn deleting_a_video_closes_its_window_and_no_other() {
+    let mut r = two_windows();
+    r.lib(Action::DeleteRow(other()));
+    r.lib(Action::ConfirmDelete);
+    assert!(r.has(|e| *e == Effect::Editor(EditCmd::Cancel { id: WIN2, rec: other() })), "{:?}", r.effects);
+    assert_eq!(windows(&r), vec![WIN]);
+    assert_eq!((face_of(&r, WIN), body_of(&r, WIN).list.map(|l| l.cuts.len())), ("editor", Some(3)), "the first's changes still there");
+
+    let mut r = two_windows();
+    let mut w = r.w.clone();
+    w.prefs.settings_tab = Some(SettingsTab::Space);
+    w.session.windows.insert(WindowKind::Settings, Door::asked(Mono(r.t)));
+    r = Run::new(w);
+    r.send(Event::Act { surface: Surface::Settings, action: Action::Disconnect, rev: 0 });
+    r.send(Event::Act { surface: Surface::Settings, action: Action::ConfirmDisconnect, rev: 0 });
+    assert!(r.scene.editors.is_empty() && r.w.session.fields.editors.is_empty(), "every window goes with the space");
+    assert!(!r.w.session.windows.keys().any(|k| matches!(k, WindowKind::Editor(_))));
+}
+
+/// No edit becomes a video behind a window: the upkeep waits until every editor window has
+/// closed, not only the first.
+#[test]
+fn the_upkeep_waits_until_every_window_has_closed() {
+    let mut w = booted();
+    w.library_ops.upkept = Some(Mono(0));
+    w.session.windows.insert(WindowKind::Library, Door::asked(Mono(900)));
+    w.library = Fact::known(Arc::new(vec![row(REC, TITLE, true, "m1"), row(OTHER, OTHER_TITLE, true, "m1")]), Mono(950));
+    w.library_ops.refreshed = Some(Mono(950));
+    let mut r = Run::new(w);
+    for id in [rec(), other()] {
+        r.lib(Action::EditRow(id.clone()));
+        r.news(EditorNews::Opened { rec: id.clone(), saved: None, markers: vec![], duration_sec: Some(95.0), keep_until: None });
+        r.news(EditorNews::Ready { rec: id, duration: 95.0 });
+    }
+    r.tick_to(6 * HOUR as u64 + 1_000);
+    assert!(!upkeeps(&r), "never while an editor window is open");
+    r.ed_in(WIN, Action::EditorDone);
+    assert_eq!(windows(&r), vec![WIN2]);
+    assert!(!upkeeps(&r), "one is still open");
+    r.ed_in(WIN2, Action::EditorDone);
+    assert!(upkeeps(&r), "every window closed: {:?}", r.effects);
 }
 
 /// News about another video, or for an editor that's gone, is stale.
@@ -2077,7 +2333,6 @@ fn the_slice_is_the_webviews_json() {
 // ── Edit in shroom: the owner page's scissors (N69, B221) ──
 
 const HOST: &str = "v.myshroom.workers.dev";
-const ELSEWHERE: &str = "You're editing another video — press Done, then Edit again.";
 const OTHER_SPACE: &str = "This Mac isn't set up for that video's space.";
 const NOT_YOURS: &str = "Only whoever recorded this video, or the space's owner, can edit it.";
 const GONE: &str = "That video isn't in your space anymore.";
@@ -2154,10 +2409,11 @@ fn the_page_reaches_every_video_an_owners_mac_may_edit() {
     assert!(opens(&r), "a member's own");
 }
 
-/// The editor already open: it comes forward as it is, one at a time — on the same video
-/// with nothing to say, on another with the footer saying why, until the next change.
+/// The page's press on a video whose window is open brings that window forward as it is,
+/// with nothing to say; on another video, its own window opens beside it (N73) — no window
+/// is told it's on the wrong video.
 #[test]
-fn the_page_brings_the_open_editor_forward_and_says_when_its_on_another_video() {
+fn the_page_brings_its_videos_window_forward_or_opens_one_beside_it() {
     let mut r = ready_editor();
     pressed(&mut r, HOST, REC);
     assert_eq!(r.effects, vec![Effect::Shell(ShellCmd::OpenEditor(WIN))], "forward, nothing asked again");
@@ -2165,47 +2421,35 @@ fn the_page_brings_the_open_editor_forward_and_says_when_its_on_another_video() 
     assert_eq!((body(&r).footer.as_str(), body(&r).footer_tone), (FOOTER, LineTone::Plain));
 
     pressed(&mut r, HOST, OTHER);
-    assert_eq!(r.effects, vec![Effect::Shell(ShellCmd::OpenEditor(WIN))]);
-    assert_eq!(body(&r).rec, REC, "it doesn't swap videos");
-    assert_eq!((body(&r).footer.as_str(), body(&r).footer_tone), (ELSEWHERE, LineTone::Amber));
-    assert!(body(&r).editable, "its changes are as they were, still to step");
+    assert_eq!(r.effects, vec![Effect::Editor(EditCmd::Open { id: WIN2, rec: other() }), Effect::Shell(ShellCmd::OpenEditor(WIN2))]);
+    assert_eq!((r.arm.name, r.arm.edge), ("edit-link-open", Some(("owner-page", "editor"))));
+    assert_eq!((body_of(&r, WIN).rec.as_str(), body_of(&r, WIN2).rec.as_str()), (REC, OTHER), "each on its own video");
+    assert_eq!((body_of(&r, WIN).footer.as_str(), body_of(&r, WIN).footer_tone), (FOOTER, LineTone::Plain), "nothing said in the first");
+    assert!(body_of(&r, WIN).editable, "its changes as they were, still to step");
 
-    // The next change, and the line goes.
-    r.op(EditOp::Cut { start: 20.0, end: 30.0 });
-    assert_eq!(body(&r).footer, FOOTER);
-
-    // Mid-save, or once it's making the final video, it only comes forward: those faces say
-    // what to press.
+    // Mid-save, the first only comes forward, its footer saying what it's doing.
     let mut r = dirty();
     r.ed(Action::EditorDone);
-    pressed(&mut r, HOST, OTHER);
+    pressed(&mut r, HOST, REC);
     assert_eq!(r.effects, vec![Effect::Shell(ShellCmd::OpenEditor(WIN))]);
-    assert_eq!(body(&r).footer, SAVING);
+    assert_eq!(body_of(&r, WIN).footer, SAVING);
 }
 
-/// Edit… in the Library for another video, the editor open: the same as the page's Edit. It
-/// comes forward as it is and says why, until the next change (2026-10-19: this route said
-/// nothing, and the editor looked stuck on the video it held).
+/// Edit… in the Library: the same as the page's press — its video's window forward as it
+/// is, or another video's own window beside it, mid-save too (N73).
 #[test]
-fn edit_in_the_library_for_another_video_says_why_too() {
+fn edit_in_the_library_opens_another_videos_window_beside_this_one() {
     let mut r = ready_editor();
-    r.lib(Action::EditRow(RecId(REC.into())));
+    r.lib(Action::EditRow(rec()));
     assert_eq!(r.effects, vec![Effect::Shell(ShellCmd::OpenEditor(WIN))], "its own video: forward, nothing asked again");
-    assert_eq!((body(&r).footer.as_str(), body(&r).footer_tone), (FOOTER, LineTone::Plain));
+    r.lib(Action::EditRow(other()));
+    assert_eq!(windows(&r), vec![WIN, WIN2]);
+    assert_eq!((body_of(&r, WIN).footer.as_str(), body_of(&r, WIN).footer_tone), (FOOTER, LineTone::Plain));
 
-    r.lib(Action::EditRow(RecId(OTHER.into())));
-    assert_eq!(r.effects, vec![Effect::Shell(ShellCmd::OpenEditor(WIN))]);
-    assert_eq!(body(&r).rec, REC, "it doesn't swap videos");
-    assert_eq!((body(&r).footer.as_str(), body(&r).footer_tone), (ELSEWHERE, LineTone::Amber));
-
-    r.op(EditOp::Cut { start: 20.0, end: 30.0 });
-    assert_eq!(body(&r).footer, FOOTER, "the next change puts it away");
-
-    // Mid-save it only comes forward: that face says what's happening.
     let mut r = dirty();
     r.ed(Action::EditorDone);
-    r.lib(Action::EditRow(RecId(OTHER.into())));
-    assert_eq!(body(&r).footer, SAVING);
+    r.lib(Action::EditRow(other()));
+    assert_eq!((face_of(&r, WIN), face_of(&r, WIN2)), ("editor-saving", "editor"));
 }
 
 /// Law 4: while a take is open nothing new shows. The press waits, and once the take is

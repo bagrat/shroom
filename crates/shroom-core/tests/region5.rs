@@ -623,13 +623,6 @@ fn rows() -> Vec<(&'static str, World)> {
         w.session.fields.editors.get_mut(&EDITOR).unwrap().kept_until = Some(Wall(w.wall.0 + 30 * 3_600_000));
         w
     }));
-    rows.push(("editor", {
-        // The owner page's Edit in shroom asked for another video while this one is open
-        // (N69): it came forward as it is, its footer saying why.
-        let mut w = editor_open(live(), EditorSave::Idle, true);
-        w.session.fields.editors.get_mut(&EDITOR).unwrap().elsewhere = true;
-        w
-    }));
     // ── after the save (B197) ──
     rows.push(("editor-making", {
         let mut w = editor_open(live(), EditorSave::Making { pct: 40 }, false);
