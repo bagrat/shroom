@@ -889,7 +889,8 @@ counts leave out what our own runs tag `?ref=ci` or `?ref=test` (`dev/stats/coll
 2. A running shroom with an open take (`recording()`: live `pid`, `take_open` true in the
    flavor's `status.json`) → refuse, nothing touched.
 3. `releases/latest/download/manifest.txt` (`version`, `macos`, `<arch> <file> <sha256>`) →
-   download → SHA-256.
+   download, through `shroom.am/download/v<version>/<file>?via=install` (counted, D:B228;
+   `SHROOM_REF` tags our own runs) → SHA-256.
 4. `ditto` extract; `codesign --verify --deep --strict`; from the public releases also
    `identifier "am.shroom" and certificate leaf = H"<RELEASE_LEAF>"` (= `tools/release-identity.sha1`).
 5. Quit via AppleScript (waited for), swap into `~/Applications/shroom.app` (old copy back on

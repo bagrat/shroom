@@ -158,8 +158,9 @@ settings (enabling a product, a token's powers, DNS) is still Bagrat's to make o
 
 **Our own fetches of shroom.am carry a tag** (DECISIONS B228), so the stats leave them out:
 `?ref=test` on anything a session asks of it by hand or in a live drive
-(`curl -fsSL 'https://shroom.am/install?ref=test' | …`, `https://shroom.am/?ref=test`).
-GitHub Actions jobs use `ci` instead. An untagged fetch counts as a person's.
+(`curl -fsSL 'https://shroom.am/install?ref=test' | …`, `https://shroom.am/?ref=test`), and
+`SHROOM_REF=test` in the environment of an installer run against the public releases (its
+download is counted on the way). GitHub Actions jobs use `ci` instead. An untagged fetch counts as a person's.
 
 - Never ask Bagrat to paste a token, key or secret into the chat.
 - **Never print the environment** (`env`, `printenv`, `set`, `export -p`, a dump of
