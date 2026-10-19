@@ -1063,7 +1063,8 @@ impl Runner {
         let (tmp, ask) = (self.dir.join(format!("ask-{n}.tmp")), self.dir.join(format!("ask-{n}.json")));
         std::fs::write(&tmp, what.to_string()).and_then(|()| std::fs::rename(&tmp, &ask)).map_err(|e| format!("ask {n}: {e}"))?;
         let done = self.dir.join(format!("done-{n}"));
-        let said = poll(60, || std::fs::read_to_string(&done).ok()).ok_or(format!("the runner never answered {what}"))?;
+        // An empty answer is one still being written: it's read again.
+        let said = poll(60, || std::fs::read_to_string(&done).ok().filter(|s| !s.trim().is_empty())).ok_or(format!("the runner never answered {what}"))?;
         d.step(&format!("the runner: {what} — {}", said.trim()));
         if said.trim() == "ok" { Ok(()) } else { Err(format!("the runner couldn't {what}: {said}")) }
     }

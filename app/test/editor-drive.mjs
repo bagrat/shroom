@@ -19,7 +19,7 @@
 // that passes leaves nothing in the temp folder; one that fails keeps its throwaway home —
 // the run log is in it — and says where.
 import { execFileSync, spawn, spawnSync } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
@@ -111,7 +111,9 @@ const asks = setInterval(async () => {
   } catch (e) {
     said = String(e.message ?? e).slice(0, 300);
   }
-  writeFileSync(join(dir, `done-${next}`), said);
+  // Written whole, then put in place: the drive reads it the moment it's there.
+  writeFileSync(join(dir, `done-${next}.tmp`), said);
+  renameSync(join(dir, `done-${next}.tmp`), join(dir, `done-${next}`));
   next += 1;
   busy = false;
 }, 150);
