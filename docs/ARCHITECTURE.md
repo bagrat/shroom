@@ -74,7 +74,7 @@ at `bf84b67079a8` (D:B2). Svelte 5, TypeScript 5.9.
 | `tests/e2e-live` | L2 on the dedicated test account | live |
 | `app/src-tauri` | `main.rs`, `commands.rs` (IPC), `runtime/` (runner, lanes, presenter, overlays, observers, seam), `harness.rs`/`drives.rs` (only with `dev-harness` in a `.dev` build — D:B5, B55, B62) | drives, `tests/l5/` |
 | `app/src-tauri/src/runtime/editor.rs` | the editor's lane (N63, D:B195, B197): the record read over a rename's door, the video found in a take or fetched to `edits/<rec>/`, its peaks, the save (`meta.edits`), the final video on a lane of its own with its progress, the bake, and the upkeep (§3.3) | `editor::tests`; `--drive editor` |
-| `app/src-tauri/src/runtime/media.rs` | `shroom-media:`: the one video the editor's lane registered, by byte ranges, and its peaks — to the editor's webview alone | `media::tests` |
+| `app/src-tauri/src/runtime/media.rs` | `shroom-media:`: each editor window's video, as the editor's lane registered it, by byte ranges, and its peaks — to that window's webview alone (N73) | `media::tests` |
 | `app/src` | webviews (`Popover`, `Onboarding`, `Library`, `Settings`, `Feedback`, `Editor` with `editor/`, `members/`, `join/`, countdown), `lib/ipc.ts`, `lib/typed.ts`, `lib/theme.css` (D:B122) | galleries; `editor/*.test.ts` (vitest) |
 | `worker/` | `src/worker.js` (one dependency-free module), `vendor/hls.min.js`, `page-version.json`, `dev/serve.mjs` | vitest + workerd contract (D:B63) |
 | `installer/`, `site/` | `install.sh` (D:B29, B44; links the `shroom` command, D:B217); the Homebrew cask and its renderer, `homebrew/` (D:B175); shroom.am Worker, with `/agent` for a coding agent (D:B132), `/cli` its guide to the command (D:B219), and `/report` with its `/feedback` form (D:B180) | their `test/` |
@@ -224,10 +224,12 @@ Keep-awake (`os.rs`) is held while `settle::can_drain` (D:B34).
 
 **The editor's lane** (`runtime/editor.rs`, N63, D:B195, B197). Nothing it runs waits on
 anything else it runs: Open, Save and Copy answer while a bake or an upkeep pass is out.
-- *Open* reads the record, finds the video (a take on this Mac when the record still plays
-  its `video.mp4`; else `edits/<rec>/source.mp4` when `source.key` names the record's file;
-  else fetched) and its peaks, and posts `Opened` with `keep_until` (Wall ms) only while the
-  edit's copy is current. Esc or ✕ mid-fetch stops it.
+- *Open* (each editor window's on a thread of its own, N73) reads the record, finds the video
+  (a take on this Mac when the record still plays its `video.mp4`; else
+  `edits/<rec>/source.mp4` when `source.key` names the record's file; else fetched) and its
+  peaks, registers them to its window, and posts `Opened` with `keep_until` (Wall ms) only
+  while the edit's copy is current. Esc or ✕ mid-fetch stops it. Its failure, and its
+  save's, are `Failed { EditorOpen(id) }` and `Failed { EditorSave(id) }`: the window's own.
 - *Save* is one record write (`save_edits_over`). It writes nothing and fails as `Refused`
   (logged) when the video moved on since the open — `bakedFrom` grew or `media.mp4` changed:
   it was baked while the window was open. That is judged inside the write, on the record it
@@ -245,7 +247,7 @@ anything else it runs: Open, Save and Copy answer while a bake or an upkeep pass
   answers nothing (the window has closed), logs what happened, and on success drops
   `edits/<rec>/`. A bake that didn't land is the upkeep's after the two days.
 - *Upkeep* (`settle::due_edit_upkeep`: at launch, then every 6 h awake, not over a take, not
-  offline, the editor closed and its lane idle). It reads the space's records now, never
+  offline, every editor window closed and its lane idle). It reads the space's records now, never
   only `library.json` (which hears of an edit only when the Library refreshes) and without
   writing it (`library::Doorway::listed`). The token Mac lists `meta/` over its pair, reads
   what changed since the cache, then each record that holds an edit. Any other Mac pages the
@@ -256,7 +258,7 @@ anything else it runs: Open, Save and Copy answer while a bake or an upkeep pass
   (§3.4) and answers `UpkeepDone { baked, copies }` or `Failed { EditorUpkeep }`. Transport
   ends the pass; a bake or copy that fails is left for the next. The token Mac's cleanup
   sweep also bakes every record in the space that's due, and finishes a bake cut off after
-  its write (`shroom_upload::library::cleanup_sparing`). Neither bakes the video the editor
+  its write (`shroom_upload::library::cleanup_sparing`). Neither bakes a video an editor
   window is open on (the Scene's, asked before each bake); a later pass does.
 
 **Trace.** `logs/run.log` (600, rolled at 5 MB) logs each event, arm and effect kinds.
@@ -333,7 +335,7 @@ stay. A switch keeps the old space's files until the new join's 200 (D:B42, B54 
   edge (`presenter::label_frame`). It is never made late (`overlay::ensure`): wanted only
   once capture runs, a panel made then could miss that take's list of what it leaves out.
   Made at start or not at all; without it, the tray shows the take.
-- Windows: onboarding 600×680 (B189), Library 680×560 (resizable), Settings 600×620, Send feedback 520×600, the editor 1100×720 (resizable down to 900×640; a resizable window opens no bigger than its screen) — each its frame, macOS's 32 pt title bar inside it. The editor's title is its slice's, “Edit — <title>”; its ✕ is posted like any window's, and the core may keep it open to save.
+- Windows: onboarding 600×680 (B189), Library 680×560 (resizable), Settings 600×620, Send feedback 520×600, the editor 1100×720 (resizable down to 900×640; a resizable window opens no bigger than its screen) — each its frame, macOS's 32 pt title bar inside it. One window each, but the editor's: one per video (N73, D:B225), each labelled `editor-<its number>` (`presenter::label`, the core's `EditorId`), the capability listing them as `editor-*`. A new one opens down and to the right of the newest editor window open (AppKit's cascade), and one that closes is destroyed, not hidden. An editor's title is its slice's, “Edit — <title>”; its ✕ is posted like any window's, and the core may keep it open to save.
 - Camera panels (`runtime/camera.rs`): bubble and Camera-only preview (§4.4).
 - Every window and overlay joins `Runtime.excluded` when made and is left out of capture;
   the bubble never is. Overlays and camera panels don't hide on ⌘H (D:B112).
@@ -347,18 +349,19 @@ composes no sentences and decides nothing.
 
 | Command | Contract |
 |---|---|
-| `act {surface, action, rev}` | dropped unless offered; Start and popover Return post fresh `Os(Grants)` first (`commands::arms`) |
+| `act {surface, action, rev}` | dropped unless offered; Start and popover Return post fresh `Os(Grants)` first (`commands::arms`). An editor window names its surface `editor`; which one is its webview's label (`commands::surface`), never what the webview says |
 | `key {surface, key}` | Return/Esc via `ret`/`esc` |
 | `field {field, value}` | `name`, `library-search`, `title`, `invite-name`; returns nothing; cut to 256 chars; the core guards (name charset/63, composer 80). Scene fields carry edit counts; `lib/typed.ts` takes the Scene's value only once its count catches up |
 | `paste_secret {field, text}` | the one path for secret text (`token`, `invite`): classified, stashed (`runtime/stash.rs`), `SecretPasted {id, shape}` posted; the field shows fixed dots while held (D:B104) |
-| `scene_get`, `dismiss`, `popover_keyed`, `popover_fit` | snapshot slice; `PopoverDismissed`; first key makes an unasked popover asked; panel height |
-| `edit {step}` | the editor (N63): `{"op": "undo" \| "redo"}`, or a `shroom_edit::Op` (`trim`, `cut`, `put-back`, `apply`, `revert`), seconds on the recording; posts `Edit(EditStep)`, which the core takes or refuses. A step that doesn't read is dropped |
+| `scene_get`, `dismiss`, `popover_keyed`, `popover_fit` | snapshot slice (an editor window's own, by its label); `PopoverDismissed`; first key makes an unasked popover asked; panel height |
+| `edit {step}` | an editor window (N63): `{"op": "undo" \| "redo"}`, or a `shroom_edit::Op` (`trim`, `cut`, `put-back`, `apply`, `revert`), seconds on the recording; posts `Edit(id, EditStep)` for the window its label names, which the core takes or refuses. A step that doesn't read, or from a webview that isn't an editor window's, is dropped |
 
 Window lifecycle comes from Rust window events.
 
-**Media.** The editor plays from `shroom-media://localhost/<rec>/video` and draws from
-`…/<rec>/peaks` (`runtime/media.rs`): only the recording its lane registered, only to the
-`editor` webview, the video by byte ranges a piece (2 MiB) at a time, anything else 404. The
+**Media.** An editor window plays from `shroom-media://localhost/<rec>/video` and draws from
+`…/<rec>/peaks` (`runtime/media.rs`): only the recording its lane registered for that window,
+only to that window's webview (N73), the video by byte ranges a piece (2 MiB) at a time,
+anything else 404. The
 policy (`tauri.conf.json`) lets `media-src` and `connect-src` reach the scheme, nothing more.
 
 **The `shroom` command → core** (`runtime/control.rs`, spec N62, D:B216). `control.sock` in
@@ -975,8 +978,9 @@ Built provisionally (N29–N34; D:B37–B42; WI §4–§6) in `runtime/member.rs
   the installer's `--join`, a paste anywhere in the welcome or Settings → Space (no door shows, DECISIONS B159).
 - **The page's Edit in shroom** (N69, D:B221) rides the same scheme: `shroom://edit/<host>/<id>`,
   read by `runtime::opened` (the one door for opened links; anything else is the member lane's)
-  into the core's `EditLink`, which opens the editor by Edit…'s own path or says in the popover
-  why it can't. It carries nothing secret; the log never names it.
+  into the core's `EditLink`, which opens the video's own editor window by Edit…'s path (or
+  brings it forward when it's open, N73) or says in the popover why it can't. It carries
+  nothing secret; the log never names it.
 - **Peek** on arrival and each entry of the invite window (never mid-take): pending, expired,
   used or space missing, with inviter and kind.
 - **Join**: `join.json` first; on 200 `device.key`, `space.json`, then `invite`/`join.json`

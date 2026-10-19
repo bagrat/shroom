@@ -323,7 +323,9 @@ and edits on the share page)*)**
 39. **Edit in shroom on the owner page** (N69, B221; Bagrat's ask and his approval of the
     boards as drawn, option A and the tooltip, 2026-10-18): the scissors open the video in
     the editor through `shroom://edit/…`, or the popover says, once, why this Mac can't.
-    Its spec row and words are provisional, for him to ratify.
+    Its spec row and words are provisional, for him to ratify. Since 2026-10-19 each video
+    opens in an editor window of its own (N73, B225, ratified by Bagrat as drawn), so its
+    line for another video is gone; and ✕ with changes not saved asks first (N71, B223).
 40. **Known gaps**, none blocking:
     - The final video's bar counts the upload by file, not by byte: once the cut is done it
       holds at 80% while the video goes up (minutes, for a long one), then 95, 97, 99, 100.
