@@ -7,8 +7,7 @@ Record. Share. Pay-as-you-go.
 
 No monthly seat, sometimes completely free
 
-- $0 · about three hours of video
-- $1.50 /month · about thirty hours
+Even a busy team — 200 five-minute videos a month, kept six months — pays about $4.85 a month. Watching is free.
 
 - Your videos live in your own Cloudflare account
 - You pay only Cloudflare, for the storage

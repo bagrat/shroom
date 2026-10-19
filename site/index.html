@@ -112,19 +112,37 @@
   .pitch { grid-area: pitch; justify-self: start; width: max-content; max-width: 100%; margin-bottom: 48px; }
   .pitch h1 { font-size: min(46px, calc((100vw - 120px) * 0.038)); font-weight: 700; line-height: 1.1; white-space: nowrap; text-wrap: initial; }
   .pitch .punch { margin-top: 6px; }
-  /* One plan that grows with what you keep: a bar from 0 to 30 hours, the free first tenth lit. */
-  .gauge { margin-top: 48px; display: flex; flex-direction: column; gap: 8px; }
-  .gauge .bar { position: relative; height: 6px; border-radius: 3px; background: var(--line); }
-  .gauge .bar::before { content: ""; position: absolute; inset: 0 90% 0 0; border-radius: 3px 0 0 3px; background: var(--frost); }
-  .gauge .ends { display: flex; justify-content: space-between; gap: 12px; color: var(--quiet); font-size: 15px; }
-  .gauge .ends span:nth-child(2n) { text-align: right; }
-  .gauge .ends .short { display: none; }
-  .gauge b { color: var(--text); font-weight: 600; }
-  .gauge .ends span:nth-child(2n+1) b { color: var(--frost); }
-  .terms { grid-area: terms; list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; align-self: start;
-    color: var(--muted); font-size: 19px; line-height: 1.45; }
+  /* The price (Bagrat, 2026-10-19: direction 1, the price in its own box, one slider and the AI
+     switch): what Cloudflare would charge for the amount set, worked out on the page. The box is
+     as wide as the headline. Without script it reads the slider's opening amount. */
+  .price { margin-top: 36px; padding: 20px 22px 18px; border-radius: 12px; background: var(--card); border: 1px solid var(--card-edge);
+    display: flex; flex-direction: column; gap: 4px; }
+  .price h2 { margin: 0 0 8px; font-size: 13px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--quiet); }
+  .price .ask { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; font-size: 15px; color: var(--muted); }
+  .price output { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .price input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 44px; margin: 0; background: transparent; cursor: pointer; }
+  .price input[type=range]::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: var(--line-strong); }
+  .price input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; margin-top: -9px; border: 0; border-radius: 50%; background: var(--text); box-shadow: 0 1px 4px rgba(0,0,0,.35); }
+  .price input[type=range]::-moz-range-track { height: 4px; border-radius: 2px; background: var(--line-strong); }
+  .price input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border: 0; border-radius: 50%; background: var(--text); }
+  .price .assume, .price .why { margin: 0; font-size: 14px; color: var(--quiet); font-variant-numeric: tabular-nums; }
+  .price .ai { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; margin-top: 6px; font-size: 15px; color: var(--muted); }
+  .price [role=switch] { position: relative; flex: none; width: 44px; height: 26px; padding: 0; border: 0; border-radius: 13px; background: var(--line-strong); cursor: pointer; }
+  .price [role=switch]::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #eceff4; box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: left .15s ease; }
+  .price [role=switch][aria-checked="true"] { background: var(--frost); }
+  .price [role=switch][aria-checked="true"]::after { left: 21px; }
+  .price .sum { display: flex; align-items: baseline; gap: 12px; margin: 8px 0 2px; font-size: 16px; color: var(--muted); }
+  .price .sum b { font-size: 44px; font-weight: 700; letter-spacing: -0.02em; line-height: 1; color: var(--text); font-variant-numeric: tabular-nums; }
+  .price .sum b.free { color: var(--frost); }
+  /* Without script the box reads the opening amount: the slider and the switch need script. */
+  .price .live { display: none; }
+  .js .price input.live { display: block; }
+  .js .price .ai.live { display: flex; }
+  .example { margin: 12px 0 0; font-size: 15px; color: var(--quiet); }
+  .terms { grid-area: terms; list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 32px; row-gap: 10px; align-self: start;
+    color: var(--muted); font-size: 17px; line-height: 1.45; }
   .terms li { display: flex; align-items: flex-start; gap: 12px; }
-  .terms svg { flex: none; width: 20px; height: 20px; margin-top: 4px; fill: none; stroke: var(--green); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+  .terms svg { flex: none; width: 20px; height: 20px; margin-top: 3px; fill: none; stroke: var(--green); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
   .terms b { color: var(--text); font-weight: 600; }
   /* The box: its top at the wordmark's baseline (half the mark's height, then the baseline's drop
      below a centred line, 0.355 em of the wordmark in SF and the common sans fonts alike). */
@@ -192,17 +210,15 @@
     .pitch { width: auto; margin-bottom: 24px; }
     .pitch h1 { font-size: 33px; white-space: normal; text-wrap: balance; }
     .pitch .punch { font-size: 17px; }
-    .gauge { margin-top: 24px; }
-    .gauge .ends { font-size: 15px; }
-    .gauge .ends .long { display: none; }
-    .gauge .ends .short { display: inline; }
+    .price { margin-top: 24px; padding: 16px 16px 14px; }
+    .price .sum b { font-size: 36px; }
     .terms { margin-bottom: 28px; }
     .side { padding-top: 0; }
     .box { padding: 16px; gap: 22px; }
     .install .head { flex-direction: column; align-items: flex-start; }
     .install h2 { font-size: 20px; }
     .tabs button { padding: 0 10px; }
-    .terms { font-size: 16px; gap: 10px; }
+    .terms { grid-template-columns: minmax(0, 1fr); font-size: 16px; gap: 10px; }
     .terms svg { margin-top: 2px; }
     .foot { padding-top: 32px; }
     .foot nav, .links nav { column-gap: 18px; }
@@ -236,10 +252,16 @@
   <div class="pitch">
     <h1>Record. Share. Pay-as-you-go.</h1>
     <p class="punch">No monthly seat, sometimes completely free</p>
-    <div class="gauge" role="img" aria-label="$0 for about three hours of video; $1.50 a month for about thirty hours">
-      <div class="bar"></div>
-      <div class="ends" aria-hidden="true"><span class="long"><b>$0</b> · about three hours of video</span><span class="long"><b>$1.50 /month</b> · about thirty hours</span><span class="short"><b>$0</b> / 3h video</span><span class="short"><b>$1.50</b> / 30h</span></div>
-    </div>
+    <section class="price" aria-labelledby="price-h">
+      <h2 id="price-h">What would it cost?</h2>
+      <div class="ask"><label for="amount">Videos a week</label><output id="amount-v" for="amount">5</output></div>
+      <input class="live" type="range" id="amount" min="1" max="50" step="1" value="5" aria-describedby="assume">
+      <p class="assume" id="assume">About five minutes each, kept six months</p>
+      <div class="ai live"><span id="ai-l">AI names, chapters and captions</span><button type="button" role="switch" id="ai" aria-checked="false" aria-labelledby="ai-l"></button></div>
+      <p class="sum"><b id="cost">about 39¢</b> <span>a month</span></p>
+      <p class="why" id="why">About 11 hours kept, 36 GB. Cloudflare keeps the first 10 GB free.</p>
+    </section>
+    <p class="example">Even a busy team — 200 five-minute videos a month, kept six months — pays about $4.85 a month. Watching is free.</p>
   </div>
 
   <ul class="terms">
@@ -363,6 +385,33 @@
     d.querySelector(".close").addEventListener("click", function () { d.close(); });
     d.addEventListener("click", function (e) { if (e.target === d) d.close(); });
     d.addEventListener("close", function () { v.pause(); open.focus(); });
+  })();
+  // The price: what Cloudflare would charge for the amount set. About 10 GB holds three hours at
+  // Normal (the FAQ); storage is $0.015 a GB-month past Cloudflare's free 10 GB (B212). AI hears
+  // and names about 3,660 neurons a video hour against 10,000 free a day (B205, B207): about 2½
+  // hours of new video a day, and past that the rest is named the next day, still free.
+  // AMOUNT is the slider's one setting: what it counts, and that in video hours a month.
+  (function () {
+    var AMOUNT = { perMonth: function (n) { return n * 5 / 60 * 52 / 12; }, label: function (n) { return String(n); }, perDay: function (n) { return n * 5 / 60 / 5; } };
+    var KEPT_MONTHS = 6, GB_PER_HOUR = 10 / 3, FREE_GB = 10, USD_PER_GB = 0.015, AI_FREE_HOURS_A_DAY = 2.5;
+    var input = document.getElementById("amount"), ai = document.getElementById("ai");
+    if (!input || !ai) return;
+    var num = function (x) { return x < 10 ? String(Math.round(x * 10) / 10) : String(Math.round(x)); };
+    var money = function (x) { return x === 0 ? "$0" : x < 0.995 ? Math.max(1, Math.round(x * 100)) + "\u00a2" : "$" + x.toFixed(2); };
+    var show = function () {
+      var n = Number(input.value), kept = AMOUNT.perMonth(n) * KEPT_MONTHS, gb = kept * GB_PER_HOUR;
+      var usd = Math.max(0, gb - FREE_GB) * USD_PER_GB, on = ai.getAttribute("aria-checked") === "true";
+      document.getElementById("amount-v").textContent = AMOUNT.label(n);
+      var cost = document.getElementById("cost");
+      cost.textContent = (usd === 0 ? "" : "about ") + money(usd);
+      cost.classList.toggle("free", usd === 0);
+      document.getElementById("why").textContent = "About " + num(kept) + " hours kept, " + num(gb) + " GB. " +
+        (usd === 0 ? "Inside Cloudflare\u2019s free 10 GB." : "Cloudflare keeps the first 10 GB free.") +
+        (!on ? "" : AMOUNT.perDay(n) <= AI_FREE_HOURS_A_DAY ? " AI is free too: under 2\u00bd hours of new video a day." : " AI: past 2\u00bd hours a day, the rest is named the next day, still free.");
+    };
+    input.addEventListener("input", show);
+    ai.addEventListener("click", function () { ai.setAttribute("aria-checked", ai.getAttribute("aria-checked") === "true" ? "false" : "true"); show(); });
+    show();
   })();
   // The install tabs (N59): one command shows; ←/→ move between the tabs.
   (function () {
