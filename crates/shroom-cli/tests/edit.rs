@@ -202,7 +202,17 @@ fn it_changes_nothing_while_this_macs_editor_holds_the_video_or_a_take_is_open()
     // A take open in the running app (a process named shroom, as the command checks): law 4.
     let app = dir.path().join("shroom");
     std::fs::copy("/bin/sleep", &app).unwrap();
-    let mut running = Command::new(&app).arg("30").spawn().unwrap();
+    // A process the other tests fork at that instant can still hold the copy open for writing
+    // until it execs: the copy is busy (ETXTBSY) for a moment, so it's started again.
+    let mut running = (0..100)
+        .find_map(|_| match Command::new(&app).arg("30").spawn() {
+            Err(e) if e.kind() == std::io::ErrorKind::ExecutableFileBusy => {
+                std::thread::sleep(std::time::Duration::from_millis(10));
+                None
+            }
+            started => Some(started.unwrap()),
+        })
+        .expect("the copy stayed busy for a second");
     std::fs::write(home.join("status.json"), format!(r#"{{"v":2,"pid":{},"take_open":true}}"#, running.id())).unwrap();
     let (code, v) = shroom(&home, &base, &["edit", ID, "cut", "30", "40", "--no-launch"]);
     let _ = running.kill();
