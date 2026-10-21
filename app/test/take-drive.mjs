@@ -10,6 +10,8 @@
 //   node app/test/take-drive.mjs not-left-out   the reader's own proof: the count stays in
 //   node app/test/take-drive.mjs camera-take    Camera as the source, a take kept (the hosted
 //                                               Mac's pattern camera only: dev/mac/camera.sh)
+//   node app/test/take-drive.mjs memory    what shroom holds at rest, after its windows and
+//                                          after a take (DECISIONS B229; dev/mac's memory)
 //
 // `disk`: a 1.3 GB sparse HFS+ image (TESTING-PLAN §9 M5: detached and deleted after the
 // run) mounted inside the work folder; the throwaway home lives on it, and a ballast file
@@ -50,7 +52,7 @@ const app = process.env.SHROOM_APP ?? join(repo, "target/debug/bundle/macos/shro
 const fakeBin = join(repo, "target/debug/cloudfake");
 for (const p of [app, fakeBin]) if (!existsSync(p)) { console.error(`missing ${p} — build it first (see the header)`); process.exit(2); }
 const which = process.argv[2];
-if (!["disk", "signals", "movies", "left-out", "not-left-out", "camera-take", "camera-drag"].includes(which)) { console.error("usage: node app/test/take-drive.mjs disk|signals|movies|left-out|not-left-out|camera-take|camera-drag"); process.exit(64); }
+if (!["disk", "signals", "movies", "left-out", "not-left-out", "camera-take", "camera-drag", "memory"].includes(which)) { console.error("usage: node app/test/take-drive.mjs disk|signals|movies|left-out|not-left-out|camera-take|camera-drag|memory"); process.exit(64); }
 
 // The core's numbers (crates/shroom-core/src/derive/popover.rs): what Start needs at Normal.
 const MARGIN = 1_000_000_000;

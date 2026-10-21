@@ -72,6 +72,13 @@
 //!   run's own space, from the home its wizard set up; only with OBS's virtual camera
 //!   playing the test pattern as the bubble, and the microphone off: nothing of a room.
 //!
+//! - `--drive take <out> memory` (DECISIONS B229): what shroom holds, as Activity Monitor's
+//!   Memory column counts it (each process's physical footprint), in the steady states a
+//!   person leaves it in: at rest (started, never clicked); after the Library, then
+//!   Settings, opened and closed; and idle after a 30-second take of the pattern, uploaded
+//!   to the fake. Each is read three times, five seconds apart, after 20 s to settle; the
+//!   report's `memory` fact has every process. It measures; it holds nothing to a bar.
+//!
 //! Where a signal can't be produced safely on this Mac — unplugging a device, revoking a
 //! TCC grant — it enters at the lowest real layer: the device lists as the observer posts
 //! them, the grants through the observer's own `grants_if_changed`. The encoder's death
@@ -122,6 +129,8 @@ pub enum TakeDrive {
     CameraDrag,
     /// The take a person makes, paced for the pre-merge run's video (B127).
     Show,
+    /// What shroom holds at rest, after its windows, and after a take (B229).
+    Memory,
 }
 
 impl TakeDrive {
@@ -140,6 +149,7 @@ impl TakeDrive {
             "camera-take" => TakeDrive::CameraTake,
             "camera-drag" => TakeDrive::CameraDrag,
             "show" => TakeDrive::Show,
+            "memory" => TakeDrive::Memory,
             _ => match s.strip_prefix("soak:").and_then(|m| m.parse::<u32>().ok()) {
                 Some(m) if (1..=240).contains(&m) => TakeDrive::Soak(m),
                 _ => return None,
@@ -163,6 +173,7 @@ impl TakeDrive {
             TakeDrive::CameraTake => "take camera-take",
             TakeDrive::CameraDrag => "take camera-drag",
             TakeDrive::Show => "take show",
+            TakeDrive::Memory => "take memory",
         }
     }
 
@@ -305,6 +316,7 @@ pub fn drive(app: AppHandle, rt: Runtime, which: TakeDrive, out: PathBuf) {
         TakeDrive::CameraTake => camera_take(&d),
         TakeDrive::CameraDrag => camera_drag(&d),
         TakeDrive::Show => show(&d),
+        TakeDrive::Memory => memory(&d),
     };
     if let Err(e) = result {
         d.report.lock().unwrap().error = Some(e);
@@ -762,6 +774,147 @@ fn soak(d: &D, minutes: u32) -> Result<(), String> {
     d.check("capture cost on average ≤ about one core (TESTING-PLAN §4)", cpu_mean <= 110.0, format!("{cpu_mean:.0}% mean, {cpu_max:.0}% max"));
     let ids = d.rt.trace.lock().unwrap().as_ref().map(|t| t.ids.join(" → ")).unwrap_or_default();
     d.check("never an interrupted or died take", !["interrupted", "capture-died", "recovered"].iter().any(|w| ids.contains(w)), "");
+    Ok(())
+}
+
+// ── what shroom holds (B229) ──
+
+/// One process of shroom's as Activity Monitor counts it: its name, its physical footprint
+/// (the Memory column) and its resident size, in bytes.
+struct Held {
+    name: String,
+    footprint: u64,
+    resident: u64,
+}
+
+/// `proc_pid_rusage`'s first flavour, as a row of words: the UUID's two, then user and
+/// system time, wakeups, pageins, wired, resident (8), footprint (9), start (10).
+fn rusage(pid: i32) -> Option<[u64; 12]> {
+    unsafe extern "C" {
+        fn proc_pid_rusage(pid: i32, flavor: i32, buffer: *mut std::ffi::c_void) -> i32;
+    }
+    let mut buf = [0u64; 12];
+    (unsafe { proc_pid_rusage(pid, 0, buf.as_mut_ptr().cast()) } == 0).then_some(buf)
+}
+
+/// This process and every WebKit process started since it — on a runner nothing else
+/// runs a web view, so those are shroom's pages, its GPU and its network process. One whose
+/// figures can't be read is kept at 0 under its name with “(unread)”, never left out unseen.
+fn held() -> Vec<(i32, Held)> {
+    let me = std::process::id() as i32;
+    let started = rusage(me).map_or(0, |r| r[10]);
+    let out = std::process::Command::new("ps").args(["-A", "-o", "pid=,comm="]).output().map(|o| String::from_utf8_lossy(&o.stdout).into_owned()).unwrap_or_default();
+    out.lines()
+        .filter_map(|l| {
+            let (pid, comm) = l.trim().split_once(' ')?;
+            let pid: i32 = pid.parse().ok()?;
+            if pid != me && !comm.contains("WebKit") {
+                return None;
+            }
+            let name = if pid == me { "shroom".to_string() } else { comm.rsplit('/').next().unwrap_or(comm).to_string() };
+            Some(match rusage(pid) {
+                Some(r) if pid == me || r[10] >= started => (pid, Held { name, footprint: r[9], resident: r[8] }),
+                Some(_) => return None,
+                None => (pid, Held { name: format!("{name} (unread)"), footprint: 0, resident: 0 }),
+            })
+        })
+        .collect()
+}
+
+/// `top`'s own reading of the same processes — its MEM column is Activity Monitor's — as a
+/// cross-check of `held`.
+fn top_of(pids: &[i32]) -> String {
+    let mut args: Vec<String> = vec!["-l".into(), "1".into(), "-stats".into(), "pid,command,mem".into()];
+    for p in pids {
+        args.push("-pid".into());
+        args.push(p.to_string());
+    }
+    let out = std::process::Command::new("top").args(&args).output().map(|o| String::from_utf8_lossy(&o.stdout).into_owned()).unwrap_or_default();
+    out.lines().skip_while(|l| !l.trim_start().starts_with("PID")).collect::<Vec<_>>().join("\n")
+}
+
+/// A steady state, read: 20 s to settle, then three readings 5 s apart; the middle total
+/// stands for it.
+fn reading(d: &D, state: &str) -> serde_json::Value {
+    std::thread::sleep(Duration::from_secs(20));
+    let mut reads: Vec<Vec<(i32, Held)>> = Vec::new();
+    for i in 0..3 {
+        if i > 0 {
+            std::thread::sleep(Duration::from_secs(5));
+        }
+        reads.push(held());
+    }
+    let top = top_of(&reads[2].iter().map(|(p, _)| *p).collect::<Vec<_>>());
+    let mut reads: Vec<Vec<Held>> = reads.into_iter().map(|r| r.into_iter().map(|(_, h)| h).collect()).collect();
+    let total = |r: &Vec<Held>, f: fn(&Held) -> u64| r.iter().map(f).sum::<u64>();
+    reads.sort_by_key(|r| total(r, |h| h.footprint));
+    let mid = &reads[1];
+    let mb = |b: u64| (b as f64 / 1_048_576.0 * 10.0).round() / 10.0;
+    let v = serde_json::json!({
+        "state": state,
+        "footprint_mb": mb(total(mid, |h| h.footprint)),
+        "resident_mb": mb(total(mid, |h| h.resident)),
+        "processes": mid.len(),
+        "each": mid.iter().map(|h| serde_json::json!({ "name": h.name, "footprint_mb": mb(h.footprint), "resident_mb": mb(h.resident) })).collect::<Vec<_>>(),
+        "readings_mb": reads.iter().map(|r| mb(total(r, |h| h.footprint))).collect::<Vec<_>>(),
+        "top": top,
+    });
+    d.step(&format!("read: {state}"));
+    eprintln!("shroom memory: {state}: {} MB in {} processes", v["footprint_mb"], v["processes"]);
+    v
+}
+
+/// Opens a window from the popover's door, lets its page paint, closes it with its ✕.
+fn open_and_close(d: &D, kind: WindowKind) -> Result<(), String> {
+    let shows = move |s: &Scene| if kind == WindowKind::Library { s.library.is_some() } else { s.settings.is_some() };
+    d.config()?;
+    d.act(if kind == WindowKind::Library { Action::OpenLibrary } else { Action::OpenSettings });
+    d.wait(&format!("{kind:?} open"), 10, shows)?;
+    std::thread::sleep(Duration::from_secs(5));
+    d.rt.post(Event::WindowClosed(kind));
+    d.wait(&format!("{kind:?} closed"), 10, move |s| !shows(s))?;
+    if snapshot(&d.rt).is_some_and(|s| s.popover.is_some()) {
+        d.rt.post(Event::PopoverDismissed);
+    }
+    Ok(())
+}
+
+fn memory(d: &D) -> Result<(), String> {
+    d.wait("ready", 20, |s| s.tray.click == Click::OpenPopover)?;
+    let mut states = vec![reading(d, "at rest")];
+    open_and_close(d, WindowKind::Library)?;
+    states.push(reading(d, "after the Library opened and closed"));
+    open_and_close(d, WindowKind::Settings)?;
+    states.push(reading(d, "after Settings opened and closed"));
+
+    let pattern = cover_with_pattern(&d.app)?;
+    let recorded = (|| {
+        d.config()?;
+        d.record()?;
+        std::thread::sleep(Duration::from_secs(30));
+        click(&d.app, &d.rt);
+        d.wait("paused", 10, |s| D::popover_id(s) == Some("paused"))?;
+        d.act(Action::Stop);
+        Ok::<(), String>(())
+    })();
+    let _ = pattern.close();
+    recorded?;
+    let (dir, _) = published_take(d, 60)?;
+    let until = Instant::now() + Duration::from_secs(180);
+    while !dir.join("uploaded").exists() {
+        if Instant::now() > until {
+            return Err("the take never finished uploading".into());
+        }
+        std::thread::sleep(Duration::from_millis(500));
+    }
+    d.step("uploaded");
+    if snapshot(&d.rt).is_some_and(|s| s.popover.is_some()) {
+        d.rt.post(Event::PopoverDismissed);
+    }
+    states.push(reading(d, "idle after a take"));
+    let ids = d.rt.trace.lock().unwrap().as_ref().map(|t| t.ids.join(" → ")).unwrap_or_default();
+    d.check("the take ended as a take ends (stopped, uploaded)", !["interrupted", "capture-died", "recovered"].iter().any(|w| ids.contains(w)), "");
+    d.fact("memory", states);
     Ok(())
 }
 
