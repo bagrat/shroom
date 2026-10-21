@@ -857,7 +857,8 @@ fn present_window(app: &AppHandle, rt: &Runtime, kind: WindowKind, now: Option<(
             let Some(w) = app.get_webview_window(&label) else { return };
             // A window closed for good (N73, B229): its page is told first, so a video it
             // held stops, and its window leaves the list kept out of captures.
-            if closes_for_good(kind) {
+            let for_good = matches!(kind, WindowKind::Editor(_)) || (closes_for_good(kind) && !super::memory_as_before(rt));
+            if for_good {
                 let _ = app.emit_to(label.as_ref(), "scene", serde_json::Value::Null);
                 remember_excluded(&w, excluded, false);
                 let _ = w.destroy();

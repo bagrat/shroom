@@ -406,9 +406,9 @@ fn handle(rt: &Runtime, active: &mut Option<Active>, warm: &mut Option<Opened>, 
                     RecNews::Finalized(Err(FailClass::Unclassified))
                 }
             };
-            // The take's buffers, freed, go back to the Mac (B229).
+            // The take's buffers, freed, go back to the Mac once it's quiet (B229).
             drop(a);
-            super::give_back_memory(rt, "the take");
+            super::give_back_memory_soon(rt, "the take");
             Some(news)
         }
         RecCmd::Confirm(dir) => {
@@ -419,7 +419,7 @@ fn handle(rt: &Runtime, active: &mut Option<Active>, warm: &mut Option<Opened>, 
             if active.as_ref().is_some_and(|a| a.name == dir.0) {
                 *active = None; // dropping the recording kills its ffmpeg
                 *live.lock().unwrap() = None;
-                super::give_back_memory(rt, "the discarded take");
+                super::give_back_memory_soon(rt, "the discarded take");
             }
             let _ = std::fs::remove_dir_all(rt.home.takes().join(&dir.0));
             Some(RecNews::Deleted(dir))
