@@ -38,7 +38,7 @@
 // bundle path.
 
 import { execFileSync, spawn } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -89,6 +89,12 @@ if (which === "disk") {
   if (ballast <= 0) { console.error(`the image has only ${free(mount)} bytes free`); process.exit(1); }
   execFileSync("mkfile", [String(ballast), join(mount, "ballast")]);
   console.log(JSON.stringify({ image: "1300m HFS+", free_before_take: free(mount), target }));
+}
+
+// memory: SHROOM_MEMORY_AS_BEFORE=1 has the app behave as before DECISIONS B229, for the other half of the measure.
+if (which === "memory" && process.env.SHROOM_MEMORY_AS_BEFORE === "1") {
+  mkdirSync(home, { recursive: true });
+  writeFileSync(join(home, "memory-as-before"), "");
 }
 
 const fake = spawn(fakeBin, ["--state", "found"], { stdio: ["pipe", "pipe", "inherit"] });

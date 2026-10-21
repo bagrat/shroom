@@ -76,8 +76,10 @@
 //!   Memory column counts it (each process's physical footprint), in the steady states a
 //!   person leaves it in: at rest (started, never clicked); after the Library, then
 //!   Settings, opened and closed; and idle after a 30-second take of the pattern, uploaded
-//!   to the fake. Each is read three times, five seconds apart, after 20 s to settle; the
-//!   report's `memory` fact has every process. It measures; it holds nothing to a bar.
+//!   to the fake. Each is read three times, five seconds apart, after 20 s to settle (a
+//!   minute after the take); the report's `memory` fact has every process. With
+//!   `memory-as-before` in the home, the app behaves as before B229, so one run reads both.
+//!   It measures; it holds nothing to a bar.
 //!
 //! Where a signal can't be produced safely on this Mac — unplugging a device, revoking a
 //! TCC grant — it enters at the lowest real layer: the device lists as the observer posts
@@ -833,10 +835,10 @@ fn top_of(pids: &[i32]) -> String {
     out.lines().skip_while(|l| !l.trim_start().starts_with("PID")).collect::<Vec<_>>().join("\n")
 }
 
-/// A steady state, read: 20 s to settle, then three readings 5 s apart; the middle total
-/// stands for it.
-fn reading(d: &D, state: &str) -> serde_json::Value {
-    std::thread::sleep(Duration::from_secs(20));
+/// A steady state, read: `settle` seconds to settle, then three readings 5 s apart; the
+/// middle total stands for it.
+fn reading(d: &D, state: &str, settle: u64) -> serde_json::Value {
+    std::thread::sleep(Duration::from_secs(settle));
     let mut reads: Vec<Vec<(i32, Held)>> = Vec::new();
     for i in 0..3 {
         if i > 0 {
@@ -881,11 +883,11 @@ fn open_and_close(d: &D, kind: WindowKind) -> Result<(), String> {
 
 fn memory(d: &D) -> Result<(), String> {
     d.wait("ready", 20, |s| s.tray.click == Click::OpenPopover)?;
-    let mut states = vec![reading(d, "at rest")];
+    let mut states = vec![reading(d, "at rest", 20)];
     open_and_close(d, WindowKind::Library)?;
-    states.push(reading(d, "after the Library opened and closed"));
+    states.push(reading(d, "after the Library opened and closed", 20));
     open_and_close(d, WindowKind::Settings)?;
-    states.push(reading(d, "after Settings opened and closed"));
+    states.push(reading(d, "after Settings opened and closed", 20));
 
     let pattern = cover_with_pattern(&d.app)?;
     let recorded = (|| {
@@ -911,7 +913,12 @@ fn memory(d: &D) -> Result<(), String> {
     if snapshot(&d.rt).is_some_and(|s| s.popover.is_some()) {
         d.rt.post(Event::PopoverDismissed);
     }
-    states.push(reading(d, "idle after a take"));
+    // A minute: what follows the upload (the copy, the naming, the Library) settles, and
+    // the memory it freed is given back 30 s after the last of it (B229).
+    states.push(reading(d, "idle after a take", 60));
+    let log = std::fs::read_to_string(d.rt.home.root.join("logs/run.log")).unwrap_or_default();
+    d.fact("given_back", log.lines().filter(|l| l.contains("memory:")).map(str::to_string).collect::<Vec<_>>());
+    d.fact("as_before", crate::runtime::memory_as_before(&d.rt));
     let ids = d.rt.trace.lock().unwrap().as_ref().map(|t| t.ids.join(" → ")).unwrap_or_default();
     d.check("the take ended as a take ends (stopped, uploaded)", !["interrupted", "capture-died", "recovered"].iter().any(|w| ids.contains(w)), "");
     d.fact("memory", states);
