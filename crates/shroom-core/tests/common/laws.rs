@@ -201,6 +201,15 @@ pub fn check(pw: &World, ps: &Scene, ev: &Event, nw: &World, ns: &Scene, fx: &[E
             assert!(d.asked || !a, "law 5: an unasked {kind:?} window activates — {}", ctx());
         }
     }
+    // The Library and Settings are closed for good, not hidden (B229): one that appears is
+    // made afresh, and making a page brings shroom forward (B106). So neither appears unless
+    // the person reached for it — or at a launch, the update relaunch's restore (N41).
+    for (now, before, kind) in [(ns.library.is_some(), ps.library.is_some(), WindowKind::Library), (ns.settings.is_some(), ps.settings.is_some(), WindowKind::Settings)] {
+        if now && !before && !matches!(ev, Event::Booted(_)) {
+            let asked = nw.session.windows.get(&kind).is_some_and(|d| d.asked);
+            assert!(asked, "B229: the {kind:?} window opened without a click — {}", ctx());
+        }
+    }
 
     // Law 6, as Bagrat asked for it on 2026-10-12 (DEVIATIONS #38; the ratified wording was
     // “Dock iff a window is open”): the Dock only while the setup window is open. Once

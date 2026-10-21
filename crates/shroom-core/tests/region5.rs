@@ -1583,6 +1583,41 @@ fn a_window_open_before_the_take_stays_and_greys_what_it_cant_do() {
     assert!(derive(&w).settings.is_none());
 }
 
+/// B229: the Library and Settings are closed for good, so each showing is a window made
+/// afresh — and making a page brings shroom forward (B106). Each must only ever show
+/// because the person reached for it: a click, or one asked for mid-take shown as the take
+/// ends (law 4); once closed, nothing brings it back by itself. (Every step here, and in
+/// every walk, is also held to the law in `common/laws.rs`; the update relaunch's restore,
+/// at a launch, is `an_update_relaunch_*` above.)
+#[test]
+fn a_closed_library_or_settings_comes_back_only_when_reached_for() {
+    for kind in [WindowKind::Library, WindowKind::Settings] {
+        let shows = |s: &Scene| if kind == WindowKind::Library { s.library.as_ref().map(|l| l.activates) } else { s.settings.as_ref().map(|w| w.activates) };
+        // Asked for mid-take: it waits, then shows as the take ends, with the keyboard.
+        let mut w = library(ready());
+        w.session.windows.clear();
+        w.take = Some(take(Phase::Paused(Cause::User), 272_000));
+        w.session.windows.insert(kind, Door::asked(Mono(w.now.0)));
+        let mut r = Run::new(w);
+        assert_eq!(shows(&r.scene), None, "{kind:?}: not mid-take (law 4)");
+        r.act(Action::Stop);
+        r.send(Event::Rec(RecNews::Finalized(Ok(272_000))));
+        assert_eq!(shows(&r.scene), Some(true), "{kind:?}: the click it waited on, shown as the take ends");
+
+        // Closed: whatever comes next — the take's upload, a refresh, ticks, the mushroom,
+        // focus elsewhere — it stays closed until it is asked for again.
+        r.send(Event::WindowClosed(kind));
+        assert_eq!(shows(&r.scene), None, "{kind:?}: ✕ closes it");
+        for ev in [Event::Tick, Event::PopoverDismissed, Event::Library(LibraryNews::Rows { rows: space_rows(), fresh: true }), Event::Tick] {
+            r.send(ev);
+            assert_eq!(shows(&r.scene), None, "{kind:?}: nothing reopens it by itself");
+        }
+        r.click();
+        r.act(if kind == WindowKind::Library { Action::OpenLibrary } else { Action::OpenSettings });
+        assert_eq!(shows(&r.scene), Some(true), "{kind:?}: reached for, it opens again");
+    }
+}
+
 #[test]
 fn every_region5_op_has_a_deadline() {
     for (op, ms) in [(Op::LibRefresh, 60_000), (Op::Rename, 60_000), (Op::Delete, 60_000), (Op::Suggest, 60_000), (Op::Keep, 60_000), (Op::Plays, 60_000), (Op::UpdateCheck, 10_000), (Op::UpdateDownload, 1_800_000), (Op::UpdateApply, 30_000)] {
