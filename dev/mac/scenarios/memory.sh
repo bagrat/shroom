@@ -28,7 +28,6 @@ node -e 'const read = (f) => { try { return JSON.parse(require("fs").readFileSyn
   }
   for (const [n, r, S] of [["before", b, B], ["after", a, A]]) {
     for (const s of Object.values(S)) console.log(`${n}, ${s.state}: ${s.each.map((e) => `${e.name} ${e.footprint_mb}`).join(", ")} (readings ${s.readings_mb.join(", ")})`);
-    console.log(`${n}, given back: ${(r.facts?.given_back ?? []).join(" / ") || "nothing"}`);
     if (r.error) console.log(`${n}, error: ${r.error}`);
   }' "$MAC_OUT/memory-before.json" "$MAC_OUT/memory.json"
 [ "$before" = 0 ] && [ "$after" = 0 ] && echo "verdict: measured both ways (release-profile build); the table is above" || echo "NO: a memory drive didn't finish (before exit $before, after exit $after)"

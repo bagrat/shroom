@@ -913,11 +913,9 @@ fn memory(d: &D) -> Result<(), String> {
     if snapshot(&d.rt).is_some_and(|s| s.popover.is_some()) {
         d.rt.post(Event::PopoverDismissed);
     }
-    // A minute: what follows the upload (the copy, the naming, the Library) settles, and
-    // the memory it freed is given back 30 s after the last of it (B229).
+    // A minute: what follows the upload (the copy, the naming, the Library) settles and
+    // macOS takes back what it held; read at 20 s, shroom still held about 25 MB more (B229).
     states.push(reading(d, "idle after a take", 60));
-    let log = std::fs::read_to_string(d.rt.home.root.join("logs/run.log")).unwrap_or_default();
-    d.fact("given_back", log.lines().filter(|l| l.contains("memory:")).map(str::to_string).collect::<Vec<_>>());
     d.fact("as_before", crate::runtime::memory_as_before(&d.rt));
     let ids = d.rt.trace.lock().unwrap().as_ref().map(|t| t.ids.join(" → ")).unwrap_or_default();
     d.check("the take ended as a take ends (stopped, uploaded)", !["interrupted", "capture-died", "recovered"].iter().any(|w| ids.contains(w)), "");

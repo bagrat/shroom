@@ -790,37 +790,9 @@ pub fn read_log_line(line: &str) -> Option<(u64, &str)> {
     Some((mono.parse().ok()?, text))
 }
 
-/// Hands the memory shroom has freed back to the Mac (B229), once things have gone quiet.
-/// macOS's allocator keeps freed pages for reuse, so after a take Activity Monitor goes on
-/// counting tens of MB nothing uses; `malloc_zone_pressure_relief` over every zone returns
-/// them. Asked for after a take ends (or is discarded) and after its upload; done 30 s after
-/// the last ask, when the work that follows them (the copy, the naming, the Library) has
-/// settled — never while a take records, where the pages are about to be used again.
-pub fn give_back_memory_soon(rt: &Runtime, after: &'static str) {
-    static ASKED: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
-    if memory_as_before(rt) {
-        return;
-    }
-    let ask = ASKED.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
-    let rt = rt.clone();
-    let _ = std::thread::Builder::new().name("shroom-give-back".into()).spawn(move || {
-        std::thread::sleep(std::time::Duration::from_secs(30));
-        let recording = rt.snapshot.lock().unwrap().as_ref().is_some_and(|s| s.tray.state == Some("recording"));
-        if ASKED.load(std::sync::atomic::Ordering::SeqCst) != ask || recording {
-            return;
-        }
-        unsafe extern "C" {
-            fn malloc_zone_pressure_relief(zone: *mut std::ffi::c_void, goal: usize) -> usize;
-        }
-        // A null zone means every zone; a goal of 0, all it can.
-        let freed = unsafe { malloc_zone_pressure_relief(std::ptr::null_mut(), 0) };
-        rt.log(&format!("memory: {} MB handed back after {after}", freed / 1_000_000));
-    });
-}
-
 /// B229 measured both ways in one run: a harness build whose home holds `memory-as-before`
-/// keeps the Library and Settings hidden when closed and gives nothing back, as shroom did
-/// before B229 (`app/test/take-drive.mjs memory`). Never in a build anyone else gets.
+/// keeps the Library and Settings hidden when closed, as shroom did before B229
+/// (`app/test/take-drive.mjs memory`). Never in a build anyone else gets.
 pub fn memory_as_before(rt: &Runtime) -> bool {
     cfg!(feature = "dev-harness") && rt.home.root.join("memory-as-before").exists()
 }
