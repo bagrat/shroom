@@ -855,20 +855,26 @@ fn present_window(app: &AppHandle, rt: &Runtime, kind: WindowKind, now: Option<(
         }
         None => {
             let Some(w) = app.get_webview_window(&label) else { return };
-            match kind {
-                // An editor window closed goes for good (N73): its page is told first, so the
-                // video it held stops, and its window leaves the list kept out of captures.
-                WindowKind::Editor(_) => {
-                    let _ = app.emit_to(label.as_ref(), "scene", serde_json::Value::Null);
-                    remember_excluded(&w, excluded, false);
-                    let _ = w.destroy();
-                }
-                _ => {
-                    let _ = w.hide();
-                }
+            // A window closed for good (N73, B229): its page is told first, so a video it
+            // held stops, and its window leaves the list kept out of captures.
+            if closes_for_good(kind) {
+                let _ = app.emit_to(label.as_ref(), "scene", serde_json::Value::Null);
+                remember_excluded(&w, excluded, false);
+                let _ = w.destroy();
+            } else {
+                let _ = w.hide();
             }
         }
     }
+}
+
+/// Whether a window that closes is destroyed rather than hidden: the editors (N73), and the
+/// Library and Settings, whose web pages hold about 44 MB and two processes while hidden
+/// (B229). Each comes back only when the person reaches for it, so the page made again then
+/// brings shroom forward only when asked (B106; the core's tests hold it). The setup window
+/// and Send feedback are still hidden: rarely opened, they were left out of that measure.
+pub fn closes_for_good(kind: WindowKind) -> bool {
+    matches!(kind, WindowKind::Editor(_) | WindowKind::Library | WindowKind::Settings)
 }
 
 /// A new editor window goes down and to the right of the newest other editor window open,
@@ -1394,6 +1400,16 @@ mod tests {
         let right = display_frame((1440.0, 0.0, 1920.0, 1080.0), 900.0);
         let f = label_frame(right, right.y + right.h - 24.0, 380.0, 30.0);
         assert_eq!((f.x + f.w, f.y + f.h), (1440.0 + 1920.0 - 12.0, right.y + right.h - 24.0 - 8.0));
+    }
+
+    #[test]
+    fn the_library_settings_and_editors_close_for_good() {
+        for kind in [WindowKind::Library, WindowKind::Settings, WindowKind::Editor(EditorId(1))] {
+            assert!(closes_for_good(kind), "{kind:?} is destroyed when it closes (B229, N73)");
+        }
+        for kind in [WindowKind::Onboarding, WindowKind::Feedback] {
+            assert!(!closes_for_good(kind), "{kind:?} is hidden");
+        }
     }
 
     #[test]
