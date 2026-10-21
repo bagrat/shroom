@@ -377,6 +377,8 @@ fn pass(rt: &Runtime, c: &Ctx, live: &Arc<Mutex<Option<LiveTake>>>, lives: &mut 
             Ok(()) => {
                 let _ = std::fs::write(dir.join("uploaded"), b"");
                 lives.remove(&dir);
+                // What sending it held, freed, goes back to the Mac (B229).
+                super::give_back_memory(rt, "the upload");
                 // Every piece is up: the space hears the rest and names it (N66).
                 naming.done(c, &dir, &q.rec.0);
                 rt.post(Event::Upload(UploadNews::Live(q.dir)));

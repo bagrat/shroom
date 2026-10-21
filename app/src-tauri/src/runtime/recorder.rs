@@ -387,7 +387,7 @@ fn handle(rt: &Runtime, active: &mut Option<Active>, warm: &mut Option<Opened>, 
                     log_frames(rt, &stats);
                 }
             }
-            match a.recording.finalize() {
+            let news = match a.recording.finalize() {
                 Ok(_) => {
                     // Stop → a whole recording on disk, timed (TESTING-PLAN §4: ≤ 200 ms).
                     rt.log(&format!("recorder: finalized in {} ms", finalizing.elapsed().as_millis()));
@@ -399,13 +399,17 @@ fn handle(rt: &Runtime, active: &mut Option<Active>, warm: &mut Option<Opened>, 
                     let _ = write_json(&a.dir.join("finalized.json"), &FinalizedJson { v: 1, length_ms: a.length_ms, why: why.into() });
                     // Already on disk since each drop; written once more, whole.
                     write_markers(&a.dir, &a.markers);
-                    Some(RecNews::Finalized(Ok(a.length_ms)))
+                    RecNews::Finalized(Ok(a.length_ms))
                 }
                 Err(e) => {
                     rt.log(&format!("recorder finalize failed: {e}"));
-                    Some(RecNews::Finalized(Err(FailClass::Unclassified)))
+                    RecNews::Finalized(Err(FailClass::Unclassified))
                 }
-            }
+            };
+            // The take's buffers, freed, go back to the Mac (B229).
+            drop(a);
+            super::give_back_memory(rt, "the take");
+            Some(news)
         }
         RecCmd::Confirm(dir) => {
             let f: Option<FinalizedJson> = super::home::read_json(&rt.home.takes().join(&dir.0).join("finalized.json"));
@@ -415,6 +419,7 @@ fn handle(rt: &Runtime, active: &mut Option<Active>, warm: &mut Option<Opened>, 
             if active.as_ref().is_some_and(|a| a.name == dir.0) {
                 *active = None; // dropping the recording kills its ffmpeg
                 *live.lock().unwrap() = None;
+                super::give_back_memory(rt, "the discarded take");
             }
             let _ = std::fs::remove_dir_all(rt.home.takes().join(&dir.0));
             Some(RecNews::Deleted(dir))

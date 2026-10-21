@@ -790,6 +790,20 @@ pub fn read_log_line(line: &str) -> Option<(u64, &str)> {
     Some((mono.parse().ok()?, text))
 }
 
+/// Hands the memory shroom has freed back to the Mac (B229). macOS's allocator keeps freed
+/// pages for reuse, so after a take and its upload Activity Monitor goes on counting about
+/// 40 MB nothing uses; `malloc_zone_pressure_relief` over every zone returns them at once.
+/// Called on the lanes, after a take ends (or is discarded) and after its upload: a few
+/// milliseconds each, off the main thread and never on the recorder's while it records.
+pub fn give_back_memory(rt: &Runtime, after: &str) {
+    unsafe extern "C" {
+        fn malloc_zone_pressure_relief(zone: *mut std::ffi::c_void, goal: usize) -> usize;
+    }
+    // A null zone means every zone; a goal of 0, all it can.
+    let freed = unsafe { malloc_zone_pressure_relief(std::ptr::null_mut(), 0) };
+    rt.log(&format!("memory: {} MB handed back after {after}", freed / 1_000_000));
+}
+
 /// A recording id as the run log names it: enough to tell takes apart, never the whole
 /// link (`AbCd…`).
 pub fn short(id: &str) -> String {
