@@ -256,12 +256,12 @@
       <h2 id="price-h">What would it cost?</h2>
       <div class="ask"><label for="amount">Videos a week</label><output id="amount-v" for="amount">5</output></div>
       <input class="live" type="range" id="amount" min="1" max="50" step="1" value="5" aria-describedby="assume">
-      <p class="assume" id="assume">About five minutes each, kept six months</p>
+      <p class="assume" id="assume">About five minutes each, kept a year</p>
       <div class="ai live"><span id="ai-l">AI names, chapters and captions</span><button type="button" role="switch" id="ai" aria-checked="false" aria-labelledby="ai-l"></button></div>
-      <p class="sum"><b id="cost">about 39¢</b> <span>a month</span></p>
-      <p class="why" id="why">About 11 hours kept, 36 GB. Cloudflare keeps the first 10 GB free.</p>
+      <p class="sum"><b id="cost">about 93¢</b> <span>a month</span></p>
+      <p class="why" id="why">About 22 hours kept, 72 GB. Cloudflare keeps the first 10 GB free.</p>
     </section>
-    <p class="example">Even a busy team — 200 five-minute videos a month, kept six months — pays about $4.85 a month. Watching is free.</p>
+    <p class="example">Even a busy team — 200 five-minute videos a month, kept a year — pays about $9.85 a month. Watching is free.</p>
   </div>
 
   <ul class="terms">
@@ -393,7 +393,7 @@
   // AMOUNT is the slider's one setting: what it counts, and that in video hours a month.
   (function () {
     var AMOUNT = { perMonth: function (n) { return n * 5 / 60 * 52 / 12; }, label: function (n) { return String(n); }, perDay: function (n) { return n * 5 / 60 / 5; } };
-    var KEPT_MONTHS = 6, GB_PER_HOUR = 10 / 3, FREE_GB = 10, USD_PER_GB = 0.015, AI_FREE_HOURS_A_DAY = 2.5;
+    var KEPT_MONTHS = 12, GB_PER_HOUR = 10 / 3, FREE_GB = 10, USD_PER_GB = 0.015, AI_FREE_HOURS_A_DAY = 2.5;
     var input = document.getElementById("amount"), ai = document.getElementById("ai");
     if (!input || !ai) return;
     var num = function (x) { return x < 10 ? String(Math.round(x * 10) / 10) : String(Math.round(x)); };
