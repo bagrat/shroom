@@ -106,6 +106,9 @@ run_one() {
     note fail "$name" "this branch has no dev/mac/scenarios/$name.sh"
     return
   fi
+  # A scenario that builds may ask for longer, in a `# mac-limit: <seconds>` line of its own.
+  seconds=$(sed -n 's/^# mac-limit: \([0-9][0-9]*\)$/\1/p' "$script" | head -n 1)
+  seconds=${seconds:-${MAC_LIMIT:-600}}
   watch_start "$dir"
   (cd "$ROOT" && MAC_APP="$BUNDLE" SHROOM_APP="$BUNDLE" MAC_OUT="$dir" limit "$seconds" bash "$script") >"$dir/output.log" 2>&1
   ended=$?

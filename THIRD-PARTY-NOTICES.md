@@ -211,7 +211,7 @@ that ships under it.
 | rustls | 0.23.46 | crate | MIT | https://github.com/rustls/rustls |
 | rustls-pki-types | 1.15.1 | crate | MIT | https://github.com/rustls/pki-types |
 | rustls-platform-verifier | 0.7.1 | crate | MIT | https://github.com/rustls/rustls-platform-verifier |
-| rustls-webpki | 0.103.15 | crate | ISC | https://github.com/rustls/webpki |
+| rustls-webpki | 0.103.16 | crate | ISC | https://github.com/rustls/webpki |
 | same-file | 1.0.6 | crate | MIT | https://github.com/BurntSushi/same-file |
 | scap-screencapturekit | 0.1.0 | crate | MIT | https://github.com/CapSoftware/Cap (rev fb3f24380cf1) |
 | schemars | 0.8.22 | crate | MIT | https://github.com/GREsau/schemars |
@@ -302,7 +302,7 @@ that ships under it.
 | uuid | 1.26.1 | crate | MIT | https://github.com/uuid-rs/uuid |
 | walkdir | 2.5.0 | crate | MIT | https://github.com/BurntSushi/walkdir |
 | web_atoms | 0.2.6 | crate | MIT | https://github.com/servo/html5ever |
-| webpki-roots | 1.0.9 | crate | CDLA-Permissive-2.0 | https://github.com/rustls/webpki-roots |
+| webpki-roots | 1.0.10 | crate | CDLA-Permissive-2.0 | https://github.com/rustls/webpki-roots |
 | window-vibrancy | 0.6.0 | crate | MIT | https://github.com/tauri-apps/tauri-plugin-vibrancy |
 | winnow | 1.0.4 | crate | MIT | https://github.com/winnow-rs/winnow |
 | writeable | 0.6.4 | crate | Unicode-3.0 | https://github.com/unicode-org/icu4x |
@@ -1167,7 +1167,7 @@ express Statement of Purpose.
 
 ### 8. CDLA-Permissive-2.0
 
-- **webpki-roots 1.0.9**
+- **webpki-roots 1.0.10**
 
 ```
 # Community Data License Agreement - Permissive - Version 2.0
@@ -1253,7 +1253,7 @@ CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 ### 10. ISC
 
-- **rustls-webpki 0.103.15** — Copyright 2015 Brian Smith.
+- **rustls-webpki 0.103.16** — Copyright 2015 Brian Smith.
 
 ```
 Except as otherwise noted, this project is licensed under the following
