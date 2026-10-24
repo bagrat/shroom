@@ -583,7 +583,9 @@ describe("the free day (B207)", () => {
     const w2 = [];
     await worker.scheduled({ scheduledTime: NOW, cron: "* * * * *" }, off, { waitUntil: (p) => w2.push(p) });
     await Promise.all(w2);
-    expect(off.BUCKET.ops).toEqual([]);
+    // No AI step at all; the schedule's other job, auto-cleanup (N74), only reads that it's off.
+    expect(off.BUCKET.ops.filter((o) => !o.key.startsWith(".shroom/autoclean"))).toEqual([]);
+    expect(off.BUCKET.written()).toEqual([]);
   });
 });
 
