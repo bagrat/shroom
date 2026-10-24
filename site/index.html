@@ -113,11 +113,11 @@
   .pitch h1 { font-size: min(46px, calc((100vw - 120px) * 0.038)); font-weight: 700; line-height: 1.1; white-space: nowrap; text-wrap: initial; }
   .pitch .punch { margin-top: 6px; }
   /* The price (Bagrat, 2026-10-19: direction 1, the price in its own box, one slider and the AI
-     switch): what Cloudflare would charge for the amount set, worked out on the page. The box is
-     as wide as the headline. Without script it reads the slider's opening amount. */
+     switch; 2026-10-24: the price first, hours of video a month, how long videos are kept): what
+     Cloudflare would charge, worked out on the page. The box is as wide as the headline. */
   .price { margin-top: 36px; padding: 20px 22px 18px; border-radius: 12px; background: var(--card); border: 1px solid var(--card-edge);
     display: flex; flex-direction: column; gap: 4px; }
-  .price h2 { margin: 0 0 8px; font-size: 13px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--quiet); }
+  .price h2 { margin: 0 0 4px; font-size: 13px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--quiet); }
   .price .ask { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; font-size: 15px; color: var(--muted); }
   .price output { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
   .price input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 44px; margin: 0; background: transparent; cursor: pointer; }
@@ -125,19 +125,23 @@
   .price input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; margin-top: -9px; border: 0; border-radius: 50%; background: var(--text); box-shadow: 0 1px 4px rgba(0,0,0,.35); }
   .price input[type=range]::-moz-range-track { height: 4px; border-radius: 2px; background: var(--line-strong); }
   .price input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border: 0; border-radius: 50%; background: var(--text); }
-  .price .assume, .price .why { margin: 0; font-size: 14px; color: var(--quiet); font-variant-numeric: tabular-nums; }
+  .price .why { margin: 6px 0 0; font-size: 14px; color: var(--quiet); }
+  .price .keep { align-items: center; justify-content: space-between; gap: 16px; min-height: 44px; font-size: 15px; color: var(--muted); }
+  .price .seg { display: flex; gap: 2px; width: 280px; padding: 3px; border-radius: 9px; background: var(--well); }
+  .price .seg button { flex: 1 1 0; min-height: 40px; padding: 0 10px; border: 0; border-radius: 7px; background: transparent; color: var(--quiet); font: 600 14px var(--sans); cursor: pointer; }
+  .price .seg button[aria-pressed="true"] { background: var(--line); color: var(--text); }
   .price .ai { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; margin-top: 6px; font-size: 15px; color: var(--muted); }
   .price [role=switch] { position: relative; flex: none; width: 44px; height: 26px; padding: 0; border: 0; border-radius: 13px; background: var(--line-strong); cursor: pointer; }
   .price [role=switch]::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #eceff4; box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: left .15s ease; }
   .price [role=switch][aria-checked="true"] { background: var(--frost); }
   .price [role=switch][aria-checked="true"]::after { left: 21px; }
-  .price .sum { display: flex; align-items: baseline; gap: 12px; margin: 8px 0 2px; font-size: 16px; color: var(--muted); }
-  .price .sum b { font-size: 44px; font-weight: 700; letter-spacing: -0.02em; line-height: 1; color: var(--text); font-variant-numeric: tabular-nums; }
+  .price .sum { display: flex; align-items: baseline; gap: 10px; margin: 0 0 10px; font-size: 16px; color: var(--muted); }
+  .price .sum b { font-size: 48px; font-weight: 700; letter-spacing: -0.02em; line-height: 1; color: var(--text); font-variant-numeric: tabular-nums; }
   .price .sum b.free { color: var(--frost); }
-  /* Without script the box reads the opening amount: the slider and the switch need script. */
+  /* Without script the box reads its opening amount (an hour, $0.00): the controls need script. */
   .price .live { display: none; }
   .js .price input.live { display: block; }
-  .js .price .ai.live { display: flex; }
+  .js .price .ai.live, .js .price .keep.live { display: flex; }
   .example { margin: 12px 0 0; font-size: 15px; color: var(--quiet); }
   .terms { grid-area: terms; list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 32px; row-gap: 10px; align-self: start;
     color: var(--muted); font-size: 17px; line-height: 1.45; }
@@ -211,7 +215,9 @@
     .pitch h1 { font-size: 33px; white-space: normal; text-wrap: balance; }
     .pitch .punch { font-size: 17px; }
     .price { margin-top: 24px; padding: 16px 16px 14px; }
-    .price .sum b { font-size: 36px; }
+    .price .sum b { font-size: 40px; }
+    .js .price .keep.live { flex-direction: column; align-items: stretch; gap: 8px; }
+    .price .seg { width: auto; }
     .terms { margin-bottom: 28px; }
     .side { padding-top: 0; }
     .box { padding: 16px; gap: 22px; }
@@ -254,14 +260,14 @@
     <p class="punch">No monthly seat, sometimes completely free</p>
     <section class="price" aria-labelledby="price-h">
       <h2 id="price-h">What would it cost?</h2>
-      <div class="ask"><label for="amount">Videos a week</label><output id="amount-v" for="amount">5</output></div>
-      <input class="live" type="range" id="amount" min="1" max="50" step="1" value="5" aria-describedby="assume">
-      <p class="assume" id="assume">About five minutes each, kept a year</p>
+      <p class="sum"><b id="cost" class="free">$0.00</b> <span>a month</span></p>
+      <div class="ask"><label for="hours">Video a month</label><output id="hours-v" for="hours">1 hour</output></div>
+      <input class="live" type="range" id="hours" min="0" max="9" step="1" value="1" aria-valuetext="1 hour a month">
+      <div class="keep live"><span id="keep-l">Keep videos</span><div class="seg" role="group" aria-labelledby="keep-l"><button type="button" aria-pressed="true" data-months="1">30 days</button><button type="button" aria-pressed="false" data-months="2">60 days</button><button type="button" aria-pressed="false" data-months="12">a year</button></div></div>
       <div class="ai live"><span id="ai-l">AI names, chapters and captions</span><button type="button" role="switch" id="ai" aria-checked="false" aria-labelledby="ai-l"></button></div>
-      <p class="sum"><b id="cost">about 93¢</b> <span>a month</span></p>
-      <p class="why" id="why">About 22 hours kept, 72 GB. Cloudflare keeps the first 10 GB free.</p>
+      <p class="why">Cloudflare’s free 10 GB holds about 3 hours.</p>
     </section>
-    <p class="example">Even a busy team — 200 five-minute videos a month, kept a year — pays about $9.85 a month. Watching is free.</p>
+    <p class="example">A team of 20, an hour each a month: $0.85 with 30-day cleanup, $11.85 kept a year.</p>
   </div>
 
   <ul class="terms">
@@ -269,7 +275,7 @@
     <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span>You pay <b>only Cloudflare</b>, for the storage</span></li>
     <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span><b>Invite your team</b> with a link</span></li>
     <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span><b>No price per person</b> — the bill counts video, not people</span></li>
-    <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span><b>Delete old videos</b> and pay less</span></li>
+    <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span><b>Old videos clean themselves up.</b> Pin the ones you keep.</span></li>
     <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span>About <b>ten minutes</b> of guided setup, once</span></li>
     <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span><b>Open source</b> — every line on GitHub</span></li>
   </ul>
@@ -386,31 +392,34 @@
     d.addEventListener("click", function (e) { if (e.target === d) d.close(); });
     d.addEventListener("close", function () { v.pause(); open.focus(); });
   })();
-  // The price: what Cloudflare would charge for the amount set. About 10 GB holds three hours at
-  // Normal (the FAQ); storage is $0.015 a GB-month past Cloudflare's free 10 GB (B212). AI hears
-  // and names about 3,660 neurons a video hour against 10,000 free a day (B205, B207): about 2½
-  // hours of new video a day, and past that the rest is named the next day, still free.
-  // AMOUNT is the slider's one setting: what it counts, and that in video hours a month.
+  // The price (N74): what Cloudflare would charge for the hours of video set, kept as long as
+  // chosen. About 10 GB holds three hours at Normal (the FAQ); storage is $0.015 a GB-month past
+  // Cloudflare's free 10 GB (B212); 30 days counts as a month. AI never adds to it: about 2½ hours
+  // of new video a day are free, and past that the rest is named the next day (B205, B207).
   (function () {
-    var AMOUNT = { perMonth: function (n) { return n * 5 / 60 * 52 / 12; }, label: function (n) { return String(n); }, perDay: function (n) { return n * 5 / 60 / 5; } };
-    var KEPT_MONTHS = 12, GB_PER_HOUR = 10 / 3, FREE_GB = 10, USD_PER_GB = 0.015, AI_FREE_HOURS_A_DAY = 2.5;
-    var input = document.getElementById("amount"), ai = document.getElementById("ai");
-    if (!input || !ai) return;
-    var num = function (x) { return x < 10 ? String(Math.round(x * 10) / 10) : String(Math.round(x)); };
-    var money = function (x) { return x === 0 ? "$0" : x < 0.995 ? Math.max(1, Math.round(x * 100)) + "\u00a2" : "$" + x.toFixed(2); };
+    var HOURS = [0.5, 1, 2, 3, 5, 10, 20, 30, 50, 100], GB_PER_HOUR = 10 / 3, FREE_GB = 10, USD_PER_GB = 0.015;
+    var input = document.getElementById("hours"), keep = Array.prototype.slice.call(document.querySelectorAll(".price .seg button"));
+    if (!input || !keep.length) return;
+    var months = 1;
+    var label = function (h) { return h === 0.5 ? "30 min" : h === 1 ? "1 hour" : h + " hours"; };
     var show = function () {
-      var n = Number(input.value), kept = AMOUNT.perMonth(n) * KEPT_MONTHS, gb = kept * GB_PER_HOUR;
-      var usd = Math.max(0, gb - FREE_GB) * USD_PER_GB, on = ai.getAttribute("aria-checked") === "true";
-      document.getElementById("amount-v").textContent = AMOUNT.label(n);
+      var h = HOURS[Number(input.value)], usd = Math.max(0, h * months * GB_PER_HOUR - FREE_GB) * USD_PER_GB;
       var cost = document.getElementById("cost");
-      cost.textContent = (usd === 0 ? "" : "about ") + money(usd);
+      cost.textContent = "$" + usd.toFixed(2);
       cost.classList.toggle("free", usd === 0);
-      document.getElementById("why").textContent = "About " + num(kept) + " hours kept, " + num(gb) + " GB. " +
-        (usd === 0 ? "Inside Cloudflare\u2019s free 10 GB." : "Cloudflare keeps the first 10 GB free.") +
-        (!on ? "" : AMOUNT.perDay(n) <= AI_FREE_HOURS_A_DAY ? " AI is free too: under 2\u00bd hours of new video a day." : " AI: past 2\u00bd hours a day, the rest is named the next day, still free.");
+      document.getElementById("hours-v").textContent = label(h);
+      input.setAttribute("aria-valuetext", label(h) + " a month");
     };
     input.addEventListener("input", show);
-    ai.addEventListener("click", function () { ai.setAttribute("aria-checked", ai.getAttribute("aria-checked") === "true" ? "false" : "true"); show(); });
+    keep.forEach(function (b) {
+      b.addEventListener("click", function () {
+        months = Number(b.getAttribute("data-months"));
+        keep.forEach(function (o) { o.setAttribute("aria-pressed", o === b ? "true" : "false"); });
+        show();
+      });
+    });
+    var ai = document.getElementById("ai");
+    if (ai) ai.addEventListener("click", function () { ai.setAttribute("aria-checked", ai.getAttribute("aria-checked") === "true" ? "false" : "true"); });
     show();
   })();
   // The install tabs (N59): one command shows; ←/→ move between the tabs.
