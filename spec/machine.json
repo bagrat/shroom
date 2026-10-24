@@ -1307,7 +1307,7 @@
   {
    "id": "N74",
    "title": "shroom.am: the price as a slider in its own box",
-   "decision": "**A tester read the landing's price bar as a loading bar (2026-10-19)**; Bagrat asked for a more professional page with a price calculator in its place and was shown five whole-page directions, then five slider kinds, on the canvas (relayed by the orchestrator). **The same day he chose** direction 1, “Quiet split” (the page as built, the price wrapped in its own box), **one slider, at most with an AI switch**, and a large example **apart from the slider**. (1) **The bar and its four labels go.** In their place, under the headline's line and as wide as the headline, a box (as redrawn to Bagrat's answers, 2026-10-24): “What would it cost?”, then **the price first**, in dollars, never cents (“$0.00”, “$0.45”: “93¢” can read as 93 dollars), then the slider “Video a month” (**hours of video**, not a count: lengths vary; 30 min to 100 hours, opening at 1 hour), then “Keep videos” (30 days · 60 days · a year, opening at 30 days, so the box opens at $0.00), the switch “AI names, chapters and captions”, and one short line, “Cloudflare’s free 10 GB holds about 3 hours.” No assumption line, no gigabytes (his ask: super simple). (2) **The model:** about 10 GB holds three hours at Normal (the FAQ); Cloudflare charges $0.015 a GB-month past its free 10 GB (B212); 30 days counts as a month. AI is about 3,660 neurons a video hour against 10,000 free a day (B205, B207): the switch never adds money. (3) **Under the box**, on its own: “A team of 20, an hour each a month: $0.85 with 30-day cleanup, $11.85 kept a year.” (his “1 hour row”). (4) **The terms** sit in two columns on a laptop (one on a phone), and term 5 becomes “Old videos clean themselves up. Pin the ones you keep.” (proposed, for auto-cleanup). (5) **Timing:** the box promises auto-cleanup, which ships in 0.1.28; this goes live the day 0.1.28 does (Bagrat, 2026-10-24). (6) **Still open:** what the AI switch shows. All the new words are proposed. Board: “shroom.am landing — 1 · Quiet split”.",
+   "decision": "**A tester read the landing's price bar as a loading bar (2026-10-19)**; Bagrat asked for a more professional page with a price calculator in its place and was shown five whole-page directions, then five slider kinds, on the canvas (relayed by the orchestrator). **The same day he chose** direction 1, “Quiet split” (the page as built, the price wrapped in its own box), **one slider, at most with an AI switch**, and a large example **apart from the slider**. (1) **The bar and its four labels go.** In their place, under the headline's line and as wide as the headline, a box (as redrawn to Bagrat's answers, 2026-10-24): “What would it cost?”, then **the price first**, in dollars, never cents (“$0.00”, “$0.45”: “93¢” can read as 93 dollars), then the slider “Video a month” (**hours of video**, not a count: lengths vary; 30 min to 100 hours, opening at 1 hour), then “Keep videos” (30 days · 60 days · a year, opening at 30 days, so the box opens at $0.00), the switch “AI names, chapters and captions”, and, as its last line, the team's month (3) No assumption line, no gigabytes (his ask: super simple). (2) **The model:** about 10 GB holds three hours at Normal (the FAQ); Cloudflare charges $0.015 a GB-month past its free 10 GB (B212); 30 days counts as a month. AI is about 3,660 neurons a video hour against 10,000 free a day (B205, B207): the switch never adds money. (3) **The box's last line:** “A team of 20, an hour each a month: $0.85 with 30-day cleanup, $11.85 kept a year.” (the team row he chose, an hour each; it took the place of a note on the free 10 GB, 2026-10-24). Nothing sits under the box. (4) **The terms** sit in two columns on a laptop (one on a phone), and term 5 becomes “Old videos clean themselves up. Pin the ones you keep.” (proposed, for auto-cleanup). (5) **Timing:** the box promises auto-cleanup, which ships in 0.1.28; this goes live the day 0.1.28 does (Bagrat, 2026-10-24). (6) **Still open:** what the AI switch shows. All the new words are proposed. Board: “shroom.am landing — 1 · Quiet split”.",
    "status": "provisional",
    "date": "2026-10-19",
    "amends": [
@@ -2608,16 +2608,6 @@
      "id": "landing.ai-names-chapters-and"
     },
     {
-     "text": "Cloudflare’s free 10 GB holds about 3 hours.",
-     "role": "line",
-     "copy": "provisional",
-     "note": "The box's last line, the only explanation in it (Bagrat, 2026-10-24: super simple, no long texts). Proposed (N74): the words are Bagrat's to approve.",
-     "cites": [
-      "N74"
-     ],
-     "id": "landing.cloudflare-s-free-10"
-    },
-    {
      "text": "a month",
      "role": "other",
      "copy": "provisional",
@@ -2631,7 +2621,7 @@
      "text": "A team of 20, an hour each a month: $0.85 with 30-day cleanup, $11.85 kept a year.",
      "role": "line",
      "copy": "provisional",
-     "note": "Under the price box, on its own (Bagrat, 2026-10-24: “1 hour row sounds good”, paraphrased: a team row at an hour each). 20 hours a month is about 67 GB: $0.85 a month with 30-day cleanup; kept a year, 800 GB: $11.85. Proposed (N74): the words are Bagrat's to approve.",
+     "note": "The price box's last line, in place of a note on Cloudflare's free 10 GB (Bagrat, 2026-10-24: he liked the box and asked for the team line there; earlier he chose a team row at an hour each). 20 hours a month is about 67 GB: $0.85 a month with 30-day cleanup; kept a year, 800 GB: $11.85. Proposed (N74): the words are Bagrat's to approve.",
      "cites": [
       "N74"
      ],

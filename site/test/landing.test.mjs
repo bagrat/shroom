@@ -160,8 +160,8 @@ describe("the landing", () => {
       "kept 30 days, 60 days or a year, 30 days when the page opens");
     assert.match(box, /<button type="button" role="switch" id="ai" aria-checked="false" aria-labelledby="ai-l"><\/button>/, "the AI switch, off when the page opens");
     assert.match(html, /\.pitch \{[^}]*width: max-content;/, "the headline, its line and the box share the headline's width");
-    const after = pitch.slice(pitch.indexOf("</section>"));
-    assert.ok(after.includes(landing.said.find((l) => l.id === "landing.a-team-of-20").text), "the team's month is a line of its own, under the box");
+    assert.match(box, new RegExp(`<p class="why">${landing.said.find((l) => l.id === "landing.a-team-of-20").text.replace(/[.$]/g, "\\$&")}</p>\\s*</section>`),
+      "the team's month closes the box, nothing under it (Bagrat, 2026-10-24)");
   });
 
   it("works the price out the page's way, in dollars, and opens at $0.00 (N74)", () => {
