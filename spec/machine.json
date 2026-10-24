@@ -1235,8 +1235,8 @@
   {
    "id": "N69",
    "title": "Edit in shroom: the owner's page opens the video in shroom's editor",
-   "decision": "**Bagrat asked for an Edit button on the video's page that opens it in the editor, 2026-10-18** (relayed by the orchestrator), and approved the boards “The page — Edit in shroom” and “Editor — opened from the page's Edit” as drawn, with their lines, option A and the tooltip “Edit in shroom” (2026-10-18). (1) **The owner page gains Edit in shroom**: the scissors, the last of the quiet icons beside the title, after Download, its tooltip “Edit in shroom”. It shows only on the owner page (the space's owners on every video, a member on their own) and only once the video is fully up, as Edit… in the Library; a recipient's page and the embed never have it. (2) **It opens `shroom://edit/<the space's address>/<the video>`**, with nothing secret in it: the browser asks first (its own “Open shroom?”), and the Mac decides by its own state. (3) **The Mac's answers.** A video this Mac can edit (the owner's Macs: every video in the space; a member's Mac: their own) opens in the editor as Edit… opens it. The editor already open comes forward as it is, one at a time; holding another video, its footer says “You're editing another video — press Done, then Edit again.” While a take is open the press waits (law 4), and the editor opens once the take ends. Otherwise the popover opens by itself under the mushroom with one line, said once: “This Mac isn't set up for that video's space.”, “Only whoever recorded this video, or the space's owner, can edit it.” or “That video isn't in your space anymore.” A Mac not set up at all opens its welcome window, as a click on the mushroom does. (4) **Where shroom isn't on the Mac, the page says nothing** (option A): only a Mac running shroom makes a browser the owner's, so the button shows only where it can work. Built: DECISIONS B221.",
-   "status": "provisional",
+   "decision": "**Bagrat asked for an Edit button on the video's page that opens it in the editor, 2026-10-18** (relayed by the orchestrator), and approved the boards “The page — Edit in shroom” and “Editor — opened from the page's Edit” as drawn, with their lines, option A and the tooltip “Edit in shroom” (2026-10-18). (1) **The owner page gains Edit in shroom**: the scissors, the last of the quiet icons beside the title, after Download, its tooltip “Edit in shroom”. It shows only on the owner page (the space's owners on every video, a member on their own) and only once the video is fully up, as Edit… in the Library; a recipient's page and the embed never have it. (2) **It opens `shroom://edit/<the space's address>/<the video>`**, with nothing secret in it: the browser asks first (its own “Open shroom?”), and the Mac decides by its own state. (3) **The Mac's answers.** A video this Mac can edit (the owner's Macs: every video in the space; a member's Mac: their own) opens in the editor as Edit… opens it. The editor already open comes forward as it is, one at a time; holding another video, its footer says “You're editing another video — press Done, then Edit again.” While a take is open the press waits (law 4), and the editor opens once the take ends. Otherwise the popover opens by itself under the mushroom with one line, said once: “This Mac isn't set up for that video's space.”, “Only whoever recorded this video, or the space's owner, can edit it.” or “That video isn't in your space anymore.” A Mac not set up at all opens its welcome window, as a click on the mushroom does. (4) **Where shroom isn't on the Mac, the page says nothing** (option A): only a Mac running shroom makes a browser the owner's, so the button shows only where it can work. Built: DECISIONS B221. **Bagrat ratified it and its four lines as built, 2026-10-24.**",
+   "status": "ratified",
    "date": "2026-10-18",
    "amends": [
     "owner-page (Edit in shroom)",
@@ -5303,7 +5303,7 @@
     {
      "text": "This Mac isn't set up for that video's space.",
      "role": "status",
-     "copy": "provisional",
+     "copy": "ratified",
      "note": "The owner page's Edit in shroom (N69), on a Mac set up for another space: the popover opens by itself under the mushroom, the app you were in keeping the keyboard; said once in the status line, first in its order, until the popover closes. Approved as drawn (Bagrat, 2026-10-18).",
      "cites": [
       "N69"
@@ -5313,7 +5313,7 @@
     {
      "text": "Only whoever recorded this video, or the space's owner, can edit it.",
      "role": "status",
-     "copy": "provisional",
+     "copy": "ratified",
      "note": "The owner page's Edit in shroom (N69), on a member's Mac, for someone else's video: the popover opens by itself under the mushroom, the app you were in keeping the keyboard; said once in the status line, first in its order, until the popover closes. Approved as drawn (Bagrat, 2026-10-18).",
      "cites": [
       "N69"
@@ -5323,7 +5323,7 @@
     {
      "text": "That video isn't in your space anymore.",
      "role": "status",
-     "copy": "provisional",
+     "copy": "ratified",
      "note": "The owner page's Edit in shroom (N69), for a video deleted since its page opened: the popover opens by itself under the mushroom, the app you were in keeping the keyboard; said once in the status line, first in its order, until the popover closes. Approved as drawn (Bagrat, 2026-10-18).",
      "cites": [
       "N69"
@@ -6694,7 +6694,7 @@
     {
      "text": "Edit in shroom",
      "role": "tooltip",
-     "copy": "provisional",
+     "copy": "ratified",
      "note": "The scissors' tooltip, and its name for screen readers (N69). Approved as drawn (Bagrat, 2026-10-18).",
      "cites": [
       "N69"
@@ -18206,7 +18206,7 @@
    "kind": "side",
    "label": "Edit in shroom",
    "trigger": "Edit in shroom, for a video this Mac can edit whose video is on this Mac: its own window, in front — or, its window open already, that window, as it is (N73)",
-   "status": "provisional",
+   "status": "ratified",
    "cites": [
     "N69",
     "N73"
@@ -18224,7 +18224,7 @@
    "kind": "side",
    "label": "Edit in shroom",
    "trigger": "Edit in shroom, for a video this Mac can edit whose video isn't on this Mac: its own window, in front (N73)",
-   "status": "provisional",
+   "status": "ratified",
    "cites": [
     "N69",
     "N73"
@@ -18242,7 +18242,7 @@
    "kind": "side",
    "label": "Edit in shroom",
    "trigger": "Edit in shroom, for a video this Mac can't edit: the popover opens by itself with one line, said once",
-   "status": "provisional",
+   "status": "ratified",
    "cites": [
     "N69"
    ],
