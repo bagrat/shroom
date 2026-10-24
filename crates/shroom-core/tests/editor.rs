@@ -50,7 +50,7 @@ fn rec() -> RecId {
 }
 
 fn row(id: &str, title: &str, live: bool, owner: &str) -> LibraryRow {
-    LibraryRow { rec: RecId(id.into()), title: title.into(), created: Wall(AUG21), length_ms: Some(272_400), live, owner: Some(owner.into()), poster: false, edited_ms: None }
+    LibraryRow { rec: RecId(id.into()), title: title.into(), created: Wall(AUG21), length_ms: Some(272_400), live, owner: Some(owner.into()), poster: false, edited_ms: None, pinned: false }
 }
 
 /// The Library open on a ready Mac: the video to edit (live), another live one, and one
@@ -2549,4 +2549,21 @@ fn a_mac_not_set_up_opens_its_welcome_window() {
     pressed(&mut r, HOST, REC);
     assert!(r.scene.onboarding.is_some(), "the welcome window");
     assert!(r.scene.editors.is_empty() && !opens(&r));
+}
+
+/// An open editor marks its video for the space's auto-cleanup (N74): at once, then every
+/// five minutes while its window stays open, so the page never deletes a video being edited.
+#[test]
+fn an_open_editor_marks_its_video_every_five_minutes_for_auto_cleanup() {
+    let mut r = opened();
+    let marked = |r: &Run| r.has(|e| *e == Effect::Library(LibCmd::Editing(vec![rec()])));
+    assert!(marked(&r), "marked as it opens");
+    let t0 = r.t;
+    r.tick_to(t0 + 200_000);
+    assert!(!marked(&r), "not again inside five minutes");
+    r.tick_to(t0 + 302_000);
+    assert!(marked(&r), "five minutes on: marked again");
+    r.send(Event::WindowClosed(WindowKind::Editor(newest(&r.w).unwrap())));
+    r.tick_to(t0 + 700_000);
+    assert!(!r.has(|e| matches!(e, Effect::Library(LibCmd::Editing(_)))), "closed: no more marks");
 }
