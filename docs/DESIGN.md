@@ -108,6 +108,9 @@ uploads the picture as the `machine-picture` artifact.
   the threads. One that's sent to Claude (or mentions @claude) can be answered and resolved
   there; a plain comment only reaches a session when he says so. `action: "watch"` asks to
   be woken by those; it sometimes fails at first (`mint_failed`), and a retry has worked.
+- **Boards for review go as images.** Bagrat reviews on his phone. When boards wait on
+  his review, export each one as a phone-readable PNG ahead of time, so they can be sent
+  (SendUserFile) the moment he asks, rather than only the canvas link (Bagrat, 2026-10-19).
 - **Proving the build matches**: `npm run -s test:gallery --workspace app` and
   `gallery:pages` screenshot every state (`app/test/gallery-out/`,
   `tests/e2e/gallery-out/`). The hosted Mac (the `shroom-cloud` skill, §5) shows the real

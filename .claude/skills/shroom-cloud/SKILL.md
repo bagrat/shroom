@@ -14,7 +14,8 @@ This skill is dev tooling. The CLAUDE.md product-voice rule covers what the **ap
 page and the installer** say to people. It doesn't stop you naming scripts and tools to
 Bagrat here. CLAUDE.md's build rules do hold here: the spec wins, a test is never
 edited to pass, and nothing is pushed to `main` — a cloud session's work
-stays on its own `claude/…` branch for Bagrat to merge.
+goes on its own `claude/…` branch and reaches `main` by a PR, merged under CLAUDE.md's
+*Merge when sure*.
 
 Run everything from the repo root. This is v1: the Rust crates, the Worker, the app's
 webviews. For the POC's recipes (fake recordings, wrangler login, whisper) see
