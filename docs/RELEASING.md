@@ -10,8 +10,10 @@ A release is a GitHub release of `bagrat/shroom` carrying exactly three files:
 The install line, the app's own updater and the Homebrew cask read nothing else
 (`releases/latest/download/manifest.txt` — `update.txt` for the app, which falls back to
 `manifest.txt` on a release without one — then `releases/download/v<version>/<zip>`;
-DECISIONS B29, B31). You make one by pushing a tag: `.github/workflows/release.yml` builds,
-signs, packages and publishes it. Nothing is ever uploaded by hand.
+DECISIONS B29, B31). You make one with **Actions → Release → Run workflow** on `main`,
+Publish ticked (B126): `.github/workflows/release.yml` builds, signs, packages and
+publishes it, and tags the commit it built. A session can't push tags, so the hand-pushed
+tag is Bagrat's alone ("Cutting a release"). Nothing is ever uploaded by hand.
 
 Two things to know before anything else:
 
@@ -29,8 +31,8 @@ Two things to know before anything else:
 
 ## One-time setup
 
-1. Get the workflows onto GitHub: push `main`. (Pushing `main` is always your go —
-   CLAUDE.md.) CI starts by itself on that push. *(Done: they have been on `main` since
+1. Get the workflows onto GitHub: merge them to `main` (by a PR, as everything reaches
+   `main` — CLAUDE.md). CI starts by itself on that merge. *(Done: they have been on `main` since
    2026-10-12; the `build/v1` branch they were written on is merged and gone.)*
 
 2. Make the release identity. Run this once, on your Mac, in Terminal:
@@ -195,16 +197,11 @@ not been proven". 0.1.4 was never released.) Read your version for it.
    (`dev/proposals/heartbeat-in-vm.md` §3). A timing bar it reports but can't judge is
    settled, only if it matters, in a Tart clone (`tests/l5/heartbeat-vm.sh`).
 
-4. If you moved the version in step 1, or wrote the notes in step 2, commit them:
+4. If you moved the version in step 1, or wrote the notes in step 2, commit them on a
+   `claude/…` branch and merge its PR (nothing is pushed to `main` directly — CLAUDE.md):
 
    ```bash
    git add docs/release-notes && git commit -am "chore: shroom 0.1.5"
-   ```
-
-   Then push `main`:
-
-   ```bash
-   git push origin main
    ```
 
 5. Wait for CI to go green on that commit. It is also what makes the release build fast:
