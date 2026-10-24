@@ -145,38 +145,40 @@ describe("the landing", () => {
     assert.deepEqual(terms, ids.map((id) => landing.said.find((l) => l.id === id).text));
   });
 
-  it("puts the price in its own box, as wide as the headline: one slider, the AI switch, the month's figure (N74)", () => {
+  it("puts the price in its own box, as wide as the headline: the price first, one slider, how long videos are kept, the AI switch (N74)", () => {
     const pitch = html.match(/<div class="pitch">([\s\S]*?)\n  <\/div>/)?.[1] ?? "";
     assert.match(pitch, /<h1>Record\. Share\. Pay-as-you-go\.<\/h1>/);
     assert.doesNotMatch(html, /class="gauge"/, "the bar is gone (a tester read it as loading)");
     const box = pitch.match(/<section class="price"[\s\S]*?<\/section>/)?.[0] ?? "";
     assert.ok(box, "the price box sits in the pitch, under the headline's line");
+    const at = (k) => box.indexOf(k);
+    assert.ok(at('id="price-h"') < at('id="cost"') && at('id="cost"') < at('id="hours"') && at('id="hours"') < at('class="keep') && at('class="keep') < at('id="ai"'),
+      "the heading, then the price, then the slider, then Keep videos, then the AI switch (Bagrat, 2026-10-24)");
     assert.equal([...box.matchAll(/type="range"/g)].length, 1, "one slider");
-    assert.match(box, /<input class="live" type="range" id="amount" min="1" max="50" step="1" value="5"/);
+    assert.match(box, /<input class="live" type="range" id="hours" min="0" max="9" step="1" value="1"/, "hours of video a month, opening at 1 hour");
+    assert.match(box, /<button type="button" aria-pressed="true" data-months="1">30 days<\/button><button type="button" aria-pressed="false" data-months="2">60 days<\/button><button type="button" aria-pressed="false" data-months="12">a year<\/button>/,
+      "kept 30 days, 60 days or a year, 30 days when the page opens");
     assert.match(box, /<button type="button" role="switch" id="ai" aria-checked="false" aria-labelledby="ai-l"><\/button>/, "the AI switch, off when the page opens");
-    assert.match(box, /<output id="amount-v" for="amount">5<\/output>/);
     assert.match(html, /\.pitch \{[^}]*width: max-content;/, "the headline, its line and the box share the headline's width");
     const after = pitch.slice(pitch.indexOf("</section>"));
-    assert.ok(after.includes(landing.said.find((l) => l.id === "landing.even-a-busy-team").text), "the busy team's month is a line of its own, under the box");
+    assert.ok(after.includes(landing.said.find((l) => l.id === "landing.a-team-of-20").text), "the team's month is a line of its own, under the box");
   });
 
-  it("works the price out the page's way, and says the opening reading without script (N74)", () => {
-    // The model, as the page's script states it: about 10 GB per three hours at Normal (the
-    // FAQ), $0.015 a GB-month past Cloudflare's free 10 GB (B212), videos kept a year.
+  it("works the price out the page's way, in dollars, and opens at $0.00 (N74)", () => {
+    // About 10 GB per three hours at Normal (the FAQ), $0.015 a GB-month past Cloudflare's free
+    // 10 GB (B212), 30 days as a month.
     const script = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]).join("\n");
-    assert.match(script, /var KEPT_MONTHS = 12, GB_PER_HOUR = 10 \/ 3, FREE_GB = 10, USD_PER_GB = 0\.015, AI_FREE_HOURS_A_DAY = 2\.5;/);
-    const month = (videosAWeek) => {
-      const gb = videosAWeek * 5 / 60 * 52 / 12 * 12 * 10 / 3;
-      return Math.max(0, gb - 10) * 0.015;
-    };
-    assert.match(html, /<b id="cost">about 93¢<\/b>/, "five a week, opening: about 93¢");
-    assert.equal(Math.round(month(5) * 100), 93);
-    assert.equal(month(0), 0, "nothing kept, nothing to pay");
-    // The busy team's line: 200 five-minute videos a month, kept a year.
-    const busy = Math.max(0, 200 * 5 / 60 * 12 * 10 / 3 - 10) * 0.015;
-    assert.equal(busy.toFixed(2), "9.85");
-    assert.match(html, /<p class="why" id="why">About 22 hours kept, 72 GB\. Cloudflare keeps the first 10 GB free\.<\/p>/);
-    assert.match(html, /\.price \.live \{ display: none; \}/, "without script, the slider and the switch stay hidden and the opening reading shows");
+    assert.match(script, /var HOURS = \[0\.5, 1, 2, 3, 5, 10, 20, 30, 50, 100\], GB_PER_HOUR = 10 \/ 3, FREE_GB = 10, USD_PER_GB = 0\.015;/);
+    assert.match(script, /cost\.textContent = "\$" \+ usd\.toFixed\(2\);/, "dollars, never cents (Bagrat, 2026-10-24)");
+    const month = (hours, months) => Math.max(0, hours * months * 10 / 3 - 10) * 0.015;
+    assert.match(html, /<b id="cost" class="free">\$0\.00<\/b>/, "an hour, kept 30 days: $0.00");
+    assert.equal(month(1, 1), 0);
+    assert.equal(month(1, 12).toFixed(2), "0.45");
+    // The team's line: 20 hours a month.
+    assert.equal(month(20, 1).toFixed(2), "0.85");
+    assert.equal(month(20, 12).toFixed(2), "11.85");
+    assert.doesNotMatch(html, /¢/, "no cents anywhere on the page");
+    assert.match(html, /\.price \.live \{ display: none; \}/, "without script the controls stay hidden and the opening reading shows");
   });
 
   it("points Read it first at the installer's own address", () => {
