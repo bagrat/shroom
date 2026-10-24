@@ -12,7 +12,8 @@
     "test:site": "node --test site/test/landing.test.mjs site/test/agent.test.mjs site/test/cli.test.mjs site/test/worker.test.mjs site/test/og.test.mjs site/test/report.test.mjs"
   },
   "overrides": {
-    "sharp": "^0.35.5"
+    "sharp": "^0.35.5",
+    "undici": "7.30.1"
   },
   "devDependencies": {
     "elkjs": "0.9.3"
