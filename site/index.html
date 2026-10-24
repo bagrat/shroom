@@ -142,7 +142,6 @@
   .price .live { display: none; }
   .js .price input.live { display: block; }
   .js .price .ai.live, .js .price .keep.live { display: flex; }
-  .example { margin: 12px 0 0; font-size: 15px; color: var(--quiet); }
   .terms { grid-area: terms; list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 32px; row-gap: 10px; align-self: start;
     color: var(--muted); font-size: 17px; line-height: 1.45; }
   .terms li { display: flex; align-items: flex-start; gap: 12px; }
@@ -265,9 +264,8 @@
       <input class="live" type="range" id="hours" min="0" max="9" step="1" value="1" aria-valuetext="1 hour a month">
       <div class="keep live"><span id="keep-l">Keep videos</span><div class="seg" role="group" aria-labelledby="keep-l"><button type="button" aria-pressed="true" data-months="1">30 days</button><button type="button" aria-pressed="false" data-months="2">60 days</button><button type="button" aria-pressed="false" data-months="12">a year</button></div></div>
       <div class="ai live"><span id="ai-l">AI names, chapters and captions</span><button type="button" role="switch" id="ai" aria-checked="false" aria-labelledby="ai-l"></button></div>
-      <p class="why">Cloudflare’s free 10 GB holds about 3 hours.</p>
+      <p class="why">A team of 20, an hour each a month: $0.85 with 30-day cleanup, $11.85 kept a year.</p>
     </section>
-    <p class="example">A team of 20, an hour each a month: $0.85 with 30-day cleanup, $11.85 kept a year.</p>
   </div>
 
   <ul class="terms">
