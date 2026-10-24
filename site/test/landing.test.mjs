@@ -162,20 +162,20 @@ describe("the landing", () => {
 
   it("works the price out the page's way, and says the opening reading without script (N74)", () => {
     // The model, as the page's script states it: about 10 GB per three hours at Normal (the
-    // FAQ), $0.015 a GB-month past Cloudflare's free 10 GB (B212), videos kept six months.
+    // FAQ), $0.015 a GB-month past Cloudflare's free 10 GB (B212), videos kept a year.
     const script = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]).join("\n");
-    assert.match(script, /var KEPT_MONTHS = 6, GB_PER_HOUR = 10 \/ 3, FREE_GB = 10, USD_PER_GB = 0\.015, AI_FREE_HOURS_A_DAY = 2\.5;/);
+    assert.match(script, /var KEPT_MONTHS = 12, GB_PER_HOUR = 10 \/ 3, FREE_GB = 10, USD_PER_GB = 0\.015, AI_FREE_HOURS_A_DAY = 2\.5;/);
     const month = (videosAWeek) => {
-      const gb = videosAWeek * 5 / 60 * 52 / 12 * 6 * 10 / 3;
+      const gb = videosAWeek * 5 / 60 * 52 / 12 * 12 * 10 / 3;
       return Math.max(0, gb - 10) * 0.015;
     };
-    assert.match(html, /<b id="cost">about 39¢<\/b>/, "five a week, opening: about 39¢");
-    assert.equal(Math.round(month(5) * 100), 39);
+    assert.match(html, /<b id="cost">about 93¢<\/b>/, "five a week, opening: about 93¢");
+    assert.equal(Math.round(month(5) * 100), 93);
     assert.equal(month(0), 0, "nothing kept, nothing to pay");
-    // The busy team's line: 200 five-minute videos a month, kept six months.
-    const busy = Math.max(0, 200 * 5 / 60 * 6 * 10 / 3 - 10) * 0.015;
-    assert.equal(busy.toFixed(2), "4.85");
-    assert.match(html, /<p class="why" id="why">About 11 hours kept, 36 GB\. Cloudflare keeps the first 10 GB free\.<\/p>/);
+    // The busy team's line: 200 five-minute videos a month, kept a year.
+    const busy = Math.max(0, 200 * 5 / 60 * 12 * 10 / 3 - 10) * 0.015;
+    assert.equal(busy.toFixed(2), "9.85");
+    assert.match(html, /<p class="why" id="why">About 22 hours kept, 72 GB\. Cloudflare keeps the first 10 GB free\.<\/p>/);
     assert.match(html, /\.price \.live \{ display: none; \}/, "without script, the slider and the switch stay hidden and the opening reading shows");
   });
 
