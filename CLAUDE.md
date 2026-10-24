@@ -144,11 +144,12 @@ lives in `spec/`; the working docs live in `docs/`.
   own chat (an approval, a ratification, a confirmation it won't take relayed): once he
   gives it, the child reports back that he did, so the orchestrator can clear it from his
   waiting list (Bagrat, 2026-10-18).
-- **Asking Bagrat.** As simple as it can be put. Interviews and walkthroughs ask one
-  question at a time. Otherwise, questions that are each a single click from a few options
-  and don't depend on each other go together in one question tool (`AskUserQuestion`)
-  call. A question that needs a prose answer is asked in plain chat, never through the
-  tool, since he can't dictate into it on mobile (Bagrat, 2026-10-16).
+- **Asking Bagrat.** As simple as it can be put, always in plain chat and never through
+  the question tool (`AskUserQuestion`): he answers by dictation on mobile, and the tool
+  takes none, not even in its "Other" answer (Bagrat, 2026-10-24; it replaced the
+  2026-10-16 rule that batched single-click questions into the tool). Interviews and
+  walkthroughs ask one question at a time. Otherwise, number the questions in one message,
+  put the recommended answer first in each, and say what happens if he has no preference.
 - **The waiting-on-you footer.** While anything waits on Bagrat that he hasn't answered
   (a question, a review, a decision, a check by hand), every message to him ends with a
   short footer listing it, most urgent first, even when the message is about another
