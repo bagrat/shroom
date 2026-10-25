@@ -376,3 +376,4 @@ and edits on the share page)*)**
     Proved in CI (the core walkthroughs, the Worker's `autoclean.test.js`, the command
     against the real page, the window gallery). Ships with 0.1.29. Known gap: no hosted-Mac
     drive yet; the Settings pop-up and the popover banner are checked in the gallery only.
+
