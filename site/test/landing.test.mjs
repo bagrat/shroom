@@ -151,12 +151,12 @@ describe("the landing", () => {
     assert.match(html, /@media \(max-width: 900px\) \{[\s\S]*?\.stack \{ display: contents; \}[\s\S]*?\.watch \{ order: 1; \} \.price \{ order: 2; \} \.install \{ order: 3; \} \.terms \{ order: 4; \}/);
   });
 
-  it("gives each term its own icon, in the page's green, in place of a tick (N74; Bagrat, 2026-10-25)", () => {
+  it("gives each term its own icon, in the page's blue, in place of a tick (N74; Bagrat, 2026-10-25)", () => {
     const list = html.match(/<ul class="tile terms">([\s\S]*?)<\/ul>/)?.[1] ?? "";
     const icons = [...list.matchAll(/<li><span class="ic" data-icon="([a-z-]+)" aria-hidden="true"><svg viewBox="0 0 24 24">/g)].map((m) => m[1]);
     assert.deepEqual(icons, ["cloud-lock", "receipt", "users", "armchair-off", "broom-sparkles", "list-checks", "code-xml"]);
     assert.doesNotMatch(list, /M5 12\.5l4\.5 4\.5L19 7\.5/, "no ticks left");
-    assert.match(html, /\.terms svg \{[^}]*stroke: var\(--green\); stroke-width: 2;/, "green, at the icons' own stroke");
+    assert.match(html, /\.terms svg \{[^}]*stroke: var\(--frost\); stroke-width: 2;/, "blue, at the icons' own stroke (green was dropped)");
   });
 
   it("says the terms in Bagrat's order, in their own tile under the price (N59, N74)", () => {
