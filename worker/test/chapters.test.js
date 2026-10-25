@@ -1,4 +1,4 @@
-// The owner edits the chapters (spec N78, owner-page-chapters; DECISIONS B240): the panel
+// The owner edits the chapters (spec N78, owner-page-chapters; DECISIONS B242): the panel
 // Edit chapters opens under the player saves the whole list at once to
 // POST /_shroom/chapters/<id>. Once the owner has changed anything the chapters are theirs —
 // kept on the recording's clock, carried over trims, cuts and bakes, never written again by

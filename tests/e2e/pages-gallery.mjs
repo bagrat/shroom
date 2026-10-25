@@ -180,7 +180,7 @@ const FACES = [
       await page.evaluate(() => { window.__stayed = true; const v = document.querySelector("video"); v.muted = true; return v.play(); }).catch(() => {});
       await page.waitForFunction(() => document.querySelector("video").currentTime > 0.5, null, { timeout: 15000 }).catch(() => {});
     },
-    golive: (id) => named(id), wait: () => true, pictures: [], lines: () => [], absent: [NAMED_LINE], act: async (page) => {
+    golive: (id) => named(id), wait: () => true, pictures: [], lines: () => [], absent: [NAMED_LINE], act: async (page, env, f) => {
       const missing = [];
       const came = await page.waitForFunction(() => document.querySelectorAll(".chs i").length > 0 && document.querySelector(".cc"), null, { timeout: 30000, polling: 250 }).then(() => true, () => false);
       if (!came) missing.push("the chapters and Captions in place, without a reload");
@@ -201,6 +201,20 @@ const FACES = [
         return t.activeCues && t.activeCues.length ? t.activeCues[0].text : false;
       }, null, { timeout: 15000, polling: 250 }).then((h) => h.jsonValue(), () => null);
       if (!(cue && cue.startsWith("Next, the invoice"))) missing.push(`a caption at 1:10 (got ${JSON.stringify(cue)})`);
+      // No line under the title once the name is in (Bagrat, 2026-10-25: removed).
+      if ((await page.evaluate(() => document.body.innerText)).includes(NAMED_LINE)) missing.push("no named-from line once the name came");
+      // A voice cut lands after the name (review of B241): 0:30–1:00 goes, and the page hears
+      // what now plays as its edits pull does. The bar comes to what a reload draws: the second
+      // chapter from 0:38, named at 0:40.
+      await env.BUCKET.put(metaKey(f.id), named(f.id, { edits: { version: 1, source_duration: AI_SECS, in: 0, out: AI_SECS, cuts: [{ start: 30, end: 60, kind: "manual", applied: true }], rev: 2 } }));
+      await page.evaluate(() => document.dispatchEvent(new CustomEvent("shroom:keep", { detail: [[0, 30], [60, 183]] })));
+      // Each section as long as its chapter on the cut clock: 0:38, 0:46, 0:43 and 0:26.
+      const redrawn = await page.waitForFunction(() => {
+        const grow = [...document.querySelectorAll(".chs i")].map((x) => Math.round(parseFloat(getComputedStyle(x).flexGrow)));
+        return +document.querySelector(".seek").max < 160 && JSON.stringify(grow) === "[38,46,43,26]";
+      }, null, { timeout: 10000, polling: 250 }).then(() => true, () => false);
+      const at40 = await tipAt(page, 40, false);
+      if (!redrawn || at40?.chapter !== AI_SAID[1][1]) missing.push(`the bar redrawn on the cut clock: “${AI_SAID[1][1]}” at 0:40 (got ${JSON.stringify(at40)}, redrawn ${redrawn})`);
       return missing;
     } },
   // …or, the account's free day used up, that the name comes later; never an error.
@@ -422,7 +436,7 @@ async function main() {
         const text = await page.evaluate(() => document.body.innerText);
         const missing = f.lines().filter((l) => !text.includes(l));
         if (!clicked) missing.push(f.after);
-        if (f.act) missing.push(...(await f.act(page)));
+        if (f.act) missing.push(...(await f.act(page, env, f)));
         if (f.hidden && !(await page.evaluate((q) => document.querySelector(q)?.hidden, f.hidden))) missing.push(`${f.hidden} hidden`);
         if (f.hover) {
           // The still is stored first; then the button is hovered and its tooltip read.
