@@ -920,7 +920,7 @@ function namingScript(html, { value = fieldOf(html).value, focused = !!fieldOf(h
   const shroomCaptions = () => { wired.captions++; };
   const docOn = {};
   const document = {
-    title: "", activeElement: null, getElementById: (id) => (id === "t" ? t : id === "ainote" ? note : null),
+    title: "", activeElement: null, getElementById: (id) => (id === "t" ? t : id === "ainote" ? note : id === "ns" ? shim : null),
     addEventListener: (type, fn) => (docOn[type] ??= []).push(fn),
     querySelector: (q) => (q === ".player" && live ? player : null),
     createElement: (tag) => Object.defineProperty(el(tag), "innerHTML", {
@@ -936,6 +936,8 @@ function namingScript(html, { value = fieldOf(html).value, focused = !!fieldOf(h
     select: () => { t.selected = true; },
   };
   const note = { textContent: "", hidden: true };
+  /** The title's shimmer (N82), as the page draws it: there only while the name is on its way. */
+  const shim = /<span class="nameshim" id="ns"/.test(html) ? { hidden: true, style: {}, gone: false, remove() { this.gone = true; } } : null;
   if (focused) document.activeElement = t;
   const timers = [];
   let pending = null;
@@ -945,7 +947,11 @@ function namingScript(html, { value = fieldOf(html).value, focused = !!fieldOf(h
   new Function("document", "fetch", "setTimeout", "CustomEvent", "shroomChapters", "shroomCaptions", script)(document, fetch, (fn) => timers.push(fn), CustomEvent, shroomChapters, shroomCaptions);
   const settled = () => new Promise((ok) => setTimeout(ok, 0));
   return {
-    t, note, document, named, player, timers,
+    t, note, shim, document, named, player, timers,
+    /** The page's line ending (N82): the finishing line faded, for whatever reason. */
+    finished() { for (const fn of docOn["shroom:finished"] ?? []) fn({}); },
+    /** The status saying the name is in: whether this script took it, and when it's dressed. */
+    namedIn() { const d = { taken: false, ready: 0, go() { this.ready++; } }; for (const fn of docOn["shroom:named-in"] ?? []) fn({ detail: d }); return d; },
     goLive() { live = true; },
     async answer(j) { timers.shift()(); pending({ ok: true, json: () => Promise.resolve(j) }); await settled(); await settled(); },
     /** The answer to an ask the page made on its own (not on its timer). */
@@ -953,7 +959,7 @@ function namingScript(html, { value = fieldOf(html).value, focused = !!fieldOf(h
     /** What now plays changed (a voice cut landed, a strip press): the player's own event. */
     keep(k) { for (const fn of docOn["shroom:keep"] ?? []) fn({ detail: k }); },
     get asked() { return asked; },
-    click() { for (const fn of on.pointerdown ?? []) fn({}); document.activeElement = t; },
+    click() { for (const fn of on.pointerdown ?? []) fn({}); document.activeElement = t; for (const fn of on.focus ?? []) fn({}); },
     type(v) { t.value = v; for (const fn of on.input ?? []) fn({}); },
   };
 }
@@ -1231,5 +1237,112 @@ describe("the page (B209)", () => {
   it("a space without the AI never asks", async () => {
     const env = await aiSpace({ ai: false });
     expect(await live(env, cookieFor(M1, OWNER_MAC))).not.toContain("/_shroom/named/");
+  });
+});
+
+// Bagrat's re-check of 0.1.33-early.1, 2026-10-25: the chapters and captions came after the
+// finishing spinner had gone. N82: the line lasts until the name is in, and the empty title
+// shimmers while it's on its way; a typed title still takes the chapters and captions.
+describe("the name on its way (N82)", () => {
+  const live = async (env, cookie) => { const res = await call(env, "GET", `/${REC}`, cookie ? { headers: { cookie } } : {}); expect(res.status).toBe(200); return res.text(); };
+  /** A take that went live a minute ago in a space that listens, its cues planned (none), not yet named. */
+  const fresh = (over = {}) => ({ durationSec: 150, createdAt: new Date(NOW - 3 * MIN).toISOString(), publishedAt: new Date(NOW - MIN).toISOString(), edits: { ...edits([], 1), voice: { planned_at: NOW - 30 * SEC, cues: 0 } }, ...over });
+  const freshPage = async (over = {}) => { const env = await aiSpace({ meta: fresh(over) }); return { env, html: await live(env, cookieFor(M1, OWNER_MAC)) }; };
+  const statusOf = async (env) => (await call(env, "GET", `/_shroom/status/${REC}`)).json();
+  const lineOf = (html) => html.match(/<div class="upl" id="ul"[^>]*>[\s\S]*?<\/div>/)?.[0] ?? "";
+
+  it("the status says the name is coming while a space that listens names a fresh take, and stops once it's in", async () => {
+    const { env } = await freshPage();
+    expect(await statusOf(env)).toMatchObject({ named: "coming" });
+    // The early title doesn't end the wait; the full name does, and so does a naming that ended with none.
+    await env.BUCKET.put(metaKey(REC), JSON.stringify({ ...record(env), named: { by: "ai", early: true, title: "Spring", chapters: [] } }));
+    expect(await statusOf(env)).toMatchObject({ named: "coming" });
+    await env.BUCKET.put(metaKey(REC), JSON.stringify({ ...record(env), named: { by: "ai", title: null, chapters: [], words: 4 } }));
+    expect((await statusOf(env)).named).toBeUndefined();
+    await env.BUCKET.put(metaKey(REC), JSON.stringify({ ...record(env), named: { by: "ai", title: null, chapters: [], failed: true } }));
+    expect((await statusOf(env)).named).toBeUndefined();
+  });
+
+  it("a typed title doesn't end the wait; a space that doesn't listen, the free day used up or five minutes passed do", async () => {
+    expect(await statusOf((await freshPage({ titled: true, title: "Mine" })).env)).toMatchObject({ named: "coming" });
+    const quiet = space({ objects: { [metaKey(REC)]: metaOf(REC, fresh()) } });
+    expect((await statusOf(quiet)).named).toBeUndefined();
+    expect((await statusOf((await freshPage({ naming: { later: "daily", at: new Date(NOW).toISOString() } })).env)).named).toBeUndefined();
+    expect((await statusOf((await freshPage({ publishedAt: new Date(NOW - 6 * MIN).toISOString() })).env)).named).toBeUndefined();
+  });
+
+  it("the finishing line stays after the cuts are planned while the name is on its way, its spinner turning, counting the five minutes", async () => {
+    const { html } = await freshPage();
+    const line = lineOf(html);
+    expect(line).not.toMatch(/ hidden/);
+    expect(line).toContain('<span class="spin" id="b"');
+    expect(line).toContain(COPY.finishing);
+    expect(html).toMatch(/"named":"coming"/);
+    const wait = Number(html.match(/"listenFor":(\d+)/)?.[1]);
+    expect(wait).toBeGreaterThan(3 * MIN);
+    expect(wait).toBeLessThanOrEqual(4 * MIN);
+    // Named: nothing left to say, the line goes.
+    const named = await namedSpace(fresh());
+    expect(lineOf(await live(named, cookieFor(M1, OWNER_MAC)))).toMatch(/ hidden/);
+  });
+
+  it("the empty title shimmers while the name is on its way, and the page doesn't open in the field", async () => {
+    const { html } = await freshPage();
+    expect(html).toContain('<span class="nameshim" id="ns" aria-hidden="true" hidden></span>');
+    expect(html).toContain(".nameshim{");
+    expect(fieldOf(html)).toMatchObject({ value: "", autofocus: false });
+    // Not on a typed title, an early one in the field, a named take, words waiting for the free day, or past its five minutes.
+    for (const over of [{ titled: true, title: "Mine" }, { named: { by: "ai", early: true, title: "Spring", chapters: [] }, title: "Spring" }, { naming: { later: "daily", at: new Date(NOW).toISOString() } }, { publishedAt: new Date(NOW - 6 * MIN).toISOString() }]) {
+      expect((await freshPage(over)).html, JSON.stringify(over)).not.toContain('id="ns"');
+    }
+    expect(await live(await namedSpace(fresh()), cookieFor(M1, OWNER_MAC))).not.toContain('id="ns"');
+  });
+
+  it("a viewer's page never shimmers nor waits", async () => {
+    const { env } = await freshPage();
+    const html = await live(env);
+    for (const s of ['id="ns"', ".nameshim{", "/_shroom/named/", 'id="ul"']) expect(html).not.toContain(s);
+  });
+
+  it("the shimmer shows once placed, and a click in the field drops it at once and takes typing", async () => {
+    const p = namingScript((await freshPage()).html);
+    expect(p.shim.gone).toBe(false);
+    p.click();
+    expect(p.shim.gone).toBe(true);
+    p.type("My own");
+    await p.answer({ named: "Planning the spring launch", titled: false, later: false, early: false, done: true, chapters: [], captions: null });
+    expect(p.t.value).toBe("My own");
+  });
+
+  it("the shimmer stops with the line, whether a name came or not", async () => {
+    const p = namingScript((await freshPage()).html);
+    p.finished();
+    expect(p.shim.gone).toBe(true);
+    const q = namingScript((await freshPage()).html);
+    await q.answer({ named: "Planning the spring launch", titled: false, later: false, early: false, done: true, chapters: [], captions: null });
+    expect(q.shim.gone).toBe(true);
+  });
+
+  it("when the status says the name is in, the script asks at once and lets the line fade once the player is dressed", async () => {
+    const p = namingScript((await freshPage()).html);
+    const before = p.asked;
+    const d = p.namedIn();
+    expect(d.taken).toBe(true);
+    expect(p.asked).toBe(before + 1);
+    expect(d.ready).toBe(0);
+    await p.reply({ named: "Planning the spring launch", titled: false, later: false, early: false, done: true, chapters: [[0, "Where we are"], [61.3, "The budget"]], captions: { src: `/_shroom/cc/${REC}?r=0%3A0`, lang: "en" } });
+    expect(p.t.value).toBe("Planning the spring launch");
+    expect(p.player.wired.chapters).toEqual([[[0, "Where we are"], [61.3, "The budget"]]]);
+    expect(d.ready).toBe(1);
+  });
+
+  it("a page whose title was typed before it opened still asks, and takes the chapters and captions in place", async () => {
+    const { html } = await freshPage({ titled: true, title: "Mine" });
+    expect(html).toContain("/_shroom/named/");
+    const p = namingScript(html);
+    await p.answer({ named: "", titled: true, later: false, early: false, done: true, chapters: [[0, "Where we are"], [61.3, "The budget"]], captions: { src: `/_shroom/cc/${REC}?r=0%3A0`, lang: "en" } });
+    expect(p.t.value).toBe("Mine");
+    expect(p.player.wired.chapters).toEqual([[[0, "Where we are"], [61.3, "The budget"]]]);
+    expect(p.player.wired.captions).toBe(1);
   });
 });
