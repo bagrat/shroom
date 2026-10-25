@@ -141,6 +141,19 @@ pub fn clean(text: &str) -> String {
     text.chars().map(|c| if acts_on_terminal(c) { '\u{fffd}' } else { c }).collect()
 }
 
+/// A title or a name from the space, as one field of a line (`list`, `info`, each batch's
+/// lines): its line breaks, and the separators a terminal or an agent may read as one, are
+/// spaces, and the invisible characters show as �. The joiners scripts and emoji need stay.
+pub fn field(text: &str) -> String {
+    text.chars()
+        .map(|c| match c {
+            '\t' | '\n' | '\r' | '\u{85}' | '\u{2028}' | '\u{2029}' => ' ',
+            '\u{200b}' | '\u{2060}'..='\u{2064}' | '\u{feff}' | '\u{180e}' => '\u{fffd}',
+            c => c,
+        })
+        .collect()
+}
+
 /// An answer's JSON with every character a terminal would act on escaped (`\u001b`, `\u202e`):
 /// still exactly what the space holds once parsed, and nothing raw on the terminal.
 /// serde_json escapes the C0 controls itself; this adds DEL, C1 and the bidi marks.
