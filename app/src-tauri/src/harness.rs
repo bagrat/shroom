@@ -1102,7 +1102,7 @@ fn run_drive(app: &AppHandle, rt: &crate::runtime::Runtime, out: &Path, seconds:
         wait_for(rt, "ready", 20, report, t0, |s| s.tray.click == Click::OpenPopover)?;
         click(app, rt);
         wait_for(rt, "config", 5, report, t0, |s| s.popover.as_ref().is_some_and(|p| p.id == "config"))?;
-        // The space listening first (`--ai`): on by default (N75) — a space this setup made
+        // The space listening first (`--ai`): on by default (N76) — a space this setup made
         // has it already; one from before turns it on as the popover shows its banner, which
         // is answered with OK once the page carries it.
         if drive_ai() {

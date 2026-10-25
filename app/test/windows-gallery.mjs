@@ -101,6 +101,9 @@ const TEXT = new Set([
   "intro", "foot", "heading", "count_hint", "count_note", "suggest_hint", "used_label", "used",
   // Your coding agent (spec N62, DECISIONS B219): the prompt in its well.
   "prompt",
+  // Pin and auto-cleanup (N75): a going row's date, the heading over the suggestions while
+  // videos are going. (A pinned row's “Pinned” is its pin's name, checked by itself.)
+  "going", "suggest_heading",
 ]);
 
 /** The sheets that ask no destructive question: law 9's colours aren't theirs (B180, as
@@ -240,7 +243,15 @@ for (const entry of library) {
     const v = await vars(page);
     await common(tag, page, errors, "library", sceneForText, { hidden: [...hidden, ...renamed.filter((t) => !shownElsewhere.has(t))] });
     // N68's line above the rows: its words, Review… and Not now.
-    check(`${tag}: the cleanup line ${b.cleanup_line ? "shows" : "absent"}`, (await page.locator(".cline").count()) === (b.cleanup_line ? 1 : 0));
+    check(`${tag}: the cleanup line ${b.cleanup_line ? "shows" : "absent"}`, (await page.locator(".cline[data-line=cleanup]").count()) === (b.cleanup_line ? 1 : 0));
+    // N75: auto-cleanup's amber line and the line after a round, each with its buttons.
+    check(`${tag}: auto-cleanup's line ${b.going_line ? "shows, amber" : "absent"}`, (await page.locator(".cline.going[data-line=going]").count()) === (b.going_line ? 1 : 0));
+    check(`${tag}: the after-line ${b.cleaned_line ? "shows" : "absent"}`, (await page.locator(".cline[data-line=cleaned]").count()) === (b.cleaned_line ? 1 : 0));
+    for (const r of b.rows) {
+      const pin = await page.locator(`li.lrow[data-key="${r.key}"] .line1 svg.kept`).count();
+      const named = r.kept ? await page.locator(`li.lrow[data-key="${r.key}"] .line1 svg.kept`).getAttribute("aria-label") : null;
+      check(`${tag}: row ${r.key} ${r.kept ? `shows its pin, named “${r.kept}”` : "no pin"}`, pin === (r.kept ? 1 : 0) && named === r.kept);
+    }
 
     // The search field reads the Scene.
     const s = page.locator('input[data-field="library-search"]');
@@ -267,6 +278,7 @@ for (const entry of library) {
       check(`${tag}: row ${r.key} ${r.member ? `carries “${r.member}”` : "carries no member's label"}`, JSON.stringify(tagged) === JSON.stringify(r.member ? [r.member] : []), JSON.stringify(tagged));
     }
     let expected = (b.sheet ? b.sheet.buttons.length : 0) + b.scope.length + (b.cleanup_line && !b.sheet ? 2 : 0);
+    if (!b.sheet) expected += [b.going_line, b.cleaned_line].filter(Boolean).reduce((n, l) => n + l.buttons.length, 0);
     for (const r of b.rows) {
       const row = page.locator(`li.lrow[data-key="${r.key}"]`);
       const rt = `${tag}: row ${r.key}`;
@@ -528,16 +540,22 @@ for (const variant of ["library-delete-sheet", "library-delete-sheet-several"]) 
  * its minimum; then each button sends the Scene's action. */
 async function cleanupChecks(entry, w) {
   const c = w.body.cleanup;
+  const sheet = w.body.sheet;
+  // What auto-cleanup will delete leads the view (N75), then the suggestions.
+  const rows = [...c.going.flatMap((g) => g.rows), ...c.rows];
   for (const [scheme, size] of [["light", SIZES.library], ["dark", SIZES.library], ["light", SIZES.library.min]]) {
     const tag = `library/${entry.variant} [${scheme}${size === SIZES.library.min ? ", min width" : ""}]`;
     const { ctx, page, errors } = await open("library", w, { colorScheme: scheme, size });
     const v = await vars(page);
-    await common(tag, page, errors, "library", { ...w, body: { cleanup: c } });
+    await common(tag, page, errors, "library", { ...w, body: { cleanup: c, sheet } });
     check(`${tag}: the list gives way to the view`, (await page.locator(".toolbar").count()) === 0 && (await page.locator(".cview").count()) === 1);
     const keys = await page.locator(".cview li.lrow").evaluateAll((els) => els.map((e) => e.dataset.key));
-    check(`${tag}: rows in the Scene's order`, keys.join("|") === c.rows.map((r) => r.key).join("|"), keys.join("|"));
+    check(`${tag}: rows in the Scene's order`, keys.join("|") === rows.map((r) => r.key).join("|"), keys.join("|"));
+    const heads = await page.locator(".cview .gohead h2").allInnerTexts();
+    const want = [...c.going.map((g) => g.heading), ...(c.suggest_heading ? [c.suggest_heading] : [])];
+    check(`${tag}: the headings, what's going first`, heads.join("|") === want.join("|"), heads.join("|"));
     check(`${tag}: ${c.empty ? "the empty line" : "no empty line"}`, (await page.locator(".cview .empty").count()) === (c.empty ? 1 : 0));
-    for (const r of c.rows) {
+    for (const r of rows) {
       const row = page.locator(`.cview li.lrow[data-key="${r.key}"]`);
       const cut = await unclipped(row);
       check(`${tag}: row ${r.key} title and meta unclipped`, cut.length === 0, cut.join(" "));
@@ -553,13 +571,19 @@ async function cleanupChecks(entry, w) {
       check(`${tag}: “${c.delete_all.label}” red text (law 9)`, c.delete_all.style === "red-text" && !bad, bad ?? "");
     }
     check(`${tag}: the Undo line ${c.undo ? "shows" : "absent"}`, (await page.locator(".cview .undo").count()) === (c.undo ? 1 : 0));
-    const expected = 1 + c.rows.reduce((n, r) => n + r.buttons.length, 0) + (c.delete_all ? 1 : 0) + (c.undo ? 1 : 0);
+    // Delete all's sheet over the view (N75): a sheet's checks, and nothing behind it acts.
+    if (sheet) {
+      await sheetChecks(tag, page, "library", w, v);
+      await ctx.close();
+      continue;
+    }
+    const expected = 1 + rows.reduce((n, r) => n + r.buttons.length, 0) + (c.delete_all ? 1 : 0) + (c.undo ? 1 : 0);
     const shown = await page.locator("button:visible").count();
     check(`${tag}: ${expected} buttons showing, no others`, shown === expected, `shown ${shown}`);
     if (size !== SIZES.library.min) await page.screenshot({ path: join(out, `library-${entry.variant}-${scheme}.png`), animations: "disabled" });
     // Every button sends the Scene's action.
     if (scheme === "light" && size !== SIZES.library.min) {
-      const where = [[".chead", c.back], ...c.rows.flatMap((r) => r.buttons.map((x) => [`li.lrow[data-key="${r.key}"]`, x])), ...(c.delete_all ? [[".cfoot", c.delete_all]] : []), ...(c.undo ? [[".undo", c.undo.undo]] : [])];
+      const where = [[".chead", c.back], ...rows.flatMap((r) => r.buttons.map((x) => [`li.lrow[data-key="${r.key}"]`, x])), ...(c.delete_all ? [[".cfoot", c.delete_all]] : []), ...(c.undo ? [[".undo", c.undo.undo]] : [])];
       for (const [scope, x] of where.filter(([, x]) => x.enabled)) {
         await clear(page);
         await page.locator(`.cview ${scope} button`, { hasText: x.label }).first().click();
@@ -579,7 +603,15 @@ for (const entry of settings) {
     const tag = `settings/${entry.variant} [${scheme}]`;
     const { ctx, page, errors } = await open("settings", w, { colorScheme: scheme });
     const v = await vars(page);
-    await common(tag, page, errors, "settings", w);
+    // Auto-cleanup's pop-up (N75): its choices live in a select — the chosen one shows, the
+    // rest when it opens; they're its options, in the Scene's order.
+    const picks = b.pane.kind === "general" ? (b.pane.videos?.autoclean?.choices ?? []) : [];
+    await common(tag, page, errors, "settings", w, { hidden: picks.map((c) => c.label) });
+    if (picks.length) {
+      const opts = await page.locator(".videos select.pop option").evaluateAll((els) => els.map((e) => ({ label: e.textContent.trim(), on: e.selected })));
+      check(`${tag}: auto-cleanup's pop-up offers the Scene's choices`, JSON.stringify(opts) === JSON.stringify(picks.map((c) => ({ label: c.label, on: c.selected }))), JSON.stringify(opts));
+      check(`${tag}: the pop-up ${picks.some((c) => c.enabled) ? "live" : "greyed"}`, (await page.locator(".videos select.pop").isEnabled()) === picks.some((c) => c.enabled));
+    }
 
     // The toolbar: the Scene's tabs, the selected one marked.
     const tabs = await page.locator("[role=tab]").evaluateAll((els) => els.map((e) => ({ label: e.textContent.trim(), on: e.getAttribute("aria-selected") === "true", en: !e.disabled })));
@@ -1185,7 +1217,7 @@ for (const entry of countdowns) {
   }
 }
 
-// N75: the AI banners say both their lines and send the Scene's actions.
+// N76: the AI banners say both their lines and send the Scene's actions.
 {
   const pop = (variant) => popovers.find((e) => e.variant === variant).scene;
   const ban = await open("popover", pop("ai-turned-on"));

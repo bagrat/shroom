@@ -219,7 +219,7 @@
   .bline { display: flex; gap: 8px; align-items: flex-start; }
   .bline .dot { margin-top: 5px; }
   .banner.frost .bline .dot { margin-top: 0; }
-  /* a bold line with a quieter one under it (N75's AI banners), the buttons beneath */
+  /* a bold line with a quieter one under it (N76's AI banners), the buttons beneath */
   .banner.frost.two { flex-direction: column; align-items: stretch; padding: 9px 10px; }
   .banner.frost.two .bline { flex: none; align-items: flex-start; }
   .banner.frost.two .bline .dot { margin-top: 5px; }

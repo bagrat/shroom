@@ -387,7 +387,7 @@ const AUG03: i64 = 1_785_758_400_000;
 const SEP30: i64 = 1_790_769_600_000;
 
 fn remote(id: &str, title: &str, at: i64, length_ms: u64) -> LibraryRow {
-    LibraryRow { rec: RecId(id.into()), title: title.into(), created: Wall(at), length_ms: Some(length_ms), live: true, owner: Some("m1".into()), poster: false, edited_ms: None }
+    LibraryRow { rec: RecId(id.into()), title: title.into(), created: Wall(at), length_ms: Some(length_ms), live: true, owner: Some("m1".into()), poster: false, edited_ms: None, pinned: false }
 }
 
 fn space_rows() -> Vec<LibraryRow> {
@@ -493,18 +493,46 @@ fn library_rows() -> Vec<(&'static str, &'static str, World)> {
     rows.push(("library-cleanup", "library-cleanup-undo", {
         let mut w = suggesting(library(ready(), space_rows()));
         w.session.fields.library.cleanup = true;
-        w.session.fields.library.undo = Some((RecId("r19".into()), Mono(990)));
+        w.session.fields.library.undo = Some((vec![RecId("r19".into())], Mono(990)));
         w
     }));
     rows.push(("library-cleanup", "library-cleanup-empty", {
         let mut w = library(ready(), space_rows());
-        w.suggestions = Fact::known(Suggestions { counting: true, space_bytes: 34_000_000_000, rows: vec![] }, Mono(960));
+        w.suggestions = Fact::known(Suggestions { counting: true, space_bytes: 34_000_000_000, rows: vec![], ..Default::default() }, Mono(960));
         w.session.fields.library.cleanup = true;
         w
     }));
     rows.push(("delete-confirm", "library-delete-sheet", {
         let mut w = library(ready(), space_rows());
         w.session.confirm = Some(Confirm::Delete(vec![RecId("r502".into())]));
+        w
+    }));
+    // N75: a pinned row and its menu's Unpin; auto-cleanup's line and the going rows; the
+    // view with what's going first; Delete all's sheet and its one Undo line.
+    rows.push(("library", "library-pinned", pinned(library(ready(), space_rows()), "onb")));
+    rows.push(("library", "library-going", going(suggesting(library(ready(), space_rows())))));
+    rows.push(("library", "library-cleaned", {
+        let mut w = going(suggesting(library(ready(), space_rows())));
+        if let Fact::Known { v, .. } = &mut w.suggestions {
+            v.going.clear();
+        }
+        w
+    }));
+    rows.push(("library-cleanup", "library-cleanup-going", {
+        let mut w = going(suggesting(library(ready(), space_rows())));
+        w.session.fields.library.cleanup = true;
+        w
+    }));
+    rows.push(("library-cleanup", "library-cleanup-undo-all", {
+        let mut w = suggesting(library(ready(), space_rows()));
+        w.session.fields.library.cleanup = true;
+        w.session.fields.library.undo = Some((["onb", "r19", "r502"].map(|r| RecId(r.into())).to_vec(), Mono(990)));
+        w
+    }));
+    rows.push(("delete-confirm-cleanup", "library-delete-all-sheet", {
+        let mut w = suggesting(library(ready(), space_rows()));
+        w.session.fields.library.cleanup = true;
+        w.session.confirm = Some(Confirm::DeleteSuggested(["onb", "r19", "r502"].map(|r| RecId(r.into())).to_vec()));
         w
     }));
     rows.push(("delete-confirm-several", "library-delete-sheet-several", {
@@ -515,11 +543,46 @@ fn library_rows() -> Vec<(&'static str, &'static str, World)> {
     rows
 }
 
+/// The space's videos known on a Mac whose Library isn't open (the popover's banner, N75).
+fn library_closed(mut w: World) -> World {
+    w.library = Fact::known(std::sync::Arc::new(space_rows()), Mono(950));
+    w
+}
+
+/// A row pinned (N75).
+fn pinned(mut w: World, id: &str) -> World {
+    if let Fact::Known { v, .. } = &mut w.library {
+        if let Some(r) = std::sync::Arc::make_mut(v).iter_mut().find(|r| r.rec.0 == id) {
+            r.pinned = true;
+        }
+    }
+    w
+}
+
+/// Auto-cleanup at 30 days (N75): two of the space's videos going in three days, and the
+/// round before it.
+fn going(mut w: World) -> World {
+    let due = Wall(w.wall.0 + 3 * 86_400_000);
+    if let Fact::Known { v, .. } = &mut w.suggestions {
+        v.autoclean = AutoClean { days: 30, last: Some(Cleaned { at: Wall(w.wall.0 - 86_400_000), recs: vec![RecId("old1".into()), RecId("old2".into())], bytes: 1_700_000_000 }) };
+        v.going = vec![
+            Going { rec: RecId("r19".into()), bytes: 640_000_000, plays: 2, quiet_days: 31, stopped_early: false, deletes_at: due },
+            Going { rec: RecId("r502".into()), bytes: 1_100_000_000, plays: 0, quiet_days: 33, stopped_early: false, deletes_at: due },
+        ];
+        v.idle = vec![
+            Idle { rec: RecId("r19".into()), quiet_days: 31 },
+            Idle { rec: RecId("r502".into()), quiet_days: 33 },
+            Idle { rec: RecId("onb".into()), quiet_days: 300 },
+        ];
+    }
+    w
+}
+
 /// What the space said is worth deleting (N68): three of the space's videos, of 34 GB.
 fn suggesting(mut w: World) -> World {
     let s = |id: &str, bytes: u64, plays: u32, quiet_days: u32| Suggestion { rec: RecId(id.into()), bytes, plays, quiet_days, stopped_early: false };
     w.suggestions = Fact::known(
-        Suggestions { counting: true, space_bytes: 34_000_000_000, rows: vec![s("onb", 3_200_000_000, 4, 300), s("r19", 1_800_000_000, 0, 45), s("r502", 1_300_000_000, 2, 120)] },
+        Suggestions { counting: true, space_bytes: 34_000_000_000, rows: vec![s("onb", 3_200_000_000, 4, 300), s("r19", 1_800_000_000, 0, 45), s("r502", 1_300_000_000, 2, 120)], ..Default::default() },
         Mono(960),
     );
     w
@@ -559,8 +622,24 @@ fn settings_rows() -> Vec<(&'static str, &'static str, World)> {
     rows.push(("settings-general", "general-your-videos", suggesting(settings(ready(), SettingsTab::General))));
     rows.push(("settings-general", "general-your-videos-free", {
         let mut w = settings(ready(), SettingsTab::General);
-        w.suggestions = Fact::known(Suggestions { counting: false, space_bytes: 8_200_000_000, rows: vec![] }, Mono(960));
+        w.suggestions = Fact::known(Suggestions { counting: false, space_bytes: 8_200_000_000, rows: vec![], ..Default::default() }, Mono(960));
         w.inflight.failures.insert(Op::Plays, Failure { at: Mono(970), class: FailClass::Transport, tries: 1 });
+        w
+    }));
+    // N75: auto-cleanup on the setup Mac, on another Mac, and turning it on.
+    rows.push(("settings-general", "general-autoclean", going(suggesting(settings(ready(), SettingsTab::General)))));
+    rows.push(("settings-general", "general-autoclean-other-mac", {
+        let mut w = going(suggesting(settings(ready(), SettingsTab::General)));
+        w.space.token = false;
+        w
+    }));
+    rows.push(("autoclean-confirm", "general-autoclean-confirm", {
+        let mut w = suggesting(settings(ready(), SettingsTab::General));
+        w = going(w);
+        if let Fact::Known { v, .. } = &mut w.suggestions {
+            v.autoclean.days = 0;
+        }
+        w.session.confirm = Some(Confirm::Autoclean(30));
         w
     }));
     rows.push(("settings-general", "general-update-ready", {
@@ -1157,7 +1236,7 @@ fn region3_rows() -> Vec<(&'static str, &'static str, &'static str, World)> {
         w.saved.push(saved_take(SavedCause::Interrupted, 272_000));
         w
     }));
-    // N75: AI on by default — the setup Mac's banner as it turns the AI on and once it's on,
+    // N76: AI on by default — the setup Mac's banner as it turns the AI on and once it's on,
     // its Turn off re-wiring, a Turn off that didn't go through, off; and a member's banner.
     let ai_on = || {
         let mut w = popover(ready());
@@ -1165,6 +1244,21 @@ fn region3_rows() -> Vec<(&'static str, &'static str, &'static str, World)> {
         w
     };
     rows.push(("popover", "ai-turned-on", "ai-turned-on", ai_on()));
+    // N75: auto-cleanup's banner three days ahead, after Pin both, and once a round went.
+    let going_pop = || going(suggesting(library_closed(popover(ready()))));
+    rows.push(("popover", "autoclean-warning", "autoclean-warning", going_pop()));
+    rows.push(("popover", "autoclean-warning", "autoclean-pinned", {
+        let mut w = going_pop();
+        w.session.fields.library.pinned_note = Some((2, Wall(w.wall.0 + 3 * 86_400_000)));
+        w
+    }));
+    rows.push(("popover", "autoclean-warning", "autoclean-cleaned", {
+        let mut w = going_pop();
+        if let Fact::Known { v, .. } = &mut w.suggestions {
+            v.going.clear();
+        }
+        w
+    }));
     rows.push(("popover", "ai-turning-off", "ai-turning-off", {
         let mut w = ai_on();
         w.space.ai_turn = Some(AiTurn::TurningOff);

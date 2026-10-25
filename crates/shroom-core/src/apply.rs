@@ -59,7 +59,7 @@ pub fn apply(w: &mut World, event: Event) -> Out {
     if edit_said && w.session.popover.is_none() {
         w.session.fields.edit_link = None;
     }
-    // AI on by default (N75; Bagrat, 2026-10-25): the setup Mac's popover, about to show “AI
+    // AI on by default (N76; Bagrat, 2026-10-25): the setup Mac's popover, about to show “AI
     // features are turned on.”, turns it on — so it's said before anything is heard.
     if w.online() != Some(false) && crate::derive::popover::ai_default_due(w) {
         w.space.ai_turn = Some(AiTurn::TurningOn);
@@ -84,7 +84,7 @@ pub fn apply(w: &mut World, event: Event) -> Out {
     (fx, arm)
 }
 
-/// The space's AI, settled on this Mac for good (N75): never turned on by default again,
+/// The space's AI, settled on this Mac for good (N76): never turned on by default again,
 /// and its banner never shown again here.
 fn settle_ai(w: &mut World) -> Vec<Effect> {
     if w.once.ai_offer_answered {
@@ -422,7 +422,8 @@ fn click(w: &mut World, at: Option<u32>) -> Out {
                 w.display_pick.clicked = at;
             }
             w.session.popover = Some(Door::asked(w.now));
-            (vec![], Arm::named("click-open-popover"))
+            // What auto-cleanup has going, for its banner (N75).
+            (crate::settle::popover_read(w).into_iter().collect(), Arm::named("click-open-popover"))
         }
         Click::Pause => {
             pause(w, Cause::User);
@@ -817,6 +818,13 @@ fn act(w: &mut World, action: Action) -> Out {
             if was == Some(Confirm::Report { sending: false }) {
                 w.session.fields.settings.report = ReportFields::default();
                 return (vec![], Arm { name: "report-cancelled", edge: Some(("report-problem", "settings-general")) });
+            }
+            // Delete all's sheet and auto-cleanup's question (N75): nothing moved.
+            if matches!(was, Some(Confirm::DeleteSuggested(_))) {
+                return (vec![], Arm { name: "delete-all-cancelled", edge: Some(("delete-confirm-cleanup", "library-cleanup")) });
+            }
+            if matches!(was, Some(Confirm::Autoclean(_))) {
+                return (vec![], Arm { name: "autoclean-cancelled", edge: Some(("autoclean-confirm", "settings-general")) });
             }
             // No sheet to take back: it's Suggested to clean up's ‹ Library (N68).
             if was.is_none() && w.session.fields.library.cleanup {
@@ -1510,7 +1518,7 @@ fn act(w: &mut World, action: Action) -> Out {
         Action::SetMark(on) => (vec![Effect::Member(MemberCmd::Mark(on))], Arm::named("set-mark")),
         // Naming (N66): the setup Mac re-wires its page; the switch reads the page's answer.
         // A new try starts clean: its own failure, if any, is the one said. The switch is a
-        // choice: AI is settled on this Mac, never turned on again by default (N75).
+        // choice: AI is settled on this Mac, never turned on again by default (N76).
         Action::SetAi(on) => {
             w.inflight.failures.remove(&Op::Ai);
             w.space.ai_turn = None;
@@ -1518,7 +1526,7 @@ fn act(w: &mut World, action: Action) -> Out {
             fx.extend(settle_ai(w));
             (fx, Arm::named("set-ai"))
         }
-        // The AI banner's OK (N75): AI stays as it is, and the banner is answered for good on
+        // The AI banner's OK (N76): AI stays as it is, and the banner is answered for good on
         // this Mac — the setup Mac's, or a member's.
         Action::AiOk => {
             let from = derive(w).popover.and_then(|p| p.banner).map(|b| b.id).filter(|id| matches!(*id, "ai-turned-on" | "ai-turn-off-failed" | "ai-on-in-space"));
@@ -1530,7 +1538,7 @@ fn act(w: &mut World, action: Action) -> Out {
             }
             (settle_ai(w), Arm { name: "ai-ok", edge: Some((from, "config")) })
         }
-        // The banner's Turn off (N75): the switch's off — the banner says it's turning off
+        // The banner's Turn off (N76): the switch's off — the banner says it's turning off
         // until the page answers. Never over a re-wiring already on its way (the turn-on's
         // few seconds): the press waits for its answer.
         Action::AiTurnOff => {
@@ -1558,14 +1566,23 @@ fn act(w: &mut World, action: Action) -> Out {
             w.prefs.cleanup_dismissed.sort();
             (vec![persist_prefs(w)], Arm::named("cleanup-dismissed"))
         }
-        Action::KeepRow(rec) => {
-            w.library_ops.keeping.insert(rec.clone());
-            (vec![Effect::Library(LibCmd::Keep(rec))], Arm::named("keep"))
+        // Pin and Unpin (N75): at once, no sheet; a selected row acts for every row selected.
+        Action::PinRow(rec, on) => {
+            let reachable = w.online() != Some(false) && !(w.space.role() == Some(Role::Member) && crate::derive::members::stranded_by_space(w));
+            if !reachable {
+                return (vec![], Arm::DROPPED);
+            }
+            let sel = &w.session.fields.library.selected;
+            let targets = if sel.len() > 1 && sel.contains(&rec) { library_view::deletable(w, &sel.clone()) } else { vec![rec] };
+            if targets.is_empty() {
+                return (vec![], Arm::DROPPED);
+            }
+            pin(w, targets, on)
         }
         Action::DeleteSuggested(rec) => {
             // One Undo line at a time: a delete it was holding goes now.
             let fx = send_undone(w);
-            w.session.fields.library.undo = Some((rec, now));
+            w.session.fields.library.undo = Some((vec![rec], now));
             (fx, Arm::named("delete-suggested"))
         }
         Action::UndoDelete => {
@@ -1577,8 +1594,76 @@ fn act(w: &mut World, action: Action) -> Out {
             if targets.is_empty() || w.online() == Some(false) {
                 return (vec![], Arm::DROPPED);
             }
-            w.session.confirm = Some(Confirm::Delete(targets));
-            (vec![], Arm { name: "delete-all-asked", edge: Some(("library-cleanup", "delete-confirm-several")) })
+            w.session.confirm = Some(Confirm::DeleteSuggested(targets));
+            (vec![], Arm { name: "delete-all-asked", edge: Some(("library-cleanup", "delete-confirm-cleanup")) })
+        }
+        // Delete all (N75): every row leaves, held on one Undo line; one pinned since stays.
+        Action::ConfirmDeleteSuggested => {
+            let Some(Confirm::DeleteSuggested(asked)) = w.session.confirm.clone() else { return (vec![], Arm::DROPPED) };
+            if w.online() == Some(false) {
+                return (vec![], Arm::DROPPED);
+            }
+            w.session.confirm = None;
+            let shown: Vec<RecId> = library_view::suggested(w).into_iter().map(|(s, _)| s.rec).collect();
+            let targets: Vec<RecId> = asked.into_iter().filter(|r| shown.contains(r)).collect();
+            let fx = send_undone(w);
+            if !targets.is_empty() {
+                w.session.fields.library.undo = Some((targets, now));
+            }
+            (fx, Arm { name: "delete-all", edge: Some(("delete-confirm-cleanup", "library-cleanup")) })
+        }
+        // ── auto-cleanup (N75) ──
+        Action::ReviewGoing => {
+            if w.take_open() {
+                return (vec![], Arm::DROPPED);
+            }
+            w.session.popover = None;
+            open_window(w, WindowKind::Library);
+            w.session.fields.library.cleanup = true;
+            w.session.fields.library.renaming = None;
+            (vec![Effect::Shell(ShellCmd::OpenLibrary)], Arm { name: "going-reviewed", edge: Some(("autoclean-warning", "library-cleanup")) })
+        }
+        Action::DismissGoing => {
+            let mut ids: Vec<String> = library_view::going_in(w, true).into_iter().map(|(g, _)| g.rec.0).collect();
+            ids.sort();
+            w.prefs.going_dismissed = ids;
+            (vec![persist_prefs(w)], Arm { name: "going-dismissed", edge: Some(("autoclean-warning", "config")) })
+        }
+        Action::PinGoing => {
+            let going = library_view::going_in(w, true);
+            let Some((at, _)) = library_view::going_day(w, &going) else { return (vec![], Arm::DROPPED) };
+            if w.online() == Some(false) {
+                return (vec![], Arm::DROPPED);
+            }
+            w.session.fields.library.pinned_note = Some((going.len() as u64, at));
+            pin(w, going.into_iter().map(|(g, _)| g.rec).collect(), true)
+        }
+        Action::CleanedOk => {
+            let Some(c) = library_view::cleaned(w) else { return (vec![], Arm::DROPPED) };
+            w.prefs.cleaned_seen = Some(c.at);
+            (vec![persist_prefs(w)], Arm::named("cleaned-ok"))
+        }
+        // Delete videos nobody watches (N75): on the Mac that holds the setup key. Turning
+        // it on, or shortening it, while videos already qualify asks first.
+        Action::SetAutoclean(days) => {
+            if !w.space.token_holder() || !crate::derive::settings::AUTOCLEAN_DAYS.contains(&days) || w.library_ops.autoclean.is_some() {
+                return (vec![], Arm::DROPPED);
+            }
+            let now_days = w.suggestions.get().map_or(0, |s| s.autoclean.days);
+            if days == now_days {
+                return (vec![], Arm::DROPPED);
+            }
+            let sooner = days > 0 && (now_days == 0 || days < now_days);
+            if sooner && crate::derive::settings::qualifying(w, days) > 0 {
+                w.session.confirm = Some(Confirm::Autoclean(days));
+                return (vec![], Arm { name: "autoclean-asked", edge: Some(("settings-general", "autoclean-confirm")) });
+            }
+            set_autoclean(w, days, Arm::named("autoclean-set"))
+        }
+        Action::ConfirmAutoclean => {
+            let Some(Confirm::Autoclean(days)) = w.session.confirm.clone() else { return (vec![], Arm::DROPPED) };
+            w.session.confirm = None;
+            set_autoclean(w, days, Arm { name: "autoclean-set", edge: Some(("autoclean-confirm", "settings-general")) })
         }
         Action::SetPlays(on) => {
             w.library_ops.plays = Some(on);
@@ -1657,9 +1742,24 @@ fn editor_act(w: &mut World, id: EditorId, action: Action) -> Out {
 /// A one-tap delete waiting on its Undo line, sent now (N68): the line ran out, another
 /// tap took its place, or its window closed.
 fn send_undone(w: &mut World) -> Vec<Effect> {
-    let Some((rec, _)) = w.session.fields.library.undo.take() else { return vec![] };
-    w.library_ops.deleting.insert(rec.clone());
-    vec![Effect::Library(LibCmd::Delete(vec![rec]))]
+    let Some((recs, _)) = w.session.fields.library.undo.take() else { return vec![] };
+    w.library_ops.deleting.extend(recs.iter().cloned());
+    vec![Effect::Library(LibCmd::Delete(recs))]
+}
+
+/// Pin or unpin these (N75): each reads as asked at once, the write follows.
+fn pin(w: &mut World, recs: Vec<RecId>, on: bool) -> Out {
+    for r in &recs {
+        w.library_ops.pinning.insert(r.clone(), on);
+    }
+    (vec![Effect::Library(LibCmd::Pin(recs, on))], Arm::named(if on { "pin" } else { "unpin" }))
+}
+
+/// Auto-cleanup's days told to the space's page (N75): a new try starts clean.
+fn set_autoclean(w: &mut World, days: u32, arm: Arm) -> Out {
+    w.inflight.failures.remove(&Op::Autoclean);
+    w.library_ops.autoclean = Some(days);
+    (vec![Effect::Cloud(CloudCmd::SetAutoclean(days))], arm)
 }
 
 /// An invite this Mac holds, from any door: a new one starts afresh. Offline, its window
@@ -1702,11 +1802,12 @@ fn forget_invite(w: &mut World, fx: &mut Vec<Effect>) {
 }
 
 /// The ops that speak for one space: a late answer after this Mac left it is stale.
-const SPACE_OPS: [Op; 19] = [
+const SPACE_OPS: [Op; 20] = [
     Op::Ai,
     Op::Cleanup,
     Op::Suggest,
-    Op::Keep,
+    Op::Pin,
+    Op::Autoclean,
     Op::Plays,
     Op::Validate,
     Op::SaveToken,
@@ -1908,7 +2009,7 @@ fn member(w: &mut World, news: MemberNews) -> Out {
                     if mark.is_some() {
                         st.mark = mark;
                     }
-                    // A Mac without the token learns its space's AI from the ping (N75): a
+                    // A Mac without the token learns its space's AI from the ping (N76): a
                     // member's popover says once whose space hears its videos.
                     if ai.is_some() && !w.space.token_holder() {
                         w.space.ai = ai;
@@ -2597,9 +2698,7 @@ fn edit_step(w: &mut World, id: EditorId, step: EditStep) -> Out {
     if e.closing {
         return (vec![], Arm::DROPPED);
     }
-    let Some(h) = Some(e).filter(|e| open && crate::derive::editor::editable(e)).and_then(|e| e.history.as_mut()) else {
-        return (vec![], Arm::DROPPED);
-    };
+    let Some(h) = Some(e).filter(|e| open && crate::derive::editor::editable(e)).and_then(|e| e.history.as_mut()) else { return (vec![], Arm::DROPPED) };
     let taken = match &step {
         EditStep::Op(op) => h.act(op),
         EditStep::Undo => h.undo(),
@@ -2628,9 +2727,7 @@ fn editor_news(w: &mut World, news: EditorNews) -> Out {
     match news {
         EditorNews::Opened { rec, saved, markers, duration_sec, keep_until } => {
             // Read once per open: a second reading over steps already taken changes nothing.
-            let Some((_, e)) = editor_on(w, &rec).filter(|(_, e)| e.history.is_none() || matches!(e.media, EditorMedia::Opening | EditorMedia::Getting { .. })) else {
-                return stale();
-            };
+            let Some((_, e)) = editor_on(w, &rec).filter(|(_, e)| e.history.is_none() || matches!(e.media, EditorMedia::Opening | EditorMedia::Getting { .. })) else { return stale() };
             let duration = duration_sec
                 .and_then(seconds)
                 .or_else(|| saved.as_ref().and_then(|s| seconds(s.list.source_duration)))
@@ -2723,9 +2820,7 @@ fn editor_news(w: &mut World, news: EditorNews) -> Out {
             w.inflight.ops.insert(Op::EditorCopy, now.plus(Op::EditorCopy.deadline_ms()));
             // The window fills with the copy it waits for: its own revision's, being cut.
             let cutting = w.library_ops.copies.get(&rec).copied().filter(|c| c.asked);
-            let Some((_, e)) = editor_on(w, &rec).filter(|(_, e)| matches!(e.save, EditorSave::Making { .. }) && cutting.is_some_and(|c| c.rev == e.rev)) else {
-                return (vec![], Arm::named("editor-making-unseen"));
-            };
+            let Some((_, e)) = editor_on(w, &rec).filter(|(_, e)| matches!(e.save, EditorSave::Making { .. }) && cutting.is_some_and(|c| c.rev == e.rev)) else { return (vec![], Arm::named("editor-making-unseen")) };
             e.save = EditorSave::Making { pct: pct.min(100) };
             (vec![], Arm::named("editor-making"))
         }
@@ -3411,13 +3506,21 @@ fn cloud(w: &mut World, news: CloudNews) -> Out {
             }
             (vec![], Arm::named(if deployed { "page-refreshed" } else { "page-current" }))
         }
+        CloudNews::Autoclean(days) => {
+            answered(w, Op::Autoclean);
+            w.library_ops.autoclean = None;
+            if let Fact::Known { v, .. } = &mut w.suggestions {
+                v.autoclean.days = days;
+            }
+            (vec![], Arm::named("autoclean-landed"))
+        }
         CloudNews::AiSet(on) => {
             answered(w, Op::Ai);
             w.space.ai = Some(on);
             if w.space.ai_turn == Some(AiTurn::TurningOn) {
                 w.space.ai_turn = None;
             }
-            // The banner's Turn off went through (N75): settled for good on this Mac, and
+            // The banner's Turn off went through (N76): settled for good on this Mac, and
             // said once, in config's status line.
             if w.space.ai_turn == Some(AiTurn::TurningOff) {
                 w.space.ai_turn = None;
@@ -3677,7 +3780,7 @@ fn cloud(w: &mut World, news: CloudNews) -> Out {
                 // under the chapter, the chapter goes on (its row just ticks).
                 let edge = (!repairing && w.row_six_done()).then_some(("wiring", "all-set"));
                 let mut fx = vec![Effect::Persist(PersistOp::Space(identity)), persist_prefs(w)];
-                // A space set up here starts with its AI on (N75; Bagrat, 2026-10-25: nothing
+                // A space set up here starts with its AI on (N76; Bagrat, 2026-10-25: nothing
                 // said in the setup): settled on this Mac, never asked or said about again.
                 if !repairing {
                     fx.extend(settle_ai(w));
@@ -3728,9 +3831,7 @@ fn back_online(w: &mut World) {
 /// `stopped-stranded`, for every role.
 fn reach_answered(w: &mut World, r: Reach) -> Out {
     let now = w.now;
-    let Some(page) = w.session.page_open.clone().filter(|p| w.net.reach.at().is_some_and(|at| at >= p.stopped)) else {
-        return (vec![], Arm::named("reached"));
-    };
+    let Some(page) = w.session.page_open.clone().filter(|p| w.net.reach.at().is_some_and(|at| at >= p.stopped)) else { return (vec![], Arm::named("reached")) };
     match r {
         Reach::Shroom => {
             back_online(w);
@@ -3909,8 +4010,12 @@ fn failed(w: &mut World, op: Op, class: crate::world::FailClass) -> Out {
         // A rename or delete that didn't land: the row reads as the space has it again.
         Op::Rename => w.library_ops.renaming.clear(),
         Op::Delete => w.library_ops.deleting.clear(),
-        // A keep or a switch that didn't land: it reads as the space has it (N68).
-        Op::Keep => w.library_ops.keeping.clear(),
+        // A pin or a switch that didn't land: it reads as the space has it (N68, N75).
+        Op::Pin => {
+            w.library_ops.pinning.clear();
+            w.session.fields.library.pinned_note = None;
+        }
+        Op::Autoclean => w.library_ops.autoclean = None,
         Op::Plays => w.library_ops.plays = None,
         // The app never quit for the swap: nothing changed — say so once, try later.
         Op::UpdateApply => {
@@ -4013,7 +4118,7 @@ fn tick(w: &mut World) -> Out {
         w.session.page_open = None;
     }
     // The AI's turn on by default, or the banner's Turn off, that didn't go through: tried
-    // again at its backoff (N75), with the popover shut too — it has been said.
+    // again at its backoff (N76), with the popover shut too — it has been said.
     if let Some(turn @ (AiTurn::TurningOn | AiTurn::TurningOff)) = w.space.ai_turn {
         if !w.inflight.ops.contains_key(&Op::Ai) && w.inflight.failures.get(&Op::Ai).is_some_and(|f| now >= f.ai_retry_at()) {
             fx.push(Effect::Cloud(CloudCmd::SetAi(turn == AiTurn::TurningOn)));
@@ -4027,7 +4132,7 @@ fn library(w: &mut World, news: LibraryNews) -> Out {
     match news {
         // A listing asked before Disconnect is about a space this Mac no longer knows.
         _ if !w.provisioned() => {
-            for op in [Op::LibRefresh, Op::LibCache, Op::Rename, Op::Delete, Op::Cleanup, Op::Suggest, Op::Keep, Op::Plays] {
+            for op in [Op::LibRefresh, Op::LibCache, Op::Rename, Op::Delete, Op::Cleanup, Op::Suggest, Op::Pin, Op::Plays] {
                 w.inflight.ops.remove(&op);
             }
             (vec![], Arm::named("library-stale"))
@@ -4040,8 +4145,8 @@ fn library(w: &mut World, news: LibraryNews) -> Out {
                 // When this refresh began (its op's deadline, less its span): the writes
                 // that landed before then are in its listing; later ones still read over it.
                 let began = w.inflight.ops.get(&Op::LibRefresh).map(|d| Mono(d.0.saturating_sub(Op::LibRefresh.deadline_ms()))).unwrap_or(Mono(0));
-                // A keep is the suggestions' to forget, not the listing's (N68).
-                w.library_ops.landed.retain(|_, (l, at)| *l == Landed::Kept || *at >= began);
+                // The listing carries each record's pin (N75): what landed before it began is in it.
+                w.library_ops.landed.retain(|_, (_, at)| *at >= began);
                 w.library_ops.edited.retain(|_, (_, at)| *at >= began);
                 answered(w, Op::LibRefresh);
                 w.library_ops.refreshed = Some(now);
@@ -4071,19 +4176,26 @@ fn library(w: &mut World, news: LibraryNews) -> Out {
         }
         LibraryNews::Suggested(s) => {
             answered(w, Op::Suggest);
-            // A keep that landed reads over a listing begun before it (as a delete does).
+            // A pin that landed reads over a listing begun before it (as a delete does).
             let began = Mono(now.0.saturating_sub(Op::Suggest.deadline_ms()));
-            w.library_ops.landed.retain(|_, (l, at)| *l != Landed::Kept || *at >= began);
+            w.library_ops.landed.retain(|_, (l, at)| !matches!(l, Landed::Pinned(_)) || *at >= began);
             w.suggestions = Fact::known(s, now);
             (vec![], Arm::named("suggested"))
         }
-        LibraryNews::Kept(rec) => {
-            w.library_ops.keeping.remove(&rec);
-            w.library_ops.landed.insert(rec, (Landed::Kept, now));
-            if w.library_ops.keeping.is_empty() {
-                answered(w, Op::Keep);
+        LibraryNews::Pinned(recs, on) => {
+            for rec in &recs {
+                w.library_ops.pinning.remove(rec);
+                w.library_ops.landed.insert(rec.clone(), (Landed::Pinned(on), now));
             }
-            (vec![], Arm::named("kept"))
+            if w.library_ops.pinning.is_empty() {
+                answered(w, Op::Pin);
+            }
+            if let Fact::Known { v, .. } = &mut w.library {
+                for r in Arc::make_mut(v).iter_mut().filter(|r| recs.contains(&r.rec)) {
+                    r.pinned = on;
+                }
+            }
+            (vec![], Arm::named(if on { "pinned" } else { "unpinned" }))
         }
         LibraryNews::Plays(on) => {
             w.library_ops.plays = None;

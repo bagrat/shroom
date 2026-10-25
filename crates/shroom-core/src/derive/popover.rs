@@ -333,11 +333,12 @@ fn banner(w: &World) -> Option<Banner> {
         .or_else(|| banner_degraded(w))
         .or_else(|| super::members::banner(w))
         .or_else(|| banner_recording_off(w))
+        .or_else(|| banner_autoclean(w))
         .or_else(|| banner_update(w))
         .or_else(|| banner_ai(w))
 }
 
-/// The AI, on by default (N75; Bagrat, 2026-10-25), the slimmest and the lowest banner. On
+/// The AI, on by default (N76; Bagrat, 2026-10-25), the slimmest and the lowest banner. On
 /// the Mac that holds the setup key, while the space's AI hasn't been settled here: “AI
 /// features are turned on.” — said while the page is re-wired with it (the popover showing
 /// this banner is what turns it on, so nothing is heard before it's been seen) and once it's
@@ -371,7 +372,7 @@ fn banner_ai(w: &World) -> Option<Banner> {
     on.then(|| frost("ai-turned-on", copy::ai_turned_on(), Some(copy::ai_turned_on_detail()), answer()))
 }
 
-/// The setup Mac turns its space's AI on by default (N75) the moment its popover would show
+/// The setup Mac turns its space's AI on by default (N76) the moment its popover would show
 /// “AI features are turned on.”: `config` up, no higher banner, AI known off and not settled
 /// on this Mac, nothing re-wiring the page. Once said, a try that didn't go through is tried
 /// again quietly (law 12).
@@ -383,6 +384,38 @@ pub fn ai_default_due(w: &World) -> bool {
         return false;
     }
     derive(w).is_some_and(|p| p.id == "config" && p.banner.is_none())
+}
+
+/// Auto-cleanup under the tray icon (N75; Bagrat, 2026-10-24): three days ahead, amber, with
+/// Pin both and Review… (Not now puts it away on this Mac until the list changes); after Pin
+/// both, what it did, while the popover stays open; once a round went, what went, with OK.
+/// Above an update and the AI offer, under a saved take, the space and recording off.
+fn banner_autoclean(w: &World) -> Option<Banner> {
+    use super::library::{cleaned, going_day, going_in};
+    if let Some((n, at)) = w.session.fields.library.pinned_note {
+        return Some(Banner { id: "autoclean-warning", tone: Tone::Frost, line: copy::pinned_going(n, &copy::day(at, w.mac.utc_offset_min)), detail: None, buttons: vec![] });
+    }
+    let going = going_in(w, true);
+    let mut ids: Vec<String> = going.iter().map(|(g, _)| g.rec.0.clone()).collect();
+    ids.sort();
+    if let Some((_, date)) = going_day(w, &going).filter(|_| ids != w.prefs.going_dismissed) {
+        let days = w.suggestions.get().map_or(0, |s| s.autoclean.days);
+        let n = going.len() as u64;
+        return Some(Banner {
+            id: "autoclean-warning",
+            tone: Tone::Amber,
+            line: copy::autoclean_warning(n, &date, days),
+            detail: None,
+            buttons: vec![
+                Button::new(Action::DismissGoing, copy::not_now(), Style::Link),
+                Button::new(Action::ReviewGoing, copy::review(), Style::Plain),
+                Button::new(Action::PinGoing, copy::pin_going(n), Style::Filled).enabled(w.online() != Some(false)),
+            ],
+        });
+    }
+    let c = cleaned(w)?;
+    let days = w.suggestions.get().map_or(0, |s| s.autoclean.days);
+    Some(Banner { id: "autoclean-warning", tone: Tone::Frost, line: copy::autoclean_cleaned(c.recs.len() as u64, days, c.bytes), detail: None, buttons: vec![Button::new(Action::CleanedOk, copy::ok(), Style::Plain)] })
 }
 
 /// Kind 2: the space can't take videos — on the token-holding Mac, `space-degraded` (N42).
@@ -451,7 +484,7 @@ fn banner_recording_off(w: &World) -> Option<Banner> {
 pub enum OneShot {
     Updated,
     Failed,
-    /// The AI banner's Turn off went through (N75).
+    /// The AI banner's Turn off went through (N76).
     AiOff,
 }
 

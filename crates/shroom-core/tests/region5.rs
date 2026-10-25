@@ -35,7 +35,7 @@ fn rec(id: &str) -> RecId {
 }
 
 fn remote(id: &str, title: &str, at: i64, length_ms: u64, live: bool) -> LibraryRow {
-    LibraryRow { rec: rec(id), title: title.into(), created: Wall(at), length_ms: Some(length_ms), live, owner: Some("m1".into()), poster: false, edited_ms: None }
+    LibraryRow { rec: rec(id), title: title.into(), created: Wall(at), length_ms: Some(length_ms), live, owner: Some("m1".into()), poster: false, edited_ms: None, pinned: false }
 }
 
 /// The space's records, as the mock draws them (and enough of them for six at once).
@@ -65,21 +65,21 @@ fn with_popover(mut w: World) -> World {
 }
 
 /// The setup Mac's popover while the space's AI is off: its banner is due (N66).
-/// The setup Mac's popover over a space whose AI is off and was never settled here (N75).
+/// The setup Mac's popover over a space whose AI is off and was never settled here (N76).
 fn ai_unsettled() -> World {
     let mut w = with_popover(ready());
     w.space.ai = Some(false);
     w
 }
 
-/// The same, the AI turned on as the banner showed (N75).
+/// The same, the AI turned on as the banner showed (N76).
 fn ai_turned_on() -> World {
     let mut w = ai_unsettled();
     w.space.ai = Some(true);
     w
 }
 
-/// A member's popover in a space whose ping says its AI is on (N75).
+/// A member's popover in a space whose ping says its AI is on (N76).
 fn ai_member() -> World {
     let mut w = with_popover(ready());
     w.space.token = false;
@@ -108,7 +108,30 @@ fn suggestion(id: &str, bytes: u64, plays: u32, quiet_days: u32) -> Suggestion {
 
 /// What the space said is worth deleting, with the space's size (N68).
 fn suggested(mut w: World, rows: Vec<Suggestion>, space_bytes: u64) -> World {
-    w.suggestions = Fact::known(Suggestions { counting: true, space_bytes, rows }, Mono(960));
+    w.suggestions = Fact::known(Suggestions { counting: true, space_bytes, rows, ..Default::default() }, Mono(960));
+    w
+}
+
+/// Auto-cleanup on at 30 days (N75), with two videos going in three days and, once, the
+/// round before it said.
+fn going(mut w: World) -> World {
+    if let Fact::Known { v, .. } = &mut w.suggestions {
+        v.autoclean = AutoClean { days: 30, last: Some(Cleaned { at: Wall(1_789_900_000_000), recs: vec![rec("a4")], bytes: 1_700_000_000 }) };
+        v.going = vec![
+            Going { rec: rec("a2"), bytes: 640_000_000, plays: 2, quiet_days: 31, stopped_early: false, deletes_at: Wall(1_790_259_200_000) },
+            Going { rec: rec("r19"), bytes: 1_100_000_000, plays: 0, quiet_days: 33, stopped_early: false, deletes_at: Wall(1_790_259_200_000) },
+        ];
+    }
+    w
+}
+
+/// A pinned video in the list (N75).
+fn with_pinned(mut w: World, id: &str) -> World {
+    if let Fact::Known { v, .. } = &mut w.library {
+        if let Some(r) = Arc::make_mut(v).iter_mut().find(|r| r.rec == rec(id)) {
+            r.pinned = true;
+        }
+    }
     w
 }
 
@@ -375,19 +398,57 @@ fn rows() -> Vec<(&'static str, World)> {
     rows.push(("library-cleanup", {
         let mut w = library_suggesting();
         w.session.fields.library.cleanup = true;
-        w.session.fields.library.undo = Some((rec("a1"), Mono(990)));
+        w.session.fields.library.undo = Some((vec![rec("a1")], Mono(990)));
         w
     }));
     rows.push(("library-cleanup", {
         let mut w = library_suggesting();
         w.session.fields.library.cleanup = true;
         for id in ["a3", "onb", "a1"] {
-            w.library_ops.landed.insert(rec(id), (Landed::Kept, Mono(980)));
+            w.library_ops.landed.insert(rec(id), (Landed::Pinned(true), Mono(980)));
         }
         w
     }));
+    // ── Pin, Delete all and auto-cleanup (N75) ──
+    rows.push(("library", with_pinned(library_suggesting(), "r502")));
+    rows.push(("library", going(library_suggesting())));
+    rows.push(("library", {
+        let mut w = with_pinned(library_suggesting(), "r502");
+        w.inflight.failures.insert(Op::Pin, Failure { class: FailClass::Transport, at: Mono(970), tries: 1 });
+        w
+    }));
+    rows.push(("library-cleanup", {
+        let mut w = going(library_suggesting());
+        w.session.fields.library.cleanup = true;
+        w
+    }));
+    rows.push(("library-cleanup", {
+        let mut w = library_suggesting();
+        w.session.fields.library.cleanup = true;
+        w.session.fields.library.undo = Some((vec![rec("a3"), rec("onb"), rec("a1")], Mono(990)));
+        w
+    }));
+    rows.push(("delete-confirm-cleanup", {
+        let mut w = library_suggesting();
+        w.session.fields.library.cleanup = true;
+        w.session.confirm = Some(Confirm::DeleteSuggested(vec![rec("a3"), rec("onb"), rec("a1")]));
+        w
+    }));
+    rows.push(("autoclean-warning", going(suggested(with_popover(library(ready())), vec![], 34_000_000_000))));
+    rows.push(("autoclean-warning", {
+        let mut w = going(suggested(with_popover(library(ready())), vec![], 34_000_000_000));
+        if let Fact::Known { v, .. } = &mut w.suggestions {
+            v.going.clear();
+        }
+        w
+    }));
+    rows.push(("autoclean-warning", {
+        let mut w = going(suggested(with_popover(library(ready())), vec![], 34_000_000_000));
+        w.session.fields.library.pinned_note = Some((2, Wall(1_790_259_200_000)));
+        w
+    }));
     rows.push(("library-empty", library_with(ready(), vec![])));
-    // N75 (Bagrat, 2026-10-25): AI on by default — the setup Mac's banner while the page is
+    // N76 (Bagrat, 2026-10-25): AI on by default — the setup Mac's banner while the page is
     // re-wired with it and once it's on, its Turn off re-wiring and when that didn't go
     // through, the line once it's off; and a member's banner.
     rows.push(("ai-turned-on", {
@@ -559,6 +620,34 @@ fn rows() -> Vec<(&'static str, World)> {
         w
     }));
     rows.push(("settings-general", suggested(settings_on(ready(), SettingsTab::General), vec![], 34_000_000_000)));
+    // Auto-cleanup (N75): the setting Mac's pop-up, another Mac's line, counting off, and the
+    // question turning it on asks.
+    rows.push(("settings-general", going(suggested(settings_on(ready(), SettingsTab::General), vec![], 34_000_000_000))));
+    rows.push(("settings-general", {
+        let mut w = going(suggested(settings_on(ready(), SettingsTab::General), vec![], 34_000_000_000));
+        w.space.token = false;
+        w
+    }));
+    rows.push(("settings-general", {
+        let mut w = going(suggested(settings_on(ready(), SettingsTab::General), vec![], 34_000_000_000));
+        if let Fact::Known { v, .. } = &mut w.suggestions {
+            v.counting = false;
+        }
+        w
+    }));
+    rows.push(("settings-general", {
+        let mut w = suggested(settings_on(ready(), SettingsTab::General), vec![], 34_000_000_000);
+        w.library_ops.autoclean = Some(30);
+        w
+    }));
+    rows.push(("autoclean-confirm", {
+        let mut w = suggested(settings_on(ready(), SettingsTab::General), vec![], 34_000_000_000);
+        if let Fact::Known { v, .. } = &mut w.suggestions {
+            v.idle = vec![Idle { rec: rec("a2"), quiet_days: 40 }, Idle { rec: rec("a3"), quiet_days: 90 }, Idle { rec: rec("a4"), quiet_days: 31 }, Idle { rec: rec("r19"), quiet_days: 35 }];
+        }
+        w.session.confirm = Some(Confirm::Autoclean(30));
+        w
+    }));
     rows.push(("settings-general", {
         let mut w = suggested(settings_on(ready(), SettingsTab::General), vec![], 34_000_000_000);
         w.inflight.failures.insert(Op::Plays, Failure { class: FailClass::Transport, at: Mono(970), tries: 1 });
@@ -759,7 +848,8 @@ fn surface_of(id: &str) -> Surface {
         Surface::Feedback
     } else if id.starts_with("editor") {
         Surface::Editor(EDITOR)
-    } else if id.starts_with("settings") || ["disconnect-confirm", "disconnect-confirm-no-token", "leave-confirm", "uninstall-confirm", "report-problem", "repair-mood", "re-entry-as-settings", "token-repair-mood", "token-other-account", "gate-card", "wiring", "space-storage-gone", "name-changed"].contains(&id) {
+    } else if id.starts_with("settings") || [
+            "autoclean-confirm","disconnect-confirm", "disconnect-confirm-no-token", "leave-confirm", "uninstall-confirm", "report-problem", "repair-mood", "re-entry-as-settings", "token-repair-mood", "token-other-account", "gate-card", "wiring", "space-storage-gone", "name-changed"].contains(&id) {
         Surface::Settings
     } else {
         Surface::Popover
@@ -1123,8 +1213,8 @@ fn library_rows_carry_their_state_words_and_their_doors() {
     let live = row(&s, "Where the 502s come from");
     assert_eq!(
         live.menu.iter().map(|b| b.label.as_str()).collect::<Vec<_>>(),
-        ["Copied", "Copy thumbnail", "Open page", "Edit…", "Rename", "Delete…"],
-        "N46: Copy thumbnail under Copy link; N63: Edit… after Open page"
+        ["Copied", "Copy thumbnail", "Open page", "Edit…", "Rename", "Pin", "Delete…"],
+        "N46: Copy thumbnail under Copy link; N63: Edit… after Open page; N75: Pin after Rename"
     );
     assert_eq!(live.gestures.double_click, Some(Action::OpenPage(rec("r502"))));
     assert_eq!(s.library.as_ref().unwrap().body.footer.as_deref(), Some("12 videos"));
@@ -1661,7 +1751,8 @@ fn a_closed_library_or_settings_comes_back_only_when_reached_for() {
 
 #[test]
 fn every_region5_op_has_a_deadline() {
-    for (op, ms) in [(Op::LibRefresh, 60_000), (Op::Rename, 60_000), (Op::Delete, 60_000), (Op::Suggest, 60_000), (Op::Keep, 60_000), (Op::Plays, 60_000), (Op::UpdateCheck, 10_000), (Op::UpdateDownload, 1_800_000), (Op::UpdateApply, 30_000)] {
+    for (op, ms) in [(Op::LibRefresh, 60_000), (Op::Rename, 60_000), (Op::Delete, 60_000), (Op::Suggest, 60_000), (Op::Pin, 60_000),
+        (Op::Autoclean, 60_000), (Op::Plays, 60_000), (Op::UpdateCheck, 10_000), (Op::UpdateDownload, 1_800_000), (Op::UpdateApply, 30_000)] {
         assert_eq!(op.deadline_ms(), ms, "{op:?}");
     }
     // A refresh that never answers ends at its deadline; the window still shows the cache.
@@ -2347,7 +2438,7 @@ fn the_page_check_says_whether_naming_is_on() {
     assert_eq!(r.w.space.ai, Some(true));
 }
 
-/// N75 (Bagrat, 2026-10-25: on by default): on the setup Mac, the popover that would show
+/// N76 (Bagrat, 2026-10-25: on by default): on the setup Mac, the popover that would show
 /// the AI's banner over AI that's off turns it on as it shows — said before anything is
 /// heard — and says so until OK or Turn off. OK settles it for good on this Mac.
 #[test]
@@ -2379,7 +2470,7 @@ fn the_setup_mac_turns_ai_on_as_the_banner_shows() {
     assert!(!r.has(|e| matches!(e, Effect::Cloud(CloudCmd::SetAi(_)))));
 }
 
-/// N75: never before it can be said — not with the popover shut, not under a higher banner,
+/// N76: never before it can be said — not with the popover shut, not under a higher banner,
 /// not mid-take, not offline — and never over an explicit no (the old offer's Not now, or the
 /// switch): those Macs' AI is settled.
 #[test]
@@ -2421,7 +2512,7 @@ fn ai_is_turned_on_only_where_the_banner_shows() {
     assert!(r.has(|e| matches!(e, Effect::Persist(PersistOp::Once(o)) if o.ai_offer_answered)));
 }
 
-/// N75, law 12: a turn-on that didn't go through, once said, is tried again quietly — ten
+/// N76, law 12: a turn-on that didn't go through, once said, is tried again quietly — ten
 /// minutes, then longer — with the popover shut too, until it goes through; OK lets it go on.
 #[test]
 fn a_turn_on_that_didnt_go_through_is_tried_again_quietly() {
@@ -2440,7 +2531,7 @@ fn a_turn_on_that_didnt_go_through_is_tried_again_quietly() {
     assert_eq!(r.w.space.ai_turn, None);
 }
 
-/// N75: Turn off re-wires the page without the AI, the banner says so, a Turn off that didn't
+/// N76: Turn off re-wires the page without the AI, the banner says so, a Turn off that didn't
 /// go through says that (law 12) and is tried again quietly; once it's off the status line
 /// says so once, and the AI is settled on this Mac.
 #[test]
@@ -2482,7 +2573,7 @@ fn turn_off_takes_the_ai_away_and_says_so_once() {
     assert!(banner(&r).is_none());
 }
 
-/// N75: a member's Mac, once its space's ping says the AI is on, says once whose account
+/// N76: a member's Mac, once its space's ping says the AI is on, says once whose account
 /// hears its new videos; OK answers it for good. It learns it from the ping.
 #[test]
 fn a_members_mac_says_once_that_the_space_hears_its_videos() {
@@ -2504,7 +2595,7 @@ fn a_members_mac_says_once_that_the_space_hears_its_videos() {
     assert!(derive(&w).popover.unwrap().banner.is_none(), "AI off: nothing to say");
 }
 
-/// N66, N75: the banner sits under every other banner, and never while the space's AI is
+/// N66, N76: the banner sits under every other banner, and never while the space's AI is
 /// unknown.
 #[test]
 fn the_ai_banner_is_the_lowest_banner() {
@@ -2518,7 +2609,7 @@ fn the_ai_banner_is_the_lowest_banner() {
 
 /// N66: only the Mac that holds the setup key can re-wire the page, so only it shows naming's
 /// switch, and its banner over AI that's off: never another of the owner's Macs, never a
-/// member's (a member's says only that the AI is on, N75).
+/// member's (a member's says only that the AI is on, N76).
 #[test]
 fn naming_shows_only_where_the_setup_key_is() {
     for role in [Role::OwnerClass, Role::Member] {

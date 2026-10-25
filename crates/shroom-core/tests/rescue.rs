@@ -64,7 +64,7 @@ fn library_open(mut w: World) -> World {
 }
 
 fn row(id: &str, title: &str, owner: Option<&str>, poster: bool) -> LibraryRow {
-    LibraryRow { rec: RecId(id.into()), title: title.into(), created: Wall(SEP30), length_ms: Some(95_000), live: true, owner: owner.map(Into::into), poster, edited_ms: None }
+    LibraryRow { rec: RecId(id.into()), title: title.into(), created: Wall(SEP30), length_ms: Some(95_000), live: true, owner: owner.map(Into::into), poster, edited_ms: None, pinned: false }
 }
 
 fn button(s: &Scene, surface: Surface, action: &Action) -> Button {
