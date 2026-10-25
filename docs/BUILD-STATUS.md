@@ -380,7 +380,7 @@ and edits on the share page)*)**
     plays), the warning in the Library and the popover banner, the page deleting on its own
     schedule with every window closed, and `shroom cleanup-candidates` matching the Library.
 
-44. **N80 — Turning AI on or off shows its parts as they happen** (B248; Bagrat approved the
+44. **N80 — Turning AI on or off shows its parts as they happen** (B249; Bagrat approved the
     boards with the plainer words, 2026-10-25, relayed by the orchestrator). The switch in
     Settings · Space moves at once and lists Checking your space · Connecting (or
     Disconnecting) AI · Switching AI on (or off) for new videos, the one underway with its
