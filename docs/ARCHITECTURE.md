@@ -335,7 +335,14 @@ stay. A switch keeps the old space's files until the new join's 200 (D:B42, B54 
   edge (`presenter::label_frame`). It is never made late (`overlay::ensure`): wanted only
   once capture runs, a panel made then could miss that take's list of what it leaves out.
   Made at start or not at all; without it, the tray shows the take.
-- Windows: onboarding 600×680 (B189), Library 680×560 (resizable), Settings 600×620, Send feedback 520×600, the editor 1100×720 (resizable down to 900×640; a resizable window opens no bigger than its screen) — each its frame, macOS's 32 pt title bar inside it. One window each, but the editor's: one per video (N73, D:B227), each labelled `editor-<its number>` (`presenter::label`, the core's `EditorId`), the capability listing them as `editor-*`. A new one opens down and to the right of the newest editor window open (AppKit's cascade). An editor, the Library and Settings are destroyed when they close, not hidden (`presenter::closes_for_good`; D:B229): each comes back only when reached for, so the page made again then brings shroom forward only when asked (B106); the setup window and Send feedback are hidden. An editor's title is its slice's, “Edit — <title>”; its ✕ is posted like any window's, and the core may keep it open to save.
+- The marker toast (N78, D:B246): the fourth, made and held as the label is. While
+  `Scene.toast` is set — two seconds after ⌥⌘M answered, until a popover or a count comes
+  up over it — the presenter puts it where the label goes, or just under the label when
+  that shows (`presenter::toast_frame`). Its page (`app/toast.html`) draws the pill inside
+  the panel's margin with its own shadow (the panel casts none, so the shadow fades with
+  the pill), fades it in and out, and starts again on a new press (`pressed`). Made at
+  start or not at all; without it, ⌥⌘M still drops its marker, unanswered on screen.
+- Windows: onboarding 600×680 (B189), Library 680×560 (resizable), Settings 600×720 (B247), Send feedback 520×600, the editor 1100×720 (resizable down to 900×640; a resizable window opens no bigger than its screen) — each its frame, macOS's 32 pt title bar inside it. One window each, but the editor's: one per video (N73, D:B227), each labelled `editor-<its number>` (`presenter::label`, the core's `EditorId`), the capability listing them as `editor-*`. A new one opens down and to the right of the newest editor window open (AppKit's cascade). An editor, the Library and Settings are destroyed when they close, not hidden (`presenter::closes_for_good`; D:B229): each comes back only when reached for, so the page made again then brings shroom forward only when asked (B106); the setup window and Send feedback are hidden. An editor's title is its slice's, “Edit — <title>”; its ✕ is posted like any window's, and the core may keep it open to save.
 - Camera panels (`runtime/camera.rs`): bubble and Camera-only preview (§4.4).
 - Every window and overlay joins `Runtime.excluded` when made and is left out of capture;
   the bubble never is. Overlays and camera panels don't hide on ⌘H (D:B112).
@@ -667,7 +674,8 @@ One H.264 variant with AAC, under `v0/`; players and unfurls use the master. A l
 **The door follows token presence** (#58, `runtime/uploader.rs:Door`): a token Mac mints
 locally, writing its ledger entry create-only first; every other Mac calls `POST /api/mint`
 under its device key and the Worker signs the byte-identical JWT. Minted per recording when
-its upload starts, so removal stops new mints while minted ones finish (≤ 7 d, N32). Instant
+its upload starts and minted again as it nears the end of its hour, so removal stops new
+mints and a minted one ends within the hour (N32). Instant
 cut-off is parent-token rotation, docs only.
 
 **Law 13:** secrets ride files only — never argv, logs, slices or the core. The installer
@@ -751,8 +759,9 @@ Macs deploy — at wiring and once a launch (`wire::refresh_page`) — and only 
 `VERSION`, never down (D:B50, B53 a); naming's switch (`wire::set_ai`) puts the page up again
 with or without the AI binding and its schedule, and a refresh or a re-wiring keeps what the
 live page has (the ping says `"ai":true`). Members compare `iface` with `member::IFACE_MIN` (2)
-and show needs-update below it (DV #30). `VERSION` moves with every page change;
-`page-version.json` fingerprints each and a test enforces it (D:B61).
+and show needs-update below it (DV #30). A published `VERSION`'s page never changes;
+`page-version.json` fingerprints each, and a page change re-stamps an unpublished VERSION's
+row or takes the next VERSION once it's out (D:B61, B248).
 
 ---
 
@@ -791,7 +800,7 @@ relaunch (N9).
 
 R2's single PUT tops out at 4.995 GiB; `put_file` sends ≤ `SINGLE_PUT_MAX` (256 MiB) whole and
 multipart above in `PART_SIZE` (128 MiB) parts (D:B15, B70 b). R2 aborts stale multiparts
-after 7 d. The MP4 never gates "watchable"; Download appears once `media.mp4` exists.
+after 7 d. The MP4 never gates "watchable"; Download works once `media.mp4` exists (the owner page draws it greyed until then, D:B250).
 
 ### 9.3 Progress truth for the page
 

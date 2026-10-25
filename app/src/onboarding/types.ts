@@ -16,7 +16,7 @@ export type Rich = { text: string; runs: Run[] };
 /** `uninstall`: quiet at the foot (B160); `sheet`: its question over the window, once asked. */
 export type WelcomeBody = { kind: "welcome"; paragraphs: Rich[]; login: Toggle; buttons: Button[]; uninstall: Button; sheet: Sheet | null };
 
-export type Glyph = "current" | "done" | "ahead" | "working";
+export type Glyph = "current" | "done" | "ahead" | "working" | "stopped";
 /** A row and its parts as the core split them (DEVIATIONS #45): the title, the aside under it,
  * a done row's fact at its end. */
 export type PlanRow = { glyph: Glyph; line: string; runs: Run[]; title: string; aside: Run[]; fact: string | null; clock: string | null };

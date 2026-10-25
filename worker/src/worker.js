@@ -154,7 +154,7 @@ export const STALL_SECONDS = 120;
 export const IFACE = 2;
 /** The version of the app that deploys this file — the same as the app's own
  * (`app/src-tauri/tauri.conf.json`, held equal by a shroom-cloud test). */
-export const VERSION = "0.1.31";
+export const VERSION = "0.1.32";
 
 const ID = /^[A-Za-z0-9_-]{16}$/;
 const HLS_JS_KEY = ".shroom/player/hls.min.js";
@@ -1522,6 +1522,7 @@ h1{flex:1 1 0;min-width:0;margin:0;font-size:1.75rem;font-weight:600;line-height
 .copy::before,#dl a::before,.dl a::before{content:"";flex:none;width:18px;height:18px;background:currentColor;-webkit-mask:var(--i) center/18px 18px no-repeat;mask:var(--i) center/18px 18px no-repeat}
 .copy:hover,#dl a:hover,.dl a:hover{background:var(--hover);color:var(--text)}
 .copy[aria-disabled=true]{cursor:default}.copy[aria-disabled=true]::before{opacity:.4}.copy[aria-disabled=true]:hover{background:transparent;color:var(--soft)}
+#dl a[aria-disabled=true]{cursor:default}#dl a[aria-disabled=true]::before{opacity:.4}#dl a[aria-disabled=true]:hover{background:transparent;color:var(--soft)}
 /* The buttons' tooltips (N46: “tooltips need padding between the button”): drawn a clear 8px
    below the button, their right edges on its right edge, so the last one stays in the window. */
 .copy,#dl,.dl{position:relative}
@@ -1555,13 +1556,16 @@ main>.line:only-child{margin:auto;max-width:420px;text-align:center;font-size:1.
    recording's shape (--ar) — the title, the upload line and the mark's foot stay in view —
    and the foot keeps the column's width. 212px: the body's padding, the title row and its
    gap, the foot; a short window's foot sits closer (12px). The player's control bar sits
-   under its picture (56px, --bar), so the picture's room is that much less. */
+   under its picture (56px, --bar), so the picture's room is that much less — and the frame
+   that waits for it keeps that room too; a page that opened with the upload line keeps the
+   line's room once it goes: the column, and the icons beside the title, move neither at the
+   go-live nor at the drain (Bagrat, 2026-10-25). */
 body{--ar:16/9;--room:calc(100dvh - 212px)}
-body:has(main .upl:not([hidden])){--room:calc(100dvh - 282px)}
+body:has(main .upl:not([hidden]),main .upl[data-room]){--room:calc(100dvh - 282px)}
 main,body>.foot{--fit:min(960px,max(320px,calc((var(--room) - var(--bar,0px)) * var(--ar))))}
-body:has(main .player){--bar:56px}
+body:has(main .player,main .wait){--bar:56px}
 main:has(.player,.wait),body:has(main .player,main .wait)>.foot{max-width:var(--fit)}
-@media (max-height:900px){body{--room:calc(100dvh - 192px)}body:has(main .upl:not([hidden])){--room:calc(100dvh - 262px)}.foot{padding-top:12px}}
+@media (max-height:900px){body{--room:calc(100dvh - 192px)}body:has(main .upl:not([hidden]),main .upl[data-room]){--room:calc(100dvh - 262px)}.foot{padding-top:12px}}
 .mark{display:flex;align-items:center;gap:8px;min-height:44px;color:var(--quiet);text-decoration:none}.mark:hover{color:var(--text)}.mark[hidden]{display:none}.mark svg{display:block;width:17px;height:18px}
 .switch{display:flex;align-items:center;gap:10px;min-height:44px;cursor:pointer}
 .switch input{-webkit-appearance:none;appearance:none;flex:none;width:36px;height:20px;margin:0;border-radius:10px;cursor:pointer;background:radial-gradient(circle 8px at 10px 50%,var(--knob) 94%,transparent) no-repeat,var(--edge)}
@@ -1590,9 +1594,9 @@ const PLAYER_STYLE = `.bar{display:block;width:100%;height:3px;border-radius:2px
 .playing .pp .i-pause,.muted .mu .i-off,.full .fs .i-exit{display:block}
 .time{flex:none;padding:0 6px;font-variant-numeric:tabular-nums;white-space:nowrap}.gap{flex:1 1 0}
 .row .sp{width:auto;min-width:44px;padding:0 10px;font-weight:600;font-variant-numeric:tabular-nums}
-.seek{-webkit-appearance:none;appearance:none;position:absolute;left:0;right:0;top:-6px;width:100%;height:16px;margin:0;padding:0;background:transparent;cursor:pointer;--p:0;--b:0}
-.seek::-webkit-slider-runnable-track{height:4px;border:0;background:linear-gradient(to right,var(--player-fill) calc(var(--p)*100%),var(--player-buf) 0 calc(var(--b)*100%),var(--player-track) 0)}
-.seek::-moz-range-track{height:4px;border:0;background:linear-gradient(to right,var(--player-fill) calc(var(--p)*100%),var(--player-buf) 0 calc(var(--b)*100%),var(--player-track) 0)}
+.seek{-webkit-appearance:none;appearance:none;position:absolute;left:0;right:0;top:-6px;width:100%;height:16px;margin:0;padding:0;background:transparent;cursor:pointer;--p:0;--b:0;--th:14px}
+.seek::-webkit-slider-runnable-track{height:4px;border:0;background:linear-gradient(to right,var(--player-fill) calc(var(--th)/2 + var(--p)*(100% - var(--th))),var(--player-buf) 0 calc(var(--th)/2 + var(--b)*(100% - var(--th)/2)),var(--player-track) 0)}
+.seek::-moz-range-track{height:4px;border:0;background:linear-gradient(to right,var(--player-fill) calc(var(--th)/2 + var(--p)*(100% - var(--th))),var(--player-buf) 0 calc(var(--th)/2 + var(--b)*(100% - var(--th)/2)),var(--player-track) 0)}
 .seek::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:14px;height:14px;margin-top:-5px;border:0;border-radius:50%;background:var(--player-hi)}
 .seek::-moz-range-thumb{width:14px;height:14px;border:0;border-radius:50%;background:var(--player-hi)}
 .seek:focus-visible{outline:none}.seek:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 3px var(--player-fill)}.seek:focus-visible::-moz-range-thumb{box-shadow:0 0 0 3px var(--player-fill)}
@@ -1746,7 +1750,7 @@ export function playerHtml(id, meta, base = "") {
   return `<div class="player" data-dur="${dur}"${ratio}><video id="v" playsinline preload="metadata"${poster}></video>`
     + `<span class="big" aria-hidden="true">${ICON.big}</span>`
     + `<div class="ctl"><div class="row"><button type="button" class="pp" aria-label="${escapeHtml(COPY.play)}">${ICON.play}${ICON.pause}</button>`
-    + `<input type="range" class="seek" min="0" max="${dur}" step="0.1" value="0" aria-label="${escapeHtml(COPY.seek)}" aria-valuetext="${time}">`
+    + `<input type="range" class="seek" min="0" max="${Math.round(dur * 10) / 10}" step="0.1" value="0" aria-label="${escapeHtml(COPY.seek)}" aria-valuetext="${time}">`
     + `<span class="time">${time}</span><span class="gap"></span>`
     + `<button type="button" class="sp" aria-label="${escapeHtml(speedLabel(1))}">1×</button>`
     + `<button type="button" class="mu" aria-label="${escapeHtml(COPY.mute)}">${ICON.sound}${ICON.muted}</button>`
@@ -1802,8 +1806,8 @@ K=E&&E.keep&&E.keep.length?E.keep:null,len=E&&+E.len||0,cp=!!(E&&E.copy),fin=fal
 function dur(){return K?shroomLength(K):isFinite(v.duration)&&v.duration>0?v.duration:known}
 function at(){var t=v.currentTime||0;return K?shroomAt(K,t):t}
 function ahead(t){var b=v.buffered,e=0;try{for(var i=0;i<b.length;i++)if(b.start(i)<=t+1&&b.end(i)>e)e=b.end(i)}catch(x){}return e}
-function paint(){var d=dur(),e=v.ended||fin,t=held?+sk.value:e&&d?d:at(),txt=shroomClock(t,e)+(d?" / "+shroomClock(d,true):"");tm.textContent=txt;sk.max=String(d||0);if(!held)sk.value=String(t);sk.setAttribute("aria-valuetext",txt);
-var b=K?shroomAt(K,ahead(v.currentTime||0)):ahead(t);sk.style.setProperty("--p",String(d?Math.min(1,t/d):0));sk.style.setProperty("--b",String(d?Math.min(1,b/d):0))}
+function paint(){var d=dur(),e=v.ended||fin,t=held?+sk.value:e&&d?d:at(),txt=shroomClock(t,e)+(d?" / "+shroomClock(d,true):"");tm.textContent=txt;var m=Math.round((d||0)*10)/10;sk.max=String(m);if(!held)sk.value=String(e&&m?m:t);sk.setAttribute("aria-valuetext",txt);
+var b=K?shroomAt(K,ahead(v.currentTime||0)):ahead(t);sk.style.setProperty("--p",String(m?Math.min(1,(+sk.value||0)/m):0));sk.style.setProperty("--b",String(d?(d-b<.25?1:Math.min(1,b/d)):0))}
 function level(g){g=Math.round(g*20)/20;if(v.volume!==g)try{v.volume=g}catch(x){}}
 function skip(){if(!K){if(v.volume!==1)level(1);return}var t=v.currentTime||0,n=K.length,i=0;while(i<n&&t>=K[i][1]-.03)i++;
 if(i===n){fin=true;if(!v.paused)v.pause();level(1);paint();return}if(t<K[i][0]-.001&&(aim!==K[i][0]||Math.abs(t-aim)>.05)){level(0);aim=K[i][0];v.currentTime=aim;return}level(v.paused?1:shroomGain(K,t,.05))}
@@ -2066,21 +2070,26 @@ function ownerPage(id, meta, now, face, waiting, blocked = false, pending = fals
   const frame = meta.media?.poster ? `<img src="/m/${id}/poster.jpg" alt="">` : "";
   const stage = live ? aiPlayer(playerHtml(id, meta), ai) : `<div class="wait" id="w">${frame}</div>`;
   // Download hands over the video as it plays (N63): it waits for an edit's permanent copy.
+  // Every quiet icon is there from the first paint, in its place: one not ready yet is greyed
+  // and goes nowhere, and the poll wakes it where it stands (Bagrat, 2026-10-25: the row
+  // flickered as they came in one by one).
   const view = viewOf(id, meta);
-  const download = view.download ? `<a href="/d/${id}">${COPY.download}</a>` : "";
+  const download = view.download ? `<a href="/d/${id}">${COPY.download}</a>` : `<a aria-disabled="true">${COPY.download}</a>`;
   // Copy thumbnail waits for the loop made for this title — or, when none can be made (the
   // upload finished with no teaser), for the still (N46).
   const thumbs = { ...thumbsOf(id, meta, live), drained: drainedNow };
   const ready = thumbs.gif || (drainedNow && !thumbs.teaser && !!thumbs.thumb);
   // Edit in shroom (N69): the last quiet icon, a plain link that opens the video in shroom's
-  // editor — once the video is fully up, as Edit… in the Library (the poll brings it in at
-  // the drain). The browser asks before shroom opens; nothing on the page tests for it.
-  const edit = face.host ? `<a class="copy edit" id="ed" href="${escapeHtml(`shroom://edit/${face.host}/${id}`)}" data-tip="${COPY.editInShroom}" aria-label="${COPY.editInShroom}"${drainedNow ? "" : " hidden"}>${COPY.editInShroom}</a>` : "";
+  // editor — once the video is fully up, as Edit… in the Library (greyed until then, its link
+  // kept aside: the poll wakes it at the drain). The browser asks before shroom opens; nothing
+  // on the page tests for it.
+  const editHref = escapeHtml(`shroom://edit/${face.host}/${id}`);
+  const edit = face.host ? `<a class="copy edit" id="ed" ${drainedNow ? `href="${editHref}"` : `data-href="${editHref}"`} data-tip="${COPY.editInShroom}" aria-label="${COPY.editInShroom}"${drainedNow ? "" : ' aria-disabled="true"'}>${COPY.editInShroom}</a>` : "";
   // Copy link and Download are quiet icons beside the title; their words name them.
-  const head = `<div class="head">${field}${copyButtons(live, !ready)}<span id="dl" data-tip="${COPY.download}">${download}</span>${edit}</div>`;
+  const head = `<div class="head">${field}${copyButtons(true, !live || !ready)}<span id="dl" data-tip="${COPY.download}">${download}</span>${edit}</div>`;
   const gone = drainedNow && !hearing;
   const spin = gone ? "" : `<span class="spin${stalled && !drainedNow ? " rest" : ""}" id="b" aria-hidden="true"></span>`;
-  const upload = `<div class="upl" id="ul"${gone ? " hidden" : ""}>${spin}<span class="up" id="u">${escapeText(line)}</span></div>`;
+  const upload = `<div class="upl" id="ul"${gone ? " hidden" : " data-room"}>${spin}<span class="up" id="u">${escapeText(line)}</span></div>`;
   // The wait's five minutes, counted down by the page itself from the take's go-live, so the
   // line never hangs on a status it can no longer reach.
   const listenFor = cutsTag === "coming" ? Math.max(0, VOICE_WAIT_MS - (now - Date.parse(meta.publishedAt))) : 0;
@@ -2104,6 +2113,8 @@ ${THUMB_JS}
 (function(){var c=${jsonForScript(cfg)},t=document.getElementById("t"),saved=c.saved,src=${jsonForScript(JSON.stringify(src))},tb=document.getElementById("th");
 var th=shroomThumbs(c.thumbs,function(ok){if(ok)tb.removeAttribute("aria-disabled");else tb.setAttribute("aria-disabled","true");tb.setAttribute("data-tip",ok?c.copyThumb:c.preparing)});
 if(c.live){shroomPlayer(document.querySelector(".player"),src,c.labels,${playing(id, view)});th.live()}
+function wake(el,href){if(!el.getAttribute("aria-disabled"))return;if(href)el.href=href;el.removeAttribute("aria-disabled")}
+function rest(el){if(el.getAttribute("aria-disabled"))return;el.removeAttribute("href");el.setAttribute("aria-disabled","true")}
 function send(v){c.pend=null;fetch("/_shroom/title/"+c.id,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({title:v})})
 .then(function(r){if(r.status===404)c.pend=v;return r.ok?r.json():null}).then(function(j){if(j){saved=j.title;if(document.activeElement!==t)t.value=saved;document.title=saved;th.retitle(saved)}})}
 function save(){var v=t.value.replace(/\\s+/g," ").trim();if(!v){t.value=saved;return}if(v===saved)return;send(v)}
@@ -2128,20 +2139,22 @@ var hn=document.querySelector(".cue-hint");function hintDue(){if(hn&&hn.isConnec
 if(hn){hn.querySelector("button").onclick=function(){hn.remove();putHintAway()};if(c.cutsTag!=="coming")hintDue()}stripSeen();
 function done(then){if(c.done)return;c.done=true;if(ul.hidden){if(then)then();return}ul.classList.add("fade");setTimeout(function(){ul.hidden=true;up.textContent="";if(sp){sp.remove();sp=null}if(then)then()},400)}
 if(c.listenFor)setTimeout(function(){c.waitOver=true;if(c.drained)done(hintDue)},c.listenFor);
-function next(ms){setTimeout(poll,ms)}
+function next(ms){c.polling=true;setTimeout(poll,ms)}
+function edited(){if(c.gone)return;var da=dl.firstChild;if(da)rest(da);if(!c.polling){gap=2000;next(0)}}
+document.addEventListener("shroom:keep",edited);
 function spin(on,turning){if(sp){sp.style.display=on?"":"none";sp.className="spin"+(turning?"":" rest")}}
 function say(x){var w=document.getElementById("w");if(!w||(!x&&!c.said))return;c.said=!!x;w.textContent="";if(x){var p=document.createElement("p");p.className="line";p.textContent=x;w.appendChild(p)}}
 function poll(){fetch("/_shroom/status/"+c.id,{cache:"no-store"}).then(function(r){return r.json()}).then(function(s){
-if(s.state==="removed"){var m=document.querySelector("main"),p=document.createElement("p");m.textContent="";p.className="line";p.textContent=c.notFound;m.appendChild(p);document.title="shroom";return}
+if(s.state==="removed"){c.gone=true;c.polling=false;var m=document.querySelector("main"),p=document.createElement("p");m.textContent="";p.className="line";p.textContent=c.notFound;m.appendChild(p);document.title="shroom";return}
 if(c.pend&&s.state!=="waiting")send(c.pend);
-if(s.state==="live"){if(s.dur)th.length(shroomClock(s.dur,true));if(s.teaser)th.teaser();if(!c.live){c.live=true;tb.hidden=false;th.live();var w=document.getElementById("w"),h=document.createElement("div");h.innerHTML=c.player;var pl=h.firstChild;
+if(s.state==="live"){if(s.dur)th.length(shroomClock(s.dur,true));if(s.teaser)th.teaser();if(!c.live){c.live=true;th.live();var w=document.getElementById("w"),h=document.createElement("div");h.innerHTML=c.player;var pl=h.firstChild;
 var cp=s.copy,ps=cp&&cp.poster||(s.poster?"/m/"+c.id+"/poster.jpg":"");if(s.dur)pl.setAttribute("data-dur",s.dur);if(ps)pl.querySelector("video").poster=ps;w.replaceWith(pl);
 shroomPlayer(pl,cp?cp.src:src,c.labels,{keep:cp?null:s.keep||null,st:"/_shroom/status/"+c.id,copy:!!cp})}
-if(s.drained)th.drained();var ed=document.getElementById("ed");if(ed&&s.drained)ed.hidden=false;
+if(s.drained)th.drained();var ed=document.getElementById("ed");if(ed&&s.drained)wake(ed,ed.getAttribute("data-href"));
 if(s.cuts&&s.cuts!=="coming"&&s.cuts!==c.cutsTag)pull(s.cuts);if(!s.cuts&&c.cutsTag==="coming"){c.cutsTag=null;var cw=document.getElementById("cuts");if(cw&&cw.hidden)cw.remove()}
 if(s.drained){c.drained=true;if(s.cuts==="coming"&&!c.waitOver){if(!c.done){ul.hidden=false;up.textContent=c.finishing;spin(true,true)}}else done(s.cuts?null:hintDue)}
 else{ul.hidden=false;up.textContent=s.stalled?c.waiting:c.finishing;spin(true,!s.stalled)}
-if(s.mp4){if(!dl.firstChild){var a=document.createElement("a");a.href="/d/"+c.id;a.textContent=c.dl;dl.appendChild(a)}if(s.drained&&s.cuts!=="coming")return}
+var da=dl.firstChild;if(da){if(s.mp4)wake(da,"/d/"+c.id);else rest(da)}if(s.mp4&&s.drained&&s.cuts!=="coming"){c.polling=false;return}
 if(!s.drained||s.cuts==="coming")return next(2000);gap=Math.min(gap*2,30000);return next(gap)}
 if(s.state==="unavailable"){if(!c.live){say(c.unavailable);up.textContent="";spin(false,false)}return next(30000)}
 if(s.state==="uploading"){say("");ul.hidden=false;up.textContent=s.stalled?c.waiting:c.finishing;spin(true,!s.stalled)}
@@ -2181,8 +2194,10 @@ const HOUR_MS = 3600 * 1000;
 const DAY_MS = 24 * HOUR_MS;
 /** Invite lifetimes, set by the server's clock (SM:1328, 1387). */
 const INVITE_SECONDS = { member: 604800, own_mac: 3600 };
-/** Credential lifetimes (§3.4): R2 sets no ceiling of its own (B35 P6), so these are it. */
-const TTL = { upload: 604800, manage: 900 };
+/** Credential lifetimes (§3.4): R2 sets no ceiling of its own (B35 P6), so these are it. An
+ * upload credential lives an hour; the Mac mints the same recording's again as it nears its
+ * end, so a removed member's upload stops within the hour (N32). */
+const TTL = { upload: 3600, manage: 900 };
 /** A one-time page key's life (`shroom-cloud::owner::KEY_TTL_SECS`). */
 const KEY_SECONDS = 600;
 /** New recordings one device may open in a clock hour (H4; a scaffold flag). */
@@ -3325,6 +3340,9 @@ const VIEW_SINCE = `${VIEWS}since.json`;
 const VIEW_BODY_MAX = 512;
 /** Hashes and tokens held for a day, per video: past these a play still counts, undeduped. */
 const VIEW_DAY_CAP = 1000;
+/** The most plays one viewer (the day's stand-in) counts for one video in a day: replays
+ * count, a stream of beacons from one place doesn't. Past it nothing is written. */
+export const VIEW_PLAYS_PER_VIEWER = 5;
 /** Days of per-day plays kept (the fading score reads them; older ones fold into `plays`). */
 const VIEW_DAYS_KEPT = 400;
 const VIEW_TOKEN = /^[A-Za-z0-9_-]{8,32}$/;
@@ -3348,9 +3366,11 @@ const dayOf = (ms) => iso(ms).slice(0, 10);
 /** @param {Request} request @param {Env} env @param {URL} url @param {string} id @param {number} now */
 async function viewBeacon(request, env, url, id, now) {
   // WebKit sends a beacon from a page being left as `Origin: null`; a named other origin,
-  // or the browser's own word that it's cross-site, is refused.
+  // or the browser's own word that it's cross-site, is refused — and so is a beacon that
+  // carries neither an Origin nor the browser's Sec-Fetch-Site: no page sent it.
   const origin = request.headers.get("origin");
-  if ((origin !== null && origin !== "null" && origin !== url.origin) || request.headers.get("sec-fetch-site") === "cross-site") return plain(403, "");
+  const site = request.headers.get("sec-fetch-site");
+  if ((origin !== null && origin !== "null" && origin !== url.origin) || site === "cross-site" || (origin === null && site === null)) return plain(403, "");
   /** @type {any} */
   let b;
   try { b = JSON.parse(new TextDecoder().decode(await readCapped(request, VIEW_BODY_MAX))); } catch { return plain(400, ""); }
@@ -3415,7 +3435,7 @@ async function viewerHash(env, request, id, now) {
 }
 
 /** A fresh record. @param {number} now */
-const emptyViews = (now) => ({ v: 1, plays: 0, viewers: 0, ends: 0, watch: Array(10).fill(0), watchedSec: 0, firstAt: null, lastAt: null, days: {}, today: { d: dayOf(now), h: [], t: {} } });
+const emptyViews = (now) => ({ v: 1, plays: 0, viewers: 0, ends: 0, watch: Array(10).fill(0), watchedSec: 0, firstAt: null, lastAt: null, days: {}, today: { d: dayOf(now), h: [], t: {}, p: {} } });
 
 /** Applies one beacon to a record (pure; exported for the tests).
  * @param {any} rec @param {{ e: string, t: string, f: number, viewer: string | null }} beacon @param {number} now @param {number} durationSec */
@@ -3423,10 +3443,17 @@ export function applyView(rec, beacon, now, durationSec) {
   const r = rec && rec.v === 1 ? structuredClone(rec) : emptyViews(now);
   const day = dayOf(now);
   if (r.today?.d !== day) r.today = { d: day, h: [], t: {} };
+  r.today.p ??= {};
   const tenth = (/** @type {number} */ f) => Math.min(9, Math.floor(f * 10));
   const known = Object.prototype.hasOwnProperty.call(r.today.t, beacon.t);
   if (beacon.e === "play") {
     if (known) return null; // this page load's play already counted
+    // One viewer's plays today, up to the ceiling; past it, nothing changes.
+    if (beacon.viewer) {
+      const n = r.today.p[beacon.viewer] ?? 0;
+      if (n >= VIEW_PLAYS_PER_VIEWER) return null;
+      if (n > 0 || Object.keys(r.today.p).length < VIEW_DAY_CAP) r.today.p[beacon.viewer] = n + 1;
+    }
     r.plays += 1;
     r.days[day] = (r.days[day] ?? 0) + 1;
     r.firstAt ??= iso(now);
@@ -5145,11 +5172,15 @@ async function aiNamedRoute(request, env, id, now) {
 // ───────── the page's player: chapters in the seek bar, captions (B209) ─────────
 
 /** The bar drawn as one section a chapter (a layer behind the native slider, which keeps its
- * keyboard and screen-reader ways), its tip, the chapter after the time; the Captions button;
+ * keyboard and screen-reader ways), on the head's travel (Bagrat, 2026-10-25): the first and
+ * last sections padded by the head's radius to the bar's ends, so each boundary falls where the
+ * head's centre stands at that time and a section grown under the pointer grows whole; its
+ * tip, the chapter after the time; the Captions button;
  * the owner's line under the title. */
 const AI_STYLE = `.player.ch .seek::-webkit-slider-runnable-track{background:transparent}.player.ch .seek::-moz-range-track{background:transparent}
 .chs{position:absolute;left:0;right:0;top:0;height:4px;display:flex;gap:2px;pointer-events:none}
-.chs i{display:block;height:4px;min-width:1px;border-radius:2px;transition:transform .12s;background:linear-gradient(to right,var(--player-fill) calc(var(--f,0)*100%),var(--player-buf) 0 calc(var(--g,0)*100%),var(--player-track) 0)}
+.chs i{display:block;height:4px;min-width:1px;border-radius:2px;transition:transform .12s;background:linear-gradient(to right,var(--player-fill) calc(var(--a,0px) + var(--f,0)*(100% - var(--a,0px) - var(--z,0px)) + var(--fe,0)*var(--z,0px)),var(--player-buf) 0 calc(var(--a,0px) + var(--g,0)*(100% - var(--a,0px) - var(--z,0px)) + var(--ge,0)*var(--z,0px)),var(--player-track) 0)}
+.chs i:first-child{padding-left:7px;--a:7px}.chs i:last-child{padding-right:7px;--z:7px}
 .chs i.on{transform:scaleY(1.75)}
 .chtip{position:absolute;bottom:calc(100% + 10px);left:0;transform:translateX(-50%);z-index:3;max-width:min(360px,80%);padding:4px 9px;border-radius:7px;background:var(--player);border:1px solid var(--player-track);color:var(--player-hi);font-size:12px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
 .chtip[hidden]{display:none}.chtip .cht{color:var(--player-text);font-variant-numeric:tabular-nums;margin-right:6px}
@@ -5189,13 +5220,14 @@ function len(){return +sk.max||0}
 function at(t){var i=0;for(var j=0;j<ch.length;j++)if(ch[j][0]<=t+.05)i=j;return i}
 function build(){var d=len();built=d;bar.textContent="";secs=[];if(!d)return;for(var i=0;i<ch.length;i++){var s=Math.min(ch[i][0],d),e=i+1<ch.length?Math.min(ch[i+1][0],d):d,x=document.createElement("i");x.style.flex=Math.max(.001,e-s)+" 1 0";bar.appendChild(x);secs.push([s,e,x])}}
 function paint(){if(ch.length<2)return;var d=len();if(d!==built)build();var t=+sk.value||0,pt=(parseFloat(sk.style.getPropertyValue("--p"))||0)*d,bt=(parseFloat(sk.style.getPropertyValue("--b"))||0)*d;
-for(var i=0;i<secs.length;i++){var s=secs[i],w=(s[1]-s[0])||1;s[2].style.setProperty("--f",String(Math.max(0,Math.min(1,(pt-s[0])/w))));s[2].style.setProperty("--g",String(Math.max(0,Math.min(1,(bt-s[0])/w))))}
+for(var i=0;i<secs.length;i++){var s=secs[i],w=(s[1]-s[0])||1,f=Math.max(0,Math.min(1,(pt-s[0])/w)),g=Math.max(0,Math.min(1,(bt-s[0])/w)),x=s[2].style;x.setProperty("--f",String(f));x.setProperty("--g",String(g));x.setProperty("--fe",f>=1?"1":"0");x.setProperty("--ge",g>=1?"1":"0")}
 var c=ch[at(t)][1];n.textContent="\\u00b7 "+c;n.title=c;sk.setAttribute("aria-valuetext",tm.textContent+", "+c)}
 function show(t,x){var i=at(t),r=sk.getBoundingClientRect(),a=document.createElement("span");tip.textContent="";a.className="cht";a.textContent=shroomClock(t,false);tip.appendChild(a);tip.appendChild(document.createTextNode(ch[i][1]));tip.hidden=false;
 var w=tip.offsetWidth;tip.style.left=Math.max(w/2,Math.min(r.width-w/2,x))+"px";for(var j=0;j<secs.length;j++)secs[j][2].classList.toggle("on",j===i)}
 function off(){tip.hidden=true;for(var j=0;j<secs.length;j++)secs[j][2].classList.remove("on")}
-function thumb(){var d=len(),r=sk.getBoundingClientRect();return d?(+sk.value/d)*r.width:0}
-sk.addEventListener("pointermove",function(e){if(e.pointerType==="touch"||touch||ch.length<2)return;var r=sk.getBoundingClientRect(),x=Math.max(0,Math.min(r.width,e.clientX-r.left));show(len()*x/(r.width||1),x)});
+function at2x(t,w){var d=len();return 7+(d?t/d:0)*(w-14)}
+function thumb(){return at2x(+sk.value||0,sk.getBoundingClientRect().width)}
+sk.addEventListener("pointermove",function(e){if(e.pointerType==="touch"||touch||ch.length<2)return;var r=sk.getBoundingClientRect(),x=Math.max(0,Math.min(r.width,e.clientX-r.left));show(len()*Math.max(0,Math.min(1,(x-7)/((r.width-14)||1))),x)});
 sk.addEventListener("pointerleave",function(e){if(e.pointerType!=="touch"&&!touch)off()});
 sk.addEventListener("pointerdown",function(e){if(e.pointerType!=="touch"||ch.length<2)return;touch=true;clearTimeout(hide);sk.classList.add("held");show(+sk.value||0,thumb())});
 function lift(e){if(e.pointerType!=="touch"||!touch)return;touch=false;sk.classList.remove("held");clearTimeout(hide);hide=setTimeout(off,1500)}

@@ -379,3 +379,12 @@ and edits on the share page)*)**
     Undo, Pin and Unpin from a row's menu, the Settings pop-up (Off as it ships, needs Count
     plays), the warning in the Library and the popover banner, the page deleting on its own
     schedule with every window closed, and `shroom cleanup-candidates` matching the Library.
+
+44. **N80 — Turning AI on or off shows its parts as they happen** (B249; Bagrat approved the
+    boards with the plainer words, 2026-10-25, relayed by the orchestrator). The switch in
+    Settings · Space moves at once and lists Checking your space · Connecting (or
+    Disconnecting) AI · Switching AI on (or off) for new videos, the one underway with its
+    clock, done once the page says so; the banner's Turn off lists the same parts. Measured
+    on the test account (2–8 s a turn). Proved in CI (the core tests, the cloud fake, the
+    window gallery). Known gap: the app's lane (`runtime/cloud.rs`) is compiled and run on
+    the Mac only; no hosted-Mac drive turns the switch yet.

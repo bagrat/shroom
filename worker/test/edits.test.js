@@ -199,7 +199,8 @@ describe("the page applies the edit until the copy is up (N63)", () => {
     const env = edited();
     expect(await text(env, `/${REC}`)).not.toContain(`href="/d/${REC}"`);
     const mine = await text(env, `/${REC}`, owner);
-    expect(mine).toContain(`<span id="dl" data-tip="${COPY.download}"></span>`);
+    // Greyed in its place until the copy is up (Bagrat, 2026-10-25).
+    expect(mine).toContain(`<span id="dl" data-tip="${COPY.download}"><a aria-disabled="true">${COPY.download}</a></span>`);
     expect(mine).toContain(`"mp4":false`);
     expect((await get(env, `/d/${REC}`)).status).toBe(404);
   });

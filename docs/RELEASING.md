@@ -178,6 +178,16 @@ not been proven". 0.1.4 was never released.) Read your version for it.
 
    and read 0.1.5 for 0.1.4 from here on.
 
+   If an early build heading to a higher version is out (Pre-releases), release that
+   version instead: with `0.1.33-early.1` out and the tree at an unreleased `0.1.32`, move
+   it to `0.1.33`, so early Macs take the release too.
+
+   Between releases the tree's version moves only when a build goes out (DECISIONS B248): a
+   page change while its version is unreleased re-stamps that version's row in
+   `worker/page-version.json` (the page-version test prints it), and once a build of it is
+   published — a release or an early build — the row is frozen and the next page change
+   needs the next version (`tools/page-version-out.sh`, in CI, holds that).
+
 2. Write the release's notes: `docs/release-notes/<version>.md`, a short list of what
    someone using shroom would notice, one line each, in shroom's voice — no decision
    numbers, files, pull requests or internal names (DECISIONS B152). Copy the newest file's
@@ -254,9 +264,10 @@ official channel never see it. Only a Mac on the **early channel** takes it.
 **Versions.** An early build is `x.y.z-early.n` on the way to release `x.y.z`, n counting
 from 1: `0.1.24` → `0.1.25-early.1` → `0.1.25-early.2` → `0.1.25` → `0.1.26-early.1`. Every reader of
 a version keeps that order: the app's updater, the page compare, `tools/bump-version.sh`, the
-installer and the release workflow. `tools/bump-version.sh 0.1.25-early.1` moves the tree there,
-from `0.1.24` or from an unreleased `0.1.25`; the next is `-early.2`, and `0.1.25` itself is the
-release. The release workflow takes an early build's version only with **Early** ticked, and
+installer and the release workflow. `tools/bump-version.sh 0.1.25-early.1` moves the tree there
+from `0.1.24`, released or not, but never down from `0.1.25`: the tree holds its own version's
+page row, and an early build's page must be newer (B248). So from an unreleased `0.1.25`, the
+early build is `0.1.26-early.1`. The next is `-early.2`, and `0.1.26` itself is the release. The release workflow takes an early build's version only with **Early** ticked, and
 an early build only with that version.
 
 **Branches.** The channel's own code lives on `main`. Early builds are cut only from the
@@ -437,7 +448,7 @@ always runs them.
 
 | Job | What it does |
 |---|---|
-| Tests | the gate: green when every test lane this run needs is — **Tests · web (Linux)** (the spec's readable form current, the third-party notices, the frontend's build, typecheck and unit suite, the Worker's unit suite, typecheck and contract under workerd, the release notes, the landing page, the agent skill, the media readers), **Tests · Rust (Linux)** (the crates with no platform in them, `rust-tests.sh --ci-linux`), **Tests · Rust and media (Mac)** (the rest of the workspace and the real recordings, `rust-tests.sh --ci`) and **Tests · installer (Mac)** (the installer and the cask, with real `ditto` and `codesign`) |
+| Tests | the gate: green when every test lane this run needs is — **Tests · web (Linux)** (the spec's readable form current, the third-party notices, the frontend's build, typecheck and unit suite, the Worker's unit suite, typecheck and contract under workerd, the release notes, the landing page, the agent skill, the media readers), **Tests · Rust (Linux)** (the crates with no platform in them, `rust-tests.sh --ci-linux`), **Tests · Settings fits its window (Linux)** (every General, Videos and Space pane no taller than the window's page, `app/test/settings-fit.mjs`, N79), **Tests · Rust and media (Mac)** (the rest of the workspace and the real recordings, `rust-tests.sh --ci`) and **Tests · installer (Mac)** (the installer and the cask, with real `ditto` and `codesign`) |
 | Release build (ad hoc) | the release build with no identity (signed ad hoc), every bundle check, packaged as a stand-in; then signed after the build with a throwaway identity, as a release is (`--resign`). From `main` it saves the caches a tag needs |
 | Signing rehearsal | makes a throwaway identity with `tools/make-release-identity.sh`, imports and trusts it as a release would, signs a file and checks macOS would keep a permission by it |
 | Advisories | `cargo audit` against RustSec and `npm audit --audit-level=high` (DECISIONS B125): a known vulnerability in a pinned dependency fails it; an unmaintained-crate notice is listed, not fatal |
@@ -542,7 +553,8 @@ it — and a green `ci.yml` says nothing about them:
   through the installed dev app: the hosted Mac's **E2E full** workflow, or
   `tests/l5/heartbeat-vm.sh`.
 - **The app's window drives and galleries** (`app/test/`) — the hosted Mac
-  (`dev/mac/loop.sh`), or their Tart lanes.
+  (`dev/mac/loop.sh`), or their Tart lanes. (The galleries' Settings height check alone runs
+  in CI: `settings-fit.mjs`.)
 - **The clean-Mac lanes** (`tests/l5/`) — a Tart VM and the
   `shroom-dev` identity; and **two Macs** (`tests/l6/`).
 

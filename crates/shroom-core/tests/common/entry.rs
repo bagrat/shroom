@@ -120,6 +120,7 @@ pub const READS: &[Read] = &[
     // ── Settings (r5) ──
     r("settings", "A space exists, so config is reachable"),
     r("settings-general", "Settings window on the General tab (the default on first open)."),
+    r("settings-videos", "Settings window on the Videos tab"),
     r("settings-space", "Settings window on the Space tab."),
     r("settings-members", "Owner-class Mac only."),
     r("settings-space-inspection", "This Mac holds the Cloudflare token and every probe passes."),
@@ -188,6 +189,7 @@ pub const ONBOARDING_FACES: &[&str] = &["first-launch", "name-v-clash", "wizard-
 /// The Settings faces the oracle reads: the tab, and the Space tab's mood.
 pub const SETTINGS_FACES: &[&str] = &[
     "settings-general",
+    "settings-videos",
     "settings-space",
     "settings-members",
     "settings-space-inspection",
@@ -685,10 +687,12 @@ fn settings(w: &World) -> Option<Option<Win>> {
     let tab = match w.prefs.settings_tab {
         Some(SettingsTab::Members) if owner_class => SettingsTab::Members,
         Some(SettingsTab::Space) => SettingsTab::Space,
+        Some(SettingsTab::Videos) => SettingsTab::Videos,
         _ => SettingsTab::General,
     };
     let faces = match tab {
         SettingsTab::General => vec!["settings-general"],
+        SettingsTab::Videos => vec!["settings-videos"],
         SettingsTab::Members => vec!["settings-members"],
         SettingsTab::Space => {
             let mood = if role(w) == Some(Role::Member) {
@@ -827,6 +831,7 @@ pub fn disagreements(w: &World, s: &Scene) -> Vec<String> {
         // The pane must be the tab the faces name (the faces are what the oracle reads).
         let pane_ok = s.settings.as_ref().is_none_or(|d| match &d.body.pane {
             SettingsPane::General(_) => d.faces.contains(&"settings-general"),
+            SettingsPane::Videos(_) => d.faces.contains(&"settings-videos"),
             SettingsPane::Space(_) => d.faces.contains(&"settings-space"),
             SettingsPane::Members(_) => d.faces.contains(&"settings-members"),
         });

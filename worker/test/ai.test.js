@@ -972,6 +972,15 @@ describe("the page (B209)", () => {
     expect(html).not.toContain("</script><b>x</b>");
     const island = html.match(/shroomChapters\(p,(\[\[.*?\]\])\)/)?.[1];
     expect(JSON.parse(island)).toEqual([[0, "Where we are"], [42.3, "</script><b>x</b>"], [99.3, "Next steps"]]);
+    // On the head's travel, inset by its radius (Bagrat, 2026-10-25): the sections, the tip
+    // under the pointer and the one above a finger all place time as the head does.
+    // The first and last sections reach the bar's ends, their outer 7 px padding: the chapters'
+    // boundaries land on the head's travel, and nothing is drawn beside them (review of B250).
+    expect(html).toContain(".chs{position:absolute;left:0;right:0;");
+    expect(html).toContain(".chs i:first-child{padding-left:7px;--a:7px}.chs i:last-child{padding-right:7px;--z:7px}");
+    expect(html).toContain(".player.ch .seek::-webkit-slider-runnable-track{background:transparent}");
+    expect(html).toContain("function at2x(t,w){var d=len();return 7+(d?t/d:0)*(w-14)}");
+    expect(html).toContain("show(len()*Math.max(0,Math.min(1,(x-7)/((r.width-14)||1))),x)");
   });
 
   it("puts a Captions button in the player row, off until pressed, and the track it turns on", async () => {

@@ -307,8 +307,9 @@ fn due_library(w: &World, fx: &mut Vec<Effect>) {
 }
 
 /// What the space says is worth deleting (N68), read on every entry of the Library (with
-/// Suggest videos to clean up on) and of Settings · General (Your videos reads the space's
-/// switch and its size from it) — when nothing has answered since the window was entered.
+/// Suggest videos to clean up on), of Settings · Videos (its switches read the space's) and
+/// of Settings · Space on an owner-class Mac (Space used, N79) — when nothing has answered
+/// since the window was entered.
 /// Owner-class Macs read the whole space's; a member's Mac its own.
 fn due_suggestions(w: &World, fx: &mut Vec<Effect>) {
     // An uninstall or a disconnect being asked asks nothing more of the space.
@@ -321,8 +322,9 @@ fn due_suggestions(w: &World, fx: &mut Vec<Effect>) {
     // its warning reaches every Mac (N75) — the popover's read learns that it is.
     let autocleaning = w.suggestions.get().is_some_and(|s| s.autoclean.days > 0);
     let library = entered(WindowKind::Library).filter(|_| w.prefs.suggest_cleanup || autocleaning);
-    let general = entered(WindowKind::Settings).filter(|_| settings_view::tab(w) == SettingsTab::General);
-    let Some(since) = library.into_iter().chain(general).max() else { return };
+    let reads = |tab: SettingsTab| tab == SettingsTab::Videos || (tab == SettingsTab::Space && w.space.owner_class());
+    let settings = entered(WindowKind::Settings).filter(|_| reads(settings_view::tab(w)));
+    let Some(since) = library.into_iter().chain(settings).max() else { return };
     if w.suggestions.at().is_none_or(|t| t < since) {
         fx.push(Effect::Library(LibCmd::Suggest { everyone: w.space.owner_class() }));
     }

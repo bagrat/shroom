@@ -42,6 +42,7 @@ Board titles read "Surface — state" (e.g. "Popover — paused", "The page — 
 | Setup and joining | `app/src/Onboarding.svelte`, `app/src/onboarding/`, `app/src/join/` |
 | Library and Settings | `app/src/library/`, `app/src/settings/`, `app/src/members/` |
 | The shroom command (“The shroom command — recording off…”, “…recording without the countdown, and the label…”) | its words, `crates/shroom-cli/src/say.rs`; the switch's light, `app/src/settings/General.svelte`; the agent label, `app/label.html` (its panel, `app/src-tauri/src/runtime/overlay.rs`) |
+| The marker toast (“The bubble — ⌥⌘M answers: the “Marker dropped” toast…”) | `app/toast.html` (its panel, `app/src-tauri/src/runtime/overlay.rs`; its place, `presenter::toast_frame`) |
 | The page, embed, invite page | `worker/src/worker.js` |
 | shroom.am (the boards “shroom.am — the index page, as built” and “shroom.am on a phone, as built”) | `site/index.html`; the other pages' header and footer, and what's new, `site/build.mjs` (`HEADER`, `FOOTER`, `whatsNewPage`) |
 | Tokens (both themes) | `app/src/lib/theme.css` |
