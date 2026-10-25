@@ -124,7 +124,7 @@ because they live in GitHub's settings, not in a branch. Check both before every
 
 9. *(Required — who may sign.)* Still on the environment's page: **Deployment branches
    and tags** → **Selected branches and tags** → add the branch `main`, the branch
-   `claude/early-integration` (early builds: [Pre-releases](#pre-releases)) and the tag rule `v*` —
+   `early-release` (early builds: [Pre-releases](#pre-releases)) and the tag rule `v*` —
    nothing else. A rehearsal off any other branch runs outside the environment, signed ad
    hoc. And under **Settings** → **Rules** → **Rulesets** → **New tag ruleset**: target
    `v*`, restrict creations, updates and deletions, with yourself on the bypass list — so
@@ -270,9 +270,11 @@ page row, and an early build's page must be newer (B248). So from an unreleased 
 early build is `0.1.26-early.1`. The next is `-early.2`, and `0.1.26` itself is the release. The release workflow takes an early build's version only with **Early** ticked, and
 an early build only with that version.
 
-**Branches.** The channel's own code lives on `main`. Early builds are cut only from the
+**Branches.** The channel's own code lives on `main`. Early builds are made on the
 long-lived integration branch, `claude/early-integration`: `main` plus the feature pull
-requests held for a release, each merged in. It takes `main` by merging it in, never by a
+requests held for a release, each merged in. They are published from `early-release`,
+which only ever points at a commit of that branch (DECISIONS B254): sessions push only
+`claude/` branches, and the `release` environment allows no `claude/` branch. It takes `main` by merging it in, never by a
 rebase. `main` stays free — fixes and features merge to it as always, and releases are cut
 from it as always (Cutting a release, above). A feature reaches `main` through its own pull
 request, never through this branch.
@@ -302,18 +304,22 @@ curl -fsSL https://github.com/bagrat/shroom/releases/download/early/manifest.txt
    head.
 3. See CI green on that head, and the hosted-Mac heartbeat (**Actions** → **E2E full** →
    Run workflow on the branch).
-4. **Actions** → **Release** → **Run workflow** → the branch, tick **Publish** and
-   **Early**. The run refuses unless CI is green on that commit, the version is an early
+4. **Actions** → **Early release branch** → **Run workflow** on
+   `claude/early-integration`. It moves `early-release` forward to that head, and refuses
+   unless CI is green on it, so what's built next is the commit CI and the heartbeat tested.
+   Then **Actions** → **Release** → **Run workflow** → `early-release`, tick **Publish** and
+   **Early**. With the environment's required reviewer set (One-time setup, step 8), the
+   build waits for your **Approve and deploy**. The run refuses unless CI is green on that commit, the version is an early
    build's and isn't tagged, and its release isn't out; it needs no release notes
    (shroom.am's What's new sends a version it has no notes for to the newest release's). It
    tags `v<version>` on the commit it built.
 5. The run's publish job fails if `releases/latest` turned out to be the early build, and
    warns if the pointer doesn't name it.
 
-The release workflow publishes an early build from `claude/early-integration` and no other
-branch, and it is the one branch besides `main` the `release` environment allows (One-time
-setup, step 9). Renaming it means changing both: `EARLY_BRANCH` and the publish job's
-condition in `release.yml`, and that list.
+The release workflow publishes an early build from `early-release` and no other branch,
+and it is the one branch besides `main` the `release` environment allows (One-time setup,
+step 9). Renaming it means changing all of them: `EARLY_BRANCH` and the publish job's
+condition in `release.yml`, `early-release.yml`, and that list.
 
 **Taking the early channel on a Mac.** Once, in Terminal:
 

@@ -229,6 +229,13 @@ impl Plays {
         let bakes = m.extra.get(BAKED_FROM).and_then(serde_json::Value::as_array).map_or(0, Vec::len);
         Plays { mp4: m.media.as_ref().and_then(|x| x.mp4.clone()), bakes }
     }
+
+    /// Whether a record that plays `now` is still on the clock an editor opened on (`self`):
+    /// the same bakes, and the same file — or none yet when it opened, the upload's
+    /// single-file copy landing after go-live being the original's own clock.
+    pub fn same_clock(&self, now: &Plays) -> bool {
+        self.bakes == now.bakes && (self.mp4.is_none() || self.mp4 == now.mp4)
+    }
 }
 
 /// The revision an edit's record holds: its `edits.rev`, also when this version can't read
@@ -266,7 +273,7 @@ pub fn save_edits_over(s3: &Client, id: &str, list: &shroom_edit::EditList, aske
     let mut rev = 0;
     let mut dropped: Vec<String> = Vec::new();
     let meta = try_update_edit(s3, id, |m| {
-        if opened.is_some_and(|o| *o != Plays::of(m)) {
+        if opened.is_some_and(|o| !o.same_clock(&Plays::of(m))) {
             return Err(UploadError::MovedOn);
         }
         rev = record_rev(m).max(asked_rev.saturating_sub(1)) + 1;
@@ -1146,6 +1153,12 @@ mod tests {
         let mut again = baked.clone();
         again.extra.insert(BAKED_FROM.into(), serde_json::json!([{}, {}]));
         assert_ne!(Plays::of(&again), Plays::of(&baked), "a second bake, its file named alike or not");
+        // Opened before the upload's single-file copy landed: the copy landing moves nothing.
+        let mut early = m.clone();
+        early.media.as_mut().unwrap().mp4 = None;
+        assert!(Plays::of(&early).same_clock(&Plays::of(&m)), "the single-file copy landing");
+        assert!(!Plays::of(&early).same_clock(&Plays::of(&baked)), "a bake, opened before the copy");
+        assert!(opened.same_clock(&Plays::of(&edited)) && !opened.same_clock(&Plays::of(&baked)));
     }
 
     /// B164: a bake kept the start Copy thumbnail's pictures show when the newest bake's first
