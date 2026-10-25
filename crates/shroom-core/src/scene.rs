@@ -1568,6 +1568,20 @@ pub struct AgentLabel {
     pub line: String,
 }
 
+/// The marker toast (N78; Bagrat, 2026-10-25): ⌥⌘M's answer, the agent label's pill with the
+/// marker's flag, top right of the display the take records — under the label when it
+/// shows. Left out of the take, as the label is, and passing every click through.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct MarkerToast {
+    pub display: u32,
+    pub line: String,
+    pub hint: String,
+    /// The agent label shows on the same display: the toast sits just under it.
+    pub under_label: bool,
+    /// When the press it answers came (ms): a new press starts its two seconds again.
+    pub pressed: u64,
+}
+
 /// The camera bubble (N22): round, mirrored, on the display being recorded —
 /// recorded as-is (never excluded from capture), never key (law 5), draggable.
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -1609,6 +1623,8 @@ pub struct Scene {
     pub preview: Option<Preview>,
     /// The agent label (N62, B216): while a take the `shroom` command started records.
     pub label: Option<AgentLabel>,
+    /// The marker toast (N78): two seconds after ⌥⌘M answers.
+    pub toast: Option<MarkerToast>,
     /// The Dock icon shows while a window of shroom's is open — the setup window, the
     /// Library, Settings, Send feedback or the editor — never for a popover alone (law 6,
     /// SM:133).

@@ -549,12 +549,24 @@ pub struct OpenTake {
     /// A marker was dropped at this pause (N64): the paused popover's row reads Marker
     /// dropped, greyed, until the take resumes.
     pub marked_at_pause: bool,
+    /// The marker toast (N78): what ⌥⌘M's last press said, and when — it shows for
+    /// `MARKER_TOAST_MS` from then, and goes with the take.
+    pub toast: Option<(MarkerToastSays, Mono)>,
     /// The microphone this take records from, by uid (`None` = silent): the one chosen when
     /// capture began, then whichever Resume used (N39's `mic-lost` fallback).
     pub mic: Option<String>,
     /// Camera as the source: the camera recorded, by uid — `camera-lost` is about this one
     /// leaving, never about some other camera (N39).
     pub camera: Option<String>,
+}
+
+/// What the marker toast says (N78).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MarkerToastSays {
+    /// A marker dropped: the take's count of them, after it.
+    Dropped(u32),
+    /// Pressed again at a pause that has its marker: nothing dropped.
+    Already,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

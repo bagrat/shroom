@@ -8,7 +8,7 @@ use std::sync::Arc;
 use crate::copy;
 use crate::derive::onboarding::{self, At};
 use crate::derive::settings::{self as settings_view, SpaceAt};
-use crate::derive::{COPIED_MS, COUNTDOWN_MS, LIT_MS, OneShot, UNDO_MS, derive, library as library_view};
+use crate::derive::{COPIED_MS, COUNTDOWN_MS, LIT_MS, MARKER_TOAST_MS, OneShot, UNDO_MS, derive, library as library_view};
 use crate::effect::{CloudCmd, EditCmd, Effect, LibCmd, MemberCmd, MoviesCopy, Perm, PersistOp, PublicUrl, RecCmd, ShellCmd, TakeCmd, UpCmd, UpdCmd};
 use crate::event::{
     ClaimFail, CloudNews, EditStep, EditorNews, Event, Field, JoinAnswer, Key, LibraryNews, MemberNews, OsNews, PeekAnswer, QuitVia, RecNews, ReportNews,
@@ -20,7 +20,7 @@ use crate::time::{Fact, Mono};
 use crate::world::{
     Access, AiTurn, Arming, Blocked, Born, Cause, Confirm, CopyOwed, CopyTarget, Door, EditLink, EditLinkNo, EditorFields, EditorId, EditorMedia, EditorSave, FailClass, Failure, Fields, Fork, Invite,
     JoinRefusal, Landed, LaunchKind, Leaving, RecId,
-    LibraryFields, LibraryOps, Members, OpenTake, Op, PageOpen, Paste, Phase, Progress, QuickProbe, Reach, RelaunchWhy, Removal, ReportFields, FeedbackFields, Restore, Role, SavedCause,
+    LibraryFields, LibraryOps, MarkerToastSays, Members, OpenTake, Op, PageOpen, Paste, Phase, Progress, QuickProbe, Reach, RelaunchWhy, Removal, ReportFields, FeedbackFields, Restore, Role, SavedCause,
     SavedTake, SecretId, SettingsFields, SettingsTab, SourceId, Space, SpaceIdentity, StopOutcome, Strike, Sweep, TakeDir, TakeLost, TokenVerdict,
     UpdateOffer, Why, WindowKind, WorkerFact, World,
 };
@@ -210,8 +210,8 @@ fn apply_event(w: &mut World, event: Event) -> Out {
             }
         }
         Event::MarkerShortcut(q) => {
-            // ⌥⌘M (N64), under ⌥⌘P's rule: recording, a marker at this moment — nothing on
-            // screen answers, the take goes on; paused, Drop a marker where it's offered.
+            // ⌥⌘M (N64), under ⌥⌘P's rule: recording, a marker at this moment — the toast
+            // answers (N78), the take goes on; paused, Drop a marker where it's offered.
             quick(w, &q);
             if let Some(out) = guard_take(w) {
                 return out;
@@ -219,14 +219,32 @@ fn apply_event(w: &mut World, event: Event) -> Out {
             if !derive(w).tray.shortcut {
                 return (vec![], Arm::DROPPED);
             }
+            // The toast answers (N78); with the popover open its row does, and `update` puts the
+            // toast away under it.
+            let now = w.now;
+            let says = |t: &mut OpenTake, s: MarkerToastSays| t.toast = Some((s, now));
             match w.take.as_ref().map(|t| t.phase) {
                 Some(Phase::Recording) => {
                     if let Some(t) = w.take.as_mut() {
                         t.markers += 1;
+                        says(t, MarkerToastSays::Dropped(t.markers));
                     }
                     (vec![Effect::Recorder(RecCmd::Marker)], Arm::named("marker-shortcut"))
                 }
-                Some(Phase::Paused(_)) if crate::derive::marker_offered(w) => act(w, Action::DropMarker),
+                Some(Phase::Paused(_)) if crate::derive::marker_offered(w) => {
+                    let out = act(w, Action::DropMarker);
+                    if let Some(t) = w.take.as_mut() {
+                        says(t, MarkerToastSays::Dropped(t.markers));
+                    }
+                    out
+                }
+                // Again at a pause that has its marker: nothing drops, and the toast says so.
+                Some(Phase::Paused(Cause::User)) if w.session.popover.is_none() && w.session.confirm.is_none() && w.take.as_ref().is_some_and(|t| t.marked_at_pause) => {
+                    if let Some(t) = w.take.as_mut() {
+                        says(t, MarkerToastSays::Already);
+                    }
+                    (vec![], Arm::named("marker-already"))
+                }
                 _ => (vec![], Arm::DROPPED),
             }
         }
@@ -2120,6 +2138,7 @@ fn get_link(w: &mut World, dir: TakeDir) -> Out {
         length_ms: saved.length_ms,
         markers: 0,
         marked_at_pause: false,
+        toast: None,
         mic: None,
         camera: None,
     });
@@ -3253,6 +3272,7 @@ fn rec(w: &mut World, news: RecNews) -> Out {
                 length_ms: 0,
                 markers: 0,
                 marked_at_pause: false,
+                toast: None,
                 mic,
                 camera,
             });
@@ -4103,6 +4123,10 @@ fn tick(w: &mut World) -> Out {
     // The countdown fires at its deadline.
     if w.session.arming.as_ref().is_some_and(|a| !a.fired && now >= a.deadline) {
         fx.extend(fire(w));
+    }
+    // The marker toast goes (N78).
+    if let Some(t) = w.take.as_mut().filter(|t| t.toast.is_some_and(|(_, at)| now >= at.plus(MARKER_TOAST_MS))) {
+        t.toast = None;
     }
     // "Copied" reverts.
     if w.session.copied.as_ref().is_some_and(|(_, at)| now >= at.plus(COPIED_MS)) {

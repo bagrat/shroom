@@ -26,6 +26,7 @@ pub enum Named {
     Countdown,
     Bubble,
     Label,
+    Toast,
 }
 
 /// The surface `named`, said by the webview labelled `label`.
@@ -41,6 +42,7 @@ pub fn surface(named: Named, label: &str) -> Option<Surface> {
         Named::Countdown => Surface::Countdown,
         Named::Bubble => Surface::Bubble,
         Named::Label => Surface::Label,
+        Named::Toast => Surface::Toast,
     })
 }
 
@@ -114,6 +116,7 @@ pub fn scene_get(rt: State<Runtime>, webview: Webview, surface: Named) -> Value 
         Surface::Popover => serde_json::to_value(&s.popover).unwrap_or(Value::Null),
         Surface::Countdown => serde_json::to_value(&s.countdown).unwrap_or(Value::Null),
         Surface::Label => serde_json::to_value(&s.label).unwrap_or(Value::Null),
+        Surface::Toast => serde_json::to_value(&s.toast).unwrap_or(Value::Null),
         Surface::Onboarding => serde_json::to_value(&s.onboarding).unwrap_or(Value::Null),
         Surface::Library => serde_json::to_value(&s.library).unwrap_or(Value::Null),
         Surface::Settings => serde_json::to_value(&s.settings).unwrap_or(Value::Null),

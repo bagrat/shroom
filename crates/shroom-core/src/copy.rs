@@ -618,6 +618,15 @@ pub fn agent_line() -> String { "Paste it into your coding agent. It can find, s
 pub fn agent_recording() -> String { "Let it start and stop recordings".into() }
 /// The agent label (N62, B216): top right of the display a take the command started records.
 pub fn agent_label_line() -> String { "Your coding agent is recording your screen".into() }
+/// The marker toast (N78): ⌥⌘M's answer, top right of the display being recorded — the
+/// take's first marker, then its later ones by number.
+pub fn marker_toast(n: u32) -> String {
+    if n <= 1 { "Marker dropped".into() } else { format!("Marker {n} dropped") }
+}
+/// The marker toast's quieter hint, on every toast (N78).
+pub fn marker_toast_hint() -> String { "Only you see this, not the video".into() }
+/// The marker toast at a pause that has its marker (N78): nothing drops.
+pub fn already_marked() -> String { "Already marked at this pause".into() }
 pub fn report_a_problem() -> String { "Report a problem…".into() }
 pub fn report_sent() -> String { "Sent — thank you. If you left your email, you’ll hear back.".into() }
 pub fn report_title() -> String { "Report a problem".into() }
@@ -1361,6 +1370,10 @@ pub fn registry() -> Vec<(&'static str, String)> {
         ("settings-general", agent_line()),
         ("settings-general", agent_recording()),
         ("recording", agent_label_line()),
+        ("recording", marker_toast(1)),
+        ("recording", marker_toast(3)),
+        ("recording", marker_toast_hint()),
+        ("tray-pause-bars", already_marked()),
         ("report-problem", report_title()),
         ("report-problem", report_line()),
         ("report-problem", report_placeholder()),
