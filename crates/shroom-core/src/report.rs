@@ -16,6 +16,22 @@ pub const CLI_LINES: usize = 30;
 pub const LINE_CHARS: usize = 400;
 /// A window's own error (`webview <surface>: <message>`): its message is cut to this.
 pub const WEBVIEW_CHARS: usize = 160;
+/// The windows whose own errors the app logs (`webview_line`); any other name is `other`.
+pub const WEBVIEW_SURFACES: &[&str] = &["popover", "settings", "library", "editor", "onboarding", "feedback"];
+
+/// A window's own error, as the app logs it: one line under a known window's name, every
+/// control character (a line break among them) a space, the message cut to `WEBVIEW_CHARS`
+/// (its last one `…` when cut), as a report keeps it.
+pub fn webview_line(surface: &str, message: &str) -> String {
+    let surface = if WEBVIEW_SURFACES.contains(&surface) { surface } else { "other" };
+    let message: String = message.chars().map(|c| if c.is_control() { ' ' } else { c }).collect();
+    let message = if message.chars().count() > WEBVIEW_CHARS {
+        message.chars().take(WEBVIEW_CHARS - 1).chain(['…']).collect()
+    } else {
+        message
+    };
+    format!("webview {surface}: {message}")
+}
 
 /// Hosts that name no one: shroom's own and the services every Mac running it talks to.
 const PUBLIC_HOSTS: &[&str] = &[

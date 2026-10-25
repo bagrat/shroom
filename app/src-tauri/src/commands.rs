@@ -80,11 +80,11 @@ pub fn paste_secret(rt: State<Runtime>, field: SecretField, text: String) {
 }
 
 /// A webview's own error (a script error, an unhandled rejection), into the app's log: a
-/// window that stops drawing says why. The message only, cut short.
+/// window that stops drawing says why. The message only, on one line and cut short, under a
+/// known window's name (`report::webview_line`).
 #[tauri::command]
 pub fn webview_error(rt: State<Runtime>, surface: String, message: String) {
-    let message: String = message.chars().take(500).collect();
-    rt.log(&format!("webview {surface}: {message}"));
+    rt.log(&shroom_core::report::webview_line(&surface, &message));
 }
 
 /// A non-secret field's contents (the link name).
