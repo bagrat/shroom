@@ -73,14 +73,14 @@ describe("the landing", () => {
     assert.doesNotMatch(video, /<video\b[^>]*\bsrc=/, "the video's address is set by script, as the block nears the screen");
     assert.match(video, /<img src="hero-poster\.webp" alt="" width="1280" height="832"/, "the still is the site's own file");
     assert.doesNotMatch(html, /\.play svg \{[^}]*margin-left/, "the play triangles sit at their optical centre");
-    const order = ['class="terms"', 'class="how-to"', 'id="install"'].map((k) => html.indexOf(k));
-    assert.ok(order[0] < order[1] && order[1] < order[2], "the video's box comes after the terms (beside them on a laptop), and Install under the video (N59)");
+    const order = ['class="how-to"', 'id="install"', 'class="price"', 'class="tile terms"'].map((k) => html.indexOf(k));
+    assert.ok(order.every((at, i) => at > 0 && (i === 0 || order[i - 1] < at)), "the video over Install, then the price over the terms (N74)");
   });
 
   it("opens the setup walkthrough from a button under the hero, in a lightbox, only when asked (N70)", () => {
-    const box = html.slice(html.indexOf('<div class="box">'), html.indexOf('<section class="install"'));
+    const box = html.slice(html.indexOf('<div class="tile watch">'), html.indexOf('<section class="tile install"'));
     const at = (/** @type {string} */ k) => box.indexOf(k);
-    assert.ok(at('id="hero"') > 0 && at('class="walk"') > at('id="hero"') && at('class="cut"') > at('class="walk"'), "the hero, then Setup walkthrough, then a cut, then Install");
+    assert.ok(at('id="hero"') > 0 && at('class="walk"') > at('id="hero"'), "the hero, then Setup walkthrough, in one tile over Install's (N74)");
     assert.match(box, /<span>Setup walkthrough<\/span>/);
     assert.match(html, /<dialog class="lightbox" id="walk" aria-label="How to set up and use shroom, 4 minutes">/);
     assert.match(html, /<video controls playsinline preload="none"[^>]*data-src="\/how-to\.mp4"><\/video>/);
@@ -118,7 +118,7 @@ describe("the landing", () => {
     const tabs = [...html.matchAll(/<button type="button" role="tab" id="([^"]+)" aria-controls="([^"]+)" aria-selected="(true|false)"[^>]*>([^<]+)<\/button>/g)];
     assert.deepEqual(tabs.map((t) => t[4]), ["Terminal", "Homebrew", "Coding agent"]);
     assert.deepEqual(tabs.map((t) => t[3]), ["true", "false", "false"], "Terminal is chosen when the page opens");
-    const panel = (id) => html.match(new RegExp(`<div class="panel( on)?" id="${id}" role="tabpanel"[^>]*>([\\s\\S]*?)\\n        </div>`)) ?? [];
+    const panel = (id) => html.match(new RegExp(`<div class="panel( on)?" id="${id}" role="tabpanel"[^>]*>([\\s\\S]*?)\\n\\s*</div>`)) ?? [];
     const [term, brew, agent] = tabs.map((t) => panel(t[2]));
     assert.equal(term[1], " on", "its panel is the one showing");
     assert.ok(!brew[1] && !agent[1], "the others wait");
@@ -133,33 +133,45 @@ describe("the landing", () => {
     assert.match(html, /<script>document\.documentElement\.className = "js";<\/script>/);
   });
 
-  it("puts the terms before the video on a phone, and install last (Bagrat, 2026-10-17)", () => {
-    assert.match(html, /grid-template-areas: "brand box" "pitch box" "terms box";/, "a laptop: the box beside the pitch and the terms");
-    assert.match(html, /@media \(max-width: 900px\) \{[\s\S]*?grid-template-areas: "brand" "pitch" "terms" "box";/, "a phone: the terms, then the video and install");
+  it("lays the page on one 12-column grid with one gutter, the masthead on its edges, the stacks ending on one line (N74)", () => {
+    assert.match(html, /\.mast, \.tiles \{[^}]*max-width: 1312px;[^}]*grid-template-columns: repeat\(12, minmax\(0, 1fr\)\); column-gap: 24px; \}/, "the masthead and the tiles share one grid");
+    assert.match(html, /\.mast \.brand \{ grid-column: 1 \/ 7;/, "the wordmark from the grid's left edge");
+    assert.match(html, /\.pitch \{ grid-column: 7 \/ 13; justify-self: end; text-align: right;/, "the headline to its right edge");
+    assert.match(html, /\.stack\.l \{ grid-column: 1 \/ 9; \}/, "the video and Install: eight columns");
+    assert.match(html, /\.stack\.r \{ grid-column: 9 \/ 13; \}/, "the price and the terms: four");
+    assert.match(html, /\.stack\.l > \.watch, \.watch \.how-to, \.watch \.stage, \.stack\.r > \.terms \{ flex: 1 1 auto; \}/, "the shorter stack grows to meet the other");
+    const tiles = html.match(/<main class="tiles">([\s\S]*?)<\/main>/)?.[1] ?? "";
+    const l = tiles.indexOf('<div class="stack l">'), r = tiles.indexOf('<div class="stack r">');
+    assert.ok(l >= 0 && l < tiles.indexOf('id="hero"') && tiles.indexOf('id="install"') < r && r < tiles.indexOf('class="price"'), "the left stack holds the video and Install, the right the price and the terms");
   });
 
-  it("says the terms in Bagrat's order, under the price bar (N59)", () => {
-    const terms = (html.match(/<ul class="terms">([\s\S]*?)<\/ul>/)?.[1] ?? "").match(/<li>[\s\S]*?<\/li>/g)?.map((li) => visible(li).trim()) ?? [];
+  it("puts the video, then the price, install and the terms on a phone (N74)", () => {
+    assert.match(html, /@media \(max-width: 900px\) \{[\s\S]*?\.stack \{ display: contents; \}[\s\S]*?\.watch \{ order: 1; \} \.price \{ order: 2; \} \.install \{ order: 3; \} \.terms \{ order: 4; \}/);
+  });
+
+  it("says the terms in Bagrat's order, in their own tile under the price (N59, N74)", () => {
+    const terms = (html.match(/<ul class="tile terms">([\s\S]*?)<\/ul>/)?.[1] ?? "").match(/<li>[\s\S]*?<\/li>/g)?.map((li) => visible(li).trim()) ?? [];
     const ids = ["landing.your-videos-live-in", "landing.you-only-ever-pay", "landing.your-team-just-accepts", "landing.no-price-per-person",
       "landing.delete-old-videos-and", "landing.you-set-cloudflare-up", "landing.open-source-every-line"];
     assert.deepEqual(terms, ids.map((id) => landing.said.find((l) => l.id === id).text));
   });
 
-  it("puts the price in its own box, as wide as the headline: the price first, one slider, how long videos are kept, the AI switch (N74)", () => {
+  it("puts the price in its own box: the price first, one slider, when old videos go, the AI switch (N74)", () => {
     const pitch = html.match(/<div class="pitch">([\s\S]*?)\n  <\/div>/)?.[1] ?? "";
     assert.match(pitch, /<h1>Record\. Share\. Pay-as-you-go\.<\/h1>/);
     assert.doesNotMatch(html, /class="gauge"/, "the bar is gone (a tester read it as loading)");
-    const box = pitch.match(/<section class="price"[\s\S]*?<\/section>/)?.[0] ?? "";
-    assert.ok(box, "the price box sits in the pitch, under the headline's line");
+    const right = html.match(/<div class="stack r">([\s\S]*?)\n  <\/div>/)?.[1] ?? "";
+    const box = right.match(/<section class="price"[\s\S]*?<\/section>/)?.[0] ?? "";
+    assert.ok(box, "the price box heads the right-hand stack");
     const at = (k) => box.indexOf(k);
     assert.ok(at('id="price-h"') < at('id="cost"') && at('id="cost"') < at('id="hours"') && at('id="hours"') < at('class="keep') && at('class="keep') < at('id="ai"'),
-      "the heading, then the price, then the slider, then Keep videos, then the AI switch (Bagrat, 2026-10-24)");
+      "the heading, then the price, then the slider, then Auto-cleanup after, then the AI switch (Bagrat, 2026-10-24)");
     assert.equal([...box.matchAll(/type="range"/g)].length, 1, "one slider");
     assert.match(box, /<input class="live" type="range" id="hours" min="0" max="9" step="1" value="1"/, "hours of video a month, opening at 1 hour");
     assert.match(box, /<button type="button" aria-pressed="true" data-months="1">30 days<\/button><button type="button" aria-pressed="false" data-months="2">60 days<\/button><button type="button" aria-pressed="false" data-months="12">a year<\/button>/,
       "kept 30 days, 60 days or a year, 30 days when the page opens");
     assert.match(box, /<button type="button" role="switch" id="ai" aria-checked="false" aria-labelledby="ai-l"><\/button>/, "the AI switch, off when the page opens");
-    assert.match(html, /\.pitch \{[^}]*width: max-content;/, "the headline, its line and the box share the headline's width");
+    assert.match(box, /<div class="keep live"><span id="keep-l">Auto-cleanup after<\/span><div class="seg" role="group" aria-labelledby="keep-l">/, "its label over the choices (Bagrat's words, 2026-10-24)");
     assert.match(box, new RegExp(`<p class="why">${landing.said.find((l) => l.id === "landing.a-team-of-20").text.replace(/[.$]/g, "\\$&")}</p>\\s*</section>`),
       "the team's month closes the box, nothing under it (Bagrat, 2026-10-24)");
   });

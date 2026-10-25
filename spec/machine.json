@@ -1307,12 +1307,12 @@
   {
    "id": "N74",
    "title": "shroom.am: the price as a slider in its own box",
-   "decision": "**A tester read the landing's price bar as a loading bar (2026-10-19)**; Bagrat asked for a more professional page with a price calculator in its place and was shown five whole-page directions, then five slider kinds, on the canvas (relayed by the orchestrator). **The same day he chose** direction 1, “Quiet split” (the page as built, the price wrapped in its own box), **one slider, at most with an AI switch**, and a large example **apart from the slider**. (1) **The bar and its four labels go.** In their place, under the headline's line and as wide as the headline, a box (as redrawn to Bagrat's answers, 2026-10-24): “What would it cost?”, then **the price first**, in dollars, never cents (“$0.00”, “$0.45”: “93¢” can read as 93 dollars), then the slider “Video a month” (**hours of video**, not a count: lengths vary; 30 min to 100 hours, opening at 1 hour), then “Keep videos” (30 days · 60 days · a year, opening at 30 days, so the box opens at $0.00), the switch “AI names, chapters and captions”, and, as its last line, the team's month (3) No assumption line, no gigabytes (his ask: super simple). (2) **The model:** about 10 GB holds three hours at Normal (the FAQ); Cloudflare charges $0.015 a GB-month past its free 10 GB (B212); 30 days counts as a month. AI is about 3,660 neurons a video hour against 10,000 free a day (B205, B207): the switch never adds money. (3) **The box's last line:** “A team of 20, an hour each a month: $0.85 with 30-day cleanup, $11.85 kept a year.” (the team row he chose, an hour each; it took the place of a note on the free 10 GB, 2026-10-24). Nothing sits under the box. (4) **The terms** sit in two columns on a laptop (one on a phone), and term 5 becomes “Old videos clean themselves up. Pin the ones you keep.” (proposed, for auto-cleanup). (5) **Timing:** the box promises auto-cleanup, which ships in 0.1.28; this goes live the day 0.1.28 does (Bagrat, 2026-10-24). (6) **Still open:** what the AI switch shows. All the new words are proposed. Board: “shroom.am landing — 1 · Quiet split”.",
+   "decision": "**A tester read the landing's price bar as a loading bar (2026-10-19)**; Bagrat asked for a more professional page with a price calculator in its place and was shown five whole-page directions, then five slider kinds, on the canvas (relayed by the orchestrator). **The same day he chose** direction 1, “Quiet split” (the page as built, the price wrapped in its own box), **one slider, at most with an AI switch**, and a large example **apart from the slider**. (1) **The bar and its four labels go.** In their place, under the headline's line and as wide as the headline, a box (as redrawn to Bagrat's answers, 2026-10-24): “What would it cost?”, then **the price first**, in dollars, never cents (“$0.00”, “$0.45”: “93¢” can read as 93 dollars), then the slider “Video a month” (**hours of video**, not a count: lengths vary; 30 min to 100 hours, opening at 1 hour), then “Auto-cleanup after” (Bagrat's words, 2026-10-24; 30 days · 60 days · a year, opening at 30 days, so the box opens at $0.00), the switch “AI names, chapters and captions”, and, as its last line, the team's month (3) No assumption line, no gigabytes (his ask: super simple). (2) **The model:** about 10 GB holds three hours at Normal (the FAQ); Cloudflare charges $0.015 a GB-month past its free 10 GB (B212); 30 days counts as a month. AI is about 3,660 neurons a video hour against 10,000 free a day (B205, B207): the switch never adds money. (3) **The box's last line:** “A team of 20, an hour each a month: $0.85 with 30-day cleanup, $11.85 kept a year.” (the team row he chose, an hour each; it took the place of a note on the free 10 GB, 2026-10-24). Nothing sits under the box. (4) **The layout (Bagrat, 2026-10-24/25):** after six whole-page layouts and five Bento variations on the canvas, he chose “Bento A, aligned”: one 12-column grid with one gutter, the masthead on the grid's edges (wordmark left, headline right, the headline's line on the wordmark's baseline), then the video over install in eight columns beside the price box over the terms in four, the two stacks ending on one line. The terms sit in one column in their own tile, and term 5 becomes “Old videos clean themselves up. Pin the ones you keep.” (5) **Timing:** the box promises auto-cleanup, which ships in 0.1.28; this goes live the day 0.1.28 does (Bagrat, 2026-10-24). (6) **Still open:** what the AI switch shows; it stays as drawn. The new words are approved with the board (Bagrat, 2026-10-25). Board: “Bento A, aligned” (LandingV3aAligned).",
    "status": "provisional",
    "date": "2026-10-19",
    "amends": [
-    "N59 (the price bar becomes a box with a slider; the terms in two columns)",
-    "landing (the price)"
+    "N59 (the price bar becomes a box with a slider; the page becomes one 12-column grid)",
+    "landing (the price, the layout)"
    ],
    "amended_by": []
   }
@@ -2518,7 +2518,7 @@
    "surface": "web-page",
    "status": "ratified",
    "board": "Landing",
-   "summary": "shroom.am, a static page with one job: take a curious visitor to a pasted command, with no false notes. Two columns on a laptop (N59). Left: the shroom mark and wordmark, large; the headline on one line and its line under it; the price in its own box, as wide as the headline: one slider and the AI switch, and what Cloudflare would charge for that a month, with a busy team's month as a line under it (N74); then seven terms with green ticks, in two columns. Right: one box, its top level with the wordmark's baseline and its bottom with the last term's: the hero, shroom recorded with shroom (“2 min”, shroom.am's own file, playing in place: a still of the editor after the take's cuts with a play button and the length, the video under it, no caption; N58, N61, N70), a small Setup walkthrough button under it that opens “How to set up and use shroom” over the page (N70), a cut, and Install under that (Terminal, Homebrew and Coding agent tabs, Terminal first; each command with [ Copy ]; Read it first; the system-requirements line). No header: the page's foot, at the bottom of the first screen under the left column, holds Send feedback, GitHub, Questions and limits, Privacy and Terms, then the visits line. On a phone it stacks, terms before the video and install last: the brand, the headline and its line, the price box and the busy team's line, the terms, the box (the hero, Setup walkthrough, then install), the foot, its links wrapping.",
+   "summary": "shroom.am, a static page with one job: take a curious visitor to a pasted command, with no false notes. On a laptop one 12-column grid with one gutter (N59, N74). The masthead sits on the grid's edges: the shroom mark and wordmark, large, at the left; at the right the headline on one line and its line under it, that line on the wordmark's baseline; a rule under them. Under it two stacks that end on one line. Left, eight columns: a tile with the hero, shroom recorded with shroom (“2 min”, shroom.am's own file, playing in place: a still of the editor after the take's cuts with a play button and the length, the video under it, no caption; N58, N61, N70) and a small Setup walkthrough button under it that opens “How to set up and use shroom” over the page (N70); under it Install in its own tile (Terminal, Homebrew and Coding agent tabs, Terminal first; each command with [ Copy ]; Read it first; the system-requirements line). Right, four columns: the price in its own box (what Cloudflare would charge a month, one slider, the cleanup choice and the AI switch, a busy team's month as its last line; N74), then seven terms with green ticks in a tile. Whichever stack is shorter grows to meet the other: the video's frame on the left, the terms' tile on the right. No header: the page's foot, at the bottom of the first screen, holds Send feedback, GitHub, Questions and limits, Privacy and Terms, then the visits line. On a phone it stacks: the brand, the headline and its line, the hero and Setup walkthrough, the price box, install, the terms, the foot, its links wrapping.",
    "entry": "A visitor arrives at shroom.am through one of three entry arrows. (1) Direct: HN, README or word of mouth; a cold visitor who needs the pitch. (2) The recipient loop: they watched a shroom video and clicked the player page's mark (Region 4; whether the mark exists = U3); a warm visitor who already saw the product work. (3) An agent fetching the BYO-agent skill (Region 6's overlay). Also reached by going back from the source view.",
    "said": [
     {
@@ -2538,8 +2538,8 @@
     {
      "text": "What would it cost?",
      "role": "title",
-     "copy": "provisional",
-     "note": "The price box's heading, small capitals, under the headline's line, where the price bar was; the price comes right under it (Bagrat, 2026-10-24). Proposed (N74): the words are Bagrat's to approve.",
+     "copy": "ratified",
+     "note": "The price box's heading, small capitals, at the top of the right-hand stack, in place of the price bar under the headline; the price comes right under it (Bagrat, 2026-10-24). Approved by Bagrat with the board “Bento A, aligned” (2026-10-25).",
      "cites": [
       "N74"
      ],
@@ -2549,28 +2549,29 @@
     {
      "text": "Video a month",
      "role": "other",
-     "copy": "provisional",
-     "note": "The slider's label, its amount at the right: 30 min, 1 hour, 2, 3, 5, 10, 20, 30, 50, 100 hours, opening at 1 hour (Bagrat, 2026-10-24: hours of video, since lengths vary). Proposed (N74): the words are Bagrat's to approve.",
+     "copy": "ratified",
+     "note": "The slider's label, its amount at the right: 30 min, 1 hour, 2, 3, 5, 10, 20, 30, 50, 100 hours, opening at 1 hour (Bagrat, 2026-10-24: hours of video, since lengths vary). Approved by Bagrat with the board “Bento A, aligned” (2026-10-25).",
      "cites": [
       "N74"
      ],
      "id": "landing.video-a-month"
     },
     {
-     "text": "Keep videos",
+     "text": "Auto-cleanup after",
      "role": "other",
-     "copy": "provisional",
-     "note": "Beside three choices, “30 days”, “60 days” and “a year”, opening at 30 days, so the box opens at $0.00 (Bagrat, 2026-10-24). 30 days counts as a month. Auto-cleanup ships in 0.1.28; this line goes live with it. Proposed (N74): the words are Bagrat's to approve.",
+     "copy": "ratified",
+     "note": "Bagrat's own words (2026-10-24), over three choices that take the box's width, “30 days”, “60 days” and “a year”, opening at 30 days, so the box opens at $0.00. 30 days counts as a month. Auto-cleanup ships in 0.1.28; this line goes live with it. Approved by Bagrat with the board “Bento A, aligned” (2026-10-25).",
      "cites": [
       "N74"
      ],
-     "id": "landing.keep-videos"
+     "id": "landing.auto-cleanup-after",
+     "was": "Keep videos"
     },
     {
      "text": "30 days",
      "role": "button",
-     "copy": "provisional",
-     "note": "One of the three “Keep videos” choices, chosen when the page opens. Proposed (N74): the words are Bagrat's to approve.",
+     "copy": "ratified",
+     "note": "One of the three “Auto-cleanup after” choices, chosen when the page opens. Approved by Bagrat with the board “Bento A, aligned” (2026-10-25).",
      "cites": [
       "N74"
      ],
@@ -2579,8 +2580,8 @@
     {
      "text": "60 days",
      "role": "button",
-     "copy": "provisional",
-     "note": "One of the three “Keep videos” choices. Proposed (N74): the words are Bagrat's to approve.",
+     "copy": "ratified",
+     "note": "One of the three “Auto-cleanup after” choices. Approved by Bagrat with the board “Bento A, aligned” (2026-10-25).",
      "cites": [
       "N74"
      ],
@@ -2589,8 +2590,8 @@
     {
      "text": "a year",
      "role": "button",
-     "copy": "provisional",
-     "note": "One of the three “Keep videos” choices. Proposed (N74): the words are Bagrat's to approve.",
+     "copy": "ratified",
+     "note": "One of the three “Auto-cleanup after” choices. Approved by Bagrat with the board “Bento A, aligned” (2026-10-25).",
      "cites": [
       "N74"
      ],
@@ -2599,8 +2600,8 @@
     {
      "text": "AI names, chapters and captions",
      "role": "other",
-     "copy": "provisional",
-     "note": "The switch, off when the page opens. It never changes the price: on Cloudflare's free plan about 2½ hours of new video a day are named at once and the rest the next day (B205, B207). What it should show is Bagrat's open question (2026-10-24). Proposed (N74): the words are Bagrat's to approve.",
+     "copy": "ratified",
+     "note": "The switch, off when the page opens. It never changes the price: on Cloudflare's free plan about 2½ hours of new video a day are named at once and the rest the next day (B205, B207). What it should show is Bagrat's open question (2026-10-24). Approved by Bagrat with the board “Bento A, aligned” (2026-10-25).",
      "cites": [
       "N74",
       "N66"
@@ -2610,8 +2611,8 @@
     {
      "text": "a month",
      "role": "other",
-     "copy": "provisional",
-     "note": "Beside the price, a large figure in dollars, never cents (Bagrat, 2026-10-24: “93¢” can read as 93 dollars): “$0.00” in frost while inside Cloudflare's free 10 GB, else “$0.45”, “$11.85” and so on. The figure varies, so it isn't a said-line. Proposed (N74): the words are Bagrat's to approve.",
+     "copy": "ratified",
+     "note": "Beside the price, a large figure in dollars, never cents (Bagrat, 2026-10-24: “93¢” can read as 93 dollars): “$0.00” in frost while inside Cloudflare's free 10 GB, else “$0.45”, “$11.85” and so on. The figure varies, so it isn't a said-line. Approved by Bagrat with the board “Bento A, aligned” (2026-10-25).",
      "cites": [
       "N74"
      ],
@@ -2620,8 +2621,8 @@
     {
      "text": "A team of 20, an hour each a month: $0.85 with 30-day cleanup, $11.85 kept a year.",
      "role": "line",
-     "copy": "provisional",
-     "note": "The price box's last line, in place of a note on Cloudflare's free 10 GB (Bagrat, 2026-10-24: he liked the box and asked for the team line there; earlier he chose a team row at an hour each). 20 hours a month is about 67 GB: $0.85 a month with 30-day cleanup; kept a year, 800 GB: $11.85. Proposed (N74): the words are Bagrat's to approve.",
+     "copy": "ratified",
+     "note": "The price box's last line, in place of a note on Cloudflare's free 10 GB (Bagrat, 2026-10-24: he liked the box and asked for the team line there; earlier he chose a team row at an hour each). 20 hours a month is about 67 GB: $0.85 a month with 30-day cleanup; kept a year, 800 GB: $11.85. Approved by Bagrat with the board “Bento A, aligned” (2026-10-25).",
      "cites": [
       "N74"
      ],
@@ -2631,7 +2632,7 @@
      "text": "Your videos live in your own Cloudflare account",
      "role": "line",
      "copy": "ratified",
-     "note": "Term 1 of 7, under the price bar; green tick. 'your own Cloudflare account' is bold. Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59).",
+     "note": "Term 1 of 7, in the terms' tile under the price box (N74); green tick. 'your own Cloudflare account' is bold. Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59).",
      "cites": [
       "N59"
      ],
@@ -2673,8 +2674,8 @@
     {
      "text": "Old videos clean themselves up. Pin the ones you keep.",
      "role": "line",
-     "copy": "provisional",
-     "note": "Term 5 of 7. 'Old videos clean themselves up.' is bold. Auto-cleanup (off by default; 15, 30 or 60 days after last watched; pinned videos stay) is Bagrat's yes of 2026-10-24 and ships in 0.1.28; this line goes live with it. Proposed (N74): the words are Bagrat's to approve.",
+     "copy": "ratified",
+     "note": "Term 5 of 7. 'Old videos clean themselves up.' is bold. Auto-cleanup (off by default; 15, 30 or 60 days after last watched; pinned videos stay) is Bagrat's yes of 2026-10-24 and ships in 0.1.28; this line goes live with it. Approved by Bagrat with the board “Bento A, aligned” (2026-10-25).",
      "cites": [
       "N59",
       "N74"
@@ -2708,7 +2709,7 @@
      "text": "Install in one line",
      "role": "title",
      "copy": "ratified",
-     "note": "The install block's heading, bold, inside the box under the video, the three tabs at its right. Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59).",
+     "note": "The install block's heading, bold, in its own tile under the video's (N74), the three tabs at its right. Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59).",
      "cites": [
       "N59"
      ],
@@ -2829,7 +2830,7 @@
      "text": "Send feedback · GitHub · Questions and limits · Privacy · Terms",
      "role": "line",
      "copy": "ratified",
-     "note": "The page's foot: one row of links under the left column, at the bottom of the first screen (after the content when it runs longer); the visits line under it. The header is gone, so Send feedback and GitHub live here. “Trouble, questions” is gone: it opened /feedback, as Send feedback does. The other shroom.am pages keep their header and footer. Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59).",
+     "note": "The page's foot: one row of links under the tiles, at the bottom of the first screen (after the content when it runs longer); the visits line under it. The header is gone, so Send feedback and GitHub live here. “Trouble, questions” is gone: it opened /feedback, as Send feedback does. The other shroom.am pages keep their header and footer. Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59).",
      "cites": [
       "N55",
       "N59"
