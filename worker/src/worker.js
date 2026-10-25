@@ -257,9 +257,11 @@ export async function handle(request, env, now, ctx) {
     // A tombstoned recording's bytes are gone for everyone (r5: "It's removed
     // everywhere"), even those an interrupted delete or a late segment left behind. The
     // record is read beside the bytes, not before them — first frame stays one round trip.
+    // Only the viewer's own browser keeps a copy (`private`): no shared cache holds a
+    // recording's bytes, so a removal or a cut reaches everyone the Worker answers.
     const [meta, res] = await Promise.all([
       readMeta(env, m[1]).then((v) => ({ v }), () => null),
-      media(request, env, `rec/${m[1]}/${file}`, type, "public, max-age=3600"),
+      media(request, env, `rec/${m[1]}/${file}`, type, "private, max-age=3600"),
     ]);
     // Once an edit's permanent copy is up, the original is out of reach (N63, step 3); a
     // baked recording is the files its record names (B197). Copy thumbnail's pictures stay,
@@ -5157,7 +5159,7 @@ async function aiCaptionsRoute(request, env, id, url) {
   if (!meta || meta.state !== "live" || !meta.captions || !read?.t.done || !aiPlaced(meta, read.t.clock)) return plain(404, "");
   const body = aiCaptions(aiOverBakes(read.t.words, meta, read.t.clock), aiKeep(meta), url.searchParams.get("e") === "1");
   return new Response(request.method === "HEAD" ? null : body, {
-    headers: { "content-type": "text/vtt; charset=utf-8", "cache-control": "public, max-age=300", "x-robots-tag": "noindex", "x-content-type-options": "nosniff" },
+    headers: { "content-type": "text/vtt; charset=utf-8", "cache-control": "private, max-age=300", "x-robots-tag": "noindex", "x-content-type-options": "nosniff" },
   });
 }
 
