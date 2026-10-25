@@ -68,8 +68,13 @@ jobs:
           shared-key: mac-macos-26-xcode${{ steps.toolchain.outputs.xcode }}
           save-if: false
 
-      # Built before any secret is written: no build script runs beside one.
+      # Built before any secret is written: no build script runs beside one. Cold (no cache
+      # for this key yet), cargo's own git fetch of the capture crates' big repository hung
+      # for an hour (run 40173006374): git's own fetch, and a limit.
       - name: The run's two ends
+        timeout-minutes: 25
+        env:
+          CARGO_NET_GIT_FETCH_WITH_CLI: 'true'
         run: cargo build --locked -p shroom-e2e-live --bin e2e-run
 
       - name: The recorder, the pointer
