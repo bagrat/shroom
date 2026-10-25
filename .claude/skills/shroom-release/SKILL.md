@@ -13,8 +13,10 @@ This is the short version, and the rules a session keeps (Bagrat, 2026-10-19).
 
 - **Every release is Actions → Release → Run workflow, with Publish.** An official
   release runs on `main`; an early build (`x.y.z-early.n`, DECISIONS B220) runs on
-  `claude/early-integration` with **Early** ticked too. It builds the branch's head. A
-  session dispatches it with its GitHub tools.
+  `early-release` with **Early** ticked too, after **Early release branch** has moved that
+  branch to `claude/early-integration`'s green head (B254). It builds the branch's head. A
+  session dispatches both with its GitHub tools, and tells the orchestrator first: each
+  signed build waits for Bagrat's **Approve and deploy**.
 - **Never a tag from a session.** A cloud session's tag push is refused (HTTP 403). The
   hand-pushed tag road is Bagrat's alone, so never plan on it, and never ask him to push one.
 - **To keep a change out of a release, hold its merge** until the release is out. Never
@@ -36,4 +38,5 @@ This is the short version, and the rules a session keeps (Bagrat, 2026-10-19).
    up with the release link.
 
 For an early build, first bring `main` into `claude/early-integration` by a merge (never a
-rebase), then follow "Pre-releases".
+rebase), then follow "Pre-releases". Sessions never push `early-release`; only its workflow
+moves it.
