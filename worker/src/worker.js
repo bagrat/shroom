@@ -320,7 +320,8 @@ export const STORAGE_TRANSIENT = [10001, 10043, 10054, 10058];
  * same honest line rather than a guess. The page refreshes itself, so it plays once the
  * storage answers. @param {unknown} e */
 function unavailableFace(e) {
-  return why(html(unavailablePage({ mark: true, owner: null, head: "" })), e);
+  const nonce = newNonce();
+  return why(html(unavailablePage({ mark: true, owner: null, head: "", nonce }), nonce), e);
 }
 
 /** Names the failure for whoever reads the response's headers (a code, never a message —
@@ -1292,8 +1293,8 @@ async function page(env, id, now, ownerP, origin, ctx) {
     const weighed = aiAfterView(env, id, meta, now).catch(() => {});
     if (ctx) ctx.waitUntil(weighed); else await weighed;
   }
-  const face = { mark, owner: owner?.ownerClass ? { switchOn: mark } : null, head: meta && meta.state !== "deleted" ? unfurl(id, meta, origin) : "", ratio: ratioOf(meta), host: new URL(origin).host };
-  if (meta && meta.state === "deleted") return html(notFoundPage(face), false, 404);
+  const face = { mark, owner: owner?.ownerClass ? { switchOn: mark } : null, head: meta && meta.state !== "deleted" ? unfurl(id, meta, origin) : "", ratio: ratioOf(meta), host: new URL(origin).host, nonce: newNonce() };
+  if (meta && meta.state === "deleted") return html(notFoundPage(face), face.nonce, false, 404);
   const mine = owner !== null && (await mayEdit(env, owner, id, !!meta));
   // Unknown or malformed ids look exactly like a video still uploading: a guessed link
   // learns nothing, and a link shared before its first byte arrives never 404s (P9).
@@ -1314,25 +1315,25 @@ async function page(env, id, now, ownerP, origin, ctx) {
       const [ledger, blocked] = await Promise.all([ledgerGet(env, id).catch(() => null), uploadsBlocked(env)]);
       if (ledger || blocked) {
         const pending = { id, state: "uploading", title: "", createdAt: new Date(now).toISOString(), progress: null };
-        return html(ownerPage(id, pending, now, face, blocked ? waitingWords(owner) : COPY.waitingConnection, blocked, true));
+        return html(ownerPage(id, pending, now, face, blocked ? waitingWords(owner) : COPY.waitingConnection, blocked, true), face.nonce);
       }
     }
-    return html(onItsWayPage(null, COPY.onItsWay, face, 0, false, true));
+    return html(onItsWayPage(null, COPY.onItsWay, face, 0, false, true), face.nonce);
   }
   if (owner && mine && (meta.state === "uploading" || playable(id, meta))) {
     const blocked = stalledAt(meta, now) && !drained(meta) && (await uploadsBlocked(env));
     const src = await sourceOf(id, meta, oneP);
-    return html(ownerPage(id, meta, now, face, blocked ? waitingWords(owner) : COPY.waitingConnection, false, false, src, aiFace(id, meta, src, !!env.AI, now), listensOf(env)));
+    return html(ownerPage(id, meta, now, face, blocked ? waitingWords(owner) : COPY.waitingConnection, false, false, src, aiFace(id, meta, src, !!env.AI, now), listensOf(env)), face.nonce);
   }
   if (meta.state === "uploading") {
     const st = status(meta, now);
-    return html(onItsWayPage(meta.title, st.stalled ? COPY.stalled : COPY.onItsWay, face, st.pct ?? 0, !!st.stalled));
+    return html(onItsWayPage(meta.title, st.stalled ? COPY.stalled : COPY.onItsWay, face, st.pct ?? 0, !!st.stalled), face.nonce);
   }
   if (playable(id, meta)) {
     const src = await sourceOf(id, meta, oneP);
-    return html(livePage(id, meta, face, src, aiFace(id, meta, src, !!env.AI, now)));
+    return html(livePage(id, meta, face, src, aiFace(id, meta, src, !!env.AI, now)), face.nonce);
   }
-  return html(unavailablePage(face));
+  return html(unavailablePage(face), face.nonce);
 }
 
 /** The owner page's fourth upload face (N40, §4.18): owner-class reads "your space", a
@@ -1354,16 +1355,27 @@ async function uploadsBlocked(env) {
 }
 
 /** Pages refuse to be framed (the owner's title field and switch live on them); only
- * the embed face may be. */
-/** @param {string} body @param {boolean} [frameable] @param {number} [status] */
-function html(body, frameable = false, status = 200) {
+ * the embed face may be. A page runs only the scripts the Worker wrote for it: each inline
+ * <script> carries the response's `nonce` (`newNonce`), and the player's hls.js loads from
+ * this origin (`'self'`), its transmuxer from a blob: worker. No plugins, no <base>, and no
+ * form posts (no page has a form). Images, media and fetches are left as they were.
+ * @param {string} body @param {string} nonce the one every <script> on the page carries
+ * @param {boolean} [frameable] @param {number} [status] */
+function html(body, nonce, frameable = false, status = 200) {
   return new Response(body, {
     status,
     headers: {
       "content-type": "text/html; charset=utf-8", "x-robots-tag": "noindex", "cache-control": "no-store", "referrer-policy": "no-referrer",
-      "content-security-policy": frameable ? "frame-ancestors *" : "frame-ancestors 'none'",
+      "x-content-type-options": "nosniff",
+      "content-security-policy": `script-src 'nonce-${nonce}' 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; worker-src 'self' blob:; frame-ancestors ${frameable ? "*" : "'none'"}`,
     },
   });
+}
+
+/** A fresh script nonce for one HTML response: 128 random bits, base64. */
+function newNonce() {
+  const b = crypto.getRandomValues(new Uint8Array(16));
+  return btoa(String.fromCharCode(...b));
 }
 
 // ───────── unfurls (R5.3) ─────────
@@ -1436,12 +1448,13 @@ async function embed(env, id, now, origin) {
   // The mark sits at the end of the player's control row (it hides with the controls), or
   // in the corner of a line.
   const corner = mark ? `<a class="mark" href="https://shroom.am" target="_blank" rel="noopener" title="${COPY.mark}" aria-label="${COPY.mark}">${LOGO}</a>` : "";
+  const nonce = newNonce();
   const frame = (/** @type {string} */ inner, refresh = 0, code = 200, css = "") => html(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex"><title>${escapeText((meta?.state !== "deleted" && meta?.title) || "shroom")}</title>${refresh ? `<meta http-equiv="refresh" content="${refresh}">` : ""}<style>${EMBED_TOKENS}${PLAYER_STYLE}${EMBED_STYLE}${css}</style></head>
-<body${mark ? ` class="marked"` : ""}>${inner}${corner}</body></html>`, true, code);
+<body${mark ? ` class="marked"` : ""}>${inner}${corner}</body></html>`, nonce, true, code);
   /** The line where the player will be; on its way, over the thin bar (N27). */
   const line = (/** @type {string} */ text, /** @type {string} */ bar = "") => `<div class="line"><p>${escapeText(text)}</p>${bar}</div>`;
-  if (!meta) return frame(line(COPY.onItsWay, thinBar(0, false)) + stallClock(), 5);
+  if (!meta) return frame(line(COPY.onItsWay, thinBar(0, false)) + stallClock(nonce), 5);
   if (meta.state === "deleted") return frame(line(COPY.notFound), 0, 404);
   if (meta.state === "uploading") {
     const st = status(meta, now);
@@ -1452,7 +1465,7 @@ async function embed(env, id, now, origin) {
   const src = await sourceOf(id, meta, oneP, view);
   const ai = aiFace(id, meta, src, !!env.AI, now);
   return frame(`${aiPlayer(playerHtml(id, meta, origin), ai)}
-<script>${PLAYER_JS};shroomPlayer(document.querySelector(".player"),${JSON.stringify(src)},${jsonForScript(JSON.stringify(LABELS))},${playing(id, view)})${aiWire(".player", ai)}
+<script nonce="${nonce}">${PLAYER_JS};shroomPlayer(document.querySelector(".player"),${JSON.stringify(src)},${jsonForScript(JSON.stringify(LABELS))},${playing(id, view)})${aiWire(".player", ai)}
 ${VIEW_JS};shroomCount(document.getElementById("v"),${JSON.stringify(id)})</script>`, 0, 200, aiCss(ai));
 }
 
@@ -1609,7 +1622,8 @@ const PLAYER_STYLE = `.bar{display:block;width:100%;height:3px;border-radius:2px
 @media (max-width:359px){.row .sp{display:none}}
 @media (prefers-reduced-motion:reduce){.bar.go i{animation:none}.bar i,.ctl,.big,.upl{transition:none}}`;
 
-/** @typedef {{ mark: boolean, owner: { switchOn: boolean } | null, head: string, ratio?: string, host?: string }} Face */
+/** @typedef {{ mark: boolean, owner: { switchOn: boolean } | null, head: string, ratio?: string, host?: string, nonce: string }} Face
+ * `nonce`: the response's script nonce, on every <script> the page writes (`html`). */
 
 /** The recording's shape as CSS reads it (`1024/768`), when its record says. @param {any} meta */
 function ratioOf(meta) {
@@ -1640,7 +1654,7 @@ function foot(face) {
 function shell(title, inner, face, head = "", script = "") {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex">${face.head}<title>${escapeText(title)}</title>${head}${TAB_ICON_LINKS}<style>${STYLE}${PLAYER_STYLE}</style></head>
-<body${face.ratio ? ` style="--ar:${face.ratio}"` : ""}><main>${inner}</main>${foot(face)}${face.owner ? MARK_SCRIPT : ""}${script}</body></html>`;
+<body${face.ratio ? ` style="--ar:${face.ratio}"` : ""}><main>${inner}</main>${foot(face)}${face.owner ? `<script nonce="${face.nonce}">${MARK_JS}</script>` : ""}${script}</body></html>`;
 }
 
 /** The owner's switch (U3, N26; DEVIATIONS #41). What the page rendered is what the space
@@ -1653,13 +1667,13 @@ function shell(title, inner, face, head = "", script = "") {
  * flip made meanwhile changes what shows and waits, and once that write has settled the
  * page saves what it shows if the space doesn't hold it already. So two quick flips can't
  * land out of order and leave the page saying one thing over a space that says the other. */
-const MARK_SCRIPT = `<script>(function(){var b=document.getElementById("mk"),m=document.querySelector(".foot .mark"),f=document.querySelector(".foot");if(!b)return;
+const MARK_JS = `(function(){var b=document.getElementById("mk"),m=document.querySelector(".foot .mark"),f=document.querySelector(".foot");if(!b)return;
 var on=b.defaultChecked,now=on,busy=0;function show(v){now=v;b.checked=v;if(m)m.hidden=!v;if(f)f.hidden=!v}show(on);
 window.addEventListener("pageshow",function(){show(now)});
 function save(){if(busy||now===on)return;var want=now;busy=1;
 fetch("/_shroom/mark",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({on:want})})
 .then(function(r){if(!r.ok)throw 0;on=want}).catch(function(){show(on)}).then(function(){busy=0;save()})}
-b.onchange=function(){show(b.checked);save()}})();</script>`;
+b.onchange=function(){show(b.checked);save()}})();`;
 
 /** The thin bar under the line where the player will be: filled to the upload's
  * progress, breathing while bytes move, resting when they've stopped (N27, N40). */
@@ -1674,16 +1688,16 @@ function thinBar(pct, rest, id = "") {
  * @param {boolean} [unknown] no record at all: the stall clock runs from this tab's first look */
 function onItsWayPage(title, line, face, pct, stalled, unknown = false) {
   const heading = title ? `<div class="head"><h1>${escapeText(title)}</h1></div>` : "";
-  return shell(title || "shroom", `${heading}<div class="wait"><p class="line">${escapeText(line)}</p>${thinBar(pct, stalled)}</div>`, face, `<meta http-equiv="refresh" content="5">`, unknown ? stallClock() : "");
+  return shell(title || "shroom", `${heading}<div class="wait"><p class="line">${escapeText(line)}</p>${thinBar(pct, stalled)}</div>`, face, `<meta http-equiv="refresh" content="5">`, unknown ? stallClock(face.nonce) : "");
 }
 
 /** An id with no record has no progress to age (N40 “on its way, stalled”: “a mistyped link
  * lands here too, by design”): the clock runs from this tab's first look at the address —
  * kept across the page's own refreshes in the tab's session storage — and past
  * `STALL_SECONDS` the line becomes the stalled one and the bar rests. Without storage (a
- * blocked frame) the page stays on its way (DECISIONS B94). */
-function stallClock() {
-  return `<script>(function(){try{var s=sessionStorage,k="shroom-seen:"+location.pathname,t=Number(s.getItem(k));if(!t){s.setItem(k,String(Date.now()));return}
+ * blocked frame) the page stays on its way (DECISIONS B94). @param {string} nonce the page's */
+function stallClock(nonce) {
+  return `<script nonce="${nonce}">(function(){try{var s=sessionStorage,k="shroom-seen:"+location.pathname,t=Number(s.getItem(k));if(!t){s.setItem(k,String(Date.now()));return}
 if(Date.now()-t<=${STALL_SECONDS * 1000})return;var p=document.querySelector("p.line")||document.querySelector(".line p"),b=document.querySelector(".bar");
 if(p)p.textContent=${jsonForScript(JSON.stringify(COPY.stalled))};if(b)b.classList.remove("go")}catch(e){}})()</script>`;
 }
@@ -1692,7 +1706,7 @@ if(p)p.textContent=${jsonForScript(JSON.stringify(COPY.stalled))};if(b)b.classLi
 function unavailableEmbed(e) {
   return why(html(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex"><title>shroom</title><meta http-equiv="refresh" content="30"><style>${EMBED_TOKENS}${EMBED_STYLE}</style></head>
-<body><div class="line"><p>${escapeText(COPY.unavailable)}</p></div></body></html>`, true), e);
+<body><div class="line"><p>${escapeText(COPY.unavailable)}</p></div></body></html>`, newNonce(), true), e);
 }
 
 /** @param {Face} face */
@@ -1949,7 +1963,7 @@ function livePage(id, meta, face, src, ai = AI_NONE) {
   const thumbs = thumbsOf(id, meta, true, false);
   const cfg = JSON.stringify({ copied: COPY.copied, copy: COPY.copyLink, copyThumb: COPY.copyThumbnail, thumbs });
   const player = `${aiPlayer(playerHtml(id, meta), ai)}
-<script>${PLAYER_JS};shroomPlayer(document.querySelector(".player"),${JSON.stringify(src)},${jsonForScript(JSON.stringify(LABELS))},${playing(id, view)})${aiWire(".player", ai)}
+<script nonce="${face.nonce}">${PLAYER_JS};shroomPlayer(document.querySelector(".player"),${JSON.stringify(src)},${jsonForScript(JSON.stringify(LABELS))},${playing(id, view)})${aiWire(".player", ai)}
 ${VIEW_JS};shroomCount(document.getElementById("v"),${JSON.stringify(id)})
 ${COPY_JS}
 ${THUMB_JS}
@@ -2122,7 +2136,7 @@ function ownerPage(id, meta, now, face, waiting, blocked = false, pending = fals
     copyThumb: COPY.copyThumbnail, preparing: COPY.preparingThumbnail, thumbs, dl: COPY.download, finishing: COPY.finishing, notFound: COPY.notFound, unavailable: COPY.unavailable, labels: LABELS, player: live ? "" : playerHtml(id, { ...meta, media: { ...meta.media, poster: null } }),
     cutsTag, listenFor, cutLabels: { back: COPY.putBack, again: COPY.cutAgain },
   });
-  const script = `<script>${PLAYER_JS}
+  const script = `<script nonce="${face.nonce}">${PLAYER_JS}
 ${COPY_JS}
 ${THUMB_JS}
 (function(){var c=${jsonForScript(cfg)},t=document.getElementById("t"),saved=c.saved,src=${jsonForScript(JSON.stringify(src))},tb=document.getElementById("th");
@@ -2177,7 +2191,7 @@ next(2000)}).catch(function(){next(5000)})}
 if(!c.live||!c.mp4||!c.drained)next(2000);else if(c.cutsTag==="coming")next(2000)})();</script>`;
   // A page waiting for its name has the player's chapters and captions ready for when they come.
   const wire = aiWire(".player", ai) || (ai.waiting ? AI_PLAYER_JS : "");
-  return shell(meta.title || "shroom", `${head}${aiNote(ai)}${stage}${cuts}${hint}${upload}`, face, aiHead(ai), `${script}${wire ? `<script>${wire}</script>` : ""}${aiOwnerScript(id, ai)}`);
+  return shell(meta.title || "shroom", `${head}${aiNote(ai)}${stage}${cuts}${hint}${upload}`, face, aiHead(ai), `${script}${wire ? `<script nonce="${face.nonce}">${wire}</script>` : ""}${aiOwnerScript(id, ai, face.nonce)}`);
 }
 
 /** A JSON island safe inside <script>: <, >, & and the two line separators escaped. */
@@ -3207,6 +3221,7 @@ async function joinPage(request, env, url, code, now) {
   const ua = request.headers.get("user-agent") ?? "";
   /** @type {{ title: string, blocks: string, script?: string }} */
   let face;
+  const nonce = newNonce();
   if (!ID.test(code)) {
     face = lineFace(COPY.inviteUnknown);
   } else {
@@ -3224,7 +3239,7 @@ async function joinPage(request, env, url, code, now) {
       /** @type {{ member: string, device: string, ownerClass: boolean } | null} */
       let viewer = null;
       try { viewer = checkCookie(await cookieClaims(request, env), roster); } catch { viewer = null; }
-      if (state === "pending") face = landingFace(invite, url.host, code, viewer?.ownerClass === true, /iPhone|iPad|iPod|Android|Windows|Linux|CrOS/.test(ua));
+      if (state === "pending") face = landingFace(invite, url.host, code, viewer?.ownerClass === true, /iPhone|iPad|iPod|Android|Windows|Linux|CrOS/.test(ua), nonce);
       else if (state === "used") {
         // "You're in" only to the one it let in. Every owner-class cookie is m1, so an
         // own-Mac link asks for the Mac it made, not the member; anyone else reads the
@@ -3236,7 +3251,7 @@ async function joinPage(request, env, url, code, now) {
       else face = lineFace(ownMac ? COPY.ownExpired : inviteExpired(inviter)); // expired or cancelled
     }
   }
-  const res = html(joinShell(face));
+  const res = html(joinShell(face), nonce);
   return request.method === "HEAD" ? new Response(null, { status: res.status, headers: res.headers }) : res;
 }
 
@@ -3253,8 +3268,8 @@ function lineFace(line) {
 const copyIcon = (id, primary) => `<button class="copy-ic${primary ? " primary" : ""}" type="button" data-copy="${id}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M15 5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2"/></svg><svg class="ok" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span class="lbl">${escapeHtml(COPY.copy)}</span></button>`;
 
 /** join-landing, its own-Mac variant, the owner view and the -elsewhere face. */
-/** @param {any} invite @param {string} host @param {string} code @param {boolean} ownerView @param {boolean} elsewhere */
-function landingFace(invite, host, code, ownerView, elsewhere) {
+/** @param {any} invite @param {string} host @param {string} code @param {boolean} ownerView @param {boolean} elsewhere @param {string} nonce the page's */
+function landingFace(invite, host, code, ownerView, elsewhere, nonce) {
   const ownMac = invite.kind === "own_mac";
   const inviter = typeof invite.inviter === "string" ? invite.inviter : "";
   const hero = ownMac ? COPY.ownHero : joinHero(inviter);
@@ -3274,7 +3289,7 @@ function landingFace(invite, host, code, ownerView, elsewhere) {
 <p class="small">${escapeHtml(COPY.openFallback)}</p></section></div>`;
   const cfg = JSON.stringify({ flip: !elsewhere, away, copied: COPY.copied });
   // iPadOS asks for the desktop site with a Macintosh user agent; touch gives it away.
-  const script = `<script>${COPY_JS}
+  const script = `<script nonce="${nonce}">${COPY_JS}
 (function(){var c=${jsonForScript(cfg)};
 if(c.flip&&navigator.maxTouchPoints>1){var g=document.getElementById("get");if(g)g.outerHTML=c.away}
 document.addEventListener("click",function(e){var n=e.target&&e.target.closest?e.target.closest("button[data-copy]"):null;if(!n)return;
@@ -5287,10 +5302,10 @@ const aiNote = (ai) => (ai.line || ai.waiting ? `<p class="ainote" id="ainote"${
  * (B241; Bagrat's hand test, 2026-10-25: they came only with a reload). The asking goes on
  * until the take's voice cuts are in too; and whenever what plays changes later (a cut landing,
  * a press on the strip), a page with chapters asks once more and redraws the bar to match.
- * Answers are taken in the order they were asked. @param {string} id @param {AiFace} ai */
-function aiOwnerScript(id, ai) {
+ * Answers are taken in the order they were asked. @param {string} id @param {AiFace} ai @param {string} nonce the page's */
+function aiOwnerScript(id, ai, nonce) {
   if (!ai.waiting && !ai.chapters.length) return "";
-  return `<script>(function(){var t=document.getElementById("t"),l=document.getElementById("ainote"),n=0,asked=0,took=0,c=${jsonForScript(JSON.stringify({ id, waiting: ai.waiting, drawn: ai.chapters, later: COPY.namingLater, captions: COPY.captions, cc: AI_CC_BUTTON }))};
+  return `<script nonce="${nonce}">(function(){var t=document.getElementById("t"),l=document.getElementById("ainote"),n=0,asked=0,took=0,c=${jsonForScript(JSON.stringify({ id, waiting: ai.waiting, drawn: ai.chapters, later: COPY.namingLater, captions: COPY.captions, cc: AI_CC_BUTTON }))};
 var shown=t.value,touched=false,mine=false,drawn=JSON.stringify(c.drawn);
 function say(x){if(l){l.textContent=x;l.hidden=!x}}
 function take(x){if(mine||x===shown)return;var was=shown;shown=x;t.dispatchEvent(new CustomEvent("shroom:named",{detail:x}));if(t.value!==was)return;
