@@ -222,7 +222,23 @@ pub struct CredFile {
     pub endpoint: String,
 }
 
+/// Whether `endpoint` and `bucket` are Cloudflare R2's own store for an account, as a space
+/// mints them (`https://<account id>.r2.cloudflarestorage.com`, the id 32 lower-case hex) and
+/// a bucket name R2 takes (3–63 of `a-z`, `0-9`, `-`): what a release build sends a
+/// recording's bytes to, and nothing else.
+pub fn r2_store(endpoint: &str, bucket: &str) -> bool {
+    let account = endpoint.strip_prefix("https://").and_then(|h| h.strip_suffix(".r2.cloudflarestorage.com"));
+    let account_ok = account.is_some_and(|a| a.len() == 32 && a.bytes().all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b)));
+    let bucket_ok = (3..=63).contains(&bucket.len()) && bucket.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-');
+    account_ok && bucket_ok
+}
+
 impl CredFile {
+    /// Whether it names R2's own store ([`r2_store`]).
+    pub fn on_r2(&self) -> bool {
+        r2_store(&self.endpoint, &self.bucket)
+    }
+
     /// The S3 credentials it holds.
     pub fn credentials(&self) -> shroom_storage::sigv4::Credentials {
         shroom_storage::sigv4::Credentials {

@@ -715,6 +715,14 @@ impl Runtime {
         }
     }
 
+    /// Whether a credential's store may take this build's bytes: in a release build only R2's
+    /// own (`shroom_cloud::device::r2_store`) — checked where a mint arrives and where a
+    /// take's `cred.json` is read back; a dev build keeps its stand-ins (the L1 fake, the
+    /// local space), which the e2e run's real R2 passes either way.
+    pub fn store_ok(&self, endpoint: &str, bucket: &str) -> bool {
+        self.dev || shroom_cloud::device::r2_store(endpoint, bucket)
+    }
+
     /// The space's bucket under the token's own derived pair (the token Mac's Library, its
     /// ledger entries, the owner grant, the roster seed): the account's R2 endpoint — or,
     /// on the local stand-in (dev), that space's bucket there.

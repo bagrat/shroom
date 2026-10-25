@@ -150,7 +150,7 @@ fn creds_for(rt: &Runtime, c: &Ctx, dir: Option<&Path>, rec: &str, purpose: Purp
     if let Some(path) = &path {
         if let Some(f) = super::home::read_json::<CredFile>(path) {
             let left = super::member::iso_ms(&f.expires_at).unwrap_or(0) - now_secs() as i64 * 1000;
-            if f.purpose == "upload" && left > CRED_LEFT_MS {
+            if f.purpose == "upload" && left > CRED_LEFT_MS && rt.store_ok(&f.endpoint, &f.bucket) {
                 return Ok((client(rt, &c.identity, &f), false));
             }
         }
@@ -174,6 +174,11 @@ fn creds_for(rt: &Runtime, c: &Ctx, dir: Option<&Path>, rec: &str, purpose: Purp
             }
         },
     };
+    // A release build sends bytes only to R2's own store, whatever the mint answered (B255).
+    if !rt.store_ok(&f.endpoint, &f.bucket) {
+        rt.log(&format!("uploader: the credential for {} names a store that isn't R2's — not used", super::short(rec)));
+        return Err(NoCred::Offline);
+    }
     if let (Some(dir), Some(path)) = (dir, &path) {
         let _ = super::home::write_json(path, &f);
         // The core learns of it at once, not at the next scan: a space that stops minting
