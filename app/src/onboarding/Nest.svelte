@@ -9,6 +9,7 @@
   import Door from "../join/Door.svelte";
   import Btn from "./Btn.svelte";
   import PasteField from "./PasteField.svelte";
+  import Parts from "./Parts.svelte";
   import Spinner from "./Spinner.svelte";
   import type { Nest, Part } from "./types";
 
@@ -40,20 +41,7 @@
 </script>
 
 {#snippet partList(parts: Part[])}
-  <!-- A wait's parts (N74): ✓ done, a spinner underway with its clock, • still to come. -->
-  <ol class="parts">
-    {#each parts as p}
-      <li class="part {p.glyph}">
-        <span class="mark">
-          {#if p.glyph === "done"}<svg class="icon13" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 4.8" /></svg>
-          {:else if p.glyph === "working"}<Spinner />
-          {:else}<span class="dot" aria-hidden="true"></span>{/if}
-        </span>
-        <span class="line">{p.line}</span>
-        {#if p.clock}<span class="clock">{p.clock}</span>{/if}
-      </li>
-    {/each}
-  </ol>
+  <Parts {parts} />
 {/snippet}
 
 <div class="nest {nest.kind}" data-nest={nest.kind}>

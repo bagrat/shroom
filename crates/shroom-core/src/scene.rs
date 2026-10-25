@@ -391,6 +391,12 @@ pub struct Banner {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub detail: Option<String>,
     pub buttons: Vec<Button>,
+    /// The parts of a re-wiring under its line, as they land (N80: the AI's Turn off).
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub parts: Vec<Part>,
+    /// The quiet line under the parts once one has run long (N80).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub long: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -637,6 +643,8 @@ pub enum Glyph {
     Done,
     Ahead,
     Working,
+    /// A part that stopped there: its run didn't go through (N80, law 12).
+    Stopped,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -1027,14 +1035,11 @@ pub struct GeneralBody {
     pub uninstall: Button,
     /// “Your coding agent” (dev/proposals/cli-agent-skill.md, provisional).
     pub agent: AgentCard,
-    /// Your videos (N68): Count plays, Suggest videos to clean up, Space used.
-    pub videos: Option<VideosGroup>,
 }
 
-/// Settings · General's group Your videos (N68).
+/// Settings' Videos tab (N79; General's group Your videos until then, N68).
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct VideosGroup {
-    pub heading: String,
     /// The space's switch: owner-class Macs change it; elsewhere it shows greyed.
     pub count: Toggle,
     pub count_hint: String,
@@ -1043,10 +1048,6 @@ pub struct VideosGroup {
     /// This Mac's.
     pub suggest: Toggle,
     pub suggest_hint: String,
-    /// “Space used”, with `used`.
-    pub used_label: Option<String>,
-    /// The space's size and what it costs — owner-class Macs, once the space has said.
-    pub used: Option<String>,
     /// Delete videos nobody watches (N75), once the space has said.
     pub autoclean: Option<AutocleanRow>,
 }
@@ -1058,7 +1059,7 @@ pub struct AutocleanRow {
     pub label: String,
     /// The line under it: how it counts, or who sets it, or what it needs.
     pub hint: String,
-    /// Off · After 15 days · After 30 days · After 60 days.
+    /// Off · After 15 days · After 30 days · After 60 days · After a year.
     pub choices: Vec<Choice>,
     /// “Turning on — a few seconds.” the first time, or why it didn't change (law 12).
     pub note: Option<String>,
@@ -1180,7 +1181,7 @@ pub struct EditorBody {
     /// failure, then the question of the original — in the timeline's place. `None` until
     /// then.
     pub after: Option<EditorAfterView>,
-    /// ✕ with changes not saved (N71): the question, in the footer's place. `None`
+    /// ✕ with changes not saved (N71): the question, in a sheet over the window. `None`
     /// otherwise.
     pub closing: Option<EditorClosingView>,
 }
@@ -1209,7 +1210,7 @@ pub enum EditorAfterView {
     Failed,
     /// It's up: “Delete the original?”, its line, then Keep for 2 days and Yes, delete
     /// (filled and leading, but a click: Return never deletes — law 9; DEVIATIONS #55) —
-    /// in the footer's place.
+    /// in a sheet over the window.
     Asking { title: String, line: String, keep: Button, delete: Button },
 }
 
@@ -1277,6 +1278,17 @@ pub struct SpaceBody {
     /// said whether it names videos.
     pub ai: Option<Toggle>,
     pub ai_line: Option<String>,
+    /// The switch's parts under its line while the page is re-wired, and once it's done or
+    /// didn't go through, this visit (N80).
+    pub ai_parts: Vec<Part>,
+    /// The quiet line under the parts once one has run long (N80).
+    pub ai_long: Option<String>,
+    /// The re-wiring didn't go through: said under the parts (law 12, N80).
+    pub ai_failed: Option<String>,
+    /// “Space used”, with `used` (N79, moved from Your videos).
+    pub used_label: Option<String>,
+    /// The space's size and what it costs — owner-class Macs, once the space has said.
+    pub used: Option<String>,
     /// Quiet text at the foot.
     pub exits: Vec<Button>,
 }
@@ -1339,6 +1351,7 @@ pub enum FromName {
 #[serde(rename_all = "kebab-case", tag = "kind")]
 pub enum SettingsPane {
     General(GeneralBody),
+    Videos(VideosGroup),
     Space(SpaceBody),
     Members(MembersBody),
 }
@@ -1458,6 +1471,7 @@ impl Window<SettingsBody> {
                     .chain(std::iter::once(&g.uninstall))
                     .collect()
             }
+            SettingsPane::Videos(_) => vec![],
             SettingsPane::Space(sp) => {
                 let mut out = nest_buttons(&sp.plan.nest);
                 out.extend(sp.mic.iter());
@@ -1492,10 +1506,10 @@ impl Window<SettingsBody> {
             return true;
         }
         match &self.body.pane {
-            SettingsPane::General(g) => {
-                let toggles = [&g.login, &g.agent.recording].into_iter().chain(g.videos.iter().flat_map(|v| [&v.count, &v.suggest]));
-                let picks = g.videos.iter().flat_map(|v| v.autoclean.iter().flat_map(|a| &a.choices));
-                toggles.into_iter().any(|t| t.enabled && &t.action == action) || picks.into_iter().any(|c| c.enabled && &c.action == action)
+            SettingsPane::General(g) => [&g.login, &g.agent.recording].into_iter().any(|t| t.enabled && &t.action == action),
+            SettingsPane::Videos(v) => {
+                let picks = v.autoclean.iter().flat_map(|a| &a.choices);
+                [&v.count, &v.suggest].into_iter().any(|t| t.enabled && &t.action == action) || picks.into_iter().any(|c| c.enabled && &c.action == action)
             }
             SettingsPane::Space(sp) => [&sp.mark, &sp.ai].into_iter().flatten().any(|t| t.enabled && &t.action == action),
             // Esc in the name being changed puts it back (B158).
@@ -1569,6 +1583,20 @@ pub struct AgentLabel {
     pub line: String,
 }
 
+/// The marker toast (N78; Bagrat, 2026-10-25): ⌥⌘M's answer, the agent label's pill with the
+/// marker's flag, top right of the display the take records — under the label when it
+/// shows. Left out of the take, as the label is, and passing every click through.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct MarkerToast {
+    pub display: u32,
+    pub line: String,
+    pub hint: String,
+    /// The agent label shows on the same display: the toast sits just under it.
+    pub under_label: bool,
+    /// When the press it answers came (ms): a new press starts its two seconds again.
+    pub pressed: u64,
+}
+
 /// The camera bubble (N22): round, mirrored, on the display being recorded —
 /// recorded as-is (never excluded from capture), never key (law 5), draggable.
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -1610,6 +1638,8 @@ pub struct Scene {
     pub preview: Option<Preview>,
     /// The agent label (N62, B216): while a take the `shroom` command started records.
     pub label: Option<AgentLabel>,
+    /// The marker toast (N78): two seconds after ⌥⌘M answers.
+    pub toast: Option<MarkerToast>,
     /// The Dock icon shows while a window of shroom's is open — the setup window, the
     /// Library, Settings, Send feedback or the editor — never for a popover alone (law 6,
     /// SM:133).

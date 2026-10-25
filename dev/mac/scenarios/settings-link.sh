@@ -17,12 +17,12 @@ no() { echo "NO: $*"; bad=1; }
 quit() { pkill -f "$MAC_APP/Contents/MacOS/shroom( |$)" 2>/dev/null; sleep 2; true; }
 # How many times the core took the link (its arm, as the runtime logs every event's).
 taken() { local n; n=$(grep -c "core settings-link " "$LOG" 2>/dev/null); echo "${n:-0}"; }
-# shroom's Settings window on screen: a layer-0 window of its process, 600 × 620 (WindowSpec).
+# shroom's Settings window on screen: a layer-0 window of its process, 600 × 720 (WindowSpec).
 settings_shown() {
   osascript -l JavaScript -e '
     ObjC.import("CoreGraphics");
     const list = ObjC.deepUnwrap(ObjC.castRefToObject($.CGWindowListCopyWindowInfo($.kCGWindowListOptionOnScreenOnly, 0))) || [];
-    list.some(w => /shroom/.test(w.kCGWindowOwnerName) && w.kCGWindowLayer === 0 && Math.round(w.kCGWindowBounds.Width) === 600 && Math.round(w.kCGWindowBounds.Height) === 620) ? "yes" : "no"' 2>/dev/null
+    list.some(w => /shroom/.test(w.kCGWindowOwnerName) && w.kCGWindowLayer === 0 && Math.round(w.kCGWindowBounds.Width) === 600 && Math.round(w.kCGWindowBounds.Height) === 720) ? "yes" : "no"' 2>/dev/null
 }
 switch_state() { grep -q '"agent_recording":true' "$home/prefs.json" 2>/dev/null && echo on || echo off; }
 refusal() { SHROOM_HOME="$home" "$cli" record start --no-launch --json; }

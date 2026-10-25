@@ -410,6 +410,7 @@ fn recording() -> OpenTake {
         length_ms: 30_000,
         markers: 0,
         marked_at_pause: false,
+        toast: None,
         mic: None,
         camera: None,
     }
@@ -617,24 +618,26 @@ fn settings_rows() -> Vec<(&'static str, &'static str, World)> {
         w.launch.version = "1.2.0".into();
         w
     }));
-    // Your videos (N68): the space past the free 10 GB; and inside it, counting off, the
+    // The Videos tab (N79; Your videos, N68): the space counting; and counting off, the
     // switch's failed line.
-    rows.push(("settings-general", "general-your-videos", suggesting(settings(ready(), SettingsTab::General))));
-    rows.push(("settings-general", "general-your-videos-free", {
-        let mut w = settings(ready(), SettingsTab::General);
+    rows.push(("settings-videos", "videos", suggesting(settings(ready(), SettingsTab::Videos))));
+    rows.push(("settings-videos", "videos-free", {
+        let mut w = settings(ready(), SettingsTab::Videos);
         w.suggestions = Fact::known(Suggestions { counting: false, space_bytes: 8_200_000_000, rows: vec![], ..Default::default() }, Mono(960));
         w.inflight.failures.insert(Op::Plays, Failure { at: Mono(970), class: FailClass::Transport, tries: 1 });
         w
     }));
     // N75: auto-cleanup on the setup Mac, on another Mac, and turning it on.
-    rows.push(("settings-general", "general-autoclean", going(suggesting(settings(ready(), SettingsTab::General)))));
-    rows.push(("settings-general", "general-autoclean-other-mac", {
-        let mut w = going(suggesting(settings(ready(), SettingsTab::General)));
+    rows.push(("settings-videos", "videos-autoclean", going(suggesting(settings(ready(), SettingsTab::Videos)))));
+    rows.push(("settings-videos", "videos-autoclean-other-mac", {
+        let mut w = going(suggesting(settings(ready(), SettingsTab::Videos)));
         w.space.token = false;
         w
     }));
-    rows.push(("autoclean-confirm", "general-autoclean-confirm", {
-        let mut w = suggesting(settings(ready(), SettingsTab::General));
+    // A member's Mac: the space's switch and its auto-cleanup read-only, this Mac's own live.
+    rows.push(("settings-videos", "videos-member", going(suggesting(settings(member(), SettingsTab::Videos)))));
+    rows.push(("autoclean-confirm", "videos-autoclean-confirm", {
+        let mut w = suggesting(settings(ready(), SettingsTab::Videos));
         w = going(w);
         if let Fact::Known { v, .. } = &mut w.suggestions {
             v.autoclean.days = 0;
@@ -663,6 +666,12 @@ fn settings_rows() -> Vec<(&'static str, &'static str, World)> {
         w
     }));
     rows.push(("settings-space-inspection", "space-inspection", space()));
+    // Space used (N79): the space's size and its cost, with the AI switch on (the tallest Space).
+    rows.push(("settings-space", "space-used", {
+        let mut w = suggesting(space());
+        w.space.ai = Some(true);
+        w
+    }));
     // N66: naming's switch on the setup Mac, off and on, and a re-wiring that didn't go through.
     rows.push(("settings-space", "space-ai-off", {
         let mut w = space();
@@ -680,6 +689,24 @@ fn settings_rows() -> Vec<(&'static str, &'static str, World)> {
         w.inflight.failures.insert(Op::Ai, Failure { at: Mono(990), class: FailClass::Transport, tries: 1 });
         w
     }));
+    // N80: the switch while the page is re-wired (turning on, its second part with its clock),
+    // done, a turn off that stopped at its second part, and one running long.
+    let rewiring = |on: bool, part: u8, end: Option<AiEnd>, ran: u64| {
+        let mut w = space();
+        w.space.ai = Some(!on);
+        w.now = Mono(3_000 + ran);
+        w.space.ai_run = Some(AiRun { on, part, since: Mono(3_000), end });
+        match end {
+            None => drop(w.inflight.ops.insert(Op::Ai, Mono(990).plus(Op::Ai.deadline_ms()))),
+            Some(AiEnd::Stopped) => drop(w.inflight.failures.insert(Op::Ai, Failure { at: Mono(3_000 + ran), class: FailClass::Transport, tries: 1 })),
+            Some(AiEnd::Done) => w.space.ai = Some(on),
+        }
+        w
+    };
+    rows.push(("settings-space", "space-ai-turning-on", rewiring(true, 2, None, 4_200)));
+    rows.push(("settings-space", "space-ai-on-done", rewiring(true, 3, Some(AiEnd::Done), 0)));
+    rows.push(("settings-space", "space-ai-off-stopped", rewiring(false, 2, Some(AiEnd::Stopped), 0)));
+    rows.push(("settings-space", "space-ai-long", rewiring(false, 2, None, 24_000)));
     rows.push(("settings-space", "space-mic-off", {
         let mut w = space();
         w.mac.mic = Fact::known(Access::Denied, Mono(0));
@@ -1263,6 +1290,17 @@ fn region3_rows() -> Vec<(&'static str, &'static str, &'static str, World)> {
         let mut w = ai_on();
         w.space.ai_turn = Some(AiTurn::TurningOff);
         w.inflight.ops.insert(Op::Ai, Mono(990).plus(Op::Ai.deadline_ms()));
+        // Its parts (N80): the second underway, with its clock.
+        w.now = Mono(6_200);
+        w.space.ai_run = Some(AiRun { on: false, part: 2, since: Mono(3_000), end: None });
+        w
+    }));
+    rows.push(("popover", "ai-turning-off", "ai-turning-off-long", {
+        let mut w = ai_on();
+        w.space.ai_turn = Some(AiTurn::TurningOff);
+        w.inflight.ops.insert(Op::Ai, Mono(990).plus(Op::Ai.deadline_ms()));
+        w.now = Mono(27_000);
+        w.space.ai_run = Some(AiRun { on: false, part: 2, since: Mono(3_000), end: None });
         w
     }));
     rows.push(("popover", "ai-turn-off-failed", "ai-turn-off-failed", {
@@ -1361,6 +1399,21 @@ fn region3_rows() -> Vec<(&'static str, &'static str, &'static str, World)> {
         w.take = Some(t);
         w
     }));
+    // The marker toast (N78): ⌥⌘M's answer, the take's first marker, a later one, and again
+    // at a pause that has its marker (the popover put away).
+    for (variant, phase, says) in [
+        ("marker-dropped", Phase::Recording, MarkerToastSays::Dropped(1)),
+        ("marker-3-dropped", Phase::Recording, MarkerToastSays::Dropped(3)),
+        ("already-marked", Phase::Paused(Cause::User), MarkerToastSays::Already),
+    ] {
+        let state = if phase == Phase::Recording { "recording" } else { "tray-pause-bars" };
+        rows.push(("toast", state, variant, {
+            let mut w = ready();
+            let n = if let MarkerToastSays::Dropped(n) = says { n } else { 1 };
+            w.take = Some(OpenTake { phase, markers: n, marked_at_pause: says == MarkerToastSays::Already, toast: Some((says, w.now)), ..recording() });
+            w
+        }));
+    }
     for (variant, at) in [("countdown-3", 900), ("countdown-1", 2_950)] {
         rows.push(("countdown", "countdown", variant, {
             let mut w = ready();
@@ -1382,6 +1435,7 @@ fn region3_gallery() -> Vec<Value> {
             let (slice, faces) = match window {
                 "countdown" => (serde_json::to_value(&scene.countdown), vec![]),
                 "label" => (serde_json::to_value(&scene.label), vec![]),
+                "toast" => (serde_json::to_value(&scene.toast), vec![]),
                 _ => (serde_json::to_value(&scene.popover), scene.popover.as_ref().map(|x| x.faces.clone()).unwrap_or_default()),
             };
             let slice = slice.expect("the slice serializes");
@@ -1480,6 +1534,12 @@ fn editor_rows() -> Vec<(&'static str, &'static str, World)> {
         ("editor-making", "editor-making", after(EditorSave::Making { pct: 40 })),
         ("editor-making-failed", "editor-making-failed", after(EditorSave::MakingFailed)),
         ("editor-keep-original", "editor-keep-original", after(EditorSave::Asking)),
+        // ✕ with the end pulled in not saved: “Save your edit?” (N71).
+        ("editor-closing", "editor-closing", {
+            let mut w = open(here(), EditorSave::Idle, Some(stepped()));
+            w.session.fields.editors.get_mut(&EditorId(1)).unwrap().closing = true;
+            w
+        }),
     ]
 }
 

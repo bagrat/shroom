@@ -83,9 +83,9 @@
   {
    "n": 4,
    "title": "The quiet-take law",
-   "rule": "**The quiet-take law** *(N41)* — while a take is open (recording *or* paused), shroom puts nothing new on screen: invites, deep links, windows, the deferred page of an offline stop, update banners — all wait for the take to end. Only the bubble and macOS's own indicator can ever appear in a take; the paused popover exists only after the pause is confirmed (POC §8). **And nothing that would end, move or replace the app runs mid-take** — Update, Disconnect, Leave, joining another space, Quit (⌘Q or the Dock, reachable when a window was already open) — their buttons grey with “You can do this once your recording is finished.”; a Quit request is declined silently while recording and opens the paused popover (its “no Quit while a take is open” note) while paused.",
+   "rule": "**The quiet-take law** *(N41)* — while a take is open (recording *or* paused), shroom puts nothing new on screen: invites, deep links, windows, the deferred page of an offline stop, update banners — all wait for the take to end. Only the bubble and macOS's own indicator can ever appear in a take (the agent label and the marker toast show to the person only, left out of the recording — N62, N78); the paused popover exists only after the pause is confirmed (POC §8). **And nothing that would end, move or replace the app runs mid-take** — Update, Disconnect, Leave, joining another space, Quit (⌘Q or the Dock, reachable when a window was already open) — their buttons grey with “You can do this once your recording is finished.”; a Quit request is declined silently while recording and opens the paused popover (its “no Quit while a take is open” note) while paused.",
    "invariants": [
-    "Let take_open = state ∈ {recording, paused, and paused's morphs/auto-pause faces}. While take_open, no window, banner, invite, deep-link handling, deferred offline-stop page, or update banner becomes newly visible; the only shroom surfaces that may newly appear are the bubble overlay, the paused popover (only after the pause is confirmed) and its morphs (discard-confirm), and the auto-pause popovers (display-lost, mic-lost, camera-lost, mac-away, permission-lost, disk-full-stop).",
+    "Let take_open = state ∈ {recording, paused, and paused's morphs/auto-pause faces}. While take_open, no window, banner, invite, deep-link handling, deferred offline-stop page, or update banner becomes newly visible; the only shroom surfaces that may newly appear are the bubble overlay, the paused popover (only after the pause is confirmed) and its morphs (discard-confirm), and the auto-pause popovers (display-lost, mic-lost, camera-lost, mac-away, permission-lost, disk-full-stop); and, left out of every capture, the agent label (N62) and the marker toast for two seconds after ⌥⌘M (N78).",
     "Items that arrive while take_open (invite deep link, offline-stop page, update banner, windows) are queued and surface only after the take ends.",
     "While take_open, Update, Disconnect, Leave, join-another-space and Quit controls are disabled and show “You can do this once your recording is finished.”",
     "A Quit request (⌘Q or Dock) while recording causes no state change and no visible surface; while paused it opens/keeps the paused popover showing its “no Quit while a take is open” note; the process keeps running in both.",
@@ -95,7 +95,9 @@
    "cites": [
     "N41",
     "POC §8",
-    "UX-STATEMACHINE.md L116-125"
+    "UX-STATEMACHINE.md L116-125",
+    "N62",
+    "N78"
    ]
   },
   {
@@ -808,7 +810,9 @@
    "amends": [
     "N28 (resolves the Members placement: the Settings window's third tab)"
    ],
-   "amended_by": []
+   "amended_by": [
+    "N79 (a fourth tab, Videos)"
+   ]
   },
   {
    "id": "N37",
@@ -1133,7 +1137,7 @@
   {
    "id": "N65",
    "title": "Voice cuts: say “shroom cut”, say the line again, and the slip is cut",
-   "decision": "**Bagrat asked for it, 2026-10-18** (relayed by the orchestrator), and tried it with his own voice the same day: the cut worked. (1) **The cue.** A speaker who slips says “shroom cut” on its own and says the line again. When the space listens (N66: the space's own Cloudflare account hears each take as it uploads), the Mac that made the take reads the take's transcript once it is whole and finds each cue. “shroom” is matched by sound, so the way it was heard doesn't matter, and it must be followed by “cut”. A mention (“just say shroom cut”, “the shroom cut feature”) is left alone; a looser hearing (“Troom cut”) counts only when it stands as a sentence of its own. (2) **The cut.** The words after the cue are lined up against the words before it to find where the line was started again; the cut runs from that restart through the cue, its edges set in the quiet on either side, found in the take on the Mac. A retake that says enough of the slip again is cut at once. A cue that breaks off a sentence (it stops without a full stop, or on a word no sentence ends on: “the”, “and”, “to”, “will”, or “is” after a noun, as in “…and your link is”) takes the sentence with it, back to its start, when it began within 20 s; the finished sentence before it stays, even when the speaker ran straight on from it. A line said again in other words is weighed by meaning (Bagrat, 2026-10-18, relayed by the orchestrator: the mechanism deterministic, the judgment above it): the Mac lists the places the redone stretch might begin, within 20 s before the cue: the starts of up to three sentences, and the pauses of 0.4 s or more inside the cue's own sentence that leave at least three of its words before them (a finished sentence before it is redone whole or not at all); the space's own Cloudflare account (Clef) scores whether what was said after the cue says again everything from each; the cut runs from the farthest start scored 0.4 or more, and only ever reaches farther back than the words alone would. When it can't answer (the free day used up, a busy model), the words alone decide. When nothing was said again after a cue, how far back the slip went isn't clear: the line before the cue is cut with it, and the strip asks the owner to check (Bagrat, 2026-10-18, after a take of his own on the early build: cut the likely slip at once instead of offering it). (3) **Where it lands.** The cuts go into the record's edit list (N63) once per take, so the share page, the embed and the download follow them, as do the captions and chapters made from the same transcript (N66). The words cut stay out of what viewers get. Only a take stopped while the space listens is cut; nothing already shared changes. (4) **No switch of its own.** The space's listening (N66) is the one switch: the cue is a deliberate command, and a take without it is untouched. (5) **The owner page shows them** (`owner-page-cuts`), under the player, in owner-mode only: each cut's time and what was said, struck through, between a few words of what plays around it, with Put back; the line cut before a cue with nothing said again after it shows “shroom cut” struck as well, under a note asking the owner to check it, and its Put back brings the line back while “shroom cut” stays out (both his picks on the board, 2026-10-18). A press saves at once; one that doesn't save puts the row back and says so. They are reviewed in both places (Bagrat, 2026-10-18, relayed by the orchestrator: “Both”): the strip on the owner page for a quick check, and the editor's timeline (N63) for fine-tuning, the cuts as red parts, a cut put back dashed, to be cut again; both read and write the one edit list, so a Put back in either shows in the other. Viewers see only the cut video. (6) **The hint** (`owner-page-cue-hint`; Bagrat OK'd its line 2026-10-18, relayed by the orchestrator): in a space that listens, the owner page of a take with no voice cuts says how, under the player, until Got it or a first take with voice cuts. (7) **Finishing** (`uploading`, `hearing`; Bagrat, 2026-10-18 (relayed by the orchestrator): one indicator on the owner page, from the upload until the voice cuts land, “Finishing” his pick of its first word): the owner page's upload line becomes one line from go-live, “Finishing your video — the link already works, share it anytime.”, a small spinner turning in front of it and no bar (Bagrat, 2026-10-18 (relayed by the orchestrator): a small spinner in front of the words, no bar), resting beside a stalled upload's line; in a space that listens it stays after the upload, its spinner turning, while the take is heard, five minutes at most, and it fades when the cuts land (the strip takes its place), when there are none (the hint, while it's due), or when the five minutes pass. It never speaks of cuts. No “Ready ✓” after it (B142's, retired on the page) and no second line. The words are proposals until he OKs them. Built: DECISIONS B200, B201, B202, B203.",
+   "decision": "**Bagrat asked for it, 2026-10-18** (relayed by the orchestrator), and tried it with his own voice the same day: the cut worked. (1) **The cue.** A speaker who slips says “shroom cut” on its own and says the line again. When the space listens (N66: the space's own Cloudflare account hears each take as it uploads), the Mac that made the take reads the take's transcript once it is whole and finds each cue. “shroom” is matched by sound, so the way it was heard doesn't matter, and it must be followed by “cut”. A mention (“just say shroom cut”, “the shroom cut feature”) is left alone; a looser hearing (“Troom cut”) counts only when it stands as a sentence of its own. A cue heard where the take on the Mac is quiet, its words and half a second either side all but silent, was never said: the hearing wrote it into silence (it does, on a take with no speech in it, primed with the cue), and it is left alone (2026-10-25, after a take of Bagrat's on the early build cut its silent start). (2) **The cut.** The words after the cue are lined up against the words before it to find where the line was started again; the cut runs from that restart through the cue, its edges set in the quiet on either side, found in the take on the Mac. A retake that says enough of the slip again is cut at once. A cue that breaks off a sentence (it stops without a full stop, or on a word no sentence ends on: “the”, “and”, “to”, “will”, or “is” after a noun, as in “…and your link is”) takes the sentence with it, back to its start, when it began within 20 s; the finished sentence before it stays, even when the speaker ran straight on from it. Unless the judgment below hears all of that sentence said again after the cue (a start scored 0.4 or more at the sentence's own start or before it), nothing was said again: the sentence is cut as the line before the cue, and the strip asks the owner to check it; a cue with nothing said again never has more than itself cut unasked (2026-10-25, after a take of Bagrat's on the early build said “shroom cut” with no slip, inside a sentence he carried on, and had the half before it cut unasked). A line said again in other words is weighed by meaning (Bagrat, 2026-10-18, relayed by the orchestrator: the mechanism deterministic, the judgment above it): the Mac lists the places the redone stretch might begin, within 20 s before the cue: the starts of up to three sentences, and the pauses of 0.4 s or more inside the cue's own sentence that leave at least three of its words before them (a finished sentence before it is redone whole or not at all); the space's own Cloudflare account (Clef) scores whether what was said after the cue says again everything from each; the cut runs from the farthest start scored 0.4 or more, and only ever reaches farther back than the words alone would. When it can't answer (the free day used up, a busy model), the words alone decide. When nothing was said again after a cue, how far back the slip went isn't clear: the line before the cue is cut with it, and the strip asks the owner to check (Bagrat, 2026-10-18, after a take of his own on the early build: cut the likely slip at once instead of offering it). (3) **Where it lands.** The cuts go into the record's edit list (N63) once per take, so the share page, the embed and the download follow them, as do the captions and chapters made from the same transcript (N66). The words cut stay out of what viewers get. Only a take stopped while the space listens is cut; nothing already shared changes. (4) **No switch of its own.** The space's listening (N66) is the one switch: the cue is a deliberate command, and a take without it is untouched. (5) **The owner page shows them** (`owner-page-cuts`), under the player, in owner-mode only: each cut's time and what was said, struck through, between a few words of what plays around it, with Put back; the line cut before a cue with nothing said again after it shows “shroom cut” struck as well, under a note asking the owner to check it, and its Put back brings the line back while “shroom cut” stays out (both his picks on the board, 2026-10-18). A press saves at once; one that doesn't save puts the row back and says so. They are reviewed in both places (Bagrat, 2026-10-18, relayed by the orchestrator: “Both”): the strip on the owner page for a quick check, and the editor's timeline (N63) for fine-tuning, the cuts as red parts, a cut put back dashed, to be cut again; both read and write the one edit list, so a Put back in either shows in the other. Viewers see only the cut video. (6) **The hint** (`owner-page-cue-hint`; Bagrat OK'd its line 2026-10-18, relayed by the orchestrator): in a space that listens, the owner page of a take with no voice cuts says how, under the player, until Got it or a first take with voice cuts. (7) **Finishing** (`uploading`, `hearing`; Bagrat, 2026-10-18 (relayed by the orchestrator): one indicator on the owner page, from the upload until the voice cuts land, “Finishing” his pick of its first word): the owner page's upload line becomes one line from go-live, “Finishing your video — the link already works, share it anytime.”, a small spinner turning in front of it and no bar (Bagrat, 2026-10-18 (relayed by the orchestrator): a small spinner in front of the words, no bar), resting beside a stalled upload's line; in a space that listens it stays after the upload, its spinner turning, while the take is heard, five minutes at most, and it fades when the cuts land (the strip takes its place), when there are none (the hint, while it's due), or when the five minutes pass. It never speaks of cuts. No “Ready ✓” after it (B142's, retired on the page) and no second line. The words are proposals until he OKs them. Built: DECISIONS B200, B201, B202, B203.",
    "status": "provisional",
    "date": "2026-10-18",
    "amends": [
@@ -1170,7 +1174,8 @@
     "shroom.am/privacy (the viewers' line, ruled 2026-10-18)"
    ],
    "amended_by": [
-    "N75"
+    "N75",
+    "N79 (Your videos is the Videos tab; Space used in Space)"
    ]
   },
   {
@@ -1191,7 +1196,7 @@
   {
    "id": "N67",
    "title": "Chapters in the seek bar, captions, and the named title on the page",
-   "decision": "**Chapters live in the page's seek bar** (Bagrat's ruling, 2026-10-18, relayed by the orchestrator; he approved the canvas boards “The page — chapters in the seek bar, named on hover” and “The page on a phone — chapters in the seek bar, named while a finger is on it” the same day). The bar splits into one section per chapter, 2 px apart. Hovering it, playing or paused, shows the time and the chapter's name at that point, and the section under the pointer grows a little. On a phone a finger on the bar shows the same above the thumb, while it drags and for a moment after a tap, and the thumb grows while the finger is on it. The chapter now playing is named after the time, cut short when long, where the player's row has room for it; a phone's row has none beside its five controls, so there the finger's tip names it (a change from the phone board as approved, found while building and put back on the canvas; Bagrat kept it so, 2026-10-18, over a line under the controls or no sound button on phones). The bar's spoken value names it everywhere. There is no chapter list. A video with fewer than two chapters keeps today's whole bar. **Captions**, when the space has them: a Captions button in the player's row turns them on; off by default, and remembered on that browser. **The named title** is the page's title, everywhere a title shows (the page, its tab, unfurls, the download's name, the Library). On the owner's page a line under the title says it was named from what was said, until the title is edited; while the free day is used up, it says the name comes a little later instead. Built: DECISIONS B209. Provisional: the words are drafts until he OKs them.",
+   "decision": "**Chapters live in the page's seek bar** (Bagrat's ruling, 2026-10-18, relayed by the orchestrator; he approved the canvas boards “The page — chapters in the seek bar, named on hover” and “The page on a phone — chapters in the seek bar, named while a finger is on it” the same day). The bar splits into one section per chapter, 2 px apart. Hovering it, playing or paused, shows the time and the chapter's name at that point, and the section under the pointer grows a little. On a phone a finger on the bar shows the same above the thumb, while it drags and for a moment after a tap, and the thumb grows while the finger is on it. The chapter now playing is named after the time, cut short when long, where the player's row has room for it; a phone's row has none beside its five controls, so there the finger's tip names it (a change from the phone board as approved, found while building and put back on the canvas; Bagrat kept it so, 2026-10-18, over a line under the controls or no sound button on phones). The bar's spoken value names it everywhere. There is no chapter list. A video with fewer than two chapters keeps today's whole bar. **Captions**, when the space has them: a Captions button in the player's row turns them on; off by default, and remembered on that browser. **The named title** is the page's title, everywhere a title shows (the page, its tab, unfurls, the download's name, the Library). On the owner's page, while the free day is used up, a line under the title says the name comes a little later (the line that said it was named from what was said is gone: Bagrat, 2026-10-25). An owner's page left open while the space names the video takes the name, the chapters and the captions in place, as they come: no reload, and playback goes on (Bagrat's hand test, 2026-10-25). Built: DECISIONS B209. Provisional: the words are drafts until he OKs them.",
    "status": "provisional",
    "date": "2026-10-18",
    "amends": [
@@ -1233,12 +1238,14 @@
     "paused (Drop a marker shows)",
     "recording (⌥⌘M)"
    ],
-   "amended_by": []
+   "amended_by": [
+    "N78"
+   ]
   },
   {
    "id": "N69",
    "title": "Edit in shroom: the owner's page opens the video in shroom's editor",
-   "decision": "**Bagrat asked for an Edit button on the video's page that opens it in the editor, 2026-10-18** (relayed by the orchestrator), and approved the boards “The page — Edit in shroom” and “Editor — opened from the page's Edit” as drawn, with their lines, option A and the tooltip “Edit in shroom” (2026-10-18). (1) **The owner page gains Edit in shroom**: the scissors, the last of the quiet icons beside the title, after Download, its tooltip “Edit in shroom”. It shows only on the owner page (the space's owners on every video, a member on their own) and only once the video is fully up, as Edit… in the Library; a recipient's page and the embed never have it. (2) **It opens `shroom://edit/<the space's address>/<the video>`**, with nothing secret in it: the browser asks first (its own “Open shroom?”), and the Mac decides by its own state. (3) **The Mac's answers.** A video this Mac can edit (the owner's Macs: every video in the space; a member's Mac: their own) opens in the editor as Edit… opens it. The editor already open comes forward as it is, one at a time; holding another video, its footer says “You're editing another video — press Done, then Edit again.” While a take is open the press waits (law 4), and the editor opens once the take ends. Otherwise the popover opens by itself under the mushroom with one line, said once: “This Mac isn't set up for that video's space.”, “Only whoever recorded this video, or the space's owner, can edit it.” or “That video isn't in your space anymore.” A Mac not set up at all opens its welcome window, as a click on the mushroom does. (4) **Where shroom isn't on the Mac, the page says nothing** (option A): only a Mac running shroom makes a browser the owner's, so the button shows only where it can work. Built: DECISIONS B221. **Bagrat ratified it and its four lines as built, 2026-10-24.**",
+   "decision": "**Bagrat asked for an Edit button on the video's page that opens it in the editor, 2026-10-18** (relayed by the orchestrator), and approved the boards “The page — Edit in shroom” and “Editor — opened from the page's Edit” as drawn, with their lines, option A and the tooltip “Edit in shroom” (2026-10-18). (1) **The owner page gains Edit in shroom**: the scissors, the last of the quiet icons beside the title, after Download, its tooltip “Edit in shroom”. It shows only on the owner page (the space's owners on every video, a member on their own) and only once the video is fully up, as Edit… in the Library (there, greyed, from the page's first paint since Bagrat's ruling of 2026-10-25); a recipient's page and the embed never have it. (2) **It opens `shroom://edit/<the space's address>/<the video>`**, with nothing secret in it: the browser asks first (its own “Open shroom?”), and the Mac decides by its own state. (3) **The Mac's answers.** A video this Mac can edit (the owner's Macs: every video in the space; a member's Mac: their own) opens in the editor as Edit… opens it. The editor already open comes forward as it is, one at a time; holding another video, its footer says “You're editing another video — press Done, then Edit again.” While a take is open the press waits (law 4), and the editor opens once the take ends. Otherwise the popover opens by itself under the mushroom with one line, said once: “This Mac isn't set up for that video's space.”, “Only whoever recorded this video, or the space's owner, can edit it.” or “That video isn't in your space anymore.” A Mac not set up at all opens its welcome window, as a click on the mushroom does. (4) **Where shroom isn't on the Mac, the page says nothing** (option A): only a Mac running shroom makes a browser the owner's, so the button shows only where it can work. Built: DECISIONS B221. **Bagrat ratified it and its four lines as built, 2026-10-24.**",
    "status": "ratified",
    "date": "2026-10-18",
    "amends": [
@@ -1335,7 +1342,10 @@
     "The popover (auto-cleanup's banner)",
     "The page (its schedule deletes what auto-cleanup says)"
    ],
-   "amended_by": []
+   "amended_by": [
+    "N77 (a fourth wait: a year)",
+    "N79 (the pop-up is in the Videos tab)"
+   ]
   },
   {
    "id": "N76",
@@ -1347,6 +1357,58 @@
     "N66 (on by default; its offer gives way to ai-turned-on)",
     "config (ai-turned-on, ai-on-in-space, ai-off)",
     "settings-space (the switch settles the AI on this Mac)"
+   ],
+   "amended_by": []
+  },
+  {
+   "id": "N77",
+   "title": "Auto-cleanup offers a year",
+   "decision": "**Bagrat, 2026-10-25** (relayed by the orchestrator: add a year to the app), so the app offers what the landing's price box does (“30 days · 60 days · a year”): Delete videos nobody watches gains a fourth wait, **After a year** (365 days), after After 60 days. 15 days stays; nothing else changes. Its lines say “a year” where they'd say the days (“nobody has watched them in a year”, “Delete videos nobody watches for a year?”). The three days' warning and every guard hold as they are; the page still keeps a video's last play however long ago it was, so a year is counted from it as the shorter waits are.",
+   "status": "ratified",
+   "date": "2026-10-25",
+   "amends": [
+    "N75 (Settings · General's pop-up: Off · After 15 days · After 30 days · After 60 days · After a year)"
+   ],
+   "amended_by": []
+  },
+  {
+   "id": "N78",
+   "title": "The marker toast: ⌥⌘M answers on screen, left out of the video",
+   "decision": "**Bagrat, trying 0.1.30-early.1, 2026-10-25:** a marker dropped with the shortcut is too silent; a toast should say so, with a hint that it isn't in the recording, left out the way the agent label is. **He approved the board “The bubble — ⌥⌘M answers: the “Marker dropped” toast” as drawn, its words and the numbering, 2026-10-25** (relayed by the orchestrator). (1) **A marker ⌥⌘M drops shows a toast**: the agent label's pill with the marker's flag, top right of the display the take records, under the menu bar (just under the label when that shows; on the display Camera's preview sits on for the camera only). It reads “Marker dropped”, or “Marker 3 dropped” for the take's later ones, beside a quieter “Only you see this, not the video”. It is left out of the recording, as the countdown, the bubble's controls and the label are, and takes no clicks. (2) **It stays two seconds, then fades.** A press while it shows swaps the words and starts its two seconds again: one toast, never a stack. (3) **Paused:** with the popover open, no toast (the row's Marker dropped answers); with it put away, the toast; a second press at the same pause drops nothing, and the toast says “Already marked at this pause”. A question open, or a pause shroom made, drops nothing and shows nothing, as before. (4) **It goes with the take**, and once the popover or a count comes up over it; it doesn't come back when they go. Amends N64 (2)'s “nothing on screen answers it”. Built: DECISIONS B246.",
+   "status": "ratified",
+   "date": "2026-10-25",
+   "amends": [
+    "N64 (2) (⌥⌘M answers with the toast)",
+    "recording (the toast's lines)",
+    "tray-pause-bars (⌥⌘M with the popover put away)",
+    "law 4 (the toast, as the agent label, newly shows mid-take, left out of the recording)",
+    "The overlays (the toast)"
+   ],
+   "amended_by": []
+  },
+  {
+   "id": "N79",
+   "title": "Settings gains a Videos tab; Space used moves to Space",
+   "decision": "**Bagrat, 2026-10-25** (relayed by the orchestrator; the board “Settings — General outgrew its window”): General had outgrown its window (with Your videos, the coding agent and auto-cleanup it was about 820 tall in a page of 588, and scrolled on a Mac), so the window gains a tab, **Videos**: General · Videos · Space · Members. Videos holds what was General's group Your videos, row for row and word for word: Count plays, Suggest videos to clean up and Delete videos nobody watches; the group's heading is the tab's name now. **Space used** goes to the Space tab, its own row right under “Cloudflare billing set up”, on owner-class Macs as before (the bill is theirs). The window grows to **600 × 720**, the editor's height (it fits a 1024×768 screen), so every tab fits its page of 688 under the title bar, Space with the AI switch's parts included. General keeps the app's own rows, the help line, your coding agent and Uninstall. Auto-cleanup's question opens over Videos; the shroom command's settings link still opens General at its switch.",
+   "status": "ratified",
+   "date": "2026-10-25",
+   "amends": [
+    "N36 (the window's tabs: General · Videos · Space · Members)",
+    "N68 (Your videos' home: the Videos tab; Space used in Space)",
+    "N75 (Delete videos nobody watches: in the Videos tab)"
+   ],
+   "amended_by": []
+  },
+  {
+   "id": "N80",
+   "title": "Turning AI on or off shows its parts as they happen",
+   "decision": "**Bagrat's hand test of 0.1.30-early.1, 2026-10-25**: turning AI on or off took long enough to worry, with little shown while it ran — the anxiety a tester named in the setup (N74). **Bagrat, 2026-10-25** (relayed by the orchestrator, on the boards “Settings — Space: the AI switch while it works…” and “Popover — AI features are turned on: Turn off while it works…”, with the plainer words): (1) **The switch moves at once** to where it's going, greyed while the page is re-wired. (2) **Three parts list under its cost line**, each ticking only when its own calls answer, the one underway spinning with its running clock from its first second, as N74's do: “Checking your space…” → “Your space is ready”; “Connecting AI to your space…” → “AI connected” (off: “Disconnecting AI…” → “AI disconnected”); “Switching AI on for new videos…” → “AI is on for new videos” (off: “Switching AI off for new videos…” → “AI is off for new videos”). (3) **Done is when the page itself says so** (its ping answers with the AI on, or without it); the last part ticks in bold and the list stays until the window closes or the tab changes. (4) **Didn't go through** (law 12): the switch reads as the page has it and is live again; the part that stopped carries a cross in its plain words, with “Couldn't change that just now — try again in a moment.” under the list. (5) **Running long**: from 20 s on one part, one quiet line, “Cloudflare is slower than usual just now — hang tight.”; the clock keeps going until the re-wiring's 3 min deadline, which is a didn't-go-through. (6) **The banner's Turn off** shows the same parts under its ratified “Turning off — a few seconds.”; its off and didn't-go-through faces are as they were. The banner's own turn-on (N76) still says only “AI features are turned on.” while it runs (Bagrat, 2026-10-25: no preference; left as it is). Measured on the test account (2026-10-25, six turns, the real page): checking your space ~1 s; connecting or disconnecting AI 0.8–1 s, 6.5 s the first time; switching it for new videos (the schedule, then the page saying so) under 0.5 s. Nothing is stored (law 1).",
+   "status": "ratified",
+   "date": "2026-10-25",
+   "amends": [
+    "N66 (the switch shows its parts while the page is re-wired)",
+    "N76 (ai-turning-off lists the same parts)",
+    "settings-space (the AI switch's parts, done, didn't go through, running long)"
    ],
    "amended_by": []
   }
@@ -1374,7 +1436,7 @@
   },
   {
    "name": "The overlays",
-   "may_do": "Lives: the chosen display | Opens: the countdown scrim; the bubble from `config` through the take; the agent label while a take the shroom command started records (N62) | Rules: never windows, never the dock icon; the bubble never takes focus, while the countdown does — you just started it, and its Esc must work without any extra macOS permission; the bubble is the only thing of ours ever in a take (the label, like the countdown, is left out of it)  [UX-STATEMACHINE.md L1720]"
+   "may_do": "Lives: the chosen display | Opens: the countdown scrim; the bubble from `config` through the take; the agent label while a take the shroom command started records (N62); the marker toast for two seconds after ⌥⌘M (N78) | Rules: never windows, never the dock icon; the bubble never takes focus, while the countdown does — you just started it, and its Esc must work without any extra macOS permission; the bubble is the only thing of ours ever in a take (the label and the marker toast, like the countdown, are left out of it)  [UX-STATEMACHINE.md L1720]"
   },
   {
    "name": "The command line",
@@ -2453,6 +2515,7 @@
    "title": "the Settings window's tabs",
    "states": [
     "settings-general",
+    "settings-videos",
     "settings-members",
     "invite-born",
     "add-another-mac"
@@ -5874,6 +5937,36 @@
       "N62"
      ],
      "id": "recording.your-coding-agent-is"
+    },
+    {
+     "text": "Marker dropped",
+     "role": "toast",
+     "copy": "ratified",
+     "note": "The marker toast (N78): ⌥⌘M dropped the take's first marker. The agent label's pill with the marker's flag, top right of the display being recorded, under the label when it shows; two seconds, then it fades. Left out of the video; it takes no clicks. Approved by Bagrat as drawn, 2026-10-25.",
+     "cites": [
+      "N78"
+     ],
+     "id": "recording.marker-dropped"
+    },
+    {
+     "text": "Marker 3 dropped",
+     "role": "toast",
+     "copy": "ratified",
+     "note": "The marker toast for the take's later markers, numbered by the take (N78). A press while it shows swaps the words and starts its two seconds again.",
+     "cites": [
+      "N78"
+     ],
+     "id": "recording.marker-n-dropped"
+    },
+    {
+     "text": "Only you see this, not the video",
+     "role": "toast",
+     "copy": "ratified",
+     "note": "The marker toast's quieter hint, beside its first words, on every toast (N78).",
+     "cites": [
+      "N78"
+     ],
+     "id": "recording.marker-only-you"
     }
    ],
    "actions": [
@@ -5903,7 +5996,7 @@
      "kind": "other",
      "return_default": false,
      "goes_to": "recording",
-     "note": "drops a marker at this moment of the take; nothing on screen answers, the take goes on (N64)"
+     "note": "drops a marker at this moment of the take, answered by the marker toast, “Marker dropped” (N78); the take goes on (N64)"
     },
     {
      "label": "⌘Q / Dock Quit",
@@ -5919,7 +6012,8 @@
     "N25",
     "N54",
     "N62",
-    "N64"
+    "N64",
+    "N78"
    ],
    "was": {
     "fixture": "r3.json",
@@ -6772,11 +6866,23 @@
    "board": null,
    "summary": "Paused. The icon wears pause bars while the take is paused.",
    "entry": "A take is paused.",
-   "said": [],
+   "said": [
+    {
+     "text": "Already marked at this pause",
+     "role": "toast",
+     "copy": "ratified",
+     "note": "The marker toast (N78), paused with the popover put away: ⌥⌘M pressed again at a pause that has its marker drops nothing, and the toast says so. The first press there drops one, and the toast says “Marker dropped” with its hint (recording's lines).",
+     "cites": [
+      "N78"
+     ],
+     "id": "tray-pause-bars.already-marked"
+    }
+   ],
    "actions": [],
    "cites": [
     "N24",
-    "N38"
+    "N38",
+    "N78"
    ],
    "was": {
     "fixture": "r3.json",
@@ -6875,7 +6981,7 @@
    "surface": "web-page",
    "status": "ratified",
    "board": "OwnerPage",
-   "summary": "The real shareable page, opened in the browser at stop. It is never a preview or a processing screen. From top to bottom: the editable title field, which is the only chrome (no header, no wordmark, no name, per U3); the player (first frame, play, scrub bar, `0:00 / 4:32`, fullscreen); [ Copy link ] and, once the video plays, [ Copy thumbnail ] beside it (N46), the page's copy doors, with the upload line and a thin bar beside it; then, bottom-right, the owner switch, “made with shroom”, and the mark. Download appears only once the single-file MP4 exists, and it is second-class (R11). Only the editable title and the switch are owner-only. The address bar shows the clean link because the key died at the 302. The clipboard is never touched (N1). Rename at any time later is a metadata write, live worldwide on the next load (R4). It works from this page in owner-mode or from the Library. Owner-mode by role is N40 and still provisional: the cookie names a member, a member's own pages give them the title only, and owner-class browsers get full owner-mode on every page of the space. When the space names its videos (N66), an untitled video takes the name made from what was said; a line under the title says so until the title is edited, or that the name comes a little later while the free day is used up; and the player gains the chapters and the Captions button the recipient sees (N67). Edit in shroom (N69): the scissors, the last of the quiet icons beside the title, after Download, only on the owner page and only once the video is fully up (as Edit… in the Library); it opens the video in shroom's editor on this Mac.",
+   "summary": "The real shareable page, opened in the browser at stop. It is never a preview or a processing screen. From top to bottom: the editable title field, which is the only chrome (no header, no wordmark, no name, per U3); the player (first frame, play, scrub bar, `0:00 / 4:32`, fullscreen); [ Copy link ] and [ Copy thumbnail ] beside it (N46), the page's copy doors, with the upload line and a thin bar beside it; then, bottom-right, the owner switch, “made with shroom”, and the mark. Download works only once the single-file MP4 exists, and it is second-class (R11). Every quiet icon beside the title is there from the page's first paint, in its place, greyed and doing nothing until it can work, and wakes where it stands, so the row never shifts (Bagrat, 2026-10-25). Only the editable title and the switch are owner-only. The address bar shows the clean link because the key died at the 302. The clipboard is never touched (N1). Rename at any time later is a metadata write, live worldwide on the next load (R4). It works from this page in owner-mode or from the Library. Owner-mode by role is N40 and still provisional: the cookie names a member, a member's own pages give them the title only, and owner-class browsers get full owner-mode on every page of the space. When the space names its videos (N66), an untitled video takes the name made from what was said; while the free day is used up, a line under the title says the name comes a little later; and the player gains the chapters and the Captions button the recipient sees, in place on a page left open as they come (N67). Edit in shroom (N69): the scissors, the last of the quiet icons beside the title, after Download, only on the owner page, greyed until the video is fully up (as Edit… in the Library); it opens the video in shroom's editor on this Mac.",
    "entry": "Stop finalized and the space's page is reachable and can fill. The app opens `v.<name>.workers.dev/<id>?k=<one-time-key>`. The Worker validates k, sets a long-lived owner cookie that names the member, and 302-redirects to the clean URL. The page also opens later on any visit from a browser carrying a qualifying cookie (owner-mode persists per-browser, rendered server-side), when stopped-offline reconnects, and through the Library's Open page (the owner-keyed door, N35).",
    "said": [
     {
@@ -6909,7 +7015,7 @@
      "text": "Copy thumbnail",
      "role": "button",
      "copy": "ratified",
-     "note": "Beside Copy link, once the video plays (N46). Greyed until the picture for the current title is ready (the loop, or the still when no loop can be made). Reads “Copied” for a moment after the click, like Copy link.",
+     "note": "Beside Copy link, from the page's first paint (N46; Bagrat, 2026-10-25). Greyed until the video plays and the picture for the current title is ready (the loop, or the still when no loop can be made). Reads “Copied” for a moment after the click, like Copy link.",
      "id": "owner-page.copy-thumbnail"
     },
     {
@@ -6923,7 +7029,7 @@
      "text": "Download",
      "role": "button",
      "copy": "ratified",
-     "note": "Present only once the single-file MP4 exists; second-class (R11). The spec gives no button styling beyond “second-class”; the action is recorded as secondary on that basis.",
+     "note": "Present from the page's first paint, greyed until the single-file MP4 exists (Bagrat, 2026-10-25); second-class (R11). The spec gives no button styling beyond “second-class”; the action is recorded as secondary on that basis.",
      "id": "owner-page.download"
     },
     {
@@ -6942,16 +7048,6 @@
       "N69"
      ],
      "id": "owner-page.edit-in-shroom"
-    },
-    {
-     "text": "Named from what you said. Click the title to change it.",
-     "role": "line",
-     "copy": "provisional",
-     "note": "N67. Under the title while the space's name stands and nobody has typed one; gone once the title is edited. Proposed 2026-10-18 (AiOwnerNamed); awaiting Bagrat.",
-     "cites": [
-      "N67"
-     ],
-     "id": "owner-page.named-from-what-you-said"
     },
     {
      "text": "Its name and chapters come a little later, once your free hours are back.",
@@ -6985,20 +7081,20 @@
      "kind": "secondary",
      "return_default": false,
      "goes_to": "owner-page",
-     "note": "N46. Copies the video's picture wrapped in the clean link, with the plain link as text beside it; reads “Copied” for a moment. Shown once the video plays, and greyed (no copy) until the picture for the current title is stored: the loop, or the still when no loop can be made. The picture is made in the background after each title save, and a video with none yet gets it made when its page opens."
+     "note": "N46. Copies the video's picture wrapped in the clean link, with the plain link as text beside it; reads “Copied” for a moment. There from the page's first paint, and greyed (no copy) until the video plays and the picture for the current title is stored: the loop, or the still when no loop can be made. The picture is made in the background after each title save, and a video with none yet gets it made when its page opens."
     },
     {
      "label": "Download",
      "kind": "secondary",
      "return_default": false,
-     "note": "Appears only when the single-file MP4 exists; second-class (R11)."
+     "note": "There from the page's first paint, greyed (no download) until the single-file MP4 exists (Bagrat, 2026-10-25); second-class (R11)."
     },
     {
      "label": "Edit in shroom",
      "kind": "secondary",
      "return_default": false,
      "goes_to": "editor",
-     "note": "N69. The scissors, the last of the quiet icons beside the title: the shroom://edit/<host>/<id> link, with nothing secret in it. Shown only on the owner page (the space's owners on every video, a member on their own), once the video is fully up, as Edit… in the Library. The browser's own “Open shroom?” is the only step it adds; the Mac decides by its own state: the editor, or the popover's one line. Where shroom isn't on the Mac, the page says nothing (only a Mac running shroom makes a browser the owner's)."
+     "note": "N69. The scissors, the last of the quiet icons beside the title: the shroom://edit/<host>/<id> link, with nothing secret in it. Shown only on the owner page (the space's owners on every video, a member on their own), from the page's first paint, greyed until the video is fully up, as Edit… in the Library (Bagrat, 2026-10-25). The browser's own “Open shroom?” is the only step it adds; the Mac decides by its own state: the editor, or the popover's one line. Where shroom isn't on the Mac, the page says nothing (only a Mac running shroom makes a browser the owner's)."
     },
     {
      "label": "made with shroom",
@@ -7023,7 +7119,7 @@
      "label": "scrub bar",
      "kind": "other",
      "return_default": false,
-     "note": "Player control."
+     "note": "Player control. Its head travels inside the bar: at the start its left edge meets the player's left edge, at the end its right edge meets the right edge, and the played part reaches the head's centre (Bagrat, 2026-10-25)."
     },
     {
      "label": "fullscreen",
@@ -7540,7 +7636,8 @@
     {
      "label": "scrub bar",
      "kind": "other",
-     "return_default": false
+     "return_default": false,
+     "note": "Its head travels inside the bar: at the start its left edge meets the player's left edge, at the end its right edge meets the right edge, and the played part reaches the head's centre (Bagrat, 2026-10-25)."
     },
     {
      "label": "fullscreen",
@@ -8044,9 +8141,10 @@
      "text": "Two videos will be deleted on Oct 27 — nobody has watched them in 30 days.",
      "role": "line",
      "copy": "ratified",
-     "note": "N75. Above the rows, amber, in place of the suggestion line, while auto-cleanup has videos going in this Mac's scope; no Not now. The count varies (a word up to nine, Law 16; one reads 'One video will be deleted…' and 'nobody has watched it'), and so do the date and the days. With videos going on different dates, the earliest. Bagrat approved the board as drawn, 2026-10-24.",
+     "note": "N75. Above the rows, amber, in place of the suggestion line, while auto-cleanup has videos going in this Mac's scope; no Not now. The count varies (a word up to nine, Law 16; one reads 'One video will be deleted…' and 'nobody has watched it'), and so do the date and the days. With videos going on different dates, the earliest. Bagrat approved the board as drawn, 2026-10-24. At 365 days it says “a year” in place of the days (N77).",
      "cites": [
-      "N75"
+      "N75",
+      "N77"
      ],
      "id": "library.autoclean-warning"
     },
@@ -8064,9 +8162,10 @@
      "text": "Auto-cleanup deleted two videos nobody had watched in 30 days, freeing 1.7 GB.",
      "role": "line",
      "copy": "ratified",
-     "note": "N75. Once, after a round of auto-cleanup took videos in this Mac's scope, until OK. The count varies (a word up to nine; one reads 'one video'), and so do the days and the size. Bagrat approved the board as drawn, 2026-10-24.",
+     "note": "N75. Once, after a round of auto-cleanup took videos in this Mac's scope, until OK. The count varies (a word up to nine; one reads 'one video'), and so do the days and the size. Bagrat approved the board as drawn, 2026-10-24. At 365 days it says “a year” in place of the days (N77).",
      "cites": [
-      "N75"
+      "N75",
+      "N77"
      ],
      "id": "library.autoclean-cleaned"
     },
@@ -8360,7 +8459,7 @@
    "surface": "window",
    "status": "ratified",
    "board": "EditorCuts",
-   "summary": "The editor (N63): a window of its own for each video (N73), titled “Edit — <the video's title>”. Top to bottom: the video, playing the edit (cuts skipped, held to the trim); the play button and the time, edited position / edited length, with “was <the recording's length>” once the edit changes it; on the right the hint and Undo · Redo; then the timeline, the whole recording's sound as a waveform with the playhead: two yellow ends that drag to trim, a drag across the sound that selects a part with Cut <its length> under it, every cut red and hatched (clicking one offers Put back <its length>), every suggestion not yet taken dashed amber (clicking one offers Cut <its length>, as a selection does); either edge of a cut or a suggestion drags to move it, the pointer ↔ over it, its length shown live under it and the picture at the edge as it goes, stopping at the next cut or suggestion, the trim's end, a tenth of a second from its other edge, or where a second would be all that's left, one step for Undo (B195 (g)), and every marker (N64) a flag at its time. The footer: the line that the link stays the same, Revert to original and Done. The waveform fills in once the sound is read; until then the timeline is empty and the ends wait. Every change can be undone, Put back and Revert included; the changes stay in the window until Done saves them. While an earlier edit's original is still kept, the time it has left sits by Revert to original; once it is gone, Revert to original only undoes what changed since the window opened. While one is open, no edit becomes a video behind it on this Mac: the upkeep, and on the Mac holding the token the cleanup sweep, wait until every editor window has closed (B199). The owner page's Edit in shroom (N69) opens it as Edit… does. Either, on a video whose window is open, brings that window forward as it is; on another video, a window of its own opens for it, in front, and every other window stays as it is (N73). Each window is its own: its steps, its Done, its final video and its questions never touch another's. ✕ with changes not saved asks before the window closes (N71).",
+   "summary": "The editor (N63): a window of its own for each video (N73), titled “Edit — <the video's title>”. Top to bottom: the video, playing the edit (cuts skipped, held to the trim); the play button and the time, edited position / edited length, with “was <the recording's length>” once the edit changes it; on the right the hint and Undo · Redo; then the timeline: the ruler, where a click or the playhead's circle dragged seeks (Bagrat, 2026-10-25), and the whole recording's sound as a waveform with the playhead: two yellow ends that drag to trim, a drag across the sound that selects a part with Cut <its length> under it (one that reaches a yellow end moves that end there, a trim), every cut red and hatched (clicking one offers Put back <its length>), every suggestion not yet taken dashed amber (clicking one offers Cut <its length>, as a selection does); either edge of a cut or a suggestion drags to move it, the pointer ↔ over it, its length shown live under it and the picture at the edge as it goes, stopping at the next cut or suggestion, the trim's end, a tenth of a second from its other edge, or where a second would be all that's left, one step for Undo (B195 (g)), and every marker (N64) a flag at its time, its pole the continuation of its dashed line through the sound. The footer: the line that the link stays the same, Revert to original and Done. The waveform fills in once the sound is read; until then the timeline is empty and the ends wait. Every change can be undone, Put back and Revert included; the changes stay in the window until Done saves them. While an earlier edit's original is still kept, the time it has left sits by Revert to original; once it is gone, Revert to original only undoes what changed since the window opened. While one is open, no edit becomes a video behind it on this Mac: the upkeep, and on the Mac holding the token the cleanup sweep, wait until every editor window has closed (B199). The owner page's Edit in shroom (N69) opens it as Edit… does. Either, on a video whose window is open, brings that window forward as it is; on another video, a window of its own opens for it, in front, and every other window stays as it is (N73). Each window is its own: its steps, its Done, its final video and its questions never touch another's. ✕ with changes not saved asks before the window closes (N71).",
    "entry": "Edit… on a live row in the Library (N63), when the video is on this Mac: its take was recorded here and is still here, or it came from the space before. One window per video (N73): Edit… on a video whose window is open brings that window forward, as it is; on another video, a window of its own opens for it. A take started while editor windows are open leaves them open (law 4 covers only what shroom would newly show). The dock icon shows while one is open.",
    "said": [
     {
@@ -8470,14 +8569,20 @@
      "kind": "other",
      "return_default": false,
      "goes_to": "editor",
-     "note": "trims; a click on the timeline moves the playhead"
+     "note": "trims; a click on the sound moves the playhead"
+    },
+    {
+     "label": "the ruler: click it, or drag the playhead's head",
+     "kind": "other",
+     "return_default": false,
+     "note": "seeks (Bagrat, 2026-10-25): a click on the ruler moves the playhead there; the playhead's circle in the ruler, or the ruler pressed anywhere, drags to scrub, the time over it and the picture following, through cuts too; what was playing waits while it's held and plays on from where it's let go; let go in a cut or past an end, it lands where play goes on. ← → a second, ⇧ five, ⌥ a frame; Home and End the edit's start and end"
     },
     {
      "label": "drag across the sound",
      "kind": "other",
      "return_default": false,
      "goes_to": "editor",
-     "note": "selects a part; Cut <length> cuts it (the Delete key too)"
+     "note": "selects a part; Cut <length> cuts it (the Delete key too); a part that reaches a yellow end, within a few pixels, moves that end there instead: a trim, not a cut at the edge (Bagrat, 2026-10-25)"
     },
     {
      "label": "Cut",
@@ -8711,7 +8816,7 @@
    "surface": "window",
    "status": "ratified",
    "board": "EditorClosing",
-   "summary": "✕ with changes not saved (N71): the window asks before it closes, in its footer's place, the edit held behind it — no step is taken and the preview pauses. One card: “Save your edit?”, a line that what changed isn't saved yet, then Discard, Keep editing and Save. Save is Done and the Return default: the edit is saved, then the final video is made. Keep editing (Esc) puts the question away, every change still there. Discard closes the window and drops what wasn't saved, the video staying as it was last saved; it is never on Return. ✕ again leaves the question as it is. Quit and Update save first, without asking (B199; Bagrat, 2026-10-19).",
+   "summary": "✕ with changes not saved (N71): the window asks before it closes, in a sheet over it (as the Library's are; Bagrat, 2026-10-25), the edit held behind it — no step is taken and the preview pauses. One card: “Save your edit?”, a line that what changed isn't saved yet, then Discard, Keep editing and Save. Save is Done and the Return default: the edit is saved, then the final video is made. Keep editing (Esc) puts the question away, every change still there. Discard closes the window and drops what wasn't saved, the video staying as it was last saved; it is never on Return. ✕ again leaves the question as it is. Quit and Update save first, without asking (B199; Bagrat, 2026-10-19).",
    "entry": "✕ while the editor holds changes not saved: in editor, or in editor-save-failed.",
    "said": [
     {
@@ -8906,7 +9011,7 @@
    "surface": "window",
    "status": "ratified",
    "board": "EditorAfterSave",
-   "summary": "The final video is up: the window asks whether to delete the original. One card: “Delete the original?”, a line that the edit is the video now and the original is only kept for reverting, then Keep for 2 days and Yes, delete, which leads (filled, as Bagrat asked) but is never the Return default: Return does nothing here (law 9; DEVIATIONS #55). Yes, delete makes the edit the video for good and deletes the original now; Keep for 2 days keeps it, and shroom deletes it two days on. ✕ or Esc is Keep for 2 days.",
+   "summary": "The final video is up: the window asks whether to delete the original, in a sheet over it (as the Library's are; Bagrat, 2026-10-25), the window held behind it. One card: “Delete the original?”, a line that the edit is the video now and the original is only kept for reverting, then Keep for 2 days and Yes, delete, which leads (filled, as Bagrat asked) but is never the Return default: Return does nothing here (law 9; DEVIATIONS #55). Yes, delete makes the edit the video for good and deletes the original now; Keep for 2 days keeps it, and shroom deletes it two days on. ✕ or Esc is Keep for 2 days.",
    "entry": "The final video landed while the editor was open.",
    "said": [
     {
@@ -9139,7 +9244,7 @@
    "surface": "window",
    "status": "provisional",
    "board": null,
-   "summary": "One standard macOS settings window with toolbar tabs General · Space · Members. Members appears only on owner-class Macs (N5, N33). The window opens on the last tab used (General the first time). One instance. ✕ ≡ Close (N12). Resolves N28's open placement.",
+   "summary": "One standard macOS settings window, 600 × 720 (N79), with toolbar tabs General · Videos · Space · Members. Members appears only on owner-class Macs (N5, N33). The window opens on the last tab used (General the first time). One instance. ✕ ≡ Close (N12). Resolves N28's open placement.",
    "entry": "A space exists, so config is reachable: not mid-take. The window opens from any of these doors: (a) the gear in config's footer; (b) all-set's Invite someone, which morphs the onboarding window into Settings on Members; (c) space-degraded's Reconnect your space, which opens Space in the repair mood (Region 2); (d) recording-off's Turn it back on, which opens Space with row six current at perm-screen (Region 3). It is also restored at its derived state after an update relaunch. A window opened before a take stays open.",
    "said": [
     {
@@ -9148,6 +9253,13 @@
      "copy": "provisional",
      "note": "Toolbar tab.",
      "id": "settings.general"
+    },
+    {
+     "text": "Videos",
+     "role": "other",
+     "copy": "ratified",
+     "note": "Toolbar tab (N79; Bagrat named it, 2026-10-25).",
+     "id": "settings.videos"
     },
     {
      "text": "Space",
@@ -9171,6 +9283,13 @@
      "return_default": false,
      "note": "Toolbar tab.",
      "goes_to": "settings-general"
+    },
+    {
+     "label": "Videos",
+     "kind": "other",
+     "return_default": false,
+     "note": "Toolbar tab.",
+     "goes_to": "settings-videos"
     },
     {
      "label": "Space",
@@ -9200,7 +9319,8 @@
     "N5",
     "N33",
     "N42",
-    "N38"
+    "N38",
+    "N79"
    ],
    "was": {
     "fixture": "r5.json",
@@ -9215,7 +9335,7 @@
    "surface": "window",
    "status": "provisional",
    "board": "SettingsGeneral",
-   "summary": "The General tab: U4's login checkbox at home at last (it reads the system's truth: if the login item is removed in System Settings, the box shows unchecked), the update row mirroring config's banner, and the help row: Copy diagnostics and Report a problem… (B180), with GitHub's new-issue link under it as the public door (N8). Past this Mac's macOS, General carries the only update line: no banner, no dot. Your videos gains Delete videos nobody watches (N75): the space's auto-cleanup, Off as it ships, set on the Mac that holds the setup key, read-only elsewhere.",
+   "summary": "The General tab: U4's login checkbox at home at last (it reads the system's truth: if the login item is removed in System Settings, the box shows unchecked), the update row mirroring config's banner, and the help row: Copy diagnostics and Report a problem… (B180), with GitHub's new-issue link under it as the public door (N8). Past this Mac's macOS, General carries the only update line: no banner, no dot. Then your coding agent (N62) and Uninstall shroom… at the foot. Your videos moved to a tab of its own, Videos (N79).",
    "entry": "Settings window on the General tab (the default on first open). The shroom command's settings link (N62) opens it too, the switch's row lit for a moment.",
    "said": [
     {
@@ -9377,156 +9497,6 @@
       "N62"
      ],
      "id": "settings-general.let-it-start-and"
-    },
-    {
-     "text": "Your videos",
-     "role": "field-label",
-     "copy": "ratified",
-     "note": "The group's heading (N68).",
-     "id": "settings-general.your-videos"
-    },
-    {
-     "text": "Count plays",
-     "role": "field-label",
-     "copy": "ratified",
-     "note": "Switch, on by default. The space's: owner-class Macs change it; elsewhere it shows greyed (N68).",
-     "id": "settings-general.count-plays"
-    },
-    {
-     "text": "How often each video is played and how far, kept in your Cloudflare account. No cookies, nothing about who watched.",
-     "role": "line",
-     "copy": "ratified",
-     "id": "settings-general.how-often-each-video"
-    },
-    {
-     "text": "Couldn't change that just now — try again in a moment.",
-     "role": "line",
-     "copy": "ratified",
-     "note": "Under Count plays, when the space didn't take the switch (law 12); the switch reads as the space has it.",
-     "id": "settings-general.couldnt-change-that"
-    },
-    {
-     "text": "Suggest videos to clean up",
-     "role": "field-label",
-     "copy": "ratified",
-     "note": "Switch, on by default; this Mac's (N68).",
-     "id": "settings-general.suggest-videos-to-clean-up"
-    },
-    {
-     "text": "In the Library, videos that might be worth deleting: rarely watched lately, and taking real room.",
-     "role": "line",
-     "copy": "ratified",
-     "id": "settings-general.videos-youve-stopped-watching"
-    },
-    {
-     "text": "Space used",
-     "role": "field-label",
-     "copy": "ratified",
-     "id": "settings-general.space-used"
-    },
-    {
-     "text": "34 GB — about 36¢ a month past Cloudflare's free 10 GB",
-     "role": "status",
-     "copy": "ratified",
-     "note": "Past the free 10 GB; the size and the cents vary (B212).",
-     "id": "settings-general.34-gb"
-    },
-    {
-     "text": "8.2 GB — inside Cloudflare's free 10 GB",
-     "role": "status",
-     "copy": "ratified",
-     "note": "Inside the free 10 GB; the size varies (B212).",
-     "id": "settings-general.8-2-gb"
-    },
-    {
-     "text": "Delete videos nobody watches",
-     "role": "field-label",
-     "copy": "ratified",
-     "note": "N75. A pop-up in Your videos, under Suggest videos to clean up; Off as it ships. Set on the Mac that holds the setup key. Bagrat approved the board as drawn, 2026-10-24.",
-     "cites": [
-      "N75"
-     ],
-     "id": "settings-general.delete-videos-nobody-watches"
-    },
-    {
-     "text": "Counted from the last time someone watched it, or from when it was shared. Pinned videos are never deleted, and the Library says which ones are going a few days before.",
-     "role": "line",
-     "copy": "ratified",
-     "note": "N75. Under it, on the Mac that sets it. Bagrat approved the board as drawn, 2026-10-24.",
-     "cites": [
-      "N75"
-     ],
-     "id": "settings-general.counted-from"
-    },
-    {
-     "text": "Off",
-     "role": "button",
-     "copy": "ratified",
-     "note": "N75. The pop-up's first choice. Bagrat approved the board as drawn, 2026-10-24.",
-     "cites": [
-      "N75"
-     ],
-     "id": "settings-general.autoclean-off"
-    },
-    {
-     "text": "After 15 days",
-     "role": "button",
-     "copy": "ratified",
-     "note": "N75. Bagrat approved the board as drawn, 2026-10-24.",
-     "cites": [
-      "N75"
-     ],
-     "id": "settings-general.after-15-days"
-    },
-    {
-     "text": "After 30 days",
-     "role": "button",
-     "copy": "ratified",
-     "note": "N75. Bagrat approved the board as drawn, 2026-10-24.",
-     "cites": [
-      "N75"
-     ],
-     "id": "settings-general.after-30-days"
-    },
-    {
-     "text": "After 60 days",
-     "role": "button",
-     "copy": "ratified",
-     "note": "N75. Bagrat approved the board as drawn, 2026-10-24.",
-     "cites": [
-      "N75"
-     ],
-     "id": "settings-general.after-60-days"
-    },
-    {
-     "text": "Your space deletes videos nobody has watched in 30 days. It's set on the Mac that set up your space. Pin a video in the Library to keep it.",
-     "role": "line",
-     "copy": "ratified",
-     "note": "N75. On every other Mac, under the pop-up greyed at the space's choice. The number of days varies; off, the pop-up reads Off and the line is the setting Mac's. Bagrat approved the board as drawn, 2026-10-24.",
-     "cites": [
-      "N75"
-     ],
-     "id": "settings-general.space-deletes"
-    },
-    {
-     "text": "Needs Count plays",
-     "role": "line",
-     "copy": "ratified",
-     "note": "N75. In place of the line under it, the pop-up greyed, while Count plays is off. Bagrat approved the board as drawn, 2026-10-24.",
-     "cites": [
-      "N75"
-     ],
-     "id": "settings-general.needs-count-plays"
-    },
-    {
-     "text": "Turning on — a few seconds.",
-     "role": "line",
-     "copy": "ratified",
-     "note": "N75. Under Delete videos nobody watches, the first time it's turned on: the space's page is given its schedule, as AI's banner says it (N66). Bagrat approved the board as drawn, 2026-10-24.",
-     "cites": [
-      "N75"
-     ],
-     "id": "settings-general.autoclean-turning-on"
     }
    ],
    "actions": [
@@ -9574,13 +9544,6 @@
      "return_default": false,
      "note": "Opens the Uninstall sheet. Greys mid-take (law 4).",
      "goes_to": "uninstall-confirm"
-    },
-    {
-     "label": "Delete videos nobody watches",
-     "kind": "other",
-     "return_default": false,
-     "goes_to": "autoclean-confirm",
-     "note": "N75. A pop-up: Off · After 15 days · After 30 days · After 60 days. Turning it on or shortening it while videos already qualify asks first (autoclean-confirm); otherwise it's set at once, “Turning on — a few seconds.” under it the first time. One that didn't go through says Couldn't change that and stays as it was."
     }
    ],
    "cites": [
@@ -9593,13 +9556,178 @@
     "B180",
     "N53",
     "N62",
-    "N68"
+    "N68",
+    "N79"
    ],
    "was": {
     "fixture": "r5.json",
     "id": "settings · General",
     "lines": "1166-1174, 1245, 1259-1260 (law 4: 116-125)"
    }
+  },
+  "settings-videos": {
+   "region": 5,
+   "kind": "face",
+   "parent": "settings",
+   "surface": "window",
+   "status": "ratified",
+   "board": "SettingsVideos",
+   "summary": "The Videos tab (N79): what was General's group Your videos, row for row and word for word. Count plays (the space's: live on owner-class Macs, greyed on a member's), Suggest videos to clean up (this Mac's), and Delete videos nobody watches (N75: the space's auto-cleanup, Off as it ships, set on the Mac that holds the setup key, read-only elsewhere). The group's heading became the tab's name. Space used moved to the Space tab.",
+   "entry": "Settings window on the Videos tab: its toolbar tab, or the window opened again on the last tab used.",
+   "said": [
+    {
+     "text": "Count plays",
+     "role": "field-label",
+     "copy": "ratified",
+     "note": "Switch, on by default. The space's: owner-class Macs change it; elsewhere it shows greyed (N68).",
+     "id": "settings-videos.count-plays"
+    },
+    {
+     "text": "How often each video is played and how far, kept in your Cloudflare account. No cookies, nothing about who watched.",
+     "role": "line",
+     "copy": "ratified",
+     "id": "settings-videos.how-often-each-video",
+     "note": ""
+    },
+    {
+     "text": "Couldn't change that just now — try again in a moment.",
+     "role": "line",
+     "copy": "ratified",
+     "note": "Under Count plays, when the space didn't take the switch (law 12); the switch reads as the space has it.",
+     "id": "settings-videos.couldnt-change-that"
+    },
+    {
+     "text": "Suggest videos to clean up",
+     "role": "field-label",
+     "copy": "ratified",
+     "note": "Switch, on by default; this Mac's (N68).",
+     "id": "settings-videos.suggest-videos-to-clean-up"
+    },
+    {
+     "text": "In the Library, videos that might be worth deleting: rarely watched lately, and taking real room.",
+     "role": "line",
+     "copy": "ratified",
+     "id": "settings-videos.videos-youve-stopped-watching",
+     "note": ""
+    },
+    {
+     "text": "Delete videos nobody watches",
+     "role": "field-label",
+     "copy": "ratified",
+     "note": "N75. A pop-up under Suggest videos to clean up; Off as it ships. Set on the Mac that holds the setup key. Bagrat approved the board as drawn, 2026-10-24.",
+     "cites": [
+      "N75"
+     ],
+     "id": "settings-videos.delete-videos-nobody-watches"
+    },
+    {
+     "text": "Counted from the last time someone watched it, or from when it was shared. Pinned videos are never deleted, and the Library says which ones are going a few days before.",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N75. Under it, on the Mac that sets it. Bagrat approved the board as drawn, 2026-10-24.",
+     "cites": [
+      "N75"
+     ],
+     "id": "settings-videos.counted-from"
+    },
+    {
+     "text": "Off",
+     "role": "button",
+     "copy": "ratified",
+     "note": "N75. The pop-up's first choice. Bagrat approved the board as drawn, 2026-10-24.",
+     "cites": [
+      "N75"
+     ],
+     "id": "settings-videos.autoclean-off"
+    },
+    {
+     "text": "After 15 days",
+     "role": "button",
+     "copy": "ratified",
+     "note": "N75. Bagrat approved the board as drawn, 2026-10-24.",
+     "cites": [
+      "N75"
+     ],
+     "id": "settings-videos.after-15-days"
+    },
+    {
+     "text": "After 30 days",
+     "role": "button",
+     "copy": "ratified",
+     "note": "N75. Bagrat approved the board as drawn, 2026-10-24.",
+     "cites": [
+      "N75"
+     ],
+     "id": "settings-videos.after-30-days"
+    },
+    {
+     "text": "After 60 days",
+     "role": "button",
+     "copy": "ratified",
+     "note": "N75. Bagrat approved the board as drawn, 2026-10-24.",
+     "cites": [
+      "N75"
+     ],
+     "id": "settings-videos.after-60-days"
+    },
+    {
+     "text": "After a year",
+     "role": "button",
+     "copy": "ratified",
+     "note": "N77. The pop-up's last choice: 365 days. Bagrat, 2026-10-25: add a year, the landing's words.",
+     "cites": [
+      "N75",
+      "N77"
+     ],
+     "id": "settings-videos.after-a-year"
+    },
+    {
+     "text": "Your space deletes videos nobody has watched in 30 days. It's set on the Mac that set up your space. Pin a video in the Library to keep it.",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N75. On every other Mac, under the pop-up greyed at the space's choice. The number of days varies; off, the pop-up reads Off and the line is the setting Mac's. Bagrat approved the board as drawn, 2026-10-24. At 365 days it says “a year” in place of the days (N77).",
+     "cites": [
+      "N75",
+      "N77"
+     ],
+     "id": "settings-videos.space-deletes"
+    },
+    {
+     "text": "Needs Count plays",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N75. In place of the line under it, the pop-up greyed, while Count plays is off. Bagrat approved the board as drawn, 2026-10-24.",
+     "cites": [
+      "N75"
+     ],
+     "id": "settings-videos.needs-count-plays"
+    },
+    {
+     "text": "Turning on — a few seconds.",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N75. Under Delete videos nobody watches, the first time it's turned on: the space's page is given its schedule, as AI's banner says it (N66). Bagrat approved the board as drawn, 2026-10-24.",
+     "cites": [
+      "N75"
+     ],
+     "id": "settings-videos.autoclean-turning-on"
+    }
+   ],
+   "actions": [
+    {
+     "label": "Delete videos nobody watches",
+     "kind": "other",
+     "return_default": false,
+     "goes_to": "autoclean-confirm",
+     "note": "N75. A pop-up: Off · After 15 days · After 30 days · After 60 days · After a year. Turning it on or shortening it while videos already qualify asks first (autoclean-confirm); otherwise it's set at once, “Turning on — a few seconds.” under it the first time. One that didn't go through says Couldn't change that and stays as it was."
+    }
+   ],
+   "cites": [
+    "N68",
+    "N75",
+    "N77",
+    "N79"
+   ]
   },
   "settings-space": {
    "region": 5,
@@ -9608,7 +9736,7 @@
    "surface": "window",
    "status": "provisional",
    "board": "SettingsSpace",
-   "summary": "The Space tab: one tab with a mood per kind of Mac (inspection · repair · owner-class-without-token · member). Beneath the rows, by role: the mark switch (owner-class only — a space setting, U3) and the exits as quiet text (Disconnect this Mac… for owners, Leave this space… for members). Row six is live on every Mac. A revoked grant un-ticks it (“screen recording is off”), with Turn it back on → the permissions chapter at exactly the missing beat, in this window. A denied microphone ticks the row with the fact, plus a quiet Turn on the microphone that opens System Settings' Microphone pane (a denied mic never blocks). Mid-take both exits grey (law 4). After Disconnect or Leave, the ~/.shroom secrets are wiped and the app returns to idle-unprovisioned; the login item stays as it was. No invite door shows (B159): an invite link pasted anywhere in the tab (⌘V) opens its invite, as the page's Open shroom does. On the Mac that holds the setup key, a second switch turns the space's AI on or off for new videos (on by default, N76) — titles, chapters, captions and voice cuts (N66) — with one line on what it does and costs; turning it on or off re-wires the page.",
+   "summary": "The Space tab: one tab with a mood per kind of Mac (inspection · repair · owner-class-without-token · member). Beneath the rows, by role: the mark switch (owner-class only — a space setting, U3) and the exits as quiet text (Disconnect this Mac… for owners, Leave this space… for members). Row six is live on every Mac. A revoked grant un-ticks it (“screen recording is off”), with Turn it back on → the permissions chapter at exactly the missing beat, in this window. A denied microphone ticks the row with the fact, plus a quiet Turn on the microphone that opens System Settings' Microphone pane (a denied mic never blocks). Mid-take both exits grey (law 4). After Disconnect or Leave, the ~/.shroom secrets are wiped and the app returns to idle-unprovisioned; the login item stays as it was. No invite door shows (B159): an invite link pasted anywhere in the tab (⌘V) opens its invite, as the page's Open shroom does. On the Mac that holds the setup key, a second switch turns the space's AI on or off for new videos (on by default, N76) — titles, chapters, captions and voice cuts (N66) — with one line on what it does and costs; turning it on or off re-wires the page. On owner-class Macs, Space used is a row of its own right under “Cloudflare billing set up”: what the space holds and what it costs (N79, moved from Your videos). Since N80 the switch moves at once and lists its parts as they land — Checking your space, Connecting (or Disconnecting) AI, Switching AI on (or off) for new videos — each ticking when its own calls answer, the one underway with its running clock; done when the page says so, the list kept until the window closes or the tab changes; didn't go through, the part that stopped crossed with the law-12 line; from 20 s on a part, one quiet line.",
    "entry": "Settings window on the Space tab. Which mood shows is derived from the kind of Mac and the probe results.",
    "said": [
     {
@@ -9698,11 +9826,193 @@
      "text": "Couldn't change that just now — try again in a moment.",
      "role": "line",
      "copy": "provisional",
-     "note": "N66. In place of the AI switch's line when a re-wiring didn't go through, until the next try or the next visit (law 12); the switch is as the page has it.",
+     "note": "N66, N80. When a re-wiring didn't go through, until the next try or the next visit (law 12); the switch is as the page has it. Since N80 under the parts, the part that stopped crossed, the cost line kept.",
      "cites": [
-      "N66"
+      "N66",
+      "N80"
      ],
      "id": "settings-space.couldnt-change-that-just"
+    },
+    {
+     "text": "Space used",
+     "role": "field-label",
+     "copy": "ratified",
+     "id": "settings-space.space-used",
+     "note": "N79: its own row in the plan's card, right under “Cloudflare billing set up”, on owner-class Macs (the bill is theirs, N68), moved from Your videos. Bagrat, 2026-10-25."
+    },
+    {
+     "text": "34 GB — about 36¢ a month past Cloudflare's free 10 GB",
+     "role": "status",
+     "copy": "ratified",
+     "note": "Past the free 10 GB; the size and the cents vary (B212).",
+     "id": "settings-space.34-gb"
+    },
+    {
+     "text": "8.2 GB — inside Cloudflare's free 10 GB",
+     "role": "status",
+     "copy": "ratified",
+     "note": "Inside the free 10 GB; the size varies (B212).",
+     "id": "settings-space.8-2-gb"
+    },
+    {
+     "text": "Checking your space…",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N80: the AI switch's parts, under its cost line: part 1 (the page's version, the setup key, that the page is shroom's), underway: its spinner, and its running clock once it has run a second. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”).",
+     "cites": [
+      "N80"
+     ],
+     "id": "settings-space.ai-part-1-now"
+    },
+    {
+     "text": "Your space is ready",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N80: the AI switch's parts, under its cost line: part 1, done: its tick. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”).",
+     "cites": [
+      "N80"
+     ],
+     "id": "settings-space.ai-part-1-done"
+    },
+    {
+     "text": "Checking your space",
+     "role": "line",
+     "copy": "provisional",
+     "note": "N80: the AI switch's part 1, stopped there (the page unanswered, the setup key not live, the page newer than this app): its cross, under the cost line, the law-12 line under it. Not drawn on the board; the build's form of a drawn line, as parts 2 and 3 stop in their plain words (provisional, N80).",
+     "cites": [
+      "N80"
+     ],
+     "id": "settings-space.ai-part-1-stopped"
+    },
+    {
+     "text": "Connecting AI to your space…",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N80: the AI switch's parts, under its cost line: turning on, part 2 (the page put up again with Cloudflare's AI), underway: its spinner and its clock. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”).",
+     "cites": [
+      "N80"
+     ],
+     "id": "settings-space.ai-on-part-2-now"
+    },
+    {
+     "text": "AI connected",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N80: the AI switch's parts, under its cost line: turning on, part 2, done. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”).",
+     "cites": [
+      "N80"
+     ],
+     "id": "settings-space.ai-on-part-2-done"
+    },
+    {
+     "text": "Connecting AI to your space",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N80: the AI switch's parts, under its cost line: turning on, part 2, still to come: its dot; with a cross when it stopped there (law 12). Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”).",
+     "cites": [
+      "N80"
+     ],
+     "id": "settings-space.ai-on-part-2-ahead"
+    },
+    {
+     "text": "Switching AI on for new videos…",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N80: the AI switch's parts, under its cost line: turning on, part 3 (its schedule, then the page saying its AI is on), underway: its spinner and its clock. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”).",
+     "cites": [
+      "N80"
+     ],
+     "id": "settings-space.ai-on-part-3-now"
+    },
+    {
+     "text": "AI is on for new videos",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N80: the AI switch's parts, under its cost line: turning on, part 3, done: its tick, in bold — the end. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”).",
+     "cites": [
+      "N80"
+     ],
+     "id": "settings-space.ai-on-part-3-done"
+    },
+    {
+     "text": "Switching AI on for new videos",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N80: the AI switch's parts, under its cost line: turning on, part 3, still to come: its dot; with a cross when it stopped there. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”).",
+     "cites": [
+      "N80"
+     ],
+     "id": "settings-space.ai-on-part-3-ahead"
+    },
+    {
+     "text": "Disconnecting AI…",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N80: the AI switch's parts, under its cost line: turning off, part 2 (the page put up again without Cloudflare's AI), underway: its spinner and its clock. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”).",
+     "cites": [
+      "N80"
+     ],
+     "id": "settings-space.ai-off-part-2-now"
+    },
+    {
+     "text": "AI disconnected",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N80: the AI switch's parts, under its cost line: turning off, part 2, done. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”).",
+     "cites": [
+      "N80"
+     ],
+     "id": "settings-space.ai-off-part-2-done"
+    },
+    {
+     "text": "Disconnecting AI",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N80: the AI switch's parts, under its cost line: turning off, part 2, still to come: its dot; with a cross when it stopped there. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”).",
+     "cites": [
+      "N80"
+     ],
+     "id": "settings-space.ai-off-part-2-ahead"
+    },
+    {
+     "text": "Switching AI off for new videos…",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N80: the AI switch's parts, under its cost line: turning off, part 3 (its schedule, then the page saying its AI is off), underway: its spinner and its clock. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”).",
+     "cites": [
+      "N80"
+     ],
+     "id": "settings-space.ai-off-part-3-now"
+    },
+    {
+     "text": "AI is off for new videos",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N80: the AI switch's parts, under its cost line: turning off, part 3, done: its tick, in bold — the end. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”).",
+     "cites": [
+      "N80"
+     ],
+     "id": "settings-space.ai-off-part-3-done"
+    },
+    {
+     "text": "Switching AI off for new videos",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N80: the AI switch's parts, under its cost line: turning off, part 3, still to come: its dot; with a cross when it stopped there. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”).",
+     "cites": [
+      "N80"
+     ],
+     "id": "settings-space.ai-off-part-3-ahead"
+    },
+    {
+     "text": "Cloudflare is slower than usual just now — hang tight.",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N80: the AI switch's parts, under its cost line: quiet, under the parts, once one part has run 20 s; the clock keeps going. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”).",
+     "cites": [
+      "N80"
+     ],
+     "id": "settings-space.ai-long"
     }
    ],
    "actions": [
@@ -9716,7 +10026,7 @@
      "label": "AI for new videos switch",
      "kind": "switch",
      "return_default": false,
-     "note": "N66. Only on the Mac that holds the setup key; one switch for every AI feature, voice cuts included. On re-wires the page with Cloudflare's AI and its schedule; off takes them away. Greys while the re-wire runs and mid-take (law 4). Using it settles the AI on this Mac: never turned on by default again (N76)."
+     "note": "N66. Only on the Mac that holds the setup key; one switch for every AI feature, voice cuts included. On re-wires the page with Cloudflare's AI and its schedule; off takes them away. Greys while the re-wire runs and mid-take (law 4). Using it settles the AI on this Mac: never turned on by default again (N76). Since N80 it moves at once to where it's going, greyed, while its three parts list under the cost line with the running clock; done when the page says so; as the page has it again when it didn't go through."
     },
     {
      "label": "⌘V (an invite link, pasted anywhere in the tab)",
@@ -9761,7 +10071,10 @@
     "N31",
     "law 4",
     "B159",
-    "N66"
+    "N66",
+    "N68",
+    "N79",
+    "N80"
    ],
    "was": {
     "fixture": "r5.json",
@@ -13268,7 +13581,7 @@
    "surface": "banner",
    "status": "ratified",
    "board": "AiDefaultBannerStates",
-   "summary": "While the space's page is put up again without Cloudflare's AI (a few seconds), the banner says so and holds no buttons.",
+   "summary": "While the space's page is put up again without Cloudflare's AI (a few seconds), the banner says so and holds no buttons. Since N80 its parts list under the line as they land — Checking your space, Disconnecting AI, Switching AI off for new videos — the one underway with its running clock; from 20 s on a part, one quiet line.",
    "entry": "Turn off in ai-turned-on, until the page answers.",
    "said": [
     {
@@ -13280,11 +13593,92 @@
       "N76"
      ],
      "id": "ai-turning-off.turning-off-a-few"
+    },
+    {
+     "text": "Checking your space…",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N80: the banner's parts, under its line: part 1 (the page's version, the setup key, that the page is shroom's), underway: its spinner, and its running clock once it has run a second. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”).",
+     "cites": [
+      "N80"
+     ],
+     "id": "ai-turning-off.ai-part-1-now"
+    },
+    {
+     "text": "Your space is ready",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N80: the banner's parts, under its line: part 1, done: its tick. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”).",
+     "cites": [
+      "N80"
+     ],
+     "id": "ai-turning-off.ai-part-1-done"
+    },
+    {
+     "text": "Disconnecting AI…",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N80: the banner's parts, under its line: turning off, part 2 (the page put up again without Cloudflare's AI), underway: its spinner and its clock. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”).",
+     "cites": [
+      "N80"
+     ],
+     "id": "ai-turning-off.ai-off-part-2-now"
+    },
+    {
+     "text": "AI disconnected",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N80: the banner's parts, under its line: turning off, part 2, done. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”).",
+     "cites": [
+      "N80"
+     ],
+     "id": "ai-turning-off.ai-off-part-2-done"
+    },
+    {
+     "text": "Disconnecting AI",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N80: the banner's parts, under its line: turning off, part 2, still to come: its dot; with a cross when it stopped there. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”).",
+     "cites": [
+      "N80"
+     ],
+     "id": "ai-turning-off.ai-off-part-2-ahead"
+    },
+    {
+     "text": "Switching AI off for new videos…",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N80: the banner's parts, under its line: turning off, part 3 (its schedule, then the page saying its AI is off), underway: its spinner and its clock. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”).",
+     "cites": [
+      "N80"
+     ],
+     "id": "ai-turning-off.ai-off-part-3-now"
+    },
+    {
+     "text": "Switching AI off for new videos",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N80: the banner's parts, under its line: turning off, part 3, still to come: its dot; with a cross when it stopped there. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”).",
+     "cites": [
+      "N80"
+     ],
+     "id": "ai-turning-off.ai-off-part-3-ahead"
+    },
+    {
+     "text": "Cloudflare is slower than usual just now — hang tight.",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N80: the banner's parts, under its line: quiet, under the parts, once one part has run 20 s; the clock keeps going. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”).",
+     "cites": [
+      "N80"
+     ],
+     "id": "ai-turning-off.ai-long"
     }
    ],
    "actions": [],
    "cites": [
-    "N76"
+    "N76",
+    "N80"
    ]
   },
   "ai-turn-off-failed": {
@@ -13596,9 +13990,10 @@
      "text": "Nobody has watched these in 30 days. Pin one to keep it; a watch before then keeps it too.",
      "role": "line",
      "copy": "ratified",
-     "note": "N75. Under the first date's heading. The number of days varies; one reads 'Nobody has watched this in 30 days. Pin it to keep it; a watch before then keeps it too.' Bagrat approved the board as drawn, 2026-10-24.",
+     "note": "N75. Under the first date's heading. The number of days varies; one reads 'Nobody has watched this in 30 days. Pin it to keep it; a watch before then keeps it too.' Bagrat approved the board as drawn, 2026-10-24. At 365 days it says “a year” in place of the days (N77).",
      "cites": [
-      "N75"
+      "N75",
+      "N77"
      ],
      "id": "library-cleanup.nobody-watched-these"
     },
@@ -13782,7 +14177,7 @@
    "surface": "web-page",
    "status": "provisional",
    "board": "OwnerPageFinishing",
-   "summary": "While the take is heard (N65 (7), N66): in a space that listens, once the upload has drained, the owner page's one line stays: the same words, its spinner turning, until the take's voice cuts land (the strip takes its place), the Mac finds none (it fades, and the hint shows in its place while that is due), or five minutes have passed since the take went live, by the page's own count. It never speaks of cuts: the same listening names the video and makes its captions and chapters. Edit comes in on the title row as the upload drains, beside it (OwnerPageFinishing, OwnerPageFinishingEnds). Owner-mode as the title has it (N40); viewers never see it.",
+   "summary": "While the take is heard (N65 (7), N66): in a space that listens, once the upload has drained, the owner page's one line stays: the same words, its spinner turning, until the take's voice cuts land (the strip takes its place), the Mac finds none (it fades, and the hint shows in its place while that is due), or five minutes have passed since the take went live, by the page's own count. It never speaks of cuts: the same listening names the video and makes its captions and chapters. Edit wakes on the title row as the upload drains, beside it (OwnerPageFinishing, OwnerPageFinishingEnds). Owner-mode as the title has it (N40); viewers never see it.",
    "entry": "The browser is in owner-mode for this video, the space listens (N66), the upload has drained, the take went live less than five minutes ago, its words don't wait for the next free day, and the Mac hasn't been through them yet: the status says the voice cuts are coming.",
    "said": [
     {
@@ -13875,9 +14270,10 @@
      "text": "Delete videos nobody watches for 30 days?",
      "role": "sheet-title",
      "copy": "ratified",
-     "note": "N75. Bold. The number of days varies. Bagrat approved the board as drawn, 2026-10-24.",
+     "note": "N75. Bold. The number of days varies. Bagrat approved the board as drawn, 2026-10-24. At 365 days it says “a year” in place of the days (N77).",
      "cites": [
-      "N75"
+      "N75",
+      "N77"
      ],
      "id": "autoclean-confirm.title"
     },
@@ -13935,9 +14331,10 @@
      "text": "Two videos will be deleted on Oct 27 — nobody has watched them in 30 days.",
      "role": "banner",
      "copy": "ratified",
-     "note": "N75. The Library's line, word for word: the count, the date and the days each varies. Bagrat approved the board as drawn, 2026-10-24.",
+     "note": "N75. The Library's line, word for word: the count, the date and the days each varies. Bagrat approved the board as drawn, 2026-10-24. At 365 days it says “a year” in place of the days (N77).",
      "cites": [
-      "N75"
+      "N75",
+      "N77"
      ],
      "id": "autoclean-warning.line"
     },
@@ -13985,9 +14382,10 @@
      "text": "Auto-cleanup deleted two videos nobody had watched in 30 days, freeing 1.7 GB.",
      "role": "banner",
      "copy": "ratified",
-     "note": "N75. Once after a round took videos in this Mac's scope, frost, with OK; the Library's line, word for word (the count, the days and the size each varies). Bagrat approved the board as drawn, 2026-10-24.",
+     "note": "N75. Once after a round took videos in this Mac's scope, frost, with OK; the Library's line, word for word (the count, the days and the size each varies). Bagrat approved the board as drawn, 2026-10-24. At 365 days it says “a year” in place of the days (N77).",
      "cites": [
-      "N75"
+      "N75",
+      "N77"
      ],
      "id": "autoclean-warning.cleaned"
     },
@@ -18682,6 +19080,56 @@
    "on": []
   },
   {
+   "from": "settings-general",
+   "to": "settings-videos",
+   "kind": "flow",
+   "label": "the Videos tab",
+   "trigger": "",
+   "status": "ratified",
+   "cites": [
+    "N79"
+   ],
+   "source": [
+    "core-arm"
+   ],
+   "on": []
+  },
+  {
+   "from": "autoclean-confirm",
+   "to": "settings-videos",
+   "kind": "flow",
+   "label": "Turn on",
+   "trigger": "Turn on: the setting is set",
+   "status": "ratified",
+   "cites": [
+    "N75"
+   ],
+   "source": [
+    "core-arm"
+   ],
+   "on": [
+    "Act(ConfirmAutoclean)"
+   ]
+  },
+  {
+   "from": "autoclean-confirm",
+   "to": "settings-videos",
+   "kind": "flow",
+   "label": "Cancel",
+   "trigger": "Cancel or Esc: the setting stays as it was",
+   "status": "ratified",
+   "cites": [
+    "N75"
+   ],
+   "source": [
+    "core-arm"
+   ],
+   "on": [
+    "Act(Back)",
+    "Key(Esc)"
+   ]
+  },
+  {
    "from": "report-problem",
    "to": "settings-general",
    "kind": "flow",
@@ -19470,58 +19918,6 @@
    ]
   },
   {
-   "from": "settings-general",
-   "to": "autoclean-confirm",
-   "kind": "flow",
-   "label": "Delete videos nobody watches",
-   "trigger": "A choice that turns auto-cleanup on or shortens it while videos already qualify",
-   "status": "ratified",
-   "cites": [
-    "N75"
-   ],
-   "source": [
-    "core-arm"
-   ],
-   "on": [
-    "Act(SetAutoclean)"
-   ]
-  },
-  {
-   "from": "autoclean-confirm",
-   "to": "settings-general",
-   "kind": "flow",
-   "label": "Turn on",
-   "trigger": "Turn on: the setting is set",
-   "status": "ratified",
-   "cites": [
-    "N75"
-   ],
-   "source": [
-    "core-arm"
-   ],
-   "on": [
-    "Act(ConfirmAutoclean)"
-   ]
-  },
-  {
-   "from": "autoclean-confirm",
-   "to": "settings-general",
-   "kind": "flow",
-   "label": "Cancel",
-   "trigger": "Cancel or Esc: the setting stays as it was",
-   "status": "ratified",
-   "cites": [
-    "N75"
-   ],
-   "source": [
-    "core-arm"
-   ],
-   "on": [
-    "Act(Back)",
-    "Key(Esc)"
-   ]
-  },
-  {
    "from": "autoclean-warning",
    "to": "library-cleanup",
    "kind": "flow",
@@ -19553,6 +19949,23 @@
    ],
    "on": [
     "Act(DismissGoing)"
+   ]
+  },
+  {
+   "from": "settings-videos",
+   "to": "autoclean-confirm",
+   "kind": "flow",
+   "label": "Delete videos nobody watches",
+   "trigger": "A choice that turns auto-cleanup on or shortens it while videos already qualify",
+   "status": "ratified",
+   "cites": [
+    "N75"
+   ],
+   "source": [
+    "core-arm"
+   ],
+   "on": [
+    "Act(SetAutoclean)"
    ]
   }
  ],
