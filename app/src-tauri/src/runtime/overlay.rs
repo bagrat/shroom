@@ -89,10 +89,11 @@ impl Overlay {
             Overlay::Countdown | Overlay::Label | Overlay::Toast => 3,
         }
     }
-    /// macOS's shadow, cast by what the page draws: the popover's card, the label's and the
-    /// toast's pills.
+    /// macOS's shadow, cast by what the page draws: the popover's card, the label's pill. The
+    /// toast's page draws its own, inside the panel's margin, so it fades with the pill —
+    /// macOS casts its shadow once, from what the panel held then (N78).
     fn shadow(self) -> bool {
-        matches!(self, Overlay::Popover | Overlay::Label | Overlay::Toast)
+        matches!(self, Overlay::Popover | Overlay::Label)
     }
     fn size(self) -> NSSize {
         match self {
@@ -128,8 +129,12 @@ define_class!(
 
 /// The label's panel, in points: room for its line, the pill drawn at its right edge.
 pub const LABEL_SIZE: (f64, f64) = (380.0, 30.0);
-/// The marker toast's panel, in points: room for its words and hint, its pill at the right.
-pub const TOAST_SIZE: (f64, f64) = (440.0, 34.0);
+/// The marker toast's panel, in points: its pill (`TOAST_PILL_H` tall) at the top right,
+/// inside a margin its own shadow fits in (`TOAST_MARGIN`: right, top, bottom), and room to
+/// its left for the longest words with their hint.
+pub const TOAST_SIZE: (f64, f64) = (470.0, 62.0);
+pub const TOAST_PILL_H: f64 = 30.0;
+pub const TOAST_MARGIN: (f64, f64, f64) = (16.0, 12.0, 20.0);
 
 thread_local! {
     static POPOVER: RefCell<Option<Retained<NSPanel>>> = const { RefCell::new(None) };

@@ -61,8 +61,9 @@ export const SIZES = {
   countdown: { width: 1512, height: 982 },
   // The agent label's panel (overlay.rs LABEL_SIZE): the pill at its right edge.
   label: { width: 380, height: 30 },
-  // The marker toast's panel (overlay.rs TOAST_SIZE): its pill at the right edge too.
-  toast: { width: 440, height: 34 },
+  // The marker toast's panel (overlay.rs TOAST_SIZE): its pill at the top right, inside the
+  // margin its shadow fits in (TOAST_MARGIN: 16 right, 12 above, 20 below).
+  toast: { width: 470, height: 62, margin: { right: 16, top: 12, bottom: 20 }, pill: 30 },
 };
 
 // Region 6's entries ride along, each in its own window (`-- members`).
@@ -1267,7 +1268,13 @@ for (const entry of toasts) {
     const pill = page.locator("#pill");
     check(`${tag}: the words and the hint are the Scene's, and nothing else`, norm(await pill.innerText()) === norm(`${entry.scene.line} ${entry.scene.hint}`), await pill.innerText());
     const box = await pill.boundingBox();
-    check(`${tag}: the pill sits at the panel's right edge, inside it`, !!box && Math.abs(box.x + box.width - SIZES.toast.width) <= 1 && box.x >= 0 && box.height <= SIZES.toast.height, JSON.stringify(box));
+    const m = SIZES.toast.margin;
+    check(
+      `${tag}: the pill sits at the panel's top right, its margin around it for its shadow`,
+      !!box && Math.abs(box.x + box.width - (SIZES.toast.width - m.right)) <= 1 && Math.abs(box.y - m.top) <= 1 && box.height === SIZES.toast.pill && box.x >= 14 && SIZES.toast.height - (box.y + box.height) >= m.bottom,
+      JSON.stringify(box),
+    );
+    check(`${tag}: the pill casts its own shadow (the panel casts none)`, (await page.evaluate(() => getComputedStyle(document.getElementById("pill")).boxShadow)) !== "none");
     check(`${tag}: the page is clear around the pill`, (await page.evaluate(() => getComputedStyle(document.body).backgroundColor)) === "rgba(0, 0, 0, 0)");
     check(`${tag}: it fades in on its two seconds`, (await page.evaluate(() => getComputedStyle(document.getElementById("pill")).animationName)) === "toast");
     check(`${tag}: no page errors`, errors.length === 0, errors.join(" | "));

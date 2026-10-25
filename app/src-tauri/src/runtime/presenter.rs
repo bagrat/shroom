@@ -1060,34 +1060,45 @@ fn cover_display(panel: &objc2_app_kit::NSPanel, display: u32) {
 /// Places the agent label at the top right of the display with CoreGraphics id `display`,
 /// under its menu bar: the top of that screen's visible frame, where AppKit has it.
 pub fn place_label(panel: &objc2_app_kit::NSWindow, display: u32) {
-    use objc2_foundation::{NSPoint, NSRect, NSSize};
+    set_frame(panel, label_place(display));
+}
+
+/// The agent label's frame on display `display`, in AppKit's coordinates.
+fn label_place(display: u32) -> Frame {
     let b = probe::display_bounds(display);
     let screen = display_frame((b.x, b.y, b.w, b.h), probe::display_bounds(shroom_capture::main_display_id()).h);
     let top = objc2_foundation::MainThreadMarker::new()
         .and_then(|mtm| objc2_app_kit::NSScreen::screens(mtm).iter().find(|s| probe::screen_id(s) == Some(display)).map(|s| s.visibleFrame()))
         .map_or(screen.y + screen.h, |v| v.origin.y + v.size.height);
     let (w, h) = overlay::LABEL_SIZE;
-    let f = label_frame(screen, top, w, h);
+    label_frame(screen, top, w, h)
+}
+
+fn set_frame(panel: &objc2_app_kit::NSWindow, f: Frame) {
+    use objc2_foundation::{NSPoint, NSRect, NSSize};
     panel.setFrame_display(NSRect::new(NSPoint::new(f.x, f.y), NSSize::new(f.w, f.h)), true);
 }
 
 /// Places the marker toast (N78) where the agent label goes on display `display` — or just
-/// under the label, when it shows there.
+/// under the label, when it shows there. One move, and none when it is already there.
 pub fn place_toast(panel: &objc2_app_kit::NSWindow, display: u32, under_label: bool) {
-    use objc2_foundation::{NSPoint, NSRect, NSSize};
-    place_label(panel, display);
+    let f = toast_frame(label_place(display), under_label);
     let at = panel.frame();
-    let (w, h) = overlay::TOAST_SIZE;
-    let f = toast_frame(Frame { x: at.origin.x, y: at.origin.y, w: at.size.width, h: at.size.height }, w, h, under_label);
-    panel.setFrame_display(NSRect::new(NSPoint::new(f.x, f.y), NSSize::new(f.w, f.h)), true);
+    if (at.origin.x, at.origin.y, at.size.width, at.size.height) != (f.x, f.y, f.w, f.h) {
+        set_frame(panel, f);
+    }
 }
 
-/// The toast's frame from the label's place (`label`, the frame `label_frame` gives at the
-/// toast's own size): the same, or under the label's pill, 6 points below it.
-pub fn toast_frame(label: Frame, w: f64, h: f64, under_label: bool) -> Frame {
-    let top = label.y + label.h;
-    let top = if under_label { top - overlay::LABEL_SIZE.1 - 2.0 } else { top };
-    Frame { x: label.x + label.w - w, y: top - h, w, h }
+/// The toast's panel from the label's (`label`, as `label_frame` gives it): its pill's top
+/// and right edge where the label's pill has them, or under the label's pill, 6 points below
+/// it — and the panel around the pill by its margin. The label's pill is 26 points of its 30,
+/// centred.
+pub fn toast_frame(label: Frame, under_label: bool) -> Frame {
+    let (w, h) = overlay::TOAST_SIZE;
+    let (right, above, _) = overlay::TOAST_MARGIN;
+    let (pill_right, pill_top, pill_bottom) = (label.x + label.w, label.y + label.h - 2.0, label.y + 2.0);
+    let top = if under_label { pill_bottom - 6.0 } else { pill_top } + above;
+    Frame { x: pill_right + right - w, y: top - h, w, h }
 }
 
 /// Where the agent label goes (AppKit's coordinates, y up): its right edge 12 points in
@@ -1450,19 +1461,25 @@ mod tests {
         assert_eq!((f.x + f.w, f.y + f.h), (1440.0 + 1920.0 - 12.0, right.y + right.h - 24.0 - 8.0));
     }
 
-    /// The marker toast (N78) sits where the label does, its right edge with the label's; with
-    /// the label up, under it — the pills 6 points apart.
+    /// The marker toast (N78) sits where the label does — its pill's top and right edge the
+    /// label pill's; with the label up, under it, the pills 6 points apart. Its panel stands
+    /// its margin off the pill.
     #[test]
     fn the_toast_sits_where_the_label_does_or_under_it() {
         let main = display_frame((0.0, 0.0, 1440.0, 900.0), 900.0);
-        let at = label_frame(main, 876.0, 440.0, 34.0);
-        assert_eq!(toast_frame(at, 440.0, 34.0, false), at);
         let label = label_frame(main, 876.0, 380.0, 30.0);
-        let under = toast_frame(at, 440.0, 34.0, true);
-        assert_eq!(under.x + under.w, label.x + label.w, "right edges lined up");
-        // The label's pill (26 of its 30) ends 2 above its panel's foot; the toast's (30 of 34)
-        // starts 2 under its panel's top.
-        assert_eq!((label.y + 2.0) - (under.y + under.h - 2.0), 6.0);
+        let (right, above, below) = overlay::TOAST_MARGIN;
+        let pill = |f: Frame| (f.x + f.w - right, f.y + f.h - above, f.y + f.h - above - overlay::TOAST_PILL_H);
+        let (label_right, label_top, label_bottom) = (label.x + label.w, label.y + label.h - 2.0, label.y + 2.0);
+        let at = toast_frame(label, false);
+        assert_eq!((pill(at).0, pill(at).1), (label_right, label_top));
+        assert_eq!((at.w, at.h), overlay::TOAST_SIZE);
+        assert!(pill(at).2 - at.y >= below, "room under the pill for its shadow");
+        let under = toast_frame(label, true);
+        assert_eq!(pill(under).0, label_right, "right edges lined up");
+        assert_eq!(label_bottom - pill(under).1, 6.0);
+        // On the main display, 1440 wide under a 24-point menu bar: the pill 12 in from the right.
+        assert_eq!(pill(at).0, 1440.0 - 12.0);
     }
 
     #[test]
