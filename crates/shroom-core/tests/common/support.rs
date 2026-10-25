@@ -75,6 +75,7 @@ pub fn take(phase: Phase, length_ms: u64) -> OpenTake {
         length_ms,
         markers: 0,
         marked_at_pause: false,
+        toast: None,
         mic: None,
         camera: None,
     }

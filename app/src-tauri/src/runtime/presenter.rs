@@ -1454,6 +1454,7 @@ mod tests {
             length_ms: 0,
             markers: 0,
             marked_at_pause: false,
+            toast: None,
             mic: None,
             camera: None,
         });
