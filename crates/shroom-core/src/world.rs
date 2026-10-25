@@ -1393,7 +1393,7 @@ pub struct EditorFields {
     pub kept_until: Option<Wall>,
     pub media: EditorMedia,
     pub save: EditorSave,
-    /// ✕ with changes not saved asked first (N71): the question takes the footer's place,
+    /// ✕ with changes not saved asked first (N71): the question in a sheet over the window,
     /// the edit held behind it, until Save, Keep editing or Discard.
     pub closing: bool,
 }

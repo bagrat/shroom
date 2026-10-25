@@ -1480,6 +1480,12 @@ fn editor_rows() -> Vec<(&'static str, &'static str, World)> {
         ("editor-making", "editor-making", after(EditorSave::Making { pct: 40 })),
         ("editor-making-failed", "editor-making-failed", after(EditorSave::MakingFailed)),
         ("editor-keep-original", "editor-keep-original", after(EditorSave::Asking)),
+        // ✕ with the end pulled in not saved: “Save your edit?” (N71).
+        ("editor-closing", "editor-closing", {
+            let mut w = open(here(), EditorSave::Idle, Some(stepped()));
+            w.session.fields.editors.get_mut(&EditorId(1)).unwrap().closing = true;
+            w
+        }),
     ]
 }
 
