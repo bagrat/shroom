@@ -1654,6 +1654,32 @@ mod tests {
         assert_eq!(short("ab"), "ab");
     }
 
+    /// The run log writes only into its own folder and its own file: a `logs` that's a link
+    /// or a file, or a `run.log` that's a link, takes nothing, and the link isn't rolled.
+    #[test]
+    fn the_run_log_writes_only_its_own_folder_and_file() {
+        let tmp = tempfile::tempdir().unwrap();
+        let elsewhere = tmp.path().join("elsewhere");
+        std::fs::create_dir(&elsewhere).unwrap();
+        let linked = tmp.path().join("linked-logs");
+        std::os::unix::fs::symlink(&elsewhere, &linked).unwrap();
+        log_line(&linked, "one\n");
+        assert!(!elsewhere.join("run.log").exists());
+        let file = tmp.path().join("file-logs");
+        std::fs::write(&file, "x").unwrap();
+        log_line(&file, "one\n");
+        assert_eq!(std::fs::read_to_string(&file).unwrap(), "x");
+        let logs = tmp.path().join("logs");
+        std::fs::create_dir(&logs).unwrap();
+        let target = tmp.path().join("target.txt");
+        std::fs::write(&target, vec![b'x'; LOG_ROLL_BYTES as usize]).unwrap();
+        std::os::unix::fs::symlink(&target, logs.join("run.log")).unwrap();
+        log_line(&logs, "two\n");
+        assert_eq!(std::fs::metadata(&target).unwrap().len(), LOG_ROLL_BYTES);
+        assert!(std::fs::symlink_metadata(logs.join("run.log")).unwrap().file_type().is_symlink());
+        assert!(!logs.join("run.log.1").exists());
+    }
+
     /// A tick that changed nothing outward isn't logged; every other step is.
     #[test]
     fn a_tick_that_asks_for_nothing_stays_out_of_the_run_log() {
