@@ -3663,7 +3663,7 @@ async function cleanup(request, env, b, now) {
 
 // ───────── auto-cleanup (N75) ─────────
 //
-// Off by default; owner-class sets Off / 15 / 30 / 60 days (`.shroom/autoclean.json`
+// Off by default; owner-class sets Off / 15 / 30 / 60 days or a year (`.shroom/autoclean.json`
 // `{v, days, at, since}`, `since`: when it was last turned on or shortened). A video is due
 // `days` after the later of its last counted play, its making and when counting began; a
 // kept (pinned) one never is. The page does the deleting itself, on the one schedule B206
@@ -3680,8 +3680,8 @@ async function cleanup(request, env, b, now) {
 const AUTOCLEAN_KEY = ".shroom/autoclean.json";
 const AUTOCLEAN_STATE = ".shroom/autoclean/state.json";
 const EDITING = ".shroom/editing/";
-/** What the setting takes: Off, then days. */
-export const AUTOCLEAN_DAYS = [0, 15, 30, 60];
+/** What the setting takes: Off, then days (a year since N77). */
+export const AUTOCLEAN_DAYS = [0, 15, 30, 60, 365];
 /** Records the walk reads a run: about two reads each, inside 50 subrequests. */
 export const AUTOCLEAN_SCAN = 10;
 /** The warning: a video is listed this long before it goes, at least. */

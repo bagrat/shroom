@@ -1104,11 +1104,12 @@ answer`), never the words.
 ### 4.24 Auto-cleanup (N75)
 
 Off by default. When it's on, the space's own page deletes the videos nobody has watched in
-15, 30 or 60 days, on its own schedule, so no Mac has to be open (Bagrat, 2026-10-24). A
+15, 30 or 60 days, or a year, on its own schedule, so no Mac has to be open (Bagrat, 2026-10-24;
+a year since 2026-10-25, N77). A
 pinned video (`keep`) is never deleted, and every video is listed three days before it goes.
 
 **The setting**, `.shroom/autoclean.json` = `{v:1, days, at, since}`: `days` is 0 (off), 15,
-30 or 60; `since` is when it was last turned on or shortened (a change to a longer wait
+30, 60 or 365 (a year); `since` is when it was last turned on or shortened (a change to a longer wait
 keeps it). A missing file reads as off.
 
 - **`GET /_shroom/api/autoclean`**, any device → `200 {days, since, going:[{id, deletesAt}],
@@ -1116,7 +1117,7 @@ keeps it). A missing file reads as off.
   member only those the ledger says are theirs. `last` = `{at, ids, bytes}`, the newest
   round's deletes (a round is a day), or null; a member sees only their own videos in it and
   their bytes, and null when none were theirs.
-- **`POST {days}`**, owner-class only (else 403); `days` not 0, 15, 30 or 60 → 400. It writes
+- **`POST {days}`**, owner-class only (else 403); `days` not 0, 15, 30, 60 or 365 → 400. It writes
   the setting, and the state's walk starts afresh (`scanAt: 0`, `cursor: null`); off also
   empties `going`. → `200 {days, since}`.
 - **`POST /_shroom/api/editing {rec}`**, the video's maker (by the ledger) or owner-class
