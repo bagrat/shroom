@@ -749,17 +749,21 @@ static BUILD: std::sync::OnceLock<String> = std::sync::OnceLock::new();
 /// every file 600), rolled to `run.log.1` past `LOG_ROLL_BYTES` so it never grows without
 /// bound. Each line opens with the UTC wall clock (`report::stamp`); a fresh log after a
 /// roll opens with the build. One write per call, so lines from several threads never
-/// interleave.
+/// interleave. Only into the folder and the file that are ours, as `cli.log` is: a `logs`
+/// that isn't a real folder, or a `run.log` that isn't a plain file (a link among them),
+/// takes nothing.
 pub fn log_line(dir: &Path, line: &str) {
     use std::io::Write;
     use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt, PermissionsExt};
     match std::fs::symlink_metadata(dir) {
         // A folder from before the rule (or loosened since): closed to everyone else, the
-        // way the log itself is. Never through a link — only the folder that is ours.
-        Ok(m) if m.is_dir() && m.permissions().mode() & 0o077 != 0 => {
-            let _ = std::fs::set_permissions(dir, std::fs::Permissions::from_mode(0o700));
+        // way the log itself is.
+        Ok(m) if m.is_dir() => {
+            if m.permissions().mode() & 0o077 != 0 {
+                let _ = std::fs::set_permissions(dir, std::fs::Permissions::from_mode(0o700));
+            }
         }
-        Ok(_) => {}
+        Ok(_) => return,
         Err(_) => {
             let _ = std::fs::DirBuilder::new().recursive(true).mode(0o700).create(dir);
         }
@@ -767,17 +771,21 @@ pub fn log_line(dir: &Path, line: &str) {
     let stamp = report::stamp(SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs() as i64).unwrap_or(0));
     let mut out: String = line.split_inclusive('\n').map(|l| format!("{stamp} {l}")).collect();
     let log = dir.join("run.log");
-    if let Ok(m) = std::fs::metadata(&log) {
-        if m.len() >= LOG_ROLL_BYTES && std::fs::rename(&log, dir.join("run.log.1")).is_ok() {
+    match std::fs::symlink_metadata(&log) {
+        Ok(m) if !m.file_type().is_file() => return,
+        Ok(m) if m.len() >= LOG_ROLL_BYTES && std::fs::rename(&log, dir.join("run.log.1")).is_ok() => {
             if let Some(build) = BUILD.get() {
                 out = format!("{stamp} rolled: {build}\n{out}");
             }
-        } else if m.permissions().mode() & 0o077 != 0 {
-            // A log written before this rule: closed to everyone else.
-            let _ = std::fs::set_permissions(&log, std::fs::Permissions::from_mode(0o600));
         }
+        _ => {}
     }
-    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).mode(0o600).open(&log) {
+    let open = std::fs::OpenOptions::new().create(true).append(true).mode(0o600).custom_flags(libc::O_NOFOLLOW).open(&log);
+    if let Ok(mut f) = open {
+        // A log written before this rule: closed to everyone else, on the file just opened.
+        if f.metadata().is_ok_and(|m| m.permissions().mode() & 0o077 != 0) {
+            let _ = f.set_permissions(std::fs::Permissions::from_mode(0o600));
+        }
         let _ = f.write_all(out.as_bytes());
     }
 }
