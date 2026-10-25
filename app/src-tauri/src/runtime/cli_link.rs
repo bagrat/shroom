@@ -1,5 +1,5 @@
 //! The `shroom` command on PATH for a Mac that got shroom before the command shipped
-//! (DECISIONS B236, DEVIATIONS #57). Only the install line's `link_cli` and the cask made
+//! (DECISIONS B239, DEVIATIONS #57). Only the install line's `link_cli` and the cask made
 //! `~/.local/bin/shroom` (B217), and an update replaces the bundle without running either,
 //! so a Mac installed before the command, and updated in-app since, had none. Once per Mac,
 //! at launch, the app makes what `link_cli` makes, under its rules: the link only in

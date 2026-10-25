@@ -94,7 +94,7 @@ pub fn uninstall(rt: &Runtime, app: &tauri::AppHandle) {
                     rt.log("uninstall: the helper couldn't disclaim shroom — its permissions may stay");
                 }
                 // The `shroom` command's link and its profile line, as `install.sh --uninstall`
-                // takes them back (B236) — never a dev build's, whose home is a throwaway.
+                // takes them back (B239) — never a dev build's, whose home is a throwaway.
                 if !rt.dev {
                     super::cli_link::unlink(&user_home, &bundle);
                 }

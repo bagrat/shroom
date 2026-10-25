@@ -1073,7 +1073,7 @@ fn start_inner(app: &AppHandle, launch: LaunchKind, quiet: bool, flags: &DevFlag
     });
     net::watch(rt.clone());
     observe::watch(rt.clone(), rt.home.root.clone());
-    // The `shroom` command on PATH, once per Mac, for one installed before it (B236).
+    // The `shroom` command on PATH, once per Mac, for one installed before it (B239).
     cli_link::boot(&rt);
     // macOS's will-sleep, held for a take's pause (DECISIONS B92).
     power::watch(rt.clone());

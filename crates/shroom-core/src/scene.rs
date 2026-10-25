@@ -1058,7 +1058,7 @@ pub struct AutocleanRow {
     pub label: String,
     /// The line under it: how it counts, or who sets it, or what it needs.
     pub hint: String,
-    /// Off · After 15 days · After 30 days · After 60 days.
+    /// Off · After 15 days · After 30 days · After 60 days · After a year.
     pub choices: Vec<Choice>,
     /// “Turning on — a few seconds.” the first time, or why it didn't change (law 12).
     pub note: Option<String>,
@@ -1180,7 +1180,7 @@ pub struct EditorBody {
     /// failure, then the question of the original — in the timeline's place. `None` until
     /// then.
     pub after: Option<EditorAfterView>,
-    /// ✕ with changes not saved (N71): the question, in the footer's place. `None`
+    /// ✕ with changes not saved (N71): the question, in a sheet over the window. `None`
     /// otherwise.
     pub closing: Option<EditorClosingView>,
 }
@@ -1209,7 +1209,7 @@ pub enum EditorAfterView {
     Failed,
     /// It's up: “Delete the original?”, its line, then Keep for 2 days and Yes, delete
     /// (filled and leading, but a click: Return never deletes — law 9; DEVIATIONS #55) —
-    /// in the footer's place.
+    /// in a sheet over the window.
     Asking { title: String, line: String, keep: Button, delete: Button },
 }
 
