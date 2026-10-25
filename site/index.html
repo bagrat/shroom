@@ -97,7 +97,8 @@
   /* The landing (N59, N74; the canvas board “Bento A, aligned”, Bagrat, 2026-10-25). One 12-column
      grid with one 24 px gutter. The masthead sits on the grid's edges: the wordmark at the left, the
      headline at the right, the line under the headline on the wordmark's baseline. Under it two
-     stacks: the video over install (eight columns), the price over the terms (four). The two stacks
+     stacks: the video over install (seven columns), the price over the terms (five; with the video
+     whole, seven and five keep the stacks nearest level at every laptop width). The two stacks
      end on one line (the rule under .stack says how). The page is at least one screen
      tall, its foot at the bottom of that screen. On a phone it stacks. */
   .page { min-height: 100vh; min-height: 100svh; display: flex; flex-direction: column; padding: 0 32px; }
@@ -118,13 +119,11 @@
   .pitch .punch { margin-top: 10px; font-size: min(20px, 1.4vw); }
   .tiles { margin-top: 32px; }
   .stack { display: flex; flex-direction: column; gap: 24px; min-width: 0; }
-  .stack.l { grid-column: 1 / 9; }
-  .stack.r { grid-column: 9 / 13; }
+  .stack.l { grid-column: 1 / 8; }
+  .stack.r { grid-column: 8 / 13; }
   /* Whichever stack is shorter grows: install on the left, the terms on the right. The video's
      frame never grows: the still and the video always show whole (Bagrat, 2026-10-25). */
   .stack.l > .install, .stack.r > .terms { flex: 1 1 auto; }
-  /* A smaller laptop: seven columns and five, so the price and the terms keep their measure. */
-  @media (max-width: 1180px) { .stack.l { grid-column: 1 / 8; } .stack.r { grid-column: 8 / 13; } }
   .tile { display: flex; flex-direction: column; gap: 18px; padding: 20px; border-radius: 12px; background: var(--card); border: 1px solid var(--card-edge); }
   /* The price (Bagrat, 2026-10-19: the price in its own box, one slider;
      2026-10-24: the price first, hours of video a month, how long until old videos go, the team
