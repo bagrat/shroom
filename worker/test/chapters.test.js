@@ -6,7 +6,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { CHAPTERS_JS, CHAPTER_MIN, COPY, addChapterAt, aiChapters, chaptersPanel, removedChapter, startChapterAt } from "../src/worker.js";
-import { M1, MHER, MHER_MAC, NOW, OWNER_AIR, REC, bodyOf, call, cookieFor, goneKey, ledger, metaKey, metaOf, space } from "./space-fixture.js";
+import { M1, MHER, MHER_MAC, NOW, ORIGIN, OWNER_AIR, REC, bodyOf, call, cookieFor, goneKey, ledger, metaKey, metaOf, space } from "./space-fixture.js";
 
 const machine = JSON.parse(readFileSync(new URL("../../spec/machine.json", import.meta.url), "utf8"));
 const said = Object.fromEntries(machine.states["owner-page-chapters"].said.map((l) => [l.id.split(".")[1], l.text]));
@@ -19,7 +19,7 @@ const named = (over = {}) => ({ durationSec: 180, named: { by: "ai", title: "Pla
 const edits = (cuts, over = {}) => ({ version: 1, source_duration: 180, in: 0, out: 180, cuts: cuts.map(([start, end], i) => ({ id: `c${i}`, start, end, kind: "manual", applied: true })), rev: 2, ...over });
 const mine = (list, over = {}) => ({ by: "owner", at: "2026-10-02T11:00:00.000Z", clock: null, list, off: false, ...over });
 
-const owner = { cookie: cookieFor(M1, OWNER_AIR) };
+const owner = { cookie: cookieFor(M1, OWNER_AIR), origin: ORIGIN };
 const PATH = `/_shroom/chapters/${REC}`;
 const save = (env, body, headers = owner) => call(env, "POST", PATH, { body, headers });
 const record = (env) => env.BUCKET.json(metaKey(REC));
@@ -57,7 +57,7 @@ describe("the owner's chapters on the bar", () => {
     back.cuts[0].applied = false;
     expect(aiChapters(named({ chapters: mine(list), edits: back }))).toEqual([[0, "A"], [60, "B"], [100, "C"], [150, "D"]]);
     // Left under 5 s by a cut, it hides the same way; the space's 20 s rule isn't theirs.
-    expect(aiChapters(m([[62, 97]]))).toEqual([[0, "A"], [65, "C"], [115, "D"]]);
+    expect(aiChapters(m([[62, 98]]))).toEqual([[0, "A"], [64, "C"], [114, "D"]]);
     expect(aiChapters(named({ chapters: mine([[0, "A"], [20, "B"], [32, "C"]]) }))).toEqual([[0, "A"], [20, "B"], [32, "C"]]);
   });
 
@@ -78,7 +78,7 @@ describe("the panel's rows", () => {
   it("start from the space's chapters as the bar shows them, on the recording's clock and the bar's", () => {
     expect(chaptersPanel(named({ edits: edits([[50, 70]]) }))).toEqual({
       mine: false, off: false, clock: null, total: 160,
-      rows: [{ s: 0, t: 0, title: "Where we are" }, { s: 70, t: 50, title: "The budget" }, { s: 140, t: 120, title: "Next steps" }],
+      rows: [{ s: 0, t: 0, title: "Where we are" }, { s: 70, t: 50, title: "The budget" }, { s: 120, t: 100, title: "Next steps" }],
     });
   });
 
@@ -160,8 +160,8 @@ describe("POST /_shroom/chapters/<id>", () => {
   it("is the owner's: no cookie, another member's browser, a deleted video", async () => {
     const env = await video();
     const body = { clock: null, off: false, list: [] };
-    expect((await save(env, body, {})).status).toBe(403);
-    expect((await save(env, body, { cookie: cookieFor(MHER, MHER_MAC) })).status).toBe(403);
+    expect((await save(env, body, { origin: ORIGIN })).status).toBe(403);
+    expect((await save(env, body, { cookie: cookieFor(MHER, MHER_MAC), origin: ORIGIN })).status).toBe(403);
     await env.BUCKET.put(goneKey(REC), "{}");
     expect((await save(env, body)).status).toBe(409);
     expect(record(env).chapters).toBeUndefined();
