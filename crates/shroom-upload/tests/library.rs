@@ -55,6 +55,25 @@ fn a_refresh_reads_only_what_changed() {
 }
 
 #[test]
+fn a_row_is_always_its_records_key() {
+    let (_fake, s3) = space();
+    record(&s3, A, "Mine", "2026-10-01T10:00:00Z");
+    // B's record, naming A inside.
+    let mut m = Meta::uploading(A, "Another", "2026-10-02T10:00:00Z");
+    m.state = MetaState::Live;
+    s3.put(&format!("meta/{B}.json"), &serde_json::to_vec(&m).unwrap(), "application/json").unwrap();
+
+    let mut cache = Cache::default();
+    library::refresh(&s3, &mut cache).unwrap();
+    assert_eq!(cache.rows.keys().collect::<Vec<_>>(), [A], "only the record that names its own key is a row");
+    assert_eq!((cache.rows[A].1.id.as_str(), cache.rows[A].1.title.as_str()), (A, "Mine"));
+    // Read by its key, it is refused rather than taken for A.
+    assert!(library::record(&s3, B).is_err());
+    assert!(library::rename(&s3, B, "Renamed").is_err());
+    assert_eq!(library::record(&s3, A).unwrap().unwrap().title, "Mine", "A untouched");
+}
+
+#[test]
 fn rename_marks_a_chosen_title_and_never_saves_an_empty_one() {
     let (_fake, s3) = space();
     record(&s3, A, "Untitled — Oct 2", "2026-10-02T10:00:00Z");

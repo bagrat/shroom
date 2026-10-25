@@ -1838,6 +1838,50 @@ fn a_failed_upkeep_waits_for_the_next_turn() {
     assert_eq!(r.arm.name, "editor-stale");
 }
 
+/// Voice cuts landing on a video (or a press on its owner page changing them) owe that
+/// video its edited copy: the upkeep is due at once rather than at its six-hour turn, under
+/// the same guards (never over a take, never offline, never while the editor is open). One
+/// that ran or failed after the cuts landed has answered them.
+#[test]
+fn landed_cuts_make_the_upkeep_due_at_once() {
+    let mut r = Run::new(booted());
+    r.send(Event::Tick);
+    assert!(upkeeps(&r));
+    r.news(EditorNews::UpkeepDone { baked: 0, copies: 0 });
+    r.tick_to(r.t + HOUR as u64);
+    assert!(!upkeeps(&r), "not its turn yet");
+    r.news(EditorNews::CutsLanded { rec: rec() });
+    assert_eq!(r.arm.name, "editor-cuts-landed");
+    assert!(upkeeps(&r), "at once: {:?}", r.effects);
+    r.news(EditorNews::UpkeepDone { baked: 0, copies: 1 });
+    r.tick_to(r.t + HOUR as u64);
+    assert!(!upkeeps(&r), "answered: back to its turn");
+
+    // Mid-take: after the take, as any upkeep.
+    let mut w = booted();
+    w.library_ops.upkept = Some(Mono(0));
+    w.take = Some(take(Phase::Recording, 10_000));
+    let mut r = Run::new(w);
+    r.news(EditorNews::CutsLanded { rec: rec() });
+    assert!(!upkeeps(&r), "never mid-take");
+    r.click();
+    r.send(Event::Rec(RecNews::Paused { length_ms: 10_000 }));
+    r.act(Action::Discard);
+    r.act(Action::ConfirmDiscard);
+    assert!(upkeeps(&r), "the take is over: {:?}", r.effects);
+
+    // One that fails after the cuts landed waits for its turn, as a failed upkeep does.
+    let mut w = booted();
+    w.library_ops.upkept = Some(Mono(0));
+    let mut r = Run::new(w);
+    r.news(EditorNews::CutsLanded { rec: rec() });
+    assert!(upkeeps(&r));
+    r.send(Event::Failed { op: Op::EditorUpkeep, class: FailClass::Transport });
+    let backoff = r.w.inflight.failures[&Op::EditorUpkeep].retry_at();
+    r.tick_to(backoff.0 + 1_000);
+    assert!(!upkeeps(&r), "not again at once");
+}
+
 #[test]
 fn the_upkeeps_deadline_is_an_hour() {
     assert_eq!(Op::EditorUpkeep.deadline_ms(), 3_600_000);
