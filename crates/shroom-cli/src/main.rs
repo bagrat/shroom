@@ -20,7 +20,7 @@ mod space;
 use serde_json::{Value, json};
 
 use home::Home;
-use out::{Done, Fail, col, day, length};
+use out::{Done, Fail, col, day, length, short_day};
 use space::{Door, Video};
 
 const GUIDE: &str = include_str!("../../../site/cli.md");
@@ -167,7 +167,11 @@ fn run(a: &Args) -> Result<Done, Fail> {
         "guide" | "skill" => Ok(Done::new(json!({"guide": GUIDE}), GUIDE)),
         "status" => status(a),
         "list" | "ls" => list(a),
-        "info" | "show" => one(a, rest, |v, _| Ok(Done::new(json!({"video": v.json()}), info_text(v)))),
+        "info" | "show" => one(a, rest, |v, d| {
+            let mut v = vec![v.clone()];
+            with_going(d, &mut v);
+            Ok(Done::new(json!({"video": v[0].json()}), info_text(&v[0])))
+        }),
         "link" | "links" if a.batch || a.from.is_some() || verb == "links" => links(a, rest),
         "link" => one(a, rest, |v, _| Ok(Done::new(json!({"id": v.row.id, "link": v.link}), v.link.clone()))),
         "open" => one(a, rest, |v, _| {
@@ -178,6 +182,9 @@ fn run(a: &Args) -> Result<Done, Fail> {
         "rename" => rename(a, rest),
         "delete" | "rm" => delete(a, rest),
         "cleanup-candidates" | "cleanup" => cleanup(a),
+        "pin" => pin(a, rest, true),
+        "unpin" => pin(a, rest, false),
+        "autoclean" => autoclean(a, rest),
         "members" => match rest.first().map(String::as_str) {
             Some("remove") => remove_member(a, &rest[1..]),
             Some(other) => Err(Fail::Usage(say::not_a_members_command(other))),
@@ -285,6 +292,7 @@ fn since_ms(since: &str) -> Result<i64, Fail> {
 
 fn list(a: &Args) -> Result<Done, Fail> {
     let (_, d, mut v) = videos(a)?;
+    with_going(&d, &mut v);
     let total = v.len();
     if let Some(n) = a.limit {
         v.truncate(n);
@@ -299,7 +307,7 @@ fn list(a: &Args) -> Result<Done, Fail> {
         let [id, date, len, title] = say::LIST_HEAD;
         text.push_str(&format!("{}  {}  {}  {title}\n", col(id, 16), col(date, 10), col(len, 7)));
         for x in &v {
-            text.push_str(&format!("{}  {}  {}  {}\n", x.row.id, day(&x.row.created_at), col(&length(x.row.duration_sec), 7), x.row.title));
+            text.push_str(&format!("{}  {}  {}  {}{}\n", x.row.id, day(&x.row.created_at), col(&length(x.row.duration_sec), 7), x.row.title, marks(x)));
         }
         if v.len() < total {
             text.push_str(&say::shown_of(v.len(), total));
@@ -316,7 +324,25 @@ fn list(a: &Args) -> Result<Done, Fail> {
 }
 
 fn info_text(v: &Video) -> String {
-    format!("{}\n{} · {}\n{}", v.row.title, day(&v.row.created_at), length(v.row.duration_sec), v.link)
+    format!("{}\n{} · {}{}\n{}", v.row.title, day(&v.row.created_at), length(v.row.duration_sec), marks(v), v.link)
+}
+
+/// What a row adds after its title (N74): ` · pinned`, or ` · deleted Oct 27 unless pinned`.
+fn marks(v: &Video) -> String {
+    match (&v.deletes_at, v.row.pinned) {
+        (_, true) => format!(" · {}", say::PINNED),
+        (Some(at), false) => format!(" · {}", say::going_suffix(&short_day(at))),
+        (None, false) => String::new(),
+    }
+}
+
+/// Marks the videos auto-cleanup will delete, with when (N74). The list stands without it:
+/// a page that can't say is a page with nothing going.
+fn with_going(d: &Door, v: &mut [Video]) {
+    let Ok(state) = d.autoclean() else { return };
+    for x in v.iter_mut() {
+        x.deletes_at = state.going.iter().find(|g| g.id == x.row.id).map(|g| g.deletes_at.clone());
+    }
 }
 
 /// The id a word names, when it's an id or a link to this space.
@@ -533,9 +559,17 @@ fn cleanup(a: &Args) -> Result<Done, Fail> {
     let Some(s) = d.suggestions(a.mine)? else { return cleanup_by_age(a) };
     // The page's days are fractions; a person reads whole ones.
     let whole = |d: Option<f64>| d.map(|d| d.max(0.0).floor() as u64);
-    let mut rows: Vec<_> = s.items.into_iter().filter(|i| i.candidate && a.older_than.is_none_or(|n| whole(i.age_days).is_some_and(|age| age >= n))).collect();
-    // Most likely first; between equals, the older.
-    rows.sort_by(|x, y| y.score.total_cmp(&x.score).then(y.age_days.unwrap_or(0.0).total_cmp(&x.age_days.unwrap_or(0.0))));
+    // What auto-cleanup will delete is always listed (N74); a pinned video never is.
+    let mut rows: Vec<_> = s
+        .items
+        .into_iter()
+        .filter(|i| !i.keep && (i.deletes_at.is_some() || (i.candidate && a.older_than.is_none_or(|n| whole(i.age_days).is_some_and(|age| age >= n)))))
+        .collect();
+    // What's going first, soonest first; then most likely first; between equals, the older.
+    rows.sort_by(|x, y| {
+        let going = |i: &shroom_cloud::member::CleanupItem| i.deletes_at.clone().map_or((1, String::new()), |at| (0, at));
+        going(x).cmp(&going(y)).then(y.score.total_cmp(&x.score)).then(y.age_days.unwrap_or(0.0).total_cmp(&x.age_days.unwrap_or(0.0)))
+    });
     if let Some(n) = a.limit {
         rows.truncate(n);
     }
@@ -546,7 +580,8 @@ fn cleanup(a: &Args) -> Result<Done, Fail> {
             json!({
                 "id": i.id, "title": i.title, "state": "live", "created_at": i.created_at, "duration_sec": i.duration_sec,
                 "owner": i.owner, "link": d.link(&i.id), "age_days": whole(i.age_days), "plays": i.plays, "last_played": i.last_played_at,
-                "quiet_days": whole(i.quiet_days), "score": i.score, "reason": code, "why": say::why(code, whole(i.quiet_days)),
+                "quiet_days": whole(i.quiet_days), "score": i.score, "reason": code, "deletes_at": i.deletes_at,
+                "why": i.deletes_at.as_deref().map_or_else(|| say::why(code, whole(i.quiet_days)), |at| say::why_going(&short_day(at))),
             })
         })
         .collect();
@@ -570,7 +605,7 @@ fn cleanup_by_age(a: &Args) -> Result<Done, Fail> {
     let mut rows: Vec<(i64, &Video)> = v
         .iter()
         .filter_map(|x| shroom_upload::library::iso_ms(&x.row.created_at).map(|ms| ((now - ms) / 86_400_000, x)))
-        .filter(|(age, _)| *age >= days as i64)
+        .filter(|(age, x)| *age >= days as i64 && !x.row.pinned)
         .collect();
     rows.sort_by_key(|r| std::cmp::Reverse(r.0));
     if let Some(n) = a.limit {
@@ -580,7 +615,7 @@ fn cleanup_by_age(a: &Args) -> Result<Done, Fail> {
         .iter()
         .map(|(age, x)| {
             let mut j = x.json();
-            for unknown in ["plays", "last_played", "quiet_days", "score"] {
+            for unknown in ["plays", "last_played", "quiet_days", "score", "deletes_at"] {
                 j[unknown] = Value::Null;
             }
             j["age_days"] = json!(age);
@@ -596,6 +631,91 @@ fn cleanup_by_age(a: &Args) -> Result<Done, Fail> {
         format!("{}\n{}\n{}", say::old_head(rows.len(), days), lines.join("\n"), say::nothing_was_deleted())
     };
     Ok(Done::new(json!({"by": "age", "counting_since": null, "older_than_days": days, "candidates": candidates}), text))
+}
+
+/// Pins videos, or takes their pins off (N74): never suggested, never deleted by
+/// auto-cleanup. By id or link, as a delete; each its own result; nothing to confirm, as a
+/// pin deletes nothing. One already so is `unchanged`; one not here, `not_found`.
+fn pin(a: &Args, rest: &[String], on: bool) -> Result<Done, Fail> {
+    let words = ids(a, rest, if on { || say::pin_usage(true) } else { || say::pin_usage(false) })?;
+    let (h, d, v) = videos(a)?;
+    if !a.dry_run {
+        quiet(&h)?;
+    }
+    let mut outcomes = Vec::new();
+    let mut seen: Vec<String> = Vec::new();
+    for w in &words {
+        let hit = match find(&v, w, &d.identity.host, false) {
+            Ok(hit) => hit,
+            Err(f) if f.code() == "not_found" => {
+                let id = id_of(w, &d.identity.host).unwrap_or_else(|| w.clone());
+                outcomes.push(batch::Outcome::ok(json!({"id": id, "status": "not_found"}), say::line_not_found(&id)));
+                continue;
+            }
+            Err(f) => {
+                outcomes.push(batch::Outcome::failed(json!({"id": w}), &f, say::line_failed(w, f.message())));
+                continue;
+            }
+        };
+        if seen.contains(&hit.row.id) {
+            continue;
+        }
+        seen.push(hit.row.id.clone());
+        let item = json!({"id": hit.row.id, "title": hit.row.title, "link": hit.link});
+        let status = if hit.row.pinned == on {
+            "unchanged"
+        } else if a.dry_run {
+            if on { "would_pin" } else { "would_unpin" }
+        } else {
+            match d.pin(&hit.row.id, on) {
+                Ok(()) => if on { "pinned" } else { "unpinned" },
+                Err(f) => {
+                    outcomes.push(batch::Outcome::failed(item, &f, say::line_failed(&say::line_video(&hit.row.id, &hit.row.title), f.message())));
+                    continue;
+                }
+            }
+        };
+        let mut j = item;
+        j["status"] = status.into();
+        outcomes.push(batch::Outcome::ok(j, say::line_pin(status, &hit.row.id, &hit.row.title, on)));
+    }
+    // One video, done: one sentence.
+    let single = match outcomes.as_slice() {
+        [o] if matches!(o.json["status"].as_str(), Some("pinned" | "unpinned")) => o.json["title"].as_str().map(|t| say::pinned_one(t, on)),
+        _ => None,
+    };
+    let mut done = batch::finish("results", outcomes, say::pins_head(on, a.dry_run), "")?;
+    if let Some(line) = single {
+        done.text = line;
+    }
+    if a.dry_run {
+        done.json["dry_run"] = true.into();
+    }
+    Ok(done)
+}
+
+/// The space's auto-cleanup (N74): whether it's on, after how many days, and what goes
+/// next. It's read here and never changed: turning it on gives the space's page its
+/// schedule, which the app on the Mac that set up the space does (Settings · General).
+fn autoclean(a: &Args, rest: &[String]) -> Result<Done, Fail> {
+    if !rest.is_empty() {
+        return Err(Fail::Refused(say::autoclean_set_in_settings()));
+    }
+    let (_, d) = door(a)?;
+    let s = d.autoclean()?;
+    let going: Vec<Value> = s.going.iter().map(|g| json!({"id": g.id, "link": d.link(&g.id), "deletes_at": g.deletes_at})).collect();
+    let next_at = s.going.iter().map(|g| g.deletes_at.clone()).min();
+    let last = s.last.as_ref().map(|l| json!({"at": l.at, "ids": l.ids, "bytes": l.bytes}));
+    let text = if s.days == 0 {
+        say::autoclean_off()
+    } else {
+        let next = match &next_at {
+            Some(at) => say::autoclean_next(s.going.iter().filter(|g| day(&g.deletes_at) == day(at)).count(), &short_day(at)),
+            None => say::autoclean_nothing_next(),
+        };
+        format!("{}\n{next}", say::autoclean_on(s.days))
+    };
+    Ok(Done::new(json!({"days": s.days, "on": s.days > 0, "since": s.since, "next_at": next_at, "going": going, "last": last}), text))
 }
 
 fn members(a: &Args) -> Result<Done, Fail> {
@@ -919,8 +1039,10 @@ mod tests {
                 edited_sec: None,
                 poster_file: None,
                 ai: None,
+                pinned: false,
             },
             link: format!("https://{HOST}/{id}"),
+            deletes_at: None,
         }
     }
 
