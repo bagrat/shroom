@@ -1,8 +1,8 @@
 // What is in a take's picture (DECISIONS B114): every frame of a take the left-out drive
 // made (`node app/test/take-drive.mjs left-out`), decoded here by this Mac's own ffmpeg —
 // not the one that made it — and held to one thing: nothing but the pattern. The drive
-// lifted shroom's popover and its count above the pattern and showed each while the take
-// ran (a capture that leaves nothing out saw them there); a take that didn't leave one out
+// lifted shroom's popover, its count, the agent label and the marker toast above the pattern
+// and showed each while the take ran (a capture that leaves nothing out saw them there); a take that didn't leave one out
 // has it over the pattern's dark field in those frames.
 //
 //   node tests/e2e/left-out.mjs <take-dir>     one JSON line; exit 0 when the picture is clean

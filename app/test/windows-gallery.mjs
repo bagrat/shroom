@@ -30,7 +30,7 @@ import { collect, dist, gallery, hex, isButton, norm, out, repo, serve, stub, te
 import { editorDrives, editorLooks, makeMedia, serveMedia } from "./editor-preview.mjs";
 import { editorScenes, REC } from "./editor-fixture.mjs";
 
-for (const f of ["library.html", "settings.html", "feedback.html", "popover.html", "countdown.html", "editor.html", "label.html"]) {
+for (const f of ["library.html", "settings.html", "feedback.html", "popover.html", "countdown.html", "editor.html", "label.html", "toast.html"]) {
   if (!existsSync(join(dist, f))) {
     console.error(`app/dist/${f} is missing — run \`npm run build --workspace app\` first.`);
     process.exit(2);
@@ -61,6 +61,8 @@ export const SIZES = {
   countdown: { width: 1512, height: 982 },
   // The agent label's panel (overlay.rs LABEL_SIZE): the pill at its right edge.
   label: { width: 380, height: 30 },
+  // The marker toast's panel (overlay.rs TOAST_SIZE): its pill at the right edge too.
+  toast: { width: 440, height: 34 },
 };
 
 // Region 6's entries ride along, each in its own window (`-- members`).
@@ -72,6 +74,7 @@ const region3 = gallery("region3");
 const popovers = [...members, ...region3].filter((e) => e.window === "popover");
 const countdowns = region3.filter((e) => e.window === "countdown");
 const labels = region3.filter((e) => e.window === "label");
+const toasts = region3.filter((e) => e.window === "toast");
 // Send feedback (`-- feedback`): the form in each of its faces, and the sent face (N60).
 const feedbacks = gallery("feedback");
 // The editor (`-- editor`, N63): its faces over one recording.
@@ -121,7 +124,7 @@ async function open(surface, scene, { colorScheme = "light", size = SIZES[surfac
   page.on("pageerror", (e) => errors.push(String(e)));
   await page.addInitScript(stub, scene);
   await page.goto(`${server.origin}/${surface}.html`);
-  await page.waitForSelector({ library: ".lib", settings: ".set", feedback: "main.fb", popover: "main.pop", countdown: "#digit:not(:empty)", label: "#pill:not([hidden])" }[surface]);
+  await page.waitForSelector({ library: ".lib", settings: ".set", feedback: "main.fb", popover: "main.pop", countdown: "#digit:not(:empty)", label: "#pill:not([hidden])", toast: "#pill:not([hidden])" }[surface]);
   await page.waitForTimeout(60);
   return { ctx, page, errors };
 }
@@ -1218,6 +1221,29 @@ for (const entry of labels) {
   }
 }
 
+// ── The marker toast (N78): the Scene's words and hint in a pill at the panel's right edge,
+// the page clear around it; it fades in, and a new press starts its fade again ──
+check("the gallery has the marker toast's three faces", toasts.length === 3, toasts.map((e) => e.variant).join(", "));
+for (const entry of toasts) {
+  for (const scheme of ["light", "dark"]) {
+    const tag = `toast/${entry.variant} [${scheme}]`;
+    const { ctx, page, errors } = await open("toast", entry.scene, { colorScheme: scheme });
+    const pill = page.locator("#pill");
+    check(`${tag}: the words and the hint are the Scene's, and nothing else`, norm(await pill.innerText()) === norm(`${entry.scene.line} ${entry.scene.hint}`), await pill.innerText());
+    const box = await pill.boundingBox();
+    check(`${tag}: the pill sits at the panel's right edge, inside it`, !!box && Math.abs(box.x + box.width - SIZES.toast.width) <= 1 && box.x >= 0 && box.height <= SIZES.toast.height, JSON.stringify(box));
+    check(`${tag}: the page is clear around the pill`, (await page.evaluate(() => getComputedStyle(document.body).backgroundColor)) === "rgba(0, 0, 0, 0)");
+    check(`${tag}: it fades in on its two seconds`, (await page.evaluate(() => getComputedStyle(document.getElementById("pill")).animationName)) === "toast");
+    check(`${tag}: no page errors`, errors.length === 0, errors.join(" | "));
+    check(`${tag}: listens to its own slice`, (await page.evaluate(() => window.__listenTarget()))?.label === "toast");
+    // Held mid-way through its two seconds, fully in (a disabled animation would end it faded out).
+    await page.evaluate(() => document.getElementById("pill").getAnimations().forEach((a) => { a.pause(); a.currentTime = 600; }));
+    check(`${tag}: mid-way it shows in full`, (await page.evaluate(() => getComputedStyle(document.getElementById("pill")).opacity)) === "1");
+    await page.screenshot({ path: join(out, `toast-${entry.variant}-${scheme}.png`), omitBackground: true });
+    await ctx.close();
+  }
+}
+
 // Region 3's controls send the Scene's actions.
 {
   const pop = (variant) => popovers.find((e) => e.variant === variant).scene;
@@ -1455,5 +1481,5 @@ console.log(`windows: library ${SIZES.library.width}×${SIZES.library.height} (m
 
 const failed = results.filter((r) => !r.ok);
 for (const f of failed) console.log(`FAIL ${f.name}${f.detail ? ` — ${f.detail}` : ""}`);
-console.log(`\n${library.length} library + ${settings.length} settings + ${feedbacks.length} feedback + ${editors.length} editor + ${popovers.length} popover + ${countdowns.length} countdown + ${labels.length} label scenes × 2 schemes · ${results.length - failed.length}/${results.length} checks passed · screenshots in ${out}`);
+console.log(`\n${library.length} library + ${settings.length} settings + ${feedbacks.length} feedback + ${editors.length} editor + ${popovers.length} popover + ${countdowns.length} countdown + ${labels.length} label + ${toasts.length} toast scenes × 2 schemes · ${results.length - failed.length}/${results.length} checks passed · screenshots in ${out}`);
 process.exit(failed.length ? 1 : 0);

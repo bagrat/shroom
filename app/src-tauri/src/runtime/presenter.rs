@@ -27,6 +27,8 @@ pub const POPOVER: &str = "popover";
 pub const COUNTDOWN: &str = "countdown";
 /// The agent label's page (N62, B216).
 pub const LABEL: &str = "label";
+/// The marker toast's page (N78).
+pub const TOAST: &str = "toast";
 pub const ONBOARDING: &str = "onboarding";
 pub const LIBRARY: &str = "library";
 pub const SETTINGS: &str = "settings";
@@ -810,6 +812,32 @@ fn apply(app: &AppHandle, rt: &Runtime, prev: Option<&Scene>, s: &Scene, exclude
         }
     }
 
+    // The marker toast (N78): ⌥⌘M's answer, where the label sits — under it when it shows —
+    // taking no clicks, never the keyboard, and left out of every capture. As the label,
+    // only the panel made as shroom started; its page fades it in and out.
+    match &s.toast {
+        Some(t) => {
+            if let Some(panel) = overlay::get(Overlay::Toast) {
+                place_toast(&panel, t.display, t.under_label);
+                let _ = app.emit_to(TOAST, "scene", t);
+                if !panel.isVisible() {
+                    overlay::show(&panel, false);
+                    rt.log(&format!("toast: shown on display {}", t.display));
+                }
+            } else if prev.is_none_or(|p| p.toast.is_none()) {
+                rt.log("toast: no panel made at start, none shown");
+            }
+        }
+        None => {
+            if let Some(panel) = overlay::get(Overlay::Toast) {
+                if panel.isVisible() {
+                    rt.log("toast: gone");
+                }
+                overlay::hide(&panel);
+            }
+        }
+    }
+
     // The bubble (born at config, through the count and the take — N22) and Camera's
     // preview: native panels on the exact camera the Scene names (camera.rs).
     super::camera::present(rt, s.bubble.as_ref(), s.preview.as_ref());
@@ -1043,6 +1071,25 @@ pub fn place_label(panel: &objc2_app_kit::NSWindow, display: u32) {
     panel.setFrame_display(NSRect::new(NSPoint::new(f.x, f.y), NSSize::new(f.w, f.h)), true);
 }
 
+/// Places the marker toast (N78) where the agent label goes on display `display` — or just
+/// under the label, when it shows there.
+pub fn place_toast(panel: &objc2_app_kit::NSWindow, display: u32, under_label: bool) {
+    use objc2_foundation::{NSPoint, NSRect, NSSize};
+    place_label(panel, display);
+    let at = panel.frame();
+    let (w, h) = overlay::TOAST_SIZE;
+    let f = toast_frame(Frame { x: at.origin.x, y: at.origin.y, w: at.size.width, h: at.size.height }, w, h, under_label);
+    panel.setFrame_display(NSRect::new(NSPoint::new(f.x, f.y), NSSize::new(f.w, f.h)), true);
+}
+
+/// The toast's frame from the label's place (`label`, the frame `label_frame` gives at the
+/// toast's own size): the same, or under the label's pill, 6 points below it.
+pub fn toast_frame(label: Frame, w: f64, h: f64, under_label: bool) -> Frame {
+    let top = label.y + label.h;
+    let top = if under_label { top - overlay::LABEL_SIZE.1 - 2.0 } else { top };
+    Frame { x: label.x + label.w - w, y: top - h, w, h }
+}
+
 /// Where the agent label goes (AppKit's coordinates, y up): its right edge 12 points in
 /// from the display's, its top 8 under `top` — the menu bar's foot.
 pub fn label_frame(screen: Frame, top: f64, w: f64, h: f64) -> Frame {
@@ -1124,12 +1171,12 @@ mod tests {
         let listed: Vec<&str> = cap["windows"].as_array().unwrap().iter().filter_map(|w| w.as_str()).collect();
         let covers = |page: &str| listed.iter().any(|l| *l == page || l.strip_suffix('*').is_some_and(|stem| page.starts_with(stem)));
         let kinds = [WindowKind::Onboarding, WindowKind::Library, WindowKind::Settings, WindowKind::Feedback, WindowKind::Editor(EditorId(1)), WindowKind::Editor(EditorId(27))];
-        let pages = kinds.map(label).into_iter().chain([Overlay::Popover.label(), Overlay::Countdown.label(), Overlay::Label.label()].map(Into::into));
+        let pages = kinds.map(label).into_iter().chain([Overlay::Popover.label(), Overlay::Countdown.label(), Overlay::Label.label(), Overlay::Toast.label()].map(Into::into));
         for page in pages {
             assert!(covers(&page), "the {page} window is not in capabilities/default.json");
         }
         assert!(listed.contains(&"editor-*") && !listed.contains(&"editor"), "the editor windows, by their labels' pattern");
-        assert_eq!((POPOVER, COUNTDOWN, LABEL), (Overlay::Popover.label(), Overlay::Countdown.label(), Overlay::Label.label()));
+        assert_eq!((POPOVER, COUNTDOWN, LABEL, TOAST), (Overlay::Popover.label(), Overlay::Countdown.label(), Overlay::Label.label(), Overlay::Toast.label()));
     }
 
     /// An editor window's label carries its number (N73): one made, one read back, and no
@@ -1401,6 +1448,21 @@ mod tests {
         let right = display_frame((1440.0, 0.0, 1920.0, 1080.0), 900.0);
         let f = label_frame(right, right.y + right.h - 24.0, 380.0, 30.0);
         assert_eq!((f.x + f.w, f.y + f.h), (1440.0 + 1920.0 - 12.0, right.y + right.h - 24.0 - 8.0));
+    }
+
+    /// The marker toast (N78) sits where the label does, its right edge with the label's; with
+    /// the label up, under it — the pills 6 points apart.
+    #[test]
+    fn the_toast_sits_where_the_label_does_or_under_it() {
+        let main = display_frame((0.0, 0.0, 1440.0, 900.0), 900.0);
+        let at = label_frame(main, 876.0, 440.0, 34.0);
+        assert_eq!(toast_frame(at, 440.0, 34.0, false), at);
+        let label = label_frame(main, 876.0, 380.0, 30.0);
+        let under = toast_frame(at, 440.0, 34.0, true);
+        assert_eq!(under.x + under.w, label.x + label.w, "right edges lined up");
+        // The label's pill (26 of its 30) ends 2 above its panel's foot; the toast's (30 of 34)
+        // starts 2 under its panel's top.
+        assert_eq!((label.y + 2.0) - (under.y + under.h - 2.0), 6.0);
     }
 
     #[test]
