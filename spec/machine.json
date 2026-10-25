@@ -83,9 +83,9 @@
   {
    "n": 4,
    "title": "The quiet-take law",
-   "rule": "**The quiet-take law** *(N41)* — while a take is open (recording *or* paused), shroom puts nothing new on screen: invites, deep links, windows, the deferred page of an offline stop, update banners — all wait for the take to end. Only the bubble and macOS's own indicator can ever appear in a take; the paused popover exists only after the pause is confirmed (POC §8). **And nothing that would end, move or replace the app runs mid-take** — Update, Disconnect, Leave, joining another space, Quit (⌘Q or the Dock, reachable when a window was already open) — their buttons grey with “You can do this once your recording is finished.”; a Quit request is declined silently while recording and opens the paused popover (its “no Quit while a take is open” note) while paused.",
+   "rule": "**The quiet-take law** *(N41)* — while a take is open (recording *or* paused), shroom puts nothing new on screen: invites, deep links, windows, the deferred page of an offline stop, update banners — all wait for the take to end. Only the bubble and macOS's own indicator can ever appear in a take (the agent label and the marker toast show to the person only, left out of the recording — N62, N78); the paused popover exists only after the pause is confirmed (POC §8). **And nothing that would end, move or replace the app runs mid-take** — Update, Disconnect, Leave, joining another space, Quit (⌘Q or the Dock, reachable when a window was already open) — their buttons grey with “You can do this once your recording is finished.”; a Quit request is declined silently while recording and opens the paused popover (its “no Quit while a take is open” note) while paused.",
    "invariants": [
-    "Let take_open = state ∈ {recording, paused, and paused's morphs/auto-pause faces}. While take_open, no window, banner, invite, deep-link handling, deferred offline-stop page, or update banner becomes newly visible; the only shroom surfaces that may newly appear are the bubble overlay, the paused popover (only after the pause is confirmed) and its morphs (discard-confirm), and the auto-pause popovers (display-lost, mic-lost, camera-lost, mac-away, permission-lost, disk-full-stop).",
+    "Let take_open = state ∈ {recording, paused, and paused's morphs/auto-pause faces}. While take_open, no window, banner, invite, deep-link handling, deferred offline-stop page, or update banner becomes newly visible; the only shroom surfaces that may newly appear are the bubble overlay, the paused popover (only after the pause is confirmed) and its morphs (discard-confirm), and the auto-pause popovers (display-lost, mic-lost, camera-lost, mac-away, permission-lost, disk-full-stop); and, left out of every capture, the agent label (N62) and the marker toast for two seconds after ⌥⌘M (N78).",
     "Items that arrive while take_open (invite deep link, offline-stop page, update banner, windows) are queued and surface only after the take ends.",
     "While take_open, Update, Disconnect, Leave, join-another-space and Quit controls are disabled and show “You can do this once your recording is finished.”",
     "A Quit request (⌘Q or Dock) while recording causes no state change and no visible surface; while paused it opens/keeps the paused popover showing its “no Quit while a take is open” note; the process keeps running in both.",
@@ -95,7 +95,9 @@
    "cites": [
     "N41",
     "POC §8",
-    "UX-STATEMACHINE.md L116-125"
+    "UX-STATEMACHINE.md L116-125",
+    "N62",
+    "N78"
    ]
   },
   {
@@ -1368,13 +1370,15 @@
   {
    "id": "N78",
    "title": "The marker toast: ⌥⌘M answers on screen, left out of the video",
-   "decision": "**Bagrat, trying 0.1.30-early.1, 2026-10-25:** a marker dropped with the shortcut is too silent; a toast should say so, with a hint that it isn't in the recording, left out the way the agent label is. **He approved the board “The bubble — ⌥⌘M answers: the “Marker dropped” toast” as drawn, its words and the numbering, 2026-10-25** (relayed by the orchestrator). (1) **A marker ⌥⌘M drops shows a toast**: the agent label's pill with the marker's flag, top right of the display the take records, under the menu bar (just under the label when that shows; on the display Camera's preview sits on for the camera only). It reads “Marker dropped”, or “Marker 3 dropped” for the take's later ones, beside a quieter “Only you see this, not the video”. It is left out of the recording, as the countdown, the bubble's controls and the label are, and takes no clicks. (2) **It stays two seconds, then fades.** A press while it shows swaps the words and starts its two seconds again: one toast, never a stack. (3) **Paused:** with the popover open, no toast (the row's Marker dropped answers); with it put away, the toast; a second press at the same pause drops nothing, and the toast says “Already marked at this pause”. A question open, or a pause shroom made, drops nothing and shows nothing, as before. (4) **It goes with the take**, and while the popover or a count shows. Amends N64 (2)'s “nothing on screen answers it”. Built: DECISIONS B243.",
+   "decision": "**Bagrat, trying 0.1.30-early.1, 2026-10-25:** a marker dropped with the shortcut is too silent; a toast should say so, with a hint that it isn't in the recording, left out the way the agent label is. **He approved the board “The bubble — ⌥⌘M answers: the “Marker dropped” toast” as drawn, its words and the numbering, 2026-10-25** (relayed by the orchestrator). (1) **A marker ⌥⌘M drops shows a toast**: the agent label's pill with the marker's flag, top right of the display the take records, under the menu bar (just under the label when that shows; on the display Camera's preview sits on for the camera only). It reads “Marker dropped”, or “Marker 3 dropped” for the take's later ones, beside a quieter “Only you see this, not the video”. It is left out of the recording, as the countdown, the bubble's controls and the label are, and takes no clicks. (2) **It stays two seconds, then fades.** A press while it shows swaps the words and starts its two seconds again: one toast, never a stack. (3) **Paused:** with the popover open, no toast (the row's Marker dropped answers); with it put away, the toast; a second press at the same pause drops nothing, and the toast says “Already marked at this pause”. A question open, or a pause shroom made, drops nothing and shows nothing, as before. (4) **It goes with the take**, and once the popover or a count comes up over it; it doesn't come back when they go. Amends N64 (2)'s “nothing on screen answers it”. Built: DECISIONS B243.",
    "status": "ratified",
    "date": "2026-10-25",
    "amends": [
     "N64 (2) (⌥⌘M answers with the toast)",
     "recording (the toast's lines)",
-    "tray-pause-bars (⌥⌘M with the popover put away)"
+    "tray-pause-bars (⌥⌘M with the popover put away)",
+    "law 4 (the toast, as the agent label, newly shows mid-take, left out of the recording)",
+    "The overlays (the toast)"
    ],
    "amended_by": []
   }
@@ -1402,7 +1406,7 @@
   },
   {
    "name": "The overlays",
-   "may_do": "Lives: the chosen display | Opens: the countdown scrim; the bubble from `config` through the take; the agent label while a take the shroom command started records (N62) | Rules: never windows, never the dock icon; the bubble never takes focus, while the countdown does — you just started it, and its Esc must work without any extra macOS permission; the bubble is the only thing of ours ever in a take (the label, like the countdown, is left out of it)  [UX-STATEMACHINE.md L1720]"
+   "may_do": "Lives: the chosen display | Opens: the countdown scrim; the bubble from `config` through the take; the agent label while a take the shroom command started records (N62); the marker toast for two seconds after ⌥⌘M (N78) | Rules: never windows, never the dock icon; the bubble never takes focus, while the countdown does — you just started it, and its Esc must work without any extra macOS permission; the bubble is the only thing of ours ever in a take (the label and the marker toast, like the countdown, are left out of it)  [UX-STATEMACHINE.md L1720]"
   },
   {
    "name": "The command line",
