@@ -1237,7 +1237,7 @@ fn editor_layout_in(d: &Drive, label: &str) -> Result<serde_json::Value, String>
       }
       const r = (q) => { const e = document.querySelector(q); if (!e) return null; const b = e.getBoundingClientRect(); return [b.left, b.top, b.width, b.height]; };
       const v = document.querySelector("video");
-      return JSON.stringify({ track: r(".track"), ruler: r(".ruler"), chip: r(".chip button"), screen: r(".screen"), delete: r(".ask .b.filled"), discard: r(".ask .b.red-outline"), ask_title: document.querySelector(".ask h2")?.textContent ?? null, ask: [...document.querySelectorAll(".ask button")].map((b) => b.textContent.trim()), play: r(".play"), label: document.querySelector(".play")?.getAttribute("aria-label") ?? null, video: v ? [v.duration, v.readyState] : null, src: v ? v.currentSrc : null, paused: v ? v.paused : null, pointer: window.__drive.at, presses: window.__drive.presses.slice(-12) });
+      return JSON.stringify({ track: r(".track"), ruler: r(".ruler"), page: [innerWidth, innerHeight], chip: r(".chip button"), screen: r(".screen"), delete: r(".ask .b.filled"), discard: r(".ask .b.red-outline"), ask_title: document.querySelector(".ask h2")?.textContent ?? null, ask: [...document.querySelectorAll(".ask button")].map((b) => b.textContent.trim()), play: r(".play"), label: document.querySelector(".play")?.getAttribute("aria-label") ?? null, video: v ? [v.duration, v.readyState] : null, src: v ? v.currentSrc : null, paused: v ? v.paused : null, pointer: window.__drive.at, presses: window.__drive.presses.slice(-12) });
     })()"#;
     page_eval(d, label, JS)
 }
@@ -1384,7 +1384,10 @@ fn ruler_leaves_nothing(d: &Drive, runner: &Runner, origin: (f64, f64)) -> Resul
         page_eval(d, &d.editor_label(), r#"JSON.stringify(document.body.style.visibility = "")"#)?;
         std::thread::sleep(Duration::from_millis(600));
         runner.shot(d, &d.editor_label(), &format!("{name}-afresh"))?;
-        let same = runner.ask(d, serde_json::json!({ "do": "same", "a": name, "b": format!("{name}-afresh") }));
+        // Compared over the timeline: the ruler with the room above it where the label sits,
+        // and the track, which the hover's line crosses.
+        let strip = [0.0, n(1) - 26.0, layout["page"][0].as_f64().unwrap_or(0.0), 26.0 + n(3) + 10.0 + 66.0 + 4.0];
+        let same = runner.ask(d, serde_json::json!({ "do": "same", "a": name, "b": format!("{name}-afresh"), "crop": strip, "page": layout["page"] }));
         let what = if press { "pressed and dragged along the ruler" } else { "swept over the ruler" };
         d.check(&format!("the pointer {what}: its time label leaves nothing behind"), same.is_ok(), same.err().unwrap_or_default());
     }
