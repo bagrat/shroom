@@ -327,6 +327,7 @@ fn plan(s: &Scene) -> &shroom_core::scene::PlanView {
     match &s.settings.as_ref().expect("the Settings window").body.pane {
         SettingsPane::Space(sp) => &sp.plan,
         SettingsPane::General(_) => panic!("General, not Space"),
+        SettingsPane::Videos(_) => panic!("Videos, not Space"),
         SettingsPane::Members(_) => panic!("Members, not Space"),
     }
 }
@@ -334,6 +335,7 @@ fn plan(s: &Scene) -> &shroom_core::scene::PlanView {
 fn general(s: &Scene) -> &shroom_core::scene::GeneralBody {
     match &s.settings.as_ref().expect("the Settings window").body.pane {
         SettingsPane::General(g) => g,
+        SettingsPane::Videos(_) => panic!("Videos, not General"),
         SettingsPane::Space(_) => panic!("Space, not General"),
         SettingsPane::Members(_) => panic!("Members, not General"),
     }
@@ -620,6 +622,8 @@ fn rows() -> Vec<(&'static str, World)> {
         w
     }));
     rows.push(("settings-videos", suggested(settings_on(ready(), SettingsTab::Videos), vec![], 34_000_000_000)));
+    // Space used, in the Space tab on an owner-class Mac (N78).
+    rows.push(("settings-space", suggested(settings_on(ready(), SettingsTab::Space), vec![], 34_000_000_000)));
     // Auto-cleanup (N75): the setting Mac's pop-up, another Mac's line, counting off, and the
     // question turning it on asks.
     rows.push(("settings-videos", going(suggested(settings_on(ready(), SettingsTab::Videos), vec![], 34_000_000_000))));
