@@ -909,10 +909,10 @@ function fieldOf(html) {
  * next `/_shroom/named/` answer; `type(v)` is the owner typing; `click()` puts the
  * keyboard in the field. The field's own events are recorded, as a browser fires them. */
 function namingScript(html, { value = fieldOf(html).value, focused = !!fieldOf(html).autofocus, live = true, playing = "/m/x/master.m3u8" } = {}) {
-  const script = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]).find((s) => s.includes("/_shroom/named/"));
+  const script = [...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)].map((m) => m[1]).find((s) => s.includes("/_shroom/named/"));
   expect(script, "the naming poll is on the page").toBeTruthy();
   // The page's player functions are its own script's, defined beside the poll's.
-  expect(html, "the player's chapters and captions can be wired after the page opened").toMatch(/<script>\s*function shroomChapters\(/);
+  expect(html, "the player's chapters and captions can be wired after the page opened").toMatch(/<script[^>]*>\s*function shroomChapters\(/);
   const on = {};
   const named = [];
   /** A stand-in player: its video (playing on), its row with the speed button, what was wired. */

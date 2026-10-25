@@ -12,7 +12,7 @@ const UNKNOWN = "NoSuchVideo00000";
 /** Runs a page's stall-clock script against a stand-in document, at `now`, with `store` as
  * the tab's session storage; returns what the line and the bar show afterwards. */
 function runClock(body, store, now, path = `/${UNKNOWN}`) {
-  const script = [...body.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]).find((s) => s.includes("shroom-seen:"));
+  const script = [...body.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)].map((m) => m[1]).find((s) => s.includes("shroom-seen:"));
   expect(script, "the stall clock is on the page").toBeTruthy();
   const line = { textContent: body.includes(COPY.onItsWay) ? COPY.onItsWay : "" };
   const classes = new Set(["bar", "go"]);
