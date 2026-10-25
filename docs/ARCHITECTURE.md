@@ -342,7 +342,7 @@ stay. A switch keeps the old space's files until the new join's 200 (D:B42, B54 
   the panel's margin with its own shadow (the panel casts none, so the shadow fades with
   the pill), fades it in and out, and starts again on a new press (`pressed`). Made at
   start or not at all; without it, ⌥⌘M still drops its marker, unanswered on screen.
-- Windows: onboarding 600×680 (B189), Library 680×560 (resizable), Settings 600×620, Send feedback 520×600, the editor 1100×720 (resizable down to 900×640; a resizable window opens no bigger than its screen) — each its frame, macOS's 32 pt title bar inside it. One window each, but the editor's: one per video (N73, D:B227), each labelled `editor-<its number>` (`presenter::label`, the core's `EditorId`), the capability listing them as `editor-*`. A new one opens down and to the right of the newest editor window open (AppKit's cascade). An editor, the Library and Settings are destroyed when they close, not hidden (`presenter::closes_for_good`; D:B229): each comes back only when reached for, so the page made again then brings shroom forward only when asked (B106); the setup window and Send feedback are hidden. An editor's title is its slice's, “Edit — <title>”; its ✕ is posted like any window's, and the core may keep it open to save.
+- Windows: onboarding 600×680 (B189), Library 680×560 (resizable), Settings 600×720 (B247), Send feedback 520×600, the editor 1100×720 (resizable down to 900×640; a resizable window opens no bigger than its screen) — each its frame, macOS's 32 pt title bar inside it. One window each, but the editor's: one per video (N73, D:B227), each labelled `editor-<its number>` (`presenter::label`, the core's `EditorId`), the capability listing them as `editor-*`. A new one opens down and to the right of the newest editor window open (AppKit's cascade). An editor, the Library and Settings are destroyed when they close, not hidden (`presenter::closes_for_good`; D:B229): each comes back only when reached for, so the page made again then brings shroom forward only when asked (B106); the setup window and Send feedback are hidden. An editor's title is its slice's, “Edit — <title>”; its ✕ is posted like any window's, and the core may keep it open to save.
 - Camera panels (`runtime/camera.rs`): bubble and Camera-only preview (§4.4).
 - Every window and overlay joins `Runtime.excluded` when made and is left out of capture;
   the bubble never is. Overlays and camera panels don't hide on ⌘H (D:B112).
@@ -758,8 +758,9 @@ Macs deploy — at wiring and once a launch (`wire::refresh_page`) — and only 
 `VERSION`, never down (D:B50, B53 a); naming's switch (`wire::set_ai`) puts the page up again
 with or without the AI binding and its schedule, and a refresh or a re-wiring keeps what the
 live page has (the ping says `"ai":true`). Members compare `iface` with `member::IFACE_MIN` (2)
-and show needs-update below it (DV #30). `VERSION` moves with every page change;
-`page-version.json` fingerprints each and a test enforces it (D:B61).
+and show needs-update below it (DV #30). A published `VERSION`'s page never changes;
+`page-version.json` fingerprints each, and a page change re-stamps an unpublished VERSION's
+row or takes the next VERSION once it's out (D:B61, B248).
 
 ---
 
@@ -798,7 +799,7 @@ relaunch (N9).
 
 R2's single PUT tops out at 4.995 GiB; `put_file` sends ≤ `SINGLE_PUT_MAX` (256 MiB) whole and
 multipart above in `PART_SIZE` (128 MiB) parts (D:B15, B70 b). R2 aborts stale multiparts
-after 7 d. The MP4 never gates "watchable"; Download works once `media.mp4` exists (the owner page draws it greyed until then, D:B247).
+after 7 d. The MP4 never gates "watchable"; Download works once `media.mp4` exists (the owner page draws it greyed until then, D:B249).
 
 ### 9.3 Progress truth for the page
 

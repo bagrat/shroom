@@ -1,0 +1,144 @@
+# The AI-on migration (spec N76, DECISIONS B235), the way a person meets it, on a
+# GitHub-hosted Mac and the dedicated Cloudflare test account (TESTING-PLAN D3): the signed
+# release installed by the one-line installer and set up through its own wizard with the AI
+# off, then updated in place to the early build — and the two guards, Not now and a
+# member's Mac (dev/mac/scenarios/ai-migration.sh). It builds nothing of the app: what runs
+# is what users run.
+#
+# A release sets its space up under the product's own names (`v` over `shroom-space`), which
+# no other lane deploys on the test account; this run deletes that space before and after
+# (`e2e-run product-close`), and one run at a time takes it (the concurrency group). The
+# run's token — the product's two powers, two hours — is minted and deleted as e2e-full's is.
+#
+# A session asks through a commit to dev/e2e/migration-request on its own branch (never
+# main). Its verdict is the job's colour; the evidence — every window whole, the checks, a
+# video of the screen, the app's logs — is kept three days and can be read by anyone signed
+# in to GitHub: it shows only the runner's screen and the test account's throwaway space.
+#
+# Every action is pinned to a full commit SHA, as in ci.yml.
+name: E2E AI migration (release → early)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ['claude/**']
+    paths: ['dev/e2e/migration-request']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-migration
+  cancel-in-progress: false
+
+env:
+  CARGO_INCREMENTAL: 0
+  CARGO_TERM_COLOR: always
+  HOMEBREW_NO_AUTO_UPDATE: 1
+  HOMEBREW_NO_INSTALL_CLEANUP: 1
+  HOMEBREW_NO_ENV_HINTS: 1
+  # The installer's downloads go through shroom.am's counter: tagged as our own (B228).
+  SHROOM_REF: ci
+
+jobs:
+  migration:
+    name: Release → early, the AI turned on
+    runs-on: macos-26
+    timeout-minutes: 90
+    environment: cf-e2e
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: A quieter Mac
+        run: sudo mdutil -a -i off || true
+
+      - name: Rust toolchain (the workspace's rust-version), and the Xcode in use
+        id: toolchain
+        run: |
+          version=$(sed -n 's/^rust-version = "\(.*\)"$/\1/p' Cargo.toml)
+          rustup toolchain install "$version" --profile minimal --no-self-update
+          rustup default "$version"
+          echo "xcode=$(xcodebuild -version | awk 'NR==1{v=$2} NR==2{b=$3} END{print v "-" b}')" >>"$GITHUB_OUTPUT"
+
+      # mac.yml's cache, read only.
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          shared-key: mac-macos-26-xcode${{ steps.toolchain.outputs.xcode }}
+          save-if: false
+
+      # Built before any secret is written: no build script runs beside one. Cold (no cache
+      # for this key yet), cargo's own git fetch of the capture crates' big repository hung
+      # for an hour (run 40173006374): git's own fetch, and a limit.
+      - name: The run's two ends
+        timeout-minutes: 25
+        env:
+          CARGO_NET_GIT_FETCH_WITH_CLI: 'true'
+        run: cargo build --locked -p shroom-e2e-live --bin e2e-run
+
+      - name: The recorder, the pointer
+        run: brew install ffmpeg cliclick
+
+      # `printf` is bash's own: neither value is ever a process argument.
+      - name: The test account, to files only this job reads
+        env:
+          SHROOM_E2E_TOKEN: ${{ secrets.SHROOM_E2E_TOKEN }}
+          SHROOM_E2E_ACCOUNT_ID: ${{ secrets.SHROOM_E2E_ACCOUNT_ID }}
+        run: |
+          [ -n "$SHROOM_E2E_TOKEN" ] && [ -n "$SHROOM_E2E_ACCOUNT_ID" ] || { echo "::error title=No secrets::cf-e2e needs SHROOM_E2E_TOKEN and SHROOM_E2E_ACCOUNT_ID"; exit 1; }
+          umask 077
+          mkdir -p "$RUNNER_TEMP/e2e"
+          printf '%s' "$SHROOM_E2E_TOKEN" >"$RUNNER_TEMP/e2e/account-token"
+
+      - name: The run opens (pinned, its token), the release's space cleared
+        env:
+          SHROOM_E2E: '1'
+          SHROOM_E2E_ACCOUNT_ID: ${{ secrets.SHROOM_E2E_ACCOUNT_ID }}
+        run: |
+          export SHROOM_E2E_TOKEN_FILE="$RUNNER_TEMP/e2e/account-token"
+          target/debug/e2e-run open "$RUNNER_TEMP/e2e/run-token" "$RUNNER_TEMP/e2e/space-id"
+          target/debug/e2e-run product-close
+
+      # The latest release, as a person installs it; it opens, and is quit so its grants
+      # are written before anything has captured.
+      - name: The release, through the one-line installer
+        run: |
+          curl -fsSL "https://shroom.am/install?ref=ci" | sh 2>&1 | tr '\r' '\n' | grep -v '^#'
+          sleep 5
+          pkill -f "$HOME/Applications/shroom.app/Contents/MacOS/" || true
+          sleep 2
+
+      - name: The release, granted
+        run: dev/mac/mac.sh prepare "$HOME/Applications/shroom.app"
+
+      - name: Set up, updated, the AI on, Turn off; Not now; a member — recorded
+        run: E2E_TOKEN_FILE="$RUNNER_TEMP/e2e/run-token" dev/mac/mac.sh run ai-migration
+
+      - name: The run closes (the release's space, the run's token)
+        if: always()
+        env:
+          SHROOM_E2E: '1'
+          SHROOM_E2E_ACCOUNT_ID: ${{ secrets.SHROOM_E2E_ACCOUNT_ID }}
+        run: |
+          if [ -s "$RUNNER_TEMP/e2e/account-token" ]; then
+            export SHROOM_E2E_TOKEN_FILE="$RUNNER_TEMP/e2e/account-token"
+            target/debug/e2e-run product-close || true
+            target/debug/e2e-run close "$RUNNER_TEMP/e2e/space-id"
+          fi
+          rm -f "$RUNNER_TEMP/e2e/account-token" "$RUNNER_TEMP/e2e/run-token"
+
+      - name: The verdict
+        if: always()
+        run: |
+          dev/mac/mac.sh summary
+          cat "$RUNNER_TEMP/mac/ai-migration/checks.tsv" 2>/dev/null || true
+          ! grep -q '^fail' "$RUNNER_TEMP/mac/results.tsv"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: e2e-migration-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/mac
+          if-no-files-found: warn
+          retention-days: 3

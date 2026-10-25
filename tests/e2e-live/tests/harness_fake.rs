@@ -9,7 +9,7 @@ use shroom_cloud::{Cloud, Policy};
 use shroom_cloudfake::{Fake, State};
 use serde_json::json;
 
-use shroom_e2e_live::{MAIN_NAME, RUN_FRESH_SECS, new_run_id, parse_rfc3339, pin, reap, rfc3339, run_token_name, stale_run_tokens, sweep_run};
+use shroom_e2e_live::{MAIN_NAME, RUN_FRESH_SECS, new_run_id, parse_rfc3339, pin, reap, rfc3339, run_token_name, stale_run_tokens, sweep_product, sweep_run};
 
 const TOKEN: &str = "cfat_0123456789abcdefghijklmnopqrstuvwxyzABCD";
 
@@ -76,6 +76,18 @@ fn a_runs_close_takes_its_own_space_and_nothing_else() {
         assert_eq!(s.scripts.keys().collect::<Vec<_>>(), ["shroom-probe", "v", &format!("v-{OTHER}")]);
         assert_eq!(s.buckets.keys().collect::<Vec<_>>(), ["shroom-space", &format!("shroom-space-{OTHER}")]);
         assert_eq!(s.subdomain.as_deref(), Some("shroom-e2e"), "the name is never swept");
+    });
+}
+
+#[test]
+fn the_releases_space_goes_and_no_runs() {
+    let (fake, c, acc) = on(two_runs(OTHER));
+    let token_id = fake.with(|s| s.token_id.clone());
+    let gone = sweep_product(&c, &acc, &token_id).unwrap();
+    assert_eq!(gone, ["bucket shroom-space", "worker v"]);
+    fake.with(|s| {
+        assert_eq!(s.scripts.keys().collect::<Vec<_>>(), ["shroom-probe", &format!("v-{RUN}"), &format!("v-{OTHER}")]);
+        assert_eq!(s.buckets.keys().collect::<Vec<_>>(), [&format!("shroom-space-{RUN}"), &format!("shroom-space-{OTHER}")]);
     });
 }
 

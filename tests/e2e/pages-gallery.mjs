@@ -130,7 +130,7 @@ async function headIn(page) {
   }, { b64: png.toString("base64"), w: r.w });
 }
 /** The colour of the bar's last 3 px, on its centre line: a fully loaded bar reads loaded to
- * its end (review of B247: it kept a 7 px stub of the unloaded colour). */
+ * its end (review of B249: it kept a 7 px stub of the unloaded colour). */
 async function endOfBar(page) {
   const r = await page.evaluate(() => {
     const p = document.querySelector(".player").getBoundingClientRect(), s = document.querySelector(".seek").getBoundingClientRect(), cs = getComputedStyle(document.querySelector(".player"));

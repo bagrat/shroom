@@ -810,7 +810,9 @@
    "amends": [
     "N28 (resolves the Members placement: the Settings window's third tab)"
    ],
-   "amended_by": []
+   "amended_by": [
+    "N79 (a fourth tab, Videos)"
+   ]
   },
   {
    "id": "N37",
@@ -1172,7 +1174,8 @@
     "shroom.am/privacy (the viewers' line, ruled 2026-10-18)"
    ],
    "amended_by": [
-    "N75"
+    "N75",
+    "N79 (Your videos is the Videos tab; Space used in Space)"
    ]
   },
   {
@@ -1340,7 +1343,8 @@
     "The page (its schedule deletes what auto-cleanup says)"
    ],
    "amended_by": [
-    "N77 (a fourth wait: a year)"
+    "N77 (a fourth wait: a year)",
+    "N79 (the pop-up is in the Videos tab)"
    ]
   },
   {
@@ -1379,6 +1383,19 @@
     "tray-pause-bars (⌥⌘M with the popover put away)",
     "law 4 (the toast, as the agent label, newly shows mid-take, left out of the recording)",
     "The overlays (the toast)"
+   ],
+   "amended_by": []
+  },
+  {
+   "id": "N79",
+   "title": "Settings gains a Videos tab; Space used moves to Space",
+   "decision": "**Bagrat, 2026-10-25** (relayed by the orchestrator; the board “Settings — General outgrew its window”): General had outgrown its window (with Your videos, the coding agent and auto-cleanup it was about 820 tall in a page of 588, and scrolled on a Mac), so the window gains a tab, **Videos**: General · Videos · Space · Members. Videos holds what was General's group Your videos, row for row and word for word: Count plays, Suggest videos to clean up and Delete videos nobody watches; the group's heading is the tab's name now. **Space used** goes to the Space tab, its own row right under “Cloudflare billing set up”, on owner-class Macs as before (the bill is theirs). The window grows to **600 × 720**, the editor's height (it fits a 1024×768 screen), so every tab fits its page of 688 under the title bar, Space with the AI switch's parts included. General keeps the app's own rows, the help line, your coding agent and Uninstall. Auto-cleanup's question opens over Videos; the shroom command's settings link still opens General at its switch.",
+   "status": "ratified",
+   "date": "2026-10-25",
+   "amends": [
+    "N36 (the window's tabs: General · Videos · Space · Members)",
+    "N68 (Your videos' home: the Videos tab; Space used in Space)",
+    "N75 (Delete videos nobody watches: in the Videos tab)"
    ],
    "amended_by": []
   }
@@ -2485,6 +2502,7 @@
    "title": "the Settings window's tabs",
    "states": [
     "settings-general",
+    "settings-videos",
     "settings-members",
     "invite-born",
     "add-another-mac"
@@ -9213,7 +9231,7 @@
    "surface": "window",
    "status": "provisional",
    "board": null,
-   "summary": "One standard macOS settings window with toolbar tabs General · Space · Members. Members appears only on owner-class Macs (N5, N33). The window opens on the last tab used (General the first time). One instance. ✕ ≡ Close (N12). Resolves N28's open placement.",
+   "summary": "One standard macOS settings window, 600 × 720 (N79), with toolbar tabs General · Videos · Space · Members. Members appears only on owner-class Macs (N5, N33). The window opens on the last tab used (General the first time). One instance. ✕ ≡ Close (N12). Resolves N28's open placement.",
    "entry": "A space exists, so config is reachable: not mid-take. The window opens from any of these doors: (a) the gear in config's footer; (b) all-set's Invite someone, which morphs the onboarding window into Settings on Members; (c) space-degraded's Reconnect your space, which opens Space in the repair mood (Region 2); (d) recording-off's Turn it back on, which opens Space with row six current at perm-screen (Region 3). It is also restored at its derived state after an update relaunch. A window opened before a take stays open.",
    "said": [
     {
@@ -9222,6 +9240,13 @@
      "copy": "provisional",
      "note": "Toolbar tab.",
      "id": "settings.general"
+    },
+    {
+     "text": "Videos",
+     "role": "other",
+     "copy": "ratified",
+     "note": "Toolbar tab (N79; Bagrat named it, 2026-10-25).",
+     "id": "settings.videos"
     },
     {
      "text": "Space",
@@ -9245,6 +9270,13 @@
      "return_default": false,
      "note": "Toolbar tab.",
      "goes_to": "settings-general"
+    },
+    {
+     "label": "Videos",
+     "kind": "other",
+     "return_default": false,
+     "note": "Toolbar tab.",
+     "goes_to": "settings-videos"
     },
     {
      "label": "Space",
@@ -9274,7 +9306,8 @@
     "N5",
     "N33",
     "N42",
-    "N38"
+    "N38",
+    "N79"
    ],
    "was": {
     "fixture": "r5.json",
@@ -9289,7 +9322,7 @@
    "surface": "window",
    "status": "provisional",
    "board": "SettingsGeneral",
-   "summary": "The General tab: U4's login checkbox at home at last (it reads the system's truth: if the login item is removed in System Settings, the box shows unchecked), the update row mirroring config's banner, and the help row: Copy diagnostics and Report a problem… (B180), with GitHub's new-issue link under it as the public door (N8). Past this Mac's macOS, General carries the only update line: no banner, no dot. Your videos gains Delete videos nobody watches (N75): the space's auto-cleanup, Off as it ships, set on the Mac that holds the setup key, read-only elsewhere.",
+   "summary": "The General tab: U4's login checkbox at home at last (it reads the system's truth: if the login item is removed in System Settings, the box shows unchecked), the update row mirroring config's banner, and the help row: Copy diagnostics and Report a problem… (B180), with GitHub's new-issue link under it as the public door (N8). Past this Mac's macOS, General carries the only update line: no banner, no dot. Then your coding agent (N62) and Uninstall shroom… at the foot. Your videos moved to a tab of its own, Videos (N79).",
    "entry": "Settings window on the General tab (the default on first open). The shroom command's settings link (N62) opens it too, the switch's row lit for a moment.",
    "said": [
     {
@@ -9451,168 +9484,6 @@
       "N62"
      ],
      "id": "settings-general.let-it-start-and"
-    },
-    {
-     "text": "Your videos",
-     "role": "field-label",
-     "copy": "ratified",
-     "note": "The group's heading (N68).",
-     "id": "settings-general.your-videos"
-    },
-    {
-     "text": "Count plays",
-     "role": "field-label",
-     "copy": "ratified",
-     "note": "Switch, on by default. The space's: owner-class Macs change it; elsewhere it shows greyed (N68).",
-     "id": "settings-general.count-plays"
-    },
-    {
-     "text": "How often each video is played and how far, kept in your Cloudflare account. No cookies, nothing about who watched.",
-     "role": "line",
-     "copy": "ratified",
-     "id": "settings-general.how-often-each-video"
-    },
-    {
-     "text": "Couldn't change that just now — try again in a moment.",
-     "role": "line",
-     "copy": "ratified",
-     "note": "Under Count plays, when the space didn't take the switch (law 12); the switch reads as the space has it.",
-     "id": "settings-general.couldnt-change-that"
-    },
-    {
-     "text": "Suggest videos to clean up",
-     "role": "field-label",
-     "copy": "ratified",
-     "note": "Switch, on by default; this Mac's (N68).",
-     "id": "settings-general.suggest-videos-to-clean-up"
-    },
-    {
-     "text": "In the Library, videos that might be worth deleting: rarely watched lately, and taking real room.",
-     "role": "line",
-     "copy": "ratified",
-     "id": "settings-general.videos-youve-stopped-watching"
-    },
-    {
-     "text": "Space used",
-     "role": "field-label",
-     "copy": "ratified",
-     "id": "settings-general.space-used"
-    },
-    {
-     "text": "34 GB — about 36¢ a month past Cloudflare's free 10 GB",
-     "role": "status",
-     "copy": "ratified",
-     "note": "Past the free 10 GB; the size and the cents vary (B212).",
-     "id": "settings-general.34-gb"
-    },
-    {
-     "text": "8.2 GB — inside Cloudflare's free 10 GB",
-     "role": "status",
-     "copy": "ratified",
-     "note": "Inside the free 10 GB; the size varies (B212).",
-     "id": "settings-general.8-2-gb"
-    },
-    {
-     "text": "Delete videos nobody watches",
-     "role": "field-label",
-     "copy": "ratified",
-     "note": "N75. A pop-up in Your videos, under Suggest videos to clean up; Off as it ships. Set on the Mac that holds the setup key. Bagrat approved the board as drawn, 2026-10-24.",
-     "cites": [
-      "N75"
-     ],
-     "id": "settings-general.delete-videos-nobody-watches"
-    },
-    {
-     "text": "Counted from the last time someone watched it, or from when it was shared. Pinned videos are never deleted, and the Library says which ones are going a few days before.",
-     "role": "line",
-     "copy": "ratified",
-     "note": "N75. Under it, on the Mac that sets it. Bagrat approved the board as drawn, 2026-10-24.",
-     "cites": [
-      "N75"
-     ],
-     "id": "settings-general.counted-from"
-    },
-    {
-     "text": "Off",
-     "role": "button",
-     "copy": "ratified",
-     "note": "N75. The pop-up's first choice. Bagrat approved the board as drawn, 2026-10-24.",
-     "cites": [
-      "N75"
-     ],
-     "id": "settings-general.autoclean-off"
-    },
-    {
-     "text": "After 15 days",
-     "role": "button",
-     "copy": "ratified",
-     "note": "N75. Bagrat approved the board as drawn, 2026-10-24.",
-     "cites": [
-      "N75"
-     ],
-     "id": "settings-general.after-15-days"
-    },
-    {
-     "text": "After 30 days",
-     "role": "button",
-     "copy": "ratified",
-     "note": "N75. Bagrat approved the board as drawn, 2026-10-24.",
-     "cites": [
-      "N75"
-     ],
-     "id": "settings-general.after-30-days"
-    },
-    {
-     "text": "After 60 days",
-     "role": "button",
-     "copy": "ratified",
-     "note": "N75. Bagrat approved the board as drawn, 2026-10-24.",
-     "cites": [
-      "N75"
-     ],
-     "id": "settings-general.after-60-days"
-    },
-    {
-     "text": "After a year",
-     "role": "button",
-     "copy": "ratified",
-     "note": "N77. The pop-up's last choice: 365 days. Bagrat, 2026-10-25: add a year, the landing's words.",
-     "cites": [
-      "N75",
-      "N77"
-     ],
-     "id": "settings-general.after-a-year"
-    },
-    {
-     "text": "Your space deletes videos nobody has watched in 30 days. It's set on the Mac that set up your space. Pin a video in the Library to keep it.",
-     "role": "line",
-     "copy": "ratified",
-     "note": "N75. On every other Mac, under the pop-up greyed at the space's choice. The number of days varies; off, the pop-up reads Off and the line is the setting Mac's. Bagrat approved the board as drawn, 2026-10-24. At 365 days it says “a year” in place of the days (N77).",
-     "cites": [
-      "N75",
-      "N77"
-     ],
-     "id": "settings-general.space-deletes"
-    },
-    {
-     "text": "Needs Count plays",
-     "role": "line",
-     "copy": "ratified",
-     "note": "N75. In place of the line under it, the pop-up greyed, while Count plays is off. Bagrat approved the board as drawn, 2026-10-24.",
-     "cites": [
-      "N75"
-     ],
-     "id": "settings-general.needs-count-plays"
-    },
-    {
-     "text": "Turning on — a few seconds.",
-     "role": "line",
-     "copy": "ratified",
-     "note": "N75. Under Delete videos nobody watches, the first time it's turned on: the space's page is given its schedule, as AI's banner says it (N66). Bagrat approved the board as drawn, 2026-10-24.",
-     "cites": [
-      "N75"
-     ],
-     "id": "settings-general.autoclean-turning-on"
     }
    ],
    "actions": [
@@ -9660,13 +9531,6 @@
      "return_default": false,
      "note": "Opens the Uninstall sheet. Greys mid-take (law 4).",
      "goes_to": "uninstall-confirm"
-    },
-    {
-     "label": "Delete videos nobody watches",
-     "kind": "other",
-     "return_default": false,
-     "goes_to": "autoclean-confirm",
-     "note": "N75. A pop-up: Off · After 15 days · After 30 days · After 60 days · After a year. Turning it on or shortening it while videos already qualify asks first (autoclean-confirm); otherwise it's set at once, “Turning on — a few seconds.” under it the first time. One that didn't go through says Couldn't change that and stays as it was."
     }
    ],
    "cites": [
@@ -9680,13 +9544,177 @@
     "N53",
     "N62",
     "N68",
-    "N77"
+    "N79"
    ],
    "was": {
     "fixture": "r5.json",
     "id": "settings · General",
     "lines": "1166-1174, 1245, 1259-1260 (law 4: 116-125)"
    }
+  },
+  "settings-videos": {
+   "region": 5,
+   "kind": "face",
+   "parent": "settings",
+   "surface": "window",
+   "status": "ratified",
+   "board": "SettingsVideos",
+   "summary": "The Videos tab (N79): what was General's group Your videos, row for row and word for word. Count plays (the space's: live on owner-class Macs, greyed on a member's), Suggest videos to clean up (this Mac's), and Delete videos nobody watches (N75: the space's auto-cleanup, Off as it ships, set on the Mac that holds the setup key, read-only elsewhere). The group's heading became the tab's name. Space used moved to the Space tab.",
+   "entry": "Settings window on the Videos tab: its toolbar tab, or the window opened again on the last tab used.",
+   "said": [
+    {
+     "text": "Count plays",
+     "role": "field-label",
+     "copy": "ratified",
+     "note": "Switch, on by default. The space's: owner-class Macs change it; elsewhere it shows greyed (N68).",
+     "id": "settings-videos.count-plays"
+    },
+    {
+     "text": "How often each video is played and how far, kept in your Cloudflare account. No cookies, nothing about who watched.",
+     "role": "line",
+     "copy": "ratified",
+     "id": "settings-videos.how-often-each-video",
+     "note": ""
+    },
+    {
+     "text": "Couldn't change that just now — try again in a moment.",
+     "role": "line",
+     "copy": "ratified",
+     "note": "Under Count plays, when the space didn't take the switch (law 12); the switch reads as the space has it.",
+     "id": "settings-videos.couldnt-change-that"
+    },
+    {
+     "text": "Suggest videos to clean up",
+     "role": "field-label",
+     "copy": "ratified",
+     "note": "Switch, on by default; this Mac's (N68).",
+     "id": "settings-videos.suggest-videos-to-clean-up"
+    },
+    {
+     "text": "In the Library, videos that might be worth deleting: rarely watched lately, and taking real room.",
+     "role": "line",
+     "copy": "ratified",
+     "id": "settings-videos.videos-youve-stopped-watching",
+     "note": ""
+    },
+    {
+     "text": "Delete videos nobody watches",
+     "role": "field-label",
+     "copy": "ratified",
+     "note": "N75. A pop-up under Suggest videos to clean up; Off as it ships. Set on the Mac that holds the setup key. Bagrat approved the board as drawn, 2026-10-24.",
+     "cites": [
+      "N75"
+     ],
+     "id": "settings-videos.delete-videos-nobody-watches"
+    },
+    {
+     "text": "Counted from the last time someone watched it, or from when it was shared. Pinned videos are never deleted, and the Library says which ones are going a few days before.",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N75. Under it, on the Mac that sets it. Bagrat approved the board as drawn, 2026-10-24.",
+     "cites": [
+      "N75"
+     ],
+     "id": "settings-videos.counted-from"
+    },
+    {
+     "text": "Off",
+     "role": "button",
+     "copy": "ratified",
+     "note": "N75. The pop-up's first choice. Bagrat approved the board as drawn, 2026-10-24.",
+     "cites": [
+      "N75"
+     ],
+     "id": "settings-videos.autoclean-off"
+    },
+    {
+     "text": "After 15 days",
+     "role": "button",
+     "copy": "ratified",
+     "note": "N75. Bagrat approved the board as drawn, 2026-10-24.",
+     "cites": [
+      "N75"
+     ],
+     "id": "settings-videos.after-15-days"
+    },
+    {
+     "text": "After 30 days",
+     "role": "button",
+     "copy": "ratified",
+     "note": "N75. Bagrat approved the board as drawn, 2026-10-24.",
+     "cites": [
+      "N75"
+     ],
+     "id": "settings-videos.after-30-days"
+    },
+    {
+     "text": "After 60 days",
+     "role": "button",
+     "copy": "ratified",
+     "note": "N75. Bagrat approved the board as drawn, 2026-10-24.",
+     "cites": [
+      "N75"
+     ],
+     "id": "settings-videos.after-60-days"
+    },
+    {
+     "text": "After a year",
+     "role": "button",
+     "copy": "ratified",
+     "note": "N77. The pop-up's last choice: 365 days. Bagrat, 2026-10-25: add a year, the landing's words.",
+     "cites": [
+      "N75",
+      "N77"
+     ],
+     "id": "settings-videos.after-a-year"
+    },
+    {
+     "text": "Your space deletes videos nobody has watched in 30 days. It's set on the Mac that set up your space. Pin a video in the Library to keep it.",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N75. On every other Mac, under the pop-up greyed at the space's choice. The number of days varies; off, the pop-up reads Off and the line is the setting Mac's. Bagrat approved the board as drawn, 2026-10-24. At 365 days it says “a year” in place of the days (N77).",
+     "cites": [
+      "N75",
+      "N77"
+     ],
+     "id": "settings-videos.space-deletes"
+    },
+    {
+     "text": "Needs Count plays",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N75. In place of the line under it, the pop-up greyed, while Count plays is off. Bagrat approved the board as drawn, 2026-10-24.",
+     "cites": [
+      "N75"
+     ],
+     "id": "settings-videos.needs-count-plays"
+    },
+    {
+     "text": "Turning on — a few seconds.",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N75. Under Delete videos nobody watches, the first time it's turned on: the space's page is given its schedule, as AI's banner says it (N66). Bagrat approved the board as drawn, 2026-10-24.",
+     "cites": [
+      "N75"
+     ],
+     "id": "settings-videos.autoclean-turning-on"
+    }
+   ],
+   "actions": [
+    {
+     "label": "Delete videos nobody watches",
+     "kind": "other",
+     "return_default": false,
+     "goes_to": "autoclean-confirm",
+     "note": "N75. A pop-up: Off · After 15 days · After 30 days · After 60 days · After a year. Turning it on or shortening it while videos already qualify asks first (autoclean-confirm); otherwise it's set at once, “Turning on — a few seconds.” under it the first time. One that didn't go through says Couldn't change that and stays as it was."
+    }
+   ],
+   "cites": [
+    "N68",
+    "N75",
+    "N77",
+    "N79"
+   ]
   },
   "settings-space": {
    "region": 5,
@@ -9695,7 +9723,7 @@
    "surface": "window",
    "status": "provisional",
    "board": "SettingsSpace",
-   "summary": "The Space tab: one tab with a mood per kind of Mac (inspection · repair · owner-class-without-token · member). Beneath the rows, by role: the mark switch (owner-class only — a space setting, U3) and the exits as quiet text (Disconnect this Mac… for owners, Leave this space… for members). Row six is live on every Mac. A revoked grant un-ticks it (“screen recording is off”), with Turn it back on → the permissions chapter at exactly the missing beat, in this window. A denied microphone ticks the row with the fact, plus a quiet Turn on the microphone that opens System Settings' Microphone pane (a denied mic never blocks). Mid-take both exits grey (law 4). After Disconnect or Leave, the ~/.shroom secrets are wiped and the app returns to idle-unprovisioned; the login item stays as it was. No invite door shows (B159): an invite link pasted anywhere in the tab (⌘V) opens its invite, as the page's Open shroom does. On the Mac that holds the setup key, a second switch turns the space's AI on or off for new videos (on by default, N76) — titles, chapters, captions and voice cuts (N66) — with one line on what it does and costs; turning it on or off re-wires the page.",
+   "summary": "The Space tab: one tab with a mood per kind of Mac (inspection · repair · owner-class-without-token · member). Beneath the rows, by role: the mark switch (owner-class only — a space setting, U3) and the exits as quiet text (Disconnect this Mac… for owners, Leave this space… for members). Row six is live on every Mac. A revoked grant un-ticks it (“screen recording is off”), with Turn it back on → the permissions chapter at exactly the missing beat, in this window. A denied microphone ticks the row with the fact, plus a quiet Turn on the microphone that opens System Settings' Microphone pane (a denied mic never blocks). Mid-take both exits grey (law 4). After Disconnect or Leave, the ~/.shroom secrets are wiped and the app returns to idle-unprovisioned; the login item stays as it was. No invite door shows (B159): an invite link pasted anywhere in the tab (⌘V) opens its invite, as the page's Open shroom does. On the Mac that holds the setup key, a second switch turns the space's AI on or off for new videos (on by default, N76) — titles, chapters, captions and voice cuts (N66) — with one line on what it does and costs; turning it on or off re-wires the page. On owner-class Macs, Space used is a row of its own right under “Cloudflare billing set up”: what the space holds and what it costs (N79, moved from Your videos).",
    "entry": "Settings window on the Space tab. Which mood shows is derived from the kind of Mac and the probe results.",
    "said": [
     {
@@ -9790,6 +9818,27 @@
       "N66"
      ],
      "id": "settings-space.couldnt-change-that-just"
+    },
+    {
+     "text": "Space used",
+     "role": "field-label",
+     "copy": "ratified",
+     "id": "settings-space.space-used",
+     "note": "N79: its own row in the plan's card, right under “Cloudflare billing set up”, on owner-class Macs (the bill is theirs, N68), moved from Your videos. Bagrat, 2026-10-25."
+    },
+    {
+     "text": "34 GB — about 36¢ a month past Cloudflare's free 10 GB",
+     "role": "status",
+     "copy": "ratified",
+     "note": "Past the free 10 GB; the size and the cents vary (B212).",
+     "id": "settings-space.34-gb"
+    },
+    {
+     "text": "8.2 GB — inside Cloudflare's free 10 GB",
+     "role": "status",
+     "copy": "ratified",
+     "note": "Inside the free 10 GB; the size varies (B212).",
+     "id": "settings-space.8-2-gb"
     }
    ],
    "actions": [
@@ -9848,7 +9897,9 @@
     "N31",
     "law 4",
     "B159",
-    "N66"
+    "N66",
+    "N68",
+    "N79"
    ],
    "was": {
     "fixture": "r5.json",
@@ -18773,6 +18824,56 @@
    "on": []
   },
   {
+   "from": "settings-general",
+   "to": "settings-videos",
+   "kind": "flow",
+   "label": "the Videos tab",
+   "trigger": "",
+   "status": "ratified",
+   "cites": [
+    "N79"
+   ],
+   "source": [
+    "core-arm"
+   ],
+   "on": []
+  },
+  {
+   "from": "autoclean-confirm",
+   "to": "settings-videos",
+   "kind": "flow",
+   "label": "Turn on",
+   "trigger": "Turn on: the setting is set",
+   "status": "ratified",
+   "cites": [
+    "N75"
+   ],
+   "source": [
+    "core-arm"
+   ],
+   "on": [
+    "Act(ConfirmAutoclean)"
+   ]
+  },
+  {
+   "from": "autoclean-confirm",
+   "to": "settings-videos",
+   "kind": "flow",
+   "label": "Cancel",
+   "trigger": "Cancel or Esc: the setting stays as it was",
+   "status": "ratified",
+   "cites": [
+    "N75"
+   ],
+   "source": [
+    "core-arm"
+   ],
+   "on": [
+    "Act(Back)",
+    "Key(Esc)"
+   ]
+  },
+  {
    "from": "report-problem",
    "to": "settings-general",
    "kind": "flow",
@@ -19561,58 +19662,6 @@
    ]
   },
   {
-   "from": "settings-general",
-   "to": "autoclean-confirm",
-   "kind": "flow",
-   "label": "Delete videos nobody watches",
-   "trigger": "A choice that turns auto-cleanup on or shortens it while videos already qualify",
-   "status": "ratified",
-   "cites": [
-    "N75"
-   ],
-   "source": [
-    "core-arm"
-   ],
-   "on": [
-    "Act(SetAutoclean)"
-   ]
-  },
-  {
-   "from": "autoclean-confirm",
-   "to": "settings-general",
-   "kind": "flow",
-   "label": "Turn on",
-   "trigger": "Turn on: the setting is set",
-   "status": "ratified",
-   "cites": [
-    "N75"
-   ],
-   "source": [
-    "core-arm"
-   ],
-   "on": [
-    "Act(ConfirmAutoclean)"
-   ]
-  },
-  {
-   "from": "autoclean-confirm",
-   "to": "settings-general",
-   "kind": "flow",
-   "label": "Cancel",
-   "trigger": "Cancel or Esc: the setting stays as it was",
-   "status": "ratified",
-   "cites": [
-    "N75"
-   ],
-   "source": [
-    "core-arm"
-   ],
-   "on": [
-    "Act(Back)",
-    "Key(Esc)"
-   ]
-  },
-  {
    "from": "autoclean-warning",
    "to": "library-cleanup",
    "kind": "flow",
@@ -19644,6 +19693,23 @@
    ],
    "on": [
     "Act(DismissGoing)"
+   ]
+  },
+  {
+   "from": "settings-videos",
+   "to": "autoclean-confirm",
+   "kind": "flow",
+   "label": "Delete videos nobody watches",
+   "trigger": "A choice that turns auto-cleanup on or shortens it while videos already qualify",
+   "status": "ratified",
+   "cites": [
+    "N75"
+   ],
+   "source": [
+    "core-arm"
+   ],
+   "on": [
+    "Act(SetAutoclean)"
    ]
   }
  ],
