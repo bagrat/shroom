@@ -97,13 +97,14 @@ fn with_no_judgment_it_still_asks_to_check() {
 
 #[test]
 fn a_cue_that_ends_its_sentence_asks_to_check_the_one_it_broke_off() {
-    // "…and your link is. Shroom cut. Okay.": nothing said again, so it asks too.
+    // "…and your link is. Shroom cut. Okay.": nothing said again, so it asks too. Run on
+    // from the finished sentence before it with no pause, so only the words say where the
+    // broken-off one began ("is" after a noun ends nothing): the finished one stays.
     let t = take(
         &[
-            ("Here is the next one.", 0.0, 3.0),
             (
-                "When you want it, just press stop and your link is.",
-                4.0,
+                "Here is the next one. When you want it, just press stop and your link is.",
+                0.0,
                 8.0,
             ),
             ("Shroom cut.", 9.0, 9.7),
@@ -174,6 +175,43 @@ fn a_slip_the_judgment_heard_said_again_is_cut_as_before() {
             CutKind::Retake,
             Confidence::High,
             "click, you press stop and the link is pasted, strum cut,"
+        )
+    );
+}
+
+#[test]
+fn the_judgment_hearing_only_the_sentence_s_tail_said_again_still_asks() {
+    // A pause of 0.4–0.6 s inside the sentence begins a start the judgment may score: it
+    // heard "which allows trimming" said again, and not the sentence's head.
+    let t = take(
+        &[
+            ("Here is the next one.", 0.0, 3.0),
+            ("So this is a really neat feature", 4.0, 6.0),
+            ("which allows trimming,", 6.5, 7.5),
+            ("shroom cut,", 8.3, 9.0),
+            ("that lets you cut the video as you talk.", 9.8, 12.5),
+        ],
+        13.5,
+    );
+    let qs = questions(&t, Options::default());
+    assert_eq!(qs[0].candidates[0], "which allows trimming,");
+    let tail: Vec<Answer> = qs
+        .iter()
+        .map(|q| Answer {
+            cue: q.cue,
+            scores: (0..q.candidates.len())
+                .map(|i| if i == 0 { 0.8 } else { 0.1 })
+                .collect(),
+        })
+        .collect();
+    let cuts = plan_with(&t, Options::default(), &tail).cuts;
+    assert_eq!(cuts.len(), 2, "{cuts:?}");
+    assert_eq!(
+        (cuts[1].kind, cuts[1].confidence, cuts[1].removed.as_str()),
+        (
+            CutKind::LineBeforeCue,
+            Confidence::Low,
+            "So this is a really neat feature which allows trimming, shroom cut,"
         )
     );
 }
