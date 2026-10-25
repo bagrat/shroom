@@ -10,6 +10,9 @@ import { Miniflare } from "miniflare";
 const SITE = new URL("..", import.meta.url).pathname;
 const modules = ["worker.js", "report.js", "clean.js"].map((f) => ({ type: "esm", path: `${SITE}${f}`, contents: readFileSync(`${SITE}${f}`, "utf8") }));
 
+/** The rate limiters site/wrangler.jsonc binds. */
+const RATELIMITS = JSON.parse(readFileSync(`${SITE}wrangler.jsonc`, "utf8").replace(/^\s*\/\/.*$/gm, "")).ratelimits;
+
 /** One Worker whose binding may send only to `allowed`, its secret naming `to`.
  * @param {string} to @param {string} allowed */
 function site(to, allowed) {
@@ -27,7 +30,11 @@ function site(to, allowed) {
           modulesRoot: SITE,
           modules: Object.fromEntries(modules.map((m) => [m.path.slice(SITE.length), { type: "esm", contents: m.contents }])),
         },
-        env: { REPORT_TO: { type: "text", value: to }, EMAIL: { type: "send-email", allowedDestinationAddresses: [allowed] } },
+        env: {
+          REPORT_TO: { type: "text", value: to },
+          EMAIL: { type: "send-email", allowedDestinationAddresses: [allowed] },
+          ...Object.fromEntries(RATELIMITS.map((/** @type {any} */ r) => [r.name, { type: "rate-limit", namespace: r.namespace_id, simple: r.simple }])),
+        },
       },
     }],
   });
