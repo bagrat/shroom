@@ -15,7 +15,8 @@ use std::time::Duration;
 
 use shroom_cloud::device::{CredFile, DeviceKey};
 use shroom_cloud::member::Space;
-use shroom_core::world::SpaceIdentity;
+use shroom_core::event::{EditorNews, Event};
+use shroom_core::world::{RecId, SpaceIdentity};
 use shroom_edit::Question;
 use shroom_storage::s3::Client;
 use shroom_upload::voice::{self, Clock, Mark, Wait, Wall, Weighed};
@@ -120,7 +121,9 @@ fn sweep(rt: &Runtime) {
             Some(Mark::Planned { at, .. }) if now.saturating_sub(at) <= LOOK_FOR_MS => {
                 let Some(p) = super::home::read_json::<PublishJson>(&dir.join("publish.json")) else { continue };
                 if let Some(s3) = client(rt, &dir) {
-                    voice::pressed(&s3, &p.rec, &dir, &noting(rt, &p.rec));
+                    if voice::pressed(&s3, &p.rec, &dir, &noting(rt, &p.rec)).is_some() {
+                        landed(rt, &p.rec);
+                    }
                 }
                 continue;
             }
@@ -141,9 +144,18 @@ fn sweep(rt: &Runtime) {
     }
 }
 
+/// Cuts landed on `rec`, or changed: the core makes its edited copy at the next upkeep,
+/// due at once, so what viewers get leaves the cuts out without waiting for the upkeep's turn.
+fn landed(rt: &Runtime, rec: &str) {
+    rt.post(Event::Editor(EditorNews::CutsLanded { rec: RecId(rec.to_string()) }));
+}
+
 /// What the lane came to, when its own lines haven't said it: a take planned has (what was
 /// heard, landed and cut).
 fn say(rt: &Runtime, rec: &str, m: &Mark) {
+    if matches!(m, Mark::Planned { cuts, .. } if !cuts.is_empty()) {
+        landed(rt, rec);
+    }
     let rec = super::short(rec);
     match m {
         Mark::Planned { .. } => {}
