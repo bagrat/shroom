@@ -210,8 +210,8 @@ fn apply_event(w: &mut World, event: Event) -> Out {
             }
         }
         Event::MarkerShortcut(q) => {
-            // ⌥⌘M (N64), under ⌥⌘P's rule: recording, a marker at this moment — nothing on
-            // screen answers, the take goes on; paused, Drop a marker where it's offered.
+            // ⌥⌘M (N64), under ⌥⌘P's rule: recording, a marker at this moment — the toast
+            // answers (N78), the take goes on; paused, Drop a marker where it's offered.
             quick(w, &q);
             if let Some(out) = guard_take(w) {
                 return out;
@@ -219,14 +219,10 @@ fn apply_event(w: &mut World, event: Event) -> Out {
             if !derive(w).tray.shortcut {
                 return (vec![], Arm::DROPPED);
             }
-            // The toast answers (N78), unless the popover's row does.
+            // The toast answers (N78); with the popover open its row does, and `update` puts the
+            // toast away under it.
             let now = w.now;
-            let answer = w.session.popover.is_none();
-            let says = |t: &mut OpenTake, s: MarkerToastSays| {
-                if answer {
-                    t.toast = Some((s, now));
-                }
-            };
+            let says = |t: &mut OpenTake, s: MarkerToastSays| t.toast = Some((s, now));
             match w.take.as_ref().map(|t| t.phase) {
                 Some(Phase::Recording) => {
                     if let Some(t) = w.take.as_mut() {
@@ -243,7 +239,7 @@ fn apply_event(w: &mut World, event: Event) -> Out {
                     out
                 }
                 // Again at a pause that has its marker: nothing drops, and the toast says so.
-                Some(Phase::Paused(Cause::User)) if answer && w.session.confirm.is_none() && w.take.as_ref().is_some_and(|t| t.marked_at_pause) => {
+                Some(Phase::Paused(Cause::User)) if w.session.popover.is_none() && w.session.confirm.is_none() && w.take.as_ref().is_some_and(|t| t.marked_at_pause) => {
                     if let Some(t) = w.take.as_mut() {
                         says(t, MarkerToastSays::Already);
                     }
