@@ -696,7 +696,7 @@ fn pin(a: &Args, rest: &[String], on: bool) -> Result<Done, Fail> {
 
 /// The space's auto-cleanup (N75): whether it's on, after how many days, and what goes
 /// next. It's read here and never changed: turning it on gives the space's page its
-/// schedule, which the app on the Mac that set up the space does (Settings · Videos, N78).
+/// schedule, which the app on the Mac that set up the space does (Settings · Videos, N79).
 fn autoclean(a: &Args, rest: &[String]) -> Result<Done, Fail> {
     if !rest.is_empty() {
         return Err(Fail::Refused(say::autoclean_set_in_settings()));

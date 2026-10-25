@@ -31,7 +31,7 @@ export type GeneralPane = {
  * settings link opened Settings here, so the switch's row is lit for a moment (B216). */
 export type AgentCard = { label: string; prompt: string; copy: Button; read_first: Button; line: string; recording: Toggle; lit: boolean };
 
-/** The Videos tab (N78; General's group Your videos until then, N68): the space's
+/** The Videos tab (N79; General's group Your videos until then, N68): the space's
  * play-count switch, this Mac's suggestions switch, and auto-cleanup's pop-up. */
 export type VideosPane = {
   kind: "videos";
@@ -55,7 +55,7 @@ export type SpacePane = {
   /** Naming's switch and its line (N66) — the Mac that holds the setup key, once its page said. */
   ai: Toggle | null;
   ai_line: string | null;
-  /** “Space used” and the space's size and cost — owner-class Macs (N78). */
+  /** “Space used” and the space's size and cost — owner-class Macs (N79). */
   used_label: string | null;
   used: string | null;
   exits: Button[];

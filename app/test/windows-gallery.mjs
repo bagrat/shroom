@@ -41,7 +41,7 @@ mkdirSync(out, { recursive: true });
 // The windows' sizes, as the runner builds them (runtime/presenter.rs's WindowSpecs — read
 // from there so the gallery and the runner stay in step). The Library resizes down to its
 // minimum. Settings is fixed: its page is the frame less macOS's title bar (688 under a
-// 720 frame, as on a Mac), and every tab must fit it (checked below; N78).
+// 720 frame, as on a Mac), and every tab must fit it (checked below; N79).
 export const SIZES = {
   library: { ...windowFrame("LIBRARY", { width: 680, height: 560 }), min: { width: 520, height: 360 } },
   settings: windowPage("SETTINGS", { width: 600, height: 720 }),
@@ -671,7 +671,7 @@ for (const entry of settings) {
       check(`${tag}: Return in the composer is the Scene's Invite`, w.ret?.do === "invite" || !!b.sheet);
       check(`${tag}: no paste field`, (await page.locator("input.paste").count()) === 0);
     } else if (b.pane.kind === "videos") {
-      // Videos (N78): the switches and the pop-up, in one card; no heading over it — the
+      // Videos (N79): the switches and the pop-up, in one card; no heading over it — the
       // tab is its name.
       const g = b.pane;
       for (const t of [g.count, g.suggest]) {
@@ -681,7 +681,7 @@ for (const entry of settings) {
       check(`${tag}: one card, no heading`, (await page.locator(".videos > .card").count()) === 1 && (await page.locator(".videos h2").count()) === 0);
     } else {
       const p = b.pane.plan;
-      // Space used (N78; Bagrat, 2026-10-25): its own row in the plan's card, right under
+      // Space used (N79; Bagrat, 2026-10-25): its own row in the plan's card, right under
       // “Cloudflare billing set up” (the third row), owner-class Macs only.
       check(
         `${tag}: Space used ${b.pane.used ? "right under the billing row" : "absent"}`,
@@ -743,7 +743,7 @@ for (const entry of settings) {
     await page.screenshot({ path: join(out, `settings-${entry.variant}-${scheme}.png`), fullPage: true, animations: "disabled" });
     const bottom = await page.evaluate(() => Math.ceil(document.querySelector(".set > .behind > .pane").getBoundingClientRect().bottom));
     if (b.pane.kind === "members") check(`${tag}: the toolbar's tabs include Members`, b.tabs.some((t) => t.label === "Members"));
-    // Every tab fits the page whole (N78), Members with the gallery's people.
+    // Every tab fits the page whole (N79), Members with the gallery's people.
     heights.push(bottom);
     check(`${tag}: the pane fits the window (${bottom} ≤ ${SIZES.settings.height})`, bottom <= SIZES.settings.height);
     if (b.sheet) {
@@ -759,7 +759,7 @@ for (const entry of settings) {
 
 const set = (variant) => settings.find((e) => e.variant === variant).scene;
 {
-  // Videos (N78; Your videos, N68): each switch sends the Scene's action and keeps the Scene's state.
+  // Videos (N79; Your videos, N68): each switch sends the Scene's action and keeps the Scene's state.
   const w = set("videos");
   const v = w.body.pane;
   const { ctx, page } = await open("settings", w);

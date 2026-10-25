@@ -243,7 +243,7 @@ jobs:
       - name: The platform-free crates
         run: .github/scripts/rust-tests.sh --ci-linux
 
-  # Settings fits its window (N78): every General, Videos and Space scene the core prints,
+  # Settings fits its window (N79): every General, Videos and Space scene the core prints,
   # rendered by the built page in WebKit, no taller than the window's page under the title
   # bar — the windows gallery's own check, alone. General outgrew its window once, unseen,
   # because the galleries run only by hand. Every run; about two minutes.

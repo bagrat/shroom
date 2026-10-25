@@ -1957,7 +1957,7 @@ pub enum Region6 {
     /// N68 on the owner's token Mac: a space with videos nobody has watched in months, one
     /// played today and one too small to matter. The Library's line, Suggested to clean up,
     /// each row's cost past the free 10 GB, Keep, a one-tap Delete and its Undo, a Delete
-    /// that goes, and Settings' Space used and its Videos tab, Count plays switched off and on (N78).
+    /// that goes, and Settings' Space used and its Videos tab, Count plays switched off and on (N79).
     Cleanup,
 }
 
@@ -2637,7 +2637,7 @@ fn cleanup_titles(s: &Scene) -> Vec<String> {
     cleanup_view(s).map(|v| v.rows.iter().filter_map(|r| r.title.clone()).collect()).unwrap_or_default()
 }
 
-/// Settings' Videos tab (N78), when it shows.
+/// Settings' Videos tab (N79), when it shows.
 fn videos_pane(s: &Scene) -> Option<shroom_core::scene::VideosGroup> {
     match s.settings.as_ref().map(|w| &w.body.pane) {
         Some(SettingsPane::Videos(v)) => Some(v.clone()),
@@ -2645,7 +2645,7 @@ fn videos_pane(s: &Scene) -> Option<shroom_core::scene::VideosGroup> {
     }
 }
 
-/// Space used, in Settings · Space (N78), when it shows.
+/// Space used, in Settings · Space (N79), when it shows.
 fn space_used(s: &Scene) -> Option<String> {
     match s.settings.as_ref().map(|w| &w.body.pane) {
         Some(SettingsPane::Space(sp)) => sp.used.clone(),
@@ -2839,7 +2839,7 @@ fn cleanup_drive(d: &Drive) -> Result<(), String> {
     d.rt.post(Event::WindowClosed(WindowKind::Library));
     d.wait("closed", 5, |s| s.library.is_none())?;
 
-    // Settings · Space: the space's size (N78); then Videos: Count plays off and on again.
+    // Settings · Space: the space's size (N79); then Videos: Count plays off and on again.
     // The read Settings asks for meets a busy space once: the failure is in the run log.
     knob(&base, CLEANUP_HOST, "fault", serde_json::json!({ "prefix": "/_shroom/api/cleanup", "status": 500, "count": 1 }))?;
     d.open(Action::OpenSettings)?;

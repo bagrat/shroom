@@ -393,7 +393,7 @@ fn general(w: &World) -> GeneralBody {
     }
 }
 
-/// The Videos tab (N78; Your videos, N68): the space's play-count switch (owner-class, once
+/// The Videos tab (N79; Your videos, N68): the space's play-count switch (owner-class, once
 /// the space has said; a switch asked reads as asked, greyed until it answers), this Mac's
 /// suggestions switch, and auto-cleanup's pop-up.
 fn videos(w: &World) -> VideosGroup {
@@ -588,7 +588,7 @@ fn space(w: &World, at: SpaceAt, offline: bool) -> SpaceBody {
     SpaceBody { plan: PlanView { header: copy::plan_header(), rows, current, nest }, mic, mark, mark_line, ai, ai_line, used_label, used, exits }
 }
 
-/// Space used (N78, moved from Your videos): the space's size and what it costs, on
+/// Space used (N79, moved from Your videos): the space's size and what it costs, on
 /// owner-class Macs (the bill is theirs), once the space has said.
 fn space_used(w: &World) -> Option<String> {
     let s = w.suggestions.get().filter(|_| w.space.owner_class())?;

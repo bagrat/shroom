@@ -71,7 +71,7 @@ const ONBOARDING_WINDOW: WindowSpec = WindowSpec { url: "onboarding.html", width
 /// The Library: a list that grows — resizable.
 const LIBRARY_WINDOW: WindowSpec = WindowSpec { url: "library.html", width: 680.0, height: 560.0, resizable: true, min: None };
 /// A standard macOS settings window: fixed size, its toolbar tabs drawn by the webview. As tall
-/// as the editor (Bagrat, 2026-10-25; B246): every tab fits the 688 under the title bar, Space
+/// as the editor (Bagrat, 2026-10-25; B247): every tab fits the 688 under the title bar, Space
 /// with the AI switch's parts included, and it fits a 1024×768 screen.
 const SETTINGS_WINDOW: WindowSpec = WindowSpec { url: "settings.html", width: 600.0, height: 720.0, resizable: false, min: None };
 

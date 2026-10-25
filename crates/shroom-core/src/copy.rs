@@ -589,7 +589,7 @@ pub fn space_used_free(bytes: u64) -> String { format!("{} — inside Cloudflare
 // ── Settings (N36) ──
 pub fn tab_general() -> String { "General".into() }
 pub fn tab_space() -> String { "Space".into() }
-/// Settings' Videos tab (N78; Bagrat named it, 2026-10-25).
+/// Settings' Videos tab (N79; Bagrat named it, 2026-10-25).
 pub fn tab_videos() -> String { "Videos".into() }
 pub fn updates() -> String { "Updates".into() }
 pub fn up_to_date(version: &str) -> String { format!("shroom {version} — up to date.") }

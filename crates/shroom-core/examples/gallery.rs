@@ -617,7 +617,7 @@ fn settings_rows() -> Vec<(&'static str, &'static str, World)> {
         w.launch.version = "1.2.0".into();
         w
     }));
-    // The Videos tab (N78; Your videos, N68): the space counting; and counting off, the
+    // The Videos tab (N79; Your videos, N68): the space counting; and counting off, the
     // switch's failed line.
     rows.push(("settings-videos", "videos", suggesting(settings(ready(), SettingsTab::Videos))));
     rows.push(("settings-videos", "videos-free", {
@@ -665,7 +665,7 @@ fn settings_rows() -> Vec<(&'static str, &'static str, World)> {
         w
     }));
     rows.push(("settings-space-inspection", "space-inspection", space()));
-    // Space used (N78): the space's size and its cost, with the AI switch on (the tallest Space).
+    // Space used (N79): the space's size and its cost, with the AI switch on (the tallest Space).
     rows.push(("settings-space", "space-used", {
         let mut w = suggesting(space());
         w.space.ai = Some(true);

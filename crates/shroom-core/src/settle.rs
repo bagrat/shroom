@@ -308,7 +308,7 @@ fn due_library(w: &World, fx: &mut Vec<Effect>) {
 
 /// What the space says is worth deleting (N68), read on every entry of the Library (with
 /// Suggest videos to clean up on), of Settings · Videos (its switches read the space's) and
-/// of Settings · Space on an owner-class Mac (Space used, N78) — when nothing has answered
+/// of Settings · Space on an owner-class Mac (Space used, N79) — when nothing has answered
 /// since the window was entered.
 /// Owner-class Macs read the whole space's; a member's Mac its own.
 fn due_suggestions(w: &World, fx: &mut Vec<Effect>) {

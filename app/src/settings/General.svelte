@@ -3,7 +3,7 @@
   // Scene says), the update row (its line, its button, What's new), the help row (Copy
   // diagnostics, Report a problem…, B180) — then the line under it, whose doors are runs of
   // the line itself; your coding agent (N62); Uninstall shroom… at the foot. Your videos is
-  // a tab of its own (Videos.svelte, N78).
+  // a tab of its own (Videos.svelte, N79).
   import type { Action } from "../lib/ipc";
   import Btn from "../onboarding/Btn.svelte";
   import type { Button } from "../onboarding/types";

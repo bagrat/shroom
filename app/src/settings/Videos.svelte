@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Settings · Videos (N78; General's group Your videos until then, N68): one card — the
+  // Settings · Videos (N79; General's group Your videos until then, N68): one card — the
   // space's play-count switch and this Mac's suggestions switch, each with its line under
   // the label, then auto-cleanup's pop-up (N75), live on the Mac that set up the space.
   import type { Action } from "../lib/ipc";

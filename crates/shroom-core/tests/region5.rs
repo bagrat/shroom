@@ -622,7 +622,7 @@ fn rows() -> Vec<(&'static str, World)> {
         w
     }));
     rows.push(("settings-videos", suggested(settings_on(ready(), SettingsTab::Videos), vec![], 34_000_000_000)));
-    // Space used, in the Space tab on an owner-class Mac (N78).
+    // Space used, in the Space tab on an owner-class Mac (N79).
     rows.push(("settings-space", suggested(settings_on(ready(), SettingsTab::Space), vec![], 34_000_000_000)));
     // Auto-cleanup (N75): the setting Mac's pop-up, another Mac's line, counting off, and the
     // question turning it on asks.

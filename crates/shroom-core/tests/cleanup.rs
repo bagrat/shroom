@@ -1,6 +1,6 @@
 //! Suggested to clean up (N68): the space's play counts, read to its end, become a line in
 //! the Library and a view of its own — each suggestion with why it's suggested, Keep, and a
-//! one-tap Delete that waits out its Undo line — and Settings' Videos tab (N78, was General's
+//! one-tap Delete that waits out its Undo line — and Settings' Videos tab (N79, was General's
 //! group Your videos): the space's play-count switch and this Mac's suggestions switch; what
 //! the space costs is Space used, in the Space tab.
 
@@ -402,7 +402,7 @@ fn settings_counts_plays_by_the_spaces_switch_and_suggests_by_this_macs() {
     let s = r.scene.settings.as_ref().unwrap();
     assert!(s.faces.contains(&"settings-videos"), "{:?}", s.faces);
     let tabs: Vec<_> = s.body.tabs.iter().map(|t| (t.label.as_str(), t.selected)).collect();
-    assert_eq!(tabs, [("General", false), ("Videos", true), ("Space", false), ("Members", false)], "the group's heading is the tab's name now (N78)");
+    assert_eq!(tabs, [("General", false), ("Videos", true), ("Space", false), ("Members", false)], "the group's heading is the tab's name now (N79)");
     let g = videos(&r.scene);
     assert_eq!((g.count.label.as_str(), g.count.on, g.count.enabled), ("Count plays", true, true));
     assert_eq!(g.count_hint, "How often each video is played and how far, kept in your Cloudflare account. No cookies, nothing about who watched.");
@@ -428,7 +428,7 @@ fn settings_counts_plays_by_the_spaces_switch_and_suggests_by_this_macs() {
 
 #[test]
 fn space_used_is_in_the_space_tab_on_an_owner_class_mac() {
-    // N78 (Bagrat, 2026-10-25): what the space holds and costs sits with the space.
+    // N79 (Bagrat, 2026-10-25): what the space holds and costs sits with the space.
     let r = Run::new(space_tab(library(three(), 34_000_000_000)));
     let b = space(&r.scene);
     assert_eq!((b.used_label.as_deref(), b.used.as_deref()), (Some("Space used"), Some("34 GB — about 36¢ a month past Cloudflare's free 10 GB")));

@@ -1029,7 +1029,7 @@ pub struct GeneralBody {
     pub agent: AgentCard,
 }
 
-/// Settings' Videos tab (N78; General's group Your videos until then, N68).
+/// Settings' Videos tab (N79; General's group Your videos until then, N68).
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct VideosGroup {
     /// The space's switch: owner-class Macs change it; elsewhere it shows greyed.
@@ -1270,7 +1270,7 @@ pub struct SpaceBody {
     /// said whether it names videos.
     pub ai: Option<Toggle>,
     pub ai_line: Option<String>,
-    /// “Space used”, with `used` (N78, moved from Your videos).
+    /// “Space used”, with `used` (N79, moved from Your videos).
     pub used_label: Option<String>,
     /// The space's size and what it costs — owner-class Macs, once the space has said.
     pub used: Option<String>,

@@ -1,4 +1,4 @@
-// Settings fits its window (N78): every scene of every tab the core's gallery
+// Settings fits its window (N79): every scene of every tab the core's gallery
 // prints, rendered by the built Settings page in WebKit, takes no more height than the
 // window's page — its WindowSpec less macOS's title bar (gallery-kit's windowPage), 688
 // under a 720 frame. Members too, with the gallery's people (a longer list may scroll, as
