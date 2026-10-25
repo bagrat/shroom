@@ -163,6 +163,29 @@ fn wiring_waits_for_the_page_to_answer_before_it_says_done() {
     assert!(fake.with(|s| s.object("shroom-space", wire::MANIFEST).is_some()));
 }
 
+/// The setup shows wiring's parts as they begin (N74): in order, the name's before its
+/// wait, and a retry says them again from the start.
+#[test]
+fn wiring_says_its_parts_in_order() {
+    let fake = Fake::start(State { subdomain: Some("bagrat".into()), propagation: 4, ..State::fresh() });
+    let c = cloud(&fake);
+    let (acc, tok) = fake.with(|s| (s.account_id(), s.token_id.clone()));
+    let m = module(BUNDLED);
+    let at = |h: &str| Space::at(h, &fake.page(h));
+    let said = std::cell::RefCell::new(Vec::new());
+    let pings_at_name = std::cell::Cell::new(None);
+    wire::wire_parts(&c, &page_spec(&acc, &tok, "v", &m), Some(&check(&at, 5_000)), &|p| {
+        said.borrow_mut().push(p);
+        if p == wire::WirePart::Name {
+            pings_at_name.set(Some(fake.with(|s| s.pings.get("v").copied().unwrap_or(0))));
+        }
+    })
+    .unwrap();
+    use wire::WirePart::*;
+    assert_eq!(*said.borrow(), [Storage, Page, Name, Check]);
+    assert_eq!(pings_at_name.get(), Some(0), "the name's part begins before its wait");
+}
+
 #[test]
 fn a_page_that_never_answers_is_a_retry_never_done() {
     let fake = Fake::start(State { subdomain: Some("bagrat".into()), propagation: 10_000, ..State::fresh() });

@@ -292,6 +292,10 @@ pub enum CloudNews {
     TokenSaved(SecretId),
     /// (Part of) the probe pass answered.
     Swept(SweepAnswer),
+    /// A run reached its part `part` (1-based, N74): the card step's check (`Sweep`'s full
+    /// pass: the token, the email gate, storage, the look around) or wiring (`Wire`: your
+    /// storage, your page, your name, the last check, this Mac).
+    Part { op: Op, part: u8 },
     /// The workers.dev name claim answered.
     Claimed { name: String, result: Result<(), ClaimFail> },
     /// Wiring ran to its silent self-check.

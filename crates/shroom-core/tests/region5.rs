@@ -549,6 +549,15 @@ fn rows() -> Vec<(&'static str, World)> {
         w.session.fields.billing_opened = true;
         w
     }));
+    // N74: the repair mood's card gate is the setup's, its watch and its quiet line too.
+    rows.push(("gate-card", {
+        let mut w = space_tab();
+        w.sweep.gates = Fact::known(Gates { email: false, card: true }, Mono(950));
+        w.session.fields.billing_opened = true;
+        w.session.fields.billing_at = Some(Mono(1_000));
+        w.now = Mono(50_000);
+        w
+    }));
     rows.push(("wiring", {
         let mut w = space_tab();
         w.sweep.worker = Fact::known(WorkerFact::Absent, Mono(950));
@@ -792,6 +801,21 @@ const LINES_OUT_OF_SCOPE: &[(&str, &str, &str)] = &[
     ("settings-space", "The small mark on every video page. You can flip it right on a page, too.", "the mark switch — not in this slice"),
     ("settings-space", "Leave this space…", "members' exit — Region 6"),
     ("wiring", "Almost there — switching your name on takes a few minutes the first time, and only once.", "the setup's last step — the onboarding window's (N45, onboarding.rs)"),
+    ("wiring", "Making your private storage…", "the setup's last step lists wiring's parts — the onboarding window's (N74, onboarding.rs); the repair mood keeps its calm line"),
+    ("wiring", "Your private storage", "the setup's last step lists wiring's parts — the onboarding window's (N74, onboarding.rs); the repair mood keeps its calm line"),
+    ("wiring", "Making your private storage", "the setup's last step lists wiring's parts — the onboarding window's (N74, onboarding.rs); the repair mood keeps its calm line"),
+    ("wiring", "Putting up your video page…", "the setup's last step lists wiring's parts — the onboarding window's (N74, onboarding.rs); the repair mood keeps its calm line"),
+    ("wiring", "Your video page", "the setup's last step lists wiring's parts — the onboarding window's (N74, onboarding.rs); the repair mood keeps its calm line"),
+    ("wiring", "Putting up your video page", "the setup's last step lists wiring's parts — the onboarding window's (N74, onboarding.rs); the repair mood keeps its calm line"),
+    ("wiring", "Switching your name on…", "the setup's last step lists wiring's parts — the onboarding window's (N74, onboarding.rs); the repair mood keeps its calm line"),
+    ("wiring", "Your name is on", "the setup's last step lists wiring's parts — the onboarding window's (N74, onboarding.rs); the repair mood keeps its calm line"),
+    ("wiring", "Switching your name on", "the setup's last step lists wiring's parts — the onboarding window's (N74, onboarding.rs); the repair mood keeps its calm line"),
+    ("wiring", "Checking it all works…", "the setup's last step lists wiring's parts — the onboarding window's (N74, onboarding.rs); the repair mood keeps its calm line"),
+    ("wiring", "Last check passed", "the setup's last step lists wiring's parts — the onboarding window's (N74, onboarding.rs); the repair mood keeps its calm line"),
+    ("wiring", "A last check that it all works", "the setup's last step lists wiring's parts — the onboarding window's (N74, onboarding.rs); the repair mood keeps its calm line"),
+    ("wiring", "Adding this Mac to your space…", "the setup's last step lists wiring's parts — the onboarding window's (N74, onboarding.rs); the repair mood keeps its calm line"),
+    ("wiring", "Adding this Mac to your space", "the setup's last step lists wiring's parts — the onboarding window's (N74, onboarding.rs); the repair mood keeps its calm line"),
+    ("wiring", "New names can take Cloudflare a while longer, sometimes ten minutes. It's fine to close this window — I'll finish by myself.", "the setup's last step lists wiring's parts — the onboarding window's (N74, onboarding.rs); the repair mood keeps its calm line"),
     ("editor", "was 4:32", "a template: the Scene hands the editor “was {}” and the webview puts the recording's length in it, as it does the time"),
 ];
 

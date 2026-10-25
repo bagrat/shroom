@@ -616,6 +616,15 @@ pub struct WelcomeBody {
     pub sheet: Option<Sheet>,
 }
 
+/// One part of a wait (N74): its mark (✓ done · a spinner underway · • to come), its line,
+/// and, while it spins, its running clock from its first second.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct Part {
+    pub glyph: Glyph,
+    pub line: String,
+    pub clock: Option<String>,
+}
+
 /// → current (Frost) · ✓ done (green) · • still ahead (N13) · a small spinner: a row ahead
 /// shroom is already doing, out of sight (wiring under the permissions chapter, N45).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -641,6 +650,9 @@ pub struct PlanRow {
     pub title: String,
     pub aside: Vec<Run>,
     pub fact: Option<String>,
+    /// A spinning row's running clock (N74), “0:48” — only while it spins, from its first
+    /// second.
+    pub clock: Option<String>,
 }
 
 impl PlanRow {
@@ -663,7 +675,7 @@ impl PlanRow {
             },
         };
         let aside = if aside.is_empty() { vec![] } else { self::runs(&aside, marks) };
-        PlanRow { glyph, line, runs, title, aside, fact }
+        PlanRow { glyph, line, runs, title, aside, fact, clock: None }
     }
 }
 
@@ -699,10 +711,13 @@ pub enum Nest {
     PickAccount { line: String, accounts: Vec<Choice>, choose: Button },
     /// The row's spinner: an answer this row needs isn't in yet.
     Checking,
+    /// The card step's check under the card row (N74): its parts, each as its probe stands.
+    Check { parts: Vec<Part> },
     /// A dashboard gate under the card row: its line, its button, the auto-poll spinner.
     /// `quiet`: the card gate's line under its button — where it goes, and that shroom is
-    /// watching (N45).
-    Gate { line: String, button: Option<Button>, quiet: Option<String> },
+    /// watching (N45). `watch`: once the billing page was opened, the watch as a part of its
+    /// own with its clock; `long`: its quiet line once it has run long (N74).
+    Gate { line: String, button: Option<Button>, quiet: Option<String>, watch: Option<Part>, long: Option<String> },
     Name {
         prefix: String,
         value: String,
@@ -719,8 +734,9 @@ pub enum Nest {
         /// Claim stays the way on.
         unexpected: Option<String>,
     },
-    /// Wiring: the spinner and the calm line, zero affordances.
-    Calm { line: String },
+    /// Wiring: the spinner and the calm line, zero affordances. In the setup, wiring's parts
+    /// under it, and its quiet line once the name has run long (N74).
+    Calm { line: String, parts: Vec<Part>, long: Option<String> },
     Found { line: String },
     /// wizard-offline: the spinner rests, one amber line, no retry.
     Offline { line: String },
@@ -1520,6 +1536,7 @@ pub fn nest_buttons(nest: &Nest) -> Vec<&Button> {
         Nest::NoToken { button, .. } => button.iter().collect(),
         Nest::Unexpected { button, .. } => vec![button],
         Nest::Checking
+        | Nest::Check { .. }
         | Nest::JoinRefused { .. }
         | Nest::Calm { .. }
         | Nest::Found { .. }

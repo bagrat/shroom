@@ -265,6 +265,13 @@ fn rows() -> Vec<(&'static str, &'static str, World)> {
         w
     }));
     rows.push(("card", "card", token_saved()));
+    // N74: the check's parts as they answer — storage underway, two seconds in.
+    rows.push(("card", "card-check", {
+        let mut w = token_saved();
+        w.sweep.check = Some(Progress { part: 3, since: Mono(1_000) });
+        w.now = Mono(3_000);
+        w
+    }));
     rows.push(("gate-email", "gate-email", gated(true, true)));
     rows.push(("gate-card", "gate-card", gated(false, true)));
     rows.push(("gate-card", "gate-card-opened", {
@@ -272,6 +279,16 @@ fn rows() -> Vec<(&'static str, &'static str, World)> {
         w.session.fields.billing_opened = true;
         w
     }));
+    // N74: the watch with its clock, and from 45 s its quiet line.
+    for (name, ms) in [("gate-card-watching", 24_000), ("gate-card-long", 70_000)] {
+        rows.push(("gate-card", name, {
+            let mut w = gated(false, true);
+            w.session.fields.billing_opened = true;
+            w.session.fields.billing_at = Some(Mono(1_000));
+            w.now = Mono(1_000 + ms);
+            w
+        }));
+    }
     rows.push(("name", "name", at_name()));
     rows.push(("name", "name-typed", {
         let mut w = at_name();
@@ -304,6 +321,15 @@ fn rows() -> Vec<(&'static str, &'static str, World)> {
         w
     }));
     rows.push(("wiring", "wiring", at_wiring()));
+    // N74: wiring's parts, switching the name on with its clock, and past 3 min its line.
+    for (name, ms) in [("wiring-parts", 48_000), ("wiring-long", 252_000)] {
+        rows.push(("wiring", name, {
+            let mut w = at_wiring();
+            w.sweep.wiring = Some(Progress { part: 3, since: Mono(1_000) });
+            w.now = Mono(1_000 + ms);
+            w
+        }));
+    }
     rows.push(("wizard-offline", "wizard-offline", {
         let mut w = at_wiring();
         w.net.online = Fact::known(false, Mono(0));
@@ -322,6 +348,13 @@ fn rows() -> Vec<(&'static str, &'static str, World)> {
     }));
     rows.push(("done", "done", at_done()));
     rows.push(("done", "done-wiring-underneath", named()));
+    // N74: the working row names the part underway, with its clock.
+    rows.push(("done", "done-wiring-part", {
+        let mut w = named();
+        w.sweep.wiring = Some(Progress { part: 3, since: Mono(1_000) });
+        w.now = Mono(49_000);
+        w
+    }));
     rows.push(("perm-mic", "perm-mic", chapter(Access::NotAsked, false)));
     rows.push(("perm-camera", "perm-camera", {
         let mut w = chapter(Access::Granted, false);
