@@ -4,7 +4,7 @@
 
 The machine: every state, edge, rule, said-line and law of shroom v1 — the spec (DECISIONS B133). Sessions edit it; MACHINE.md and the canvas's machine boards are generated from it.
 
-163 states · 344 edges · 26 rules · 683 said-lines · 16 laws · 84 ledger rows.
+163 states · 344 edges · 26 rules · 717 said-lines · 16 laws · 85 ledger rows.
 
 Status: **ratified** is Bagrat's; **provisional** is designed or built and awaits him (each cites its row: `#n` is a DEVIATIONS row of docs/DECISIONS.md, `Bn` a decision, `Nn`/`Un`/`Pn` a ledger row below). `SM:n` in older citations is a line of the retired spec text, kept in history/spec/UX-STATEMACHINE.md.
 
@@ -280,7 +280,7 @@ The only pre-setup state (U1). There is no menu: the tray click opens the welcom
 | → | Kind | Label | Status | Cites |
 |---|---|---|---|---|
 | `welcome` | flow | tray click — the same window, any day (N21) | ratified |  |
-| `idle-ready` | flow | Cloudflare: wired | ratified | N13, B134 |
+| `idle-ready` | flow | Cloudflare: wired — also with the setup window closed (N74) | ratified | B134, N13, N74 |
 | `member-welcome` | flow | tray click while a remembered invite still lives (defined in Region 6, N30, designed 2026-09-30) | provisional |  |
 | `join-expired` | fail | tray click after the remembered invite has died: the window's join-expired face, shown once; the plain welcome thereafter (defined in Region 6, N30, designed 2026-09-30) | provisional |  |
 
@@ -554,11 +554,25 @@ Repair mood only: a pasted token belongs to a different Cloudflare account than 
 
 ### `card`
 
-state · window · **ratified** · board: WizardCard · cites N14
+state · window · **ratified** · board: WizardCard · cites N14, N74
 
-The visible gate step under the plan's card row. One probe pass runs at paste-validate (write-class probe, R2-enabled probe, subdomain GET); its gates surface here, email first then card. Existing-R2 accounts tick the row silently, seeing neither gate.
+The visible gate step under the plan's card row. One probe pass runs at paste-validate (write-class probe, R2-enabled probe, subdomain GET); its gates surface here, email first then card. Existing-R2 accounts tick the row silently, seeing neither gate. Since N74 the check shows its four parts under the card row as they run — the token, the email gate, storage (the card gate), then the look for a link name and an earlier space — each ticking only when its own probe answers; the part underway carries its running clock (spinning rows only, never a done or a coming one). The same parts show when a relaunch re-runs the check.
 
 **Entry.** Paste validated and token persisted (or account chosen at token-pick-account); probe pass ran.
+
+| Said | Role | Copy | Note |
+|---|---|---|---|
+| “Checking your token…” | line | provisional | N74: part 1 of the check, underway: its spinner, and its running clock once it has run a second. Not drawn on the board; the build's form of a drawn line (provisional, N74). |
+| “Your token works” | line | ratified | N74: part 1 of the check, done: its tick. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards). |
+| “Checking your Cloudflare email is confirmed…” | line | ratified | N74: part 2 of the check, underway: its spinner, and its running clock once it has run a second. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards). |
+| “Your Cloudflare email is confirmed” | line | ratified | N74: part 2 of the check, done: its tick. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards). |
+| “Checking your Cloudflare email is confirmed” | line | provisional | N74: part 2 of the check, still to come: its dot. Not drawn on the board; the build's form of a drawn line (provisional, N74). |
+| “Checking that storage is switched on…” | line | ratified | N74: part 3 of the check, underway: its spinner, and its running clock once it has run a second. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards). |
+| “Storage is switched on” | line | ratified | N74: part 3 of the check, done: its tick. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards). |
+| “Checking that storage is switched on” | line | provisional | N74: part 3 of the check, still to come: its dot. Not drawn on the board; the build's form of a drawn line (provisional, N74). |
+| “Looking for your link name and any earlier space…” | line | provisional | N74: part 4 of the check, underway: its spinner, and its running clock once it has run a second. Not drawn on the board; the build's form of a drawn line (provisional, N74). |
+| “Looked for your link name and any earlier space” | line | ratified | N74: part 4 of the check, done: its tick. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards). |
+| “Looking for your link name and any earlier space” | line | ratified | N74: part 4 of the check, still to come: its dot. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards). |
 
 | → | Kind | Label | Status | Cites |
 |---|---|---|---|---|
@@ -587,7 +601,7 @@ Cloudflare's email-verification gate under the card row; auto-polls with a spinn
 
 ### `gate-card`
 
-failure-state · window · **ratified** · cites N14, N18, N42, N45
+failure-state · window · **ratified** · cites N14, N18, N42, N45, N74
 
 The card gate under the card row. The button opens Cloudflare's own billing page (shroom never sees payment data); a spinner marks the auto-poll watch. Also the repair mood's state when the card is removed / storage switched off.
 
@@ -599,6 +613,8 @@ The card gate under the card row. The button opens Cloudflare's own billing page
 | “Add credit card” | button | ratified | Filled. |
 | “Add credit card opens your Cloudflare billing page. I'll notice the card the moment it's there and carry on.” | line | ratified | N45: quiet, under the button, until it's clicked. Ratified by Bagrat, 2026-10-15 (on the canvas's setup-fixes boards). |
 | “Billing is open in your browser — add the card there. I'll carry on by myself.” | line | ratified | N45: quiet, under the button, once it was clicked. Ratified by Bagrat, 2026-10-15 (on the canvas's setup-fixes boards). |
+| “Waiting for Cloudflare to confirm your card is in place…” | line | ratified | N74: once Add credit card was clicked, under its quiet line: the watch, its spinner and its running clock from the click. Bagrat's words, 2026-10-25. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards). |
+| “A new card can take Cloudflare a minute or so to count. Once it's added, I'll move on — hang tight!” | line | ratified | N74: quiet, under the watch, from 45 s after the click. Its second sentence Bagrat's, in the window's one voice, 2026-10-25. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards). |
 
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
@@ -673,16 +689,32 @@ Not a state — a derived label. If the account already holds a Worker named v t
 
 ### `wiring`
 
-state · window · **ratified** · board: WizardWiring · cites N16, N18, N3, N4, R6, N45
+state · window · **ratified** · board: WizardWiring · cites N16, N18, N3, N4, N45, N74, R6
 
-The setup's last step since N45, reached only when the permissions chapter finished before wiring did: a spinner and one calm line while the ~6 idempotent REST calls (private bucket, the v Worker, the Worker secret, member #1 enrollment, the subdomain's propagation — minutes on a new name) and the silent self-check finish. Wiring itself starts the moment the link name ticks and runs under the chapter, out of sight. Closing the window mid-wire is safe. In the repair mood, wiring runs again when the page or its key is gone (the click was the consent).
+The setup's last step since N45, reached only when the permissions chapter finished before wiring did: a spinner and one calm line while the ~6 idempotent REST calls (private bucket, the v Worker, the Worker secret, member #1 enrollment, the subdomain's propagation — minutes on a new name) and the silent self-check finish. Wiring itself starts the moment the link name ticks and runs under the chapter, out of sight. Closing the window mid-wire is safe. In the repair mood, wiring runs again when the page or its key is gone (the click was the consent). Since N74 the last step lists wiring's five parts under the calm line — your private storage, your video page, switching your name on, a last check, adding this Mac — each ticking only when its own calls answer; the part underway carries its running clock, which a retry never resets (parts already done stay ticked). From 3 min on switching your name on, one quiet line says new names can take longer and that closing the window is fine. And wiring no longer needs the window (Bagrat, 2026-10-19): while a token is saved, the name row has ticked and no space is set up, it keeps trying — window open or closed, and from the next launch after a quit, the login item's silent one included — and lands without opening anything.
 
-**Entry.** The permissions chapter is done (row six ticked) and wiring hasn't finished. Repair mood: the page (Worker) or its key is gone.
+**Entry.** The permissions chapter is done (row six ticked) and wiring hasn't finished. Repair mood: the page (Worker) or its key is gone. Since N74 also with the setup window closed, or after a relaunch: the token saved, the name row ticked (the launch's own probe pass says so), no space yet.
 
 | Said | Role | Copy | Note |
 |---|---|---|---|
 | “Setting up your space… switching your name on takes about a minute, one time only.” | line | ratified | The calm line of the repair mood's re-wire (Settings · Space). Since N45 the setup's last step says the line below. |
 | “Almost there — switching your name on takes a few minutes the first time, and only once.” | line | ratified | N45: the setup's last step, waiting for wiring. Ratified by Bagrat, 2026-10-15 (on the canvas's setup-fixes boards). |
+| “Making your private storage…” | line | provisional | N74: part 1 of wiring, under the calm line, underway: its spinner and its running clock, counted from the first try and never reset by a retry. Not drawn on the board; the build's form of a drawn line (provisional, N74). |
+| “Your private storage” | line | ratified | N74: part 1 of wiring, under the calm line, done: its tick. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards). |
+| “Making your private storage” | line | provisional | N74: part 1 of wiring, under the calm line, still to come: its dot. Not drawn on the board; the build's form of a drawn line (provisional, N74). |
+| “Putting up your video page…” | line | provisional | N74: part 2 of wiring, under the calm line, underway: its spinner and its running clock, counted from the first try and never reset by a retry. Not drawn on the board; the build's form of a drawn line (provisional, N74). |
+| “Your video page” | line | ratified | N74: part 2 of wiring, under the calm line, done: its tick. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards). |
+| “Putting up your video page” | line | provisional | N74: part 2 of wiring, under the calm line, still to come: its dot. Not drawn on the board; the build's form of a drawn line (provisional, N74). |
+| “Switching your name on…” | line | ratified | N74: part 3 of wiring, under the calm line, underway: its spinner and its running clock, counted from the first try and never reset by a retry. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards). |
+| “Your name is on” | line | ratified | N74: part 3 of wiring, under the calm line, done: its tick. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards). |
+| “Switching your name on” | line | provisional | N74: part 3 of wiring, under the calm line, still to come: its dot. Not drawn on the board; the build's form of a drawn line (provisional, N74). |
+| “Checking it all works…” | line | provisional | N74: part 4 of wiring, under the calm line, underway: its spinner and its running clock, counted from the first try and never reset by a retry. Not drawn on the board; the build's form of a drawn line (provisional, N74). |
+| “Last check passed” | line | ratified | N74: part 4 of wiring, under the calm line, done: its tick. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards). |
+| “A last check that it all works” | line | ratified | N74: part 4 of wiring, under the calm line, still to come: its dot. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards). |
+| “Adding this Mac to your space…” | line | provisional | N74: part 5 of wiring, under the calm line, underway: its spinner and its running clock, counted from the first try and never reset by a retry. Not drawn on the board; the build's form of a drawn line (provisional, N74). |
+| “This Mac is in your space” | line | ratified | N74: part 5 of wiring, under the calm line, done: its tick. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards). |
+| “Adding this Mac to your space” | line | ratified | N74: part 5 of wiring, under the calm line, still to come: its dot. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards). |
+| “New names can take Cloudflare a while longer, sometimes ten minutes. It's fine to close this window — I'll finish by myself.” | line | ratified | N74: quiet, under the parts, once switching your name on has run 3 min. Bagrat, 2026-10-19: wiring finishes on its own with the window closed. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards). |
 
 | → | Kind | Label | Status | Cites |
 |---|---|---|---|---|
@@ -744,7 +776,7 @@ A pasted token's probes find a space already there (a Mac replaced, or the owner
 
 ### `done`
 
-state · window · **ratified** · board: WizardPerms · cites N17, U5, N45
+state · window · **ratified** · board: WizardPerms · cites N17, N45, N74, U5
 
 The resting beat that opens the permissions chapter: four ticks, the permissions row current (drawn fifth, N45), its nest previewing the choreography, and the wiring row beneath it working out of sight. Nothing auto-fires (no dialog to an empty chair). perm-preamble is fused in. Row six ticks only at the end of permissions; the menu-bar handoff lives at all-set.
 
@@ -761,6 +793,11 @@ The resting beat that opens the permissions chapter: four ticks, the permissions
 | “✓ Wiring it up” | line | provisional | one case the spec didn't print, so it varies by case — the copy table: The plan, rows behind you · copy table |
 | “✓ Letting macOS allow recording” | line | provisional | one case the spec didn't print, so it varies by case — the copy table: The plan, rows behind you · copy table |
 | “• Wiring it up (shroom is doing this part now)” | line | ratified | N45: the wiring row while wiring runs under the permissions chapter — its dot a small spinner. Ratified by Bagrat, 2026-10-15 (on the canvas's setup-fixes boards). |
+| “• Wiring it up (shroom is doing this part now · making your private storage)” | line | provisional | N74: the wiring row while wiring runs under the chapter, naming part 1 underway; its running clock follows the aside. The board drew part 3; the others are its form (provisional, N74). |
+| “• Wiring it up (shroom is doing this part now · putting up your video page)” | line | provisional | N74: the wiring row while wiring runs under the chapter, naming part 2 underway; its running clock follows the aside. The board drew part 3; the others are its form (provisional, N74). |
+| “• Wiring it up (shroom is doing this part now · switching your name on)” | line | ratified | N74: the wiring row while wiring runs under the chapter, naming part 3 underway; its running clock follows the aside. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards). |
+| “• Wiring it up (shroom is doing this part now · checking it all works)” | line | provisional | N74: the wiring row while wiring runs under the chapter, naming part 4 underway; its running clock follows the aside. The board drew part 3; the others are its form (provisional, N74). |
+| “• Wiring it up (shroom is doing this part now · adding this Mac to your space)” | line | provisional | N74: the wiring row while wiring runs under the chapter, naming part 5 underway; its running clock follows the aside. The board drew part 3; the others are its form (provisional, N74). |
 
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
@@ -4364,6 +4401,7 @@ A move that holds for a whole group of states, written once (B133). The tests ex
 | N71 | The editor's ✕ with changes not saved asks: Save, Keep editing or Discard | **Bagrat asked, 2026-10-18** (relayed by the orchestrator), that the editor's ✕ stop saving without a word, as Done does, and ask instead: discard, keep editing, or save. **On 2026-10-19 he approved the board “Editor — closing with changes not saved” as drawn** (relayed by the orchestrator). (1) **✕ with changes not saved asks**, in the footer's place, the edit held behind it: “Save your edit?”, “What you've changed isn't saved yet.”, then Discard, Keep editing and Save. While it asks no step is taken and the preview pauses. (2) **Save is Done**: the edit is saved, then the final video is made, as after Done. Return presses it. (3) **Keep editing** puts the question away, every change still there; Esc does the same. (4) **Discard** closes the window and drops what wasn't saved: the video stays as it was last saved. It is never on Return. (5) **What doesn't change**: with nothing to save, ✕ closes the window at once; while the edit saves, ✕ waits for it; after Done (the final video being made, the original asked about) ✕ is Close; a save the space turned down closes; Done saves as before. (6) **Quit and Update save first, as now, without asking** (Bagrat, 2026-10-19). Built: DECISIONS B223. **Ratified by Bagrat as drawn, 2026-10-19.** | ratified | 2026-10-19 |
 | N72 | shroom edit: the command trims and cuts a video, and the app makes its final video | **The orchestrator, 2026-10-19:** the shroom command gains `edit` now that the editor (N63) has shipped, built in full with its words provisional for Bagrat's next look. (1) **`shroom edit <video>` says what the edit is**: how long the video plays and how long the recording is, the trim, each cut by its id (`m1`… by hand, `v1`… from the voice cues) with where it starts and ends and whether it's applied (a voice cue's cut can be a suggestion, not applied), and whether the final video is made. (2) **One change a call**, on the recording's own clock (seconds, or minutes:seconds): `trim <in> <out>`, `cut <start> <end>`, `put-back <cut>`, `apply <cut>`, `resize <cut> <start> <end>`, `revert`. Each is the editor's own step (B195), refused for the editor's own reasons, and saved at once as the editor's Done saves: the list in the video's record, so the link plays it from its next load and nothing is re-encoded first. `--dry-run` says what the edit would be and saves nothing. Undo and Redo stay the editor's: a window's history, never a record's. (3) **It goes where `rename` goes**: through the space's page under this Mac's device key, the owner's Macs on any video and a member's Mac on its own (B215); it waits while a take is open (law 4); and while that video is open in an editor window on this Mac it changes nothing (`editor_open`), so that window's Done never silently undoes it. The last save wins, as between two editors (B195). (4) **The final video is the app's to make**: after a change that leaves something out, the command asks the running app, opening it as the record commands do (`--no-launch` leaves it), and the app makes it as it makes one after the editor's Done, one at a time and never over a take, getting the video from the space first when this Mac hasn't got it; Download and the page use it once it's up, and the original is kept two days, then goes (B197: Keep for 2 days, the command never deleting an original itself). `shroom edit <video> finish` asks again, for a change saved while the app wasn't there. A change back to the whole recording needs no final video. (5) **Its answers**: the edit as (1) says it; a refusal is `cant_edit` with its reason (`out_of_range`, `leaves_too_little`, `too_short`, `nothing_changes`, `no_such_cut`, `editor_open`), exit 12; the words are the command's own (`say.rs`). Built: DECISIONS B225. **Ratified by Bagrat as built, 2026-10-19:** the command's words, the guide's *Editing* section and B225's three calls. | ratified | 2026-10-19 |
 | N73 | One editor window per video | **Bagrat asked, 2026-10-19** (relayed by the orchestrator), whether each video could get an editor window of its own, the Mac's document way, instead of the one window that comes forward on the video it holds; the same day he chose it, as the board “Editor — one window per video” draws it, built after the close prompt (N71) as its own change (relayed by the orchestrator). (1) **Edit on a video that isn't open** — Edit in shroom on its page, or Edit… in the Library — opens a window of its own for it, in front, as a first window opens: from the take when this Mac recorded the video, else after “Getting the video from your space…”. Every other window stays as it was, its changes still there, not saved and not lost. (2) **Edit on a video whose window is open**, from either, brings that window forward as it is. Nothing else moves. (3) **Each window is its own**: its steps and Undo, its Done, its final video, its “Delete the original?” and ✕'s question (N71). Done in one never touches another. The final videos are still made one at a time: a second waits its turn, its window reading “Making the final video… 0%” until then. (4) **Quit and Update** save every window's changes first, as now, without asking (Bagrat, 2026-10-19). Deleting a video closes its window and no other; leaving the space closes them all. While a take is open, nothing new opens (law 4): Edit in shroom pressed meanwhile waits, as now. (5) **The line “You're editing another video — press Done, then Edit again.” goes** (N69's), and with it the board “Editor — Edit on another video”, which drew a switch. No new words. Built: DECISIONS B227. **Ratified by Bagrat as drawn, 2026-10-19**; the build's calls are B227's, for him to overturn. | ratified | 2026-10-19 |
+| N74 | Setup shows its waits as they happen, and wiring finishes on its own | **A tester's finding, 2026-10-19** (a fresh Cloudflare account, 0.1.26): two waits in the setup felt stuck — the card step and the last step — and nearly lost him. **Bagrat, 2026-10-19 to 2026-10-25** (relayed by the orchestrator), on the boards “Setup — the card step shows its check as it runs…” and “Setup — the last step shows each part of wiring as it lands…”: (1) **The card step's check** shows its four parts under the card row as they run — Your token works · Your Cloudflare email is confirmed · Storage is switched on · Looked for your link name and any earlier space — each ticking only when its own probe answers, never ahead of it. (2) **After Add credit card**, the watch is a row of its own: “Waiting for Cloudflare to confirm your card is in place…” with its running clock; from 45 s one quiet line: “A new card can take Cloudflare a minute or so to count. Once it's added, I'll move on — hang tight!” (3) **The last step** lists wiring's five parts under the calm line — Your private storage · Your video page · Your name is on · Last check passed · This Mac is in your space — the part underway with its running clock, counted from the first try and never reset by a retry; from 3 min on the name, one quiet line: “New names can take Cloudflare a while longer, sometimes ten minutes. It's fine to close this window — I'll finish by myself.” While the permissions are the step, the wiring row's aside names the part underway, with its clock. (4) **Clocks on spinning rows only**: never on a done row or one still to come; a part that answers inside a second ticks before its clock shows. (5) **Wiring finishes on its own** (Bagrat, 2026-10-19: “finish on its own”): while a token is saved, the name row has ticked and no space is set up, wiring keeps trying with the window open or closed, and from the next launch after a quit (the login item's silent one included, its probe pass saying where the setup stands); it opens nothing when it lands (laws 5, 11), and the next click on the mushroom opens the popover ready to record — or the setup at the permissions, when they aren't done on this Mac. No step is stored (law 1): what's done is what the calls answered this time. **Ratified by Bagrat as drawn, 2026-10-25**; the forms the boards didn't draw (a part still to come, a part underway that the board drew done) are the build's, provisional. Built: DECISIONS B231. | ratified | 2026-10-25 |
 
 ## Surfaces
 
