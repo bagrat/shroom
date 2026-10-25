@@ -332,6 +332,15 @@ pub const AI_SCHEDULE: &str = "* * * * *";
 /// The script PUT with its bindings: the bucket and the parent, and with naming on (N66)
 /// Cloudflare's AI, whose schedule is put beside it.
 fn put_page(cloud: &Cloud, spec: &WireSpec, ai: bool) -> Result<(), CloudError> {
+    put_script(cloud, spec, ai)?;
+    if ai {
+        cloud.put_schedules(spec.account_id, spec.label, &[AI_SCHEDULE])?;
+    }
+    Ok(())
+}
+
+/// The script alone, with its bindings (the AI's when `ai`).
+fn put_script(cloud: &Cloud, spec: &WireSpec, ai: bool) -> Result<(), CloudError> {
     let mut bindings = vec![
         Binding::R2Bucket { name: "BUCKET".into(), bucket: spec.bucket.into() },
         Binding::SecretText { name: PARENT_BINDING.into(), text: parent_text(cloud, spec.account_id, spec.bucket, spec.token_id) },
@@ -339,11 +348,17 @@ fn put_page(cloud: &Cloud, spec: &WireSpec, ai: bool) -> Result<(), CloudError> 
     if ai {
         bindings.push(Binding::Ai { name: "AI".into() });
     }
-    cloud.put_worker(spec.account_id, spec.label, "worker.js", spec.worker_module, &bindings, spec.compatibility_date)?;
-    if ai {
-        cloud.put_schedules(spec.account_id, spec.label, &[AI_SCHEDULE])?;
-    }
-    Ok(())
+    cloud.put_worker(spec.account_id, spec.label, "worker.js", spec.worker_module, &bindings, spec.compatibility_date)
+}
+
+/// Turning the AI on or off, part by part as the switch names them (N78); part 1, checking
+/// the space, is the caller's.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AiPart {
+    /// The page put up again with Cloudflare's AI, or without it.
+    Page = 2,
+    /// Its schedule, then the page saying so.
+    Schedule = 3,
 }
 
 /// Naming on or off (N66, DECISIONS B206 a): the space's own page put up again with
@@ -351,12 +366,33 @@ fn put_page(cloud: &Cloud, spec: &WireSpec, ai: bool) -> Result<(), CloudError> 
 /// names, chapters and captions already made stay where they are. `autoclean`: the space's
 /// auto-cleanup is on (N75), so naming off keeps the one schedule both use.
 pub fn set_ai(cloud: &Cloud, spec: &WireSpec, on: bool, autoclean: bool) -> Result<(), WireError> {
+    set_ai_parts(cloud, spec, on, autoclean, None, &|_| {})
+}
+
+/// [`set_ai`], saying each part as it begins (N78), and with `confirm` (the page's check and
+/// its host) done only once the page itself says its AI is on, or off — asked every
+/// `every`, for at most `within`: a page that never says so didn't go through.
+pub fn set_ai_parts(cloud: &Cloud, spec: &WireSpec, on: bool, autoclean: bool, confirm: Option<(&PageCheck, &str)>, part: &dyn Fn(AiPart)) -> Result<(), WireError> {
     if crate::sweep::worker_fact(cloud, spec.account_id, spec.label, spec.bucket)? != crate::sweep::WorkerFact::Ours {
         return Err(WireError::Foreign);
     }
-    put_page(cloud, spec, on)?;
-    if !on && !autoclean {
+    part(AiPart::Page);
+    put_script(cloud, spec, on)?;
+    part(AiPart::Schedule);
+    if on {
+        cloud.put_schedules(spec.account_id, spec.label, &[AI_SCHEDULE])?;
+    } else if !autoclean {
         cloud.put_schedules(spec.account_id, spec.label, &[])?;
+    }
+    if let Some((page, host)) = confirm {
+        let space = (page.at)(host);
+        let until = Instant::now() + page.within;
+        while !matches!(space.ping(), Ping::Shroom { ai, .. } if ai == on) {
+            if Instant::now() >= until {
+                return Err(WireError::NotAnswering);
+            }
+            std::thread::sleep(page.every);
+        }
     }
     Ok(())
 }

@@ -391,6 +391,12 @@ pub struct Banner {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub detail: Option<String>,
     pub buttons: Vec<Button>,
+    /// The parts of a re-wiring under its line, as they land (N78: the AI's Turn off).
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub parts: Vec<Part>,
+    /// The quiet line under the parts once one has run long (N78).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub long: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -637,6 +643,8 @@ pub enum Glyph {
     Done,
     Ahead,
     Working,
+    /// A part that stopped there: its run didn't go through (N78, law 12).
+    Stopped,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -1277,6 +1285,13 @@ pub struct SpaceBody {
     /// said whether it names videos.
     pub ai: Option<Toggle>,
     pub ai_line: Option<String>,
+    /// The switch's parts under its line while the page is re-wired, and once it's done or
+    /// didn't go through, this visit (N78).
+    pub ai_parts: Vec<Part>,
+    /// The quiet line under the parts once one has run long (N78).
+    pub ai_long: Option<String>,
+    /// The re-wiring didn't go through: said under the parts (law 12, N78).
+    pub ai_failed: Option<String>,
     /// Quiet text at the foot.
     pub exits: Vec<Button>,
 }

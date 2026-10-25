@@ -297,6 +297,23 @@ fn part_line(now: &[&str], done: &[&str], ahead: Option<&[&str]>, part: u8, glyp
         _ => now[i].into(),
     }
 }
+// ── N78: turning the AI on or off says its parts ──
+
+/// Turning the AI on or off, part by part (N78; Bagrat's words, 2026-10-25): 1 checking the
+/// space, 2 the page with the AI or without it, 3 the AI for new videos — off's, then on's.
+const AI_NOW: [[&str; 3]; 2] = [
+    ["Checking your space…", "Disconnecting AI…", "Switching AI off for new videos…"],
+    ["Checking your space…", "Connecting AI to your space…", "Switching AI on for new videos…"],
+];
+const AI_DONE: [[&str; 3]; 2] = [["Your space is ready", "AI disconnected", "AI is off for new videos"], ["Your space is ready", "AI connected", "AI is on for new videos"]];
+/// One part of the AI's re-wiring, as its mark shows it; a part that stopped there reads as
+/// one still to come (N78).
+pub fn ai_part(on: bool, part: u8, glyph: crate::scene::Glyph) -> String {
+    let glyph = if glyph == crate::scene::Glyph::Stopped { crate::scene::Glyph::Ahead } else { glyph };
+    part_line(&AI_NOW[usize::from(on)], &AI_DONE[usize::from(on)], None, part, glyph)
+}
+/// Under the AI's parts once one has run 20 s (N78).
+pub fn ai_long() -> String { "Cloudflare is slower than usual just now — hang tight.".into() }
 /// One part of the card step's check, as its mark shows it: underway, done, or to come.
 pub fn check_part(part: u8, glyph: crate::scene::Glyph) -> String { part_line(&CHECK_NOW, &CHECK_DONE, None, part, glyph) }
 /// One part of wiring, as its mark shows it.
@@ -1555,11 +1572,36 @@ pub fn registry() -> Vec<(&'static str, String)> {
         ("settings-space", ai_label()),
         ("settings-space", ai_cost()),
         ("settings-space", ai_failed()),
+        ("settings-space", ai_part(true, 1, crate::scene::Glyph::Working)),
+        ("settings-space", ai_part(true, 1, crate::scene::Glyph::Done)),
+        ("settings-space", ai_part(true, 2, crate::scene::Glyph::Working)),
+        ("settings-space", ai_part(true, 2, crate::scene::Glyph::Done)),
+        ("settings-space", ai_part(true, 2, crate::scene::Glyph::Ahead)),
+        ("settings-space", ai_part(true, 3, crate::scene::Glyph::Working)),
+        ("settings-space", ai_part(true, 3, crate::scene::Glyph::Done)),
+        ("settings-space", ai_part(true, 3, crate::scene::Glyph::Ahead)),
+        ("settings-space", ai_part(false, 1, crate::scene::Glyph::Working)),
+        ("settings-space", ai_part(false, 1, crate::scene::Glyph::Done)),
+        ("settings-space", ai_part(false, 2, crate::scene::Glyph::Working)),
+        ("settings-space", ai_part(false, 2, crate::scene::Glyph::Done)),
+        ("settings-space", ai_part(false, 2, crate::scene::Glyph::Ahead)),
+        ("settings-space", ai_part(false, 3, crate::scene::Glyph::Working)),
+        ("settings-space", ai_part(false, 3, crate::scene::Glyph::Done)),
+        ("settings-space", ai_part(false, 3, crate::scene::Glyph::Ahead)),
+        ("settings-space", ai_long()),
         ("ai-turned-on", ai_turned_on()),
         ("ai-turned-on", ai_turned_on_detail()),
         ("ai-turned-on", turn_off()),
         ("ai-turned-on", ok()),
         ("ai-turning-off", ai_turning_off()),
+        ("ai-turning-off", ai_part(false, 1, crate::scene::Glyph::Working)),
+        ("ai-turning-off", ai_part(false, 1, crate::scene::Glyph::Done)),
+        ("ai-turning-off", ai_part(false, 2, crate::scene::Glyph::Working)),
+        ("ai-turning-off", ai_part(false, 2, crate::scene::Glyph::Done)),
+        ("ai-turning-off", ai_part(false, 2, crate::scene::Glyph::Ahead)),
+        ("ai-turning-off", ai_part(false, 3, crate::scene::Glyph::Working)),
+        ("ai-turning-off", ai_part(false, 3, crate::scene::Glyph::Ahead)),
+        ("ai-turning-off", ai_long()),
         ("ai-turn-off-failed", ai_turned_on()),
         ("ai-turn-off-failed", ai_turn_off_failed()),
         ("ai-turn-off-failed", turn_off()),

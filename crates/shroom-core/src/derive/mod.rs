@@ -278,6 +278,10 @@ fn next_wake(w: &World) -> Option<Mono> {
     // The AI's re-wiring, tried again quietly (N76): the banner's Turn off, or the setup
     // Mac's turn-on by default.
     wakes.extend(w.inflight.failures.get(&Op::Ai).map(|f| f.ai_retry_at()));
+    // The AI's re-wiring's clock, each second while it runs (N78).
+    if let Some(run) = ai_running(w) {
+        wakes.push(Mono(run.since.0 + (w.now.0.saturating_sub(run.since.0) / 1_000 + 1) * 1_000));
+    }
     onboarding::wakes(w, &mut wakes);
     settings::wakes(w, &mut wakes);
     members::wakes(w, &mut wakes);
@@ -296,6 +300,39 @@ fn next_wake(w: &World) -> Option<Mono> {
 
 /// Naming's last re-wiring didn't go through (N66, law 12) and nothing runs since: said in the
 /// window it was asked from, for this visit to it.
+/// After this long on one part, the AI's re-wiring says Cloudflare is slow (N78).
+pub const AI_LONG_MS: u64 = 20_000;
+
+/// The AI's re-wiring while it runs (N78).
+pub fn ai_running(w: &World) -> Option<crate::world::AiRun> {
+    w.space.ai_run.filter(|r| r.end.is_none() && w.inflight.ops.contains_key(&Op::Ai))
+}
+
+/// The AI's parts as its run stands (N78): the parts before the one underway done, it
+/// spinning with its running clock from its first second, the rest to come; all done once
+/// the page said so; a run that stopped ends at its part, crossed. With the quiet line once
+/// the part underway has run long.
+pub fn ai_parts(w: &World, run: crate::world::AiRun) -> (Vec<crate::scene::Part>, Option<String>) {
+    use crate::scene::{Glyph, Part};
+    use crate::world::AiEnd;
+    let ms = w.now.0.saturating_sub(run.since.0);
+    let last = if run.end == Some(AiEnd::Stopped) { run.part } else { 3 };
+    let parts = (1..=last)
+        .map(|n| {
+            let glyph = match (run.end, n.cmp(&run.part)) {
+                (Some(AiEnd::Done), _) | (_, std::cmp::Ordering::Less) => Glyph::Done,
+                (Some(AiEnd::Stopped), _) => Glyph::Stopped,
+                (None, std::cmp::Ordering::Equal) => Glyph::Working,
+                (None, std::cmp::Ordering::Greater) => Glyph::Ahead,
+            };
+            let clock = (glyph == Glyph::Working && ms >= 1_000).then(|| copy::length(ms));
+            Part { glyph, line: copy::ai_part(run.on, n, glyph), clock }
+        })
+        .collect();
+    let long = (run.end.is_none() && ms >= AI_LONG_MS).then(copy::ai_long);
+    (parts, long)
+}
+
 pub fn ai_fell_through(w: &World, window: crate::world::WindowKind) -> bool {
     let entered = w.session.windows.get(&window).map(|d| d.entered);
     !w.inflight.ops.contains_key(&Op::Ai) && w.inflight.failures.get(&Op::Ai).is_some_and(|f| entered.is_some_and(|e| f.at >= e))

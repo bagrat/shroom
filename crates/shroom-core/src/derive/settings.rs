@@ -546,13 +546,28 @@ fn space(w: &World, at: SpaceAt, offline: bool) -> SpaceBody {
     // Naming (N66): only the Mac that holds the setup key can re-wire the page, once its
     // page said where it stands; greyed while a re-wiring runs and mid-take (law 4).
     let ai_known = w.space.ai.filter(|_| w.space.token_holder());
-    let ai = ai_known.map(|on| Toggle { action: Action::SetAi(!on), label: copy::ai_label(), on, enabled: !w.inflight.ops.contains_key(&Op::Ai) && !w.take_open() });
-    let ai_line = ai_known.map(|_| if super::ai_fell_through(w, crate::world::WindowKind::Settings) { copy::ai_failed() } else { copy::ai_cost() });
+    // N78: while the page is re-wired the switch shows where it's going, and its parts list
+    // under the cost line — kept this visit once done, or where it stopped (law 12).
+    let running = super::ai_running(w);
+    let ai = ai_known.map(|on| {
+        let on = running.map_or(on, |r| r.on);
+        Toggle { action: Action::SetAi(!on), label: copy::ai_label(), on, enabled: !w.inflight.ops.contains_key(&Op::Ai) && !w.take_open() }
+    });
+    let ai_line = ai_known.map(|_| copy::ai_cost());
+    let fell = ai_known.is_some() && super::ai_fell_through(w, crate::world::WindowKind::Settings);
+    let entered = w.session.windows.get(&crate::world::WindowKind::Settings).map(|d| d.entered);
+    let shown = w.space.ai_run.filter(|_| ai_known.is_some()).filter(|r| match r.end {
+        None => running.is_some(),
+        Some(crate::world::AiEnd::Done) => entered.is_some_and(|e| r.since >= e),
+        Some(crate::world::AiEnd::Stopped) => fell,
+    });
+    let (ai_parts, ai_long) = shown.map(|r| super::ai_parts(w, r)).unwrap_or_default();
+    let ai_failed = fell.then(copy::ai_failed);
     let exit = if id.role == Role::Member { copy::leave_space_ellipsis() } else { copy::disconnect_ellipsis() };
     let exits = vec![not_mid_take(w, Button::new(Action::Disconnect, exit, Style::Quiet))];
     let mic = mic_denied(w).then(|| Button::new(Action::OpenMicSettings, copy::turn_on_mic(), Style::Quiet));
     if role_face(w).is_some() {
-        return SpaceBody { plan: space_elsewhere(w, at, offline), mic, mark, mark_line, ai, ai_line, exits };
+        return SpaceBody { plan: space_elsewhere(w, at, offline), mic, mark, mark_line, ai, ai_line, ai_parts, ai_long, ai_failed, exits };
     }
     let current = at.row();
     let rows = (1..=6u8)
@@ -587,7 +602,7 @@ fn space(w: &World, at: SpaceAt, offline: bool) -> SpaceBody {
     } else {
         nest(w, at)
     };
-    SpaceBody { plan: PlanView { header: copy::plan_header(), rows, current, nest }, mic, mark, mark_line, ai, ai_line, exits }
+    SpaceBody { plan: PlanView { header: copy::plan_header(), rows, current, nest }, mic, mark, mark_line, ai, ai_line, ai_parts, ai_long, ai_failed, exits }
 }
 
 fn token_nest(w: &World, line: String, checking: bool, error: Option<String>) -> Nest {
