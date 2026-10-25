@@ -4,7 +4,7 @@
 
 The machine: every state, edge, rule, said-line and law of shroom v1 — the spec (DECISIONS B133). Sessions edit it; MACHINE.md and the canvas's machine boards are generated from it.
 
-166 states · 353 edges · 26 rules · 779 said-lines · 16 laws · 90 ledger rows.
+167 states · 354 edges · 26 rules · 779 said-lines · 16 laws · 91 ledger rows.
 
 Status: **ratified** is Bagrat's; **provisional** is designed or built and awaits him (each cites its row: `#n` is a DEVIATIONS row of docs/DECISIONS.md, `Bn` a decision, `Nn`/`Un`/`Pn` a ledger row below). `SM:n` in older citations is a line of the retired spec text, kept in history/spec/UX-STATEMACHINE.md.
 
@@ -2695,21 +2695,23 @@ Several rows selected (the cleanup job): one sheet for all of them, with plural 
 
 ### `settings`
 
-state · window · **provisional** · cites N36, N28, N12, N5, N33, N42, N38
+state · window · **provisional** · cites N36, N28, N12, N5, N33, N42, N38, N79
 
-One standard macOS settings window with toolbar tabs General · Space · Members. Members appears only on owner-class Macs (N5, N33). The window opens on the last tab used (General the first time). One instance. ✕ ≡ Close (N12). Resolves N28's open placement.
+One standard macOS settings window, 600 × 720 (N79), with toolbar tabs General · Videos · Space · Members. Members appears only on owner-class Macs (N5, N33). The window opens on the last tab used (General the first time). One instance. ✕ ≡ Close (N12). Resolves N28's open placement.
 
 **Entry.** A space exists, so config is reachable: not mid-take. The window opens from any of these doors: (a) the gear in config's footer; (b) all-set's Invite someone, which morphs the onboarding window into Settings on Members; (c) space-degraded's Reconnect your space, which opens Space in the repair mood (Region 2); (d) recording-off's Turn it back on, which opens Space with row six current at perm-screen (Region 3). It is also restored at its derived state after an update relaunch. A window opened before a take stays open.
 
 | Said | Role | Copy | Note |
 |---|---|---|---|
 | “General” | other | provisional | Toolbar tab. |
+| “Videos” | other | ratified | Toolbar tab (N79; Bagrat named it, 2026-10-25). |
 | “Space” | other | provisional | Toolbar tab. |
 | “Members” | other | provisional | Toolbar tab, owner-class Macs only. |
 
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
 | General | other |  | `settings-general` | Toolbar tab. |
+| Videos | other |  | `settings-videos` | Toolbar tab. |
 | Space | other |  | `settings-space` | Toolbar tab. |
 | Members | other |  | `settings-members` | Toolbar tab, owner-class only. |
 | ✕ | close |  |  | ≡ Close (N12). The window closes; the dock icon goes unless another window (e.g. Library) is still open (dock iff a window is open). |
@@ -2723,9 +2725,9 @@ One standard macOS settings window with toolbar tabs General · Space · Members
 
 ### `settings-general`
 
-face · window · **provisional** · a face of `settings` · board: SettingsGeneral · cites N36, U4, N8, N37, U7, B135, B180, N53, N62, N68, N77
+face · window · **provisional** · a face of `settings` · board: SettingsGeneral · cites N36, U4, N8, N37, U7, B135, B180, N53, N62, N68, N79
 
-The General tab: U4's login checkbox at home at last (it reads the system's truth: if the login item is removed in System Settings, the box shows unchecked), the update row mirroring config's banner, and the help row: Copy diagnostics and Report a problem… (B180), with GitHub's new-issue link under it as the public door (N8). Past this Mac's macOS, General carries the only update line: no banner, no dot. Your videos gains Delete videos nobody watches (N75): the space's auto-cleanup, Off as it ships, set on the Mac that holds the setup key, read-only elsewhere.
+The General tab: U4's login checkbox at home at last (it reads the system's truth: if the login item is removed in System Settings, the box shows unchecked), the update row mirroring config's banner, and the help row: Copy diagnostics and Report a problem… (B180), with GitHub's new-issue link under it as the public door (N8). Past this Mac's macOS, General carries the only update line: no banner, no dot. Then your coding agent (N62) and Uninstall shroom… at the foot. Your videos moved to a tab of its own, Videos (N79).
 
 **Entry.** Settings window on the General tab (the default on first open). The shroom command's settings link (N62) opens it too, the switch's row lit for a moment.
 
@@ -2751,16 +2753,41 @@ The General tab: U4's login checkbox at home at last (it reads the system's trut
 | “Read it first” | link | ratified | Opens shroom.am/cli in the browser: what the agent will read, word for word. Ratified by Bagrat, 2026-10-18: as built; he'll tweak the card's words once he uses it. · N62 |
 | “Paste it into your coding agent. It can find, share and tidy your videos, and asks you before it deletes anything.” | line | ratified | Under the prompt. Ratified by Bagrat, 2026-10-18: as built; he'll tweak the card's words once he uses it. · N62 |
 | “Let it start and stop recordings” | field-label | ratified | A switch, off by default (Bagrat, 2026-10-18). While it's off, the app refuses the command's recording asks, and the refusal's link (`shroom://settings/agent`) opens General here with this row in view and lit for a moment, never flipped. Ratified by Bagrat, 2026-10-18, relayed by the orchestrator. · N62 |
-| “Your videos” | field-label | ratified | The group's heading (N68). |
+
+| Action | Kind | Return | Goes to | Note |
+|---|---|---|---|---|
+| Start shroom when you log in | other |  |  | Checkbox. Reflects and sets the system login item, and reads the system's truth. |
+| Update | filled-default |  | `updating-app` | Return behaviour in Settings is not stated. Greys mid-take with “You can do this once your recording is finished.” (Law 4). |
+| What's new | text-link |  |  | Opens the release notes in the browser. |
+| Copy diagnostics | secondary |  |  | Puts the report, without a description, on the clipboard: the version, macOS, the chip and memory, the setup timeline and the last 200 log lines, cleaned (B180). Law 10: only on this click. |
+| Report a problem… | secondary |  | `report-problem` | Opens the report sheet (B180). |
+| GitHub | text-link |  |  | The new-issue link, prefilled with the version and nothing else (N8, B180). |
+| Uninstall shroom… | text-link |  | `uninstall-confirm` | Opens the Uninstall sheet. Greys mid-take (law 4). |
+
+| → | Kind | Label | Status | Cites |
+|---|---|---|---|---|
+| `settings-space` | flow | the Space tab | provisional | N36 |
+| `updating-app` | flow | Update (an update is ready, not mid-take) | provisional |  |
+| `uninstall-confirm` | side | Uninstall shroom…, not mid-take | provisional | B135 |
+| `report-problem` | side | Report a problem… | provisional | B180 |
+| `settings-videos` | flow | the Videos tab | ratified | N79 |
+
+### `settings-videos`
+
+face · window · **ratified** · a face of `settings` · board: SettingsVideos · cites N68, N75, N77, N79
+
+The Videos tab (N79): what was General's group Your videos, row for row and word for word. Count plays (the space's: live on owner-class Macs, greyed on a member's), Suggest videos to clean up (this Mac's), and Delete videos nobody watches (N75: the space's auto-cleanup, Off as it ships, set on the Mac that holds the setup key, read-only elsewhere). The group's heading became the tab's name. Space used moved to the Space tab.
+
+**Entry.** Settings window on the Videos tab: its toolbar tab, or the window opened again on the last tab used.
+
+| Said | Role | Copy | Note |
+|---|---|---|---|
 | “Count plays” | field-label | ratified | Switch, on by default. The space's: owner-class Macs change it; elsewhere it shows greyed (N68). |
 | “How often each video is played and how far, kept in your Cloudflare account. No cookies, nothing about who watched.” | line | ratified |  |
 | “Couldn't change that just now — try again in a moment.” | line | ratified | Under Count plays, when the space didn't take the switch (law 12); the switch reads as the space has it. |
 | “Suggest videos to clean up” | field-label | ratified | Switch, on by default; this Mac's (N68). |
 | “In the Library, videos that might be worth deleting: rarely watched lately, and taking real room.” | line | ratified |  |
-| “Space used” | field-label | ratified |  |
-| “34 GB — about 36¢ a month past Cloudflare's free 10 GB” | status | ratified | Past the free 10 GB; the size and the cents vary (B212). |
-| “8.2 GB — inside Cloudflare's free 10 GB” | status | ratified | Inside the free 10 GB; the size varies (B212). |
-| “Delete videos nobody watches” | field-label | ratified | N75. A pop-up in Your videos, under Suggest videos to clean up; Off as it ships. Set on the Mac that holds the setup key. Bagrat approved the board as drawn, 2026-10-24. · N75 |
+| “Delete videos nobody watches” | field-label | ratified | N75. A pop-up under Suggest videos to clean up; Off as it ships. Set on the Mac that holds the setup key. Bagrat approved the board as drawn, 2026-10-24. · N75 |
 | “Counted from the last time someone watched it, or from when it was shared. Pinned videos are never deleted, and the Library says which ones are going a few days before.” | line | ratified | N75. Under it, on the Mac that sets it. Bagrat approved the board as drawn, 2026-10-24. · N75 |
 | “Off” | button | ratified | N75. The pop-up's first choice. Bagrat approved the board as drawn, 2026-10-24. · N75 |
 | “After 15 days” | button | ratified | N75. Bagrat approved the board as drawn, 2026-10-24. · N75 |
@@ -2773,28 +2800,17 @@ The General tab: U4's login checkbox at home at last (it reads the system's trut
 
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
-| Start shroom when you log in | other |  |  | Checkbox. Reflects and sets the system login item, and reads the system's truth. |
-| Update | filled-default |  | `updating-app` | Return behaviour in Settings is not stated. Greys mid-take with “You can do this once your recording is finished.” (Law 4). |
-| What's new | text-link |  |  | Opens the release notes in the browser. |
-| Copy diagnostics | secondary |  |  | Puts the report, without a description, on the clipboard: the version, macOS, the chip and memory, the setup timeline and the last 200 log lines, cleaned (B180). Law 10: only on this click. |
-| Report a problem… | secondary |  | `report-problem` | Opens the report sheet (B180). |
-| GitHub | text-link |  |  | The new-issue link, prefilled with the version and nothing else (N8, B180). |
-| Uninstall shroom… | text-link |  | `uninstall-confirm` | Opens the Uninstall sheet. Greys mid-take (law 4). |
 | Delete videos nobody watches | other |  | `autoclean-confirm` | N75. A pop-up: Off · After 15 days · After 30 days · After 60 days · After a year. Turning it on or shortening it while videos already qualify asks first (autoclean-confirm); otherwise it's set at once, “Turning on — a few seconds.” under it the first time. One that didn't go through says Couldn't change that and stays as it was. |
 
 | → | Kind | Label | Status | Cites |
 |---|---|---|---|---|
-| `settings-space` | flow | the Space tab | provisional | N36 |
-| `updating-app` | flow | Update (an update is ready, not mid-take) | provisional |  |
-| `uninstall-confirm` | side | Uninstall shroom…, not mid-take | provisional | B135 |
-| `report-problem` | side | Report a problem… | provisional | B180 |
 | `autoclean-confirm` | flow | Delete videos nobody watches | ratified | N75 |
 
 ### `settings-space`
 
-face · window · **provisional** · a face of `settings` · board: SettingsSpace · cites N36, N42, U3, N29, N31, law 4, B159, N66, N80
+face · window · **provisional** · a face of `settings` · board: SettingsSpace · cites N36, N42, U3, N29, N31, law 4, B159, N66, N68, N79, N80
 
-The Space tab: one tab with a mood per kind of Mac (inspection · repair · owner-class-without-token · member). Beneath the rows, by role: the mark switch (owner-class only — a space setting, U3) and the exits as quiet text (Disconnect this Mac… for owners, Leave this space… for members). Row six is live on every Mac. A revoked grant un-ticks it (“screen recording is off”), with Turn it back on → the permissions chapter at exactly the missing beat, in this window. A denied microphone ticks the row with the fact, plus a quiet Turn on the microphone that opens System Settings' Microphone pane (a denied mic never blocks). Mid-take both exits grey (law 4). After Disconnect or Leave, the ~/.shroom secrets are wiped and the app returns to idle-unprovisioned; the login item stays as it was. No invite door shows (B159): an invite link pasted anywhere in the tab (⌘V) opens its invite, as the page's Open shroom does. On the Mac that holds the setup key, a second switch turns the space's AI on or off for new videos (on by default, N76) — titles, chapters, captions and voice cuts (N66) — with one line on what it does and costs; turning it on or off re-wires the page. Since N80 the switch moves at once and lists its parts as they land — Checking your space, Connecting (or Disconnecting) AI, Switching AI on (or off) for new videos — each ticking when its own calls answer, the one underway with its running clock; done when the page says so, the list kept until the window closes or the tab changes; didn't go through, the part that stopped crossed with the law-12 line; from 20 s on a part, one quiet line.
+The Space tab: one tab with a mood per kind of Mac (inspection · repair · owner-class-without-token · member). Beneath the rows, by role: the mark switch (owner-class only — a space setting, U3) and the exits as quiet text (Disconnect this Mac… for owners, Leave this space… for members). Row six is live on every Mac. A revoked grant un-ticks it (“screen recording is off”), with Turn it back on → the permissions chapter at exactly the missing beat, in this window. A denied microphone ticks the row with the fact, plus a quiet Turn on the microphone that opens System Settings' Microphone pane (a denied mic never blocks). Mid-take both exits grey (law 4). After Disconnect or Leave, the ~/.shroom secrets are wiped and the app returns to idle-unprovisioned; the login item stays as it was. No invite door shows (B159): an invite link pasted anywhere in the tab (⌘V) opens its invite, as the page's Open shroom does. On the Mac that holds the setup key, a second switch turns the space's AI on or off for new videos (on by default, N76) — titles, chapters, captions and voice cuts (N66) — with one line on what it does and costs; turning it on or off re-wires the page. On owner-class Macs, Space used is a row of its own right under “Cloudflare billing set up”: what the space holds and what it costs (N79, moved from Your videos). Since N80 the switch moves at once and lists its parts as they land — Checking your space, Connecting (or Disconnecting) AI, Switching AI on (or off) for new videos — each ticking when its own calls answer, the one underway with its running clock; done when the page says so, the list kept until the window closes or the tab changes; didn't go through, the part that stopped crossed with the law-12 line; from 20 s on a part, one quiet line.
 
 **Entry.** Settings window on the Space tab. Which mood shows is derived from the kind of Mac and the probe results.
 
@@ -2812,6 +2828,9 @@ The Space tab: one tab with a mood per kind of Mac (inspection · repair · owne
 | “AI for new videos” | field-label | ratified | N66. Label of the AI switch, one switch for every AI feature (voice cuts, N65, included), on the Mac that holds the setup key only (it re-wires the page). Bagrat approved the board AiSettings as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later. · N66 |
 | “Titles, chapters and captions from what’s said, and your “shroom cut” slips cut — on your own Cloudflare account. Free for about 2½ hours of new video a day; more is about 4¢ per video hour on Cloudflare’s $5 plan.” | line | ratified | N66. Description beside the AI switch: the one cost line. Bagrat approved the board AiSettings as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later. · N66 |
 | “Couldn't change that just now — try again in a moment.” | line | provisional | N66, N80. When a re-wiring didn't go through, until the next try or the next visit (law 12); the switch is as the page has it. Since N80 under the parts, the part that stopped crossed, the cost line kept. · N66, N80 |
+| “Space used” | field-label | ratified | N79: its own row in the plan's card, right under “Cloudflare billing set up”, on owner-class Macs (the bill is theirs, N68), moved from Your videos. Bagrat, 2026-10-25. |
+| “34 GB — about 36¢ a month past Cloudflare's free 10 GB” | status | ratified | Past the free 10 GB; the size and the cents vary (B212). |
+| “8.2 GB — inside Cloudflare's free 10 GB” | status | ratified | Inside the free 10 GB; the size varies (B212). |
 | “Checking your space…” | line | ratified | N80: the AI switch's parts, under its cost line: part 1 (the page's version, the setup key, that the page is shroom's), underway: its spinner, and its running clock once it has run a second. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”). · N80 |
 | “Your space is ready” | line | ratified | N80: the AI switch's parts, under its cost line: part 1, done: its tick. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”). · N80 |
 | “Checking your space” | line | provisional | N80: the AI switch's part 1, stopped there (the page unanswered, the setup key not live, the page newer than this app): its cross, under the cost line, the law-12 line under it. Not drawn on the board; the build's form of a drawn line, as parts 2 and 3 stop in their plain words (provisional, N80). · N80 |
@@ -3434,8 +3453,8 @@ Auto-cleanup turned on, or its wait shortened, while videos already qualify (N75
 
 | → | Kind | Label | Status | Cites |
 |---|---|---|---|---|
-| `settings-general` | flow | Turn on | ratified | N75 |
-| `settings-general` | flow | Cancel | ratified | N75 |
+| `settings-videos` | flow | Turn on | ratified | N75 |
+| `settings-videos` | flow | Cancel | ratified | N75 |
 
 ### `autoclean-warning`
 
@@ -4361,7 +4380,7 @@ A move that holds for a whole group of states, written once (B133). The tests ex
 - **@idle** — the tray at rest (law 5): `idle-ready`, `idle-unprovisioned`
 - **@space-tab** — the Space tab, every mood and the Region 2 state beneath it (N36, N42): `settings-space`, `settings-space-inspection`, `settings-space-repair`, `settings-space-no-token`, `settings-space-member`, `re-entry-as-settings`, `repair-mood`, `token-repair-mood`, `token`, `token-garbled`, `token-wrong-powers`, `token-other-account`, `gate-email`, `gate-card`, `name-changed`, `wiring`, `wizard-offline`, `wizard-unexpected`, `space-storage-gone`, `perm-screen`, `relaunching`
 - **@exit-sheets** — the Space tab's exit sheets (N36): `disconnect-confirm`, `disconnect-confirm-no-token`, `leave-confirm`
-- **@settings-tabs** — the Settings window's tabs (N36): `settings-general`, `settings-members`, `invite-born`, `add-another-mac`
+- **@settings-tabs** — the Settings window's tabs (N36): `settings-general`, `settings-videos`, `settings-members`, `invite-born`, `add-another-mac`
 - **@join-doors** — where an invite can arrive (N30, N31): `idle-ready`, `idle-unprovisioned`, `config`, `welcome`, `first-launch`, `join-waiting`, `join-expired`, `join-used`, `join-space-missing`
 - **@join-arrival** — the invite window's faces on arrival (N30, N31, #20): `member-welcome`, `join-waiting`, `join-expired`, `join-used`, `join-space-missing`, `join-already-here`, `join-switch-confirm`, `join-switch-confirm-uploads`, `join-switch-confirm-saved-take`, `joining`
 - **@banners** — config's banners (one at a time, N38) (N38): `space-degraded`, `space-degraded-no-token-mac`, `recording-off`, `recovered-take`, `update-ready`, `updating-app`, `space-needs-update-member`, `space-needs-update-no-token`, `member-revoked`, `space-needs-owner`, `space-gone`, `owner-mac-removed`
@@ -4543,6 +4562,7 @@ A move that holds for a whole group of states, written once (B133). The tests ex
 | N76 | AI is on by default, and said once | **Bagrat, 2026-10-25** (relayed by the orchestrator, on the boards “Popover — AI features are turned on…” and its states), reversing N66's off by default (2026-10-18): the space's AI — names, chapters, captions and voice cuts, one switch — is **on by default**. (1) **A space set up from now on starts with it on**: the setup's wiring puts up a new page with Cloudflare's AI and its schedule, and says nothing about it (Bagrat, 2026-10-25: nothing in the setup, nor in the Library); the switch in Settings · Space shows it on. A repair's wiring never changes it. (2) **A space set up before**: on the Mac that holds the setup key, the first popover after the update that would show the AI's banner turns it on as it shows “AI features are turned on.” with Turn off and OK — so nothing is heard before it's been said (`ai-turned-on`). It stays until OK or Turn off; Turn off re-wires the page without the AI and says so once (`ai-turning-off`, `ai-turn-off-failed`, `ai-off`). (3) **An explicit no stands**: a Mac that said Not now to N66's offer, or used the switch, has its AI settled and is never turned on by default nor shown the banner (one remembered fact on this Mac, `ai_offer_answered`). (4) **Members' Macs**, whose new videos the owner's account then hears, say so once: “AI is on in Bagrat's space.”, with OK (`ai-on-in-space`); they learn it from the space's ping. (5) The setup Mac offline, or not updated: nothing changes until it is opened on this version. N66's offer, its confirm, its turning-on, failed and on faces are gone; its switch, its cost line and everything the AI does stay. The privacy page's AI point is reworded to match. | ratified | 2026-10-25 |
 | N77 | Auto-cleanup offers a year | **Bagrat, 2026-10-25** (relayed by the orchestrator: add a year to the app), so the app offers what the landing's price box does (“30 days · 60 days · a year”): Delete videos nobody watches gains a fourth wait, **After a year** (365 days), after After 60 days. 15 days stays; nothing else changes. Its lines say “a year” where they'd say the days (“nobody has watched them in a year”, “Delete videos nobody watches for a year?”). The three days' warning and every guard hold as they are; the page still keeps a video's last play however long ago it was, so a year is counted from it as the shorter waits are. | ratified | 2026-10-25 |
 | N78 | The marker toast: ⌥⌘M answers on screen, left out of the video | **Bagrat, trying 0.1.30-early.1, 2026-10-25:** a marker dropped with the shortcut is too silent; a toast should say so, with a hint that it isn't in the recording, left out the way the agent label is. **He approved the board “The bubble — ⌥⌘M answers: the “Marker dropped” toast” as drawn, its words and the numbering, 2026-10-25** (relayed by the orchestrator). (1) **A marker ⌥⌘M drops shows a toast**: the agent label's pill with the marker's flag, top right of the display the take records, under the menu bar (just under the label when that shows; on the display Camera's preview sits on for the camera only). It reads “Marker dropped”, or “Marker 3 dropped” for the take's later ones, beside a quieter “Only you see this, not the video”. It is left out of the recording, as the countdown, the bubble's controls and the label are, and takes no clicks. (2) **It stays two seconds, then fades.** A press while it shows swaps the words and starts its two seconds again: one toast, never a stack. (3) **Paused:** with the popover open, no toast (the row's Marker dropped answers); with it put away, the toast; a second press at the same pause drops nothing, and the toast says “Already marked at this pause”. A question open, or a pause shroom made, drops nothing and shows nothing, as before. (4) **It goes with the take**, and once the popover or a count comes up over it; it doesn't come back when they go. Amends N64 (2)'s “nothing on screen answers it”. Built: DECISIONS B246. | ratified | 2026-10-25 |
+| N79 | Settings gains a Videos tab; Space used moves to Space | **Bagrat, 2026-10-25** (relayed by the orchestrator; the board “Settings — General outgrew its window”): General had outgrown its window (with Your videos, the coding agent and auto-cleanup it was about 820 tall in a page of 588, and scrolled on a Mac), so the window gains a tab, **Videos**: General · Videos · Space · Members. Videos holds what was General's group Your videos, row for row and word for word: Count plays, Suggest videos to clean up and Delete videos nobody watches; the group's heading is the tab's name now. **Space used** goes to the Space tab, its own row right under “Cloudflare billing set up”, on owner-class Macs as before (the bill is theirs). The window grows to **600 × 720**, the editor's height (it fits a 1024×768 screen), so every tab fits its page of 688 under the title bar, Space with the AI switch's parts included. General keeps the app's own rows, the help line, your coding agent and Uninstall. Auto-cleanup's question opens over Videos; the shroom command's settings link still opens General at its switch. | ratified | 2026-10-25 |
 | N80 | Turning AI on or off shows its parts as they happen | **Bagrat's hand test of 0.1.30-early.1, 2026-10-25**: turning AI on or off took long enough to worry, with little shown while it ran — the anxiety a tester named in the setup (N74). **Bagrat, 2026-10-25** (relayed by the orchestrator, on the boards “Settings — Space: the AI switch while it works…” and “Popover — AI features are turned on: Turn off while it works…”, with the plainer words): (1) **The switch moves at once** to where it's going, greyed while the page is re-wired. (2) **Three parts list under its cost line**, each ticking only when its own calls answer, the one underway spinning with its running clock from its first second, as N74's do: “Checking your space…” → “Your space is ready”; “Connecting AI to your space…” → “AI connected” (off: “Disconnecting AI…” → “AI disconnected”); “Switching AI on for new videos…” → “AI is on for new videos” (off: “Switching AI off for new videos…” → “AI is off for new videos”). (3) **Done is when the page itself says so** (its ping answers with the AI on, or without it); the last part ticks in bold and the list stays until the window closes or the tab changes. (4) **Didn't go through** (law 12): the switch reads as the page has it and is live again; the part that stopped carries a cross in its plain words, with “Couldn't change that just now — try again in a moment.” under the list. (5) **Running long**: from 20 s on one part, one quiet line, “Cloudflare is slower than usual just now — hang tight.”; the clock keeps going until the re-wiring's 3 min deadline, which is a didn't-go-through. (6) **The banner's Turn off** shows the same parts under its ratified “Turning off — a few seconds.”; its off and didn't-go-through faces are as they were. The banner's own turn-on (N76) still says only “AI features are turned on.” while it runs (Bagrat, 2026-10-25: no preference; left as it is). Measured on the test account (2026-10-25, six turns, the real page): checking your space ~1 s; connecting or disconnecting AI 0.8–1 s, 6.5 s the first time; switching it for new videos (the schedule, then the page saying so) under 0.5 s. Nothing is stored (law 1). | ratified | 2026-10-25 |
 
 ## Surfaces

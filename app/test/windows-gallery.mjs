@@ -26,7 +26,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:f
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { webkit } from "playwright";
-import { collect, dist, gallery, hex, isButton, norm, out, repo, serve, stub, texts, windowPage } from "./gallery-kit.mjs";
+import { collect, dist, gallery, hex, isButton, norm, out, repo, serve, stub, texts, windowFrame, windowPage } from "./gallery-kit.mjs";
 import { editorDrives, editorLooks, makeMedia, serveMedia } from "./editor-preview.mjs";
 import { editorScenes, REC } from "./editor-fixture.mjs";
 
@@ -38,21 +38,13 @@ for (const f of ["library.html", "settings.html", "feedback.html", "popover.html
 }
 mkdirSync(out, { recursive: true });
 
-// The windows' inner sizes, as the runner builds them (runtime/presenter.rs's WindowSpecs —
-// read from there so the gallery and the runner stay in step; the fallbacks are the sizes
-// they were written against). The Library resizes down to its minimum; Settings is fixed,
-// tall enough for its tallest pane (checked below).
-function spec(label, fallback) {
-  try {
-    const src = readFileSync(join(repo, "app/src-tauri/src/runtime/presenter.rs"), "utf8");
-    const m = src.match(new RegExp(`label: ${label},[^}]*?width: ([\\d.]+), height: ([\\d.]+)`));
-    if (m) return { width: Number(m[1]), height: Number(m[2]) };
-  } catch {}
-  return fallback;
-}
+// The windows' sizes, as the runner builds them (runtime/presenter.rs's WindowSpecs — read
+// from there so the gallery and the runner stay in step). The Library resizes down to its
+// minimum. Settings is fixed: its page is the frame less macOS's title bar (688 under a
+// 720 frame, as on a Mac), and every tab must fit it (checked below; N79).
 export const SIZES = {
-  library: { ...spec("LIBRARY", { width: 680, height: 560 }), min: { width: 520, height: 360 } },
-  settings: spec("SETTINGS", { width: 600, height: 620 }),
+  library: { ...windowFrame("LIBRARY", { width: 680, height: 560 }), min: { width: 520, height: 360 } },
+  settings: windowPage("SETTINGS", { width: 600, height: 720 }),
   // Send feedback (N60): its page under the title bar.
   feedback: windowPage("FEEDBACK", { width: 520, height: 600 }),
   // The popover is 320 wide and fits its content's height (commands.rs's popover_fit, up to 720).
@@ -610,7 +602,7 @@ for (const entry of settings) {
     const v = await vars(page);
     // Auto-cleanup's pop-up (N75): its choices live in a select — the chosen one shows, the
     // rest when it opens; they're its options, in the Scene's order.
-    const picks = b.pane.kind === "general" ? (b.pane.videos?.autoclean?.choices ?? []) : [];
+    const picks = b.pane.kind === "videos" ? (b.pane.autoclean?.choices ?? []) : [];
     await common(tag, page, errors, "settings", w, { hidden: picks.map((c) => c.label) });
     if (picks.length) {
       const opts = await page.locator(".videos select.pop option").evaluateAll((els) => els.map((e) => ({ label: e.textContent.trim(), on: e.selected })));
@@ -683,8 +675,31 @@ for (const entry of settings) {
       check(`${tag}: the composer has the keyboard ${w.activates && !b.sheet ? "(activates)" : "only when it may"}`, (await who.evaluate((e) => e === document.activeElement)) === (w.activates && !b.sheet));
       check(`${tag}: Return in the composer is the Scene's Invite`, w.ret?.do === "invite" || !!b.sheet);
       check(`${tag}: no paste field`, (await page.locator("input.paste").count()) === 0);
+    } else if (b.pane.kind === "videos") {
+      // Videos (N79): the switches and the pop-up, in one card; no heading over it — the
+      // tab is its name.
+      const g = b.pane;
+      for (const t of [g.count, g.suggest]) {
+        const box = page.getByRole("checkbox", { name: t.label });
+        check(`${tag}: “${t.label}” ${t.on ? "on" : "off"}, ${t.enabled ? "live" : "greyed"}`, (await box.isChecked()) === t.on && (await box.isEnabled()) === t.enabled);
+      }
+      check(`${tag}: one card, no heading`, (await page.locator(".videos > .card").count()) === 1 && (await page.locator(".videos h2").count()) === 0);
     } else {
       const p = b.pane.plan;
+      // Space used (N79; Bagrat, 2026-10-25): its own row in the plan's card, right under
+      // “Cloudflare billing set up” (the third row), owner-class Macs only.
+      check(
+        `${tag}: Space used ${b.pane.used ? "right under the billing row" : "absent"}`,
+        b.pane.used
+          ? await page.evaluate((want) => {
+              const u = document.querySelector("ol.rows > li.used-row");
+              const rows = document.querySelectorAll("ol.rows > li.row");
+              let prev = u?.previousElementSibling;
+              while (prev?.classList.contains("under")) prev = prev.previousElementSibling;
+              return !!u && prev === rows[2] && u.querySelector(".used")?.textContent === want;
+            }, b.pane.used)
+          : (await page.locator(".used-row").count()) === 0,
+      );
       const glyphs = await page.locator("li.row .glyph").evaluateAll((els) => els.map((e) => getComputedStyle(e).color));
       // A row ahead's dot is the canvas's #7b8494 (--dim), as the wizard draws it.
       const want = { current: v.frost, done: v.green, ahead: v.dim };
@@ -734,6 +749,7 @@ for (const entry of settings) {
     await page.screenshot({ path: join(out, `settings-${entry.variant}-${scheme}.png`), fullPage: true, animations: "disabled" });
     const bottom = await page.evaluate(() => Math.ceil(document.querySelector(".set > .behind > .pane").getBoundingClientRect().bottom));
     if (b.pane.kind === "members") check(`${tag}: the toolbar's tabs include Members`, b.tabs.some((t) => t.label === "Members"));
+    // Every tab fits the page whole (N79), Members with the gallery's people.
     heights.push(bottom);
     check(`${tag}: the pane fits the window (${bottom} ≤ ${SIZES.settings.height})`, bottom <= SIZES.settings.height);
     if (b.sheet) {
@@ -749,9 +765,9 @@ for (const entry of settings) {
 
 const set = (variant) => settings.find((e) => e.variant === variant).scene;
 {
-  // Your videos (N68): each switch sends the Scene's action and keeps the Scene's state.
-  const w = set("general-your-videos");
-  const v = w.body.pane.videos;
+  // Videos (N79; Your videos, N68): each switch sends the Scene's action and keeps the Scene's state.
+  const w = set("videos");
+  const v = w.body.pane;
   const { ctx, page } = await open("settings", w);
   for (const t of [v.count, v.suggest]) {
     await clear(page);

@@ -252,8 +252,8 @@ pub fn derive(w: &World) -> Option<Window<SettingsBody>> {
         return None;
     }
     let tab = tab(w);
-    let mut tabs_shown = vec![(SettingsTab::General, copy::tab_general()), (SettingsTab::Space, copy::tab_space())];
-    // The third tab, owner-class Macs only (N36, law 14).
+    let mut tabs_shown = vec![(SettingsTab::General, copy::tab_general()), (SettingsTab::Videos, copy::tab_videos()), (SettingsTab::Space, copy::tab_space())];
+    // The last tab, owner-class Macs only (N36, law 14).
     if w.space.owner_class() {
         tabs_shown.push((SettingsTab::Members, copy::tab_members()));
     }
@@ -264,6 +264,10 @@ pub fn derive(w: &World) -> Option<Window<SettingsBody>> {
         SettingsTab::General => {
             faces.push("settings-general");
             SettingsPane::General(general(w))
+        }
+        SettingsTab::Videos => {
+            faces.push("settings-videos");
+            SettingsPane::Videos(videos(w))
         }
         SettingsTab::Members => {
             faces.extend(super::members::faces(w));
@@ -386,24 +390,18 @@ fn general(w: &World) -> GeneralBody {
             },
             lit: matches!(w.session.fields.settings.lit, Some((crate::event::SettingsSpot::AgentRecording, _))),
         },
-        videos: w.provisioned().then(|| videos(w)),
     }
 }
 
-/// Your videos (N68): the space's play-count switch (owner-class, once the space has said;
-/// a switch asked reads as asked, greyed until it answers), this Mac's suggestions switch,
-/// and what the space costs (owner-class: the bill is theirs).
+/// The Videos tab (N79; Your videos, N68): the space's play-count switch (owner-class, once
+/// the space has said; a switch asked reads as asked, greyed until it answers), this Mac's
+/// suggestions switch, and auto-cleanup's pop-up.
 fn videos(w: &World) -> VideosGroup {
     let known = w.suggestions.get();
     let counting = w.library_ops.plays.or(known.map(|s| s.counting)).unwrap_or(true);
     let online = w.online() != Some(false);
     let owner = w.space.owner_class();
-    let used = known.filter(|_| owner).map(|s| match super::library::space_cents(s.space_bytes) {
-        0 => copy::space_used_free(s.space_bytes),
-        cents => copy::space_used_past(s.space_bytes, cents),
-    });
     VideosGroup {
-        heading: copy::your_videos(),
         count: Toggle {
             action: Action::SetPlays(!counting),
             label: copy::count_plays(),
@@ -414,8 +412,6 @@ fn videos(w: &World) -> VideosGroup {
         count_note: (w.inflight.failures.contains_key(&Op::Plays) && w.library_ops.plays.is_none()).then(copy::plays_failed),
         suggest: Toggle { action: Action::SetSuggestCleanup(!w.prefs.suggest_cleanup), label: copy::suggest_cleanup(), on: w.prefs.suggest_cleanup, enabled: true },
         suggest_hint: copy::suggest_cleanup_hint(),
-        used_label: used.as_ref().map(|_| copy::space_used()),
-        used,
         autoclean: known.map(|s| autoclean_row(w, s, counting)),
     }
 }
@@ -568,8 +564,10 @@ fn space(w: &World, at: SpaceAt, offline: bool) -> SpaceBody {
     let exit = if id.role == Role::Member { copy::leave_space_ellipsis() } else { copy::disconnect_ellipsis() };
     let exits = vec![not_mid_take(w, Button::new(Action::Disconnect, exit, Style::Quiet))];
     let mic = mic_denied(w).then(|| Button::new(Action::OpenMicSettings, copy::turn_on_mic(), Style::Quiet));
+    let used = space_used(w);
+    let used_label = used.as_ref().map(|_| copy::space_used());
     if role_face(w).is_some() {
-        return SpaceBody { plan: space_elsewhere(w, at, offline), mic, mark, mark_line, ai, ai_line, ai_parts, ai_long, ai_failed, exits };
+        return SpaceBody { plan: space_elsewhere(w, at, offline), mic, mark, mark_line, ai, ai_line, ai_parts, ai_long, ai_failed, used_label, used, exits };
     }
     let current = at.row();
     let rows = (1..=6u8)
@@ -604,7 +602,17 @@ fn space(w: &World, at: SpaceAt, offline: bool) -> SpaceBody {
     } else {
         nest(w, at)
     };
-    SpaceBody { plan: PlanView { header: copy::plan_header(), rows, current, nest }, mic, mark, mark_line, ai, ai_line, ai_parts, ai_long, ai_failed, exits }
+    SpaceBody { plan: PlanView { header: copy::plan_header(), rows, current, nest }, mic, mark, mark_line, ai, ai_line, ai_parts, ai_long, ai_failed, used_label, used, exits }
+}
+
+/// Space used (N79, moved from Your videos): the space's size and what it costs, on
+/// owner-class Macs (the bill is theirs), once the space has said.
+fn space_used(w: &World) -> Option<String> {
+    let s = w.suggestions.get().filter(|_| w.space.owner_class())?;
+    Some(match super::library::space_cents(s.space_bytes) {
+        0 => copy::space_used_free(s.space_bytes),
+        cents => copy::space_used_past(s.space_bytes, cents),
+    })
 }
 
 fn token_nest(w: &World, line: String, checking: bool, error: Option<String>) -> Nest {
@@ -699,7 +707,7 @@ fn sheet(w: &World) -> Option<Sheet> {
     }
     // Auto-cleanup turned on or shortened while videos already qualify (N75): how many and
     // when — three days on — under N23's law.
-    if let (Some(Confirm::Autoclean(days)), SettingsTab::General) = (&w.session.confirm, tab(w)) {
+    if let (Some(Confirm::Autoclean(days)), SettingsTab::Videos) = (&w.session.confirm, tab(w)) {
         let date = copy::day(crate::time::Wall(w.wall.0 + 3 * 86_400_000), w.mac.utc_offset_min);
         return Some(Sheet {
             id: "autoclean-confirm",

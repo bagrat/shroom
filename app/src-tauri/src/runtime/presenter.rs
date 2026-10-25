@@ -72,8 +72,10 @@ struct WindowSpec {
 const ONBOARDING_WINDOW: WindowSpec = WindowSpec { url: "onboarding.html", width: 600.0, height: 680.0, resizable: false, min: None };
 /// The Library: a list that grows — resizable.
 const LIBRARY_WINDOW: WindowSpec = WindowSpec { url: "library.html", width: 680.0, height: 560.0, resizable: true, min: None };
-/// A standard macOS settings window: fixed size, its toolbar tabs drawn by the webview.
-const SETTINGS_WINDOW: WindowSpec = WindowSpec { url: "settings.html", width: 600.0, height: 620.0, resizable: false, min: None };
+/// A standard macOS settings window: fixed size, its toolbar tabs drawn by the webview. As tall
+/// as the editor (Bagrat, 2026-10-25; B247): every tab fits the 688 under the title bar, Space
+/// with the AI switch's parts included, and it fits a 1024×768 screen.
+const SETTINGS_WINDOW: WindowSpec = WindowSpec { url: "settings.html", width: 600.0, height: 720.0, resizable: false, min: None };
 
 /// Send feedback (N60): a small fixed window, the board's frame — room for the form with
 /// “See exactly what's sent” open under the title bar.
@@ -1285,7 +1287,7 @@ mod tests {
         assert_eq!(opening_size(&EDITOR_WINDOW, Some(small)), (1024.0, 720.0), "the hosted Mac's screen");
         assert_eq!(opening_size(&EDITOR_WINDOW, Some(tiny)), (900.0, 640.0), "never below its smallest");
         assert_eq!(opening_size(&EDITOR_WINDOW, None), (1100.0, 720.0), "no screen read: the spec's");
-        assert_eq!(opening_size(&SETTINGS_WINDOW, Some(tiny)), (600.0, 620.0), "a fixed window keeps its size");
+        assert_eq!(opening_size(&SETTINGS_WINDOW, Some(tiny)), (600.0, 720.0), "a fixed window keeps its size");
         assert_eq!(opening_size(&LIBRARY_WINDOW, Some(Frame { w: 600.0, h: 500.0, ..tiny })), (600.0, 500.0));
     }
 

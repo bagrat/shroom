@@ -849,7 +849,7 @@ fn act(w: &mut World, action: Action) -> Out {
                 return (vec![], Arm { name: "delete-all-cancelled", edge: Some(("delete-confirm-cleanup", "library-cleanup")) });
             }
             if matches!(was, Some(Confirm::Autoclean(_))) {
-                return (vec![], Arm { name: "autoclean-cancelled", edge: Some(("autoclean-confirm", "settings-general")) });
+                return (vec![], Arm { name: "autoclean-cancelled", edge: Some(("autoclean-confirm", "settings-videos")) });
             }
             // No sheet to take back: it's Suggested to clean up's ‹ Library (N68).
             if was.is_none() && w.session.fields.library.cleanup {
@@ -1264,7 +1264,11 @@ fn act(w: &mut World, action: Action) -> Out {
             if let Some(d) = w.session.windows.get_mut(&WindowKind::Settings) {
                 d.entered = now;
             }
-            let edge = (tab == SettingsTab::Space).then_some(("settings-general", "settings-space"));
+            let edge = match tab {
+                SettingsTab::Space => Some(("settings-general", "settings-space")),
+                SettingsTab::Videos => Some(("settings-general", "settings-videos")),
+                _ => None,
+            };
             (vec![persist_prefs(w)], Arm { name: "settings-tab", edge })
         }
         Action::SetLoginItem(on) => (vec![Effect::Shell(ShellCmd::SetLoginItem(on))], Arm::named("login-item")),
@@ -1685,14 +1689,14 @@ fn act(w: &mut World, action: Action) -> Out {
             let sooner = days > 0 && (now_days == 0 || days < now_days);
             if sooner && crate::derive::settings::qualifying(w, days) > 0 {
                 w.session.confirm = Some(Confirm::Autoclean(days));
-                return (vec![], Arm { name: "autoclean-asked", edge: Some(("settings-general", "autoclean-confirm")) });
+                return (vec![], Arm { name: "autoclean-asked", edge: Some(("settings-videos", "autoclean-confirm")) });
             }
             set_autoclean(w, days, Arm::named("autoclean-set"))
         }
         Action::ConfirmAutoclean => {
             let Some(Confirm::Autoclean(days)) = w.session.confirm.clone() else { return (vec![], Arm::DROPPED) };
             w.session.confirm = None;
-            set_autoclean(w, days, Arm { name: "autoclean-set", edge: Some(("autoclean-confirm", "settings-general")) })
+            set_autoclean(w, days, Arm { name: "autoclean-set", edge: Some(("autoclean-confirm", "settings-videos")) })
         }
         Action::SetPlays(on) => {
             w.library_ops.plays = Some(on);

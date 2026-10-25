@@ -592,7 +592,6 @@ pub fn autoclean_qualify(n: u64, date: &str) -> String {
 }
 pub fn cleanup_empty() -> String { "Nothing to clean up right now.".into() }
 
-pub fn your_videos() -> String { "Your videos".into() }
 pub fn count_plays() -> String { "Count plays".into() }
 pub fn count_plays_hint() -> String { "How often each video is played and how far, kept in your Cloudflare account. No cookies, nothing about who watched.".into() }
 /// The play-count switch didn't go through (law 12).
@@ -607,6 +606,8 @@ pub fn space_used_free(bytes: u64) -> String { format!("{} — inside Cloudflare
 // ── Settings (N36) ──
 pub fn tab_general() -> String { "General".into() }
 pub fn tab_space() -> String { "Space".into() }
+/// Settings' Videos tab (N79; Bagrat named it, 2026-10-25).
+pub fn tab_videos() -> String { "Videos".into() }
 pub fn updates() -> String { "Updates".into() }
 pub fn up_to_date(version: &str) -> String { format!("shroom {version} — up to date.") }
 /// The running version when nothing is known about a newer one yet (no check answered, or
@@ -1314,7 +1315,7 @@ pub fn registry() -> Vec<(&'static str, String)> {
         ("library", autoclean_cleaned(2, 30, 1_700_000_000)),
         ("library", ok()),
         ("library", plays_failed()),
-        ("settings-general", ai_turning_on()),
+        ("settings-videos", ai_turning_on()),
         ("delete-confirm-cleanup", delete_all_title(6)),
         ("delete-confirm-cleanup", delete_all_frees(11_000_000_000)),
         ("delete-confirm-cleanup", delete_all_button(6)),
@@ -1326,15 +1327,15 @@ pub fn registry() -> Vec<(&'static str, String)> {
         ("autoclean-warning", pinned_going(2, "Oct 27")),
         ("autoclean-warning", autoclean_cleaned(2, 30, 1_700_000_000)),
         ("autoclean-warning", ok()),
-        ("settings-general", autoclean_label()),
-        ("settings-general", autoclean_hint()),
-        ("settings-general", autoclean_off()),
-        ("settings-general", after_days(15)),
-        ("settings-general", after_days(30)),
-        ("settings-general", after_days(60)),
-        ("settings-general", after_days(365)),
-        ("settings-general", space_deletes(30)),
-        ("settings-general", needs_count_plays()),
+        ("settings-videos", autoclean_label()),
+        ("settings-videos", autoclean_hint()),
+        ("settings-videos", autoclean_off()),
+        ("settings-videos", after_days(15)),
+        ("settings-videos", after_days(30)),
+        ("settings-videos", after_days(60)),
+        ("settings-videos", after_days(365)),
+        ("settings-videos", space_deletes(30)),
+        ("settings-videos", needs_count_plays()),
         ("autoclean-confirm", autoclean_confirm_title(30)),
         ("autoclean-confirm", autoclean_qualify(4, "Oct 27")),
         ("autoclean-confirm", cancel()),
@@ -1356,17 +1357,17 @@ pub fn registry() -> Vec<(&'static str, String)> {
         ("delete-confirm-several", delete_many_line()),
         // ── Settings ──
         ("settings", tab_general()),
+        ("settings", tab_videos()),
         ("settings", tab_space()),
         ("settings-general", login_box()),
-        ("settings-general", your_videos()),
-        ("settings-general", count_plays()),
-        ("settings-general", count_plays_hint()),
-        ("settings-general", plays_failed()),
-        ("settings-general", suggest_cleanup()),
-        ("settings-general", suggest_cleanup_hint()),
-        ("settings-general", space_used()),
-        ("settings-general", space_used_past(34_000_000_000, 36)),
-        ("settings-general", space_used_free(8_200_000_000)),
+        ("settings-videos", count_plays()),
+        ("settings-videos", count_plays_hint()),
+        ("settings-videos", plays_failed()),
+        ("settings-videos", suggest_cleanup()),
+        ("settings-videos", suggest_cleanup_hint()),
+        ("settings-space", space_used()),
+        ("settings-space", space_used_past(34_000_000_000, 36)),
+        ("settings-space", space_used_free(8_200_000_000)),
         ("settings-general", updates()),
         ("settings-general", up_to_date("1.2.0")),
         ("settings-general", update_ready("1.3.0")),

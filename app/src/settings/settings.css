@@ -179,6 +179,25 @@
   line-height: 1.45;
 }
 
+/* Space used (N79): a row of the plan's card under the billing row, set in past the glyphs'
+   column, its value at the row's end. */
+.space .plan li.used-row {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  /* The plan's rows are flex rows, their glyph 6 px from the title (onboarding.css). */
+  column-gap: 6px;
+  align-items: center;
+  min-height: 36px;
+  box-sizing: border-box;
+  padding: 7px 12px;
+  line-height: 1.45;
+}
+
+.space .plan li.used-row .used {
+  color: var(--muted);
+  text-align: right;
+}
+
 .space .plan li.row .glyph {
   text-align: center;
 }
@@ -388,13 +407,11 @@
   color: var(--green, var(--frost));
 }
 
-/* Your videos (N68): a small heading over its card; each switch carries its line under the label. */
-.general .group {
-  margin: 0 0 -10px;
-  padding: 0 2px;
-  font-size: 12px;
-  font-weight: 400;
-  color: var(--muted);
+/* Videos (N79; Your videos, N68): one card; each switch carries its line under the label. */
+.videos {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .srow.tall {
@@ -413,11 +430,6 @@
 
 .srow .hint.note {
   color: var(--amber);
-}
-
-.videos .used {
-  color: var(--muted);
-  text-align: right;
 }
 
 /* Your coding agent (dev/proposals/cli-agent-skill.md): the prompt in a well with its Copy,
