@@ -6,6 +6,7 @@
 // player dark under both — both are shot). Never the network, never a real space.
 //
 //   node tests/e2e/pages-gallery.mjs
+//   GALLERY_ONLY=seek-head-live,owner-icons-in-place node tests/e2e/pages-gallery.mjs   (some faces)
 //
 // Faces: owner-page (uploading, waiting-conn, waiting-space, fully-live), live, on-its-way,
 // on-its-way-untitled, on-its-way-stalled, unavailable, removed, embed-face (live and
@@ -82,7 +83,8 @@ async function tipAt(page, at, finger) {
     }, at);
   } else {
     const r = await page.$eval(".seek", (sk) => { const b = sk.getBoundingClientRect(); return { x: b.left, y: b.top + b.height / 2, w: b.width, max: +sk.max }; });
-    await page.mouse.move(r.x + (r.w * (at + 0.5)) / r.max, r.y);
+    // Where the head would stand at that time: its travel is inset by its radius (7 px).
+    await page.mouse.move(r.x + 7 + ((r.w - 14) * (at + 0.5)) / r.max, r.y);
   }
   await page.waitForTimeout(200);
   return page.evaluate(() => {
@@ -104,6 +106,97 @@ const chaptered = (finger) => async (page) => {
   if (!spoken.endsWith(`, ${finger ? AI_SAID[2][1] : AI_SAID[0][1]}`)) missing.push(`the bar's spoken value naming the chapter (got “${spoken}”)`);
   return missing;
 };
+
+/** Where the seek head is painted, against the player's box (Bagrat, 2026-10-25: at the end its
+ * right edge meets the box's right edge; at the start its left edge, the left). Read from the
+ * pixels of the bar with the picture hidden: the head is the only near-white there.
+ * @returns {Promise<{ left: number, right: number, width: number } | null>} head edges from the box's left */
+async function headIn(page) {
+  const r = await page.evaluate(() => {
+    const p = document.querySelector(".player").getBoundingClientRect(), s = document.querySelector(".seek").getBoundingClientRect();
+    document.querySelector("video").style.visibility = "hidden";
+    return { x: p.left, w: p.width, y: s.top, h: s.height };
+  });
+  const png = await page.screenshot({ clip: { x: r.x, y: r.y, width: r.w, height: r.h } });
+  await page.evaluate(() => { document.querySelector("video").style.visibility = ""; });
+  return page.evaluate(async ({ b64, w }) => {
+    const img = new Image(); img.src = "data:image/png;base64," + b64; await img.decode();
+    const k = document.createElement("canvas"); k.width = img.naturalWidth; k.height = img.naturalHeight;
+    const x = k.getContext("2d"); x.drawImage(img, 0, 0);
+    const d = x.getImageData(0, 0, k.width, k.height).data, scale = k.width / w;
+    let lo = Infinity, hi = -1;
+    for (let i = 0; i < d.length; i += 4) if (d[i] > 215 && d[i + 1] > 215 && d[i + 2] > 215) { const c = (i / 4) % k.width; lo = Math.min(lo, c); hi = Math.max(hi, c); }
+    return hi < 0 ? null : { left: lo / scale, right: (hi + 1) / scale, width: w };
+  }, { b64: png.toString("base64"), w: r.w });
+}
+/** The colour of the bar's last 3 px, on its centre line: a fully loaded bar reads loaded to
+ * its end (review of B250: it kept a 7 px stub of the unloaded colour). */
+async function endOfBar(page) {
+  const r = await page.evaluate(() => {
+    const p = document.querySelector(".player").getBoundingClientRect(), s = document.querySelector(".seek").getBoundingClientRect(), cs = getComputedStyle(document.querySelector(".player"));
+    return { x: p.right - 3, y: s.top + s.height / 2 - 1, buf: cs.getPropertyValue("--player-buf").trim(), track: cs.getPropertyValue("--player-track").trim() };
+  });
+  const png = await page.screenshot({ clip: { x: r.x, y: r.y, width: 3, height: 2 } });
+  const px = await page.evaluate(async (b64) => {
+    const img = new Image(); img.src = "data:image/png;base64," + b64; await img.decode();
+    const k = document.createElement("canvas"); k.width = img.naturalWidth; k.height = img.naturalHeight;
+    const x = k.getContext("2d"); x.drawImage(img, 0, 0); const d = x.getImageData(0, 0, 1, 1).data; return [d[0], d[1], d[2]];
+  }, png.toString("base64"));
+  const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const near = (a, b) => a.every((v, i) => Math.abs(v - b[i]) <= 14);
+  return { px, buffered: near(px, hex(r.buf)), unloaded: near(px, hex(r.track)) };
+}
+/** The head at 0:00 and at the very end, on a laptop and a phone: inside the box, touching
+ * its edge (within a pixel of anti-aliasing); a fully loaded bar reads loaded to its end;
+ * with chapters (`starts`, past the first), each boundary on the head's travel, the first
+ * and last sections reaching the box's ends. */
+const headInside = (starts = null) => async (page) => {
+  const missing = [];
+  // Loaded first: the player fetches its stream on the first play.
+  await page.evaluate(() => { const v = document.querySelector("video"); v.muted = true; return v.play().catch(() => {}); });
+  const known = await page.waitForFunction(() => { const v = document.querySelector("video"); return isFinite(v.duration) && v.duration > 0 && v.readyState >= 1; }, null, { timeout: 15000 }).then(() => true, () => false);
+  if (!known) return ["the video's length, to seek to its end"];
+  for (const [width, height] of [[900, 640], [390, 844]]) {
+    await page.setViewportSize({ width, height });
+    await page.evaluate(() => { const v = document.querySelector("video"); v.pause(); v.currentTime = 0; });
+    await page.waitForTimeout(300);
+    const start = await headIn(page);
+    if (!start || Math.abs(start.left) > 1) missing.push(`at ${width}px, 0:00: the head's left edge on the box's (got ${JSON.stringify(start)})`);
+    const ended = await page.evaluate(() => new Promise((ok) => {
+      const v = document.querySelector("video");
+      v.muted = true; v.addEventListener("ended", () => ok(true), { once: true });
+      v.currentTime = Math.max(0, v.duration - 0.4); v.play().catch(() => ok(false)); setTimeout(() => ok(v.ended), 8000);
+    }));
+    await page.waitForTimeout(400);
+    const end = await headIn(page);
+    if (!ended || !end || Math.abs(end.right - end.width) > 1) missing.push(`at ${width}px, the end: the head's right edge on the box's (ended ${ended}, got ${JSON.stringify(end)})`);
+    if (starts) {
+      const ch = await page.evaluate(() => {
+        const xs = [...document.querySelectorAll(".chs i")].map((x) => x.getBoundingClientRect()), p = document.querySelector(".player").getBoundingClientRect(), d = +document.querySelector(".seek").max;
+        return { first: xs[0].left - p.left, last: p.right - xs[xs.length - 1].right, gaps: xs.slice(1).map((x, i) => (xs[i].right + x.left) / 2 - p.left), w: p.width, d };
+      });
+      const want = starts.map((t) => 7 + (t / ch.d) * (ch.w - 14));
+      if (Math.abs(ch.first) > 0.5 || Math.abs(ch.last) > 0.5 || ch.gaps.length !== want.length || ch.gaps.some((g, i) => Math.abs(g - want[i]) > 1.5)) missing.push(`at ${width}px: the chapters' boundaries on the head's travel, the ends at the box's (got ${JSON.stringify(ch)}, want ${JSON.stringify(want)})`);
+    }
+    // Loaded to its end, the head mid-way: the bar's last pixels are the loaded colour.
+    const full = await page.evaluate(() => new Promise((ok) => {
+      const v = document.querySelector("video"); v.pause(); v.currentTime = v.duration / 2;
+      const t = setInterval(() => { const b = v.buffered; if (b.length && b.end(b.length - 1) >= v.duration - 0.2 && b.start(0) <= 0.2) { clearInterval(t); ok(true) } }, 200);
+      setTimeout(() => { clearInterval(t); ok(false) }, 20000);
+    }));
+    await page.waitForTimeout(400);
+    const tail = await endOfBar(page);
+    if (full && !tail.buffered) missing.push(`at ${width}px: a fully loaded bar loaded to its end (got ${JSON.stringify(tail)})`);
+  }
+  await page.setViewportSize({ width: 900, height: 640 });
+  return missing;
+};
+/** The owner's title icons, each where it stands: its box, and whether it's greyed. */
+const iconsOf = (page) => page.evaluate(() => ["#c", "#th", "#dl a", "#ed"].map((q) => {
+  const el = document.querySelector(q); if (!el) return { q, missing: true };
+  const b = el.getBoundingClientRect();
+  return { q, x: Math.round(b.left * 2) / 2, y: Math.round(b.top * 2) / 2, w: b.width, greyed: el.getAttribute("aria-disabled") === "true", href: el.getAttribute("href") };
+}));
 
 // Each face: its id in spec/machine.json, the record behind it, how it's opened, and which of the
 // spec's lines it must show (the lines that vary are pinned by the record: 2 of 5 is 40 %).
@@ -224,6 +317,41 @@ const FACES = [
     const pressed = await page.$eval(".cc", (b) => b.getAttribute("aria-pressed"));
     return [...(pressed === "true" ? [] : ["Captions pressed"]), ...(shown && shown.startsWith("Next, the invoice") ? [] : [`a caption at 1:10 (got ${JSON.stringify(shown)})`])];
   } },
+  // Bagrat, 2026-10-25: the icons beside the title came in one by one and the row flickered.
+  // Opened while the video uploads, every one is there, the ones not ready greyed (a greyed
+  // Download goes nowhere); once it's fully up they wake where they stand: nothing moves.
+  { face: "owner-icons-in-place", id: "OwnrIconOwnrIcon", owner: true, engine: "chromium", record: (id) => uploading(id, 2, 5, 1000, { durationSec: 8 }),
+    before: async (page) => {
+      await page.evaluate((icons) => { window.__icons = icons; }, await iconsOf(page));
+      if (await page.$("#dl a")) await page.click("#dl a", { force: true });
+    },
+    // The take's own shape (16:10) comes with the go-live; an open page keeps the box it opened with.
+    golive: (id) => meta(id, { progress: { done: 9, total: 9, updatedAt: iso(Date.now()) } }), wait: () => true, pictures: [], lines: () => [], act: async (page) => {
+      const missing = [];
+      const before = await page.evaluate(() => window.__icons);
+      if (!before) return ["the page left (a greyed Download went somewhere)"];
+      for (const i of before) if (i.missing) missing.push(`${i.q} there from the first paint`);
+      for (const q of ["#th", "#dl a", "#ed"]) if (!before.find((i) => i.q === q)?.greyed) missing.push(`${q} greyed while it uploads`);
+      if (before.find((i) => i.q === "#dl a")?.href) missing.push("a greyed Download that goes nowhere");
+      const woke = await page.waitForFunction(() => document.querySelector("#dl a").getAttribute("href") && !document.querySelector("#ed").getAttribute("aria-disabled"), null, { timeout: 20000, polling: 250 }).then(() => true, () => false);
+      if (!woke) missing.push("Download and Edit in shroom awake once it's fully up");
+      // At the wake, and again once the upload line has gone (the drain gives its room back).
+      for (const when of ["awake", "the line gone"]) {
+        if (when !== "awake") await page.waitForFunction(() => document.getElementById("ul").hidden, null, { timeout: 15000 }).then(() => page.waitForTimeout(600), () => missing.push("the upload line gone at the drain"));
+        const after = await iconsOf(page);
+        for (const a of after) {
+          const b = before.find((i) => i.q === a.q);
+          if (b && (b.x !== a.x || b.y !== a.y || Math.abs(b.w - a.w) > 0.5)) missing.push(`${a.q} where it stood, ${when} (${b.x},${b.y} → ${a.x},${a.y})`);
+        }
+      }
+      return missing;
+    } },
+  // Bagrat, 2026-10-25: the seek head inside the bar, on every face that plays.
+  { face: "seek-head-live", id: "SeekLiveSeekLive", record: (id) => meta(id, { media: media(id, false) }), lines: () => [TITLE], act: headInside() },
+  { face: "seek-head-live-chromium", id: "SeekChroSeekChro", engine: "chromium", record: (id) => meta(id, { media: media(id, false) }), lines: () => [TITLE], act: headInside() },
+  { face: "seek-head-owner", id: "SeekOwnrSeekOwnr", owner: true, record: (id) => meta(id, { media: media(id, false), progress: { done: 9, total: 9, updatedAt: iso(Date.now()) } }), lines: () => [], act: headInside() },
+  { face: "seek-head-embed", id: "SeekEmbdSeekEmbd", embed: true, record: (id) => meta(id, { media: media(id, false) }), lines: () => [], absent: [TITLE], act: headInside() },
+  { face: "seek-head-chapters", id: "SeekChapSeekChap", ai: true, engine: "chromium", record: (id) => named(id, { titled: true }), lines: () => [AI_TITLE], act: headInside(AI_SAID.slice(1).map(([t]) => t)) },
 ];
 
 /** A real 8 s fMP4 HLS stream and its poster, as the app uploads them. */
@@ -274,6 +402,8 @@ async function chipIn(browser, bytes) {
 }
 
 async function main() {
+  const only = process.env.GALLERY_ONLY ? process.env.GALLERY_ONLY.split(",") : null;
+  if (only) FACES.splice(0, FACES.length, ...FACES.filter((f) => only.includes(f.face)));
   fs.mkdirSync(out, { recursive: true });
   const files = encode();
   const long = encodeLong();

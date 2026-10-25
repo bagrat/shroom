@@ -255,14 +255,14 @@ describe("serving and copying it", () => {
     expect((await req(env, `/m/${ID}/thumb-0123456789abcdef.gif`)).status).toBe(404);
   });
 
-  it("puts Copy thumbnail beside Copy link on the owner page, shown once the video plays", async () => {
+  it("puts Copy thumbnail beside Copy link on the owner page, there from the first paint, greyed until the video plays (Bagrat, 2026-10-25)", async () => {
     const env = space({ [`meta/${ID}.json`]: metaOf({ thumb: { title: "Where the 502s come from", gif: "thumb-0123456789abcdef.gif" } }) });
     const cookie = await cookieFor(env);
     const live = await (await req(env, `/${ID}`, { headers: { cookie } })).text();
     expect(live).toContain(`<button class="copy" id="c" data-tip="${COPY.copyLink}">${COPY.copyLink}</button><button class="copy thumb" id="th" data-tip="${COPY.copyThumbnail}">${COPY.copyThumbnail}</button>`);
     const waiting = space({ [`meta/${ID}.json`]: metaOf({ state: "uploading", media: null }) });
     const page = await (await req(waiting, `/${ID}`, { headers: { cookie: await cookieFor(waiting) } })).text();
-    expect(page).toMatch(new RegExp(`<button class="copy thumb" id="th" [^>]* hidden>${COPY.copyThumbnail}</button>`));
+    expect(page).toContain(`<button class="copy thumb" id="th" data-tip="${COPY.preparingThumbnail}" aria-disabled="true">${COPY.copyThumbnail}</button>`);
     // A viewer's page has them too (N46, the viewer's ruling) — see below.
     expect(await (await req(env, `/${ID}`)).text()).toContain(COPY.copyThumbnail);
   });
