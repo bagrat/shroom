@@ -120,14 +120,13 @@
   .stack { display: flex; flex-direction: column; gap: 24px; min-width: 0; }
   .stack.l { grid-column: 1 / 9; }
   .stack.r { grid-column: 9 / 13; }
-  /* Whichever stack is shorter grows: on the left the video's frame (its still is cropped to fit,
-     the video itself is never cut), on the right the terms. */
-  .stack.l > .watch, .watch .how-to, .watch .stage, .stack.r > .terms { flex: 1 1 auto; }
-  .watch .how-to { display: flex; flex-direction: column; }
+  /* Whichever stack is shorter grows: install on the left, the terms on the right. The video's
+     frame never grows: the still and the video always show whole (Bagrat, 2026-10-25). */
+  .stack.l > .install, .stack.r > .terms { flex: 1 1 auto; }
   /* A smaller laptop: seven columns and five, so the price and the terms keep their measure. */
   @media (max-width: 1180px) { .stack.l { grid-column: 1 / 8; } .stack.r { grid-column: 8 / 13; } }
   .tile { display: flex; flex-direction: column; gap: 18px; padding: 20px; border-radius: 12px; background: var(--card); border: 1px solid var(--card-edge); }
-  /* The price (Bagrat, 2026-10-19: the price in its own box, one slider and the AI switch;
+  /* The price (Bagrat, 2026-10-19: the price in its own box, one slider;
      2026-10-24: the price first, hours of video a month, how long until old videos go, the team
      line inside): what Cloudflare would charge, worked out on the page. */
   .price { padding: 22px 24px 20px; border-radius: 12px; background: var(--card); border: 1px solid var(--card-edge);
@@ -146,18 +145,13 @@
   .price .seg { display: flex; gap: 2px; padding: 3px; border-radius: 9px; background: var(--well); }
   .price .seg button { flex: 1 1 0; min-height: 40px; padding: 0 10px; border: 0; border-radius: 7px; background: transparent; color: var(--quiet); font: 600 14px var(--sans); cursor: pointer; }
   .price .seg button[aria-pressed="true"] { background: var(--line); color: var(--text); }
-  .price .ai { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; margin-top: 6px; font-size: 15px; color: var(--muted); }
-  .price [role=switch] { position: relative; flex: none; width: 44px; height: 26px; padding: 0; border: 0; border-radius: 13px; background: var(--line-strong); cursor: pointer; }
-  .price [role=switch]::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #eceff4; box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: left .15s ease; }
-  .price [role=switch][aria-checked="true"] { background: var(--frost); }
-  .price [role=switch][aria-checked="true"]::after { left: 21px; }
   .price .sum { display: flex; align-items: baseline; gap: 10px; margin: 0 0 10px; font-size: 16px; color: var(--muted); }
   .price .sum b { font-size: 46px; font-weight: 700; letter-spacing: -0.02em; line-height: 1; color: var(--text); font-variant-numeric: tabular-nums; }
   .price .sum b.free { color: var(--frost); }
   /* Without script the box reads its opening amount (an hour, $0.00): the controls need script. */
   .price .live { display: none; }
   .js .price input.live { display: block; }
-  .js .price .ai.live, .js .price .keep.live { display: flex; }
+  .js .price .keep.live { display: flex; }
   .terms { list-style: none; margin: 0; padding: 22px; justify-content: center; gap: 10px;
     color: var(--muted); font-size: 15px; line-height: 1.45; }
   .terms li { display: flex; align-items: flex-start; gap: 12px; }
@@ -166,7 +160,7 @@
 
   /* The hero: the still sits over the video, and fades once the video is playing. */
   .how-to { position: relative; }
-  .stage { position: relative; aspect-ratio: 826 / 421; border-radius: 10px; overflow: hidden; background: var(--well); border: 1px solid var(--line); }
+  .stage { position: relative; aspect-ratio: 1280 / 832; border-radius: 10px; overflow: hidden; background: var(--well); border: 1px solid var(--line); }
   .stage video { position: absolute; inset: 0; width: 100%; height: 100%; background: #1f2228; }
   .still { position: absolute; inset: 0; padding: 0; border: 0; background: #2b2f36; cursor: pointer; transition: opacity .4s ease; }
   .still img { display: block; width: 100%; height: 100%; object-fit: cover; }
@@ -225,7 +219,6 @@
     .pitch .punch { margin-top: 8px; font-size: 17px; }
     .tiles { margin-top: 20px; grid-template-columns: minmax(0, 1fr); row-gap: 20px; }
     .stack { display: contents; }
-    .watch .stage { flex: none; }
     .watch { order: 1; } .price { order: 2; } .install { order: 3; } .terms { order: 4; }
     .tile { padding: 16px; gap: 16px; }
     .price { padding: 16px 16px 14px; }
@@ -319,7 +312,6 @@
       <div class="ask"><label for="hours">Video a month</label><output id="hours-v" for="hours">1 hour</output></div>
       <input class="live" type="range" id="hours" min="0" max="9" step="1" value="1" aria-valuetext="1 hour a month">
       <div class="keep live"><span id="keep-l">Auto-cleanup after</span><div class="seg" role="group" aria-labelledby="keep-l"><button type="button" aria-pressed="true" data-months="1">30 days</button><button type="button" aria-pressed="false" data-months="2">60 days</button><button type="button" aria-pressed="false" data-months="12">a year</button></div></div>
-      <div class="ai live"><span id="ai-l">AI names, chapters and captions</span><button type="button" role="switch" id="ai" aria-checked="false" aria-labelledby="ai-l"></button></div>
       <p class="why">A team of 20, an hour each a month: $0.85 with 30-day cleanup, $11.85 kept a year.</p>
     </section>
 
@@ -428,8 +420,6 @@
         show();
       });
     });
-    var ai = document.getElementById("ai");
-    if (ai) ai.addEventListener("click", function () { ai.setAttribute("aria-checked", ai.getAttribute("aria-checked") === "true" ? "false" : "true"); });
     show();
   })();
   // The install tabs (N59): one command shows; ←/→ move between the tabs.
