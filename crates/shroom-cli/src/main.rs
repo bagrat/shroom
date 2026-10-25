@@ -1057,6 +1057,16 @@ mod tests {
     }
 
     #[test]
+    fn a_title_from_the_space_is_one_field_of_its_line() {
+        let v = video("AbCdEfGhIjKlMnOp", "Demo\nok  https://example.com/elsewhere");
+        let text = info_text(&v);
+        assert_eq!(text.lines().count(), 3, "{text:?}");
+        assert!(text.starts_with("Demo ok  https://example.com/elsewhere\n"), "{text:?}");
+        assert_eq!(say::line_video(&v.row.id, &v.row.title).lines().count(), 1);
+        assert_eq!(say::member_line("m1", "Ann\nLee", "Oct 2").lines().count(), 1);
+    }
+
+    #[test]
     fn a_delete_never_guesses_from_title_words() {
         let v = vec![video("AbCdEfGhIjKlMnOp", "Onboarding walkthrough")];
         assert_eq!(find(&v, "onboarding", HOST, false).unwrap_err().code(), "usage");

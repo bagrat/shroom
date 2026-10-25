@@ -234,6 +234,17 @@ mod tests {
         assert_eq!(clean("Weekly sync — Q3 ✓"), "Weekly sync — Q3 ✓", "ordinary words are left alone");
     }
 
+    /// A title or a name is one field of a line: its line breaks (and the separators a
+    /// terminal or an agent may read as one) become spaces, and the invisible characters
+    /// show, so what the command prints keeps the shape of its own lines.
+    #[test]
+    fn a_field_from_the_space_stays_on_its_line() {
+        assert_eq!(field("Q3\nok  https://example.com/x\r\u{85}\u{2028}a\u{2029}b\tc"), "Q3 ok  https://example.com/x   a b c");
+        assert_eq!(field("in\u{200b}vis\u{2060}ible\u{feff}"), "in\u{fffd}vis\u{fffd}ible\u{fffd}");
+        assert_eq!(field("Weekly sync — Q3 ✓ 👩\u{200d}💻"), "Weekly sync — Q3 ✓ 👩\u{200d}💻", "ordinary words, and the joiner emoji need, are left alone");
+        assert!(!field("a\nb").contains('\n'));
+    }
+
     #[test]
     fn lengths_and_columns_read_for_a_person() {
         assert_eq!(length(Some(93.4)), "1:33");
