@@ -1146,6 +1146,12 @@ mod tests {
         let mut again = baked.clone();
         again.extra.insert(BAKED_FROM.into(), serde_json::json!([{}, {}]));
         assert_ne!(Plays::of(&again), Plays::of(&baked), "a second bake, its file named alike or not");
+        // Opened before the upload's single-file copy landed: the copy landing moves nothing.
+        let mut early = m.clone();
+        early.media.as_mut().unwrap().mp4 = None;
+        assert!(Plays::of(&early).same_clock(&Plays::of(&m)), "the single-file copy landing");
+        assert!(!Plays::of(&early).same_clock(&Plays::of(&baked)), "a bake, opened before the copy");
+        assert!(opened.same_clock(&Plays::of(&edited)) && !opened.same_clock(&Plays::of(&baked)));
     }
 
     /// B164: a bake kept the start Copy thumbnail's pictures show when the newest bake's first
