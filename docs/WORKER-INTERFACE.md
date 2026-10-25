@@ -178,7 +178,7 @@ Not built; P1 passed (D:B35). See history/design/WORKER-INTERFACE.md §2.5.
 | **Join code** | the `/join/<code>` path; peek and join bodies | the right to consume one pending invite | Cancel, use, expiry |
 | **Owner cookie** (a browser) | `shroom_owner` | the issuing device is active (metadata powers, and one picture per title beside what it may rename, D:B164) | removing that device or its member |
 | **`k`** | `?k=` on `/<id>` | one redeem of a grant | the redeem, or 600 s |
-| **Recording credential** | S3 SigV4 + session token, direct to R2 | R2 enforces `rec/<id>/` + `meta/<id>.json` | expiry: 7 days upload, 15 min manage |
+| **Recording credential** | S3 SigV4 + session token, direct to R2 | R2 enforces `rec/<id>/` + `meta/<id>.json` | expiry: 1 hour upload (the Mac re-mints the same recording's near its end), 15 min manage |
 
 No credential is needed for the public pages, `/m/`, `/d/`, status, `/oembed`, ping, the
 icon, or `/join/<code>` (which reads a cookie only to pick a face).
@@ -300,7 +300,7 @@ cred   = {accessKeyId: key_id, secretAccessKey: hex(sha256(jwt)), sessionToken: 
 
 | Purpose | TTL | Rule |
 |---|---|---|
-| `upload` | 604800 s | Owner (§2.4) is someone else → 403 `not-yours` (owner-class too). Deleted or sealed → 410 `deleted`. No owner: spend the budget, then `ledgerCreate`; lost to another → 403 `not-yours`. |
+| `upload` | 3600 s | Owner (§2.4) is someone else → 403 `not-yours` (owner-class too). Deleted or sealed → 410 `deleted`. No owner: spend the budget, then `ledgerCreate`; lost to another → 403 `not-yours`. |
 | `manage` | 900 s | Someone else's and the caller isn't owner-class → 403 `not-yours` (before existence). No meta or no owner → 404 `absent`. Deleted or sealed and not owner-class → 410 `deleted`. |
 
 Then the parent. If it is missing, the Worker sets `health.json` to `blocked`/`no-parent`
@@ -360,14 +360,14 @@ Page routes add `rec/<id>/…`. The join page reads the roster and `cookie.key` 
 
 | Leaked | Can | Ends when |
 |---|---|---|
-| a member's Mac | as that member: ≤ 20 new recordings/h; list, rename and delete its own; key its own pages (≤ 60/h); report `refused` on its own, `ok` on any. Never others' ids or labels, `.shroom/`, or invites | Remove (next call 403); issued upload credentials ≤ 7 days |
+| a member's Mac | as that member: ≤ 20 new recordings/h; list, rename and delete its own; key its own pages (≤ 60/h); report `refused` on its own, `ok` on any. Never others' ids or labels, `.shroom/`, or invites | Remove (next call 403); issued upload credentials within the hour |
 | a token-less owner Mac | list and delete anything; manage members; remove token-less owner Macs. Not token Macs, deploys or repair | any owner-class Remove; a fresh token always recovers |
 | a token Mac | everything | roll the token, **then** a live-token Mac re-places `R2_PARENT` |
 | a pending member link | one join under the invite's label | Cancel; the real invitee then sees `join-used` |
 | a pending own-Mac link | owner-class for an hour (the riskiest; no Cancel row in v1) | its hour or use; then Remove… |
 | a cookie | rename what it may edit, and store a picture beside it (≤ 40 per video, capped in size, D:B164); the mark if owner-class. Never list, delete, mint | removing its device or member |
 | `k` | one redeem | the redeem, or 600 s |
-| a recording credential | its one recording's bytes and meta. Never un-delete a sealed one | 7 days / 15 min |
+| a recording credential | its one recording's bytes and meta. Never un-delete a sealed one | 1 hour / 15 min |
 | `R2_PARENT` | the token's R2 reach (no response ever carries it) | roll, then re-place |
 | a false health report | flip owner pages' waiting line | the next true report or enroll |
 
@@ -790,8 +790,8 @@ invites are accepted, but v1 offers no control for them (§6.4).
 | already removed or left | 204, no write |
 | active | the member and **every active device of theirs** → `removed` with `endedAt` → 204 |
 
-The next mint, `k` or cookie use fails. Minted credentials finish within 7 days (N32,
-SM:1365). The label is kept.
+The next mint, `k` or cookie use fails. Minted credentials end within the hour (N32,
+SM:1365): the re-mint an upload needs as its credential nears its end is refused. The label is kept.
 
 ### 4.15 `DELETE /_shroom/api/devices/<did | self>`
 
@@ -904,7 +904,7 @@ gone or over its cap shows Cloudflare's page.
 
 ### 4.20 `POST /_shroom/api/gone` — sealing a delete (D:B125)
 
-**Why.** An upload credential can rewrite its meta for seven days (N32), so a tombstone
+**Why.** An upload credential can rewrite its meta for the rest of its hour (N32), so a tombstone
 alone isn't final. `.shroom/gone/<id>` is out of every recording credential's reach.
 
 **Request:** device key, with `{"rec":"<16>"}` (else 400).

@@ -47,6 +47,12 @@ impl LiveUpload {
         LiveUpload { s3, id: id.to_string(), dir: dir.to_path_buf(), sent: HashMap::new(), claimed: false }
     }
 
+    /// Goes on with a fresh credential (the take's was re-minted near its end); what was sent
+    /// stays sent.
+    pub fn renew(&mut self, s3: Client) {
+        self.s3 = s3;
+    }
+
     pub fn id(&self) -> &str {
         &self.id
     }

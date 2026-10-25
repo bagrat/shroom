@@ -110,8 +110,8 @@ const claimsOf = (jwt) => JSON.parse(Buffer.from(jwt.split(".")[1], "base64url")
 
 /** The golden vector — the same inputs and bytes as crates/shroom-cloud/tests/member_vector.rs. */
 const GOLDEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."
-  + "eyJhdWQiOiIwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZi5yMi5jbG91ZGZsYXJlc3RvcmFnZS5jb20iLCJidWNrZXQiOiJzaHJvb20tc3BhY2UiLCJleHAiOjE3OTE1NDcyMDAsImlhdCI6MTc5MDk0MjQwMCwiaXNzIjoiMDAxMTIyMzM0NDU1NjY3Nzg4OTlhYWJiY2NkZGVlZmYiLCJwYXRocyI6eyJvYmplY3RQYXRocyI6WyJtZXRhL0FiQ2RFZkdoSWpLbE1uT3AuanNvbiJdLCJwcmVmaXhQYXRocyI6WyJyZWMvQWJDZEVmR2hJaktsTW5PcC8iXX0sInNjb3BlIjoib2JqZWN0LXJlYWQtd3JpdGUiLCJzdWIiOiIwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZiJ9."
-  + "SjlFTu38wdAOOr-s_PB-X6_Qy8vwi7sf2DhE4c2TNA4";
+  + "eyJhdWQiOiIwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZi5yMi5jbG91ZGZsYXJlc3RvcmFnZS5jb20iLCJidWNrZXQiOiJzaHJvb20tc3BhY2UiLCJleHAiOjE3OTA5NDYwMDAsImlhdCI6MTc5MDk0MjQwMCwiaXNzIjoiMDAxMTIyMzM0NDU1NjY3Nzg4OTlhYWJiY2NkZGVlZmYiLCJwYXRocyI6eyJvYmplY3RQYXRocyI6WyJtZXRhL0FiQ2RFZkdoSWpLbE1uT3AuanNvbiJdLCJwcmVmaXhQYXRocyI6WyJyZWMvQWJDZEVmR2hJaktsTW5PcC8iXX0sInNjb3BlIjoib2JqZWN0LXJlYWQtd3JpdGUiLCJzdWIiOiIwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZiJ9."
+  + "n9e_7MejDb8Ey6iGgbBKfoXnQE3U81PEd3U7WuimBts";
 
 /** A request descriptor for the batteries below: every new route, with a working body. */
 const ROUTES = [
@@ -787,7 +787,7 @@ describe("mint (§3.4, §4.8)", () => {
     const [h, c, s] = GOLDEN.split(".");
     expect(createHmac("sha256", Buffer.from(PARENT.secret, "utf8")).update(`${h}.${c}`).digest("base64url")).toBe(s);
     expect(Buffer.from(c, "base64url").toString("utf8")).toBe(
-      `{"aud":"${PARENT.account_id}.r2.cloudflarestorage.com","bucket":"shroom-space","exp":${NOW / 1000 + 604800},"iat":${NOW / 1000},"iss":"${PARENT.key_id}",`
+      `{"aud":"${PARENT.account_id}.r2.cloudflarestorage.com","bucket":"shroom-space","exp":${NOW / 1000 + 3600},"iat":${NOW / 1000},"iss":"${PARENT.key_id}",`
       + `"paths":{"objectPaths":["meta/${REC}.json"],"prefixPaths":["rec/${REC}/"]},"scope":"object-read-write","sub":"${PARENT.account_id}"}`);
 
     const b = await expectOk(await mint(space(), MHER_MAC));
@@ -802,15 +802,15 @@ describe("mint (§3.4, §4.8)", () => {
     const b = await expectOk(await mint(space(), MHER_MAC));
     expect(b).toEqual({
       shroom: 1, accessKeyId: PARENT.key_id, secretAccessKey: expect.stringMatching(/^[0-9a-f]{64}$/), sessionToken: expect.any(String),
-      expiresAt: iso(NOW + 604800 * SEC), bucket: PARENT.bucket, endpoint: `https://${PARENT.account_id}.r2.cloudflarestorage.com`, owner: MHER,
+      expiresAt: iso(NOW + 3600 * SEC), bucket: PARENT.bucket, endpoint: `https://${PARENT.account_id}.r2.cloudflarestorage.com`, owner: MHER,
     });
   });
 
-  it("caps an upload credential at seven days and a manage credential at fifteen minutes, whatever the body asks", async () => {
+  it("caps an upload credential at an hour and a manage credential at fifteen minutes, whatever the body asks", async () => {
     const env = space();
     const up = await expectOk(await mint(env, MHER_MAC, REC, "upload", { ttl: 2592000, exp: NOW / 1000 + 2592000, expiresAt: iso(NOW + 30 * DAY) }));
     const c = claimsOf(jwtOf(up));
-    expect(c.exp - c.iat).toBe(604800);
+    expect(c.exp - c.iat).toBe(3600);
     env.BUCKET.touch(metaKey(REC), metaOf(REC, { owner: MHER }));
     const mg = await expectOk(await mint(env, MHER_MAC, REC, "manage", { ttl: 604800 }));
     const m = claimsOf(jwtOf(mg));

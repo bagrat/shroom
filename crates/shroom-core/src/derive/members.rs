@@ -47,12 +47,16 @@ pub fn stranded_by_space(w: &World) -> bool {
     matches!(life(w), Some(Life::Revoked | Life::Gone))
 }
 
+/// An upload credential is used only while it has more than this left; nearer its end the
+/// uploader mints it again (a credential lives an hour: WORKER-INTERFACE §3.7).
+pub const CRED_LEFT_MS: i64 = 15 * 60_000;
+
 /// Whether this queued take can still go up from this Mac: any, while the space takes this
 /// Mac's videos; once it doesn't (removed, or gone), only one already holding an upload
-/// credential with an hour left — N32's “a video already on its way can still finish”
-/// (whole-spec audit #22). The rest wait here, stranded.
+/// credential with more than [`CRED_LEFT_MS`] left — N32's video already on its way, for
+/// what is left of its hour (whole-spec audit #22). The rest wait here, stranded.
 pub fn can_send(w: &World, q: &crate::world::Queued) -> bool {
-    !stranded_by_space(w) || w.members.minted.get(&q.dir).is_some_and(|until| until.0 - w.wall.0 > 3_600_000)
+    !stranded_by_space(w) || w.members.minted.get(&q.dir).is_some_and(|until| until.0 - w.wall.0 > CRED_LEFT_MS)
 }
 
 /// A new video would have nowhere to go: Start greys (N34's table; a removed owner Mac, as
