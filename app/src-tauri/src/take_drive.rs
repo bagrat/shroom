@@ -62,9 +62,9 @@
 //!   open on; then the Library, that editor and Settings open behind the pattern, and a take
 //!   in which each is lifted above it in turn, then the popover, the agent label and the
 //!   marker toast. A capture that leaves nothing out sees each one (the proof it was up), and
-//!   the report gives the stretch of the take each was up for: `app/test/take-drive.mjs`
-//!   reads a frame from the middle of each (`tests/e2e/own-windows.mjs`) — the windows in
-//!   the picture, the rest not.
+//!   the report gives the pattern's counter just before each went up and just after it went:
+//!   `app/test/take-drive.mjs` finds that stretch in the take's own frames and reads the
+//!   middle of it (`tests/e2e/own-windows.mjs`) — the windows in the picture, the rest not.
 //!
 //! - `--drive take <out> camera-take` (DECISIONS B121): Camera as the source through the
 //!   real flow — `config`, Return, the count, five seconds, the pause, Stop — and the take
@@ -1702,9 +1702,26 @@ fn left_out_take(d: &D, display: u32) -> Result<(), String> {
 /// The least of the pattern's dark field the Library, an editor or Settings lights when it is
 /// in a picture: each covers most of the hosted Mac's 1024 × 768 display, centred.
 const WINDOW_SEEN: f64 = 0.05;
-/// How long each stays up once a capture that leaves nothing out has seen it: the reader
-/// takes the frame from the middle, so the take may start a little before the Scene says.
+/// How long each stays up once a capture that leaves nothing out has seen it.
 const HELD_MS: u64 = 3000;
+
+/// The pattern's counter in one real captured frame of `display`, read until a frame shows
+/// it (the strip is clear of everything then). The reader finds the stretch something was up
+/// for by these, in the take's own frames: the take's clock and the drive's don't line up
+/// (the hosted Mac's take began some 3 s after the Scene said it records, 2026-10-25).
+fn counter(display: u32) -> Result<u32, String> {
+    let until = Instant::now() + Duration::from_secs(3);
+    loop {
+        let (gray, w, h) = crate::harness::grab(display)?;
+        if let Some(n) = shroom_testpattern::read_gray(&gray, w, h) {
+            return Ok(n);
+        }
+        if Instant::now() > until {
+            return Err("the pattern's counter couldn't be read".into());
+        }
+        std::thread::sleep(Duration::from_millis(50));
+    }
+}
 
 /// Does `f` to one of shroom's windows' NSWindow on the main thread, by its label.
 fn with_window<T: Send + 'static>(d: &D, label: String, f: impl FnOnce(&objc2_app_kit::NSWindow) -> T + Send + 'static) -> Option<T> {
@@ -1811,13 +1828,14 @@ fn own_windows_take(d: &D, display: u32, windows: &[(String, &'static str)]) -> 
     d.check("the pattern alone lights none of its dark field", alone < 0.002, pct(alone));
     d.config()?;
     d.record()?;
-    let began = Instant::now();
     std::thread::sleep(Duration::from_millis(1500));
-    // Each stretch of the take something was up for: (what, recorded?, from ms, to ms).
-    let mut stretches: Vec<(String, bool, u128, u128)> = Vec::new();
+    // Each stretch of the take something was up for, by the pattern's counter just before it
+    // went up and just after it went: (what, recorded?, before, after).
+    let mut stretches: Vec<(String, bool, u32, u32)> = Vec::new();
 
     // The windows, each lifted above the pattern in turn and put back behind it.
     for (label, name) in windows {
+        let before = counter(display)?;
         let was = with_window(d, label.clone(), |w| {
             let was = w.level();
             w.setLevel(ABOVE_THE_PATTERN);
@@ -1825,27 +1843,28 @@ fn own_windows_take(d: &D, display: u32, windows: &[(String, &'static str)]) -> 
             was
         });
         let seen = lit_within(display, alone + WINDOW_SEEN, 5)?;
-        let from = began.elapsed().as_millis();
         std::thread::sleep(Duration::from_millis(HELD_MS));
-        let to = began.elapsed().as_millis();
         if let Some(was) = was {
             with_window(d, label.clone(), move |w| w.setLevel(was));
         }
+        std::thread::sleep(Duration::from_millis(300));
+        let after = counter(display)?;
         d.check(&format!("a capture that leaves nothing out sees {name} over the pattern"), was.is_some() && seen - alone >= WINDOW_SEEN, pct_over(seen, alone));
-        stretches.push((name.to_string(), true, from, to));
+        stretches.push((name.to_string(), true, before, after));
         std::thread::sleep(Duration::from_millis(600));
     }
 
     // The popover and the agent label, each put up by hand and held.
     for (which, name, bar) in [(Overlay::Popover, "the popover", POPOVER_SEEN), (Overlay::Label, "the agent label", LABEL_SEEN)] {
+        let before = counter(display)?;
         with_panel(d, which, |w| w.orderFrontRegardless());
         let seen = lit_within(display, alone + bar, 5)?;
-        let from = began.elapsed().as_millis();
         std::thread::sleep(Duration::from_millis(HELD_MS));
-        let to = began.elapsed().as_millis();
         with_panel(d, which, |w| w.orderOut(None));
+        std::thread::sleep(Duration::from_millis(300));
+        let after = counter(display)?;
         d.check(&format!("a capture that leaves nothing out sees {name} over the pattern"), seen - alone >= bar, pct_over(seen, alone));
-        stretches.push((name.to_string(), false, from, to));
+        stretches.push((name.to_string(), false, before, after));
         std::thread::sleep(Duration::from_millis(600));
     }
 
@@ -1854,15 +1873,14 @@ fn own_windows_take(d: &D, display: u32, windows: &[(String, &'static str)]) -> 
     let Some(q) = d.on_main(move || objc2_foundation::MainThreadMarker::new().map(|mtm| probe::quick(mtm, &root).0)).flatten() else {
         return Err("no quick probe for the shortcut".into());
     };
+    let before = counter(display)?;
     d.rt.post(Event::MarkerShortcut(q));
     d.wait("the marker toast", 5, |s| s.toast.is_some())?;
     let seen = lit_within(display, alone + TOAST_SEEN, 2)?;
-    let from = began.elapsed().as_millis();
-    std::thread::sleep(Duration::from_millis(800));
-    let to = began.elapsed().as_millis();
     d.check("a capture that leaves nothing out sees the marker toast over the pattern", seen - alone >= TOAST_SEEN, pct_over(seen, alone));
-    stretches.push(("the marker toast".into(), false, from, to));
     let _ = d.wait("the toast gone", 5, |s| s.toast.is_none());
+    let after = counter(display)?;
+    stretches.push(("the marker toast".into(), false, before, after));
     std::thread::sleep(Duration::from_millis(600));
 
     click(&d.app, &d.rt);
@@ -1877,7 +1895,7 @@ fn own_windows_take(d: &D, display: u32, windows: &[(String, &'static str)]) -> 
         files["missing"].as_array().is_some_and(|m| m.is_empty()) && files["segments"].as_u64().unwrap_or(0) > 0 && files["decodes"] == true,
         files.to_string(),
     );
-    d.fact("stretches", stretches.iter().map(|(what, recorded, from, to)| serde_json::json!({ "what": what, "recorded": recorded, "from_ms": from, "to_ms": to })).collect::<Vec<_>>());
+    d.fact("stretches", stretches.iter().map(|(what, recorded, before, after)| serde_json::json!({ "what": what, "recorded": recorded, "before": before, "after": after })).collect::<Vec<_>>());
     d.fact("take", files);
     d.fact("take_dir", dir.display().to_string());
     Ok(())

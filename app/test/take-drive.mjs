@@ -35,7 +35,7 @@
 // only the first reading is made), or no ffmpeg here that can decode the take.
 // `own-windows` (N82, DECISIONS B256): a take with the Library, an editor and Settings lifted
 // above the pattern in turn, then the popover, the agent label and the marker toast; a frame
-// from the middle of each one's stretch is read here (tests/e2e/own-windows.mjs): the windows
+// from the middle of each one's stretch, found by the pattern's counter, is read here (tests/e2e/own-windows.mjs): the windows
 // light the pattern's dark field, the rest leave it dark. The frames are kept as PNGs beside
 // the report (in SHROOM_TAKE_OUT when it's set).
 //
