@@ -1,4 +1,4 @@
-// Auto-cleanup (spec N75, Bagrat 2026-10-24): off by default; Off / 15 / 30 / 60 days from
+// Auto-cleanup (spec N75, Bagrat 2026-10-24; a year, N77, 2026-10-25): off by default; Off / 15 / 30 / 60 / 365 days from
 // the last counted watch, or from the upload if nobody played it; a pinned (kept) video is
 // never deleted; three days' warning; and the space's own page does the deleting on its one
 // schedule, so a closed Mac never misses one. The page scans a few records a run and deletes
@@ -50,9 +50,9 @@ describe("the auto-cleanup setting", () => {
     expect(await bodyOf(await call(env, "GET", "/_shroom/api/autoclean", { auth: MHER_MAC.bearer }))).toMatchObject({ days: 30 });
   });
 
-  it("takes only Off, 15, 30 or 60 days", async () => {
+  it("takes only Off, 15, 30 or 60 days, or a year", async () => {
     const env = cleanSpace();
-    for (const days of [7, -1, "30", null, 30.5]) expect((await call(env, "POST", "/_shroom/api/autoclean", { auth: OWNER_MAC.bearer, body: { days } })).status).toBe(400);
+    for (const days of [7, -1, "30", null, 30.5, 90, 364, 366, "365"]) expect((await call(env, "POST", "/_shroom/api/autoclean", { auth: OWNER_MAC.bearer, body: { days } })).status).toBe(400);
     expect((await call(env, "POST", "/_shroom/api/autoclean", { body: { days: 30 } })).status).toBe(401);
   });
 
@@ -87,6 +87,19 @@ describe("what's going, and when", () => {
     });
     const s = await scan(env);
     expect(s.going).toEqual({ [A]: { warnedAt: iso(NOW), deletesAt: iso(NOW + 3 * DAY) }, [B]: { warnedAt: iso(NOW), deletesAt: iso(NOW + 3 * DAY) } });
+  });
+
+  it("at a year, counts from the last play however long ago, and never from before counting began", async () => {
+    // A: played 363 days ago → due in 2 days. B: made 500 days ago, never played → due.
+    // C: played 300 days ago, D: made 200 days ago → not for months.
+    const objects = {
+      [metaKey(A)]: video(A, 500), [viewsKey(A)]: played(iso(NOW - 363 * DAY)), [metaKey(B)]: video(B, 500),
+      [metaKey(C)]: video(C, 500), [viewsKey(C)]: played(iso(NOW - 300 * DAY)), [metaKey(D)]: video(D, 200),
+    };
+    const env = cleanSpace({ ...objects, [SINCE]: JSON.stringify({ since: iso(NOW - 500 * DAY) }) }, { days: 365 });
+    expect(Object.keys((await scan(env)).going).sort()).toEqual([A, B].sort());
+    // Counting began 300 days ago: nothing has been quiet a year as far as it can tell.
+    expect((await scan(cleanSpace(objects, { days: 365 }))).going).toEqual({});
   });
 
   it("never lists a pinned video, one still uploading, or one before counting began", async () => {

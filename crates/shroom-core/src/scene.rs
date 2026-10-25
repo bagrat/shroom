@@ -1058,7 +1058,7 @@ pub struct AutocleanRow {
     pub label: String,
     /// The line under it: how it counts, or who sets it, or what it needs.
     pub hint: String,
-    /// Off · After 15 days · After 30 days · After 60 days.
+    /// Off · After 15 days · After 30 days · After 60 days · After a year.
     pub choices: Vec<Choice>,
     /// “Turning on — a few seconds.” the first time, or why it didn't change (law 12).
     pub note: Option<String>,

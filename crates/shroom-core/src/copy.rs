@@ -510,27 +510,32 @@ pub fn delete_all_button(n: u64) -> String { if n == 2 { "Delete both".into() } 
 
 // ── auto-cleanup (N75) ──
 
+/// Auto-cleanup's wait in words: “a year” at 365 days (N77, the landing's words), else the days.
+pub fn wait(days: u32) -> String {
+    if days == 365 { "a year".into() } else { format!("{days} days") }
+}
+
 /// The Library's amber line, and the popover's banner, three days ahead.
 pub fn autoclean_warning(n: u64, date: &str, days: u32) -> String {
     if n == 1 {
-        format!("One video will be deleted on {date} — nobody has watched it in {days} days.")
+        format!("One video will be deleted on {date} — nobody has watched it in {}.", wait(days))
     } else {
-        format!("{} videos will be deleted on {date} — nobody has watched them in {days} days.", count_word_cap(n))
+        format!("{} videos will be deleted on {date} — nobody has watched them in {}.", count_word_cap(n), wait(days))
     }
 }
 pub fn deleted_unless_pinned(date: &str) -> String { format!("Deleted {date} unless pinned") }
 /// Once a round went: what, and what it freed.
 pub fn autoclean_cleaned(n: u64, days: u32, bytes: u64) -> String {
     let what = if n == 1 { "one video".to_string() } else { format!("{} videos", count_word(n)) };
-    format!("Auto-cleanup deleted {what} nobody had watched in {days} days, freeing {}.", size(bytes))
+    format!("Auto-cleanup deleted {what} nobody had watched in {}, freeing {}.", wait(days), size(bytes))
 }
 pub fn ok() -> String { "OK".into() }
 pub fn deleting_on(date: &str) -> String { format!("Deleting on {date}") }
 pub fn nobody_watched_these(n: u64, days: u32) -> String {
     if n == 1 {
-        format!("Nobody has watched this in {days} days. Pin it to keep it; a watch before then keeps it too.")
+        format!("Nobody has watched this in {}. Pin it to keep it; a watch before then keeps it too.", wait(days))
     } else {
-        format!("Nobody has watched these in {days} days. Pin one to keep it; a watch before then keeps it too.")
+        format!("Nobody has watched these in {}. Pin one to keep it; a watch before then keeps it too.", wait(days))
     }
 }
 pub fn might_be_worth_deleting() -> String { "Might be worth deleting".into() }
@@ -554,13 +559,13 @@ pub fn autoclean_hint() -> String {
     "Counted from the last time someone watched it, or from when it was shared. Pinned videos are never deleted, and the Library says which ones are going a few days before.".into()
 }
 pub fn autoclean_off() -> String { "Off".into() }
-pub fn after_days(days: u32) -> String { format!("After {days} days") }
+pub fn after_days(days: u32) -> String { format!("After {}", wait(days)) }
 /// Every Mac but the one that sets it.
 pub fn space_deletes(days: u32) -> String {
-    format!("Your space deletes videos nobody has watched in {days} days. It's set on the Mac that set up your space. Pin a video in the Library to keep it.")
+    format!("Your space deletes videos nobody has watched in {}. It's set on the Mac that set up your space. Pin a video in the Library to keep it.", wait(days))
 }
 pub fn needs_count_plays() -> String { "Needs Count plays".into() }
-pub fn autoclean_confirm_title(days: u32) -> String { format!("Delete videos nobody watches for {days} days?") }
+pub fn autoclean_confirm_title(days: u32) -> String { format!("Delete videos nobody watches for {}?", wait(days)) }
 pub fn autoclean_qualify(n: u64, date: &str) -> String {
     if n == 1 {
         format!("One video already qualifies. It'll be deleted on {date} unless someone watches it or you pin it — the Library shows which. Its link will say the video is gone.")
@@ -1301,6 +1306,7 @@ pub fn registry() -> Vec<(&'static str, String)> {
         ("settings-general", after_days(15)),
         ("settings-general", after_days(30)),
         ("settings-general", after_days(60)),
+        ("settings-general", after_days(365)),
         ("settings-general", space_deletes(30)),
         ("settings-general", needs_count_plays()),
         ("autoclean-confirm", autoclean_confirm_title(30)),

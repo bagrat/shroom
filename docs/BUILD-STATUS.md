@@ -370,7 +370,7 @@ and edits on the share page)*)**
 43. **N75 — Pin, Delete all, and auto-cleanup run by the space's page** (B232–B234; Bagrat
     approved every board and its words as drawn, 2026-10-24, relayed by the orchestrator).
     Pin is the record's `keep`, from a row's menu and `shroom pin`/`unpin`; Delete all… asks
-    once and holds one Undo; auto-cleanup (off by default; 15, 30 or 60 days unwatched) is
+    once and holds one Undo; auto-cleanup (off by default; 15, 30 or 60 days unwatched, or a year since N77, B236) is
     set on the Mac that set up the space and run by the space's page on the one schedule AI
     naming uses, three days' warning first in the Library, the popover and the command.
     Proved in CI (the core walkthroughs, the Worker's `autoclean.test.js`, the command

@@ -1335,7 +1335,9 @@
     "The popover (auto-cleanup's banner)",
     "The page (its schedule deletes what auto-cleanup says)"
    ],
-   "amended_by": []
+   "amended_by": [
+    "N77 (a fourth wait: a year)"
+   ]
   },
   {
    "id": "N76",
@@ -1347,6 +1349,17 @@
     "N66 (on by default; its offer gives way to ai-turned-on)",
     "config (ai-turned-on, ai-on-in-space, ai-off)",
     "settings-space (the switch settles the AI on this Mac)"
+   ],
+   "amended_by": []
+  },
+  {
+   "id": "N77",
+   "title": "Auto-cleanup offers a year",
+   "decision": "**Bagrat, 2026-10-25** (relayed by the orchestrator: add a year to the app), so the app offers what the landing's price box does (“30 days · 60 days · a year”): Delete videos nobody watches gains a fourth wait, **After a year** (365 days), after After 60 days. 15 days stays; nothing else changes. Its lines say “a year” where they'd say the days (“nobody has watched them in a year”, “Delete videos nobody watches for a year?”). The three days' warning and every guard hold as they are; the page still keeps a video's last play however long ago it was, so a year is counted from it as the shorter waits are.",
+   "status": "ratified",
+   "date": "2026-10-25",
+   "amends": [
+    "N75 (Settings · General's pop-up: Off · After 15 days · After 30 days · After 60 days · After a year)"
    ],
    "amended_by": []
   }
@@ -8044,9 +8057,10 @@
      "text": "Two videos will be deleted on Oct 27 — nobody has watched them in 30 days.",
      "role": "line",
      "copy": "ratified",
-     "note": "N75. Above the rows, amber, in place of the suggestion line, while auto-cleanup has videos going in this Mac's scope; no Not now. The count varies (a word up to nine, Law 16; one reads 'One video will be deleted…' and 'nobody has watched it'), and so do the date and the days. With videos going on different dates, the earliest. Bagrat approved the board as drawn, 2026-10-24.",
+     "note": "N75. Above the rows, amber, in place of the suggestion line, while auto-cleanup has videos going in this Mac's scope; no Not now. The count varies (a word up to nine, Law 16; one reads 'One video will be deleted…' and 'nobody has watched it'), and so do the date and the days. With videos going on different dates, the earliest. Bagrat approved the board as drawn, 2026-10-24. At 365 days it says “a year” in place of the days (N77).",
      "cites": [
-      "N75"
+      "N75",
+      "N77"
      ],
      "id": "library.autoclean-warning"
     },
@@ -8064,9 +8078,10 @@
      "text": "Auto-cleanup deleted two videos nobody had watched in 30 days, freeing 1.7 GB.",
      "role": "line",
      "copy": "ratified",
-     "note": "N75. Once, after a round of auto-cleanup took videos in this Mac's scope, until OK. The count varies (a word up to nine; one reads 'one video'), and so do the days and the size. Bagrat approved the board as drawn, 2026-10-24.",
+     "note": "N75. Once, after a round of auto-cleanup took videos in this Mac's scope, until OK. The count varies (a word up to nine; one reads 'one video'), and so do the days and the size. Bagrat approved the board as drawn, 2026-10-24. At 365 days it says “a year” in place of the days (N77).",
      "cites": [
-      "N75"
+      "N75",
+      "N77"
      ],
      "id": "library.autoclean-cleaned"
     },
@@ -9499,12 +9514,24 @@
      "id": "settings-general.after-60-days"
     },
     {
+     "text": "After a year",
+     "role": "button",
+     "copy": "ratified",
+     "note": "N77. The pop-up's last choice: 365 days. Bagrat, 2026-10-25: add a year, the landing's words.",
+     "cites": [
+      "N75",
+      "N77"
+     ],
+     "id": "settings-general.after-a-year"
+    },
+    {
      "text": "Your space deletes videos nobody has watched in 30 days. It's set on the Mac that set up your space. Pin a video in the Library to keep it.",
      "role": "line",
      "copy": "ratified",
-     "note": "N75. On every other Mac, under the pop-up greyed at the space's choice. The number of days varies; off, the pop-up reads Off and the line is the setting Mac's. Bagrat approved the board as drawn, 2026-10-24.",
+     "note": "N75. On every other Mac, under the pop-up greyed at the space's choice. The number of days varies; off, the pop-up reads Off and the line is the setting Mac's. Bagrat approved the board as drawn, 2026-10-24. At 365 days it says “a year” in place of the days (N77).",
      "cites": [
-      "N75"
+      "N75",
+      "N77"
      ],
      "id": "settings-general.space-deletes"
     },
@@ -9580,7 +9607,7 @@
      "kind": "other",
      "return_default": false,
      "goes_to": "autoclean-confirm",
-     "note": "N75. A pop-up: Off · After 15 days · After 30 days · After 60 days. Turning it on or shortening it while videos already qualify asks first (autoclean-confirm); otherwise it's set at once, “Turning on — a few seconds.” under it the first time. One that didn't go through says Couldn't change that and stays as it was."
+     "note": "N75. A pop-up: Off · After 15 days · After 30 days · After 60 days · After a year. Turning it on or shortening it while videos already qualify asks first (autoclean-confirm); otherwise it's set at once, “Turning on — a few seconds.” under it the first time. One that didn't go through says Couldn't change that and stays as it was."
     }
    ],
    "cites": [
@@ -9593,7 +9620,8 @@
     "B180",
     "N53",
     "N62",
-    "N68"
+    "N68",
+    "N77"
    ],
    "was": {
     "fixture": "r5.json",
@@ -13596,9 +13624,10 @@
      "text": "Nobody has watched these in 30 days. Pin one to keep it; a watch before then keeps it too.",
      "role": "line",
      "copy": "ratified",
-     "note": "N75. Under the first date's heading. The number of days varies; one reads 'Nobody has watched this in 30 days. Pin it to keep it; a watch before then keeps it too.' Bagrat approved the board as drawn, 2026-10-24.",
+     "note": "N75. Under the first date's heading. The number of days varies; one reads 'Nobody has watched this in 30 days. Pin it to keep it; a watch before then keeps it too.' Bagrat approved the board as drawn, 2026-10-24. At 365 days it says “a year” in place of the days (N77).",
      "cites": [
-      "N75"
+      "N75",
+      "N77"
      ],
      "id": "library-cleanup.nobody-watched-these"
     },
@@ -13875,9 +13904,10 @@
      "text": "Delete videos nobody watches for 30 days?",
      "role": "sheet-title",
      "copy": "ratified",
-     "note": "N75. Bold. The number of days varies. Bagrat approved the board as drawn, 2026-10-24.",
+     "note": "N75. Bold. The number of days varies. Bagrat approved the board as drawn, 2026-10-24. At 365 days it says “a year” in place of the days (N77).",
      "cites": [
-      "N75"
+      "N75",
+      "N77"
      ],
      "id": "autoclean-confirm.title"
     },
@@ -13935,9 +13965,10 @@
      "text": "Two videos will be deleted on Oct 27 — nobody has watched them in 30 days.",
      "role": "banner",
      "copy": "ratified",
-     "note": "N75. The Library's line, word for word: the count, the date and the days each varies. Bagrat approved the board as drawn, 2026-10-24.",
+     "note": "N75. The Library's line, word for word: the count, the date and the days each varies. Bagrat approved the board as drawn, 2026-10-24. At 365 days it says “a year” in place of the days (N77).",
      "cites": [
-      "N75"
+      "N75",
+      "N77"
      ],
      "id": "autoclean-warning.line"
     },
@@ -13985,9 +14016,10 @@
      "text": "Auto-cleanup deleted two videos nobody had watched in 30 days, freeing 1.7 GB.",
      "role": "banner",
      "copy": "ratified",
-     "note": "N75. Once after a round took videos in this Mac's scope, frost, with OK; the Library's line, word for word (the count, the days and the size each varies). Bagrat approved the board as drawn, 2026-10-24.",
+     "note": "N75. Once after a round took videos in this Mac's scope, frost, with OK; the Library's line, word for word (the count, the days and the size each varies). Bagrat approved the board as drawn, 2026-10-24. At 365 days it says “a year” in place of the days (N77).",
      "cites": [
-      "N75"
+      "N75",
+      "N77"
      ],
      "id": "autoclean-warning.cleaned"
     },
