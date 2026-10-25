@@ -25,7 +25,7 @@ quit
 mkdir -p "$w/target" "$w/src"
 ditto "$MAC_APP" "$w/target/shroom-dev.app"
 ditto "$MAC_APP" "$w/src/shroom-dev.app"
-v=$(node -p 'require(process.argv[1]).version' "app/src-tauri/tauri.conf.json")
+v=$(node -p 'require(process.argv[1]).version' "$PWD/app/src-tauri/tauri.conf.json")
 SHROOM_STAND_IN=1 sh tools/package-release.sh "$w/src/shroom-dev.app" "$v" "$w/rel/download/v$v" >/dev/null
 mkdir -p "$w/rel/latest/download"
 cp "$w/rel/download/v$v/manifest.txt" "$w/rel/latest/download/manifest.txt"
