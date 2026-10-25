@@ -1182,7 +1182,9 @@
     "settings-space (the naming switch, on the Mac that holds the setup key)",
     "config (the AI banner and its confirm, on the Mac that holds the setup key)"
    ],
-   "amended_by": []
+   "amended_by": [
+    "N75 (on by default; the offer, its confirm and Not now give way to a banner that says it's on)"
+   ]
   },
   {
    "id": "N67",
@@ -1315,6 +1317,19 @@
     "wiring (its parts, the long line, and no window needed)",
     "done (the wiring row names the part underway)",
     "N45 (wiring runs out of sight under the chapter: now out of the window too)"
+   ],
+   "amended_by": []
+  },
+  {
+   "id": "N75",
+   "title": "AI is on by default, and said once",
+   "decision": "**Bagrat, 2026-10-25** (relayed by the orchestrator, on the boards “Popover — AI features are turned on…” and its states), reversing N66's off by default (2026-10-18): the space's AI — names, chapters, captions and voice cuts, one switch — is **on by default**. (1) **A space set up from now on starts with it on**: the setup's wiring puts up a new page with Cloudflare's AI and its schedule, and says nothing about it (Bagrat, 2026-10-25: nothing in the setup, nor in the Library); the switch in Settings · Space shows it on. A repair's wiring never changes it. (2) **A space set up before**: on the Mac that holds the setup key, the first popover after the update that would show the AI's banner turns it on as it shows “AI features are turned on.” with Turn off and OK — so nothing is heard before it's been said (`ai-turned-on`). It stays until OK or Turn off; Turn off re-wires the page without the AI and says so once (`ai-turning-off`, `ai-turn-off-failed`, `ai-off`). (3) **An explicit no stands**: a Mac that said Not now to N66's offer, or used the switch, has its AI settled and is never turned on by default nor shown the banner (one remembered fact on this Mac, `ai_offer_answered`). (4) **Members' Macs**, whose new videos the owner's account then hears, say so once: “AI is on in Bagrat's space.”, with OK (`ai-on-in-space`); they learn it from the space's ping. (5) The setup Mac offline, or not updated: nothing changes until it is opened on this version. N66's offer, its confirm, its turning-on, failed and on faces are gone; its switch, its cost line and everything the AI does stay. The privacy page's AI point is reworded to match.",
+   "status": "ratified",
+   "date": "2026-10-25",
+   "amends": [
+    "N66 (on by default; its offer gives way to ai-turned-on)",
+    "config (ai-turned-on, ai-on-in-space, ai-off)",
+    "settings-space (the switch settles the AI on this Mac)"
    ],
    "amended_by": []
   }
@@ -9392,7 +9407,7 @@
    "surface": "window",
    "status": "provisional",
    "board": "SettingsSpace",
-   "summary": "The Space tab: one tab with a mood per kind of Mac (inspection · repair · owner-class-without-token · member). Beneath the rows, by role: the mark switch (owner-class only — a space setting, U3) and the exits as quiet text (Disconnect this Mac… for owners, Leave this space… for members). Row six is live on every Mac. A revoked grant un-ticks it (“screen recording is off”), with Turn it back on → the permissions chapter at exactly the missing beat, in this window. A denied microphone ticks the row with the fact, plus a quiet Turn on the microphone that opens System Settings' Microphone pane (a denied mic never blocks). Mid-take both exits grey (law 4). After Disconnect or Leave, the ~/.shroom secrets are wiped and the app returns to idle-unprovisioned; the login item stays as it was. No invite door shows (B159): an invite link pasted anywhere in the tab (⌘V) opens its invite, as the page's Open shroom does. On the Mac that holds the setup key, a second switch turns the space's AI on for new videos — titles, chapters, captions and voice cuts (N66) — with one line on what it does and costs; turning it on or off re-wires the page.",
+   "summary": "The Space tab: one tab with a mood per kind of Mac (inspection · repair · owner-class-without-token · member). Beneath the rows, by role: the mark switch (owner-class only — a space setting, U3) and the exits as quiet text (Disconnect this Mac… for owners, Leave this space… for members). Row six is live on every Mac. A revoked grant un-ticks it (“screen recording is off”), with Turn it back on → the permissions chapter at exactly the missing beat, in this window. A denied microphone ticks the row with the fact, plus a quiet Turn on the microphone that opens System Settings' Microphone pane (a denied mic never blocks). Mid-take both exits grey (law 4). After Disconnect or Leave, the ~/.shroom secrets are wiped and the app returns to idle-unprovisioned; the login item stays as it was. No invite door shows (B159): an invite link pasted anywhere in the tab (⌘V) opens its invite, as the page's Open shroom does. On the Mac that holds the setup key, a second switch turns the space's AI on or off for new videos (on by default, N75) — titles, chapters, captions and voice cuts (N66) — with one line on what it does and costs; turning it on or off re-wires the page.",
    "entry": "Settings window on the Space tab. Which mood shows is derived from the kind of Mac and the probe results.",
    "said": [
     {
@@ -9472,7 +9487,7 @@
      "text": "Titles, chapters and captions from what’s said, and your “shroom cut” slips cut — on your own Cloudflare account. Free for about 2½ hours of new video a day; more is about 4¢ per video hour on Cloudflare’s $5 plan.",
      "role": "line",
      "copy": "ratified",
-     "note": "N66. Description beside the AI switch: the one cost line, also in ai-confirm. Bagrat approved the board AiSettings as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later.",
+     "note": "N66. Description beside the AI switch: the one cost line. Bagrat approved the board AiSettings as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later.",
      "cites": [
       "N66"
      ],
@@ -9500,7 +9515,7 @@
      "label": "AI for new videos switch",
      "kind": "switch",
      "return_default": false,
-     "note": "N66. Only on the Mac that holds the setup key; one switch for every AI feature, voice cuts included. On re-wires the page with Cloudflare's AI and its schedule; off takes them away. Greys while the re-wire runs and mid-take (law 4)."
+     "note": "N66. Only on the Mac that holds the setup key; one switch for every AI feature, voice cuts included. On re-wires the page with Cloudflare's AI and its schedule; off takes them away. Greys while the re-wire runs and mid-take (law 4). Using it settles the AI on this Mac: never turned on by default again (N75)."
     },
     {
      "label": "⌘V (an invite link, pasted anywhere in the tab)",
@@ -12973,250 +12988,255 @@
     "N41"
    ]
   },
-  "ai-offer": {
+  "ai-turned-on": {
    "region": 5,
    "kind": "banner",
    "parent": "config",
    "surface": "banner",
    "status": "ratified",
-   "board": "AiBanner",
-   "summary": "The AI offer (N66; Bagrat, 2026-10-18: off by default, but visible): a frost banner in the popover, like the update's, on the Mac that holds the setup key while the space's AI is off. It says what shroom can do — name videos, add chapters, cut slips — never what it costs: Turn on… opens the short confirm that says so. The lowest banner: a saved take, the space, recording off and an update come first. Not now hides it for good on this Mac (Bagrat, 2026-10-18): from then on only the switch in Settings · Space turns AI on. Members' Macs and the space's other Macs never show it, nor does a Mac once AI has been on there.",
-   "entry": "`config` opens on the Mac that holds the setup key while the space's AI is off and no higher banner shows, and the banner has never been answered on this Mac.",
+   "board": "AiDefaultBanner",
+   "summary": "AI on by default (N75; Bagrat, 2026-10-25): a frost banner in the popover, the lowest, on the Mac that holds the setup key while the space's AI hasn't been settled on this Mac. When `config` would show it over AI that's off, that is what turns the AI on — the page is re-wired with Cloudflare's AI and its schedule, as the switch does — so it is said before anything is heard; it says the same while the few seconds run and once it's on, until OK or Turn off. Never over an explicit no: a Mac that said Not now to the old offer, or used the switch in Settings · Space, has its AI settled and never sees it. A space set up on this Mac starts with its AI on and settled — nothing said (Bagrat, 2026-10-25: nothing in the setup). A try at turning it on that didn't go through says nothing: the banner isn't shown, and the next popover that would show it tries again after a quiet backoff (law 12). A saved take, the space, recording off and an update come first.",
+   "entry": "`config` opens on the Mac that holds the setup key while the space's AI has never been settled on this Mac and no higher banner shows: the AI is turned on as it shows, or is on already.",
    "said": [
     {
-     "text": "shroom can name your videos, add chapters and cut your slips for you.",
+     "text": "AI features are turned on.",
      "role": "banner",
      "copy": "ratified",
-     "note": "N66. The banner's line (AiBanner). Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later.",
+     "note": "N75. Bold. Bagrat's own words. Bagrat approved the board as drawn (Bagrat, 2026-10-25).",
      "cites": [
-      "N66"
+      "N75"
      ],
-     "id": "ai-offer.shroom-can-name-your"
+     "id": "ai-turned-on.ai-features-are-turned"
     },
     {
-     "text": "Turn on…",
-     "role": "button",
-     "copy": "ratified",
-     "note": "N66. Filled; a banner's own filled button is never the Return default (law 8). Opens ai-confirm. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later.",
-     "cites": [
-      "N66"
-     ],
-     "id": "ai-offer.turn-on"
-    },
-    {
-     "text": "Not now",
-     "role": "link",
-     "copy": "ratified",
-     "note": "N66. Quiet, left of Turn on…. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later.",
-     "cites": [
-      "N66"
-     ],
-     "id": "ai-offer.not-now"
-    }
-   ],
-   "actions": [
-    {
-     "label": "Turn on…",
-     "kind": "filled-default",
-     "return_default": false,
-     "goes_to": "ai-confirm",
-     "note": "The confirm says what it costs."
-    },
-    {
-     "label": "Not now",
-     "kind": "text-link",
-     "return_default": false,
-     "goes_to": "config",
-     "note": "Hidden for good on this Mac; the switch in Settings · Space stays."
-    }
-   ],
-   "cites": [
-    "N66"
-   ]
-  },
-  "ai-confirm": {
-   "region": 5,
-   "kind": "state",
-   "parent": null,
-   "surface": "popover",
-   "status": "ratified",
-   "board": "AiConfirm",
-   "summary": "Turn on…'s short confirm (N66): the popover morphs into a question that says what turning AI on does and what it costs, once, before it costs anything. Like every question in the popover it has no Return default: Turn on is a click. Back and Esc go back to config with the banner still there.",
-   "entry": "Turn on… in the AI banner.",
-   "said": [
-    {
-     "text": "Turn on AI for new videos?",
-     "role": "title",
-     "copy": "ratified",
-     "note": "N66. Bold. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later.",
-     "cites": [
-      "N66"
-     ],
-     "id": "ai-confirm.turn-on-ai-for"
-    },
-    {
-     "text": "Titles, chapters and captions from what’s said, and your “shroom cut” slips cut — on your own Cloudflare account. Free for about 2½ hours of new video a day; more is about 4¢ per video hour on Cloudflare’s $5 plan.",
+     "text": "New videos get titles, chapters and captions from what’s said, and your “shroom cut” slips cut — on your own Cloudflare account.",
      "role": "line",
      "copy": "ratified",
-     "note": "N66. The one cost line, also under the switch in Settings · Space. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later.",
+     "note": "N75. Under the bold line. Bagrat approved the board as drawn (Bagrat, 2026-10-25).",
      "cites": [
-      "N66"
+      "N75"
      ],
-     "id": "ai-confirm.titles-chapters-and-captions"
+     "id": "ai-turned-on.new-videos-get-titles"
     },
     {
-     "text": "Back",
-     "role": "button",
+     "text": "Turn off",
+     "role": "link",
      "copy": "ratified",
-     "note": "N66. Leftmost. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later.",
+     "note": "N75. Quiet, left of OK. Bagrat approved the board as drawn (Bagrat, 2026-10-25).",
      "cites": [
-      "N66"
+      "N75"
      ],
-     "id": "ai-confirm.back"
+     "id": "ai-turned-on.turn-off"
     },
     {
-     "text": "Turn on",
+     "text": "OK",
      "role": "button",
      "copy": "ratified",
-     "note": "N66. Filled, rightmost; no Return default (a click, as every popover question). Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later.",
+     "note": "N75. Filled, rightmost; a banner's own filled button is never the Return default (law 8). Bagrat approved the board as drawn (Bagrat, 2026-10-25).",
      "cites": [
-      "N66"
+      "N75"
      ],
-     "id": "ai-confirm.turn-on"
+     "id": "ai-turned-on.ok"
     }
    ],
    "actions": [
     {
-     "label": "Back",
-     "kind": "secondary",
+     "label": "Turn off",
+     "kind": "text-link",
      "return_default": false,
-     "goes_to": "config",
-     "note": "Esc too; the banner stays."
+     "goes_to": "ai-turning-off",
+     "note": "The page is re-wired without the AI, as the switch in Settings · Space does. Not while the turn-on's few seconds run: the press waits for them."
     },
     {
-     "label": "Turn on",
+     "label": "OK",
      "kind": "filled-default",
      "return_default": false,
-     "goes_to": "ai-turning-on",
-     "note": "Re-wires the space's page with Cloudflare's AI and its schedule, as the switch in Settings · Space does."
+     "goes_to": "config",
+     "note": "AI stays on; settled for good on this Mac."
     }
    ],
    "cites": [
+    "N75",
     "N66"
    ]
   },
-  "ai-turning-on": {
+  "ai-turning-off": {
    "region": 5,
    "kind": "face",
-   "parent": "ai-offer",
+   "parent": "ai-turned-on",
    "surface": "banner",
    "status": "ratified",
-   "board": "AiBannerStates",
-   "summary": "While the space's page is put up again with Cloudflare's AI (a few seconds), the banner says so and holds no buttons.",
-   "entry": "Turn on in ai-confirm, until the page answers.",
+   "board": "AiDefaultBannerStates",
+   "summary": "While the space's page is put up again without Cloudflare's AI (a few seconds), the banner says so and holds no buttons.",
+   "entry": "Turn off in ai-turned-on, until the page answers.",
    "said": [
     {
-     "text": "Turning on — a few seconds.",
+     "text": "Turning off — a few seconds.",
      "role": "banner",
      "copy": "ratified",
-     "note": "N66. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later.",
+     "note": "N75. Bagrat approved the board as drawn (Bagrat, 2026-10-25).",
      "cites": [
-      "N66"
+      "N75"
      ],
-     "id": "ai-turning-on.turning-on-a-few"
+     "id": "ai-turning-off.turning-off-a-few"
     }
    ],
    "actions": [],
    "cites": [
-    "N66"
+    "N75"
    ]
   },
-  "ai-offer-failed": {
+  "ai-turn-off-failed": {
    "region": 5,
    "kind": "face",
-   "parent": "ai-offer",
+   "parent": "ai-turned-on",
    "surface": "banner",
    "status": "ratified",
-   "board": "AiBannerStates",
-   "summary": "The re-wiring didn't go through (law 12): the banner says so in place of its line, for this visit to the popover, and Turn on… is live again.",
-   "entry": "ai-turning-on, and the space's page couldn't be put up again with the AI.",
+   "board": "AiDefaultBannerStates",
+   "summary": "The re-wiring didn't go through (law 12): the banner comes back with the failure said under its line, Turn off and OK live again; it's tried again quietly — ten minutes, doubling, at most an hour — until it goes through or OK.",
+   "entry": "ai-turning-off, and the space's page couldn't be put up again without the AI.",
    "said": [
     {
-     "text": "Couldn't change that just now — try again in a moment.",
+     "text": "AI features are turned on.",
      "role": "banner",
      "copy": "ratified",
-     "note": "N66. The words of the switch's own failure line. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later.",
+     "note": "N75. Bold, as ai-turned-on's. Bagrat approved the board as drawn (Bagrat, 2026-10-25).",
      "cites": [
-      "N66"
+      "N75"
      ],
-     "id": "ai-offer-failed.couldnt-change-that-just"
+     "id": "ai-turn-off-failed.ai-features-are-turned"
     },
     {
-     "text": "Turn on…",
-     "role": "button",
+     "text": "Couldn't turn it off just now — try again in a moment.",
+     "role": "line",
      "copy": "ratified",
-     "note": "N66. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later.",
+     "note": "N75. In place of the banner's second line. Bagrat approved the board as drawn (Bagrat, 2026-10-25).",
      "cites": [
-      "N66"
+      "N75"
      ],
-     "id": "ai-offer-failed.turn-on"
+     "id": "ai-turn-off-failed.couldnt-turn-it-off"
     },
     {
-     "text": "Not now",
+     "text": "Turn off",
      "role": "link",
      "copy": "ratified",
-     "note": "N66. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later.",
+     "note": "N75. Bagrat approved the board as drawn (Bagrat, 2026-10-25).",
      "cites": [
-      "N66"
+      "N75"
      ],
-     "id": "ai-offer-failed.not-now"
+     "id": "ai-turn-off-failed.turn-off"
+    },
+    {
+     "text": "OK",
+     "role": "button",
+     "copy": "ratified",
+     "note": "N75. Bagrat approved the board as drawn (Bagrat, 2026-10-25).",
+     "cites": [
+      "N75"
+     ],
+     "id": "ai-turn-off-failed.ok"
     }
    ],
    "actions": [
     {
-     "label": "Turn on…",
-     "kind": "filled-default",
-     "return_default": false,
-     "goes_to": "ai-confirm"
-    },
-    {
-     "label": "Not now",
+     "label": "Turn off",
      "kind": "text-link",
      "return_default": false,
+     "goes_to": "ai-turning-off"
+    },
+    {
+     "label": "OK",
+     "kind": "filled-default",
+     "return_default": false,
      "goes_to": "config",
-     "note": "Hidden for good on this Mac, as ai-offer's."
+     "note": "AI stays on; the quiet tries stop."
     }
    ],
    "cites": [
-    "N66",
+    "N75",
     "law 12"
    ]
   },
-  "ai-on": {
+  "ai-off": {
    "region": 5,
    "kind": "face",
    "parent": "config",
    "surface": "status-line",
    "status": "ratified",
-   "board": "AiBannerStates",
-   "summary": "A one-shot status-line fact once the banner's Turn on has gone through, where the update's “Updated ✓” goes: said once, then the line is behind us.",
-   "entry": "The page answers that its AI is on after the banner's Turn on: in the popover then, or the next time it opens.",
+   "board": "AiDefaultBannerStates",
+   "summary": "A one-shot status-line fact once the banner's Turn off has gone through, where the update's “Updated ✓” goes: said once, then the line is behind us. AI is settled on this Mac; the switch in Settings · Space turns it on again.",
+   "entry": "The page answers that its AI is off after the banner's Turn off: in the popover then, or the next time it opens.",
    "said": [
     {
-     "text": "AI is on for new videos ✓",
+     "text": "AI is off — turn it on any time in Settings.",
      "role": "status",
      "copy": "ratified",
-     "note": "N66. Once only; it ranks after the upload truth (N38). Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later.",
+     "note": "N75. Once only; it ranks after the upload truth (N38). Bagrat approved the board as drawn (Bagrat, 2026-10-25).",
      "cites": [
-      "N66"
+      "N75",
+      "N38"
      ],
-     "id": "ai-on.ai-is-on-for"
+     "id": "ai-off.ai-is-off-turn"
     }
    ],
    "actions": [],
    "cites": [
-    "N66",
+    "N75",
     "N38"
+   ]
+  },
+  "ai-on-in-space": {
+   "region": 5,
+   "kind": "banner",
+   "parent": "config",
+   "surface": "banner",
+   "status": "ratified",
+   "board": "AiDefaultBannerStates",
+   "summary": "A member's Mac, once the space's ping says its AI is on (N75): the new videos it records there are heard in the owner's Cloudflare account, so it says so once, in the lowest banner, with OK. No switch: the AI is the owner's to turn off. Owner-class Macs without the token never show it.",
+   "entry": "`config` opens on a member's Mac whose space's ping says its AI is on, no higher banner shows, and the banner has never been answered on this Mac.",
+   "said": [
+    {
+     "text": "AI is on in Bagrat's space.",
+     "role": "banner",
+     "copy": "ratified",
+     "note": "N75. Bold; the owner's name. Bagrat approved the board as drawn (Bagrat, 2026-10-25).",
+     "cites": [
+      "N75"
+     ],
+     "id": "ai-on-in-space.ai-is-on-in"
+    },
+    {
+     "text": "Your new videos there get titles, chapters and captions from what’s said — on Bagrat's Cloudflare account.",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N75. Under the bold line. Bagrat approved the board as drawn (Bagrat, 2026-10-25).",
+     "cites": [
+      "N75"
+     ],
+     "id": "ai-on-in-space.your-new-videos-there"
+    },
+    {
+     "text": "OK",
+     "role": "button",
+     "copy": "ratified",
+     "note": "N75. Filled. Bagrat approved the board as drawn (Bagrat, 2026-10-25).",
+     "cites": [
+      "N75"
+     ],
+     "id": "ai-on-in-space.ok"
+    }
+   ],
+   "actions": [
+    {
+     "label": "OK",
+     "kind": "filled-default",
+     "return_default": false,
+     "goes_to": "config",
+     "note": "Answered for good on this Mac."
+    }
+   ],
+   "cites": [
+    "N75"
    ]
   },
   "library-cleanup": {
@@ -18259,13 +18279,13 @@
   },
   {
    "from": "config",
-   "to": "ai-offer",
+   "to": "ai-turned-on",
    "kind": "auto",
    "label": "",
-   "trigger": "config opens on the Mac that holds the setup key while the space's AI is off, no higher banner shows and the banner has never been answered on this Mac (N66)",
+   "trigger": "config opens on the Mac that holds the setup key while the space's AI was never settled on this Mac and no higher banner shows: the AI is turned on as it shows (N75)",
    "status": "ratified",
    "cites": [
-    "N66"
+    "N75"
    ],
    "source": [
     "canvas"
@@ -18273,83 +18293,48 @@
    "on": []
   },
   {
-   "from": "ai-offer",
-   "to": "ai-confirm",
-   "kind": "flow",
-   "label": "Turn on…",
-   "trigger": "Turn on… (or the same on ai-offer-failed)",
-   "status": "ratified",
-   "cites": [
-    "N66"
-   ],
-   "source": [
-    "canvas"
-   ],
-   "on": [
-    "Act(AiAsk)"
-   ]
-  },
-  {
-   "from": "ai-offer",
+   "from": "ai-turned-on",
    "to": "config",
    "kind": "flow",
-   "label": "Not now",
-   "trigger": "Not now: hidden on this Mac for good; the switch in Settings · Space stays (N66)",
+   "label": "OK",
+   "trigger": "OK: AI stays on, settled for good on this Mac (N75)",
    "status": "ratified",
    "cites": [
-    "N66"
+    "N75"
    ],
    "source": [
     "canvas"
    ],
    "on": [
-    "Act(AiNotNow)"
+    "Act(AiOk)"
    ]
   },
   {
-   "from": "ai-confirm",
-   "to": "ai-turning-on",
+   "from": "ai-turned-on",
+   "to": "ai-turning-off",
    "kind": "flow",
-   "label": "Turn on",
-   "trigger": "Turn on: the space's page is put up again with the AI",
+   "label": "Turn off",
+   "trigger": "Turn off: the space's page is put up again without the AI",
    "status": "ratified",
    "cites": [
-    "N66"
+    "N75"
    ],
    "source": [
     "canvas"
    ],
    "on": [
-    "Act(AiOn)"
+    "Act(AiTurnOff)"
    ]
   },
   {
-   "from": "ai-confirm",
-   "to": "config",
-   "kind": "flow",
-   "label": "Back",
-   "trigger": "Back or Esc: the banner stays",
-   "status": "ratified",
-   "cites": [
-    "N66"
-   ],
-   "source": [
-    "canvas"
-   ],
-   "on": [
-    "Act(Back)",
-    "Key(Esc)"
-   ]
-  },
-  {
-   "from": "ai-turning-on",
-   "to": "ai-on",
+   "from": "ai-turning-off",
+   "to": "ai-off",
    "kind": "auto",
    "label": "",
-   "trigger": "the page answers that its AI is on",
+   "trigger": "the page answers that its AI is off",
    "status": "ratified",
    "cites": [
-    "N66"
+    "N75"
    ],
    "source": [
     "canvas"
@@ -18359,20 +18344,87 @@
    ]
   },
   {
-   "from": "ai-turning-on",
-   "to": "ai-offer-failed",
+   "from": "ai-turning-off",
+   "to": "ai-turn-off-failed",
    "kind": "fail",
    "label": "",
    "trigger": "the re-wiring didn't go through (law 12)",
    "status": "ratified",
    "cites": [
-    "N66"
+    "N75",
+    "law 12"
    ],
    "source": [
     "canvas"
    ],
    "on": [
     "Failed(Ai)"
+   ]
+  },
+  {
+   "from": "ai-turn-off-failed",
+   "to": "ai-turning-off",
+   "kind": "flow",
+   "label": "Turn off",
+   "trigger": "Turn off again (or its quiet try)",
+   "status": "ratified",
+   "cites": [
+    "N75"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Act(AiTurnOff)"
+   ]
+  },
+  {
+   "from": "ai-turn-off-failed",
+   "to": "config",
+   "kind": "flow",
+   "label": "OK",
+   "trigger": "OK: AI stays on, settled for good on this Mac",
+   "status": "ratified",
+   "cites": [
+    "N75"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Act(AiOk)"
+   ]
+  },
+  {
+   "from": "config",
+   "to": "ai-on-in-space",
+   "kind": "auto",
+   "label": "",
+   "trigger": "config opens on a member's Mac whose space's AI is on, no higher banner shows and the banner was never answered on this Mac (N75)",
+   "status": "ratified",
+   "cites": [
+    "N75"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": []
+  },
+  {
+   "from": "ai-on-in-space",
+   "to": "config",
+   "kind": "flow",
+   "label": "OK",
+   "trigger": "OK: answered for good on this Mac",
+   "status": "ratified",
+   "cites": [
+    "N75"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": [
+    "Act(AiOk)"
    ]
   },
   {

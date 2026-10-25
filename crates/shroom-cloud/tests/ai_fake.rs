@@ -128,3 +128,35 @@ fn the_schedule_is_fenced_like_every_other_write() {
     let c = Cloud::new(TOKEN, Policy::TestNamespace { prefix: "shroom-e2e-".into() });
     assert!(c.put_schedules("acc", "v", &["* * * * *"]).is_err(), "a run token never touches a name outside its own");
 }
+
+/// N75 (Bagrat, 2026-10-25: on by default): a space set up from now on gets a page with the AI
+/// and its schedule; a space already there keeps what its page has, set up again or not, and
+/// a repair's wiring never turns it on.
+#[test]
+fn a_new_space_starts_with_the_ai_and_an_old_one_keeps_what_it_has() {
+    let fake = Fake::start(State { subdomain: Some("bagrat".into()), ..State::fresh() });
+    let c = cloud(&fake);
+    let (acc, tok) = fake.with(|s| (s.account_id(), s.token_id.clone()));
+    let m = module("0.4.0");
+    let at = |h: &str| Space::at(h, &fake.page(h));
+    wire::wire_fresh_parts(&c, &spec(&acc, &tok, &m), Some(&check(&at, "0.4.0")), &|_| {}).unwrap();
+    assert!(bound(&fake).contains(&"ai".to_string()));
+    assert_eq!(fake.with(|s| s.schedules["v"].clone()), ["* * * * *"]);
+    assert_eq!(ai_of(&fake), Some(true));
+
+    // Set up again over a page whose AI was turned off: it stays off.
+    wire::set_ai(&c, &spec(&acc, &tok, &m), false).unwrap();
+    let newer = module("0.5.0");
+    let w = wire::wire_fresh_parts(&c, &spec(&acc, &tok, &newer), Some(&check(&at, "0.5.0")), &|_| {}).unwrap();
+    assert!(w.deployed);
+    assert_eq!(ai_of(&fake), Some(false), "an explicit off stands");
+
+    // A repair's wiring where the page is gone never turns it on.
+    let fake = Fake::start(State { subdomain: Some("bagrat".into()), ..State::fresh() });
+    let c = cloud(&fake);
+    let (acc, tok) = fake.with(|s| (s.account_id(), s.token_id.clone()));
+    let at = |h: &str| Space::at(h, &fake.page(h));
+    wire::wire_with(&c, &spec(&acc, &tok, &m), Some(&check(&at, "0.4.0"))).unwrap();
+    assert!(!bound(&fake).contains(&"ai".to_string()));
+    assert_eq!(ai_of(&fake), Some(false));
+}

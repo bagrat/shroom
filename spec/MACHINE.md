@@ -4,7 +4,7 @@
 
 The machine: every state, edge, rule, said-line and law of shroom v1 — the spec (DECISIONS B133). Sessions edit it; MACHINE.md and the canvas's machine boards are generated from it.
 
-163 states · 344 edges · 26 rules · 715 said-lines · 16 laws · 85 ledger rows.
+163 states · 346 edges · 26 rules · 716 said-lines · 16 laws · 86 ledger rows.
 
 Status: **ratified** is Bagrat's; **provisional** is designed or built and awaits him (each cites its row: `#n` is a DEVIATIONS row of docs/DECISIONS.md, `Bn` a decision, `Nn`/`Un`/`Pn` a ledger row below). `SM:n` in older citations is a line of the retired spec text, kept in history/spec/UX-STATEMACHINE.md.
 
@@ -1219,7 +1219,8 @@ A same-themed custom popover under the tray (Loom-style). It is never a native m
 | `library` | side | footer icons | provisional |  |
 | `settings-general` | side | footer icons | provisional |  |
 | `send-feedback` | side | footer icons | ratified | N60 |
-| `ai-offer` | auto | config opens on the Mac that holds the setup key while the space's AI is off, no higher banner shows and the banner has never been answered on this Mac (N66) | ratified | N66 |
+| `ai-turned-on` | auto | config opens on the Mac that holds the setup key while the space's AI was never settled on this Mac and no higher banner shows: the AI is turned on as it shows (N75) | ratified | N75 |
+| `ai-on-in-space` | auto | config opens on a member's Mac whose space's AI is on, no higher banner shows and the banner was never answered on this Mac (N75) | ratified | N75 |
 
 ### `disk-low`
 
@@ -2765,7 +2766,7 @@ The General tab: U4's login checkbox at home at last (it reads the system's trut
 
 face · window · **provisional** · a face of `settings` · board: SettingsSpace · cites N36, N42, U3, N29, N31, law 4, B159, N66
 
-The Space tab: one tab with a mood per kind of Mac (inspection · repair · owner-class-without-token · member). Beneath the rows, by role: the mark switch (owner-class only — a space setting, U3) and the exits as quiet text (Disconnect this Mac… for owners, Leave this space… for members). Row six is live on every Mac. A revoked grant un-ticks it (“screen recording is off”), with Turn it back on → the permissions chapter at exactly the missing beat, in this window. A denied microphone ticks the row with the fact, plus a quiet Turn on the microphone that opens System Settings' Microphone pane (a denied mic never blocks). Mid-take both exits grey (law 4). After Disconnect or Leave, the ~/.shroom secrets are wiped and the app returns to idle-unprovisioned; the login item stays as it was. No invite door shows (B159): an invite link pasted anywhere in the tab (⌘V) opens its invite, as the page's Open shroom does. On the Mac that holds the setup key, a second switch turns the space's AI on for new videos — titles, chapters, captions and voice cuts (N66) — with one line on what it does and costs; turning it on or off re-wires the page.
+The Space tab: one tab with a mood per kind of Mac (inspection · repair · owner-class-without-token · member). Beneath the rows, by role: the mark switch (owner-class only — a space setting, U3) and the exits as quiet text (Disconnect this Mac… for owners, Leave this space… for members). Row six is live on every Mac. A revoked grant un-ticks it (“screen recording is off”), with Turn it back on → the permissions chapter at exactly the missing beat, in this window. A denied microphone ticks the row with the fact, plus a quiet Turn on the microphone that opens System Settings' Microphone pane (a denied mic never blocks). Mid-take both exits grey (law 4). After Disconnect or Leave, the ~/.shroom secrets are wiped and the app returns to idle-unprovisioned; the login item stays as it was. No invite door shows (B159): an invite link pasted anywhere in the tab (⌘V) opens its invite, as the page's Open shroom does. On the Mac that holds the setup key, a second switch turns the space's AI on or off for new videos (on by default, N75) — titles, chapters, captions and voice cuts (N66) — with one line on what it does and costs; turning it on or off re-wires the page.
 
 **Entry.** Settings window on the Space tab. Which mood shows is derived from the kind of Mac and the probe results.
 
@@ -2781,13 +2782,13 @@ The Space tab: one tab with a mood per kind of Mac (inspection · repair · owne
 | “Turn on the microphone” | button | provisional | Quiet. |
 | “You can do this once your recording is finished.” | line | provisional | Mid-take, both exits grey with this line (law 4). |
 | “AI for new videos” | field-label | ratified | N66. Label of the AI switch, one switch for every AI feature (voice cuts, N65, included), on the Mac that holds the setup key only (it re-wires the page). Bagrat approved the board AiSettings as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later. · N66 |
-| “Titles, chapters and captions from what’s said, and your “shroom cut” slips cut — on your own Cloudflare account. Free for about 2½ hours of new video a day; more is about 4¢ per video hour on Cloudflare’s $5 plan.” | line | ratified | N66. Description beside the AI switch: the one cost line, also in ai-confirm. Bagrat approved the board AiSettings as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later. · N66 |
+| “Titles, chapters and captions from what’s said, and your “shroom cut” slips cut — on your own Cloudflare account. Free for about 2½ hours of new video a day; more is about 4¢ per video hour on Cloudflare’s $5 plan.” | line | ratified | N66. Description beside the AI switch: the one cost line. Bagrat approved the board AiSettings as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later. · N66 |
 | “Couldn't change that just now — try again in a moment.” | line | provisional | N66. In place of the AI switch's line when a re-wiring didn't go through, until the next try or the next visit (law 12); the switch is as the page has it. · N66 |
 
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
 | made with shroom switch | switch |  |  | Owner-class only. A space-global setting (U3), also flippable on a page. |
-| AI for new videos switch | switch |  |  | N66. Only on the Mac that holds the setup key; one switch for every AI feature, voice cuts included. On re-wires the page with Cloudflare's AI and its schedule; off takes them away. Greys while the re-wire runs and mid-take (law 4). |
+| AI for new videos switch | switch |  |  | N66. Only on the Mac that holds the setup key; one switch for every AI feature, voice cuts included. On re-wires the page with Cloudflare's AI and its schedule; off takes them away. Greys while the re-wire runs and mid-take (law 4). Using it settles the AI on this Mac: never turned on by default again (N75). |
 | ⌘V (an invite link, pasted anywhere in the tab) | other |  | `join-switch-confirm` | No door shows (B159). A link to this Mac's own space goes to join-already-here instead. Into the join machine (Region 6). Return behaviour not stated. |
 | Turn it back on | filled-default |  | `perm-screen` | The permissions chapter at exactly the missing beat, in this window. Only shown when the screen grant is revoked. Return behaviour in Settings is not stated. |
 | Turn on the microphone | secondary |  |  | Quiet. Opens System Settings' Microphone pane. |
@@ -3192,102 +3193,106 @@ Send feedback (N60): a small window of its own, opened from the popover's first 
 | email it to hi@shroom.am | text-link |  |  | Only once a send failed: a mail draft to hi@shroom.am with the words and the version (N48). |
 | Done | filled-default | ↵ |  | The sent face only: closes the window. Esc and ✕ too. |
 
-### `ai-offer`
+### `ai-turned-on`
 
-banner · banner · **ratified** · a face of `config` · board: AiBanner · cites N66
+banner · banner · **ratified** · a face of `config` · board: AiDefaultBanner · cites N75, N66
 
-The AI offer (N66; Bagrat, 2026-10-18: off by default, but visible): a frost banner in the popover, like the update's, on the Mac that holds the setup key while the space's AI is off. It says what shroom can do — name videos, add chapters, cut slips — never what it costs: Turn on… opens the short confirm that says so. The lowest banner: a saved take, the space, recording off and an update come first. Not now hides it for good on this Mac (Bagrat, 2026-10-18): from then on only the switch in Settings · Space turns AI on. Members' Macs and the space's other Macs never show it, nor does a Mac once AI has been on there.
+AI on by default (N75; Bagrat, 2026-10-25): a frost banner in the popover, the lowest, on the Mac that holds the setup key while the space's AI hasn't been settled on this Mac. When `config` would show it over AI that's off, that is what turns the AI on — the page is re-wired with Cloudflare's AI and its schedule, as the switch does — so it is said before anything is heard; it says the same while the few seconds run and once it's on, until OK or Turn off. Never over an explicit no: a Mac that said Not now to the old offer, or used the switch in Settings · Space, has its AI settled and never sees it. A space set up on this Mac starts with its AI on and settled — nothing said (Bagrat, 2026-10-25: nothing in the setup). A try at turning it on that didn't go through says nothing: the banner isn't shown, and the next popover that would show it tries again after a quiet backoff (law 12). A saved take, the space, recording off and an update come first.
 
-**Entry.** `config` opens on the Mac that holds the setup key while the space's AI is off and no higher banner shows, and the banner has never been answered on this Mac.
+**Entry.** `config` opens on the Mac that holds the setup key while the space's AI has never been settled on this Mac and no higher banner shows: the AI is turned on as it shows, or is on already.
 
 | Said | Role | Copy | Note |
 |---|---|---|---|
-| “shroom can name your videos, add chapters and cut your slips for you.” | banner | ratified | N66. The banner's line (AiBanner). Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later. · N66 |
-| “Turn on…” | button | ratified | N66. Filled; a banner's own filled button is never the Return default (law 8). Opens ai-confirm. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later. · N66 |
-| “Not now” | link | ratified | N66. Quiet, left of Turn on…. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later. · N66 |
+| “AI features are turned on.” | banner | ratified | N75. Bold. Bagrat's own words. Bagrat approved the board as drawn (Bagrat, 2026-10-25). · N75 |
+| “New videos get titles, chapters and captions from what’s said, and your “shroom cut” slips cut — on your own Cloudflare account.” | line | ratified | N75. Under the bold line. Bagrat approved the board as drawn (Bagrat, 2026-10-25). · N75 |
+| “Turn off” | link | ratified | N75. Quiet, left of OK. Bagrat approved the board as drawn (Bagrat, 2026-10-25). · N75 |
+| “OK” | button | ratified | N75. Filled, rightmost; a banner's own filled button is never the Return default (law 8). Bagrat approved the board as drawn (Bagrat, 2026-10-25). · N75 |
 
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
-| Turn on… | filled-default |  | `ai-confirm` | The confirm says what it costs. |
-| Not now | text-link |  | `config` | Hidden for good on this Mac; the switch in Settings · Space stays. |
+| Turn off | text-link |  | `ai-turning-off` | The page is re-wired without the AI, as the switch in Settings · Space does. Not while the turn-on's few seconds run: the press waits for them. |
+| OK | filled-default |  | `config` | AI stays on; settled for good on this Mac. |
 
 | → | Kind | Label | Status | Cites |
 |---|---|---|---|---|
-| `ai-confirm` | flow | Turn on… | ratified | N66 |
-| `config` | flow | Not now | ratified | N66 |
+| `config` | flow | OK | ratified | N75 |
+| `ai-turning-off` | flow | Turn off | ratified | N75 |
 
-### `ai-confirm`
+### `ai-turning-off`
 
-state · popover · **ratified** · board: AiConfirm · cites N66
+face · banner · **ratified** · a face of `ai-turned-on` · board: AiDefaultBannerStates · cites N75
 
-Turn on…'s short confirm (N66): the popover morphs into a question that says what turning AI on does and what it costs, once, before it costs anything. Like every question in the popover it has no Return default: Turn on is a click. Back and Esc go back to config with the banner still there.
+While the space's page is put up again without Cloudflare's AI (a few seconds), the banner says so and holds no buttons.
 
-**Entry.** Turn on… in the AI banner.
+**Entry.** Turn off in ai-turned-on, until the page answers.
 
 | Said | Role | Copy | Note |
 |---|---|---|---|
-| “Turn on AI for new videos?” | title | ratified | N66. Bold. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later. · N66 |
-| “Titles, chapters and captions from what’s said, and your “shroom cut” slips cut — on your own Cloudflare account. Free for about 2½ hours of new video a day; more is about 4¢ per video hour on Cloudflare’s $5 plan.” | line | ratified | N66. The one cost line, also under the switch in Settings · Space. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later. · N66 |
-| “Back” | button | ratified | N66. Leftmost. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later. · N66 |
-| “Turn on” | button | ratified | N66. Filled, rightmost; no Return default (a click, as every popover question). Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later. · N66 |
+| “Turning off — a few seconds.” | banner | ratified | N75. Bagrat approved the board as drawn (Bagrat, 2026-10-25). · N75 |
+
+| → | Kind | Label | Status | Cites |
+|---|---|---|---|---|
+| `ai-off` | auto | the page answers that its AI is off | ratified | N75 |
+| `ai-turn-off-failed` | fail | the re-wiring didn't go through (law 12) | ratified | N75, law 12 |
+
+### `ai-turn-off-failed`
+
+face · banner · **ratified** · a face of `ai-turned-on` · board: AiDefaultBannerStates · cites N75, law 12
+
+The re-wiring didn't go through (law 12): the banner comes back with the failure said under its line, Turn off and OK live again; it's tried again quietly — ten minutes, doubling, at most an hour — until it goes through or OK.
+
+**Entry.** ai-turning-off, and the space's page couldn't be put up again without the AI.
+
+| Said | Role | Copy | Note |
+|---|---|---|---|
+| “AI features are turned on.” | banner | ratified | N75. Bold, as ai-turned-on's. Bagrat approved the board as drawn (Bagrat, 2026-10-25). · N75 |
+| “Couldn't turn it off just now — try again in a moment.” | line | ratified | N75. In place of the banner's second line. Bagrat approved the board as drawn (Bagrat, 2026-10-25). · N75 |
+| “Turn off” | link | ratified | N75. Bagrat approved the board as drawn (Bagrat, 2026-10-25). · N75 |
+| “OK” | button | ratified | N75. Bagrat approved the board as drawn (Bagrat, 2026-10-25). · N75 |
 
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
-| Back | secondary |  | `config` | Esc too; the banner stays. |
-| Turn on | filled-default |  | `ai-turning-on` | Re-wires the space's page with Cloudflare's AI and its schedule, as the switch in Settings · Space does. |
+| Turn off | text-link |  | `ai-turning-off` |  |
+| OK | filled-default |  | `config` | AI stays on; the quiet tries stop. |
 
 | → | Kind | Label | Status | Cites |
 |---|---|---|---|---|
-| `ai-turning-on` | flow | Turn on | ratified | N66 |
-| `config` | flow | Back | ratified | N66 |
+| `ai-turning-off` | flow | Turn off | ratified | N75 |
+| `config` | flow | OK | ratified | N75 |
 
-### `ai-turning-on`
+### `ai-off`
 
-face · banner · **ratified** · a face of `ai-offer` · board: AiBannerStates · cites N66
+face · status-line · **ratified** · a face of `config` · board: AiDefaultBannerStates · cites N75, N38
 
-While the space's page is put up again with Cloudflare's AI (a few seconds), the banner says so and holds no buttons.
+A one-shot status-line fact once the banner's Turn off has gone through, where the update's “Updated ✓” goes: said once, then the line is behind us. AI is settled on this Mac; the switch in Settings · Space turns it on again.
 
-**Entry.** Turn on in ai-confirm, until the page answers.
-
-| Said | Role | Copy | Note |
-|---|---|---|---|
-| “Turning on — a few seconds.” | banner | ratified | N66. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later. · N66 |
-
-| → | Kind | Label | Status | Cites |
-|---|---|---|---|---|
-| `ai-on` | auto | the page answers that its AI is on | ratified | N66 |
-| `ai-offer-failed` | fail | the re-wiring didn't go through (law 12) | ratified | N66 |
-
-### `ai-offer-failed`
-
-face · banner · **ratified** · a face of `ai-offer` · board: AiBannerStates · cites N66, law 12
-
-The re-wiring didn't go through (law 12): the banner says so in place of its line, for this visit to the popover, and Turn on… is live again.
-
-**Entry.** ai-turning-on, and the space's page couldn't be put up again with the AI.
+**Entry.** The page answers that its AI is off after the banner's Turn off: in the popover then, or the next time it opens.
 
 | Said | Role | Copy | Note |
 |---|---|---|---|
-| “Couldn't change that just now — try again in a moment.” | banner | ratified | N66. The words of the switch's own failure line. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later. · N66 |
-| “Turn on…” | button | ratified | N66. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later. · N66 |
-| “Not now” | link | ratified | N66. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later. · N66 |
+| “AI is off — turn it on any time in Settings.” | status | ratified | N75. Once only; it ranks after the upload truth (N38). Bagrat approved the board as drawn (Bagrat, 2026-10-25). · N75, N38 |
+
+### `ai-on-in-space`
+
+banner · banner · **ratified** · a face of `config` · board: AiDefaultBannerStates · cites N75
+
+A member's Mac, once the space's ping says its AI is on (N75): the new videos it records there are heard in the owner's Cloudflare account, so it says so once, in the lowest banner, with OK. No switch: the AI is the owner's to turn off. Owner-class Macs without the token never show it.
+
+**Entry.** `config` opens on a member's Mac whose space's ping says its AI is on, no higher banner shows, and the banner has never been answered on this Mac.
+
+| Said | Role | Copy | Note |
+|---|---|---|---|
+| “AI is on in Bagrat's space.” | banner | ratified | N75. Bold; the owner's name. Bagrat approved the board as drawn (Bagrat, 2026-10-25). · N75 |
+| “Your new videos there get titles, chapters and captions from what’s said — on Bagrat's Cloudflare account.” | line | ratified | N75. Under the bold line. Bagrat approved the board as drawn (Bagrat, 2026-10-25). · N75 |
+| “OK” | button | ratified | N75. Filled. Bagrat approved the board as drawn (Bagrat, 2026-10-25). · N75 |
 
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
-| Turn on… | filled-default |  | `ai-confirm` |  |
-| Not now | text-link |  | `config` | Hidden for good on this Mac, as ai-offer's. |
+| OK | filled-default |  | `config` | Answered for good on this Mac. |
 
-### `ai-on`
-
-face · status-line · **ratified** · a face of `config` · board: AiBannerStates · cites N66, N38
-
-A one-shot status-line fact once the banner's Turn on has gone through, where the update's “Updated ✓” goes: said once, then the line is behind us.
-
-**Entry.** The page answers that its AI is on after the banner's Turn on: in the popover then, or the next time it opens.
-
-| Said | Role | Copy | Note |
-|---|---|---|---|
-| “AI is on for new videos ✓” | status | ratified | N66. Once only; it ranks after the upload truth (N38). Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later. · N66 |
+| → | Kind | Label | Status | Cites |
+|---|---|---|---|---|
+| `config` | flow | OK | ratified | N75 |
 
 ### `library-cleanup`
 
@@ -4400,6 +4405,7 @@ A move that holds for a whole group of states, written once (B133). The tests ex
 | N72 | shroom edit: the command trims and cuts a video, and the app makes its final video | **The orchestrator, 2026-10-19:** the shroom command gains `edit` now that the editor (N63) has shipped, built in full with its words provisional for Bagrat's next look. (1) **`shroom edit <video>` says what the edit is**: how long the video plays and how long the recording is, the trim, each cut by its id (`m1`… by hand, `v1`… from the voice cues) with where it starts and ends and whether it's applied (a voice cue's cut can be a suggestion, not applied), and whether the final video is made. (2) **One change a call**, on the recording's own clock (seconds, or minutes:seconds): `trim <in> <out>`, `cut <start> <end>`, `put-back <cut>`, `apply <cut>`, `resize <cut> <start> <end>`, `revert`. Each is the editor's own step (B195), refused for the editor's own reasons, and saved at once as the editor's Done saves: the list in the video's record, so the link plays it from its next load and nothing is re-encoded first. `--dry-run` says what the edit would be and saves nothing. Undo and Redo stay the editor's: a window's history, never a record's. (3) **It goes where `rename` goes**: through the space's page under this Mac's device key, the owner's Macs on any video and a member's Mac on its own (B215); it waits while a take is open (law 4); and while that video is open in an editor window on this Mac it changes nothing (`editor_open`), so that window's Done never silently undoes it. The last save wins, as between two editors (B195). (4) **The final video is the app's to make**: after a change that leaves something out, the command asks the running app, opening it as the record commands do (`--no-launch` leaves it), and the app makes it as it makes one after the editor's Done, one at a time and never over a take, getting the video from the space first when this Mac hasn't got it; Download and the page use it once it's up, and the original is kept two days, then goes (B197: Keep for 2 days, the command never deleting an original itself). `shroom edit <video> finish` asks again, for a change saved while the app wasn't there. A change back to the whole recording needs no final video. (5) **Its answers**: the edit as (1) says it; a refusal is `cant_edit` with its reason (`out_of_range`, `leaves_too_little`, `too_short`, `nothing_changes`, `no_such_cut`, `editor_open`), exit 12; the words are the command's own (`say.rs`). Built: DECISIONS B225. **Ratified by Bagrat as built, 2026-10-19:** the command's words, the guide's *Editing* section and B225's three calls. | ratified | 2026-10-19 |
 | N73 | One editor window per video | **Bagrat asked, 2026-10-19** (relayed by the orchestrator), whether each video could get an editor window of its own, the Mac's document way, instead of the one window that comes forward on the video it holds; the same day he chose it, as the board “Editor — one window per video” draws it, built after the close prompt (N71) as its own change (relayed by the orchestrator). (1) **Edit on a video that isn't open** — Edit in shroom on its page, or Edit… in the Library — opens a window of its own for it, in front, as a first window opens: from the take when this Mac recorded the video, else after “Getting the video from your space…”. Every other window stays as it was, its changes still there, not saved and not lost. (2) **Edit on a video whose window is open**, from either, brings that window forward as it is. Nothing else moves. (3) **Each window is its own**: its steps and Undo, its Done, its final video, its “Delete the original?” and ✕'s question (N71). Done in one never touches another. The final videos are still made one at a time: a second waits its turn, its window reading “Making the final video… 0%” until then. (4) **Quit and Update** save every window's changes first, as now, without asking (Bagrat, 2026-10-19). Deleting a video closes its window and no other; leaving the space closes them all. While a take is open, nothing new opens (law 4): Edit in shroom pressed meanwhile waits, as now. (5) **The line “You're editing another video — press Done, then Edit again.” goes** (N69's), and with it the board “Editor — Edit on another video”, which drew a switch. No new words. Built: DECISIONS B227. **Ratified by Bagrat as drawn, 2026-10-19**; the build's calls are B227's, for him to overturn. | ratified | 2026-10-19 |
 | N74 | Setup shows its waits as they happen, and wiring finishes on its own | **A tester's finding, 2026-10-19** (a fresh Cloudflare account, 0.1.26): two waits in the setup felt stuck — the card step and the last step — and nearly lost him. **Bagrat, 2026-10-19 to 2026-10-25** (relayed by the orchestrator), on the boards “Setup — the card step shows its check as it runs…” and “Setup — the last step shows each part of wiring as it lands…”: (1) **The card step's check** shows its four parts under the card row as they run — Your token works · Your Cloudflare email is confirmed · Storage is switched on · Looking for your link name and any earlier space… — each ticking only when its own probe answers, never ahead of it. (2) **After Add credit card**, the watch is a row of its own: “Waiting for Cloudflare to confirm your card is in place…” with its running clock; from 45 s one quiet line: “A new card can take Cloudflare a minute or so to count. Once it's added, I'll move on — hang tight!” (3) **The last step** lists wiring's five parts under the calm line — Your private storage · Your video page · Your name is on · Last check passed · Adding this Mac to your space… — the part underway with its running clock, counted from the first try and never reset by a retry; from 3 min on the name, one quiet line: “New names can take Cloudflare a while longer, sometimes ten minutes. It's fine to close this window — I'll finish by myself.” While the permissions are the step, the wiring row's aside names the part underway, with its clock. (4) **Clocks on spinning rows only**: never on a done row or one still to come; a part that answers inside a second ticks before its clock shows. (5) **Wiring finishes on its own** (Bagrat, 2026-10-19: “finish on its own”): while a token is saved, the name row has ticked and no space is set up, wiring keeps trying with the window open or closed, and from the next launch after a quit (the login item's silent one included, its probe pass saying where the setup stands); it opens nothing when it lands (laws 5, 11), and the next click on the mushroom opens the popover ready to record — or the setup at the permissions, when they aren't done on this Mac. No step is stored (law 1): what's done is what the calls answered this time. **Ratified by Bagrat as drawn, 2026-10-25**; the forms the boards didn't draw (a part still to come, a part underway that the board drew done) are the build's, provisional. The last part of each run has no done form: the step moves on the moment it answers (the check to the next row, wiring to all set), so “Looked for your link name and any earlier space” and “This Mac is in your space”, on the boards' notes, never show and aren't lines. Built: DECISIONS B231. | ratified | 2026-10-25 |
+| N75 | AI is on by default, and said once | **Bagrat, 2026-10-25** (relayed by the orchestrator, on the boards “Popover — AI features are turned on…” and its states), reversing N66's off by default (2026-10-18): the space's AI — names, chapters, captions and voice cuts, one switch — is **on by default**. (1) **A space set up from now on starts with it on**: the setup's wiring puts up a new page with Cloudflare's AI and its schedule, and says nothing about it (Bagrat, 2026-10-25: nothing in the setup, nor in the Library); the switch in Settings · Space shows it on. A repair's wiring never changes it. (2) **A space set up before**: on the Mac that holds the setup key, the first popover after the update that would show the AI's banner turns it on as it shows “AI features are turned on.” with Turn off and OK — so nothing is heard before it's been said (`ai-turned-on`). It stays until OK or Turn off; Turn off re-wires the page without the AI and says so once (`ai-turning-off`, `ai-turn-off-failed`, `ai-off`). (3) **An explicit no stands**: a Mac that said Not now to N66's offer, or used the switch, has its AI settled and is never turned on by default nor shown the banner (one remembered fact on this Mac, `ai_offer_answered`). (4) **Members' Macs**, whose new videos the owner's account then hears, say so once: “AI is on in Bagrat's space.”, with OK (`ai-on-in-space`); they learn it from the space's ping. (5) The setup Mac offline, or not updated: nothing changes until it is opened on this version. N66's offer, its confirm, its turning-on, failed and on faces are gone; its switch, its cost line and everything the AI does stay. The privacy page's AI point is reworded to match. | ratified | 2026-10-25 |
 
 ## Surfaces
 

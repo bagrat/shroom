@@ -79,11 +79,11 @@ pub const READS: &[Read] = &[
     r("recording-off", "`config` opens and the probe finds screen recording switched off for shroom."),
     r("update-ready", "The release is downloaded and verified against the published fingerprint. A space exists"),
     r("updating-app", "Update clicked in config's banner or Settings → General, not mid-take."),
-    r("ai-offer", "`config` opens on the Mac that holds the setup key while the space's AI is off and no higher banner shows"),
-    r("ai-confirm", "Turn on… in the AI banner."),
-    r("ai-turning-on", "Turn on in ai-confirm, until the page answers."),
-    r("ai-offer-failed", "ai-turning-on, and the space's page couldn't be put up again with the AI."),
-    r("ai-on", "The page answers that its AI is on after the banner's Turn on"),
+    r("ai-turned-on", "`config` opens on the Mac that holds the setup key while the space's AI has never been settled on this Mac and no higher banner shows"),
+    r("ai-turning-off", "Turn off in ai-turned-on, until the page answers."),
+    r("ai-turn-off-failed", "ai-turning-off, and the space's page couldn't be put up again without the AI."),
+    r("ai-off", "The page answers that its AI is off after the banner's Turn off"),
+    r("ai-on-in-space", "`config` opens on a member's Mac whose space's ping says its AI is on"),
     // ── the overlays (r3) ──
     r("countdown", "Start recording in `config`."),
     r("bubble", "A camera is picked in the camera picker (not Camera off) and the source is a display"),
@@ -181,7 +181,7 @@ pub struct Win {
 }
 
 /// The popover faces the oracle reads (any other face `derive` adds is not its business).
-pub const POPOVER_FACES: &[&str] = &["display-lost", "mic-lost", "camera-lost", "mac-away", "mic-permission-lost", "discard-confirm-saved-take", "disk-low", "updated", "update-failed", "ai-on"];
+pub const POPOVER_FACES: &[&str] = &["display-lost", "mic-lost", "camera-lost", "mac-away", "mic-permission-lost", "discard-confirm-saved-take", "disk-low", "updated", "update-failed", "ai-off"];
 /// The onboarding faces the oracle reads.
 pub const ONBOARDING_FACES: &[&str] = &["first-launch", "name-v-clash", "wizard-unexpected", "member-done", "member-all-set", "member-all-set-own-mac"];
 /// The Settings faces the oracle reads: the tab, and the Space tab's mood.
@@ -337,22 +337,29 @@ fn banner(w: &World) -> Option<&'static str> {
     ai_banner(w)
 }
 
-/// N66: the AI banner — the setup Mac, the space's AI known off; while its Turn on re-wires
-/// the page, or after a try of it failed until the next, else while it's never been answered
-/// on this Mac (a Not now is for good).
+/// N75: the AI banner. A member's Mac: the space's ping says its AI is on, never answered
+/// here. The setup Mac, the AI never settled here: Turn off re-wiring the page, or after a
+/// try of it failed until the next; else the AI on — or being turned on as it showed.
 fn ai_banner(w: &World) -> Option<&'static str> {
-    if !config_exists(w) || role(w) != Some(Role::TokenHolder) || !w.space.token || w.space.ai != Some(false) {
+    if !config_exists(w) || w.once.ai_offer_answered {
         return None;
     }
-    if w.space.ai_turn == Some(shroom_core::world::AiTurn::Turning) {
-        if w.inflight.ops.contains_key(&Op::Ai) {
-            return Some("ai-turning-on");
+    if role(w) == Some(Role::Member) {
+        return (w.space.ai == Some(true)).then_some("ai-on-in-space");
+    }
+    if role(w) != Some(Role::TokenHolder) || !w.space.token {
+        return None;
+    }
+    let rewiring = w.inflight.ops.contains_key(&Op::Ai);
+    if w.space.ai_turn == Some(shroom_core::world::AiTurn::TurningOff) {
+        if rewiring {
+            return Some("ai-turning-off");
         }
         if w.inflight.failures.contains_key(&Op::Ai) {
-            return Some("ai-offer-failed");
+            return Some("ai-turn-off-failed");
         }
     }
-    (!w.once.ai_offer_answered).then_some("ai-offer")
+    (w.space.ai == Some(true) || w.space.ai_turn == Some(shroom_core::world::AiTurn::TurningOn)).then_some("ai-turned-on")
 }
 
 /// The status line's upload truth (N38) speaks — so a one-shot line waits.
@@ -432,7 +439,6 @@ fn popover(w: &World) -> Option<Pop> {
         // N34's stranded take, tossed: N25's question in the popover (B40 h).
         Some(Confirm::DiscardRow(dir)) if w.queue.iter().any(|q| &q.dir == dir) => return Some(pop("discard-confirm", vec!["discard-confirm-saved-take"])),
         Some(Confirm::Quit) => return Some(pop("quit-confirm", vec![])),
-        Some(Confirm::Ai) => return Some(pop("ai-confirm", vec![])),
         _ => {}
     }
     match &w.session.last_stop {
@@ -456,8 +462,8 @@ fn popover(w: &World) -> Option<Pop> {
             faces.push("updated");
         } else if w.update.failed {
             faces.push("update-failed");
-        } else if w.space.ai_turn == Some(shroom_core::world::AiTurn::On) {
-            faces.push("ai-on");
+        } else if w.space.ai_turn == Some(shroom_core::world::AiTurn::Off) {
+            faces.push("ai-off");
         }
     }
     Some(Pop { id: "config", faces, banner: banner(w) })
