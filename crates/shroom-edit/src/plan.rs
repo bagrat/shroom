@@ -585,9 +585,8 @@ fn plan_one(cx: &Ctx, cue: &Cue, floor: usize, ceil: usize, judged: Option<usize
     if !apart {
         return Vec::new();
     }
-    // It broke off a sentence: whatever was said after it, in the same words or others,
-    // that sentence is the slip, and it goes with the cue; the one before it, finished,
-    // stays.
+    // It broke off a sentence: that sentence is the likely slip, and it goes with the cue;
+    // the one before it, finished, stays.
     let sentence = (cue.first > floor)
         .then(|| cx.sentence_start(cue.first - 1, floor))
         .filter(|&s| {
@@ -599,17 +598,18 @@ fn plan_one(cx: &Ctx, cue: &Cue, floor: usize, ceil: usize, judged: Option<usize
         });
     let sentence = sentence.filter(|&s| cue.start - words[s].start <= SENTENCE_MAX);
     // The judgment heard a stretch said again in other words: it goes with the cue, as far
-    // back as the judgment put its start, and never less than the sentence the cue broke off.
-    // Without the judgment's word that it was said again, nothing was: the sentence is the
-    // likely slip, cut with the cue below, for the owner to check (a speaker may say the cue
-    // with no slip, inside a sentence they carry on).
+    // back as the judgment put its start. The sentence the cue broke off goes for sure only
+    // when the judgment heard all of it said again (a start at the sentence's or before it).
+    // Without that word, nothing was said again: the sentence is the likely slip, cut with
+    // the cue below, for the owner to check (a speaker may say the cue with no slip, inside
+    // a sentence they carry on).
     let reach = match (sentence, judged) {
-        (Some(s), Some(j)) => Some((
-            s.min(j),
+        (Some(s), Some(j)) if j <= s => Some((
+            j,
             "the sentence the cue broke off, and more by the judgment",
         )),
         (None, Some(j)) => Some((j, "said again in other words, by the judgment")),
-        (_, None) => None,
+        _ => None,
     };
     if let Some((from, why)) = reach {
         {
