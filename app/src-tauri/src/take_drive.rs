@@ -1856,10 +1856,30 @@ fn own_windows_take(d: &D, display: u32, windows: &[(String, &'static str)]) -> 
 
     // The popover and the agent label, each put up by hand and held.
     for (which, name, bar) in [(Overlay::Popover, "the popover", POPOVER_SEEN), (Overlay::Label, "the agent label", LABEL_SEEN)] {
+        if which == Overlay::Label {
+            // Its page draws the pill from the slice a take of the command's would give it,
+            // given again here: the take's own Scene turns may have cleared it (the hosted
+            // Mac saw the label's panel up with nothing drawn, 2026-10-25).
+            use tauri::Emitter;
+            with_panel(d, which, move |w| presenter::place_label(w, display));
+            let _ = d.app.emit_to(presenter::LABEL, "scene", shroom_core::scene::AgentLabel { display, line: shroom_core::copy::agent_label_line() });
+            std::thread::sleep(Duration::from_millis(500));
+        }
         let before = counter(display)?;
-        with_panel(d, which, |w| w.orderFrontRegardless());
-        let seen = lit_within(display, alone + bar, 5)?;
-        std::thread::sleep(Duration::from_millis(HELD_MS));
+        // Held up until a capture that leaves nothing out has seen it (the Scene's next turn
+        // may put it away), as the left-out drive does.
+        let mut seen = 0.0;
+        for _ in 0..6 {
+            with_panel(d, which, |w| w.orderFrontRegardless());
+            seen = lit_within(display, alone + bar, 1)?;
+            if seen - alone >= bar {
+                break;
+            }
+        }
+        for _ in 0..HELD_MS / 250 {
+            with_panel(d, which, |w| w.orderFrontRegardless());
+            std::thread::sleep(Duration::from_millis(250));
+        }
         with_panel(d, which, |w| w.orderOut(None));
         std::thread::sleep(Duration::from_millis(300));
         let after = counter(display)?;
