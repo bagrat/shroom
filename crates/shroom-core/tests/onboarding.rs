@@ -305,8 +305,9 @@ fn rows() -> Vec<(&'static str, World)> {
     }));
     rows.push(("card", token_saved()));
     // N74: the check's parts as they answer — the first underway, then the last.
-    rows.push(("card", checking(token_saved(), 1)));
-    rows.push(("card", checking(token_saved(), 4)));
+    for part in 1..=4 {
+        rows.push(("card", checking(token_saved(), part)));
+    }
     rows.push(("gate-email", gated(true, true)));
     rows.push(("gate-card", gated(false, true)));
     // Add credit card clicked: the page is open, shroom watches (N45).
@@ -343,9 +344,10 @@ fn rows() -> Vec<(&'static str, World)> {
     }));
     rows.push(("wiring", at_wiring()));
     // N74: wiring's parts — the first underway, the name past 3 min, the last.
-    rows.push(("wiring", wiring_at(at_wiring(), 1, 1_000, 1_000)));
+    for part in 1..=5 {
+        rows.push(("wiring", wiring_at(at_wiring(), part, 1_000, 1_000)));
+    }
     rows.push(("wiring", wiring_at(at_wiring(), 3, 1_000, 200_000)));
-    rows.push(("wiring", wiring_at(at_wiring(), 5, 1_000, 1_000)));
     rows.push(("wizard-offline", {
         let mut w = at_wiring();
         w.net.online = Fact::known(false, Mono(0));
@@ -645,7 +647,7 @@ fn fresh_install_through_the_wizard_and_the_chapter_to_idle_ready() {
     assert!(r.has(|e| matches!(e, Effect::Persist(PersistOp::Primed(_)))));
     // The permissions done before wiring: wiring is the last step (N45).
     assert_eq!(win(&r.scene), "wiring");
-    let Nest::Calm { line } = nest(&r.scene) else { panic!() };
+    let Nest::Calm { line, .. } = nest(&r.scene) else { panic!() };
     assert_eq!(line, "Almost there — switching your name on takes a few minutes the first time, and only once.");
     assert_eq!(row(&r.scene, 5), "✓ Letting macOS allow recording");
     assert_eq!(r.scene.onboarding.as_ref().unwrap().ret, None, "wiring has zero affordances");
