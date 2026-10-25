@@ -83,7 +83,7 @@ fn owner_name(w: &World) -> String {
 pub fn banner(w: &World) -> Option<Banner> {
     let life = life(w)?;
     let name = owner_name(w);
-    let amber = |id: &'static str, line: String, buttons: Vec<Button>| Banner { id, tone: Tone::Amber, line, detail: None, buttons };
+    let amber = |id: &'static str, line: String, buttons: Vec<Button>| Banner { id, tone: Tone::Amber, line, detail: None, buttons, parts: vec![], long: None };
     Some(match (w.space.role()?, life) {
         (Role::Member, Life::Revoked) => amber("member-revoked", copy::member_revoked(&name), stranded_buttons(w, copy::leave_space_ellipsis())),
         (Role::Member, Life::NeedsOwner) => amber("space-needs-owner", copy::needs_owner(&name), vec![]),

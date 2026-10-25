@@ -689,6 +689,24 @@ fn settings_rows() -> Vec<(&'static str, &'static str, World)> {
         w.inflight.failures.insert(Op::Ai, Failure { at: Mono(990), class: FailClass::Transport, tries: 1 });
         w
     }));
+    // N80: the switch while the page is re-wired (turning on, its second part with its clock),
+    // done, a turn off that stopped at its second part, and one running long.
+    let rewiring = |on: bool, part: u8, end: Option<AiEnd>, ran: u64| {
+        let mut w = space();
+        w.space.ai = Some(!on);
+        w.now = Mono(3_000 + ran);
+        w.space.ai_run = Some(AiRun { on, part, since: Mono(3_000), end });
+        match end {
+            None => drop(w.inflight.ops.insert(Op::Ai, Mono(990).plus(Op::Ai.deadline_ms()))),
+            Some(AiEnd::Stopped) => drop(w.inflight.failures.insert(Op::Ai, Failure { at: Mono(3_000 + ran), class: FailClass::Transport, tries: 1 })),
+            Some(AiEnd::Done) => w.space.ai = Some(on),
+        }
+        w
+    };
+    rows.push(("settings-space", "space-ai-turning-on", rewiring(true, 2, None, 4_200)));
+    rows.push(("settings-space", "space-ai-on-done", rewiring(true, 3, Some(AiEnd::Done), 0)));
+    rows.push(("settings-space", "space-ai-off-stopped", rewiring(false, 2, Some(AiEnd::Stopped), 0)));
+    rows.push(("settings-space", "space-ai-long", rewiring(false, 2, None, 24_000)));
     rows.push(("settings-space", "space-mic-off", {
         let mut w = space();
         w.mac.mic = Fact::known(Access::Denied, Mono(0));
@@ -1272,6 +1290,17 @@ fn region3_rows() -> Vec<(&'static str, &'static str, &'static str, World)> {
         let mut w = ai_on();
         w.space.ai_turn = Some(AiTurn::TurningOff);
         w.inflight.ops.insert(Op::Ai, Mono(990).plus(Op::Ai.deadline_ms()));
+        // Its parts (N80): the second underway, with its clock.
+        w.now = Mono(6_200);
+        w.space.ai_run = Some(AiRun { on: false, part: 2, since: Mono(3_000), end: None });
+        w
+    }));
+    rows.push(("popover", "ai-turning-off", "ai-turning-off-long", {
+        let mut w = ai_on();
+        w.space.ai_turn = Some(AiTurn::TurningOff);
+        w.inflight.ops.insert(Op::Ai, Mono(990).plus(Op::Ai.deadline_ms()));
+        w.now = Mono(27_000);
+        w.space.ai_run = Some(AiRun { on: false, part: 2, since: Mono(3_000), end: None });
         w
     }));
     rows.push(("popover", "ai-turn-off-failed", "ai-turn-off-failed", {

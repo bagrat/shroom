@@ -6,6 +6,7 @@
   import { onMount, tick } from "svelte";
   import { act, fit, key, keyed, onScene, sceneGet, type Action } from "./lib/ipc";
   import Mushroom from "./lib/Mushroom.svelte";
+  import Parts from "./onboarding/Parts.svelte";
   import Picker from "./popover/Picker.svelte";
 
   type Button = { action: Action; label: string; style: string; enabled: boolean; note?: string | null };
@@ -105,8 +106,11 @@
     {/if}
 
     {#if p.banner}
-      <section class="banner {p.banner.tone}" class:inline={p.banner.tone === "frost"} class:two={!!p.banner.detail}>
-        {#if p.banner.detail}
+      <section class="banner {p.banner.tone}" class:inline={p.banner.tone === "frost"} class:two={!!p.banner.detail || !!p.banner.parts}>
+        {#if p.banner.parts}
+          <!-- A re-wiring's parts under its bold line, as they land (N80: the AI's Turn off). -->
+          <div class="bline"><span class="dot" aria-hidden="true"></span><div class="lines wide"><p class="head">{p.banner.line}</p><Parts parts={p.banner.parts} />{#if p.banner.long}<p class="detail long">{p.banner.long}</p>{/if}</div></div>
+        {:else if p.banner.detail}
           <div class="bline"><span class="dot" aria-hidden="true"></span><div class="lines"><p class="head">{p.banner.line}</p><p class="detail">{p.banner.detail}</p></div></div>
         {:else}
           <div class="bline"><span class="dot" aria-hidden="true"></span><p>{p.banner.line}</p></div>
@@ -227,6 +231,10 @@
   .banner .lines p { margin: 0; }
   .banner .head { font-weight: 600; }
   .banner .detail { color: var(--muted); font-size: 12px; }
+  /* the parts fill the banner's width, whatever their lines (N80) */
+  .banner .lines.wide { flex: 1 1 auto; min-width: 0; }
+  .banner .lines :global(.parts) { margin-top: 4px; background: rgba(0, 0, 0, 0.12); padding: 6px 8px; gap: 2px; }
+  .banner .detail.long { padding: 2px 0 0 21px; }
   .dot { width: 8px; height: 8px; border-radius: 4px; flex: none; display: block; }
   .amber .dot, .dot.amber { background: var(--amber); }
   .frost .dot { background: var(--accent); }

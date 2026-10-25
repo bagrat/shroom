@@ -184,7 +184,7 @@ describe("the owner page", () => {
       expect(body).toContain(`body:has(main .upl:not([hidden]),main .upl[data-room]){--room:calc(100dvh - 282px)}`);
       expect(body).toMatch(/<div class="upl" id="ul" data-room>/);
       // A change to what plays (a press on the strip, cuts landing) greys Download until the
-      // poll, started again if it had stopped, finds its file (review of B249).
+      // poll, started again if it had stopped, finds its file (review of B250).
       expect(body).toContain(`function edited(){if(c.gone)return;var da=dl.firstChild;if(da)rest(da);if(!c.polling){gap=2000;next(0)}}`);
       expect(body).toContain(`document.addEventListener("shroom:keep",edited)`);
       expect(body).toContain(`function next(ms){c.polling=true;setTimeout(poll,ms)}`);

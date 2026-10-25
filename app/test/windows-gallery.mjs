@@ -82,8 +82,9 @@ const TEXT = new Set([
   // Region 6: the member's label on a row, Settings · Space's beneath-the-rows lines, the
   // Members tab's You row, a row's fact, the composer's line, a born link's address.
   "member", "mark_line", "you", "fact", "invite_line", "prefix",
-  // Naming (N66): the setup Mac's switch line under it.
-  "ai_line",
+  // Naming (N66): the setup Mac's switch line under it; its quiet and failed lines under its
+  // parts (N80).
+  "ai_line", "ai_long", "ai_failed", "clock",
   // A line in runs (Rich): who invites say they're from (B158).
   "text",
   // Report a problem (B180): General's help row and its sent line; the sheet's field label,
@@ -712,7 +713,8 @@ for (const entry of settings) {
       // Once the card watch is a part of its own, the card row keeps its arrow; each part
       // underway turns its own spinner (N74).
       const spinning = ["checking", "check", "calm", "priming"].includes(p.nest.kind) || (p.nest.kind === "gate" && !p.nest.watch) || (p.nest.kind === "token" && p.nest.checking);
-      const parts = [...(p.nest.parts ?? []), ...(p.nest.watch ? [p.nest.watch] : [])].filter((x) => x.glyph === "working").length;
+      // The AI switch's parts under it (N80) turn theirs too.
+      const parts = [...(p.nest.parts ?? []), ...(p.nest.watch ? [p.nest.watch] : []), ...(b.pane.ai_parts ?? [])].filter((x) => x.glyph === "working").length;
       check(`${tag}: spinner ${spinning ? "turns" : "absent"}`, (await page.locator(".spin:not(.rest)").count()) === (spinning ? 1 : 0) + parts);
       if (p.nest.kind === "token") check(`${tag}: token placeholder`, await page.locator(`input.paste[placeholder="${p.nest.placeholder}"]`).isVisible());
       if (p.nest.kind === "token") {
@@ -1027,6 +1029,28 @@ for (const variant of ["remove-member", "remove-invite", "remove-mac"]) {
   await ctx.close();
 }
 {
+  // N80: while the page is re-wired the switch shows where it's going, greyed, and its parts
+  // list under the cost line — the one underway with its clock; done ends in bold; a stop is
+  // crossed with the failure's line; from 20 s, the quiet line.
+  const { ctx, page } = await open("settings", set("space-ai-turning-on"));
+  const sw = page.getByRole("switch", { name: "AI for new videos", exact: true });
+  check("space · AI parts: the switch shows where it's going, greyed", (await sw.isChecked()) && (await sw.isDisabled()));
+  check("space · AI parts: three parts", (await page.locator(".ai-parts .part").count()) === 3);
+  check("space · AI parts: the one underway with its clock", (await page.locator(".ai-parts .part.working .clock").textContent()) === "0:04");
+  check("space · AI parts: the parts never grey", (await page.locator(".beneath > .mark.busy").evaluate((e) => getComputedStyle(e).opacity)) === "1");
+  await ctx.close();
+  const done = await open("settings", set("space-ai-on-done"));
+  check("space · AI parts done: the last in bold", (await done.page.locator(".ai-parts .part:last-child .line").evaluate((e) => getComputedStyle(e).fontWeight)) === "600");
+  await done.ctx.close();
+  const stopped = await open("settings", set("space-ai-off-stopped"));
+  check("space · AI parts stopped: crossed where it stopped", (await stopped.page.locator(".ai-parts .part.stopped .cross").count()) === 1);
+  check("space · AI parts stopped: the failure's line", (await stopped.page.locator(".ai-parts .ai-after").textContent()) === "Couldn't change that just now — try again in a moment.");
+  await stopped.ctx.close();
+  const long = await open("settings", set("space-ai-long"));
+  check("space · AI parts long: the quiet line", (await long.page.locator(".ai-parts .ai-after").textContent()) === "Cloudflare is slower than usual just now — hang tight.");
+  await long.ctx.close();
+}
+{
   const { ctx, page } = await open("settings", set("space-member"));
   await page.locator(".plan h1").click();
   await pasteAt(page, null, "https://v.myshroom.workers.dev/join/abc");
@@ -1249,6 +1273,10 @@ for (const entry of countdowns) {
   await ban.page.getByRole("button", { name: "OK", exact: true }).click();
   check("ai-turned-on: OK sends ai-ok", acted(await calls(ban.page), "popover", { do: "ai-ok" }));
   await ban.ctx.close();
+  // N80: the banner's Turn off lists its parts under its line, the one underway with its clock.
+  const off = await open("popover", pop("ai-turning-off"));
+  check("ai-turning-off: its parts under its line", (await off.page.locator(".banner .parts .part").count()) === 3 && (await off.page.locator(".banner .part.working .clock").textContent()) === "0:03");
+  await off.ctx.close();
   const member = await open("popover", pop("ai-on-in-space"));
   await clear(member.page);
   await member.page.getByRole("button", { name: "OK", exact: true }).click();
