@@ -2936,7 +2936,7 @@ fn cleanup_drive(d: &Drive) -> Result<(), String> {
     let s = d.wait("library-cleanup, on what's going", 15, |s| cleanup_view(s).is_some_and(|v| !v.going.is_empty()))?;
     let g = cleanup_view(&s).map(|v| v.going[0].clone()).expect("going");
     let labels: Vec<&str> = g.rows.first().map(|r| r.buttons.iter().map(|b| b.label.as_str()).collect()).unwrap_or_default();
-    d.check("Review… opens what's going first: its date, the line, Open page and Pin", g.heading == format!("Deleting on {date}") && g.line.as_deref() == Some("Nobody has watched these in 15 days. Pin one to keep it; a watch before then keeps it too.") && g.rows.iter().map(|r| r.key.as_str()).collect::<Vec<_>>() == ["Cdrive000billing"] && labels == ["Open page", "Pin"], format!("{} / {:?} / {labels:?}", g.heading, g.line));
+    d.check("Review… opens what's going first: its date, the line, Open page and Pin", g.heading == format!("Deleting on {date}") && g.line.as_deref() == Some("Nobody has watched this in 15 days. Pin it to keep it; a watch before then keeps it too.") && g.rows.iter().map(|r| r.key.as_str()).collect::<Vec<_>>() == ["Cdrive000billing"] && labels == ["Open page", "Pin"], format!("{} / {:?} / {labels:?}", g.heading, g.line));
     d.after(3000);
     d.rt.post(Event::WindowClosed(WindowKind::Library));
     d.wait("closed", 5, |s| s.library.is_none() && s.popover.is_none())?;
@@ -2967,7 +2967,8 @@ fn cleanup_drive(d: &Drive) -> Result<(), String> {
     d.check("the popover says it too, with OK", pop_banner(&s).is_some_and(|b| b.2 == ["OK"]), format!("{:?}", pop_banner(&s)));
     d.after(2500);
     d.act(Surface::Popover, Action::CleanedOk);
-    d.wait("OK: put away", 5, |s| pop_banner(s).is_none())?;
+    // Put away: the next banner in rank may take its place (this Mac's AI line, N76).
+    d.wait("OK: put away", 5, |s| pop_banner(s).is_none_or(|b| b.0 != "autoclean-warning"))?;
     d.after(1500);
     d.act(Surface::Popover, Action::Dismiss);
     d.wait("popover closed", 5, |s| s.popover.is_none())?;
