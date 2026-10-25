@@ -555,10 +555,12 @@ fn space(w: &World, at: SpaceAt, offline: bool) -> SpaceBody {
     });
     let ai_line = ai_known.map(|_| copy::ai_cost());
     let fell = ai_known.is_some() && super::ai_fell_through(w, crate::world::WindowKind::Settings);
-    let entered = w.session.windows.get(&crate::world::WindowKind::Settings).map(|d| d.entered);
+    // Done stays until the window closes or the tab changes (which ends the run): only a
+    // window opened before it was done shows it — a refocus is no new visit here.
+    let opened = w.session.windows.get(&crate::world::WindowKind::Settings).map(|d| d.opened);
     let shown = w.space.ai_run.filter(|_| ai_known.is_some()).filter(|r| match r.end {
         None => running.is_some(),
-        Some(crate::world::AiEnd::Done) => entered.is_some_and(|e| r.since >= e),
+        Some(crate::world::AiEnd::Done) => opened.is_some_and(|o| r.since >= o),
         Some(crate::world::AiEnd::Stopped) => fell,
     });
     let (ai_parts, ai_long) = shown.map(|r| super::ai_parts(w, r)).unwrap_or_default();

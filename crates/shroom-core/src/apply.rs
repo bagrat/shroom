@@ -1234,6 +1234,10 @@ fn act(w: &mut World, action: Action) -> Out {
         // ── Settings ──
         Action::SettingsTab(tab) => {
             w.prefs.settings_tab = Some(tab);
+            // Another tab ends the AI switch's done list (N78).
+            if w.space.ai_run.is_some_and(|r| r.end == Some(AiEnd::Done)) {
+                w.space.ai_run = None;
+            }
             // Another tab puts the link's light out: coming back never lights it again.
             w.session.fields.settings.lit = None;
             // A name being changed and left is put back (B158).
@@ -3524,9 +3528,9 @@ fn cloud(w: &mut World, news: CloudNews) -> Out {
         CloudNews::AiSet(on) => {
             answered(w, Op::Ai);
             w.space.ai = Some(on);
-            // Done once the page said so (N78): every part ticked.
+            // Done once the page said so (N78): every part ticked, from now.
             if let Some(run) = w.space.ai_run.as_mut() {
-                *run = AiRun { part: 3, end: Some(AiEnd::Done), ..*run };
+                *run = AiRun { part: 3, since: w.now, end: Some(AiEnd::Done), ..*run };
             }
             if w.space.ai_turn == Some(AiTurn::TurningOn) {
                 w.space.ai_turn = None;

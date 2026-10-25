@@ -1588,6 +1588,8 @@ pub fn registry() -> Vec<(&'static str, String)> {
         ("settings-space", ai_part(false, 3, crate::scene::Glyph::Working)),
         ("settings-space", ai_part(false, 3, crate::scene::Glyph::Done)),
         ("settings-space", ai_part(false, 3, crate::scene::Glyph::Ahead)),
+        ("settings-space", ai_part(true, 1, crate::scene::Glyph::Stopped)),
+        ("settings-space", ai_part(false, 1, crate::scene::Glyph::Stopped)),
         ("settings-space", ai_long()),
         ("ai-turned-on", ai_turned_on()),
         ("ai-turned-on", ai_turned_on_detail()),

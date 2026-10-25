@@ -911,9 +911,11 @@ fn refresh(rt: &Runtime) -> Result<CloudNews, FailClass> {
 }
 
 /// How the AI's re-wiring asks the page whether it says so (N78): measured within 0.3 s of
-/// the last call on the test account (2026-10-25), so a half-second cadence for 30 s.
+/// the last call on the test account (2026-10-25), so every half second — and, as the spec
+/// says, for as long as the re-wiring's 3 min deadline allows: 150 s, after the calls'
+/// own seconds, so the lane answers before the deadline does.
 const AI_CONFIRM_EVERY: Duration = Duration::from_millis(500);
-const AI_CONFIRM_WITHIN: Duration = Duration::from_secs(30);
+const AI_CONFIRM_WITHIN: Duration = Duration::from_secs(150);
 
 /// Naming on or off (N66, DECISIONS B206 a): this app's page put up again over the space's
 /// own with Cloudflare's AI and its schedule, or without them — only on the Mac that holds

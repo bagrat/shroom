@@ -109,7 +109,7 @@
       <section class="banner {p.banner.tone}" class:inline={p.banner.tone === "frost"} class:two={!!p.banner.detail || !!p.banner.parts}>
         {#if p.banner.parts}
           <!-- A re-wiring's parts under its bold line, as they land (N78: the AI's Turn off). -->
-          <div class="bline"><span class="dot" aria-hidden="true"></span><div class="lines"><p class="head">{p.banner.line}</p><Parts parts={p.banner.parts} />{#if p.banner.long}<p class="detail long">{p.banner.long}</p>{/if}</div></div>
+          <div class="bline"><span class="dot" aria-hidden="true"></span><div class="lines wide"><p class="head">{p.banner.line}</p><Parts parts={p.banner.parts} />{#if p.banner.long}<p class="detail long">{p.banner.long}</p>{/if}</div></div>
         {:else if p.banner.detail}
           <div class="bline"><span class="dot" aria-hidden="true"></span><div class="lines"><p class="head">{p.banner.line}</p><p class="detail">{p.banner.detail}</p></div></div>
         {:else}
@@ -231,6 +231,8 @@
   .banner .lines p { margin: 0; }
   .banner .head { font-weight: 600; }
   .banner .detail { color: var(--muted); font-size: 12px; }
+  /* the parts fill the banner's width, whatever their lines (N78) */
+  .banner .lines.wide { flex: 1 1 auto; min-width: 0; }
   .banner .lines :global(.parts) { margin-top: 4px; background: rgba(0, 0, 0, 0.12); padding: 6px 8px; gap: 2px; }
   .banner .detail.long { padding: 2px 0 0 21px; }
   .dot { width: 8px; height: 8px; border-radius: 4px; flex: none; display: block; }
