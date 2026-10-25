@@ -37,11 +37,18 @@ echo "the window: ${X:-?},${Y:-?} ${W:-?} × ${H:-?}" | tee "$OUT/size.txt"
 # The tabs' centres across the window, as the toolbar sets them (the gallery's, at 1×), and
 # their row: the title bar's 32 points, then the toolbar's middle.
 TAB_Y=$((${Y:-0} + 32 + 21))
-# The pane under the toolbar, the part of each shot compared.
-CROP_Y=$((${Y:-0} + 32 + 44)) CROP_H=$((${H:-720} - 32 - 44))
-for tab in General:180 Videos:258 Space:333 Members:416; do
+# The pane under the toolbar, the part of each shot compared — above the Dock, which the
+# runner's 768-point screen puts over the window's foot (its top edge alone differs between
+# two shots).
+CROP_Y=$((${Y:-0} + 32 + 44))
+foot=$((${Y:-0} + ${H:-720})); [ "$foot" -gt 690 ] && foot=690
+CROP_H=$((foot - CROP_Y))
+# General last, by its own click: the settings link lights the agent's row for a moment, and
+# another tab puts that light out.
+for tab in Videos:258 Space:333 Members:416 General:180; do
   name=${tab%%:*} x=$((${X:-0} + ${tab##*:}))
-  [ "$name" = General ] || { cliclick "c:$x,$TAB_Y"; sleep 2.5; }
+  cliclick "c:$x,$TAB_Y"
+  sleep 2.5
   # An empty spot of the toolbar takes the keyboard from any field (Members' composer has
   # it), so Home and End scroll the page rather than move a caret.
   cliclick "c:$((${X:-0} + 570)),$TAB_Y"
