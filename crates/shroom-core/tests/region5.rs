@@ -2416,10 +2416,12 @@ fn naming_is_a_switch_on_the_setup_mac_that_re_wires_the_page() {
     r.set(Action::SetAi(false));
     r.send(Event::Failed { op: Op::Ai, class: FailClass::Transport });
     assert!(space_pane(&r.scene).ai.as_ref().is_some_and(|t| t.on && t.enabled), "as the page has it");
-    assert_eq!(space_pane(&r.scene).ai_line, Some(shroom_core::copy::ai_failed()), "and it says so (law 12)");
+    // Since N78 the failure is said under the switch's parts; the cost line stays.
+    assert_eq!(space_pane(&r.scene).ai_failed, Some(shroom_core::copy::ai_failed()), "and it says so (law 12)");
     r.set(Action::SetAi(false));
     r.send(Event::Cloud(CloudNews::AiSet(false)));
-    assert_eq!(space_pane(&r.scene).ai_line, Some(shroom_core::copy::ai_cost()), "until it goes through");
+    assert_eq!(space_pane(&r.scene).ai_failed, None, "until it goes through");
+    assert_eq!(space_pane(&r.scene).ai_line, Some(shroom_core::copy::ai_cost()));
     let mut w = space_tab();
     w.space.ai = Some(true);
     w.take = Some(OpenTake { opened: Mono(950), since: Mono(950), ..take(Phase::Recording, 61_000) });
@@ -2623,4 +2625,155 @@ fn naming_shows_only_where_the_setup_key_is() {
         let w = with_popover(w);
         assert!(derive(&w).popover.unwrap().banner.is_none(), "{role:?}");
     }
+}
+
+// ── The AI switch shows its parts (N78) ──
+
+/// The AI's parts as the scene shows them: each part's mark, line and clock.
+fn ai_parts(parts: &[shroom_core::scene::Part]) -> Vec<(shroom_core::scene::Glyph, String, Option<String>)> {
+    parts.iter().map(|p| (p.glyph, p.line.clone(), p.clock.clone())).collect()
+}
+
+/// N78 (Bagrat, 2026-10-25): the switch moves at once to where it's going, greyed, and lists
+/// its three parts as they land — each ticked only when the run says the next began, the one
+/// underway with its running clock from its first second; done when the page says so, the
+/// list kept until the tab or the window changes.
+#[test]
+fn the_ai_switch_shows_its_parts_as_they_land() {
+    use shroom_core::copy;
+    use shroom_core::scene::Glyph::*;
+    let mut w = space_tab();
+    w.space.ai = Some(false);
+    let mut r = Run::new(w);
+    assert!(space_pane(&r.scene).ai_parts.is_empty(), "nothing before the press");
+    r.set(Action::SetAi(true));
+    let t = space_pane(&r.scene).ai.clone().unwrap();
+    assert!(t.on && !t.enabled, "moves at once, greyed: {t:?}");
+    assert_eq!(space_pane(&r.scene).ai_line, Some(copy::ai_cost()), "the cost line stays");
+    assert_eq!(
+        ai_parts(&space_pane(&r.scene).ai_parts),
+        [(Working, "Checking your space…".into(), None), (Ahead, "Connecting AI to your space".into(), None), (Ahead, "Switching AI on for new videos".into(), None)]
+    );
+    let t0 = r.t;
+    r.tick_to(t0 + 1_500);
+    assert_eq!(space_pane(&r.scene).ai_parts[0].clock.as_deref(), Some("0:01"), "its clock from its first second");
+    r.send(Event::Cloud(CloudNews::Part { op: Op::Ai, part: 2 }));
+    assert_eq!(
+        ai_parts(&space_pane(&r.scene).ai_parts),
+        [(Done, "Your space is ready".into(), None), (Working, "Connecting AI to your space…".into(), None), (Ahead, "Switching AI on for new videos".into(), None)],
+        "the clock starts again with its part"
+    );
+    r.send(Event::Cloud(CloudNews::Part { op: Op::Ai, part: 3 }));
+    assert_eq!(space_pane(&r.scene).ai_parts[2].glyph, Working);
+    assert_eq!(space_pane(&r.scene).ai_parts[2].line, "Switching AI on for new videos…");
+    r.send(Event::Cloud(CloudNews::AiSet(true)));
+    assert_eq!(
+        ai_parts(&space_pane(&r.scene).ai_parts),
+        [(Done, "Your space is ready".into(), None), (Done, "AI connected".into(), None), (Done, "AI is on for new videos".into(), None)],
+        "done when the page says so"
+    );
+    let t = space_pane(&r.scene).ai.clone().unwrap();
+    assert!(t.on && t.enabled, "live again: {t:?}");
+    assert_eq!(space_pane(&r.scene).ai_line, Some(copy::ai_cost()));
+    // Kept until the tab changes.
+    r.set(Action::SettingsTab(SettingsTab::General));
+    r.set(Action::SettingsTab(SettingsTab::Space));
+    assert!(space_pane(&r.scene).ai_parts.is_empty(), "gone once the tab changed");
+
+    // Off reads the same with its own words.
+    r.set(Action::SetAi(false));
+    r.send(Event::Cloud(CloudNews::Part { op: Op::Ai, part: 2 }));
+    assert!(!space_pane(&r.scene).ai.as_ref().unwrap().on, "moves to off at once");
+    assert_eq!(space_pane(&r.scene).ai_parts[1].line, "Disconnecting AI…");
+    assert_eq!(space_pane(&r.scene).ai_parts[2].line, "Switching AI off for new videos");
+    r.send(Event::Cloud(CloudNews::Part { op: Op::Ai, part: 3 }));
+    r.send(Event::Cloud(CloudNews::AiSet(false)));
+    assert_eq!(
+        space_pane(&r.scene).ai_parts.iter().map(|p| p.line.as_str()).collect::<Vec<_>>(),
+        ["Your space is ready", "AI disconnected", "AI is off for new videos"]
+    );
+}
+
+/// N78, law 12: a re-wiring that didn't go through puts the switch back as the page has it,
+/// live; the part that stopped carries its cross in its plain words, the parts after it go,
+/// and the failure's line is said under them.
+#[test]
+fn an_ai_switch_that_didnt_go_through_says_where_it_stopped() {
+    use shroom_core::copy;
+    use shroom_core::scene::Glyph::*;
+    let mut w = space_tab();
+    w.space.ai = Some(true);
+    let mut r = Run::new(w);
+    r.set(Action::SetAi(false));
+    r.send(Event::Cloud(CloudNews::Part { op: Op::Ai, part: 2 }));
+    assert_eq!(space_pane(&r.scene).ai_failed, None);
+    r.send(Event::Failed { op: Op::Ai, class: FailClass::Transport });
+    let sp = space_pane(&r.scene);
+    assert!(sp.ai.as_ref().is_some_and(|t| t.on && t.enabled), "as the page has it, live");
+    assert_eq!(ai_parts(&sp.ai_parts), [(Done, "Your space is ready".into(), None), (Stopped, "Disconnecting AI".into(), None)]);
+    assert_eq!(sp.ai_failed, Some(copy::ai_failed()), "said (law 12)");
+    assert_eq!(sp.ai_line, Some(copy::ai_cost()), "the cost line stays");
+    // The next try starts over.
+    r.set(Action::SetAi(false));
+    let sp = space_pane(&r.scene);
+    assert_eq!(sp.ai_failed, None);
+    assert_eq!(sp.ai_parts[0].glyph, Working);
+}
+
+/// N78: from 20 s on one part, one quiet line under the parts; the clock keeps going.
+#[test]
+fn an_ai_switch_running_long_says_so_once() {
+    use shroom_core::copy;
+    let mut w = space_tab();
+    w.space.ai = Some(true);
+    let mut r = Run::new(w);
+    r.set(Action::SetAi(false));
+    r.send(Event::Cloud(CloudNews::Part { op: Op::Ai, part: 2 }));
+    let t0 = r.t;
+    r.tick_to(t0 + 19_000);
+    assert_eq!(space_pane(&r.scene).ai_long, None);
+    r.tick_to(t0 + 24_000);
+    assert_eq!(space_pane(&r.scene).ai_long, Some(copy::ai_long()));
+    assert_eq!(space_pane(&r.scene).ai_parts[1].clock.as_deref(), Some("0:24"));
+}
+
+/// N78: while the run's clock shows, the window wakes each second to move it.
+#[test]
+fn the_ai_switch_clock_wakes_the_window_each_second() {
+    let mut w = space_tab();
+    w.space.ai = Some(true);
+    let mut r = Run::new(w);
+    r.set(Action::SetAi(false));
+    let since = r.w.space.ai_run.unwrap().since;
+    let wake = r.scene.next_wake;
+    assert!(wake.is_some_and(|m| m.0 <= since.0 + 1_000), "{wake:?} after {since:?}");
+}
+
+/// N78: the banner's Turn off lists the same parts under its line, with their clock, and
+/// the quiet line from 20 s; its off and didn't-go-through faces stay as they were.
+#[test]
+fn the_banners_turn_off_shows_its_parts() {
+    use shroom_core::copy;
+    use shroom_core::scene::Glyph::*;
+    let banner = |r: &Run| r.scene.popover.as_ref().and_then(|p| p.banner.clone()).unwrap();
+    let mut r = Run::new(ai_turned_on());
+    r.act(Action::AiTurnOff);
+    let b = banner(&r);
+    assert_eq!((b.id, b.line.as_str()), ("ai-turning-off", copy::ai_turning_off().as_str()));
+    assert_eq!(
+        ai_parts(&b.parts),
+        [(Working, "Checking your space…".into(), None), (Ahead, "Disconnecting AI".into(), None), (Ahead, "Switching AI off for new videos".into(), None)]
+    );
+    r.send(Event::Cloud(CloudNews::Part { op: Op::Ai, part: 2 }));
+    let t0 = r.t;
+    r.tick_to(t0 + 3_200);
+    let b = banner(&r);
+    assert_eq!(ai_parts(&b.parts)[1], (Working, "Disconnecting AI…".into(), Some("0:03".into())));
+    assert_eq!(b.long, None);
+    r.tick_to(t0 + 21_000);
+    assert_eq!(banner(&r).long, Some(copy::ai_long()));
+    r.send(Event::Failed { op: Op::Ai, class: FailClass::Transport });
+    let b = banner(&r);
+    assert_eq!(b.id, "ai-turn-off-failed");
+    assert!(b.parts.is_empty() && b.long.is_none(), "the failed face as it was");
 }

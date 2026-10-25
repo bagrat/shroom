@@ -183,3 +183,32 @@ fn auto_cleanup_shares_naming_s_one_schedule_and_each_keeps_it_while_the_other_i
     wire::set_schedule(&c, &spec(&acc, &tok, &m), false).unwrap();
     assert!(schedules().is_empty(), "both off: no schedule");
 }
+
+/// N78: turning AI on or off says its parts as they begin — the page put up again, then its
+/// schedule — and ends only once the page itself says so.
+#[test]
+fn naming_says_its_parts_in_order_and_ends_when_the_page_says_so() {
+    let fake = Fake::start(State { subdomain: Some("bagrat".into()), ..State::fresh() });
+    let (acc, tok, m) = wired(&fake, "0.4.0");
+    let c = cloud(&fake);
+    let at = |h: &str| Space::at(h, &fake.page(h));
+    for on in [true, false] {
+        let seen = std::cell::RefCell::new(Vec::new());
+        wire::set_ai_parts(&c, &spec(&acc, &tok, &m), on, false, Some((&check(&at, "0.4.0"), HOST)), &|p| seen.borrow_mut().push(p)).unwrap();
+        assert_eq!(*seen.borrow(), [wire::AiPart::Page, wire::AiPart::Schedule]);
+        assert_eq!(ai_of(&fake), Some(on));
+    }
+}
+
+/// N78: a page that never says so is a re-wiring that didn't go through (law 12) — never a
+/// done said ahead of the page.
+#[test]
+fn naming_that_the_page_never_confirms_didnt_go_through() {
+    let fake = Fake::start(State { subdomain: Some("bagrat".into()), ..State::fresh() });
+    let (acc, tok, m) = wired(&fake, "0.4.0");
+    let c = cloud(&fake);
+    // Asked somewhere nothing answers: the page never says its AI is on.
+    let never = |_: &str| Space::at(HOST, "http://127.0.0.1:9");
+    let r = wire::set_ai_parts(&c, &spec(&acc, &tok, &m), true, false, Some((&check(&never, "0.4.0"), HOST)), &|_| {});
+    assert!(matches!(r, Err(WireError::NotAnswering)), "{r:?}");
+}
