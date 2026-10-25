@@ -60,13 +60,13 @@ click() { # <label> [seconds to wait for it]
   cliclick "c:$xy"
   say_ "clicked '$1' at $xy"
 }
-# A switch: its row is the element, the toggle sits at the row's right end.
+# A switch: the whole row is the element and its toggle is drawn at one end, so it is
+# pressed as VoiceOver presses it.
 toggle() { # <label>
-  local frame
-  frame=$(ax | awk -F'\t' -v l="$1" '$2 == "AXCheckBox" && $3 == l { print $5; exit }')
-  [ -n "$frame" ] || { say_ "no switch '$1'"; return 1; }
-  cliclick "c:$(echo "$frame" | awk -F, '{ printf "%d,%d", $1 + $3 - 30, $2 + $4 / 2 }')"
-  say_ "switched '$1'"
+  local said
+  said=$(osascript -l JavaScript "$AX" shroom press AXCheckBox "$1" 2>&1)
+  say_ "switch '$1': $said"
+  [ "$said" = pressed ]
 }
 value_of() { ax | awk -F'\t' -v l="$1" '$1 != "W" && $2 != "AXStaticText" && $3 == l { print $6; exit }'; }
 # Every shroom window, whole, at its own frame; and the screen.
