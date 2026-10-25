@@ -172,7 +172,8 @@ export async function editorLooks({ browser, origin, mediaOrigin, entries, check
       // the footer, then the question in the footer's place; Revert is gone.
       const after = b.after ?? null;
       const asking = after?.state === "asking";
-      // ✕ with changes not saved asks in the same place (N71).
+      // ✕ with changes not saved asks the same way (N71): each a sheet over the window
+      // (Bagrat, 2026-10-25), the window behind held as it was.
       const closing = b.closing ?? null;
       const question = asking ? after : closing;
       const lines = question
@@ -180,7 +181,8 @@ export async function editorLooks({ browser, origin, mediaOrigin, entries, check
         : [b.footer, ...(["ready", "opening"].includes(b.media.state) && !after ? [b.hint] : []), ...(b.media.line ? [b.media.line] : []), ...(after?.state === "making" ? [after.line] : []), ...(b.original_kept && !after ? [b.original_kept] : [])];
       const missing = lines.filter((l) => !body.includes(norm(l)));
       check(`${tag}: every line is visible`, missing.length === 0, missing.join(" | "));
-      const want = asking ? [after.keep, after.delete] : closing ? [closing.discard, closing.keep, closing.save] : [...(b.media.state === "failed" ? [b.media.retry] : []), ...(b.media.state === "failed" || after || !b.revert ? [] : [b.revert]), b.done];
+      const behind = [...(b.media.state === "failed" ? [b.media.retry] : []), ...(b.media.state === "failed" || after || !b.revert ? [] : [b.revert]), b.done];
+      const want = [...(asking ? [after.keep, after.delete] : closing ? [closing.discard, closing.keep, closing.save] : []), ...behind];
       const shown = (await page.locator("button:visible").evaluateAll((els) => els.map((e) => e.innerText.trim()).filter(Boolean))).map(norm);
       check(`${tag}: the Scene's buttons, no others with words`, shown.sort().join("|") === want.map((x) => x.label).sort().join("|"), shown.join("|"));
       for (const x of want) {
@@ -189,8 +191,28 @@ export async function editorLooks({ browser, origin, mediaOrigin, entries, check
         check(`${tag}: “${x.label}” ${x.enabled ? "enabled" : "greyed"}, ${x.style}`, ok);
       }
       if (question) {
-        check(`${tag}: the question takes the footer's place`, (await page.locator(".foot").count()) === 0 && (await page.locator(".ask").count()) === 1);
-        const order = (await page.locator(".ask button").allInnerTexts()).map(norm);
+        // A sheet as the Library's: the window dimmed under it and held — nothing behind it
+        // takes a click or the keyboard — and nobody's button holds the keyboard.
+        const sheet = await page.evaluate(() => {
+          const s = document.querySelector(".scrim > .sheet[role=alertdialog][aria-modal=true]");
+          const scrim = s?.parentElement;
+          const r = scrim?.getBoundingClientRect();
+          return {
+            one: document.querySelectorAll(".sheet").length === 1 && !!s,
+            covers: !!r && r.left <= 0 && r.top <= 0 && r.right >= innerWidth && r.bottom >= innerHeight && getComputedStyle(scrim).position === "fixed",
+            dimmed: !!scrim && !/rgba\(0, 0, 0, 0\)|transparent/.test(getComputedStyle(scrim).backgroundColor),
+            title: s?.querySelector("h2")?.innerText,
+            line: [...(s?.querySelectorAll("p") ?? [])].map((p) => p.innerText),
+            inert: document.querySelector("main.ed").inert && !s?.closest("[inert]"),
+            footBehind: !!document.querySelector("main.ed .foot"),
+            focus: document.activeElement === s,
+          };
+        });
+        check(`${tag}: the question is a sheet over the window, dimmed behind it`, sheet.one && sheet.covers && sheet.dimmed, JSON.stringify(sheet));
+        check(`${tag}: the sheet says the question's title and line`, sheet.title === question.title && sheet.line.join("|") === question.line, JSON.stringify(sheet));
+        check(`${tag}: the window behind is held (inert), its footer as it was`, sheet.inert && sheet.footBehind, JSON.stringify(sheet));
+        check(`${tag}: the sheet holds the keyboard, never a button in it`, sheet.focus);
+        const order = (await page.locator(".sheet .sheet-acts button").allInnerTexts()).map(norm);
         if (asking) {
           check(`${tag}: Keep for 2 days, then Yes, delete — filled, leading`, order.join("|") === [after.keep.label, after.delete.label].join("|") && after.delete.style === "filled", order.join("|"));
           check(`${tag}: Return isn't Yes, delete (law 9)`, w.ret === null);
@@ -215,7 +237,7 @@ export async function editorLooks({ browser, origin, mediaOrigin, entries, check
       check(`${tag}: nothing scrolls`, !wide);
       // The system font, as every window has it (theme.css's --font): a browser's default
       // here would be a serif in a Mac's webview.
-      const fonts = await page.evaluate(() => [".ed", ".time", ".hint", ".foot .line", ".foot button", ".ask h2", ".ask button"].map((q) => document.querySelector(q)).filter(Boolean).map((e) => getComputedStyle(e).fontFamily));
+      const fonts = await page.evaluate(() => [".ed", ".time", ".hint", ".foot .line", ".foot button", ".sheet h2", ".sheet button"].map((q) => document.querySelector(q)).filter(Boolean).map((e) => getComputedStyle(e).fontFamily));
       check(`${tag}: its words in the system font`, fonts.length >= 3 && fonts.every((f) => f.includes("-apple-system")), fonts.join(" | "));
       check(`${tag}: no page errors`, errors.length === 0, errors.join(" | "));
       check(`${tag}: listens to its own window's slice, by its label`, (await page.evaluate(() => window.__listenTarget()))?.label === EDITOR_LABEL);
@@ -604,6 +626,19 @@ export async function editorDrives({ browser, origin, mediaOrigin, entries, chec
     await clear(page);
     await page.keyboard.press("Enter");
     check("editor-keep-original: Return does nothing", (await calls(page)).length === 0, JSON.stringify(await calls(page)));
+    // The window behind is held: Space plays nothing, and a click on Play or the track
+    // under the sheet's dimming reaches nothing.
+    await page.keyboard.press(" ");
+    const play = await page.locator(".play").boundingBox();
+    const track = await page.locator("canvas.wave").boundingBox();
+    await page.mouse.click(play.x + play.width / 2, play.y + play.height / 2);
+    await page.mouse.click(track.x + track.width / 2, track.y + track.height / 2);
+    await page.waitForTimeout(300);
+    check(
+      "editor-keep-original: behind the sheet nothing plays or answers",
+      (await page.evaluate(() => document.querySelector("video").paused)) && (await calls(page)).length === 0,
+      JSON.stringify(await calls(page)),
+    );
     await page.keyboard.press("Escape");
     await page.getByRole("button", { name: w.body.after.delete.label, exact: true }).click();
     await page.getByRole("button", { name: w.body.after.keep.label, exact: true }).click();
