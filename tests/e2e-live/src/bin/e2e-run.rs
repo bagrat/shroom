@@ -9,6 +9,9 @@
 //!       the run's own space (`v-<run>`, `shroom-space-<run>`) and token deleted, crashed
 //!       runs' leftovers reaped. Another run going on the account is never touched, so
 //!       runs side by side need no lock (DECISIONS B131).
+//!   e2e-run product-close
+//!       the release's space (`v` or its fallbacks over `shroom-space`) deleted — the AI
+//!       migration check's, which sets up a signed release (`e2e-migration.yml`).
 //!
 //! Needs SHROOM_E2E=1 and the account token and id (see `config`).
 
@@ -40,7 +43,8 @@ fn main() {
             let run = space_file.and_then(|f| std::fs::read_to_string(f).ok()).map(|s| s.trim().to_string()).filter(|r| shroom_cloud::wire::run_started(r).is_some());
             shroom_e2e_live::close(&cfg, run.as_deref()).map(|gone| format!("closed{}: {}", run.map(|r| format!(" run {r}")).unwrap_or_default(), if gone.is_empty() { "nothing to delete".to_string() } else { gone.join(", ") }))
         }
-        _ => Err("usage: e2e-run open <token-file> <space-id-file> | close [<space-id-file>]".to_string()),
+        (Some("product-close"), None, None) => shroom_e2e_live::close_product(&cfg).map(|gone| format!("the release's space: {}", if gone.is_empty() { "nothing to delete".to_string() } else { gone.join(", ") })),
+        _ => Err("usage: e2e-run open <token-file> <space-id-file> | close [<space-id-file>] | product-close".to_string()),
     };
     match result {
         Ok(said) => println!("e2e-run: {said}"),
