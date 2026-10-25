@@ -114,7 +114,7 @@ describe("the owner page", () => {
     const up = await (await req(env, `/${ID}`, { headers: { cookie } })).text();
     expect(up).toContain(`<a class="copy edit" id="ed" data-href="shroom://edit/v.example.workers.dev/${ID}" data-tip="${COPY.editInShroom}" aria-label="${COPY.editInShroom}" aria-disabled="true">${COPY.editInShroom}</a>`);
     expect(up).not.toMatch(/id="ed"[^>]* href=/);
-    expect(up).toContain(`if(s.drained)wake(ed,ed.getAttribute("data-href"))`);
+    expect(up).toContain(`if(ed&&s.drained)wake(ed,ed.getAttribute("data-href"))`);
     // A recipient's page and the embed never have it.
     expect(await (await req(env, `/${ID}`)).text()).not.toContain("shroom://edit/");
     expect(await (await req(env, `/${ID}?embed=1`)).text()).not.toContain("shroom://edit/");
@@ -178,6 +178,8 @@ describe("the owner page", () => {
       expect(body).not.toContain(`dl.appendChild`);
       // Greyed is drawn the same for each: dimmed, no hover, nothing under the pointer.
       expect(body).toContain(`#dl a[aria-disabled=true]{cursor:default}#dl a[aria-disabled=true]::before{opacity:.4}`);
+      // The column keeps the player's width while the frame waits for it: nothing moves at the go-live.
+      expect(body).toContain(`body:has(main .player,main .wait){--bar:56px}`);
     });
 
     it("leaves the viewer's page as it is: what a viewer can't use isn't drawn (B166)", async () => {

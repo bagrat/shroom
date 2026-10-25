@@ -83,7 +83,8 @@ async function tipAt(page, at, finger) {
     }, at);
   } else {
     const r = await page.$eval(".seek", (sk) => { const b = sk.getBoundingClientRect(); return { x: b.left, y: b.top + b.height / 2, w: b.width, max: +sk.max }; });
-    await page.mouse.move(r.x + (r.w * (at + 0.5)) / r.max, r.y);
+    // Where the head would stand at that time: its travel is inset by its radius (7 px).
+    await page.mouse.move(r.x + 7 + ((r.w - 14) * (at + 0.5)) / r.max, r.y);
   }
   await page.waitForTimeout(200);
   return page.evaluate(() => {
@@ -290,7 +291,9 @@ const FACES = [
       await page.evaluate((icons) => { window.__icons = icons; }, await iconsOf(page));
       if (await page.$("#dl a")) await page.click("#dl a", { force: true });
     },
-    golive: (id) => meta(id, { progress: { done: 9, total: 9, updatedAt: iso(Date.now()) } }), wait: () => true, pictures: [], lines: () => [], act: async (page) => {
+    // The record learns the video's shape at the go-live (16:9 is the page's guess before it), so
+    // a 16:10 take re-lays the whole column then: a different jump from this one, kept apart here.
+    golive: (id) => meta(id, { media: { ...media(id), width: 1920, height: 1080 }, progress: { done: 9, total: 9, updatedAt: iso(Date.now()) } }), wait: () => true, pictures: [], lines: () => [], act: async (page) => {
       const missing = [];
       const before = await page.evaluate(() => window.__icons);
       if (!before) return ["the page left (a greyed Download went somewhere)"];
