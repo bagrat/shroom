@@ -155,7 +155,7 @@ export const STALL_SECONDS = 120;
 export const IFACE = 2;
 /** The version of the app that deploys this file — the same as the app's own
  * (`app/src-tauri/tauri.conf.json`, held equal by a shroom-cloud test). */
-export const VERSION = "0.1.27";
+export const VERSION = "0.1.28";
 
 const ID = /^[A-Za-z0-9_-]{16}$/;
 const HLS_JS_KEY = ".shroom/player/hls.min.js";
@@ -2048,8 +2048,11 @@ function thumbsOf(id, meta, live, store = true) {
  * @param {string} [src] @param {boolean} [listens] the space hears its takes (N66) */
 function ownerPage(id, meta, now, face, waiting, blocked = false, pending = false, src = `/m/${id}/master.m3u8`, ai = AI_NONE, listens = false) {
   const live = meta.state === "live";
-  const placeholder = meta.titled ? untitled(meta.createdAt ?? new Date(now).toISOString()) : meta.title || untitled(meta.createdAt);
-  const value = meta.titled ? meta.title : "";
+  // A name the space made (N66) is the title: the field holds it as its value, drawn as plain
+  // text until it's clicked, and the page doesn't open in it (Bagrat's report, 2026-10-24).
+  const named = !meta.titled && meta.named?.by === "ai" && typeof meta.named.title === "string" && meta.title ? String(meta.title) : "";
+  const placeholder = meta.titled || named ? untitled(meta.createdAt ?? new Date(now).toISOString()) : meta.title || untitled(meta.createdAt);
+  const value = meta.titled ? meta.title : named;
   const st = status(meta, now);
   const stalled = blocked || !!st.stalled;
   const drainedNow = live && st.drained;
@@ -2060,7 +2063,7 @@ function ownerPage(id, meta, now, face, waiting, blocked = false, pending = fals
   const cutsTag = cutsField(meta, now, listens).cuts ?? null;
   const hearing = drainedNow && cutsTag === "coming";
   const line = drainedNow ? (hearing ? COPY.finishing : "") : stalled ? waiting : COPY.finishing;
-  const field = `<input class="title" id="t" maxlength="${TITLE_MAX}" aria-label="Title" value="${escapeHtml(value)}" placeholder="${escapeHtml(placeholder)}"${meta.titled ? "" : " autofocus"}>`;
+  const field = `<input class="title" id="t" maxlength="${TITLE_MAX}" aria-label="Title" value="${escapeHtml(value)}" placeholder="${escapeHtml(placeholder)}"${value ? "" : " autofocus"}>`;
   const frame = meta.media?.poster ? `<img src="/m/${id}/poster.jpg" alt="">` : "";
   const stage = live ? aiPlayer(playerHtml(id, meta), ai) : `<div class="wait" id="w">${frame}</div>`;
   // Download hands over the video as it plays (N63): it waits for an edit's permanent copy.
@@ -2092,7 +2095,7 @@ function ownerPage(id, meta, now, face, waiting, blocked = false, pending = fals
   // coming, it waits for the line to end with none.
   const hint = listens && !rows ? `<div class="cue-hint" role="note" hidden><span>${escapeText(COPY.cueHint)}</span><button type="button">${escapeText(COPY.cueHintGotIt)}</button></div>` : "";
   const cfg = JSON.stringify({
-    id, live, drained: drainedNow, pending, mp4: view.download, saved: meta.titled ? meta.title : "", copied: COPY.copied, copy: COPY.copyLink, waiting,
+    id, live, drained: drainedNow, pending, mp4: view.download, saved: value, copied: COPY.copied, copy: COPY.copyLink, waiting,
     copyThumb: COPY.copyThumbnail, preparing: COPY.preparingThumbnail, thumbs, dl: COPY.download, finishing: COPY.finishing, notFound: COPY.notFound, unavailable: COPY.unavailable, labels: LABELS, player: live ? "" : playerHtml(id, { ...meta, media: { ...meta.media, poster: null } }),
     cutsTag, listenFor, cutLabels: { back: COPY.putBack, again: COPY.cutAgain },
   });
@@ -2106,6 +2109,7 @@ function send(v){c.pend=null;fetch("/_shroom/title/"+c.id,{method:"POST",headers
 .then(function(r){if(r.status===404)c.pend=v;return r.ok?r.json():null}).then(function(j){if(j){saved=j.title;if(document.activeElement!==t)t.value=saved;document.title=saved;th.retitle(saved)}})}
 function save(){var v=t.value.replace(/\\s+/g," ").trim();if(!v){t.value=saved;return}if(v===saved)return;send(v)}
 t.addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();t.blur()}});t.addEventListener("blur",save);
+t.addEventListener("shroom:named",function(e){saved=e.detail});
 function copied(el,label){return function(ok){if(!ok)return;el.textContent=c.copied;el.classList.add("done");setTimeout(function(){el.textContent=label;el.classList.remove("done")},1500)}}
 var b=document.getElementById("c");b.onclick=function(){shroomCopy(location.origin+"/"+c.id,null).then(copied(b,c.copy))};
 tb.onclick=function(){if(tb.getAttribute("aria-disabled"))return;th.copy().then(copied(tb,c.copyThumb))};
@@ -5208,16 +5212,23 @@ const aiHead = (ai) => (aiCss(ai) ? `<style>${AI_STYLE}</style>` : "");
  * later; a slot for it while a name is on its way. @param {AiFace} ai */
 const aiNote = (ai) => (ai.line || ai.waiting ? `<p class="ainote" id="ainote"${ai.line ? "" : " hidden"}>${escapeText(ai.line)}</p>` : "");
 
-/** The owner's page while a name is on its way (B209 c): it asks now and then, and shows
- * the name in the title field (as its placeholder, so it stays the space's until it's typed
- * over) unless a title was typed meanwhile; an early title (B205 f) is shown and asked past,
- * till the full name takes its place. @param {string} id @param {AiFace} ai */
+/** The owner's page while a name is on its way (B209 c, B230): it asks now and then, and a
+ * name that comes is the title — the field's value, plain text until clicked, the page's save
+ * told of it first so an untouched field writes nothing and the name stays the space's. A
+ * field being typed in is left be, and one the page opened in lets go of the keyboard; one the
+ * owner clicked into, before a key, takes the name selected, ready to retype. An early title
+ * (B205 f) is shown and asked past, till the full name takes its place. Once a title is saved
+ * from the field, nothing more is taken. @param {string} id @param {AiFace} ai */
 function aiOwnerScript(id, ai) {
   if (!ai.waiting) return "";
   return `<script>(function(){var t=document.getElementById("t"),l=document.getElementById("ainote"),n=0,c=${jsonForScript(JSON.stringify({ id, named: COPY.named, later: COPY.namingLater }))};
+var shown=t.value,touched=false,mine=false;
 function say(x){if(l){l.textContent=x;l.hidden=!x}}
+function take(x){if(mine||x===shown)return;var was=shown;shown=x;t.dispatchEvent(new CustomEvent("shroom:named",{detail:x}));if(t.value!==was)return;
+t.value=x;document.title=x;if(document.activeElement===t){if(touched)t.select();else t.blur()}}
 function poll(){if(++n>60)return;fetch("/_shroom/named/"+c.id,{cache:"no-store"}).then(function(r){return r.ok?r.json():null}).then(function(j){if(!j||j.titled){say("");return}
-if(j.named){t.placeholder=j.named;if(!t.value)document.title=j.named;say(c.named);if(!j.early)return}
+if(j.named){take(j.named);say(c.named);if(!j.early)return}
 if(j.later)say(c.later);setTimeout(poll,n<12?5000:30000)}).catch(function(){setTimeout(poll,30000)})}
-t.addEventListener("change",function(){say("")});setTimeout(poll,5000)})()</script>`;
+t.addEventListener("pointerdown",function(){touched=true});t.addEventListener("input",function(){touched=true});
+t.addEventListener("change",function(){mine=true;say("")});setTimeout(poll,5000)})()</script>`;
 }

@@ -394,7 +394,7 @@ describe("the early title (B205 f)", () => {
     expect(record(env).titled ?? false).toBe(false);
     // The owner's page has it from the start, in its field, and says where it came from.
     const html = await (await call(env, "GET", `/${REC}`, { headers: { cookie: cookieFor(M1, OWNER_MAC) } })).text();
-    expect(html).toContain(`placeholder="${EARLY}"`);
+    expect(fieldOf(html)).toMatchObject({ value: EARLY, autofocus: false });
     expect(textOf(html)).toContain(COPY.named);
     // Nothing more until the next minute is up: one early title a take.
     expect(await answerOf(env, { rec: REC, through: 10 })).toMatchObject({ step: "idle", more: false });
@@ -875,6 +875,48 @@ describe("edits (B208)", () => {
   });
 });
 
+/** The owner's title field as the page draws it: its value, its placeholder, and whether
+ * the page opens in it. */
+function fieldOf(html) {
+  const tag = html.match(/<input class="title" id="t"[^>]*>/)?.[0];
+  expect(tag, "the title field is on the page").toBeTruthy();
+  const attr = (n) => tag.match(new RegExp(`\\s${n}="([^"]*)"`))?.[1] ?? null;
+  return { value: attr("value"), placeholder: attr("placeholder"), autofocus: /\sautofocus/.test(tag) };
+}
+
+/** The owner page's naming poll, run against a stand-in title field: `answer(j)` plays the
+ * next `/_shroom/named/` answer; `type(v)` is the owner typing; `click()` puts the
+ * keyboard in the field. The field's own events are recorded, as a browser fires them. */
+function namingScript(html, { value = fieldOf(html).value, focused = !!fieldOf(html).autofocus } = {}) {
+  const script = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]).find((s) => s.includes("/_shroom/named/"));
+  expect(script, "the naming poll is on the page").toBeTruthy();
+  const on = {};
+  const named = [];
+  const document = { title: "", activeElement: null, getElementById: (id) => (id === "t" ? t : id === "ainote" ? note : null) };
+  const t = {
+    value: value ?? "", placeholder: fieldOf(html).placeholder,
+    addEventListener: (type, fn) => (on[type] ??= []).push(fn),
+    dispatchEvent: (e) => { if (e.type === "shroom:named") named.push(e.detail); for (const fn of on[e.type] ?? []) fn(e); return true; },
+    blur: () => { if (document.activeElement !== t) return; document.activeElement = null; for (const fn of on.blur ?? []) fn({}); },
+    focus: () => { document.activeElement = t; },
+    select: () => { t.selected = true; },
+  };
+  const note = { textContent: "", hidden: true };
+  if (focused) document.activeElement = t;
+  const timers = [];
+  let pending = null;
+  const fetch = () => new Promise((ok) => { pending = ok; });
+  const CustomEvent = function (type, init) { return { type, detail: init?.detail }; };
+  new Function("document", "fetch", "setTimeout", "CustomEvent", script)(document, fetch, (fn) => timers.push(fn), CustomEvent);
+  const settled = () => new Promise((ok) => setTimeout(ok, 0));
+  return {
+    t, note, document, named,
+    async answer(j) { timers.shift()(); pending({ ok: true, json: () => Promise.resolve(j) }); await settled(); await settled(); },
+    click() { for (const fn of on.pointerdown ?? []) fn({}); document.activeElement = t; },
+    type(v) { t.value = v; for (const fn of on.input ?? []) fn({}); },
+  };
+}
+
 describe("the page (B209)", () => {
   const live = async (env, cookie) => { const res = await call(env, "GET", `/${REC}`, cookie ? { headers: { cookie } } : {}); expect(res.status).toBe(200); return res.text(); };
 
@@ -914,7 +956,11 @@ describe("the page (B209)", () => {
     const env = await namedSpace();
     const cookie = cookieFor(M1, OWNER_MAC);
     let html = await live(env, cookie);
-    expect(html).toContain(`placeholder="Planning the spring launch"`);
+    // The name is the title (Bagrat's report, 2026-10-24): the field holds it as its value,
+    // drawn as plain text until it's clicked, and the page doesn't open in the field.
+    expect(fieldOf(html)).toEqual({ value: "Planning the spring launch", placeholder: "Untitled — Oct 2", autofocus: false });
+    // Leaving the field untouched saves nothing: the name stays the space's (B209 c).
+    expect(html).toContain(`"saved":"Planning the spring launch"`);
     expect(textOf(html)).toContain(COPY.named);
     await env.BUCKET.put(metaKey(REC), JSON.stringify({ ...record(env), title: "Mine", titled: true }));
     html = await live(env, cookie);
@@ -935,6 +981,61 @@ describe("the page (B209)", () => {
     expect((await call(env, "GET", `/_shroom/named/${REC}`, { headers: { cookie: cookieFor(MHER, MHER_MAC) } })).status).toBe(403);
     await finish(env);
     expect(await (await call(env, "GET", `/_shroom/named/${REC}`, { headers: { cookie } })).json()).toEqual({ named: "Planning the spring launch", titled: false, later: false, early: false });
+  });
+
+  /** An untitled take's owner page, opened while its name is on its way. */
+  const waitingPage = async () => {
+    const env = await aiSpace();
+    const m = JSON.parse(metaOf(REC, { durationSec: 150, createdAt: new Date(NOW - 2 * MIN).toISOString() }));
+    await env.BUCKET.put(metaKey(REC), JSON.stringify(m));
+    return live(env, cookieFor(M1, OWNER_MAC));
+  };
+
+  it("a name that arrives is the title: it fills the field and the field lets go of the keyboard (Bagrat's report, 2026-10-24)", async () => {
+    const html = await waitingPage();
+    expect(fieldOf(html)).toMatchObject({ value: "", autofocus: true });
+    const p = namingScript(html);
+    await p.answer({ named: "Planning the spring launch", titled: false, later: false, early: false });
+    // The value, not the placeholder: drawn as plain text, its caret free once it's clicked.
+    expect(p.t.value).toBe("Planning the spring launch");
+    expect(p.document.title).toBe("Planning the spring launch");
+    expect(p.document.activeElement).toBeNull();
+    // The page's save hears the name first, so letting go saves nothing.
+    expect(p.named).toEqual(["Planning the spring launch"]);
+    expect(p.note).toMatchObject({ textContent: COPY.named, hidden: false });
+  });
+
+  it("the full name takes the early one's place in an untouched field", async () => {
+    const p = namingScript(await waitingPage());
+    await p.answer({ named: "Spring", titled: false, later: false, early: true });
+    expect(p.t.value).toBe("Spring");
+    await p.answer({ named: "Planning the spring launch", titled: false, later: false, early: false });
+    expect(p.t.value).toBe("Planning the spring launch");
+    expect(p.named).toEqual(["Spring", "Planning the spring launch"]);
+  });
+
+  it("a name arriving while the owner types leaves the typing be, and the keyboard where it is", async () => {
+    const p = namingScript(await waitingPage());
+    p.click();
+    p.type("My own tit");
+    await p.answer({ named: "Planning the spring launch", titled: false, later: false, early: false });
+    expect(p.t.value).toBe("My own tit");
+    expect(p.document.activeElement).toBe(p.t);
+    expect(p.document.title).toBe("");
+  });
+
+  it("a name arriving after the owner clicked in, before a key, fills the field ready to retype", async () => {
+    const p = namingScript(await waitingPage());
+    p.click();
+    await p.answer({ named: "Planning the spring launch", titled: false, later: false, early: false });
+    expect(p.t.value).toBe("Planning the spring launch");
+    expect(p.document.activeElement).toBe(p.t);
+    expect(p.t.selected).toBe(true);
+  });
+
+  it("the page's save takes the name as what's saved, so an untouched field writes nothing", async () => {
+    const html = await waitingPage();
+    expect(html).toMatch(/t\.addEventListener\("shroom:named",function\(e\)\{saved=e\.detail\}\)/);
   });
 
   it("a space without the AI never asks", async () => {
