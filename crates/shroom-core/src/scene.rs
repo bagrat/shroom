@@ -787,6 +787,8 @@ pub enum Nest {
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct InviteBody {
     pub title: Option<String>,
+    /// Under the title, the space the invite joins: “Their space: v.x.workers.dev”.
+    pub space: Option<String>,
     pub lines: Vec<String>,
     /// member-welcome's “Start shroom when you log in” (U4).
     pub login: Option<Toggle>,
