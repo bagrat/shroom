@@ -1290,6 +1290,21 @@ mod tests {
         }
     }
 
+    /// Why the space can't judge now, as the Mac logs it: a word or two of its own, never
+    /// more than one short line whatever the space sent.
+    #[test]
+    fn a_later_says_why_in_one_short_line() {
+        assert_eq!(later_why(&json!({"shroom": 1, "later": true, "why": "daily"})), "later: daily");
+        assert_eq!(later_why(&json!({"shroom": 1, "later": true, "why": "busy: 3006 at 12:00."})), "later: busy: 3006 at 12:00.");
+        assert_eq!(later_why(&json!({"shroom": 1, "later": true})), "later: no reason");
+        assert_eq!(later_why(&json!({"shroom": 1, "later": true, "why": 7})), "later: no reason");
+        let many = later_why(&json!({"shroom": 1, "later": true, "why": "daily\n2026-10-18T17:52:03Z  1 core <b>step</b>\r\u{1b}[0m"}));
+        assert_eq!(many, "later: daily2026-10-18T17:52:03Z  1 core bstepb0m");
+        let long = later_why(&json!({"shroom": 1, "later": true, "why": "x".repeat(5000)}));
+        assert_eq!(long, format!("later: {}", "x".repeat(WHY_CHARS)));
+        assert_eq!(later_why(&json!({"shroom": 1, "later": true, "why": "\n\u{1b}<>"})), "later: no reason");
+    }
+
     #[test]
     fn a_status_says_cuts_are_coming_only_in_so_many_words() {
         assert!(cuts_word(br#"{"state":"live","drained":true,"cuts":"coming"}"#));
