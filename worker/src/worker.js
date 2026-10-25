@@ -360,9 +360,9 @@ export function status(meta, now, id = meta?.id, listens = false) {
     // already open (N65): coming, or their tag.
     const view = viewOf(String(id), meta);
     const moved = view.copy ?? (view.baked && !view.edit && Array.isArray(meta.bakedFrom) && meta.bakedFrom.length > 0
-      ? { src: `/m/${id}/${view.file}`, dur: view.dur, poster: view.poster ?? undefined } : null);
+      ? { src: `/m/${id}/${view.file}`, dur: view.dur, poster: view.poster ?? undefined, teaser: view.teaser ?? undefined } : null);
     const live = { state: "live", poster: !!view.poster, mp4: view.download, teaser: !!view.teaser, thumb: newestThumb(String(id), meta), dur: view.dur, drained: drained(meta),
-      ...(view.edit ? { keep: view.edit.keep } : {}), ...(moved ? { copy: { src: moved.src, dur: moved.dur, poster: moved.poster ?? null } } : {}), ...cutsField(meta, now, listens) };
+      ...(view.edit ? { keep: view.edit.keep } : {}), ...(moved ? { copy: { src: moved.src, dur: moved.dur, poster: moved.poster ?? null, ...(moved.teaser ? { teaser: moved.teaser } : {}) } } : {}), ...cutsField(meta, now, listens) };
     return live.drained ? live : { ...live, pct: pct(meta), stalled: stalledAt(meta, now) };
   }
   if (meta.state !== "uploading") return { state: "unavailable" };
@@ -1926,6 +1926,7 @@ if(!c.store)make=function(){return Promise.resolve(c.thumb)};cb=cb||function(){}
 return{length:function(l){if(l)c.len=l},retitle:function(t){c.title=t;c.titled=true;c.thumb=null;c.gif=false;if(c.live){cb(false);make()}},
 drained:function(){if(c.drained)return;c.drained=true;var my=gen;if(!c.teaser&&making)making.then(function(){if(!c.teaser)wake(my)})},
 live:function(){c.live=true;if(!c.thumb||!c.gif)make()},
+source:function(f,p,t){if(!f||f===c.from)return;c.from=f;c.psrc=p;c.tsrc=t||"";c.teaser=!!t;c.thumb=null;c.gif=false;cb(false);if(c.live)make()},
 teaser:function(){if(c.teaser)return;c.teaser=true;if(c.live&&!c.gif)make()},
 copy:function(){var link=location.origin+"/"+c.id;if(!c.thumb&&!c.psrc)return shroomCopy(link,null);return shroomCopyRich(c.thumb?html(c.thumb):(making||make()).then(function(u){return html(u||c.psrc)}),link)}}}
 function shroomCopyRich(h,t){var hp=Promise.resolve(h);
@@ -2147,7 +2148,7 @@ function say(x){var w=document.getElementById("w");if(!w||(!x&&!c.said))return;c
 function poll(){fetch("/_shroom/status/"+c.id,{cache:"no-store"}).then(function(r){return r.json()}).then(function(s){
 if(s.state==="removed"){c.gone=true;c.polling=false;var m=document.querySelector("main"),p=document.createElement("p");m.textContent="";p.className="line";p.textContent=c.notFound;m.appendChild(p);document.title="shroom";return}
 if(c.pend&&s.state!=="waiting")send(c.pend);
-if(s.state==="live"){if(s.dur)th.length(shroomClock(s.dur,true));if(s.teaser)th.teaser();if(!c.live){c.live=true;th.live();var w=document.getElementById("w"),h=document.createElement("div");h.innerHTML=c.player;var pl=h.firstChild;
+if(s.state==="live"){var cq=s.copy;if(cq&&cq.poster)th.source(cq.poster.slice(cq.poster.lastIndexOf("/")+1),cq.poster,cq.teaser||"");if(s.dur)th.length(shroomClock(s.dur,true));if(s.teaser)th.teaser();if(!c.live){c.live=true;th.live();var w=document.getElementById("w"),h=document.createElement("div");h.innerHTML=c.player;var pl=h.firstChild;
 var cp=s.copy,ps=cp&&cp.poster||(s.poster?"/m/"+c.id+"/poster.jpg":"");if(s.dur)pl.setAttribute("data-dur",s.dur);if(ps)pl.querySelector("video").poster=ps;w.replaceWith(pl);
 shroomPlayer(pl,cp?cp.src:src,c.labels,{keep:cp?null:s.keep||null,st:"/_shroom/status/"+c.id,copy:!!cp})}
 if(s.drained)th.drained();var ed=document.getElementById("ed");if(ed&&s.drained)wake(ed,ed.getAttribute("data-href"));
