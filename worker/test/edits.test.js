@@ -777,7 +777,7 @@ describe("a baked recording: the edit became the video (B197)", () => {
 
   it("tells the status where its file is, so a player still on the original moves over to it", async () => {
     const st = JSON.parse(await text(baked(), `/_shroom/status/${REC}`));
-    expect(st.copy).toEqual({ src: `/m/${REC}/edit-3.mp4`, dur: 220.9, poster: `/m/${REC}/edit-3-poster.jpg` });
+    expect(st.copy).toEqual({ src: `/m/${REC}/edit-3.mp4`, dur: 220.9, poster: `/m/${REC}/edit-3-poster.jpg`, teaser: `/m/${REC}/edit-3-teaser.mp4` });
     // Opened while the edit played over the original: the bake took the original away.
     const s = stage([[2, 6], [9, 12], [13.5, 18]], { answer: st });
     s.click();
