@@ -376,3 +376,12 @@ and edits on the share page)*)**
     Proved in CI (the core walkthroughs, the Worker's `autoclean.test.js`, the command
     against the real page, the window gallery). Ships with 0.1.29. Known gap: no hosted-Mac
     drive yet; the Settings pop-up and the popover banner are checked in the gallery only.
+
+44. **N78 — Turning AI on or off shows its parts as they happen** (B238; Bagrat approved the
+    boards with the plainer words, 2026-10-25, relayed by the orchestrator). The switch in
+    Settings · Space moves at once and lists Checking your space · Connecting (or
+    Disconnecting) AI · Switching AI on (or off) for new videos, the one underway with its
+    clock, done once the page says so; the banner's Turn off lists the same parts. Measured
+    on the test account (2–8 s a turn). Proved in CI (the core tests, the cloud fake, the
+    window gallery). Known gap: the app's lane (`runtime/cloud.rs`) is compiled and run on
+    the Mac only; no hosted-Mac drive turns the switch yet.
