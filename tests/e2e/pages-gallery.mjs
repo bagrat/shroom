@@ -368,6 +368,24 @@ const FACES = [
       if (from !== "edit-3-poster.jpg") missing.push(`a picture drawn from the copy's first frame (got ${JSON.stringify(env.BUCKET.json(metaKey(f.id))?.thumb ?? null)})`);
       return missing;
     } },
+  // The edit put back while its copy was on its way (every cut on again, as the strip or the
+  // editor does): the page follows the first frame back to the recording's own and wakes.
+  { face: "owner-thumb-after-undo", id: "OwnrUndoOwnrUndo", owner: true, engine: "chromium",
+    record: (id) => meta(id, { media: media(id, false), progress: { done: 9, total: 9, updatedAt: iso(Date.now()) }, edits: { version: 1, source_duration: 8, in: 0, out: 8, cuts: [{ start: 0, end: 3, kind: "manual", applied: true }], rev: 3 } }),
+    before: async (page) => { await page.evaluate((g) => { window.__greyed = g; window.__stayed = true; }, await page.$eval("#th", (b) => b.getAttribute("aria-disabled"))); },
+    golive: (id) => meta(id, { media: media(id, false), progress: { done: 9, total: 9, updatedAt: iso(Date.now()) }, edits: { version: 1, source_duration: 8, in: 0, out: 8, cuts: [{ start: 0, end: 3, kind: "manual", applied: false }], rev: 4 } }),
+    wait: () => true, pictures: [], lines: () => [], act: async (page, env, f) => {
+      const missing = [];
+      if (await page.evaluate(() => window.__greyed) !== "true") missing.push("Copy thumbnail greyed while the copy is on its way");
+      // What plays changed (the page's own press, or the poll's pull, says so).
+      await page.evaluate(() => document.dispatchEvent(new CustomEvent("shroom:keep", { detail: null })));
+      const woke = await page.waitForFunction(() => !document.getElementById("th").getAttribute("aria-disabled"), null, { timeout: 45000, polling: 250 }).then(() => true, () => false);
+      if (!woke) missing.push("Copy thumbnail awake once the edit is put back, with no reload");
+      if (!(await page.evaluate(() => window.__stayed))) missing.push("the same page (it reloaded)");
+      const from = env.BUCKET.json(metaKey(f.id))?.thumb?.from;
+      if (from !== "poster.jpg") missing.push(`a picture drawn from the recording's own first frame (got ${JSON.stringify(env.BUCKET.json(metaKey(f.id))?.thumb ?? null)})`);
+      return missing;
+    } },
   // Bagrat, 2026-10-25: the seek head inside the bar, on every face that plays.
   { face: "seek-head-live", id: "SeekLiveSeekLive", record: (id) => meta(id, { media: media(id, false) }), lines: () => [TITLE], act: headInside() },
   { face: "seek-head-live-chromium", id: "SeekChroSeekChro", engine: "chromium", record: (id) => meta(id, { media: media(id, false) }), lines: () => [TITLE], act: headInside() },
