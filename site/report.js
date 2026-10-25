@@ -5,10 +5,13 @@
 // when someone presses Send. The checks run in order, and the first that fails answers and
 // sends nothing:
 //
-//   size     the body is 64 KB at most                                    413 {error:"size"}
+//   size     the body is 512 KB at most                                   413 {error:"size"}
 //   shape    JSON with known fields only, each within its bounds          400 {error:"shape"}
-//   switch   REPORTS isn't "off", and the inbox and the binding exist     503 {error:"off"}
-//   rate     a few a minute from one address, and a ceiling for everyone  429 {error:"rate"}
+//   switch   REPORTS isn't "off", and the inbox, the binding and the
+//            sender's rate limiters exist                                 503 {error:"off"}
+//   rate     a few a minute from one address, and a ceiling for all of
+//            that sender's reports; the app and the page each count
+//            against their own pair (LIMITERS)                            429 {error:"rate"}
 //   check    from the page: Turnstile says a person sent it               403 {error:"check"}
 //
 // Then the log is cleaned once more (site/clean.js), and one message goes out through the
@@ -21,6 +24,13 @@ import { cleanLog } from "./clean.js";
 
 export const MAX_BYTES = 512 * 1024;
 export const FROM = "report-sender@shroom.am";
+/** The rate limiters each sender counts against: one keyed by address, one for all that
+ * sender's reports (site/wrangler.jsonc). The app's are their own, and tighter by address,
+ * so neither door can spend the other's budget. */
+export const LIMITERS = /** @type {const} */ ({
+  app: { rate: "REPORT_APP_RATE", ceiling: "REPORT_APP_CEILING" },
+  page: { rate: "REPORT_RATE", ceiling: "REPORT_CEILING" },
+});
 const SITEVERIFY = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 
 /** The fields a report may carry, each with its bound in characters. */
@@ -193,10 +203,13 @@ export async function handleReport(request, env, fetcher = fetch) {
 
   if (env.REPORTS === "off" || !env.REPORT_TO || !env.EMAIL) return json(503, { error: "off" });
   if (r.from === "page" && !env.TURNSTILE_SECRET) return json(503, { error: "off" });
+  const names = LIMITERS[r.from];
+  const rate = env[names.rate];
+  const ceiling = env[names.ceiling];
+  if (!rate || !ceiling) return json(503, { error: "off" });
 
   const ip = request.headers.get("cf-connecting-ip") ?? "";
-  for (const [limiter, key] of [[env.REPORT_RATE, ip || "unknown"], [env.REPORT_CEILING, "all"]]) {
-    if (!limiter) continue;
+  for (const [limiter, key] of [[rate, ip || "unknown"], [ceiling, "all"]]) {
     const { success } = await limiter.limit({ key });
     if (!success) return json(429, { error: "rate" });
   }
