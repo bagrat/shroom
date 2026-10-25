@@ -358,13 +358,11 @@
   color: var(--green, var(--frost));
 }
 
-/* Your videos (N68): a small heading over its card; each switch carries its line under the label. */
-.general .group {
-  margin: 0 0 -10px;
-  padding: 0 2px;
-  font-size: 12px;
-  font-weight: 400;
-  color: var(--muted);
+/* Videos (N78; Your videos, N68): one card; each switch carries its line under the label. */
+.videos {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .srow.tall {
@@ -385,7 +383,24 @@
   color: var(--amber);
 }
 
-.videos .used {
+/* Space used (N78): the first row of the card beneath the plan, its value at the end. */
+.beneath .used-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 12px;
+}
+
+.beneath .used-row .grow {
+  flex: 1 1 auto;
+}
+
+.beneath .used-row + .mark {
+  border-top: 1px solid var(--border);
+}
+
+.beneath .used {
   color: var(--muted);
   text-align: right;
 }

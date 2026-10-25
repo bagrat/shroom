@@ -1957,7 +1957,7 @@ pub enum Region6 {
     /// N68 on the owner's token Mac: a space with videos nobody has watched in months, one
     /// played today and one too small to matter. The Library's line, Suggested to clean up,
     /// each row's cost past the free 10 GB, Keep, a one-tap Delete and its Undo, a Delete
-    /// that goes, and Settings · General's Your videos with Count plays switched off and on.
+    /// that goes, and Settings' Space used and its Videos tab, Count plays switched off and on (N78).
     Cleanup,
 }
 
@@ -2621,9 +2621,18 @@ fn cleanup_titles(s: &Scene) -> Vec<String> {
     cleanup_view(s).map(|v| v.rows.iter().filter_map(|r| r.title.clone()).collect()).unwrap_or_default()
 }
 
-fn general_videos(s: &Scene) -> Option<shroom_core::scene::VideosGroup> {
+/// Settings' Videos tab (N78), when it shows.
+fn videos_pane(s: &Scene) -> Option<shroom_core::scene::VideosGroup> {
     match s.settings.as_ref().map(|w| &w.body.pane) {
-        Some(SettingsPane::General(g)) => g.videos.clone(),
+        Some(SettingsPane::Videos(v)) => Some(v.clone()),
+        _ => None,
+    }
+}
+
+/// Space used, in Settings · Space (N78), when it shows.
+fn space_used(s: &Scene) -> Option<String> {
+    match s.settings.as_ref().map(|w| &w.body.pane) {
+        Some(SettingsPane::Space(sp)) => sp.used.clone(),
         _ => None,
     }
 }
@@ -2699,18 +2708,23 @@ fn cleanup_drive(d: &Drive) -> Result<(), String> {
     d.rt.post(Event::WindowClosed(WindowKind::Library));
     d.wait("closed", 5, |s| s.library.is_none())?;
 
-    // Settings · General: Your videos, the space's size, and Count plays off and on again.
+    // Settings · Space: the space's size (N78); then Videos: Count plays off and on again.
     // The read Settings asks for meets a busy space once: the failure is in the run log.
     knob(&base, SPACE_A, "fault", serde_json::json!({ "prefix": "/_shroom/api/cleanup", "status": 500, "count": 1 }))?;
     d.open(Action::OpenSettings)?;
-    let s = d.wait("Your videos", 30, |s| general_videos(s).is_some_and(|v| v.used.is_some()))?;
-    let v = general_videos(&s).expect("videos");
-    d.check("Your videos: both switches on", v.heading == "Your videos" && v.count.on && v.count.enabled && v.suggest.on, format!("count {} suggest {}", v.count.on, v.suggest.on));
-    d.check("Space used: inside the free 10 GB now", v.used.as_deref().is_some_and(|u| u.ends_with("inside Cloudflare's free 10 GB")), format!("{:?}", v.used));
+    d.act(Surface::Settings, Action::SettingsTab(SettingsTab::Space));
+    let s = d.wait("Space used", 30, |s| space_used(s).is_some())?;
+    let used = space_used(&s);
+    d.check("Space used: inside the free 10 GB now", used.as_deref().is_some_and(|u| u.ends_with("inside Cloudflare's free 10 GB")), format!("{used:?}"));
+    d.after(2000);
+    d.act(Surface::Settings, Action::SettingsTab(SettingsTab::Videos));
+    let s = d.wait("Videos", 30, |s| videos_pane(s).is_some_and(|v| v.count.enabled))?;
+    let v = videos_pane(&s).expect("videos");
+    d.check("Videos: both switches on", v.count.on && v.count.enabled && v.suggest.on, format!("count {} suggest {}", v.count.on, v.suggest.on));
     d.after(2500);
     d.act(Surface::Settings, v.count.action.clone());
     // The switch moves at once and stays greyed until the space has taken it.
-    d.wait("Count plays off, taken", 20, |s| general_videos(s).is_some_and(|v| !v.count.on && v.count.enabled))?;
+    d.wait("Count plays off, taken", 20, |s| videos_pane(s).is_some_and(|v| !v.count.on && v.count.enabled))?;
     let sw = worker_object(&base, ".shroom/plays.json");
     d.check("the space's switch is off", sw.as_ref().is_some_and(|o| o["on"] == false), format!("{sw:?}"));
     play_today(&base, "Cdrive000billing")?;
@@ -2718,12 +2732,14 @@ fn cleanup_drive(d: &Drive) -> Result<(), String> {
     d.check("with it off, a play isn't counted", rec.as_ref().is_some_and(|r| r["plays"] == 4), format!("{:?}", rec.as_ref().map(|r| r["plays"].clone())));
     d.after(2000);
     let s = snapshot(&d.rt).ok_or("no scene")?;
-    let v = general_videos(&s).ok_or("no Your videos")?;
+    let v = videos_pane(&s).ok_or("no Videos tab")?;
     d.act(Surface::Settings, v.count.action.clone());
-    d.wait("Count plays on again, taken", 20, |s| general_videos(s).is_some_and(|v| v.count.on && v.count.enabled))?;
+    d.wait("Count plays on again, taken", 20, |s| videos_pane(s).is_some_and(|v| v.count.on && v.count.enabled))?;
     let sw = worker_object(&base, ".shroom/plays.json");
     d.check("the space's switch is on again", sw.as_ref().is_some_and(|o| o["on"] == true), format!("{sw:?}"));
     d.after(2000);
+    // Settings opens on the last tab used: leave it on General, as it was.
+    d.act(Surface::Settings, Action::SettingsTab(SettingsTab::General));
     d.rt.post(Event::WindowClosed(WindowKind::Settings));
     d.wait("closed", 5, |s| s.settings.is_none())?;
 

@@ -2,9 +2,9 @@
   // Settings · Space (N36, N42): the plan in this Mac's mood — inspection (every row ticked,
   // its fact on it), repair (the first broken row current, the wizard's own nest beneath
   // it), an owner-class Mac without the token, a member's Mac — then a denied microphone's
-  // quiet door, and beneath the rows, in one card: the “made with shroom” switch
-  // (owner-class) and, on the Mac that holds the setup key, naming's (N66); the exits at
-  // its foot. No invite door shows (B159): a link pasted anywhere in the tab opens its
+  // quiet door, and beneath the rows, in one card: Space used (owner-class, N78), the
+  // “made with shroom” switch (owner-class) and, on the Mac that holds the setup key,
+  // naming's (N66); the exits at its foot. No invite door shows (B159): a link pasted anywhere in the tab opens its
   // invite (Settings.svelte).
   import type { Toggle } from "../onboarding/types";
   import type { Action } from "../lib/ipc";
@@ -46,9 +46,10 @@
 
 <section class="space">
   <Plan plan={sp.plan} {send} {activates} afterRow={micDoor} />
-  {#if sp.mark || sp.ai}
-    <!-- One card beneath the plan: the switches' rows; the exits close it. -->
+  {#if sp.used || sp.mark || sp.ai}
+    <!-- One card beneath the plan: what the space holds, the switches' rows; the exits close it. -->
     <div class="beneath card">
+      {#if sp.used}<div class="used-row"><span class="grow">{sp.used_label}</span><span class="used">{sp.used}</span></div>{/if}
       {#if sp.mark}{@render switchRow(sp.mark, sp.mark_line, "mark-switch")}{/if}
       {#if sp.ai}{@render switchRow(sp.ai, sp.ai_line, "ai-switch")}{/if}
     </div>
