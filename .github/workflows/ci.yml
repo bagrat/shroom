@@ -536,6 +536,26 @@ jobs:
             echo '```'
           } >>"$GITHUB_STEP_SUMMARY"
 
+      # The release signs this very bundle after it is built (tools/release-build.sh
+      # --resign), so that is rehearsed here too: with a throwaway identity, imported as the
+      # tag workflow imports the real one.
+      - name: Signed after the build, as a release is (a throwaway identity)
+        run: |
+          .github/scripts/signing-keychain.sh scratch "$RUNNER_TEMP/scratch.keychain-db"
+          tools/make-release-identity.sh "shroom ci resign" --keychain "$RUNNER_TEMP/scratch.keychain-db" --out "$RUNNER_TEMP/resign" --days 365 >/dev/null
+          .github/scripts/signing-keychain.sh drop "$RUNNER_TEMP/scratch.keychain-db"
+          SIGNING_P12_BASE64=$(cat "$RUNNER_TEMP/resign/shroom-ci-resign.p12.base64")
+          SIGNING_P12_PASSWORD=$(cat "$RUNNER_TEMP/resign/shroom-ci-resign.password")
+          export SIGNING_P12_BASE64 SIGNING_P12_PASSWORD
+          GITHUB_OUTPUT=$RUNNER_TEMP/resign/identity.txt .github/scripts/signing-keychain.sh import
+          identity=$(sed -n 's/^identity=//p' "$RUNNER_TEMP/resign/identity.txt")
+          tools/release-build.sh "$RUNNER_TEMP/release" --resign --identity "$identity" --leaf "$(cat "$RUNNER_TEMP/resign/shroom-ci-resign.sha1")"
+          cat "$RUNNER_TEMP/release/signature.txt"
+
+      - name: The signing keychain, gone
+        if: always()
+        run: .github/scripts/signing-keychain.sh delete
+
   # ── The signing rehearsal ────────────────────────────────────────────────────────────
   # A release is signed from a .p12 in a secret, in a throwaway keychain, on a runner that
   # has to be told to trust a self-signed certificate. None of that can be tried on a pull

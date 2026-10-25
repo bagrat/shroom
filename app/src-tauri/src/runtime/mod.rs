@@ -1538,6 +1538,9 @@ mod tests {
         // The signing secrets: the tag workflow's alone, in the `release` environment.
         assert!(!ci.contains("secrets."), "CI reads no secret");
         assert!(rel.contains("environment: release"));
+        // Built before the identity is on the runner; only then signed with it.
+        let (built, imported, signed) = (rel.find("release-build.sh \"$RUNNER_TEMP/release\" --adhoc"), rel.find("signing-keychain.sh import"), rel.find("--resign --identity"));
+        assert!(built.is_some() && built < imported && imported < signed, "built ad hoc, then the identity imported, then the bundle signed with it");
         for name in ["RELEASE_CERT_P12_BASE64", "RELEASE_CERT_PASSWORD"] {
             assert!(rel.contains(&format!("secrets.{name}")) && include_str!("../../../../docs/RELEASING.md").contains(name), "{name}");
         }

@@ -429,7 +429,7 @@ always runs them.
 | Job | What it does |
 |---|---|
 | Tests | the gate: green when every test lane this run needs is — **Tests · web (Linux)** (the spec's readable form current, the third-party notices, the frontend's build, typecheck and unit suite, the Worker's unit suite, typecheck and contract under workerd, the release notes, the landing page, the agent skill, the media readers), **Tests · Rust (Linux)** (the crates with no platform in them, `rust-tests.sh --ci-linux`), **Tests · Rust and media (Mac)** (the rest of the workspace and the real recordings, `rust-tests.sh --ci`) and **Tests · installer (Mac)** (the installer and the cask, with real `ditto` and `codesign`) |
-| Release build (ad hoc) | the release build with no identity (signed ad hoc), every bundle check, packaged as a stand-in. From `main` it saves the caches a tag needs |
+| Release build (ad hoc) | the release build with no identity (signed ad hoc), every bundle check, packaged as a stand-in; then signed after the build with a throwaway identity, as a release is (`--resign`). From `main` it saves the caches a tag needs |
 | Signing rehearsal | makes a throwaway identity with `tools/make-release-identity.sh`, imports and trusts it as a release would, signs a file and checks macOS would keep a permission by it |
 | Advisories | `cargo audit` against RustSec and `npm audit --audit-level=high` (DECISIONS B125): a known vulnerability in a pinned dependency fails it; an unmaintained-crate notice is listed, not fatal |
 
@@ -438,7 +438,7 @@ always runs them.
 | Job | What it does |
 |---|---|
 | The tag is the tree's version | the tag equals the version in all seven version files; the commit is on `main`; the certificate is pinned; the version's notes are written (a rehearsal only warns) |
-| Build, sign, package | restores the caches, builds the encoder only if its cache missed, imports the identity into a throwaway keychain (deleted whatever happens), checks it is the pinned certificate, runs the release build, packages it |
+| Build, sign, package | restores the caches, builds the encoder only if its cache missed, runs the release build with no key on the runner (signed ad hoc), then imports the identity into a throwaway keychain (its key not exportable; deleted whatever happens), checks it is the pinned certificate, signs the finished bundle with it (`--resign`), packages it. A rehearsal off `main` skips the identity and keeps the ad hoc build |
 | Publish the release | the only job that can write to the repo: creates the release with its files and its notes — `docs/release-notes/<version>.md` under "What's new", GitHub's generated list folded under "Under the hood" (`tools/release-notes.mjs`, B152) — then fetches the files back from the public address |
 
 ### How long

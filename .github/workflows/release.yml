@@ -8,9 +8,10 @@
 #
 #   check    the tag is the version every version file holds, the commit is on `main`, and
 #            the repo pins the release certificate. No secret, no approval.
-#   build    in the `release` environment (its two secrets; Bagrat's approval, if he turned
-#            that on): the one release build (tools/release-build.sh), signed with the
-#            release identity from a throwaway keychain, then packaged
+#   build    the one release build (tools/release-build.sh), built with no key on the runner;
+#            then, in the `release` environment (its two secrets; Bagrat's approval, if he
+#            turned that on), signed with the release identity from a throwaway keychain —
+#            after every build script and package has run — then packaged
 #            (tools/package-release.sh) — manifest.txt, update.txt (the same bytes, the
 #            name the app's updater asks for: DECISIONS B136) and shroom-<version>-arm64.zip.
 #   publish  the only job that may write to the repo: a GitHub release for the tag with
@@ -251,6 +252,11 @@ jobs:
             tools/build-ffmpeg.sh
           fi
 
+      # Built before the identity is on the runner: every build script, proc-macro and
+      # package runs with no key here.
+      - name: The release build, signed ad hoc
+        run: tools/release-build.sh "$RUNNER_TEMP/release" --adhoc
+
       - name: The release identity, into a throwaway keychain
         id: identity
         env:
@@ -268,10 +274,11 @@ jobs:
             exit 1
           }
 
-      - name: The release build, signed
+      # Only codesign uses the key: the finished bundle, its encoder and its command.
+      - name: The release build, signed with the release identity
         env:
           IDENTITY: ${{ steps.identity.outputs.identity }}
-        run: tools/release-build.sh "$RUNNER_TEMP/release" --identity "$IDENTITY" --leaf "$(tr -d ' \n' <tools/release-identity.sha1)"
+        run: tools/release-build.sh "$RUNNER_TEMP/release" --resign --identity "$IDENTITY" --leaf "$(tr -d ' \n' <tools/release-identity.sha1)"
 
       - name: The signing keychain, gone
         if: always()
