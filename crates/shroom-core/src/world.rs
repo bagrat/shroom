@@ -452,6 +452,9 @@ pub struct Space {
     /// re-wiring the page until it answers, tried again quietly while it doesn't; a Turn off,
     /// once through, `config` says once — behind us when the popover that said it closes.
     pub ai_turn: Option<AiTurn>,
+    /// The AI's re-wiring as it goes (N80): which way, its part underway and since when, and
+    /// how it ended. Never stored (law 1); a new try starts over.
+    pub ai_run: Option<AiRun>,
 }
 
 impl Space {
@@ -793,7 +796,7 @@ pub struct Members {
     pub left_behind: BTreeSet<TakeDir>,
     /// Published takes already holding an upload credential, and until when (each take's
     /// `cred.json`, from the takes scan): a space that stops minting for this Mac still
-    /// lets these finish (N32, N80: a video already on its way has up to an hour to finish).
+    /// lets these finish (N32, N81: a video already on its way has up to an hour to finish).
     pub minted: BTreeMap<TakeDir, Wall>,
 }
 
@@ -1603,6 +1606,23 @@ pub enum AiTurn {
     TurningOn,
     TurningOff,
     Off,
+}
+
+/// Turning the AI on or off, part by part (N80): 1 checking the space, 2 the page put up
+/// again with the AI or without it, 3 its schedule and the page saying so.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AiRun {
+    pub on: bool,
+    pub part: u8,
+    pub since: Mono,
+    pub end: Option<AiEnd>,
+}
+
+/// How a run of the AI's re-wiring ended (N80): the page said so, or it stopped at its part.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AiEnd {
+    Done,
+    Stopped,
 }
 
 impl Failure {

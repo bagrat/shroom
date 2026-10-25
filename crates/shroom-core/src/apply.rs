@@ -18,7 +18,7 @@ use crate::report::{Kind, Post};
 use crate::scene::{Action, Click};
 use crate::time::{Fact, Mono};
 use crate::world::{
-    Access, AiTurn, Arming, Blocked, Born, Cause, Confirm, CopyOwed, CopyTarget, Door, EditLink, EditLinkNo, EditorFields, EditorId, EditorMedia, EditorSave, FailClass, Failure, Fields, Fork, Invite,
+    Access, AiEnd, AiRun, AiTurn, Arming, Blocked, Born, Cause, Confirm, CopyOwed, CopyTarget, Door, EditLink, EditLinkNo, EditorFields, EditorId, EditorMedia, EditorSave, FailClass, Failure, Fields, Fork, Invite,
     JoinRefusal, Landed, LaunchKind, Leaving, RecId,
     LibraryFields, LibraryOps, MarkerToastSays, Members, OpenTake, Op, PageOpen, Paste, Phase, Progress, QuickProbe, Reach, RelaunchWhy, Removal, ReportFields, FeedbackFields, Restore, Role, SavedCause,
     SavedTake, SecretId, SettingsFields, SettingsTab, SourceId, Space, SpaceIdentity, StopOutcome, Strike, Sweep, TakeDir, TakeLost, TokenVerdict,
@@ -63,7 +63,7 @@ pub fn apply(w: &mut World, event: Event) -> Out {
     // features are turned on.”, turns it on — so it's said before anything is heard.
     if w.online() != Some(false) && crate::derive::popover::ai_default_due(w) {
         w.space.ai_turn = Some(AiTurn::TurningOn);
-        fx.push(Effect::Cloud(CloudCmd::SetAi(true)));
+        fx.push(set_ai(w, true));
     }
     // A press on the page's Edit in shroom held for a take goes on once it's over (law 4).
     if !w.take_open() && matches!(w.session.fields.edit_link, Some(EditLink::Waiting { asked: false, .. })) {
@@ -86,6 +86,13 @@ pub fn apply(w: &mut World, event: Event) -> Out {
 
 /// The space's AI, settled on this Mac for good (N76): never turned on by default again,
 /// and its banner never shown again here.
+/// The AI's re-wiring, asked (N66): its run starts over at part 1, the switch showing where
+/// it's going (N80).
+fn set_ai(w: &mut World, on: bool) -> Effect {
+    w.space.ai_run = Some(AiRun { on, part: 1, since: w.now, end: None });
+    Effect::Cloud(CloudCmd::SetAi(on))
+}
+
 fn settle_ai(w: &mut World) -> Vec<Effect> {
     if w.once.ai_offer_answered {
         return vec![];
@@ -1245,6 +1252,10 @@ fn act(w: &mut World, action: Action) -> Out {
         // ── Settings ──
         Action::SettingsTab(tab) => {
             w.prefs.settings_tab = Some(tab);
+            // Another tab ends the AI switch's done list (N80).
+            if w.space.ai_run.is_some_and(|r| r.end == Some(AiEnd::Done)) {
+                w.space.ai_run = None;
+            }
             // Another tab puts the link's light out: coming back never lights it again.
             w.session.fields.settings.lit = None;
             // A name being changed and left is put back (B158).
@@ -1544,7 +1555,7 @@ fn act(w: &mut World, action: Action) -> Out {
         Action::SetAi(on) => {
             w.inflight.failures.remove(&Op::Ai);
             w.space.ai_turn = None;
-            let mut fx = vec![Effect::Cloud(CloudCmd::SetAi(on))];
+            let mut fx = vec![set_ai(w, on)];
             fx.extend(settle_ai(w));
             (fx, Arm::named("set-ai"))
         }
@@ -1571,7 +1582,7 @@ fn act(w: &mut World, action: Action) -> Out {
             }
             w.inflight.failures.remove(&Op::Ai);
             w.space.ai_turn = Some(AiTurn::TurningOff);
-            (vec![Effect::Cloud(CloudCmd::SetAi(false))], Arm { name: "ai-turn-off", edge: Some((from, "ai-turning-off")) })
+            (vec![set_ai(w, false)], Arm { name: "ai-turn-off", edge: Some((from, "ai-turning-off")) })
         }
         Action::SetScope(scope) => {
             w.session.fields.library.scope = scope;
@@ -1893,7 +1904,7 @@ fn joined(w: &mut World, identity: SpaceIdentity) -> Out {
         // The editor is on a video of the space left behind (N63).
         gone.extend(leave_editor(w));
     }
-    w.space = Space { identity: Some(identity.clone()), token: false, device_key: true, broken: Fact::Unknown, page_checked: None, ai: None, ai_turn: None };
+    w.space = Space { identity: Some(identity.clone()), token: false, device_key: true, broken: Fact::Unknown, page_checked: None, ai: None, ai_turn: None, ai_run: None };
     w.sweep = Sweep::default();
     w.library = Fact::Unknown;
     w.library_ops = LibraryOps::default();
@@ -3546,6 +3557,10 @@ fn cloud(w: &mut World, news: CloudNews) -> Out {
         CloudNews::AiSet(on) => {
             answered(w, Op::Ai);
             w.space.ai = Some(on);
+            // Done once the page said so (N80): every part ticked, from now.
+            if let Some(run) = w.space.ai_run.as_mut() {
+                *run = AiRun { part: 3, since: w.now, end: Some(AiEnd::Done), ..*run };
+            }
             if w.space.ai_turn == Some(AiTurn::TurningOn) {
                 w.space.ai_turn = None;
             }
@@ -3643,6 +3658,14 @@ fn cloud(w: &mut World, news: CloudNews) -> Out {
         // parts before it in a blink — they stay ticked, the clock counts from the first.
         CloudNews::Part { op, part } => {
             let now = w.now;
+            // The AI's re-wiring (N80): its part underway, counted from when it began.
+            if op == Op::Ai {
+                if let Some(run) = w.space.ai_run.as_mut().filter(|r| r.end.is_none() && r.part != part) {
+                    run.part = part;
+                    run.since = now;
+                }
+                return (vec![], Arm::named("part"));
+            }
             let slot = match op {
                 Op::Sweep => &mut w.sweep.check,
                 Op::Wire => &mut w.sweep.wiring,
@@ -4005,6 +4028,12 @@ fn upload(w: &mut World, news: UploadNews) -> Out {
 fn failed(w: &mut World, op: Op, class: crate::world::FailClass) -> Out {
     w.inflight.ops.remove(&op);
     note_failure(w, op, class);
+    // The AI's re-wiring stopped at its part underway (N80, law 12).
+    if op == Op::Ai {
+        if let Some(run) = w.space.ai_run.as_mut().filter(|r| r.end.is_none()) {
+            run.end = Some(AiEnd::Stopped);
+        }
+    }
     // The page's Edit in shroom waited on this refresh: nothing opens (B221 (c)).
     if op == Op::LibRefresh && matches!(w.session.fields.edit_link, Some(EditLink::Waiting { asked: true, .. })) {
         w.session.fields.edit_link = None;
@@ -4154,7 +4183,7 @@ fn tick(w: &mut World) -> Out {
     // again at its backoff (N76), with the popover shut too — it has been said.
     if let Some(turn @ (AiTurn::TurningOn | AiTurn::TurningOff)) = w.space.ai_turn {
         if !w.inflight.ops.contains_key(&Op::Ai) && w.inflight.failures.get(&Op::Ai).is_some_and(|f| now >= f.ai_retry_at()) {
-            fx.push(Effect::Cloud(CloudCmd::SetAi(turn == AiTurn::TurningOn)));
+            fx.push(set_ai(w, turn == AiTurn::TurningOn));
         }
     }
     (fx, Arm::named("tick"))
