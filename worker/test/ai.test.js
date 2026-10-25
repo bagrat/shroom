@@ -455,10 +455,10 @@ describe("the early title (B205 f)", () => {
     const env = await aiSpace({ name: answers });
     await firstMinute(env);
     const cookie = cookieFor(M1, OWNER_MAC);
-    expect(await (await call(env, "GET", `/_shroom/named/${REC}`, { headers: { cookie } })).json()).toEqual({ named: EARLY, titled: false, later: false, early: true, done: false, chapters: [], captions: null });
+    expect(await (await call(env, "GET", `/_shroom/named/${REC}`, { headers: { cookie } })).json()).toEqual({ named: EARLY, titled: false, later: false, early: true, done: false, chapters: [], captions: null, copy: null });
     expect(await (await call(env, "GET", `/${REC}`, { headers: { cookie } })).text()).toContain("/_shroom/named/");
     await finish(env);
-    expect(await (await call(env, "GET", `/_shroom/named/${REC}`, { headers: { cookie } })).json()).toEqual({ named: FULL, titled: false, later: false, early: false, done: true, ...(await reloadShows(env, cookie)) });
+    expect(await (await call(env, "GET", `/_shroom/named/${REC}`, { headers: { cookie } })).json()).toEqual({ named: FULL, titled: false, later: false, early: false, done: true, ...(await reloadShows(env, cookie)), copy: null });
   });
 
   it("an early title that fails is let go, and holds nothing up", async () => {
@@ -918,8 +918,10 @@ function namingScript(html, { value = fieldOf(html).value, focused = !!fieldOf(h
     querySelector: (q) => (q === "video" ? video : q === ".sp" ? sp : q === ".cc" ? row.children.find((c) => c.className === "cc") ?? null : null) };
   const shroomChapters = (p, ch) => { wired.chapters.push(ch); p.classList.add("ch"); };
   const shroomCaptions = () => { wired.captions++; };
+  const docOn = {};
   const document = {
     title: "", activeElement: null, getElementById: (id) => (id === "t" ? t : id === "ainote" ? note : null),
+    addEventListener: (type, fn) => (docOn[type] ??= []).push(fn),
     querySelector: (q) => (q === ".player" && live ? player : null),
     createElement: (tag) => Object.defineProperty(el(tag), "innerHTML", {
       set(h) { const m = h.match(/^<button type="button" class="([^"]*)" aria-label="([^"]*)" aria-pressed="([^"]*)">/); this.firstChild = m ? el("button", { className: m[1], label: m[2], pressed: m[3], html: h }) : null; },
@@ -937,7 +939,8 @@ function namingScript(html, { value = fieldOf(html).value, focused = !!fieldOf(h
   if (focused) document.activeElement = t;
   const timers = [];
   let pending = null;
-  const fetch = () => new Promise((ok) => { pending = ok; });
+  let asked = 0;
+  const fetch = () => { asked++; return new Promise((ok) => { pending = ok; }); };
   const CustomEvent = function (type, init) { return { type, detail: init?.detail }; };
   new Function("document", "fetch", "setTimeout", "CustomEvent", "shroomChapters", "shroomCaptions", script)(document, fetch, (fn) => timers.push(fn), CustomEvent, shroomChapters, shroomCaptions);
   const settled = () => new Promise((ok) => setTimeout(ok, 0));
@@ -945,6 +948,11 @@ function namingScript(html, { value = fieldOf(html).value, focused = !!fieldOf(h
     t, note, document, named, player, timers,
     goLive() { live = true; },
     async answer(j) { timers.shift()(); pending({ ok: true, json: () => Promise.resolve(j) }); await settled(); await settled(); },
+    /** The answer to an ask the page made on its own (not on its timer). */
+    async reply(j) { pending({ ok: true, json: () => Promise.resolve(j) }); await settled(); await settled(); },
+    /** What now plays changed (a voice cut landed, a strip press): the player's own event. */
+    keep(k) { for (const fn of docOn["shroom:keep"] ?? []) fn({ detail: k }); },
+    get asked() { return asked; },
     click() { for (const fn of on.pointerdown ?? []) fn({}); document.activeElement = t; },
     type(v) { t.value = v; for (const fn of on.input ?? []) fn({}); },
   };
@@ -1010,7 +1018,7 @@ describe("the page (B209)", () => {
     expect(html).toContain("/_shroom/named/");
     const res = await call(env, "GET", `/_shroom/named/${REC}`, { headers: { cookie } });
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ named: "", titled: false, later: false, early: false, done: false, chapters: [], captions: null });
+    expect(await res.json()).toEqual({ named: "", titled: false, later: false, early: false, done: false, chapters: [], captions: null, copy: null });
     expect((await call(env, "GET", `/_shroom/named/${REC}`)).status).toBe(403);
     expect((await call(env, "GET", `/_shroom/named/${REC}`, { headers: { cookie: cookieFor(MHER, MHER_MAC) } })).status).toBe(403);
     await finish(env);
@@ -1018,7 +1026,39 @@ describe("the page (B209)", () => {
     const shows = await reloadShows(env, cookie);
     expect(shows.chapters.length).toBeGreaterThan(1);
     expect(shows.captions).toEqual({ src: expect.stringMatching(new RegExp(`^/_shroom/cc/${REC}\\?r=`)), lang: "en" });
-    expect(await (await call(env, "GET", `/_shroom/named/${REC}`, { headers: { cookie } })).json()).toEqual({ named: "Planning the spring launch", titled: false, later: false, early: false, done: true, ...shows });
+    expect(await (await call(env, "GET", `/_shroom/named/${REC}`, { headers: { cookie } })).json()).toEqual({ named: "Planning the spring launch", titled: false, later: false, early: false, done: true, ...shows, copy: null });
+  });
+
+  it("the name's answer is done only once the take's voice cuts are in (review of B239)", async () => {
+    // A space that listens, the take live a minute ago: its cues are still being judged.
+    const env = await aiSpace({ meta: { publishedAt: new Date(NOW - MIN).toISOString() } });
+    await finish(env);
+    const cookie = cookieFor(M1, OWNER_MAC);
+    const ask = async () => (await call(env, "GET", `/_shroom/named/${REC}`, { headers: { cookie } })).json();
+    expect(await ask()).toMatchObject({ named: "Planning the spring launch", done: false });
+    await env.BUCKET.put(metaKey(REC), JSON.stringify({ ...record(env), edits: { ...edits([[30, 40]], 2), voice: { planned_at: NOW, cues: 1 } } }));
+    const now = await ask();
+    expect(now).toMatchObject({ done: true, ...(await reloadShows(env, cookie)) });
+    expect(now.chapters).toEqual([[0, "Where we are"], [51.3, "The budget"]]);
+  });
+
+  it("names the edit's own copy, whose clock the captions take; a baked file's own name isn't one (review of B239)", async () => {
+    const env = await namedSpace();
+    const cookie = cookieFor(M1, OWNER_MAC);
+    const COPY = { rev: 2, file: "edit-2.mp4", duration: 140 };
+    await env.BUCKET.put(metaKey(REC), JSON.stringify({ ...record(env), edits: { ...edits([[30, 40]], 2), copy: COPY } }));
+    let html = await live(env, cookie);
+    expect(html).toMatch(new RegExp(`<track kind="captions" src="/_shroom/cc/${REC}\\?r=[^"&]*&amp;e=1"`));
+    expect(await (await call(env, "GET", `/_shroom/named/${REC}`, { headers: { cookie } })).json()).toMatchObject({ copy: `/m/${REC}/edit-2.mp4` });
+    // Baked (B197): edit-3.mp4 is the recording now; a newer edit, its copy not up yet, plays
+    // the file with its cuts skipped, on the file's own clock.
+    const BAKED = { hls: null, mp4: `rec/${REC}/edit-3.mp4`, poster: null, width: 1920, height: 1080 };
+    await env.BUCKET.put(metaKey(REC), JSON.stringify({ ...record(env), durationSec: 150, media: BAKED, bakedFrom: [{ at: "2026-10-03T10:00:00Z", rev: 3, keep: [[0, 150]] }], edits: edits([[30, 40]], 4) }));
+    html = await live(env, cookie);
+    expect(html).toContain(`/m/${REC}/edit-3.mp4`);
+    expect(html).toMatch(new RegExp(`<track kind="captions" src="/_shroom/cc/${REC}\\?r=[^"]*"`));
+    expect(html).not.toMatch(/<track kind="captions" src="[^"]*e=1"/);
+    expect(await (await call(env, "GET", `/_shroom/named/${REC}`, { headers: { cookie } })).json()).toMatchObject({ copy: null });
   });
 
   /** An untitled take's owner page, opened while its name is on its way. */
@@ -1085,7 +1125,7 @@ describe("the page (B209)", () => {
 
   it("the chapters and captions that come with the name go into the player in place, as it plays", async () => {
     const p = namingScript(await waitingPage());
-    await p.answer({ named: "Spring", titled: false, later: false, early: true, done: false, chapters: [], captions: null });
+    await p.answer({ named: "Spring", titled: false, later: false, early: true, done: false, chapters: [], captions: null, copy: null });
     expect(p.player.wired).toEqual({ chapters: [], captions: 0 });
     await p.answer(full());
     // The bar cut into its chapters, once.
@@ -1103,9 +1143,48 @@ describe("the page (B209)", () => {
   });
 
   it("the captions follow the clock of what plays: an edit's own copy takes the edited one", async () => {
-    const p = namingScript(await waitingPage(), { playing: `/m/${REC}/edit-3.mp4` });
-    await p.answer(full());
+    const p = namingScript(await waitingPage(), { playing: `https://v.example.com/m/${REC}/edit-3.mp4` });
+    await p.answer(full({ copy: `/m/${REC}/edit-3.mp4` }));
     expect(p.player.video.children[0].src).toBe(`${CAPTIONS.src}&e=1`);
+  });
+
+  it("a baked recording's own file plays on its own clock, whatever its name (review of B239)", async () => {
+    // A baked video plays `edit-3.mp4` as the recording, a newer edit's cuts skipped as it plays.
+    const p = namingScript(await waitingPage(), { playing: `https://v.example.com/m/${REC}/edit-3.mp4` });
+    await p.answer(full({ copy: null }));
+    expect(p.player.video.children[0].src).toBe(CAPTIONS.src);
+  });
+
+  // Review of B239: a voice cut lands after the name (the Mac plans its cuts from the finished
+  // transcript the naming step read). The bar must come to what a reload draws.
+  it("chapters that change after they were drawn are drawn again; the asking goes on while the cuts are coming", async () => {
+    const p = namingScript(await waitingPage());
+    await p.answer(full({ done: false }));
+    expect(p.player.wired.chapters).toEqual([CHAPTERS]);
+    expect(p.timers).toHaveLength(1);
+    const CUT = [[0, "Where we are"], [51.3, "The budget"]];
+    await p.answer(full({ chapters: CUT }));
+    expect(p.player.wired.chapters).toEqual([CHAPTERS, CUT]);
+    // Captions are wired once; their track runs on the recording's clock either way.
+    expect(p.player.wired.captions).toBe(1);
+    expect(p.timers).toHaveLength(0);
+  });
+
+  it("when what plays changes after the asking stopped, it asks once more and redraws the bar", async () => {
+    const p = namingScript(await waitingPage());
+    await p.answer(full());
+    expect(p.timers).toHaveLength(0);
+    const before = p.asked;
+    p.keep([[0, 30], [40, 150]]);
+    expect(p.asked).toBe(before + 1);
+    const CUT = [[0, "Where we are"], [51.3, "The budget"]];
+    await p.reply(full({ chapters: CUT }));
+    expect(p.player.wired.chapters).toEqual([CHAPTERS, CUT]);
+    // The same chapters again draw nothing new.
+    p.keep([[0, 30], [40, 150]]);
+    await p.reply(full({ chapters: CUT }));
+    expect(p.player.wired.chapters).toEqual([CHAPTERS, CUT]);
+    expect(p.timers).toHaveLength(0);
   });
 
   it("a title typed while the name is on its way still gets the chapters and captions", async () => {
