@@ -111,6 +111,9 @@ uploads the picture as the `machine-picture` artifact.
 - **Boards for review go as images.** Bagrat reviews on his phone. When boards wait on
   his review, export each one as a phone-readable PNG ahead of time, so they can be sent
   (SendUserFile) the moment he asks, rather than only the canvas link (Bagrat, 2026-10-19).
+  Each image holds a whole board: when one is too tall for a phone, split it only between
+  rows or frames, never through one, and look at every image before sending it (Bagrat,
+  2026-10-25, after an icon sheet was cut mid-row).
 - **Proving the build matches**: `npm run -s test:gallery --workspace app` and
   `gallery:pages` screenshot every state (`app/test/gallery-out/`,
   `tests/e2e/gallery-out/`). The hosted Mac (the `shroom-cloud` skill, §5) shows the real
