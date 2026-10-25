@@ -9767,6 +9767,16 @@
      "id": "settings-space.ai-part-1-done"
     },
     {
+     "text": "Checking your space",
+     "role": "line",
+     "copy": "provisional",
+     "note": "N78: the AI switch's part 1, stopped there (the page unanswered, the setup key not live, the page newer than this app): its cross, under the cost line, the law-12 line under it. Not drawn on the board; the build's form of a drawn line, as parts 2 and 3 stop in their plain words (provisional, N78).",
+     "cites": [
+      "N78"
+     ],
+     "id": "settings-space.ai-part-1-stopped"
+    },
+    {
      "text": "Connecting AI to your space…",
      "role": "line",
      "copy": "ratified",

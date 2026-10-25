@@ -4,7 +4,7 @@
 
 The machine: every state, edge, rule, said-line and law of shroom v1 — the spec (DECISIONS B133). Sessions edit it; MACHINE.md and the canvas's machine boards are generated from it.
 
-166 states · 353 edges · 26 rules · 775 said-lines · 16 laws · 89 ledger rows.
+166 states · 353 edges · 26 rules · 776 said-lines · 16 laws · 89 ledger rows.
 
 Status: **ratified** is Bagrat's; **provisional** is designed or built and awaits him (each cites its row: `#n` is a DEVIATIONS row of docs/DECISIONS.md, `Bn` a decision, `Nn`/`Un`/`Pn` a ledger row below). `SM:n` in older citations is a line of the retired spec text, kept in history/spec/UX-STATEMACHINE.md.
 
@@ -2807,6 +2807,7 @@ The Space tab: one tab with a mood per kind of Mac (inspection · repair · owne
 | “Couldn't change that just now — try again in a moment.” | line | provisional | N66, N78. When a re-wiring didn't go through, until the next try or the next visit (law 12); the switch is as the page has it. Since N78 under the parts, the part that stopped crossed, the cost line kept. · N66, N78 |
 | “Checking your space…” | line | ratified | N78: the AI switch's parts, under its cost line: part 1 (the page's version, the setup key, that the page is shroom's), underway: its spinner, and its running clock once it has run a second. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”). · N78 |
 | “Your space is ready” | line | ratified | N78: the AI switch's parts, under its cost line: part 1, done: its tick. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”). · N78 |
+| “Checking your space” | line | provisional | N78: the AI switch's part 1, stopped there (the page unanswered, the setup key not live, the page newer than this app): its cross, under the cost line, the law-12 line under it. Not drawn on the board; the build's form of a drawn line, as parts 2 and 3 stop in their plain words (provisional, N78). · N78 |
 | “Connecting AI to your space…” | line | ratified | N78: the AI switch's parts, under its cost line: turning on, part 2 (the page put up again with Cloudflare's AI), underway: its spinner and its clock. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”). · N78 |
 | “AI connected” | line | ratified | N78: the AI switch's parts, under its cost line: turning on, part 2, done. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”). · N78 |
 | “Connecting AI to your space” | line | ratified | N78: the AI switch's parts, under its cost line: turning on, part 2, still to come: its dot; with a cross when it stopped there (law 12). Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”). · N78 |
