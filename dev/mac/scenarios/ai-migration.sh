@@ -39,7 +39,7 @@ check() { # <name> <ok 0|1> <seen>
   [ "$2" = 0 ] || { mark=fail; failed=1; }
   printf '%s\t%s\t%s\n' "$mark" "$1" "$(printf '%s' "$3" | tr '\t\n' '  ' | cut -c1-300)" | tee -a "$CHECKS"
 }
-stop() { check "$1" 1 "$2"; finish_up; exit 1; }
+stop() { check "$1" 1 "$2"; shot "stopped"; finish_up; exit 1; }
 ax() { osascript -l JavaScript "$AX" shroom 2>/dev/null; }
 has() { ax | awk -F'\t' -v l="$1" '$1 != "W" && index($3, l) == 1 { f = 1 } END { exit !f }'; }
 wait_for() { # <label prefix> <seconds>
@@ -76,7 +76,19 @@ shot() { # <name>
   ax >"$SHOTS/$name.ax.txt"
   say_ "shot $name"
 }
-popover() { osascript -e 'tell application "System Events" to tell process "shroom" to click menu bar item 1 of menu bar 2' >/dev/null 2>&1; sleep 3; }
+# The mushroom clicked, as a person clicks it; again if no window came up (a popover asked
+# for while the app is still busy with what came before can miss its first click).
+popover() {
+  local try
+  for try in 1 2 3; do
+    osascript -e 'tell application "System Events" to tell process "shroom" to click menu bar item 1 of menu bar 2' >/dev/null 2>&1
+    sleep 3
+    ax | grep -q '^W' && return 0
+    sleep 2
+  done
+  say_ "no popover came up"
+  return 1
+}
 esc() { osascript -e 'tell application "System Events" to key code 53' >/dev/null 2>&1; sleep 1; }
 quit_app() {
   pkill -f "$APP/Contents/MacOS/" 2>/dev/null
@@ -96,6 +108,7 @@ once() { cat "$HOME_DIR/once.json" 2>/dev/null | tr -d '\n ' ; }
 keep_log() { cp "$HOME_DIR/logs/run.log" "$OUT/run-$1.log" 2>/dev/null; }
 finish_up() {
   pbcopy </dev/null
+  keep_log last
   [ -n "${INVITE:-}" ] && rm -f "$INVITE"
   quit_app
 }
@@ -159,6 +172,12 @@ update_in_place() { # <leg>
   t=0
   while [ "$t" -lt 300 ]; do
     [ "$(version)" = "$TO" ] && pgrep -f "$APP/Contents/MacOS/shroom" >/dev/null && break
+    # Still offered half a minute on: the click didn't land. Said, and clicked again.
+    if [ "$t" -gt 0 ] && [ $((t % 30)) -eq 0 ] && [ "$(version)" = "$FROM" ] && has "Update"; then
+      say_ "Update is still offered after $t s; clicking it again"
+      shot "$leg-update-still-offered"
+      click "Update" 2
+    fi
     sleep 3
     t=$((t + 3))
   done
