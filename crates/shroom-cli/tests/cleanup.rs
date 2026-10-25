@@ -164,3 +164,75 @@ fn a_space_not_counting_plays_says_so() {
     assert_eq!(code, 0, "{v}");
     assert_eq!(v["counting"], false);
 }
+
+/// With auto-cleanup on (N74): what's going comes first, soonest first, each with when; a
+/// pinned video is never a candidate, even one a stale page still marks.
+#[test]
+fn what_auto_cleanup_will_delete_comes_first_and_a_pinned_video_never_does() {
+    let (base, _) = page(|path, body| {
+        let (status, mut v) = suggestions(path, body);
+        if body["after"].is_null() {
+            let items = v["items"].as_array_mut().unwrap();
+            // The roadmap isn't worth deleting, but nobody watched it: it's going on the 27th.
+            items[1]["deletesAt"] = "2026-10-27T03:00:00.000Z".into();
+            items[1]["reason"]["code"] = "not-lately".into();
+            items[2]["deletesAt"] = "2026-10-26T03:00:00.000Z".into();
+            // The first one was pinned since: the page says keep.
+            items[0]["keep"] = true.into();
+        }
+        (status, v)
+    });
+    let dir = tempfile::tempdir().unwrap();
+    mac(dir.path(), "OwnerClass");
+    let (code, v) = shroom(dir.path(), &base, &["cleanup-candidates"]);
+    assert_eq!(code, 0, "{v}");
+    let ids: Vec<&str> = v["candidates"].as_array().unwrap().iter().map(|c| c["id"].as_str().unwrap()).collect();
+    assert_eq!(ids, ["0ldD3m0F0rAcm3Co", "Q3rNdPl4nW1kThr0", "D3s1gnR3v13wAug1"], "going first, soonest first; the pinned one never");
+    assert_eq!(v["candidates"][0]["deletes_at"], "2026-10-26T03:00:00.000Z");
+    assert!(v["candidates"][2]["deletes_at"].is_null());
+    assert!(v["candidates"][0]["why"].as_str().unwrap().contains("unless pinned"), "{}", v["candidates"][0]);
+}
+
+/// `shroom autoclean` reads the space's setting and what's going; it never changes it (the
+/// app on the Mac that set up the space does, as it gives the page its schedule).
+#[test]
+fn autoclean_reads_the_setting_and_whats_next_and_never_changes_it() {
+    let (base, heard) = page(|path, _| {
+        assert_eq!(path, format!("/{HOST}/_shroom/api/autoclean"));
+        (200, json!({"shroom": 1, "days": 30, "since": "2026-10-01T00:00:00.000Z",
+            "going": [{"id": "0ldD3m0F0rAcm3Co", "deletesAt": "2026-10-27T03:00:00.000Z"}, {"id": "Fr1st3v3rT3st000", "deletesAt": "2026-10-27T05:00:00.000Z"}, {"id": "D3s1gnR3v13wAug1", "deletesAt": "2026-10-28T03:00:00.000Z"}],
+            "last": {"at": "2026-10-20T03:00:00.000Z", "ids": ["St4ndupN0t3sJn05"], "bytes": 900_000_000u64}}))
+    });
+    let dir = tempfile::tempdir().unwrap();
+    mac(dir.path(), "Member");
+    let (code, v) = shroom(dir.path(), &base, &["autoclean"]);
+    assert_eq!(code, 0, "{v}");
+    assert_eq!((v["days"].as_u64(), v["on"].as_bool()), (Some(30), Some(true)));
+    assert_eq!(v["next_at"], "2026-10-27T03:00:00.000Z");
+    assert_eq!(v["going"].as_array().unwrap().len(), 3);
+    assert_eq!(v["going"][0]["link"], format!("https://{HOST}/0ldD3m0F0rAcm3Co"));
+    assert_eq!(v["last"]["ids"][0], "St4ndupN0t3sJn05");
+    let out = Command::new(env!("CARGO_BIN_EXE_shroom-cli")).arg("autoclean").env("SHROOM_HOME", dir.path()).env("SHROOM_SPACE_BASE", &base).output().unwrap();
+    let text = String::from_utf8_lossy(&out.stdout);
+    assert!(text.contains("Auto-cleanup: videos nobody watches for 30 days are deleted."), "{text}");
+    assert!(text.contains("Next: 2 videos on Oct 27. Pin one to keep it: shroom pin <video>"), "{text}");
+
+    let before = heard.lock().unwrap().len();
+    let (code, v) = shroom(dir.path(), &base, &["autoclean", "60"]);
+    assert_eq!((code, v["error"].as_str()), (6, Some("refused")), "{v}");
+    assert!(v["message"].as_str().unwrap().contains("Settings"));
+    assert_eq!(heard.lock().unwrap().len(), before, "nothing asked of the space");
+}
+
+#[test]
+fn autoclean_off_or_on_a_page_without_it_says_off() {
+    for answer in [(200, json!({"shroom": 1, "days": 0, "since": null, "going": [], "last": null})), (404, json!({"shroom": 1, "error": "not-found"}))] {
+        let (base, _) = page(move |_, _| answer.clone());
+        let dir = tempfile::tempdir().unwrap();
+        mac(dir.path(), "OwnerClass");
+        let (code, v) = shroom(dir.path(), &base, &["autoclean"]);
+        assert_eq!(code, 0, "{v}");
+        assert_eq!((v["days"].as_u64(), v["on"].as_bool()), (Some(0), Some(false)), "{v}");
+        assert!(v["going"].as_array().unwrap().is_empty());
+    }
+}
