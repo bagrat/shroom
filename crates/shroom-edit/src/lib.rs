@@ -419,7 +419,13 @@ pub struct Saved {
 impl Saved {
     /// A list saved as `rev`, with no copy yet.
     pub fn new(list: EditList, rev: u64) -> Saved {
-        Saved { list, rev, copy: None, keep_until: None, extra: serde_json::Map::new() }
+        Saved {
+            list,
+            rev,
+            copy: None,
+            keep_until: None,
+            extra: serde_json::Map::new(),
+        }
     }
 
     /// The copy, when it was cut from this very revision.
