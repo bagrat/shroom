@@ -44,7 +44,12 @@ osascript -e 'tell application "System Events" to key code 119' 2>/dev/null
 sleep 2
 screencapture -x "$OUT/general-foot.png"
 quit
-if grep -q "AXScrollBar" "$OUT/size.txt"; then
+# The window's part of each shot, the menu bar's clock left out (it sits at 212,58 on the
+# runner's 1024×768 screen; the shots are in pixels, at 1×).
+crop() { sips -c 560 600 --cropOffset 90 212 "$OUT/$1.png" --out "$OUT/$1-window.png" >/dev/null; }
+crop general-top
+crop general-foot
+if grep -q "AXScrollBar" "$OUT/size.txt" || ! cmp -s "$OUT/general-top-window.png" "$OUT/general-foot-window.png"; then
   echo "NO: Settings · General scrolls on this Mac"
   exit 1
 fi
