@@ -49,7 +49,7 @@ on:
         type: boolean
         default: false
       early:
-        description: An early build — a pre-release, from claude/early-integration only (with Publish)
+        description: An early build — a pre-release, from early-release only (with Publish)
         type: boolean
         default: false
 
@@ -71,8 +71,10 @@ env:
   # The end-to-end lanes' browsers are never needed on a runner.
   PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
   # The one branch an early build is published from (docs/RELEASING.md, "Branches"); the
-  # `release` environment allows it, `main` and `v*` tags, and nothing else.
-  EARLY_BRANCH: claude/early-integration
+  # `release` environment allows it, `main` and `v*` tags, and nothing else. It isn't a
+  # claude/ branch, so no session pushes it: early-release.yml moves it to the integration
+  # branch's head once CI is green there.
+  EARLY_BRANCH: early-release
 
 jobs:
   check:
@@ -366,7 +368,7 @@ jobs:
     needs: [check, build]
     # A tag publishes, and so does Run workflow on main with Publish, or on the early branch
     # with Publish and Early (a pre-release); a rehearsal stops after the build.
-    if: github.ref_type == 'tag' || (github.event_name == 'workflow_dispatch' && inputs.publish && (github.ref == 'refs/heads/main' || (inputs.early && github.ref == 'refs/heads/claude/early-integration')))
+    if: github.ref_type == 'tag' || (github.event_name == 'workflow_dispatch' && inputs.publish && (github.ref == 'refs/heads/main' || (inputs.early && github.ref == 'refs/heads/early-release')))
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
