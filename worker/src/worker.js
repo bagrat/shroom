@@ -154,7 +154,7 @@ export const STALL_SECONDS = 120;
 export const IFACE = 2;
 /** The version of the app that deploys this file — the same as the app's own
  * (`app/src-tauri/tauri.conf.json`, held equal by a shroom-cloud test). */
-export const VERSION = "0.1.31";
+export const VERSION = "0.1.32";
 
 const ID = /^[A-Za-z0-9_-]{16}$/;
 const HLS_JS_KEY = ".shroom/player/hls.min.js";
@@ -1522,6 +1522,7 @@ h1{flex:1 1 0;min-width:0;margin:0;font-size:1.75rem;font-weight:600;line-height
 .copy::before,#dl a::before,.dl a::before{content:"";flex:none;width:18px;height:18px;background:currentColor;-webkit-mask:var(--i) center/18px 18px no-repeat;mask:var(--i) center/18px 18px no-repeat}
 .copy:hover,#dl a:hover,.dl a:hover{background:var(--hover);color:var(--text)}
 .copy[aria-disabled=true]{cursor:default}.copy[aria-disabled=true]::before{opacity:.4}.copy[aria-disabled=true]:hover{background:transparent;color:var(--soft)}
+#dl a[aria-disabled=true]{cursor:default}#dl a[aria-disabled=true]::before{opacity:.4}#dl a[aria-disabled=true]:hover{background:transparent;color:var(--soft)}
 /* The buttons' tooltips (N46: “tooltips need padding between the button”): drawn a clear 8px
    below the button, their right edges on its right edge, so the last one stays in the window. */
 .copy,#dl,.dl{position:relative}
@@ -1555,11 +1556,13 @@ main>.line:only-child{margin:auto;max-width:420px;text-align:center;font-size:1.
    recording's shape (--ar) — the title, the upload line and the mark's foot stay in view —
    and the foot keeps the column's width. 212px: the body's padding, the title row and its
    gap, the foot; a short window's foot sits closer (12px). The player's control bar sits
-   under its picture (56px, --bar), so the picture's room is that much less. */
+   under its picture (56px, --bar), so the picture's room is that much less — and the frame
+   that waits for it keeps that room too, so the column, and the icons beside the title,
+   don't move at the go-live (Bagrat, 2026-10-25). */
 body{--ar:16/9;--room:calc(100dvh - 212px)}
 body:has(main .upl:not([hidden])){--room:calc(100dvh - 282px)}
 main,body>.foot{--fit:min(960px,max(320px,calc((var(--room) - var(--bar,0px)) * var(--ar))))}
-body:has(main .player){--bar:56px}
+body:has(main .player,main .wait){--bar:56px}
 main:has(.player,.wait),body:has(main .player,main .wait)>.foot{max-width:var(--fit)}
 @media (max-height:900px){body{--room:calc(100dvh - 192px)}body:has(main .upl:not([hidden])){--room:calc(100dvh - 262px)}.foot{padding-top:12px}}
 .mark{display:flex;align-items:center;gap:8px;min-height:44px;color:var(--quiet);text-decoration:none}.mark:hover{color:var(--text)}.mark[hidden]{display:none}.mark svg{display:block;width:17px;height:18px}
@@ -1590,9 +1593,9 @@ const PLAYER_STYLE = `.bar{display:block;width:100%;height:3px;border-radius:2px
 .playing .pp .i-pause,.muted .mu .i-off,.full .fs .i-exit{display:block}
 .time{flex:none;padding:0 6px;font-variant-numeric:tabular-nums;white-space:nowrap}.gap{flex:1 1 0}
 .row .sp{width:auto;min-width:44px;padding:0 10px;font-weight:600;font-variant-numeric:tabular-nums}
-.seek{-webkit-appearance:none;appearance:none;position:absolute;left:0;right:0;top:-6px;width:100%;height:16px;margin:0;padding:0;background:transparent;cursor:pointer;--p:0;--b:0}
-.seek::-webkit-slider-runnable-track{height:4px;border:0;background:linear-gradient(to right,var(--player-fill) calc(var(--p)*100%),var(--player-buf) 0 calc(var(--b)*100%),var(--player-track) 0)}
-.seek::-moz-range-track{height:4px;border:0;background:linear-gradient(to right,var(--player-fill) calc(var(--p)*100%),var(--player-buf) 0 calc(var(--b)*100%),var(--player-track) 0)}
+.seek{-webkit-appearance:none;appearance:none;position:absolute;left:0;right:0;top:-6px;width:100%;height:16px;margin:0;padding:0;background:transparent;cursor:pointer;--p:0;--b:0;--th:14px}
+.seek::-webkit-slider-runnable-track{height:4px;border:0;background:linear-gradient(to right,var(--player-fill) calc(var(--th)/2 + var(--p)*(100% - var(--th))),var(--player-buf) 0 calc(var(--th)/2 + var(--b)*(100% - var(--th))),var(--player-track) 0)}
+.seek::-moz-range-track{height:4px;border:0;background:linear-gradient(to right,var(--player-fill) calc(var(--th)/2 + var(--p)*(100% - var(--th))),var(--player-buf) 0 calc(var(--th)/2 + var(--b)*(100% - var(--th))),var(--player-track) 0)}
 .seek::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:14px;height:14px;margin-top:-5px;border:0;border-radius:50%;background:var(--player-hi)}
 .seek::-moz-range-thumb{width:14px;height:14px;border:0;border-radius:50%;background:var(--player-hi)}
 .seek:focus-visible{outline:none}.seek:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 3px var(--player-fill)}.seek:focus-visible::-moz-range-thumb{box-shadow:0 0 0 3px var(--player-fill)}
@@ -1746,7 +1749,7 @@ export function playerHtml(id, meta, base = "") {
   return `<div class="player" data-dur="${dur}"${ratio}><video id="v" playsinline preload="metadata"${poster}></video>`
     + `<span class="big" aria-hidden="true">${ICON.big}</span>`
     + `<div class="ctl"><div class="row"><button type="button" class="pp" aria-label="${escapeHtml(COPY.play)}">${ICON.play}${ICON.pause}</button>`
-    + `<input type="range" class="seek" min="0" max="${dur}" step="0.1" value="0" aria-label="${escapeHtml(COPY.seek)}" aria-valuetext="${time}">`
+    + `<input type="range" class="seek" min="0" max="${dur}" step="any" value="0" aria-label="${escapeHtml(COPY.seek)}" aria-valuetext="${time}">`
     + `<span class="time">${time}</span><span class="gap"></span>`
     + `<button type="button" class="sp" aria-label="${escapeHtml(speedLabel(1))}">1×</button>`
     + `<button type="button" class="mu" aria-label="${escapeHtml(COPY.mute)}">${ICON.sound}${ICON.muted}</button>`
@@ -1803,7 +1806,7 @@ function dur(){return K?shroomLength(K):isFinite(v.duration)&&v.duration>0?v.dur
 function at(){var t=v.currentTime||0;return K?shroomAt(K,t):t}
 function ahead(t){var b=v.buffered,e=0;try{for(var i=0;i<b.length;i++)if(b.start(i)<=t+1&&b.end(i)>e)e=b.end(i)}catch(x){}return e}
 function paint(){var d=dur(),e=v.ended||fin,t=held?+sk.value:e&&d?d:at(),txt=shroomClock(t,e)+(d?" / "+shroomClock(d,true):"");tm.textContent=txt;sk.max=String(d||0);if(!held)sk.value=String(t);sk.setAttribute("aria-valuetext",txt);
-var b=K?shroomAt(K,ahead(v.currentTime||0)):ahead(t);sk.style.setProperty("--p",String(d?Math.min(1,t/d):0));sk.style.setProperty("--b",String(d?Math.min(1,b/d):0))}
+var b=K?shroomAt(K,ahead(v.currentTime||0)):ahead(t);sk.style.setProperty("--p",String(d?Math.min(1,(+sk.value||0)/d):0));sk.style.setProperty("--b",String(d?Math.min(1,b/d):0))}
 function level(g){g=Math.round(g*20)/20;if(v.volume!==g)try{v.volume=g}catch(x){}}
 function skip(){if(!K){if(v.volume!==1)level(1);return}var t=v.currentTime||0,n=K.length,i=0;while(i<n&&t>=K[i][1]-.03)i++;
 if(i===n){fin=true;if(!v.paused)v.pause();level(1);paint();return}if(t<K[i][0]-.001&&(aim!==K[i][0]||Math.abs(t-aim)>.05)){level(0);aim=K[i][0];v.currentTime=aim;return}level(v.paused?1:shroomGain(K,t,.05))}
@@ -2066,18 +2069,23 @@ function ownerPage(id, meta, now, face, waiting, blocked = false, pending = fals
   const frame = meta.media?.poster ? `<img src="/m/${id}/poster.jpg" alt="">` : "";
   const stage = live ? aiPlayer(playerHtml(id, meta), ai) : `<div class="wait" id="w">${frame}</div>`;
   // Download hands over the video as it plays (N63): it waits for an edit's permanent copy.
+  // Every quiet icon is there from the first paint, in its place: one not ready yet is greyed
+  // and goes nowhere, and the poll wakes it where it stands (Bagrat, 2026-10-25: the row
+  // flickered as they came in one by one).
   const view = viewOf(id, meta);
-  const download = view.download ? `<a href="/d/${id}">${COPY.download}</a>` : "";
+  const download = view.download ? `<a href="/d/${id}">${COPY.download}</a>` : `<a aria-disabled="true">${COPY.download}</a>`;
   // Copy thumbnail waits for the loop made for this title — or, when none can be made (the
   // upload finished with no teaser), for the still (N46).
   const thumbs = { ...thumbsOf(id, meta, live), drained: drainedNow };
   const ready = thumbs.gif || (drainedNow && !thumbs.teaser && !!thumbs.thumb);
   // Edit in shroom (N69): the last quiet icon, a plain link that opens the video in shroom's
-  // editor — once the video is fully up, as Edit… in the Library (the poll brings it in at
-  // the drain). The browser asks before shroom opens; nothing on the page tests for it.
-  const edit = face.host ? `<a class="copy edit" id="ed" href="${escapeHtml(`shroom://edit/${face.host}/${id}`)}" data-tip="${COPY.editInShroom}" aria-label="${COPY.editInShroom}"${drainedNow ? "" : " hidden"}>${COPY.editInShroom}</a>` : "";
+  // editor — once the video is fully up, as Edit… in the Library (greyed until then, its link
+  // kept aside: the poll wakes it at the drain). The browser asks before shroom opens; nothing
+  // on the page tests for it.
+  const editHref = escapeHtml(`shroom://edit/${face.host}/${id}`);
+  const edit = face.host ? `<a class="copy edit" id="ed" ${drainedNow ? `href="${editHref}"` : `data-href="${editHref}"`} data-tip="${COPY.editInShroom}" aria-label="${COPY.editInShroom}"${drainedNow ? "" : ' aria-disabled="true"'}>${COPY.editInShroom}</a>` : "";
   // Copy link and Download are quiet icons beside the title; their words name them.
-  const head = `<div class="head">${field}${copyButtons(live, !ready)}<span id="dl" data-tip="${COPY.download}">${download}</span>${edit}</div>`;
+  const head = `<div class="head">${field}${copyButtons(true, !live || !ready)}<span id="dl" data-tip="${COPY.download}">${download}</span>${edit}</div>`;
   const gone = drainedNow && !hearing;
   const spin = gone ? "" : `<span class="spin${stalled && !drainedNow ? " rest" : ""}" id="b" aria-hidden="true"></span>`;
   const upload = `<div class="upl" id="ul"${gone ? " hidden" : ""}>${spin}<span class="up" id="u">${escapeText(line)}</span></div>`;
@@ -2104,6 +2112,8 @@ ${THUMB_JS}
 (function(){var c=${jsonForScript(cfg)},t=document.getElementById("t"),saved=c.saved,src=${jsonForScript(JSON.stringify(src))},tb=document.getElementById("th");
 var th=shroomThumbs(c.thumbs,function(ok){if(ok)tb.removeAttribute("aria-disabled");else tb.setAttribute("aria-disabled","true");tb.setAttribute("data-tip",ok?c.copyThumb:c.preparing)});
 if(c.live){shroomPlayer(document.querySelector(".player"),src,c.labels,${playing(id, view)});th.live()}
+function wake(el,href){if(!el.getAttribute("aria-disabled"))return;if(href)el.href=href;el.removeAttribute("aria-disabled")}
+function rest(el){if(el.getAttribute("aria-disabled"))return;el.removeAttribute("href");el.setAttribute("aria-disabled","true")}
 function send(v){c.pend=null;fetch("/_shroom/title/"+c.id,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({title:v})})
 .then(function(r){if(r.status===404)c.pend=v;return r.ok?r.json():null}).then(function(j){if(j){saved=j.title;if(document.activeElement!==t)t.value=saved;document.title=saved;th.retitle(saved)}})}
 function save(){var v=t.value.replace(/\\s+/g," ").trim();if(!v){t.value=saved;return}if(v===saved)return;send(v)}
@@ -2134,14 +2144,14 @@ function say(x){var w=document.getElementById("w");if(!w||(!x&&!c.said))return;c
 function poll(){fetch("/_shroom/status/"+c.id,{cache:"no-store"}).then(function(r){return r.json()}).then(function(s){
 if(s.state==="removed"){var m=document.querySelector("main"),p=document.createElement("p");m.textContent="";p.className="line";p.textContent=c.notFound;m.appendChild(p);document.title="shroom";return}
 if(c.pend&&s.state!=="waiting")send(c.pend);
-if(s.state==="live"){if(s.dur)th.length(shroomClock(s.dur,true));if(s.teaser)th.teaser();if(!c.live){c.live=true;tb.hidden=false;th.live();var w=document.getElementById("w"),h=document.createElement("div");h.innerHTML=c.player;var pl=h.firstChild;
+if(s.state==="live"){if(s.dur)th.length(shroomClock(s.dur,true));if(s.teaser)th.teaser();if(!c.live){c.live=true;th.live();var w=document.getElementById("w"),h=document.createElement("div");h.innerHTML=c.player;var pl=h.firstChild;
 var cp=s.copy,ps=cp&&cp.poster||(s.poster?"/m/"+c.id+"/poster.jpg":"");if(s.dur)pl.setAttribute("data-dur",s.dur);if(ps)pl.querySelector("video").poster=ps;w.replaceWith(pl);
 shroomPlayer(pl,cp?cp.src:src,c.labels,{keep:cp?null:s.keep||null,st:"/_shroom/status/"+c.id,copy:!!cp})}
-if(s.drained)th.drained();var ed=document.getElementById("ed");if(ed&&s.drained)ed.hidden=false;
+if(s.drained)th.drained();var ed=document.getElementById("ed");if(ed&&s.drained)wake(ed,ed.getAttribute("data-href"));
 if(s.cuts&&s.cuts!=="coming"&&s.cuts!==c.cutsTag)pull(s.cuts);if(!s.cuts&&c.cutsTag==="coming"){c.cutsTag=null;var cw=document.getElementById("cuts");if(cw&&cw.hidden)cw.remove()}
 if(s.drained){c.drained=true;if(s.cuts==="coming"&&!c.waitOver){if(!c.done){ul.hidden=false;up.textContent=c.finishing;spin(true,true)}}else done(s.cuts?null:hintDue)}
 else{ul.hidden=false;up.textContent=s.stalled?c.waiting:c.finishing;spin(true,!s.stalled)}
-if(s.mp4){if(!dl.firstChild){var a=document.createElement("a");a.href="/d/"+c.id;a.textContent=c.dl;dl.appendChild(a)}if(s.drained&&s.cuts!=="coming")return}
+var da=dl.firstChild;if(da){if(s.mp4)wake(da,"/d/"+c.id);else rest(da)}if(s.mp4&&s.drained&&s.cuts!=="coming")return
 if(!s.drained||s.cuts==="coming")return next(2000);gap=Math.min(gap*2,30000);return next(gap)}
 if(s.state==="unavailable"){if(!c.live){say(c.unavailable);up.textContent="";spin(false,false)}return next(30000)}
 if(s.state==="uploading"){say("");ul.hidden=false;up.textContent=s.stalled?c.waiting:c.finishing;spin(true,!s.stalled)}
@@ -5145,10 +5155,12 @@ async function aiNamedRoute(request, env, id, now) {
 // ───────── the page's player: chapters in the seek bar, captions (B209) ─────────
 
 /** The bar drawn as one section a chapter (a layer behind the native slider, which keeps its
- * keyboard and screen-reader ways), its tip, the chapter after the time; the Captions button;
+ * keyboard and screen-reader ways), on the head's travel: 7 px in from each end, where the
+ * head's centre stops (Bagrat, 2026-10-25), the slider's own track drawing the two ends; its
+ * tip, the chapter after the time; the Captions button;
  * the owner's line under the title. */
-const AI_STYLE = `.player.ch .seek::-webkit-slider-runnable-track{background:transparent}.player.ch .seek::-moz-range-track{background:transparent}
-.chs{position:absolute;left:0;right:0;top:0;height:4px;display:flex;gap:2px;pointer-events:none}
+const AI_STYLE = `.player.ch .seek::-webkit-slider-runnable-track{background:linear-gradient(to right,var(--player-fill) 7px,transparent 0 calc(100% - 7px),var(--player-track) 0)}.player.ch .seek::-moz-range-track{background:linear-gradient(to right,var(--player-fill) 7px,transparent 0 calc(100% - 7px),var(--player-track) 0)}
+.chs{position:absolute;left:7px;right:7px;top:0;height:4px;display:flex;gap:2px;pointer-events:none}
 .chs i{display:block;height:4px;min-width:1px;border-radius:2px;transition:transform .12s;background:linear-gradient(to right,var(--player-fill) calc(var(--f,0)*100%),var(--player-buf) 0 calc(var(--g,0)*100%),var(--player-track) 0)}
 .chs i.on{transform:scaleY(1.75)}
 .chtip{position:absolute;bottom:calc(100% + 10px);left:0;transform:translateX(-50%);z-index:3;max-width:min(360px,80%);padding:4px 9px;border-radius:7px;background:var(--player);border:1px solid var(--player-track);color:var(--player-hi);font-size:12px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
@@ -5194,8 +5206,9 @@ var c=ch[at(t)][1];n.textContent="\\u00b7 "+c;n.title=c;sk.setAttribute("aria-va
 function show(t,x){var i=at(t),r=sk.getBoundingClientRect(),a=document.createElement("span");tip.textContent="";a.className="cht";a.textContent=shroomClock(t,false);tip.appendChild(a);tip.appendChild(document.createTextNode(ch[i][1]));tip.hidden=false;
 var w=tip.offsetWidth;tip.style.left=Math.max(w/2,Math.min(r.width-w/2,x))+"px";for(var j=0;j<secs.length;j++)secs[j][2].classList.toggle("on",j===i)}
 function off(){tip.hidden=true;for(var j=0;j<secs.length;j++)secs[j][2].classList.remove("on")}
-function thumb(){var d=len(),r=sk.getBoundingClientRect();return d?(+sk.value/d)*r.width:0}
-sk.addEventListener("pointermove",function(e){if(e.pointerType==="touch"||touch||ch.length<2)return;var r=sk.getBoundingClientRect(),x=Math.max(0,Math.min(r.width,e.clientX-r.left));show(len()*x/(r.width||1),x)});
+function at2x(t,w){var d=len();return 7+(d?t/d:0)*(w-14)}
+function thumb(){return at2x(+sk.value||0,sk.getBoundingClientRect().width)}
+sk.addEventListener("pointermove",function(e){if(e.pointerType==="touch"||touch||ch.length<2)return;var r=sk.getBoundingClientRect(),x=Math.max(0,Math.min(r.width,e.clientX-r.left));show(len()*Math.max(0,Math.min(1,(x-7)/((r.width-14)||1))),x)});
 sk.addEventListener("pointerleave",function(e){if(e.pointerType!=="touch"&&!touch)off()});
 sk.addEventListener("pointerdown",function(e){if(e.pointerType!=="touch"||ch.length<2)return;touch=true;clearTimeout(hide);sk.classList.add("held");show(+sk.value||0,thumb())});
 function lift(e){if(e.pointerType!=="touch"||!touch)return;touch=false;sk.classList.remove("held");clearTimeout(hide);hide=setTimeout(off,1500)}
