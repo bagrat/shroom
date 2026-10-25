@@ -13,6 +13,8 @@
 //   { "do": "drag", "focus": [x, y], "from": [x, y], "to": [x, y] }   cliclick: a click, a drag
 //   { "do": "click", "at": [x, y] }                                    cliclick: a click
 //   { "do": "move", "at": [x, y] }                                     cliclick: the pointer there
+//   { "do": "sweep", "press": bool, "from": [x, y], "to": [x, y] }      cliclick: the pointer along, in 2 px steps (held down)
+//   { "do": "same", "a": <name>, "b": <name> }                         ffmpeg: the two shots' pixels, the same? (else <a>-diff.png)
 //
 // Points are from the main display's top-left. The screenshots, the copy the drive read
 // back from the bucket and the report land in $MAC_OUT when the scenario sets it. A drive
@@ -95,6 +97,30 @@ async function answer(ask) {
   if (ask.do === "move") {
     cliclick(`m:${at([ask.at[0] - 3, ask.at[1]])}`, `m:${at(ask.at)}`);
     return;
+  }
+  if (ask.do === "sweep") {
+    // Slow, as a hand goes: every 2 px, each move its own event.
+    const [[x1, y1], [x2, y2]] = [ask.from, ask.to];
+    const n = Math.max(1, Math.round(Math.abs(x2 - x1) / 2));
+    const points = Array.from({ length: n }, (_, i) => [x1 + ((x2 - x1) * (i + 1)) / n, y1 + ((y2 - y1) * (i + 1)) / n]);
+    cliclick(`m:${at(ask.from)}`);
+    if (!ask.press) {
+      cliclick("-w", "8", ...points.map((p) => `m:${at(p)}`));
+      return;
+    }
+    cliclick(`dd:${at(ask.from)}`);
+    if (!dragMoves(points)) cliclick(...points.map((p) => `m:${at(p)}`));
+    cliclick(`du:${at(ask.to)}`);
+    return;
+  }
+  if (ask.do === "same") {
+    if (![ask.a, ask.b].every((n) => /^[a-z0-9-]+$/.test(n))) throw new Error("not shots this runner compares");
+    const [a, b] = [ask.a, ask.b].map((n) => join(dir, `${n}.png`));
+    const md5 = (f) => execFileSync(ffmpeg, ["-v", "error", "-i", f, "-f", "md5", "-"], { encoding: "utf8" }).trim();
+    if (md5(a) === md5(b)) return;
+    // Where they differ, made bright, beside them.
+    spawnSync(ffmpeg, ["-v", "error", "-y", "-i", a, "-i", b, "-lavfi", "[0][1]blend=all_mode=difference,lutrgb=r=min(255\\,val*16):g=min(255\\,val*16):b=min(255\\,val*16)", "-frames:v", "1", join(dir, `${ask.a}-diff.png`)]);
+    throw new Error(`${ask.a} and ${ask.b} differ (${ask.a}-diff.png)`);
   }
   throw new Error(`unknown ask ${JSON.stringify(ask)}`);
 }
