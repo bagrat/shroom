@@ -198,7 +198,7 @@ fn edit_sits_after_open_page_in_a_live_rows_menu_only() {
     let r = Run::new(library());
     let live = lib_row(&r, TITLE);
     let menu: Vec<&str> = live.menu.iter().map(|b| b.label.as_str()).collect();
-    assert_eq!(menu, ["Copy link", "Copy thumbnail", "Open page", "Edit…", "Rename", "Delete…"]);
+    assert_eq!(menu, ["Copy link", "Copy thumbnail", "Open page", "Edit…", "Rename", "Pin", "Delete…"]);
     let edit = edit_button(live).expect("Edit…");
     assert_eq!((button(edit), &edit.action), (("Edit…", Style::Plain, true), &Action::EditRow(rec())));
     assert!(!live.buttons.iter().chain(&live.hover).any(|b| matches!(b.action, Action::EditRow(_))), "the menu only");
@@ -272,7 +272,8 @@ fn a_member_sees_edit_only_on_their_own_rows() {
 #[test]
 fn edit_opens_the_editor_on_the_row_and_asks_for_its_record() {
     let r = opened();
-    assert_eq!(r.effects, vec![Effect::Editor(EditCmd::Open { id: WIN, rec: rec() }), Effect::Shell(ShellCmd::OpenEditor(WIN))]);
+    assert_eq!(r.effects, vec![Effect::Editor(EditCmd::Open { id: WIN, rec: rec() }), Effect::Shell(ShellCmd::OpenEditor(WIN)), Effect::Library(LibCmd::Editing(vec![rec()]))],
+        "marked for the space's auto-cleanup as it opens (N74)");
     assert_eq!(r.arm.edge, Some(("library", "editor")));
     let win = r.scene.editors.get(&WIN).expect("the editor");
     assert_eq!(win.id, "editor");
@@ -1277,7 +1278,8 @@ fn edit_on_another_video_opens_a_window_of_its_own() {
     let mut r = dirty();
     let held = list(&r);
     r.lib(Action::EditRow(other()));
-    assert_eq!(r.effects, vec![Effect::Editor(EditCmd::Open { id: WIN2, rec: other() }), Effect::Shell(ShellCmd::OpenEditor(WIN2))], "its own window, its video asked for");
+    assert_eq!(r.effects, vec![Effect::Editor(EditCmd::Open { id: WIN2, rec: other() }), Effect::Shell(ShellCmd::OpenEditor(WIN2)), Effect::Library(LibCmd::Editing(vec![other()]))],
+        "its own window, its video asked for (and marked, N74)");
     assert_eq!((r.arm.name, r.arm.edge), ("open-editor", Some(("library", "editor"))));
     assert_eq!(windows(&r), vec![WIN, WIN2]);
     assert_eq!((body_of(&r, WIN2).title, body_of(&r, WIN2).rec), (format!("Edit — {OTHER_TITLE}"), OTHER.to_string()));
@@ -1644,6 +1646,10 @@ fn the_time_left_counts_down_on_its_wakes() {
         r.tick_to(wake.0 - 1);
         assert_eq!(body(&r).original_kept.as_deref(), Some(words.as_str()), "never before its wake");
         r.tick_to(wake.0);
+        // The open editor's mark for auto-cleanup wakes too, every five minutes (N74).
+        if r.has(|e| matches!(e, Effect::Library(LibCmd::Editing(_)))) && body(&r).original_kept.as_deref() == Some(words.as_str()) {
+            continue;
+        }
         let now = body(&r).original_kept;
         assert_ne!(now.as_deref(), Some(words.as_str()), "the wake changes the words");
         said.extend(now);
@@ -1653,7 +1659,8 @@ fn the_time_left_counts_down_on_its_wakes() {
     want.extend(["nine", "eight", "seven", "six", "five", "four", "three", "two"].map(|n| format!("The original is kept {n} more hours")));
     want.extend(["The original is kept one more hour".to_string(), "The original is kept less than an hour".to_string()]);
     assert_eq!(said, want);
-    assert_eq!(r.scene.next_wake, None, "nothing left to count");
+    let marks: Vec<Mono> = r.w.library_ops.marked.values().map(|m| m.plus(shroom_core::settle::EDITING_MARK_MS)).collect();
+    assert!(r.scene.next_wake.is_none_or(|t| marks.contains(&t)), "nothing left to count: only the editor's mark for auto-cleanup wakes (N74)");
 }
 
 /// No line at all: nothing kept, its time already up, or a copy that isn't the saved edit's
@@ -2382,7 +2389,8 @@ fn says_once(r: &Run, line: &str) {
 fn the_pages_edit_opens_the_editor_as_edit_does() {
     let mut r = Run::new(at_rest());
     pressed(&mut r, HOST, REC);
-    assert_eq!(r.effects, vec![Effect::Editor(EditCmd::Open { id: WIN, rec: rec() }), Effect::Shell(ShellCmd::OpenEditor(WIN))]);
+    assert_eq!(r.effects, vec![Effect::Editor(EditCmd::Open { id: WIN, rec: rec() }), Effect::Shell(ShellCmd::OpenEditor(WIN)), Effect::Library(LibCmd::Editing(vec![rec()]))],
+        "marked for the space's auto-cleanup as it opens (N74)");
     assert_eq!(r.arm.edge, Some(("owner-page", "editor")));
     let win = r.scene.editors.get(&WIN).expect("the editor");
     assert!(win.activates, "the person asked for it, on the page");
@@ -2434,7 +2442,7 @@ fn the_page_brings_its_videos_window_forward_or_opens_one_beside_it() {
     assert_eq!((body(&r).footer.as_str(), body(&r).footer_tone), (FOOTER, LineTone::Plain));
 
     pressed(&mut r, HOST, OTHER);
-    assert_eq!(r.effects, vec![Effect::Editor(EditCmd::Open { id: WIN2, rec: other() }), Effect::Shell(ShellCmd::OpenEditor(WIN2))]);
+    assert_eq!(r.effects, vec![Effect::Editor(EditCmd::Open { id: WIN2, rec: other() }), Effect::Shell(ShellCmd::OpenEditor(WIN2)), Effect::Library(LibCmd::Editing(vec![other()]))]);
     assert_eq!((r.arm.name, r.arm.edge), ("edit-link-open", Some(("owner-page", "editor"))));
     assert_eq!((body_of(&r, WIN).rec.as_str(), body_of(&r, WIN2).rec.as_str()), (REC, OTHER), "each on its own video");
     assert_eq!((body_of(&r, WIN).footer.as_str(), body_of(&r, WIN).footer_tone), (FOOTER, LineTone::Plain), "nothing said in the first");

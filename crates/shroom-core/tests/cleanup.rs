@@ -357,17 +357,27 @@ fn the_suggestions_are_read_on_entry_and_by_scope() {
     let mut r = Run::new(with_popover(w));
     r.act(Action::OpenLibrary);
     assert!(r.has(|e| *e == Effect::Library(LibCmd::Suggest { everyone: false })));
-    // Suggestions off on this Mac: the Library still reads (auto-cleanup's warning must
-    // reach every Mac, N74), but says nothing of them.
+    // Suggestions off on this Mac: the Library reads none, and says nothing.
     let mut w = library(three(), 34_000_000_000);
     w.prefs.suggest_cleanup = false;
     w.session.windows.remove(&WindowKind::Library);
     w.suggestions = Fact::Unknown;
     let mut r = Run::new(with_popover(w));
     r.act(Action::OpenLibrary);
-    assert!(r.has(|e| matches!(e, Effect::Library(LibCmd::Suggest { .. }))));
+    assert!(!r.has(|e| matches!(e, Effect::Library(LibCmd::Suggest { .. }))));
     r.send(answer(three(), 34_000_000_000));
     assert!(line(&r.scene).is_none());
+    // …unless the space's auto-cleanup is on: its warning reaches every Mac (N74).
+    let mut w = library(three(), 34_000_000_000);
+    w.prefs.suggest_cleanup = false;
+    if let Fact::Known { v, .. } = &mut w.suggestions {
+        v.autoclean.days = 30;
+    }
+    w.suggestions = Fact::known(w.suggestions.get().unwrap().clone(), Mono(10));
+    w.session.windows.remove(&WindowKind::Library);
+    let mut r = Run::new(with_popover(w));
+    r.act(Action::OpenLibrary);
+    assert!(r.has(|e| matches!(e, Effect::Library(LibCmd::Suggest { .. }))));
 }
 
 #[test]

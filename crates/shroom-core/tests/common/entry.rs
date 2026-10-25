@@ -79,6 +79,7 @@ pub const READS: &[Read] = &[
     r("recording-off", "`config` opens and the probe finds screen recording switched off for shroom."),
     r("update-ready", "The release is downloaded and verified against the published fingerprint. A space exists"),
     r("updating-app", "Update clicked in config's banner or Settings → General, not mid-take."),
+    r("autoclean-warning", "`config` while auto-cleanup has videos going in this Mac's scope, not put away by Not now, and no higher banner shows."),
     r("ai-offer", "`config` opens on the Mac that holds the setup key while the space's AI is off and no higher banner shows"),
     r("ai-confirm", "Turn on… in the AI banner."),
     r("ai-turning-on", "Turn on in ai-confirm, until the page answers."),
@@ -331,10 +332,47 @@ fn banner(w: &World) -> Option<&'static str> {
     if recording_off(w) {
         return Some("recording-off");
     }
+    if config_exists(w) && autoclean_banner(w) {
+        return Some("autoclean-warning");
+    }
     if update_ready(w) {
         return Some(if w.update.applying { "updating-app" } else { "update-ready" });
     }
     ai_banner(w)
+}
+
+/// N74: auto-cleanup's banner — Pin both's word while the popover stays open; or videos going
+/// that this Mac may see (live, unpinned, not being deleted), unless Not now put this very
+/// list away; or a round that went and hasn't had its OK.
+fn autoclean_banner(w: &World) -> bool {
+    use shroom_core::world::Landed;
+    if w.session.fields.library.pinned_note.is_some() {
+        return true;
+    }
+    let Some(s) = w.suggestions.get() else { return false };
+    if s.autoclean.days == 0 {
+        return false;
+    }
+    let me = w.space.identity.as_ref().map(|i| i.member_id.clone());
+    let member = role(w) == Some(Role::Member);
+    let pinned = |rec: &shroom_core::world::RecId| match (w.library_ops.pinning.get(rec), w.library_ops.landed.get(rec)) {
+        (Some(on), _) => *on,
+        (None, Some((Landed::Pinned(on), _))) => *on,
+        _ => w.library.get().is_some_and(|v| v.iter().any(|r| &r.rec == rec && r.pinned)),
+    };
+    let undoing = |rec: &shroom_core::world::RecId| w.session.fields.library.undo.as_ref().is_some_and(|(u, _)| u.contains(rec));
+    let seen = |rec: &shroom_core::world::RecId| {
+        w.library.get().is_none_or(|v| v.iter().any(|r| &r.rec == rec && r.live && (!member || r.owner == me)))
+            && !w.library_ops.deleting.contains(rec)
+            && !matches!(w.library_ops.landed.get(rec), Some((Landed::Deleted, _)))
+            && !undoing(rec)
+    };
+    let mut going: Vec<String> = s.going.iter().filter(|g| !pinned(&g.rec) && seen(&g.rec)).map(|g| g.rec.0.clone()).collect();
+    going.sort();
+    if !going.is_empty() && going != w.prefs.going_dismissed {
+        return true;
+    }
+    s.autoclean.last.as_ref().is_some_and(|c| !c.recs.is_empty() && w.prefs.cleaned_seen != Some(c.at))
 }
 
 /// N66: the AI banner — the setup Mac, the space's AI known off; while its Turn on re-wires

@@ -393,6 +393,11 @@ fn rows() -> Vec<(&'static str, World)> {
     // ── Pin, Delete all and auto-cleanup (N74) ──
     rows.push(("library", with_pinned(library_suggesting(), "r502")));
     rows.push(("library", going(library_suggesting())));
+    rows.push(("library", {
+        let mut w = with_pinned(library_suggesting(), "r502");
+        w.inflight.failures.insert(Op::Pin, Failure { class: FailClass::Transport, at: Mono(970), tries: 1 });
+        w
+    }));
     rows.push(("library-cleanup", {
         let mut w = going(library_suggesting());
         w.session.fields.library.cleanup = true;
@@ -599,6 +604,11 @@ fn rows() -> Vec<(&'static str, World)> {
         }
         w
     }));
+    rows.push(("settings-general", {
+        let mut w = suggested(settings_on(ready(), SettingsTab::General), vec![], 34_000_000_000);
+        w.library_ops.autoclean = Some(30);
+        w
+    }));
     rows.push(("autoclean-confirm", {
         let mut w = suggested(settings_on(ready(), SettingsTab::General), vec![], 34_000_000_000);
         if let Fact::Known { v, .. } = &mut w.suggestions {
@@ -792,7 +802,8 @@ fn surface_of(id: &str) -> Surface {
         Surface::Feedback
     } else if id.starts_with("editor") {
         Surface::Editor(EDITOR)
-    } else if id.starts_with("settings") || ["disconnect-confirm", "disconnect-confirm-no-token", "leave-confirm", "uninstall-confirm", "report-problem", "repair-mood", "re-entry-as-settings", "token-repair-mood", "token-other-account", "gate-card", "wiring", "space-storage-gone", "name-changed"].contains(&id) {
+    } else if id.starts_with("settings") || [
+            "autoclean-confirm","disconnect-confirm", "disconnect-confirm-no-token", "leave-confirm", "uninstall-confirm", "report-problem", "repair-mood", "re-entry-as-settings", "token-repair-mood", "token-other-account", "gate-card", "wiring", "space-storage-gone", "name-changed"].contains(&id) {
         Surface::Settings
     } else {
         Surface::Popover
@@ -1161,8 +1172,8 @@ fn library_rows_carry_their_state_words_and_their_doors() {
     let live = row(&s, "Where the 502s come from");
     assert_eq!(
         live.menu.iter().map(|b| b.label.as_str()).collect::<Vec<_>>(),
-        ["Copied", "Copy thumbnail", "Open page", "Edit…", "Rename", "Delete…"],
-        "N46: Copy thumbnail under Copy link; N63: Edit… after Open page"
+        ["Copied", "Copy thumbnail", "Open page", "Edit…", "Rename", "Pin", "Delete…"],
+        "N46: Copy thumbnail under Copy link; N63: Edit… after Open page; N74: Pin after Rename"
     );
     assert_eq!(live.gestures.double_click, Some(Action::OpenPage(rec("r502"))));
     assert_eq!(s.library.as_ref().unwrap().body.footer.as_deref(), Some("12 videos"));
@@ -1699,7 +1710,8 @@ fn a_closed_library_or_settings_comes_back_only_when_reached_for() {
 
 #[test]
 fn every_region5_op_has_a_deadline() {
-    for (op, ms) in [(Op::LibRefresh, 60_000), (Op::Rename, 60_000), (Op::Delete, 60_000), (Op::Suggest, 60_000), (Op::Keep, 60_000), (Op::Plays, 60_000), (Op::UpdateCheck, 10_000), (Op::UpdateDownload, 1_800_000), (Op::UpdateApply, 30_000)] {
+    for (op, ms) in [(Op::LibRefresh, 60_000), (Op::Rename, 60_000), (Op::Delete, 60_000), (Op::Suggest, 60_000), (Op::Pin, 60_000),
+        (Op::Autoclean, 60_000), (Op::Plays, 60_000), (Op::UpdateCheck, 10_000), (Op::UpdateDownload, 1_800_000), (Op::UpdateApply, 30_000)] {
         assert_eq!(op.deadline_ms(), ms, "{op:?}");
     }
     // A refresh that never answers ends at its deadline; the window still shows the cache.

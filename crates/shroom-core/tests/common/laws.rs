@@ -463,9 +463,11 @@ pub fn failure_state(id: &str) -> bool {
 /// The background work law 12 lets go quietly once nothing wants it any more: reads, the
 /// uploader, a saved edit's permanent copy (N63: the save the person asked for has
 /// landed; the page plays the saved list over the original until a copy is up) and the
-/// editor's upkeep (B197 (d): the next turn bakes and copies what this one didn't) — never
-/// a write a person asked for.
-const BACKGROUND: &[Op] = &[Op::Standing, Op::Roster, Op::Peek, Op::LibCache, Op::LibRefresh, Op::Reach, Op::Sweep, Op::Refresh, Op::UpdateCheck, Op::UpdateDownload, Op::Upload, Op::EditorCopy, Op::EditorUpkeep];
+/// editor's upkeep (B197 (d): the next turn bakes and copies what this one didn't), and the
+/// suggestions' read (N74: the popover reads them again as it next opens) — never a write a
+/// person asked for.
+const BACKGROUND: &[Op] = &[
+    Op::Suggest,Op::Standing, Op::Roster, Op::Peek, Op::LibCache, Op::LibRefresh, Op::Reach, Op::Sweep, Op::Refresh, Op::UpdateCheck, Op::UpdateDownload, Op::Upload, Op::EditorCopy, Op::EditorUpkeep];
 
 /// An op whose failure another op covers, with why.
 const COVERED: &[(Op, Op, &str)] = &[(Op::LibCache, Op::LibRefresh, "the remembered list is a head start; the bucket refresh fills the same list")];
@@ -872,6 +874,9 @@ fn figure_counts(s: &str) -> bool {
             && i + 2 < b.len()
             && b[i + 1] == b' '
             && s[i + 2..].chars().next().is_some_and(|c| c.is_alphabetic())
+            // A size is a measure, not a count (N74's “That frees 5 GB.”).
+            && !s[i + 2..].starts_with("GB")
+            && !s[i + 2..].starts_with("MB")
     })
 }
 

@@ -7,11 +7,12 @@ mod laws;
 #[path = "common/support.rs"]
 mod support;
 
+use shroom_core::Effect;
+
 use shroom_core::effect::LibCmd;
 use shroom_core::event::{Event, LibraryNews};
 use shroom_core::scene::Action;
 use shroom_core::time::Wall;
-use shroom_core::Effect;
 use shroom_core::world::*;
 use support::*;
 
