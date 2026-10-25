@@ -327,7 +327,7 @@ pub fn set_ai(cloud: &Cloud, spec: &WireSpec, on: bool, autoclean: bool) -> Resu
     Ok(())
 }
 
-/// The space's page given its schedule, or not (N74, DECISIONS B230): the one Cron Trigger
+/// The space's page given its schedule, or not (N74, DECISIONS B231): the one Cron Trigger
 /// naming uses (`AI_SCHEDULE`), while auto-cleanup or naming is on. Only ever over shroom's
 /// own page; the page itself isn't put up again.
 pub fn set_schedule(cloud: &Cloud, spec: &WireSpec, on: bool) -> Result<(), WireError> {

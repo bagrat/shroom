@@ -925,7 +925,7 @@ fn set_ai(rt: &Runtime, on: bool) -> Result<CloudNews, FailClass> {
     }
 }
 
-/// Auto-cleanup's days (N74, DECISIONS B230), from the Mac that holds the setup key: on, the
+/// Auto-cleanup's days (N74, DECISIONS B231), from the Mac that holds the setup key: on, the
 /// space's page is given its schedule first (the one naming uses), then told the days; off,
 /// it's told, and the schedule goes unless naming still needs it.
 fn set_autoclean(rt: &Runtime, days: u32) -> Result<CloudNews, FailClass> {
