@@ -108,18 +108,36 @@ fn transport_of(uid: &str) -> Transport {
     if status != 0 { Transport::Other } else { Transport::from_fourcc(code) }
 }
 
+/// What the list reads of an input device: cpal's, or a test's.
+trait Input: std::fmt::Display {
+    /// Its CoreAudio UID, past cpal's `host:` prefix.
+    fn uid(&self) -> Option<String>;
+    fn name(&self) -> Option<String>;
+}
+
+impl Input for cpal::Device {
+    fn uid(&self) -> Option<String> {
+        let uid = self.id().ok()?.to_string();
+        Some(uid.split_once(':').map(|(_, u)| u.to_string()).unwrap_or(uid))
+    }
+
+    fn name(&self) -> Option<String> {
+        self.description().ok().map(|x| x.name().to_string())
+    }
+}
+
+/// One input device as the list shows it.
+fn listed(d: &impl Input, transport: impl FnOnce(&str) -> Transport) -> Option<MicDevice> {
+    let uid = d.uid()?;
+    let name = d.name().unwrap_or_else(|| d.to_string());
+    Some(MicDevice { transport: transport(&uid), uid, name })
+}
+
 /// Every input device, with its connection type.
 pub fn input_devices() -> Vec<MicDevice> {
     let host = cpal::default_host();
     let Ok(devices) = host.input_devices() else { return Vec::new() };
-    devices
-        .filter_map(|d| {
-            let uid = d.id().ok()?.to_string();
-            let uid = uid.split_once(':').map(|(_, u)| u.to_string()).unwrap_or(uid);
-            let name = d.description().map(|x| x.name().to_string()).unwrap_or_else(|_| d.to_string());
-            Some(MicDevice { transport: transport_of(&uid), uid, name })
-        })
-        .collect()
+    devices.filter_map(|d| listed(&d, transport_of)).collect()
 }
 
 /// The system's default input device's UID.
@@ -228,6 +246,49 @@ mod tests {
         let devices = [dev("usb", Transport::Usb), dev("builtin", Transport::BuiltIn)];
         assert_eq!(choose(&devices, None, Some("usb")).unwrap().uid, "usb");
         assert_eq!(choose(&devices, Some("gone"), None).unwrap().uid, "builtin");
+    }
+
+    /// A device as cpal's CoreAudio one reads while it's there.
+    struct Here;
+    impl std::fmt::Display for Here {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.write_str("MacBook Pro Microphone")
+        }
+    }
+    impl Input for Here {
+        fn uid(&self) -> Option<String> {
+            Some("BuiltInMicrophoneDevice".into())
+        }
+        fn name(&self) -> Option<String> {
+            Some("MacBook Pro Microphone".into())
+        }
+    }
+
+    /// A device leaving mid-list (AirPods going, a display's sound with display sleep), as
+    /// cpal's CoreAudio one does it: its id still reads, its name no longer does, and its
+    /// `Display` (that same name read) is an error — one `to_string` panics on.
+    struct Leaving;
+    impl std::fmt::Display for Leaving {
+        fn fmt(&self, _: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            Err(std::fmt::Error)
+        }
+    }
+    impl Input for Leaving {
+        fn uid(&self) -> Option<String> {
+            Some("AirPods-uid".into())
+        }
+        fn name(&self) -> Option<String> {
+            None
+        }
+    }
+
+    /// The mic list is re-read every 2 s on the observer thread; a device leaving under it is
+    /// left out of that read (the next one has it gone), never a panic that ends the thread.
+    #[test]
+    fn a_mic_leaving_mid_list_is_left_out() {
+        assert_eq!(listed(&Leaving, |_| Transport::Bluetooth), None);
+        let here = listed(&Here, |_| Transport::BuiltIn).unwrap();
+        assert_eq!((here.uid.as_str(), here.name.as_str(), here.transport), ("BuiltInMicrophoneDevice", "MacBook Pro Microphone", Transport::BuiltIn));
     }
 
     #[test]
