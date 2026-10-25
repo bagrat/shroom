@@ -93,7 +93,7 @@ fn suggested(mut w: World, rows: Vec<Suggestion>, space_bytes: u64) -> World {
     w
 }
 
-/// Auto-cleanup on at 30 days (N74), with two videos going in three days and, once, the
+/// Auto-cleanup on at 30 days (N75), with two videos going in three days and, once, the
 /// round before it said.
 fn going(mut w: World) -> World {
     if let Fact::Known { v, .. } = &mut w.suggestions {
@@ -106,7 +106,7 @@ fn going(mut w: World) -> World {
     w
 }
 
-/// A pinned video in the list (N74).
+/// A pinned video in the list (N75).
 fn with_pinned(mut w: World, id: &str) -> World {
     if let Fact::Known { v, .. } = &mut w.library {
         if let Some(r) = Arc::make_mut(v).iter_mut().find(|r| r.rec == rec(id)) {
@@ -390,7 +390,7 @@ fn rows() -> Vec<(&'static str, World)> {
         }
         w
     }));
-    // ── Pin, Delete all and auto-cleanup (N74) ──
+    // ── Pin, Delete all and auto-cleanup (N75) ──
     rows.push(("library", with_pinned(library_suggesting(), "r502")));
     rows.push(("library", going(library_suggesting())));
     rows.push(("library", {
@@ -589,7 +589,7 @@ fn rows() -> Vec<(&'static str, World)> {
         w
     }));
     rows.push(("settings-general", suggested(settings_on(ready(), SettingsTab::General), vec![], 34_000_000_000)));
-    // Auto-cleanup (N74): the setting Mac's pop-up, another Mac's line, counting off, and the
+    // Auto-cleanup (N75): the setting Mac's pop-up, another Mac's line, counting off, and the
     // question turning it on asks.
     rows.push(("settings-general", going(suggested(settings_on(ready(), SettingsTab::General), vec![], 34_000_000_000))));
     rows.push(("settings-general", {
@@ -1173,7 +1173,7 @@ fn library_rows_carry_their_state_words_and_their_doors() {
     assert_eq!(
         live.menu.iter().map(|b| b.label.as_str()).collect::<Vec<_>>(),
         ["Copied", "Copy thumbnail", "Open page", "Edit…", "Rename", "Pin", "Delete…"],
-        "N46: Copy thumbnail under Copy link; N63: Edit… after Open page; N74: Pin after Rename"
+        "N46: Copy thumbnail under Copy link; N63: Edit… after Open page; N75: Pin after Rename"
     );
     assert_eq!(live.gestures.double_click, Some(Action::OpenPage(rec("r502"))));
     assert_eq!(s.library.as_ref().unwrap().body.footer.as_deref(), Some("12 videos"));

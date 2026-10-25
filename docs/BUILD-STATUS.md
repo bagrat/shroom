@@ -367,7 +367,7 @@ and edits on the share page)*)**
     and B225's calls — the command saves itself rather than through the app, refuses while
     the video is open in an editor window, and never asks “Delete the original?” (Keep for 2 days).
 
-43. **N74 — Pin, Delete all, and auto-cleanup run by the space's page** (B231–B233; Bagrat
+43. **N75 — Pin, Delete all, and auto-cleanup run by the space's page** (B232–B234; Bagrat
     approved every board and its words as drawn, 2026-10-24, relayed by the orchestrator).
     Pin is the record's `keep`, from a row's menu and `shroom pin`/`unpin`; Delete all… asks
     once and holds one Undo; auto-cleanup (off by default; 15, 30 or 60 days unwatched) is

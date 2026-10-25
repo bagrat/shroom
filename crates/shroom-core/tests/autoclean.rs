@@ -1,4 +1,4 @@
-//! Auto-cleanup (N74): the space's setting in Settings · General, set on the Mac that holds
+//! Auto-cleanup (N75): the space's setting in Settings · General, set on the Mac that holds
 //! the setup key and read everywhere else; three days ahead, the Library's amber line, each
 //! going row's Pin, Review… with what's going first, and the popover's banner with Pin both;
 //! once a round has gone, a line that says so, with OK. The space's page does the deleting.

@@ -165,7 +165,7 @@ fn a_space_not_counting_plays_says_so() {
     assert_eq!(v["counting"], false);
 }
 
-/// With auto-cleanup on (N74): what's going comes first, soonest first, each with when; a
+/// With auto-cleanup on (N75): what's going comes first, soonest first, each with when; a
 /// pinned video is never a candidate, even one a stale page still marks.
 #[test]
 fn what_auto_cleanup_will_delete_comes_first_and_a_pinned_video_never_does() {

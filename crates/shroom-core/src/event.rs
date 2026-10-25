@@ -301,7 +301,7 @@ pub enum CloudNews {
     Refreshed { deployed: bool, ai: Option<bool> },
     /// Naming went on or off (N66): the page answers with the AI, or without it.
     AiSet(bool),
-    /// Auto-cleanup's setting landed: the days the space's page now has (N74).
+    /// Auto-cleanup's setting landed: the days the space's page now has (N75).
     Autoclean(u32),
 }
 
@@ -375,7 +375,7 @@ pub enum LibraryNews {
     Cleaned { under_tombstones: u32, orphans: u32, keys: u32 },
     /// What the space says is worth deleting, and whether it counts plays (N68).
     Suggested(crate::world::Suggestions),
-    /// Each record's `keep` landed, on or off (N74's Pin).
+    /// Each record's `keep` landed, on or off (N75's Pin).
     Pinned(Vec<RecId>, bool),
     /// The space's play-count switch answered: where it stands now (N68).
     Plays(bool),

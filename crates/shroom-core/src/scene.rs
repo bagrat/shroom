@@ -236,18 +236,18 @@ pub enum Action {
     ReviewCleanup,
     /// The suggestion line's ✕: put away until the suggestions change.
     DismissCleanup,
-    /// Pin (or Unpin) a row (N74, the record's `keep`): a selected row acts for every row
+    /// Pin (or Unpin) a row (N75, the record's `keep`): a selected row acts for every row
     /// selected; on a suggestion, it leaves the list for good.
     PinRow(RecId, bool),
     /// Delete on a suggestion: one tap, its Undo line first.
     DeleteSuggested(RecId),
     /// The Undo line's Undo.
     UndoDelete,
-    /// Delete all…: its own sheet, over every suggestion shown (N74).
+    /// Delete all…: its own sheet, over every suggestion shown (N75).
     DeleteAllSuggested,
-    /// The sheet's Delete all: every row leaves, held on one Undo line (N74).
+    /// The sheet's Delete all: every row leaves, held on one Undo line (N75).
     ConfirmDeleteSuggested,
-    // ── auto-cleanup (N74) ──
+    // ── auto-cleanup (N75) ──
     /// The popover banner's Review…: the Library, on what's going.
     ReviewGoing,
     /// The popover banner's Not now: put away on this Mac until the list changes.
@@ -876,9 +876,9 @@ pub struct LibraryRowView {
     pub progress: Option<u32>,
     /// A recovered take, pinned to the top under the amber dot.
     pub pinned: bool,
-    /// Pinned to keep (N74): “Pinned”, said by the small pin before its title.
+    /// Pinned to keep (N75): “Pinned”, said by the small pin before its title.
     pub kept: Option<String>,
-    /// Auto-cleanup will delete it (N74): “Deleted Oct 27 unless pinned”, amber.
+    /// Auto-cleanup will delete it (N75): “Deleted Oct 27 unless pinned”, amber.
     pub going: Option<String>,
     pub selected: bool,
     pub gestures: Gestures,
@@ -914,20 +914,20 @@ pub struct LibraryBody {
     pub cleanup_line: Option<CleanupLine>,
     /// Suggested to clean up, in place of the list (N68).
     pub cleanup: Option<CleanupBody>,
-    /// Auto-cleanup's amber line, three days ahead (N74): in the suggestion line's place.
+    /// Auto-cleanup's amber line, three days ahead (N75): in the suggestion line's place.
     pub going_line: Option<Notice>,
-    /// Once a round of auto-cleanup went (N74): what went and what it freed, with OK.
+    /// Once a round of auto-cleanup went (N75): what went and what it freed, with OK.
     pub cleaned_line: Option<Notice>,
 }
 
-/// A line above the Library's rows and its buttons (N74).
+/// A line above the Library's rows and its buttons (N75).
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Notice {
     pub line: String,
     pub buttons: Vec<Button>,
 }
 
-/// What auto-cleanup will delete on one date (N74): its heading, the line under the first,
+/// What auto-cleanup will delete on one date (N75): its heading, the line under the first,
 /// and each video with Open page and Pin.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct GoingGroup {
@@ -953,9 +953,9 @@ pub struct CleanupBody {
     /// “‹ Library”.
     pub back: Button,
     pub intro: Option<String>,
-    /// What auto-cleanup will delete, by date, ahead of the suggestions (N74).
+    /// What auto-cleanup will delete, by date, ahead of the suggestions (N75).
     pub going: Vec<GoingGroup>,
-    /// “Might be worth deleting”, over the suggestions while anything is going (N74).
+    /// “Might be worth deleting”, over the suggestions while anything is going (N75).
     pub suggest_heading: Option<String>,
     pub rows: Vec<CleanupRowView>,
     /// Once the last suggestion is kept or deleted.
@@ -975,7 +975,7 @@ pub struct CleanupRowView {
     pub meta: String,
     /// Where its poster is, as `LibraryRowView::poster`.
     pub poster: Option<String>,
-    /// Going with auto-cleanup (N74): “Deleted Oct 27 unless pinned”, amber, after the facts.
+    /// Going with auto-cleanup (N75): “Deleted Oct 27 unless pinned”, amber, after the facts.
     pub going: Option<String>,
     /// Open page, Pin, Delete (red text).
     pub buttons: Vec<Button>,
@@ -1028,11 +1028,11 @@ pub struct VideosGroup {
     pub used_label: Option<String>,
     /// The space's size and what it costs — owner-class Macs, once the space has said.
     pub used: Option<String>,
-    /// Delete videos nobody watches (N74), once the space has said.
+    /// Delete videos nobody watches (N75), once the space has said.
     pub autoclean: Option<AutocleanRow>,
 }
 
-/// Auto-cleanup's pop-up (N74): live on the Mac that holds the setup key, greyed elsewhere
+/// Auto-cleanup's pop-up (N75): live on the Mac that holds the setup key, greyed elsewhere
 /// and while Count plays is off.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct AutocleanRow {

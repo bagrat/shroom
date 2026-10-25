@@ -146,7 +146,7 @@ pub enum CloudCmd {
     /// Naming on or off (N66): this app's page put up again with Cloudflare's AI and its
     /// schedule, or without them — on the token Mac only. Answers `AiSet`.
     SetAi(bool),
-    /// Auto-cleanup's days (N74; 0: off): the space's page told (`POST /autoclean`), and
+    /// Auto-cleanup's days (N75; 0: off): the space's page told (`POST /autoclean`), and
     /// given its schedule while auto-cleanup or naming is on — on the token Mac only.
     /// Answers `Autoclean`.
     SetAutoclean(u32),
@@ -276,10 +276,10 @@ pub enum LibCmd {
     /// What the space says is worth deleting (N68): `POST /cleanup` paged to its end, the
     /// whole space's (`everyone`) on owner-class Macs. Answers `Suggested`.
     Suggest { everyone: bool },
-    /// Set or clear each record's `keep` (N74's Pin; read-modify-write under `If-Match`).
+    /// Set or clear each record's `keep` (N75's Pin; read-modify-write under `If-Match`).
     /// Answers `Pinned`.
     Pin(Vec<RecId>, bool),
-    /// Mark these videos as open in an editor, for the space's auto-cleanup (N74,
+    /// Mark these videos as open in an editor, for the space's auto-cleanup (N75,
     /// `POST /editing`): its page leaves them be for a quarter of an hour. Answers nothing.
     Editing(Vec<RecId>),
     /// The space's play-count switch (owner-class). Answers `Plays`.

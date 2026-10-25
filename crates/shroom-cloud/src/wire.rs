@@ -315,7 +315,7 @@ fn put_page(cloud: &Cloud, spec: &WireSpec, ai: bool) -> Result<(), CloudError> 
 /// Naming on or off (N66, DECISIONS B206 a): the space's own page put up again with
 /// Cloudflare's AI and its schedule, or without them. Only ever over shroom's own page; the
 /// names, chapters and captions already made stay where they are. `autoclean`: the space's
-/// auto-cleanup is on (N74), so naming off keeps the one schedule both use.
+/// auto-cleanup is on (N75), so naming off keeps the one schedule both use.
 pub fn set_ai(cloud: &Cloud, spec: &WireSpec, on: bool, autoclean: bool) -> Result<(), WireError> {
     if crate::sweep::worker_fact(cloud, spec.account_id, spec.label, spec.bucket)? != crate::sweep::WorkerFact::Ours {
         return Err(WireError::Foreign);
@@ -327,7 +327,7 @@ pub fn set_ai(cloud: &Cloud, spec: &WireSpec, on: bool, autoclean: bool) -> Resu
     Ok(())
 }
 
-/// The space's page given its schedule, or not (N74, DECISIONS B231): the one Cron Trigger
+/// The space's page given its schedule, or not (N75, DECISIONS B232): the one Cron Trigger
 /// naming uses (`AI_SCHEDULE`), while auto-cleanup or naming is on. Only ever over shroom's
 /// own page; the page itself isn't put up again.
 pub fn set_schedule(cloud: &Cloud, spec: &WireSpec, on: bool) -> Result<(), WireError> {

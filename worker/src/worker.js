@@ -182,7 +182,7 @@ export default {
   async fetch(request, env, ctx) {
     return handle(request, env, Date.now(), ctx);
   },
-  /** The schedule each minute, on a space with naming (B206 c) or auto-cleanup (N74) on:
+  /** The schedule each minute, on a space with naming (B206 c) or auto-cleanup (N75) on:
    * one Cron Trigger for both.
    * @param {{ scheduledTime: number }} controller @param {Env} env @param {Ctx} ctx */
   async scheduled(controller, env, ctx) {
@@ -3661,7 +3661,7 @@ async function cleanup(request, env, b, now) {
 }
 
 
-// ───────── auto-cleanup (N74) ─────────
+// ───────── auto-cleanup (N75) ─────────
 //
 // Off by default; owner-class sets Off / 15 / 30 / 60 days (`.shroom/autoclean.json`
 // `{v, days, at, since}`, `since`: when it was last turned on or shortened). A video is due

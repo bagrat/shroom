@@ -1,4 +1,4 @@
-//! `shroom pin` / `shroom unpin` (spec N74): a pinned video is never suggested and never
+//! `shroom pin` / `shroom unpin` (spec N75): a pinned video is never suggested and never
 //! deleted by auto-cleanup. Many at once, each its own result, safe to run again; `--dry-run`
 //! says what would change. Against the real Worker (`worker/dev/serve.mjs`), as
 //! `tests/space.rs` is; without node the test says so and passes as skipped.

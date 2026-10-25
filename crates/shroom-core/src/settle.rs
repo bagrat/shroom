@@ -42,11 +42,11 @@ pub fn settle(w: &World) -> Vec<Effect> {
     fx
 }
 
-/// How often an open editor marks its video for the space's auto-cleanup (N74): the mark
+/// How often an open editor marks its video for the space's auto-cleanup (N75): the mark
 /// holds a quarter of an hour, so every five minutes keeps it whole.
 pub const EDITING_MARK_MS: u64 = 300_000;
 
-/// Each video an editor window holds is marked as being edited (N74, `POST /editing`) as
+/// Each video an editor window holds is marked as being edited (N75, `POST /editing`) as
 /// the window opens and every five minutes after, so the space's page never deletes it
 /// from under the editor. Online only; `update` notes when each was marked.
 fn due_editing_marks(w: &World, fx: &mut Vec<Effect>) {
@@ -318,7 +318,7 @@ fn due_suggestions(w: &World, fx: &mut Vec<Effect>) {
     }
     let entered = |kind: WindowKind| w.session.windows.get(&kind).filter(|_| w.window_visible(kind)).map(|d| d.entered);
     // With Suggest videos to clean up off, still read while the space's auto-cleanup is on:
-    // its warning reaches every Mac (N74) — the popover's read learns that it is.
+    // its warning reaches every Mac (N75) — the popover's read learns that it is.
     let autocleaning = w.suggestions.get().is_some_and(|s| s.autoclean.days > 0);
     let library = entered(WindowKind::Library).filter(|_| w.prefs.suggest_cleanup || autocleaning);
     let general = entered(WindowKind::Settings).filter(|_| settings_view::tab(w) == SettingsTab::General);
@@ -328,7 +328,7 @@ fn due_suggestions(w: &World, fx: &mut Vec<Effect>) {
     }
 }
 
-/// The popover's banner (N74): what auto-cleanup has going, read as the mushroom's click
+/// The popover's banner (N75): what auto-cleanup has going, read as the mushroom's click
 /// opens the popover, at most once an hour — online, with a space, nothing else asked.
 pub fn popover_read(w: &World) -> Option<Effect> {
     let leaving = matches!(w.session.confirm, Some(crate::world::Confirm::Uninstall { .. } | crate::world::Confirm::Exit));
@@ -337,7 +337,7 @@ pub fn popover_read(w: &World) -> Option<Effect> {
         .then(|| Effect::Library(LibCmd::Suggest { everyone: w.space.owner_class() }))
 }
 
-/// How stale the popover lets auto-cleanup's list get before it reads it again (N74).
+/// How stale the popover lets auto-cleanup's list get before it reads it again (N75).
 pub const SUGGEST_FROM_POPOVER_MS: u64 = 3_600_000;
 
 /// The background update check: at launch, then every few hours, and when the popover

@@ -437,7 +437,7 @@ fn spawn_with(rt: Runtime, sweep: impl FnMut(&Runtime, &SpaceIdentity) -> Result
                     }
                     continue;
                 }
-                // The editor's mark for the space's auto-cleanup (N74), under the device key: a
+                // The editor's mark for the space's auto-cleanup (N75), under the device key: a
                 // miss is logged, never failed into the core — it marks again in five minutes.
                 if let LibCmd::Editing(recs) = &cmd {
                     let marked = rt.home.read_json::<SpaceIdentity>("space.json").ok_or(FailClass::Refused).and_then(|space| worker_door(&rt, &space));
@@ -572,7 +572,7 @@ fn suggest(rt: &Runtime, key: &DeviceKey, page: &Space, everyone: bool) -> Resul
     let mut counting = true;
     let mut space_bytes = 0u64;
     let mut found: Vec<(f64, Suggestion)> = Vec::new();
-    // Auto-cleanup's facts (N74): what's going and when, what turning it on would take, and
+    // Auto-cleanup's facts (N75): what's going and when, what turning it on would take, and
     // the setting with its newest round, as the last page says them.
     let mut going: Vec<Going> = Vec::new();
     let mut idle: Vec<Idle> = Vec::new();
@@ -647,7 +647,7 @@ fn plays(rt: &Runtime, key: &DeviceKey, page: &Space, on: bool) -> Result<(), Fa
     }
 }
 
-/// Pin or Unpin (N74): the record's `keep` set or taken off, under `If-Match`, for each —
+/// Pin or Unpin (N75): the record's `keep` set or taken off, under `If-Match`, for each —
 /// the first that fails stops the rest, and the core reads every one as the space has it.
 fn pin<'a>(rt: &Runtime, client: impl Fn(&str) -> Result<Held<'a>, FailClass>, recs: Vec<RecId>, on: bool) -> Result<(), FailClass> {
     for rec in &recs {

@@ -267,7 +267,7 @@ fn next_wake(w: &World) -> Option<Mono> {
     if let Some((_, at)) = &w.session.fields.settings.lit {
         wakes.push(at.plus(LIT_MS));
     }
-    // An open editor's next mark for the space's auto-cleanup (N74).
+    // An open editor's next mark for the space's auto-cleanup (N75).
     wakes.extend(w.library_ops.marked.values().map(|t| t.plus(crate::settle::EDITING_MARK_MS)));
     wakes.extend(w.inflight.ops.values().copied());
     // The stop's probe asking again after a “not shroom” that hasn't held (B60).

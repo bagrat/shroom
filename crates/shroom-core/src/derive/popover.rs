@@ -362,7 +362,7 @@ fn banner_ai(w: &World) -> Option<Banner> {
     (!w.once.ai_offer_answered).then(|| Banner { id: "ai-offer", tone: Tone::Frost, line: copy::ai_banner(), buttons: ask() })
 }
 
-/// Auto-cleanup under the tray icon (N74; Bagrat, 2026-10-24): three days ahead, amber, with
+/// Auto-cleanup under the tray icon (N75; Bagrat, 2026-10-24): three days ahead, amber, with
 /// Pin both and Review… (Not now puts it away on this Mac until the list changes); after Pin
 /// both, what it did, while the popover stays open; once a round went, what went, with OK.
 /// Above an update and the AI offer, under a saved take, the space and recording off.

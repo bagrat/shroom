@@ -41,7 +41,7 @@ pub struct Suggestions {
 pub struct Video {
     pub row: Row,
     pub link: String,
-    /// When auto-cleanup will delete it (N74), while it's going.
+    /// When auto-cleanup will delete it (N75), while it's going.
     pub deletes_at: Option<String>,
 }
 
@@ -148,7 +148,7 @@ impl Door {
         Ok(meta.title)
     }
 
-    /// Pins a video or takes its pin off (N74): the record's `keep`, under a `manage`
+    /// Pins a video or takes its pin off (N75): the record's `keep`, under a `manage`
     /// credential as a rename is.
     pub fn pin(&self, id: &str, on: bool) -> Result<(), Fail> {
         let s3 = self.manage(id)?;
@@ -156,8 +156,8 @@ impl Door {
         Ok(())
     }
 
-    /// The space's auto-cleanup (N74, `GET autoclean`): its days, and what's going when, in
-    /// this Mac's scope. A page from before N74 has none: off.
+    /// The space's auto-cleanup (N75, `GET autoclean`): its days, and what's going when, in
+    /// this Mac's scope. A page from before N75 has none: off.
     pub fn autoclean(&self) -> Result<AutoCleanState, Fail> {
         match self.page.autoclean(&self.key) {
             Answer::Refused(r) if r.status == 404 => Ok(AutoCleanState::default()),

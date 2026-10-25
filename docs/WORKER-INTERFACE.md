@@ -1101,7 +1101,7 @@ per candidate, each 0–1, and `shroom-edit` cuts from the farthest start scored
 log keeps, per cue, the scores and `ms`, or the `why` (`later: busy`, `refused 429`, `no
 answer`), never the words.
 
-### 4.24 Auto-cleanup (N74)
+### 4.24 Auto-cleanup (N75)
 
 Off by default. When it's on, the space's own page deletes the videos nobody has watched in
 15, 30 or 60 days, on its own schedule, so no Mac has to be open (Bagrat, 2026-10-24). A

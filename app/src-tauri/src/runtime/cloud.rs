@@ -912,7 +912,7 @@ fn set_ai(rt: &Runtime, on: bool) -> Result<CloudNews, FailClass> {
         compatibility_date: COMPATIBILITY_DATE,
         assets: &assets,
     };
-    // Auto-cleanup shares the one schedule (N74): naming off keeps it while that's on. Not
+    // Auto-cleanup shares the one schedule (N75): naming off keeps it while that's on. Not
     // known (the page didn't say): keep it — a spare schedule costs a read a minute.
     let autoclean = super::library::worker_door(rt, &space).ok().and_then(|(key, page)| page.autoclean(&key).ok()).is_none_or(|a| a.days > 0);
     match wire::set_ai(&h.cloud, &spec, on, autoclean) {
@@ -925,7 +925,7 @@ fn set_ai(rt: &Runtime, on: bool) -> Result<CloudNews, FailClass> {
     }
 }
 
-/// Auto-cleanup's days (N74, DECISIONS B231), from the Mac that holds the setup key: on, the
+/// Auto-cleanup's days (N75, DECISIONS B232), from the Mac that holds the setup key: on, the
 /// space's page is given its schedule first (the one naming uses), then told the days; off,
 /// it's told, and the schedule goes unless naming still needs it.
 fn set_autoclean(rt: &Runtime, days: u32) -> Result<CloudNews, FailClass> {

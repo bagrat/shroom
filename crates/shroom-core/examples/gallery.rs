@@ -474,7 +474,7 @@ fn library_rows() -> Vec<(&'static str, &'static str, World)> {
         w.session.confirm = Some(Confirm::Delete(vec![RecId("r502".into())]));
         w
     }));
-    // N74: a pinned row and its menu's Unpin; auto-cleanup's line and the going rows; the
+    // N75: a pinned row and its menu's Unpin; auto-cleanup's line and the going rows; the
     // view with what's going first; Delete all's sheet and its one Undo line.
     rows.push(("library", "library-pinned", pinned(library(ready(), space_rows()), "onb")));
     rows.push(("library", "library-going", going(suggesting(library(ready(), space_rows())))));
@@ -510,13 +510,13 @@ fn library_rows() -> Vec<(&'static str, &'static str, World)> {
     rows
 }
 
-/// The space's videos known on a Mac whose Library isn't open (the popover's banner, N74).
+/// The space's videos known on a Mac whose Library isn't open (the popover's banner, N75).
 fn library_closed(mut w: World) -> World {
     w.library = Fact::known(std::sync::Arc::new(space_rows()), Mono(950));
     w
 }
 
-/// A row pinned (N74).
+/// A row pinned (N75).
 fn pinned(mut w: World, id: &str) -> World {
     if let Fact::Known { v, .. } = &mut w.library {
         if let Some(r) = std::sync::Arc::make_mut(v).iter_mut().find(|r| r.rec.0 == id) {
@@ -526,7 +526,7 @@ fn pinned(mut w: World, id: &str) -> World {
     w
 }
 
-/// Auto-cleanup at 30 days (N74): two of the space's videos going in three days, and the
+/// Auto-cleanup at 30 days (N75): two of the space's videos going in three days, and the
 /// round before it.
 fn going(mut w: World) -> World {
     let due = Wall(w.wall.0 + 3 * 86_400_000);
@@ -593,7 +593,7 @@ fn settings_rows() -> Vec<(&'static str, &'static str, World)> {
         w.inflight.failures.insert(Op::Plays, Failure { at: Mono(970), class: FailClass::Transport, tries: 1 });
         w
     }));
-    // N74: auto-cleanup on the setup Mac, on another Mac, and turning it on.
+    // N75: auto-cleanup on the setup Mac, on another Mac, and turning it on.
     rows.push(("settings-general", "general-autoclean", going(suggesting(settings(ready(), SettingsTab::General)))));
     rows.push(("settings-general", "general-autoclean-other-mac", {
         let mut w = going(suggesting(settings(ready(), SettingsTab::General)));
@@ -1211,7 +1211,7 @@ fn region3_rows() -> Vec<(&'static str, &'static str, &'static str, World)> {
         w
     };
     rows.push(("popover", "ai-offer", "ai-offer", ai_off()));
-    // N74: auto-cleanup's banner three days ahead, after Pin both, and once a round went.
+    // N75: auto-cleanup's banner three days ahead, after Pin both, and once a round went.
     let going_pop = || going(suggesting(library_closed(popover(ready()))));
     rows.push(("popover", "autoclean-warning", "autoclean-warning", going_pop()));
     rows.push(("popover", "autoclean-warning", "autoclean-pinned", {

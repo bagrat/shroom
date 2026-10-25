@@ -604,7 +604,7 @@ pub struct LibraryRow {
     /// The edited length, when the record holds an edit that changes what plays (N63,
     /// `meta.edits`): the row shows it in place of the recording's.
     pub edited_ms: Option<u64>,
-    /// Pinned (N74, the record's `keep`): never suggested, never taken by auto-cleanup.
+    /// Pinned (N75, the record's `keep`): never suggested, never taken by auto-cleanup.
     pub pinned: bool,
 }
 
@@ -636,13 +636,13 @@ pub struct LibraryOps {
     /// When the editor's upkeep last answered (B197 (d)): originals kept past their two days
     /// baked, and copies an edit is missing made.
     pub upkept: Option<Mono>,
-    /// Pins and unpins under way (N74, the record's `keep`): what was asked, so a row reads
+    /// Pins and unpins under way (N75, the record's `keep`): what was asked, so a row reads
     /// it at once and a suggestion leaves while the write runs.
     pub pinning: BTreeMap<RecId, bool>,
-    /// Auto-cleanup's setting asked and not yet answered: the days (N74).
+    /// Auto-cleanup's setting asked and not yet answered: the days (N75).
     pub autoclean: Option<u32>,
     /// When each video an open editor holds was last marked for the space's auto-cleanup
-    /// (N74): again every `EDITING_MARK_MS` while its window stays open.
+    /// (N75): again every `EDITING_MARK_MS` while its window stays open.
     pub marked: BTreeMap<RecId, Mono>,
     /// The space's play-count switch, asked and not yet answered: what was asked (N68).
     pub plays: Option<bool>,
@@ -666,7 +666,7 @@ pub struct Suggestions {
     pub space_bytes: u64,
     /// The videos worth deleting, costliest per remaining play first.
     pub rows: Vec<Suggestion>,
-    /// What auto-cleanup will delete, three days ahead (N74): earliest first.
+    /// What auto-cleanup will delete, three days ahead (N75): earliest first.
     pub going: Vec<Going>,
     /// Every live, unpinned video in this Mac's scope and how long nobody has played it:
     /// what turning auto-cleanup on, or shortening it, would already take.
@@ -675,7 +675,7 @@ pub struct Suggestions {
     pub autoclean: AutoClean,
 }
 
-/// A video auto-cleanup will delete on `deletes_at` unless it's pinned or watched (N74).
+/// A video auto-cleanup will delete on `deletes_at` unless it's pinned or watched (N75).
 #[derive(Debug, Clone, PartialEq)]
 pub struct Going {
     pub rec: RecId,
@@ -686,14 +686,14 @@ pub struct Going {
     pub deletes_at: Wall,
 }
 
-/// A live, unpinned video and the days nobody has played it (N74).
+/// A live, unpinned video and the days nobody has played it (N75).
 #[derive(Debug, Clone, PartialEq)]
 pub struct Idle {
     pub rec: RecId,
     pub quiet_days: u32,
 }
 
-/// The space's auto-cleanup (N74): the days a video may go unwatched (0: off), and the
+/// The space's auto-cleanup (N75): the days a video may go unwatched (0: off), and the
 /// newest round that went, in this Mac's scope.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct AutoClean {
@@ -726,7 +726,7 @@ pub struct Suggestion {
 pub enum Landed {
     Deleted,
     Renamed(String),
-    /// Pinned or unpinned (N74, the record's `keep`).
+    /// Pinned or unpinned (N75, the record's `keep`).
     Pinned(bool),
 }
 
@@ -1020,9 +1020,9 @@ pub enum Op {
     Ai,
     /// What the space says is worth deleting, read to its end (N68, `POST /cleanup`).
     Suggest,
-    /// A record's `keep` written, on or off (N74's Pin).
+    /// A record's `keep` written, on or off (N75's Pin).
     Pin,
-    /// Auto-cleanup's setting (N74): the space's page told, and given its schedule.
+    /// Auto-cleanup's setting (N75): the space's page told, and given its schedule.
     Autoclean,
     /// The space's play-count switch (N68, `POST /plays`).
     Plays,
@@ -1126,11 +1126,11 @@ pub struct Prefs {
     /// The suggestions whose line ✕ put away, until they change (N68): their ids, sorted.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub cleanup_dismissed: Vec<String>,
-    /// What auto-cleanup had going when the popover's banner was put away (N74, Not now):
+    /// What auto-cleanup had going when the popover's banner was put away (N75, Not now):
     /// their ids, sorted — back once the list changes.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub going_dismissed: Vec<String>,
-    /// The round of auto-cleanup whose line OK put away (N74): its time.
+    /// The round of auto-cleanup whose line OK put away (N75): its time.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cleaned_seen: Option<Wall>,
     /// General's “Let it start and stop recordings”: a coding agent may record through the
@@ -1250,9 +1250,9 @@ pub enum Confirm {
     Report { sending: bool },
     /// The AI banner's Turn on… (N66): what it does and costs, before it costs anything.
     Ai,
-    /// Delete all… on Suggested to clean up (N74): these, on one Undo line.
+    /// Delete all… on Suggested to clean up (N75): these, on one Undo line.
     DeleteSuggested(Vec<RecId>),
-    /// Auto-cleanup turned on or shortened to these days while videos already qualify (N74).
+    /// Auto-cleanup turned on or shortened to these days while videos already qualify (N75).
     Autoclean(u32),
 }
 
@@ -1514,10 +1514,10 @@ pub struct LibraryFields {
     pub scope: LibraryScope,
     /// Suggested to clean up is open in place of the list (N68).
     pub cleanup: bool,
-    /// Suggestions deleted with one tap, or all of them with Delete all (N74), and when:
+    /// Suggestions deleted with one tap, or all of them with Delete all (N75), and when:
     /// the Undo line shows until the deletes are sent (N68, `UNDO_MS`).
     pub undo: Option<(Vec<RecId>, Mono)>,
-    /// Pin both in the popover's banner (N74): how many it pinned and the date they were
+    /// Pin both in the popover's banner (N75): how many it pinned and the date they were
     /// going, said while the popover stays open.
     pub pinned_note: Option<(u64, Wall)>,
 }

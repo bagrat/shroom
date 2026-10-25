@@ -101,7 +101,7 @@ const TEXT = new Set([
   "intro", "foot", "heading", "count_hint", "count_note", "suggest_hint", "used_label", "used",
   // Your coding agent (spec N62, DECISIONS B219): the prompt in its well.
   "prompt",
-  // Pin and auto-cleanup (N74): a going row's date, the heading over the suggestions while
+  // Pin and auto-cleanup (N75): a going row's date, the heading over the suggestions while
   // videos are going. (A pinned row's “Pinned” is its pin's name, checked by itself.)
   "going", "suggest_heading",
 ]);
@@ -244,7 +244,7 @@ for (const entry of library) {
     await common(tag, page, errors, "library", sceneForText, { hidden: [...hidden, ...renamed.filter((t) => !shownElsewhere.has(t))] });
     // N68's line above the rows: its words, Review… and Not now.
     check(`${tag}: the cleanup line ${b.cleanup_line ? "shows" : "absent"}`, (await page.locator(".cline[data-line=cleanup]").count()) === (b.cleanup_line ? 1 : 0));
-    // N74: auto-cleanup's amber line and the line after a round, each with its buttons.
+    // N75: auto-cleanup's amber line and the line after a round, each with its buttons.
     check(`${tag}: auto-cleanup's line ${b.going_line ? "shows, amber" : "absent"}`, (await page.locator(".cline.going[data-line=going]").count()) === (b.going_line ? 1 : 0));
     check(`${tag}: the after-line ${b.cleaned_line ? "shows" : "absent"}`, (await page.locator(".cline[data-line=cleaned]").count()) === (b.cleaned_line ? 1 : 0));
     for (const r of b.rows) {
@@ -541,7 +541,7 @@ for (const variant of ["library-delete-sheet", "library-delete-sheet-several"]) 
 async function cleanupChecks(entry, w) {
   const c = w.body.cleanup;
   const sheet = w.body.sheet;
-  // What auto-cleanup will delete leads the view (N74), then the suggestions.
+  // What auto-cleanup will delete leads the view (N75), then the suggestions.
   const rows = [...c.going.flatMap((g) => g.rows), ...c.rows];
   for (const [scheme, size] of [["light", SIZES.library], ["dark", SIZES.library], ["light", SIZES.library.min]]) {
     const tag = `library/${entry.variant} [${scheme}${size === SIZES.library.min ? ", min width" : ""}]`;
@@ -571,7 +571,7 @@ async function cleanupChecks(entry, w) {
       check(`${tag}: “${c.delete_all.label}” red text (law 9)`, c.delete_all.style === "red-text" && !bad, bad ?? "");
     }
     check(`${tag}: the Undo line ${c.undo ? "shows" : "absent"}`, (await page.locator(".cview .undo").count()) === (c.undo ? 1 : 0));
-    // Delete all's sheet over the view (N74): a sheet's checks, and nothing behind it acts.
+    // Delete all's sheet over the view (N75): a sheet's checks, and nothing behind it acts.
     if (sheet) {
       await sheetChecks(tag, page, "library", w, v);
       await ctx.close();
@@ -603,7 +603,7 @@ for (const entry of settings) {
     const tag = `settings/${entry.variant} [${scheme}]`;
     const { ctx, page, errors } = await open("settings", w, { colorScheme: scheme });
     const v = await vars(page);
-    // Auto-cleanup's pop-up (N74): its choices live in a select — the chosen one shows, the
+    // Auto-cleanup's pop-up (N75): its choices live in a select — the chosen one shows, the
     // rest when it opens; they're its options, in the Scene's order.
     const picks = b.pane.kind === "general" ? (b.pane.videos?.autoclean?.choices ?? []) : [];
     await common(tag, page, errors, "settings", w, { hidden: picks.map((c) => c.label) });

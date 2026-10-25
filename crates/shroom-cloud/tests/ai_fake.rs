@@ -131,7 +131,7 @@ fn the_schedule_is_fenced_like_every_other_write() {
 
 #[test]
 fn auto_cleanup_shares_naming_s_one_schedule_and_each_keeps_it_while_the_other_is_on() {
-    // N74 (DECISIONS B231): the space's page deletes on the one schedule naming uses; turning
+    // N75 (DECISIONS B232): the space's page deletes on the one schedule naming uses; turning
     // auto-cleanup on puts it, naming off keeps it while auto-cleanup is on, and auto-cleanup
     // off takes it away once naming is off too. The page itself isn't put up again.
     let fake = Fake::start(State { subdomain: Some("bagrat".into()), ..State::fresh() });

@@ -1,4 +1,4 @@
-//! Pin to keep (N74): the record's `keep`, set and taken back from a row's menu, at once and
+//! Pin to keep (N75): the record's `keep`, set and taken back from a row's menu, at once and
 //! with no sheet; several rows selected, it acts on all; a pinned row shows a small pin; the
 //! suggestions and auto-cleanup never take a pinned video.
 

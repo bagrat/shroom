@@ -341,7 +341,7 @@ fn banner(w: &World) -> Option<&'static str> {
     ai_banner(w)
 }
 
-/// N74: auto-cleanup's banner — Pin both's word while the popover stays open; or videos going
+/// N75: auto-cleanup's banner — Pin both's word while the popover stays open; or videos going
 /// that this Mac may see (live, unpinned, not being deleted), unless Not now put this very
 /// list away; or a round that went and hasn't had its OK.
 fn autoclean_banner(w: &World) -> bool {

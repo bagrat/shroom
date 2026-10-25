@@ -176,7 +176,7 @@ pub fn day(iso: &str) -> &str {
     iso.get(..10).unwrap_or(iso)
 }
 
-/// `2026-10-27T03:00:00Z` → `Oct 27`, as the Library says a day (N74).
+/// `2026-10-27T03:00:00Z` → `Oct 27`, as the Library says a day (N75).
 pub fn short_day(iso: &str) -> String {
     const MONTHS: [&str; 12] = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     let month = iso.get(5..7).and_then(|m| m.parse::<usize>().ok()).filter(|m| (1..=12).contains(m));

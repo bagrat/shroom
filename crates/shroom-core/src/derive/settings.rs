@@ -420,10 +420,10 @@ fn videos(w: &World) -> VideosGroup {
     }
 }
 
-/// The days auto-cleanup offers (N74): Off, then each wait.
+/// The days auto-cleanup offers (N75): Off, then each wait.
 pub const AUTOCLEAN_DAYS: [u32; 4] = [0, 15, 30, 60];
 
-/// Delete videos nobody watches (N74): the space's setting, live on the Mac that holds the
+/// Delete videos nobody watches (N75): the space's setting, live on the Mac that holds the
 /// setup key (turning it on gives the space's page its schedule), read-only elsewhere and
 /// while Count plays is off; as asked while it's being set, else as the space has it.
 fn autoclean_row(w: &World, s: &crate::world::Suggestions, counting: bool) -> crate::scene::AutocleanRow {
@@ -462,7 +462,7 @@ fn autoclean_row(w: &World, s: &crate::world::Suggestions, counting: bool) -> cr
     }
 }
 
-/// The videos auto-cleanup would already take at these days (N74): live, unpinned, and
+/// The videos auto-cleanup would already take at these days (N75): live, unpinned, and
 /// nobody has played them for that long.
 pub fn qualifying(w: &World, days: u32) -> u64 {
     w.suggestions.get().map_or(0, |s| s.idle.iter().filter(|i| i.quiet_days >= days && !super::library::pinned(w, &i.rec)).count() as u64)
@@ -680,7 +680,7 @@ fn sheet(w: &World) -> Option<Sheet> {
     if let (Some(Confirm::Uninstall { going }), SettingsTab::General) = (&w.session.confirm, tab(w)) {
         return Some(uninstall_sheet(w, *going));
     }
-    // Auto-cleanup turned on or shortened while videos already qualify (N74): how many and
+    // Auto-cleanup turned on or shortened while videos already qualify (N75): how many and
     // when — three days on — under N23's law.
     if let (Some(Confirm::Autoclean(days)), SettingsTab::General) = (&w.session.confirm, tab(w)) {
         let date = copy::day(crate::time::Wall(w.wall.0 + 3 * 86_400_000), w.mac.utc_offset_min);

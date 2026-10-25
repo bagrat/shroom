@@ -39,7 +39,7 @@ pub struct Row {
     pub other: Option<String>,
     /// Where its poster is (`LibraryRowView::poster`).
     pub poster: Option<String>,
-    /// Pinned to keep (N74): as asked while the write runs, else as it landed, else the record.
+    /// Pinned to keep (N75): as asked while the write runs, else as it landed, else the record.
     pub kept: bool,
 }
 
@@ -225,7 +225,7 @@ pub fn deletable(w: &World, recs: &[RecId]) -> Vec<RecId> {
 const FREE_BYTES: u64 = 10_000_000_000;
 const CENTS_PER_GB_MONTH: f64 = 1.5;
 
-/// Pinned (N74): as asked while the write runs, else as it landed, else as the record has it.
+/// Pinned (N75): as asked while the write runs, else as it landed, else as the record has it.
 pub fn pinned(w: &World, rec: &RecId) -> bool {
     if let Some(on) = w.library_ops.pinning.get(rec) {
         return *on;
@@ -236,7 +236,7 @@ pub fn pinned(w: &World, rec: &RecId) -> bool {
     w.library.get().is_some_and(|v| v.iter().any(|r| &r.rec == rec && r.pinned))
 }
 
-/// What auto-cleanup will delete (N74), in the space's order (earliest first): live videos
+/// What auto-cleanup will delete (N75), in the space's order (earliest first): live videos
 /// in the Library's view — or, `whole`, everything this Mac may see (the popover's) — less
 /// those pinned since, deleted or on an Undo line.
 pub fn going_in(w: &World, whole: bool) -> Vec<(Going, Row)> {
@@ -246,7 +246,7 @@ pub fn going_in(w: &World, whole: bool) -> Vec<(Going, Row)> {
     }
     let shown = rows_in(w, whole);
     // The popover's banner needs no titles: before this Mac has read the Library, the space's
-    // own list — scoped to this Mac by the space — stands (N74).
+    // own list — scoped to this Mac by the space — stands (N75).
     let unread = whole && w.library.get().is_none();
     let bare = |g: &Going| Row { rec: g.rec.clone(), title: None, created: g.deletes_at, length_ms: None, edited_ms: None, kind: Kind::Live, other: None, poster: None, kept: false };
     s.going
@@ -259,7 +259,7 @@ pub fn going_in(w: &World, whole: bool) -> Vec<(Going, Row)> {
         .collect()
 }
 
-/// The newest round of auto-cleanup, while its line hasn't been put away (N74).
+/// The newest round of auto-cleanup, while its line hasn't been put away (N75).
 pub fn cleaned(w: &World) -> Option<Cleaned> {
     let s = w.suggestions.get()?;
     let c = s.autoclean.last.as_ref()?;
@@ -273,7 +273,7 @@ pub fn going_day(w: &World, going: &[(Going, Row)]) -> Option<(crate::time::Wall
 }
 
 /// The suggestions this Mac shows, in the space's order: live videos in its scope, less
-/// those pinned (N74), going (they show apart), deleted (under way or landed) and those on
+/// those pinned (N75), going (they show apart), deleted (under way or landed) and those on
 /// the Undo line.
 pub fn suggested(w: &World) -> Vec<(Suggestion, Row)> {
     let Some(s) = w.suggestions.get() else { return vec![] };
@@ -376,7 +376,7 @@ fn cleanup_body(w: &World, list: &[(Suggestion, Row)]) -> CleanupBody {
             }
         })
         .collect();
-    // What auto-cleanup will delete leads, a heading per date (N74).
+    // What auto-cleanup will delete leads, a heading per date (N75).
     let going = going_in(w, false);
     let days = w.suggestions.get().map_or(0, |s| s.autoclean.days);
     let mut groups: Vec<GoingGroup> = Vec::new();
@@ -391,7 +391,7 @@ fn cleanup_body(w: &World, list: &[(Suggestion, Row)]) -> CleanupBody {
             .map(|(g, r)| CleanupRowView {
                 key: r.rec.0.clone(),
                 title: r.title.clone(),
-                // No cost: it's going anyway (the board, N74).
+                // No cost: it's going anyway (the board, N75).
                 meta: format!("{} · {} · {}", copy::day(r.created, w.mac.utc_offset_min), copy::size(g.bytes), copy::cleanup_reason(g.plays, g.quiet_days, g.stopped_early)),
                 poster: r.poster.clone(),
                 going: Some(copy::deleted_unless_pinned(&date)),
@@ -422,7 +422,7 @@ fn cleanup_body(w: &World, list: &[(Suggestion, Row)]) -> CleanupBody {
     }
 }
 
-/// Auto-cleanup's amber line in the Library (N74): how many go, when, and why — no Not now.
+/// Auto-cleanup's amber line in the Library (N75): how many go, when, and why — no Not now.
 fn going_line(w: &World) -> Option<Notice> {
     if w.session.fields.library.cleanup {
         return None;
@@ -433,7 +433,7 @@ fn going_line(w: &World) -> Option<Notice> {
     Some(Notice { line: copy::autoclean_warning(going.len() as u64, &date, days), buttons: vec![Button::new(Action::ReviewCleanup, copy::review(), Style::Plain)] })
 }
 
-/// Once a round of auto-cleanup went (N74): what went and what it freed, until OK.
+/// Once a round of auto-cleanup went (N75): what went and what it freed, until OK.
 fn cleaned_line(w: &World) -> Option<Notice> {
     let c = cleaned(w)?;
     let days = w.suggestions.get().map_or(0, |s| s.autoclean.days);
@@ -506,7 +506,7 @@ pub fn derive(w: &World) -> Option<Window<LibraryBody>> {
             title: copy::library(),
             search: TextField { placeholder: copy::search_titles(), value: f.search.clone(), enabled: true, edits: f.search_edits },
             scope,
-            // Offline says so; a Pin or Unpin that didn't go through says so too (law 12, N74).
+            // Offline says so; a Pin or Unpin that didn't go through says so too (law 12, N75).
             notice: if offline {
                 Some(copy::library_offline())
             } else {
@@ -550,7 +550,7 @@ fn view(w: &World, r: &Row) -> LibraryRowView {
     let rename = f.renaming.as_ref().filter(|(x, _)| *x == rec).map(|(_, v)| TextField { placeholder: r.title.clone().unwrap_or_default(), value: v.clone(), enabled: reachable, edits: f.title_edits });
     let no_gestures = Gestures { click: None, cmd_click: None, shift_click: None, title_click: None, double_click: None, copy: None };
 
-    // Auto-cleanup will delete it (N74): the date, amber, unless it's pinned.
+    // Auto-cleanup will delete it (N75): the date, amber, unless it's pinned.
     let going = going_in(w, false).into_iter().find(|(_, g)| g.rec == r.rec).map(|(g, _)| copy::deleted_unless_pinned(&copy::day(g.deletes_at, w.mac.utc_offset_min)));
 
     let (state, tone, progress) = match &r.kind {
@@ -594,7 +594,7 @@ fn view(w: &World, r: &Row) -> LibraryRowView {
         ),
         _ => {
             let mut buttons = vec![copy_btn()];
-            // A row auto-cleanup will delete carries its Pin (N74), beside Copy link.
+            // A row auto-cleanup will delete carries its Pin (N75), beside Copy link.
             if going.is_some() {
                 buttons.insert(0, Button::new(Action::PinRow(rec.clone(), true), copy::pin(), Style::Plain).enabled(reachable));
             }
@@ -613,7 +613,7 @@ fn view(w: &World, r: &Row) -> LibraryRowView {
                 menu.push(after_take(Button::new(Action::EditRow(rec.clone()), copy::edit_ellipsis(), Style::Plain).enabled(reachable)));
             }
             menu.push(Button::new(Action::StartRename(rec.clone()), copy::rename(), Style::Plain).enabled(reachable));
-            // Pin or Unpin after Rename, on a live row (N74): several selected, Pin while any
+            // Pin or Unpin after Rename, on a live row (N75): several selected, Pin while any
             // of them isn't pinned, and it acts on all.
             if matches!(r.kind, Kind::Live) {
                 let together: Vec<&RecId> = if f.selected.len() > 1 && f.selected.contains(&rec) { f.selected.iter().collect() } else { vec![&rec] };
@@ -689,7 +689,7 @@ fn sheet(w: &World, all: &[Row]) -> Option<Sheet> {
                 ],
             })
         }
-        // Delete all… on Suggested to clean up (N74): its own sheet, with what it frees.
+        // Delete all… on Suggested to clean up (N75): its own sheet, with what it frees.
         Confirm::DeleteSuggested(recs) => {
             let n = recs.len() as u64;
             let bytes: u64 = w.suggestions.get().map_or(0, |s| s.rows.iter().filter(|x| recs.contains(&x.rec)).map(|x| x.bytes).sum());

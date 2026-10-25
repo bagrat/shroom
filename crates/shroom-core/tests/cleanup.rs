@@ -367,7 +367,7 @@ fn the_suggestions_are_read_on_entry_and_by_scope() {
     assert!(!r.has(|e| matches!(e, Effect::Library(LibCmd::Suggest { .. }))));
     r.send(answer(three(), 34_000_000_000));
     assert!(line(&r.scene).is_none());
-    // …unless the space's auto-cleanup is on: its warning reaches every Mac (N74).
+    // …unless the space's auto-cleanup is on: its warning reaches every Mac (N75).
     let mut w = library(three(), 34_000_000_000);
     w.prefs.suggest_cleanup = false;
     if let Fact::Known { v, .. } = &mut w.suggestions {

@@ -327,7 +327,7 @@ fn info_text(v: &Video) -> String {
     format!("{}\n{} · {}{}\n{}", v.row.title, day(&v.row.created_at), length(v.row.duration_sec), marks(v), v.link)
 }
 
-/// What a row adds after its title (N74): ` · pinned`, or ` · deleted Oct 27 unless pinned`.
+/// What a row adds after its title (N75): ` · pinned`, or ` · deleted Oct 27 unless pinned`.
 fn marks(v: &Video) -> String {
     match (&v.deletes_at, v.row.pinned) {
         (_, true) => format!(" · {}", say::PINNED),
@@ -336,7 +336,7 @@ fn marks(v: &Video) -> String {
     }
 }
 
-/// Marks the videos auto-cleanup will delete, with when (N74). The list stands without it:
+/// Marks the videos auto-cleanup will delete, with when (N75). The list stands without it:
 /// a page that can't say is a page with nothing going.
 fn with_going(d: &Door, v: &mut [Video]) {
     let Ok(state) = d.autoclean() else { return };
@@ -559,7 +559,7 @@ fn cleanup(a: &Args) -> Result<Done, Fail> {
     let Some(s) = d.suggestions(a.mine)? else { return cleanup_by_age(a) };
     // The page's days are fractions; a person reads whole ones.
     let whole = |d: Option<f64>| d.map(|d| d.max(0.0).floor() as u64);
-    // What auto-cleanup will delete is always listed (N74); a pinned video never is.
+    // What auto-cleanup will delete is always listed (N75); a pinned video never is.
     let mut rows: Vec<_> = s
         .items
         .into_iter()
@@ -633,7 +633,7 @@ fn cleanup_by_age(a: &Args) -> Result<Done, Fail> {
     Ok(Done::new(json!({"by": "age", "counting_since": null, "older_than_days": days, "candidates": candidates}), text))
 }
 
-/// Pins videos, or takes their pins off (N74): never suggested, never deleted by
+/// Pins videos, or takes their pins off (N75): never suggested, never deleted by
 /// auto-cleanup. By id or link, as a delete; each its own result; nothing to confirm, as a
 /// pin deletes nothing. One already so is `unchanged`; one not here, `not_found`.
 fn pin(a: &Args, rest: &[String], on: bool) -> Result<Done, Fail> {
@@ -694,7 +694,7 @@ fn pin(a: &Args, rest: &[String], on: bool) -> Result<Done, Fail> {
     Ok(done)
 }
 
-/// The space's auto-cleanup (N74): whether it's on, after how many days, and what goes
+/// The space's auto-cleanup (N75): whether it's on, after how many days, and what goes
 /// next. It's read here and never changed: turning it on gives the space's page its
 /// schedule, which the app on the Mac that set up the space does (Settings · General).
 fn autoclean(a: &Args, rest: &[String]) -> Result<Done, Fail> {

@@ -708,7 +708,7 @@ body {
   overflow: visible;
 }
 
-/* ── N74: a pinned row's small pin, and auto-cleanup's amber line ── */
+/* ── N75: a pinned row's small pin, and auto-cleanup's amber line ── */
 
 .line1 .kept {
   flex: none;

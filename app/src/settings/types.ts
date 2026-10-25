@@ -33,7 +33,7 @@ export type GeneralPane = {
     suggest_hint: string;
     used_label: string | null;
     used: string | null;
-    /** Delete videos nobody watches (N74): a pop-up, live on the setup Mac only. */
+    /** Delete videos nobody watches (N75): a pop-up, live on the setup Mac only. */
     autoclean: { label: string; hint: string; choices: Choice[]; note: string | null } | null;
   } | null;
   /** “Your coding agent” (spec N62; DECISIONS B219). */

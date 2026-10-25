@@ -33,7 +33,7 @@ pub fn update(w: &mut World, env: Envelope) -> (Vec<Effect>, Arm) {
     if take_was && w.take.is_none() {
         w.display_pick.by_hand = false;
     }
-    // Pin both's word lasts while the popover stays open (N74).
+    // Pin both's word lasts while the popover stays open (N75).
     if w.session.popover.is_none() {
         w.session.fields.library.pinned_note = None;
     }
@@ -61,7 +61,7 @@ fn mark(w: &mut World, fx: &[Effect]) {
         if let Effect::Editor(effect::EditCmd::Copy { rec, rev }) = e {
             w.library_ops.copies.insert(rec.clone(), world::CopyOwed { rev: *rev, asked: true });
         }
-        // An editor's mark for the space's auto-cleanup (N74): again in five minutes.
+        // An editor's mark for the space's auto-cleanup (N75): again in five minutes.
         if let Effect::Library(effect::LibCmd::Editing(recs)) = e {
             for r in recs {
                 w.library_ops.marked.insert(r.clone(), w.now);

@@ -19,14 +19,14 @@
   <header class="chead">
     <Btn b={c.back} {send} />
     <h1>{c.title}</h1>
-    <!-- With videos going, the line on the suggestions sits under their own heading (N74). -->
+    <!-- With videos going, the line on the suggestions sits under their own heading (N75). -->
     {#if c.intro && !c.going.length}<p class="intro">{c.intro}</p>{/if}
   </header>
   <div class="list">
     {#if c.empty}
       <div class="empty"><p>{c.empty}</p></div>
     {:else}
-      <!-- N74: what auto-cleanup will delete leads, a heading per date, each with Open page and Pin. -->
+      <!-- N75: what auto-cleanup will delete leads, a heading per date, each with Open page and Pin. -->
       {#each c.going as g (g.heading)}
         <div class="gohead">
           <h2>{g.heading}</h2>

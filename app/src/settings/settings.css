@@ -471,7 +471,7 @@
   }
 }
 
-/* N74: Delete videos nobody watches — a pop-up at the row's end. */
+/* N75: Delete videos nobody watches — a pop-up at the row's end. */
 .videos .pop {
   flex: none;
   font: inherit;

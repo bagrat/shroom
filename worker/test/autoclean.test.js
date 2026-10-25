@@ -1,4 +1,4 @@
-// Auto-cleanup (spec N74, Bagrat 2026-10-24): off by default; Off / 15 / 30 / 60 days from
+// Auto-cleanup (spec N75, Bagrat 2026-10-24): off by default; Off / 15 / 30 / 60 days from
 // the last counted watch, or from the upload if nobody played it; a pinned (kept) video is
 // never deleted; three days' warning; and the space's own page does the deleting on its one
 // schedule, so a closed Mac never misses one. The page scans a few records a run and deletes

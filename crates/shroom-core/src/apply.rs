@@ -406,7 +406,7 @@ fn click(w: &mut World, at: Option<u32>) -> Out {
                 w.display_pick.clicked = at;
             }
             w.session.popover = Some(Door::asked(w.now));
-            // What auto-cleanup has going, for its banner (N74).
+            // What auto-cleanup has going, for its banner (N75).
             (crate::settle::popover_read(w).into_iter().collect(), Arm::named("click-open-popover"))
         }
         Click::Pause => {
@@ -807,7 +807,7 @@ fn act(w: &mut World, action: Action) -> Out {
             if was == Some(Confirm::Ai) {
                 return (vec![], Arm { name: "ai-back", edge: Some(("ai-confirm", "config")) });
             }
-            // Delete all's sheet and auto-cleanup's question (N74): nothing moved.
+            // Delete all's sheet and auto-cleanup's question (N75): nothing moved.
             if matches!(was, Some(Confirm::DeleteSuggested(_))) {
                 return (vec![], Arm { name: "delete-all-cancelled", edge: Some(("delete-confirm-cleanup", "library-cleanup")) });
             }
@@ -1549,7 +1549,7 @@ fn act(w: &mut World, action: Action) -> Out {
             w.prefs.cleanup_dismissed.sort();
             (vec![persist_prefs(w)], Arm::named("cleanup-dismissed"))
         }
-        // Pin and Unpin (N74): at once, no sheet; a selected row acts for every row selected.
+        // Pin and Unpin (N75): at once, no sheet; a selected row acts for every row selected.
         Action::PinRow(rec, on) => {
             let reachable = w.online() != Some(false) && !(w.space.role() == Some(Role::Member) && crate::derive::members::stranded_by_space(w));
             if !reachable {
@@ -1580,7 +1580,7 @@ fn act(w: &mut World, action: Action) -> Out {
             w.session.confirm = Some(Confirm::DeleteSuggested(targets));
             (vec![], Arm { name: "delete-all-asked", edge: Some(("library-cleanup", "delete-confirm-cleanup")) })
         }
-        // Delete all (N74): every row leaves, held on one Undo line; one pinned since stays.
+        // Delete all (N75): every row leaves, held on one Undo line; one pinned since stays.
         Action::ConfirmDeleteSuggested => {
             let Some(Confirm::DeleteSuggested(asked)) = w.session.confirm.clone() else { return (vec![], Arm::DROPPED) };
             if w.online() == Some(false) {
@@ -1595,7 +1595,7 @@ fn act(w: &mut World, action: Action) -> Out {
             }
             (fx, Arm { name: "delete-all", edge: Some(("delete-confirm-cleanup", "library-cleanup")) })
         }
-        // ── auto-cleanup (N74) ──
+        // ── auto-cleanup (N75) ──
         Action::ReviewGoing => {
             if w.take_open() {
                 return (vec![], Arm::DROPPED);
@@ -1626,7 +1626,7 @@ fn act(w: &mut World, action: Action) -> Out {
             w.prefs.cleaned_seen = Some(c.at);
             (vec![persist_prefs(w)], Arm::named("cleaned-ok"))
         }
-        // Delete videos nobody watches (N74): on the Mac that holds the setup key. Turning
+        // Delete videos nobody watches (N75): on the Mac that holds the setup key. Turning
         // it on, or shortening it, while videos already qualify asks first.
         Action::SetAutoclean(days) => {
             if !w.space.token_holder() || !crate::derive::settings::AUTOCLEAN_DAYS.contains(&days) || w.library_ops.autoclean.is_some() {
@@ -1730,7 +1730,7 @@ fn send_undone(w: &mut World) -> Vec<Effect> {
     vec![Effect::Library(LibCmd::Delete(recs))]
 }
 
-/// Pin or unpin these (N74): each reads as asked at once, the write follows.
+/// Pin or unpin these (N75): each reads as asked at once, the write follows.
 fn pin(w: &mut World, recs: Vec<RecId>, on: bool) -> Out {
     for r in &recs {
         w.library_ops.pinning.insert(r.clone(), on);
@@ -1738,7 +1738,7 @@ fn pin(w: &mut World, recs: Vec<RecId>, on: bool) -> Out {
     (vec![Effect::Library(LibCmd::Pin(recs, on))], Arm::named(if on { "pin" } else { "unpin" }))
 }
 
-/// Auto-cleanup's days told to the space's page (N74): a new try starts clean.
+/// Auto-cleanup's days told to the space's page (N75): a new try starts clean.
 fn set_autoclean(w: &mut World, days: u32, arm: Arm) -> Out {
     w.inflight.failures.remove(&Op::Autoclean);
     w.library_ops.autoclean = Some(days);
@@ -3962,7 +3962,7 @@ fn failed(w: &mut World, op: Op, class: crate::world::FailClass) -> Out {
         // A rename or delete that didn't land: the row reads as the space has it again.
         Op::Rename => w.library_ops.renaming.clear(),
         Op::Delete => w.library_ops.deleting.clear(),
-        // A pin or a switch that didn't land: it reads as the space has it (N68, N74).
+        // A pin or a switch that didn't land: it reads as the space has it (N68, N75).
         Op::Pin => {
             w.library_ops.pinning.clear();
             w.session.fields.library.pinned_note = None;
@@ -4094,7 +4094,7 @@ fn library(w: &mut World, news: LibraryNews) -> Out {
                 // When this refresh began (its op's deadline, less its span): the writes
                 // that landed before then are in its listing; later ones still read over it.
                 let began = w.inflight.ops.get(&Op::LibRefresh).map(|d| Mono(d.0.saturating_sub(Op::LibRefresh.deadline_ms()))).unwrap_or(Mono(0));
-                // The listing carries each record's pin (N74): what landed before it began is in it.
+                // The listing carries each record's pin (N75): what landed before it began is in it.
                 w.library_ops.landed.retain(|_, (_, at)| *at >= began);
                 w.library_ops.edited.retain(|_, (_, at)| *at >= began);
                 answered(w, Op::LibRefresh);

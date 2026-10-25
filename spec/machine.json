@@ -1170,7 +1170,7 @@
     "shroom.am/privacy (the viewers' line, ruled 2026-10-18)"
    ],
    "amended_by": [
-    "N74"
+    "N75"
    ]
   },
   {
@@ -1306,9 +1306,9 @@
    "amended_by": []
   },
   {
-   "id": "N74",
+   "id": "N75",
    "title": "Pin to keep, Delete all, and auto-cleanup run by the space's page",
-   "decision": "**Bagrat, 2026-10-19**, after a private-round tester said most videos stop mattering within weeks: add Delete all to the suggested list and pinned videos. **2026-10-24**: yes to real auto-cleanup on the tester's terms, the space's own page doing the deleting so a closed Mac never misses one (relayed by the orchestrator), and a heads-up in the popover too; the same day he approved every board as drawn (the boards “Library — pin a video to keep it”, “Library — Suggested to clean up: Pin in place of Keep, Delete all…”, “The shroom command — shroom pin / shroom unpin”, “Settings — General: auto-cleanup…”, “Library — auto-cleanup's warning…”, “Library and the command — after auto-cleanup deletes…”, “Popover — auto-cleanup under the tray icon…”). (1) **Pin** is the record's `keep` (N68's Keep, renamed so one idea has one name): a pinned video is never suggested and never deleted by auto-cleanup. A row's menu says Pin or Unpin after Rename, at once, no sheet; several rows selected, it acts on all. A pinned row shows a small pin before its title. Suggested to clean up's Keep becomes Pin. `shroom pin` / `shroom unpin` do the same, many at once; list and info say “pinned”. (2) **Delete all…** on the suggested list asks once with its own sheet — the count and what it frees — then every row leaves at once and one Undo line holds the whole batch for the few seconds a single delete's does. Pinned videos are never in the list; one pinned elsewhere since the list was read is skipped. (3) **Auto-cleanup**, off by default: Settings · General's Your videos gains “Delete videos nobody watches” — Off · After 15 days · After 30 days · After 60 days — counted from the last time someone watched it (the owner's own plays never count), or from its upload if nobody did, never before counting began. It's the space's setting, for every video in it, and is set on the Mac that holds the setup key, because turning it on gives the space's page its schedule (the one Cron Trigger AI naming uses, B206); every other Mac reads it. It needs Count plays: with counting off it greys and nothing goes. Turning it on, or shortening it, while videos already qualify asks once, with how many and the date; nothing goes sooner than three days after. (4) **Three days ahead** the Library says which videos will be deleted and when, each going row with a one-tap Pin; Review… shows them first. The popover shows the same as a banner, with Pin both (all of them) and Review…, Not now hiding it on that Mac until the list changes. (5) **The space's page deletes** what's due, on the date or within a day of it, whether any Mac is open or not, one video a run: never a pinned one, one still uploading, one open in an editor (the Mac marks it), or one watched since its warning. It goes as a Delete does: the link says the video was removed. (6) **After**, the Library and the popover say once what went and what it freed, with OK. Built: DECISIONS B231–B233.",
+   "decision": "**Bagrat, 2026-10-19**, after a private-round tester said most videos stop mattering within weeks: add Delete all to the suggested list and pinned videos. **2026-10-24**: yes to real auto-cleanup on the tester's terms, the space's own page doing the deleting so a closed Mac never misses one (relayed by the orchestrator), and a heads-up in the popover too; the same day he approved every board as drawn (the boards “Library — pin a video to keep it”, “Library — Suggested to clean up: Pin in place of Keep, Delete all…”, “The shroom command — shroom pin / shroom unpin”, “Settings — General: auto-cleanup…”, “Library — auto-cleanup's warning…”, “Library and the command — after auto-cleanup deletes…”, “Popover — auto-cleanup under the tray icon…”). (1) **Pin** is the record's `keep` (N68's Keep, renamed so one idea has one name): a pinned video is never suggested and never deleted by auto-cleanup. A row's menu says Pin or Unpin after Rename, at once, no sheet; several rows selected, it acts on all. A pinned row shows a small pin before its title. Suggested to clean up's Keep becomes Pin. `shroom pin` / `shroom unpin` do the same, many at once; list and info say “pinned”. (2) **Delete all…** on the suggested list asks once with its own sheet — the count and what it frees — then every row leaves at once and one Undo line holds the whole batch for the few seconds a single delete's does. Pinned videos are never in the list; one pinned elsewhere since the list was read is skipped. (3) **Auto-cleanup**, off by default: Settings · General's Your videos gains “Delete videos nobody watches” — Off · After 15 days · After 30 days · After 60 days — counted from the last time someone watched it (the owner's own plays never count), or from its upload if nobody did, never before counting began. It's the space's setting, for every video in it, and is set on the Mac that holds the setup key, because turning it on gives the space's page its schedule (the one Cron Trigger AI naming uses, B206); every other Mac reads it. It needs Count plays: with counting off it greys and nothing goes. Turning it on, or shortening it, while videos already qualify asks once, with how many and the date; nothing goes sooner than three days after. (4) **Three days ahead** the Library says which videos will be deleted and when, each going row with a one-tap Pin; Review… shows them first. The popover shows the same as a banner, with Pin both (all of them) and Review…, Not now hiding it on that Mac until the list changes. (5) **The space's page deletes** what's due, on the date or within a day of it, whether any Mac is open or not, one video a run: never a pinned one, one still uploading, one open in an editor (the Mac marks it), or one watched since its warning. It goes as a Delete does: the link says the video was removed. (6) **After**, the Library and the popover say once what went and what it freed, with OK. Built: DECISIONS B232–B234.",
    "status": "ratified",
    "date": "2026-10-24",
    "amends": [
@@ -7526,7 +7526,7 @@
    "surface": "window",
    "status": "provisional",
    "board": "Library",
-   "summary": "The Library window, thin by design (§5.6), built for two jobs: re-share an old video and clean up. It is a list, newest first. Each row shows a small poster, the title, then date · length; in Everyone, other members' rows add their admin-private label (N28; removed members keep it). Copy link is always visible; Copy thumbnail sits under it in the row's menu (N46), and Edit… after Open page (N63). Open page and Delete… show on hover or selection. State words appear only when a video isn't live (no word means live). A recovered take pins to the top under the amber dot, mirroring N25's banner. The full macOS idiom applies: click a title to rename it, double-click to open, ⌘C copies, the Delete key deletes, right-click opens a menu, ⌘/⇧-click multi-selects. Mine · Everyone shows only on owner-class Macs once someone else has a video here, and Mine is the default. Search is local and instant, over titles only. The window opens on the local cache, and the bucket refresh (R10 delta sync) runs behind it, sliding new rows in, including videos from your other Macs. Footer: the count only, with no sizes or prices (P13 parked). Scope: members see their own videos, owner-class Macs see the whole space. If another Mac deletes a video while this Mac is uploading it, the tombstone check at resume stops the upload and this row turns to 'Removed from the space' with Save to Movies · Discard…. Mocked row shape: '<title> — Aug 21 · 4:32' (+ ' · Mher' in Everyone). A pinned row (N74) shows a small pin before its title; its menu says Unpin in place of Pin. While auto-cleanup has videos going, an amber line above the rows says how many and when, and each going row says so with a Pin; once a round has gone, a line says what went, with OK.",
+   "summary": "The Library window, thin by design (§5.6), built for two jobs: re-share an old video and clean up. It is a list, newest first. Each row shows a small poster, the title, then date · length; in Everyone, other members' rows add their admin-private label (N28; removed members keep it). Copy link is always visible; Copy thumbnail sits under it in the row's menu (N46), and Edit… after Open page (N63). Open page and Delete… show on hover or selection. State words appear only when a video isn't live (no word means live). A recovered take pins to the top under the amber dot, mirroring N25's banner. The full macOS idiom applies: click a title to rename it, double-click to open, ⌘C copies, the Delete key deletes, right-click opens a menu, ⌘/⇧-click multi-selects. Mine · Everyone shows only on owner-class Macs once someone else has a video here, and Mine is the default. Search is local and instant, over titles only. The window opens on the local cache, and the bucket refresh (R10 delta sync) runs behind it, sliding new rows in, including videos from your other Macs. Footer: the count only, with no sizes or prices (P13 parked). Scope: members see their own videos, owner-class Macs see the whole space. If another Mac deletes a video while this Mac is uploading it, the tombstone check at resume stops the upload and this row turns to 'Removed from the space' with Save to Movies · Discard…. Mocked row shape: '<title> — Aug 21 · 4:32' (+ ' · Mher' in Everyone). A pinned row (N75) shows a small pin before its title; its menu says Unpin in place of Pin. While auto-cleanup has videos going, an amber line above the rows says how many and when, and each going row says so with a Pin; once a round has gone, a line says what went, with OK.",
    "entry": "A space exists, so config is reachable: idle-ready, not mid-take. The user clicks the Library (folder) icon in config's footer. One instance: clicking the icon again brings the open window forward. A window opened before a take stays open through it (N41's quiet-take law covers only what shroom would newly show). It is also restored at its derived state after an update relaunch if it was open when Update ran. The dock icon shows while it is open (Region 1 dock rule).",
    "said": [
     {
@@ -7755,9 +7755,9 @@
      "text": "Pin",
      "role": "button",
      "copy": "ratified",
-     "note": "N74. A row's menu, after Rename, on a live row that isn't pinned. Several rows selected: Pin when any isn't pinned, else Unpin, and it acts on all. Also on a row auto-cleanup will delete, beside Copy link. Greys offline, as Rename does. Bagrat approved the board as drawn, 2026-10-24.",
+     "note": "N75. A row's menu, after Rename, on a live row that isn't pinned. Several rows selected: Pin when any isn't pinned, else Unpin, and it acts on all. Also on a row auto-cleanup will delete, beside Copy link. Greys offline, as Rename does. Bagrat approved the board as drawn, 2026-10-24.",
      "cites": [
-      "N74"
+      "N75"
      ],
      "id": "library.pin"
     },
@@ -7765,9 +7765,9 @@
      "text": "Unpin",
      "role": "button",
      "copy": "ratified",
-     "note": "N74. In place of Pin, on a pinned row. Bagrat approved the board as drawn, 2026-10-24.",
+     "note": "N75. In place of Pin, on a pinned row. Bagrat approved the board as drawn, 2026-10-24.",
      "cites": [
-      "N74"
+      "N75"
      ],
      "id": "library.unpin"
     },
@@ -7775,9 +7775,9 @@
      "text": "Pinned",
      "role": "other",
      "copy": "ratified",
-     "note": "N74. A pinned row's small pin before its title says it to VoiceOver and on hover. Bagrat approved the board as drawn, 2026-10-24.",
+     "note": "N75. A pinned row's small pin before its title says it to VoiceOver and on hover. Bagrat approved the board as drawn, 2026-10-24.",
      "cites": [
-      "N74"
+      "N75"
      ],
      "id": "library.pinned"
     },
@@ -7785,9 +7785,9 @@
      "text": "Two videos will be deleted on Oct 27 — nobody has watched them in 30 days.",
      "role": "line",
      "copy": "ratified",
-     "note": "N74. Above the rows, amber, in place of the suggestion line, while auto-cleanup has videos going in this Mac's scope; no Not now. The count varies (a word up to nine, Law 16; one reads 'One video will be deleted…' and 'nobody has watched it'), and so do the date and the days. With videos going on different dates, the earliest. Bagrat approved the board as drawn, 2026-10-24.",
+     "note": "N75. Above the rows, amber, in place of the suggestion line, while auto-cleanup has videos going in this Mac's scope; no Not now. The count varies (a word up to nine, Law 16; one reads 'One video will be deleted…' and 'nobody has watched it'), and so do the date and the days. With videos going on different dates, the earliest. Bagrat approved the board as drawn, 2026-10-24.",
      "cites": [
-      "N74"
+      "N75"
      ],
      "id": "library.autoclean-warning"
     },
@@ -7795,9 +7795,9 @@
      "text": "Deleted Oct 27 unless pinned",
      "role": "line",
      "copy": "ratified",
-     "note": "N74. After a going row's date · length, amber. The date varies. Bagrat approved the board as drawn, 2026-10-24.",
+     "note": "N75. After a going row's date · length, amber. The date varies. Bagrat approved the board as drawn, 2026-10-24.",
      "cites": [
-      "N74"
+      "N75"
      ],
      "id": "library.deleted-unless-pinned"
     },
@@ -7805,9 +7805,9 @@
      "text": "Auto-cleanup deleted two videos nobody had watched in 30 days, freeing 1.7 GB.",
      "role": "line",
      "copy": "ratified",
-     "note": "N74. Once, after a round of auto-cleanup took videos in this Mac's scope, until OK. The count varies (a word up to nine; one reads 'one video'), and so do the days and the size. Bagrat approved the board as drawn, 2026-10-24.",
+     "note": "N75. Once, after a round of auto-cleanup took videos in this Mac's scope, until OK. The count varies (a word up to nine; one reads 'one video'), and so do the days and the size. Bagrat approved the board as drawn, 2026-10-24.",
      "cites": [
-      "N74"
+      "N75"
      ],
      "id": "library.autoclean-cleaned"
     },
@@ -7815,9 +7815,9 @@
      "text": "OK",
      "role": "button",
      "copy": "ratified",
-     "note": "N74. Puts the line away, here and in the popover. Bagrat approved the board as drawn, 2026-10-24.",
+     "note": "N75. Puts the line away, here and in the popover. Bagrat approved the board as drawn, 2026-10-24.",
      "cites": [
-      "N74"
+      "N75"
      ],
      "id": "library.ok"
     },
@@ -7825,9 +7825,9 @@
      "text": "Couldn't change that just now — try again in a moment.",
      "role": "line",
      "copy": "ratified",
-     "note": "N74. Above the rows, after a Pin or Unpin that didn't go through (law 12): the row reads as the space has it. The settings' own words for a switch that didn't change.",
+     "note": "N75. Above the rows, after a Pin or Unpin that didn't go through (law 12): the row reads as the space has it. The settings' own words for a switch that didn't change.",
      "cites": [
-      "N74"
+      "N75"
      ],
      "id": "library.pin-failed"
     }
@@ -7924,7 +7924,7 @@
      "kind": "other",
      "return_default": false,
      "goes_to": "library",
-     "note": "N74. Right-click → Pin (Unpin on a pinned row), after Rename; and Pin on a row auto-cleanup will delete. At once, no sheet."
+     "note": "N75. Right-click → Pin (Unpin on a pinned row), after Rename; and Pin on a row auto-cleanup will delete. At once, no sheet."
     }
    ],
    "cites": [
@@ -8956,7 +8956,7 @@
    "surface": "window",
    "status": "provisional",
    "board": "SettingsGeneral",
-   "summary": "The General tab: U4's login checkbox at home at last (it reads the system's truth: if the login item is removed in System Settings, the box shows unchecked), the update row mirroring config's banner, and the help row: Copy diagnostics and Report a problem… (B180), with GitHub's new-issue link under it as the public door (N8). Past this Mac's macOS, General carries the only update line: no banner, no dot. Your videos gains Delete videos nobody watches (N74): the space's auto-cleanup, Off as it ships, set on the Mac that holds the setup key, read-only elsewhere.",
+   "summary": "The General tab: U4's login checkbox at home at last (it reads the system's truth: if the login item is removed in System Settings, the box shows unchecked), the update row mirroring config's banner, and the help row: Copy diagnostics and Report a problem… (B180), with GitHub's new-issue link under it as the public door (N8). Past this Mac's macOS, General carries the only update line: no banner, no dot. Your videos gains Delete videos nobody watches (N75): the space's auto-cleanup, Off as it ships, set on the Mac that holds the setup key, read-only elsewhere.",
    "entry": "Settings window on the General tab (the default on first open). The shroom command's settings link (N62) opens it too, the switch's row lit for a moment.",
    "said": [
     {
@@ -9183,9 +9183,9 @@
      "text": "Delete videos nobody watches",
      "role": "field-label",
      "copy": "ratified",
-     "note": "N74. A pop-up in Your videos, under Suggest videos to clean up; Off as it ships. Set on the Mac that holds the setup key. Bagrat approved the board as drawn, 2026-10-24.",
+     "note": "N75. A pop-up in Your videos, under Suggest videos to clean up; Off as it ships. Set on the Mac that holds the setup key. Bagrat approved the board as drawn, 2026-10-24.",
      "cites": [
-      "N74"
+      "N75"
      ],
      "id": "settings-general.delete-videos-nobody-watches"
     },
@@ -9193,9 +9193,9 @@
      "text": "Counted from the last time someone watched it, or from when it was shared. Pinned videos are never deleted, and the Library says which ones are going a few days before.",
      "role": "line",
      "copy": "ratified",
-     "note": "N74. Under it, on the Mac that sets it. Bagrat approved the board as drawn, 2026-10-24.",
+     "note": "N75. Under it, on the Mac that sets it. Bagrat approved the board as drawn, 2026-10-24.",
      "cites": [
-      "N74"
+      "N75"
      ],
      "id": "settings-general.counted-from"
     },
@@ -9203,9 +9203,9 @@
      "text": "Off",
      "role": "button",
      "copy": "ratified",
-     "note": "N74. The pop-up's first choice. Bagrat approved the board as drawn, 2026-10-24.",
+     "note": "N75. The pop-up's first choice. Bagrat approved the board as drawn, 2026-10-24.",
      "cites": [
-      "N74"
+      "N75"
      ],
      "id": "settings-general.autoclean-off"
     },
@@ -9213,9 +9213,9 @@
      "text": "After 15 days",
      "role": "button",
      "copy": "ratified",
-     "note": "N74. Bagrat approved the board as drawn, 2026-10-24.",
+     "note": "N75. Bagrat approved the board as drawn, 2026-10-24.",
      "cites": [
-      "N74"
+      "N75"
      ],
      "id": "settings-general.after-15-days"
     },
@@ -9223,9 +9223,9 @@
      "text": "After 30 days",
      "role": "button",
      "copy": "ratified",
-     "note": "N74. Bagrat approved the board as drawn, 2026-10-24.",
+     "note": "N75. Bagrat approved the board as drawn, 2026-10-24.",
      "cites": [
-      "N74"
+      "N75"
      ],
      "id": "settings-general.after-30-days"
     },
@@ -9233,9 +9233,9 @@
      "text": "After 60 days",
      "role": "button",
      "copy": "ratified",
-     "note": "N74. Bagrat approved the board as drawn, 2026-10-24.",
+     "note": "N75. Bagrat approved the board as drawn, 2026-10-24.",
      "cites": [
-      "N74"
+      "N75"
      ],
      "id": "settings-general.after-60-days"
     },
@@ -9243,9 +9243,9 @@
      "text": "Your space deletes videos nobody has watched in 30 days. It's set on the Mac that set up your space. Pin a video in the Library to keep it.",
      "role": "line",
      "copy": "ratified",
-     "note": "N74. On every other Mac, under the pop-up greyed at the space's choice. The number of days varies; off, the pop-up reads Off and the line is the setting Mac's. Bagrat approved the board as drawn, 2026-10-24.",
+     "note": "N75. On every other Mac, under the pop-up greyed at the space's choice. The number of days varies; off, the pop-up reads Off and the line is the setting Mac's. Bagrat approved the board as drawn, 2026-10-24.",
      "cites": [
-      "N74"
+      "N75"
      ],
      "id": "settings-general.space-deletes"
     },
@@ -9253,9 +9253,9 @@
      "text": "Needs Count plays",
      "role": "line",
      "copy": "ratified",
-     "note": "N74. In place of the line under it, the pop-up greyed, while Count plays is off. Bagrat approved the board as drawn, 2026-10-24.",
+     "note": "N75. In place of the line under it, the pop-up greyed, while Count plays is off. Bagrat approved the board as drawn, 2026-10-24.",
      "cites": [
-      "N74"
+      "N75"
      ],
      "id": "settings-general.needs-count-plays"
     },
@@ -9263,9 +9263,9 @@
      "text": "Turning on — a few seconds.",
      "role": "line",
      "copy": "ratified",
-     "note": "N74. Under Delete videos nobody watches, the first time it's turned on: the space's page is given its schedule, as AI's banner says it (N66). Bagrat approved the board as drawn, 2026-10-24.",
+     "note": "N75. Under Delete videos nobody watches, the first time it's turned on: the space's page is given its schedule, as AI's banner says it (N66). Bagrat approved the board as drawn, 2026-10-24.",
      "cites": [
-      "N74"
+      "N75"
      ],
      "id": "settings-general.autoclean-turning-on"
     }
@@ -9321,7 +9321,7 @@
      "kind": "other",
      "return_default": false,
      "goes_to": "autoclean-confirm",
-     "note": "N74. A pop-up: Off · After 15 days · After 30 days · After 60 days. Turning it on or shortening it while videos already qualify asks first (autoclean-confirm); otherwise it's set at once, “Turning on — a few seconds.” under it the first time. One that didn't go through says Couldn't change that and stays as it was."
+     "note": "N75. A pop-up: Off · After 15 days · After 30 days · After 60 days. Turning it on or shortening it while videos already qualify asks first (autoclean-confirm); otherwise it's set at once, “Turning on — a few seconds.” under it the first time. One that didn't go through says Couldn't change that and stays as it was."
     }
    ],
    "cites": [
@@ -13183,7 +13183,7 @@
    "surface": "window",
    "status": "ratified",
    "board": "CleanupView",
-   "summary": "Suggested to clean up (N68, N74): the Library's own view of the videos worth deleting, costliest per remaining play first. While auto-cleanup has videos going, they lead it: a heading per date, a line, and each with Open page and Pin; the suggestions follow under their own heading. A line says what deleting all of them frees and saves; each row shows the poster, the title, then when it was made · its size · why it's suggested, with Open page, Pin and Delete (red text). Delete is one tap: the row leaves and an Undo line stays a few seconds before the delete is sent (a sealed delete can't be taken back, B125). Delete all… asks once with its own sheet (delete-confirm-cleanup); then every row leaves and one Undo line holds them all. Pin sets the record's keep and the row leaves for good. Members see their own; owner-class Macs follow Mine · Everyone.",
+   "summary": "Suggested to clean up (N68, N75): the Library's own view of the videos worth deleting, costliest per remaining play first. While auto-cleanup has videos going, they lead it: a heading per date, a line, and each with Open page and Pin; the suggestions follow under their own heading. A line says what deleting all of them frees and saves; each row shows the poster, the title, then when it was made · its size · why it's suggested, with Open page, Pin and Delete (red text). Delete is one tap: the row leaves and an Undo line stays a few seconds before the delete is sent (a sealed delete can't be taken back, B125). Delete all… asks once with its own sheet (delete-confirm-cleanup); then every row leaves and one Undo line holds them all. Pin sets the record's keep and the row leaves for good. Members see their own; owner-class Macs follow Mine · Everyone.",
    "entry": "Review… on the Library's suggestion line.",
    "said": [
     {
@@ -13258,10 +13258,10 @@
      "text": "Pin",
      "role": "button",
      "copy": "ratified",
-     "note": "N74 (was Keep, N68). Pins the video: it leaves this list for good and is never deleted by auto-cleanup. Bagrat approved the board as drawn, 2026-10-24.",
+     "note": "N75 (was Keep, N68). Pins the video: it leaves this list for good and is never deleted by auto-cleanup. Bagrat approved the board as drawn, 2026-10-24.",
      "id": "library-cleanup.pin",
      "cites": [
-      "N74"
+      "N75"
      ]
     },
     {
@@ -13288,7 +13288,7 @@
      "text": "Delete all six…",
      "role": "button",
      "copy": "ratified",
-     "note": "Red text; opens delete-confirm-cleanup (N74). The count varies, a word up to nine; two reads 'Delete both…'.",
+     "note": "Red text; opens delete-confirm-cleanup (N75). The count varies, a word up to nine; two reads 'Delete both…'.",
      "id": "library-cleanup.delete-all-six"
     },
     {
@@ -13296,9 +13296,9 @@
      "role": "line",
      "copy": "ratified",
      "id": "library-cleanup.pinned-never-suggested",
-     "note": "N74 (was the line on Keep). Bagrat approved the board as drawn, 2026-10-24.",
+     "note": "N75 (was the line on Keep). Bagrat approved the board as drawn, 2026-10-24.",
      "cites": [
-      "N74"
+      "N75"
      ]
     },
     {
@@ -13312,9 +13312,9 @@
      "text": "Deleted six videos.",
      "role": "line",
      "copy": "ratified",
-     "note": "N74. Delete all's Undo line, a few seconds; the deletes are sent when it goes. The count varies (a word up to nine; two reads 'both videos'). Bagrat approved the board as drawn, 2026-10-24.",
+     "note": "N75. Delete all's Undo line, a few seconds; the deletes are sent when it goes. The count varies (a word up to nine; two reads 'both videos'). Bagrat approved the board as drawn, 2026-10-24.",
      "cites": [
-      "N74"
+      "N75"
      ],
      "id": "library-cleanup.deleted-six"
     },
@@ -13322,9 +13322,9 @@
      "text": "Deleting on Oct 27",
      "role": "heading",
      "copy": "ratified",
-     "note": "N74. Leads the view while auto-cleanup has videos going: one heading per date, earliest first. The date varies. Bagrat approved the board as drawn, 2026-10-24.",
+     "note": "N75. Leads the view while auto-cleanup has videos going: one heading per date, earliest first. The date varies. Bagrat approved the board as drawn, 2026-10-24.",
      "cites": [
-      "N74"
+      "N75"
      ],
      "id": "library-cleanup.deleting-on"
     },
@@ -13332,9 +13332,9 @@
      "text": "Nobody has watched these in 30 days. Pin one to keep it; a watch before then keeps it too.",
      "role": "line",
      "copy": "ratified",
-     "note": "N74. Under the first date's heading. The number of days varies; one reads 'Nobody has watched this in 30 days. Pin it to keep it; a watch before then keeps it too.' Bagrat approved the board as drawn, 2026-10-24.",
+     "note": "N75. Under the first date's heading. The number of days varies; one reads 'Nobody has watched this in 30 days. Pin it to keep it; a watch before then keeps it too.' Bagrat approved the board as drawn, 2026-10-24.",
      "cites": [
-      "N74"
+      "N75"
      ],
      "id": "library-cleanup.nobody-watched-these"
     },
@@ -13342,9 +13342,9 @@
      "text": "Deleted Oct 27 unless pinned",
      "role": "line",
      "copy": "ratified",
-     "note": "N74. After a going row's date · size · why, amber; its buttons are Open page and Pin (no Delete: it's going anyway). The date varies. Bagrat approved the board as drawn, 2026-10-24.",
+     "note": "N75. After a going row's date · size · why, amber; its buttons are Open page and Pin (no Delete: it's going anyway). The date varies. Bagrat approved the board as drawn, 2026-10-24.",
      "cites": [
-      "N74"
+      "N75"
      ],
      "id": "library-cleanup.deleted-unless-pinned"
     },
@@ -13352,9 +13352,9 @@
      "text": "Might be worth deleting",
      "role": "heading",
      "copy": "ratified",
-     "note": "N74. Over the suggestions, only when videos are going above them. Bagrat approved the board as drawn, 2026-10-24.",
+     "note": "N75. Over the suggestions, only when videos are going above them. Bagrat approved the board as drawn, 2026-10-24.",
      "cites": [
-      "N74"
+      "N75"
      ],
      "id": "library-cleanup.might-be-worth-deleting"
     }
@@ -13375,7 +13375,7 @@
    ],
    "cites": [
     "N68",
-    "N74"
+    "N75"
    ],
    "was": null
   },
@@ -13543,16 +13543,16 @@
    "surface": "sheet",
    "status": "ratified",
    "board": "CleanupDeleteAll",
-   "summary": "Delete all… on Suggested to clean up (N74): one sheet for the whole list, saying how many and what it frees. N23's law: no Return default, Esc ≡ Cancel, the destructive button red-outlined and rightmost. Its Delete takes every row off the list at once and holds them on one Undo line for a few seconds before the deletes are sent; a video pinned since the list was read is left out.",
+   "summary": "Delete all… on Suggested to clean up (N75): one sheet for the whole list, saying how many and what it frees. N23's law: no Return default, Esc ≡ Cancel, the destructive button red-outlined and rightmost. Its Delete takes every row off the list at once and holds them on one Undo line for a few seconds before the deletes are sent; a video pinned since the list was read is left out.",
    "entry": "Delete all… under the suggestions (two or more).",
    "said": [
     {
      "text": "Delete all six suggested videos?",
      "role": "sheet-title",
      "copy": "ratified",
-     "note": "N74. Bold. The count varies (a word up to nine, Law 16); two reads 'Delete both suggested videos?'. Bagrat approved the board as drawn, 2026-10-24.",
+     "note": "N75. Bold. The count varies (a word up to nine, Law 16); two reads 'Delete both suggested videos?'. Bagrat approved the board as drawn, 2026-10-24.",
      "cites": [
-      "N74"
+      "N75"
      ],
      "id": "delete-confirm-cleanup.title"
     },
@@ -13560,9 +13560,9 @@
      "text": "That frees 11 GB. They're removed everywhere. Their links stay, and say the videos are gone.",
      "role": "sheet-body",
      "copy": "ratified",
-     "note": "N74. The size varies: the list's total, as the view's line says it. Bagrat approved the board as drawn, 2026-10-24.",
+     "note": "N75. The size varies: the list's total, as the view's line says it. Bagrat approved the board as drawn, 2026-10-24.",
      "cites": [
-      "N74"
+      "N75"
      ],
      "id": "delete-confirm-cleanup.frees"
     },
@@ -13570,9 +13570,9 @@
      "text": "Delete all six",
      "role": "button",
      "copy": "ratified",
-     "note": "N74. Red outline, rightmost, never the Return default (law 9). The count varies; two reads 'Delete both'. Bagrat approved the board as drawn, 2026-10-24.",
+     "note": "N75. Red outline, rightmost, never the Return default (law 9). The count varies; two reads 'Delete both'. Bagrat approved the board as drawn, 2026-10-24.",
      "cites": [
-      "N74"
+      "N75"
      ],
      "id": "delete-confirm-cleanup.delete-all"
     }
@@ -13593,7 +13593,7 @@
     }
    ],
    "cites": [
-    "N74"
+    "N75"
    ],
    "was": null
   },
@@ -13604,16 +13604,16 @@
    "surface": "sheet",
    "status": "ratified",
    "board": "AutoCleanSettings",
-   "summary": "Auto-cleanup turned on, or its wait shortened, while videos already qualify (N74): one question in Settings, with how many and the date they'd go — never sooner than three days on. No Return default (law 9); Cancel and Esc leave the setting as it was.",
+   "summary": "Auto-cleanup turned on, or its wait shortened, while videos already qualify (N75): one question in Settings, with how many and the date they'd go — never sooner than three days on. No Return default (law 9); Cancel and Esc leave the setting as it was.",
    "entry": "A choice in Delete videos nobody watches that turns it on or shortens it, while at least one video in the space would already be due.",
    "said": [
     {
      "text": "Delete videos nobody watches for 30 days?",
      "role": "sheet-title",
      "copy": "ratified",
-     "note": "N74. Bold. The number of days varies. Bagrat approved the board as drawn, 2026-10-24.",
+     "note": "N75. Bold. The number of days varies. Bagrat approved the board as drawn, 2026-10-24.",
      "cites": [
-      "N74"
+      "N75"
      ],
      "id": "autoclean-confirm.title"
     },
@@ -13621,9 +13621,9 @@
      "text": "Four videos already qualify. They'll be deleted on Oct 27 unless someone watches them or you pin them — the Library shows which. Their links will say the videos are gone.",
      "role": "sheet-body",
      "copy": "ratified",
-     "note": "N74. The count (a word up to nine; one reads 'One video already qualifies. It'll be deleted on Oct 27 unless someone watches it or you pin it — the Library shows which. Its link will say the video is gone.') and the date (three days on) each varies. Bagrat approved the board as drawn, 2026-10-24.",
+     "note": "N75. The count (a word up to nine; one reads 'One video already qualifies. It'll be deleted on Oct 27 unless someone watches it or you pin it — the Library shows which. Its link will say the video is gone.') and the date (three days on) each varies. Bagrat approved the board as drawn, 2026-10-24.",
      "cites": [
-      "N74"
+      "N75"
      ],
      "id": "autoclean-confirm.already-qualify"
     },
@@ -13631,9 +13631,9 @@
      "text": "Turn on",
      "role": "button",
      "copy": "ratified",
-     "note": "N74. Red outline, rightmost, never the Return default. Bagrat approved the board as drawn, 2026-10-24.",
+     "note": "N75. Red outline, rightmost, never the Return default. Bagrat approved the board as drawn, 2026-10-24.",
      "cites": [
-      "N74"
+      "N75"
      ],
      "id": "autoclean-confirm.turn-on"
     }
@@ -13653,7 +13653,7 @@
     }
    ],
    "cites": [
-    "N74"
+    "N75"
    ],
    "was": null
   },
@@ -13664,16 +13664,16 @@
    "surface": "banner",
    "status": "ratified",
    "board": "AutoCleanPopover",
-   "summary": "Auto-cleanup's heads-up in the popover (N74; Bagrat, 2026-10-24: under the tray icon too, as the AI offer shows): an amber banner while videos in this Mac's scope are going, three days ahead. Pin both pins every video it counts; Review… opens the Library on what's going; Not now hides it on this Mac until the list of what's going changes (the Library's line stays). It ranks above the update and the AI offer, under a saved take, the space and recording off. No dot on the tray: amber there means a take needs you.",
+   "summary": "Auto-cleanup's heads-up in the popover (N75; Bagrat, 2026-10-24: under the tray icon too, as the AI offer shows): an amber banner while videos in this Mac's scope are going, three days ahead. Pin both pins every video it counts; Review… opens the Library on what's going; Not now hides it on this Mac until the list of what's going changes (the Library's line stays). It ranks above the update and the AI offer, under a saved take, the space and recording off. No dot on the tray: amber there means a take needs you.",
    "entry": "`config` while auto-cleanup has videos going in this Mac's scope, not put away by Not now, and no higher banner shows.",
    "said": [
     {
      "text": "Two videos will be deleted on Oct 27 — nobody has watched them in 30 days.",
      "role": "banner",
      "copy": "ratified",
-     "note": "N74. The Library's line, word for word: the count, the date and the days each varies. Bagrat approved the board as drawn, 2026-10-24.",
+     "note": "N75. The Library's line, word for word: the count, the date and the days each varies. Bagrat approved the board as drawn, 2026-10-24.",
      "cites": [
-      "N74"
+      "N75"
      ],
      "id": "autoclean-warning.line"
     },
@@ -13681,9 +13681,9 @@
      "text": "Pin both",
      "role": "button",
      "copy": "ratified",
-     "note": "N74. Filled amber; never the Return default (law 8). The count varies: one reads 'Pin it', three or more 'Pin all three'. Bagrat approved the board as drawn, 2026-10-24.",
+     "note": "N75. Filled amber; never the Return default (law 8). The count varies: one reads 'Pin it', three or more 'Pin all three'. Bagrat approved the board as drawn, 2026-10-24.",
      "cites": [
-      "N74"
+      "N75"
      ],
      "id": "autoclean-warning.pin-both"
     },
@@ -13691,9 +13691,9 @@
      "text": "Review…",
      "role": "button",
      "copy": "ratified",
-     "note": "N74. Opens the Library on Suggested to clean up. Bagrat approved the board as drawn, 2026-10-24.",
+     "note": "N75. Opens the Library on Suggested to clean up. Bagrat approved the board as drawn, 2026-10-24.",
      "cites": [
-      "N74"
+      "N75"
      ],
      "id": "autoclean-warning.review"
     },
@@ -13701,9 +13701,9 @@
      "text": "Not now",
      "role": "button",
      "copy": "ratified",
-     "note": "N74. Quiet text. Bagrat approved the board as drawn, 2026-10-24.",
+     "note": "N75. Quiet text. Bagrat approved the board as drawn, 2026-10-24.",
      "cites": [
-      "N74"
+      "N75"
      ],
      "id": "autoclean-warning.not-now"
     },
@@ -13711,9 +13711,9 @@
      "text": "Pinned both. Nothing will be deleted on Oct 27.",
      "role": "banner",
      "copy": "ratified",
-     "note": "N74. After Pin both, while the popover stays open; gone the next time it opens. One reads 'Pinned it.', three or more 'Pinned all three.'. The date varies. Bagrat approved the board as drawn, 2026-10-24.",
+     "note": "N75. After Pin both, while the popover stays open; gone the next time it opens. One reads 'Pinned it.', three or more 'Pinned all three.'. The date varies. Bagrat approved the board as drawn, 2026-10-24.",
      "cites": [
-      "N74"
+      "N75"
      ],
      "id": "autoclean-warning.pinned-both"
     },
@@ -13721,9 +13721,9 @@
      "text": "Auto-cleanup deleted two videos nobody had watched in 30 days, freeing 1.7 GB.",
      "role": "banner",
      "copy": "ratified",
-     "note": "N74. Once after a round took videos in this Mac's scope, frost, with OK; the Library's line, word for word (the count, the days and the size each varies). Bagrat approved the board as drawn, 2026-10-24.",
+     "note": "N75. Once after a round took videos in this Mac's scope, frost, with OK; the Library's line, word for word (the count, the days and the size each varies). Bagrat approved the board as drawn, 2026-10-24.",
      "cites": [
-      "N74"
+      "N75"
      ],
      "id": "autoclean-warning.cleaned"
     },
@@ -13731,9 +13731,9 @@
      "text": "OK",
      "role": "button",
      "copy": "ratified",
-     "note": "N74. Puts it away here and in the Library. Bagrat approved the board as drawn, 2026-10-24.",
+     "note": "N75. Puts it away here and in the Library. Bagrat approved the board as drawn, 2026-10-24.",
      "cites": [
-      "N74"
+      "N75"
      ],
      "id": "autoclean-warning.ok"
     }
@@ -13760,7 +13760,7 @@
     }
    ],
    "cites": [
-    "N74"
+    "N75"
    ],
    "was": null
   }
@@ -19128,7 +19128,7 @@
    "trigger": "Delete all… under the suggestions",
    "status": "ratified",
    "cites": [
-    "N74"
+    "N75"
    ],
    "source": [
     "core-arm"
@@ -19145,7 +19145,7 @@
    "trigger": "Delete all: every row leaves, one Undo line",
    "status": "ratified",
    "cites": [
-    "N74"
+    "N75"
    ],
    "source": [
     "core-arm"
@@ -19162,7 +19162,7 @@
    "trigger": "Cancel or Esc",
    "status": "ratified",
    "cites": [
-    "N74"
+    "N75"
    ],
    "source": [
     "core-arm"
@@ -19180,7 +19180,7 @@
    "trigger": "A choice that turns auto-cleanup on or shortens it while videos already qualify",
    "status": "ratified",
    "cites": [
-    "N74"
+    "N75"
    ],
    "source": [
     "core-arm"
@@ -19197,7 +19197,7 @@
    "trigger": "Turn on: the setting is set",
    "status": "ratified",
    "cites": [
-    "N74"
+    "N75"
    ],
    "source": [
     "core-arm"
@@ -19214,7 +19214,7 @@
    "trigger": "Cancel or Esc: the setting stays as it was",
    "status": "ratified",
    "cites": [
-    "N74"
+    "N75"
    ],
    "source": [
     "core-arm"
@@ -19232,7 +19232,7 @@
    "trigger": "Review… opens the Library on what's going",
    "status": "ratified",
    "cites": [
-    "N74"
+    "N75"
    ],
    "source": [
     "core-arm"
@@ -19249,7 +19249,7 @@
    "trigger": "Not now: put away on this Mac until the list of what's going changes",
    "status": "ratified",
    "cites": [
-    "N74"
+    "N75"
    ],
    "source": [
     "core-arm"

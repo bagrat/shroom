@@ -27,9 +27,9 @@ export type Row = {
   tone: "amber" | "frost" | null;
   progress: number | null;
   pinned: boolean;
-  /** Pinned to keep (N74): “Pinned”, said by the small pin before the title. */
+  /** Pinned to keep (N75): “Pinned”, said by the small pin before the title. */
   kept: string | null;
-  /** Auto-cleanup will delete it (N74): “Deleted Oct 27 unless pinned”, amber. */
+  /** Auto-cleanup will delete it (N75): “Deleted Oct 27 unless pinned”, amber. */
   going: string | null;
   selected: boolean;
   gestures: Gestures;
@@ -59,16 +59,16 @@ export type LibraryBody = {
   cleanup_line: { line: string; review: Button; dismiss: Button } | null;
   /** Suggested to clean up, in place of the list (N68). */
   cleanup: CleanupBody | null;
-  /** Auto-cleanup's amber line, three days ahead (N74), in the suggestion line's place. */
+  /** Auto-cleanup's amber line, three days ahead (N75), in the suggestion line's place. */
   going_line: Notice | null;
-  /** Once a round of auto-cleanup went (N74), with OK. */
+  /** Once a round of auto-cleanup went (N75), with OK. */
   cleaned_line: Notice | null;
 };
 
-/** A line above the rows and its buttons (N74). */
+/** A line above the rows and its buttons (N75). */
 export type Notice = { line: string; buttons: Button[] };
 
-/** What auto-cleanup will delete on one date (N74): its heading, a line under the first. */
+/** What auto-cleanup will delete on one date (N75): its heading, a line under the first. */
 export type GoingGroup = { heading: string; line: string | null; rows: CleanupRow[] };
 
 /** One suggestion: the poster, the title, then when it was made · its size · why. */
@@ -79,9 +79,9 @@ export type CleanupBody = {
   /** “‹ Library”. */
   back: Button;
   intro: string | null;
-  /** What auto-cleanup will delete, by date, ahead of the suggestions (N74). */
+  /** What auto-cleanup will delete, by date, ahead of the suggestions (N75). */
   going: GoingGroup[];
-  /** “Might be worth deleting”, over the suggestions while anything is going (N74). */
+  /** “Might be worth deleting”, over the suggestions while anything is going (N75). */
   suggest_heading: string | null;
   rows: CleanupRow[];
   /** Once the last suggestion is kept or deleted. */

@@ -66,7 +66,7 @@ fn rename_marks_a_chosen_title_and_never_saves_an_empty_one() {
 
 #[test]
 fn a_pin_marks_the_record_and_leaves_everything_else_as_it_was() {
-    // N74 (N68's Keep): Pin is `keep: true` on its record, Unpin takes it off, the title and
+    // N75 (N68's Keep): Pin is `keep: true` on its record, Unpin takes it off, the title and
     // every other field untouched; the row says so; a tombstone stops it.
     let (_fake, s3) = space();
     record(&s3, A, "Q3 roadmap", "2026-10-02T10:00:00Z");

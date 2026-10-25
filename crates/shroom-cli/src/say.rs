@@ -359,7 +359,7 @@ pub fn why(code: &str, quiet_days: Option<u64>) -> String {
 }
 
 /// Without the page's suggestions: its age alone.
-/// A going video's why (N74): auto-cleanup deletes it on that day.
+/// A going video's why (N75): auto-cleanup deletes it on that day.
 pub fn why_going(on: &str) -> String {
     format!("deleted {on} unless pinned")
 }
@@ -395,7 +395,7 @@ pub fn nothing_was_deleted() -> String {
     "Nothing was deleted. shroom delete <id> --yes removes one for good.".into()
 }
 
-// ── pin and auto-cleanup (N74) ──
+// ── pin and auto-cleanup (N75) ──
 
 /// The list's and info's word for a pinned video.
 pub const PINNED: &str = "pinned";

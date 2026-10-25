@@ -135,7 +135,7 @@
         />
       {:else if row.title !== null}
         {#if row.kept}
-          <!-- N74: pinned to keep — the small pin says so, to VoiceOver and on hover. -->
+          <!-- N75: pinned to keep — the small pin says so, to VoiceOver and on hover. -->
           <svg class="kept" viewBox="0 0 16 16" role="img" aria-label={row.kept}><title>{row.kept}</title><path
               d="M9.8 1.5l4.7 4.7-1.2.5-2.5 2.5.2 3.1-1.3 1.3-2.7-2.7-3.9 3.9H2.5v-.6l3.9-3.9-2.7-2.7 1.3-1.3 3.1.2 2.5-2.5z"
             /></svg

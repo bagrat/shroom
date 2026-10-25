@@ -449,7 +449,7 @@ pub fn cleanup_reason(plays: u32, quiet_days: u32, stopped_early: bool) -> Strin
 }
 pub fn pin() -> String { "Pin".into() }
 pub fn unpin() -> String { "Unpin".into() }
-/// A pinned row's small pin, as VoiceOver and a hover say it (N74).
+/// A pinned row's small pin, as VoiceOver and a hover say it (N75).
 pub fn pinned() -> String { "Pinned".into() }
 pub fn deleted_title(title: &str) -> String { format!("Deleted “{title}”.") }
 pub fn undo() -> String { "Undo".into() }
@@ -457,13 +457,13 @@ pub fn delete_all(n: u64) -> String {
     if n == 2 { "Delete both…".into() } else { format!("Delete all {}…", count_word(n)) }
 }
 pub fn cleanup_foot() -> String { "A pinned video is never suggested; unpin it in the Library. Plays are counted in your own Cloudflare account.".into() }
-/// Delete all's Undo line (N74).
+/// Delete all's Undo line (N75).
 pub fn deleted_count(n: u64) -> String { if n == 2 { "Deleted both videos.".into() } else { format!("Deleted {} videos.", count_word(n)) } }
 pub fn delete_all_title(n: u64) -> String { if n == 2 { "Delete both suggested videos?".into() } else { format!("Delete all {} suggested videos?", count_word(n)) } }
 pub fn delete_all_frees(bytes: u64) -> String { format!("That frees {}. They're removed everywhere. Their links stay, and say the videos are gone.", size(bytes)) }
 pub fn delete_all_button(n: u64) -> String { if n == 2 { "Delete both".into() } else { format!("Delete all {}", count_word(n)) } }
 
-// ── auto-cleanup (N74) ──
+// ── auto-cleanup (N75) ──
 
 /// The Library's amber line, and the popover's banner, three days ahead.
 pub fn autoclean_warning(n: u64, date: &str, days: u32) -> String {

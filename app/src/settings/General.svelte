@@ -110,7 +110,7 @@
       {#if v.autoclean}
         {@const a = v.autoclean}
         {@const live = a.choices.some((c) => c.enabled)}
-        <!-- N74: auto-cleanup — a pop-up on the Mac that set up the space, read-only elsewhere. -->
+        <!-- N75: auto-cleanup — a pop-up on the Mac that set up the space, read-only elsewhere. -->
         <label class="srow tall" class:off={!live}>
           <span class="grow"
             ><span class="lbl2">{a.label}</span><span class="hint">{a.hint}</span>{#if a.note}<span class="hint note" role="status">{a.note}</span>{/if}</span
