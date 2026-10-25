@@ -20,7 +20,7 @@ use crate::time::{Fact, Mono};
 use crate::world::{
     Access, AiTurn, Arming, Blocked, Born, Cause, Confirm, CopyOwed, CopyTarget, Door, EditLink, EditLinkNo, EditorFields, EditorId, EditorMedia, EditorSave, FailClass, Failure, Fields, Fork, Invite,
     JoinRefusal, Landed, LaunchKind, Leaving, RecId,
-    LibraryFields, LibraryOps, Members, OpenTake, Op, PageOpen, Paste, Phase, QuickProbe, Reach, RelaunchWhy, Removal, ReportFields, FeedbackFields, Restore, Role, SavedCause,
+    LibraryFields, LibraryOps, Members, OpenTake, Op, PageOpen, Paste, Phase, Progress, QuickProbe, Reach, RelaunchWhy, Removal, ReportFields, FeedbackFields, Restore, Role, SavedCause,
     SavedTake, SecretId, SettingsFields, SettingsTab, SourceId, Space, SpaceIdentity, StopOutcome, Strike, Sweep, TakeDir, TakeLost, TokenVerdict,
     UpdateOffer, Why, WindowKind, WorkerFact, World,
 };
@@ -1005,6 +1005,8 @@ fn act(w: &mut World, action: Action) -> Out {
             let Some(account) = w.sweep.account() else { return (vec![], Arm::DROPPED) };
             let url = PublicUrl::Billing { account_id: account.id.clone() };
             w.session.fields.billing_opened = true;
+            // The watch's clock counts from the first click (N74).
+            w.session.fields.billing_at.get_or_insert(w.now);
             (vec![Effect::Shell(ShellCmd::OpenUrl(url))], Arm::named("add-card"))
         }
         Action::Claim => {
@@ -3486,8 +3488,28 @@ fn cloud(w: &mut World, news: CloudNews) -> Out {
             }
             (vec![], Arm { name: "token-saved", edge: Some(("token", "card")) })
         }
+        // A run's part underway (N74). The check is one pass: its part is the newest it
+        // said, so a pass begun again starts over and ticks nothing it hasn't answered.
+        // Wiring keeps its furthest part: every call is idempotent, and a retry re-runs the
+        // parts before it in a blink — they stay ticked, the clock counts from the first.
+        CloudNews::Part { op, part } => {
+            let now = w.now;
+            let slot = match op {
+                Op::Sweep => &mut w.sweep.check,
+                Op::Wire => &mut w.sweep.wiring,
+                _ => return (vec![], Arm::DROPPED),
+            };
+            let monotonic = op == Op::Wire;
+            match slot {
+                Some(p) if p.part == part => {}
+                Some(p) if monotonic && p.part > part => {}
+                _ => *slot = Some(Progress { part, since: now }),
+            }
+            (vec![], Arm::named("part"))
+        }
         CloudNews::Swept(ans) => {
             answered(w, Op::Sweep);
+            w.sweep.check = None;
             // Every probe pass runs under a stored token; one answering without it was
             // asked before Disconnect, about a space this Mac no longer knows.
             if !w.space.token {
@@ -3591,10 +3613,12 @@ fn cloud(w: &mut World, news: CloudNews) -> Out {
         // it is never set up again behind them (N36).
         CloudNews::Wired(_) if !w.space.token => {
             w.inflight.ops.remove(&Op::Wire);
+            w.sweep.wiring = None;
             (vec![], Arm::named("wired-stale"))
         }
         CloudNews::Wired(result) => match result {
             Ok(mut identity) => {
+                w.sweep.wiring = None;
                 let repairing = w.provisioned();
                 if repairing {
                     // A rewire in the repair mood keeps its failure history: if the next
@@ -3640,6 +3664,7 @@ fn cloud(w: &mut World, news: CloudNews) -> Out {
             // The fallback classification: a gate closed since the card step.
             Err(WireFail::Gate(g)) => {
                 answered(w, Op::Wire);
+                w.sweep.wiring = None;
                 w.sweep.gates = Fact::known(g, w.now);
                 (vec![], Arm::named("wire-gated"))
             }

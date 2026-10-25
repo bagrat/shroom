@@ -219,6 +219,44 @@ fn swept(gates: Gates, subdomain: Option<&str>, foreign_v: bool, found: Option<u
 
 const CLEAR: Gates = Gates { email: false, card: false };
 
+/// The card step's check with its part `part` underway (N74), since Mono(950).
+fn checking(mut w: World, part: u8) -> World {
+    w.sweep.check = Some(Progress { part, since: Mono(950) });
+    w
+}
+
+/// Wiring with its part `part` underway since `since`, read at `now` (N74).
+fn wiring_at(mut w: World, part: u8, since: u64, now: u64) -> World {
+    w.sweep.wiring = Some(Progress { part, since: Mono(since) });
+    w.now = Mono(now);
+    w
+}
+
+/// The parts a nest lists (N74): each one's mark, line and clock.
+fn parts(s: &Scene) -> Vec<(Glyph, String, Option<String>)> {
+    let list = match nest(s) {
+        Nest::Check { parts } => parts.clone(),
+        Nest::Calm { parts, .. } => parts.clone(),
+        Nest::Gate { watch, .. } => watch.iter().cloned().collect(),
+        other => panic!("no parts in {other:?}"),
+    };
+    list.into_iter().map(|p| (p.glyph, p.line, p.clock)).collect()
+}
+
+fn long(s: &Scene) -> Option<String> {
+    match nest(s) {
+        Nest::Calm { long, .. } | Nest::Gate { long, .. } => long.clone(),
+        other => panic!("no long line in {other:?}"),
+    }
+}
+
+fn clock(s: &Scene, n: usize) -> Option<String> {
+    match &s.onboarding.as_ref().unwrap().body {
+        OnboardingBody::Plan(p) => p.rows[n - 1].clock.clone(),
+        _ => panic!("no rows"),
+    }
+}
+
 // ── the inventory: one row (or more) per in-scope state ──
 
 fn rows() -> Vec<(&'static str, World)> {
@@ -266,12 +304,24 @@ fn rows() -> Vec<(&'static str, World)> {
         w
     }));
     rows.push(("card", token_saved()));
+    // N74: the check's parts as they answer — the first underway, then the last.
+    for part in 1..=4 {
+        rows.push(("card", checking(token_saved(), part)));
+    }
     rows.push(("gate-email", gated(true, true)));
     rows.push(("gate-card", gated(false, true)));
     // Add credit card clicked: the page is open, shroom watches (N45).
     rows.push(("gate-card", {
         let mut w = gated(false, true);
         w.session.fields.billing_opened = true;
+        w
+    }));
+    // N74: the watch with its clock, and from 45 s its quiet line.
+    rows.push(("gate-card", {
+        let mut w = gated(false, true);
+        w.session.fields.billing_opened = true;
+        w.session.fields.billing_at = Some(Mono(1_000));
+        w.now = Mono(46_000);
         w
     }));
     rows.push(("name", at_name()));
@@ -293,6 +343,11 @@ fn rows() -> Vec<(&'static str, World)> {
         w
     }));
     rows.push(("wiring", at_wiring()));
+    // N74: wiring's parts — the first underway, the name past 3 min, the last.
+    for part in 1..=5 {
+        rows.push(("wiring", wiring_at(at_wiring(), part, 1_000, 1_000)));
+    }
+    rows.push(("wiring", wiring_at(at_wiring(), 3, 1_000, 200_000)));
     rows.push(("wizard-offline", {
         let mut w = at_wiring();
         w.net.online = Fact::known(false, Mono(0));
@@ -312,6 +367,10 @@ fn rows() -> Vec<(&'static str, World)> {
     rows.push(("done", at_done()));
     // The name ticked, wiring running underneath the chapter (N45).
     rows.push(("done", named()));
+    // N74: the working row names the part underway.
+    for part in 1..=5 {
+        rows.push(("done", wiring_at(named(), part, 1_000, 2_000)));
+    }
     rows.push(("perm-mic", chapter(Access::NotAsked, false)));
     rows.push(("perm-camera", {
         let mut w = chapter(Access::Granted, false);
@@ -442,7 +501,8 @@ fn the_plan_marks_its_rows_from_the_facts() {
     let mut w = affirmed();
     w.space.token = true;
     let s = derive(&w);
-    assert_eq!((win(&s), nest(&s)), ("card", &Nest::Checking));
+    assert_eq!(win(&s), "card");
+    assert!(matches!(nest(&s), Nest::Check { .. }), "N74: the re-probe shows the check's parts");
     assert_eq!(row(&s, 1), "✓ A Cloudflare account", "a stored token re-proves box 1");
     assert_eq!(row(&s, 2), "✓ One access token for shroom");
     w.sweep.token = Fact::known(TokenVerdict::Revoked, Mono(950));
@@ -587,7 +647,7 @@ fn fresh_install_through_the_wizard_and_the_chapter_to_idle_ready() {
     assert!(r.has(|e| matches!(e, Effect::Persist(PersistOp::Primed(_)))));
     // The permissions done before wiring: wiring is the last step (N45).
     assert_eq!(win(&r.scene), "wiring");
-    let Nest::Calm { line } = nest(&r.scene) else { panic!() };
+    let Nest::Calm { line, .. } = nest(&r.scene) else { panic!() };
     assert_eq!(line, "Almost there — switching your name on takes a few minutes the first time, and only once.");
     assert_eq!(row(&r.scene, 5), "✓ Letting macOS allow recording");
     assert_eq!(r.scene.onboarding.as_ref().unwrap().ret, None, "wiring has zero affordances");
@@ -1823,4 +1883,188 @@ fn wiring_finished_under_the_chapter_ends_at_all_set() {
     r.send(Event::Tick);
     r.cloud(CloudNews::Wired(Err(shroom_core::event::WireFail::Gate(Gates { email: false, card: true }))));
     assert_eq!(win(&r.scene), "gate-card");
+}
+
+// ── N74: the waits show what's happening ──
+
+const DONE: Glyph = Glyph::Done;
+const NOW: Glyph = Glyph::Working;
+const AHEAD: Glyph = Glyph::Ahead;
+
+fn p(g: Glyph, line: &str, clock: Option<&str>) -> (Glyph, String, Option<String>) {
+    (g, line.into(), clock.map(String::from))
+}
+
+#[test]
+fn the_card_check_shows_its_parts_as_they_answer() {
+    let mut r = Run::new(token_saved());
+    r.at(1_000).send(Event::Tick);
+    assert_eq!(win(&r.scene), "card");
+    // Nothing answered yet: the first part is underway.
+    assert_eq!(parts(&r.scene), [
+        p(NOW, "Checking your token…", None),
+        p(AHEAD, "Checking your Cloudflare email is confirmed", None),
+        p(AHEAD, "Checking that storage is switched on", None),
+        p(AHEAD, "Looking for your link name and any earlier space", None),
+    ]);
+    r.cloud(CloudNews::Part { op: Op::Sweep, part: 2 });
+    let began = r.t;
+    assert_eq!(parts(&r.scene)[..2], [p(DONE, "Your token works", None), p(NOW, "Checking your Cloudflare email is confirmed…", None)]);
+    r.cloud(CloudNews::Part { op: Op::Sweep, part: 3 });
+    let storage = r.t;
+    r.tick_to(storage + 600);
+    assert_eq!(parts(&r.scene)[2], p(NOW, "Checking that storage is switched on…", None), "under a second: no clock yet");
+    assert!(r.scene.next_wake.is_some_and(|t| t.0 <= storage + 1_000), "the clock's first second is a wake");
+    r.tick_to(storage + 2_000);
+    assert_eq!(parts(&r.scene), [
+        p(DONE, "Your token works", None),
+        p(DONE, "Your Cloudflare email is confirmed", None),
+        p(NOW, "Checking that storage is switched on…", Some("0:02")),
+        p(AHEAD, "Looking for your link name and any earlier space", None),
+    ], "a clock on the spinning row only");
+    assert!(storage > began);
+    r.cloud(CloudNews::Part { op: Op::Sweep, part: 4 });
+    assert_eq!(parts(&r.scene)[2..], [
+        p(DONE, "Storage is switched on", None),
+        p(NOW, "Looking for your link name and any earlier space…", None),
+    ]);
+    r.cloud(swept(CLEAR, None, false, None));
+    assert_eq!(win(&r.scene), "name", "the pass answered: the check's parts are behind it");
+    assert_eq!(r.w.sweep.check, None, "no step is kept once the pass answers (law 1)");
+    // A pass that answers part 1 again (a retry, a relaunch) starts over: nothing is ticked
+    // that this pass hasn't answered.
+    let mut r = Run::new(checking(token_saved(), 3));
+    r.cloud(CloudNews::Part { op: Op::Sweep, part: 1 });
+    assert_eq!(parts(&r.scene)[0], p(NOW, "Checking your token…", None));
+}
+
+#[test]
+fn the_card_watch_counts_from_add_credit_card() {
+    let mut r = Run::new(gated(false, true));
+    r.at(1_000).send(Event::Tick);
+    assert_eq!(win(&r.scene), "gate-card");
+    assert_eq!(parts(&r.scene), [], "no watch row until the billing page was opened");
+    r.on(Action::AddCard);
+    let clicked = r.t;
+    assert_eq!(parts(&r.scene), [p(NOW, "Waiting for Cloudflare to confirm your card is in place…", None)]);
+    r.tick_to(clicked + 24_000);
+    assert_eq!(parts(&r.scene), [p(NOW, "Waiting for Cloudflare to confirm your card is in place…", Some("0:24"))]);
+    assert_eq!(long(&r.scene), None);
+    r.tick_to(clicked + 45_000);
+    assert_eq!(long(&r.scene).as_deref(), Some("A new card can take Cloudflare a minute or so to count. Once it's added, I'll move on — hang tight!"));
+    // The card counted: the gate clears, and the plan goes on.
+    r.cloud(CloudNews::Swept(SweepAnswer { gates: Some(CLEAR), ..Default::default() }));
+    assert_eq!(win(&r.scene), "card");
+}
+
+#[test]
+fn the_last_step_lists_wirings_parts_and_its_clock_survives_a_retry() {
+    let mut r = Run::new(window(at_wiring()));
+    r.at(1_000).send(Event::Tick);
+    assert_eq!(win(&r.scene), "wiring");
+    r.cloud(CloudNews::Part { op: Op::Wire, part: 1 });
+    r.cloud(CloudNews::Part { op: Op::Wire, part: 2 });
+    r.cloud(CloudNews::Part { op: Op::Wire, part: 3 });
+    let name = r.t;
+    r.tick_to(name + 48_000);
+    assert_eq!(parts(&r.scene), [
+        p(DONE, "Your private storage", None),
+        p(DONE, "Your video page", None),
+        p(NOW, "Switching your name on…", Some("0:48")),
+        p(AHEAD, "A last check that it all works", None),
+        p(AHEAD, "Adding this Mac to your space", None),
+    ]);
+    assert_eq!(long(&r.scene), None);
+    let OnboardingBody::Plan(plan) = &r.scene.onboarding.as_ref().unwrap().body else { panic!() };
+    let Nest::Calm { line, .. } = &plan.nest else { panic!() };
+    assert_eq!(line, "Almost there — switching your name on takes a few minutes the first time, and only once.", "the ratified line stays");
+    // The name's wait ran out: wiring tries again; the parts before it re-run quickly and
+    // stay ticked, and the clock counts on from the first try.
+    r.send(Event::Failed { op: Op::Wire, class: FailClass::Timeout });
+    r.tick_to(name + 150_000);
+    assert!(r.has(|e| matches!(e, Effect::Cloud(CloudCmd::Wire { .. }))), "wiring tries again");
+    r.cloud(CloudNews::Part { op: Op::Wire, part: 1 });
+    r.tick_to(name + 181_000);
+    assert_eq!(parts(&r.scene)[..3], [
+        p(DONE, "Your private storage", None),
+        p(DONE, "Your video page", None),
+        p(NOW, "Switching your name on…", Some("3:01")),
+    ]);
+    assert_eq!(long(&r.scene).as_deref(), Some("New names can take Cloudflare a while longer, sometimes ten minutes. It's fine to close this window — I'll finish by myself."));
+    r.cloud(CloudNews::Part { op: Op::Wire, part: 4 });
+    r.cloud(CloudNews::Part { op: Op::Wire, part: 5 });
+    assert_eq!(parts(&r.scene)[2..], [
+        p(DONE, "Your name is on", None),
+        p(DONE, "Last check passed", None),
+        p(NOW, "Adding this Mac to your space…", None),
+    ]);
+    assert_eq!(long(&r.scene), None, "the long line is the name's");
+    r.cloud(CloudNews::Wired(Ok(identity())));
+    assert_eq!(win(&r.scene), "all-set");
+    assert_eq!(r.w.sweep.wiring, None, "nothing of wiring's parts is kept once it lands");
+}
+
+#[test]
+fn the_working_row_names_the_part_underway_with_its_clock() {
+    let mut r = Run::new(window(named()));
+    r.at(1_000).send(Event::Tick);
+    assert_eq!(win(&r.scene), "done");
+    assert_eq!(row(&r.scene, 6), "• Wiring it up (shroom is doing this part now)", "no part reported yet");
+    assert_eq!(clock(&r.scene, 6), None);
+    r.cloud(CloudNews::Part { op: Op::Wire, part: 3 });
+    let name = r.t;
+    r.tick_to(name + 48_000);
+    assert_eq!(row(&r.scene, 6), "• Wiring it up (shroom is doing this part now · switching your name on)");
+    assert_eq!(clock(&r.scene, 6).as_deref(), Some("0:48"));
+    for n in 1..=5 {
+        assert_eq!(clock(&r.scene, n), None, "row {n}: a clock on the spinning row only");
+    }
+}
+
+#[test]
+fn wiring_finishes_on_its_own_with_the_window_closed() {
+    let mut r = Run::new(window(at_wiring()));
+    r.at(1_000).send(Event::Tick);
+    assert!(r.has(|e| matches!(e, Effect::Cloud(CloudCmd::Wire { .. }))));
+    r.send(Event::WindowClosed(WindowKind::Onboarding));
+    assert_eq!(r.scene.onboarding, None);
+    // The name's wait ran out with the window closed: wiring tries again all the same.
+    r.send(Event::Failed { op: Op::Wire, class: FailClass::Timeout });
+    r.tick_to(r.t + 150_000);
+    assert!(r.has(|e| matches!(e, Effect::Cloud(CloudCmd::Wire { .. }))), "N74: wiring keeps trying with the window closed");
+    r.cloud(CloudNews::Wired(Ok(identity())));
+    assert!(r.w.provisioned());
+    assert_eq!(r.scene.onboarding, None, "it lands without opening anything");
+    assert_eq!(r.scene.popover, None);
+    r.click();
+    assert!(r.ids().contains(&"config"), "the next click on the mushroom: the popover, ready to record");
+}
+
+#[test]
+fn after_a_quit_wiring_resumes_from_the_next_launch_without_a_window() {
+    let mut r = Run::new(window(at_wiring()));
+    r.at(1_000).send(Event::Tick);
+    // The login item's silent launch: nothing opens, and the launch's own probe pass says
+    // where the setup stands.
+    let granted = QuickProbe { screen: true, mic: Access::Granted, camera: Access::Granted, ..quick() };
+    let mut r2 = reboot(&r, LaunchKind::LoginItem, granted.clone(), None);
+    assert_eq!(r2.scene.onboarding, None);
+    assert!(r2.has(|e| *e == Effect::Cloud(CloudCmd::Sweep(SweepPart::Full))), "the launch re-probes the saved token");
+    r2.cloud(swept(CLEAR, Some("myshroom"), false, None));
+    assert!(r2.has(|e| *e == Effect::Cloud(CloudCmd::Wire { label: "v".into() })), "and wiring resumes, window closed");
+    assert_eq!(r2.scene.onboarding, None);
+    r2.cloud(CloudNews::Wired(Ok(identity())));
+    assert!(r2.w.provisioned());
+    assert_eq!(r2.scene.onboarding, None, "it lands without opening anything (laws 5 and 11)");
+
+    // A Mac stopped at the card gate: the launch's pass finds the gate, and nothing else
+    // runs until the window is open — no poll, no wiring.
+    let mut r = Run::new(window(gated(false, true)));
+    r.at(1_000).send(Event::Tick);
+    let mut r3 = reboot(&r, LaunchKind::LoginItem, granted, None);
+    assert!(r3.has(|e| *e == Effect::Cloud(CloudCmd::Sweep(SweepPart::Full))));
+    r3.cloud(swept(Gates { email: false, card: true }, None, false, None));
+    r3.tick_to(r3.t + 30_000);
+    assert!(!r3.has(|e| matches!(e, Effect::Cloud(_))), "no poll and no wiring with the window closed");
+    assert_eq!(r3.scene.onboarding, None);
 }

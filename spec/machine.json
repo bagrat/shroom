@@ -1302,6 +1302,21 @@
     "quit-saves-the-edit (every window's changes)"
    ],
    "amended_by": []
+  },
+  {
+   "id": "N74",
+   "title": "Setup shows its waits as they happen, and wiring finishes on its own",
+   "decision": "**A tester's finding, 2026-10-19** (a fresh Cloudflare account, 0.1.26): two waits in the setup felt stuck — the card step and the last step — and nearly lost him. **Bagrat, 2026-10-19 to 2026-10-25** (relayed by the orchestrator), on the boards “Setup — the card step shows its check as it runs…” and “Setup — the last step shows each part of wiring as it lands…”: (1) **The card step's check** shows its four parts under the card row as they run — Your token works · Your Cloudflare email is confirmed · Storage is switched on · Looking for your link name and any earlier space… — each ticking only when its own probe answers, never ahead of it. (2) **After Add credit card**, the watch is a row of its own: “Waiting for Cloudflare to confirm your card is in place…” with its running clock; from 45 s one quiet line: “A new card can take Cloudflare a minute or so to count. Once it's added, I'll move on — hang tight!” (3) **The last step** lists wiring's five parts under the calm line — Your private storage · Your video page · Your name is on · Last check passed · Adding this Mac to your space… — the part underway with its running clock, counted from the first try and never reset by a retry; from 3 min on the name, one quiet line: “New names can take Cloudflare a while longer, sometimes ten minutes. It's fine to close this window — I'll finish by myself.” While the permissions are the step, the wiring row's aside names the part underway, with its clock. (4) **Clocks on spinning rows only**: never on a done row or one still to come; a part that answers inside a second ticks before its clock shows. (5) **Wiring finishes on its own** (Bagrat, 2026-10-19: “finish on its own”): while a token is saved, the name row has ticked and no space is set up, wiring keeps trying with the window open or closed, and from the next launch after a quit (the login item's silent one included, its probe pass saying where the setup stands); it opens nothing when it lands (laws 5, 11), and the next click on the mushroom opens the popover ready to record — or the setup at the permissions, when they aren't done on this Mac. No step is stored (law 1): what's done is what the calls answered this time. **Ratified by Bagrat as drawn, 2026-10-25**; the forms the boards didn't draw (a part still to come, a part underway that the board drew done) are the build's, provisional. The last part of each run has no done form: the step moves on the moment it answers (the check to the next row, wiring to all set), so “Looked for your link name and any earlier space” and “This Mac is in your space”, on the boards' notes, never show and aren't lines. Built: DECISIONS B231.",
+   "status": "ratified",
+   "date": "2026-10-25",
+   "amends": [
+    "card (the check's parts)",
+    "gate-card (the watch and its clock)",
+    "wiring (its parts, the long line, and no window needed)",
+    "done (the wiring row names the part underway)",
+    "N45 (wiring runs out of sight under the chapter: now out of the window too)"
+   ],
+   "amended_by": []
   }
  ],
  "surfaces": [
@@ -3867,12 +3882,84 @@
    "surface": "window",
    "status": "ratified",
    "board": "WizardCard",
-   "summary": "The visible gate step under the plan's card row. One probe pass runs at paste-validate (write-class probe, R2-enabled probe, subdomain GET); its gates surface here, email first then card. Existing-R2 accounts tick the row silently, seeing neither gate.",
+   "summary": "The visible gate step under the plan's card row. One probe pass runs at paste-validate (write-class probe, R2-enabled probe, subdomain GET); its gates surface here, email first then card. Existing-R2 accounts tick the row silently, seeing neither gate. Since N74 the check shows its four parts under the card row as they run — the token, the email gate, storage (the card gate), then the look for a link name and an earlier space — each ticking only when its own probe answers; the part underway carries its running clock (spinning rows only, never a done or a coming one). The same parts show when a relaunch re-runs the check.",
    "entry": "Paste validated and token persisted (or account chosen at token-pick-account); probe pass ran.",
-   "said": [],
+   "said": [
+    {
+     "text": "Checking your token…",
+     "role": "line",
+     "copy": "provisional",
+     "note": "N74: part 1 of the check, underway: its spinner, and its running clock once it has run a second. Not drawn on the board; the build's form of a drawn line (provisional, N74).",
+     "id": "card.part-1-now"
+    },
+    {
+     "text": "Your token works",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N74: part 1 of the check, done: its tick. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards).",
+     "id": "card.part-1-done"
+    },
+    {
+     "text": "Checking your Cloudflare email is confirmed…",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N74: part 2 of the check, underway: its spinner, and its running clock once it has run a second. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards).",
+     "id": "card.part-2-now"
+    },
+    {
+     "text": "Your Cloudflare email is confirmed",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N74: part 2 of the check, done: its tick. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards).",
+     "id": "card.part-2-done"
+    },
+    {
+     "text": "Checking your Cloudflare email is confirmed",
+     "role": "line",
+     "copy": "provisional",
+     "note": "N74: part 2 of the check, still to come: its dot. Not drawn on the board; the build's form of a drawn line (provisional, N74).",
+     "id": "card.part-2-ahead"
+    },
+    {
+     "text": "Checking that storage is switched on…",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N74: part 3 of the check, underway: its spinner, and its running clock once it has run a second. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards).",
+     "id": "card.part-3-now"
+    },
+    {
+     "text": "Storage is switched on",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N74: part 3 of the check, done: its tick. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards).",
+     "id": "card.part-3-done"
+    },
+    {
+     "text": "Checking that storage is switched on",
+     "role": "line",
+     "copy": "provisional",
+     "note": "N74: part 3 of the check, still to come: its dot. Not drawn on the board; the build's form of a drawn line (provisional, N74).",
+     "id": "card.part-3-ahead"
+    },
+    {
+     "text": "Looking for your link name and any earlier space…",
+     "role": "line",
+     "copy": "provisional",
+     "note": "N74: part 4 of the check, underway: its spinner, and its running clock once it has run a second. Not drawn on the board; the build's form of a drawn line (provisional, N74).",
+     "id": "card.part-4-now"
+    },
+    {
+     "text": "Looking for your link name and any earlier space",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N74: part 4 of the check, still to come: its dot. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards).",
+     "id": "card.part-4-ahead"
+    }
+   ],
    "actions": [],
    "cites": [
-    "N14"
+    "N14",
+    "N74"
    ],
    "was": {
     "fixture": "r2.json",
@@ -3946,6 +4033,20 @@
      "copy": "ratified",
      "note": "N45: quiet, under the button, once it was clicked. Ratified by Bagrat, 2026-10-15 (on the canvas's setup-fixes boards).",
      "id": "gate-card.billing-is-open"
+    },
+    {
+     "text": "Waiting for Cloudflare to confirm your card is in place…",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N74: once Add credit card was clicked, under its quiet line: the watch, its spinner and its running clock from the click. Bagrat's words, 2026-10-25. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards).",
+     "id": "gate-card.waiting-for-cloudflare-to-confirm"
+    },
+    {
+     "text": "A new card can take Cloudflare a minute or so to count. Once it's added, I'll move on — hang tight!",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N74: quiet, under the watch, from 45 s after the click. Its second sentence Bagrat's, in the window's one voice, 2026-10-25. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards).",
+     "id": "gate-card.a-new-card-can-take"
     }
    ],
    "actions": [
@@ -3960,7 +4061,8 @@
     "N14",
     "N18",
     "N42",
-    "N45"
+    "N45",
+    "N74"
    ],
    "was": {
     "fixture": "r2.json",
@@ -4134,8 +4236,8 @@
    "surface": "window",
    "status": "ratified",
    "board": "WizardWiring",
-   "summary": "The setup's last step since N45, reached only when the permissions chapter finished before wiring did: a spinner and one calm line while the ~6 idempotent REST calls (private bucket, the v Worker, the Worker secret, member #1 enrollment, the subdomain's propagation — minutes on a new name) and the silent self-check finish. Wiring itself starts the moment the link name ticks and runs under the chapter, out of sight. Closing the window mid-wire is safe. In the repair mood, wiring runs again when the page or its key is gone (the click was the consent).",
-   "entry": "The permissions chapter is done (row six ticked) and wiring hasn't finished. Repair mood: the page (Worker) or its key is gone.",
+   "summary": "The setup's last step since N45, reached only when the permissions chapter finished before wiring did: a spinner and one calm line while the ~6 idempotent REST calls (private bucket, the v Worker, the Worker secret, member #1 enrollment, the subdomain's propagation — minutes on a new name) and the silent self-check finish. Wiring itself starts the moment the link name ticks and runs under the chapter, out of sight. Closing the window mid-wire is safe. In the repair mood, wiring runs again when the page or its key is gone (the click was the consent). Since N74 the last step lists wiring's five parts under the calm line — your private storage, your video page, switching your name on, a last check, adding this Mac — each ticking only when its own calls answer; the part underway carries its running clock, which a retry never resets (parts already done stay ticked). From 3 min on switching your name on, one quiet line says new names can take longer and that closing the window is fine. And wiring no longer needs the window (Bagrat, 2026-10-19): while a token is saved, the name row has ticked and no space is set up, it keeps trying — window open or closed, and from the next launch after a quit, the login item's silent one included — and lands without opening anything.",
+   "entry": "The permissions chapter is done (row six ticked) and wiring hasn't finished. Repair mood: the page (Worker) or its key is gone. Since N74 also with the setup window closed, or after a relaunch: the token saved, the name row ticked (the launch's own probe pass says so), no space yet.",
    "said": [
     {
      "text": "Setting up your space… switching your name on takes about a minute, one time only.",
@@ -4150,6 +4252,111 @@
      "copy": "ratified",
      "note": "N45: the setup's last step, waiting for wiring. Ratified by Bagrat, 2026-10-15 (on the canvas's setup-fixes boards).",
      "id": "wiring.almost-there"
+    },
+    {
+     "text": "Making your private storage…",
+     "role": "line",
+     "copy": "provisional",
+     "note": "N74: part 1 of wiring, under the calm line, underway: its spinner and its running clock, counted from the first try and never reset by a retry. Not drawn on the board; the build's form of a drawn line (provisional, N74).",
+     "id": "wiring.part-1-now"
+    },
+    {
+     "text": "Your private storage",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N74: part 1 of wiring, under the calm line, done: its tick. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards).",
+     "id": "wiring.part-1-done"
+    },
+    {
+     "text": "Making your private storage",
+     "role": "line",
+     "copy": "provisional",
+     "note": "N74: part 1 of wiring, under the calm line, still to come: its dot. Not drawn on the board; the build's form of a drawn line (provisional, N74).",
+     "id": "wiring.part-1-ahead"
+    },
+    {
+     "text": "Putting up your video page…",
+     "role": "line",
+     "copy": "provisional",
+     "note": "N74: part 2 of wiring, under the calm line, underway: its spinner and its running clock, counted from the first try and never reset by a retry. Not drawn on the board; the build's form of a drawn line (provisional, N74).",
+     "id": "wiring.part-2-now"
+    },
+    {
+     "text": "Your video page",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N74: part 2 of wiring, under the calm line, done: its tick. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards).",
+     "id": "wiring.part-2-done"
+    },
+    {
+     "text": "Putting up your video page",
+     "role": "line",
+     "copy": "provisional",
+     "note": "N74: part 2 of wiring, under the calm line, still to come: its dot. Not drawn on the board; the build's form of a drawn line (provisional, N74).",
+     "id": "wiring.part-2-ahead"
+    },
+    {
+     "text": "Switching your name on…",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N74: part 3 of wiring, under the calm line, underway: its spinner and its running clock, counted from the first try and never reset by a retry. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards).",
+     "id": "wiring.part-3-now"
+    },
+    {
+     "text": "Your name is on",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N74: part 3 of wiring, under the calm line, done: its tick. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards).",
+     "id": "wiring.part-3-done"
+    },
+    {
+     "text": "Switching your name on",
+     "role": "line",
+     "copy": "provisional",
+     "note": "N74: part 3 of wiring, under the calm line, still to come: its dot. Not drawn on the board; the build's form of a drawn line (provisional, N74).",
+     "id": "wiring.part-3-ahead"
+    },
+    {
+     "text": "Checking it all works…",
+     "role": "line",
+     "copy": "provisional",
+     "note": "N74: part 4 of wiring, under the calm line, underway: its spinner and its running clock, counted from the first try and never reset by a retry. Not drawn on the board; the build's form of a drawn line (provisional, N74).",
+     "id": "wiring.part-4-now"
+    },
+    {
+     "text": "Last check passed",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N74: part 4 of wiring, under the calm line, done: its tick. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards).",
+     "id": "wiring.part-4-done"
+    },
+    {
+     "text": "A last check that it all works",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N74: part 4 of wiring, under the calm line, still to come: its dot. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards).",
+     "id": "wiring.part-4-ahead"
+    },
+    {
+     "text": "Adding this Mac to your space…",
+     "role": "line",
+     "copy": "provisional",
+     "note": "N74: part 5 of wiring, under the calm line, underway: its spinner and its running clock, counted from the first try and never reset by a retry. Not drawn on the board; the build's form of a drawn line (provisional, N74).",
+     "id": "wiring.part-5-now"
+    },
+    {
+     "text": "Adding this Mac to your space",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N74: part 5 of wiring, under the calm line, still to come: its dot. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards).",
+     "id": "wiring.part-5-ahead"
+    },
+    {
+     "text": "New names can take Cloudflare a while longer, sometimes ten minutes. It's fine to close this window — I'll finish by myself.",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N74: quiet, under the parts, once switching your name on has run 3 min. Bagrat, 2026-10-19: wiring finishes on its own with the window closed. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards).",
+     "id": "wiring.new-names-can-take-cloudflare"
     }
    ],
    "actions": [],
@@ -4158,8 +4365,9 @@
     "N18",
     "N3",
     "N4",
-    "R6",
-    "N45"
+    "N45",
+    "N74",
+    "R6"
    ],
    "was": {
     "fixture": "r2.json",
@@ -4358,6 +4566,41 @@
      "copy": "ratified",
      "note": "N45: the wiring row while wiring runs under the permissions chapter — its dot a small spinner. Ratified by Bagrat, 2026-10-15 (on the canvas's setup-fixes boards).",
      "id": "done.wiring-it-up-doing"
+    },
+    {
+     "text": "• Wiring it up (shroom is doing this part now · making your private storage)",
+     "role": "line",
+     "copy": "provisional",
+     "note": "N74: the wiring row while wiring runs under the chapter, naming part 1 underway; its running clock follows the aside. The board drew part 3; the others are its form (provisional, N74).",
+     "id": "done.wiring-working-part-1"
+    },
+    {
+     "text": "• Wiring it up (shroom is doing this part now · putting up your video page)",
+     "role": "line",
+     "copy": "provisional",
+     "note": "N74: the wiring row while wiring runs under the chapter, naming part 2 underway; its running clock follows the aside. The board drew part 3; the others are its form (provisional, N74).",
+     "id": "done.wiring-working-part-2"
+    },
+    {
+     "text": "• Wiring it up (shroom is doing this part now · switching your name on)",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N74: the wiring row while wiring runs under the chapter, naming part 3 underway; its running clock follows the aside. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards).",
+     "id": "done.wiring-working-part-3"
+    },
+    {
+     "text": "• Wiring it up (shroom is doing this part now · checking it all works)",
+     "role": "line",
+     "copy": "provisional",
+     "note": "N74: the wiring row while wiring runs under the chapter, naming part 4 underway; its running clock follows the aside. The board drew part 3; the others are its form (provisional, N74).",
+     "id": "done.wiring-working-part-4"
+    },
+    {
+     "text": "• Wiring it up (shroom is doing this part now · adding this Mac to your space)",
+     "role": "line",
+     "copy": "provisional",
+     "note": "N74: the wiring row while wiring runs under the chapter, naming part 5 underway; its running clock follows the aside. The board drew part 3; the others are its form (provisional, N74).",
+     "id": "done.wiring-working-part-5"
     }
    ],
    "actions": [
@@ -4371,8 +4614,9 @@
    ],
    "cites": [
     "N17",
-    "U5",
-    "N45"
+    "N45",
+    "N74",
+    "U5"
    ],
    "was": {
     "fixture": "r2.json",
@@ -13615,12 +13859,13 @@
    "from": "idle-unprovisioned",
    "to": "idle-ready",
    "kind": "flow",
-   "label": "Cloudflare: wired",
+   "label": "Cloudflare: wired — also with the setup window closed (N74)",
    "trigger": "",
    "status": "ratified",
    "cites": [
+    "B134",
     "N13",
-    "B134"
+    "N74"
    ],
    "source": [
     "core-run"

@@ -447,7 +447,14 @@ fn summary(n: &CloudNews) -> String {
         CloudNews::PageOpened(r) => r.0.clone(),
         CloudNews::Refreshed { deployed, ai } => format!("deployed {deployed}, naming {ai:?}"),
         CloudNews::AiSet(on) => format!("naming {}", if *on { "on" } else { "off" }),
+        CloudNews::Part { op, part } => format!("{op:?} part {part}"),
     }
+}
+
+/// A run's part underway (N74): the window shows it as it goes, and the log keeps when.
+fn post_part(rt: &Runtime, op: Op, part: u8) {
+    rt.log(&format!("wizard {}: part {part}", if op == Op::Wire { "wire" } else { "sweep" }));
+    rt.post(Event::Cloud(CloudNews::Part { op, part }));
 }
 
 /// A Cloudflare error's failure class (the lanes that verify the token share it).
@@ -590,14 +597,22 @@ fn sweep_pass(rt: &Runtime, part: SweepPart, proved_here: &mut Option<(String, S
         let g = sweep::gates(&h.cloud, &account_id, PROBE_WORKER).map_err(|e| class(&e))?;
         return Ok(CloudNews::Swept(SweepAnswer { gates: Some(gates(g)), ..SweepAnswer::default() }));
     }
+    // The check's parts, each said as it begins (N74): the token, the email gate, storage,
+    // then the look around.
+    post_part(rt, Op::Sweep, 1);
     let (verdict, proved) = prove(&h)?;
     let mut ans = SweepAnswer { token: Some(verdict), ..SweepAnswer::default() };
     let Some((account_id, token_id)) = proved else { return Ok(CloudNews::Swept(ans)) };
-    let g = sweep::gates(&h.cloud, &account_id, PROBE_WORKER).map_err(|e| class(&e))?;
+    post_part(rt, Op::Sweep, 2);
+    let email = sweep::email_gate(&h.cloud, &account_id, PROBE_WORKER).map_err(|e| class(&e))?;
+    post_part(rt, Op::Sweep, 3);
+    let card = sweep::card_gate(&h.cloud, &account_id).map_err(|e| class(&e))?;
+    let g = sweep::Gates { email, card };
     ans.gates = Some(gates(g));
     if g.email || g.card {
         return Ok(CloudNews::Swept(ans));
     }
+    post_part(rt, Op::Sweep, 4);
     // A provisioned space is probed under its own label, never the label chain (#1, B50):
     // a foreign `v` beside a space under `v` is never wired over, and a space under
     // `shroom` never reads broken when a foreign `v` goes.
@@ -744,6 +759,8 @@ fn claim(rt: &Runtime, name: String) -> Result<CloudNews, FailClass> {
 /// Wiring under the survey's label: the bucket, the player, the page, its route, the
 /// self-check, then the space's marker — idempotent end to end.
 fn wire_space(rt: &Runtime, label: &str) -> Result<CloudNews, FailClass> {
+    // Wiring's parts, each said as it begins (N74); the window keeps the furthest.
+    post_part(rt, Op::Wire, 1);
     let h = held(rt)?;
     let (_, proved) = prove(&h)?;
     let Some((account_id, token_id)) = proved else { return Ok(CloudNews::Wired(Err(WireFail::Refused))) };
@@ -762,7 +779,7 @@ fn wire_space(rt: &Runtime, label: &str) -> Result<CloudNews, FailClass> {
     // done only once it answers.
     let at = |host: &str| rt.page_at(host);
     let page = PageCheck { at: &at, version: page_version(), every: PageCheck::EVERY, within: PageCheck::WITHIN };
-    match wire::wire_with(&h.cloud, &spec, Some(&page)) {
+    match wire::wire_parts(&h.cloud, &spec, Some(&page), &|p| post_part(rt, Op::Wire, p as u8)) {
         Ok(w) => {
             rt.log(&format!("wizard wire: the page {}", if w.deployed { "went up" } else { "was current — kept" }));
             // N29: the owner's name in macOS's short form, everywhere it's written.
@@ -771,6 +788,7 @@ fn wire_space(rt: &Runtime, label: &str) -> Result<CloudNews, FailClass> {
             // member #1's. A failure here doesn't undo a working space — the token's own
             // uploads need no enroll — and the next entry's enroll tries again.
             let place = Place { account_id: &account_id, token_id: &token_id, label, bucket: &names.bucket, host: &w.host, owner_name: &owner_name };
+            post_part(rt, Op::Wire, 5);
             match enroll_this_mac(rt, &h.cloud, &place) {
                 Ok(e) => rt.log(&format!("wizard wire: enrolled {} as {}", e.device, e.member)),
                 Err(e) => rt.log(&format!("wizard wire: enroll didn't land ({}) — the next entry tries again", redact(&e))),

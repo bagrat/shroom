@@ -658,8 +658,11 @@ for (const entry of settings) {
         : await page.locator(`ol.rows > li.row:nth-of-type(${p.current}) + li.under > .nest`).count();
       check(`${tag}: nest ${p.current === null ? "below the plan" : `under row ${p.current}`}`, placed === 1);
       check(`${tag}: the nest is the Scene's (${p.nest.kind})`, (await page.locator(`.nest[data-nest="${p.nest.kind}"]`).count()) === 1);
-      const spinning = ["checking", "gate", "calm", "priming"].includes(p.nest.kind) || (p.nest.kind === "token" && p.nest.checking);
-      check(`${tag}: spinner ${spinning ? "turns" : "absent"}`, (await page.locator(".spin:not(.rest)").count()) === (spinning ? 1 : 0));
+      // Once the card watch is a part of its own, the card row keeps its arrow; each part
+      // underway turns its own spinner (N74).
+      const spinning = ["checking", "check", "calm", "priming"].includes(p.nest.kind) || (p.nest.kind === "gate" && !p.nest.watch) || (p.nest.kind === "token" && p.nest.checking);
+      const parts = [...(p.nest.parts ?? []), ...(p.nest.watch ? [p.nest.watch] : [])].filter((x) => x.glyph === "working").length;
+      check(`${tag}: spinner ${spinning ? "turns" : "absent"}`, (await page.locator(".spin:not(.rest)").count()) === (spinning ? 1 : 0) + parts);
       if (p.nest.kind === "token") check(`${tag}: token placeholder`, await page.locator(`input.paste[placeholder="${p.nest.placeholder}"]`).isVisible());
       if (p.nest.kind === "token") {
         const shown = await page.locator(".nest input.paste").inputValue();

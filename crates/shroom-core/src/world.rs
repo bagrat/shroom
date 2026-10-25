@@ -398,6 +398,21 @@ pub struct Sweep {
     /// gate still up) is still a whole answer: the plan re-probes on its next entry, the
     /// gate on its poll — never in a loop.
     pub pass: Option<Mono>,
+    /// The card step's check, while a full pass runs: the part underway and since when
+    /// (N74). Gone once the pass answers — a part is ticked only by its own probe, this pass.
+    pub check: Option<Progress>,
+    /// Wiring, while it runs: the furthest part reached and since when (N74). Every call is
+    /// idempotent, so a retry re-runs the parts before it quickly: they stay ticked, and the
+    /// clock counts from the first try. Gone once wiring answers.
+    pub wiring: Option<Progress>,
+}
+
+/// A run's part underway (N74), 1-based, and when it began: what a wait shows of itself.
+/// Never stored on disk (law 1) — the run says it again as it goes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Progress {
+    pub part: u8,
+    pub since: Mono,
 }
 
 impl Sweep {
@@ -1256,6 +1271,8 @@ pub struct Fields {
     /// Add credit card was clicked in this window: the card gate's quiet line says the
     /// billing page is open (N45).
     pub billing_opened: bool,
+    /// When Add credit card was first clicked: the watch's clock counts from it (N74).
+    pub billing_at: Option<Mono>,
     /// The link name as typed, already filtered (lowercase, charset, length).
     pub name: String,
     /// How many edits of the name were taken in — the Scene carries it, so the window can
