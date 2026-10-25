@@ -1,6 +1,6 @@
 [package]
 name = "shroom-app"
-version = "0.1.29-early.1"
+version = "0.1.30-early.1"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
