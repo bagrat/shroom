@@ -2084,7 +2084,19 @@ pub fn seed_region6(which: Region6, flags: &crate::runtime::DevFlags) -> Result<
             h.write_json("invite", &installer).map_err(|e| e.to_string())?;
             seed.codes.push(code);
         }
-        Region6::Members | Region6::Cleanup => {
+        Region6::Cleanup => {
+            // The owner's token Mac, provisioned and enrolled (member #1, the token flag), on
+            // the space the fake's account names.
+            seed_provisioned(flags)?;
+            let mut space: SpaceIdentity = h.read_json("space.json").ok_or("no space.json")?;
+            space.owner_name = "Bagrat".into();
+            let key = DeviceKey::generate(&space.host);
+            h.write_json("device.key", &key).map_err(|e| e.to_string())?;
+            h.write_json("space.json", &space).map_err(|e| e.to_string())?;
+            knob(&base, &space.host, "device", serde_json::json!({ "id": key.device, "verifier": key.verifier(), "member": "m1", "name": "MacBook Pro", "token": true }))?;
+            seed.seeded_secret = Some(key.secret);
+        }
+        Region6::Members => {
             // The owner's token Mac, provisioned and enrolled (member #1, the token flag).
             seed_provisioned(flags)?;
             let mut space: SpaceIdentity = h.read_json("space.json").ok_or("no space.json")?;
@@ -2558,6 +2570,10 @@ const CLEANUP_SEEDED: [(&str, &str, i64, u64, Option<(u32, i64, usize)>); 5] = [
     ("Cdrive000standup", "Standup notes", 50, 40_000_000, Some((3, 30, 9))),
 ];
 const DAY_SECS: i64 = 86_400;
+/// The cleanup drive's space: the fake account's own name (`myshroom`), so the launch's
+/// re-probe finds every row sound — a renamed space would be `space-degraded`, whose banner
+/// rightly outranks auto-cleanup's (N75).
+const CLEANUP_HOST: &str = HOST;
 
 /// One of the cleanup drive's videos, as a Mac's drained upload leaves its record (`bytes`).
 fn cleanup_meta(id: &str, title: &str, days: i64, bytes: u64, now: i64) -> shroom_upload::meta::Meta {
@@ -2584,17 +2600,17 @@ fn seed_cleanup(d: &Drive, base: &str) -> Result<(), String> {
     let token_id = cloud.verify(ACCOUNT).map_err(|e| e.to_string())?.id;
     let pair = cloud.s3_credentials(&token_id);
     d.seen.lock().unwrap().push(pair.secret_access_key.clone());
-    knob(base, SPACE_A, "parent", serde_json::json!({ "account_id": ACCOUNT, "bucket": shroom_cloud::wire::BUCKET, "key_id": pair.access_key_id, "secret": pair.secret_access_key }))?;
-    knob(base, SPACE_A, "put", serde_json::json!({ "key": ".shroom/views/since.json", "json": { "since": shroom_cloud::registry::iso((now - 200 * DAY_SECS) as u64) } }))?;
+    knob(base, CLEANUP_HOST, "parent", serde_json::json!({ "account_id": ACCOUNT, "bucket": shroom_cloud::wire::BUCKET, "key_id": pair.access_key_id, "secret": pair.secret_access_key }))?;
+    knob(base, CLEANUP_HOST, "put", serde_json::json!({ "key": ".shroom/views/since.json", "json": { "since": shroom_cloud::registry::iso((now - 200 * DAY_SECS) as u64) } }))?;
     for (id, title, days, bytes, plays) in CLEANUP_SEEDED {
         let m = cleanup_meta(id, title, days, bytes, now);
-        knob(base, SPACE_A, "put", serde_json::json!({ "key": keys::meta(id), "json": m }))?;
+        knob(base, CLEANUP_HOST, "put", serde_json::json!({ "key": keys::meta(id), "json": m }))?;
         if let Some((n, quiet, tenth)) = plays {
             let last = now - quiet * DAY_SECS;
             let day = |t: i64| shroom_cloud::registry::iso(t as u64)[..10].to_string();
             let mut watch = [0u32; 10];
             watch[tenth] = n;
-            knob(base, SPACE_A, "put", serde_json::json!({ "key": format!(".shroom/views/{id}.json"), "json": {
+            knob(base, CLEANUP_HOST, "put", serde_json::json!({ "key": format!(".shroom/views/{id}.json"), "json": {
                 "v": 1, "plays": n, "viewers": n, "ends": n, "watch": watch, "watchedSec": 0,
                 "firstAt": shroom_cloud::registry::iso(last as u64), "lastAt": shroom_cloud::registry::iso(last as u64),
                 "days": serde_json::Map::from_iter([(day(last), serde_json::json!(n))]), "today": { "d": day(last), "h": [], "t": {} },
@@ -2606,9 +2622,9 @@ fn seed_cleanup(d: &Drive, base: &str) -> Result<(), String> {
 
 /// A viewer plays a video on its page today: the page's beacon, as a browser sends it.
 fn play_today(base: &str, id: &str) -> Result<(), String> {
-    let url = format!("{}/{SPACE_A}/_shroom/view/{id}", base.trim_end_matches('/'));
+    let url = format!("{}/{CLEANUP_HOST}/_shroom/view/{id}", base.trim_end_matches('/'));
     for body in [serde_json::json!({ "e": "play", "t": "drivePlay0001" }), serde_json::json!({ "e": "end", "t": "drivePlay0001", "f": 0.9 })] {
-        ureq::post(&url).header("origin", format!("https://{SPACE_A}")).header("content-type", "text/plain").send(body.to_string()).map_err(|e| format!("the page's beacon: {e}"))?;
+        ureq::post(&url).header("origin", format!("https://{CLEANUP_HOST}")).header("content-type", "text/plain").send(body.to_string()).map_err(|e| format!("the page's beacon: {e}"))?;
     }
     Ok(())
 }
@@ -2629,13 +2645,13 @@ fn general_videos(s: &Scene) -> Option<shroom_core::scene::VideosGroup> {
 }
 
 fn worker_object(base: &str, key: &str) -> Option<serde_json::Value> {
-    objects(base, SPACE_A).ok()?.into_iter().find(|o| o["key"] == key).and_then(|o| serde_json::from_str(o["text"].as_str()?).ok())
+    objects(base, CLEANUP_HOST).ok()?.into_iter().find(|o| o["key"] == key).and_then(|o| serde_json::from_str(o["text"].as_str()?).ok())
 }
 
 /// The space's page runs its own schedule (N75's auto-cleanup), `ahead_hours` from now: the
 /// local Worker's clock moved for the cron's runs alone — what a closed Mac sleeps through.
 fn page_schedule(base: &str, ahead_hours: u64, runs: Option<u32>) -> Result<serde_json::Value, String> {
-    let url = format!("{}/_dev/space/{SPACE_A}/schedule", base.trim_end_matches('/'));
+    let url = format!("{}/_dev/space/{CLEANUP_HOST}/schedule", base.trim_end_matches('/'));
     let body = match runs {
         Some(n) => serde_json::json!({ "aheadHours": ahead_hours, "runs": n }),
         None => serde_json::json!({ "aheadHours": ahead_hours }),
@@ -2816,7 +2832,7 @@ fn cleanup_drive(d: &Drive) -> Result<(), String> {
 
     // Settings · General: Your videos, the space's size, and Count plays off and on again.
     // The read Settings asks for meets a busy space once: the failure is in the run log.
-    knob(&base, SPACE_A, "fault", serde_json::json!({ "prefix": "/_shroom/api/cleanup", "status": 500, "count": 1 }))?;
+    knob(&base, CLEANUP_HOST, "fault", serde_json::json!({ "prefix": "/_shroom/api/cleanup", "status": 500, "count": 1 }))?;
     d.open(Action::OpenSettings)?;
     let s = d.wait("Your videos", 30, |s| general_videos(s).is_some_and(|v| v.used.is_some()))?;
     let v = general_videos(&s).expect("videos");
@@ -2931,7 +2947,7 @@ fn cleanup_drive(d: &Drive) -> Result<(), String> {
     let gone = worker_object(&base, &keys::meta("Cdrive000billing"));
     d.check("the page deleted it on its schedule: a tombstone, by auto", gone.as_ref().is_some_and(|m| m["state"] == "deleted" && m["by"] == "auto"), format!("{:?}", gone.as_ref().map(|m| (&m["state"], &m["by"]))));
     d.check("the round remembered: one video, 3.2 GB", run["state"]["last"]["ids"] == serde_json::json!(["Cdrive000billing"]) && run["state"]["last"]["bytes"] == 3_200_000_000u64, format!("{}", run["state"]["last"]));
-    let left = objects(&base, SPACE_A)?.iter().filter(|o| o["key"].as_str().is_some_and(|k| k.starts_with("rec/Cdrive000billing/"))).count();
+    let left = objects(&base, CLEANUP_HOST)?.iter().filter(|o| o["key"].as_str().is_some_and(|k| k.starts_with("rec/Cdrive000billing/"))).count();
     d.check("its bytes went with it", left == 0, format!("{left} left"));
     let standup = worker_object(&base, &keys::meta("Cdrive000standup"));
     d.check("the pinned one stays", standup.as_ref().is_some_and(|m| m["state"] == "live"), "standup live");
