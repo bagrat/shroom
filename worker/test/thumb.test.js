@@ -367,4 +367,32 @@ describe("Copy thumbnail waits until its picture is ready (N46; Bagrat: “Yes d
     expect(page).not.toMatch(/id="(c|th)" title=/);
     expect(await owner({ media })).toContain(`<span id="dl" data-tip="${COPY.download}">`);
   });
+
+  // A page opened while an edit waits for its copy has nothing to draw from (N63): the copy's
+  // first frame. The status names the first frame Copy thumbnail draws from now (`drawFrom`),
+  // and the page follows it both ways: the copy landing (draw from it and wake), the edit put
+  // back (draw from the recording's own and wake), a press making the copy stale (grey, nothing
+  // to draw from yet). The orchestrator relaying Bagrat's rule of 2026-10-25: a button that
+  // never gets ready is a bug.
+  it("follows the first frame it draws from as the status names it, both ways, waking in place", async () => {
+    const waiting = { edits: { version: 1, source_duration: 150, in: 0, out: 150, cuts: [{ start: 1, end: 20, kind: "manual", applied: true }], rev: 3 } };
+    const page = await owner(waiting);
+    expect(page).toContain(`"from":"","psrc":"","tsrc":""`);
+    expect(page).toContain(`<button class="copy thumb" id="th" data-tip="${COPY.preparingThumbnail}" aria-disabled="true">`);
+    // The status names what the page as served would draw from: nothing while the copy is on
+    // its way, the recording's own first frame and teaser without an edit.
+    const st = async (over) => JSON.parse(await (await req(space({ [`meta/${ID}.json`]: metaOf(over) }), `/_shroom/status/${ID}`)).text());
+    expect((await st(waiting)).drawFrom).toBeNull();
+    expect((await st({})).drawFrom).toEqual({ from: "poster.jpg", psrc: `/m/${ID}/poster.jpg`, tsrc: `/m/${ID}/teaser.mp4`, teaser: true });
+    // The page's drawing follows it: a new first frame (or none) starts over; the same, nothing.
+    expect(THUMB_JS).toContain(`source:function(p){var f=p&&p.from||"";if(f===c.from)return;c.from=f;c.psrc=f?p.psrc:"";c.tsrc=f?p.tsrc:"";c.teaser=!!(f&&p.teaser);c.thumb=null;c.gif=false;gen++;cb(false);if(f&&c.live)make()}`);
+    expect(page).toContain(`if(s.drawFrom!==undefined)th.source(s.drawFrom);`);
+    // A picture says the first frame it was drawn from when it began, never one that came since,
+    // and one begun before the page started over is never stored (review of B252).
+    expect(THUMB_JS).toContain(`function store(b,title,from){`);
+    expect(THUMB_JS).toContain(`"x-shroom-from":from`);
+    expect(THUMB_JS).toContain(`var my=++gen,from=c.from,`);
+    expect(THUMB_JS).toContain(`loop(title).then(function(b){return my===gen?store(b,title,from):null})`);
+    expect(THUMB_JS).toContain(`still(title).then(function(b){return my===gen?store(b,title,from):null})`);
+  });
 });

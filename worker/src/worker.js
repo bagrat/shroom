@@ -362,7 +362,8 @@ export function status(meta, now, id = meta?.id, listens = false) {
     const moved = view.copy ?? (view.baked && !view.edit && Array.isArray(meta.bakedFrom) && meta.bakedFrom.length > 0
       ? { src: `/m/${id}/${view.file}`, dur: view.dur, poster: view.poster ?? undefined } : null);
     const live = { state: "live", poster: !!view.poster, mp4: view.download, teaser: !!view.teaser, thumb: newestThumb(String(id), meta), dur: view.dur, drained: drained(meta),
-      ...(view.edit ? { keep: view.edit.keep } : {}), ...(moved ? { copy: { src: moved.src, dur: moved.dur, poster: moved.poster ?? null } } : {}), ...cutsField(meta, now, listens) };
+      ...(view.edit ? { keep: view.edit.keep } : {}), ...(moved ? { copy: { src: moved.src, dur: moved.dur, poster: moved.poster ?? null } } : {}), ...cutsField(meta, now, listens),
+      ...(ID.test(String(id)) ? { drawFrom: drawFrom(String(id), meta) } : {}) };
     return live.drained ? live : { ...live, pct: pct(meta), stalled: stalledAt(meta, now) };
   }
   if (meta.state !== "uploading") return { state: "unavailable" };
@@ -1911,14 +1912,14 @@ var s=size(c.caps.gifWidth),k=canvas(s[0],s[1]),x=k.getContext("2d",{willReadFre
 function step(){if(i>=n)return Promise.resolve();return new Promise(function(ok){v.addEventListener("seeked",ok,{once:true});v.currentTime=i/10}).then(function(){x.clearRect(0,0,s[0],s[1]);draw(x,s[0],s[1],v,title);
 if(!i&&!x.getImageData(Math.round(s[0]*.05),Math.round(s[1]*.05),1,1).data[3])throw new Error("no frames");frames.push(x.getImageData(0,0,s[0],s[1]).data);i++;return step()})}
 return step().then(function(){var g=shroomGif(frames,s[0],s[1],10);if(g.length>c.caps.gifMax){g=shroomGif(frames.filter(function(_,j){return j%2===0}),s[0],s[1],20)}v.removeAttribute("src");return g.length>c.caps.gifMax?null:new Blob([g],{type:"image/gif"})})})}
-function store(b,title){if(!b)return null;return fetch("/_shroom/thumb/"+c.id,{method:"POST",headers:{"content-type":b.type,"x-shroom-title":encodeURIComponent(title),"x-shroom-from":c.from},body:b})
+function store(b,title,from){if(!b)return null;return fetch("/_shroom/thumb/"+c.id,{method:"POST",headers:{"content-type":b.type,"x-shroom-title":encodeURIComponent(title),"x-shroom-from":from},body:b})
 .then(function(r){return r.ok?r.json():null}).then(function(j){return j&&j.url},function(){return null})}
 function wake(my){if(my===gen){clearTimeout(guard);cb(true)}}
-function make(){if(!c.from)return Promise.resolve(null);var my=++gen,title=c.titled?c.title:"";
-var first=c.thumb?Promise.resolve(c.thumb):still(title).then(function(b){return store(b,title)}).then(function(u){if(my===gen&&u&&!c.thumb)c.thumb=u;return u},function(){return null});
+function make(){if(!c.from)return Promise.resolve(null);var my=++gen,from=c.from,title=c.titled?c.title:"";
+var first=c.thumb?Promise.resolve(c.thumb):still(title).then(function(b){return my===gen?store(b,title,from):null}).then(function(u){if(my===gen&&u&&!c.thumb)c.thumb=u;return u},function(){return null});
 making=first;first.then(function(){if(my!==gen)return;if(c.gif)return wake(my);if(!c.teaser){if(c.drained)wake(my);return}
 clearTimeout(guard);guard=setTimeout(function(){wake(my)},20000);
-return loop(title).then(function(b){return store(b,title)}).then(function(u){if(my===gen&&u){c.thumb=u;c.gif=true}wake(my)})}).catch(function(){wake(my)});
+return loop(title).then(function(b){return my===gen?store(b,title,from):null}).then(function(u){if(my===gen&&u){c.thumb=u;c.gif=true}wake(my)})}).catch(function(){wake(my)});
 return first}
 function html(u){var w=600,h=Math.round(600*c.rh/c.rw),t=c.titled?c.title:"",a=document.createElement("a"),i=document.createElement("img");a.href=location.origin+"/"+c.id;
 i.src=location.origin+u;i.width=w;i.height=h;i.alt=t;i.style.maxWidth="100%";a.appendChild(i);return a.outerHTML}
@@ -1926,6 +1927,7 @@ if(!c.store)make=function(){return Promise.resolve(c.thumb)};cb=cb||function(){}
 return{length:function(l){if(l)c.len=l},retitle:function(t){c.title=t;c.titled=true;c.thumb=null;c.gif=false;if(c.live){cb(false);make()}},
 drained:function(){if(c.drained)return;c.drained=true;var my=gen;if(!c.teaser&&making)making.then(function(){if(!c.teaser)wake(my)})},
 live:function(){c.live=true;if(!c.thumb||!c.gif)make()},
+source:function(p){var f=p&&p.from||"";if(f===c.from)return;c.from=f;c.psrc=f?p.psrc:"";c.tsrc=f?p.tsrc:"";c.teaser=!!(f&&p.teaser);c.thumb=null;c.gif=false;gen++;cb(false);if(f&&c.live)make()},
 teaser:function(){if(c.teaser)return;c.teaser=true;if(c.live&&!c.gif)make()},
 copy:function(){var link=location.origin+"/"+c.id;if(!c.thumb&&!c.psrc)return shroomCopy(link,null);return shroomCopyRich(c.thumb?html(c.thumb):(making||make()).then(function(u){return html(u||c.psrc)}),link)}}}
 function shroomCopyRich(h,t){var hp=Promise.resolve(h);
@@ -2030,12 +2032,23 @@ function startKept(id, meta) {
 function thumbsOf(id, meta, live, store = true) {
   const thumb = newestThumb(id, meta);
   const view = viewOf(id, meta);
-  const from = thumbSource(id, meta);
-  const tsrc = !from ? "" : view.teaser ?? (view.copy || view.baked ? "" : `/m/${id}/teaser.mp4`);
+  const src = drawFrom(id, meta);
   return { id, live, store, title: meta.titled ? meta.title : "", titled: !!meta.titled, thumb, gif: !!thumb?.endsWith(".gif"),
-    teaser: !!from && !!view.teaser, len: view.dur > 0 ? clock(view.dur, true) : "",
-    from: from ?? "", psrc: from ? `/m/${id}/${from}` : "", tsrc,
+    teaser: !!src?.teaser, len: view.dur > 0 ? clock(view.dur, true) : "",
+    from: src?.from ?? "", psrc: src?.psrc ?? "", tsrc: src?.tsrc ?? "",
     rw: meta.media?.width || 16, rh: meta.media?.height || 9, caps: THUMB };
+}
+
+/** What Copy thumbnail draws from now (N46, N63): the first frame's name, its address and the
+ * teaser's, and whether the teaser is up — or null, nothing to draw from (an edit waiting for
+ * its copy). The page as served starts from it; the status names it, so an open owner page
+ * follows it as an edit's copy lands, the edit is put back, or a press makes the copy stale
+ * (B252). @param {string} id @param {any} meta */
+function drawFrom(id, meta) {
+  const from = thumbSource(id, meta);
+  if (!from) return null;
+  const view = viewOf(id, meta);
+  return { from, psrc: `/m/${id}/${from}`, tsrc: view.teaser ?? (view.copy || view.baked ? "" : `/m/${id}/teaser.mp4`), teaser: !!view.teaser };
 }
 
 /** The owner page (N26, N40): the title field is the only chrome, Copy link and Download
@@ -2147,7 +2160,7 @@ function say(x){var w=document.getElementById("w");if(!w||(!x&&!c.said))return;c
 function poll(){fetch("/_shroom/status/"+c.id,{cache:"no-store"}).then(function(r){return r.json()}).then(function(s){
 if(s.state==="removed"){c.gone=true;c.polling=false;var m=document.querySelector("main"),p=document.createElement("p");m.textContent="";p.className="line";p.textContent=c.notFound;m.appendChild(p);document.title="shroom";return}
 if(c.pend&&s.state!=="waiting")send(c.pend);
-if(s.state==="live"){if(s.dur)th.length(shroomClock(s.dur,true));if(s.teaser)th.teaser();if(!c.live){c.live=true;th.live();var w=document.getElementById("w"),h=document.createElement("div");h.innerHTML=c.player;var pl=h.firstChild;
+if(s.state==="live"){if(s.drawFrom!==undefined)th.source(s.drawFrom);if(s.dur)th.length(shroomClock(s.dur,true));if(s.teaser)th.teaser();if(!c.live){c.live=true;th.live();var w=document.getElementById("w"),h=document.createElement("div");h.innerHTML=c.player;var pl=h.firstChild;
 var cp=s.copy,ps=cp&&cp.poster||(s.poster?"/m/"+c.id+"/poster.jpg":"");if(s.dur)pl.setAttribute("data-dur",s.dur);if(ps)pl.querySelector("video").poster=ps;w.replaceWith(pl);
 shroomPlayer(pl,cp?cp.src:src,c.labels,{keep:cp?null:s.keep||null,st:"/_shroom/status/"+c.id,copy:!!cp})}
 if(s.drained)th.drained();var ed=document.getElementById("ed");if(ed&&s.drained)wake(ed,ed.getAttribute("data-href"));
