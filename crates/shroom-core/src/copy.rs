@@ -269,6 +269,51 @@ pub fn name_taken() -> String { "That name's taken — try another.".into() }
 pub fn wiring() -> String { "Setting up your space… switching your name on takes about a minute, one time only.".into() }
 /// N45: the setup's last step, when the permissions finished before wiring.
 pub fn wiring_last() -> String { "Almost there — switching your name on takes a few minutes the first time, and only once.".into() }
+
+// ── N74: the waits say what's happening ──
+
+/// The card step's check, part by part (N74): 1 the token, 2 the email gate, 3 storage
+/// (the card gate), 4 the look for a link name and an earlier space.
+const CHECK_NOW: [&str; 4] = [
+    "Checking your token…",
+    "Checking your Cloudflare email is confirmed…",
+    "Checking that storage is switched on…",
+    "Looking for your link name and any earlier space…",
+];
+/// The last part has no done form: the step moves on the moment it answers.
+const CHECK_DONE: [&str; 3] = ["Your token works", "Your Cloudflare email is confirmed", "Storage is switched on"];
+/// Wiring, part by part (N74): 1 your storage, 2 your page, 3 your name, 4 the last check,
+/// 5 this Mac.
+const WIRE_NOW: [&str; 5] = ["Making your private storage…", "Putting up your video page…", "Switching your name on…", "Checking it all works…", "Adding this Mac to your space…"];
+const WIRE_DONE: [&str; 4] = ["Your private storage", "Your video page", "Your name is on", "Last check passed"];
+const WIRE_AHEAD: [&str; 5] = ["Making your private storage", "Putting up your video page", "Switching your name on", "A last check that it all works", "Adding this Mac to your space"];
+
+fn part_line(now: &[&str], done: &[&str], ahead: Option<&[&str]>, part: u8, glyph: crate::scene::Glyph) -> String {
+    use crate::scene::Glyph;
+    let i = usize::from(part.clamp(1, now.len() as u8) - 1);
+    match glyph {
+        Glyph::Done => done.get(i).unwrap_or(&now[i]).to_string(),
+        Glyph::Ahead => ahead.map_or_else(|| now[i].trim_end_matches('…').to_string(), |a| a[i].to_string()),
+        _ => now[i].into(),
+    }
+}
+/// One part of the card step's check, as its mark shows it: underway, done, or to come.
+pub fn check_part(part: u8, glyph: crate::scene::Glyph) -> String { part_line(&CHECK_NOW, &CHECK_DONE, None, part, glyph) }
+/// One part of wiring, as its mark shows it.
+pub fn wire_part(part: u8, glyph: crate::scene::Glyph) -> String { part_line(&WIRE_NOW, &WIRE_DONE, Some(&WIRE_AHEAD), part, glyph) }
+/// The wiring row under the chapter, naming the part underway (N74).
+pub fn row_working_part(part: u8) -> String {
+    let now = WIRE_NOW[usize::from(part.clamp(1, 5) - 1)].trim_end_matches('…');
+    let mut chars = now.chars();
+    let first = chars.next().map(|c| c.to_lowercase().collect::<String>()).unwrap_or_default();
+    format!("• {} (shroom is doing this part now · {first}{})", row_title(5), chars.as_str())
+}
+/// The card gate's watch once the billing page was opened (N74; Bagrat's words).
+pub fn card_waiting() -> String { "Waiting for Cloudflare to confirm your card is in place…".into() }
+/// Under the watch from 45 s (N74).
+pub fn card_long() -> String { "A new card can take Cloudflare a minute or so to count. Once it's added, I'll move on — hang tight!".into() }
+/// Under wiring's parts once switching the name on has run 3 min (N74).
+pub fn wiring_long() -> String { "New names can take Cloudflare a while longer, sometimes ten minutes. It's fine to close this window — I'll finish by myself.".into() }
 pub fn offline_wizard() -> String { "Everything so far is saved — I'll pick up right here when you're back online.".into() }
 /// The wizard's one face for a failure nothing else classifies (DEVIATIONS #25) — written
 /// during the build, awaiting ratification (DECISIONS' copy table).
@@ -1055,6 +1100,18 @@ pub fn registry() -> Vec<(&'static str, String)> {
         ("gate-card", add_card()),
         ("gate-card", card_where()),
         ("gate-card", card_opened()),
+        ("gate-card", card_waiting()),
+        ("gate-card", card_long()),
+        ("card", check_part(1, crate::scene::Glyph::Working)),
+        ("card", check_part(1, crate::scene::Glyph::Done)),
+        ("card", check_part(2, crate::scene::Glyph::Working)),
+        ("card", check_part(2, crate::scene::Glyph::Done)),
+        ("card", check_part(2, crate::scene::Glyph::Ahead)),
+        ("card", check_part(3, crate::scene::Glyph::Working)),
+        ("card", check_part(3, crate::scene::Glyph::Done)),
+        ("card", check_part(3, crate::scene::Glyph::Ahead)),
+        ("card", check_part(4, crate::scene::Glyph::Working)),
+        ("card", check_part(4, crate::scene::Glyph::Ahead)),
         ("name", name_prefix("v")),
         ("name", name_suffix()),
         ("name", keeper()),
@@ -1065,12 +1122,32 @@ pub fn registry() -> Vec<(&'static str, String)> {
         ("name-v-clash", row_done(4, Some(&name_fact("shroom.myname.workers.dev", true)))),
         ("wiring", wiring()),
         ("wiring", wiring_last()),
+        ("wiring", wiring_long()),
+        ("wiring", wire_part(1, crate::scene::Glyph::Working)),
+        ("wiring", wire_part(1, crate::scene::Glyph::Done)),
+        ("wiring", wire_part(1, crate::scene::Glyph::Ahead)),
+        ("wiring", wire_part(2, crate::scene::Glyph::Working)),
+        ("wiring", wire_part(2, crate::scene::Glyph::Done)),
+        ("wiring", wire_part(2, crate::scene::Glyph::Ahead)),
+        ("wiring", wire_part(3, crate::scene::Glyph::Working)),
+        ("wiring", wire_part(3, crate::scene::Glyph::Done)),
+        ("wiring", wire_part(3, crate::scene::Glyph::Ahead)),
+        ("wiring", wire_part(4, crate::scene::Glyph::Working)),
+        ("wiring", wire_part(4, crate::scene::Glyph::Done)),
+        ("wiring", wire_part(4, crate::scene::Glyph::Ahead)),
+        ("wiring", wire_part(5, crate::scene::Glyph::Working)),
+        ("wiring", wire_part(5, crate::scene::Glyph::Ahead)),
         ("wizard-offline", offline_wizard()),
         ("space-found", found("v.myshroom.workers.dev", 14)),
         ("done", done_ask()),
         ("done", done_flip()),
         ("done", allow_recording()),
         ("done", row_working()),
+        ("done", row_working_part(1)),
+        ("done", row_working_part(2)),
+        ("done", row_working_part(3)),
+        ("done", row_working_part(4)),
+        ("done", row_working_part(5)),
         ("perm-screen", perm_screen()),
         ("perm-screen", perm_screen_asking()),
         ("perm-screen", closed_its_window()),

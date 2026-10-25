@@ -33,7 +33,9 @@
   let mark = $derived.by(() => {
     const n = plan.nest;
     if (under === null) return null;
-    if (n.kind === "checking" || n.kind === "gate" || n.kind === "calm" || n.kind === "priming") return "turning";
+    if (n.kind === "checking" || n.kind === "check" || n.kind === "calm" || n.kind === "priming") return "turning";
+    // Once the card watch is a part of its own, the row keeps its arrow (N74).
+    if (n.kind === "gate") return n.watch ? null : "turning";
     if (n.kind === "token" && n.checking) return "turning";
     if (n.kind === "offline" || n.kind === "unexpected") return "resting";
     return null;
@@ -67,7 +69,7 @@
         </span>
         <span class="text">
           <span class="title"><Runs runs={p.title} /></span>
-          {#if p.aside.length}<span class="aside"><span class="sep">{p.open}</span><Runs runs={p.aside} /><span class="sep">{p.close}</span></span>{/if}
+          {#if p.aside.length}<span class="aside"><span class="sep">{p.open}</span><Runs runs={p.aside} /><span class="sep">{p.close}</span>{#if r.clock}<span class="clock">{r.clock}</span>{/if}</span>{/if}
         </span>
         {#if p.fact.length}<span class="fact"><span class="sep">{p.dash}</span><Runs runs={p.fact} /></span>{/if}
       </li>
