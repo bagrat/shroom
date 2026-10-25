@@ -4,7 +4,7 @@
 
 The machine: every state, edge, rule, said-line and law of shroom v1 — the spec (DECISIONS B133). Sessions edit it; MACHINE.md and the canvas's machine boards are generated from it.
 
-167 states · 354 edges · 26 rules · 779 said-lines · 16 laws · 91 ledger rows.
+167 states · 354 edges · 26 rules · 779 said-lines · 16 laws · 93 ledger rows.
 
 Status: **ratified** is Bagrat's; **provisional** is designed or built and awaits him (each cites its row: `#n` is a DEVIATIONS row of docs/DECISIONS.md, `Bn` a decision, `Nn`/`Un`/`Pn` a ledger row below). `SM:n` in older citations is a line of the retired spec text, kept in history/spec/UX-STATEMACHINE.md.
 
@@ -1836,7 +1836,7 @@ The real shareable page, opened in the browser at stop. It is never a preview or
 | `on-its-way` | flow | the link beat the upload | ratified |  |
 | `owner-page-cuts` | auto | the take's voice cuts land — the page shows them | provisional | N65 |
 | `owner-page-cue-hint` | auto | a take with no voice cuts, in a space that listens — the page shows how to cut a slip | provisional | N65 |
-| `hearing` | auto | opened while the take is heard — the line, its spinner turning | provisional | N65 |
+| `hearing` | auto | opened while the take is heard or named — the line, its spinner turning | provisional | N65, N82 |
 | `editor` | side | Edit in shroom | ratified | N69, N73 |
 | `editor-getting` | side | Edit in shroom | ratified | N69, N73 |
 | `config` | side | Edit in shroom | ratified | N69 |
@@ -1855,7 +1855,7 @@ The owner page's one line while the take is finishing (N65 (7)): from go-live, u
 
 | → | Kind | Label | Status | Cites |
 |---|---|---|---|---|
-| `hearing` | auto | the upload drains in a space that listens while the take is heard — the line stays, its spinner turning | provisional | N65 |
+| `hearing` | auto | the upload drains in a space that listens while the take is heard or named — the line stays, its spinner turning | provisional | N65, N82 |
 | `waiting-conn` | flow | offline | ratified |  |
 | `fully-live` | flow | queue drained | ratified |  |
 
@@ -2145,11 +2145,11 @@ The voice-cut hint (N65): in a space that listens, the owner page of a take with
 
 ### `hearing`
 
-face · web-page · **provisional** · a face of `owner-page` · board: OwnerPageFinishing · cites N65, N66, N40
+face · web-page · **provisional** · a face of `owner-page` · board: PageAiPendingC · cites N65, N66, N82, N40
 
-While the take is heard (N65 (7), N66): in a space that listens, once the upload has drained, the owner page's one line stays: the same words, its spinner turning, until the take's voice cuts land (the strip takes its place), the Mac finds none (it fades, and the hint shows in its place while that is due), or five minutes have passed since the take went live, by the page's own count. It never speaks of cuts: the same listening names the video and makes its captions and chapters. Edit wakes on the title row as the upload drains, beside it (OwnerPageFinishing, OwnerPageFinishingEnds). Owner-mode as the title has it (N40); viewers never see it.
+While the take is heard and named (N65 (7), N66, N82): in a space that listens, once the upload has drained, the owner page's one line stays: the same words, its spinner turning, until the take's voice cuts are planned and its name is in (the full name with its chapters and captions, or the naming ended with none), then fades as they appear; or five minutes have passed since the take went live, by the page's own count. A strip whose cuts land first shows under the player, the line under it. While the name is on its way the empty title field shimmers, a soft gradient sliding beside its placeholder; the page doesn't open in the field, a click or the keyboard in it drops the shimmer and takes typing, and the shimmer stops with the line. It never speaks of cuts or names. Edit wakes on the title row as the upload drains, beside it (OwnerPageFinishing, OwnerPageFinishingEnds, PageAiPendingC). Owner-mode as the title has it (N40); viewers never see it.
 
-**Entry.** The browser is in owner-mode for this video, the space listens (N66), the upload has drained, the take went live less than five minutes ago, its words don't wait for the next free day, and the Mac hasn't been through them yet: the status says the voice cuts are coming.
+**Entry.** The browser is in owner-mode for this video, the space listens (N66), the upload has drained, the take went live less than five minutes ago, its words don't wait for the next free day, and the Mac hasn't been through them yet or the space hasn't named it yet: the status says the voice cuts or the name are coming.
 
 | Said | Role | Copy | Note |
 |---|---|---|---|
@@ -2157,9 +2157,9 @@ While the take is heard (N65 (7), N66): in a space that listens, once the upload
 
 | → | Kind | Label | Status | Cites |
 |---|---|---|---|---|
-| `owner-page-cuts` | auto | the take's voice cuts land — the strip takes the line's place | provisional | N65 |
-| `owner-page-cue-hint` | auto | nothing to cut, or five minutes pass, and the hint is due — the hint takes the line's place | provisional | N65 |
-| `fully-live` | auto | nothing to cut, or five minutes pass — the line fades | provisional | N65 |
+| `owner-page-cuts` | auto | the take's voice cuts are in and so is its name — the line fades, the strip stays | provisional | N65, N82 |
+| `owner-page-cue-hint` | auto | nothing to cut and the name in, or five minutes pass, and the hint is due — the hint takes the line's place | provisional | N65, N82 |
+| `fully-live` | auto | nothing to cut and the name in, or five minutes pass — the line fades | provisional | N65, N82 |
 
 #### Region 4's amendments
 
@@ -3622,14 +3622,14 @@ A sheet over the Members face that confirms a Remove…. It has three faces by r
 
 face · sheet · **provisional** · a face of `member-remove-confirm` · cites N32
 
-Removing a joined member. They can't record to the space anymore, but a video already on its way can still finish. Their videos stay in the Library with their label.
+Removing a joined member. They can't record to the space anymore; a video already on its way has up to an hour to finish. Their videos stay in the Library with their label.
 
 **Entry.** Remove… on a joined member's row.
 
 | Said | Role | Copy | Note |
 |---|---|---|---|
 | “Remove Mher?” | sheet-title | provisional | The member's admin-private label varies. |
-| “Mher won't be able to record to your space anymore — a video already on its way can still finish. Mher's videos stay; you'll find them in your Library.” | sheet-body | provisional | Bound to per-recording minting. Per-member creds would force “for up to a week”. |
+| “Mher won't be able to record to your space anymore — a video already on its way has up to an hour to finish. Mher's videos stay; you'll find them in your Library.” | sheet-body | ratified | Bagrat, 2026-10-25 (N81): an upload credential lives an hour and a removed Mac's re-mint is refused, so the line names the hour. |
 | “Cancel” | button | provisional |  |
 | “Remove” | button | provisional |  |
 
@@ -4328,7 +4328,7 @@ A removed owner-class Mac (its /me or mint answers 401, or 403 removed): config'
 #### Region 6's scaffold flags
 
 - Instant member cut-off = rotating the parent token (an admin operation). Whether the UI offers it is a scaffold flag. An instant member cut-off control is listed as deliberately absent from v1 (parent-token rotation UI, N3).
-- Per-recording credential minting at upload start. member-remove-confirm's “a video already on its way can still finish” is true only if creds mint per recording. Per-member creds would force the line to become “for up to a week”: the copy is bound to the mechanism.
+- Per-recording credential minting at upload start, minted again near the end of its hour (N81). member-remove-confirm's “a video already on its way has up to an hour to finish” is true only if creds mint per recording and live an hour: the copy is bound to the mechanism.
 - Own-Mac invites: one hour, one-time, owner-class, labelled silently by the joining Mac's sharing name. Every owner Mac records as member #1 with its own device key, which is what Remove revokes. A Mac that holds the Cloudflare token mints from that token and can't be stopped by a device key (no Remove…; Disconnect, or delete the token in Cloudflare).
 - Deep link registration (shroom://join/…) at first launch. The browser's own “open shroom?” prompt is the only step it adds (N29). [ Open shroom ] on the join page is this deep link; the paste line is its fallback.
 - The member cookie: owner-mode keys on the member, not the space (N40). The Worker checks maker vs cookie, and owner-class sees all. A member's owner-mode on a page is the title only; the space-global mark switch belongs to owner-class Macs.
@@ -4564,6 +4564,8 @@ A move that holds for a whole group of states, written once (B133). The tests ex
 | N78 | The marker toast: ⌥⌘M answers on screen, left out of the video | **Bagrat, trying 0.1.30-early.1, 2026-10-25:** a marker dropped with the shortcut is too silent; a toast should say so, with a hint that it isn't in the recording, left out the way the agent label is. **He approved the board “The bubble — ⌥⌘M answers: the “Marker dropped” toast” as drawn, its words and the numbering, 2026-10-25** (relayed by the orchestrator). (1) **A marker ⌥⌘M drops shows a toast**: the agent label's pill with the marker's flag, top right of the display the take records, under the menu bar (just under the label when that shows; on the display Camera's preview sits on for the camera only). It reads “Marker dropped”, or “Marker 3 dropped” for the take's later ones, beside a quieter “Only you see this, not the video”. It is left out of the recording, as the countdown, the bubble's controls and the label are, and takes no clicks. (2) **It stays two seconds, then fades.** A press while it shows swaps the words and starts its two seconds again: one toast, never a stack. (3) **Paused:** with the popover open, no toast (the row's Marker dropped answers); with it put away, the toast; a second press at the same pause drops nothing, and the toast says “Already marked at this pause”. A question open, or a pause shroom made, drops nothing and shows nothing, as before. (4) **It goes with the take**, and once the popover or a count comes up over it; it doesn't come back when they go. Amends N64 (2)'s “nothing on screen answers it”. Built: DECISIONS B246. | ratified | 2026-10-25 |
 | N79 | Settings gains a Videos tab; Space used moves to Space | **Bagrat, 2026-10-25** (relayed by the orchestrator; the board “Settings — General outgrew its window”): General had outgrown its window (with Your videos, the coding agent and auto-cleanup it was about 820 tall in a page of 588, and scrolled on a Mac), so the window gains a tab, **Videos**: General · Videos · Space · Members. Videos holds what was General's group Your videos, row for row and word for word: Count plays, Suggest videos to clean up and Delete videos nobody watches; the group's heading is the tab's name now. **Space used** goes to the Space tab, its own row right under “Cloudflare billing set up”, on owner-class Macs as before (the bill is theirs). The window grows to **600 × 720**, the editor's height (it fits a 1024×768 screen), so every tab fits its page of 688 under the title bar, Space with the AI switch's parts included. General keeps the app's own rows, the help line, your coding agent and Uninstall. Auto-cleanup's question opens over Videos; the shroom command's settings link still opens General at its switch. | ratified | 2026-10-25 |
 | N80 | Turning AI on or off shows its parts as they happen | **Bagrat's hand test of 0.1.30-early.1, 2026-10-25**: turning AI on or off took long enough to worry, with little shown while it ran — the anxiety a tester named in the setup (N74). **Bagrat, 2026-10-25** (relayed by the orchestrator, on the boards “Settings — Space: the AI switch while it works…” and “Popover — AI features are turned on: Turn off while it works…”, with the plainer words): (1) **The switch moves at once** to where it's going, greyed while the page is re-wired. (2) **Three parts list under its cost line**, each ticking only when its own calls answer, the one underway spinning with its running clock from its first second, as N74's do: “Checking your space…” → “Your space is ready”; “Connecting AI to your space…” → “AI connected” (off: “Disconnecting AI…” → “AI disconnected”); “Switching AI on for new videos…” → “AI is on for new videos” (off: “Switching AI off for new videos…” → “AI is off for new videos”). (3) **Done is when the page itself says so** (its ping answers with the AI on, or without it); the last part ticks in bold and the list stays until the window closes or the tab changes. (4) **Didn't go through** (law 12): the switch reads as the page has it and is live again; the part that stopped carries a cross in its plain words, with “Couldn't change that just now — try again in a moment.” under the list. (5) **Running long**: from 20 s on one part, one quiet line, “Cloudflare is slower than usual just now — hang tight.”; the clock keeps going until the re-wiring's 3 min deadline, which is a didn't-go-through. (6) **The banner's Turn off** shows the same parts under its ratified “Turning off — a few seconds.”; its off and didn't-go-through faces are as they were. The banner's own turn-on (N76) still says only “AI features are turned on.” while it runs (Bagrat, 2026-10-25: no preference; left as it is). Measured on the test account (2026-10-25, six turns, the real page): checking your space ~1 s; connecting or disconnecting AI 0.8–1 s, 6.5 s the first time; switching it for new videos (the schedule, then the page saying so) under 0.5 s. Nothing is stored (law 1). | ratified | 2026-10-25 |
+| N81 | Upload credentials live an hour; the Remove sheet says so | **Bagrat, 2026-10-25** (relayed by the orchestrator; he approved the wording as drafted the same day): a recording's upload credential lives **one hour**, not seven days (still within N4's ≤7 days), and the Mac mints the same recording's again as it nears its end, so a long upload goes on and a removed Mac's upload ends within the hour (its re-mint is refused). The Remove sheet's member face now says “Mher won't be able to record to your space anymore — a video already on its way has up to an hour to finish. Mher's videos stay; you'll find them in your Library.” (ratified), and shroom.am's FAQ says the same of removing someone. | ratified | 2026-10-25 |
+| N82 | The finishing line lasts until the name, chapters and captions land; the title shimmers while the name is on its way | **Bagrat's re-check of 0.1.33-early.1, 2026-10-25**: the chapters and captions dropped in without a reload, but seconds after the finishing spinner had gone, so the page looked done with no name or chapters coming. **Bagrat, 2026-10-25** (relayed by the orchestrator; his pick on the boards “The page — after go-live… A / B / C”: C, with B's title placeholder): (1) **The one line lasts.** In a space that listens (N66), the owner page's line, “Finishing your video — the link already works, share it anytime.”, its spinner turning, stays after the upload until the take's voice cuts are planned **and** its name is in (the full name, with its chapters and captions, or the naming ended with none: too few words, or it gave up), then fades as they appear: the title, the bar's chapters and the Captions button come in with the fade. Five minutes after the go-live at most, by the page's own count, as before; a name that comes later still drops in. A strip whose cuts land first shows under the player with the line still under it. It never says a name is coming, and no new words are added. Words waiting for the next free day don't keep it (the note under the title says the rest comes later). (2) **The title shimmers while the name is on its way**: a soft gradient slides in the empty title field beside its placeholder, for as long as the line lasts. The page doesn't open in the field then; a click or the keyboard in it drops the shimmer at once and takes typing, and a name that lands later never overwrites what was typed. It stops with the line, whether a name came or not. (3) **A typed title doesn't end the wait**: the chapters and captions that come with the naming still drop into the player, on a page whose title was typed before it opened as on one typed while it was open. Viewers' pages are unchanged. Nothing is stored (law 1). | ratified | 2026-10-25 |
 
 ## Surfaces
 
@@ -4601,7 +4603,7 @@ A move that holds for a whole group of states, written once (B133). The tests ex
 
 ## Scaffold flags
 
-- **Per-recording credential minting** — N32's removal copy is true only if creds mint per recording at upload start; per-member creds would force “for up to a week”.  [L1740-1741]
+- **Per-recording credential minting** — N32's removal copy (amended by N81: “has up to an hour to finish”) is true only if creds mint per recording, each living an hour and minted again near its end.  [L1740-1741]
 - **The member cookie** — owner-mode keys on the member, not the space (N40); the Worker checks maker vs cookie, owner-class sees all.  [L1742-1743]
 - **Launch provenance** — tell a launch you did from a login-item or update relaunch (N41); treat the reopen event as a tray click in every state.  [L1744-1745]
 - **The popover's anchor fallback** when the status item is occluded (N41).  [L1746]

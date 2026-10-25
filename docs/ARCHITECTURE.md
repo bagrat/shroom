@@ -674,7 +674,8 @@ One H.264 variant with AAC, under `v0/`; players and unfurls use the master. A l
 **The door follows token presence** (#58, `runtime/uploader.rs:Door`): a token Mac mints
 locally, writing its ledger entry create-only first; every other Mac calls `POST /api/mint`
 under its device key and the Worker signs the byte-identical JWT. Minted per recording when
-its upload starts, so removal stops new mints while minted ones finish (≤ 7 d, N32). Instant
+its upload starts and minted again as it nears the end of its hour, so removal stops new
+mints and a minted one ends within the hour (N32). Instant
 cut-off is parent-token rotation, docs only.
 
 **Law 13:** secrets ride files only — never argv, logs, slices or the core. The installer
@@ -732,7 +733,7 @@ foreign `v`. `VERSION` 0.1.9, `IFACE` 2.
 | `GET /m/<id>/<file>` | `rec/<id>/…` with Range/HEAD; only `.m3u8 .m4s .mp4 .jpg .vtt`; `nosniff`, `CSP: sandbox`; record read beside: deleted → 404, unreadable → 503; an edit's copy current → only its files and the recording's own poster while the edit keeps its first frame (N63); baked → only what `media` names (D:B197); `thumb-*` whatever else is (D:B164), but only the record's current picture once an edit or a bake took something from the first 3 s |
 | `GET /d/<id>` | the recording's own file (`video.mp4`, or a baked `edit-<n>.mp4`) — or an edit's current copy; nothing while an edit waits for one — named from the live title, Range forwarded |
 | `GET /oembed?url=` | iframe of the embed face |
-| `GET /_shroom/hls.js`, `/_shroom/ping`, `/_shroom/status/<id>` | the player (immutable); `{shroom, iface, version}` without storage; the page's poll (`drained`, `pct`, `stalled`, `cuts`; an edit's `keep` and `copy`) |
+| `GET /_shroom/hls.js`, `/_shroom/ping`, `/_shroom/status/<id>` | the player (immutable); `{shroom, iface, version}` without storage; the page's poll (`drained`, `pct`, `stalled`, `cuts`, `named`; an edit's `keep` and `copy`) |
 | `POST /_shroom/title/<id>`, `/_shroom/mark` | cookie title edit (`etagMatches`); the mark switch (owner-class) |
 | `POST`, `GET /_shroom/edits/<id>` | a voice cut on or off (`etagMatches`, the maker or owner-class); the owner page's strip and what plays (N65, D:B200) |
 | `GET /favicon.{svg,png,ico}` | the icon carried in the module (D:B109) |

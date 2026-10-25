@@ -766,7 +766,9 @@
    "status": "autonomous-awaiting-ratification",
    "date": "2026-09-30",
    "amends": [],
-   "amended_by": []
+   "amended_by": [
+    "N81"
+   ]
   },
   {
    "id": "N33",
@@ -1145,7 +1147,9 @@
     "uploading (the page's one line: “Finishing your video — the link already works, share it anytime.”, after a spinner, no bar, in place of “Uploading — 40%. Your link already works.”)",
     "fully-live (no “Ready ✓”: the line fades)"
    ],
-   "amended_by": []
+   "amended_by": [
+    "N82 (the finishing line also waits for the name, chapters and captions)"
+   ]
   },
   {
    "id": "N62",
@@ -1204,7 +1208,9 @@
     "live (chapters in the bar; captions, where the summary said no captions in v1)",
     "absent_from_v1 (captions join v1 with N67; transcript search stays out)"
    ],
-   "amended_by": []
+   "amended_by": [
+    "N82 (the title shimmers while the name is on its way; a typed title still takes the chapters and captions)"
+   ]
   },
   {
    "id": "N63",
@@ -1411,6 +1417,30 @@
     "settings-space (the AI switch's parts, done, didn't go through, running long)"
    ],
    "amended_by": []
+  },
+  {
+   "id": "N81",
+   "title": "Upload credentials live an hour; the Remove sheet says so",
+   "decision": "**Bagrat, 2026-10-25** (relayed by the orchestrator; he approved the wording as drafted the same day): a recording's upload credential lives **one hour**, not seven days (still within N4's ≤7 days), and the Mac mints the same recording's again as it nears its end, so a long upload goes on and a removed Mac's upload ends within the hour (its re-mint is refused). The Remove sheet's member face now says “Mher won't be able to record to your space anymore — a video already on its way has up to an hour to finish. Mher's videos stay; you'll find them in your Library.” (ratified), and shroom.am's FAQ says the same of removing someone.",
+   "status": "ratified",
+   "date": "2026-10-25",
+   "amends": [
+    "N32 (the member face's body line)"
+   ],
+   "amended_by": []
+  },
+  {
+   "id": "N82",
+   "title": "The finishing line lasts until the name, chapters and captions land; the title shimmers while the name is on its way",
+   "decision": "**Bagrat's re-check of 0.1.33-early.1, 2026-10-25**: the chapters and captions dropped in without a reload, but seconds after the finishing spinner had gone, so the page looked done with no name or chapters coming. **Bagrat, 2026-10-25** (relayed by the orchestrator; his pick on the boards “The page — after go-live… A / B / C”: C, with B's title placeholder): (1) **The one line lasts.** In a space that listens (N66), the owner page's line, “Finishing your video — the link already works, share it anytime.”, its spinner turning, stays after the upload until the take's voice cuts are planned **and** its name is in (the full name, with its chapters and captions, or the naming ended with none: too few words, or it gave up), then fades as they appear: the title, the bar's chapters and the Captions button come in with the fade. Five minutes after the go-live at most, by the page's own count, as before; a name that comes later still drops in. A strip whose cuts land first shows under the player with the line still under it. It never says a name is coming, and no new words are added. Words waiting for the next free day don't keep it (the note under the title says the rest comes later). (2) **The title shimmers while the name is on its way**: a soft gradient slides in the empty title field beside its placeholder, for as long as the line lasts. The page doesn't open in the field then; a click or the keyboard in it drops the shimmer at once and takes typing, and a name that lands later never overwrites what was typed. It stops with the line, whether a name came or not. (3) **A typed title doesn't end the wait**: the chapters and captions that come with the naming still drop into the player, on a page whose title was typed before it opened as on one typed while it was open. Viewers' pages are unchanged. Nothing is stored (law 1).",
+   "status": "ratified",
+   "date": "2026-10-25",
+   "amends": [
+    "N65 (7) (the finishing line also waits for the name)",
+    "N67 (an open owner page takes the chapters and captions under a typed title too)",
+    "hearing (the line's end, the title's shimmer)"
+   ],
+   "amended_by": []
   }
  ],
  "surfaces": [
@@ -1467,7 +1497,7 @@
   "a member's own Add another Mac (a member's second Mac is a second invite, N33)  [L1733-1734]"
  ],
  "scaffold_flags": [
-  "**Per-recording credential minting** — N32's removal copy is true only if creds mint per recording at upload start; per-member creds would force “for up to a week”.  [L1740-1741]",
+  "**Per-recording credential minting** — N32's removal copy (amended by N81: “has up to an hour to finish”) is true only if creds mint per recording, each living an hour and minted again near its end.  [L1740-1741]",
   "**The member cookie** — owner-mode keys on the member, not the space (N40); the Worker checks maker vs cookie, owner-class sees all.  [L1742-1743]",
   "**Launch provenance** — tell a launch you did from a login-item or update relaunch (N41); treat the reopen event as a tray click in every state.  [L1744-1745]",
   "**The popover's anchor fallback** when the status item is occluded (N41).  [L1746]",
@@ -2269,7 +2299,7 @@
      "source_lines": "1299-1302, 1731-1732, 1762"
     },
     {
-     "flag": "Per-recording credential minting at upload start. member-remove-confirm's “a video already on its way can still finish” is true only if creds mint per recording. Per-member creds would force the line to become “for up to a week”: the copy is bound to the mechanism.",
+     "flag": "Per-recording credential minting at upload start, minted again near the end of its hour (N81). member-remove-confirm's “a video already on its way has up to an hour to finish” is true only if creds mint per recording and live an hour: the copy is bound to the mechanism.",
      "source_lines": "1294-1298, 1372-1375, 80, 1740-1741"
     },
     {
@@ -11191,7 +11221,7 @@
    "surface": "sheet",
    "status": "provisional",
    "board": null,
-   "summary": "Removing a joined member. They can't record to the space anymore, but a video already on its way can still finish. Their videos stay in the Library with their label.",
+   "summary": "Removing a joined member. They can't record to the space anymore; a video already on its way has up to an hour to finish. Their videos stay in the Library with their label.",
    "entry": "Remove… on a joined member's row.",
    "said": [
     {
@@ -11202,10 +11232,10 @@
      "id": "member-remove-confirm-member.remove-mher"
     },
     {
-     "text": "Mher won't be able to record to your space anymore — a video already on its way can still finish. Mher's videos stay; you'll find them in your Library.",
+     "text": "Mher won't be able to record to your space anymore — a video already on its way has up to an hour to finish. Mher's videos stay; you'll find them in your Library.",
      "role": "sheet-body",
-     "copy": "provisional",
-     "note": "Bound to per-recording minting. Per-member creds would force “for up to a week”.",
+     "copy": "ratified",
+     "note": "Bagrat, 2026-10-25 (N81): an upload credential lives an hour and a removed Mac's re-mint is refused, so the line names the hour.",
      "id": "member-remove-confirm-member.mher-wont-be-able"
     },
     {
@@ -14176,9 +14206,9 @@
    "parent": "owner-page",
    "surface": "web-page",
    "status": "provisional",
-   "board": "OwnerPageFinishing",
-   "summary": "While the take is heard (N65 (7), N66): in a space that listens, once the upload has drained, the owner page's one line stays: the same words, its spinner turning, until the take's voice cuts land (the strip takes its place), the Mac finds none (it fades, and the hint shows in its place while that is due), or five minutes have passed since the take went live, by the page's own count. It never speaks of cuts: the same listening names the video and makes its captions and chapters. Edit wakes on the title row as the upload drains, beside it (OwnerPageFinishing, OwnerPageFinishingEnds). Owner-mode as the title has it (N40); viewers never see it.",
-   "entry": "The browser is in owner-mode for this video, the space listens (N66), the upload has drained, the take went live less than five minutes ago, its words don't wait for the next free day, and the Mac hasn't been through them yet: the status says the voice cuts are coming.",
+   "board": "PageAiPendingC",
+   "summary": "While the take is heard and named (N65 (7), N66, N82): in a space that listens, once the upload has drained, the owner page's one line stays: the same words, its spinner turning, until the take's voice cuts are planned and its name is in (the full name with its chapters and captions, or the naming ended with none), then fades as they appear; or five minutes have passed since the take went live, by the page's own count. A strip whose cuts land first shows under the player, the line under it. While the name is on its way the empty title field shimmers, a soft gradient sliding beside its placeholder; the page doesn't open in the field, a click or the keyboard in it drops the shimmer and takes typing, and the shimmer stops with the line. It never speaks of cuts or names. Edit wakes on the title row as the upload drains, beside it (OwnerPageFinishing, OwnerPageFinishingEnds, PageAiPendingC). Owner-mode as the title has it (N40); viewers never see it.",
+   "entry": "The browser is in owner-mode for this video, the space listens (N66), the upload has drained, the take went live less than five minutes ago, its words don't wait for the next free day, and the Mac hasn't been through them yet or the space hasn't named it yet: the status says the voice cuts or the name are coming.",
    "said": [
     {
      "text": "Finishing your video — the link already works, share it anytime.",
@@ -14192,6 +14222,7 @@
    "cites": [
     "N65",
     "N66",
+    "N82",
     "N40"
    ]
   },
@@ -17029,11 +17060,12 @@
    "from": "uploading",
    "to": "hearing",
    "kind": "auto",
-   "label": "the upload drains in a space that listens while the take is heard — the line stays, its spinner turning",
-   "trigger": "The page's own poll sees the upload drain while the status says the voice cuts are coming",
+   "label": "the upload drains in a space that listens while the take is heard or named — the line stays, its spinner turning",
+   "trigger": "The page's own poll sees the upload drain while the status says the voice cuts or the name are coming",
    "status": "provisional",
    "cites": [
-    "N65"
+    "N65",
+    "N82"
    ],
    "source": [
     "canvas"
@@ -17044,11 +17076,12 @@
    "from": "owner-page",
    "to": "hearing",
    "kind": "auto",
-   "label": "opened while the take is heard — the line, its spinner turning",
-   "trigger": "On load, in owner-mode, with the upload drained and the status saying the voice cuts are coming",
+   "label": "opened while the take is heard or named — the line, its spinner turning",
+   "trigger": "On load, in owner-mode, with the upload drained and the status saying the voice cuts or the name are coming",
    "status": "provisional",
    "cites": [
-    "N65"
+    "N65",
+    "N82"
    ],
    "source": [
     "canvas"
@@ -17059,11 +17092,12 @@
    "from": "hearing",
    "to": "owner-page-cuts",
    "kind": "auto",
-   "label": "the take's voice cuts land — the strip takes the line's place",
-   "trigger": "The page's own poll sees the cuts land; the line fades and the strip shows",
+   "label": "the take's voice cuts are in and so is its name — the line fades, the strip stays",
+   "trigger": "The page's own poll sees the cuts land (the strip shows) and the name come in, or five minutes pass; the line fades as the title, chapters and captions appear",
    "status": "provisional",
    "cites": [
-    "N65"
+    "N65",
+    "N82"
    ],
    "source": [
     "canvas"
@@ -17074,11 +17108,12 @@
    "from": "hearing",
    "to": "owner-page-cue-hint",
    "kind": "auto",
-   "label": "nothing to cut, or five minutes pass, and the hint is due — the hint takes the line's place",
-   "trigger": "The status stops saying the voice cuts are coming and the record has none (the Mac found nothing to cut, or five minutes passed since the take went live, by the page's own count), and this browser hasn't put the hint away",
+   "label": "nothing to cut and the name in, or five minutes pass, and the hint is due — the hint takes the line's place",
+   "trigger": "The status says neither the voice cuts nor the name are coming and the record has no cuts (the Mac found nothing to cut and the naming is done, or five minutes passed since the take went live, by the page's own count), and this browser hasn't put the hint away",
    "status": "provisional",
    "cites": [
-    "N65"
+    "N65",
+    "N82"
    ],
    "source": [
     "canvas"
@@ -17089,11 +17124,12 @@
    "from": "hearing",
    "to": "fully-live",
    "kind": "auto",
-   "label": "nothing to cut, or five minutes pass — the line fades",
+   "label": "nothing to cut and the name in, or five minutes pass — the line fades",
    "trigger": "As above, with the hint put away",
    "status": "provisional",
    "cites": [
-    "N65"
+    "N65",
+    "N82"
    ],
    "source": [
     "canvas"

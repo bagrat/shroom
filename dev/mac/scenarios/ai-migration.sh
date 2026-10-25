@@ -24,7 +24,10 @@ SHOTS="$OUT/shots"
 CHECKS="$OUT/checks.tsv"
 HOME_DIR="$HOME/.shroom"
 FROM=0.1.27
-TO=0.1.30-early.1
+# The build an early-channel Mac takes is whatever the early pointer names now (B220), so
+# the update leg reads it rather than pinning a number that the next early build outdates.
+TO=$(curl -fsSL --retry 3 --max-time 30 https://github.com/bagrat/shroom/releases/download/early/manifest.txt | sed -n 's/^version=//p')
+[ -n "$TO" ] || { echo "ai-migration: couldn't read the early pointer's version" >&2; exit 1; }
 SHROOM="$HOME/.local/bin/shroom"
 AX="$PWD/dev/mac/ax.js"
 export SHROOM_REF=ci

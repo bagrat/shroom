@@ -352,7 +352,7 @@ impl Cloud {
     }
 
     /// Mints short-lived bucket credentials scoped to `prefixes` and single `objects`
-    /// (N4: one per recording, minted when its upload begins; ≤ 7 days). The parent is
+    /// (N4: one per recording, minted when its upload begins and again near its end; an hour). The parent is
     /// the token's derived key id. Probed live 2026-07-20: scoping is enforced.
     pub fn mint_temp_credentials(
         &self,

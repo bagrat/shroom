@@ -4,12 +4,15 @@
 # type, no test harness, the bundled encoder) built, signed and checked. Every lane that
 # makes a release-config app runs this script, so the app CI checks is the app a tag ships:
 #
-#   .github/workflows/release.yml   --identity <the release identity> --leaf <its pin>
-#   .github/workflows/ci.yml        --adhoc   (no identity on a pull request's runner)
+#   .github/workflows/release.yml   --adhoc, then --resign --identity <the release identity>
+#                                   --leaf <its pin>: built with no key on the runner, signed after
+#   .github/workflows/ci.yml        --adhoc   (no identity on a pull request's runner), then
+#                                   --resign with a throwaway identity, as the release does
 #   tests/l5/build-release.sh       --identity shroom-dev   (this Mac's L5 lane, with its
 #                                   own guards: a throwaway target, nothing claims shroom://)
 #
 # Usage: tools/release-build.sh <out-dir> (--identity <name> [--leaf <sha1>] | --adhoc)
+#        tools/release-build.sh <out-dir> --resign --identity <name> [--leaf <sha1>]
 #
 #   --identity <name>  sign the bundle and its encoder with this keychain identity. The
 #                      bundle's designated requirement must then be `identifier "am.shroom"
@@ -23,6 +26,12 @@
 #                      one build only. Enough to prove the build and its bundle; never a
 #                      release — macOS would ask for Screen Recording again after every
 #                      update.
+#   --resign           build nothing: sign <out-dir>/shroom.app, which an --adhoc run left
+#                      there, with --identity — its encoder and command, then the bundle,
+#                      with the hardened runtime and the app's entitlements, as the bundler
+#                      signs them — and check it as an --identity build is checked. So the
+#                      release identity is on the runner only after every build script,
+#                      proc-macro and package has run, and only codesign uses it.
 #
 # It builds into cargo's target dir — CARGO_TARGET_DIR when set, else ./target (the one a
 # CI cache keeps) — and copies the bundle to <out-dir>/shroom.app. Beside it, it leaves:
@@ -46,25 +55,27 @@ SIDECAR=$ROOT/build/ffmpeg/sidecar/ffmpeg-aarch64-apple-darwin
 # the encoder as a second external binary, signed with the bundle: Contents/MacOS/shroom-cli.
 CLI=$ROOT/build/cli/shroom-cli-aarch64-apple-darwin
 
-usage() { echo "usage: tools/release-build.sh <out-dir> (--identity <name> [--leaf <sha1>] | --adhoc)"; exit 64; }
+usage() { echo "usage: tools/release-build.sh <out-dir> (--identity <name> [--leaf <sha1>] | --adhoc | --resign --identity <name> [--leaf <sha1>])"; exit 64; }
 
 [ $# -ge 1 ] || usage
 out=$1
 shift
 identity=
 adhoc=
+resign=
 leaf=
 while [ $# -gt 0 ]; do
   case "$1" in
     --identity) [ $# -ge 2 ] || usage; identity=$2; shift 2 ;;
     --adhoc) adhoc=1; shift ;;
+    --resign) resign=1; shift ;;
     --leaf) [ $# -ge 2 ] || usage; leaf=$2; shift 2 ;;
     *) usage ;;
   esac
 done
 case "$out" in ""|-*) usage ;; esac
 if [ -n "$adhoc" ]; then
-  [ -z "$identity" ] && [ -z "$leaf" ] || usage
+  [ -z "$identity" ] && [ -z "$leaf" ] && [ -z "$resign" ] || usage
   sign=-
 else
   [ -n "$identity" ] || usage
@@ -82,32 +93,50 @@ if [ -n "$leaf" ]; then
   [ ${#leaf} -eq 40 ] || { echo "--leaf takes a certificate's SHA-1: 40 hex digits"; exit 64; }
 fi
 
-[ -x "$SIDECAR" ] || { echo "no encoder to bundle — run tools/build-ffmpeg.sh first"; exit 1; }
-# The encoder is the one the script pins — not a stale build, not a cache's stand-in.
-"$ROOT/tools/build-ffmpeg.sh" --check >/dev/null || { echo "the encoder in build/ffmpeg isn't the one tools/build-ffmpeg.sh makes — run tools/build-ffmpeg.sh"; exit 1; }
-command -v npx >/dev/null 2>&1 || { echo "node isn't on the PATH here"; exit 1; }
-[ -x "$ROOT/node_modules/.bin/tauri" ] || { echo "the build tools aren't installed — run npm ci"; exit 1; }
-python3 "$ROOT/tools/third-party-notices.py" --check || exit 1
-
+ENTITLEMENTS=$ROOT/app/src-tauri/Entitlements.plist
 mkdir -p "$out"
 out=$(cd "$out" && pwd)
-tgt=${CARGO_TARGET_DIR:-$ROOT/target}
-case "$tgt" in /*) ;; *) tgt=$(pwd)/$tgt ;; esac
-bundle=$tgt/release/bundle/macos/shroom.app
-
-# The command, built for the bundle's floor (every binary in Contents/MacOS is, below).
+# The bundle's floor: every binary in Contents/MacOS is built for it (below).
 floor=$(plutil -extract bundle.macOS.minimumSystemVersion raw -o - "$ROOT/app/src-tauri/tauri.conf.json")
-rm -f "$CLI"
-(cd "$ROOT" && MACOSX_DEPLOYMENT_TARGET="$floor" CARGO_TARGET_DIR="$tgt" cargo build --release -p shroom-cli >"$out/build-cli.log" 2>&1) || { tail -n 20 "$out/build-cli.log"; exit 1; }
-mkdir -p "$(dirname "$CLI")" && cp "$tgt/release/shroom-cli" "$CLI"
 
-# Never a bundle from an earlier build (a restored target dir may hold one).
-rm -rf "$bundle" "$out/shroom.app"
-(cd "$ROOT/app" && CARGO_TARGET_DIR="$tgt" npx tauri build --bundles app \
-  --config src-tauri/tauri.release.conf.json \
-  --config "{\"bundle\":{\"macOS\":{\"signingIdentity\":\"$sign\"}}}" >"$out/build.log" 2>&1) || { tail -n 20 "$out/build.log"; exit 1; }
-[ -d "$bundle" ] || { tail -n 20 "$out/build.log"; echo "the build left no bundle at $bundle"; exit 1; }
-ditto "$bundle" "$out/shroom.app"
+if [ -n "$resign" ]; then
+  app=$out/shroom.app
+  [ -d "$app" ] || { echo "nothing to sign at $app — run tools/release-build.sh $out --adhoc first"; exit 1; }
+  codesign -dvv "$app" 2>&1 | grep -Fxq 'Signature=adhoc' || { echo "$app isn't the ad hoc build --resign signs"; exit 1; }
+  # Inside out, as the bundler signs: the encoder and the command, then the bundle (and its
+  # main executable with it). The same options the bundler gives them (hardened runtime, the
+  # app's entitlements, identifiers left to codesign) — only the identity is new.
+  for bin in ffmpeg shroom-cli; do
+    codesign --force --sign "$identity" --entitlements "$ENTITLEMENTS" --options runtime "$app/Contents/MacOS/$bin" \
+      || { echo "couldn't sign Contents/MacOS/$bin with $identity"; exit 1; }
+  done
+  codesign --force --sign "$identity" --entitlements "$ENTITLEMENTS" --options runtime "$app" \
+    || { echo "couldn't sign the bundle with $identity"; exit 1; }
+else
+  [ -x "$SIDECAR" ] || { echo "no encoder to bundle — run tools/build-ffmpeg.sh first"; exit 1; }
+  # The encoder is the one the script pins — not a stale build, not a cache's stand-in.
+  "$ROOT/tools/build-ffmpeg.sh" --check >/dev/null || { echo "the encoder in build/ffmpeg isn't the one tools/build-ffmpeg.sh makes — run tools/build-ffmpeg.sh"; exit 1; }
+  command -v npx >/dev/null 2>&1 || { echo "node isn't on the PATH here"; exit 1; }
+  [ -x "$ROOT/node_modules/.bin/tauri" ] || { echo "the build tools aren't installed — run npm ci"; exit 1; }
+  python3 "$ROOT/tools/third-party-notices.py" --check || exit 1
+
+  tgt=${CARGO_TARGET_DIR:-$ROOT/target}
+  case "$tgt" in /*) ;; *) tgt=$(pwd)/$tgt ;; esac
+  bundle=$tgt/release/bundle/macos/shroom.app
+
+  # The command, built for the bundle's floor.
+  rm -f "$CLI"
+  (cd "$ROOT" && MACOSX_DEPLOYMENT_TARGET="$floor" CARGO_TARGET_DIR="$tgt" cargo build --release -p shroom-cli >"$out/build-cli.log" 2>&1) || { tail -n 20 "$out/build-cli.log"; exit 1; }
+  mkdir -p "$(dirname "$CLI")" && cp "$tgt/release/shroom-cli" "$CLI"
+
+  # Never a bundle from an earlier build (a restored target dir may hold one).
+  rm -rf "$bundle" "$out/shroom.app"
+  (cd "$ROOT/app" && CARGO_TARGET_DIR="$tgt" npx tauri build --bundles app \
+    --config src-tauri/tauri.release.conf.json \
+    --config "{\"bundle\":{\"macOS\":{\"signingIdentity\":\"$sign\"}}}" >"$out/build.log" 2>&1) || { tail -n 20 "$out/build.log"; exit 1; }
+  [ -d "$bundle" ] || { tail -n 20 "$out/build.log"; echo "the build left no bundle at $bundle"; exit 1; }
+  ditto "$bundle" "$out/shroom.app"
+fi
 
 app=$out/shroom.app
 plist=$app/Contents/Info.plist
@@ -145,6 +174,14 @@ else
   if [ -n "$leaf" ] && [ "$got" != "$leaf" ]; then
     echo "the bundle is signed with certificate $got, not the pinned $leaf"; exit 1
   fi
+  # Every binary as the bundler signs it: the hardened runtime and the app's entitlements
+  # (what macOS asks the microphone and camera by).
+  for bin in "$app/Contents/MacOS/"*; do
+    sig "$bin" | grep -q '^CodeDirectory .*flags=0x10000(runtime)' || { echo "$(basename "$bin") isn't signed with the hardened runtime"; exit 1; }
+    for e in com.apple.security.device.audio-input com.apple.security.device.camera; do
+      codesign -d --entitlements - "$bin" 2>/dev/null | grep -q "$e" || { echo "$(basename "$bin") isn't signed with $e"; exit 1; }
+    done
+  done
   signed="$identity — certificate $got"
 fi
 {
