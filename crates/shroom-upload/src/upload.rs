@@ -110,8 +110,15 @@ fn content_type(file: &str) -> &'static str {
 pub(crate) fn read_meta(s3: &Client, id: &str) -> Result<Option<Meta>, UploadError> {
     match with_retry(|| s3.get(&keys::meta(id)))? {
         None => Ok(None),
-        Some(bytes) => serde_json::from_slice(&bytes).map(Some).map_err(|e| UploadError::Incomplete(format!("unreadable meta: {e}"))),
+        Some(bytes) => serde_json::from_slice(&bytes).map_err(|e| UploadError::Incomplete(format!("unreadable meta: {e}"))).and_then(|m| its_own(m, id)).map(Some),
     }
+}
+
+/// A record read from `meta/<id>.json` is that recording's only when it names the same id:
+/// everything done with it afterwards (a row, a rename, a delete, a copy's prefix) goes by
+/// `meta.id`, and the key is what the space's rules are written for.
+pub(crate) fn its_own(meta: Meta, id: &str) -> Result<Meta, UploadError> {
+    if meta.id == id { Ok(meta) } else { Err(UploadError::Incomplete(format!("the record at {} names another recording", keys::meta(id)))) }
 }
 
 /// Read-modify-write of the record under optimistic concurrency: the write carries the
@@ -131,7 +138,7 @@ pub fn update_meta(s3: &Client, id: &str, mut change: impl FnMut(&mut Meta)) -> 
 pub(crate) fn try_update_meta(s3: &Client, id: &str, mut change: impl FnMut(&mut Meta) -> Result<(), UploadError>) -> Result<Meta, UploadError> {
     for _ in 0..8 {
         let (bytes, etag) = with_retry(|| s3.get_with_etag(&keys::meta(id)))?.ok_or(UploadError::Collision)?;
-        let mut meta: Meta = serde_json::from_slice(&bytes).map_err(|e| UploadError::Incomplete(format!("unreadable meta: {e}")))?;
+        let mut meta: Meta = its_own(serde_json::from_slice(&bytes).map_err(|e| UploadError::Incomplete(format!("unreadable meta: {e}")))?, id)?;
         if meta.state == State::Deleted {
             return Err(UploadError::Tombstoned);
         }
@@ -267,7 +274,7 @@ struct Counter {
 fn beat_once(s3: &Client, id: &str, done: u32, total: u32) {
     let Ok(Some((bytes, etag))) = s3.get_with_etag(&keys::meta(id)) else { return };
     let Ok(mut meta) = serde_json::from_slice::<Meta>(&bytes) else { return };
-    if meta.state == State::Deleted {
+    if meta.state == State::Deleted || meta.id != id {
         return;
     }
     meta.progress = Some(Progress { done, total, updated_at: now_iso() });
