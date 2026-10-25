@@ -374,10 +374,11 @@ and edits on the share page)*)**
     set on the Mac that set up the space and run by the space's page on the one schedule AI
     naming uses, three days' warning first in the Library, the popover and the command.
     Proved in CI (the core walkthroughs, the Worker's `autoclean.test.js`, the command
+<<<<<<< HEAD
     against the real page, the window gallery). Ships with 0.1.29. Known gap: no hosted-Mac
     drive yet; the Settings pop-up and the popover banner are checked in the gallery only.
 
-44. **N78 — Turning AI on or off shows its parts as they happen** (B238; Bagrat approved the
+44. **N78 — Turning AI on or off shows its parts as they happen** (B241; Bagrat approved the
     boards with the plainer words, 2026-10-25, relayed by the orchestrator). The switch in
     Settings · Space moves at once and lists Checking your space · Connecting (or
     Disconnecting) AI · Switching AI on (or off) for new videos, the one underway with its
@@ -385,3 +386,10 @@ and edits on the share page)*)**
     on the test account (2–8 s a turn). Proved in CI (the core tests, the cloud fake, the
     window gallery). Known gap: the app's lane (`runtime/cloud.rs`) is compiled and run on
     the Mac only; no hosted-Mac drive turns the switch yet.
+=======
+    against the real page, the window gallery). Ships with 0.1.29. On the hosted Mac since
+    2026-10-25: the `cleanup` scenario walks it in the real app — Delete all… and its one
+    Undo, Pin and Unpin from a row's menu, the Settings pop-up (Off as it ships, needs Count
+    plays), the warning in the Library and the popover banner, the page deleting on its own
+    schedule with every window closed, and `shroom cleanup-candidates` matching the Library.
+>>>>>>> origin/main

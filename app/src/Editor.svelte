@@ -10,6 +10,8 @@
   import { onMount, untrack } from "svelte";
   import { act, edit, key, onScene, ownLabel, sceneGet, type Action, type EditStep } from "./lib/ipc";
   import Btn from "./onboarding/Btn.svelte";
+  import Sheet from "./library/Sheet.svelte";
+  import type { Sheet as SheetView } from "./library/types";
   import Timeline, { type Selection, type Trim } from "./editor/Timeline.svelte";
   import { clock, fill } from "./editor/clock";
   import { END_SLACK, editedAt, gain, keep as keepOf, length, nextPlay, snap, type Keep } from "./editor/keep";
@@ -78,6 +80,18 @@
   };
 
   let b = $derived(w?.body);
+  /** The window's question, as a sheet over it (Bagrat, 2026-10-25: the footer's place was
+   * too easy to miss): “Delete the original?” once the final video is up (B197), or ✕'s
+   * “Save your edit?” (N71). The window behind is held: inert, and Space plays nothing. */
+  let ask = $derived.by((): SheetView | null => {
+    if (!w || !b) return null;
+    if (b.after?.state === "asking") {
+      const a = b.after;
+      return { id: w.id, faces: [], title: a.title, lines: [a.line], blocked: null, buttons: [a.keep, a.delete] };
+    }
+    const c = b.closing;
+    return c ? { id: w.id, faces: [], title: c.title, lines: [c.line], blocked: null, buttons: [c.discard, c.keep, c.save] } : null;
+  });
   let media = $derived(b?.media.state ?? "opening");
   let ready = $derived(media === "ready");
   let src = $derived(b && ready ? `${base}/${encodeURIComponent(b.rec)}/video?open=${opened}` : null);
@@ -257,15 +271,16 @@
       }
       if (e.key === "Escape") {
         e.preventDefault();
-        // While ✕ asks, Esc is Keep editing whatever is selected behind the question (N71).
-        if (selection && !body.closing) selection = null;
+        // While the window asks, Esc is the sheet's (Keep editing, N71; Keep for 2 days,
+        // B197) whatever is selected behind it.
+        if (selection && !ask) selection = null;
         else if (w.esc) key("editor", "esc");
         return;
       }
       if (e.key === " ") {
         e.preventDefault();
-        // The edit is held while ✕ asks: the preview stays paused (N71).
-        if (!body.closing) toggle();
+        // The edit is held while the window asks: the preview stays paused (N71).
+        if (!ask) toggle();
         return;
       }
       if (e.key === "Backspace" || e.key === "Delete") {
@@ -297,7 +312,7 @@
 </script>
 
 {#if w && b}
-  <main class="ed" data-state={w.id} data-media={media}>
+  <main class="ed" data-state={w.id} data-media={media} inert={!!ask}>
     <div class="stage">
       <div class="screen">
         {#if src}
@@ -410,42 +425,22 @@
 
     <div class="grow"></div>
 
-    {#if b.after?.state === "asking"}
-      <!-- The final video is up: what becomes of the original, in the footer's place. Yes,
-           delete leads, filled — a click only; Return does nothing here (law 9). -->
-      <section class="ask" role="group" aria-label={b.after.title}>
-        <div class="words">
-          <h2>{b.after.title}</h2>
-          <p>{b.after.line}</p>
-        </div>
-        <Btn b={b.after.keep} {send} inlineNote={false} />
-        <Btn b={b.after.delete} {send} inlineNote={false} />
-      </section>
-    {:else if b.closing}
-      <!-- ✕ with changes not saved (N71): the question in the footer's place, the edit held
-           behind it. Discard is a click only; Return is Save and Esc Keep editing. -->
-      <section class="ask" role="group" aria-label={b.closing.title}>
-        <div class="words">
-          <h2>{b.closing.title}</h2>
-          <p>{b.closing.line}</p>
-        </div>
-        <Btn b={b.closing.discard} {send} inlineNote={false} />
-        <Btn b={b.closing.keep} {send} inlineNote={false} />
-        <Btn b={b.closing.save} {send} inlineNote={false} />
-      </section>
-    {:else}
-      <footer class="foot">
-        <span class="line" class:amber={b.footer_tone === "amber"} role="status">{b.footer}</span>
-        <!-- After a save the edit is the video's own: nothing is reverted from here — nor
-             once the space turned the save down (no `revert`, B199). -->
-        {#if media !== "failed" && !b.after && b.revert}
-          {#if b.original_kept}<span class="kept">{b.original_kept}</span>{/if}
-          <Btn b={b.revert} {send} inlineNote={false} />
-        {/if}
-        <Btn b={b.done} {send} inlineNote={false} />
-      </footer>
-    {/if}
+    <!-- Behind a question too, held: its words and buttons as they were. -->
+    <footer class="foot">
+      <span class="line" class:amber={b.footer_tone === "amber"} role="status">{b.footer}</span>
+      <!-- After a save the edit is the video's own: nothing is reverted from here — nor
+           once the space turned the save down (no `revert`, B199). -->
+      {#if media !== "failed" && !b.after && b.revert}
+        {#if b.original_kept}<span class="kept">{b.original_kept}</span>{/if}
+        <Btn b={b.revert} {send} inlineNote={false} />
+      {/if}
+      <Btn b={b.done} {send} inlineNote={false} />
+    </footer>
   </main>
+  <!-- Its question, a sheet as the Library's are: Keep for 2 days, then Yes, delete, filled
+       and a click only (Return does nothing here, law 9); or Discard, a click only, Keep
+       editing (Esc) and Save (Return). The keys are the Scene's, from the window's own. -->
+  {#if ask}<Sheet sheet={ask} {send} />{/if}
 {/if}
 
 <style>
@@ -454,6 +449,12 @@
   :global(#app) {
     height: 100%;
     margin: 0;
+  }
+  /* The window's type, the sheet over it included (it sits outside `.ed`). */
+  :global(body) {
+    font: 13px/1.45 var(--font);
+    -webkit-font-smoothing: antialiased;
+    color: var(--fg);
   }
   .ed {
     box-sizing: border-box;
@@ -632,44 +633,6 @@
   }
   .note.making span {
     color: var(--fg);
-  }
-  /* “Delete the original?”, and ✕'s “Save your edit?” (N71), in the footer's place: one
-     card, its words, then its answers. */
-  .ask {
-    flex: none;
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    padding: 14px 16px;
-    border-radius: 10px;
-    background: var(--card);
-    box-shadow: 0 0 0 1px var(--line);
-  }
-  .ask .words {
-    flex: 1 1 0;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-  .ask h2 {
-    margin: 0;
-    font-size: 14px;
-    font-weight: 600;
-  }
-  .ask p {
-    margin: 0;
-    color: var(--muted);
-  }
-  .ask :global(.b) {
-    min-height: 30px;
-    border-radius: 7px;
-    flex: none;
-  }
-  .ask :global(.b.filled) {
-    padding: 0 16px;
-  }
-  .ask :global(.b.plain) {
-    color: var(--fg-3);
   }
   .foot :global(.b),
   .note :global(.b) {
