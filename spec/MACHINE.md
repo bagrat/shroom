@@ -4,7 +4,7 @@
 
 The machine: every state, edge, rule, said-line and law of shroom v1 — the spec (DECISIONS B133). Sessions edit it; MACHINE.md and the canvas's machine boards are generated from it.
 
-166 states · 351 edges · 26 rules · 716 said-lines · 16 laws · 85 ledger rows.
+166 states · 351 edges · 26 rules · 718 said-lines · 16 laws · 85 ledger rows.
 
 Status: **ratified** is Bagrat's; **provisional** is designed or built and awaits him (each cites its row: `#n` is a DEVIATIONS row of docs/DECISIONS.md, `Bn` a decision, `Nn`/`Un`/`Pn` a ledger row below). `SM:n` in older citations is a line of the retired spec text, kept in history/spec/UX-STATEMACHINE.md.
 
@@ -2220,6 +2220,7 @@ The Library window, thin by design (§5.6), built for two jobs: re-share an old 
 | “Deleted Oct 27 unless pinned” | line | ratified | N74. After a going row's date · length, amber. The date varies. Bagrat approved the board as drawn, 2026-10-24. · N74 |
 | “Auto-cleanup deleted two videos nobody had watched in 30 days, freeing 1.7 GB.” | line | ratified | N74. Once, after a round of auto-cleanup took videos in this Mac's scope, until OK. The count varies (a word up to nine; one reads 'one video'), and so do the days and the size. Bagrat approved the board as drawn, 2026-10-24. · N74 |
 | “OK” | button | ratified | N74. Puts the line away, here and in the popover. Bagrat approved the board as drawn, 2026-10-24. · N74 |
+| “Couldn't change that just now — try again in a moment.” | line | ratified | N74. Above the rows, after a Pin or Unpin that didn't go through (law 12): the row reads as the space has it. The settings' own words for a switch that didn't change. · N74 |
 
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
@@ -2724,6 +2725,7 @@ The General tab: U4's login checkbox at home at last (it reads the system's trut
 | “After 60 days” | button | ratified | N74. Bagrat approved the board as drawn, 2026-10-24. · N74 |
 | “Your space deletes videos nobody has watched in 30 days. It's set on the Mac that set up your space. Pin a video in the Library to keep it.” | line | ratified | N74. On every other Mac, under the pop-up greyed at the space's choice. The number of days varies; off, the pop-up reads Off and the line is the setting Mac's. Bagrat approved the board as drawn, 2026-10-24. · N74 |
 | “Needs Count plays” | line | ratified | N74. In place of the line under it, the pop-up greyed, while Count plays is off. Bagrat approved the board as drawn, 2026-10-24. · N74 |
+| “Turning on — a few seconds.” | line | ratified | N74. Under Delete videos nobody watches, the first time it's turned on: the space's page is given its schedule, as AI's banner says it (N66). Bagrat approved the board as drawn, 2026-10-24. · N74 |
 
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
@@ -3350,7 +3352,7 @@ Auto-cleanup turned on, or its wait shortened, while videos already qualify (N74
 | Said | Role | Copy | Note |
 |---|---|---|---|
 | “Delete videos nobody watches for 30 days?” | sheet-title | ratified | N74. Bold. The number of days varies. Bagrat approved the board as drawn, 2026-10-24. · N74 |
-| “Four videos already qualify. They'll be deleted on Oct 27 unless someone watches them or you pin them — the Library shows which. Their links will say the videos are gone.” | sheet-body | ratified | N74. The count (a word up to nine; one reads 'One video already qualifies. It'll be deleted on Oct 27 unless someone watches it or you pin it — the Library shows which. Its link will say the video is gone.') and the date (three days on) vary. Bagrat approved the board as drawn, 2026-10-24. · N74 |
+| “Four videos already qualify. They'll be deleted on Oct 27 unless someone watches them or you pin them — the Library shows which. Their links will say the videos are gone.” | sheet-body | ratified | N74. The count (a word up to nine; one reads 'One video already qualifies. It'll be deleted on Oct 27 unless someone watches it or you pin it — the Library shows which. Its link will say the video is gone.') and the date (three days on) each varies. Bagrat approved the board as drawn, 2026-10-24. · N74 |
 | “Turn on” | button | ratified | N74. Red outline, rightmost, never the Return default. Bagrat approved the board as drawn, 2026-10-24. · N74 |
 
 | Action | Kind | Return | Goes to | Note |

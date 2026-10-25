@@ -7820,6 +7820,16 @@
       "N74"
      ],
      "id": "library.ok"
+    },
+    {
+     "text": "Couldn't change that just now — try again in a moment.",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N74. Above the rows, after a Pin or Unpin that didn't go through (law 12): the row reads as the space has it. The settings' own words for a switch that didn't change.",
+     "cites": [
+      "N74"
+     ],
+     "id": "library.pin-failed"
     }
    ],
    "actions": [
@@ -9248,6 +9258,16 @@
       "N74"
      ],
      "id": "settings-general.needs-count-plays"
+    },
+    {
+     "text": "Turning on — a few seconds.",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N74. Under Delete videos nobody watches, the first time it's turned on: the space's page is given its schedule, as AI's banner says it (N66). Bagrat approved the board as drawn, 2026-10-24.",
+     "cites": [
+      "N74"
+     ],
+     "id": "settings-general.autoclean-turning-on"
     }
    ],
    "actions": [
@@ -13601,7 +13621,7 @@
      "text": "Four videos already qualify. They'll be deleted on Oct 27 unless someone watches them or you pin them — the Library shows which. Their links will say the videos are gone.",
      "role": "sheet-body",
      "copy": "ratified",
-     "note": "N74. The count (a word up to nine; one reads 'One video already qualifies. It'll be deleted on Oct 27 unless someone watches it or you pin it — the Library shows which. Its link will say the video is gone.') and the date (three days on) vary. Bagrat approved the board as drawn, 2026-10-24.",
+     "note": "N74. The count (a word up to nine; one reads 'One video already qualifies. It'll be deleted on Oct 27 unless someone watches it or you pin it — the Library shows which. Its link will say the video is gone.') and the date (three days on) each varies. Bagrat approved the board as drawn, 2026-10-24.",
      "cites": [
       "N74"
      ],
