@@ -4,7 +4,7 @@
 
 The machine: every state, edge, rule, said-line and law of shroom v1 — the spec (DECISIONS B133). Sessions edit it; MACHINE.md and the canvas's machine boards are generated from it.
 
-163 states · 344 edges · 26 rules · 683 said-lines · 16 laws · 84 ledger rows.
+163 states · 344 edges · 26 rules · 687 said-lines · 16 laws · 85 ledger rows.
 
 Status: **ratified** is Bagrat's; **provisional** is designed or built and awaits him (each cites its row: `#n` is a DEVIATIONS row of docs/DECISIONS.md, `Bn` a decision, `Nn`/`Un`/`Pn` a ledger row below). `SM:n` in older citations is a line of the retired spec text, kept in history/spec/UX-STATEMACHINE.md.
 
@@ -1265,7 +1265,7 @@ A light scrim on the chosen display only, with a large 3 · 2 · 1 and one quiet
 
 ### `recording`
 
-state · tray · **ratified** · board: TrayFaces · cites N24, N39, N41, N25, N54, N62, N64
+state · tray · **ratified** · board: TrayFaces · cites N24, N39, N41, N25, N54, N62, N64, N78
 
 The tray is the whole surface and there is no popover. The icon wears the red dot. A click is an instant pause, and the popover opens only after the pause is confirmed (never catch a menu in the last frame, POC §8). No timer in the menu bar. Network is never the recording's problem: capture writes locally regardless, and upload is opportunistic in the background. A right-click mid-take is the same as a left click (N39). ⌘Q and the Dock's Quit are declined silently (law 4).
 
@@ -1274,13 +1274,16 @@ The tray is the whole surface and there is no popover. The icon wears the red do
 | Said | Role | Copy | Note |
 |---|---|---|---|
 | “Your coding agent is recording your screen” | label | ratified | The agent label: a small label at the top right of the display being recorded, while a take the shroom command started records (N62, B216). Left out of the video, as the countdown and the bubble's controls are; it takes no clicks. Not with --no-label; never on a take the person started, nor on one of the camera only; paused, it goes. Ratified by Bagrat, 2026-10-18, relayed by the orchestrator: the board as drawn. · N62 |
+| “Marker dropped” | toast | ratified | The marker toast (N78): ⌥⌘M dropped the take's first marker. The agent label's pill with the marker's flag, top right of the display being recorded, under the label when it shows; two seconds, then it fades. Left out of the video; it takes no clicks. Approved by Bagrat as drawn, 2026-10-25. · N78 |
+| “Marker 3 dropped” | toast | ratified | The marker toast for the take's later markers, numbered by the take (N78). A press while it shows swaps the words and starts its two seconds again. · N78 |
+| “Only you see this, not the video” | toast | ratified | The marker toast's quieter hint, beside its first words, on every toast (N78). · N78 |
 
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
 | tray click | other |  | `paused` | Instant pause. The popover opens after the pause is confirmed. |
 | right-click | other |  | `paused` | same as a left click mid-take (N39) |
 | ⌥⌘P | other |  | `paused` | the tray click's pause, from the keyboard; the popover opens after the pause is confirmed (N54) |
-| ⌥⌘M | other |  | `recording` | drops a marker at this moment of the take; nothing on screen answers, the take goes on (N64) |
+| ⌥⌘M | other |  | `recording` | drops a marker at this moment of the take, answered by the marker toast, “Marker dropped” (N78); the take goes on (N64) |
 | ⌘Q / Dock Quit | other |  |  | declined silently while recording (law 4) |
 
 | → | Kind | Label | Status | Cites |
@@ -1631,11 +1634,15 @@ Recording. No popover, and the click is the pause. No timer in the menu bar.
 
 ### `tray-pause-bars`
 
-tray-face · tray · **ratified** · a face of `paused` · cites N24, N38
+tray-face · tray · **ratified** · a face of `paused` · cites N24, N38, N78
 
 Paused. The icon wears pause bars while the take is paused.
 
 **Entry.** A take is paused.
+
+| Said | Role | Copy | Note |
+|---|---|---|---|
+| “Already marked at this pause” | toast | ratified | The marker toast (N78), paused with the popover put away: ⌥⌘M pressed again at a pause that has its marker drops nothing, and the toast says so. The first press there drops one, and the toast says “Marker dropped” with its hint (recording's lines). · N78 |
 
 ### `tray-amber-dot`
 
@@ -4364,6 +4371,7 @@ A move that holds for a whole group of states, written once (B133). The tests ex
 | N71 | The editor's ✕ with changes not saved asks: Save, Keep editing or Discard | **Bagrat asked, 2026-10-18** (relayed by the orchestrator), that the editor's ✕ stop saving without a word, as Done does, and ask instead: discard, keep editing, or save. **On 2026-10-19 he approved the board “Editor — closing with changes not saved” as drawn** (relayed by the orchestrator). (1) **✕ with changes not saved asks**, in the footer's place, the edit held behind it: “Save your edit?”, “What you've changed isn't saved yet.”, then Discard, Keep editing and Save. While it asks no step is taken and the preview pauses. (2) **Save is Done**: the edit is saved, then the final video is made, as after Done. Return presses it. (3) **Keep editing** puts the question away, every change still there; Esc does the same. (4) **Discard** closes the window and drops what wasn't saved: the video stays as it was last saved. It is never on Return. (5) **What doesn't change**: with nothing to save, ✕ closes the window at once; while the edit saves, ✕ waits for it; after Done (the final video being made, the original asked about) ✕ is Close; a save the space turned down closes; Done saves as before. (6) **Quit and Update save first, as now, without asking** (Bagrat, 2026-10-19). Built: DECISIONS B223. **Ratified by Bagrat as drawn, 2026-10-19.** | ratified | 2026-10-19 |
 | N72 | shroom edit: the command trims and cuts a video, and the app makes its final video | **The orchestrator, 2026-10-19:** the shroom command gains `edit` now that the editor (N63) has shipped, built in full with its words provisional for Bagrat's next look. (1) **`shroom edit <video>` says what the edit is**: how long the video plays and how long the recording is, the trim, each cut by its id (`m1`… by hand, `v1`… from the voice cues) with where it starts and ends and whether it's applied (a voice cue's cut can be a suggestion, not applied), and whether the final video is made. (2) **One change a call**, on the recording's own clock (seconds, or minutes:seconds): `trim <in> <out>`, `cut <start> <end>`, `put-back <cut>`, `apply <cut>`, `resize <cut> <start> <end>`, `revert`. Each is the editor's own step (B195), refused for the editor's own reasons, and saved at once as the editor's Done saves: the list in the video's record, so the link plays it from its next load and nothing is re-encoded first. `--dry-run` says what the edit would be and saves nothing. Undo and Redo stay the editor's: a window's history, never a record's. (3) **It goes where `rename` goes**: through the space's page under this Mac's device key, the owner's Macs on any video and a member's Mac on its own (B215); it waits while a take is open (law 4); and while that video is open in an editor window on this Mac it changes nothing (`editor_open`), so that window's Done never silently undoes it. The last save wins, as between two editors (B195). (4) **The final video is the app's to make**: after a change that leaves something out, the command asks the running app, opening it as the record commands do (`--no-launch` leaves it), and the app makes it as it makes one after the editor's Done, one at a time and never over a take, getting the video from the space first when this Mac hasn't got it; Download and the page use it once it's up, and the original is kept two days, then goes (B197: Keep for 2 days, the command never deleting an original itself). `shroom edit <video> finish` asks again, for a change saved while the app wasn't there. A change back to the whole recording needs no final video. (5) **Its answers**: the edit as (1) says it; a refusal is `cant_edit` with its reason (`out_of_range`, `leaves_too_little`, `too_short`, `nothing_changes`, `no_such_cut`, `editor_open`), exit 12; the words are the command's own (`say.rs`). Built: DECISIONS B225. **Ratified by Bagrat as built, 2026-10-19:** the command's words, the guide's *Editing* section and B225's three calls. | ratified | 2026-10-19 |
 | N73 | One editor window per video | **Bagrat asked, 2026-10-19** (relayed by the orchestrator), whether each video could get an editor window of its own, the Mac's document way, instead of the one window that comes forward on the video it holds; the same day he chose it, as the board “Editor — one window per video” draws it, built after the close prompt (N71) as its own change (relayed by the orchestrator). (1) **Edit on a video that isn't open** — Edit in shroom on its page, or Edit… in the Library — opens a window of its own for it, in front, as a first window opens: from the take when this Mac recorded the video, else after “Getting the video from your space…”. Every other window stays as it was, its changes still there, not saved and not lost. (2) **Edit on a video whose window is open**, from either, brings that window forward as it is. Nothing else moves. (3) **Each window is its own**: its steps and Undo, its Done, its final video, its “Delete the original?” and ✕'s question (N71). Done in one never touches another. The final videos are still made one at a time: a second waits its turn, its window reading “Making the final video… 0%” until then. (4) **Quit and Update** save every window's changes first, as now, without asking (Bagrat, 2026-10-19). Deleting a video closes its window and no other; leaving the space closes them all. While a take is open, nothing new opens (law 4): Edit in shroom pressed meanwhile waits, as now. (5) **The line “You're editing another video — press Done, then Edit again.” goes** (N69's), and with it the board “Editor — Edit on another video”, which drew a switch. No new words. Built: DECISIONS B227. **Ratified by Bagrat as drawn, 2026-10-19**; the build's calls are B227's, for him to overturn. | ratified | 2026-10-19 |
+| N78 | The marker toast: ⌥⌘M answers on screen, left out of the video | **Bagrat, trying 0.1.30-early.1, 2026-10-25:** a marker dropped with the shortcut is too silent; a toast should say so, with a hint that it isn't in the recording, left out the way the agent label is. **He approved the board “The bubble — ⌥⌘M answers: the “Marker dropped” toast” as drawn, its words and the numbering, 2026-10-25** (relayed by the orchestrator). (1) **A marker ⌥⌘M drops shows a toast**: the agent label's pill with the marker's flag, top right of the display the take records, under the menu bar (just under the label when that shows; on the display Camera's preview sits on for the camera only). It reads “Marker dropped”, or “Marker 3 dropped” for the take's later ones, beside a quieter “Only you see this, not the video”. It is left out of the recording, as the countdown, the bubble's controls and the label are, and takes no clicks. (2) **It stays two seconds, then fades.** A press while it shows swaps the words and starts its two seconds again: one toast, never a stack. (3) **Paused:** with the popover open, no toast (the row's Marker dropped answers); with it put away, the toast; a second press at the same pause drops nothing, and the toast says “Already marked at this pause”. A question open, or a pause shroom made, drops nothing and shows nothing, as before. (4) **It goes with the take**, and while the popover or a count shows. Amends N64 (2)'s “nothing on screen answers it”. Built: DECISIONS B239. | ratified | 2026-10-25 |
 
 ## Surfaces
 

@@ -1229,7 +1229,9 @@
     "paused (Drop a marker shows)",
     "recording (⌥⌘M)"
    ],
-   "amended_by": []
+   "amended_by": [
+    "N78"
+   ]
   },
   {
    "id": "N69",
@@ -1300,6 +1302,19 @@
     "The window (the editor's, one per video)",
     "editor-video-deleted (its window only)",
     "quit-saves-the-edit (every window's changes)"
+   ],
+   "amended_by": []
+  },
+  {
+   "id": "N78",
+   "title": "The marker toast: ⌥⌘M answers on screen, left out of the video",
+   "decision": "**Bagrat, trying 0.1.30-early.1, 2026-10-25:** a marker dropped with the shortcut is too silent; a toast should say so, with a hint that it isn't in the recording, left out the way the agent label is. **He approved the board “The bubble — ⌥⌘M answers: the “Marker dropped” toast” as drawn, its words and the numbering, 2026-10-25** (relayed by the orchestrator). (1) **A marker ⌥⌘M drops shows a toast**: the agent label's pill with the marker's flag, top right of the display the take records, under the menu bar (just under the label when that shows; on the display Camera's preview sits on for the camera only). It reads “Marker dropped”, or “Marker 3 dropped” for the take's later ones, beside a quieter “Only you see this, not the video”. It is left out of the recording, as the countdown, the bubble's controls and the label are, and takes no clicks. (2) **It stays two seconds, then fades.** A press while it shows swaps the words and starts its two seconds again: one toast, never a stack. (3) **Paused:** with the popover open, no toast (the row's Marker dropped answers); with it put away, the toast; a second press at the same pause drops nothing, and the toast says “Already marked at this pause”. A question open, or a pause shroom made, drops nothing and shows nothing, as before. (4) **It goes with the take**, and while the popover or a count shows. Amends N64 (2)'s “nothing on screen answers it”. Built: DECISIONS B239.",
+   "status": "ratified",
+   "date": "2026-10-25",
+   "amends": [
+    "N64 (2) (⌥⌘M answers with the toast)",
+    "recording (the toast's lines)",
+    "tray-pause-bars (⌥⌘M with the popover put away)"
    ],
    "amended_by": []
   }
@@ -5598,6 +5613,36 @@
       "N62"
      ],
      "id": "recording.your-coding-agent-is"
+    },
+    {
+     "text": "Marker dropped",
+     "role": "toast",
+     "copy": "ratified",
+     "note": "The marker toast (N78): ⌥⌘M dropped the take's first marker. The agent label's pill with the marker's flag, top right of the display being recorded, under the label when it shows; two seconds, then it fades. Left out of the video; it takes no clicks. Approved by Bagrat as drawn, 2026-10-25.",
+     "cites": [
+      "N78"
+     ],
+     "id": "recording.marker-dropped"
+    },
+    {
+     "text": "Marker 3 dropped",
+     "role": "toast",
+     "copy": "ratified",
+     "note": "The marker toast for the take's later markers, numbered by the take (N78). A press while it shows swaps the words and starts its two seconds again.",
+     "cites": [
+      "N78"
+     ],
+     "id": "recording.marker-n-dropped"
+    },
+    {
+     "text": "Only you see this, not the video",
+     "role": "toast",
+     "copy": "ratified",
+     "note": "The marker toast's quieter hint, beside its first words, on every toast (N78).",
+     "cites": [
+      "N78"
+     ],
+     "id": "recording.marker-only-you"
     }
    ],
    "actions": [
@@ -5627,7 +5672,7 @@
      "kind": "other",
      "return_default": false,
      "goes_to": "recording",
-     "note": "drops a marker at this moment of the take; nothing on screen answers, the take goes on (N64)"
+     "note": "drops a marker at this moment of the take, answered by the marker toast, “Marker dropped” (N78); the take goes on (N64)"
     },
     {
      "label": "⌘Q / Dock Quit",
@@ -5643,7 +5688,8 @@
     "N25",
     "N54",
     "N62",
-    "N64"
+    "N64",
+    "N78"
    ],
    "was": {
     "fixture": "r3.json",
@@ -6496,11 +6542,23 @@
    "board": null,
    "summary": "Paused. The icon wears pause bars while the take is paused.",
    "entry": "A take is paused.",
-   "said": [],
+   "said": [
+    {
+     "text": "Already marked at this pause",
+     "role": "toast",
+     "copy": "ratified",
+     "note": "The marker toast (N78), paused with the popover put away: ⌥⌘M pressed again at a pause that has its marker drops nothing, and the toast says so. The first press there drops one, and the toast says “Marker dropped” with its hint (recording's lines).",
+     "cites": [
+      "N78"
+     ],
+     "id": "tray-pause-bars.already-marked"
+    }
+   ],
    "actions": [],
    "cites": [
     "N24",
-    "N38"
+    "N38",
+    "N78"
    ],
    "was": {
     "fixture": "r3.json",

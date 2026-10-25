@@ -103,6 +103,14 @@ fn rows() -> Vec<(&'static str, World)> {
         w.take = Some(t);
         w
     }));
+    // The marker toast (N78): ⌥⌘M's answer, the take's first marker and a later one.
+    for n in [1, 3] {
+        rows.push(("recording", {
+            let mut w = ready();
+            w.take = Some(OpenTake { markers: n, toast: Some((MarkerToastSays::Dropped(n), Mono(0))), ..take(Phase::Recording, 0) });
+            w
+        }));
+    }
     rows.push(("tray-red-dot", {
         let mut w = ready();
         w.take = Some(take(Phase::Recording, 0));
@@ -129,6 +137,13 @@ fn rows() -> Vec<(&'static str, World)> {
     rows.push(("paused", {
         let mut w = with_popover(ready());
         w.take = Some(OpenTake { markers: 1, marked_at_pause: true, ..take(Phase::Paused(Cause::User), 272_000) });
+        w
+    }));
+    // ⌥⌘M again at a pause that has its marker, the popover put away (N78): the toast says
+    // nothing dropped.
+    rows.push(("tray-pause-bars", {
+        let mut w = ready();
+        w.take = Some(OpenTake { markers: 1, marked_at_pause: true, toast: Some((MarkerToastSays::Already, Mono(0))), ..take(Phase::Paused(Cause::User), 272_000) });
         w
     }));
     rows.push(("tray-pause-bars", {
