@@ -2,7 +2,7 @@
 // (Window<SettingsBody>, N36). Every string is final copy from the core.
 import type { Action } from "../lib/ipc";
 import type { Sheet, TextField } from "../library/types";
-import type { Button, Choice, PlanView, Rich, Toggle } from "../onboarding/types";
+import type { Button, Choice, Part, PlanView, Rich, Toggle } from "../onboarding/types";
 
 export type GeneralPane = {
   kind: "general";
@@ -55,6 +55,10 @@ export type SpacePane = {
   /** Naming's switch and its line (N66) — the Mac that holds the setup key, once its page said. */
   ai: Toggle | null;
   ai_line: string | null;
+  /** The switch's parts while the page is re-wired, done or where it stopped (N80). */
+  ai_parts: Part[];
+  ai_long: string | null;
+  ai_failed: string | null;
   /** “Space used” and the space's size and cost — owner-class Macs (N79). */
   used_label: string | null;
   used: string | null;

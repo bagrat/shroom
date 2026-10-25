@@ -1398,6 +1398,19 @@
     "N75 (Delete videos nobody watches: in the Videos tab)"
    ],
    "amended_by": []
+  },
+  {
+   "id": "N80",
+   "title": "Turning AI on or off shows its parts as they happen",
+   "decision": "**Bagrat's hand test of 0.1.30-early.1, 2026-10-25**: turning AI on or off took long enough to worry, with little shown while it ran — the anxiety a tester named in the setup (N74). **Bagrat, 2026-10-25** (relayed by the orchestrator, on the boards “Settings — Space: the AI switch while it works…” and “Popover — AI features are turned on: Turn off while it works…”, with the plainer words): (1) **The switch moves at once** to where it's going, greyed while the page is re-wired. (2) **Three parts list under its cost line**, each ticking only when its own calls answer, the one underway spinning with its running clock from its first second, as N74's do: “Checking your space…” → “Your space is ready”; “Connecting AI to your space…” → “AI connected” (off: “Disconnecting AI…” → “AI disconnected”); “Switching AI on for new videos…” → “AI is on for new videos” (off: “Switching AI off for new videos…” → “AI is off for new videos”). (3) **Done is when the page itself says so** (its ping answers with the AI on, or without it); the last part ticks in bold and the list stays until the window closes or the tab changes. (4) **Didn't go through** (law 12): the switch reads as the page has it and is live again; the part that stopped carries a cross in its plain words, with “Couldn't change that just now — try again in a moment.” under the list. (5) **Running long**: from 20 s on one part, one quiet line, “Cloudflare is slower than usual just now — hang tight.”; the clock keeps going until the re-wiring's 3 min deadline, which is a didn't-go-through. (6) **The banner's Turn off** shows the same parts under its ratified “Turning off — a few seconds.”; its off and didn't-go-through faces are as they were. The banner's own turn-on (N76) still says only “AI features are turned on.” while it runs (Bagrat, 2026-10-25: no preference; left as it is). Measured on the test account (2026-10-25, six turns, the real page): checking your space ~1 s; connecting or disconnecting AI 0.8–1 s, 6.5 s the first time; switching it for new videos (the schedule, then the page saying so) under 0.5 s. Nothing is stored (law 1).",
+   "status": "ratified",
+   "date": "2026-10-25",
+   "amends": [
+    "N66 (the switch shows its parts while the page is re-wired)",
+    "N76 (ai-turning-off lists the same parts)",
+    "settings-space (the AI switch's parts, done, didn't go through, running long)"
+   ],
+   "amended_by": []
   }
  ],
  "surfaces": [
@@ -9722,7 +9735,7 @@
    "surface": "window",
    "status": "provisional",
    "board": "SettingsSpace",
-   "summary": "The Space tab: one tab with a mood per kind of Mac (inspection · repair · owner-class-without-token · member). Beneath the rows, by role: the mark switch (owner-class only — a space setting, U3) and the exits as quiet text (Disconnect this Mac… for owners, Leave this space… for members). Row six is live on every Mac. A revoked grant un-ticks it (“screen recording is off”), with Turn it back on → the permissions chapter at exactly the missing beat, in this window. A denied microphone ticks the row with the fact, plus a quiet Turn on the microphone that opens System Settings' Microphone pane (a denied mic never blocks). Mid-take both exits grey (law 4). After Disconnect or Leave, the ~/.shroom secrets are wiped and the app returns to idle-unprovisioned; the login item stays as it was. No invite door shows (B159): an invite link pasted anywhere in the tab (⌘V) opens its invite, as the page's Open shroom does. On the Mac that holds the setup key, a second switch turns the space's AI on or off for new videos (on by default, N76) — titles, chapters, captions and voice cuts (N66) — with one line on what it does and costs; turning it on or off re-wires the page. On owner-class Macs, Space used is a row of its own right under “Cloudflare billing set up”: what the space holds and what it costs (N79, moved from Your videos).",
+   "summary": "The Space tab: one tab with a mood per kind of Mac (inspection · repair · owner-class-without-token · member). Beneath the rows, by role: the mark switch (owner-class only — a space setting, U3) and the exits as quiet text (Disconnect this Mac… for owners, Leave this space… for members). Row six is live on every Mac. A revoked grant un-ticks it (“screen recording is off”), with Turn it back on → the permissions chapter at exactly the missing beat, in this window. A denied microphone ticks the row with the fact, plus a quiet Turn on the microphone that opens System Settings' Microphone pane (a denied mic never blocks). Mid-take both exits grey (law 4). After Disconnect or Leave, the ~/.shroom secrets are wiped and the app returns to idle-unprovisioned; the login item stays as it was. No invite door shows (B159): an invite link pasted anywhere in the tab (⌘V) opens its invite, as the page's Open shroom does. On the Mac that holds the setup key, a second switch turns the space's AI on or off for new videos (on by default, N76) — titles, chapters, captions and voice cuts (N66) — with one line on what it does and costs; turning it on or off re-wires the page. On owner-class Macs, Space used is a row of its own right under “Cloudflare billing set up”: what the space holds and what it costs (N79, moved from Your videos). Since N80 the switch moves at once and lists its parts as they land — Checking your space, Connecting (or Disconnecting) AI, Switching AI on (or off) for new videos — each ticking when its own calls answer, the one underway with its running clock; done when the page says so, the list kept until the window closes or the tab changes; didn't go through, the part that stopped crossed with the law-12 line; from 20 s on a part, one quiet line.",
    "entry": "Settings window on the Space tab. Which mood shows is derived from the kind of Mac and the probe results.",
    "said": [
     {
@@ -9812,9 +9825,10 @@
      "text": "Couldn't change that just now — try again in a moment.",
      "role": "line",
      "copy": "provisional",
-     "note": "N66. In place of the AI switch's line when a re-wiring didn't go through, until the next try or the next visit (law 12); the switch is as the page has it.",
+     "note": "N66, N80. When a re-wiring didn't go through, until the next try or the next visit (law 12); the switch is as the page has it. Since N80 under the parts, the part that stopped crossed, the cost line kept.",
      "cites": [
-      "N66"
+      "N66",
+      "N80"
      ],
      "id": "settings-space.couldnt-change-that-just"
     },
@@ -9838,6 +9852,166 @@
      "copy": "ratified",
      "note": "Inside the free 10 GB; the size varies (B212).",
      "id": "settings-space.8-2-gb"
+    },
+    {
+     "text": "Checking your space…",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N80: the AI switch's parts, under its cost line: part 1 (the page's version, the setup key, that the page is shroom's), underway: its spinner, and its running clock once it has run a second. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”).",
+     "cites": [
+      "N80"
+     ],
+     "id": "settings-space.ai-part-1-now"
+    },
+    {
+     "text": "Your space is ready",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N80: the AI switch's parts, under its cost line: part 1, done: its tick. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”).",
+     "cites": [
+      "N80"
+     ],
+     "id": "settings-space.ai-part-1-done"
+    },
+    {
+     "text": "Checking your space",
+     "role": "line",
+     "copy": "provisional",
+     "note": "N80: the AI switch's part 1, stopped there (the page unanswered, the setup key not live, the page newer than this app): its cross, under the cost line, the law-12 line under it. Not drawn on the board; the build's form of a drawn line, as parts 2 and 3 stop in their plain words (provisional, N80).",
+     "cites": [
+      "N80"
+     ],
+     "id": "settings-space.ai-part-1-stopped"
+    },
+    {
+     "text": "Connecting AI to your space…",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N80: the AI switch's parts, under its cost line: turning on, part 2 (the page put up again with Cloudflare's AI), underway: its spinner and its clock. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”).",
+     "cites": [
+      "N80"
+     ],
+     "id": "settings-space.ai-on-part-2-now"
+    },
+    {
+     "text": "AI connected",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N80: the AI switch's parts, under its cost line: turning on, part 2, done. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”).",
+     "cites": [
+      "N80"
+     ],
+     "id": "settings-space.ai-on-part-2-done"
+    },
+    {
+     "text": "Connecting AI to your space",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N80: the AI switch's parts, under its cost line: turning on, part 2, still to come: its dot; with a cross when it stopped there (law 12). Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”).",
+     "cites": [
+      "N80"
+     ],
+     "id": "settings-space.ai-on-part-2-ahead"
+    },
+    {
+     "text": "Switching AI on for new videos…",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N80: the AI switch's parts, under its cost line: turning on, part 3 (its schedule, then the page saying its AI is on), underway: its spinner and its clock. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”).",
+     "cites": [
+      "N80"
+     ],
+     "id": "settings-space.ai-on-part-3-now"
+    },
+    {
+     "text": "AI is on for new videos",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N80: the AI switch's parts, under its cost line: turning on, part 3, done: its tick, in bold — the end. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”).",
+     "cites": [
+      "N80"
+     ],
+     "id": "settings-space.ai-on-part-3-done"
+    },
+    {
+     "text": "Switching AI on for new videos",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N80: the AI switch's parts, under its cost line: turning on, part 3, still to come: its dot; with a cross when it stopped there. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”).",
+     "cites": [
+      "N80"
+     ],
+     "id": "settings-space.ai-on-part-3-ahead"
+    },
+    {
+     "text": "Disconnecting AI…",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N80: the AI switch's parts, under its cost line: turning off, part 2 (the page put up again without Cloudflare's AI), underway: its spinner and its clock. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”).",
+     "cites": [
+      "N80"
+     ],
+     "id": "settings-space.ai-off-part-2-now"
+    },
+    {
+     "text": "AI disconnected",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N80: the AI switch's parts, under its cost line: turning off, part 2, done. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”).",
+     "cites": [
+      "N80"
+     ],
+     "id": "settings-space.ai-off-part-2-done"
+    },
+    {
+     "text": "Disconnecting AI",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N80: the AI switch's parts, under its cost line: turning off, part 2, still to come: its dot; with a cross when it stopped there. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”).",
+     "cites": [
+      "N80"
+     ],
+     "id": "settings-space.ai-off-part-2-ahead"
+    },
+    {
+     "text": "Switching AI off for new videos…",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N80: the AI switch's parts, under its cost line: turning off, part 3 (its schedule, then the page saying its AI is off), underway: its spinner and its clock. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”).",
+     "cites": [
+      "N80"
+     ],
+     "id": "settings-space.ai-off-part-3-now"
+    },
+    {
+     "text": "AI is off for new videos",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N80: the AI switch's parts, under its cost line: turning off, part 3, done: its tick, in bold — the end. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”).",
+     "cites": [
+      "N80"
+     ],
+     "id": "settings-space.ai-off-part-3-done"
+    },
+    {
+     "text": "Switching AI off for new videos",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N80: the AI switch's parts, under its cost line: turning off, part 3, still to come: its dot; with a cross when it stopped there. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”).",
+     "cites": [
+      "N80"
+     ],
+     "id": "settings-space.ai-off-part-3-ahead"
+    },
+    {
+     "text": "Cloudflare is slower than usual just now — hang tight.",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N80: the AI switch's parts, under its cost line: quiet, under the parts, once one part has run 20 s; the clock keeps going. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”).",
+     "cites": [
+      "N80"
+     ],
+     "id": "settings-space.ai-long"
     }
    ],
    "actions": [
@@ -9851,7 +10025,7 @@
      "label": "AI for new videos switch",
      "kind": "switch",
      "return_default": false,
-     "note": "N66. Only on the Mac that holds the setup key; one switch for every AI feature, voice cuts included. On re-wires the page with Cloudflare's AI and its schedule; off takes them away. Greys while the re-wire runs and mid-take (law 4). Using it settles the AI on this Mac: never turned on by default again (N76)."
+     "note": "N66. Only on the Mac that holds the setup key; one switch for every AI feature, voice cuts included. On re-wires the page with Cloudflare's AI and its schedule; off takes them away. Greys while the re-wire runs and mid-take (law 4). Using it settles the AI on this Mac: never turned on by default again (N76). Since N80 it moves at once to where it's going, greyed, while its three parts list under the cost line with the running clock; done when the page says so; as the page has it again when it didn't go through."
     },
     {
      "label": "⌘V (an invite link, pasted anywhere in the tab)",
@@ -9898,7 +10072,8 @@
     "B159",
     "N66",
     "N68",
-    "N79"
+    "N79",
+    "N80"
    ],
    "was": {
     "fixture": "r5.json",
@@ -13405,7 +13580,7 @@
    "surface": "banner",
    "status": "ratified",
    "board": "AiDefaultBannerStates",
-   "summary": "While the space's page is put up again without Cloudflare's AI (a few seconds), the banner says so and holds no buttons.",
+   "summary": "While the space's page is put up again without Cloudflare's AI (a few seconds), the banner says so and holds no buttons. Since N80 its parts list under the line as they land — Checking your space, Disconnecting AI, Switching AI off for new videos — the one underway with its running clock; from 20 s on a part, one quiet line.",
    "entry": "Turn off in ai-turned-on, until the page answers.",
    "said": [
     {
@@ -13417,11 +13592,92 @@
       "N76"
      ],
      "id": "ai-turning-off.turning-off-a-few"
+    },
+    {
+     "text": "Checking your space…",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N80: the banner's parts, under its line: part 1 (the page's version, the setup key, that the page is shroom's), underway: its spinner, and its running clock once it has run a second. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”).",
+     "cites": [
+      "N80"
+     ],
+     "id": "ai-turning-off.ai-part-1-now"
+    },
+    {
+     "text": "Your space is ready",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N80: the banner's parts, under its line: part 1, done: its tick. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”).",
+     "cites": [
+      "N80"
+     ],
+     "id": "ai-turning-off.ai-part-1-done"
+    },
+    {
+     "text": "Disconnecting AI…",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N80: the banner's parts, under its line: turning off, part 2 (the page put up again without Cloudflare's AI), underway: its spinner and its clock. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”).",
+     "cites": [
+      "N80"
+     ],
+     "id": "ai-turning-off.ai-off-part-2-now"
+    },
+    {
+     "text": "AI disconnected",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N80: the banner's parts, under its line: turning off, part 2, done. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”).",
+     "cites": [
+      "N80"
+     ],
+     "id": "ai-turning-off.ai-off-part-2-done"
+    },
+    {
+     "text": "Disconnecting AI",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N80: the banner's parts, under its line: turning off, part 2, still to come: its dot; with a cross when it stopped there. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”).",
+     "cites": [
+      "N80"
+     ],
+     "id": "ai-turning-off.ai-off-part-2-ahead"
+    },
+    {
+     "text": "Switching AI off for new videos…",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N80: the banner's parts, under its line: turning off, part 3 (its schedule, then the page saying its AI is off), underway: its spinner and its clock. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”).",
+     "cites": [
+      "N80"
+     ],
+     "id": "ai-turning-off.ai-off-part-3-now"
+    },
+    {
+     "text": "Switching AI off for new videos",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N80: the banner's parts, under its line: turning off, part 3, still to come: its dot; with a cross when it stopped there. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”).",
+     "cites": [
+      "N80"
+     ],
+     "id": "ai-turning-off.ai-off-part-3-ahead"
+    },
+    {
+     "text": "Cloudflare is slower than usual just now — hang tight.",
+     "role": "line",
+     "copy": "ratified",
+     "note": "N80: the banner's parts, under its line: quiet, under the parts, once one part has run 20 s; the clock keeps going. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”).",
+     "cites": [
+      "N80"
+     ],
+     "id": "ai-turning-off.ai-long"
     }
    ],
    "actions": [],
    "cites": [
-    "N76"
+    "N76",
+    "N80"
    ]
   },
   "ai-turn-off-failed": {
