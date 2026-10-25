@@ -454,7 +454,9 @@ async function main() {
         await page.goto(`${origin}/${ids.own}`);
         const stage = await page.evaluate(() => ({ w: document.getElementById("w")?.textContent, spin: document.getElementById("b")?.className ?? null, turning: getComputedStyle(document.getElementById("b")).animationName, up: document.getElementById("u").textContent, body: document.body.innerText }));
         check("owner, uploading: the stage is empty, the one line speaks, a spinner turning in front of it", stage.w === "" && stage.spin === "spin" && stage.turning === "shroom-spin" && stage.up === COPY.finishing && !stage.body.includes(COPY.onItsWay), true, stage);
-        check("owner, uploading: Edit in shroom waits for the drain (N69)", await page.evaluate(() => { const e = document.getElementById("ed"); return !!e && e.getClientRects().length === 0; }));
+        // Every icon there from the first paint (Bagrat, 2026-10-25): Edit in shroom greyed and
+        // going nowhere until the drain, Download the same until its file lands.
+        check("owner, uploading: Edit in shroom waits for the drain, there and greyed (N69)", await page.evaluate(() => { const e = document.getElementById("ed"); return !!e && e.getClientRects().length > 0 && e.getAttribute("aria-disabled") === "true" && !e.getAttribute("href"); }));
         await page.evaluate(() => { navigator.clipboard.writeText = () => Promise.reject(new Error("denied")); document.execCommand = () => false; });
         await page.click("#c");
         await page.waitForTimeout(300);
@@ -467,13 +469,13 @@ async function main() {
         // Every file up (the record counts none), the line goes: no “Fully live ✓” on the page,
         // and no “Ready ✓” either; in a space that doesn't listen it simply fades (N65 (7)).
         await page.waitForFunction(() => document.getElementById("u").getClientRects().length === 0 && !document.getElementById("b"), null, { timeout: 10_000 }).catch(() => {});
-        const afterSwap = await page.evaluate((fully) => ({ up: document.getElementById("u").getClientRects().length > 0, said: document.body.innerText.includes(fully), bar: !!document.getElementById("b"), dl: document.getElementById("dl").textContent, controls: document.querySelector(".player video").controls }), COPY.fullyLive);
-        check("the go-live swaps the player in with its poster, and the upload line goes", swapped && !afterSwap.up && !afterSwap.said && !afterSwap.bar && !afterSwap.controls && afterSwap.dl === "", true, afterSwap);
+        const afterSwap = await page.evaluate((fully) => ({ up: document.getElementById("u").getClientRects().length > 0, said: document.body.innerText.includes(fully), bar: !!document.getElementById("b"), dl: document.querySelector("#dl a")?.getAttribute("href") ?? null, greyed: document.querySelector("#dl a")?.getAttribute("aria-disabled") ?? null, controls: document.querySelector(".player video").controls }), COPY.fullyLive);
+        check("the go-live swaps the player in with its poster, and the upload line goes", swapped && !afterSwap.up && !afterSwap.said && !afterSwap.bar && !afterSwap.controls && afterSwap.dl === null && afterSwap.greyed === "true", true, afterSwap);
         // Edit in shroom (N69): in at the drain, the last quiet icon, a plain link to shroom's editor.
         const ed = await page.evaluate(() => { const e = document.getElementById("ed"); return e && { shown: e.getClientRects().length > 0, href: e.getAttribute("href"), tip: e.getAttribute("data-tip"), last: e === e.parentElement.lastElementChild }; });
         check("Edit in shroom comes in at the drain, a link to shroom's editor (N69)", !!ed && ed.shown && ed.last && ed.href === `shroom://edit/${new URL(origin).host}/${ids.own}` && ed.tip === COPY.editInShroom, true, ed);
         await put(metaKey(ids.own), meta(ids.own, { media: { hls: `rec/${ids.own}/master.m3u8`, mp4: `rec/${ids.own}/video.mp4`, poster: `rec/${ids.own}/poster.jpg`, width: 640, height: 400 } }));
-        check("Download appears when the MP4 lands", await page.waitForFunction((w) => document.querySelector("#dl a")?.textContent === w, COPY.download, { timeout: 20_000 }).then(() => true, () => false));
+        check("Download wakes where it stands when the MP4 lands", await page.waitForFunction((h) => document.querySelector("#dl a")?.getAttribute("href") === h && !document.querySelector("#dl a").getAttribute("aria-disabled"), `/d/${ids.own}`, { timeout: 20_000 }).then(() => true, () => false));
         // The top icons sit in the middle of their hover (2026-10-19: 3 px left, the hidden
         // label still taking the gap beside the icon): an icon-only button has no gap.
         const offCentre = await page.evaluate(() => [...document.querySelectorAll(".head .copy:not([hidden]):not(.done), .head #dl a")]
