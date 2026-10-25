@@ -46,7 +46,10 @@
 //              plays reaching the player; a press
 //              that doesn't save leaves its row and says so; a recipient's page carries none
 //              of it; a page open while the cues are coming keeps its one line (hearing), its spinner
-//              turning, then takes the strip in when they land; the hint shows on a take with no
+//              turning, then takes the strip in when they land, the line staying under it while the
+//              name is on its way (N82), the empty title shimmering beside its placeholder; the line
+//              fades once the name is in, the title already in the field; a click in the title drops
+//              the shimmer and takes typing; the hint shows on a take with no
 //              voice cuts, and Got it (or a strip seen) puts it away; the line fades when the Mac finds
 //              nothing to cut (the hint in its place), and by its own count after five minutes
 //   edit       a saved edit (N63, DECISIONS B195: 2–6, 9–12 and 13.5–18 of the 20 s) played
@@ -636,12 +639,40 @@ async function main() {
             below: !!p && u.getBoundingClientRect().top >= p.getBoundingClientRect().bottom - 1 } : null; });
         const lineGone = () => page.waitForFunction(() => { const u = document.getElementById("ul"); return !u || u.hidden; }, null, { timeout: 4000 }).then(() => true, () => false);
         const heard = await finishing();
+        // While the name is on its way (N82), the empty title shimmers beside its placeholder, inside the field.
+        const shimmer = () => page.evaluate(() => { const n = document.getElementById("ns"), t = document.getElementById("t");
+          if (!n || n.hidden) return null; const a = n.getBoundingClientRect(), f = t.getBoundingClientRect();
+          return { inside: a.left > f.left + 40 && a.right <= f.right && a.top > f.top && a.bottom < f.bottom, width: a.width, sliding: getComputedStyle(n).animationName === "shroom-shim", focused: document.activeElement === t }; });
+        const shimmering = await shimmer();
         await shot("owner-finishing");
         await put(metaKey(ids.cuts), meta(ids.cuts, { publishedAt: iso(Date.now() - 4000), edits: voiceEdits() }));
         const stripLanded = await page.waitForFunction(() => { const s = document.getElementById("cuts"); return !!s && !s.hidden && s.querySelectorAll("li").length === 2; }, null, { timeout: 10_000 }).then(() => true, () => false);
-        const goneWithStrip = await lineGone();
-        check("cuts: a page open while the cues are coming keeps its one line, its spinner turning, then takes the strip in when they land, the line gone",
-          coming && heard?.words === COPY.finishing && heard.turning && heard.below && stripLanded && goneWithStrip, true, { coming, heard, landed: stripLanded, goneWithStrip });
+        // The cuts are in, the name isn't (N82): the line stays under the strip, still turning.
+        await page.waitForTimeout(3000);
+        const stillFinishing = await finishing();
+        const stillShimmering = !!(await shimmer());
+        await shot("owner-finishing-name-coming");
+        const NAME = "Fixing the login timeout";
+        await put(metaKey(ids.cuts), meta(ids.cuts, { publishedAt: iso(Date.now() - 6000), edits: voiceEdits(), title: NAME, named: { by: "ai", title: NAME, chapters: [] } }));
+        const goneWithName = await page.waitForFunction(() => { const u = document.getElementById("ul"); return !u || u.hidden; }, null, { timeout: 12_000 })
+          .then(() => page.evaluate(() => ({ title: document.getElementById("t").value, shimmer: !!document.getElementById("ns") })), () => null);
+        check("cuts: a page open while the cues are coming keeps its one line, its spinner turning, then takes the strip in when they land, the line staying while the name is on its way (N82)",
+          coming && heard?.words === COPY.finishing && heard.turning && heard.below && stripLanded && stillFinishing?.words === COPY.finishing && stillFinishing.turning, true, { coming, heard, landed: stripLanded, stillFinishing });
+        check("name: the empty title shimmers beside its placeholder while the name is on its way, the page not opened in the field (N82)",
+          !!shimmering && shimmering.inside && shimmering.width >= 24 && shimmering.sliding && !shimmering.focused && stillShimmering, true, { shimmering, stillShimmering });
+        check("name: the line fades once the name is in, the title already in the field and the shimmer gone (N82)",
+          goneWithName?.title === NAME && !goneWithName.shimmer, true, goneWithName);
+        // A click in the field drops the shimmer at once and takes typing.
+        await put(metaKey(ids.cuts), meta(ids.cuts, { publishedAt: iso(Date.now() - 2000), edits: voiceEdits() }));
+        await page.goto(`${origin}/${ids.cuts}`);
+        const shimFirst = !!(await shimmer());
+        await page.click("#t");
+        const afterClick = await page.evaluate(() => ({ shimmer: !!document.getElementById("ns"), focused: document.activeElement === document.getElementById("t") }));
+        await page.keyboard.type("Mine");
+        const typed = await page.evaluate(() => document.getElementById("t").value);
+        check("name: a click in the title drops the shimmer at once and takes typing (N82)", shimFirst && !afterClick.shimmer && afterClick.focused && typed === "Mine", true, { shimFirst, afterClick, typed });
+        // Emptied again, so leaving the page saves no title (an empty field writes nothing).
+        await page.fill("#t", "");
         // The hint (owner-page-cue-hint): a take with no voice cuts, in a space that listens.
         const hintShown = () => page.evaluate(() => { const h = document.querySelector(".cue-hint"); return !!h && !h.hidden && h.getClientRects().length > 0; });
         const forget = () => page.evaluate(() => { try { localStorage.removeItem("shroom:cue-hint"); } catch { /* none kept */ } });
@@ -671,7 +702,7 @@ async function main() {
         await page.goto(`${origin}/${ids.cuts}`);
         const firstLine = await finishing();
         const hintHeld = !(await hintShown());
-        await put(metaKey(ids.cuts), meta(ids.cuts, { publishedAt: iso(Date.now() - 4000), edits: noCues() }));
+        await put(metaKey(ids.cuts), meta(ids.cuts, { publishedAt: iso(Date.now() - 4000), edits: noCues(), named: { by: "ai", title: null, chapters: [], words: 3 } }));
         const noneGone = await lineGone();
         const hintAfter = await page.waitForFunction(() => { const h = document.querySelector(".cue-hint"); return !!h && !h.hidden; }, null, { timeout: 3000 }).then(() => true, () => false);
         await page.route(`**/_shroom/status/${ids.cuts}`, async (route) => { const res = await route.fetch(); route.fulfill({ response: res, json: { ...(await res.json()), cuts: "coming" } }); });
