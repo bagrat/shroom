@@ -124,7 +124,8 @@ fn default_output_latency(rate: u32) -> std::time::Duration {
 /// check's sound (B172). Only on a test Mac — it is heard.
 pub fn play_out(signal: Signal) -> Result<Speaker, String> {
     let device = cpal::default_host().default_output_device().ok_or("this Mac has no output device")?;
-    let name = device.description().map(|x| x.name().to_string()).unwrap_or_else(|_| device.to_string());
+    // Not `device.to_string()` for a fallback: cpal's Display is the same read, and panics.
+    let name = device.description().map(|x| x.name().to_string()).unwrap_or_else(|_| "the default output".into());
     let (stream, rate, output_gaps) = play_on(&device, signal)?;
     Ok(Speaker { _stream: Live(stream), device: name, rate, output_gaps, device_latency: default_output_latency(rate) })
 }

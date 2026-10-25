@@ -109,7 +109,7 @@ fn transport_of(uid: &str) -> Transport {
 }
 
 /// What the list reads of an input device: cpal's, or a test's.
-trait Input: std::fmt::Display {
+trait Input {
     /// Its CoreAudio UID, past cpal's `host:` prefix.
     fn uid(&self) -> Option<String>;
     fn name(&self) -> Option<String>;
@@ -126,10 +126,13 @@ impl Input for cpal::Device {
     }
 }
 
-/// One input device as the list shows it.
+/// One input device as the list shows it, or `None` when it can't be read whole: a device
+/// going away mid-list answers its id, then fails its name. (Never cpal's `Display` for a
+/// fallback: it is that same name read, and `to_string` panics on its error — the observer
+/// thread died of it.)
 fn listed(d: &impl Input, transport: impl FnOnce(&str) -> Transport) -> Option<MicDevice> {
     let uid = d.uid()?;
-    let name = d.name().unwrap_or_else(|| d.to_string());
+    let name = d.name()?;
     Some(MicDevice { transport: transport(&uid), uid, name })
 }
 
