@@ -213,7 +213,7 @@ describe("the page applies the edit until the copy is up (N63)", () => {
     for (const tag of ["og:image", "og:video", "twitter:image", "twitter:player"]) expect(body, tag).not.toContain(tag);
     for (const page of [body, await text(env, `/${REC}?embed=1`), await text(env, `/${REC}`, owner)]) expect(page.match(/<video[^>]*>/)?.[0]).not.toContain("poster=");
     expect(JSON.parse(await text(env, `/oembed?url=${encodeURIComponent(`${ORIGIN}/${REC}`)}`)).thumbnail_url).toBeUndefined();
-    expect(JSON.parse(await text(env, `/_shroom/status/${REC}`))).toEqual({ state: "live", poster: false, mp4: false, teaser: false, thumb: null, dur: 221, drained: true, keep: KEEP });
+    expect(JSON.parse(await text(env, `/_shroom/status/${REC}`))).toEqual({ state: "live", poster: false, mp4: false, teaser: false, thumb: null, dur: 221, drained: true, keep: KEEP, drawFrom: null });
     expect(body).toContain(`<span class="time">0:00 / 3:41</span>`);
   });
 
@@ -352,7 +352,7 @@ describe("once the permanent copy is up, the page plays it as it is (N63)", () =
 
   it("tells the status where the copy is, so an open player can move over to it", async () => {
     expect(JSON.parse(await text(copied(), `/_shroom/status/${REC}`))).toEqual({ state: "live", poster: true, mp4: true, teaser: true, thumb: null, dur: 220.9, drained: true,
-      keep: KEEP, copy: { src: `/m/${REC}/edit-3.mp4`, dur: 220.9, poster: `/m/${REC}/edit-3-poster.jpg` } });
+      keep: KEEP, copy: { src: `/m/${REC}/edit-3.mp4`, dur: 220.9, poster: `/m/${REC}/edit-3-poster.jpg` }, drawFrom: { from: "edit-3-poster.jpg", psrc: `/m/${REC}/edit-3-poster.jpg`, tsrc: `/m/${REC}/edit-3-teaser.mp4`, teaser: true } });
     // The player asks it when its media fails, and swaps to the copy at the same edited moment.
     expect(PLAYER_JS).toMatch(/v\.addEventListener\("error",fail\)/);
     // hls.js keeps retrying a piece that answers 404 (not fatal for a while): the 404 itself asks.
@@ -772,7 +772,7 @@ describe("a baked recording: the edit became the video (B197)", () => {
     expect(mine).toContain(`"mp4":true`);
     expect(mine).toContain(`"len":"3:41","from":"edit-3-poster.jpg","psrc":"/m/${REC}/edit-3-poster.jpg","tsrc":"/m/${REC}/edit-3-teaser.mp4"`);
     expect(JSON.parse(await text(env, `/_shroom/status/${REC}`))).toEqual({ state: "live", poster: true, mp4: true, teaser: true, thumb: null, dur: 220.9, drained: true,
-      copy: { src: `/m/${REC}/edit-3.mp4`, dur: 220.9, poster: `/m/${REC}/edit-3-poster.jpg` } });
+      copy: { src: `/m/${REC}/edit-3.mp4`, dur: 220.9, poster: `/m/${REC}/edit-3-poster.jpg` }, drawFrom: { from: "edit-3-poster.jpg", psrc: `/m/${REC}/edit-3-poster.jpg`, tsrc: `/m/${REC}/edit-3-teaser.mp4`, teaser: true } });
   });
 
   it("tells the status where its file is, so a player still on the original moves over to it", async () => {
