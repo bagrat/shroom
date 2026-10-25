@@ -2,6 +2,7 @@
 //! `derive`, present, dispatch effects to lanes whose results come back as events.
 
 pub mod camera;
+pub mod cli_link;
 pub mod cloud;
 pub mod editor;
 pub mod control;
@@ -1072,6 +1073,8 @@ fn start_inner(app: &AppHandle, launch: LaunchKind, quiet: bool, flags: &DevFlag
     });
     net::watch(rt.clone());
     observe::watch(rt.clone(), rt.home.root.clone());
+    // The `shroom` command on PATH, once per Mac, for one installed before it (B236).
+    cli_link::boot(&rt);
     // macOS's will-sleep, held for a take's pause (DECISIONS B92).
     power::watch(rt.clone());
     // The seam's own re-read of the grants (the core's facts move only on entry events).
