@@ -201,6 +201,11 @@ impl Local {
         // Every init segment the playlist names: the shared one, and a take's own when its
         // picture differed (`shroom_encode::files::take_init`).
         let mut inits = maps(&playlist);
+        // Only the encoder's own names (`init.mp4`, `init_<n>.mp4`), read from this folder:
+        // a playlist naming any other file is refused whole.
+        if let Some(name) = inits.iter().find(|n| !files::is_init(n)) {
+            return Err(UploadError::Incomplete(format!("the playlist names {name:?}, which isn't an init segment")));
+        }
         if inits.is_empty() {
             inits.push(files::INIT_SEGMENT.to_string());
         }

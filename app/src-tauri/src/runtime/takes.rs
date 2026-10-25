@@ -147,10 +147,12 @@ pub fn classify_held(dir: &Path) -> Kind {
     }
 }
 
-/// Every take directory, oldest first.
+/// Every take directory, oldest first: the real folders in `takes/` (a link is never
+/// followed) named as a take's are (`posters::valid_dir`).
 pub fn dirs(takes: &Path) -> Vec<PathBuf> {
+    let take = |e: &fs::DirEntry| e.file_type().is_ok_and(|t| t.is_dir()) && e.file_name().to_str().is_some_and(crate::runtime::posters::valid_dir);
     let mut v: Vec<PathBuf> = fs::read_dir(takes)
-        .map(|it| it.filter_map(|e| e.ok()).map(|e| e.path()).filter(|p| p.is_dir()).collect())
+        .map(|it| it.filter_map(|e| e.ok()).filter(take).map(|e| e.path()).collect())
         .unwrap_or_default();
     v.sort();
     v
