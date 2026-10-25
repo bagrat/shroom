@@ -4372,37 +4372,12 @@ export function aiSentences(words) {
 // ───────── edits (B208): one clock, mapped on every view ─────────
 
 /** The ranges of the recording that play under its saved edit (the editor's `meta.edits`,
- * N63), as shroom-edit's `EditList::checked().keep()` gives them: the trim minus the applied
- * cuts, merged. null when it all plays, as recorded. @param {any} meta @returns {[number, number][] | null} */
+ * N63): the player's own (`editsOf`), so the captions, the chapters and the naming follow
+ * exactly what plays — placed on the record's `durationSec`, the list's `source_duration`
+ * only when the record has none. null when it all plays, as recorded; empty when the edit
+ * leaves nothing to play, and then no word plays either. @param {any} meta @returns {[number, number][] | null} */
 export function aiKeep(meta) {
-  const e = meta?.edits;
-  if (!e || typeof e !== "object") return null;
-  const d = Number(e.source_duration) > 0 ? Number(e.source_duration) : 0;
-  if (!d) return null;
-  const clamp = (/** @type {unknown} */ t) => (t !== null && t !== "" && Number.isFinite(Number(t)) ? Math.min(d, Math.max(0, Number(t))) : NaN);
-  let a = clamp(e.in), b = clamp(e.out);
-  if (Number.isNaN(a)) a = 0;
-  if (Number.isNaN(b)) b = d;
-  if (b - a < Math.min(1, d)) { a = 0; b = d; }
-  /** @type {[number, number][]} */
-  const applied = (Array.isArray(e.cuts) ? e.cuts : [])
-    .filter((/** @type {any} */ c) => c && c.applied === true)
-    .map((/** @type {any} */ c) => [clamp(c.start), clamp(c.end)]);
-  const cuts = applied
-    .filter(([s, t]) => !Number.isNaN(s) && !Number.isNaN(t) && t > s)
-    .map(([s, t]) => /** @type {[number, number]} */ ([Math.max(s, a), Math.min(t, b)]))
-    .filter(([s, t]) => t > s)
-    .sort((x, y) => x[0] - y[0]);
-  /** @type {[number, number][]} */
-  const keep = [];
-  let at = a;
-  for (const [s, t] of cuts) {
-    if (t <= at) continue;
-    if (s > at) keep.push([at, s]);
-    at = Math.max(at, t);
-  }
-  if (at < b) keep.push([at, b]);
-  return keep.length === 1 && keep[0][0] <= 0 && keep[0][1] >= d ? null : keep;
+  return editsOf(meta)?.keep ?? null;
 }
 
 /** A recording time on the edited clock; null in a cut or outside the trim.
