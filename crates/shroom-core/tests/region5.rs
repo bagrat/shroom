@@ -554,6 +554,13 @@ fn rows() -> Vec<(&'static str, World)> {
         w.inflight.failures.insert(Op::Ai, Failure { at: Mono(990), class: FailClass::Transport, tries: 1 });
         w
     }));
+    // A run stopped at its first part (N78, law 12).
+    rows.push(("settings-space", {
+        let mut w = space_tab();
+        w.space.ai = Some(true);
+        w.inflight.failures.insert(Op::Ai, Failure { at: Mono(990), class: FailClass::Transport, tries: 1 });
+        ai_rewiring(w, false, 1, Some(AiEnd::Stopped), 990)
+    }));
     // The switch's parts as they land, done, and running long (N78).
     for on in [true, false] {
         for (part, end, since) in [(1, None, 990), (2, None, 990), (3, None, 990), (3, Some(AiEnd::Done), 990), (2, None, 0)] {
@@ -2807,4 +2814,45 @@ fn the_banners_turn_off_shows_its_parts() {
     let b = banner(&r);
     assert_eq!(b.id, "ai-turn-off-failed");
     assert!(b.parts.is_empty() && b.long.is_none(), "the failed face as it was");
+}
+
+/// N78 (3): the done list stays until the window closes or the tab changes — a refocus of
+/// Settings (Cmd-Tab back, the popover closing) is neither, before the page says so or after.
+#[test]
+fn the_ai_switch_done_list_outlives_a_refocus() {
+    let mut w = space_tab();
+    w.space.ai = Some(false);
+    let mut r = Run::new(w);
+    r.set(Action::SetAi(true));
+    r.send(Event::Cloud(CloudNews::Part { op: Op::Ai, part: 2 }));
+    r.send(Event::Cloud(CloudNews::Part { op: Op::Ai, part: 3 }));
+    r.send(Event::WindowFocused(WindowKind::Settings, quick()));
+    r.send(Event::Cloud(CloudNews::AiSet(true)));
+    assert_eq!(space_pane(&r.scene).ai_parts.len(), 3, "refocused while it ran");
+    r.send(Event::WindowFocused(WindowKind::Settings, quick()));
+    assert_eq!(space_pane(&r.scene).ai_parts.len(), 3, "refocused once done");
+    r.set(Action::SettingsTab(SettingsTab::General));
+    r.set(Action::SettingsTab(SettingsTab::Space));
+    assert!(space_pane(&r.scene).ai_parts.is_empty(), "a tab change ends it");
+    // Done before this window opened (it opened at 900): never shown by it.
+    let mut w = space_tab();
+    w.space.ai = Some(true);
+    let w = ai_rewiring(w, true, 3, Some(AiEnd::Done), 800);
+    assert!(space_pane(&derive(&w)).ai_parts.is_empty(), "done before this window opened");
+}
+
+/// N78, law 12: a run that stops at its first part (the page unanswered, the setup key not
+/// live) crosses it in its plain words, with the failure's line under it.
+#[test]
+fn an_ai_switch_stopped_at_its_first_part_says_so() {
+    use shroom_core::copy;
+    use shroom_core::scene::Glyph::*;
+    let mut w = space_tab();
+    w.space.ai = Some(true);
+    let mut r = Run::new(w);
+    r.set(Action::SetAi(false));
+    r.send(Event::Failed { op: Op::Ai, class: FailClass::Transport });
+    let sp = space_pane(&r.scene);
+    assert_eq!(ai_parts(&sp.ai_parts), [(Stopped, "Checking your space".into(), None)]);
+    assert_eq!(sp.ai_failed, Some(copy::ai_failed()));
 }
