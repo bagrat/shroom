@@ -876,7 +876,7 @@ pub fn link_prefix(host: &str) -> String { format!("{host}/join/") }
 pub fn own_mac_link_line() -> String { "Open this link on your other Mac — it's good for one hour.".into() }
 pub fn remove_title(name: &str) -> String { format!("Remove {name}?") }
 pub fn remove_member_line(label: &str) -> String {
-    format!("{label} won't be able to record to your space anymore — a video already on its way can still finish. {label}'s videos stay; you'll find them in your Library.")
+    format!("{label} won't be able to record to your space anymore — a video already on its way has up to an hour to finish. {label}'s videos stay; you'll find them in your Library.")
 }
 pub fn remove() -> String { "Remove".into() }
 pub fn cancel_invite_title(label: &str) -> String { format!("Cancel {label}'s invite?") }
