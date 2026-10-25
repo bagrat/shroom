@@ -975,7 +975,9 @@ pub struct CleanupRowView {
     pub meta: String,
     /// Where its poster is, as `LibraryRowView::poster`.
     pub poster: Option<String>,
-    /// Open page, Keep, Delete (red text).
+    /// Going with auto-cleanup (N74): “Deleted Oct 27 unless pinned”, amber, after the facts.
+    pub going: Option<String>,
+    /// Open page, Pin, Delete (red text).
     pub buttons: Vec<Button>,
 }
 

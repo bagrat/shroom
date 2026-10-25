@@ -161,7 +161,8 @@ fn review_shows_whats_going_first_then_the_suggestions() {
     assert_eq!(g.line.as_deref(), Some("Nobody has watched these in 30 days. Pin one to keep it; a watch before then keeps it too."));
     let titles: Vec<_> = g.rows.iter().map(|x| x.title.clone().unwrap_or_default()).collect();
     assert_eq!(titles, ["Weekly update, Sep 18", "Design review: settings sheet"]);
-    assert!(g.rows[0].meta.ends_with(&format!("640 MB · Watched twice, the last 31 days ago · Deleted {} unless pinned", day(DUE))));
+    assert!(g.rows[0].meta.ends_with("640 MB · Watched twice, the last 31 days ago"), "no cost: it's going anyway");
+    assert_eq!(g.rows[0].going, Some(format!("Deleted {} unless pinned", day(DUE))), "amber, after the facts");
     let labels: Vec<_> = g.rows[0].buttons.iter().map(|b| b.label.as_str()).collect();
     assert_eq!(labels, ["Open page", "Pin"], "no Delete: it's going anyway");
     assert_eq!(v.suggest_heading.as_deref(), Some("Might be worth deleting"));

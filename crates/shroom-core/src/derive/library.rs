@@ -367,6 +367,7 @@ fn cleanup_body(w: &World, list: &[(Suggestion, Row)]) -> CleanupBody {
                 title: r.title.clone(),
                 meta: meta(r, s.bytes, copy::cleanup_reason(s.plays, s.quiet_days, s.stopped_early)),
                 poster: r.poster.clone(),
+                going: None,
                 buttons: vec![
                     open(&rec),
                     Button::new(Action::PinRow(rec.clone(), true), copy::pin(), Style::Plain).enabled(reachable),
@@ -391,8 +392,9 @@ fn cleanup_body(w: &World, list: &[(Suggestion, Row)]) -> CleanupBody {
                 key: r.rec.0.clone(),
                 title: r.title.clone(),
                 // No cost: it's going anyway (the board, N74).
-                meta: format!("{} · {} · {} · {}", copy::day(r.created, w.mac.utc_offset_min), copy::size(g.bytes), copy::cleanup_reason(g.plays, g.quiet_days, g.stopped_early), copy::deleted_unless_pinned(&date)),
+                meta: format!("{} · {} · {}", copy::day(r.created, w.mac.utc_offset_min), copy::size(g.bytes), copy::cleanup_reason(g.plays, g.quiet_days, g.stopped_early)),
                 poster: r.poster.clone(),
+                going: Some(copy::deleted_unless_pinned(&date)),
                 buttons: vec![open(&r.rec), Button::new(Action::PinRow(r.rec.clone(), true), copy::pin(), Style::Plain).enabled(reachable)],
             })
             .collect();
