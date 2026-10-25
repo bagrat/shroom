@@ -2500,7 +2500,7 @@ The save didn't go through (offline, or the space didn't answer): the window sta
 
 state · window · **ratified** · board: EditorClosing · cites N71, B223
 
-✕ with changes not saved (N71): the window asks before it closes, in its footer's place, the edit held behind it — no step is taken and the preview pauses. One card: “Save your edit?”, a line that what changed isn't saved yet, then Discard, Keep editing and Save. Save is Done and the Return default: the edit is saved, then the final video is made. Keep editing (Esc) puts the question away, every change still there. Discard closes the window and drops what wasn't saved, the video staying as it was last saved; it is never on Return. ✕ again leaves the question as it is. Quit and Update save first, without asking (B199; Bagrat, 2026-10-19).
+✕ with changes not saved (N71): the window asks before it closes, in a sheet over it (as the Library's are; Bagrat, 2026-10-25), the edit held behind it — no step is taken and the preview pauses. One card: “Save your edit?”, a line that what changed isn't saved yet, then Discard, Keep editing and Save. Save is Done and the Return default: the edit is saved, then the final video is made. Keep editing (Esc) puts the question away, every change still there. Discard closes the window and drops what wasn't saved, the video staying as it was last saved; it is never on Return. ✕ again leaves the question as it is. Quit and Update save first, without asking (B199; Bagrat, 2026-10-19).
 
 **Entry.** ✕ while the editor holds changes not saved: in editor, or in editor-save-failed.
 
@@ -2595,7 +2595,7 @@ The final video couldn't be made or put up (offline, the space didn't answer, th
 
 state · window · **ratified** · board: EditorAfterSave · cites N63, B197
 
-The final video is up: the window asks whether to delete the original. One card: “Delete the original?”, a line that the edit is the video now and the original is only kept for reverting, then Keep for 2 days and Yes, delete, which leads (filled, as Bagrat asked) but is never the Return default: Return does nothing here (law 9; DEVIATIONS #55). Yes, delete makes the edit the video for good and deletes the original now; Keep for 2 days keeps it, and shroom deletes it two days on. ✕ or Esc is Keep for 2 days.
+The final video is up: the window asks whether to delete the original, in a sheet over it (as the Library's are; Bagrat, 2026-10-25), the window held behind it. One card: “Delete the original?”, a line that the edit is the video now and the original is only kept for reverting, then Keep for 2 days and Yes, delete, which leads (filled, as Bagrat asked) but is never the Return default: Return does nothing here (law 9; DEVIATIONS #55). Yes, delete makes the edit the video for good and deletes the original now; Keep for 2 days keeps it, and shroom deletes it two days on. ✕ or Esc is Keep for 2 days.
 
 **Entry.** The final video landed while the editor was open.
 

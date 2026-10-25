@@ -1000,7 +1000,7 @@ or an owner-class browser (§3.5) only, else 403: `{"named":"<title or empty>","
 `done` once the full name is in (or naming gave up); `chapters` and `captions` are what a
 reload would put in the player (the bar's clock; the track on the recording's, the page adding
 `&e=1` when an edit's own copy plays). The page asks on until `done`, puts the chapters and
-captions into the player as it plays, and asks on till the player is there (D:B238).
+captions into the player as it plays, and asks on till the player is there (D:B239).
 
 A seal also deletes the video's plays, `views/<id>.json` (§4.22).
 
