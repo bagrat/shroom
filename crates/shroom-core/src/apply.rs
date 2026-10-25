@@ -8,7 +8,7 @@ use std::sync::Arc;
 use crate::copy;
 use crate::derive::onboarding::{self, At};
 use crate::derive::settings::{self as settings_view, SpaceAt};
-use crate::derive::{COPIED_MS, COUNTDOWN_MS, LIT_MS, OneShot, UNDO_MS, derive, library as library_view};
+use crate::derive::{COPIED_MS, COUNTDOWN_MS, LIT_MS, MARKER_TOAST_MS, OneShot, UNDO_MS, derive, library as library_view};
 use crate::effect::{CloudCmd, EditCmd, Effect, LibCmd, MemberCmd, MoviesCopy, Perm, PersistOp, PublicUrl, RecCmd, ShellCmd, TakeCmd, UpCmd, UpdCmd};
 use crate::event::{
     ClaimFail, CloudNews, EditStep, EditorNews, Event, Field, JoinAnswer, Key, LibraryNews, MemberNews, OsNews, PeekAnswer, QuitVia, RecNews, ReportNews,
@@ -20,7 +20,7 @@ use crate::time::{Fact, Mono};
 use crate::world::{
     Access, AiEnd, AiRun, AiTurn, Arming, Blocked, Born, Cause, Confirm, CopyOwed, CopyTarget, Door, EditLink, EditLinkNo, EditorFields, EditorId, EditorMedia, EditorSave, FailClass, Failure, Fields, Fork, Invite,
     JoinRefusal, Landed, LaunchKind, Leaving, RecId,
-    LibraryFields, LibraryOps, Members, OpenTake, Op, PageOpen, Paste, Phase, Progress, QuickProbe, Reach, RelaunchWhy, Removal, ReportFields, FeedbackFields, Restore, Role, SavedCause,
+    LibraryFields, LibraryOps, MarkerToastSays, Members, OpenTake, Op, PageOpen, Paste, Phase, Progress, QuickProbe, Reach, RelaunchWhy, Removal, ReportFields, FeedbackFields, Restore, Role, SavedCause,
     SavedTake, SecretId, SettingsFields, SettingsTab, SourceId, Space, SpaceIdentity, StopOutcome, Strike, Sweep, TakeDir, TakeLost, TokenVerdict,
     UpdateOffer, Why, WindowKind, WorkerFact, World,
 };
@@ -87,7 +87,7 @@ pub fn apply(w: &mut World, event: Event) -> Out {
 /// The space's AI, settled on this Mac for good (N76): never turned on by default again,
 /// and its banner never shown again here.
 /// The AI's re-wiring, asked (N66): its run starts over at part 1, the switch showing where
-/// it's going (N78).
+/// it's going (N80).
 fn set_ai(w: &mut World, on: bool) -> Effect {
     w.space.ai_run = Some(AiRun { on, part: 1, since: w.now, end: None });
     Effect::Cloud(CloudCmd::SetAi(on))
@@ -217,8 +217,8 @@ fn apply_event(w: &mut World, event: Event) -> Out {
             }
         }
         Event::MarkerShortcut(q) => {
-            // ⌥⌘M (N64), under ⌥⌘P's rule: recording, a marker at this moment — nothing on
-            // screen answers, the take goes on; paused, Drop a marker where it's offered.
+            // ⌥⌘M (N64), under ⌥⌘P's rule: recording, a marker at this moment — the toast
+            // answers (N78), the take goes on; paused, Drop a marker where it's offered.
             quick(w, &q);
             if let Some(out) = guard_take(w) {
                 return out;
@@ -226,14 +226,32 @@ fn apply_event(w: &mut World, event: Event) -> Out {
             if !derive(w).tray.shortcut {
                 return (vec![], Arm::DROPPED);
             }
+            // The toast answers (N78); with the popover open its row does, and `update` puts the
+            // toast away under it.
+            let now = w.now;
+            let says = |t: &mut OpenTake, s: MarkerToastSays| t.toast = Some((s, now));
             match w.take.as_ref().map(|t| t.phase) {
                 Some(Phase::Recording) => {
                     if let Some(t) = w.take.as_mut() {
                         t.markers += 1;
+                        says(t, MarkerToastSays::Dropped(t.markers));
                     }
                     (vec![Effect::Recorder(RecCmd::Marker)], Arm::named("marker-shortcut"))
                 }
-                Some(Phase::Paused(_)) if crate::derive::marker_offered(w) => act(w, Action::DropMarker),
+                Some(Phase::Paused(_)) if crate::derive::marker_offered(w) => {
+                    let out = act(w, Action::DropMarker);
+                    if let Some(t) = w.take.as_mut() {
+                        says(t, MarkerToastSays::Dropped(t.markers));
+                    }
+                    out
+                }
+                // Again at a pause that has its marker: nothing drops, and the toast says so.
+                Some(Phase::Paused(Cause::User)) if w.session.popover.is_none() && w.session.confirm.is_none() && w.take.as_ref().is_some_and(|t| t.marked_at_pause) => {
+                    if let Some(t) = w.take.as_mut() {
+                        says(t, MarkerToastSays::Already);
+                    }
+                    (vec![], Arm::named("marker-already"))
+                }
                 _ => (vec![], Arm::DROPPED),
             }
         }
@@ -1234,7 +1252,7 @@ fn act(w: &mut World, action: Action) -> Out {
         // ── Settings ──
         Action::SettingsTab(tab) => {
             w.prefs.settings_tab = Some(tab);
-            // Another tab ends the AI switch's done list (N78).
+            // Another tab ends the AI switch's done list (N80).
             if w.space.ai_run.is_some_and(|r| r.end == Some(AiEnd::Done)) {
                 w.space.ai_run = None;
             }
@@ -2127,6 +2145,7 @@ fn get_link(w: &mut World, dir: TakeDir) -> Out {
         length_ms: saved.length_ms,
         markers: 0,
         marked_at_pause: false,
+        toast: None,
         mic: None,
         camera: None,
     });
@@ -2871,6 +2890,11 @@ fn editor_news(w: &mut World, news: EditorNews) -> Out {
             w.library_ops.upkept = Some(now);
             (vec![], Arm::named("editor-upkept"))
         }
+        EditorNews::CutsLanded { .. } => {
+            // Nothing on screen moves: the upkeep, due now, makes the copy the cuts owe.
+            w.library_ops.upkeep_asked = Some(now);
+            (vec![], Arm::named("editor-cuts-landed"))
+        }
     }
 }
 
@@ -3255,6 +3279,7 @@ fn rec(w: &mut World, news: RecNews) -> Out {
                 length_ms: 0,
                 markers: 0,
                 marked_at_pause: false,
+                toast: None,
                 mic,
                 camera,
             });
@@ -3528,7 +3553,7 @@ fn cloud(w: &mut World, news: CloudNews) -> Out {
         CloudNews::AiSet(on) => {
             answered(w, Op::Ai);
             w.space.ai = Some(on);
-            // Done once the page said so (N78): every part ticked, from now.
+            // Done once the page said so (N80): every part ticked, from now.
             if let Some(run) = w.space.ai_run.as_mut() {
                 *run = AiRun { part: 3, since: w.now, end: Some(AiEnd::Done), ..*run };
             }
@@ -3629,7 +3654,7 @@ fn cloud(w: &mut World, news: CloudNews) -> Out {
         // parts before it in a blink — they stay ticked, the clock counts from the first.
         CloudNews::Part { op, part } => {
             let now = w.now;
-            // The AI's re-wiring (N78): its part underway, counted from when it began.
+            // The AI's re-wiring (N80): its part underway, counted from when it began.
             if op == Op::Ai {
                 if let Some(run) = w.space.ai_run.as_mut().filter(|r| r.end.is_none() && r.part != part) {
                     run.part = part;
@@ -3999,7 +4024,7 @@ fn upload(w: &mut World, news: UploadNews) -> Out {
 fn failed(w: &mut World, op: Op, class: crate::world::FailClass) -> Out {
     w.inflight.ops.remove(&op);
     note_failure(w, op, class);
-    // The AI's re-wiring stopped at its part underway (N78, law 12).
+    // The AI's re-wiring stopped at its part underway (N80, law 12).
     if op == Op::Ai {
         if let Some(run) = w.space.ai_run.as_mut().filter(|r| r.end.is_none()) {
             run.end = Some(AiEnd::Stopped);
@@ -4123,6 +4148,10 @@ fn tick(w: &mut World) -> Out {
     // The countdown fires at its deadline.
     if w.session.arming.as_ref().is_some_and(|a| !a.fired && now >= a.deadline) {
         fx.extend(fire(w));
+    }
+    // The marker toast goes (N78).
+    if let Some(t) = w.take.as_mut().filter(|t| t.toast.is_some_and(|(_, at)| now >= at.plus(MARKER_TOAST_MS))) {
+        t.toast = None;
     }
     // "Copied" reverts.
     if w.session.copied.as_ref().is_some_and(|(_, at)| now >= at.plus(COPIED_MS)) {

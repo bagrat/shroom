@@ -410,6 +410,7 @@ fn recording() -> OpenTake {
         length_ms: 30_000,
         markers: 0,
         marked_at_pause: false,
+        toast: None,
         mic: None,
         camera: None,
     }
@@ -680,7 +681,7 @@ fn settings_rows() -> Vec<(&'static str, &'static str, World)> {
         w.inflight.failures.insert(Op::Ai, Failure { at: Mono(990), class: FailClass::Transport, tries: 1 });
         w
     }));
-    // N78: the switch while the page is re-wired (turning on, its second part with its clock),
+    // N80: the switch while the page is re-wired (turning on, its second part with its clock),
     // done, a turn off that stopped at its second part, and one running long.
     let rewiring = |on: bool, part: u8, end: Option<AiEnd>, ran: u64| {
         let mut w = space();
@@ -1281,7 +1282,7 @@ fn region3_rows() -> Vec<(&'static str, &'static str, &'static str, World)> {
         let mut w = ai_on();
         w.space.ai_turn = Some(AiTurn::TurningOff);
         w.inflight.ops.insert(Op::Ai, Mono(990).plus(Op::Ai.deadline_ms()));
-        // Its parts (N78): the second underway, with its clock.
+        // Its parts (N80): the second underway, with its clock.
         w.now = Mono(6_200);
         w.space.ai_run = Some(AiRun { on: false, part: 2, since: Mono(3_000), end: None });
         w
@@ -1390,6 +1391,21 @@ fn region3_rows() -> Vec<(&'static str, &'static str, &'static str, World)> {
         w.take = Some(t);
         w
     }));
+    // The marker toast (N78): ⌥⌘M's answer, the take's first marker, a later one, and again
+    // at a pause that has its marker (the popover put away).
+    for (variant, phase, says) in [
+        ("marker-dropped", Phase::Recording, MarkerToastSays::Dropped(1)),
+        ("marker-3-dropped", Phase::Recording, MarkerToastSays::Dropped(3)),
+        ("already-marked", Phase::Paused(Cause::User), MarkerToastSays::Already),
+    ] {
+        let state = if phase == Phase::Recording { "recording" } else { "tray-pause-bars" };
+        rows.push(("toast", state, variant, {
+            let mut w = ready();
+            let n = if let MarkerToastSays::Dropped(n) = says { n } else { 1 };
+            w.take = Some(OpenTake { phase, markers: n, marked_at_pause: says == MarkerToastSays::Already, toast: Some((says, w.now)), ..recording() });
+            w
+        }));
+    }
     for (variant, at) in [("countdown-3", 900), ("countdown-1", 2_950)] {
         rows.push(("countdown", "countdown", variant, {
             let mut w = ready();
@@ -1411,6 +1427,7 @@ fn region3_gallery() -> Vec<Value> {
             let (slice, faces) = match window {
                 "countdown" => (serde_json::to_value(&scene.countdown), vec![]),
                 "label" => (serde_json::to_value(&scene.label), vec![]),
+                "toast" => (serde_json::to_value(&scene.toast), vec![]),
                 _ => (serde_json::to_value(&scene.popover), scene.popover.as_ref().map(|x| x.faces.clone()).unwrap_or_default()),
             };
             let slice = slice.expect("the slice serializes");

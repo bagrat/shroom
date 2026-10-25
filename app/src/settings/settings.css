@@ -248,7 +248,7 @@
   opacity: 0.5;
 }
 
-/* The AI's switch while its parts show (N78): the switch at the top of its row, and only
+/* The AI's switch while its parts show (N80): the switch at the top of its row, and only
    the switch greys — the parts stay readable. */
 .beneath > .mark.busy {
   align-items: flex-start;

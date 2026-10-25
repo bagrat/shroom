@@ -184,7 +184,7 @@ fn auto_cleanup_shares_naming_s_one_schedule_and_each_keeps_it_while_the_other_i
     assert!(schedules().is_empty(), "both off: no schedule");
 }
 
-/// N78: turning AI on or off says its parts as they begin — the page put up again, then its
+/// N80: turning AI on or off says its parts as they begin — the page put up again, then its
 /// schedule — and ends only once the page itself says so.
 #[test]
 fn naming_says_its_parts_in_order_and_ends_when_the_page_says_so() {
@@ -200,7 +200,7 @@ fn naming_says_its_parts_in_order_and_ends_when_the_page_says_so() {
     }
 }
 
-/// N78: a page that never says so is a re-wiring that didn't go through (law 12) — never a
+/// N80: a page that never says so is a re-wiring that didn't go through (law 12) — never a
 /// done said ahead of the page.
 #[test]
 fn naming_that_the_page_never_confirms_didnt_go_through() {
@@ -213,7 +213,7 @@ fn naming_that_the_page_never_confirms_didnt_go_through() {
     assert!(matches!(r, Err(WireError::NotAnswering)), "{r:?}");
 }
 
-/// N78: a page still answering with its old AI keeps the run waiting, and it ends as a
+/// N80: a page still answering with its old AI keeps the run waiting, and it ends as a
 /// didn't-go-through — never a done because the calls answered.
 #[test]
 fn naming_waits_for_the_pages_new_word() {

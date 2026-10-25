@@ -23,7 +23,7 @@
 {/snippet}
 
 <!-- A switch's row: its label is its own words; the line under them only explains. The AI's
-     lists its parts under its line while the page is re-wired (N78): those never grey. -->
+     lists its parts under its line while the page is re-wired (N80): those never grey. -->
 {#snippet switchRow(t: Toggle, line: string | null, id: string, after?: () => any)}
   <div class="mark" class:off={!t.enabled} class:busy={!!after}>
     <div class="mark-text">

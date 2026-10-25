@@ -1,5 +1,5 @@
 <script lang="ts">
-  // A wait's parts (N74, N78): ✓ done, a spinner underway with its clock, • still to come,
+  // A wait's parts (N74, N80): ✓ done, a spinner underway with its clock, • still to come,
   // ✕ where a run stopped. Drawn by the setup, Settings · Space and the popover's banner.
   import Spinner from "./Spinner.svelte";
   import type { Part } from "./types";

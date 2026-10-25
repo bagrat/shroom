@@ -452,7 +452,7 @@ pub struct Space {
     /// re-wiring the page until it answers, tried again quietly while it doesn't; a Turn off,
     /// once through, `config` says once — behind us when the popover that said it closes.
     pub ai_turn: Option<AiTurn>,
-    /// The AI's re-wiring as it goes (N78): which way, its part underway and since when, and
+    /// The AI's re-wiring as it goes (N80): which way, its part underway and since when, and
     /// how it ended. Never stored (law 1); a new try starts over.
     pub ai_run: Option<AiRun>,
 }
@@ -552,12 +552,24 @@ pub struct OpenTake {
     /// A marker was dropped at this pause (N64): the paused popover's row reads Marker
     /// dropped, greyed, until the take resumes.
     pub marked_at_pause: bool,
+    /// The marker toast (N78): what ⌥⌘M's last press said, and when — it shows for
+    /// `MARKER_TOAST_MS` from then, and goes with the take.
+    pub toast: Option<(MarkerToastSays, Mono)>,
     /// The microphone this take records from, by uid (`None` = silent): the one chosen when
     /// capture began, then whichever Resume used (N39's `mic-lost` fallback).
     pub mic: Option<String>,
     /// Camera as the source: the camera recorded, by uid — `camera-lost` is about this one
     /// leaving, never about some other camera (N39).
     pub camera: Option<String>,
+}
+
+/// What the marker toast says (N78).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MarkerToastSays {
+    /// A marker dropped: the take's count of them, after it.
+    Dropped(u32),
+    /// Pressed again at a pause that has its marker: nothing dropped.
+    Already,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -655,6 +667,9 @@ pub struct LibraryOps {
     /// When the editor's upkeep last answered (B197 (d)): originals kept past their two days
     /// baked, and copies an edit is missing made.
     pub upkept: Option<Mono>,
+    /// When voice cuts last landed on a video of this Mac's (`CutsLanded`): the upkeep is due
+    /// from then, not at its six-hour turn, until one runs or fails after it.
+    pub upkeep_asked: Option<Mono>,
     /// Pins and unpins under way (N75, the record's `keep`): what was asked, so a row reads
     /// it at once and a suggestion leaves while the write runs.
     pub pinning: BTreeMap<RecId, bool>,
@@ -1591,7 +1606,7 @@ pub enum AiTurn {
     Off,
 }
 
-/// Turning the AI on or off, part by part (N78): 1 checking the space, 2 the page put up
+/// Turning the AI on or off, part by part (N80): 1 checking the space, 2 the page put up
 /// again with the AI or without it, 3 its schedule and the page saying so.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AiRun {
@@ -1601,7 +1616,7 @@ pub struct AiRun {
     pub end: Option<AiEnd>,
 }
 
-/// How a run of the AI's re-wiring ended (N78): the page said so, or it stopped at its part.
+/// How a run of the AI's re-wiring ended (N80): the page said so, or it stopped at its part.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AiEnd {
     Done,

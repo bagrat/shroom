@@ -351,7 +351,7 @@ fn put_script(cloud: &Cloud, spec: &WireSpec, ai: bool) -> Result<(), CloudError
     cloud.put_worker(spec.account_id, spec.label, "worker.js", spec.worker_module, &bindings, spec.compatibility_date)
 }
 
-/// Turning the AI on or off, part by part as the switch names them (N78); part 1, checking
+/// Turning the AI on or off, part by part as the switch names them (N80); part 1, checking
 /// the space, is the caller's.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AiPart {
@@ -369,7 +369,7 @@ pub fn set_ai(cloud: &Cloud, spec: &WireSpec, on: bool, autoclean: bool) -> Resu
     set_ai_parts(cloud, spec, on, autoclean, None, &|_| {})
 }
 
-/// [`set_ai`], saying each part as it begins (N78), and with `confirm` (the page's check and
+/// [`set_ai`], saying each part as it begins (N80), and with `confirm` (the page's check and
 /// its host) done only once the page itself says its AI is on, or off — asked every
 /// `every`, for at most `within`: a page that never says so didn't go through.
 pub fn set_ai_parts(cloud: &Cloud, spec: &WireSpec, on: bool, autoclean: bool, confirm: Option<(&PageCheck, &str)>, part: &dyn Fn(AiPart)) -> Result<(), WireError> {

@@ -297,9 +297,9 @@ fn part_line(now: &[&str], done: &[&str], ahead: Option<&[&str]>, part: u8, glyp
         _ => now[i].into(),
     }
 }
-// ── N78: turning the AI on or off says its parts ──
+// ── N80: turning the AI on or off says its parts ──
 
-/// Turning the AI on or off, part by part (N78; Bagrat's words, 2026-10-25): 1 checking the
+/// Turning the AI on or off, part by part (N80; Bagrat's words, 2026-10-25): 1 checking the
 /// space, 2 the page with the AI or without it, 3 the AI for new videos — off's, then on's.
 const AI_NOW: [[&str; 3]; 2] = [
     ["Checking your space…", "Disconnecting AI…", "Switching AI off for new videos…"],
@@ -307,12 +307,12 @@ const AI_NOW: [[&str; 3]; 2] = [
 ];
 const AI_DONE: [[&str; 3]; 2] = [["Your space is ready", "AI disconnected", "AI is off for new videos"], ["Your space is ready", "AI connected", "AI is on for new videos"]];
 /// One part of the AI's re-wiring, as its mark shows it; a part that stopped there reads as
-/// one still to come (N78).
+/// one still to come (N80).
 pub fn ai_part(on: bool, part: u8, glyph: crate::scene::Glyph) -> String {
     let glyph = if glyph == crate::scene::Glyph::Stopped { crate::scene::Glyph::Ahead } else { glyph };
     part_line(&AI_NOW[usize::from(on)], &AI_DONE[usize::from(on)], None, part, glyph)
 }
-/// Under the AI's parts once one has run 20 s (N78).
+/// Under the AI's parts once one has run 20 s (N80).
 pub fn ai_long() -> String { "Cloudflare is slower than usual just now — hang tight.".into() }
 /// One part of the card step's check, as its mark shows it: underway, done, or to come.
 pub fn check_part(part: u8, glyph: crate::scene::Glyph) -> String { part_line(&CHECK_NOW, &CHECK_DONE, None, part, glyph) }
@@ -634,6 +634,15 @@ pub fn agent_line() -> String { "Paste it into your coding agent. It can find, s
 pub fn agent_recording() -> String { "Let it start and stop recordings".into() }
 /// The agent label (N62, B216): top right of the display a take the command started records.
 pub fn agent_label_line() -> String { "Your coding agent is recording your screen".into() }
+/// The marker toast (N78): ⌥⌘M's answer, top right of the display being recorded — the
+/// take's first marker, then its later ones by number.
+pub fn marker_toast(n: u32) -> String {
+    if n <= 1 { "Marker dropped".into() } else { format!("Marker {n} dropped") }
+}
+/// The marker toast's quieter hint, on every toast (N78).
+pub fn marker_toast_hint() -> String { "Only you see this, not the video".into() }
+/// The marker toast at a pause that has its marker (N78): nothing drops.
+pub fn already_marked() -> String { "Already marked at this pause".into() }
 pub fn report_a_problem() -> String { "Report a problem…".into() }
 pub fn report_sent() -> String { "Sent — thank you. If you left your email, you’ll hear back.".into() }
 pub fn report_title() -> String { "Report a problem".into() }
@@ -1377,6 +1386,10 @@ pub fn registry() -> Vec<(&'static str, String)> {
         ("settings-general", agent_line()),
         ("settings-general", agent_recording()),
         ("recording", agent_label_line()),
+        ("recording", marker_toast(1)),
+        ("recording", marker_toast(3)),
+        ("recording", marker_toast_hint()),
+        ("tray-pause-bars", already_marked()),
         ("report-problem", report_title()),
         ("report-problem", report_line()),
         ("report-problem", report_placeholder()),

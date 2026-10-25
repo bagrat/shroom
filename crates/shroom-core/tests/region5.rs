@@ -383,7 +383,7 @@ impl Drive for Run {
 
 // ── the inventory: one row (or more) per in-scope state ──
 
-/// The AI's page being re-wired (N78): its run at `part` since `since`, in flight until it ends.
+/// The AI's page being re-wired (N80): its run at `part` since `since`, in flight until it ends.
 fn ai_rewiring(mut w: World, on: bool, part: u8, end: Option<AiEnd>, since: u64) -> World {
     w.space.ai_run = Some(AiRun { on, part, since: Mono(since), end });
     if end.is_none() {
@@ -477,7 +477,7 @@ fn rows() -> Vec<(&'static str, World)> {
         w.inflight.ops.insert(Op::Ai, Mono(990).plus(Op::Ai.deadline_ms()));
         w
     }));
-    // Its parts as they land (N78), and the quiet line once one has run long.
+    // Its parts as they land (N80), and the quiet line once one has run long.
     for (part, since) in [(1, 990), (2, 990), (3, 990), (2, 0)] {
         rows.push(("ai-turning-off", {
             let mut w = ai_turned_on();
@@ -554,14 +554,14 @@ fn rows() -> Vec<(&'static str, World)> {
         w.inflight.failures.insert(Op::Ai, Failure { at: Mono(990), class: FailClass::Transport, tries: 1 });
         w
     }));
-    // A run stopped at its first part (N78, law 12).
+    // A run stopped at its first part (N80, law 12).
     rows.push(("settings-space", {
         let mut w = space_tab();
         w.space.ai = Some(true);
         w.inflight.failures.insert(Op::Ai, Failure { at: Mono(990), class: FailClass::Transport, tries: 1 });
         ai_rewiring(w, false, 1, Some(AiEnd::Stopped), 990)
     }));
-    // The switch's parts as they land, done, and running long (N78).
+    // The switch's parts as they land, done, and running long (N80).
     for on in [true, false] {
         for (part, end, since) in [(1, None, 990), (2, None, 990), (3, None, 990), (3, Some(AiEnd::Done), 990), (2, None, 0)] {
             rows.push(("settings-space", {
@@ -2454,7 +2454,7 @@ fn naming_is_a_switch_on_the_setup_mac_that_re_wires_the_page() {
     r.set(Action::SetAi(false));
     r.send(Event::Failed { op: Op::Ai, class: FailClass::Transport });
     assert!(space_pane(&r.scene).ai.as_ref().is_some_and(|t| t.on && t.enabled), "as the page has it");
-    // Since N78 the failure is said under the switch's parts; the cost line stays.
+    // Since N80 the failure is said under the switch's parts; the cost line stays.
     assert_eq!(space_pane(&r.scene).ai_failed, Some(shroom_core::copy::ai_failed()), "and it says so (law 12)");
     r.set(Action::SetAi(false));
     r.send(Event::Cloud(CloudNews::AiSet(false)));
@@ -2665,14 +2665,14 @@ fn naming_shows_only_where_the_setup_key_is() {
     }
 }
 
-// ── The AI switch shows its parts (N78) ──
+// ── The AI switch shows its parts (N80) ──
 
 /// The AI's parts as the scene shows them: each part's mark, line and clock.
 fn ai_parts(parts: &[shroom_core::scene::Part]) -> Vec<(shroom_core::scene::Glyph, String, Option<String>)> {
     parts.iter().map(|p| (p.glyph, p.line.clone(), p.clock.clone())).collect()
 }
 
-/// N78 (Bagrat, 2026-10-25): the switch moves at once to where it's going, greyed, and lists
+/// N80 (Bagrat, 2026-10-25): the switch moves at once to where it's going, greyed, and lists
 /// its three parts as they land — each ticked only when the run says the next began, the one
 /// underway with its running clock from its first second; done when the page says so, the
 /// list kept until the tab or the window changes.
@@ -2732,7 +2732,7 @@ fn the_ai_switch_shows_its_parts_as_they_land() {
     );
 }
 
-/// N78, law 12: a re-wiring that didn't go through puts the switch back as the page has it,
+/// N80, law 12: a re-wiring that didn't go through puts the switch back as the page has it,
 /// live; the part that stopped carries its cross in its plain words, the parts after it go,
 /// and the failure's line is said under them.
 #[test]
@@ -2758,7 +2758,7 @@ fn an_ai_switch_that_didnt_go_through_says_where_it_stopped() {
     assert_eq!(sp.ai_parts[0].glyph, Working);
 }
 
-/// N78: from 20 s on one part, one quiet line under the parts; the clock keeps going.
+/// N80: from 20 s on one part, one quiet line under the parts; the clock keeps going.
 #[test]
 fn an_ai_switch_running_long_says_so_once() {
     use shroom_core::copy;
@@ -2775,7 +2775,7 @@ fn an_ai_switch_running_long_says_so_once() {
     assert_eq!(space_pane(&r.scene).ai_parts[1].clock.as_deref(), Some("0:24"));
 }
 
-/// N78: while the run's clock shows, the window wakes each second to move it.
+/// N80: while the run's clock shows, the window wakes each second to move it.
 #[test]
 fn the_ai_switch_clock_wakes_the_window_each_second() {
     let mut w = space_tab();
@@ -2787,7 +2787,7 @@ fn the_ai_switch_clock_wakes_the_window_each_second() {
     assert!(wake.is_some_and(|m| m.0 <= since.0 + 1_000), "{wake:?} after {since:?}");
 }
 
-/// N78: the banner's Turn off lists the same parts under its line, with their clock, and
+/// N80: the banner's Turn off lists the same parts under its line, with their clock, and
 /// the quiet line from 20 s; its off and didn't-go-through faces stay as they were.
 #[test]
 fn the_banners_turn_off_shows_its_parts() {
@@ -2816,7 +2816,7 @@ fn the_banners_turn_off_shows_its_parts() {
     assert!(b.parts.is_empty() && b.long.is_none(), "the failed face as it was");
 }
 
-/// N78 (3): the done list stays until the window closes or the tab changes — a refocus of
+/// N80 (3): the done list stays until the window closes or the tab changes — a refocus of
 /// Settings (Cmd-Tab back, the popover closing) is neither, before the page says so or after.
 #[test]
 fn the_ai_switch_done_list_outlives_a_refocus() {
@@ -2841,7 +2841,7 @@ fn the_ai_switch_done_list_outlives_a_refocus() {
     assert!(space_pane(&derive(&w)).ai_parts.is_empty(), "done before this window opened");
 }
 
-/// N78, law 12: a run that stops at its first part (the page unanswered, the setup key not
+/// N80, law 12: a run that stops at its first part (the page unanswered, the setup key not
 /// live) crosses it in its plain words, with the failure's line under it.
 #[test]
 fn an_ai_switch_stopped_at_its_first_part_says_so() {

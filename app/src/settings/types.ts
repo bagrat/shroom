@@ -55,7 +55,7 @@ export type SpacePane = {
   /** Naming's switch and its line (N66) — the Mac that holds the setup key, once its page said. */
   ai: Toggle | null;
   ai_line: string | null;
-  /** The switch's parts while the page is re-wired, done or where it stopped (N78). */
+  /** The switch's parts while the page is re-wired, done or where it stopped (N80). */
   ai_parts: Part[];
   ai_long: string | null;
   ai_failed: string | null;

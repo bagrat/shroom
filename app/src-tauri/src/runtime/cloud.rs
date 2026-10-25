@@ -910,7 +910,7 @@ fn refresh(rt: &Runtime) -> Result<CloudNews, FailClass> {
     }
 }
 
-/// How the AI's re-wiring asks the page whether it says so (N78): measured within 0.3 s of
+/// How the AI's re-wiring asks the page whether it says so (N80): measured within 0.3 s of
 /// the last call on the test account (2026-10-25), so every half second — and, as the spec
 /// says, for as long as the re-wiring's 3 min deadline allows: 150 s, after the calls'
 /// own seconds, so the lane answers before the deadline does.
@@ -922,7 +922,7 @@ const AI_CONFIRM_WITHIN: Duration = Duration::from_secs(150);
 /// the setup key, and never over a newer page (another Mac's update): that page keeps its
 /// script and the switch says it couldn't change it.
 fn set_ai(rt: &Runtime, on: bool) -> Result<CloudNews, FailClass> {
-    // Its parts, each said as it begins (N78): checking the space, the page with the AI or
+    // Its parts, each said as it begins (N80): checking the space, the page with the AI or
     // without it, then its schedule and the page saying so.
     post_part(rt, Op::Ai, 1);
     let space = rt.home.read_json::<SpaceIdentity>("space.json").filter(|s| s.role == Role::TokenHolder).ok_or(FailClass::Refused)?;
@@ -950,7 +950,7 @@ fn set_ai(rt: &Runtime, on: bool) -> Result<CloudNews, FailClass> {
     // Auto-cleanup shares the one schedule (N75): naming off keeps it while that's on. Not
     // known (the page didn't say): keep it — a spare schedule costs a read a minute.
     let autoclean = super::library::worker_door(rt, &space).ok().and_then(|(key, page)| page.autoclean(&key).ok()).is_none_or(|a| a.days > 0);
-    // Done only once the page itself says so (N78).
+    // Done only once the page itself says so (N80).
     let at = |host: &str| rt.page_at(host);
     let page = PageCheck { at: &at, version: page_version(), every: AI_CONFIRM_EVERY, within: AI_CONFIRM_WITHIN };
     match wire::set_ai_parts(&h.cloud, &spec, on, autoclean, Some((&page, space.host.as_str())), &|p| post_part(rt, Op::Ai, p as u8)) {

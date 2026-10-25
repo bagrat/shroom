@@ -362,7 +362,7 @@ fn banner_ai(w: &World) -> Option<Banner> {
     let answer = || vec![Button::new(Action::AiOk, copy::ok(), Style::Filled), off.clone()];
     if w.space.ai_turn == Some(AiTurn::TurningOff) {
         if rewiring {
-            // Its parts under the line as they land (N78).
+            // Its parts under the line as they land (N80).
             let (parts, long) = super::ai_running(w).map(|r| super::ai_parts(w, r)).unwrap_or_default();
             return Some(Banner { parts, long, ..frost("ai-turning-off", copy::ai_turning_off(), None, vec![]) });
         }

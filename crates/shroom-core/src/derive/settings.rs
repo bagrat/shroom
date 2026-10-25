@@ -546,7 +546,7 @@ fn space(w: &World, at: SpaceAt, offline: bool) -> SpaceBody {
     // Naming (N66): only the Mac that holds the setup key can re-wire the page, once its
     // page said where it stands; greyed while a re-wiring runs and mid-take (law 4).
     let ai_known = w.space.ai.filter(|_| w.space.token_holder());
-    // N78: while the page is re-wired the switch shows where it's going, and its parts list
+    // N80: while the page is re-wired the switch shows where it's going, and its parts list
     // under the cost line — kept this visit once done, or where it stopped (law 12).
     let running = super::ai_running(w);
     let ai = ai_known.map(|on| {
