@@ -766,7 +766,9 @@
    "status": "autonomous-awaiting-ratification",
    "date": "2026-09-30",
    "amends": [],
-   "amended_by": []
+   "amended_by": [
+    "N80"
+   ]
   },
   {
    "id": "N33",
@@ -1398,6 +1400,17 @@
     "N75 (Delete videos nobody watches: in the Videos tab)"
    ],
    "amended_by": []
+  },
+  {
+   "id": "N80",
+   "title": "Upload credentials live an hour; the Remove sheet says so",
+   "decision": "**Bagrat, 2026-10-25** (relayed by the orchestrator; he approved the wording as drafted the same day): a recording's upload credential lives **one hour**, not seven days (still within N4's ≤7 days), and the Mac mints the same recording's again as it nears its end, so a long upload goes on and a removed Mac's upload ends within the hour (its re-mint is refused). The Remove sheet's member face now says “Mher won't be able to record to your space anymore — a video already on its way has up to an hour to finish. Mher's videos stay; you'll find them in your Library.” (ratified), and shroom.am's FAQ says the same of removing someone.",
+   "status": "ratified",
+   "date": "2026-10-25",
+   "amends": [
+    "N32 (the member face's body line)"
+   ],
+   "amended_by": []
   }
  ],
  "surfaces": [
@@ -1454,7 +1467,7 @@
   "a member's own Add another Mac (a member's second Mac is a second invite, N33)  [L1733-1734]"
  ],
  "scaffold_flags": [
-  "**Per-recording credential minting** — N32's removal copy is true only if creds mint per recording at upload start; per-member creds would force “for up to a week”.  [L1740-1741]",
+  "**Per-recording credential minting** — N32's removal copy (amended by N80: “has up to an hour to finish”) is true only if creds mint per recording, each living an hour and minted again near its end.  [L1740-1741]",
   "**The member cookie** — owner-mode keys on the member, not the space (N40); the Worker checks maker vs cookie, owner-class sees all.  [L1742-1743]",
   "**Launch provenance** — tell a launch you did from a login-item or update relaunch (N41); treat the reopen event as a tray click in every state.  [L1744-1745]",
   "**The popover's anchor fallback** when the status item is occluded (N41).  [L1746]",
@@ -2256,7 +2269,7 @@
      "source_lines": "1299-1302, 1731-1732, 1762"
     },
     {
-     "flag": "Per-recording credential minting at upload start. member-remove-confirm's “a video already on its way can still finish” is true only if creds mint per recording. Per-member creds would force the line to become “for up to a week”: the copy is bound to the mechanism.",
+     "flag": "Per-recording credential minting at upload start, minted again near the end of its hour (N80). member-remove-confirm's “a video already on its way has up to an hour to finish” is true only if creds mint per recording and live an hour: the copy is bound to the mechanism.",
      "source_lines": "1294-1298, 1372-1375, 80, 1740-1741"
     },
     {
@@ -11015,7 +11028,7 @@
    "surface": "sheet",
    "status": "provisional",
    "board": null,
-   "summary": "Removing a joined member. They can't record to the space anymore, but a video already on its way can still finish. Their videos stay in the Library with their label.",
+   "summary": "Removing a joined member. They can't record to the space anymore; a video already on its way has up to an hour to finish. Their videos stay in the Library with their label.",
    "entry": "Remove… on a joined member's row.",
    "said": [
     {
@@ -11026,10 +11039,10 @@
      "id": "member-remove-confirm-member.remove-mher"
     },
     {
-     "text": "Mher won't be able to record to your space anymore — a video already on its way can still finish. Mher's videos stay; you'll find them in your Library.",
+     "text": "Mher won't be able to record to your space anymore — a video already on its way has up to an hour to finish. Mher's videos stay; you'll find them in your Library.",
      "role": "sheet-body",
-     "copy": "provisional",
-     "note": "Bound to per-recording minting. Per-member creds would force “for up to a week”.",
+     "copy": "ratified",
+     "note": "Bagrat, 2026-10-25 (N80): an upload credential lives an hour and a removed Mac's re-mint is refused, so the line names the hour.",
      "id": "member-remove-confirm-member.mher-wont-be-able"
     },
     {

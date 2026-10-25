@@ -4,7 +4,7 @@
 
 The machine: every state, edge, rule, said-line and law of shroom v1 — the spec (DECISIONS B133). Sessions edit it; MACHINE.md and the canvas's machine boards are generated from it.
 
-167 states · 354 edges · 26 rules · 755 said-lines · 16 laws · 90 ledger rows.
+167 states · 354 edges · 26 rules · 755 said-lines · 16 laws · 91 ledger rows.
 
 Status: **ratified** is Bagrat's; **provisional** is designed or built and awaits him (each cites its row: `#n` is a DEVIATIONS row of docs/DECISIONS.md, `Bn` a decision, `Nn`/`Un`/`Pn` a ledger row below). `SM:n` in older citations is a line of the retired spec text, kept in history/spec/UX-STATEMACHINE.md.
 
@@ -3598,14 +3598,14 @@ A sheet over the Members face that confirms a Remove…. It has three faces by r
 
 face · sheet · **provisional** · a face of `member-remove-confirm` · cites N32
 
-Removing a joined member. They can't record to the space anymore, but a video already on its way can still finish. Their videos stay in the Library with their label.
+Removing a joined member. They can't record to the space anymore; a video already on its way has up to an hour to finish. Their videos stay in the Library with their label.
 
 **Entry.** Remove… on a joined member's row.
 
 | Said | Role | Copy | Note |
 |---|---|---|---|
 | “Remove Mher?” | sheet-title | provisional | The member's admin-private label varies. |
-| “Mher won't be able to record to your space anymore — a video already on its way can still finish. Mher's videos stay; you'll find them in your Library.” | sheet-body | provisional | Bound to per-recording minting. Per-member creds would force “for up to a week”. |
+| “Mher won't be able to record to your space anymore — a video already on its way has up to an hour to finish. Mher's videos stay; you'll find them in your Library.” | sheet-body | ratified | Bagrat, 2026-10-25 (N80): an upload credential lives an hour and a removed Mac's re-mint is refused, so the line names the hour. |
 | “Cancel” | button | provisional |  |
 | “Remove” | button | provisional |  |
 
@@ -4304,7 +4304,7 @@ A removed owner-class Mac (its /me or mint answers 401, or 403 removed): config'
 #### Region 6's scaffold flags
 
 - Instant member cut-off = rotating the parent token (an admin operation). Whether the UI offers it is a scaffold flag. An instant member cut-off control is listed as deliberately absent from v1 (parent-token rotation UI, N3).
-- Per-recording credential minting at upload start. member-remove-confirm's “a video already on its way can still finish” is true only if creds mint per recording. Per-member creds would force the line to become “for up to a week”: the copy is bound to the mechanism.
+- Per-recording credential minting at upload start, minted again near the end of its hour (N80). member-remove-confirm's “a video already on its way has up to an hour to finish” is true only if creds mint per recording and live an hour: the copy is bound to the mechanism.
 - Own-Mac invites: one hour, one-time, owner-class, labelled silently by the joining Mac's sharing name. Every owner Mac records as member #1 with its own device key, which is what Remove revokes. A Mac that holds the Cloudflare token mints from that token and can't be stopped by a device key (no Remove…; Disconnect, or delete the token in Cloudflare).
 - Deep link registration (shroom://join/…) at first launch. The browser's own “open shroom?” prompt is the only step it adds (N29). [ Open shroom ] on the join page is this deep link; the paste line is its fallback.
 - The member cookie: owner-mode keys on the member, not the space (N40). The Worker checks maker vs cookie, and owner-class sees all. A member's owner-mode on a page is the title only; the space-global mark switch belongs to owner-class Macs.
@@ -4539,6 +4539,7 @@ A move that holds for a whole group of states, written once (B133). The tests ex
 | N77 | Auto-cleanup offers a year | **Bagrat, 2026-10-25** (relayed by the orchestrator: add a year to the app), so the app offers what the landing's price box does (“30 days · 60 days · a year”): Delete videos nobody watches gains a fourth wait, **After a year** (365 days), after After 60 days. 15 days stays; nothing else changes. Its lines say “a year” where they'd say the days (“nobody has watched them in a year”, “Delete videos nobody watches for a year?”). The three days' warning and every guard hold as they are; the page still keeps a video's last play however long ago it was, so a year is counted from it as the shorter waits are. | ratified | 2026-10-25 |
 | N78 | The marker toast: ⌥⌘M answers on screen, left out of the video | **Bagrat, trying 0.1.30-early.1, 2026-10-25:** a marker dropped with the shortcut is too silent; a toast should say so, with a hint that it isn't in the recording, left out the way the agent label is. **He approved the board “The bubble — ⌥⌘M answers: the “Marker dropped” toast” as drawn, its words and the numbering, 2026-10-25** (relayed by the orchestrator). (1) **A marker ⌥⌘M drops shows a toast**: the agent label's pill with the marker's flag, top right of the display the take records, under the menu bar (just under the label when that shows; on the display Camera's preview sits on for the camera only). It reads “Marker dropped”, or “Marker 3 dropped” for the take's later ones, beside a quieter “Only you see this, not the video”. It is left out of the recording, as the countdown, the bubble's controls and the label are, and takes no clicks. (2) **It stays two seconds, then fades.** A press while it shows swaps the words and starts its two seconds again: one toast, never a stack. (3) **Paused:** with the popover open, no toast (the row's Marker dropped answers); with it put away, the toast; a second press at the same pause drops nothing, and the toast says “Already marked at this pause”. A question open, or a pause shroom made, drops nothing and shows nothing, as before. (4) **It goes with the take**, and once the popover or a count comes up over it; it doesn't come back when they go. Amends N64 (2)'s “nothing on screen answers it”. Built: DECISIONS B246. | ratified | 2026-10-25 |
 | N79 | Settings gains a Videos tab; Space used moves to Space | **Bagrat, 2026-10-25** (relayed by the orchestrator; the board “Settings — General outgrew its window”): General had outgrown its window (with Your videos, the coding agent and auto-cleanup it was about 820 tall in a page of 588, and scrolled on a Mac), so the window gains a tab, **Videos**: General · Videos · Space · Members. Videos holds what was General's group Your videos, row for row and word for word: Count plays, Suggest videos to clean up and Delete videos nobody watches; the group's heading is the tab's name now. **Space used** goes to the Space tab, its own row right under “Cloudflare billing set up”, on owner-class Macs as before (the bill is theirs). The window grows to **600 × 720**, the editor's height (it fits a 1024×768 screen), so every tab fits its page of 688 under the title bar, Space with the AI switch's parts included. General keeps the app's own rows, the help line, your coding agent and Uninstall. Auto-cleanup's question opens over Videos; the shroom command's settings link still opens General at its switch. | ratified | 2026-10-25 |
+| N80 | Upload credentials live an hour; the Remove sheet says so | **Bagrat, 2026-10-25** (relayed by the orchestrator; he approved the wording as drafted the same day): a recording's upload credential lives **one hour**, not seven days (still within N4's ≤7 days), and the Mac mints the same recording's again as it nears its end, so a long upload goes on and a removed Mac's upload ends within the hour (its re-mint is refused). The Remove sheet's member face now says “Mher won't be able to record to your space anymore — a video already on its way has up to an hour to finish. Mher's videos stay; you'll find them in your Library.” (ratified), and shroom.am's FAQ says the same of removing someone. | ratified | 2026-10-25 |
 
 ## Surfaces
 
@@ -4576,7 +4577,7 @@ A move that holds for a whole group of states, written once (B133). The tests ex
 
 ## Scaffold flags
 
-- **Per-recording credential minting** — N32's removal copy is true only if creds mint per recording at upload start; per-member creds would force “for up to a week”.  [L1740-1741]
+- **Per-recording credential minting** — N32's removal copy (amended by N80: “has up to an hour to finish”) is true only if creds mint per recording, each living an hour and minted again near its end.  [L1740-1741]
 - **The member cookie** — owner-mode keys on the member, not the space (N40); the Worker checks maker vs cookie, owner-class sees all.  [L1742-1743]
 - **Launch provenance** — tell a launch you did from a login-item or update relaunch (N41); treat the reopen event as a tray click in every state.  [L1744-1745]
 - **The popover's anchor fallback** when the status item is occluded (N41).  [L1746]
