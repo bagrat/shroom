@@ -763,7 +763,7 @@ impl Space {
     pub fn judge(&self, key: &DeviceKey, rec: &str, cue: usize, after: &str, candidates: &[String]) -> Result<(Vec<f64>, Option<u64>), String> {
         let body = json!({"rec": rec, "cue": cue, "after": after, "candidates": candidates});
         match self.call::<Value>("POST", "cue", Some(body), Some(key)) {
-            Answer::Ok(v) if v.get("later").and_then(Value::as_bool) == Some(true) => Err(format!("later: {}", v.get("why").and_then(Value::as_str).unwrap_or("no reason"))),
+            Answer::Ok(v) if v.get("later").and_then(Value::as_bool) == Some(true) => Err(later_why(&v)),
             Answer::Ok(v) => scores_of(&v, candidates.len()).map(|s| (s, v.get("ms").and_then(Value::as_u64))).ok_or_else(|| "an answer that doesn't fit".into()),
             Answer::Refused(r) => Err(format!("refused {}", r.status)),
             Answer::NotShroom { status } => Err(format!("not the space's answer ({status})")),
@@ -1193,6 +1193,19 @@ pub fn ai_signal_noted(space: &Space, auth: &AiAuth, rec: &str, signal: AiSignal
         }
     }
     (sent, notes)
+}
+
+/// The most of the space's own `why` a later judgment keeps (`later_why`).
+const WHY_CHARS: usize = 60;
+
+/// Why the space can't judge now, for the Mac's log: `later: ` and the space's `why` in its
+/// plain characters (letters, digits, space, `-`, `:`, `.`), at most `WHY_CHARS`, as the
+/// naming lane's notes are kept (`meta::ai_note`).
+fn later_why(v: &Value) -> String {
+    let why = v.get("why").and_then(Value::as_str).unwrap_or("");
+    let why: String = why.chars().filter(|c| c.is_ascii_alphanumeric() || " -:.".contains(*c)).take(WHY_CHARS).collect();
+    let why = why.trim();
+    format!("later: {}", if why.is_empty() { "no reason" } else { why })
 }
 
 /// A signal's lines for this Mac's log: `naming <take>: <signal> → <how it went>`, then each
