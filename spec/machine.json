@@ -14116,120 +14116,120 @@
     {
      "text": "Chapters",
      "role": "heading",
-     "copy": "provisional",
-     "note": "The panel's heading. Drawn on the boards Bagrat OK'd, 2026-10-25; the words are drafts until he OKs them.",
+     "copy": "ratified",
+     "note": "The panel's heading. OK'd as written, Bagrat 2026-10-25.",
      "id": "owner-page-chapters.chapters"
     },
     {
      "text": "Edit chapters",
      "role": "tooltip",
-     "copy": "provisional",
-     "note": "The icon's name and tooltip, among the title's icons before the scissors. Drawn on the boards Bagrat OK'd, 2026-10-25; the words are drafts until he OKs them.",
+     "copy": "ratified",
+     "note": "The icon's name and tooltip, among the title's icons before the scissors. OK'd as written, Bagrat 2026-10-25.",
      "id": "owner-page-chapters.edit-chapters"
     },
     {
      "text": "Show in the seek bar",
      "role": "label",
-     "copy": "provisional",
-     "note": "The switch's label; on a phone, “In the seek bar”. Drawn on the boards Bagrat OK'd, 2026-10-25; the words are drafts until he OKs them.",
+     "copy": "ratified",
+     "note": "The switch's label; on a phone, “In the seek bar”. OK'd as written, Bagrat 2026-10-25.",
      "id": "owner-page-chapters.show-in-the-seek-bar"
     },
     {
      "text": "Done",
      "role": "button",
-     "copy": "provisional",
-     "note": "Shuts the panel. Drawn on the boards Bagrat OK'd, 2026-10-25; the words are drafts until he OKs them.",
+     "copy": "ratified",
+     "note": "Shuts the panel. OK'd as written, Bagrat 2026-10-25.",
      "id": "owner-page-chapters.done"
     },
     {
      "text": "Add a chapter at 1:20",
      "role": "button",
-     "copy": "provisional",
-     "note": "Under the rows; the time is the playhead's and varies. Drawn on the boards Bagrat OK'd, 2026-10-25; the words are drafts until he OKs them.",
+     "copy": "ratified",
+     "note": "Under the rows; the time is the playhead's and varies. OK'd as written, Bagrat 2026-10-25.",
      "id": "owner-page-chapters.add-a-chapter-at"
     },
     {
      "text": "Add the first chapter",
      "role": "button",
-     "copy": "provisional",
-     "note": "On a video with no chapters, under “No chapters yet.”: a row at 0:00 with its name open. Drawn on the boards Bagrat OK'd, 2026-10-25; the words are drafts until he OKs them.",
+     "copy": "ratified",
+     "note": "On a video with no chapters, under “No chapters yet.”: a row at 0:00 with its name open. OK'd as written, Bagrat 2026-10-25.",
      "id": "owner-page-chapters.add-the-first-chapter"
     },
     {
      "text": "No chapters yet.",
      "role": "note",
-     "copy": "provisional",
-     "note": "A video with no chapters. Drawn on the boards Bagrat OK'd, 2026-10-25; the words are drafts until he OKs them.",
+     "copy": "ratified",
+     "note": "A video with no chapters. OK'd as written, Bagrat 2026-10-25.",
      "id": "owner-page-chapters.no-chapters-yet"
     },
     {
      "text": "Name this chapter",
      "role": "placeholder",
-     "copy": "provisional",
-     "note": "A new row's name field. Drawn on the boards Bagrat OK'd, 2026-10-25; the words are drafts until he OKs them.",
+     "copy": "ratified",
+     "note": "A new row's name field. OK'd as written, Bagrat 2026-10-25.",
      "id": "owner-page-chapters.name-this-chapter"
     },
     {
      "text": "Start this chapter at 1:20",
      "role": "tooltip",
-     "copy": "provisional",
-     "note": "The arrow's name; the time is the playhead's. Drawn on the boards Bagrat OK'd, 2026-10-25; the words are drafts until he OKs them.",
+     "copy": "ratified",
+     "note": "The arrow's name; the time is the playhead's. OK'd as written, Bagrat 2026-10-25.",
      "id": "owner-page-chapters.start-this-chapter-at"
     },
     {
      "text": "Remove this chapter",
      "role": "tooltip",
-     "copy": "provisional",
-     "note": "The ✕'s name. Drawn on the boards Bagrat OK'd, 2026-10-25; the words are drafts until he OKs them.",
+     "copy": "ratified",
+     "note": "The ✕'s name. OK'd as written, Bagrat 2026-10-25.",
      "id": "owner-page-chapters.remove-this-chapter"
     },
     {
      "text": "Removed “Trial results and metrics”.",
      "role": "status",
-     "copy": "provisional",
-     "note": "A removed chapter's row, with Undo; the name varies. Drawn on the boards Bagrat OK'd, 2026-10-25; the words are drafts until he OKs them.",
+     "copy": "ratified",
+     "note": "A removed chapter's row, with Undo; the name varies. OK'd as written, Bagrat 2026-10-25.",
      "id": "owner-page-chapters.removed"
     },
     {
      "text": "Undo",
      "role": "button",
-     "copy": "provisional",
-     "note": "Puts the removed chapter back. Drawn on the boards Bagrat OK'd, 2026-10-25; the words are drafts until he OKs them.",
+     "copy": "ratified",
+     "note": "Puts the removed chapter back. OK'd as written, Bagrat 2026-10-25.",
      "id": "owner-page-chapters.undo"
     },
     {
      "text": "A chapter needs at least 5 seconds.",
      "role": "status",
-     "copy": "provisional",
-     "note": "Amber, under the rows: a time too close to a neighbour; nothing saves and the field stays open. Drawn on the boards Bagrat OK'd, 2026-10-25; the words are drafts until he OKs them.",
+     "copy": "ratified",
+     "note": "Amber, under the rows: a time too close to a neighbour; nothing saves and the field stays open. OK'd as written, Bagrat 2026-10-25.",
      "id": "owner-page-chapters.needs-5-seconds"
     },
     {
      "text": "That time isn't in the video.",
      "role": "status",
-     "copy": "provisional",
-     "note": "Amber, under the rows: a time past the end; nothing saves. Drawn on the boards Bagrat OK'd, 2026-10-25; the words are drafts until he OKs them.",
+     "copy": "ratified",
+     "note": "Amber, under the rows: a time past the end; nothing saves. OK'd as written, Bagrat 2026-10-25.",
      "id": "owner-page-chapters.not-in-the-video"
     },
     {
      "text": "Off: viewers see the seek bar without chapters.",
      "role": "note",
-     "copy": "provisional",
-     "note": "Under the heading while the switch is off. Drawn on the boards Bagrat OK'd, 2026-10-25; the words are drafts until he OKs them.",
+     "copy": "ratified",
+     "note": "Under the heading while the switch is off. OK'd as written, Bagrat 2026-10-25.",
      "id": "owner-page-chapters.off-viewers-see"
     },
     {
      "text": "Cut from the video. It comes back if you put the cut back.",
      "role": "note",
-     "copy": "provisional",
-     "note": "Under the name of a chapter an edit cut out whole (or left under 5 s). Drawn on the boards Bagrat OK'd, 2026-10-25; the words are drafts until he OKs them.",
+     "copy": "ratified",
+     "note": "Under the name of a chapter an edit cut out whole (or left under 5 s). OK'd as written, Bagrat 2026-10-25.",
      "id": "owner-page-chapters.cut-from-the-video"
     },
     {
      "text": "Couldn't save that. Check your connection, then try again.",
      "role": "status",
-     "copy": "provisional",
-     "note": "Amber, under the rows, after a change that didn't save; the cut strip's line. Drawn on the boards Bagrat OK'd, 2026-10-25; the words are drafts until he OKs them.",
+     "copy": "ratified",
+     "note": "Amber, under the rows, after a change that didn't save; the cut strip's line. OK'd as written, Bagrat 2026-10-25.",
      "id": "owner-page-chapters.couldnt-save"
     }
    ],

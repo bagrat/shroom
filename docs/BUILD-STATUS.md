@@ -385,4 +385,4 @@ and edits on the share page)*)**
     remove with Undo, add at the playhead, and a switch that hides them from the bar. The
     owner's chapters are theirs for good (the naming never writes them) and follow trims, cuts
     and bakes. Proved by the Worker's `chapters.test.js` and the page gallery's eight
-    `owner-chapters-*` faces in real Chromium. The words wait on his OK as drafts.
+    `owner-chapters-*` faces in real Chromium. Its words OK'd as written (Bagrat, 2026-10-25).

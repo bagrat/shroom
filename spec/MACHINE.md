@@ -2165,23 +2165,23 @@ The owner edits the video's chapters (N78), in a panel the Edit chapters icon op
 
 | Said | Role | Copy | Note |
 |---|---|---|---|
-| “Chapters” | heading | provisional | The panel's heading. Drawn on the boards Bagrat OK'd, 2026-10-25; the words are drafts until he OKs them. |
-| “Edit chapters” | tooltip | provisional | The icon's name and tooltip, among the title's icons before the scissors. Drawn on the boards Bagrat OK'd, 2026-10-25; the words are drafts until he OKs them. |
-| “Show in the seek bar” | label | provisional | The switch's label; on a phone, “In the seek bar”. Drawn on the boards Bagrat OK'd, 2026-10-25; the words are drafts until he OKs them. |
-| “Done” | button | provisional | Shuts the panel. Drawn on the boards Bagrat OK'd, 2026-10-25; the words are drafts until he OKs them. |
-| “Add a chapter at 1:20” | button | provisional | Under the rows; the time is the playhead's and varies. Drawn on the boards Bagrat OK'd, 2026-10-25; the words are drafts until he OKs them. |
-| “Add the first chapter” | button | provisional | On a video with no chapters, under “No chapters yet.”: a row at 0:00 with its name open. Drawn on the boards Bagrat OK'd, 2026-10-25; the words are drafts until he OKs them. |
-| “No chapters yet.” | note | provisional | A video with no chapters. Drawn on the boards Bagrat OK'd, 2026-10-25; the words are drafts until he OKs them. |
-| “Name this chapter” | placeholder | provisional | A new row's name field. Drawn on the boards Bagrat OK'd, 2026-10-25; the words are drafts until he OKs them. |
-| “Start this chapter at 1:20” | tooltip | provisional | The arrow's name; the time is the playhead's. Drawn on the boards Bagrat OK'd, 2026-10-25; the words are drafts until he OKs them. |
-| “Remove this chapter” | tooltip | provisional | The ✕'s name. Drawn on the boards Bagrat OK'd, 2026-10-25; the words are drafts until he OKs them. |
-| “Removed “Trial results and metrics”.” | status | provisional | A removed chapter's row, with Undo; the name varies. Drawn on the boards Bagrat OK'd, 2026-10-25; the words are drafts until he OKs them. |
-| “Undo” | button | provisional | Puts the removed chapter back. Drawn on the boards Bagrat OK'd, 2026-10-25; the words are drafts until he OKs them. |
-| “A chapter needs at least 5 seconds.” | status | provisional | Amber, under the rows: a time too close to a neighbour; nothing saves and the field stays open. Drawn on the boards Bagrat OK'd, 2026-10-25; the words are drafts until he OKs them. |
-| “That time isn't in the video.” | status | provisional | Amber, under the rows: a time past the end; nothing saves. Drawn on the boards Bagrat OK'd, 2026-10-25; the words are drafts until he OKs them. |
-| “Off: viewers see the seek bar without chapters.” | note | provisional | Under the heading while the switch is off. Drawn on the boards Bagrat OK'd, 2026-10-25; the words are drafts until he OKs them. |
-| “Cut from the video. It comes back if you put the cut back.” | note | provisional | Under the name of a chapter an edit cut out whole (or left under 5 s). Drawn on the boards Bagrat OK'd, 2026-10-25; the words are drafts until he OKs them. |
-| “Couldn't save that. Check your connection, then try again.” | status | provisional | Amber, under the rows, after a change that didn't save; the cut strip's line. Drawn on the boards Bagrat OK'd, 2026-10-25; the words are drafts until he OKs them. |
+| “Chapters” | heading | ratified | The panel's heading. OK'd as written, Bagrat 2026-10-25. |
+| “Edit chapters” | tooltip | ratified | The icon's name and tooltip, among the title's icons before the scissors. OK'd as written, Bagrat 2026-10-25. |
+| “Show in the seek bar” | label | ratified | The switch's label; on a phone, “In the seek bar”. OK'd as written, Bagrat 2026-10-25. |
+| “Done” | button | ratified | Shuts the panel. OK'd as written, Bagrat 2026-10-25. |
+| “Add a chapter at 1:20” | button | ratified | Under the rows; the time is the playhead's and varies. OK'd as written, Bagrat 2026-10-25. |
+| “Add the first chapter” | button | ratified | On a video with no chapters, under “No chapters yet.”: a row at 0:00 with its name open. OK'd as written, Bagrat 2026-10-25. |
+| “No chapters yet.” | note | ratified | A video with no chapters. OK'd as written, Bagrat 2026-10-25. |
+| “Name this chapter” | placeholder | ratified | A new row's name field. OK'd as written, Bagrat 2026-10-25. |
+| “Start this chapter at 1:20” | tooltip | ratified | The arrow's name; the time is the playhead's. OK'd as written, Bagrat 2026-10-25. |
+| “Remove this chapter” | tooltip | ratified | The ✕'s name. OK'd as written, Bagrat 2026-10-25. |
+| “Removed “Trial results and metrics”.” | status | ratified | A removed chapter's row, with Undo; the name varies. OK'd as written, Bagrat 2026-10-25. |
+| “Undo” | button | ratified | Puts the removed chapter back. OK'd as written, Bagrat 2026-10-25. |
+| “A chapter needs at least 5 seconds.” | status | ratified | Amber, under the rows: a time too close to a neighbour; nothing saves and the field stays open. OK'd as written, Bagrat 2026-10-25. |
+| “That time isn't in the video.” | status | ratified | Amber, under the rows: a time past the end; nothing saves. OK'd as written, Bagrat 2026-10-25. |
+| “Off: viewers see the seek bar without chapters.” | note | ratified | Under the heading while the switch is off. OK'd as written, Bagrat 2026-10-25. |
+| “Cut from the video. It comes back if you put the cut back.” | note | ratified | Under the name of a chapter an edit cut out whole (or left under 5 s). OK'd as written, Bagrat 2026-10-25. |
+| “Couldn't save that. Check your connection, then try again.” | status | ratified | Amber, under the rows, after a change that didn't save; the cut strip's line. OK'd as written, Bagrat 2026-10-25. |
 
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
