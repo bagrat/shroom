@@ -236,14 +236,30 @@ pub enum Action {
     ReviewCleanup,
     /// The suggestion line's ✕: put away until the suggestions change.
     DismissCleanup,
-    /// Keep on a suggestion: off the list for good (the record's `keep`).
-    KeepRow(RecId),
+    /// Pin (or Unpin) a row (N74, the record's `keep`): a selected row acts for every row
+    /// selected; on a suggestion, it leaves the list for good.
+    PinRow(RecId, bool),
     /// Delete on a suggestion: one tap, its Undo line first.
     DeleteSuggested(RecId),
     /// The Undo line's Undo.
     UndoDelete,
-    /// Delete all…: the several-videos sheet, over every suggestion shown.
+    /// Delete all…: its own sheet, over every suggestion shown (N74).
     DeleteAllSuggested,
+    /// The sheet's Delete all: every row leaves, held on one Undo line (N74).
+    ConfirmDeleteSuggested,
+    // ── auto-cleanup (N74) ──
+    /// The popover banner's Review…: the Library, on what's going.
+    ReviewGoing,
+    /// The popover banner's Not now: put away on this Mac until the list changes.
+    DismissGoing,
+    /// The popover banner's Pin both: every video going, pinned.
+    PinGoing,
+    /// OK on the line after a round went: put away here and in the popover.
+    CleanedOk,
+    /// Settings · General's Delete videos nobody watches (0: off).
+    SetAutoclean(u32),
+    /// Its question's Turn on.
+    ConfirmAutoclean,
     /// Settings · General's Count plays (the space's switch, owner-class).
     SetPlays(bool),
     /// Settings · General's Suggest videos to clean up (this Mac's).
@@ -860,6 +876,10 @@ pub struct LibraryRowView {
     pub progress: Option<u32>,
     /// A recovered take, pinned to the top under the amber dot.
     pub pinned: bool,
+    /// Pinned to keep (N74): “Pinned”, said by the small pin before its title.
+    pub kept: Option<String>,
+    /// Auto-cleanup will delete it (N74): “Deleted Oct 27 unless pinned”, amber.
+    pub going: Option<String>,
     pub selected: bool,
     pub gestures: Gestures,
     /// Always visible.
@@ -894,6 +914,26 @@ pub struct LibraryBody {
     pub cleanup_line: Option<CleanupLine>,
     /// Suggested to clean up, in place of the list (N68).
     pub cleanup: Option<CleanupBody>,
+    /// Auto-cleanup's amber line, three days ahead (N74): in the suggestion line's place.
+    pub going_line: Option<Notice>,
+    /// Once a round of auto-cleanup went (N74): what went and what it freed, with OK.
+    pub cleaned_line: Option<Notice>,
+}
+
+/// A line above the Library's rows and its buttons (N74).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct Notice {
+    pub line: String,
+    pub buttons: Vec<Button>,
+}
+
+/// What auto-cleanup will delete on one date (N74): its heading, the line under the first,
+/// and each video with Open page and Pin.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct GoingGroup {
+    pub heading: String,
+    pub line: Option<String>,
+    pub rows: Vec<CleanupRowView>,
 }
 
 /// The Library's line about the videos worth deleting (N68).
@@ -913,6 +953,10 @@ pub struct CleanupBody {
     /// “‹ Library”.
     pub back: Button,
     pub intro: Option<String>,
+    /// What auto-cleanup will delete, by date, ahead of the suggestions (N74).
+    pub going: Vec<GoingGroup>,
+    /// “Might be worth deleting”, over the suggestions while anything is going (N74).
+    pub suggest_heading: Option<String>,
     pub rows: Vec<CleanupRowView>,
     /// Once the last suggestion is kept or deleted.
     pub empty: Option<String>,
@@ -982,6 +1026,21 @@ pub struct VideosGroup {
     pub used_label: Option<String>,
     /// The space's size and what it costs — owner-class Macs, once the space has said.
     pub used: Option<String>,
+    /// Delete videos nobody watches (N74), once the space has said.
+    pub autoclean: Option<AutocleanRow>,
+}
+
+/// Auto-cleanup's pop-up (N74): live on the Mac that holds the setup key, greyed elsewhere
+/// and while Count plays is off.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct AutocleanRow {
+    pub label: String,
+    /// The line under it: how it counts, or who sets it, or what it needs.
+    pub hint: String,
+    /// Off · After 15 days · After 30 days · After 60 days.
+    pub choices: Vec<Choice>,
+    /// “Turning on — a few seconds.” the first time, or why it didn't change (law 12).
+    pub note: Option<String>,
 }
 
 /// General's card for a coding agent: the prompt to paste, Copy, “Read it first”, the line
@@ -1287,13 +1346,15 @@ impl Window<LibraryBody> {
         // Suggested to clean up stands in place of the list (N68).
         if let Some(c) = &self.body.cleanup {
             return std::iter::once(&c.back)
+                .chain(c.going.iter().flat_map(|g| g.rows.iter().flat_map(|r| &r.buttons)))
                 .chain(c.rows.iter().flat_map(|r| &r.buttons))
                 .chain(&c.delete_all)
                 .chain(c.undo.as_ref().map(|u| &u.undo))
                 .collect();
         }
         let line = self.body.cleanup_line.iter().flat_map(|l| [&l.review, &l.dismiss]);
-        self.body.rows.iter().flat_map(|r| r.buttons.iter().chain(&r.hover).chain(&r.menu)).chain(line).collect()
+        let notices = self.body.going_line.iter().chain(&self.body.cleaned_line).flat_map(|n| &n.buttons);
+        self.body.rows.iter().flat_map(|r| r.buttons.iter().chain(&r.hover).chain(&r.menu)).chain(line).chain(notices).collect()
     }
 
     pub fn offers(&self, action: &Action) -> bool {
@@ -1412,7 +1473,8 @@ impl Window<SettingsBody> {
         match &self.body.pane {
             SettingsPane::General(g) => {
                 let toggles = [&g.login, &g.agent.recording].into_iter().chain(g.videos.iter().flat_map(|v| [&v.count, &v.suggest]));
-                toggles.into_iter().any(|t| t.enabled && &t.action == action)
+                let picks = g.videos.iter().flat_map(|v| v.autoclean.iter().flat_map(|a| &a.choices));
+                toggles.into_iter().any(|t| t.enabled && &t.action == action) || picks.into_iter().any(|c| c.enabled && &c.action == action)
             }
             SettingsPane::Space(sp) => [&sp.mark, &sp.ai].into_iter().flatten().any(|t| t.enabled && &t.action == action),
             // Esc in the name being changed puts it back (B158).

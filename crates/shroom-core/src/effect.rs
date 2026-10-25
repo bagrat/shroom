@@ -1,8 +1,9 @@
 //! Everything the core can ask for — data, executed by the runner's lanes, whose results
 //! come back as events. Effects never cross to a webview.
 
-use crate::world::{EditorId, Op, Prefs, Quality, RecId, RelaunchWhy, Restore, SecretId, SourceId, SpaceIdentity, TakeDir, Why};
 use crate::time::Wall;
+
+use crate::world::{EditorId, Op, Prefs, Quality, RecId, RelaunchWhy, Restore, SecretId, SourceId, SpaceIdentity, TakeDir, Why};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Effect {
@@ -56,6 +57,7 @@ impl Effect {
             Effect::Cloud(CloudCmd::Wire { .. }) => Some(Op::Wire),
             Effect::Cloud(CloudCmd::Refresh) => Some(Op::Refresh),
             Effect::Cloud(CloudCmd::SetAi(_)) => Some(Op::Ai),
+            Effect::Cloud(CloudCmd::SetAutoclean(_)) => Some(Op::Autoclean),
             Effect::Shell(ShellCmd::Relaunch(_)) => Some(Op::Relaunch),
             Effect::Library(LibCmd::Refresh) => Some(Op::LibRefresh),
             Effect::Library(LibCmd::Cleanup) => Some(Op::Cleanup),
@@ -63,7 +65,7 @@ impl Effect {
             Effect::Library(LibCmd::Rename(..)) => Some(Op::Rename),
             Effect::Library(LibCmd::Delete(_)) => Some(Op::Delete),
             Effect::Library(LibCmd::Suggest { .. }) => Some(Op::Suggest),
-            Effect::Library(LibCmd::Keep(_)) => Some(Op::Keep),
+            Effect::Library(LibCmd::Pin(..)) => Some(Op::Pin),
             Effect::Library(LibCmd::Plays(_)) => Some(Op::Plays),
             Effect::Updater(UpdCmd::Check) => Some(Op::UpdateCheck),
             Effect::Updater(UpdCmd::Download(_)) => Some(Op::UpdateDownload),
@@ -144,6 +146,10 @@ pub enum CloudCmd {
     /// Naming on or off (N66): this app's page put up again with Cloudflare's AI and its
     /// schedule, or without them — on the token Mac only. Answers `AiSet`.
     SetAi(bool),
+    /// Auto-cleanup's days (N74; 0: off): the space's page told (`POST /autoclean`), and
+    /// given its schedule while auto-cleanup or naming is on — on the token Mac only.
+    /// Answers `Autoclean`.
+    SetAutoclean(u32),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -270,8 +276,12 @@ pub enum LibCmd {
     /// What the space says is worth deleting (N68): `POST /cleanup` paged to its end, the
     /// whole space's (`everyone`) on owner-class Macs. Answers `Suggested`.
     Suggest { everyone: bool },
-    /// Set the record's `keep` (read-modify-write under `If-Match`). Answers `Kept`.
-    Keep(RecId),
+    /// Set or clear each record's `keep` (N74's Pin; read-modify-write under `If-Match`).
+    /// Answers `Pinned`.
+    Pin(Vec<RecId>, bool),
+    /// Mark these videos as open in an editor, for the space's auto-cleanup (N74,
+    /// `POST /editing`): its page leaves them be for a quarter of an hour. Answers nothing.
+    Editing(Vec<RecId>),
     /// The space's play-count switch (owner-class). Answers `Plays`.
     Plays(bool),
 }

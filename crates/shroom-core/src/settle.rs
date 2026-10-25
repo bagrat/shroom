@@ -38,7 +38,31 @@ pub fn settle(w: &World) -> Vec<Effect> {
     due_sleep_ack(w, &mut fx);
     due_edit_copy(w, &mut fx);
     due_edit_upkeep(w, &mut fx);
+    due_editing_marks(w, &mut fx);
     fx
+}
+
+/// How often an open editor marks its video for the space's auto-cleanup (N74): the mark
+/// holds a quarter of an hour, so every five minutes keeps it whole.
+pub const EDITING_MARK_MS: u64 = 300_000;
+
+/// Each video an editor window holds is marked as being edited (N74, `POST /editing`) as
+/// the window opens and every five minutes after, so the space's page never deletes it
+/// from under the editor. Online only; `update` notes when each was marked.
+fn due_editing_marks(w: &World, fx: &mut Vec<Effect>) {
+    if !w.provisioned() || w.online() == Some(false) {
+        return;
+    }
+    let mut due: Vec<crate::world::RecId> = Vec::new();
+    for e in w.session.fields.editors.values() {
+        let fresh = w.library_ops.marked.get(&e.rec).is_some_and(|at| w.now.0 < at.plus(EDITING_MARK_MS).0);
+        if !fresh && !due.contains(&e.rec) {
+            due.push(e.rec.clone());
+        }
+    }
+    if !due.is_empty() {
+        fx.push(Effect::Library(LibCmd::Editing(due)));
+    }
 }
 
 /// A saved edit's permanent copy (N63, B195 (f)): owed copies are cut one at a time, never
@@ -293,13 +317,28 @@ fn due_suggestions(w: &World, fx: &mut Vec<Effect>) {
         return;
     }
     let entered = |kind: WindowKind| w.session.windows.get(&kind).filter(|_| w.window_visible(kind)).map(|d| d.entered);
-    let library = entered(WindowKind::Library).filter(|_| w.prefs.suggest_cleanup);
+    // With Suggest videos to clean up off, still read while the space's auto-cleanup is on:
+    // its warning reaches every Mac (N74) — the popover's read learns that it is.
+    let autocleaning = w.suggestions.get().is_some_and(|s| s.autoclean.days > 0);
+    let library = entered(WindowKind::Library).filter(|_| w.prefs.suggest_cleanup || autocleaning);
     let general = entered(WindowKind::Settings).filter(|_| settings_view::tab(w) == SettingsTab::General);
     let Some(since) = library.into_iter().chain(general).max() else { return };
     if w.suggestions.at().is_none_or(|t| t < since) {
         fx.push(Effect::Library(LibCmd::Suggest { everyone: w.space.owner_class() }));
     }
 }
+
+/// The popover's banner (N74): what auto-cleanup has going, read as the mushroom's click
+/// opens the popover, at most once an hour — online, with a space, nothing else asked.
+pub fn popover_read(w: &World) -> Option<Effect> {
+    let leaving = matches!(w.session.confirm, Some(crate::world::Confirm::Uninstall { .. } | crate::world::Confirm::Exit));
+    let stale = w.suggestions.at().is_none_or(|t| w.now.0 >= t.plus(SUGGEST_FROM_POPOVER_MS).0);
+    (w.provisioned() && w.online() != Some(false) && !leaving && !w.take_open() && idle(w, Op::Suggest) && stale)
+        .then(|| Effect::Library(LibCmd::Suggest { everyone: w.space.owner_class() }))
+}
+
+/// How stale the popover lets auto-cleanup's list get before it reads it again (N74).
+pub const SUGGEST_FROM_POPOVER_MS: u64 = 3_600_000;
 
 /// The background update check: at launch, then every few hours, and when the popover
 /// opens a while after the last (B154); fail-soft (N37).

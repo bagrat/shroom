@@ -4,8 +4,8 @@
 //! over titles. Offline, Copy link stays live; renaming and deleting grey out.
 
 use crate::copy;
-use crate::scene::{Action, Button, Choice, CleanupBody, CleanupLine, CleanupRowView, Gestures, LibraryBody, LibraryRowView, Sheet, Style, TextField, Tone, UndoLine, Window};
-use crate::world::{Blocked, Confirm, CopyTarget, Landed, LibraryRow, LibraryScope, RecId, Role, Suggestion, TakeDir, WindowKind, World};
+use crate::scene::{Action, Button, Choice, CleanupBody, CleanupLine, CleanupRowView, Gestures, GoingGroup, LibraryBody, LibraryRowView, Notice, Sheet, Style, TextField, Tone, UndoLine, Window};
+use crate::world::{Blocked, Cleaned, Confirm, CopyTarget, Going, Landed, LibraryRow, LibraryScope, RecId, Role, Suggestion, TakeDir, WindowKind, World};
 
 /// What a row is, by where it stands.
 #[derive(Debug, Clone, PartialEq)]
@@ -39,6 +39,8 @@ pub struct Row {
     pub other: Option<String>,
     /// Where its poster is (`LibraryRowView::poster`).
     pub poster: Option<String>,
+    /// Pinned to keep (N74): as asked while the write runs, else as it landed, else the record.
+    pub kept: bool,
 }
 
 impl Row {
@@ -106,7 +108,7 @@ fn rows_in(w: &World, whole: bool) -> Vec<Row> {
     let landed = &w.library_ops.landed;
     // A one-tap delete on its Undo line is gone from the list behind it too (N68).
     let undoing = w.session.fields.library.undo.as_ref().map(|(r, _)| r);
-    let gone = |rec: &RecId| w.library_ops.deleting.contains(rec) || matches!(landed.get(rec), Some((Landed::Deleted, _))) || undoing == Some(rec);
+    let gone = |rec: &RecId| w.library_ops.deleting.contains(rec) || matches!(landed.get(rec), Some((Landed::Deleted, _))) || undoing.is_some_and(|u| u.contains(rec));
     let title = |rec: &RecId, fallback: &str| {
         w.library_ops
             .renaming
@@ -125,7 +127,7 @@ fn rows_in(w: &World, whole: bool) -> Vec<Row> {
         None => find(rec).and_then(|r| r.edited_ms),
     };
 
-    let pinned: Vec<Row> = w
+    let recovered: Vec<Row> = w
         .saved
         .iter()
         .map(|s| Row {
@@ -137,6 +139,7 @@ fn rows_in(w: &World, whole: bool) -> Vec<Row> {
             kind: Kind::Recovered(s.dir.clone()),
             other: None,
             poster: Some(local_poster(&s.rec, &s.dir)),
+            kept: false,
         })
         .collect();
 
@@ -161,6 +164,7 @@ fn rows_in(w: &World, whole: bool) -> Vec<Row> {
             kind,
             other: None,
             poster: Some(local_poster(&q.rec, &q.dir)),
+            kept: false,
         });
     }
     for q in &w.removed {
@@ -173,6 +177,7 @@ fn rows_in(w: &World, whole: bool) -> Vec<Row> {
             kind: Kind::Removed(q.dir.clone()),
             other: None,
             poster: Some(local_poster(&q.rec, &q.dir)),
+            kept: false,
         });
     }
     let local: Vec<&RecId> = w.queue.iter().chain(&w.removed).map(|q| &q.rec).chain(w.saved.iter().map(|s| &s.rec)).collect();
@@ -186,10 +191,11 @@ fn rows_in(w: &World, whole: bool) -> Vec<Row> {
             kind: if r.live { Kind::Live } else { Kind::Elsewhere },
             other: r.owner.clone().filter(|_| others(w, r)),
             poster: r.poster.then(|| r.rec.0.clone()),
+            kept: pinned(w, &r.rec),
         });
     }
     rest.sort_by(|a, b| b.created.cmp(&a.created).then_with(|| a.rec.cmp(&b.rec)));
-    pinned.into_iter().chain(rest).collect()
+    recovered.into_iter().chain(rest).collect()
 }
 
 /// A take this Mac holds: its own `poster.jpg` first, then the space's (`<rec>/<dir>`).
@@ -219,15 +225,63 @@ pub fn deletable(w: &World, recs: &[RecId]) -> Vec<RecId> {
 const FREE_BYTES: u64 = 10_000_000_000;
 const CENTS_PER_GB_MONTH: f64 = 1.5;
 
+/// Pinned (N74): as asked while the write runs, else as it landed, else as the record has it.
+pub fn pinned(w: &World, rec: &RecId) -> bool {
+    if let Some(on) = w.library_ops.pinning.get(rec) {
+        return *on;
+    }
+    if let Some((Landed::Pinned(on), _)) = w.library_ops.landed.get(rec) {
+        return *on;
+    }
+    w.library.get().is_some_and(|v| v.iter().any(|r| &r.rec == rec && r.pinned))
+}
+
+/// What auto-cleanup will delete (N74), in the space's order (earliest first): live videos
+/// in the Library's view — or, `whole`, everything this Mac may see (the popover's) — less
+/// those pinned since, deleted or on an Undo line.
+pub fn going_in(w: &World, whole: bool) -> Vec<(Going, Row)> {
+    let Some(s) = w.suggestions.get() else { return vec![] };
+    if s.autoclean.days == 0 {
+        return vec![];
+    }
+    let shown = rows_in(w, whole);
+    // The popover's banner needs no titles: before this Mac has read the Library, the space's
+    // own list — scoped to this Mac by the space — stands (N74).
+    let unread = whole && w.library.get().is_none();
+    let bare = |g: &Going| Row { rec: g.rec.clone(), title: None, created: g.deletes_at, length_ms: None, edited_ms: None, kind: Kind::Live, other: None, poster: None, kept: false };
+    s.going
+        .iter()
+        .filter(|g| !pinned(w, &g.rec))
+        .filter_map(|g| match unread {
+            true => (!w.library_ops.deleting.contains(&g.rec)).then(|| (g.clone(), bare(g))),
+            false => shown.iter().find(|r| r.rec == g.rec && r.kind == Kind::Live).map(|r| (g.clone(), r.clone())),
+        })
+        .collect()
+}
+
+/// The newest round of auto-cleanup, while its line hasn't been put away (N74).
+pub fn cleaned(w: &World) -> Option<Cleaned> {
+    let s = w.suggestions.get()?;
+    let c = s.autoclean.last.as_ref()?;
+    (!c.recs.is_empty() && s.autoclean.days > 0 && w.prefs.cleaned_seen != Some(c.at)).then(|| c.clone())
+}
+
+/// The earliest date among these, as this Mac's calendar names it.
+pub fn going_day(w: &World, going: &[(Going, Row)]) -> Option<(crate::time::Wall, String)> {
+    let at = going.iter().map(|(g, _)| g.deletes_at).min()?;
+    Some((at, copy::day(at, w.mac.utc_offset_min)))
+}
+
 /// The suggestions this Mac shows, in the space's order: live videos in its scope, less
-/// those kept or deleted (under way or landed) and the one on its Undo line.
+/// those pinned (N74), going (they show apart), deleted (under way or landed) and those on
+/// the Undo line.
 pub fn suggested(w: &World) -> Vec<(Suggestion, Row)> {
     let Some(s) = w.suggestions.get() else { return vec![] };
-    let landed = &w.library_ops.landed;
     let shown = rows(w);
+    let going: Vec<RecId> = going_in(w, false).into_iter().map(|(g, _)| g.rec).collect();
     s.rows
         .iter()
-        .filter(|x| !w.library_ops.keeping.contains(&x.rec) && !matches!(landed.get(&x.rec), Some((Landed::Kept, _))))
+        .filter(|x| !pinned(w, &x.rec) && !going.contains(&x.rec))
         .filter_map(|x| shown.iter().find(|r| r.rec == x.rec && r.kind == Kind::Live).map(|r| (x.clone(), r.clone())))
         .collect()
 }
@@ -272,7 +326,7 @@ fn intro(w: &World, list: &[(Suggestion, Row)]) -> Option<String> {
 /// The line above the rows: on with Suggest videos to clean up, while there's something to
 /// suggest that ✕ hasn't put away.
 fn cleanup_line(w: &World, list: &[(Suggestion, Row)]) -> Option<CleanupLine> {
-    if !w.prefs.suggest_cleanup || w.session.fields.library.cleanup || list.is_empty() {
+    if !w.prefs.suggest_cleanup || w.session.fields.library.cleanup || list.is_empty() || !going_in(w, false).is_empty() {
         return None;
     }
     let mut ids: Vec<String> = list.iter().map(|(s, _)| s.rec.0.clone()).collect();
@@ -295,45 +349,93 @@ fn cleanup_body(w: &World, list: &[(Suggestion, Row)]) -> CleanupBody {
     // Each row's cost, its size at the list price: only past the free 10 GB, and never on a
     // member's Mac, whose bill is the owner's (N68 (8)).
     let priced = w.space.role() != Some(Role::Member) && w.suggestions.get().is_some_and(|s| s.space_bytes > FREE_BYTES);
+    let open = |rec: &RecId| {
+        let b = Button::new(Action::OpenPage(rec.clone()), copy::open_page(), Style::Link).enabled(reachable);
+        // What would put something new on screen waits for the take (law 4).
+        if mid_take { Button { enabled: false, note: Some(copy::after_take()), ..b } } else { b }
+    };
+    let meta = |r: &Row, bytes: u64, why: String| match priced {
+        true => format!("{} · {} · {} · {why}", copy::day(r.created, w.mac.utc_offset_min), copy::size(bytes), copy::row_cost(list_cents(bytes))),
+        false => format!("{} · {} · {why}", copy::day(r.created, w.mac.utc_offset_min), copy::size(bytes)),
+    };
     let rows: Vec<CleanupRowView> = list
         .iter()
         .map(|(s, r)| {
             let rec = r.rec.clone();
-            let why = copy::cleanup_reason(s.plays, s.quiet_days, s.stopped_early);
-            let open = Button::new(Action::OpenPage(rec.clone()), copy::open_page(), Style::Link).enabled(reachable);
-            // What would put something new on screen waits for the take (law 4).
-            let open = if mid_take { Button { enabled: false, note: Some(copy::after_take()), ..open } } else { open };
             CleanupRowView {
                 key: rec.0.clone(),
                 title: r.title.clone(),
-                meta: match priced {
-                    true => format!("{} · {} · {} · {why}", copy::day(r.created, w.mac.utc_offset_min), copy::size(s.bytes), copy::row_cost(list_cents(s.bytes))),
-                    false => format!("{} · {} · {why}", copy::day(r.created, w.mac.utc_offset_min), copy::size(s.bytes)),
-                },
+                meta: meta(r, s.bytes, copy::cleanup_reason(s.plays, s.quiet_days, s.stopped_early)),
                 poster: r.poster.clone(),
                 buttons: vec![
-                    open,
-                    Button::new(Action::KeepRow(rec.clone()), copy::keep(), Style::Plain).enabled(reachable),
+                    open(&rec),
+                    Button::new(Action::PinRow(rec.clone(), true), copy::pin(), Style::Plain).enabled(reachable),
                     Button::new(Action::DeleteSuggested(rec), copy::delete(), Style::RedText).enabled(reachable),
                 ],
             }
         })
         .collect();
-    let undo = w.session.fields.library.undo.as_ref().map(|(rec, _)| {
-        let title = rows_title(w, rec);
-        UndoLine { line: copy::deleted_title(&title), undo: Button::new(Action::UndoDelete, copy::undo(), Style::Link) }
+    // What auto-cleanup will delete leads, a heading per date (N74).
+    let going = going_in(w, false);
+    let days = w.suggestions.get().map_or(0, |s| s.autoclean.days);
+    let mut groups: Vec<GoingGroup> = Vec::new();
+    let mut dates: Vec<crate::time::Wall> = going.iter().map(|(g, _)| g.deletes_at).collect();
+    dates.sort();
+    dates.dedup_by_key(|d| copy::day(*d, w.mac.utc_offset_min));
+    for (i, at) in dates.iter().enumerate() {
+        let date = copy::day(*at, w.mac.utc_offset_min);
+        let rows = going
+            .iter()
+            .filter(|(g, _)| copy::day(g.deletes_at, w.mac.utc_offset_min) == date)
+            .map(|(g, r)| CleanupRowView {
+                key: r.rec.0.clone(),
+                title: r.title.clone(),
+                // No cost: it's going anyway (the board, N74).
+                meta: format!("{} · {} · {} · {}", copy::day(r.created, w.mac.utc_offset_min), copy::size(g.bytes), copy::cleanup_reason(g.plays, g.quiet_days, g.stopped_early), copy::deleted_unless_pinned(&date)),
+                poster: r.poster.clone(),
+                buttons: vec![open(&r.rec), Button::new(Action::PinRow(r.rec.clone(), true), copy::pin(), Style::Plain).enabled(reachable)],
+            })
+            .collect();
+        groups.push(GoingGroup { heading: copy::deleting_on(&date), line: (i == 0).then(|| copy::nobody_watched_these(going.len() as u64, days)), rows });
+    }
+    let undo = w.session.fields.library.undo.as_ref().map(|(recs, _)| {
+        let line = match recs.as_slice() {
+            [rec] => copy::deleted_title(&rows_title(w, rec)),
+            _ => copy::deleted_count(recs.len() as u64),
+        };
+        UndoLine { line, undo: Button::new(Action::UndoDelete, copy::undo(), Style::Link) }
     });
     let some = !rows.is_empty();
     CleanupBody {
         title: copy::cleanup_title(),
         back: Button::new(Action::Back, copy::cleanup_back(), Style::Link),
         intro: intro(w, list),
-        empty: (!some).then(copy::cleanup_empty),
+        suggest_heading: (some && !groups.is_empty()).then(copy::might_be_worth_deleting),
+        empty: (!some && groups.is_empty()).then(copy::cleanup_empty),
         foot: some.then(copy::cleanup_foot),
         delete_all: (list.len() > 1).then(|| Button::new(Action::DeleteAllSuggested, copy::delete_all(list.len() as u64), Style::RedText).enabled(reachable)),
+        going: groups,
         rows,
         undo,
     }
+}
+
+/// Auto-cleanup's amber line in the Library (N74): how many go, when, and why — no Not now.
+fn going_line(w: &World) -> Option<Notice> {
+    if w.session.fields.library.cleanup {
+        return None;
+    }
+    let going = going_in(w, false);
+    let (_, date) = going_day(w, &going)?;
+    let days = w.suggestions.get().map_or(0, |s| s.autoclean.days);
+    Some(Notice { line: copy::autoclean_warning(going.len() as u64, &date, days), buttons: vec![Button::new(Action::ReviewCleanup, copy::review(), Style::Plain)] })
+}
+
+/// Once a round of auto-cleanup went (N74): what went and what it freed, until OK.
+fn cleaned_line(w: &World) -> Option<Notice> {
+    let c = cleaned(w)?;
+    let days = w.suggestions.get().map_or(0, |s| s.autoclean.days);
+    Some(Notice { line: copy::autoclean_cleaned(c.recs.len() as u64, days, c.bytes), buttons: vec![Button::new(Action::CleanedOk, copy::ok(), Style::Quiet)] })
 }
 
 /// A title the list no longer shows (a row on its Undo line): the space's, as last read.
@@ -402,13 +504,20 @@ pub fn derive(w: &World) -> Option<Window<LibraryBody>> {
             title: copy::library(),
             search: TextField { placeholder: copy::search_titles(), value: f.search.clone(), enabled: true, edits: f.search_edits },
             scope,
-            notice: offline.then(copy::library_offline),
+            // Offline says so; a Pin or Unpin that didn't go through says so too (law 12, N74).
+            notice: if offline {
+                Some(copy::library_offline())
+            } else {
+                (w.inflight.failures.contains_key(&crate::world::Op::Pin) && w.library_ops.pinning.is_empty()).then(copy::plays_failed)
+            },
             empty,
             rows: shown.iter().map(|r| view(w, r)).collect(),
             footer: (!all.is_empty()).then(|| copy::video_count(all.len() as u64)),
             sheet,
             cleanup_line: cleanup_line(w, &suggested),
             cleanup: f.cleanup.then(|| cleanup_body(w, &suggested)),
+            going_line: going_line(w),
+            cleaned_line: cleaned_line(w),
         },
         ret,
         esc,
@@ -438,6 +547,9 @@ fn view(w: &World, r: &Row) -> LibraryRowView {
     let delete_btn = || Button::new(Action::DeleteRow(rec.clone()), copy::delete_ellipsis(), Style::RedText).enabled(reachable);
     let rename = f.renaming.as_ref().filter(|(x, _)| *x == rec).map(|(_, v)| TextField { placeholder: r.title.clone().unwrap_or_default(), value: v.clone(), enabled: reachable, edits: f.title_edits });
     let no_gestures = Gestures { click: None, cmd_click: None, shift_click: None, title_click: None, double_click: None, copy: None };
+
+    // Auto-cleanup will delete it (N74): the date, amber, unless it's pinned.
+    let going = going_in(w, false).into_iter().find(|(_, g)| g.rec == r.rec).map(|(g, _)| copy::deleted_unless_pinned(&copy::day(g.deletes_at, w.mac.utc_offset_min)));
 
     let (state, tone, progress) = match &r.kind {
         Kind::Recovered(_) => (Some(copy::row_interrupted(len.as_deref().unwrap_or("0:00"))), Some(Tone::Amber), None),
@@ -480,6 +592,10 @@ fn view(w: &World, r: &Row) -> LibraryRowView {
         ),
         _ => {
             let mut buttons = vec![copy_btn()];
+            // A row auto-cleanup will delete carries its Pin (N74), beside Copy link.
+            if going.is_some() {
+                buttons.insert(0, Button::new(Action::PinRow(rec.clone(), true), copy::pin(), Style::Plain).enabled(reachable));
+            }
             if let Kind::WaitingSpace(dir) = &r.kind {
                 buttons.push(super::members::save_button(w, Action::SaveRowToMovies(dir.clone()), &[dir], copy::save_to_movies(), Style::Plain));
             }
@@ -494,7 +610,15 @@ fn view(w: &World, r: &Row) -> LibraryRowView {
             if matches!(r.kind, Kind::Live) {
                 menu.push(after_take(Button::new(Action::EditRow(rec.clone()), copy::edit_ellipsis(), Style::Plain).enabled(reachable)));
             }
-            menu.extend([Button::new(Action::StartRename(rec.clone()), copy::rename(), Style::Plain).enabled(reachable), delete_btn()]);
+            menu.push(Button::new(Action::StartRename(rec.clone()), copy::rename(), Style::Plain).enabled(reachable));
+            // Pin or Unpin after Rename, on a live row (N74): several selected, Pin while any
+            // of them isn't pinned, and it acts on all.
+            if matches!(r.kind, Kind::Live) {
+                let together: Vec<&RecId> = if f.selected.len() > 1 && f.selected.contains(&rec) { f.selected.iter().collect() } else { vec![&rec] };
+                let all = together.iter().all(|x| pinned(w, x));
+                menu.push(Button::new(Action::PinRow(rec.clone(), !all), if all { copy::unpin() } else { copy::pin() }, Style::Plain).enabled(reachable));
+            }
+            menu.push(delete_btn());
             let gestures = Gestures {
                 click: Some(Action::SelectRow(rec.clone())),
                 cmd_click: Some(Action::ToggleRow(rec.clone())),
@@ -515,6 +639,8 @@ fn view(w: &World, r: &Row) -> LibraryRowView {
         tone,
         progress,
         pinned: matches!(r.kind, Kind::Recovered(_)),
+        kept: r.kept.then(copy::pinned),
+        going,
         selected: r.published() && f.selected.contains(&r.rec),
         gestures,
         buttons,
@@ -558,6 +684,22 @@ fn sheet(w: &World, all: &[Row]) -> Option<Sheet> {
                 buttons: vec![
                     Button::new(Action::Back, copy::cancel(), Style::Plain),
                     Button::new(Action::ConfirmDelete, copy::delete(), Style::RedOutline).enabled(online),
+                ],
+            })
+        }
+        // Delete all… on Suggested to clean up (N74): its own sheet, with what it frees.
+        Confirm::DeleteSuggested(recs) => {
+            let n = recs.len() as u64;
+            let bytes: u64 = w.suggestions.get().map_or(0, |s| s.rows.iter().filter(|x| recs.contains(&x.rec)).map(|x| x.bytes).sum());
+            Some(Sheet {
+                id: "delete-confirm-cleanup",
+                faces: vec![],
+                title: copy::delete_all_title(n),
+                lines: vec![copy::delete_all_frees(bytes)],
+                blocked: None,
+                buttons: vec![
+                    Button::new(Action::Back, copy::cancel(), Style::Plain),
+                    Button::new(Action::ConfirmDeleteSuggested, copy::delete_all_button(n), Style::RedOutline).enabled(w.online() != Some(false)),
                 ],
             })
         }

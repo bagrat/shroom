@@ -447,13 +447,82 @@ pub fn cleanup_reason(plays: u32, quiet_days: u32, stopped_early: bool) -> Strin
         n => format!("Watched {n} times, {early}the last {} ago", ago(quiet_days)),
     }
 }
-pub fn keep() -> String { "Keep".into() }
+pub fn pin() -> String { "Pin".into() }
+pub fn unpin() -> String { "Unpin".into() }
+/// A pinned row's small pin, as VoiceOver and a hover say it (N74).
+pub fn pinned() -> String { "Pinned".into() }
 pub fn deleted_title(title: &str) -> String { format!("Deleted “{title}”.") }
 pub fn undo() -> String { "Undo".into() }
 pub fn delete_all(n: u64) -> String {
     if n == 2 { "Delete both…".into() } else { format!("Delete all {}…", count_word(n)) }
 }
-pub fn cleanup_foot() -> String { "Keep takes a video off this list for good. Plays are counted in your own Cloudflare account.".into() }
+pub fn cleanup_foot() -> String { "A pinned video is never suggested; unpin it in the Library. Plays are counted in your own Cloudflare account.".into() }
+/// Delete all's Undo line (N74).
+pub fn deleted_count(n: u64) -> String { if n == 2 { "Deleted both videos.".into() } else { format!("Deleted {} videos.", count_word(n)) } }
+pub fn delete_all_title(n: u64) -> String { if n == 2 { "Delete both suggested videos?".into() } else { format!("Delete all {} suggested videos?", count_word(n)) } }
+pub fn delete_all_frees(bytes: u64) -> String { format!("That frees {}. They're removed everywhere. Their links stay, and say the videos are gone.", size(bytes)) }
+pub fn delete_all_button(n: u64) -> String { if n == 2 { "Delete both".into() } else { format!("Delete all {}", count_word(n)) } }
+
+// ── auto-cleanup (N74) ──
+
+/// The Library's amber line, and the popover's banner, three days ahead.
+pub fn autoclean_warning(n: u64, date: &str, days: u32) -> String {
+    if n == 1 {
+        format!("One video will be deleted on {date} — nobody has watched it in {days} days.")
+    } else {
+        format!("{} videos will be deleted on {date} — nobody has watched them in {days} days.", count_word_cap(n))
+    }
+}
+pub fn deleted_unless_pinned(date: &str) -> String { format!("Deleted {date} unless pinned") }
+/// Once a round went: what, and what it freed.
+pub fn autoclean_cleaned(n: u64, days: u32, bytes: u64) -> String {
+    let what = if n == 1 { "one video".to_string() } else { format!("{} videos", count_word(n)) };
+    format!("Auto-cleanup deleted {what} nobody had watched in {days} days, freeing {}.", size(bytes))
+}
+pub fn ok() -> String { "OK".into() }
+pub fn deleting_on(date: &str) -> String { format!("Deleting on {date}") }
+pub fn nobody_watched_these(n: u64, days: u32) -> String {
+    if n == 1 {
+        format!("Nobody has watched this in {days} days. Pin it to keep it; a watch before then keeps it too.")
+    } else {
+        format!("Nobody has watched these in {days} days. Pin one to keep it; a watch before then keeps it too.")
+    }
+}
+pub fn might_be_worth_deleting() -> String { "Might be worth deleting".into() }
+pub fn pin_going(n: u64) -> String {
+    match n {
+        1 => "Pin it".into(),
+        2 => "Pin both".into(),
+        n => format!("Pin all {}", count_word(n)),
+    }
+}
+pub fn pinned_going(n: u64, date: &str) -> String {
+    let what = match n {
+        1 => "it".to_string(),
+        2 => "both".to_string(),
+        n => format!("all {}", count_word(n)),
+    };
+    format!("Pinned {what}. Nothing will be deleted on {date}.")
+}
+pub fn autoclean_label() -> String { "Delete videos nobody watches".into() }
+pub fn autoclean_hint() -> String {
+    "Counted from the last time someone watched it, or from when it was shared. Pinned videos are never deleted, and the Library says which ones are going a few days before.".into()
+}
+pub fn autoclean_off() -> String { "Off".into() }
+pub fn after_days(days: u32) -> String { format!("After {days} days") }
+/// Every Mac but the one that sets it.
+pub fn space_deletes(days: u32) -> String {
+    format!("Your space deletes videos nobody has watched in {days} days. It's set on the Mac that set up your space. Pin a video in the Library to keep it.")
+}
+pub fn needs_count_plays() -> String { "Needs Count plays".into() }
+pub fn autoclean_confirm_title(days: u32) -> String { format!("Delete videos nobody watches for {days} days?") }
+pub fn autoclean_qualify(n: u64, date: &str) -> String {
+    if n == 1 {
+        format!("One video already qualifies. It'll be deleted on {date} unless someone watches it or you pin it — the Library shows which. Its link will say the video is gone.")
+    } else {
+        format!("{} videos already qualify. They'll be deleted on {date} unless someone watches them or you pin them — the Library shows which. Their links will say the videos are gone.", count_word_cap(n))
+    }
+}
 pub fn cleanup_empty() -> String { "Nothing to clean up right now.".into() }
 
 pub fn your_videos() -> String { "Your videos".into() }
@@ -1115,7 +1184,44 @@ pub fn registry() -> Vec<(&'static str, String)> {
         ("library-cleanup", cleanup_reason(4, 300, false)),
         ("library-cleanup", cleanup_reason(0, 45, false)),
         ("library-cleanup", open_page()),
-        ("library-cleanup", keep()),
+        ("library-cleanup", pin()),
+        ("library-cleanup", deleted_count(6)),
+        ("library-cleanup", deleting_on("Oct 27")),
+        ("library-cleanup", nobody_watched_these(2, 30)),
+        ("library-cleanup", deleted_unless_pinned("Oct 27")),
+        ("library-cleanup", might_be_worth_deleting()),
+        ("library", pin()),
+        ("library", unpin()),
+        ("library", pinned()),
+        ("library", autoclean_warning(2, "Oct 27", 30)),
+        ("library", deleted_unless_pinned("Oct 27")),
+        ("library", autoclean_cleaned(2, 30, 1_700_000_000)),
+        ("library", ok()),
+        ("library", plays_failed()),
+        ("settings-general", ai_turning_on()),
+        ("delete-confirm-cleanup", delete_all_title(6)),
+        ("delete-confirm-cleanup", delete_all_frees(11_000_000_000)),
+        ("delete-confirm-cleanup", delete_all_button(6)),
+        ("delete-confirm-cleanup", cancel()),
+        ("autoclean-warning", autoclean_warning(2, "Oct 27", 30)),
+        ("autoclean-warning", pin_going(2)),
+        ("autoclean-warning", review()),
+        ("autoclean-warning", not_now()),
+        ("autoclean-warning", pinned_going(2, "Oct 27")),
+        ("autoclean-warning", autoclean_cleaned(2, 30, 1_700_000_000)),
+        ("autoclean-warning", ok()),
+        ("settings-general", autoclean_label()),
+        ("settings-general", autoclean_hint()),
+        ("settings-general", autoclean_off()),
+        ("settings-general", after_days(15)),
+        ("settings-general", after_days(30)),
+        ("settings-general", after_days(60)),
+        ("settings-general", space_deletes(30)),
+        ("settings-general", needs_count_plays()),
+        ("autoclean-confirm", autoclean_confirm_title(30)),
+        ("autoclean-confirm", autoclean_qualify(4, "Oct 27")),
+        ("autoclean-confirm", cancel()),
+        ("autoclean-confirm", turn_on()),
         ("library-cleanup", delete()),
         ("library-cleanup", deleted_title("Old onboarding take")),
         ("library-cleanup", undo()),

@@ -335,6 +335,7 @@ fn banner(w: &World) -> Option<Banner> {
         .or_else(|| banner_degraded(w))
         .or_else(|| super::members::banner(w))
         .or_else(|| banner_recording_off(w))
+        .or_else(|| banner_autoclean(w))
         .or_else(|| banner_update(w))
         .or_else(|| banner_ai(w))
 }
@@ -359,6 +360,37 @@ fn banner_ai(w: &World) -> Option<Banner> {
         }
     }
     (!w.once.ai_offer_answered).then(|| Banner { id: "ai-offer", tone: Tone::Frost, line: copy::ai_banner(), buttons: ask() })
+}
+
+/// Auto-cleanup under the tray icon (N74; Bagrat, 2026-10-24): three days ahead, amber, with
+/// Pin both and Review… (Not now puts it away on this Mac until the list changes); after Pin
+/// both, what it did, while the popover stays open; once a round went, what went, with OK.
+/// Above an update and the AI offer, under a saved take, the space and recording off.
+fn banner_autoclean(w: &World) -> Option<Banner> {
+    use super::library::{cleaned, going_day, going_in};
+    if let Some((n, at)) = w.session.fields.library.pinned_note {
+        return Some(Banner { id: "autoclean-warning", tone: Tone::Frost, line: copy::pinned_going(n, &copy::day(at, w.mac.utc_offset_min)), buttons: vec![] });
+    }
+    let going = going_in(w, true);
+    let mut ids: Vec<String> = going.iter().map(|(g, _)| g.rec.0.clone()).collect();
+    ids.sort();
+    if let Some((_, date)) = going_day(w, &going).filter(|_| ids != w.prefs.going_dismissed) {
+        let days = w.suggestions.get().map_or(0, |s| s.autoclean.days);
+        let n = going.len() as u64;
+        return Some(Banner {
+            id: "autoclean-warning",
+            tone: Tone::Amber,
+            line: copy::autoclean_warning(n, &date, days),
+            buttons: vec![
+                Button::new(Action::DismissGoing, copy::not_now(), Style::Link),
+                Button::new(Action::ReviewGoing, copy::review(), Style::Plain),
+                Button::new(Action::PinGoing, copy::pin_going(n), Style::Filled).enabled(w.online() != Some(false)),
+            ],
+        });
+    }
+    let c = cleaned(w)?;
+    let days = w.suggestions.get().map_or(0, |s| s.autoclean.days);
+    Some(Banner { id: "autoclean-warning", tone: Tone::Frost, line: copy::autoclean_cleaned(c.recs.len() as u64, days, c.bytes), buttons: vec![Button::new(Action::CleanedOk, copy::ok(), Style::Plain)] })
 }
 
 /// Kind 2: the space can't take videos — on the token-holding Mac, `space-degraded` (N42).
