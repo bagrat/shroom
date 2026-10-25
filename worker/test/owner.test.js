@@ -178,8 +178,16 @@ describe("the owner page", () => {
       expect(body).not.toContain(`dl.appendChild`);
       // Greyed is drawn the same for each: dimmed, no hover, nothing under the pointer.
       expect(body).toContain(`#dl a[aria-disabled=true]{cursor:default}#dl a[aria-disabled=true]::before{opacity:.4}`);
-      // The column keeps the player's width while the frame waits for it: nothing moves at the go-live.
+      // The column keeps the player's width while the frame waits for it: nothing moves at the
+      // go-live; and keeps the upload line's room once the line has gone: nothing moves at the drain.
       expect(body).toContain(`body:has(main .player,main .wait){--bar:56px}`);
+      expect(body).toContain(`body:has(main .upl:not([hidden]),main .upl[data-room]){--room:calc(100dvh - 282px)}`);
+      expect(body).toMatch(/<div class="upl" id="ul" data-room>/);
+      // A change to what plays (a press on the strip, cuts landing) greys Download until the
+      // poll, started again if it had stopped, finds its file (review of B245).
+      expect(body).toContain(`function edited(){if(c.gone)return;var da=dl.firstChild;if(da)rest(da);if(!c.polling){gap=2000;next(0)}}`);
+      expect(body).toContain(`document.addEventListener("shroom:keep",edited)`);
+      expect(body).toContain(`function next(ms){c.polling=true;setTimeout(poll,ms)}`);
     });
 
     it("leaves the viewer's page as it is: what a viewer can't use isn't drawn (B166)", async () => {

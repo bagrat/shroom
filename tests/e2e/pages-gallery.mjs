@@ -129,9 +129,28 @@ async function headIn(page) {
     return hi < 0 ? null : { left: lo / scale, right: (hi + 1) / scale, width: w };
   }, { b64: png.toString("base64"), w: r.w });
 }
+/** The colour of the bar's last 3 px, on its centre line: a fully loaded bar reads loaded to
+ * its end (review of B245: it kept a 7 px stub of the unloaded colour). */
+async function endOfBar(page) {
+  const r = await page.evaluate(() => {
+    const p = document.querySelector(".player").getBoundingClientRect(), s = document.querySelector(".seek").getBoundingClientRect(), cs = getComputedStyle(document.querySelector(".player"));
+    return { x: p.right - 3, y: s.top + s.height / 2 - 1, buf: cs.getPropertyValue("--player-buf").trim(), track: cs.getPropertyValue("--player-track").trim() };
+  });
+  const png = await page.screenshot({ clip: { x: r.x, y: r.y, width: 3, height: 2 } });
+  const px = await page.evaluate(async (b64) => {
+    const img = new Image(); img.src = "data:image/png;base64," + b64; await img.decode();
+    const k = document.createElement("canvas"); k.width = img.naturalWidth; k.height = img.naturalHeight;
+    const x = k.getContext("2d"); x.drawImage(img, 0, 0); const d = x.getImageData(0, 0, 1, 1).data; return [d[0], d[1], d[2]];
+  }, png.toString("base64"));
+  const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const near = (a, b) => a.every((v, i) => Math.abs(v - b[i]) <= 14);
+  return { px, buffered: near(px, hex(r.buf)), unloaded: near(px, hex(r.track)) };
+}
 /** The head at 0:00 and at the very end, on a laptop and a phone: inside the box, touching
- * its edge (within a pixel of anti-aliasing); with chapters, the sections span its travel. */
-const headInside = async (page) => {
+ * its edge (within a pixel of anti-aliasing); a fully loaded bar reads loaded to its end;
+ * with chapters (`starts`, past the first), each boundary on the head's travel, the first
+ * and last sections reaching the box's ends. */
+const headInside = (starts = null) => async (page) => {
   const missing = [];
   // Loaded first: the player fetches its stream on the first play.
   await page.evaluate(() => { const v = document.querySelector("video"); v.muted = true; return v.play().catch(() => {}); });
@@ -151,8 +170,23 @@ const headInside = async (page) => {
     await page.waitForTimeout(400);
     const end = await headIn(page);
     if (!ended || !end || Math.abs(end.right - end.width) > 1) missing.push(`at ${width}px, the end: the head's right edge on the box's (ended ${ended}, got ${JSON.stringify(end)})`);
-    const ch = await page.evaluate(() => { const xs = [...document.querySelectorAll(".chs i")], p = document.querySelector(".player").getBoundingClientRect(); return xs.length ? { first: xs[0].getBoundingClientRect().left - p.left, last: p.right - xs[xs.length - 1].getBoundingClientRect().right } : null; });
-    if (ch && (Math.abs(ch.first - 7) > 1 || Math.abs(ch.last - 7) > 1)) missing.push(`at ${width}px: the chapters on the head's travel, 7 px in from each end (got ${JSON.stringify(ch)})`);
+    if (starts) {
+      const ch = await page.evaluate(() => {
+        const xs = [...document.querySelectorAll(".chs i")].map((x) => x.getBoundingClientRect()), p = document.querySelector(".player").getBoundingClientRect(), d = +document.querySelector(".seek").max;
+        return { first: xs[0].left - p.left, last: p.right - xs[xs.length - 1].right, gaps: xs.slice(1).map((x, i) => (xs[i].right + x.left) / 2 - p.left), w: p.width, d };
+      });
+      const want = starts.map((t) => 7 + (t / ch.d) * (ch.w - 14));
+      if (Math.abs(ch.first) > 0.5 || Math.abs(ch.last) > 0.5 || ch.gaps.length !== want.length || ch.gaps.some((g, i) => Math.abs(g - want[i]) > 1.5)) missing.push(`at ${width}px: the chapters' boundaries on the head's travel, the ends at the box's (got ${JSON.stringify(ch)}, want ${JSON.stringify(want)})`);
+    }
+    // Loaded to its end, the head mid-way: the bar's last pixels are the loaded colour.
+    const full = await page.evaluate(() => new Promise((ok) => {
+      const v = document.querySelector("video"); v.pause(); v.currentTime = v.duration / 2;
+      const t = setInterval(() => { const b = v.buffered; if (b.length && b.end(b.length - 1) >= v.duration - 0.2 && b.start(0) <= 0.2) { clearInterval(t); ok(true) } }, 200);
+      setTimeout(() => { clearInterval(t); ok(false) }, 20000);
+    }));
+    await page.waitForTimeout(400);
+    const tail = await endOfBar(page);
+    if (full && !tail.buffered) missing.push(`at ${width}px: a fully loaded bar loaded to its end (got ${JSON.stringify(tail)})`);
   }
   await page.setViewportSize({ width: 900, height: 640 });
   return missing;
@@ -291,9 +325,8 @@ const FACES = [
       await page.evaluate((icons) => { window.__icons = icons; }, await iconsOf(page));
       if (await page.$("#dl a")) await page.click("#dl a", { force: true });
     },
-    // The record learns the video's shape at the go-live (16:9 is the page's guess before it), so
-    // a 16:10 take re-lays the whole column then: a different jump from this one, kept apart here.
-    golive: (id) => meta(id, { media: { ...media(id), width: 1920, height: 1080 }, progress: { done: 9, total: 9, updatedAt: iso(Date.now()) } }), wait: () => true, pictures: [], lines: () => [], act: async (page) => {
+    // The take's own shape (16:10) comes with the go-live; an open page keeps the box it opened with.
+    golive: (id) => meta(id, { progress: { done: 9, total: 9, updatedAt: iso(Date.now()) } }), wait: () => true, pictures: [], lines: () => [], act: async (page) => {
       const missing = [];
       const before = await page.evaluate(() => window.__icons);
       if (!before) return ["the page left (a greyed Download went somewhere)"];
@@ -302,19 +335,23 @@ const FACES = [
       if (before.find((i) => i.q === "#dl a")?.href) missing.push("a greyed Download that goes nowhere");
       const woke = await page.waitForFunction(() => document.querySelector("#dl a").getAttribute("href") && !document.querySelector("#ed").getAttribute("aria-disabled"), null, { timeout: 20000, polling: 250 }).then(() => true, () => false);
       if (!woke) missing.push("Download and Edit in shroom awake once it's fully up");
-      const after = await iconsOf(page);
-      for (const a of after) {
-        const b = before.find((i) => i.q === a.q);
-        if (b && (b.x !== a.x || b.y !== a.y || Math.abs(b.w - a.w) > 0.5)) missing.push(`${a.q} where it stood (${b.x},${b.y} → ${a.x},${a.y})`);
+      // At the wake, and again once the upload line has gone (the drain gives its room back).
+      for (const when of ["awake", "the line gone"]) {
+        if (when !== "awake") await page.waitForFunction(() => document.getElementById("ul").hidden, null, { timeout: 15000 }).then(() => page.waitForTimeout(600), () => missing.push("the upload line gone at the drain"));
+        const after = await iconsOf(page);
+        for (const a of after) {
+          const b = before.find((i) => i.q === a.q);
+          if (b && (b.x !== a.x || b.y !== a.y || Math.abs(b.w - a.w) > 0.5)) missing.push(`${a.q} where it stood, ${when} (${b.x},${b.y} → ${a.x},${a.y})`);
+        }
       }
       return missing;
     } },
   // Bagrat, 2026-10-25: the seek head inside the bar, on every face that plays.
-  { face: "seek-head-live", id: "SeekLiveSeekLive", record: (id) => meta(id, { media: media(id, false) }), lines: () => [TITLE], act: headInside },
-  { face: "seek-head-live-chromium", id: "SeekChroSeekChro", engine: "chromium", record: (id) => meta(id, { media: media(id, false) }), lines: () => [TITLE], act: headInside },
-  { face: "seek-head-owner", id: "SeekOwnrSeekOwnr", owner: true, record: (id) => meta(id, { media: media(id, false), progress: { done: 9, total: 9, updatedAt: iso(Date.now()) } }), lines: () => [], act: headInside },
-  { face: "seek-head-embed", id: "SeekEmbdSeekEmbd", embed: true, record: (id) => meta(id, { media: media(id, false) }), lines: () => [], absent: [TITLE], act: headInside },
-  { face: "seek-head-chapters", id: "SeekChapSeekChap", ai: true, engine: "chromium", record: (id) => named(id, { titled: true }), lines: () => [AI_TITLE], act: headInside },
+  { face: "seek-head-live", id: "SeekLiveSeekLive", record: (id) => meta(id, { media: media(id, false) }), lines: () => [TITLE], act: headInside() },
+  { face: "seek-head-live-chromium", id: "SeekChroSeekChro", engine: "chromium", record: (id) => meta(id, { media: media(id, false) }), lines: () => [TITLE], act: headInside() },
+  { face: "seek-head-owner", id: "SeekOwnrSeekOwnr", owner: true, record: (id) => meta(id, { media: media(id, false), progress: { done: 9, total: 9, updatedAt: iso(Date.now()) } }), lines: () => [], act: headInside() },
+  { face: "seek-head-embed", id: "SeekEmbdSeekEmbd", embed: true, record: (id) => meta(id, { media: media(id, false) }), lines: () => [], absent: [TITLE], act: headInside() },
+  { face: "seek-head-chapters", id: "SeekChapSeekChap", ai: true, engine: "chromium", record: (id) => named(id, { titled: true }), lines: () => [AI_TITLE], act: headInside(AI_SAID.slice(1).map(([t]) => t)) },
 ];
 
 /** A real 8 s fMP4 HLS stream and its poster, as the app uploads them. */
