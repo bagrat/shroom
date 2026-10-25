@@ -28,7 +28,7 @@ pub use cue::{Cue, CueWords, Said, find_cues, find_cues_in};
 pub use edit::{History, Op, Refusal};
 pub use judge::{Answer, Intent, JUDGED, MEANT, Meant, Question};
 pub use land::{land, land_with};
-pub use plan::{Options, intents, plan, plan_meant, plan_with, questions, questions_meant};
+pub use plan::{Options, intents, plan, plan_meant, plan_with, questions, questions_meant, spoken};
 
 use serde::{Deserialize, Serialize};
 
