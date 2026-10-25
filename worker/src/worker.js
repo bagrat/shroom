@@ -100,9 +100,8 @@ export const COPY = {
   speed: "Playback speed",
   mute: "Mute",
   unmute: "Unmute",
-  // Names, chapters and captions (N66, N67): the owner page's two lines, and the player's
-  // Captions button, in DECISIONS' copy table too.
-  named: "Named from what you said. Click the title to change it.",
+  // Names, chapters and captions (N66, N67): the owner page's line while the name waits for
+  // the free day, and the player's Captions button, in DECISIONS' copy table too.
   namingLater: "Its name and chapters come a little later, once your free hours are back.",
   captions: "Captions",
   // Voice cuts on the owner page (N65, owner-page-cuts; provisional words).
@@ -155,7 +154,7 @@ export const STALL_SECONDS = 120;
 export const IFACE = 2;
 /** The version of the app that deploys this file — the same as the app's own
  * (`app/src-tauri/tauri.conf.json`, held equal by a shroom-cloud test). */
-export const VERSION = "0.1.30";
+export const VERSION = "0.1.31";
 
 const ID = /^[A-Za-z0-9_-]{16}$/;
 const HLS_JS_KEY = ".shroom/player/hls.min.js";
@@ -2148,7 +2147,8 @@ if(s.state==="unavailable"){if(!c.live){say(c.unavailable);up.textContent="";spi
 if(s.state==="uploading"){say("");ul.hidden=false;up.textContent=s.stalled?c.waiting:c.finishing;spin(true,!s.stalled)}
 next(2000)}).catch(function(){next(5000)})}
 if(!c.live||!c.mp4||!c.drained)next(2000);else if(c.cutsTag==="coming")next(2000)})();</script>`;
-  const wire = aiWire(".player", ai);
+  // A page waiting for its name has the player's chapters and captions ready for when they come.
+  const wire = aiWire(".player", ai) || (ai.waiting ? AI_PLAYER_JS : "");
   return shell(meta.title || "shroom", `${head}${aiNote(ai)}${stage}${cuts}${hint}${upload}`, face, aiHead(ai), `${script}${wire ? `<script>${wire}</script>` : ""}${aiOwnerScript(id, ai)}`);
 }
 
@@ -4543,7 +4543,8 @@ function aiFace(id, meta, src, on, now) {
   const edited = /\/edit-\d+\.mp4$/.test(src);
   const captions = live && meta.captions && typeof meta.captions === "object" ? { src: `/_shroom/cc/${id}?r=${encodeURIComponent(aiRev(meta))}${edited ? "&e=1" : ""}`, lang } : null;
   const named = meta.named?.by === "ai" && typeof meta.named.title === "string";
-  const line = meta.titled ? "" : named ? COPY.named : meta.naming?.later === "daily" ? COPY.namingLater : "";
+  // No line once it's named (Bagrat, 2026-10-25: “Named from what you said…” removed).
+  const line = !meta.titled && !named && meta.naming?.later === "daily" ? COPY.namingLater : "";
   const created = Date.parse(String(meta.createdAt ?? ""));
   const waiting = on && !meta.titled && (!meta.named || !!meta.named.early) && Number.isFinite(created) && now - created < 2 * HOUR_MS;
   return { chapters: live ? aiChapters(meta) : [], captions, line, waiting };
@@ -5119,7 +5120,10 @@ async function aiCaptionsRoute(request, env, id, url) {
 }
 
 /** GET /_shroom/named/<id> (B209 c): the name the space gave the video, for its own owner's
- * page left open while it was on its way — the maker's or an owner's browser only.
+ * page left open while it was on its way — the maker's or an owner's browser only. `done`
+ * once the full name is in (or naming gave up), with what a reload would put in the player:
+ * the chapters on the bar's clock and the captions' track on the recording's (the page adds
+ * the edited clock's flag when an edit's own copy plays) — Bagrat's hand test, 2026-10-25.
  * @param {Request} request @param {Env} env @param {string} id */
 async function aiNamedRoute(request, env, id) {
   const owner = await ownerOf(request, env);
@@ -5128,7 +5132,8 @@ async function aiNamedRoute(request, env, id) {
   if (!meta || meta.state === "deleted") return plain(404, "");
   if (!(await mayEdit(env, owner, id, true))) return plain(403, "");
   const named = !meta.titled && meta.named?.by === "ai" && typeof meta.named.title === "string" ? String(meta.title || "") : "";
-  return json({ named, titled: !!meta.titled, later: !named && !meta.titled && meta.naming?.later === "daily", early: !!named && !!meta.named.early });
+  const { chapters, captions } = aiFace(id, meta, "", false, 0);
+  return json({ named, titled: !!meta.titled, later: !named && !meta.titled && meta.naming?.later === "daily", early: !!named && !!meta.named.early, done: !!meta.named && !meta.named.early, chapters, captions });
 }
 
 // ───────── the page's player: chapters in the seek bar, captions (B209) ─────────
@@ -5157,9 +5162,11 @@ const ICON_CC = `<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="3"
 function aiPlayer(html, ai) {
   if (!ai.captions) return html;
   const track = `<track kind="captions" src="${escapeHtml(ai.captions.src)}"${ai.captions.lang ? ` srclang="${ai.captions.lang}"` : ""} label="${escapeHtml(COPY.captions)}">`;
-  const button = `<button type="button" class="cc" aria-label="${escapeHtml(COPY.captions)}" aria-pressed="false">${ICON_CC}</button>`;
-  return html.replace("></video>", `>${track}</video>`).replace(`<button type="button" class="sp"`, `${button}<button type="button" class="sp"`);
+  return html.replace("></video>", `>${track}</video>`).replace(`<button type="button" class="sp"`, `${AI_CC_BUTTON}<button type="button" class="sp"`);
 }
+
+/** The Captions button, off (B209 b). */
+const AI_CC_BUTTON = `<button type="button" class="cc" aria-label="${escapeHtml(COPY.captions)}" aria-pressed="false">${ICON_CC}</button>`;
 
 /** The bar's chapters and the Captions button, wired after `shroomPlayer` (B209 a, b). `ch`:
  * [[start on the bar's clock, title], …]. A tip shows the time and chapter under the
@@ -5218,17 +5225,24 @@ const aiNote = (ai) => (ai.line || ai.waiting ? `<p class="ainote" id="ainote"${
  * field being typed in is left be, and one the page opened in lets go of the keyboard; one the
  * owner clicked into, before a key, takes the name selected, ready to retype. An early title
  * (B205 f) is shown and asked past, till the full name takes its place. Once a title is saved
- * from the field, nothing more is taken. @param {string} id @param {AiFace} ai */
+ * from the field, nothing more is taken. The chapters and captions that come with the full
+ * name go into the player as it plays (the bar cut, the track and the Captions button added,
+ * the video left alone), whether or not a title was typed meanwhile, once the player is there
+ * (Bagrat's hand test, 2026-10-25: they came only with a reload). @param {string} id @param {AiFace} ai */
 function aiOwnerScript(id, ai) {
   if (!ai.waiting) return "";
-  return `<script>(function(){var t=document.getElementById("t"),l=document.getElementById("ainote"),n=0,c=${jsonForScript(JSON.stringify({ id, named: COPY.named, later: COPY.namingLater }))};
+  return `<script>(function(){var t=document.getElementById("t"),l=document.getElementById("ainote"),n=0,c=${jsonForScript(JSON.stringify({ id, later: COPY.namingLater, captions: COPY.captions, cc: AI_CC_BUTTON }))};
 var shown=t.value,touched=false,mine=false;
 function say(x){if(l){l.textContent=x;l.hidden=!x}}
 function take(x){if(mine||x===shown)return;var was=shown;shown=x;t.dispatchEvent(new CustomEvent("shroom:named",{detail:x}));if(t.value!==was)return;
 t.value=x;document.title=x;if(document.activeElement===t){if(touched)t.select();else t.blur()}}
-function poll(){if(++n>60)return;fetch("/_shroom/named/"+c.id,{cache:"no-store"}).then(function(r){return r.ok?r.json():null}).then(function(j){if(!j||j.titled){say("");return}
-if(j.named){take(j.named);say(c.named);if(!j.early)return}
-if(j.later)say(c.later);setTimeout(poll,n<12?5000:30000)}).catch(function(){setTimeout(poll,30000)})}
+function dress(j){var ch=j.chapters||[],cc=j.captions;if(!ch.length&&!cc)return true;var p=document.querySelector(".player");if(!p)return false;var v=p.querySelector("video");
+if(cc&&!p.querySelector(".cc")){var k=document.createElement("track"),sp=p.querySelector(".sp"),h=document.createElement("div");k.kind="captions";k.src=cc.src+(/\\/edit-\\d+\\.mp4(\\?|$)/.test(v.currentSrc||v.src||"")?"&e=1":"");if(cc.lang)k.srclang=cc.lang;k.label=c.captions;v.appendChild(k);
+h.innerHTML=c.cc;sp.parentNode.insertBefore(h.firstChild,sp);shroomCaptions(p)}
+if(ch.length&&!p.classList.contains("ch"))shroomChapters(p,ch);return true}
+function poll(){if(++n>60)return;fetch("/_shroom/named/"+c.id,{cache:"no-store"}).then(function(r){return r.ok?r.json():null}).then(function(j){if(!j)return;
+if(j.named&&!j.titled)take(j.named);say(j.later?c.later:"");if(dress(j)&&j.done)return;
+setTimeout(poll,n<12?5000:30000)}).catch(function(){setTimeout(poll,30000)})}
 t.addEventListener("pointerdown",function(){touched=true});t.addEventListener("input",function(){touched=true});
 t.addEventListener("change",function(){mine=true;say("")});setTimeout(poll,5000)})()</script>`;
 }

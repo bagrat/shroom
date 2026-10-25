@@ -11,7 +11,8 @@
 // on-its-way-untitled, on-its-way-stalled, unavailable, removed, embed-face (live and
 // removed); and a video the space has named (N66, N67): the owner's page named and waiting
 // for the free day, a viewer's with chapters in the seek bar on a laptop and a phone, and its
-// captions showing. Prints one JSON summary; exits non-zero when a face is missing a line,
+// captions showing; and the owner's page left open, playing, while the name lands: the
+// chapters and captions come in place, with no reload. Prints one JSON summary; exits non-zero when a face is missing a line,
 // shows another face's, or throws.
 
 import { execFileSync } from "node:child_process";
@@ -39,6 +40,8 @@ const meta = (id, over = {}) => JSON.stringify({ schema: 1, id, state: "live", t
 const uploading = (id, done, total, ageMs = 1000, over = {}) => meta(id, { state: "uploading", media: null, progress: { done, total, updatedAt: iso(Date.now() - ageMs) }, ...over });
 /** A spec line by its id: the words a face must show. */
 const line = (state, id) => machine.states[state]?.said?.find((l) => l.id === id)?.text ?? `(no ${id} in the spec)`;
+/** The line that said where the name came from: off the owner's page (Bagrat, 2026-10-25). */
+const NAMED_LINE = "Named from what you said.";
 
 // A video the space has named (N66, N67): three minutes, an invented script heard as the
 // Worker stores it ([word, start, end] on the recording's clock), the name and chapters the
@@ -146,15 +149,47 @@ const FACES = [
   { face: "embed-face", id: "EmbdEmbdEmbdEmbd", embed: true, record: (id) => meta(id), lines: () => [], absent: [TITLE] },
   { face: "embed-face · removed", id: "EmbdGoneEmbdGone", embed: true, record: (id) => JSON.stringify({ schema: 1, id, state: "deleted", title: TITLE }), lines: () => said("removed").slice(0, 1) },
   // Named by the space (N66, N67; DECISIONS B209): the owner's title field holds the name
-  // until it's typed over, and the line under it says where it came from…
-  { face: "owner-named", id: "OwnrNamdOwnrNamd", owner: true, ai: true, record: (id) => named(id), lines: () => [line("owner-page", "owner-page.named-from-what-you-said"), `· ${AI_SAID[0][1]}`],
-    act: async (page) => ((await page.$eval("#t", (t) => t.placeholder)) === AI_TITLE ? [] : ["the name in the title field"]) },
+  // until it's typed over (B230), with no line under it (Bagrat, 2026-10-25: removed)…
+  { face: "owner-named", id: "OwnrNamdOwnrNamd", owner: true, ai: true, record: (id) => named(id), lines: () => [`· ${AI_SAID[0][1]}`], absent: [NAMED_LINE],
+    act: async (page) => ((await page.$eval("#t", (t) => t.value)) === AI_TITLE ? [] : ["the name in the title field"]) },
+  // …and a page left open, playing, while the space names the video (Bagrat's hand test,
+  // 2026-10-25: they showed only after a refresh): the name, the chapters in the bar and the
+  // Captions button come in place, with no reload, and playback goes on.
+  { face: "owner-named-in-place", id: "OwnrInPlOwnrInPl", owner: true, ai: true, listens: true, engine: "chromium",
+    record: (id) => meta(id, { durationSec: AI_SECS, title: "Untitled — Oct 25", titled: false, media: { ...media(id), mp4: null }, createdAt: iso(Date.now() - 4 * 60_000) }),
+    before: async (page) => {
+      await page.evaluate(() => { window.__stayed = true; const v = document.querySelector("video"); v.muted = true; return v.play(); }).catch(() => {});
+      await page.waitForFunction(() => document.querySelector("video").currentTime > 0.5, null, { timeout: 15000 }).catch(() => {});
+    },
+    golive: (id) => named(id), wait: () => true, pictures: [], lines: () => [], absent: [NAMED_LINE], act: async (page) => {
+      const missing = [];
+      const came = await page.waitForFunction(() => document.querySelectorAll(".chs i").length > 0 && document.querySelector(".cc"), null, { timeout: 30000, polling: 250 }).then(() => true, () => false);
+      if (!came) missing.push("the chapters and Captions in place, without a reload");
+      const s = await page.evaluate(() => { const v = document.querySelector("video"); return { stayed: window.__stayed === true, paused: v.paused, t: v.currentTime, title: document.getElementById("t").value, tracks: v.textTracks.length }; });
+      if (!s.stayed) missing.push("the same page (it reloaded)");
+      if (s.paused || s.t < 1) missing.push(`playback going on (paused ${s.paused} at ${s.t})`);
+      if (s.title !== AI_TITLE) missing.push(`the name in the title field (got “${s.title}”)`);
+      if (s.tracks !== 1) missing.push(`one captions track (got ${s.tracks})`);
+      if (!came) return missing;
+      missing.push(...(await chaptered(false)(page)));
+      // Captions, pressed, show where words are said.
+      await page.click(".cc");
+      const cue = await page.waitForFunction(() => {
+        const v = document.querySelector("video"), t = v.textTracks[0];
+        if (!t || t.mode !== "showing" || !t.cues || !t.cues.length) return false;
+        // It plays on: seek, then read the cue on a later look, once the seek has landed.
+        if (v.currentTime < 70 || v.currentTime > 72) { v.currentTime = 70; return false; }
+        return t.activeCues && t.activeCues.length ? t.activeCues[0].text : false;
+      }, null, { timeout: 15000, polling: 250 }).then((h) => h.jsonValue(), () => null);
+      if (!(cue && cue.startsWith("Next, the invoice"))) missing.push(`a caption at 1:10 (got ${JSON.stringify(cue)})`);
+      return missing;
+    } },
   // …or, the account's free day used up, that the name comes later; never an error.
   { face: "owner-naming-later", id: "OwnrDailyOwnrDly", owner: true, ai: true, record: (id) => meta(id, { durationSec: AI_SECS, title: "Untitled — Oct 18", titled: false, naming: { later: "daily" } }),
-    lines: () => [line("owner-page", "owner-page.its-name-and-chapters-come")], absent: [line("owner-page", "owner-page.named-from-what-you-said")] },
+    lines: () => [line("owner-page", "owner-page.its-name-and-chapters-come")], absent: [NAMED_LINE] },
   // A viewer's page: the chapters cut into the seek bar, the one under the pointer named in a
   // tip; the one playing beside the time and in the bar's spoken value; Captions in the row.
-  { face: "live-chapters", id: "LiveChapLiveChap", ai: true, record: (id) => named(id, { titled: true }), lines: () => [AI_TITLE, `· ${AI_SAID[0][1]}`], absent: [line("owner-page", "owner-page.named-from-what-you-said")], act: chaptered(false) },
+  { face: "live-chapters", id: "LiveChapLiveChap", ai: true, record: (id) => named(id, { titled: true }), lines: () => [AI_TITLE, `· ${AI_SAID[0][1]}`], absent: [NAMED_LINE], act: chaptered(false) },
   // A phone has no hover: a finger on the bar names the chapter above the thumb. The row has
   // no room beside its five controls for the chapter's name.
   { face: "live-chapters-phone", id: "LivePhonLivePhon", ai: true, phone: true, record: (id) => named(id, { titled: true }), lines: () => [AI_TITLE], act: async (page) => {
@@ -254,6 +289,8 @@ async function main() {
       const entry = (summary.faces[f.face] = { shots: [] });
       const backgrounds = [];
       if (f.blocked) await env.BUCKET.put(HEALTH, JSON.stringify({ v: 1, uploads: "blocked", at: iso(Date.now()) }));
+      // A space with the AI on (its page asks for a name on its way); nothing here runs it.
+      if (f.listens) env.AI = { run: async () => { throw new Error("the gallery runs no model"); } };
       for (const scheme of ["light", "dark"]) {
         if (f.golive) {
           await env.BUCKET.put(metaKey(f.id), f.record(f.id));
@@ -271,6 +308,7 @@ async function main() {
         await page.waitForLoadState(f.hold ? "load" : "networkidle").catch(() => {});
         if (!f.record || f.record(f.id).includes('"live"')) await page.waitForTimeout(400);
         let clicked = true;
+        if (f.before) await f.before(page);
         if (f.golive) {
           // Back to uploading for this scheme's pass, then live under the open page.
           await env.BUCKET.put(metaKey(f.id), f.golive(f.id));
@@ -318,6 +356,7 @@ async function main() {
         await context.close();
       }
       if (f.blocked) await env.BUCKET.delete(HEALTH);
+      if (f.listens) delete env.AI;
       if (f.chip) {
         // The stored still's corner: the length's light text over the dark pill, or not there.
         const key = [...env.BUCKET.store.keys()].find((k) => k.startsWith(`rec/${f.id}/thumb-`) && k.endsWith(".jpg"));
