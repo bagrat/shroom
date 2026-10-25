@@ -137,8 +137,8 @@ describe("the landing", () => {
     assert.match(html, /\.mast, \.tiles \{[^}]*max-width: 1312px;[^}]*grid-template-columns: repeat\(12, minmax\(0, 1fr\)\); column-gap: 24px; \}/, "the masthead and the tiles share one grid");
     assert.match(html, /\.mast \.brand \{ grid-column: 1 \/ 7;/, "the wordmark from the grid's left edge");
     assert.match(html, /\.pitch \{ grid-column: 7 \/ 13; justify-self: end; text-align: right;/, "the headline to its right edge");
-    assert.match(html, /\.stack\.l \{ grid-column: 1 \/ 9; \}/, "the video and Install: eight columns");
-    assert.match(html, /\.stack\.r \{ grid-column: 9 \/ 13; \}/, "the price and the terms: four");
+    assert.match(html, /\.stack\.l \{ grid-column: 1 \/ 8; \}/, "the video and Install: seven columns");
+    assert.match(html, /\.stack\.r \{ grid-column: 8 \/ 13; \}/, "the price and the terms: five");
     assert.match(html, /\.stack\.l > \.install, \.stack\.r > \.terms \{ flex: 1 1 auto; \}/, "the shorter stack grows to meet the other, at install or the terms");
     assert.match(html, /\.stage \{ position: relative; aspect-ratio: 1280 \/ 832;/, "the video's frame keeps the still's shape, so the still shows whole (Bagrat, 2026-10-25)");
     assert.doesNotMatch(html, /\.stage[^{]*\{[^}]*flex: 1/, "and never grows");
