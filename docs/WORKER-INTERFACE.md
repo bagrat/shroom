@@ -430,6 +430,7 @@ A status alone never maps to a state. Within `IFACE = 2`, routes and fields only
 | 4.21 | POST | `/_shroom/api/ai` | device key / parent proof |
 | 4.21 | GET, HEAD | `/_shroom/cc/<id>` | none |
 | 4.21 | GET | `/_shroom/named/<id>` | cookie |
+| 4.21 | GET, POST | `/_shroom/chapters/<id>` | cookie |
 | 4.22 | POST | `/_shroom/view/<id>` | none (same-site) |
 | 4.22 | POST | `/_shroom/api/cleanup` | device key (`everyone`: owner-class) |
 | 4.22 | GET, POST | `/_shroom/api/plays` | device key (POST: owner-class) |
@@ -1001,6 +1002,23 @@ or an owner-class browser (§3.5) only, else 403: `{"named":"<title or empty>","
 reload would put in the player (the bar's clock; the track on the recording's, the page adding
 `&e=1` when an edit's own copy plays). The page asks on until `done`, puts the chapters and
 captions into the player as it plays, and asks on till the player is there (D:B239).
+
+**`GET /_shroom/chapters/<id>`** and **`POST /_shroom/chapters/<id>`** — the owner's chapters
+(N78, D:B240): the maker's or an owner-class browser only, else 403; no record or deleted → 404
+(GET). GET answers `{"chapters":[[start,"title"],…],"panel":{mine,off,clock,total,rows}}`:
+`chapters` what the bar shows, `rows` one a chapter, `{s, t, title}` with `s` its start on the
+recording's clock now and `t` on the bar's (`null` while an edit cuts it out whole, or leaves it
+under 5 s), the space's chapters as the bar shows them until the owner's own exist (`mine`).
+POST (same-origin) takes the whole list, `{"clock":<the panel's clock>,"off":bool,"list":[{s|t,
+title}…]}`: a kept row by `s`, a moved or new one by `t`; a name 1–80 characters, at most 50
+rows. A clock other than the record's (the editor made the video again since) → 409; a `t`
+past the end → `400 {"why":"outside"}`; a moved or new start within 5 s of a neighbour on the
+bar or of the end → `400 {"why":"short"}`; anything else malformed → 400. Under If-Match
+(sealed or deleted → 409) it writes `chapters` = `{by:"owner", at, clock, list:[[s,"title"],…],
+off}` → `200` with GET's answer, `no-store`. From then on the bar shows the owner's (on a video
+of any length, two or more playing, none while `off`), carried through the edit and any bake
+as the space's are, and the naming never writes them: its new `named.chapters` stay unseen,
+and an edit is weighed for naming again by the space's own chapters only.
 
 A seal also deletes the video's plays, `views/<id>.json` (§4.22).
 

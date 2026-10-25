@@ -376,3 +376,10 @@ and edits on the share page)*)**
     Proved in CI (the core walkthroughs, the Worker's `autoclean.test.js`, the command
     against the real page, the window gallery). Ships with 0.1.29. Known gap: no hosted-Mac
     drive yet; the Settings pop-up and the popover banner are checked in the gallery only.
+44. **N78 — the owner edits the chapters on the video's page** (B240; Bagrat OK'd the boards,
+    2026-10-25, relayed by the orchestrator: page only, after 0.1.30). Edit chapters among the
+    title's icons opens a panel under the player: rename, move to the playhead or a typed time,
+    remove with Undo, add at the playhead, and a switch that hides them from the bar. The
+    owner's chapters are theirs for good (the naming never writes them) and follow trims, cuts
+    and bakes. Proved by the Worker's `chapters.test.js` and the page gallery's eight
+    `owner-chapters-*` faces in real Chromium. The words wait on his OK as drafts.
