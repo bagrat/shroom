@@ -367,4 +367,18 @@ describe("Copy thumbnail waits until its picture is ready (N46; Bagrat: “Yes d
     expect(page).not.toMatch(/id="(c|th)" title=/);
     expect(await owner({ media })).toContain(`<span id="dl" data-tip="${COPY.download}">`);
   });
+
+  // A page opened while an edit waits for its copy has nothing to draw from (N63): the copy's
+  // first frame. When the copy lands under the open page, the poll hands its first frame and
+  // teaser over, and the picture is made and Copy thumbnail wakes, with no reload (the
+  // orchestrator relaying Bagrat's rule of 2026-10-25: a button that never gets ready is a bug).
+  it("wakes in place when an edit's copy lands under the open page, drawn from the copy", async () => {
+    const page = await owner({ edits: { version: 1, source_duration: 150, in: 0, out: 150, cuts: [{ start: 10, end: 20, kind: "manual", applied: true }], rev: 3 } });
+    expect(page).toContain(`"from":"","psrc":"","tsrc":""`);
+    expect(page).toContain(`<button class="copy thumb" id="th" data-tip="${COPY.preparingThumbnail}" aria-disabled="true">`);
+    // The page's drawing takes a new first frame (a copy's), and draws from it.
+    expect(THUMB_JS).toContain(`source:function(f,p,t){if(!f||f===c.from)return;c.from=f;c.psrc=p;c.tsrc=t||"";c.teaser=!!t;c.thumb=null;c.gif=false;cb(false);if(c.live)make()}`);
+    // The poll hands over the copy's, as the status names it.
+    expect(page).toContain(`var cq=s.copy;if(cq&&cq.poster)th.source(cq.poster.slice(cq.poster.lastIndexOf("/")+1),cq.poster,cq.teaser||"");`);
+  });
 });
