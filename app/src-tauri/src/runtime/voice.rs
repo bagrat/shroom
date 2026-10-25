@@ -13,7 +13,7 @@
 use std::path::Path;
 use std::time::Duration;
 
-use shroom_cloud::device::{CredFile, DeviceKey};
+use shroom_cloud::device::DeviceKey;
 use shroom_cloud::member::Space;
 use shroom_core::event::{EditorNews, Event};
 use shroom_core::world::{RecId, SpaceIdentity};
@@ -30,11 +30,10 @@ const SWEEP_EVERY: Duration = Duration::from_secs(6 * 3600);
 /// A take's words are looked for this long after its go-live, then never again.
 const LOOK_FOR_MS: u64 = 2 * 24 * 3600 * 1000;
 
-/// The take's own credential as a bucket client.
-fn client(rt: &Runtime, dir: &Path) -> Option<Client> {
-    let identity: SpaceIdentity = rt.home.read_json("space.json")?;
-    let cred: CredFile = super::home::read_json(&dir.join("cred.json"))?;
-    Some(super::uploader::client(rt, &identity, &cred))
+/// The take's own credential as a bucket client, minted again when it's near its end (it
+/// lives an hour, and the lane looks for two days).
+fn client(rt: &Runtime, dir: &Path, rec: &str) -> Option<Client> {
+    super::uploader::take_client(rt, dir, rec)
 }
 
 /// The space and this Mac's key for it: what the judgment is asked through.
@@ -81,7 +80,7 @@ pub(crate) fn after_go_live(rt: &Runtime, dir: &Path, rec: &str) {
     let (lane, dir, rec) = (rt.clone(), dir.to_path_buf(), rec.to_string());
     let spawned = std::thread::Builder::new().name("shroom-voice".into()).spawn(move || {
         let rt = lane;
-        let Some(s3) = client(&rt, &dir) else {
+        let Some(s3) = client(&rt, &dir, &rec) else {
             rt.log(&format!("voice: {} has no credential to read its words with", super::short(&rec)));
             return;
         };
@@ -120,7 +119,7 @@ fn sweep(rt: &Runtime) {
             Some(Mark::Waiting { since }) => since,
             Some(Mark::Planned { at, .. }) if now.saturating_sub(at) <= LOOK_FOR_MS => {
                 let Some(p) = super::home::read_json::<PublishJson>(&dir.join("publish.json")) else { continue };
-                if let Some(s3) = client(rt, &dir) {
+                if let Some(s3) = client(rt, &dir, &p.rec) {
                     if voice::pressed(&s3, &p.rec, &dir, &noting(rt, &p.rec)).is_some() {
                         landed(rt, &p.rec);
                     }
@@ -135,7 +134,7 @@ fn sweep(rt: &Runtime) {
         let Some(p) = super::home::read_json::<PublishJson>(&dir.join("publish.json")) else { continue };
         let m = if now.saturating_sub(since) > LOOK_FOR_MS {
             voice::give_up(&dir, now)
-        } else if let Some(s3) = client(rt, &dir) {
+        } else if let Some(s3) = client(rt, &dir, &p.rec) {
             voice::look_again_judged(&s3, &p.rec, &dir, now, &judgment(&door, &p.rec), &noting(rt, &p.rec))
         } else {
             continue;

@@ -796,7 +796,7 @@ pub struct Members {
     pub left_behind: BTreeSet<TakeDir>,
     /// Published takes already holding an upload credential, and until when (each take's
     /// `cred.json`, from the takes scan): a space that stops minting for this Mac still
-    /// lets these finish (N32: “a video already on its way can still finish”).
+    /// lets these finish (N32, N81: a video already on its way has up to an hour to finish).
     pub minted: BTreeMap<TakeDir, Wall>,
 }
 

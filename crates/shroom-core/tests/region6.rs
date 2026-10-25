@@ -978,7 +978,7 @@ fn removing_asks_at_its_own_beat_and_never_on_return() {
     assert_eq!(sh.title, "Remove Mher?");
     assert_eq!(
         sh.lines,
-        ["Mher won't be able to record to your space anymore — a video already on its way can still finish. Mher's videos stay; you'll find them in your Library."]
+        ["Mher won't be able to record to your space anymore — a video already on its way has up to an hour to finish. Mher's videos stay; you'll find them in your Library."]
     );
     assert_eq!(sh.buttons.iter().map(|b| (b.label.as_str(), b.style)).collect::<Vec<_>>(), [("Cancel", Style::Plain), ("Remove", Style::RedOutline)]);
     r.key(Surface::Settings, Key::Return);

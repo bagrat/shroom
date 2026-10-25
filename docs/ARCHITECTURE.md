@@ -674,7 +674,8 @@ One H.264 variant with AAC, under `v0/`; players and unfurls use the master. A l
 **The door follows token presence** (#58, `runtime/uploader.rs:Door`): a token Mac mints
 locally, writing its ledger entry create-only first; every other Mac calls `POST /api/mint`
 under its device key and the Worker signs the byte-identical JWT. Minted per recording when
-its upload starts, so removal stops new mints while minted ones finish (≤ 7 d, N32). Instant
+its upload starts and minted again as it nears the end of its hour, so removal stops new
+mints and a minted one ends within the hour (N32). Instant
 cut-off is parent-token rotation, docs only.
 
 **Law 13:** secrets ride files only — never argv, logs, slices or the core. The installer
