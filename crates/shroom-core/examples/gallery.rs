@@ -895,7 +895,7 @@ fn standing(a: StandingAnswer) -> Event {
 }
 
 fn fine() -> StandingAnswer {
-    StandingAnswer::Fine { current: true, only_holder: Some(false), mark: Some(true) }
+    StandingAnswer::Fine { current: true, only_holder: Some(false), mark: Some(true), ai: None }
 }
 
 fn struck(w: World, a: StandingAnswer) -> World {
@@ -974,7 +974,7 @@ fn member_rows() -> Vec<(&'static str, &'static str, &'static str, World)> {
     rows.push(("settings", "member-remove-confirm-invite", "remove-invite", feed(members(owner(), "d_pro"), [set(Action::Remove(RowRef::Invite("i_ani".into())))])));
     rows.push(("settings", "member-remove-confirm-own-mac", "remove-mac", feed(members(owner(), "d_pro"), [set(Action::Remove(RowRef::Mac("d_air".into())))])));
     // ── Settings · Space on every kind of Mac ──
-    rows.push(("settings", "settings-space", "space-owner-mark", feed(inspected(settings(owner(), SettingsTab::Space)), [standing(StandingAnswer::Fine { current: true, only_holder: Some(true), mark: Some(true) })])));
+    rows.push(("settings", "settings-space", "space-owner-mark", feed(inspected(settings(owner(), SettingsTab::Space)), [standing(StandingAnswer::Fine { current: true, only_holder: Some(true), mark: Some(true), ai: None })])));
     rows.push(("settings", "settings-space-no-token", "space-owner-class", feed(settings(owner_class(), SettingsTab::Space), [standing(fine())])));
     rows.push(("settings", "token", "space-owner-class-add-token", feed(settings(owner_class(), SettingsTab::Space), [standing(fine()), set(Action::AddToken)])));
     rows.push(("settings", "settings-space-member", "space-member", feed(settings(member(), SettingsTab::Space), [standing(fine())])));
@@ -1088,8 +1088,8 @@ fn member_rows() -> Vec<(&'static str, &'static str, &'static str, World)> {
         w.queue = stranded_queue(1);
         struck(w, StandingAnswer::Gone)
     }));
-    rows.push(("popover", "space-needs-update-member", "needs-update-member", feed(popover(member()), [standing(StandingAnswer::Fine { current: false, only_holder: None, mark: None })])));
-    rows.push(("popover", "space-needs-update-no-token", "needs-update-owner-class", feed(popover(owner_class()), [standing(StandingAnswer::Fine { current: false, only_holder: Some(false), mark: Some(true) })])));
+    rows.push(("popover", "space-needs-update-member", "needs-update-member", feed(popover(member()), [standing(StandingAnswer::Fine { current: false, only_holder: None, mark: None, ai: None })])));
+    rows.push(("popover", "space-needs-update-no-token", "needs-update-owner-class", feed(popover(owner_class()), [standing(StandingAnswer::Fine { current: false, only_holder: Some(false), mark: Some(true), ai: None })])));
     rows.push(("popover", "space-degraded-no-token-mac", "degraded-no-token", struck(popover(owner_class()), StandingAnswer::SpaceSide)));
     rows.push(("popover", "stopped-stranded", "stopped-stranded", {
         let mut w = popover(member());
@@ -1236,14 +1236,14 @@ fn region3_rows() -> Vec<(&'static str, &'static str, &'static str, World)> {
         w.saved.push(saved_take(SavedCause::Interrupted, 272_000));
         w
     }));
-    // N66: the setup Mac's popover while the space's AI is off — the banner, its confirm,
-    // turning on, a Turn on that didn't go through, and on.
-    let ai_off = || {
+    // N76: AI on by default — the setup Mac's banner as it turns the AI on and once it's on,
+    // its Turn off re-wiring, a Turn off that didn't go through, off; and a member's banner.
+    let ai_on = || {
         let mut w = popover(ready());
-        w.space.ai = Some(false);
+        w.space.ai = Some(true);
         w
     };
-    rows.push(("popover", "ai-offer", "ai-offer", ai_off()));
+    rows.push(("popover", "ai-turned-on", "ai-turned-on", ai_on()));
     // N75: auto-cleanup's banner three days ahead, after Pin both, and once a round went.
     let going_pop = || going(suggesting(library_closed(popover(ready()))));
     rows.push(("popover", "autoclean-warning", "autoclean-warning", going_pop()));
@@ -1259,27 +1259,28 @@ fn region3_rows() -> Vec<(&'static str, &'static str, &'static str, World)> {
         }
         w
     }));
-    rows.push(("popover", "ai-confirm", "ai-confirm", {
-        let mut w = ai_off();
-        w.session.confirm = Some(Confirm::Ai);
-        w
-    }));
-    rows.push(("popover", "ai-turning-on", "ai-turning-on", {
-        let mut w = ai_off();
-        w.space.ai_turn = Some(AiTurn::Turning);
+    rows.push(("popover", "ai-turning-off", "ai-turning-off", {
+        let mut w = ai_on();
+        w.space.ai_turn = Some(AiTurn::TurningOff);
         w.inflight.ops.insert(Op::Ai, Mono(990).plus(Op::Ai.deadline_ms()));
         w
     }));
-    rows.push(("popover", "ai-offer-failed", "ai-offer-failed", {
-        let mut w = ai_off();
-        w.space.ai_turn = Some(AiTurn::Turning);
+    rows.push(("popover", "ai-turn-off-failed", "ai-turn-off-failed", {
+        let mut w = ai_on();
+        w.space.ai_turn = Some(AiTurn::TurningOff);
         w.inflight.failures.insert(Op::Ai, Failure { at: Mono(990), class: FailClass::Transport, tries: 1 });
         w
     }));
-    rows.push(("popover", "ai-on", "ai-on", {
+    rows.push(("popover", "ai-off", "ai-off", {
         let mut w = popover(ready());
+        w.space.ai = Some(false);
+        w.space.ai_turn = Some(AiTurn::Off);
+        w.once.ai_offer_answered = true;
+        w
+    }));
+    rows.push(("popover", "ai-on-in-space", "ai-on-in-space", {
+        let mut w = popover(member());
         w.space.ai = Some(true);
-        w.space.ai_turn = Some(AiTurn::On);
         w
     }));
     rows.push(("popover", "paused", "paused", paused_take(Cause::User, 272_000)));

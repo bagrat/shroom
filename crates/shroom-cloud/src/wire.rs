@@ -258,12 +258,24 @@ pub enum WirePart {
 
 /// [`wire_with`], saying each part as it begins (N74) — the caller shows the wait.
 pub fn wire_parts(cloud: &Cloud, spec: &WireSpec, page: Option<&PageCheck>, part: &dyn Fn(WirePart)) -> Result<Wired, WireError> {
+    wire_any(cloud, spec, page, part, false)
+}
+
+/// [`wire_parts`] for a space being set up (N76; Bagrat, 2026-10-25: AI on by default): a
+/// page put up where there was none carries the AI and its schedule. A page already there
+/// keeps whatever it had, as every wiring does.
+pub fn wire_fresh_parts(cloud: &Cloud, spec: &WireSpec, page: Option<&PageCheck>, part: &dyn Fn(WirePart)) -> Result<Wired, WireError> {
+    wire_any(cloud, spec, page, part, true)
+}
+
+fn wire_any(cloud: &Cloud, spec: &WireSpec, page: Option<&PageCheck>, part: &dyn Fn(WirePart), fresh: bool) -> Result<Wired, WireError> {
     let subdomain = cloud.subdomain(spec.account_id)?.ok_or(WireError::NoName)?;
     let host = format!("{}.{subdomain}.workers.dev", spec.label);
     let (fact, ai) = crate::sweep::worker_fact_ai(cloud, spec.account_id, spec.label, spec.bucket)?;
     if !matches!(fact, crate::sweep::WorkerFact::Absent | crate::sweep::WorkerFact::Ours) {
         return Err(WireError::Foreign);
     }
+    let ai = ai || fresh && fact == crate::sweep::WorkerFact::Absent;
     // Our page, answering at this version or a newer one: its script stays.
     let current = fact == crate::sweep::WorkerFact::Ours
         && page.is_some_and(|p| match (p.at)(&host).ping() {

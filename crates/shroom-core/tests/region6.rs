@@ -255,11 +255,11 @@ fn standing(a: StandingAnswer) -> Event {
 }
 
 fn fine() -> StandingAnswer {
-    StandingAnswer::Fine { current: true, only_holder: None, mark: None }
+    StandingAnswer::Fine { current: true, only_holder: None, mark: None, ai: None }
 }
 
 fn owner_facts(only_holder: bool, mark: bool) -> StandingAnswer {
-    StandingAnswer::Fine { current: true, only_holder: Some(only_holder), mark: Some(mark) }
+    StandingAnswer::Fine { current: true, only_holder: Some(only_holder), mark: Some(mark), ai: None }
 }
 
 /// Invite answered 201 for Ani: her row, and her new link in the stash under 7.
@@ -655,10 +655,10 @@ fn rows() -> Vec<(&'static str, World, Check)> {
         let w = library_with(owner(), mixed_rows());
         feed(w, [news(MemberNews::Roster(roster())), lib(Action::SetScope(LibraryScope::Everyone)), lib(Action::DeleteRow(RecId(s("r_mher"))))])
     }, Full));
-    rows.push(("space-needs-update-member", feed(with_popover(member()), [standing(StandingAnswer::Fine { current: false, only_holder: None, mark: None })]), Full));
+    rows.push(("space-needs-update-member", feed(with_popover(member()), [standing(StandingAnswer::Fine { current: false, only_holder: None, mark: None, ai: None })]), Full));
     rows.push((
         "space-needs-update-no-token",
-        feed(with_popover(owner_class()), [standing(StandingAnswer::Fine { current: false, only_holder: Some(false), mark: Some(true) })]),
+        feed(with_popover(owner_class()), [standing(StandingAnswer::Fine { current: false, only_holder: Some(false), mark: Some(true), ai: None })]),
         Full,
     ));
     rows.push(("space-degraded-no-token-mac", struck(with_popover(owner_class()), StandingAnswer::SpaceSide), Full));
@@ -1625,7 +1625,7 @@ fn a_stop_the_space_cant_take_stays_safe_on_this_mac() {
 
 #[test]
 fn space_needs_an_update_reads_by_role() {
-    let behind = StandingAnswer::Fine { current: false, only_holder: None, mark: None };
+    let behind = StandingAnswer::Fine { current: false, only_holder: None, mark: None, ai: None };
     let mut r = Run::new(with_popover(member()));
     r.send(standing(behind.clone()));
     assert_eq!(banner(&r.scene), Some("space-needs-update-member"));

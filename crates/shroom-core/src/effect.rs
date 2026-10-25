@@ -138,7 +138,9 @@ pub enum CloudCmd {
     /// Claim this workers.dev name (only ever on the person's click); answers `Claimed`.
     Claim(String),
     /// The idempotent wiring calls and the self-check, under this label; answers `Wired`.
-    Wire { label: String },
+    /// `fresh`: the setup's own wiring — a page put up where none was carries the AI (N76);
+    /// a repair's never changes it.
+    Wire { label: String, fresh: bool },
     /// The token Mac's page refresh (§6.10, B50): ping the space's page and, only when it
     /// answers older than this app's, put this app's page up (the roster seeded first);
     /// never over a newer one, never any storage. Answers `Refreshed`.

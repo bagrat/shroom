@@ -1008,18 +1008,26 @@ pub fn reconnect_here() -> String { "Reconnect here".into() }
 // Settings · Space on every kind of Mac, and the Library across members.
 pub fn mark_label() -> String { "“made with shroom” on your pages".into() }
 pub fn mark_line() -> String { "The small mark on every video page. You can flip it right on a page, too.".into() }
-// AI for new videos (N66; Bagrat, 2026-10-18): the setup Mac's one switch, and the popover's
-// banner and its confirm. The cost line is said in the confirm and under the switch.
+// AI for new videos (N66; Bagrat, 2026-10-18): the setup Mac's one switch, with its cost line;
+// on by default (N76; Bagrat, 2026-10-25), said once in the popover's banner.
 pub fn ai_label() -> String { "AI for new videos".into() }
 pub fn ai_cost() -> String {
     "Titles, chapters and captions from what’s said, and your “shroom cut” slips cut — on your own Cloudflare account. Free for about 2½ hours of new video a day; more is about 4¢ per video hour on Cloudflare’s $5 plan.".into()
 }
-pub fn ai_banner() -> String { "shroom can name your videos, add chapters and cut your slips for you.".into() }
-pub fn turn_on_ask() -> String { "Turn on…".into() }
-pub fn ai_confirm_title() -> String { "Turn on AI for new videos?".into() }
-pub fn ai_turning_on() -> String { "Turning on — a few seconds.".into() }
-pub fn ai_on_said() -> String { "AI is on for new videos ✓".into() }
+pub fn ai_turned_on() -> String { "AI features are turned on.".into() }
+pub fn ai_turned_on_detail() -> String {
+    "New videos get titles, chapters and captions from what’s said, and your “shroom cut” slips cut — on your own Cloudflare account.".into()
+}
+pub fn turn_off() -> String { "Turn off".into() }
 pub fn turn_on() -> String { "Turn on".into() }
+pub fn ai_turning_on() -> String { "Turning on — a few seconds.".into() }
+pub fn ai_turning_off() -> String { "Turning off — a few seconds.".into() }
+pub fn ai_turn_off_failed() -> String { "Couldn't turn it off just now — try again in a moment.".into() }
+pub fn ai_off_said() -> String { "AI is off — turn it on any time in Settings.".into() }
+pub fn ai_on_in_space(name: &str) -> String { format!("AI is on in {name}'s space.") }
+pub fn ai_on_in_space_detail(name: &str) -> String {
+    format!("Your new videos there get titles, chapters and captions from what’s said — on {name}'s Cloudflare account.")
+}
 /// A re-wiring that didn't go through: in place of the switch's or the banner's line (law 12).
 pub fn ai_failed() -> String { "Couldn't change that just now — try again in a moment.".into() }
 pub fn repairs_elsewhere() -> String {
@@ -1541,18 +1549,19 @@ pub fn registry() -> Vec<(&'static str, String)> {
         ("settings-space", ai_label()),
         ("settings-space", ai_cost()),
         ("settings-space", ai_failed()),
-        ("ai-offer", ai_banner()),
-        ("ai-offer", turn_on_ask()),
-        ("ai-offer", not_now()),
-        ("ai-confirm", ai_confirm_title()),
-        ("ai-confirm", ai_cost()),
-        ("ai-confirm", back()),
-        ("ai-confirm", turn_on()),
-        ("ai-turning-on", ai_turning_on()),
-        ("ai-offer-failed", ai_failed()),
-        ("ai-offer-failed", turn_on_ask()),
-        ("ai-offer-failed", not_now()),
-        ("ai-on", ai_on_said()),
+        ("ai-turned-on", ai_turned_on()),
+        ("ai-turned-on", ai_turned_on_detail()),
+        ("ai-turned-on", turn_off()),
+        ("ai-turned-on", ok()),
+        ("ai-turning-off", ai_turning_off()),
+        ("ai-turn-off-failed", ai_turned_on()),
+        ("ai-turn-off-failed", ai_turn_off_failed()),
+        ("ai-turn-off-failed", turn_off()),
+        ("ai-turn-off-failed", ok()),
+        ("ai-off", ai_off_said()),
+        ("ai-on-in-space", ai_on_in_space("Bagrat")),
+        ("ai-on-in-space", ai_on_in_space_detail("Bagrat")),
+        ("ai-on-in-space", ok()),
         ("settings-space", leave_space_ellipsis()),
         ("settings-space-no-token", space_row_done(None, "v.myshroom.workers.dev")),
         ("settings-space-no-token", space_done(6, Some(&on_this_mac()))),

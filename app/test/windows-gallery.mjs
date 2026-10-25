@@ -1217,22 +1217,23 @@ for (const entry of countdowns) {
   }
 }
 
-// N66: the AI banner and its confirm send the Scene's actions.
+// N76: the AI banners say both their lines and send the Scene's actions.
 {
   const pop = (variant) => popovers.find((e) => e.variant === variant).scene;
-  const ban = await open("popover", pop("ai-offer"));
+  const ban = await open("popover", pop("ai-turned-on"));
+  check("ai-turned-on: both lines", (await ban.page.locator(".banner .head").textContent()) === "AI features are turned on." && (await ban.page.locator(".banner .detail").count()) === 1);
   await clear(ban.page);
-  await ban.page.getByRole("button", { name: "Turn on…", exact: true }).click();
-  check("ai-offer: Turn on… sends ai-ask", acted(await calls(ban.page), "popover", { do: "ai-ask" }));
+  await ban.page.getByRole("button", { name: "Turn off", exact: true }).click();
+  check("ai-turned-on: Turn off sends ai-turn-off", acted(await calls(ban.page), "popover", { do: "ai-turn-off" }));
   await clear(ban.page);
-  await ban.page.getByRole("button", { name: "Not now", exact: true }).click();
-  check("ai-offer: Not now sends ai-not-now", acted(await calls(ban.page), "popover", { do: "ai-not-now" }));
+  await ban.page.getByRole("button", { name: "OK", exact: true }).click();
+  check("ai-turned-on: OK sends ai-ok", acted(await calls(ban.page), "popover", { do: "ai-ok" }));
   await ban.ctx.close();
-  const ask = await open("popover", pop("ai-confirm"));
-  await clear(ask.page);
-  await ask.page.getByRole("button", { name: "Turn on", exact: true }).click();
-  check("ai-confirm: Turn on sends ai-on", acted(await calls(ask.page), "popover", { do: "ai-on" }));
-  await ask.ctx.close();
+  const member = await open("popover", pop("ai-on-in-space"));
+  await clear(member.page);
+  await member.page.getByRole("button", { name: "OK", exact: true }).click();
+  check("ai-on-in-space: OK sends ai-ok", acted(await calls(member.page), "popover", { do: "ai-ok" }));
+  await member.ctx.close();
 }
 
 // ── The agent label (N62, B216): the Scene's line in a pill at the panel's right edge, the

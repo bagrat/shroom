@@ -59,6 +59,12 @@ pub fn apply(w: &mut World, event: Event) -> Out {
     if edit_said && w.session.popover.is_none() {
         w.session.fields.edit_link = None;
     }
+    // AI on by default (N76; Bagrat, 2026-10-25): the setup Mac's popover, about to show “AI
+    // features are turned on.”, turns it on — so it's said before anything is heard.
+    if w.online() != Some(false) && crate::derive::popover::ai_default_due(w) {
+        w.space.ai_turn = Some(AiTurn::TurningOn);
+        fx.push(Effect::Cloud(CloudCmd::SetAi(true)));
+    }
     // A press on the page's Edit in shroom held for a take goes on once it's over (law 4).
     if !w.take_open() && matches!(w.session.fields.edit_link, Some(EditLink::Waiting { asked: false, .. })) {
         if let Some(EditLink::Waiting { host, rec, .. }) = w.session.fields.edit_link.take() {
@@ -72,10 +78,20 @@ pub fn apply(w: &mut World, event: Event) -> Out {
                 fx.push(Effect::Persist(PersistOp::Once(w.once.clone())));
             }
             OneShot::Failed => w.update.failed = false,
-            OneShot::AiOn => w.space.ai_turn = None,
+            OneShot::AiOff => w.space.ai_turn = None,
         }
     }
     (fx, arm)
+}
+
+/// The space's AI, settled on this Mac for good (N76): never turned on by default again,
+/// and its banner never shown again here.
+fn settle_ai(w: &mut World) -> Vec<Effect> {
+    if w.once.ai_offer_answered {
+        return vec![];
+    }
+    w.once.ai_offer_answered = true;
+    vec![Effect::Persist(PersistOp::Once(w.once.clone()))]
 }
 
 fn apply_event(w: &mut World, event: Event) -> Out {
@@ -803,10 +819,6 @@ fn act(w: &mut World, action: Action) -> Out {
                 w.session.fields.settings.report = ReportFields::default();
                 return (vec![], Arm { name: "report-cancelled", edge: Some(("report-problem", "settings-general")) });
             }
-            // The AI banner's confirm: back to config, the banner still there (N66).
-            if was == Some(Confirm::Ai) {
-                return (vec![], Arm { name: "ai-back", edge: Some(("ai-confirm", "config")) });
-            }
             // Delete all's sheet and auto-cleanup's question (N75): nothing moved.
             if matches!(was, Some(Confirm::DeleteSuggested(_))) {
                 return (vec![], Arm { name: "delete-all-cancelled", edge: Some(("delete-confirm-cleanup", "library-cleanup")) });
@@ -1393,7 +1405,7 @@ fn act(w: &mut World, action: Action) -> Out {
             }
             let label = id.label.clone();
             w.session.fields.settings.fresh = true;
-            (vec![Effect::Cloud(CloudCmd::Wire { label })], Arm { name: "set-up-fresh", edge: Some(("space-storage-gone", "wiring")) })
+            (vec![Effect::Cloud(CloudCmd::Wire { label, fresh: false })], Arm { name: "set-up-fresh", edge: Some(("space-storage-gone", "wiring")) })
         }
         // The wizard's “something unexpected” face (DEVIATIONS #25): its Try again asks
         // every wizard call again now — the backoff is behind it, and the window re-probes.
@@ -1505,36 +1517,39 @@ fn act(w: &mut World, action: Action) -> Out {
         }
         Action::SetMark(on) => (vec![Effect::Member(MemberCmd::Mark(on))], Arm::named("set-mark")),
         // Naming (N66): the setup Mac re-wires its page; the switch reads the page's answer.
-        // A new try starts clean: its own failure, if any, is the one said.
+        // A new try starts clean: its own failure, if any, is the one said. The switch is a
+        // choice: AI is settled on this Mac, never turned on again by default (N76).
         Action::SetAi(on) => {
             w.inflight.failures.remove(&Op::Ai);
             w.space.ai_turn = None;
-            (vec![Effect::Cloud(CloudCmd::SetAi(on))], Arm::named("set-ai"))
+            let mut fx = vec![Effect::Cloud(CloudCmd::SetAi(on))];
+            fx.extend(settle_ai(w));
+            (fx, Arm::named("set-ai"))
         }
-        // The AI banner's Turn on… (N66): its confirm says what it costs, before anything does.
-        Action::AiAsk => {
-            if w.take_open() || w.space.ai_turn == Some(AiTurn::Turning) && w.inflight.ops.contains_key(&Op::Ai) {
+        // The AI banner's OK (N76): AI stays as it is, and the banner is answered for good on
+        // this Mac — the setup Mac's, or a member's.
+        Action::AiOk => {
+            let from = derive(w).popover.and_then(|p| p.banner).map(|b| b.id).filter(|id| matches!(*id, "ai-turned-on" | "ai-turn-off-failed" | "ai-on-in-space"));
+            let Some(from) = from else { return (vec![], Arm::DROPPED) };
+            // A turn-on still on its way goes on (quietly, if it must be tried again); a Turn
+            // off that didn't go through stops being tried.
+            if w.space.ai_turn != Some(AiTurn::TurningOn) {
+                w.space.ai_turn = None;
+            }
+            (settle_ai(w), Arm { name: "ai-ok", edge: Some((from, "config")) })
+        }
+        // The banner's Turn off (N76): the switch's off — the banner says it's turning off
+        // until the page answers. Never over a re-wiring already on its way (the turn-on's
+        // few seconds): the press waits for its answer.
+        Action::AiTurnOff => {
+            let from = derive(w).popover.and_then(|p| p.banner).map(|b| b.id).filter(|id| matches!(*id, "ai-turned-on" | "ai-turn-off-failed"));
+            let Some(from) = from else { return (vec![], Arm::DROPPED) };
+            if w.take_open() || w.inflight.ops.contains_key(&Op::Ai) {
                 return (vec![], Arm::DROPPED);
             }
-            w.session.confirm = Some(Confirm::Ai);
-            (vec![], Arm { name: "ai-asked", edge: Some(("ai-offer", "ai-confirm")) })
-        }
-        // The confirm's Turn on is the switch's: the banner says it's turning on until the
-        // page answers.
-        Action::AiOn => {
-            let asked = w.session.confirm == Some(Confirm::Ai);
-            if asked {
-                w.session.confirm = None;
-            }
             w.inflight.failures.remove(&Op::Ai);
-            w.space.ai_turn = Some(AiTurn::Turning);
-            (vec![Effect::Cloud(CloudCmd::SetAi(true))], Arm { name: "ai-on", edge: asked.then_some(("ai-confirm", "ai-turning-on")) })
-        }
-        // Not now: hidden for good on this Mac (Bagrat, 2026-10-18); the switch stays.
-        Action::AiNotNow => {
-            w.space.ai_turn = None;
-            w.once.ai_offer_answered = true;
-            (vec![Effect::Persist(PersistOp::Once(w.once.clone()))], Arm { name: "ai-not-now", edge: Some(("ai-offer", "config")) })
+            w.space.ai_turn = Some(AiTurn::TurningOff);
+            (vec![Effect::Cloud(CloudCmd::SetAi(false))], Arm { name: "ai-turn-off", edge: Some((from, "ai-turning-off")) })
         }
         Action::SetScope(scope) => {
             w.session.fields.library.scope = scope;
@@ -1983,7 +1998,7 @@ fn member(w: &mut World, news: MemberNews) -> Out {
             st.at = Some(now);
             let arm = match answer {
                 // The cause clears, the face clears (law 1).
-                StandingAnswer::Fine { current, only_holder, mark } => {
+                StandingAnswer::Fine { current, only_holder, mark, ai } => {
                     st.fine = Some(now);
                     st.revoked = false;
                     st.strike = None;
@@ -1993,6 +2008,11 @@ fn member(w: &mut World, news: MemberNews) -> Out {
                     }
                     if mark.is_some() {
                         st.mark = mark;
+                    }
+                    // A Mac without the token learns its space's AI from the ping (N76): a
+                    // member's popover says once whose space hears its videos.
+                    if ai.is_some() && !w.space.token_holder() {
+                        w.space.ai = ai;
                     }
                     "standing-fine"
                 }
@@ -3497,22 +3517,19 @@ fn cloud(w: &mut World, news: CloudNews) -> Out {
         CloudNews::AiSet(on) => {
             answered(w, Op::Ai);
             w.space.ai = Some(on);
-            // On, by the banner or the switch: the banner is answered for good on this Mac,
-            // and the banner's own Turn on is said once, in config's status line.
-            let turning = w.space.ai_turn == Some(AiTurn::Turning);
-            if turning {
+            if w.space.ai_turn == Some(AiTurn::TurningOn) {
                 w.space.ai_turn = None;
             }
-            let mut fx = Vec::new();
-            if on && !w.once.ai_offer_answered {
-                w.once.ai_offer_answered = true;
-                fx.push(Effect::Persist(PersistOp::Once(w.once.clone())));
+            // The banner's Turn off went through (N76): settled for good on this Mac, and
+            // said once, in config's status line.
+            if w.space.ai_turn == Some(AiTurn::TurningOff) {
+                w.space.ai_turn = None;
+                if !on {
+                    w.space.ai_turn = Some(AiTurn::Off);
+                    return (settle_ai(w), Arm { name: "ai-set", edge: Some(("ai-turning-off", "ai-off")) });
+                }
             }
-            if on && turning {
-                w.space.ai_turn = Some(AiTurn::On);
-                return (fx, Arm { name: "ai-set", edge: Some(("ai-turning-on", "ai-on")) });
-            }
-            (fx, Arm::named("ai-set"))
+            (vec![], Arm::named("ai-set"))
         }
         CloudNews::Validated { id, result } => {
             answered(w, Op::Validate);
@@ -3762,7 +3779,13 @@ fn cloud(w: &mut World, news: CloudNews) -> Out {
                 // The last step since N45: wired after the chapter ended is all set; wired
                 // under the chapter, the chapter goes on (its row just ticks).
                 let edge = (!repairing && w.row_six_done()).then_some(("wiring", "all-set"));
-                (vec![Effect::Persist(PersistOp::Space(identity)), persist_prefs(w)], Arm { name: "wired", edge })
+                let mut fx = vec![Effect::Persist(PersistOp::Space(identity)), persist_prefs(w)];
+                // A space set up here starts with its AI on (N76; Bagrat, 2026-10-25: nothing
+                // said in the setup): settled on this Mac, never asked or said about again.
+                if !repairing {
+                    fx.extend(settle_ai(w));
+                }
+                (fx, Arm { name: "wired", edge })
             }
             // The fallback classification: a gate closed since the card step.
             Err(WireFail::Gate(g)) => {
@@ -3979,10 +4002,10 @@ fn failed(w: &mut World, op: Op, class: crate::world::FailClass) -> Out {
             w.inflight.failures.remove(&Op::Relaunch);
             fx.push(Effect::Persist(PersistOp::Restore(None)));
         }
-        // The banner's Turn on didn't go through: it says so, Turn on… live again (law 12),
-        // and it's tried again quietly until it goes through or the person says Not now.
-        Op::Ai if w.space.ai_turn == Some(AiTurn::Turning) => {
-            return (fx, Arm { name: "ai-failed", edge: Some(("ai-turning-on", "ai-offer-failed")) });
+        // The banner's Turn off didn't go through: it says so, Turn off live again (law 12),
+        // and it's tried again quietly until it goes through or the person says OK.
+        Op::Ai if w.space.ai_turn == Some(AiTurn::TurningOff) => {
+            return (fx, Arm { name: "ai-failed", edge: Some(("ai-turning-off", "ai-turn-off-failed")) });
         }
         // A rename or delete that didn't land: the row reads as the space has it again.
         Op::Rename => w.library_ops.renaming.clear(),
@@ -4094,9 +4117,12 @@ fn tick(w: &mut World) -> Out {
     if w.session.page_open.as_ref().is_some_and(|p| w.wall.0 >= p.at.0 + 3_600_000) {
         w.session.page_open = None;
     }
-    // The AI banner's Turn on that didn't go through, tried again at its backoff (N66).
-    if w.space.ai_turn == Some(AiTurn::Turning) && !w.inflight.ops.contains_key(&Op::Ai) && w.inflight.failures.get(&Op::Ai).is_some_and(|f| now >= f.ai_retry_at()) {
-        fx.push(Effect::Cloud(CloudCmd::SetAi(true)));
+    // The AI's turn on by default, or the banner's Turn off, that didn't go through: tried
+    // again at its backoff (N76), with the popover shut too — it has been said.
+    if let Some(turn @ (AiTurn::TurningOn | AiTurn::TurningOff)) = w.space.ai_turn {
+        if !w.inflight.ops.contains_key(&Op::Ai) && w.inflight.failures.get(&Op::Ai).is_some_and(|f| now >= f.ai_retry_at()) {
+            fx.push(Effect::Cloud(CloudCmd::SetAi(turn == AiTurn::TurningOn)));
+        }
     }
     (fx, Arm::named("tick"))
 }
