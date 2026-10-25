@@ -1237,7 +1237,7 @@ fn editor_layout_in(d: &Drive, label: &str) -> Result<serde_json::Value, String>
       }
       const r = (q) => { const e = document.querySelector(q); if (!e) return null; const b = e.getBoundingClientRect(); return [b.left, b.top, b.width, b.height]; };
       const v = document.querySelector("video");
-      return JSON.stringify({ track: r(".track"), ruler: r(".ruler"), page: [innerWidth, innerHeight], chip: r(".chip button"), screen: r(".screen"), delete: r(".ask .b.filled"), discard: r(".ask .b.red-outline"), ask_title: document.querySelector(".ask h2")?.textContent ?? null, ask: [...document.querySelectorAll(".ask button")].map((b) => b.textContent.trim()), play: r(".play"), label: document.querySelector(".play")?.getAttribute("aria-label") ?? null, video: v ? [v.duration, v.readyState] : null, src: v ? v.currentSrc : null, paused: v ? v.paused : null, pointer: window.__drive.at, presses: window.__drive.presses.slice(-12) });
+      return JSON.stringify({ track: r(".track"), ruler: r(".ruler"), page: [innerWidth, innerHeight], chip: r(".chip button"), screen: r(".screen"), delete: r(".sheet .b.filled"), discard: r(".sheet .b.red-outline"), ask_title: document.querySelector(".sheet h2")?.textContent ?? null, ask: [...document.querySelectorAll(".sheet button")].map((b) => b.textContent.trim()), play: r(".play"), label: document.querySelector(".play")?.getAttribute("aria-label") ?? null, video: v ? [v.duration, v.readyState] : null, src: v ? v.currentSrc : null, paused: v ? v.paused : null, pointer: window.__drive.at, presses: window.__drive.presses.slice(-12) });
     })()"#;
     page_eval(d, label, JS)
 }
