@@ -157,16 +157,20 @@ pub const UPKEEP_MS: u64 = CLEANUP_MS;
 
 /// When the editor's upkeep is due (B197 (d)): once a launch — at once, booted on a Mac in a
 /// space — then `UPKEEP_MS` after the last one (fail-soft: one that couldn't run waits as
-/// long). Every Mac, token or not: each bakes and copies its own videos.
+/// long), and at once when voice cuts have landed since the last one (`CutsLanded`). Every
+/// Mac, token or not: each bakes and copies its own videos.
 pub fn next_upkeep(w: &World) -> Option<Mono> {
     if !w.provisioned() || w.launch.version.is_empty() {
         return None;
     }
     let failed = w.inflight.failures.get(&Op::EditorUpkeep).map(|f| f.at);
-    Some(match w.library_ops.upkept.max(failed) {
+    let turn = match w.library_ops.upkept.max(failed) {
         Some(t) => t.plus(UPKEEP_MS),
         None => Mono(0),
-    })
+    };
+    // Cuts landed since the last upkeep answered: due from then.
+    let asked = w.library_ops.upkeep_asked.filter(|&a| w.library_ops.upkept.max(failed).is_none_or(|t| t < a));
+    Some(asked.map_or(turn, |a| a.min(turn)))
 }
 
 /// When the token Mac's page refresh is due (§6.10, B50): once a launch, an hour after one

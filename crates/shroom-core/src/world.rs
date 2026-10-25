@@ -652,6 +652,9 @@ pub struct LibraryOps {
     /// When the editor's upkeep last answered (B197 (d)): originals kept past their two days
     /// baked, and copies an edit is missing made.
     pub upkept: Option<Mono>,
+    /// When voice cuts last landed on a video of this Mac's (`CutsLanded`): the upkeep is due
+    /// from then, not at its six-hour turn, until one runs or fails after it.
+    pub upkeep_asked: Option<Mono>,
     /// Pins and unpins under way (N75, the record's `keep`): what was asked, so a row reads
     /// it at once and a suggestion leaves while the write runs.
     pub pinning: BTreeMap<RecId, bool>,
