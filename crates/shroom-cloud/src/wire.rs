@@ -240,6 +240,24 @@ fn await_page(page: &PageCheck, host: &str) -> Result<(), WireError> {
 /// re-placed (§3.4) — so an older app never lowers a newer page; and after the route is
 /// switched on, wiring waits for the page to answer before it reports done.
 pub fn wire_with(cloud: &Cloud, spec: &WireSpec, page: Option<&PageCheck>) -> Result<Wired, WireError> {
+    wire_parts(cloud, spec, page, &|_| {})
+}
+
+/// Wiring's parts as the setup names them (N74), each said as it begins.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WirePart {
+    /// The bucket, the player, the cookie key and the roster.
+    Storage = 1,
+    /// The script with its bindings (or the parent alone over a current page).
+    Page = 2,
+    /// The workers.dev route switched on, and the wait until the page answers.
+    Name = 3,
+    /// The write-read-delete self-check and the space's marker.
+    Check = 4,
+}
+
+/// [`wire_with`], saying each part as it begins (N74) — the caller shows the wait.
+pub fn wire_parts(cloud: &Cloud, spec: &WireSpec, page: Option<&PageCheck>, part: &dyn Fn(WirePart)) -> Result<Wired, WireError> {
     let subdomain = cloud.subdomain(spec.account_id)?.ok_or(WireError::NoName)?;
     let host = format!("{}.{subdomain}.workers.dev", spec.label);
     let (fact, ai) = crate::sweep::worker_fact_ai(cloud, spec.account_id, spec.label, spec.bucket)?;
@@ -252,6 +270,7 @@ pub fn wire_with(cloud: &Cloud, spec: &WireSpec, page: Option<&PageCheck>) -> Re
             Ping::Shroom { version, .. } => !may_deploy_over(&version, p.version),
             _ => false,
         });
+    part(WirePart::Storage);
     cloud.create_bucket(spec.account_id, spec.bucket)?;
     let s3 = bucket_client(cloud, spec.account_id, spec.bucket, spec.token_id);
     for (key, bytes, ct) in spec.assets {
@@ -263,6 +282,7 @@ pub fn wire_with(cloud: &Cloud, spec: &WireSpec, page: Option<&PageCheck>) -> Re
     // Region 6 gets it from the token Mac's page refresh (`refresh_page`, DECISIONS B50 c)
     // before an iface-2 page goes up; an existing one is left exactly as found.
     let _ = registry::seed(&s3, None, unix_now())?;
+    part(WirePart::Page);
     if current {
         // The page stays as it is; its parent is this token's (space-found's second
         // placement, §3.4) — a fresh paste's pair, never the previous token's.
@@ -272,10 +292,12 @@ pub fn wire_with(cloud: &Cloud, spec: &WireSpec, page: Option<&PageCheck>) -> Re
         // page had it (N66: a re-wiring never turns naming off).
         put_page(cloud, spec, ai)?;
     }
+    part(WirePart::Name);
     cloud.enable_workers_dev(spec.account_id, spec.label)?;
     if let Some(p) = page {
         await_page(p, &host)?;
     }
+    part(WirePart::Check);
     // The silent self-check: write, read, delete one tiny object through the real path.
     let probe = ".shroom/self-check";
     s3.put(probe, b"ok", "text/plain")?;

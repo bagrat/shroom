@@ -471,7 +471,7 @@ pub fn plan(w: &World, at: &At) -> PlanView {
         PlanRow::new(Glyph::Ahead, copy::row_ahead(6), copy::row_ahead_marks(6))
     };
     let nest = match at {
-        At::Joining => Nest::Calm { line: copy::joining_line() },
+        At::Joining => Nest::Calm { line: copy::joining_line(), parts: vec![], long: None },
         At::JoinWaiting => Nest::Offline { line: if w.online() == Some(false) { copy::join_offline() } else { not_answering(w, inviter(w).unwrap_or_default()) } },
         At::JoinExpired | At::JoinUsed | At::JoinSpaceMissing => match refusal(w, at) {
             Some((line, door)) => Nest::JoinRefused { line, door },

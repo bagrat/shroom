@@ -348,15 +348,23 @@ fn due_save(w: &World, fx: &mut Vec<Effect>) {
 /// a claim whose answer was lost. A pass that stopped early (a dead token, a gate up) is a
 /// whole answer: nothing re-fires until the next entry or the gate's poll.
 fn due_sweep(w: &World, fx: &mut Vec<Effect>) {
-    let Some(door) = w.session.windows.get(&WindowKind::Onboarding) else { return };
-    if plan_at(w).is_none() || w.provisioned() || !w.space.token || w.sweep.paste.is_some() {
+    if w.provisioned() || !w.space.token || w.sweep.paste.is_some() {
         return;
     }
     if w.online() == Some(false) || !idle(w, Op::Sweep) {
         return;
     }
-    if w.sweep.pass.is_none_or(|t| t < door.entered) {
-        fx.push(Effect::Cloud(CloudCmd::Sweep(SweepPart::Full)));
+    match w.session.windows.get(&WindowKind::Onboarding) {
+        // The plan re-probes on every entry.
+        Some(door) if plan_at(w).is_some() => {
+            if w.sweep.pass.is_none_or(|t| t < door.entered) {
+                fx.push(Effect::Cloud(CloudCmd::Sweep(SweepPart::Full)));
+            }
+        }
+        // With the window closed, once a process: where the setup stands, so wiring can
+        // finish on its own (N74). A gate still up waits for the window — no poll.
+        None if w.sweep.pass.is_none() && !w.launch.ending => fx.push(Effect::Cloud(CloudCmd::Sweep(SweepPart::Full))),
+        _ => {}
     }
 }
 
@@ -375,13 +383,11 @@ fn due_gate_poll(w: &World, fx: &mut Vec<Effect>) {
 /// under the survey's label — never one it found someone else's (B24).
 fn due_wire(w: &World, fx: &mut Vec<Effect>) {
     let Some(label) = w.sweep.label() else { return };
-    // Since N45 wiring also runs out of sight under the permissions chapter, from the
-    // moment the name row ticks — never on the way out of a relaunch.
-    let under_chapter = matches!(plan_at(w), Some(At::Done | At::PermMic | At::PermCamera | At::PermScreen | At::Priming))
-        && !w.provisioned()
-        && !w.launch.ending
-        && onboarding::rows_done(w)[3];
-    if (under_chapter || matches!(plan_at(w), Some(At::Wiring | At::Found(_)))) && w.online() != Some(false) && idle(w, Op::Wire) {
+    // Since N45 wiring runs out of sight under the permissions chapter, from the moment the
+    // name row ticks; since N74 out of the window too — closed, or never opened this launch
+    // — so it finishes on its own. Never on the way out of a relaunch.
+    let out_of_sight = w.space.token && !w.provisioned() && !w.launch.ending && onboarding::rows_done(w)[3];
+    if (out_of_sight || matches!(plan_at(w), Some(At::Wiring | At::Found(_)))) && w.online() != Some(false) && idle(w, Op::Wire) {
         fx.push(Effect::Cloud(CloudCmd::Wire { label: label.to_string() }));
     }
 }

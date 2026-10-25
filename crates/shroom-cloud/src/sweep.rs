@@ -162,20 +162,28 @@ pub struct Gates {
 }
 
 pub fn gates(cloud: &Cloud, account_id: &str, probe: &str) -> Result<Gates, CloudError> {
-    let email = match cloud.put_worker(account_id, probe, "probe.js", PROBE_MODULE, &[], "2026-09-01") {
+    Ok(Gates { email: email_gate(cloud, account_id, probe)?, card: card_gate(cloud, account_id)? })
+}
+
+/// The email gate alone (true = still up): the throwaway write, removed again.
+pub fn email_gate(cloud: &Cloud, account_id: &str, probe: &str) -> Result<bool, CloudError> {
+    match cloud.put_worker(account_id, probe, "probe.js", PROBE_MODULE, &[], "2026-09-01") {
         Ok(()) => {
             let _ = cloud.delete_worker(account_id, probe);
-            false
+            Ok(false)
         }
-        Err(e) if gate_of(&e) == Some(Gate::Email) => true,
-        Err(e) => return Err(e),
-    };
-    let card = match cloud.list_buckets(account_id) {
-        Ok(_) => false,
-        Err(e) if gate_of(&e) == Some(Gate::Card) => true,
-        Err(e) => return Err(e),
-    };
-    Ok(Gates { email, card })
+        Err(e) if gate_of(&e) == Some(Gate::Email) => Ok(true),
+        Err(e) => Err(e),
+    }
+}
+
+/// The card gate alone (true = still up): R2's own list call.
+pub fn card_gate(cloud: &Cloud, account_id: &str) -> Result<bool, CloudError> {
+    match cloud.list_buckets(account_id) {
+        Ok(_) => Ok(false),
+        Err(e) if gate_of(&e) == Some(Gate::Card) => Ok(true),
+        Err(e) => Err(e),
+    }
 }
 
 const PROBE_MODULE: &str = "export default { fetch() { return new Response(null, { status: 404 }); } };\n";

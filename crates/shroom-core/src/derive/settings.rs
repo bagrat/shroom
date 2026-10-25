@@ -566,10 +566,10 @@ fn nest(w: &World, at: SpaceAt) -> Nest {
         SpaceAt::Garbled => token_nest(w, token_line(), false, Some(copy::token_garbled())),
         SpaceAt::WrongPowers => token_nest(w, token_line(), false, Some(copy::token_wrong_powers())),
         SpaceAt::OtherAccount => token_nest(w, token_line(), false, Some(copy::token_other_account(&host))),
-        SpaceAt::GateEmail => Nest::Gate { line: copy::gate_email(), button: None, quiet: None },
+        SpaceAt::GateEmail => Nest::Gate { line: copy::gate_email(), button: None, quiet: None, watch: None, long: None },
         SpaceAt::GateCard => super::onboarding::card_gate(w),
         SpaceAt::NameChanged => Nest::NameChanged { line: copy::name_changed() },
-        SpaceAt::Wiring => Nest::Calm { line: copy::wiring() },
+        SpaceAt::Wiring => Nest::Calm { line: copy::wiring(), parts: vec![], long: None },
         SpaceAt::StorageGone => Nest::StorageGone {
             line: copy::storage_gone(),
             buttons: vec![
