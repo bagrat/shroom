@@ -54,6 +54,12 @@ pub fn mac_channel(rt: &Runtime) -> Channel {
     Channel::from_file(std::fs::read_to_string(rt.home.path("channel")).ok().as_deref())
 }
 
+/// The channel a staged copy is held to: this Mac's — but a dev build's stand-in serves the
+/// tree's own version, an early build's too, whatever its throwaway home's channel.
+fn staged_channel(rt: &Runtime) -> Channel {
+    if rt.dev { Channel::Early } else { mac_channel(rt) }
+}
+
 fn class(e: &UpdateError) -> FailClass {
     match e {
         UpdateError::Transport(_) => FailClass::Transport,
@@ -61,6 +67,8 @@ fn class(e: &UpdateError) -> FailClass {
         UpdateError::Mismatch => FailClass::Refused,
         // Nor is a copy someone other than this app's own signer made (B125).
         UpdateError::Signature(_) => FailClass::Refused,
+        // Nor one that isn't, by its own Info.plist, the newer version offered (B255).
+        UpdateError::Staged(_) => FailClass::Refused,
         _ => FailClass::Unclassified,
     }
 }
@@ -196,6 +204,14 @@ fn apply(rt: &Runtime, app: &AppHandle, version: &str) -> Result<(), FailClass> 
     // Only a copy signed as the app it replaces is ever swapped in (DECISIONS B125): a
     // release someone else published, fingerprint and all, stays staged and unused.
     if let Err(e) = shroom_update::same_signer(&staged, &target) {
+        rt.log(&format!("updater not applied {version}: {e}"));
+        let _ = std::fs::remove_dir_all(rt.home.updates().join(version));
+        return Err(class(&e));
+    }
+    // And only the version offered, newer than this one, of this Mac's channel — as the
+    // staged copy's own Info.plist says it is, not only as the manifest named it (B255).
+    let offered = Version::parse(version).ok_or(FailClass::Refused)?;
+    if let Err(e) = shroom_update::check_staged(&staged, offered, running(rt)?, staged_channel(rt)) {
         rt.log(&format!("updater not applied {version}: {e}"));
         let _ = std::fs::remove_dir_all(rt.home.updates().join(version));
         return Err(class(&e));

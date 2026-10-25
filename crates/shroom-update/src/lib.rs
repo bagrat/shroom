@@ -149,6 +149,9 @@ pub enum UpdateError {
     Archive(String),
     /// The staged copy isn't signed by the app it would replace (DECISIONS B125).
     Signature(String),
+    /// The staged copy isn't the version offered, newer than the one running, of this Mac's
+    /// channel — by its own Info.plist ([`staged_fits`]).
+    Staged(String),
     Io(std::io::Error),
 }
 
@@ -160,6 +163,7 @@ impl std::fmt::Display for UpdateError {
             UpdateError::Mismatch => write!(f, "the fingerprint didn't match"),
             UpdateError::Archive(e) => write!(f, "archive: {e}"),
             UpdateError::Signature(e) => write!(f, "signature: {e}"),
+            UpdateError::Staged(e) => write!(f, "staged: {e}"),
             UpdateError::Io(e) => write!(f, "{e}"),
         }
     }
@@ -210,6 +214,50 @@ pub fn same_signer(staged: &Path, replaced: &Path) -> Result<(), UpdateError> {
         .stderr(Stdio::null())
         .status()?;
     if status.success() { Ok(()) } else { Err(UpdateError::Signature(format!("the update doesn't meet {req}"))) }
+}
+
+/// `CFBundleShortVersionString` in an Info.plist's XML text: the string after its key.
+pub fn short_version_in(plist: &str) -> Option<&str> {
+    const KEY: &str = "<key>CFBundleShortVersionString</key>";
+    let rest = plist[plist.find(KEY)? + KEY.len()..].trim_start().strip_prefix("<string>")?;
+    Some(rest[..rest.find("</string>")?].trim())
+}
+
+/// The version a bundle says it is, by its own `Contents/Info.plist` — the file the
+/// installer reads it from too. The bundler writes it as XML; a binary one is read through
+/// `plutil`. None: no bundle, or no version that reads.
+pub fn bundle_version(app: &Path) -> Option<Version> {
+    let plist = app.join("Contents").join("Info.plist");
+    let bytes = std::fs::read(&plist).ok()?;
+    let text = if bytes.starts_with(b"bplist") {
+        let out = Command::new("plutil").args(["-convert", "xml1", "-o", "-"]).arg(&plist).stdin(Stdio::null()).stderr(Stdio::null()).output().ok()?;
+        String::from_utf8(out.stdout).ok().filter(|_| out.status.success())?
+    } else {
+        String::from_utf8(bytes).ok()?
+    };
+    Version::parse(short_version_in(&text)?)
+}
+
+/// Whether a staged copy (its own version, [`bundle_version`]) may replace the one running:
+/// it is exactly the version offered, newer than the one running, and — on the official
+/// channel — no early build. The manifest said what to fetch; this is what was fetched.
+pub fn staged_fits(bundle: Option<Version>, offered: Version, running: Version, channel: Channel) -> Result<(), UpdateError> {
+    let Some(bundle) = bundle else { return Err(UpdateError::Staged("its own version couldn't be read".into())) };
+    if bundle != offered {
+        return Err(UpdateError::Staged(format!("it is {bundle}, not {offered}")));
+    }
+    if bundle <= running {
+        return Err(UpdateError::Staged(format!("{bundle} isn't newer than {running}")));
+    }
+    if channel == Channel::Official && bundle.is_early() {
+        return Err(UpdateError::Staged(format!("{bundle} is an early build, and this Mac takes the official releases")));
+    }
+    Ok(())
+}
+
+/// [`staged_fits`], for the staged `shroom.app` at `staged`.
+pub fn check_staged(staged: &Path, offered: Version, running: Version, channel: Channel) -> Result<(), UpdateError> {
+    staged_fits(bundle_version(staged), offered, running, channel)
 }
 
 /// Which releases a Mac takes (DECISIONS B220): the official ones, or the early channel's
