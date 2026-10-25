@@ -177,7 +177,8 @@ const FACES = [
       const cue = await page.waitForFunction(() => {
         const v = document.querySelector("video"), t = v.textTracks[0];
         if (!t || t.mode !== "showing" || !t.cues || !t.cues.length) return false;
-        if (Math.abs(v.currentTime - 70) > 0.5) v.currentTime = 70;
+        // It plays on: seek, then read the cue on a later look, once the seek has landed.
+        if (v.currentTime < 70 || v.currentTime > 72) { v.currentTime = 70; return false; }
         return t.activeCues && t.activeCues.length ? t.activeCues[0].text : false;
       }, null, { timeout: 15000, polling: 250 }).then((h) => h.jsonValue(), () => null);
       if (!(cue && cue.startsWith("Next, the invoice"))) missing.push(`a caption at 1:10 (got ${JSON.stringify(cue)})`);

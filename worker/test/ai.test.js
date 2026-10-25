@@ -904,7 +904,7 @@ function namingScript(html, { value = fieldOf(html).value, focused = !!fieldOf(h
   const script = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]).find((s) => s.includes("/_shroom/named/"));
   expect(script, "the naming poll is on the page").toBeTruthy();
   // The page's player functions are its own script's, defined beside the poll's.
-  expect(html, "the player's chapters and captions can be wired after the page opened").toMatch(/<script>[^<]*function shroomChapters\(/);
+  expect(html, "the player's chapters and captions can be wired after the page opened").toMatch(/<script>\s*function shroomChapters\(/);
   const on = {};
   const named = [];
   /** A stand-in player: its video (playing on), its row with the speed button, what was wired. */
@@ -921,9 +921,9 @@ function namingScript(html, { value = fieldOf(html).value, focused = !!fieldOf(h
   const document = {
     title: "", activeElement: null, getElementById: (id) => (id === "t" ? t : id === "ainote" ? note : null),
     querySelector: (q) => (q === ".player" && live ? player : null),
-    createElement: (tag) => (tag === "div" ? el("div", {
-      set innerHTML(h) { const m = h.match(/^<button type="button" class="([^"]*)" aria-label="([^"]*)" aria-pressed="([^"]*)">/); this.firstChild = m ? el("button", { className: m[1], label: m[2], pressed: m[3], html: h }) : null; },
-    }) : el(tag)),
+    createElement: (tag) => Object.defineProperty(el(tag), "innerHTML", {
+      set(h) { const m = h.match(/^<button type="button" class="([^"]*)" aria-label="([^"]*)" aria-pressed="([^"]*)">/); this.firstChild = m ? el("button", { className: m[1], label: m[2], pressed: m[3], html: h }) : null; },
+    }),
   };
   const t = {
     value: value ?? "", placeholder: fieldOf(html).placeholder,
