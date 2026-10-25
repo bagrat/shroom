@@ -434,6 +434,8 @@ A status alone never maps to a state. Within `IFACE = 2`, routes and fields only
 | 4.22 | POST | `/_shroom/api/cleanup` | device key (`everyone`: owner-class) |
 | 4.22 | GET, POST | `/_shroom/api/plays` | device key (POST: owner-class) |
 | 4.23 | POST | `/_shroom/api/cue` | device key |
+| 4.24 | GET, POST | `/_shroom/api/autoclean` | device key (POST: owner-class) |
+| 4.24 | POST | `/_shroom/api/editing` | device key (the video's maker or owner-class) |
 
 **The Worker writes only:**
 - the roster (CAS), the ledger (create-only) and `rate/<did>`;
@@ -445,9 +447,13 @@ A status alone never maps to a state. Within `IFACE = 2`, routes and fields only
 - `rec/<id>/thumb-<16 hex>.gif|jpg` via a thumbnail POST: created, named by its contents,
   never anything else under `rec/` but naming's transcript below (D:B164);
 - with naming on (§4.21): `rec/<id>/ai/transcript.json`, `.shroom/ai/later/<id>`, and the
-  record's `title` (while untitled), `named`, `captions` and `naming`, under `If-Match`.
+  record's `title` (while untitled), `named`, `captions` and `naming`, under `If-Match`;
+- `autoclean.json` (a plain put), `autoclean/state.json` (CAS) and `editing/<id>.json` (a
+  plain put), and with auto-cleanup on (§4.24) the delete of a video it lists: its record's
+  tombstone under `If-Match`, then every object under `rec/<id>/`, then `gone/<id>`, its
+  `views/<id>.json` and `editing/<id>.json`.
 
-It never deletes bytes or claims a meta.
+It never claims a meta, and deletes bytes only as auto-cleanup's delete (§4.24).
 
 ### 4.2 `GET /_shroom/ping`
 
@@ -990,7 +996,16 @@ own copy plays), otherwise on the recording's. 404 without captions, for a delet
 
 **`GET /_shroom/named/<id>`** — the owner page's ask while a name is on its way: the maker's
 or an owner-class browser (§3.5) only, else 403: `{"named":"<title or empty>","titled":bool,
-"later":bool,"early":bool}`; the page asks on while `early`, until the full name replaces it.
+"later":bool,"early":bool,"done":bool,"chapters":[[start,"title"],…],"captions":{"src","lang"}|null,
+"copy":"/m/<id>/edit-<n>.mp4"|null}`. `chapters` and `captions` are what a reload would put in
+the player: the chapters on the bar's clock, the track on the recording's; `copy` is the saved
+edit's own copy, and the page adds `&e=1` to the track only when that copy is what plays (a
+baked recording's own `edit-<n>.mp4` plays on its own clock). `done` once the full name is in
+(or naming gave up after none) and the take's voice cuts are no longer `coming` (§4.20's
+`cuts`): they are planned from the transcript the name was made from, so they land after it.
+The page asks on until `done` and the player is there, puts the chapters and captions into the
+player as it plays, redraws the bar when the chapters change, and asks once more whenever what
+plays changes (`shroom:keep`) — a page that shows chapters does that last part too (D:B241).
 
 A seal also deletes the video's plays, `views/<id>.json` (§4.22).
 
@@ -1039,8 +1054,12 @@ facts. Each live item carries:
   10 GB / 3 h;
 - `usdPerMonth, plays, viewers, medianWatched, lastPlayedAt, plays90`;
 - `quietDays`: null while counting can't tell yet;
-- `keep`: the record's, which Keep sets under If-Match;
-- `candidate, score, reason: {code, …facts}`.
+- `keep`: the record's, which Pin sets (and Unpin clears) under If-Match;
+- `candidate, score, reason: {code, …facts}`;
+- `deletesAt`: when auto-cleanup deletes it (§4.24), or null.
+
+The answer also carries `autoclean: {days, last}`: the setting's days (0: off) and the newest
+round auto-cleanup deleted, scoped as §4.24's `GET` scopes it.
 
 The default formula is `fading-cost`. Its candidate is at least 14 days old (30 for the
 score), not played in 14 days, quiet 30 days, never kept, with heat < 0.25 and ≥ 1¢ a month
@@ -1090,6 +1109,62 @@ per candidate, each 0–1, and `shroom-edit` cuts from the farthest start scored
 (`JUDGED`). `later`, a refusal or no answer: the cue keeps the code's own plan. The Mac's run
 log keeps, per cue, the scores and `ms`, or the `why` (`later: busy`, `refused 429`, `no
 answer`), never the words.
+
+### 4.24 Auto-cleanup (N75)
+
+Off by default. When it's on, the space's own page deletes the videos nobody has watched in
+15, 30 or 60 days, or a year, on its own schedule, so no Mac has to be open (Bagrat, 2026-10-24;
+a year since 2026-10-25, N77). A
+pinned video (`keep`) is never deleted, and every video is listed three days before it goes.
+
+**The setting**, `.shroom/autoclean.json` = `{v:1, days, at, since}`: `days` is 0 (off), 15,
+30, 60 or 365 (a year); `since` is when it was last turned on or shortened (a change to a longer wait
+keeps it). A missing file reads as off.
+
+- **`GET /_shroom/api/autoclean`**, any device → `200 {days, since, going:[{id, deletesAt}],
+  last}`. `going` is what's listed, earliest first: owner-class Macs see every video, a
+  member only those the ledger says are theirs. `last` = `{at, ids, bytes}`, the newest
+  round's deletes (a round is a day), or null; a member sees only their own videos in it and
+  their bytes, and null when none were theirs.
+- **`POST {days}`**, owner-class only (else 403); `days` not 0, 15, 30, 60 or 365 → 400. It writes
+  the setting, and the state's walk starts afresh (`scanAt: 0`, `cursor: null`); off also
+  empties `going`. → `200 {days, since}`.
+- **`POST /_shroom/api/editing {rec}`**, the video's maker (by the ledger) or owner-class
+  (else 403) → puts `.shroom/editing/<rec>.json` = `{until: now + 15 min, by: <device>}` →
+  204. A Mac sends it every five minutes while an editor is open on that video. Auto-cleanup
+  never deletes a video whose mark is still good.
+
+**The schedule.** The same single `* * * * *` Cron Trigger the AI's schedule is (§4.21, D:B206
+c): the Mac that holds the setup key puts it while AI *or* auto-cleanup is on, and takes it
+away when both are off. Each run takes one step (`autocleanTick`), and only when the
+setting is on and counting plays is on (`plays.json`): with counting off it pauses, since it
+can't see plays. The step's record is `.shroom/autoclean/state.json` = `{v:1, scanAt, cursor,
+going:{<id>:{warnedAt, deletesAt}}, last:{at, ids, bytes, sizes}}`, written under `If-Match`
+(a lost race leaves the step to the next run).
+
+- **The walk**, while `cursor` is set or once a day: the next `AUTOCLEAN_SCAN` (10) records
+  of `meta/` after the cursor, each with its plays record. A video is due `days` after the
+  latest of its last counted play (`lastAt`), its `createdAt` and when counting began
+  (`views/since.json`; without it nothing is due). A live, unkept video due within three
+  days is listed, `warnedAt` the first run that listed it, and
+  `deletesAt` = the latest of its due date, `warnedAt` + 3 days and `since` + 3 days. Any
+  other one leaves the list. At the listing's end, `cursor` is null and `scanAt` now.
+- **The delete**, on the other runs: the listed videos whose `deletesAt` has passed,
+  earliest first, a few at most. Each is read fresh. One that's sealed, deleted, no longer
+  live, kept, not fully uploaded (its `progress` short of `total`), or played since
+  `warnedAt` leaves the list. One whose editor's mark is still good waits for a later run.
+  The first that's none of these is deleted, as a Delete is (`shroom_upload::library::delete`,
+  then §4.20's seal): the tombstone `{schema:1, id, state:"deleted", deletedAt, createdAt,
+  owner, by:"auto"}` under `If-Match`, then every object under `rec/<id>/` (listed and
+  deleted a thousand at a time), then `gone/<id>` = `{v:1, by:"auto", at}`, then its plays
+  record and its mark. It joins `last`. One delete a run at most.
+- **Timing:** on the date, or within a day of it.
+
+**Cloudflare's Free plan** (the Workers limits page, read 2026-10-24): 5 Cron Triggers per
+account, of which this uses one; 10 ms of CPU per scheduled run, which is why the walk takes
+ten records a run; 50 subrequests per run, R2 calls included (a walk's step is about 22, a
+delete about 10 plus a list and a delete per thousand objects); and 15 minutes of wall time
+per run.
 
 ---
 

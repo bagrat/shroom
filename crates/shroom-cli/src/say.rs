@@ -17,6 +17,9 @@ shroom — your shroom videos from the command line.
   shroom rename <video> <new title>
   shroom delete <id-or-link>... --yes delete for good (try --dry-run first)
   shroom cleanup-candidates           videos worth a look before deleting
+  shroom pin <id-or-link>...          never suggested, never auto-deleted
+  shroom unpin <id-or-link>...        can be suggested again
+  shroom autoclean                    whether videos nobody watches are deleted, and which next
   shroom members                      who is in your space (the owner's Macs)
   shroom invite <name>                a link that lets one person join (7 days, once)
   shroom invite cancel <invite-id>... those links stop working
@@ -33,6 +36,7 @@ shroom — your shroom videos from the command line.
 Many at once (each item its own result; safe to run again; --dry-run first)
   shroom invite --batch \"Ann Lee\" \"Sam Ng\" ... --yes   a link each (at most 20)
   shroom delete <id>... --yes                     several videos, one confirmation
+  shroom pin <id>...                              several pins (unpin too)
   shroom rename --batch \"<id>=<new title>\" ...    several titles
   shroom links <video>...                         the links of several videos
   shroom list --mine --since 7d                   what you made this week
@@ -355,6 +359,11 @@ pub fn why(code: &str, quiet_days: Option<u64>) -> String {
 }
 
 /// Without the page's suggestions: its age alone.
+/// A going video's why (N75): auto-cleanup deletes it on that day.
+pub fn why_going(on: &str) -> String {
+    format!("deleted {on} unless pinned")
+}
+
 pub fn why_old(days: u64) -> String {
     format!("older than {days} days")
 }
@@ -374,7 +383,7 @@ pub fn line_candidate(id: &str, day: &str, title: &str, why: &str) -> String {
 pub fn no_suggestions(older_than: Option<u64>) -> String {
     match older_than {
         Some(d) => format!("Nothing to suggest older than {d} days."),
-        None => "Nothing to suggest: your videos are being watched, kept, or new.".into(),
+        None => "Nothing to suggest: your videos are being watched, pinned, or new.".into(),
     }
 }
 
@@ -384,6 +393,69 @@ pub fn nothing_older(days: u64) -> String {
 
 pub fn nothing_was_deleted() -> String {
     "Nothing was deleted. shroom delete <id> --yes removes one for good.".into()
+}
+
+// ── pin and auto-cleanup (N75) ──
+
+/// The list's and info's word for a pinned video.
+pub const PINNED: &str = "pinned";
+
+pub fn pin_usage(on: bool) -> String {
+    if on { "shroom pin <id-or-link>...".into() } else { "shroom unpin <id-or-link>...".into() }
+}
+
+pub fn pinned_one(title: &str, on: bool) -> String {
+    if on { format!("Pinned “{title}”. It won't be suggested for cleanup.") } else { format!("Unpinned “{title}”. It can be suggested for cleanup again.") }
+}
+
+pub fn pins_head(on: bool, dry_run: bool) -> String {
+    match (on, dry_run) {
+        (true, false) => "Pinned:".into(),
+        (false, false) => "Unpinned:".into(),
+        (true, true) => "Would pin (nothing was changed):".into(),
+        (false, true) => "Would unpin (nothing was changed):".into(),
+    }
+}
+
+/// One video of a pin batch: what happened to it (`pinned`, `unpinned`, `unchanged`…).
+pub fn line_pin(status: &str, id: &str, title: &str, on: bool) -> String {
+    let word = match status {
+        "would_pin" => "would pin",
+        "would_unpin" => "would unpin",
+        s => s,
+    };
+    let note = match (status, on) {
+        ("unchanged", true) => " (already pinned)",
+        ("unchanged", false) => " (not pinned)",
+        _ => "",
+    };
+    format!("  {word:<9}  {id}  {title}{note}")
+}
+
+/// `· deleted Oct 27 unless pinned`, after a going video's title in the list.
+pub fn going_suffix(on: &str) -> String {
+    format!("deleted {on} unless pinned")
+}
+
+pub fn autoclean_off() -> String {
+    "Auto-cleanup is off: shroom deletes nothing by itself. It's turned on in shroom's Settings, on the Mac that set up your space.".into()
+}
+
+pub fn autoclean_on(days: u32) -> String {
+    format!("Auto-cleanup: videos nobody watches for {} are deleted.", shroom_core::copy::wait(days))
+}
+
+pub fn autoclean_next(n: usize, on: &str) -> String {
+    let videos = if n == 1 { "1 video".to_string() } else { format!("{n} videos") };
+    format!("Next: {videos} on {on}. Pin one to keep it: shroom pin <video>")
+}
+
+pub fn autoclean_nothing_next() -> String {
+    "Nothing is due to go in the next three days.".into()
+}
+
+pub fn autoclean_set_in_settings() -> String {
+    "Auto-cleanup is changed in shroom's Settings, on the Mac that set up your space.".into()
 }
 
 // ── members ──

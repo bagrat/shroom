@@ -97,8 +97,8 @@ export async function serveMedia({ video, peaks }, rec = REC) {
 }
 
 /** The editor window on `scene`, its media from `mediaOrigin`. */
-export async function openEditor(browser, origin, mediaOrigin, scene, { colorScheme = "light", size = EDITOR_SIZE } = {}) {
-  const ctx = await browser.newContext({ colorScheme, viewport: { width: size.width, height: size.height }, deviceScaleFactor: 2 });
+export async function openEditor(browser, origin, mediaOrigin, scene, { colorScheme = "light", size = EDITOR_SIZE, scale = 2 } = {}) {
+  const ctx = await browser.newContext({ colorScheme, viewport: { width: size.width, height: size.height }, deviceScaleFactor: scale });
   const page = await ctx.newPage();
   const errors = [];
   page.on("pageerror", (e) => errors.push(String(e)));
@@ -172,7 +172,8 @@ export async function editorLooks({ browser, origin, mediaOrigin, entries, check
       // the footer, then the question in the footer's place; Revert is gone.
       const after = b.after ?? null;
       const asking = after?.state === "asking";
-      // ✕ with changes not saved asks in the same place (N71).
+      // ✕ with changes not saved asks the same way (N71): each a sheet over the window
+      // (Bagrat, 2026-10-25), the window behind held as it was.
       const closing = b.closing ?? null;
       const question = asking ? after : closing;
       const lines = question
@@ -180,7 +181,8 @@ export async function editorLooks({ browser, origin, mediaOrigin, entries, check
         : [b.footer, ...(["ready", "opening"].includes(b.media.state) && !after ? [b.hint] : []), ...(b.media.line ? [b.media.line] : []), ...(after?.state === "making" ? [after.line] : []), ...(b.original_kept && !after ? [b.original_kept] : [])];
       const missing = lines.filter((l) => !body.includes(norm(l)));
       check(`${tag}: every line is visible`, missing.length === 0, missing.join(" | "));
-      const want = asking ? [after.keep, after.delete] : closing ? [closing.discard, closing.keep, closing.save] : [...(b.media.state === "failed" ? [b.media.retry] : []), ...(b.media.state === "failed" || after || !b.revert ? [] : [b.revert]), b.done];
+      const behind = [...(b.media.state === "failed" ? [b.media.retry] : []), ...(b.media.state === "failed" || after || !b.revert ? [] : [b.revert]), b.done];
+      const want = [...(asking ? [after.keep, after.delete] : closing ? [closing.discard, closing.keep, closing.save] : []), ...behind];
       const shown = (await page.locator("button:visible").evaluateAll((els) => els.map((e) => e.innerText.trim()).filter(Boolean))).map(norm);
       check(`${tag}: the Scene's buttons, no others with words`, shown.sort().join("|") === want.map((x) => x.label).sort().join("|"), shown.join("|"));
       for (const x of want) {
@@ -189,8 +191,28 @@ export async function editorLooks({ browser, origin, mediaOrigin, entries, check
         check(`${tag}: “${x.label}” ${x.enabled ? "enabled" : "greyed"}, ${x.style}`, ok);
       }
       if (question) {
-        check(`${tag}: the question takes the footer's place`, (await page.locator(".foot").count()) === 0 && (await page.locator(".ask").count()) === 1);
-        const order = (await page.locator(".ask button").allInnerTexts()).map(norm);
+        // A sheet as the Library's: the window dimmed under it and held — nothing behind it
+        // takes a click or the keyboard — and nobody's button holds the keyboard.
+        const sheet = await page.evaluate(() => {
+          const s = document.querySelector(".scrim > .sheet[role=alertdialog][aria-modal=true]");
+          const scrim = s?.parentElement;
+          const r = scrim?.getBoundingClientRect();
+          return {
+            one: document.querySelectorAll(".sheet").length === 1 && !!s,
+            covers: !!r && r.left <= 0 && r.top <= 0 && r.right >= innerWidth && r.bottom >= innerHeight && getComputedStyle(scrim).position === "fixed",
+            dimmed: !!scrim && !/rgba\(0, 0, 0, 0\)|transparent/.test(getComputedStyle(scrim).backgroundColor),
+            title: s?.querySelector("h2")?.innerText,
+            line: [...(s?.querySelectorAll("p") ?? [])].map((p) => p.innerText),
+            inert: document.querySelector("main.ed").inert && !s?.closest("[inert]"),
+            footBehind: !!document.querySelector("main.ed .foot"),
+            focus: document.activeElement === s,
+          };
+        });
+        check(`${tag}: the question is a sheet over the window, dimmed behind it`, sheet.one && sheet.covers && sheet.dimmed, JSON.stringify(sheet));
+        check(`${tag}: the sheet says the question's title and line`, sheet.title === question.title && sheet.line.join("|") === question.line, JSON.stringify(sheet));
+        check(`${tag}: the window behind is held (inert), its footer as it was`, sheet.inert && sheet.footBehind, JSON.stringify(sheet));
+        check(`${tag}: the sheet holds the keyboard, never a button in it`, sheet.focus);
+        const order = (await page.locator(".sheet .sheet-acts button").allInnerTexts()).map(norm);
         if (asking) {
           check(`${tag}: Keep for 2 days, then Yes, delete — filled, leading`, order.join("|") === [after.keep.label, after.delete.label].join("|") && after.delete.style === "filled", order.join("|"));
           check(`${tag}: Return isn't Yes, delete (law 9)`, w.ret === null);
@@ -215,7 +237,7 @@ export async function editorLooks({ browser, origin, mediaOrigin, entries, check
       check(`${tag}: nothing scrolls`, !wide);
       // The system font, as every window has it (theme.css's --font): a browser's default
       // here would be a serif in a Mac's webview.
-      const fonts = await page.evaluate(() => [".ed", ".time", ".hint", ".foot .line", ".foot button", ".ask h2", ".ask button"].map((q) => document.querySelector(q)).filter(Boolean).map((e) => getComputedStyle(e).fontFamily));
+      const fonts = await page.evaluate(() => [".ed", ".time", ".hint", ".foot .line", ".foot button", ".sheet h2", ".sheet button"].map((q) => document.querySelector(q)).filter(Boolean).map((e) => getComputedStyle(e).fontFamily));
       check(`${tag}: its words in the system font`, fonts.length >= 3 && fonts.every((f) => f.includes("-apple-system")), fonts.join(" | "));
       check(`${tag}: no page errors`, errors.length === 0, errors.join(" | "));
       check(`${tag}: listens to its own window's slice, by its label`, (await page.evaluate(() => window.__listenTarget()))?.label === EDITOR_LABEL);
@@ -303,6 +325,14 @@ export async function editorDrives({ browser, origin, mediaOrigin, entries, chec
   const held = await page.locator(".chip button").innerText();
   check("editor: a selection stops at the trim's in", norm(held) === `Cut ${(8 - b.list.in).toFixed(1)} s` || near(Number(/(\d+\.\d)/.exec(held)?.[1]), 8 - b.list.in, 0.3), held);
   await page.keyboard.press("Escape");
+  // … and one that reaches it, cut, moves the in there: a trim (A+, Bagrat, 2026-10-25).
+  await drag(page, 8, b.list.in + 0.05, d);
+  await clear(page);
+  await page.keyboard.press("Delete");
+  s = steps(await calls(page));
+  check("editor: a selection that reaches an end, cut, trims to it", s.length === 1 && s[0].op === "trim" && near(s[0].in, 8, 0.3) && s[0].out === b.list.out, JSON.stringify(s));
+  await page.evaluate((w) => window.__emit(w), cutFace);
+  await page.waitForTimeout(1200);
 
   // A click on a cut picks it: Put back <length>, which sends put-back.
   await click(page, (cut.start + cut.end) / 2, d);
@@ -428,6 +458,78 @@ export async function editorDrives({ browser, origin, mediaOrigin, entries, chec
   await page.keyboard.press(" ");
   await page.waitForTimeout(100);
   check("editor: Space again pauses", await page.evaluate(() => document.querySelector("video").paused));
+
+  // The ruler (board “Editor — seeking”): a click seeks, a press dragged scrubs (the
+  // picture follows, through a cut too), the head held doesn't jump, and what was playing
+  // waits and plays on.
+  const ruler = await page.locator(".ruler").boundingBox();
+  const onRuler = (t) => ({ x: ruler.x + (t / d) * ruler.width, y: ruler.y + ruler.height / 2 });
+  await page.mouse.click(onRuler(30).x, onRuler(30).y);
+  check("editor: a click on the ruler moves the playhead there", near(await current(page), 30, 0.3), String(await current(page)));
+  await page.mouse.move(onRuler(12).x, onRuler(12).y);
+  await page.mouse.down();
+  await page.mouse.move(onRuler((cut.start + cut.end) / 2).x, onRuler(0).y, { steps: 6 });
+  const scrubbed = await current(page);
+  check("editor: the ruler dragged scrubs, the picture following into a cut", near(scrubbed, (cut.start + cut.end) / 2, 0.4) && (await page.locator(".when").count()) === 1, String(scrubbed));
+  await page.mouse.move(onRuler(cut.end + 3).x, onRuler(0).y, { steps: 3 });
+  await page.mouse.up();
+  check("editor: … let go, the playhead stays there", near(await current(page), cut.end + 3, 0.4), String(await current(page)));
+  check("editor: … and no selection, nothing sent", (await page.locator(".sel").count()) === 0 && steps(await calls(page)).length === 0);
+  let hb = await page.locator(".playhead .head").boundingBox();
+  await page.mouse.move(hb.x + hb.width / 2 + 3, hb.y + hb.height / 2);
+  const grab = await page.locator(".playhead .head").evaluate((el) => getComputedStyle(el).cursor);
+  check("editor: the head shows an open hand", grab === "grab", grab);
+  const t0 = await current(page);
+  await page.mouse.down();
+  await page.mouse.move(hb.x + hb.width / 2 + 4, hb.y + hb.height / 2, { steps: 2 });
+  check("editor: the head held doesn't jump to the pointer", near(await current(page), t0, 0.15), `${t0} → ${await current(page)}`);
+  await page.mouse.move(hb.x + hb.width / 2 + 3 + (5 / d) * ruler.width, hb.y + hb.height / 2, { steps: 4 });
+  await page.mouse.up();
+  check("editor: … dragged, it moves by as much", near(await current(page), t0 + 5, 0.3), `${t0} → ${await current(page)}`);
+  await page.keyboard.press(" ");
+  await page.waitForTimeout(300);
+  hb = await page.locator(".playhead .head").boundingBox();
+  await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(400);
+  const whileHeld = await page.evaluate(() => document.querySelector("video").paused);
+  await page.mouse.up();
+  await page.waitForTimeout(400);
+  const playsOn = await page.evaluate(() => !document.querySelector("video").paused);
+  check("editor: playing, the head held pauses it, and let go it plays on", whileHeld && playsOn, `${whileHeld} ${playsOn}`);
+  await page.keyboard.press(" ");
+  await page.waitForTimeout(100);
+
+  // The keys: a second, five, a frame; Home and End, the edit's start and end.
+  await click(page, 12, d);
+  const r0 = await current(page);
+  await page.keyboard.press("ArrowRight");
+  const r1 = await current(page);
+  await page.keyboard.press("Shift+ArrowLeft");
+  const r2 = await current(page);
+  await page.keyboard.press("Alt+ArrowRight");
+  const r3 = await current(page);
+  check("editor: → a second, ⇧← five, ⌥→ a frame", near(r1, r0 + 1, 0.01) && near(r2, r0 - 4, 0.01) && near(r3, r0 - 4 + 1 / 30, 0.01), `${r0} ${r1} ${r2} ${r3}`);
+  // (Read off the time: under the core's own faces, an edit sent above has been taken.)
+  await page.keyboard.press("Home");
+  const home = await timeText(page);
+  await page.keyboard.press("End");
+  const atEnd = await timeText(page);
+  check("editor: Home goes to the edit's start, End to its end", home.startsWith("0:00 / ") && atEnd.startsWith(`${atEnd.split(" / ")[1]} / `), `${home} · ${atEnd}`);
+  await click(page, 12, d);
+
+  // Pixels (Bagrat, 2026-10-25): the playhead's line starts at its circle's centre, nothing
+  // above it; a marker's pole is its dashed line's continuation, the same x and width.
+  const geo = await page.evaluate(() => {
+    const r = (el) => el.getBoundingClientRect();
+    const line = r(document.querySelector(".playhead"));
+    const head = r(document.querySelector(".playhead .head"));
+    const m = document.querySelector(".marker");
+    return { line, head, mark: m && r(m), pole: m && r(m.querySelector(".pole")) };
+  });
+  check("editor: the playhead's line starts at its circle's centre", near(geo.line.top, geo.head.top + geo.head.height / 2, 0.01) && near(geo.line.left + geo.line.width / 2, geo.head.left + geo.head.width / 2, 0.01), JSON.stringify([geo.line, geo.head]));
+  if (geo.mark)
+    check("editor: a marker's pole stands on its line: the same x and width, no gap", geo.pole.left === geo.mark.left && geo.pole.width === geo.mark.width && geo.pole.bottom === geo.mark.top && Number.isInteger(geo.mark.left), JSON.stringify([geo.pole, geo.mark]));
 
   // Playing across a cut: never a moment inside it.
   await click(page, cut.start - 2.5, d);
@@ -604,6 +706,19 @@ export async function editorDrives({ browser, origin, mediaOrigin, entries, chec
     await clear(page);
     await page.keyboard.press("Enter");
     check("editor-keep-original: Return does nothing", (await calls(page)).length === 0, JSON.stringify(await calls(page)));
+    // The window behind is held: Space plays nothing, and a click on Play or the track
+    // under the sheet's dimming reaches nothing.
+    await page.keyboard.press(" ");
+    const play = await page.locator(".play").boundingBox();
+    const track = await page.locator("canvas.wave").boundingBox();
+    await page.mouse.click(play.x + play.width / 2, play.y + play.height / 2);
+    await page.mouse.click(track.x + track.width / 2, track.y + track.height / 2);
+    await page.waitForTimeout(300);
+    check(
+      "editor-keep-original: behind the sheet nothing plays or answers",
+      (await page.evaluate(() => document.querySelector("video").paused)) && (await calls(page)).length === 0,
+      JSON.stringify(await calls(page)),
+    );
     await page.keyboard.press("Escape");
     await page.getByRole("button", { name: w.body.after.delete.label, exact: true }).click();
     await page.getByRole("button", { name: w.body.after.keep.label, exact: true }).click();

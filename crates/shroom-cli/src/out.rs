@@ -176,6 +176,17 @@ pub fn day(iso: &str) -> &str {
     iso.get(..10).unwrap_or(iso)
 }
 
+/// `2026-10-27T03:00:00Z` → `Oct 27`, as the Library says a day (N75).
+pub fn short_day(iso: &str) -> String {
+    const MONTHS: [&str; 12] = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    let month = iso.get(5..7).and_then(|m| m.parse::<usize>().ok()).filter(|m| (1..=12).contains(m));
+    let d = iso.get(8..10).and_then(|d| d.parse::<u32>().ok());
+    match (month, d) {
+        (Some(m), Some(d)) => format!("{} {d}", MONTHS[m - 1]),
+        _ => day(iso).to_string(),
+    }
+}
+
 /// Pads or cuts `s` to `n` characters, for one table column.
 pub fn col(s: &str, n: usize) -> String {
     let count = s.chars().count();
@@ -230,5 +241,6 @@ mod tests {
         assert_eq!(length(None), "–");
         assert_eq!(col("abc", 5), "abc  ");
         assert_eq!(col("abcdef", 4), "abc…");
+        assert_eq!(short_day("2026-10-07T03:00:00.000Z"), "Oct 7");
     }
 }

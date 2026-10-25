@@ -366,3 +366,16 @@ and edits on the share page)*)**
     words (`crates/shroom-cli/src/say.rs`, the edit section), the guide's *Editing* section,
     and B225's calls — the command saves itself rather than through the app, refuses while
     the video is open in an editor window, and never asks “Delete the original?” (Keep for 2 days).
+
+43. **N75 — Pin, Delete all, and auto-cleanup run by the space's page** (B232–B234; Bagrat
+    approved every board and its words as drawn, 2026-10-24, relayed by the orchestrator).
+    Pin is the record's `keep`, from a row's menu and `shroom pin`/`unpin`; Delete all… asks
+    once and holds one Undo; auto-cleanup (off by default; 15, 30 or 60 days unwatched, or a year since N77, B236) is
+    set on the Mac that set up the space and run by the space's page on the one schedule AI
+    naming uses, three days' warning first in the Library, the popover and the command.
+    Proved in CI (the core walkthroughs, the Worker's `autoclean.test.js`, the command
+    against the real page, the window gallery). Ships with 0.1.29. On the hosted Mac since
+    2026-10-25: the `cleanup` scenario walks it in the real app — Delete all… and its one
+    Undo, Pin and Unpin from a row's menu, the Settings pop-up (Off as it ships, needs Count
+    plays), the warning in the Library and the popover banner, the page deleting on its own
+    schedule with every window closed, and `shroom cleanup-candidates` matching the Library.

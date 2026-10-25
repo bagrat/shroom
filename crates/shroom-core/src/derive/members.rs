@@ -83,7 +83,7 @@ fn owner_name(w: &World) -> String {
 pub fn banner(w: &World) -> Option<Banner> {
     let life = life(w)?;
     let name = owner_name(w);
-    let amber = |id: &'static str, line: String, buttons: Vec<Button>| Banner { id, tone: Tone::Amber, line, buttons };
+    let amber = |id: &'static str, line: String, buttons: Vec<Button>| Banner { id, tone: Tone::Amber, line, detail: None, buttons };
     Some(match (w.space.role()?, life) {
         (Role::Member, Life::Revoked) => amber("member-revoked", copy::member_revoked(&name), stranded_buttons(w, copy::leave_space_ellipsis())),
         (Role::Member, Life::NeedsOwner) => amber("space-needs-owner", copy::needs_owner(&name), vec![]),
@@ -471,7 +471,7 @@ pub fn plan(w: &World, at: &At) -> PlanView {
         PlanRow::new(Glyph::Ahead, copy::row_ahead(6), copy::row_ahead_marks(6))
     };
     let nest = match at {
-        At::Joining => Nest::Calm { line: copy::joining_line() },
+        At::Joining => Nest::Calm { line: copy::joining_line(), parts: vec![], long: None },
         At::JoinWaiting => Nest::Offline { line: if w.online() == Some(false) { copy::join_offline() } else { not_answering(w, inviter(w).unwrap_or_default()) } },
         At::JoinExpired | At::JoinUsed | At::JoinSpaceMissing => match refusal(w, at) {
             Some((line, door)) => Nest::JoinRefused { line, door },

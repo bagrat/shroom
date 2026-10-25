@@ -77,7 +77,7 @@ at `bf84b67079a8` (D:B2). Svelte 5, TypeScript 5.9.
 | `app/src-tauri/src/runtime/media.rs` | `shroom-media:`: each editor window's video, as the editor's lane registered it, by byte ranges, and its peaks — to that window's webview alone (N73) | `media::tests` |
 | `app/src` | webviews (`Popover`, `Onboarding`, `Library`, `Settings`, `Feedback`, `Editor` with `editor/`, `members/`, `join/`, countdown), `lib/ipc.ts`, `lib/typed.ts`, `lib/theme.css` (D:B122) | galleries; `editor/*.test.ts` (vitest) |
 | `worker/` | `src/worker.js` (one dependency-free module), `vendor/hls.min.js`, `page-version.json`, `dev/serve.mjs` | vitest + workerd contract (D:B63) |
-| `installer/`, `site/` | `install.sh` (D:B29, B44; links the `shroom` command, D:B217); the Homebrew cask and its renderer, `homebrew/` (D:B175); shroom.am Worker, with `/agent` for a coding agent (D:B132), `/cli` its guide to the command (D:B219), and `/report` with its `/feedback` form (D:B180) | their `test/` |
+| `installer/`, `site/` | `install.sh` (D:B29, B44; links the `shroom` command, D:B217; the app links it once for a Mac installed before it, D:B239); the Homebrew cask and its renderer, `homebrew/` (D:B175); shroom.am Worker, with `/agent` for a coding agent (D:B132), `/cli` its guide to the command (D:B219), and `/report` with its `/feedback` form (D:B180) | their `test/` |
 | `tools/`, `.github/workflows/` | release build, packaging, identity, ffmpeg, notices; `ci.yml`, `release.yml`, `site.yml`, `e2e.yml`, `e2e-full.yml`, `mac.yml` | CI |
 
 **Flavors** come from the bundle identifier alone (`runtime::Flavor::of`, D:B97; the
@@ -264,8 +264,8 @@ anything else it runs: Open, Save and Copy answer while a bake or an upkeep pass
 **Trace.** `logs/run.log` (600, rolled at 5 MB) logs each event, arm and effect kinds.
 `trace::Ring` keeps the last 512 steps (kinds, arm, edge, state ids on change), names read at
 most two variants deep so no value or secret enters; `runtime/ring.rs` writes it into
-`run.log` on a dev-build law breach, a rescued take, a panic and each harness run's end
-(D:B93). The `shroom` command keeps its own, `logs/cli.log` (600, rolled at 64 KB; D:B215):
+`run.log` on a dev-build law breach, a rescued take, a panic (after the panic's own line:
+its thread, where, and its message cut to 160 characters) and each harness run's end (D:B93). The `shroom` command keeps its own, `logs/cli.log` (600, rolled at 64 KB; D:B215):
 one line a run — stamped as `run.log`'s are, the verb and the options' names, `ok` or the
 code and exit, what it counted, the space's or the app's refusal, the time it took; never a
 word it was given. Report a problem and Copy diagnostics carry its last 30 lines among the
@@ -334,7 +334,7 @@ stay. A switch keeps the old space's files until the new join's 200 (D:B42, B54 
   take's display, 8 points under its menu bar (the screen's visible frame), 12 in from its
   edge (`presenter::label_frame`). It is never made late (`overlay::ensure`): wanted only
   once capture runs, a panel made then could miss that take's list of what it leaves out.
-- The marker toast (N78, D:B239): the fourth, made and held as the label is. While
+- The marker toast (N78, D:B243): the fourth, made and held as the label is. While
   `Scene.toast` is set — two seconds after ⌥⌘M answered — the presenter puts it where the
   label goes, or just under the label when that shows (`presenter::toast_frame`); its page
   (`app/toast.html`) fades it in and out, and starts again on a new press (`pressed`).
@@ -735,7 +735,7 @@ foreign `v`. `VERSION` 0.1.9, `IFACE` 2.
 | `GET /favicon.{svg,png,ico}` | the icon carried in the module (D:B109) |
 | `GET /join/<code>` | the join page faces; opening never uses the invite |
 | `/_shroom/api/` | `POST peek, join, enroll, mint, key, library, invites, mark, health, gone, ai, cue`; `GET me, members`; `DELETE invites/<iid>, members/<mid>, devices/<did\|self>` — JSON with `"shroom":1` |
-| `GET /_shroom/cc/<id>`, `/_shroom/named/<id>` | with naming on (N66, N67, WI §4.21): the captions as WebVTT through the saved edit; the owner page's ask for a name on its way |
+| `GET /_shroom/cc/<id>`, `/_shroom/named/<id>` | with naming on (N66, N67, WI §4.21): the captions as WebVTT through the saved edit; the owner page's ask for a name on its way, with the chapters and captions it puts in place (B241) |
 
 Every response carries `X-Robots-Tag: noindex`; HEAD and Range never 500. API bodies
 ≤ 16 KiB (library 128 KiB); a browser Origin is refused on the API.

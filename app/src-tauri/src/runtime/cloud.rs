@@ -381,6 +381,7 @@ fn spawn_wizard(rt: Runtime) -> Sender<(Instant, CloudCmd)> {
                     CloudCmd::Wire { .. } => (Op::Wire, "wire"),
                     CloudCmd::Refresh => (Op::Refresh, "refresh"),
                     CloudCmd::SetAi(_) => (Op::Ai, "naming"),
+                    CloudCmd::SetAutoclean(_) => (Op::Autoclean, "auto-cleanup"),
                     CloudCmd::Reach | CloudCmd::OpenOwnerPage(_) => continue,
                 };
                 // A whole pass that found this token live over its own page: this Mac enrolls
@@ -392,9 +393,10 @@ fn spawn_wizard(rt: Runtime) -> Sender<(Instant, CloudCmd)> {
                     CloudCmd::SaveToken(id, account_id) => save_token(&rt, id, &account_id),
                     CloudCmd::Sweep(part) => sweep_pass(&rt, part, &mut proved),
                     CloudCmd::Claim(name) => claim(&rt, name),
-                    CloudCmd::Wire { label } => wire_space(&rt, &label),
+                    CloudCmd::Wire { label, fresh } => wire_space(&rt, &label, fresh),
                     CloudCmd::Refresh => refresh(&rt),
                     CloudCmd::SetAi(on) => set_ai(&rt, on),
+                    CloudCmd::SetAutoclean(days) => set_autoclean(&rt, days),
                     CloudCmd::Reach | CloudCmd::OpenOwnerPage(_) => continue,
                 };
                 // Turning the AI on or off says how long the page took to go up again (B206 f).
@@ -447,7 +449,15 @@ fn summary(n: &CloudNews) -> String {
         CloudNews::PageOpened(r) => r.0.clone(),
         CloudNews::Refreshed { deployed, ai } => format!("deployed {deployed}, naming {ai:?}"),
         CloudNews::AiSet(on) => format!("naming {}", if *on { "on" } else { "off" }),
+        CloudNews::Autoclean(days) => format!("auto-cleanup {days} days"),
+        CloudNews::Part { op, part } => format!("{op:?} part {part}"),
     }
+}
+
+/// A run's part underway (N74): the window shows it as it goes, and the log keeps when.
+fn post_part(rt: &Runtime, op: Op, part: u8) {
+    rt.log(&format!("wizard {}: part {part}", if op == Op::Wire { "wire" } else { "sweep" }));
+    rt.post(Event::Cloud(CloudNews::Part { op, part }));
 }
 
 /// A Cloudflare error's failure class (the lanes that verify the token share it).
@@ -590,14 +600,22 @@ fn sweep_pass(rt: &Runtime, part: SweepPart, proved_here: &mut Option<(String, S
         let g = sweep::gates(&h.cloud, &account_id, PROBE_WORKER).map_err(|e| class(&e))?;
         return Ok(CloudNews::Swept(SweepAnswer { gates: Some(gates(g)), ..SweepAnswer::default() }));
     }
+    // The check's parts, each said as it begins (N74): the token, the email gate, storage,
+    // then the look around.
+    post_part(rt, Op::Sweep, 1);
     let (verdict, proved) = prove(&h)?;
     let mut ans = SweepAnswer { token: Some(verdict), ..SweepAnswer::default() };
     let Some((account_id, token_id)) = proved else { return Ok(CloudNews::Swept(ans)) };
-    let g = sweep::gates(&h.cloud, &account_id, PROBE_WORKER).map_err(|e| class(&e))?;
+    post_part(rt, Op::Sweep, 2);
+    let email = sweep::email_gate(&h.cloud, &account_id, PROBE_WORKER).map_err(|e| class(&e))?;
+    post_part(rt, Op::Sweep, 3);
+    let card = sweep::card_gate(&h.cloud, &account_id).map_err(|e| class(&e))?;
+    let g = sweep::Gates { email, card };
     ans.gates = Some(gates(g));
     if g.email || g.card {
         return Ok(CloudNews::Swept(ans));
     }
+    post_part(rt, Op::Sweep, 4);
     // A provisioned space is probed under its own label, never the label chain (#1, B50):
     // a foreign `v` beside a space under `v` is never wired over, and a space under
     // `shroom` never reads broken when a foreign `v` goes.
@@ -742,8 +760,11 @@ fn claim(rt: &Runtime, name: String) -> Result<CloudNews, FailClass> {
 }
 
 /// Wiring under the survey's label: the bucket, the player, the page, its route, the
-/// self-check, then the space's marker — idempotent end to end.
-fn wire_space(rt: &Runtime, label: &str) -> Result<CloudNews, FailClass> {
+/// self-check, then the space's marker — idempotent end to end. `fresh`: the setup's own
+/// wiring, whose new page carries the AI (N76).
+fn wire_space(rt: &Runtime, label: &str, fresh: bool) -> Result<CloudNews, FailClass> {
+    // Wiring's parts, each said as it begins (N74); the window keeps the furthest.
+    post_part(rt, Op::Wire, 1);
     let h = held(rt)?;
     let (_, proved) = prove(&h)?;
     let Some((account_id, token_id)) = proved else { return Ok(CloudNews::Wired(Err(WireFail::Refused))) };
@@ -762,7 +783,8 @@ fn wire_space(rt: &Runtime, label: &str) -> Result<CloudNews, FailClass> {
     // done only once it answers.
     let at = |host: &str| rt.page_at(host);
     let page = PageCheck { at: &at, version: page_version(), every: PageCheck::EVERY, within: PageCheck::WITHIN };
-    match wire::wire_with(&h.cloud, &spec, Some(&page)) {
+    let wiring = if fresh { wire::wire_fresh_parts } else { wire::wire_parts };
+    match wiring(&h.cloud, &spec, Some(&page), &|p| post_part(rt, Op::Wire, p as u8)) {
         Ok(w) => {
             rt.log(&format!("wizard wire: the page {}", if w.deployed { "went up" } else { "was current — kept" }));
             // N29: the owner's name in macOS's short form, everywhere it's written.
@@ -771,6 +793,7 @@ fn wire_space(rt: &Runtime, label: &str) -> Result<CloudNews, FailClass> {
             // member #1's. A failure here doesn't undo a working space — the token's own
             // uploads need no enroll — and the next entry's enroll tries again.
             let place = Place { account_id: &account_id, token_id: &token_id, label, bucket: &names.bucket, host: &w.host, owner_name: &owner_name };
+            post_part(rt, Op::Wire, 5);
             match enroll_this_mac(rt, &h.cloud, &place) {
                 Ok(e) => rt.log(&format!("wizard wire: enrolled {} as {}", e.device, e.member)),
                 Err(e) => rt.log(&format!("wizard wire: enroll didn't land ({}) — the next entry tries again", redact(&e))),
@@ -909,7 +932,10 @@ fn set_ai(rt: &Runtime, on: bool) -> Result<CloudNews, FailClass> {
         compatibility_date: COMPATIBILITY_DATE,
         assets: &assets,
     };
-    match wire::set_ai(&h.cloud, &spec, on) {
+    // Auto-cleanup shares the one schedule (N75): naming off keeps it while that's on. Not
+    // known (the page didn't say): keep it — a spare schedule costs a read a minute.
+    let autoclean = super::library::worker_door(rt, &space).ok().and_then(|(key, page)| page.autoclean(&key).ok()).is_none_or(|a| a.days > 0);
+    match wire::set_ai(&h.cloud, &spec, on, autoclean) {
         Ok(()) => Ok(CloudNews::AiSet(on)),
         Err(WireError::Cloud(e)) => Err(class(&e)),
         Err(e) => {
@@ -917,6 +943,59 @@ fn set_ai(rt: &Runtime, on: bool) -> Result<CloudNews, FailClass> {
             Err(FailClass::Refused)
         }
     }
+}
+
+/// Auto-cleanup's days (N75, DECISIONS B232), from the Mac that holds the setup key: on, the
+/// space's page is given its schedule first (the one naming uses), then told the days; off,
+/// it's told, and the schedule goes unless naming still needs it.
+fn set_autoclean(rt: &Runtime, days: u32) -> Result<CloudNews, FailClass> {
+    let space = rt.home.read_json::<SpaceIdentity>("space.json").filter(|s| s.role == Role::TokenHolder).ok_or(FailClass::Refused)?;
+    let (key, page) = super::library::worker_door(rt, &space)?;
+    let h = held(rt)?;
+    let (_, proved) = prove(&h)?;
+    let Some((account_id, token_id)) = proved.filter(|(a, _)| *a == space.account_id) else {
+        rt.log("auto-cleanup: the token isn't live for this space");
+        return Err(FailClass::Refused);
+    };
+    let assets: [(&str, &[u8], &str); 1] = [(".shroom/player/hls.min.js", HLS_JS, "text/javascript")];
+    let spec = WireSpec {
+        account_id: &account_id,
+        token_id: &token_id,
+        label: &space.label,
+        bucket: &space.bucket,
+        worker_module: WORKER_MODULE,
+        compatibility_date: COMPATIBILITY_DATE,
+        assets: &assets,
+    };
+    let schedule = |on: bool| match wire::set_schedule(&h.cloud, &spec, on) {
+        Ok(()) => Ok(()),
+        Err(WireError::Cloud(e)) => Err(class(&e)),
+        Err(e) => {
+            rt.log(&format!("auto-cleanup: refused ({})", redact(&e.to_string())));
+            Err(FailClass::Refused)
+        }
+    };
+    if days > 0 {
+        schedule(true)?;
+    }
+    let set = match page.set_autoclean(&key, days) {
+        shroom_cloud::member::Answer::Ok(d) => d,
+        other => {
+            rt.log(&format!("auto-cleanup: the page answered {other:?}"));
+            return Err(match other {
+                shroom_cloud::member::Answer::Unanswered(_) => FailClass::Transport,
+                _ => FailClass::Refused,
+            });
+        }
+    };
+    if set == 0 {
+        let naming = matches!(rt.page_at(&space.host).ping(), shroom_cloud::member::Ping::Shroom { ai: true, .. });
+        if !naming {
+            schedule(false)?;
+        }
+    }
+    rt.log(&format!("auto-cleanup: {}", if set == 0 { "off".to_string() } else { format!("{set} days") }));
+    Ok(CloudNews::Autoclean(set))
 }
 
 /// The live page's version, or why this launch's refresh couldn't run yet (B50 c): a page

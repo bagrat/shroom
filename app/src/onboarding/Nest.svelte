@@ -10,7 +10,7 @@
   import Btn from "./Btn.svelte";
   import PasteField from "./PasteField.svelte";
   import Spinner from "./Spinner.svelte";
-  import type { Nest } from "./types";
+  import type { Nest, Part } from "./types";
 
   let {
     nest,
@@ -38,6 +38,23 @@
     }
   }
 </script>
+
+{#snippet partList(parts: Part[])}
+  <!-- A wait's parts (N74): ✓ done, a spinner underway with its clock, • still to come. -->
+  <ol class="parts">
+    {#each parts as p}
+      <li class="part {p.glyph}">
+        <span class="mark">
+          {#if p.glyph === "done"}<svg class="icon13" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 4.8" /></svg>
+          {:else if p.glyph === "working"}<Spinner />
+          {:else}<span class="dot" aria-hidden="true"></span>{/if}
+        </span>
+        <span class="line">{p.line}</span>
+        {#if p.clock}<span class="clock">{p.clock}</span>{/if}
+      </li>
+    {/each}
+  </ol>
+{/snippet}
 
 <div class="nest {nest.kind}" data-nest={nest.kind}>
   {#if nest.kind === "account"}
@@ -75,15 +92,19 @@
     <div class="acts"><Btn b={nest.choose} {send} /></div>
   {:else if nest.kind === "checking"}
     {#if spin}<div class="wait"><Spinner /></div>{/if}
+  {:else if nest.kind === "check"}
+    {@render partList(nest.parts)}
   {:else if nest.kind === "gate"}
     <p>{nest.line}</p>
-    {#if nest.button || spin}
+    {#if nest.button || (spin && !nest.watch)}
       <div class="acts">
         {#if nest.button}<Btn b={nest.button} {send} />{/if}
-        {#if spin}<Spinner />{/if}
+        {#if spin && !nest.watch}<Spinner />{/if}
       </div>
     {/if}
     {#if nest.quiet}<p class="quiet">{nest.quiet}</p>{/if}
+    {#if nest.watch}{@render partList([nest.watch])}{/if}
+    {#if nest.long}<p class="quiet">{nest.long}</p>{/if}
   {:else if nest.kind === "name"}
     <div class="url">
       <span class="pre">{nest.prefix}</span><input
@@ -109,6 +130,8 @@
     </div>
   {:else if nest.kind === "calm"}
     <div class="wait">{#if spin}<Spinner />{/if}<p>{nest.line}</p></div>
+    {#if nest.parts.length}{@render partList(nest.parts)}{/if}
+    {#if nest.long}<p class="quiet">{nest.long}</p>{/if}
   {:else if nest.kind === "found"}
     <p>{nest.line}</p>
   {:else if nest.kind === "offline"}

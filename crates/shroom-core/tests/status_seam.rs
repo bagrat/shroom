@@ -214,7 +214,7 @@ fn a_members_standing_reads_from_its_space() {
     assert_eq!(p(&r).standing, "needs-owner");
 
     let mut r = Run::new(member());
-    r.send(Event::Member(MemberNews::Standing(StandingAnswer::Fine { current: false, only_holder: None, mark: None })));
+    r.send(Event::Member(MemberNews::Standing(StandingAnswer::Fine { current: false, only_holder: None, mark: None, ai: None })));
     assert_eq!(p(&r).standing, "needs-update");
 
     // The token's Mac repairs its space instead (N42): never a member standing.

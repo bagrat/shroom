@@ -32,6 +32,12 @@ const NEAR_QUIETEST: f32 = 3.0;
 /// cut, to the first pause, when that pause begins at most this long after the word
 /// (seconds): sound that runs on longer may be speech the transcriber missed.
 const TAIL: f64 = 1.0;
+/// A cue's sound is looked for this far either side of its words (seconds), as word times
+/// drift by a few tenths…
+const CUE_REACH: f64 = 0.5;
+/// …and a cue with less sound than this there (seconds), the rest of it the take's quiet,
+/// was never said: the hearing wrote it into silence (N65 (1)). A spoken syllable is longer.
+const CUE_SOUND: f64 = 0.15;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Options {
@@ -134,6 +140,33 @@ impl Ctx<'_> {
             end = self.quietest(near(a1, b1, false)).unwrap_or(end);
         }
         (start.max(0.0), end.min(self.t.duration))
+    }
+
+    /// Whether the take sounds around a cue's words: with its quiet unknown, it's taken as
+    /// said.
+    fn sounded(&self, cue: &Cue) -> bool {
+        if self.t.silences.is_empty() {
+            return true;
+        }
+        let a = (cue.start - CUE_REACH).max(0.0);
+        let b = (cue.end + CUE_REACH).min(self.t.duration.max(cue.end));
+        let mut quiet: Vec<(f64, f64)> = self
+            .t
+            .silences
+            .iter()
+            .map(|s| (s.start.max(a), s.end.min(b)))
+            .filter(|(s, e)| e > s)
+            .collect();
+        quiet.sort_by(|x, y| x.0.total_cmp(&y.0));
+        let (mut covered, mut upto) = (0.0, a);
+        for (s, e) in quiet {
+            let s = s.max(upto);
+            if e > s {
+                covered += e - s;
+                upto = e;
+            }
+        }
+        b - a - covered >= CUE_SOUND
     }
 
     fn in_silence(&self, t: f64) -> bool {
@@ -366,10 +399,20 @@ fn bounds(cues: &[Cue], k: usize, len: usize) -> (usize, usize) {
     (floor, cues.get(k + 1).map_or(len, |c| c.first))
 }
 
+/// The cues in the words where the take sounds: one heard in its quiet was never said
+/// (N65 (1)). The planner's own: its questions and cuts count these.
+pub fn spoken(t: &Transcript, o: Options) -> Vec<Cue> {
+    let cx = Ctx { t, o };
+    find_cues_in(&t.words, o.cues)
+        .into_iter()
+        .filter(|c| cx.sounded(c))
+        .collect()
+}
+
 /// The cues heard: "shroom cut", and in a wider set (`o.cues`) any other phrase the judgment
 /// said was meant for the editor ([`MEANT`]); with no word on it, it isn't one.
 fn heard(t: &Transcript, o: Options, meant: &[Meant]) -> Vec<Cue> {
-    find_cues_in(&t.words, o.cues)
+    spoken(t, o)
         .into_iter()
         .filter(|c| {
             c.said == Said::ShroomCut
@@ -386,7 +429,7 @@ fn heard(t: &Transcript, o: Options, meant: &[Meant]) -> Vec<Cue> {
 pub fn intents(t: &Transcript, o: Options) -> Vec<Intent> {
     let cx = Ctx { t, o };
     let words = &t.words;
-    find_cues_in(words, o.cues)
+    spoken(t, o)
         .iter()
         .filter(|c| c.said != Said::ShroomCut)
         .map(|c| {
@@ -542,9 +585,8 @@ fn plan_one(cx: &Ctx, cue: &Cue, floor: usize, ceil: usize, judged: Option<usize
     if !apart {
         return Vec::new();
     }
-    // It broke off a sentence: whatever was said after it, in the same words or others,
-    // that sentence is the slip, and it goes with the cue; the one before it, finished,
-    // stays.
+    // It broke off a sentence: that sentence is the likely slip, and it goes with the cue;
+    // the one before it, finished, stays.
     let sentence = (cue.first > floor)
         .then(|| cx.sentence_start(cue.first - 1, floor))
         .filter(|&s| {
@@ -556,15 +598,18 @@ fn plan_one(cx: &Ctx, cue: &Cue, floor: usize, ceil: usize, judged: Option<usize
         });
     let sentence = sentence.filter(|&s| cue.start - words[s].start <= SENTENCE_MAX);
     // The judgment heard a stretch said again in other words: it goes with the cue, as far
-    // back as the judgment put its start, and never less than the sentence the cue broke off.
+    // back as the judgment put its start. The sentence the cue broke off goes for sure only
+    // when the judgment heard all of it said again (a start at the sentence's or before it).
+    // Without that word, nothing was said again: the sentence is the likely slip, cut with
+    // the cue below, for the owner to check (a speaker may say the cue with no slip, inside
+    // a sentence they carry on).
     let reach = match (sentence, judged) {
-        (Some(s), Some(j)) => Some((
-            s.min(j),
+        (Some(s), Some(j)) if j <= s => Some((
+            j,
             "the sentence the cue broke off, and more by the judgment",
         )),
-        (Some(s), None) => Some((s, "the sentence the cue broke off")),
         (None, Some(j)) => Some((j, "said again in other words, by the judgment")),
-        (None, None) => None,
+        _ => None,
     };
     if let Some((from, why)) = reach {
         {
@@ -588,7 +633,7 @@ fn plan_one(cx: &Ctx, cue: &Cue, floor: usize, ceil: usize, judged: Option<usize
             }];
         }
     }
-    // The sentence before it ended and nothing was said again: cut the cue (and any filler
+    // Nothing was said again: cut the cue (and any filler
     // right after), and the line before it with it, though how far back the slip went isn't
     // clear (Bagrat, 2026-10-18): the owner page asks to check it.
     let mut last = cue.last;
@@ -610,7 +655,8 @@ fn plan_one(cx: &Ctx, cue: &Cue, floor: usize, ceil: usize, judged: Option<usize
         why: "cue with no retake after it".into(),
     }];
     if cue.first > floor {
-        let line = cx.line_start(cue.first - 1, floor);
+        // The sentence the cue broke off is the line; the finished one before it stays.
+        let line = sentence.unwrap_or_else(|| cx.line_start(cue.first - 1, floor));
         let (start, _) = cx.span(line, cue.first - 1);
         cuts.push(Cut {
             id: String::new(),

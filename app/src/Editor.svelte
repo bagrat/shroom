@@ -10,6 +10,8 @@
   import { onMount, untrack } from "svelte";
   import { act, edit, key, onScene, ownLabel, sceneGet, type Action, type EditStep } from "./lib/ipc";
   import Btn from "./onboarding/Btn.svelte";
+  import Sheet from "./library/Sheet.svelte";
+  import type { Sheet as SheetView } from "./library/types";
   import Timeline, { type Selection, type Trim } from "./editor/Timeline.svelte";
   import { clock, fill } from "./editor/clock";
   import { END_SLACK, editedAt, gain, keep as keepOf, length, nextPlay, snap, type Keep } from "./editor/keep";
@@ -38,6 +40,8 @@
   let lastMedia = "";
 
   const send = (a: Action) => act("editor", a);
+  /** ⌥← ⌥→: a frame, at the 30 a second shroom records. */
+  const FRAME = 1 / 30;
   const step = (s: EditStep) => void edit(s);
 
   const take = (s: unknown) => {
@@ -78,6 +82,18 @@
   };
 
   let b = $derived(w?.body);
+  /** The window's question, as a sheet over it (Bagrat, 2026-10-25: the footer's place was
+   * too easy to miss): “Delete the original?” once the final video is up (B197), or ✕'s
+   * “Save your edit?” (N71). The window behind is held: inert, and Space plays nothing. */
+  let ask = $derived.by((): SheetView | null => {
+    if (!w || !b) return null;
+    if (b.after?.state === "asking") {
+      const a = b.after;
+      return { id: w.id, faces: [], title: a.title, lines: [a.line], blocked: null, buttons: [a.keep, a.delete] };
+    }
+    const c = b.closing;
+    return c ? { id: w.id, faces: [], title: c.title, lines: [c.line], blocked: null, buttons: [c.discard, c.keep, c.save] } : null;
+  });
   let media = $derived(b?.media.state ?? "opening");
   let ready = $derived(media === "ready");
   let src = $derived(b && ready ? `${base}/${encodeURIComponent(b.rec)}/video?open=${opened}` : null);
@@ -216,6 +232,30 @@
     put(ended ? Math.max(k[k.length - 1][0], to - END_SLACK) : to);
   }
 
+  /** The playhead held on the ruler: what was playing waits, and plays on from where it's
+   * let go (board “Editor — seeking”). */
+  let resume = false;
+  function hold(holding: boolean) {
+    if (!video) return;
+    if (holding) {
+      resume = !video.paused;
+      video.pause();
+    } else if (resume) {
+      resume = false;
+      play();
+    }
+  }
+
+  /** The arrows, Home and End: the playhead by a second, five, a frame, or to the edit's
+   * start or end. */
+  function nudge(by: number | "start" | "end") {
+    const k = playKeep;
+    if (!ready || !k.length) return;
+    if (by === "start") seek(k[0][0]);
+    else if (by === "end") seek(k[k.length - 1][1]);
+    else seek(Math.min(Math.max(pos + by, 0), duration));
+  }
+
   /** An end being dragged shows its frame (while paused): where the edit will start, or end. */
   function scrub(t: number) {
     if (!video || !video.paused || !ready) return;
@@ -235,9 +275,22 @@
     }, 1050);
   }
 
+  /** A part cut: one that reaches an end of the trim moves that end there instead, a trim,
+   * not a cut at the edge (A+: Bagrat, 2026-10-25). One that reaches both is the core's to
+   * refuse. */
+  function cutPart(start: number, end: number) {
+    const l = b?.list;
+    const atIn = !!l && start <= l.in + 1e-6;
+    const atOut = !!l && end >= l.out - 1e-6;
+    if (l && atIn !== atOut) {
+      trim = atIn ? { in: end, out: l.out } : { in: l.in, out: start };
+      trimmed(trim);
+    } else step({ op: "cut", start, end });
+  }
+
   function cut() {
     if (selection?.kind !== "range") return;
-    step({ op: "cut", start: selection.start, end: selection.end });
+    cutPart(selection.start, selection.end);
     selection = null;
   }
 
@@ -257,21 +310,32 @@
       }
       if (e.key === "Escape") {
         e.preventDefault();
-        // While ✕ asks, Esc is Keep editing whatever is selected behind the question (N71).
-        if (selection && !body.closing) selection = null;
+        // While the window asks, Esc is the sheet's (Keep editing, N71; Keep for 2 days,
+        // B197) whatever is selected behind it.
+        if (selection && !ask) selection = null;
         else if (w.esc) key("editor", "esc");
         return;
       }
       if (e.key === " ") {
         e.preventDefault();
-        // The edit is held while ✕ asks: the preview stays paused (N71).
-        if (!body.closing) toggle();
+        // The edit is held while the window asks: the preview stays paused (N71).
+        if (!ask) toggle();
         return;
       }
       if (e.key === "Backspace" || e.key === "Delete") {
         // Delete never means "go back" in a window.
         e.preventDefault();
         if (body.editable) cut();
+        return;
+      }
+      const keys: Record<string, number | "start" | "end"> = { ArrowLeft: -1, ArrowRight: 1, Home: "start", End: "end" };
+      if (e.key in keys && !e.metaKey && !e.ctrlKey && !ask) {
+        // Never while a field holds the keyboard.
+        const t = e.target as HTMLElement | null;
+        if (t?.closest("input, textarea, [contenteditable]")) return;
+        e.preventDefault();
+        const k = keys[e.key];
+        nudge(typeof k === "number" ? k * (e.altKey ? FRAME : e.shiftKey ? 5 : 1) : k);
         return;
       }
       if (e.metaKey && !e.altKey && !e.ctrlKey && e.key.toLowerCase() === "z") {
@@ -297,7 +361,7 @@
 </script>
 
 {#if w && b}
-  <main class="ed" data-state={w.id} data-media={media}>
+  <main class="ed" data-state={w.id} data-media={media} inert={!!ask}>
     <div class="stage">
       <div class="screen">
         {#if src}
@@ -399,8 +463,9 @@
           bind:trim
           onseek={seek}
           onscrub={scrub}
+          onhold={hold}
           ontrim={trimmed}
-          oncut={(start, end) => step({ op: "cut", start, end })}
+          oncut={cutPart}
           onputback={(index) => step({ op: "put-back", index })}
           onapply={(index) => step({ op: "apply", index })}
           onresize={(index, start, end) => step({ op: "resize", index, start, end })}
@@ -410,42 +475,22 @@
 
     <div class="grow"></div>
 
-    {#if b.after?.state === "asking"}
-      <!-- The final video is up: what becomes of the original, in the footer's place. Yes,
-           delete leads, filled — a click only; Return does nothing here (law 9). -->
-      <section class="ask" role="group" aria-label={b.after.title}>
-        <div class="words">
-          <h2>{b.after.title}</h2>
-          <p>{b.after.line}</p>
-        </div>
-        <Btn b={b.after.keep} {send} inlineNote={false} />
-        <Btn b={b.after.delete} {send} inlineNote={false} />
-      </section>
-    {:else if b.closing}
-      <!-- ✕ with changes not saved (N71): the question in the footer's place, the edit held
-           behind it. Discard is a click only; Return is Save and Esc Keep editing. -->
-      <section class="ask" role="group" aria-label={b.closing.title}>
-        <div class="words">
-          <h2>{b.closing.title}</h2>
-          <p>{b.closing.line}</p>
-        </div>
-        <Btn b={b.closing.discard} {send} inlineNote={false} />
-        <Btn b={b.closing.keep} {send} inlineNote={false} />
-        <Btn b={b.closing.save} {send} inlineNote={false} />
-      </section>
-    {:else}
-      <footer class="foot">
-        <span class="line" class:amber={b.footer_tone === "amber"} role="status">{b.footer}</span>
-        <!-- After a save the edit is the video's own: nothing is reverted from here — nor
-             once the space turned the save down (no `revert`, B199). -->
-        {#if media !== "failed" && !b.after && b.revert}
-          {#if b.original_kept}<span class="kept">{b.original_kept}</span>{/if}
-          <Btn b={b.revert} {send} inlineNote={false} />
-        {/if}
-        <Btn b={b.done} {send} inlineNote={false} />
-      </footer>
-    {/if}
+    <!-- Behind a question too, held: its words and buttons as they were. -->
+    <footer class="foot">
+      <span class="line" class:amber={b.footer_tone === "amber"} role="status">{b.footer}</span>
+      <!-- After a save the edit is the video's own: nothing is reverted from here — nor
+           once the space turned the save down (no `revert`, B199). -->
+      {#if media !== "failed" && !b.after && b.revert}
+        {#if b.original_kept}<span class="kept">{b.original_kept}</span>{/if}
+        <Btn b={b.revert} {send} inlineNote={false} />
+      {/if}
+      <Btn b={b.done} {send} inlineNote={false} />
+    </footer>
   </main>
+  <!-- Its question, a sheet as the Library's are: Keep for 2 days, then Yes, delete, filled
+       and a click only (Return does nothing here, law 9); or Discard, a click only, Keep
+       editing (Esc) and Save (Return). The keys are the Scene's, from the window's own. -->
+  {#if ask}<Sheet sheet={ask} {send} />{/if}
 {/if}
 
 <style>
@@ -454,6 +499,12 @@
   :global(#app) {
     height: 100%;
     margin: 0;
+  }
+  /* The window's type, the sheet over it included (it sits outside `.ed`). */
+  :global(body) {
+    font: 13px/1.45 var(--font);
+    -webkit-font-smoothing: antialiased;
+    color: var(--fg);
   }
   .ed {
     box-sizing: border-box;
@@ -578,10 +629,10 @@
      the chip. */
   .timeline {
     flex: none;
-    padding: 26px 0 48px;
+    padding: 26px 0 42px;
   }
   .ruler-room {
-    height: 28px;
+    height: 34px;
   }
   .note {
     height: 66px;
@@ -632,44 +683,6 @@
   }
   .note.making span {
     color: var(--fg);
-  }
-  /* “Delete the original?”, and ✕'s “Save your edit?” (N71), in the footer's place: one
-     card, its words, then its answers. */
-  .ask {
-    flex: none;
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    padding: 14px 16px;
-    border-radius: 10px;
-    background: var(--card);
-    box-shadow: 0 0 0 1px var(--line);
-  }
-  .ask .words {
-    flex: 1 1 0;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-  .ask h2 {
-    margin: 0;
-    font-size: 14px;
-    font-weight: 600;
-  }
-  .ask p {
-    margin: 0;
-    color: var(--muted);
-  }
-  .ask :global(.b) {
-    min-height: 30px;
-    border-radius: 7px;
-    flex: none;
-  }
-  .ask :global(.b.filled) {
-    padding: 0 16px;
-  }
-  .ask :global(.b.plain) {
-    color: var(--fg-3);
   }
   .foot :global(.b),
   .note :global(.b) {

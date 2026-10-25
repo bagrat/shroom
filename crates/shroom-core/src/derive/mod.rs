@@ -5,16 +5,16 @@ pub mod feedback;
 pub mod library;
 pub mod members;
 pub mod onboarding;
-mod popover;
+pub mod popover;
 pub mod settings;
 pub mod status;
 mod tray;
 
-pub(crate) use popover::{OneShot, one_shot_showing, selected_mic as popover_selected_mic, selected_source as popover_selected_source};
 pub use popover::{
     DISK_MARGIN, ROOM_FLOOR_MINUTES, ROOM_LOW_MINUTES, bytes_per_minute, marker_offered, resume_mic, resume_ok, selected_camera, source_present,
     take_floor_bytes,
 };
+pub(crate) use popover::{OneShot, one_shot_showing, selected_mic as popover_selected_mic, selected_source as popover_selected_source};
 
 use crate::copy;
 use crate::scene::{Bubble, Countdown, Preview, Scene};
@@ -294,16 +294,17 @@ fn next_wake(w: &World) -> Option<Mono> {
     if let Some((_, at)) = &w.session.fields.settings.lit {
         wakes.push(at.plus(LIT_MS));
     }
+    // An open editor's next mark for the space's auto-cleanup (N75).
+    wakes.extend(w.library_ops.marked.values().map(|t| t.plus(crate::settle::EDITING_MARK_MS)));
     wakes.extend(w.inflight.ops.values().copied());
     // The stop's probe asking again after a “not shroom” that hasn't held (B60).
     if w.session.page_open.is_some() {
         wakes.extend(w.net.not_shroom_reprobe());
     }
     wakes.extend(w.inflight.failures.values().map(|f| f.retry_at()));
-    // The AI banner's Turn on, tried again quietly (N66).
-    if w.space.ai_turn == Some(crate::world::AiTurn::Turning) {
-        wakes.extend(w.inflight.failures.get(&Op::Ai).map(|f| f.ai_retry_at()));
-    }
+    // The AI's re-wiring, tried again quietly (N76): the banner's Turn off, or the setup
+    // Mac's turn-on by default.
+    wakes.extend(w.inflight.failures.get(&Op::Ai).map(|f| f.ai_retry_at()));
     onboarding::wakes(w, &mut wakes);
     settings::wakes(w, &mut wakes);
     members::wakes(w, &mut wakes);

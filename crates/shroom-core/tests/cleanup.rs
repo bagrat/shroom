@@ -25,7 +25,7 @@ fn rec(id: &str) -> RecId {
 }
 
 fn remote(id: &str, title: &str, days_ago: i64, owner: &str) -> LibraryRow {
-    LibraryRow { rec: rec(id), title: title.into(), created: Wall(NOW - days_ago * DAY), length_ms: Some(600_000), live: true, owner: Some(owner.into()), poster: false, edited_ms: None }
+    LibraryRow { rec: rec(id), title: title.into(), created: Wall(NOW - days_ago * DAY), length_ms: Some(600_000), live: true, owner: Some(owner.into()), poster: false, edited_ms: None, pinned: false }
 }
 
 fn space_rows() -> Vec<LibraryRow> {
@@ -46,7 +46,7 @@ fn three() -> Vec<Suggestion> {
 }
 
 fn answer(rows: Vec<Suggestion>, space_bytes: u64) -> Event {
-    Event::Library(LibraryNews::Suggested(Suggestions { counting: true, space_bytes, rows }))
+    Event::Library(LibraryNews::Suggested(Suggestions { counting: true, space_bytes, rows, ..Default::default() }))
 }
 
 /// The Library open over the space, the bucket's refresh answered, and the space's
@@ -56,7 +56,7 @@ fn library(rows: Vec<Suggestion>, space_bytes: u64) -> World {
     w.session.windows.insert(WindowKind::Library, Door::asked(Mono(900)));
     w.library = Fact::known(Arc::new(space_rows()), Mono(950));
     w.library_ops.refreshed = Some(Mono(950));
-    w.suggestions = Fact::known(Suggestions { counting: true, space_bytes, rows }, Mono(960));
+    w.suggestions = Fact::known(Suggestions { counting: true, space_bytes, rows, ..Default::default() }, Mono(960));
     w
 }
 
@@ -143,11 +143,11 @@ fn the_library_says_so_in_one_line_and_review_opens_the_view() {
     assert!(v.rows[1].meta.ends_with("1.8 GB · 3¢ a month · Nobody has watched it"));
     assert!(v.rows[2].meta.ends_with("1.3 GB · 2¢ a month · Watched 41 times, the last 4 months ago"));
     assert_eq!(v.intro.as_deref(), Some("These might be worth deleting: rarely watched lately, and taking real room. Deleting all three frees 6.3 GB — about 9¢ a month off your Cloudflare bill."));
-    assert_eq!(v.foot.as_deref(), Some("Keep takes a video off this list for good. Plays are counted in your own Cloudflare account."));
+    assert_eq!(v.foot.as_deref(), Some("A pinned video is never suggested; unpin it in the Library. Plays are counted in your own Cloudflare account."));
     let all = v.delete_all.clone().unwrap();
     assert_eq!((all.label.as_str(), all.style), ("Delete all three…", Style::RedText), "law 9: red text, never a button");
     let labels: Vec<_> = v.rows[0].buttons.iter().map(|b| (b.label.as_str(), b.style)).collect();
-    assert_eq!(labels, [("Open page", Style::Link), ("Keep", Style::Plain), ("Delete", Style::RedText)]);
+    assert_eq!(labels, [("Open page", Style::Link), ("Pin", Style::Plain), ("Delete", Style::RedText)]);
     let w = r.scene.library.as_ref().unwrap();
     assert_eq!((w.ret.clone(), w.esc.clone()), (None, None), "no Return default; ‹ Library is the way back");
 
@@ -201,17 +201,17 @@ fn a_second_tap_sends_the_first_and_closing_the_window_sends_what_waits() {
 }
 
 #[test]
-fn keep_takes_a_video_off_the_list_for_good_and_a_failed_keep_brings_it_back() {
+fn pin_takes_a_video_off_the_list_for_good_and_a_failed_pin_brings_it_back() {
     let mut w = library(three(), 34_000_000_000);
     w.session.fields.library.cleanup = true;
     let mut r = Run::new(w);
-    r.lib(Action::KeepRow(rec("roadmap")));
-    assert!(r.has(|e| *e == Effect::Library(LibCmd::Keep(rec("roadmap")))));
+    r.lib(Action::PinRow(rec("roadmap"), true));
+    assert!(r.has(|e| *e == Effect::Library(LibCmd::Pin(vec![rec("roadmap")], true))));
     assert_eq!(titles(&r.scene).len(), 2, "it leaves while the write runs");
-    r.send(Event::Failed { op: Op::Keep, class: FailClass::Transport });
-    assert_eq!(titles(&r.scene).len(), 3, "a keep that didn't land: the row is back");
-    r.lib(Action::KeepRow(rec("roadmap")));
-    r.send(Event::Library(LibraryNews::Kept(rec("roadmap"))));
+    r.send(Event::Failed { op: Op::Pin, class: FailClass::Transport });
+    assert_eq!(titles(&r.scene).len(), 3, "a pin that didn't land: the row is back");
+    r.lib(Action::PinRow(rec("roadmap"), true));
+    r.send(Event::Library(LibraryNews::Pinned(vec![rec("roadmap")], true)));
     assert_eq!(titles(&r.scene).len(), 2);
     // A refresh begun before the keep landed still lists it: the landed keep reads over it.
     r.send(answer(three(), 34_000_000_000));
@@ -219,19 +219,62 @@ fn keep_takes_a_video_off_the_list_for_good_and_a_failed_keep_brings_it_back() {
 }
 
 #[test]
-fn delete_all_asks_once_with_the_several_videos_sheet() {
+fn delete_all_asks_once_with_its_own_sheet_then_holds_them_all_on_one_undo_line() {
     let mut w = library(three(), 34_000_000_000);
     w.session.fields.library.cleanup = true;
     let mut r = Run::new(w);
     r.lib(Action::DeleteAllSuggested);
-    assert_eq!(r.arm.edge, Some(("library-cleanup", "delete-confirm-several")));
+    assert_eq!(r.arm.edge, Some(("library-cleanup", "delete-confirm-cleanup")));
+    assert!(r.ids().contains(&"delete-confirm-cleanup"));
     let sheet = r.scene.library.as_ref().unwrap().body.sheet.clone().unwrap();
-    assert_eq!(sheet.title, "Delete three videos?");
-    r.lib(Action::ConfirmDelete);
-    assert!(r.has(|e| *e == Effect::Library(LibCmd::Delete(vec![rec("billing"), rec("acme"), rec("roadmap")]))));
+    assert_eq!(sheet.id, "delete-confirm-cleanup");
+    assert_eq!(sheet.title, "Delete all three suggested videos?");
+    assert_eq!(sheet.lines, ["That frees 6.3 GB. They're removed everywhere. Their links stay, and say the videos are gone."]);
+    let labels: Vec<_> = sheet.buttons.iter().map(|b| (b.label.as_str(), b.style)).collect();
+    assert_eq!(labels, [("Cancel", Style::Plain), ("Delete all three", Style::RedOutline)], "N23's law: the destructive one rightmost, red-outlined");
+    assert_eq!(r.scene.library.as_ref().unwrap().ret, None, "no Return default (law 9)");
+
+    r.lib(Action::Back);
+    assert_eq!(r.arm.edge, Some(("delete-confirm-cleanup", "library-cleanup")));
+    assert_eq!(titles(&r.scene).len(), 3, "Cancel: nothing moved");
+
+    r.lib(Action::DeleteAllSuggested);
+    r.lib(Action::ConfirmDeleteSuggested);
+    assert_eq!(r.arm.edge, Some(("delete-confirm-cleanup", "library-cleanup")));
+    assert!(r.effects.is_empty(), "nothing is sent while Undo stands");
     let v = view(&r.scene);
-    assert_eq!(v.empty.as_deref(), Some("Nothing to clean up right now."));
+    assert_eq!(v.empty.as_deref(), Some("Nothing to clean up right now."), "every row leaves at once");
     assert!(v.intro.is_none() && v.delete_all.is_none());
+    let undo = v.undo.clone().unwrap();
+    assert_eq!((undo.line.as_str(), undo.undo.label.as_str()), ("Deleted three videos.", "Undo"));
+
+    r.lib(Action::UndoDelete);
+    assert_eq!(titles(&r.scene).len(), 3, "Undo brings every row back");
+    assert!(r.effects.is_empty());
+
+    r.lib(Action::DeleteAllSuggested);
+    r.lib(Action::ConfirmDeleteSuggested);
+    let due = r.scene.next_wake.expect("the Undo line's end wakes the core");
+    r.tick_to(due.0);
+    assert!(r.has(|e| *e == Effect::Library(LibCmd::Delete(vec![rec("billing"), rec("acme"), rec("roadmap")]))), "sent together once the line goes");
+    assert!(view(&r.scene).undo.is_none());
+}
+
+#[test]
+fn delete_all_of_two_reads_both_and_leaves_out_one_pinned_since() {
+    let mut w = library(three(), 34_000_000_000);
+    w.session.fields.library.cleanup = true;
+    let mut r = Run::new(w);
+    r.lib(Action::PinRow(rec("roadmap"), true));
+    assert_eq!(view(&r.scene).delete_all.as_ref().unwrap().label, "Delete both…");
+    r.lib(Action::DeleteAllSuggested);
+    let sheet = r.scene.library.as_ref().unwrap().body.sheet.clone().unwrap();
+    assert_eq!(sheet.title, "Delete both suggested videos?");
+    assert_eq!(sheet.buttons[1].label, "Delete both");
+    r.lib(Action::ConfirmDeleteSuggested);
+    assert_eq!(view(&r.scene).undo.as_ref().unwrap().line, "Deleted both videos.");
+    r.send(Event::WindowClosed(WindowKind::Library));
+    assert!(r.has(|e| *e == Effect::Library(LibCmd::Delete(vec![rec("billing"), rec("acme")]))), "the pinned one stays; closing sends what waits");
 }
 
 #[test]
@@ -283,12 +326,12 @@ fn the_money_line_is_honest_about_the_free_ten_gigabytes() {
 }
 
 #[test]
-fn offline_keep_and_delete_grey_and_open_page_stays() {
+fn offline_pin_and_delete_grey_and_open_page_stays() {
     let mut w = library(three(), 34_000_000_000);
     w.session.fields.library.cleanup = true;
     let mut r = Run::new(w);
     r.send(Event::Os(OsNews::NetPath(false)));
-    assert!(!button(&r.scene, "Q3 roadmap walkthrough", &Action::KeepRow(rec("roadmap"))).enabled);
+    assert!(!button(&r.scene, "Q3 roadmap walkthrough", &Action::PinRow(rec("roadmap"), true)).enabled);
     assert!(!button(&r.scene, "Q3 roadmap walkthrough", &Action::DeleteSuggested(rec("roadmap"))).enabled);
     assert!(!view(&r.scene).delete_all.as_ref().unwrap().enabled);
     r.lib(Action::DeleteSuggested(rec("roadmap")));
@@ -324,6 +367,17 @@ fn the_suggestions_are_read_on_entry_and_by_scope() {
     assert!(!r.has(|e| matches!(e, Effect::Library(LibCmd::Suggest { .. }))));
     r.send(answer(three(), 34_000_000_000));
     assert!(line(&r.scene).is_none());
+    // …unless the space's auto-cleanup is on: its warning reaches every Mac (N75).
+    let mut w = library(three(), 34_000_000_000);
+    w.prefs.suggest_cleanup = false;
+    if let Fact::Known { v, .. } = &mut w.suggestions {
+        v.autoclean.days = 30;
+    }
+    w.suggestions = Fact::known(w.suggestions.get().unwrap().clone(), Mono(10));
+    w.session.windows.remove(&WindowKind::Library);
+    let mut r = Run::new(with_popover(w));
+    r.act(Action::OpenLibrary);
+    assert!(r.has(|e| matches!(e, Effect::Library(LibCmd::Suggest { .. }))));
 }
 
 #[test]
@@ -375,7 +429,7 @@ fn a_members_mac_shows_the_spaces_switch_greyed_and_no_bill() {
 
 #[test]
 fn every_n68_op_has_a_deadline_and_a_late_answer_after_disconnect_is_stale() {
-    for op in [Op::Suggest, Op::Keep, Op::Plays] {
+    for op in [Op::Suggest, Op::Pin, Op::Plays, Op::Autoclean] {
         assert_eq!(op.deadline_ms(), 60_000, "{op:?}");
     }
     let mut w = library(three(), 34_000_000_000);
