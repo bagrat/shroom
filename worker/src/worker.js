@@ -5123,7 +5123,7 @@ async function aiCaptionsRoute(request, env, id, url) {
 
 /** GET /_shroom/named/<id> (B209 c): the name the space gave the video, for its own owner's
  * page left open while it was on its way — the maker's or an owner's browser only. With what a
- * reload would put in the player (B240; Bagrat's hand test, 2026-10-25): the chapters on the
+ * reload would put in the player (B241; Bagrat's hand test, 2026-10-25): the chapters on the
  * bar's clock, the captions' track on the recording's, and the edit's own copy, whose clock
  * the track takes when that copy is what plays (the page adds the flag). `done` once the full
  * name is in (or naming gave up after none) and the take's voice cuts too, which are planned
@@ -5179,7 +5179,7 @@ const AI_CC_BUTTON = `<button type="button" class="cc" aria-label="${escapeHtml(
  * pointer, or above the thumb while a finger drags it and for 1.5 s after, the thumb grown
  * while the finger is on it; the chapter playing follows the time and joins the bar's
  * spoken value. Called again on a player it drew, it redraws the bar with the chapters given
- * (fewer than two take the bar away): what plays changed under an open page (B240).
+ * (fewer than two take the bar away): what plays changed under an open page (B241).
  * Captions are off until pressed, and the browser remembers. */
 const AI_PLAYER_JS = `function shroomChapters(p,ch){if(p.shroomCh)return p.shroomCh(ch);var sk=p.querySelector(".seek"),v=p.querySelector("video"),ctl=p.querySelector(".ctl"),tm=p.querySelector(".time");if(!sk||!ch||ch.length<2)return;
 var bar=document.createElement("div"),tip=document.createElement("div"),n=document.createElement("span"),secs=[],hide=0,touch=false,built=-1;
@@ -5237,7 +5237,7 @@ const aiNote = (ai) => (ai.line || ai.waiting ? `<p class="ainote" id="ainote"${
  * from the field, nothing more is taken. The chapters and captions that come with the full
  * name go into the player as it plays (the bar cut, the track and the Captions button added,
  * the video left alone), whether or not a title was typed meanwhile, once the player is there
- * (B240; Bagrat's hand test, 2026-10-25: they came only with a reload). The asking goes on
+ * (B241; Bagrat's hand test, 2026-10-25: they came only with a reload). The asking goes on
  * until the take's voice cuts are in too; and whenever what plays changes later (a cut landing,
  * a press on the strip), a page with chapters asks once more and redraws the bar to match.
  * Answers are taken in the order they were asked. @param {string} id @param {AiFace} ai */
