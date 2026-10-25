@@ -1347,9 +1347,11 @@ member ends the cookie on its next use.
 
 - `worker.js`: `IFACE = 2`, `VERSION = "0.1.9"` (both in ping). `member::IFACE_MIN = 2`.
   Within an iface, routes and fields only grow; a break takes a new path and an iface bump.
-- **`VERSION` moves with every page change** (D:B61). `page-version.test.js` holds
-  `worker/page-version.json`'s fingerprint of `src/worker.js` + `vendor/hls.min.js` per
-  VERSION. It equals the app's version (`tauri.conf.json`;
+- **A published `VERSION`'s page never changes** (D:B61, B248). `page-version.test.js`
+  holds `worker/page-version.json`'s fingerprint of `src/worker.js` + `vendor/hls.min.js`
+  per VERSION. While no build of the tree's VERSION is out, a page change re-stamps its
+  row; once `v<VERSION>` is tagged (a release or an early build), the row is frozen
+  (`tools/page-version-out.sh`, CI) and a page change takes the next VERSION. It equals the app's version (`tauri.conf.json`;
   `the_bundled_pages_version_is_the_apps`).
 - **Deploys compare `VERSION`, never `iface`.** `wire::may_deploy_over` allows only strictly
   older pages, never an unreadable one (D:B50). Wiring keeps a current page and re-places

@@ -758,8 +758,9 @@ Macs deploy — at wiring and once a launch (`wire::refresh_page`) — and only 
 `VERSION`, never down (D:B50, B53 a); naming's switch (`wire::set_ai`) puts the page up again
 with or without the AI binding and its schedule, and a refresh or a re-wiring keeps what the
 live page has (the ping says `"ai":true`). Members compare `iface` with `member::IFACE_MIN` (2)
-and show needs-update below it (DV #30). `VERSION` moves with every page change;
-`page-version.json` fingerprints each and a test enforces it (D:B61).
+and show needs-update below it (DV #30). A published `VERSION`'s page never changes;
+`page-version.json` fingerprints each, and a page change re-stamps an unpublished VERSION's
+row or takes the next VERSION once it's out (D:B61, B248).
 
 ---
 
