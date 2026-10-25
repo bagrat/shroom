@@ -137,10 +137,12 @@ describe("the landing", () => {
     assert.match(html, /\.mast, \.tiles \{[^}]*max-width: 1312px;[^}]*grid-template-columns: repeat\(12, minmax\(0, 1fr\)\); column-gap: 24px; \}/, "the masthead and the tiles share one grid");
     assert.match(html, /\.mast \.brand \{ grid-column: 1 \/ 7;/, "the wordmark from the grid's left edge");
     assert.match(html, /\.pitch \{ grid-column: 7 \/ 13; justify-self: end; text-align: right;/, "the headline to its right edge");
-    // The headline's top on the top of the wordmark's "m" (Bagrat, 2026-10-25): in the wordmark's
-    // own em and ex, so it holds in whatever font the visitor has.
+    // The headline's middle on the wordmark's (Bagrat, 2026-10-25): the middles of their
+    // x-heights meet, in the wordmark's own em and ex, so it holds in whatever font the visitor has.
     assert.match(html, /\.mast \{[^}]*align-items: start;/);
-    assert.match(html, /\.pitch \{ padding-top: calc\(var\(--mark\) \* 45 \/ 84 \+ 0\.36em - 1ex - 0\.013em\); \}\s*\.pitch h1 \{ text-box: trim-start cap alphabetic; \}/);
+    assert.match(html, /--h1: min\(38px, 2\.64vw\);\s*padding-top: calc\(var\(--mark\) \* 45 \/ 84 \+ 0\.36em - 0\.5ex\); \}/, "a bit smaller, and its middle on the wordmark's");
+    assert.match(html, /\.pitch h1 \{ text-box: trim-both ex alphabetic; margin-top: -0\.5ex; \}/);
+    assert.doesNotMatch(html, /class="punch"/, "no line under the headline (Bagrat, 2026-10-25)");
     assert.match(html, /\.stack\.l \{ grid-column: 1 \/ 8; \}/, "the video and Install: seven columns");
     assert.match(html, /\.stack\.r \{ grid-column: 8 \/ 13; \}/, "the price and the terms: five");
     assert.match(html, /\.stack\.l > \.install, \.stack\.r > \.terms \{ flex: 1 1 auto; \}/, "the shorter stack grows to meet the other, at install or the terms");
@@ -156,15 +158,22 @@ describe("the landing", () => {
   });
 
   it("gives each term its own icon, in the page's blue, in place of a tick (N74; Bagrat, 2026-10-25)", () => {
-    const list = html.match(/<ul class="tile terms">([\s\S]*?)<\/ul>/)?.[1] ?? "";
+    const list = html.match(/<section class="tile terms"[^>]*>[\s\S]*?<ul>([\s\S]*?)<\/ul>/)?.[1] ?? "";
     const icons = [...list.matchAll(/<li><span class="ic" data-icon="([a-z-]+)" aria-hidden="true"><svg viewBox="0 0 24 24">/g)].map((m) => m[1]);
     assert.deepEqual(icons, ["cloud-lock", "receipt", "users", "armchair-off", "broom-sparkles", "list-checks", "code-xml"]);
     assert.doesNotMatch(list, /M5 12\.5l4\.5 4\.5L19 7\.5/, "no ticks left");
     assert.match(html, /\.terms svg \{[^}]*stroke: var\(--frost\); stroke-width: 2;/, "blue, at the icons' own stroke (green was dropped)");
   });
 
+  it("titles the terms' tile in the price box's label style (N74; the title Bagrat's to pick)", () => {
+    assert.match(html, /<section class="tile terms" aria-labelledby="terms-h">\s*<h2 id="terms-h">([^<]+)<\/h2>\s*<ul>/);
+    const title = html.match(/<h2 id="terms-h">([^<]+)<\/h2>/)?.[1];
+    assert.equal(title, landing.said.find((l) => l.id === "landing.why-shroom").text);
+    assert.match(html, /\.terms h2 \{ margin: 0; font-size: 13px; font-weight: 600; letter-spacing: 0\.06em; text-transform: uppercase; color: var\(--quiet\); \}/, "like \u201cWhat would it cost?\u201d");
+  });
+
   it("says the terms in Bagrat's order, in their own tile under the price (N59, N74)", () => {
-    const terms = (html.match(/<ul class="tile terms">([\s\S]*?)<\/ul>/)?.[1] ?? "").match(/<li>[\s\S]*?<\/li>/g)?.map((li) => visible(li).trim()) ?? [];
+    const terms = (html.match(/<section class="tile terms"[^>]*>[\s\S]*?<ul>([\s\S]*?)<\/ul>/)?.[1] ?? "").match(/<li>[\s\S]*?<\/li>/g)?.map((li) => visible(li).trim()) ?? [];
     const ids = ["landing.your-videos-live-in", "landing.you-only-ever-pay", "landing.your-team-just-accepts", "landing.no-price-per-person",
       "landing.delete-old-videos-and", "landing.you-set-cloudflare-up", "landing.open-source-every-line"];
     assert.deepEqual(terms, ids.map((id) => landing.said.find((l) => l.id === id).text));

@@ -5,8 +5,6 @@ means the person you're helping and “we” means shroom.
 
 Record. Share. Pay-as-you-go.
 
-No monthly seat, sometimes completely free
-
 A team of 20, an hour each a month: $0.85 with 30-day cleanup, $11.85 kept a year.
 
 - Your videos live in your own Cloudflare account
