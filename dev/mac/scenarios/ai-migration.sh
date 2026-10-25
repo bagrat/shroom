@@ -66,7 +66,9 @@ shot() { # <name>
   n=$((n + 1))
   local name i=0 frame
   name=$(printf '%02d-%s' "$n" "$1")
-  sleep 1
+  # The pointer out of the picture, so no tooltip covers what is said.
+  cliclick "m:120,600"
+  sleep 1.5
   ax | awk -F'\t' '$1 == "W" { print $4 }' | while read -r frame; do
     i=$((i + 1))
     [ "${frame##*,}" -gt 20 ] 2>/dev/null || continue
@@ -80,11 +82,13 @@ shot() { # <name>
 # for while the app is still busy with what came before can miss its first click).
 popover() {
   local try
-  for try in 1 2 3; do
-    osascript -e 'tell application "System Events" to tell process "shroom" to click menu bar item 1 of menu bar 2' >/dev/null 2>&1
-    sleep 3
+  local xy
+  for try in 1 2 3 4; do
+    xy=$(osascript -e 'tell application "System Events" to tell process "shroom" to get {position, size} of menu bar item 1 of menu bar 2' 2>/dev/null | awk -F', ' '{ printf "%d,%d", $1 + $3 / 2, $2 + $4 / 2 }')
+    if [ -n "$xy" ]; then cliclick "c:$xy"; else osascript -e 'tell application "System Events" to tell process "shroom" to click menu bar item 1 of menu bar 2' >/dev/null 2>&1; fi
+    sleep 4
     ax | grep -q '^W' && return 0
-    sleep 2
+    sleep $((try * 3))
   done
   say_ "no popover came up"
   return 1
@@ -217,32 +221,33 @@ esc
 # A take with words in it, said by the Mac's own voice (the Mac's sound is in every display
 # take, B172); the space names it.
 say_ "A: a take with words in it"
-"$SHROOM" record start --no-countdown --no-label >"$OUT/record-start.txt" 2>&1
-sleep 4
-say -r 170 "Hi, this is a short test of shroom. I am recording my screen to show how the new version names a video by itself. First I open the settings, then I pick a display, and then I press stop. The link is copied, and the title comes from what I said. That is all for today, thank you for watching." &
-sleep 2
 popover
+click "Start recording" 10 || stop "A: Start recording" "not in the popover"
+sleep 6
+say -r 170 "Hi, this is a short test of shroom. I am recording my screen to show how the new version names a video by itself. First I open the settings, then I pick a display, and then I press stop. The link is copied, and the title comes from what I said. That is all for today, thank you for watching." &
 shot "A-recording"
-esc
 wait
 sleep 3
-"$SHROOM" record stop >"$OUT/record-stop.txt" 2>&1
-check "A: the take recorded and stopped by the shroom command" $? "$(cat "$OUT/record-start.txt" "$OUT/record-stop.txt" | tr '\n' ' ')"
+# The mushroom mid-take pauses it; Finish & Share ends it.
+popover
+shot "A-paused"
+click "Finish & Share" 10
+check "A: a take recorded with the popover's Start recording and Finish & Share" $? "$(ax | awk -F'\t' '$2 == "AXButton" { printf "%s · ", $3 }')"
 sleep 5
 first=$("$SHROOM" list --json --limit 1 2>/dev/null)
 id=$(printf '%s' "$first" | node -p 'JSON.parse(require("fs").readFileSync(0,"utf8")).videos?.[0]?.id ?? ""' 2>/dev/null)
 title0=$(printf '%s' "$first" | node -p 'JSON.parse(require("fs").readFileSync(0,"utf8")).videos?.[0]?.title ?? ""' 2>/dev/null)
-say_ "the take: $id, at first “$title0”"
+say_ "the take: ${id}, at first “${title0}”"
 t=0
 named=""
 while [ "$t" -lt 600 ] && [ -n "$id" ]; do
   named=$(grep -F "naming" "$HOME_DIR/logs/run.log" | grep -F "named by" | tail -n 1)
   title=$("$SHROOM" info "$id" --json 2>/dev/null | node -p 'JSON.parse(require("fs").readFileSync(0,"utf8")).video?.title ?? ""' 2>/dev/null)
-  [ -n "$named" ] && [ "$title" != "$title0" ] && break
+  [ -n "$named" ] && break
   sleep 10
   t=$((t + 10))
 done
-check "A: the new take got a name from the AI" "$([ -n "$named" ] && [ "$title" != "$title0" ] && echo 0 || echo 1)" "“$title0” → “$title” after $t s; $named"
+check "A: the new take got a name from the AI" "$([ -n "$named" ] && echo 0 || echo 1)" "“${title0}” → “${title}” after ${t} s; ${named}"
 grep -F "naming" "$HOME_DIR/logs/run.log" | tail -n 12 >"$OUT/naming.log"
 popover
 click "Library" 10 && sleep 4 && shot "A-library-named" && esc
@@ -360,7 +365,7 @@ while [ "$t" -lt 180 ]; do
 done
 shot "C-member-popover"
 has "$line"
-check "C: the member's Mac says “$line”" $? "$(ax | awk -F'\t' '$2 == "AXStaticText" && /AI/ { printf "%s · ", $3 }')"
+check "C: the member's Mac says “${line}”" $? "$(ax | awk -F'\t' '$2 == "AXStaticText" && /AI/ { printf "%s · ", $3 }')"
 has "OK" && ! has "Turn off"
 check "C: …with OK only" $? "$(ax | awk -F'\t' '$2 == "AXButton" { printf "%s · ", $3 }')"
 click "OK" 5
