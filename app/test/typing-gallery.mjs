@@ -53,7 +53,7 @@ const FIELDS = [
   { name: "name", page: "onboarding", scene: scene(onboarding, "name"), sel: "input.name", cap: 63 },
 ];
 const READY = { library: ".lib", settings: ".set", onboarding: "main.ob" };
-const SIZE = { library: { width: 680, height: 560 }, settings: { width: 600, height: 620 }, onboarding: windowPage("ONBOARDING", { width: 600, height: 680 }) };
+const SIZE = { library: { width: 680, height: 560 }, settings: windowPage("SETTINGS", { width: 600, height: 620 }), onboarding: windowPage("ONBOARDING", { width: 600, height: 680 }) };
 
 // What a person types: Bagrat's own word, and a longer one for typing ahead of the core
 // (every character one the link name keeps too).

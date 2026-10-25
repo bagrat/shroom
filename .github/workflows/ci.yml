@@ -134,7 +134,8 @@ jobs:
   #       LaunchServices, the test space's token in ~/.shroom-dev, Playwright's browsers.
   #   app/test/*-drive.mjs, *-gallery.mjs, update-drive.sh
   #       drive the dev app's own windows (the `shroom-dev` keychain identity, a session
-  #       with a screen).
+  #       with a screen). The galleries' Settings height check runs here on its own, cheap,
+  #       as app/test/settings-fit.mjs (the tests-fit lane).
   #   tests/l5/*
   #       a Tart VM cloned from a 30 GB golden image, and the `shroom-dev` identity.
   #   tests/l6/two-macs.mjs
@@ -241,6 +242,56 @@ jobs:
 
       - name: The platform-free crates
         run: .github/scripts/rust-tests.sh --ci-linux
+
+  # Settings fits its window (N78): every General, Videos and Space scene the core prints,
+  # rendered by the built page in WebKit, no taller than the window's page under the title
+  # bar — the windows gallery's own check, alone. General outgrew its window once, unseen,
+  # because the galleries run only by hand. Every run; about two minutes.
+  tests-fit:
+    name: Tests · Settings fits its window (Linux)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          package-manager-cache: false
+
+      - name: Restore npm's download cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.npm
+          key: npm-ubuntu-24.04-node${{ env.NODE_VERSION }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            npm-ubuntu-24.04-node${{ env.NODE_VERSION }}-
+
+      - name: Install the node packages
+        run: npm ci
+
+      - name: Rust toolchain (the workspace's rust-version)
+        run: |
+          version=$(sed -n 's/^rust-version = "\(.*\)"$/\1/p' Cargo.toml)
+          rustup toolchain install "$version" --profile minimal --no-self-update
+          rustup default "$version"
+
+      # The Linux Rust lane's cache, read only: the core's gallery example is built from it.
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          shared-key: tests-ubuntu-24.04
+          save-if: false
+
+      - name: The app's frontend
+        run: npm run build --workspace app
+
+      - name: WebKit, Playwright's
+        run: npx playwright install --with-deps webkit
+
+      - name: Settings fits its window
+        run: node app/test/settings-fit.mjs | tee -a "$GITHUB_STEP_SUMMARY"
 
   # The rest of the Rust workspace — the app, the recorder, the encoder, the uploader, the
   # updater, the CLI — and the media tests' real recordings, on a Mac.
@@ -387,7 +438,7 @@ jobs:
   # docs/RELEASING.md ask for.
   tests:
     name: Tests
-    needs: [route, tests-web, tests-rust-linux, tests-mac, tests-installer]
+    needs: [route, tests-web, tests-rust-linux, tests-fit, tests-mac, tests-installer]
     if: ${{ !cancelled() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -398,6 +449,7 @@ jobs:
           ROUTE: ${{ needs.route.result }}
           WEB: ${{ needs.tests-web.result }}
           RUST_LINUX: ${{ needs.tests-rust-linux.result }}
+          FIT: ${{ needs.tests-fit.result }}
           RUST_MAC: ${{ needs.tests-mac.result }}
           INSTALLER: ${{ needs.tests-installer.result }}
         run: |
@@ -413,6 +465,7 @@ jobs:
           lane "Route" "$ROUTE" yes
           lane "Tests · web (Linux)" "$WEB" yes
           lane "Tests · Rust (Linux)" "$RUST_LINUX" yes
+          lane "Tests · Settings fits its window (Linux)" "$FIT" yes
           lane "Tests · Rust and media (Mac)" "$RUST_MAC" "$mac"
           lane "Tests · installer (Mac)" "$INSTALLER" "$mac"
           exit "$bad"
