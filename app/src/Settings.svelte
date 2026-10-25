@@ -8,6 +8,7 @@
   import Sheet from "./library/Sheet.svelte";
   import General from "./settings/General.svelte";
   import Space from "./settings/Space.svelte";
+  import Videos from "./settings/Videos.svelte";
   import ReportSheet from "./settings/ReportSheet.svelte";
   import Members from "./members/Members.svelte";
   import { isSettings, type SettingsWindow } from "./settings/types";
@@ -94,6 +95,8 @@
       <main class="pane {b.pane.kind}">
         {#if b.pane.kind === "general"}
           <General g={b.pane} {send} />
+        {:else if b.pane.kind === "videos"}
+          <Videos v={b.pane} {send} />
         {:else if b.pane.kind === "space"}
           <Space sp={b.pane} {send} {activates} />
         {:else}

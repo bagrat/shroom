@@ -428,7 +428,7 @@ always runs them.
 
 | Job | What it does |
 |---|---|
-| Tests | the gate: green when every test lane this run needs is — **Tests · web (Linux)** (the spec's readable form current, the third-party notices, the frontend's build, typecheck and unit suite, the Worker's unit suite, typecheck and contract under workerd, the release notes, the landing page, the agent skill, the media readers), **Tests · Rust (Linux)** (the crates with no platform in them, `rust-tests.sh --ci-linux`), **Tests · Rust and media (Mac)** (the rest of the workspace and the real recordings, `rust-tests.sh --ci`) and **Tests · installer (Mac)** (the installer and the cask, with real `ditto` and `codesign`) |
+| Tests | the gate: green when every test lane this run needs is — **Tests · web (Linux)** (the spec's readable form current, the third-party notices, the frontend's build, typecheck and unit suite, the Worker's unit suite, typecheck and contract under workerd, the release notes, the landing page, the agent skill, the media readers), **Tests · Rust (Linux)** (the crates with no platform in them, `rust-tests.sh --ci-linux`), **Tests · Settings fits its window (Linux)** (every General, Videos and Space pane no taller than the window's page, `app/test/settings-fit.mjs`, N79), **Tests · Rust and media (Mac)** (the rest of the workspace and the real recordings, `rust-tests.sh --ci`) and **Tests · installer (Mac)** (the installer and the cask, with real `ditto` and `codesign`) |
 | Release build (ad hoc) | the release build with no identity (signed ad hoc), every bundle check, packaged as a stand-in. From `main` it saves the caches a tag needs |
 | Signing rehearsal | makes a throwaway identity with `tools/make-release-identity.sh`, imports and trusts it as a release would, signs a file and checks macOS would keep a permission by it |
 | Advisories | `cargo audit` against RustSec and `npm audit --audit-level=high` (DECISIONS B125): a known vulnerability in a pinned dependency fails it; an unmaintained-crate notice is listed, not fatal |
@@ -533,7 +533,8 @@ it — and a green `ci.yml` says nothing about them:
   through the installed dev app: the hosted Mac's **E2E full** workflow, or
   `tests/l5/heartbeat-vm.sh`.
 - **The app's window drives and galleries** (`app/test/`) — the hosted Mac
-  (`dev/mac/loop.sh`), or their Tart lanes.
+  (`dev/mac/loop.sh`), or their Tart lanes. (The galleries' Settings height check alone runs
+  in CI: `settings-fit.mjs`.)
 - **The clean-Mac lanes** (`tests/l5/`) — a Tart VM and the
   `shroom-dev` identity; and **two Macs** (`tests/l6/`).
 
