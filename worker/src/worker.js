@@ -3325,6 +3325,9 @@ const VIEW_SINCE = `${VIEWS}since.json`;
 const VIEW_BODY_MAX = 512;
 /** Hashes and tokens held for a day, per video: past these a play still counts, undeduped. */
 const VIEW_DAY_CAP = 1000;
+/** The most plays one viewer (the day's stand-in) counts for one video in a day: replays
+ * count, a stream of beacons from one place doesn't. Past it nothing is written. */
+export const VIEW_PLAYS_PER_VIEWER = 5;
 /** Days of per-day plays kept (the fading score reads them; older ones fold into `plays`). */
 const VIEW_DAYS_KEPT = 400;
 const VIEW_TOKEN = /^[A-Za-z0-9_-]{8,32}$/;
@@ -3348,9 +3351,11 @@ const dayOf = (ms) => iso(ms).slice(0, 10);
 /** @param {Request} request @param {Env} env @param {URL} url @param {string} id @param {number} now */
 async function viewBeacon(request, env, url, id, now) {
   // WebKit sends a beacon from a page being left as `Origin: null`; a named other origin,
-  // or the browser's own word that it's cross-site, is refused.
+  // or the browser's own word that it's cross-site, is refused — and so is a beacon that
+  // carries neither an Origin nor the browser's Sec-Fetch-Site: no page sent it.
   const origin = request.headers.get("origin");
-  if ((origin !== null && origin !== "null" && origin !== url.origin) || request.headers.get("sec-fetch-site") === "cross-site") return plain(403, "");
+  const site = request.headers.get("sec-fetch-site");
+  if ((origin !== null && origin !== "null" && origin !== url.origin) || site === "cross-site" || (origin === null && site === null)) return plain(403, "");
   /** @type {any} */
   let b;
   try { b = JSON.parse(new TextDecoder().decode(await readCapped(request, VIEW_BODY_MAX))); } catch { return plain(400, ""); }
@@ -3415,7 +3420,7 @@ async function viewerHash(env, request, id, now) {
 }
 
 /** A fresh record. @param {number} now */
-const emptyViews = (now) => ({ v: 1, plays: 0, viewers: 0, ends: 0, watch: Array(10).fill(0), watchedSec: 0, firstAt: null, lastAt: null, days: {}, today: { d: dayOf(now), h: [], t: {} } });
+const emptyViews = (now) => ({ v: 1, plays: 0, viewers: 0, ends: 0, watch: Array(10).fill(0), watchedSec: 0, firstAt: null, lastAt: null, days: {}, today: { d: dayOf(now), h: [], t: {}, p: {} } });
 
 /** Applies one beacon to a record (pure; exported for the tests).
  * @param {any} rec @param {{ e: string, t: string, f: number, viewer: string | null }} beacon @param {number} now @param {number} durationSec */
@@ -3423,10 +3428,17 @@ export function applyView(rec, beacon, now, durationSec) {
   const r = rec && rec.v === 1 ? structuredClone(rec) : emptyViews(now);
   const day = dayOf(now);
   if (r.today?.d !== day) r.today = { d: day, h: [], t: {} };
+  r.today.p ??= {};
   const tenth = (/** @type {number} */ f) => Math.min(9, Math.floor(f * 10));
   const known = Object.prototype.hasOwnProperty.call(r.today.t, beacon.t);
   if (beacon.e === "play") {
     if (known) return null; // this page load's play already counted
+    // One viewer's plays today, up to the ceiling; past it, nothing changes.
+    if (beacon.viewer) {
+      const n = r.today.p[beacon.viewer] ?? 0;
+      if (n >= VIEW_PLAYS_PER_VIEWER) return null;
+      if (n > 0 || Object.keys(r.today.p).length < VIEW_DAY_CAP) r.today.p[beacon.viewer] = n + 1;
+    }
     r.plays += 1;
     r.days[day] = (r.days[day] ?? 0) + 1;
     r.firstAt ??= iso(now);
