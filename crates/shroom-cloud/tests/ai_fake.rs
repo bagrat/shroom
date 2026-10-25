@@ -63,16 +63,16 @@ fn naming_on_puts_the_page_up_with_the_ai_and_a_schedule_each_minute_and_off_tak
     assert_eq!(ai_of(&fake), Some(false));
     assert!(fake.with(|s| s.schedules.get("v").is_none_or(Vec::is_empty)));
 
-    wire::set_ai(&c, &spec(&acc, &tok, &m), true).unwrap();
+    wire::set_ai(&c, &spec(&acc, &tok, &m), true, false).unwrap();
     assert_eq!(bound(&fake), ["r2_bucket", "secret_text", "ai"]);
     assert_eq!(fake.with(|s| s.scripts["v"][2]["name"].clone()), "AI");
     assert_eq!(fake.with(|s| s.schedules["v"].clone()), ["* * * * *"]);
     assert_eq!(ai_of(&fake), Some(true), "the page says so");
     // Turning it on again is the same page.
-    wire::set_ai(&c, &spec(&acc, &tok, &m), true).unwrap();
+    wire::set_ai(&c, &spec(&acc, &tok, &m), true, false).unwrap();
     assert_eq!(bound(&fake), ["r2_bucket", "secret_text", "ai"]);
 
-    wire::set_ai(&c, &spec(&acc, &tok, &m), false).unwrap();
+    wire::set_ai(&c, &spec(&acc, &tok, &m), false, false).unwrap();
     assert_eq!(bound(&fake), ["r2_bucket", "secret_text"]);
     assert_eq!(fake.with(|s| s.schedules["v"].clone()), Vec::<String>::new());
     assert_eq!(ai_of(&fake), Some(false));
@@ -85,7 +85,7 @@ fn a_refresh_after_an_update_keeps_naming_as_the_live_page_has_it() {
         let (acc, tok, old) = wired(&fake, "0.3.0");
         let c = cloud(&fake);
         if on {
-            wire::set_ai(&c, &spec(&acc, &tok, &old), true).unwrap();
+            wire::set_ai(&c, &spec(&acc, &tok, &old), true, false).unwrap();
         }
         let ours = module("0.4.0");
         let at = |h: &str| Space::at(h, &fake.page(h));
@@ -102,7 +102,7 @@ fn a_re_wiring_keeps_it_too() {
     let fake = Fake::start(State { subdomain: Some("bagrat".into()), ..State::fresh() });
     let (acc, tok, old) = wired(&fake, "0.3.0");
     let c = cloud(&fake);
-    wire::set_ai(&c, &spec(&acc, &tok, &old), true).unwrap();
+    wire::set_ai(&c, &spec(&acc, &tok, &old), true, false).unwrap();
     // The repair mood's wiring, with a newer page in hand: the script goes up again, the AI with it.
     let ours = module("0.4.0");
     let at = |h: &str| Space::at(h, &fake.page(h));
@@ -119,7 +119,7 @@ fn naming_is_only_ever_turned_on_for_shrooms_own_page() {
     let c = cloud(&fake);
     let (acc, tok) = fake.with(|s| (s.account_id(), s.token_id.clone()));
     let m = module("0.4.0");
-    assert!(matches!(wire::set_ai(&c, &spec(&acc, &tok, &m), true), Err(WireError::Foreign)));
+    assert!(matches!(wire::set_ai(&c, &spec(&acc, &tok, &m), true, false), Err(WireError::Foreign)));
     assert!(fake.with(|s| !s.schedules.contains_key("v")), "no schedule on someone else's Worker");
 }
 
@@ -127,4 +127,27 @@ fn naming_is_only_ever_turned_on_for_shrooms_own_page() {
 fn the_schedule_is_fenced_like_every_other_write() {
     let c = Cloud::new(TOKEN, Policy::TestNamespace { prefix: "shroom-e2e-".into() });
     assert!(c.put_schedules("acc", "v", &["* * * * *"]).is_err(), "a run token never touches a name outside its own");
+}
+
+#[test]
+fn auto_cleanup_shares_naming_s_one_schedule_and_each_keeps_it_while_the_other_is_on() {
+    // N75 (DECISIONS B232): the space's page deletes on the one schedule naming uses; turning
+    // auto-cleanup on puts it, naming off keeps it while auto-cleanup is on, and auto-cleanup
+    // off takes it away once naming is off too. The page itself isn't put up again.
+    let fake = Fake::start(State { subdomain: Some("bagrat".into()), ..State::fresh() });
+    let (acc, tok, m) = wired(&fake, "0.4.0");
+    let c = cloud(&fake);
+    let schedules = || fake.with(|s| s.schedules.get("v").cloned().unwrap_or_default());
+
+    wire::set_schedule(&c, &spec(&acc, &tok, &m), true).unwrap();
+    assert_eq!(schedules(), ["* * * * *"]);
+    assert_eq!(bound(&fake), ["r2_bucket", "secret_text"], "no AI for auto-cleanup");
+
+    wire::set_ai(&c, &spec(&acc, &tok, &m), true, true).unwrap();
+    wire::set_ai(&c, &spec(&acc, &tok, &m), false, true).unwrap();
+    assert_eq!(schedules(), ["* * * * *"], "naming off, auto-cleanup on: the schedule stays");
+    assert_eq!(bound(&fake), ["r2_bucket", "secret_text"]);
+
+    wire::set_schedule(&c, &spec(&acc, &tok, &m), false).unwrap();
+    assert!(schedules().is_empty(), "both off: no schedule");
 }

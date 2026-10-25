@@ -35,7 +35,7 @@ fn rec(id: &str) -> RecId {
 }
 
 fn remote(id: &str, title: &str, at: i64, length_ms: u64, live: bool) -> LibraryRow {
-    LibraryRow { rec: rec(id), title: title.into(), created: Wall(at), length_ms: Some(length_ms), live, owner: Some("m1".into()), poster: false, edited_ms: None }
+    LibraryRow { rec: rec(id), title: title.into(), created: Wall(at), length_ms: Some(length_ms), live, owner: Some("m1".into()), poster: false, edited_ms: None, pinned: false }
 }
 
 /// The space's records, as the mock draws them (and enough of them for six at once).
@@ -89,7 +89,30 @@ fn suggestion(id: &str, bytes: u64, plays: u32, quiet_days: u32) -> Suggestion {
 
 /// What the space said is worth deleting, with the space's size (N68).
 fn suggested(mut w: World, rows: Vec<Suggestion>, space_bytes: u64) -> World {
-    w.suggestions = Fact::known(Suggestions { counting: true, space_bytes, rows }, Mono(960));
+    w.suggestions = Fact::known(Suggestions { counting: true, space_bytes, rows, ..Default::default() }, Mono(960));
+    w
+}
+
+/// Auto-cleanup on at 30 days (N75), with two videos going in three days and, once, the
+/// round before it said.
+fn going(mut w: World) -> World {
+    if let Fact::Known { v, .. } = &mut w.suggestions {
+        v.autoclean = AutoClean { days: 30, last: Some(Cleaned { at: Wall(1_789_900_000_000), recs: vec![rec("a4")], bytes: 1_700_000_000 }) };
+        v.going = vec![
+            Going { rec: rec("a2"), bytes: 640_000_000, plays: 2, quiet_days: 31, stopped_early: false, deletes_at: Wall(1_790_259_200_000) },
+            Going { rec: rec("r19"), bytes: 1_100_000_000, plays: 0, quiet_days: 33, stopped_early: false, deletes_at: Wall(1_790_259_200_000) },
+        ];
+    }
+    w
+}
+
+/// A pinned video in the list (N75).
+fn with_pinned(mut w: World, id: &str) -> World {
+    if let Fact::Known { v, .. } = &mut w.library {
+        if let Some(r) = Arc::make_mut(v).iter_mut().find(|r| r.rec == rec(id)) {
+            r.pinned = true;
+        }
+    }
     w
 }
 
@@ -356,15 +379,53 @@ fn rows() -> Vec<(&'static str, World)> {
     rows.push(("library-cleanup", {
         let mut w = library_suggesting();
         w.session.fields.library.cleanup = true;
-        w.session.fields.library.undo = Some((rec("a1"), Mono(990)));
+        w.session.fields.library.undo = Some((vec![rec("a1")], Mono(990)));
         w
     }));
     rows.push(("library-cleanup", {
         let mut w = library_suggesting();
         w.session.fields.library.cleanup = true;
         for id in ["a3", "onb", "a1"] {
-            w.library_ops.landed.insert(rec(id), (Landed::Kept, Mono(980)));
+            w.library_ops.landed.insert(rec(id), (Landed::Pinned(true), Mono(980)));
         }
+        w
+    }));
+    // ── Pin, Delete all and auto-cleanup (N75) ──
+    rows.push(("library", with_pinned(library_suggesting(), "r502")));
+    rows.push(("library", going(library_suggesting())));
+    rows.push(("library", {
+        let mut w = with_pinned(library_suggesting(), "r502");
+        w.inflight.failures.insert(Op::Pin, Failure { class: FailClass::Transport, at: Mono(970), tries: 1 });
+        w
+    }));
+    rows.push(("library-cleanup", {
+        let mut w = going(library_suggesting());
+        w.session.fields.library.cleanup = true;
+        w
+    }));
+    rows.push(("library-cleanup", {
+        let mut w = library_suggesting();
+        w.session.fields.library.cleanup = true;
+        w.session.fields.library.undo = Some((vec![rec("a3"), rec("onb"), rec("a1")], Mono(990)));
+        w
+    }));
+    rows.push(("delete-confirm-cleanup", {
+        let mut w = library_suggesting();
+        w.session.fields.library.cleanup = true;
+        w.session.confirm = Some(Confirm::DeleteSuggested(vec![rec("a3"), rec("onb"), rec("a1")]));
+        w
+    }));
+    rows.push(("autoclean-warning", going(suggested(with_popover(library(ready())), vec![], 34_000_000_000))));
+    rows.push(("autoclean-warning", {
+        let mut w = going(suggested(with_popover(library(ready())), vec![], 34_000_000_000));
+        if let Fact::Known { v, .. } = &mut w.suggestions {
+            v.going.clear();
+        }
+        w
+    }));
+    rows.push(("autoclean-warning", {
+        let mut w = going(suggested(with_popover(library(ready())), vec![], 34_000_000_000));
+        w.session.fields.library.pinned_note = Some((2, Wall(1_790_259_200_000)));
         w
     }));
     rows.push(("library-empty", library_with(ready(), vec![])));
@@ -537,6 +598,34 @@ fn rows() -> Vec<(&'static str, World)> {
         w
     }));
     rows.push(("settings-general", suggested(settings_on(ready(), SettingsTab::General), vec![], 34_000_000_000)));
+    // Auto-cleanup (N75): the setting Mac's pop-up, another Mac's line, counting off, and the
+    // question turning it on asks.
+    rows.push(("settings-general", going(suggested(settings_on(ready(), SettingsTab::General), vec![], 34_000_000_000))));
+    rows.push(("settings-general", {
+        let mut w = going(suggested(settings_on(ready(), SettingsTab::General), vec![], 34_000_000_000));
+        w.space.token = false;
+        w
+    }));
+    rows.push(("settings-general", {
+        let mut w = going(suggested(settings_on(ready(), SettingsTab::General), vec![], 34_000_000_000));
+        if let Fact::Known { v, .. } = &mut w.suggestions {
+            v.counting = false;
+        }
+        w
+    }));
+    rows.push(("settings-general", {
+        let mut w = suggested(settings_on(ready(), SettingsTab::General), vec![], 34_000_000_000);
+        w.library_ops.autoclean = Some(30);
+        w
+    }));
+    rows.push(("autoclean-confirm", {
+        let mut w = suggested(settings_on(ready(), SettingsTab::General), vec![], 34_000_000_000);
+        if let Fact::Known { v, .. } = &mut w.suggestions {
+            v.idle = vec![Idle { rec: rec("a2"), quiet_days: 40 }, Idle { rec: rec("a3"), quiet_days: 90 }, Idle { rec: rec("a4"), quiet_days: 31 }, Idle { rec: rec("r19"), quiet_days: 35 }];
+        }
+        w.session.confirm = Some(Confirm::Autoclean(30));
+        w
+    }));
     rows.push(("settings-general", {
         let mut w = suggested(settings_on(ready(), SettingsTab::General), vec![], 34_000_000_000);
         w.inflight.failures.insert(Op::Plays, Failure { class: FailClass::Transport, at: Mono(970), tries: 1 });
@@ -737,7 +826,8 @@ fn surface_of(id: &str) -> Surface {
         Surface::Feedback
     } else if id.starts_with("editor") {
         Surface::Editor(EDITOR)
-    } else if id.starts_with("settings") || ["disconnect-confirm", "disconnect-confirm-no-token", "leave-confirm", "uninstall-confirm", "report-problem", "repair-mood", "re-entry-as-settings", "token-repair-mood", "token-other-account", "gate-card", "wiring", "space-storage-gone", "name-changed"].contains(&id) {
+    } else if id.starts_with("settings") || [
+            "autoclean-confirm","disconnect-confirm", "disconnect-confirm-no-token", "leave-confirm", "uninstall-confirm", "report-problem", "repair-mood", "re-entry-as-settings", "token-repair-mood", "token-other-account", "gate-card", "wiring", "space-storage-gone", "name-changed"].contains(&id) {
         Surface::Settings
     } else {
         Surface::Popover
@@ -1106,8 +1196,8 @@ fn library_rows_carry_their_state_words_and_their_doors() {
     let live = row(&s, "Where the 502s come from");
     assert_eq!(
         live.menu.iter().map(|b| b.label.as_str()).collect::<Vec<_>>(),
-        ["Copied", "Copy thumbnail", "Open page", "Edit…", "Rename", "Delete…"],
-        "N46: Copy thumbnail under Copy link; N63: Edit… after Open page"
+        ["Copied", "Copy thumbnail", "Open page", "Edit…", "Rename", "Pin", "Delete…"],
+        "N46: Copy thumbnail under Copy link; N63: Edit… after Open page; N75: Pin after Rename"
     );
     assert_eq!(live.gestures.double_click, Some(Action::OpenPage(rec("r502"))));
     assert_eq!(s.library.as_ref().unwrap().body.footer.as_deref(), Some("12 videos"));
@@ -1644,7 +1734,8 @@ fn a_closed_library_or_settings_comes_back_only_when_reached_for() {
 
 #[test]
 fn every_region5_op_has_a_deadline() {
-    for (op, ms) in [(Op::LibRefresh, 60_000), (Op::Rename, 60_000), (Op::Delete, 60_000), (Op::Suggest, 60_000), (Op::Keep, 60_000), (Op::Plays, 60_000), (Op::UpdateCheck, 10_000), (Op::UpdateDownload, 1_800_000), (Op::UpdateApply, 30_000)] {
+    for (op, ms) in [(Op::LibRefresh, 60_000), (Op::Rename, 60_000), (Op::Delete, 60_000), (Op::Suggest, 60_000), (Op::Pin, 60_000),
+        (Op::Autoclean, 60_000), (Op::Plays, 60_000), (Op::UpdateCheck, 10_000), (Op::UpdateDownload, 1_800_000), (Op::UpdateApply, 30_000)] {
         assert_eq!(op.deadline_ms(), ms, "{op:?}");
     }
     // A refresh that never answers ends at its deadline; the window still shows the cache.

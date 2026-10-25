@@ -3,12 +3,12 @@
 use serde::{Deserialize, Serialize};
 
 use crate::scene::Action;
+use crate::time::Wall;
 use crate::world::{
     Access, Account, Blocked, Device, Display, FailClass, Gates, InviteKind, LaunchKind, LibraryRow, Once, Op, OsSession, PendingInvite, Prefs,
     QuickProbe, Queued, Reach, RecId, Restore, Roster, SavedTake, SecretId, SpaceIdentity, TakeDir, TokenVerdict, UpdateOffer, WindowKind,
     WorkerFact,
 };
-use crate::time::Wall;
 
 /// What the shell read from disk at launch.
 #[derive(Debug, Clone, PartialEq)]
@@ -305,6 +305,8 @@ pub enum CloudNews {
     Refreshed { deployed: bool, ai: Option<bool> },
     /// Naming went on or off (N66): the page answers with the AI, or without it.
     AiSet(bool),
+    /// Auto-cleanup's setting landed: the days the space's page now has (N75).
+    Autoclean(u32),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -377,8 +379,8 @@ pub enum LibraryNews {
     Cleaned { under_tombstones: u32, orphans: u32, keys: u32 },
     /// What the space says is worth deleting, and whether it counts plays (N68).
     Suggested(crate::world::Suggestions),
-    /// A record's `keep` landed (N68).
-    Kept(RecId),
+    /// Each record's `keep` landed, on or off (N75's Pin).
+    Pinned(Vec<RecId>, bool),
     /// The space's play-count switch answered: where it stands now (N68).
     Plays(bool),
 }

@@ -9,7 +9,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use serde_json::{Value, json};
 use shroom_cloud::device::DeviceKey;
-use shroom_cloud::member::{Answer, CleanupItem, LibraryRequest, MintNext, Purpose, Scope, Space};
+use shroom_cloud::member::{Answer, AutoCleanState, CleanupItem, LibraryRequest, MintNext, Purpose, Scope, Space};
 use shroom_core::world::{Role, SpaceIdentity};
 use shroom_storage::s3::{Bucket, Client};
 use shroom_storage::sigv4::Credentials;
@@ -41,6 +41,8 @@ pub struct Suggestions {
 pub struct Video {
     pub row: Row,
     pub link: String,
+    /// When auto-cleanup will delete it (N75), while it's going.
+    pub deletes_at: Option<String>,
 }
 
 impl Video {
@@ -53,6 +55,8 @@ impl Video {
             "duration_sec": self.row.duration_sec,
             "owner": self.row.owner,
             "link": self.link,
+            "pinned": self.row.pinned,
+            "deletes_at": self.deletes_at,
         })
     }
 }
@@ -106,7 +110,7 @@ impl Door {
             }
         }
         let mut videos: Vec<Video> =
-            rows.into_values().filter(|r| seen.contains(&r.id) && r.state != State::Deleted).map(|row| Video { link: self.link(&row.id), row }).collect();
+            rows.into_values().filter(|r| seen.contains(&r.id) && r.state != State::Deleted).map(|row| Video { link: self.link(&row.id), row, deletes_at: None }).collect();
         videos.sort_by(|a, b| b.row.created_at.cmp(&a.row.created_at));
         Ok(videos)
     }
@@ -142,6 +146,24 @@ impl Door {
         let s3 = self.manage(id)?;
         let meta = library::rename(&s3, id, title).map_err(upload_fail)?;
         Ok(meta.title)
+    }
+
+    /// Pins a video or takes its pin off (N75): the record's `keep`, under a `manage`
+    /// credential as a rename is.
+    pub fn pin(&self, id: &str, on: bool) -> Result<(), Fail> {
+        let s3 = self.manage(id)?;
+        library::set_pinned(&s3, id, on).map_err(upload_fail)?;
+        Ok(())
+    }
+
+    /// The space's auto-cleanup (N75, `GET autoclean`): its days, and what's going when, in
+    /// this Mac's scope. A page from before N75 has none: off.
+    pub fn autoclean(&self) -> Result<AutoCleanState, Fail> {
+        match self.page.autoclean(&self.key) {
+            Answer::Refused(r) if r.status == 404 => Ok(AutoCleanState::default()),
+            Answer::NotShroom { status: 404 } => Ok(AutoCleanState::default()),
+            a => answer(a),
+        }
     }
 
     /// Deletes one video for good: the record becomes a tombstone (its link says
