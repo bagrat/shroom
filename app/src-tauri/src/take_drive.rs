@@ -183,7 +183,7 @@ impl TakeDrive {
     /// whether the Scene has the popover or the count up.
     pub fn probe(self) -> fn(&Scene) -> String {
         match self {
-            TakeDrive::LeftOut | TakeDrive::NotLeftOut => |s| format!("{}{}", s.state_ids().join(" | "), if s.popover.is_some() || s.countdown.is_some() || s.label.is_some() { OVERLAY_UP } else { "" }),
+            TakeDrive::LeftOut | TakeDrive::NotLeftOut => |s| format!("{}{}", s.state_ids().join(" | "), if s.popover.is_some() || s.countdown.is_some() || s.label.is_some() || s.toast.is_some() { OVERLAY_UP } else { "" }),
             _ => |s| s.state_ids().join(" | "),
         }
     }
@@ -1463,6 +1463,9 @@ const COUNT_SEEN: f64 = 0.9;
 /// band of the dark field holds part of the pill (1.6 % of the field on the hosted Mac's
 /// 1024 × 768 display, 2026-10-18) — more than twice what a clean frame may have lit.
 const LABEL_SEEN: f64 = 0.005;
+/// The least the marker toast lights (N78): it sits where the label does, a pill as tall and
+/// longer — the label's bar holds for it.
+const TOAST_SEEN: f64 = LABEL_SEEN;
 
 /// How much of the pattern's dark field is lit in one real captured frame of `display` that
 /// leaves nothing out (`shroom_testpattern::field_lit`).
@@ -1504,7 +1507,7 @@ fn with_panel<T: Send + 'static>(d: &D, which: presenter::Overlay, f: impl FnOnc
 /// `count_stays_in`: the reader's own proof — the count is taken off the list first.
 fn left_out(d: &D, count_stays_in: bool) -> Result<(), String> {
     use presenter::Overlay;
-    const PANELS: [(Overlay, &str); 3] = [(Overlay::Popover, "the popover"), (Overlay::Countdown, "the count"), (Overlay::Label, "the agent label")];
+    const PANELS: [(Overlay, &str); 4] = [(Overlay::Popover, "the popover"), (Overlay::Countdown, "the count"), (Overlay::Label, "the agent label"), (Overlay::Toast, "the marker toast")];
     d.wait("ready", 20, |s| s.tray.click == Click::OpenPopover)?;
     if !shroom_capture::has_permission() {
         return Err("recording isn't allowed for shroom on this Mac".into());
@@ -1621,6 +1624,24 @@ fn left_out_take(d: &D, display: u32) -> Result<(), String> {
     }
     let s = d.after(600);
     d.check("the take went on recording through it", s.tray.state == Some("recording"), s.state_ids().join(" | "));
+
+    // 4b. ⌥⌘M, as the shortcut posts it (N78): the toast comes up where the label sits, from
+    // the Scene and its own page, and a capture that leaves nothing out sees it there — then
+    // it goes on its own after its two seconds. The take leaves it out like the rest.
+    let root = d.rt.home.root.clone();
+    let Some(q) = d.on_main(move || objc2_foundation::MainThreadMarker::new().map(|mtm| probe::quick(mtm, &root).0)).flatten() else {
+        return Err("no quick probe for the shortcut".into());
+    };
+    d.rt.post(Event::MarkerShortcut(q));
+    let s = d.wait("the marker toast", 5, |s| s.toast.is_some())?;
+    let says = s.toast.as_ref().map(|t| t.line.clone());
+    d.check("⌥⌘M mid-take answers with the toast, “Marker dropped”", says.as_deref() == Some(shroom_core::copy::marker_toast(1).as_str()), format!("{says:?}"));
+    let up = with_panel(d, Overlay::Toast, |w| w.isVisible()) == Some(true);
+    let seen = lit_within(display, alone + TOAST_SEEN, 2)?;
+    d.check("…its panel is up, and a capture that leaves nothing out sees it over the pattern", up && seen - alone >= TOAST_SEEN, format!("up {up}, {}", pct_over(seen, alone)));
+    let gone = d.wait("the toast gone", 5, |s| s.toast.is_none());
+    let down = with_panel(d, Overlay::Toast, |w| !w.isVisible()) == Some(true);
+    d.check("…and it goes by itself after its two seconds, the take still recording", gone.is_ok_and(|s| s.tray.state == Some("recording")) && down, format!("panel down {down}"));
 
     // 5. A pause: its popover comes up as the capture ends. Then Stop.
     click(&d.app, &d.rt);

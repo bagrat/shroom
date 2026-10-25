@@ -14,7 +14,7 @@ mod support;
 use std::sync::Arc;
 
 use shroom_core::effect::{EditCmd, Effect, LibCmd, PersistOp, RecCmd, ShellCmd, UpdCmd};
-use shroom_core::event::{EditStep, EditorNews, Event, Key, LibraryNews, QuitVia, RecNews, Surface};
+use shroom_core::event::{CliOp, EditStep, EditorNews, Event, Key, LibraryNews, QuitVia, RecNews, Surface};
 use shroom_core::scene::{Action, Button, EditListView, EditorAfterView, EditorBody, EditorClosingView, EditorMediaView, LibraryRowView, LineTone, PausedBody, PopoverBody, Style};
 use shroom_core::time::{Fact, Mono, Wall};
 use shroom_core::world::*;
@@ -2190,8 +2190,8 @@ fn a_pause_you_didnt_make_offers_no_marker() {
     }
 }
 
-/// ⌥⌘M (N64): recording, a marker at that moment — nothing on screen answers, the take goes
-/// on; paused, Drop a marker while it's offered; anything else, nothing.
+/// ⌥⌘M (N64): recording, a marker at that moment — no popover opens (the toast answers, N78),
+/// the take goes on; paused, Drop a marker while it's offered; anything else, nothing.
 #[test]
 fn the_marker_shortcut_marks_the_take_and_drops_one_while_paused() {
     let mut w = ready();
@@ -2203,7 +2203,7 @@ fn the_marker_shortcut_marks_the_take_and_drops_one_while_paused() {
     assert_eq!(r.effects, vec![Effect::Recorder(RecCmd::Marker)]);
     let t = r.w.take.as_ref().unwrap();
     assert_eq!((t.markers, t.marked_at_pause, t.phase), (1, false, Phase::Recording));
-    assert!(r.scene.popover.is_none(), "nothing on screen answers it");
+    assert!(r.scene.popover.is_none(), "no popover opens for it");
     r.send(Event::MarkerShortcut(quick()));
     assert_eq!(r.w.take.as_ref().unwrap().markers, 2, "every press while recording is a marker");
 
@@ -2248,6 +2248,161 @@ fn the_marker_shortcut_marks_the_take_and_drops_one_while_paused() {
     assert!(r.scene.countdown.is_some());
     r.send(Event::MarkerShortcut(quick()));
     assert!(r.effects.is_empty() && r.w.take.is_none());
+}
+
+// ── the marker toast (N78) ──
+
+const TOAST_HINT: &str = "Only you see this, not the video";
+
+fn toast(r: &Run) -> Option<(String, String)> {
+    r.scene.toast.as_ref().map(|t| (t.line.clone(), t.hint.clone()))
+}
+
+fn says(line: &str) -> Option<(String, String)> {
+    Some((line.into(), TOAST_HINT.into()))
+}
+
+fn recording() -> Run {
+    let mut w = ready();
+    w.take = Some(take(Phase::Recording, 0));
+    let mut r = Run::new(w);
+    r.at(10_000);
+    r
+}
+
+/// ⌥⌘M while recording answers with the toast (N78): “Marker dropped” and its hint, top
+/// right of the display the take records, for two seconds.
+#[test]
+fn the_marker_shortcut_answers_with_the_toast_for_two_seconds() {
+    let mut r = recording();
+    assert_eq!(toast(&r), None, "nothing before a press");
+    r.send(Event::MarkerShortcut(quick()));
+    let pressed = r.t;
+    assert_eq!(toast(&r), says("Marker dropped"));
+    let t = r.scene.toast.clone().unwrap();
+    assert_eq!((Some(SourceId::Display(t.display)), t.under_label), (r.w.take.as_ref().map(|t| t.source), false), "on the display being recorded");
+    assert_eq!(r.scene.next_wake, Some(Mono(pressed + 2_000)), "the runner wakes when it goes");
+    assert!(r.scene.popover.is_none(), "the take goes on");
+    r.tick_to(pressed + 1_990);
+    assert_eq!(toast(&r), says("Marker dropped"), "still up just before its two seconds");
+    r.tick_to(pressed + 2_000);
+    assert_eq!(toast(&r), None, "gone at two seconds");
+}
+
+/// Every press is a marker, so every press answers, numbered by the take; a press while it
+/// shows swaps the words and starts its two seconds again — one toast, never a stack.
+#[test]
+fn a_press_while_it_shows_swaps_the_words_and_starts_again() {
+    let mut r = recording();
+    r.send(Event::MarkerShortcut(quick()));
+    let first = r.t;
+    r.tick_to(first + 1_500);
+    r.send(Event::MarkerShortcut(quick()));
+    let second = r.t;
+    assert_eq!(toast(&r), says("Marker 2 dropped"));
+    r.tick_to(first + 2_000);
+    assert_eq!(toast(&r), says("Marker 2 dropped"), "the first press's two seconds don't end the second's");
+    r.tick_to(second + 2_000);
+    assert_eq!(toast(&r), None);
+    r.at(second + 30_000);
+    r.send(Event::MarkerShortcut(quick()));
+    assert_eq!(toast(&r), says("Marker 3 dropped"), "numbered by the take, however far apart");
+    assert_eq!(r.w.take.as_ref().unwrap().markers, 3);
+}
+
+/// Paused: the popover open answers in its row, so no toast; put away, the toast; again at
+/// the same pause, nothing drops and the toast says so.
+#[test]
+fn paused_the_toast_answers_only_with_the_popover_put_away() {
+    let mut r = Run::new(paused_popover(Cause::User));
+    r.send(Event::MarkerShortcut(quick()));
+    assert!(r.has(|e| *e == Effect::Recorder(RecCmd::Marker)));
+    assert_eq!(button(&paused_body(&r).marker.unwrap()), ("Marker dropped", Style::Plain, false));
+    assert_eq!(toast(&r), None, "the row answers");
+    assert!(r.w.take.as_ref().unwrap().toast.is_none(), "no toast is held for later either");
+    r.send(Event::PopoverDismissed);
+    assert_eq!(toast(&r), None, "put away inside the two seconds: still none");
+
+    let mut w = paused_popover(Cause::User);
+    w.session.popover = None;
+    let mut r = Run::new(w);
+    r.send(Event::MarkerShortcut(quick()));
+    assert!(r.has(|e| *e == Effect::Recorder(RecCmd::Marker)));
+    assert_eq!(toast(&r), says("Marker dropped"));
+    r.send(Event::MarkerShortcut(quick()));
+    assert!(r.effects.is_empty() && r.w.take.as_ref().unwrap().markers == 1, "one marker per pause");
+    assert_eq!(toast(&r), says("Already marked at this pause"));
+    let again = r.t;
+    r.tick_to(again + 2_000);
+    assert_eq!(toast(&r), None);
+}
+
+/// A question open, or a pause shroom made: nothing drops and nothing shows, as before.
+#[test]
+fn nothing_dropped_shows_no_toast() {
+    // Restart's question outlives the popover put away: ⌥⌘M then drops nothing and shows
+    // nothing, a marker at this pause or not.
+    for marked in [false, true] {
+        let mut w = paused_popover(Cause::User);
+        w.take.as_mut().unwrap().marked_at_pause = marked;
+        let mut r = Run::new(w);
+        r.act(Action::Restart);
+        r.send(Event::PopoverDismissed);
+        assert!(r.w.session.confirm.is_some() && r.w.session.popover.is_none(), "the question open, the popover away");
+        let before = r.w.take.as_ref().unwrap().markers;
+        r.send(Event::MarkerShortcut(quick()));
+        assert!(r.effects.is_empty() && r.w.take.as_ref().unwrap().markers == before, "marked {marked}: nothing drops");
+        assert_eq!(toast(&r), None, "marked {marked}: nothing shows");
+    }
+    let mut w = paused_popover(Cause::MicLost);
+    w.session.popover = None;
+    let mut r = Run::new(w);
+    r.send(Event::MarkerShortcut(quick()));
+    assert_eq!(toast(&r), None);
+    let mut r = Run::new(ready());
+    r.send(Event::MarkerShortcut(quick()));
+    assert_eq!(toast(&r), None, "no take: a stray press");
+}
+
+/// It goes with the take, and while the popover shows.
+#[test]
+fn the_toast_goes_with_the_take_and_under_the_popover() {
+    // The tray click pauses; the popover that opens hides it.
+    let mut r = recording();
+    r.send(Event::MarkerShortcut(quick()));
+    r.click();
+    r.send(Event::Rec(RecNews::Paused { length_ms: 9_000 }));
+    assert!(r.scene.popover.is_some());
+    assert_eq!(toast(&r), None, "never beside the popover");
+    // Put away inside the two seconds: it doesn't come back.
+    r.send(Event::PopoverDismissed);
+    assert!(r.scene.popover.is_none());
+    assert_eq!(toast(&r), None, "gone, not hidden");
+    // Stopped inside its two seconds (the command's stop: no popover): gone while the take
+    // finishes, and with it.
+    let mut w = ready();
+    w.prefs.agent_recording = true;
+    w.take = Some(take(Phase::Recording, 0));
+    let mut r = Run::new(w);
+    r.at(10_000);
+    r.send(Event::MarkerShortcut(quick()));
+    assert_eq!(toast(&r), says("Marker dropped"));
+    r.send(Event::Cli { id: 1, op: CliOp::Stop });
+    assert!(matches!(r.w.take.as_ref().map(|t| t.phase), Some(Phase::Finalizing(_))), "the take is finishing");
+    assert!(r.scene.popover.is_none());
+    assert_eq!(toast(&r), None, "gone as the take finishes");
+}
+
+/// With the agent label up, the toast sits under it, on its display.
+#[test]
+fn the_toast_sits_under_the_agent_label() {
+    let mut w = ready();
+    w.take = Some(take(Phase::Recording, 0));
+    w.agent = Some(w.take.as_ref().unwrap().opened);
+    let mut r = Run::new(w);
+    r.send(Event::MarkerShortcut(quick()));
+    let (l, t) = (r.scene.label.clone().expect("the label"), r.scene.toast.clone().expect("the toast"));
+    assert_eq!((t.display, t.under_label), (l.display, true));
 }
 
 /// Markers the record holds show on the editor's timeline, at their times on the recording.
