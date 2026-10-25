@@ -395,7 +395,8 @@ describe("the early title (B205 f)", () => {
     // The owner's page has it from the start, in its field, and says where it came from.
     const html = await (await call(env, "GET", `/${REC}`, { headers: { cookie: cookieFor(M1, OWNER_MAC) } })).text();
     expect(fieldOf(html)).toMatchObject({ value: EARLY, autofocus: false });
-    expect(textOf(html)).toContain(COPY.named);
+    // With no line under it (Bagrat, 2026-10-25: removed).
+    expect(textOf(html)).not.toContain(NAMED_LINE);
     // Nothing more until the next minute is up: one early title a take.
     expect(await answerOf(env, { rec: REC, through: 10 })).toMatchObject({ step: "idle", more: false });
     expect(await answerOf(env, { rec: REC, through: 20 })).toMatchObject({ step: "heard" });
@@ -454,10 +455,10 @@ describe("the early title (B205 f)", () => {
     const env = await aiSpace({ name: answers });
     await firstMinute(env);
     const cookie = cookieFor(M1, OWNER_MAC);
-    expect(await (await call(env, "GET", `/_shroom/named/${REC}`, { headers: { cookie } })).json()).toEqual({ named: EARLY, titled: false, later: false, early: true });
+    expect(await (await call(env, "GET", `/_shroom/named/${REC}`, { headers: { cookie } })).json()).toEqual({ named: EARLY, titled: false, later: false, early: true, done: false, chapters: [], captions: null });
     expect(await (await call(env, "GET", `/${REC}`, { headers: { cookie } })).text()).toContain("/_shroom/named/");
     await finish(env);
-    expect(await (await call(env, "GET", `/_shroom/named/${REC}`, { headers: { cookie } })).json()).toEqual({ named: FULL, titled: false, later: false, early: false });
+    expect(await (await call(env, "GET", `/_shroom/named/${REC}`, { headers: { cookie } })).json()).toEqual({ named: FULL, titled: false, later: false, early: false, done: true, ...(await reloadShows(env, cookie)) });
   });
 
   it("an early title that fails is let go, and holds nothing up", async () => {
@@ -522,8 +523,8 @@ describe("the free day (B207)", () => {
     expect(record(env).naming).toBeUndefined();
     const named = await call(env, "GET", `/${REC}`, { headers: { cookie: cookieFor(M1, OWNER_MAC) } });
     const text = textOf(await named.text());
-    expect(text).toContain(COPY.named);
     expect(text).not.toContain(COPY.namingLater);
+    expect(text).not.toContain(NAMED_LINE);
   });
 
   it("a busy model is tried again in five minutes, with nothing said", async () => {
@@ -877,6 +878,18 @@ describe("edits (B208)", () => {
 
 /** The owner's title field as the page draws it: its value, its placeholder, and whether
  * the page opens in it. */
+/** The line that said where the name came from, gone from the owner's page (Bagrat, 2026-10-25). */
+const NAMED_LINE = "Named from what you said.";
+
+/** What the owner's page shows of the AI once it's reloaded: the chapters its bar is drawn
+ * with and its captions' track — what a page left open must come to, in place. */
+async function reloadShows(env, cookie) {
+  const html = await (await call(env, "GET", `/${REC}`, { headers: { cookie } })).text();
+  const island = html.match(/shroomChapters\(p,(\[\[.*?\]\])\)/)?.[1];
+  const track = html.match(/<track kind="captions" src="([^"]*)"(?: srclang="([^"]*)")?/);
+  return { chapters: island ? JSON.parse(island) : [], captions: track ? { src: track[1].replace(/&amp;/g, "&"), lang: track[2] ?? "" } : null };
+}
+
 function fieldOf(html) {
   const tag = html.match(/<input class="title" id="t"[^>]*>/)?.[0];
   expect(tag, "the title field is on the page").toBeTruthy();
@@ -887,12 +900,31 @@ function fieldOf(html) {
 /** The owner page's naming poll, run against a stand-in title field: `answer(j)` plays the
  * next `/_shroom/named/` answer; `type(v)` is the owner typing; `click()` puts the
  * keyboard in the field. The field's own events are recorded, as a browser fires them. */
-function namingScript(html, { value = fieldOf(html).value, focused = !!fieldOf(html).autofocus } = {}) {
+function namingScript(html, { value = fieldOf(html).value, focused = !!fieldOf(html).autofocus, live = true, playing = "/m/x/master.m3u8" } = {}) {
   const script = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]).find((s) => s.includes("/_shroom/named/"));
   expect(script, "the naming poll is on the page").toBeTruthy();
+  // The page's player functions are its own script's, defined beside the poll's.
+  expect(html, "the player's chapters and captions can be wired after the page opened").toMatch(/<script>[^<]*function shroomChapters\(/);
   const on = {};
   const named = [];
-  const document = { title: "", activeElement: null, getElementById: (id) => (id === "t" ? t : id === "ainote" ? note : null) };
+  /** A stand-in player: its video (playing on), its row with the speed button, what was wired. */
+  const el = (tag, attrs = {}) => ({ tag, ...attrs, children: [], appendChild(c) { this.children.push(c); c.parentNode = this; return c; } });
+  const video = el("video", { src: playing, currentSrc: playing, paused: false, currentTime: 12.5 });
+  const sp = el("button", { className: "sp" });
+  const row = el("div", { insertBefore(c, at) { this.children.splice(this.children.indexOf(at), 0, c); c.parentNode = this; return c; } });
+  row.children.push(sp); sp.parentNode = row;
+  const wired = { chapters: [], captions: 0 };
+  const player = { video, row, wired, classList: { has: new Set(), contains(k) { return this.has.has(k); }, add(k) { this.has.add(k); } },
+    querySelector: (q) => (q === "video" ? video : q === ".sp" ? sp : q === ".cc" ? row.children.find((c) => c.className === "cc") ?? null : null) };
+  const shroomChapters = (p, ch) => { wired.chapters.push(ch); p.classList.add("ch"); };
+  const shroomCaptions = () => { wired.captions++; };
+  const document = {
+    title: "", activeElement: null, getElementById: (id) => (id === "t" ? t : id === "ainote" ? note : null),
+    querySelector: (q) => (q === ".player" && live ? player : null),
+    createElement: (tag) => (tag === "div" ? el("div", {
+      set innerHTML(h) { const m = h.match(/^<button type="button" class="([^"]*)" aria-label="([^"]*)" aria-pressed="([^"]*)">/); this.firstChild = m ? el("button", { className: m[1], label: m[2], pressed: m[3], html: h }) : null; },
+    }) : el(tag)),
+  };
   const t = {
     value: value ?? "", placeholder: fieldOf(html).placeholder,
     addEventListener: (type, fn) => (on[type] ??= []).push(fn),
@@ -907,10 +939,11 @@ function namingScript(html, { value = fieldOf(html).value, focused = !!fieldOf(h
   let pending = null;
   const fetch = () => new Promise((ok) => { pending = ok; });
   const CustomEvent = function (type, init) { return { type, detail: init?.detail }; };
-  new Function("document", "fetch", "setTimeout", "CustomEvent", script)(document, fetch, (fn) => timers.push(fn), CustomEvent);
+  new Function("document", "fetch", "setTimeout", "CustomEvent", "shroomChapters", "shroomCaptions", script)(document, fetch, (fn) => timers.push(fn), CustomEvent, shroomChapters, shroomCaptions);
   const settled = () => new Promise((ok) => setTimeout(ok, 0));
   return {
-    t, note, document, named,
+    t, note, document, named, player, timers,
+    goLive() { live = true; },
     async answer(j) { timers.shift()(); pending({ ok: true, json: () => Promise.resolve(j) }); await settled(); await settled(); },
     click() { for (const fn of on.pointerdown ?? []) fn({}); document.activeElement = t; },
     type(v) { t.value = v; for (const fn of on.input ?? []) fn({}); },
@@ -952,7 +985,7 @@ describe("the page (B209)", () => {
     expect(await live(env)).not.toMatch(/shroomChapters\(p,\[/);
   });
 
-  it("the owner's page shows the named title in its field and says where it came from, until it's typed over", async () => {
+  it("the owner's page shows the named title in its field, with no line under it (Bagrat, 2026-10-25)", async () => {
     const env = await namedSpace();
     const cookie = cookieFor(M1, OWNER_MAC);
     let html = await live(env, cookie);
@@ -961,10 +994,11 @@ describe("the page (B209)", () => {
     expect(fieldOf(html)).toEqual({ value: "Planning the spring launch", placeholder: "Untitled — Oct 2", autofocus: false });
     // Leaving the field untouched saves nothing: the name stays the space's (B209 c).
     expect(html).toContain(`"saved":"Planning the spring launch"`);
-    expect(textOf(html)).toContain(COPY.named);
+    expect(textOf(html)).not.toContain(NAMED_LINE);
+    expect(html).not.toContain('id="ainote"');
     await env.BUCKET.put(metaKey(REC), JSON.stringify({ ...record(env), title: "Mine", titled: true }));
     html = await live(env, cookie);
-    expect(textOf(html)).not.toContain(COPY.named);
+    expect(fieldOf(html).value).toBe("Mine");
   });
 
   it("the owner's page waits for a name on its way, and asks only its own space", async () => {
@@ -976,11 +1010,15 @@ describe("the page (B209)", () => {
     expect(html).toContain("/_shroom/named/");
     const res = await call(env, "GET", `/_shroom/named/${REC}`, { headers: { cookie } });
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ named: "", titled: false, later: false, early: false });
+    expect(await res.json()).toEqual({ named: "", titled: false, later: false, early: false, done: false, chapters: [], captions: null });
     expect((await call(env, "GET", `/_shroom/named/${REC}`)).status).toBe(403);
     expect((await call(env, "GET", `/_shroom/named/${REC}`, { headers: { cookie: cookieFor(MHER, MHER_MAC) } })).status).toBe(403);
     await finish(env);
-    expect(await (await call(env, "GET", `/_shroom/named/${REC}`, { headers: { cookie } })).json()).toEqual({ named: "Planning the spring launch", titled: false, later: false, early: false });
+    // With what a reload would show: the chapters on the bar's clock and the captions' track.
+    const shows = await reloadShows(env, cookie);
+    expect(shows.chapters.length).toBeGreaterThan(1);
+    expect(shows.captions).toEqual({ src: expect.stringMatching(new RegExp(`^/_shroom/cc/${REC}\\?r=`)), lang: "en" });
+    expect(await (await call(env, "GET", `/_shroom/named/${REC}`, { headers: { cookie } })).json()).toEqual({ named: "Planning the spring launch", titled: false, later: false, early: false, done: true, ...shows });
   });
 
   /** An untitled take's owner page, opened while its name is on its way. */
@@ -1002,7 +1040,8 @@ describe("the page (B209)", () => {
     expect(p.document.activeElement).toBeNull();
     // The page's save hears the name first, so letting go saves nothing.
     expect(p.named).toEqual(["Planning the spring launch"]);
-    expect(p.note).toMatchObject({ textContent: COPY.named, hidden: false });
+    // Nothing said under it (Bagrat, 2026-10-25: the named-from line removed).
+    expect(p.note).toMatchObject({ textContent: "", hidden: true });
   });
 
   it("the full name takes the early one's place in an untouched field", async () => {
@@ -1036,6 +1075,69 @@ describe("the page (B209)", () => {
   it("the page's save takes the name as what's saved, so an untouched field writes nothing", async () => {
     const html = await waitingPage();
     expect(html).toMatch(/t\.addEventListener\("shroom:named",function\(e\)\{saved=e\.detail\}\)/);
+  });
+
+  // Bagrat's hand test, 2026-10-25: the name came in place, the chapters and captions only
+  // after a refresh. They come with the full name, and go in where the reload would put them.
+  const CHAPTERS = [[0, "Where we are"], [61.3, "The budget"]];
+  const CAPTIONS = { src: `/_shroom/cc/${REC}?r=0%3A0`, lang: "en" };
+  const full = (over = {}) => ({ named: "Planning the spring launch", titled: false, later: false, early: false, done: true, chapters: CHAPTERS, captions: CAPTIONS, ...over });
+
+  it("the chapters and captions that come with the name go into the player in place, as it plays", async () => {
+    const p = namingScript(await waitingPage());
+    await p.answer({ named: "Spring", titled: false, later: false, early: true, done: false, chapters: [], captions: null });
+    expect(p.player.wired).toEqual({ chapters: [], captions: 0 });
+    await p.answer(full());
+    // The bar cut into its chapters, once.
+    expect(p.player.wired.chapters).toEqual([CHAPTERS]);
+    // The captions' track on the video, the Captions button before the speed, wired once.
+    expect(p.player.video.children).toEqual([expect.objectContaining({ tag: "track", kind: "captions", src: CAPTIONS.src, srclang: "en", label: COPY.captions })]);
+    expect(p.player.row.children.map((c) => c.className)).toEqual(["cc", "sp"]);
+    expect(p.player.row.children[0]).toMatchObject({ label: COPY.captions, pressed: "false" });
+    expect(p.player.wired.captions).toBe(1);
+    // Playback isn't touched: the same source, still playing, where it was.
+    expect(p.player.video).toMatchObject({ src: "/m/x/master.m3u8", paused: false, currentTime: 12.5 });
+    expect(p.t.value).toBe("Planning the spring launch");
+    // Done: nothing more is asked.
+    expect(p.timers).toHaveLength(0);
+  });
+
+  it("the captions follow the clock of what plays: an edit's own copy takes the edited one", async () => {
+    const p = namingScript(await waitingPage(), { playing: `/m/${REC}/edit-3.mp4` });
+    await p.answer(full());
+    expect(p.player.video.children[0].src).toBe(`${CAPTIONS.src}&e=1`);
+  });
+
+  it("a title typed while the name is on its way still gets the chapters and captions", async () => {
+    const p = namingScript(await waitingPage());
+    p.click();
+    p.type("Mine");
+    p.t.dispatchEvent({ type: "change" });
+    await p.answer({ named: "", titled: true, later: false, early: false, done: false, chapters: [], captions: null });
+    expect(p.timers).toHaveLength(1);
+    await p.answer(full({ named: "", titled: true }));
+    expect(p.t.value).toBe("Mine");
+    expect(p.player.wired.chapters).toEqual([CHAPTERS]);
+    expect(p.player.wired.captions).toBe(1);
+  });
+
+  it("a name that lands before the player does is dressed once the player is there", async () => {
+    const p = namingScript(await waitingPage(), { live: false });
+    await p.answer(full());
+    expect(p.t.value).toBe("Planning the spring launch");
+    expect(p.timers).toHaveLength(1);
+    p.goLive();
+    await p.answer(full());
+    expect(p.player.wired.chapters).toEqual([CHAPTERS]);
+    expect(p.timers).toHaveLength(0);
+  });
+
+  it("a name with neither chapters nor captions ends the asking, touching nothing", async () => {
+    const p = namingScript(await waitingPage());
+    await p.answer(full({ chapters: [], captions: null }));
+    expect(p.player.wired).toEqual({ chapters: [], captions: 0 });
+    expect(p.player.video.children).toEqual([]);
+    expect(p.timers).toHaveLength(0);
   });
 
   it("a space without the AI never asks", async () => {
