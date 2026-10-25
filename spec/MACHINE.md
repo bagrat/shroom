@@ -4,7 +4,7 @@
 
 The machine: every state, edge, rule, said-line and law of shroom v1 — the spec (DECISIONS B133). Sessions edit it; MACHINE.md and the canvas's machine boards are generated from it.
 
-167 states · 354 edges · 26 rules · 779 said-lines · 16 laws · 92 ledger rows.
+167 states · 354 edges · 26 rules · 781 said-lines · 16 laws · 92 ledger rows.
 
 Status: **ratified** is Bagrat's; **provisional** is designed or built and awaits him (each cites its row: `#n` is a DEVIATIONS row of docs/DECISIONS.md, `Bn` a decision, `Nn`/`Un`/`Pn` a ledger row below). `SM:n` in older citations is a line of the retired spec text, kept in history/spec/UX-STATEMACHINE.md.
 
@@ -3818,6 +3818,7 @@ The welcome window's twin, which already knows it's an invite. It shows the hero
 | Said | Role | Copy | Note |
 |---|---|---|---|
 | “Bagrat invited you to record with shroom.” | title | provisional | The inviter's name varies: the inviting Mac account's name in macOS's short, locale-aware form (N29). |
+| “Their space: v.myshroom.workers.dev” | line | ratified | The space's address the invite link points at, a quiet line under the title; the address varies. Bagrat, 2026-10-25, relayed by the orchestrator: approved the board “Joining — welcome and switch spaces?: “Their space: <address>” under who invited you” as drawn, with “Their space:”. |
 | “shroom records your screen and hands you a link to share. Your videos will live in Bagrat's space, where Bagrat can see them too — nothing to sign up for, nothing to pay.” | line | provisional | The N5 truth mirrored for the invitee, said once. The inviter's name varies. |
 | “One step before your first video: let macOS allow recording. About a minute, once.” | line | provisional |  |
 | “Start shroom when you log in” | field-label | ratified | The welcome's ratified U4 checkbox label, reused. Pre-checked. |
@@ -4128,6 +4129,7 @@ The invite window asks before anything moves. There is one space per Mac, so joi
 | Said | Role | Copy | Note |
 |---|---|---|---|
 | “Bagrat invited you to record with shroom.” | title | provisional | The inviter's name varies. |
+| “Their space: v.myshroom.workers.dev” | line | ratified | The space's address the invite link points at, a quiet line under the title; the address varies. Bagrat, 2026-10-25, relayed by the orchestrator: approved the board “Joining — welcome and switch spaces?: “Their space: <address>” under who invited you” as drawn, with “Their space:”. |
 | “This Mac records to v.mine.workers.dev now. Joining moves it to Bagrat's space — your videos in v.mine.workers.dev stay right where they are.” | line | provisional | The current space's address varies (example v.mine.workers.dev). The inviter's name varies. |
 | “You can come back to your own space anytime by setting it up again with a fresh token — everything will be there.” | line | provisional | One more line, shown only when this Mac is its space's only token-holder. |
 | “You've started setting up your own space. Joining Bagrat's instead sets that aside — your Cloudflare stays as it is.” | line | provisional | The one different line for a half-set-up space (the invite arrives mid-wizard). |
