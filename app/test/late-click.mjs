@@ -88,6 +88,17 @@ async function clickAt(locator) {
   await ctx.close();
 }
 
+// A click that took nothing (on a line, between controls) is no change of the person's: the
+// banner landing right after it still holds back the click that follows.
+{
+  const { ctx, page } = await open("popover", config, { width: 320, height: 720 });
+  await clickAt(page.locator(".hint"));
+  await land(page, ready);
+  await clearAndClick(page, page.locator(".banner").getByRole("button", { name: "Update", exact: true }));
+  check("popover: a click on a line just before the banner doesn't excuse it", (await acts(page)).length === 0, (await acts(page)).join(","));
+  await ctx.close();
+}
+
 // The keyboard is never held back: focus doesn't move with the layout.
 {
   const { ctx, page } = await open("popover", config, { width: 320, height: 720 });

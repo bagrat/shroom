@@ -67,9 +67,11 @@ done
 echo "$n clicks"
 log="$home/logs/run.log"
 cp "$log" "$OUT/run.log" 2>/dev/null
-staged=$(awk '/ core update-staged /{print $1; exit}' "$log" 2>/dev/null)
-took=$(awk '/ core update \[/{print $1; exit}' "$log" 2>/dev/null)
+# Each line: the wall clock, then the app's own clock in ms.
+staged=$(awk '/ core update-staged /{print $2; exit}' "$log" 2>/dev/null)
+took=$(awk '/ core update \[/{print $2; exit}' "$log" 2>/dev/null)
 echo "update-staged at ${staged:-?} ms, update taken at ${took:-?} ms"
+case "$staged$took" in *[!0-9]*) no "the log's clock isn't a number: ${staged:-?} and ${took:-?}"; staged= ;; esac
 if [ -z "$staged" ] || [ -z "$took" ]; then
   no "the log hasn't both: Update never came, or was never taken"
 else

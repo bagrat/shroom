@@ -46,9 +46,9 @@ export function steady(root: HTMLElement = document.body): () => void {
   }
 
   const onClick = (e: MouseEvent) => {
+    const el = (e.target as Element | null)?.closest?.(CONTROLS);
     // A keyboard's click (Space, Return on a button) carries no pointer count.
     if (e.detail > 0) {
-      const el = (e.target as Element | null)?.closest?.(CONTROLS);
       const at = el ? moved.get(el) : undefined;
       if (at !== undefined && performance.now() - at < STEADY_MS) {
         e.preventDefault();
@@ -56,7 +56,9 @@ export function steady(root: HTMLElement = document.body): () => void {
         return;
       }
     }
-    own = performance.now();
+    // Only a click that took a control changes anything; one on a line or between controls
+    // excuses nothing that lands after it.
+    if (el) own = performance.now();
   };
   const onKey = () => {
     own = performance.now();
