@@ -60,6 +60,14 @@ click() { # <label> [seconds to wait for it]
   cliclick "c:$xy"
   say_ "clicked '$1' at $xy"
 }
+# A switch: its row is the element, the toggle sits at the row's right end.
+toggle() { # <label>
+  local frame
+  frame=$(ax | awk -F'\t' -v l="$1" '$2 == "AXCheckBox" && $3 == l { print $5; exit }')
+  [ -n "$frame" ] || { say_ "no switch '$1'"; return 1; }
+  cliclick "c:$(echo "$frame" | awk -F, '{ printf "%d,%d", $1 + $3 - 30, $2 + $4 / 2 }')"
+  say_ "switched '$1'"
+}
 value_of() { ax | awk -F'\t' -v l="$1" '$1 != "W" && $2 != "AXStaticText" && $3 == l { print $6; exit }'; }
 # Every shroom window, whole, at its own frame; and the screen.
 shot() { # <name>
@@ -259,16 +267,15 @@ popover
 has "AI features are turned on."
 check "A: the banner stays until OK or Turn off" $? "$(ax | awk -F'\t' '$2 == "AXStaticText" && /AI/ { printf "%s · ", $3 }')"
 click "Turn off" || stop "A: Turn off" "not clickable"
-sleep 2
-shot "A-turning-off"
+wait_for "AI is off" 60
+shot "A-turned-off-said"
+has "AI is off — turn it on any time in Settings."
+check "A: …and says so: AI is off — turn it on any time in Settings." $? "$(ax | awk -F'\t' '$2 == "AXStaticText" && /AI/ { printf "%s · ", $3 }')"
 ai=$(wait_ai off 120)
 check "A: Turn off took the AI off the page (its ping)" "$([ "$ai" = off ] && echo 0 || echo 1)" "ping: $ai"
 esc
 popover
-wait_for "AI is off" 20
 shot "A-turned-off"
-has "AI is off — turn it on any time in Settings."
-check "A: …and says so: AI is off — turn it on any time in Settings." $? "$(ax | awk -F'\t' '$2 == "AXStaticText" && /AI/ { printf "%s · ", $3 }')"
 ! has "AI features are turned on."
 check "A: the banner is gone" $? ""
 click "Settings" 10 || stop "A: Settings" "no gear in the popover"
@@ -320,7 +327,7 @@ check "B: Settings · Space's AI switch is off" "$([ "$v" = 0 ] || [ "$v" = fals
 
 # ── C ─────────────────────────────────────────────────────────────────────────────────
 say_ "C: the owner turns the AI on in Settings; a member joins"
-click "AI for new videos" 5
+toggle "AI for new videos"
 ai=$(wait_ai on 120)
 shot "C-owner-switch-on"
 check "C: the owner's switch put the AI on the page" "$([ "$ai" = on ] && echo 0 || echo 1)" "ping: $ai"
