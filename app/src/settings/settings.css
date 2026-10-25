@@ -470,3 +470,19 @@
     background-color: transparent;
   }
 }
+
+/* N74: Delete videos nobody watches — a pop-up at the row's end. */
+.videos .pop {
+  flex: none;
+  font: inherit;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--card-raised, var(--card));
+  color: var(--fg);
+}
+
+.videos .pop:disabled {
+  color: var(--muted);
+}

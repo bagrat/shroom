@@ -36,7 +36,7 @@ use shroom_cloud::member::{Answer, CleanupPage, LibraryPage, LibraryRequest, Min
 use shroom_core::effect::LibCmd;
 use shroom_core::event::{Event, LibraryNews};
 use shroom_core::time::Wall;
-use shroom_core::world::{FailClass, LibraryRow, Op, RecId, Role, SpaceIdentity, Suggestion, Suggestions};
+use shroom_core::world::{AutoClean, Cleaned, FailClass, Going, Idle, LibraryRow, Op, RecId, Role, SpaceIdentity, Suggestion, Suggestions};
 use shroom_storage::s3::{Client, S3Error};
 use shroom_upload::library::{self, Cache, Row};
 use shroom_upload::keys;
@@ -365,6 +365,7 @@ pub fn row(r: &Row) -> LibraryRow {
         owner: r.owner.clone(),
         poster: false,
         edited_ms: r.edited_sec.filter(|s| s.is_finite() && *s >= 0.0).map(|s| (s * 1000.0).round() as u64),
+        pinned: r.pinned,
     }
 }
 
@@ -436,6 +437,22 @@ fn spawn_with(rt: Runtime, sweep: impl FnMut(&Runtime, &SpaceIdentity) -> Result
                     }
                     continue;
                 }
+                // The editor's mark for the space's auto-cleanup (N74), under the device key: a
+                // miss is logged, never failed into the core — it marks again in five minutes.
+                if let LibCmd::Editing(recs) = &cmd {
+                    let marked = rt.home.read_json::<SpaceIdentity>("space.json").ok_or(FailClass::Refused).and_then(|space| worker_door(&rt, &space));
+                    match marked {
+                        Ok((key, page)) => {
+                            for rec in recs {
+                                if let other @ (Answer::Refused(_) | Answer::Unanswered(_) | Answer::NotShroom { .. }) = page.editing(&key, &rec.0) {
+                                    rt.log(&format!("library editing {}: {other:?}", super::short(&rec.0)));
+                                }
+                            }
+                        }
+                        Err(class) => rt.log(&format!("library editing: no door ({class:?})")),
+                    }
+                    continue;
+                }
                 let op = match &cmd {
                     LibCmd::LoadCache => Op::LibCache,
                     LibCmd::Refresh => Op::LibRefresh,
@@ -443,8 +460,10 @@ fn spawn_with(rt: Runtime, sweep: impl FnMut(&Runtime, &SpaceIdentity) -> Result
                     LibCmd::Delete(_) => Op::Delete,
                     LibCmd::Cleanup => Op::Cleanup,
                     LibCmd::Suggest { .. } => Op::Suggest,
-                    LibCmd::Keep(_) => Op::Keep,
+                    LibCmd::Pin(..) => Op::Pin,
                     LibCmd::Plays(_) => Op::Plays,
+                    // Answered above: it asks nothing of the core.
+                    LibCmd::Editing(_) => continue,
                 };
                 // Read before the space: a wipe between the two shows as a newer generation.
                 let generation = *rt.space_gen.lock().unwrap();
@@ -481,9 +500,9 @@ fn spawn_with(rt: Runtime, sweep: impl FnMut(&Runtime, &SpaceIdentity) -> Result
                 let ok = match (&cached.as_ref().expect("a door").door, cmd) {
                     // Answered above: a cache load at once, a sweep on its own lane, and
                     // what goes to the space's Worker whatever the door.
-                    (_, LibCmd::LoadCache | LibCmd::Cleanup | LibCmd::Suggest { .. } | LibCmd::Plays(_)) => Ok(()),
-                    (Door::Token(s3), LibCmd::Keep(rec)) => keep(&rt, s3, rec),
-                    (Door::Device { key, page }, LibCmd::Keep(rec)) => manage(&rt, &space, key, page, &rec.0).and_then(|s3| keep(&rt, &s3, rec)),
+                    (_, LibCmd::LoadCache | LibCmd::Cleanup | LibCmd::Suggest { .. } | LibCmd::Plays(_) | LibCmd::Editing(_)) => Ok(()),
+                    (Door::Token(s3), LibCmd::Pin(recs, on)) => pin(&rt, |_| Ok(Held::Shared(s3)), recs, on),
+                    (Door::Device { key, page }, LibCmd::Pin(recs, on)) => pin(&rt, |rec| manage(&rt, &space, key, page, rec).map(Held::Own), recs, on),
                     (Door::Token(s3), LibCmd::Refresh) => refresh(&rt, &space, s3, generation),
                     (Door::Token(s3), LibCmd::Rename(rec, title)) => rename(&rt, &space, s3, rec, &title, generation),
                     (Door::Token(s3), LibCmd::Delete(recs)) => delete(&rt, &space, |_| Ok(Held::Shared(s3)), |id| seal_here(s3, id), recs, generation),
@@ -529,7 +548,7 @@ fn log_ai(rt: &Runtime, before: &BTreeMap<String, Option<String>>, rows: &BTreeM
 
 /// This Mac's device key and its space's Worker (N68): every Mac has both once enrolled,
 /// the token Mac too.
-fn worker_door(rt: &Runtime, space: &SpaceIdentity) -> Result<(DeviceKey, Space), FailClass> {
+pub(super) fn worker_door(rt: &Runtime, space: &SpaceIdentity) -> Result<(DeviceKey, Space), FailClass> {
     let key = super::member::device_key(rt).filter(|k| k.host == space.host).ok_or_else(|| {
         rt.log("library: no device key for this Mac's space");
         FailClass::Refused
@@ -553,6 +572,11 @@ fn suggest(rt: &Runtime, key: &DeviceKey, page: &Space, everyone: bool) -> Resul
     let mut counting = true;
     let mut space_bytes = 0u64;
     let mut found: Vec<(f64, Suggestion)> = Vec::new();
+    // Auto-cleanup's facts (N74): what's going and when, what turning it on would take, and
+    // the setting with its newest round, as the last page says them.
+    let mut going: Vec<Going> = Vec::new();
+    let mut idle: Vec<Idle> = Vec::new();
+    let mut autoclean = AutoClean::default();
     // What the run log says of the read (shroom_cloud::cleanup_log): every item, by short id.
     let mut read = cleanup_log::Read::default();
     for _ in 0..SUGGEST_PAGES {
@@ -561,11 +585,25 @@ fn suggest(rt: &Runtime, key: &DeviceKey, page: &Space, everyone: bool) -> Resul
             other => return Err(answer_class(rt, "suggest", &other)),
         };
         counting = p.counting;
+        autoclean = AutoClean {
+            days: p.autoclean.days,
+            last: p.autoclean.last.as_ref().and_then(|l| {
+                Some(Cleaned { at: Wall(parse_iso(&l.at)?), recs: l.ids.iter().map(|id| RecId(id.clone())).collect(), bytes: l.bytes })
+            }),
+        };
         read.pages += 1;
         read.views.add(&p.views);
         read.items.extend(p.items.iter().cloned());
         for item in &p.items {
             space_bytes += item.bytes;
+            let quiet_days = item.quiet_days.unwrap_or(0.0).max(0.0) as u32;
+            if !item.keep {
+                idle.push(Idle { rec: RecId(item.id.clone()), quiet_days });
+            }
+            if let Some(at) = item.deletes_at.as_deref().and_then(parse_iso).filter(|_| !item.keep) {
+                let stopped_early = item.reason.as_ref().is_some_and(|r| r.code == "stopped-early");
+                going.push(Going { rec: RecId(item.id.clone()), bytes: item.bytes, plays: item.plays, quiet_days, stopped_early, deletes_at: Wall(at) });
+            }
             if item.candidate {
                 let stopped_early = item.reason.as_ref().is_some_and(|r| r.code == "stopped-early");
                 let quiet_days = item.quiet_days.unwrap_or(0.0).max(0.0) as u32;
@@ -584,7 +622,11 @@ fn suggest(rt: &Runtime, key: &DeviceKey, page: &Space, everyone: bool) -> Resul
                     rt.log(&line);
                 }
                 let rows = found.into_iter().map(|(_, s)| s).collect();
-                rt.post(Event::Library(LibraryNews::Suggested(Suggestions { counting, space_bytes, rows })));
+                going.sort_by(|a, b| a.deletes_at.cmp(&b.deletes_at).then_with(|| a.rec.cmp(&b.rec)));
+                if autoclean.days > 0 {
+                    rt.log(&format!("library auto-cleanup: {} days, {} going{}", autoclean.days, going.len(), going.first().map(|g| format!(", the first {}", super::short(&g.rec.0))).unwrap_or_default()));
+                }
+                rt.post(Event::Library(LibraryNews::Suggested(Suggestions { counting, space_bytes, rows, going, idle, autoclean })));
                 return Ok(());
             }
         }
@@ -605,19 +647,19 @@ fn plays(rt: &Runtime, key: &DeviceKey, page: &Space, on: bool) -> Result<(), Fa
     }
 }
 
-/// Keep (N68): `keep: true` on the record, under `If-Match`.
-fn keep(rt: &Runtime, s3: &Client, rec: RecId) -> Result<(), FailClass> {
-    match library::keep(s3, &rec.0) {
-        Ok(_) => {
-            rt.log(&format!("library kept {}", super::short(&rec.0)));
-            rt.post(Event::Library(LibraryNews::Kept(rec)));
-            Ok(())
-        }
-        Err(e) => {
-            rt.log(&format!("library keep {}: {e}", super::short(&rec.0)));
-            Err(class(&e))
+/// Pin or Unpin (N74): the record's `keep` set or taken off, under `If-Match`, for each —
+/// the first that fails stops the rest, and the core reads every one as the space has it.
+fn pin<'a>(rt: &Runtime, client: impl Fn(&str) -> Result<Held<'a>, FailClass>, recs: Vec<RecId>, on: bool) -> Result<(), FailClass> {
+    for rec in &recs {
+        let held = client(&rec.0)?;
+        if let Err(e) = library::set_pinned(&held, &rec.0, on) {
+            rt.log(&format!("library {} {}: {e}", if on { "pin" } else { "unpin" }, super::short(&rec.0)));
+            return Err(class(&e));
         }
     }
+    rt.log(&format!("library {} {}", if on { "pinned" } else { "unpinned" }, recs.iter().map(|r| super::short(&r.0)).collect::<Vec<_>>().join(", ")));
+    rt.post(Event::Library(LibraryNews::Pinned(recs, on)));
+    Ok(())
 }
 
 fn refresh(rt: &Runtime, space: &SpaceIdentity, s3: &Client, generation: u64) -> Result<(), FailClass> {
@@ -991,7 +1033,7 @@ mod tests {
             (LibCmd::Rename(RecId("r1".into()), "t".into()), Op::Rename),
             (LibCmd::Delete(vec![RecId("r1".into())]), Op::Delete),
             (LibCmd::Suggest { everyone: true }, Op::Suggest),
-            (LibCmd::Keep(RecId("r1".into())), Op::Keep),
+            (LibCmd::Pin(vec![RecId("r1".into())], true), Op::Pin),
             (LibCmd::Plays(false), Op::Plays),
         ] {
             lane.send(cmd).unwrap();

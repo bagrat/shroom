@@ -107,6 +107,30 @@
           />
         </label>
       {/each}
+      {#if v.autoclean}
+        {@const a = v.autoclean}
+        {@const live = a.choices.some((c) => c.enabled)}
+        <!-- N74: auto-cleanup — a pop-up on the Mac that set up the space, read-only elsewhere. -->
+        <label class="srow tall" class:off={!live}>
+          <span class="grow"
+            ><span class="lbl2">{a.label}</span><span class="hint">{a.hint}</span>{#if a.note}<span class="hint note" role="status">{a.note}</span>{/if}</span
+          >
+          <select
+            class="pop"
+            disabled={!live}
+            onchange={(e) => {
+              const el = e.currentTarget as HTMLSelectElement;
+              const c = a.choices[el.selectedIndex];
+              // The pop-up shows what the space has until the core says otherwise (a question
+              // may come first, and Cancel leaves it as it was).
+              el.selectedIndex = a.choices.findIndex((x) => x.selected);
+              if (c && !c.selected) send(c.action);
+            }}
+          >
+            {#each a.choices as c}<option selected={c.selected}>{c.label}</option>{/each}
+          </select>
+        </label>
+      {/if}
       {#if v.used}
         <div class="srow">
           <span class="grow">{v.used_label}</span>

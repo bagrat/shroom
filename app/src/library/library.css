@@ -707,3 +707,48 @@ body {
 .cview .line2 .meta {
   overflow: visible;
 }
+
+/* ── N74: a pinned row's small pin, and auto-cleanup's amber line ── */
+
+.line1 .kept {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  margin-right: 6px;
+  fill: var(--frost);
+}
+
+.cline.going {
+  background: color-mix(in srgb, var(--amber) 10%, transparent);
+}
+
+.cline.going svg {
+  stroke: var(--amber);
+}
+
+/* What auto-cleanup will delete, ahead of the suggestions: a heading per date. */
+.cview .gohead {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cview .gohead h2 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.cview .gohead p {
+  margin: 0;
+  color: var(--fg-2);
+}
+
+.line1:has(.kept) {
+  align-items: center;
+}
+
+.cview .rows + .gohead {
+  margin-top: 8px;
+}

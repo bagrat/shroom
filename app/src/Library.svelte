@@ -148,6 +148,22 @@
         </label>
       </header>
       {#if b.notice}<p class="notice">{b.notice}</p>{/if}
+      {#if b.going_line}
+        <!-- N74: auto-cleanup's warning, three days ahead — amber, Review… only, no Not now. -->
+        <div class="cline going" data-line="going">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.6 8.5h5.8l.6-8.5" /></svg>
+          <span class="text">{b.going_line.line}</span>
+          {#each b.going_line.buttons as nb}<Btn b={nb} {send} />{/each}
+        </div>
+      {/if}
+      {#if b.cleaned_line}
+        <!-- N74: once a round of auto-cleanup went, what went and what it freed, with OK. -->
+        <div class="cline" data-line="cleaned">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.6 8.5h5.8l.6-8.5" /></svg>
+          <span class="text">{b.cleaned_line.line}</span>
+          {#each b.cleaned_line.buttons as nb}<Btn b={nb} {send} />{/each}
+        </div>
+      {/if}
       {#if b.cleanup_line}
         <!-- N68: the videos worth deleting, in one quiet line; Review… opens them, Not now puts it away. -->
         <div class="cline" data-line="cleanup">

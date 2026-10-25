@@ -19,12 +19,40 @@
   <header class="chead">
     <Btn b={c.back} {send} />
     <h1>{c.title}</h1>
-    {#if c.intro}<p class="intro">{c.intro}</p>{/if}
+    <!-- With videos going, the line on the suggestions sits under their own heading (N74). -->
+    {#if c.intro && !c.going.length}<p class="intro">{c.intro}</p>{/if}
   </header>
   <div class="list">
     {#if c.empty}
       <div class="empty"><p>{c.empty}</p></div>
     {:else}
+      <!-- N74: what auto-cleanup will delete leads, a heading per date, each with Open page and Pin. -->
+      {#each c.going as g (g.heading)}
+        <div class="gohead">
+          <h2>{g.heading}</h2>
+          {#if g.line}<p>{g.line}</p>{/if}
+        </div>
+        <ul class="rows card" aria-label={g.heading}>
+          {#each g.rows as row (row.key)}
+            {@const src = poster(row.poster)}
+            <li class="lrow" data-key={row.key}>
+              <span class="lead" aria-hidden="true"></span>
+              <span class="thumb" aria-hidden="true"
+                >{#if src && !failed[row.key]}<img {src} alt="" draggable="false" onerror={() => (failed = { ...failed, [row.key]: true })} />{:else}<svg viewBox="0 0 16 16"
+                    ><path d="M5 3.5v9l7.5-4.5z" /></svg
+                  >{/if}</span
+              >
+              <div class="main">
+                <div class="line1"><span class="title">{row.title ?? ""}</span></div>
+                <div class="line2"><span class="meta">{row.meta}</span>{#if row.going}<span class="state amber">{row.going}</span>{/if}</div>
+              </div>
+              <div class="tail"><div class="always">{#each row.buttons as b}<Btn {b} {send} inlineNote={false} />{/each}</div></div>
+            </li>
+          {/each}
+        </ul>
+      {/each}
+      {#if c.suggest_heading}<div class="gohead"><h2>{c.suggest_heading}</h2>{#if c.intro}<p>{c.intro}</p>{/if}</div>{/if}
+      {#if c.rows.length}
       <ul class="rows card" aria-label={c.title}>
         {#each c.rows as row (row.key)}
           {@const src = poster(row.poster)}
@@ -43,6 +71,7 @@
           </li>
         {/each}
       </ul>
+      {/if}
     {/if}
   </div>
   {#if c.foot || c.delete_all}

@@ -2672,11 +2672,11 @@ fn cleanup_drive(d: &Drive) -> Result<(), String> {
     d.check("Delete is red text, Delete all three… too (law 9)", v.rows[0].buttons.iter().any(|b| b.label == "Delete" && b.style == Style::RedText) && v.delete_all.as_ref().is_some_and(|b| b.label == "Delete all three…" && b.style == Style::RedText), "styles");
     d.after(3000);
 
-    // Keep: off the list for good, and the record says so.
+    // Pin (N74, was Keep): off the list for good, and the record says so.
     let migrated = RecId("Cdrive00migrated".into());
-    d.act(Surface::Library, Action::KeepRow(migrated.clone()));
-    let s = d.wait("kept", 15, |s| cleanup_view(s).is_some_and(|v| v.rows.len() == 2))?;
-    d.check("Keep takes it off the list", !cleanup_titles(&s).iter().any(|t| t == "Migration dry run"), format!("{:?}", cleanup_titles(&s)));
+    d.act(Surface::Library, Action::PinRow(migrated.clone(), true));
+    let s = d.wait("pinned", 15, |s| cleanup_view(s).is_some_and(|v| v.rows.len() == 2))?;
+    d.check("Pin takes it off the list", !cleanup_titles(&s).iter().any(|t| t == "Migration dry run"), format!("{:?}", cleanup_titles(&s)));
     let kept = poll(10, || worker_object(&base, &keys::meta(&migrated.0)).filter(|m| m["keep"] == true));
     d.check("the record says keep", kept.is_some(), "meta keep");
     d.after(2000);
