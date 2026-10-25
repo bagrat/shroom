@@ -1537,7 +1537,7 @@ mod tests {
         assert!(rel.contains("actions/cache/restore@") && !rel.contains("actions/cache@"), "the tag run restores, never saves");
         // The signing secrets: the tag workflow's alone, in the `release` environment.
         assert!(!ci.contains("secrets."), "CI reads no secret");
-        assert!(rel.contains("environment: release"));
+        assert!(rel.contains("environment: ${{ needs.check.outputs.signs == 'true' && 'release' || '' }}"), "the secrets' environment, only on a run that signs");
         // Built before the identity is on the runner; only then signed with it.
         let (built, imported, signed) = (rel.find("release-build.sh \"$RUNNER_TEMP/release\" --adhoc"), rel.find("signing-keychain.sh import"), rel.find("--resign --identity"));
         assert!(built.is_some() && built < imported && imported < signed, "built ad hoc, then the identity imported, then the bundle signed with it");

@@ -112,17 +112,23 @@ Two things to know before anything else:
    rm -r ~/.shroom/release-identity
    ```
 
-8. *(Optional — your approval before each release.)* On the `release` environment's page:
-   **Required reviewers** → add yourself, and leave **Prevent self-review** unticked (you
-   are the only reviewer). Each release's build then waits for your click in the run's page
-   before it can read the secrets.
+Steps 8 and 9 are **required**: they are what keeps the release identity to the code you
+meant to ship. A run of the workflow uses the copy of `release.yml` on the branch it runs
+from, so the workflow's own checks can't guard the secrets; the environment's rules can,
+because they live in GitHub's settings, not in a branch. Check both before every launch.
 
-9. *(Optional — who may release.)* Still on the environment's page: **Deployment branches
-   and tags** → **Selected branches and tags** → add the tag rule `v*`, and the branch
-   `main` if you want to use the rehearsal in step 11. And under **Settings** → **Rules** →
-   **Rulesets** → **New tag ruleset**: target `v*`, restrict creations, updates and
-   deletions, with yourself on the bypass list — so nobody else can push a release tag, and
-   a published version's tag can't be moved.
+8. *(Required — your approval before each signed build.)* On the `release` environment's
+   page: **Required reviewers** → add yourself, and leave **Prevent self-review** unticked
+   (you are the only reviewer). Each signed build then waits for your click in the run's
+   page before it can read the secrets.
+
+9. *(Required — who may sign.)* Still on the environment's page: **Deployment branches
+   and tags** → **Selected branches and tags** → add the branch `main`, the branch
+   `claude/early-integration` (early builds: [Pre-releases](#pre-releases)) and the tag rule `v*` —
+   nothing else. A rehearsal off any other branch runs outside the environment, signed ad
+   hoc. And under **Settings** → **Rules** → **Rulesets** → **New tag ruleset**: target
+   `v*`, restrict creations, updates and deletions, with yourself on the bypass list — so
+   nobody else can push a release tag, and a published version's tag can't be moved.
 
 10. Look at CI on `main`: all four jobs green — **Tests**, **Release build (ad hoc)**,
     **Signing rehearsal**, **Advisories**. The rehearsal does everything a release does to
@@ -131,7 +137,8 @@ Two things to know before anything else:
     been proven".)
 
 11. Rehearse with the real identity, publishing nothing: **Actions** → **Release** → **Run
-    workflow** → branch `main`. It builds and signs exactly as a tag would, shows the
+    workflow** → branch `main`. It builds and signs exactly as a tag would (off `main`, a
+    rehearsal builds the same but never signs with the identity), shows the
     signature and the SHA-256s in the run's summary, keeps the two files as an artifact
     for a week, and skips the publish job.
 
@@ -292,8 +299,10 @@ curl -fsSL https://github.com/bagrat/shroom/releases/download/early/manifest.txt
 5. The run's publish job fails if `releases/latest` turned out to be the early build, and
    warns if the pointer doesn't name it.
 
-*(If the `release` environment's deployment branches are limited — One-time setup, step 9
-— the branch must be on that list for the run to reach the signing secrets.)*
+The release workflow publishes an early build from `claude/early-integration` and no other
+branch, and it is the one branch besides `main` the `release` environment allows (One-time
+setup, step 9). Renaming it means changing both: `EARLY_BRANCH` and the publish job's
+condition in `release.yml`, and that list.
 
 **Taking the early channel on a Mac.** Once, in Terminal:
 
