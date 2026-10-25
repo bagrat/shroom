@@ -1135,7 +1135,7 @@ mod tests {
             foreign_v: false,
         };
         rt.home.write_json("token.json", &serde_json::json!({ "v": 1, "token": "t", "account_id": "acct" })).unwrap();
-        let rec = |id: &str, forged: Option<&str>| Row { id: id.into(), title: id.into(), state: State::Live, created_at: "2026-10-02T12:00:00Z".into(), duration_sec: None, owner: forged.map(Into::into), poster: None, edited_sec: None, poster_file: None, ai: None };
+        let rec = |id: &str, forged: Option<&str>| Row { id: id.into(), title: id.into(), state: State::Live, created_at: "2026-10-02T12:00:00Z".into(), duration_sec: None, owner: forged.map(Into::into), poster: None, edited_sec: None, poster_file: None, ai: None, pinned: false };
         let mut file = CacheFile { v: 1, space: space_key(&space), ..CacheFile::default() };
         file.cache.rows.insert("mine".into(), ("e".into(), rec("mine", None)));
         file.cache.rows.insert("forged".into(), ("e".into(), rec("forged", Some("m1"))));
@@ -1159,6 +1159,7 @@ mod tests {
             edited_sec: None,
             poster_file: None,
             ai: None,
+            pinned: false,
         };
         let l = row(&r);
         assert_eq!(l.rec, RecId("AbCd".into()));
@@ -1185,7 +1186,7 @@ mod tests {
             }
             serde_json::to_value(&m).unwrap()
         };
-        let cached = |id: &str, edited: Option<f64>, state: State| Row { id: id.into(), title: "t".into(), state, created_at: "2026-10-02T00:00:00Z".into(), duration_sec: Some(10.0), owner: None, poster: None, edited_sec: edited, poster_file: None, ai: None };
+        let cached = |id: &str, edited: Option<f64>, state: State| Row { id: id.into(), title: "t".into(), state, created_at: "2026-10-02T00:00:00Z".into(), duration_sec: Some(10.0), owner: None, poster: None, edited_sec: edited, poster_file: None, ai: None, pinned: false };
         let mut cache = Cache::default();
         cache.rows.insert("Aaaa".into(), ("e1".into(), cached("Aaaa", None, State::Live)));
         cache.rows.insert("Bbbb".into(), ("e2".into(), cached("Bbbb", Some(6.0), State::Live)));
