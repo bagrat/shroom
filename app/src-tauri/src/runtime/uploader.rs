@@ -174,7 +174,7 @@ fn creds_for(rt: &Runtime, c: &Ctx, dir: Option<&Path>, rec: &str, purpose: Purp
             }
         },
     };
-    // A release build sends bytes only to R2's own store, whatever the mint answered (B255).
+    // A release build sends bytes only to R2's own store, whatever the mint answered (B257).
     if !rt.store_ok(&f.endpoint, &f.bucket) {
         rt.log(&format!("uploader: the credential for {} names a store that isn't R2's — not used", super::short(rec)));
         return Err(NoCred::Offline);

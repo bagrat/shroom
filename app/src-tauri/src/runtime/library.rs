@@ -303,7 +303,7 @@ fn answer_class<T>(rt: &Runtime, what: &str, a: &Answer<T>) -> FailClass {
 /// A `manage` credential for one recording (§6.8): 15 minutes, never written down.
 fn manage(rt: &Runtime, space: &SpaceIdentity, key: &DeviceKey, page: &Space, rec: &str) -> Result<Client, FailClass> {
     match MintNext::of(page.mint(key, rec, Purpose::Manage)) {
-        // A release build sends bytes only to R2's own store, whatever the mint answered (B255).
+        // A release build sends bytes only to R2's own store, whatever the mint answered (B257).
         MintNext::Minted(m) if !rt.store_ok(&m.endpoint, &m.bucket) => {
             rt.log(&format!("library: the manage credential for {} names a store that isn't R2's — not used", super::short(rec)));
             Err(FailClass::Refused)
