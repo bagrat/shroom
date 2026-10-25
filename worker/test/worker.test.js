@@ -79,6 +79,18 @@ describe("media", () => {
     expect(res.headers.get("content-security-policy")).toBe("sandbox; default-src 'none'");
   });
 
+  it("lets only the viewer's own browser keep a recording's files, the pictures too", async () => {
+    const e = { BUCKET: fakeBucket({ [`rec/${ID}/v0/seg_00000.m4s`]: bytes, [`rec/${ID}/master.m3u8`]: "#EXTM3U\n", [`rec/${ID}/poster.jpg`]: bytes, [`rec/${ID}/teaser.mp4`]: bytes, [`rec/${ID}/thumb-0123456789abcdef.gif`]: bytes }) };
+    for (const f of ["v0/seg_00000.m4s", "master.m3u8", "poster.jpg", "teaser.mp4", "thumb-0123456789abcdef.gif"]) {
+      const res = await get(e, `/m/${ID}/${f}`);
+      expect(res.status, f).toBe(200);
+      const cache = res.headers.get("cache-control") ?? "";
+      expect(cache, f).toMatch(/^private\b/);
+      expect(cache, f).not.toMatch(/\bpublic\b/);
+      expect(Number(cache.match(/max-age=(\d+)/)?.[1]), f).toBeLessThanOrEqual(3600);
+    }
+  });
+
   it("serves only the kinds of file a recording is made of (B125)", async () => {
     const e = { BUCKET: fakeBucket({ [`rec/${ID}/page.html`]: "<script>alert(1)</script>", [`rec/${ID}/x`]: "x", [`rec/${ID}/a.svg`]: "<svg/>" }) };
     for (const f of ["page.html", "x", "a.svg"]) expect((await get(e, `/m/${ID}/${f}`)).status, f).toBe(404);

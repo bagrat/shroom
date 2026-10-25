@@ -707,6 +707,14 @@ describe("captions (B205 e, B208 b, B209 b)", () => {
     for (let i = 0; i < copy.length; i++) expect(copy[i][0]).toBeCloseTo(original[i][0] >= 40 ? original[i][0] - 10 : original[i][0], 2);
   });
 
+  it("is kept only by the viewer's browser, never a shared cache", async () => {
+    const { res } = await vtt(await namedSpace());
+    const cache = res.headers.get("cache-control") ?? "";
+    expect(cache).toMatch(/^private\b/);
+    expect(cache).not.toMatch(/\bpublic\b/);
+    expect(Number(cache.match(/max-age=(\d+)/)?.[1])).toBeLessThanOrEqual(300);
+  });
+
   it("writes a cue's words as text, never markup", () => {
     const text = aiCaptions([["<b>bold</b>", 0, 0.5], ["&", 0.6, 0.8], ["-->", 0.9, 1]], null, false);
     expect(text).toContain("&lt;b&gt;bold&lt;/b&gt; &amp; →");
