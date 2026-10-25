@@ -199,6 +199,10 @@ jobs:
       - name: The app's unit suite (the editor's edit model and clock, held to shroom-edit's vectors and the page)
         run: npm test --workspace app
 
+      # A page's row may be re-stamped only until a build of its VERSION is out (B61, B248).
+      - name: A page that's out keeps its fingerprint
+        run: tools/page-version-out.sh
+
       - name: The Worker — unit suite, typecheck, the contract under workerd
         run: |
           npm test --workspace worker
