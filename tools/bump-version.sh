@@ -12,14 +12,15 @@
 #                                                        only when its VERSION is newer, B50)
 #   worker/page-version.json        a new row            the page's fingerprint under that
 #                                                        VERSION (worker/dev/page-fingerprint.mjs);
-#                                                        rows are added, never edited
+#                                                        rows are added; only an unpublished
+#                                                        VERSION's row is re-stamped (B248)
 #
 # and docs/CHECKPOINT.md's update rehearsal, which names the version one patch above the tree's
 # (its test, the_checkpoint_script_tells_the_truth_about_the_build, holds it to that).
 #
 #   tools/bump-version.sh <x.y.z>           move everything to x.y.z — it must be higher
 #   tools/bump-version.sh <x.y.z-early.n>   an early build (DECISIONS B220): below x.y.z, above
-#                                           x.y.z-early.(n-1); also from an unreleased x.y.z
+#                                           x.y.z-early.(n-1) and the tree's own version
 #   tools/bump-version.sh --check [x.y.z]   change nothing: do all seven agree (on x.y.z)?
 #
 # --check prints one plain line and fails when they don't; the tag workflow runs it with the
@@ -93,9 +94,9 @@ old=$(in_tauri)
 shaped "$old" || fail "couldn't read the current version from app/src-tauri/tauri.conf.json"
 why=$(agree "$old") || fail "the tree doesn't agree on its version yet ($why) — nothing changed"
 higher=$(printf '%s\n%s\n' "$(key "$old")" "$(key "$new")" | awk 'NR==1{a=$1; b=$2; c=$3; d=$4} NR==2{print ($1>a || ($1==a && ($2>b || ($2==b && ($3>c || ($3==c && $4>d)))))) ? "yes" : "no"}')
-# The one move down: a tree at x.y.z that isn't out yet takes an early build of it
-# (B220) — release.yml refuses any version already tagged, and no Mac has x.y.z.
-case "$new" in "$old"-early.*) higher=yes ;; esac
+# No move down, not even to an early build of an unreleased x.y.z: the tree already holds
+# x.y.z's page row, and the page's VERSION is its newest row (B220, B248). An early build
+# leads to the version after the tree's: 0.1.33-early.1 from an unreleased 0.1.32.
 [ "$higher" = yes ] || fail "$new isn't higher than $old — a version only goes up (an installed shroom takes a newer one only)"
 command -v node >/dev/null 2>&1 || fail "needs node, for the page's fingerprint"
 
