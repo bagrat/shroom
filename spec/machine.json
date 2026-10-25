@@ -1238,7 +1238,7 @@
   {
    "id": "N69",
    "title": "Edit in shroom: the owner's page opens the video in shroom's editor",
-   "decision": "**Bagrat asked for an Edit button on the video's page that opens it in the editor, 2026-10-18** (relayed by the orchestrator), and approved the boards “The page — Edit in shroom” and “Editor — opened from the page's Edit” as drawn, with their lines, option A and the tooltip “Edit in shroom” (2026-10-18). (1) **The owner page gains Edit in shroom**: the scissors, the last of the quiet icons beside the title, after Download, its tooltip “Edit in shroom”. It shows only on the owner page (the space's owners on every video, a member on their own) and only once the video is fully up, as Edit… in the Library; a recipient's page and the embed never have it. (2) **It opens `shroom://edit/<the space's address>/<the video>`**, with nothing secret in it: the browser asks first (its own “Open shroom?”), and the Mac decides by its own state. (3) **The Mac's answers.** A video this Mac can edit (the owner's Macs: every video in the space; a member's Mac: their own) opens in the editor as Edit… opens it. The editor already open comes forward as it is, one at a time; holding another video, its footer says “You're editing another video — press Done, then Edit again.” While a take is open the press waits (law 4), and the editor opens once the take ends. Otherwise the popover opens by itself under the mushroom with one line, said once: “This Mac isn't set up for that video's space.”, “Only whoever recorded this video, or the space's owner, can edit it.” or “That video isn't in your space anymore.” A Mac not set up at all opens its welcome window, as a click on the mushroom does. (4) **Where shroom isn't on the Mac, the page says nothing** (option A): only a Mac running shroom makes a browser the owner's, so the button shows only where it can work. Built: DECISIONS B221. **Bagrat ratified it and its four lines as built, 2026-10-24.**",
+   "decision": "**Bagrat asked for an Edit button on the video's page that opens it in the editor, 2026-10-18** (relayed by the orchestrator), and approved the boards “The page — Edit in shroom” and “Editor — opened from the page's Edit” as drawn, with their lines, option A and the tooltip “Edit in shroom” (2026-10-18). (1) **The owner page gains Edit in shroom**: the scissors, the last of the quiet icons beside the title, after Download, its tooltip “Edit in shroom”. It shows only on the owner page (the space's owners on every video, a member on their own) and only once the video is fully up, as Edit… in the Library (there, greyed, from the page's first paint since Bagrat's ruling of 2026-10-25); a recipient's page and the embed never have it. (2) **It opens `shroom://edit/<the space's address>/<the video>`**, with nothing secret in it: the browser asks first (its own “Open shroom?”), and the Mac decides by its own state. (3) **The Mac's answers.** A video this Mac can edit (the owner's Macs: every video in the space; a member's Mac: their own) opens in the editor as Edit… opens it. The editor already open comes forward as it is, one at a time; holding another video, its footer says “You're editing another video — press Done, then Edit again.” While a take is open the press waits (law 4), and the editor opens once the take ends. Otherwise the popover opens by itself under the mushroom with one line, said once: “This Mac isn't set up for that video's space.”, “Only whoever recorded this video, or the space's owner, can edit it.” or “That video isn't in your space anymore.” A Mac not set up at all opens its welcome window, as a click on the mushroom does. (4) **Where shroom isn't on the Mac, the page says nothing** (option A): only a Mac running shroom makes a browser the owner's, so the button shows only where it can work. Built: DECISIONS B221. **Bagrat ratified it and its four lines as built, 2026-10-24.**",
    "status": "ratified",
    "date": "2026-10-18",
    "amends": [
@@ -6888,7 +6888,7 @@
    "surface": "web-page",
    "status": "ratified",
    "board": "OwnerPage",
-   "summary": "The real shareable page, opened in the browser at stop. It is never a preview or a processing screen. From top to bottom: the editable title field, which is the only chrome (no header, no wordmark, no name, per U3); the player (first frame, play, scrub bar, `0:00 / 4:32`, fullscreen); [ Copy link ] and, once the video plays, [ Copy thumbnail ] beside it (N46), the page's copy doors, with the upload line and a thin bar beside it; then, bottom-right, the owner switch, “made with shroom”, and the mark. Download appears only once the single-file MP4 exists, and it is second-class (R11). Only the editable title and the switch are owner-only. The address bar shows the clean link because the key died at the 302. The clipboard is never touched (N1). Rename at any time later is a metadata write, live worldwide on the next load (R4). It works from this page in owner-mode or from the Library. Owner-mode by role is N40 and still provisional: the cookie names a member, a member's own pages give them the title only, and owner-class browsers get full owner-mode on every page of the space. When the space names its videos (N66), an untitled video takes the name made from what was said; while the free day is used up, a line under the title says the name comes a little later; and the player gains the chapters and the Captions button the recipient sees, in place on a page left open as they come (N67). Edit in shroom (N69): the scissors, the last of the quiet icons beside the title, after Download, only on the owner page and only once the video is fully up (as Edit… in the Library); it opens the video in shroom's editor on this Mac.",
+   "summary": "The real shareable page, opened in the browser at stop. It is never a preview or a processing screen. From top to bottom: the editable title field, which is the only chrome (no header, no wordmark, no name, per U3); the player (first frame, play, scrub bar, `0:00 / 4:32`, fullscreen); [ Copy link ] and [ Copy thumbnail ] beside it (N46), the page's copy doors, with the upload line and a thin bar beside it; then, bottom-right, the owner switch, “made with shroom”, and the mark. Download works only once the single-file MP4 exists, and it is second-class (R11). Every quiet icon beside the title is there from the page's first paint, in its place, greyed and doing nothing until it can work, and wakes where it stands, so the row never shifts (Bagrat, 2026-10-25). Only the editable title and the switch are owner-only. The address bar shows the clean link because the key died at the 302. The clipboard is never touched (N1). Rename at any time later is a metadata write, live worldwide on the next load (R4). It works from this page in owner-mode or from the Library. Owner-mode by role is N40 and still provisional: the cookie names a member, a member's own pages give them the title only, and owner-class browsers get full owner-mode on every page of the space. When the space names its videos (N66), an untitled video takes the name made from what was said; while the free day is used up, a line under the title says the name comes a little later; and the player gains the chapters and the Captions button the recipient sees, in place on a page left open as they come (N67). Edit in shroom (N69): the scissors, the last of the quiet icons beside the title, after Download, only on the owner page, greyed until the video is fully up (as Edit… in the Library); it opens the video in shroom's editor on this Mac.",
    "entry": "Stop finalized and the space's page is reachable and can fill. The app opens `v.<name>.workers.dev/<id>?k=<one-time-key>`. The Worker validates k, sets a long-lived owner cookie that names the member, and 302-redirects to the clean URL. The page also opens later on any visit from a browser carrying a qualifying cookie (owner-mode persists per-browser, rendered server-side), when stopped-offline reconnects, and through the Library's Open page (the owner-keyed door, N35).",
    "said": [
     {
@@ -6922,7 +6922,7 @@
      "text": "Copy thumbnail",
      "role": "button",
      "copy": "ratified",
-     "note": "Beside Copy link, once the video plays (N46). Greyed until the picture for the current title is ready (the loop, or the still when no loop can be made). Reads “Copied” for a moment after the click, like Copy link.",
+     "note": "Beside Copy link, from the page's first paint (N46; Bagrat, 2026-10-25). Greyed until the video plays and the picture for the current title is ready (the loop, or the still when no loop can be made). Reads “Copied” for a moment after the click, like Copy link.",
      "id": "owner-page.copy-thumbnail"
     },
     {
@@ -6936,7 +6936,7 @@
      "text": "Download",
      "role": "button",
      "copy": "ratified",
-     "note": "Present only once the single-file MP4 exists; second-class (R11). The spec gives no button styling beyond “second-class”; the action is recorded as secondary on that basis.",
+     "note": "Present from the page's first paint, greyed until the single-file MP4 exists (Bagrat, 2026-10-25); second-class (R11). The spec gives no button styling beyond “second-class”; the action is recorded as secondary on that basis.",
      "id": "owner-page.download"
     },
     {
@@ -6988,20 +6988,20 @@
      "kind": "secondary",
      "return_default": false,
      "goes_to": "owner-page",
-     "note": "N46. Copies the video's picture wrapped in the clean link, with the plain link as text beside it; reads “Copied” for a moment. Shown once the video plays, and greyed (no copy) until the picture for the current title is stored: the loop, or the still when no loop can be made. The picture is made in the background after each title save, and a video with none yet gets it made when its page opens."
+     "note": "N46. Copies the video's picture wrapped in the clean link, with the plain link as text beside it; reads “Copied” for a moment. There from the page's first paint, and greyed (no copy) until the video plays and the picture for the current title is stored: the loop, or the still when no loop can be made. The picture is made in the background after each title save, and a video with none yet gets it made when its page opens."
     },
     {
      "label": "Download",
      "kind": "secondary",
      "return_default": false,
-     "note": "Appears only when the single-file MP4 exists; second-class (R11)."
+     "note": "There from the page's first paint, greyed (no download) until the single-file MP4 exists (Bagrat, 2026-10-25); second-class (R11)."
     },
     {
      "label": "Edit in shroom",
      "kind": "secondary",
      "return_default": false,
      "goes_to": "editor",
-     "note": "N69. The scissors, the last of the quiet icons beside the title: the shroom://edit/<host>/<id> link, with nothing secret in it. Shown only on the owner page (the space's owners on every video, a member on their own), once the video is fully up, as Edit… in the Library. The browser's own “Open shroom?” is the only step it adds; the Mac decides by its own state: the editor, or the popover's one line. Where shroom isn't on the Mac, the page says nothing (only a Mac running shroom makes a browser the owner's)."
+     "note": "N69. The scissors, the last of the quiet icons beside the title: the shroom://edit/<host>/<id> link, with nothing secret in it. Shown only on the owner page (the space's owners on every video, a member on their own), from the page's first paint, greyed until the video is fully up, as Edit… in the Library (Bagrat, 2026-10-25). The browser's own “Open shroom?” is the only step it adds; the Mac decides by its own state: the editor, or the popover's one line. Where shroom isn't on the Mac, the page says nothing (only a Mac running shroom makes a browser the owner's)."
     },
     {
      "label": "made with shroom",
@@ -7026,7 +7026,7 @@
      "label": "scrub bar",
      "kind": "other",
      "return_default": false,
-     "note": "Player control."
+     "note": "Player control. Its head travels inside the bar: at the start its left edge meets the player's left edge, at the end its right edge meets the right edge, and the played part reaches the head's centre (Bagrat, 2026-10-25)."
     },
     {
      "label": "fullscreen",
@@ -7543,7 +7543,8 @@
     {
      "label": "scrub bar",
      "kind": "other",
-     "return_default": false
+     "return_default": false,
+     "note": "Its head travels inside the bar: at the start its left edge meets the player's left edge, at the end its right edge meets the right edge, and the played part reaches the head's centre (Bagrat, 2026-10-25)."
     },
     {
      "label": "fullscreen",
@@ -13801,7 +13802,7 @@
    "surface": "web-page",
    "status": "provisional",
    "board": "OwnerPageFinishing",
-   "summary": "While the take is heard (N65 (7), N66): in a space that listens, once the upload has drained, the owner page's one line stays: the same words, its spinner turning, until the take's voice cuts land (the strip takes its place), the Mac finds none (it fades, and the hint shows in its place while that is due), or five minutes have passed since the take went live, by the page's own count. It never speaks of cuts: the same listening names the video and makes its captions and chapters. Edit comes in on the title row as the upload drains, beside it (OwnerPageFinishing, OwnerPageFinishingEnds). Owner-mode as the title has it (N40); viewers never see it.",
+   "summary": "While the take is heard (N65 (7), N66): in a space that listens, once the upload has drained, the owner page's one line stays: the same words, its spinner turning, until the take's voice cuts land (the strip takes its place), the Mac finds none (it fades, and the hint shows in its place while that is due), or five minutes have passed since the take went live, by the page's own count. It never speaks of cuts: the same listening names the video and makes its captions and chapters. Edit wakes on the title row as the upload drains, beside it (OwnerPageFinishing, OwnerPageFinishingEnds). Owner-mode as the title has it (N40); viewers never see it.",
    "entry": "The browser is in owner-mode for this video, the space listens (N66), the upload has drained, the take went live less than five minutes ago, its words don't wait for the next free day, and the Mac hasn't been through them yet: the status says the voice cuts are coming.",
    "said": [
     {
