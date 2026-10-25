@@ -383,6 +383,19 @@ impl Drive for Run {
 
 // ── the inventory: one row (or more) per in-scope state ──
 
+/// The AI's page being re-wired (N78): its run at `part` since `since`, in flight until it ends.
+fn ai_rewiring(mut w: World, on: bool, part: u8, end: Option<AiEnd>, since: u64) -> World {
+    w.space.ai_run = Some(AiRun { on, part, since: Mono(since), end });
+    if end.is_none() {
+        w.inflight.ops.insert(Op::Ai, Mono(990).plus(Op::Ai.deadline_ms()));
+    }
+    // Begun long ago: the part has run past its quiet line's 20 s.
+    if since == 0 {
+        w.now = Mono(21_000);
+    }
+    w
+}
+
 fn rows() -> Vec<(&'static str, World)> {
     let mut rows: Vec<(&'static str, World)> = Vec::new();
     // ── the Library ──
@@ -464,6 +477,14 @@ fn rows() -> Vec<(&'static str, World)> {
         w.inflight.ops.insert(Op::Ai, Mono(990).plus(Op::Ai.deadline_ms()));
         w
     }));
+    // Its parts as they land (N78), and the quiet line once one has run long.
+    for (part, since) in [(1, 990), (2, 990), (3, 990), (2, 0)] {
+        rows.push(("ai-turning-off", {
+            let mut w = ai_turned_on();
+            w.space.ai_turn = Some(AiTurn::TurningOff);
+            ai_rewiring(w, false, part, None, since)
+        }));
+    }
     rows.push(("ai-turn-off-failed", {
         let mut w = ai_turned_on();
         w.space.ai_turn = Some(AiTurn::TurningOff);
@@ -533,6 +554,16 @@ fn rows() -> Vec<(&'static str, World)> {
         w.inflight.failures.insert(Op::Ai, Failure { at: Mono(990), class: FailClass::Transport, tries: 1 });
         w
     }));
+    // The switch's parts as they land, done, and running long (N78).
+    for on in [true, false] {
+        for (part, end, since) in [(1, None, 990), (2, None, 990), (3, None, 990), (3, Some(AiEnd::Done), 990), (2, None, 0)] {
+            rows.push(("settings-space", {
+                let mut w = space_tab();
+                w.space.ai = Some(!on);
+                ai_rewiring(w, on, part, end, since)
+            }));
+        }
+    }
     rows.push(("settings-space", {
         let mut w = space_tab();
         w.mac.mic = Fact::known(Access::Denied, Mono(0));
