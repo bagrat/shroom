@@ -39,6 +39,13 @@ impl std::fmt::Display for S3Error {
 /// line — bounded so a connection that stalls can't hold its caller for good.
 pub const GET_TO_FILE_BUDGET: Duration = Duration::from_secs(30 * 60);
 
+/// The most [`Client::get_to_file`] writes to disk for one object: far past any recording's
+/// single-file copy, so a body that doesn't end can't fill the disk.
+pub const GET_TO_FILE_MAX: u64 = 64 << 30;
+
+/// The most pages [`Client::list`] follows: ten million keys at R2's thousand a page.
+pub const LIST_PAGES_MAX: usize = 10_000;
+
 /// How much [`Client::get_to_file`] reads at a time: what it holds in memory, and how often
 /// it reports progress and asks whether to stop.
 pub const READ_CHUNK: usize = 256 * 1024;
@@ -206,8 +213,15 @@ impl Client {
     /// or untouched. `progress(done, total)` follows each chunk (`total` is 0 when the store
     /// doesn't say); `cancel()` is asked before each one and stops the transfer with
     /// [`S3Error::Cancelled`]. Whatever stops it, the partial file goes. `Ok(false)`: no such
-    /// object. Not retried here (a retry starts over, so it's the caller's to make).
+    /// object. Not retried here (a retry starts over, so it's the caller's to make). The
+    /// body is held to [`GET_TO_FILE_MAX`]: a store that says more, or sends more than it
+    /// said, is an error before the disk takes it.
     pub fn get_to_file(&self, key: &str, path: &Path, progress: &mut dyn FnMut(u64, u64), cancel: &dyn Fn() -> bool) -> Result<bool, S3Error> {
+        self.get_to_file_within(key, path, GET_TO_FILE_MAX, progress, cancel)
+    }
+
+    /// [`Client::get_to_file`], its body held to `max` bytes.
+    pub fn get_to_file_within(&self, key: &str, path: &Path, max: u64, progress: &mut dyn FnMut(u64, u64), cancel: &dyn Fn() -> bool) -> Result<bool, S3Error> {
         use std::io::{Read, Write};
         if cancel() {
             return Err(S3Error::Cancelled);
@@ -231,6 +245,11 @@ impl Client {
             }
         }
         let total = res.body().content_length().unwrap_or(0);
+        if total > max {
+            return Err(S3Error::Transport(format!("the object is {total} bytes, over the {max} a download takes")));
+        }
+        // The length the store said, else the ceiling: past it, the transfer stops.
+        let ceiling = if total > 0 { total } else { max };
         let mut tmp = path.as_os_str().to_os_string();
         tmp.push(".tmp");
         let tmp = PathBuf::from(tmp);
@@ -250,6 +269,9 @@ impl Client {
                     Err(e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
                     Err(e) => return Err(S3Error::Transport(e.to_string())),
                 };
+                if done + n as u64 > ceiling {
+                    return Err(S3Error::Transport(format!("the body ran past {ceiling} bytes")));
+                }
                 file.write_all(&buf[..n]).map_err(local)?;
                 done += n as u64;
                 progress(done, total);
@@ -358,11 +380,19 @@ impl Client {
         result
     }
 
-    /// Every object under `prefix`, following continuation tokens.
+    /// Every object under `prefix`, following continuation tokens: to the last page, or an
+    /// empty token. A token the listing already gave (it isn't moving on) or more than
+    /// [`LIST_PAGES_MAX`] pages is an error, never a loop.
     pub fn list(&self, prefix: &str) -> Result<Vec<Object>, S3Error> {
+        self.list_within(prefix, LIST_PAGES_MAX)
+    }
+
+    /// [`Client::list`], following at most `max_pages` pages.
+    pub fn list_within(&self, prefix: &str, max_pages: usize) -> Result<Vec<Object>, S3Error> {
         let mut out = Vec::new();
         let mut token: Option<String> = None;
-        loop {
+        let mut seen = std::collections::HashSet::new();
+        for _ in 0..max_pages {
             let mut url = format!(
                 "{}/{}?list-type=2&prefix={}",
                 self.bucket.endpoint.trim_end_matches('/'),
@@ -377,11 +407,16 @@ impl Client {
             let page = parse_list(&xml);
             out.extend(page.objects);
             match page.next {
-                Some(t) if page.truncated => token = Some(t),
-                _ => break,
+                Some(t) if page.truncated && !t.is_empty() => {
+                    if !seen.insert(t.clone()) {
+                        return Err(S3Error::Transport("the listing gave a page's token again".into()));
+                    }
+                    token = Some(t);
+                }
+                _ => return Ok(out),
             }
         }
-        Ok(out)
+        Err(S3Error::Transport(format!("the listing ran past {max_pages} pages")))
     }
 }
 
