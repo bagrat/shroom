@@ -44,6 +44,7 @@ const NOT_SAID: &[(&str, &str)] = &[
     ("invited_row", "composed: the row's label, a dash, and invited_fact's said-line"),
     ("size", "a size inside a line (N68): “11 GB”, “780 MB”"),
     ("money", "money inside a line (N68): “17¢”"),
+    ("wait", "auto-cleanup's wait inside a line (N77): “30 days”, “a year”"),
 ];
 
 /// Every line copy.rs ships is a said-line of spec/machine.json (through the registry,
