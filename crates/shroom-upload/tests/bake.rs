@@ -475,6 +475,30 @@ fn a_save_from_an_editor_opened_before_the_bake_never_lands_on_the_baked_video()
     assert_eq!(library::save_edits(&s3, A, &short.now, 1).unwrap(), 3);
 }
 
+/// An editor that opened in the seconds after go-live, before the upload's single-file copy
+/// landed, holds a list on the same clock the copy plays: its save lands once the copy is
+/// named in the record.
+#[test]
+fn a_save_from_an_editor_opened_before_the_single_file_copy_landed_lands() {
+    let (_fake, s3) = space();
+    record(&s3, A);
+    let meta = |s3: &Client| serde_json::from_value::<Meta>(read(s3, A)).unwrap();
+    // Live, its stream up, the single-file copy still on its way.
+    let mut m = meta(&s3);
+    m.media.as_mut().unwrap().mp4 = None;
+    s3.put(&format!("meta/{A}.json"), &serde_json::to_vec(&m).unwrap(), "application/json").unwrap();
+    let opened = library::Plays::of(&meta(&s3));
+    assert_eq!(opened.mp4, None);
+    // The editor cuts; meanwhile the upload finishes and names the single-file copy.
+    let mut h = History::new(EditList::new(60.0));
+    assert!(h.act(&Op::Cut { start: 30.0, end: 35.0 }));
+    let mut m = meta(&s3);
+    m.media.as_mut().unwrap().mp4 = Some(format!("rec/{A}/video.mp4"));
+    s3.put(&format!("meta/{A}.json"), &serde_json::to_vec(&m).unwrap(), "application/json").unwrap();
+    assert_eq!(library::save_edits_over(&s3, A, &h.now, 1, Some(&opened)).unwrap(), 1);
+    assert_eq!(read(&s3, A)["edits"]["rev"], 1);
+}
+
 #[test]
 fn a_tombstone_stops_a_bake() {
     let (_fake, s3) = space();
