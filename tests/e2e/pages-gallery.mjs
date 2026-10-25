@@ -189,7 +189,11 @@ const FACES = [
       // chapter from 0:38, named at 0:40.
       await env.BUCKET.put(metaKey(f.id), named(f.id, { edits: { version: 1, source_duration: AI_SECS, in: 0, out: AI_SECS, cuts: [{ start: 30, end: 60, kind: "manual", applied: true }], rev: 2 } }));
       await page.evaluate(() => document.dispatchEvent(new CustomEvent("shroom:keep", { detail: [[0, 30], [60, 183]] })));
-      const redrawn = await page.waitForFunction(() => +document.querySelector(".seek").max < 160 && document.querySelector(".chs i:last-child").style.flex.startsWith("26"), null, { timeout: 10000, polling: 250 }).then(() => true, () => false);
+      // Each section as long as its chapter on the cut clock: 0:38, 0:46, 0:43 and 0:26.
+      const redrawn = await page.waitForFunction(() => {
+        const grow = [...document.querySelectorAll(".chs i")].map((x) => Math.round(parseFloat(getComputedStyle(x).flexGrow)));
+        return +document.querySelector(".seek").max < 160 && JSON.stringify(grow) === "[38,46,43,26]";
+      }, null, { timeout: 10000, polling: 250 }).then(() => true, () => false);
       const at40 = await tipAt(page, 40, false);
       if (!redrawn || at40?.chapter !== AI_SAID[1][1]) missing.push(`the bar redrawn on the cut clock: “${AI_SAID[1][1]}” at 0:40 (got ${JSON.stringify(at40)}, redrawn ${redrawn})`);
       return missing;
