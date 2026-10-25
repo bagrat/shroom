@@ -2195,8 +2195,10 @@ const HOUR_MS = 3600 * 1000;
 const DAY_MS = 24 * HOUR_MS;
 /** Invite lifetimes, set by the server's clock (SM:1328, 1387). */
 const INVITE_SECONDS = { member: 604800, own_mac: 3600 };
-/** Credential lifetimes (§3.4): R2 sets no ceiling of its own (B35 P6), so these are it. */
-const TTL = { upload: 604800, manage: 900 };
+/** Credential lifetimes (§3.4): R2 sets no ceiling of its own (B35 P6), so these are it. An
+ * upload credential lives an hour; the Mac mints the same recording's again as it nears its
+ * end, so a removed member's upload stops within the hour (N32). */
+const TTL = { upload: 3600, manage: 900 };
 /** A one-time page key's life (`shroom-cloud::owner::KEY_TTL_SECS`). */
 const KEY_SECONDS = 600;
 /** New recordings one device may open in a clock hour (H4; a scaffold flag). */
