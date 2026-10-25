@@ -4,7 +4,7 @@
 
 The machine: every state, edge, rule, said-line and law of shroom v1 — the spec (DECISIONS B133). Sessions edit it; MACHINE.md and the canvas's machine boards are generated from it.
 
-166 states · 353 edges · 26 rules · 776 said-lines · 16 laws · 89 ledger rows.
+166 states · 353 edges · 26 rules · 775 said-lines · 16 laws · 89 ledger rows.
 
 Status: **ratified** is Bagrat's; **provisional** is designed or built and awaits him (each cites its row: `#n` is a DEVIATIONS row of docs/DECISIONS.md, `Bn` a decision, `Nn`/`Un`/`Pn` a ledger row below). `SM:n` in older citations is a line of the retired spec text, kept in history/spec/UX-STATEMACHINE.md.
 
@@ -3271,7 +3271,6 @@ While the space's page is put up again without Cloudflare's AI (a few seconds), 
 | “AI disconnected” | line | ratified | N78: the banner's parts, under its line: turning off, part 2, done. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”). · N78 |
 | “Disconnecting AI” | line | ratified | N78: the banner's parts, under its line: turning off, part 2, still to come: its dot; with a cross when it stopped there. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”). · N78 |
 | “Switching AI off for new videos…” | line | ratified | N78: the banner's parts, under its line: turning off, part 3 (its schedule, then the page saying its AI is off), underway: its spinner and its clock. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”). · N78 |
-| “AI is off for new videos” | line | ratified | N78: the banner's parts, under its line: turning off, part 3, done: its tick, in bold — the end. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”). · N78 |
 | “Switching AI off for new videos” | line | ratified | N78: the banner's parts, under its line: turning off, part 3, still to come: its dot; with a cross when it stopped there. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”). · N78 |
 | “Cloudflare is slower than usual just now — hang tight.” | line | ratified | N78: the banner's parts, under its line: quiet, under the parts, once one part has run 20 s; the clock keeps going. Bagrat approved the words, 2026-10-25 (relayed by the orchestrator: the plainer set, on the boards “Settings — Space: the AI switch while it works…” and “Popover — … Turn off while it works…”). · N78 |
 
