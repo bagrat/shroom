@@ -1245,6 +1245,15 @@ pub enum WindowKind {
     Editor(EditorId),
 }
 
+impl WindowKind {
+    /// Whether a take records this window while it's on screen, like any app's (law 4, N82):
+    /// the Library, every editor and Settings, for a bug report of shroom itself. Onboarding
+    /// and Send feedback stay out of every capture, as the overlays do.
+    pub fn recorded(self) -> bool {
+        matches!(self, WindowKind::Library | WindowKind::Settings | WindowKind::Editor(_))
+    }
+}
+
 /// An open surface: when it opened (law 4 visibility), when it was last entered (probe
 /// freshness), and whether the person asked for it (an unasked one never takes the keyboard).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
