@@ -15,7 +15,7 @@
 //   { "do": "move", "at": [x, y] }                                     cliclick: the pointer there
 //   { "do": "sweep", "press": bool, "from": [x, y], "to": [x, y] }      cliclick: the pointer along, in 2 px steps (held down)
 //   { "do": "same", "a": <name>, "b": <name>, "crop": [x, y, w, h], "page": [w, h] }
-//                                    ffmpeg: the two shots' pixels in the page's `crop` (CSS px), the same? (else <a>-diff.png)
+//                                    ffmpeg: the two shots' pixels in the page's `crop` (CSS px), none far off? (else <a>-diff.png)
 //
 // Points are from the main display's top-left. The screenshots, the copy the drive read
 // back from the bucket and the report land in $MAC_OUT when the scenario sets it. A drive
@@ -124,11 +124,16 @@ async function answer(ask) {
     const top = h - ask.page[1] * k;
     const [cx, cy, cw, ch] = ask.crop.map((v) => Math.round(v * k));
     const crop = `format=rgb24,crop=${Math.min(cw, w - cx)}:${Math.min(ch, h - top - cy)}:${cx}:${Math.round(top) + cy}`;
-    const md5 = (f) => execFileSync(ffmpeg, ["-v", "error", "-i", f, "-vf", crop, "-f", "md5", "-"], { encoding: "utf8" }).trim();
-    if (md5(a) === md5(b)) return;
+    // Off by a step or two is how a gradient's dashes come out painted in parts; a trace is
+    // the label's dark pill or line where the ruler is light: far off.
+    const raw = (f) => execFileSync(ffmpeg, ["-v", "error", "-i", f, "-vf", crop, "-f", "rawvideo", "-pix_fmt", "rgb24", "-"], { maxBuffer: 1 << 28 });
+    const [pa, pb] = [raw(a), raw(b)];
+    let off = pa.length === pb.length ? 0 : Infinity;
+    for (let i = 0; i < pa.length && off !== Infinity; i += 3) if (Math.max(Math.abs(pa[i] - pb[i]), Math.abs(pa[i + 1] - pb[i + 1]), Math.abs(pa[i + 2] - pb[i + 2])) > 24) off++;
+    if (off === 0) return;
     // Where they differ, made bright, beside them.
     spawnSync(ffmpeg, ["-v", "error", "-y", "-i", a, "-i", b, "-lavfi", `[0]${crop}[a];[1]${crop}[b];[a][b]blend=all_mode=difference,lutrgb=r=min(255\\,val*32):g=min(255\\,val*32):b=min(255\\,val*32)`, "-frames:v", "1", join(dir, `${ask.a}-diff.png`)]);
-    throw new Error(`${ask.a} and ${ask.b} differ (${ask.a}-diff.png)`);
+    throw new Error(`${ask.a} and ${ask.b} differ in ${off} pixels (${ask.a}-diff.png)`);
   }
   throw new Error(`unknown ask ${JSON.stringify(ask)}`);
 }

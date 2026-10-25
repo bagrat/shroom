@@ -1368,29 +1368,43 @@ fn play_by_hand(d: &Drive, runner: &Runner, origin: (f64, f64)) -> Result<(), St
 
 /// The ruler's time label, moved, leaves nothing behind (it left traces in WebKit,
 /// 2026-10-25): the pointer swept over the ruler, then pressed and dragged along it; each
-/// time, the window as WebKit left it against the window painted afresh.
+/// time, the window as WebKit left it against the window painted afresh. First as it was
+/// before (the label and the hover's line without layers of their own), for the record, then
+/// as it is.
 fn ruler_leaves_nothing(d: &Drive, runner: &Runner, origin: (f64, f64)) -> Result<(), String> {
+    const FLAT: &str = r#"JSON.stringify(!!document.head.appendChild(Object.assign(document.createElement("style"), { id: "flat", textContent: ".ghost, .when { will-change: auto !important; }" })))"#;
+    const LAYERED: &str = r#"JSON.stringify(!!document.getElementById("flat")?.remove())"#;
     let layout = editor_layout(d)?;
     let r = layout.get("ruler").filter(|r| !r.is_null()).ok_or("no ruler on the page")?;
     let n = |i: usize| r.get(i).and_then(serde_json::Value::as_f64).unwrap_or(0.0);
     let (x, y) = (|f: f64| origin.0 + n(0) + n(2) * f, origin.1 + n(1) + n(3) / 2.0);
-    for (name, press, from, to) in [("editor-ruler-hovered", false, 0.05, 0.7), ("editor-ruler-scrubbed", true, 0.7, 0.2)] {
-        runner.ask(d, serde_json::json!({ "do": "sweep", "press": press, "from": [x(from), y], "to": [x(to), y] }))?;
-        std::thread::sleep(Duration::from_millis(500));
-        runner.shot(d, &d.editor_label(), name)?;
-        // Painted afresh: the page hidden a moment and shown again, the pointer where it was.
-        page_eval(d, &d.editor_label(), r#"JSON.stringify(document.body.style.visibility = "hidden")"#)?;
-        std::thread::sleep(Duration::from_millis(400));
-        page_eval(d, &d.editor_label(), r#"JSON.stringify(document.body.style.visibility = "")"#)?;
-        std::thread::sleep(Duration::from_millis(600));
-        runner.shot(d, &d.editor_label(), &format!("{name}-afresh"))?;
-        // Compared over the timeline: the ruler with the room above it where the label sits,
-        // and the track, which the hover's line crosses.
-        let strip = [0.0, n(1) - 26.0, layout["page"][0].as_f64().unwrap_or(0.0), 26.0 + n(3) + 10.0 + 66.0 + 4.0];
-        let same = runner.ask(d, serde_json::json!({ "do": "same", "a": name, "b": format!("{name}-afresh"), "crop": strip, "page": layout["page"] }));
-        let what = if press { "pressed and dragged along the ruler" } else { "swept over the ruler" };
-        d.check(&format!("the pointer {what}: its time label leaves nothing behind"), same.is_ok(), same.err().unwrap_or_default());
+    // Compared over the timeline: the ruler with the room above it where the label sits, and
+    // the track, which the hover's line crosses.
+    let strip = [0.0, n(1) - 26.0, layout["page"][0].as_f64().unwrap_or(0.0), 26.0 + n(3) + 10.0 + 66.0 + 4.0];
+    let mut before = serde_json::Map::new();
+    for flat in [true, false] {
+        page_eval(d, &d.editor_label(), if flat { FLAT } else { LAYERED })?;
+        for (what, press, from, to) in [("hovered", false, 0.05, 0.7), ("scrubbed", true, 0.7, 0.2)] {
+            let name = format!("editor-ruler-{what}{}", if flat { "-before" } else { "" });
+            runner.ask(d, serde_json::json!({ "do": "sweep", "press": press, "from": [x(from), y], "to": [x(to), y] }))?;
+            std::thread::sleep(Duration::from_millis(500));
+            runner.shot(d, &d.editor_label(), &name)?;
+            // Painted afresh: the page hidden a moment and shown again, the pointer where it was.
+            page_eval(d, &d.editor_label(), r#"JSON.stringify(document.body.style.visibility = "hidden")"#)?;
+            std::thread::sleep(Duration::from_millis(400));
+            page_eval(d, &d.editor_label(), r#"JSON.stringify(document.body.style.visibility = "")"#)?;
+            std::thread::sleep(Duration::from_millis(600));
+            runner.shot(d, &d.editor_label(), &format!("{name}-afresh"))?;
+            let same = runner.ask(d, serde_json::json!({ "do": "same", "a": name, "b": format!("{name}-afresh"), "crop": strip, "page": layout["page"] }));
+            if flat {
+                before.insert(what.into(), serde_json::json!(same.err().unwrap_or_else(|| "nothing left behind".into())));
+                continue;
+            }
+            let how = if press { "pressed and dragged along the ruler" } else { "swept over the ruler" };
+            d.check(&format!("the pointer {how}: its time label leaves nothing behind"), same.is_ok(), same.err().unwrap_or_default());
+        }
     }
+    d.fact_like("ruler_before", serde_json::Value::Object(before));
     Ok(())
 }
 
