@@ -790,6 +790,13 @@ pub fn read_log_line(line: &str) -> Option<(u64, &str)> {
     Some((mono.parse().ok()?, text))
 }
 
+/// B229 measured both ways in one run: a harness build whose home holds `memory-as-before`
+/// keeps the Library and Settings hidden when closed, as shroom did before B229
+/// (`app/test/take-drive.mjs memory`). Never in a build anyone else gets.
+pub fn memory_as_before(rt: &Runtime) -> bool {
+    cfg!(feature = "dev-harness") && rt.home.root.join("memory-as-before").exists()
+}
+
 /// A recording id as the run log names it: enough to tell takes apart, never the whole
 /// link (`AbCd…`).
 pub fn short(id: &str) -> String {

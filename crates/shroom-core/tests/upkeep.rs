@@ -150,7 +150,7 @@ fn the_sweep_waits_while_the_editor_is_open() {
     let pass = r.w.sweep.pass.unwrap().0;
     // The Library open on a live video, and Edit… on it: its record read, the video here.
     let rec = RecId("Sx4kq9dLmNpQrStU".into());
-    let row = LibraryRow { rec: rec.clone(), title: "Setting up shroom in two minutes".into(), created: Wall(1_787_313_600_000), length_ms: Some(272_400), live: true, owner: Some("m1".into()), poster: false, edited_ms: None };
+    let row = LibraryRow { rec: rec.clone(), title: "Setting up shroom in two minutes".into(), created: Wall(1_787_313_600_000), length_ms: Some(272_400), live: true, owner: Some("m1".into()), poster: false, edited_ms: None, pinned: false };
     r.w.session.windows.insert(WindowKind::Library, Door::asked(Mono(r.t)));
     r.w.library = Fact::known(Arc::new(vec![row]), Mono(r.t));
     r.w.library_ops.refreshed = Some(Mono(r.t));

@@ -33,7 +33,7 @@ const url = `${server.origin}/onboarding.html`;
 // The page the setup window gives its webview: 600×680 less the title bar (the canvas's frame).
 const PAGE = windowPage("ONBOARDING", { width: 600, height: 680 });
 
-const TEXT = new Set(["text", "paragraphs", "label", "header", "line", "lines", "question", "error", "hint", "taken", "quiet", "miss", "prefix", "suffix", "note", "title", "door"]);
+const TEXT = new Set(["text", "paragraphs", "label", "header", "line", "lines", "question", "error", "hint", "taken", "quiet", "miss", "prefix", "suffix", "note", "title", "door", "clock", "long"]);
 const texts = (node) => said(node, TEXT);
 
 // ── the run ──
@@ -135,9 +135,13 @@ for (const entry of gallery) {
     }
 
     // The spinner where the Scene implies one; at rest offline.
-    const spinning = nest && (["checking", "gate", "calm", "priming"].includes(nest.kind) || (nest.kind === "token" && nest.checking));
-    // A row shroom does out of sight (wiring under the permissions, N45) turns its own.
-    const working = s.body.kind === "plan" ? s.body.rows.filter((r) => r.glyph === "working").length : 0;
+    // Once the card watch is a part of its own, the card row keeps its arrow (N74).
+    const spinning = nest && (["checking", "check", "calm", "priming"].includes(nest.kind) || (nest.kind === "gate" && !nest.watch) || (nest.kind === "token" && nest.checking));
+    // A row shroom does out of sight (wiring under the permissions, N45) turns its own; so
+    // does each part of a wait that's underway (N74).
+    const parts = nest ? [...(nest.parts ?? []), ...(nest.watch ? [nest.watch] : [])] : [];
+    const working =
+      (s.body.kind === "plan" ? s.body.rows.filter((r) => r.glyph === "working").length : 0) + parts.filter((p) => p.glyph === "working").length;
     check(`${tag}: spinner ${spinning ? "turns" : "absent"}`, (await page.locator(".spin:not(.rest)").count()) === (spinning ? 1 : 0) + working);
     // At rest: wizard-offline / join-waiting's nest, or an arrival waiting on its space.
     const resting = nest?.kind === "offline" || nest?.kind === "unexpected" || (s.body.kind === "invite" && s.body.spinner);

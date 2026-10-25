@@ -325,9 +325,10 @@ and edits on the share page)*)**
 39. **Edit in shroom on the owner page** (N69, B221; Bagrat's ask and his approval of the
     boards as drawn, option A and the tooltip, 2026-10-18): the scissors open the video in
     the editor through `shroom://edit/…`, or the popover says, once, why this Mac can't.
-    Its spec row and words are provisional, for him to ratify. Since 2026-10-19 each video
-    opens in an editor window of its own (N73, B227, ratified by Bagrat as drawn), so its
-    line for another video is gone; and ✕ with changes not saved asks first (N71, B223).
+    He ratified its spec row and its four lines as built on 2026-10-24. Since 2026-10-19
+    each video opens in an editor window of its own (N73, B227, ratified by Bagrat as
+    drawn), so its line for another video is gone; and ✕ with changes not saved asks first
+    (N71, B223).
 40. **Known gaps**, none blocking:
     - The final video's bar counts the upload by file, not by byte: once the cut is done it
       holds at 80% while the video goes up (minutes, for a long one), then 95, 97, 99, 100.
@@ -365,3 +366,13 @@ and edits on the share page)*)**
     words (`crates/shroom-cli/src/say.rs`, the edit section), the guide's *Editing* section,
     and B225's calls — the command saves itself rather than through the app, refuses while
     the video is open in an editor window, and never asks “Delete the original?” (Keep for 2 days).
+
+43. **N75 — Pin, Delete all, and auto-cleanup run by the space's page** (B232–B234; Bagrat
+    approved every board and its words as drawn, 2026-10-24, relayed by the orchestrator).
+    Pin is the record's `keep`, from a row's menu and `shroom pin`/`unpin`; Delete all… asks
+    once and holds one Undo; auto-cleanup (off by default; 15, 30 or 60 days unwatched) is
+    set on the Mac that set up the space and run by the space's page on the one schedule AI
+    naming uses, three days' warning first in the Library, the popover and the command.
+    Proved in CI (the core walkthroughs, the Worker's `autoclean.test.js`, the command
+    against the real page, the window gallery). Ships with 0.1.29. Known gap: no hosted-Mac
+    drive yet; the Settings pop-up and the popover banner are checked in the gallery only.

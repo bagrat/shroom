@@ -4,7 +4,7 @@
 
 The machine: every state, edge, rule, said-line and law of shroom v1 — the spec (DECISIONS B133). Sessions edit it; MACHINE.md and the canvas's machine boards are generated from it.
 
-163 states · 344 edges · 26 rules · 683 said-lines · 16 laws · 84 ledger rows.
+166 states · 353 edges · 26 rules · 751 said-lines · 16 laws · 87 ledger rows.
 
 Status: **ratified** is Bagrat's; **provisional** is designed or built and awaits him (each cites its row: `#n` is a DEVIATIONS row of docs/DECISIONS.md, `Bn` a decision, `Nn`/`Un`/`Pn` a ledger row below). `SM:n` in older citations is a line of the retired spec text, kept in history/spec/UX-STATEMACHINE.md.
 
@@ -280,7 +280,7 @@ The only pre-setup state (U1). There is no menu: the tray click opens the welcom
 | → | Kind | Label | Status | Cites |
 |---|---|---|---|---|
 | `welcome` | flow | tray click — the same window, any day (N21) | ratified |  |
-| `idle-ready` | flow | Cloudflare: wired | ratified | N13, B134 |
+| `idle-ready` | flow | Cloudflare: wired — also with the setup window closed (N74) | ratified | B134, N13, N74 |
 | `member-welcome` | flow | tray click while a remembered invite still lives (defined in Region 6, N30, designed 2026-09-30) | provisional |  |
 | `join-expired` | fail | tray click after the remembered invite has died: the window's join-expired face, shown once; the plain welcome thereafter (defined in Region 6, N30, designed 2026-09-30) | provisional |  |
 
@@ -554,11 +554,24 @@ Repair mood only: a pasted token belongs to a different Cloudflare account than 
 
 ### `card`
 
-state · window · **ratified** · board: WizardCard · cites N14
+state · window · **ratified** · board: WizardCard · cites N14, N74
 
-The visible gate step under the plan's card row. One probe pass runs at paste-validate (write-class probe, R2-enabled probe, subdomain GET); its gates surface here, email first then card. Existing-R2 accounts tick the row silently, seeing neither gate.
+The visible gate step under the plan's card row. One probe pass runs at paste-validate (write-class probe, R2-enabled probe, subdomain GET); its gates surface here, email first then card. Existing-R2 accounts tick the row silently, seeing neither gate. Since N74 the check shows its four parts under the card row as they run — the token, the email gate, storage (the card gate), then the look for a link name and an earlier space — each ticking only when its own probe answers; the part underway carries its running clock (spinning rows only, never a done or a coming one). The same parts show when a relaunch re-runs the check.
 
 **Entry.** Paste validated and token persisted (or account chosen at token-pick-account); probe pass ran.
+
+| Said | Role | Copy | Note |
+|---|---|---|---|
+| “Checking your token…” | line | provisional | N74: part 1 of the check, underway: its spinner, and its running clock once it has run a second. Not drawn on the board; the build's form of a drawn line (provisional, N74). |
+| “Your token works” | line | ratified | N74: part 1 of the check, done: its tick. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards). |
+| “Checking your Cloudflare email is confirmed…” | line | ratified | N74: part 2 of the check, underway: its spinner, and its running clock once it has run a second. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards). |
+| “Your Cloudflare email is confirmed” | line | ratified | N74: part 2 of the check, done: its tick. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards). |
+| “Checking your Cloudflare email is confirmed” | line | provisional | N74: part 2 of the check, still to come: its dot. Not drawn on the board; the build's form of a drawn line (provisional, N74). |
+| “Checking that storage is switched on…” | line | ratified | N74: part 3 of the check, underway: its spinner, and its running clock once it has run a second. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards). |
+| “Storage is switched on” | line | ratified | N74: part 3 of the check, done: its tick. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards). |
+| “Checking that storage is switched on” | line | provisional | N74: part 3 of the check, still to come: its dot. Not drawn on the board; the build's form of a drawn line (provisional, N74). |
+| “Looking for your link name and any earlier space…” | line | provisional | N74: part 4 of the check, underway: its spinner, and its running clock once it has run a second. Not drawn on the board; the build's form of a drawn line (provisional, N74). |
+| “Looking for your link name and any earlier space” | line | ratified | N74: part 4 of the check, still to come: its dot. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards). |
 
 | → | Kind | Label | Status | Cites |
 |---|---|---|---|---|
@@ -587,7 +600,7 @@ Cloudflare's email-verification gate under the card row; auto-polls with a spinn
 
 ### `gate-card`
 
-failure-state · window · **ratified** · cites N14, N18, N42, N45
+failure-state · window · **ratified** · cites N14, N18, N42, N45, N74
 
 The card gate under the card row. The button opens Cloudflare's own billing page (shroom never sees payment data); a spinner marks the auto-poll watch. Also the repair mood's state when the card is removed / storage switched off.
 
@@ -599,6 +612,8 @@ The card gate under the card row. The button opens Cloudflare's own billing page
 | “Add credit card” | button | ratified | Filled. |
 | “Add credit card opens your Cloudflare billing page. I'll notice the card the moment it's there and carry on.” | line | ratified | N45: quiet, under the button, until it's clicked. Ratified by Bagrat, 2026-10-15 (on the canvas's setup-fixes boards). |
 | “Billing is open in your browser — add the card there. I'll carry on by myself.” | line | ratified | N45: quiet, under the button, once it was clicked. Ratified by Bagrat, 2026-10-15 (on the canvas's setup-fixes boards). |
+| “Waiting for Cloudflare to confirm your card is in place…” | line | ratified | N74: once Add credit card was clicked, under its quiet line: the watch, its spinner and its running clock from the click. Bagrat's words, 2026-10-25. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards). |
+| “A new card can take Cloudflare a minute or so to count. Once it's added, I'll move on — hang tight!” | line | ratified | N74: quiet, under the watch, from 45 s after the click. Its second sentence Bagrat's, in the window's one voice, 2026-10-25. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards). |
 
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
@@ -673,16 +688,31 @@ Not a state — a derived label. If the account already holds a Worker named v t
 
 ### `wiring`
 
-state · window · **ratified** · board: WizardWiring · cites N16, N18, N3, N4, R6, N45
+state · window · **ratified** · board: WizardWiring · cites N16, N18, N3, N4, N45, N74, R6
 
-The setup's last step since N45, reached only when the permissions chapter finished before wiring did: a spinner and one calm line while the ~6 idempotent REST calls (private bucket, the v Worker, the Worker secret, member #1 enrollment, the subdomain's propagation — minutes on a new name) and the silent self-check finish. Wiring itself starts the moment the link name ticks and runs under the chapter, out of sight. Closing the window mid-wire is safe. In the repair mood, wiring runs again when the page or its key is gone (the click was the consent).
+The setup's last step since N45, reached only when the permissions chapter finished before wiring did: a spinner and one calm line while the ~6 idempotent REST calls (private bucket, the v Worker, the Worker secret, member #1 enrollment, the subdomain's propagation — minutes on a new name) and the silent self-check finish. Wiring itself starts the moment the link name ticks and runs under the chapter, out of sight. Closing the window mid-wire is safe. In the repair mood, wiring runs again when the page or its key is gone (the click was the consent). Since N74 the last step lists wiring's five parts under the calm line — your private storage, your video page, switching your name on, a last check, adding this Mac — each ticking only when its own calls answer; the part underway carries its running clock, which a retry never resets (parts already done stay ticked). From 3 min on switching your name on, one quiet line says new names can take longer and that closing the window is fine. And wiring no longer needs the window (Bagrat, 2026-10-19): while a token is saved, the name row has ticked and no space is set up, it keeps trying — window open or closed, and from the next launch after a quit, the login item's silent one included — and lands without opening anything.
 
-**Entry.** The permissions chapter is done (row six ticked) and wiring hasn't finished. Repair mood: the page (Worker) or its key is gone.
+**Entry.** The permissions chapter is done (row six ticked) and wiring hasn't finished. Repair mood: the page (Worker) or its key is gone. Since N74 also with the setup window closed, or after a relaunch: the token saved, the name row ticked (the launch's own probe pass says so), no space yet.
 
 | Said | Role | Copy | Note |
 |---|---|---|---|
 | “Setting up your space… switching your name on takes about a minute, one time only.” | line | ratified | The calm line of the repair mood's re-wire (Settings · Space). Since N45 the setup's last step says the line below. |
 | “Almost there — switching your name on takes a few minutes the first time, and only once.” | line | ratified | N45: the setup's last step, waiting for wiring. Ratified by Bagrat, 2026-10-15 (on the canvas's setup-fixes boards). |
+| “Making your private storage…” | line | provisional | N74: part 1 of wiring, under the calm line, underway: its spinner and its running clock, counted from the first try and never reset by a retry. Not drawn on the board; the build's form of a drawn line (provisional, N74). |
+| “Your private storage” | line | ratified | N74: part 1 of wiring, under the calm line, done: its tick. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards). |
+| “Making your private storage” | line | provisional | N74: part 1 of wiring, under the calm line, still to come: its dot. Not drawn on the board; the build's form of a drawn line (provisional, N74). |
+| “Putting up your video page…” | line | provisional | N74: part 2 of wiring, under the calm line, underway: its spinner and its running clock, counted from the first try and never reset by a retry. Not drawn on the board; the build's form of a drawn line (provisional, N74). |
+| “Your video page” | line | ratified | N74: part 2 of wiring, under the calm line, done: its tick. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards). |
+| “Putting up your video page” | line | provisional | N74: part 2 of wiring, under the calm line, still to come: its dot. Not drawn on the board; the build's form of a drawn line (provisional, N74). |
+| “Switching your name on…” | line | ratified | N74: part 3 of wiring, under the calm line, underway: its spinner and its running clock, counted from the first try and never reset by a retry. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards). |
+| “Your name is on” | line | ratified | N74: part 3 of wiring, under the calm line, done: its tick. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards). |
+| “Switching your name on” | line | provisional | N74: part 3 of wiring, under the calm line, still to come: its dot. Not drawn on the board; the build's form of a drawn line (provisional, N74). |
+| “Checking it all works…” | line | provisional | N74: part 4 of wiring, under the calm line, underway: its spinner and its running clock, counted from the first try and never reset by a retry. Not drawn on the board; the build's form of a drawn line (provisional, N74). |
+| “Last check passed” | line | ratified | N74: part 4 of wiring, under the calm line, done: its tick. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards). |
+| “A last check that it all works” | line | ratified | N74: part 4 of wiring, under the calm line, still to come: its dot. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards). |
+| “Adding this Mac to your space…” | line | provisional | N74: part 5 of wiring, under the calm line, underway: its spinner and its running clock, counted from the first try and never reset by a retry. Not drawn on the board; the build's form of a drawn line (provisional, N74). |
+| “Adding this Mac to your space” | line | ratified | N74: part 5 of wiring, under the calm line, still to come: its dot. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards). |
+| “New names can take Cloudflare a while longer, sometimes ten minutes. It's fine to close this window — I'll finish by myself.” | line | ratified | N74: quiet, under the parts, once switching your name on has run 3 min. Bagrat, 2026-10-19: wiring finishes on its own with the window closed. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards). |
 
 | → | Kind | Label | Status | Cites |
 |---|---|---|---|---|
@@ -744,7 +774,7 @@ A pasted token's probes find a space already there (a Mac replaced, or the owner
 
 ### `done`
 
-state · window · **ratified** · board: WizardPerms · cites N17, U5, N45
+state · window · **ratified** · board: WizardPerms · cites N17, N45, N74, U5
 
 The resting beat that opens the permissions chapter: four ticks, the permissions row current (drawn fifth, N45), its nest previewing the choreography, and the wiring row beneath it working out of sight. Nothing auto-fires (no dialog to an empty chair). perm-preamble is fused in. Row six ticks only at the end of permissions; the menu-bar handoff lives at all-set.
 
@@ -761,6 +791,11 @@ The resting beat that opens the permissions chapter: four ticks, the permissions
 | “✓ Wiring it up” | line | provisional | one case the spec didn't print, so it varies by case — the copy table: The plan, rows behind you · copy table |
 | “✓ Letting macOS allow recording” | line | provisional | one case the spec didn't print, so it varies by case — the copy table: The plan, rows behind you · copy table |
 | “• Wiring it up (shroom is doing this part now)” | line | ratified | N45: the wiring row while wiring runs under the permissions chapter — its dot a small spinner. Ratified by Bagrat, 2026-10-15 (on the canvas's setup-fixes boards). |
+| “• Wiring it up (shroom is doing this part now · making your private storage)” | line | provisional | N74: the wiring row while wiring runs under the chapter, naming part 1 underway; its running clock follows the aside. The board drew part 3; the others are its form (provisional, N74). |
+| “• Wiring it up (shroom is doing this part now · putting up your video page)” | line | provisional | N74: the wiring row while wiring runs under the chapter, naming part 2 underway; its running clock follows the aside. The board drew part 3; the others are its form (provisional, N74). |
+| “• Wiring it up (shroom is doing this part now · switching your name on)” | line | ratified | N74: the wiring row while wiring runs under the chapter, naming part 3 underway; its running clock follows the aside. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards). |
+| “• Wiring it up (shroom is doing this part now · checking it all works)” | line | provisional | N74: the wiring row while wiring runs under the chapter, naming part 4 underway; its running clock follows the aside. The board drew part 3; the others are its form (provisional, N74). |
+| “• Wiring it up (shroom is doing this part now · adding this Mac to your space)” | line | provisional | N74: the wiring row while wiring runs under the chapter, naming part 5 underway; its running clock follows the aside. The board drew part 3; the others are its form (provisional, N74). |
 
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
@@ -1155,9 +1190,9 @@ A same-themed custom popover under the tray (Loom-style). It is never a native m
 | “LG UltraFine 3” | line | provisional | one case the spec didn't print, so it varies by case — the copy table: Displays of one name that place can't tell apart · copy table |
 | “Your camera didn't send a picture, so nothing was recorded — try again.” | status | ratified | A Camera only take whose capture died with nothing a repair could save: said once in config's status line, until the popover closes. Ratified by Bagrat (2026-10-14, wording approved); DEVIATIONS #53. · #53 |
 | “Your screen didn't send a picture, so nothing was recorded — try again.” | status | ratified | A display take whose capture died with nothing a repair could save: said once in config's status line, until the popover closes. Ratified by Bagrat (2026-10-14, wording approved); DEVIATIONS #53. · #53 |
-| “This Mac isn't set up for that video's space.” | status | provisional | The owner page's Edit in shroom (N69), on a Mac set up for another space: the popover opens by itself under the mushroom, the app you were in keeping the keyboard; said once in the status line, first in its order, until the popover closes. Approved as drawn (Bagrat, 2026-10-18). · N69 |
-| “Only whoever recorded this video, or the space's owner, can edit it.” | status | provisional | The owner page's Edit in shroom (N69), on a member's Mac, for someone else's video: the popover opens by itself under the mushroom, the app you were in keeping the keyboard; said once in the status line, first in its order, until the popover closes. Approved as drawn (Bagrat, 2026-10-18). · N69 |
-| “That video isn't in your space anymore.” | status | provisional | The owner page's Edit in shroom (N69), for a video deleted since its page opened: the popover opens by itself under the mushroom, the app you were in keeping the keyboard; said once in the status line, first in its order, until the popover closes. Approved as drawn (Bagrat, 2026-10-18). · N69 |
+| “This Mac isn't set up for that video's space.” | status | ratified | The owner page's Edit in shroom (N69), on a Mac set up for another space: the popover opens by itself under the mushroom, the app you were in keeping the keyboard; said once in the status line, first in its order, until the popover closes. Approved as drawn (Bagrat, 2026-10-18). · N69 |
+| “Only whoever recorded this video, or the space's owner, can edit it.” | status | ratified | The owner page's Edit in shroom (N69), on a member's Mac, for someone else's video: the popover opens by itself under the mushroom, the app you were in keeping the keyboard; said once in the status line, first in its order, until the popover closes. Approved as drawn (Bagrat, 2026-10-18). · N69 |
+| “That video isn't in your space anymore.” | status | ratified | The owner page's Edit in shroom (N69), for a video deleted since its page opened: the popover opens by itself under the mushroom, the app you were in keeping the keyboard; said once in the status line, first in its order, until the popover closes. Approved as drawn (Bagrat, 2026-10-18). · N69 |
 
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
@@ -1184,7 +1219,8 @@ A same-themed custom popover under the tray (Loom-style). It is never a native m
 | `library` | side | footer icons | provisional |  |
 | `settings-general` | side | footer icons | provisional |  |
 | `send-feedback` | side | footer icons | ratified | N60 |
-| `ai-offer` | auto | config opens on the Mac that holds the setup key while the space's AI is off, no higher banner shows and the banner has never been answered on this Mac (N66) | ratified | N66 |
+| `ai-turned-on` | auto | config opens on the Mac that holds the setup key while the space's AI was never settled on this Mac and no higher banner shows: the AI is turned on as it shows (N76) | ratified | N76 |
+| `ai-on-in-space` | auto | config opens on a member's Mac whose space's AI is on, no higher banner shows and the banner was never answered on this Mac (N76) | ratified | N76 |
 
 ### `disk-low`
 
@@ -1768,7 +1804,7 @@ The real shareable page, opened in the browser at stop. It is never a preview or
 | “Preparing the thumbnail…” | tooltip | ratified | N46: Copy thumbnail's tooltip while it waits for its picture (wording approved by Bagrat, 2026-10-15). |
 | “Download” | button | ratified | Present only once the single-file MP4 exists; second-class (R11). The spec gives no button styling beyond “second-class”; the action is recorded as secondary on that basis. |
 | “made with shroom” | field-label | ratified | The owner switch's label, beside the mark. The same three words are the hover tooltip recipients get. |
-| “Edit in shroom” | tooltip | provisional | The scissors' tooltip, and its name for screen readers (N69). Approved as drawn (Bagrat, 2026-10-18). · N69 |
+| “Edit in shroom” | tooltip | ratified | The scissors' tooltip, and its name for screen readers (N69). Approved as drawn (Bagrat, 2026-10-18). · N69 |
 | “Named from what you said. Click the title to change it.” | line | provisional | N67. Under the title while the space's name stands and nobody has typed one; gone once the title is edited. Proposed 2026-10-18 (AiOwnerNamed); awaiting Bagrat. · N67 |
 | “Its name and chapters come a little later, once your free hours are back.” | line | provisional | N66 (4), N67. Under the title while the take waits for the next free day (after 00:00 UTC); nothing reads as an error. Proposed 2026-10-18 (AiNamingLater); awaiting Bagrat. · N66, N67 |
 
@@ -1795,9 +1831,9 @@ The real shareable page, opened in the browser at stop. It is never a preview or
 | `owner-page-cuts` | auto | the take's voice cuts land — the page shows them | provisional | N65 |
 | `owner-page-cue-hint` | auto | a take with no voice cuts, in a space that listens — the page shows how to cut a slip | provisional | N65 |
 | `hearing` | auto | opened while the take is heard — the line, its spinner turning | provisional | N65 |
-| `editor` | side | Edit in shroom | provisional | N69, N73 |
-| `editor-getting` | side | Edit in shroom | provisional | N69, N73 |
-| `config` | side | Edit in shroom | provisional | N69 |
+| `editor` | side | Edit in shroom | ratified | N69, N73 |
+| `editor-getting` | side | Edit in shroom | ratified | N69, N73 |
+| `config` | side | Edit in shroom | ratified | N69 |
 
 ### `uploading`
 
@@ -2177,7 +2213,7 @@ While the take is heard (N65 (7), N66): in a space that listens, once the upload
 
 state · window · **provisional** · board: Library · cites N35, N5, N33, N25, N26, N28, N34, N41, U2, §5.6, R10, P13, N46, N68, N63, N73
 
-The Library window, thin by design (§5.6), built for two jobs: re-share an old video and clean up. It is a list, newest first. Each row shows a small poster, the title, then date · length; in Everyone, other members' rows add their admin-private label (N28; removed members keep it). Copy link is always visible; Copy thumbnail sits under it in the row's menu (N46), and Edit… after Open page (N63). Open page and Delete… show on hover or selection. State words appear only when a video isn't live (no word means live). A recovered take pins to the top under the amber dot, mirroring N25's banner. The full macOS idiom applies: click a title to rename it, double-click to open, ⌘C copies, the Delete key deletes, right-click opens a menu, ⌘/⇧-click multi-selects. Mine · Everyone shows only on owner-class Macs once someone else has a video here, and Mine is the default. Search is local and instant, over titles only. The window opens on the local cache, and the bucket refresh (R10 delta sync) runs behind it, sliding new rows in, including videos from your other Macs. Footer: the count only, with no sizes or prices (P13 parked). Scope: members see their own videos, owner-class Macs see the whole space. If another Mac deletes a video while this Mac is uploading it, the tombstone check at resume stops the upload and this row turns to 'Removed from the space' with Save to Movies · Discard…. Mocked row shape: '<title> — Aug 21 · 4:32' (+ ' · Mher' in Everyone).
+The Library window, thin by design (§5.6), built for two jobs: re-share an old video and clean up. It is a list, newest first. Each row shows a small poster, the title, then date · length; in Everyone, other members' rows add their admin-private label (N28; removed members keep it). Copy link is always visible; Copy thumbnail sits under it in the row's menu (N46), and Edit… after Open page (N63). Open page and Delete… show on hover or selection. State words appear only when a video isn't live (no word means live). A recovered take pins to the top under the amber dot, mirroring N25's banner. The full macOS idiom applies: click a title to rename it, double-click to open, ⌘C copies, the Delete key deletes, right-click opens a menu, ⌘/⇧-click multi-selects. Mine · Everyone shows only on owner-class Macs once someone else has a video here, and Mine is the default. Search is local and instant, over titles only. The window opens on the local cache, and the bucket refresh (R10 delta sync) runs behind it, sliding new rows in, including videos from your other Macs. Footer: the count only, with no sizes or prices (P13 parked). Scope: members see their own videos, owner-class Macs see the whole space. If another Mac deletes a video while this Mac is uploading it, the tombstone check at resume stops the upload and this row turns to 'Removed from the space' with Save to Movies · Discard…. Mocked row shape: '<title> — Aug 21 · 4:32' (+ ' · Mher' in Everyone). A pinned row (N75) shows a small pin before its title; its menu says Unpin in place of Pin. While auto-cleanup has videos going, an amber line above the rows says how many and when, and each going row says so with a Pin; once a round has gone, a line says what went, with OK.
 
 **Entry.** A space exists, so config is reachable: idle-ready, not mid-take. The user clicks the Library (folder) icon in config's footer. One instance: clicking the icon again brings the open window forward. A window opened before a take stays open through it (N41's quiet-take law covers only what shroom would newly show). It is also restored at its derived state after an update relaunch if it was open when Update ran. The dock icon shows while it is open (Region 1 dock rule).
 
@@ -2213,6 +2249,14 @@ The Library window, thin by design (§5.6), built for two jobs: re-share an old 
 | “Review…” | button | ratified | Opens Suggested to clean up (N68). |
 | “Not now” | tooltip | ratified | The ✕ at the line's end, named for VoiceOver. Hides the line until the suggestions change (N68). |
 | “Edit…” | menu-item | ratified | N63; a live row's menu, after Open page |
+| “Pin” | button | ratified | N75. A row's menu, after Rename, on a live row that isn't pinned. Several rows selected: Pin when any isn't pinned, else Unpin, and it acts on all. Also on a row auto-cleanup will delete, beside Copy link. Greys offline, as Rename does. Bagrat approved the board as drawn, 2026-10-24. · N75 |
+| “Unpin” | button | ratified | N75. In place of Pin, on a pinned row. Bagrat approved the board as drawn, 2026-10-24. · N75 |
+| “Pinned” | other | ratified | N75. A pinned row's small pin before its title says it to VoiceOver and on hover. Bagrat approved the board as drawn, 2026-10-24. · N75 |
+| “Two videos will be deleted on Oct 27 — nobody has watched them in 30 days.” | line | ratified | N75. Above the rows, amber, in place of the suggestion line, while auto-cleanup has videos going in this Mac's scope; no Not now. The count varies (a word up to nine, Law 16; one reads 'One video will be deleted…' and 'nobody has watched it'), and so do the date and the days. With videos going on different dates, the earliest. Bagrat approved the board as drawn, 2026-10-24. · N75 |
+| “Deleted Oct 27 unless pinned” | line | ratified | N75. After a going row's date · length, amber. The date varies. Bagrat approved the board as drawn, 2026-10-24. · N75 |
+| “Auto-cleanup deleted two videos nobody had watched in 30 days, freeing 1.7 GB.” | line | ratified | N75. Once, after a round of auto-cleanup took videos in this Mac's scope, until OK. The count varies (a word up to nine; one reads 'one video'), and so do the days and the size. Bagrat approved the board as drawn, 2026-10-24. · N75 |
+| “OK” | button | ratified | N75. Puts the line away, here and in the popover. Bagrat approved the board as drawn, 2026-10-24. · N75 |
+| “Couldn't change that just now — try again in a moment.” | line | ratified | N75. Above the rows, after a Pin or Unpin that didn't go through (law 12): the row reads as the space has it. The settings' own words for a switch that didn't change. · N75 |
 
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
@@ -2229,6 +2273,7 @@ The Library window, thin by design (§5.6), built for two jobs: re-share an old 
 | Discard… (recovered take) | red-text |  | `discard-confirm` | N25's confirm, not the delete sheet: no link was ever handed out, so no tombstone. Red per Law 9 (the row text doesn't restate the colour). |
 | Discard… (Removed from the space row) | red-text |  |  | The take on this Mac is still its maker's to keep or toss (law 2). Which confirm it opens is not stated. |
 | ✕ (close window) | close |  |  | Ordinary window: closing it takes the dock icon away unless another window is open (Region 1 dock rule: dock iff a window is open; ✕ ≡ the retreat, line 1717). |
+| Pin / Unpin | other |  | `library` | N75. Right-click → Pin (Unpin on a pinned row), after Rename; and Pin on a row auto-cleanup will delete. At once, no sheet. |
 
 | → | Kind | Label | Status | Cites |
 |---|---|---|---|---|
@@ -2673,7 +2718,7 @@ One standard macOS settings window with toolbar tabs General · Space · Members
 
 face · window · **provisional** · a face of `settings` · board: SettingsGeneral · cites N36, U4, N8, N37, U7, B135, B180, N53, N62, N68
 
-The General tab: U4's login checkbox at home at last (it reads the system's truth: if the login item is removed in System Settings, the box shows unchecked), the update row mirroring config's banner, and the help row: Copy diagnostics and Report a problem… (B180), with GitHub's new-issue link under it as the public door (N8). Past this Mac's macOS, General carries the only update line: no banner, no dot.
+The General tab: U4's login checkbox at home at last (it reads the system's truth: if the login item is removed in System Settings, the box shows unchecked), the update row mirroring config's banner, and the help row: Copy diagnostics and Report a problem… (B180), with GitHub's new-issue link under it as the public door (N8). Past this Mac's macOS, General carries the only update line: no banner, no dot. Your videos gains Delete videos nobody watches (N75): the space's auto-cleanup, Off as it ships, set on the Mac that holds the setup key, read-only elsewhere.
 
 **Entry.** Settings window on the General tab (the default on first open). The shroom command's settings link (N62) opens it too, the switch's row lit for a moment.
 
@@ -2708,6 +2753,15 @@ The General tab: U4's login checkbox at home at last (it reads the system's trut
 | “Space used” | field-label | ratified |  |
 | “34 GB — about 36¢ a month past Cloudflare's free 10 GB” | status | ratified | Past the free 10 GB; the size and the cents vary (B212). |
 | “8.2 GB — inside Cloudflare's free 10 GB” | status | ratified | Inside the free 10 GB; the size varies (B212). |
+| “Delete videos nobody watches” | field-label | ratified | N75. A pop-up in Your videos, under Suggest videos to clean up; Off as it ships. Set on the Mac that holds the setup key. Bagrat approved the board as drawn, 2026-10-24. · N75 |
+| “Counted from the last time someone watched it, or from when it was shared. Pinned videos are never deleted, and the Library says which ones are going a few days before.” | line | ratified | N75. Under it, on the Mac that sets it. Bagrat approved the board as drawn, 2026-10-24. · N75 |
+| “Off” | button | ratified | N75. The pop-up's first choice. Bagrat approved the board as drawn, 2026-10-24. · N75 |
+| “After 15 days” | button | ratified | N75. Bagrat approved the board as drawn, 2026-10-24. · N75 |
+| “After 30 days” | button | ratified | N75. Bagrat approved the board as drawn, 2026-10-24. · N75 |
+| “After 60 days” | button | ratified | N75. Bagrat approved the board as drawn, 2026-10-24. · N75 |
+| “Your space deletes videos nobody has watched in 30 days. It's set on the Mac that set up your space. Pin a video in the Library to keep it.” | line | ratified | N75. On every other Mac, under the pop-up greyed at the space's choice. The number of days varies; off, the pop-up reads Off and the line is the setting Mac's. Bagrat approved the board as drawn, 2026-10-24. · N75 |
+| “Needs Count plays” | line | ratified | N75. In place of the line under it, the pop-up greyed, while Count plays is off. Bagrat approved the board as drawn, 2026-10-24. · N75 |
+| “Turning on — a few seconds.” | line | ratified | N75. Under Delete videos nobody watches, the first time it's turned on: the space's page is given its schedule, as AI's banner says it (N66). Bagrat approved the board as drawn, 2026-10-24. · N75 |
 
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
@@ -2718,6 +2772,7 @@ The General tab: U4's login checkbox at home at last (it reads the system's trut
 | Report a problem… | secondary |  | `report-problem` | Opens the report sheet (B180). |
 | GitHub | text-link |  |  | The new-issue link, prefilled with the version and nothing else (N8, B180). |
 | Uninstall shroom… | text-link |  | `uninstall-confirm` | Opens the Uninstall sheet. Greys mid-take (law 4). |
+| Delete videos nobody watches | other |  | `autoclean-confirm` | N75. A pop-up: Off · After 15 days · After 30 days · After 60 days. Turning it on or shortening it while videos already qualify asks first (autoclean-confirm); otherwise it's set at once, “Turning on — a few seconds.” under it the first time. One that didn't go through says Couldn't change that and stays as it was. |
 
 | → | Kind | Label | Status | Cites |
 |---|---|---|---|---|
@@ -2725,12 +2780,13 @@ The General tab: U4's login checkbox at home at last (it reads the system's trut
 | `updating-app` | flow | Update (an update is ready, not mid-take) | provisional |  |
 | `uninstall-confirm` | side | Uninstall shroom…, not mid-take | provisional | B135 |
 | `report-problem` | side | Report a problem… | provisional | B180 |
+| `autoclean-confirm` | flow | Delete videos nobody watches | ratified | N75 |
 
 ### `settings-space`
 
 face · window · **provisional** · a face of `settings` · board: SettingsSpace · cites N36, N42, U3, N29, N31, law 4, B159, N66
 
-The Space tab: one tab with a mood per kind of Mac (inspection · repair · owner-class-without-token · member). Beneath the rows, by role: the mark switch (owner-class only — a space setting, U3) and the exits as quiet text (Disconnect this Mac… for owners, Leave this space… for members). Row six is live on every Mac. A revoked grant un-ticks it (“screen recording is off”), with Turn it back on → the permissions chapter at exactly the missing beat, in this window. A denied microphone ticks the row with the fact, plus a quiet Turn on the microphone that opens System Settings' Microphone pane (a denied mic never blocks). Mid-take both exits grey (law 4). After Disconnect or Leave, the ~/.shroom secrets are wiped and the app returns to idle-unprovisioned; the login item stays as it was. No invite door shows (B159): an invite link pasted anywhere in the tab (⌘V) opens its invite, as the page's Open shroom does. On the Mac that holds the setup key, a second switch turns the space's AI on for new videos — titles, chapters, captions and voice cuts (N66) — with one line on what it does and costs; turning it on or off re-wires the page.
+The Space tab: one tab with a mood per kind of Mac (inspection · repair · owner-class-without-token · member). Beneath the rows, by role: the mark switch (owner-class only — a space setting, U3) and the exits as quiet text (Disconnect this Mac… for owners, Leave this space… for members). Row six is live on every Mac. A revoked grant un-ticks it (“screen recording is off”), with Turn it back on → the permissions chapter at exactly the missing beat, in this window. A denied microphone ticks the row with the fact, plus a quiet Turn on the microphone that opens System Settings' Microphone pane (a denied mic never blocks). Mid-take both exits grey (law 4). After Disconnect or Leave, the ~/.shroom secrets are wiped and the app returns to idle-unprovisioned; the login item stays as it was. No invite door shows (B159): an invite link pasted anywhere in the tab (⌘V) opens its invite, as the page's Open shroom does. On the Mac that holds the setup key, a second switch turns the space's AI on or off for new videos (on by default, N76) — titles, chapters, captions and voice cuts (N66) — with one line on what it does and costs; turning it on or off re-wires the page.
 
 **Entry.** Settings window on the Space tab. Which mood shows is derived from the kind of Mac and the probe results.
 
@@ -2746,13 +2802,13 @@ The Space tab: one tab with a mood per kind of Mac (inspection · repair · owne
 | “Turn on the microphone” | button | provisional | Quiet. |
 | “You can do this once your recording is finished.” | line | provisional | Mid-take, both exits grey with this line (law 4). |
 | “AI for new videos” | field-label | ratified | N66. Label of the AI switch, one switch for every AI feature (voice cuts, N65, included), on the Mac that holds the setup key only (it re-wires the page). Bagrat approved the board AiSettings as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later. · N66 |
-| “Titles, chapters and captions from what’s said, and your “shroom cut” slips cut — on your own Cloudflare account. Free for about 2½ hours of new video a day; more is about 4¢ per video hour on Cloudflare’s $5 plan.” | line | ratified | N66. Description beside the AI switch: the one cost line, also in ai-confirm. Bagrat approved the board AiSettings as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later. · N66 |
+| “Titles, chapters and captions from what’s said, and your “shroom cut” slips cut — on your own Cloudflare account. Free for about 2½ hours of new video a day; more is about 4¢ per video hour on Cloudflare’s $5 plan.” | line | ratified | N66. Description beside the AI switch: the one cost line. Bagrat approved the board AiSettings as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later. · N66 |
 | “Couldn't change that just now — try again in a moment.” | line | provisional | N66. In place of the AI switch's line when a re-wiring didn't go through, until the next try or the next visit (law 12); the switch is as the page has it. · N66 |
 
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
 | made with shroom switch | switch |  |  | Owner-class only. A space-global setting (U3), also flippable on a page. |
-| AI for new videos switch | switch |  |  | N66. Only on the Mac that holds the setup key; one switch for every AI feature, voice cuts included. On re-wires the page with Cloudflare's AI and its schedule; off takes them away. Greys while the re-wire runs and mid-take (law 4). |
+| AI for new videos switch | switch |  |  | N66. Only on the Mac that holds the setup key; one switch for every AI feature, voice cuts included. On re-wires the page with Cloudflare's AI and its schedule; off takes them away. Greys while the re-wire runs and mid-take (law 4). Using it settles the AI on this Mac: never turned on by default again (N76). |
 | ⌘V (an invite link, pasted anywhere in the tab) | other |  | `join-switch-confirm` | No door shows (B159). A link to this Mac's own space goes to join-already-here instead. Into the join machine (Region 6). Return behaviour not stated. |
 | Turn it back on | filled-default |  | `perm-screen` | The permissions chapter at exactly the missing beat, in this window. Only shown when the screen grant is revoked. Return behaviour in Settings is not stated. |
 | Turn on the microphone | secondary |  |  | Quiet. Opens System Settings' Microphone pane. |
@@ -3157,108 +3213,112 @@ Send feedback (N60): a small window of its own, opened from the popover's first 
 | email it to hi@shroom.am | text-link |  |  | Only once a send failed: a mail draft to hi@shroom.am with the words and the version (N48). |
 | Done | filled-default | ↵ |  | The sent face only: closes the window. Esc and ✕ too. |
 
-### `ai-offer`
+### `ai-turned-on`
 
-banner · banner · **ratified** · a face of `config` · board: AiBanner · cites N66
+banner · banner · **ratified** · a face of `config` · board: AiDefaultBanner · cites N76, N66
 
-The AI offer (N66; Bagrat, 2026-10-18: off by default, but visible): a frost banner in the popover, like the update's, on the Mac that holds the setup key while the space's AI is off. It says what shroom can do — name videos, add chapters, cut slips — never what it costs: Turn on… opens the short confirm that says so. The lowest banner: a saved take, the space, recording off and an update come first. Not now hides it for good on this Mac (Bagrat, 2026-10-18): from then on only the switch in Settings · Space turns AI on. Members' Macs and the space's other Macs never show it, nor does a Mac once AI has been on there.
+AI on by default (N76; Bagrat, 2026-10-25): a frost banner in the popover, the lowest, on the Mac that holds the setup key while the space's AI hasn't been settled on this Mac. When `config` would show it over AI that's off, that is what turns the AI on — the page is re-wired with Cloudflare's AI and its schedule, as the switch does — so it is said before anything is heard; it says the same while the few seconds run and once it's on, until OK or Turn off. Never over an explicit no: a Mac that said Not now to the old offer, or used the switch in Settings · Space, has its AI settled and never sees it. A space set up on this Mac starts with its AI on and settled — nothing said (Bagrat, 2026-10-25: nothing in the setup). Turn off greys while the turn-on's few seconds run. A turn-on that didn't go through, once said, is tried again quietly — ten minutes, doubling, at most an hour — with the popover shut too, until it goes through (law 12). A saved take, the space, recording off and an update come first.
 
-**Entry.** `config` opens on the Mac that holds the setup key while the space's AI is off and no higher banner shows, and the banner has never been answered on this Mac.
+**Entry.** `config` opens on the Mac that holds the setup key while the space's AI has never been settled on this Mac and no higher banner shows: the AI is turned on as it shows, or is on already.
 
 | Said | Role | Copy | Note |
 |---|---|---|---|
-| “shroom can name your videos, add chapters and cut your slips for you.” | banner | ratified | N66. The banner's line (AiBanner). Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later. · N66 |
-| “Turn on…” | button | ratified | N66. Filled; a banner's own filled button is never the Return default (law 8). Opens ai-confirm. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later. · N66 |
-| “Not now” | link | ratified | N66. Quiet, left of Turn on…. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later. · N66 |
+| “AI features are turned on.” | banner | ratified | N76. Bold. Bagrat's own words. Bagrat approved the board as drawn (Bagrat, 2026-10-25). · N76 |
+| “New videos get titles, chapters and captions from what’s said, and your “shroom cut” slips cut — on your own Cloudflare account.” | line | ratified | N76. Under the bold line. Bagrat approved the board as drawn (Bagrat, 2026-10-25). · N76 |
+| “Turn off” | link | ratified | N76. Quiet, left of OK. Bagrat approved the board as drawn (Bagrat, 2026-10-25). · N76 |
+| “OK” | button | ratified | N76. Filled, rightmost; a banner's own filled button is never the Return default (law 8). Bagrat approved the board as drawn (Bagrat, 2026-10-25). · N76 |
 
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
-| Turn on… | filled-default |  | `ai-confirm` | The confirm says what it costs. |
-| Not now | text-link |  | `config` | Hidden for good on this Mac; the switch in Settings · Space stays. |
+| Turn off | text-link |  | `ai-turning-off` | The page is re-wired without the AI, as the switch in Settings · Space does. Not while the turn-on's few seconds run: the press waits for them. |
+| OK | filled-default |  | `config` | AI stays on; settled for good on this Mac. |
 
 | → | Kind | Label | Status | Cites |
 |---|---|---|---|---|
-| `ai-confirm` | flow | Turn on… | ratified | N66 |
-| `config` | flow | Not now | ratified | N66 |
+| `config` | flow | OK | ratified | N76 |
+| `ai-turning-off` | flow | Turn off | ratified | N76 |
 
-### `ai-confirm`
+### `ai-turning-off`
 
-state · popover · **ratified** · board: AiConfirm · cites N66
+face · banner · **ratified** · a face of `ai-turned-on` · board: AiDefaultBannerStates · cites N76
 
-Turn on…'s short confirm (N66): the popover morphs into a question that says what turning AI on does and what it costs, once, before it costs anything. Like every question in the popover it has no Return default: Turn on is a click. Back and Esc go back to config with the banner still there.
+While the space's page is put up again without Cloudflare's AI (a few seconds), the banner says so and holds no buttons.
 
-**Entry.** Turn on… in the AI banner.
+**Entry.** Turn off in ai-turned-on, until the page answers.
 
 | Said | Role | Copy | Note |
 |---|---|---|---|
-| “Turn on AI for new videos?” | title | ratified | N66. Bold. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later. · N66 |
-| “Titles, chapters and captions from what’s said, and your “shroom cut” slips cut — on your own Cloudflare account. Free for about 2½ hours of new video a day; more is about 4¢ per video hour on Cloudflare’s $5 plan.” | line | ratified | N66. The one cost line, also under the switch in Settings · Space. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later. · N66 |
-| “Back” | button | ratified | N66. Leftmost. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later. · N66 |
-| “Turn on” | button | ratified | N66. Filled, rightmost; no Return default (a click, as every popover question). Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later. · N66 |
+| “Turning off — a few seconds.” | banner | ratified | N76. Bagrat approved the board as drawn (Bagrat, 2026-10-25). · N76 |
+
+| → | Kind | Label | Status | Cites |
+|---|---|---|---|---|
+| `ai-off` | auto | the page answers that its AI is off | ratified | N76 |
+| `ai-turn-off-failed` | fail | the re-wiring didn't go through (law 12) | ratified | N76, law 12 |
+
+### `ai-turn-off-failed`
+
+face · banner · **ratified** · a face of `ai-turned-on` · board: AiDefaultBannerStates · cites N76, law 12
+
+The re-wiring didn't go through (law 12): the banner comes back with the failure said under its line, Turn off and OK live again; it's tried again quietly — ten minutes, doubling, at most an hour — until it goes through or OK.
+
+**Entry.** ai-turning-off, and the space's page couldn't be put up again without the AI.
+
+| Said | Role | Copy | Note |
+|---|---|---|---|
+| “AI features are turned on.” | banner | ratified | N76. Bold, as ai-turned-on's. Bagrat approved the board as drawn (Bagrat, 2026-10-25). · N76 |
+| “Couldn't turn it off just now — try again in a moment.” | line | ratified | N76. In place of the banner's second line. Bagrat approved the board as drawn (Bagrat, 2026-10-25). · N76 |
+| “Turn off” | link | ratified | N76. Bagrat approved the board as drawn (Bagrat, 2026-10-25). · N76 |
+| “OK” | button | ratified | N76. Bagrat approved the board as drawn (Bagrat, 2026-10-25). · N76 |
 
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
-| Back | secondary |  | `config` | Esc too; the banner stays. |
-| Turn on | filled-default |  | `ai-turning-on` | Re-wires the space's page with Cloudflare's AI and its schedule, as the switch in Settings · Space does. |
+| Turn off | text-link |  | `ai-turning-off` |  |
+| OK | filled-default |  | `config` | AI stays on; the quiet tries stop. |
 
 | → | Kind | Label | Status | Cites |
 |---|---|---|---|---|
-| `ai-turning-on` | flow | Turn on | ratified | N66 |
-| `config` | flow | Back | ratified | N66 |
+| `ai-turning-off` | flow | Turn off | ratified | N76 |
+| `config` | flow | OK | ratified | N76 |
 
-### `ai-turning-on`
+### `ai-off`
 
-face · banner · **ratified** · a face of `ai-offer` · board: AiBannerStates · cites N66
+face · status-line · **ratified** · a face of `config` · board: AiDefaultBannerStates · cites N76, N38
 
-While the space's page is put up again with Cloudflare's AI (a few seconds), the banner says so and holds no buttons.
+A one-shot status-line fact once the banner's Turn off has gone through, where the update's “Updated ✓” goes: said once, then the line is behind us. AI is settled on this Mac; the switch in Settings · Space turns it on again.
 
-**Entry.** Turn on in ai-confirm, until the page answers.
-
-| Said | Role | Copy | Note |
-|---|---|---|---|
-| “Turning on — a few seconds.” | banner | ratified | N66. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later. · N66 |
-
-| → | Kind | Label | Status | Cites |
-|---|---|---|---|---|
-| `ai-on` | auto | the page answers that its AI is on | ratified | N66 |
-| `ai-offer-failed` | fail | the re-wiring didn't go through (law 12) | ratified | N66 |
-
-### `ai-offer-failed`
-
-face · banner · **ratified** · a face of `ai-offer` · board: AiBannerStates · cites N66, law 12
-
-The re-wiring didn't go through (law 12): the banner says so in place of its line, for this visit to the popover, and Turn on… is live again.
-
-**Entry.** ai-turning-on, and the space's page couldn't be put up again with the AI.
+**Entry.** The page answers that its AI is off after the banner's Turn off: in the popover then, or the next time it opens.
 
 | Said | Role | Copy | Note |
 |---|---|---|---|
-| “Couldn't change that just now — try again in a moment.” | banner | ratified | N66. The words of the switch's own failure line. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later. · N66 |
-| “Turn on…” | button | ratified | N66. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later. · N66 |
-| “Not now” | link | ratified | N66. Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later. · N66 |
+| “AI is off — turn it on any time in Settings.” | status | ratified | N76. Once only; it ranks after the upload truth (N38). Bagrat approved the board as drawn (Bagrat, 2026-10-25). · N76, N38 |
+
+### `ai-on-in-space`
+
+banner · banner · **ratified** · a face of `config` · board: AiDefaultBannerStates · cites N76
+
+A member's Mac, once the space's ping says its AI is on (N76): the new videos it records there are heard in the owner's Cloudflare account, so it says so once, in the lowest banner, with OK. No switch: the AI is the owner's to turn off. Owner-class Macs without the token never show it.
+
+**Entry.** `config` opens on a member's Mac whose space's ping says its AI is on, no higher banner shows, and the banner has never been answered on this Mac.
+
+| Said | Role | Copy | Note |
+|---|---|---|---|
+| “AI is on in Bagrat's space.” | banner | ratified | N76. Bold; the owner's name. Bagrat approved the board as drawn (Bagrat, 2026-10-25). · N76 |
+| “Your new videos there get titles, chapters and captions from what’s said — on Bagrat's Cloudflare account.” | line | ratified | N76. Under the bold line. Bagrat approved the board as drawn (Bagrat, 2026-10-25). · N76 |
+| “OK” | button | ratified | N76. Filled. Bagrat approved the board as drawn (Bagrat, 2026-10-25). · N76 |
 
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
-| Turn on… | filled-default |  | `ai-confirm` |  |
-| Not now | text-link |  | `config` | Hidden for good on this Mac, as ai-offer's. |
+| OK | filled-default |  | `config` | Answered for good on this Mac. |
 
-### `ai-on`
-
-face · status-line · **ratified** · a face of `config` · board: AiBannerStates · cites N66, N38
-
-A one-shot status-line fact once the banner's Turn on has gone through, where the update's “Updated ✓” goes: said once, then the line is behind us.
-
-**Entry.** The page answers that its AI is on after the banner's Turn on: in the popover then, or the next time it opens.
-
-| Said | Role | Copy | Note |
-|---|---|---|---|
-| “AI is on for new videos ✓” | status | ratified | N66. Once only; it ranks after the upload truth (N38). Bagrat approved the board as drawn, 2026-10-18, with the price said per video hour; he may tweak the words later. · N66 |
+| → | Kind | Label | Status | Cites |
+|---|---|---|---|---|
+| `config` | flow | OK | ratified | N76 |
 
 ### `library-cleanup`
 
-face · window · **ratified** · a face of `library` · board: CleanupView · cites N68
+face · window · **ratified** · a face of `library` · board: CleanupView · cites N68, N75
 
-Suggested to clean up (N68): the Library's own view of the videos worth deleting, costliest per remaining play first. A line says what deleting all of them frees and saves; each row shows the poster, the title, then when it was made · its size · why it's suggested, with Open page, Keep and Delete (red text). Delete is one tap: the row leaves and an Undo line stays a few seconds before the delete is sent (a sealed delete can't be taken back, B125). Delete all… opens the several-videos sheet. Keep sets the record's keep and the row leaves for good. Members see their own; owner-class Macs follow Mine · Everyone.
+Suggested to clean up (N68, N75): the Library's own view of the videos worth deleting, costliest per remaining play first. While auto-cleanup has videos going, they lead it: a heading per date, a line, and each with Open page and Pin; the suggestions follow under their own heading. A line says what deleting all of them frees and saves; each row shows the poster, the title, then when it was made · its size · why it's suggested, with Open page, Pin and Delete (red text). Delete is one tap: the row leaves and an Undo line stays a few seconds before the delete is sent (a sealed delete can't be taken back, B125). Delete all… asks once with its own sheet (delete-confirm-cleanup); then every row leaves and one Undo line holds them all. Pin sets the record's keep and the row leaves for good. Members see their own; owner-class Macs follow Mine · Everyone.
 
 **Entry.** Review… on the Library's suggestion line.
 
@@ -3274,23 +3334,105 @@ Suggested to clean up (N68): the Library's own view of the videos worth deleting
 | “Watched 4 times, the last 10 months ago” | line | ratified | A row's reason (B211); the counts and times vary. Counts are figures here: a row fact (Law 16). Shapes: 'Watched once, 5 months ago' · 'Watched twice, the last 2 months ago' · 'Watched twice, stopped early, the last 4 months ago' (most stopped in the first quarter) · 'Nobody has watched it'. Times: days under 60, months under 24, then years. |
 | “Nobody has watched it” | line | ratified | The reason when counting never saw a play. |
 | “Open page” | button | ratified |  |
-| “Keep” | button | ratified | Takes the video off the list for good. |
+| “Pin” | button | ratified | N75 (was Keep, N68). Pins the video: it leaves this list for good and is never deleted by auto-cleanup. Bagrat approved the board as drawn, 2026-10-24. · N75 |
 | “Delete” | button | ratified | Red text, never a button (Law 9); one tap, then Undo. |
 | “Deleted “Old onboarding take”.” | line | ratified | The Undo line, a few seconds; the delete is sent when it goes. The title varies. |
 | “Undo” | button | ratified |  |
-| “Delete all six…” | button | ratified | Red text; opens delete-confirm-several. The count varies, a word up to nine; two reads 'Delete both…'. |
-| “Keep takes a video off this list for good. Plays are counted in your own Cloudflare account.” | line | ratified |  |
+| “Delete all six…” | button | ratified | Red text; opens delete-confirm-cleanup (N75). The count varies, a word up to nine; two reads 'Delete both…'. |
+| “A pinned video is never suggested; unpin it in the Library. Plays are counted in your own Cloudflare account.” | line | ratified | N75 (was the line on Keep). Bagrat approved the board as drawn, 2026-10-24. · N75 |
 | “Nothing to clean up right now.” | line | ratified | Once the last suggestion is kept or deleted. |
+| “Deleted six videos.” | line | ratified | N75. Delete all's Undo line, a few seconds; the deletes are sent when it goes. The count varies (a word up to nine; two reads 'both videos'). Bagrat approved the board as drawn, 2026-10-24. · N75 |
+| “Deleting on Oct 27” | heading | ratified | N75. Leads the view while auto-cleanup has videos going: one heading per date, earliest first. The date varies. Bagrat approved the board as drawn, 2026-10-24. · N75 |
+| “Nobody has watched these in 30 days. Pin one to keep it; a watch before then keeps it too.” | line | ratified | N75. Under the first date's heading. The number of days varies; one reads 'Nobody has watched this in 30 days. Pin it to keep it; a watch before then keeps it too.' Bagrat approved the board as drawn, 2026-10-24. · N75 |
+| “Deleted Oct 27 unless pinned” | line | ratified | N75. After a going row's date · size · why, amber; its buttons are Open page and Pin (no Delete: it's going anyway). The date varies. Bagrat approved the board as drawn, 2026-10-24. · N75 |
+| “Might be worth deleting” | heading | ratified | N75. Over the suggestions, only when videos are going above them. Bagrat approved the board as drawn, 2026-10-24. · N75 |
 
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
 | ‹ Library | secondary |  | `library` |  |
-| Delete all six… | destructive |  | `delete-confirm-several` |  |
+| Delete all six… | destructive |  | `delete-confirm-cleanup` |  |
 
 | → | Kind | Label | Status | Cites |
 |---|---|---|---|---|
 | `library` | flow | ‹ Library | ratified | N68 |
-| `delete-confirm-several` | flow | Delete all… | ratified | N68 |
+| `delete-confirm-cleanup` | flow | Delete all… | ratified | N75 |
+
+### `delete-confirm-cleanup`
+
+state · sheet · **ratified** · board: CleanupDeleteAll · cites N75
+
+Delete all… on Suggested to clean up (N75): one sheet for the whole list, saying how many and what it frees. N23's law: no Return default, Esc ≡ Cancel, the destructive button red-outlined and rightmost. Its Delete takes every row off the list at once and holds them on one Undo line for a few seconds before the deletes are sent; a video pinned since the list was read is left out.
+
+**Entry.** Delete all… under the suggestions (two or more).
+
+| Said | Role | Copy | Note |
+|---|---|---|---|
+| “Delete all six suggested videos?” | sheet-title | ratified | N75. Bold. The count varies (a word up to nine, Law 16); two reads 'Delete both suggested videos?'. Bagrat approved the board as drawn, 2026-10-24. · N75 |
+| “That frees 11 GB. They're removed everywhere. Their links stay, and say the videos are gone.” | sheet-body | ratified | N75. The size varies: the list's total, as the view's line says it. Bagrat approved the board as drawn, 2026-10-24. · N75 |
+| “Delete all six” | button | ratified | N75. Red outline, rightmost, never the Return default (law 9). The count varies; two reads 'Delete both'. Bagrat approved the board as drawn, 2026-10-24. · N75 |
+
+| Action | Kind | Return | Goes to | Note |
+|---|---|---|---|---|
+| Cancel | secondary |  | `library-cleanup` |  |
+| Delete all six | destructive |  | `library-cleanup` | Every row leaves; one Undo line. |
+
+| → | Kind | Label | Status | Cites |
+|---|---|---|---|---|
+| `library-cleanup` | flow | Delete all six | ratified | N75 |
+| `library-cleanup` | flow | Cancel | ratified | N75 |
+
+### `autoclean-confirm`
+
+state · sheet · **ratified** · board: AutoCleanSettings · cites N75
+
+Auto-cleanup turned on, or its wait shortened, while videos already qualify (N75): one question in Settings, with how many and the date they'd go — never sooner than three days on. No Return default (law 9); Cancel and Esc leave the setting as it was.
+
+**Entry.** A choice in Delete videos nobody watches that turns it on or shortens it, while at least one video in the space would already be due.
+
+| Said | Role | Copy | Note |
+|---|---|---|---|
+| “Delete videos nobody watches for 30 days?” | sheet-title | ratified | N75. Bold. The number of days varies. Bagrat approved the board as drawn, 2026-10-24. · N75 |
+| “Four videos already qualify. They'll be deleted on Oct 27 unless someone watches them or you pin them — the Library shows which. Their links will say the videos are gone.” | sheet-body | ratified | N75. The count (a word up to nine; one reads 'One video already qualifies. It'll be deleted on Oct 27 unless someone watches it or you pin it — the Library shows which. Its link will say the video is gone.') and the date (three days on) each varies. Bagrat approved the board as drawn, 2026-10-24. · N75 |
+| “Turn on” | button | ratified | N75. Red outline, rightmost, never the Return default. Bagrat approved the board as drawn, 2026-10-24. · N75 |
+
+| Action | Kind | Return | Goes to | Note |
+|---|---|---|---|---|
+| Cancel | secondary |  | `settings-general` |  |
+| Turn on | destructive |  | `settings-general` |  |
+
+| → | Kind | Label | Status | Cites |
+|---|---|---|---|---|
+| `settings-general` | flow | Turn on | ratified | N75 |
+| `settings-general` | flow | Cancel | ratified | N75 |
+
+### `autoclean-warning`
+
+banner · banner · **ratified** · a face of `config` · board: AutoCleanPopover · cites N75
+
+Auto-cleanup's heads-up in the popover (N75; Bagrat, 2026-10-24: under the tray icon too, as the AI offer shows): an amber banner while videos in this Mac's scope are going, three days ahead. Pin both pins every video it counts; Review… opens the Library on what's going; Not now hides it on this Mac until the list of what's going changes (the Library's line stays). It ranks above the update and the AI offer, under a saved take, the space and recording off. No dot on the tray: amber there means a take needs you.
+
+**Entry.** `config` while auto-cleanup has videos going in this Mac's scope, not put away by Not now, and no higher banner shows.
+
+| Said | Role | Copy | Note |
+|---|---|---|---|
+| “Two videos will be deleted on Oct 27 — nobody has watched them in 30 days.” | banner | ratified | N75. The Library's line, word for word: the count, the date and the days each varies. Bagrat approved the board as drawn, 2026-10-24. · N75 |
+| “Pin both” | button | ratified | N75. Filled amber; never the Return default (law 8). The count varies: one reads 'Pin it', three or more 'Pin all three'. Bagrat approved the board as drawn, 2026-10-24. · N75 |
+| “Review…” | button | ratified | N75. Opens the Library on Suggested to clean up. Bagrat approved the board as drawn, 2026-10-24. · N75 |
+| “Not now” | button | ratified | N75. Quiet text. Bagrat approved the board as drawn, 2026-10-24. · N75 |
+| “Pinned both. Nothing will be deleted on Oct 27.” | banner | ratified | N75. After Pin both, while the popover stays open; gone the next time it opens. One reads 'Pinned it.', three or more 'Pinned all three.'. The date varies. Bagrat approved the board as drawn, 2026-10-24. · N75 |
+| “Auto-cleanup deleted two videos nobody had watched in 30 days, freeing 1.7 GB.” | banner | ratified | N75. Once after a round took videos in this Mac's scope, frost, with OK; the Library's line, word for word (the count, the days and the size each varies). Bagrat approved the board as drawn, 2026-10-24. · N75 |
+| “OK” | button | ratified | N75. Puts it away here and in the Library. Bagrat approved the board as drawn, 2026-10-24. · N75 |
+
+| Action | Kind | Return | Goes to | Note |
+|---|---|---|---|---|
+| Pin both | filled-default |  | `config` | Pins every video the banner counts; the banner says so while the popover is open. |
+| Review… | secondary |  | `library-cleanup` |  |
+| Not now | text-link |  | `config` |  |
+
+| → | Kind | Label | Status | Cites |
+|---|---|---|---|---|
+| `library-cleanup` | flow | Review… | ratified | N75 |
+| `config` | flow | Not now | ratified | N75 |
 
 #### Region 5's amendments
 
@@ -4359,11 +4501,14 @@ A move that holds for a whole group of states, written once (B133). The tests ex
 | N67 | Chapters in the seek bar, captions, and the named title on the page | **Chapters live in the page's seek bar** (Bagrat's ruling, 2026-10-18, relayed by the orchestrator; he approved the canvas boards “The page — chapters in the seek bar, named on hover” and “The page on a phone — chapters in the seek bar, named while a finger is on it” the same day). The bar splits into one section per chapter, 2 px apart. Hovering it, playing or paused, shows the time and the chapter's name at that point, and the section under the pointer grows a little. On a phone a finger on the bar shows the same above the thumb, while it drags and for a moment after a tap, and the thumb grows while the finger is on it. The chapter now playing is named after the time, cut short when long, where the player's row has room for it; a phone's row has none beside its five controls, so there the finger's tip names it (a change from the phone board as approved, found while building and put back on the canvas; Bagrat kept it so, 2026-10-18, over a line under the controls or no sound button on phones). The bar's spoken value names it everywhere. There is no chapter list. A video with fewer than two chapters keeps today's whole bar. **Captions**, when the space has them: a Captions button in the player's row turns them on; off by default, and remembered on that browser. **The named title** is the page's title, everywhere a title shows (the page, its tab, unfurls, the download's name, the Library). On the owner's page a line under the title says it was named from what was said, until the title is edited; while the free day is used up, it says the name comes a little later instead. Built: DECISIONS B209. Provisional: the words are drafts until he OKs them. | provisional | 2026-10-18 |
 | N63 | The editor: trim, cut, undo, and edits the link plays | **Bagrat asked for it, 2026-10-18** (relayed by the orchestrator): a real editor, apart from AI, that the spoken-cue layer can plug into later. **Edit… in a Library row's menu** opens the **editor**, a window of its own (one at a time), on a live video in this Mac's scope, renamable here: the video plays at the top; under it the play button and the time, edited position / edited length, with “was 4:32” once the edit changes the length; then the **timeline**: the whole recording's sound as a waveform with the playhead, **yellow ends that drag to trim**, and **a drag across the sound that selects a part**, with **Cut 12.0 s** under it. **A cut shows red** and the preview skips it as it plays; clicking a cut offers **Put back**. **Undo and Redo** (also ⌘Z and ⇧⌘Z) step through every change made in the window, Put back and Revert included. **Revert to original** puts back every cut and both ends. **Done** (Return) saves the edit and closes the window; ✕ is Done. The footer says the link stays the same. Saving is a small edit list kept in the video's record; **the share page and the embed apply it as they play** (they skip the cuts, hold to the trim, and show the edited length), so **the link never changes** and nothing is re-encoded first. Until then the original stays in the space, so Revert works from any Mac. Then the window stays to make **the final video**: the Mac cuts the edit with its own encoder and puts it up beside the original under the same link (“Making the final video… 40%”; the window can be closed and shroom finishes it); once it is up, Download and the page use it. **Then it asks “Delete the original?”** (Bagrat, 2026-10-18: encourage deleting it soon; no 30-day keep): **Yes, delete** leads, filled — a click, never Return (law 9; DEVIATIONS #55, ratified 2026-10-18) — and the edit becomes the video for good; **Keep for 2 days** keeps the original so the edit can still be reverted, and shroom deletes it after two days, whether or not this Mac is open then; closing the window there means Keep for 2 days. While the original is kept, the editor says by Revert how long it has left; once it is gone, the edit is final and Revert to original only undoes what changed since the window opened. A video that isn't on this Mac comes from the space first (“Getting the video from your space…”); if that fails the window says so and offers Try again. While it saves, Done reads Saving…; if the save doesn't go through, the window stays open and says so, and Done tries again. Edit… greys offline and while a take is open (law 4), as Rename does. Built: DECISIONS B195, B197. **Ratified by Bagrat as built, 2026-10-18**, with B195–B199 and the build’s words. | ratified | 2026-10-18 |
 | N64 | Markers: Drop a marker comes back while paused, and ⌥⌘M drops one while recording | **Bagrat asked for markers dropped while recording, 2026-10-18** (relayed by the orchestrator), as the POC once had. (1) **Drop a marker comes back to the paused popover**, between Finish & Share and Restart, reversing B143's hiding now that the editor (N63) shows markers. It lands a marker at the pause point; once dropped, the row reads **Marker dropped** and greys until the take resumes (a second marker at the same point says nothing). (2) **⌥⌘M drops a marker while recording**, at that moment of the take, held only while a take is open, exactly as N54's ⌥⌘P (no new permission, let go when the take closes, nothing on screen names it in v1, and nothing on screen answers it: the take goes on). (3) **Markers show as flags on the editor's timeline**, at their times on the recording. They never reach viewers in v1. Built: DECISIONS B196. **Ratified by Bagrat as built, 2026-10-18**, with B195–B199 and the build’s words. | ratified | 2026-10-18 |
-| N69 | Edit in shroom: the owner's page opens the video in shroom's editor | **Bagrat asked for an Edit button on the video's page that opens it in the editor, 2026-10-18** (relayed by the orchestrator), and approved the boards “The page — Edit in shroom” and “Editor — opened from the page's Edit” as drawn, with their lines, option A and the tooltip “Edit in shroom” (2026-10-18). (1) **The owner page gains Edit in shroom**: the scissors, the last of the quiet icons beside the title, after Download, its tooltip “Edit in shroom”. It shows only on the owner page (the space's owners on every video, a member on their own) and only once the video is fully up, as Edit… in the Library; a recipient's page and the embed never have it. (2) **It opens `shroom://edit/<the space's address>/<the video>`**, with nothing secret in it: the browser asks first (its own “Open shroom?”), and the Mac decides by its own state. (3) **The Mac's answers.** A video this Mac can edit (the owner's Macs: every video in the space; a member's Mac: their own) opens in the editor as Edit… opens it. The editor already open comes forward as it is, one at a time; holding another video, its footer says “You're editing another video — press Done, then Edit again.” While a take is open the press waits (law 4), and the editor opens once the take ends. Otherwise the popover opens by itself under the mushroom with one line, said once: “This Mac isn't set up for that video's space.”, “Only whoever recorded this video, or the space's owner, can edit it.” or “That video isn't in your space anymore.” A Mac not set up at all opens its welcome window, as a click on the mushroom does. (4) **Where shroom isn't on the Mac, the page says nothing** (option A): only a Mac running shroom makes a browser the owner's, so the button shows only where it can work. Built: DECISIONS B221. | provisional | 2026-10-18 |
+| N69 | Edit in shroom: the owner's page opens the video in shroom's editor | **Bagrat asked for an Edit button on the video's page that opens it in the editor, 2026-10-18** (relayed by the orchestrator), and approved the boards “The page — Edit in shroom” and “Editor — opened from the page's Edit” as drawn, with their lines, option A and the tooltip “Edit in shroom” (2026-10-18). (1) **The owner page gains Edit in shroom**: the scissors, the last of the quiet icons beside the title, after Download, its tooltip “Edit in shroom”. It shows only on the owner page (the space's owners on every video, a member on their own) and only once the video is fully up, as Edit… in the Library; a recipient's page and the embed never have it. (2) **It opens `shroom://edit/<the space's address>/<the video>`**, with nothing secret in it: the browser asks first (its own “Open shroom?”), and the Mac decides by its own state. (3) **The Mac's answers.** A video this Mac can edit (the owner's Macs: every video in the space; a member's Mac: their own) opens in the editor as Edit… opens it. The editor already open comes forward as it is, one at a time; holding another video, its footer says “You're editing another video — press Done, then Edit again.” While a take is open the press waits (law 4), and the editor opens once the take ends. Otherwise the popover opens by itself under the mushroom with one line, said once: “This Mac isn't set up for that video's space.”, “Only whoever recorded this video, or the space's owner, can edit it.” or “That video isn't in your space anymore.” A Mac not set up at all opens its welcome window, as a click on the mushroom does. (4) **Where shroom isn't on the Mac, the page says nothing** (option A): only a Mac running shroom makes a browser the owner's, so the button shows only where it can work. Built: DECISIONS B221. **Bagrat ratified it and its four lines as built, 2026-10-24.** | ratified | 2026-10-18 |
 | N70 | The landing's hero: shroom, recorded with shroom, with the walkthrough behind a button | **Bagrat approved the board “shroom.am — the voice-cut hero takes the box”, 2026-10-18, and asked for it to go live, 2026-10-19.** (1) **The landing's box holds the hero**: a two-minute take of shroom recorded with shroom itself, his voice cut included (“shroom cut”, cut and put back on screen), music under it and the how-to's end card. It is shroom.am's own file (`/hero-2.mp4`), loads only as its block nears the screen and plays in place on a click, as N61's video did. Its still is the editor after the take's cuts with his camera bubble and the cut row; the play button reads “Play shroom, recorded with shroom, 2 minutes” to VoiceOver and the length shown is “2 min”. No caption. (2) **“How to set up and use shroom” moves behind a small Setup walkthrough button** under the hero, then a 3 px cut through the box, then Install. The button opens it in a lightbox over the page (the whole screen on a phone); Esc, Close or a click outside closes and stops it, and the hero pauses while it plays. (3) **The hidden /next**, where the page waited, sends anyone who kept the link to `/`. The layout of N59 is otherwise unchanged. Built: DECISIONS B222. Ratified by Bagrat, 2026-10-19. | ratified | 2026-10-19 |
 | N71 | The editor's ✕ with changes not saved asks: Save, Keep editing or Discard | **Bagrat asked, 2026-10-18** (relayed by the orchestrator), that the editor's ✕ stop saving without a word, as Done does, and ask instead: discard, keep editing, or save. **On 2026-10-19 he approved the board “Editor — closing with changes not saved” as drawn** (relayed by the orchestrator). (1) **✕ with changes not saved asks**, in the footer's place, the edit held behind it: “Save your edit?”, “What you've changed isn't saved yet.”, then Discard, Keep editing and Save. While it asks no step is taken and the preview pauses. (2) **Save is Done**: the edit is saved, then the final video is made, as after Done. Return presses it. (3) **Keep editing** puts the question away, every change still there; Esc does the same. (4) **Discard** closes the window and drops what wasn't saved: the video stays as it was last saved. It is never on Return. (5) **What doesn't change**: with nothing to save, ✕ closes the window at once; while the edit saves, ✕ waits for it; after Done (the final video being made, the original asked about) ✕ is Close; a save the space turned down closes; Done saves as before. (6) **Quit and Update save first, as now, without asking** (Bagrat, 2026-10-19). Built: DECISIONS B223. **Ratified by Bagrat as drawn, 2026-10-19.** | ratified | 2026-10-19 |
 | N72 | shroom edit: the command trims and cuts a video, and the app makes its final video | **The orchestrator, 2026-10-19:** the shroom command gains `edit` now that the editor (N63) has shipped, built in full with its words provisional for Bagrat's next look. (1) **`shroom edit <video>` says what the edit is**: how long the video plays and how long the recording is, the trim, each cut by its id (`m1`… by hand, `v1`… from the voice cues) with where it starts and ends and whether it's applied (a voice cue's cut can be a suggestion, not applied), and whether the final video is made. (2) **One change a call**, on the recording's own clock (seconds, or minutes:seconds): `trim <in> <out>`, `cut <start> <end>`, `put-back <cut>`, `apply <cut>`, `resize <cut> <start> <end>`, `revert`. Each is the editor's own step (B195), refused for the editor's own reasons, and saved at once as the editor's Done saves: the list in the video's record, so the link plays it from its next load and nothing is re-encoded first. `--dry-run` says what the edit would be and saves nothing. Undo and Redo stay the editor's: a window's history, never a record's. (3) **It goes where `rename` goes**: through the space's page under this Mac's device key, the owner's Macs on any video and a member's Mac on its own (B215); it waits while a take is open (law 4); and while that video is open in an editor window on this Mac it changes nothing (`editor_open`), so that window's Done never silently undoes it. The last save wins, as between two editors (B195). (4) **The final video is the app's to make**: after a change that leaves something out, the command asks the running app, opening it as the record commands do (`--no-launch` leaves it), and the app makes it as it makes one after the editor's Done, one at a time and never over a take, getting the video from the space first when this Mac hasn't got it; Download and the page use it once it's up, and the original is kept two days, then goes (B197: Keep for 2 days, the command never deleting an original itself). `shroom edit <video> finish` asks again, for a change saved while the app wasn't there. A change back to the whole recording needs no final video. (5) **Its answers**: the edit as (1) says it; a refusal is `cant_edit` with its reason (`out_of_range`, `leaves_too_little`, `too_short`, `nothing_changes`, `no_such_cut`, `editor_open`), exit 12; the words are the command's own (`say.rs`). Built: DECISIONS B225. **Ratified by Bagrat as built, 2026-10-19:** the command's words, the guide's *Editing* section and B225's three calls. | ratified | 2026-10-19 |
 | N73 | One editor window per video | **Bagrat asked, 2026-10-19** (relayed by the orchestrator), whether each video could get an editor window of its own, the Mac's document way, instead of the one window that comes forward on the video it holds; the same day he chose it, as the board “Editor — one window per video” draws it, built after the close prompt (N71) as its own change (relayed by the orchestrator). (1) **Edit on a video that isn't open** — Edit in shroom on its page, or Edit… in the Library — opens a window of its own for it, in front, as a first window opens: from the take when this Mac recorded the video, else after “Getting the video from your space…”. Every other window stays as it was, its changes still there, not saved and not lost. (2) **Edit on a video whose window is open**, from either, brings that window forward as it is. Nothing else moves. (3) **Each window is its own**: its steps and Undo, its Done, its final video, its “Delete the original?” and ✕'s question (N71). Done in one never touches another. The final videos are still made one at a time: a second waits its turn, its window reading “Making the final video… 0%” until then. (4) **Quit and Update** save every window's changes first, as now, without asking (Bagrat, 2026-10-19). Deleting a video closes its window and no other; leaving the space closes them all. While a take is open, nothing new opens (law 4): Edit in shroom pressed meanwhile waits, as now. (5) **The line “You're editing another video — press Done, then Edit again.” goes** (N69's), and with it the board “Editor — Edit on another video”, which drew a switch. No new words. Built: DECISIONS B227. **Ratified by Bagrat as drawn, 2026-10-19**; the build's calls are B227's, for him to overturn. | ratified | 2026-10-19 |
+| N74 | Setup shows its waits as they happen, and wiring finishes on its own | **A tester's finding, 2026-10-19** (a fresh Cloudflare account, 0.1.26): two waits in the setup felt stuck — the card step and the last step — and nearly lost him. **Bagrat, 2026-10-19 to 2026-10-25** (relayed by the orchestrator), on the boards “Setup — the card step shows its check as it runs…” and “Setup — the last step shows each part of wiring as it lands…”: (1) **The card step's check** shows its four parts under the card row as they run — Your token works · Your Cloudflare email is confirmed · Storage is switched on · Looking for your link name and any earlier space… — each ticking only when its own probe answers, never ahead of it. (2) **After Add credit card**, the watch is a row of its own: “Waiting for Cloudflare to confirm your card is in place…” with its running clock; from 45 s one quiet line: “A new card can take Cloudflare a minute or so to count. Once it's added, I'll move on — hang tight!” (3) **The last step** lists wiring's five parts under the calm line — Your private storage · Your video page · Your name is on · Last check passed · Adding this Mac to your space… — the part underway with its running clock, counted from the first try and never reset by a retry; from 3 min on the name, one quiet line: “New names can take Cloudflare a while longer, sometimes ten minutes. It's fine to close this window — I'll finish by myself.” While the permissions are the step, the wiring row's aside names the part underway, with its clock. (4) **Clocks on spinning rows only**: never on a done row or one still to come; a part that answers inside a second ticks before its clock shows. (5) **Wiring finishes on its own** (Bagrat, 2026-10-19: “finish on its own”): while a token is saved, the name row has ticked and no space is set up, wiring keeps trying with the window open or closed, and from the next launch after a quit (the login item's silent one included, its probe pass saying where the setup stands); it opens nothing when it lands (laws 5, 11), and the next click on the mushroom opens the popover ready to record — or the setup at the permissions, when they aren't done on this Mac. No step is stored (law 1): what's done is what the calls answered this time. **Ratified by Bagrat as drawn, 2026-10-25**; the forms the boards didn't draw (a part still to come, a part underway that the board drew done) are the build's, provisional. The last part of each run has no done form: the step moves on the moment it answers (the check to the next row, wiring to all set), so “Looked for your link name and any earlier space” and “This Mac is in your space”, on the boards' notes, never show and aren't lines. Built: DECISIONS B231. | ratified | 2026-10-25 |
+| N75 | Pin to keep, Delete all, and auto-cleanup run by the space's page | **Bagrat, 2026-10-19**, after a private-round tester said most videos stop mattering within weeks: add Delete all to the suggested list and pinned videos. **2026-10-24**: yes to real auto-cleanup on the tester's terms, the space's own page doing the deleting so a closed Mac never misses one (relayed by the orchestrator), and a heads-up in the popover too; the same day he approved every board as drawn (the boards “Library — pin a video to keep it”, “Library — Suggested to clean up: Pin in place of Keep, Delete all…”, “The shroom command — shroom pin / shroom unpin”, “Settings — General: auto-cleanup…”, “Library — auto-cleanup's warning…”, “Library and the command — after auto-cleanup deletes…”, “Popover — auto-cleanup under the tray icon…”). (1) **Pin** is the record's `keep` (N68's Keep, renamed so one idea has one name): a pinned video is never suggested and never deleted by auto-cleanup. A row's menu says Pin or Unpin after Rename, at once, no sheet; several rows selected, it acts on all. A pinned row shows a small pin before its title. Suggested to clean up's Keep becomes Pin. `shroom pin` / `shroom unpin` do the same, many at once; list and info say “pinned”. (2) **Delete all…** on the suggested list asks once with its own sheet — the count and what it frees — then every row leaves at once and one Undo line holds the whole batch for the few seconds a single delete's does. Pinned videos are never in the list; one pinned elsewhere since the list was read is skipped. (3) **Auto-cleanup**, off by default: Settings · General's Your videos gains “Delete videos nobody watches” — Off · After 15 days · After 30 days · After 60 days — counted from the last time someone watched it (the owner's own plays never count), or from its upload if nobody did, never before counting began. It's the space's setting, for every video in it, and is set on the Mac that holds the setup key, because turning it on gives the space's page its schedule (the one Cron Trigger AI naming uses, B206); every other Mac reads it. It needs Count plays: with counting off it greys and nothing goes. Turning it on, or shortening it, while videos already qualify asks once, with how many and the date; nothing goes sooner than three days after. (4) **Three days ahead** the Library says which videos will be deleted and when, each going row with a one-tap Pin; Review… shows them first. The popover shows the same as a banner, with Pin both (all of them) and Review…, Not now hiding it on that Mac until the list changes. (5) **The space's page deletes** what's due, on the date or within a day of it, whether any Mac is open or not, one video a run: never a pinned one, one still uploading, one open in an editor (the Mac marks it), or one watched since its warning. It goes as a Delete does: the link says the video was removed. (6) **After**, the Library and the popover say once what went and what it freed, with OK. Built: DECISIONS B232–B234. | ratified | 2026-10-24 |
+| N76 | AI is on by default, and said once | **Bagrat, 2026-10-25** (relayed by the orchestrator, on the boards “Popover — AI features are turned on…” and its states), reversing N66's off by default (2026-10-18): the space's AI — names, chapters, captions and voice cuts, one switch — is **on by default**. (1) **A space set up from now on starts with it on**: the setup's wiring puts up a new page with Cloudflare's AI and its schedule, and says nothing about it (Bagrat, 2026-10-25: nothing in the setup, nor in the Library); the switch in Settings · Space shows it on. A repair's wiring never changes it. (2) **A space set up before**: on the Mac that holds the setup key, the first popover after the update that would show the AI's banner turns it on as it shows “AI features are turned on.” with Turn off and OK — so nothing is heard before it's been said (`ai-turned-on`). It stays until OK or Turn off; Turn off re-wires the page without the AI and says so once (`ai-turning-off`, `ai-turn-off-failed`, `ai-off`). (3) **An explicit no stands**: a Mac that said Not now to N66's offer, or used the switch, has its AI settled and is never turned on by default nor shown the banner (one remembered fact on this Mac, `ai_offer_answered`). (4) **Members' Macs**, whose new videos the owner's account then hears, say so once: “AI is on in Bagrat's space.”, with OK (`ai-on-in-space`); they learn it from the space's ping. (5) The setup Mac offline, or not updated: nothing changes until it is opened on this version. N66's offer, its confirm, its turning-on, failed and on faces are gone; its switch, its cost line and everything the AI does stay. The privacy page's AI point is reworded to match. | ratified | 2026-10-25 |
 
 ## Surfaces
 

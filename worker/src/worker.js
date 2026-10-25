@@ -155,7 +155,7 @@ export const STALL_SECONDS = 120;
 export const IFACE = 2;
 /** The version of the app that deploys this file — the same as the app's own
  * (`app/src-tauri/tauri.conf.json`, held equal by a shroom-cloud test). */
-export const VERSION = "0.1.27-early.1";
+export const VERSION = "0.1.29";
 
 const ID = /^[A-Za-z0-9_-]{16}$/;
 const HLS_JS_KEY = ".shroom/player/hls.min.js";
@@ -182,10 +182,13 @@ export default {
   async fetch(request, env, ctx) {
     return handle(request, env, Date.now(), ctx);
   },
-  /** The schedule each minute, on a space with naming on (B206 c).
+  /** The schedule each minute, on a space with naming (B206 c) or auto-cleanup (N75) on:
+   * one Cron Trigger for both.
    * @param {{ scheduledTime: number }} controller @param {Env} env @param {Ctx} ctx */
   async scheduled(controller, env, ctx) {
-    if (env.AI) ctx.waitUntil(aiTick(env, controller.scheduledTime || Date.now()));
+    const now = controller.scheduledTime || Date.now();
+    if (env.AI) ctx.waitUntil(aiTick(env, now));
+    ctx.waitUntil(autocleanTick(env, now).catch(() => {}));
   },
 };
 
@@ -198,7 +201,7 @@ export default {
  * @typedef {{ objects: R2Object[], truncated: boolean, cursor?: string }} R2Objects
  * @typedef {{ get(key: string, options?: { range?: Headers }): Promise<R2ObjectBody | null>, head(key: string): Promise<R2Object | null>,
  *   put(key: string, value: string | ArrayBufferView, options?: { onlyIf?: R2Conditional, httpMetadata?: { contentType?: string }, customMetadata?: Record<string, string> }): Promise<R2Object | null>,
- *   delete(key: string): Promise<void>, list(options?: R2ListOptions): Promise<R2Objects> }} R2Bucket
+ *   delete(key: string | string[]): Promise<void>, list(options?: R2ListOptions): Promise<R2Objects> }} R2Bucket
  * @typedef {{ member: string, device: string, ownerClass: boolean, roster: any }} Owner
  * @typedef {{ key: string, size: number, etag: string, httpEtag?: string, customMetadata?: Record<string, string>, range?: { offset?: number, length?: number, suffix?: number } }} R2Object
  * @typedef {R2Object & { body: ReadableStream, text(): Promise<string>, arrayBuffer?(): Promise<ArrayBuffer> }} R2ObjectBody
@@ -2045,8 +2048,11 @@ function thumbsOf(id, meta, live, store = true) {
  * @param {string} [src] @param {boolean} [listens] the space hears its takes (N66) */
 function ownerPage(id, meta, now, face, waiting, blocked = false, pending = false, src = `/m/${id}/master.m3u8`, ai = AI_NONE, listens = false) {
   const live = meta.state === "live";
-  const placeholder = meta.titled ? untitled(meta.createdAt ?? new Date(now).toISOString()) : meta.title || untitled(meta.createdAt);
-  const value = meta.titled ? meta.title : "";
+  // A name the space made (N66) is the title: the field holds it as its value, drawn as plain
+  // text until it's clicked, and the page doesn't open in it (Bagrat's report, 2026-10-24).
+  const named = !meta.titled && meta.named?.by === "ai" && typeof meta.named.title === "string" && meta.title ? String(meta.title) : "";
+  const placeholder = meta.titled || named ? untitled(meta.createdAt ?? new Date(now).toISOString()) : meta.title || untitled(meta.createdAt);
+  const value = meta.titled ? meta.title : named;
   const st = status(meta, now);
   const stalled = blocked || !!st.stalled;
   const drainedNow = live && st.drained;
@@ -2057,7 +2063,7 @@ function ownerPage(id, meta, now, face, waiting, blocked = false, pending = fals
   const cutsTag = cutsField(meta, now, listens).cuts ?? null;
   const hearing = drainedNow && cutsTag === "coming";
   const line = drainedNow ? (hearing ? COPY.finishing : "") : stalled ? waiting : COPY.finishing;
-  const field = `<input class="title" id="t" maxlength="${TITLE_MAX}" aria-label="Title" value="${escapeHtml(value)}" placeholder="${escapeHtml(placeholder)}"${meta.titled ? "" : " autofocus"}>`;
+  const field = `<input class="title" id="t" maxlength="${TITLE_MAX}" aria-label="Title" value="${escapeHtml(value)}" placeholder="${escapeHtml(placeholder)}"${value ? "" : " autofocus"}>`;
   const frame = meta.media?.poster ? `<img src="/m/${id}/poster.jpg" alt="">` : "";
   const stage = live ? aiPlayer(playerHtml(id, meta), ai) : `<div class="wait" id="w">${frame}</div>`;
   // Download hands over the video as it plays (N63): it waits for an edit's permanent copy.
@@ -2089,7 +2095,7 @@ function ownerPage(id, meta, now, face, waiting, blocked = false, pending = fals
   // coming, it waits for the line to end with none.
   const hint = listens && !rows ? `<div class="cue-hint" role="note" hidden><span>${escapeText(COPY.cueHint)}</span><button type="button">${escapeText(COPY.cueHintGotIt)}</button></div>` : "";
   const cfg = JSON.stringify({
-    id, live, drained: drainedNow, pending, mp4: view.download, saved: meta.titled ? meta.title : "", copied: COPY.copied, copy: COPY.copyLink, waiting,
+    id, live, drained: drainedNow, pending, mp4: view.download, saved: value, copied: COPY.copied, copy: COPY.copyLink, waiting,
     copyThumb: COPY.copyThumbnail, preparing: COPY.preparingThumbnail, thumbs, dl: COPY.download, finishing: COPY.finishing, notFound: COPY.notFound, unavailable: COPY.unavailable, labels: LABELS, player: live ? "" : playerHtml(id, { ...meta, media: { ...meta.media, poster: null } }),
     cutsTag, listenFor, cutLabels: { back: COPY.putBack, again: COPY.cutAgain },
   });
@@ -2103,6 +2109,7 @@ function send(v){c.pend=null;fetch("/_shroom/title/"+c.id,{method:"POST",headers
 .then(function(r){if(r.status===404)c.pend=v;return r.ok?r.json():null}).then(function(j){if(j){saved=j.title;if(document.activeElement!==t)t.value=saved;document.title=saved;th.retitle(saved)}})}
 function save(){var v=t.value.replace(/\\s+/g," ").trim();if(!v){t.value=saved;return}if(v===saved)return;send(v)}
 t.addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();t.blur()}});t.addEventListener("blur",save);
+t.addEventListener("shroom:named",function(e){saved=e.detail});
 function copied(el,label){return function(ok){if(!ok)return;el.textContent=c.copied;el.classList.add("done");setTimeout(function(){el.textContent=label;el.classList.remove("done")},1500)}}
 var b=document.getElementById("c");b.onclick=function(){shroomCopy(location.origin+"/"+c.id,null).then(copied(b,c.copy))};
 tb.onclick=function(){if(tb.getAttribute("aria-disabled"))return;th.copy().then(copied(tb,c.copyThumb))};
@@ -2263,6 +2270,8 @@ async function route(request, env, url, now) {
     case "ai": only("POST"); return aiAskRoute(request, env, url, now);
     case "cleanup": only("POST"); return cleanup(request, env, await body(request), now);
     case "plays": return plays(request, env, url, now);
+    case "autoclean": return autocleanRoute(request, env, now);
+    case "editing": only("POST"); return editing(request, env, await body(request), now);
     case "cue": only("POST"); return cue(request, env, await body(request), now);
   }
   const target = path.match(/^(invites|members|devices)\/([^/]+)$/);
@@ -3602,12 +3611,15 @@ async function cleanup(request, env, b, now) {
   if (!FORMULAS.includes(formula)) throw bad();
   const after = b.after === undefined || b.after === null ? null : typeof b.after === "string" && ID.test(b.after) ? b.after : (() => { throw bad(); })();
 
-  const [ledgers, metas, sinceO, counting] = await Promise.all([
+  const [ledgers, metas, sinceO, counting, auto, autoState] = await Promise.all([
     listPage(env, LEDGER, after ? `${LEDGER}${after}` : undefined, true),
     listPage(env, "meta/", after ? `meta/${after}.json` : undefined, false),
     env.BUCKET.get(VIEW_SINCE),
     playsOn(env).catch(() => true),
+    autocleanConfig(env).catch(() => null),
+    readJson(env, AUTOCLEAN_STATE).catch(() => null),
   ]);
+  const going = autoState?.v?.going ?? {};
   /** @type {any} */
   let since = null;
   if (sinceO) { try { since = JSON.parse(await sinceO.text()); } catch { since = null; } }
@@ -3642,9 +3654,213 @@ async function cleanup(request, env, b, now) {
     const x = cleanupFacts(meta, rec, now, sinceMs);
     const verdict = cleanupScore(x, formula, now);
     const { days: _days, ...facts } = x;
-    return { id, title: typeof meta.title === "string" ? meta.title : "", createdAt: meta.createdAt ?? null, owner: owners.get(id) ?? M1, ...facts, ...verdict };
+    return { id, title: typeof meta.title === "string" ? meta.title : "", createdAt: meta.createdAt ?? null, owner: owners.get(id) ?? M1, ...facts, ...verdict, deletesAt: going[id]?.deletesAt ?? null };
   }))).filter((i) => i !== null);
-  return answer({ countingSince: sinceMs === null ? null : iso(sinceMs), counting, formula, views, items, next: end });
+  const autoclean = { days: auto?.days ?? 0, last: await lastFor(env, autoState?.v?.last ?? null, who) };
+  return answer({ countingSince: sinceMs === null ? null : iso(sinceMs), counting, formula, views, items, next: end, autoclean });
+}
+
+
+// ───────── auto-cleanup (N75) ─────────
+//
+// Off by default; owner-class sets Off / 15 / 30 / 60 days (`.shroom/autoclean.json`
+// `{v, days, at, since}`, `since`: when it was last turned on or shortened). A video is due
+// `days` after the later of its last counted play, its making and when counting began; a
+// kept (pinned) one never is. The page does the deleting itself, on the one schedule B206
+// put (each minute), so a closed Mac never misses one: one small step a run, inside the
+// free plan's 10 ms of CPU and 50 subrequests. Once a day it walks the records a few at a
+// time and lists in `.shroom/autoclean/state.json` what will be due within three days, each
+// with the date it goes — never sooner than three days after it was first listed, nor than
+// three days after the setting last changed — so every video gets its warning. Between
+// walks, each run deletes at most one listed video whose date has passed, read fresh and
+// exactly as a Delete goes (the tombstone, the bytes, the seal, its plays), unless it was
+// pinned, watched or stopped being live since (it leaves the list), or an editor holds it
+// (it waits). `last` remembers the newest day's round, for the Macs to say once.
+
+const AUTOCLEAN_KEY = ".shroom/autoclean.json";
+const AUTOCLEAN_STATE = ".shroom/autoclean/state.json";
+const EDITING = ".shroom/editing/";
+/** What the setting takes: Off, then days. */
+export const AUTOCLEAN_DAYS = [0, 15, 30, 60];
+/** Records the walk reads a run: about two reads each, inside 50 subrequests. */
+export const AUTOCLEAN_SCAN = 10;
+/** The warning: a video is listed this long before it goes, at least. */
+export const AUTOCLEAN_WARN_MS = 3 * DAY_MS;
+/** How long an editor's mark holds a video (the Mac renews it every five minutes). */
+export const EDITING_MS = 15 * 60 * 1000;
+
+/** A JSON object and its etag, or null. @param {Env} env @param {string} key */
+async function readJson(env, key) {
+  const o = await env.BUCKET.get(key);
+  if (!o) return null;
+  /** @type {any} */
+  let v = null;
+  try { v = JSON.parse(await o.text()); } catch { v = null; }
+  return { v, etag: o.etag };
+}
+
+/** The setting: `{days, since}`, off when there is none. @param {Env} env */
+async function autocleanConfig(env) {
+  const c = (await readJson(env, AUTOCLEAN_KEY))?.v;
+  const days = AUTOCLEAN_DAYS.includes(c?.days) ? c.days : 0;
+  return { days, since: typeof c?.since === "string" ? c.since : null };
+}
+
+/** A fresh state. @returns {any} */
+const autocleanEmpty = () => ({ v: 1, scanAt: 0, cursor: null, going: {}, last: null });
+
+/** Writes the state back on the etag it was read at (create-only when there was none).
+ * @param {Env} env @param {any} state @param {string | null} etag */
+const autocleanSave = (env, state, etag) => casPut(env, AUTOCLEAN_STATE, JSON.stringify(state), etag ? { etagMatches: etag } : { etagDoesNotMatch: "*" });
+
+/** Whose a video is: the ledger's member, else the space's own (m1). @param {Env} env @param {string} id */
+const videoOwner = async (env, id) => (await ledgerGet(env, id).catch(() => null))?.member ?? M1;
+
+/** The newest round as a caller may see it: owner-class all of it; a member only their own
+ * videos and their bytes, or nothing. @param {Env} env @param {any} last @param {Caller} who */
+async function lastFor(env, last, who) {
+  if (!last || !Array.isArray(last.ids) || last.ids.length === 0) return null;
+  if (who.ownerClass) return { at: last.at, ids: last.ids, bytes: Number(last.bytes) || 0 };
+  /** @type {string[]} */
+  const all = last.ids;
+  const owners = await Promise.all(all.map((id) => videoOwner(env, id)));
+  const ids = all.filter((_, i) => owners[i] === who.mid);
+  if (!ids.length) return null;
+  return { at: last.at, ids, bytes: ids.reduce((a, id) => a + (Number(last.sizes?.[id]) || 0), 0) };
+}
+
+/** `GET /_shroom/api/autoclean` → `{days, since, going, last}`, any device (a member sees
+ * their own videos); `POST {days}` sets it, owner-class only, and starts a fresh walk.
+ * @param {Request} request @param {Env} env @param {number} now */
+async function autocleanRoute(request, env, now) {
+  const { who } = await authed(request, env);
+  if (request.method === "GET") {
+    const [c, st] = await Promise.all([autocleanConfig(env), readJson(env, AUTOCLEAN_STATE)]);
+    /** @type {[string, any][]} */
+    const entries = Object.entries(st?.v?.going ?? {});
+    const owners = who.ownerClass ? null : await Promise.all(entries.map(([id]) => videoOwner(env, id)));
+    const going = entries.filter((_, i) => owners === null || owners[i] === who.mid).map(([id, g]) => ({ id, deletesAt: String(g.deletesAt) }))
+      .sort((a, b) => (a.deletesAt < b.deletesAt ? -1 : a.deletesAt > b.deletesAt ? 1 : a.id < b.id ? -1 : 1));
+    return answer({ days: c.days, since: c.since, going, last: await lastFor(env, st?.v?.last ?? null, who) });
+  }
+  if (request.method !== "POST") throw new Refusal(405, "method");
+  ownerClassOnly(who);
+  const b = await body(request);
+  if (!AUTOCLEAN_DAYS.includes(b.days)) throw bad();
+  const was = await autocleanConfig(env);
+  // On, or shorter: every video gets its three days' warning from now.
+  const since = b.days > 0 && (was.days === 0 || b.days < was.days) ? iso(now) : was.since;
+  await env.BUCKET.put(AUTOCLEAN_KEY, JSON.stringify({ v: 1, days: b.days, at: iso(now), since }), { httpMetadata: JSON_TYPE });
+  for (let i = 0; i < CAS_TRIES; i++) {
+    const st = await readJson(env, AUTOCLEAN_STATE);
+    const next = { ...autocleanEmpty(), ...(st?.v ?? {}), scanAt: 0, cursor: null };
+    if (b.days === 0) next.going = {};
+    if (await autocleanSave(env, next, st?.etag ?? null)) break;
+  }
+  return answer({ days: b.days, since });
+}
+
+/** `POST /_shroom/api/editing {rec}`: an editor is open on this video — its maker's Mac or
+ * an owner-class one says so every five minutes, and auto-cleanup leaves it be meanwhile.
+ * @param {Request} request @param {Env} env @param {any} b @param {number} now */
+async function editing(request, env, b, now) {
+  const { who } = await authed(request, env);
+  if (typeof b.rec !== "string" || !ID.test(b.rec)) throw bad();
+  if (!who.ownerClass && (await videoOwner(env, b.rec)) !== who.mid) throw new Refusal(403, "not-yours");
+  await env.BUCKET.put(`${EDITING}${b.rec}.json`, JSON.stringify({ until: iso(now + EDITING_MS), by: who.did }), { httpMetadata: JSON_TYPE });
+  return noContent();
+}
+
+/** One run of the schedule's auto-cleanup: a step of the day's walk, or one delete.
+ * Exported for the tests. @param {Env} env @param {number} now */
+export async function autocleanTick(env, now) {
+  const c = await autocleanConfig(env);
+  if (c.days === 0) {
+    // Off: nothing is going.
+    const st = await readJson(env, AUTOCLEAN_STATE);
+    if (st?.v && Object.keys(st.v.going ?? {}).length) await autocleanSave(env, { ...st.v, going: {} }, st.etag);
+    return;
+  }
+  // Paused while plays aren't counted: nothing is deleted on plays it can't see.
+  if (!(await playsOn(env).catch(() => true))) return;
+  const st = await readJson(env, AUTOCLEAN_STATE);
+  const state = { ...autocleanEmpty(), ...(st?.v ?? {}) };
+  if (state.cursor !== null || now - Number(state.scanAt) >= DAY_MS) await autocleanWalk(env, state, c, now);
+  else if (!(await autocleanDelete(env, state, now))) return;
+  await autocleanSave(env, state, st?.etag ?? null);
+}
+
+/** A step of the walk: a few records after the cursor, each listed or let go.
+ * @param {Env} env @param {any} state @param {{ days: number, since: string | null }} c @param {number} now */
+async function autocleanWalk(env, state, c, now) {
+  const [page, sinceO] = await Promise.all([
+    env.BUCKET.list({ prefix: "meta/", limit: AUTOCLEAN_SCAN, ...(state.cursor ? { startAfter: `meta/${state.cursor}.json` } : {}) }),
+    readJson(env, VIEW_SINCE),
+  ]);
+  // Before counting began nothing can be due: its plays were never seen.
+  const counting = Date.parse(sinceO?.v?.since ?? "");
+  const changed = Date.parse(c.since ?? "") || 0;
+  /** @type {string[]} */
+  const ids = [];
+  for (const o of page.objects) { const id = metaIdOf(o.key); if (id) ids.push(id); }
+  await Promise.all(ids.map(async (id) => {
+    const [m, r] = await Promise.all([readJson(env, `meta/${id}.json`), readJson(env, `${VIEWS}${id}.json`)]);
+    const meta = m?.v;
+    const last = Date.parse(r?.v?.lastAt ?? "") || 0;
+    const from = Math.max(last, Date.parse(meta?.createdAt ?? "") || 0, counting || 0);
+    const due = from + c.days * DAY_MS;
+    if (!Number.isFinite(counting) || !meta || meta.state !== "live" || meta.keep === true || due > now + AUTOCLEAN_WARN_MS) {
+      delete state.going[id];
+      return;
+    }
+    const warnedAt = state.going[id]?.warnedAt ?? iso(now);
+    state.going[id] = { warnedAt, deletesAt: iso(Math.max(due, Date.parse(warnedAt) + AUTOCLEAN_WARN_MS, changed + AUTOCLEAN_WARN_MS)) };
+  }));
+  if (page.truncated && ids.length) state.cursor = ids[ids.length - 1];
+  else { state.cursor = null; state.scanAt = now; }
+}
+
+/** The delete step: the listed videos whose date has passed, earliest first; the first one
+ * no editor holds goes. False when there was nothing to change.
+ * @param {Env} env @param {any} state @param {number} now */
+async function autocleanDelete(env, state, now) {
+  /** @type {[string, { warnedAt: string, deletesAt: string }][]} */
+  const listed = Object.entries(state.going);
+  const due = listed.filter(([, g]) => Date.parse(g.deletesAt) <= now)
+    .sort(([a, x], [b, y]) => (x.deletesAt < y.deletesAt ? -1 : x.deletesAt > y.deletesAt ? 1 : a < b ? -1 : 1));
+  // A few at most a run: past an editor's hold to the next.
+  for (const [id, g] of due.slice(0, 3)) {
+    const [m, r, gone, mark] = await Promise.all([readJson(env, `meta/${id}.json`), readJson(env, `${VIEWS}${id}.json`), env.BUCKET.head(`${GONE}${id}`), readJson(env, `${EDITING}${id}.json`)]);
+    const meta = m?.v;
+    const watched = (Date.parse(r?.v?.lastAt ?? "") || 0) > Date.parse(g.warnedAt);
+    if (!m || gone || !meta || meta.state !== "live" || meta.keep === true || !drained(meta) || watched) {
+      delete state.going[id];
+      return true;
+    }
+    if ((Date.parse(mark?.v?.until ?? "") || 0) > now) continue;
+    // As a Delete goes (shroom_upload::library::delete, then the seal): the tombstone first,
+    // so the link says the video is gone and every uploading Mac stops; then the bytes.
+    const tomb = { schema: 1, id, state: "deleted", deletedAt: iso(now), createdAt: meta.createdAt ?? null, owner: meta.owner ?? null, by: "auto" };
+    if (!(await casPut(env, `meta/${id}.json`, JSON.stringify(tomb), { etagMatches: m.etag }))) return false;
+    for (let i = 0; i < 20; i++) {
+      const objects = await env.BUCKET.list({ prefix: `rec/${id}/`, limit: 1000 });
+      if (objects.objects.length) await env.BUCKET.delete(objects.objects.map((o) => o.key));
+      if (!objects.truncated) break;
+    }
+    await env.BUCKET.put(`${GONE}${id}`, JSON.stringify({ v: 1, by: "auto", at: iso(now) }), { httpMetadata: JSON_TYPE });
+    await env.BUCKET.delete([`${VIEWS}${id}.json`, `${EDITING}${id}.json`]).catch(() => {});
+    delete state.going[id];
+    // A round is a day: the Macs say each once.
+    const bytes = Number(meta.bytes) > 0 ? Number(meta.bytes) : 0;
+    const fresh = !state.last || now - Date.parse(state.last.at) > DAY_MS;
+    const last = fresh ? { at: iso(now), ids: [], bytes: 0, sizes: {} } : state.last;
+    last.ids = [...last.ids, id];
+    last.bytes = (Number(last.bytes) || 0) + bytes;
+    last.sizes = { ...(last.sizes ?? {}), [id]: bytes };
+    state.last = last;
+    return true;
+  }
+  return false;
 }
 
 // ───────── the tab icon (DECISIONS B109) ─────────
@@ -4996,16 +5212,23 @@ const aiHead = (ai) => (aiCss(ai) ? `<style>${AI_STYLE}</style>` : "");
  * later; a slot for it while a name is on its way. @param {AiFace} ai */
 const aiNote = (ai) => (ai.line || ai.waiting ? `<p class="ainote" id="ainote"${ai.line ? "" : " hidden"}>${escapeText(ai.line)}</p>` : "");
 
-/** The owner's page while a name is on its way (B209 c): it asks now and then, and shows
- * the name in the title field (as its placeholder, so it stays the space's until it's typed
- * over) unless a title was typed meanwhile; an early title (B205 f) is shown and asked past,
- * till the full name takes its place. @param {string} id @param {AiFace} ai */
+/** The owner's page while a name is on its way (B209 c, B230): it asks now and then, and a
+ * name that comes is the title — the field's value, plain text until clicked, the page's save
+ * told of it first so an untouched field writes nothing and the name stays the space's. A
+ * field being typed in is left be, and one the page opened in lets go of the keyboard; one the
+ * owner clicked into, before a key, takes the name selected, ready to retype. An early title
+ * (B205 f) is shown and asked past, till the full name takes its place. Once a title is saved
+ * from the field, nothing more is taken. @param {string} id @param {AiFace} ai */
 function aiOwnerScript(id, ai) {
   if (!ai.waiting) return "";
   return `<script>(function(){var t=document.getElementById("t"),l=document.getElementById("ainote"),n=0,c=${jsonForScript(JSON.stringify({ id, named: COPY.named, later: COPY.namingLater }))};
+var shown=t.value,touched=false,mine=false;
 function say(x){if(l){l.textContent=x;l.hidden=!x}}
+function take(x){if(mine||x===shown)return;var was=shown;shown=x;t.dispatchEvent(new CustomEvent("shroom:named",{detail:x}));if(t.value!==was)return;
+t.value=x;document.title=x;if(document.activeElement===t){if(touched)t.select();else t.blur()}}
 function poll(){if(++n>60)return;fetch("/_shroom/named/"+c.id,{cache:"no-store"}).then(function(r){return r.ok?r.json():null}).then(function(j){if(!j||j.titled){say("");return}
-if(j.named){t.placeholder=j.named;if(!t.value)document.title=j.named;say(c.named);if(!j.early)return}
+if(j.named){take(j.named);say(c.named);if(!j.early)return}
 if(j.later)say(c.later);setTimeout(poll,n<12?5000:30000)}).catch(function(){setTimeout(poll,30000)})}
-t.addEventListener("change",function(){say("")});setTimeout(poll,5000)})()</script>`;
+t.addEventListener("pointerdown",function(){touched=true});t.addEventListener("input",function(){touched=true});
+t.addEventListener("change",function(){mine=true;say("")});setTimeout(poll,5000)})()</script>`;
 }

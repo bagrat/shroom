@@ -416,7 +416,56 @@ fn videos(w: &World) -> VideosGroup {
         suggest_hint: copy::suggest_cleanup_hint(),
         used_label: used.as_ref().map(|_| copy::space_used()),
         used,
+        autoclean: known.map(|s| autoclean_row(w, s, counting)),
     }
+}
+
+/// The days auto-cleanup offers (N75): Off, then each wait.
+pub const AUTOCLEAN_DAYS: [u32; 4] = [0, 15, 30, 60];
+
+/// Delete videos nobody watches (N75): the space's setting, live on the Mac that holds the
+/// setup key (turning it on gives the space's page its schedule), read-only elsewhere and
+/// while Count plays is off; as asked while it's being set, else as the space has it.
+fn autoclean_row(w: &World, s: &crate::world::Suggestions, counting: bool) -> crate::scene::AutocleanRow {
+    let asked = w.library_ops.autoclean;
+    let days = asked.unwrap_or(s.autoclean.days);
+    let sets = w.space.token_holder();
+    let live = sets && counting && asked.is_none() && w.online() != Some(false);
+    let hint = if !counting {
+        copy::needs_count_plays()
+    } else if sets {
+        copy::autoclean_hint()
+    } else {
+        copy::space_deletes(days)
+    };
+    let note = if asked.is_some_and(|d| d > 0) && s.autoclean.days == 0 {
+        Some(copy::ai_turning_on())
+    } else if asked.is_none() && w.inflight.failures.contains_key(&Op::Autoclean) {
+        Some(copy::plays_failed())
+    } else {
+        None
+    };
+    crate::scene::AutocleanRow {
+        label: copy::autoclean_label(),
+        hint,
+        choices: AUTOCLEAN_DAYS
+            .into_iter()
+            .map(|d| Choice {
+                action: Action::SetAutoclean(d),
+                label: if d == 0 { copy::autoclean_off() } else { copy::after_days(d) },
+                selected: d == days,
+                enabled: live,
+                detail: None,
+            })
+            .collect(),
+        note,
+    }
+}
+
+/// The videos auto-cleanup would already take at these days (N75): live, unpinned, and
+/// nobody has played them for that long.
+pub fn qualifying(w: &World, days: u32) -> u64 {
+    w.suggestions.get().map_or(0, |s| s.idle.iter().filter(|i| i.quiet_days >= days && !super::library::pinned(w, &i.rec)).count() as u64)
 }
 
 /// Row one's fact: the account's name — as the re-probe proved it, else as the space
@@ -566,10 +615,10 @@ fn nest(w: &World, at: SpaceAt) -> Nest {
         SpaceAt::Garbled => token_nest(w, token_line(), false, Some(copy::token_garbled())),
         SpaceAt::WrongPowers => token_nest(w, token_line(), false, Some(copy::token_wrong_powers())),
         SpaceAt::OtherAccount => token_nest(w, token_line(), false, Some(copy::token_other_account(&host))),
-        SpaceAt::GateEmail => Nest::Gate { line: copy::gate_email(), button: None, quiet: None },
+        SpaceAt::GateEmail => Nest::Gate { line: copy::gate_email(), button: None, quiet: None, watch: None, long: None },
         SpaceAt::GateCard => super::onboarding::card_gate(w),
         SpaceAt::NameChanged => Nest::NameChanged { line: copy::name_changed() },
-        SpaceAt::Wiring => Nest::Calm { line: copy::wiring() },
+        SpaceAt::Wiring => Nest::Calm { line: copy::wiring(), parts: vec![], long: None },
         SpaceAt::StorageGone => Nest::StorageGone {
             line: copy::storage_gone(),
             buttons: vec![
@@ -630,6 +679,22 @@ fn sheet(w: &World) -> Option<Sheet> {
     }
     if let (Some(Confirm::Uninstall { going }), SettingsTab::General) = (&w.session.confirm, tab(w)) {
         return Some(uninstall_sheet(w, *going));
+    }
+    // Auto-cleanup turned on or shortened while videos already qualify (N75): how many and
+    // when — three days on — under N23's law.
+    if let (Some(Confirm::Autoclean(days)), SettingsTab::General) = (&w.session.confirm, tab(w)) {
+        let date = copy::day(crate::time::Wall(w.wall.0 + 3 * 86_400_000), w.mac.utc_offset_min);
+        return Some(Sheet {
+            id: "autoclean-confirm",
+            faces: vec![],
+            title: copy::autoclean_confirm_title(*days),
+            lines: vec![copy::autoclean_qualify(qualifying(w, *days), &date)],
+            blocked: None,
+            buttons: vec![
+                Button::new(Action::Back, copy::cancel(), Style::Plain),
+                Button::new(Action::ConfirmAutoclean, copy::turn_on(), Style::RedOutline).enabled(w.online() != Some(false)),
+            ],
+        });
     }
     if w.session.confirm != Some(Confirm::Exit) || tab(w) != SettingsTab::Space {
         return None;

@@ -201,6 +201,15 @@ pub fn check(pw: &World, ps: &Scene, ev: &Event, nw: &World, ns: &Scene, fx: &[E
             assert!(d.asked || !a, "law 5: an unasked {kind:?} window activates — {}", ctx());
         }
     }
+    // The Library and Settings are closed for good, not hidden (B229): one that appears is
+    // made afresh, and making a page brings shroom forward (B106). So neither appears unless
+    // the person reached for it — or at a launch, the update relaunch's restore (N41).
+    for (now, before, kind) in [(ns.library.is_some(), ps.library.is_some(), WindowKind::Library), (ns.settings.is_some(), ps.settings.is_some(), WindowKind::Settings)] {
+        if now && !before && !matches!(ev, Event::Booted(_)) {
+            let asked = nw.session.windows.get(&kind).is_some_and(|d| d.asked);
+            assert!(asked, "B229: the {kind:?} window opened without a click — {}", ctx());
+        }
+    }
 
     // Law 6, as Bagrat asked for it on 2026-10-12 (DEVIATIONS #38; the ratified wording was
     // “Dock iff a window is open”): the Dock only while the setup window is open. Once
@@ -454,9 +463,11 @@ pub fn failure_state(id: &str) -> bool {
 /// The background work law 12 lets go quietly once nothing wants it any more: reads, the
 /// uploader, a saved edit's permanent copy (N63: the save the person asked for has
 /// landed; the page plays the saved list over the original until a copy is up) and the
-/// editor's upkeep (B197 (d): the next turn bakes and copies what this one didn't) — never
-/// a write a person asked for.
-const BACKGROUND: &[Op] = &[Op::Standing, Op::Roster, Op::Peek, Op::LibCache, Op::LibRefresh, Op::Reach, Op::Sweep, Op::Refresh, Op::UpdateCheck, Op::UpdateDownload, Op::Upload, Op::EditorCopy, Op::EditorUpkeep];
+/// editor's upkeep (B197 (d): the next turn bakes and copies what this one didn't), and the
+/// suggestions' read (N75: the popover reads them again as it next opens) — never a write a
+/// person asked for.
+const BACKGROUND: &[Op] = &[
+    Op::Suggest,Op::Standing, Op::Roster, Op::Peek, Op::LibCache, Op::LibRefresh, Op::Reach, Op::Sweep, Op::Refresh, Op::UpdateCheck, Op::UpdateDownload, Op::Upload, Op::EditorCopy, Op::EditorUpkeep];
 
 /// An op whose failure another op covers, with why.
 const COVERED: &[(Op, Op, &str)] = &[(Op::LibCache, Op::LibRefresh, "the remembered list is a head start; the bucket refresh fills the same list")];
@@ -863,6 +874,9 @@ fn figure_counts(s: &str) -> bool {
             && i + 2 < b.len()
             && b[i + 1] == b' '
             && s[i + 2..].chars().next().is_some_and(|c| c.is_alphabetic())
+            // A size is a measure, not a count (N75's “That frees 5 GB.”).
+            && !s[i + 2..].starts_with("GB")
+            && !s[i + 2..].starts_with("MB")
     })
 }
 

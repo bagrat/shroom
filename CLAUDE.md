@@ -6,10 +6,12 @@ without Loom pricing, never a SaaS we operate." The repo is **in the v1 build** 
 stack (Tauri v2 shell + Rust capture core) and designed the UX, and the build is under way.
 
 > **Read memory first.** Before anything else in a session, attach the private
-> bagrat/shroom-private (`add_repo`, then clone it as the tool says) and read Bagrat's
-> memory there (its CLAUDE.md points to it). It stays private: nothing from it lands in this
-> repo. No access (a contributor, or the attach is refused)? Carry on without it; never
-> wait on it. A session reads the memory as it was when it attached.
+> bagrat/shroom-private (`add_repo`), clone it as the tool says, and register the clone
+> (`register_repo_root`): that loads its working agreement, which says how Bagrat works
+> with sessions, and its skills. Then read his memory there (that agreement points to it).
+> It stays private: nothing from it lands in this repo. No access (a contributor, or the
+> attach is refused)? Carry on without it; never wait on it. A session reads the memory as
+> it was when it attached.
 
 ## The lay of the land
 
@@ -64,8 +66,8 @@ lives in `spec/`; the working docs live in `docs/`.
 
 ## Build rules (v1)
 
-- **Code lives on `main`**, beside the design record: the local `build/v1` branch was
-  merged into it and retired (2026-10-13). It changes only by merged PRs (see *Merge when sure*).
+- **Code lives on `main`**, beside the design record. It changes only by merged PRs (see
+  *Merge when sure*).
 - **The spec wins.** Spec tests are written before each region's code and committed
   separately. When the spec is wrong or unbuildable, write the change to the deviations in
   `docs/DECISIONS.md` (what, why, evidence) for Bagrat to ratify — never edit a test to make it pass.
@@ -87,10 +89,10 @@ lives in `spec/`; the working docs live in `docs/`.
   protect a run" before writing a workflow script.
 - **Don't push `main` without Bagrat's go**: a push to `main` that touches the site
   deploys shroom.am (`.github/workflows/site.yml` → the `shroom-site` Worker, from
-  `site/`) — pushing is a user-facing act. GitHub Pages and the plugin marketplace that
-  used to ride on `main` are decommissioned (see `history/proposals/shroom-am-worker.md`).
-  Nothing is pushed to `main` directly. A PR merged under *Merge when sure* counts as his
-  standing go.
+  `site/`) — pushing is a user-facing act. Nothing is pushed to `main` directly. A PR
+  merged under *Merge when sure* counts as his standing go.
+- **Releases**: the `shroom-release` skill, before any release or early build (Run
+  workflow on `main`, never a tag from a session; [`docs/RELEASING.md`](docs/RELEASING.md)).
 - **Test in the cloud first; never on Bagrat's Mac.** It carries only the official
   release, or a signed pre-release from the early channel (Bagrat, 2026-10-18: he takes
   the early channel to try what's coming; still never a dev build — DECISIONS B220,
@@ -98,19 +100,20 @@ lives in `spec/`; the working docs live in `docs/`.
   record/encode, the app shell, updater/installer, signing) goes to the hosted Mac, and a
   Tart clone on his Mac is the last resort (TESTING-PLAN §5,
   `dev/proposals/heartbeat-in-vm.md` §3). Every dev-build launcher refuses on his Mac.
+- **Feature work runs on judgment.** A session building a feature makes its own calls
+  and doesn't ask Bagrat; it stops only for a truly critical one (Bagrat, 2026-10-18, for
+  the feature builds; standing for all feature work since 2026-10-24). *Design first* and
+  the calls this file reserves for him still hold.
 - **Spawning side work.** A spawn-task chip only for work that needs a local Mac session.
   When a cloud session is enough, ask Bagrat in the chat and, on his yes, start the cloud
-  session yourself.
+  session yourself (see *Spawned sessions attach the repo*).
 
 ## How sessions work together
 
-- **One orchestrator.** Bagrat talks mostly to one orchestrator session. It watches every
-  live shroom session and talks to them (`send_message`). About every 30 min it sends him a
-  recap he can act on without scrolling back. When a session needs him, it sends one push
-  notification per need. Several asks come in the order to do them: blocking or
-  time-sensitive first, then reviews, then decisions, then checks by hand.
-- **Substantial work gets its own session.** The orchestrator spawns it and tracks it
-  rather than doing it.
+- **How Bagrat works** (asking him, push notifications, "remember this") is in his
+  private working agreement, loaded with the memory above.
+- **One orchestrator.** Bagrat talks mostly to one orchestrator session; every other
+  session reports to it (*Report up*). How the orchestrator works is its own.
 - **Titles stay true.** A session renames itself (`set_session_title` on its own id) when
   its topic changes or gets more concrete, or the title no longer fits.
 - **References carry context and links.** A PR, issue or numbered reference (DEVIATIONS
@@ -128,39 +131,15 @@ lives in `spec/`; the working docs live in `docs/`.
   report up, waiting for an approval nobody sees. A session whose work is private material
   passes `https://github.com/bagrat/shroom-private` instead and attaches this repo when it
   needs code (that repo's CLAUDE.md says how its cloud setup runs).
-- **Blocked children are surfaced.** Each recap checks every live child's `status_bucket`.
-  One that reads blocked or waiting on a permission gets a push to Bagrat at once, with its
-  session link and the exact thing to approve. When Bagrat unblocks a child in its own chat,
-  that child tells the orchestrator at once that he did and what it's doing now
-  (Bagrat, 2026-10-16). The same goes for anything the child needs from him directly in its
-  own chat (an approval, a ratification, a confirmation it won't take relayed): once he
-  gives it, the child reports back that he did, so the orchestrator can clear it from his
-  waiting list (Bagrat, 2026-10-18).
-- **Asking Bagrat.** As simple as it can be put. Interviews and walkthroughs ask one
-  question at a time. Otherwise, questions that are each a single click from a few options
-  and don't depend on each other go together in one question tool (`AskUserQuestion`)
-  call. A question that needs a prose answer is asked in plain chat, never through the
-  tool, since he can't dictate into it on mobile (Bagrat, 2026-10-16).
-- **The waiting-on-you footer.** While anything waits on Bagrat that he hasn't answered
-  (a question, a review, a decision, a check by hand), every message to him ends with a
-  short footer listing it, most urgent first, even when the message is about another
-  thread. It stays on every message until he answers; with nothing waiting, no footer
-  (Bagrat, 2026-10-18).
-- **Push notifications come from the orchestrator.** A child session sends Bagrat a push
-  only when it absolutely needs him and can't go through the orchestrator. Everything
-  else goes to the orchestrator, and only the orchestrator pushes him (Bagrat, 2026-10-16).
-- **"Remember this."** When Bagrat asks a session to remember something about how he
-  works, it goes into this file, into shroom-private's CLAUDE.md, or both, by where it
-  applies. Anything more specific (a fact, a preference about one area, a standing
-  decision, context to carry) goes in Bagrat's memory in shroom-private, committed
-  straight to its `main` with no PR (Bagrat, 2026-10-16). See *Read memory first* above.
 - **Report up; don't wait to be polled.** A session the orchestrator spawned or watches
   messages it (`send_message`) when something that matters changes. That covers finishing,
   opening or merging a PR, failing, getting blocked, or needing Bagrat: a question, a
   decision, a review or merge, or an approval on his Mac. Send one short message with
-  context and links, and nothing for routine progress. The orchestrator's id comes from the
-  session that spawned it. A session started by hand reports to the orchestrator Bagrat
-  names.
+  context and links, and nothing for routine progress. When Bagrat gives a child something
+  directly in its own chat (unblocks it, approves, ratifies, confirms), it tells the
+  orchestrator at once that he did and what it's doing now, so it leaves his waiting list
+  (Bagrat, 2026-10-16 and 2026-10-18). The orchestrator's id comes from the session that
+  spawned it. A session started by hand reports to the orchestrator Bagrat names.
 - **Merge when sure.** A session merges its own PR without waiting when all of these hold:
   CI is green on the head, it's mergeable, the change is in scope, and nothing in it is
   Bagrat's to decide (a ruling, product copy, a stack change, anything this file reserves
