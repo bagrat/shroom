@@ -6,6 +6,7 @@
 // player dark under both — both are shot). Never the network, never a real space.
 //
 //   node tests/e2e/pages-gallery.mjs
+//   GALLERY_ONLY=seek-head-live,owner-icons-in-place node tests/e2e/pages-gallery.mjs   (some faces)
 //
 // Faces: owner-page (uploading, waiting-conn, waiting-space, fully-live), live, on-its-way,
 // on-its-way-untitled, on-its-way-stalled, unavailable, removed, embed-face (live and
@@ -104,6 +105,63 @@ const chaptered = (finger) => async (page) => {
   if (!spoken.endsWith(`, ${finger ? AI_SAID[2][1] : AI_SAID[0][1]}`)) missing.push(`the bar's spoken value naming the chapter (got “${spoken}”)`);
   return missing;
 };
+
+/** Where the seek head is painted, against the player's box (Bagrat, 2026-10-25: at the end its
+ * right edge meets the box's right edge; at the start its left edge, the left). Read from the
+ * pixels of the bar with the picture hidden: the head is the only near-white there.
+ * @returns {Promise<{ left: number, right: number, width: number } | null>} head edges from the box's left */
+async function headIn(page) {
+  const r = await page.evaluate(() => {
+    const p = document.querySelector(".player").getBoundingClientRect(), s = document.querySelector(".seek").getBoundingClientRect();
+    document.querySelector("video").style.visibility = "hidden";
+    return { x: p.left, w: p.width, y: s.top, h: s.height };
+  });
+  const png = await page.screenshot({ clip: { x: r.x, y: r.y, width: r.w, height: r.h } });
+  await page.evaluate(() => { document.querySelector("video").style.visibility = ""; });
+  return page.evaluate(async ({ b64, w }) => {
+    const img = new Image(); img.src = "data:image/png;base64," + b64; await img.decode();
+    const k = document.createElement("canvas"); k.width = img.naturalWidth; k.height = img.naturalHeight;
+    const x = k.getContext("2d"); x.drawImage(img, 0, 0);
+    const d = x.getImageData(0, 0, k.width, k.height).data, scale = k.width / w;
+    let lo = Infinity, hi = -1;
+    for (let i = 0; i < d.length; i += 4) if (d[i] > 215 && d[i + 1] > 215 && d[i + 2] > 215) { const c = (i / 4) % k.width; lo = Math.min(lo, c); hi = Math.max(hi, c); }
+    return hi < 0 ? null : { left: lo / scale, right: (hi + 1) / scale, width: w };
+  }, { b64: png.toString("base64"), w: r.w });
+}
+/** The head at 0:00 and at the very end, on a laptop and a phone: inside the box, touching
+ * its edge (within a pixel of anti-aliasing); with chapters, the sections span its travel. */
+const headInside = async (page) => {
+  const missing = [];
+  // Loaded first: the player fetches its stream on the first play.
+  await page.evaluate(() => { const v = document.querySelector("video"); v.muted = true; return v.play().catch(() => {}); });
+  const known = await page.waitForFunction(() => { const v = document.querySelector("video"); return isFinite(v.duration) && v.duration > 0 && v.readyState >= 1; }, null, { timeout: 15000 }).then(() => true, () => false);
+  if (!known) return ["the video's length, to seek to its end"];
+  for (const [width, height] of [[900, 640], [390, 844]]) {
+    await page.setViewportSize({ width, height });
+    await page.evaluate(() => { const v = document.querySelector("video"); v.pause(); v.currentTime = 0; });
+    await page.waitForTimeout(300);
+    const start = await headIn(page);
+    if (!start || Math.abs(start.left) > 1) missing.push(`at ${width}px, 0:00: the head's left edge on the box's (got ${JSON.stringify(start)})`);
+    const ended = await page.evaluate(() => new Promise((ok) => {
+      const v = document.querySelector("video");
+      v.muted = true; v.addEventListener("ended", () => ok(true), { once: true });
+      v.currentTime = Math.max(0, v.duration - 0.4); v.play().catch(() => ok(false)); setTimeout(() => ok(v.ended), 8000);
+    }));
+    await page.waitForTimeout(400);
+    const end = await headIn(page);
+    if (!ended || !end || Math.abs(end.right - end.width) > 1) missing.push(`at ${width}px, the end: the head's right edge on the box's (ended ${ended}, got ${JSON.stringify(end)})`);
+    const ch = await page.evaluate(() => { const xs = [...document.querySelectorAll(".chs i")], p = document.querySelector(".player").getBoundingClientRect(); return xs.length ? { first: xs[0].getBoundingClientRect().left - p.left, last: p.right - xs[xs.length - 1].getBoundingClientRect().right } : null; });
+    if (ch && (Math.abs(ch.first - 7) > 1 || Math.abs(ch.last - 7) > 1)) missing.push(`at ${width}px: the chapters on the head's travel, 7 px in from each end (got ${JSON.stringify(ch)})`);
+  }
+  await page.setViewportSize({ width: 900, height: 640 });
+  return missing;
+};
+/** The owner's title icons, each where it stands: its box, and whether it's greyed. */
+const iconsOf = (page) => page.evaluate(() => ["#c", "#th", "#dl a", "#ed"].map((q) => {
+  const el = document.querySelector(q); if (!el) return { q, missing: true };
+  const b = el.getBoundingClientRect();
+  return { q, x: Math.round(b.left * 2) / 2, y: Math.round(b.top * 2) / 2, w: b.width, greyed: el.getAttribute("aria-disabled") === "true", href: el.getAttribute("href") };
+}));
 
 // Each face: its id in spec/machine.json, the record behind it, how it's opened, and which of the
 // spec's lines it must show (the lines that vary are pinned by the record: 2 of 5 is 40 %).
@@ -224,6 +282,36 @@ const FACES = [
     const pressed = await page.$eval(".cc", (b) => b.getAttribute("aria-pressed"));
     return [...(pressed === "true" ? [] : ["Captions pressed"]), ...(shown && shown.startsWith("Next, the invoice") ? [] : [`a caption at 1:10 (got ${JSON.stringify(shown)})`])];
   } },
+  // Bagrat, 2026-10-25: the icons beside the title came in one by one and the row flickered.
+  // Opened while the video uploads, every one is there, the ones not ready greyed (a greyed
+  // Download goes nowhere); once it's fully up they wake where they stand: nothing moves.
+  { face: "owner-icons-in-place", id: "OwnrIconOwnrIcon", owner: true, engine: "chromium", record: (id) => uploading(id, 2, 5, 1000, { durationSec: 8 }),
+    before: async (page) => {
+      await page.evaluate((icons) => { window.__icons = icons; }, await iconsOf(page));
+      if (await page.$("#dl a")) await page.click("#dl a", { force: true });
+    },
+    golive: (id) => meta(id, { progress: { done: 9, total: 9, updatedAt: iso(Date.now()) } }), wait: () => true, pictures: [], lines: () => [], act: async (page) => {
+      const missing = [];
+      const before = await page.evaluate(() => window.__icons);
+      if (!before) return ["the page left (a greyed Download went somewhere)"];
+      for (const i of before) if (i.missing) missing.push(`${i.q} there from the first paint`);
+      for (const q of ["#th", "#dl a", "#ed"]) if (!before.find((i) => i.q === q)?.greyed) missing.push(`${q} greyed while it uploads`);
+      if (before.find((i) => i.q === "#dl a")?.href) missing.push("a greyed Download that goes nowhere");
+      const woke = await page.waitForFunction(() => document.querySelector("#dl a").getAttribute("href") && !document.querySelector("#ed").getAttribute("aria-disabled"), null, { timeout: 20000, polling: 250 }).then(() => true, () => false);
+      if (!woke) missing.push("Download and Edit in shroom awake once it's fully up");
+      const after = await iconsOf(page);
+      for (const a of after) {
+        const b = before.find((i) => i.q === a.q);
+        if (b && (b.x !== a.x || b.y !== a.y || Math.abs(b.w - a.w) > 0.5)) missing.push(`${a.q} where it stood (${b.x},${b.y} → ${a.x},${a.y})`);
+      }
+      return missing;
+    } },
+  // Bagrat, 2026-10-25: the seek head inside the bar, on every face that plays.
+  { face: "seek-head-live", id: "SeekLiveSeekLive", record: (id) => meta(id, { media: media(id, false) }), lines: () => [TITLE], act: headInside },
+  { face: "seek-head-live-chromium", id: "SeekChroSeekChro", engine: "chromium", record: (id) => meta(id, { media: media(id, false) }), lines: () => [TITLE], act: headInside },
+  { face: "seek-head-owner", id: "SeekOwnrSeekOwnr", owner: true, record: (id) => meta(id, { media: media(id, false), progress: { done: 9, total: 9, updatedAt: iso(Date.now()) } }), lines: () => [], act: headInside },
+  { face: "seek-head-embed", id: "SeekEmbdSeekEmbd", embed: true, record: (id) => meta(id, { media: media(id, false) }), lines: () => [], absent: [TITLE], act: headInside },
+  { face: "seek-head-chapters", id: "SeekChapSeekChap", ai: true, engine: "chromium", record: (id) => named(id, { titled: true }), lines: () => [AI_TITLE], act: headInside },
 ];
 
 /** A real 8 s fMP4 HLS stream and its poster, as the app uploads them. */
@@ -274,6 +362,8 @@ async function chipIn(browser, bytes) {
 }
 
 async function main() {
+  const only = process.env.GALLERY_ONLY ? process.env.GALLERY_ONLY.split(",") : null;
+  if (only) FACES.splice(0, FACES.length, ...FACES.filter((f) => only.includes(f.face)));
   fs.mkdirSync(out, { recursive: true });
   const files = encode();
   const long = encodeLong();

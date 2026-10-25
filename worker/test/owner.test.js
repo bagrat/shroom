@@ -108,11 +108,13 @@ describe("the owner page", () => {
     const link = `<a class="copy edit" id="ed" href="shroom://edit/v.example.workers.dev/${ID}" data-tip="${COPY.editInShroom}" aria-label="${COPY.editInShroom}">${COPY.editInShroom}</a>`;
     expect(body).toContain(link);
     expect(body.indexOf(link)).toBeGreaterThan(body.indexOf(`id="dl"`)); // after Download, the last
-    // Bytes still arriving: drawn hidden, and the poll brings it in at the drain.
+    // Bytes still arriving: there, greyed and going nowhere, and the poll wakes it at the
+    // drain (Bagrat, 2026-10-25: every icon there from the start).
     env.BUCKET.touch(`meta/${ID}.json`, metaOf({ progress: { done: 2, total: 5, updatedAt: "2026-10-02T11:59:50Z" } }));
     const up = await (await req(env, `/${ID}`, { headers: { cookie } })).text();
-    expect(up).toMatch(new RegExp(`id="ed" href="shroom://edit/v\\.example\\.workers\\.dev/${ID}"[^>]* hidden>`));
-    expect(up).toContain(`var ed=document.getElementById("ed");if(ed&&s.drained)ed.hidden=false;`);
+    expect(up).toContain(`<a class="copy edit" id="ed" data-href="shroom://edit/v.example.workers.dev/${ID}" data-tip="${COPY.editInShroom}" aria-label="${COPY.editInShroom}" aria-disabled="true">${COPY.editInShroom}</a>`);
+    expect(up).not.toMatch(/id="ed"[^>]* href=/);
+    expect(up).toContain(`if(s.drained)wake(ed,ed.getAttribute("data-href"))`);
     // A recipient's page and the embed never have it.
     expect(await (await req(env, `/${ID}`)).text()).not.toContain("shroom://edit/");
     expect(await (await req(env, `/${ID}?embed=1`)).text()).not.toContain("shroom://edit/");
@@ -121,6 +123,70 @@ describe("the owner page", () => {
     expect(await (await req(env, `/${ID}`, { headers: { cookie: m } })).text()).not.toContain("shroom://edit/");
     env.BUCKET.touch(ledgerKey(ID), JSON.stringify({ v: 1, member: MHER, device: MHER_MAC.id, at: "2026-10-02T11:00:00Z" }), { m: MHER });
     expect(await (await req(env, `/${ID}`, { headers: { cookie: m } })).text()).toContain("shroom://edit/");
+  });
+
+  // Bagrat, 2026-10-25: the icons came in one by one and the row flickered. Every quiet icon
+  // beside the title is there from the first paint, in its place, greyed until it can work.
+  describe("the title's quiet icons, all there from the first paint", () => {
+    const head = (body) => body.match(/<div class="head">([\s\S]*?)<\/div>/)?.[1] ?? "";
+    const order = (h) => ['id="c"', 'id="th"', 'id="dl"', 'id="ed"'].map((k) => h.indexOf(k));
+    const UP = { progress: { done: 2, total: 5, updatedAt: "2026-10-02T11:59:50Z" } };
+
+    it("draws Copy link, Copy thumbnail, Download and Edit in shroom, in that order, the ones not ready greyed", async () => {
+      for (const [face, over] of [["uploading", { state: "uploading", media: null, ...UP }], ["live, its last files still on the way", UP]]) {
+        const env = space({ [`meta/${ID}.json`]: metaOf(over) });
+        const h = head(await (await req(env, `/${ID}`, { headers: { cookie: await cookieFor(env) } })).text());
+        const at = order(h);
+        expect(at.every((i, n) => i > 0 && (n === 0 || i > at[n - 1])), `${face}: ${h}`).toBe(true);
+        expect(h, face).toContain(`<button class="copy" id="c" data-tip="${COPY.copyLink}">${COPY.copyLink}</button>`);
+        expect(h, face).toContain(`<button class="copy thumb" id="th" data-tip="${COPY.preparingThumbnail}" aria-disabled="true">${COPY.copyThumbnail}</button>`);
+        expect(h, face).toContain(`<span id="dl" data-tip="${COPY.download}"><a aria-disabled="true">${COPY.download}</a></span>`);
+        expect(h, face).toMatch(/<a class="copy edit" id="ed" data-href="shroom:\/\/edit\/[^"]*"[^>]* aria-disabled="true">/);
+        expect(h, face).not.toMatch(/ hidden[ >]/);
+        expect(h, face).not.toContain(`href="/d/`);
+      }
+    });
+
+    it("draws them before the record exists too, on the maker's own page", async () => {
+      const env = space();
+      env.BUCKET.store.delete(`meta/${ID}.json`);
+      const cookie = await cookieFor(env);
+      env.BUCKET.touch(ledgerKey(ID), JSON.stringify({ v: 1, member: "m1", device: OWNER_MAC.id, at: "2026-10-02T11:59:00Z" }), { m: "m1" });
+      const body = await (await req(env, `/${ID}`, { headers: { cookie } })).text();
+      expect(body).toContain(`class="title"`);
+      const at = order(head(body));
+      expect(at.every((i) => i > 0)).toBe(true);
+      expect(head(body)).not.toMatch(/ hidden[ >]/);
+    });
+
+    it("draws the ready ones awake: a fully-up video with its file", async () => {
+      const env = space({ [`meta/${ID}.json`]: metaOf({ media: { hls: `rec/${ID}/master.m3u8`, mp4: `rec/${ID}/video.mp4`, width: 1920, height: 1080 } }) });
+      const h = head(await (await req(env, `/${ID}`, { headers: { cookie: await cookieFor(env) } })).text());
+      expect(h).toContain(`<span id="dl" data-tip="${COPY.download}"><a href="/d/${ID}">${COPY.download}</a></span>`);
+      expect(h).toContain(`<a class="copy edit" id="ed" href="shroom://edit/v.example.workers.dev/${ID}" data-tip="${COPY.editInShroom}" aria-label="${COPY.editInShroom}">`);
+      expect(h).not.toContain(`aria-disabled="true">${COPY.download}`);
+    });
+
+    it("wakes each where it stands, never adding or showing one, and greys Download again if its file goes", async () => {
+      const env = space({ [`meta/${ID}.json`]: metaOf({ state: "uploading", media: null, ...UP }) });
+      const body = await (await req(env, `/${ID}`, { headers: { cookie: await cookieFor(env) } })).text();
+      expect(body).toContain(`function wake(el,href){if(!el.getAttribute("aria-disabled"))return;if(href)el.href=href;el.removeAttribute("aria-disabled")}`);
+      expect(body).toContain(`function rest(el){if(el.getAttribute("aria-disabled"))return;el.removeAttribute("href");el.setAttribute("aria-disabled","true")}`);
+      expect(body).toContain(`if(da){if(s.mp4)wake(da,"/d/"+c.id);else rest(da)}`);
+      expect(body).not.toContain(`tb.hidden=false`);
+      expect(body).not.toContain(`ed.hidden=false`);
+      expect(body).not.toContain(`dl.appendChild`);
+      // Greyed is drawn the same for each: dimmed, no hover, nothing under the pointer.
+      expect(body).toContain(`#dl a[aria-disabled=true]{cursor:default}#dl a[aria-disabled=true]::before{opacity:.4}`);
+    });
+
+    it("leaves the viewer's page as it is: what a viewer can't use isn't drawn (B166)", async () => {
+      const env = space();
+      const h = head(await (await req(env, `/${ID}`)).text());
+      expect(h).toContain(`<h1>`);
+      expect(h).not.toContain(`aria-disabled`);
+      expect(h).not.toContain(COPY.download);
+    });
   });
 
   it("is the recipient page for a forged or absent cookie", async () => {
