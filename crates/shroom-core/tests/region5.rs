@@ -327,6 +327,7 @@ fn plan(s: &Scene) -> &shroom_core::scene::PlanView {
     match &s.settings.as_ref().expect("the Settings window").body.pane {
         SettingsPane::Space(sp) => &sp.plan,
         SettingsPane::General(_) => panic!("General, not Space"),
+        SettingsPane::Videos(_) => panic!("Videos, not Space"),
         SettingsPane::Members(_) => panic!("Members, not Space"),
     }
 }
@@ -334,6 +335,7 @@ fn plan(s: &Scene) -> &shroom_core::scene::PlanView {
 fn general(s: &Scene) -> &shroom_core::scene::GeneralBody {
     match &s.settings.as_ref().expect("the Settings window").body.pane {
         SettingsPane::General(g) => g,
+        SettingsPane::Videos(_) => panic!("Videos, not General"),
         SettingsPane::Space(_) => panic!("Space, not General"),
         SettingsPane::Members(_) => panic!("Members, not General"),
     }
@@ -619,37 +621,39 @@ fn rows() -> Vec<(&'static str, World)> {
         w.session.fields.settings.sent = true;
         w
     }));
-    rows.push(("settings-general", suggested(settings_on(ready(), SettingsTab::General), vec![], 34_000_000_000)));
+    rows.push(("settings-videos", suggested(settings_on(ready(), SettingsTab::Videos), vec![], 34_000_000_000)));
+    // Space used, in the Space tab on an owner-class Mac (N79).
+    rows.push(("settings-space", suggested(settings_on(ready(), SettingsTab::Space), vec![], 34_000_000_000)));
     // Auto-cleanup (N75): the setting Mac's pop-up, another Mac's line, counting off, and the
     // question turning it on asks.
-    rows.push(("settings-general", going(suggested(settings_on(ready(), SettingsTab::General), vec![], 34_000_000_000))));
-    rows.push(("settings-general", {
-        let mut w = going(suggested(settings_on(ready(), SettingsTab::General), vec![], 34_000_000_000));
+    rows.push(("settings-videos", going(suggested(settings_on(ready(), SettingsTab::Videos), vec![], 34_000_000_000))));
+    rows.push(("settings-videos", {
+        let mut w = going(suggested(settings_on(ready(), SettingsTab::Videos), vec![], 34_000_000_000));
         w.space.token = false;
         w
     }));
-    rows.push(("settings-general", {
-        let mut w = going(suggested(settings_on(ready(), SettingsTab::General), vec![], 34_000_000_000));
+    rows.push(("settings-videos", {
+        let mut w = going(suggested(settings_on(ready(), SettingsTab::Videos), vec![], 34_000_000_000));
         if let Fact::Known { v, .. } = &mut w.suggestions {
             v.counting = false;
         }
         w
     }));
-    rows.push(("settings-general", {
-        let mut w = suggested(settings_on(ready(), SettingsTab::General), vec![], 34_000_000_000);
+    rows.push(("settings-videos", {
+        let mut w = suggested(settings_on(ready(), SettingsTab::Videos), vec![], 34_000_000_000);
         w.library_ops.autoclean = Some(30);
         w
     }));
     rows.push(("autoclean-confirm", {
-        let mut w = suggested(settings_on(ready(), SettingsTab::General), vec![], 34_000_000_000);
+        let mut w = suggested(settings_on(ready(), SettingsTab::Videos), vec![], 34_000_000_000);
         if let Fact::Known { v, .. } = &mut w.suggestions {
             v.idle = vec![Idle { rec: rec("a2"), quiet_days: 40 }, Idle { rec: rec("a3"), quiet_days: 90 }, Idle { rec: rec("a4"), quiet_days: 31 }, Idle { rec: rec("r19"), quiet_days: 35 }];
         }
         w.session.confirm = Some(Confirm::Autoclean(30));
         w
     }));
-    rows.push(("settings-general", {
-        let mut w = suggested(settings_on(ready(), SettingsTab::General), vec![], 34_000_000_000);
+    rows.push(("settings-videos", {
+        let mut w = suggested(settings_on(ready(), SettingsTab::Videos), vec![], 34_000_000_000);
         w.inflight.failures.insert(Op::Plays, Failure { class: FailClass::Transport, at: Mono(970), tries: 1 });
         w
     }));
