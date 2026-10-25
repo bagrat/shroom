@@ -264,8 +264,8 @@ anything else it runs: Open, Save and Copy answer while a bake or an upkeep pass
 **Trace.** `logs/run.log` (600, rolled at 5 MB) logs each event, arm and effect kinds.
 `trace::Ring` keeps the last 512 steps (kinds, arm, edge, state ids on change), names read at
 most two variants deep so no value or secret enters; `runtime/ring.rs` writes it into
-`run.log` on a dev-build law breach, a rescued take, a panic and each harness run's end
-(D:B93). The `shroom` command keeps its own, `logs/cli.log` (600, rolled at 64 KB; D:B215):
+`run.log` on a dev-build law breach, a rescued take, a panic (after the panic's own line:
+its thread, where, and its message cut to 160 characters) and each harness run's end (D:B93). The `shroom` command keeps its own, `logs/cli.log` (600, rolled at 64 KB; D:B215):
 one line a run — stamped as `run.log`'s are, the verb and the options' names, `ok` or the
 code and exit, what it counted, the space's or the app's refusal, the time it took; never a
 word it was given. Report a problem and Copy diagnostics carry its last 30 lines among the
