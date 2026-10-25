@@ -311,6 +311,23 @@ mod tests {
         assert_eq!(minted_until(tmp.path()), None, "only an upload credential");
     }
 
+    /// The take folders are the real folders in `takes/` named as a take's are: a link to a
+    /// folder elsewhere, a file, or a folder of another name is no take.
+    #[test]
+    fn the_takes_are_real_folders_named_as_takes_are() {
+        let tmp = tempfile::tempdir().unwrap();
+        let takes = tmp.path().join("takes");
+        let elsewhere = tmp.path().join("elsewhere");
+        fs::create_dir_all(&elsewhere).unwrap();
+        for d in ["20261002-120000-ab12", "20261002-101500-ab12", ".hidden", "-lead", "has space", "under_score"] {
+            fs::create_dir_all(takes.join(d)).unwrap();
+        }
+        fs::write(takes.join("20261002-130000-ab12"), b"a file").unwrap();
+        std::os::unix::fs::symlink(&elsewhere, takes.join("20261002-140000-ab12")).unwrap();
+        assert_eq!(dirs(&takes), [takes.join("20261002-101500-ab12"), takes.join("20261002-120000-ab12")]);
+        assert!(dirs(&tmp.path().join("none")).is_empty());
+    }
+
     use super::*;
 
     fn touch(dir: &Path, name: &str, body: &str) {

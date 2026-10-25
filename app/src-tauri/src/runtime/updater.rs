@@ -246,6 +246,21 @@ mod tests {
         assert_eq!(base(&rt).as_deref(), Some(shroom_update::RELEASES));
     }
 
+    /// A staged copy that isn't the version offered, newer, of this channel, is refused like
+    /// one signed by someone else — and a dev build's stand-in may serve an early build to a
+    /// Mac on the official channel (the tree's own version), a release build's never.
+    #[test]
+    fn a_staged_copy_of_another_version_is_refused() {
+        assert_eq!(class(&UpdateError::Staged("0.1.24, not 0.1.26".into())), FailClass::Refused);
+        let tmp = tempfile::tempdir().unwrap();
+        let (mut rt, _rx) = Runtime::for_test(tmp.path().join("h"), None, None);
+        assert_eq!(staged_channel(&rt), Channel::Early);
+        rt.dev = false;
+        assert_eq!(staged_channel(&rt), Channel::Official);
+        std::fs::write(rt.home.path("channel"), "early\n").unwrap();
+        assert_eq!(staged_channel(&rt), Channel::Early);
+    }
+
     /// The channel is the folder's `channel` file's (B220), read at each check.
     #[test]
     fn the_channel_is_the_folders_file() {

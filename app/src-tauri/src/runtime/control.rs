@@ -197,6 +197,24 @@ mod tests {
         }
     }
 
+    /// Beside each ask, the run log has who asked: the calling process's pid and the program
+    /// it runs, as macOS has them — so a recording the person didn't start says what did.
+    #[test]
+    fn the_log_says_which_process_asked() {
+        assert_eq!(caller(Some((812, "/Applications/shroom.app/Contents/MacOS/shroom-cli".into()))), "from pid 812 /Applications/shroom.app/Contents/MacOS/shroom-cli");
+        assert_eq!(caller(Some((812, String::new()))), "from pid 812 (no path)");
+        assert_eq!(caller(None), "from an unknown process");
+        let line = format!("{} {}", asked(4, &CliOp::Start(StartAsk { countdown: false, label: false })), caller(Some((812, "/usr/local/bin/shroom".into()))));
+        assert_eq!(line, "control: ask 4 record.start no-count no-label from pid 812 /usr/local/bin/shroom");
+        assert_eq!(shroom_core::report::clean_line(&line), line, "nothing in it for the report to take out");
+        // The real call, on a connected pair: this process, and its own program.
+        let (a, _b) = UnixStream::pair().unwrap();
+        let (pid, path) = peer(&a).expect("the peer's pid");
+        assert_eq!(pid, std::process::id() as i32);
+        let exe = std::env::current_exe().unwrap();
+        assert!(path.ends_with(&*exe.file_name().unwrap().to_string_lossy()), "{path} is {}", exe.display());
+    }
+
     #[test]
     fn an_answer_is_a_code_and_a_link_never_words() {
         let a = CliAnswer { id: 3, ok: true, take: "stopping", error: None, link: Some("https://v.x.workers.dev/AbCdEfGhIjKlMnOp".into()) };

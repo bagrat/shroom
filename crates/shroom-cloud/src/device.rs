@@ -304,4 +304,38 @@ mod tests {
         assert!(InviteFile::read(br#"{"v":1,"link":"https://evil.example/elsewhere","arrived":"x"}"#).is_none());
         assert!(InviteFile::read(b"not json").is_none());
     }
+
+    /// A release build sends a recording's bytes only to Cloudflare R2's own address for an
+    /// account, over https, into a bucket name R2 takes.
+    #[test]
+    fn a_credential_names_r2s_own_store_or_none() {
+        const ACC: &str = "0123456789abcdef0123456789abcdef";
+        let at = |endpoint: &str, bucket: &str| r2_store(endpoint, bucket);
+        assert!(at(&format!("https://{ACC}.r2.cloudflarestorage.com"), "shroom-space"));
+        assert!(at(&format!("https://{ACC}.r2.cloudflarestorage.com"), "shroom-space-1792000000-ab12"));
+        assert!(at(&format!("https://{ACC}.r2.cloudflarestorage.com"), "abc") && at(&format!("https://{ACC}.r2.cloudflarestorage.com"), &"a".repeat(63)));
+        for endpoint in [
+            format!("http://{ACC}.r2.cloudflarestorage.com"),
+            format!("https://{ACC}.r2.cloudflarestorage.com/"),
+            format!("https://{ACC}.r2.cloudflarestorage.com.example.com"),
+            format!("https://{ACC}.r2.cloudflarestorage.com:8443"),
+            format!("https://{ACC}.r2.cloudflarestorage.com/bucket"),
+            format!("https://x{ACC}.r2.cloudflarestorage.com"),
+            format!("https://{}.r2.cloudflarestorage.com", ACC.to_uppercase()),
+            format!("https://{}.r2.cloudflarestorage.com", &ACC[1..]),
+            "https://x.r2.cloudflarestorage.com".to_string(),
+            "https://192.168.1.10".to_string(),
+            "http://127.0.0.1:9000".to_string(),
+            String::new(),
+        ] {
+            assert!(!at(&endpoint, "shroom-space"), "{endpoint}");
+        }
+        for bucket in ["", "ab", "Shroom-space", "shroom_space", "shroom.space", "shroom/space", "../x", "shroom space", &"a".repeat(64)] {
+            assert!(!at(&format!("https://{ACC}.r2.cloudflarestorage.com"), bucket), "{bucket:?}");
+        }
+        let c = CredFile { v: 1, purpose: "upload".into(), access_key_id: "a".into(), secret_access_key: "b".into(), session_token: "c".into(), expires_at: "x".into(), bucket: "shroom-space".into(), endpoint: format!("https://{ACC}.r2.cloudflarestorage.com") };
+        assert!(c.on_r2());
+        assert!(!CredFile { endpoint: "http://127.0.0.1:9000".into(), ..c.clone() }.on_r2());
+        assert!(!CredFile { bucket: "x/y".into(), ..c }.on_r2());
+    }
 }

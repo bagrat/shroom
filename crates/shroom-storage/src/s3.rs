@@ -627,6 +627,111 @@ mod tests {
         assert!(!path.exists() && !tmp_of(&path).exists());
     }
 
+    /// A body with no length, sent until the connection closes (as a store that doesn't say
+    /// one may).
+    fn lengthless(body: Vec<u8>) -> String {
+        use std::io::{BufRead, BufReader, Write};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = format!("http://{}", listener.local_addr().unwrap());
+        std::thread::spawn(move || {
+            let (stream, _) = listener.accept().unwrap();
+            let mut reader = BufReader::new(stream.try_clone().unwrap());
+            loop {
+                let mut line = String::new();
+                if reader.read_line(&mut line).unwrap_or(0) == 0 || line.trim_end().is_empty() {
+                    break;
+                }
+            }
+            let mut s = stream;
+            let _ = write!(s, "HTTP/1.1 200 OK\r\nconnection: close\r\n\r\n");
+            let _ = s.write_all(&body);
+        });
+        addr
+    }
+
+    #[test]
+    fn a_body_past_its_ceiling_is_an_error_and_leaves_nothing() {
+        let dir = Scratch::new("ceiling");
+        let path = dir.path().join("source.mp4");
+        std::fs::write(&path, b"an earlier copy").unwrap();
+        // No length said: the fixed ceiling holds.
+        let addr = lengthless(pattern(4 * READ_CHUNK));
+        let r = client(&addr).get_to_file_within("rec/x/video.mp4", &path, 2 * READ_CHUNK as u64, &mut |_, _| {}, &|| false);
+        assert!(matches!(r, Err(S3Error::Transport(_))), "{r:?}");
+        assert_eq!(std::fs::read(&path).unwrap(), b"an earlier copy", "untouched");
+        assert!(!tmp_of(&path).exists(), "the partial file goes");
+        // Under it, the whole body lands.
+        let body = pattern(READ_CHUNK + 7);
+        let addr = lengthless(body.clone());
+        assert!(client(&addr).get_to_file_within("rec/x/video.mp4", &path, 2 * READ_CHUNK as u64, &mut |_, _| {}, &|| false).unwrap());
+        assert!(std::fs::read(&path).unwrap() == body);
+        // A length said above the ceiling is refused before a byte is written.
+        let (addr, _) = answer(200, 3 * READ_CHUNK, pattern(3 * READ_CHUNK));
+        let r = client(&addr).get_to_file_within("rec/x/video.mp4", &path, 2 * READ_CHUNK as u64, &mut |_, _| panic!("no progress"), &|| false);
+        assert!(matches!(r, Err(S3Error::Transport(_))), "{r:?}");
+        assert!(std::fs::read(&path).unwrap() == body, "untouched");
+        assert!(!tmp_of(&path).exists());
+        assert!(GET_TO_FILE_MAX >= 32 << 30, "a long recording fits");
+    }
+
+    /// A listing that answers each page of `pages(n)` (n from 0), until the connection count
+    /// runs out; gives the address and how many pages were asked for.
+    fn lister(pages: impl Fn(usize) -> String + Send + 'static) -> (String, std::sync::Arc<std::sync::atomic::AtomicUsize>) {
+        use std::io::{BufRead, BufReader, Write};
+        use std::sync::atomic::Ordering;
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = format!("http://{}", listener.local_addr().unwrap());
+        let asked = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let count = asked.clone();
+        std::thread::spawn(move || {
+            for stream in listener.incoming() {
+                let Ok(stream) = stream else { return };
+                let mut reader = BufReader::new(stream.try_clone().unwrap());
+                loop {
+                    let mut line = String::new();
+                    if reader.read_line(&mut line).unwrap_or(0) == 0 || line.trim_end().is_empty() {
+                        break;
+                    }
+                }
+                let xml = pages(count.fetch_add(1, Ordering::SeqCst));
+                let mut s = stream;
+                let _ = write!(s, "HTTP/1.1 200 OK\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{xml}", xml.len());
+            }
+        });
+        (addr, asked)
+    }
+
+    fn page_xml(n: usize, next: Option<&str>) -> String {
+        let more = next.map(|t| format!("<IsTruncated>true</IsTruncated><NextContinuationToken>{t}</NextContinuationToken>")).unwrap_or_else(|| "<IsTruncated>false</IsTruncated>".into());
+        format!("<ListBucketResult>{more}<Contents><Key>rec/x/seg_{n:05}.m4s</Key><Size>1</Size></Contents></ListBucketResult>")
+    }
+
+    #[test]
+    fn a_listing_follows_its_pages_to_the_end() {
+        let (addr, asked) = lister(|n| page_xml(n, (n < 2).then(|| format!("t{n}")).as_deref()));
+        let listed = client(&addr).list("rec/x/").unwrap();
+        assert_eq!(listed.len(), 3);
+        assert_eq!(asked.load(std::sync::atomic::Ordering::SeqCst), 3);
+    }
+
+    #[test]
+    fn a_listing_that_doesnt_move_on_stops() {
+        use std::sync::atomic::Ordering;
+        // The same token again: an error after the page that repeats it, never a loop.
+        let (addr, asked) = lister(|n| page_xml(n, Some("again")));
+        assert!(matches!(client(&addr).list("rec/x/"), Err(S3Error::Transport(_))));
+        assert_eq!(asked.load(Ordering::SeqCst), 2);
+        // An empty token is the end of the listing.
+        let (addr, asked) = lister(|n| page_xml(n, Some("")));
+        assert_eq!(client(&addr).list("rec/x/").unwrap().len(), 1);
+        assert_eq!(asked.load(Ordering::SeqCst), 1);
+        // A new token every time: stopped at the page cap.
+        let (addr, asked) = lister(|n| page_xml(n, Some(&format!("t{n}"))));
+        assert!(matches!(client(&addr).list_within("rec/x/", 5), Err(S3Error::Transport(_))));
+        assert_eq!(asked.load(Ordering::SeqCst), 5);
+        assert!(LIST_PAGES_MAX >= 10_000, "a large space lists whole");
+    }
+
     #[test]
     fn an_empty_list_is_empty() {
         let p = parse_list("<ListBucketResult><IsTruncated>false</IsTruncated></ListBucketResult>");

@@ -476,4 +476,51 @@ mod tests {
         assert_eq!(offer(&m, Version::new(1, 4, 0), "arm64", 15), Offer::Nothing);
         assert_eq!(offer(&m, Version::new(1, 3, 2), "x86_64", 15), Offer::Nothing);
     }
+
+    const PLIST: &str = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n\t<key>CFBundleIdentifier</key>\n\t<string>am.shroom</string>\n\t<key>CFBundleShortVersionString</key>\n\t<string>0.1.26</string>\n\t<key>CFBundleVersion</key>\n\t<string>0.1.26</string>\n</dict>\n</plist>\n";
+
+    /// The version a bundle says it is: its Info.plist's `CFBundleShortVersionString`, as
+    /// the bundler writes it (XML), an early build's too.
+    #[test]
+    fn reads_a_bundles_own_version() {
+        let with = |v: &str| PLIST.replacen("<string>0.1.26</string>", &format!("<string>{v}</string>"), 1);
+        assert_eq!(short_version_in(PLIST), Some("0.1.26"));
+        assert_eq!(short_version_in(&with("0.1.27-early.2")), Some("0.1.27-early.2"));
+        assert_eq!(short_version_in("<plist><dict><key>CFBundleVersion</key><string>1</string></dict></plist>"), None, "no short version");
+        assert_eq!(short_version_in("<key>CFBundleShortVersionString</key><integer>3</integer>"), None, "not a string");
+        let dir = scratch("bundle");
+        let app = dir.join("shroom.app");
+        assert_eq!(bundle_version(&app), None, "no bundle");
+        std::fs::create_dir_all(app.join("Contents")).unwrap();
+        std::fs::write(app.join("Contents/Info.plist"), PLIST).unwrap();
+        assert_eq!(bundle_version(&app), Some(Version::new(0, 1, 26)));
+        std::fs::write(app.join("Contents/Info.plist"), with("latest")).unwrap();
+        assert_eq!(bundle_version(&app), None, "a version that doesn't read");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// A staged copy is swapped in only as the version offered, newer than the one running,
+    /// and of this Mac's channel: an official Mac takes no early build.
+    #[test]
+    fn a_staged_copy_fits_only_as_the_offered_newer_version_of_this_channel() {
+        let v = |s: &str| Version::parse(s).unwrap();
+        let fits = |bundle: Option<&str>, offered: &str, running: &str, channel| staged_fits(bundle.map(v), v(offered), v(running), channel).is_ok();
+        assert!(fits(Some("0.1.26"), "0.1.26", "0.1.25", Channel::Official));
+        assert!(fits(Some("0.1.26-early.1"), "0.1.26-early.1", "0.1.25", Channel::Early));
+        assert!(fits(Some("0.1.26"), "0.1.26", "0.1.26-early.3", Channel::Early), "an early Mac takes the release");
+        assert!(!fits(None, "0.1.26", "0.1.25", Channel::Official), "a version that can't be read");
+        assert!(!fits(Some("0.1.24"), "0.1.26", "0.1.25", Channel::Official), "not the version offered");
+        assert!(!fits(Some("0.1.26"), "0.1.27", "0.1.25", Channel::Official), "not the version offered");
+        assert!(!fits(Some("0.1.25"), "0.1.25", "0.1.25", Channel::Official), "the version running");
+        assert!(!fits(Some("0.1.24"), "0.1.24", "0.1.25", Channel::Early), "older than the one running");
+        assert!(!fits(Some("0.1.26-early.1"), "0.1.26-early.1", "0.1.25", Channel::Official), "an early build, on the official channel");
+        assert!(matches!(staged_fits(None, v("0.1.26"), v("0.1.25"), Channel::Official), Err(UpdateError::Staged(_))));
+    }
+
+    fn scratch(name: &str) -> PathBuf {
+        let p = std::env::temp_dir().join(format!("shroom-update-{}-{name}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&p);
+        std::fs::create_dir_all(&p).unwrap();
+        p
+    }
 }

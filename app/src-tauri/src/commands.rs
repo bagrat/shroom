@@ -185,6 +185,46 @@ mod tests {
         assert!(serde_json::from_value::<Named>(serde_json::json!({ "editor": 1 })).is_err(), "a webview never names an editor window");
     }
 
+    /// Every surface is its own window's: a webview acts on, keys into and reads the slice
+    /// of only the surface its window's label is — never another window's.
+    #[test]
+    fn a_surface_is_only_its_own_windows() {
+        use crate::runtime::presenter::{COUNTDOWN, FEEDBACK, LABEL, LIBRARY, ONBOARDING, POPOVER, SETTINGS, TOAST};
+        let named = |s: &str| serde_json::from_value::<Named>(serde_json::json!(s)).unwrap();
+        let own = [("popover", POPOVER), ("onboarding", ONBOARDING), ("library", LIBRARY), ("settings", SETTINGS), ("feedback", FEEDBACK), ("countdown", COUNTDOWN), ("label", LABEL), ("toast", TOAST)];
+        let labels = ["popover", "onboarding", "library", "settings", "feedback", "countdown", "label", "toast", "bubble", "main", "pattern", "editor-1", "tray"];
+        for (name, label) in own {
+            assert!(surface(named(name), label).is_some(), "{name} from its own window");
+            for other in labels.iter().filter(|l| **l != label) {
+                assert_eq!(surface(named(name), other), None, "{name} from {other}");
+            }
+        }
+        assert_eq!(surface(named("bubble"), "bubble"), Some(Surface::Bubble));
+        for other in ["popover", "settings", "main", "editor-1"] {
+            assert_eq!(surface(named("tray"), other), None, "the tray has no webview: {other}");
+            assert_eq!(surface(named("bubble"), other), None, "{other}");
+        }
+        assert_eq!(surface(named("editor"), "settings"), None);
+    }
+
+    /// A secret is pasted only in the windows with a paste field (the setup and Settings), and
+    /// a typed field comes only from the windows that have one.
+    #[test]
+    fn pastes_and_fields_come_only_from_the_windows_that_have_them() {
+        for label in ["onboarding", "settings"] {
+            assert!(pastes_from(label), "{label}");
+        }
+        for label in ["popover", "library", "feedback", "countdown", "label", "toast", "bubble", "main", "pattern", "editor-1", ""] {
+            assert!(!pastes_from(label), "{label}");
+        }
+        for label in ["onboarding", "settings", "library", "feedback"] {
+            assert!(types_from(label), "{label}");
+        }
+        for label in ["popover", "countdown", "label", "toast", "bubble", "main", "pattern", "editor-1", ""] {
+            assert!(!types_from(label), "{label}");
+        }
+    }
+
     #[test]
     fn start_and_the_popovers_return_carry_fresh_grants() {
         assert!(arms(Surface::Popover, Some(&Action::Start), None));

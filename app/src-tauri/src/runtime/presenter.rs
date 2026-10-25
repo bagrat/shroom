@@ -1192,6 +1192,20 @@ mod tests {
         assert_eq!((POPOVER, COUNTDOWN, LABEL, TOAST), (Overlay::Popover.label(), Overlay::Countdown.label(), Overlay::Label.label(), Overlay::Toast.label()));
     }
 
+    /// The pages may listen for their slice and stop listening (`app/src/lib/ipc.ts`), and
+    /// nothing more of Tauri's own: no default set, no emitting, no tray or menu — the app's
+    /// commands are its own. A debug build's devtools key is the one other (Tauri's hotkey).
+    #[test]
+    fn the_pages_may_only_listen() {
+        let cap: serde_json::Value = serde_json::from_str(include_str!("../../capabilities/default.json")).unwrap();
+        let granted: Vec<&str> = cap["permissions"].as_array().unwrap().iter().map(|p| p.as_str().expect("a permission by its name")).collect();
+        assert_eq!(granted, ["core:event:allow-listen", "core:event:allow-unlisten", "core:webview:allow-internal-toggle-devtools"]);
+        for p in &granted {
+            assert!(!p.ends_with(":default") && *p != "core:default", "a default set: {p}");
+            assert!(!p.contains("emit") && !p.contains("tray") && !p.contains("menu"), "{p}");
+        }
+    }
+
     /// An editor window's label carries its number (N73): one made, one read back, and no
     /// other label reads as an editor window's.
     #[test]

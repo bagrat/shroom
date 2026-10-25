@@ -1792,6 +1792,23 @@ mod tests {
         }
     }
 
+    /// A release build sends a recording's bytes only to R2's own store for an account
+    /// (`https://<account>.r2.cloudflarestorage.com`, a bucket name R2 takes), whatever a
+    /// credential names; a dev build keeps its stand-ins (the fake, the local space).
+    #[test]
+    fn a_release_build_stores_only_on_r2() {
+        let r2 = "https://0123456789abcdef0123456789abcdef.r2.cloudflarestorage.com";
+        let tmp = tempfile::tempdir().unwrap();
+        let (mut rt, _rx) = Runtime::for_test(tmp.path().join("a"), Some(("http://127.0.0.1:1/client/v4".into(), "http://127.0.0.1:2".into())), None);
+        assert!(rt.store_ok("http://127.0.0.1:2", "shroom-space"), "the fake's");
+        assert!(rt.store_ok(r2, "shroom-space"));
+        rt.dev = false;
+        assert!(rt.store_ok(r2, "shroom-space"));
+        for (endpoint, bucket) in [("http://127.0.0.1:2", "shroom-space"), ("http://0123456789abcdef0123456789abcdef.r2.cloudflarestorage.com", "shroom-space"), ("https://media.example.com", "shroom-space"), (r2, "shroom/space")] {
+            assert!(!rt.store_ok(endpoint, bucket), "{endpoint} {bucket}");
+        }
+    }
+
     #[test]
     fn the_stops_reach_probe_is_fenced_like_the_space() {
         let tmp = tempfile::tempdir().unwrap();
