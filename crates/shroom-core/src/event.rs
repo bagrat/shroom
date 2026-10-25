@@ -485,8 +485,9 @@ pub enum JoinAnswer {
 pub enum StandingAnswer {
     /// `/me` 200. `current`: the page has every route this app calls (ping `iface ≥
     /// IFACE_MIN`); owner-class Macs also hear whether this Mac is its space's only
-    /// token-holder (§4.7, U9) and the mark switch.
-    Fine { current: bool, only_holder: Option<bool>, mark: Option<bool> },
+    /// token-holder (§4.7, U9) and the mark switch. `ai`: whether the ping says the page
+    /// carries the AI (N75), when it was asked.
+    Fine { current: bool, only_holder: Option<bool>, mark: Option<bool>, ai: Option<bool> },
     /// `/me` or a mint: 401, or 403 `removed` — this identity is dead here. Never debounced.
     Revoked,
     /// A mint or `/me` 503 `space`, or a fresh credential refused on its first PUT. A face

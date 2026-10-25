@@ -5,7 +5,7 @@ pub mod feedback;
 pub mod library;
 pub mod members;
 pub mod onboarding;
-mod popover;
+pub mod popover;
 pub mod settings;
 pub mod status;
 mod tray;
@@ -273,10 +273,9 @@ fn next_wake(w: &World) -> Option<Mono> {
         wakes.extend(w.net.not_shroom_reprobe());
     }
     wakes.extend(w.inflight.failures.values().map(|f| f.retry_at()));
-    // The AI banner's Turn on, tried again quietly (N66).
-    if w.space.ai_turn == Some(crate::world::AiTurn::Turning) {
-        wakes.extend(w.inflight.failures.get(&Op::Ai).map(|f| f.ai_retry_at()));
-    }
+    // The AI's re-wiring, tried again quietly (N75): the banner's Turn off, or the setup
+    // Mac's turn-on by default.
+    wakes.extend(w.inflight.failures.get(&Op::Ai).map(|f| f.ai_retry_at()));
     onboarding::wakes(w, &mut wakes);
     settings::wakes(w, &mut wakes);
     members::wakes(w, &mut wakes);

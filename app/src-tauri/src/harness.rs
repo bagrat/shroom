@@ -1102,17 +1102,27 @@ fn run_drive(app: &AppHandle, rt: &crate::runtime::Runtime, out: &Path, seconds:
         wait_for(rt, "ready", 20, report, t0, |s| s.tray.click == Click::OpenPopover)?;
         click(app, rt);
         wait_for(rt, "config", 5, report, t0, |s| s.popover.as_ref().is_some_and(|p| p.id == "config"))?;
-        // The space turned to listen first (`--ai`, N66), as a person turns it: the popover's
-        // banner, Turn on…, its confirm's Turn on.
+        // The space listening first (`--ai`): on by default (N75) — a space this setup made
+        // has it already; one from before turns it on as the popover shows its banner, which
+        // is answered with OK once the page carries it.
         if drive_ai() {
-            let banner = |s: &shroom_core::Scene| s.popover.as_ref().and_then(|p| p.banner.as_ref()).map(|b| b.id);
-            wait_for(rt, "the AI banner", 60, report, t0, |s| banner(s) == Some("ai-offer"))?;
-            rt.post(Event::Act { surface: Surface::Popover, action: Action::AiAsk, rev: 0 });
-            wait_for(rt, "ai-confirm", 10, report, t0, |s| s.popover.as_ref().is_some_and(|p| p.id == "ai-confirm"))?;
-            rt.post(Event::Act { surface: Surface::Popover, action: Action::AiOn, rev: 0 });
-            let on = shroom_core::copy::ai_on_said();
-            wait_for(rt, "AI is on", 120, report, t0, |s| s.popover.as_ref().and_then(|p| p.status_line.as_deref()) == Some(on.as_str()))?;
-            wait_for(rt, "config again, listening", 10, report, t0, |s| s.popover.as_ref().is_some_and(|p| p.id == "config"))?;
+            let ai_on = || {
+                let host = rt.home.read_json::<shroom_core::world::SpaceIdentity>("space.json").map(|s| s.host).unwrap_or_default();
+                matches!(rt.page_at(&host).ping(), shroom_cloud::member::Ping::Shroom { ai: true, .. })
+            };
+            let until = std::time::Instant::now() + Duration::from_secs(120);
+            while !ai_on() {
+                if std::time::Instant::now() > until {
+                    return Err("timed out waiting for the space's AI to be on".into());
+                }
+                std::thread::sleep(Duration::from_secs(1));
+            }
+            let answered = |s: &shroom_core::Scene| s.popover.as_ref().and_then(|p| p.banner.as_ref()).is_none_or(|b| b.id != "ai-turned-on" || b.buttons.iter().all(|x| x.enabled));
+            wait_for(rt, "AI is on", 30, report, t0, answered)?;
+            if snapshot(rt).and_then(|s| s.popover.and_then(|p| p.banner)).is_some_and(|b| b.id == "ai-turned-on") {
+                rt.post(Event::Act { surface: Surface::Popover, action: Action::AiOk, rev: 0 });
+            }
+            wait_for(rt, "config again, listening", 10, report, t0, |s| s.popover.as_ref().is_some_and(|p| p.id == "config" && p.banner.as_ref().is_none_or(|b| b.id != "ai-turned-on")))?;
         }
         // Only the pattern is measured: the camera picker starts on a camera (N43), so its bubble goes.
         if snapshot(rt).is_some_and(|s| s.bubble.is_some()) {

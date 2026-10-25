@@ -261,7 +261,7 @@ fn due_space_wire(w: &World, fx: &mut Vec<Effect>) {
     let Some(id) = &w.space.identity else { return };
     let foreign = w.sweep.worker.is(&crate::world::WorkerFact::Foreign);
     if space_at(w) == Some(SpaceAt::Wiring) && !foreign && w.online() != Some(false) && idle(w, Op::Wire) {
-        fx.push(Effect::Cloud(CloudCmd::Wire { label: id.label.clone() }));
+        fx.push(Effect::Cloud(CloudCmd::Wire { label: id.label.clone(), fresh: false }));
     }
 }
 
@@ -388,7 +388,7 @@ fn due_wire(w: &World, fx: &mut Vec<Effect>) {
     // — so it finishes on its own. Never on the way out of a relaunch.
     let out_of_sight = w.space.token && !w.provisioned() && !w.launch.ending && onboarding::rows_done(w)[3];
     if (out_of_sight || matches!(plan_at(w), Some(At::Wiring | At::Found(_)))) && w.online() != Some(false) && idle(w, Op::Wire) {
-        fx.push(Effect::Cloud(CloudCmd::Wire { label: label.to_string() }));
+        fx.push(Effect::Cloud(CloudCmd::Wire { label: label.to_string(), fresh: true }));
     }
 }
 

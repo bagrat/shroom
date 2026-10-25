@@ -595,7 +595,7 @@ fn fresh_install_through_the_wizard_and_the_chapter_to_idle_ready() {
     // N45: the permissions follow the name at once; wiring starts underneath.
     assert_eq!(win(&r.scene), "done");
     assert_eq!(row(&r.scene, 4), "✓ Your link name — v.myshroomhq.workers.dev");
-    assert!(r.has(|e| *e == Effect::Cloud(CloudCmd::Wire { label: "v".into() })), "wiring starts out of sight");
+    assert!(r.has(|e| *e == Effect::Cloud(CloudCmd::Wire { label: "v".into(), fresh: true })), "wiring starts out of sight");
     let deadline = r.w.inflight.ops[&Op::Wire];
     assert_eq!(deadline.0 - r.t, 180_000, "wiring gets three minutes (DEVIATIONS #8)");
     assert!(!r.has(|e| matches!(e, Effect::Shell(ShellCmd::RequestPermission(_)))), "nothing auto-fires at done");
@@ -750,7 +750,7 @@ fn a_foreign_v_gives_the_space_the_label_shroom() {
     r.typed("myname").on(Action::Claim);
     r.cloud(CloudNews::Claimed { name: "myname".into(), result: Ok(()) });
     assert_eq!(row(&r.scene, 4), "✓ Your link name — shroom.myname.workers.dev (“v” was already taken in your Cloudflare)");
-    assert!(r.has(|e| *e == Effect::Cloud(CloudCmd::Wire { label: "shroom".into() })), "wiring never touches their v");
+    assert!(r.has(|e| *e == Effect::Cloud(CloudCmd::Wire { label: "shroom".into(), fresh: true })), "wiring never touches their v");
 }
 
 /// What the name row says in the wizard's plan and in Settings · Space's.
@@ -783,7 +783,7 @@ fn only_a_v_seen_to_be_someone_elses_is_called_taken() {
         r.typed("myshroom").on(Action::Claim);
         r.cloud(CloudNews::Claimed { name: "myshroom".into(), result: Ok(()) });
         assert_eq!(win(&r.scene), "done", "N45: the permissions come before the wiring");
-        assert!(r.has(|e| *e == Effect::Cloud(CloudCmd::Wire { label: "shroom".into() })), "a v passed by is never wired either");
+        assert!(r.has(|e| *e == Effect::Cloud(CloudCmd::Wire { label: "shroom".into(), fresh: true })), "a v passed by is never wired either");
         assert_eq!(row(&r.scene, 4), line, "seen {seen}: while it wires");
 
         r.cloud(CloudNews::Wired(Ok(space("myshroom", "shroom"))));
@@ -1555,7 +1555,7 @@ fn wiring_falls_back_to_the_gates() {
         assert!(r.has(|e| *e == Effect::Cloud(CloudCmd::Sweep(SweepPart::Full))));
         r.cloud(swept(CLEAR, Some("myshroom"), false, None));
         assert_eq!(win(&r.scene), "wiring");
-        assert!(r.has(|e| *e == Effect::Cloud(CloudCmd::Wire { label: "v".into() })));
+        assert!(r.has(|e| *e == Effect::Cloud(CloudCmd::Wire { label: "v".into(), fresh: true })));
     }
 }
 
@@ -1568,7 +1568,7 @@ fn the_label_is_the_surveys() {
     r.cloud(CloudNews::Swept(SweepAnswer { label: Some(Some("shroom-v".into())), ..sweep_answer(Some("myname")) }));
     assert_eq!(win(&r.scene), "done", "N45: the permissions come before the wiring");
     assert!(r.ids().contains(&"name-v-clash"));
-    assert!(r.has(|e| *e == Effect::Cloud(CloudCmd::Wire { label: "shroom-v".into() })));
+    assert!(r.has(|e| *e == Effect::Cloud(CloudCmd::Wire { label: "shroom-v".into(), fresh: true })));
     assert_eq!(row(&r.scene, 4), "✓ Your link name — shroom-v.myname.workers.dev (“v” was already taken in your Cloudflare)");
 
     let mut r = Run::new(token_saved());
@@ -2051,7 +2051,7 @@ fn after_a_quit_wiring_resumes_from_the_next_launch_without_a_window() {
     assert_eq!(r2.scene.onboarding, None);
     assert!(r2.has(|e| *e == Effect::Cloud(CloudCmd::Sweep(SweepPart::Full))), "the launch re-probes the saved token");
     r2.cloud(swept(CLEAR, Some("myshroom"), false, None));
-    assert!(r2.has(|e| *e == Effect::Cloud(CloudCmd::Wire { label: "v".into() })), "and wiring resumes, window closed");
+    assert!(r2.has(|e| *e == Effect::Cloud(CloudCmd::Wire { label: "v".into(), fresh: true })), "and wiring resumes, window closed");
     assert_eq!(r2.scene.onboarding, None);
     r2.cloud(CloudNews::Wired(Ok(identity())));
     assert!(r2.w.provisioned());

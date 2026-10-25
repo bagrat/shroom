@@ -105,8 +105,12 @@
     {/if}
 
     {#if p.banner}
-      <section class="banner {p.banner.tone}" class:inline={p.banner.tone === "frost"}>
-        <div class="bline"><span class="dot" aria-hidden="true"></span><p>{p.banner.line}</p></div>
+      <section class="banner {p.banner.tone}" class:inline={p.banner.tone === "frost"} class:two={!!p.banner.detail}>
+        {#if p.banner.detail}
+          <div class="bline"><span class="dot" aria-hidden="true"></span><div class="lines"><p class="head">{p.banner.line}</p><p class="detail">{p.banner.detail}</p></div></div>
+        {:else}
+          <div class="bline"><span class="dot" aria-hidden="true"></span><p>{p.banner.line}</p></div>
+        {/if}
         {#if p.banner.buttons.length}
           <div class="row">{#each p.banner.buttons as b}{@render btn(b)}{/each}</div>
         {/if}
@@ -215,11 +219,20 @@
   .bline { display: flex; gap: 8px; align-items: flex-start; }
   .bline .dot { margin-top: 5px; }
   .banner.frost .bline .dot { margin-top: 0; }
+  /* a bold line with a quieter one under it (N75's AI banners), the buttons beneath */
+  .banner.frost.two { flex-direction: column; align-items: stretch; padding: 9px 10px; }
+  .banner.frost.two .bline { flex: none; align-items: flex-start; }
+  .banner.frost.two .bline .dot { margin-top: 5px; }
+  .banner .lines { display: flex; flex-direction: column; gap: 2px; }
+  .banner .lines p { margin: 0; }
+  .banner .head { font-weight: 600; }
+  .banner .detail { color: var(--muted); font-size: 12px; }
   .dot { width: 8px; height: 8px; border-radius: 4px; flex: none; display: block; }
   .amber .dot, .dot.amber { background: var(--amber); }
   .frost .dot { background: var(--accent); }
   .banner .row { display: flex; gap: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
   .banner.frost .row { justify-content: flex-end; flex-direction: row-reverse; gap: 10px; }
+  .banner.frost.two .row { justify-content: flex-start; } /* reversed: the buttons sit right */
   .banner .b { min-height: 30px; }
   .banner.amber .b.filled { background: var(--amber-fill); border-color: var(--amber-fill); color: var(--on-amber); }
   .banner.amber .b.red-text { color: var(--red-on-amber); }

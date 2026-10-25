@@ -223,12 +223,12 @@ pub enum Action {
     /// Settings · Space's AI switch (N66): the setup Mac re-wires the page with the AI and
     /// its schedule, or without them.
     SetAi(bool),
-    /// The popover's AI banner (N66): Turn on… — its confirm, which says the cost.
-    AiAsk,
-    /// The confirm's Turn on — as the switch.
-    AiOn,
-    /// The banner's Not now: hidden for good on this Mac; the switch in Settings · Space stays.
-    AiNotNow,
+    /// The popover's AI banner (N75): OK — AI stays as it is, and the banner is answered for
+    /// good on this Mac (the setup Mac's, or a member's).
+    AiOk,
+    /// The setup Mac's AI banner (N75): Turn off — the page is re-wired without the AI, as
+    /// the switch in Settings · Space does.
+    AiTurnOff,
     /// The Library's *Mine · Everyone*.
     SetScope(LibraryScope),
     // ── Suggested to clean up (N68) ──
@@ -371,6 +371,9 @@ pub struct Banner {
     pub id: &'static str,
     pub tone: Tone,
     pub line: String,
+    /// A second, quieter line under a bold `line` (N75's AI banners); most banners have one line.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub detail: Option<String>,
     pub buttons: Vec<Button>,
 }
 

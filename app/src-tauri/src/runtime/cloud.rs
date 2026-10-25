@@ -392,7 +392,7 @@ fn spawn_wizard(rt: Runtime) -> Sender<(Instant, CloudCmd)> {
                     CloudCmd::SaveToken(id, account_id) => save_token(&rt, id, &account_id),
                     CloudCmd::Sweep(part) => sweep_pass(&rt, part, &mut proved),
                     CloudCmd::Claim(name) => claim(&rt, name),
-                    CloudCmd::Wire { label } => wire_space(&rt, &label),
+                    CloudCmd::Wire { label, fresh } => wire_space(&rt, &label, fresh),
                     CloudCmd::Refresh => refresh(&rt),
                     CloudCmd::SetAi(on) => set_ai(&rt, on),
                     CloudCmd::Reach | CloudCmd::OpenOwnerPage(_) => continue,
@@ -757,8 +757,9 @@ fn claim(rt: &Runtime, name: String) -> Result<CloudNews, FailClass> {
 }
 
 /// Wiring under the survey's label: the bucket, the player, the page, its route, the
-/// self-check, then the space's marker — idempotent end to end.
-fn wire_space(rt: &Runtime, label: &str) -> Result<CloudNews, FailClass> {
+/// self-check, then the space's marker — idempotent end to end. `fresh`: the setup's own
+/// wiring, whose new page carries the AI (N75).
+fn wire_space(rt: &Runtime, label: &str, fresh: bool) -> Result<CloudNews, FailClass> {
     // Wiring's parts, each said as it begins (N74); the window keeps the furthest.
     post_part(rt, Op::Wire, 1);
     let h = held(rt)?;
@@ -779,7 +780,8 @@ fn wire_space(rt: &Runtime, label: &str) -> Result<CloudNews, FailClass> {
     // done only once it answers.
     let at = |host: &str| rt.page_at(host);
     let page = PageCheck { at: &at, version: page_version(), every: PageCheck::EVERY, within: PageCheck::WITHIN };
-    match wire::wire_parts(&h.cloud, &spec, Some(&page), &|p| post_part(rt, Op::Wire, p as u8)) {
+    let wiring = if fresh { wire::wire_fresh_parts } else { wire::wire_parts };
+    match wiring(&h.cloud, &spec, Some(&page), &|p| post_part(rt, Op::Wire, p as u8)) {
         Ok(w) => {
             rt.log(&format!("wizard wire: the page {}", if w.deployed { "went up" } else { "was current — kept" }));
             // N29: the owner's name in macOS's short form, everywhere it's written.
