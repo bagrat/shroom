@@ -8,6 +8,8 @@
 //   node app/test/take-drive.mjs movies    Save to Movies on a take the space can't take
 //   node app/test/take-drive.mjs left-out  a take from a cold start, and what it leaves out
 //   node app/test/take-drive.mjs not-left-out   the reader's own proof: the count stays in
+//   node app/test/take-drive.mjs own-windows    the Library, an editor and Settings in a take's
+//                                               picture; the popover, label and toast not (N82)
 //   node app/test/take-drive.mjs camera-take    Camera as the source, a take kept (the hosted
 //                                               Mac's pattern camera only: dev/mac/camera.sh)
 //   node app/test/take-drive.mjs memory    what shroom holds at rest, after its windows and
@@ -31,6 +33,12 @@
 // the list (only the count: a digit and a line of copy), and the reader must find it in the
 // take. Exit 3 when something couldn't be looked at: a locked screen (nothing records —
 // only the first reading is made), or no ffmpeg here that can decode the take.
+// `own-windows` (N82, DECISIONS B256): a take with the Library, an editor and Settings lifted
+// above the pattern in turn, then the popover, the agent label and the marker toast; a frame
+// from the middle of each one's stretch is read here (tests/e2e/own-windows.mjs): the windows
+// light the pattern's dark field, the rest leave it dark. The frames are kept as PNGs beside
+// the report (in SHROOM_TAKE_OUT when it's set).
+//
 // SHROOM_TAKE_OUT=<dir> also leaves the take and the report there, for a reader elsewhere
 // (the L5 run, tests/l5/take-vm.sh: a clean Mac has no ffmpeg of its own).
 //
@@ -52,7 +60,7 @@ const app = process.env.SHROOM_APP ?? join(repo, "target/debug/bundle/macos/shro
 const fakeBin = join(repo, "target/debug/cloudfake");
 for (const p of [app, fakeBin]) if (!existsSync(p)) { console.error(`missing ${p} — build it first (see the header)`); process.exit(2); }
 const which = process.argv[2];
-if (!["disk", "signals", "movies", "left-out", "not-left-out", "camera-take", "camera-drag", "memory"].includes(which)) { console.error("usage: node app/test/take-drive.mjs disk|signals|movies|left-out|not-left-out|camera-take|camera-drag|memory"); process.exit(64); }
+if (!["disk", "signals", "movies", "left-out", "not-left-out", "own-windows", "camera-take", "camera-drag", "memory"].includes(which)) { console.error("usage: node app/test/take-drive.mjs disk|signals|movies|left-out|not-left-out|own-windows|camera-take|camera-drag|memory"); process.exit(64); }
 
 // The core's numbers (crates/shroom-core/src/derive/popover.rs): what Start needs at Normal.
 const MARGIN = 1_000_000_000;
@@ -121,6 +129,21 @@ const said = existsSync(join(work, "stderr.log")) ? readFileSync(join(work, "std
 if (which === "camera-take" && process.env.SHROOM_TAKE_OUT) {
   mkdirSync(process.env.SHROOM_TAKE_OUT, { recursive: true });
   for (const name of ["camera-take.mp4", "camera-take.png"]) if (existsSync(join(work, name))) cpSync(join(work, name), join(process.env.SHROOM_TAKE_OUT, name));
+}
+// own-windows: a frame from each stretch of the take, read before the take is deleted.
+if (which === "own-windows") {
+  const skipped = (r.facts?.skipped ?? []).map(([what, why]) => ({ what, why }));
+  const take = r.facts?.take_dir;
+  const pngs = join(process.env.SHROOM_TAKE_OUT ?? work, "frames");
+  const reader = await import(join(repo, "tests/e2e/own-windows.mjs"));
+  const { canRead } = await import(join(repo, "tests/e2e/left-out.mjs"));
+  const picture = !take || !existsSync(take) ? null : canRead() ? reader.windowsIn(take, r.facts?.stretches, pngs) : { read: false, why: "no ffmpeg and ffprobe here to decode the take with" };
+  if (process.env.SHROOM_TAKE_OUT) cpSync(out, join(process.env.SHROOM_TAKE_OUT, "report.json"));
+  const failed = (r.checks ?? []).filter(([, ok]) => !ok).map(([what, , seen]) => ({ what, seen }));
+  const unseen = skipped.length > 0 || (r.ok && (!picture || picture.read === false));
+  const verdict = !picture || picture.read === false ? null : picture.ok;
+  console.log(JSON.stringify({ ok: r.ok && !unseen && verdict !== false, failed, skipped, picture, pattern: said, report: r }, null, 1));
+  process.exit(!r.ok || verdict === false ? 1 : unseen ? 3 : 0);
 }
 const stays = which === "not-left-out";
 if (which !== "left-out" && !stays) {
