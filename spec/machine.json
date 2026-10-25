@@ -1424,6 +1424,15 @@
     "N32 (the member face's body line)"
    ],
    "amended_by": []
+  },
+  {
+   "id": "N82",
+   "title": "A click on a control that something late just moved does nothing",
+   "decision": "**Bagrat's re-check of 0.1.30-early.1, 2026-10-25**: he opened the popover to change the camera, the update finished downloading a second later, and its ready banner went in above the picker rows; everything under it dropped, a click meant for the rows landed on Update, and shroom quit and came back updated — it looked like a crash. **Bagrat, 2026-10-25** (relayed by the orchestrator, on the board “Popover — a banner that lands late never takes a click…”, picking A): nothing changes in the look. In the popover and in Settings, for **half a second** after something lands and moves a control or puts a new one in its place — a banner, an Update button, a line under a picker — a pointer click on that control does nothing, and the next click works. What the person's own click or key just changed (a menu they opened, a tab they picked, a pick that adds its line) is theirs and isn't held back; the keyboard is never held back (its focus doesn't move with the layout). Not a state and no words: the click is simply not taken. B and C (the offer below Start; the offer waiting for the next open) were not picked.",
+   "status": "ratified",
+   "date": "2026-10-25",
+   "amends": [],
+   "amended_by": []
   }
  ],
  "surfaces": [
@@ -20676,6 +20685,15 @@
    "text": "Save to Movies — the stranded-take rescue (N34) The take's single-file copy lands in ~/Movies under its title and Finder shows it. The take keeps waiting — it still uploads if the space returns — until discarded. Several: “Save three to Movies”. After saving, the banner reads “Saved to Movies ✓” with a quiet Discard…. No take is ever lost to a space that went away.",
    "about": [
     "member-revoked"
+   ]
+  },
+  {
+   "id": "late-click",
+   "region": 3,
+   "text": "Late-arrival guard — not a state (N82): in the popover and in Settings, a pointer click on a control that something arriving by itself moved or put there in the last half-second does nothing; the next click works. What the person's own click or key changed, and the keyboard, are never held back.",
+   "about": [
+    "config",
+    "settings-general"
    ]
   }
  ]
