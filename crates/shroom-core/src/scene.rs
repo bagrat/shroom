@@ -1027,14 +1027,11 @@ pub struct GeneralBody {
     pub uninstall: Button,
     /// “Your coding agent” (dev/proposals/cli-agent-skill.md, provisional).
     pub agent: AgentCard,
-    /// Your videos (N68): Count plays, Suggest videos to clean up, Space used.
-    pub videos: Option<VideosGroup>,
 }
 
-/// Settings · General's group Your videos (N68).
+/// Settings' Videos tab (N78; General's group Your videos until then, N68).
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct VideosGroup {
-    pub heading: String,
     /// The space's switch: owner-class Macs change it; elsewhere it shows greyed.
     pub count: Toggle,
     pub count_hint: String,
@@ -1043,10 +1040,6 @@ pub struct VideosGroup {
     /// This Mac's.
     pub suggest: Toggle,
     pub suggest_hint: String,
-    /// “Space used”, with `used`.
-    pub used_label: Option<String>,
-    /// The space's size and what it costs — owner-class Macs, once the space has said.
-    pub used: Option<String>,
     /// Delete videos nobody watches (N75), once the space has said.
     pub autoclean: Option<AutocleanRow>,
 }
@@ -1277,6 +1270,10 @@ pub struct SpaceBody {
     /// said whether it names videos.
     pub ai: Option<Toggle>,
     pub ai_line: Option<String>,
+    /// “Space used”, with `used` (N78, moved from Your videos).
+    pub used_label: Option<String>,
+    /// The space's size and what it costs — owner-class Macs, once the space has said.
+    pub used: Option<String>,
     /// Quiet text at the foot.
     pub exits: Vec<Button>,
 }
@@ -1339,6 +1336,7 @@ pub enum FromName {
 #[serde(rename_all = "kebab-case", tag = "kind")]
 pub enum SettingsPane {
     General(GeneralBody),
+    Videos(VideosGroup),
     Space(SpaceBody),
     Members(MembersBody),
 }
@@ -1458,6 +1456,7 @@ impl Window<SettingsBody> {
                     .chain(std::iter::once(&g.uninstall))
                     .collect()
             }
+            SettingsPane::Videos(_) => vec![],
             SettingsPane::Space(sp) => {
                 let mut out = nest_buttons(&sp.plan.nest);
                 out.extend(sp.mic.iter());
@@ -1492,10 +1491,10 @@ impl Window<SettingsBody> {
             return true;
         }
         match &self.body.pane {
-            SettingsPane::General(g) => {
-                let toggles = [&g.login, &g.agent.recording].into_iter().chain(g.videos.iter().flat_map(|v| [&v.count, &v.suggest]));
-                let picks = g.videos.iter().flat_map(|v| v.autoclean.iter().flat_map(|a| &a.choices));
-                toggles.into_iter().any(|t| t.enabled && &t.action == action) || picks.into_iter().any(|c| c.enabled && &c.action == action)
+            SettingsPane::General(g) => [&g.login, &g.agent.recording].into_iter().any(|t| t.enabled && &t.action == action),
+            SettingsPane::Videos(v) => {
+                let picks = v.autoclean.iter().flat_map(|a| &a.choices);
+                [&v.count, &v.suggest].into_iter().any(|t| t.enabled && &t.action == action) || picks.into_iter().any(|c| c.enabled && &c.action == action)
             }
             SettingsPane::Space(sp) => [&sp.mark, &sp.ai].into_iter().flatten().any(|t| t.enabled && &t.action == action),
             // Esc in the name being changed puts it back (B158).

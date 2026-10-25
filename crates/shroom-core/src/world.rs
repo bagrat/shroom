@@ -1190,6 +1190,8 @@ impl Default for Prefs {
 pub enum SettingsTab {
     #[default]
     General,
+    /// Your videos, a tab of its own since General outgrew the window (N78).
+    Videos,
     Space,
     /// Owner-class Macs only — Region 6's tab.
     Members,
