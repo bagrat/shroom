@@ -261,7 +261,10 @@ anything else it runs: Open, Save and Copy answer while a bake or an upkeep pass
   its write (`shroom_upload::library::cleanup_sparing`). Neither bakes a video an editor
   window is open on (the Scene's, asked before each bake); a later pass does.
 
-**Trace.** `logs/run.log` (600, rolled at 5 MB) logs each event, arm and effect kinds.
+**Trace.** `logs/run.log` (600, rolled at 5 MB; written only into its own folder and its
+own file, never through a link, D:B256) logs each event, arm and effect kinds. A window's own
+error is one line there, under a known window's name, cut at the source to the report's 160
+characters (`report::webview_line`).
 `trace::Ring` keeps the last 512 steps (kinds, arm, edge, state ids on change), names read at
 most two variants deep so no value or secret enters; `runtime/ring.rs` writes it into
 `run.log` on a dev-build law breach, a rescued take, a panic (after the panic's own line:
@@ -887,7 +890,9 @@ shroom.am is the `shroom-site` Worker (`site/worker.js`, deployed by `site.yml` 
 `main` touching `site/` or `installer/install.sh`); `/install` serves the script as plain
 text, never a redirect; `/agent` is the coding agents' page. `POST /report`
 (`site/report.js`, D:B180) is the one address that takes anything in: a report or feedback,
-checked (size, shape, rate, Turnstile from `/feedback`), its log cleaned (`site/clean.js`),
+checked (size, shape, rate, Turnstile from `/feedback`; the app's reports and the page's
+each count against their own rate limiters, and a door without them is off, D:B256), its log
+cleaned (`site/clean.js`),
 emailed through the `send_email` binding to the inbox in the secret `REPORT_TO`, and kept
 nowhere. `/feedback` is its form. `/download/v<version>/<file>` (D:B228) is a counted `302`
 to that release file on GitHub, `?via=install|update` saying what it was for; the site's
