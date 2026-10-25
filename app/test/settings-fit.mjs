@@ -1,8 +1,8 @@
-// Settings fits its window (N78): every General, Videos and Space scene the core's gallery
+// Settings fits its window (N78): every scene of every tab the core's gallery
 // prints, rendered by the built Settings page in WebKit, takes no more height than the
-// window's page — its WindowSpec less macOS's title bar (gallery-kit's windowPage), 588
-// under a 620 frame. Members is a list that grows with each person and may scroll, as the
-// Library's does. The cheap half of windows-gallery.mjs's own check, run in CI so a pane
+// window's page — its WindowSpec less macOS's title bar (gallery-kit's windowPage), 688
+// under a 720 frame. Members too, with the gallery's people (a longer list may scroll, as
+// the Library's does). The cheap half of windows-gallery.mjs's own check, run in CI so a pane
 // can't outgrow the window again unnoticed: each scene once, light, at the window's width
 // and a short height, so the pane takes its own height rather than the window's.
 //
@@ -22,7 +22,7 @@ if (!existsSync(join(dist, "settings.html"))) {
   process.exit(2);
 }
 
-const PAGE = windowPage("SETTINGS", { width: 600, height: 620 });
+const PAGE = windowPage("SETTINGS", { width: 600, height: 720 });
 const scenes = [...gallery("settings"), ...gallery("members").filter((e) => e.window === "settings")];
 const server = await serve();
 const browser = await webkit.launch();
@@ -30,7 +30,6 @@ const rows = [];
 let bad = 0;
 for (const entry of scenes) {
   const kind = entry.scene.body.pane.kind;
-  if (kind === "members") continue;
   const ctx = await browser.newContext({ viewport: { width: PAGE.width, height: 100 } });
   const page = await ctx.newPage();
   await page.addInitScript(stub, entry.scene);

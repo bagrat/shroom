@@ -179,6 +179,25 @@
   line-height: 1.45;
 }
 
+/* Space used (N78): a row of the plan's card under the billing row, set in past the glyphs'
+   column, its value at the row's end. */
+.space .plan li.used-row {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  /* The plan's rows are flex rows, their glyph 6 px from the title (onboarding.css). */
+  column-gap: 6px;
+  align-items: center;
+  min-height: 36px;
+  box-sizing: border-box;
+  padding: 7px 12px;
+  line-height: 1.45;
+}
+
+.space .plan li.used-row .used {
+  color: var(--muted);
+  text-align: right;
+}
+
 .space .plan li.row .glyph {
   text-align: center;
 }
@@ -381,28 +400,6 @@
 
 .srow .hint.note {
   color: var(--amber);
-}
-
-/* Space used (N78): the first row of the card beneath the plan, its value at the end. */
-.beneath .used-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 44px;
-  padding: 0 12px;
-}
-
-.beneath .used-row .grow {
-  flex: 1 1 auto;
-}
-
-.beneath .used-row + .mark {
-  border-top: 1px solid var(--border);
-}
-
-.beneath .used {
-  color: var(--muted);
-  text-align: right;
 }
 
 /* Your coding agent (dev/proposals/cli-agent-skill.md): the prompt in a well with its Copy,
