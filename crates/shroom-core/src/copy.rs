@@ -1514,6 +1514,7 @@ pub fn registry() -> Vec<(&'static str, String)> {
         ("member-remove-confirm-own-mac", remove_mac_line()),
         // ── the join machine ──
         ("member-welcome", invited_you("Bagrat")),
+        ("member-welcome", their_space("v.myshroom.workers.dev")),
         ("member-welcome", member_truth("Bagrat")),
         ("member-welcome", member_step()),
         ("member-welcome", login_box()),
@@ -1549,6 +1550,7 @@ pub fn registry() -> Vec<(&'static str, String)> {
         ("join-already-here", already_here_own()),
         ("join-already-here", close()),
         ("join-switch-confirm", invited_you("Bagrat")),
+        ("join-switch-confirm", their_space("v.myshroom.workers.dev")),
         ("join-switch-confirm", switch_line("v.mine.workers.dev", "Bagrat")),
         ("join-switch-confirm", switch_only_holder()),
         ("join-switch-confirm", switch_half_set_up("Bagrat")),
