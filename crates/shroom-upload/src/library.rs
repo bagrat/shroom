@@ -41,6 +41,9 @@ pub struct Row {
     /// What the space's AI did with it, in one line for the Mac's log (`meta::ai_note`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ai: Option<String>,
+    /// Pinned (N74): the record's `keep`.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub pinned: bool,
 }
 
 impl Row {
@@ -58,6 +61,7 @@ impl Row {
             edited_sec: m.edited_sec(),
             poster_file: poster_file(m),
             ai: crate::meta::ai_note(m),
+            pinned: m.extra.get("keep").and_then(serde_json::Value::as_bool) == Some(true),
         }
     }
 }
@@ -647,11 +651,16 @@ pub fn upkeep_plan(records: &[(String, Meta)], now: &str, mine: &dyn Fn(&str) ->
     plan
 }
 
-/// Keeps a recording off the suggestions to clean up for good (N68): `keep: true` on its
-/// record, nothing else changed; a tombstone stops it.
-pub fn keep(s3: &Client, id: &str) -> Result<Meta, UploadError> {
+/// Pins a recording, or unpins it (N74, N68's Keep): `keep: true` on its record, or the
+/// field taken off, nothing else changed; a tombstone stops it. A pinned video is never
+/// suggested to clean up and never deleted by the space's auto-cleanup.
+pub fn set_pinned(s3: &Client, id: &str, on: bool) -> Result<Meta, UploadError> {
     update_meta(s3, id, |m| {
-        m.extra.insert("keep".into(), serde_json::Value::Bool(true));
+        if on {
+            m.extra.insert("keep".into(), serde_json::Value::Bool(true));
+        } else {
+            m.extra.remove("keep");
+        }
     })
 }
 
