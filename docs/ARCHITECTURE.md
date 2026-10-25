@@ -731,7 +731,7 @@ foreign `v`. `VERSION` 0.1.9, `IFACE` 2.
 | `GET /favicon.{svg,png,ico}` | the icon carried in the module (D:B109) |
 | `GET /join/<code>` | the join page faces; opening never uses the invite |
 | `/_shroom/api/` | `POST peek, join, enroll, mint, key, library, invites, mark, health, gone, ai, cue`; `GET me, members`; `DELETE invites/<iid>, members/<mid>, devices/<did\|self>` — JSON with `"shroom":1` |
-| `GET /_shroom/cc/<id>`, `/_shroom/named/<id>` | with naming on (N66, N67, WI §4.21): the captions as WebVTT through the saved edit; the owner page's ask for a name on its way |
+| `GET /_shroom/cc/<id>`, `/_shroom/named/<id>` | with naming on (N66, N67, WI §4.21): the captions as WebVTT through the saved edit; the owner page's ask for a name on its way, with the chapters and captions it puts in place (B241) |
 
 Every response carries `X-Robots-Tag: noindex`; HEAD and Range never 500. API bodies
 ≤ 16 KiB (library 128 KiB); a browser Origin is refused on the API.
