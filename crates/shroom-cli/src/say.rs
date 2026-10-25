@@ -442,7 +442,7 @@ pub fn autoclean_off() -> String {
 }
 
 pub fn autoclean_on(days: u32) -> String {
-    format!("Auto-cleanup: videos nobody watches for {days} days are deleted.")
+    format!("Auto-cleanup: videos nobody watches for {} are deleted.", shroom_core::copy::wait(days))
 }
 
 pub fn autoclean_next(n: usize, on: &str) -> String {

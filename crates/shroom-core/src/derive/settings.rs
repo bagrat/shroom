@@ -420,8 +420,8 @@ fn videos(w: &World) -> VideosGroup {
     }
 }
 
-/// The days auto-cleanup offers (N75): Off, then each wait.
-pub const AUTOCLEAN_DAYS: [u32; 4] = [0, 15, 30, 60];
+/// The days auto-cleanup offers (N75): Off, then each wait; a year since N77.
+pub const AUTOCLEAN_DAYS: [u32; 5] = [0, 15, 30, 60, 365];
 
 /// Delete videos nobody watches (N75): the space's setting, live on the Mac that holds the
 /// setup key (turning it on gives the space's page its schedule), read-only elsewhere and

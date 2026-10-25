@@ -268,7 +268,7 @@ fn the_setting_mac_sets_it_and_turning_it_on_asks_when_videos_already_qualify() 
     assert_eq!(a.label, "Delete videos nobody watches");
     assert_eq!(a.hint, "Counted from the last time someone watched it, or from when it was shared. Pinned videos are never deleted, and the Library says which ones are going a few days before.");
     let choices: Vec<_> = a.choices.iter().map(|c| (c.label.as_str(), c.selected, c.enabled)).collect();
-    assert_eq!(choices, [("Off", true, true), ("After 15 days", false, true), ("After 30 days", false, true), ("After 60 days", false, true)], "off as it ships");
+    assert_eq!(choices, [("Off", true, true), ("After 15 days", false, true), ("After 30 days", false, true), ("After 60 days", false, true), ("After a year", false, true)], "off as it ships");
 
     r.set(Action::SetAutoclean(30));
     assert_eq!(r.arm.edge, Some(("settings-general", "autoclean-confirm")));
@@ -296,6 +296,36 @@ fn the_setting_mac_sets_it_and_turning_it_on_asks_when_videos_already_qualify() 
     let a = videos(&r.scene).autoclean.clone().unwrap();
     assert_eq!(a.note, None);
     assert!(a.choices.iter().any(|c| c.label == "After 30 days" && c.selected));
+}
+
+#[test]
+fn a_year_is_a_choice_and_its_lines_say_a_year() {
+    // N77 (Bagrat, 2026-10-25: add a year): 365 days, said as the landing says it.
+    let mut s = facts(0, vec![], None);
+    s.idle.push(Idle { rec: rec("r502"), quiet_days: 400 });
+    let mut r = Run::new(general(s));
+    r.set(Action::SetAutoclean(365));
+    let sheet = r.scene.settings.as_ref().unwrap().body.sheet.clone().expect("one already qualifies: it asks");
+    assert_eq!(sheet.title, "Delete videos nobody watches for a year?");
+    r.set(Action::ConfirmAutoclean);
+    assert!(r.has(|e| *e == Effect::Cloud(CloudCmd::SetAutoclean(365))));
+    r.send(Event::Cloud(CloudNews::Autoclean(365)));
+    assert!(videos(&r.scene).autoclean.as_ref().unwrap().choices.iter().any(|c| c.label == "After a year" && c.selected));
+
+    let mut w = general(facts(365, vec![], None));
+    w.space.token = false;
+    assert_eq!(videos(&Run::new(w).scene).autoclean.as_ref().unwrap().hint, "Your space deletes videos nobody has watched in a year. It's set on the Mac that set up your space. Pin a video in the Library to keep it.");
+
+    let year = |n: u32| vec![going("weekly", 640_000_000, 2, n), going("design", 1_100_000_000, 0, n)];
+    let lib = Run::new(library(facts(365, year(366), None)));
+    assert_eq!(going_line(&lib.scene).unwrap(), format!("Two videos will be deleted on {} — nobody has watched them in a year.", day(DUE)));
+    assert_eq!(banner(&Run::new(popover(facts(365, year(366), None))).scene).unwrap().1, format!("Two videos will be deleted on {} — nobody has watched them in a year.", day(DUE)));
+    let mut w = library(facts(365, year(366), None));
+    w.session.fields.library.cleanup = true;
+    let v = Run::new(w).scene.library.as_ref().unwrap().body.cleanup.clone().unwrap();
+    assert_eq!(v.going[0].line.as_deref(), Some("Nobody has watched these in a year. Pin one to keep it; a watch before then keeps it too."));
+    let gone = Run::new(library(facts(365, vec![], Some(Cleaned { at: Wall(NOW), recs: vec![rec("old1")], bytes: 640_000_000 }))));
+    assert_eq!(gone.scene.library.as_ref().unwrap().body.cleaned_line.as_ref().unwrap().line, "Auto-cleanup deleted one video nobody had watched in a year, freeing 640 MB.");
 }
 
 #[test]
