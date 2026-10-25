@@ -531,6 +531,9 @@ pub enum EditorNews {
     CopyDone { rec: RecId, rev: u64, named: bool },
     /// The upkeep answered (B197 (d)): how many originals it baked, how many copies it made.
     UpkeepDone { baked: u32, copies: u32 },
+    /// The voice lane changed this video's cuts (they landed, or a press on its owner page
+    /// changed them): it owes its edited copy, so the upkeep is due at once.
+    CutsLanded { rec: RecId },
 }
 
 /// What the shell says about a report (B180).

@@ -335,7 +335,7 @@ stay. A switch keeps the old space's files until the new join's 200 (D:B42, B54 
   edge (`presenter::label_frame`). It is never made late (`overlay::ensure`): wanted only
   once capture runs, a panel made then could miss that take's list of what it leaves out.
   Made at start or not at all; without it, the tray shows the take.
-- The marker toast (N78, D:B243): the fourth, made and held as the label is. While
+- The marker toast (N78, D:B246): the fourth, made and held as the label is. While
   `Scene.toast` is set — two seconds after ⌥⌘M answered, until a popover or a count comes
   up over it — the presenter puts it where the label goes, or just under the label when
   that shows (`presenter::toast_frame`). Its page (`app/toast.html`) draws the pill inside

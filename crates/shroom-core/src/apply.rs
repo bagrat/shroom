@@ -2879,6 +2879,11 @@ fn editor_news(w: &mut World, news: EditorNews) -> Out {
             w.library_ops.upkept = Some(now);
             (vec![], Arm::named("editor-upkept"))
         }
+        EditorNews::CutsLanded { .. } => {
+            // Nothing on screen moves: the upkeep, due now, makes the copy the cuts owe.
+            w.library_ops.upkeep_asked = Some(now);
+            (vec![], Arm::named("editor-cuts-landed"))
+        }
     }
 }
 
