@@ -92,6 +92,8 @@ pub enum Surface {
     Bubble,
     /// The agent label (N62, B216): it takes no clicks and no keys; only its slice is read.
     Label,
+    /// The marker toast (N78): as the label, only its slice is read.
+    Toast,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

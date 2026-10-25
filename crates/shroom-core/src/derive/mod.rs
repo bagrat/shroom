@@ -29,6 +29,8 @@ pub const UNDO_MS: u64 = 5_000;
 /// the link opened cold to draw itself. The window shows the light for its own first moments
 /// (about two seconds) and fades it, whenever it drew.
 pub const LIT_MS: u64 = 6_000;
+/// How long the marker toast shows (N78): two seconds, then it fades.
+pub const MARKER_TOAST_MS: u64 = 2_000;
 /// The countdown: 3 · 2 · 1 (N22).
 pub const COUNTDOWN_MS: u64 = 3_000;
 /// “Every few hours”: how often the background update check runs, and how long a failed
@@ -54,7 +56,8 @@ pub fn derive(w: &World) -> Scene {
     // setup-only Dock was rejected).
     let dock = onboarding.is_some() || library.is_some() || settings.is_some() || feedback.is_some() || !editors.is_empty();
     let label = agent_label(w);
-    Scene { tray: tray::derive(w), popover, onboarding, library, settings, feedback, editors, countdown, bubble, preview, label, dock, next_wake: next_wake(w) }
+    let toast = marker_toast(w, popover.is_some() || countdown.is_some(), label.as_ref());
+    Scene { tray: tray::derive(w), popover, onboarding, library, settings, feedback, editors, countdown, bubble, preview, label, toast, dock, next_wake: next_wake(w) }
 }
 
 /// The agent label (N62, B216): on the display a take the command started records, while
@@ -65,6 +68,27 @@ fn agent_label(w: &World) -> Option<crate::scene::AgentLabel> {
     let SourceId::Display(display) = t.source else { return None };
     let recording = matches!(t.phase, crate::world::Phase::Starting | crate::world::Phase::Recording | crate::world::Phase::Resuming);
     recording.then(|| crate::scene::AgentLabel { display, line: copy::agent_label_line() })
+}
+
+/// The marker toast (N78): for two seconds after ⌥⌘M answered, on the display the take
+/// records (Camera's: where its preview sits), under the agent label when it shows there.
+/// Never beside the popover or a count, never once the take is over.
+fn marker_toast(w: &World, covered: bool, label: Option<&crate::scene::AgentLabel>) -> Option<crate::scene::MarkerToast> {
+    let t = w.take.as_ref()?;
+    let (says, at) = t.toast?;
+    if covered || w.now >= at.plus(MARKER_TOAST_MS) || matches!(t.phase, crate::world::Phase::Finalizing(_)) {
+        return None;
+    }
+    let display = match t.source {
+        SourceId::Display(id) => id,
+        SourceId::Camera => preview_display(w)?,
+    };
+    let line = match says {
+        crate::world::MarkerToastSays::Dropped(n) => copy::marker_toast(n),
+        crate::world::MarkerToastSays::Already => copy::already_marked(),
+    };
+    let under_label = label.is_some_and(|l| l.display == display);
+    Some(crate::scene::MarkerToast { display, line, hint: copy::marker_toast_hint(), under_label, pressed: at.0 })
 }
 
 /// The update to offer now: downloaded, verified, a space to carry it (never before
@@ -264,6 +288,9 @@ fn next_wake(w: &World) -> Option<Mono> {
     }
     if let Some((_, at)) = &w.session.copied {
         wakes.push(at.plus(COPIED_MS));
+    }
+    if let Some((_, at)) = w.take.as_ref().and_then(|t| t.toast) {
+        wakes.push(at.plus(MARKER_TOAST_MS));
     }
     if let Some((_, at)) = &w.session.fields.library.undo {
         wakes.push(at.plus(UNDO_MS));
