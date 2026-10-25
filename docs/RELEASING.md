@@ -416,11 +416,19 @@ before the build, and the publish after it. Both workflows build through one scr
 `tools/release-build.sh`, so the app CI checks is the app a tag ships. Every action is
 pinned to a commit.
 
-**CI** (`.github/workflows/ci.yml`) — every push to `main`, every pull request:
+**CI** (`.github/workflows/ci.yml`) — every push to `main`, every pull request. It is
+routed (the **Route** job, `tools/ci-route.py`): `main` and Run workflow run every job; a
+pull request runs the Linux jobs always and the Mac's (the two Mac test lanes, the release
+build, the signing rehearsal) only when it touches something outside `site/`, `worker/`,
+`docs/`, `dev/`, `history/`, `.claude/`, `spec/MACHINE.md` and top-level prose, or a web
+file a Mac lane reads (the router finds those in the Mac lanes' sources:
+`python3 tools/ci-route.py --reads`). A skipped Mac job reports as skipped. An early build
+from a branch needs those jobs green, so it is of a branch that touched the app — which
+always runs them.
 
 | Job | What it does |
 |---|---|
-| Tests | the spec's readable form current (`tools/render-machine-md.py --check`), the Rust workspace, the Worker (unit suite, typecheck, the contract under workerd), the installer, the landing page, the agent skill, the media readers, the frontend's build and typecheck |
+| Tests | the gate: green when every test lane this run needs is — **Tests · web (Linux)** (the spec's readable form current, the third-party notices, the frontend's build, typecheck and unit suite, the Worker's unit suite, typecheck and contract under workerd, the release notes, the landing page, the agent skill, the media readers), **Tests · Rust (Linux)** (the crates with no platform in them, `rust-tests.sh --ci-linux`), **Tests · Rust and media (Mac)** (the rest of the workspace and the real recordings, `rust-tests.sh --ci`) and **Tests · installer (Mac)** (the installer and the cask, with real `ditto` and `codesign`) |
 | Release build (ad hoc) | the release build with no identity (signed ad hoc), every bundle check, packaged as a stand-in. From `main` it saves the caches a tag needs |
 | Signing rehearsal | makes a throwaway identity with `tools/make-release-identity.sh`, imports and trusts it as a release would, signs a file and checks macOS would keep a permission by it |
 | Advisories | `cargo audit` against RustSec and `npm audit --audit-level=high` (DECISIONS B125): a known vulnerability in a pinned dependency fails it; an unmaintained-crate notice is listed, not fatal |
