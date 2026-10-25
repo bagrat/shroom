@@ -70,7 +70,8 @@ fn between(middle: &[(&str, f64, f64)]) -> Transcript {
 
 #[test]
 fn a_cut_carries_six_words_either_side() {
-    // Bagrat's reworded redo: the broken-off sentence goes with the cue.
+    // Bagrat's reworded redo: the broken-off sentence goes with the cue, as the line before
+    // it while no judgment says it was said again (N65 (2), 2026-10-25).
     let t = between(&[
         ("Click", 6.5, 6.8),
         ("on", 6.85, 6.95),
@@ -83,13 +84,13 @@ fn a_cut_carries_six_words_either_side() {
         ("cut.", 9.35, 9.8),
     ]);
     let cuts = plan(&t, Options::default()).cuts;
-    assert_eq!(cuts.len(), 1, "{cuts:?}");
+    assert_eq!(cuts.len(), 2, "{cuts:?}");
     assert_eq!(
-        cuts[0].leads.as_deref(),
+        cuts[1].leads.as_deref(),
         Some("quick test of the voice cut.")
     );
     assert_eq!(
-        cuts[0].resumes.as_deref(),
+        cuts[1].resumes.as_deref(),
         Some("To get your video, use this")
     );
 }

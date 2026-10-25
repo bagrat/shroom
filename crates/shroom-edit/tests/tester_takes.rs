@@ -96,7 +96,7 @@ fn a_sentence_ending_on_is_after_a_noun_was_broken_off() {
     assert_eq!(
         (last.kind, last.applied, last.removed.as_str()),
         (
-            CutKind::Retake,
+            CutKind::LineBeforeCue,
             true,
             "When you want to get your link, just press stop and your link is. Shroom cut."
         )
