@@ -1005,7 +1005,7 @@ baked recording's own `edit-<n>.mp4` plays on its own clock). `done` once the fu
 `cuts`): they are planned from the transcript the name was made from, so they land after it.
 The page asks on until `done` and the player is there, puts the chapters and captions into the
 player as it plays, redraws the bar when the chapters change, and asks once more whenever what
-plays changes (`shroom:keep`) — a page that shows chapters does that last part too (D:B239).
+plays changes (`shroom:keep`) — a page that shows chapters does that last part too (D:B240).
 
 A seal also deletes the video's plays, `views/<id>.json` (§4.22).
 

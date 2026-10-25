@@ -374,5 +374,8 @@ and edits on the share page)*)**
     set on the Mac that set up the space and run by the space's page on the one schedule AI
     naming uses, three days' warning first in the Library, the popover and the command.
     Proved in CI (the core walkthroughs, the Worker's `autoclean.test.js`, the command
-    against the real page, the window gallery). Ships with 0.1.29. Known gap: no hosted-Mac
-    drive yet; the Settings pop-up and the popover banner are checked in the gallery only.
+    against the real page, the window gallery). Ships with 0.1.29. On the hosted Mac since
+    2026-10-25: the `cleanup` scenario walks it in the real app — Delete all… and its one
+    Undo, Pin and Unpin from a row's menu, the Settings pop-up (Off as it ships, needs Count
+    plays), the warning in the Library and the popover banner, the page deleting on its own
+    schedule with every window closed, and `shroom cleanup-candidates` matching the Library.

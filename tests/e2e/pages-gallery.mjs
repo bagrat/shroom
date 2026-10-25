@@ -184,7 +184,7 @@ const FACES = [
       if (!(cue && cue.startsWith("Next, the invoice"))) missing.push(`a caption at 1:10 (got ${JSON.stringify(cue)})`);
       // No line under the title once the name is in (Bagrat, 2026-10-25: removed).
       if ((await page.evaluate(() => document.body.innerText)).includes(NAMED_LINE)) missing.push("no named-from line once the name came");
-      // A voice cut lands after the name (review of B239): 0:30–1:00 goes, and the page hears
+      // A voice cut lands after the name (review of B240): 0:30–1:00 goes, and the page hears
       // what now plays as its edits pull does. The bar comes to what a reload draws: the second
       // chapter from 0:38, named at 0:40.
       await env.BUCKET.put(metaKey(f.id), named(f.id, { edits: { version: 1, source_duration: AI_SECS, in: 0, out: AI_SECS, cuts: [{ start: 30, end: 60, kind: "manual", applied: true }], rev: 2 } }));

@@ -1029,7 +1029,7 @@ describe("the page (B209)", () => {
     expect(await (await call(env, "GET", `/_shroom/named/${REC}`, { headers: { cookie } })).json()).toEqual({ named: "Planning the spring launch", titled: false, later: false, early: false, done: true, ...shows, copy: null });
   });
 
-  it("the name's answer is done only once the take's voice cuts are in (review of B239)", async () => {
+  it("the name's answer is done only once the take's voice cuts are in (review of B240)", async () => {
     // A space that listens, the take live a minute ago: its cues are still being judged.
     const env = await aiSpace({ meta: { publishedAt: new Date(NOW - MIN).toISOString() } });
     await finish(env);
@@ -1042,7 +1042,7 @@ describe("the page (B209)", () => {
     expect(now.chapters).toEqual([[0, "Where we are"], [51.3, "The budget"]]);
   });
 
-  it("names the edit's own copy, whose clock the captions take; a baked file's own name isn't one (review of B239)", async () => {
+  it("names the edit's own copy, whose clock the captions take; a baked file's own name isn't one (review of B240)", async () => {
     const env = await namedSpace();
     const cookie = cookieFor(M1, OWNER_MAC);
     const COPY = { rev: 2, file: "edit-2.mp4", duration: 140 };
@@ -1148,14 +1148,14 @@ describe("the page (B209)", () => {
     expect(p.player.video.children[0].src).toBe(`${CAPTIONS.src}&e=1`);
   });
 
-  it("a baked recording's own file plays on its own clock, whatever its name (review of B239)", async () => {
+  it("a baked recording's own file plays on its own clock, whatever its name (review of B240)", async () => {
     // A baked video plays `edit-3.mp4` as the recording, a newer edit's cuts skipped as it plays.
     const p = namingScript(await waitingPage(), { playing: `https://v.example.com/m/${REC}/edit-3.mp4` });
     await p.answer(full({ copy: null }));
     expect(p.player.video.children[0].src).toBe(CAPTIONS.src);
   });
 
-  // Review of B239: a voice cut lands after the name (the Mac plans its cuts from the finished
+  // Review of B240: a voice cut lands after the name (the Mac plans its cuts from the finished
   // transcript the naming step read). The bar must come to what a reload draws.
   it("chapters that change after they were drawn are drawn again; the asking goes on while the cuts are coming", async () => {
     const p = namingScript(await waitingPage());
