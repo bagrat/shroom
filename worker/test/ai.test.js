@@ -9,7 +9,7 @@ import { mkdtempSync, readdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import worker, { AI_HEAR_PRIME, AI_MODELS, COPY, aiCaptions, aiChapters, aiCleanChapters, aiKeep, aiPiece, aiRefusal, aiSentences, aiTick, aiTitle, aiToEdited, aiToSource, mp4Tracks } from "../src/worker.js";
+import worker, { AI_HEAR_PRIME, AI_MODELS, COPY, aiCaptions, aiChapters, aiCleanChapters, aiKeep, aiPiece, aiRefusal, aiSentences, aiTick, aiTitle, aiToEdited, aiToSource, editsOf, mp4Tracks } from "../src/worker.js";
 import { GONE_MAC, HOST, M1, MHER, MHER_MAC, NOW, OTHER_PARENT_SECRET, OWNER_AIR, OWNER_MAC, REC, SEC, bodyOf, call, cookieFor, goneKey, ledger, metaKey, metaOf, parentProof, space, textOf } from "./space-fixture.js";
 import { PIECE_SECS, adtsFrames, cat, chat, fakeAI, initMp4, pieceMp4, responseOf, script, takeObjects } from "./ai-take.js";
 
@@ -707,6 +707,28 @@ describe("captions (B205 e, B208 b, B209 b)", () => {
     for (let i = 0; i < copy.length; i++) expect(copy[i][0]).toBeCloseTo(original[i][0] >= 40 ? original[i][0] - 10 : original[i][0], 2);
   });
 
+  it("follows the cuts the player plays when the edit names no length of its own, or another one", async () => {
+    const cut = SPOKEN.filter((w) => (w.s + w.e) / 2 >= 30 && (w.s + w.e) / 2 < 40).map((w) => w.w);
+    const said = SPOKEN.map((w) => w.w).filter((w) => !cut.includes(w));
+    // The record's own length (150 s) places the edit, as on the page: a list with no
+    // length, a zero one, or a shorter one with no out point still cuts what it cuts.
+    for (const over of [{ source_duration: 0 }, { source_duration: undefined }, { source_duration: 100, out: undefined }]) {
+      const env = await namedSpace({ edits: edits([[30, 40]], 2, over) });
+      const words = cuesOf((await vtt(env)).text).map((c) => c[2].replace(/\n/g, " ")).join(" ").split(" ");
+      expect(words, JSON.stringify(over)).toEqual(said);
+    }
+  });
+
+  it("has no words when the edit leaves nothing to play", async () => {
+    for (const over of [{}, { source_duration: 0 }]) {
+      const env = await namedSpace({ edits: edits([[0, 150]], 2, over) });
+      const { res, text } = await vtt(env);
+      expect(res.status).toBe(200);
+      expect(cuesOf(text), JSON.stringify(over)).toEqual([]);
+      expect(aiKeep(record(env)), JSON.stringify(over)).toEqual([]);
+    }
+  });
+
   it("is kept only by the viewer's browser, never a shared cache", async () => {
     const { res } = await vtt(await namedSpace());
     const cache = res.headers.get("cache-control") ?? "";
@@ -774,6 +796,15 @@ describe("edits (B208)", () => {
     // Fewer than 90 s left: none. A chapter left under 20 s folds into the one before.
     expect(aiChapters(meta({ edits: { ...edits([]), source_duration: 180, in: 0, out: 85 } }))).toEqual([]);
     expect(aiChapters(meta({ edits: { ...edits([[62, 110]]), source_duration: 180, out: 180 } }))).toEqual([[0, "A"], [72, "C"]]);
+  });
+
+  it("places chapters on the cuts the player plays, by the record's own length", () => {
+    const meta = (e) => ({ durationSec: 180, named: { by: "ai", chapters: [[0, "A"], [60, "B"], [120, "C"]] }, edits: { ...edits([[50, 70]]), out: undefined, ...e } });
+    for (const e of [{ source_duration: 0 }, { source_duration: undefined }, { source_duration: 180 }, { source_duration: 120 }]) {
+      expect(aiChapters(meta(e)), JSON.stringify(e)).toEqual([[0, "A"], [50, "B"], [100, "C"]]);
+      expect(aiKeep(meta(e)), JSON.stringify(e)).toEqual(editsOf(meta(e))?.keep);
+    }
+    expect(aiChapters(meta({ cuts: [{ start: 0, end: 180, applied: true }] }))).toEqual([]);
   });
 
   it("makes the name again after an edit that cuts a fifth of what was said, in the background, once", async () => {
