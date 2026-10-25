@@ -8,6 +8,7 @@
   import Mushroom from "./lib/Mushroom.svelte";
   import Parts from "./onboarding/Parts.svelte";
   import Picker from "./popover/Picker.svelte";
+  import { steady } from "./lib/steady";
 
   type Button = { action: Action; label: string; style: string; enabled: boolean; note?: string | null };
   let p = $state<any>(null);
@@ -57,7 +58,10 @@
     // Spaces. What closes it from outside — a click somewhere else — is the runner's to see.
     window.addEventListener("keydown", onKey);
     window.addEventListener("mousedown", onDown, true);
+    // A banner that lands under the pointer never takes the click meant for what it moved (N82).
+    const unsteady = steady();
     return () => {
+      unsteady();
       un.then((f) => f());
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("mousedown", onDown, true);
