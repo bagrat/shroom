@@ -45,6 +45,15 @@ fn rows() -> Vec<(&'static str, World)> {
             w
         }));
     }
+    // The owner page's Edit in shroom, for a video this Mac can't edit: one line, said once
+    // (N69, ratified 2026-10-24).
+    for no in [EditLinkNo::OtherSpace, EditLinkNo::NotYours, EditLinkNo::Gone] {
+        rows.push(("config", {
+            let mut w = with_popover(ready());
+            w.session.fields.edit_link = Some(EditLink::Said(no));
+            w
+        }));
+    }
     rows.push(("config", {
         let mut w = with_popover(ready());
         w.mac.mic = Fact::known(Access::Denied, Mono(0)); // a denied mic: the quiet hint
