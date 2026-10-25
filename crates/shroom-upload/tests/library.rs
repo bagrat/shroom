@@ -65,17 +65,23 @@ fn rename_marks_a_chosen_title_and_never_saves_an_empty_one() {
 }
 
 #[test]
-fn keep_marks_the_record_and_leaves_everything_else_as_it_was() {
-    // N68: Keep takes a video off the suggestions for good — `keep: true` on its record,
-    // the title and every other field untouched; a tombstone stops it.
+fn a_pin_marks_the_record_and_leaves_everything_else_as_it_was() {
+    // N74 (N68's Keep): Pin is `keep: true` on its record, Unpin takes it off, the title and
+    // every other field untouched; the row says so; a tombstone stops it.
     let (_fake, s3) = space();
     record(&s3, A, "Q3 roadmap", "2026-10-02T10:00:00Z");
-    library::keep(&s3, A).unwrap();
-    let v: serde_json::Value = serde_json::from_slice(&s3.get(&format!("meta/{A}.json")).unwrap().unwrap()).unwrap();
+    let read = || -> serde_json::Value { serde_json::from_slice(&s3.get(&format!("meta/{A}.json")).unwrap().unwrap()).unwrap() };
+    let m = library::set_pinned(&s3, A, true).unwrap();
+    assert!(library::Row::of(&m).pinned, "the Library's row reads it");
+    let v = read();
     assert_eq!((v["keep"].as_bool(), v["title"].as_str(), v["state"].as_str()), (Some(true), Some("Q3 roadmap"), Some("live")));
-    library::keep(&s3, A).unwrap();
+    library::set_pinned(&s3, A, true).unwrap();
+    let m = library::set_pinned(&s3, A, false).unwrap();
+    assert!(!library::Row::of(&m).pinned);
+    let v = read();
+    assert_eq!((v.get("keep"), v["title"].as_str()), (None, Some("Q3 roadmap")), "unpinned: the field goes, nothing else moves");
     library::delete(&s3, A).unwrap();
-    assert!(library::keep(&s3, A).is_err());
+    assert!(library::set_pinned(&s3, A, true).is_err());
 }
 
 #[test]
