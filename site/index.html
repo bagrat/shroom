@@ -106,16 +106,25 @@
   .mast {
     --mark: min(112px, 7.8vw);
     --word: calc(var(--mark) * 0.84);
-    align-items: end; padding: 48px 0 28px; border-bottom: 1px solid var(--line);
+    align-items: start; padding: 48px 0 28px; border-bottom: 1px solid var(--line);
   }
   .mast .brand { grid-column: 1 / 7; justify-self: start; gap: calc(var(--mark) * 0.18); min-height: 0;
     font-size: var(--word); font-weight: 800; letter-spacing: -0.03em; line-height: 1; }
   .mast .brand svg { width: var(--mark); height: calc(var(--mark) * 90 / 84); }
-  /* The punch line's baseline on the wordmark's: the wordmark's baseline sits 0.355 em of it below
-     the mark's middle; the punch line's sits 0.48 em of its own above its box's foot. */
-  .pitch { grid-column: 7 / 13; justify-self: end; text-align: right; min-width: 0;
-    padding-bottom: calc(var(--mark) * 45 / 84 - var(--word) * 0.355 - 0.48 * min(20px, 1.4vw)); }
-  .pitch h1 { font-size: min(44px, 3.06vw); font-weight: 700; line-height: 1.06; letter-spacing: -0.02em; white-space: nowrap; text-wrap: initial; }
+  /* The headline's top on the top of the wordmark's “m” (Bagrat, 2026-10-25). The m's top sits
+     above the mark's middle by its x-height and overshoot less the baseline's drop: 1ex + 0.013em
+     − 0.36em of the wordmark. The pitch takes the wordmark's size so its em and ex are the
+     wordmark's, in whatever font the visitor has; its lines set their own sizes. The headline's
+     box starts at its capitals' top (text-box), or 0.14 of its size above them where that isn't
+     supported. */
+  .pitch { grid-column: 7 / 13; justify-self: end; text-align: right; min-width: 0; font-size: var(--word);
+    --h1: min(44px, 3.06vw);
+    padding-top: calc(var(--mark) * 45 / 84 + 0.36em - 1ex - 0.013em - var(--h1) * 0.14); }
+  @supports (text-box-trim: trim-start) {
+    .pitch { padding-top: calc(var(--mark) * 45 / 84 + 0.36em - 1ex - 0.013em); }
+    .pitch h1 { text-box: trim-start cap alphabetic; }
+  }
+  .pitch h1 { font-size: var(--h1); font-weight: 700; line-height: 1.06; letter-spacing: -0.02em; white-space: nowrap; text-wrap: initial; }
   .pitch .punch { margin-top: 10px; font-size: min(20px, 1.4vw); }
   .tiles { margin-top: 32px; }
   .stack { display: flex; flex-direction: column; gap: 24px; min-width: 0; }
@@ -218,7 +227,7 @@
     /* On a phone: the masthead, the video, the price, install, then the terms (the board's phone). */
     .mast { --mark: 64px; --word: 52px; grid-template-columns: minmax(0, 1fr); row-gap: 20px; padding: 24px 0 0; border-bottom: 0; }
     .mast .brand, .pitch { grid-column: 1; }
-    .pitch { justify-self: start; text-align: left; padding-bottom: 0; }
+    .pitch { justify-self: start; text-align: left; padding-top: 0; }
     .pitch h1 { font-size: 34px; line-height: 1.1; white-space: normal; text-wrap: balance; }
     .pitch .punch { margin-top: 8px; font-size: 17px; }
     .tiles { margin-top: 20px; grid-template-columns: minmax(0, 1fr); row-gap: 20px; }
