@@ -278,11 +278,12 @@ jobs:
           rustup toolchain install "$version" --profile minimal --no-self-update
           rustup default "$version"
 
-      # The Linux Rust lane's cache, read only: the core's gallery example is built from it.
+      # Its own cache (only the core's gallery example is built here), saved from main only,
+      # so it never takes the place of the Linux Rust lane's.
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
-          shared-key: tests-ubuntu-24.04
-          save-if: false
+          shared-key: fit-ubuntu-24.04
+          save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: The app's frontend
         run: npm run build --workspace app
