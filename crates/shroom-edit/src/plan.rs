@@ -600,14 +600,16 @@ fn plan_one(cx: &Ctx, cue: &Cue, floor: usize, ceil: usize, judged: Option<usize
     let sentence = sentence.filter(|&s| cue.start - words[s].start <= SENTENCE_MAX);
     // The judgment heard a stretch said again in other words: it goes with the cue, as far
     // back as the judgment put its start, and never less than the sentence the cue broke off.
+    // Without the judgment's word that it was said again, nothing was: the sentence is the
+    // likely slip, cut with the cue below, for the owner to check (a speaker may say the cue
+    // with no slip, inside a sentence they carry on).
     let reach = match (sentence, judged) {
         (Some(s), Some(j)) => Some((
             s.min(j),
             "the sentence the cue broke off, and more by the judgment",
         )),
-        (Some(s), None) => Some((s, "the sentence the cue broke off")),
         (None, Some(j)) => Some((j, "said again in other words, by the judgment")),
-        (None, None) => None,
+        (_, None) => None,
     };
     if let Some((from, why)) = reach {
         {
@@ -631,7 +633,7 @@ fn plan_one(cx: &Ctx, cue: &Cue, floor: usize, ceil: usize, judged: Option<usize
             }];
         }
     }
-    // The sentence before it ended and nothing was said again: cut the cue (and any filler
+    // Nothing was said again: cut the cue (and any filler
     // right after), and the line before it with it, though how far back the slip went isn't
     // clear (Bagrat, 2026-10-18): the owner page asks to check it.
     let mut last = cue.last;
@@ -653,7 +655,8 @@ fn plan_one(cx: &Ctx, cue: &Cue, floor: usize, ceil: usize, judged: Option<usize
         why: "cue with no retake after it".into(),
     }];
     if cue.first > floor {
-        let line = cx.line_start(cue.first - 1, floor);
+        // The sentence the cue broke off is the line; the finished one before it stays.
+        let line = sentence.unwrap_or_else(|| cx.line_start(cue.first - 1, floor));
         let (start, _) = cx.span(line, cue.first - 1);
         cuts.push(Cut {
             id: String::new(),
