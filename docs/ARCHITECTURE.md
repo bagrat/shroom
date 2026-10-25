@@ -262,7 +262,7 @@ anything else it runs: Open, Save and Copy answer while a bake or an upkeep pass
   window is open on (the Scene's, asked before each bake); a later pass does.
 
 **Trace.** `logs/run.log` (600, rolled at 5 MB; written only into its own folder and its
-own file, never through a link, D:B256) logs each event, arm and effect kinds. A window's own
+own file, never through a link, D:B258) logs each event, arm and effect kinds. A window's own
 error is one line there, under a known window's name, cut at the source to the report's 160
 characters (`report::webview_line`).
 `trace::Ring` keeps the last 512 steps (kinds, arm, edge, state ids on change), names read at
@@ -891,7 +891,7 @@ shroom.am is the `shroom-site` Worker (`site/worker.js`, deployed by `site.yml` 
 text, never a redirect; `/agent` is the coding agents' page. `POST /report`
 (`site/report.js`, D:B180) is the one address that takes anything in: a report or feedback,
 checked (size, shape, rate, Turnstile from `/feedback`; the app's reports and the page's
-each count against their own rate limiters, and a door without them is off, D:B256), its log
+each count against their own rate limiters, and a door without them is off, D:B258), its log
 cleaned (`site/clean.js`),
 emailed through the `send_email` binding to the inbox in the secret `REPORT_TO`, and kept
 nowhere. `/feedback` is its form. `/download/v<version>/<file>` (D:B228) is a counted `302`
