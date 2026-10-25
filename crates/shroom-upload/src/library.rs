@@ -13,7 +13,7 @@ use shroom_storage::s3::{Client, Object};
 
 use crate::keys;
 use crate::meta::{Media, Meta, State, iso_at, now_iso};
-use crate::upload::{UploadError, try_update_meta, update_meta, with_retry};
+use crate::upload::{UploadError, its_own, try_update_meta, update_meta, with_retry};
 
 /// What a Library row needs from a record.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -105,7 +105,8 @@ pub struct Delta {
 
 /// Lists `meta/` and the deletion records, reads only the records whose ETag changed, and
 /// drops ids that no longer exist. A sealed id is deleted whatever its record says now
-/// (DECISIONS B125) and costs no read. A record that can't be parsed is skipped, never fatal.
+/// (DECISIONS B125) and costs no read. A record that can't be parsed, or that names another
+/// id than its key's, is skipped, never fatal: a row's id is always its key's.
 pub fn refresh(s3: &Client, cache: &mut Cache) -> Result<Delta, UploadError> {
     let listed = with_retry(|| s3.list("meta/"))?;
     let sealed: std::collections::BTreeSet<String> =
@@ -133,7 +134,8 @@ pub fn refresh(s3: &Client, cache: &mut Cache) -> Result<Delta, UploadError> {
         }
         delta.reads += 1;
         let Some((bytes, got)) = with_retry(|| s3.get_with_etag(&o.key))? else { continue };
-        let Some(meta) = serde_json::from_slice(&bytes).ok().and_then(crate::meta::listed) else { continue };
+        // A record that names another recording than its key isn't this row's: skipped.
+        let Some(meta) = serde_json::from_slice(&bytes).ok().and_then(crate::meta::listed).filter(|m| m.id == id) else { continue };
         let fresh = !cache.rows.contains_key(id);
         cache.rows.insert(id.to_string(), (got, Row::of(&meta)));
         if fresh { delta.added.push(id.to_string()) } else { delta.changed.push(id.to_string()) }
@@ -339,7 +341,7 @@ pub fn set_edit_copy(s3: &Client, id: &str, copy: &shroom_edit::EditCopy, now: &
     if raw.get("state").and_then(|s| s.as_str()) == Some("deleted") {
         return Err(UploadError::Tombstoned);
     }
-    let seen: Meta = serde_json::from_value(raw).map_err(|e| UploadError::Incomplete(format!("unreadable meta: {e}")))?;
+    let seen: Meta = its_own(serde_json::from_value(raw).map_err(|e| UploadError::Incomplete(format!("unreadable meta: {e}")))?, id)?;
     if !holds(&seen) {
         let keep = named(&seen);
         delete_copy_files(s3, id, &mine.into_iter().filter(|f| !keep.contains(f)).collect::<Vec<_>>(), &seen);
@@ -559,7 +561,7 @@ fn look(s3: &Client, id: &str) -> Result<Meta, UploadError> {
     if raw.get("state").and_then(|s| s.as_str()) == Some("deleted") {
         return Err(UploadError::Tombstoned);
     }
-    serde_json::from_value(raw).map_err(|e| UploadError::Incomplete(format!("unreadable meta: {e}")))
+    its_own(serde_json::from_value(raw).map_err(|e| UploadError::Incomplete(format!("unreadable meta: {e}")))?, id)
 }
 
 /// The deletes of a video already baked (`record`), finished: what its bake deletes, from
