@@ -2105,8 +2105,8 @@ mod tests {
         ] {
             assert!(has(cmd), "docs/CHECKPOINT.md should carry `{cmd}` in a block");
         }
-        assert!(flat.contains("curl -fsSL https://shroom.am/install | sh"), "the install line, as the landing shows it");
-        assert!(read("site/index.html").contains("curl -fsSL https://shroom.am/install | sh</code>"));
+        // That the install line and "Read it first" are the landing's own words is held on
+        // Linux, beside the landing (site/test/landing.test.mjs): a landing change needs no Mac.
         assert!(read("installer/install.sh").contains("if [ \"${1:-}\" = \"--uninstall\" ]; then uninstall; return; fi"), "the install line takes --uninstall (B135)");
         for b in &blocks {
             assert!(!b.contains("tests/") && !b.contains("cargo ") && !b.contains("dev/"), "nothing from the tree runs on his Mac: {b}");
@@ -2119,7 +2119,6 @@ mod tests {
         for said in ["Getting shroom…", "verified ✓", "Installed — opening shroom now."] {
             assert!(flat.contains(said) && installer.contains(said), "the installer says {said:?}");
         }
-        assert!(read("site/index.html").contains(">Read it first</a>") && flat.contains("\"Read it first\""));
 
         // Step 5's name row: the uninstall leaves the space, so setup finds `v` again.
         {

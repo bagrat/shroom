@@ -1,7 +1,7 @@
 //! The presenter: the only place the Scene becomes AppKit. The tray's face and menu, the
 //! popover's, the countdown's and the agent label's panels (`overlay.rs`; the popover key
-//! only when asked — law 5), the three windows (onboarding, Library, Settings — each
-//! excluded from capture at creation), the camera panels (`camera.rs`), and the Dock (law
+//! only when asked — law 5), the windows (onboarding, Library, Settings, Send feedback, the
+//! editors — each recorded like any app's, N85), the camera panels (`camera.rs`), and the Dock (law
 //! 6: the setup window's alone). Webviews get their slice as a `scene` event; they render,
 //! nothing more.
 
@@ -956,9 +956,9 @@ pub fn bring_forward_kind(app: &AppHandle, kind: WindowKind) {
     });
 }
 
-/// One of shroom's windows, built hidden — and left out of every screen capture from the
-/// moment it exists (ARCHITECTURE §4.4: every shroom window but the bubble is excluded): a
-/// Settings window showing Members, or a link just born, never lands in a video.
+/// One of shroom's windows, built hidden. Each is recorded in a take like any app's window
+/// (law 4, N85: a bug report of shroom shows it) unless `WindowKind::recorded` says
+/// otherwise, and then it is left out of every capture from the moment it exists.
 fn build_window(app: &AppHandle, rt: &Runtime, kind: WindowKind, excluded: &Arc<Mutex<Vec<u32>>>) -> Option<tauri::WebviewWindow> {
     let sp = spec(kind);
     let (width, height) = opening_size(sp, mushrooms_screen(app));
@@ -974,7 +974,9 @@ fn build_window(app: &AppHandle, rt: &Runtime, kind: WindowKind, excluded: &Arc<
         b = b.min_inner_size(w, h);
     }
     let w = b.build().ok()?;
-    remember_excluded(&w, excluded, true);
+    if !kind.recorded() {
+        remember_excluded(&w, excluded, true);
+    }
     let rt = rt.clone();
     w.on_window_event(move |event| match event {
         WindowEvent::CloseRequested { api, .. } => {
@@ -1111,8 +1113,8 @@ pub fn label_frame(screen: Frame, top: f64, w: f64, h: f64) -> Frame {
     Frame { x: screen.x + screen.w - w - MARGIN, y: top - GAP - h, w, h }
 }
 
-/// Keeps shroom's own UI out of every frame (the countdown scrim, the popover, the
-/// windows); `on: false` as a window goes for good (an editor's, N73), so its number,
+/// Keeps shroom's own UI out of every frame (the countdown scrim, the popover, the windows
+/// a take doesn't record); `on: false` as a window goes for good (an editor's, N73), so its number,
 /// should macOS give it again, keeps nothing else out.
 fn remember_excluded(w: &tauri::WebviewWindow, excluded: &Arc<Mutex<Vec<u32>>>, on: bool) {
     let Ok(ptr) = w.ns_window() else { return };
