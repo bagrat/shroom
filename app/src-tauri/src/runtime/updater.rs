@@ -67,7 +67,7 @@ fn class(e: &UpdateError) -> FailClass {
         UpdateError::Mismatch => FailClass::Refused,
         // Nor is a copy someone other than this app's own signer made (B125).
         UpdateError::Signature(_) => FailClass::Refused,
-        // Nor one that isn't, by its own Info.plist, the newer version offered (B257).
+        // Nor one that isn't, by its own Info.plist, the newer version offered (B274).
         UpdateError::Staged(_) => FailClass::Refused,
         _ => FailClass::Unclassified,
     }
@@ -209,7 +209,7 @@ fn apply(rt: &Runtime, app: &AppHandle, version: &str) -> Result<(), FailClass> 
         return Err(class(&e));
     }
     // And only the version offered, newer than this one, of this Mac's channel — as the
-    // staged copy's own Info.plist says it is, not only as the manifest named it (B257).
+    // staged copy's own Info.plist says it is, not only as the manifest named it (B274).
     let offered = Version::parse(version).ok_or(FailClass::Refused)?;
     if let Err(e) = shroom_update::check_staged(&staged, offered, running(rt)?, staged_channel(rt)) {
         rt.log(&format!("updater not applied {version}: {e}"));

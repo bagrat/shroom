@@ -309,7 +309,7 @@ re-queued, DV #27). Unlocked without `finalized.json` → interrupted (repaired 
 dir is a real folder in `takes/`, named as `takes::new_dir_name` makes them
 (`posters::valid_dir`): the scan (`takes::dirs`) never follows a link and skips any other
 name; the upload reads an init only by the encoder's own names (`init.mp4`, `init_<k>.mp4`,
-`files::is_init`) and refuses a joined playlist naming any other (D:B257).
+`files::is_init`) and refuses a joined playlist naming any other (D:B274).
 
 **Never on disk:** the Session, the take's phase, inflight, Library and Members rows.
 
@@ -360,16 +360,16 @@ composes no sentences and decides nothing.
 
 | Command | Contract |
 |---|---|
-| `act {surface, action, rev}` | dropped unless offered; Start and popover Return post fresh `Os(Grants)` first (`commands::arms`). An editor window names its surface `editor`; which one is its webview's label (`commands::surface`), never what the webview says. Every surface is its own window's: the popover only from `popover`, Settings only from `settings`, and so on — a surface named from another window's webview, or the tray's (it has none), is no surface, and `act`, `key` and `scene_get` drop it (D:B257) |
+| `act {surface, action, rev}` | dropped unless offered; Start and popover Return post fresh `Os(Grants)` first (`commands::arms`). An editor window names its surface `editor`; which one is its webview's label (`commands::surface`), never what the webview says. Every surface is its own window's: the popover only from `popover`, Settings only from `settings`, and so on — a surface named from another window's webview, or the tray's (it has none), is no surface, and `act`, `key` and `scene_get` drop it (D:B274) |
 | `key {surface, key}` | Return/Esc via `ret`/`esc` |
-| `field {field, value}` | `name`, `library-search`, `title`, `invite-name`; returns nothing; cut to 256 chars; the core guards (name charset/63, composer 80). Scene fields carry edit counts; `lib/typed.ts` takes the Scene's value only once its count catches up. Only from the windows with a typed field — the setup, Settings, the Library, Send feedback (`commands::types_from`, D:B257) |
-| `paste_secret {field, text}` | the one path for secret text (`token`, `invite`): classified, stashed (`runtime/stash.rs`), `SecretPasted {id, shape}` posted; the field shows fixed dots while held (D:B104). Only from the windows with a paste field — the setup and Settings (`commands::pastes_from`, D:B257) |
+| `field {field, value}` | `name`, `library-search`, `title`, `invite-name`; returns nothing; cut to 256 chars; the core guards (name charset/63, composer 80). Scene fields carry edit counts; `lib/typed.ts` takes the Scene's value only once its count catches up. Only from the windows with a typed field — the setup, Settings, the Library, Send feedback (`commands::types_from`, D:B274) |
+| `paste_secret {field, text}` | the one path for secret text (`token`, `invite`): classified, stashed (`runtime/stash.rs`), `SecretPasted {id, shape}` posted; the field shows fixed dots while held (D:B104). Only from the windows with a paste field — the setup and Settings (`commands::pastes_from`, D:B274) |
 | `scene_get`, `dismiss`, `popover_keyed`, `popover_fit` | snapshot slice (an editor window's own, by its label); `PopoverDismissed`; first key makes an unasked popover asked; panel height |
 | `edit {step}` | an editor window (N63): `{"op": "undo" \| "redo"}`, or a `shroom_edit::Op` (`trim`, `cut`, `put-back`, `apply`, `revert`), seconds on the recording; posts `Edit(id, EditStep)` for the window its label names, which the core takes or refuses. A step that doesn't read, or from a webview that isn't an editor window's, is dropped |
 
 Window lifecycle comes from Rust window events.
 
-**What the pages may call of Tauri itself** (`capabilities/default.json`, D:B257): listen for
+**What the pages may call of Tauri itself** (`capabilities/default.json`, D:B274): listen for
 their slice and stop listening (`core:event:allow-listen`, `core:event:allow-unlisten` —
 `lib/ipc.ts`'s `listen`; its `getCurrentWebviewWindow().label` reads the page's own metadata
 and asks nothing), and a debug build's devtools key. No default set, no emitting, no tray,
@@ -400,7 +400,7 @@ with its link and copies nothing. The command words `recording_off` with the set
 (`SettingsFields.lit`); it never flips the switch, and mid-take it opens nothing. The run
 log has each ask and its answer by number, the ask with the process that made it — its pid
 by `LOCAL_PEERPID` and its program by `proc_pidpath` (`control: ask 4 record.start no-count
-from pid 812 /usr/local/bin/shroom`, D:B257) — and the answer
+from pid 812 /usr/local/bin/shroom`, D:B274) — and the answer
 (`control: answer 4 no recording_off (3 ms)`), any connection dropped or ask not read, and
 the agent label shown and gone. `shroom edit` (spec N72, D:B225) saves an edit itself,
 through the space's page, and adds two asks, answered whatever the switch says:
@@ -694,7 +694,7 @@ cut-off is parent-token rotation, docs only. A release build uses a credential o
 names R2's own store — `https://<32 hex>.r2.cloudflarestorage.com` and a bucket of 3–63
 `[a-z0-9-]` (`shroom_cloud::device::r2_store`, `Runtime::store_ok`) — checked where a mint
 answer arrives (upload and `manage`) and where a take's `cred.json` is read back; any other
-is not used (re-minted, or the pass waits). Dev builds keep their stand-ins (D:B257).
+is not used (re-minted, or the pass waits). Dev builds keep their stand-ins (D:B274).
 
 **Law 13:** secrets ride files only — never argv, logs, slices or the core. The installer
 hands an invite over by file and launches with `--invite` (D:B44). Secret-holding structs
@@ -715,7 +715,7 @@ REST at `api.cloudflare.com/client/v4`, Bearer token, through `shroom_cloud::Clo
 | 2 | `cfat_` → `GET /accounts/{id}/tokens/verify` (never the user endpoint) | rejected → token faces |
 | 3 | powers by use (`sweep::powers`) | `token-wrong-powers` |
 | 4 | persist `token.json` | — |
-| 5 | gates (`sweep::gates`): deploy-and-remove `shroom-probe` — only when no Worker has the name (`worker_fact`), else a fresh `shroom-probe-<8 hex>`; one already there is never written or deleted, and the probe it made goes by a plain DELETE, never `?force=true` (D:B257); R2 list; polled 5 s | 8000077 → `gate-email`; 10042 / "enable R2" → `gate-card`, button opens the R2 page (DV #47) |
+| 5 | gates (`sweep::gates`): deploy-and-remove `shroom-probe` — only when no Worker has the name (`worker_fact`), else a fresh `shroom-probe-<8 hex>`; one already there is never written or deleted, and the probe it made goes by a plain DELETE, never `?force=true` (D:B274); R2 list; polled 5 s | 8000077 → `gate-email`; 10042 / "enable R2" → `gate-card`, button opens the R2 page (DV #47) |
 | 6 | survey (`sweep::survey`): subdomain, labels `v`/`shroom`/`shroom-v`… via `worker_fact` (Absent, Ours, KeyGone, Foreign), bucket, manifest | 10007 → `name`; foreign `v` → label `shroom` (N42); manifest → `space-found` |
 | 7 | claim on explicit click (`PUT …/workers/subdomain`) | 10031 → `name-taken` |
 | 8 | wire (`wire::wire_with`): bucket → `.shroom/player/hls.min.js` → cookie key (create-only) → roster seed (create-only) → read the page; deploy (`worker.js`, compat 2026-09-01, bindings `BUCKET`, `R2_PARENT`) only if absent, silent or older (`may_deploy_over`), else re-place `R2_PARENT` → route (`…/scripts/{label}/subdomain`) → ping every 3 s ≤ 90 s → self-check → manifest last | `done` |
@@ -810,7 +810,7 @@ Each S3 call retries in place (`with_retry`: 6 tries, 500 ms doubling to 15 s; 4
 408/429 not retried). A listing (`s3::Client::list`) follows its pages to the last or an
 empty token; a token it already followed, or past `LIST_PAGES_MAX` (10 000) pages, is an
 error. A download to disk (`get_to_file`) stops past the length the store said, else past
-`GET_TO_FILE_MAX` (64 GiB), and its `.tmp` goes (D:B257). A failed pass reports `Blocked`/`Idle`; the core owns the pass retry
+`GET_TO_FILE_MAX` (64 GiB), and its `.tmp` goes (D:B274). A failed pass reports `Blocked`/`Idle`; the core owns the pass retry
 (5 s → 2 min); a rerun sends only what's missing. A fresh device credential refused on its
 first PUT is space-side (`StandingAnswer::SpaceSide`); an older one is re-minted; a token
 Mac's refusal is `Blocked::Space`. When the space stops minting for this Mac, takes holding a
@@ -950,7 +950,7 @@ in `updates/<version>/`, then `same_signer` against the installed app's designat
 requirement (D:B125 M2), then the staged copy's own version, by its `Contents/Info.plist`
 (`CFBundleShortVersionString`, `shroom_update::check_staged`): exactly the version offered,
 newer than the one running, and on the official channel no early build — else it is
-discarded like a signature that doesn't match (D:B257; a dev build's stand-in may serve the
+discarded like a signature that doesn't match (D:B274; a dev build's stand-in may serve the
 tree's early version). Frost dot + "shroom 1.3.0 is ready." [ Update ] → `restore.json` →
 quit → detached `SWAP_SH` swaps and reopens with `--relaunched=update` (or `update-failed`,
 old copy back) → window restored → "Updated to 1.3.0 ✓" once. Never mid-take. A token Mac
@@ -1147,7 +1147,7 @@ Numbers are stable; code cites them.
 29. Transcription — decided: D:B168 — none in v1.
 30. Markers — decided: D:B49 e — `markers.json` → `meta.markers`.
 31. Card-gate code — decided: D:B26, DV #47 — 10042 seen on a fresh account; button opens the R2 page.
-32. Gate-email probe — decided: D:B26 — `shroom-probe` Worker; written only when no Worker has the name, else under a fresh `shroom-probe-<8 hex>`, and removed without force (D:B257).
+32. Gate-email probe — decided: D:B26 — `shroom-probe` Worker; written only when no Worker has the name, else under a fresh `shroom-probe-<8 hex>`, and removed without force (D:B274).
 33. `objects` grant — decided: probed.
 34. `~/.shroom` layout — decided: D:B22 — §3.4.
 35. Thresholds — decided: DV #8, D:B47 — §15.
