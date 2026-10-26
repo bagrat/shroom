@@ -5,16 +5,13 @@ means the person you're helping and “we” means shroom.
 
 Record. Share. Pay-as-you-go.
 
-No monthly seat, sometimes completely free
-
-- $0 · about three hours of video
-- $1.50 /month · about thirty hours
+A team of 20, an hour each a month: $0.85 with 30-day cleanup, $11.85 kept a year.
 
 - Your videos live in your own Cloudflare account
 - You pay only Cloudflare, for the storage
 - Invite your team with a link
 - No price per person — the bill counts video, not people
-- Delete old videos and pay less
+- Old videos clean themselves up. Pin the ones you keep.
 - About ten minutes of guided setup, once
 - Open source — every line on GitHub
 
