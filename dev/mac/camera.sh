@@ -129,19 +129,42 @@ wait_for() {
   done
 }
 
+# The gray (0–255) of the screen at x,y: is what a click is aimed at drawn yet?
+gray_at() {
+  screencapture -x -R"$1,$2,1,1" "$WORK/pixel.png" >/dev/null 2>&1 || return 1
+  ffmpeg -hide_banner -loglevel error -nostdin -i "$WORK/pixel.png" -f rawvideo -pix_fmt gray - 2>/dev/null | head -c 1 | od -An -tu1 | tr -d ' \n'
+}
+
 # The switch, as a person throws it: OBS's alert opens Login Items & Extensions, the OBS
 # switch is clicked, and the throwaway admin answers the password. Places are those of the
-# runner's 1024 × 768 screen, as the held Mac showed them; each step waits for its window,
-# which a loaded runner can take ten seconds and more to show (run 38461018279).
+# runner's 1024 × 768 screen, as the held Mac showed them. A loaded runner takes its time
+# with every window (run 38461018279), so no click is made on a wait alone: each waits for
+# what it's aimed at, and is made again until what it opens is up. The Camera Extensions
+# sheet can sit empty for seconds after System Settings shows (run 40248053938: a click 4 s
+# in hit the bare sheet, and no password was ever asked); its OBS row is drawn once the
+# OBS icon's dark pixel is there (the bare sheet is 236 all over, the icon 136).
 enable_by_hand() {
-  local pw="$WORK/admin-password" waited=0
+  local pw="$WORK/admin-password" waited=0 clicks=0
   [ -s "$pw" ] || { (umask 077; openssl rand -hex 16 >"$pw"); sudo sysadminctl -addUser camprobe -fullName camprobe -password "$(cat "$pw")" -admin >>"$WORK/enable.log" 2>&1; }
-  wait_for UserNotificationCenter 30; sleep 1; shot before-settings
-  cliclick c:512,405
-  wait_for "System Settings" 30; sleep 4; shot settings
-  cliclick c:675,272
-  if ! wait_for SecurityAgent 60; then
+  wait_for UserNotificationCenter 60; sleep 1; shot before-settings
+  until [ "$clicks" -ge 3 ]; do
+    cliclick c:512,405; clicks=$((clicks + 1))
+    wait_for "System Settings" 20 && break
+  done
+  wait_for "System Settings" 1 || { shot no-settings; echo "System Settings never came up ($clicks clicks)" >>"$WORK/enable.log"; return 1; }
+  until [ "$(gray_at 322 272)" -lt 180 ] 2>/dev/null || [ "$waited" -ge 60 ]; do sleep 1; waited=$((waited + 1)); done
+  echo "the OBS row drawn after $waited s" >>"$WORK/enable.log"
+  shot settings
+  clicks=0
+  # A switch already blue (its track at 685,272 no longer the off gray, 205) is waiting on
+  # its password: it isn't clicked again.
+  until [ "$clicks" -ge 3 ]; do
+    [ "$clicks" -gt 0 ] && [ "$(gray_at 685 272)" -lt 180 ] 2>/dev/null || { cliclick c:675,272; clicks=$((clicks + 1)); }
+    wait_for SecurityAgent 30 && break
+  done
+  if ! wait_for SecurityAgent 1; then
     shot no-password
+    echo "no password asked ($clicks clicks)" >>"$WORK/enable.log"
     return 1
   fi
   sleep 2; shot password
@@ -150,7 +173,8 @@ enable_by_hand() {
   cliclick c:512,375 "t:$(cat "$pw")"
   sleep 1
   cliclick c:570,417
-  while [ "$(state)" != "activated enabled" ] && [ "$waited" -lt 30 ]; do sleep 1; waited=$((waited + 1)); done
+  waited=0
+  while [ "$(state)" != "activated enabled" ] && [ "$waited" -lt 60 ]; do sleep 1; waited=$((waited + 1)); done
   shot after-password
   cliclick c:694,569
   sleep 2
@@ -182,26 +206,56 @@ seen() {
   node -e 'try { const s = require(process.argv[1]).sample || {}; console.log(Math.round(s.mean_luma || 0)); } catch { console.log(0); }' "$out"
 }
 
-# OBS looks for its camera once, as it starts: started before macOS switched the camera
-# on, every start of the virtual camera says "Could not find the virtual camera system
-# process" (runs 38458869231, 38462001170). So OBS is started again — ended by a signal,
-# its Safe Mode marker cleared and macOS's crash dialog off — and asked over its remote
-# control once it answers.
-start_virtual_camera() {
-  local tries=0 waited=0 bright
-  defaults write com.apple.CrashReporter DialogType none
+# OBS, ended and gone. Started again over one still quitting, `open` hands the launch to
+# the one on its way out, and no OBS is left to answer (run 40245899605).
+stop_obs() {
+  local waited=0
   pkill -x OBS 2>/dev/null
-  sleep 4
+  while pgrep -x OBS >/dev/null; do
+    if [ "$waited" -ge 30 ]; then pkill -9 -x OBS 2>/dev/null; sleep 2; break; fi
+    sleep 1; waited=$((waited + 1))
+  done
+}
+
+# OBS started again — ended first, its Safe Mode marker cleared — and answering its remote
+# control.
+restart_obs() {
+  local waited=0
+  stop_obs
   rm -rf "$HOME/Library/Application Support/obs-studio/.sentinel"
   open -g -a "$OBS" --args --disable-shutdown-check --disable-updater --disable-missing-files-check
-  until obs_ask GetVersion >/dev/null 2>&1 || [ "$waited" -ge 60 ]; do sleep 2; waited=$((waited + 2)); done
-  while [ "$tries" -lt 3 ]; do
-    obs_ask StartVirtualCam >>"$WORK/obs.log" 2>&1
-    sleep 4
-    bright=$(seen "try$tries")
-    echo "try $tries: brightness $bright" >>"$WORK/obs.log"
-    [ "$bright" -gt 80 ] && return 0
-    tries=$((tries + 1))
+  until obs_ask GetVersion >/dev/null 2>&1; do
+    [ "$waited" -lt 120 ] || return 1
+    sleep 2; waited=$((waited + 2))
+  done
+}
+
+# OBS finds the camera's system process as it starts the virtual camera: started before
+# macOS has that process up, every start says "Could not find the virtual camera system
+# process" (runs 38458869231, 38462001170). macOS brings it up in its own time after the
+# switch, a long time on a loaded runner: an OBS started again 4 s after the switch could
+# miss it for all three of its starts, while the dev app already saw the camera's own
+# placeholder (runs 40240284787, 40240265681) — so macOS listing the camera says nothing of
+# it. OBS is started again (macOS's crash dialog off), and a start that shows OBS's own
+# picture three times gets a fresh OBS, up to three.
+start_virtual_camera() {
+  local round=0 tries bright
+  defaults write com.apple.CrashReporter DialogType none
+  while [ "$round" -lt 3 ]; do
+    if restart_obs; then
+      tries=0
+      while [ "$tries" -lt 3 ]; do
+        obs_ask StartVirtualCam >>"$WORK/obs.log" 2>&1
+        sleep 4
+        bright=$(seen "$round-$tries")
+        echo "OBS start $round, try $tries: brightness $bright" >>"$WORK/obs.log"
+        [ "$bright" -gt 80 ] && return 0
+        tries=$((tries + 1))
+      done
+    else
+      echo "OBS start $round: no answer in 120 s" >>"$WORK/obs.log"
+    fi
+    round=$((round + 1))
   done
   return 1
 }
@@ -210,7 +264,8 @@ start_virtual_camera() {
 # camera that runs and shows the pattern; nothing closed that alert, and it sat over
 # shroom's popover through the e2e run's recording (run 38585915506). It is OBS's modal
 # panel (window layer 8): its OK, the one button in its bottom row, is clicked as a person
-# would. The camera stays on.
+# would. The camera stays on. Each start that missed the camera left an alert of its own,
+# stacked: they're clicked away one by one.
 obs_alert_ok() {
   osascript -l JavaScript -e 'ObjC.import("CoreGraphics");
     const w = ObjC.deepUnwrap(ObjC.castRefToObject($.CGWindowListCopyWindowInfo($.kCGWindowListOptionOnScreenOnly, 0)))
@@ -223,7 +278,7 @@ dismiss_obs_alert() {
   at=$(obs_alert_ok)
   [ -n "$at" ] || { note info "camera: OBS's alert" "none up"; return 0; }
   shot obs-alert
-  while [ -n "$at" ] && [ "$tries" -lt 3 ]; do
+  while [ -n "$at" ] && [ "$tries" -lt 8 ]; do
     cliclick "c:$at"
     sleep 2
     at=$(obs_alert_ok)
@@ -245,7 +300,11 @@ up() {
   note info "camera: OBS's camera after its start" "${was:-not asked for}"
   if [ "$was" != "activated enabled" ]; then
     enable_by_hand
-    [ "$(state)" = "activated enabled" ] && note info "camera: switched on" "in System Settings, by the throwaway admin"
+    if [ "$(state)" = "activated enabled" ]; then
+      note info "camera: switched on" "in System Settings, by the throwaway admin — $(grep -m 1 'drawn after' "$WORK/enable.log")"
+    else
+      note info "camera: not switched on" "$(tail -n 1 "$WORK/enable.log")"
+    fi
   fi
   if start_virtual_camera; then
     note pass "camera: it shows the pattern" "$(tail -n 1 "$WORK/obs.log")"
