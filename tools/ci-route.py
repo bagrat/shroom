@@ -102,6 +102,7 @@ SPEC_WEB = {"ledger"} | {f"states.{s}" for s in LANDING_STATES}
 
 def machine_diff():
     import importlib.util
+    sys.dont_write_bytecode = True  # no tools/__pycache__ left in the tree
     spec = importlib.util.spec_from_file_location("machine_diff", ROOT / "tools/machine-diff.py")
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
