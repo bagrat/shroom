@@ -5231,8 +5231,8 @@ const AI_STYLE = `.player.ch .seek::-webkit-slider-runnable-track{background:tra
 
 /** The owner's empty title while the name is on its way (N84): no border and no fill, a soft
  * gradient sliding across the whole title and its line, until it's clicked; still where motion
- * is reduced. */
-const NAME_SHIM_STYLE = `.title[data-naming]:not(:focus){border-color:transparent;background-color:transparent;background-image:linear-gradient(100deg,transparent 30%,var(--edge) 50%,transparent 70%);background-size:200% 100%;background-repeat:no-repeat;animation:shroom-shim 1.6s linear infinite}
+ * is reduced. The line steps down to fit a narrower field (`--naming-size`, 18 px at least). */
+const NAME_SHIM_STYLE = `.title[data-naming]::placeholder{font-size:var(--naming-size,1em)}.title[data-naming]:not(:focus){border-color:transparent;background-color:transparent;background-image:linear-gradient(100deg,transparent 30%,var(--edge) 50%,transparent 70%);background-size:200% 100%;background-repeat:no-repeat;animation:shroom-shim 1.6s linear infinite}
 @keyframes shroom-shim{from{background-position:150% 0}to{background-position:-50% 0}}
 @media (prefers-reduced-motion:reduce){.title[data-naming]:not(:focus){animation:none}}`;
 
@@ -5317,8 +5317,8 @@ const aiNote = (ai) => (ai.line || ai.waiting ? `<p class="ainote" id="ainote"${
  * until the take's voice cuts are in too; and whenever what plays changes later (a cut landing,
  * a press on the strip), a page with chapters asks once more and redraws the bar to match.
  * Answers are taken in the order they were asked. A title typed before the page opened asks
- * too, for the chapters and captions (N82). The empty title's shimmer and its line (N84) take
- * the short line when the long one doesn't fit the field, and go at a click, a key, a name, or
+ * too, for the chapters and captions (N82). The empty title's shimmer and its line (N84): the
+ * long line steps down in size to fit the field, and takes the short one below 18 px, and go at a click, a key, a name, or
  * the page's line ending, the date its placeholder again; when the status
  * says the name is in, the page's line waits for this script's answer to fade (N82).
  * @param {string} id @param {AiFace} ai */
@@ -5328,7 +5328,8 @@ function aiOwnerScript(id, ai) {
 var shown=t.value,touched=false,mine=false,drawn=JSON.stringify(c.drawn),sh=t.hasAttribute("data-naming"),wide=t.placeholder;
 function unshim(){if(!sh)return;sh=false;t.placeholder=t.getAttribute("data-date")||"";t.removeAttribute("data-naming")}
 function place(){if(!sh)return;if(t.value||document.activeElement===t)return unshim();try{var cs=getComputedStyle(t),g=document.createElement("canvas").getContext("2d");g.font=cs.fontWeight+" "+cs.fontSize+" "+cs.fontFamily;
-t.placeholder=g.measureText(wide).width>t.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight)?t.getAttribute("data-naming"):wide}catch(e){}}
+var room=t.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight),size=parseFloat(cs.fontSize),fit=Math.floor(size*room/g.measureText(wide).width);
+if(fit>=size){t.placeholder=wide;t.style.removeProperty("--naming-size")}else if(fit>=18){t.placeholder=wide;t.style.setProperty("--naming-size",fit+"px")}else{t.placeholder=t.getAttribute("data-naming");t.style.removeProperty("--naming-size")}}catch(e){}}
 function say(x){if(l){l.textContent=x;l.hidden=!x}}
 function take(x){unshim();if(mine||x===shown)return;var was=shown;shown=x;t.dispatchEvent(new CustomEvent("shroom:named",{detail:x}));if(t.value!==was)return;
 t.value=x;document.title=x;if(document.activeElement===t){if(touched)t.select();else t.blur()}}
