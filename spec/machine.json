@@ -83,9 +83,10 @@
   {
    "n": 4,
    "title": "The quiet-take law",
-   "rule": "**The quiet-take law** *(N41)* — while a take is open (recording *or* paused), shroom puts nothing new on screen: invites, deep links, windows, the deferred page of an offline stop, update banners — all wait for the take to end. Only the bubble and macOS's own indicator can ever appear in a take (the agent label and the marker toast show to the person only, left out of the recording — N62, N78); the paused popover exists only after the pause is confirmed (POC §8). **And nothing that would end, move or replace the app runs mid-take** — Update, Disconnect, Leave, joining another space, Quit (⌘Q or the Dock, reachable when a window was already open) — their buttons grey with “You can do this once your recording is finished.”; a Quit request is declined silently while recording and opens the paused popover (its “no Quit while a take is open” note) while paused.",
+   "rule": "**The quiet-take law** *(N41)* — while a take is open (recording *or* paused), shroom puts nothing new on screen: invites, deep links, windows, the deferred page of an offline stop, update banners — all wait for the take to end. Of what shroom puts on screen mid-take, only the bubble and macOS's own indicator can ever appear in a take (the agent label and the marker toast show to the person only, left out of the recording — N62, N78). shroom's windows (the Library, an editor, Settings, Send feedback, setup), when the person has them open, are recorded like any other app's; shroom never opens one mid-take by itself (N85); the paused popover exists only after the pause is confirmed (POC §8). **And nothing that would end, move or replace the app runs mid-take** — Update, Disconnect, Leave, joining another space, Quit (⌘Q or the Dock, reachable when a window was already open) — their buttons grey with “You can do this once your recording is finished.”; a Quit request is declined silently while recording and opens the paused popover (its “no Quit while a take is open” note) while paused.",
    "invariants": [
     "Let take_open = state ∈ {recording, paused, and paused's morphs/auto-pause faces}. While take_open, no window, banner, invite, deep-link handling, deferred offline-stop page, or update banner becomes newly visible; the only shroom surfaces that may newly appear are the bubble overlay, the paused popover (only after the pause is confirmed) and its morphs (discard-confirm), and the auto-pause popovers (display-lost, mic-lost, camera-lost, mac-away, permission-lost, disk-full-stop); and, left out of every capture, the agent label (N62) and the marker toast for two seconds after ⌥⌘M (N78).",
+    "What every capture holds of shroom's (N85): the bubble, and every shroom window while it is on screen (the Library, every editor, Settings, Send feedback, onboarding), like any other app's windows. Left out of every capture, from the moment each exists: the popover in every face (config, paused and its morphs, the auto-pause faces), the countdown, the agent label and the marker toast.",
     "Items that arrive while take_open (invite deep link, offline-stop page, update banner, windows) are queued and surface only after the take ends.",
     "While take_open, Update, Disconnect, Leave, join-another-space and Quit controls are disabled and show “You can do this once your recording is finished.”",
     "A Quit request (⌘Q or Dock) while recording causes no state change and no visible surface; while paused it opens/keeps the paused popover showing its “no Quit while a take is open” note; the process keeps running in both.",
@@ -97,7 +98,8 @@
     "POC §8",
     "UX-STATEMACHINE.md L116-125",
     "N62",
-    "N78"
+    "N78",
+    "N85"
    ]
   },
   {
@@ -1105,7 +1107,8 @@
     "N58 (the demo's place: a box beside the pitch; its caption goes)"
    ],
    "amended_by": [
-    "N61"
+    "N61",
+    "N86"
    ]
   },
   {
@@ -1445,6 +1448,15 @@
    ]
   },
   {
+   "id": "N83",
+   "title": "A click on a control that something late just moved does nothing",
+   "decision": "**Bagrat's re-check of 0.1.30-early.1, 2026-10-25**: he opened the popover to change the camera, the update finished downloading a second later, and its ready banner went in above the picker rows; everything under it dropped, a click meant for the rows landed on Update, and shroom quit and came back updated — it looked like a crash. **Bagrat, 2026-10-25** (relayed by the orchestrator, on the board “Popover — a banner that lands late never takes a click…”, picking A): nothing changes in the look. In the popover and in Settings, for **half a second** after something lands and moves a control or puts a new one in its place — a banner, an Update button, a line under a picker — a pointer click on that control does nothing, and the next click works. What the person's own click or key just changed (a menu they opened, a tab they picked, a pick that adds its line) is theirs and isn't held back; the keyboard is never held back (its focus doesn't move with the layout). Not a state and no words: the click is simply not taken. B and C (the offer below Start; the offer waiting for the next open) were not picked.",
+   "status": "ratified",
+   "date": "2026-10-25",
+   "amends": [],
+   "amended_by": []
+  },
+  {
    "id": "N84",
    "title": "While the name is on its way, the title itself shimmers, borderless, saying a click names it",
    "decision": "**Bagrat's check of 0.1.33-early.2, 2026-10-26** (relayed by the orchestrator): the shimmer was a strip after “Untitled” where he expected the whole title to shimmer, with a line like “AI is naming your video, click to name manually”; then, on the board “The page — the title shimmers, borderless…”: no border while it shimmers, only a click brings up the editable box, which comes with the border; and the phone's line approved as drawn. He picked no line between the two drawn for wide windows, so his own stands. (1) **While the name is on its way** (N82's wait), the empty title shows no field: no border, no fill, a soft gradient sliding across the whole title, and in it, where the title goes, “AI is naming your video, click to name manually”, or on a narrow window (a phone) “Naming…”. The line is the field's placeholder: never typed, saved or taken as the title. (2) **A click** (or the keyboard) in it brings up the editable box with its border, the shimmer and the line gone at once, the date as its placeholder, ready for typing; a name that lands later never overwrites what was typed. (3) **The name lands**: plain text, as a named title always shows. (4) **No name comes**: the shimmer and the line stop with the finishing line, and the field is the empty one with the date. Viewers' pages are unchanged.",
@@ -1453,6 +1465,32 @@
    "amends": [
     "N82 (2) (the whole title shimmers, borderless, with its line, in place of the strip beside the placeholder)",
     "hearing (the title's shimmer and its two lines)"
+   ],
+   "amended_by": []
+  },
+  {
+   "id": "N85",
+   "title": "shroom's windows show in a take",
+   "decision": "**Bagrat, 2026-10-25** (relayed by the orchestrator): the Library, the editor and Settings should show up in a recording, so a bug report of shroom itself shows what went wrong; **and, 2026-10-26** (relayed by the orchestrator, answering whether Send feedback stays out): anything that can appear during a take and would help such a report is recorded. Until now every shroom window was left out of every capture. (1) **Recorded like any app's:** every shroom window — the Library, every editor, Settings, Send feedback, onboarding — sheets included, whenever it is on screen during a take: open before it, or opened by the person mid-take. (2) **Left out, as before:** the countdown and the marker toast (both tell the person they stay out of the video: the count lifts the instant capture starts, N7; the toast says so in its hint, N78); the agent label (it would sit in every video an agent records, N62); and the popover in every face — it shows only once a pause has stopped the picture, so it never helps a report, and leaving it out keeps it from the take's last frame (POC §8). (3) **The bubble** stays as it is: recorded. (4) **Law 4 still holds:** shroom opens nothing new mid-take by itself; a window the person opens is theirs to record. (5) **One behavior for everyone**, no setting. Members' invite pill draws its code as a mask and the code never reaches the window (law 13), so a take of Settings can't show a usable link. Built: DECISIONS B266.",
+   "status": "ratified",
+   "date": "2026-10-25",
+   "amends": [
+    "law 4 (shroom's own windows the person has open are recorded; what shroom says mid-take stays out)",
+    "bubble (the only thing of ours shroom puts into a take)",
+    "The overlays (the bubble, the only overlay in a take)",
+    "The window (every window is recorded in a take)"
+   ],
+   "amended_by": []
+  },
+  {
+   "id": "N86",
+   "title": "shroom.am: the price as a slider in its own box",
+   "decision": "**A tester read the landing's price bar as a loading bar (2026-10-19)**; Bagrat asked for a more professional page with a price calculator in its place and was shown five whole-page directions, then five slider kinds, on the canvas (relayed by the orchestrator). **The same day he chose** direction 1, “Quiet split” (the page as built, the price wrapped in its own box), **one slider, at most with an AI switch** (the switch was later dropped, below), and a large example **apart from the slider**. (1) **The bar and its four labels go.** In their place, under the headline's line and as wide as the headline, a box (as redrawn to Bagrat's answers, 2026-10-24): “What would it cost?”, then **the price first**, in dollars, never cents (“$0.00”, “$0.45”: “93¢” can read as 93 dollars), then the slider “Video a month” (**hours of video**, not a count: lengths vary; 30 min to 100 hours, opening at 1 hour), then “Auto-cleanup after” (Bagrat's words, 2026-10-24; 30 days · 60 days · a year, opening at 30 days, so the box opens at $0.00) and, as its last line, the team's month (3) No assumption line, no gigabytes (his ask: super simple). (2) **The model:** about 10 GB holds three hours at Normal (the FAQ); Cloudflare charges $0.015 a GB-month past its free 10 GB (B212); 30 days counts as a month. AI is about 3,660 neurons a video hour against 10,000 free a day (B205, B207): AI never adds money. (3) **The box's last line:** “A team of 20, an hour each a month: $0.85 with 30-day cleanup, $11.85 kept a year.” (the team row he chose, an hour each; it took the place of a note on the free 10 GB, 2026-10-24). Nothing sits under the box. (4) **The layout (Bagrat, 2026-10-24/25):** after six whole-page layouts and five Bento variations on the canvas, he chose “Bento A, aligned”: one 12-column grid with one gutter, the masthead on the grid's edges (wordmark left, headline right; first the headline's line on the wordmark's baseline, then, at Bagrat's word on the built page, 2026-10-25, the headline's top on the top of the wordmark's “m”), then the video over install beside the price box over the terms, the two stacks ending on one line (eight columns and four as drawn; seven and five once the video showed whole, which keeps the stacks nearest level). The terms sit in one column in their own tile, and term 5 becomes “Old videos clean themselves up. Pin the ones you keep.” (5) **Timing:** the box promises auto-cleanup, so this goes live the day the release that ships auto-cleanup does (Bagrat, 2026-10-24; first planned for 0.1.28, now the official 0.1.30). (6) **No AI switch** (Bagrat, 2026-10-25, on the built page): AI never changes the price, so the box doesn't offer it; that settles what the switch would show. The video always shows whole at every width. The new words are approved with the board (Bagrat, 2026-10-25). Board: “Bento A, aligned” (LandingV3aAligned). (7) **Icons in place of the ticks** (Bagrat, 2026-10-25, after two rounds on the canvas: “the terms' icons” and its round 2): each term gets its own icon, Lucide shapes at stroke 2 on a chip, in the page's frost blue (green was tried on the whole page and dropped, Bagrat, 2026-10-25): a cloud with a lock (three scoops, the lock a badge at its foot), a receipt, two people, an armchair crossed out, a broom with sparkles, a checklist, and code brackets. (8) **The masthead, simpler** (Bagrat, 2026-10-25, on the built page): the line under the headline (“No monthly seat, sometimes completely free”, B140) leaves the page and the link-preview card; the headline is a little smaller (38 px on a laptop) and its middle sits on the wordmark's middle (the middles of their x-heights), in place of the capitals' top on the m's top. The terms' tile gets a title in the price box's label style; he chose “Why shroom?” over “What you get” and “How it works”.",
+   "status": "provisional",
+   "date": "2026-10-19",
+   "amends": [
+    "N59 (the price bar becomes a box with a slider; the page becomes one 12-column grid)",
+    "landing (the price, the layout)"
    ],
    "amended_by": []
   }
@@ -1468,7 +1506,7 @@
   },
   {
    "name": "The window",
-   "may_do": "Lives: centered on the mushroom's display (N57), one at a time per kind, the editor's one per video (N73) | Opens: the editor (Edit…, N63), onboarding, Library, Settings, Send feedback (N60) | Rules: the dock icon while open; ✕ ≡ the retreat (N12); survives a browser round-trip  [UX-STATEMACHINE.md L1717]"
+   "may_do": "Lives: centered on the mushroom's display (N57), one at a time per kind, the editor's one per video (N73) | Opens: the editor (Edit…, N63), onboarding, Library, Settings, Send feedback (N60) | Rules: the dock icon while open; ✕ ≡ the retreat (N12); survives a browser round-trip; every window is recorded in a take like any app's (N85)  [UX-STATEMACHINE.md L1717]"
   },
   {
    "name": "The page",
@@ -1480,7 +1518,7 @@
   },
   {
    "name": "The overlays",
-   "may_do": "Lives: the chosen display | Opens: the countdown scrim; the bubble from `config` through the take; the agent label while a take the shroom command started records (N62); the marker toast for two seconds after ⌥⌘M (N78) | Rules: never windows, never the dock icon; the bubble never takes focus, while the countdown does — you just started it, and its Esc must work without any extra macOS permission; the bubble is the only thing of ours ever in a take (the label and the marker toast, like the countdown, are left out of it)  [UX-STATEMACHINE.md L1720]"
+   "may_do": "Lives: the chosen display | Opens: the countdown scrim; the bubble from `config` through the take; the agent label while a take the shroom command started records (N62); the marker toast for two seconds after ⌥⌘M (N78) | Rules: never windows, never the dock icon; the bubble never takes focus, while the countdown does — you just started it, and its Esc must work without any extra macOS permission; the bubble is the only overlay of ours ever in a take (the label and the marker toast, like the countdown, are left out of it)  [UX-STATEMACHINE.md L1720]"
   },
   {
    "name": "The command line",
@@ -2659,7 +2697,7 @@
    "surface": "web-page",
    "status": "ratified",
    "board": "Landing",
-   "summary": "shroom.am, a static page with one job: take a curious visitor to a pasted command, with no false notes. Two columns on a laptop (N59). Left: the shroom mark and wordmark, large; the headline on one line and its line under it; one thin price bar, 0 to 30 hours to scale, as wide as the headline, $0 for the first tenth and $1.50 a month at its end; then seven terms with green ticks. Right: one box, its top level with the wordmark's baseline and its bottom with the last term's: the hero, shroom recorded with shroom (“2 min”, shroom.am's own file, playing in place: a still of the editor after the take's cuts with a play button and the length, the video under it, no caption; N58, N61, N70), a small Setup walkthrough button under it that opens “How to set up and use shroom” over the page (N70), a cut, and Install under that (Terminal, Homebrew and Coding agent tabs, Terminal first; each command with [ Copy ]; Read it first; the system-requirements line). No header: the page's foot, at the bottom of the first screen under the left column, holds Send feedback, GitHub, Questions and limits, Privacy and Terms, then the visits line. On a phone it stacks, terms before the video and install last: the brand, the headline and its line, the bar (its labels short: “$0 / 3h video”, “$1.50 / 30h”), the terms, the box (the hero, Setup walkthrough, then install), the foot, its links wrapping.",
+   "summary": "shroom.am, a static page with one job: take a curious visitor to a pasted command, with no false notes. On a laptop one 12-column grid with one gutter (N59, N86). The masthead sits on the grid's edges: the shroom mark and wordmark, large, at the left; at the right the headline on one line, a little smaller, its middle on the wordmark's middle, with no line under it (Bagrat, 2026-10-25); a rule under them. Under it two stacks that end on one line. Left, seven columns: a tile with the hero, shroom recorded with shroom (“2 min”, shroom.am's own file, playing in place: a still of the editor after the take's cuts with a play button and the length, the video under it, no caption; N58, N61, N70) and a small Setup walkthrough button under it that opens “How to set up and use shroom” over the page (N70); under it Install in its own tile (Terminal, Homebrew and Coding agent tabs, Terminal first; each command with [ Copy ]; Read it first; the system-requirements line). Right, five columns: the price in its own box (what Cloudflare would charge a month, one slider and the cleanup choice, a busy team's month as its last line; N86), then the seven terms in a tile under a small-capitals title, each with its own icon on a blue chip (N86). Whichever stack is shorter grows to meet the other: install's tile on the left, the terms' tile on the right; the video always shows whole, never cropped (Bagrat, 2026-10-25). No header: the page's foot, at the bottom of the first screen, holds Send feedback, GitHub, Questions and limits, Privacy and Terms, then the visits line. On a phone it stacks: the brand, the headline and its line, the hero and Setup walkthrough, the price box, install, the terms, the foot, its links wrapping.",
    "entry": "A visitor arrives at shroom.am through one of three entry arrows. (1) Direct: HN, README or word of mouth; a cold visitor who needs the pitch. (2) The recipient loop: they watched a shroom video and clicked the player page's mark (Region 4; whether the mark exists = U3); a warm visitor who already saw the product work. (3) An agent fetching the BYO-agent skill (Region 6's overlay). Also reached by going back from the source view.",
    "said": [
     {
@@ -2670,59 +2708,102 @@
      "id": "landing.screen-recordings-without-the"
     },
     {
-     "text": "No monthly seat, sometimes completely free",
+     "text": "What would it cost?",
+     "role": "title",
+     "copy": "ratified",
+     "note": "The price box's heading, small capitals, at the top of the right-hand stack, in place of the price bar under the headline; the price comes right under it (Bagrat, 2026-10-24). Approved by Bagrat with the board “Bento A, aligned” (2026-10-25).",
+     "cites": [
+      "N86"
+     ],
+     "id": "landing.what-would-it-cost",
+     "was": "$0 · about three hours of video"
+    },
+    {
+     "text": "Video a month",
+     "role": "other",
+     "copy": "ratified",
+     "note": "The slider's label, its amount at the right: 30 min, 1 hour, 2, 3, 5, 10, 20, 30, 50, 100 hours, opening at 1 hour (Bagrat, 2026-10-24: hours of video, since lengths vary). Approved by Bagrat with the board “Bento A, aligned” (2026-10-25).",
+     "cites": [
+      "N86"
+     ],
+     "id": "landing.video-a-month"
+    },
+    {
+     "text": "Auto-cleanup after",
+     "role": "other",
+     "copy": "ratified",
+     "note": "Bagrat's own words (2026-10-24), over three choices that take the box's width, “30 days”, “60 days” and “a year”, opening at 30 days, so the box opens at $0.00. 30 days counts as a month. This line goes live with the release that ships auto-cleanup. Approved by Bagrat with the board “Bento A, aligned” (2026-10-25).",
+     "cites": [
+      "N86"
+     ],
+     "id": "landing.auto-cleanup-after",
+     "was": "Keep videos"
+    },
+    {
+     "text": "30 days",
+     "role": "button",
+     "copy": "ratified",
+     "note": "One of the three “Auto-cleanup after” choices, chosen when the page opens. Approved by Bagrat with the board “Bento A, aligned” (2026-10-25).",
+     "cites": [
+      "N86"
+     ],
+     "id": "landing.keep-30-days"
+    },
+    {
+     "text": "60 days",
+     "role": "button",
+     "copy": "ratified",
+     "note": "One of the three “Auto-cleanup after” choices. Approved by Bagrat with the board “Bento A, aligned” (2026-10-25).",
+     "cites": [
+      "N86"
+     ],
+     "id": "landing.keep-60-days"
+    },
+    {
+     "text": "a year",
+     "role": "button",
+     "copy": "ratified",
+     "note": "One of the three “Auto-cleanup after” choices. Approved by Bagrat with the board “Bento A, aligned” (2026-10-25).",
+     "cites": [
+      "N86"
+     ],
+     "id": "landing.keep-a-year"
+    },
+    {
+     "text": "a month",
+     "role": "other",
+     "copy": "ratified",
+     "note": "Beside the price, a large figure in dollars, never cents (Bagrat, 2026-10-24: “93¢” can read as 93 dollars): “$0.00” in frost while inside Cloudflare's free 10 GB, else “$0.45”, “$11.85” and so on. The figure varies, so it isn't a said-line. Approved by Bagrat with the board “Bento A, aligned” (2026-10-25).",
+     "cites": [
+      "N86"
+     ],
+     "id": "landing.a-month"
+    },
+    {
+     "text": "A team of 20, an hour each a month: $0.85 with 30-day cleanup, $11.85 kept a year.",
      "role": "line",
      "copy": "ratified",
-     "note": "Hero punchline, second line, with no closing period, as he wrote it (B140).",
-     "id": "landing.pay-as-you-go"
+     "note": "The price box's last line, in place of a note on Cloudflare's free 10 GB (Bagrat, 2026-10-24: he liked the box and asked for the team line there; earlier he chose a team row at an hour each). 20 hours a month is about 67 GB: $0.85 a month with 30-day cleanup; kept a year, 800 GB: $11.85. Approved by Bagrat with the board “Bento A, aligned” (2026-10-25).",
+     "cites": [
+      "N86"
+     ],
+     "id": "landing.a-team-of-20"
     },
     {
-     "text": "$0 · about three hours of video",
-     "role": "other",
+     "text": "Why shroom?",
+     "role": "title",
      "copy": "ratified",
-     "note": "The price bar's left label on a laptop: one thin bar from 0 to 30 hours, true to scale, its first tenth lit (the free part). '$0' is bold, in frost. It replaces the first of the two price tiles, which read as two plans. Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59).",
+     "note": "The terms' tile's title, in the price box's label style (small capitals), over the seven terms. Bagrat asked for a title there and chose “Why shroom?” (2026-10-25), over “What you get” and “How it works”: it pairs as a question with “What would it cost?” (N86).",
      "cites": [
-      "N59"
+      "N86"
      ],
-     "id": "landing.0-month-about-six",
-     "was": "$0 /month — about three hours of video"
-    },
-    {
-     "text": "$1.50 /month · about thirty hours",
-     "role": "other",
-     "copy": "ratified",
-     "note": "The price bar's right label on a laptop, under its end. '$1.50 /month' is bold. Words, not numerals, on the landing; the welcome deliberately uses numerals (Law 16, N12). Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59).",
-     "cites": [
-      "N59"
-     ],
-     "id": "landing.1-50-month-about",
-     "was": "$1.50 /month — about thirty hours"
-    },
-    {
-     "text": "$0 / 3h video",
-     "role": "other",
-     "copy": "ratified",
-     "note": "The price bar's left label on a phone. '$0' is bold, in frost. Numerals here, against Law 16's words-on-the-landing, by his own wording: it must fit on one line beside the right label. Bagrat's phone note, 2026-10-17 (N59): the long label wrapped at 390 wide.",
-     "cites": [
-      "N59"
-     ],
-     "id": "landing.0-3h-video"
-    },
-    {
-     "text": "$1.50 / 30h",
-     "role": "other",
-     "copy": "ratified",
-     "note": "The price bar's right label on a phone. '$1.50' is bold ($1.50, not his “$1.5”, to match the laptop's label). Bagrat's phone note, 2026-10-17 (N59): the long label wrapped at 390 wide.",
-     "cites": [
-      "N59"
-     ],
-     "id": "landing.1-50-30h"
+     "id": "landing.why-shroom"
     },
     {
      "text": "Your videos live in your own Cloudflare account",
      "role": "line",
      "copy": "ratified",
-     "note": "Term 1 of 7, under the price bar; green tick. 'your own Cloudflare account' is bold. Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59).",
+     "note": "Term 1 of 7, in the terms' tile under the price box (N86); its icon a cloud with a lock (N86). 'your own Cloudflare account' is bold. Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59).",
      "cites": [
       "N59"
      ],
@@ -2762,15 +2843,16 @@
      "id": "landing.no-price-per-person"
     },
     {
-     "text": "Delete old videos and pay less",
+     "text": "Old videos clean themselves up. Pin the ones you keep.",
      "role": "line",
      "copy": "ratified",
-     "note": "Term 5 of 7. 'Delete old videos' is bold. Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59).",
+     "note": "Term 5 of 7. 'Old videos clean themselves up.' is bold. Auto-cleanup (off by default; 15, 30 or 60 days after last watched; pinned videos stay) is Bagrat's yes of 2026-10-24; this line goes live with the release that ships it. Approved by Bagrat with the board “Bento A, aligned” (2026-10-25).",
      "cites": [
-      "N59"
+      "N59",
+      "N86"
      ],
      "id": "landing.delete-old-videos-and",
-     "was": "Delete old videos and pay less — storage is the whole bill."
+     "was": "Delete old videos and pay less"
     },
     {
      "text": "About ten minutes of guided setup, once",
@@ -2798,7 +2880,7 @@
      "text": "Install in one line",
      "role": "title",
      "copy": "ratified",
-     "note": "The install block's heading, bold, inside the box under the video, the three tabs at its right. Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59).",
+     "note": "The install block's heading, bold, in its own tile under the video's (N86), the three tabs at its right. Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59).",
      "cites": [
       "N59"
      ],
@@ -2919,7 +3001,7 @@
      "text": "Send feedback · GitHub · Questions and limits · Privacy · Terms",
      "role": "line",
      "copy": "ratified",
-     "note": "The page's foot: one row of links under the left column, at the bottom of the first screen (after the content when it runs longer); the visits line under it. The header is gone, so Send feedback and GitHub live here. “Trouble, questions” is gone: it opened /feedback, as Send feedback does. The other shroom.am pages keep their header and footer. Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59).",
+     "note": "The page's foot: one row of links under the tiles, at the bottom of the first screen (after the content when it runs longer); the visits line under it. The header is gone, so Send feedback and GitHub live here. “Trouble, questions” is gone: it opened /feedback, as Send feedback does. The other shroom.am pages keep their header and footer. Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59).",
      "cites": [
       "N55",
       "N59"
@@ -3021,7 +3103,8 @@
     "N58",
     "N59",
     "N61",
-    "N70"
+    "N70",
+    "N86"
    ],
    "was": {
     "fixture": "r1.json",
@@ -5888,7 +5971,7 @@
    "surface": "overlay",
    "status": "ratified",
    "board": null,
-   "summary": "The corner bubble, born at `config`, not at the count (N22). Live from the moment the popover opens, so you see and place yourself before Start. It stays through the count and the take, and Camera off in the camera picker hides it live (DEVIATIONS #43). Draggable, not resizable. It uses the un-excluded preview-window trick with zero compositing. It never takes focus, and it is the only thing of ours ever in a take. Discard takes it away. If the bubble's camera disappears, the take is never interrupted; the bubble simply goes.",
+   "summary": "The corner bubble, born at `config`, not at the count (N22). Live from the moment the popover opens, so you see and place yourself before Start. It stays through the count and the take, and Camera off in the camera picker hides it live (DEVIATIONS #43). Draggable, not resizable. It uses the un-excluded preview-window trick with zero compositing. It never takes focus, and it is the only thing of ours shroom puts into a take (shroom's windows are recorded too while the person has them open, like any app's — N85). Discard takes it away. If the bubble's camera disappears, the take is never interrupted; the bubble simply goes.",
    "entry": "A camera is picked in the camera picker (not Camera off) and the source is a display (with Camera only as the source there is no bubble), from config's opening through countdown, recording and paused.",
    "said": [],
    "actions": [
@@ -5902,7 +5985,8 @@
    "cites": [
     "N22",
     "N39",
-    "#43"
+    "#43",
+    "N85"
    ],
    "was": {
     "fixture": "r3.json",
@@ -8504,7 +8588,7 @@
    "status": "ratified",
    "board": "EditorCuts",
    "summary": "The editor (N63): a window of its own for each video (N73), titled “Edit — <the video's title>”. Top to bottom: the video, playing the edit (cuts skipped, held to the trim); the play button and the time, edited position / edited length, with “was <the recording's length>” once the edit changes it; on the right the hint and Undo · Redo; then the timeline: the ruler, where a click or the playhead's circle dragged seeks (Bagrat, 2026-10-25), and the whole recording's sound as a waveform with the playhead: two yellow ends that drag to trim, a drag across the sound that selects a part with Cut <its length> under it (one that reaches a yellow end moves that end there, a trim), every cut red and hatched (clicking one offers Put back <its length>), every suggestion not yet taken dashed amber (clicking one offers Cut <its length>, as a selection does); either edge of a cut or a suggestion drags to move it, the pointer ↔ over it, its length shown live under it and the picture at the edge as it goes, stopping at the next cut or suggestion, the trim's end, a tenth of a second from its other edge, or where a second would be all that's left, one step for Undo (B195 (g)), and every marker (N64) a flag at its time, its pole the continuation of its dashed line through the sound. The footer: the line that the link stays the same, Revert to original and Done. The waveform fills in once the sound is read; until then the timeline is empty and the ends wait. Every change can be undone, Put back and Revert included; the changes stay in the window until Done saves them. While an earlier edit's original is still kept, the time it has left sits by Revert to original; once it is gone, Revert to original only undoes what changed since the window opened. While one is open, no edit becomes a video behind it on this Mac: the upkeep, and on the Mac holding the token the cleanup sweep, wait until every editor window has closed (B199). The owner page's Edit in shroom (N69) opens it as Edit… does. Either, on a video whose window is open, brings that window forward as it is; on another video, a window of its own opens for it, in front, and every other window stays as it is (N73). Each window is its own: its steps, its Done, its final video and its questions never touch another's. ✕ with changes not saved asks before the window closes (N71).",
-   "entry": "Edit… on a live row in the Library (N63), when the video is on this Mac: its take was recorded here and is still here, or it came from the space before. One window per video (N73): Edit… on a video whose window is open brings that window forward, as it is; on another video, a window of its own opens for it. A take started while editor windows are open leaves them open (law 4 covers only what shroom would newly show). The dock icon shows while one is open.",
+   "entry": "Edit… on a live row in the Library (N63), when the video is on this Mac: its take was recorded here and is still here, or it came from the space before. One window per video (N73): Edit… on a video whose window is open brings that window forward, as it is; on another video, a window of its own opens for it. A take started while editor windows are open leaves them open (law 4 covers only what shroom would newly show), and records it like any app's (N85). The dock icon shows while one is open.",
    "said": [
     {
      "text": "Edit — Setting up shroom in two minutes",
@@ -8692,7 +8776,8 @@
     "B199",
     "N69",
     "N71",
-    "N73"
+    "N73",
+    "N85"
    ]
   },
   "editor-getting": {
@@ -20728,6 +20813,15 @@
    "text": "Save to Movies — the stranded-take rescue (N34) The take's single-file copy lands in ~/Movies under its title and Finder shows it. The take keeps waiting — it still uploads if the space returns — until discarded. Several: “Save three to Movies”. After saving, the banner reads “Saved to Movies ✓” with a quiet Discard…. No take is ever lost to a space that went away.",
    "about": [
     "member-revoked"
+   ]
+  },
+  {
+   "id": "late-click",
+   "region": 3,
+   "text": "Late-arrival guard — not a state (N83): in the popover and in Settings, a pointer click on a control that something arriving by itself moved or put there in the last half-second does nothing; the next click works. What the person's own click or key changed, and the keyboard, are never held back.",
+   "about": [
+    "config",
+    "settings-general"
    ]
   }
  ]

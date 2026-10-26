@@ -1245,6 +1245,17 @@ pub enum WindowKind {
     Editor(EditorId),
 }
 
+impl WindowKind {
+    /// Whether a take records this window while it's on screen, like any app's (law 4, N85):
+    /// every one, so a bug report of shroom shows it. Only the overlays stay out of every
+    /// capture. A new kind of window says here which it is.
+    pub fn recorded(self) -> bool {
+        match self {
+            WindowKind::Onboarding | WindowKind::Library | WindowKind::Settings | WindowKind::Feedback | WindowKind::Editor(_) => true,
+        }
+    }
+}
+
 /// An open surface: when it opened (law 4 visibility), when it was last entered (probe
 /// freshness), and whether the person asked for it (an unasked one never takes the keyboard).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
