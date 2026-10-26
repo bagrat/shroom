@@ -707,6 +707,9 @@ jobs:
       - name: The node packages
         run: npm audit --audit-level=high
 
+      - name: shroom.am's deploy tool (site/deploy's lockfile)
+        run: npm audit --prefix site/deploy --audit-level=high
+
   signing:
     name: Signing rehearsal
     needs: route
