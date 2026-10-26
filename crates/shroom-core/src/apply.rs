@@ -8,7 +8,7 @@ use std::sync::Arc;
 use crate::copy;
 use crate::derive::onboarding::{self, At};
 use crate::derive::settings::{self as settings_view, SpaceAt};
-use crate::derive::{COPIED_MS, COUNTDOWN_MS, LIT_MS, OneShot, UNDO_MS, derive, library as library_view};
+use crate::derive::{COPIED_MS, COUNTDOWN_MS, LIT_MS, MARKER_TOAST_MS, OneShot, UNDO_MS, derive, library as library_view};
 use crate::effect::{CloudCmd, EditCmd, Effect, LibCmd, MemberCmd, MoviesCopy, Perm, PersistOp, PublicUrl, RecCmd, ShellCmd, TakeCmd, UpCmd, UpdCmd};
 use crate::event::{
     ClaimFail, CloudNews, EditStep, EditorNews, Event, Field, JoinAnswer, Key, LibraryNews, MemberNews, OsNews, PeekAnswer, QuitVia, RecNews, ReportNews,
@@ -18,9 +18,9 @@ use crate::report::{Kind, Post};
 use crate::scene::{Action, Click};
 use crate::time::{Fact, Mono};
 use crate::world::{
-    Access, AiTurn, Arming, Blocked, Born, Cause, Confirm, CopyOwed, CopyTarget, Door, EditLink, EditLinkNo, EditorFields, EditorId, EditorMedia, EditorSave, FailClass, Failure, Fields, Fork, Invite,
+    Access, AiEnd, AiRun, AiTurn, Arming, Blocked, Born, Cause, Confirm, CopyOwed, CopyTarget, Door, EditLink, EditLinkNo, EditorFields, EditorId, EditorMedia, EditorSave, FailClass, Failure, Fields, Fork, Invite,
     JoinRefusal, Landed, LaunchKind, Leaving, RecId,
-    LibraryFields, LibraryOps, Members, OpenTake, Op, PageOpen, Paste, Phase, Progress, QuickProbe, Reach, RelaunchWhy, Removal, ReportFields, FeedbackFields, Restore, Role, SavedCause,
+    LibraryFields, LibraryOps, MarkerToastSays, Members, OpenTake, Op, PageOpen, Paste, Phase, Progress, QuickProbe, Reach, RelaunchWhy, Removal, ReportFields, FeedbackFields, Restore, Role, SavedCause,
     SavedTake, SecretId, SettingsFields, SettingsTab, SourceId, Space, SpaceIdentity, StopOutcome, Strike, Sweep, TakeDir, TakeLost, TokenVerdict,
     UpdateOffer, Why, WindowKind, WorkerFact, World,
 };
@@ -63,7 +63,7 @@ pub fn apply(w: &mut World, event: Event) -> Out {
     // features are turned on.”, turns it on — so it's said before anything is heard.
     if w.online() != Some(false) && crate::derive::popover::ai_default_due(w) {
         w.space.ai_turn = Some(AiTurn::TurningOn);
-        fx.push(Effect::Cloud(CloudCmd::SetAi(true)));
+        fx.push(set_ai(w, true));
     }
     // A press on the page's Edit in shroom held for a take goes on once it's over (law 4).
     if !w.take_open() && matches!(w.session.fields.edit_link, Some(EditLink::Waiting { asked: false, .. })) {
@@ -86,6 +86,13 @@ pub fn apply(w: &mut World, event: Event) -> Out {
 
 /// The space's AI, settled on this Mac for good (N76): never turned on by default again,
 /// and its banner never shown again here.
+/// The AI's re-wiring, asked (N66): its run starts over at part 1, the switch showing where
+/// it's going (N80).
+fn set_ai(w: &mut World, on: bool) -> Effect {
+    w.space.ai_run = Some(AiRun { on, part: 1, since: w.now, end: None });
+    Effect::Cloud(CloudCmd::SetAi(on))
+}
+
 fn settle_ai(w: &mut World) -> Vec<Effect> {
     if w.once.ai_offer_answered {
         return vec![];
@@ -210,8 +217,8 @@ fn apply_event(w: &mut World, event: Event) -> Out {
             }
         }
         Event::MarkerShortcut(q) => {
-            // ⌥⌘M (N64), under ⌥⌘P's rule: recording, a marker at this moment — nothing on
-            // screen answers, the take goes on; paused, Drop a marker where it's offered.
+            // ⌥⌘M (N64), under ⌥⌘P's rule: recording, a marker at this moment — the toast
+            // answers (N78), the take goes on; paused, Drop a marker where it's offered.
             quick(w, &q);
             if let Some(out) = guard_take(w) {
                 return out;
@@ -219,14 +226,32 @@ fn apply_event(w: &mut World, event: Event) -> Out {
             if !derive(w).tray.shortcut {
                 return (vec![], Arm::DROPPED);
             }
+            // The toast answers (N78); with the popover open its row does, and `update` puts the
+            // toast away under it.
+            let now = w.now;
+            let says = |t: &mut OpenTake, s: MarkerToastSays| t.toast = Some((s, now));
             match w.take.as_ref().map(|t| t.phase) {
                 Some(Phase::Recording) => {
                     if let Some(t) = w.take.as_mut() {
                         t.markers += 1;
+                        says(t, MarkerToastSays::Dropped(t.markers));
                     }
                     (vec![Effect::Recorder(RecCmd::Marker)], Arm::named("marker-shortcut"))
                 }
-                Some(Phase::Paused(_)) if crate::derive::marker_offered(w) => act(w, Action::DropMarker),
+                Some(Phase::Paused(_)) if crate::derive::marker_offered(w) => {
+                    let out = act(w, Action::DropMarker);
+                    if let Some(t) = w.take.as_mut() {
+                        says(t, MarkerToastSays::Dropped(t.markers));
+                    }
+                    out
+                }
+                // Again at a pause that has its marker: nothing drops, and the toast says so.
+                Some(Phase::Paused(Cause::User)) if w.session.popover.is_none() && w.session.confirm.is_none() && w.take.as_ref().is_some_and(|t| t.marked_at_pause) => {
+                    if let Some(t) = w.take.as_mut() {
+                        says(t, MarkerToastSays::Already);
+                    }
+                    (vec![], Arm::named("marker-already"))
+                }
                 _ => (vec![], Arm::DROPPED),
             }
         }
@@ -824,7 +849,7 @@ fn act(w: &mut World, action: Action) -> Out {
                 return (vec![], Arm { name: "delete-all-cancelled", edge: Some(("delete-confirm-cleanup", "library-cleanup")) });
             }
             if matches!(was, Some(Confirm::Autoclean(_))) {
-                return (vec![], Arm { name: "autoclean-cancelled", edge: Some(("autoclean-confirm", "settings-general")) });
+                return (vec![], Arm { name: "autoclean-cancelled", edge: Some(("autoclean-confirm", "settings-videos")) });
             }
             // No sheet to take back: it's Suggested to clean up's ‹ Library (N68).
             if was.is_none() && w.session.fields.library.cleanup {
@@ -1227,6 +1252,10 @@ fn act(w: &mut World, action: Action) -> Out {
         // ── Settings ──
         Action::SettingsTab(tab) => {
             w.prefs.settings_tab = Some(tab);
+            // Another tab ends the AI switch's done list (N80).
+            if w.space.ai_run.is_some_and(|r| r.end == Some(AiEnd::Done)) {
+                w.space.ai_run = None;
+            }
             // Another tab puts the link's light out: coming back never lights it again.
             w.session.fields.settings.lit = None;
             // A name being changed and left is put back (B158).
@@ -1235,7 +1264,11 @@ fn act(w: &mut World, action: Action) -> Out {
             if let Some(d) = w.session.windows.get_mut(&WindowKind::Settings) {
                 d.entered = now;
             }
-            let edge = (tab == SettingsTab::Space).then_some(("settings-general", "settings-space"));
+            let edge = match tab {
+                SettingsTab::Space => Some(("settings-general", "settings-space")),
+                SettingsTab::Videos => Some(("settings-general", "settings-videos")),
+                _ => None,
+            };
             (vec![persist_prefs(w)], Arm { name: "settings-tab", edge })
         }
         Action::SetLoginItem(on) => (vec![Effect::Shell(ShellCmd::SetLoginItem(on))], Arm::named("login-item")),
@@ -1522,7 +1555,7 @@ fn act(w: &mut World, action: Action) -> Out {
         Action::SetAi(on) => {
             w.inflight.failures.remove(&Op::Ai);
             w.space.ai_turn = None;
-            let mut fx = vec![Effect::Cloud(CloudCmd::SetAi(on))];
+            let mut fx = vec![set_ai(w, on)];
             fx.extend(settle_ai(w));
             (fx, Arm::named("set-ai"))
         }
@@ -1549,7 +1582,7 @@ fn act(w: &mut World, action: Action) -> Out {
             }
             w.inflight.failures.remove(&Op::Ai);
             w.space.ai_turn = Some(AiTurn::TurningOff);
-            (vec![Effect::Cloud(CloudCmd::SetAi(false))], Arm { name: "ai-turn-off", edge: Some((from, "ai-turning-off")) })
+            (vec![set_ai(w, false)], Arm { name: "ai-turn-off", edge: Some((from, "ai-turning-off")) })
         }
         Action::SetScope(scope) => {
             w.session.fields.library.scope = scope;
@@ -1656,14 +1689,14 @@ fn act(w: &mut World, action: Action) -> Out {
             let sooner = days > 0 && (now_days == 0 || days < now_days);
             if sooner && crate::derive::settings::qualifying(w, days) > 0 {
                 w.session.confirm = Some(Confirm::Autoclean(days));
-                return (vec![], Arm { name: "autoclean-asked", edge: Some(("settings-general", "autoclean-confirm")) });
+                return (vec![], Arm { name: "autoclean-asked", edge: Some(("settings-videos", "autoclean-confirm")) });
             }
             set_autoclean(w, days, Arm::named("autoclean-set"))
         }
         Action::ConfirmAutoclean => {
             let Some(Confirm::Autoclean(days)) = w.session.confirm.clone() else { return (vec![], Arm::DROPPED) };
             w.session.confirm = None;
-            set_autoclean(w, days, Arm { name: "autoclean-set", edge: Some(("autoclean-confirm", "settings-general")) })
+            set_autoclean(w, days, Arm { name: "autoclean-set", edge: Some(("autoclean-confirm", "settings-videos")) })
         }
         Action::SetPlays(on) => {
             w.library_ops.plays = Some(on);
@@ -1871,7 +1904,7 @@ fn joined(w: &mut World, identity: SpaceIdentity) -> Out {
         // The editor is on a video of the space left behind (N63).
         gone.extend(leave_editor(w));
     }
-    w.space = Space { identity: Some(identity.clone()), token: false, device_key: true, broken: Fact::Unknown, page_checked: None, ai: None, ai_turn: None };
+    w.space = Space { identity: Some(identity.clone()), token: false, device_key: true, broken: Fact::Unknown, page_checked: None, ai: None, ai_turn: None, ai_run: None };
     w.sweep = Sweep::default();
     w.library = Fact::Unknown;
     w.library_ops = LibraryOps::default();
@@ -2116,6 +2149,7 @@ fn get_link(w: &mut World, dir: TakeDir) -> Out {
         length_ms: saved.length_ms,
         markers: 0,
         marked_at_pause: false,
+        toast: None,
         mic: None,
         camera: None,
     });
@@ -2860,6 +2894,11 @@ fn editor_news(w: &mut World, news: EditorNews) -> Out {
             w.library_ops.upkept = Some(now);
             (vec![], Arm::named("editor-upkept"))
         }
+        EditorNews::CutsLanded { .. } => {
+            // Nothing on screen moves: the upkeep, due now, makes the copy the cuts owe.
+            w.library_ops.upkeep_asked = Some(now);
+            (vec![], Arm::named("editor-cuts-landed"))
+        }
     }
 }
 
@@ -3244,6 +3283,7 @@ fn rec(w: &mut World, news: RecNews) -> Out {
                 length_ms: 0,
                 markers: 0,
                 marked_at_pause: false,
+                toast: None,
                 mic,
                 camera,
             });
@@ -3517,6 +3557,10 @@ fn cloud(w: &mut World, news: CloudNews) -> Out {
         CloudNews::AiSet(on) => {
             answered(w, Op::Ai);
             w.space.ai = Some(on);
+            // Done once the page said so (N80): every part ticked, from now.
+            if let Some(run) = w.space.ai_run.as_mut() {
+                *run = AiRun { part: 3, since: w.now, end: Some(AiEnd::Done), ..*run };
+            }
             if w.space.ai_turn == Some(AiTurn::TurningOn) {
                 w.space.ai_turn = None;
             }
@@ -3614,6 +3658,14 @@ fn cloud(w: &mut World, news: CloudNews) -> Out {
         // parts before it in a blink — they stay ticked, the clock counts from the first.
         CloudNews::Part { op, part } => {
             let now = w.now;
+            // The AI's re-wiring (N80): its part underway, counted from when it began.
+            if op == Op::Ai {
+                if let Some(run) = w.space.ai_run.as_mut().filter(|r| r.end.is_none() && r.part != part) {
+                    run.part = part;
+                    run.since = now;
+                }
+                return (vec![], Arm::named("part"));
+            }
             let slot = match op {
                 Op::Sweep => &mut w.sweep.check,
                 Op::Wire => &mut w.sweep.wiring,
@@ -3976,6 +4028,12 @@ fn upload(w: &mut World, news: UploadNews) -> Out {
 fn failed(w: &mut World, op: Op, class: crate::world::FailClass) -> Out {
     w.inflight.ops.remove(&op);
     note_failure(w, op, class);
+    // The AI's re-wiring stopped at its part underway (N80, law 12).
+    if op == Op::Ai {
+        if let Some(run) = w.space.ai_run.as_mut().filter(|r| r.end.is_none()) {
+            run.end = Some(AiEnd::Stopped);
+        }
+    }
     // The page's Edit in shroom waited on this refresh: nothing opens (B221 (c)).
     if op == Op::LibRefresh && matches!(w.session.fields.edit_link, Some(EditLink::Waiting { asked: true, .. })) {
         w.session.fields.edit_link = None;
@@ -4095,6 +4153,10 @@ fn tick(w: &mut World) -> Out {
     if w.session.arming.as_ref().is_some_and(|a| !a.fired && now >= a.deadline) {
         fx.extend(fire(w));
     }
+    // The marker toast goes (N78).
+    if let Some(t) = w.take.as_mut().filter(|t| t.toast.is_some_and(|(_, at)| now >= at.plus(MARKER_TOAST_MS))) {
+        t.toast = None;
+    }
     // "Copied" reverts.
     if w.session.copied.as_ref().is_some_and(|(_, at)| now >= at.plus(COPIED_MS)) {
         w.session.copied = None;
@@ -4121,7 +4183,7 @@ fn tick(w: &mut World) -> Out {
     // again at its backoff (N76), with the popover shut too — it has been said.
     if let Some(turn @ (AiTurn::TurningOn | AiTurn::TurningOff)) = w.space.ai_turn {
         if !w.inflight.ops.contains_key(&Op::Ai) && w.inflight.failures.get(&Op::Ai).is_some_and(|f| now >= f.ai_retry_at()) {
-            fx.push(Effect::Cloud(CloudCmd::SetAi(turn == AiTurn::TurningOn)));
+            fx.push(set_ai(w, turn == AiTurn::TurningOn));
         }
     }
     (fx, Arm::named("tick"))

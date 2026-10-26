@@ -1,7 +1,8 @@
 //! Suggested to clean up (N68): the space's play counts, read to its end, become a line in
 //! the Library and a view of its own — each suggestion with why it's suggested, Keep, and a
-//! one-tap Delete that waits out its Undo line — and Settings · General's group Your videos:
-//! the space's play-count switch, this Mac's suggestions switch, and what the space costs.
+//! one-tap Delete that waits out its Undo line — and Settings' Videos tab (N79, was General's
+//! group Your videos): the space's play-count switch and this Mac's suggestions switch; what
+//! the space costs is Space used, in the Space tab.
 
 #[path = "common/laws.rs"]
 mod laws;
@@ -12,7 +13,7 @@ use std::sync::Arc;
 
 use shroom_core::effect::{Effect, LibCmd, PersistOp};
 use shroom_core::event::{Event, LibraryNews, OsNews, Surface};
-use shroom_core::scene::{Action, CleanupBody, Scene, SettingsPane, Style, VideosGroup};
+use shroom_core::scene::{Action, CleanupBody, Scene, SettingsPane, SpaceBody, Style, VideosGroup};
 use shroom_core::time::{Fact, Mono, Wall};
 use shroom_core::world::*;
 use support::*;
@@ -65,11 +66,19 @@ fn with_popover(mut w: World) -> World {
     w
 }
 
-fn general(w: World) -> World {
+fn on_tab(w: World, tab: SettingsTab) -> World {
     let mut w = w;
-    w.prefs.settings_tab = Some(SettingsTab::General);
+    w.prefs.settings_tab = Some(tab);
     w.session.windows.insert(WindowKind::Settings, Door::asked(Mono(900)));
     w
+}
+
+fn videos_tab(w: World) -> World {
+    on_tab(w, SettingsTab::Videos)
+}
+
+fn space_tab(w: World) -> World {
+    on_tab(w, SettingsTab::Space)
 }
 
 fn member(mut w: World) -> World {
@@ -113,8 +122,15 @@ fn line(s: &Scene) -> Option<String> {
 
 fn videos(s: &Scene) -> &VideosGroup {
     match &s.settings.as_ref().expect("Settings open").body.pane {
-        SettingsPane::General(g) => g.videos.as_ref().expect("the group Your videos"),
-        other => panic!("not General: {other:?}"),
+        SettingsPane::Videos(g) => g,
+        other => panic!("not Videos: {other:?}"),
+    }
+}
+
+fn space(s: &Scene) -> &SpaceBody {
+    match &s.settings.as_ref().expect("Settings open").body.pane {
+        SettingsPane::Space(b) => b,
+        other => panic!("not Space: {other:?}"),
     }
 }
 
@@ -382,14 +398,16 @@ fn the_suggestions_are_read_on_entry_and_by_scope() {
 
 #[test]
 fn settings_counts_plays_by_the_spaces_switch_and_suggests_by_this_macs() {
-    let mut r = Run::new(general(library(three(), 34_000_000_000)));
+    let mut r = Run::new(videos_tab(library(three(), 34_000_000_000)));
+    let s = r.scene.settings.as_ref().unwrap();
+    assert!(s.faces.contains(&"settings-videos"), "{:?}", s.faces);
+    let tabs: Vec<_> = s.body.tabs.iter().map(|t| (t.label.as_str(), t.selected)).collect();
+    assert_eq!(tabs, [("General", false), ("Videos", true), ("Space", false), ("Members", false)], "the group's heading is the tab's name now (N79)");
     let g = videos(&r.scene);
-    assert_eq!(g.heading, "Your videos");
     assert_eq!((g.count.label.as_str(), g.count.on, g.count.enabled), ("Count plays", true, true));
     assert_eq!(g.count_hint, "How often each video is played and how far, kept in your Cloudflare account. No cookies, nothing about who watched.");
     assert_eq!((g.suggest.label.as_str(), g.suggest.on, g.suggest.enabled), ("Suggest videos to clean up", true, true));
     assert_eq!(g.suggest_hint, "In the Library, videos that might be worth deleting: rarely watched lately, and taking real room.");
-    assert_eq!((g.used_label.as_deref(), g.used.as_deref()), (Some("Space used"), Some("34 GB — about 36¢ a month past Cloudflare's free 10 GB")));
 
     r.set(Action::SetPlays(false));
     assert!(r.has(|e| *e == Effect::Library(LibCmd::Plays(false))));
@@ -406,25 +424,55 @@ fn settings_counts_plays_by_the_spaces_switch_and_suggests_by_this_macs() {
     assert!(r.has(|e| matches!(e, Effect::Persist(PersistOp::Prefs(p)) if !p.suggest_cleanup)));
     assert!(!videos(&r.scene).suggest.on);
     assert!(line(&r.scene).is_none(), "the Library's line goes with it");
+}
 
-    let r = Run::new(general(library(vec![], 8_200_000_000)));
-    assert_eq!(videos(&r.scene).used.as_deref(), Some("8.2 GB — inside Cloudflare's free 10 GB"));
-    let r = Run::new(general(library(vec![], 134_500_000_000)));
-    assert_eq!(videos(&r.scene).used.as_deref(), Some("135 GB — about $1.87 a month past Cloudflare's free 10 GB"));
+#[test]
+fn space_used_is_in_the_space_tab_on_an_owner_class_mac() {
+    // N79 (Bagrat, 2026-10-25): what the space holds and costs sits with the space.
+    let r = Run::new(space_tab(library(three(), 34_000_000_000)));
+    let b = space(&r.scene);
+    assert_eq!((b.used_label.as_deref(), b.used.as_deref()), (Some("Space used"), Some("34 GB — about 36¢ a month past Cloudflare's free 10 GB")));
+    let r = Run::new(space_tab(library(vec![], 8_200_000_000)));
+    assert_eq!(space(&r.scene).used.as_deref(), Some("8.2 GB — inside Cloudflare's free 10 GB"));
+    let r = Run::new(space_tab(library(vec![], 134_500_000_000)));
+    assert_eq!(space(&r.scene).used.as_deref(), Some("135 GB — about $1.87 a month past Cloudflare's free 10 GB"));
+    // General carries none of it any more.
+    let r = Run::new(on_tab(library(three(), 34_000_000_000), SettingsTab::General));
+    assert!(matches!(r.scene.settings.as_ref().unwrap().body.pane, SettingsPane::General(_)));
+    // Entering Space reads the space's size when nothing has answered since (law 1).
+    let mut w = space_tab(library(vec![], 0));
+    w.suggestions = Fact::Unknown;
+    w.session.windows.insert(WindowKind::Settings, Door::asked(Mono(900)));
+    let mut r = Run::new(w);
+    r.set(Action::SettingsTab(SettingsTab::Space));
+    assert!(r.has(|e| *e == Effect::Library(LibCmd::Suggest { everyone: true })));
+    // …and entering Videos does too: its switches read the space.
+    let mut w = on_tab(library(vec![], 0), SettingsTab::General);
+    w.suggestions = Fact::Unknown;
+    let mut r = Run::new(w);
+    r.set(Action::SettingsTab(SettingsTab::Videos));
+    assert_eq!(r.arm.edge, Some(("settings-general", "settings-videos")));
+    assert!(r.has(|e| *e == Effect::Library(LibCmd::Suggest { everyone: true })));
 }
 
 #[test]
 fn a_members_mac_shows_the_spaces_switch_greyed_and_no_bill() {
-    let r = Run::new(general(member(library(three(), 6_300_000_000))));
+    let r = Run::new(videos_tab(member(library(three(), 6_300_000_000))));
     let g = videos(&r.scene);
     assert!(g.count.on && !g.count.enabled, "the space's switch is owner-class's");
     assert!(g.suggest.enabled);
-    assert_eq!(g.used, None, "the bill is the owner's");
-    // Before the space has said, the switch waits greyed.
-    let mut w = general(library(vec![], 0));
+    let tabs: Vec<_> = r.scene.settings.as_ref().unwrap().body.tabs.iter().map(|t| t.label.clone()).collect();
+    assert_eq!(tabs, ["General", "Videos", "Space"], "Videos on every Mac; Members owner-class only");
+    let r = Run::new(space_tab(member(library(three(), 6_300_000_000))));
+    assert_eq!(space(&r.scene).used, None, "the bill is the owner's");
+    // Before the space has said, the switch waits greyed, and Space used waits.
+    let mut w = videos_tab(library(vec![], 0));
     w.suggestions = Fact::Unknown;
     let g = Run::new(w).scene.clone();
-    assert!(!videos(&g).count.enabled && videos(&g).used.is_none());
+    assert!(!videos(&g).count.enabled);
+    let mut w = space_tab(library(vec![], 0));
+    w.suggestions = Fact::Unknown;
+    assert!(space(&Run::new(w).scene).used.is_none());
 }
 
 #[test]

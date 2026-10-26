@@ -40,6 +40,8 @@
   let lastMedia = "";
 
   const send = (a: Action) => act("editor", a);
+  /** ⌥← ⌥→: a frame, at the 30 a second shroom records. */
+  const FRAME = 1 / 30;
   const step = (s: EditStep) => void edit(s);
 
   const take = (s: unknown) => {
@@ -230,6 +232,30 @@
     put(ended ? Math.max(k[k.length - 1][0], to - END_SLACK) : to);
   }
 
+  /** The playhead held on the ruler: what was playing waits, and plays on from where it's
+   * let go (board “Editor — seeking”). */
+  let resume = false;
+  function hold(holding: boolean) {
+    if (!video) return;
+    if (holding) {
+      resume = !video.paused;
+      video.pause();
+    } else if (resume) {
+      resume = false;
+      play();
+    }
+  }
+
+  /** The arrows, Home and End: the playhead by a second, five, a frame, or to the edit's
+   * start or end. */
+  function nudge(by: number | "start" | "end") {
+    const k = playKeep;
+    if (!ready || !k.length) return;
+    if (by === "start") seek(k[0][0]);
+    else if (by === "end") seek(k[k.length - 1][1]);
+    else seek(Math.min(Math.max(pos + by, 0), duration));
+  }
+
   /** An end being dragged shows its frame (while paused): where the edit will start, or end. */
   function scrub(t: number) {
     if (!video || !video.paused || !ready) return;
@@ -249,9 +275,22 @@
     }, 1050);
   }
 
+  /** A part cut: one that reaches an end of the trim moves that end there instead, a trim,
+   * not a cut at the edge (A+: Bagrat, 2026-10-25). One that reaches both is the core's to
+   * refuse. */
+  function cutPart(start: number, end: number) {
+    const l = b?.list;
+    const atIn = !!l && start <= l.in + 1e-6;
+    const atOut = !!l && end >= l.out - 1e-6;
+    if (l && atIn !== atOut) {
+      trim = atIn ? { in: end, out: l.out } : { in: l.in, out: start };
+      trimmed(trim);
+    } else step({ op: "cut", start, end });
+  }
+
   function cut() {
     if (selection?.kind !== "range") return;
-    step({ op: "cut", start: selection.start, end: selection.end });
+    cutPart(selection.start, selection.end);
     selection = null;
   }
 
@@ -287,6 +326,16 @@
         // Delete never means "go back" in a window.
         e.preventDefault();
         if (body.editable) cut();
+        return;
+      }
+      const keys: Record<string, number | "start" | "end"> = { ArrowLeft: -1, ArrowRight: 1, Home: "start", End: "end" };
+      if (e.key in keys && !e.metaKey && !e.ctrlKey && !ask) {
+        // Never while a field holds the keyboard.
+        const t = e.target as HTMLElement | null;
+        if (t?.closest("input, textarea, [contenteditable]")) return;
+        e.preventDefault();
+        const k = keys[e.key];
+        nudge(typeof k === "number" ? k * (e.altKey ? FRAME : e.shiftKey ? 5 : 1) : k);
         return;
       }
       if (e.metaKey && !e.altKey && !e.ctrlKey && e.key.toLowerCase() === "z") {
@@ -414,8 +463,9 @@
           bind:trim
           onseek={seek}
           onscrub={scrub}
+          onhold={hold}
           ontrim={trimmed}
-          oncut={(start, end) => step({ op: "cut", start, end })}
+          oncut={cutPart}
           onputback={(index) => step({ op: "put-back", index })}
           onapply={(index) => step({ op: "apply", index })}
           onresize={(index, start, end) => step({ op: "resize", index, start, end })}
@@ -579,10 +629,10 @@
      the chip. */
   .timeline {
     flex: none;
-    padding: 26px 0 48px;
+    padding: 26px 0 42px;
   }
   .ruler-room {
-    height: 28px;
+    height: 34px;
   }
   .note {
     height: 66px;

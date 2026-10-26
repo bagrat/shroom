@@ -183,3 +183,53 @@ fn auto_cleanup_shares_naming_s_one_schedule_and_each_keeps_it_while_the_other_i
     wire::set_schedule(&c, &spec(&acc, &tok, &m), false).unwrap();
     assert!(schedules().is_empty(), "both off: no schedule");
 }
+
+/// N80: turning AI on or off says its parts as they begin — the page put up again, then its
+/// schedule — and ends only once the page itself says so.
+#[test]
+fn naming_says_its_parts_in_order_and_ends_when_the_page_says_so() {
+    let fake = Fake::start(State { subdomain: Some("bagrat".into()), ..State::fresh() });
+    let (acc, tok, m) = wired(&fake, "0.4.0");
+    let c = cloud(&fake);
+    let at = |h: &str| Space::at(h, &fake.page(h));
+    for on in [true, false] {
+        let seen = std::cell::RefCell::new(Vec::new());
+        wire::set_ai_parts(&c, &spec(&acc, &tok, &m), on, false, Some((&check(&at, "0.4.0"), HOST)), &|p| seen.borrow_mut().push(p)).unwrap();
+        assert_eq!(*seen.borrow(), [wire::AiPart::Page, wire::AiPart::Schedule]);
+        assert_eq!(ai_of(&fake), Some(on));
+    }
+}
+
+/// N80: a page that never says so is a re-wiring that didn't go through (law 12) — never a
+/// done said ahead of the page.
+#[test]
+fn naming_that_the_page_never_confirms_didnt_go_through() {
+    let fake = Fake::start(State { subdomain: Some("bagrat".into()), ..State::fresh() });
+    let (acc, tok, m) = wired(&fake, "0.4.0");
+    let c = cloud(&fake);
+    // Asked somewhere nothing answers: the page never says its AI is on.
+    let never = |_: &str| Space::at(HOST, "http://127.0.0.1:9");
+    let r = wire::set_ai_parts(&c, &spec(&acc, &tok, &m), true, false, Some((&check(&never, "0.4.0"), HOST)), &|_| {});
+    assert!(matches!(r, Err(WireError::NotAnswering)), "{r:?}");
+}
+
+/// N80: a page still answering with its old AI keeps the run waiting, and it ends as a
+/// didn't-go-through — never a done because the calls answered.
+#[test]
+fn naming_waits_for_the_pages_new_word() {
+    for on in [true, false] {
+        let fake = Fake::start(State { subdomain: Some("bagrat".into()), ..State::fresh() });
+        let (acc, tok, m) = wired(&fake, "0.4.0");
+        let c = cloud(&fake);
+        if !on {
+            wire::set_ai(&c, &spec(&acc, &tok, &m), true, false).unwrap();
+        }
+        // Another space's page, saying the old word whatever this one now has.
+        let stale = Fake::start(State { subdomain: Some("bagrat".into()), ..State::fresh() });
+        let (sa, st, sm) = wired(&stale, "0.4.0");
+        wire::set_ai(&cloud(&stale), &spec(&sa, &st, &sm), !on, false).unwrap();
+        let old = |h: &str| Space::at(h, &stale.page(h));
+        let r = wire::set_ai_parts(&c, &spec(&acc, &tok, &m), on, false, Some((&check(&old, "0.4.0"), HOST)), &|_| {});
+        assert!(matches!(r, Err(WireError::NotAnswering)), "on {on}: {r:?}");
+    }
+}

@@ -255,14 +255,14 @@ describe("serving and copying it", () => {
     expect((await req(env, `/m/${ID}/thumb-0123456789abcdef.gif`)).status).toBe(404);
   });
 
-  it("puts Copy thumbnail beside Copy link on the owner page, shown once the video plays", async () => {
+  it("puts Copy thumbnail beside Copy link on the owner page, there from the first paint, greyed until the video plays (Bagrat, 2026-10-25)", async () => {
     const env = space({ [`meta/${ID}.json`]: metaOf({ thumb: { title: "Where the 502s come from", gif: "thumb-0123456789abcdef.gif" } }) });
     const cookie = await cookieFor(env);
     const live = await (await req(env, `/${ID}`, { headers: { cookie } })).text();
     expect(live).toContain(`<button class="copy" id="c" data-tip="${COPY.copyLink}">${COPY.copyLink}</button><button class="copy thumb" id="th" data-tip="${COPY.copyThumbnail}">${COPY.copyThumbnail}</button>`);
     const waiting = space({ [`meta/${ID}.json`]: metaOf({ state: "uploading", media: null }) });
     const page = await (await req(waiting, `/${ID}`, { headers: { cookie: await cookieFor(waiting) } })).text();
-    expect(page).toMatch(new RegExp(`<button class="copy thumb" id="th" [^>]* hidden>${COPY.copyThumbnail}</button>`));
+    expect(page).toContain(`<button class="copy thumb" id="th" data-tip="${COPY.preparingThumbnail}" aria-disabled="true">${COPY.copyThumbnail}</button>`);
     // A viewer's page has them too (N46, the viewer's ruling) — see below.
     expect(await (await req(env, `/${ID}`)).text()).toContain(COPY.copyThumbnail);
   });
@@ -366,5 +366,33 @@ describe("Copy thumbnail waits until its picture is ready (N46; Bagrat: “Yes d
     expect(page).toMatch(/\[data-tip\]::after\{content:attr\(data-tip\);position:absolute;top:calc\(100% \+ 8px\)/);
     expect(page).not.toMatch(/id="(c|th)" title=/);
     expect(await owner({ media })).toContain(`<span id="dl" data-tip="${COPY.download}">`);
+  });
+
+  // A page opened while an edit waits for its copy has nothing to draw from (N63): the copy's
+  // first frame. The status names the first frame Copy thumbnail draws from now (`drawFrom`),
+  // and the page follows it both ways: the copy landing (draw from it and wake), the edit put
+  // back (draw from the recording's own and wake), a press making the copy stale (grey, nothing
+  // to draw from yet). The orchestrator relaying Bagrat's rule of 2026-10-25: a button that
+  // never gets ready is a bug.
+  it("follows the first frame it draws from as the status names it, both ways, waking in place", async () => {
+    const waiting = { edits: { version: 1, source_duration: 150, in: 0, out: 150, cuts: [{ start: 1, end: 20, kind: "manual", applied: true }], rev: 3 } };
+    const page = await owner(waiting);
+    expect(page).toContain(`"from":"","psrc":"","tsrc":""`);
+    expect(page).toContain(`<button class="copy thumb" id="th" data-tip="${COPY.preparingThumbnail}" aria-disabled="true">`);
+    // The status names what the page as served would draw from: nothing while the copy is on
+    // its way, the recording's own first frame and teaser without an edit.
+    const st = async (over) => JSON.parse(await (await req(space({ [`meta/${ID}.json`]: metaOf(over) }), `/_shroom/status/${ID}`)).text());
+    expect((await st(waiting)).drawFrom).toBeNull();
+    expect((await st({})).drawFrom).toEqual({ from: "poster.jpg", psrc: `/m/${ID}/poster.jpg`, tsrc: `/m/${ID}/teaser.mp4`, teaser: true });
+    // The page's drawing follows it: a new first frame (or none) starts over; the same, nothing.
+    expect(THUMB_JS).toContain(`source:function(p){var f=p&&p.from||"";if(f===c.from)return;c.from=f;c.psrc=f?p.psrc:"";c.tsrc=f?p.tsrc:"";c.teaser=!!(f&&p.teaser);c.thumb=null;c.gif=false;gen++;cb(false);if(f&&c.live)make()}`);
+    expect(page).toContain(`if(s.drawFrom!==undefined)th.source(s.drawFrom);`);
+    // A picture says the first frame it was drawn from when it began, never one that came since,
+    // and one begun before the page started over is never stored (review of B252).
+    expect(THUMB_JS).toContain(`function store(b,title,from){`);
+    expect(THUMB_JS).toContain(`"x-shroom-from":from`);
+    expect(THUMB_JS).toContain(`var my=++gen,from=c.from,`);
+    expect(THUMB_JS).toContain(`loop(title).then(function(b){return my===gen?store(b,title,from):null})`);
+    expect(THUMB_JS).toContain(`still(title).then(function(b){return my===gen?store(b,title,from):null})`);
   });
 });

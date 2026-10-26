@@ -178,7 +178,7 @@ Not built; P1 passed (D:B35). See history/design/WORKER-INTERFACE.md §2.5.
 | **Join code** | the `/join/<code>` path; peek and join bodies | the right to consume one pending invite | Cancel, use, expiry |
 | **Owner cookie** (a browser) | `shroom_owner` | the issuing device is active (metadata powers, and one picture per title beside what it may rename, D:B164) | removing that device or its member |
 | **`k`** | `?k=` on `/<id>` | one redeem of a grant | the redeem, or 600 s |
-| **Recording credential** | S3 SigV4 + session token, direct to R2 | R2 enforces `rec/<id>/` + `meta/<id>.json` | expiry: 7 days upload, 15 min manage |
+| **Recording credential** | S3 SigV4 + session token, direct to R2 | R2 enforces `rec/<id>/` + `meta/<id>.json` | expiry: 1 hour upload (the Mac re-mints the same recording's near its end), 15 min manage |
 
 No credential is needed for the public pages, `/m/`, `/d/`, status, `/oembed`, ping, the
 icon, or `/join/<code>` (which reads a cookie only to pick a face).
@@ -300,7 +300,7 @@ cred   = {accessKeyId: key_id, secretAccessKey: hex(sha256(jwt)), sessionToken: 
 
 | Purpose | TTL | Rule |
 |---|---|---|
-| `upload` | 604800 s | Owner (§2.4) is someone else → 403 `not-yours` (owner-class too). Deleted or sealed → 410 `deleted`. No owner: spend the budget, then `ledgerCreate`; lost to another → 403 `not-yours`. |
+| `upload` | 3600 s | Owner (§2.4) is someone else → 403 `not-yours` (owner-class too). Deleted or sealed → 410 `deleted`. No owner: spend the budget, then `ledgerCreate`; lost to another → 403 `not-yours`. |
 | `manage` | 900 s | Someone else's and the caller isn't owner-class → 403 `not-yours` (before existence). No meta or no owner → 404 `absent`. Deleted or sealed and not owner-class → 410 `deleted`. |
 
 Then the parent. If it is missing, the Worker sets `health.json` to `blocked`/`no-parent`
@@ -360,14 +360,14 @@ Page routes add `rec/<id>/…`. The join page reads the roster and `cookie.key` 
 
 | Leaked | Can | Ends when |
 |---|---|---|
-| a member's Mac | as that member: ≤ 20 new recordings/h; list, rename and delete its own; key its own pages (≤ 60/h); report `refused` on its own, `ok` on any. Never others' ids or labels, `.shroom/`, or invites | Remove (next call 403); issued upload credentials ≤ 7 days |
+| a member's Mac | as that member: ≤ 20 new recordings/h; list, rename and delete its own; key its own pages (≤ 60/h); report `refused` on its own, `ok` on any. Never others' ids or labels, `.shroom/`, or invites | Remove (next call 403); issued upload credentials within the hour |
 | a token-less owner Mac | list and delete anything; manage members; remove token-less owner Macs. Not token Macs, deploys or repair | any owner-class Remove; a fresh token always recovers |
 | a token Mac | everything | roll the token, **then** a live-token Mac re-places `R2_PARENT` |
 | a pending member link | one join under the invite's label | Cancel; the real invitee then sees `join-used` |
 | a pending own-Mac link | owner-class for an hour (the riskiest; no Cancel row in v1) | its hour or use; then Remove… |
 | a cookie | rename what it may edit, and store a picture beside it (≤ 40 per video, capped in size, D:B164); the mark if owner-class. Never list, delete, mint | removing its device or member |
 | `k` | one redeem | the redeem, or 600 s |
-| a recording credential | its one recording's bytes and meta. Never un-delete a sealed one | 7 days / 15 min |
+| a recording credential | its one recording's bytes and meta. Never un-delete a sealed one | 1 hour / 15 min |
 | `R2_PARENT` | the token's R2 reach (no response ever carries it) | roll, then re-place |
 | a false health report | flip owner pages' waiting line | the next true report or enroll |
 
@@ -791,8 +791,8 @@ invites are accepted, but v1 offers no control for them (§6.4).
 | already removed or left | 204, no write |
 | active | the member and **every active device of theirs** → `removed` with `endedAt` → 204 |
 
-The next mint, `k` or cookie use fails. Minted credentials finish within 7 days (N32,
-SM:1365). The label is kept.
+The next mint, `k` or cookie use fails. Minted credentials end within the hour (N32,
+SM:1365): the re-mint an upload needs as its credential nears its end is refused. The label is kept.
 
 ### 4.15 `DELETE /_shroom/api/devices/<did | self>`
 
@@ -831,7 +831,7 @@ HTML answers are 200 `text/html`, `noindex`, `no-store`, `no-referrer`, CSP
 | Route | Behaviour |
 |---|---|
 | `/_shroom/hls.js` | `.shroom/player/hls.min.js`, immutable for a year |
-| `/_shroom/status/<id>` | Public JSON, not shroom-shaped. Absent → `waiting`. Deleted or sealed → `removed`. Live with HLS, or baked (D:B197, §4.18) → `{live, poster, mp4, teaser, thumb, dur, drained}` (`thumb`: the newest Copy thumbnail picture for the title and drawn from the first frame the video shows now — the record's `thumb` with its `from` current, see the thumbnail POST — or null; D:B164. `dur`: the length in seconds, 0 when unknown, which a page opened while the video uploaded draws on its picture; D:B165) (+ `pct`, `stalled` until drained). With an edit (N63, D:B195; §4.18): `dur` is the edited length, `keep` the ranges that play, `copy` `{src, dur, poster}` once its permanent copy is current; `mp4` says Download has something to hand over, `poster`/`teaser` whether the page shows a first frame and a teaser — never one of a part that's cut (§4.18). A baked recording with no edit (D:B197: `bakedFrom` non-empty) names its own file as `copy` the same way, so a player the bake left on the original (its files 404) moves to it; a player already on that file stays. An edit that leaves nothing to play (its applied cuts cover the whole trim, or neither the record nor the list has a length) → `unavailable`, never the recording as it was. Uploading → `{uploading, pct, stalled}`. Else, or a throwing read → `unavailable` (D:B94). `pct` ≤ 99. `stalled` = `progress.updatedAt` (else `createdAt`) older than 120 s. Live, it may add `cuts` (N65, D:B200 c): `"coming"` while the space hears its takes (an `AI` binding, N66), the take went live under 5 min ago (`publishedAt`) and its edit list carries no plan mark (`edits.voice`), unless `naming.later` is set; once planned with voice cuts, a short base-36 tag of their rows, which any press changes. Never a word that was cut. |
+| `/_shroom/status/<id>` | Public JSON, not shroom-shaped. Absent → `waiting`. Deleted or sealed → `removed`. Live with HLS, or baked (D:B197, §4.18) → `{live, poster, mp4, teaser, thumb, dur, drained}` (`thumb`: the newest Copy thumbnail picture for the title and drawn from the first frame the video shows now — the record's `thumb` with its `from` current, see the thumbnail POST — or null; D:B164. `dur`: the length in seconds, 0 when unknown, which a page opened while the video uploaded draws on its picture; D:B165) (+ `pct`, `stalled` until drained). With an edit (N63, D:B195; §4.18): `dur` is the edited length, `keep` the ranges that play, `copy` `{src, dur, poster}` once its permanent copy is current; `drawFrom` `{from, psrc, tsrc, teaser}` or null, what Copy thumbnail draws from now, which an open owner page follows (D:B252); `mp4` says Download has something to hand over, `poster`/`teaser` whether the page shows a first frame and a teaser — never one of a part that's cut (§4.18). A baked recording with no edit (D:B197: `bakedFrom` non-empty) names its own file as `copy` the same way, so a player the bake left on the original (its files 404) moves to it; a player already on that file stays. An edit that leaves nothing to play (its applied cuts cover the whole trim, or neither the record nor the list has a length) → `unavailable`, never the recording as it was. Uploading → `{uploading, pct, stalled}`. Else, or a throwing read → `unavailable` (D:B94). `pct` ≤ 99. `stalled` = `progress.updatedAt` (else `createdAt`) older than 120 s. Live, it may add `cuts` (N65, D:B200 c): `"coming"` while the space hears its takes (an `AI` binding, N66), the take went live under 5 min ago (`publishedAt`) and its edit list carries no plan mark (`edits.voice`), unless `naming.later` is set; once planned with voice cuts, a short base-36 tag of their rows, which any press changes. Never a word that was cut. It may add `named: "coming"` (N82, D:B263) on the same terms while the full name isn't in (`named` absent or `named.early`; a typed title doesn't end it), so the owner page keeps its line until the name, chapters and captions are in. |
 | `/m/<id>/<file>` | No empty/`.`/`..` segment; only `m3u8 m4s mp4 jpg gif vtt` (else 404, D:B125; `gif` for Copy thumbnail's loop, D:B164). Reads `rec/<id>/<file>` beside the record: deleted or sealed → 404, record throws → 503, absent → served. While the record's edit has a current permanent copy (N63 step 3, D:B195) only the copy's own files and the recording's own first frame (`poster.jpg`, which a token-less Mac's Library fetches until the bake), while the edit keeps that frame, are served; the original's stream, `teaser.mp4`, `video.mp4` and anything else → 404, GET, HEAD and Range alike (a stale copy or no edit serves them again). A baked recording (D:B197) serves exactly the files its `media` names; with a newer copy current over it, that copy's files and its own poster while the new edit keeps its first frame. Copy thumbnail's `thumb-<16 hex>.gif\|jpg` (D:B164) are served whatever else is, so a paste already sent keeps its picture — unless an edit took something from the first 3 s the pictures show (the first frame, the teaser's first 3 s): when the record's edit or any bake (`bakedFrom[].keep`) doesn't start with a range from 0 to at least 3 s, only the record's current picture (`thumb`, its title and `from` current) is. Range → 206. `public, max-age=3600`. Media answers are `nosniff` with `content-security-policy: sandbox; default-src 'none'`. |
 | `/d/<id>` | The video as it plays, as an attachment named after the title: a live record with no edit and `media.mp4` → its own file, `rec/<id>/video.mp4` (or, baked, the `edit-<n>.mp4` its key names, §4.18); with an edit, its current permanent copy → `rec/<id>/edit-<n>.mp4` (a name `editsOf` validated, never one taken as is); an edit whose copy isn't up or that leaves nothing to play, or anything else → 404 (N63). Storage failure → 503. |
 | `/oembed?url=` | This origin's `/<id>` → `{version, type:"video", width, height, html (iframe ?embed=1), title?, thumbnail_*?}` (with an edit, N63: the thumbnail is its copy's own first frame once it's up, none when the copy has none; before, the recording's first frame only while the edit keeps it), else 404 |
@@ -884,7 +884,7 @@ Only the Worker writes it. `setHealth` reads first and puts only on a change (ab
 | deleted or sealed | anyone | "There's no video at this link." — a plain not found, 404 (B141) |
 | absent (B14 id) | mine, with a ledger entry or health `blocked` | the owner page's pending chrome (title field from the placeholder, sent once the record exists; Copy link; empty stage). Its line is the blocked words, else "Waiting for connection — your link already works." (D:B49 b, B53 c) |
 | absent | anyone else | on its way: 5 s refresh, stall clock (`sessionStorage`; stalled line after 120 s, D:B94 a) |
-| uploading, or live with HLS or baked | mine | the owner page: "Uploading — N%. Your link already works."; stalled and undrained, "Waiting for connection — …", or with health `blocked` "Waiting for your space — …" (owner-class) / `waitingFor(members[m].inviter)` (a member; no inviter → the connection line); drained, no line. Its title row ends with **Edit in shroom** (N69, D:B221): a plain link to `shroom://edit/<the page's host>/<id>`, drawn hidden until the upload drains (the poll brings it in), never on another's page or the embed |
+| uploading, or live with HLS or baked | mine | the owner page: "Uploading — N%. Your link already works."; stalled and undrained, "Waiting for connection — …", or with health `blocked` "Waiting for your space — …" (owner-class) / `waitingFor(members[m].inviter)` (a member; no inviter → the connection line); drained, no line. Its title row ends with **Edit in shroom** (N69, D:B221): a plain link to `shroom://edit/<the page's host>/<id>`, never on another's page or the embed. Copy link, Copy thumbnail, Download and Edit in shroom are all drawn from the first paint, in that order; one not ready is greyed (`aria-disabled="true"`): Copy thumbnail until its picture is stored, Download with no `href` until the single-file MP4 is up, Edit with its link kept in `data-href` until the upload drains. The poll wakes each in place, greys Download again when what plays changes (`shroom:keep`, starting the poll again if it had stopped) and wakes it when the new file is up (D:B250) |
 | uploading | others | on its way, or the stalled line |
 | live with HLS, or baked | others | the player (+ Download if `media.mp4`). It plays `video.mp4` when `media.mp4` is set and `rec/<id>/v0/stream.m3u8` (read beside the record) names one `EXT-X-MAP`; else `master.m3u8` (D:B177). The owner page and the embed choose the same way. **An edit** (`meta.edits`, N63, D:B195) rides the record already read: `editsOf` (a port of `shroom_edit::EditList::checked` + `keep`, clamped to `durationSec`, every applied cut read wherever it sits in the list) hands the player only the ranges that play (at most the first 500, `EDIT_KEEP_MAX`: past them playback ends rather than play a cut), never the list or its transcript text (`removed`, `resumes`, `why`). The player starts at the trim's in, skips each cut (every frame while playing, and on `timeupdate`/`seeking`), stops at the out, and counts its time, seek bar, ←/→ and Home/End in edited time; the edited length is the page's, the unfurl's `og:video:duration`, the status's and Copy thumbnail's. Download waits for the copy. An edit that leaves nothing to play is never read as no edit: the page, the owner page and the embed show the unavailable face, with no Download. No picture shows a part that's cut: until the copy is up the unfurl, oEmbed and the player's `poster` show the recording's first frame only while the edit keeps it (`poster.jpg` is frame 0), and no teaser (its 15 s can hold a cut), and a loaded player waits at the first range's start, so a trimmed-off first frame never shows. Once the edit's permanent copy is current (`copy.rev == rev`) the player plays `/m/<id>/<copy.file>` as it is, with the copy's own poster and teaser (page, unfurl, Copy thumbnail) — none when it has none, never the original's in their place; a player still on the original when the copy lands moves over to it when the original answers 404 (it asks the status). **Baked** (D:B197: the edit became the video — `hls: null`, `media` naming the copy's own files, `durationSec` its length, `edits` gone): the player plays `media.mp4`'s file and the page, unfurl and Download use `media`'s keys, each taken only when it sits directly under `rec/<id>/` and is a name of its slot's kind (`video.mp4` / `poster.jpg` / `teaser.mp4` or `edit-<n>.mp4` / `-poster.jpg` / `-teaser.mp4`); a record that still has its stream reads as before (a set slot is the fixed name). The stream's playlist is still read beside the record (B177: no round of its own) but a baked record's player never waits on it. `bakedFrom` never leaves the Worker. Edited again, its `edits` count on its own clock and everything above applies. **`shroom:keep`** (agreed with the voice-cut build, #59): a CustomEvent on the page's document, `detail` the ranges to play on the recording's clock, made safe as `editsOf` makes an edit (numbers only, clamped to `durationSec`, merged, at most 500) — the player takes them in place of the edit and moves a playhead in a cut on; it does nothing while the copy plays |
 | else | anyone | unavailable (30 s refresh) |
@@ -905,7 +905,7 @@ gone or over its cap shows Cloudflare's page.
 
 ### 4.20 `POST /_shroom/api/gone` — sealing a delete (D:B125)
 
-**Why.** An upload credential can rewrite its meta for seven days (N32), so a tombstone
+**Why.** An upload credential can rewrite its meta for the rest of its hour (N32), so a tombstone
 alone isn't final. `.shroom/gone/<id>` is out of every recording credential's reach.
 
 **Request:** device key, with `{"rec":"<16>"}` (else 400).
@@ -1007,9 +1007,12 @@ baked recording's own `edit-<n>.mp4` plays on its own clock). `done` once the fu
 The page asks on until `done` and the player is there, puts the chapters and captions into the
 player as it plays, redraws the bar when the chapters change, and asks once more whenever what
 plays changes (`shroom:keep`) — a page that shows chapters does that last part too (D:B241).
+A page whose title was typed before it opened asks too, for the chapters and captions; and when
+the status stops saying `named: "coming"`, it asks at once and the page's line fades once the
+answer is in the player (N82, D:B263). While the name is on its way, an untitled page's title field carries `data-naming` and `data-date`, which the same script takes away at a click, a name or the line's end (N84, D:B265).
 
 **`GET /_shroom/chapters/<id>`** and **`POST /_shroom/chapters/<id>`** — the owner's chapters
-(N78, D:B242): the maker's or an owner-class browser only, else 403; no record or deleted → 404
+(N85, D:B266): the maker's or an owner-class browser only, else 403; no record or deleted → 404
 (GET). GET answers `{"chapters":[[start,"title"],…],"panel":{mine,off,clock,total,rows}}`:
 `chapters` what the bar shows, `rows` one a chapter, `{s, t, title}` with `s` its start on the
 recording's clock now and `t` on the bar's (`null` while an edit cuts it out whole, or leaves it
@@ -1365,9 +1368,11 @@ member ends the cookie on its next use.
 
 - `worker.js`: `IFACE = 2`, `VERSION = "0.1.9"` (both in ping). `member::IFACE_MIN = 2`.
   Within an iface, routes and fields only grow; a break takes a new path and an iface bump.
-- **`VERSION` moves with every page change** (D:B61). `page-version.test.js` holds
-  `worker/page-version.json`'s fingerprint of `src/worker.js` + `vendor/hls.min.js` per
-  VERSION. It equals the app's version (`tauri.conf.json`;
+- **A published `VERSION`'s page never changes** (D:B61, B248). `page-version.test.js`
+  holds `worker/page-version.json`'s fingerprint of `src/worker.js` + `vendor/hls.min.js`
+  per VERSION. While no build of the tree's VERSION is out, a page change re-stamps its
+  row; once `v<VERSION>` is tagged (a release or an early build), the row is frozen
+  (`tools/page-version-out.sh`, CI) and a page change takes the next VERSION. It equals the app's version (`tauri.conf.json`;
   `the_bundled_pages_version_is_the_apps`).
 - **Deploys compare `VERSION`, never `iface`.** `wire::may_deploy_over` allows only strictly
   older pages, never an unreadable one (D:B50). Wiring keeps a current page and re-places

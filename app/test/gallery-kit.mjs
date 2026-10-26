@@ -31,13 +31,18 @@ export const gallery = (which) =>
  *  a 520×568 web area (dev/mac/scenarios/window-size.sh, 2026-10-17). */
 export const TITLE_BAR = 32;
 export function windowPage(label, fallback) {
-  let size = fallback;
-  try {
-    const src = readFileSync(join(repo, "app/src-tauri/src/runtime/presenter.rs"), "utf8");
-    const m = src.match(new RegExp(`label: ${label},[^}]*?width: ([\\d.]+), height: ([\\d.]+)`));
-    if (m) size = { width: Number(m[1]), height: Number(m[2]) };
-  } catch {}
+  const size = windowFrame(label, fallback);
   return { width: size.width, height: size.height - TITLE_BAR };
+}
+
+/** A window's frame, as its WindowSpec (`<LABEL>_WINDOW` in runtime/presenter.rs) has it. A
+ *  spec that can't be read fails loudly: a fallback silently kept would let the galleries
+ *  check against a size the runner no longer builds. */
+export function windowFrame(label, fallback) {
+  const src = readFileSync(join(repo, "app/src-tauri/src/runtime/presenter.rs"), "utf8");
+  const m = src.match(new RegExp(`const ${label}_WINDOW: WindowSpec = WindowSpec \\{[^}]*?width: ([\\d.]+), height: ([\\d.]+)`));
+  if (!m) throw new Error(`gallery-kit: no ${label}_WINDOW in runtime/presenter.rs (the galleries assumed ${fallback.width}×${fallback.height})`);
+  return { width: Number(m[1]), height: Number(m[2]) };
 }
 
 const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png" };

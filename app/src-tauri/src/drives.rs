@@ -1957,7 +1957,7 @@ pub enum Region6 {
     /// N68 on the owner's token Mac: a space with videos nobody has watched in months, one
     /// played today and one too small to matter. The Library's line, Suggested to clean up,
     /// each row's cost past the free 10 GB, Keep, a one-tap Delete and its Undo, a Delete
-    /// that goes, and Settings · General's Your videos with Count plays switched off and on.
+    /// that goes, and Settings' Space used and its Videos tab, Count plays switched off and on (N79).
     Cleanup,
 }
 
@@ -2637,9 +2637,18 @@ fn cleanup_titles(s: &Scene) -> Vec<String> {
     cleanup_view(s).map(|v| v.rows.iter().filter_map(|r| r.title.clone()).collect()).unwrap_or_default()
 }
 
-fn general_videos(s: &Scene) -> Option<shroom_core::scene::VideosGroup> {
+/// Settings' Videos tab (N79), when it shows.
+fn videos_pane(s: &Scene) -> Option<shroom_core::scene::VideosGroup> {
     match s.settings.as_ref().map(|w| &w.body.pane) {
-        Some(SettingsPane::General(g)) => g.videos.clone(),
+        Some(SettingsPane::Videos(v)) => Some(v.clone()),
+        _ => None,
+    }
+}
+
+/// Space used, in Settings · Space (N79), when it shows.
+fn space_used(s: &Scene) -> Option<String> {
+    match s.settings.as_ref().map(|w| &w.body.pane) {
+        Some(SettingsPane::Space(sp)) => sp.used.clone(),
         _ => None,
     }
 }
@@ -2830,18 +2839,23 @@ fn cleanup_drive(d: &Drive) -> Result<(), String> {
     d.rt.post(Event::WindowClosed(WindowKind::Library));
     d.wait("closed", 5, |s| s.library.is_none())?;
 
-    // Settings · General: Your videos, the space's size, and Count plays off and on again.
+    // Settings · Space: the space's size (N79); then Videos: Count plays off and on again.
     // The read Settings asks for meets a busy space once: the failure is in the run log.
     knob(&base, CLEANUP_HOST, "fault", serde_json::json!({ "prefix": "/_shroom/api/cleanup", "status": 500, "count": 1 }))?;
     d.open(Action::OpenSettings)?;
-    let s = d.wait("Your videos", 30, |s| general_videos(s).is_some_and(|v| v.used.is_some()))?;
-    let v = general_videos(&s).expect("videos");
-    d.check("Your videos: both switches on", v.heading == "Your videos" && v.count.on && v.count.enabled && v.suggest.on, format!("count {} suggest {}", v.count.on, v.suggest.on));
-    d.check("Space used: inside the free 10 GB now", v.used.as_deref().is_some_and(|u| u.ends_with("inside Cloudflare's free 10 GB")), format!("{:?}", v.used));
+    d.act(Surface::Settings, Action::SettingsTab(SettingsTab::Space));
+    let s = d.wait("Space used", 30, |s| space_used(s).is_some())?;
+    let used = space_used(&s);
+    d.check("Space used: inside the free 10 GB now", used.as_deref().is_some_and(|u| u.ends_with("inside Cloudflare's free 10 GB")), format!("{used:?}"));
+    d.after(2000);
+    d.act(Surface::Settings, Action::SettingsTab(SettingsTab::Videos));
+    let s = d.wait("Videos", 30, |s| videos_pane(s).is_some_and(|v| v.count.enabled))?;
+    let v = videos_pane(&s).expect("videos");
+    d.check("Videos: both switches on", v.count.on && v.count.enabled && v.suggest.on, format!("count {} suggest {}", v.count.on, v.suggest.on));
     d.after(2500);
     d.act(Surface::Settings, v.count.action.clone());
     // The switch moves at once and stays greyed until the space has taken it.
-    d.wait("Count plays off, taken", 20, |s| general_videos(s).is_some_and(|v| !v.count.on && v.count.enabled))?;
+    d.wait("Count plays off, taken", 20, |s| videos_pane(s).is_some_and(|v| !v.count.on && v.count.enabled))?;
     let sw = worker_object(&base, ".shroom/plays.json");
     d.check("the space's switch is off", sw.as_ref().is_some_and(|o| o["on"] == false), format!("{sw:?}"));
     play_today(&base, "Cdrive000billing")?;
@@ -2849,16 +2863,16 @@ fn cleanup_drive(d: &Drive) -> Result<(), String> {
     d.check("with it off, a play isn't counted", rec.as_ref().is_some_and(|r| r["plays"] == 4), format!("{:?}", rec.as_ref().map(|r| r["plays"].clone())));
     d.after(2000);
     let s = snapshot(&d.rt).ok_or("no scene")?;
-    let v = general_videos(&s).ok_or("no Your videos")?;
+    let v = videos_pane(&s).ok_or("no Videos tab")?;
     d.act(Surface::Settings, v.count.action.clone());
-    d.wait("Count plays on again, taken", 20, |s| general_videos(s).is_some_and(|v| v.count.on && v.count.enabled))?;
+    d.wait("Count plays on again, taken", 20, |s| videos_pane(s).is_some_and(|v| v.count.on && v.count.enabled))?;
     let sw = worker_object(&base, ".shroom/plays.json");
     d.check("the space's switch is on again", sw.as_ref().is_some_and(|o| o["on"] == true), format!("{sw:?}"));
     d.after(2000);
 
     // Delete videos nobody watches (N75): set here, on the Mac that set up the space.
-    let s = d.wait("the auto-cleanup pop-up, live", 10, |s| general_videos(s).and_then(|v| v.autoclean).is_some_and(|a| a.choices.iter().all(|c| c.enabled)))?;
-    let a = general_videos(&s).and_then(|v| v.autoclean).expect("the pop-up");
+    let s = d.wait("the auto-cleanup pop-up, live", 10, |s| videos_pane(s).and_then(|v| v.autoclean).is_some_and(|a| a.choices.iter().all(|c| c.enabled)))?;
+    let a = videos_pane(&s).and_then(|v| v.autoclean).expect("the pop-up");
     d.check("Your space deletes after Off · 15 · 30 · 60 days · a year", a.label == "Delete videos nobody watches" && a.choices.iter().map(|c| c.label.as_str()).collect::<Vec<_>>() == ["Off", "After 15 days", "After 30 days", "After 60 days", "After a year"], format!("{:?}", a.choices.iter().map(|c| &c.label).collect::<Vec<_>>()));
     d.check("it's Off as it ships", a.choices.iter().find(|c| c.selected).is_some_and(|c| c.label == "Off") && worker_object(&base, ".shroom/autoclean.json").is_none(), format!("{:?}", a.choices.iter().find(|c| c.selected).map(|c| &c.label)));
     d.check("its hint: how it counts, and the warning", a.hint.starts_with("Counted from the last time someone watched it"), a.hint.clone());
@@ -2871,23 +2885,25 @@ fn cleanup_drive(d: &Drive) -> Result<(), String> {
     d.check("turning it on asks first: two already qualify", sheet.title == "Delete videos nobody watches for 15 days?" && sheet.lines.first().is_some_and(|l| l.starts_with("Two videos already qualify.")) && labels == ["Cancel", "Turn on"], format!("{} / {:?} / {labels:?}", sheet.title, sheet.lines));
     d.after(2500);
     d.act(Surface::Settings, Action::ConfirmAutoclean);
-    d.wait("After 15 days, taken", 20, |s| general_videos(s).and_then(|v| v.autoclean).is_some_and(|a| a.note.is_none() && a.choices.iter().any(|c| c.selected && c.label == "After 15 days")))?;
+    d.wait("After 15 days, taken", 20, |s| videos_pane(s).and_then(|v| v.autoclean).is_some_and(|a| a.note.is_none() && a.choices.iter().any(|c| c.selected && c.label == "After 15 days")))?;
     let cfg = worker_object(&base, ".shroom/autoclean.json");
     d.check("the space holds the setting: 15 days", cfg.as_ref().is_some_and(|c| c["days"] == 15), format!("{cfg:?}"));
     d.after(2500);
 
     // It needs Count plays: with the switch off, the pop-up greys and says so.
     let s = snapshot(&d.rt).ok_or("no scene")?;
-    let v = general_videos(&s).ok_or("no Your videos")?;
+    let v = videos_pane(&s).ok_or("no Videos tab")?;
     d.act(Surface::Settings, v.count.action.clone());
-    let s = d.wait("Count plays off again", 20, |s| general_videos(s).is_some_and(|v| !v.count.on && v.count.enabled))?;
-    let a = general_videos(&s).and_then(|v| v.autoclean).expect("the pop-up");
+    let s = d.wait("Count plays off again", 20, |s| videos_pane(s).is_some_and(|v| !v.count.on && v.count.enabled))?;
+    let a = videos_pane(&s).and_then(|v| v.autoclean).expect("the pop-up");
     d.check("Needs Count plays: greyed while plays aren't counted", a.hint == "Needs Count plays" && a.choices.iter().all(|c| !c.enabled), format!("{} / {:?}", a.hint, a.choices.iter().map(|c| c.enabled).collect::<Vec<_>>()));
     d.after(2500);
-    let v = general_videos(&s).ok_or("no Your videos")?;
+    let v = videos_pane(&s).ok_or("no Videos tab")?;
     d.act(Surface::Settings, v.count.action.clone());
-    d.wait("Count plays on, the pop-up live again", 20, |s| general_videos(s).is_some_and(|v| v.count.on && v.count.enabled && v.autoclean.as_ref().is_some_and(|a| a.choices.iter().all(|c| c.enabled))))?;
+    d.wait("Count plays on, the pop-up live again", 20, |s| videos_pane(s).is_some_and(|v| v.count.on && v.count.enabled && v.autoclean.as_ref().is_some_and(|a| a.choices.iter().all(|c| c.enabled))))?;
     d.after(1500);
+    // Settings opens on the last tab used: leave it on General, as it was.
+    d.act(Surface::Settings, Action::SettingsTab(SettingsTab::General));
     d.rt.post(Event::WindowClosed(WindowKind::Settings));
     d.wait("closed", 5, |s| s.settings.is_none())?;
 

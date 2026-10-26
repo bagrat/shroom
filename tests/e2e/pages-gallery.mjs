@@ -6,13 +6,15 @@
 // player dark under both — both are shot). Never the network, never a real space.
 //
 //   node tests/e2e/pages-gallery.mjs
+//   GALLERY_ONLY=seek-head-live,owner-icons-in-place node tests/e2e/pages-gallery.mjs   (some faces)
 //
 // Faces: owner-page (uploading, waiting-conn, waiting-space, fully-live), live, on-its-way,
 // on-its-way-untitled, on-its-way-stalled, unavailable, removed, embed-face (live and
 // removed); and a video the space has named (N66, N67): the owner's page named and waiting
 // for the free day, a viewer's with chapters in the seek bar on a laptop and a phone, and its
 // captions showing; and the owner's page left open, playing, while the name lands: the
-// chapters and captions come in place, with no reload. And the owner editing the chapters (N78):
+// chapters and captions come in place, with no reload; and while its name is on its way, the
+// title shimmering whole with no border, on a laptop and a phone, and the box a click brings up. And the owner editing the chapters (N85):
 // Edit chapters shut and open, a rename, an add at the playhead and a remove, a time too near,
 // the switch off, a video with none, a phone, and the icon greyed before the video plays. Prints one JSON summary; exits non-zero when a face is missing a line,
 // shows another face's, or throws.
@@ -68,6 +70,13 @@ function aiWords() {
   return words;
 }
 const AI_TRANSCRIPT = { v: 1, model: "@cf/openai/whisper-large-v3-turbo", language: "en", duration: AI_SECS, heard_through: AI_SECS, done: true, windows: 4, clock: null, words: aiWords(), tail: [] };
+/** A take that went live seconds ago in a space that listens, its name still on its way (N82). */
+const naming = (id) => meta(id, { durationSec: AI_SECS, title: "Untitled — Oct 26", titled: false, createdAt: iso(Date.now() - 60_000), publishedAt: iso(Date.now() - 10_000) });
+/** The title shimmering with no border, its line the one given (N84). */
+const shimmering = (want) => async (page) => {
+  const s = await page.evaluate(() => { const t = document.getElementById("t"), cs = getComputedStyle(t); return { naming: t.hasAttribute("data-naming"), line: t.placeholder, border: cs.borderTopColor, sliding: cs.animationName }; });
+  return s.naming && s.line === want && /rgba\(0, 0, 0, 0\)|transparent/.test(s.border) && s.sliding === "shroom-shim" ? [] : [`the borderless shimmer saying “${want}” (got ${JSON.stringify(s)})`];
+};
 const named = (id, over = {}) => meta(id, {
   durationSec: AI_SECS, title: AI_TITLE, titled: false, media: { ...media(id), mp4: null },
   named: { by: "ai", model: "@cf/openai/gpt-oss-120b", at: iso(Date.now()), rev: "0:0", clock: null, words: AI_TRANSCRIPT.words.length, title: AI_TITLE, chapters: AI_SAID.map(([s, t]) => [s, t]), language: "en" },
@@ -84,7 +93,8 @@ async function tipAt(page, at, finger) {
     }, at);
   } else {
     const r = await page.$eval(".seek", (sk) => { const b = sk.getBoundingClientRect(); return { x: b.left, y: b.top + b.height / 2, w: b.width, max: +sk.max }; });
-    await page.mouse.move(r.x + (r.w * (at + 0.5)) / r.max, r.y);
+    // Where the head would stand at that time: its travel is inset by its radius (7 px).
+    await page.mouse.move(r.x + 7 + ((r.w - 14) * (at + 0.5)) / r.max, r.y);
   }
   await page.waitForTimeout(200);
   return page.evaluate(() => {
@@ -107,6 +117,96 @@ const chaptered = (finger) => async (page) => {
   return missing;
 };
 
+/** Where the seek head is painted, against the player's box (Bagrat, 2026-10-25: at the end its
+ * right edge meets the box's right edge; at the start its left edge, the left). Read from the
+ * pixels of the bar with the picture hidden: the head is the only near-white there.
+ * @returns {Promise<{ left: number, right: number, width: number } | null>} head edges from the box's left */
+async function headIn(page) {
+  const r = await page.evaluate(() => {
+    const p = document.querySelector(".player").getBoundingClientRect(), s = document.querySelector(".seek").getBoundingClientRect();
+    document.querySelector("video").style.visibility = "hidden";
+    return { x: p.left, w: p.width, y: s.top, h: s.height };
+  });
+  const png = await page.screenshot({ clip: { x: r.x, y: r.y, width: r.w, height: r.h } });
+  await page.evaluate(() => { document.querySelector("video").style.visibility = ""; });
+  return page.evaluate(async ({ b64, w }) => {
+    const img = new Image(); img.src = "data:image/png;base64," + b64; await img.decode();
+    const k = document.createElement("canvas"); k.width = img.naturalWidth; k.height = img.naturalHeight;
+    const x = k.getContext("2d"); x.drawImage(img, 0, 0);
+    const d = x.getImageData(0, 0, k.width, k.height).data, scale = k.width / w;
+    let lo = Infinity, hi = -1;
+    for (let i = 0; i < d.length; i += 4) if (d[i] > 215 && d[i + 1] > 215 && d[i + 2] > 215) { const c = (i / 4) % k.width; lo = Math.min(lo, c); hi = Math.max(hi, c); }
+    return hi < 0 ? null : { left: lo / scale, right: (hi + 1) / scale, width: w };
+  }, { b64: png.toString("base64"), w: r.w });
+}
+/** The colour of the bar's last 3 px, on its centre line: a fully loaded bar reads loaded to
+ * its end (review of B250: it kept a 7 px stub of the unloaded colour). */
+async function endOfBar(page) {
+  const r = await page.evaluate(() => {
+    const p = document.querySelector(".player").getBoundingClientRect(), s = document.querySelector(".seek").getBoundingClientRect(), cs = getComputedStyle(document.querySelector(".player"));
+    return { x: p.right - 3, y: s.top + s.height / 2 - 1, buf: cs.getPropertyValue("--player-buf").trim(), track: cs.getPropertyValue("--player-track").trim() };
+  });
+  const png = await page.screenshot({ clip: { x: r.x, y: r.y, width: 3, height: 2 } });
+  const px = await page.evaluate(async (b64) => {
+    const img = new Image(); img.src = "data:image/png;base64," + b64; await img.decode();
+    const k = document.createElement("canvas"); k.width = img.naturalWidth; k.height = img.naturalHeight;
+    const x = k.getContext("2d"); x.drawImage(img, 0, 0); const d = x.getImageData(0, 0, 1, 1).data; return [d[0], d[1], d[2]];
+  }, png.toString("base64"));
+  const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const near = (a, b) => a.every((v, i) => Math.abs(v - b[i]) <= 14);
+  return { px, buffered: near(px, hex(r.buf)), unloaded: near(px, hex(r.track)) };
+}
+/** The head at 0:00 and at the very end, on a laptop and a phone: inside the box, touching
+ * its edge (within a pixel of anti-aliasing); a fully loaded bar reads loaded to its end;
+ * with chapters (`starts`, past the first), each boundary on the head's travel, the first
+ * and last sections reaching the box's ends. */
+const headInside = (starts = null) => async (page) => {
+  const missing = [];
+  // Loaded first: the player fetches its stream on the first play.
+  await page.evaluate(() => { const v = document.querySelector("video"); v.muted = true; return v.play().catch(() => {}); });
+  const known = await page.waitForFunction(() => { const v = document.querySelector("video"); return isFinite(v.duration) && v.duration > 0 && v.readyState >= 1; }, null, { timeout: 15000 }).then(() => true, () => false);
+  if (!known) return ["the video's length, to seek to its end"];
+  for (const [width, height] of [[900, 640], [390, 844]]) {
+    await page.setViewportSize({ width, height });
+    await page.evaluate(() => { const v = document.querySelector("video"); v.pause(); v.currentTime = 0; });
+    await page.waitForTimeout(300);
+    const start = await headIn(page);
+    if (!start || Math.abs(start.left) > 1) missing.push(`at ${width}px, 0:00: the head's left edge on the box's (got ${JSON.stringify(start)})`);
+    const ended = await page.evaluate(() => new Promise((ok) => {
+      const v = document.querySelector("video");
+      v.muted = true; v.addEventListener("ended", () => ok(true), { once: true });
+      v.currentTime = Math.max(0, v.duration - 0.4); v.play().catch(() => ok(false)); setTimeout(() => ok(v.ended), 8000);
+    }));
+    await page.waitForTimeout(400);
+    const end = await headIn(page);
+    if (!ended || !end || Math.abs(end.right - end.width) > 1) missing.push(`at ${width}px, the end: the head's right edge on the box's (ended ${ended}, got ${JSON.stringify(end)})`);
+    if (starts) {
+      const ch = await page.evaluate(() => {
+        const xs = [...document.querySelectorAll(".chs i")].map((x) => x.getBoundingClientRect()), p = document.querySelector(".player").getBoundingClientRect(), d = +document.querySelector(".seek").max;
+        return { first: xs[0].left - p.left, last: p.right - xs[xs.length - 1].right, gaps: xs.slice(1).map((x, i) => (xs[i].right + x.left) / 2 - p.left), w: p.width, d };
+      });
+      const want = starts.map((t) => 7 + (t / ch.d) * (ch.w - 14));
+      if (Math.abs(ch.first) > 0.5 || Math.abs(ch.last) > 0.5 || ch.gaps.length !== want.length || ch.gaps.some((g, i) => Math.abs(g - want[i]) > 1.5)) missing.push(`at ${width}px: the chapters' boundaries on the head's travel, the ends at the box's (got ${JSON.stringify(ch)}, want ${JSON.stringify(want)})`);
+    }
+    // Loaded to its end, the head mid-way: the bar's last pixels are the loaded colour.
+    const full = await page.evaluate(() => new Promise((ok) => {
+      const v = document.querySelector("video"); v.pause(); v.currentTime = v.duration / 2;
+      const t = setInterval(() => { const b = v.buffered; if (b.length && b.end(b.length - 1) >= v.duration - 0.2 && b.start(0) <= 0.2) { clearInterval(t); ok(true) } }, 200);
+      setTimeout(() => { clearInterval(t); ok(false) }, 20000);
+    }));
+    await page.waitForTimeout(400);
+    const tail = await endOfBar(page);
+    if (full && !tail.buffered) missing.push(`at ${width}px: a fully loaded bar loaded to its end (got ${JSON.stringify(tail)})`);
+  }
+  await page.setViewportSize({ width: 900, height: 640 });
+  return missing;
+};
+/** The owner's title icons, each where it stands: its box, and whether it's greyed. */
+const iconsOf = (page) => page.evaluate(() => ["#c", "#th", "#dl a", "#ed"].map((q) => {
+  const el = document.querySelector(q); if (!el) return { q, missing: true };
+  const b = el.getBoundingClientRect();
+  return { q, x: Math.round(b.left * 2) / 2, y: Math.round(b.top * 2) / 2, w: b.width, greyed: el.getAttribute("aria-disabled") === "true", href: el.getAttribute("href") };
+}));
 /** The owner's chapters panel (owner-page-chapters): its lines by id, and the two with a time or a name. */
 const chLine = (id) => line("owner-page-chapters", `owner-page-chapters.${id}`);
 const addAt = (t) => chLine("add-a-chapter-at").replace("1:20", t);
@@ -220,6 +320,17 @@ const FACES = [
   // …or, the account's free day used up, that the name comes later; never an error.
   { face: "owner-naming-later", id: "OwnrDailyOwnrDly", owner: true, ai: true, record: (id) => meta(id, { durationSec: AI_SECS, title: "Untitled — Oct 18", titled: false, naming: { later: "daily" } }),
     lines: () => [line("owner-page", "owner-page.its-name-and-chapters-come")], absent: [NAMED_LINE] },
+  // While the name is on its way (N82, N84): the whole title shimmers with no border, its line
+  // in it (the short one on a phone); a click brings up the bordered box, the date its
+  // placeholder. A laptop's window (1280) fits the long line; a narrower one takes the short
+// one, as a phone does. The landed name is owner-named's.
+  { face: "owner-naming-shimmer", id: "OwnrShimOwnrShim", owner: true, ai: true, listens: true, viewport: { width: 1280, height: 760 }, record: (id) => naming(id), lines: () => [], act: shimmering(line("hearing", "hearing.ai-is-naming")) },
+  { face: "owner-naming-shimmer-phone", id: "OwnrShPhOwnrShPh", owner: true, ai: true, listens: true, phone: true, record: (id) => naming(id), lines: () => [], act: shimmering(line("hearing", "hearing.naming")) },
+  { face: "owner-naming-clicked", id: "OwnrShClOwnrShCl", owner: true, ai: true, listens: true, record: (id) => naming(id), lines: () => [], act: async (page) => {
+    await page.click("#t");
+    const s = await page.evaluate(() => { const t = document.getElementById("t"), cs = getComputedStyle(t); return { naming: t.hasAttribute("data-naming"), line: t.placeholder, border: cs.borderTopColor, focused: document.activeElement === t }; });
+    return s.naming || s.line !== "Untitled — Oct 26" || !s.focused || /rgba\(0, 0, 0, 0\)|transparent/.test(s.border) ? [`the bordered box with the date after a click (got ${JSON.stringify(s)})`] : [];
+  } },
   // A viewer's page: the chapters cut into the seek bar, the one under the pointer named in a
   // tip; the one playing beside the time and in the bar's spoken value; Captions in the row.
   { face: "live-chapters", id: "LiveChapLiveChap", ai: true, record: (id) => named(id, { titled: true }), lines: () => [AI_TITLE, `· ${AI_SAID[0][1]}`], absent: [NAMED_LINE], act: chaptered(false) },
@@ -243,7 +354,82 @@ const FACES = [
     const pressed = await page.$eval(".cc", (b) => b.getAttribute("aria-pressed"));
     return [...(pressed === "true" ? [] : ["Captions pressed"]), ...(shown && shown.startsWith("Next, the invoice") ? [] : [`a caption at 1:10 (got ${JSON.stringify(shown)})`])];
   } },
-  // The owner edits the chapters (N78, owner-page-chapters): Edit chapters among the title's
+  // Bagrat, 2026-10-25: the icons beside the title came in one by one and the row flickered.
+  // Opened while the video uploads, every one is there, the ones not ready greyed (a greyed
+  // Download goes nowhere); once it's fully up they wake where they stand: nothing moves.
+  { face: "owner-icons-in-place", id: "OwnrIconOwnrIcon", owner: true, engine: "chromium", record: (id) => uploading(id, 2, 5, 1000, { durationSec: 8 }),
+    before: async (page) => {
+      await page.evaluate((icons) => { window.__icons = icons; }, await iconsOf(page));
+      if (await page.$("#dl a")) await page.click("#dl a", { force: true });
+    },
+    // The take's own shape (16:10) comes with the go-live; an open page keeps the box it opened with.
+    golive: (id) => meta(id, { progress: { done: 9, total: 9, updatedAt: iso(Date.now()) } }), wait: () => true, pictures: [], lines: () => [], act: async (page) => {
+      const missing = [];
+      const before = await page.evaluate(() => window.__icons);
+      if (!before) return ["the page left (a greyed Download went somewhere)"];
+      for (const i of before) if (i.missing) missing.push(`${i.q} there from the first paint`);
+      for (const q of ["#th", "#dl a", "#ed"]) if (!before.find((i) => i.q === q)?.greyed) missing.push(`${q} greyed while it uploads`);
+      if (before.find((i) => i.q === "#dl a")?.href) missing.push("a greyed Download that goes nowhere");
+      const woke = await page.waitForFunction(() => document.querySelector("#dl a").getAttribute("href") && !document.querySelector("#ed").getAttribute("aria-disabled"), null, { timeout: 20000, polling: 250 }).then(() => true, () => false);
+      if (!woke) missing.push("Download and Edit in shroom awake once it's fully up");
+      // At the wake, and again once the upload line has gone (the drain gives its room back).
+      for (const when of ["awake", "the line gone"]) {
+        if (when !== "awake") await page.waitForFunction(() => document.getElementById("ul").hidden, null, { timeout: 15000 }).then(() => page.waitForTimeout(600), () => missing.push("the upload line gone at the drain"));
+        const after = await iconsOf(page);
+        for (const a of after) {
+          const b = before.find((i) => i.q === a.q);
+          if (b && (b.x !== a.x || b.y !== a.y || Math.abs(b.w - a.w) > 0.5)) missing.push(`${a.q} where it stood, ${when} (${b.x},${b.y} → ${a.x},${a.y})`);
+        }
+      }
+      return missing;
+    } },
+  // A page opened while an edit waits for its copy has nothing to draw Copy thumbnail from;
+  // when the copy lands under it, the picture is made from the copy and the button wakes, with
+  // no reload (2026-10-25: a button that never gets ready is a bug).
+  { face: "owner-thumb-after-copy", id: "OwnrCopyOwnrCopy", owner: true, engine: "chromium",
+    record: (id) => meta(id, { media: media(id, false), progress: { done: 9, total: 9, updatedAt: iso(Date.now()) }, edits: { version: 1, source_duration: 8, in: 0, out: 8, cuts: [{ start: 2, end: 3, kind: "manual", applied: true }], rev: 3 } }),
+    before: async (page, env, f) => {
+      const greyed = await page.$eval("#th", (b) => b.getAttribute("aria-disabled"));
+      await page.evaluate((g) => { window.__greyed = g; window.__stayed = true; }, greyed);
+      for (const [name, from] of [["edit-3.mp4", "teaser.mp4"], ["edit-3-poster.jpg", "poster.jpg"], ["edit-3-teaser.mp4", "teaser.mp4"]]) await env.BUCKET.put(`rec/${f.id}/${name}`, env.BUCKET.store.get(`rec/${f.id}/${from}`));
+    },
+    golive: (id) => meta(id, { media: media(id, false), progress: { done: 9, total: 9, updatedAt: iso(Date.now()) },
+      edits: { version: 1, source_duration: 8, in: 0, out: 8, cuts: [{ start: 2, end: 3, kind: "manual", applied: true }], rev: 3, copy: { rev: 3, file: "edit-3.mp4", duration: 7, poster: "edit-3-poster.jpg", teaser: "edit-3-teaser.mp4" } } }),
+    wait: () => true, pictures: [], lines: () => [], act: async (page, env, f) => {
+      const missing = [];
+      if (await page.evaluate(() => window.__greyed) !== "true") missing.push("Copy thumbnail greyed while the copy is on its way");
+      const woke = await page.waitForFunction(() => !document.getElementById("th").getAttribute("aria-disabled"), null, { timeout: 45000, polling: 250 }).then(() => true, () => false);
+      if (!woke) missing.push("Copy thumbnail awake once the copy is up, with no reload");
+      if (!(await page.evaluate(() => window.__stayed))) missing.push("the same page (it reloaded)");
+      const from = env.BUCKET.json(metaKey(f.id))?.thumb?.from;
+      if (from !== "edit-3-poster.jpg") missing.push(`a picture drawn from the copy's first frame (got ${JSON.stringify(env.BUCKET.json(metaKey(f.id))?.thumb ?? null)})`);
+      return missing;
+    } },
+  // The edit put back while its copy was on its way (every cut on again, as the strip or the
+  // editor does): the page follows the first frame back to the recording's own and wakes.
+  { face: "owner-thumb-after-undo", id: "OwnrUndoOwnrUndo", owner: true, engine: "chromium",
+    record: (id) => meta(id, { media: media(id, false), progress: { done: 9, total: 9, updatedAt: iso(Date.now()) }, edits: { version: 1, source_duration: 8, in: 0, out: 8, cuts: [{ start: 0, end: 3, kind: "manual", applied: true }], rev: 3 } }),
+    before: async (page) => { await page.evaluate((g) => { window.__greyed = g; window.__stayed = true; }, await page.$eval("#th", (b) => b.getAttribute("aria-disabled"))); },
+    golive: (id) => meta(id, { media: media(id, false), progress: { done: 9, total: 9, updatedAt: iso(Date.now()) }, edits: { version: 1, source_duration: 8, in: 0, out: 8, cuts: [{ start: 0, end: 3, kind: "manual", applied: false }], rev: 4 } }),
+    wait: () => true, pictures: [], lines: () => [], act: async (page, env, f) => {
+      const missing = [];
+      if (await page.evaluate(() => window.__greyed) !== "true") missing.push("Copy thumbnail greyed while the copy is on its way");
+      // What plays changed (the page's own press, or the poll's pull, says so).
+      await page.evaluate(() => document.dispatchEvent(new CustomEvent("shroom:keep", { detail: null })));
+      const woke = await page.waitForFunction(() => !document.getElementById("th").getAttribute("aria-disabled"), null, { timeout: 45000, polling: 250 }).then(() => true, () => false);
+      if (!woke) missing.push("Copy thumbnail awake once the edit is put back, with no reload");
+      if (!(await page.evaluate(() => window.__stayed))) missing.push("the same page (it reloaded)");
+      const from = env.BUCKET.json(metaKey(f.id))?.thumb?.from;
+      if (from !== "poster.jpg") missing.push(`a picture drawn from the recording's own first frame (got ${JSON.stringify(env.BUCKET.json(metaKey(f.id))?.thumb ?? null)})`);
+      return missing;
+    } },
+  // Bagrat, 2026-10-25: the seek head inside the bar, on every face that plays.
+  { face: "seek-head-live", id: "SeekLiveSeekLive", record: (id) => meta(id, { media: media(id, false) }), lines: () => [TITLE], act: headInside() },
+  { face: "seek-head-live-chromium", id: "SeekChroSeekChro", engine: "chromium", record: (id) => meta(id, { media: media(id, false) }), lines: () => [TITLE], act: headInside() },
+  { face: "seek-head-owner", id: "SeekOwnrSeekOwnr", owner: true, record: (id) => meta(id, { media: media(id, false), progress: { done: 9, total: 9, updatedAt: iso(Date.now()) } }), lines: () => [], act: headInside() },
+  { face: "seek-head-embed", id: "SeekEmbdSeekEmbd", embed: true, record: (id) => meta(id, { media: media(id, false) }), lines: () => [], absent: [TITLE], act: headInside() },
+  { face: "seek-head-chapters", id: "SeekChapSeekChap", ai: true, engine: "chromium", record: (id) => named(id, { titled: true }), lines: () => [AI_TITLE], act: headInside(AI_SAID.slice(1).map(([t]) => t)) },
+  // The owner edits the chapters (N85, owner-page-chapters): Edit chapters among the title's
   // icons opens the panel under the player; nothing for chapters shows until it's clicked.
   { face: "owner-chapters-closed", id: "ChapShutChapShut", owner: true, ai: true, engine: "chromium", record: (id) => named(id), lines: () => [], absent: [chLine("show-in-the-seek-bar"), chLine("done")],
     act: async (page) => {
@@ -370,6 +556,8 @@ async function chipIn(browser, bytes) {
 }
 
 async function main() {
+  const only = process.env.GALLERY_ONLY ? process.env.GALLERY_ONLY.split(",") : null;
+  if (only) FACES.splice(0, FACES.length, ...FACES.filter((f) => only.includes(f.face)));
   fs.mkdirSync(out, { recursive: true });
   const files = encode();
   const long = encodeLong();
@@ -409,7 +597,7 @@ async function main() {
         // A face that saves starts each scheme from its record as written.
         if (f.saves) await env.BUCKET.put(metaKey(f.id), f.record(f.id));
         const engine = f.engine === "chromium" ? (chrome ??= await chromium.launch()) : browser;
-        const context = await engine.newContext({ colorScheme: scheme, ...(f.phone ? { viewport: { width: 390, height: 844 }, hasTouch: true } : { viewport: { width: 900, height: 640 } }) });
+        const context = await engine.newContext({ colorScheme: scheme, ...(f.phone ? { viewport: { width: 390, height: 844 }, hasTouch: true } : { viewport: f.viewport ?? { width: 900, height: 640 } }) });
         if (f.owner) await context.addCookies([{ name: cname, value: cvalue, url: origin }]);
         const page = await context.newPage();
         if (f.hold) await page.route(f.hold, () => {});
@@ -420,7 +608,7 @@ async function main() {
         await page.waitForLoadState(f.hold ? "load" : "networkidle").catch(() => {});
         if (!f.record || f.record(f.id).includes('"live"')) await page.waitForTimeout(400);
         let clicked = true;
-        if (f.before) await f.before(page);
+        if (f.before) await f.before(page, env, f);
         if (f.golive) {
           // Back to uploading for this scheme's pass, then live under the open page.
           await env.BUCKET.put(metaKey(f.id), f.golive(f.id));
