@@ -25,48 +25,8 @@
 
 ## Next
 
-1. **0.1.7 is out** (2026-10-14, run 38528266164): installed 0.1.5s offer it as an update.
-   The heartbeat ran on Bagrat's Mac the same day, on `main` after the release — green,
-   exit 0 (the Heartbeat table). Still open: the update from 0.1.5 on a real install is
-   the first real test of B125's signer check (`grep 'updater not applied'` should find
-   nothing). The next release: bump (`tools/bump-version.sh`), merge, then **Actions →
-   Release → Run workflow** on `main` with Publish (RELEASING.md).
-2. The checkpoint sitting (`CHECKPOINT.md`, items 20–25 and the by-hand checks of
-   28–35, plus what came since — B119, DEVIATIONS #42, B125), then the ratifications
-   (1–6).
-3. “How to set up and use shroom” plays on the landing (17, B194). Intel is decided: Apple
-   silicon only (7, B167). Identity and signing (8) are done: 0.1.5
-   shipped signed.
-4. Send feedback from the popover is built (N60, B193), the waving hand his pick.
-5. **The editor is built** ([#61](https://github.com/bagrat/shroom/pull/61) *(the editor:
-   trim, cut, undo, markers, and edits on the share page)*; N63 and N64, ratified 2026-10-18;
-   B195–B199). Edit… in a live Library row opens it in a window of its own: trim, cut,
-   a cut's edges dragged to adjust it (B195 (g), Bagrat's ask once he'd seen it), Undo and
-   Redo, Revert. Done saves the edit into the record, and the link, unchanged,
-   plays it at once. The Mac then makes the final video and asks “Delete the original?”:
-   Yes, delete makes the edit the video now; otherwise the original goes two days on, by
-   the first of the space's Macs to run then (B197). Markers dropped while paused, or with
-   ⌥⌘M while recording, show as flags on its timeline (N64). What waits on Bagrat: items
-   37–39.
-6. Voice cuts (N65, provisional) are built: the owner page's strip, its press, the
-   cuts' word in the status and the page's one finishing line, which stays while a take is heard (B200), and the Mac's lane that plans a take once the space has
-   heard it and lands its cuts in the record (B201), how far back a line said again in other
-   words reaches weighed by Clef on the space's own account (B202); the cue is “shroom cut”, his pick (B203). They sit on the editor's edit list (N63) and come alive with N66's
-   transcript (the AI build); the editor's final copy lets Download follow them. Built ahead of the release call, which is Bagrat's.
-   Nothing else in-frame is queued: the build resumes on his answers.
-5. **Names, chapters and captions** (N66, N67, B205–B209) are built on their branch, off
-   by default, waiting for his review and the release call: the space names its videos,
-   places chapters in the seek bar and writes captions through the owner's own Cloudflare
-   account; a switch in Settings · Space on the setup Mac and a one-time card in its
-   Library turn it on. Checked live on the free-plan test account (B206).
-5. **The `shroom` command for coding agents is built and ratified** (N62, B215–B219;
-   [#58](https://github.com/bagrat/shroom/pull/58) *(the shroom command for coding agents)*):
-   the command inside the app and on PATH, many at once, the app's control socket behind
-   General's switch — its refusal carrying the link that opens Settings at the switch — the
-   start without the count and the agent label, and the guide at shroom.am/cli. Shipped in
-   0.1.25 (2026-10-19). Then `shroom edit` (N72, B225, item 42), ratified 2026-10-19: what a video's edit
-   is, one change a call saved as the editor's Done saves, and the app making its final
-   video.
+This file no longer keeps the backlog (2026-10-25). Ideas, questions and bug reports are
+welcome as [issues](https://github.com/bagrat/shroom/issues) on this repo.
 
 
 ## Waiting for Bagrat
