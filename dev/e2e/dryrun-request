@@ -1,0 +1,4 @@
+# A session asks .github/workflows/e2e-dryrun.yml for its own branch by committing here — never on main.
+# expect= is the version both install lines must give.
+expect=0.1.33
+asked=2026-10-26T05:10:00Z
