@@ -83,10 +83,10 @@
   {
    "n": 4,
    "title": "The quiet-take law",
-   "rule": "**The quiet-take law** *(N41)* — while a take is open (recording *or* paused), shroom puts nothing new on screen: invites, deep links, windows, the deferred page of an offline stop, update banners — all wait for the take to end. Of what shroom puts on screen mid-take, only the bubble and macOS's own indicator can ever appear in a take (the agent label and the marker toast show to the person only, left out of the recording — N62, N78). The Library, an editor and Settings, when the person has them open, are recorded like any other app's windows; shroom never opens one mid-take by itself (N83); the paused popover exists only after the pause is confirmed (POC §8). **And nothing that would end, move or replace the app runs mid-take** — Update, Disconnect, Leave, joining another space, Quit (⌘Q or the Dock, reachable when a window was already open) — their buttons grey with “You can do this once your recording is finished.”; a Quit request is declined silently while recording and opens the paused popover (its “no Quit while a take is open” note) while paused.",
+   "rule": "**The quiet-take law** *(N41)* — while a take is open (recording *or* paused), shroom puts nothing new on screen: invites, deep links, windows, the deferred page of an offline stop, update banners — all wait for the take to end. Of what shroom puts on screen mid-take, only the bubble and macOS's own indicator can ever appear in a take (the agent label and the marker toast show to the person only, left out of the recording — N62, N78). shroom's windows (the Library, an editor, Settings, Send feedback, setup), when the person has them open, are recorded like any other app's; shroom never opens one mid-take by itself (N83); the paused popover exists only after the pause is confirmed (POC §8). **And nothing that would end, move or replace the app runs mid-take** — Update, Disconnect, Leave, joining another space, Quit (⌘Q or the Dock, reachable when a window was already open) — their buttons grey with “You can do this once your recording is finished.”; a Quit request is declined silently while recording and opens the paused popover (its “no Quit while a take is open” note) while paused.",
    "invariants": [
     "Let take_open = state ∈ {recording, paused, and paused's morphs/auto-pause faces}. While take_open, no window, banner, invite, deep-link handling, deferred offline-stop page, or update banner becomes newly visible; the only shroom surfaces that may newly appear are the bubble overlay, the paused popover (only after the pause is confirmed) and its morphs (discard-confirm), and the auto-pause popovers (display-lost, mic-lost, camera-lost, mac-away, permission-lost, disk-full-stop); and, left out of every capture, the agent label (N62) and the marker toast for two seconds after ⌥⌘M (N78).",
-    "What every capture holds of shroom's (N83): the bubble, and the Library, every editor and Settings windows while they are on screen, like any other app's windows. Left out of every capture, from the moment each exists: the popover in every face (config, paused and its morphs, the auto-pause faces), the countdown, the agent label, the marker toast, and the onboarding and Send feedback windows.",
+    "What every capture holds of shroom's (N83): the bubble, and every shroom window while it is on screen (the Library, every editor, Settings, Send feedback, onboarding), like any other app's windows. Left out of every capture, from the moment each exists: the popover in every face (config, paused and its morphs, the auto-pause faces), the countdown, the agent label and the marker toast.",
     "Items that arrive while take_open (invite deep link, offline-stop page, update banner, windows) are queued and surface only after the take ends.",
     "While take_open, Update, Disconnect, Leave, join-another-space and Quit controls are disabled and show “You can do this once your recording is finished.”",
     "A Quit request (⌘Q or Dock) while recording causes no state change and no visible surface; while paused it opens/keeps the paused popover showing its “no Quit while a take is open” note; the process keeps running in both.",
@@ -1446,15 +1446,15 @@
   },
   {
    "id": "N83",
-   "title": "The Library, the editor and Settings show in a take",
-   "decision": "**Bagrat, 2026-10-25** (relayed by the orchestrator): the Library, the editor and Settings should show up in a recording, so a bug report of shroom itself shows what went wrong. Until now every shroom window was left out of every capture. (1) **Recorded like any app's:** the Library, every editor window and Settings, sheets included, whenever they are on screen during a take — open before it, or opened by the person mid-take. (2) **Left out, as before:** everything shroom says to the person around and during a take — the popover in every face (config, paused and its morphs, the auto-pause faces), the countdown, the agent label, the marker toast — and the onboarding and Send feedback windows. (3) **The bubble** stays as it is: recorded. (4) **Law 4 still holds:** shroom opens nothing new mid-take by itself; a window the person opens is theirs to record. (5) **One behavior for everyone**, no setting. Built: DECISIONS B264.",
+   "title": "shroom's windows show in a take",
+   "decision": "**Bagrat, 2026-10-25** (relayed by the orchestrator): the Library, the editor and Settings should show up in a recording, so a bug report of shroom itself shows what went wrong; **and, 2026-10-26** (relayed by the orchestrator, answering whether Send feedback stays out): anything that can appear during a take and would help such a report is recorded. Until now every shroom window was left out of every capture. (1) **Recorded like any app's:** every shroom window — the Library, every editor, Settings, Send feedback, onboarding — sheets included, whenever it is on screen during a take: open before it, or opened by the person mid-take. (2) **Left out, as before:** the countdown and the marker toast (both tell the person they stay out of the video: the count lifts the instant capture starts, N7; the toast says so in its hint, N78); the agent label (it would sit in every video an agent records, N62); and the popover in every face — it shows only once a pause has stopped the picture, so it never helps a report, and leaving it out keeps it from the take's last frame (POC §8). (3) **The bubble** stays as it is: recorded. (4) **Law 4 still holds:** shroom opens nothing new mid-take by itself; a window the person opens is theirs to record. (5) **One behavior for everyone**, no setting. Members' invite pill draws its code as a mask and the code never reaches the window (law 13), so a take of Settings can't show a usable link. Built: DECISIONS B264.",
    "status": "ratified",
    "date": "2026-10-25",
    "amends": [
     "law 4 (shroom's own windows the person has open are recorded; what shroom says mid-take stays out)",
     "bubble (the only thing of ours shroom puts into a take)",
     "The overlays (the bubble, the only overlay in a take)",
-    "The window (which windows a take records)"
+    "The window (every window is recorded in a take)"
    ],
    "amended_by": []
   }
@@ -1470,7 +1470,7 @@
   },
   {
    "name": "The window",
-   "may_do": "Lives: centered on the mushroom's display (N57), one at a time per kind, the editor's one per video (N73) | Opens: the editor (Edit…, N63), onboarding, Library, Settings, Send feedback (N60) | Rules: the dock icon while open; ✕ ≡ the retreat (N12); survives a browser round-trip; the Library, the editor and Settings are recorded in a take like any app's windows, onboarding and Send feedback left out (N83)  [UX-STATEMACHINE.md L1717]"
+   "may_do": "Lives: centered on the mushroom's display (N57), one at a time per kind, the editor's one per video (N73) | Opens: the editor (Edit…, N63), onboarding, Library, Settings, Send feedback (N60) | Rules: the dock icon while open; ✕ ≡ the retreat (N12); survives a browser round-trip; every window is recorded in a take like any app's (N83)  [UX-STATEMACHINE.md L1717]"
   },
   {
    "name": "The page",
@@ -5890,7 +5890,7 @@
    "surface": "overlay",
    "status": "ratified",
    "board": null,
-   "summary": "The corner bubble, born at `config`, not at the count (N22). Live from the moment the popover opens, so you see and place yourself before Start. It stays through the count and the take, and Camera off in the camera picker hides it live (DEVIATIONS #43). Draggable, not resizable. It uses the un-excluded preview-window trick with zero compositing. It never takes focus, and it is the only thing of ours shroom puts into a take (the Library, an editor and Settings are recorded too while the person has them open, like any app's windows — N83). Discard takes it away. If the bubble's camera disappears, the take is never interrupted; the bubble simply goes.",
+   "summary": "The corner bubble, born at `config`, not at the count (N22). Live from the moment the popover opens, so you see and place yourself before Start. It stays through the count and the take, and Camera off in the camera picker hides it live (DEVIATIONS #43). Draggable, not resizable. It uses the un-excluded preview-window trick with zero compositing. It never takes focus, and it is the only thing of ours shroom puts into a take (shroom's windows are recorded too while the person has them open, like any app's — N83). Discard takes it away. If the bubble's camera disappears, the take is never interrupted; the bubble simply goes.",
    "entry": "A camera is picked in the camera picker (not Camera off) and the source is a display (with Camera only as the source there is no bubble), from config's opening through countdown, recording and paused.",
    "said": [],
    "actions": [

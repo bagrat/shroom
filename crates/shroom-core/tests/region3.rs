@@ -281,24 +281,20 @@ fn the_marker_shortcut_is_held_with_the_pause_shortcut() {
     assert_eq!(r.w.take.as_ref().map(|t| (t.phase, t.markers)), Some((Phase::Recording, 1)), "the take goes on");
 }
 
-/// Law 4 as N83 has it (Bagrat, 2026-10-25): the Library, every editor and Settings are
-/// recorded in a take like any app's windows; the onboarding and Send feedback windows stay
-/// out of every capture, as the popover, the count, the agent label and the marker toast do
-/// (overlays, never windows: always left out).
+/// Law 4 as N83 has it (Bagrat, 2026-10-25 and 2026-10-26): every shroom window is recorded
+/// in a take like any app's — a bug report of shroom shows it. The popover, the count, the
+/// agent label and the marker toast are overlays, never windows: always left out.
 #[test]
-fn a_take_records_the_library_the_editor_and_settings_and_nothing_else_of_ours() {
+fn a_take_records_every_window_of_ours() {
     let spec = Spec::load();
     let law = spec.law(4).expect("law 4");
     assert!(law.cites.iter().any(|c| c == "N83"), "law 4 cites N83");
     let held = law.invariants.iter().find(|i| i.contains("(N83)")).expect("law 4's N83 invariant");
-    for name in ["Library", "editor", "Settings", "onboarding", "Send feedback", "popover", "countdown", "agent label", "marker toast"] {
+    for name in ["Library", "editor", "Settings", "Send feedback", "onboarding", "popover", "countdown", "agent label", "marker toast"] {
         assert!(held.contains(name), "law 4's N83 invariant names {name}");
     }
-    for kind in [WindowKind::Library, WindowKind::Settings, WindowKind::Editor(EditorId(1)), WindowKind::Editor(EditorId(7))] {
+    for kind in [WindowKind::Onboarding, WindowKind::Library, WindowKind::Settings, WindowKind::Feedback, WindowKind::Editor(EditorId(1)), WindowKind::Editor(EditorId(7))] {
         assert!(kind.recorded(), "{kind:?} shows in a take");
-    }
-    for kind in [WindowKind::Onboarding, WindowKind::Feedback] {
-        assert!(!kind.recorded(), "{kind:?} is left out of every take");
     }
 }
 
