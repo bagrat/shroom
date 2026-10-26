@@ -1247,10 +1247,12 @@ pub enum WindowKind {
 
 impl WindowKind {
     /// Whether a take records this window while it's on screen, like any app's (law 4, N83):
-    /// the Library, every editor and Settings, for a bug report of shroom itself. Onboarding
-    /// and Send feedback stay out of every capture, as the overlays do.
+    /// every one, so a bug report of shroom shows it. Only the overlays stay out of every
+    /// capture. A new kind of window says here which it is.
     pub fn recorded(self) -> bool {
-        matches!(self, WindowKind::Library | WindowKind::Settings | WindowKind::Editor(_))
+        match self {
+            WindowKind::Onboarding | WindowKind::Library | WindowKind::Settings | WindowKind::Feedback | WindowKind::Editor(_) => true,
+        }
     }
 }
 

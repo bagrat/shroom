@@ -1,6 +1,6 @@
 // Which of shroom's own windows are in a take's picture (N83, DECISIONS B264): the take the
 // own-windows drive made (`node app/test/take-drive.mjs own-windows`), read here by this Mac's
-// own ffmpeg. The drive lifted the Library, an editor and Settings above the pattern in turn,
+// own ffmpeg. The drive lifted the Library, an editor, Settings and Send feedback above the pattern in turn,
 // then the popover, the agent label and the marker toast, and its report gives the pattern's
 // counter just before each went up and just after it went. Each stretch is found in the take's
 // own frames by that counter (the take's clock and the drive's don't line up), and the frames

@@ -9,8 +9,8 @@
 //!   and unpublished, without ever meeting ENOSPC (law 2).
 //! - `--drive take <out> signals`: the bubble (a native panel that never takes the
 //!   keyboard, on the core's camera, dragged and remembered), which windows a take leaves
-//!   out (the popover and Send feedback, from creation) and which it records (the Library
-//!   and Settings, N83), Camera as the source (its preview, the count on its display,
+//!   out (the popover, from creation) and which it records (the Library, Settings and Send
+//!   feedback, N83), Camera as the source (its preview, the count on its display,
 //!   the preview staying through the take while the take still gets its frames,
 //!   `camera-lost` for the recorded camera — then Discard, so the room never outlives the
 //!   drive), then display takes interrupted by: the microphone leaving (`mic-lost`, Resume
@@ -59,7 +59,7 @@
 //!   picture, and the reader must be seen to find it there.
 //!
 //! - `--drive take <out> own-windows` (N83, DECISIONS B264): a first take, for an editor to
-//!   open on; then the Library, that editor and Settings open behind the pattern, and a take
+//!   open on; then the Library, that editor, Settings and Send feedback open behind the pattern, and a take
 //!   in which each is lifted above it in turn, then the popover, the agent label and the
 //!   marker toast. A capture that leaves nothing out sees each one (the proof it was up), and
 //!   the report gives the pattern's counter just before each went up and just after it went:
@@ -132,8 +132,9 @@ pub enum TakeDrive {
     LeftOut,
     /// The same with the count taken off the list: the take must have it in its picture.
     NotLeftOut,
-    /// A take with the Library, an editor and Settings shown over the pattern in turn, and
-    /// the popover, the label and the toast: the windows in its picture, the rest not (N83).
+    /// A take with the Library, an editor, Settings and Send feedback shown over the pattern
+    /// in turn, then the popover, the label and the toast: the windows in its picture, the
+    /// rest not (N83).
     OwnWindows,
     /// Camera as the source, a take kept — the hosted Mac's pattern camera only (B121).
     CameraTake,
@@ -964,8 +965,8 @@ fn signals(d: &D) -> Result<(), String> {
     let granted = probe::access(shroom_capture::camera_access()) == Access::Granted;
     let a_camera = cameras.iter().any(|c| !c.continuity);
 
-    // 1. The popover and Send feedback are left out of capture from creation; the Library
-    // and Settings are recorded like any app's (N83).
+    // 1. The popover is left out of capture from creation; the Library, Settings and Send
+    // feedback are recorded like any app's (N83).
     windows_excluded(d)?;
 
     // 2. The bubble and Camera as the source (the camera only on this Mac's own grant).
@@ -1012,17 +1013,10 @@ fn windows_excluded(d: &D) -> Result<(), String> {
     std::thread::sleep(Duration::from_millis(300));
     // Each window is made on the main thread: read after the windows themselves are (a
     // loaded Mac can still be making one when the Scene shows it).
-    let numbers: Vec<_> = [("library", "the Library", true), ("settings", "Settings", true), ("feedback", "Send feedback", false)]
-        .into_iter()
-        .map(|(label, name, recorded)| (name, recorded, crate::drives::poll(5, || window_number(&d.app, label))))
-        .collect();
+    let numbers: Vec<_> = [("library", "the Library"), ("settings", "Settings"), ("feedback", "Send feedback")].into_iter().map(|(label, name)| (name, crate::drives::poll(5, || window_number(&d.app, label)))).collect();
     let excluded = d.rt.excluded.lock().unwrap().clone();
-    for (name, recorded, n) in numbers {
-        if recorded {
-            d.check(&format!("{name}'s window is recorded in a take (N83)"), n.is_some_and(|n| !excluded.contains(&n)), format!("{n:?} not in {excluded:?}"));
-        } else {
-            d.check(&format!("{name}'s window is excluded from capture"), n.is_some_and(|n| excluded.contains(&n)), format!("{n:?} in {excluded:?}"));
-        }
+    for (name, n) in numbers {
+        d.check(&format!("{name}'s window is recorded in a take (N83)"), n.is_some_and(|n| !excluded.contains(&n)), format!("{n:?} not in {excluded:?}"));
     }
     // The popover's own panel — the window that shows — not the hidden host of its page.
     let app = d.app.clone();
@@ -1699,8 +1693,8 @@ fn left_out_take(d: &D, display: u32) -> Result<(), String> {
 
 // ── a take with shroom's own windows in it (N83) ──
 
-/// The least of the pattern's dark field the Library, an editor or Settings lights when it is
-/// in a picture: each covers most of the hosted Mac's 1024 × 768 display, centred.
+/// The least of the pattern's dark field one of shroom's windows lights when it is
+/// in a picture: each covers much of the hosted Mac's 1024 × 768 display, centred.
 const WINDOW_SEEN: f64 = 0.05;
 /// How long each stays up once a capture that leaves nothing out has seen it.
 const HELD_MS: u64 = 3000;
@@ -1747,7 +1741,7 @@ fn own_windows(d: &D) -> Result<(), String> {
     d.fact("skipped", serde_json::json!([]));
     let pattern = cover_with_pattern(&d.app)?;
     let result = own_windows_opened(d);
-    for kind in [WindowKind::Library, WindowKind::Settings] {
+    for kind in [WindowKind::Library, WindowKind::Settings, WindowKind::Feedback] {
         d.rt.post(Event::WindowClosed(kind));
     }
     if let Some(s) = snapshot(&d.rt) {
@@ -1781,6 +1775,9 @@ fn own_windows_opened(d: &D) -> Result<(), String> {
     d.config()?;
     d.act(Action::OpenSettings);
     d.wait("Settings", 10, |s| s.settings.is_some())?;
+    d.config()?;
+    d.act(Action::OpenFeedback);
+    d.wait("Send feedback", 10, |s| s.feedback.is_some())?;
     if snapshot(&d.rt).is_some_and(|s| s.popover.is_some()) {
         d.rt.post(Event::PopoverDismissed);
         d.wait("the popover closed", 5, |s| s.popover.is_none())?;
@@ -1788,7 +1785,7 @@ fn own_windows_opened(d: &D) -> Result<(), String> {
     // Their pages draw a moment after they show (a window's first paint takes seconds on a
     // hosted Mac); behind the pattern they draw unseen.
     std::thread::sleep(Duration::from_secs(4));
-    let windows = [(presenter::LIBRARY.to_string(), "the Library"), (editor, "the editor"), (presenter::SETTINGS.to_string(), "Settings")];
+    let windows = [(presenter::LIBRARY.to_string(), "the Library"), (editor, "the editor"), (presenter::SETTINGS.to_string(), "Settings"), (presenter::FEEDBACK.to_string(), "Send feedback")];
     let excluded = d.rt.excluded.lock().unwrap().clone();
     for (label, name) in &windows {
         let n = with_window(d, label.clone(), |w| w.windowNumber() as u32);
