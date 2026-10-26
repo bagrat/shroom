@@ -14,7 +14,7 @@
 // for the free day, a viewer's with chapters in the seek bar on a laptop and a phone, and its
 // captions showing; and the owner's page left open, playing, while the name lands: the
 // chapters and captions come in place, with no reload; and while its name is on its way, the
-// title shimmering whole with no border, on a laptop and a phone, and the box a click brings up. And the owner editing the chapters (N85):
+// title shimmering whole with no border, on a laptop and a phone, and the box a click brings up. And the owner editing the chapters (N86):
 // Edit chapters shut and open, a rename, an add at the playhead and a remove, a time too near,
 // the switch off, a video with none, a phone, and the icon greyed before the video plays. Prints one JSON summary; exits non-zero when a face is missing a line,
 // shows another face's, or throws.
@@ -429,7 +429,7 @@ const FACES = [
   { face: "seek-head-owner", id: "SeekOwnrSeekOwnr", owner: true, record: (id) => meta(id, { media: media(id, false), progress: { done: 9, total: 9, updatedAt: iso(Date.now()) } }), lines: () => [], act: headInside() },
   { face: "seek-head-embed", id: "SeekEmbdSeekEmbd", embed: true, record: (id) => meta(id, { media: media(id, false) }), lines: () => [], absent: [TITLE], act: headInside() },
   { face: "seek-head-chapters", id: "SeekChapSeekChap", ai: true, engine: "chromium", record: (id) => named(id, { titled: true }), lines: () => [AI_TITLE], act: headInside(AI_SAID.slice(1).map(([t]) => t)) },
-  // The owner edits the chapters (N85, owner-page-chapters): Edit chapters among the title's
+  // The owner edits the chapters (N86, owner-page-chapters): Edit chapters among the title's
   // icons opens the panel under the player; nothing for chapters shows until it's clicked.
   { face: "owner-chapters-closed", id: "ChapShutChapShut", owner: true, ai: true, engine: "chromium", record: (id) => named(id), lines: () => [], absent: [chLine("show-in-the-seek-bar"), chLine("done")],
     act: async (page) => {

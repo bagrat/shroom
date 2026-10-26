@@ -257,6 +257,10 @@ bash dev/mac/loop.sh run selftest settings    # ~4 min warm, ~7 cold; prints the
   must be in neither take. Take 1 must be the beep alone. Start any "other app" from the
   script, never from shroom: ScreenCaptureKit's `excludesCurrentProcessAudio` leaves out
   shroom's own children too (probed 2026-10-16), so a player shroom starts reads as silence.
+- **A Retina screen.** The runner's own is 1024 × 768 at 1×. `dev/mac/hidpi.m` makes a
+  virtual display of 1280 × 800 points at 2× the main one for as long as it runs;
+  `editor-2x` builds it with `clang` and runs the editor's drive there (proven 2026-10-25,
+  run 40244400746). A scenario that must look at 2× starts the same way.
 - **What it can't settle** — say so, don't stretch it. First-run permission prompts:
   the grants are written, never asked for. A real camera's picture and rate. Timing
   bars — repeated and skipped frames, A/V offset: `record` ends with 2 there, and a
