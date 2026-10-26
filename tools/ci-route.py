@@ -10,8 +10,9 @@ A change skips the Mac only when every path it touches is web (WEB below) and no
 reads it. "Reads" is found, not listed: every path-shaped string in the Mac lanes' sources
 (`include_str!`, `root.join("site/index.html")`, a node test's `join(ROOT, …)`), so a new
 test that reads a doc routes that doc to the Mac the day it lands. Anything not web —
-crates/, app/, tools/ (but a site-only one), installer/, .github/, spec/machine.json, a lockfile, a new top-level
-folder — runs the full Mac set. When in doubt, the Mac runs.
+crates/, app/, tools/ (but a site-only one), installer/, .github/, spec/machine.json (but a
+change to the landing's own state and the ledger, DEVIATIONS #58), a lockfile, a new
+top-level folder — runs the full Mac set. When in doubt, the Mac runs.
 """
 import json
 import re
@@ -89,6 +90,49 @@ def reads():
     return found
 
 
+# spec/machine.json is not web, but a change confined to the landing's own state and the
+# ledger can't reach a Mac lane: the app doesn't build from the JSON, and the one Mac lane
+# that reads it (the installer's tests) reads other states, by id (DEVIATIONS #58, ratified
+# by Bagrat 2026-10-26). Edges, rules, laws, groups, flags and every other state still run
+# the Mac. The self-test holds that no Mac lane names the landing.
+SPEC = "spec/machine.json"
+LANDING_STATES = {"landing"}
+SPEC_WEB = {"ledger"} | {f"states.{s}" for s in LANDING_STATES}
+
+
+def machine_diff():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("machine_diff", ROOT / "tools/machine-diff.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def landing_read_by_mac():
+    """The landing's states a Mac lane that reads the JSON names, quoted."""
+    named = set()
+    for src in mac_sources():
+        text = src.read_text(errors="replace")
+        if SPEC in text:
+            named |= {s for s in LANDING_STATES if f'"{s}"' in text}
+    return named
+
+
+def spec_reach(a, b, named):
+    """Why a change to the JSON from a to b reaches the Mac, or None when it can't."""
+    beyond = sorted(machine_diff().touched(a, b) - SPEC_WEB)
+    if beyond:
+        return f"touches {', '.join(beyond[:5])}{' …' if len(beyond) > 5 else ''}"
+    if named:
+        return f"the landing's state, which a Mac lane reads ({', '.join(sorted(named))})"
+    return None
+
+
+def spec_at(rev):
+    out = subprocess.run(["git", "show", f"{rev}:{SPEC}"], cwd=ROOT, capture_output=True, text=True)
+    return json.loads(out.stdout) if out.returncode == 0 else None
+
+
 def reaches_mac(path, read):
     if not web(path):
         return "not web"
@@ -96,6 +140,17 @@ def reaches_mac(path, read):
         if path == r or path.startswith(r.rstrip("/") + "/"):
             return f"read by {', '.join(sorted(read[r]))}"
     return None
+
+
+def reach(path, read, base, head):
+    if path != SPEC:
+        return reaches_mac(path, read)
+    mb = subprocess.run(["git", "merge-base", base, head], cwd=ROOT, capture_output=True, text=True).stdout.strip()
+    a, b = spec_at(mb) if mb else None, spec_at(head)
+    if a is None or b is None:
+        return "not web (added or removed)"
+    r = spec_reach(a, b, landing_read_by_mac())
+    return f"not web: {r}" if r else None
 
 
 def route(base, head):
@@ -106,7 +161,7 @@ def route(base, head):
     changed = [p for p in out.stdout.splitlines() if p]
     # A rename's old side counts as touched too: --no-renames lists both.
     read = reads()
-    why = [f"{p} — {r}" for p in changed if (r := reaches_mac(p, read))]
+    why = [f"{p} — {r}" for p in changed if (r := reach(p, read, base, head))]
     return bool(why) or not changed, why or (["(no changed files)"] if not changed else [])
 
 
