@@ -13,6 +13,7 @@ test that reads a doc routes that doc to the Mac the day it lands. Anything not 
 crates/, app/, tools/ (but a site-only one), installer/, .github/, spec/machine.json, a lockfile, a new top-level
 folder — runs the full Mac set. When in doubt, the Mac runs.
 """
+import json
 import re
 import subprocess
 import sys
@@ -140,9 +141,45 @@ def self_test():
         "worker/package.json": False,
     }
     bad = [f"{p}: want mac={w}, got {reaches_mac(p, read)!r}" for p, w in cases.items() if bool(reaches_mac(p, read)) != w]
+
+    # A change to spec/machine.json skips the Mac only when it touches the landing's own
+    # state and the ledger, and no Mac lane names the landing (DEVIATIONS #58, ratified).
+    import copy
+    spec = json.loads((ROOT / "spec/machine.json").read_text())
+
+    def changed(edit):
+        b = copy.deepcopy(spec)
+        edit(b)
+        return b
+
+    def ledger_row(b):
+        b["ledger"].append({"id": "N999", "title": "a landing change", "decision": "x", "status": "ratified"})
+
+    def landing(b):
+        b["states"]["landing"]["summary"] += " More."
+        b["states"]["landing"].setdefault("cites", []).append("N999")
+
+    spec_cases = {
+        "the landing's state and a ledger row": (lambda b: (landing(b), ledger_row(b)), set(), False),
+        "a ledger row alone": (ledger_row, set(), False),
+        "nothing": (lambda b: None, set(), False),
+        "the landing, but a Mac lane names it": (landing, {"landing"}, True),
+        "source-view (the installer's test reads it)": (lambda b: b["states"]["source-view"].update(summary="x"), set(), True),
+        "a new state": (lambda b: b["states"].update({"landing-two": dict(spec["states"]["landing"])}), set(), True),
+        "an edge from the landing": (lambda b: b["edges"].append({**spec["edges"][0], "label": "x"}), set(), True),
+        "a law": (lambda b: b["laws"].append("x"), set(), True),
+        "a rule": (lambda b: b["rules"][0].update(status="provisional"), set(), True),
+    }
+    for name, (edit, named, want) in spec_cases.items():
+        got = spec_reach(spec, changed(edit), named)
+        if bool(got) != want:
+            bad.append(f"spec/machine.json, {name}: want mac={want}, got {got!r}")
+    landing_named = landing_read_by_mac()
+    if landing_named:
+        bad.append(f"a Mac lane reads the landing's state ({', '.join(sorted(landing_named))}): DEVIATIONS #58 assumes none does")
     if bad:
         sys.exit("ci-route self-test:\n  " + "\n  ".join(bad))
-    print(f"ci-route self-test: {len(cases)} cases hold; the Mac lanes read {len(read)} web paths")
+    print(f"ci-route self-test: {len(cases) + len(spec_cases)} cases hold; the Mac lanes read {len(read)} web paths")
 
 
 def main(argv):
