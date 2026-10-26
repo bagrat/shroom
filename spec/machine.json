@@ -1107,7 +1107,8 @@
     "N58 (the demo's place: a box beside the pitch; its caption goes)"
    ],
    "amended_by": [
-    "N61"
+    "N61",
+    "N86"
    ]
   },
   {
@@ -1197,7 +1198,7 @@
    ],
    "amended_by": [
     "N76 (on by default; the offer, its confirm and Not now give way to a banner that says it's on)",
-    "N86 (the owner's chapters: the naming never writes them again)"
+    "N87 (the owner's chapters: the naming never writes them again)"
    ]
   },
   {
@@ -1213,7 +1214,7 @@
    ],
    "amended_by": [
     "N82 (the title shimmers while the name is on its way; a typed title still takes the chapters and captions)",
-    "N86 (the bar shows the owner's chapters when there are any)"
+    "N87 (the bar shows the owner's chapters when there are any)"
    ]
   },
   {
@@ -1485,6 +1486,18 @@
   },
   {
    "id": "N86",
+   "title": "shroom.am: the price as a slider in its own box",
+   "decision": "**A tester read the landing's price bar as a loading bar (2026-10-19)**; Bagrat asked for a more professional page with a price calculator in its place and was shown five whole-page directions, then five slider kinds, on the canvas (relayed by the orchestrator). **The same day he chose** direction 1, “Quiet split” (the page as built, the price wrapped in its own box), **one slider, at most with an AI switch** (the switch was later dropped, below), and a large example **apart from the slider**. (1) **The bar and its four labels go.** In their place, under the headline's line and as wide as the headline, a box (as redrawn to Bagrat's answers, 2026-10-24): “What would it cost?”, then **the price first**, in dollars, never cents (“$0.00”, “$0.45”: “93¢” can read as 93 dollars), then the slider “Video a month” (**hours of video**, not a count: lengths vary; 30 min to 100 hours, opening at 1 hour), then “Auto-cleanup after” (Bagrat's words, 2026-10-24; 30 days · 60 days · a year, opening at 30 days, so the box opens at $0.00) and, as its last line, the team's month (3) No assumption line, no gigabytes (his ask: super simple). (2) **The model:** about 10 GB holds three hours at Normal (the FAQ); Cloudflare charges $0.015 a GB-month past its free 10 GB (B212); 30 days counts as a month. AI is about 3,660 neurons a video hour against 10,000 free a day (B205, B207): AI never adds money. (3) **The box's last line:** “A team of 20, an hour each a month: $0.85 with 30-day cleanup, $11.85 kept a year.” (the team row he chose, an hour each; it took the place of a note on the free 10 GB, 2026-10-24). Nothing sits under the box. (4) **The layout (Bagrat, 2026-10-24/25):** after six whole-page layouts and five Bento variations on the canvas, he chose “Bento A, aligned”: one 12-column grid with one gutter, the masthead on the grid's edges (wordmark left, headline right; first the headline's line on the wordmark's baseline, then, at Bagrat's word on the built page, 2026-10-25, the headline's top on the top of the wordmark's “m”), then the video over install beside the price box over the terms, the two stacks ending on one line (eight columns and four as drawn; seven and five once the video showed whole, which keeps the stacks nearest level). The terms sit in one column in their own tile, and term 5 becomes “Old videos clean themselves up. Pin the ones you keep.” (5) **Timing:** the box promises auto-cleanup, so this goes live the day the release that ships auto-cleanup does (Bagrat, 2026-10-24; first planned for 0.1.28, now the official 0.1.30). (6) **No AI switch** (Bagrat, 2026-10-25, on the built page): AI never changes the price, so the box doesn't offer it; that settles what the switch would show. The video always shows whole at every width. The new words are approved with the board (Bagrat, 2026-10-25). Board: “Bento A, aligned” (LandingV3aAligned). (7) **Icons in place of the ticks** (Bagrat, 2026-10-25, after two rounds on the canvas: “the terms' icons” and its round 2): each term gets its own icon, Lucide shapes at stroke 2 on a chip, in the page's frost blue (green was tried on the whole page and dropped, Bagrat, 2026-10-25): a cloud with a lock (three scoops, the lock a badge at its foot), a receipt, two people, an armchair crossed out, a broom with sparkles, a checklist, and code brackets. (8) **The masthead, simpler** (Bagrat, 2026-10-25, on the built page): the line under the headline (“No monthly seat, sometimes completely free”, B140) leaves the page and the link-preview card; the headline is a little smaller (38 px on a laptop) and its middle sits on the wordmark's middle (the middles of their x-heights), in place of the capitals' top on the m's top. The terms' tile gets a title in the price box's label style; he chose “Why shroom?” over “What you get” and “How it works”.",
+   "status": "provisional",
+   "date": "2026-10-19",
+   "amends": [
+    "N59 (the price bar becomes a box with a slider; the page becomes one 12-column grid)",
+    "landing (the price, the layout)"
+   ],
+   "amended_by": []
+  },
+  {
+   "id": "N87",
    "title": "The owner edits the chapters on the video's page",
    "decision": "**Bagrat, 2026-10-25**, during his hand test of 0.1.30-early.1: there was no way to change a chapter. He OK'd the boards (OwnerPageChapters, OwnerPageChaptersOpen, OwnerPageChapterRows, OwnerPageChaptersPhone) the same day, after asking that nothing for chapters show until it's asked for: page only, the Mac editor gets nothing for now. (1) **Edit chapters** is a quiet icon among the title's, before the scissors, on the owner's page only (owner-mode as the title has it, N40), with its name as a tooltip. It is there from the page's first paint and greyed until the video plays; then every video has it, with chapters or none. (2) **The panel** opens in place, under the player and above the voice cuts (never a sheet or pop-over: it works with the playhead); the icon stays lit while it is open, and it or Done shuts it. It opens shut on every visit. A row a chapter: its start, its name (a field, plain until clicked, as the title is), an arrow that starts it at the playhead and ✕ to remove it; the first chapter always starts at 0:00 and has no arrow. A start is moved by clicking it and typing a time (1:15, or 1:02:15); Enter saves, Esc puts it back. Add a chapter at the playhead adds a row there with its name open; a video with none says so and adds the first at 0:00. A chapter lasts at least 5 s and starts inside the video; a time that breaks either saves nothing and says why. A removed chapter's row says so, with Undo, until the page is left. Show in the seek bar turns the chapters off for everyone and keeps them in the panel. Every change saves at once (under If-Match, B21) and the bar above follows; a viewer sees it on their next visit. A change that didn't save puts the row back and says so on one line. (3) **Yours for good**: once the owner changes anything, the chapters are the owner's, and the space never writes them again, not when it names the video again after an edit, not when its naming runs late; the title keeps its own rule (a typed title wins). (4) **Edits move them, never lose them**: the owner's chapters are kept on the recording's clock, so a trim or a cut moves a start inside it to where it ends, and a chapter cut out whole, or left under 5 s, is set aside (its row says so) and comes back when the cut is put back. A permanent copy the editor makes (B197) carries them over as it does the space's. (5) Turning AI off keeps them. The bar shows the owner's chapters on a video of any length, as long as two or more play. Built: DECISIONS B267.",
    "status": "ratified",
@@ -2699,7 +2712,7 @@
    "surface": "web-page",
    "status": "ratified",
    "board": "Landing",
-   "summary": "shroom.am, a static page with one job: take a curious visitor to a pasted command, with no false notes. Two columns on a laptop (N59). Left: the shroom mark and wordmark, large; the headline on one line and its line under it; one thin price bar, 0 to 30 hours to scale, as wide as the headline, $0 for the first tenth and $1.50 a month at its end; then seven terms with green ticks. Right: one box, its top level with the wordmark's baseline and its bottom with the last term's: the hero, shroom recorded with shroom (“2 min”, shroom.am's own file, playing in place: a still of the editor after the take's cuts with a play button and the length, the video under it, no caption; N58, N61, N70), a small Setup walkthrough button under it that opens “How to set up and use shroom” over the page (N70), a cut, and Install under that (Terminal, Homebrew and Coding agent tabs, Terminal first; each command with [ Copy ]; Read it first; the system-requirements line). No header: the page's foot, at the bottom of the first screen under the left column, holds Send feedback, GitHub, Questions and limits, Privacy and Terms, then the visits line. On a phone it stacks, terms before the video and install last: the brand, the headline and its line, the bar (its labels short: “$0 / 3h video”, “$1.50 / 30h”), the terms, the box (the hero, Setup walkthrough, then install), the foot, its links wrapping.",
+   "summary": "shroom.am, a static page with one job: take a curious visitor to a pasted command, with no false notes. On a laptop one 12-column grid with one gutter (N59, N86). The masthead sits on the grid's edges: the shroom mark and wordmark, large, at the left; at the right the headline on one line, a little smaller, its middle on the wordmark's middle, with no line under it (Bagrat, 2026-10-25); a rule under them. Under it two stacks that end on one line. Left, seven columns: a tile with the hero, shroom recorded with shroom (“2 min”, shroom.am's own file, playing in place: a still of the editor after the take's cuts with a play button and the length, the video under it, no caption; N58, N61, N70) and a small Setup walkthrough button under it that opens “How to set up and use shroom” over the page (N70); under it Install in its own tile (Terminal, Homebrew and Coding agent tabs, Terminal first; each command with [ Copy ]; Read it first; the system-requirements line). Right, five columns: the price in its own box (what Cloudflare would charge a month, one slider and the cleanup choice, a busy team's month as its last line; N86), then the seven terms in a tile under a small-capitals title, each with its own icon on a blue chip (N86). Whichever stack is shorter grows to meet the other: install's tile on the left, the terms' tile on the right; the video always shows whole, never cropped (Bagrat, 2026-10-25). No header: the page's foot, at the bottom of the first screen, holds Send feedback, GitHub, Questions and limits, Privacy and Terms, then the visits line. On a phone it stacks: the brand, the headline and its line, the hero and Setup walkthrough, the price box, install, the terms, the foot, its links wrapping.",
    "entry": "A visitor arrives at shroom.am through one of three entry arrows. (1) Direct: HN, README or word of mouth; a cold visitor who needs the pitch. (2) The recipient loop: they watched a shroom video and clicked the player page's mark (Region 4; whether the mark exists = U3); a warm visitor who already saw the product work. (3) An agent fetching the BYO-agent skill (Region 6's overlay). Also reached by going back from the source view.",
    "said": [
     {
@@ -2710,59 +2723,102 @@
      "id": "landing.screen-recordings-without-the"
     },
     {
-     "text": "No monthly seat, sometimes completely free",
+     "text": "What would it cost?",
+     "role": "title",
+     "copy": "ratified",
+     "note": "The price box's heading, small capitals, at the top of the right-hand stack, in place of the price bar under the headline; the price comes right under it (Bagrat, 2026-10-24). Approved by Bagrat with the board “Bento A, aligned” (2026-10-25).",
+     "cites": [
+      "N86"
+     ],
+     "id": "landing.what-would-it-cost",
+     "was": "$0 · about three hours of video"
+    },
+    {
+     "text": "Video a month",
+     "role": "other",
+     "copy": "ratified",
+     "note": "The slider's label, its amount at the right: 30 min, 1 hour, 2, 3, 5, 10, 20, 30, 50, 100 hours, opening at 1 hour (Bagrat, 2026-10-24: hours of video, since lengths vary). Approved by Bagrat with the board “Bento A, aligned” (2026-10-25).",
+     "cites": [
+      "N86"
+     ],
+     "id": "landing.video-a-month"
+    },
+    {
+     "text": "Auto-cleanup after",
+     "role": "other",
+     "copy": "ratified",
+     "note": "Bagrat's own words (2026-10-24), over three choices that take the box's width, “30 days”, “60 days” and “a year”, opening at 30 days, so the box opens at $0.00. 30 days counts as a month. This line goes live with the release that ships auto-cleanup. Approved by Bagrat with the board “Bento A, aligned” (2026-10-25).",
+     "cites": [
+      "N86"
+     ],
+     "id": "landing.auto-cleanup-after",
+     "was": "Keep videos"
+    },
+    {
+     "text": "30 days",
+     "role": "button",
+     "copy": "ratified",
+     "note": "One of the three “Auto-cleanup after” choices, chosen when the page opens. Approved by Bagrat with the board “Bento A, aligned” (2026-10-25).",
+     "cites": [
+      "N86"
+     ],
+     "id": "landing.keep-30-days"
+    },
+    {
+     "text": "60 days",
+     "role": "button",
+     "copy": "ratified",
+     "note": "One of the three “Auto-cleanup after” choices. Approved by Bagrat with the board “Bento A, aligned” (2026-10-25).",
+     "cites": [
+      "N86"
+     ],
+     "id": "landing.keep-60-days"
+    },
+    {
+     "text": "a year",
+     "role": "button",
+     "copy": "ratified",
+     "note": "One of the three “Auto-cleanup after” choices. Approved by Bagrat with the board “Bento A, aligned” (2026-10-25).",
+     "cites": [
+      "N86"
+     ],
+     "id": "landing.keep-a-year"
+    },
+    {
+     "text": "a month",
+     "role": "other",
+     "copy": "ratified",
+     "note": "Beside the price, a large figure in dollars, never cents (Bagrat, 2026-10-24: “93¢” can read as 93 dollars): “$0.00” in frost while inside Cloudflare's free 10 GB, else “$0.45”, “$11.85” and so on. The figure varies, so it isn't a said-line. Approved by Bagrat with the board “Bento A, aligned” (2026-10-25).",
+     "cites": [
+      "N86"
+     ],
+     "id": "landing.a-month"
+    },
+    {
+     "text": "A team of 20, an hour each a month: $0.85 with 30-day cleanup, $11.85 kept a year.",
      "role": "line",
      "copy": "ratified",
-     "note": "Hero punchline, second line, with no closing period, as he wrote it (B140).",
-     "id": "landing.pay-as-you-go"
+     "note": "The price box's last line, in place of a note on Cloudflare's free 10 GB (Bagrat, 2026-10-24: he liked the box and asked for the team line there; earlier he chose a team row at an hour each). 20 hours a month is about 67 GB: $0.85 a month with 30-day cleanup; kept a year, 800 GB: $11.85. Approved by Bagrat with the board “Bento A, aligned” (2026-10-25).",
+     "cites": [
+      "N86"
+     ],
+     "id": "landing.a-team-of-20"
     },
     {
-     "text": "$0 · about three hours of video",
-     "role": "other",
+     "text": "Why shroom?",
+     "role": "title",
      "copy": "ratified",
-     "note": "The price bar's left label on a laptop: one thin bar from 0 to 30 hours, true to scale, its first tenth lit (the free part). '$0' is bold, in frost. It replaces the first of the two price tiles, which read as two plans. Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59).",
+     "note": "The terms' tile's title, in the price box's label style (small capitals), over the seven terms. Bagrat asked for a title there and chose “Why shroom?” (2026-10-25), over “What you get” and “How it works”: it pairs as a question with “What would it cost?” (N86).",
      "cites": [
-      "N59"
+      "N86"
      ],
-     "id": "landing.0-month-about-six",
-     "was": "$0 /month — about three hours of video"
-    },
-    {
-     "text": "$1.50 /month · about thirty hours",
-     "role": "other",
-     "copy": "ratified",
-     "note": "The price bar's right label on a laptop, under its end. '$1.50 /month' is bold. Words, not numerals, on the landing; the welcome deliberately uses numerals (Law 16, N12). Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59).",
-     "cites": [
-      "N59"
-     ],
-     "id": "landing.1-50-month-about",
-     "was": "$1.50 /month — about thirty hours"
-    },
-    {
-     "text": "$0 / 3h video",
-     "role": "other",
-     "copy": "ratified",
-     "note": "The price bar's left label on a phone. '$0' is bold, in frost. Numerals here, against Law 16's words-on-the-landing, by his own wording: it must fit on one line beside the right label. Bagrat's phone note, 2026-10-17 (N59): the long label wrapped at 390 wide.",
-     "cites": [
-      "N59"
-     ],
-     "id": "landing.0-3h-video"
-    },
-    {
-     "text": "$1.50 / 30h",
-     "role": "other",
-     "copy": "ratified",
-     "note": "The price bar's right label on a phone. '$1.50' is bold ($1.50, not his “$1.5”, to match the laptop's label). Bagrat's phone note, 2026-10-17 (N59): the long label wrapped at 390 wide.",
-     "cites": [
-      "N59"
-     ],
-     "id": "landing.1-50-30h"
+     "id": "landing.why-shroom"
     },
     {
      "text": "Your videos live in your own Cloudflare account",
      "role": "line",
      "copy": "ratified",
-     "note": "Term 1 of 7, under the price bar; green tick. 'your own Cloudflare account' is bold. Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59).",
+     "note": "Term 1 of 7, in the terms' tile under the price box (N86); its icon a cloud with a lock (N86). 'your own Cloudflare account' is bold. Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59).",
      "cites": [
       "N59"
      ],
@@ -2802,15 +2858,16 @@
      "id": "landing.no-price-per-person"
     },
     {
-     "text": "Delete old videos and pay less",
+     "text": "Old videos clean themselves up. Pin the ones you keep.",
      "role": "line",
      "copy": "ratified",
-     "note": "Term 5 of 7. 'Delete old videos' is bold. Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59).",
+     "note": "Term 5 of 7. 'Old videos clean themselves up.' is bold. Auto-cleanup (off by default; 15, 30 or 60 days after last watched; pinned videos stay) is Bagrat's yes of 2026-10-24; this line goes live with the release that ships it. Approved by Bagrat with the board “Bento A, aligned” (2026-10-25).",
      "cites": [
-      "N59"
+      "N59",
+      "N86"
      ],
      "id": "landing.delete-old-videos-and",
-     "was": "Delete old videos and pay less — storage is the whole bill."
+     "was": "Delete old videos and pay less"
     },
     {
      "text": "About ten minutes of guided setup, once",
@@ -2838,7 +2895,7 @@
      "text": "Install in one line",
      "role": "title",
      "copy": "ratified",
-     "note": "The install block's heading, bold, inside the box under the video, the three tabs at its right. Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59).",
+     "note": "The install block's heading, bold, in its own tile under the video's (N86), the three tabs at its right. Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59).",
      "cites": [
       "N59"
      ],
@@ -2959,7 +3016,7 @@
      "text": "Send feedback · GitHub · Questions and limits · Privacy · Terms",
      "role": "line",
      "copy": "ratified",
-     "note": "The page's foot: one row of links under the left column, at the bottom of the first screen (after the content when it runs longer); the visits line under it. The header is gone, so Send feedback and GitHub live here. “Trouble, questions” is gone: it opened /feedback, as Send feedback does. The other shroom.am pages keep their header and footer. Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59).",
+     "note": "The page's foot: one row of links under the tiles, at the bottom of the first screen (after the content when it runs longer); the visits line under it. The header is gone, so Send feedback and GitHub live here. “Trouble, questions” is gone: it opened /feedback, as Send feedback does. The other shroom.am pages keep their header and footer. Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59).",
      "cites": [
       "N55",
       "N59"
@@ -3061,7 +3118,8 @@
     "N58",
     "N59",
     "N61",
-    "N70"
+    "N70",
+    "N86"
    ],
    "was": {
     "fixture": "r1.json",
@@ -14535,7 +14593,7 @@
    "surface": "web-page",
    "status": "ratified",
    "board": "OwnerPageChaptersOpen",
-   "summary": "The owner edits the video's chapters (N86), in a panel the Edit chapters icon opens in place under the player, above the voice cuts. A heading, the switch Show in the seek bar, and Done; then a row a chapter: its start, its name as a field, an arrow that starts it at the playhead (not on the first, always at 0:00) and ✕. Add a chapter at the playhead under the rows. Every change saves at once and the bar above follows. A removed chapter's row says so with Undo; a chapter an edit cut out whole is set aside, its row saying so, and comes back with the cut. Switched off, a line says viewers see the bar without chapters, and the rows wait, dimmed. A time too close to a neighbour or outside the video saves nothing and says why; a change that didn't save puts the row back and says so (OwnerPageChapterRows). Owner-mode as the title has it (N40); viewers never see the panel or the icon, only the bar.",
+   "summary": "The owner edits the video's chapters (N87), in a panel the Edit chapters icon opens in place under the player, above the voice cuts. A heading, the switch Show in the seek bar, and Done; then a row a chapter: its start, its name as a field, an arrow that starts it at the playhead (not on the first, always at 0:00) and ✕. Add a chapter at the playhead under the rows. Every change saves at once and the bar above follows. A removed chapter's row says so with Undo; a chapter an edit cut out whole is set aside, its row saying so, and comes back with the cut. Switched off, a line says viewers see the bar without chapters, and the rows wait, dimmed. A time too close to a neighbour or outside the video saves nothing and says why; a change that didn't save puts the row back and says so (OwnerPageChapterRows). Owner-mode as the title has it (N40); viewers never see the panel or the icon, only the bar.",
    "entry": "The owner clicks Edit chapters among the title's icons, once the video plays.",
    "actions": [
     {
@@ -14696,7 +14754,7 @@
     }
    ],
    "cites": [
-    "N86",
+    "N87",
     "N67",
     "N66",
     "N40",
@@ -20259,7 +20317,7 @@
    "trigger": "The owner clicks the Edit chapters icon beside the title (live video, owner-mode)",
    "status": "ratified",
    "cites": [
-    "N86"
+    "N87"
    ],
    "source": [
     "canvas"
@@ -20274,7 +20332,7 @@
    "trigger": "Done, or the Edit chapters icon again",
    "status": "ratified",
    "cites": [
-    "N86"
+    "N87"
    ],
    "source": [
     "canvas"

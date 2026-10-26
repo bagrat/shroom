@@ -118,7 +118,7 @@ export const COPY = {
   // The hint, on a take with no voice cuts in a space that listens (owner-page-cue-hint).
   cueHint: "Slipped? Say “shroom cut”, then say the line again.",
   cueHintGotIt: "Got it",
-  // The owner's chapters (N86, owner-page-chapters; provisional words). The lines with a time
+  // The owner's chapters (N87, owner-page-chapters; provisional words). The lines with a time
   // or a name in them are addChapterAt, startChapterAt and removedChapter.
   editChapters: "Edit chapters",
   chaptersHeading: "Chapters",
@@ -1545,7 +1545,7 @@ const I_SAVE = maskIcon("M8 2.5v8M4.5 7.5L8 11l3.5-3.5M3 13.5h10");
 const I_CUT = maskIcon("M6.5 4.5a2 2 0 1 1-4 0a2 2 0 1 1 4 0M6.5 11.5a2 2 0 1 1-4 0a2 2 0 1 1 4 0M6.2 5.6L13 11.8M6.2 10.4L13 4.2");
 // Edit in shroom's scissors (N69): the editor's own mark, the one its cuts carry.
 const I_EDIT = maskIcon("M2.5 4.5a2 2 0 1 0 4 0a2 2 0 1 0-4 0M2.5 11.5a2 2 0 1 0 4 0a2 2 0 1 0-4 0M6.2 5.6L13 11.8M6.2 10.4L13 4.2");
-// Edit chapters (N86): a list's lines; the panel's own marks — the bar's sections, the arrow to the playhead, ✕, +.
+// Edit chapters (N87): a list's lines; the panel's own marks — the bar's sections, the arrow to the playhead, ✕, +.
 const I_CHAPTERS = maskIcon("M2.5 4h1.2M6 4h7.5M2.5 8h1.2M6 8h7.5M2.5 12h1.2M6 12h7.5");
 const I_CH_MARK = maskIcon("M2 8h2M7 8h2M12 8h2", 2.2);
 const I_CH_MOVE = maskIcon("M12 2.8v10.4M2.5 8h6.2M6.2 5.5L8.7 8l-2.5 2.5");
@@ -2153,7 +2153,7 @@ function ownerPage(id, meta, now, face, waiting, blocked = false, pending = fals
   const editHref = escapeHtml(`shroom://edit/${face.host}/${id}`);
   const edit = face.host ? `<a class="copy edit" id="ed" ${drainedNow ? `href="${editHref}"` : `data-href="${editHref}"`} data-tip="${COPY.editInShroom}" aria-label="${COPY.editInShroom}"${drainedNow ? "" : ' aria-disabled="true"'}>${COPY.editInShroom}</a>` : "";
   // Copy link and Download are quiet icons beside the title; their words name them.
-  // Edit chapters (N86): before the scissors, there from the first paint and greyed until the
+  // Edit chapters (N87): before the scissors, there from the first paint and greyed until the
   // video plays; it opens the panel under the player.
   const chap = `<button class="copy chap" id="chb" type="button" data-tip="${COPY.editChapters}" aria-label="${COPY.editChapters}" aria-expanded="false"${live ? "" : ' aria-disabled="true"'}>${COPY.editChapters}</button>`;
   const head = `<div class="head">${field}${copyButtons(true, !live || !ready)}<span id="dl" data-tip="${COPY.download}">${download}</span>${chap}${edit}</div>`;
@@ -2233,7 +2233,7 @@ if(s.state==="unavailable"){if(!c.live){say(c.unavailable);up.textContent="";spi
 if(s.state==="uploading"){say("");ul.hidden=false;up.textContent=s.stalled?c.waiting:c.finishing;spin(true,!s.stalled)}
 next(2000)}).catch(function(){next(5000)})}
 if(!c.live||!c.mp4||!c.drained)next(2000);else if(c.cutsTag==="coming"||c.named==="coming")next(2000)})();</script>`;
-  // The owner's page always has the player's chapter code: the panel cuts the bar from it (N86).
+  // The owner's page always has the player's chapter code: the panel cuts the bar from it (N87).
   const wire = aiWire(".player", ai) || AI_PLAYER_JS;
   const panel = `<script>${CHAPTERS_JS}
 shroomChapterPanel(${jsonForScript(JSON.stringify({ id, w: chaptersWords() }))})</script>`;
@@ -4562,7 +4562,7 @@ function aiChaptersThrough(chapters, keep, total) {
   return out;
 }
 
-/** The chapters as the page's bar shows them: the owner's once they're theirs (N86), else the
+/** The chapters as the page's bar shows them: the owner's once they're theirs (N87), else the
  * space's. @param {any} meta @returns {[number, string][]} */
 export function aiChapters(meta) {
   const own = ownChapters(meta);
@@ -4595,7 +4595,7 @@ function aiNamedChapters(meta) {
   return shown.length >= 2 ? shown.map(([s, t]) => /** @type {[number, string]} */ ([Math.round(s * 10) / 10, t])) : [];
 }
 
-// ───────── the owner's chapters (N86, owner-page-chapters; B267) ─────────
+// ───────── the owner's chapters (N87, owner-page-chapters; B267) ─────────
 
 /** The shortest chapter the owner may make, and that the bar shows of theirs after a cut. */
 export const CHAPTER_MIN = 5;
@@ -4666,7 +4666,7 @@ export function chaptersPanel(meta) {
   return { mine: true, off: !!meta.chapters.off, clock, total, rows };
 }
 
-/** A chapters save's body, held to the rules (N86): each row a name and either `s` (a kept
+/** A chapters save's body, held to the rules (N87): each row a name and either `s` (a kept
  * row's start on the recording's clock) or `t` (a moved or new one's, on the bar's), within the
  * video, no two starts on the bar closer than CHAPTER_MIN nor one that close to the end.
  * @param {any} body @param {any} meta
@@ -4701,7 +4701,7 @@ function chaptersOf(body, meta) {
   return { list: rows.map((x) => /** @type {[number, string]} */ ([Math.round(x.s * 100) / 100, x.title])), off: body.off };
 }
 
-/** GET /_shroom/chapters/<id> (N86): the panel's rows and the bar's chapters, for the
+/** GET /_shroom/chapters/<id> (N87): the panel's rows and the bar's chapters, for the
  * video's own owner's page. @param {Request} request @param {Env} env @param {string} id */
 async function chaptersRoute(request, env, id) {
   const owner = await ownerOf(request, env);
@@ -4712,7 +4712,7 @@ async function chaptersRoute(request, env, id) {
   return noStore(json({ chapters: meta.state === "live" ? aiChapters(meta) : [], panel: chaptersPanel(meta) }));
 }
 
-/** POST /_shroom/chapters/<id> (N86): the owner's whole list, saved under If-Match (B21) on
+/** POST /_shroom/chapters/<id> (N87): the owner's whole list, saved under If-Match (B21) on
  * the clock the page saw; from then on the chapters are the owner's. Answers the bar's
  * chapters and the panel's rows. @param {Env} env @param {string} id @param {any} body @param {Owner} owner @param {number} now */
 async function writeChapters(env, id, body, owner, now) {
@@ -5359,7 +5359,7 @@ async function aiAfterView(env, id, meta, now) {
   const playing = aiPlaying(words, aiKeep(meta)).length;
   const saw = Number(meta.named.words) || 0;
   const had = Array.isArray(meta.named.chapters) ? meta.named.chapters.length : 0;
-  // Weighed by the space's own chapters: the owner's (N86) are never the naming's to redo.
+  // Weighed by the space's own chapters: the owner's (N87) are never the naming's to redo.
   if ((saw > 0 && playing <= saw * (1 - AI_RULES.renameShare)) || (had >= 2 && aiNamedChapters(meta).length < had)) {
     await aiMark(env, id, (l) => (l?.rename ? undefined : { ...aiFresh(now), ...(l ?? {}), done: true, rename: true }));
     return;
@@ -5494,7 +5494,7 @@ ${AI_PLAYER_JS}
 (function(){var p=document.querySelector(${jsonForScript(JSON.stringify(sel))});if(!p)return;${ai.chapters.length ? `shroomChapters(p,${jsonForScript(JSON.stringify(ai.chapters))});` : ""}${ai.captions ? "shroomCaptions(p)" : ""}})()`;
 }
 
-/** The owner's chapters panel (owner-page-chapters, N86; the boards OwnerPageChaptersOpen and
+/** The owner's chapters panel (owner-page-chapters, N87; the boards OwnerPageChaptersOpen and
  * OwnerPageChapterRows): a card in the voice cuts' style, under the player. */
 const CHAPTERS_STYLE = `.chapters{background:var(--card);border:1px solid var(--card-edge);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:8px}.chapters[hidden]{display:none}
 .ch-head{display:flex;align-items:center;gap:10px}.chapters h2{flex:1 1 auto;margin:0;font-size:15px;font-weight:600;display:flex;align-items:center;gap:10px}

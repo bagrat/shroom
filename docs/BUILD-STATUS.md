@@ -348,7 +348,7 @@ and edits on the share page)*)**
     on the test account (2–8 s a turn). Proved in CI (the core tests, the cloud fake, the
     window gallery). Known gap: the app's lane (`runtime/cloud.rs`) is compiled and run on
     the Mac only; no hosted-Mac drive turns the switch yet.
-45. **N86 — the owner edits the chapters on the video's page** (B267; Bagrat OK'd the boards,
+45. **N87 — the owner edits the chapters on the video's page** (B267; Bagrat OK'd the boards,
     2026-10-25, relayed by the orchestrator: page only, after 0.1.30). Edit chapters among the
     title's icons opens a panel under the player: rename, move to the playhead or a typed time,
     remove with Undo, add at the playhead, and a switch that hides them from the bar. The

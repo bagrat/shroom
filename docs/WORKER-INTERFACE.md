@@ -1012,7 +1012,7 @@ the status stops saying `named: "coming"`, it asks at once and the page's line f
 answer is in the player (N82, D:B263). While the name is on its way, an untitled page's title field carries `data-naming` and `data-date`, which the same script takes away at a click, a name or the line's end (N84, D:B265).
 
 **`GET /_shroom/chapters/<id>`** and **`POST /_shroom/chapters/<id>`** — the owner's chapters
-(N86, D:B267): the maker's or an owner-class browser only, else 403; no record or deleted → 404
+(N87, D:B267): the maker's or an owner-class browser only, else 403; no record or deleted → 404
 (GET). GET answers `{"chapters":[[start,"title"],…],"panel":{mine,off,clock,total,rows}}`:
 `chapters` what the bar shows, `rows` one a chapter, `{s, t, title}` with `s` its start on the
 recording's clock now and `t` on the bar's (`null` while an edit cuts it out whole, or leaves it
