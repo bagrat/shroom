@@ -103,6 +103,9 @@ export const COPY = {
   // Names, chapters and captions (N66, N67): the owner page's line while the name waits for
   // the free day, and the player's Captions button, in DECISIONS' copy table too.
   namingLater: "Its name and chapters come a little later, once your free hours are back.",
+  // The title while the name is on its way (N84): Bagrat's line, and on a narrow window the short one.
+  aiNaming: "AI is naming your video, click to name manually",
+  aiNamingShort: "Naming…",
   captions: "Captions",
   // Voice cuts on the owner page (N65, owner-page-cuts; provisional words).
   cutsHeading: "Cut where you said “shroom cut”",
@@ -154,7 +157,7 @@ export const STALL_SECONDS = 120;
 export const IFACE = 2;
 /** The version of the app that deploys this file — the same as the app's own
  * (`app/src-tauri/tauri.conf.json`, held equal by a shroom-cloud test). */
-export const VERSION = "0.1.32";
+export const VERSION = "0.1.33";
 
 const ID = /^[A-Za-z0-9_-]{16}$/;
 const HLS_JS_KEY = ".shroom/player/hls.min.js";
@@ -357,12 +360,12 @@ export function status(meta, now, id = meta?.id, listens = false) {
     // playing the original when the copy took its place moves over to it. A baked
     // recording with no edit (B197) names its own file there the same way: the bake took
     // the original away from a player still on it. `cuts`: the voice cuts' word for a page
-    // already open (N65): coming, or their tag.
+    // already open (N65): coming, or their tag. `named`: coming while the name is (N82).
     const view = viewOf(String(id), meta);
     const moved = view.copy ?? (view.baked && !view.edit && Array.isArray(meta.bakedFrom) && meta.bakedFrom.length > 0
       ? { src: `/m/${id}/${view.file}`, dur: view.dur, poster: view.poster ?? undefined } : null);
     const live = { state: "live", poster: !!view.poster, mp4: view.download, teaser: !!view.teaser, thumb: newestThumb(String(id), meta), dur: view.dur, drained: drained(meta),
-      ...(view.edit ? { keep: view.edit.keep } : {}), ...(moved ? { copy: { src: moved.src, dur: moved.dur, poster: moved.poster ?? null } } : {}), ...cutsField(meta, now, listens),
+      ...(view.edit ? { keep: view.edit.keep } : {}), ...(moved ? { copy: { src: moved.src, dur: moved.dur, poster: moved.poster ?? null } } : {}), ...cutsField(meta, now, listens), ...namingField(meta, now, listens),
       ...(ID.test(String(id)) ? { drawFrom: drawFrom(String(id), meta) } : {}) };
     return live.drained ? live : { ...live, pct: pct(meta), stalled: stalledAt(meta, now) };
   }
@@ -753,6 +756,16 @@ function cutsField(meta, now, listens = false) {
   let h = 0x811c9dc5;
   for (const ch of rows.map((r) => `${r.id}:${r.on ? 1 : 0}${r.cue ? (r.cueOn ? 1 : 0) : ""}`).join(",")) h = Math.imul(h ^ ch.charCodeAt(0), 0x01000193) >>> 0;
   return { cuts: h.toString(36) };
+}
+
+/** The status's word on the name (N82): "coming" while a space that listens names a take
+ * that went live less than VOICE_WAIT_MS ago and its full name isn't in — an early title
+ * doesn't count; a naming that ended with none (too few words, or it gave up) does — unless
+ * its words wait for tomorrow's free day (N66). A typed title doesn't end it: the chapters
+ * and captions still come. @param {any} meta @param {number} now @param {boolean} [listens] @returns {{ named?: "coming" }} */
+function namingField(meta, now, listens = false) {
+  const live = Date.parse(meta?.publishedAt ?? "");
+  return listens && (!meta?.named || !!meta.named.early) && !meta?.naming?.later && Number.isFinite(live) && now - live < VOICE_WAIT_MS ? { named: "coming" } : {};
 }
 
 /** A press on the strip: one voice cut on or off, read-modify-write under If-Match like
@@ -2076,10 +2089,17 @@ function ownerPage(id, meta, now, face, waiting, blocked = false, pending = fals
   // front of it and no bar (Bagrat, 2026-10-18). While a space that listens hears the take (the
   // cuts are coming) it stays after the upload, its spinner turning; otherwise, drained, it has
   // nothing left to say and goes — no “Fully live ✓”, no “Ready ✓”. Stalled, the spinner rests.
+  // Since N82 it also waits for the name, its chapters and captions, and fades as they come.
   const cutsTag = cutsField(meta, now, listens).cuts ?? null;
-  const hearing = drainedNow && cutsTag === "coming";
+  const nameTag = namingField(meta, now, listens).named ?? null;
+  const hearing = drainedNow && (cutsTag === "coming" || nameTag === "coming");
   const line = drainedNow ? (hearing ? COPY.finishing : "") : stalled ? waiting : COPY.finishing;
-  const field = `<input class="title" id="t" maxlength="${TITLE_MAX}" aria-label="Title" value="${escapeHtml(value)}" placeholder="${escapeHtml(placeholder)}"${value ? "" : " autofocus"}>`;
+  // While the name is on its way the empty title shimmers whole, borderless, its placeholder the
+  // line that says a click names it (N82, N84), and the page doesn't open in it: a click brings
+  // up the bordered box, the date its placeholder again.
+  const shim = ai.waiting && !value && !meta.naming?.later && (!live || nameTag === "coming");
+  const naming = shim ? ` data-naming="${escapeHtml(COPY.aiNamingShort)}" data-date="${escapeHtml(placeholder)}"` : "";
+  const field = `<input class="title" id="t" maxlength="${TITLE_MAX}" aria-label="Title" value="${escapeHtml(value)}" placeholder="${escapeHtml(shim ? COPY.aiNaming : placeholder)}"${naming}${value || shim ? "" : " autofocus"}>`;
   const frame = meta.media?.poster ? `<img src="/m/${id}/poster.jpg" alt="">` : "";
   const stage = live ? aiPlayer(playerHtml(id, meta), ai) : `<div class="wait" id="w">${frame}</div>`;
   // Download hands over the video as it plays (N63): it waits for an edit's permanent copy.
@@ -2105,7 +2125,7 @@ function ownerPage(id, meta, now, face, waiting, blocked = false, pending = fals
   const upload = `<div class="upl" id="ul"${gone ? " hidden" : " data-room"}>${spin}<span class="up" id="u">${escapeText(line)}</span></div>`;
   // The wait's five minutes, counted down by the page itself from the take's go-live, so the
   // line never hangs on a status it can no longer reach.
-  const listenFor = cutsTag === "coming" ? Math.max(0, VOICE_WAIT_MS - (now - Date.parse(meta.publishedAt))) : 0;
+  const listenFor = cutsTag === "coming" || nameTag === "coming" ? Math.max(0, VOICE_WAIT_MS - (now - Date.parse(meta.publishedAt))) : 0;
   // Voice cuts (N65): what was cut where the speaker said “shroom cut”, under the player —
   // this page is the maker's or an owner-class browser's. While the cues are still coming,
   // an empty strip waits for the page's poll to fill it.
@@ -2118,7 +2138,7 @@ function ownerPage(id, meta, now, face, waiting, blocked = false, pending = fals
   const cfg = JSON.stringify({
     id, live, drained: drainedNow, pending, mp4: view.download, saved: value, copied: COPY.copied, copy: COPY.copyLink, waiting,
     copyThumb: COPY.copyThumbnail, preparing: COPY.preparingThumbnail, thumbs, dl: COPY.download, finishing: COPY.finishing, notFound: COPY.notFound, unavailable: COPY.unavailable, labels: LABELS, player: live ? "" : playerHtml(id, { ...meta, media: { ...meta.media, poster: null } }),
-    cutsTag, listenFor, cutLabels: { back: COPY.putBack, again: COPY.cutAgain },
+    cutsTag, named: nameTag, listenFor, cutLabels: { back: COPY.putBack, again: COPY.cutAgain },
   });
   const script = `<script>${PLAYER_JS}
 ${COPY_JS}
@@ -2150,9 +2170,12 @@ var HK="shroom:cue-hint";function hintAway(){try{return localStorage.getItem(HK)
 function stripSeen(){var cu=document.getElementById("cuts");if(cu&&!cu.hidden){putHintAway();var h=document.querySelector(".cue-hint");if(h)h.remove()}}
 var hn=document.querySelector(".cue-hint");function hintDue(){if(hn&&hn.isConnected&&!hintAway())hn.hidden=false}
 if(hn){hn.querySelector("button").onclick=function(){hn.remove();putHintAway()};if(c.cutsTag!=="coming")hintDue()}stripSeen();
-function done(then){if(c.done)return;c.done=true;if(ul.hidden){if(then)then();return}ul.classList.add("fade");setTimeout(function(){ul.hidden=true;up.textContent="";if(sp){sp.remove();sp=null}if(then)then()},400)}
+function done(then){if(c.done)return;c.done=true;document.dispatchEvent(new CustomEvent("shroom:finished"));if(ul.hidden){if(then)then();return}ul.classList.add("fade");setTimeout(function(){ul.hidden=true;up.textContent="";if(sp){sp.remove();sp=null}if(then)then()},400)}
 if(c.listenFor)setTimeout(function(){c.waitOver=true;if(c.drained)done(hintDue)},c.listenFor);
 function next(ms){c.polling=true;setTimeout(poll,ms)}
+function more(s){return s.cuts==="coming"||s.named==="coming"}
+function land(go){if(c.landing)return;if(c.named!=="coming"){go();return}c.named=null;c.landing=true;var d={taken:false,go:function(){c.landing=false;go()}};
+document.dispatchEvent(new CustomEvent("shroom:named-in",{detail:d}));if(!d.taken)d.go();else setTimeout(d.go,3000)}
 function edited(){if(c.gone)return;var da=dl.firstChild;if(da)rest(da);if(!c.polling){gap=2000;next(0)}}
 document.addEventListener("shroom:keep",edited);
 function spin(on,turning){if(sp){sp.style.display=on?"":"none";sp.className="spin"+(turning?"":" rest")}}
@@ -2160,22 +2183,22 @@ function say(x){var w=document.getElementById("w");if(!w||(!x&&!c.said))return;c
 function poll(){fetch("/_shroom/status/"+c.id,{cache:"no-store"}).then(function(r){return r.json()}).then(function(s){
 if(s.state==="removed"){c.gone=true;c.polling=false;var m=document.querySelector("main"),p=document.createElement("p");m.textContent="";p.className="line";p.textContent=c.notFound;m.appendChild(p);document.title="shroom";return}
 if(c.pend&&s.state!=="waiting")send(c.pend);
-if(s.state==="live"){if(s.drawFrom!==undefined)th.source(s.drawFrom);if(s.dur)th.length(shroomClock(s.dur,true));if(s.teaser)th.teaser();if(!c.live){c.live=true;th.live();var w=document.getElementById("w"),h=document.createElement("div");h.innerHTML=c.player;var pl=h.firstChild;
+if(s.state==="live"){if(s.named==="coming")c.named="coming";if(s.drawFrom!==undefined)th.source(s.drawFrom);if(s.dur)th.length(shroomClock(s.dur,true));if(s.teaser)th.teaser();if(!c.live){c.live=true;th.live();var w=document.getElementById("w"),h=document.createElement("div");h.innerHTML=c.player;var pl=h.firstChild;
 var cp=s.copy,ps=cp&&cp.poster||(s.poster?"/m/"+c.id+"/poster.jpg":"");if(s.dur)pl.setAttribute("data-dur",s.dur);if(ps)pl.querySelector("video").poster=ps;w.replaceWith(pl);
 shroomPlayer(pl,cp?cp.src:src,c.labels,{keep:cp?null:s.keep||null,st:"/_shroom/status/"+c.id,copy:!!cp})}
 if(s.drained)th.drained();var ed=document.getElementById("ed");if(ed&&s.drained)wake(ed,ed.getAttribute("data-href"));
 if(s.cuts&&s.cuts!=="coming"&&s.cuts!==c.cutsTag)pull(s.cuts);if(!s.cuts&&c.cutsTag==="coming"){c.cutsTag=null;var cw=document.getElementById("cuts");if(cw&&cw.hidden)cw.remove()}
-if(s.drained){c.drained=true;if(s.cuts==="coming"&&!c.waitOver){if(!c.done){ul.hidden=false;up.textContent=c.finishing;spin(true,true)}}else done(s.cuts?null:hintDue)}
+if(s.drained){c.drained=true;if(more(s)&&!c.waitOver){if(!c.done){ul.hidden=false;up.textContent=c.finishing;spin(true,true)}}else land(function(){done(s.cuts?null:hintDue)})}
 else{ul.hidden=false;up.textContent=s.stalled?c.waiting:c.finishing;spin(true,!s.stalled)}
-var da=dl.firstChild;if(da){if(s.mp4)wake(da,"/d/"+c.id);else rest(da)}if(s.mp4&&s.drained&&s.cuts!=="coming"){c.polling=false;return}
-if(!s.drained||s.cuts==="coming")return next(2000);gap=Math.min(gap*2,30000);return next(gap)}
+var da=dl.firstChild;if(da){if(s.mp4)wake(da,"/d/"+c.id);else rest(da)}if(s.mp4&&s.drained&&!more(s)&&!c.landing){c.polling=false;return}
+if(!s.drained||more(s))return next(2000);gap=Math.min(gap*2,30000);return next(gap)}
 if(s.state==="unavailable"){if(!c.live){say(c.unavailable);up.textContent="";spin(false,false)}return next(30000)}
 if(s.state==="uploading"){say("");ul.hidden=false;up.textContent=s.stalled?c.waiting:c.finishing;spin(true,!s.stalled)}
 next(2000)}).catch(function(){next(5000)})}
-if(!c.live||!c.mp4||!c.drained)next(2000);else if(c.cutsTag==="coming")next(2000)})();</script>`;
+if(!c.live||!c.mp4||!c.drained)next(2000);else if(c.cutsTag==="coming"||c.named==="coming")next(2000)})();</script>`;
   // A page waiting for its name has the player's chapters and captions ready for when they come.
-  const wire = aiWire(".player", ai) || (ai.waiting ? AI_PLAYER_JS : "");
-  return shell(meta.title || "shroom", `${head}${aiNote(ai)}${stage}${cuts}${hint}${upload}`, face, aiHead(ai), `${script}${wire ? `<script>${wire}</script>` : ""}${aiOwnerScript(id, ai)}`);
+  const wire = aiWire(".player", ai) || (ai.waiting || ai.coming ? AI_PLAYER_JS : "");
+  return shell(meta.title || "shroom", `${head}${aiNote(ai)}${stage}${cuts}${hint}${upload}`, face, `${aiHead(ai)}${shim ? `<style>${NAME_SHIM_STYLE}</style>` : ""}`, `${script}${wire ? `<script>${wire}</script>` : ""}${aiOwnerScript(id, ai)}`);
 }
 
 /** A JSON island safe inside <script>: <, >, & and the two line separators escaped. */
@@ -4567,13 +4590,14 @@ export function aiCaptions(words, keep, edited) {
   return `WEBVTT\n\n${cues.map((c, i) => `${i + 1}\n${vttTime(c.s)} --> ${vttTime(Math.max(c.e, c.s + 0.5))}\n${text(lines(c.text))}\n`).join("\n")}`;
 }
 
-/** @typedef {{ chapters: [number, string][], captions: { src: string, lang: string } | null, line: string, waiting: boolean }} AiFace */
+/** @typedef {{ chapters: [number, string][], captions: { src: string, lang: string } | null, line: string, waiting: boolean, coming: boolean }} AiFace */
 /** @type {AiFace} */
-const AI_NONE = { chapters: [], captions: null, line: "", waiting: false };
+const AI_NONE = { chapters: [], captions: null, line: "", waiting: false, coming: false };
 
 /** What a page shows of the AI's work (B209), from the record alone: the chapters, the
  * captions' address (on the clock of what `src` plays), and the owner's line. `waiting`: the
- * owner's page asks for a name on its way (naming on, a recent take, not yet named or titled).
+ * owner's page asks for a name on its way (naming on, a recent take, not yet named or titled);
+ * `coming`: the same with a typed title too, for the chapters and captions (N82).
  * @param {string} id @param {any} meta @param {string} src @param {boolean} on @param {number} now @returns {AiFace} */
 function aiFace(id, meta, src, on, now) {
   if (!meta || meta.state === "deleted") return AI_NONE;
@@ -4588,8 +4612,8 @@ function aiFace(id, meta, src, on, now) {
   // No line once it's named (Bagrat, 2026-10-25: “Named from what you said…” removed).
   const line = !meta.titled && !named && meta.naming?.later === "daily" ? COPY.namingLater : "";
   const created = Date.parse(String(meta.createdAt ?? ""));
-  const waiting = on && !meta.titled && (!meta.named || !!meta.named.early) && Number.isFinite(created) && now - created < 2 * HOUR_MS;
-  return { chapters: live ? aiChapters(meta) : [], captions, line, waiting };
+  const coming = on && (!meta.named || !!meta.named.early) && Number.isFinite(created) && now - created < 2 * HOUR_MS;
+  return { chapters: live ? aiChapters(meta) : [], captions, line, waiting: coming && !meta.titled, coming };
 }
 
 // ───────── naming (B205 c, d) ─────────
@@ -5205,6 +5229,13 @@ const AI_STYLE = `.player.ch .seek::-webkit-slider-runnable-track{background:tra
 @media (max-width:479px){.chn{display:none}}
 @media (prefers-reduced-motion:reduce){.chs i{transition:none}}`;
 
+/** The owner's empty title while the name is on its way (N84): no border and no fill, a soft
+ * gradient sliding across the whole title and its line, until it's clicked; still where motion
+ * is reduced. The line steps down to fit a narrower field (`--naming-size`, 18 px at least). */
+const NAME_SHIM_STYLE = `.title[data-naming]::placeholder{font-size:var(--naming-size,1em)}.title[data-naming]:not(:focus){border-color:transparent;background-color:transparent;background-image:linear-gradient(100deg,transparent 30%,var(--edge) 50%,transparent 70%);background-size:200% 100%;background-repeat:no-repeat;animation:shroom-shim 1.6s linear infinite}
+@keyframes shroom-shim{from{background-position:150% 0}to{background-position:-50% 0}}
+@media (prefers-reduced-motion:reduce){.title[data-naming]:not(:focus){animation:none}}`;
+
 const ICON_CC = `<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="3" width="13" height="10" rx="2"/><path d="M7.2 6.6a1.8 1.8 0 1 0 0 2.8M11.7 6.6a1.8 1.8 0 1 0 0 2.8"/></svg>`;
 
 /** The player's markup with what the record names (B209 b): its captions track, and the
@@ -5265,7 +5296,7 @@ ${AI_PLAYER_JS}
 }
 
 /** The AI's style, on a page that shows any of it. @param {AiFace} ai */
-const aiCss = (ai) => (ai.chapters.length || ai.captions || ai.line || ai.waiting ? AI_STYLE : "");
+const aiCss = (ai) => (ai.chapters.length || ai.captions || ai.line || ai.waiting || ai.coming ? AI_STYLE : "");
 /** @param {AiFace} ai */
 const aiHead = (ai) => (aiCss(ai) ? `<style>${AI_STYLE}</style>` : "");
 
@@ -5285,13 +5316,22 @@ const aiNote = (ai) => (ai.line || ai.waiting ? `<p class="ainote" id="ainote"${
  * (B241; Bagrat's hand test, 2026-10-25: they came only with a reload). The asking goes on
  * until the take's voice cuts are in too; and whenever what plays changes later (a cut landing,
  * a press on the strip), a page with chapters asks once more and redraws the bar to match.
- * Answers are taken in the order they were asked. @param {string} id @param {AiFace} ai */
+ * Answers are taken in the order they were asked. A title typed before the page opened asks
+ * too, for the chapters and captions (N82). The empty title's shimmer and its line (N84): the
+ * long line steps down in size to fit the field, and takes the short one below 18 px, and go at a click, a key, a name, or
+ * the page's line ending, the date its placeholder again; when the status
+ * says the name is in, the page's line waits for this script's answer to fade (N82).
+ * @param {string} id @param {AiFace} ai */
 function aiOwnerScript(id, ai) {
-  if (!ai.waiting && !ai.chapters.length) return "";
-  return `<script>(function(){var t=document.getElementById("t"),l=document.getElementById("ainote"),n=0,asked=0,took=0,c=${jsonForScript(JSON.stringify({ id, waiting: ai.waiting, drawn: ai.chapters, later: COPY.namingLater, captions: COPY.captions, cc: AI_CC_BUTTON }))};
-var shown=t.value,touched=false,mine=false,drawn=JSON.stringify(c.drawn);
+  if (!ai.waiting && !ai.coming && !ai.chapters.length) return "";
+  return `<script>(function(){var t=document.getElementById("t"),l=document.getElementById("ainote"),n=0,asked=0,took=0,c=${jsonForScript(JSON.stringify({ id, waiting: ai.waiting, coming: ai.coming, drawn: ai.chapters, later: COPY.namingLater, captions: COPY.captions, cc: AI_CC_BUTTON }))};
+var shown=t.value,touched=false,mine=false,drawn=JSON.stringify(c.drawn),sh=t.hasAttribute("data-naming"),wide=t.placeholder;
+function unshim(){if(!sh)return;sh=false;t.placeholder=t.getAttribute("data-date")||"";t.removeAttribute("data-naming")}
+function place(){if(!sh)return;if(t.value||document.activeElement===t)return unshim();try{var cs=getComputedStyle(t),g=document.createElement("canvas").getContext("2d");g.font=cs.fontWeight+" "+cs.fontSize+" "+cs.fontFamily;
+var room=t.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight),size=parseFloat(cs.fontSize),fit=Math.floor(size*room/g.measureText(wide).width);
+if(fit>=size){t.placeholder=wide;t.style.removeProperty("--naming-size")}else if(fit>=18){t.placeholder=wide;t.style.setProperty("--naming-size",fit+"px")}else{t.placeholder=t.getAttribute("data-naming");t.style.removeProperty("--naming-size")}}catch(e){}}
 function say(x){if(l){l.textContent=x;l.hidden=!x}}
-function take(x){if(mine||x===shown)return;var was=shown;shown=x;t.dispatchEvent(new CustomEvent("shroom:named",{detail:x}));if(t.value!==was)return;
+function take(x){unshim();if(mine||x===shown)return;var was=shown;shown=x;t.dispatchEvent(new CustomEvent("shroom:named",{detail:x}));if(t.value!==was)return;
 t.value=x;document.title=x;if(document.activeElement===t){if(touched)t.select();else t.blur()}}
 function dress(j){var ch=j.chapters||[],cc=j.captions,k=JSON.stringify(ch),p=document.querySelector(".player");if(!p)return !ch.length&&!cc;var v=p.querySelector("video"),s=v.currentSrc||v.src||"";
 if(cc&&!p.querySelector(".cc")){var tr=document.createElement("track"),sp=p.querySelector(".sp"),h=document.createElement("div");tr.kind="captions";tr.src=cc.src+(j.copy&&s.slice(-j.copy.length)===j.copy?"&e=1":"");if(cc.lang)tr.srclang=cc.lang;tr.label=c.captions;v.appendChild(tr);
@@ -5300,7 +5340,9 @@ if(k!==drawn){drawn=k;shroomChapters(p,ch)}return true}
 function ask(then){var me=++asked;fetch("/_shroom/named/"+c.id,{cache:"no-store"}).then(function(r){return r.ok?r.json():null}).then(function(j){var late=me<took;if(!late)took=me;
 if(!j||late){if(then)then(j,false);return}if(c.waiting){if(j.named&&!j.titled)take(j.named);say(j.later?c.later:"")}var ok=dress(j);if(then)then(j,ok)}).catch(function(){if(then)then(undefined,false)})}
 function poll(){if(++n>60)return;ask(function(j,ok){if(j===null)return;if(ok&&j&&j.done)return;setTimeout(poll,j&&n<12?5000:30000)})}
-document.addEventListener("shroom:keep",function(){ask()});if(!c.waiting)return;
-t.addEventListener("pointerdown",function(){touched=true});t.addEventListener("input",function(){touched=true});
-t.addEventListener("change",function(){mine=true;say("")});setTimeout(poll,5000)})()</script>`;
+document.addEventListener("shroom:keep",function(){ask()});document.addEventListener("shroom:finished",unshim);
+document.addEventListener("shroom:named-in",function(e){e.detail.taken=true;ask(function(){e.detail.go()})});
+if(sh){t.addEventListener("focus",unshim);t.addEventListener("pointerdown",unshim);t.addEventListener("input",unshim);place();try{window.addEventListener("resize",place)}catch(e){}}
+if(c.waiting){t.addEventListener("pointerdown",function(){touched=true});t.addEventListener("input",function(){touched=true});
+t.addEventListener("change",function(){mine=true;say("")})}if(c.waiting||c.coming)setTimeout(poll,5000)})()</script>`;
 }
