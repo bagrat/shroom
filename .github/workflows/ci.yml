@@ -215,6 +215,9 @@ jobs:
           node --test tools/test/release-notes.test.mjs
           node tools/release-notes.mjs check --all
 
+      - name: Only a branch's own request starts an e2e run (tools/e2e-asked.py)
+        run: node --test tools/test/e2e-asked.test.mjs
+
       - name: The landing page, the media readers
         run: |
           node --test site/test/landing.test.mjs site/test/agent.test.mjs site/test/cli.test.mjs site/test/worker.test.mjs site/test/og.test.mjs site/test/report.test.mjs

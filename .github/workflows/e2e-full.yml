@@ -52,8 +52,36 @@ env:
   STATUS_CONTEXT: e2e (test account)
 
 jobs:
+  # A push starts this only when the branch's own commits changed dev/e2e/request, never
+  # because a merge of main brought another PR's request in (tools/e2e-asked.py). Seconds,
+  # on Linux, so a merge of main never waits for a Mac to say no. Run workflow always runs.
+  asked:
+    name: Did the branch ask?
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      asked: ${{ steps.asked.outputs.asked }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: The branch's own commits, past main
+        id: asked
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = push ]; then
+            python3 tools/e2e-asked.py dev/e2e/request "$BEFORE" HEAD | tee -a "$GITHUB_OUTPUT"
+          else
+            echo "asked=true" | tee -a "$GITHUB_OUTPUT"
+          fi
+
   e2e:
     name: Install → setup → record → play, live
+    needs: asked
+    if: needs.asked.outputs.asked == 'true'
     runs-on: macos-26
     timeout-minutes: 90
     environment: cf-e2e
