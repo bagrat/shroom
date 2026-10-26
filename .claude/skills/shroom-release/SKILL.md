@@ -34,8 +34,13 @@ This is the short version, and the rules a session keeps (Bagrat, 2026-10-19).
 3. The heartbeat green on the release's commit: E2E full on `main`.
 4. Version and notes go to `main` by a merged PR, never a push.
 5. CI green on that commit, then Run workflow with Publish (as above).
-6. Check the published release (RELEASING.md "Checking a published release") and report
-   up with the release link.
+6. Check the published release (RELEASING.md "Checking a published release").
+7. Bring Homebrew up yourself, every release: attach `bagrat/homebrew-shroom` (`add_repo`
+   with push access), then Run workflow on its **Bump** (`bump.yml`, on `main`). Don't
+   leave it to the hourly schedule: GitHub runs it only every few hours, and `brew install`
+   gives the old version until then. When the run is green, read the tap's
+   `Casks/shroom.rb`: its `version` must be the new one and its `sha256` the zip's (the
+   `arm64=` line of the release's `manifest.txt`). Then report up with the release link.
 
 For an early build, first bring `main` into `claude/early-integration` by a merge (never a
 rebase), then follow "Pre-releases". Sessions never push `early-release`; only its workflow
