@@ -18,13 +18,14 @@ env:
 
 jobs:
   webkit:
-    name: WebKit frames, ${{ matrix.hogs }} hogs
+    name: WebKit frames, ${{ matrix.hogs }} hogs ${{ matrix.copy }}
     runs-on: macos-26
     timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
         hogs: [12]
+        copy: [a, b]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -37,15 +38,16 @@ jobs:
           npm ci
           npx playwright install webkit
           brew install ffmpeg
-      - run: PROBE_VT=1 node dev/probe/webkit-frames.mjs 25 ${{ matrix.hogs }} | tee probe.jsonl
+      - run: PROBE_VT=1 node dev/probe/webkit-frames.mjs 40 ${{ matrix.hogs }} | tee probe.jsonl
       - if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: webkit-${{ matrix.hogs }}
+          name: webkit-${{ matrix.hogs }}-${{ matrix.copy }}
           path: probe.jsonl
 
   camera:
     name: Camera, ${{ matrix.variant }} ${{ matrix.copy }}
+    if: false
     runs-on: macos-26
     timeout-minutes: 90
     strategy:

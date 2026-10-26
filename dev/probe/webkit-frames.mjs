@@ -96,12 +96,14 @@ for (let i = 0; i < plays; i++) {
       if (s.ended || s.errors.length) break;
       await sleep(500);
     }
-    const [counters, unread, undrawnFirst, rearmed, trace, t] = await page.evaluate(() => [window.__samples, window.__unread, !!window.__undrawnFirst, window.__rearmed, window.__trace, window.__t]);
+    const [counters, unread, undrawnFirst, rearmed, trace, t, el] = await page.evaluate(() => { const v = document.getElementById("v");
+      return [window.__samples, window.__unread, !!window.__undrawnFirst, window.__rearmed, window.__trace, window.__t,
+        v && { currentTime: Number(v.currentTime.toFixed(2)), paused: v.paused, readyState: v.readyState, networkState: v.networkState, played: v.played.length ? Number(v.played.end(v.played.length - 1).toFixed(2)) : 0 }]; });
     let backwards = 0, prev = null;
     for (const c of counters) { if (c === null) continue; if (prev !== null && c < prev) backwards++; prev = c; }
     const presented = counters.length, readable = counters.filter((c) => c !== null).length;
     const ok = s.ended && s.errors.length === 0 && backwards === 0 && readable === presented && presented > 0;
-    const row = { play: i, variant, ok, ended: s.ended, presented, readable, backwards, rearmed, undrawnFirst, mediaTime: t, first: counters.find((c) => c !== null), last: counters.findLast((c) => c !== null), errors: s.errors, unread, load: os.loadavg().map((l) => l.toFixed(1)).join(" "), trace: presented ? undefined : trace };
+    const row = { play: i, variant, ok, ended: s.ended, presented, readable, backwards, rearmed, undrawnFirst, mediaTime: t, first: counters.find((c) => c !== null), last: counters.findLast((c) => c !== null), errors: s.errors, unread, load: os.loadavg().map((l) => l.toFixed(1)).join(" "), el, trace: presented > 5 && s.ended ? undefined : trace, wallMs: Date.now() - t0 };
     results[variant].push(row);
     console.log(JSON.stringify(row));
     await browser.close();
