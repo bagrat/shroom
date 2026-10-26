@@ -10,7 +10,7 @@ A change skips the Mac only when every path it touches is web (WEB below) and no
 reads it. "Reads" is found, not listed: every path-shaped string in the Mac lanes' sources
 (`include_str!`, `root.join("site/index.html")`, a node test's `join(ROOT, …)`), so a new
 test that reads a doc routes that doc to the Mac the day it lands. Anything not web —
-crates/, app/, tools/, installer/, .github/, spec/machine.json, a lockfile, a new top-level
+crates/, app/, tools/ (but a site-only one), installer/, .github/, spec/machine.json, a lockfile, a new top-level
 folder — runs the full Mac set. When in doubt, the Mac runs.
 """
 import re
@@ -21,10 +21,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 
 # What a Mac lane can't be reached by unless it reads it: the site, the Worker, the docs,
-# the spec's readable form, dev tooling, the frozen record, the session skills, and the
-# top-level prose. spec/machine.json is not here: every region's tests derive from it.
+# the spec's readable form, dev tooling, the frozen record, the session skills, the
+# top-level prose, and the tools that make only the site (render-og-card.mjs draws
+# site/og.png, and site/test/og.test.mjs holds it). spec/machine.json is not here: every
+# region's tests derive from it.
 WEB_DIRS = ("site/", "worker/", "docs/", "dev/", "history/", ".claude/")
-WEB_FILES = ("spec/MACHINE.md",)
+WEB_FILES = ("spec/MACHINE.md", "tools/render-og-card.mjs")
 
 
 def web(path):
