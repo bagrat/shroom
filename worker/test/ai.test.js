@@ -16,6 +16,7 @@ import { PIECE_SECS, adtsFrames, cat, chat, fakeAI, initMp4, pieceMp4, responseO
 const MIN = 60 * SEC;
 const API = "/_shroom/api/ai";
 const LATER = `.shroom/ai/later/${REC}`;
+const machine = JSON.parse(readFileSync(new URL("../../spec/machine.json", import.meta.url), "utf8"));
 const TRANSCRIPT = `rec/${REC}/ai/transcript.json`;
 const MIDNIGHT = Date.parse("2026-10-03T00:00:00Z"); // the first 00:00 UTC after NOW
 
@@ -920,7 +921,7 @@ function namingScript(html, { value = fieldOf(html).value, focused = !!fieldOf(h
   const shroomCaptions = () => { wired.captions++; };
   const docOn = {};
   const document = {
-    title: "", activeElement: null, getElementById: (id) => (id === "t" ? t : id === "ainote" ? note : id === "ns" ? shim : null),
+    title: "", activeElement: null, getElementById: (id) => (id === "t" ? t : id === "ainote" ? note : null),
     addEventListener: (type, fn) => (docOn[type] ??= []).push(fn),
     querySelector: (q) => (q === ".player" && live ? player : null),
     createElement: (tag) => Object.defineProperty(el(tag), "innerHTML", {
@@ -929,6 +930,7 @@ function namingScript(html, { value = fieldOf(html).value, focused = !!fieldOf(h
   };
   const t = {
     value: value ?? "", placeholder: fieldOf(html).placeholder,
+    getAttribute: (n) => attrs[n] ?? null, hasAttribute: (n) => n in attrs, removeAttribute: (n) => { delete attrs[n]; },
     addEventListener: (type, fn) => (on[type] ??= []).push(fn),
     dispatchEvent: (e) => { if (e.type === "shroom:named") named.push(e.detail); for (const fn of on[e.type] ?? []) fn(e); return true; },
     blur: () => { if (document.activeElement !== t) return; document.activeElement = null; for (const fn of on.blur ?? []) fn({}); },
@@ -936,8 +938,8 @@ function namingScript(html, { value = fieldOf(html).value, focused = !!fieldOf(h
     select: () => { t.selected = true; },
   };
   const note = { textContent: "", hidden: true };
-  /** The title's shimmer (N82), as the page draws it: there only while the name is on its way. */
-  const shim = /<span class="nameshim" id="ns"/.test(html) ? { hidden: true, style: {}, gone: false, remove() { this.gone = true; } } : null;
+  /** The field's own attributes, as the page draws them: the shimmer's (N84) among them. */
+  const attrs = Object.fromEntries([...(html.match(/<input class="title" id="t"[^>]*>/)?.[0] ?? "").matchAll(/\s([a-z-]+)="([^"]*)"/g)].map((m) => [m[1], m[2].replace(/&amp;/g, "&")]));
   if (focused) document.activeElement = t;
   const timers = [];
   let pending = null;
@@ -947,7 +949,9 @@ function namingScript(html, { value = fieldOf(html).value, focused = !!fieldOf(h
   new Function("document", "fetch", "setTimeout", "CustomEvent", "shroomChapters", "shroomCaptions", script)(document, fetch, (fn) => timers.push(fn), CustomEvent, shroomChapters, shroomCaptions);
   const settled = () => new Promise((ok) => setTimeout(ok, 0));
   return {
-    t, note, shim, document, named, player, timers,
+    t, note, document, named, player, timers,
+    /** Whether the title shimmers now (N84): the field still carries its naming line. */
+    get shimmering() { return "data-naming" in attrs; },
     /** The page's line ending (N82): the finishing line faded, for whatever reason. */
     finished() { for (const fn of docOn["shroom:finished"] ?? []) fn({}); },
     /** The status saying the name is in: whether this script took it, and when it's dressed. */
@@ -1242,7 +1246,8 @@ describe("the page (B209)", () => {
 
 // Bagrat's re-check of 0.1.33-early.1, 2026-10-25: the chapters and captions came after the
 // finishing spinner had gone. N82: the line lasts until the name is in, and the empty title
-// shimmers while it's on its way; a typed title still takes the chapters and captions.
+// shimmers while it's on its way (N84: the whole title, borderless, with its line); a typed
+// title still takes the chapters and captions.
 describe("the name on its way (N82)", () => {
   const live = async (env, cookie) => { const res = await call(env, "GET", `/${REC}`, cookie ? { headers: { cookie } } : {}); expect(res.status).toBe(200); return res.text(); };
   /** A take that went live a minute ago in a space that listens, its cues planned (none), not yet named. */
@@ -1286,29 +1291,43 @@ describe("the name on its way (N82)", () => {
     expect(lineOf(await live(named, cookieFor(M1, OWNER_MAC)))).toMatch(/ hidden/);
   });
 
-  it("the empty title shimmers while the name is on its way, and the page doesn't open in the field", async () => {
+  /** The spec's lines for the title while the name is on its way (N84). */
+  const naming = (id) => { const l = machine.states.hearing.said.find((x) => x.id === `hearing.${id}`); expect(l, id).toBeTruthy(); return l.text; };
+  const tagOf = (html) => html.match(/<input class="title" id="t"[^>]*>/)?.[0] ?? "";
+
+  it("the empty title shimmers whole, borderless, with its line while the name is on its way, and the page doesn't open in it (N84)", async () => {
     const { html } = await freshPage();
-    expect(html).toContain('<span class="nameshim" id="ns" aria-hidden="true" hidden></span>');
-    expect(html).toContain(".nameshim{");
-    expect(fieldOf(html)).toMatchObject({ value: "", autofocus: false });
+    const tag = tagOf(html);
+    expect(fieldOf(html)).toMatchObject({ value: "", placeholder: naming("ai-is-naming"), autofocus: false });
+    expect(tag).toContain(` data-naming="${naming("naming")}"`);
+    expect(tag).toMatch(/ data-date="Untitled — Oct \d+"/);
+    // No border, no fill: the gradient slides across the whole title until it's clicked.
+    const css = html.match(/\.title\[data-naming\]:not\(:focus\)\{[^}]*\}/)?.[0] ?? "";
+    expect(css).toContain("border-color:transparent");
+    expect(css).toContain("animation:shroom-shim");
+    expect(html).not.toContain("nameshim");
     // Not on a typed title, an early one in the field, a named take, words waiting for the free day, or past its five minutes.
     for (const over of [{ titled: true, title: "Mine" }, { named: { by: "ai", early: true, title: "Spring", chapters: [] }, title: "Spring" }, { naming: { later: "daily", at: new Date(NOW).toISOString() } }, { publishedAt: new Date(NOW - 6 * MIN).toISOString() }]) {
-      expect((await freshPage(over)).html, JSON.stringify(over)).not.toContain('id="ns"');
+      const other = (await freshPage(over)).html;
+      expect(tagOf(other), JSON.stringify(over)).not.toContain("data-naming");
+      expect(other).not.toContain(naming("ai-is-naming"));
     }
-    expect(await live(await namedSpace(fresh()), cookieFor(M1, OWNER_MAC))).not.toContain('id="ns"');
+    expect(tagOf(await live(await namedSpace(fresh()), cookieFor(M1, OWNER_MAC)))).not.toContain("data-naming");
   });
 
   it("a viewer's page never shimmers nor waits", async () => {
     const { env } = await freshPage();
     const html = await live(env);
-    for (const s of ['id="ns"', ".nameshim{", "/_shroom/named/", 'id="ul"']) expect(html).not.toContain(s);
+    for (const s of ["data-naming", naming("ai-is-naming"), "/_shroom/named/", 'id="ul"']) expect(html).not.toContain(s);
   });
 
-  it("the shimmer shows once placed, and a click in the field drops it at once and takes typing", async () => {
+  it("a click in the title drops the shimmer and its line at once: the box takes typing, the date its placeholder (N84)", async () => {
     const p = namingScript((await freshPage()).html);
-    expect(p.shim.gone).toBe(false);
+    expect(p.shimmering).toBe(true);
+    const date = p.t.getAttribute("data-date");
     p.click();
-    expect(p.shim.gone).toBe(true);
+    expect(p.shimmering).toBe(false);
+    expect(p.t.placeholder).toBe(date);
     p.type("My own");
     await p.answer({ named: "Planning the spring launch", titled: false, later: false, early: false, done: true, chapters: [], captions: null });
     expect(p.t.value).toBe("My own");
@@ -1316,11 +1335,14 @@ describe("the name on its way (N82)", () => {
 
   it("the shimmer stops with the line, whether a name came or not", async () => {
     const p = namingScript((await freshPage()).html);
+    const date = p.t.getAttribute("data-date");
     p.finished();
-    expect(p.shim.gone).toBe(true);
+    expect(p.shimmering).toBe(false);
+    expect(p.t.placeholder).toBe(date);
     const q = namingScript((await freshPage()).html);
     await q.answer({ named: "Planning the spring launch", titled: false, later: false, early: false, done: true, chapters: [], captions: null });
-    expect(q.shim.gone).toBe(true);
+    expect(q.shimmering).toBe(false);
+    expect(q.t.value).toBe("Planning the spring launch");
   });
 
   it("when the status says the name is in, the script asks at once and lets the line fade once the player is dressed", async () => {
