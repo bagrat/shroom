@@ -1008,7 +1008,7 @@ player as it plays, redraws the bar when the chapters change, and asks once more
 plays changes (`shroom:keep`) — a page that shows chapters does that last part too (D:B241).
 A page whose title was typed before it opened asks too, for the chapters and captions; and when
 the status stops saying `named: "coming"`, it asks at once and the page's line fades once the
-answer is in the player (N82, D:B263).
+answer is in the player (N82, D:B263). While the name is on its way, an untitled page's title field carries `data-naming` and `data-date`, which the same script takes away at a click, a name or the line's end (N84, D:B265).
 
 A seal also deletes the video's plays, `views/<id>.json` (§4.22).
 

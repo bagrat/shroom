@@ -1440,7 +1440,9 @@
     "N67 (an open owner page takes the chapters and captions under a typed title too)",
     "hearing (the line's end, the title's shimmer)"
    ],
-   "amended_by": []
+   "amended_by": [
+    "N84 (the whole title shimmers, borderless, with a line saying a click names it)"
+   ]
   },
   {
    "id": "N83",
@@ -1449,6 +1451,18 @@
    "status": "ratified",
    "date": "2026-10-25",
    "amends": [],
+   "amended_by": []
+  },
+  {
+   "id": "N84",
+   "title": "While the name is on its way, the title itself shimmers, borderless, saying a click names it",
+   "decision": "**Bagrat's check of 0.1.33-early.2, 2026-10-26** (relayed by the orchestrator): the shimmer was a strip after “Untitled” where he expected the whole title to shimmer, with a line like “AI is naming your video, click to name manually”; then, on the board “The page — the title shimmers, borderless…”: no border while it shimmers, only a click brings up the editable box, which comes with the border; and the phone's line approved as drawn. He picked no line between the two drawn for wide windows, so his own stands. (1) **While the name is on its way** (N82's wait), the empty title shows no field: no border, no fill, a soft gradient sliding across the whole title, and in it, where the title goes, “AI is naming your video, click to name manually”, or on a narrow window (a phone) “Naming…”. The line is the field's placeholder: never typed, saved or taken as the title. (2) **A click** (or the keyboard) in it brings up the editable box with its border, the shimmer and the line gone at once, the date as its placeholder, ready for typing; a name that lands later never overwrites what was typed. (3) **The name lands**: plain text, as a named title always shows. (4) **No name comes**: the shimmer and the line stop with the finishing line, and the field is the empty one with the date. Viewers' pages are unchanged.",
+   "status": "ratified",
+   "date": "2026-10-26",
+   "amends": [
+    "N82 (2) (the whole title shimmers, borderless, with its line, in place of the strip beside the placeholder)",
+    "hearing (the title's shimmer and its two lines)"
+   ],
    "amended_by": []
   }
  ],
@@ -14216,7 +14230,7 @@
    "surface": "web-page",
    "status": "provisional",
    "board": "PageAiPendingC",
-   "summary": "While the take is heard and named (N65 (7), N66, N82): in a space that listens, once the upload has drained, the owner page's one line stays: the same words, its spinner turning, until the take's voice cuts are planned and its name is in (the full name with its chapters and captions, or the naming ended with none), then fades as they appear; or five minutes have passed since the take went live, by the page's own count. A strip whose cuts land first shows under the player, the line under it. While the name is on its way the empty title field shimmers, a soft gradient sliding beside its placeholder; the page doesn't open in the field, a click or the keyboard in it drops the shimmer and takes typing, and the shimmer stops with the line. It never speaks of cuts or names. Edit wakes on the title row as the upload drains, beside it (OwnerPageFinishing, OwnerPageFinishingEnds, PageAiPendingC). Owner-mode as the title has it (N40); viewers never see it.",
+   "summary": "While the take is heard and named (N65 (7), N66, N82): in a space that listens, once the upload has drained, the owner page's one line stays: the same words, its spinner turning, until the take's voice cuts are planned and its name is in (the full name with its chapters and captions, or the naming ended with none), then fades as they appear; or five minutes have passed since the take went live, by the page's own count. A strip whose cuts land first shows under the player, the line under it. While the name is on its way the empty title shows no field (N84): no border, a soft gradient sliding across the whole title, with a line where the title goes saying a click names it, shorter on a narrow window; the page doesn't open in the field. A click or the keyboard in it brings up the bordered box, the shimmer and the line gone, the date as its placeholder, ready for typing; the shimmer stops with the line under the player. It never speaks of cuts or names. Edit wakes on the title row as the upload drains, beside it (OwnerPageFinishing, OwnerPageFinishingEnds, PageAiPendingC, PageAiPendingWholeBox). Owner-mode as the title has it (N40); viewers never see it.",
    "entry": "The browser is in owner-mode for this video, the space listens (N66), the upload has drained, the take went live less than five minutes ago, its words don't wait for the next free day, and the Mac hasn't been through them yet or the space hasn't named it yet: the status says the voice cuts or the name are coming.",
    "said": [
     {
@@ -14225,6 +14239,20 @@
      "copy": "ratified",
      "note": "The upload's line (uploading), kept after the upload while the take is heard, its spinner turning. Bagrat, 2026-10-18 (relayed by the orchestrator): one indicator on the owner page, from the upload until the voice cuts land, “Finishing” his pick of its first word.",
      "id": "hearing.finishing-your-video"
+    },
+    {
+     "text": "AI is naming your video, click to name manually",
+     "role": "placeholder",
+     "copy": "ratified",
+     "note": "The title's placeholder while the name is on its way, on a wide window (N84). Bagrat's own line, 2026-10-26 (relayed by the orchestrator); he picked no other.",
+     "id": "hearing.ai-is-naming"
+    },
+    {
+     "text": "Naming…",
+     "role": "placeholder",
+     "copy": "ratified",
+     "note": "The same on a narrow window, a phone, where the longer line is cut (N84). Bagrat approved the phone board, 2026-10-26 (relayed by the orchestrator).",
+     "id": "hearing.naming"
     }
    ],
    "actions": [],
@@ -14232,6 +14260,7 @@
     "N65",
     "N66",
     "N82",
+    "N84",
     "N40"
    ]
   },
