@@ -73,8 +73,18 @@ say() { printf '%s\n' "$*"; }
 fail() { for line in "$@"; do say "$line"; done; exit 1; }
 
 # The shroom already in ~/Applications names itself, and keeps its own folder:
-# ~/.shroom (a developer build keeps ~/.shroom-dev).
-bundle_id() { plutil -extract CFBundleIdentifier raw -o - "$APP/Contents/Info.plist" 2>/dev/null || echo am.shroom; }
+# ~/.shroom (a developer build keeps ~/.shroom-dev). Only a name of shroom's own shape —
+# am.shroom, or am.shroom.<part>… in lowercase letters, digits and '-' — is taken, since it
+# goes into the uninstall's paths and the AppleScript; any other reads as am.shroom.
+bundle_id() {
+  bid=$(plutil -extract CFBundleIdentifier raw -o - "$APP/Contents/Info.plist" 2>/dev/null) || bid=""
+  case "$bid" in
+    *[!a-z0-9.-]* | *..* | *.) bid=am.shroom ;;
+    am.shroom | am.shroom.*) ;;
+    *) bid=am.shroom ;;
+  esac
+  echo "$bid"
+}
 state_dir() {
   case "$(bundle_id)" in
     *.dev) echo "$HOME/.shroom-dev" ;;

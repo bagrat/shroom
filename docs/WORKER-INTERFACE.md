@@ -430,6 +430,7 @@ A status alone never maps to a state. Within `IFACE = 2`, routes and fields only
 | 4.21 | POST | `/_shroom/api/ai` | device key / parent proof |
 | 4.21 | GET, HEAD | `/_shroom/cc/<id>` | none |
 | 4.21 | GET | `/_shroom/named/<id>` | cookie |
+| 4.21 | GET, POST | `/_shroom/chapters/<id>` | cookie |
 | 4.22 | POST | `/_shroom/view/<id>` | none (same-site) |
 | 4.22 | POST | `/_shroom/api/cleanup` | device key (`everyone`: owner-class) |
 | 4.22 | GET, POST | `/_shroom/api/plays` | device key (POST: owner-class) |
@@ -471,8 +472,8 @@ It never claims a meta, and deletes bytes only as auto-cleanup's delete (§4.24)
 **Request.** Opening never consumes (SM:1427). The route reads the UA, the roster (once)
 and `cookie.key` (only with a cookie), never `mark.json`. Other methods → 405.
 
-**Response.** Always 200 `text/html`, `noindex`, `no-store`, `no-referrer`, CSP
-`frame-ancestors 'none'` (HEAD sends headers only). `<title>` is the hero, escaped. Every
+**Response.** Always 200 `text/html`, `noindex`, `no-store`, `no-referrer`, `nosniff`, the
+pages' script policy with `frame-ancestors 'none'` (§4.17; HEAD sends headers only). `<title>` is the hero, escaped. Every
 face carries the icon links (§4.19), shroom's name top-left, and "made with shroom"
 bottom-right **whatever the switch says** (U6; §9 Q17).
 
@@ -824,14 +825,19 @@ A removed owner-class Mac shows `owner-mac-removed` (DV #21); a fresh token revi
 
 ### 4.17 The page routes
 
-HTML answers are 200 `text/html`, `noindex`, `no-store`, `no-referrer`, CSP
-`frame-ancestors 'none'` (embed: `*`). Other methods → 405; unmatched → 404.
+HTML answers are 200 `text/html`, `noindex`, `no-store`, `no-referrer`, `nosniff`, and a
+script policy (D:B272): `script-src 'nonce-<n>' 'self'; object-src 'none'; base-uri 'none';
+form-action 'none'; worker-src 'self' blob:; frame-ancestors 'none'` (embed: `*`). The nonce
+is 128 random bits drawn per response and carried by every inline `<script>` the Worker
+writes; `'self'` is the player's `/_shroom/hls.js`, `blob:` its transmuxer's worker. No page
+has an inline event handler or a form; images, media and fetches are not restricted. Other
+methods → 405; unmatched → 404.
 
 | Route | Behaviour |
 |---|---|
 | `/_shroom/hls.js` | `.shroom/player/hls.min.js`, immutable for a year |
 | `/_shroom/status/<id>` | Public JSON, not shroom-shaped. Absent → `waiting`. Deleted or sealed → `removed`. Live with HLS, or baked (D:B197, §4.18) → `{live, poster, mp4, teaser, thumb, dur, drained}` (`thumb`: the newest Copy thumbnail picture for the title and drawn from the first frame the video shows now — the record's `thumb` with its `from` current, see the thumbnail POST — or null; D:B164. `dur`: the length in seconds, 0 when unknown, which a page opened while the video uploaded draws on its picture; D:B165) (+ `pct`, `stalled` until drained). With an edit (N63, D:B195; §4.18): `dur` is the edited length, `keep` the ranges that play, `copy` `{src, dur, poster}` once its permanent copy is current; `drawFrom` `{from, psrc, tsrc, teaser}` or null, what Copy thumbnail draws from now, which an open owner page follows (D:B252); `mp4` says Download has something to hand over, `poster`/`teaser` whether the page shows a first frame and a teaser — never one of a part that's cut (§4.18). A baked recording with no edit (D:B197: `bakedFrom` non-empty) names its own file as `copy` the same way, so a player the bake left on the original (its files 404) moves to it; a player already on that file stays. An edit that leaves nothing to play (its applied cuts cover the whole trim, or neither the record nor the list has a length) → `unavailable`, never the recording as it was. Uploading → `{uploading, pct, stalled}`. Else, or a throwing read → `unavailable` (D:B94). `pct` ≤ 99. `stalled` = `progress.updatedAt` (else `createdAt`) older than 120 s. Live, it may add `cuts` (N65, D:B200 c): `"coming"` while the space hears its takes (an `AI` binding, N66), the take went live under 5 min ago (`publishedAt`) and its edit list carries no plan mark (`edits.voice`), unless `naming.later` is set; once planned with voice cuts, a short base-36 tag of their rows, which any press changes. Never a word that was cut. It may add `named: "coming"` (N82, D:B263) on the same terms while the full name isn't in (`named` absent or `named.early`; a typed title doesn't end it), so the owner page keeps its line until the name, chapters and captions are in. |
-| `/m/<id>/<file>` | No empty/`.`/`..` segment; only `m3u8 m4s mp4 jpg gif vtt` (else 404, D:B125; `gif` for Copy thumbnail's loop, D:B164). Reads `rec/<id>/<file>` beside the record: deleted or sealed → 404, record throws → 503, absent → served. While the record's edit has a current permanent copy (N63 step 3, D:B195) only the copy's own files and the recording's own first frame (`poster.jpg`, which a token-less Mac's Library fetches until the bake), while the edit keeps that frame, are served; the original's stream, `teaser.mp4`, `video.mp4` and anything else → 404, GET, HEAD and Range alike (a stale copy or no edit serves them again). A baked recording (D:B197) serves exactly the files its `media` names; with a newer copy current over it, that copy's files and its own poster while the new edit keeps its first frame. Copy thumbnail's `thumb-<16 hex>.gif\|jpg` (D:B164) are served whatever else is, so a paste already sent keeps its picture — unless an edit took something from the first 3 s the pictures show (the first frame, the teaser's first 3 s): when the record's edit or any bake (`bakedFrom[].keep`) doesn't start with a range from 0 to at least 3 s, only the record's current picture (`thumb`, its title and `from` current) is. Range → 206. `public, max-age=3600`. Media answers are `nosniff` with `content-security-policy: sandbox; default-src 'none'`. |
+| `/m/<id>/<file>` | No empty/`.`/`..` segment; only `m3u8 m4s mp4 jpg gif vtt` (else 404, D:B125; `gif` for Copy thumbnail's loop, D:B164). Reads `rec/<id>/<file>` beside the record: deleted or sealed → 404, record throws → 503, absent → served. While the record's edit has a current permanent copy (N63 step 3, D:B195) only the copy's own files and the recording's own first frame (`poster.jpg`, which a token-less Mac's Library fetches until the bake), while the edit keeps that frame, are served; the original's stream, `teaser.mp4`, `video.mp4` and anything else → 404, GET, HEAD and Range alike (a stale copy or no edit serves them again). A baked recording (D:B197) serves exactly the files its `media` names; with a newer copy current over it, that copy's files and its own poster while the new edit keeps its first frame. Copy thumbnail's `thumb-<16 hex>.gif\|jpg` (D:B164) are served whatever else is, so a paste already sent keeps its picture — unless an edit took something from the first 3 s the pictures show (the first frame, the teaser's first 3 s): when the record's edit or any bake (`bakedFrom[].keep`) doesn't start with a range from 0 to at least 3 s, only the record's current picture (`thumb`, its title and `from` current) is. Range → 206. `private, max-age=3600`: only the viewer's browser keeps a copy, never a shared cache (D:B272). Media answers are `nosniff` with `content-security-policy: sandbox; default-src 'none'`. |
 | `/d/<id>` | The video as it plays, as an attachment named after the title: a live record with no edit and `media.mp4` → its own file, `rec/<id>/video.mp4` (or, baked, the `edit-<n>.mp4` its key names, §4.18); with an edit, its current permanent copy → `rec/<id>/edit-<n>.mp4` (a name `editsOf` validated, never one taken as is); an edit whose copy isn't up or that leaves nothing to play, or anything else → 404 (N63). Storage failure → 503. |
 | `/oembed?url=` | This origin's `/<id>` → `{version, type:"video", width, height, html (iframe ?embed=1), title?, thumbnail_*?}` (with an edit, N63: the thumbnail is its copy's own first frame once it's up, none when the copy has none; before, the recording's first frame only while the edit keeps it), else 404 |
 | `/<seg>?k=<k>` | Redeem (below) |
@@ -990,8 +996,10 @@ its words on the old clock; words or chapters on a clock the list no longer hold
 and `meta.edits.rev`) that removes at least a fifth of the words it saw, or a whole
 chapter, marks the take to be named again; else the revision is stamped.
 
-**`GET|HEAD /_shroom/cc/<id>`** — the captions as WebVTT (`text/vtt`, `max-age=300`), written
-per view from the transcript through the saved edit: `e=1` on the edited clock (the editor's
+**`GET|HEAD /_shroom/cc/<id>`** — the captions as WebVTT (`text/vtt`, `private, max-age=300`),
+written per view from the transcript through the saved edit as the player reads it (`editsOf`'s
+ranges, placed on the record's `durationSec`; an edit that leaves nothing to play, no words;
+D:B272): `e=1` on the edited clock (the editor's
 own copy plays), otherwise on the recording's. 404 without captions, for a deleted record.
 
 **`GET /_shroom/named/<id>`** — the owner page's ask while a name is on its way: the maker's
@@ -1009,6 +1017,23 @@ plays changes (`shroom:keep`) — a page that shows chapters does that last part
 A page whose title was typed before it opened asks too, for the chapters and captions; and when
 the status stops saying `named: "coming"`, it asks at once and the page's line fades once the
 answer is in the player (N82, D:B263). While the name is on its way, an untitled page's title field carries `data-naming` and `data-date`, which the same script takes away at a click, a name or the line's end (N84, D:B265).
+
+**`GET /_shroom/chapters/<id>`** and **`POST /_shroom/chapters/<id>`** — the owner's chapters
+(N87, D:B267): the maker's or an owner-class browser only, else 403; no record or deleted → 404
+(GET). GET answers `{"chapters":[[start,"title"],…],"panel":{mine,off,clock,total,rows}}`:
+`chapters` what the bar shows, `rows` one a chapter, `{s, t, title}` with `s` its start on the
+recording's clock now and `t` on the bar's (`null` while an edit cuts it out whole, or leaves it
+under 5 s), the space's chapters as the bar shows them until the owner's own exist (`mine`).
+POST (same-origin) takes the whole list, `{"clock":<the panel's clock>,"off":bool,"list":[{s|t,
+title}…]}`: a kept row by `s`, a moved or new one by `t`; a name 1–80 characters, at most 50
+rows. A clock other than the record's (the editor made the video again since) → 409; a `t`
+past the end → `400 {"why":"outside"}`; a moved or new start within 5 s of a neighbour on the
+bar or of the end → `400 {"why":"short"}`; anything else malformed → 400. Under If-Match
+(sealed or deleted → 409) it writes `chapters` = `{by:"owner", at, clock, list:[[s,"title"],…],
+off}` → `200` with GET's answer, `no-store`. From then on the bar shows the owner's (on a video
+of any length, two or more playing, none while `off`), carried through the edit and any bake
+as the space's are, and the naming never writes them: its new `named.chapters` stay unseen,
+and an edit is weighed for naming again by the space's own chapters only.
 
 A seal also deletes the video's plays, `views/<id>.json` (§4.22).
 

@@ -114,7 +114,9 @@ describe("the recipient's on-its-way faces (N27, N40)", () => {
     const a = await html(space(), `/${REC}`);
     const b = await html(space(), "/zzzzzzzzzzzzzzzz");
     expect(a).toContain(`<div class="wait"><p class="line">${COPY.onItsWay}</p><span class="bar go"><i style="width:0%"></i></span></div>`);
-    expect(a).toBe(b);
+    // The same page, but for the script nonce each response draws afresh.
+    const bare = (/** @type {string} */ x) => x.replace(/ nonce="[^"]*"/g, "");
+    expect(bare(a)).toBe(bare(b));
   });
 
   it("gives the embed face the same line and bar", async () => {
