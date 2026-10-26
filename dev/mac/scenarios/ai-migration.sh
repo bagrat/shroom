@@ -1,9 +1,10 @@
 # The AI-on migration (spec N76, DECISIONS B235) the way a person meets it, on the test
-# account: the signed 0.1.27 release installed by the one-line installer and set up through
-# its own wizard with the AI left off and the old offer never answered, then updated in
-# place to the early build, as an early-channel Mac is. Then the two guards: a Mac that
-# said Not now to the old offer, and a member's Mac. Only e2e-migration.yml runs it: it
-# needs the run's token (E2E_TOKEN_FILE) and the release installed at MAC_APP.
+# account: the signed 0.1.27 release installed by its version through the one-line
+# installer, and set up through its own wizard with the AI left off and the old offer
+# never answered, then updated in place to the early build, as an early-channel Mac is.
+# Then the two guards: a Mac that said Not now to the old offer, and a member's Mac. Only
+# e2e-migration.yml runs it: it needs the run's token (E2E_TOKEN_FILE) and the release
+# installed at MAC_APP.
 #
 #   A. never answered → updated: the first popover says “AI features are turned on.” with
 #      Turn off and OK; the page answers its ping with the AI; a take with words in it gets
@@ -23,11 +24,27 @@ OUT=${MAC_OUT:?}
 SHOTS="$OUT/shots"
 CHECKS="$OUT/checks.tsv"
 HOME_DIR="$HOME/.shroom"
+# The last release before the AI was on by default (B235 shipped in 0.1.30-early.1 and
+# 0.1.33): a Mac still on it is the one the migration meets. It is installed by its version
+# (dev/e2e/install-release.sh, here and by e2e-migration.yml), since the installer's own
+# latest already has the AI on and would show no old offer to migrate from.
 FROM=0.1.27
-# The build an early-channel Mac takes is whatever the early pointer names now (B220), so
-# the update leg reads it rather than pinning a number that the next early build outdates.
-TO=$(curl -fsSL --retry 3 --max-time 30 https://github.com/bagrat/shroom/releases/download/early/manifest.txt | sed -n 's/^version=//p')
-[ -n "$TO" ] || { echo "ai-migration: couldn't read the early pointer's version" >&2; exit 1; }
+# The build an early-channel Mac takes (B220): the early pointer's, or the latest release
+# once that is newer — read, rather than pinned, so the next build doesn't outdate it.
+pointer() { curl -fsSL --retry 3 --max-time 30 "https://github.com/bagrat/shroom/releases/$1/manifest.txt" | sed -n 's/^version=//p'; }
+TO=$(printf '%s\n%s\n' "$(pointer download/early)" "$(pointer latest/download)" | awk -F'[.-]' 'NF {
+  k = sprintf("%09d %09d %09d %09d", $1, $2, $3, (NF > 3 ? $5 : 999999999)); if (k > best) { best = k; v = $0 } } END { print v }')
+[ -n "$TO" ] || { echo "ai-migration: couldn't read the early pointer's or the latest release's version" >&2; exit 1; }
+# 0.1.27 meets the old offer before it hears of an update: its popover shows one banner, and
+# an update outranks the offer (N38's order). While 0.1.27 was the latest nothing was newer;
+# since 0.1.33 is, a 0.1.27 set up here showed "Update" and no offer (run 40261609075). So
+# GitHub's releases, where its updater looks, are kept from this Mac from each leg's setup
+# until its update step, which opens the app again to look. This runner's own hosts file,
+# put back by finish_up.
+HOLD="# ai-migration: no updates yet"
+flush_names() { sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder 2>/dev/null; }
+hold_updates() { printf '0.0.0.0 github.com %s\n:: github.com %s\n' "$HOLD" "$HOLD" | sudo tee -a /etc/hosts >/dev/null; flush_names; }
+let_updates() { sudo sed -i '' "/$HOLD/d" /etc/hosts; flush_names; }
 SHROOM="$HOME/.local/bin/shroom"
 AX="$PWD/dev/mac/ax.js"
 export SHROOM_REF=ci
@@ -122,6 +139,7 @@ wait_ai() { # <on|off> <seconds>
 once() { cat "$HOME_DIR/once.json" 2>/dev/null | tr -d '\n ' ; }
 keep_log() { cp "$HOME_DIR/logs/run.log" "$OUT/run-$1.log" 2>/dev/null; }
 finish_up() {
+  let_updates
   pbcopy </dev/null
   keep_log last
   [ -n "${INVITE:-}" ] && rm -f "$INVITE"
@@ -169,6 +187,7 @@ wizard() { # <leg> <fresh|reconnect>
 # the popover's Update.
 update_in_place() { # <leg>
   local leg=$1 t=0
+  let_updates
   printf 'early\n' >"$HOME_DIR/channel"
   quit_app
   open "$APP"
@@ -182,7 +201,7 @@ update_in_place() { # <leg>
   done
   has "Update" || stop "$leg: the update was offered" "no Update in the popover after $t s; $(grep -F 'updater' "$HOME_DIR/logs/run.log" | tail -n 2)"
   shot "$leg-update-offered"
-  check "$leg: the popover offers the update on the early channel" 0 "$(ax | awk -F'\t' '$2 == "AXStaticText" && /0\.1\.30/ { print $3; exit }')"
+  check "$leg: the popover offers the update on the early channel" 0 "$(ax | awk -F'\t' -v to="$TO" '$2 == "AXStaticText" && index($3, to) { print $3; exit }')"
   click "Update" || stop "$leg: Update" "not clickable"
   t=0
   while [ "$t" -lt 300 ]; do
@@ -205,6 +224,7 @@ update_in_place() { # <leg>
 # ── A ─────────────────────────────────────────────────────────────────────────────────
 say_ "A: $FROM, set up, the AI never answered"
 [ "$(version)" = "$FROM" ] || stop "A: the release installed is $FROM" "$(version)"
+hold_updates
 open "$APP"
 wizard A fresh
 check "A: the space's AI is off on $FROM" "$([ "$(wait_ai off 30)" = off ] && echo 0 || echo 1)" "ping: $(ping_ai)"
@@ -297,8 +317,9 @@ quit_app
 say_ "B: another Mac of the owner's on $FROM, Not now on the old offer"
 mv "$HOME_DIR" "$HOME/.shroom-legA"
 rm -rf "$APP"
-curl -fsSL "https://shroom.am/install?ref=ci" | sh 2>&1 | tr '\r' '\n' | grep -v '^#' | tail -n 3
+bash dev/e2e/install-release.sh "$FROM" | tail -n 3
 [ "$(version)" = "$FROM" ] || stop "B: the release reinstalled" "$(version)"
+hold_updates
 wizard B reconnect
 check "B: the space's AI is off" "$([ "$(wait_ai off 30)" = off ] && echo 0 || echo 1)" "ping: $(ping_ai)"
 popover

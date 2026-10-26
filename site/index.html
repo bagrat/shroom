@@ -94,42 +94,84 @@
   .cmd .lbl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .cmd .done .lbl { position: static; width: auto; height: auto; clip-path: none; }
 
-  /* The landing (N59, the canvas board “shroom.am redesign — B8-box”). On a laptop, two columns:
-     the brand, the pitch and the terms on the left; one box on the right whose top is level with
-     the wordmark's baseline and whose bottom is the last term's. The page is at least one screen
+  /* The landing (N59, N86; the canvas board “Bento A, aligned”, Bagrat, 2026-10-25). One 12-column
+     grid with one 24 px gutter. The masthead sits on the grid's edges: the wordmark at the left, the
+     headline at the right, the line under the headline on the wordmark's baseline. Under it two
+     stacks: the video over install (seven columns), the price over the terms (five; with the video
+     whole, seven and five keep the stacks nearest level at every laptop width). The two stacks
+     end on one line (the rule under .stack says how). The page is at least one screen
      tall, its foot at the bottom of that screen. On a phone it stacks. */
   .page { min-height: 100vh; min-height: 100svh; display: flex; flex-direction: column; padding: 0 32px; }
-  .split {
-    --mark: min(124px, 8.6vw);
+  .mast, .tiles { width: 100%; max-width: 1312px; margin: 0 auto; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: 24px; }
+  .mast {
+    --mark: min(112px, 7.8vw);
     --word: calc(var(--mark) * 0.84);
-    width: 100%; max-width: 1376px; margin: 0 auto; padding-top: 36px;
-    display: grid; grid-template-columns: minmax(0, 744fr) minmax(0, 576fr); column-gap: 56px;
-    grid-template-areas: "brand box" "pitch box" "terms box"; grid-template-rows: auto auto 1fr;
+    align-items: start; padding: 48px 0 28px; border-bottom: 1px solid var(--line);
   }
-  .split .brand { grid-area: brand; align-self: start; gap: calc(var(--mark) * 0.18); min-height: 0; margin-bottom: 70px;
+  .mast .brand { grid-column: 1 / 7; justify-self: start; gap: calc(var(--mark) * 0.18); min-height: 0;
     font-size: var(--word); font-weight: 800; letter-spacing: -0.03em; line-height: 1; }
-  .split .brand svg { width: var(--mark); height: calc(var(--mark) * 90 / 84); }
-  .pitch { grid-area: pitch; justify-self: start; width: max-content; max-width: 100%; margin-bottom: 48px; }
-  .pitch h1 { font-size: min(46px, calc((100vw - 120px) * 0.038)); font-weight: 700; line-height: 1.1; white-space: nowrap; text-wrap: initial; }
-  .pitch .punch { margin-top: 6px; }
-  /* One plan that grows with what you keep: a bar from 0 to 30 hours, the free first tenth lit. */
-  .gauge { margin-top: 48px; display: flex; flex-direction: column; gap: 8px; }
-  .gauge .bar { position: relative; height: 6px; border-radius: 3px; background: var(--line); }
-  .gauge .bar::before { content: ""; position: absolute; inset: 0 90% 0 0; border-radius: 3px 0 0 3px; background: var(--frost); }
-  .gauge .ends { display: flex; justify-content: space-between; gap: 12px; color: var(--quiet); font-size: 15px; }
-  .gauge .ends span:nth-child(2n) { text-align: right; }
-  .gauge .ends .short { display: none; }
-  .gauge b { color: var(--text); font-weight: 600; }
-  .gauge .ends span:nth-child(2n+1) b { color: var(--frost); }
-  .terms { grid-area: terms; list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; align-self: start;
-    color: var(--muted); font-size: 19px; line-height: 1.45; }
-  .terms li { display: flex; align-items: flex-start; gap: 12px; }
-  .terms svg { flex: none; width: 20px; height: 20px; margin-top: 4px; fill: none; stroke: var(--green); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+  .mast .brand svg { width: var(--mark); height: calc(var(--mark) * 90 / 84); }
+  /* The headline's middle on the wordmark's (Bagrat, 2026-10-25): the middles of their
+     x-heights meet. The wordmark's sits half its x-height above its baseline, and its baseline
+     0.36em below the mark's middle; the pitch takes the wordmark's size, so its em and ex are the
+     wordmark's in whatever font the visitor has. The headline's box is trimmed to its own
+     x-height (text-box) and pulls up by half of it; where that isn't supported it pulls up by
+     the middle's depth in its line box instead. */
+  .pitch { grid-column: 7 / 13; justify-self: end; text-align: right; min-width: 0; font-size: var(--word);
+    --h1: min(38px, 2.64vw);
+    padding-top: calc(var(--mark) * 45 / 84 + 0.36em - 0.5ex); }
+  .pitch h1 { font-size: var(--h1); font-weight: 700; line-height: 1.06; letter-spacing: -0.02em; white-space: nowrap; text-wrap: initial;
+    margin-top: -0.62em; }
+  @supports (text-box-trim: trim-both) {
+    .pitch h1 { text-box: trim-both ex alphabetic; margin-top: -0.5ex; }
+  }
+  .tiles { margin-top: 32px; }
+  .stack { display: flex; flex-direction: column; gap: 24px; min-width: 0; }
+  .stack.l { grid-column: 1 / 8; }
+  .stack.r { grid-column: 8 / 13; }
+  /* Whichever stack is shorter grows: install on the left, the terms on the right. The video's
+     frame never grows: the still and the video always show whole (Bagrat, 2026-10-25). */
+  .stack.l > .install, .stack.r > .terms { flex: 1 1 auto; }
+  .tile { display: flex; flex-direction: column; gap: 18px; padding: 20px; border-radius: 12px; background: var(--card); border: 1px solid var(--card-edge); }
+  /* The price (Bagrat, 2026-10-19: the price in its own box, one slider;
+     2026-10-24: the price first, hours of video a month, how long until old videos go, the team
+     line inside): what Cloudflare would charge, worked out on the page. */
+  .price { padding: 22px 24px 20px; border-radius: 12px; background: var(--card); border: 1px solid var(--card-edge);
+    display: flex; flex-direction: column; gap: 4px; }
+  .price h2 { margin: 0 0 4px; font-size: 13px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--quiet); }
+  .price .ask { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; font-size: 15px; color: var(--muted); }
+  .price output { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .price input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 44px; margin: 0; background: transparent; cursor: pointer; }
+  .price input[type=range]::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: var(--line-strong); }
+  .price input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; margin-top: -9px; border: 0; border-radius: 50%; background: var(--text); box-shadow: 0 1px 4px rgba(0,0,0,.35); }
+  .price input[type=range]::-moz-range-track { height: 4px; border-radius: 2px; background: var(--line-strong); }
+  .price input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border: 0; border-radius: 50%; background: var(--text); }
+  .price .why { margin: 6px 0 0; font-size: 14px; color: var(--quiet); }
+  /* The cleanup choice: its label over the three choices, which take the box's width. */
+  .price .keep { flex-direction: column; gap: 8px; margin-top: 6px; font-size: 15px; color: var(--muted); }
+  .price .seg { display: flex; gap: 2px; padding: 3px; border-radius: 9px; background: var(--well); }
+  .price .seg button { flex: 1 1 0; min-height: 40px; padding: 0 10px; border: 0; border-radius: 7px; background: transparent; color: var(--quiet); font: 600 14px var(--sans); cursor: pointer; }
+  .price .seg button[aria-pressed="true"] { background: var(--line); color: var(--text); }
+  .price .sum { display: flex; align-items: baseline; gap: 10px; margin: 0 0 10px; font-size: 16px; color: var(--muted); }
+  .price .sum b { font-size: 46px; font-weight: 700; letter-spacing: -0.02em; line-height: 1; color: var(--text); font-variant-numeric: tabular-nums; }
+  .price .sum b.free { color: var(--frost); }
+  /* Without script the box reads its opening amount (an hour, $0.00): the controls need script. */
+  .price .live { display: none; }
+  .js .price input.live { display: block; }
+  .js .price .keep.live { display: flex; }
+  .terms { padding: 22px; justify-content: center; gap: 14px; }
+  /* Its title, in the price box's label style (Bagrat, 2026-10-25, the title his to pick). */
+  .terms h2 { margin: 0; font-size: 13px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--quiet); }
+  .terms ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px;
+    color: var(--muted); font-size: 15px; line-height: 1.45; }
+  /* Each term's icon (Bagrat, 2026-10-25, the canvas boards “the terms' icons”): Lucide shapes,
+     stroke 2, in the page's frost blue, on a chip of the same blue (green was tried on the whole
+     page and dropped). The cloud's lock is a badge cut
+     into the cloud's foot (its mask). */
+  .terms li { display: flex; align-items: center; gap: 12px; }
+  .terms .ic { flex: none; width: 34px; height: 34px; border-radius: 8px; background: color-mix(in srgb, var(--frost) 15%, transparent); display: flex; align-items: center; justify-content: center; }
+  .terms svg { width: 20px; height: 20px; fill: none; stroke: var(--frost); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
   .terms b { color: var(--text); font-weight: 600; }
-  /* The box: its top at the wordmark's baseline (half the mark's height, then the baseline's drop
-     below a centred line, 0.355 em of the wordmark in SF and the common sans fonts alike). */
-  .side { grid-area: box; display: flex; flex-direction: column; padding-top: calc(var(--mark) * 45 / 84 + var(--word) * 0.355); }
-  .box { flex: 1 1 auto; display: flex; flex-direction: column; gap: 24px; padding: 20px; border-radius: 10px; background: var(--card); border: 1px solid var(--card-edge); }
 
   /* The hero: the still sits over the video, and fades once the video is playing. */
   .how-to { position: relative; }
@@ -144,14 +186,12 @@
   .still.gone { opacity: 0; pointer-events: none; }
   @media (prefers-reduced-motion: reduce) { .still { transition: none; } }
 
-  /* The setup walkthrough: a small button under the hero, the same space above and below it,
-     then a cut through the box in the page's colour (Bagrat, 2026-10-18). */
-  .walk { align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; min-height: 36px; margin-top: -10px; padding: 0 14px 0 7px;
+  /* The setup walkthrough: a small button under the hero (Bagrat, 2026-10-18). */
+  .walk { align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 14px 0 7px;
     border: 1px solid var(--line-strong); border-radius: 10px; background: var(--line); color: var(--text); font: 600 15px var(--sans); cursor: pointer; }
   .walk:hover { background: var(--line-strong); }
   .walk .disc { width: 22px; height: 22px; border-radius: 50%; background: #88c0d0; display: flex; align-items: center; justify-content: center; flex: none; }
   .walk .disc svg { width: 10px; height: 10px; fill: #2b2f36; display: block; }
-  .cut { height: 3px; margin: -10px -20px 0; background: var(--bg); flex: none; }
 
   /* The walkthrough plays over the page; Esc, the close button or a click outside it closes it. */
   .lightbox { width: min(1120px, calc(100vw - 64px)); max-width: none; max-height: none; padding: 0; border: 0; background: transparent; color: var(--text); overflow: visible; }
@@ -164,7 +204,7 @@
   .lightbox video { display: block; width: 100%; height: auto; max-height: calc(100vh - 140px); aspect-ratio: 16 / 9; border-radius: 12px; background: #1f2228; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
 
   /* Install: one command at a time, in tabs; Terminal first. Without script every panel shows. */
-  .install { display: flex; flex-direction: column; gap: 12px; }
+  .install { justify-content: center; gap: 12px; }
   .install .head { display: flex; align-items: center; justify-content: space-between; gap: 8px 12px; flex-wrap: wrap; }
   .install h2 { font-size: 22px; font-weight: 700; }
   .tabs { display: flex; gap: 2px; }
@@ -175,7 +215,7 @@
   .js .panel:not(.on), .js .read:not(.on) { display: none; }
   .install .fine { display: flex; flex-wrap: wrap; gap: 4px 14px; }
 
-  .foot { width: 100%; max-width: 1376px; margin: auto auto 0; padding: 40px 0 24px; color: var(--quiet); font-size: 14px; }
+  .foot { width: 100%; max-width: 1312px; margin: auto auto 0; padding: 40px 0 24px; color: var(--quiet); font-size: 14px; }
   .foot > * { max-width: 744px; }
   /* The same links close every shroom.am page (the others' footer is site/build.mjs's FOOTER). */
   .foot nav, .links nav { display: flex; flex-wrap: wrap; align-items: center; column-gap: 12px; }
@@ -186,24 +226,21 @@
 
   @media (max-width: 900px) {
     .page { padding: 0 16px; }
-    /* On a phone the terms come before the video, and install goes last (Bagrat, 2026-10-17). */
-    .split { --mark: 72px; --word: 60px; padding-top: 28px; grid-template-columns: minmax(0, 1fr); grid-template-areas: "brand" "pitch" "terms" "box"; grid-template-rows: none; }
-    .split .brand { margin-bottom: 28px; }
-    .pitch { width: auto; margin-bottom: 24px; }
-    .pitch h1 { font-size: 33px; white-space: normal; text-wrap: balance; }
-    .pitch .punch { font-size: 17px; }
-    .gauge { margin-top: 24px; }
-    .gauge .ends { font-size: 15px; }
-    .gauge .ends .long { display: none; }
-    .gauge .ends .short { display: inline; }
-    .terms { margin-bottom: 28px; }
-    .side { padding-top: 0; }
-    .box { padding: 16px; gap: 22px; }
+    /* On a phone: the masthead, the video, the price, install, then the terms (the board's phone). */
+    .mast { --mark: 64px; --word: 52px; grid-template-columns: minmax(0, 1fr); row-gap: 20px; padding: 24px 0 0; border-bottom: 0; }
+    .mast .brand, .pitch { grid-column: 1; }
+    .pitch { justify-self: start; text-align: left; padding-top: 0; }
+    .pitch h1 { margin-top: 0; text-box: normal; font-size: 34px; line-height: 1.1; white-space: normal; text-wrap: balance; }
+    .tiles { margin-top: 20px; grid-template-columns: minmax(0, 1fr); row-gap: 20px; }
+    .stack { display: contents; }
+    .watch { order: 1; } .price { order: 2; } .install { order: 3; } .terms { order: 4; }
+    .tile { padding: 16px; gap: 16px; }
+    .price { padding: 16px 16px 14px; }
+    .price .sum b { font-size: 40px; }
+    .terms ul { font-size: 16px; }
     .install .head { flex-direction: column; align-items: flex-start; }
     .install h2 { font-size: 20px; }
     .tabs button { padding: 0 10px; }
-    .terms { font-size: 16px; gap: 10px; }
-    .terms svg { margin-top: 2px; }
     .foot { padding-top: 32px; }
     .foot nav, .links nav { column-gap: 18px; }
     .foot nav a, .links nav a { font-size: 14px; }
@@ -212,7 +249,6 @@
     .still .play { width: 56px; height: 56px; margin: -28px 0 0 -28px; }
     .still .play svg { width: 22px; height: 22px; }
     .walk { font-size: 14px; }
-    .cut { margin: -10px -16px 0; }
     /* On a phone the walkthrough takes the whole screen. */
     .lightbox { width: 100vw; height: 100vh; height: 100dvh; margin: 0; padding: 12px; background: #000; display: none; flex-direction: column; justify-content: center; }
     .lightbox[open] { display: flex; }
@@ -222,7 +258,7 @@
 </head>
 <body>
 <div class="page">
-<main class="split">
+<header class="mast">
   <a class="brand" href="/"><svg xmlns="http://www.w3.org/2000/svg" viewBox="18 20 84 90" aria-hidden="true">
 <path class="stem" d="M50,68 C49,82 46,92 46,96 C46,101 52,104 60,104 C68,104 74,101 74,96 C74,92 71,82 70,68 Z" fill="#E5E9F0"/>
 <path d="M24,64 C24,42 40,26 60,26 C80,26 96,42 96,64 C86,75 34,75 24,64 Z" fill="#88C0D0"/>
@@ -235,25 +271,12 @@
 
   <div class="pitch">
     <h1>Record. Share. Pay-as-you-go.</h1>
-    <p class="punch">No monthly seat, sometimes completely free</p>
-    <div class="gauge" role="img" aria-label="$0 for about three hours of video; $1.50 a month for about thirty hours">
-      <div class="bar"></div>
-      <div class="ends" aria-hidden="true"><span class="long"><b>$0</b> · about three hours of video</span><span class="long"><b>$1.50 /month</b> · about thirty hours</span><span class="short"><b>$0</b> / 3h video</span><span class="short"><b>$1.50</b> / 30h</span></div>
-    </div>
   </div>
+</header>
 
-  <ul class="terms">
-    <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span>Your videos live in <b>your own Cloudflare account</b></span></li>
-    <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span>You pay <b>only Cloudflare</b>, for the storage</span></li>
-    <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span><b>Invite your team</b> with a link</span></li>
-    <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span><b>No price per person</b> — the bill counts video, not people</span></li>
-    <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span><b>Delete old videos</b> and pay less</span></li>
-    <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span>About <b>ten minutes</b> of guided setup, once</span></li>
-    <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span><b>Open source</b> — every line on GitHub</span></li>
-  </ul>
-
-  <div class="side">
-    <div class="box">
+<main class="tiles">
+  <div class="stack l">
+    <div class="tile watch">
       <!-- The hero (N70): shroom, recorded with shroom, its voice cut included. The still and the
            video are both shroom.am's own files (/hero-2.mp4, served in pieces by site/worker.js);
            the video's address is set only once the block is within 200 px of the screen (the
@@ -267,33 +290,56 @@
       <!-- The setup walkthrough (the how-to that was in this box, N58, N61): /how-to.mp4 in a
            lightbox, its address set only when it's opened. -->
       <button type="button" class="walk" id="walk-open" aria-haspopup="dialog"><span class="disc" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M5 3v10l8.5-5z"/></svg></span><span>Setup walkthrough</span></button>
-      <div class="cut" aria-hidden="true"></div>
-
-      <section class="install" id="install">
-        <div class="head">
-          <h2>Install in one line</h2>
-          <div class="tabs" role="tablist" aria-label="How to install">
-            <button type="button" role="tab" id="t-term" aria-controls="p-term" aria-selected="true">Terminal</button>
-            <button type="button" role="tab" id="t-brew" aria-controls="p-brew" aria-selected="false" tabindex="-1">Homebrew</button>
-            <button type="button" role="tab" id="t-agent" aria-controls="p-agent" aria-selected="false" tabindex="-1">Coding agent</button>
-          </div>
-        </div>
-        <div class="panel on" id="p-term" role="tabpanel" aria-labelledby="t-term">
-          <div class="cmd"><code id="cmd">curl -fsSL https://shroom.am/install | sh</code><button type="button" data-copy="cmd"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M15 5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2"/></svg><svg class="ok" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span class="lbl">Copy</span></button></div>
-        </div>
-        <div class="panel" id="p-brew" role="tabpanel" aria-labelledby="t-brew">
-          <div class="cmd"><code id="brew">brew install --cask bagrat/shroom/shroom &amp;&amp; open ~/Applications/shroom.app</code><button type="button" data-copy="brew"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M15 5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2"/></svg><svg class="ok" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span class="lbl">Copy</span></button></div>
-        </div>
-        <div class="panel" id="p-agent" role="tabpanel" aria-labelledby="t-agent">
-          <div class="cmd"><code id="agent">Install shroom on my Mac: read https://shroom.am/agent and follow it.</code><button type="button" data-copy="agent"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M15 5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2"/></svg><svg class="ok" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span class="lbl">Copy</span></button></div>
-        </div>
-        <!-- The ratified sentence's shape with its facts filled in (SM:212-215): the floor is
-             the installer's MIN_MACOS, the kinds of Mac are what tools/package-release.sh
-             ships — Apple silicon only today (DECISIONS B7; Intel is ARCHITECTURE §16 #27).
-             site/test/landing.test.mjs holds the line to both. -->
-        <p class="fine"><span class="read on" data-for="p-term"><a href="/install">Read it first</a></span><span class="read" data-for="p-agent"><a href="/agent">Read it first</a> <span>Your agent asks you before it runs anything.</span></span><span>For macOS 14 or newer, Apple silicon.</span></p>
-      </section>
     </div>
+
+    <section class="tile install" id="install">
+      <div class="head">
+        <h2>Install in one line</h2>
+        <div class="tabs" role="tablist" aria-label="How to install">
+          <button type="button" role="tab" id="t-term" aria-controls="p-term" aria-selected="true">Terminal</button>
+          <button type="button" role="tab" id="t-brew" aria-controls="p-brew" aria-selected="false" tabindex="-1">Homebrew</button>
+          <button type="button" role="tab" id="t-agent" aria-controls="p-agent" aria-selected="false" tabindex="-1">Coding agent</button>
+        </div>
+      </div>
+      <div class="panel on" id="p-term" role="tabpanel" aria-labelledby="t-term">
+        <div class="cmd"><code id="cmd">curl -fsSL https://shroom.am/install | sh</code><button type="button" data-copy="cmd"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M15 5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2"/></svg><svg class="ok" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span class="lbl">Copy</span></button></div>
+      </div>
+      <div class="panel" id="p-brew" role="tabpanel" aria-labelledby="t-brew">
+        <div class="cmd"><code id="brew">brew install --cask bagrat/shroom/shroom &amp;&amp; open ~/Applications/shroom.app</code><button type="button" data-copy="brew"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M15 5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2"/></svg><svg class="ok" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span class="lbl">Copy</span></button></div>
+      </div>
+      <div class="panel" id="p-agent" role="tabpanel" aria-labelledby="t-agent">
+        <div class="cmd"><code id="agent">Install shroom on my Mac: read https://shroom.am/agent and follow it.</code><button type="button" data-copy="agent"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M15 5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2"/></svg><svg class="ok" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span class="lbl">Copy</span></button></div>
+      </div>
+      <!-- The ratified sentence's shape with its facts filled in (SM:212-215): the floor is
+           the installer's MIN_MACOS, the kinds of Mac are what tools/package-release.sh
+           ships — Apple silicon only today (DECISIONS B7; Intel is ARCHITECTURE §16 #27).
+           site/test/landing.test.mjs holds the line to both. -->
+      <p class="fine"><span class="read on" data-for="p-term"><a href="/install">Read it first</a></span><span class="read" data-for="p-agent"><a href="/agent">Read it first</a> <span>Your agent asks you before it runs anything.</span></span><span>For macOS 14 or newer, Apple silicon.</span></p>
+    </section>
+  </div>
+
+  <div class="stack r">
+    <section class="price" aria-labelledby="price-h">
+      <h2 id="price-h">What would it cost?</h2>
+      <p class="sum"><b id="cost" class="free">$0.00</b> <span>a month</span></p>
+      <div class="ask"><label for="hours">Video a month</label><output id="hours-v" for="hours">1 hour</output></div>
+      <input class="live" type="range" id="hours" min="0" max="9" step="1" value="1" aria-valuetext="1 hour a month">
+      <div class="keep live"><span id="keep-l">Auto-cleanup after</span><div class="seg" role="group" aria-labelledby="keep-l"><button type="button" aria-pressed="true" data-months="1">30 days</button><button type="button" aria-pressed="false" data-months="2">60 days</button><button type="button" aria-pressed="false" data-months="12">a year</button></div></div>
+      <p class="why">A team of 20, an hour each a month: $0.85 with 30-day cleanup, $11.85 kept a year.</p>
+    </section>
+
+    <section class="tile terms" aria-labelledby="terms-h">
+      <h2 id="terms-h">Why shroom?</h2>
+      <ul>
+        <li><span class="ic" data-icon="cloud-lock" aria-hidden="true"><svg viewBox="0 0 24 24"><mask id="ic-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24"><rect width="24" height="24" fill="#fff" stroke="none"/><rect x="11.5" y="11.5" width="11" height="12" rx="2" fill="#000" stroke="none"/></mask><g mask="url(#ic-cut)"><path d="M6.5 17A3.5 3.5 0 1 1 6.52 10A5.5 5.5 0 0 1 17.31 8.05A4.5 4.5 0 1 1 18 17Z"/></g><rect width="8" height="6" x="13.5" y="15.5" rx="1.2"/><path d="M15.5 15.5v-1.6a2 2 0 0 1 4 0V15.5"/></svg></span><span>Your videos live in <b>your own Cloudflare account</b></span></li>
+        <li><span class="ic" data-icon="receipt" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 17V7"/> <path d="M16 8h-6a2 2 0 0 0 0 4h4a2 2 0 0 1 0 4H8"/> <path d="M4 3a1 1 0 0 1 1-1 1.3 1.3 0 0 1 .7.2l.933.6a1.3 1.3 0 0 0 1.4 0l.934-.6a1.3 1.3 0 0 1 1.4 0l.933.6a1.3 1.3 0 0 0 1.4 0l.933-.6a1.3 1.3 0 0 1 1.4 0l.934.6a1.3 1.3 0 0 0 1.4 0l.933-.6A1.3 1.3 0 0 1 19 2a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1 1.3 1.3 0 0 1-.7-.2l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.934.6a1.3 1.3 0 0 1-1.4 0l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-1.4 0l-.934-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-.7.2 1 1 0 0 1-1-1z"/></svg></span><span>You pay <b>only Cloudflare</b>, for the storage</span></li>
+        <li><span class="ic" data-icon="users" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/> <path d="M16 3.128a4 4 0 0 1 0 7.744"/> <path d="M22 21v-2a4 4 0 0 0-3-3.87"/> <circle cx="9" cy="7" r="4"/></svg></span><span><b>Invite your team</b> with a link</span></li>
+        <li><span class="ic" data-icon="armchair-off" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M19 9V6a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v3"/> <path d="M3 16a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5a2 2 0 0 0-4 0v1.5a.5.5 0 0 1-.5.5h-9a.5.5 0 0 1-.5-.5V11a2 2 0 0 0-4 0z"/> <path d="M5 18v2"/> <path d="M19 18v2"/><path d="m2 2 20 20"/></svg></span><span><b>No price per person</b> — the bill counts video, not people</span></li>
+        <li><span class="ic" data-icon="broom-sparkles" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M11 2v2"/> <path d="M12 3h-2"/> <path d="M13.5 10.5 22 2"/> <path d="M14.734 13.841a2 2 0 00-.314-2.42L12.58 9.58a2 2 0 00-2.421-.314l-7.657 4.461A1 1 0 002.3 15.3l6.403 6.403a1 1 0 001.571-.204z"/> <path d="M20 15v4"/> <path d="M22 17h-4"/> <path d="M4 4v4"/> <path d="m5 18 2-2"/> <path d="M6 6H2"/> <path d="m7.699 10.7 5.602 5.601"/></svg></span><span><b>Old videos clean themselves up.</b> Pin the ones you keep.</span></li>
+        <li><span class="ic" data-icon="list-checks" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M13 5h8"/> <path d="M13 12h8"/> <path d="M13 19h8"/> <path d="m3 17 2 2 4-4"/> <path d="m3 7 2 2 4-4"/></svg></span><span>About <b>ten minutes</b> of guided setup, once</span></li>
+        <li><span class="ic" data-icon="code-xml" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m18 16 4-4-4-4"/> <path d="m6 8-4 4 4 4"/> <path d="m14.5 4-5 16"/></svg></span><span><b>Open source</b> — every line on GitHub</span></li>
+      </ul>
+    </section>
   </div>
 </main>
 
@@ -363,6 +409,34 @@
     d.querySelector(".close").addEventListener("click", function () { d.close(); });
     d.addEventListener("click", function (e) { if (e.target === d) d.close(); });
     d.addEventListener("close", function () { v.pause(); open.focus(); });
+  })();
+  // The price (N86): what Cloudflare would charge for the hours of video set, kept as long as
+  // chosen. About 10 GB holds three hours at Normal (the FAQ); storage is $0.015 a GB-month past
+  // Cloudflare's free 10 GB (B212); 30 days counts as a month. AI never adds to it: about 2½ hours
+  // of new video a day are free, and past that the rest is named the next day (B205, B207).
+  (function () {
+    var HOURS = [0.5, 1, 2, 3, 5, 10, 20, 30, 50, 100], GB_PER_HOUR = 10 / 3, FREE_GB = 10, USD_PER_GB = 0.015;
+    var input = document.getElementById("hours"), keep = Array.prototype.slice.call(document.querySelectorAll(".price .seg button"));
+    if (!input || !keep.length) return;
+    var months = 1;
+    var label = function (h) { return h === 0.5 ? "30 min" : h === 1 ? "1 hour" : h + " hours"; };
+    var show = function () {
+      var h = HOURS[Number(input.value)], usd = Math.max(0, h * months * GB_PER_HOUR - FREE_GB) * USD_PER_GB;
+      var cost = document.getElementById("cost");
+      cost.textContent = "$" + usd.toFixed(2);
+      cost.classList.toggle("free", usd === 0);
+      document.getElementById("hours-v").textContent = label(h);
+      input.setAttribute("aria-valuetext", label(h) + " a month");
+    };
+    input.addEventListener("input", show);
+    keep.forEach(function (b) {
+      b.addEventListener("click", function () {
+        months = Number(b.getAttribute("data-months"));
+        keep.forEach(function (o) { o.setAttribute("aria-pressed", o === b ? "true" : "false"); });
+        show();
+      });
+    });
+    show();
   })();
   // The install tabs (N59): one command shows; ←/→ move between the tabs.
   (function () {

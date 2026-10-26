@@ -257,6 +257,10 @@ bash dev/mac/loop.sh run selftest settings    # ~4 min warm, ~7 cold; prints the
   must be in neither take. Take 1 must be the beep alone. Start any "other app" from the
   script, never from shroom: ScreenCaptureKit's `excludesCurrentProcessAudio` leaves out
   shroom's own children too (probed 2026-10-16), so a player shroom starts reads as silence.
+- **A Retina screen.** The runner's own is 1024 × 768 at 1×. `dev/mac/hidpi.m` makes a
+  virtual display of 1280 × 800 points at 2× the main one for as long as it runs;
+  `editor-2x` builds it with `clang` and runs the editor's drive there (proven 2026-10-25,
+  run 40244400746). A scenario that must look at 2× starts the same way.
 - **What it can't settle** — say so, don't stretch it. First-run permission prompts:
   the grants are written, never asked for. A real camera's picture and rate. Timing
   bars — repeated and skipped frames, A/V offset: `record` ends with 2 there, and a
@@ -304,6 +308,11 @@ printf '# A session asks .github/workflows/e2e-full.yml for its own branch by co
 git add dev/e2e/request && git commit -m "e2e: <why>" && git push origin HEAD
 ```
 
+- **Only your own commit asks.** A merge of main that brings another PR's request in
+  starts a run too, but its first job (*Did the branch ask?*, `tools/e2e-asked.py`, on
+  Linux) finds no commit of yours touched the file and the Mac job is skipped: no status,
+  no Mac. Resolving a conflict in the file to fresh words is your own request and runs.
+  The same holds for `dev/e2e/migration-request`.
 - **Watching it.** Find the run with the GitHub tools (`actions_list`, workflow
   `e2e-full.yml`, your branch), then poll it in the background — the public API answers
   without a token: `curl -s https://api.github.com/repos/bagrat/shroom/actions/runs/<id>`
