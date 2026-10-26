@@ -243,9 +243,12 @@ not been proven". 0.1.4 was never released.) Read your version for it.
 8. When the run is green, check the release (next section).
 
 9. Bring Homebrew's copy up to it: on github.com, `bagrat/homebrew-shroom` → **Actions** →
-   **Bump** → **Run workflow**. It runs by itself every hour anyway; running it now puts
-   the release in `brew install --cask bagrat/shroom/shroom` at once, and wakes the hourly
-   run if GitHub paused it after 60 quiet days. Its run ends "shroom <version> (from
+   **Bump** → **Run workflow**. Don't skip it: it is scheduled hourly, but GitHub runs
+   that schedule only every few hours (after 0.1.33, `brew install` gave an older version
+   for hours). Running it now puts the release in `brew install --cask
+   bagrat/shroom/shroom` at once, and wakes the schedule if GitHub paused it after 60
+   quiet days. Then check the tap's `Casks/shroom.rb` names the new version and the zip's
+   SHA-256 (the `arm64=` line of the release's `manifest.txt`). Its run ends "shroom <version> (from
    bagrat/shroom@…)" in the tap's commits, or "Already the latest." (Homebrew below.)
 
 If the run fails before the publish job, nothing was published: fix what it says, and
