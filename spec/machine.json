@@ -11874,6 +11874,13 @@
      "id": "member-welcome.bagrat-invited-you-to"
     },
     {
+     "text": "Their space: v.myshroom.workers.dev",
+     "role": "line",
+     "copy": "ratified",
+     "note": "The space's address the invite link points at, a quiet line under the title; the address varies. Bagrat, 2026-10-25, relayed by the orchestrator: approved the board “Joining — welcome and switch spaces?: “Their space: <address>” under who invited you” as drawn, with “Their space:”.",
+     "id": "member-welcome.their-space"
+    },
+    {
      "text": "shroom records your screen and hands you a link to share. Your videos will live in Bagrat's space, where Bagrat can see them too — nothing to sign up for, nothing to pay.",
      "role": "line",
      "copy": "provisional",
@@ -12743,6 +12750,13 @@
      "copy": "provisional",
      "note": "The inviter's name varies.",
      "id": "join-switch-confirm.bagrat-invited-you-to"
+    },
+    {
+     "text": "Their space: v.myshroom.workers.dev",
+     "role": "line",
+     "copy": "ratified",
+     "note": "The space's address the invite link points at, a quiet line under the title; the address varies. Bagrat, 2026-10-25, relayed by the orchestrator: approved the board “Joining — welcome and switch spaces?: “Their space: <address>” under who invited you” as drawn, with “Their space:”.",
+     "id": "join-switch-confirm.their-space"
     },
     {
      "text": "This Mac records to v.mine.workers.dev now. Joining moves it to Bagrat's space — your videos in v.mine.workers.dev stay right where they are.",

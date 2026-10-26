@@ -321,7 +321,7 @@ pub fn switch_faces(w: &World) -> Vec<&'static str> {
 /// The invite window's faces that aren't a plan.
 pub fn invite_body(w: &World, at: &At) -> InviteBody {
     let name = inviter(w).unwrap_or_default().to_string();
-    let mut b = InviteBody { title: None, lines: vec![], login: None, buttons: vec![], door: None, spinner: false };
+    let mut b = InviteBody { title: None, space: None, lines: vec![], login: None, buttons: vec![], door: None, spinner: false };
     match at {
         At::MemberWelcome => {
             let (host, kind, _) = pending(w).unwrap_or(("", InviteKind::Member, ""));
@@ -330,6 +330,7 @@ pub fn invite_body(w: &World, at: &At) -> InviteBody {
                 b.lines = vec![copy::same_videos(host), copy::member_step_here()];
             } else {
                 b.title = Some(copy::invited_you(&name));
+                b.space = Some(copy::their_space(host));
                 b.lines = vec![copy::member_truth(&name), copy::member_step()];
             }
             let off = w.session.fields.login_off;
@@ -364,6 +365,7 @@ pub fn invite_body(w: &World, at: &At) -> InviteBody {
         }
         At::SwitchConfirm => {
             b.title = Some(copy::invited_you(&name));
+            b.space = pending(w).map(|(host, _, _)| copy::their_space(host));
             match &w.space.identity {
                 Some(id) => {
                     b.lines.push(copy::switch_line(&id.host, &name));

@@ -536,6 +536,18 @@ input.name.taken:focus {
   margin: 0;
 }
 
+/* “Their space: <address>”, quiet under the title; the address in the body's colour. */
+.invite > .space {
+  margin: -6px 0 0;
+  font-size: 13px;
+  color: var(--fg-3);
+}
+
+.invite > .space span {
+  color: var(--fg);
+  font-weight: 500;
+}
+
 .invite .say {
   display: flex;
   flex-direction: column;
