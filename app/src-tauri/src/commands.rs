@@ -7,7 +7,7 @@ use shroom_core::scene::Action;
 use tauri::{State, Webview};
 
 use crate::runtime::Runtime;
-use crate::runtime::presenter::editor_of;
+use crate::runtime::presenter::{COUNTDOWN, FEEDBACK, LABEL, LIBRARY, ONBOARDING, POPOVER, SETTINGS, TOAST, editor_of};
 
 /// A surface as its webview names it (`app/src/lib/ipc.ts`'s `Surface`). An editor window
 /// names itself “editor”: which one it is, is its window's label's (`editor-<its number>`,
@@ -29,21 +29,35 @@ pub enum Named {
     Toast,
 }
 
-/// The surface `named`, said by the webview labelled `label`.
+/// The surface `named`, said by the webview labelled `label` — only its own window's: each
+/// surface is the window of its label (`presenter`'s), an editor the one its label numbers,
+/// and the tray has no webview at all. Anything else names no surface.
 pub fn surface(named: Named, label: &str) -> Option<Surface> {
-    Some(match named {
-        Named::Tray => Surface::Tray,
-        Named::Popover => Surface::Popover,
-        Named::Onboarding => Surface::Onboarding,
-        Named::Library => Surface::Library,
-        Named::Settings => Surface::Settings,
-        Named::Feedback => Surface::Feedback,
-        Named::Editor => Surface::Editor(editor_of(label)?),
-        Named::Countdown => Surface::Countdown,
-        Named::Bubble => Surface::Bubble,
-        Named::Label => Surface::Label,
-        Named::Toast => Surface::Toast,
-    })
+    let (surface, own) = match named {
+        Named::Tray => return None,
+        Named::Popover => (Surface::Popover, POPOVER),
+        Named::Onboarding => (Surface::Onboarding, ONBOARDING),
+        Named::Library => (Surface::Library, LIBRARY),
+        Named::Settings => (Surface::Settings, SETTINGS),
+        Named::Feedback => (Surface::Feedback, FEEDBACK),
+        Named::Editor => return editor_of(label).map(Surface::Editor),
+        Named::Countdown => (Surface::Countdown, COUNTDOWN),
+        Named::Bubble => (Surface::Bubble, "bubble"),
+        Named::Label => (Surface::Label, LABEL),
+        Named::Toast => (Surface::Toast, TOAST),
+    };
+    (label == own).then_some(surface)
+}
+
+/// The windows with a secret's paste field: the setup's and Settings' (`PasteField`).
+pub fn pastes_from(label: &str) -> bool {
+    [ONBOARDING, SETTINGS].contains(&label)
+}
+
+/// The windows with a typed field (`app/src/lib/typed.ts`'s users): the setup, Settings, the
+/// Library and Send feedback.
+pub fn types_from(label: &str) -> bool {
+    [ONBOARDING, SETTINGS, LIBRARY, FEEDBACK].contains(&label)
 }
 
 #[tauri::command]
@@ -75,7 +89,10 @@ pub fn arms(surface: Surface, action: Option<&Action>, key: Option<Key>) -> bool
 /// A paste into a secret field. Returns nothing: the core answers with the paste's shape
 /// through the Scene, never with its text.
 #[tauri::command]
-pub fn paste_secret(rt: State<Runtime>, field: SecretField, text: String) {
+pub fn paste_secret(rt: State<Runtime>, webview: Webview, field: SecretField, text: String) {
+    if !pastes_from(webview.label()) {
+        return rt.log(&format!("commands: a paste from the {} window, which has no paste field — dropped", webview.label()));
+    }
     rt.paste_secret(field, text);
 }
 
@@ -89,7 +106,10 @@ pub fn webview_error(rt: State<Runtime>, surface: String, message: String) {
 
 /// A non-secret field's contents (the link name).
 #[tauri::command]
-pub fn field(rt: State<Runtime>, field: Field, value: String) {
+pub fn field(rt: State<Runtime>, webview: Webview, field: Field, value: String) {
+    if !types_from(webview.label()) {
+        return rt.log(&format!("commands: a field from the {} window, which has no typed field — dropped", webview.label()));
+    }
     rt.field(field, value);
 }
 
@@ -183,6 +203,46 @@ mod tests {
             assert_eq!(surface(named("editor"), not_one), None, "{not_one}");
         }
         assert!(serde_json::from_value::<Named>(serde_json::json!({ "editor": 1 })).is_err(), "a webview never names an editor window");
+    }
+
+    /// Every surface is its own window's: a webview acts on, keys into and reads the slice
+    /// of only the surface its window's label is — never another window's.
+    #[test]
+    fn a_surface_is_only_its_own_windows() {
+        use crate::runtime::presenter::{COUNTDOWN, FEEDBACK, LABEL, LIBRARY, ONBOARDING, POPOVER, SETTINGS, TOAST};
+        let named = |s: &str| serde_json::from_value::<Named>(serde_json::json!(s)).unwrap();
+        let own = [("popover", POPOVER), ("onboarding", ONBOARDING), ("library", LIBRARY), ("settings", SETTINGS), ("feedback", FEEDBACK), ("countdown", COUNTDOWN), ("label", LABEL), ("toast", TOAST)];
+        let labels = ["popover", "onboarding", "library", "settings", "feedback", "countdown", "label", "toast", "bubble", "main", "pattern", "editor-1", "tray"];
+        for (name, label) in own {
+            assert!(surface(named(name), label).is_some(), "{name} from its own window");
+            for other in labels.iter().filter(|l| **l != label) {
+                assert_eq!(surface(named(name), other), None, "{name} from {other}");
+            }
+        }
+        assert_eq!(surface(named("bubble"), "bubble"), Some(Surface::Bubble));
+        for other in ["popover", "settings", "main", "editor-1"] {
+            assert_eq!(surface(named("tray"), other), None, "the tray has no webview: {other}");
+            assert_eq!(surface(named("bubble"), other), None, "{other}");
+        }
+        assert_eq!(surface(named("editor"), "settings"), None);
+    }
+
+    /// A secret is pasted only in the windows with a paste field (the setup and Settings), and
+    /// a typed field comes only from the windows that have one.
+    #[test]
+    fn pastes_and_fields_come_only_from_the_windows_that_have_them() {
+        for label in ["onboarding", "settings"] {
+            assert!(pastes_from(label), "{label}");
+        }
+        for label in ["popover", "library", "feedback", "countdown", "label", "toast", "bubble", "main", "pattern", "editor-1", ""] {
+            assert!(!pastes_from(label), "{label}");
+        }
+        for label in ["onboarding", "settings", "library", "feedback"] {
+            assert!(types_from(label), "{label}");
+        }
+        for label in ["popover", "countdown", "label", "toast", "bubble", "main", "pattern", "editor-1", ""] {
+            assert!(!types_from(label), "{label}");
+        }
     }
 
     #[test]

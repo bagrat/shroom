@@ -215,7 +215,8 @@ describe("nothing else about the addresses changed", () => {
       const res = await get(space(), path);
       expect(res.status, path).toBe(200);
       expect(res.headers.get("content-type"), path).toMatch(/^text\/html/);
-      expect(await res.text(), path).toBe(unknown);
+      // The same page, but for the script nonce each response draws afresh.
+      expect((await res.text()).replace(/ nonce="[^"]*"/g, ""), path).toBe(unknown.replace(/ nonce="[^"]*"/g, ""));
     }
   });
 

@@ -368,6 +368,13 @@ describe("updating", () => {
     assert.equal(take.installed, "1.1.0");
   });
 
+  it("a copy whose name isn't of shroom's shape is asked to quit as the release, am.shroom", async () => {
+    for (const odd of ['am.shroom" & x', "am.shroom/../x", "other.app"]) {
+      const r = await run({ setup: (home, running) => { installOld(home, odd); writeFileSync(running, ""); } });
+      assert.match(r.log, /^quit am\.shroom\n/, odd);
+    }
+  });
+
   // The app's own rule (runtime::Flavor::of): `….dev` is a developer build whatever comes
   // before it, and anything else is the release — the retired preview's name too (B148).
   it("only a developer build keeps ~/.shroom-dev; every other name is the release's ~/.shroom", async () => {
@@ -1114,6 +1121,28 @@ describe("uninstalling", () => {
     gone(r, "am.shroom.dev", ".shroom-dev");
     assert.match(r.log, /tccutil reset All am\.shroom\.dev/);
     assert.ok(existsSync(join(r.home, ".shroom/token.json")), "another build's folder is not this one's to remove");
+  });
+
+  // Only a name of shroom's own shape (am.shroom, or am.shroom.<part>…) is taken from the
+  // copy in ~/Applications; any other is read as the release's, am.shroom.
+  it("goes by shroom's own name: a copy naming itself anything else is removed as the release, and the system's shared folders stay", async () => {
+    for (const odd of ["", "..", "am.shroom/../x", "am.shroom..x", 'am.shroom" & x', "other.app"]) {
+      const r = await run({
+        args: UN,
+        setup: (home) => {
+          installed(home);
+          execFileSync("plutil", ["-replace", "CFBundleIdentifier", "-string", odd, join(home, "Applications/shroom.app/Contents/Info.plist")]);
+          for (const d of ["Library/WebKit/someone.else", "Library/Caches/someone.else", "Library/HTTPStorages/someone.else"]) mkdirSync(join(home, d), { recursive: true });
+        },
+      });
+      assert.equal(r.code, 0, JSON.stringify(odd));
+      gone(r);
+      for (const d of ["Library/WebKit/someone.else", "Library/Caches/someone.else", "Library/HTTPStorages/someone.else"]) {
+        assert.ok(existsSync(join(r.home, d)), `${d} stays (${JSON.stringify(odd)})`);
+      }
+      assert.match(r.log, /^tccutil reset All am\.shroom$/m, JSON.stringify(odd));
+      assert.match(r.log, /^defaults delete am\.shroom$/m, JSON.stringify(odd));
+    }
   });
 
   it("refuses to run anywhere but a Mac, before touching anything", async () => {

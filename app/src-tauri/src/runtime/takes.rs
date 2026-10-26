@@ -147,10 +147,12 @@ pub fn classify_held(dir: &Path) -> Kind {
     }
 }
 
-/// Every take directory, oldest first.
+/// Every take directory, oldest first: the real folders in `takes/` (a link is never
+/// followed) named as a take's are (`posters::valid_dir`).
 pub fn dirs(takes: &Path) -> Vec<PathBuf> {
+    let take = |e: &fs::DirEntry| e.file_type().is_ok_and(|t| t.is_dir()) && e.file_name().to_str().is_some_and(crate::runtime::posters::valid_dir);
     let mut v: Vec<PathBuf> = fs::read_dir(takes)
-        .map(|it| it.filter_map(|e| e.ok()).map(|e| e.path()).filter(|p| p.is_dir()).collect())
+        .map(|it| it.filter_map(|e| e.ok()).filter(take).map(|e| e.path()).collect())
         .unwrap_or_default();
     v.sort();
     v
@@ -309,6 +311,23 @@ mod tests {
         assert_eq!(minted_until(tmp.path()), Some(Wall(1_791_547_200_000)));
         crate::runtime::home::write_json(&tmp.path().join("cred.json"), &f("manage")).unwrap();
         assert_eq!(minted_until(tmp.path()), None, "only an upload credential");
+    }
+
+    /// The take folders are the real folders in `takes/` named as a take's are: a link to a
+    /// folder elsewhere, a file, or a folder of another name is no take.
+    #[test]
+    fn the_takes_are_real_folders_named_as_takes_are() {
+        let tmp = tempfile::tempdir().unwrap();
+        let takes = tmp.path().join("takes");
+        let elsewhere = tmp.path().join("elsewhere");
+        fs::create_dir_all(&elsewhere).unwrap();
+        for d in ["20261002-120000-ab12", "20261002-101500-ab12", ".hidden", "-lead", "has space", "under_score"] {
+            fs::create_dir_all(takes.join(d)).unwrap();
+        }
+        fs::write(takes.join("20261002-130000-ab12"), b"a file").unwrap();
+        std::os::unix::fs::symlink(&elsewhere, takes.join("20261002-140000-ab12")).unwrap();
+        assert_eq!(dirs(&takes), [takes.join("20261002-101500-ab12"), takes.join("20261002-120000-ab12")]);
+        assert!(dirs(&tmp.path().join("none")).is_empty());
     }
 
     use super::*;

@@ -1197,7 +1197,8 @@
     "config (the AI banner and its confirm, on the Mac that holds the setup key)"
    ],
    "amended_by": [
-    "N76 (on by default; the offer, its confirm and Not now give way to a banner that says it's on)"
+    "N76 (on by default; the offer, its confirm and Not now give way to a banner that says it's on)",
+    "N87 (the owner's chapters: the naming never writes them again)"
    ]
   },
   {
@@ -1212,7 +1213,8 @@
     "absent_from_v1 (captions join v1 with N67; transcript search stays out)"
    ],
    "amended_by": [
-    "N82 (the title shimmers while the name is on its way; a typed title still takes the chapters and captions)"
+    "N82 (the title shimmers while the name is on its way; a typed title still takes the chapters and captions)",
+    "N87 (the bar shows the owner's chapters when there are any)"
    ]
   },
   {
@@ -1491,6 +1493,19 @@
    "amends": [
     "N59 (the price bar becomes a box with a slider; the page becomes one 12-column grid)",
     "landing (the price, the layout)"
+   ],
+   "amended_by": []
+  },
+  {
+   "id": "N87",
+   "title": "The owner edits the chapters on the video's page",
+   "decision": "**Bagrat, 2026-10-25**, during his hand test of 0.1.30-early.1: there was no way to change a chapter. He OK'd the boards (OwnerPageChapters, OwnerPageChaptersOpen, OwnerPageChapterRows, OwnerPageChaptersPhone) the same day, after asking that nothing for chapters show until it's asked for: page only, the Mac editor gets nothing for now. (1) **Edit chapters** is a quiet icon among the title's, before the scissors, on the owner's page only (owner-mode as the title has it, N40), with its name as a tooltip. It is there from the page's first paint and greyed until the video plays; then every video has it, with chapters or none. (2) **The panel** opens in place, under the player and above the voice cuts (never a sheet or pop-over: it works with the playhead); the icon stays lit while it is open, and it or Done shuts it. It opens shut on every visit. A row a chapter: its start, its name (a field, plain until clicked, as the title is), an arrow that starts it at the playhead and ✕ to remove it; the first chapter always starts at 0:00 and has no arrow. A start is moved by clicking it and typing a time (1:15, or 1:02:15); Enter saves, Esc puts it back. Add a chapter at the playhead adds a row there with its name open; a video with none says so and adds the first at 0:00. A chapter lasts at least 5 s and starts inside the video; a time that breaks either saves nothing and says why. A removed chapter's row says so, with Undo, until the page is left. Show in the seek bar turns the chapters off for everyone and keeps them in the panel. Every change saves at once (under If-Match, B21) and the bar above follows; a viewer sees it on their next visit. A change that didn't save puts the row back and says so on one line. (3) **Yours for good**: once the owner changes anything, the chapters are the owner's, and the space never writes them again, not when it names the video again after an edit, not when its naming runs late; the title keeps its own rule (a typed title wins). (4) **Edits move them, never lose them**: the owner's chapters are kept on the recording's clock, so a trim or a cut moves a start inside it to where it ends, and a chapter cut out whole, or left under 5 s, is set aside (its row says so) and comes back when the cut is put back. A permanent copy the editor makes (B197) carries them over as it does the space's. (5) Turning AI off keeps them. The bar shows the owner's chapters on a video of any length, as long as two or more play. Built: DECISIONS B267.",
+   "status": "ratified",
+   "date": "2026-10-25",
+   "amends": [
+    "owner-page (Edit chapters among the title's icons)",
+    "N66 (5) (the name and chapters made again: never the owner's chapters)",
+    "N67 (the bar shows the owner's chapters when there are any)"
    ],
    "amended_by": []
   }
@@ -11537,10 +11552,10 @@
      "id": "join-landing.paste-this-into-terminal"
     },
     {
-     "text": "curl -fsSL https://shroom.am/install | sh -s -- --join v.myshroom.workers.dev/join/7xk2pm",
+     "text": "curl -fsSL https://shroom.am/install | sh -s -- --join 'v.myshroom.workers.dev/join/7xk2pm'",
      "role": "other",
-     "copy": "provisional",
-     "note": "The install command with the join link built in. The link varies.",
+     "copy": "ratified",
+     "note": "The install command with the join link built in, the link in single quotes so a pasted command keeps it whole, as the agent page writes it. The link varies. Bagrat, 2026-10-25, relayed by the orchestrator: the link quoted here as on the agent page.",
      "id": "join-landing.curl-fssl-https-shroom"
     },
     {
@@ -11825,7 +11840,7 @@
    "status": "provisional",
    "board": null,
    "summary": "Region 1's install script verbatim, run with --join <link>; it passes the link to the app at launch. The join link rides argv and shell history once. This is the conscious scoped exception: one-time use + a 7-day TTL (one hour for own-Mac links). The admin token never gets this exception.",
-   "entry": "The user runs the join page's install command (curl … | sh -s -- --join <link>).",
+   "entry": "The user runs the join page's install command (curl … | sh -s -- --join '<link>').",
    "said": [],
    "actions": [],
    "cites": [
@@ -11857,6 +11872,13 @@
      "copy": "provisional",
      "note": "The inviter's name varies: the inviting Mac account's name in macOS's short, locale-aware form (N29).",
      "id": "member-welcome.bagrat-invited-you-to"
+    },
+    {
+     "text": "Their space: v.myshroom.workers.dev",
+     "role": "line",
+     "copy": "ratified",
+     "note": "The space's address the invite link points at, a quiet line under the title; the address varies. Bagrat, 2026-10-25, relayed by the orchestrator: approved the board “Joining — welcome and switch spaces?: “Their space: <address>” under who invited you” as drawn, with “Their space:”.",
+     "id": "member-welcome.their-space"
     },
     {
      "text": "shroom records your screen and hands you a link to share. Your videos will live in Bagrat's space, where Bagrat can see them too — nothing to sign up for, nothing to pay.",
@@ -12728,6 +12750,13 @@
      "copy": "provisional",
      "note": "The inviter's name varies.",
      "id": "join-switch-confirm.bagrat-invited-you-to"
+    },
+    {
+     "text": "Their space: v.myshroom.workers.dev",
+     "role": "line",
+     "copy": "ratified",
+     "note": "The space's address the invite link points at, a quiet line under the title; the address varies. Bagrat, 2026-10-25, relayed by the orchestrator: approved the board “Joining — welcome and switch spaces?: “Their space: <address>” under who invited you” as drawn, with “Their space:”.",
+     "id": "join-switch-confirm.their-space"
     },
     {
      "text": "This Mac records to v.mine.workers.dev now. Joining moves it to Bagrat's space — your videos in v.mine.workers.dev stay right where they are.",
@@ -14570,6 +14599,182 @@
     "N75"
    ],
    "was": null
+  },
+  "owner-page-chapters": {
+   "region": 4,
+   "kind": "face",
+   "parent": "owner-page",
+   "surface": "web-page",
+   "status": "ratified",
+   "board": "OwnerPageChaptersOpen",
+   "summary": "The owner edits the video's chapters (N87), in a panel the Edit chapters icon opens in place under the player, above the voice cuts. A heading, the switch Show in the seek bar, and Done; then a row a chapter: its start, its name as a field, an arrow that starts it at the playhead (not on the first, always at 0:00) and ✕. Add a chapter at the playhead under the rows. Every change saves at once and the bar above follows. A removed chapter's row says so with Undo; a chapter an edit cut out whole is set aside, its row saying so, and comes back with the cut. Switched off, a line says viewers see the bar without chapters, and the rows wait, dimmed. A time too close to a neighbour or outside the video saves nothing and says why; a change that didn't save puts the row back and says so (OwnerPageChapterRows). Owner-mode as the title has it (N40); viewers never see the panel or the icon, only the bar.",
+   "entry": "The owner clicks Edit chapters among the title's icons, once the video plays.",
+   "actions": [
+    {
+     "label": "Done",
+     "kind": "secondary",
+     "return_default": false,
+     "goes_to": "owner-page",
+     "note": "Shuts the panel; the Edit chapters icon does the same."
+    },
+    {
+     "label": "Add a chapter at 1:20",
+     "kind": "secondary",
+     "return_default": false,
+     "goes_to": "owner-page-chapters",
+     "note": "A row at the playhead, its name field open; a name typed and Enter (or leaving the field) saves it, nothing typed takes it away again. The time varies."
+    },
+    {
+     "label": "Remove this chapter",
+     "kind": "secondary",
+     "return_default": false,
+     "goes_to": "owner-page-chapters",
+     "note": "The ✕ on a row: saves at once; the row becomes Removed “…”. with Undo, until the page is left."
+    },
+    {
+     "label": "Start this chapter at 1:20",
+     "kind": "secondary",
+     "return_default": false,
+     "goes_to": "owner-page-chapters",
+     "note": "The arrow on a row: the chapter starts at the playhead; the rows re-sort."
+    },
+    {
+     "label": "Show in the seek bar",
+     "kind": "switch",
+     "return_default": false,
+     "goes_to": "owner-page-chapters",
+     "note": "Off hides the chapters from the bar for everyone and keeps them here."
+    }
+   ],
+   "said": [
+    {
+     "text": "Chapters",
+     "role": "heading",
+     "copy": "ratified",
+     "note": "The panel's heading. OK'd as written, Bagrat 2026-10-25.",
+     "id": "owner-page-chapters.chapters"
+    },
+    {
+     "text": "Edit chapters",
+     "role": "tooltip",
+     "copy": "ratified",
+     "note": "The icon's name and tooltip, among the title's icons before the scissors. OK'd as written, Bagrat 2026-10-25.",
+     "id": "owner-page-chapters.edit-chapters"
+    },
+    {
+     "text": "Show in the seek bar",
+     "role": "label",
+     "copy": "ratified",
+     "note": "The switch's label; on a phone, “In the seek bar”. OK'd as written, Bagrat 2026-10-25.",
+     "id": "owner-page-chapters.show-in-the-seek-bar"
+    },
+    {
+     "text": "Done",
+     "role": "button",
+     "copy": "ratified",
+     "note": "Shuts the panel. OK'd as written, Bagrat 2026-10-25.",
+     "id": "owner-page-chapters.done"
+    },
+    {
+     "text": "Add a chapter at 1:20",
+     "role": "button",
+     "copy": "ratified",
+     "note": "Under the rows; the time is the playhead's and varies. OK'd as written, Bagrat 2026-10-25.",
+     "id": "owner-page-chapters.add-a-chapter-at"
+    },
+    {
+     "text": "Add the first chapter",
+     "role": "button",
+     "copy": "ratified",
+     "note": "On a video with no chapters, under “No chapters yet.”: a row at 0:00 with its name open. OK'd as written, Bagrat 2026-10-25.",
+     "id": "owner-page-chapters.add-the-first-chapter"
+    },
+    {
+     "text": "No chapters yet.",
+     "role": "note",
+     "copy": "ratified",
+     "note": "A video with no chapters. OK'd as written, Bagrat 2026-10-25.",
+     "id": "owner-page-chapters.no-chapters-yet"
+    },
+    {
+     "text": "Name this chapter",
+     "role": "placeholder",
+     "copy": "ratified",
+     "note": "A new row's name field. OK'd as written, Bagrat 2026-10-25.",
+     "id": "owner-page-chapters.name-this-chapter"
+    },
+    {
+     "text": "Start this chapter at 1:20",
+     "role": "tooltip",
+     "copy": "ratified",
+     "note": "The arrow's name; the time is the playhead's. OK'd as written, Bagrat 2026-10-25.",
+     "id": "owner-page-chapters.start-this-chapter-at"
+    },
+    {
+     "text": "Remove this chapter",
+     "role": "tooltip",
+     "copy": "ratified",
+     "note": "The ✕'s name. OK'd as written, Bagrat 2026-10-25.",
+     "id": "owner-page-chapters.remove-this-chapter"
+    },
+    {
+     "text": "Removed “Trial results and metrics”.",
+     "role": "status",
+     "copy": "ratified",
+     "note": "A removed chapter's row, with Undo; the name varies. OK'd as written, Bagrat 2026-10-25.",
+     "id": "owner-page-chapters.removed"
+    },
+    {
+     "text": "Undo",
+     "role": "button",
+     "copy": "ratified",
+     "note": "Puts the removed chapter back. OK'd as written, Bagrat 2026-10-25.",
+     "id": "owner-page-chapters.undo"
+    },
+    {
+     "text": "A chapter needs at least 5 seconds.",
+     "role": "status",
+     "copy": "ratified",
+     "note": "Amber, under the rows: a time too close to a neighbour; nothing saves and the field stays open. OK'd as written, Bagrat 2026-10-25.",
+     "id": "owner-page-chapters.needs-5-seconds"
+    },
+    {
+     "text": "That time isn't in the video.",
+     "role": "status",
+     "copy": "ratified",
+     "note": "Amber, under the rows: a time past the end; nothing saves. OK'd as written, Bagrat 2026-10-25.",
+     "id": "owner-page-chapters.not-in-the-video"
+    },
+    {
+     "text": "Off: viewers see the seek bar without chapters.",
+     "role": "note",
+     "copy": "ratified",
+     "note": "Under the heading while the switch is off. OK'd as written, Bagrat 2026-10-25.",
+     "id": "owner-page-chapters.off-viewers-see"
+    },
+    {
+     "text": "Cut from the video. It comes back if you put the cut back.",
+     "role": "note",
+     "copy": "ratified",
+     "note": "Under the name of a chapter an edit cut out whole (or left under 5 s). OK'd as written, Bagrat 2026-10-25.",
+     "id": "owner-page-chapters.cut-from-the-video"
+    },
+    {
+     "text": "Couldn't save that. Check your connection, then try again.",
+     "role": "status",
+     "copy": "ratified",
+     "note": "Amber, under the rows, after a change that didn't save; the cut strip's line. OK'd as written, Bagrat 2026-10-25.",
+     "id": "owner-page-chapters.couldnt-save"
+    }
+   ],
+   "cites": [
+    "N87",
+    "N67",
+    "N66",
+    "N40",
+    "N63",
+    "B21"
+   ]
   }
  },
  "edges": [
@@ -20117,6 +20322,36 @@
    "on": [
     "Act(SetAutoclean)"
    ]
+  },
+  {
+   "from": "owner-page",
+   "to": "owner-page-chapters",
+   "kind": "flow",
+   "label": "Edit chapters — the panel opens under the player",
+   "trigger": "The owner clicks the Edit chapters icon beside the title (live video, owner-mode)",
+   "status": "ratified",
+   "cites": [
+    "N87"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": []
+  },
+  {
+   "from": "owner-page-chapters",
+   "to": "owner-page",
+   "kind": "flow",
+   "label": "Done — the panel shuts",
+   "trigger": "Done, or the Edit chapters icon again",
+   "status": "ratified",
+   "cites": [
+    "N87"
+   ],
+   "source": [
+    "canvas"
+   ],
+   "on": []
   }
  ],
  "rules": [

@@ -69,6 +69,8 @@ export type PlanView = { kind: "plan"; header: string; rows: PlanRow[]; current:
 export type InviteBody = {
   kind: "invite";
   title: string | null;
+  /** Under the title, the space the invite joins: “Their space: v.x.workers.dev”. */
+  space: string | null;
   lines: string[];
   /** member-welcome's “Start shroom when you log in” (U4). */
   login: Toggle | null;

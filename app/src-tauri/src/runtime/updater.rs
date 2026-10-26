@@ -54,6 +54,12 @@ pub fn mac_channel(rt: &Runtime) -> Channel {
     Channel::from_file(std::fs::read_to_string(rt.home.path("channel")).ok().as_deref())
 }
 
+/// The channel a staged copy is held to: this Mac's — but a dev build's stand-in serves the
+/// tree's own version, an early build's too, whatever its throwaway home's channel.
+fn staged_channel(rt: &Runtime) -> Channel {
+    if rt.dev { Channel::Early } else { mac_channel(rt) }
+}
+
 fn class(e: &UpdateError) -> FailClass {
     match e {
         UpdateError::Transport(_) => FailClass::Transport,
@@ -61,6 +67,8 @@ fn class(e: &UpdateError) -> FailClass {
         UpdateError::Mismatch => FailClass::Refused,
         // Nor is a copy someone other than this app's own signer made (B125).
         UpdateError::Signature(_) => FailClass::Refused,
+        // Nor one that isn't, by its own Info.plist, the newer version offered (B274).
+        UpdateError::Staged(_) => FailClass::Refused,
         _ => FailClass::Unclassified,
     }
 }
@@ -200,6 +208,14 @@ fn apply(rt: &Runtime, app: &AppHandle, version: &str) -> Result<(), FailClass> 
         let _ = std::fs::remove_dir_all(rt.home.updates().join(version));
         return Err(class(&e));
     }
+    // And only the version offered, newer than this one, of this Mac's channel — as the
+    // staged copy's own Info.plist says it is, not only as the manifest named it (B274).
+    let offered = Version::parse(version).ok_or(FailClass::Refused)?;
+    if let Err(e) = shroom_update::check_staged(&staged, offered, running(rt)?, staged_channel(rt)) {
+        rt.log(&format!("updater not applied {version}: {e}"));
+        let _ = std::fs::remove_dir_all(rt.home.updates().join(version));
+        return Err(class(&e));
+    }
     if rt.dev {
         // The reopened copy carries the throwaway home (and the fake, and a drive's second
         // half) — it never runs on the real dev home.
@@ -244,6 +260,21 @@ mod tests {
         assert_eq!(base(&rt), None);
         rt.dev = false;
         assert_eq!(base(&rt).as_deref(), Some(shroom_update::RELEASES));
+    }
+
+    /// A staged copy that isn't the version offered, newer, of this channel, is refused like
+    /// one signed by someone else — and a dev build's stand-in may serve an early build to a
+    /// Mac on the official channel (the tree's own version), a release build's never.
+    #[test]
+    fn a_staged_copy_of_another_version_is_refused() {
+        assert_eq!(class(&UpdateError::Staged("0.1.24, not 0.1.26".into())), FailClass::Refused);
+        let tmp = tempfile::tempdir().unwrap();
+        let (mut rt, _rx) = Runtime::for_test(tmp.path().join("h"), None, None);
+        assert_eq!(staged_channel(&rt), Channel::Early);
+        rt.dev = false;
+        assert_eq!(staged_channel(&rt), Channel::Official);
+        std::fs::write(rt.home.path("channel"), "early\n").unwrap();
+        assert_eq!(staged_channel(&rt), Channel::Early);
     }
 
     /// The channel is the folder's `channel` file's (B220), read at each check.
