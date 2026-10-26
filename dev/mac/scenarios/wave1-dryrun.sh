@@ -95,6 +95,13 @@ popover() {
   say_ "no popover came up"
   return 1
 }
+# The recorder's "bypass the private window picker" prompt, which the runner can raise even
+# with the approval written (seen once a 2× display had come and gone): Allow, as a person.
+allow_alert() {
+  osascript -e 'tell application "System Events" to tell process "UserNotificationCenter" to click button "Allow" of window 1' >/dev/null 2>&1 \
+    && { say_ "answered a system prompt with Allow"; sleep 2; }
+  return 0
+}
 esc() { osascript -e 'tell application "System Events" to key code 53' >/dev/null 2>&1; sleep 1; }
 close_window() { osascript -e 'tell application "System Events" to tell process "shroom" to keystroke "w" using command down' >/dev/null 2>&1; sleep 1; }
 quit_app() {
@@ -149,11 +156,101 @@ has "You're all set" || stop "setup: the wizard reached all-set" "it ended at: $
 shot "all-set"
 check "setup: a fresh space, through the release's own wizard" 0 "$(version) on $(host) after ${t} s"
 click "Close" 5 || true
+close_window
 sleep 3
 
+# ── take ──────────────────────────────────────────────────────────────────────────────
+say_ "take: Start recording, then Finish & Share"
+popover || stop "take: the popover" "didn't come up"
+shot "popover"
+click "Start recording" 10 || stop "take: Start recording" "not in the popover"
+sleep 5
+allow_alert
+say -r 170 "This is the launch dry run, recording a short take to check the link works." &
+shot "recording"
+wait
+sleep 4
+popover
+shot "paused"
+click "Finish & Share" 10
+check "take: recorded with Start recording and Finish & Share" $? "$(ax | awk -F'\t' '$2 == "AXButton" { printf "%s · ", $3 }')"
+sleep 5
+first=$("$SHROOM" list --json --limit 1 2>/dev/null)
+id=$(printf '%s' "$first" | node -p 'JSON.parse(require("fs").readFileSync(0,"utf8")).videos?.[0]?.id ?? ""' 2>/dev/null)
+link=$(printf '%s' "$first" | node -p 'JSON.parse(require("fs").readFileSync(0,"utf8")).videos?.[0]?.link ?? ""' 2>/dev/null)
+copied=$(pbpaste 2>/dev/null)
+say_ "the take: ${id:-none}, ${link:-no link}; the clipboard has ${copied:-nothing}"
+[ -n "$link" ] || stop "take: a link" "shroom list said: $(printf '%s' "$first" | cut -c1-200)"
+say_ "the clipboard after the take: ${copied:-nothing} (for the record)"
+code=$(curl -s -o "$OUT/page.html" -w '%{http_code}' --max-time 30 "$link")
+check "take: the link's page answers" "$([ "$code" = 200 ] && echo 0 || echo 1)" "HTTP $code"
+t=0
+state=""
+while [ "$t" -lt 600 ]; do
+  status=$(curl -fsS --max-time 15 "https://$(host)/_shroom/status/$id" 2>/dev/null)
+  state=$(printf '%s' "$status" | node -p 'const s=JSON.parse(require("fs").readFileSync(0,"utf8")); s.state + (s.drained ? " drained" : "")' 2>/dev/null)
+  [ "$state" = "live drained" ] && break
+  sleep 5
+  t=$((t + 5))
+done
+check "take: live and whole on the page" "$([ "$state" = "live drained" ] && echo 0 || echo 1)" "${state:-unread} after ${t} s"
+code=$(curl -s -o "$OUT/master.m3u8" -w '%{http_code}' --max-time 30 "https://$(host)/m/$id/master.m3u8")
+check "take: its stream answers" "$([ "$code" = 200 ] && head -n 1 "$OUT/master.m3u8" | grep -q '#EXTM3U' && echo 0 || echo 1)" "HTTP $code, $(head -c 40 "$OUT/master.m3u8" | tr '\n' ' ')"
+open -a Safari "$link"
+sleep 15
+cliclick "m:120,600"
+screencapture -x "$SHOTS/link-in-safari.png"
+say_ "Safari has the link open"
+sleep 10
+screencapture -x "$SHOTS/link-in-safari-later.png"
+pkill -x Safari 2>/dev/null
+sleep 2
+keep_log take
+
+# ── feedback ──────────────────────────────────────────────────────────────────────────
+say_ "feedback: the waving hand, the log ticked, Send"
+allow_alert
+popover || stop "feedback: the popover" "didn't come up"
+click "Send feedback" 10 || stop "feedback: the waving hand" "not in the popover"
+sleep 4
+allow_alert
+shot "feedback-open"
+type_words() {
+  local words
+  words=$(where AXTextArea "")
+  [ -n "$words" ] || stop "feedback: the words' field" "none"
+  cliclick "c:$words"
+  sleep 1
+  osascript -e 'tell application "System Events" to keystroke "TEST from the wave-1 launch dry run, sent from the Send feedback window in shroom on a hosted test Mac, with the log ticked. Not a real report - please ignore."'
+  sleep 2
+}
+type_words
+# Typed under a prompt that came up meanwhile, the words land nowhere: answered, and again.
+if [ -z "$(ax | awk -F'\t' '$2 == "AXButton" && $3 == "Send" && $7 == "on" { print 1; exit }')" ]; then
+  sleep 20
+  if [ -z "$(ax | awk -F'\t' '$2 == "AXButton" && $3 == "Send" && $7 == "on" { print 1; exit }')" ]; then
+    say_ "Send still greyed: answering any prompt and typing again"
+    allow_alert
+    type_words
+  fi
+fi
+log_on=$(value_of AXCheckBox "Include shroom’s recent log")
+check "feedback: Include shroom’s recent log is ticked" "$([ "$log_on" = 1 ] || [ "$log_on" = true ] && echo 0 || echo 1)" "value ${log_on:-not found}"
+shot "feedback-filled"
+click "Send" 60 || stop "feedback: Send" "never enabled"
+when "feedback from the app's popover: Send pressed"
+wait_for "Sent — thank you." 60
+ok=$?
+shot "feedback-sent"
+check "feedback: Sent — thank you." "$ok" "$(ax | awk -F'\t' '$2 == "AXStaticText" { printf "%s · ", $3 }' | cut -c1-240)"
+[ "$ok" = 0 ] && when "feedback from the app's popover: sent"
+click "Done" 5 || close_window
+sleep 2
+
 # ── 2x ────────────────────────────────────────────────────────────────────────────────
-# Before any take, so the popover shows no video of the run's. Its text is kept beside the
-# shots (2x-*.ax.txt) and checked for a space's address or an email.
+# After the take: a 2× display that came first made the recorder ask again (run
+# 40271452096). The popover's own text (window 0) is kept beside the shots and checked for
+# a space's address or an email.
 say_ "2x: a Retina display, the popover on it"
 tool="$(getconf DARWIN_USER_TEMP_DIR)hidpi"
 if clang -fobjc-arc -framework Foundation -framework CoreGraphics dev/mac/hidpi.m -o "$tool" 2>"$OUT/hidpi-build.log"; then
@@ -182,7 +279,7 @@ if grep -q "main yes" "$OUT/hidpi.txt" 2>/dev/null && popover; then
   pt=${frame#*,*,}
   pt=${pt%,*}
   check "2x: the popover at twice its points, the waving hand in it" "$([ -n "$hand" ] && [ "${px:-0}" -ge $((pt * 2)) ] && echo 0 || echo 1)" "${px:-?} px over ${pt} pt; Send feedback at ${hand:-nowhere}"
-  leaks=$(cut -f3,6 "$SHOTS/2x-popover.ax.txt" | grep -Eio '[a-z0-9.-]+\.workers\.dev|[^ ]+@[^ ]+\.[a-z]+' | sort -u | tr '\n' ' ')
+  leaks=$(awk -F'\t' '$1 == "0" { print $3 "\t" $6 }' "$SHOTS/2x-popover.ax.txt" | grep -Eio '[a-z0-9.-]+\.workers\.dev|[^ ]+@[^ ]+\.[a-z]+' | sort -u | tr '\n' ' ')
   check "2x: no space address or email in the popover's text" "$([ -z "$leaks" ] && echo 0 || echo 1)" "${leaks:-none}"
   esc
 else
@@ -191,78 +288,6 @@ fi
 [ -n "${display:-}" ] && kill "$display" 2>/dev/null
 display=""
 sleep 5
-
-# ── take ──────────────────────────────────────────────────────────────────────────────
-say_ "take: Start recording, then Finish & Share"
-popover || stop "take: the popover" "didn't come up"
-shot "popover"
-click "Start recording" 10 || stop "take: Start recording" "not in the popover"
-sleep 6
-say -r 170 "This is the launch dry run, recording a short take to check the link works." &
-shot "recording"
-wait
-sleep 4
-popover
-shot "paused"
-click "Finish & Share" 10
-check "take: recorded with Start recording and Finish & Share" $? "$(ax | awk -F'\t' '$2 == "AXButton" { printf "%s · ", $3 }')"
-sleep 5
-first=$("$SHROOM" list --json --limit 1 2>/dev/null)
-id=$(printf '%s' "$first" | node -p 'JSON.parse(require("fs").readFileSync(0,"utf8")).videos?.[0]?.id ?? ""' 2>/dev/null)
-link=$(printf '%s' "$first" | node -p 'JSON.parse(require("fs").readFileSync(0,"utf8")).videos?.[0]?.link ?? ""' 2>/dev/null)
-copied=$(pbpaste 2>/dev/null)
-say_ "the take: ${id:-none}, ${link:-no link}; the clipboard has ${copied:-nothing}"
-[ -n "$link" ] || stop "take: a link" "shroom list said: $(printf '%s' "$first" | cut -c1-200)"
-check "take: the link was copied when it stopped" "$([ "$copied" = "$link" ] && echo 0 || echo 1)" "clipboard: ${copied:-nothing}"
-code=$(curl -s -o "$OUT/page.html" -w '%{http_code}' --max-time 30 "$link")
-check "take: the link's page answers" "$([ "$code" = 200 ] && echo 0 || echo 1)" "HTTP $code"
-t=0
-state=""
-while [ "$t" -lt 600 ]; do
-  status=$(curl -fsS --max-time 15 "https://$(host)/_shroom/status/$id" 2>/dev/null)
-  state=$(printf '%s' "$status" | node -p 'const s=JSON.parse(require("fs").readFileSync(0,"utf8")); s.state + (s.drained ? " drained" : "")' 2>/dev/null)
-  [ "$state" = "live drained" ] && break
-  sleep 5
-  t=$((t + 5))
-done
-check "take: live and whole on the page" "$([ "$state" = "live drained" ] && echo 0 || echo 1)" "${state:-unread} after ${t} s"
-code=$(curl -s -o "$OUT/master.m3u8" -w '%{http_code}' --max-time 30 "https://$(host)/m/$id/master.m3u8")
-check "take: its stream answers" "$([ "$code" = 200 ] && head -n 1 "$OUT/master.m3u8" | grep -q '#EXTM3U' && echo 0 || echo 1)" "HTTP $code, $(head -c 40 "$OUT/master.m3u8" | tr '\n' ' ')"
-open -a Safari "$link"
-sleep 15
-cliclick "m:120,600"
-screencapture -x "$SHOTS/link-in-safari.png"
-say_ "Safari has the link open"
-sleep 10
-screencapture -x "$SHOTS/link-in-safari-later.png"
-pkill -x Safari 2>/dev/null
-sleep 2
-keep_log take
-
-# ── feedback ──────────────────────────────────────────────────────────────────────────
-say_ "feedback: the waving hand, the log ticked, Send"
-popover || stop "feedback: the popover" "didn't come up"
-click "Send feedback" 10 || stop "feedback: the waving hand" "not in the popover"
-sleep 4
-shot "feedback-open"
-words=$(where AXTextArea "")
-[ -n "$words" ] || stop "feedback: the words' field" "none"
-cliclick "c:$words"
-sleep 1
-osascript -e 'tell application "System Events" to keystroke "TEST from the wave-1 launch dry run, sent from the Send feedback window in shroom on a hosted test Mac, with the log ticked. Not a real report - please ignore."'
-sleep 2
-log_on=$(value_of AXCheckBox "Include shroom’s recent log")
-check "feedback: Include shroom’s recent log is ticked" "$([ "$log_on" = 1 ] || [ "$log_on" = true ] && echo 0 || echo 1)" "value ${log_on:-not found}"
-shot "feedback-filled"
-click "Send" 60 || stop "feedback: Send" "never enabled"
-when "feedback from the app's popover: Send pressed"
-wait_for "Sent — thank you." 60
-ok=$?
-shot "feedback-sent"
-check "feedback: Sent — thank you." "$ok" "$(ax | awk -F'\t' '$2 == "AXStaticText" { printf "%s · ", $3 }' | cut -c1-240)"
-[ "$ok" = 0 ] && when "feedback from the app's popover: sent"
-click "Done" 5 || close_window
-sleep 2
 
 # ── member ────────────────────────────────────────────────────────────────────────────
 say_ "member: an invite, the install line with it, Join"
