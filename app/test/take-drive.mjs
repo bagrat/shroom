@@ -9,7 +9,7 @@
 //   node app/test/take-drive.mjs left-out  a take from a cold start, and what it leaves out
 //   node app/test/take-drive.mjs not-left-out   the reader's own proof: the count stays in
 //   node app/test/take-drive.mjs own-windows    the Library, an editor, Settings and Send feedback in a take's
-//                                               picture; the popover, label and toast not (N83)
+//                                               picture; the popover, label and toast not (N85)
 //   node app/test/take-drive.mjs camera-take    Camera as the source, a take kept (the hosted
 //                                               Mac's pattern camera only: dev/mac/camera.sh)
 //   node app/test/take-drive.mjs memory    what shroom holds at rest, after its windows and
@@ -33,7 +33,7 @@
 // the list (only the count: a digit and a line of copy), and the reader must find it in the
 // take. Exit 3 when something couldn't be looked at: a locked screen (nothing records —
 // only the first reading is made), or no ffmpeg here that can decode the take.
-// `own-windows` (N83, DECISIONS B264): a take with the Library, an editor, Settings and Send feedback lifted
+// `own-windows` (N85, DECISIONS B266): a take with the Library, an editor, Settings and Send feedback lifted
 // above the pattern in turn, then the popover, the agent label and the marker toast; a frame
 // from the middle of each one's stretch, found by the pattern's counter, is read here (tests/e2e/own-windows.mjs): the windows
 // light the pattern's dark field, the rest leave it dark. The frames are kept as PNGs beside

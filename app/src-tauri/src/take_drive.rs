@@ -10,7 +10,7 @@
 //! - `--drive take <out> signals`: the bubble (a native panel that never takes the
 //!   keyboard, on the core's camera, dragged and remembered), which windows a take leaves
 //!   out (the popover, from creation) and which it records (the Library, Settings and Send
-//!   feedback, N83), Camera as the source (its preview, the count on its display,
+//!   feedback, N85), Camera as the source (its preview, the count on its display,
 //!   the preview staying through the take while the take still gets its frames,
 //!   `camera-lost` for the recorded camera — then Discard, so the room never outlives the
 //!   drive), then display takes interrupted by: the microphone leaving (`mic-lost`, Resume
@@ -58,7 +58,7 @@
 //!   count: a digit and a line of copy, nothing of the Mac's — so the take has it in its
 //!   picture, and the reader must be seen to find it there.
 //!
-//! - `--drive take <out> own-windows` (N83, DECISIONS B264): a first take, for an editor to
+//! - `--drive take <out> own-windows` (N85, DECISIONS B266): a first take, for an editor to
 //!   open on; then the Library, that editor, Settings and Send feedback open behind the pattern, and a take
 //!   in which each is lifted above it in turn, then the popover, the agent label and the
 //!   marker toast. A capture that leaves nothing out sees each one (the proof it was up), and
@@ -134,7 +134,7 @@ pub enum TakeDrive {
     NotLeftOut,
     /// A take with the Library, an editor, Settings and Send feedback shown over the pattern
     /// in turn, then the popover, the label and the toast: the windows in its picture, the
-    /// rest not (N83).
+    /// rest not (N85).
     OwnWindows,
     /// Camera as the source, a take kept — the hosted Mac's pattern camera only (B121).
     CameraTake,
@@ -966,7 +966,7 @@ fn signals(d: &D) -> Result<(), String> {
     let a_camera = cameras.iter().any(|c| !c.continuity);
 
     // 1. The popover is left out of capture from creation; the Library, Settings and Send
-    // feedback are recorded like any app's (N83).
+    // feedback are recorded like any app's (N85).
     windows_excluded(d)?;
 
     // 2. The bubble and Camera as the source (the camera only on this Mac's own grant).
@@ -1016,7 +1016,7 @@ fn windows_excluded(d: &D) -> Result<(), String> {
     let numbers: Vec<_> = [("library", "the Library"), ("settings", "Settings"), ("feedback", "Send feedback")].into_iter().map(|(label, name)| (name, crate::drives::poll(5, || window_number(&d.app, label)))).collect();
     let excluded = d.rt.excluded.lock().unwrap().clone();
     for (name, n) in numbers {
-        d.check(&format!("{name}'s window is recorded in a take (N83)"), n.is_some_and(|n| !excluded.contains(&n)), format!("{n:?} not in {excluded:?}"));
+        d.check(&format!("{name}'s window is recorded in a take (N85)"), n.is_some_and(|n| !excluded.contains(&n)), format!("{n:?} not in {excluded:?}"));
     }
     // The popover's own panel — the window that shows — not the hidden host of its page.
     let app = d.app.clone();
@@ -1691,7 +1691,7 @@ fn left_out_take(d: &D, display: u32) -> Result<(), String> {
     Ok(())
 }
 
-// ── a take with shroom's own windows in it (N83) ──
+// ── a take with shroom's own windows in it (N85) ──
 
 /// The least of the pattern's dark field one of shroom's windows lights when it is
 /// in a picture: each covers much of the hosted Mac's 1024 × 768 display, centred.
@@ -1789,7 +1789,7 @@ fn own_windows_opened(d: &D) -> Result<(), String> {
     let excluded = d.rt.excluded.lock().unwrap().clone();
     for (label, name) in &windows {
         let n = with_window(d, label.clone(), |w| w.windowNumber() as u32);
-        d.check(&format!("{name}'s window is off the list of what a take leaves out (N83)"), n.is_some_and(|n| !excluded.contains(&n)), format!("{n:?} not in {excluded:?}"));
+        d.check(&format!("{name}'s window is off the list of what a take leaves out (N85)"), n.is_some_and(|n| !excluded.contains(&n)), format!("{n:?} not in {excluded:?}"));
     }
 
     warp_pointer_away();

@@ -1155,6 +1155,13 @@ fn region3_rows() -> Vec<(&'static str, &'static str, &'static str, World)> {
         ]
     };
     rows.push(("popover", "config", "config", popover(ready())));
+    // An update, downloaded and verified, offered over config (N37): the slimmest banner.
+    rows.push(("popover", "update-ready", "update-ready", {
+        let mut w = popover(ready());
+        w.update.offer = Fact::known(Some(UpdateOffer::Ready { version: "1.3.0".into() }), Mono(950));
+        w.update.staged = Some("1.3.0".into());
+        w
+    }));
     rows.push(("popover", "config", "config-twins-show-yourself", {
         let mut w = popover(ready());
         w.mac.displays = Fact::known(two_twins(), Mono(0));

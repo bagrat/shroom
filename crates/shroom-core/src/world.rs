@@ -1246,7 +1246,7 @@ pub enum WindowKind {
 }
 
 impl WindowKind {
-    /// Whether a take records this window while it's on screen, like any app's (law 4, N83):
+    /// Whether a take records this window while it's on screen, like any app's (law 4, N85):
     /// every one, so a bug report of shroom shows it. Only the overlays stay out of every
     /// capture. A new kind of window says here which it is.
     pub fn recorded(self) -> bool {

@@ -1,7 +1,7 @@
 //! The presenter: the only place the Scene becomes AppKit. The tray's face and menu, the
 //! popover's, the countdown's and the agent label's panels (`overlay.rs`; the popover key
 //! only when asked — law 5), the windows (onboarding, Library, Settings, Send feedback, the
-//! editors — each recorded like any app's, N83), the camera panels (`camera.rs`), and the Dock (law
+//! editors — each recorded like any app's, N85), the camera panels (`camera.rs`), and the Dock (law
 //! 6: the setup window's alone). Webviews get their slice as a `scene` event; they render,
 //! nothing more.
 
@@ -957,7 +957,7 @@ pub fn bring_forward_kind(app: &AppHandle, kind: WindowKind) {
 }
 
 /// One of shroom's windows, built hidden. Each is recorded in a take like any app's window
-/// (law 4, N83: a bug report of shroom shows it) unless `WindowKind::recorded` says
+/// (law 4, N85: a bug report of shroom shows it) unless `WindowKind::recorded` says
 /// otherwise, and then it is left out of every capture from the moment it exists.
 fn build_window(app: &AppHandle, rt: &Runtime, kind: WindowKind, excluded: &Arc<Mutex<Vec<u32>>>) -> Option<tauri::WebviewWindow> {
     let sp = spec(kind);
