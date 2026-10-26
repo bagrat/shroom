@@ -367,3 +367,51 @@ fn a_key_shaped_run_never_reaches_the_report() {
     assert!(!line.contains("Zm9v"), "{line}");
     let _ = derive;
 }
+
+// ── a window's own error, as the app logs it ──
+
+/// One line, whatever the window sent: its line breaks and other controls are spaces, and
+/// its message is cut where the report would cut it.
+#[test]
+fn a_windows_error_is_one_line_cut_at_the_source() {
+    let line = report::webview_line("popover", "TypeError: x is undefined\n    at draw (popover.js:1:2)\r\n\tat run\u{1b}[0m");
+    assert_eq!(line, "webview popover: TypeError: x is undefined     at draw (popover.js:1:2)   at run [0m");
+    let long = report::webview_line("editor", &format!("{}\n{}", "x".repeat(300), "y".repeat(300)));
+    assert!(!long.contains('\n'));
+    let message = long.strip_prefix("webview editor: ").unwrap();
+    assert_eq!(message.chars().count(), report::WEBVIEW_CHARS);
+    assert!(message.ends_with('…'));
+    let stamped = format!("2026-10-18T17:52:03Z       10 {long}");
+    assert_eq!(report::clean_line(&stamped), stamped, "the report keeps it as it is");
+}
+
+/// The window's name is one of the app's windows, or `other`.
+#[test]
+fn a_windows_error_names_a_known_window() {
+    for surface in report::WEBVIEW_SURFACES {
+        assert!(report::webview_line(surface, "boom").starts_with(&format!("webview {surface}: ")));
+    }
+    for surface in ["", "Popover", "popover\n2026-10-18T17:52:03Z  1 core step", &"a".repeat(300), "pop over"] {
+        assert_eq!(report::webview_line(surface, "boom"), "webview other: boom", "{surface:?}");
+    }
+}
+
+/// Every window the app's webviews name when they send their errors is a known one.
+#[test]
+fn every_window_that_sends_its_errors_is_known() {
+    let src = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../app/src");
+    let mut named = Vec::new();
+    for entry in std::fs::read_dir(&src).unwrap() {
+        let path = entry.unwrap().path();
+        if path.extension().is_some_and(|e| e == "ts") {
+            let text = std::fs::read_to_string(&path).unwrap();
+            for part in text.split("reportErrors(\"").skip(1) {
+                named.push(part.split('"').next().unwrap().to_string());
+            }
+        }
+    }
+    assert!(!named.is_empty());
+    for surface in named {
+        assert!(report::WEBVIEW_SURFACES.contains(&surface.as_str()), "{surface}");
+    }
+}

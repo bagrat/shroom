@@ -23,8 +23,39 @@ const EMAIL_RE = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi;
 const HOME_RE = /\/(?:Users|home)\/[^/\s"']+/g;
 const HOST_RE = new RegExp(`(?<![\\w./~-])(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+(?:${TLDS})\\b`, "gi");
 const HEX_RE = /\b[0-9a-f]{16,}\b/gi;
-// A key-shaped run: 24 or more of base64's characters, holding a letter and a digit.
-const RUN_RE = /[A-Za-z0-9+/_-]{24,}={0,2}/g;
+// What follows a link's code (`/join/`, `?k=`, `&k=`) or a credential's scheme, up to a space.
+const AFTER_RE = /(\/join\/|[?&]k=|Bearer |ShroomParent )\S+/g;
+// A run of base64's characters long enough to be a key (`idLike` says which).
+const RUN_RE = /[A-Za-z0-9+/_-]{16,}={0,2}/g;
+
+/** A part of a run between `+ / _ -` that names a thing, not a key: short, a number, a
+ * word with a number after it (`sha256`), or a number with a letter or two (`26b`, `18T17`).
+ * @param {string} p */
+const shaped = (p) => p.length <= 5 || /^[0-9]+$/.test(p) || /^[A-Za-z]+[0-9]*$/.test(p) || /^[0-9]+[A-Za-z]?[0-9]*[A-Za-z]?$/.test(p);
+
+/** A run's letters read as words: one case, or words of three letters or more (one shorter
+ * allowed), at least three letters a word (`ScreenCaptureKit`, `NSURLErrorDomain`).
+ * @param {string} r */
+function words(r) {
+  if (!/[a-z]/.test(r) || !/[A-Z]/.test(r)) return true;
+  const pieces = r.match(/[A-Z]+(?![a-z])|[A-Z]?[a-z]+/g) ?? [];
+  const letters = pieces.join("").length;
+  const short = pieces.filter((p) => /[a-z]/.test(p) && p.length < 3).length;
+  return short <= 1 && pieces.length * 3 <= letters;
+}
+
+/** Whether a run (its `=` apart) is key-shaped: 24 or more holding a letter and a digit; 32
+ * or more holding both cases; 16 or more holding a digit or both cases, unless it reads as
+ * names (each part `shaped`, its letters `words`).
+ * @param {string} r */
+function idLike(r) {
+  const digit = /\d/.test(r);
+  const mixed = /[a-z]/.test(r) && /[A-Z]/.test(r);
+  if (r.length >= 24 && digit && /[A-Za-z]/.test(r)) return true;
+  if (r.length >= 32 && mixed) return true;
+  if (r.length < 16 || (!digit && !mixed)) return false;
+  return !(r.split(/[+/_-]+/).filter(Boolean).every(shaped) && words(r));
+}
 
 /** The host of a URL, or "" when it has none. @param {string} url */
 function hostOf(url) {
@@ -46,6 +77,7 @@ export function cleanLine(line) {
     if (/\.workers\.dev$/i.test(host)) return "<your space>";
     return PUBLIC_HOSTS.test(host) ? `https://${host}/…` : "<a web address>";
   });
+  s = s.replace(AFTER_RE, "$1<an id>");
   s = s.replace(EMAIL_RE, "<an email>");
   s = s.replace(HOME_RE, "~");
   s = s.replace(HOST_RE, (h) => {
@@ -53,7 +85,7 @@ export function cleanLine(line) {
     return /\.workers\.dev$/i.test(h) ? "<your space>" : "<a host>";
   });
   s = s.replace(HEX_RE, "<an id>");
-  s = s.replace(RUN_RE, (r) => (/[A-Za-z]/.test(r) && /\d/.test(r) ? "<an id>" : r));
+  s = s.replace(RUN_RE, (r) => (idLike(r.replace(/=+$/, "")) ? "<an id>" : r));
   return s.length > LINE_CHARS ? s.slice(0, LINE_CHARS) + "…" : s;
 }
 

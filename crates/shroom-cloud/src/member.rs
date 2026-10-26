@@ -763,7 +763,7 @@ impl Space {
     pub fn judge(&self, key: &DeviceKey, rec: &str, cue: usize, after: &str, candidates: &[String]) -> Result<(Vec<f64>, Option<u64>), String> {
         let body = json!({"rec": rec, "cue": cue, "after": after, "candidates": candidates});
         match self.call::<Value>("POST", "cue", Some(body), Some(key)) {
-            Answer::Ok(v) if v.get("later").and_then(Value::as_bool) == Some(true) => Err(format!("later: {}", v.get("why").and_then(Value::as_str).unwrap_or("no reason"))),
+            Answer::Ok(v) if v.get("later").and_then(Value::as_bool) == Some(true) => Err(later_why(&v)),
             Answer::Ok(v) => scores_of(&v, candidates.len()).map(|s| (s, v.get("ms").and_then(Value::as_u64))).ok_or_else(|| "an answer that doesn't fit".into()),
             Answer::Refused(r) => Err(format!("refused {}", r.status)),
             Answer::NotShroom { status } => Err(format!("not the space's answer ({status})")),
@@ -1195,6 +1195,19 @@ pub fn ai_signal_noted(space: &Space, auth: &AiAuth, rec: &str, signal: AiSignal
     (sent, notes)
 }
 
+/// The most of the space's own `why` a later judgment keeps (`later_why`).
+const WHY_CHARS: usize = 60;
+
+/// Why the space can't judge now, for the Mac's log: `later: ` and the space's `why` in its
+/// plain characters (letters, digits, space, `-`, `:`, `.`), at most `WHY_CHARS`, as the
+/// naming lane's notes are kept (`meta::ai_note`).
+fn later_why(v: &Value) -> String {
+    let why = v.get("why").and_then(Value::as_str).unwrap_or("");
+    let why: String = why.chars().filter(|c| c.is_ascii_alphanumeric() || " -:.".contains(*c)).take(WHY_CHARS).collect();
+    let why = why.trim();
+    format!("later: {}", if why.is_empty() { "no reason" } else { why })
+}
+
 /// A signal's lines for this Mac's log: `naming <take>: <signal> → <how it went>`, then each
 /// answer's note, as many lines as keep each under the report's cut (B206 f).
 pub fn ai_log_lines(take: &str, signal: AiSignal, sent: AiSent, notes: &[String]) -> Vec<String> {
@@ -1288,6 +1301,21 @@ mod tests {
         for v in [json!({"shroom": 1, "later": true}), json!({"shroom": 1, "scores": [0.75]}), json!({"shroom": 1, "scores": [0.75, 1.5]}), json!({"shroom": 1, "scores": [0.75, "x"]}), json!({"shroom": 1})] {
             assert_eq!(scores_of(&v, n), None, "{v}");
         }
+    }
+
+    /// Why the space can't judge now, as the Mac logs it: a word or two of its own, never
+    /// more than one short line whatever the space sent.
+    #[test]
+    fn a_later_says_why_in_one_short_line() {
+        assert_eq!(later_why(&json!({"shroom": 1, "later": true, "why": "daily"})), "later: daily");
+        assert_eq!(later_why(&json!({"shroom": 1, "later": true, "why": "busy: 3006 at 12:00."})), "later: busy: 3006 at 12:00.");
+        assert_eq!(later_why(&json!({"shroom": 1, "later": true})), "later: no reason");
+        assert_eq!(later_why(&json!({"shroom": 1, "later": true, "why": 7})), "later: no reason");
+        let many = later_why(&json!({"shroom": 1, "later": true, "why": "daily\n2026-10-18T17:52:03Z  1 core <b>step</b>\r\u{1b}[0m"}));
+        assert_eq!(many, "later: daily2026-10-18T17:52:03Z  1 core bstepb0m");
+        let long = later_why(&json!({"shroom": 1, "later": true, "why": "x".repeat(5000)}));
+        assert_eq!(long, format!("later: {}", "x".repeat(WHY_CHARS)));
+        assert_eq!(later_why(&json!({"shroom": 1, "later": true, "why": "\n\u{1b}<>"})), "later: no reason");
     }
 
     #[test]

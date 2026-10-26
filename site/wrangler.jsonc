@@ -28,11 +28,15 @@
   // live in the Worker (`wrangler secret put`). Without REPORT_TO, /report answers "off";
   // without TURNSTILE_SECRET, so does the feedback form's.
   "send_email": [{ "name": "EMAIL" }],
-  // A few reports a minute from one address, and a ceiling for everyone (per Cloudflare
-  // location). The counters are Cloudflare's own and short-lived; nothing else is kept.
+  // A few reports a minute from one address, and a ceiling for all of them (per Cloudflare
+  // location): the feedback page's pair, and the app's own, tighter by address, so neither
+  // door spends the other's budget. Without its pair, a door answers "off". The counters
+  // are Cloudflare's own and short-lived; nothing else is kept.
   "ratelimits": [
     { "name": "REPORT_RATE", "namespace_id": "1801", "simple": { "limit": 3, "period": 60 } },
-    { "name": "REPORT_CEILING", "namespace_id": "1802", "simple": { "limit": 30, "period": 60 } }
+    { "name": "REPORT_CEILING", "namespace_id": "1802", "simple": { "limit": 30, "period": 60 } },
+    { "name": "REPORT_APP_RATE", "namespace_id": "1803", "simple": { "limit": 2, "period": 60 } },
+    { "name": "REPORT_APP_CEILING", "namespace_id": "1804", "simple": { "limit": 30, "period": 60 } }
   ],
   // No request logs: nothing about who visited is kept.
   "observability": { "enabled": false }

@@ -16,6 +16,22 @@ pub const CLI_LINES: usize = 30;
 pub const LINE_CHARS: usize = 400;
 /// A window's own error (`webview <surface>: <message>`): its message is cut to this.
 pub const WEBVIEW_CHARS: usize = 160;
+/// The windows whose own errors the app logs (`webview_line`); any other name is `other`.
+pub const WEBVIEW_SURFACES: &[&str] = &["popover", "settings", "library", "editor", "onboarding", "feedback"];
+
+/// A window's own error, as the app logs it: one line under a known window's name, every
+/// control character (a line break among them) a space, the message cut to `WEBVIEW_CHARS`
+/// (its last one `…` when cut), as a report keeps it.
+pub fn webview_line(surface: &str, message: &str) -> String {
+    let surface = if WEBVIEW_SURFACES.contains(&surface) { surface } else { "other" };
+    let message: String = message.chars().map(|c| if c.is_control() { ' ' } else { c }).collect();
+    let message = if message.chars().count() > WEBVIEW_CHARS {
+        message.chars().take(WEBVIEW_CHARS - 1).chain(['…']).collect()
+    } else {
+        message
+    };
+    format!("webview {surface}: {message}")
+}
 
 /// Hosts that name no one: shroom's own and the services every Mac running it talks to.
 const PUBLIC_HOSTS: &[&str] = &[
@@ -187,6 +203,7 @@ pub fn clean_line(line: &str) -> String {
     let mut s: String = line.chars().filter(|c| *c == '\t' || !c.is_control()).collect();
     s = cut_webview(&s);
     s = replace_urls(&s);
+    s = replace_after(&s);
     s = replace_emails(&s);
     s = replace_homes(&s);
     s = replace_hosts(&s);
@@ -432,8 +449,108 @@ fn replace_hex(s: &str) -> String {
     out
 }
 
-/// A key-shaped run: 24 or more of base64's characters (and up to two `=`), holding a
-/// letter and a digit → `<an id>`.
+/// What follows a link's code (`/join/`, `?k=`, `&k=`) or a credential's scheme
+/// (`Bearer `, `ShroomParent `), up to a space → `<an id>`.
+fn replace_after(s: &str) -> String {
+    const MARKS: &[&str] = &["/join/", "?k=", "&k=", "Bearer ", "ShroomParent "];
+    let mut out = String::new();
+    let mut rest = s;
+    loop {
+        // The earliest mark followed by something; at one place, the first that matches.
+        let next = MARKS
+            .iter()
+            .filter_map(|m| {
+                let mut from = 0;
+                while let Some(at) = rest[from..].find(m) {
+                    let at = from + at;
+                    if rest[at + m.len()..].chars().next().is_some_and(|c| !c.is_whitespace()) {
+                        return Some((at, m.len()));
+                    }
+                    from = at + 1;
+                }
+                None
+            })
+            .min_by_key(|&(at, _)| at);
+        let Some((at, len)) = next else { break };
+        out.push_str(&rest[..at + len]);
+        out.push_str("<an id>");
+        let after = &rest[at + len..];
+        rest = &after[after.find(char::is_whitespace).unwrap_or(after.len())..];
+    }
+    out.push_str(rest);
+    out
+}
+
+/// A part of a run between `+ / _ -` that names a thing, not a key: short, a number, a word
+/// with a number after it (`sha256`), or a number with a letter or two (`26b`, `18T17`).
+fn shaped(p: &[char]) -> bool {
+    let digits = |from: usize| from + p[from..].iter().take_while(|c| c.is_ascii_digit()).count();
+    let letter = |at: usize| at + usize::from(p.get(at).is_some_and(|c| c.is_ascii_alphabetic()));
+    let letters = p.iter().take_while(|c| c.is_ascii_alphabetic()).count();
+    // `[0-9]+[A-Za-z]?[0-9]*[A-Za-z]?`
+    let number = {
+        let a = digits(0);
+        a > 0 && letter(digits(letter(a))) == p.len()
+    };
+    p.len() <= 5 || number || (letters > 0 && digits(letters) == p.len())
+}
+
+/// A run's letters read as words: one case, or words of three letters or more (one shorter
+/// allowed), at least three letters a word (`ScreenCaptureKit`, `NSURLErrorDomain`).
+fn words(r: &[char]) -> bool {
+    if !r.iter().any(char::is_ascii_lowercase) || !r.iter().any(char::is_ascii_uppercase) {
+        return true;
+    }
+    // The run's words, as `[A-Z]+(?![a-z])|[A-Z]?[a-z]+` finds them: their lengths, and
+    // whether each holds a small letter.
+    let mut pieces: Vec<(usize, bool)> = Vec::new();
+    let mut i = 0;
+    while i < r.len() {
+        if r[i].is_ascii_uppercase() {
+            let up = r[i..].iter().take_while(|c| c.is_ascii_uppercase()).count();
+            let lower_next = r.get(i + up).is_some_and(char::is_ascii_lowercase);
+            if !lower_next || up >= 2 {
+                let n = if lower_next { up - 1 } else { up };
+                pieces.push((n, false));
+                i += n;
+                continue;
+            }
+            let low = r[i + 1..].iter().take_while(|c| c.is_ascii_lowercase()).count();
+            pieces.push((1 + low, true));
+            i += 1 + low;
+        } else if r[i].is_ascii_lowercase() {
+            let low = r[i..].iter().take_while(|c| c.is_ascii_lowercase()).count();
+            pieces.push((low, true));
+            i += low;
+        } else {
+            i += 1;
+        }
+    }
+    let letters: usize = pieces.iter().map(|p| p.0).sum();
+    let short = pieces.iter().filter(|p| p.1 && p.0 < 3).count();
+    short <= 1 && pieces.len() * 3 <= letters
+}
+
+/// Whether a run of base64's characters is key-shaped: 24 or more holding a letter and a
+/// digit; 32 or more holding both cases; 16 or more holding a digit or both cases, unless it
+/// reads as names (each part `shaped`, its letters `words`).
+fn id_like(r: &[char]) -> bool {
+    let digit = r.iter().any(char::is_ascii_digit);
+    let mixed = r.iter().any(char::is_ascii_lowercase) && r.iter().any(char::is_ascii_uppercase);
+    if r.len() >= 24 && digit && r.iter().any(char::is_ascii_alphabetic) {
+        return true;
+    }
+    if r.len() >= 32 && mixed {
+        return true;
+    }
+    if r.len() < 16 || (!digit && !mixed) {
+        return false;
+    }
+    let names = r.split(|c| "+/_-".contains(*c)).filter(|p| !p.is_empty()).all(shaped);
+    !(names && words(r))
+}
+
+/// A key-shaped run (`id_like`) of base64's characters, and up to two `=` → `<an id>`.
 fn replace_runs(s: &str) -> String {
     let chars: Vec<char> = s.chars().collect();
     let in_run = |c: char| c.is_ascii_alphanumeric() || "+/_-".contains(c);
@@ -450,7 +567,7 @@ fn replace_runs(s: &str) -> String {
                 end += 1;
             }
             let run = &chars[i..j];
-            if run.len() >= 24 && run.iter().any(|c| c.is_ascii_alphabetic()) && run.iter().any(|c| c.is_ascii_digit()) {
+            if id_like(run) {
                 out.push_str("<an id>");
                 i = end;
             } else {
