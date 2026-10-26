@@ -1,9 +1,9 @@
 # The AI-on migration (spec N76, DECISIONS B235), the way a person meets it, on a
 # GitHub-hosted Mac and the dedicated Cloudflare test account (TESTING-PLAN D3): the signed
-# release installed by the one-line installer and set up through its own wizard with the AI
-# off, then updated in place to the early build — and the two guards, Not now and a
-# member's Mac (dev/mac/scenarios/ai-migration.sh). It builds nothing of the app: what runs
-# is what users run.
+# release before the AI was on, installed by the one-line installer and set up through its
+# own wizard with the AI off, then updated in place to the early build — and the two
+# guards, Not now and a member's Mac (dev/mac/scenarios/ai-migration.sh). It builds
+# nothing of the app: what runs is what users run.
 #
 # A release sets its space up under the product's own names (`v` over `shroom-space`), which
 # no other lane deploys on the test account; this run deletes that space before and after
@@ -100,11 +100,11 @@ jobs:
           target/debug/e2e-run open "$RUNNER_TEMP/e2e/run-token" "$RUNNER_TEMP/e2e/space-id"
           target/debug/e2e-run product-close
 
-      # The latest release, as a person installs it; it opens, and is quit so its grants
-      # are written before anything has captured.
+      # The release the scenario migrates from (its FROM), by the one-line installer; it
+      # opens, and is quit so its grants are written before anything has captured.
       - name: The release, through the one-line installer
         run: |
-          curl -fsSL "https://shroom.am/install?ref=ci" | sh 2>&1 | tr '\r' '\n' | grep -v '^#'
+          bash dev/e2e/install-release.sh "$(sed -n 's/^FROM=//p' dev/mac/scenarios/ai-migration.sh)"
           sleep 5
           pkill -f "$HOME/Applications/shroom.app/Contents/MacOS/" || true
           sleep 2

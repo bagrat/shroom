@@ -1,9 +1,10 @@
 # The AI-on migration (spec N76, DECISIONS B235) the way a person meets it, on the test
-# account: the signed 0.1.27 release installed by the one-line installer and set up through
-# its own wizard with the AI left off and the old offer never answered, then updated in
-# place to the early build, as an early-channel Mac is. Then the two guards: a Mac that
-# said Not now to the old offer, and a member's Mac. Only e2e-migration.yml runs it: it
-# needs the run's token (E2E_TOKEN_FILE) and the release installed at MAC_APP.
+# account: the signed 0.1.27 release installed by its version through the one-line
+# installer, and set up through its own wizard with the AI left off and the old offer
+# never answered, then updated in place to the early build, as an early-channel Mac is.
+# Then the two guards: a Mac that said Not now to the old offer, and a member's Mac. Only
+# e2e-migration.yml runs it: it needs the run's token (E2E_TOKEN_FILE) and the release
+# installed at MAC_APP.
 #
 #   A. never answered → updated: the first popover says “AI features are turned on.” with
 #      Turn off and OK; the page answers its ping with the AI; a take with words in it gets
@@ -23,11 +24,17 @@ OUT=${MAC_OUT:?}
 SHOTS="$OUT/shots"
 CHECKS="$OUT/checks.tsv"
 HOME_DIR="$HOME/.shroom"
+# The last release before the AI was on by default (B235 shipped in 0.1.30-early.1 and
+# 0.1.33): a Mac still on it is the one the migration meets. It is installed by its version
+# (dev/e2e/install-release.sh, here and by e2e-migration.yml), since the installer's own
+# latest already has the AI on and would show no old offer to migrate from.
 FROM=0.1.27
-# The build an early-channel Mac takes is whatever the early pointer names now (B220), so
-# the update leg reads it rather than pinning a number that the next early build outdates.
-TO=$(curl -fsSL --retry 3 --max-time 30 https://github.com/bagrat/shroom/releases/download/early/manifest.txt | sed -n 's/^version=//p')
-[ -n "$TO" ] || { echo "ai-migration: couldn't read the early pointer's version" >&2; exit 1; }
+# The build an early-channel Mac takes (B220): the early pointer's, or the latest release
+# once that is newer — read, rather than pinned, so the next build doesn't outdate it.
+pointer() { curl -fsSL --retry 3 --max-time 30 "https://github.com/bagrat/shroom/releases/$1/manifest.txt" | sed -n 's/^version=//p'; }
+TO=$(printf '%s\n%s\n' "$(pointer download/early)" "$(pointer latest/download)" | awk -F'[.-]' 'NF {
+  k = sprintf("%09d %09d %09d %09d", $1, $2, $3, (NF > 3 ? $5 : 999999999)); if (k > best) { best = k; v = $0 } } END { print v }')
+[ -n "$TO" ] || { echo "ai-migration: couldn't read the early pointer's or the latest release's version" >&2; exit 1; }
 SHROOM="$HOME/.local/bin/shroom"
 AX="$PWD/dev/mac/ax.js"
 export SHROOM_REF=ci
@@ -182,7 +189,7 @@ update_in_place() { # <leg>
   done
   has "Update" || stop "$leg: the update was offered" "no Update in the popover after $t s; $(grep -F 'updater' "$HOME_DIR/logs/run.log" | tail -n 2)"
   shot "$leg-update-offered"
-  check "$leg: the popover offers the update on the early channel" 0 "$(ax | awk -F'\t' '$2 == "AXStaticText" && /0\.1\.30/ { print $3; exit }')"
+  check "$leg: the popover offers the update on the early channel" 0 "$(ax | awk -F'\t' -v to="$TO" '$2 == "AXStaticText" && index($3, to) { print $3; exit }')"
   click "Update" || stop "$leg: Update" "not clickable"
   t=0
   while [ "$t" -lt 300 ]; do
@@ -297,7 +304,7 @@ quit_app
 say_ "B: another Mac of the owner's on $FROM, Not now on the old offer"
 mv "$HOME_DIR" "$HOME/.shroom-legA"
 rm -rf "$APP"
-curl -fsSL "https://shroom.am/install?ref=ci" | sh 2>&1 | tr '\r' '\n' | grep -v '^#' | tail -n 3
+bash dev/e2e/install-release.sh "$FROM" | tail -n 3
 [ "$(version)" = "$FROM" ] || stop "B: the release reinstalled" "$(version)"
 wizard B reconnect
 check "B: the space's AI is off" "$([ "$(wait_ai off 30)" = off ] && echo 0 || echo 1)" "ping: $(ping_ai)"
