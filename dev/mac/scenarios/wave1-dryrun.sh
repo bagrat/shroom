@@ -317,7 +317,7 @@ shot "member-all-set"
 has "You're all set"
 check "member: joined by the invite" $? "$(node -p 'const s=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")); s.role + " of " + s.owner_name + "'"'"'s space"' "$HOME_DIR/space.json" 2>/dev/null)"
 role=$(node -p 'JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).role' "$HOME_DIR/space.json" 2>/dev/null)
-check "member: a member of the owner's space, on its address" "$([ "$role" = member ] && echo 0 || echo 1)" "${role:-no role} on $(host)"
+check "member: a member of the owner's space, on its address" "$([ "$(printf %s "$role" | tr A-Z a-z)" = member ] && echo 0 || echo 1)" "${role:-no role} on $(host)"
 click "Close" 5
 sleep 3
 popover && shot "member-popover" && esc
