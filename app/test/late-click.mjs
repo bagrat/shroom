@@ -1,4 +1,4 @@
-// A click on a control that something late just moved does nothing (spec N82): the popover
+// A click on a control that something late just moved does nothing (spec N83): the popover
 // and Settings, rendered by the built pages in WebKit against the stubbed bridge, each handed
 // a second Scene that puts something in above the controls — the update's ready banner over
 // config, Update and What's new in General's Updates row, where its line was. A pointer click on a control that
@@ -21,7 +21,7 @@ for (const f of ["popover.html", "settings.html"]) {
   }
 }
 
-// The half-second (N82), and a moment past it.
+// The half-second (N83), and a moment past it.
 const STEADY_MS = 500;
 const PAST = STEADY_MS + 150;
 
@@ -160,5 +160,5 @@ for (const r of results) {
   if (!r.ok) failed++;
   console.log(`${r.ok ? "ok  " : "FAIL"} ${r.name}${r.ok || !r.detail ? "" : ` — ${r.detail}`}`);
 }
-console.log(`late clicks (N82): ${results.length - failed} of ${results.length}`);
+console.log(`late clicks (N83): ${results.length - failed} of ${results.length}`);
 if (failed) process.exit(1);

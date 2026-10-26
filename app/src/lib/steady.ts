@@ -1,5 +1,5 @@
-// A click on a control that something late just moved does nothing (spec N82, DECISIONS
-// B256). A banner that lands a second after the popover opens, Update coming into its row:
+// A click on a control that something late just moved does nothing (spec N83, DECISIONS
+// B264). A banner that lands a second after the popover opens, Update coming into its row:
 // whatever was under the pointer is now something else, and a click meant for it would go
 // to what took its place. So for half a second after the page changes by itself, a pointer
 // click on a control that moved, or that came in where it is, is not taken; the next one is.
@@ -7,7 +7,7 @@
 // answering them) is theirs, and the keyboard is never held back: focus doesn't move with
 // the layout. Nothing on screen says so — the look is unchanged.
 
-/** How long a moved control waits before it takes a click (N82). */
+/** How long a moved control waits before it takes a click (N83). */
 export const STEADY_MS = 500;
 /** A change this soon after the person's own click or key is theirs. */
 const OWN_MS = 300;

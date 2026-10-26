@@ -1147,7 +1147,9 @@
     "uploading (the page's one line: “Finishing your video — the link already works, share it anytime.”, after a spinner, no bar, in place of “Uploading — 40%. Your link already works.”)",
     "fully-live (no “Ready ✓”: the line fades)"
    ],
-   "amended_by": []
+   "amended_by": [
+    "N82 (the finishing line also waits for the name, chapters and captions)"
+   ]
   },
   {
    "id": "N62",
@@ -1206,7 +1208,9 @@
     "live (chapters in the bar; captions, where the summary said no captions in v1)",
     "absent_from_v1 (captions join v1 with N67; transcript search stays out)"
    ],
-   "amended_by": []
+   "amended_by": [
+    "N82 (the title shimmers while the name is on its way; a typed title still takes the chapters and captions)"
+   ]
   },
   {
    "id": "N63",
@@ -1427,6 +1431,19 @@
   },
   {
    "id": "N82",
+   "title": "The finishing line lasts until the name, chapters and captions land; the title shimmers while the name is on its way",
+   "decision": "**Bagrat's re-check of 0.1.33-early.1, 2026-10-25**: the chapters and captions dropped in without a reload, but seconds after the finishing spinner had gone, so the page looked done with no name or chapters coming. **Bagrat, 2026-10-25** (relayed by the orchestrator; his pick on the boards “The page — after go-live… A / B / C”: C, with B's title placeholder): (1) **The one line lasts.** In a space that listens (N66), the owner page's line, “Finishing your video — the link already works, share it anytime.”, its spinner turning, stays after the upload until the take's voice cuts are planned **and** its name is in (the full name, with its chapters and captions, or the naming ended with none: too few words, or it gave up), then fades as they appear: the title, the bar's chapters and the Captions button come in with the fade. Five minutes after the go-live at most, by the page's own count, as before; a name that comes later still drops in. A strip whose cuts land first shows under the player with the line still under it. It never says a name is coming, and no new words are added. Words waiting for the next free day don't keep it (the note under the title says the rest comes later). (2) **The title shimmers while the name is on its way**: a soft gradient slides in the empty title field beside its placeholder, for as long as the line lasts. The page doesn't open in the field then; a click or the keyboard in it drops the shimmer at once and takes typing, and a name that lands later never overwrites what was typed. It stops with the line, whether a name came or not. (3) **A typed title doesn't end the wait**: the chapters and captions that come with the naming still drop into the player, on a page whose title was typed before it opened as on one typed while it was open. Viewers' pages are unchanged. Nothing is stored (law 1).",
+   "status": "ratified",
+   "date": "2026-10-25",
+   "amends": [
+    "N65 (7) (the finishing line also waits for the name)",
+    "N67 (an open owner page takes the chapters and captions under a typed title too)",
+    "hearing (the line's end, the title's shimmer)"
+   ],
+   "amended_by": []
+  },
+  {
+   "id": "N83",
    "title": "A click on a control that something late just moved does nothing",
    "decision": "**Bagrat's re-check of 0.1.30-early.1, 2026-10-25**: he opened the popover to change the camera, the update finished downloading a second later, and its ready banner went in above the picker rows; everything under it dropped, a click meant for the rows landed on Update, and shroom quit and came back updated — it looked like a crash. **Bagrat, 2026-10-25** (relayed by the orchestrator, on the board “Popover — a banner that lands late never takes a click…”, picking A): nothing changes in the look. In the popover and in Settings, for **half a second** after something lands and moves a control or puts a new one in its place — a banner, an Update button, a line under a picker — a pointer click on that control does nothing, and the next click works. What the person's own click or key just changed (a menu they opened, a tab they picked, a pick that adds its line) is theirs and isn't held back; the keyboard is never held back (its focus doesn't move with the layout). Not a state and no words: the click is simply not taken. B and C (the offer below Start; the offer waiting for the next open) were not picked.",
    "status": "ratified",
@@ -14198,9 +14215,9 @@
    "parent": "owner-page",
    "surface": "web-page",
    "status": "provisional",
-   "board": "OwnerPageFinishing",
-   "summary": "While the take is heard (N65 (7), N66): in a space that listens, once the upload has drained, the owner page's one line stays: the same words, its spinner turning, until the take's voice cuts land (the strip takes its place), the Mac finds none (it fades, and the hint shows in its place while that is due), or five minutes have passed since the take went live, by the page's own count. It never speaks of cuts: the same listening names the video and makes its captions and chapters. Edit wakes on the title row as the upload drains, beside it (OwnerPageFinishing, OwnerPageFinishingEnds). Owner-mode as the title has it (N40); viewers never see it.",
-   "entry": "The browser is in owner-mode for this video, the space listens (N66), the upload has drained, the take went live less than five minutes ago, its words don't wait for the next free day, and the Mac hasn't been through them yet: the status says the voice cuts are coming.",
+   "board": "PageAiPendingC",
+   "summary": "While the take is heard and named (N65 (7), N66, N82): in a space that listens, once the upload has drained, the owner page's one line stays: the same words, its spinner turning, until the take's voice cuts are planned and its name is in (the full name with its chapters and captions, or the naming ended with none), then fades as they appear; or five minutes have passed since the take went live, by the page's own count. A strip whose cuts land first shows under the player, the line under it. While the name is on its way the empty title field shimmers, a soft gradient sliding beside its placeholder; the page doesn't open in the field, a click or the keyboard in it drops the shimmer and takes typing, and the shimmer stops with the line. It never speaks of cuts or names. Edit wakes on the title row as the upload drains, beside it (OwnerPageFinishing, OwnerPageFinishingEnds, PageAiPendingC). Owner-mode as the title has it (N40); viewers never see it.",
+   "entry": "The browser is in owner-mode for this video, the space listens (N66), the upload has drained, the take went live less than five minutes ago, its words don't wait for the next free day, and the Mac hasn't been through them yet or the space hasn't named it yet: the status says the voice cuts or the name are coming.",
    "said": [
     {
      "text": "Finishing your video — the link already works, share it anytime.",
@@ -14214,6 +14231,7 @@
    "cites": [
     "N65",
     "N66",
+    "N82",
     "N40"
    ]
   },
@@ -17051,11 +17069,12 @@
    "from": "uploading",
    "to": "hearing",
    "kind": "auto",
-   "label": "the upload drains in a space that listens while the take is heard — the line stays, its spinner turning",
-   "trigger": "The page's own poll sees the upload drain while the status says the voice cuts are coming",
+   "label": "the upload drains in a space that listens while the take is heard or named — the line stays, its spinner turning",
+   "trigger": "The page's own poll sees the upload drain while the status says the voice cuts or the name are coming",
    "status": "provisional",
    "cites": [
-    "N65"
+    "N65",
+    "N82"
    ],
    "source": [
     "canvas"
@@ -17066,11 +17085,12 @@
    "from": "owner-page",
    "to": "hearing",
    "kind": "auto",
-   "label": "opened while the take is heard — the line, its spinner turning",
-   "trigger": "On load, in owner-mode, with the upload drained and the status saying the voice cuts are coming",
+   "label": "opened while the take is heard or named — the line, its spinner turning",
+   "trigger": "On load, in owner-mode, with the upload drained and the status saying the voice cuts or the name are coming",
    "status": "provisional",
    "cites": [
-    "N65"
+    "N65",
+    "N82"
    ],
    "source": [
     "canvas"
@@ -17081,11 +17101,12 @@
    "from": "hearing",
    "to": "owner-page-cuts",
    "kind": "auto",
-   "label": "the take's voice cuts land — the strip takes the line's place",
-   "trigger": "The page's own poll sees the cuts land; the line fades and the strip shows",
+   "label": "the take's voice cuts are in and so is its name — the line fades, the strip stays",
+   "trigger": "The page's own poll sees the cuts land (the strip shows) and the name come in, or five minutes pass; the line fades as the title, chapters and captions appear",
    "status": "provisional",
    "cites": [
-    "N65"
+    "N65",
+    "N82"
    ],
    "source": [
     "canvas"
@@ -17096,11 +17117,12 @@
    "from": "hearing",
    "to": "owner-page-cue-hint",
    "kind": "auto",
-   "label": "nothing to cut, or five minutes pass, and the hint is due — the hint takes the line's place",
-   "trigger": "The status stops saying the voice cuts are coming and the record has none (the Mac found nothing to cut, or five minutes passed since the take went live, by the page's own count), and this browser hasn't put the hint away",
+   "label": "nothing to cut and the name in, or five minutes pass, and the hint is due — the hint takes the line's place",
+   "trigger": "The status says neither the voice cuts nor the name are coming and the record has no cuts (the Mac found nothing to cut and the naming is done, or five minutes passed since the take went live, by the page's own count), and this browser hasn't put the hint away",
    "status": "provisional",
    "cites": [
-    "N65"
+    "N65",
+    "N82"
    ],
    "source": [
     "canvas"
@@ -17111,11 +17133,12 @@
    "from": "hearing",
    "to": "fully-live",
    "kind": "auto",
-   "label": "nothing to cut, or five minutes pass — the line fades",
+   "label": "nothing to cut and the name in, or five minutes pass — the line fades",
    "trigger": "As above, with the hint put away",
    "status": "provisional",
    "cites": [
-    "N65"
+    "N65",
+    "N82"
    ],
    "source": [
     "canvas"
@@ -20690,7 +20713,7 @@
   {
    "id": "late-click",
    "region": 3,
-   "text": "Late-arrival guard — not a state (N82): in the popover and in Settings, a pointer click on a control that something arriving by itself moved or put there in the last half-second does nothing; the next click works. What the person's own click or key changed, and the keyboard, are never held back.",
+   "text": "Late-arrival guard — not a state (N83): in the popover and in Settings, a pointer click on a control that something arriving by itself moved or put there in the last half-second does nothing; the next click works. What the person's own click or key changed, and the keyboard, are never held back.",
    "about": [
     "config",
     "settings-general"

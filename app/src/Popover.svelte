@@ -58,7 +58,7 @@
     // Spaces. What closes it from outside — a click somewhere else — is the runner's to see.
     window.addEventListener("keydown", onKey);
     window.addEventListener("mousedown", onDown, true);
-    // A banner that lands under the pointer never takes the click meant for what it moved (N82).
+    // A banner that lands under the pointer never takes the click meant for what it moved (N83).
     const unsteady = steady();
     return () => {
       unsteady();

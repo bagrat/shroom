@@ -298,7 +298,7 @@ jobs:
       - name: Settings fits its window
         run: node app/test/settings-fit.mjs | tee -a "$GITHUB_STEP_SUMMARY"
 
-      # A click on a control that something late just moved does nothing (N82): the popover
+      # A click on a control that something late just moved does nothing (N83): the popover
       # and Settings, each handed a Scene that lands under the pointer. Seconds.
       - name: A late arrival never takes a click
         run: node app/test/late-click.mjs | tee -a "$GITHUB_STEP_SUMMARY"

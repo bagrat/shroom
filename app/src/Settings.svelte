@@ -63,7 +63,7 @@
     };
     window.addEventListener("keydown", onKey);
     window.addEventListener("paste", onPaste);
-    // Update coming into its row never takes the click meant for what was there (N82).
+    // Update coming into its row never takes the click meant for what was there (N83).
     const unsteady = steady();
     return () => {
       unsteady();

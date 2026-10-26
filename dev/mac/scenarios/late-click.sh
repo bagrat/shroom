@@ -1,4 +1,4 @@
-# A click on a control that something late just moved does nothing (N82, B256), with real
+# A click on a control that something late just moved does nothing (N83, B264), with real
 # clicks on a real Mac. Settings · General opens while the update is still downloading (the
 # release stand-in holds the download back); a hand clicks where Update will come, again
 # and again, from before it comes until shroom quits for the swap. Update comes into its row
