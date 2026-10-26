@@ -11552,10 +11552,10 @@
      "id": "join-landing.paste-this-into-terminal"
     },
     {
-     "text": "curl -fsSL https://shroom.am/install | sh -s -- --join v.myshroom.workers.dev/join/7xk2pm",
+     "text": "curl -fsSL https://shroom.am/install | sh -s -- --join 'v.myshroom.workers.dev/join/7xk2pm'",
      "role": "other",
-     "copy": "provisional",
-     "note": "The install command with the join link built in. The link varies.",
+     "copy": "ratified",
+     "note": "The install command with the join link built in, the link in single quotes so a pasted command keeps it whole, as the agent page writes it. The link varies. Bagrat, 2026-10-25, relayed by the orchestrator: the link quoted here as on the agent page.",
      "id": "join-landing.curl-fssl-https-shroom"
     },
     {
@@ -11840,7 +11840,7 @@
    "status": "provisional",
    "board": null,
    "summary": "Region 1's install script verbatim, run with --join <link>; it passes the link to the app at launch. The join link rides argv and shell history once. This is the conscious scoped exception: one-time use + a 7-day TTL (one hour for own-Mac links). The admin token never gets this exception.",
-   "entry": "The user runs the join page's install command (curl … | sh -s -- --join <link>).",
+   "entry": "The user runs the join page's install command (curl … | sh -s -- --join '<link>').",
    "said": [],
    "actions": [],
    "cites": [

@@ -3751,7 +3751,7 @@ The page a join link opens, served by the space's own Worker with no shroom.am d
 | “shroom records your screen and hands you a link to share. Nothing to sign up for — Bagrat set up a space for you.” | line | provisional | The inviter's name varies (macOS short form, N29). |
 | “Get shroom” | other | provisional | Block heading. |
 | “Paste this into Terminal (⌘ space, type “Terminal”) and press Return — it installs shroom and opens it, already knowing it's you.” | line | provisional | The Terminal hand-hold (flag 2, kept). The inner quotes are curly in the spec. |
-| “curl -fsSL https://shroom.am/install \| sh -s -- --join v.myshroom.workers.dev/join/7xk2pm” | other | provisional | The install command with the join link built in. The link varies. |
+| “curl -fsSL https://shroom.am/install \| sh -s -- --join 'v.myshroom.workers.dev/join/7xk2pm'” | other | ratified | The install command with the join link built in, the link in single quotes so a pasted command keeps it whole, as the agent page writes it. The link varies. Bagrat, 2026-10-25, relayed by the orchestrator: the link quoted here as on the agent page. |
 | “Copy” | button | provisional |  |
 | “Read it first — the same address opens as readable source.” | line | ratified | The landing's ratified line, verbatim (N6). |
 | “For macOS 14 or newer, Apple silicon.” | line | ratified | The landing's ratified line, verbatim. Only the sentence's shape is ratified: the OS floor and Intel stance are scaffold-time facts, to fill in without rewording (line 214). · was “For macOS 14 or newer, Apple silicon and Intel.” · B7, B44, copy table, B134 |
@@ -3844,7 +3844,7 @@ face · terminal · **provisional** · a face of `installing` · cites N3, N29, 
 
 Region 1's install script verbatim, run with --join <link>; it passes the link to the app at launch. The join link rides argv and shell history once. This is the conscious scoped exception: one-time use + a 7-day TTL (one hour for own-Mac links). The admin token never gets this exception.
 
-**Entry.** The user runs the join page's install command (curl … | sh -s -- --join <link>).
+**Entry.** The user runs the join page's install command (curl … | sh -s -- --join '<link>').
 
 | → | Kind | Label | Status | Cites |
 |---|---|---|---|---|

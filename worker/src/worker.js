@@ -154,7 +154,7 @@ export const joinHero = (name) => `${name} invited you to record with shroom.`;
 /** @param {string} name */
 export const joinIntro = (name) => `shroom records your screen and hands you a link to share. Nothing to sign up for — ${name} set up a space for you.`;
 /** @param {string} link the join link without its scheme: <host>/join/<code> */
-export const installLine = (link) => `curl -fsSL https://shroom.am/install | sh -s -- --join ${link}`;
+export const installLine = (link) => `curl -fsSL https://shroom.am/install | sh -s -- --join '${link}'`;
 /** The Homebrew join line (N50, N51): the link whole, since the app takes a web address
  * handed over by `open -a` only as a join link. @param {string} link <host>/join/<code> */
 export const brewLine = (link) => `brew install --cask bagrat/shroom/shroom && open -a ~/Applications/shroom.app "https://${link}"`;

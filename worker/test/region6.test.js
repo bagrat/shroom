@@ -72,7 +72,7 @@ const W = {
   waitingBagrat: r4line("Waiting for Bagrat's space — your link already works."),
 };
 const GET_SHROOM_BLOCK = (code) => LANDING(code).filter((l) => ![W.hero, W.sevenDays].includes(l.text) && !l.text.startsWith("shroom records your screen"));
-const INSTALL = (code) => `curl -fsSL https://shroom.am/install | sh -s -- --join ${HOST}/join/${code}`;
+const INSTALL = (code) => `curl -fsSL https://shroom.am/install | sh -s -- --join '${HOST}/join/${code}'`;
 // The Homebrew join line (N50, N51): the link whole, https:// and all.
 const BREW = (code) => `brew install --cask bagrat/shroom/shroom && open -a ~/Applications/shroom.app "https://${HOST}/join/${code}"`;
 
