@@ -308,6 +308,11 @@ printf '# A session asks .github/workflows/e2e-full.yml for its own branch by co
 git add dev/e2e/request && git commit -m "e2e: <why>" && git push origin HEAD
 ```
 
+- **Only your own commit asks.** A merge of main that brings another PR's request in
+  starts a run too, but its first job (*Did the branch ask?*, `tools/e2e-asked.py`, on
+  Linux) finds no commit of yours touched the file and the Mac job is skipped: no status,
+  no Mac. Resolving a conflict in the file to fresh words is your own request and runs.
+  The same holds for `dev/e2e/migration-request`.
 - **Watching it.** Find the run with the GitHub tools (`actions_list`, workflow
   `e2e-full.yml`, your branch), then poll it in the background — the public API answers
   without a token: `curl -s https://api.github.com/repos/bagrat/shroom/actions/runs/<id>`
