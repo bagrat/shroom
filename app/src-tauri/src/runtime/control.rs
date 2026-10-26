@@ -11,9 +11,10 @@
 //! for, refusing all of them while General's “Let it start and stop recordings” is off.
 //! The answer is a code, never words: the command says them. Nothing secret crosses here.
 //!
-//! The run log has every ask and its answer, by the ask's number: the op and how a start
-//! goes, then the answer's code and how long the core took (`asked`, `answered`) — and any
-//! connection dropped or ask not read, with why. Never the link a stop answers with.
+//! The run log has every ask and its answer, by the ask's number: the op, how a start goes
+//! and who asked — the calling process's pid and program (`caller`) — then the answer's code
+//! and how long the core took (`asked`, `answered`) — and any connection dropped or ask not
+//! read, with why. Never the link a stop answers with.
 
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Read, Write};
@@ -105,6 +106,32 @@ fn same_user(s: &UnixStream) -> bool {
     ok && uid == unsafe { libc::getuid() }
 }
 
+/// The calling process as macOS has it: its pid (`LOCAL_PEERPID`) and the program it runs
+/// (`proc_pidpath`; empty when that can't be read). None: no pid.
+fn peer(s: &UnixStream) -> Option<(i32, String)> {
+    let mut pid: libc::pid_t = 0;
+    let mut len = std::mem::size_of::<libc::pid_t>() as libc::socklen_t;
+    // SAFETY: a connected socket's descriptor, and an out-parameter of the size given.
+    let ok = unsafe { libc::getsockopt(s.as_raw_fd(), libc::SOL_LOCAL, libc::LOCAL_PEERPID, (&mut pid as *mut libc::pid_t).cast(), &mut len) } == 0;
+    if !ok || pid <= 0 {
+        return None;
+    }
+    let mut buf = vec![0u8; libc::PROC_PIDPATHINFO_MAXSIZE as usize];
+    // SAFETY: a buffer of the size given, which the call fills and measures.
+    let n = unsafe { libc::proc_pidpath(pid, buf.as_mut_ptr().cast(), buf.len() as u32) };
+    buf.truncate(n.max(0) as usize);
+    Some((pid, String::from_utf8_lossy(&buf).into_owned()))
+}
+
+/// Who asked, as the run log has it beside the ask: the pid and the program's path.
+pub fn caller(peer: Option<(i32, String)>) -> String {
+    match peer {
+        Some((pid, path)) if path.is_empty() => format!("from pid {pid} (no path)"),
+        Some((pid, path)) => format!("from pid {pid} {path}"),
+        None => "from an unknown process".into(),
+    }
+}
+
 /// Listens on `control.sock` for as long as the app runs. A socket another run left
 /// behind is replaced; one that can't be made is logged and the app runs without it.
 pub fn spawn(rt: Runtime, pending: Pending) {
@@ -141,8 +168,9 @@ pub fn spawn(rt: Runtime, pending: Pending) {
                 rt.post(Event::Os(super::os::grants()));
             }
             let id = pending.next.fetch_add(1, Ordering::SeqCst) + 1;
+            let from = caller(peer(&conn));
             pending.open.lock().unwrap().insert(id, (conn, Instant::now()));
-            rt.log(&asked(id, &op));
+            rt.log(&format!("{} {from}", asked(id, &op)));
             rt.post(Event::Cli { id, op });
         }
     });
@@ -195,6 +223,28 @@ mod tests {
         for l in [asked(4, &CliOp::Start(StartAsk { countdown: false, label: true })), answered(&ok, Duration::ZERO)] {
             assert_eq!(shroom_core::report::clean_line(&l), l, "nothing in it for the report to take out");
         }
+    }
+
+    /// Beside each ask, the run log has who asked: the calling process's pid and the program
+    /// it runs, as macOS has them — so a recording the person didn't start says what did.
+    #[test]
+    fn the_log_says_which_process_asked() {
+        assert_eq!(caller(Some((812, "/Applications/shroom.app/Contents/MacOS/shroom-cli".into()))), "from pid 812 /Applications/shroom.app/Contents/MacOS/shroom-cli");
+        assert_eq!(caller(Some((812, String::new()))), "from pid 812 (no path)");
+        assert_eq!(caller(None), "from an unknown process");
+        let line = format!("{} {}", asked(4, &CliOp::Start(StartAsk { countdown: false, label: false })), caller(Some((812, "/usr/local/bin/shroom".into()))));
+        assert_eq!(line, "control: ask 4 record.start no-count no-label from pid 812 /usr/local/bin/shroom");
+        assert_eq!(shroom_core::report::clean_line(&line), line, "nothing in it for the report to take out");
+        // The real call, on a connection to a listening socket: this process, and its own
+        // program.
+        let tmp = tempfile::tempdir().unwrap();
+        let listener = UnixListener::bind(tmp.path().join("c.sock")).unwrap();
+        let _client = UnixStream::connect(tmp.path().join("c.sock")).unwrap();
+        let (conn, _) = listener.accept().unwrap();
+        let (pid, path) = peer(&conn).expect("the peer's pid");
+        assert_eq!(pid, std::process::id() as i32);
+        let exe = std::env::current_exe().unwrap();
+        assert!(path.ends_with(&*exe.file_name().unwrap().to_string_lossy()), "{path} is {}", exe.display());
     }
 
     #[test]

@@ -715,6 +715,14 @@ impl Runtime {
         }
     }
 
+    /// Whether a credential's store may take this build's bytes: in a release build only R2's
+    /// own (`shroom_cloud::device::r2_store`) — checked where a mint arrives and where a
+    /// take's `cred.json` is read back; a dev build keeps its stand-ins (the L1 fake, the
+    /// local space), which the e2e run's real R2 passes either way.
+    pub fn store_ok(&self, endpoint: &str, bucket: &str) -> bool {
+        self.dev || shroom_cloud::device::r2_store(endpoint, bucket)
+    }
+
     /// The space's bucket under the token's own derived pair (the token Mac's Library, its
     /// ledger entries, the owner grant, the roster seed): the account's R2 endpoint — or,
     /// on the local stand-in (dev), that space's bucket there.
@@ -1789,6 +1797,23 @@ mod tests {
         for bad in ["v", "shroom-space", "1792000000-AB12", "../1792000000-ab12", ""] {
             std::fs::write(dir.join("e2e-space-id"), bad).unwrap();
             assert_eq!(e2e_space_id_in(&dir), None, "{bad:?}");
+        }
+    }
+
+    /// A release build sends a recording's bytes only to R2's own store for an account
+    /// (`https://<account>.r2.cloudflarestorage.com`, a bucket name R2 takes), whatever a
+    /// credential names; a dev build keeps its stand-ins (the fake, the local space).
+    #[test]
+    fn a_release_build_stores_only_on_r2() {
+        let r2 = "https://0123456789abcdef0123456789abcdef.r2.cloudflarestorage.com";
+        let tmp = tempfile::tempdir().unwrap();
+        let (mut rt, _rx) = Runtime::for_test(tmp.path().join("a"), Some(("http://127.0.0.1:1/client/v4".into(), "http://127.0.0.1:2".into())), None);
+        assert!(rt.store_ok("http://127.0.0.1:2", "shroom-space"), "the fake's");
+        assert!(rt.store_ok(r2, "shroom-space"));
+        rt.dev = false;
+        assert!(rt.store_ok(r2, "shroom-space"));
+        for (endpoint, bucket) in [("http://127.0.0.1:2", "shroom-space"), ("http://0123456789abcdef0123456789abcdef.r2.cloudflarestorage.com", "shroom-space"), ("https://media.example.com", "shroom-space"), (r2, "shroom/space")] {
+            assert!(!rt.store_ok(endpoint, bucket), "{endpoint} {bucket}");
         }
     }
 

@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "What the main window may call.",
+  "description": "What the pages may call of Tauri itself: listen for their slice and stop listening (app/src/lib/ipc.ts), and a debug build's devtools key. The app's own commands are its own (commands.rs).",
   "windows": [
     "main",
     "popover",
@@ -17,6 +17,8 @@
     "pattern"
   ],
   "permissions": [
-    "core:default"
+    "core:event:allow-listen",
+    "core:event:allow-unlisten",
+    "core:webview:allow-internal-toggle-devtools"
   ]
 }

@@ -31,6 +31,7 @@ fn a_fresh_account_from_paste_to_a_wired_space() {
     assert!(sweep::powers(&c, &acc).unwrap().both());
     assert_eq!(sweep::gates(&c, &acc, "shroom-probe").unwrap(), Gates { email: false, card: false });
     assert!(fake.with(|s| !s.scripts.contains_key("shroom-probe")), "the email probe cleans up");
+    assert!(fake.with(|s| !s.calls.iter().any(|c| c.starts_with("FORCED "))), "without force: it made the probe, nothing hangs on it");
 
     let before = sweep::survey_space(&c, &acc, &token_id).unwrap();
     assert_eq!((before.subdomain.clone(), before.label.as_deref(), before.foreign_v, before.found), (None, Some("v"), false, None));
@@ -88,6 +89,38 @@ fn the_gates_surface_email_first_then_card() {
     fake.with(|s| s.email_verified = false);
     let e = c.put_worker(&acc, "v", "w.js", "x", &[], "2026-09-01").unwrap_err();
     assert_eq!(sweep::gate_of(&e), Some(Gate::Email));
+}
+
+/// The email probe writes only a Worker it made: one already under the probe's name stays
+/// exactly as it is, through a gates pass and the gate's own poll, and the probe goes under
+/// a fresh name of its own (`<probe>-<8 hex>`), removed again without force.
+#[test]
+fn a_worker_already_named_as_the_probe_survives_a_gates_pass() {
+    let fake = Fake::start(State::fresh());
+    let c = cloud(&fake);
+    let acc = fake.with(|s| s.account_id());
+    let theirs = vec![serde_json::json!({"type": "plain_text", "name": "KEEP"})];
+    fake.with(|s| s.scripts.insert("shroom-probe".into(), theirs.clone()));
+    assert_eq!(sweep::gates(&c, &acc, "shroom-probe").unwrap(), Gates { email: false, card: false });
+    fake.with(|s| {
+        assert_eq!(s.scripts.get("shroom-probe"), Some(&theirs), "untouched");
+        let writes = |name: &str| s.calls.iter().filter(|c| !c.starts_with("GET ") && c.ends_with(&format!("/workers/scripts/{name}"))).count();
+        assert_eq!(writes("shroom-probe"), 0, "never written or deleted: {:?}", s.calls);
+        let fresh: Vec<&str> = s.calls.iter().filter(|c| c.starts_with("PUT ")).filter_map(|c| c.rsplit_once("/workers/scripts/").map(|(_, n)| n)).collect();
+        assert_eq!(fresh.len(), 1, "{:?}", s.calls);
+        let suffix = fresh[0].strip_prefix("shroom-probe-").unwrap_or_else(|| panic!("{}", fresh[0]));
+        assert!(suffix.len() == 8 && suffix.bytes().all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase()), "{}", fresh[0]);
+        assert_eq!(writes(fresh[0]), 2, "made, then removed");
+        assert!(!s.scripts.contains_key(fresh[0]), "the probe it made is gone again");
+        assert!(!s.calls.iter().any(|c| c.starts_with("FORCED ")), "removed without force");
+    });
+    // The gate still reads while the name is someone else's.
+    fake.with(|s| s.email_verified = false);
+    assert!(sweep::email_gate(&c, &acc, "shroom-probe").unwrap());
+    fake.with(|s| assert_eq!(s.scripts.get("shroom-probe"), Some(&theirs)));
+    fake.with(|s| s.email_verified = true);
+    assert!(!sweep::email_gate(&c, &acc, "shroom-probe").unwrap());
+    fake.with(|s| assert_eq!((s.scripts.get("shroom-probe"), s.scripts.len()), (Some(&theirs), 1)));
 }
 
 #[test]
