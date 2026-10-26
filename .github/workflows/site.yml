@@ -9,7 +9,10 @@
 #
 # Releases are not deployed here — they go out on a tag (release.yml).
 #
-# Every action is pinned to a full commit SHA, as in ci.yml; wrangler is pinned to a version.
+# Every action is pinned to a full commit SHA, as in ci.yml. Wrangler, the one tool that runs
+# with the token, is pinned with its whole tree in site/deploy/package-lock.json (integrity
+# hashes, the public registry) and installed with `npm ci --ignore-scripts` before the token
+# is in any step's env.
 name: Site
 
 on:
@@ -33,7 +36,6 @@ concurrency:
 
 env:
   NODE_VERSION: 22
-  WRANGLER_VERSION: 4.145.0
 
 jobs:
   test:
@@ -78,6 +80,9 @@ jobs:
             echo "ready=no" >>"$GITHUB_OUTPUT"
             echo "::warning title=shroom.am not deployed::The site environment doesn't hold CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID yet — nothing was deployed."
           fi
+      - name: Wrangler, from its lockfile
+        if: steps.secrets.outputs.ready == 'yes'
+        run: npm ci --prefix site/deploy --ignore-scripts --no-audit --no-fund
       - name: Build
         if: steps.secrets.outputs.ready == 'yes'
         run: node site/build.mjs
@@ -87,7 +92,7 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           WRANGLER_SEND_METRICS: 'false'
-        run: npx --yes "wrangler@$WRANGLER_VERSION" deploy -c site/wrangler.jsonc
+        run: site/deploy/node_modules/.bin/wrangler deploy -c site/wrangler.jsonc
       - name: shroom.am answers
         if: steps.secrets.outputs.ready == 'yes'
         # A new version takes a few seconds to reach every edge: asked again for a minute.
