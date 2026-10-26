@@ -847,6 +847,15 @@ describe("edits (B208)", () => {
     expect(env.BUCKET.json(LATER)).toMatchObject({ rename: true });
   });
 
+  it("weighs an edit by the space's own chapters: the owner's fewer ones never queue the naming again (N78)", async () => {
+    const env = await namedSpace();
+    const chapters = { by: "owner", at: new Date(NOW).toISOString(), clock: null, list: [[0, "Mine"], [50, "Also mine"]], off: false };
+    await env.BUCKET.put(metaKey(REC), JSON.stringify({ ...record(env), chapters, edits: edits([[140, 150]], 3) }));
+    await call(env, "GET", `/${REC}`);
+    expect(env.BUCKET.json(LATER)).toBeNull();
+    expect(record(env).chapters).toEqual(chapters);
+  });
+
   it("never renames over a typed title", async () => {
     const env = await namedSpace({ title: "Mine", titled: true });
     await env.BUCKET.put(metaKey(REC), JSON.stringify({ ...record(env), edits: edits([[0, 75]]) }));

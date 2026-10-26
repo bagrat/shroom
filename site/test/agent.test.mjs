@@ -95,8 +95,9 @@ describe("the agent page", () => {
 
   // The invite goes on the end the way the installer reads it: `--join <link>`, first.
   it("asks for the invite link and passes it as the installer expects", () => {
-    assert.match(flat, /On “I have an invite link”, ask “Paste your invite link here\.” and, when it comes, run the command once with the link on the end, unchanged:/);
-    assert.ok(md.includes("`curl -fsSL https://shroom.am/install | sh -s -- --join <their invite link>`"));
+    assert.match(flat, /On “I have an invite link”, ask “Paste your invite link here\.” When it comes, look at it first: an invite link looks like https:\/\/v\.<name>\.workers\.dev\/join\/<code>, and holds only letters, digits and \. - \/ : — if it holds anything else, run nothing and ask them to check the link\. Otherwise run the command once, with the link in single quotes, unchanged:/);
+    assert.ok(md.includes("`curl -fsSL https://shroom.am/install | sh -s -- --join '<their invite link>'`"));
+    assert.match(flat, /If they already gave you an invite link, show the command with it, checked and quoted as below,/);
     assert.match(installer, /if \[ "\$\{1:-\}" = "--join" \]; then join="\$\{2:-\}"; fi/);
   });
 
