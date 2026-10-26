@@ -73,6 +73,8 @@ const url = `http://127.0.0.1:${server.address().port}/${ID}`;
 
 const load = [];
 for (let i = 0; i < hogs; i++) load.push(spawn("sh", ["-c", "while :; do :; done"], { stdio: "ignore" }));
+// The GPU and the media engine busy too, as OBS's rendering and its virtual camera keep them.
+if (hogs && process.env.PROBE_VT) for (let i = 0; i < 2; i++) load.push(spawn("sh", ["-c", "while :; do ffmpeg -hide_banner -loglevel quiet -nostdin -f lavfi -i testsrc2=size=1920x1080:rate=60 -t 60 -c:v h264_videotoolbox -b:v 20M -f null -; done"], { stdio: "ignore" }));
 await new Promise((r) => setTimeout(r, hogs ? 20_000 : 0));
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -106,6 +108,7 @@ for (let i = 0; i < plays; i++) {
   }
 }
 for (const p of load) p.kill("SIGKILL");
+spawn("pkill", ["-f", "h264_videotoolbox"]);
 server.close();
 const sum = (rows) => ({ plays: rows.length, failed: rows.filter((r) => !r.ok).length, presentedZero: rows.filter((r) => r.presented === 0).length, rearmedPlays: rows.filter((r) => r.rearmed > 0).length,
   presented: rows.map((r) => r.presented).join(",") });

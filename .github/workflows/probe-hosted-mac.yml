@@ -24,7 +24,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        hogs: [0, 12]
+        hogs: [12]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -37,7 +37,7 @@ jobs:
           npm ci
           npx playwright install webkit
           brew install ffmpeg
-      - run: node dev/probe/webkit-frames.mjs 15 ${{ matrix.hogs }} | tee probe.jsonl
+      - run: PROBE_VT=1 node dev/probe/webkit-frames.mjs 25 ${{ matrix.hogs }} | tee probe.jsonl
       - if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -52,7 +52,7 @@ jobs:
       fail-fast: false
       matrix:
         variant: [old, new]
-        copy: [1, 2, 3]
+        copy: [1, 2]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
