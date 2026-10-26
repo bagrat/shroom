@@ -281,7 +281,7 @@ fn the_marker_shortcut_is_held_with_the_pause_shortcut() {
     assert_eq!(r.w.take.as_ref().map(|t| (t.phase, t.markers)), Some((Phase::Recording, 1)), "the take goes on");
 }
 
-/// Law 4 as N82 has it (Bagrat, 2026-10-25): the Library, every editor and Settings are
+/// Law 4 as N83 has it (Bagrat, 2026-10-25): the Library, every editor and Settings are
 /// recorded in a take like any app's windows; the onboarding and Send feedback windows stay
 /// out of every capture, as the popover, the count, the agent label and the marker toast do
 /// (overlays, never windows: always left out).
@@ -289,10 +289,10 @@ fn the_marker_shortcut_is_held_with_the_pause_shortcut() {
 fn a_take_records_the_library_the_editor_and_settings_and_nothing_else_of_ours() {
     let spec = Spec::load();
     let law = spec.law(4).expect("law 4");
-    assert!(law.cites.iter().any(|c| c == "N82"), "law 4 cites N82");
-    let held = law.invariants.iter().find(|i| i.contains("(N82)")).expect("law 4's N82 invariant");
+    assert!(law.cites.iter().any(|c| c == "N83"), "law 4 cites N83");
+    let held = law.invariants.iter().find(|i| i.contains("(N83)")).expect("law 4's N83 invariant");
     for name in ["Library", "editor", "Settings", "onboarding", "Send feedback", "popover", "countdown", "agent label", "marker toast"] {
-        assert!(held.contains(name), "law 4's N82 invariant names {name}");
+        assert!(held.contains(name), "law 4's N83 invariant names {name}");
     }
     for kind in [WindowKind::Library, WindowKind::Settings, WindowKind::Editor(EditorId(1)), WindowKind::Editor(EditorId(7))] {
         assert!(kind.recorded(), "{kind:?} shows in a take");

@@ -346,7 +346,7 @@ stay. A switch keeps the old space's files until the new join's 200 (D:B42, B54 
 - Camera panels (`runtime/camera.rs`): bubble and Camera-only preview (§4.4).
 - Every overlay, the setup window and Send feedback join `Runtime.excluded` when made and
   are left out of capture (`WindowKind::recorded`); the Library, every editor and Settings
-  are recorded like any app's windows (N82, D:B256), and so is the bubble. Overlays and camera panels don't hide on ⌘H (D:B112).
+  are recorded like any app's windows (N83, D:B264), and so is the bubble. Overlays and camera panels don't hide on ⌘H (D:B112).
 
 **Core → webview.** After every loop turn each showing surface gets its whole slice:
 `emit_to(label, "scene", slice)` — no diff, no `rev` (D:B107). On mount, `scene_get`. Slices
@@ -507,7 +507,7 @@ The design record has them: history/design/ARCHITECTURE.md §3.9.
 
 - **Bubble = an un-excluded native panel, zero compositing** (`runtime/camera.rs`, D:B47 g):
   180 pt, round, mirrored, a layer shroom draws the exact camera's frames into (the Scene
-  names it; a picture that stops restarts its camera, D:B188); the overlays and the setup and feedback windows are excluded, the bubble is recorded as-is (as are the Library, the editors and Settings, N82). Born at
+  names it; a picture that stops restarts its camera, D:B188); the overlays and the setup and feedback windows are excluded, the bubble is recorded as-is (as are the Library, the editors and Settings, N83). Born at
   `config`, through the countdown and take; follows the chosen display; dragged position in
   `prefs.bubble_at`; goes quietly if its camera leaves. The popover's camera picker is a camera
   pick or Camera off (DV #43); an iPhone is never auto-picked (D:B48). Panels open at once with a
@@ -734,7 +734,7 @@ foreign `v`. `VERSION` 0.1.9, `IFACE` 2.
 | `GET /m/<id>/<file>` | `rec/<id>/…` with Range/HEAD; only `.m3u8 .m4s .mp4 .jpg .vtt`; `nosniff`, `CSP: sandbox`; record read beside: deleted → 404, unreadable → 503; an edit's copy current → only its files and the recording's own poster while the edit keeps its first frame (N63); baked → only what `media` names (D:B197); `thumb-*` whatever else is (D:B164), but only the record's current picture once an edit or a bake took something from the first 3 s |
 | `GET /d/<id>` | the recording's own file (`video.mp4`, or a baked `edit-<n>.mp4`) — or an edit's current copy; nothing while an edit waits for one — named from the live title, Range forwarded |
 | `GET /oembed?url=` | iframe of the embed face |
-| `GET /_shroom/hls.js`, `/_shroom/ping`, `/_shroom/status/<id>` | the player (immutable); `{shroom, iface, version}` without storage; the page's poll (`drained`, `pct`, `stalled`, `cuts`; an edit's `keep` and `copy`) |
+| `GET /_shroom/hls.js`, `/_shroom/ping`, `/_shroom/status/<id>` | the player (immutable); `{shroom, iface, version}` without storage; the page's poll (`drained`, `pct`, `stalled`, `cuts`, `named`; an edit's `keep` and `copy`) |
 | `POST /_shroom/title/<id>`, `/_shroom/mark` | cookie title edit (`etagMatches`); the mark switch (owner-class) |
 | `POST`, `GET /_shroom/edits/<id>` | a voice cut on or off (`etagMatches`, the maker or owner-class); the owner page's strip and what plays (N65, D:B200) |
 | `GET /favicon.{svg,png,ico}` | the icon carried in the module (D:B109) |

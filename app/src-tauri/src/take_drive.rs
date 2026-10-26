@@ -10,7 +10,7 @@
 //! - `--drive take <out> signals`: the bubble (a native panel that never takes the
 //!   keyboard, on the core's camera, dragged and remembered), which windows a take leaves
 //!   out (the popover and Send feedback, from creation) and which it records (the Library
-//!   and Settings, N82), Camera as the source (its preview, the count on its display,
+//!   and Settings, N83), Camera as the source (its preview, the count on its display,
 //!   the preview staying through the take while the take still gets its frames,
 //!   `camera-lost` for the recorded camera — then Discard, so the room never outlives the
 //!   drive), then display takes interrupted by: the microphone leaving (`mic-lost`, Resume
@@ -58,7 +58,7 @@
 //!   count: a digit and a line of copy, nothing of the Mac's — so the take has it in its
 //!   picture, and the reader must be seen to find it there.
 //!
-//! - `--drive take <out> own-windows` (N82, DECISIONS B256): a first take, for an editor to
+//! - `--drive take <out> own-windows` (N83, DECISIONS B264): a first take, for an editor to
 //!   open on; then the Library, that editor and Settings open behind the pattern, and a take
 //!   in which each is lifted above it in turn, then the popover, the agent label and the
 //!   marker toast. A capture that leaves nothing out sees each one (the proof it was up), and
@@ -133,7 +133,7 @@ pub enum TakeDrive {
     /// The same with the count taken off the list: the take must have it in its picture.
     NotLeftOut,
     /// A take with the Library, an editor and Settings shown over the pattern in turn, and
-    /// the popover, the label and the toast: the windows in its picture, the rest not (N82).
+    /// the popover, the label and the toast: the windows in its picture, the rest not (N83).
     OwnWindows,
     /// Camera as the source, a take kept — the hosted Mac's pattern camera only (B121).
     CameraTake,
@@ -965,7 +965,7 @@ fn signals(d: &D) -> Result<(), String> {
     let a_camera = cameras.iter().any(|c| !c.continuity);
 
     // 1. The popover and Send feedback are left out of capture from creation; the Library
-    // and Settings are recorded like any app's (N82).
+    // and Settings are recorded like any app's (N83).
     windows_excluded(d)?;
 
     // 2. The bubble and Camera as the source (the camera only on this Mac's own grant).
@@ -1019,7 +1019,7 @@ fn windows_excluded(d: &D) -> Result<(), String> {
     let excluded = d.rt.excluded.lock().unwrap().clone();
     for (name, recorded, n) in numbers {
         if recorded {
-            d.check(&format!("{name}'s window is recorded in a take (N82)"), n.is_some_and(|n| !excluded.contains(&n)), format!("{n:?} not in {excluded:?}"));
+            d.check(&format!("{name}'s window is recorded in a take (N83)"), n.is_some_and(|n| !excluded.contains(&n)), format!("{n:?} not in {excluded:?}"));
         } else {
             d.check(&format!("{name}'s window is excluded from capture"), n.is_some_and(|n| excluded.contains(&n)), format!("{n:?} in {excluded:?}"));
         }
@@ -1697,7 +1697,7 @@ fn left_out_take(d: &D, display: u32) -> Result<(), String> {
     Ok(())
 }
 
-// ── a take with shroom's own windows in it (N82) ──
+// ── a take with shroom's own windows in it (N83) ──
 
 /// The least of the pattern's dark field the Library, an editor or Settings lights when it is
 /// in a picture: each covers most of the hosted Mac's 1024 × 768 display, centred.
@@ -1792,7 +1792,7 @@ fn own_windows_opened(d: &D) -> Result<(), String> {
     let excluded = d.rt.excluded.lock().unwrap().clone();
     for (label, name) in &windows {
         let n = with_window(d, label.clone(), |w| w.windowNumber() as u32);
-        d.check(&format!("{name}'s window is off the list of what a take leaves out (N82)"), n.is_some_and(|n| !excluded.contains(&n)), format!("{n:?} not in {excluded:?}"));
+        d.check(&format!("{name}'s window is off the list of what a take leaves out (N83)"), n.is_some_and(|n| !excluded.contains(&n)), format!("{n:?} not in {excluded:?}"));
     }
 
     warp_pointer_away();

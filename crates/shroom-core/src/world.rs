@@ -1246,7 +1246,7 @@ pub enum WindowKind {
 }
 
 impl WindowKind {
-    /// Whether a take records this window while it's on screen, like any app's (law 4, N82):
+    /// Whether a take records this window while it's on screen, like any app's (law 4, N83):
     /// the Library, every editor and Settings, for a bug report of shroom itself. Onboarding
     /// and Send feedback stay out of every capture, as the overlays do.
     pub fn recorded(self) -> bool {
