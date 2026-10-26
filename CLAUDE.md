@@ -140,6 +140,11 @@ lives in `spec/`; the working docs live in `docs/`.
   orchestrator at once that he did and what it's doing now, so it leaves his waiting list
   (Bagrat, 2026-10-16 and 2026-10-18). The orchestrator's id comes from the session that
   spawned it. A session started by hand reports to the orchestrator Bagrat names.
+- **The backlog lives in shroom-private's issues** (Bagrat, 2026-10-25). Sessions file a
+  new backlog item (a bug, an idea, later work) as an issue there, not here and not in a
+  doc. Issues opened on this repo are welcome; they're mirrored there and kept current
+  from here, and this repo's issues are never written to by the mirror. BUILD-STATUS no
+  longer keeps a "Next" list.
 - **Merge when sure.** A session merges its own PR without waiting when all of these hold:
   CI is green on the head, it's mergeable, the change is in scope, and nothing in it is
   Bagrat's to decide (a ruling, product copy, a stack change, anything this file reserves
