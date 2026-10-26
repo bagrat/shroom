@@ -151,7 +151,7 @@ pub fn from_args(args: Vec<String>) -> Mode {
     if let Some(rest) = after("--drive") {
         if rest.first().map(String::as_str) == Some("take") {
             let out = PathBuf::from(rest.get(1).expect("--drive take needs an output path"));
-            let which = rest.get(2).and_then(|w| crate::take_drive::TakeDrive::parse(w)).expect("--drive take <out> disk|signals|movies|upload-kill|upload-resume|soak:<minutes>|surfaces|left-out|not-left-out|camera-take");
+            let which = rest.get(2).and_then(|w| crate::take_drive::TakeDrive::parse(w)).expect("--drive take <out> disk|signals|movies|upload-kill|upload-resume|soak:<minutes>|surfaces|left-out|not-left-out|own-windows|camera-take");
             return Mode::DriveTake { which, out };
         }
         if let Some(which) = rest.first().and_then(|w| Region6::parse(w)) {
